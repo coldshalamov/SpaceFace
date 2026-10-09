@@ -33,6 +33,28 @@ import { hash32, wrapAngle } from '../core/rng.js';
 import { evaluateUnlocks } from './survivalUnlocks.js';
 import { CRUCIBLE_WEEKLY_ROTATION } from '../data/survivalMutators.js';
 import { challengeFromRun, consumeQueuedDailyDateKey, lastQueuedDailyDateKey, normalizeMutators } from './survivalMutators.js';
+import { applyBank, buyHull, buyTrack, emptyHangar, migrateHangar } from '../data/swarmHangar.js';
+import {
+  applySwarmLadderResult,
+  emptySwarmLadder,
+  isSwarmLadderRun,
+  migrateSwarmLadder,
+  swarmLadderStarTotal,
+} from '../data/swarmLadder.js';
+import {
+  applyCrossoverResult,
+  crossoverFactsFor,
+  emptyCrossover,
+  migrateCrossover,
+  registerCrossoverReader,
+} from '../data/swarmCrossover.js';
+import {
+  earnedPerkIds,
+  emptyPerks,
+  migratePerks,
+  normalizePerkLoadout,
+} from '../data/swarmPerks.js';
+import { swarmThreatBountyMult, swarmThreatMutatorIds } from '../data/swarmThreats.js';
 
 export const CRUCIBLE_META_FMT = 'spaceface-crucible-meta';
 export const CRUCIBLE_META_SCHEMA_VERSION = 1;
@@ -592,6 +614,89 @@ function emptyDaily() {
   return { byDate: {} };
 }
 
+/* ---------------------------------------------------------------------------------------------- */
+/* SWARM-06 §8 — the challenge ledger. One paid row per daily date and per weekly mutator: a run  */
+/* that reaches its bar banks the Bounty once, and the ledger feeds the challenge-gated perk      */
+/* earns (Bounty Hunter). Rewards land on the Hangar bounty — Swarm's own wallet, never           */
+/* Adventure credits.                                                                             */
+/* ---------------------------------------------------------------------------------------------- */
+
+export const SWARM_CHALLENGE_DAILY_WAVES = 5;
+export const SWARM_CHALLENGE_DAILY_BOUNTY = 150;
+export const SWARM_CHALLENGE_WEEKLY_WAVES = 10;
+export const SWARM_CHALLENGE_WEEKLY_BOUNTY = 300;
+
+function emptyChallenges() {
+  return { daily: {}, weekly: {} };
+}
+
+function migrateChallenges(raw) {
+  const out = emptyChallenges();
+  const src = asObject(raw);
+  if (!src) return out;
+  const dailyIn = asObject(src.daily) ? src.daily : {};
+  for (const key of Object.keys(dailyIn)) {
+    const row = asObject(dailyIn[key]);
+    const dateKey = isUtcDateKey(key) ? key : (row && isUtcDateKey(row.dateKey) ? row.dateKey : '');
+    if (!dateKey || !row) continue;
+    out.daily[dateKey] = {
+      dateKey,
+      wavesCleared: Number.isInteger(row.wavesCleared) && row.wavesCleared >= 0 ? row.wavesCleared : 0,
+      bounty: Number.isInteger(row.bounty) && row.bounty >= 0 ? row.bounty : 0,
+      at: typeof row.at === 'string' && row.at ? row.at : null,
+    };
+  }
+  const weeklyIn = asObject(src.weekly) ? src.weekly : {};
+  for (const key of Object.keys(weeklyIn)) {
+    const row = asObject(weeklyIn[key]);
+    const weekKey = isUtcWeekKey(key) ? key : (row && isUtcWeekKey(row.weekKey) ? row.weekKey : '');
+    if (!weekKey || !row) continue;
+    out.weekly[weekKey] = {
+      weekKey,
+      mutatorId: typeof row.mutatorId === 'string' ? row.mutatorId : null,
+      wavesCleared: Number.isInteger(row.wavesCleared) && row.wavesCleared >= 0 ? row.wavesCleared : 0,
+      bounty: Number.isInteger(row.bounty) && row.bounty >= 0 ? row.bounty : 0,
+      at: typeof row.at === 'string' && row.at ? row.at : null,
+    };
+  }
+  return out;
+}
+
+/** Finished challenges, the count the perk earns read. A paid row is a finished challenge. */
+export function crucibleChallengesDone(profile) {
+  const bag = migrateChallenges(profile && profile.challenges);
+  return Object.keys(bag.daily).length + Object.keys(bag.weekly).length;
+}
+
+/**
+ * What this settled run pays into the Hangar bounty, and the ledger rows it claims. Pure on
+ * the inputs — the caller applies the bounty to bank.hangar and the rows to profile.challenges.
+ * Bars: a daily-seeded run banks on its date once it clears five waves; a run under the weekly
+ * mutator banks once for the week at ten. Anything else pays nothing and writes nothing.
+ */
+function challengePayoutFor(compact, challenges, recordedAt) {
+  const bag = migrateChallenges(challenges);
+  const paid = [];
+  const waves = Number.isInteger(compact && compact.wavesCleared) ? compact.wavesCleared : 0;
+  const ruleset = compact && compact.ruleset;
+  const isSwarm = ruleset === 'swarm';
+  const dailyKey = compact && typeof compact.dailyDateKey === 'string' && isUtcDateKey(compact.dailyDateKey)
+    ? compact.dailyDateKey : null;
+  if (isSwarm && dailyKey && !bag.daily[dailyKey] && waves >= SWARM_CHALLENGE_DAILY_WAVES) {
+    bag.daily[dailyKey] = { dateKey: dailyKey, wavesCleared: waves, bounty: SWARM_CHALLENGE_DAILY_BOUNTY, at: recordedAt };
+    paid.push({ kind: 'daily', key: dailyKey, bounty: SWARM_CHALLENGE_DAILY_BOUNTY });
+  }
+  const mutators = compact && Array.isArray(compact.mutators) ? compact.mutators : [];
+  const weekKey = utcWeekKeyFromIso(recordedAt);
+  const weeklyId = weeklyMutatorForWeekKey(weekKey);
+  if (isSwarm && weekKey && weeklyId && mutators.includes(weeklyId) && !bag.weekly[weekKey]
+    && waves >= SWARM_CHALLENGE_WEEKLY_WAVES) {
+    bag.weekly[weekKey] = { weekKey, mutatorId: weeklyId, wavesCleared: waves, bounty: SWARM_CHALLENGE_WEEKLY_BOUNTY, at: recordedAt };
+    paid.push({ kind: 'weekly', key: weekKey, bounty: SWARM_CHALLENGE_WEEKLY_BOUNTY });
+  }
+  return { challenges: bag, paid };
+}
+
 function emptyGhosts() {
   return { byHash: {}, lastHash: null };
 }
@@ -605,6 +710,16 @@ export function emptyCrucibleProfile() {
     daily: emptyDaily(),
     ghosts: emptyGhosts(),
     bestLines: [],
+    hangar: emptyHangar(),
+    // SWARM-04: the curated ladder — per-arena zones (stars + best chain), the deepest wave
+    // seen, and the checkpoint a cleared zone boss unlocked. Empty until the first ladder run.
+    ladder: emptySwarmLadder(),
+    // SWARM-06: the crossover ledger (what a Swarm run proved, so Adventure can sell it), the
+    // perk loadout (the pick only — earns are derived from the ladder and challenges), and the
+    // challenge ledger (one paid row per daily date / weekly mutator).
+    crossover: emptyCrossover(),
+    perks: emptyPerks(),
+    challenges: emptyChallenges(),
   };
 }
 
@@ -650,6 +765,12 @@ function migrateProfile(raw) {
     ghosts: migrateGhosts(src.ghosts),
     // Historical rows keep their absent metadata. Never promote a v1 pose tape into a causal line.
     bestLines: Array.isArray(src.bestLines) ? src.bestLines.map(normalizeBestLine).filter(Boolean).slice(0, BEST_LINE_RETAIN_CAP) : [],
+    // Schema stays at 1. Unknown-key copy runs only above that, so the hangar has to be named here.
+    hangar: migrateHangar(src.hangar),
+    ladder: migrateSwarmLadder(src.ladder),
+    crossover: migrateCrossover(src.crossover),
+    perks: migratePerks(src.perks),
+    challenges: migrateChallenges(src.challenges),
   };
   if (version > CRUCIBLE_META_SCHEMA_VERSION) {
     for (const key of Object.keys(src)) {
@@ -661,6 +782,11 @@ function migrateProfile(raw) {
         || key === 'daily'
         || key === 'ghosts'
         || key === 'bestLines'
+        || key === 'hangar'
+        || key === 'ladder'
+        || key === 'crossover'
+        || key === 'perks'
+        || key === 'challenges'
       ) continue;
       profile[key] = cloneJson(src[key]);
     }
@@ -864,6 +990,312 @@ export function saveCrucibleMeta(profile, storage = liveStorage()) {
   return true;
 }
 
+/* ---------------------------------------------------------------------------------------------- */
+/* SWARM-05 §7.2 — the door is the hangar. Buys pass through the swarmHangar owner's own verbs    */
+/* against the profile bag this module alone persists: load, buy, save. A refused buy returns the  */
+/* owner's reason verbatim — the surface shows it, never a guessed one.                            */
+/* ---------------------------------------------------------------------------------------------- */
+
+export function buyCrucibleHangarTrack(trackId, storage = liveStorage()) {
+  const profile = loadCrucibleMeta(storage);
+  const result = buyTrack(profile && profile.hangar, trackId);
+  if (!result || !result.ok) return { ok: false, reason: (result && result.reason) || 'refused', hangar: profile.hangar };
+  profile.hangar = result.hangar;
+  if (!saveCrucibleMeta(profile, storage)) return { ok: false, reason: 'save_failed', hangar: result.hangar };
+  return { ok: true, hangar: result.hangar, rank: result.rank, price: result.price, profile };
+}
+
+export function buyCrucibleHangarHull(hullId, price, storage = liveStorage()) {
+  const profile = loadCrucibleMeta(storage);
+  const result = buyHull(profile && profile.hangar, hullId, price);
+  if (!result || !result.ok || result.duplicate === true) {
+    return { ok: false, reason: result && result.duplicate ? 'owned' : (result && result.reason) || 'refused', hangar: profile.hangar };
+  }
+  profile.hangar = result.hangar;
+  if (!saveCrucibleMeta(profile, storage)) return { ok: false, reason: 'save_failed', hangar: result.hangar };
+  return { ok: true, hangar: result.hangar, profile };
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* SWARM-06 §4.3/§8 — the perk loadout and the door's read of the depth ledgers. Earns are derived */
+/* here too: the same ladder star total the arena gates read, plus finished challenges, so the    */
+/* door and the run-stamp can never disagree about what a profile earned.                          */
+/* ---------------------------------------------------------------------------------------------- */
+
+/** The perks the profile may slot right now — derived, never stored. */
+export function crucibleEarnedPerkIds(profile = null, storage = liveStorage()) {
+  const bag = profile ? migrateProfile(profile) : loadCrucibleMeta(storage);
+  return earnedPerkIds(bag, {
+    starTotal: swarmLadderStarTotal(bag.ladder),
+    challengesDone: crucibleChallengesDone(bag),
+  });
+}
+
+/**
+ * Persist the door's two-slot pick. Unknown and unearned ids drop through normalizePerkLoadout —
+ * a hand-written bag cannot slot a locked perk — and the surviving pick is what runSession will
+ * stamp on the next run.
+ */
+export function setCruciblePerkLoadout(ids, storage = liveStorage()) {
+  const profile = loadCrucibleMeta(storage);
+  const loadout = normalizePerkLoadout(ids, crucibleEarnedPerkIds(profile, storage));
+  profile.perks = { loadout };
+  if (!saveCrucibleMeta(profile, storage)) return { ok: false, reason: 'save_failed', loadout };
+  return { ok: true, loadout, profile };
+}
+
+/**
+ * What the Hangar door shows for the depth layer: the earned Saucer (and any future crossover
+ * rows), the perk catalog with earn state and the stored pick, and the challenge ledgers' fresh
+ * claim state so the door can say "today's bounty is still on the table" honestly.
+ */
+export function crucibleSwarmDepthView(profile = null, storage = liveStorage()) {
+  const bag = profile ? migrateProfile(profile) : loadCrucibleMeta(storage);
+  const challenges = migrateChallenges(bag.challenges);
+  const dateKey = utcDateKeyNow();
+  const weekKey = utcWeekKeyNow();
+  const weeklyId = weeklyMutatorForNow();
+  const earned = crucibleEarnedPerkIds(bag, storage);
+  const loadout = normalizePerkLoadout(
+    bag.perks && bag.perks.loadout,
+    earned,
+  );
+  return {
+    crossover: migrateCrossover(bag.crossover),
+    perks: {
+      earned,
+      loadout,
+      slots: 2,
+    },
+    challenges: {
+      done: crucibleChallengesDone(bag),
+      daily: {
+        dateKey,
+        claimed: !!(dateKey && challenges.daily[dateKey]),
+        waves: SWARM_CHALLENGE_DAILY_WAVES,
+        bounty: SWARM_CHALLENGE_DAILY_BOUNTY,
+      },
+      weekly: {
+        weekKey,
+        mutatorId: weeklyId || null,
+        claimed: !!(weekKey && challenges.weekly[weekKey]),
+        waves: SWARM_CHALLENGE_WEEKLY_WAVES,
+        bounty: SWARM_CHALLENGE_WEEKLY_BOUNTY,
+      },
+    },
+    stars: swarmLadderStarTotal(bag.ladder),
+  };
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* additive profile merge (FB-104 — save-file transport carries the bag across machines)           */
+/* ---------------------------------------------------------------------------------------------- */
+
+function mergeInt(a, b) {
+  const x = Number.isInteger(a) && a >= 0 ? a : 0;
+  const y = Number.isInteger(b) && b >= 0 ? b : 0;
+  return Math.max(x, y);
+}
+
+function mergeRecordRow(ra, rb) {
+  const a = asObject(ra);
+  const b = asObject(rb);
+  if (!a && !b) return emptyRecord();
+  if (!a) return { ...b };
+  if (!b) return { ...a };
+  // Unknown future fields survive on the primary copy; the named fields below always resolve
+  // upward so a merge can never lower a best or drop a counter.
+  const out = { ...emptyRecord(), ...b, ...a };
+  for (const key of ['attempts', 'victories', 'bestScore', 'deepestWave', 'bestKills', 'tieCount']) {
+    out[key] = mergeInt(a[key], b[key]);
+  }
+  // bestResult is the comparable run under recordRules — the stronger one wins; an incomparable
+  // pair keeps the imported row (it is the newer claim to the slot).
+  const ar = asObject(a.bestResult);
+  const br = asObject(b.bestResult);
+  let best = null;
+  if (ar && br) {
+    const order = compareRunRecords(ar, br);
+    best = order == null || order >= 0 ? ar : br;
+  } else {
+    best = ar || br;
+  }
+  out.bestResult = best ? cloneJson(best) : null;
+  out.bestSeed = best && Number.isInteger(best.seed) ? best.seed : mergeInt(a.bestSeed, b.bestSeed);
+  const tied = [];
+  const seen = new Set();
+  const tiedIn = [
+    ...(Array.isArray(a.tiedResults) ? a.tiedResults : []),
+    ...(Array.isArray(b.tiedResults) ? b.tiedResults : []),
+  ];
+  for (const row of tiedIn) {
+    if (!asObject(row)) continue;
+    const sig = stableStringify(row);
+    if (seen.has(sig)) continue;
+    seen.add(sig);
+    tied.push(cloneJson(row));
+    if (tied.length >= CRUCIBLE_HISTORY_LIMIT) break;
+  }
+  out.tiedResults = tied;
+  return out;
+}
+
+function mergeDailyRow(key, ra, rb) {
+  const a = asObject(ra);
+  const b = asObject(rb);
+  if (!a && !b) return null;
+  if (!a) return { ...b };
+  if (!b) return { ...a };
+  const out = { ...b, ...a };
+  out.dateKey = isUtcDateKey(a.dateKey) ? a.dateKey : (isUtcDateKey(b.dateKey) ? b.dateKey : key);
+  out.bestScore = mergeInt(a.bestScore, b.bestScore);
+  out.deepestWave = mergeInt(a.deepestWave, b.deepestWave);
+  out.attempts = mergeInt(a.attempts, b.attempts);
+  // The newer stamp owns the displayed outcome and seed; a tie keeps the imported row.
+  const at = typeof a.recordedAt === 'string' ? a.recordedAt : '';
+  const bt = typeof b.recordedAt === 'string' ? b.recordedAt : '';
+  const newer = at >= bt ? a : b;
+  out.lastOutcome = newer.lastOutcome || a.lastOutcome || b.lastOutcome || null;
+  out.seed = Number.isInteger(newer.seed) && newer.seed > 0 ? newer.seed : mergeInt(a.seed, b.seed);
+  out.recordedAt = newer.recordedAt || null;
+  return out;
+}
+
+function mergeHistoryRows(aRows, bRows) {
+  // Oldest-first union — the file's rows first, then stored rows it never carried (usually the
+  // newer tail when the same machine kept playing after export). Rows dedupe on their canonical
+  // content so an export→wipe→import round trip restores the timeline once.
+  const out = [];
+  const seen = new Set();
+  for (const row of [...aRows, ...bRows]) {
+    if (!asObject(row)) continue;
+    const sig = stableStringify(row);
+    if (seen.has(sig)) continue;
+    seen.add(sig);
+    out.push(cloneJson(row));
+  }
+  return out.slice(-CRUCIBLE_HISTORY_LIMIT);
+}
+
+/**
+ * Additive union of two crucible profiles (FB-104). `primary` is the imported bag, `secondary`
+ * the stored one. Merge law mirrors mergeAchievementBags: collections union (imported row wins a
+ * true same-key conflict), every counter and every best takes the max, and the comparable
+ * bestResult keeps the stronger run — an import can never lower a record. Unknown future-schema
+ * keys pass through, primary winning. Re-running the merge on its own output is a no-op.
+ */
+export function mergeCrucibleProfiles(primary, secondary) {
+  const a = migrateProfile(primary);
+  const b = migrateProfile(secondary);
+  const out = emptyCrucibleProfile();
+  // Union of unlocks — the same key names the same unlock, so the imported row simply wins.
+  out.unlocks = { ...b.unlocks, ...a.unlocks };
+  // Records: lifetime counters max, per-key rows merge upward under the record rules.
+  const lifetime = emptyLifetime();
+  const la = asObject(a.records && a.records.lifetime) ? a.records.lifetime : {};
+  const lb = asObject(b.records && b.records.lifetime) ? b.records.lifetime : {};
+  for (const key of Object.keys(lifetime)) lifetime[key] = mergeInt(la[key], lb[key]);
+  const byKeyA = asObject(a.records && a.records.byKey) ? a.records.byKey : {};
+  const byKeyB = asObject(b.records && b.records.byKey) ? b.records.byKey : {};
+  const byKey = {};
+  for (const key of new Set([...Object.keys(byKeyA), ...Object.keys(byKeyB)])) {
+    byKey[key] = mergeRecordRow(byKeyA[key], byKeyB[key]);
+  }
+  out.records = { byKey, lifetime };
+  out.history = mergeHistoryRows(
+    Array.isArray(a.history) ? a.history : [],
+    Array.isArray(b.history) ? b.history : [],
+  );
+  // Daily boards: per-date merge upward; the freshest stamp keeps the displayed outcome.
+  const dailyA = asObject(a.daily && a.daily.byDate) ? a.daily.byDate : {};
+  const dailyB = asObject(b.daily && b.daily.byDate) ? b.daily.byDate : {};
+  const byDate = {};
+  for (const key of new Set([...Object.keys(dailyA), ...Object.keys(dailyB)])) {
+    const row = mergeDailyRow(key, dailyA[key], dailyB[key]);
+    if (row) byDate[row.dateKey] = row;
+  }
+  out.daily = { byDate: pruneDailyByDate(byDate) };
+  // Ghosts: a hash names one tape, so a same-key conflict is the same run — the fresher stamp
+  // wins the display fields. lastHash tracks the newest recordedAt across the union.
+  const ghostA = asObject(a.ghosts && a.ghosts.byHash) ? a.ghosts.byHash : {};
+  const ghostB = asObject(b.ghosts && b.ghosts.byHash) ? b.ghosts.byHash : {};
+  const byHash = {};
+  for (const key of new Set([...Object.keys(ghostA), ...Object.keys(ghostB)])) {
+    const ra = asObject(ghostA[key]);
+    const rb = asObject(ghostB[key]);
+    if (ra && rb) {
+      const at = typeof ra.recordedAt === 'string' ? ra.recordedAt : '';
+      const bt = typeof rb.recordedAt === 'string' ? rb.recordedAt : '';
+      byHash[key] = cloneJson(at >= bt ? ra : rb);
+    } else {
+      byHash[key] = cloneJson(ra || rb);
+    }
+  }
+  const pruned = pruneGhostsByHash(byHash);
+  let lastHash = null;
+  let lastAt = '';
+  for (const row of Object.values(pruned)) {
+    const at = typeof row.recordedAt === 'string' ? row.recordedAt : '';
+    if (lastHash == null || at >= lastAt) { lastAt = at; lastHash = row.hash; }
+  }
+  out.ghosts = { byHash: pruned, lastHash };
+  // Best lines union by canonical id, points-descending, same retain cap as retainBestLine.
+  const lines = [];
+  const seenIds = new Set();
+  for (const line of [
+    ...(Array.isArray(a.bestLines) ? a.bestLines : []),
+    ...(Array.isArray(b.bestLines) ? b.bestLines : []),
+  ]) {
+    if (!asObject(line)) continue;
+    const id = typeof line.id === 'string' && line.id ? line.id : stableStringify(line);
+    if (seenIds.has(id)) continue;
+    seenIds.add(id);
+    lines.push(cloneJson(line));
+  }
+  out.bestLines = lines.sort((x, y) => (y.points || 0) - (x.points || 0)).slice(0, BEST_LINE_RETAIN_CAP);
+  // Hangar: bounty and the reroll counter are wallet-style totals (max), per-track ranks are
+  // purchased progression (per-track max), settled keys and owned hulls union — a settled key
+  // must stay settled on both sides so neither run can be banked twice, and a hull either
+  // side owns stays owned. migrateProfile already normalized both bags into the same shape.
+  const hangarA = asObject(a.hangar) ? a.hangar : emptyHangar();
+  const hangarB = asObject(b.hangar) ? b.hangar : emptyHangar();
+  const ranks = {};
+  for (const key of new Set([...Object.keys(hangarA.ranks || {}), ...Object.keys(hangarB.ranks || {})])) {
+    ranks[key] = mergeInt((hangarA.ranks || {})[key], (hangarB.ranks || {})[key]);
+  }
+  out.hangar = {
+    bounty: mergeInt(hangarA.bounty, hangarB.bounty),
+    ranks,
+    settledKeys: [...new Set([...(hangarB.settledKeys || []), ...(hangarA.settledKeys || [])])].slice(-80),
+    ownedHulls: [...new Set([...(hangarB.ownedHulls || []), ...(hangarA.ownedHulls || [])])],
+    rerollsUsed: mergeInt(hangarA.rerollsUsed, hangarB.rerollsUsed),
+  };
+  // SWARM-06: crossover is a union — a hull either side proved stays proved. The perk loadout
+  // is one pick, so the primary's pick wins when it carries one; the secondary's fills an empty
+  // hand. Challenges union by their own keys (a paid date stays paid either way).
+  const crossA = migrateCrossover(a.crossover);
+  const crossB = migrateCrossover(b.crossover);
+  out.crossover = { earned: { ...crossB.earned, ...crossA.earned } };
+  const loadA = Array.isArray(a.perks && a.perks.loadout) ? a.perks.loadout : [];
+  const loadB = Array.isArray(b.perks && b.perks.loadout) ? b.perks.loadout : [];
+  out.perks = migratePerks({ loadout: loadA.length ? loadA : loadB });
+  const chA = migrateChallenges(a.challenges);
+  const chB = migrateChallenges(b.challenges);
+  out.challenges = {
+    daily: { ...chB.daily, ...chA.daily },
+    weekly: { ...chB.weekly, ...chA.weekly },
+  };
+  // Unknown top-level keys (a newer schema riding inside the bag) pass through; the imported
+  // copy wins a conflict, matching migrateProfile's own passthrough rule.
+  for (const key of Object.keys(b)) {
+    if (!Object.prototype.hasOwnProperty.call(out, key)) out[key] = b[key];
+  }
+  for (const key of Object.keys(a)) {
+    if (!Object.prototype.hasOwnProperty.call(out, key)) out[key] = a[key];
+  }
+  return out;
+}
+
 export function recordRulesFor(result = {}, run = {}) {
   const provided = result.recordRules || run.recordRules || {};
   const rules = {};
@@ -1038,6 +1470,14 @@ export function overconfidenceStreak(history) {
 export function compactRunResult(result, run, newly) {
   const challenge = challengeFromRun(run);
   const dailyDateKey = resolveDailyDateKey(result, run);
+  // SWARM-06: a Threat's mutator-shaped wager (No Re-rolls, Draftless) rides run.arenaMutators
+  // for its mechanics, but it is the run's OWN difficulty contract — recorded on
+  // compact.threats — never a side-door mutator. Kept out of compact.mutators so an honest
+  // wager cannot kick a ladder run off the climb it paid difficulty to fly.
+  const wagerMutators = new Set(swarmThreatMutatorIds(
+    (result && Array.isArray(result.threats) && result.threats)
+    || (run && run.telemetry && Array.isArray(run.telemetry.threats) && run.telemetry.threats)
+    || []));
   const compact = {
     schemaVersion: 1,
     outcome: result && result.outcome ? result.outcome : null,
@@ -1045,8 +1485,18 @@ export function compactRunResult(result, run, newly) {
     arenaId: (result && result.arenaId) || (run && run.arenaId) || null,
     ruleset: challenge.ruleset,
     trialId: challenge.trialId,
-    mutators: challenge.mutators.slice(),
+    mutators: wagerMutators.size
+      ? challenge.mutators.filter((id) => !wagerMutators.has(id))
+      : challenge.mutators.slice(),
     wave: result && Number.isInteger(result.wave) ? result.wave : 0,
+    // SWARM-04: the round the run began at — 1 for a fresh ladder attempt, the checkpoint's
+    // first wave for a head start. Without it a 10-round clear from Round 11 would read as
+    // rounds 1–10 cleared and pay the wrong zone's stars.
+    startWave: Number.isInteger(result && result.startWave) && result.startWave > 0
+      ? result.startWave
+      : (run && run.telemetry && Number.isInteger(run.telemetry.startWave)
+        ? run.telemetry.startWave
+        : 1),
     deepestWave: result && Number.isInteger(result.deepestWave) ? result.deepestWave : 0,
     wavesCleared: result && Number.isInteger(result.wavesCleared) ? result.wavesCleared : 0,
     kills: result && Number.isInteger(result.kills) ? result.kills : 0,
@@ -1109,8 +1559,39 @@ function applyDailyBoard(daily, compact, recordedAt) {
   return { ...prevBag, byDate: pruneDailyByDate(byDate) };
 }
 
+function hangarEndedAt(value) {
+  if (value == null) return undefined;
+  if (typeof value === 'string' || typeof value === 'number') return value;
+  if (typeof value === 'object') {
+    const tick = value.tick != null ? value.tick : '';
+    const simTime = value.simTime != null ? value.simTime : '';
+    if (tick === '' && simTime === '') return undefined;
+    // settleKey joins this into one string. A stamp object would collapse every death together.
+    return `${tick}:${simTime}`;
+  }
+  return String(value);
+}
+
+function hangarBankInput(result, run) {
+  const src = result && typeof result === 'object' ? result : {};
+  const runSrc = run && typeof run === 'object' ? run : {};
+  const outcome = typeof src.outcome === 'string' ? src.outcome : '';
+  return {
+    credits: src.credits,
+    // The results plate says "defeat". The hangar banks a death.
+    outcome: outcome === 'defeat' ? 'death' : outcome,
+    cashOut: src.cashOut === true,
+    wavesCleared: src.wavesCleared != null ? src.wavesCleared : src.wave,
+    wave: src.wave != null ? src.wave : runSrc.wave,
+    runId: src.runId != null ? src.runId : runSrc.runId,
+    seed: src.seed != null ? src.seed : runSrc.seed,
+    endedAt: hangarEndedAt(src.endedAt),
+  };
+}
+
 export function settleCrucibleRun({ result, run, profile = null, storage = liveStorage() } = {}) {
   const loaded = profile ? migrateProfile(profile) : loadCrucibleMeta(storage);
+  const bank = applyBank(loaded.hangar, hangarBankInput(result, run));
   const evaluated = evaluateUnlocks(loaded, result || {});
   const compact = compactRunResult(result || {}, run || {}, evaluated.newly);
   const line = compact.bestLine;
@@ -1127,10 +1608,62 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
     ghosts = upsertGhost(ghosts, tape, recordedAt, compact.recordRules);
     compact.ghostHash = ghosts.lastHash;
   }
+  compact.bankedBounty = bank.banked;
+  compact.hangarBounty = bank.hangarBounty;
+  compact.cashOut = bank.cashOut;
+  // SWARM-04: settle the run onto the curated ladder — stars per cleared zone, best wave,
+  // and the checkpoint a zone boss unlocks. Only the arena's own seed counts: a Daily or a
+  // typed Custom seed is honest play that simply does not pay stars (isSwarmLadderRun).
+  const ladderEval = isSwarmLadderRun(compact)
+    ? applySwarmLadderResult(loaded.ladder, {
+      arenaId: compact.arenaId,
+      startWave: Number.isInteger(compact.startWave) && compact.startWave > 0 ? compact.startWave : 1,
+      lastClearedWave: (Number.isInteger(compact.startWave) && compact.startWave > 0 ? compact.startWave : 1)
+        + (Number.isInteger(compact.wavesCleared) ? compact.wavesCleared : 0) - 1,
+      deepestWave: compact.deepestWave,
+      zoneChains: result && result.zoneChains,
+      zoneDeaths: result && result.zoneDeaths,
+    })
+    : null;
+  if (ladderEval && (ladderEval.delta.newStars > 0 || ladderEval.delta.newCheckpoint)) {
+    compact.ladderDelta = ladderEval.delta;
+  }
+  // SWARM-06: the crossover ledger — a Swarm run whose cleared span covers an earn wave (the
+  // Zone 3 boss for the Saucer) writes the proof here. Practice runs and non-swarm rulesets
+  // earn nothing; already-earned ids never re-fire (applyCrossoverResult owns both laws).
+  const crossEval = applyCrossoverResult(loaded.crossover, {
+    ...crossoverFactsFor(compact),
+    at: recordedAt,
+  });
+  if (crossEval.earned.length) {
+    compact.crossoverEarned = crossEval.earned.map((entry) => entry.id);
+  }
+  // SWARM-06: challenge purses and the Threat wager's Bounty multiplier ride the Hangar bounty —
+  // Swarm's own wallet. bank.hangar is this module's bag, so the additions are honest writes.
+  const threatIds = Array.isArray(result && result.threats) ? result.threats
+    : (run && run.telemetry && Array.isArray(run.telemetry.threats) ? run.telemetry.threats : []);
+  const threatMult = swarmThreatBountyMult(threatIds);
+  if (threatMult !== 1 && bank.banked > 0) {
+    const bonus = Math.round(bank.banked * (threatMult - 1));
+    bank.hangar = { ...bank.hangar, bounty: (bank.hangar.bounty || 0) + bonus };
+    compact.threatBountyBonus = bonus;
+    compact.hangarBounty = bank.hangar.bounty;
+  }
+  if (threatIds.length) compact.threats = threatIds.slice();
+  const challengeEval = challengePayoutFor(compact, loaded.challenges, recordedAt);
+  if (challengeEval.paid.length) {
+    compact.challengeRewards = challengeEval.paid.map((row) => ({ ...row }));
+    const total = challengeEval.paid.reduce((sum, row) => sum + row.bounty, 0);
+    bank.hangar = { ...bank.hangar, bounty: (bank.hangar.bounty || 0) + total };
+    compact.hangarBounty = bank.hangar.bounty;
+  }
   const next = {
     ...loaded,
     schemaVersion: CRUCIBLE_META_SCHEMA_VERSION,
     unlocks: evaluated.unlocks,
+    ladder: ladderEval ? ladderEval.ladder : loaded.ladder,
+    crossover: crossEval.crossover,
+    challenges: challengeEval.challenges,
     records: {
       byKey,
       lifetime: applyLifetime(records.lifetime, compact),
@@ -1139,6 +1672,7 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
     daily: applyDailyBoard(loaded.daily, compact, recordedAt),
     ghosts,
     bestLines: retainBestLine(loaded.bestLines, line),
+    hangar: bank.hangar,
   };
   saveCrucibleMeta(next, storage);
   consumeQueuedDailyDateKey();
@@ -1245,6 +1779,17 @@ export function kitBalanceBoard(cells, {
     n: list.length,
   };
 }
+
+// SWARM-06: the crossover read port — ships.js sits upstream of this module (survivalMutators
+// imports it), so the shipyard's buy gate cannot import survivalRecords without a cycle. The
+// port hands the gate the bag's own migrated read: no reader, empty ledger, never a guessed earn.
+registerCrossoverReader(() => {
+  try {
+    return loadCrucibleMeta();
+  } catch {
+    return null;
+  }
+});
 
 export function formatKitBalanceBoard(board, { seeds = [] } = {}) {
   const lines = [];

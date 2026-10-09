@@ -87,18 +87,24 @@ test('PQ-164.03 seed 16403: table test of intensity by momentum', () => {
   assert.ok(rows[rows.length - 1].boost > rows[0].boost, 'boost rises with momentum');
 });
 
-test('PQ-164.03: reduce-motion is silent on every channel', () => {
+test('PQ-164.03 + FB-005: haptics off is silent on every channel; reduce-motion is not the owner', () => {
   const loud = computeHapticFrame({ momentum: 999, lineActive: true, lineLoad: 1, boost: true, slam: 1 });
   assert.ok(loud.strong > 0.9 && loud.weak > 0.9, 'a full frame is a real frame');
   const quiet = computeHapticFrame({
-    momentum: 999, lineActive: true, lineLoad: 1, boost: true, slam: 1, reduceMotion: true,
+    momentum: 999, lineActive: true, lineLoad: 1, boost: true, slam: 1, haptics: 'off',
   });
   assert.deepEqual(quiet, {
-    enabled: false, reduceMotion: true, momentum: 0, line: 0, slam: 0, boost: 0, weak: 0, strong: 0,
+    enabled: false, haptics: 'off', momentum: 0, line: 0, slam: 0, boost: 0, weak: 0, strong: 0,
+    pulse: null,
   });
+  // FB-005: reduce-motion is vestibular — it no longer silences the motors.
+  const reduced = computeHapticFrame({
+    momentum: 999, lineActive: true, lineLoad: 1, boost: true, slam: 1, reduceMotion: true,
+  });
+  assert.ok(reduced.strong > 0.9, 'reduce-motion leaves the strong motor live');
 });
 
-test('PQ-164.03: shipped tick drives dual-rumble; reduce-motion resets the motors', () => {
+test('PQ-164.03 + FB-005: shipped tick drives dual-rumble; haptics off resets the motors', () => {
   const pad = makePad();
   installedPad = pad;
   const bus = createBus();
@@ -137,9 +143,15 @@ test('PQ-164.03: shipped tick drives dual-rumble; reduce-motion resets the motor
   assert.ok(gp.haptics.slam > 0.9, `full slam reads ~1 (got ${gp.haptics.slam})`);
   assert.ok(pad.vibrationActuator.last('dual-rumble').strongMagnitude > 0.9);
 
-  // Reduce-motion goes quiet and releases the motors.
+  // Reduce-motion is NOT the haptics switch: the motors stay live under it.
   state.settings.video.motionReduce = true;
   state.tick = 5;
+  gp.tick(0.016, state);
+  assert.equal(gp.haptics.enabled, true, 'reduce-motion leaves rumble on (FB-005)');
+
+  // The accessibility haptics axis is the owner: 'off' goes quiet and releases the motors.
+  state.settings.accessibility = { haptics: 'off' };
+  state.tick = 6;
   gp.tick(0.016, state);
   assert.equal(gp.haptics.enabled, false);
   assert.equal(gp.haptics.strong, 0);

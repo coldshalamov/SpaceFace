@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6edd5f9054fefb3f43a868189c36bc27b2776c143f14762f89e7d96ce9b37672",
+  "contentHash": "e290e4d993e9cb837df614a25951108717408a5e22dcb7b1de9f47cc89cdbee0",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1764,8 +1764,8 @@
       "uri": "place_ore_sorter.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -1876,19 +1876,20 @@
       }
     ],
     "materialProfileRoles": {
-      "geology": 17,
-      "mechanical": 4
+      "geology": 12,
+      "mechanical": 4,
+      "signal": 5
     },
     "materialProfiles": [
       {
         "allowTextures": false,
         "planIndex": 2,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 3,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1923,17 +1924,17 @@
       {
         "allowTextures": false,
         "planIndex": 11,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 12,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 13,
-        "role": "geology"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2560,7 +2561,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ore_sorter.glb"
   },
-  "runtimeHash": "859c8e2475c89ae83eeac3c1c294e4656153cab21024bbecd1b71b96883f0ef6",
+  "runtimeHash": "48767072f2172be6ebc4a7cb5924d58905a9a25165713d121b2c1e5dd63bb0c3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

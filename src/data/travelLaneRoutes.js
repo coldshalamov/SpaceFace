@@ -69,7 +69,7 @@ export const LANE_HELIOS_TETHYS = Object.freeze({
    * The scripted disruption (D8: "ONE damaged/disabled segment"). Index into the segment list, where
    * segment i spans beacon i → beacon i+1.
    *
-   * Segment 4 is chosen for a reason worth recording: it sits ~5.6k WU along a ~14.8k WU chord, so
+   * Segment 4 is chosen for a reason worth recording: it sits ~4.6k WU along a ~14.8k WU chord, so
    * it is unambiguously inside the Helios Voronoi cell rather than near the bisector. A dead segment
    * straddling the boundary would make `sectorMembershipAtGlobal` a coin-flip between two cells, and
    * `encounterDirector.requestAuthoredEncounter` hard-rejects with `wrong_sector` when the sector it
@@ -83,7 +83,78 @@ export const LANE_HELIOS_TETHYS = Object.freeze({
   ambushShapeId: 'ambush_snare',
 });
 
-export const TRAVEL_LANES = Object.freeze([LANE_HELIOS_TETHYS]);
+function authoredLane(spec) {
+  return Object.freeze({
+    ceilingMult: 2.5,
+    rampMult: 2.5,
+    corridorRadiusWU: LANE_CORRIDOR_RADIUS_WU,
+    disruptedSegments: Object.freeze([1]),
+    ambushShapeId: 'ambush_snare',
+    ...spec,
+  });
+}
+
+/** FB-033 — five more strings on atlas edges that already have a named face. */
+export const LANE_HELIOS_CERES = authoredLane({
+  id: 'lane_helios_ceres',
+  name: 'Helios–Ceres Ore Run',
+  fromSectorId: 'sector_helios_prime',
+  toSectorId: 'sector_ceres_belt',
+  contactId: 'lane_rell_moisture',
+});
+export const LANE_CERES_VESTA = authoredLane({
+  id: 'lane_ceres_vesta',
+  name: 'Ceres–Vesta Slag Run',
+  fromSectorId: 'sector_ceres_belt',
+  toSectorId: 'sector_vesta_forge',
+  contactId: 'lane_tann_slag_carrier',
+});
+// FB-033 reroute: the first cut of this edge ran Tethys→Pallas straight through the Ceres→Vesta
+// corridor (segment midpoints 193 WU apart — two tubes sharing the same sky). The west-march
+// string now hangs off Pallas→Sker instead, which is the drift cut that stays clear.
+export const LANE_PALLAS_SKER = authoredLane({
+  id: 'lane_pallas_sker',
+  name: 'Pallas–Sker Drift Cut',
+  fromSectorId: 'sector_pallas_drift',
+  toSectorId: 'sector_sker_haven',
+  contactId: 'lane_vey_tithe',
+});
+export const LANE_TETHYS_DIONE = authoredLane({
+  id: 'lane_tethys_dione',
+  name: 'Tethys–Dione Cleared Run',
+  fromSectorId: 'sector_tethys_junction',
+  toSectorId: 'sector_dione_lane',
+  contactId: 'lane_sable_cleared_run',
+});
+export const LANE_IO_CHARON = authoredLane({
+  id: 'lane_io_charon',
+  name: 'Io–Charon Claim Run',
+  fromSectorId: 'sector_io_reach',
+  toSectorId: 'sector_charon_expanse',
+  contactId: 'lane_pell_claim_nine',
+});
+
+export const TRAVEL_LANES = Object.freeze([
+  LANE_HELIOS_TETHYS,
+  LANE_HELIOS_CERES,
+  LANE_CERES_VESTA,
+  LANE_PALLAS_SKER,
+  LANE_TETHYS_DIONE,
+  LANE_IO_CHARON,
+]);
+
+/** Cited headline for a lane whose dead segment just became an ambush. */
+export function laneDisruptionHeadline(lane) {
+  const id = (lane && (lane.laneId || lane.id)) || 'lane';
+  const name = (lane && (lane.laneName || lane.name)) || id;
+  return Object.freeze({
+    text: `${name} is broken. The dead segment is on the chart.`,
+    kind: 'lane_disrupted',
+    sourceRef: `lane:disrupted:${id}`,
+    laneId: id,
+    laneName: name,
+  });
+}
 
 /**
  * Derive a lane's physical beacon chain from its endpoint sectors' frozen global origins.

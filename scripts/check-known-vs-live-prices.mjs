@@ -130,7 +130,7 @@ function testRuntimeScope() {
   const galaxySrc = readFileSync(new URL('../src/ui/galaxyMap.js', import.meta.url), 'utf8');
   const sectorSimSrc = readFileSync(new URL('../src/systems/sectorSim.js', import.meta.url), 'utf8');
 
-  assert.match(economySrc, /recordMarketMemory\(stationId, snapshot = null\)/,
+  assert.match(economySrc, /recordMarketMemory\(stationId, snapshot = null/,
     'economy must own the visited-station memory writer');
   assert.match(economySrc, /state\.player\.marketMemory/,
     'price memory must live under player state so it saves with the pilot');

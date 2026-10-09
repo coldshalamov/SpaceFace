@@ -39,14 +39,14 @@ export const ADVENTURE_ROLE_DOCTRINES = freezeDeep([
   {
     role: 'reach',
     enemyId: 'quiet_ghost',
-    combatDoctrineId: 'ranged_disengager',
+    combatDoctrineId: 'ranged_stalker',
     living: 'long-range watches off trade lanes',
     blurb: 'Ghosts already disengage and return on a new bearing.',
   },
   {
     role: 'support',
     enemyId: 'pd_screen_escort',
-    combatDoctrineId: 'interceptor_flyby',
+    combatDoctrineId: 'escort_screen',
     living: 'advanced faction fleets screening a leader',
     blurb: 'The cleanser/screen from the exam wave is a point-defense escort.',
     industrial: { enemyId: 'mule_trader', living: 'repair and haul traffic in industrial sites' },
@@ -61,7 +61,7 @@ export const ADVENTURE_ROLE_DOCTRINES = freezeDeep([
   {
     role: 'disruptor',
     enemyId: 'mine_layer_jackal',
-    combatDoctrineId: 'ranged_disengager',
+    combatDoctrineId: 'mine_layer_wake',
     living: 'refinery routes and salted wakes',
     blurb: 'The mine-layer from the Foundry salts industrial approaches.',
   },

@@ -8,6 +8,7 @@ import { leftoverNewRunLine } from '../../core/newGamePlus.js';
 import { MODULES } from '../../data/modules.js';
 import {
   DEFAULT_STARTER_ID,
+  NEW_GAME,
   NEW_GAME_STARTERS,
   starterById,
 } from '../../data/newGameDefaults.js';
@@ -19,13 +20,13 @@ import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { createStageHull } from './stageHull.js';
-import { createStopScale, createStopArc, createTurntable } from '../orrery/stopDial.js';
+import { createStopScale } from '../orrery/stopDial.js';
 import { createYardCarousel } from '../orrery/yardCarousel.js';
 import { createHullRing } from '../orrery/hullRing.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { hullPosterUrl } from '../hullPosters.js';
-import { injectDeckplate } from '../deckplate/index.js';
-import { capPins, platePins, panePins, channelPins, rowPins, wellPins }
+import { dpMark, injectDeckplate } from '../deckplate/index.js';
+import { capPins, platePins, channelPins }
   from '../kit/computedMaterial.js';
 
 // PQ-156.00: the catalog owns the three starter hulls; Hitch stays the default pick so a
@@ -35,7 +36,7 @@ const SHIP_BY_ID = new Map(SHIPS.map((def) => [def.id, def]));
 const FITTABLE_BY_ID = new Map();
 for (const item of [...WEAPONS, ...MODULES]) FITTABLE_BY_ID.set(item.id, item);
 const DIFFICULTIES = [
-  ['casual', 'Casual', 'Much softer combat for learning and QA.'],
+  ['casual', 'Casual', 'Much softer combat. Learn the ropes.'],
   ['standard', 'Standard', 'Softer hits on you; slightly easier kills.'],
   ['veteran', 'Veteran', 'Full combat baseline. No damage padding.'],
   ['ironman', 'Ironman', 'Veteran combat. Death ends the run.'],
@@ -247,11 +248,10 @@ export function parseUniverseSeed(value) {
   return Number.isSafeInteger(seed) && seed > 0 && seed <= 0xffffffff ? seed : null;
 }
 
-function randomSeedText(ctx) {
+function randomSeedText() {
   // A fresh seed for the "New seed" word. Cosmetic UI randomness (the run's seed is whatever the
   // field says when Launch is pressed), so Math.random is fine here; state.rng belongs to the sim.
-  const rng = ctx && ctx.state && typeof ctx.state.rng === 'function' ? ctx.state.rng : Math.random;
-  return String(1 + Math.floor(rng() * 0xfffffffe));
+  return String(1 + Math.floor(Math.random() * 0xfffffffe));
 }
 
 function readNewGamePlusCandidateAsync(ctx) {
@@ -416,6 +416,12 @@ export const newGameScreen = {
     if (refs && refs.unsubStartFailed) {
       try { refs.unsubStartFailed(); } catch (e) {}
     }
+    // a remount without a dispose (screen swap, error recovery) would leave the last mount's
+    // instruments observing detached DOM — release them first, the way dispose() does (REV-D136b.3)
+    for (const key of ['_diffDial', '_starterDial', '_hullRing', 'hull']) {
+      if (this[key] && typeof this[key].dispose === 'function') { try { this[key].dispose(); } catch (e) {} }
+      this[key] = null;
+    }
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen');
     rootEl.dataset.kReady = '0';
@@ -492,6 +498,23 @@ export const newGameScreen = {
     diffWords.setAttribute('aria-labelledby', diffField.label.id);
     diffWords.classList.add('of-pause');
     for (const b of diffWords.querySelectorAll('.k-word')) railWord(b);
+    // The produced tier insignia (deckplate markPaths `insignia-difficulty-1..4`): one chevron
+    // stack seated beside each word at badge scale — the chevron count carries the tier, the
+    // word carries the name, so the mark stays aria-hidden and the button's name is unchanged.
+    // Beside, not above: the stop-arc is the row's spine and the arc's inner words already hang
+    // over its crest — a taller button would push them into it. The live word's mark lights
+    // (its accent chevron is the lamp) in _setDifficulty, alongside aria-pressed.
+    DIFFICULTIES.forEach(([val], i) => {
+      const b = diffWords.querySelector(`.k-word[data-action="difficulty:${val}"]`);
+      if (!b) return;
+      b.insertAdjacentHTML('afterbegin', dpMark(`insignia-difficulty-${i + 1}`, {
+        size: '18px',
+        lit: val === DEFAULT_DIFFICULTY,
+        className: 'sf-ng-diff-mark',
+      }));
+      const mark = b.querySelector('.sf-ng-diff-mark');
+      if (mark) { mark.style.verticalAlign = '-3px'; mark.style.marginRight = '6px'; }
+    });
     const diffDesc = el('p', 'k-sentence', '');
     diffDesc.id = 'sf-ng-difficulty-desc';
     diffWords.setAttribute('aria-describedby', diffDesc.id);
@@ -499,9 +522,10 @@ export const newGameScreen = {
     diffField.wrap.appendChild(diff);
     diffField.wrap.appendChild(diffDesc);
     body.appendChild(diffField.wrap);
-    // ORRERY: difficulty is a four-stop scale with the amber index.
-    // difficulty as a four-stop dial with the Hand (ORRERY 6); it fills the form column with an instrument
-    if (ORRERY) this._diffDial = createStopArc({ row: diffWords, width: 340, radius: 116, span: 144, overshoot: 0 });
+    // ORRERY: difficulty is a four-stop scale with the amber index, stood on end — the form
+    // column is narrower than four grown names on one line, so the ruler stacks a station per
+    // line and every word keeps the column's whole width (D136).
+    if (ORRERY) this._diffDial = createStopScale({ row: diffWords, width: 340, axis: 'y' });
     body.appendChild(hairline());
 
     // Arrow bridges for the Tab-invisible starter row: Down from the pilot name or Up from the
@@ -527,12 +551,24 @@ export const newGameScreen = {
         target.focus();
       }
     });
+    // The scale stands on end, so the stations take Up/Down along their own line — the roving's
+    // Left/Right still answers too (REV-D136b.1). The edges walk out the way the dial reads: Up
+    // off the first station climbs back to the starter words, Down off the last falls to the seed.
     diffWords.addEventListener('keydown', (e) => {
-      if (e.key !== 'ArrowUp' || e.altKey || e.ctrlKey || e.metaKey) return;
-      const target = liveWordIn(starterWords);
-      if (!target) return;
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+      const all = [...diffWords.querySelectorAll('.k-word')];
+      const i = all.indexOf(e.target);
+      if (i < 0) return;
+      const next = all[i + (e.key === 'ArrowDown' ? 1 : -1)];
       e.preventDefault();
-      target.focus();
+      if (next) { next.focus(); cue('move'); return; }
+      if (e.key === 'ArrowUp') {
+        const target = liveWordIn(starterWords);
+        if (target) target.focus();
+      } else {
+        seed.focus();
+      }
     });
     // Once focus leaves the starter row, park every word's Tab stop again — the row's roving
     // focusin marks the entered word tabbable, and the six-stop launch traversal must stay
@@ -561,7 +597,7 @@ export const newGameScreen = {
     const newSeed = el('button', 'k-word k-word--fine', 'New seed');
     newSeed.type = 'button'; newSeed.dataset.action = 'newSeed';
     paintKey(newSeed, 'small');
-    newSeed.addEventListener('click', () => { if (launching) return; seed.value = randomSeedText(ctx); cue('confirm'); });
+    newSeed.addEventListener('click', () => { if (launching) return; seed.value = randomSeedText(ctx); cue('confirm'); this._emitEmbarkSpec(); });
     seedRow.appendChild(seed); seedRow.appendChild(newSeed);
     seedField.wrap.appendChild(seedRow);
     const seedDesc = el('p', 'k-t-fine k-38', ORRERY
@@ -569,6 +605,8 @@ export const newGameScreen = {
       : 'Leave blank for a random universe. The same seed always produces the same contracts and markets.');
     seedDesc.id = 'sf-ng-seed-desc';
     seedField.wrap.appendChild(seedDesc);
+    // A typed seed decides the salted dressing rows — re-arm the embark warm when it changes.
+    seed.addEventListener('input', () => this._emitEmbarkSpec());
     body.appendChild(seedField.wrap);
     body.appendChild(hairline());
 
@@ -839,9 +877,38 @@ export const newGameScreen = {
       setLaunching, unsubStartFailed, unsubLoading, cancelHullRelease, ctx,
       isLaunching: () => launching,
       legacy: () => ({ on: legacyOn, select: legacySelect, candidate: newGamePlusCandidate }),
+      // The embark-speculation seed: typed seeds enumerate exactly; a blank field pre-rolls
+      // a candidate here so the salted dressing rows it warms are the ones the launch rolls.
+      // Drawn through the same rng seam as randomSeedText — the run's seed contract is
+      // unchanged (resetRunState treats a forwarded opts.seed identically to its internal roll).
+      specSeedRoll: parseUniverseSeed(randomSeedText(ctx)),
     };
     this._setStarter(DEFAULT_STARTER.id, { silent: true });
     this._setDifficulty(DEFAULT_DIFFICULTY, { silent: true });
+  },
+
+  // The newGame screen used to be the only embark path with no speculation emit — every
+  // authored decode for the start sector paid inside the loading window. During form dwell
+  // this re-arms the renderer's embark warm: sector recipe + opening cast + starter hull,
+  // with the salted dressing rows once a seed exists (typed or the pre-rolled candidate).
+  _emitEmbarkSpec() {
+    if (!refs || !refs.ctx || !refs.ctx.bus || typeof refs.ctx.bus.emit !== 'function') return;
+    // The arm enumerates the sector def + salted dressing streams and posts ~60–100 warm
+    // requests — running it inside the gesture task drops a menu frame per keystroke.
+    // Coalesce to one deferred emit that reads the field at fire time (not queueMicrotask,
+    // which drains pre-paint): a typed burst arms once, after the gesture.
+    if (this._embarkSpecQueued) return;
+    this._embarkSpecQueued = true;
+    setTimeout(() => {
+      this._embarkSpecQueued = false;
+      if (!refs || !refs.ctx || !refs.ctx.bus || typeof refs.ctx.bus.emit !== 'function') return;
+      const typed = refs.seed ? parseUniverseSeed(refs.seed.value) : null;
+      refs.ctx.bus.emit('game:embarkSpeculation', {
+        sectorId: NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime',
+        seed: typed == null ? refs.specSeedRoll : typed,
+        shipDefId: refs.starter && refs.starter.shipId,
+      });
+    }, 0);
   },
 
   _setStarter(id, { silent = false } = {}) {
@@ -864,6 +931,7 @@ export const newGameScreen = {
     if (this.hull) {
       this.hull.show(starter.shipId, { fittings: starterStageFittings(starter) });
     }
+    this._emitEmbarkSpec();
     syncKeys(refs.starterWords);
   },
 
@@ -879,6 +947,9 @@ export const newGameScreen = {
       b.setAttribute('aria-pressed', String(live));
       // The row's single Tab stop is the live word; the kit's roving focus takes over inside the row.
       b.tabIndex = live ? 0 : -1;
+      // The tier insignia lights with its word: the accent chevron is the mark's lamp.
+      const mark = b.querySelector('.sf-ng-diff-mark');
+      if (mark) mark.classList.toggle('dp-mark--lit', live);
     }
     if (!silent) refs.diff.dispatchEvent(new Event('change', { bubbles: true }));
     syncKeys(refs.diffWords);
@@ -897,7 +968,9 @@ export const newGameScreen = {
     // requires a finite positive number and otherwise randomises, so passing NaN or 0 through
     // would silently mean "random" while looking deliberate.
     const rawSeed = parseUniverseSeed(refs.seed.value);
-    const seedOpt = rawSeed == null ? {} : { seed: rawSeed };
+    // Blank forwards the pre-rolled candidate the embark arm already enumerated for — the
+    // salted dressing rows it warmed are the exact rows this run materializes.
+    const seedOpt = { seed: rawSeed == null ? refs.specSeedRoll : rawSeed };
     const legacy = refs.legacy();
     const newGamePlusOpt = legacy.on && legacy.select && legacy.select.value && legacy.candidate
       ? { newGamePlus: { slot: legacy.candidate.sourceSlot, keepsakeId: legacy.select.value } }
@@ -917,6 +990,7 @@ export const newGameScreen = {
   onShow(ctx) {
     if (!refs) return;
     cue('open');
+    this._emitEmbarkSpec();
     refs.setLaunching(false);
     refs.cancelHullRelease();
     if (this.hull) this.hull.restore();
@@ -941,6 +1015,7 @@ export const newGameScreen = {
   refresh() {},
   dispose() {
     if (refs && refs.cancelHullRelease) refs.cancelHullRelease();
+    if (this._diffDial) { this._diffDial.dispose(); this._diffDial = null; }
     if (this._starterDial) { this._starterDial.dispose(); this._starterDial = null; }
     if (this.hull) { this.hull.dispose(); this.hull = null; }
     if (this._hullRing) { this._hullRing.dispose(); this._hullRing = null; }

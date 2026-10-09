@@ -38,7 +38,11 @@ export function uiSourceDigest(repoRoot) {
   const walk = (dir) => {
     let entries = [];
     try { entries = readdirSync(dir, { withFileTypes: true }); } catch (_) { return; }
-    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+    // Codepoint order, not localeCompare: ICU collation differs across host builds
+    // (a Windows VM and the Ubuntu runner order 'AGENTS.md' differently), which made
+    // the same file set hash to different digests on different OSes — a baseline shot
+    // on one host could never satisfy the staleness check on another.
+    for (const entry of entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
       const full = join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
       else {

@@ -1,0 +1,147 @@
+diff --git a/src/systems/lawSecurity.js b/src/systems/lawSecurity.js
+index 2013829..de11ed8 100644
+--- a/src/systems/lawSecurity.js
++++ b/src/systems/lawSecurity.js
+@@ -9,7 +9,7 @@
+ 
+ import { hash32 } from '../core/rng.js';
+ import { occupantGenerationOf } from '../core/entity.js';
+-import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
++import { isDynamicPhysicsBodyEntity, physicsBodyNativeReady } from '../core/physicsAuthority.js';
+ import { primitiveBlocksSegment, segmentHitsProxy } from '../combat/lineOfSight.js';
+ import { proxyWorldPrimitives, proxyScaleFor, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
+ import { takeNearWorkSlice } from '../core/activityScheduler.js';
+@@ -4817,7 +4817,7 @@ export function pointInScanCone(origin, heading, range, halfAngle, point) {
+ }
+ 
+ export function scanLineOccluded(origin, target, occluder) {
+-  if (!origin || !target || !occluder || !occluder.pos) return false;
++  if (!origin || !target || !occluder || !occluder.pos || !physicsBodyNativeReady(occluder)) return false;
+   // A body with a real compound collider (a measured skin on a fixed solid, or a declared legacy
+   // manifest) occludes with that collider. Everything else — every dynamic hull, which never takes
+   // a skin — keeps the gameplay-radius disc below.
+@@ -5845,7 +5845,7 @@ function lawWitnessPlanRowIsStill(occ) {
+     const vz = occ.vel ? Math.abs(Number(occ.vel.z) || 0) : 0;
+     return vx <= 1e-6 && vz <= 1e-6 && !occ.intent;
+   }
+-  return !isDynamicPhysicsBodyEntity(occ);
++  return !occ.physicsBody?.collisionProxyManifest && !isDynamicPhysicsBodyEntity(occ);
+ }
+ 
+ function lawWitnessPlanInsert(plan, rec) {
+@@ -5949,9 +5949,11 @@ function buildLawWitnessOccluderView(occ, manifest) {
+ // the grid lane so the two-tier eval keeps an identical verdict.
+ function lawWitnessRowBlocked(rec, observer, targetPos, ignoredIds, ax, az, bx, bz, mx, mz, halfLen) {
+   const occ = rec.occ;
+-  if (!occ || occ.alive === false || occ.collides === false || !occ.pos) return false;
++  if (!occ || occ.alive === false || occ.collides === false || !occ.pos || !physicsBodyNativeReady(occ)) return false;
+   if (occ === observer || occ.id === observer.id) return false;
+   if (ignoredIds && ignoredIds.has(occ.id)) return false;
++  // Authored geometry may change within the tick-scoped plan. Re-read its revision-keyed view.
++  if (occ.physicsBody?.collisionProxyManifest) rec = lawWitnessOccluderView(occ);
+   // Every surface point of this occluder sits within `reach` of its origin; a center outside
+   // the segment's enclosing ball cannot intersect — identical verdict, no segment math.
+   const dxm = occ.pos.x - mx;
+diff --git a/test/convex-law-query-coherence.test.mjs b/test/convex-law-query-coherence.test.mjs
+new file mode 100644
+index 0000000..a821d6f
+--- /dev/null
++++ b/test/convex-law-query-coherence.test.mjs
+@@ -0,0 +1,97 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { physics } from '../src/core/physics.js';
++import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
++import { physicsBodyNativeReady } from '../src/core/physicsAuthority.js';
++import { sweepCollisionProxyInto } from '../src/core/collisionProxySweep.js';
++import { segmentHitsProxy, witnessLineOfSight } from '../src/combat/lineOfSight.js';
++import { lawWitnessesNear, scanLineOccluded } from '../src/systems/lawSecurity.js';
++
++const box = (x0, x1, z0 = -1, z1 = 1) => ({ kind: 'convex', vertices: [[x0,z0],[x1,z0],[x1,z1],[x0,z1]] });
++const manifest = primitive => ({ schemaVersion: 1, id: 'convex:law-cover', referenceRadius: 'world', primitives: [primitive] });
++function fixture(primitive = box(-2,2), from = {x:-5,z:0}, to = {x:5,z:0}) {
++  const cover = { id: 1, type: 'station', alive: true, collides: true, collisionMask: -1, radius: 4,
++    pos: {x:0,z:0}, vel: {x:0,z:0}, rot: 0, data: {}, physicsBody: { schemaVersion: 1, dynamic: false,
++      shape: 'ball', mass: 22, radius: 4, inertiaY: 40, useMeasuredSkin: false, revision: 1,
++      collisionProxyManifest: manifest(primitive) } };
++  const observer = {id:99,type:'ship',alive:true,collides:true,data:{lawWitness:true},pos:from};
++  const state = {tick:7,entityList:[cover,observer],entities:new Map([[1,cover],[99,observer]])};
++  const witnesses = () => lawWitnessesNear(state,{pos:to,radius:50}).map(w=>w.entityId);
++  return { cover, observer, state, from, to, witnesses };
++}
++
++test('same-tick authored convex revisions refresh law reach and exact geometry outside old grid', () => {
++  const f = fixture(box(-2,2), {x:1000,z:-5}, {x:1000,z:5});
++  assert.deepEqual(f.witnesses(),[99]);
++  f.cover.physicsBody.collisionProxyManifest.primitives = [box(990,1010)];
++  f.cover.physicsBody.revision++;
++  assert.equal(segmentHitsProxy(f.cover,f.from,f.to),true);
++  assert.equal(witnessLineOfSight(f.state,f.observer,f.to),false);
++  assert.deepEqual(f.witnesses(),[]);
++  f.cover.physicsBody.collisionProxyManifest = manifest(box(-2,2));
++  f.cover.physicsBody.revision++;
++  assert.equal(segmentHitsProxy(f.cover,f.from,f.to),false);
++  assert.deepEqual(f.witnesses(),[99]);
++});
++
++test('same-tick native floor refusal and repair agree across nearest projectile and every LOS consumer', async () => {
++  const f = fixture(), owner = await createSg02DynamicBodyOwner();
++  const projectile = {id:2,type:'projectile',alive:true,radius:.1,collisionMask:-1};
++  const reader = {_segmentHitScratch:{},_bestSegmentHitScratch:{}};
++  const far = {...f.cover,id:3,pos:{x:4,z:0},physicsBody:{...f.cover.physicsBody,collisionProxyManifest:manifest(box(-.5,.5))}};
++  const hit = () => physics._bestProjectileTarget.call(reader,projectile,f.from,f.to,[far,f.cover],null);
++  const visible = expected => {
++    assert.equal(segmentHitsProxy(f.cover,f.from,f.to),!expected);
++    assert.equal(scanLineOccluded(f.from,f.to,f.cover),!expected);
++    assert.equal(witnessLineOfSight(f.state,f.observer,f.to),expected);
++    assert.equal(sweepCollisionProxyInto({},f.cover,f.cover.physicsBody.collisionProxyManifest,f.from,f.to,.1),!expected);
++    assert.deepEqual(f.witnesses(),expected?[99]:[]);
++  };
++  try {
++    owner.syncFromEntities([f.cover,far]); visible(false); assert.equal(hit(),f.cover);
++    f.cover.physicsBody.collisionProxyManifest.primitives = [box(-.001,.001,-2,2)];
++    f.cover.physicsBody.revision++;
++    owner.syncFromEntities([f.cover,far]);
++    assert.equal(physicsBodyNativeReady(f.cover),false);
++    assert.equal(owner.records.has(1),false);
++    assert.equal(owner.world.bodies.len(),1);
++    visible(true); assert.equal(hit(),far,'refused near geometry cannot mask valid farther hit');
++    f.cover.physicsBody.collisionProxyManifest.primitives = [box(-2,2)];
++    f.cover.physicsBody.revision++;
++    owner.syncFromEntities([f.cover,far]);
++    assert.equal(physicsBodyNativeReady(f.cover),true);
++    visible(false); assert.equal(hit(),f.cover);
++  } finally { owner.dispose(); }
++});
++
++test('initial below-floor authored convex has no native body and casts no law cover', async () => {
++  const f = fixture(box(-.001,.001,-2,2)), owner = await createSg02DynamicBodyOwner();
++  try {
++    owner.syncFromEntities([f.cover]);
++    assert.equal(owner.world.bodies.len(),0); assert.equal(owner.world.colliders.len(),0);
++    assert.equal(physicsBodyNativeReady(f.cover),false);
++    assert.equal(scanLineOccluded(f.from,f.to,f.cover),false);
++    assert.deepEqual(f.witnesses(),[99]);
++  } finally { owner.dispose(); }
++});
++
++test('unchanged law queries reuse geometry and occluder plan while retaining static-grid narrowing', () => {
++  const f = fixture(box(20,22));
++  let vertexReads = 0, entityWalks = 0, distantPositionReads = 0;
++  const primitive = f.cover.physicsBody.collisionProxyManifest.primitives[0];
++  const vertices = primitive.vertices;
++  Object.defineProperty(primitive,'vertices',{get(){vertexReads++;return vertices;},enumerable:true});
++  const values = f.state.entities.values.bind(f.state.entities);
++  f.state.entities.values = () => {entityWalks++;return values();};
++  for (let index=0;index<256;index++) {
++    const distant = {id:1000+index,type:'station',alive:true,collides:true,radius:2,data:{},
++      pos:{get x(){distantPositionReads++;return 20000+index*1000;},z:20000}};
++    f.state.entities.set(distant.id,distant);f.state.entityList.push(distant);
++  }
++  assert.deepEqual(f.witnesses(),[99]);
++  const reads = {vertexReads,entityWalks,distantPositionReads};
++  for(let query=0;query<50;query++)assert.deepEqual(f.witnesses(),[99]);
++  assert.equal(entityWalks,reads.entityWalks,'same-tick queries do not rescan the entity Map');
++  assert.equal(vertexReads,reads.vertexReads,'unchanged authored geometry does not re-expand');
++  assert.equal(distantPositionReads,reads.distantPositionReads,'distant static buckets remain excluded');
++});

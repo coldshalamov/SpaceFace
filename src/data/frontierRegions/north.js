@@ -52,14 +52,15 @@ export const NORTH_ORIGIN_CELLS = Object.freeze({
   sector_phoebe_echo: Object.freeze({ x: 2, y: 18 }),
 });
 
-/** Inline copies of SECTOR_PALETTE_CLASSES (core/belt/fringe/anomaly) — no shared import. */
+/** Inline copies of SECTOR_PALETTE_CLASSES (core/belt/fringe/anomaly) — no shared import.
+ *  Values mirror sectors.js exactly; the Lacquer & Starlight unification retune applies here too. */
 export const NORTH_PALETTE = Object.freeze({
   belt: Object.freeze({
-    key: 0xffd59a, rim: 0xb56d2f, fill: 0xffb13d, ambient: 0x594a42,
+    key: 0xffd59a, rim: 0x71a4bf, fill: 0xbca58d, ambient: 0x594a52,
     fog: 0x090705, fogDensity: 0.00002, nebulaTint: 0x8a4a1e, dust: 0xc0793d,
   }),
   fringe: Object.freeze({
-    key: 0xffb07a, rim: 0xff3f2d, fill: 0xffaa66, ambient: 0x584343,
+    key: 0xffb07a, rim: 0x9875ce, fill: 0xbc91a6, ambient: 0x51435d,
     fog: 0x090504, fogDensity: 0.00003, nebulaTint: 0x8a1e1e, dust: 0xc15032,
   }),
   anomaly: Object.freeze({
@@ -102,6 +103,7 @@ export const NORTH_SECTORS = Object.freeze([
     security: 0.14,
     charted: false,
     factionId: 'faction_dmc',
+    industries: { mining: true },
     position: Object.freeze({ ...NORTH_ORIGIN_CELLS.sector_rhea_cinder }),
     worldRadius: 5000,
     paletteKey: 'belt',
@@ -138,7 +140,15 @@ export const NORTH_SECTORS = Object.freeze([
     ]),
     pois: Object.freeze([
       Object.freeze({ id: 'poi_rhea_slag', type: 'derelict', name: 'Slag Hauler Hulk' }),
-      Object.freeze({ id: 'poi_rhea_claim', type: 'cache', name: 'Burned Survey Cache', hidden: true }),
+      // Sealed-cache payoff rows: world.js _spawnCachePayoffs pops `contents` as a real
+      // anchored cargo pod once the cache is investigated.
+      Object.freeze({
+        id: 'poi_rhea_claim',
+        type: 'cache',
+        name: 'Burned Survey Cache',
+        hidden: true,
+        contents: Object.freeze({ commodityId: 'cmdty_ore_goldium', amount: 2 }),
+      }),
     ]),
   }),
 
@@ -149,6 +159,7 @@ export const NORTH_SECTORS = Object.freeze([
     security: 0.18,
     charted: false,
     factionId: 'faction_free',
+    industries: { research: true },
     position: Object.freeze({ ...NORTH_ORIGIN_CELLS.sector_haumea_rift }),
     worldRadius: 5100,
     paletteKey: 'fringe',
@@ -206,6 +217,7 @@ export const NORTH_SECTORS = Object.freeze([
     security: 0.10,
     charted: false,
     factionId: 'faction_quiet',
+    threat: 'quiet',
     position: Object.freeze({ ...NORTH_ORIGIN_CELLS.sector_eris_margin }),
     worldRadius: 5200,
     paletteKey: 'fringe',
@@ -243,9 +255,22 @@ export const NORTH_SECTORS = Object.freeze([
       }),
     ]),
     pois: Object.freeze([
-      Object.freeze({ id: 'poi_eris_drop', type: 'cache', name: 'Quiet Drop Point', hidden: true }),
+      Object.freeze({
+        id: 'poi_eris_drop',
+        type: 'cache',
+        name: 'Quiet Drop Point',
+        hidden: true,
+        contents: Object.freeze({ commodityId: 'cmdty_salvage_electronics', amount: 3 }),
+      }),
       Object.freeze({ id: 'poi_eris_wreck', type: 'wreck', name: 'Toll-Runner Wreck' }),
-      Object.freeze({ id: 'poi_eris_dead_drop', type: 'cache', name: 'Margin Dead Drop', hidden: true, factionId: 'faction_quiet' }),
+      Object.freeze({
+        id: 'poi_eris_dead_drop',
+        type: 'cache',
+        name: 'Margin Dead Drop',
+        hidden: true,
+        factionId: 'faction_quiet',
+        contents: Object.freeze({ commodityId: 'cmdty_art', amount: 1 }),
+      }),
       Object.freeze({
         id: 'poi_eris_metronome',
         type: 'anomaly',
@@ -269,6 +294,8 @@ export const NORTH_SECTORS = Object.freeze([
     security: 0.06,
     charted: false,
     factionId: 'faction_vael',
+    threat: 'vael',
+    industries: { research: true },
     position: Object.freeze({ ...NORTH_ORIGIN_CELLS.sector_phoebe_echo }),
     worldRadius: 5500,
     paletteKey: 'anomaly',
@@ -324,7 +351,14 @@ export const NORTH_SECTORS = Object.freeze([
           body: 'Sixty crystal fragments hold a sphere around the Echo Shrine without visible support. Active scans isolate one remembered note of the Vael schism at a time.',
         }),
       }),
-      Object.freeze({ id: 'poi_phoebe_vault', type: 'cache', name: 'Silent Vault', hidden: true }),
+      // The Silent Vault: one unit of the exotic its sealing was meant to protect.
+      Object.freeze({
+        id: 'poi_phoebe_vault',
+        type: 'cache',
+        name: 'Silent Vault',
+        hidden: true,
+        contents: Object.freeze({ commodityId: 'cmdty_exotic_xenium', amount: 1 }),
+      }),
     ]),
   }),
 ]);

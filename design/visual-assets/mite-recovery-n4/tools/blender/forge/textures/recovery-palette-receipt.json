@@ -1,0 +1,15 @@
+{
+  "candidate": "N4 NEW bytes",
+  "recipe": "restrained terminal margin and body-underside contact zone; shell-only bowed directional roughness",
+  "randomNoise": false,
+  "images": [
+    {
+      "file": "brood-anatomical-albedo.png",
+      "sha256": "05d78a5b4ad92a4f2b319d24bb5659baf322e0cb3d6b6d6cb0e8a274acd8855e"
+    },
+    {
+      "file": "brood-shared-anatomy-roughness.png",
+      "sha256": "4f2174f2863bdf63ca99543870f8ea3b62292aeca76d1166516b71b070e2afe2"
+    }
+  ]
+}

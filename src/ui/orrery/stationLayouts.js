@@ -85,7 +85,8 @@ ${S} .so-command-trigger::before, ${S} .so-command-trigger::after { display:none
 ${S} .so-command-trigger .so-icon { width:14px; height:14px; }
 /* the key hint is a word after a dot, never a drawn key cap */
 ${S} .so-command-trigger .dp-kbd { background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
-  padding:0 !important; font:inherit !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .5) !important; }
+  padding:0 !important; font:inherit !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .5) !important;
+  display:inline-block !important; white-space:nowrap !important; }
 ${S} .so-command-trigger .dp-kbd::before { content:"· "; color:rgb(${BONE} / .4); }
 ${S} .so-command-trigger:is(:hover, :focus-visible) { color:rgb(246 241 230) !important; outline:none !important; }
 ${S} .so-command-trigger:focus-visible { color:var(--dp-hand, #f2b950) !important; }
@@ -102,9 +103,10 @@ ${S} .sxb-purse__value { color:rgb(248 244 234) !important; text-shadow:0 0 22px
 ${S} .sxb-purse__label { color:rgb(${BONE} / .6) !important; }
 ${S} .sxb-vitals { display:flex !important; flex-wrap:nowrap !important; justify-content:flex-end; align-items:flex-start; gap:6px 6px !important;
   list-style:none; margin:10px 0 0 !important; padding:0 !important; background:none !important; border:0 !important; }
-${S} .sxb-vital { display:flex !important; flex-direction:column; align-items:center; position:relative; min-width:0 !important; width:132px !important; flex:none !important;
+${S} .sxb-vital { display:flex !important; flex-direction:column; align-items:center; position:relative; min-width:132px !important; width:auto !important; flex:none !important;
   margin:0 !important; padding:0 !important; gap:0 !important; background:none !important; border:0 !important; box-shadow:none !important; }
 ${S} .sxb-vital::before, ${S} .sxb-vital::after { display:none !important; }
+@media (min-width:900px) { ${S} .sxb-berth > .sxb-handoff { max-width:max(320px, calc(100vw - 816px)) !important; } }
 ${S} .sxb-vital__head { display:flex !important; flex-direction:column; align-items:center; gap:1px; background:none !important; border:0 !important;
   box-shadow:none !important; padding:0 !important; min-height:0 !important; width:auto !important; color:inherit; cursor:default; }
 ${S} button.sxb-vital__head { cursor:pointer; }
@@ -202,6 +204,15 @@ ${S} .sxb-ops .sx-dock__group--nav { gap:0 clamp(28px, 2.2vw, 44px) !important; 
   ${S} .sxb-ops .sx-dock__group--nav { gap:0 16px !important; }
   ${S} .sxb-ops .sx-tile__label { letter-spacing:.16em !important; }
   ${S} .sxb-ops .of-facility-rail { max-width:64vw !important; }
+}
+@media (max-width:900px) {
+  /* the crown's vital row is nowrap at berth width — once the berth stacks single-column the
+     crown only has the panel's width, and the row's overhang walks its leftmost dials (Hull,
+     Repair, Insure) off the left edge of the glass or clips them inside the crown (D112, and
+     the same collision at 701–900 — REV-D112). Let the readings wrap, anchored left where the
+     player's eye starts. */
+  ${S} .sxb-vitals { flex-wrap:wrap !important; justify-content:flex-start !important; gap:8px 10px !important; }
+  ${S} .sxb-vital { width:auto !important; min-width:96px !important; }
 }
 ${S} .sxb-ops .sx-tile { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important;
   color:rgb(${BONE} / .58) !important; padding:6px 2px !important; }

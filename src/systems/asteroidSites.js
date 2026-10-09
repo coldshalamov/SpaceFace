@@ -1,3 +1,6 @@
+import { validateCeresWorkfleetOperation, ceresWorkfleetContactRetained, CERES_WORKFLEET_REQUEST_STREAM, CERES_WORKFLEET_JOB_ID } from './ceresWorkfleet.js';
+import { CERES_WORKFLEET_CONTRACT as CERES_FLEET } from '../data/ceresWorkfleet.js';
+const CERES_NPC_AUTHORITY=Symbol('ceres-site-operation');
 // Asteroid sites — durable machine-design surface grown inside drilled asteroids.
 // Design: design/ASTEROID_SITES_BRIEF.md. Owns ONLY state.sites (plus the documented
 // tile.structure stamp on live drill fields and site markers under asteroid ent.data).
@@ -25,6 +28,7 @@ import {
   commitShipmentSale,
   ensureShipment,
   shipmentQty,
+  shipmentUsed,
   takeFromShipment,
 } from './cargoCustody.js';
 import {
@@ -42,11 +46,12 @@ import { COMMODITIES } from '../data/commodities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { asteroidMass } from '../data/sectorPhysical.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { presentationOwnerAdmissionForWorldRecord } from '../core/presentationAdmission.js';
 import { WORLD_SITE_MANIFESTS, worldSiteManifestById } from '../data/worldSiteManifests.js';
 import {
   createWorldSiteRecord, normalizeWorldSiteRecord, applyWorldSiteOperation,
-  applyWorldSiteFailure, operationForWorldSiteComponent, projectWorldSite,
+  applyWorldSiteFailure, operationForWorldSiteComponent, projectWorldSite, retainCeresWorkfleetPayload,
 } from './worldSiteKernel.js';
 import {
   syncWorldSiteMaterialization, removeWorldSiteMaterialization, captureWorldSitePayloadState,
@@ -110,6 +115,7 @@ export function makeSiteRecord({ id, asteroidId, sectorId, fieldId, createdT }) 
     overlays: { power: [], lane: [] },
     laneStores: [],           // [{ cells:[idx], store:{goodId:qty} }] — persisted per lane network
     exportOff: Object.fromEntries(SITE_BALANCE.exportDefaultOff.map((id) => [id, true])),
+    podDestinationId: null,   // null = the auto lane (the sector's first station)
     exportBuffer: {},
     fleet: {
       podsReady: 0,
@@ -170,6 +176,243 @@ function drillAccountingStamp(site) {
   return stamp;
 }
 
+// ---------------------------------------------------------------------------
+// SF-273/SF-274 durable-record repair. `state.sites.byId` arrives verbatim from arbitrary saves:
+// the owner below validates custody + machinery fields to a conserved, explicitly-safe state
+// before any system resumes work on them. Every repair fails CLOSED toward the player —
+// goods return to a current owner (buffer/store), a handoff that cannot prove its identity is
+// never re-sold, and an unrecoverable machine phase resolves to the same safe idle the live
+// "abandoned batch" rule already uses. Nothing here mints units, credits, or progress.
+// ---------------------------------------------------------------------------
+
+function isPlainObject(value) {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function finiteNumber(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/** Clean a {goodId: qty} map. Fractional stock is legal in buffers/lanes; shipment lots are ints. */
+function normalizeSiteStoreMap(store, { integers = false } = {}) {
+  const out = {};
+  if (!isPlainObject(store)) return out;
+  for (const [goodId, qty] of Object.entries(store)) {
+    if (typeof goodId !== 'string' || !goodId) continue;
+    const n = integers ? Math.floor(Number(qty)) : Number(qty);
+    if (Number.isFinite(n) && n > 0) out[goodId] = n;
+  }
+  return out;
+}
+
+/** Return an unrecoverable pod's goods to the launch buffer — the lot's previous owner. */
+function refundSitePodCargo(site, cargo) {
+  let moved = 0;
+  if (!isPlainObject(site.exportBuffer)) site.exportBuffer = {};
+  for (const [goodId, qty] of Object.entries(isPlainObject(cargo) ? cargo : {})) {
+    const n = Math.floor(Number(qty));
+    if (typeof goodId !== 'string' || !goodId || !(n > 0)) continue;
+    site.exportBuffer[goodId] = (Number(site.exportBuffer[goodId]) || 0) + n;
+    moved += n;
+  }
+  return moved;
+}
+
+/**
+ * Machine records are durable authorship: placement, mode, fractional carry and a committed
+ * fabricator batch all survive a save boundary. Repair drops only records that can never run
+ * again (unknown housing, off-grid or duplicated cell, corrupt id) — they are invisible,
+ * untouchable phantoms otherwise. A `job` whose recipe/progress cannot resume resolves to null:
+ * identical to the deliberate mode-swap outcome, inputs stay consumed, the machine idles safe.
+ */
+function normalizeSiteMachines(site) {
+  const machines = Array.isArray(site.machines) ? site.machines : [];
+  const kept = [];
+  const seenIds = new Set();
+  const seenCells = new Set();
+  let dropped = 0;
+  for (const m of machines) {
+    if (!isPlainObject(m)) { dropped += 1; continue; }
+    const def = SITE_MACHINE_BY_ID.get(m.defId);
+    const id = typeof m.id === 'string' && m.id ? m.id : null;
+    const col = Number(m.col);
+    const row = Number(m.row);
+    const cellOk = Number.isInteger(col) && Number.isInteger(row)
+      && col >= 0 && col < COLS && row >= 0 && row < ROWS;
+    if (!def || !id || seenIds.has(id) || !cellOk || seenCells.has(`${col},${row}`)) {
+      dropped += 1;
+      continue;
+    }
+    seenIds.add(id);
+    seenCells.add(`${col},${row}`);
+    m.col = col;
+    m.row = row;
+    // A mode outside the machine's authored list idles it forever; restore the authored default.
+    if (Array.isArray(def.modes) && !def.modes.includes(m.mode)) m.mode = def.defaultMode || null;
+    const carry = isPlainObject(m.carry) ? m.carry : {};
+    m.carry = {};
+    for (const [key, qty] of Object.entries(carry)) {
+      if (typeof key !== 'string' || !key) continue;
+      const n = Number(qty);
+      // Honest carries are strictly sub-unit accruals; a value at/over a whole unit is
+      // corruption that would mint output next tick — drop it rather than clamp to ~1.
+      if (Number.isFinite(n) && n > 0 && n < 1) m.carry[key] = n;
+    }
+    const job = isPlainObject(m.job) ? m.job : null;
+    m.job = null;
+    if (job && typeof job.recipeId === 'string' && job.recipeId
+      && Number.isFinite(Number(job.progressS)) && Number(job.progressS) >= 0) {
+      m.job = { recipeId: job.recipeId, progressS: Number(job.progressS) };
+    }
+    kept.push(m);
+  }
+  if (dropped > 0) {
+    console.warn(`[asteroidSites] save repaired: dropped ${dropped} unrecoverable machine record(s) on ${site.id}`);
+  }
+  site.machines = kept;
+  // A corrupt machine counter must never mint an id a surviving machine already owns.
+  let maxNum = 0;
+  for (const m of kept) {
+    const match = /^m(\d+)$/.exec(m.id);
+    if (match) maxNum = Math.max(maxNum, Number(match[1]));
+  }
+  site.nextMachineNum = Math.max(maxNum + 1, Math.trunc(Number(site.nextMachineNum)) || 1, 1);
+}
+
+/**
+ * Custody + fleet repair (SF-273). An in-flight courier pod IS the interrupted handoff:
+ * goods already left the launch buffer and live in `shipment._pod` until one seal converts them
+ * into exactly one receipt. Honest saves satisfy `_pod === Σ pod cargo` exactly; the seal path
+ * itself only launches whole units. Repair enforces that invariant instead of letting residue
+ * sell later or a deficit stall the pod: kept pods own `_pod`; anything unrecoverable refunds
+ * to the buffer; anything whose intent already settled is dropped WITHOUT a refund (the lot was
+ * already paid once — a refund would clone it).
+ */
+function normalizeSiteCustody(site) {
+  site.exportBuffer = normalizeSiteStoreMap(site.exportBuffer);
+  const exportOff = {};
+  for (const [goodId, off] of Object.entries(isPlainObject(site.exportOff) ? site.exportOff : {})) {
+    if (off) exportOff[goodId] = true;
+  }
+  site.exportOff = exportOff;
+  // A pod destination must name a station that exists in the site's CURRENT sector — a stale id
+  // (rerolled chart, moved claim) degrades to the auto lane instead of selling into a ghost.
+  const destSector = SECTOR_BY_ID.get(site.sectorId);
+  const destStations = destSector && Array.isArray(destSector.stations) ? destSector.stations : [];
+  if (!destStations.some((st) => st && st.id === site.podDestinationId)) site.podDestinationId = null;
+
+  const laneStores = [];
+  for (const entry of Array.isArray(site.laneStores) ? site.laneStores : []) {
+    if (!isPlainObject(entry)) continue;
+    const cells = (Array.isArray(entry.cells) ? entry.cells : [])
+      .filter((c) => Number.isInteger(c) && c >= 0 && c < COLS * ROWS);
+    const store = normalizeSiteStoreMap(entry.store);
+    if (!cells.length) {
+      // No surviving cells means reconcile() would silently spill this stock next rebuild;
+      // move it to the port buffer instead so the lot survives.
+      for (const [goodId, qty] of Object.entries(store)) {
+        site.exportBuffer[goodId] = (Number(site.exportBuffer[goodId]) || 0) + qty;
+      }
+      continue;
+    }
+    laneStores.push({ cells, store });
+  }
+  site.laneStores = laneStores;
+
+  const fleet = isPlainObject(site.fleet) ? site.fleet : {};
+  const receipts = isPlainObject(site.saleReceipts) ? site.saleReceipts : {};
+  const inFlight = [];
+  const seenIntents = new Set();
+  let droppedPods = 0;
+  const rawPods = Array.isArray(fleet.inFlight) ? fleet.inFlight : [];
+  for (let i = 0; i < rawPods.length; i += 1) {
+    const pod = rawPods[i];
+    if (!isPlainObject(pod)) { droppedPods += 1; continue; }
+    const cargo = normalizeSiteStoreMap(pod.cargo, { integers: true });
+    const launchT = Number(pod.launchT);
+    const arriveT = Number(pod.arriveT);
+    if (!Number.isFinite(launchT) || !Number.isFinite(arriveT) || !Object.keys(cargo).length) {
+      // The record cannot name when it launched or what it carries — its honest remainder goes
+      // back to the launch buffer, which owns it until a fresh launch commits a new intent.
+      refundSitePodCargo(site, cargo);
+      droppedPods += 1;
+      continue;
+    }
+    const intentId = typeof pod.intentId === 'string' && pod.intentId
+      ? pod.intentId
+      : `site-sale:${site.id}:${launchT}:${i}`;
+    if (seenIntents.has(intentId) || receipts[intentId]) {
+      // This lot already settled (or is a ghost of a kept record). Dropping without refund is
+      // the conservation rule: the same intent must never pay twice.
+      droppedPods += 1;
+      continue;
+    }
+    seenIntents.add(intentId);
+    inFlight.push({
+      launchT,
+      arriveT,
+      cargo,
+      lost: pod.lost === true,
+      stationId: typeof pod.stationId === 'string' && pod.stationId ? pod.stationId : null,
+      stationName: typeof pod.stationName === 'string' && pod.stationName
+        ? pod.stationName
+        : (typeof pod.stationId === 'string' && pod.stationId ? pod.stationId : 'the freight lane'),
+      intentId,
+      worldRecordId: typeof pod.worldRecordId === 'string' && pod.worldRecordId
+        ? pod.worldRecordId
+        : `site:${site.id}:pod:${launchT}:${i}`,
+    });
+  }
+  if (droppedPods > 0) {
+    console.warn(`[asteroidSites] save repaired: retired ${droppedPods} unrecoverable courier record(s) on ${site.id}`);
+  }
+  site.fleet = {
+    podsReady: Math.max(0, Math.trunc(finiteNumber(fleet.podsReady, 0))),
+    podTarget: Number.isFinite(Number(fleet.podTarget))
+      ? Math.max(0, Math.min(SITE_BALANCE.maxPodTarget, Math.trunc(Number(fleet.podTarget))))
+      : SITE_BALANCE.defaultPodTarget,
+    inFlight,
+    launches: Math.max(0, Math.trunc(finiteNumber(fleet.launches, 0))),
+    delivered: Math.max(0, Math.trunc(finiteNumber(fleet.delivered, 0))),
+    lost: Math.max(0, Math.trunc(finiteNumber(fleet.lost, 0))),
+    lastLaunchT: Number.isFinite(Number(fleet.lastLaunchT)) ? Number(fleet.lastLaunchT) : -1e9,
+  };
+
+  // Custody objects are created ONLY when the lot needs a home — stamping empty shipment/
+  // receipt objects onto sites that never launched would break save byte-identity (A10).
+  let podCustody = 0;
+  for (const pod of inFlight) podCustody += storeTotal(pod.cargo);
+  if (isPlainObject(site.shipment) || podCustody > 0) {
+    const shipment = ensureShipment(site);
+    shipment.items = normalizeSiteStoreMap(shipment.items, { integers: true });
+    // The in-flight custody account is exactly the surviving pods' cargo — no more, no less.
+    if (podCustody > 0) shipment.items._pod = podCustody;
+    else delete shipment.items._pod;
+    shipment.deliveryState = shipmentUsed(site) > 0 ? 'loading' : 'delivered';
+  } else if (site.shipment != null) {
+    delete site.shipment;
+  }
+  if (isPlainObject(site.saleReceipts)) {
+    for (const [intentId, entry] of Object.entries(site.saleReceipts)) {
+      if (!isPlainObject(entry)) delete site.saleReceipts[intentId];
+    }
+  } else if (site.saleReceipts != null) {
+    delete site.saleReceipts;
+  }
+  // A persisted half-committed intent is never resumable truth — the receipt ledger is.
+  delete site.pendingSale;
+
+  site.stats = isPlainObject(site.stats) ? site.stats : {};
+  site.stats.grossCr = Math.max(0, finiteNumber(site.stats.grossCr, 0));
+  site.stats.creditedCr = Math.max(0, finiteNumber(site.stats.creditedCr, 0));
+  site.stats.exportedU = Math.max(0, finiteNumber(site.stats.exportedU, 0));
+  site.ledger = (Array.isArray(site.ledger) ? site.ledger : [])
+    .filter((entry) => isPlainObject(entry))
+    .slice(0, SITE_BALANCE.ledgerMax);
+  if (site.returnBaseline != null && !isPlainObject(site.returnBaseline)) delete site.returnBaseline;
+}
+
 export const asteroidSites = {
   name: 'asteroidSites',
   // serialize() JSON-clones each site record and normalizes world records into fresh trees;
@@ -199,6 +442,7 @@ export const asteroidSites = {
     this._worldRestoreActive = false;
     this._worldAdmissionBySite = new Map();
     this._worldPayloadCaptureTicks = new Map();
+    this._worldSectionGenerations = new Map();
 
     // Subscriptions are idempotent per bus: a second init(ctx) against the SAME bus (a re-boot
     // path re-entering init) must not double every listener — doubled drill:break handlers would
@@ -258,11 +502,30 @@ export const asteroidSites = {
 
     // Anchored sites re-materialize their rock on every sector visit (self-healing in _repairTick,
     // this listener just makes it prompt). Unanchored sites die with their re-rolled rock.
-    this.bus.on('sector:enter', ({ sectorId } = {}) => {
-      this._repairSweepWanted = true;
+    this.bus.on('sector:enter', (p = {}) => {
+      const { sectorId, enterEpoch } = p;
+      // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+      // payload whose enterEpoch no longer matches the world's serial is stale — syncing
+      // its sites mints home-keyed bodies nothing removes. Synthetic payloads (tests, the
+      // census cook) carry no epoch and always run.
+      const staleEnter = enterEpoch != null && !!state.world
+        && state.world.enterSerial != null && enterEpoch !== state.world.enterSerial;
+      // Arm the sweep after the guard — a stale payload must not mutate live state at all.
+      if (!staleEnter) this._repairSweepWanted = true;
+      // Live GPU + flight + hard enter: defer the materialization pair into the cook's
+      // FIFO (the provider's steps twin covers both sync + repair) — the census drains
+      // them under its slice clock in listener order.
+      if (!this._worldRestoreActive && !staleEnter
+          && deferSectorEnterMaterialization(state, p, this._enterCookProvider)) return;
       // Save restore clears the old entities, enters the saved sector, and only then calls this
       // owner's deserialize. Never rematerialize the pre-load record in that ordering window.
-      if (!this._worldRestoreActive) this._syncWorldSites(sectorId);
+      if (!this._worldRestoreActive && !staleEnter) this._syncWorldSites(sectorId);
+      // The 1s accumulator deferral exists to amortize per-frame cost, but an anchored rock
+      // that died since the last visit belongs inside the enter census window — the respawn
+      // is idempotent, so the accumulator's later pass is a no-op rescan. A stale payload
+      // pays nothing: its sweep would only re-scan the live sector and emit inside the
+      // presented frame.
+      if (!this._worldRestoreActive && !staleEnter) this._repairAnchors();
     });
     this.bus.on('sector:exit', ({ sectorId } = {}) => {
       // SF-294: snapshot each anchored claim's consequence counters as the player leaves — the
@@ -280,12 +543,14 @@ export const asteroidSites = {
       this._worldSyncWanted = true;
       this._worldAdmissionBySite.clear();
       this._worldPayloadCaptureTicks.clear();
+      this._worldSectionGenerations.clear();
       this._surveyByAsteroid.clear(); // volatile assay knowledge never crosses a load
     });
     this.bus.on('save:loaded', () => {
       this._worldRestoreActive = false;
       this._worldAdmissionBySite.clear();
       this._worldPayloadCaptureTicks.clear();
+      this._worldSectionGenerations.clear();
       this._rt.clear();
       this._repairSweepWanted = true;
       this._worldSyncWanted = true;
@@ -293,6 +558,24 @@ export const asteroidSites = {
     });
     this.bus.on('save:error', () => { this._worldRestoreActive = false; });
     this.bus.on('physics:impact', (payload = {}) => this._onWorldSiteImpact(payload));
+
+    // Census mount (vesper pattern): register a cook provider so anchored-site rows
+    // materialize inside the renderer's deterministic sector census (jump + opening)
+    // instead of relying on this listener's emit position. syncWorldSiteMaterialization
+    // dedupes by world record, so the emit listener's own call later in the slice is a
+    // no-op — the provider is ordering insurance, not a second spawn path.
+    if (this.ctx && this.ctx.helpers) {
+      this._enterCookProvider = (sector) => this._enterCookSteps(sector);
+      (this.ctx.helpers.sectorCookProviders
+        || (this.ctx.helpers.sectorCookProviders = []))
+        // Chunked cook provider: the census drives the steps across its slice clock; the
+        // emit listener drains the same steps synchronously.
+        .push(this._enterCookProvider);
+    }
+    this.bus.on('entity:killed', (payload = {}) => this._onWorldSiteSectionKilled(payload));
+    this.bus.on('entity:destroyed', (payload = {}) => {
+      if (payload.entity?.hull <= 0) this._onWorldSiteSectionKilled(payload);
+    });
   },
 
   newGame() {
@@ -305,6 +588,7 @@ export const asteroidSites = {
     this._worldRestoreActive = false;
     this._worldAdmissionBySite = new Map();
     this._worldPayloadCaptureTicks = new Map();
+    this._worldSectionGenerations = new Map();
   },
 
   serialize() {
@@ -380,6 +664,7 @@ export const asteroidSites = {
     this._worldSyncWanted = true;
     this._worldAdmissionBySite = new Map();
     this._worldPayloadCaptureTicks = new Map();
+    this._worldSectionGenerations = new Map();
   },
 
   _normalize(sites) {
@@ -388,9 +673,15 @@ export const asteroidSites = {
     if (!sites.meta) sites.meta = { rngSeed: 0 };
     if (!sites.worldById || typeof sites.worldById !== 'object' || Array.isArray(sites.worldById)) sites.worldById = {};
     if (!Array.isArray(sites.worldOrder)) sites.worldOrder = [];
+    let maxSiteNum = 0;
     for (const id of sites.order) {
       const site = sites.byId[id];
       if (!site) continue;
+      // The map key is the durable identity; a record claiming a different id could detach
+      // itself from its own lookups (or worse, shadow a sibling claim).
+      site.id = id;
+      const siteNumMatch = /^site_(\d+)$/.exec(id);
+      if (siteNumMatch) maxSiteNum = Math.max(maxSiteNum, Number(siteNumMatch[1]));
       site.cleared = normalizeClearedTiles(site.cleared);
       if (site.drillVeinRemainders != null && !Array.isArray(site.drillVeinRemainders)) {
         site.drillVeinRemainders = [];
@@ -412,10 +703,17 @@ export const asteroidSites = {
       // so a corrupt save fails closed to a playable path instead of inventing terminal truth.
       if (site.survey != null) site.survey = normalizeSurveyRecord(site.survey, COLS, ROWS);
       for (const m of site.machines) {
+        if (!isPlainObject(m)) continue; // unrecoverable entries are dropped by the deep repair below
         if (!m.carry) m.carry = {};
         if (m.job === undefined) m.job = null;
       }
+      // SF-273/SF-274: deep repair of the durable machinery + custody fields. Runs after the
+      // shape guards above so each pass sees real objects; both are fixed points on honest data.
+      normalizeSiteMachines(site);
+      normalizeSiteCustody(site);
     }
+    // A corrupt site counter must never mint an id a surviving claim already owns.
+    sites.nextSiteNum = Math.max(maxSiteNum + 1, Math.trunc(Number(sites.nextSiteNum)) || 1, 1);
   },
 
   _ensureWorldSiteRecords() {
@@ -435,6 +733,10 @@ export const asteroidSites = {
   },
 
   _syncWorldSites(sectorId = null) {
+    for (const _ of this._syncWorldSitesSteps(sectorId)) { /* sync lane: inline */ }
+  },
+
+  *_syncWorldSitesSteps(sectorId = null) {
     const currentSectorId = sectorId || (this.state.world && this.state.world.currentSectorId) || null;
     if (!currentSectorId) return;
     this._captureWorldSitePayloads(currentSectorId);
@@ -448,6 +750,14 @@ export const asteroidSites = {
         state: this.state, helpers: this.ctx && this.ctx.helpers, manifest, record,
       });
       this._worldAdmissionBySite.set(siteId, result.admissionState);
+      for (const payload of manifest.payloads) {
+        if (payload.structural) this._worldAdmissionBySite.set(payload.worldObjectId,
+          presentationOwnerAdmissionForWorldRecord(payload.worldObjectId, this.state));
+      }
+      for (const entity of result.entities) {
+        if (entity.data?.worldSiteStructural) this._worldSectionGenerations.set(entity.data.worldRecordId, entity);
+      }
+      yield;
     }
   },
 
@@ -472,9 +782,19 @@ export const asteroidSites = {
       const record = sites.worldById[siteId];
       if (!record || record.sectorId !== currentSectorId) continue;
       const admission = presentationOwnerAdmissionForWorldRecord(`${record.worldObjectId}/root`, this.state);
-      if (this._worldAdmissionBySite.get(siteId) === admission) continue;
-      this._syncWorldSites(currentSectorId);
-      return;
+      if (this._worldAdmissionBySite.get(siteId) !== admission) {
+        this._syncWorldSites(currentSectorId);
+        return;
+      }
+      const manifest = worldSiteManifestById(record.manifestId);
+      for (const payload of manifest?.payloads || []) {
+        if (!payload.structural) continue;
+        const ownAdmission = presentationOwnerAdmissionForWorldRecord(payload.worldObjectId, this.state);
+        if (this._worldAdmissionBySite.get(payload.worldObjectId) !== ownAdmission) {
+          this._syncWorldSites(currentSectorId);
+          return;
+        }
+      }
     }
   },
 
@@ -504,7 +824,7 @@ export const asteroidSites = {
   _captureWorldSitePayloads(sectorId = null, { force = false } = {}) {
     const sites = this.state.sites;
     if (!sites || !sites.worldById) return;
-    const tick = Math.max(0, Math.trunc(Number(this.state.tick) || 0));
+    const tick = Math.max(0, Math.trunc(Number(deferredEnterTick(this.state)) || 0));
     const captureTicks = this._worldPayloadCaptureTicks || (this._worldPayloadCaptureTicks = new Map());
     for (const siteId of sites.worldOrder || []) {
       const manifest = worldSiteManifestById(siteId);
@@ -539,9 +859,16 @@ export const asteroidSites = {
     const index = this.state.entityIndex;
     const byWorldRecord = index && index.__spacefaceEntityIndexV1 && index.ready === true
       && index.byWorldRecordId instanceof Map ? index.byWorldRecordId : null;
+    // The map holds the FIRST carrier — provably the only candidate only when the
+    // count is exactly one; a multi-carrier id falls back to the walk so a later
+    // carrier satisfying the compound predicate is not missed.
+    const wrCounts = index && index.byWorldRecordIdCount instanceof Map
+      ? index.byWorldRecordIdCount : null;
     let payloadEntity = null;
     let receiverEntity = null;
-    if (byWorldRecord) {
+    if (byWorldRecord && wrCounts
+      && wrCounts.get(payloadDef.worldObjectId) === 1
+      && wrCounts.get(receiverWorldRecordId) === 1) {
       const payloadHit = indexedWorldRecordEntity(this.state, payloadDef.worldObjectId);
       const receiverHit = indexedWorldRecordEntity(this.state, receiverWorldRecordId);
       if (payloadHit && payloadHit.data && payloadHit.data.worldSiteId === manifest.id
@@ -559,7 +886,12 @@ export const asteroidSites = {
     }
     const payloadEntities = [];
     const receiverEntities = [];
-    for (const entity of this.state.entities.values()) {
+    const idx = this.state.entityIndex;
+    const siteBucket = idx && idx.ready === true && idx.byWorldSiteId instanceof Map
+      && idx._indexedIds && idx._indexedIds.size === this.state.entities.size
+      ? idx.byWorldSiteId.get(manifest.id) : null;
+    const candidates = siteBucket || this.state.entities.values();
+    for (const entity of candidates) {
       if (!entity || entity.alive === false || !entity.data || entity.data.worldSiteId !== manifest.id) continue;
       if (entity.data.worldRecordId === payloadDef.worldObjectId
         && entity.data.worldSitePayloadId === payloadDef.id) payloadEntities.push(entity);
@@ -578,7 +910,8 @@ export const asteroidSites = {
     };
   },
 
-  applyWorldSiteBeamOperation({ siteId, componentId, verb, amount, requestStreamId, requestSequence, tick } = {}) {
+  applyWorldSiteBeamOperation({ siteId, componentId, verb, amount, requestStreamId, requestSequence, tick, ceresAuthority } = {}) {
+    if(requestStreamId===CERES_WORKFLEET_REQUEST_STREAM&&ceresAuthority!==CERES_NPC_AUTHORITY)return {ok:false,reason:'npc-authority-required',moved:0};
     this._captureWorldSitePayloads();
     const record = this.getWorldSite(siteId);
     const manifest = record && worldSiteManifestById(record.manifestId);
@@ -614,6 +947,62 @@ export const asteroidSites = {
     if (result.materializationChanged
       && this.state.world && this.state.world.currentSectorId === result.record.sectorId) this._syncWorldSites(result.record.sectorId);
     return { ...result, moved: result.receipt && result.receipt.amountApplied || 0, operationId: operation.id };
+  },
+
+  applyCeresWorkfleetOperation(request={}) {
+    if(!validateCeresWorkfleetOperation(this.state,request)||request.requestSequence!==this.state.tick
+      ||!(request.amount>0&&request.amount<=1.8))return {ok:false,reason:'physical-cutter-not-ready'};
+    const operation=worldSiteManifestById(CERES_FLEET.siteId).operations.find(o=>o.id===request.operationId);
+    return this.applyWorldSiteBeamOperation({siteId:CERES_FLEET.siteId,componentId:operation.componentId,verb:operation.verb,
+      amount:request.amount,requestStreamId:CERES_WORKFLEET_REQUEST_STREAM,requestSequence:request.requestSequence,
+      ceresAuthority:CERES_NPC_AUTHORITY});
+  },
+
+  retainCeresWorkfleetSection(request={}) {
+    const state=this.state,job=state.npcJobs?.ceresWorkfleet,section=state.entities.get(request.sectionId),cradle=state.entities.get(request.cradleId);
+    if(!job||job.id!==CERES_WORKFLEET_JOB_ID||request.jobId!==job.id||job.phase!=='pads'
+      ||cradle?.data?.worldRecordId!==CERES_FLEET.identities.cradle
+      ||!ceresWorkfleetContactRetained(cradle,section,state,'cradle'))return {ok:false,reason:'receiver-not-physically-retained'};
+    const line=this._registry?.get('combat')?.kernel?.attachments?.get(job.receiverId);
+    const worker=state.entities.get(request.workerId);
+    if(line?.state!=='active'||line.ownerId!==cradle.id||line.targetId!==section.id
+      ||worker?.data?.worldRecordId!==CERES_FLEET.identities.worker
+      ||Math.hypot(worker.pos.x-cradle.pos.x,worker.pos.z-cradle.pos.z)<200)return {ok:false,reason:'receiver-coupling-invalid'};
+    this._captureWorldSitePayloads(CERES_FLEET.sectorId,{force:true});
+    const record=this.getWorldSite(CERES_FLEET.siteId),manifest=worldSiteManifestById(CERES_FLEET.siteId);
+    const result=retainCeresWorkfleetPayload(manifest,record,{receiverWorldRecordId:CERES_FLEET.identities.cradle,
+      payloadWorldObjectId:section.data.worldRecordId,tick:state.tick,motion:{pos:{x:section.pos.x,z:section.pos.z},
+        vel:{x:section.vel.x,z:section.vel.z},rot:section.rot,angVel:section.angVel}});
+    if(result.ok)this.state.sites.worldById[CERES_FLEET.siteId]=result.record;
+    return result;
+  },
+
+  releaseCeresWorkfleetRetention(jobId) {
+    const job=this.state.npcJobs?.ceresWorkfleet,record=this.getWorldSite(CERES_FLEET.siteId);
+    if(jobId!==CERES_WORKFLEET_JOB_ID||job?.id!==jobId||job.phase!=='player-retained'||!record?.payloads?.long_plate?.retained)return false;
+    const next={...record,payloads:{...record.payloads,long_plate:{...record.payloads.long_plate}}};
+    delete next.payloads.long_plate.retained;next.revision++;this.state.sites.worldById[CERES_FLEET.siteId]=next;return true;
+  },
+
+  _onWorldSiteSectionKilled({ id, entity: retiredEntity = null } = {}) {
+    if (this._worldRestoreActive) return;
+    const entity = retiredEntity || this.state.entities?.get(id);
+    const data = entity?.data;
+    if (!data?.worldSiteStructural || this._worldSectionGenerations.get(data.worldRecordId) !== entity) return;
+    if (entity.alive !== false && !(entity.hull <= 0)) return;
+    const record = this.getWorldSite(data.worldSiteId);
+    const manifest = record && worldSiteManifestById(record.manifestId);
+    const payload = manifest?.payloads.find((entry) => entry.structural
+      && entry.id === data.worldSitePayloadId && entry.worldObjectId === data.worldRecordId);
+    const durable = payload && record.payloads[payload.id];
+    if (!durable || durable.destroyed) return;
+    // Commit before entity cleanup removes the only physical witness. The cadence capture is
+    // insufficient here: combat may kill and remove a body between its 15-tick snapshots.
+    this.state.sites.worldById[record.manifestId] = {
+      ...record, revision: record.revision + 1, updatedTick: Math.max(record.updatedTick, this.state.tick || 0),
+      payloads: { ...record.payloads, [payload.id]: { ...durable, destroyed: true, remainingHull: 0 } },
+    };
+    this._worldSyncWanted = true;
   },
 
   _onWorldSiteImpact(payload = {}) {
@@ -1474,7 +1863,6 @@ export const asteroidSites = {
     }
 
     this._markDirty(site.id, { net: true });
-    this.bus.emit('site:overlayChanged', { siteId, kind, col, row, on: !!on });
     return { ok: true, reason: null, spilled: confirmedSpill ? confirmedSpill.spilledTotal : 0 };
   },
 
@@ -1506,6 +1894,21 @@ export const asteroidSites = {
     const site = this.getSite(siteId);
     if (!site) return { ok: false, reason: 'no-site' };
     site.fleet.podTarget = Math.max(0, Math.min(SITE_BALANCE.maxPodTarget, Math.trunc(Number(target) || 0)));
+    return { ok: true, reason: null };
+  },
+
+  setPodDestination(siteId, stationId) {
+    const site = this.getSite(siteId);
+    if (!site) return { ok: false, reason: 'no-site' };
+    if (stationId == null) {
+      site.podDestinationId = null; // the auto lane: the sector's first station
+      return { ok: true, reason: null };
+    }
+    const sector = SECTOR_BY_ID.get(site.sectorId);
+    const stations = sector && Array.isArray(sector.stations) ? sector.stations : [];
+    if (!stations.some((st) => st && st.id === stationId)) return { ok: false, reason: 'bad-station' };
+    if (site.podDestinationId === stationId) return { ok: true, reason: 'no-change' };
+    site.podDestinationId = stationId;
     return { ok: true, reason: null };
   },
 
@@ -1591,6 +1994,10 @@ export const asteroidSites = {
 
   /** Anchored sites in the CURRENT sector re-materialize their rock if it is missing. */
   _repairAnchors() {
+    for (const _ of this._repairAnchorsSteps()) { /* sync lane: inline */ }
+  },
+
+  *_repairAnchorsSteps() {
     if (this._worldRestoreActive) return;
     const state = this.state;
     const sectorId = state.world && state.world.currentSectorId;
@@ -1633,13 +2040,21 @@ export const asteroidSites = {
         this._returnVisitLine(site, sectorId);
         this._snapshotReturnBaseline(site);
       }
+      yield;
     }
     for (const siteId of state.sites.order) {
       const site = state.sites.byId[siteId];
       // Only a PRODUCING site wears the exterior relay (PQ-024): committed claims stay
       // visually unmarked until real output lands; re-entry re-ensures exactly one.
       if (site && site.anchored && site.sectorId === sectorId && this._isProducing(site)) this._ensureBeacon(site);
+      yield;
     }
+  },
+
+  // Cook-provider twin: the sliced census drives one site/anchor per slice boundary.
+  *_enterCookSteps(sector) {
+    if (!this._worldRestoreActive) yield* this._syncWorldSitesSteps(sector && sector.id);
+    if (!this._worldRestoreActive) yield* this._repairAnchorsSteps();
   },
 
   /**
@@ -1919,7 +2334,10 @@ export const asteroidSites = {
 
     const sector = SECTOR_BY_ID.get(site.sectorId);
     const danger = sector ? dangerIndex(sector) : 0.2;
-    const station = sector && Array.isArray(sector.stations) && sector.stations.length ? sector.stations[0] : null;
+    // The player's addressed customer wins; null (or a stale id — normalized away) keeps the
+    // auto lane, the sector's first station.
+    const stations = sector && Array.isArray(sector.stations) ? sector.stations : [];
+    const station = stations.find((st) => st && st.id === site.podDestinationId) || stations[0] || null;
     // Loss decided at launch (seeded), revealed at arrival — long-run converges on the odds,
     // individual runs stay dramatic (brief §6).
     const roll = drawSeeded(state.sites.meta, 'rngSeed', hash32(state.meta && state.meta.seed || 1, site.id, fleet.launches));
@@ -1945,6 +2363,7 @@ export const asteroidSites = {
       asteroidId: site.asteroidId,
       sectorId: site.sectorId,
       cargoUnits: loaded,
+      destinationStationId: station ? station.id : null,
       arriveT: state.simTime + travel,
       intentId,
       worldRecordId,
@@ -2009,6 +2428,16 @@ export const asteroidSites = {
       if (pod.arriveT > state.simTime) { remaining.push(pod); continue; }
       const sealed = this._sealPodOutcome(site, pod);
       if (sealed && sealed.duplicate) continue;
+      // SF-273: a seal that cannot complete must never crash the site tick, erase the lot, or
+      // fabricate a sale. The cargo goes back to the launch buffer (the lot's previous owner)
+      // and custody is debited to match — the pod itself retires so the failure cannot loop.
+      if (!sealed || sealed.ok !== true || !isPlainObject(sealed.receipt)) {
+        const returned = refundSitePodCargo(site, pod.cargo);
+        takeFromShipment(site, '_pod', storeTotal(pod.cargo));
+        this._ledger(site, 'warn',
+          `Courier handoff could not settle — ${returned}u returned to the launch buffer.`);
+        continue;
+      }
       if (pod.lost) {
         fleet.lost += 1;
         const units = storeTotal(pod.cargo);
@@ -2022,9 +2451,13 @@ export const asteroidSites = {
         continue;
       }
       fleet.delivered += 1;
-      const units = sealed ? sealed.receipt.quantity : storeTotal(pod.cargo);
-      const credited = sealed ? sealed.receipt.credited : 0;
-      this._ledger(site, 'good', `Courier delivered ${units}u to ${pod.stationName} — ${credited} cr banked.`);
+      const units = Number.isFinite(sealed.receipt.quantity)
+        ? sealed.receipt.quantity
+        : storeTotal(pod.cargo);
+      const returnedU = Number(sealed.receipt.returned) || 0;
+      const credited = Number.isFinite(sealed.receipt.credited) ? sealed.receipt.credited : 0;
+      this._ledger(site, 'good', `Courier delivered ${units}u to ${pod.stationName} — ${credited} cr banked.`
+        + (returnedU > 0 ? ` ${returnedU}u unlisted there rode back to the buffer.` : ''));
       this.bus.emit('site:courierDelivered', {
         siteId: site.id,
         stationId: pod.stationId,
@@ -2061,12 +2494,17 @@ export const asteroidSites = {
       site.saleReceipts[intentId] = { fingerprint: `lost:${intentId}`, receipt };
       return { ok: true, duplicate: false, receipt };
     }
+    // Sale and freight must agree unit for unit: only goods the destination market actually
+    // lists can be sold there and land there (INF-econ critic round). A good with no listing
+    // banks nothing — it rides back to the launch buffer below, the lot's previous owner.
+    const { traded, returned } = this._podSaleSplit(pod);
+    const soldUnits = storeTotal(traded);
     let rawGross = 0;
-    for (const goodId of Object.keys(pod.cargo || {}).sort()) {
-      rawGross += pod.cargo[goodId] * this._salePrice(pod.stationId, goodId);
+    for (const goodId of Object.keys(traded).sort()) {
+      rawGross += traded[goodId] * this._salePrice(pod.stationId, goodId);
     }
     const realisedTotal = Math.round(rawGross * SITE_BALANCE.podSalvageMult);
-    const realisedPrice = units > 0 ? realisedTotal / units : 0;
+    const realisedPrice = soldUnits > 0 ? realisedTotal / soldUnits : 0;
     const operatingCost = Math.max(0, Math.round(rawGross) - realisedTotal);
     const have = shipmentQty(site, '_pod');
     if (have < units) addToShipment(site, '_pod', units - have, 9999);
@@ -2082,18 +2520,75 @@ export const asteroidSites = {
     const result = commitShipmentSale(site, plan, () => this._creditPassive(realisedTotal));
     if (result && result.ok && result.receipt) {
       result.receipt.destination = pod.stationName || pod.stationId || null;
+      result.receipt.quantity = soldUnits; // what the sale actually sold; custody debited the whole pod
       result.receipt.realisedPrice = realisedPrice;
       result.receipt.realisedTotal = realisedTotal;
       result.receipt.operatingCost = operatingCost;
       result.receipt.loss = 0;
+      result.receipt.returned = storeTotal(returned);
       result.receipt.credited = result.receipt.credited | 0;
       if (!result.duplicate) {
+        // The goods land where the sale claims to sell — before the stats row so a reader of the
+        // receipt already finds the intake committed. Duplicate seals re-land nothing.
+        this._landPodFreight(pod, traded);
+        if (storeTotal(returned) > 0) refundSitePodCargo(site, returned);
         site.stats.grossCr += realisedTotal;
-        site.stats.exportedU += units;
+        site.stats.exportedU += soldUnits;
         site.stats.creditedCr += result.receipt.credited;
       }
     }
     return result;
+  },
+
+  /**
+   * Split the pod's goods into what the destination market lists (sellable, landable) and what
+   * it does not (banked at the basePrice fallback while the freight bounces 'untraded' — the
+   * residual teleport this path exists to end). Strictly read-only over the economy's markets.
+   * With no destination ("the freight lane") or no economy in the harness there is no market to
+   * disagree with, so every good rides as it always has.
+   */
+  _podSaleSplit(pod) {
+    const traded = {};
+    const returned = {};
+    const econ = this._registry && this._registry.get ? this._registry.get('economy') : null;
+    const markets = econ && econ.state && econ.state.economy && econ.state.economy.markets;
+    const market = pod && pod.stationId && markets ? markets[pod.stationId] : null;
+    for (const goodId of Object.keys((pod && pod.cargo) || {}).sort()) {
+      const qty = Math.floor(Number(pod.cargo[goodId]) || 0);
+      if (qty <= 0) continue;
+      if (!market || market[goodId]) traded[goodId] = qty;
+      else returned[goodId] = qty;
+    }
+    return { traded, returned };
+  },
+
+  /**
+   * The courier handoff is a REAL delivery (INF-econ, WF-06): each SOLD good lands in the
+   * destination market through the canonical freight fact (cargo:delivered → economy
+   * applyFreightDelivery — deduped by receiptId, stock write, shortageRelieved cue). The sale
+   * above was priced at the pre-intake quote; the NEXT pod prices against the market this one
+   * fed, so sustained site output moves the price it sells at instead of minting credits
+   * against a market that never saw a unit. No station ("sold to the freight lane") has no
+   * market to feed and lands nothing. Lost pods never reach here.
+   * @param {object} traded the pod's sold goods only — unlisted goods are not sold here and
+   *   ride back to the launch buffer instead (see _podSaleSplit).
+   */
+  _landPodFreight(pod, traded) {
+    // A stable receiptId is what makes the intake deduped rather than replayable. Restored pods
+    // carry one — the save-repair path assigns a synthetic intentId to old-save pods — so they
+    // land and dedupe exactly like live launches; only a malformed in-memory pod lacks one, and
+    // a handoff that cannot be receipted must not write stock either. Land nothing.
+    if (!pod || !pod.stationId || typeof pod.intentId !== 'string' || !pod.intentId) return;
+    for (const goodId of Object.keys(traded || {}).sort()) {
+      const qty = Math.floor(Number(traded[goodId]) || 0);
+      if (qty <= 0) continue;
+      this.bus.emit('cargo:delivered', {
+        commodityId: goodId,
+        qty,
+        stationId: pod.stationId,
+        receiptId: `${pod.intentId}:${goodId}`,
+      });
+    }
   },
 
   _salePrice(stationId, goodId) {
@@ -2209,6 +2704,8 @@ export const asteroidSites = {
     }
 
     const podRecipe = SITE_RECIPE_BY_ID.get('sr_fab_courier');
+    // Pod destination + options resolved HERE so the screen never imports sector data itself.
+    const destSector = SECTOR_BY_ID.get(site.sectorId);
     return {
       site,
       hasCore: this.hasCore(site),
@@ -2217,6 +2714,11 @@ export const asteroidSites = {
       lanes,
       machines,
       exportRatePerMin: round3(exportRatePerMin),
+      courier: {
+        destinationId: site.podDestinationId || null,
+        stations: (destSector && Array.isArray(destSector.stations) ? destSector.stations : [])
+          .map((st) => ({ id: st.id, name: st.name })),
+      },
       fleet: {
         ...site.fleet,
         inFlightCount: site.fleet.inFlight.length,

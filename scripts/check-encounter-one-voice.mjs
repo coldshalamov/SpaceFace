@@ -117,7 +117,13 @@ function assertNoModal(emitted, label) {
   // legitimately defer under a beat-0 parked player. Seed 23 schedules ambush_snare inside the
   // haven with the richest scanned two-day schedule (4 fired incl. the snare, seeds 1-24).
   // Floor unchanged.
-  const SOAK_SEED = 23;
+  // 2026-10-05: 23 -> 43. The opening-raid/salvage-tail guarantee wave (encounters 344/367)
+  // consumed draws again — seed 23's two-day haven schedule now holds only storyBeatMin-gated
+  // items (dart_shepherd, pd_screen_wall), which legitimately defer under a beat-0 parked
+  // player: the snare still fires (got 1) but the coverage floor starves. Seed 43 schedules
+  // ambush_snare inside the haven with the richest scanned two-day schedule (5 fired incl.
+  // the snare + pirate_toll — 2 proximity-gated, seeds 1-48). Floor unchanged.
+  const SOAK_SEED = 43;
   const { sim, state, bus, emitted, voice } = boot(SOAK_SEED, 'sector_sker_haven', havenPos, { cmdty_refined_metals: 12 });
   const referee = [];
   const firedKinds = [];

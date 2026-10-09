@@ -7,6 +7,8 @@ import {
   priceMult,
 } from '../../systems/economy.js';
 import { sectorSignalFor, effectiveDangerTierFor } from '../../systems/sectorSim.js';
+import { getDerivedStats, shipworksStationAccess } from '../../systems/ships.js';
+import { SHIPS } from '../../data/ships.js';
 import { rankTradeRoutes } from './localSpaceMapModel.js';
 
 const COMMODITY_NAME_BY_ID = new Map(COMMODITIES.map((commodity) => [commodity.id, commodity.name]));
@@ -219,14 +221,27 @@ function heldCargoLots(state) {
   const hold = state && state.player && state.player.cargo;
   const items = hold && hold.items;
   if (!items || typeof items !== 'object') return [];
+  const tradeLots = (state.player && state.player.tradeLots) || {};
   const lots = [];
   for (const [commodityId, qtyRaw] of Object.entries(items)) {
     const qty = Math.max(0, Math.floor(Number(qtyRaw) || 0));
     if (!(qty > 0)) continue;
+    // FB-048: cost basis is the FIFO average of the surviving buy lots — the number the hold
+    // actually cost, not a hardcoded zero that made every lot read as free money.
+    const queue = Array.isArray(tradeLots[commodityId]) ? tradeLots[commodityId] : null;
+    let basisUnits = 0;
+    let basisCost = 0;
+    if (queue) {
+      for (const lot of queue) {
+        const u = Math.max(0, Math.floor(Number(lot && lot.qty) || 0));
+        basisCost += u * (Number(lot && lot.unit) || 0);
+        basisUnits += u;
+      }
+    }
     lots.push({
       commodityId,
       units: qty,
-      costBasis: 0,
+      costBasis: basisUnits > 0 ? basisCost / basisUnits : 0,
       sellHint: 0,
       source: 'held',
     });
@@ -320,6 +335,56 @@ export function buildTradeLanesModel(state, limit = 5, options = {}) {
       modelApprox: source === 'MODEL',
     };
   });
+}
+
+const SHIP_DEF_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
+
+function parkedHoldUnits(owned) {
+  const items = owned && owned.cargo && owned.cargo.items;
+  if (!items || typeof items !== 'object') return 0;
+  let units = 0;
+  for (const id of Object.keys(items)) units += Math.max(0, Math.floor(Number(items[id]) || 0));
+  return units;
+}
+
+/**
+ * FB-061 — the cargo-deck read for the fleet panel: which parked hulls still carry a hold,
+ * whether this berth has a shipyard deck crew, and what the live hold holds. Pure read; the
+ * transfer verbs emit ui:transferParkedCargo and the cargo system performs the move.
+ */
+export function buildParkedHoldModel(state) {
+  const player = state && state.player;
+  const ownedShips = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  const live = player && player.cargo && player.cargo.items ? player.cargo : null;
+  const activeIndex = Math.max(0, Math.floor(Number(player && player.activeShipIndex) || 0));
+  const access = shipworksStationAccess(state);
+  let activeUnits = 0;
+  if (live) {
+    for (const id of Object.keys(live.items)) activeUnits += Math.max(0, Math.floor(Number(live.items[id]) || 0));
+  }
+  const holds = ownedShips.map((owned, index) => {
+    if (!owned || index === activeIndex) return null;
+    const def = SHIP_DEF_BY_ID.get(owned.defId) || null;
+    const derived = getDerivedStats(owned.defId, owned.fittings || [], player);
+    return {
+      index,
+      defId: owned.defId || null,
+      name: (def && def.name) || 'hull',
+      units: parkedHoldUnits(owned),
+      usedVolume: Math.max(0, Number(owned.cargo && owned.cargo.usedVolume) || 0),
+      capVolume: Math.max(0, Number(derived && derived.cargoCap) || 0),
+    };
+  }).filter(Boolean);
+  return {
+    dockedAtShipyard: !!access.hull,
+    stationId: access.stationId || null,
+    activeIndex,
+    activeUnits,
+    activeUsedVolume: Math.max(0, Number(live && live.usedVolume) || 0),
+    activeCapVolume: Math.max(0, Number(live && live.capVolume) || 0),
+    shipCount: ownedShips.length,
+    holds,
+  };
 }
 
 export const __cargoDeckInternals = Object.freeze({

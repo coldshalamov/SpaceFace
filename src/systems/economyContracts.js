@@ -24,10 +24,12 @@
 // (their exported contracts), never edited. Budget: spawn:none at offer time · voice: one 'news'
 // line per offer · draw:none.
 
+import { dedupError } from '../core/warnDedup.js';
 import { SECTORS } from '../data/sectors.js';
 import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
 import { quoteMissionEconomics, affordableContractQuantity, economicRiskTier } from '../economy/economyMissionTerms.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { FACTION_META } from '../data/factions.js';
 import { MISSION_TYPES, MISSION_TUNING } from '../data/missions.js';
 import { hash32, mulberry32 } from '../core/rng.js';
@@ -37,6 +39,7 @@ import {
   selectEconContract, fillCause, SCARCITY_PAY_SCALE, BLOCKADE_PAY_SCALE, BLOCKADE_RELIEF_CMDTYS,
   FIRST_TRADE_CONTRACT_STATION_ID,
   buildFirstTradeOffer,
+  starvedOfferProse,
 } from '../data/economyContractTemplates.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
@@ -70,9 +73,10 @@ export function isOnboardingActive(state) {
 
 // ── ECON-P4 pure field-contract helpers (emit-only discipline; no missions authority) ─────────
 
-/** Stable board-ready offer id: eco_<stationId>_<epoch>. Pure. */
-export function stableFieldOfferId(stationId, epoch) {
-  return `eco_${stationId}_${epoch}`;
+/** Stable board-ready offer id: eco_<stationId>_<epoch>[_<slot>]. Pure. The optional slot
+ *  distinguishes the two rows of one competing-feedstock evaluation (NXB-043). */
+export function stableFieldOfferId(stationId, epoch, slot = '') {
+  return slot ? `eco_${stationId}_${epoch}_${slot}` : `eco_${stationId}_${epoch}`;
 }
 
 /** Contract board epoch from simTime + refreshSec (missions config default 600). Pure. */
@@ -226,6 +230,19 @@ export const economyContracts = {
     return isStationEpochEvaluated(own, stationId, ep);
   },
 
+  _repOf(factionId) {
+    const rec = factionId && this.state.factions ? this.state.factions[factionId] : null;
+    return rec ? (rec.rep || 0) : 0;
+  },
+
+  /** Sector stations in authored order, minus any berth the pilot's standing can't dock at.
+      Authored order keeps [0] the sector's primary berth and keeps the ungated surplus draw
+      identical to the pre-gate stream — the gating is the only behavioral delta. */
+  _dockableStations(sec) {
+    return (sec && sec.stations || [])
+      .filter((st) => stationBerthAdmits(st, this._repOf(st.factionId || sec.factionId), this.state));
+  },
+
   /**
    * True when missions already owns this offer — either still listed on the station board or
    * already accepted into the active list. A taken-into-active offer is a delivered offer:
@@ -300,21 +317,28 @@ export const economyContracts = {
       // offer leaves the epoch open so the identical seeded row retries on a later dock.
       if (isStationEpochEvaluated(own, stationId, epoch)) return;
 
-      const offer = this.planOffer(info, epoch) || this.planMaintenanceOffer(info, epoch);
-      if (!offer) { markStationEpochEvaluated(own, stationId, epoch); return; }
-      const fieldClass = offerClassFor(offer);
+      // NXB-043 — one evaluation may carry TWO rows: when the same feedstock is starving
+      // two reachable yards, both bids post so the player sees the real competition.
+      const offers = this.planOffers(info, epoch);
+      if (!offers.length) { markStationEpochEvaluated(own, stationId, epoch); return; }
+      const fieldClass = offerClassFor(offers[0]);
       if (fieldClass && emittedClasses.has(fieldClass)) {
         markStationEpochEvaluated(own, stationId, epoch);
         return;
       }
 
-      // EMIT-ONLY: never writes state.missions — missions.js owns boards/active.
-      if (this._offerOnBoard(stationId, offer.id)) {
-        markStationEpochEvaluated(own, stationId, epoch); // boarded earlier — dedupe, silent
-      } else if (this._emitOfferForBoard(stationId, offer)) {
-        markStationEpochEvaluated(own, stationId, epoch); // confirmed boarding this emit
+      // EMIT-ONLY: never writes state.missions — missions.js owns boards/active. The pair is
+      // one evaluation: the class guard applies to it, not between its own rows.
+      let boardedAny = false;
+      for (const offer of offers) {
+        if (this._offerOnBoard(stationId, offer.id)) {
+          boardedAny = true; // boarded earlier — dedupe, silent
+          continue;
+        }
+        if (!this._emitOfferForBoard(stationId, offer)) continue; // refused — retry stays open below
+        boardedAny = true; // confirmed boarding this emit
         if (!isOnboardingActive(this.state)) {
-          // One news line, through the arbiter (falls back to a toast like marketNews).
+          // One news line per row, through the arbiter (falls back to a toast like marketNews).
           const line = `Contract posted at ${info.name}: ${offer.title}`;
           const said = this.helpers && this.helpers.voice && typeof this.helpers.voice.say === 'function'
             ? this.helpers.voice.say({ channel: 'news', text: line, kind: 'contract' })
@@ -322,9 +346,13 @@ export const economyContracts = {
           if (!said) this.bus.emit('toast', { text: line, kind: 'info', ttl: 4 });
         }
       }
-      // else: the board refused — the epoch stays open; the same seeded offer retries.
+      if (boardedAny) {
+        if (fieldClass) emittedClasses.add(fieldClass);
+        markStationEpochEvaluated(own, stationId, epoch);
+      }
+      // else: the board refused every row — the epoch stays open; the seeded offers retry.
     } catch (err) {
-      console.error('[economyContracts] dock:docked', err);
+      dedupError('economyContracts/dock-docked', '[economyContracts] dock:docked', err);
     }
   },
 
@@ -352,7 +380,7 @@ export const economyContracts = {
       for (const id of [...(SECTOR_BY_ID.get(info.sectorId)?.neighbors || [])].sort()) {
         const signal = sectorSignalFor(state, id);
         const candidate = signal ? selectEconContract(signal) : null;
-        const target = (SECTOR_BY_ID.get(id)?.stations || []).slice().sort((a,b) => a.id.localeCompare(b.id))[0];
+        const target = this._dockableStations(SECTOR_BY_ID.get(id))[0];
         if (!candidate || !reliefKeys.has(candidate.template.key) || !target) continue;
         if (!reliefDestination || signal.pricePressure > local.pricePressure) {
           selected = candidate; local = signal;
@@ -396,9 +424,13 @@ export const economyContracts = {
       for (const nId of ((sector && sector.neighbors) || []).slice().sort()) {
         const nSig = sectorSignalFor(state, nId);
         const nSec = SECTOR_BY_ID.get(nId);
-        if (!nSig || !nSec || !(nSec.stations || []).length) continue;
+        if (!nSig || !nSec) continue;
+        // A berth that refuses the pilot can't take the surplus — a gated-only
+        // sector is skipped, not inherited as an unreachable destination.
+        const stations = this._dockableStations(nSec);
+        if (!stations.length) continue;
         if (!bestNeighbor || nSig.pricePressure > bestNeighbor.pressure) {
-          bestNeighbor = { sectorId: nId, pressure: nSig.pricePressure, stations: nSec.stations };
+          bestNeighbor = { sectorId: nId, pressure: nSig.pricePressure, stations };
         }
       }
       if (bestNeighbor) {
@@ -482,35 +514,96 @@ export const economyContracts = {
   },
 
   /**
+   * Reachable-region starvation scan: every tier-eligible industry input leg starving at a yard
+   * this station can see — its own sector's other berths plus every neighbor sector's stations,
+   * one hop, the same reach the signal templates already quote. The docked station itself is
+   * never a destination (a self-delivery would be zero-travel). Each entry is the live hopper
+   * fill — a posted shortage names real stock. Hungriest first, station-id tie-break.
+   */
+  _starvedStationNeeds(info) {
+    const markets = this.state && this.state.economy && this.state.economy.markets;
+    if (!markets) return [];
+    const out = [];
+    const seen = new Set([info.id]);
+    const readSector = (sec) => {
+      if (!sec) return;
+      for (const st of (sec.stations || [])) {
+        if (seen.has(st.id)) continue;
+        seen.add(st.id);
+        // A yard whose berth refuses the pilot can't take the freight — its
+        // shortage is real but the contract could never settle there.
+        if (!stationBerthAdmits(st, this._repOf(st.factionId || sec.factionId), this.state)) continue;
+        const need = starvedIndustryNeedFor(st.type, sec.tier || 0, markets[st.id]);
+        if (need) out.push({ need, stationId: st.id, sectorId: sec.id });
+      }
+    };
+    readSector(SECTOR_BY_ID.get(info.sectorId));
+    for (const nId of (SECTOR_BY_ID.get(info.sectorId)?.neighbors || []).slice().sort()) {
+      readSector(SECTOR_BY_ID.get(nId));
+    }
+    out.sort((a, b) => (a.need.fill - b.need.fill)
+      || (a.stationId < b.stationId ? -1 : a.stationId > b.stationId ? 1 : 0));
+    return out;
+  },
+
+  /**
    * Neighbor-scan starvation read: the hungriest tier-eligible industry input across the sectors
    * this station can see. The need is the live hopper fill — a posted shortage names real stock.
    */
   _starvedNeighborNeed(info) {
-    const markets = this.state && this.state.economy && this.state.economy.markets;
-    if (!markets) return null;
-    const neighbors = (SECTOR_BY_ID.get(info.sectorId)?.neighbors || []).slice().sort();
-    let worst = null;
-    for (const nId of neighbors) {
-      const nSec = SECTOR_BY_ID.get(nId);
-      for (const st of (nSec?.stations || [])) {
-        const need = starvedIndustryNeedFor(st.type, nSec.tier || 0, markets[st.id]);
-        if (need && (!worst || need.fill < worst.need.fill)) {
-          worst = { need, stationId: st.id, sectorId: nId };
-        }
-      }
+    return this._starvedStationNeeds(info)[0] || null;
+  },
+
+  /**
+   * planOffers(info, epoch) -> array of board-shaped offers (0, 1, or 2). One dock evaluation
+   * lands at most ONE field decision — except NXB-043's competing pair: when one feedstock is
+   * starving two different reachable yards, both bids post in the same evaluation so the player
+   * can read the tradeoff. Deterministic: same (seed, stationId, epoch, markets) ⇒ same rows.
+   */
+  planOffers(info, epoch) {
+    const needs = this._starvedStationNeeds(info);
+    // Hungriest contested input: two or more distinct yards starve for the SAME commodity —
+    // the available freight can't feed both, so both bids post and the player picks the loser.
+    const byInput = new Map();
+    for (const row of needs) {
+      const group = byInput.get(row.need.inputId);
+      if (group) group.push(row);
+      else byInput.set(row.need.inputId, [row]);
     }
-    return worst;
+    const contested = [...byInput.values()]
+      .filter((group) => group.length >= 2)
+      .sort((a, b) => a[0].need.fill - b[0].need.fill)[0];
+    if (contested) {
+      const pair = contested.slice(0, 2).map((starved, index) => this._starvedIndustryOffer(
+        info, starved, epoch, {
+          slot: index === 0 ? '' : 'b',
+          rivalStationId: contested[1 - index].stationId,
+        },
+      ));
+      if (pair.every(Boolean)) return pair;
+      // A bid that can't price (empty hold, unreachable qty) falls through to the single offer.
+    }
+    const offer = this.planOffer(info, epoch) || this.planMaintenanceOffer(info, epoch);
+    return offer ? [offer] : [];
   },
 
   /**
    * Board-shaped relief run into a starving yard — same cargo_delivery/relief shape as the
    * signal templates so accept/settle paths are unchanged. Delivery lands via cargo:delivered →
    * stock, so fulfilling the contract physically re-feeds the line it claims to help.
+   *
+   * NXB-043 — `options.rivalStationId` marks a competing bid: two yards starving for the same
+   * input get two rows whose freight is REAL (preloadedCargo: false — sealed client cargo
+   * would conjure each berth its own supply and the offers would not actually compete). The
+   * same physical lot can land in only one market, so accepting one run decides the other.
    */
-  _starvedIndustryOffer(info, starved, epoch) {
+  _starvedIndustryOffer(info, starved, epoch, options = {}) {
     const destStationId = starved.stationId;
     const destSectorId = starved.sectorId;
     const cmdtyId = starved.need.inputId;
+    const rivalStationId = options.rivalStationId || null;
+    const rivalName = rivalStationId
+      ? (STATION_INFO.get(rivalStationId)?.name || rivalStationId) : null;
     const cargo = this.state.player?.cargo || {};
     const cargoDef = CMDTY_BY_ID.get(cmdtyId);
     const qty = affordableContractQuantity({
@@ -524,28 +617,33 @@ export const economyContracts = {
     const unitVal = (cargoDef && cargoDef.basePrice) || 50;
     const cargoValue = unitVal * qty;
     const params = { cmdtyId, qty, cargoValue, fValue: 1 + cargoValue / 8000, taskTime: 20, passengers: 0 };
+    const preloadedCargo = !rivalName; // a contested bid posts a call for real freight
     const economyTerms = quoteMissionEconomics({
       type: 'cargo_delivery',
       tier: Math.max(info.tier || 0, STATION_INFO.get(destStationId)?.tier || 0, riskTier),
-      riskTier, distance, params, preloadedCargo: true, fieldPressure: 0.5,
+      riskTier, distance, params, preloadedCargo, fieldPressure: 0.5,
     });
     const destName = STATION_INFO.get(destStationId)?.name || destSectorId;
     const commodity = cmdtyName(cmdtyId);
-    const causeLine = `${destName}'s yard is starving for ${commodity} — its line is idling on an empty hopper. Run feedstock in and the berth pays the scarcity premium while it lasts.`;
+    const prose = starvedOfferProse({ qty, commodity, destName, rivalName });
+    const causeLine = prose.line;
     return {
-      id: stableFieldOfferId(info.id, epoch),
+      id: stableFieldOfferId(info.id, epoch, options.slot || ''),
       source: 'economyContract',
       type: 'cargo_delivery',
       stationId: info.id,
       factionId: info.factionId,
       reward_cr: economyTerms.rewardCr, time_limit_s: economyTerms.deadlineS,
-      duration_s: economyTerms.deadlineS, collateral_cr: 0, riskTier, preloadedCargo: true,
+      duration_s: economyTerms.deadlineS, collateral_cr: 0, riskTier, preloadedCargo,
       economyTerms,
       destStationId, destSectorId, distance,
       params,
-      title: `Yard feed run: ${qty}u ${commodity} into ${destName} (line starved)`,
+      title: prose.title,
       summary: causeLine,
-      cause: { tag: 'industry_starved', axis: 'pricePressure', line: causeLine },
+      cause: {
+        tag: 'industry_starved', axis: 'pricePressure', line: causeLine,
+        ...(rivalStationId ? { rivalStationId } : null),
+      },
       expiresAtEpoch: epoch + 1,
       storyTag: null,
     };

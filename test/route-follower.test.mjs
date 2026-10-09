@@ -405,6 +405,122 @@ test('an arrived physical-gate waypoint retires through the real ui:setCourse sh
   assert.equal(h.state.nav.autopilot.status, 'arrived');
 });
 
+test('a local waypoint cannot survive a sector transition it did not ask for', () => {
+  const h = makeHarness();
+  const worldSystem = Object.create(world);
+  worldSystem.state = h.state;
+  worldSystem.bus = h.bus;
+
+  // A point fix armed in the origin sector — the shape world leaves for a station/ore berth
+  // with no provable live entity (targetEntityId is gated on the stamped bind now).
+  worldSystem._onSetCourse({
+    type: 'station',
+    pos: { x: 300, z: 120 },
+    label: 'Ore berth',
+    waypointKind: 'nav',
+    arrivalRadius: 36,
+    autopilot: true,
+  });
+  assert.ok(h.state.nav.waypoint, 'a local course arms a waypoint');
+  assert.equal(h.state.nav.waypoint.targetSectorId, undefined,
+    'a local fix names no destination sector');
+  assert.equal(h.state.nav.autopilot.active, true, 'the paired burn is live');
+
+  // Leaving by any other door — a manual gate hop, a drive jump, a cross-sector recovery —
+  // strands the fix: pos/x:300,z:120 only ever meant coordinates in the departed frame.
+  h.state.world.currentSectorId = CHAIN[1];
+  h.bus.emit('sector:enter', { sectorId: CHAIN[1] });
+
+  assert.equal(h.state.nav.waypoint, null,
+    'a fix in the departed frame cannot keep steering the ship from foreign coordinates');
+  assert.equal(h.state.nav.autopilot.active, false,
+    'the paired burn cannot keep thrusting toward meaningless coordinates');
+  assert.equal(h.state.nav.autopilot.status, 'lost-target',
+    'leaving the sector is a lost course, never an arrival the ship earned');
+  assert.equal(h.state.nav.autopilot.stable, null,
+    'the stamped bind retires with the fix it proved');
+});
+
+test('a foreign autopilot still burning releases; an inactive record is untouched', () => {
+  const h = makeHarness();
+  h.state.nav.waypoint = { pos: { x: 300, z: 120 }, label: 'Ore berth' };
+  h.state.nav.autopilot = {
+    active: true,
+    target: { x: -800, z: 400 },
+    targetEntityId: null,
+    label: 'Some other fix',
+    arrivalRadius: 36,
+    status: 'cruising',
+  };
+
+  h.state.world.currentSectorId = CHAIN[1];
+  h.bus.emit('sector:enter', { sectorId: CHAIN[1] });
+
+  assert.equal(h.state.nav.waypoint, null, 'the stale fix still retires');
+  // Missions can overwrite nav.waypoint mid-burn and orphan the autopilot — after a teleport
+  // an active burn aimed anywhere but the arrival sector is the same stale course: released.
+  assert.equal(h.state.nav.autopilot.active, false);
+  assert.equal(h.state.nav.autopilot.status, 'lost-target');
+  assert.equal(h.state.nav.autopilot.stable, null);
+});
+
+test('the teleport retire drops the input latches and brake/avoidance scratch', () => {
+  const h = makeHarness();
+  h.state.nav.waypoint = { pos: { x: 300, z: 120 }, label: 'Ore berth' };
+  h.state.nav.autopilot = {
+    active: true,
+    target: { x: 300, z: 120 },
+    targetEntityId: null,
+    label: 'Ore berth',
+    arrivalRadius: 36,
+    status: 'cruising',
+    brakeSettled: true,
+    brakeHold: true,
+    _avoidanceSide: 1,
+    _avoidanceTargetEntityId: 'e9',
+    _avoidanceTargetX: 5,
+    _avoidanceTargetZ: -3,
+  };
+  // A held autopilot latches input.autopilot and input.actions.brake while it burns — the
+  // retire must drop both, or the next tick's flight reads a burn the nav record just killed.
+  h.state.input = { autopilot: true, actions: { brake: true } };
+
+  h.state.world.currentSectorId = CHAIN[1];
+  h.bus.emit('sector:enter', { sectorId: CHAIN[1] });
+
+  assert.equal(h.state.input.autopilot, false, 'the input latch releases with the record');
+  assert.equal(h.state.input.actions.brake, false, 'the brake action releases with it');
+  // stopAutopilot parity: latent-only fields clear too so a later in-place re-arm inherits
+  // nothing stale.
+  assert.equal(h.state.nav.autopilot.brakeSettled, false);
+  assert.equal(h.state.nav.autopilot.brakeHold, false);
+  assert.equal(h.state.nav.autopilot._avoidanceSide, 0);
+  assert.equal(h.state.nav.autopilot._avoidanceTargetEntityId, '');
+  assert.equal(h.state.nav.autopilot._avoidanceTargetX, null);
+});
+
+test('a continuous membership enter never retires the armed course', () => {
+  const h = makeHarness();
+  h.state.nav.waypoint = { pos: { x: 300, z: 120 }, label: 'Ore berth' };
+  h.state.nav.autopilot = {
+    active: true,
+    target: { x: 300, z: 120 },
+    targetEntityId: null,
+    label: 'Ore berth',
+    arrivalRadius: 36,
+    status: 'cruising',
+  };
+
+  // Free-flight Voronoi flips carry noTeleport — bookkeeping, not a teleport. The ship kept
+  // its global pose; the fix still names the same reachable place and the burn continues.
+  h.state.world.currentSectorId = CHAIN[1];
+  h.bus.emit('sector:enter', { sectorId: CHAIN[1], continuous: true, noTeleport: true });
+
+  assert.ok(h.state.nav.waypoint, 'a continuous flip is not a transition the fix failed to earn');
+  assert.equal(h.state.nav.autopilot.active, true, 'the burn survives bookkeeping');
+  assert.equal(h.state.nav.autopilot.status, 'cruising');
+});
+
 test('an unengaged multi-hop plot advances when the player manually completes a leg', () => {
   const route = routeFromChain(CHAIN);
   const h = makeHarness({ route, autoTravel: true });

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { boot } from './helpers.mjs';
 import { readTensionPolicy, tensionAccrualScale, tensionCandidateRank, tensionPacingBlockReason } from '../../src/ai/tensionPolicy.js';
-import { loadEncounterConsumer } from '../../../fixture/loadEncounterConsumer.mjs';
+import { loadEncounterConsumer } from './fixture/loadEncounterConsumer.mjs';
 
 const combat = { id: 'fight', deck: 'combat', tier: 'minor', pressureCost: 20, script: 'fixture' };
 const civilian = { id: 'civil', deck: 'civilian', tier: 'ambient', pressureCost: 10, script: 'fixture' };

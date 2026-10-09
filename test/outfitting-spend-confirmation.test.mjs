@@ -451,7 +451,9 @@ function getConfirmDialog() {
   assert.match(SHIPWORKS_SOURCE, /describeOutfittingSpendConfirm\(def,\s*credits,\s*\{[\s\S]*?fitSlotIndex[\s\S]*?\}\)/, 'Shipworks uses the selected fitting action in the shared module-spend description');
   assert.match(SHIPWORKS_SOURCE, /ok\s*=\s*await\s+confirm\(confirmOpts\)/, 'Shipworks awaits paid-spend confirmation');
   assert.match(SHIPWORKS_SOURCE, /if\s*\(!ok\)\s*\{[\s\S]*?return;\s*\}/, 'Shipworks cancellation returns before purchase');
-  const shipworksBuyIndex = SHIPWORKS_SOURCE.search(/ctx\.bus\.emit\('ui:buyModule',\s*\{\s*defId,\s*fitSlotIndex/);
+  // NXI-114 shipped the purchase through emitFitIntent (the shared refused-fit listener), so the
+  // ordering pin reads the shipped emit form: the purchase intent still follows the confirmation.
+  const shipworksBuyIndex = SHIPWORKS_SOURCE.search(/emitFitIntent\('ui:buyModule',\s*\{\s*defId,\s*fitSlotIndex/);
   const shipworksConfirmIndex = SHIPWORKS_SOURCE.indexOf('ok = await confirm(confirmOpts)');
   assert.ok(shipworksBuyIndex > shipworksConfirmIndex, 'default-route module purchase follows confirmation');
 }

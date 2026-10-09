@@ -1,0 +1,46 @@
+diff --git a/src/render/broodPartitionLod.js b/src/render/broodPartitionLod.js
+new file mode 100644
+index 0000000..21d8004
+--- /dev/null
++++ b/src/render/broodPartitionLod.js
+@@ -0,0 +1,40 @@
++// Presentation-only continuity for pre-existing material. No entity or physics fields are written.
++const MATERIAL_IDS = new Set(['brood_splitter', 'brood_splitter_axial', 'brood_splitter_port', 'brood_splitter_starboard']);
++const validLife = e => e && Number.isSafeInteger(e.occupantGeneration) && e.occupantGeneration > 0;
++export function createBroodPartitionLodOwner() {
++  const presented = new WeakMap(), pending = new WeakMap();
++  const observed = new WeakMap();
++  function handoff(payload) {
++    const parent = payload?.parent;
++    if (!validLife(parent) || !MATERIAL_IDS.has(parent.data?.broodBodyId) || observed.get(parent) === parent.occupantGeneration) return false;
++    const from = presented.get(parent);
++    if (!from || from.life !== parent.occupantGeneration) return false;
++    const parts = payload.children || (payload.corpse ? [payload.corpse] : []);
++    if (!Array.isArray(parts) || !parts.length || parts.length > 3) return false;
++    observed.set(parent, parent.occupantGeneration);
++    for (const child of parts) if (validLife(child) && MATERIAL_IDS.has(child.data?.broodBodyId)) {
++      pending.set(child, {life:child.occupantGeneration, level:from.level, px:from.px});
++    }
++    return true;
++  }
++  function resolve(entity, data, px) {
++    const lod = data.lod;
++    if (!validLife(entity) || !MATERIAL_IDS.has(entity.data?.broodBodyId)) return lod.resolve(px);
++    let birth = pending.get(entity);
++    if (birth && birth.life !== entity.occupantGeneration) { pending.delete(entity); birth = null; }
++    // A resolving marker isn't a visible material cell. Keep the handoff until its real root
++    // commits; asynchronous asset admission must not consume the one birth-frame continuity.
++    const ready = data.authoredVisualRoot === 'authored-root' && data.geometryPending !== true;
++    let level;
++    if (birth && ready && typeof lod.adopt === 'function') {
++      lod.adopt(birth.level, birth.px); level = birth.level; pending.delete(entity);
++    } else level = lod.resolve(px);
++    if (ready) {
++      let row = presented.get(entity);
++      if (!row) { row = {}; presented.set(entity,row); }
++      row.life=entity.occupantGeneration; row.level=level; row.px=lod.lastPx;
++    }
++    return level;
++  }
++  return Object.freeze({handoff,resolve});
++}

@@ -7,6 +7,67 @@ import { leftoverLedgerCard } from '../story/storyLedger.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { isPlayerWanted } from '../systems/heat.js';
 import { cardsForStation } from './marketNews.js';
+import { formatOfflineReceiptLine, isOfflineReceiptShowable } from './automationPayoff.js';
+
+/** One sim day. A loaded save older than this may speak the offline summary. */
+const SIM_DAY_S = 600;
+
+function offlineSummaryReceipt(state) {
+  const noted = state && state.ui && state.ui.offlineSummary;
+  if (noted && typeof noted === 'object') return noted;
+  const meta = state && state.automation && state.automation.meta;
+  return (meta && meta.lastOfflineReceipt) || null;
+}
+
+/** TEACH-07 — one line for a loaded save older than a sim day. A fresh save stays quiet. */
+export function returningPilotLine(state) {
+  const ui = state && state.ui;
+  if (ui && ui.returnSummaryHeard) return null;
+  if (ui && ui.returnSummaryVisible) return ui.returnSummaryVisible;
+  const slot = state && state.save && state.save.currentSlot;
+  if (!slot) return null;
+  const receipt = offlineSummaryReceipt(state);
+  if (!isOfflineReceiptShowable(receipt)) return null;
+  const elapsed = Number(receipt.elapsedSec) || 0;
+  if (!(elapsed > SIM_DAY_S)) return null;
+  return formatOfflineReceiptLine(receipt) || null;
+}
+
+export function noteReturnSummaryPainted(state, line) {
+  if (!state || !line) return;
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  if (state.ui.returnSummaryHeard) return;
+  state.ui.returnSummaryVisible = line;
+}
+
+/** The berth calls this when the visit ends, so the next dock does not repeat the line. */
+export function finishReturnSummary(state) {
+  if (!state || !state.ui) return;
+  if (state.ui.returnSummaryVisible) state.ui.returnSummaryHeard = true;
+  state.ui.returnSummaryVisible = null;
+}
+
+export function berthArrivalNews(view, fallbackNews = '') {
+  const summary = view && view.returnSummary ? String(view.returnSummary) : '';
+  const news = (view && view.news) || fallbackNews || '';
+  if (summary && news && !String(news).includes(summary)) return `${summary} ${news}`.trim();
+  return summary || String(news || '');
+}
+
+export function noteOfflineSummary(state, receipt) {
+  if (!state || !receipt || typeof receipt !== 'object') return null;
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  state.ui.offlineSummary = receipt;
+  return receipt;
+}
+
+export function bindReturningPilotSummary(bus, state) {
+  if (!bus || typeof bus.on !== 'function' || !state) return () => {};
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  if (state.ui._returnSummaryBound) return () => {};
+  state.ui._returnSummaryBound = true;
+  return bus.on('automation:offlineSummary', (receipt) => noteOfflineSummary(state, receipt));
+}
 
 const CONTRABAND_IDS = new Set(COMMODITIES.filter((def) => def.legality === 'contraband').map((def) => def.id));
 
@@ -36,6 +97,23 @@ function localNews(state, stationId) {
   if (card && card.stationId === stationId && card.headline) return String(card.headline).replace(/\s+/g, ' ').trim();
   return null;
 }
+
+/**
+ * The pocket's own deed news (stationContacts keeps the latest notable lane event per
+ * sector). Fresher than it is loud: the berth line speaks it as "the station heard", once
+ * the sector's event is still inside its news window. Read-only, like every dock line.
+ */
+function localDeedLine(state) {
+  const sectorId = state && state.world && state.world.currentSectorId;
+  const deed = sectorId && state.stationLife && state.stationLife.deeds
+    ? state.stationLife.deeds[sectorId] : null;
+  if (!deed || !deed.text) return null;
+  const simTime = Number(state.simTime) || 0;
+  if (simTime - (Number(deed.simTime) || 0) > DEED_NEWS_TTL_S) return null;
+  return `DOCK LOG: ${String(deed.text).replace(/\s+/g, ' ').trim()}`;
+}
+
+const DEED_NEWS_TTL_S = 1800;
 
 function leftoverCardFields(card) {
   if (!card || !card.badge || !card.title || !card.body) return null;
@@ -275,7 +353,9 @@ export function writeBerthArrival(targets, view, fallbackNews = '') {
   const newsEl = targets && targets.newsEl;
   const cardEl = targets && targets.cardEl;
   const host = leftoverTraceHost(targets);
-  const news = (view && view.news) || fallbackNews || '';
+  const summary = view && view.returnSummary;
+  if (summary) noteReturnSummaryPainted(targets && targets.state, summary);
+  const news = berthArrivalNews(view, fallbackNews);
   setNodeText(newsEl, news);
   const eventCard = paintBerthEventCard(cardEl, view && view.eventCard);
   if (newsEl) {
@@ -337,7 +417,7 @@ export function buildDockArrival(state = {}, station = {}) {
   const stationId = station.id || station.stationId || '';
   const action = primaryActionFor(state);
   const rumor = leftoverRumorLine(state, stationId);
-  const news = rumor || localNews(state, stationId);
+  const news = rumor || localNews(state, stationId) || localDeedLine(state);
   const route = leftoverRouteLine(state, stationId);
   const traffic = localTraffic(state, stationId) || route;
   const paperwork = paperworkFor(state);
@@ -364,8 +444,9 @@ export function buildDockArrival(state = {}, station = {}) {
   const ledgerLine = ledger && ledger.body ? ledger.body : null;
   const mechanicLine = mechanic && mechanic.body ? mechanic.body : null;
   const berthLine = yardBerthLine(state, stationId);
+  const returnSummary = returningPilotLine(state);
   const hull = activeHullIdentity(state);
-  const lines = [action.label, berthLine, news, traffic, paperwork, patchText, ledgerLine, mechanicLine]
+  const lines = [action.label, berthLine, returnSummary, news, traffic, paperwork, patchText, ledgerLine, mechanicLine]
     .filter(Boolean)
     .slice(0, 7);
   return {
@@ -373,6 +454,7 @@ export function buildDockArrival(state = {}, station = {}) {
     ident,
     primaryAction: action.label,
     primaryTarget: action.target,
+    returnSummary,
     news,
     eventCard,
     rumor,

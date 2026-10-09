@@ -1,3 +1,5 @@
+import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
+import { ceresWorkfleetHardwareSpec, ceresWorkfleetHardwareRoleForRecord, isCeresWorkfleetRecordIdentity } from '../data/ceresWorkfleetHardware.js';
 // Pure durable world-entity record schema + rematerialization helpers (M2-C2).
 //
 // Owned exclusively by systems/world.js for capture on demote and rematerialize on promote.
@@ -45,6 +47,13 @@ export const MAX_RECORDS_PER_SECTOR = 48;
 // 5MB localStorage quota refused writes around cycle ~94.)
 export const MAX_ALIVE_CONVOY_RECORDS_PER_SECTOR = 24;
 
+// Ambient kill tombstones (a plain NPC/convoy hull with no player-authored markers and no
+// recipe identity) are memorial only, but each kill mints a unique recordId so the bag grows
+// without bound: every NPC-vs-NPC death in a materialized sector persisted ~1-2 KB forever.
+// The sector remembers the newest few; recipe tombstones are exempt because the embodiment
+// reconcile needs the surviving recordId to suppress a re-roll.
+export const MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR = 24;
+
 /** Generic observed actors stay as recent-memory this long (simTime seconds). */
 export const RECENT_MEMORY_WINDOW_S = 180;
 
@@ -71,15 +80,45 @@ export function clearScheduledWake(options = {}) {
   };
 }
 
-function hasPermanentWorldMarkers(rec) {
-  if (!rec) return false;
+function hasPermanentMarkersBeyondOutcome(rec) {
   if (rec.kind === RECORD_KIND.MISSION_TARGET || rec.kind === RECORD_KIND.WRECK
     || rec.kind === RECORD_KIND.AFTERMATH) return true;
-  if (rec.outcome === 'defeated' || rec.outcome === 'destroyed') return true;
   if (rec.playerOwned === true || rec.playerCreated === true || rec.named === true) return true;
   if (rec.missionId || rec.missionTag || rec.jobId) return true;
   if (rec.deactivation && rec.deactivation.reason === 'player') return true;
   return false;
+}
+
+function hasPermanentWorldMarkers(rec) {
+  if (!rec) return false;
+  if (rec.outcome === 'defeated' || rec.outcome === 'destroyed') return true;
+  return hasPermanentMarkersBeyondOutcome(rec);
+}
+
+/**
+ * Positional identities minted by the spawn machinery — `_assignDurableRecordId` writes
+ * '<hint>:<seq>:<qx>:<qz>' and the capture fallback composes '<kind>:<type>:<qx>:<qz>:<tag>';
+ * both end in an int:int tail. An authored lookup identity (worldOneOff:, factionBerth:,
+ * claim-convoy:, activity slot ids, …) never does, so a tombstone carrying a positional key
+ * is provably memorial-only: no authored anti-respawn gate can re-derive its recordId.
+ */
+const GENERATED_POSITIONAL_IDENTITY = /:-?\d+:-?\d+:[^:]*$/;
+
+/**
+ * A tombstone the ambient bound may evict: dead, an ordinary kill outcome, and PROVABLY
+ * ephemeral — its identity is a positional mint. Authored identities, recipe tombstones,
+ * bosses, and every mission/wreck/player/named marker stay protected: eviction can never
+ * resurrect a death an authored gate was counting on. An identity-less tombstone stays
+ * protected too — a legacy record that never carried the field is indistinguishable from
+ * an authored latch, and the kill path's 'kill' stamp alone cannot tell them apart.
+ */
+export function isAmbientTombstoneWorldRecord(rec) {
+  return !!(rec && rec.alive === false
+    && (rec.outcome === 'destroyed' || rec.outcome === 'defeated')
+    && rec.isBoss !== true
+    && rec.recordSource !== 'sector_embodiment'
+    && !hasPermanentMarkersBeyondOutcome(rec)
+    && GENERATED_POSITIONAL_IDENTITY.test(String(rec.identityKey || '')));
 }
 
 /**
@@ -503,15 +542,37 @@ export function canonicalTrafficIntent(entity, opts = {}, previous = null) {
       || stationPositionForId(stationIdFromValue(waypoints[1]), opts, entity);
   }
   if (!from || !to) return prior;
-  const startT = Number.isFinite(itinerary.startT)
+  const authoredStart = Number.isFinite(itinerary.startT)
     ? itinerary.startT
-    : (Number.isFinite(itinerary.departureAt) ? itinerary.departureAt : (opts.simTime || 0));
+    : (Number.isFinite(itinerary.departureAt) ? itinerary.departureAt : NaN);
+  let startT = Number.isFinite(authoredStart) ? authoredStart : (opts.simTime || 0);
   const duration = Number.isFinite(itinerary.durationS) ? Math.max(0, itinerary.durationS) : 0;
-  const endT = Number.isFinite(itinerary.endT)
+  let endT = Number.isFinite(itinerary.endT)
     ? itinerary.endT
     : (Number.isFinite(itinerary.arrivalAt)
       ? itinerary.arrivalAt
       : (Number.isFinite(itinerary.dueAt) ? itinerary.dueAt : startT + duration));
+  if (!(endT > startT)) {
+    // No authored window (express_hitch_route carries none): derive the span from the route
+    // length and the body's own cruise speed. When the capture happens mid-route and the
+    // itinerary authored no departure time, anchor the window at the entity's progress —
+    // u(now) then lands on its real leg position instead of rewinding to `from`. Bodies
+    // too slow to fly the route keep the degenerate shape; callers guard endT<=startT
+    // into ballistic drift.
+    const velX = entity && entity.vel && Number.isFinite(entity.vel.x) ? entity.vel.x : 0;
+    const velZ = entity && entity.vel && Number.isFinite(entity.vel.z) ? entity.vel.z : 0;
+    const cruise = Math.hypot(velX, velZ);
+    const total = Math.hypot(to.x - from.x, to.z - from.z);
+    if (cruise > 0.5 && total > 0) {
+      if (!Number.isFinite(authoredStart)) {
+        const ex = entity && entity.pos && Number.isFinite(entity.pos.x) ? entity.pos.x : from.x;
+        const ez = entity && entity.pos && Number.isFinite(entity.pos.z) ? entity.pos.z : from.z;
+        const elapsed = Math.hypot(ex - from.x, ez - from.z) / cruise;
+        startT = (opts.simTime || 0) - elapsed;
+      }
+      endT = startT + total / cruise;
+    }
+  }
   const kind = itinerary.intentKind === 'patrol' || itinerary.kind === 'patrol'
     ? 'patrol'
     : (itinerary.intentKind === 'escort' ? 'escort' : 'travel');
@@ -564,12 +625,18 @@ export function deserializeRecordsBag(data) {
 /** List records for a sector, deterministic order by recordId. */
 export function recordsForSector(bag, sectorId) {
   const byId = bag && bag.byId ? bag.byId : {};
-  const out = [];
-  for (const id of Object.keys(byId).sort()) {
+  // Filter before sorting: the old order sorted the whole bag's keys — sorting only the
+  // sector's subset is key-for-key identical (byId keys are recordIds) but scales with
+  // the sector (~48 cap) instead of total save records.
+  const ids = [];
+  for (const id of Object.keys(byId)) {
     const rec = byId[id];
     if (!rec) continue;
-    if (rec.sectorId === sectorId || rec.homeSectorId === sectorId) out.push(rec);
+    if (rec.sectorId === sectorId || rec.homeSectorId === sectorId) ids.push(id);
   }
+  ids.sort();
+  const out = new Array(ids.length);
+  for (let i = 0; i < ids.length; i++) out[i] = byId[ids[i]];
   return out;
 }
 
@@ -681,7 +748,9 @@ export function captureEntityRecord(entity, opts = {}) {
     || null;
   const missionId = missionIdentityOf(d) || (previous && previous.missionId) || null;
   const missionTag = d.missionTag || (previous && previous.missionTag) || missionId || null;
-  const jobId = d.jobId || (previous && previous.jobId) || null;
+  // Ceres' existing activity jobId is a same-life runtime lease; durable custody lives in its validated itinerary.
+  const transientCeresJob=ceresWorkfleetRoleForEntity(entity)&&(!d.jobId||d.jobId==='job:ceres:second_measure:long_plate');
+  const jobId = transientCeresJob ? null : d.jobId || (previous && previous.jobId) || null;
   const playerOwned = d.playerOwned === true || entity.playerOwned === true
     || previous && previous.playerOwned === true;
   const playerCreated = d.playerCreated === true || entity.playerCreated === true
@@ -690,9 +759,12 @@ export function captureEntityRecord(entity, opts = {}) {
     || typeof d.name === 'string' && d.name.trim().length > 0
     || typeof entity.name === 'string' && entity.name.trim().length > 0
     || previous && previous.named === true;
-  const identityKey = existingId
-    || opts.identityKey
+  // identityKey records the semantic spawn identity, not the stable recordId: an ambient mint
+  // (`kill:*:<qx>:<qz>`) or an authored slot key must land here even when `d.worldRecordId` is
+  // already stamped — the wr_* id stays the join key (recordId below), never the classifier.
+  const identityKey = opts.identityKey
     || d.identityKey
+    || existingId
     || [
       kind,
       d.lootTableId || d.enemyTypeId || d.defId || entity.type || 'x',
@@ -851,6 +923,15 @@ export function upsertRecord(bag, record) {
       playerCreated: prior.playerCreated === true || record.playerCreated === true,
       named: prior.named === true || record.named === true,
       name: record.name || prior.name,
+      // Identity provenance latches too: a normalized re-capture that never heard of the
+      // recipe/boss/authored origin cannot downgrade it into an evictable ambient tombstone.
+      recordSource: prior.recordSource || record.recordSource,
+      recipeKey: prior.recipeKey || record.recipeKey,
+      isBoss: prior.isBoss === true || record.isBoss === true,
+      bossPoiId: prior.bossPoiId || record.bossPoiId,
+      bossSectorId: prior.bossSectorId || record.bossSectorId,
+      identityKey: prior.identityKey || record.identityKey,
+      durableReason: prior.durableReason || record.durableReason,
       outcome: priorTerminal ? prior.outcome : record.outcome,
       alive: priorTerminal ? false : record.alive,
       scheduledEventIds: record.scheduledEventIds !== undefined
@@ -868,27 +949,64 @@ export function upsertRecord(bag, record) {
   return rec;
 }
 
+function recordAgeRank(a, b) {
+  if (a.lastSeenTick !== b.lastSeenTick) return a.lastSeenTick - b.lastSeenTick;
+  if (a.lastObservedT !== b.lastObservedT) return a.lastObservedT - b.lastObservedT;
+  return a.recordId < b.recordId ? -1 : (a.recordId > b.recordId ? 1 : 0);
+}
+
 function enforceSectorBound(bag, sectorId, opts = {}) {
   // Counting pass first: the sorted recordsForSector walk below is only needed once the sector
   // is actually over cap, which is the rare path.
   const byId = bag && bag.byId ? bag.byId : {};
   let sectorCount = 0;
+  let ambientTombstones = 0;
   for (const id of Object.keys(byId)) {
     const rec = byId[id];
-    if (rec && (rec.sectorId === sectorId || rec.homeSectorId === sectorId)) sectorCount++;
+    if (!rec || (rec.sectorId !== sectorId && rec.homeSectorId !== sectorId)) continue;
+    sectorCount++;
+    if (isAmbientTombstoneWorldRecord(rec)) ambientTombstones++;
   }
-  if (sectorCount <= MAX_RECORDS_PER_SECTOR) return;
-  const list = recordsForSector(bag, sectorId);
+  const tombstoneOverflow = ambientTombstones - MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR;
+  if (sectorCount <= MAX_RECORDS_PER_SECTOR && tombstoneOverflow <= 0) return;
+  let retiredTombstones = 0;
+  let list = recordsForSector(bag, sectorId);
+  if (tombstoneOverflow > 0) {
+    const rankedTombstones = list.filter(isAmbientTombstoneWorldRecord).sort(recordAgeRank);
+    const droppedIds = rankedTombstones.slice(0, tombstoneOverflow)
+      .map((rec) => rec.recordId).sort();
+    for (const recordId of droppedIds) delete bag.byId[recordId];
+    retiredTombstones = droppedIds.length;
+    const remainingIds = recordsForSector(bag, sectorId).map((rec) => rec.recordId).sort();
+    appendRetentionReceipt(bag, {
+      receiptId: `wr-tomb:${sectorId}:${(hash32(1, 'wr-tomb', remainingIds.join(','), droppedIds.join(',')) >>> 0).toString(16)}`,
+      event: 'world_records_tombstone_cap',
+      source: opts.source || 'runtime',
+      sectorId: sectorId || null,
+      limit: MAX_AMBIENT_TOMBSTONE_RECORDS_PER_SECTOR,
+      before: ambientTombstones,
+      retiredRecordIds: droppedIds,
+      protectedOverflow: 0,
+    });
+    ensureRetentionReport(bag).sectors[String(sectorId || '')] = {
+      sectorId: sectorId || null,
+      total: remainingIds.length,
+      limit: MAX_RECORDS_PER_SECTOR,
+      reclaimable: 0,
+      retiredRecent: 0,
+      retiredTombstones,
+      protectedOverflow: 0,
+    };
+    list = recordsForSector(bag, sectorId);
+    sectorCount = list.length;
+    if (sectorCount <= MAX_RECORDS_PER_SECTOR) return;
+  }
   const reclaimable = list.filter(isReclaimableRecentWorldRecord);
   const required = Math.max(0, list.length - MAX_RECORDS_PER_SECTOR);
   // Keep the ordinary under-cap runtime shape unchanged; reports are created only when a cap
   // transaction or protected overflow actually occurs.
   if (required === 0) return;
-  const ranked = reclaimable.slice().sort((a, b) => {
-    if (a.lastSeenTick !== b.lastSeenTick) return a.lastSeenTick - b.lastSeenTick;
-    if (a.lastObservedT !== b.lastObservedT) return a.lastObservedT - b.lastObservedT;
-    return a.recordId < b.recordId ? -1 : (a.recordId > b.recordId ? 1 : 0);
-  });
+  const ranked = reclaimable.slice().sort(recordAgeRank);
   const dropCount = Math.min(required, ranked.length);
   for (let i = 0; i < dropCount; i++) {
     delete bag.byId[ranked[i].recordId];
@@ -901,6 +1019,7 @@ function enforceSectorBound(bag, sectorId, opts = {}) {
     limit: MAX_RECORDS_PER_SECTOR,
     reclaimable: ranked.length - dropCount,
     retiredRecent: dropCount,
+    retiredTombstones,
     protectedOverflow,
   };
   const remainingIds = recordsForSector(bag, sectorId).map((rec) => rec.recordId).sort();
@@ -978,6 +1097,10 @@ export function markRecordDestroyed(bag, recordId, opts = {}) {
 export function spawnSpecFromRecord(record) {
   const rec = normalizeRecord(record);
   if (!rec || !recordShouldRematerialize(rec, 'FULL')) return null;
+  if (isCeresWorkfleetRecordIdentity(record)) {
+    const role=ceresWorkfleetHardwareRoleForRecord(record);
+    return role ? ceresWorkfleetHardwareSpec(role,record) : null;
+  }
 
   if (rec.type === 'wreck' || rec.kind === RECORD_KIND.WRECK || rec.kind === RECORD_KIND.AFTERMATH) {
     return {
@@ -1094,6 +1217,9 @@ export function bindEntityToRecord(entity, record) {
   if (!entity.data) entity.data = {};
   entity.data.worldRecordId = record.recordId;
   entity.data.durable = true;
+  // Rematerialized hosts keep the semantic spawn identity — a later kill re-captures
+  // with the positional mint key instead of falling back to the stable wr_* id.
+  if (record.identityKey) entity.data.identityKey = record.identityKey;
   if (record.homeSectorId) {
     entity.homeSectorId = record.homeSectorId;
     entity.data.homeSectorId = record.homeSectorId;

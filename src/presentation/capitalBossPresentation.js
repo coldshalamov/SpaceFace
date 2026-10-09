@@ -56,8 +56,10 @@ export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight
   ctx.clearRect(0,0,canvas.width,canvas.height);blank=false;
   for(const c of warnings.values())drawCapitalWarning(ctx,c,clockForFight(c.fightId),worldToScreen,{reducedMotion});
  },
-  restore(fights){warnings.clear();for(const r of Object.values(fights))if(r.cast&&!r.suspended&&!r.terminal){
-   const b=requireCapitalBossEncounter(r.encounterId).score.beats.find(b=>b.id===r.cast.beatId);
+  restore(fights){warnings.clear();for(const r of Object.values(fights||{}))if(r.cast&&!r.suspended&&!r.terminal){
+   const spec=requireCapitalBossEncounter(r.encounterId);
+   const b=spec&&spec.score&&spec.score.beats&&spec.score.beats.find(b=>b.id===r.cast.beatId);
+   if(!b) continue;
    remember({fightId:r.fightId,castId:r.cast.id,shapes:r.cast.shapes,locked:r.cast.locked,startedAt:r.cast.startedAt,
     fireAt:r.cast.startedAt+b.tellTicks,endAt:r.cast.startedAt+b.tellTicks+b.activeTicks});
   }},

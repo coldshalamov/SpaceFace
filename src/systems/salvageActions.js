@@ -1,3 +1,4 @@
+import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
 // salvageActions.js - BP-01.1 SALVAGE_DISTINCT_FROM_MINING system.
 //
 // Annotates existing wreck entities with a distinct salvage verb from the pure catalog. The mining
@@ -6,7 +7,7 @@
 
 import { actionForWreck, actionReadoutForWreck, poolForAction } from '../data/salvageActions.js';
 import { salvagePoolForWreck } from '../data/salvageLegality.js';
-import { entityIndexVersion, entityIndexLaneVersion, indexedTypeScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { hash32 } from '../core/rng.js';
 
 const TETHER_AWAY_DISTANCE = 260;
@@ -70,7 +71,8 @@ function ensureUi(state) {
 }
 
 function isWreck(entity) {
-  return !!(entity && entity.type === 'wreck');
+  return !!(entity && entity.type === 'wreck'&&!isCeresWorkfleetHardware(entity)
+    &&!(entity.data?.worldSiteStructural===true&&entity.data.persistenceOwner==='asteroidSites'));
 }
 
 function playerEntity(state) {
@@ -389,7 +391,7 @@ export const salvageActions = {
   // nearest cooker. Runs only on ticks with a live cooker, so quiet flight
   // never pays the ship walk.
   _clearCookers(state, cookers, now) {
-    for (const ship of state.entityList || []) {
+    for (const ship of indexedShipLikeScan(state)) {
       if (!ship || ship.alive === false || !ship.pos) continue;
       if (ship.type !== 'ship' && ship.type !== 'drone') continue;
       if (ship.id === state.playerId) continue;
@@ -440,7 +442,7 @@ export const salvageActions = {
   },
 
   _releaseCookerFlight(state) {
-    for (const ship of state.entityList || []) {
+    for (const ship of indexedShipLikeScan(state)) {
       if (!ship || !ship.data) continue;
       const ai = ship.data.ai;
       if ((ship.data.intent && ship.data.intent.mode === 'salvage_cooker_flee')
@@ -587,8 +589,7 @@ export const salvageActions = {
     const pos = entity.pos ? { x: entity.pos.x, z: entity.pos.z } : { x: 0, z: 0 };
     const combat = this._registry && this._registry.get && this._registry.get('combat');
     const hits = [];
-    const list = state.entityList || [];
-    for (const victim of list) {
+    for (const victim of indexedShipLikeScan(state)) {
       if (!victim || victim.alive === false || victim.id === entity.id) continue;
       if (victim.type !== 'ship' && victim.type !== 'drone') continue;
       if (!victim.pos) continue;
@@ -609,7 +610,7 @@ export const salvageActions = {
       hits.push(victim.id);
     }
     let chained = 0;
-    for (const other of list) {
+    for (const other of indexedTypeScan(state, 'wrecks')) {
       if (!isWreck(other) || other.alive === false) continue;
       const sib = other.data && other.data.unstableReactor;
       if (!sib || sib.vented || sib.burst || !other.pos) continue;
@@ -660,7 +661,7 @@ export const salvageActions = {
         data.coreWarned = true;
         if (this._bus && this._bus.emit) {
           this._bus.emit('toast', {
-            text: 'The vented core is going critical — scoop it or clear the blast!',
+            text: 'The vented core is going critical — scoop it or clear the blast.',
             kind: 'warn', ttl: 4,
           });
         }
@@ -679,8 +680,7 @@ export const salvageActions = {
     // just the player. Same combat.onHit path as before, per victim.
     const combat = this._registry && this._registry.get && this._registry.get('combat');
     const hits = [];
-    const list = state.entityList || [];
-    for (const victim of list) {
+    for (const victim of indexedShipLikeScan(state)) {
       if (!victim || victim.alive === false || victim.id === entity.id) continue;
       if (victim.type !== 'ship' && victim.type !== 'drone') continue;
       if (!victim.pos) continue;
@@ -704,7 +704,7 @@ export const salvageActions = {
     // the room pops in sequence, not one frame — each still bursts radially.
     const now = state.simTime || 0;
     let chained = 0;
-    for (const other of list) {
+    for (const other of indexedTypeScan(state, 'wrecks')) {
       if (!isWreck(other) || other.alive === false || other.id === entity.id) continue;
       const sib = other.data && other.data.unstableReactor;
       if (!sib || sib.vented || sib.burst || !other.pos) continue;
@@ -717,7 +717,7 @@ export const salvageActions = {
     // INF-U13 v3: the fireball also pops hot ejected cores in the blast — venting
     // next to a cooking row is a way to lose the prize. Depth-1: core pops chain
     // siblings through dueAt only, never re-enter the core scan.
-    for (const other of list) {
+    for (const other of indexedTypeScan(state, 'pickups')) {
       if (!other || other.alive === false || other.id === entity.id) continue;
       if (other.type !== 'pickup' || !other.data || other.data.ventedCore !== true) continue;
       const cooledAt = other.data.cooledAt;

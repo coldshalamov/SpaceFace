@@ -180,6 +180,18 @@ try {
         count: p && p.admitted,
       }));
     }
+    // The swarm's first stop is the armory draft (3f6864322): it pauses the world for a pick
+    // before wave 1, and stops again between later waves — an unanswered draft reads as a
+    // frozen sim and the flight wait below never lands. This witness measures the fight, not
+    // the shop, so it answers every draft with the player's own "Keep current loadout" emit
+    // (the same request check-crucible-route makes). Attached before the flight wait for the
+    // same reason as the wave listeners: the opening draft precedes firstPlayableFrameAt.
+    window.__SF_SMOOTH_DRAFT_ANSWER__ = setInterval(() => {
+      const st = window.SF && window.SF.state;
+      if (st && st.run && st.run.phase === 'draft') {
+        window.SF.bus.emit('run:draftPickRequested', { offerId: null });
+      }
+    }, 250);
   });
   await page.waitForFunction(() => {
     const state = window.SF && window.SF.state;

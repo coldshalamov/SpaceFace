@@ -22,6 +22,7 @@ export default defineFlavorPack({
         { id: 'concord_06', text: 'Piracy fell after survivor reporting was centralized.' },
         { id: 'concord_07', text: 'Helios Bay Seven passed review. Criteria remain sealed.' },
         { id: 'concord_08', text: 'All submitted corrections remain officially received.' },
+        { id: 'concord_09', text: 'Pallas ration surpluses were reclassified as scheduled. Belt Outpost crews remain on standing ration review.' },
       ],
     },
     {
@@ -41,6 +42,7 @@ export default defineFlavorPack({
         { id: 'margin_10', text: 'R3-CARRIER filter batch: withdrawn year 3, replacement still pending. We are asking why.' },
         { id: 'margin_11', text: 'The Clear-Air index moved again. Same desk holds the position. We printed the desk.' },
         { id: 'margin_12', text: 'Division 6 renewed its budget under REF 44-C. No public scope. We are counting the cycles.' },
+        { id: 'margin_13', text: 'Ceres cracks more cells than its own belt burns. The Cut claim crews still ration by mid-shift. The manifests do not add up.' },
       ],
     },
     {

@@ -1,0 +1,109 @@
+{
+  "schema": "spaceface.rigidMotionBank.v1",
+  "rigId": "towline_mara_controls",
+  "sourceAssetId": "SF_SHIP_TOWLINE_MARA",
+  "sourceGlbSha256": "192c897cfe6364ae9062e0e155a159090ece69ec5476507734323b8fbe25b08b",
+  "fps": 60,
+  "bindings": [
+    {
+      "id": "towline_jaw_starboard",
+      "node": "MOTION_TOWLINE_JAW_STARBOARD",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          4,
+          1.4299999475479126,
+          5.349999904632568
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "id": "towline_jaw_port",
+      "node": "MOTION_TOWLINE_JAW_PORT",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          4,
+          1.4299999475479126,
+          -5.349999904632568
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "clips": [
+    {
+      "name": "source_rest_pose",
+      "durationS": 0.016666666666666666,
+      "loop": false,
+      "endMode": "hold",
+      "channels": [
+        {
+          "group": "towline_jaw_starboard",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        },
+        {
+          "group": "towline_jaw_port",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    }
+  ]
+}

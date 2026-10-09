@@ -1,0 +1,29 @@
+{ forceTicks: 9, visibleTicks: 9 }
+{
+  angles: [ 1.3089969389957472, 0.5958333333333342, 0.5200000000000007 ],
+  rest: [
+    [ 'StarboardRim', 'HingeA', 'StarboardStrake' ],
+    [ 'StarboardRim', 'HingeB', 'StarboardStrake' ],
+    [ 'StarboardRim', 'HingeC', 'StarboardStrake' ]
+  ],
+  end: [
+    [ 'StarboardRim', 'HingeA', 'StarboardStrake' ],
+    [ 'StarboardRim', 'HingeB', 'StarboardStrake' ],
+    [ 'StarboardRim', 'HingeC', 'StarboardStrake' ]
+  ]
+}
+✔ registry phase ordering publishes the previous witnessed firing after the next submission (73.57363ms)
+✔ cleanup does not replace a later foreign control command (2.050282ms)
+✔ full accepted paddle travel does not enter a new fixed hull slab (22.426623ms)
+✔ equal-valued foreign native force is not proof of Latch actuation (2.711617ms)
+✔ failed native integration cannot certify the pending firing (48.938296ms)
+✔ a subsequent native tick with no Latch command extinguishes the old accepted receipt (11.465045ms)
+✔ both signed yaw offsets receive socket-derived restoring moments (3.774504ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 389.269545

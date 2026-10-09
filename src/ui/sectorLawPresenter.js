@@ -7,6 +7,7 @@ import { SECTORS } from '../data/sectors.js';
 import { sectorLawProfile } from './securityReadout.js';
 import { INK_SHADOW } from './hudBrackets.js';
 import { openingInstructionSolo } from './hudAttention.js';
+import { isPlayerWanted } from '../systems/heat.js';
 
 const STYLE_ID = 'sf-sector-law-style';
 const RECEIPT_TTL_S = 4;
@@ -92,6 +93,11 @@ export function authorityTargetText(payload, state) {
   return entityName(entityById(state, payload.attackerId)) || `CONTACT ${String(payload.attackerId).toUpperCase()}`;
 }
 
+export function authorityAggressorText(target) {
+  const value = String(target || '');
+  return /AGGRESSOR|INCIDENT SUBJECT/.test(value) ? value : `AGGRESSOR ${value}`;
+}
+
 function causeText(cause) {
   switch (String(cause || '')) {
     case 'player_assault': return 'Patrol assault inside protected jurisdiction';
@@ -101,6 +107,56 @@ function causeText(cause) {
     case 'self_defense': return 'Self-defense response';
     default: return 'Verified aggression inside protected jurisdiction';
   }
+}
+
+/** Options the pilot can still take before a player-caused distress escalates. */
+export function firstLawOptionLine(payload, state) {
+  if (!payload) return '';
+  const cause = String(payload.cause || '');
+  if (cause !== 'player_assault' && cause !== 'player_piracy') return '';
+  const status = String(payload.status || 'distress');
+  if (status !== 'distress') return '';
+  if (isPlayerWanted(state)) {
+    return ' You are already wanted. Leaving the ring does not stand this patrol down.';
+  }
+  return ' Leave the station ring and hold fire — patrol stands down. Keep firing and they arrive armed.';
+}
+
+/**
+ * Why a collision kill is or is not the pilot's. Only collision causes — a gun kill
+ * already has its own receipt. Returns null when this event is not that question.
+ */
+export function collisionResponsibilityLine(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const cause = payload.cause;
+  if (cause !== 'terrain_collision' && cause !== 'ship_collision') return null;
+  if (payload.playerCaused !== true) return 'Not your collision. You are not responsible.';
+  if (payload.outcome === 'lawful') return 'Your collision killed a hostile. Law clears it.';
+  if (payload.outcome === 'unwitnessed') {
+    return payload.sustainedAssault === true
+      ? 'You kept at them, but nobody saw the collision. No charge yet.'
+      : 'Your collision. Nobody saw it, so there is no charge yet.';
+  }
+  if (payload.outcome === 'charged_unstable') {
+    return 'Authorities witnessed your collision. No charge has been filed.';
+  }
+  if (payload.kind === 'lawful_kill') return 'Your collision killed a protected patrol. A charge has been filed.';
+  if (payload.sustainedAssault === true || payload.kind === 'unlawful_kill') {
+    return 'You kept hitting them. This collision is the attack, not an accident.';
+  }
+  if (payload.outcome === 'charged' || payload.kind === 'reckless_kill') {
+    return 'Your collision killed a civilian. Charged reckless, not a continued attack.';
+  }
+  return null;
+}
+
+export function collisionResponsibilityReceipt(payload) {
+  const line = collisionResponsibilityLine(payload);
+  if (!line) return null;
+  const charged = payload.outcome === 'charged' || payload.outcome === 'discovered';
+  return { outcome: 'collision_responsibility', text: line, cause: payload.cause,
+    stationId: payload.stationId ?? null, danger: charged,
+    statusText: charged ? 'CHARGE FILED' : payload.outcome === 'lawful' ? 'CLEARED' : 'NO CHARGE FILED' };
 }
 
 export function authorityIncidentReadout(payload, state, simTime = state && state.simTime || 0) {
@@ -145,7 +201,7 @@ export function authorityIncidentReadout(payload, state, simTime = state && stat
     mode: 'incident', danger: true,
     flag: 'DISTRESS LOGGED', authority, station, target,
     headline: 'PATROL DISPATCH PENDING',
-    detail: causeText(payload.cause), statusText: eta == null ? 'ETA —' : `ETA ${eta.toFixed(1)} S`, eta,
+    detail: `${causeText(payload.cause)}${firstLawOptionLine(payload, state)}`, statusText: eta == null ? 'ETA —' : `ETA ${eta.toFixed(1)} S`, eta,
   });
 }
 
@@ -241,9 +297,10 @@ export function createSectorLawPresenter(ctx) {
     text(els.flag, view.flag);
     text(els.status, view.statusText);
     text(els.headline, view.headline);
-    text(els.meta, `${view.authority.toUpperCase()} · ${view.station.toUpperCase()} · AGGRESSOR ${view.target}`);
+    const aggressor = authorityAggressorText(view.target);
+    text(els.meta, `${view.authority.toUpperCase()} · ${view.station.toUpperCase()} · ${aggressor}`);
     text(els.detail, view.detail);
-    root.setAttribute('aria-label', `${view.flag}. ${view.headline}. Authority ${view.authority}. Aggressor ${view.target}. ${view.detail}. ${view.statusText}.`);
+    root.setAttribute('aria-label', `${view.flag}. ${view.headline}. Authority ${view.authority}. ${aggressor}. ${view.detail}. ${view.statusText}.`);
     lastEtaText = view.statusText;
     root.hidden = false;
     return true;
@@ -254,14 +311,17 @@ export function createSectorLawPresenter(ctx) {
     const receiptText = directLawReceiptText(receipt);
     if (!receiptText) return false;
     active = { mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
-    root.className = receipt.outcome === 'retaliation_authorized' ? 'sf-law--receipt sf-law--danger' : 'sf-law--receipt';
+    root.className = receipt.outcome === 'retaliation_authorized' || receipt.danger ? 'sf-law--receipt sf-law--danger' : 'sf-law--receipt';
     text(els.flag, 'AUTHORITY RECEIPT');
-    text(els.status, receipt.outcome === 'retaliation_authorized' ? 'SELF-DEFENSE'
-      : receipt.outcome === 'customs_complied' ? 'COMPLIANCE LOGGED' : 'STAND DOWN');
+    text(els.status, receipt.statusText || (receipt.outcome === 'retaliation_authorized' ? 'SELF-DEFENSE'
+      : receipt.outcome === 'customs_complied' ? 'COMPLIANCE LOGGED' : 'STAND DOWN'));
     text(els.headline, receiptText);
     text(els.meta, receipt.stationId ? stationName(state, receipt.stationId).toUpperCase() : 'OUTSIDE PROTECTED JURISDICTION');
     text(els.detail, receipt.cause === 'player_attack' ? 'Cause: player fired first.'
-      : receipt.cause === 'customs_scan' ? 'Manifest read acknowledged.' : 'Incident closed.');
+      : receipt.cause === 'customs_scan' ? 'Manifest read acknowledged.'
+      : receipt.cause === 'terrain_collision' ? 'Cause: the body hit terrain.'
+      : receipt.cause === 'ship_collision' ? 'Cause: hull on hull.'
+      : 'Incident closed.');
     root.setAttribute('aria-label', `${receiptText}. ${els.detail.textContent}`);
     root.hidden = false;
     return true;
@@ -312,6 +372,10 @@ export function createSectorLawPresenter(ctx) {
   subscribe('law:dispatchStarted', renderIncident);
   subscribe('law:incidentResolved', renderIncident);
   subscribe('law:incidentReceipt', showDirectReceipt);
+  subscribe('law:killedAdjudicated', (payload) => {
+    const receipt = collisionResponsibilityReceipt(payload);
+    return receipt ? showDirectReceipt(receipt) : false;
+  });
   subscribe('drill:start', hide);
   subscribe('drill:end', hide);
   subscribe('pirateParley:demand', () => { if (active && active.mode === 'entry') hide(); });
@@ -339,7 +403,7 @@ function injectStyle() {
     border-radius:4px; box-shadow:0 14px 30px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05);
     color:#e7edf5; text-shadow:${INK_SHADOW};
     font-family:var(--hud-body,"IBM Plex Sans","Segoe UI",sans-serif); transition:opacity .16s ease-out, transform .16s ease-out; }
-  #ui-root > #sf-sector-law { position:absolute; top:112px; right:20px; width:min(340px, calc(100vw - 40px)); }
+  #ui-root > #sf-sector-law { position:absolute; top:112px; right:20px; width:min(300px, calc(100vw - 40px)); }
   #sf-sector-law[hidden] { display:none !important; }
   #sf-sector-law.sf-law--badge { width:max-content; max-width:100%; padding:4px 10px; }
   #sf-sector-law.sf-law--badge .sf-law__headline,
@@ -366,7 +430,8 @@ function injectStyle() {
     .sf-law__headline { font-size:12px; }
     .sf-law__detail { font-size:12px; }
   }
-  @media (prefers-reduced-motion:reduce) { #sf-sector-law { transition:none; } }`;
+  @media (prefers-reduced-motion:reduce) { #sf-sector-law { transition:none; } }
+  html.sf-reduce-motion #sf-sector-law { transition:none; }`;
   document.head.appendChild(style);
 }
 

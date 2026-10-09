@@ -23,6 +23,7 @@ test('flight root template hits reuse geometry but rebind per-instance state', (
     distinctRoots: true,
     sharedGeometry: true,
     distinctMaterials: true,
+    sharedBakeAliased: true,
     reboundHooks: true,
     geometryDisposedOnce: true,
   });
@@ -37,6 +38,7 @@ test('Kestrel package-path template hits rehydrate bindings and close ownership'
     visibleParity: true,
     packageCreates: true,
     packageDisposals: true,
+    abandonedCacheHitReleased: true,
     releaseWasIdempotent: true,
     mutableMaterialIsolation: true,
     closureIsolation: true,

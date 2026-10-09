@@ -334,10 +334,16 @@ test('the Foundry pulse joins the reserved-unique manifest with a frozen count',
     .filter((entry) => entry.unique === true && !wreckDropIds.has(entry.id))
     .map((entry) => entry.id)
     .sort();
+  // List re-pinned 2026-10-03: the four precursor-machine modules joined the reserved set with the
+  // wave-C alien ecology landing (af734e085 — precursorMachines grants them via grantAlienUnique).
   assert.deepEqual(reservedOutsideWrecks, [
+    'mod_lattice_coupler_s',
+    'mod_precursor_handshake_s',
+    'mod_quiet_equation_s',
+    'mod_resonant_massline_m',
     'unique_broken_ring_whip',
     'unique_mirrorjaw_pulse',
     'unique_no_cut_filament',
     'unique_toll_saint_bridle',
-  ], 'the reserved manifest outside the twelve wrecks is the three ace trophy heads plus the Foundry pulse');
+  ], 'the reserved manifest outside the twelve wrecks is the three ace trophy heads, the Foundry pulse, and the four precursor-machine modules');
 });

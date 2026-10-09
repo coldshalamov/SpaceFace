@@ -11,13 +11,15 @@ import {
 
 const STYLE_ID = 'sf-orrery-flightpreview-style';
 const CSS = `
-.orr-flightpreview { position:fixed; inset:0; z-index:40; pointer-events:none; overflow:hidden; font-family:var(--dp-face-read, "Instrument Sans"); }
+.orr-flightpreview { position:fixed; inset:0; z-index:40; pointer-events:none; overflow:hidden; font-family:var(--dp-face-read, "Instrument Sans"); --orr-cluster-scale:.85; }
 .orr-flightpreview__place { position:absolute; left:40px; top:34px; }
 .orr-flightpreview__tape { position:absolute; left:50%; top:26px; transform:translateX(-50%); }
 .orr-flightpreview__toasts { position:absolute; right:32px; top:168px; }
 .orr-flightpreview__cluster { position:absolute; left:18px; bottom:24px; }
 .orr-flightpreview__place { left:40px; }
-@media (max-width:1700px) { .orr-flightpreview { --orr-cluster-scale:.82; } .orr-radar, .orr-tape { zoom:.86; } }
+@media (max-width:1700px) { .orr-flightpreview { --orr-cluster-scale:.7; } .orr-radar, .orr-tape { zoom:.86; } }
+@media (max-width:1400px) { .orr-flightpreview__cluster { left:8px; } }
+@media (max-width:1300px) { .orr-flightpreview { --orr-cluster-scale:.6; } }
 .orr-flightpreview__radar { position:absolute; right:30px; bottom:18px; }
 /* a low vignette only where instruments sit, so they read over bright nebula without any box */
 .orr-flightpreview::before { content:""; position:absolute; inset:0; pointer-events:none;
@@ -113,7 +115,7 @@ export const orreryFlightScreen = {
     tape.setObjective({ kind: 'Contract', text: 'Recover the 47-A sample from the marked rock', bearing: 41, distance: 4100, etaS: 38 });
     cluster.update({
       hull: 86, hullMax: 100, shield: 64, shieldMax: 100, armor: 20, armorMax: 30,
-      energy: 80, energyMax: 100, heat: 0.22, speed: 149, speedRef: 180, boost: 0.7, drift: 24,
+      energy: 80, energyMax: 100, heat: 0.22, speed: 149, speedRef: 180, speedMax: 405, boost: 0.7, drift: 24,
       tether: { state: 'Payload', mass: 960, strain: 0.62 },
       ordnance: {
         1: { state: 'armed', count: 3, tip: tipFor(1, 'Charge ×3', '1 · Y', 'Armed — press to detonate') },
@@ -142,6 +144,8 @@ export const orreryFlightScreen = {
     toasts.push({ kind: 'Salvage', html: '<b>+240 cr</b> · Hull plating recovered', gain: true, delay: 900 });
 
     cluster.arrive();
+    // the bench probes the Speed Dial through this handle (scripts/ui-bench-eval.mjs): set a speed, shoot it
+    if (typeof window !== 'undefined') window.__BENCH_CLUSTER = cluster;
     this._parts = { cluster, radar, lock };
   },
   onShow() {},

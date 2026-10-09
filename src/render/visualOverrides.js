@@ -1,3 +1,7 @@
+import { isLatchActor } from './latchNineVisuals.js';
+import { isTallyThreeAssessor } from './tallyThreeVisuals.js';
+import { isCeresWorkfleetPlace } from './ceresWorkfleetVisuals.js';
+import { isCeresShipbreakSection } from './ceresShipbreakVisuals.js';
 // Bespoke visual overrides for hero assets plus the authored-asset boundary.
 // Explicit authored identities fail closed. A load/build problem may leave an entity temporarily
 // absent and diagnostic, but it must never publish a visually unrelated procedural body first.
@@ -10,17 +14,17 @@ import { buildDriftBarge } from './ships/driftBarge.js';
 import { buildQuietRaider } from './ships/quietRaider.js';
 import { buildVaelSniper } from './ships/vaelSniper.js';
 import { loadAuthoredPart } from './assetLoader.js';
-import { freezeStaticChildMatrices, freezeStaticTransformRoot } from './staticChildMatrices.js';
+import { freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked, updateMatrixWorldSteps } from './staticChildMatrices.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
 import {
-  batchPackagedPropOpaqueMeshes,
+  batchPackagedPropOpaqueMeshesSteps,
   batchScenarioPropOpaqueMeshes,
 } from './scenarioPropBatching.js';
 import {
   GENERIC_TOW_PACKAGED_PROP,
   SCENARIO_47A_PACKAGED_PROPS,
 } from '../data/scenarios/47aLiveScene.js';
-import { modelTruthRow } from '../data/modelTruth.js';
+import { modelTruthRow, modelTruthRowForEntity } from '../data/modelTruth.js';
 import {
   admissionOwnerInactive,
   authoredReadmissionStatus,
@@ -28,6 +32,7 @@ import {
   buildAuthoredCargoCapsule,
   buildAuthoredPlaceProp,
   buildAuthoredStationArchetype,
+  carryAdmittedOnceStamp,
   enqueueBoundaryUpgrade,
   markAuthoredBoundaryForReadmission,
   prepareAuthoredVisualPipelines,
@@ -35,8 +40,10 @@ import {
   staleAuthoredRunVerdict,
   requiresProductionWholeShipForEntity,
   residencyOptionsForBoundary,
+  residencyRegistryForStandInRecord,
   waitForOpeningGraphPublicationRelease,
   wrapShipWithAuthoredParts,
+  queuePacedDetachedTeardown,
 } from './partsLibrary.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import { canonicalizeInstalledSurfaceProgramKey } from './illustratedSurface.js';
@@ -51,6 +58,8 @@ import {
   PRESENTATION_ADMISSION,
   setPresentationAdmission,
 } from '../core/presentationAdmission.js';
+import { yieldToBrowser } from './startupGpuResidency.js';
+import { notePacedFrameSpend } from './decodeTaskBudget.js';
 
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 
@@ -67,7 +76,7 @@ function requiresProductionWholeShip(entity) {
 
 function isWorldPlaceProp(entity) {
   if (!entity || !entity.data) return false;
-  if (hasExplicitAuthoredGeologyPresentation(entity)) return true;
+  if (isLatchActor(entity) || isTallyThreeAssessor(entity) || hasExplicitAuthoredGeologyPresentation(entity) || isCeresShipbreakSection(entity) || isCeresWorkfleetPlace(entity)) return true;
   if (entity.type !== 'fx') return false;
   return typeof entity.data.placeId === 'string' || typeof entity.data.landmarkGlb === 'string';
 }
@@ -303,6 +312,16 @@ function lodStandInFor(entity, record, target = null) {
     group.add(mesh);
   }
   if (!group.children.length) return null;
+  // Live-residency borrow: record.residency.state was stamped once at decode and never flips,
+  // so byte eviction can dispose these shared buffers mid-pending while the stand-in keeps
+  // drawing them (a re-upload inside the presented frame). Retain the record against the
+  // stand-in group's own lifecycle — 'removed' self-releases, and the detached-owner sweep
+  // covers a substrate detached with the marker still parented inside.
+  const borrowKey = record.residency && record.residency.key;
+  const borrowRegistry = residencyRegistryForStandInRecord(record);
+  if (borrowKey && borrowRegistry && typeof borrowRegistry.retain === 'function') {
+    borrowRegistry.retain(borrowKey, group, { role: 'resolving-stand-in' });
+  }
   // Preview the commit's transform, not the authored frame: place/station bodies recenter the
   // record's bounds-center onto X,Z origin (payloads/packaged all three axes) and station
   // commits can yaw the approach channel — a stand-in drawn at authored offset snaps sideways
@@ -323,6 +342,9 @@ function lodStandInFor(entity, record, target = null) {
   }
   group.userData.spacefaceSharedAsset = true;
   group.userData.authoredResolvingMarker = true;
+  // A stand-in is the ship's own hull shape, not the abstract marker — the terminal admission
+  // verdict may publish it as the lockable drawn body (syncResolvingMarker).
+  group.userData.admissionStandInHull = true;
   return group;
 }
 
@@ -393,27 +415,31 @@ export function installBoundaryResolvingMarker(boundary, entity, options = {}) {
   // Z/Y-dominant records (spindle worst) the octahedron proportions under-cover its
   // silhouette, so union per axis with the record's scaled bounds where census covers
   // the armed file.
-  const recordHalf = boundaryStandInScaledHalf(data, entity);
-  const half = [
-    Math.max(markerX * 0.5, recordHalf ? recordHalf[0] : 0),
-    Math.max(markerX * (0.3 / 3.4), recordHalf ? recordHalf[1] : 0),
-    Math.max(markerX * 0.25, recordHalf ? recordHalf[2] : 0),
-  ];
+  const markerHalf = [markerX * 0.5, markerX * (0.3 / 3.4), markerX * 0.25];
+  // The stand-in previews the committed frame (recenter + approach yaw): its drawn box is
+  // the record's scaled bounds rotated by the armed yaw about a possibly-displaced center,
+  // not the unrotated authored box — a square yaw-armed record can outgrow an axis by ~41%.
+  const stand = boundaryStandInDrawnEnvelope(data, entity);
   const existing = data.visualBounds;
-  if (existing && Array.isArray(existing.size)) {
-    const center = Array.isArray(existing.center) ? existing.center : [0, 0, 0];
-    const nextCenter = [0, 0, 0];
-    const nextSize = [0, 0, 0];
-    for (let i = 0; i < 3; i++) {
-      const lo = Math.min((Number(center[i]) || 0) - (Number(existing.size[i]) || 0) / 2, -half[i]);
-      const hi = Math.max((Number(center[i]) || 0) + (Number(existing.size[i]) || 0) / 2, half[i]);
-      nextCenter[i] = (lo + hi) / 2;
-      nextSize[i] = hi - lo;
+  const hasExisting = !!(existing && Array.isArray(existing.size));
+  const existingCenter = hasExisting && Array.isArray(existing.center) ? existing.center : null;
+  const nextCenter = [0, 0, 0];
+  const nextSize = [0, 0, 0];
+  for (let i = 0; i < 3; i++) {
+    let lo = -markerHalf[i];
+    let hi = markerHalf[i];
+    if (stand) {
+      lo = Math.min(lo, stand.center[i] - stand.half[i]);
+      hi = Math.max(hi, stand.center[i] + stand.half[i]);
     }
-    data.visualBounds = { center: nextCenter, size: nextSize };
-  } else {
-    data.visualBounds = { center: [0, 0, 0], size: [half[0] * 2, half[1] * 2, half[2] * 2] };
+    if (hasExisting) {
+      lo = Math.min(lo, (Number(existingCenter ? existingCenter[i] : 0) || 0) - (Number(existing.size[i]) || 0) / 2);
+      hi = Math.max(hi, (Number(existingCenter ? existingCenter[i] : 0) || 0) + (Number(existing.size[i]) || 0) / 2);
+    }
+    nextCenter[i] = (lo + hi) / 2;
+    nextSize[i] = hi - lo;
   }
+  data.visualBounds = { center: nextCenter, size: nextSize };
   return data.wantsBoundaryResolvingMarker === true ? data : null;
 }
 
@@ -432,14 +458,18 @@ export function materializeBoundaryResolvingMarker(boundary) {
   // materials instead of the abstract octahedron — strictly closer to the committed body.
   let marker = null;
   const standInTarget = boundaryStandInTarget(data, entity);
+  let record = null;
   if (standInFile && boundaryStandInResolver) {
-    let record = null;
     try { record = boundaryStandInResolver(entity, standInFile) || null; } catch { record = null; }
     if (record) marker = lodStandInFor(entity, record, standInTarget);
   }
   if (!marker) {
     marker = resolvingMarkerFor(entity, boundaryStandInDrawnX(data, standInTarget));
-    if (standInFile && boundaryStandInResolver) {
+    if (record) {
+      // A resident record that cannot build a stand-in (no primitives/bounds) never
+      // becomes usable — the ship-substrate path stamps the same terminal reason.
+      data.resolvingMarkerFallbackReason = 'stand-in-record-unusable';
+    } else if (standInFile && boundaryStandInResolver) {
       // Built before the record went resident: keep the same pending retry the ship substrate
       // uses so a mid-admission warm decode still converges on the real body.
       data.admissionStandInPending = true;
@@ -516,13 +546,13 @@ function boundaryStandInDrawnX(data, target) {
 }
 
 /**
- * Half-extents the resident same-identity stand-in actually draws for this arm: the
- * census row's authored bounds scaled by the same factor lodStandInFor applies
- * (entityScale / sourceLength). Returns null when the armed file sits outside the
- * census or the target carries no scaleable basis — callers then keep the octahedron
- * proportions per axis, as before.
+ * The stand-in's actual drawn box in boundary-local space: the census row's authored bounds
+ * scaled by the factor lodStandInFor applies, then folded through the committed-frame arms
+ * (recenter shifts the drawn center; approach yaw rotates half-extents and sweeps a
+ * non-recentered center about the boundary origin). Returns { half, center } or null when
+ * the armed file sits outside the census or the target carries no scaleable basis.
  */
-function boundaryStandInScaledHalf(data, entity) {
+function boundaryStandInDrawnEnvelope(data, entity) {
   const file = data && data.boundaryResolvingStandInFile;
   if (typeof file !== 'string' || !file) return null;
   const row = modelTruthRow(file.replace(/^.*\//, '').replace(/\.glb$/i, ''));
@@ -538,11 +568,44 @@ function boundaryStandInScaledHalf(data, entity) {
   else if (Number.isFinite(target.x)) entityScale = target.x;
   if (!Number.isFinite(entityScale) || !(entityScale > 0)) return null;
   const factor = entityScale / sourceLength;
-  return [
+  const half = [
     (Number(size[0]) || 0) * factor * 0.5,
     (Number(size[1]) || 0) * factor * 0.5,
     (Number(size[2]) || 0) * factor * 0.5,
   ];
+  const bc = row.bounds && row.bounds.center;
+  const cx = (Array.isArray(bc) ? Number(bc[0]) || 0 : 0) * factor;
+  const cy = (Array.isArray(bc) ? Number(bc[1]) || 0 : 0) * factor;
+  const cz = (Array.isArray(bc) ? Number(bc[2]) || 0 : 0) * factor;
+  // lodStandInFor's frame order: translate by -center·scale for armed recenter axes, then
+  // rotation.y about the (translated) group origin — equivalent net geometry for the box.
+  let c0x = cx;
+  let c0y = cy;
+  let c0z = cz;
+  if (target.recenter === 'xz') { c0x = 0; c0z = 0; }
+  else if (target.recenter === 'xyz') { c0x = 0; c0y = 0; c0z = 0; }
+  const yaw = Number.isFinite(target.yawDeg) && target.yawDeg !== 0 ? target.yawDeg * (Math.PI / 180) : 0;
+  const rotated = yaw === 0
+    ? { half, center: [c0x, c0y, c0z] }
+    : {
+      half: [
+        half[0] * Math.abs(Math.cos(yaw)) + half[2] * Math.abs(Math.sin(yaw)),
+        half[1],
+        half[0] * Math.abs(Math.sin(yaw)) + half[2] * Math.abs(Math.cos(yaw)),
+      ],
+      center: [c0x * Math.cos(yaw) + c0z * Math.sin(yaw), c0y, -c0x * Math.sin(yaw) + c0z * Math.cos(yaw)],
+    };
+  // syncResolvingMarker copies the hull's live bank/pitch onto the marker each frame, so a
+  // ship stand-in's drawn box leans its Y extent into XZ beyond this yaw-only stamp — the
+  // cull union is radial anyway, so widen X/Z to the rotation-invariant bound.
+  if (entity && entity.type === 'ship') {
+    rotated.half = [
+      Math.hypot(rotated.half[0], rotated.half[1]),
+      rotated.half[1],
+      Math.hypot(rotated.half[2], rotated.half[1]),
+    ];
+  }
+  return rotated;
 }
 
 /**
@@ -556,10 +619,27 @@ export function detachBoundaryResolvingMarker(boundary) {
   delete data.wantsBoundaryResolvingMarker;
   delete data.boundaryResolvingMarkerEntity;
   const marker = data.resolvingMarker;
-  if (!marker) return false;
-  if (marker.parent) marker.parent.remove(marker);
-  delete data.resolvingMarker;
-  return true;
+  let detached = false;
+  if (marker) {
+    if (marker.parent) marker.parent.remove(marker);
+    delete data.resolvingMarker;
+    detached = true;
+  }
+  // Publish-time invariant: no authoredResolvingMarker node may survive an authored commit.
+  // The tracked field covers the normal case — this pass purges a tagged straggler whose
+  // link to `data.resolvingMarker` was lost (e.g. marker reparented under another root).
+  // Markers only ever mount via boundary.add above — direct children — so a boundary
+  // that never minted one has nothing to purge, and a reparented straggler beyond the
+  // child list is a broken-marker scenario the commit's own replacement covers.
+  if (data.authoredResolvingMarker === true && Array.isArray(boundary.children)) {
+    for (const node of boundary.children) {
+      if (node.userData && node.userData.authoredResolvingMarker === true) {
+        if (node.parent) node.parent.remove(node);
+        detached = true;
+      }
+    }
+  }
+  return detached;
 }
 
 /**
@@ -599,7 +679,16 @@ export function upgradeAdmissionStandIn(boundary, resolveRecord) {
   const standIn = record
     ? lodStandInFor(entity, record, isBoundarySeat ? boundaryStandInTarget(boundaryData, entity) : null)
     : null;
-  if (!standIn) return false; // still nothing resident — keep waiting while pending
+  if (!standIn) {
+    if (record) {
+      // The record resolved but cannot build a stand-in — it never becomes usable,
+      // so the periodic re-resolve scan has nothing left to converge on.
+      boundaryData.resolvingMarkerFallbackReason = 'stand-in-record-unusable';
+      boundaryData.admissionStandInPending = false;
+      if (substrate && substrate.userData) substrate.userData.admissionStandInPending = false;
+    }
+    return false; // still nothing resident — keep waiting while pending
+  }
   substrate.remove(marker);
   substrate.add(standIn);
   substrate.userData.resolvingMarker = standIn;
@@ -631,12 +720,13 @@ export function releaseAdmissionStandInFallback(boundary) {
   return true;
 }
 
-function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveRecord = null, proceduralFallback = null) {
+function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveRecord = null, proceduralFallback = null, proceduralFallbackMissionOnly = false) {
   const root = new THREE.Group();
   root.name = `${entity && entity.data && entity.data.defId || 'ship'}_DirectAuthoredAdmission`;
   root.visible = false;
   root.userData.kind = 'ship';
   root.userData.authoredAdmissionSubstrate = true;
+  root.userData.admissionEntity = entity;
   const standIn = standInRecord ? lodStandInFor(entity, standInRecord) : null;
   let marker;
   if (standIn) {
@@ -659,7 +749,6 @@ function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveR
       root.userData.resolvingMarkerFallbackReason = 'no-resident-record';
       root.userData.admissionStandInPending = true;
     }
-    root.userData.admissionEntity = entity;
     root.userData.admissionStandInResolver = resolveRecord;
     // Detach paths that never see a terminal marker sync (despawn mid-pending, teardown) still
     // release the gauge — disposeDetachedObject invokes this hook on the substrate root.
@@ -672,9 +761,15 @@ function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveR
   root.add(marker);
   root.userData.resolvingMarker = marker;
   // A retry-exhausted non-required ship builds the sanctioned procedural body instead of
-  // keeping the octahedron forever; required ships stay authored-or-nothing (no thunk).
+  // keeping the octahedron forever. Required ships stay authored-or-nothing EXCEPT a mission
+  // target: their thunk is flagged mission-only, and syncResolvingMarker consumes it only when
+  // the entity is mission-critical AND still on the abstract marker — a drawn stand-in hull is
+  // already the ship's own identity and keeps it.
   if (typeof proceduralFallback === 'function') {
     root.userData.admissionProceduralFallback = proceduralFallback;
+    if (proceduralFallbackMissionOnly === true) {
+      root.userData.admissionProceduralFallbackMissionOnly = true;
+    }
   }
   root.userData.authoredResolvingMarker = true;
   root.userData.authoredAdmissionTemporaryDrawables = Math.max(1, marker.isMesh ? 1 : marker.children.length);
@@ -688,10 +783,19 @@ function directAuthoredAdmissionSubstrate(entity, standInRecord = null, resolveR
   // with the substrate when the authored body swaps in.
   {
     const r = Math.max(4, Number.isFinite(entity && entity.radius) ? entity.radius : 6);
-    root.userData.visualBounds = {
-      center: [0, 0, 0],
-      size: [r * WHOLE_SHIP_STAND_IN_TARGET_LENGTH, r * 0.6, r * 1.7],
-    };
+    const size = [r * WHOLE_SHIP_STAND_IN_TARGET_LENGTH, r * 0.6, r * 1.7];
+    // Union the measured hull axes at the committed X basis — the fixed margins under-cover
+    // Z/Y-dominant hulls (ship_saucer commits ~1.81r on Z, ~0.62r on Y).
+    const row = modelTruthRowForEntity(entity);
+    const rowSize = row && row.bounds && row.bounds.size;
+    const sourceLength = rowSize && Number(rowSize[0]);
+    if (rowSize && sourceLength > 0) {
+      const factor = (r * WHOLE_SHIP_STAND_IN_TARGET_LENGTH) / sourceLength;
+      size[0] = Math.max(size[0], (Number(rowSize[0]) || 0) * factor);
+      size[1] = Math.max(size[1], (Number(rowSize[1]) || 0) * factor);
+      size[2] = Math.max(size[2], (Number(rowSize[2]) || 0) * factor);
+    }
+    root.userData.visualBounds = { center: [0, 0, 0], size };
   }
   root.userData.renderContract = {
     assetBoundary: 'resident authored identity admission substrate',
@@ -723,6 +827,7 @@ const RELEASE_PART_ROOT = 'assets/ships/release/parts/';
 const PACKAGED_PRIMITIVE_MATRIX = new THREE.Matrix4();
 const PACKAGED_FIT_CENTER = new THREE.Vector3();
 const PACKAGED_FIT_SIZE = new THREE.Vector3();
+const PACKAGED_FIT_SCRATCH = new THREE.Box3();
 const SCENARIO_PROP_KEEP_VISIBLE = new Set(['HandoffBeacon_Zone_Disc']);
 
 function packagedPartUrl(relativeFile) {
@@ -784,7 +889,33 @@ function isLod0Primitive(primitive) {
 }
 
 function instantiatePackagedPrimitives(record, parent) {
-  for (const primitive of record && record.primitives || []) {
+  const it = instantiatePackagedPrimitivesSteps(record, parent);
+  for (;;) { const step = it.next(); if (step.done) return step.value; }
+}
+
+// Stepped twin of the mint above — a hulk-scale record's primitive rows pace at
+// strides inside the commit's driveLeg spine instead of minting atomically. The
+// stamp leg runs first so a suspended walk keeps the boundary provenance visible.
+function* instantiatePackagedPrimitivesSteps(record, parent) {
+  // The flat-primitive mount replays the same decoded package the instance route stamps on
+  // its root — publish the same `spacefaceRenderPackage` boundary here so the opening
+  // census's productionBoundary walk does not read a mounted packaged prop as an
+  // unprovenanced blocking root (D157). A record with no render package keeps the asset
+  // identity but no verified hash, and the gate stays honest for it.
+  if (parent && parent.userData && !parent.userData.spacefaceRenderPackage) {
+    const pkg = record && record.renderPackage || null;
+    const assetId = (pkg && pkg.assetId) || (record && record.assetId) || null;
+    if (assetId) {
+      parent.userData.spacefaceRenderPackage = {
+        assetId,
+        contentHash: (pkg && pkg.contentHash) || null,
+      };
+    }
+  }
+  const primitives = (record && record.primitives) || [];
+  for (let i = 0; i < primitives.length; i++) {
+    if (i > 0 && (i % 128) === 0) yield;
+    const primitive = primitives[i];
     if (!primitive || !primitive.geometry || !primitive.material) continue;
     if (!isLod0Primitive(primitive)) continue;
     const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
@@ -821,6 +952,48 @@ function fitPackagedGroup(group, targetRadius) {
   );
 }
 
+// Stepped twin of the sync fit above — the forced compose yields at strides and
+// the bounds union walks Box3.expandByObject(precise=false) iteratively, so a
+// packaged subtree paces inside the commit leg instead of two atomic walks.
+function* fitPackagedGroupSteps(group, targetRadius) {
+  if (!group) return;
+  yield* updateMatrixWorldSteps(group, true);
+  const box = new THREE.Box3();
+  const stack = [group];
+  let visited = 0;
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if ((++visited % 1024) === 0) yield;
+    node.updateWorldMatrix(false, false);
+    const geometry = node.geometry;
+    if (geometry !== undefined) {
+      if (node.boundingBox !== undefined) {
+        if (node.boundingBox === null) node.computeBoundingBox();
+        PACKAGED_FIT_SCRATCH.copy(node.boundingBox);
+      } else {
+        if (geometry.boundingBox === null) geometry.computeBoundingBox();
+        PACKAGED_FIT_SCRATCH.copy(geometry.boundingBox);
+      }
+      PACKAGED_FIT_SCRATCH.applyMatrix4(node.matrixWorld);
+      box.union(PACKAGED_FIT_SCRATCH);
+    }
+    const children = node.children;
+    for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+  }
+  if (box.isEmpty()) return;
+  box.getCenter(PACKAGED_FIT_CENTER);
+  box.getSize(PACKAGED_FIT_SIZE);
+  const envelope = Math.max(PACKAGED_FIT_SIZE.x, PACKAGED_FIT_SIZE.y, PACKAGED_FIT_SIZE.z, 1e-6);
+  const radius = Number(targetRadius);
+  const fitScale = Number.isFinite(radius) && radius > 0 ? (radius * 2) / envelope : 1;
+  group.scale.setScalar(fitScale);
+  group.position.set(
+    -PACKAGED_FIT_CENTER.x * fitScale,
+    -PACKAGED_FIT_CENTER.y * fitScale,
+    -PACKAGED_FIT_CENTER.z * fitScale,
+  );
+}
+
 function isPackagedBodyDescendant(object, root) {
   let current = object;
   while (current && current !== root) {
@@ -833,8 +1006,34 @@ function isPackagedBodyDescendant(object, root) {
 // A detached packaged group the admission run still owns: its primitives were minted fresh for
 // this mount, so geometry and material instances die with it. Shared-asset geometries keep
 // their pool pin; texture maps ride the packaged cache and are left alone.
+function* disposeDetachedPackagedGroupSteps(group) {
+  const stack = [group];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % 128) === 0) yield;
+    if (object.geometry && typeof object.geometry.dispose === 'function'
+      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
+      object.geometry.dispose();
+    }
+    const materials = Array.isArray(object.material)
+      ? object.material
+      : object.material ? [object.material] : [];
+    for (const material of materials) {
+      if (material && typeof material.dispose === 'function') material.dispose();
+    }
+    const children = object.children || [];
+    for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
+}
+
 function disposeDetachedPackagedGroup(group) {
   if (!group || typeof group.traverse !== 'function') return;
+  // The mid-prepare abort legs (orphan/pipeline-fail/stale-run) used to tear the
+  // packaged subtree down atomically inside the commit continuation — the same
+  // presented-beat class the place/commit disposes already pace on the shared queue.
+  if (queuePacedDetachedTeardown(group, disposeDetachedPackagedGroupSteps(group))) return;
   group.traverse((object) => {
     if (!object) return;
     if (object.geometry && typeof object.geometry.dispose === 'function'
@@ -963,6 +1162,9 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
     // waits on the opening-graph release. Adding the group straight to the live scene left its
     // materials to link inside the first bloomScene draw (the wrk_glass_shattered / lnb_* brick);
     // routing through the queue instead delayed mounts into measured flight windows.
+    // Hoisted like attachPackagedBody: the .catch runs outside the .then closure, so the
+    // detached group must live in this scope for the thrown-leg dispose to reach it.
+    let detachedCommitGroup = null;
     const completion = loadPart(url, {
       renderer,
       slot: spec.slot || slotForPackagedFile(spec.file),
@@ -978,23 +1180,76 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         return false;
       }
       const packaged = new THREE.Group();
+      detachedCommitGroup = packaged;
       packaged.name = `${root.userData.kind || entity.type || 'prop'}_PackagedBody`;
       packaged.userData.scenarioPackagedBody = true;
-      instantiatePackagedPrimitives(record, packaged);
+      // Same yield+orphan spine as attachPackagedBody: the build legs below are
+      // contiguous work in this continuation, so pace them and re-verify the
+      // mount owner between legs — the packaged root stays detached (hidden)
+      // until the mount tail, so the spread changes nothing visible.
+      const legNow = () => (
+        typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now()
+      );
+      let legStarted = legNow();
+      const scenarioCommitOrphaned = () => {
+        if (root.parent) return false;
+        releaseBoundaryResidency(renderer, root,
+          'packaged-prop-orphaned-mid-commit', mintedAdmissionOptions.admissionEpoch);
+        root.userData.authoredAssetState = 'orphaned-before-swap';
+        return true;
+      };
+      const COMMIT_ORPHANED = Symbol('packaged-prop-commit-orphaned');
+      const driveLeg = async (iter) => {
+        for (;;) {
+          const legStep = iter.next();
+          if (legStep.done) return legStep.value;
+          notePacedFrameSpend(legNow() - legStarted);
+          await yieldToBrowser();
+          legStarted = legNow();
+          if (scenarioCommitOrphaned()) return COMMIT_ORPHANED;
+        }
+      };
+      if ((await driveLeg(instantiatePackagedPrimitivesSteps(record, packaged))) === COMMIT_ORPHANED) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
       if (!packaged.children.length) {
+        disposeDetachedPackagedGroup(packaged);
         if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         root.userData.authoredAssetState = 'unavailable';
         return false;
       }
-      fitPackagedGroup(packaged, packagedFitRadius(entity, spec));
-      batchPackagedPropOpaqueMeshes(packaged);
-      freezeStaticChildMatrices(packaged);
-      freezeStaticTransformRoot(packaged);
+      if ((await driveLeg(fitPackagedGroupSteps(packaged, packagedFitRadius(entity, spec)))) === COMMIT_ORPHANED) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
+      if ((await driveLeg(batchPackagedPropOpaqueMeshesSteps(packaged))) === COMMIT_ORPHANED) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
+      if (scenarioCommitOrphaned()) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
+      if ((await driveLeg(freezeStaticChildMatricesSteps(packaged))) === COMMIT_ORPHANED) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
+      freezeStaticTransformRootMarked(packaged);
+      notePacedFrameSpend(legNow() - legStarted);
+      await yieldToBrowser();
+      legStarted = legNow();
+      if (scenarioCommitOrphaned()) {
+        disposeDetachedPackagedGroup(packaged);
+        return false;
+      }
       root.userData.authoredAssetState = 'compiling-pipelines';
       try {
         await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);
       } catch (error) {
         releaseBoundaryResidency(renderer, root, 'packaged-prop-pipeline-failed', mintedAdmissionOptions.admissionEpoch);
+        disposeDetachedPackagedGroup(packaged);
         if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         // Same lifecycle abort partsLibrary classifies: an owner that shelves mid-admission
         // has no visual to publish — a breadcrumb, not a composition defect.
@@ -1018,13 +1273,18 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       }
       if (!root.parent) {
         releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-after-compile', mintedAdmissionOptions.admissionEpoch);
+        disposeDetachedPackagedGroup(packaged);
         root.userData.authoredAssetState = 'orphaned-before-swap';
         return false;
       }
-      const publicationWait = waitForOpeningGraphPublicationRelease();
+      const publicationWait = waitForOpeningGraphPublicationRelease({
+        ...mintedAdmissionOptions,
+        entity: liveEntity || entity,
+      });
       if (publicationWait) await publicationWait;
       if (!root.parent) {
         releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-before-publication', mintedAdmissionOptions.admissionEpoch);
+        disposeDetachedPackagedGroup(packaged);
         root.userData.authoredAssetState = 'orphaned-before-swap';
         return false;
       }
@@ -1038,15 +1298,26 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         disposeDetachedPackagedGroup(packaged);
         return false;
       }
+      // The mount tail below is one contiguous span (hide → graft → touch → shadow
+      // sync → settle) — debit the paced ledger for its real cost.
+      legStarted = legNow();
       detachBoundaryResolvingMarker(root);
       hideProceduralPropDrawables(root);
       root.add(packaged);
+      carryAdmittedOnceStamp(packaged, root);
       // The detached prepare compiled/touched `packaged`; attached-state keys can still differ
       // (owner chain, final visibility). One exact-target re-touch here pays any residual link
       // inside this continuation instead of the first presented bloom pass.
       const touch = mintedAdmissionOptions.touchAuthoredExactTarget;
       if (typeof touch === 'function') {
         try { touch(packaged); } catch (error) { reportVisualWarning(options, '[visualOverrides] packaged publish touch failed', error); }
+      }
+      // Same commit seam as the exact-target touch: the added subtree's meshes carry
+      // three.js castShadow=false until a policy traverse covers them, so the live
+      // caster policy re-syncs here instead of at the next unrelated band flip.
+      const packagedShadowSync = mintedAdmissionOptions.syncPackagedBodyShadowPolicy;
+      if (typeof packagedShadowSync === 'function') {
+        try { packagedShadowSync(root, liveEntity || entity, packaged); } catch (_) { /* best effort */ }
       }
       root.userData.hull = packaged;
       root.userData.authoredAssetState = 'authored';
@@ -1063,8 +1334,13 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         entity,
         boundary: root,
       }, options);
+      notePacedFrameSpend(legNow() - legStarted);
       return true;
     }).catch((error) => {
+      if (detachedCommitGroup && !detachedCommitGroup.parent) {
+        try { disposeDetachedPackagedGroup(detachedCommitGroup); } catch (_) { /* teardown */ }
+      }
+      detachedCommitGroup = null;
       if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
       if (root.parent && admissionOwnerInactive(null, entity, error)) {
         markAuthoredBoundaryForReadmission(root, 'packaged-prop-owner-inactive');
@@ -1115,6 +1391,7 @@ export function installVisualOverrides(factory, options = {}) {
     const directShip = directAuthoredMount
       && authoredShips
       && entity && entity.type === 'ship'
+      && !isWorldPlaceProp(entity)
       && !(entity.data && entity.data.precompileProbe === true)
       && !(authoredWholeShipsOnly && !requiredWholeShip);
     const authoredCargoCapsule = hasExplicitAuthoredPayloadPresentation(entity);
@@ -1130,13 +1407,12 @@ export function installVisualOverrides(factory, options = {}) {
       try { standInRecord = admissionStandInRecord(entity); }
       catch (error) { reportVisualWarning(options, '[visualOverrides] admission stand-in lookup failed', error); }
       visual = directAuthoredAdmissionSubstrate(entity, standInRecord, admissionStandInRecord,
-        requiredWholeShip
-          ? null
-          : () => {
-            const fallback = fallbackBuild(entity);
-            configureTransparentSinglePassSurfaces(fallback);
-            return fallback;
-          });
+        () => {
+          const fallback = fallbackBuild(entity);
+          configureTransparentSinglePassSurfaces(fallback);
+          return fallback;
+        },
+        requiredWholeShip);
     } else if (isWorldPlaceProp(entity)) {
       const geologyFallback = hasExplicitAuthoredGeologyPresentation(entity)
         ? fallbackBuild(entity)
@@ -1208,7 +1484,7 @@ export function installVisualOverrides(factory, options = {}) {
     if (!visual) visual = fallbackBuild(entity);
     visual = attachPackagedScenarioProp(visual, entity, options);
     assertReleaseHeroVisual(entity, visual, releaseMode);
-    if (!visual || !entity || entity.type !== 'ship') return visual;
+    if (!visual || !entity || entity.type !== 'ship' || isTallyThreeAssessor(entity)) return visual;
     configureTransparentSinglePassSurfaces(visual);
     if (!authoredShips) return visual;
 

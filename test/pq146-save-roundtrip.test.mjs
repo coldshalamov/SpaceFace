@@ -11,6 +11,8 @@ import {stuntGrammar} from '../src/systems/stuntGrammar.js';
 import {collisionConsequences} from '../src/systems/collisionConsequences.js';
 import {tumbleStates} from '../src/systems/tumbleStates.js';
 import {journalFor} from '../src/combat/stuntEvidence.js';
+import {serializeCombatState,restoreCombatState} from '../src/combat/persistence.js';
+import {readTumbleStatus} from '../src/combat/tumbleStatus.js';
 import {COMBAT_FLAGS} from '../src/data/featureFlags.js';
 
 function body(id,x,z,{mass=16,radius=8,hull=100,team=1,vx=0,vz=0,combatSpeed}={}){
@@ -35,12 +37,14 @@ async function world(entities,tick=0){
     rope(){owner.createAttachment({attachmentId:'rope',defId:'tether_standard',ownerId:0,targetId:1,sourceWorld:entities[0].pos,targetWorld:entities[1].pos,restLength:30,tick:state.tick});},
     run(until,each=null){while(state.tick<until){state.tick++;state.simTime=state.tick/60;each?.(state.tick);owner.step(1/60);
       for(const p of owner.drainContactImpacts())bus.emit('physics:impact',{...p,tick:state.tick,consequenceKernelVersion:1});tumble.update(1/60,state);grammar.update(1/60,state);}},
-    snapshot(){return {tick:state.tick,entities:entities.map(cloneBody),stunts:structuredClone(grammar.serialize())};},
+    snapshot(){return {tick:state.tick,entities:entities.map(cloneBody),stunts:structuredClone(grammar.serialize()),combat:serializeCombatState(state)};},
     close(){tumble.destroy?.();grammar.destroy();consequence.destroy();kernel.dispose();owner.dispose();COMBAT_FLAGS.weaponImpulseConsequences=flag;}};
 }
 async function restored(saved){
   const w=await world(saved.entities.map(cloneBody),saved.tick);
-  w.bus.emit('save:restoring',{});w.grammar.deserialize(structuredClone(saved.stunts));w.bus.emit('save:loaded',{});
+  w.bus.emit('save:restoring',{});
+  restoreCombatState(w.state,saved.combat,ref=>ref?.kind==='player'?w.state.playerId:ref?.kind==='persistent'&&w.state.entities.has(Number(ref.saveId))?Number(ref.saveId):null);
+  w.grammar.deserialize(structuredClone(saved.stunts));w.bus.emit('save:loaded',{});
   return w;
 }
 // The payload, pursuer and wingman are slow hull classes (governed combat speed 95): receipt
@@ -107,8 +111,12 @@ test('a save after the first payoff keeps the amendment window: the wingman coll
     const saved=live.snapshot();
     assert.equal(saved.stunts.detector.incidents.length,1);
     assert.equal(saved.stunts.state.recentTricks.length,1);
+    assert.ok(readTumbleStatus(live.state,2),'the struck pursuer is still a loose projectile at the save boundary');
+    assert.ok(saved.combat.entities.some(r=>r.entityRef?.saveId==='2'),'the pending stunt body keeps its combat state even without a persistent flag');
+    assert.equal(saved.combat.entities.some(r=>r.entityRef?.saveId==='3'),false,'unclaimed transient bodies remain outside combat persistence');
     const after=await restored(saved);
     try{
+      assert.equal(readTumbleStatus(after.state,2)?.data.until,readTumbleStatus(live.state,2)?.data.until,'Continue preserves the existing loose-hull lifetime');
       after.run(200);
       assert.equal(after.detected.length,0,'the settled first payoff is not re-detected after reload');
       assert.equal(after.amended.length,1);

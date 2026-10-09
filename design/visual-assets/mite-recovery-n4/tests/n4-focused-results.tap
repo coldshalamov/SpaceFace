@@ -1,0 +1,21 @@
+✔ convex reverse metric preserves separated solids, winding and exact source units (4.996938ms)
+✔ convex metric reports an actual missing surface and retained clear-volume crossing (1.608227ms)
+✔ internal convex pieces have no invented exposed-boundary distance (0.594133ms)
+✔ convex schema fails closed for bad geometry, counts, IDs and missing tiers (0.659671ms)
+✔ legacy OBB and capsule measurements remain supported (0.568114ms)
+✔ explicit zero-emissive Brood allows no shader hooks while retaining socket anchors (1.603329ms)
+✔ omitted hooks still retain ordinary ship and place defaults (0.198798ms)
+✔ arbitrary empty hook lists and required-hook omissions remain rejected (0.410237ms)
+✔ contradictory actual hook or emissive material cannot claim explicit none (0.20613ms)
+✔ declared required channel cores remain mandatory even beside an empty Brood declaration (0.197277ms)
+✔ ordinary Forge ship and place hook defaults remain unchanged (1.294014ms)
+✔ explicit per-channel hook contract validates actual separate mesh nodes at every LOD (1.079082ms)
+✔ empty, malformed, missing, duplicate and non-render hook overrides fail closed (0.645871ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 88.044309

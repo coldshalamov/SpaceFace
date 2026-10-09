@@ -21,6 +21,7 @@
 //     Digits are free to the word counter; letters are not.
 import { SITE_MACHINES } from '../../data/sites.js';
 import { commodityName, sentenceCase } from './inspector.js';
+import { createIndustryPlanner } from './industryPlanner.js';
 
 export const PALETTE_ITEMS = [
   ...SITE_MACHINES.map((def) => ({
@@ -142,6 +143,7 @@ const SETTLE_MS = 300;
  *   motionReduce                 skip the §9 settle.
  */
 export function createBuildPalette(host, { onSelect, onUserSelect, motionReduce = false } = {}) {
+  const planner = createIndustryPlanner(host);
   const root = document.createElement('div');
   root.className = 'aw-palette';
   root.setAttribute('role', 'group');
@@ -253,7 +255,7 @@ export function createBuildPalette(host, { onSelect, onUserSelect, motionReduce 
       shortfalls[id] = miss && Object.keys(miss).length ? shortfallText(miss) : '';
     }
 
-    if (!visible.length) { unmount(); return { mounted: false, changed }; }
+    if (!visible.length) { unmount({ keepPlanner: true }); return { mounted: false, changed }; }
     // A unique machine that just got built loses its key; the arm has to land somewhere real.
     if (!visible.includes(selectedId)) selectTo(visible[0]);
     paint();
@@ -293,7 +295,9 @@ export function createBuildPalette(host, { onSelect, onUserSelect, motionReduce 
     return true;
   }
 
-  function unmount() {
+  function unmount({ keepPlanner = false } = {}) {
+    // Internal pre-Core sync hides only machine keys; session exit also closes the planner.
+    if (!keepPlanner) planner.setVisible(false);
     // The arm goes back to the Core whether or not a row was on the glass: a rock with no Core has
     // exactly one legal build, and `selected` is what BUILD mode places. Leaving a stale extractor
     // armed here would make Enter refuse forever on a rock that has lost its Core.
@@ -322,12 +326,16 @@ export function createBuildPalette(host, { onSelect, onUserSelect, motionReduce 
     },
     sync,
     /** BUILD engaged: the row goes live (armed ring reads, keys accept the pointer). */
-    setBuildActive(active) { root.classList.toggle('live', !!active); },
+    setBuildActive(active) {
+      root.classList.toggle('live', !!active);
+      planner.setVisible(active);
+    },
     setMotionReduce(v) { reduce = !!v; },
     unmount,
     destroy() {
       clearTimeout(settleTimer);
       unmount();
+      planner.destroy();
       keys.clear();
       tipCosts.clear();
       visible = [];

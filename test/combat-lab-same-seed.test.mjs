@@ -164,10 +164,14 @@ test('buildSandboxLaunchConfig and requestSandboxGame forward the same seed twic
   const bus = { emit(type, payload) { payloads.push({ type, payload }); } };
   requestSandboxGame(bus, first);
   requestSandboxGame(bus, second);
-  assert.equal(payloads.length, 2);
-  assert.deepEqual(payloads[0].payload, { seed: setup.seed });
-  assert.deepEqual(payloads[1].payload, { seed: setup.seed });
-  assert.deepEqual(payloads[0].payload, payloads[1].payload);
+  // Each request also emits the embark-speculation visual prefetch (w33) — the contract
+  // here is that each request's game:new carries the same seed, not that no other event
+  // may ride alongside it.
+  const gameNews = payloads.filter((row) => row.type === 'game:new');
+  assert.equal(gameNews.length, 2);
+  assert.deepEqual(gameNews[0].payload, { seed: setup.seed });
+  assert.deepEqual(gameNews[1].payload, { seed: setup.seed });
+  assert.deepEqual(gameNews[0].payload, gameNews[1].payload);
 });
 
 test('validated Combat Lab seed is present on the game:new payload', () => {

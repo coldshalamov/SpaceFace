@@ -25,6 +25,7 @@ export function createDockingCradle() {
     axisX: 1, axisZ: 0,  // outbound corridor axis; chevrons sit out along it pointing inbound
     radius: 14,          // pad radius in wu (from the capture lane half-width)
     pulseT: 0,
+    release01: 0,        // FB-073: undock release beat envelope — runs 1 → 0 over the same fade
   };
 }
 
@@ -34,6 +35,21 @@ export function resetDockingCradle(cradle) {
   cradle.visible01 = 0;
   cradle.phase = 'none';
   cradle.pulseT = 0;
+  cradle.release01 = 0;
+  return cradle;
+}
+
+/**
+ * FB-073 — `dock:undocked` kicks the cradle backwards instead of adding a second effect. The
+ * berth's last-measured geometry is kept (the corridor readout is already quiet by then) and the
+ * envelope runs the same 0.28 s fade while the writer draws brackets letting go and chevrons
+ * pointing outbound. Safe to call on a quiet cradle — the beat simply reads once and latches off.
+ */
+export function releaseDockingCradle(cradle) {
+  if (!cradle) return cradle;
+  cradle.release01 = Math.max(cradle.visible01, 0.55);
+  cradle.visible01 = cradle.release01;
+  cradle.phase = 'release';
   return cradle;
 }
 
@@ -48,6 +64,18 @@ export function updateDockingCradle(cradle, dt, readout, proxy) {
   // Approach is still outside the mouth — keep a faint preview so the pad is discoverable,
   // but the envelope stays low until the corridor actually gates the ship in.
   const preview = phase === 'approach' && !!(readout && readout.berth);
+  // FB-073 release beat: `dock:undocked` armed it while the corridor went quiet — run the fade
+  // out on the retained berth geometry. Once armed it always plays: a same-frame stale 'berthed'
+  // readout must not swallow the beat, and a sub-280 ms re-dock simply crossfades back in.
+  if (cradle.release01 > 0) {
+    const releaseStep = dt > 0 ? dt / DOCKING_CRADLE_FADE_S : 1;
+    cradle.release01 = Math.max(0, cradle.release01 - releaseStep);
+    cradle.visible01 = cradle.release01;
+    cradle.phase = cradle.release01 > 0 ? 'release' : 'none';
+    cradle.pulseT += Math.max(0, dt);
+    return cradle;
+  }
+  cradle.release01 = 0;
   const target = engaged ? 1 : preview ? 0.38 : 0;
   const step = dt > 0 ? dt / DOCKING_CRADLE_FADE_S : 1;
   cradle.visible01 += clamp(target - cradle.visible01, -step, step);
@@ -121,8 +149,10 @@ export function writeDockingCradleGeometry(out, cradle, opts) {
   const R = cradle.radius;
   const ax = cradle.axisX, az = cradle.axisZ;
 
-  // Phase brightness: corridor is a soft guide, capture pulses with the lock, berthed holds solid.
-  let level = phase === 'capture' ? 0.62 : phase === 'berthed' ? 0.95 : 0.42;
+  const releasing = phase === 'release';
+  // Phase brightness: corridor is a soft guide, capture pulses with the lock, berthed holds solid,
+  // release reads at nearly-berthed level so the reversed beat is unmistakable as it fades.
+  let level = phase === 'capture' ? 0.62 : phase === 'berthed' ? 0.95 : releasing ? 0.85 : 0.42;
   let pulse = 1;
   if (phase === 'capture' && !reducedMotion) {
     pulse = 0.82 + 0.18 * Math.sin(cradle.pulseT * 7.2);
@@ -144,7 +174,8 @@ export function writeDockingCradleGeometry(out, cradle, opts) {
   }
   // --- Acquisition brackets: four short arcs at 45° that slowly sweep when not reduced. --
   const sweep = reducedMotion ? Math.PI / 4 : cradle.pulseT * 0.5;
-  const brkR = R * 0.62, brkLen = 0.42; // arc length in radians
+  // Release: the brackets let go — they slide out past the pad edge as the beat fades.
+  const brkR = R * (releasing ? 0.62 + (1 - vis) * 0.55 : 0.62), brkLen = 0.42; // arc len in radians
   for (let k = 0; k < BRACKET_COUNT; k++) {
     const base = sweep + (k / BRACKET_COUNT) * Math.PI * 2;
     emitted = emitQuad(out, emitted,
@@ -152,15 +183,18 @@ export function writeDockingCradleGeometry(out, cradle, opts) {
       bx + Math.cos(base + brkLen) * brkR, bz + Math.sin(base + brkLen) * brkR,
       Math.max(0.6, R * 0.06), y + 0.02, cr * master * 1.25, cg * master * 1.25, cb * master * 1.25);
   }
-  // --- Inbound chevrons: three arrows along the outbound axis pointing at the pad. ------
+  // --- Chevrons: three arrows along the corridor axis. Inbound while docking; on release they
+  // flip apex-out and slide away along the axis — the pad itself is showing the way out. ----
+  const dir = releasing ? 1 : -1;
+  const drift = releasing ? (1 - vis) * (R * 0.5 + 3) : 0;
   for (let k = 0; k < CHEVRON_COUNT; k++) {
-    const d = R + 4 + k * (R * 0.42 + 3);
+    const d = R + 4 + drift + k * (R * 0.42 + 3);
     const cx = bx + ax * d, cz = bz + az * d;
     const size = Math.max(1.4, R * 0.16) * (1 - k * 0.16);
     const fade = master * (1 - k * 0.24);
-    // Apex points INBOUND (-axis): two arms back along ±45°.
-    const tipX = cx - ax * size * 0.5, tipZ = cz - az * size * 0.5;
-    const backX = cx + ax * size * 0.5, backZ = cz + az * size * 0.5;
+    // Apex points INBOUND (-axis) while docking, OUTBOUND (+axis) on release.
+    const tipX = cx + ax * size * 0.5 * dir, tipZ = cz + az * size * 0.5 * dir;
+    const backX = cx - ax * size * 0.5 * dir, backZ = cz - az * size * 0.5 * dir;
     const sx = -az, sz = ax; // lateral
     emitted = emitQuad(out, emitted, tipX, tipZ, backX + sx * size, backZ + sz * size,
       0.45, y, cr * fade, cg * fade, cb * fade);

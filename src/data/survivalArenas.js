@@ -30,6 +30,8 @@ import { CINDER_ARENA_ID } from '../systems/cinderSluiceArena.js';
 import { CRYO_ARENA_ID } from '../systems/cryoDriftArena.js';
 import { LAGRANGE_ARENA_ID, LAGRANGE_PYLON_SEP } from '../systems/lagrangeCrucible.js';
 import { STORM_ARENA_ID } from '../systems/stormLatticeArena.js';
+import { MILL_ARENA_ID } from '../systems/asteroidMillArena.js';
+import { HIVE_ARENA_ID } from '../systems/theHiveArena.js';
 import { debrisLayoutForArena, FOUNDRY_ARENA_ID } from '../systems/swarmArena.js';
 import { planArenaInstall } from '../systems/survivalArena.js';
 import { compactRunResult } from '../systems/survivalRecords.js';
@@ -115,6 +117,20 @@ export const ARENA_LAWS = Object.freeze({
     law: 'conduct',
     verb: 'conduct',
     line: 'conducted lattice',
+  }),
+  // SWARM-07 B4 — the Mill grinds: break the seam and the seam pays ore.
+  [MILL_ARENA_ID]: Object.freeze({
+    id: MILL_ARENA_ID,
+    law: 'grind',
+    verb: 'grind',
+    line: 'grinding the seam for ore',
+  }),
+  // SWARM-07 B4 — the Hive breathes: walls grow shut, sacs birth the tide.
+  [HIVE_ARENA_ID]: Object.freeze({
+    id: HIVE_ARENA_ID,
+    law: 'breathe',
+    verb: 'breach',
+    line: 'breaching living walls and sacs',
   }),
 });
 

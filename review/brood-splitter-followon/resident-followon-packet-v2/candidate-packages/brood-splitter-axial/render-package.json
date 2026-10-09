@@ -1,0 +1,3948 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.brood-splitter-axial.anchor.socket-brood-contact",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.0249626636505127,
+        0,
+        0.00006308033334789798,
+        1
+      ],
+      "nodeName": "SOCKET_BROOD_CONTACT",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.0249626636505127,
+        0,
+        0.00006308033334789798,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.anchor.socket-brood-tether",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_BROOD_TETHER",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.brood-splitter-axial",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "e231171a8ade31fc33f5b1bd86de7ea829552e183ddf5ef871c065d187d03f1e",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.brood-splitter-axial.node.motion-splitter-jaw-port.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.brood-splitter-axial.node.motion-splitter-jaw-port"
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.motion-splitter-jaw-starboard.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.brood-splitter-axial.node.motion-splitter-jaw-starboard"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          0.12496267259120941,
+          1.0583397150039673,
+          1.275044322013855
+        ],
+        "min": [
+          -2.865037441253662,
+          -0.44674351811408997,
+          -0.9999181628227234
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3724e74a7b85c26672541e1627329a290fc9818293c0acd9e1a71d2c4ee3bce0",
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-01.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_axial_convex_01",
+      "nodeId": "sf.render.brood-splitter-axial.node.collision-axial-convex-01",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.3550373315811157,
+          1.0582164525985718,
+          0.9900534749031067
+        ],
+        "min": [
+          -4.040037155151367,
+          -0.4466201961040497,
+          -0.674927294254303
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "90d139c075e78c22616350d7af3a763b493ea8019a8471026b478b3fb59e2de9",
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-02.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_axial_convex_02",
+      "nodeId": "sf.render.brood-splitter-axial.node.collision-axial-convex-02",
+      "primitiveIndex": 0,
+      "vertexCount": 66
+    },
+    {
+      "bounds": {
+        "max": [
+          0.3449312150478363,
+          1.058178186416626,
+          1.4199411869049072
+        ],
+        "min": [
+          -0.3550058603286743,
+          -0.44658198952674866,
+          -1.4298149347305298
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "af9c8ff169fcd64d6f6cae29563cad53c953d74012df398a77d9ece9099c1bed",
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-03.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_axial_convex_03",
+      "nodeId": "sf.render.brood-splitter-axial.node.collision-axial-convex-03",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.46001967787742615,
+          1.0582400560379028,
+          1.6700317859649658
+        ],
+        "min": [
+          -1.900054931640625,
+          -0.4466438293457031,
+          0.8450943827629089
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e9078e7b7dea48dd33d5c29828a284d66b4cfa4c3677dc17ef5f6a60e0b5d7e5",
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-04.primitive.0",
+      "indexCount": 24,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_axial_convex_04",
+      "nodeId": "sf.render.brood-splitter-axial.node.collision-axial-convex-04",
+      "primitiveIndex": 0,
+      "vertexCount": 18
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.46001967787742615,
+          1.0582400560379028,
+          -0.8549681901931763
+        ],
+        "min": [
+          -1.900054931640625,
+          -0.4466438293457031,
+          -1.679905652999878
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e47d307e563265d5a297ab17074982b959b4fad6e602819e888222f754645d92",
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-05.primitive.0",
+      "indexCount": 24,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_axial_convex_05",
+      "nodeId": "sf.render.brood-splitter-axial.node.collision-axial-convex-05",
+      "primitiveIndex": 0,
+      "vertexCount": 18
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.46003732085227966,
+          1.0582462549209595,
+          1.885050892829895
+        ],
+        "min": [
+          -2.045037269592285,
+          -0.446649968624115,
+          0.9900752305984497
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d8c650b34840a49c9caf3b29761cfe288e90bbea199bf0d0f65dc387dd7a8622",
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-06.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_axial_convex_06",
+      "nodeId": "sf.render.brood-splitter-axial.node.collision-axial-convex-06",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.46003732085227966,
+          1.0582865476608276,
+          -0.9999457001686096
+        ],
+        "min": [
+          -2.0416653156280518,
+          -0.4466903507709503,
+          -1.8899282217025757
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "456269ff8a4903299cedc10c569d72ff9bb6bb077e2ff95fc6e79a2abbf010e9",
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-07.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_axial_convex_07",
+      "nodeId": "sf.render.brood-splitter-axial.node.collision-axial-convex-07",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          2.4549479484558105,
+          1.0582400560379028,
+          2.0250518321990967
+        ],
+        "min": [
+          1.7549774646759033,
+          -0.4466438293457031,
+          1.205074429512024
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0b1f32e3f996c8f2cc5f1cf1a9c000b657aedd2318362c398e88f0594a3a8300",
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-08.primitive.0",
+      "indexCount": 24,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_axial_convex_08",
+      "nodeId": "sf.render.brood-splitter-axial.node.collision-axial-convex-08",
+      "primitiveIndex": 0,
+      "vertexCount": 18
+    },
+    {
+      "bounds": {
+        "max": [
+          2.1249475479125977,
+          1.0582400560379028,
+          -1.0849045515060425
+        ],
+        "min": [
+          1.8449777364730835,
+          -0.4466438293457031,
+          -1.2149693965911865
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ebdcad8712f075506331f28f3db2cc2edf4b1547e39af2d69d3c2872c70cddef",
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-09.primitive.0",
+      "indexCount": 24,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_axial_convex_09",
+      "nodeId": "sf.render.brood-splitter-axial.node.collision-axial-convex-09",
+      "primitiveIndex": 0,
+      "vertexCount": 18
+    },
+    {
+      "bounds": {
+        "max": [
+          1.75484299659729,
+          1.0581340789794922,
+          2.0250630378723145
+        ],
+        "min": [
+          0.3450823128223419,
+          -0.44653788208961487,
+          -1.8049368858337402
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "92b1ac10cc6e0380122c53acf97ddcfa976f32bbc8e4d8fa64afb22739e7f94d",
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-10.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_axial_convex_10",
+      "nodeId": "sf.render.brood-splitter-axial.node.collision-axial-convex-10",
+      "primitiveIndex": 0,
+      "vertexCount": 46
+    },
+    {
+      "bounds": {
+        "max": [
+          3.340003252029419,
+          1.0582400560379028,
+          0.6950565576553345
+        ],
+        "min": [
+          2.2049221992492676,
+          -0.4466438293457031,
+          -0.7049304246902466
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "830842c79cca8028e8e00bee805913103cb77dd4cd097f8ef3cb65204224b1e2",
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-11.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_axial_convex_11",
+      "nodeId": "sf.render.brood-splitter-axial.node.collision-axial-convex-11",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          2.2050070762634277,
+          1.0582584142684937,
+          1.0150630474090576
+        ],
+        "min": [
+          1.6599183082580566,
+          -0.44666212797164917,
+          -1.0899369716644287
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "720ed5205d62eff972833897c132a5548ae382ea3906fd03c24eb4fb98a4293f",
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-12.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_axial_convex_12",
+      "nodeId": "sf.render.brood-splitter-axial.node.collision-axial-convex-12",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.7099626064300537,
+          1.0581964254379272,
+          -0.3099524974822998
+        ],
+        "min": [
+          1.6549626588821411,
+          -0.44660016894340515,
+          -2.0649213790893555
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6bf080777f585314643fc63a2222143199265ab813a47460ef357ae6de2c47d4",
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-13.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_axial_convex_13",
+      "nodeId": "sf.render.brood-splitter-axial.node.collision-axial-convex-13",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    },
+    {
+      "bounds": {
+        "max": [
+          3.7099626064300537,
+          1.0582466125488281,
+          2.0550665855407715
+        ],
+        "min": [
+          1.754962682723999,
+          -0.4466504156589508,
+          0.30005937814712524
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a371dfaf88fbe7962c059d23d57a6c7e524d5be9b00aac1d8cd14d62672ec2c9",
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-14.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_axial_convex_14",
+      "nodeId": "sf.render.brood-splitter-axial.node.collision-axial-convex-14",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          2.4549362659454346,
+          1.0582400560379028,
+          -1.0899200439453125
+        ],
+        "min": [
+          1.3549891710281372,
+          -0.4466438293457031,
+          -1.9949538707733154
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b7867ef7b80c017493f9d89aaad20368b7ebb881e3bc9a02a70062c0be4e6c00",
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-15.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_axial_convex_15",
+      "nodeId": "sf.render.brood-splitter-axial.node.collision-axial-convex-15",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          2.1249351501464844,
+          1.0582400560379028,
+          2.0250840187072754
+        ],
+        "min": [
+          1.6749900579452515,
+          -0.4466438293457031,
+          1.0750420093536377
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1a90bc1f25cf46c6ccb6359748a78fedd17cc7928c8fe41c5f38987778c6a198",
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-16.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "Collision_axial_convex_16",
+      "nodeId": "sf.render.brood-splitter-axial.node.collision-axial-convex-16",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          3.2349627017974854,
+          1.058328628540039,
+          1.7778476476669312
+        ],
+        "min": [
+          -3.93503737449646,
+          -0.1968098133802414,
+          -1.7777215242385864
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4f8920fc3627e0dcbe5f1532620031a978f61d26eb970c3b049ea285d5ba3068",
+      "id": "sf.render.brood-splitter-axial.node.lod0-axial-carapace.primitive.0",
+      "indexCount": 36018,
+      "indexed": true,
+      "materialHash": "e1cb4c48922ec995f50bd382f9248b80b91a62848f5478c536ee34b8cb2aecaa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_AXIAL_Carapace",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod0-axial-carapace",
+      "primitiveIndex": 0,
+      "vertexCount": 8044
+    },
+    {
+      "bounds": {
+        "max": [
+          3.339315414428711,
+          0.6900567412376404,
+          1.8899178504943848
+        ],
+        "min": [
+          -4.030060768127441,
+          -0.4380536377429962,
+          -1.88979172706604
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ecb2b5b24928d1066f9eaa184adf651c081b99eb8ec88340b5a7e2a2ecbd9434",
+      "id": "sf.render.brood-splitter-axial.node.lod0-axial-membrane.primitive.0",
+      "indexCount": 45954,
+      "indexed": true,
+      "materialHash": "e545a6c66bb7f76f969fa3e1438af670739021519681bf4a05d6b76993e3be91",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_AXIAL_Membrane",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod0-axial-membrane",
+      "primitiveIndex": 0,
+      "vertexCount": 9632
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7358763217926025,
+          0.037029609084129333,
+          -1.1079604625701904
+        ],
+        "min": [
+          0.9066875576972961,
+          -0.2967319190502167,
+          -1.88858962059021
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "118b927d7940a9087ce86cd51c3771df71742d60e1df890e1118170d10b8ed87",
+      "id": "sf.render.brood-splitter-axial.node.lod0-jaw-port.primitive.0",
+      "indexCount": 1560,
+      "indexed": true,
+      "materialHash": "e1cb4c48922ec995f50bd382f9248b80b91a62848f5478c536ee34b8cb2aecaa",
+      "materialPipelineKey": "opaque",
+      "meshName": "A3_axial_mandible_1.002",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod0-jaw-port",
+      "primitiveIndex": 0,
+      "vertexCount": 352
+    },
+    {
+      "bounds": {
+        "max": [
+          3.708010196685791,
+          0.0395943820476532,
+          -0.29775094985961914
+        ],
+        "min": [
+          0.9066875576972961,
+          -0.33041584491729736,
+          -2.0597450137138367
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "65970ddfcbac8b1eea7f692b68c99e91565ded4fdbd7f5f841af910941882dc2",
+      "id": "sf.render.brood-splitter-axial.node.lod0-jaw-port.primitive.1",
+      "indexCount": 4350,
+      "indexed": true,
+      "materialHash": "504e2af287f3bf7d40c6664e9b7db31a7fe326988fe3104180a6471c7a097b33",
+      "materialPipelineKey": "opaque",
+      "meshName": "A3_axial_mandible_1.002",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod0-jaw-port",
+      "primitiveIndex": 1,
+      "vertexCount": 927
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7358764708042145,
+          0.03702959418296814,
+          1.8887158632278442
+        ],
+        "min": [
+          0.9066877961158752,
+          -0.2967319041490555,
+          1.1080867946147919
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4e21eccd05ad49b7c1946416051d349bd14fba45907a7fe0b2d581b837bb0a22",
+      "id": "sf.render.brood-splitter-axial.node.lod0-jaw-starboard.primitive.0",
+      "indexCount": 1506,
+      "indexed": true,
+      "materialHash": "e1cb4c48922ec995f50bd382f9248b80b91a62848f5478c536ee34b8cb2aecaa",
+      "materialPipelineKey": "opaque",
+      "meshName": "A3_axial_mandible_-1.002",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod0-jaw-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 341
+    },
+    {
+      "bounds": {
+        "max": [
+          3.708010196685791,
+          0.039594367146492004,
+          2.059871256351471
+        ],
+        "min": [
+          0.9066877961158752,
+          -0.33041583001613617,
+          0.29787731170654297
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0e4c28da3affc1e2f1c57865480cb09b6b069e971f173fcf14d227c96a29d124",
+      "id": "sf.render.brood-splitter-axial.node.lod0-jaw-starboard.primitive.1",
+      "indexCount": 4404,
+      "indexed": true,
+      "materialHash": "504e2af287f3bf7d40c6664e9b7db31a7fe326988fe3104180a6471c7a097b33",
+      "materialPipelineKey": "opaque",
+      "meshName": "A3_axial_mandible_-1.002",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod0-jaw-starboard",
+      "primitiveIndex": 1,
+      "vertexCount": 943
+    },
+    {
+      "bounds": {
+        "max": [
+          3.2349627017974854,
+          1.0582627058029175,
+          1.776097059249878
+        ],
+        "min": [
+          -3.93503737449646,
+          -0.19600041210651398,
+          -1.7759709358215332
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8974e350632d9008c49ea8647fccb4914a2f39ebfeea7293a23115314efe8db3",
+      "id": "sf.render.brood-splitter-axial.node.lod1-axial-carapace.primitive.0",
+      "indexCount": 12426,
+      "indexed": true,
+      "materialHash": "e1cb4c48922ec995f50bd382f9248b80b91a62848f5478c536ee34b8cb2aecaa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_AXIAL_Carapace",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod1-axial-carapace",
+      "primitiveIndex": 0,
+      "vertexCount": 3196
+    },
+    {
+      "bounds": {
+        "max": [
+          3.339315414428711,
+          0.6877944469451904,
+          1.890224814414978
+        ],
+        "min": [
+          -4.022497177124023,
+          -0.44455012679100037,
+          -1.8900986909866333
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ec29080260042a010077dc6ff5cc4dba514fa3d6ddb7b597fd08f2e8e0ddb8e3",
+      "id": "sf.render.brood-splitter-axial.node.lod1-axial-membrane.primitive.0",
+      "indexCount": 43644,
+      "indexed": true,
+      "materialHash": "e545a6c66bb7f76f969fa3e1438af670739021519681bf4a05d6b76993e3be91",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_AXIAL_Membrane",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod1-axial-membrane",
+      "primitiveIndex": 0,
+      "vertexCount": 9548
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7564720809459686,
+          0.03537668287754059,
+          -1.1085928678512573
+        ],
+        "min": [
+          0.9052712321281433,
+          -0.29925278574228287,
+          -1.9067593812942505
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "47118891942a01f388809a89f6fea6bd1dc89b1d54ee64f4ee1306185bdf58ee",
+      "id": "sf.render.brood-splitter-axial.node.lod1-jaw-port.primitive.0",
+      "indexCount": 264,
+      "indexed": true,
+      "materialHash": "e1cb4c48922ec995f50bd382f9248b80b91a62848f5478c536ee34b8cb2aecaa",
+      "materialPipelineKey": "opaque",
+      "meshName": "A3_axial_mandible_1.003",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod1-jaw-port",
+      "primitiveIndex": 0,
+      "vertexCount": 75
+    },
+    {
+      "bounds": {
+        "max": [
+          3.7081351280212402,
+          0.039482563734054565,
+          -0.29742431640625
+        ],
+        "min": [
+          0.9052712321281433,
+          -0.32970474660396576,
+          -2.059703528881073
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ec387db94f9358100365d4fcabe04e6721847d41b61bcc6ddb0292aab6b1fe78",
+      "id": "sf.render.brood-splitter-axial.node.lod1-jaw-port.primitive.1",
+      "indexCount": 780,
+      "indexed": true,
+      "materialHash": "504e2af287f3bf7d40c6664e9b7db31a7fe326988fe3104180a6471c7a097b33",
+      "materialPipelineKey": "opaque",
+      "meshName": "A3_axial_mandible_1.003",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod1-jaw-port",
+      "primitiveIndex": 1,
+      "vertexCount": 197
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7564720809459686,
+          0.03537668287754059,
+          1.9068856835365295
+        ],
+        "min": [
+          0.9052712321281433,
+          -0.29925278574228287,
+          1.1087191700935364
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bb24631438f75734cbeaa1e9a565e2c643b39e658c9c1d797aafbb832e7a431a",
+      "id": "sf.render.brood-splitter-axial.node.lod1-jaw-starboard.primitive.0",
+      "indexCount": 264,
+      "indexed": true,
+      "materialHash": "e1cb4c48922ec995f50bd382f9248b80b91a62848f5478c536ee34b8cb2aecaa",
+      "materialPipelineKey": "opaque",
+      "meshName": "A3_axial_mandible_-1.003",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod1-jaw-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 75
+    },
+    {
+      "bounds": {
+        "max": [
+          3.7081351280212402,
+          0.039482563734054565,
+          2.059829831123352
+        ],
+        "min": [
+          0.9052712321281433,
+          -0.32970474660396576,
+          0.29755067825317383
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3d73ff923cd44f43949d7f3fec31e90299ca830d920d8eddc6cc3e47e2dd9e97",
+      "id": "sf.render.brood-splitter-axial.node.lod1-jaw-starboard.primitive.1",
+      "indexCount": 780,
+      "indexed": true,
+      "materialHash": "504e2af287f3bf7d40c6664e9b7db31a7fe326988fe3104180a6471c7a097b33",
+      "materialPipelineKey": "opaque",
+      "meshName": "A3_axial_mandible_-1.003",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod1-jaw-starboard",
+      "primitiveIndex": 1,
+      "vertexCount": 197
+    },
+    {
+      "bounds": {
+        "max": [
+          3.2349627017974854,
+          1.058062195777893,
+          1.7316542863845825
+        ],
+        "min": [
+          -3.93503737449646,
+          -0.1962009221315384,
+          -1.7573940753936768
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8f408d06e03734c14362b7d9d870e4d37602ef50148f0dc074567ed03a64ae56",
+      "id": "sf.render.brood-splitter-axial.node.lod2-axial-carapace.primitive.0",
+      "indexCount": 8814,
+      "indexed": true,
+      "materialHash": "e1cb4c48922ec995f50bd382f9248b80b91a62848f5478c536ee34b8cb2aecaa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_AXIAL_Carapace",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod2-axial-carapace",
+      "primitiveIndex": 0,
+      "vertexCount": 2400
+    },
+    {
+      "bounds": {
+        "max": [
+          3.339315414428711,
+          0.6672968864440918,
+          1.8899892568588257
+        ],
+        "min": [
+          -4.023330211639404,
+          -0.4418073892593384,
+          -1.889863133430481
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e41840d5301bc007ef06114cd623945433ccf578d3ac6301136985fc1df4b8ae",
+      "id": "sf.render.brood-splitter-axial.node.lod2-axial-membrane.primitive.0",
+      "indexCount": 25050,
+      "indexed": true,
+      "materialHash": "e545a6c66bb7f76f969fa3e1438af670739021519681bf4a05d6b76993e3be91",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_AXIAL_Membrane",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod2-axial-membrane",
+      "primitiveIndex": 0,
+      "vertexCount": 6004
+    },
+    {
+      "bounds": {
+        "max": [
+          1.590996503829956,
+          0.028381258249282837,
+          -1.1085621118545532
+        ],
+        "min": [
+          0.9052712321281433,
+          -0.27870456874370575,
+          -1.7840225994586945
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2b83f16a56c5f7bf3e539f47f9638f9427081597bc3166691e466d2047484674",
+      "id": "sf.render.brood-splitter-axial.node.lod2-jaw-port.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "e1cb4c48922ec995f50bd382f9248b80b91a62848f5478c536ee34b8cb2aecaa",
+      "materialPipelineKey": "opaque",
+      "meshName": "A3_axial_mandible_1.005",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod2-jaw-port",
+      "primitiveIndex": 0,
+      "vertexCount": 46
+    },
+    {
+      "bounds": {
+        "max": [
+          3.7081351280212402,
+          0.03813272714614868,
+          -0.29756462574005127
+        ],
+        "min": [
+          0.9052712321281433,
+          -0.3303702473640442,
+          -2.0595017075538635
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5e5270eb39b8f14d517fc723ba22a07c2ef2a4318d71a3123f74767c8e31d447",
+      "id": "sf.render.brood-splitter-axial.node.lod2-jaw-port.primitive.1",
+      "indexCount": 582,
+      "indexed": true,
+      "materialHash": "504e2af287f3bf7d40c6664e9b7db31a7fe326988fe3104180a6471c7a097b33",
+      "materialPipelineKey": "opaque",
+      "meshName": "A3_axial_mandible_1.005",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod2-jaw-port",
+      "primitiveIndex": 1,
+      "vertexCount": 156
+    },
+    {
+      "bounds": {
+        "max": [
+          1.590996503829956,
+          0.028381258249282837,
+          1.7841489017009735
+        ],
+        "min": [
+          0.9052712321281433,
+          -0.27870456874370575,
+          1.1086884140968323
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d0ee0b08382d967d4c3d35721519e7196caa6bc732f36ec2f108268416deee54",
+      "id": "sf.render.brood-splitter-axial.node.lod2-jaw-starboard.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "e1cb4c48922ec995f50bd382f9248b80b91a62848f5478c536ee34b8cb2aecaa",
+      "materialPipelineKey": "opaque",
+      "meshName": "A3_axial_mandible_-1.005",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod2-jaw-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 46
+    },
+    {
+      "bounds": {
+        "max": [
+          3.7081351280212402,
+          0.03813272714614868,
+          2.0596280097961426
+        ],
+        "min": [
+          0.9052712321281433,
+          -0.3303702473640442,
+          0.2976909875869751
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "62fbb79269efd9c6fa97e99c7d1b0728cbe5fe6e45d2d703bccbc388bc5e4d31",
+      "id": "sf.render.brood-splitter-axial.node.lod2-jaw-starboard.primitive.1",
+      "indexCount": 582,
+      "indexed": true,
+      "materialHash": "504e2af287f3bf7d40c6664e9b7db31a7fe326988fe3104180a6471c7a097b33",
+      "materialPipelineKey": "opaque",
+      "meshName": "A3_axial_mandible_-1.005",
+      "nodeId": "sf.render.brood-splitter-axial.node.lod2-jaw-starboard",
+      "primitiveIndex": 1,
+      "vertexCount": 156
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "504e2af287f3bf7d40c6664e9b7db31a7fe326988fe3104180a6471c7a097b33",
+      "id": "material:504e2af287f3bf7d40c6664e",
+      "name": "Material_Ceramic_BroodChitin",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "BroodChitin_ORM_v1",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "BroodChitin_Normal_v1",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "BroodChitin_ORM_v1",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e1cb4c48922ec995f50bd382f9248b80b91a62848f5478c536ee34b8cb2aecaa",
+      "id": "material:e1cb4c48922ec995f50bd382",
+      "name": "Material_Hull_BroodCarapace",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "linear",
+          "name": "BroodChitin_ORM_v1",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "BroodChitin_Normal_v1",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "BroodChitin_ORM_v1",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e545a6c66bb7f76f969fa3e1438af670739021519681bf4a05d6b76993e3be91",
+      "id": "material:e545a6c66bb7f76f969fa3e1",
+      "name": "Material_Ceramic_BroodMembrane",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-01",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_axial_convex_01",
+      "nodeName": "COLLISION_axial_convex_01",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-02",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_axial_convex_02",
+      "nodeName": "COLLISION_axial_convex_02",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-03",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_axial_convex_03",
+      "nodeName": "COLLISION_axial_convex_03",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-04",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_axial_convex_04",
+      "nodeName": "COLLISION_axial_convex_04",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-05",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_axial_convex_05",
+      "nodeName": "COLLISION_axial_convex_05",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-06",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_axial_convex_06",
+      "nodeName": "COLLISION_axial_convex_06",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-07",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_axial_convex_07",
+      "nodeName": "COLLISION_axial_convex_07",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-08",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_axial_convex_08",
+      "nodeName": "COLLISION_axial_convex_08",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-09",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_axial_convex_09",
+      "nodeName": "COLLISION_axial_convex_09",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-10",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_axial_convex_10",
+      "nodeName": "COLLISION_axial_convex_10",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-11",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_axial_convex_11",
+      "nodeName": "COLLISION_axial_convex_11",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-12",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_axial_convex_12",
+      "nodeName": "COLLISION_axial_convex_12",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-13",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_axial_convex_13",
+      "nodeName": "COLLISION_axial_convex_13",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-14",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_axial_convex_14",
+      "nodeName": "COLLISION_axial_convex_14",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-15",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_axial_convex_15",
+      "nodeName": "COLLISION_axial_convex_15",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.collision-axial-convex-16",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_axial_convex_16",
+      "nodeName": "COLLISION_axial_convex_16",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.lod0-axial-carapace",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_AXIAL_Carapace",
+      "nodeName": "LOD0_AXIAL_Carapace",
+      "nodePath": [
+        0,
+        16,
+        0
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.part-splitter-axial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.lod0-axial-membrane",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_AXIAL_Membrane",
+      "nodeName": "LOD0_AXIAL_Membrane",
+      "nodePath": [
+        0,
+        16,
+        1
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.part-splitter-axial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.lod0-jaw-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_JAW_PORT",
+      "nodeName": "LOD0_JAW_PORT",
+      "nodePath": [
+        0,
+        16,
+        6,
+        0
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.motion-splitter-jaw-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.31496262550354,
+        -0.18000000715255737,
+        -1.3599369525909424,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.lod0-jaw-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_JAW_STARBOARD",
+      "nodeName": "LOD0_JAW_STARBOARD",
+      "nodePath": [
+        0,
+        16,
+        7,
+        0
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.motion-splitter-jaw-starboard",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.31496262550354,
+        -0.18000000715255737,
+        1.360063076019287,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.lod1-axial-carapace",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_AXIAL_Carapace",
+      "nodeName": "LOD1_AXIAL_Carapace",
+      "nodePath": [
+        0,
+        16,
+        2
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.part-splitter-axial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.lod1-axial-membrane",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_AXIAL_Membrane",
+      "nodeName": "LOD1_AXIAL_Membrane",
+      "nodePath": [
+        0,
+        16,
+        3
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.part-splitter-axial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.lod1-jaw-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_JAW_PORT",
+      "nodeName": "LOD1_JAW_PORT",
+      "nodePath": [
+        0,
+        16,
+        6,
+        1
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.motion-splitter-jaw-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.31496262550354,
+        -0.18000000715255737,
+        -1.3599369525909424,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.lod1-jaw-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_JAW_STARBOARD",
+      "nodeName": "LOD1_JAW_STARBOARD",
+      "nodePath": [
+        0,
+        16,
+        7,
+        1
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.motion-splitter-jaw-starboard",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.31496262550354,
+        -0.18000000715255737,
+        1.360063076019287,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.lod2-axial-carapace",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_AXIAL_Carapace",
+      "nodeName": "LOD2_AXIAL_Carapace",
+      "nodePath": [
+        0,
+        16,
+        4
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.part-splitter-axial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.lod2-axial-membrane",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_AXIAL_Membrane",
+      "nodeName": "LOD2_AXIAL_Membrane",
+      "nodePath": [
+        0,
+        16,
+        5
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.part-splitter-axial",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.lod2-jaw-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_JAW_PORT",
+      "nodeName": "LOD2_JAW_PORT",
+      "nodePath": [
+        0,
+        16,
+        6,
+        2
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.motion-splitter-jaw-port",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.31496262550354,
+        -0.18000000715255737,
+        -1.3599369525909424,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.lod2-jaw-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_JAW_STARBOARD",
+      "nodeName": "LOD2_JAW_STARBOARD",
+      "nodePath": [
+        0,
+        16,
+        7,
+        2
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.motion-splitter-jaw-starboard",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.31496262550354,
+        -0.18000000715255737,
+        1.360063076019287,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.motion-splitter-jaw-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.31496262550354,
+        -0.18000000715255737,
+        -1.3599369525909424,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_SPLITTER_JAW_PORT",
+      "nodeName": "MOTION_SPLITTER_JAW_PORT",
+      "nodePath": [
+        0,
+        16,
+        6
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.part-splitter-axial",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.31496262550354,
+        -0.18000000715255737,
+        -1.3599369525909424,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.motion-splitter-jaw-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.31496262550354,
+        -0.18000000715255737,
+        1.360063076019287,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_SPLITTER_JAW_STARBOARD",
+      "nodeName": "MOTION_SPLITTER_JAW_STARBOARD",
+      "nodePath": [
+        0,
+        16,
+        7
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.part-splitter-axial",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1.31496262550354,
+        -0.18000000715255737,
+        1.360063076019287,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.part-splitter-axial",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "PART_SPLITTER_AXIAL",
+      "nodeName": "PART_SPLITTER_AXIAL",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_BROOD_SPLITTER_AXIAL_V01_ROOT",
+      "nodeName": "SF_BROOD_SPLITTER_AXIAL_V01_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.socket-brood-contact",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.0249626636505127,
+        0,
+        0.00006308033334789798,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_BROOD_CONTACT",
+      "nodeName": "SOCKET_BROOD_CONTACT",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.0249626636505127,
+        0,
+        0.00006308033334789798,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.brood-splitter-axial.node.socket-brood-tether",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_BROOD_TETHER",
+      "nodeName": "SOCKET_BROOD_TETHER",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.brood-splitter-axial.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "4490cba5ec0750dfb52bd2a7a4e3565ca49c063bd61e231506c768ae013fbfbb"
+    },
+    "sourceGlb": {
+      "bytes": 787896,
+      "sha256": "70b2b62318af2d3a44204d2957d65305c4ee475219c514fdf358139bc1ab19f3",
+      "uri": "brood_splitter_axial_v01.glb"
+    },
+    "sourceManifest": {
+      "bytes": 229066,
+      "sha256": "588a2fb97a680f30483ebf2274b50ca220e8a9a5201649cf2f4bb1cf03aa6735",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 1691816,
+    "sha256": "743c37f8a40a0b1cc5d33382cc36c19ec23f84eb5393394f7031874e5cc20393",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -0.16503727436065674,
+        0.30579809844493866,
+        -0.0025250613689422607
+      ],
+      "max": [
+        3.7099626064300537,
+        1.0583397150039673,
+        2.059871256351471
+      ],
+      "min": [
+        -4.040037155151367,
+        -0.44674351811408997,
+        -2.0649213790893555
+      ],
+      "size": [
+        7.749999761581421,
+        1.5050832331180573,
+        4.124792635440826
+      ]
+    },
+    "hidden": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          -1.3599369525909424,
+          1
+        ],
+        "name": "MOTION_SPLITTER_JAW_PORT",
+        "planIndex": 25,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "MOTION_SPLITTER_JAW_PORT",
+          "pose_closed_radians": -0.115,
+          "pose_open_radians": 0.52,
+          "presentation": "static-rest",
+          "rigid": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_SPLITTER_JAW_PORT",
+            "recordIds": [
+              "sf.render.brood-splitter-axial.node.motion-splitter-jaw-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          -1.3599369525909424,
+          1
+        ],
+        "name": "LOD0_JAW_PORT",
+        "planIndex": 26,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "a6_cutting_blade": true,
+          "anatomical_cell": "axial",
+          "forge_bevel": 0.007,
+          "forge_smooth": 64,
+          "forge_uv_scale": 1,
+          "jaw_ring_size": 11,
+          "jaw_root_sections": 9,
+          "jaw_sections": 36,
+          "name": "LOD0_JAW_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_JAW_PORT",
+            "recordIds": [
+              "sf.render.brood-splitter-axial.node.lod0-jaw-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          -1.3599369525909424,
+          1
+        ],
+        "name": "LOD1_JAW_PORT",
+        "planIndex": 29,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "a6_cutting_blade": true,
+          "anatomical_cell": "axial",
+          "authored_lod_loops": 1,
+          "forge_uv_scale": 1,
+          "jaw_ring_size": 11,
+          "jaw_root_sections": 4,
+          "jaw_sections": 16,
+          "name": "LOD1_JAW_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_JAW_PORT",
+            "recordIds": [
+              "sf.render.brood-splitter-axial.node.lod1-jaw-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          -1.3599369525909424,
+          1
+        ],
+        "name": "LOD2_JAW_PORT",
+        "planIndex": 32,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "a6_cutting_blade": true,
+          "anatomical_cell": "axial",
+          "authored_lod_loops": 2,
+          "forge_uv_scale": 1,
+          "jaw_ring_size": 11,
+          "jaw_root_sections": 2,
+          "jaw_sections": 11,
+          "name": "LOD2_JAW_PORT",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_JAW_PORT",
+            "recordIds": [
+              "sf.render.brood-splitter-axial.node.lod2-jaw-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          1.360063076019287,
+          1
+        ],
+        "name": "MOTION_SPLITTER_JAW_STARBOARD",
+        "planIndex": 35,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "motionGroup": true
+        },
+        "userData": {
+          "name": "MOTION_SPLITTER_JAW_STARBOARD",
+          "pose_closed_radians": 0.115,
+          "pose_open_radians": -0.52,
+          "presentation": "static-rest",
+          "rigid": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_SPLITTER_JAW_STARBOARD",
+            "recordIds": [
+              "sf.render.brood-splitter-axial.node.motion-splitter-jaw-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          1.360063076019287,
+          1
+        ],
+        "name": "LOD0_JAW_STARBOARD",
+        "planIndex": 36,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "lod": "lod0",
+          "motionGroup": true
+        },
+        "userData": {
+          "a6_cutting_blade": true,
+          "anatomical_cell": "axial",
+          "forge_bevel": 0.007,
+          "forge_smooth": 64,
+          "forge_uv_scale": 1,
+          "jaw_ring_size": 11,
+          "jaw_root_sections": 9,
+          "jaw_sections": 36,
+          "name": "LOD0_JAW_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD0_JAW_STARBOARD",
+            "recordIds": [
+              "sf.render.brood-splitter-axial.node.lod0-jaw-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          1.360063076019287,
+          1
+        ],
+        "name": "LOD1_JAW_STARBOARD",
+        "planIndex": 39,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "lod": "lod1",
+          "motionGroup": true
+        },
+        "userData": {
+          "a6_cutting_blade": true,
+          "anatomical_cell": "axial",
+          "authored_lod_loops": 1,
+          "forge_uv_scale": 1,
+          "jaw_ring_size": 11,
+          "jaw_root_sections": 4,
+          "jaw_sections": 16,
+          "name": "LOD1_JAW_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD1_JAW_STARBOARD",
+            "recordIds": [
+              "sf.render.brood-splitter-axial.node.lod1-jaw-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          1.360063076019287,
+          1
+        ],
+        "name": "LOD2_JAW_STARBOARD",
+        "planIndex": 42,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "lod": "lod2",
+          "motionGroup": true
+        },
+        "userData": {
+          "a6_cutting_blade": true,
+          "anatomical_cell": "axial",
+          "authored_lod_loops": 2,
+          "forge_uv_scale": 1,
+          "jaw_ring_size": 11,
+          "jaw_root_sections": 2,
+          "jaw_sections": 11,
+          "name": "LOD2_JAW_STARBOARD",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "LOD2_JAW_STARBOARD",
+            "recordIds": [
+              "sf.render.brood-splitter-axial.node.lod2-jaw-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.0249626636505127,
+          0,
+          0.00006308033334789798,
+          1
+        ],
+        "name": "SOCKET_BROOD_CONTACT",
+        "planIndex": 45,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "contact"
+        },
+        "userData": {
+          "name": "SOCKET_BROOD_CONTACT",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "contact",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_BROOD_CONTACT",
+            "recordIds": [
+              "sf.render.brood-splitter-axial.anchor.socket-brood-contact",
+              "sf.render.brood-splitter-axial.node.socket-brood-contact"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_BROOD_TETHER",
+        "planIndex": 46,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            1,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_BROOD_TETHER",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              1,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_BROOD_TETHER",
+            "recordIds": [
+              "sf.render.brood-splitter-axial.anchor.socket-brood-tether",
+              "sf.render.brood-splitter-axial.node.socket-brood-tether"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "ceramic": 9,
+      "hull": 9
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "ceramic"
+      }
+    ],
+    "motionBank": {
+      "bytes": 2251,
+      "rigId": "brood_splitter_axial_static_rest",
+      "sha256": "f4ea1e4325bb5d0fa999e6878e4f43d162858c45e781920deff95a6dcd301ad7",
+      "uri": "assets/ships/motions/brood-splitter-axial.motion.json"
+    },
+    "nodeCount": 47,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_AXIAL_Carapace",
+        "planIndex": 19,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_AXIAL_Membrane",
+        "planIndex": 20,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_AXIAL_Carapace",
+        "planIndex": 21,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_AXIAL_Membrane",
+        "planIndex": 22,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_AXIAL_Carapace",
+        "planIndex": 23,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_AXIAL_Membrane",
+        "planIndex": 24,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          -1.3599369525909424,
+          1
+        ],
+        "name": "A3_axial_mandible_1002",
+        "planIndex": 27,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          -1.3599369525909424,
+          1
+        ],
+        "name": "A3_axial_mandible_1002_1",
+        "planIndex": 28,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          -1.3599369525909424,
+          1
+        ],
+        "name": "A3_axial_mandible_1003",
+        "planIndex": 30,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          -1.3599369525909424,
+          1
+        ],
+        "name": "A3_axial_mandible_1003_1",
+        "planIndex": 31,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          -1.3599369525909424,
+          1
+        ],
+        "name": "A3_axial_mandible_1005",
+        "planIndex": 33,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          -1.3599369525909424,
+          1
+        ],
+        "name": "A3_axial_mandible_1005_1",
+        "planIndex": 34,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          1.360063076019287,
+          1
+        ],
+        "name": "A3_axial_mandible_-1002",
+        "planIndex": 37,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          1.360063076019287,
+          1
+        ],
+        "name": "A3_axial_mandible_-1002_1",
+        "planIndex": 38,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod0",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          1.360063076019287,
+          1
+        ],
+        "name": "A3_axial_mandible_-1003",
+        "planIndex": 40,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          1.360063076019287,
+          1
+        ],
+        "name": "A3_axial_mandible_-1003_1",
+        "planIndex": 41,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          1.360063076019287,
+          1
+        ],
+        "name": "A3_axial_mandible_-1005",
+        "planIndex": 43,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          1.31496262550354,
+          -0.18000000715255737,
+          1.360063076019287,
+          1
+        ],
+        "name": "A3_axial_mandible_-1005_1",
+        "planIndex": 44,
+        "tags": {
+          "broodCell": "brood_splitter_axial",
+          "broodContractId": "brood_splitter_axial",
+          "broodSourceSeal": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+          "canopy": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/brood_splitter_axial_v01.glb"
+  },
+  "runtimeHash": "71c7e4da03afca1ab1193ed670477404808d126d8892856010ccd186b8ae2639",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.7099626064300537,
+          1.0583397150039673,
+          2.059871256351471
+        ],
+        "min": [
+          -4.040037155151367,
+          -0.44674351811408997,
+          -2.0649213790893555
+        ]
+      },
+      "id": "sf.render.brood-splitter-axial.body",
+      "nodeIds": [
+        "sf.render.brood-splitter-axial.node.collision-axial-convex-01",
+        "sf.render.brood-splitter-axial.node.collision-axial-convex-02",
+        "sf.render.brood-splitter-axial.node.collision-axial-convex-03",
+        "sf.render.brood-splitter-axial.node.collision-axial-convex-04",
+        "sf.render.brood-splitter-axial.node.collision-axial-convex-05",
+        "sf.render.brood-splitter-axial.node.collision-axial-convex-06",
+        "sf.render.brood-splitter-axial.node.collision-axial-convex-07",
+        "sf.render.brood-splitter-axial.node.collision-axial-convex-08",
+        "sf.render.brood-splitter-axial.node.collision-axial-convex-09",
+        "sf.render.brood-splitter-axial.node.collision-axial-convex-10",
+        "sf.render.brood-splitter-axial.node.collision-axial-convex-11",
+        "sf.render.brood-splitter-axial.node.collision-axial-convex-12",
+        "sf.render.brood-splitter-axial.node.collision-axial-convex-13",
+        "sf.render.brood-splitter-axial.node.collision-axial-convex-14",
+        "sf.render.brood-splitter-axial.node.collision-axial-convex-15",
+        "sf.render.brood-splitter-axial.node.collision-axial-convex-16",
+        "sf.render.brood-splitter-axial.node.lod0-axial-carapace",
+        "sf.render.brood-splitter-axial.node.lod0-axial-membrane",
+        "sf.render.brood-splitter-axial.node.lod0-jaw-port",
+        "sf.render.brood-splitter-axial.node.lod0-jaw-starboard",
+        "sf.render.brood-splitter-axial.node.lod1-axial-carapace",
+        "sf.render.brood-splitter-axial.node.lod1-axial-membrane",
+        "sf.render.brood-splitter-axial.node.lod1-jaw-port",
+        "sf.render.brood-splitter-axial.node.lod1-jaw-starboard",
+        "sf.render.brood-splitter-axial.node.lod2-axial-carapace",
+        "sf.render.brood-splitter-axial.node.lod2-axial-membrane",
+        "sf.render.brood-splitter-axial.node.lod2-jaw-port",
+        "sf.render.brood-splitter-axial.node.lod2-jaw-starboard",
+        "sf.render.brood-splitter-axial.node.motion-splitter-jaw-port",
+        "sf.render.brood-splitter-axial.node.motion-splitter-jaw-starboard",
+        "sf.render.brood-splitter-axial.node.part-splitter-axial",
+        "sf.render.brood-splitter-axial.node.sf-brood-splitter-axial-v01-root",
+        "sf.render.brood-splitter-axial.node.socket-brood-contact",
+        "sf.render.brood-splitter-axial.node.socket-brood-tether"
+      ]
+    }
+  ]
+}

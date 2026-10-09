@@ -67,7 +67,7 @@ test('protected first-flight drain caps to the ordinary runtime mesh budget', as
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   assert.match(
     renderer,
-    /_drainMeshBuildQueue\(Math\.min\(moved, RUNTIME_MESH_BUILD_BUDGET\)\)/,
+    /_drainMeshBuildQueue\(Math\.min\(hoistedLeft, RUNTIME_MESH_BUILD_BUDGET\)\)/,
     'hold-exempt drain must not build an unbounded exempt cohort in one frame',
   );
 });

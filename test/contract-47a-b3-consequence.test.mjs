@@ -58,7 +58,7 @@ function harness() {
 test('47-A B3 is the long tow, not a shipyard choice', () => {
   const h = harness();
   assert.equal(h.state.nav.waypoint.storyBeat, 3);
-  assert.match(h.state.nav.waypoint.reason, /tow the slag core/i);
+  assert.match(h.state.nav.waypoint.reason, /tow the (\d+ t )?slag core/i);
 
   h.bus.emit('dock:docked', { stationId: 'station_tethys' });
   h.bus.emit('ship:purchased', { defId: 'ship_drifter', price: 9000, stationId: 'station_tethys' });

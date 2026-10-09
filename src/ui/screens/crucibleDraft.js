@@ -28,8 +28,9 @@
 // with its key in fine print; the focused one bright. The refit is a column of hardpoint rows.
 
 import { MODULES } from '../../data/modules.js';
-import { SURVIVAL_DRAFT_CHOICES } from '../../data/survivalDraft.js';
+import { SURVIVAL_DRAFT_CHOICES, swarmSellPrice } from '../../data/survivalDraft.js';
 import { SWARM_CATEGORIES } from '../../data/swarmCatalog.js';
+import { swarmRoundPreview } from '../../data/swarmLadder.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { canExtract, requestSurvivalExtraction } from '../../systems/survivalExtraction.js';
 import { canContinueSurvivalEndless, continueSurvivalEndless } from '../../systems/survivalEndless.js';
@@ -483,7 +484,7 @@ function budgetGauge(wallet, price) {
   top.textContent = `WALLET ${w} CR`;
   root.appendChild(top);
   const under = svgNode('text', { x: x0, y: y + 26, class: 'orr-armory-budget__read' });
-  under.textContent = left >= 0 ? `costs ${p} \u00b7 leaves ${left}` : `short ${-left} cr`;
+  under.textContent = left >= 0 ? `COSTS ${p} CR \u00b7 LEAVES ${left} CR` : `SHORT ${-left} CR`;
   if (left < 0) under.setAttribute('class', 'orr-armory-budget__read is-short');
   root.appendChild(under);
   return root;
@@ -592,6 +593,21 @@ export function refitFootLines(run) {
   };
 }
 
+/** SWARM-04 §6.5 — the one next-round sentence the armory and the refit bench both print. */
+function swarmNextLine(next) {
+  if (!next) return '';
+  const bits = [
+    `Round ${next.wave} — ${next.zone.name}`,
+    `clear ${next.killTarget}`,
+    `${next.concurrent} in the room`,
+  ];
+  if (next.roster.length) bits.push(next.roster.join(', '));
+  if (next.newcomer) bits.push(`new: ${next.newcomer}`);
+  if (next.event) bits.push(`${next.event.name} — ${next.event.telegraph}`);
+  if (next.boss) bits.push(`boss: ${next.boss.label}`);
+  return `Next — ${bits.join(' · ')}`;
+}
+
 export const crucibleDraftScreen = {
   id: 'crucibleDraft',
   // Locked: the run is paused on this choice, and Escape must not leave the phase machine
@@ -620,8 +636,22 @@ export const crucibleDraftScreen = {
     title.appendChild(h);
     const sub = el('p', 'k-t-emph k-62 sf-cru-sub', '');
     title.appendChild(sub);
+    // SWARM-04 §6.5 — the next-round preview: body count, archetypes, any newcomer, the event
+    // card, the boss. Buying becomes counter-planning when the fight coming is on the same
+    // screen as the shelf. The armory alone carries it; the gauntlet's Rearm stays quiet.
+    const preview = el('p', 'k-sentence sf-cru-preview', '');
+    preview.hidden = true;
+    title.appendChild(preview);
+    // SWARM-05 §7.3 — the hull being flown is the armory's context, a status line under the
+    // title, never a zero-price card at the top of the shelf. The other manifest hulls still
+    // list — as Switch rows, priced by what a switch costs (nothing).
+    const cradle = el('p', 'k-t-fine sf-cru-cradle', '');
+    cradle.hidden = true;
+    title.appendChild(cradle);
     rootEl.appendChild(title);
     this._sub = sub;
+    this._preview = preview;
+    this._cradle = cradle;
 
     // .k-stage — the three offers across on the sky, then the one status line.
     const stage = el('section', 'k-stage sf-cru-stage');
@@ -682,9 +712,10 @@ export const crucibleDraftScreen = {
         budget: el('div', 'orr-armory-reading__budget'),
         buy: el('p', 'orr-armory-reading__buy', ''),
         demo: el('p', 'orr-armory-reading__demo', ''),
+        hold: el('p', 'orr-armory-reading__hold', ''),
       };
       const words = el('div', 'orr-armory-reading__words');
-      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.compare, parts.budget, parts.buy, parts.demo);
+      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.compare, parts.budget, parts.buy, parts.demo, parts.hold);
       reading.append(parts.jig, words);
       rootEl.appendChild(reading);
       this._reading = { el: reading, parts, jig: createSlotJig({ host: parts.jig }), offerId: null };
@@ -841,6 +872,8 @@ export const crucibleDraftScreen = {
   },
 
   onShow() {
+    this._visualArmory?.setActive(true);
+    if (this._ctx) this.refresh(this._ctx);
     const r = this._regions;
     if (!r || !canAnimate()) return;
     cue('open');
@@ -851,10 +884,14 @@ export const crucibleDraftScreen = {
   },
 
   onHide() {
+    this._visualArmory?.setActive(false);
     if (canAnimate()) cue('close');
   },
 
   dispose() {
+    this._visualArmory?.dispose();
+    this._purchaseArmed = true;
+    this._purchasePending = false;
     this._reading?.jig?.dispose();
     this._filterRow?.dispose?.();
     if (this._pulseTimer) clearTimeout(this._pulseTimer);
@@ -862,6 +899,7 @@ export const crucibleDraftScreen = {
     if (typeof window !== 'undefined' && this._onRailResize) window.removeEventListener?.('resize', this._onRailResize);
     this._reading = null;
     this._visualArmory = null;
+    this._preview = null;
     this._ctx = null;
   },
 
@@ -928,12 +966,53 @@ export const crucibleDraftScreen = {
       }
     }
 
+    // SWARM-04: a checkpoint start's opening armory parks run.wave one below the bought
+    // entry — "Round 10 cleared" would claim a fight this run never flew. The bought purse
+    // and the round ahead are the honest words.
+    const runStart = context.state?.run?.telemetry
+      && Number.isInteger(context.state.run.telemetry.startWave)
+      ? context.state.run.telemetry.startWave : 1;
     this._sub.textContent = offers.length
       ? (wave === 0
         ? 'Fit out before round 1 — the purse is already open.'
-        : shop ? `Round ${wave} cleared. Buy a new toy, or save for something bigger.`
-          : `Wave ${wave} cleared. Choose a new weapon.`)
+        : shop && runStart > 1 && wave === runStart - 1
+          ? `Checkpoint start — the purse is stocked for Round ${runStart}.`
+          : shop ? `Round ${wave} cleared. Buy a new toy, or save for something bigger.`
+            : `Wave ${wave} cleared. Choose a new weapon.`)
       : `Wave ${wave} cleared. Nothing new fits this hull.`;
+
+    // SWARM-04 §6.5 — plan around the next fight. `wave` is the round just cleared (0 before
+    // the opener), so the preview is always wave + 1. Everything on the line is already
+    // authored on the pure plan — same seed, same card — so the armory can speak for the
+    // round coming without touching generation.
+    if (this._preview) {
+      let text = '';
+      const run = context.state && context.state.run;
+      if (shop && run) {
+        text = swarmNextLine(
+          swarmRoundPreview({ arenaId: run.arenaId, wave: wave + 1, seed: run.seed }),
+        );
+      }
+      this._preview.textContent = text;
+      this._preview.hidden = !text;
+    }
+
+    // SWARM-05 §7.3 — the hull being flown leaves the catalogue and reads on the status
+    // line; the other manifest hulls stay on the shelf as Switch rows.
+    const flying = shop ? offers.find((offer) => offer._flying) : null;
+    if (this._cradle) {
+      const cradleName = flying && (flying.name || entityLabel('hull:' + flying.defId) || flying.defId);
+      this._cradle.textContent = cradleName ? `In the cradle — ${cradleName}` : '';
+      this._cradle.hidden = !cradleName;
+    }
+    // SWARM-05 §7.3 — Recommended for your build: the owner's three picks lead the shelf
+    // once and do not repeat in the catalogue below. Category and search shelves stay the
+    // plain catalogue.
+    const recommended = shop && this._category === 'All' && !this._query
+      && owner && typeof owner.recommendedOffers === 'function'
+      ? owner.recommendedOffers().filter((offer) => !offer._flying)
+      : [];
+    const recommendedIds = new Set(recommended.map((offer) => offer.id));
 
     // INF-060: a purchase rebuilds the cards; the player stays on the same offer instead of
     // being thrown back to the first card (or into detached-focus limbo).
@@ -941,7 +1020,8 @@ export const crucibleDraftScreen = {
     cards.innerHTML = '';
     const visibleOffers = shop
       ? offers
-        .filter(offer => (this._category === 'All' || categoryFor(offer) === this._category)
+        .filter(offer => !offer._flying && !recommendedIds.has(offer.id)
+          && (this._category === 'All' || categoryFor(offer) === this._category)
           && matchesQuery(offer))
         .sort((a, b) => a.price - b.price || a.name.localeCompare(b.name))
       : offers.slice(0, SURVIVAL_DRAFT_CHOICES);
@@ -949,6 +1029,18 @@ export const crucibleDraftScreen = {
     let walletDrawn = false;
     let key = 1;
     const credits = Number(context.state?.run?.credits) || 0;
+    if (recommended.length) {
+      const shelfHead = el('p', 'orr-rail-divider', 'Recommended for your build');
+      shelfHead.setAttribute('aria-hidden', 'true');
+      cards.appendChild(shelfHead);
+      for (const offer of recommended) {
+        cards.appendChild(this._buildCard(context, offer, key));
+        key += 1;
+      }
+      const shelfRest = el('p', 'orr-rail-divider', 'The whole shelf');
+      shelfRest.setAttribute('aria-hidden', 'true');
+      cards.appendChild(shelfRest);
+    }
     for (const offer of visibleOffers) {
       // the armory's rail: the price as an engraved divider over each price's group, and the wallet
       // as a line where the rail passes what the run can pay
@@ -981,12 +1073,12 @@ export const crucibleDraftScreen = {
       empty.appendChild(clear); cards.appendChild(empty);
     }
     this._note.textContent = notice || lines.notice || '';
-    this._offersById = new Map(visibleOffers.map((offer) => [offer.id, offer]));
+    this._offersById = new Map([...visibleOffers, ...recommended].map((offer) => [offer.id, offer]));
     rootEl.classList.toggle('orr-armory', shop && !!this._reading);
     if (this._reading) {
-      this._reading.el.hidden = !shop || !visibleOffers.length;
+      this._reading.el.hidden = !shop || !(visibleOffers.length || recommended.length);
       const keep = this._offersById.get(this._reading.offerId);
-      const first = keep || visibleOffers.find((offer) => offer.available) || visibleOffers[0];
+      const first = keep || visibleOffers.find((offer) => offer.available) || recommended[0] || visibleOffers[0];
       if (shop && first) this._paintReading(context, first);
     }
 
@@ -1026,36 +1118,50 @@ export const crucibleDraftScreen = {
     // Only claim focus when it is not already inside this surface, and when the rebuild did not
     // just restore the player's place. A refused re-roll must not yank the player off the
     // control they just used.
-    if (!restoreFocusedControl(rootEl, savedFocus)) {
-      const active = typeof document !== 'undefined' ? document.activeElement : null;
-      if (!active || !rootEl.contains || !rootEl.contains(active)) {
-        const target = [...cards.querySelectorAll('button:not(:disabled)')].find(card => card.dataset.offerId === this._reading?.offerId)
-          || cards.querySelector('button:not(:disabled)') || this._skip;
-        if (target && typeof target.focus === 'function') {
-          try { target.focus(); } catch { /* focus is best-effort */ }
+    this._restoringInspection = true;
+    try {
+      if (!restoreFocusedControl(rootEl, savedFocus)) {
+        const active = typeof document !== 'undefined' ? document.activeElement : null;
+        if (!active || !rootEl.contains || !rootEl.contains(active)) {
+          const target = [...cards.querySelectorAll('button:not(:disabled)')].find(card => card.dataset.offerId === this._reading?.offerId)
+            || cards.querySelector('button:not(:disabled)') || this._skip;
+          if (target && typeof target.focus === 'function') {
+            try { target.focus(); } catch { /* focus is best-effort */ }
+          }
         }
       }
-    }
+    } finally { this._restoringInspection = false; }
   },
 
   /** Validate against the owner's CURRENT shelf; never spend on a captured/stale offer. */
   _purchaseSelected(ctx) {
+    if (this._purchaseArmed === false || this._purchasePending) return;
     const owner = draftOwner(ctx);
     const offer = owner?.currentOffers?.().find(item => item.id === this._reading?.offerId);
     if (!offer?.available || offer.purchased || ctx.state?.run?.phase !== 'draft') {
       this.refresh(ctx); return;
     }
-    ctx.bus.emit('run:draftPickRequested', { offerId: offer.id });
-    const notice = owner?.lastNotice?.();
-    if (!notice) this._flash = { text: `Purchased ${offer.name || offer.defId}.`, until: Date.now() + 5000 };
-    this.refresh(ctx);
+    // A refreshed shelf can select a different row after a purchase. A second click on the
+    // same confirmation key must never silently buy that row; inspection explicitly re-arms it.
+    this._purchaseArmed = false;
+    this._purchasePending = true;
+    this._visualArmory?.pending(offer);
+    try {
+      ctx.bus.emit('run:draftPickRequested', { offerId: offer.id });
+    } finally {
+      try { this.refresh(ctx); }
+      finally { this._purchasePending = false; }
+    }
   },
 
   /** Focus or an explicit click selects an offer. Pointer travel never changes a pending purchase. */
   _readFrom(event) {
     const card = event && event.target && event.target.closest ? event.target.closest('[data-offer-id]') : null;
     const offer = card && this._offersById ? this._offersById.get(card.dataset.offerId) : null;
-    if (offer && this._ctx) this._paintReading(this._ctx, offer);
+    if (offer && this._ctx && !this._purchasePending && !this._restoringInspection) {
+      this._purchaseArmed = true;
+      this._paintReading(this._ctx, offer);
+    }
   },
 
   _paintReading(context, offer) {
@@ -1065,16 +1171,27 @@ export const crucibleDraftScreen = {
     // hull switch moves none of offer.id/credits, and a refit can leave both unchanged while
     // the jig goes stale, so the fit rides the key too.
     const fit = activeLoadout(context);
+    const owner = draftOwner(context);
+    const receipt = owner?.preparationReceipt?.();
+    const generation = owner?.preparationGeneration?.();
+    if (r.generation !== generation) this._purchaseArmed = true;
+    const receiptKey = receipt ? `${receipt.generation}:${receipt.sequence}:${receipt.outcome}` : `${generation ?? ''}`;
+    const armed = this._purchaseArmed !== false;
     const fitKey = (fit.hullId || '') + '|' + fit.fittings.join(',');
     if (r.offerId === offer.id && r.credits === context.state?.run?.credits
-      && r.demoed === offer.demoed && r.purchased === offer.purchased
-      && r.available === offer.available && r.fitKey === fitKey) return;
+      && r.demoed === offer.demoed && r.purchased === offer.purchased && r.held === offer.held
+      && r.available === offer.available && r.fitKey === fitKey
+      && r.receiptKey === receiptKey && r.armed === armed) return;
     r.offerId = offer.id;
     r.fitKey = fitKey;
     r.credits = context.state?.run?.credits;
     r.demoed = offer.demoed;
     r.purchased = offer.purchased;
     r.available = offer.available;
+    r.held = offer.held;
+    r.receiptKey = receiptKey;
+    r.generation = generation;
+    r.armed = armed;
     // The row being read lights its hardpoint: one ice pass along the leader beam and a pulse
     // of the node ring. Re-armed per row change; reduced motion leaves it off (bone at rest).
     const jigHost = r.parts && r.parts.jig;
@@ -1093,7 +1210,6 @@ export const crucibleDraftScreen = {
     parts.blurb.textContent = lines.blurb;
     parts.act.textContent = lines.activation || '';
     // where it goes: the run's ship with that hardpoint lit
-    const owner = draftOwner(context);
     const rows = owner && typeof owner.refitRows === 'function' ? owner.refitRows() : [];
     const hullId = activeLoadout(context).hullId;
     const slot = Number.isInteger(offer.slotIndex) ? offer.slotIndex : -1;
@@ -1124,7 +1240,9 @@ export const crucibleDraftScreen = {
       if (gauge) parts.budget.appendChild(gauge);
     }
     r.el.classList.toggle('is-unavailable', !offer.available);
-    if (this._visualArmory) this._visualArmory.show(offer, lines, { credits: Number(context.state?.run?.credits) || 0, hullId, rows });
+    if (this._visualArmory) this._visualArmory.show(offer, lines, {
+      credits: Number(context.state?.run?.credits) || 0, hullId, rows, armed, receipt, generation,
+    });
     // The demo word: a fitting the reading is on can fly one round for free — the showcase half
     // of the sandbox. Hulls and the service counter carry no hardpoint, so nothing to demo.
     parts.demo.textContent = '';
@@ -1139,6 +1257,22 @@ export const crucibleDraftScreen = {
         this.refresh(context);
       });
       parts.demo.appendChild(demo);
+    }
+    // SWARM-05 §7.3 — hold the card for the next armory: the shelf re-deals, this one comes
+    // back. The service counter and the flown hull cannot ride a hold (the owner refuses
+    // them); a held card's word lets it go.
+    parts.hold.textContent = '';
+    if (!offer.purchased && offer.kind !== 'service' && !offer._flying) {
+      const hold = el('button', 'orr-armory-reading__hold-word');
+      hold.type = 'button';
+      hold.textContent = offer.held
+        ? 'Held for the next armory — let it go'
+        : 'Hold for the next armory';
+      hold.addEventListener('click', () => {
+        context.bus.emit('run:draftLockRequested', { offerId: offer.id });
+        this.refresh(context);
+      });
+      parts.hold.appendChild(hold);
     }
     // the rail's Hand sits on the row being read
     if (this._cards) {
@@ -1247,8 +1381,17 @@ export const crucibleDraftScreen = {
     if (lines.activation) card.appendChild(el('p', 'k-text k-t-data sf-cru-activation', lines.activation));
     if (Number.isFinite(offer.price)) {
       // The price reads on the head line, beside the verb: one line less per card, so the
-      // armory's next row shows at the bottom edge and says the stock goes on.
-      head.appendChild(el('p', 'k-t-emph sf-cru-price', offer.purchased ? 'FITTED' : `${offer.price} cr`));
+      // armory's next row shows at the bottom edge and says the stock goes on. SWARM-05 §7.3:
+      // a manifest hull is a switch, not a sale — "On manifest", never "0 cr".
+      const onManifest = offer.kind === 'hull' && Number.isInteger(offer._ownedIndex);
+      head.appendChild(el('p', 'k-t-emph sf-cru-price',
+        offer.purchased ? 'FITTED' : onManifest ? 'On manifest' : `${offer.price} cr`));
+      // A hold badge rides the same head line: the card this armory carried in (lockedIn) or
+      // the one a hold now rides on for the next (held).
+      if (offer.lockedIn || offer.held) {
+        head.appendChild(el('p', 'k-t-fine sf-cru-held',
+          offer.lockedIn ? 'Held in' : 'Held for the next armory'));
+      }
       if (offer.unavailableReason && !offer.purchased) {
         card.appendChild(el('p', 'k-t-fine sf-cru-afford', offer.unavailableReason));
       }
@@ -1259,7 +1402,13 @@ export const crucibleDraftScreen = {
     card.appendChild(el('p', 'k-t-fine k-38 sf-cru-slot', lines.slot));
 
     card.addEventListener('click', () => {
-      if (visualShop) { this._paintReading(ctx, this._offersById?.get(offer.id) || offer); return; }
+      if (visualShop) {
+        if (!this._purchasePending) {
+          this._purchaseArmed = true;
+          this._paintReading(ctx, this._offersById?.get(offer.id) || offer);
+        }
+        return;
+      }
       if (offer.available) this._flash = { text: `Bought ${lines.name}.`, until: Date.now() + 5000 };
       ctx.bus.emit('run:draftPickRequested', { offerId: offer.id });
       if (ctx.state?.run?.ruleset === 'swarm' && ctx.state.run.phase === 'draft') this.refresh(ctx);
@@ -1298,6 +1447,12 @@ export const crucibleRefitScreen = {
     note.setAttribute('aria-live', 'polite');
     title.appendChild(note);
     this._note = note;
+    // SWARM-04 §6.5 — the refit bench is the armory's zone boundary: the round after a
+    // wave-10 refit opens the next zone, so the preview rides here too.
+    const preview = el('p', 'k-sentence sf-cru-preview', '');
+    preview.hidden = true;
+    title.appendChild(preview);
+    this._preview = preview;
 
     // .k-stage — one row per hardpoint: its name, what is fitted beneath, the spare words and the
     // verb. ORRERY §6: the rows are the labels of a hull on the jig — the run's ship in plan at the
@@ -1561,6 +1716,7 @@ export const crucibleRefitScreen = {
     if (this._hullWatch) { this._hullWatch.disconnect(); this._hullWatch = null; }
     if (this._doneHold) { this._doneHold.dispose(); this._doneHold = null; }
     if (this._extractHold) { this._extractHold.dispose(); this._extractHold = null; }
+    this._preview = null;
   },
 
   /** The three keys, their words and their fine print, for the run as it stands now. */
@@ -1611,6 +1767,20 @@ export const crucibleRefitScreen = {
     if (!rows || !context) return;
     this._ctx = context;
     this._syncFoot(context);
+    // SWARM-04 §6.5 — the same next-round card the armory shows. The refit opens after the
+    // wave it names; the round ahead is run.wave + 1.
+    if (this._preview) {
+      let text = '';
+      const run = context.state && context.state.run;
+      if (run && run.ruleset === 'swarm') {
+        const wave = Number.isInteger(run.wave) ? run.wave : 0;
+        text = swarmNextLine(
+          swarmRoundPreview({ arenaId: run.arenaId, wave: wave + 1, seed: run.seed }),
+        );
+      }
+      this._preview.textContent = text;
+      this._preview.hidden = !text;
+    }
     // INF-060: a fit/strip rebuilds every row. Capture where the player was (and which spare they
     // had chosen per hardpoint) so the rebuild neither drops focus nor resets their picks.
     const rootEl = this._root;
@@ -1732,6 +1902,34 @@ export const crucibleRefitScreen = {
         });
       }
       line.appendChild(action);
+      // SWARM-05 §7.3 — sell back at half. The refit is the run's inventory: a fitted row
+      // sells its fitting; an open row sells the spare it has picked. The word carries the
+      // exact refund (swarmSellPrice is the same read the owner pays), and the owner answers
+      // through the wallet's own receipt — a refused sale lands on the note line.
+      const run = context.state && context.state.run;
+      if (run && run.ruleset === 'swarm') {
+        let sellDefId = row.defId || null;
+        let sellTarget = null;
+        if (sellDefId) {
+          sellTarget = { slotIndex: row.slotIndex };
+        } else {
+          const chosen = this._chosenSpare(row);
+          if (chosen && chosen.defId) {
+            sellDefId = chosen.defId;
+            sellTarget = { instanceId: chosen.instanceId };
+          }
+        }
+        const sellPrice = sellDefId ? swarmSellPrice(sellDefId) : null;
+        if (sellTarget && sellPrice != null && sellPrice > 0) {
+          const sell = word(`Sell · ${sellPrice} cr`, 'k-word--fine');
+          sell.classList.add('sf-cru-act', 'sf-cru-sell');
+          sell.addEventListener('click', () => {
+            context.bus.emit('run:refitSellRequested', sellTarget);
+            this.refresh(context);
+          });
+          line.appendChild(sell);
+        }
+      }
       rows.appendChild(item);
       jigNodes.push({ el: item, slotType: row.slotType, state, num: String((row.slotIndex || 0) + 1).padStart(2, '0') });
     }

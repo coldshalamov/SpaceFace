@@ -33,9 +33,11 @@ const DOCTRINE_REFRESH_TICKS = 3;
  * control leaves through the SG-02 maneuver port as normalized force/torque requests.
  */
 export class TacticalAIStack {
-  constructor({ seed = 1, ports, config = {} } = {}) {
+  constructor({ seed = 1, ports, config = {}, shapeBehavior = null } = {}) {
     this.seed = (Number(seed) >>> 0) || 1;
     this.ports = assertAIPorts(ports);
+    // Authored owners may shape intent before the single physical planner computes motors.
+    this.shapeBehavior = typeof shapeBehavior === 'function' ? shapeBehavior : (behavior) => behavior;
     this.enemyMind = this.ports.enemyMind || null;
     const traceConfig = config.trace === undefined ? { enabled: true, layers: ['behavior'], capacity: 512 } : (config.trace || {});
     this.trace = config.trace instanceof ExplainabilityTrace
@@ -202,11 +204,14 @@ export class TacticalAIStack {
           && priorDecision && !doctrineDecisionChanged(priorDecision.combatDoctrine, combatDoctrine)
           && !enemyMindDecisionChanged(priorDecision.enemyMind || null, mind)) {
           let cached = retickDecision(priorDecision, tick, combatDoctrine);
-          if (mind) {
+          const mindAction = applyEnemyMindBehavior(cached.action, mind, freeze);
+          const authoredAction = this.shapeBehavior(mindAction, member.id);
+          const authoredManeuver = authoredAction !== mindAction;
+          if (mind || authoredManeuver) {
             // Keep tactical waypoints live without re-running action selection. This is motor
             // control, not another utility think; the accepted action and its gates stay intact.
-            const action = applyEnemyMindBehavior(cached.action, mind, freeze);
-            const request = mind.ownManeuver ? this.maneuver.plan({
+            const action = authoredAction;
+            const request = mind?.ownManeuver || authoredManeuver ? this.maneuver.plan({
               tick, entityId: member.id, perception, behavior: action, directive: effectiveDirective,
             }) : cached.maneuver;
             cached = freeze({ ...cached, directive: effectiveDirective, action, maneuver: request, enemyMind: mind });
@@ -229,8 +234,8 @@ export class TacticalAIStack {
           current,
           combatDoctrine,
         }), mind);
-        const behavior = applyEnemyMindBehavior(
-          this.executor.update({ tick, entityId: member.id, selected, directive: effectiveDirective, perception }), mind, freeze);
+        const behavior = this.shapeBehavior(applyEnemyMindBehavior(
+          this.executor.update({ tick, entityId: member.id, selected, directive: effectiveDirective, perception }), mind, freeze), member.id);
         const request = this.maneuver.plan({ tick, entityId: member.id, perception, behavior, directive: effectiveDirective });
         this.ports.maneuver.request(request);
         const decision = freeze({

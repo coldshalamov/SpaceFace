@@ -68,12 +68,14 @@ run('isHitInWeakArc detects rear-arc hits', () => {
 // ── Static HUD hooks present ────────────────────────────────────────────────
 const hudSrc = readFileSync(join(ROOT, 'src/ui/hud.js'), 'utf8');
 const panelSrc = readFileSync(join(ROOT, 'src/ui/targetPanel.js'), 'utf8');
-const uiRootSrc = readFileSync(join(ROOT, 'src/ui/uiRoot.js'), 'utf8');
+// HUD chrome CSS lives in views/hudStyles.js (uiRoot injects it via injectHudCss) — pin the
+// module that ships the rule, not the file that mounts it.
+const hudStylesSrc = readFileSync(join(ROOT, 'src/ui/views/hudStyles.js'), 'utf8');
 
 run('HUD lead pip wired via computeLeadPipOverlay', () => {
   assert.match(hudSrc, /sf-leadpip/);
   assert.match(hudSrc, /computeLeadPipOverlay/);
-  assert.match(uiRootSrc, /\.sf-leadpip/);
+  assert.match(hudStylesSrc, /\.sf-leadpip/);
 });
 
 run('computeLeadPipOverlay visible when hostile separates >7px on screen', () => {
@@ -122,7 +124,7 @@ run('computeLeadPipOverlay hidden without ballistic weapon', () => {
 run('target panel damage triangle wired', () => {
   assert.match(panelSrc, /sf-target__triangle/);
   assert.match(panelSrc, /familyEffectiveness/);
-  assert.match(uiRootSrc, /\.sf-tri/);
+  assert.match(hudStylesSrc, /\.sf-tri/);
 });
 
 run('weak-point reveal path wired', () => {

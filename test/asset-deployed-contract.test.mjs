@@ -109,6 +109,9 @@ test('a pre-existing trader profit cycle does not count as a legacy deployment',
   assert.equal(cycles.length, 1);
   assert.equal(cycles[0].id, 'pre-existing-trader');
 
+  // A save that already runs a trader holds the research — the owner-side gate (SF-129)
+  // enforces tech_autonomous_fleets at the transaction, matching the panel's lock.
+  h.state.player.researchedNodes.push('tech_autonomous_fleets');
   assert.equal(automation.hireTrader('trader_hauler_l'), true);
   assert.equal(h.state.story.beatIndex, 7, 'a real deployment still completes a legacy save');
   assert.equal(deployed.length, 1);

@@ -13,6 +13,7 @@
 import { SECTORS, dangerIndex, dangerTier } from '../data/sectors.js';
 import { FACTION_META } from '../data/factions.js';
 import { hash32, mulberry32 } from '../core/rng.js';
+import { dedupError } from '../core/warnDedup.js';
 import {
   SECTOR_FIELD_VERSION,
   buildSectorGraph,
@@ -158,7 +159,7 @@ export const sectorSim = {
         this._refreshDiagnostics();
       }
     } catch (err) {
-      console.error('[sectorSim] update', err);
+      dedupError('sectorSim/update', '[sectorSim] update', err);
     }
   },
 
@@ -423,7 +424,7 @@ export const sectorSim = {
     try {
       return auto.offscreenRiskPass(days, (sectorId) => this.effectiveDanger(sectorId)) || 0;
     } catch (err) {
-      console.error('[sectorSim] offscreenRiskPass', err);
+      dedupError('sectorSim/offscreenRiskPass', '[sectorSim] offscreenRiskPass', err);
       return 0;
     }
   },
@@ -452,7 +453,7 @@ export const sectorSim = {
         }
       }
     } catch (err) {
-      console.error('[sectorSim] injectConflictTension', err);
+      dedupError('sectorSim/injectConflictTension', '[sectorSim] injectConflictTension', err);
     }
   },
 
@@ -671,8 +672,12 @@ export const sectorSim = {
     if (!id) return;
     const continuous = !!(p && (p.continuous || p.noTeleport));
     const rec = this._sectorRec(id);
-    const elapsed = Math.max(0, (this.state.simTime || 0) - (rec.lastEnterSimT || 0));
-    rec.lastEnterSimT = this.state.simTime || 0;
+    // This listener runs inside the drained emit tail — state.simTime has already advanced
+    // past the enter that minted this payload, so stamping/elapsing off the live clock makes
+    // both values wobble by the drain window. enterSimTime is the emit's own clock.
+    const enterSimT = Number.isFinite(p && p.enterSimTime) ? p.enterSimTime : (this.state.simTime || 0);
+    const elapsed = Math.max(0, enterSimT - (rec.lastEnterSimT || 0));
+    rec.lastEnterSimT = enterSimT;
 
     // Project recipes for rematerialize consumers. Never advances the field; idempotent so a
     // continuous Voronoi handoff cannot re-apply the same epoch's economy/embodiment twice.
@@ -1007,7 +1012,7 @@ export const sectorSim = {
 
   _guard(label, fn) {
     try { return fn(); }
-    catch (err) { console.error(`[sectorSim] ${label}`, err); return undefined; }
+    catch (err) { dedupError(`sectorSim/guard/${label}`, `[sectorSim] ${label}`, err); return undefined; }
   },
 };
 

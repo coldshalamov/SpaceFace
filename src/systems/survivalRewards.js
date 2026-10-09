@@ -4,6 +4,7 @@ import { admitStuntThreat, threatReward } from '../combat/stuntScoring.js';
 import { bodyLife } from '../combat/stuntEvidence.js';
 import { validateRunState } from '../core/runState.js';
 import { CREDIT_CHIP_KIND } from '../data/killRewards.js';
+import { runHasPerk } from '../data/swarmPerks.js';
 import { swarmStakeFor } from '../data/swarmStakes.js';
 import { bankActive, resetRound, settleCrash } from './stuntCombo.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
@@ -40,6 +41,10 @@ export const survivalRewards = {
       'entity:destroyed': p => this._onEntityDestroyed(p), 'pickup:collected': p => this._onPickupCollected(p),
       'run:transitioned': p => this._onTransitioned(p), 'run:started': () => this._reset(),
       'player:death': () => this._onDeath(), 'run:ended': () => { this._onDeath(); this._discardChips(); },
+      // SWARM-06: a perk asks for a bonus chip; a magnet elite eats one. Both arrive as intents
+      // and land in the same entitlement ledger a cohort chip uses — the wallet's own seams.
+      'swarm:bonusChip': p => this._onBonusChip(p),
+      'swarm:chipStolen': p => this._onChipStolen(p),
     };
     for (const [event, fn] of Object.entries(handlers)) if (this.bus?.on) this._unsubs.push(this.bus.on(event, fn));
     // Rehydrated actors retain their original immutable admission; missing old-save metadata is
@@ -97,7 +102,10 @@ export const survivalRewards = {
     const killerId = payload.killerId ?? payload.provenance?.actorId;
     const playerOwned = playerId != null && killerId === playerId;
     this._emit('run:awardRequested', { xp: killXpFor(victim.data?.level), score: playerOwned ? threat.baseScore : 0, reason: 'kill', wave: run.wave });
-    const credits = Math.max(0, Math.round(threat.credits * this._creditScale(run)));
+    // SWARM-06: Bounty Hunter pays triple on champions — the perk's whole contract. The scale
+    // rides the same entitlement, so the chip the body drops IS the triple, not a side award.
+    const bountyMult = runHasPerk(run, 'bounty_hunter') && victim.data?.swarmChampion === true ? 3 : 1;
+    const credits = Math.max(0, Math.round(threat.credits * this._creditScale(run) * bountyMult));
     r.baseCash += credits;
     r.entitlements[lifeId] = { credits, settled: false, wave: run.wave };
     this._dropRunChip(victim, payload, threat, credits);
@@ -155,6 +163,46 @@ export const survivalRewards = {
     return this._settleEntitlement(entitlementId, reason);
   },
   _onPickupCollected(payload) { if (payload?.pickupId != null) this._settleChip(payload.pickupId, 'chip_scooped'); },
+  /**
+   * SWARM-06 — a perk mints a chip outside a kill. Same pipeline a cohort chip uses: mint the
+   * entitlement first (the spawned pickup binds it in _onEntitySpawned), then drop the body.
+   * It sweeps at round clear like any earned chip — a bonus is honest pay, not a rounding path.
+   */
+  _onBonusChip(payload) {
+    const run = liveRun(this.state);
+    if (!run || !isSwarmRuleset(run.ruleset)) return;
+    const credits = Math.max(0, Math.round(Number(payload?.credits) || 0));
+    const pos = payload?.pos;
+    if (!(credits > 0) || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+    const r = this._ensure();
+    const lifeId = `bonus:${run.seed ?? 0}:${run.wave ?? 0}:${++r.admissionCounter}`;
+    r.baseCash += credits;
+    r.entitlements[lifeId] = { credits, settled: false, wave: run.wave };
+    this._emit('loot:drop', {
+      pos: { x: pos.x, z: pos.z },
+      vel: { x: 0, z: 0 },
+      source: 'kill_burst',
+      items: [{
+        kind: CREDIT_CHIP_KIND, credits, amount: credits, wallet: RUN_WALLET,
+        entitlementId: lifeId, grantReason: typeof payload?.reason === 'string' ? payload.reason : `swarm:bonus:${this._planWave}`,
+      }],
+    });
+    this._payStipend();
+  },
+  /**
+   * SWARM-06 — a magnet elite ate the chip. Void its entitlement so the round-clear sweep can
+   * never resurrect the payment: the steal is real, not a delay. The chip body is already dead.
+   */
+  _onChipStolen(payload) {
+    const id = payload?.pickupId;
+    if (id == null) return;
+    const r = this._ensure();
+    const entitlementId = r.chips[String(id)];
+    if (entitlementId == null) return;
+    delete r.chips[String(id)];
+    const row = r.entitlements[entitlementId];
+    if (row && !row.settled) { row.settled = true; row.voided = 'stolen'; }
+  },
   _onEntityDestroyed(payload) {
     // Despawn is not collection. Preserve earned entitlement until a real round clear.
     if (payload?.id != null) delete this._ensure().chips[String(payload.id)];

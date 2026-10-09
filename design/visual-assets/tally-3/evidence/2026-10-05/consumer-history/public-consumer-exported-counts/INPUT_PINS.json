@@ -1,0 +1,52 @@
+[
+  {
+    "path": "assets/ships/parts/places/place_tally_3.glb",
+    "sha256": "85ae67b12d490606224052c9e2b60f9f352b3d05984e5bec4a28b85674de7f77",
+    "bytes": 1883244
+  },
+  {
+    "path": "assets/ships/motions/tally-3.motion.json",
+    "sha256": "51ad42be1f93c55ce183d959616bc81f7f1518427e0225de448ed3fc1ae58926",
+    "bytes": 99347
+  },
+  {
+    "path": "tools/blender/forge/ships/tally_3.py",
+    "sha256": "dc30ff8ad1dee7bffee8132bf5714fef1b88df0f72b66c275dcfa6ef8f1e1d2f",
+    "bytes": 24879
+  },
+  {
+    "path": "assets/ships/release/release_manifest.json",
+    "sha256": "06fceab808cacc6686b6c0cbeaa517429ad1632c808e28e515dfcb2f056b4cba",
+    "bytes": 228363
+  },
+  {
+    "path": "assets/ships/release/parts/places/place_tally_3.glb",
+    "sha256": "10fbb5b67f22774484463812b20c3b2e6d07d7cc90517beedf2a6f88a87e2db1",
+    "bytes": 640276
+  },
+  {
+    "path": "src/render/renderPackageManifest.js",
+    "sha256": "4bba454ba45cca01721534eb2e7ad0719d18e922155b472f2d6f2ef8d6e4af01",
+    "bytes": 158051
+  },
+  {
+    "path": "assets/ships/render-packages/pilots.json",
+    "sha256": "e700fa67f861bbafb2c1733137aed6506ae130220a8e74df23c82bf01c44f3b6",
+    "bytes": 228777
+  },
+  {
+    "path": "assets/ships/release/render-packages/tally-3/render-package.json",
+    "sha256": "ab0f3ef43ab61a417b93b2f98e5a6c14476bc20b5f78b8ca4b455ab3e8b48e8d",
+    "bytes": 114324
+  },
+  {
+    "path": "assets/ships/release/render-packages/tally-3/render.glb",
+    "sha256": "90a73cb4b15daab23b813c7bb9b9323e6e7f5879de1e3e30d8caf7e58b51196f",
+    "bytes": 1117156
+  },
+  {
+    "path": "design/visual-assets/tally-3/asset-contract.json",
+    "sha256": "adc8ae3cebf59cdd808bef4af71ca4f40fcc08c98bd81b89313df2a7aa44058f",
+    "bytes": 30693
+  }
+]

@@ -10,16 +10,18 @@ import {
   frameSimStepCap,
 } from './simulationRunner.js';
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
-import { collectJournalPresentationEntities } from '../world/presentationSources.js';
+import { collectJournalPresentationEntities, collectJournalPresentationEntitiesChunked } from '../world/presentationSources.js';
 import { resolveFrameCap, stepFrameCapDebtInto } from '../render/adaptiveQuality.js';
 import { shouldSkipFullTickSystems } from './presentationFreeze.js';
 import { PRESENTATION_LISTENER_DRAIN_BUDGET, SECTOR_ENTER_DRAIN_BUDGET, SECTOR_ENTER_LISTENER_BUDGET } from './eventBus.js';
 import { syncFocusLossHold } from './focusLossHold.js';
+import { createTimeEffects } from './timeEffects.js';
 
 // Consecutive failing frames before the loop calls the picture dead. 30 is half a second at 60 Hz:
 // long enough that a single hitch, a context blip or one bad entity cannot trip it, short enough
 // that a player who is looking at a frozen world has not been looking at it for long.
 const PRESENTATION_STALL_FRAMES = 30;
+const GRAPHICS_RECOVERY_TIMEOUT_MS = 60_000;
 
 const _stepCapArgs = { frameDt: 0, fixedDt: LOOP_FIXED_DT, maxSteps: 0 };
 const _frameCapArgs = { cap: 0, vsync: true, displayHz: 60 };
@@ -190,6 +192,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   const onSimulationFailure = typeof deps.onSimulationFailure === 'function'
     ? deps.onSimulationFailure
     : null;
+  const onPresentationFailure = typeof deps.onPresentationFailure === 'function'
+    ? deps.onPresentationFailure
+    : null;
   const measureNow = deps.perfNow || perfNow;
   const presentationJournal = deps.presentationJournal
     || registry?.ctx?.presentationJournal
@@ -238,12 +243,23 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   }
 
   let destroyed = false;
+  let contextOutageStartedAt = null;
   let transportClosed = false;
   let frameHandle = null;
   let last = nowMs();
   let lifecycleState = requestedState();
   let restoreTarget = LOOP_LIFECYCLE_STATES.FOREGROUND_VISIBLE;
   let suspended = !isPresentingState(lifecycleState);
+  // Sliced emits exist to bound work inside a presented frame — while nothing is
+  // presenting (boot, loading, hidden) that bound only delays listener work past
+  // its window. Suspension makes emits deliver inline and flushes any parked
+  // tail at the transition; the first call covers a runner minted mid-suspension.
+  const syncEmitSliceSuspension = () => {
+    if (bus && typeof bus.setEmitSliceSuspended === 'function') {
+      bus.setEmitSliceSuspended(suspended);
+    }
+  };
+  syncEmitSliceSuspension();
   let unsubscribeLifecycle = null;
   let lifecycleGeneration = 0;
   let hasCompletedTick = false;
@@ -349,6 +365,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     consecutiveFrameErrors: 0,
     presentationStalled: false,
     presentationStallCount: 0,
+    presentationFailureNotified: false,
+    presentationFailure: null,
   };
 
   const readWitnessSample = (into) => collectRuntimeWitnessSample(state, {
@@ -430,6 +448,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       try {
         inputResumeTarget.removeEventListener('pointerdown', onInputResume, true);
         inputResumeTarget.removeEventListener('keydown', onInputResume, true);
+        inputResumeTarget.removeEventListener('touchstart', onInputResume, true);
       } catch (error) {
         recordTeardownError('removeInputResumeListener', error, errors);
       }
@@ -507,6 +526,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   function enterNonPresenting(next, reason) {
     const wasSuspended = suspended;
     suspended = true;
+    syncEmitSliceSuspension();
     diagnostics.suspended = true;
     diagnostics.restoreTarget = null;
     diagnostics.stepsThisFrame = 0;
@@ -531,6 +551,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   }
 
   function enterRestoring(target, reason) {
+    // Time spent hidden or suspended is not a failed foreground recovery attempt.
+    contextOutageStartedAt = null;
     restoreTarget = target;
     diagnostics.restoreTarget = target;
     if (lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING) {
@@ -541,6 +563,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
     const wasSuspended = suspended;
     suspended = false;
+    syncEmitSliceSuspension();
     diagnostics.suspended = false;
     recordState(LOOP_LIFECYCLE_STATES.RESTORING, reason);
     if (wasSuspended) diagnostics.resumeCount++;
@@ -589,13 +612,17 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   }
 
   function onWindowFocus() {
-    if (destroyed) return;
-    try { syncFocusLossHold(state, false); } catch (_) { /* resume is idempotent */ }
+    onInputResume();
   }
 
   function onInputResume() {
-    if (destroyed || !suspended) return;
+    if (destroyed) return;
     if (shellState === LOOP_LIFECYCLE_STATES.SYSTEM_SUSPENDED) return;
+    // Browsers can deliver blur without a matching focus on return. Active interaction proves
+    // focus even when rAF kept running: otherwise the focus pause freezes the world indefinitely.
+    // Clear only that owner's hold; loading, menus and context recovery retain theirs.
+    try { syncFocusLossHold(state, false); } catch (_) { /* resume is idempotent */ }
+    if (!suspended) return;
     documentHidden = false;
     diagnostics.visibilityState = 'visible';
     synchronizeLifecycle('input-resume');
@@ -659,6 +686,40 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     }
   }
 
+  function notifyPresentationFailure(code, message) {
+    if (destroyed || diagnostics.presentationFailureNotified || !onPresentationFailure) return;
+    const failure = Object.freeze({
+      code, message, tick: state.tick, simTime: state.simTime,
+      headline: 'Graphics interrupted',
+      fills: 'The flight picture could not recover safely.',
+      detail: 'Restart from the main menu to recover. Progress since your last save may be lost.',
+      verbLabel: 'Restart to main menu',
+    });
+    diagnostics.presentationFailureNotified = true;
+    diagnostics.presentationFailure = failure;
+    try { stop(); }
+    catch (error) { console.error('[loop] presentation stop after graphics failure:', error); }
+    try { onPresentationFailure(failure); }
+    catch (error) { console.error('[loop] onPresentationFailure callback failed:', error); }
+  }
+
+  function checkGraphicsRecovery(now) {
+    const render = state.render;
+    const recovery = render?.contextRecovery;
+    if (recovery?.terminal === true) {
+      notifyPresentationFailure('GRAPHICS_RECOVERY_FAILED', recovery.lastError || 'Graphics recovery failed');
+      return;
+    }
+    if (render?.contextLost !== true && recovery?.pending !== true) {
+      contextOutageStartedAt = null;
+      return;
+    }
+    if (contextOutageStartedAt === null) contextOutageStartedAt = now;
+    if (now - contextOutageStartedAt >= GRAPHICS_RECOVERY_TIMEOUT_MS) {
+      notifyPresentationFailure('GRAPHICS_RECOVERY_TIMED_OUT', recovery?.lastError || 'Graphics recovery timed out');
+    }
+  }
+
   function requestJournalRebuild(reason) {
     if (!presentationJournal || typeof presentationJournal.requestRebuild !== 'function') return;
     try { presentationJournal.requestRebuild(reason); } catch (_) { /* derived channel only */ }
@@ -699,29 +760,144 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     return true;
   }
 
+  // A journal rebuild used to collect + republish every journal row inside one
+  // presented frame. Both legs advance bounded work per call: the collect walks the
+  // chunked twin on a wall-clock deadline (per-row steps are ~sub-µs, so a fixed row
+  // cap would drag the O(entities) consume() fallback across many presents), and
+  // rebuildFromSteps publishes rows against the same per-present budget. needsRebuild
+  // stays set across the suspension, so the commit below only lands when the stepped
+  // generator actually finishes — a mid-suspension journal write invalidates the
+  // attempt and the next call re-collects. Consecutive invalidated attempts escalate
+  // to one synchronous drain, which no foreign write can interleave mid-flight.
+  const JOURNAL_REBUILD_COLLECT_MS = 4;
+  const JOURNAL_REBUILD_INVALIDATED_MAX = 3;
+  let steppedJournalRebuild = null;
+  let journalRebuildInvalidations = 0;
+
+  function commitJournalRebuild() {
+    const start = presentationJournal.getLastRebuildStart?.() || 0;
+    const end = presentationJournal.getLastRebuildEnd?.() || start;
+    simulationRunner.alignJournalCursor?.(end);
+    pendingJournalStart = start;
+    pendingJournalEnd = end;
+    pendingJournalFullRebuild = true;
+    pendingJournalRebuildGeneration = presentationJournal.getRebuildGeneration?.() || 0;
+    hasPendingJournal = true;
+    diagnostics.journalRebuildCount++;
+    journalRebuildInvalidations = 0;
+    return true;
+  }
+
+  function syncJournalRebuildEscalation(tick) {
+    const rebuildTick = Number.isSafeInteger(tick) && tick >= 0
+      ? tick
+      : (Number.isSafeInteger(state.tick) && state.tick >= 0 ? state.tick : 0);
+    const entities = collectJournalPresentationEntities(state);
+    if (typeof presentationJournal.rebuildFrom !== 'function'
+        || presentationJournal.rebuildFrom(entities, rebuildTick) !== true) {
+      diagnostics.journalRebuildFailureCount++;
+      return false;
+    }
+    return commitJournalRebuild();
+  }
+
   function rebuildJournalIfNeeded() {
-    if (!presentationJournal || typeof presentationJournal.needsRebuild !== 'function'
-      || !presentationJournal.needsRebuild()) return false;
-    diagnostics.journalRebuildAttemptCount++;
+    if (!presentationJournal || typeof presentationJournal.needsRebuild !== 'function') return false;
+    if (!steppedJournalRebuild && !presentationJournal.needsRebuild()) return false;
     try {
-      const entities = collectJournalPresentationEntities(state);
-      const tick = Number.isSafeInteger(state.tick) && state.tick >= 0 ? state.tick : 0;
-      if (typeof presentationJournal.rebuildFrom !== 'function'
-        || presentationJournal.rebuildFrom(entities, tick) !== true) {
-        diagnostics.journalRebuildFailureCount++;
-        return false;
+      if (!steppedJournalRebuild) {
+        diagnostics.journalRebuildAttemptCount++;
+        presentationJournal.clearSuppressedDestroyIds?.();
+        const collectOut = [];
+        steppedJournalRebuild = {
+          collectIter: collectJournalPresentationEntitiesChunked(state, collectOut),
+          collectOut,
+          tick: Number.isSafeInteger(state.tick) && state.tick >= 0 ? state.tick : 0,
+          publishIter: null,
+        };
       }
-      const start = presentationJournal.getLastRebuildStart?.() || 0;
-      const end = presentationJournal.getLastRebuildEnd?.() || start;
-      simulationRunner.alignJournalCursor?.(end);
-      pendingJournalStart = start;
-      pendingJournalEnd = end;
-      pendingJournalFullRebuild = true;
-      pendingJournalRebuildGeneration = presentationJournal.getRebuildGeneration?.() || 0;
-      hasPendingJournal = true;
-      diagnostics.journalRebuildCount++;
-      return true;
+      const job = steppedJournalRebuild;
+      if (!job.publishIter) {
+        const collectDeadline = nowMs() + JOURNAL_REBUILD_COLLECT_MS;
+        let step = job.collectIter.next();
+        while (!step.done && nowMs() < collectDeadline) step = job.collectIter.next();
+        if (!step.done) return false;
+        // Collect-phase writes are suppressed without flagging the attempt — most
+        // classes self-heal (the publish re-reads live pose for members; a write for
+        // a non-member trips *-without-spawn after commit), but a suppressed destroy
+        // naming a collected id would commit a zombie spawn that never re-writes.
+        // Doom on exactly that class instead of any suppression, or every busy
+        // collect falls through to the atomic escalation the stepped twin replaced.
+        // Only a LIVE collected row collides: the publish loop skips rows whose
+        // alive flag flipped before its turn, so a destroy-without-recycle costs
+        // the journal nothing — its id simply drops out of the committed set.
+        const suppressedDestroys = presentationJournal.getSuppressedDestroyIds?.();
+        if (suppressedDestroys && suppressedDestroys.size > 0) {
+          const entities = step.value || [];
+          const collectedLiveIds = new Set();
+          for (const entity of entities) {
+            if (entity && Number.isSafeInteger(entity.id) && entity.alive !== false) {
+              collectedLiveIds.add(entity.id);
+            }
+          }
+          let doomed = false;
+          for (const entityId of suppressedDestroys) {
+            if (collectedLiveIds.has(entityId)) { doomed = true; break; }
+          }
+          if (doomed) {
+            const tick = job.tick;
+            steppedJournalRebuild = null;
+            if (++journalRebuildInvalidations >= JOURNAL_REBUILD_INVALIDATED_MAX) {
+              return syncJournalRebuildEscalation(tick);
+            }
+            return false;
+          }
+        }
+        presentationJournal.clearSuppressedDestroyIds?.();
+        const entities = step.value || [];
+        if (typeof presentationJournal.rebuildFromSteps !== 'function') {
+          if (presentationJournal.rebuildFrom(entities, job.tick) !== true) {
+            steppedJournalRebuild = null;
+            diagnostics.journalRebuildFailureCount++;
+            return false;
+          }
+        } else {
+          // The completed collect doubles as the consume() fallback's world sample
+          // while the publish leg is still in flight — populateJournalFrame hands
+          // it to the publisher so a tick-consuming present doesn't re-pay the
+          // whole-set sync collect against the same GameState.
+          job.entities = entities;
+          job.publishIter = presentationJournal.rebuildFromSteps(entities, job.tick);
+        }
+      }
+      if (job.publishIter) {
+        // publishSpawn is a cheap ring append — debit the same wall-clock window the
+        // collect leg uses so most rebuilds commit inside a single present.
+        const publishDeadline = nowMs() + JOURNAL_REBUILD_COLLECT_MS;
+        let step = job.publishIter.next();
+        while (!step.done && nowMs() < publishDeadline) step = job.publishIter.next();
+        if (!step.done) return false;
+        const result = step.value;
+        const tick = job.tick;
+        steppedJournalRebuild = null;
+        if (result !== true) {
+          // 'invalidated' already re-requested the rebuild — needsRebuild still set, so the
+          // next present starts a fresh collect. Anything else is a genuine failure the
+          // journal also reported via its own requestRebuild.
+          if (result === 'invalidated') {
+            if (++journalRebuildInvalidations >= JOURNAL_REBUILD_INVALIDATED_MAX) {
+              return syncJournalRebuildEscalation(tick);
+            }
+          } else {
+            diagnostics.journalRebuildFailureCount++;
+          }
+          return false;
+        }
+      }
+      steppedJournalRebuild = null;
+      return commitJournalRebuild();
     } catch (_) {
+      steppedJournalRebuild = null;
       diagnostics.journalRebuildFailureCount++;
       requestJournalRebuild('presentation-rebuild-error');
       return false;
@@ -743,6 +919,28 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     presentationFrame.journalFullRebuild = pendingJournalFullRebuild;
     presentationFrame.journalRebuildGeneration = pendingJournalRebuildGeneration;
     presentationFrame.journalValid = valid;
+    // While a stepped rebuild is mid-publish its completed collect is the
+    // canonical live-GameState sample — the publisher's fallback mirrors it
+    // instead of re-collecting the whole set inside the presented frame.
+    presentationFrame.rebuildCollectedEntities = steppedJournalRebuild
+        && steppedJournalRebuild.publishIter
+        && Array.isArray(steppedJournalRebuild.entities)
+      ? steppedJournalRebuild.entities : null;
+    // While the collect leg is still pacing, its accumulating prefix is a
+    // strictly-fresher live sample than the fallback's whole-set sync collect.
+    // The publisher applies it with retire suppressed — the retire sweep is
+    // what makes a partial sample dangerous, and the flag kills it.
+    presentationFrame.rebuildCollectPrefix = steppedJournalRebuild
+        && !steppedJournalRebuild.publishIter
+        && Array.isArray(steppedJournalRebuild.collectOut)
+      ? steppedJournalRebuild.collectOut : null;
+    // Destroyed-but-uncollected ids hold stale rows through the collect window
+    // — the publisher hides them on the prefix feed until the publish retire
+    // frees their slots. The journal returns the live set; it clears only on
+    // collect completion, when the publish feed stops consulting it anyway.
+    presentationFrame.rebuildSuppressedDestroyIds = steppedJournalRebuild
+        && !steppedJournalRebuild.publishIter
+      ? presentationJournal.getSuppressedDestroyIds?.() : null;
   }
 
   function acknowledgePresentedJournal() {
@@ -803,6 +1001,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       presentationMs = measureNow() - presentationStart;
       diagnostics.lastPresentMs = presentationMs;
       perf.recordPresentationFrame?.(presentationMs);
+    }
+    if (presentationAccepted && typeof deps.onPresented === 'function') {
+      try { deps.onPresented(); } catch { /* the paint-freshness hook is best-effort */ }
     }
     // P7: the first presented frame whose completed tick consumed a newer input command is that
     // command's photon. The stamp arrived wall-timed at the input boundary; the subtraction is
@@ -993,7 +1194,6 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         }
       }
 
-      diagnostics.lastLeftoverMs = Math.max(0, frameBudgetMs - presentationMs);
       // A restore frame's picture is out; settle its accumulator without advancing the clock.
       if (restoring && !destroyed && !suspended) advanceSimulation(frameDt, true, undefined, perf);
       // Sim and picture are both done. The compile drain is offered what TRULY remains of this
@@ -1022,9 +1222,16 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       if (sliceBus && typeof sliceBus.drainPresentationTail === 'function') {
         // Fresh measure again (the emit slice spent too): remainMs=0 must not hand the tail
         // an unbounded window — a scaled backlog would drain unbounded inside the frame that
-        // already missed budget. The 0.5 ms floor keeps the queue moving at ~1 listener.
+        // already missed budget. The 0.5 ms floor keeps the queue moving at ~1 listener —
+        // but a kill clump or sector teardown enqueues ~10+ tails per entity at 1–4 ms each,
+        // so a spent frame at the floor trails real choreography for tens of frames. Scale
+        // the floor (not the ceiling) with the backlog, bounded at 2 ms: the queue drains
+        // ~4x faster while an overrun never spends more than that bounded fraction extra.
         const tailMs = Math.max(0, frameBudgetMs - (measureNow() - callbackStart));
-        sliceBus.drainPresentationTail(PRESENTATION_LISTENER_DRAIN_BUDGET, Math.min(4, Math.max(0.5, tailMs)));
+        const tailPending = typeof sliceBus.pendingPresentationCount === 'function'
+          ? sliceBus.pendingPresentationCount() : 0;
+        const tailFloorMs = Math.min(2, 0.5 + Math.max(0, tailPending - 32) / 64);
+        sliceBus.drainPresentationTail(PRESENTATION_LISTENER_DRAIN_BUDGET, Math.min(4, Math.max(tailFloorMs, tailMs)));
       }
       _stepCapArgs.frameDt = 0;
       _stepCapArgs.fixedDt = LOOP_FIXED_DT;
@@ -1052,12 +1259,47 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         && diagnostics.consecutiveFrameErrors >= PRESENTATION_STALL_FRAMES) {
         diagnostics.presentationStalled = true;
         diagnostics.presentationStallCount++;
+        // D111: a frozen-picture report is only actionable with the frozen moment's evidence
+        // attached — the loop diagnostics, the simulation closeCauseSite (null while the sim
+        // is merely unschedulable rather than dead), the time-effects request ledger (a
+        // 'window-focus-loss' scale-0 hold reads identical to a freeze on a screenshot), and
+        // the graphics-context state — so the report discriminates a stopped scheduler, a
+        // simulation exception, a native stall and an intentional pause.
+        const simDiagnostics = simulationRunner.getDiagnostics?.() || null;
+        let timeEffectRequests = null;
+        try {
+          timeEffectRequests = createTimeEffects(state).describeRequests();
+        } catch (_) { timeEffectRequests = null; }
+        let glContextLost = null;
+        try {
+          const gl = state && state.render && state.render.renderer
+            && typeof state.render.renderer.getContext === 'function'
+            ? state.render.renderer.getContext() : null;
+          glContextLost = gl && typeof gl.isContextLost === 'function' ? gl.isContextLost() : null;
+        } catch (_) { glContextLost = null; }
+        diagnostics.presentationStallEvidence = Object.freeze({
+          loop: { ...diagnostics },
+          simulation: simDiagnostics,
+          closeCauseSite: simDiagnostics && typeof simDiagnostics.closeCauseSite === 'string'
+            ? simDiagnostics.closeCauseSite : null,
+          timeEffectRequests,
+          graphicsContext: {
+            glContextLost,
+            renderContextLost: state && state.render ? state.render.contextLost === true : null,
+            contextRecoveryPending: !!(state && state.render && state.render.contextRecovery
+              && state.render.contextRecovery.pending === true),
+          },
+        });
         console.error('[loop] PRESENTATION STALLED: '
           + `${diagnostics.consecutiveFrameErrors} consecutive frame errors — the 3D canvas is `
           + 'frozen while the loop and HUD keep running. Last error: '
-          + `${diagnostics.lastFrameError}`);
+          + `${diagnostics.lastFrameError}`,
+          diagnostics.presentationStallEvidence);
       }
       notifySimulationFailure();
+      if (diagnostics.presentationStalled) {
+        notifyPresentationFailure('PRESENTATION_FAILED', diagnostics.lastFrameError);
+      }
     } finally {
       if (perf && typeof perf.recordFrameCallback === 'function') {
         perf.recordFrameCallback(measureNow() - callbackStart);
@@ -1075,6 +1317,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       captureWitness();
     }
 
+    if (!destroyed && !suspended) checkGraphicsRecovery(now);
     // renderUpdate may synchronously trigger the full terminal closer. Never complete a restore
     // transition after its audio/listener/transport owners have already been destroyed.
     if (!mustRescheduleAfterFrame({ destroyed })) return;
@@ -1103,6 +1346,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   if (inputResumeTarget && typeof inputResumeTarget.addEventListener === 'function') {
     inputResumeTarget.addEventListener('pointerdown', onInputResume, true);
     inputResumeTarget.addEventListener('keydown', onInputResume, true);
+    inputResumeTarget.addEventListener('touchstart', onInputResume, { capture: true, passive: true });
   }
   if (lifecyclePort && typeof lifecyclePort.subscribe === 'function') {
     const unsubscribe = lifecyclePort.subscribe(onShellLifecycle);

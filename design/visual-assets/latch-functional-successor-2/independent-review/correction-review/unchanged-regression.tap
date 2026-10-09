@@ -1,0 +1,841 @@
+TAP version 13
+# (node:12) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# { forceTicks: 9, visibleTicks: 9 }
+# {
+#   angles: [ 1.3089969389957472, 0.5958333333333342, 0.5200000000000007 ],
+#   rest: [
+#     [ 'StarboardRim', 'HingeA', 'StarboardStrake' ],
+#     [ 'StarboardRim', 'HingeB', 'StarboardStrake' ],
+#     [ 'StarboardRim', 'HingeC', 'StarboardStrake' ]
+#   ],
+#   end: [
+#     [ 'StarboardRim', 'HingeA', 'StarboardStrake' ],
+#     [ 'StarboardRim', 'HingeB', 'StarboardStrake' ],
+#     [ 'StarboardRim', 'HingeC', 'StarboardStrake' ]
+#   ]
+# }
+# Subtest: registry phase ordering publishes the previous witnessed firing after the next submission
+ok 1 - registry phase ordering publishes the previous witnessed firing after the next submission
+  ---
+  duration_ms: 109.755747
+  type: 'test'
+  ...
+# Subtest: cleanup does not replace a later foreign control command
+ok 2 - cleanup does not replace a later foreign control command
+  ---
+  duration_ms: 4.528685
+  type: 'test'
+  ...
+# Subtest: full accepted paddle travel does not enter a new fixed hull slab
+ok 3 - full accepted paddle travel does not enter a new fixed hull slab
+  ---
+  duration_ms: 43.506712
+  type: 'test'
+  ...
+# Subtest: equal-valued foreign native force is not proof of Latch actuation
+ok 4 - equal-valued foreign native force is not proof of Latch actuation
+  ---
+  duration_ms: 3.293819
+  type: 'test'
+  ...
+# (node:13) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: failed native integration cannot certify the pending firing
+ok 5 - failed native integration cannot certify the pending firing
+  ---
+  duration_ms: 118.690035
+  type: 'test'
+  ...
+# Subtest: a subsequent native tick with no Latch command extinguishes the old accepted receipt
+ok 6 - a subsequent native tick with no Latch command extinguishes the old accepted receipt
+  ---
+  duration_ms: 34.611377
+  type: 'test'
+  ...
+# Subtest: both signed yaw offsets receive socket-derived restoring moments
+ok 7 - both signed yaw offsets receive socket-derived restoring moments
+  ---
+  duration_ms: 5.931362
+  type: 'test'
+  ...
+# (node:19) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: Ceres measurement uses explicit native compounds at the runtime source origin
+ok 8 - Ceres measurement uses explicit native compounds at the runtime source origin
+  ---
+  duration_ms: 7.426679
+  type: 'test'
+  ...
+# Subtest: current unrelated catalog fits are retained while the seven Ceres assets keep exactly scale two
+ok 9 - current unrelated catalog fits are retained while the seven Ceres assets keep exactly scale two
+  ---
+  duration_ms: 4.334783
+  type: 'test'
+  ...
+# Subtest: Forge role coverage requires every textured material and never pardons an unclassified sibling
+ok 10 - Forge role coverage requires every textured material and never pardons an unclassified sibling
+  ---
+  duration_ms: 0.498279
+  type: 'test'
+  ...
+# (node:20) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+#  Particle system powered by three.quarks. https://quarks.art/
+# Subtest: only three exact Ceres identities join the three existing Stormshift families
+ok 11 - only three exact Ceres identities join the three existing Stormshift families
+  ---
+  duration_ms: 8.121504
+  type: 'test'
+  ...
+# Subtest: saved readiness, requested tags, staged roots and mismatched GLB sources never admit a cold body
+ok 12 - saved readiness, requested tags, staged roots and mismatched GLB sources never admit a cold body
+  ---
+  duration_ms: 9.537
+  type: 'test'
+  ...
+# Subtest: source/release GLB URLs normalize exactly and mutable boundary metadata cannot relabel receipts
+ok 13 - source/release GLB URLs normalize exactly and mutable boundary metadata cannot relabel receipts
+  ---
+  duration_ms: 5.57677
+  type: 'test'
+  ...
+# [partsLibrary] authored place admission failed; no substitute visual published Error: injected compile failure
+#     at prepareAuthoredPipelines (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/test/ceres-workfleet-admission.test.mjs:208:38)
+#     at prepareAuthoredVisualPipelines (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/src/render/partsLibrary.js:8156:44)
+#     at completeAdmission (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/src/render/partsLibrary.js:4040:13)
+#     at upgradePlaceBoundary (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/src/render/partsLibrary.js:4110:10)
+# [render] appearance replacement retained previous visual 1 Error: injected cold compilation failure
+#     at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/test/ceres-workfleet-admission.test.mjs:288:41)
+#     at async Test.run (node:internal/test_runner/test:1389:7)
+#     at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+# [render] appearance replacement retained previous visual 2 Error: injected cold compilation failure
+#     at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/test/ceres-workfleet-admission.test.mjs:288:41)
+#     at async Test.run (node:internal/test_runner/test:1389:7)
+#     at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+# [render] appearance replacement retained previous visual 3 Error: injected cold compilation failure
+#     at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/test/ceres-workfleet-admission.test.mjs:288:41)
+#     at async Test.run (node:internal/test_runner/test:1389:7)
+#     at async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+# Subtest: actual cradle place publication waits for delayed GPU and both initial renderer latches
+ok 14 - actual cradle place publication waits for delayed GPU and both initial renderer latches
+  ---
+  duration_ms: 81.593537
+  type: 'test'
+  ...
+# Subtest: actual cutterHead place publication waits for delayed GPU and both initial renderer latches
+ok 15 - actual cutterHead place publication waits for delayed GPU and both initial renderer latches
+  ---
+  duration_ms: 5.899075
+  type: 'test'
+  ...
+# Subtest: actual place compile cannot publish requested Ceres identity
+ok 16 - actual place compile cannot publish requested Ceres identity
+  ---
+  duration_ms: 4.368875
+  type: 'test'
+  ...
+# Subtest: actual place wrong-source cannot publish requested Ceres identity
+ok 17 - actual place wrong-source cannot publish requested Ceres identity
+  ---
+  duration_ms: 2.875711
+  type: 'test'
+  ...
+# Subtest: offscreen eviction retains exact admitted hardware; context failure and browser disposal revoke it
+ok 18 - offscreen eviction retains exact admitted hardware; context failure and browser disposal revoke it
+  ---
+  duration_ms: 4.063836
+  type: 'test'
+  ...
+# Subtest: reused objects, render generations and cold restore revoke both exact identity and indirect child actions
+ok 19 - reused objects, render generations and cold restore revoke both exact identity and indirect child actions
+  ---
+  duration_ms: 1.037559
+  type: 'test'
+  ...
+# Subtest: existing single traffic reconciliation invokes both bounded owners once per tick
+ok 20 - existing single traffic reconciliation invokes both bounded owners once per tick
+  ---
+  duration_ms: 0.885811
+  type: 'test'
+  ...
+# Subtest: native failure closes headless and browser work, target, projectile and LOS readers without replacing authored shapes
+ok 21 - native failure closes headless and browser work, target, projectile and LOS readers without replacing authored shapes
+  ---
+  duration_ms: 6.673519
+  type: 'test'
+  ...
+# Subtest: all three exact families retry failed offscreen builds through one existing renderer poll
+ok 22 - all three exact families retry failed offscreen builds through one existing renderer poll
+  ---
+  duration_ms: 5.679133
+  type: 'test'
+  ...
+# Subtest: delayed breaker GPU publication cannot authorize a stale generation, object or same-object life
+ok 23 - delayed breaker GPU publication cannot authorize a stale generation, object or same-object life
+  ---
+  duration_ms: 1.910591
+  type: 'test'
+  ...
+# Subtest: foreign effective proxy, scale and mass cannot acquire the authored Ceres receipt
+ok 24 - foreign effective proxy, scale and mass cannot acquire the authored Ceres receipt
+  ---
+  duration_ms: 1.186683
+  type: 'test'
+  ...
+# Subtest: real Continue restores Ceres identities and hardware recipes without saved browser readiness
+ok 25 - real Continue restores Ceres identities and hardware recipes without saved browser readiness
+  ---
+  duration_ms: 166.421213
+  type: 'test'
+  ...
+# Subtest: Ceres cold admission withdraws real native attachment endpoints and resumes the same line only after exact readmission
+ok 26 - Ceres cold admission withdraws real native attachment endpoints and resumes the same line only after exact readmission
+  ---
+  duration_ms: 5.867076
+  type: 'test'
+  ...
+# Subtest: actual breaker whole-ship wrapper publishes the selected hull source through repeated composition
+ok 27 - actual breaker whole-ship wrapper publishes the selected hull source through repeated composition
+  ---
+  duration_ms: 31.500194
+  type: 'test'
+  ...
+# Subtest: breaker actual renderer snapshot replacement activates only its published current-life propulsion
+ok 28 - breaker actual renderer snapshot replacement activates only its published current-life propulsion
+  ---
+  duration_ms: 4.336066
+  type: 'test'
+  ...
+# Subtest: cutterHead actual renderer snapshot replacement activates only its published current-life propulsion
+ok 29 - cutterHead actual renderer snapshot replacement activates only its published current-life propulsion
+  ---
+  duration_ms: 2.813278
+  type: 'test'
+  ...
+# Subtest: actual LOD2 renderer submission clears a cutter throat on zero consumed force despite decorative sleep
+ok 30 - actual LOD2 renderer submission clears a cutter throat on zero consumed force despite decorative sleep
+  ---
+  duration_ms: 4.167643
+  type: 'test'
+  ...
+# (node:25) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: current live flight intent commits and remains valid for the post-commit observer
+ok 31 - current live flight intent commits and remains valid for the post-commit observer
+  ---
+  duration_ms: 6.740868
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current dead fence
+ok 32 - issued intent loses permission at the current dead fence
+  ---
+  duration_ms: 1.331972
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current depletedHull fence
+ok 33 - issued intent loses permission at the current depletedHull fence
+  ---
+  duration_ms: 0.234312
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current gameover fence
+ok 34 - issued intent loses permission at the current gameover fence
+  ---
+  duration_ms: 0.249825
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current menu fence
+ok 35 - issued intent loses permission at the current menu fence
+  ---
+  duration_ms: 0.24595
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current paused fence
+ok 36 - issued intent loses permission at the current paused fence
+  ---
+  duration_ms: 0.190246
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current loading fence
+ok 37 - issued intent loses permission at the current loading fence
+  ---
+  duration_ms: 0.192599
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current openMap fence
+ok 38 - issued intent loses permission at the current openMap fence
+  ---
+  duration_ms: 0.381724
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current blackout fence
+ok 39 - issued intent loses permission at the current blackout fence
+  ---
+  duration_ms: 0.236916
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current charging fence
+ok 40 - issued intent loses permission at the current charging fence
+  ---
+  duration_ms: 0.31279
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current jumping fence
+ok 41 - issued intent loses permission at the current jumping fence
+  ---
+  duration_ms: 0.238949
+  type: 'test'
+  ...
+# Subtest: issued intent loses permission at the current sectorShell fence
+ok 42 - issued intent loses permission at the current sectorShell fence
+  ---
+  duration_ms: 0.166721
+  type: 'test'
+  ...
+# Subtest: root reproducer: same exact actor dies and reaches gameover before UI commit
+ok 43 - root reproducer: same exact actor dies and reaches gameover before UI commit
+  ---
+  duration_ms: 0.386411
+  type: 'test'
+  ...
+# Subtest: existing fresh-destination tow can finish through its presentation cook, but cannot revive a dead pilot
+ok 44 - existing fresh-destination tow can finish through its presentation cook, but cannot revive a dead pilot
+  ---
+  duration_ms: 0.238489
+  type: 'test'
+  ...
+# Subtest: legacy unbound compatibility does not upgrade into a current recognition receipt
+ok 45 - legacy unbound compatibility does not upgrade into a current recognition receipt
+  ---
+  duration_ms: 0.170165
+  type: 'test'
+  ...
+# (node:27) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: existing shared caption/voice consumer tells approach apart from permission
+ok 46 - existing shared caption/voice consumer tells approach apart from permission
+  ---
+  duration_ms: 2.098884
+  type: 'test'
+  ...
+# Subtest: off-duty, foreign ship, lost station and uncommitted acknowledgement stay silent
+ok 47 - off-duty, foreign ship, lost station and uncommitted acknowledgement stay silent
+  ---
+  duration_ms: 0.21323
+  type: 'test'
+  ...
+# (node:28) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: normal materializer creates one source-origin physical actor and binds one exact spawn-budget slot
+ok 48 - normal materializer creates one source-origin physical actor and binds one exact spawn-budget slot
+  ---
+  duration_ms: 126.979025
+  type: 'test'
+  ...
+# Subtest: ordinary approach guidance does not manufacture clearance; actual berth commit acknowledges once and return can acknowledge again
+ok 49 - ordinary approach guidance does not manufacture clearance; actual berth commit acknowledges once and return can acknowledge again
+  ---
+  duration_ms: 13.061176
+  type: 'test'
+  ...
+# Subtest: sector exit releases the exact actor and slot; return rematerializes a fresh native life
+ok 50 - sector exit releases the exact actor and slot; return rematerializes a fresh native life
+  ---
+  duration_ms: 7.129903
+  type: 'test'
+  ...
+# Subtest: cold semantic restore removes the old runtime body, restores only four fields and does not replay acknowledgement
+ok 51 - cold semantic restore removes the old runtime body, restores only four fields and does not replay acknowledgement
+  ---
+  duration_ms: 7.91966
+  type: 'test'
+  ...
+# Subtest: destroyed/disabled Latch leaves ordinary docking authority usable and does not respawn a destroyed body
+ok 52 - destroyed/disabled Latch leaves ordinary docking authority usable and does not respawn a destroyed body
+  ---
+  duration_ms: 10.986468
+  type: 'test'
+  ...
+# Subtest: native-observed clean docking recognizes once; stale or replayed commits cannot add arrivals
+ok 53 - native-observed clean docking recognizes once; stale or replayed commits cannot add arrivals
+  ---
+  duration_ms: 10.779567
+  type: 'test'
+  ...
+# Subtest: only same-life law-owner player incidents enter the bounded idempotent memory
+ok 54 - only same-life law-owner player incidents enter the bounded idempotent memory
+  ---
+  duration_ms: 3.794532
+  type: 'test'
+  ...
+# Subtest: browser source admission and scene detach fail physical colliders closed without borrowing ready strings
+ok 55 - browser source admission and scene detach fail physical colliders closed without borrowing ready strings
+  ---
+  duration_ms: 4.679872
+  type: 'test'
+  ...
+# (node:39) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: canonical compiled Latch package presents only exact consumed native actuation and withdraws on scene loss
+ok 56 - canonical compiled Latch package presents only exact consumed native actuation and withdraws on scene loss
+  ---
+  duration_ms: 344.55078
+  type: 'test'
+  ...
+# LATCH_COMPOSED_CPU_COUNTS {"lod0":{"visibleMeshCandidates":25,"triangles":24040},"lod1":{"visibleMeshCandidates":25,"triangles":9606},"lod2":{"visibleMeshCandidates":25,"triangles":3414}}
+# Subtest: real place publication records the compiled Latch source independently of Ceres metadata
+ok 57 - real place publication records the compiled Latch source independently of Ceres metadata
+  ---
+  duration_ms: 353.555994
+  type: 'test'
+  ...
+# Subtest: source certificate, current native compound and every rendered LOD agree without relaxing coverage
+ok 58 - source certificate, current native compound and every rendered LOD agree without relaxing coverage
+  ---
+  duration_ms: 13.532233
+  type: 'test'
+  ...
+# (node:84) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: real native compound has source slabs and three solid paddles; never an enclosing convex hull
+ok 59 - real native compound has source slabs and three solid paddles; never an enclosing convex hull
+  ---
+  duration_ms: 74.576817
+  type: 'test'
+  ...
+# Subtest: paddles move actual native colliders and stale generations cannot command or render
+ok 60 - paddles move actual native colliders and stale generations cannot command or render
+  ---
+  duration_ms: 8.77132
+  type: 'test'
+  ...
+# Subtest: a real native blocker stops a swept blade before endpoint penetration
+ok 61 - a real native blocker stops a swept blade before endpoint penetration
+  ---
+  duration_ms: 16.720334
+  type: 'test'
+  ...
+# Subtest: continuous rotational bounds include intermediate arc extrema, not only endpoints
+ok 62 - continuous rotational bounds include intermediate arc extrema, not only endpoints
+  ---
+  duration_ms: 0.216976
+  type: 'test'
+  ...
+# Subtest: propulsion requires a later native force witness; stale physics and scene lives stay dark
+ok 63 - propulsion requires a later native force witness; stale physics and scene lives stay dark
+  ---
+  duration_ms: 26.682252
+  type: 'test'
+  ...
+# Subtest: same life with replaced manifest/spec/body cannot inherit accepted motion or plume
+ok 64 - same life with replaced manifest/spec/body cannot inherit accepted motion or plume
+  ---
+  duration_ms: 1.861347
+  type: 'test'
+  ...
+# Subtest: forged same-id geometry never obtains a Latch physical binding
+ok 65 - forged same-id geometry never obtains a Latch physical binding
+  ---
+  duration_ms: 1.07138
+  type: 'test'
+  ...
+# Subtest: disabled, dead and disposed native owners immediately invalidate render and command leases
+ok 66 - disabled, dead and disposed native owners immediately invalidate render and command leases
+  ---
+  duration_ms: 1.67047
+  type: 'test'
+  ...
+# Subtest: full rotational motor remains bounded; accepted native orientation matches its centre arc
+ok 67 - full rotational motor remains bounded; accepted native orientation matches its centre arc
+  ---
+  duration_ms: 17.296259
+  type: 'test'
+  ...
+# Subtest: cold semantic Continue creates fresh bindings and never revives prior motor angles or native receipt
+ok 68 - cold semantic Continue creates fresh bindings and never revives prior motor angles or native receipt
+  ---
+  duration_ms: 38.252367
+  type: 'test'
+  ...
+# Subtest: opaque non-rest native snapshot is rejected rather than misbinding physical paddles on Continue
+ok 69 - opaque non-rest native snapshot is rejected rather than misbinding physical paddles on Continue
+  ---
+  duration_ms: 18.99388
+  type: 'test'
+  ...
+# Subtest: signed force allocations select opposite real mouths; idle and sector-detached actuation stay dark
+ok 70 - signed force allocations select opposite real mouths; idle and sector-detached actuation stay dark
+  ---
+  duration_ms: 4.052359
+  type: 'test'
+  ...
+# Subtest: leaving the service sector cancels its queued force without deleting foreign impulses
+ok 71 - leaving the service sector cancels its queued force without deleting foreign impulses
+  ---
+  duration_ms: 1.864131
+  type: 'test'
+  ...
+# Subtest: signed socket moment matches native game-yaw torque and turns a misaligned tender toward rest
+ok 72 - signed socket moment matches native game-yaw torque and turns a misaligned tender toward rest
+  ---
+  duration_ms: 1.180694
+  type: 'test'
+  ...
+# (node:90) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: missing real authored model keeps production service unpromoted without a fallback
+ok 73 - missing real authored model keeps production service unpromoted without a fallback
+  ---
+  duration_ms: 2.118764
+  type: 'test'
+  ...
+# Subtest: admission rejects red/foreign art, static or sensor bodies, stale identity and duplicate tenders
+ok 74 - admission rejects red/foreign art, static or sensor bodies, stale identity and duplicate tenders
+  ---
+  duration_ms: 1.518471
+  type: 'test'
+  ...
+# Subtest: post-commit event observes both UI fields, even when service initialized before uiRoot
+ok 75 - post-commit event observes both UI fields, even when service initialized before uiRoot
+  ---
+  duration_ms: 1.641977
+  type: 'test'
+  ...
+# Subtest: paused keepalive finishes one ACK without advancing sim time or moving a body
+ok 76 - paused keepalive finishes one ACK without advancing sim time or moving a body
+  ---
+  duration_ms: 0.657959
+  type: 'test'
+  ...
+# Subtest: raw or wrong-identity post-commit messages cannot manufacture an ACK
+ok 77 - raw or wrong-identity post-commit messages cannot manufacture an ACK
+  ---
+  duration_ms: 0.368144
+  type: 'test'
+  ...
+# Subtest: denial during docked pause cancels acknowledgement immediately
+ok 78 - denial during docked pause cancels acknowledgement immediately
+  ---
+  duration_ms: 0.53254
+  type: 'test'
+  ...
+# Subtest: new tender or player lifetime cannot inherit an armed arrival even when the object is reused
+ok 79 - new tender or player lifetime cannot inherit an armed arrival even when the object is reused
+  ---
+  duration_ms: 0.529616
+  type: 'test'
+  ...
+# Subtest: physical service-box displacement exposes recovery while leaving bodies untouched
+ok 80 - physical service-box displacement exposes recovery while leaving bodies untouched
+  ---
+  duration_ms: 0.371478
+  type: 'test'
+  ...
+# Subtest: canonical killed body persists destroyed, but a stale/unrelated kill does not
+ok 81 - canonical killed body persists destroyed, but a stale/unrelated kill does not
+  ---
+  duration_ms: 0.315544
+  type: 'test'
+  ...
+# Subtest: real Save capture plan and sync/async section generator save only semantic fields
+ok 82 - real Save capture plan and sync/async section generator save only semantic fields
+  ---
+  duration_ms: 1.905233
+  type: 'test'
+  ...
+# Subtest: real restore prefix calls the owner before sector entry and completed arrival never replays
+ok 83 - real restore prefix calls the owner before sector entry and completed arrival never replays
+  ---
+  duration_ms: 1.193603
+  type: 'test'
+  ...
+# Subtest: fresh-run owner list resets destroyed/met without rediscovering a stale old-world body
+ok 84 - fresh-run owner list resets destroyed/met without rediscovering a stale old-world body
+  ---
+  duration_ms: 0.282605
+  type: 'test'
+  ...
+# Subtest: sector lifecycle and teardown discard active/stale observers without duplicate listeners
+ok 85 - sector lifecycle and teardown discard active/stale observers without duplicate listeners
+  ---
+  duration_ms: 0.405749
+  type: 'test'
+  ...
+# Subtest: production order, reset, browser and Node lookup and docked keepalive seams are wired
+ok 86 - production order, reset, browser and Node lookup and docked keepalive seams are wired
+  ---
+  duration_ms: 1.19829
+  type: 'test'
+  ...
+# Subtest: old-player dock:docked through the real commit helper cannot dock or acknowledge the new player
+ok 87 - old-player dock:docked through the real commit helper cannot dock or acknowledge the new player
+  ---
+  duration_ms: 0.321102
+  type: 'test'
+  ...
+# Subtest: legacy untagged docking remains usable but cannot gain Latch ACK on a later keepalive
+ok 88 - legacy untagged docking remains usable but cannot gain Latch ACK on a later keepalive
+  ---
+  duration_ms: 0.296565
+  type: 'test'
+  ...
+# Subtest: same ID and generation on a fresh restored object cannot authenticate an old dock intent
+ok 89 - same ID and generation on a fresh restored object cannot authenticate an old dock intent
+  ---
+  duration_ms: 0.303186
+  type: 'test'
+  ...
+# Subtest: cloning/serializing a receipt preserves ordinary compatibility but cannot forge recognition
+ok 90 - cloning/serializing a receipt preserves ordinary compatibility but cannot forge recognition
+  ---
+  duration_ms: 0.175343
+  type: 'test'
+  ...
+# Subtest: same actor cannot reuse a dock receipt across sector entry or target object replacement
+ok 91 - same actor cannot reuse a dock receipt across sector entry or target object replacement
+  ---
+  duration_ms: 0.231468
+  type: 'test'
+  ...
+# (node:102) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: range extraction drives the real physics owner with unchanged enter/leave events
+ok 92 - range extraction drives the real physics owner with unchanged enter/leave events
+  ---
+  duration_ms: 2.904785
+  type: 'test'
+  ...
+# Subtest: manifest berth and large-hull standoff keep the actual range/speed gate
+ok 93 - manifest berth and large-hull standoff keep the actual range/speed gate
+  ---
+  duration_ms: 2.617804
+  type: 'test'
+  ...
+# Subtest: nearest station and jump gate selection are preserved
+ok 94 - nearest station and jump gate selection are preserved
+  ---
+  duration_ms: 0.297897
+  type: 'test'
+  ...
+# Subtest: denial banner and command route keep the exact same pure refusal selector
+ok 95 - denial banner and command route keep the exact same pure refusal selector
+  ---
+  duration_ms: 0.641764
+  type: 'test'
+  ...
+# Subtest: requests, UI prompt repaints and corridor geometry never manufacture GUIDE
+ok 96 - requests, UI prompt repaints and corridor geometry never manufacture GUIDE
+  ---
+  duration_ms: 0.351939
+  type: 'test'
+  ...
+# Subtest: revocation interrupts GUIDE next tick, inside the 10 Hz readout interval
+ok 97 - revocation interrupts GUIDE next tick, inside the 10 Hz readout interval
+  ---
+  duration_ms: 0.369805
+  type: 'test'
+  ...
+# Subtest: fresh exact entity identity defeats stale station indexes and stale denial indexes
+ok 98 - fresh exact entity identity defeats stale station indexes and stale denial indexes
+  ---
+  duration_ms: 0.251248
+  type: 'test'
+  ...
+# Subtest: transition, jump, dead player and nonflight fences close guidance
+ok 99 - transition, jump, dead player and nonflight fences close guidance
+  ---
+  duration_ms: 0.234532
+  type: 'test'
+  ...
+# Subtest: only a confirmed docked-state edge after an eligible approach acknowledges, once
+ok 100 - only a confirmed docked-state edge after an eligible approach acknowledges, once
+  ---
+  duration_ms: 0.275554
+  type: 'test'
+  ...
+# Subtest: Save/Continue during GUIDE recomputes permission and after arrival never replays ACK
+ok 101 - Save/Continue during GUIDE recomputes permission and after arrival never replays ACK
+  ---
+  duration_ms: 0.420031
+  type: 'test'
+  ...
+# Subtest: save restore and replaced ship cannot inherit an armed arrival
+ok 102 - save restore and replaced ship cannot inherit an armed arrival
+  ---
+  duration_ms: 0.150065
+  type: 'test'
+  ...
+# Subtest: recovery reports the physical owner state without moving or freezing either vessel
+ok 103 - recovery reports the physical owner state without moving or freezing either vessel
+  ---
+  duration_ms: 0.308794
+  type: 'test'
+  ...
+# Subtest: disabled, dismissed and destroyed character never changes ordinary docking
+ok 104 - disabled, dismissed and destroyed character never changes ordinary docking
+  ---
+  duration_ms: 0.239751
+  type: 'test'
+  ...
+# Subtest: bounded save normalization rejects transient fields and returns independent data
+ok 105 - bounded save normalization rejects transient fields and returns independent data
+  ---
+  duration_ms: 0.235444
+  type: 'test'
+  ...
+# Subtest: manual approach gives mouth/alignment cues before permission, then READY only at the actual berth
+ok 106 - manual approach gives mouth/alignment cues before permission, then READY only at the actual berth
+  ---
+  duration_ms: 0.581474
+  type: 'test'
+  ...
+# Subtest: approach target reads do not engage autopilot or write player input, and revocation clears them
+ok 107 - approach target reads do not engage autopilot or write player input, and revocation clears them
+  ---
+  duration_ms: 0.496867
+  type: 'test'
+  ...
+# Subtest: off-duty service stays quiet instead of republishing every tick in another sector
+ok 108 - off-duty service stays quiet instead of republishing every tick in another sector
+  ---
+  duration_ms: 0.161433
+  type: 'test'
+  ...
+# Subtest: a menu or administrative transition cannot manufacture the first voluntary encounter
+ok 109 - a menu or administrative transition cannot manufacture the first voluntary encounter
+  ---
+  duration_ms: 0.160742
+  type: 'test'
+  ...
+# (node:111) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: normalized physics bodies and resolved specs are identity-stable while unchanged
+ok 110 - normalized physics bodies and resolved specs are identity-stable while unchanged
+  ---
+  duration_ms: 2.028869
+  type: 'test'
+  ...
+# Subtest: body replacement and revision changes invalidate only the affected caches
+ok 111 - body replacement and revision changes invalidate only the affected caches
+  ---
+  duration_ms: 0.738379
+  type: 'test'
+  ...
+# (node:120) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: owned control keeps public command shape and issues a nonserializable unforgeable receipt
+ok 112 - owned control keeps public command shape and issues a nonserializable unforgeable receipt
+  ---
+  duration_ms: 4.439311
+  type: 'test'
+  ...
+# Subtest: a same-source same-value later write revokes ownership, independent of strings and equality
+ok 113 - a same-source same-value later write revokes ownership, independent of strings and equality
+  ---
+  duration_ms: 0.383066
+  type: 'test'
+  ...
+# Subtest: cancel removes only its still-pending control and keeps foreign impulses and torque impulses
+ok 114 - cancel removes only its still-pending control and keeps foreign impulses and torque impulses
+  ---
+  duration_ms: 0.33268
+  type: 'test'
+  ...
+# Subtest: consumed, reincarnated, changed-spec and cleared-authority receipts cannot cancel fresh ownership
+ok 115 - consumed, reincarnated, changed-spec and cleared-authority receipts cannot cancel fresh ownership
+  ---
+  duration_ms: 0.601273
+  type: 'test'
+  ...
+# (node:133) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/correction-review/audit-overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: CLI parser requires an explicit, unique list of place ids
+ok 116 - CLI parser requires an explicit, unique list of place ids
+  ---
+  duration_ms: 1.849549
+  type: 'test'
+  ...
+# Subtest: selected assets resolve only canonical, unblocked place rows
+ok 117 - selected assets resolve only canonical, unblocked place rows
+  ---
+  duration_ms: 0.59201
+  type: 'test'
+  ...
+# Subtest: selected build and manifest patch preserve membership, order, and untouched rows
+ok 118 - selected build and manifest patch preserve membership, order, and untouched rows
+  ---
+  duration_ms: 1.963771
+  type: 'test'
+  ...
+# Subtest: publication bindings pin current release and manifest hashes exactly
+ok 119 - publication bindings pin current release and manifest hashes exactly
+  ---
+  duration_ms: 0.769135
+  type: 'test'
+  ...
+# Subtest: release metadata replaces source-pending state on asset, scene, and canonical root
+ok 120 - release metadata replaces source-pending state on asset, scene, and canonical root
+  ---
+  duration_ms: 0.800243
+  type: 'test'
+  ...
+# Subtest: release metadata preserves a source-declared single-LOD preview topology
+ok 121 - release metadata preserves a source-declared single-LOD preview topology
+  ---
+  duration_ms: 0.280411
+  type: 'test'
+  ...
+# Subtest: source and parts-manifest guards roll back outputs on post-validation drift
+ok 122 - source and parts-manifest guards roll back outputs on post-validation drift
+  ---
+  duration_ms: 43.032054
+  type: 'test'
+  ...
+# Subtest: parts-manifest guard also rolls back outputs on post-validation drift
+ok 123 - parts-manifest guard also rolls back outputs on post-validation drift
+  ---
+  duration_ms: 22.987851
+  type: 'test'
+  ...
+# Subtest: source drift and incomplete release payloads fail closed
+ok 124 - source drift and incomplete release payloads fail closed
+  ---
+  duration_ms: 1.236088
+  type: 'test'
+  ...
+# Subtest: release texture profiles keep normals UASTC and color plus ORM ETC1S
+ok 125 - release texture profiles keep normals UASTC and color plus ORM ETC1S
+  ---
+  duration_ms: 0.260401
+  type: 'test'
+  ...
+# Subtest: first registration appends only a fully validated selected place without changing prior rows
+ok 126 - first registration appends only a fully validated selected place without changing prior rows
+  ---
+  duration_ms: 2.05647
+  type: 'test'
+  ...
+1..126
+# tests 126
+# suites 0
+# pass 126
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3493.072902

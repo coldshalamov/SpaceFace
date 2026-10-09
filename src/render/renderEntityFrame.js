@@ -13,6 +13,7 @@ export function createRenderEntityFrame() {
     entitiesVisited: 0,
     byId: new Map(),
     records: [],
+    seenCount: 0,
     contactShadows: [],
     shipAux: [],
     authored: [],
@@ -27,6 +28,7 @@ export function beginRenderEntityFrame(frame) {
   if (frame.frameId === 0) frame.frameId = 1;
   frame.traversals = 1;
   frame.entitiesVisited = 0;
+  frame.seenCount = 0;
   frame.records.length = 0;
   frame.contactShadows.length = 0;
   frame.shipAux.length = 0;
@@ -63,6 +65,7 @@ export function classifyRenderEntity(frame, entity, mesh, options = false) {
 
   record.entity = entity;
   record.mesh = mesh;
+  if (record.seenFrame !== frame.frameId) frame.seenCount++;
   record.seenFrame = frame.frameId;
   record.viewCulled = nextViewCulled;
   record.visible = visible;
@@ -146,8 +149,25 @@ export function projectRenderEntityFrame(frame, snapshot, archetypeOf, visibleFl
 
 export function endRenderEntityFrame(frame) {
   if (!frame) return null;
-  for (const [id, record] of frame.byId) {
-    if (record.seenFrame !== frame.frameId) frame.byId.delete(id);
+  // Seen ids ⊆ byId, so equality means nothing went stale this frame — the
+  // eviction walk only runs when the map actually outgrew the frame's distinct
+  // set. It amortizes: a parked keys() iterator spreads a churn frame's O(map)
+  // prune across calls instead of landing inside the presented tail.
+  if (frame.byId.size > frame.seenCount) {
+    const iter = frame._evictIter || (frame._evictIter = frame.byId.keys());
+    let visited = 0;
+    for (;;) {
+      const step = iter.next();
+      if (step.done) { frame._evictIter = null; break; }
+      visited += 1;
+      const id = step.value;
+      const record = frame.byId.get(id);
+      if (!record || record.seenFrame === frame.frameId) continue;
+      frame.byId.delete(id);
+      if (visited >= 256) break;
+    }
+  } else if (frame._evictIter) {
+    frame._evictIter = null;
   }
   return frame;
 }

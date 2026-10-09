@@ -28,6 +28,9 @@ const lethalBlowByVictimId = new Map();
 export const PENDING_SLAM_MAX_AGE_TICKS = 12;
 export const LETHAL_BLOW_MAX_AGE_TICKS = 2;
 const LETHAL_BLOW_KEY_CAP = 512;
+// Same leak guard as the lethal-blow map below: a slammed ship that despawns never consumes
+// its note, so victim keys would otherwise accumulate without bound across a long session.
+export const PENDING_SLAM_KEY_CAP = 512;
 const FRACTURE_SPLIT_SPEED = 12;
 
 function finite(value, fallback = 0) {
@@ -44,13 +47,29 @@ export function isSlamFractureCandidate(target, closingSpeed) {
   return Number.isFinite(closingSpeed) && closingSpeed >= fractureThresholdWU;
 }
 
+// Stale notes past the freshness window can never satisfy consumePendingSlamIfFresh again, and
+// while they linger they only suppress the arena shard they were supposed to yield — so insert
+// time prunes them, keyed off the incoming note's own tick (deterministic, no wall clock).
+function pruneStalePendingSlams(nowTick) {
+  // Deleting during Map iteration is spec-safe: a deleted entry is simply not visited again.
+  for (const [victimId, note] of pendingByVictimId) {
+    if (Math.abs(nowTick - note.tick) > PENDING_SLAM_MAX_AGE_TICKS) pendingByVictimId.delete(victimId);
+  }
+}
+
 export function notePendingSlam(target, slam = {}) {
   const closingSpeed = Number(slam.closingSpeed);
   if (!isSlamFractureCandidate(target, closingSpeed)) return false;
+  const tick = Math.max(0, Math.trunc(finite(slam.tick)));
+  pruneStalePendingSlams(tick);
+  if (pendingByVictimId.size >= PENDING_SLAM_KEY_CAP) {
+    const oldest = pendingByVictimId.keys().next();
+    if (oldest && !oldest.done) pendingByVictimId.delete(oldest.value);
+  }
   pendingByVictimId.set(target.id, {
     victimId: target.id,
     closingSpeed,
-    tick: Math.max(0, Math.trunc(finite(slam.tick))),
+    tick,
     pos: {
       x: finite(target.pos && target.pos.x),
       z: finite(target.pos && target.pos.z),
@@ -66,8 +85,15 @@ export function notePendingSlam(target, slam = {}) {
   return true;
 }
 
-export function peekPendingSlam(victimId) {
-  return victimId == null ? null : pendingByVictimId.get(victimId) || null;
+export function peekPendingSlam(victimId, tick) {
+  const note = victimId == null ? null : pendingByVictimId.get(victimId) || null;
+  if (!note || tick == null) return note;
+  // A note past the freshness window can never satisfy consumePendingSlamIfFresh again, so it
+  // must not keep suppressing the shard path that reads this peek. Read-only: the insert-time
+  // prune still owns deletion.
+  const now = Math.max(0, Math.trunc(finite(tick)));
+  const then = Math.max(0, Math.trunc(finite(note.tick)));
+  return Math.abs(now - then) <= PENDING_SLAM_MAX_AGE_TICKS ? note : null;
 }
 
 export function consumePendingSlam(victimId) {
@@ -345,6 +371,20 @@ const TEAROFF_MASS_FRAC = 0.02;
 const TEAROFF_RADIUS_MIN = 1.6;
 const TEAROFF_RADIUS_MAX = 3.4;
 
+// Impact tear-off admission for LOOSE bodies (wreck/debris), the sibling of the ship
+// tear-off path collisionConsequences owns. The threshold is the same force that takes a
+// craft's helm (COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV): the shove that tumbles a ship
+// shears loose debris apart. Admission lives with the wreck owner (aftermathWrecks);
+// the body spec is this file's (spawnCollisionTearOff), so ship chips and wreck chips
+// share one debris law.
+export const IMPACT_TEAROFF_LAW = Object.freeze({
+  deltaV: 18,
+  heavyDeltaV: 34,
+  cooldownS: 1.0,
+  maxPerVictim: 2,
+  minVictimMass: 2,
+});
+
 function tearOffSpec({ note, dir, speed, mass, radius, sectorId }) {
   return {
     type: 'wreck',
@@ -364,6 +404,9 @@ function tearOffSpec({ note, dir, speed, mass, radius, sectorId }) {
       scanLabel: 'Hull Debris',
       name: 'Hull Debris',
       collisionTearOff: true,
+      // Correlator-only stamp: no production reader keys off it today (tests and the
+      // stunt journal may) — a wreck-sourced chip's victimId is a wreck, not a ship,
+      // and nothing downstream assumes otherwise.
       collisionTearOffOf: note.victimId != null ? note.victimId : null,
       homeSectorId: sectorId,
       persistenceOwner: 'collisionConsequences',

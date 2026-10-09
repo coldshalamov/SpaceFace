@@ -65,6 +65,18 @@ jobs:
           printf '%s' '{"type":"module","exports":{".":"./three.module.js","./addons/*":"./addons/*"}}' > node_modules/three/package.json
           cp vendor/rapier3d-compat/rapier.mjs node_modules/@dimforge/rapier3d-compat/rapier.mjs
           printf '%s' '{"type":"module","exports":"./rapier.mjs"}' > node_modules/@dimforge/rapier3d-compat/package.json
+          # audioSystem -> elementaryVoices statically imports @elemaudio/core; the package
+          # isn't vendored like three/rapier, so install the exact locked version into a
+          # staging prefix and link it plus its transitive deps in (resolves whether Node
+          # walks the real path or the link path).
+          mkdir -p node_modules/@elemaudio
+          npm install --prefix "$RUNNER_TEMP/elemaudio" --ignore-scripts --no-audit --no-fund @elemaudio/core@4.0.1
+          ln -s "$RUNNER_TEMP/elemaudio/node_modules/@elemaudio/core" node_modules/@elemaudio/core
+          for dep in shallowequal invariant eventemitter3 loose-envify js-tokens; do
+            if [ -d "$RUNNER_TEMP/elemaudio/node_modules/$dep" ]; then
+              ln -s "$RUNNER_TEMP/elemaudio/node_modules/$dep" "node_modules/$dep"
+            fi
+          done
           git rev-parse HEAD > .devshots/draw-flight/source-sha.txt
       - name: Sustained speed, actual collision authority, gun lead and lifecycle regression
         run: |

@@ -21,6 +21,8 @@ export function bindCommittedRange(input, valueLabel, fmt, onValue) {
     paint();
     const value = parseFloat(input.value);
     onValue(value, persist);
+    input.setAttribute('aria-valuenow', String(value));
+    input.setAttribute('aria-valuetext', fmt(value));
     valueLabel.textContent = fmt(value);
   };
   input.addEventListener('input', () => publish(false));
@@ -54,6 +56,12 @@ export function paneBuilder(pane) {
       labelEl.htmlFor = id;
       const ctl = el('div', 'k-words k-words--row');
       const r = el('input', 'k-range'); r.id = id; r.type = 'range'; r.min = min; r.max = max; r.step = step; r.value = get();
+      r.setAttribute('role', 'slider');
+      r.setAttribute('aria-valuemin', String(min));
+      r.setAttribute('aria-valuemax', String(max));
+      r.setAttribute('aria-valuenow', String(get()));
+      r.setAttribute('aria-valuetext', fmt(get()));
+      r.setAttribute('aria-label', labelText);
       const v = el('span', 'k-t-emph', fmt(get()));
       bindCommittedRange(r, v, fmt, onInput);
       ctl.appendChild(r); ctl.appendChild(v); li.appendChild(ctl);

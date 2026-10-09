@@ -5,6 +5,8 @@ import { TOLLMAN } from './capital-boss/tollman.js';
 import { ALA } from './capital-boss/ala.js';
 import { FOREMAN } from './capital-boss/foreman.js';
 import { REGENT } from './capital-boss/regent.js';
+import { BROOD_QUEEN } from './capital-boss/brood-queen.js';
+import { TENDRIL } from './capital-boss/tendril.js';
 export { SUBSYSTEM_ROLES as CAPITAL_BOSS_SUBSYSTEM_ROLES } from './capital-boss/shared.js';
 export const CAPITAL_BOSS_ENCOUNTER_ID = 'capital_boss_hulk';
 export const CAPITAL_BOSS_TOLLMAN_ENCOUNTER_ID = 'capital_boss_tollman';
@@ -13,14 +15,21 @@ export const CAPITAL_BOSS_ALA_ENCOUNTER_ID = 'capital_boss_ala';
 // They are encounter-only ids — no mission row posts them; the swarm wave owner starts the fight.
 export const CAPITAL_BOSS_FOREMAN_ENCOUNTER_ID = 'capital_boss_foreman';
 export const CAPITAL_BOSS_REGENT_ENCOUNTER_ID = 'capital_boss_regent';
+// SWARM-07 B3: the deep rotation's Brood champions — the Queen's nest at wave 70 and the
+// Tendril's coil field at wave 80. Same encounter-only contract as the Foreman/Regent rows.
+export const CAPITAL_BOSS_BROOD_QUEEN_ENCOUNTER_ID = 'capital_boss_brood_queen';
+export const CAPITAL_BOSS_TENDRIL_ENCOUNTER_ID = 'capital_boss_tendril';
 export const CAPITAL_BOSS_ENCOUNTER = IRON_MAW;
 export const CAPITAL_BOSS_TOLLMAN_ENCOUNTER = TOLLMAN;
 export const CAPITAL_BOSS_ALA_ENCOUNTER = ALA;
 export const CAPITAL_BOSS_FOREMAN_ENCOUNTER = FOREMAN;
 export const CAPITAL_BOSS_REGENT_ENCOUNTER = REGENT;
+export const CAPITAL_BOSS_BROOD_QUEEN_ENCOUNTER = BROOD_QUEEN;
+export const CAPITAL_BOSS_TENDRIL_ENCOUNTER = TENDRIL;
 export const CAPITAL_BOSS_ENCOUNTERS = Object.freeze({
   [IRON_MAW.id]: IRON_MAW, [TOLLMAN.id]: TOLLMAN, [ALA.id]: ALA,
   [FOREMAN.id]: FOREMAN, [REGENT.id]: REGENT,
+  [BROOD_QUEEN.id]: BROOD_QUEEN, [TENDRIL.id]: TENDRIL,
 });
 // Preserve the old fallback for existing callers. New starts use requireCapitalBossEncounter.
 export function capitalBossEncounter(id = CAPITAL_BOSS_ENCOUNTER_ID) {

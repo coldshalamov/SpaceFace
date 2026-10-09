@@ -1,0 +1,50 @@
+{
+  "scope": "portable independent audit evidence; not runtime assets",
+  "original_audit_sha256": "bd84f9ec5d4d2a12251399c4f76ccd8bcdce80ef9adec82dff93e8c1ee780d9b",
+  "model_verdicts": 26,
+  "new_packaged_models": 25,
+  "splitter_prototype_verdicts": 1,
+  "runtime_visual_acceptance": "unverified",
+  "images": [
+    {
+      "path": "sheets/01-brood-vs-established.png",
+      "bytes": 744230,
+      "sha256": "b29b2572c834aed9fd666fccb19caf75589760a1cac3a602f668ab2e8b5db8c4"
+    },
+    {
+      "path": "sheets/02-machinery-1.png",
+      "bytes": 678466,
+      "sha256": "b7e0d48dc196dbf1e0196d552ed3125941e0e4b75b87d661c6087e1c68946834"
+    },
+    {
+      "path": "sheets/02-machinery-2.png",
+      "bytes": 724541,
+      "sha256": "8659f1aa234a332fbe55acfec3e4dafc79a9ff93f92974a6e42ae84c51b5cdf7"
+    },
+    {
+      "path": "sheets/02-machinery-3.png",
+      "bytes": 275806,
+      "sha256": "6916e67728922ab5624b5417eaf690a23e48e80d4c180237688b1d1400ecd4b6"
+    },
+    {
+      "path": "sheets/03-gameplay-footprint.png",
+      "bytes": 377854,
+      "sha256": "6a5f0d3a845126deb664fe9b5c02ef831edb376b9118091911f3d9fd9d1db4d5"
+    },
+    {
+      "path": "sheets/04-splitter-iteration-history.png",
+      "bytes": 349178,
+      "sha256": "234d4153549de2523381ae8ef33c7cd61ac31c93602acae8a86f30e6f022ac57"
+    },
+    {
+      "path": "sheets/05-fauna-context.png",
+      "bytes": 175980,
+      "sha256": "83884fe570143bc0ed63c27b4e862673a3bc989b2a9d996b0138265d15b48f4a"
+    },
+    {
+      "path": "sheets/06-ceres-context.png",
+      "bytes": 275223,
+      "sha256": "99313a2d2bdc52593dd7087de28d377f2213106af579e67699239044053a3b93"
+    }
+  ]
+}

@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3252788f70fe627bbe88b182b7de3494d806675cfae754e80080bbc4d60f6e0c",
+  "contentHash": "6be7a8b28a8995298807fd8b87ad7625d88c1f889677223cb1c6f29e46a8268e",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -978,8 +978,8 @@
       "uri": "place_welding_drone.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -1053,10 +1053,11 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 8,
+      "glass": 1,
+      "hull": 6,
       "mechanical": 1,
       "service": 1,
-      "signal": 1
+      "signal": 2
     },
     "materialProfiles": [
       {
@@ -1087,7 +1088,7 @@
       {
         "allowTextures": false,
         "planIndex": 8,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
@@ -1112,7 +1113,7 @@
       {
         "allowTextures": false,
         "planIndex": 14,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 15,
@@ -1419,7 +1420,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_welding_drone.glb"
   },
-  "runtimeHash": "9bb9d52e202909b9608031f433a0fdd5622856b197f680641246239da588347e",
+  "runtimeHash": "964de062416f128ef74c7708a513b681edadc0f925e1d43f317b20b42063153e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

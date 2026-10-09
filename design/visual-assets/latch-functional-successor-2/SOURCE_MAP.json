@@ -1,0 +1,351 @@
+{
+  "base": "accepted combined-v3",
+  "baseSourceMapSha256": "2ea9dabaa3963a8f928022cf2a443fa0b82ff039b34876e5badb05be0507df2e",
+  "promotion": false,
+  "files": [
+    {
+      "path": "assets/ships/forge/sources/latch_nine/LatchNine.blend",
+      "bytes": 3013298,
+      "sha256": "afe83637489433940091e6cc925c2e7a4f2679874d3974e46db2b7670fa29b59",
+      "baseSha256": null
+    },
+    {
+      "path": "assets/ships/forge/sources/latch_nine/latch-nine.geometry.json",
+      "bytes": 8309,
+      "sha256": "7fad2ac6456385005a5a9bea33058a835a3475ae9697fe7776bd66bb8ce9f5e7",
+      "baseSha256": null
+    },
+    {
+      "path": "assets/ships/motions/latch-nine.motion.json",
+      "bytes": 3761,
+      "sha256": "8ba58c6625848f7e5fba6c2700b41300c0d83c4152ee9a87ab8c8e7e9745e261",
+      "baseSha256": null
+    },
+    {
+      "path": "assets/ships/parts/places/place_latch_nine.glb",
+      "bytes": 2392052,
+      "sha256": "9f50438e1576c6a61375584f48ce941635c49cd4b67769cbb1b67fdd1029d4d5",
+      "baseSha256": null
+    },
+    {
+      "path": "assets/ships/release/parts/places/place_latch_nine.glb",
+      "bytes": 879144,
+      "sha256": "c3550bccf5ff6c191008619616f68e2e22ff01f8be8bb19a9c4e1d3fd380b80c",
+      "baseSha256": null
+    },
+    {
+      "path": "assets/ships/release/render-packages/latch-nine/render-package.json",
+      "bytes": 294154,
+      "sha256": "6b69220641f1b7ff6b85aade7b65c0e586e2be2f26443ba396e3fe5b9af6176e",
+      "baseSha256": null
+    },
+    {
+      "path": "assets/ships/release/render-packages/latch-nine/render.glb",
+      "bytes": 1487920,
+      "sha256": "61fe8328cfefa1e7e979c4461fe3aac2715ed5cdb6d62dc839c7a55880b8dd99",
+      "baseSha256": null
+    },
+    {
+      "path": "scripts/build-place-release-assets.mjs",
+      "bytes": 31927,
+      "sha256": "e9b9d068b916b4c1165710588a4b687d60f7b96df0e46ca21c0653d3da132ec3",
+      "baseSha256": "d8ab97f9ba98e84b56eaa6fd4283148ee7152989a5d86e6dff34f5685e8ca961"
+    },
+    {
+      "path": "scripts/lib/modelTruthAuthoredCompound.mjs",
+      "bytes": 3696,
+      "sha256": "b54a202800e5506dae856f2b9d3debe9f467bb6ff55d3d169ef30a7b5423ad37",
+      "baseSha256": "bd03c4baadeb1ed397bb27d4493e28494c7c3bc6c06fb7cc384ed46f5de083cd"
+    },
+    {
+      "path": "scripts/model-truth-census.mjs",
+      "bytes": 32281,
+      "sha256": "140b9028ca440e7dc8b2077d71f4f35ae25e9394a1aa91eaa97a5da2dfe3feab",
+      "baseSha256": "8f518ca6755ebdde8bf3b5161fb03a446d3f689d449eae26bf8d89e9d048f0fa"
+    },
+    {
+      "path": "src/core/dockAccess.js",
+      "bytes": 3123,
+      "sha256": "1bb2b8a09c8dc53c076ec3dbb83c2234191e303fdfe7e6b26aceb198d838cfea",
+      "baseSha256": null
+    },
+    {
+      "path": "src/core/dockIntent.js",
+      "bytes": 3145,
+      "sha256": "e12a5477196f0df0726e230e4834bb23976944ba8646397b1464ca469e4d3828",
+      "baseSha256": null
+    },
+    {
+      "path": "src/core/dockRange.js",
+      "bytes": 2892,
+      "sha256": "62045dc6fe72da7668f835f682bf17b3ef64504d73bf6c47e00b7c8bbcf279fc",
+      "baseSha256": null
+    },
+    {
+      "path": "src/core/latchNineArrivalEvidence.js",
+      "bytes": 2226,
+      "sha256": "935e9dbd25e2c9ea6fd74524964c85b358da143e6d49450a47bb12c0068ec27d",
+      "baseSha256": null
+    },
+    {
+      "path": "src/core/latchNineMaterialization.js",
+      "bytes": 398,
+      "sha256": "fdeac9bb1df435accab98946f67287de69c9a8278670f90083d77f61ee85f0fd",
+      "baseSha256": null
+    },
+    {
+      "path": "src/core/latchNineNative.js",
+      "bytes": 6639,
+      "sha256": "96bdee8d8606e94fa71e623076d716ad4272215cb505504ebd3917d141834514",
+      "baseSha256": null
+    },
+    {
+      "path": "src/core/machineryPresentation.js",
+      "bytes": 12494,
+      "sha256": "e2352de0066ea6cab312646eb821359851ab50a7742d7b4d7d4c37e6c4266ebc",
+      "baseSha256": "6419451f5089b17e99d858d5e7d2d4fcfffda8c206aac1a3da493e56d570c213"
+    },
+    {
+      "path": "src/core/physics.js",
+      "bytes": 90975,
+      "sha256": "9313009ad16af21e18813110b0cbd0b9c549e89e2c1a3484480cca75cddeaf3c",
+      "baseSha256": "60bd69d3af050840d5c30e9dd9cf4738af0a87ae6e3b0c06ec950f69e8f61881"
+    },
+    {
+      "path": "src/core/physicsAuthority.js",
+      "bytes": 32140,
+      "sha256": "8862ce0c90391d6310a7dc38bd32544280b8e96367e45da9e9a91a93f81446ac",
+      "baseSha256": "3ea19212a16ed19a8b513256bb538695755fd666222698e0f1d273cc38d207b5"
+    },
+    {
+      "path": "src/core/registry.js",
+      "bytes": 58024,
+      "sha256": "aa621b420a85982ac321a08344a98801d67ee2f0f4d09e2629d10263e5cdb9c3",
+      "baseSha256": "a407657b9ed25bbad6f2173f4d24822748f3692f54909d16b25176b0ab3db1e7"
+    },
+    {
+      "path": "src/core/runReset.js",
+      "bytes": 3131,
+      "sha256": "0407a27b03dd0340476d83e0044a4cfcc62614881c5feeb716fdc0a4be55c4fc",
+      "baseSha256": "991f246a7be808c4f1b6c3402626a5cd7c476c5c274d67b8d28fe93548665631"
+    },
+    {
+      "path": "src/core/sg02DynamicBodyOwner.js",
+      "bytes": 229644,
+      "sha256": "fae40b23b14a223b8475f2e2b51a1d19674bc8c18684ab5bb9030a7760cc35ca",
+      "baseSha256": "e3632be9a0bea7550ec48f1ed8b544aeac6c0fecc7f1529bb7e898af1adc1f0c"
+    },
+    {
+      "path": "src/data/latchNine.js",
+      "bytes": 2722,
+      "sha256": "a19397801609635753c8a58e710bdba8de7805fb874466ac36e016dbd8e375d6",
+      "baseSha256": null
+    },
+    {
+      "path": "src/data/latchNineBody.js",
+      "bytes": 2588,
+      "sha256": "7f3ed67012d86d4d0724e1e6db7d8bd7500c2780a0a24536263e938689298369",
+      "baseSha256": null
+    },
+    {
+      "path": "src/data/latchNineGeometry.js",
+      "bytes": 3898,
+      "sha256": "17e2452065b470393020d96bb678e6fdfe9fab5fcc080744414c2ee02fe96982",
+      "baseSha256": null
+    },
+    {
+      "path": "src/data/latchNineGuidance.js",
+      "bytes": 1157,
+      "sha256": "90b367dde9cd1e4189ed83fcfc2b83203e076e930c4d16fb504aaafdeab1d531",
+      "baseSha256": null
+    },
+    {
+      "path": "src/data/latchNineIdentity.js",
+      "bytes": 394,
+      "sha256": "74ca44ff7d1c30a6b646fbab2efec27ec8ca0fa34777379b1c31e9402780d83d",
+      "baseSha256": null
+    },
+    {
+      "path": "src/render/authoredMotion.js",
+      "bytes": 53948,
+      "sha256": "dea93312340d51b473615e26f30a8238b4a269f43f91b4cc3e60aa47b937df11",
+      "baseSha256": "965542456c1428109f27f487294af13f56abc3ebca838623b46c5cf1f7c07ef6"
+    },
+    {
+      "path": "src/render/latchNineVisuals.js",
+      "bytes": 7344,
+      "sha256": "12d276e7009b2894522666f16f1782ac91c420e19378f3571659d62c61740146",
+      "baseSha256": null
+    },
+    {
+      "path": "src/render/partsLibrary.js",
+      "bytes": 708195,
+      "sha256": "90ea9ba6fbd8c1e1f80444b87c4fda5fb6b7cb54d1f86905e16a93f5ceeefcbc",
+      "baseSha256": "8bc5328c26a43cc40fccc70871d8ed7d2bacf240a55b152b9847e7486e551037"
+    },
+    {
+      "path": "src/render/vfx.js",
+      "bytes": 790881,
+      "sha256": "f34eadbb8c7ba9852900c72bafc48cac12086b0b8da894a3097ead7a6dfe9da0",
+      "baseSha256": "823f736c2e6a407c3ac40401a105da179abdb38f53164e69f0ed248caef65c9f"
+    },
+    {
+      "path": "src/render/visualFactory.js",
+      "bytes": 285733,
+      "sha256": "cd1a2e4662d6aff8296d5dea075712384b3a8eb9f38ccf4189d345a8493c6ad2",
+      "baseSha256": "1fabc8d8323680272c4ec9a2cdcee67f9b3ede272ba0f1b9bc3630b2f52a3bd1"
+    },
+    {
+      "path": "src/render/visualOverrides.js",
+      "bytes": 69195,
+      "sha256": "8223a58ebe35abd3d1f4be5819b79726dfb7b072bef6edeb5ae85c3c19f06b0f",
+      "baseSha256": "3b5fdba72f49b4bcaaa5a04c2eba5cb5bf5345469979f2858c34cb4016bb9c63"
+    },
+    {
+      "path": "src/runtime/authoritativeSystemManifest.js",
+      "bytes": 27888,
+      "sha256": "ad515690656ee13541078e253475aa522492bf428da4c7a07bdc305e71d03444",
+      "baseSha256": "78f39e7d93bad76f7e8ac07aa0f75b15b08d8426864eb39244e78964e6f90db2"
+    },
+    {
+      "path": "src/runtime/nodeSystemFactoryTable.js",
+      "bytes": 19002,
+      "sha256": "85954d5945435abc1fef4c01f6af5cb5dd8cb0b6c1b46e01122bc7b181606809",
+      "baseSha256": "089f4bdf002d5ecf5779777c7cc1115d172bb7bd4f83377293b22df324e3c4e1"
+    },
+    {
+      "path": "src/save/saveSystem.js",
+      "bytes": 356307,
+      "sha256": "bad7488a1c868c04d06d0bc57da3869ae096626afd9747cb359ea641aa5fe790",
+      "baseSha256": "0dbd4d9e51ea42074696d0f9d0a40abb195d7a311c5c15315819a90421a91434"
+    },
+    {
+      "path": "src/systems/latchNine.js",
+      "bytes": 8703,
+      "sha256": "92829583512ab1fc4910cfc49cc6fe47961f457c2bafe3f9f239f8e2921f7339",
+      "baseSha256": null
+    },
+    {
+      "path": "src/systems/latchNinePropulsion.js",
+      "bytes": 5232,
+      "sha256": "0b91328d1f9ba5276048f6c99e607168a9862fa805651c5f8ac3dc006943583a",
+      "baseSha256": null
+    },
+    {
+      "path": "src/systems/latchNineService.js",
+      "bytes": 9616,
+      "sha256": "d3ed00ece3949274d4add2d09af74f4a40243bad4e4b7d537e3ed9768215cd74",
+      "baseSha256": null
+    },
+    {
+      "path": "src/systems/latchNineTender.js",
+      "bytes": 4802,
+      "sha256": "c6641f672811f65eb51ff09cee03aa7f93ea4233966fbf350f0faa5e78887d83",
+      "baseSha256": null
+    },
+    {
+      "path": "src/systems/stationBroadcast.js",
+      "bytes": 12157,
+      "sha256": "21a6394d742688ca21734349c1d2dcf110ac62a36d0a34e38ba0f051aeab7539",
+      "baseSha256": "e5ad991506e36062d239d7dd2ec896f16fdadf4cb05451c7d58c35de6fcb4649"
+    },
+    {
+      "path": "src/systems/world.js",
+      "bytes": 337720,
+      "sha256": "0628f7bc59af995bd2f1bd492a74eb607be28e5dcc70c16144228bfe83b1747a",
+      "baseSha256": "ce3693ee06d8fc929b8c8e1d4d4f691ea7973f8c738620e0250c6e843ed26ca3"
+    },
+    {
+      "path": "src/ui/dockDenyBanner.js",
+      "bytes": 6526,
+      "sha256": "1e1e1388a08e8cf00b64bae45e838f750a090bcd3738c8e8e063230aaab0faaf",
+      "baseSha256": "ebc200a48d55f1d783a52fe13fbc9ce43957dc2058fa5fe2b2e5c503a2bb422d"
+    },
+    {
+      "path": "src/ui/dockStateCommit.js",
+      "bytes": 1177,
+      "sha256": "adc05ab92713b1ee2f538856e4dff6bdcfc09c59dc4c994b027b9214097861d5",
+      "baseSha256": null
+    },
+    {
+      "path": "src/ui/input.js",
+      "bytes": 53685,
+      "sha256": "88dfc4ed5133e34985f674cc48edd97b11d2bbb5ee1c8ee1ed4b3317c479175d",
+      "baseSha256": "2f4929054d6cddb4c9370bc26c132ab0159e7fa5ed765dc07bde9ab763350377"
+    },
+    {
+      "path": "src/ui/uiRoot.js",
+      "bytes": 102131,
+      "sha256": "e5678eb639cb25904cc22b6f8ae0602f006434c74354cf30f0e4ea2284ac49a8",
+      "baseSha256": "74e834c0fb6d6a76d70d6b12557a755c1c2d00f421bf63f819014186075fec03"
+    },
+    {
+      "path": "test/dock-intent-live-command.test.mjs",
+      "bytes": 3389,
+      "sha256": "47f3b8f59af33be175f4163d73f970f3a42fd8d2917d0ec2a7f8313d3ecdf918",
+      "baseSha256": null
+    },
+    {
+      "path": "test/latch-nine-guidance-consumer.test.mjs",
+      "bytes": 1494,
+      "sha256": "1b6da285557298eb9f9d431e7a07b7c58c59500f245fccb256e4e1256bf333e3",
+      "baseSha256": null
+    },
+    {
+      "path": "test/latch-nine-normal-route.test.mjs",
+      "bytes": 12230,
+      "sha256": "e786012a370d14611f31303cb45c347f5ccaa36a0585ee4d9e94e2d3c2b71b2b",
+      "baseSha256": null
+    },
+    {
+      "path": "test/latch-nine-package-presentation.test.mjs",
+      "bytes": 10518,
+      "sha256": "5d8b8688513ed3861851e7128acaa9b5ff3bde934f6d4a18b8fff7efffd5f73f",
+      "baseSha256": null
+    },
+    {
+      "path": "test/latch-nine-reconstruction.test.mjs",
+      "bytes": 9893,
+      "sha256": "169a195fa57d376933ea502082794f0ca0329ae1d568aa816ba6ca37a5177de4",
+      "baseSha256": null
+    },
+    {
+      "path": "test/latch-nine-runtime.test.mjs",
+      "bytes": 16744,
+      "sha256": "a16565da5904a22733f26de12438c9d2b191ed2ef1ffb80fa4afd05e0d5caab0",
+      "baseSha256": null
+    },
+    {
+      "path": "test/latch-nine-service.test.mjs",
+      "bytes": 13841,
+      "sha256": "e406112fb0b3856559280c16341fc2a1d1dd1829140a4ccc107707376563f7ba",
+      "baseSha256": null
+    },
+    {
+      "path": "test/physics-owned-control.test.mjs",
+      "bytes": 2393,
+      "sha256": "0749d5099bdb0a2569bda6b883535aaa0ba4b9df103b18bf63aa0b609dbdc34a",
+      "baseSha256": null
+    },
+    {
+      "path": "test/place-release-builder-contract.test.mjs",
+      "bytes": 20080,
+      "sha256": "3dcd2d0f663481932177f33011b8fe096342512c2219865496f7595ad4d284eb",
+      "baseSha256": "ec422ed064a0887d0a52827d33767c1f1bd8ad417c6e2b730950f92054324c98"
+    },
+    {
+      "path": "tools/blender/forge/fleet.json",
+      "bytes": 41035,
+      "sha256": "513bfb4f7852eaee9f9c7d66fc1cbe58f15cc795e646fc36ca377ef529241684",
+      "baseSha256": "3a5a6344ff75f3a80d5b4019cbd919397b44b79610096d68c785347ee45b090e"
+    },
+    {
+      "path": "tools/blender/forge/ships/latch_nine.py",
+      "bytes": 11349,
+      "sha256": "cebeae06c0f6dac9ac971f26cd16c68b1be258cec2ae3820a653319fc2dbda0a",
+      "baseSha256": null
+    }
+  ],
+  "status": "narrow lifecycle correction; independent successor re-review pending",
+  "predecessorSourceMapSha256": "223d37c0160c681cf8d8aa1835edc48f49fefebb201119c0036655e32aaf26b5"
+}

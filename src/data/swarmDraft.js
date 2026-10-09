@@ -129,6 +129,30 @@ export const SWARM_DRAFT_OFFERS = Object.freeze([
     kind: 'verb', shape: 'line_load',
     blurb: 'One line laid across the lane they are coming down.',
   },
+  // FB-021 — the four live emergent weapons (src/data/emergentPrimitives.js) join the shelf as
+  // verb cards. Each sentence names its primitive. `fromWave` is the debut gate the wave planner
+  // already speaks: the detonator is the first emergent toy on the shelf and the primer does not
+  // arrive until after it — a primer with nothing to blow up is a card that lies.
+  {
+    id: 'sticky', defId: 'wpn_sticky_detonator', verb: 'Trap',
+    kind: 'verb', shape: null, fromWave: 3,
+    blurb: 'Sticks a charge to a hull — you call the moment it goes.',
+  },
+  {
+    id: 'driver', defId: 'wpn_mass_driver', verb: 'Throw',
+    kind: 'verb', shape: null, fromWave: 5,
+    blurb: 'Drives a mass slug through whatever it meets — the shove is the shot.',
+  },
+  {
+    id: 'primer', defId: 'wpn_conductive_primer', verb: 'Arc',
+    kind: 'verb', shape: null, fromWave: 7,
+    blurb: 'Primes a hull so the next hit jumps the gap to its neighbours.',
+  },
+  {
+    id: 'cooker', defId: 'wpn_thermal_cooker', verb: 'Burn',
+    kind: 'verb', shape: null, fromWave: 9,
+    blurb: 'Cooks a target from the inside until its own fuel joins the fire.',
+  },
   {
     id: 'spool', defId: 'mod_massline_spool_m', verb: 'Spool',
     kind: 'number', shape: null,

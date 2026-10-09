@@ -123,6 +123,7 @@ export default defineFlavorPack({
         { id: 'c11_02', text: 'Dead rivers cross the inner face beneath cycling city lights.' },
         { id: 'c11_03', text: 'Those batteries should have failed before human history.' },
         { id: 'c11_04', text: 'The city grid spells something no translator will commit to.' },
+        { id: 'c11_05', text: 'One street lights when a hull holds station inside the shadow. The Archive pays for that reading.' },
       ],
     },
     {
@@ -133,6 +134,7 @@ export default defineFlavorPack({
         { id: 'c12_02', text: 'Navigators call it a lighthouse. The radiation disagrees.' },
         { id: 'c12_03', text: 'Quiet schedules use Metronome-rotations instead of local time.' },
         { id: 'c12_04', text: "Quiet crossing logs cluster precisely between the beam's returns." },
+        { id: 'c12_05', text: 'The eighth second runs short. Fence brokers time their windows by the gap.' },
       ],
     },
     {
@@ -173,6 +175,7 @@ export default defineFlavorPack({
         { id: 'c13d_02', text: 'Each trophy answers to a raid story, if scanned.' },
         { id: 'c13d_03', text: 'The skull grows larger after every successful Reach raid.' },
         { id: 'c13d_04', text: 'No architect designed the Throne. Survivors kept welding.' },
+        { id: 'c13d_05', text: 'One plate on the wall answers no registry. It was welded blank on purpose.' },
       ],
     },
     {

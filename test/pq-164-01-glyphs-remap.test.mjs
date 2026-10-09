@@ -228,7 +228,9 @@ test('PQ-164.01: shipped tick honours the remap; capture queue and captureMode w
   assert.deepEqual(gp.drainButtonPresses(), [], 'drain empties the queue');
   assert.equal(gp.lastButton, 'home');
 
-  // captureMode leaves every action inert while still recording edges.
+  // captureMode leaves every action inert while still recording edges. FB-003: under capture a
+  // press is a GESTURE — a lone button commits on release, and a key tapped on a held button
+  // commits as a 'mod+key' chord, so the button name lands once the gesture resolves.
   gp.captureMode = true;
   installedPad.buttons[16] = { pressed: false, value: 0, touched: false };
   state.tick += 1;
@@ -238,7 +240,11 @@ test('PQ-164.01: shipped tick honours the remap; capture queue and captureMode w
   gp.tick(0.016, state);
   assert.equal(gp.actions.accept.held, false, 'captureMode keeps actions inert');
   assert.equal(gp.actions.accept.pressed, false);
-  assert.deepEqual(gp.drainButtonPresses(), ['accept'], 'capture still receives the pressed button');
+  assert.deepEqual(gp.drainButtonPresses(), [], 'a held gesture has not resolved yet');
+  installedPad.buttons[0] = { pressed: false, value: 0, touched: false };
+  state.tick += 1;
+  gp.tick(0.016, state);
+  assert.deepEqual(gp.drainButtonPresses(), ['accept'], 'capture commits the released button');
   gp.captureMode = false;
 });
 
@@ -274,13 +280,18 @@ test('PQ-164.01: UI tick routes captured presses and flips the prompt device on 
   assert.equal(getPromptDevice(), 'gamepad', 'pad activity edge flips the prompt device');
   assert.equal(promptLabel('dock'), '[ B ]', 'dock chip reads as the pad glyph');
 
-  // Capture: registered handler receives the raw button and the press cannot activate UI.
+  // Capture: registered handler receives the button and the press cannot activate UI. FB-003:
+  // the capture gesture commits on release, so the handler hears the resolved button name.
   const captured = [];
   setGamepadCaptureHandler((name) => captured.push(name));
   installedPad.buttons[12] = { pressed: false, value: 0, touched: false };
   state.tick += 1;
   input.tick(0.016);
   installedPad.buttons[0] = { pressed: true, value: 1, touched: true };
+  state.tick += 1;
+  input.tick(0.016);
+  assert.deepEqual(captured, [], 'a still-held gesture has not resolved');
+  installedPad.buttons[0] = { pressed: false, value: 0, touched: false };
   state.tick += 1;
   input.tick(0.016);
   assert.deepEqual(captured, ['accept'], 'capture handler receives the std button name');

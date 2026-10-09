@@ -579,16 +579,41 @@ function nodeHasVisibleMesh(node) {
   return found;
 }
 
-function collectNodesByName(root, name) {
-  const found = [];
+function collectNodesByNameMap(root) {
+  const byName = new Map();
   const stack = [...(root.children || [])];
   while (stack.length) {
     const node = stack.pop();
     if (!node) continue;
-    if (node.name === name) found.push(node);
+    const name = node.name;
+    if (name) {
+      let list = byName.get(name);
+      if (!list) byName.set(name, list = []);
+      list.push(node);
+    }
     for (const child of node.children || []) stack.push(child);
   }
-  return found;
+  return byName;
+}
+
+// Stepped twin — same DFS walk, yields at stride boundaries so the collect can
+// pace inside a commit leg instead of landing atomically.
+function* collectNodesByNameMapSteps(root, byName) {
+  const stack = [...(root.children || [])];
+  let visited = 0;
+  while (stack.length) {
+    const node = stack.pop();
+    if (!node) continue;
+    if ((++visited % 512) === 0) yield;
+    const name = node.name;
+    if (name) {
+      let list = byName.get(name);
+      if (!list) byName.set(name, list = []);
+      list.push(node);
+    }
+    for (const child of node.children || []) stack.push(child);
+  }
+  return byName;
 }
 
 /**
@@ -605,10 +630,25 @@ function collectNodesByName(root, name) {
  */
 export function bindAuthoredMotion(root, bank, options = {}) {
   const checked = validateMotionBank(bank);
+  const nodesByName = collectNodesByNameMap(root);
+  return finishAuthoredMotionBind(checked, nodesByName);
+}
+
+// Stepped twin: identical bind semantics, but the O(subtree) name-map collect
+// yields at stride boundaries. Group/binding application is index-order and the
+// controller mints only after the collect completes, so a suspended walk never
+// surfaces a half-bound rig.
+export function* bindAuthoredMotionSteps(root, bank, options = {}) {
+  const checked = validateMotionBank(bank);
+  const nodesByName = yield* collectNodesByNameMapSteps(root, new Map());
+  return finishAuthoredMotionBind(checked, nodesByName);
+}
+
+function finishAuthoredMotionBind(checked, nodesByName) {
   const groups = new Map();
   for (const binding of checked.bindings) {
     const nodeName = binding.node || motionNodeNameFor(binding.id);
-    const matches = collectNodesByName(root, nodeName);
+    const matches = nodesByName.get(nodeName) || [];
     const restT = binding.restPose.translation;
     const restQ = binding.restPose.rotation;
     const nodes = [];
@@ -647,6 +687,39 @@ export function bindAuthoredMotion(root, bank, options = {}) {
   const clips = new Map();
   for (const clip of checked.clips) clips.set(clip.name, clip);
 
+  // Max reach each bound group can displace a subtree vertex, per binding: rotation keys are
+  // rest-relative deltas, so the largest deviation is the key with the smallest |w|; chord
+  // factor 2·sin(θ/2) = 2·sqrt(1-|w|²). Translation keys add |t| directly. The consumer
+  // multiplies the chord factor by the node's measured subtree radius (world space, lazy)
+  // and sums across bindings — nested pivots compose linearly, same-named LOD twins are
+  // maxed not summed (only one level draws).
+  const padSpecs = [];
+  for (const [groupId, group] of groups) {
+    let chordFactor = 0;
+    let tMax = 0;
+    for (const clip of checked.clips) {
+      for (const channel of clip.channels) {
+        if (channel.group !== groupId) continue;
+        const values = channel.values;
+        if (channel.path === 'rotation') {
+          for (let i = 0; i < values.length; i += 4) {
+            const w = Math.abs(values[i + 3]);
+            const factor = 2 * Math.sqrt(Math.max(0, 1 - Math.min(1, w) ** 2));
+            if (factor > chordFactor) chordFactor = factor;
+          }
+        } else {
+          for (let i = 0; i < values.length; i += 3) {
+            const t = Math.hypot(values[i], values[i + 1], values[i + 2]);
+            if (t > tMax) tMax = t;
+          }
+        }
+      }
+    }
+    if (chordFactor > 0 || tMax > 0) {
+      padSpecs.push({ nodes: group.nodes, chordFactor, tMax });
+    }
+  }
+
   // A LOOPING 'authoredMotion:attach' clip is this rig's ambient idle — it is the clip the
   // resume block re-enters and the one reduced-motion parks.
   const attachClipName = (checked.events || {})['authoredMotion:attach'];
@@ -658,7 +731,6 @@ export function bindAuthoredMotion(root, bank, options = {}) {
   function lastClipName() {
     let last = null;
     for (const key of state.clips.keys()) last = key;
-    return last;
   }
 
   const state = {
@@ -819,6 +891,7 @@ export function bindAuthoredMotion(root, bank, options = {}) {
       return clip ? clip.durationS : null;
     },
     groups,
+    get motionPadSpec() { return padSpecs; },
 
     /**
      * Blend every currently-posed group back to rest over durationS — the early-disengage

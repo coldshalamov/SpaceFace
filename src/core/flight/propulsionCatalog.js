@@ -307,6 +307,33 @@ export const PROPULSION_PROFILES = Object.freeze({
     },
   }),
 
+  drive_torch_xl: freezeProfile({
+    id: 'drive_torch_xl',
+    family: DRIVE_FAMILIES.TORCH,
+    label: 'Capital Open-Cycle Torch Drive XL',
+    mainAccel: 140,
+    reverseAccel: 24,
+    strafeAccel: 10,
+    yawAccel: 1.8,
+    yawBrake: 2.5,
+    maxYawRate: 0.65,
+    spoolUpS: 3.5,
+    spoolDownS: 2.0,
+    ignitionFloor: 0.18,
+    boostAccelMult: 1.45,
+    boostSpeedMult: 1.35,
+    solverSpeedLimit: INF,
+    precisionSpeed: 70,
+    combatSpeed: 280,
+    travelCeiling: 980,
+    resources: {
+      idleFuelPerS: 0.03,
+      fuelPerAccel: 0.024,
+      heatPerAccel: 0.045,
+      coolingPerS: 1.5,
+    },
+  }),
+
   drive_field_sail_m: freezeProfile({
     id: 'drive_field_sail_m',
     family: DRIVE_FAMILIES.SAIL,

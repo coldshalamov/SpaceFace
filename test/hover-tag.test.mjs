@@ -7,12 +7,19 @@ function stubTag(w, h, text = 'Rock') {
   return { hidden: true, style: {}, textContent: text, offsetWidth: w, offsetHeight: h };
 }
 
+// Placement rides a translate3d composed with the stylesheet centering (see placeHoverTag):
+// parse the px point out of the transform — the box lands exactly where the old left/top
+// writes put it, without a per-tick layout invalidation.
+function tagPos(el) {
+  const m = /translate3d\((-?[\d.]+)px,(-?[\d.]+)px,0\)/.exec(el.style.transform || '');
+  return m ? { px: parseFloat(m[1]), py: parseFloat(m[2]) } : { px: NaN, py: NaN };
+}
+
 test('an initially hidden tag is made visible before it is measured and placed', () => {
   const el = stubTag(120, 40);
   placeHoverTag(el, 500, 300, 1000, 800);
   assert.equal(el.hidden, false, 'measurement cannot run on a hidden element');
-  assert.equal(el.style.left, '500px');
-  assert.equal(el.style.top, '300px');
+  assert.match(el.style.transform, /translate3d\(500px,300px,0\)/);
 });
 
 test('placement clamps inside the viewport at every corner', () => {
@@ -23,11 +30,10 @@ test('placement clamps inside the viewport at every corner', () => {
     el.hidden = true;
     el.__woiSize = null;
     placeHoverTag(el, x, y, vw, vh);
-    const px = parseFloat(el.style.left);
-    const py = parseFloat(el.style.top);
+    const { px, py } = tagPos(el);
     const halfW = Math.min(el.__woiSize.w, vw - 24) / 2;
-    assert.ok(px - halfW >= 0 && px + halfW <= vw, `x=${x}: clamped inside, got left=${px}`);
-    assert.ok(py - (el.__woiSize.h + 14) >= -1 && py <= vh, `y=${y}: clamped inside, got top=${py}`);
+    assert.ok(px - halfW >= 0 && px + halfW <= vw, `x=${x}: clamped inside, got px=${px}`);
+    assert.ok(py - (el.__woiSize.h + 14) >= -1 && py <= vh, `y=${y}: clamped inside, got py=${py}`);
   }
 });
 
@@ -35,7 +41,7 @@ test('a long name caps width to the viewport minus margins', () => {
   const el = stubTag(1600, 40, 'An Extremely Long Proper Noun Ship Name Beyond Any Reason');
   placeHoverTag(el, 500, 300, 1000, 800);
   assert.equal(el.style.maxWidth, '976px', 'the tag never runs past the viewport edge');
-  const px = parseFloat(el.style.left);
+  const { px } = tagPos(el);
   assert.ok(px + 488 <= 1000, 'right edge stays inside');
 });
 

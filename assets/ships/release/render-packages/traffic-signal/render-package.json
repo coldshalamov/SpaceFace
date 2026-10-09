@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3da9fb7198246b06c257cfa9b652723569e43167ac46fb200583a021b8d4f58a",
+  "contentHash": "c58be261cbad76aa5be1a12f389b5ad3fd5fccd6499798e0196b536a668b47a5",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -918,8 +918,8 @@
       "uri": "place_traffic_signal.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -993,8 +993,8 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 7,
-      "signal": 2,
+      "hull": 5,
+      "signal": 4,
       "warning": 1
     },
     "materialProfiles": [
@@ -1021,7 +1021,7 @@
       {
         "allowTextures": false,
         "planIndex": 7,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1031,7 +1031,7 @@
       {
         "allowTextures": false,
         "planIndex": 9,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1326,7 +1326,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_traffic_signal.glb"
   },
-  "runtimeHash": "20b2eaa57c5eb9c7fb67a31a82097dd6a8238b93326b4469cc737f7ca4a5aa76",
+  "runtimeHash": "dd0964c13a99bd55d0f2c68ec505eb9aea8c8af5228c368a205888dfe1bc6087",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5dfb3adc888b9ae45c5f9764a9f11124cd950b18aea53643803cb63287fcac5f",
+  "contentHash": "86c5a0d7a81ced42797167d1a3af8b0ed623eb4c387afefd922f7c0e5b8bcf4b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1449,8 +1449,8 @@
       "uri": "place_drill_platform_cold.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -1486,8 +1486,9 @@
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 14,
-      "mechanical": 4
+      "hull": 13,
+      "mechanical": 4,
+      "rubber": 1
     },
     "materialProfiles": [
       {
@@ -1498,7 +1499,7 @@
       {
         "allowTextures": false,
         "planIndex": 3,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
@@ -2074,7 +2075,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_drill_platform_cold.glb"
   },
-  "runtimeHash": "bb8b10fc492d17366d5d57fefb967fc7e83bc6f3e27c4fafe6f4ba31b950d9d5",
+  "runtimeHash": "58c742e104cd4be295e65a5bb6f70997312e552b81be40e44d752e0675359fc7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

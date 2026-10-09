@@ -12,7 +12,9 @@ import {
   PRODUCTION_UPDATE_ORDER,
   getAuthoritativeInitOrder,
   getAuthoritativeUpdateOrder,
+  getSystemClock,
   isNodeSafeSystemId,
+  validateSystemClockDeclarations,
 } from '../src/runtime/authoritativeSystemManifest.js';
 import {
   authoritativeIdentityEqual,
@@ -72,8 +74,40 @@ test('production init + update order lengths match the live browser baseline', (
   // Bumper's timed front wedge; one system in both orders, right after impulseCharges so both blast
   // verbs sit before physics. Absent from the frozen legacy47a list, so the 47-A golden cannot see it.
   // Morrow adds one fixed-step character owner before physics.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 166);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 125);
+  // 166 -> 167 init / 125 -> 126 update: vesper joins as a second fixed-step character owner
+  // immediately after morrow and still before physics, so both orders grow by one.
+  // 167 -> 168 init / 126 -> 127 update: volatileExposure (NXB-008) — exposure-driven volatile
+  // cargo state; one system in both orders right after jettisonImpulse. Its update is a cheap
+  // tick%15 gate on non-cadence ticks, so it runs on the table clock beside lootShards.
+  // 168 -> 169 init / 127 -> 128 update: BRACKET adds one fixed-step character owner before physics.
+  // 169 -> 171 init / 128 -> 130 update: SWARM-02 juice pack — the arcade detector (swarmJuice,
+  // one slot after swarmChain so it reads the kills this tick settled) and its DOM-guarded
+  // presenter (swarmJuiceHud, after survivalHud); one in both orders each.
+  // 171 -> 172 init / 130 -> 131 update: RAVEL is a fixed-step character owner
+  // after BRACKET and before physics, shared by browser and Node production paths.
+  // 172 -> 173 init / 131 -> 132 update: SWARM-06 swarmElites — the Threat stamp, seeded
+  // elite affixes and the live perk effects (§6.4/§4.3). One system in both orders, after
+  // swarmJuice so a wave's spawn receipts are already stamped before the HUDs read.
+  // 173 -> 174 init / 132 -> 133 update: SOLSTICE / SL-9 system owner, registered with
+  // the character owners after ravel and before physics.
+  // 174 -> 175 init / 133 -> 134 update: RUBRIC / HM-11 system owner, after solstice and
+  // before physics, in both orders.
+  // 176 -> 178 init / 135 -> 137 update: gyreSnare (telekinetic katamari lash, after
+  // fields and before planetRuntime/physics) and gyreHud (DOM-guarded pill, after
+  // fieldHud) — one system each in both orders.
+  // Latch Nine's physical harbor service and Scissorwake's first-encounter requester.
+  // Two bounded Ceres concepts and the event-only evidence prompt.
+  // 200 init / 151 update with secondRinse (Hasp) and ruud (HOOK-LEFT).
+  // Hasp follows palletJack; HOOK-LEFT follows ruckus before physics.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 200);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 151);
+  assert.equal(PRODUCTION_INIT_ORDER.includes('stuckTowPrompt'), true);
+  assert.equal(PRODUCTION_UPDATE_ORDER.includes('stuckTowPrompt'), false);
+  assert.equal(getSystemClock('moralTrap'), 'calendar');
+  assert.equal(getSystemClock('moralTrapSystem'), 'calendar');
+  assert.ok(PRODUCTION_INIT_ORDER.includes('ravel'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('bracket') < PRODUCTION_UPDATE_ORDER.indexOf('ravel'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('ravel') < PRODUCTION_UPDATE_ORDER.indexOf('physics'));
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
@@ -111,6 +145,11 @@ test('production init + update order lengths match the live browser baseline', (
   assert.ok(PRODUCTION_INIT_ORDER.indexOf('combat')
     < PRODUCTION_INIT_ORDER.indexOf('capitalBossEncounters'));
   assert.ok(PRODUCTION_INIT_ORDER.includes('capitalBossEncounters'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('palletJack')
+    < PRODUCTION_UPDATE_ORDER.indexOf('secondRinse'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('secondRinse')
+    < PRODUCTION_UPDATE_ORDER.indexOf('aiSlot'));
+  assert.ok(PRODUCTION_INIT_ORDER.includes('secondRinse'));
 });
 
 // J6: every system in update order must also be initialized (update ⊆ init).
@@ -222,7 +261,22 @@ test('browser production system set is unchanged vs production manifest constant
   // 164 with miningHud (INF lane): the mining instrument joins both orders beside the
   // other DOM-guarded HUDs (massSeedHud/fieldHud/planetHud posture).
   // 165 with hullBurst (hull-burst overhaul slice C; one system in both orders).
-  assert.equal(registry.systems.length, 166);
+  // 166 with morrow (fixed-step character owner before physics); 167 with vesper (same
+  // posture — one system in both orders, between morrow and physics). 168 with
+  // volatileExposure (NXB-008, beside jettisonImpulse in both orders).
+  // 169 with bracket (PR #210 — a third fixed-step character owner before physics).
+  // 171 with SWARM-02 juice pack — swarmJuice (arcade detector, after swarmChain) and
+  // swarmJuiceHud (DOM-guarded presenter, after survivalHud), one system in both orders each.
+  // 172 with ravel (PR #217 — fixed-step character owner after bracket, before physics).
+  // 173 with SWARM-06 swarmElites (the Threat/affix/perk runtime; one system in both orders,
+  // after swarmJuice so cohort stamps precede the HUDs' readout).
+  // 174 with solstice (SL-9 system owner, after ravel and before physics).
+  // 175 with rubric (HM-11 system owner, after solstice and before physics).
+  // 177 with the Gyre Snare pair — gyreSnare (the held-verb lash itself, between
+  // fields and physics) and gyreHud (DOM-guarded lane pill beside fieldHud), one
+  // system in both orders each.
+  // 200 with secondRinse and ruud, each registered once in both orders.
+  assert.equal(registry.systems.length, 200);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));
@@ -299,4 +353,12 @@ test('authoritativeIdentityEqual detects profile and order drift', () => {
   const c = resolveRuntimeManifest({ profileId: 'legacy47a' });
   assert.equal(authoritativeIdentityEqual(a, b), true);
   assert.equal(authoritativeIdentityEqual(a, c), false);
+});
+
+// FB-089: the table clock is declared, never defaulted. Every production update-order id
+// must appear in exactly one clock list (or hold a glass capability) — a new system with
+// no declaration fails here with its id named.
+test('every production update-order system has exactly one declared clock', () => {
+  const violations = validateSystemClockDeclarations();
+  assert.deepEqual(violations, [], `clock declaration violations: ${violations.join('; ')}`);
 });

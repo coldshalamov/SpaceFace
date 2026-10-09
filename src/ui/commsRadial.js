@@ -23,6 +23,7 @@ import { laneInputWrite } from '../core/simLaneCommands.js';
 import { createMorphLabel } from './effects/morphLabel.js';
 import { factionIcon, icon as stationIcon } from './station/icons.js';
 import { dpIcon } from './deckplate/icons.js';
+import { injectCommsLayouts } from './orrery/commsLayouts.js';
 import { FACTION_META } from '../data/factions.js';
 import { tierFor, factionStandingGuidance } from './factionStanding.js';
 import { resolveEntity } from './entityResolver.js';
@@ -207,7 +208,7 @@ function actionReason(actionId, availability, state, target) {
   }
   if (actionId === CONTACT_HAIL_ACTION_HEAVE_TO && availability.heaveToAvailable !== true) {
     const role = roleWord(target);
-    if (role && !HEAVE_TO_COMPLIANT_ROLES.has(role)) return 'ROLE WILL NOT HEAVE';
+    if (role && !HEAVE_TO_COMPLIANT_ROLES.has(role)) return 'CREW WILL NOT HEAVE TO';
     const record = traderRecord(state, availability.targetId);
     if (record && record.heaveTo === false) return 'NO HOLD WINDOW';
     return '';
@@ -271,8 +272,14 @@ function layoutSelectorArc(host, buttons) {
   rail.setAttribute('height', String(total));
   rail.setAttribute('viewBox', `0 0 ${bow + 24} ${total}`);
   const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  path.setAttribute('d', `M${bow + 11} 0Q${11 - bow} ${half} ${bow + 11} ${total}`);
+  const railD = `M${bow + 11} 0Q${11 - bow} ${half} ${bow + 11} ${total}`;
+  path.setAttribute('d', railD);
   rail.appendChild(path);
+  // the spine is a band (the path) under a crisp edge (this twin), as every structure in the interface is
+  const edge = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  edge.setAttribute('class', 'sf-commsfan__edge');
+  edge.setAttribute('d', railD);
+  rail.appendChild(edge);
   host.insertBefore(rail, host.firstChild);
 }
 
@@ -340,9 +347,13 @@ export function createCommsRadial(ctx) {
   const root = typeof document !== 'undefined' ? document.getElementById('ui-root') : null;
   if (!root) return { tick() {}, destroy() {} };
 
+  injectCommsLayouts();
   const fan = document.createElement('div');
   fan.id = 'sf-commsfan';
   fan.className = 'sf-commsfan';
+  fan.setAttribute('role', 'dialog');
+  fan.setAttribute('aria-modal', 'true');
+  fan.setAttribute('aria-label', 'Quick communications');
   fan.hidden = true;
   fan.innerHTML = `
     <div class="sf-commsfan__fan" role="region" aria-label="Quick comms fan">
@@ -352,6 +363,7 @@ export function createCommsRadial(ctx) {
         <span class="sf-commsfan__class" data-k="classword">HOLD ALT</span>
         <span class="sf-commsfan__freq" data-k="freq"></span>
         <svg class="sf-commsfan__ribbon" viewBox="0 0 152 24" aria-hidden="true" focusable="false">
+          <path class="sf-commsfan__bloom" data-k="ribbon-bloom"></path>
           <path data-k="ribbon"></path>
         </svg>
       </button>
@@ -409,6 +421,7 @@ export function createCommsRadial(ctx) {
   const classEl = fan.querySelector('[data-k="classword"]');
   const wedgeHost = fan.querySelector('[data-k="wedgehost"]');
   const ribbonPath = fan.querySelector('[data-k="ribbon"]');
+  const ribbonBloom = fan.querySelector('[data-k="ribbon-bloom"]');
   const freqHost = fan.querySelector('[data-k="freq"]');
   const freqMorph = createMorphLabel(freqHost, { text: 'FREQ IDLE' });
 
@@ -467,6 +480,7 @@ export function createCommsRadial(ctx) {
     const amplitude = payload ? clamp01((Number(payload.expiresAt) - now) / Math.max(1, ttl)) : 0.22;
     const d = buildHailRibbonPath(visual.seed, amplitude, visual.density);
     ribbonPath.setAttribute('d', d);
+    if (ribbonBloom) ribbonBloom.setAttribute('d', d);
     const freq = hailFrequencyText(amplitude, visual.density);
     const dir = previousFreq && freq > previousFreq ? 'up' : previousFreq && freq < previousFreq ? 'down' : 'flat';
     freqMorph.set(freq, { dir });
@@ -502,8 +516,11 @@ export function createCommsRadial(ctx) {
       button.className = 'sf-commsfan__wedge';
       button.dataset.choice = action.id;
       button.dataset.why = why;
-      button.setAttribute('aria-label', `${action.label}${why ? `. ${why}` : ''}`);
+      const keyDigit = i + 1;
+      button.setAttribute('aria-keyshortcuts', String(keyDigit));
+      button.setAttribute('aria-label', `${action.label} (key ${keyDigit})${why ? `. ${why}` : ''}`);
       button.innerHTML = `
+        <span class="sf-commsfan__keychip mono" aria-hidden="true">${keyDigit}</span>
         ${wedgeIconSvg(action.id)}
         <span class="sf-commsfan__verb">${action.label}</span>
         ${why ? `<span class="sf-commsfan__why">${why}</span>` : ''}
@@ -566,30 +583,26 @@ export function createCommsRadial(ctx) {
       (Number(state.simTime) || 0) + CONTACT_HAIL_REQUEST_TTL_S,
     );
     if (!probe || !Array.isArray(probe.actions) || probe.actions.length === 0) return null;
-    return availability;
+    return { availability, probe };
   }
 
   function openFan() {
     if (open || isFlightBlocked(state)) return false;
-    const availability = buildTargetAvailability();
-    if (!availability) return false;
+    const info = buildTargetAvailability();
+    if (!info) return false;
+    const { availability, probe } = info;
     open = true;
     currentTargetId = availability.targetId;
     currentAvailability = availability;
-    activeOffer = null;
-    activePayload = null;
+    activeOffer = probe;
+    activePayload = probe;
     fan.hidden = false;
     fan.classList.add('is-open');
     if (!state.ui) state.ui = {};
     state.ui.commsRadialOpen = true;
     bus.emit('audio:cue', { id: 'ui_open' });
     bus.emit('contactHail:request', { targetId: currentTargetId, source: 'radial' });
-    updateHubVisual({
-      targetId: currentTargetId,
-      kind: availability.kind,
-      lines: [availability.label || 'CONTACT'],
-      expiresAt: (Number(state.simTime) || 0) + CONTACT_HAIL_REQUEST_TTL_S,
-    });
+    updateHubVisual(probe);
     renderFanWedges();
     nextUiUpdateAt = Number(state.simTime) || 0;
     return true;
@@ -597,6 +610,7 @@ export function createCommsRadial(ctx) {
 
   function closeFan() {
     if (!open) return;
+    const heldFocus = fan.contains(document.activeElement);
     open = false;
     activeOffer = null;
     lastWedgeSig = '';
@@ -605,6 +619,15 @@ export function createCommsRadial(ctx) {
     wedgeHost.replaceChildren();
     wedgeButtons = [];
     if (state.ui) state.ui.commsRadialOpen = false;
+    if (heldFocus && !deckOpen) restoreFlightFocus();
+  }
+
+  function restoreFlightFocus() {
+    if (isFlightBlocked(state)) return;
+    const canvas = document.getElementById('gl-canvas');
+    if (!canvas) return;
+    if (!canvas.hasAttribute('tabindex')) canvas.tabIndex = -1;
+    focusSafely(canvas);
   }
 
   function refText(ref) {
@@ -741,10 +764,12 @@ export function createCommsRadial(ctx) {
 
   function closeDeck() {
     if (!deckOpen) return;
+    const heldFocus = deck.contains(document.activeElement);
     deckOpen = false;
     deck.classList.remove('is-open');
     deck.hidden = true;
-    focusSafely(hubBtn);
+    if (open) focusSafely(hubBtn);
+    else if (heldFocus) restoreFlightFocus();
   }
 
   function onKeyDown(event) {
@@ -755,6 +780,18 @@ export function createCommsRadial(ctx) {
       if (escLatchedOnHold) return;
       openFan();
       return;
+    }
+    if (open && event.key >= '1' && event.key <= '9') {
+      const idx = Number(event.key) - 1;
+      if (idx >= 0 && idx < wedgeButtons.length) {
+        const btn = wedgeButtons[idx];
+        if (btn && !btn.classList.contains('is-dim') && btn.dataset && btn.dataset.choice) {
+          event.preventDefault();
+          event.stopPropagation();
+          choose(btn.dataset.choice, 'keyboard');
+          return;
+        }
+      }
     }
     if (event.key === 'Escape') {
       if (deckOpen) {
@@ -778,6 +815,18 @@ export function createCommsRadial(ctx) {
     altHeld = false;
     escLatchedOnHold = false;
     closeFan();
+  }
+
+  // Alt-Tab can deliver Alt's release to another app. Like the flight input owner,
+  // the hold-to-open fan must release its latch on blur instead of swallowing keys
+  // when the player returns to the game.
+  function onWindowBlur() {
+    altHeld = false;
+    escLatchedOnHold = false;
+    closeFan();
+  }
+  function onVisibilityChange() {
+    if (document.hidden) onWindowBlur();
   }
 
   function handleGamepadNav() {
@@ -834,6 +883,15 @@ export function createCommsRadial(ctx) {
   });
   document.addEventListener('keydown', onKeyDown, true);
   document.addEventListener('keyup', onKeyUp, true);
+  const windowTarget = document.defaultView;
+  windowTarget?.addEventListener('blur', onWindowBlur);
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  // The shared game accepts shell presence as well as DOM focus: Electron can minimize
+  // a fullscreen window without delivering the DOM blur that browsers normally send.
+  const offShellPresence = windowTarget?.spacefaceLifecycle?.subscribe(command => {
+    if (command.state !== 'foreground-visible') onWindowBlur();
+  });
+  if (typeof offShellPresence === 'function') unsubs.push(offShellPresence);
 
   attachBus('contactHail:offer', (payload) => {
     if (!payload || payload.targetId == null) return;
@@ -899,12 +957,17 @@ export function createCommsRadial(ctx) {
     destroyed = true;
     document.removeEventListener('keydown', onKeyDown, true);
     document.removeEventListener('keyup', onKeyUp, true);
+    windowTarget?.removeEventListener('blur', onWindowBlur);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
     for (const off of unsubs.splice(0)) {
       try { off(); } catch (_) {}
     }
     try { freqMorph.dispose(); } catch (_) {}
     fan.remove();
     deck.remove();
+    // A torn-down fan must not leave the held-open flag set, or the velocity tape stays
+    // suppressed on this state object with nothing left to clear it.
+    if (state.ui) state.ui.commsRadialOpen = false;
   }
 
   return { tick, destroy, openDeck };

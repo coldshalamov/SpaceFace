@@ -32,7 +32,7 @@ async function findFreePort(start) {
 
 const port = await findFreePort(8620);
 const url = `http://127.0.0.1:${port}/`;
-const server = spawn(process.execPath, ['server.js', String(port)], { cwd: ROOT, stdio: 'ignore', windowsHide: true });
+const server = spawn(process.execPath, ['server.js', String(port)], {env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },  cwd: ROOT, stdio: 'ignore', windowsHide: true });
 process.on('exit', () => { try { server.kill(); } catch (_) {} });
 let up = false;
 for (let i = 0; i < 160 && !up; i++) {

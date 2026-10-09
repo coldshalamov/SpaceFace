@@ -126,6 +126,6 @@ test('the renderer routes created pool meshes through the admission latch', () =
   const poolStart = RENDERER_SOURCE.indexOf('createAsteroidInstancePool(scene, {');
   assert.ok(poolStart >= 0, 'the renderer must pass an admission hook to the pool');
   const block = RENDERER_SOURCE.slice(poolStart, poolStart + 400);
-  assert.match(block, /onMeshCreated:\s*\(mesh\)\s*=>\s*\{\s*void admitSubjectPipelines\(mesh\)/,
+  assert.match(block, /onMeshCreated:\s*\(mesh\)\s*=>\s*\{\s*void admitSubjectPipelines\(mesh[,\s]/,
     'created pool meshes must compile+upload behind the pending latch');
 });

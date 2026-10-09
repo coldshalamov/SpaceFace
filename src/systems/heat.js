@@ -21,6 +21,7 @@
 // Tunables kept conservative so a casual smuggler isn't perma-hunted, but a murderous pirate feels
 // real consequences. All clamp at 1.
 import { isRunSealed } from '../core/runSeal.js';
+import { SHIPS } from '../data/ships.js';
 
 const HEAT_MAX = 1;
 const KILL_NONHOSTILE = 0.28;      // piracy kill of a clean ship
@@ -163,6 +164,36 @@ function shortText(value, max) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+const SHIP_NAME_BY_ID = new Map(SHIPS.map((def) => [def && def.id, def && def.name]));
+// victimClass words that mean "unnamed thing", not a party — humanizing them would print
+// 'Ship' where the alert should say nothing at all.
+const GENERIC_AFFECTED_CLASSES = new Set(['ship', 'station', 'payload']);
+
+/** The party an incident hit as presentation may say it — a name, never the stable id
+ *  (`entity:379`, `hauler_7`, `pq077_capsule`). Returns null when nothing readable exists;
+ *  absence renders as absence, never an invented party. */
+export function incidentPartyLabel(receipt, state) {
+  if (!receipt || typeof receipt !== 'object') return null;
+  const explicit = shortText(receipt.victimLabel, 48);
+  if (explicit) return explicit;
+  const data = receipt.victimEntityId != null
+    && state && state.entities && typeof state.entities.get === 'function'
+    ? (state.entities.get(receipt.victimEntityId) || {}).data
+    : null;
+  if (data) {
+    const named = shortText(data.name, 48) || shortText(data.callsign, 48)
+      || shortText(data.ai && data.ai.name, 48) || shortText(data.trafficLabel, 48);
+    if (named) return named;
+    const defName = SHIP_NAME_BY_ID.get(data.defId);
+    if (typeof defName === 'string' && defName.length > 0) return defName;
+  }
+  const victimClass = shortText(receipt.victimClass, 48);
+  if (victimClass && !GENERIC_AFFECTED_CLASSES.has(victimClass)) {
+    return victimClass.replace(/_/g, ' ');
+  }
+  return null;
+}
+
 // Defensive copy of the convicting-incident record for the public packet. Unknown shapes
 // (old saves, foreign writers) degrade to null rather than a half-invented explanation.
 function evidenceAgePassed(record, now) {
@@ -180,6 +211,7 @@ function incidentSnapshot(record, now = null) {
     kind: shortText(record.kind, 32),
     incidentReceiptId: record.incidentReceiptId,
     affected: shortText(record.affected, 48),
+    affectedLabel: shortText(record.affectedLabel, 48),
     witnessCount: Number.isFinite(Number(record.witnessCount))
       ? Math.max(0, Number(record.witnessCount) | 0) : 0,
     jurisdiction: shortText(record.jurisdiction, 48),
@@ -426,6 +458,8 @@ export const heat = {
       incidentReceiptId,
       affected: shortText(
         receipt.victimStableId || receipt.victimClass || receipt.payloadStableId || null, 48),
+      // The id stays for traceability; the label is the only party the alert may print.
+      affectedLabel: shortText(incidentPartyLabel(receipt, this.state), 48),
       witnessCount,
       jurisdiction: shortText(receipt.stationId || null, 48),
       evidenceClass: discovered ? 'discovered' : shortText(receipt.evidenceClass, 32),

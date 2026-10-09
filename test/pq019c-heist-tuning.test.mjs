@@ -136,7 +136,14 @@ test('the escape hold is at least one second and latches inside the run window',
 
 test('the payout beats honest risk-3 work without making it pointless', () => {
   const risk = (MISSION_TUNING.RISK_MULT && MISSION_TUNING.RISK_MULT[3]) || 2.2;
-  const boardMax = Math.round(Math.max(...Object.values(MISSION_TUNING.BASE)) * risk);
+  // The honest ceiling is the best ORDINARY board contract — procedurally-offered work.
+  // authored_set_piece and capital_boss are posted set-pieces (proceduralWeight: 0), the same
+  // class as the heist itself: a one-time 1237cr capital contract does not compete with
+  // repeatable honest income the way board work does.
+  const ordinary = Object.entries(MISSION_TUNING.BASE)
+    .filter(([type]) => type !== 'authored_set_piece' && type !== 'capital_boss')
+    .map(([, base]) => base);
+  const boardMax = Math.round(Math.max(...ordinary) * risk);
   assert.ok(PQ019C_HEIST_TUNING.payoutCr > boardMax,
     `${PQ019C_HEIST_TUNING.payoutCr}cr must beat the ${boardMax}cr best ordinary risk-3 contract: `
     + 'this run costs heat, a WANTED flag and a real chance of losing the capsule');

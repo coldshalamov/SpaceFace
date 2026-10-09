@@ -25,6 +25,7 @@ import {
   worldSiteManifestById,
 } from '../../src/data/worldSiteManifests.js';
 import { CINDER_SLUICE_SITE_ID } from '../../src/data/environmentalMachinery.js';
+import { CERES_SHIPBREAK_SITE_ID } from '../../src/data/ceresShipbreak.js';
 import { forEachDressingRow } from '../../src/world/dressingTable.js';
 import { asteroidSites } from '../../src/systems/asteroidSites.js';
 import { trafficRoleMixForSector } from '../../src/systems/traffic.js';
@@ -33,6 +34,7 @@ import {
   createWorldSiteRecord,
   planWorldSiteMaterialization,
 } from '../../src/systems/worldSiteKernel.js';
+import { syncWorldSiteMaterialization } from '../../src/systems/worldSiteRuntime.js';
 import {
   buildSystemModel,
   resolveCourseTarget,
@@ -122,31 +124,71 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // (48 primitives), growing colliders from 68 (single balls/capsules) to 236 (60 station/gate +
 // 128 asteroid + 48 ship). Entity/type census, cathedral census, releaseSha256 and every other
 // topology assertion are unchanged. Prior digest was 718d39d8123d511762ea7f84901c359088fe1372c55abae632271c8e2eb32544.
+// 2026-10-05: re-pinned after adjudicating D90/D145 — every delta traced to authored work.
+// SOLSTICE / SL-9 (5103e8668) added the Star Lantern (poi_solstice_lantern) → authored pois
+// 9 → 10. _spawnPOIs() draws two rng values per POI even for authored fixed `pos`, so the new
+// POI shifts the deterministic spawn stream: one patrol ship's new landing falls inside the
+// far-shelf boundary, so the live core census drops ship 2 → 1 (entities 38 → 37, collidable
+// 14 → 13, colliders 236 → 212 as its 24-primitive solid skin leaves the live list). The
+// Long Berth yard tug now stays live too — D141 (09132834b) excludes physical worldOneOff
+// bodies from the far shelf because lean far rows strip the identity fields needed to
+// rematerialize them without duplicates — but additive-dressing entities are excluded from
+// this core census, so it moves only the dressing pin below, not this digest's entity counts.
+// Cathedral census 15/15 (14 shelved), all topology/exact-agreement assertions unchanged.
+// Prior digest was b0627637f6ac3f120dc67fb2197c0817165bf3d002dcaf8ca1fcacf9af9028c0.
+// 2026-10-03: re-pinned for the solid-dressing lane (D161 adjudication): Ceres activity
+// objects that re-point dressing props (disabled refinery hull → dead-hulk draw, bait wreck,
+// grave shard, cargo staging pod → barge draw) now take fixed measured-skin bodies, so their
+// census rows gained real colliders. The transit weigh beacon keeps its authored no-presence
+// contract (explicit `collides:false` on poi_ceres_throughline — it stays a non-colliding
+// route marker mid-lane). Entity/type census, cathedral census, releaseSha256 and every
+// topology/exact-agreement assertion are unchanged. Prior digest was
+// 8404e62c8acaa5e75feca22c173c32ee3597254df16ab0f4db176d516cf77e1b.
+//
+// 2026-10-05 (7f6f048ef): the four Ceres activity-object slots (dead hulk, bait wreck, grave
+// shard, conveyor barge) repoint ambient props the pocket loop was going to draw anyway — the
+// pocket contract says a slot is free of entity, collider, and draw cost, so the slot entities
+// take the ghost branch instead of measured-skin bodies. Census moves 19→15 collidable and
+// 329→260 colliders; the remaining solids are the legit dressing targets. Prior digest was
+// 1e245a850b53c10a7de1cda7ce4caf7cf97685e39f5e1b39e30529c4b15e68a6.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  'b0627637f6ac3f120dc67fb2197c0817165bf3d002dcaf8ca1fcacf9af9028c0';
+  'f3ddedcef9d4992fcf9a7c39c983fe967ab1f4906e72a4302e148fd203b5d333';
 
-const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
+// PR221 preserves static site anatomy under its canonical owner: the Cathedral's fourteen
+// wrecks stay live instead of losing fixed/compound geometry on the generic far shelf. Ceres
+// also gains Second Measure and RU-7's work-yard POIs; the seeded patrol moves into live range.
+// The seed47 one-tick core is 52 entities / 23 solids / 291 primitives, with no geometry moved.
+const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID, CERES_SHIPBREAK_SITE_ID]);
+// 2026-10-03 (solid-dressing lane, D161 adjudication): dressing structures the player can see
+// now take fixed measured-skin bodies — the census collider equals the drawn model, sized from
+// modelTruthCensus. Pieces under the craft-scale floor (frag scraps, small pins) stay ghosts.
 const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
   everydaySpaceKit: Object.freeze({
     entities: 6,
     byType: Object.freeze({ fx: 6 }),
-    collidable: 0,
-    colliders: 0,
+    collidable: 3,
+    colliders: 58,
   }),
   wreckAftermath: Object.freeze({
     entities: 4,
     byType: Object.freeze({ fx: 4 }),
-    collidable: 0,
-    colliders: 0,
+    collidable: 3,
+    // Second Measure adds a wreck-field anchor. The same isolated aftermath RNG now selects
+    // a different ordinary field (pre-PR221 sectors alone restore the old 58 primitives).
+    colliders: 38,
   }),
-  // PQ-143.02: the strut shrine, the pirate ram, and the eight pod-field shells are the
-  // non-colliding fx dressing. The yard tug is a physical wreck and leaves the fx census when
-  // the far-actor shelf takes it. Excluded from the core structural census.
+  // PQ-143.02: the Long Berth yard tug is an authored physical wreck (0c6f0ea1a). It used to
+  // leave this census whenever the far-actor shelf took it; D141 (09132834b) deliberately
+  // excludes data.worldOneOff bodies from shelving — lean far rows strip the identity fields
+  // needed to rematerialize a unique one-off and re-minted duplicates — so it stays live,
+  // collidable, and carries its 24-primitive measured skin. The strut shrine, the pirate ram,
+  // and the pod-field shells above the craft-scale floor join it as measured-skin solids under
+  // the solid-dressing lane. Still excluded from the core structural census.
   worldOneOff: Object.freeze({
-    entities: 10,
-    byType: Object.freeze({ fx: 10 }),
-    collidable: 0,
-    colliders: 0,
+    entities: 11,
+    byType: Object.freeze({ fx: 10, wreck: 1 }),
+    collidable: 9,
+    colliders: 183,
   }),
 });
 
@@ -843,19 +885,21 @@ function censusLiveEntities(entities) {
 }
 
 function censusPlannedWorldSite(manifest) {
-  const plan = planWorldSiteMaterialization(
-    manifest,
-    createWorldSiteRecord(manifest, { tick: 0 }),
-  );
-  const collidable = plan.entities.filter((entity) => (
-    entity.collides === true || entity.bodyType === 'solid'
-  ));
-  return {
-    entities: plan.entities.length,
-    byType: countTypes(plan.entities),
-    collidable: collidable.length,
-    colliders: collidable.length,
-  };
+  // A plan's `payload` is an abstract operation result: structural payloads materialize as
+  // finite collidable wreck sections, including their authored compound boxes. Project with
+  // the existing runtime owner, rather than duplicating its body/type rules in this checker.
+  const sim = createSimulation({ seed: 47, systems: [] });
+  try {
+    const result = syncWorldSiteMaterialization({
+      state: sim.state,
+      helpers: sim.helpers,
+      manifest,
+      record: createWorldSiteRecord(manifest, { tick: 0 }),
+    });
+    return censusLiveEntities(result.entities);
+  } finally {
+    sim.dispose();
+  }
 }
 
 function countTypes(entities) {
@@ -1025,6 +1069,16 @@ function validateAdditiveWorldSites(value, failures) {
   };
   if (stableStringify(cinder?.planned) !== stableStringify(expectedCinder)) {
     failures.push(`additiveWorldSites.${CINDER_SLUICE_SITE_ID}:contract-drift`);
+  }
+  const secondMeasure = sites.find((site) => site?.siteId === CERES_SHIPBREAK_SITE_ID);
+  const expectedSecondMeasure = {
+    entities: 12,
+    byType: { fx: 1, wreck: 11 },
+    collidable: 8,
+    colliders: 16,
+  };
+  if (stableStringify(secondMeasure?.planned) !== stableStringify(expectedSecondMeasure)) {
+    failures.push(`additiveWorldSites.${CERES_SHIPBREAK_SITE_ID}:contract-drift`);
   }
 }
 

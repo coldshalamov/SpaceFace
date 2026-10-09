@@ -217,6 +217,8 @@ test('the pack bake is shared per hull record + engine profile, so wave spawns d
   // round-zero -> wave-1 pack boundary (seed 4242) were these per-compose Retro_* bakes.
   const skin = new THREE.BoxGeometry(1.6, 0.4, 0.7);
   const record = {
+    url: 'parts/hulls/wasp.glb',
+    assetId: 'wasp-hull',
     bounds: { size: [2, 1, 1] },
     primitives: [{ geometry: skin, matrix: new THREE.Matrix4(), tags: { lod: 'lod0' } }],
   };
@@ -257,9 +259,15 @@ test('the pack bake is shared per hull record + engine profile, so wave spawns d
   const other = packMeshes(mount('ship_leviathan'));
   assert.notEqual(other[0].geometry, a[0].geometry, 'engine profiles keep distinct bakes');
   // A different record is a different hull — never shares the bake.
-  const record2 = { ...record, primitives: [...record.primitives] };
+  const record2 = { ...record, url: 'parts/hulls/hornet.glb', assetId: 'hornet-hull', primitives: [...record.primitives] };
   const c = packMeshes(mount('ship_wasp', record2));
   assert.notEqual(c[0].geometry, a[0].geometry, 'the cache is per hull record');
+  // A re-decode of the SAME authored file mints a new record object — the bake is still
+  // identical, so the stable url identity must hit the same cache entry (evict-and-reload
+  // cannot strand resident buffers behind a fresh WeakMap key).
+  const recordReload = { ...record, primitives: [...record.primitives] };
+  const r = packMeshes(mount('ship_wasp', recordReload));
+  assert.equal(r[0].geometry, a[0].geometry, 'a re-decoded record for the same file shares the bake');
   // And hulls without a record keep the per-attach bake: the live-tree skin is per-hull.
   const bare = (hull) => packMeshes(hull);
   const hullX = new THREE.Group();
@@ -271,4 +279,72 @@ test('the pack bake is shared per hull record + engine profile, so wave spawns d
   const mx = bare(hullX).filter((m) => m.geometry.userData.spacefaceSharedAsset);
   assert.equal(mx.length, 0, 'unmeasured hulls never enter the shared cache');
   assert.ok(bare(hullY).length >= 10, 'unmeasured hulls still get a full pack');
+});
+
+test('package records share the bake through their own subtree — the +29s wave-uploads path', () => {
+  // Whole-ship/package records carry renderPackage, not primitives. Before the fix they fell
+  // through to a per-attach bake, so every in-round twin uploaded fresh Retro_* buffers at
+  // first draw (the res:GLTFKit_ship_wasp rows measured +29s into the seed-4242 fight). The
+  // record's own instantiated subtree is the record-determined soup, so passing it as skinRoot
+  // shares the bake across every twin of the same hull record.
+  const packageRecord = {
+    url: 'parts/wholeships/ashline_dart.glb',
+    assetId: 'SF_WHOLESHIP_ASHLINE_DART',
+    renderPackage: { assetId: 'pkg-wasp' },
+  };
+  const bodyGeometry = () => new THREE.BoxGeometry(1.6, 0.4, 0.7);
+  const mountPackaged = (extraSibling = null) => {
+    const hull = new THREE.Group();
+    const skinRoot = new THREE.Group();
+    skinRoot.add(new THREE.Mesh(bodyGeometry(), new THREE.MeshBasicMaterial()));
+    hull.add(skinRoot);
+    if (extraSibling) hull.add(extraSibling);
+    attachRetroMounts(hull, { data: { defId: 'ship_wasp' } }, {}, null, packageRecord, skinRoot);
+    return hull;
+  };
+  const packMeshes = (hull) => {
+    const out = [];
+    hull.traverse((o) => { if (o.isMesh && /^Retro_/.test(o.name)) out.push(o); });
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  };
+  const hullA = mountPackaged();
+  const a = packMeshes(hullA);
+  assert.ok(a.length >= 10, 'packaged hull still gets the full two-pack hardware');
+  const hullB = mountPackaged(
+    // Hull B bolts a fat sibling beside the record subtree — a fitted mount. The shared bake
+    // must ignore it: seats measure the authored body only.
+    new THREE.Mesh(new THREE.BoxGeometry(4, 4, 4), new THREE.MeshBasicMaterial()),
+  );
+  const b = packMeshes(hullB);
+  assert.equal(b.length, a.length);
+  for (let i = 0; i < a.length; i++) {
+    assert.equal(a[i].geometry, b[i].geometry,
+      `${a[i].name}: twins share the baked buffers — no per-spawn merge or upload`);
+    assert.equal(a[i].geometry.userData.spacefaceSharedAsset, true);
+  }
+  for (const side of ['Port', 'Starboard']) {
+    const pivotA = hullA.getObjectByName(`Retro_Thruster_${side}`).position.toArray();
+    const pivotB = hullB.getObjectByName(`Retro_Thruster_${side}`).position.toArray();
+    assert.deepEqual(pivotA, pivotB, `${side}: the fitted sibling never shifts the shared seat`);
+  }
+  // A record with no primitives AND no skinRoot still cannot prove its soup is
+  // record-determined, so it keeps the per-attach bake.
+  const hullC = new THREE.Group();
+  hullC.add(new THREE.Mesh(bodyGeometry(), new THREE.MeshBasicMaterial()));
+  attachRetroMounts(hullC, { data: { defId: 'ship_wasp' } }, {}, null, packageRecord);
+  const c = packMeshes(hullC).filter((m) => m.geometry.userData.spacefaceSharedAsset);
+  assert.equal(c.length, 0, 'a record without a measured subtree stays per-attach');
+  // Two different package records never share — the cache keys on the authored file identity.
+  const record2 = {
+    url: 'parts/wholeships/hornet.glb',
+    assetId: 'SF_WHOLESHIP_HORNET',
+    renderPackage: { assetId: 'pkg-hornet' },
+  };
+  const hullD = new THREE.Group();
+  const skinRoot2 = new THREE.Group();
+  skinRoot2.add(new THREE.Mesh(bodyGeometry(), new THREE.MeshBasicMaterial()));
+  hullD.add(skinRoot2);
+  attachRetroMounts(hullD, { data: { defId: 'ship_wasp' } }, {}, null, record2, skinRoot2);
+  const d = packMeshes(hullD);
+  assert.notEqual(d[0].geometry, a[0].geometry, 'the cache is per hull record');
 });

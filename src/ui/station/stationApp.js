@@ -19,7 +19,9 @@ import { stationIcon } from './stationArt.js';
 import { createStationEffects, stationMotionAllowed } from './stationEffects.js';
 import { ensureStylesheet } from './stationStyles.js';
 import { createStationCommands } from './stationCommands.js';
-import { berthSeatDefId, buildDockArrival, writeBerthArrival } from '../dockArrival.js';
+import {
+  berthSeatDefId, bindReturningPilotSummary, buildDockArrival, finishReturnSummary, writeBerthArrival,
+} from '../dockArrival.js';
 import { createFactionsScreen } from './screens/factions.js';
 import { createMarketScreen } from './screens/market.js';
 import { createContractsScreen } from './screens/contracts.js';
@@ -52,6 +54,7 @@ import { injectOrreryStation, setVitalDial, vitalDialSvg, vitalValueHtml } from 
 import { injectOrreryStationTabs } from '../orrery/stationTabsLayouts.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { AMMO_BATCH as MUNITIONS_LOAD } from './serviceQuotes.js';
+import { tradeClearedReceipt, TRADE_EXPECTATION_KEY } from './tradeReceipt.js';
 
 const STATION_REC = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_REC.set(s.id, { station: s, sector: sec });
@@ -200,6 +203,7 @@ function departureChipIntent(chip) {
 }
 
 export function createStationApp(rootEl, ctx, opts = {}) {
+  bindReturningPilotSummary(ctx && ctx.bus, ctx && ctx.state);
   ensureStylesheet();
   const state = () => (ctx && ctx.state) || {};
   const stationId = () => (state().ui && state().ui.dockedStationId) || null;
@@ -670,13 +674,13 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
 
   const HELP = {
-    market: ['Trade scope', 'Select a commodity to inspect price, demand and station pressure. Buy or sell against your credits and hold.'],
-    shipworks: ['Shipworks bay', 'Select a ship or a physical system slot, preview compatible equipment, then install through the real fitting system.'],
-    industry: ['Production line', 'Trace raw stock into refined goods and fabricated modules. Broken paths identify the exact missing input.'],
-    contracts: ['Missions board', 'Accept jobs, track routes, and settle objectives that complete at this berth. Highlighted rows need your attention first.'],
-    factions: ['Authority network', 'Select a faction to expose its standing thresholds, relationships, recent change and immediate unlocks.'],
-    bar: ['Station contacts', 'Contacts turn rumors and local knowledge into actionable leads, survey data and missions.'],
-    ledger: ["Ship's Ledger", 'The Tessera keeps what the manifests leave out. Physically recovered evidence pages open to their forensic detail.'],
+    market: ['Market', 'Pick a commodity to see its price, demand and stock. Buy or sell against your credits and hold space.'],
+    shipworks: ['Shipworks', 'Pick a ship or a slot, preview compatible gear, then install it.'],
+    industry: ['Industry', 'Trace raw stock into refined goods and modules. A broken line names the exact input it is missing.'],
+    contracts: ['Missions', 'Accept jobs, track routes and settle objectives that finish at this berth. Highlighted rows need attention first.'],
+    factions: ['Factions', 'Pick a faction to see its standing, relationships, recent changes and what it unlocks.'],
+    bar: ['Contacts', 'Contacts turn rumors and local knowledge into leads, survey data and missions.'],
+    ledger: ["Ship's Ledger", 'The Tessera keeps what the manifests leave out. Recovered evidence opens to full detail.'],
   };
   helpEl.addEventListener('click', () => {
     // Toggle, not re-open. With the trigger now exempt from close-on-outside-click, a second press
@@ -769,11 +773,19 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     navigate(destination, request.options && typeof request.options === 'object' ? request.options : {});
   });
 
+  subscribe('economy:tradeFailed', () => {
+    // A refused execute emits no tradeCompleted, so the market's confirmed-terms stamp would
+    // outlive its trade — and simTime is frozen while docked, so the stamp's TTL never ages it
+    // out. A later unstamped settle (an adventure decision on the same screen) must not borrow
+    // confirmation it never made; the slot dies with the refusal.
+    const s = state();
+    if (s && s.ui) s.ui[TRADE_EXPECTATION_KEY] = null;
+  });
   subscribe('economy:tradeCompleted', (p = {}) => {
-    const name = CMDTY_NAME.get(p.commodityId) || titleCaseWords(p.commodityId || 'cargo');
-    const verb = p.side === 'sell' ? 'SOLD' : 'BOUGHT';
-    const sign = p.side === 'sell' ? '+' : '−';
-    showReceipt('TRADE CLEARED', `${verb} ${fmtCr(p.qty)}u ${name}`, `${sign}${fmtCr(p.total)} cr`);
+    // SF-241: the receipt reads what settled through tradeTruth against the terms the market
+    // confirmed — a partial fill says "6 of the 10 confirmed", a full fill reports agreement.
+    const receipt = tradeClearedReceipt(state(), p);
+    showReceipt(receipt.title, receipt.line, receipt.detail);
     // The cargo handoff is a live task shortcut, not static onboarding copy. A completed trade
     // changes hold contents, credits, and whether the shortcut must open owned-only Sell mode.
     refresh();
@@ -835,6 +847,17 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         refuel: toCost(q('refuel'), 'refuel'),
         resupply: toCost(q('ammo'), 'ammo'),
         insurance: toCost(q('insurance'), 'insurance'),
+        // FB-049/FB-124 — the note and the manifest cover are berth services like the rest:
+        // quote them through the same table so every verb shows its live number. A draw
+        // pays the player, so it reads as a gain like redemption, not a price.
+        loan: (() => {
+          const lq = q('loan');
+          return lq && !lq.disabled
+            ? { text: `+${fmtCr(lq.amount)} cr`, tone: 'gain', title: lq.detail }
+            : { text: lq ? (lq.disabledReason || 'Unavailable') : 'Offline', disabled: true, title: lq ? lq.detail : 'Loan quote unavailable' };
+        })(),
+        settle: toCost(q('settle'), 'settle'),
+        cargoInsure: toCost(q('cargo_insurance'), 'cargo_insurance'),
         wash: washAvailable
           ? toCost(q('hull_wash'), 'hull_wash')
           : { text: 'Offline', disabled: true, title: 'Hull wash requires a repair berth' },
@@ -871,7 +894,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       commitUndock();
       return true;
     }
-    const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo', wash: 'hull_wash', insurance: 'insurance', rights: 'redeem_rights' };
+    const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo', wash: 'hull_wash', insurance: 'insurance', rights: 'redeem_rights', loan: 'loan', settle: 'settle', cargoInsure: 'cargo_insurance' };
     const type = typeMap[id];
     if (!type && bus) {
       const presence = runFactionPresenceDockAction(bus, state(), stationId(), id);
@@ -1077,9 +1100,29 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         acts: [carrying
           ? `<button type="button" ${stationControlAttrs('sell')} class="k-word k-word--fine fh-key fh-key--small sxb-vital__act" data-vital-act="sell"` +
             ` aria-label="Sell cargo at this station">Sell</button>`
-          : ''],
+          : '',
+          // FB-124 — the manifest cover lives on the hold row it prices.
+          vitalActHtml('cargoInsure', costs.cargoInsure, 'Cover', true)],
       },
     ];
+    // FB-049 — the note is an instrument, and instruments need a visible home. One action
+    // unit (like Munitions/Rights): present only while there is a balance to settle or a
+    // line left to draw.
+    const debtCr = Math.max(0, Math.round(Number(s.player && s.player.debt) || 0));
+    const loanOpen = !!(costs.loan && !costs.loan.disabled);
+    if (debtCr > 0 || loanOpen) {
+      vitals.push({
+        k: 'note', label: 'Ledger', frac: 0, tone: debtCr > 0 ? 'warn' : 'ok', track: false,
+        value: debtCr > 0 ? `Debt ${fmtCr(debtCr)} cr` : 'Credit line open',
+        aria: debtCr > 0
+          ? `${fmtCr(debtCr)} credits owed — stale notes levy a daily bounty share`
+          : 'A note can be drawn at this berth',
+        acts: [
+          vitalActHtml('settle', costs.settle, 'Settle'),
+          vitalActHtml('loan', costs.loan, 'Draw', true),
+        ],
+      });
+    }
     // Munitions has no meter in state, so it appears only when there is something to load — an
     // action-only unit rather than a permanently-present tile reading "Rearm".
     const muniAboard = Math.max(0, Math.floor(Number(cargo.items && cargo.items.cmdty_munitions) || 0));
@@ -1087,7 +1130,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       vitals.push({
         k: 'muni', label: 'Munitions', frac: Math.min(1, muniAboard / MUNITIONS_LOAD), tone: 'warn', track: false,
         value: `${fmtCr(muniAboard)} / ${MUNITIONS_LOAD}`, aria: `Munitions low: ${fmtCr(muniAboard)} aboard of a ${MUNITIONS_LOAD}-round load`,
-        acts: [vitalActHtml('resupply', costs.resupply, 'Resupply')],
+        acts: [vitalActHtml('resupply', costs.resupply, 'Rearm')],
       });
     }
     // Claimed rights surface only while there is something to redeem — like Munitions, this is
@@ -1163,7 +1206,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     let arrival = { news: null, eventCard: null };
     try { arrival = buildDockArrival(s, { id: stationId(), name: st.name, services: st.services, typeLabel: st.typeLabel, factionName: st.factionName }); } catch (_) { /* keep empty arrival */ }
     writeBerthArrival(
-      { newsEl, cardEl: eventEl },
+      { newsEl, cardEl: eventEl, state: s },
       arrival,
       '',
     );
@@ -1347,6 +1390,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       }
     },
     onHide() {
+      finishReturnSummary(state());
       shown = false; commands.setEnabled(false); effects.hide();
       if (receiptTimer) { clearTimeout(receiptTimer); receiptTimer = 0; }
       receiptEl.hidden = true;

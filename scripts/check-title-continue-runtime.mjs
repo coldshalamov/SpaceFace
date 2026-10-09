@@ -211,7 +211,10 @@ async function startFreshServer() {
 }
 
 function isHandledStoreProbeAbort(issue) {
+  // Only the boot GET probe is excused (10s client deadline, handled local merge fallback).
+  // A store PUT abort is a mirror regression and must still fail the probe.
   return issue && issue.type === 'error'
+    && issue.method === 'GET'
     && String(issue.text).includes('__spaceface_player_store')
     && String(issue.text).includes('net::ERR_ABORTED');
 }

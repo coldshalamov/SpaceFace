@@ -134,7 +134,8 @@ const GIMMICK_LABELS = {
 function getGimmickLabel(gimmick) {
   if (!gimmick) return '';
   const normalized = String(gimmick).toLowerCase().replace(/_/g, '-');
-  return GIMMICK_LABELS[normalized] || GIMMICK_LABELS[String(gimmick).toLowerCase()] || String(gimmick).toUpperCase();
+  return GIMMICK_LABELS[normalized] || GIMMICK_LABELS[String(gimmick).toLowerCase()]
+    || String(gimmick).replace(/_/g, ' ').toUpperCase();
 }
 
 export function targetDisplayName(e) {
@@ -196,8 +197,8 @@ export function richSeamTargetReadout(target, state) {
       return Object.freeze({
         state: 'open',
         text: opportunity.reservationId
-          ? `${seamLabel} · NPC HELP LOCK · +${opportunity.bonusU}u`
-          : `${seamLabel} · +${opportunity.bonusU}u · HOT CUT`,
+          ? `${seamLabel} · ALREADY CLAIMED · +${opportunity.bonusU}u`
+          : `${seamLabel} · +${opportunity.bonusU}u · OPEN`,
         opportunityId: opportunity.opportunityId,
       });
     }
@@ -309,7 +310,9 @@ export function wingLineFor(target, playerId) {
   const wingRole = IDENTITY_WING_ROLE[doctrineId] || (doctrineId ? 'press' : null);
   const tracking = target.data && target.data.combat && target.data.combat.targetId != null
     && playerId != null && target.data.combat.targetId === playerId;
-  const shortId = squadId.length > 18 ? squadId.slice(0, 17) + '…' : squadId;
+  // Squad ids are internal hex slugs — a long one shows only its tail as a unit number, never
+  // a truncated hash ('WING SQ-77F3C2A19B04D1E…').
+  const shortId = squadId.length > 8 ? squadId.slice(-4) : squadId;
   let line = `WING ${shortId.toUpperCase()}`;
   // Role slugs are already display-shaped (area_denial reads AREA DENIAL), so the panel
   // shares the grammar's vocabulary instead of keeping a second table to drift.
@@ -404,6 +407,19 @@ export function targetPhysicalClassLabel(t) {
   return typeof cls === 'string' && cls.length > 0 ? cls.toUpperCase() : null;
 }
 
+/**
+ * FB-058: the scanned ship's build badge — the label the buildIdentity system stamped on the
+ * entity. Shown only at the SF-133 disclosure stage (deep/full reveal, where fittings are
+ * disclosed); a class-band contact never advertises hidden hardware. Pure and DOM-free.
+ */
+export function targetBuildBadgeLabel(t) {
+  const data = t && t.data;
+  const reveal = data && data.scanRevealed;
+  const disclosed = reveal && (reveal.quality === 'full' || reveal.quality === 'deep');
+  const label = disclosed && data.buildIdentity ? data.buildIdentity.label : null;
+  return typeof label === 'string' && label.length > 0 ? label.toUpperCase() : null;
+}
+
 export function targetBountyPreview(target) {
   const amount = Math.max(0, Math.round(Number(target && target.data && target.data.bountyCr) || 0));
   if (amount <= 0) return 0;
@@ -480,6 +496,14 @@ export function objectInfoLine(t, state, p, dist) {
       facts.push(`Holds ${label}${amount > 0 ? ` ×${amount}` : ''}`);
     } else if (t.type === 'wreck') {
       facts.push('Salvageable');
+    }
+    // A disclosed kill record rides the same facts line in its own terse shape — the reveal's
+    // story exists only at identified+, so its presence IS the disclosure gate.
+    const record = t.type === 'wreck' && d.scanRevealed && d.scanRevealed.story ? d.scanRevealed : null;
+    if (record) {
+      const killer = d.provenance && d.provenance.killerLabel;
+      if (killer) facts.push(`Killer: ${killer}`);
+      if (Number.isFinite(record.daysAgo) && record.daysAgo > 0) facts.push(`${record.daysAgo}d ago`);
     }
   } else if (Number.isFinite(t.mass) && t.mass > 0) {
     facts.push(`Mass ${Number.isInteger(t.mass) ? t.mass : Math.round(t.mass * 100) / 100}`);
@@ -665,12 +689,14 @@ export function createTargetPanel(ctx) {
       const facShort = fac ? (fac.short || fac.name) : '—';
       const callsign = t.data && t.data.callsign;
       const classLabel = targetPhysicalClassLabel(t);
-      const idKey = `${tid}:${facShort}:${role}:${level}:${callsign || ''}:${classLabel || ''}`;
+      const badgeLabel = targetBuildBadgeLabel(t);
+      const idKey = `${tid}:${facShort}:${role}:${level}:${callsign || ''}:${classLabel || ''}:${badgeLabel || ''}`;
       if (idKey !== lastIdentityKey) {
         lastIdentityKey = idKey;
         const levelBit = level != null ? ` · L${level}` : '';
         const classBit = classLabel ? ` · ${classLabel}` : '';
-        setText(elIdentity, `${facShort} · ${role}${levelBit}${classBit}`);
+        const badgeBit = badgeLabel ? ` · ${badgeLabel}` : '';
+        setText(elIdentity, `${facShort} · ${role}${levelBit}${classBit}${badgeBit}`);
       }
       if (elIdentity.style.display !== 'block') elIdentity.style.display = 'block';
     } else if (elIdentity.style.display !== 'none') {

@@ -44,7 +44,11 @@ export default defineEncounter(trigger, {
   },
   civilian: {
     archetypes: ['mule_trader'],
-    size: [1, 1],
+    // Two haulers: a predation convoy is a freight LADEN pair, not one manifest hull
+    // (PQ-047 residual — custody stamps land on every hauler, so each must carry freight
+    // its own death can spill). Runtime predation still selects one stable carrier as the
+    // raid target; the second hauler flies the same lane under the same screen.
+    size: [2, 2],
     factionId: 'faction_mts',
     context: 'civilian',
     team: 2,

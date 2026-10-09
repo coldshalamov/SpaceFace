@@ -6,8 +6,19 @@
 // or tether assist. The authored waypoint position remains the fail-closed fallback if the entity is
 // absent during admission, destruction, or a save/load boundary.
 
+import { resolveEntitySelection } from './sim/stableSelection.js';
+
 export function resolveWaypointPresentationPosition(state, waypoint) {
   if (!waypoint) return null;
+  if (waypoint.stable) {
+    // The bind was stamped at arm time: a durable target follows its new instance, a
+    // recycled transient id resolves closed and the authored fix keeps the waypoint honest.
+    const entity = resolveEntitySelection(state, waypoint.stable);
+    const pos = entity && entity.alive !== false ? entity.pos : null;
+    if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) return pos;
+    const fallback = waypoint.pos;
+    return fallback && Number.isFinite(fallback.x) && Number.isFinite(fallback.z) ? fallback : null;
+  }
   const presentationId = waypoint.presentationEntityId;
   if (presentationId != null) {
     const entity = state?.entities?.get?.(presentationId);

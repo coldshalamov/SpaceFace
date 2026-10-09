@@ -45,3 +45,38 @@ test('persistent actors respawn exactly once per load — no duplicate generatio
   const snapshot2 = save._serializeEntities.call(saveOwner);
   assert.equal(snapshot2.persistent.length, 2, 'the serialized envelope stays flat across roundtrips');
 });
+
+// D136 — durable-record carriers got a duplicate generation from a different seam: sector
+// re-entry rematerialized the world record (unflagged shell) before the persistent envelope
+// respawned, so two live hulls shared one data.worldRecordId and both ended up persistent
+// (manifest/job anchors then pinned the mark). The envelope respawn must yield to a live
+// carrier, and a stale envelope that already carries two copies must collapse to one.
+test('a saved record carrier yields to a live carrier and envelope duplicates collapse', () => {
+  const { sim, state, saveOwner } = scene();
+  // World records deliberately carry no flags, so the shell a record rematerializes before
+  // the envelope arrives is not persistent — it survives the stale-clear that precedes the
+  // respawn and is exactly the twin D136 kept alive.
+  const shell = sim.spawn({
+    type: 'ship', team: 2, pos: { x: 10, z: 20 },
+    data: { worldRecordId: 'wr-d136-a', stableId: 'carrier-a' },
+  });
+  const remap = new Map();
+  const envelope = [
+    { id: 9001, type: 'ship', team: 2, pos: { x: 1, z: 1 }, flags: { persistent: true }, data: { worldRecordId: 'wr-d136-a', stableId: 'carrier-a' } },
+    { id: 9002, type: 'ship', team: 2, pos: { x: 2, z: 2 }, flags: { persistent: true }, data: { worldRecordId: 'wr-d136-b', stableId: 'carrier-b' } },
+    { id: 9003, type: 'ship', team: 2, pos: { x: 3, z: 3 }, flags: { persistent: true }, data: { worldRecordId: 'wr-d136-b', stableId: 'carrier-b' } },
+  ];
+  save._spawnPersistentEntities.call(saveOwner, envelope, remap);
+
+  const carriersA = state.entityList.filter(
+    (e) => e && e.alive !== false && e.data && e.data.worldRecordId === 'wr-d136-a');
+  assert.equal(carriersA.length, 1, 'one live hull per worldRecordId');
+  assert.equal(carriersA[0].id, shell.id, 'the live carrier is kept, not a respawned twin');
+  assert.equal(remap.get('9001'), shell.id, 'saved id remaps onto the live carrier');
+
+  const carriersB = state.entityList.filter(
+    (e) => e && e.alive !== false && e.data && e.data.worldRecordId === 'wr-d136-b');
+  assert.equal(carriersB.length, 1, 'a leaked envelope collapses to one carrier per record');
+  assert.equal(remap.get('9003'), carriersB[0].id, 'the stale duplicate remaps onto its carrier');
+  assert.equal(carriersB[0].flags.persistent, true, 'the surviving carrier keeps the saved mark');
+});

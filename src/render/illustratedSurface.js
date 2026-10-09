@@ -5,7 +5,7 @@
 // uniform owned by src/render/look.js (authored in src/data/lookMoods.js), and smooth paint
 // gains a clear coat — a sharp second specular lobe (sun glint + mirrored environment) and a
 // coloured grazing rim. The pastel albedo lift is gone: paint shows its authored value.
-import { Color, Vector3 } from 'three';
+import { Color, ShaderChunk, Vector3 } from 'three';
 import { HULL_LAYOUT_GLSL } from './illustratedHullLayout.js';
 import { LOOK_SURFACE_UNIFORMS } from './look.js';
 export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v13';
@@ -195,6 +195,36 @@ export function canonicalizeObjectSurfaceProgramKeys(root) {
   return changed;
 }
 
+// Stepped twin: explicit-stack pre-order DFS identical to traverse, yielding per
+// 512 nodes so the packaged-commit leg paces instead of landing as one span.
+export function* canonicalizeObjectSurfaceProgramKeysSteps(root) {
+  if (!root) return 0;
+  const visitObject = (object) => {
+    let changed = 0;
+    const list = Array.isArray(object.material) ? object.material
+      : object.material ? [object.material] : [];
+    for (const material of list) {
+      if (canonicalizeInstalledSurfaceProgramKey(material)) changed += 1;
+    }
+    return changed;
+  };
+  if (typeof root.traverse !== 'function') return visitObject(root);
+  let changed = 0;
+  const stack = [root];
+  let visited = 0;
+  while (stack.length > 0) {
+    const object = stack.pop();
+    if ((++visited % 512) === 0) yield;
+    changed += visitObject(object);
+    const children = object && object.children;
+    if (!Array.isArray(children)) continue;
+    for (let i = children.length - 1; i >= 0; i -= 1) {
+      if (children[i]) stack.push(children[i]);
+    }
+  }
+  return changed;
+}
+
 /** Chain existing packed-ORM/breakup hooks. One version key for every colour and hull. */
 export function installIllustratedSurface(material) {
   if (!material || (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial)
@@ -211,6 +241,12 @@ export function installIllustratedSurface(material) {
     shader.uniforms ??= {};
     // Shared objects, not copies: look.js writes one value and every hull program reads it.
     Object.assign(shader.uniforms, LOOK_SURFACE_UNIFORMS);
+    // Honour the authored/role env intensity under scene.environment (three only applies
+    // material.envMapIntensity to an explicit material.envMap), scaled by the Look.
+    const hullMaterial = this;
+    shader.uniforms.sfAuthoredEnv = { get value() {
+      return hullMaterial.envMap ? 1 : (Number.isFinite(hullMaterial.envMapIntensity) ? hullMaterial.envMapIntensity : 1);
+    } };
     shader.uniforms.sfPaintPigment = { value: new Color(pigment?.color || '#ffffff') };
     shader.uniforms.sfPaintStrength = { value: pigment?.strength || 0 };
     const layout = this.userData?.spacefaceHullLayout;
@@ -223,7 +259,11 @@ export function installIllustratedSurface(material) {
       .replace('#include <common>', '#include <common>\nattribute vec3 sfHullPosition;\nvarying vec3 vSfHullPosition;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfHullPosition = sfHullPosition;');
     shader.fragmentShader = shader.fragmentShader
+      .replace('#include <envmap_physical_pars_fragment>',
+        ShaderChunk.envmap_physical_pars_fragment.replaceAll('* envMapIntensity', '* (envMapIntensity * sfAuthoredEnv * sfLookSceneEnv)'))
       .replace('#include <common>', `#include <common>
+        uniform float sfAuthoredEnv;
+        uniform float sfLookSceneEnv;
         uniform float sfLookAlbedoGamma;
         uniform float sfLookAlbedoSaturation;
         uniform float sfLookBandMix;

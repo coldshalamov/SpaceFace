@@ -1,0 +1,43 @@
+{
+  "scope": "Read-only Tally-3 intake; no implementation acceptance",
+  "localHead": "561c0435ed294496650c2b864adc93abfb4530da",
+  "remoteReadOnlyObservation": {
+    "pr": 221,
+    "head": "6f4b153464585c7480d994af6f89103338790a3e",
+    "master": "df1af22e5a1f1b10d36cdab91473799b704dcd6a",
+    "state": "open",
+    "draft": true,
+    "mergeable": false,
+    "commentCount": 3
+  },
+  "sha256": {
+    "src/systems/salvage.js": "c609d90178a9189a52e574118fb00b087f47d6f7469c7dc99e7e154ece04bd7d",
+    "src/systems/claims.js": "6310374a8e6122f1ad921c3208ae70643bc75f90b37c4483ece9c7264207245d",
+    "src/systems/provenanceLedger.js": "283e87f563c141170e0a887f392a64915ab21945d81b50175e3fc94c9b5ad851",
+    "src/systems/economy.js": "e38f9a76b25d66d07768e8037cf9e39c2932391a47e7a85de0fc18f9d97c4607",
+    "src/systems/cargo.js": "15daf66f075ff4de5c301bb56399e8f00fcdde25242b59f1aa767aa9a638ec2b",
+    "src/core/pickupCustody.js": "139622406a124103ec0b087689416b069c16270a622ffde96580a463d3626b75",
+    "src/data/sectorZones.js": "e9efb4d71d3206517451bdd1b1f820e286a5d35e211af367e6981c553092e6ef",
+    "src/data/contactHail.js": "53f61af54558728243fe7e4b61545bdcf5a27828a54267f04092481361d600b5",
+    "src/systems/scanner.js": "d33d18e3010d143989ca655e91abc00becfe59c995c042e05ccebd6175a9fcc7",
+    "src/systems/scanReveal.js": "1fc36824ea35ab31b9c40255987c6863bd864c182a5f141dcc8a46924c90800e",
+    "src/systems/lawSecurity.js": "341583f3c014eb0fa52e7ab4d9ffefd569f857f83090fbe68991cb106cb8ab0f",
+    "src/ui/comms.js": "8ae5050c338653e60f85a444fb9a3e6c23440af7517a974efdf31e34eaacbd17",
+    "src/render/partsLibrary.js": "3d8f28bd9845df2ccca283597b6d472957412995986f4fa19f817b1f5de8659f",
+    "design/program/world-depth-2026-10-02/TWENTY_CONCEPT_MAP.json": "727d47494b2cc0bc24f048bffebc7a545e5cfef665df44e7e395e307251a686e",
+    "design/program/world-depth-2026-10-02/REVIEW_SYSTEM.md": "7b620cc74da332cf60158aed7a153c7e23877db2d4e15632c7d22c72b60e7a1c",
+    "design/program/world-depth-2026-10-02/REVIEW_LEDGER.json": "80d7a7bbcf6e6fbe7931260b6a039db75c20e29f87ef08f2f41cdd00a73c4983",
+    "design/program/NOW.md": "532035a36ec01a1553fb46fd356446b01787b804822125fdbd62dda4e94e020f",
+    "tools/blender/forge/FORGE.md": "7bfcbae129e70b558c67defce8f48bce1cfc1c90a4e3972a1ae103c19bda499a"
+  },
+  "baselineTestCommand": "node --test --test-concurrency=1 test/pq048-salvage-cutter-loop.test.mjs test/salvage-claim-theft.test.mjs test/econ-04-salvage-intake-receipt.test.mjs test/scan-wreck-provenance.test.mjs test/d130-salvage-point-scan-bound.test.mjs",
+  "baselineResult": {
+    "passed": 30,
+    "failed": 0
+  },
+  "missingReferencedInstructions": [
+    "assets/AGENTS.md",
+    "assets/ships/AGENTS.md",
+    "design/program/GRAPHICS_PROGRAM.md"
+  ]
+}

@@ -102,23 +102,41 @@ export const THEME_TO_MUSIC_STATE = Object.freeze({
   wanted: 'tense',
 });
 
-function bed(id, hzA, hzB, waveA, waveB, noise, tone, label) {
+function bed(id, hzA, hzB, waveA, waveB, noise, tone, label, stemWeights) {
   return Object.freeze({
     id, hzA, hzB, waveA, waveB, noise, tone, label,
     signature: `${waveA}:${hzA}:${waveB}:${hzB}:${noise}:${tone}`,
+    // FB-122 — sector register of the combat bed. Neutral (all 1) leaves state weights intact.
+    stemWeights: Object.freeze(stemWeights || { A: 1, B: 1, C: 1, D: 1 }),
   });
+}
+
+/** State weights × sector register. State identity stays on `stemWeights`; this is what is heard. */
+export function mixAudibleStemWeights(stateWeights, sectorWeights) {
+  const out = {};
+  for (const key of ['A', 'B', 'C', 'D']) {
+    const sector = sectorWeights && Number.isFinite(sectorWeights[key]) ? sectorWeights[key] : 1;
+    out[key] = Math.round((Number(stateWeights && stateWeights[key]) || 0) * sector * 1000) / 1000;
+  }
+  return Object.freeze(out);
+}
+
+/** WANTED motif transposed by two semitones per heat tier. Band 1 is unison. */
+export function wantedMotifRate(band) {
+  const steps = Math.max(0, Math.min(4, (Number(band) || 1) - 1));
+  return Math.round(Math.pow(2, (steps * 2) / 12) * 1000) / 1000;
 }
 
 // Per-sector beds: each sector a stranger can name from the bed alone (unique hz/wave/noise).
 export const SECTOR_BEDS = Object.freeze({
-  sector_helios_prime: bed('bed_helios', 82.4, 164.8, 'sine', 'triangle', 0.06, 1480, 'Helios Prime'),
+  sector_helios_prime: bed('bed_helios', 82.4, 164.8, 'sine', 'triangle', 0.06, 1480, 'Helios Prime', { A: 1, B: 0.4, C: 0.55, D: 0.85 }),
   sector_ceres_belt: bed('bed_ceres', 73, 110, 'triangle', 'sine', 0.22, 720, 'Ceres Belt'),
   sector_tethys_junction: bed('bed_tethys', 110, 220, 'square', 'sine', 0.14, 1840, 'Tethys Junction'),
   sector_vesta_forge: bed('bed_vesta', 55, 110, 'sawtooth', 'triangle', 0.28, 540, 'Vesta Forge'),
   sector_pallas_drift: bed('bed_pallas', 98, 147, 'triangle', 'sine', 0.1, 1240, 'Pallas Drift'),
   sector_io_reach: bed('bed_io', 65, 97.5, 'sawtooth', 'sine', 0.34, 680, 'Io Reach'),
   sector_charon_expanse: bed('bed_charon', 49, 73.5, 'sine', 'sine', 0.18, 420, 'Charon Expanse'),
-  sector_sker_haven: bed('bed_sker', 72, 145, 'sawtooth', 'square', 0.48, 720, 'Sker Haven'),
+  sector_sker_haven: bed('bed_sker', 72, 145, 'sawtooth', 'square', 0.48, 720, 'Sker Haven', { A: 0.25, B: 1, C: 1, D: 0.15 }),
   sector_veil_nebula: bed('bed_veil', 61.8, 92.7, 'sine', 'triangle', 0.08, 540, 'Veil Nebula'),
   sector_ashfall_reach: bed('bed_ashfall', 44, 88, 'sawtooth', 'sine', 0.4, 380, 'Ashfall Reach'),
 });
@@ -205,6 +223,35 @@ export function resolveThemeState(input = {}) {
 }
 
 /**
+ * SWARM-06 — the chain's music lift, 0..1. A running Swarm chain drags the audible stem mix
+ * toward the combat register without changing the STATE row the rest of the matrix resolves —
+ * same bed, same motif, a hotter mix of it. Pure and bounded: 40 chain saturates.
+ */
+export const SWARM_LIFT_CHAIN_FULL = 40;
+export function swarmChainLift(chain) {
+  const c = Math.max(0, Number(chain) || 0);
+  return Math.min(1, c / SWARM_LIFT_CHAIN_FULL);
+}
+
+/**
+ * The lifted mix: blend each audible stem toward the combat row's sector-registered weight,
+ * never downward — a station mix stays a station mix, it just lets the fight bleed in.
+ */
+export function applySwarmStemLift(audibleWeights, sectorWeights, lift) {
+  const k = clamp01(lift);
+  if (k <= 0) return audibleWeights;
+  const combat = THEME_STEM_WEIGHTS.combat;
+  const out = {};
+  for (const key of ['A', 'B', 'C', 'D']) {
+    const base = Number(audibleWeights && audibleWeights[key]) || 0;
+    const sector = sectorWeights && Number.isFinite(sectorWeights[key]) ? sectorWeights[key] : 1;
+    const toward = (Number(combat[key]) || 0) * sector;
+    out[key] = Math.round((base + Math.max(0, toward - base) * k) * 1000) / 1000;
+  }
+  return Object.freeze(out);
+}
+
+/**
  * Adaptive matrix: game presentation snapshot → authored stem weights, motif, per-sector bed,
  * optional faction sting. Pure.
  */
@@ -213,6 +260,11 @@ export function resolveThemeMatrix(input = {}) {
   const motif = THEME_MOTIFS[state];
   const stemWeights = THEME_STEM_WEIGHTS[state];
   const bedRow = resolveSectorBed(input.sectorId);
+  const sectorStemWeights = bedRow.stemWeights;
+  let audibleStemWeights = mixAudibleStemWeights(stemWeights, sectorStemWeights);
+  // SWARM-06: `input.swarmLift` (0..1) is the chain's hand on the faders — the same state row,
+  // driven hotter as the run's kill chain climbs.
+  audibleStemWeights = applySwarmStemLift(audibleStemWeights, sectorStemWeights, input.swarmLift);
   const stingRow = resolveFactionSting(input.factionId);
   const stem = MUSIC_STEMS.find((row) => row && (row.id === `stem_${motif.stem.toLowerCase()}` || row.label))
     || MUSIC_STEMS[0];
@@ -223,6 +275,8 @@ export function resolveThemeMatrix(input = {}) {
     musicState: THEME_TO_MUSIC_STATE[state],
     motif,
     stemWeights,
+    sectorStemWeights,
+    audibleStemWeights,
     stemId: motif.stem,
     stemDef: stem,
     bed: bedRow,

@@ -11,6 +11,7 @@ import {
   dossArchiveMapOffer,
 } from '../src/data/dossArchive.js';
 import { stationContacts } from '../src/systems/stationContacts.js';
+import { LAST_SHIFT, freshLastShiftRecord, lastShiftReport } from '../src/data/lastShift.js';
 import { MAP_FOCUS, MAP_SCREEN_ID } from '../src/ui/mapAuthority.js';
 import { applyMapOpenIntentToView } from '../src/ui/galaxyMap.js';
 import { buildReply, openDossArchiveMap } from '../src/ui/station/barContacts.js';
@@ -140,6 +141,22 @@ function publish(sourceId, state, bus) {
 function dossFlags(state) {
   return Object.keys(state.player.stationContacts[DOSS_ARCHIVE_CONTACT_ID]?.flags || {}).sort();
 }
+
+test('a filed Last Shift source appears immediately and invalid optional flags disappear on reconciliation', () => {
+  const { state, bus } = boot();
+  try {
+    const row = freshLastShiftRecord(); row.knownClueIds = ['fairlead']; row.revision = 1;
+    row.receipts.push({ id: `${LAST_SHIFT.siteId}:archive:r1`, revision: 1, clueIds: ['fairlead'],
+      destroyedClueIds: [], text: lastShiftReport(['fairlead']), at: 90 }); state.world.lastShift = row;
+    bus.emit('lastShift:archived', row.receipts[0]);
+    assert.deepEqual(dossFlags(state), ['doss_ceres_last_shift']);
+    assert.equal(dossArchiveMapOffer(state), null, 'optional evidence cannot replace the required three sources');
+    row.receipts[0].text = 'Unverified substitute account';
+    bus.emit('save:loaded');
+    assert.deepEqual(dossFlags(state), []);
+    assert.equal(state.player.stationContactCounters[DOSS_ARCHIVE_COUNTER_ID], 0);
+  } finally { close(); }
+});
 
 test('Doss derives the same three source flags through all six physical discovery orders', () => {
   const orders = [

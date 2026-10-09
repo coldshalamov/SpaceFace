@@ -1,0 +1,84 @@
+{
+  "schema": "spaceface.portableRejectedModelRecipe.v1",
+  "model": "mite",
+  "status": "generated-unverified",
+  "artAccepted": false,
+  "runtimeAdmitted": false,
+  "historicalModel": {
+    "glbSHA256": "07479da4dc2c95ab9c8fbd1c2e7cf91703bc3e499f02ccd0a7ab148ee7df0e28",
+    "motionSHA256": "1dce1265d79bfd29d7fd24a3c5e2d67cbef2be83391ee746c10b3767937233c6"
+  },
+  "inputContractSHA256": "02dee48836ad542476276648b4bde2949d2b782d18220ffcdcfd7d175a589ce4",
+  "inputs": [
+    {
+      "path": "design/visual-assets/brood-mite-unfinished/contracts/proposed-mite-contract.json",
+      "sha256": "02dee48836ad542476276648b4bde2949d2b782d18220ffcdcfd7d175a589ce4",
+      "bytes": 19524
+    },
+    {
+      "path": "design/visual-assets/brood-mite-unfinished/candidate-m7/brood_mite_v01.glb",
+      "sha256": "07479da4dc2c95ab9c8fbd1c2e7cf91703bc3e499f02ccd0a7ab148ee7df0e28",
+      "bytes": 410644
+    },
+    {
+      "path": "design/visual-assets/brood-mite-unfinished/candidate-m7/brood-mite.motion.json",
+      "sha256": "1dce1265d79bfd29d7fd24a3c5e2d67cbef2be83391ee746c10b3767937233c6",
+      "bytes": 4167
+    },
+    {
+      "path": "design/visual-assets/brood-mite-unfinished/study-m6/mite-M6-source.blend",
+      "sha256": "c5507e3d6eb5012a4bd9b496f3bdd38d71c01c41c5cc3d4e325e3e9e29c60d9a",
+      "bytes": 1458410
+    }
+  ],
+  "recipeManifestSHA256": "65465d4daa45a95ba9a8a34b70df5cb954984bb5f4c6c6a581a2fd79836a5dc8",
+  "steps": [
+    {
+      "step": "lods",
+      "exitCode": 0,
+      "log": "logs/lods.log"
+    },
+    {
+      "step": "assemble",
+      "exitCode": 0,
+      "log": "logs/assemble.log"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "brood_mite_v01.glb",
+      "sha256": "07479da4dc2c95ab9c8fbd1c2e7cf91703bc3e499f02ccd0a7ab148ee7df0e28",
+      "bytes": 410644
+    },
+    {
+      "path": "mite-M7-LOD0-editable.blend",
+      "sha256": "794093c608133142fb1cf4c8ba5053c6ef3558b6cd939aea48c4ace991a1074b",
+      "bytes": 913690
+    },
+    {
+      "path": "mite-M7-LOD0-review.glb",
+      "sha256": "ccda4c0413c7341a78f59ac8dee792bc17a1d49c8d744a795a59f672e468d571",
+      "bytes": 223512
+    },
+    {
+      "path": "mite-M7-LOD1-editable.blend",
+      "sha256": "0c0f1359f4880530137642f665f6afca2c7d302baf3ae923a246e9ea9f44edfc",
+      "bytes": 780946
+    },
+    {
+      "path": "mite-M7-LOD1-review.glb",
+      "sha256": "45c2012e97e0704b8cd26a0a3dc4fde53eeb6ec5d11f0b75577e0a02cd119791",
+      "bytes": 139180
+    },
+    {
+      "path": "mite-M7-LOD2-editable.blend",
+      "sha256": "1a74bb12ac29423e51329ee244139a44cefcded1b974d8eadf2fbb853f79c23a",
+      "bytes": 741946
+    },
+    {
+      "path": "mite-M7-LOD2-review.glb",
+      "sha256": "1fc001c9e1fd049e24b6831b057b97f7152a154cf7251fcd7e1396a3975cc09e",
+      "bytes": 117176
+    }
+  ]
+}

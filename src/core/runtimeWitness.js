@@ -203,6 +203,10 @@ function copySample(dst, src) {
   dst.admissionMs = src.admissionMs;
   dst.topPhase = src.topPhase;
   dst.topPhaseP95 = src.topPhaseP95;
+  dst.fenceBytesPacked = src.fenceBytesPacked;
+  dst.worldSpawnLimited = src.worldSpawnLimited;
+  dst.worldSpawnCriticalDeferred = src.worldSpawnCriticalDeferred;
+  dst.geometryPending = src.geometryPending;
   dst.hitch = src.hitch;
   return dst;
 }
@@ -239,6 +243,10 @@ function emptySample() {
     admissionMs: 0,
     topPhase: null,
     topPhaseP95: 0,
+    fenceBytesPacked: 0,
+    worldSpawnLimited: 0,
+    worldSpawnCriticalDeferred: 0,
+    geometryPending: 0,
     hitch: false,
   };
 }
@@ -293,6 +301,20 @@ export function collectRuntimeWitnessSample(state, extras = {}, wallMs = Date.no
   sample.admissionMs = finite(frameSample?.admissionMs);
   sample.topPhase = top?.name || null;
   sample.topPhaseP95 = finite(top?.p95);
+  // MACH-09: bytes the presentation fence packed on its last commit. The renderer publishes it on
+  // state.render.snapshotFence; the report reduces it to p50/p95 across the sample window.
+  sample.fenceBytesPacked = finite(state?.render?.snapshotFence?.bytes);
+  // MACH-06: world.js counts its own spawn-authority outcomes at emit time on
+  // state.world.spawnWitness; the witness reports cumulative totals plus the window delta so a
+  // dense scene's clamping is visible without a per-event log.
+  const spawnWitness = state?.world?.spawnWitness;
+  sample.worldSpawnLimited = finite(spawnWitness?.limited);
+  sample.worldSpawnCriticalDeferred = finite(spawnWitness?.criticalDeferred);
+  // MACH-07: the live geometry queue publishes one number — roots still pending — on
+  // state.render.geometryPending (pipelineAutoFlushPolicy.publishGeometryPending reads the
+  // queue stats). The witness prints it so an arrival drain is a number falling to 0, not a
+  // per-mesh flag an agent has to hunt for.
+  sample.geometryPending = finite(state?.render?.geometryPending);
   sample.hitch = callbackMs >= 33.4;
   sample.costs = costs;
   return sample;
@@ -497,6 +519,53 @@ export function classifyRuntimeWitness(samples, { canvasHashes = [] } = {}) {
   };
 }
 
+/**
+ * One line: bytes the presentation fence packed per commit, reduced to p50/p95 over the
+ * sample window. 0-valued samples (no pack yet) are excluded so a boot window does not
+ * read as a zero-byte frame.
+ */
+function formatFenceBytesLine(samples) {
+  const values = (Array.isArray(samples) ? samples : [])
+    .map((row) => finite(row?.fenceBytesPacked))
+    .filter((bytes) => bytes > 0)
+    .sort((a, b) => a - b);
+  if (values.length === 0) return '- packed snapshot bytes/frame: n/a';
+  const pick = (q) => values[Math.min(values.length - 1, Math.max(0, Math.ceil(q * values.length) - 1))];
+  const lastValue = finite(samples[samples.length - 1]?.fenceBytesPacked);
+  return `- packed snapshot bytes/frame: p50 ${pick(0.5)} / p95 ${pick(0.95)} / last ${lastValue} (n ${values.length})`;
+}
+
+/**
+ * One line: cumulative spawn-authority counters (limited clamps vs critical deferrals) plus the
+ * delta accumulated across the sample window — a dense scene reads non-zero limited while the
+ * critical line stays at zero, exactly the asymmetry MACH-06 wants agents to see.
+ */
+function formatSpawnWitnessLine(samples) {
+  const rows = Array.isArray(samples) ? samples : [];
+  const first = rows[0] || null;
+  const last = rows[rows.length - 1] || null;
+  const limited = finite(last?.worldSpawnLimited);
+  const critical = finite(last?.worldSpawnCriticalDeferred);
+  const limitedDelta = limited - finite(first?.worldSpawnLimited);
+  const criticalDelta = critical - finite(first?.worldSpawnCriticalDeferred);
+  return `- world spawn limited ${limited} (+${limitedDelta}) / critical deferred ${critical} (+${criticalDelta})`;
+}
+
+/**
+ * One line: live geometry roots still pending on the admission queue (state.render.geometryPending
+ * published from the queue's own stats) plus the window delta — an arrival reads it falling to 0
+ * instead of a per-mesh flag (MACH-07).
+ */
+function formatGeometryPendingLine(samples) {
+  const rows = Array.isArray(samples) ? samples : [];
+  const first = rows[0] || null;
+  const last = rows[rows.length - 1] || null;
+  const pending = finite(last?.geometryPending);
+  const pendingDelta = pending - finite(first?.geometryPending);
+  const signed = pendingDelta >= 0 ? `+${pendingDelta}` : String(pendingDelta);
+  return `- geometry roots pending ${pending} (${signed} in window)`;
+}
+
 export function formatRuntimeWitnessReport({
   verdict,
   samples = [],
@@ -529,6 +598,9 @@ export function formatRuntimeWitnessReport({
     `- drawCalls: ${last?.drawCalls ?? 'n/a'}`,
     `- lastFrameError: ${last?.lastFrameError || 'none'}`,
     `- gpu: ${gpu ? `${gpu.renderer || '?'} (tier ${gpu.tier ?? '?'})` : 'n/a'}`,
+    formatFenceBytesLine(samples),
+    formatSpawnWitnessLine(samples),
+    formatGeometryPendingLine(samples),
     '',
     '## Where the last frames went (ms)',
   ];

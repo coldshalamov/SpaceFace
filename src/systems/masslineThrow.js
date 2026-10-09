@@ -16,8 +16,10 @@
 // state.massline2.throw subtree (outside the sim-snapshot whitelist and the save schema) and cuts
 // the attachment through the same service tetherGameplay uses. The cut itself adds no free speed.
 import { massline2Flag } from '../data/featureFlags.js';
+import { captureEntitySelection, resolveEntitySelection } from '../ui/sim/stableSelection.js';
 import { sampleThrowSolution, tetherPairKinematics } from '../combat/tetherFireControl.js';
-import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
+import { fieldsRelevantAlongCorridor, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
+import { fieldBodyProfile, fieldEntityIsPrimed, fieldVelocityTermApplies } from './fields.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { forecastCadenceWindow } from '../combat/masslineReleaseGeometry.js';
 import { resolveThrowWhoosh } from '../audio/masslineInstrument.js';
@@ -25,11 +27,20 @@ import { clearSwingTraceReleasePaint, paintSwingTraceRelease } from '../render/m
 
 // --- Dials (design doc §12) -----------------------------------------------------------------
 const SNAP_WINDOW_MS = 90;          // forward-only queue ceiling; 5 fixed ticks at 60 Hz
+// SF-2b (#5): the queue outlives the window it accepted the press for by this many ticks. The
+// forecast that queues a press models a coasting swing; under thrust (W+D spin) the real window
+// arrives up to one tick after the forecast, and a deadline at exactly the forecast tick cut the
+// accepted press one tick early — off solution, a near miss the player had been promised.
+const SNAP_DEADLINE_SLACK_TICKS = 1;
 const CURSOR_AIM_GRACE = 48;        // wu of surface miss that still soft-snaps the throw aim
 const SLING_RELEASE_SPEED_FRACTION = 0; // compatibility export: no free release energy
 const SLING_MIN_EXIT_SPEED = 25;    // "genuinely moving" bar (mirrors SNAP_CATCH_MIN_SPEED)
 const THROW_MIN_PAYLOAD_SPEED = 25; // don't auto-cut a parked payload — no throw below this
 const AIM_QUERY_RADIUS = 220;       // cursor-aim entity search radius around aimWorld
+// RELEASE-TRUTH C4 — corridor-relevance horizon. Must equal the contact horizon the release
+// solve actually claims (solveCadenceRelease's own 6 s default): a field intersecting that
+// corridor anywhere can bend the claimed contact, so the preview must not call it irrelevant.
+const THROW_FIELD_CORRIDOR_HORIZON_S = 6;
 
 const AIMABLE_TYPES = new Set(['ship', 'drone', 'asteroid', 'station', 'wreck', 'payload']);
 
@@ -258,32 +269,42 @@ export const masslineThrow = {
     if (onNow) { this._executeThrow(state, player, payload, aim, solution, 'snap'); return; }
     if (window.reliable && window.enterS > 0 && window.enterS <= SNAP_WINDOW_MS / 1000) {
       this._pendingSnap = { identity, attachmentId: tether.attachmentId,
-        deadlineTick: state.tick + Math.floor(SNAP_WINDOW_MS / 1000 * 60) };
+        deadlineTick: state.tick + Math.ceil(window.enterS * 60 - 1e-6) + SNAP_DEADLINE_SLACK_TICKS };
       runtime.armed = true;
       return;
     }
     this._executeThrow(state, player, payload, aim, solution, 'snap-manual');
   },
 
-  // Build a pure field-acceleration sampler for the release predictor, or null when no continuous
-  // field is active (so the predictor stays exactly ballistic). The closure reuses scratch objects
-  // — zero allocation per predictor step.
+  // Build a pure field-acceleration sampler for the release predictor, or null when no field
+  // can bend THIS throw (so the predictor stays exactly ballistic — RELEASE-TRUTH C4). The
+  // body profile is production's own (RELEASE-TRUTH C2): fieldBodyProfile is the same record
+  // fields.js hands the kernel every tick, so earned coupling/resistance (combat multipliers
+  // × authored fieldResponseMult, never target selection), boost, hitch, and kinematic status
+  // reach the preview unchanged — and the kernel receives velocity through the same gate
+  // production applies (ships/drones only, never a primed light). The corridor test keeps a
+  // payload-excluded, zero-force, or provably disjoint field out of the solve entirely: an
+  // irrelevant field must not downgrade a six-second ballistic contact to the field window.
   _buildFieldSampler(state, payload) {
     const snapshot = state.fields && Array.isArray(state.fields.snapshot) ? state.fields.snapshot : null;
     if (!snapshot || snapshot.length === 0) return null;
-    const targetId = state.player && state.player.targetId;
-    const profile = {
-      mass: Math.max(0.1, Number.isFinite(payload.physicsBody && payload.physicsBody.mass) ? payload.physicsBody.mass : (Number.isFinite(payload.mass) ? payload.mass : 1)),
-      type: payload.type,
-      team: payload.team,
-      id: payload.id,
-      marked: targetId != null && payload.id === targetId,
+    const profile = fieldBodyProfile(payload, state);
+    profile.primed = fieldEntityIsPrimed(this.registry, state, payload);
+    // The corridor is the ballistic claim being protected: the release solve's full contact
+    // horizon (solveCadenceRelease's own default), not the shorter field-integration window.
+    const horizon = THROW_FIELD_CORRIDOR_HORIZON_S;
+    const end = {
+      x: finite(payload.pos && payload.pos.x) + finite(payload.vel && payload.vel.x) * horizon,
+      z: finite(payload.pos && payload.pos.z) + finite(payload.vel && payload.vel.z) * horizon,
     };
+    const relevant = fieldsRelevantAlongCorridor(snapshot, payload.pos, end, profile);
+    if (relevant.length === 0) return null;
+    const useVelocityTerm = fieldVelocityTermApplies(payload, profile);
     const simTime = state.simTime;
     const pS = { x: 0, z: 0 }, vS = { x: 0, z: 0 }, out = { ax: 0, az: 0 };
     return (px, pz, vx, vz) => {
       pS.x = px; pS.z = pz; vS.x = vx; vS.z = vz;
-      return sampleFieldAcceleration(pS, vS, snapshot, simTime, profile, out);
+      return sampleFieldAcceleration(pS, useVelocityTerm ? vS : null, relevant, simTime, profile, out);
     };
   },
 
@@ -346,9 +367,27 @@ export const masslineThrow = {
 
     const releaseTarget = runtime.releaseTarget;
     if (!releaseTarget) return null;
-    if (releaseTarget.targetId != null) {
-      const entity = state.entities && state.entities.get ? state.entities.get(releaseTarget.targetId) : null;
+    if (releaseTarget.targetId != null || releaseTarget.stable) {
+      // A stamped bind re-proves its target every tick: the stable identity follows a
+      // re-materialized body across sector re-entry and resolves closed on recycle — never
+      // redirecting the release onto the unrelated body that now holds the slot. The bare id
+      // remains the path for seeds that carry no stamp.
+      const entity = releaseTarget.stable
+        ? resolveEntitySelection(state, releaseTarget.stable)
+        : (state.entities && state.entities.get ? state.entities.get(releaseTarget.targetId) : null);
       if (!validReleaseEntity(entity, player.id, payload.id)) {
+        // A closed waypoint bind keeps the recorded fix as a point aim — the same fail-closed
+        // place the seed and _resolveSelfAim fall back to — rather than dropping the throw.
+        const waypoint = releaseTarget.source === 'waypoint' && state.nav ? state.nav.waypoint : null;
+        if (waypoint && waypoint.pos && Number.isFinite(waypoint.pos.x) && Number.isFinite(waypoint.pos.z)) {
+          runtime.releaseTarget = pointReleaseTarget(
+            'waypoint', 'waypoint', waypoint.pos.x, waypoint.pos.z, positive(waypoint.arrivalRadius, 12),
+          );
+          return {
+            entity: null,
+            target: { pos: runtime.releaseTarget.pos, vel: ZERO_VELOCITY, radius: runtime.releaseTarget.radius },
+          };
+        }
         runtime.releaseTarget = null;
         return null;
       }
@@ -445,15 +484,19 @@ export const masslineThrow = {
     }
     const waypoint = state.nav && state.nav.waypoint;
     if (!waypoint) return null;
-    if (waypoint.targetEntityId != null) {
-      const entity = state.entities.get(waypoint.targetEntityId);
-      if (entity && entity.alive !== false && entity.pos) {
-        return {
-          targetId: entity.id,
-          kind: 'waypoint',
-          target: { pos: entity.pos, vel: entity.vel || { x: 0, z: 0 }, radius: entity.radius },
-        };
-      }
+    // The stable stamp is the authority for which entity the waypoint id meant: a durable
+    // selection follows the re-materialized body across sector re-entry, and a transient one
+    // resolves closed on recycle — never redirecting the throw onto the unrelated body that
+    // now holds the slot. The bare id remains the path for waypoints that predate the stamp.
+    const waypointEntity = waypoint.stable
+      ? resolveEntitySelection(state, waypoint.stable)
+      : (waypoint.targetEntityId != null ? state.entities.get(waypoint.targetEntityId) : null);
+    if (waypointEntity && waypointEntity.alive !== false && waypointEntity.pos) {
+      return {
+        targetId: waypointEntity.id,
+        kind: 'waypoint',
+        target: { pos: waypointEntity.pos, vel: waypointEntity.vel || { x: 0, z: 0 }, radius: waypointEntity.radius },
+      };
     }
     if (!waypoint.pos || !Number.isFinite(waypoint.pos.x) || !Number.isFinite(waypoint.pos.z)) return null;
     return {
@@ -757,17 +800,29 @@ function seedReleaseTarget(state, player, payload) {
   if (selectedId != null && selectedId !== payload.id && selectedId !== player.id) {
     const selected = state.entities && state.entities.get ? state.entities.get(selectedId) : null;
     if (validReleaseEntity(selected, player.id, payload.id)) {
-      return entityReleaseTarget(selected.id, 'selection');
+      const target = entityReleaseTarget(selected.id, 'selection');
+      // The scrubber never walks this record — stamp the bind at seed so _resolveThrowAim
+      // re-proves it and a despawn+recycle mid-swing cannot redirect the release (review).
+      const stable = captureEntitySelection(selected);
+      if (stable) target.stable = stable;
+      return target;
     }
   }
 
   const waypoint = state.nav && state.nav.waypoint;
   if (!waypoint) return null;
-  if (waypoint.targetEntityId != null) {
-    const entity = state.entities && state.entities.get ? state.entities.get(waypoint.targetEntityId) : null;
-    if (validReleaseEntity(entity, player.id, payload.id)) {
-      return entityReleaseTarget(entity.id, 'waypoint', 'waypoint');
-    }
+  // Same stamp contract as _resolveSelfAim: a stable bind follows the re-materialized body and
+  // resolves closed on recycle; the bare id only serves unstamped waypoints. The stamp rides the
+  // seeded record so _resolveThrowAim re-proves it every tick — a post-seed swap cannot strand
+  // the throw onto the slot's new occupant.
+  const waypointEntity = waypoint.stable
+    ? resolveEntitySelection(state, waypoint.stable)
+    : (waypoint.targetEntityId != null && state.entities && state.entities.get
+      ? state.entities.get(waypoint.targetEntityId) : null);
+  if (validReleaseEntity(waypointEntity, player.id, payload.id)) {
+    const target = entityReleaseTarget(waypointEntity.id, 'waypoint', 'waypoint');
+    if (waypoint.stable) target.stable = waypoint.stable;
+    return target;
   }
   if (!waypoint.pos || !Number.isFinite(waypoint.pos.x) || !Number.isFinite(waypoint.pos.z)) return null;
   return pointReleaseTarget(

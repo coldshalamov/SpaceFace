@@ -1,4 +1,4 @@
-import { label, clone, compareId } from './schema.js';
+import { label, clone, compareId, text } from './schema.js';
 
 const COMPLETE_STAGES = ['kill', 'aftermath', 'salvage', 'recovered', 'sold', 'law'];
 const SURFACE_TEXT = { terrain: 'terrain', craft: 'another craft', structure: 'a structure' };
@@ -8,12 +8,15 @@ const sectorName = f => label(f?.zoneName || f?.sectorName || f?.sectorId);
 const stationName = f => label(f?.stationName || f?.stationId, 'a station');
 // Do not round a small, positive cargo receipt down to a fictitious zero.
 function quantity(n) { return String(n); }
+// Two kill shapes open with the victim's name; a retained identity like "your ship" or "an
+// unnamed ship" must not start the sentence lowercase.
+const sentence = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 function killLine(f) {
   const target = victimName(f);
   if (['terrain_collision', 'ship_collision'].includes(f.details.cause)) {
-    return `${target} was destroyed in a collision with ${SURFACE_TEXT[f.details.surface] || 'another body'} in ${sectorName(f)}.`;
+    return sentence(`${target} was destroyed in a collision with ${SURFACE_TEXT[f.details.surface] || 'another body'} in ${sectorName(f)}.`);
   }
-  if (f.actor.id === null && !f.actor.player) return `${target} was destroyed in ${sectorName(f)}.`;
+  if (f.actor.id === null && !f.actor.player) return sentence(`${target} was destroyed in ${sectorName(f)}.`);
   return `${pilotName(f)} destroyed ${target} in ${sectorName(f)}.`;
 }
 function pathsFrom(story) {
@@ -63,10 +66,15 @@ export function buildStoryView(story) {
   let radio = '', complete = false;
   if (kill) {
     score = kill.actor.player ? 22 : 6;
+    // Your own hull's loss is a beat in its own right — rescue-level, so it clears the news
+    // floor (minNewsScore 38) and the ticker/recall surfaces can speak it. It claims no kill.
+    if (kill.subject.player) score = Math.max(score, 48);
     if (['terrain_collision', 'ship_collision'].includes(kill.details.cause)) score += 22;
     if (['station', 'capital'].includes(kill.details.victimClass)) score += 20;
     score += Math.min(24, Math.max(0, kills.length - 1) * 8);
-    kind = 'battle'; title = `Loss recorded in ${sectorName(kill)}`; summary = killLine(kill);
+    kind = 'battle';
+    title = kill.subject.player ? `Your hull went dark in ${sectorName(kill)}` : `Loss recorded in ${sectorName(kill)}`;
+    summary = killLine(kill);
     if (kills.length > 1) summary += ` ${kills.length} ship losses share this recorded encounter; their individual causes remain separate.`;
     if (progress >= 2) { score += 8; kind = 'battle_aftermath'; summary += ' An identified wreck or cargo manifest remains in the record.'; }
     if (progress >= 3) {
@@ -172,6 +180,18 @@ export function buildStoryView(story) {
     } else if (f.stage === 'delivery') {
       kind = 'depot_delivery'; score = 12; title = 'Depot freight moved';
       summary = `${quantity(f.details.qty)} units of depot freight ${f.details.inbound ? 'arrived at' : 'departed for'} ${f.subject ? f.subject.name : 'a claim body'}.`;
+    } else if (f.stage === 'story') {
+      // Authored campaign evidence — spoken choices, Verge filings, the revocation. The latest
+      // story fact names the file; every other citation stands behind it.
+      const storyFacts = ns.filter(n => n.stage === 'story');
+      const last = storyFacts[storyFacts.length - 1] || f;
+      const d = last.details || {};
+      kind = 'story_record'; score = Math.max(score, 40);
+      title = text(d.title, 'The campaign ledger');
+      summary = `${text(d.note, 'A recorded campaign decision stands')}.`;
+      if (storyFacts.length > 1) {
+        summary += ` ${storyFacts.length - 1} other citation${storyFacts.length > 2 ? 's' : ''} stand in the same file.`;
+      }
     } else { score = 4; summary = 'A simulation fact was retained for possible later connection.'; }
     radio = summary;
   }

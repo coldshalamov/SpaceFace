@@ -13,6 +13,7 @@ import {
   ORIGIN_PHYSICAL_IDENTITIES,
   ORIGIN_ROLE_KITS,
   ORIGIN_ROUTE_STATUS,
+  CAREER_STARTER_DISPLACED_UTILITY,
 } from './careerOriginContracts.js';
 import {
   acceptOrigin as acceptHaulerOrigin,
@@ -1093,6 +1094,7 @@ export function createCareerOriginsSystem() {
         reason: `career_origin:${careerId}:starter`,
       });
       if (!granted) return false;
+      const fitted = this._fitStarterRoleKit(kit.defId);
       meta.upgradeReceipts[careerId] = {
         defId: kit.defId,
         label: kit.label,
@@ -1102,13 +1104,46 @@ export function createCareerOriginsSystem() {
       if (meta.routes[careerId]) meta.routes[careerId].upgradeGranted = true;
       const identityReceipt = meta.identityReceipts[careerId];
       if (identityReceipt && identityReceipt.loadout) {
-        identityReceipt.loadout.status = 'inventory';
+        identityReceipt.loadout.status = fitted ? 'fitted' : 'inventory';
         identityReceipt.loadout.issuedAtS = simTimeOf(this.state);
       }
       emit(this.bus, 'toast', {
-        text: `${kit.label} starter kit issued. Fit it when ready.`, kind: 'success', ttl: 5,
+        text: fitted
+          ? `${kit.label} is on the hitch. The drill amp is in the hold.`
+          : `${kit.label} starter kit issued. Fit it when ready.`,
+        kind: 'success',
+        ttl: 5,
       });
       return true;
+    },
+
+    // The Hitch has one utility slot. The role kit takes it from the drill amp,
+    // and the amp goes back to the hold as a real module — not a vanished string.
+    _fitStarterRoleKit(defId) {
+      const ships = this.registry && typeof this.registry.get === 'function'
+        ? this.registry.get('ships') : null;
+      const player = this.state && this.state.player;
+      if (!ships || typeof ships.fitModule !== 'function' || !player) return false;
+      const index = Number.isInteger(player.activeShipIndex) ? player.activeShipIndex : 0;
+      const ship = Array.isArray(player.ownedShips)
+        ? (player.ownedShips[index] || player.ownedShips[0]) : null;
+      if (!ship || !Array.isArray(ship.fittings) || ship.fittings.includes(defId)) return false;
+      const slotIndex = ship.fittings.indexOf(CAREER_STARTER_DISPLACED_UTILITY);
+      if (slotIndex < 0) return false;
+      const inventory = Array.isArray(player.moduleInventory) ? player.moduleInventory : [];
+      let instanceId = null;
+      for (let i = inventory.length - 1; i >= 0; i--) {
+        if (inventory[i] && inventory[i].defId === defId) {
+          instanceId = inventory[i].instanceId;
+          break;
+        }
+      }
+      if (instanceId == null) return false;
+      return ships.fitModule({
+        shipIndex: player.ownedShips.indexOf(ship),
+        slotIndex,
+        instanceId,
+      }) === true;
     },
 
     _releaseCareerFocus(careerId) {

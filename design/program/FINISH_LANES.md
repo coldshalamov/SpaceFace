@@ -14,6 +14,16 @@ This file does not create a second queue. `program-queue.json` still owns unit t
 INFERENCE catalog lines still exist for grunt-sized sittings; §23's campaign briefs are the detailed
 wording the lanes cite. What changes is the unit a strong agent is handed: an area, not a leaf.
 
+**Maturity priority, owner 2026-10-04:** follow
+[`build_map.md` §1.8](../../build_map.md#18-production-maturity-debugging-and-polish).
+Debugging, everyday UX, text/layout correctness, visible-model readiness, bounded off-screen
+work and lifecycle/performance repairs are explicit lane assignments. Repair confirmed failures
+before expanding the affected area. For a maturity campaign, rotate through that workflow table,
+including failure/recovery edges and areas whose feature checklists are empty. Use the existing
+demo defect ledger for unresolved findings; the owner need not supply technical bug descriptions.
+The §1.8 bounded completion rule and current quiet-host routing govern this work, including where
+older lane wording below asks for long sessions, captures or release qualification.
+
 ## 1. What changed
 
 - **The unit of a finishing session is a lane, not a leaf.** Take one lane, play it, and own it
@@ -210,6 +220,14 @@ to THE INSTRUMENT — coordinate by exact path).
 
 ## 7. Lane four — THE WORLD
 
+**Expansion design:** [Mature target, asset families and concrete place briefs](world-depth-2026-10-02/README.md).
+Select one bounded slice in this area; name the missing hulls, creatures, machinery and states
+needed to fulfill it. Existing models are not a creative ceiling. Stormshift at the Anvil is a
+worked first candidate; the whole-game target also includes movement landscapes, distinctive
+threats, inhabited institutions, alien ecology and ancient machinery. Continue the chosen slice
+across sessions through the existing context; do not replace it with unrelated catalog repairs.
+
+
 **The feeling.** You arrived in the middle of their day. A miner is on a seam, a hauler is coming
 or going, someone wants that cargo, a patrol has a route — and you did not press accept to make
 any of it true. You can interfere anywhere in the chain or watch it continue without you. Failure
@@ -334,7 +352,9 @@ for anything Blender-side.
 > Asteroid Works world-art units PQ-130/PQ-131 stay with their own campaign. The authority is
 > [`design/frontend/ORRERY.md`](../frontend/ORRERY.md) + [`design/frontend/OVERHAUL_PLAN_2026-09-25.md`](../frontend/OVERHAUL_PLAN_2026-09-25.md);
 > live per-surface status is [`design/frontend/ORRERY_HANDOFF.md`](../frontend/ORRERY_HANDOFF.md) §2. A frontend defect found by
-> another lane goes to one row in `DEMO_READINESS_2026-09-20.md` §6, never a parallel implementation.
+> another lane is repaired within its task under root `AGENTS.md` §1/§7: minimal ORRERY-consistent
+> functional/layout fixes are allowed, with exact current-path ownership preserved. Only deferred
+> defects go to one row in `DEMO_READINESS_2026-09-20.md` §6. Redesign stays with this lane.
 
 **The feeling.** Flight, dock, map, pause, prompt and the Crucible door are the same ship's
 instrument: an orrery of light, the amber Hand that swings to your choice, rings and scales and

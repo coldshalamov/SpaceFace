@@ -771,11 +771,21 @@ const WITHDRAWAL_BLOCK = 36;
 const WITHDRAWAL_REPLAN_CAP = 2;
 
 function stepSquadWithdrawal(squad, tick, perceptions, focus, leaderPerception) {
+  // An accepted escape stays released while the ward remains clear. Without the latch a ward
+  // parked on its corridor or beyond the threat's reach is re-committed on the next decision
+  // tick, and the covering ship is re-drafted forever onto a retreat that already succeeded —
+  // plus a fresh announcement every re-commit. The latch clears when the ward's escape no
+  // longer holds (it drifted back into the fight or was disabled), making it a live ward again.
+  const released = squad.releasedWards || (squad.releasedWards = new Map());
+  for (const [releasedId, corridor] of released) {
+    if (!releasedWardStillEscaped(releasedId, corridor, perceptions, focus)) released.delete(releasedId);
+  }
   const wounded = [];
   for (const perception of perceptions) {
     const self = perception && perception.self;
     if (!self || self.alive === false || self.disabled) continue;
     if (!(self.hullFraction <= WITHDRAWAL_HULL)) continue;
+    if (released.has(self.id)) continue;
     wounded.push(perception);
   }
   wounded.sort((a, b) => a.self.hullFraction - b.self.hullFraction
@@ -797,6 +807,7 @@ function stepSquadWithdrawal(squad, tick, perceptions, focus, leaderPerception) 
   const leaderMoved = sameWard && previous.anchorLeaderGeneration != null && leaderRejected
     && previous.anchorLeaderGeneration !== squad.leaderOccupantGeneration;
   if (escaped) {
+    released.set(previous.wardId, previous.corridor);
     squad.withdrawalCommit = null;
     return null;
   }
@@ -849,6 +860,21 @@ function wardEscaped(ward, commit, focus) {
   if (pointDistance(ward.self.pos, commit.corridor) <= WITHDRAWAL_ARRIVE) return true;
   if (focus && focus.pos && pointDistance(ward.self.pos, focus.pos) >= WITHDRAWAL_ESCAPE) return true;
   return false;
+}
+
+// A released ward stays out of ward selection while the same escape criteria still hold: it is
+// sitting on the corridor it was given, or it is beyond the threat's reach. A ward missing from
+// the picture is departed — released for good. A ward that left its corridor and is inside the
+// threat's reach again is a live wounded member once more and earns a fresh commitment.
+function releasedWardStillEscaped(wardId, corridor, perceptions, focus) {
+  for (const perception of perceptions) {
+    const self = perception && perception.self;
+    if (!self || self.id !== wardId) continue;
+    if (self.alive === false || self.disabled === true) return false;
+    if (corridor && pointDistance(self.pos, corridor) <= WITHDRAWAL_ARRIVE) return true;
+    return !!(focus && focus.pos && pointDistance(self.pos, focus.pos) >= WITHDRAWAL_ESCAPE);
+  }
+  return true;
 }
 
 function covererHealthy(perceptions, coverId, wardId) {

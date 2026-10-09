@@ -71,7 +71,11 @@ if (!args.shots.length) {
   const browser = await chromium.launch({ headless: !args.headed, executablePath: process.env.SF_CHROMIUM || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined) });
   const outDir = path.resolve(ROOT, args.out || '.devshots/ui-bench');
   mkdirSync(outDir, { recursive: true });
-  const page = await browser.newPage({ viewport: args.viewport });
+  // --phone: a touch device (Chromium's mobile emulation) with the phone deck's CSS on the page.
+  const page = await browser.newPage({
+    viewport: args.viewport,
+    ...(args.phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}),
+  });
   page.on('pageerror', (error) => {
     console.error(`  pageerror: ${error && error.message ? error.message : error}`);
     const where = error && error.stack ? String(error.stack).split(`
@@ -104,7 +108,9 @@ async function shoot(page, id, outDir) {
   const started = Date.now();
   const bg = args.bg ? `&bg=${encodeURIComponent(bgUrl(args.bg))}` : '';
   const demo = args.demo ? '&demo=1' : '';
-  const url = `${base}?screen=${encodeURIComponent(id)}&chrome=0${demo}${bg}`;
+  const phone = args.phone ? '&phone=1' : '';
+  const extra = args.query ? `&${args.query}` : '';
+  const url = `${base}?screen=${encodeURIComponent(id)}&chrome=0${demo}${phone}${extra}${bg}`;
   // This process yields CPU (PRIORITY_LOW above); a loaded host stretches module fetches for minutes.
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 300_000 });
   const opened = await page.waitForFunction(() => window.__BENCH_READY === true, null, { timeout: 300_000 })
@@ -309,6 +315,8 @@ function parseArgs(argv) {
     list: false,
     walk: false,
     demo: false,
+    phone: false,
+    query: null,
     probe: null,
     max: 24,
     viewport: { width: 1920, height: 1080 },
@@ -317,6 +325,8 @@ function parseArgs(argv) {
     if (arg === '--list') parsed.list = true;
     if (arg === '--walk') parsed.walk = true;
     if (arg === '--demo') parsed.demo = true;
+    if (arg === '--phone') { parsed.phone = true; if (!parsed.viewportSet) parsed.viewport = { width: 390, height: 844 }; }
+    if (arg.startsWith('--query=')) parsed.query = arg.slice('--query='.length);
     if (arg === '--headed') parsed.headed = true;
     if (arg.startsWith('--shot=')) parsed.shots.push(...splitIds(arg.slice('--shot='.length)));
     if (arg.startsWith('--bg=')) parsed.bg = arg.slice('--bg='.length);
@@ -325,7 +335,7 @@ function parseArgs(argv) {
     if (arg.startsWith('--max=')) parsed.max = Number(arg.slice('--max='.length)) || parsed.max;
     if (arg.startsWith('--viewport=')) {
       const match = /^(\d+)x(\d+)$/.exec(arg.slice('--viewport='.length));
-      if (match) parsed.viewport = { width: Number(match[1]), height: Number(match[2]) };
+      if (match) { parsed.viewport = { width: Number(match[1]), height: Number(match[2]) }; parsed.viewportSet = true; }
     }
     if (!arg.startsWith('--')) parsed.shots.push(...splitIds(arg));
   }

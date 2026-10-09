@@ -1,3 +1,8 @@
+import { isLatchActor } from './latchNineVisuals.js';
+import { isTallyThreeAssessor } from './tallyThreeVisuals.js';
+import { isBorrowedVoiceRing } from '../data/borrowedVoiceBody.js';
+import { isCeresWorkfleetPlace, ceresWorkfleetPlaceFile } from './ceresWorkfleetVisuals.js';
+import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection } from './ceresShipbreakVisuals.js';
 // Builds Three.js meshes for entities from primitives, deterministic procedural maps, and visual
 // libraries that were fully decoded before flight admission. Contract: createVisualFactory() ->
 // { build(entity) }
@@ -17,9 +22,17 @@
 //   rather than a unique geometry per rock.
 import * as THREE from 'three';
 import { buildMorrowVisual } from './characters/morrowModel.js';
+import { buildVesperVisual } from './characters/vesperModel.js';
+import { buildBracketVisual } from './characters/bracketModel.js';
+import { buildRavelVisual } from './characters/ravelModel.js';
+import { buildSolsticeVisual } from './characters/solsticeModel.js';
+import { buildRubricVisual } from './characters/rubricModel.js';
+import { buildRuckusVisual } from './characters/ruckusModel.js';
+import { buildRuudVisual } from './characters/ruudModel.js';
 import { modelTruthMountFractions } from '../data/modelTruth.js';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
+import { rockFamilyFor, ROCK_FAMILY_TINT_MIX, ROCK_FAMILY_EMISSIVE_LIFT } from './rockFamilyLibrary.js';
 import {
   COMMON_ROCK_MATERIAL_ROLES,
   COMMON_ROCK_MINERAL_SHEEN,
@@ -31,12 +44,14 @@ import {
 } from './objectSpaceGeology.js';
 import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
-import { canonicalizeObjectSurfaceProgramKeys, installIllustratedSurface } from './illustratedSurface.js';
+import { canonicalizeObjectSurfaceProgramKeys, canonicalizeObjectSurfaceProgramKeysSteps, installIllustratedSurface } from './illustratedSurface.js';
 import { opticCellGeometry, opticCellBodyMaterial, opticCellKindOf, dressOpticCell, opticCellPoolResources } from './opticCellPresentation.js';
 import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossal planet-site body
 import { buildFaunaMesh } from './faunaVisuals.js'; // Alien Ecology program — organic fauna bodies
+import { buildNurseryMineralRib } from './veilRayNurseryVisuals.js';
 import { buildMachineMesh } from './machineVisuals.js'; // Verge-Layer machines — pale procedural bodies
-import { freezeStaticChildMatrices, freezeStaticTransformRoot } from './staticChildMatrices.js';
+import { buildFoldAberrantVisual, buildFoldPayloadVisual } from './foldAberrantVisual.js';
+import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked, updateMatrixWorldSteps } from './staticChildMatrices.js';
 import {
   makeNoiseTexture, makeGreebleTexture, makeGradientTexture, makeHullPanelTexture,
   makeHullNormalMap, makeGreebleDetailTexture, makeDecalSheet,
@@ -49,22 +64,28 @@ import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { commodityPresentationFor } from '../data/commodities.js';
 import { buildPickupGeometry, pickupShapeForCommodity } from './pickupShapes.js';
+import { PICKUP_ROLE, buildPickupRoleGeometry, pickupRoleForEntity } from './vfx/fragmentFamilies.js';
 import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
+import { yieldToBrowser } from './startupGpuResidency.js';
+import { notePacedFrameSpend } from './decodeTaskBudget.js';
 import { createEnergyMaterial } from './energy/energyMaterials.js';
 import * as kit from './ships/shipKit.js';
 import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from './hlod.js';
 import { attachLodState } from './lod.js';
 import { loadAuthoredPart } from './assetLoader.js';
-import { attachAuthoredMotionDriver, bindInstanceMotion } from './authoredMotion.js';
+import { attachAuthoredMotionDriver, bindInstanceMotionSteps } from './authoredMotion.js';
+import { primeDrawnCullStamps } from './visualCullRadius.js';
 import {
   admissionOwnerInactive,
   authoredAdmissionRetriableStatus,
   AUTHORED_ADMISSION_RETRY_MAX,
   authoredReadmissionStatus,
   boundaryLiveEntity,
+  carryAdmittedOnceStamp,
   markAuthoredBoundaryForReadmission,
   prepareAuthoredVisualPipelines,
+  queuePacedDetachedTeardown,
   releaseBoundaryResidency,
   residencyOptionsForBoundary,
   staleAuthoredRunVerdict,
@@ -397,7 +418,7 @@ function freezeStaticPresentation(root, options = {}) {
   freezeStaticChildMatrices(root);
   // The root itself only transforms at mount/seat/repose — those writers call updateMatrix()
   // through the matrixAutoUpdate === false dirty hook (PERF-59).
-  freezeStaticTransformRoot(root);
+  freezeStaticTransformRootMarked(root);
   return root;
 }
 
@@ -461,6 +482,7 @@ function optimizeStaticBatches(root) {
 
 function isBatchCandidate(obj) {
   if (!obj || !obj.isMesh || obj.isBatchedMesh || obj.isInstancedMesh) return false;
+  if (obj.userData?.contactShadowReceiver === true) return false;
   if (obj.onBeforeRender && obj.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender) return false;
   if (obj.children && obj.children.length) return false;
   const g = obj.geometry, m = obj.material;
@@ -1083,6 +1105,7 @@ function addNavBlinkers(g, R, halfWidth, length, blinkers) {
 // Detail is laid out on a loose grid across the deck footprint (length × halfWidth in R-fractions),
 // jittered so it doesn't look mechanical. Each cluster is built from cached primitives.
 // =============================================================================================
+
 function surfaceDetail(ctx) {
   const { g, R, pal, hm, vis, hints, seed } = ctx;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
@@ -1627,9 +1650,8 @@ function buildTraderHaul(ctx) {
 
 // pirate_swoop — Reaver Pirate. Asymmetric, greeble-heavy, exposed mismatched engines. Reads: raider/scavenger.
 function buildPirateSwoop(ctx) {
-  const { g, R, hm, accent, vis, seed } = ctx;
+  const { g, R, hm, accent, vis } = ctx;
   const L = vis.length || 1.3, W = vis.halfWidth || 0.55;
-  const rnd = mulberryLite(seed + 31);
   const hullShape = new THREE.Shape();
   hullShape.moveTo(0, L * 0.6); hullShape.lineTo(W * 0.8, -L * 0.4);
   hullShape.lineTo(W * 0.3, -L * 0.55); hullShape.lineTo(-W * 1.0, -L * 0.2);
@@ -1640,9 +1662,11 @@ function buildPirateSwoop(ctx) {
   hullGeo.center();
   const hull = new THREE.Mesh(hullGeo, hm);
   hull.rotation.x = -Math.PI / 2; hull.scale.setScalar(R); g.add(hull);
+  const swoopX = [-0.40, -0.15, 0.10, 0.28, 0.42];
+  const swoopZ = [0.20, -0.25, 0.15, -0.10, 0.30];
   for (let i = 0; i < 5; i++) {
-    const box = new THREE.Mesh(getGeometry(`edr:greeb${i}`, () => new THREE.BoxGeometry(0.1 + rnd() * 0.12, 0.1 + rnd() * 0.1, 0.12 + rnd() * 0.15)), hm);
-    box.position.set((rnd() - 0.5) * W * 1.4 * R, R * (0.15 + rnd() * 0.15), (rnd() - 0.5) * L * 0.8 * R);
+    const box = new THREE.Mesh(getGeometry('edr:swoopBolt', () => new THREE.BoxGeometry(0.14, 0.12, 0.16)), hm);
+    box.position.set(swoopX[i] * W * R, R * 0.2, swoopZ[i] * L * R);
     box.scale.setScalar(R); g.add(box);
   }
   const sizes = [0.16, 0.11, 0.13];
@@ -1805,8 +1829,8 @@ function buildShipMesh(e, pal) {
   const family = (enemySil && ENEMY_FAMILY_BUILDERS[enemySil]) ? enemySil : familyFor(defId);
   const isEnemyFamily = !!enemySil && !!ENEMY_FAMILY_BUILDERS[enemySil];
   const recipe = recipeFor(defId);
-  const seed = hashId(e.id);
   const tierRow = tierForLoadout(defId, (e.data && e.data.fittings) || [], e.data && e.data.visualTier);
+  const seed = hashId(`${defId}|${family}|${tierRow.name || ''}|${Math.round(R)}`);
   const hints = Object.assign({ plating: 'smooth', greeble: 0.5 }, tierRow.hints || {});
   const loadout = loadoutProps(e);
   const blinkers = [];
@@ -1913,17 +1937,19 @@ function buildShipMesh(e, pal) {
   // 8) SENSOR/UTILITY masts — antennas + dishes near the authored sensor anchor, count from loadout.
   if (vis.sensor) {
     const n = Math.max(1, Math.min(5, (loadout.utilityCount || 1) + Math.round((hints.greeble || 0) * 2)));
-    const rnd = mulberryLite(seed + 777);
     for (let i = 0; i < n; i++) {
       const ant = new THREE.Mesh(getGeometry('ship:antenna', () => new THREE.CylinderGeometry(0.015, 0.025, 0.45, 4)), hm);
-      ant.position.set(vis.sensor[0] * R + (rnd() - 0.5) * R * 0.3, vis.sensor[1] * R + rnd() * R * 0.1, (rnd() - 0.5) * R * 0.3);
+      ant.position.set(
+        vis.sensor[0] * R + (i - (n - 1) / 2) * R * 0.08,
+        vis.sensor[1] * R,
+        0,
+      );
       ant.scale.setScalar(R); g.add(ant);
       const tip = lampFixture(pal.accent, R * 0.032, 2.6);
       tip.position.set(ant.position.x, vis.sensor[1] * R + R * 0.32, ant.position.z); g.add(tip);
-      // a dish on some masts
       if (i % 2 === 0) {
         const dish = new THREE.Mesh(getGeometry('ship:dish', () => new THREE.SphereGeometry(0.12, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2)), hm);
-        dish.position.set(vis.sensor[0] * R + (rnd() - 0.5) * R * 0.2, vis.sensor[1] * R + R * 0.18, (rnd() - 0.5) * R * 0.2);
+        dish.position.set(vis.sensor[0] * R, vis.sensor[1] * R + R * 0.18, (i - 1) * R * 0.06);
         dish.scale.setScalar(R); g.add(dish);
       }
     }
@@ -2318,11 +2344,16 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
   // numbers; this key keeps one cached material per variant.
   const variantSpec = commonSurfaceReady ? rockSurfaceVariantSpec(variantIdx) : null;
   const variantKey = variantSpec ? `:v${ROCK_SURFACE_VARIANTS.indexOf(variantSpec)}` : '';
-  const key = `astmat:${typeId}:${tint || 'def'}${variantKey}${bare ? ':bare' : ''}`;
+  // Metallic / crystalline / exotic rocks wear a generated surface family once its maps have decoded
+  // (rockFamilyLibrary.js); a rock built before then keeps the flat tinted material under its own key.
+  const family = typeId === 'ast_common_rock' ? null : rockFamilyFor(def.variant);
+  const key = `astmat:${typeId}:${tint || 'def'}${variantKey}${bare ? ':bare' : ''}${family ? ':fam' : ''}`;
   return getMaterial(key, () => {
     const commonSurface = commonSurfaceReady;
-    const color = tint != null ? new THREE.Color(tint) : new THREE.Color(def.color);
+    let color = tint != null ? new THREE.Color(tint) : new THREE.Color(def.color);
     if (variantSpec) color.multiply(new THREE.Color(...variantSpec.tint));
+    // The texture carries the surface, so the type colour only tints it rather than multiplying it dark.
+    if (family) color = new THREE.Color(0xffffff).lerp(color, ROCK_FAMILY_TINT_MIX[def.variant] ?? 0.25);
     const skipRoughNoise = !!commonSurface || def.variant === 'crystal' || def.variant === 'ice';
     const rough = skipRoughNoise
       ? null
@@ -2359,8 +2390,9 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
 
     const material = new THREE.MeshStandardMaterial({
       color,
-      map: commonSurface && commonSurface.baseColor || null,
-      normalMap: commonSurface && commonSurface.normal || null,
+      map: commonSurface && commonSurface.baseColor || family && family.baseColor || null,
+      normalMap: commonSurface && commonSurface.normal || family && family.normal || null,
+      emissiveMap: family && family.emissive || null,
       normalScale: commonSurface
         ? new THREE.Vector2(variantSpec.normalScale, variantSpec.normalScale)
         : new THREE.Vector2(1, 1),
@@ -2372,7 +2404,9 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
         || (def.variant === 'crystal' ? null : rough),
       metalnessMap: commonSurface && commonSurface.orm || null,
       vertexColors: !!commonSurface,
-      emissive: new THREE.Color(def.emissive), emissiveIntensity: eiBoost,
+      emissive: new THREE.Color(def.emissive),
+      // A glow map confines the glow to the crystals / veins, so the intensity is lifted to keep them readable.
+      emissiveIntensity: family && family.emissive ? Math.min(3.2, eiBoost * ROCK_FAMILY_EMISSIVE_LIFT) : eiBoost,
       flatShading: def.flat,
     });
     if (bare) {
@@ -2647,6 +2681,128 @@ function gateLensMaterial(isWormhole) {
   });
 }
 
+// EVENT HORIZON face — a structured, time-driven construction, not a painted card. The old face
+// was a static radial-gradient canvas (the soft-card read VFX_TECHNIQUE_STANDARD bans for
+// objects); this one carries internal structure AND travelling motion:
+//   - a 3-armed log-spiral fold rosette whose radial phase advances with uTime, so every crest
+//     travels INWARD toward the throat (the mesh swirl infrastructureMotion applies cannot
+//     express radial infall — the two motions compose, and the disc counter-rotates against the
+//     lens disc above for parallax);
+//   - differential rotation: the fold field runs prograde, the dark channel field slow
+//     retrograde, so the combined rosette shears over time instead of spinning as one decal;
+//   - fine counter-drifting filaments and dark channels that cut the glow into arms, so the
+//     face reads as infalling matter, never as a filled soft square.
+// Seam safety: every angular frequency is an integer multiple of theta, so the atan(±π) branch
+// cut is invisible — same guarantee as the lens shader. Instruction set is exactly the lens
+// family (atan/sin/exp/pow/smoothstep/log), which this project already runs on the software
+// rasterizer; `setFactoryPortalRenderMode('canvas')` restores the legacy gradient card if a
+// rasterizer ever refuses the program.
+const GATE_PORTAL_FRAGMENT = `
+  precision highp float;
+  varying vec2 vUv;
+  uniform float uTime;
+  uniform vec3 uColorCore;   // hot throat tone (was the gradient's centre stop)
+  uniform vec3 uColorArm;    // fold / filament mid tone (was the gradient's mid stop)
+  uniform vec3 uColorDeep;   // deep body tone between the folds (was the gradient's outer stop)
+  uniform float uOpacity;    // legacy additive envelope: 0.55 gate / 0.7 wormhole
+  uniform float uIntensity;
+
+  void main() {
+    vec2 p = vUv * 2.0 - 1.0;
+    float r = length(p);
+    if (r > 1.0) discard;
+    float theta = atan(p.y, p.x);
+
+    // Differential rotation: folds prograde, channels slow retrograde.
+    float angF = theta - uTime * 0.50;
+    float angC = theta + uTime * 0.13;
+
+    // Infall: adding uTime to the radial phase moves every crest toward r=0 over time.
+    float fall = uTime * 0.34;
+    float radial = r + fall;
+
+    // Log-spiral fold coordinate (integer angular multiplier keeps the atan seam hidden).
+    float spiralF = angF * 3.0 - 4.6 * log(r + 0.14) + radial * 3.1;
+    // Quasi-organic wobble from two incommensurate seam-safe terms — no hash noise needed.
+    float wob = sin(angF * 2.0 + r * 7.0 - uTime * 0.7) * 0.5
+              + sin(angC * 3.0 - r * 4.0 + uTime * 0.4) * 0.5;
+    float folds = smoothstep(0.10, 0.95, sin(spiralF + wob * 1.4));
+
+    // Fine counter-drifting filaments, strongest mid-disc where the folds read.
+    float fil = smoothstep(0.55, 1.0, sin(angF * 9.0 - 12.6 * log(r + 0.14) + radial * 6.2 - wob * 1.9));
+    float midWeight = smoothstep(0.05, 0.28, r) * smoothstep(1.0, 0.60, r);
+
+    // Dark channels cut the glow into arms so the face never reads as a filled card.
+    float channels = smoothstep(0.40, 0.88, sin(angC * 5.0 + 2.4 * log(r + 0.14) + wob));
+    float channelDark = mix(1.0, 0.20, channels * midWeight);
+
+    // Hot throat keeps the established bright-centre silhouette; slow breath, no strobe.
+    float core = exp(-r * r * 6.0) * (0.86 + 0.14 * sin(uTime * 1.3));
+    float rim = exp(-pow((r - 0.94) * 9.5, 2.0));
+    float rimFade = smoothstep(1.0, 0.80, r);
+
+    float structure = (folds * 0.62 + fil * 0.38) * midWeight * channelDark;
+    vec3 col = mix(uColorDeep, uColorArm, clamp(structure * 1.4, 0.0, 1.0));
+    col = mix(col, uColorCore, clamp(core + rim * 0.5, 0.0, 1.0));
+
+    float a = clamp(core * 0.92 + structure * 0.85 + rim * 0.34, 0.0, 1.0) * rimFade * uOpacity;
+    gl_FragColor = vec4(col * uIntensity, a);
+  }
+`;
+
+// Bench/CI escape hatch: 'shader' (default) builds the animated construction; 'canvas' builds the
+// legacy gradient-card material. Must be set before the first gate is built (the material cache
+// is per type, so a mid-session flip only affects not-yet-built gate types).
+let _portalRenderMode = 'shader';
+export function setFactoryPortalRenderMode(mode) {
+  if (mode === 'shader' || mode === 'canvas') _portalRenderMode = mode;
+}
+
+// One material per portal TYPE (never per gate instance) — the pre-existing cache keys.
+function gatePortalMaterial(isWormhole) {
+  if (_portalRenderMode === 'canvas') return gatePortalFallbackMaterial(isWormhole);
+  return getMaterial(isWormhole ? 'gate:portal:wh' : 'gate:portal', () => {
+    const material = new THREE.ShaderMaterial({
+      name: isWormhole ? 'GatePortalWormhole' : 'GatePortal',
+      uniforms: {
+        uTime: { value: 0 },
+        uColorCore: { value: new THREE.Color(isWormhole ? '#f0c0ff' : '#bff4ff') },
+        uColorArm: { value: new THREE.Color(isWormhole ? '#9030ff' : '#39d0ff') },
+        uColorDeep: { value: new THREE.Color(isWormhole ? '#3a0a4a' : '#0a1830') },
+        uOpacity: { value: isWormhole ? 0.7 : 0.55 },
+        uIntensity: { value: 1 },
+      },
+      vertexShader: GATE_LENS_VERTEX,
+      fragmentShader: GATE_PORTAL_FRAGMENT,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    configurePlanarAdditiveMaterial(material);
+    return material;
+  });
+}
+
+// Sane fallback: the legacy radial-gradient card, kept verbatim (texture cache keys included) so
+// the gate still renders a full portal face if the shader program is ever unavailable.
+function gatePortalFallbackMaterial(isWormhole) {
+  return getMaterial(isWormhole ? 'gate:portal:wh:canvas' : 'gate:portal:canvas', () => {
+    const tex = getTexture(isWormhole ? 'grad:portal:wh' : 'grad:portal', () => makeGradientTexture({
+      type: 'radial',
+      stops: isWormhole
+        ? [[0, '#f0c0ff'], [0.35, '#9030ff'], [0.7, '#3a0a4a'], [1, '#08000f']]
+        : [[0, '#bff4ff'], [0.4, '#39d0ff'], [1, '#0a1830']],
+    }));
+    const material = new THREE.MeshBasicMaterial({
+      map: tex, transparent: true, opacity: isWormhole ? 0.7 : 0.55,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+    });
+    configurePlanarAdditiveMaterial(material);
+    return material;
+  });
+}
+
 // Vertical jump gate: a chunky portal you fly THROUGH. The ring plane contains the
 // world Y axis + the radial-in direction (toward sector center), so a ship approaching
 // from the sector center passes cleanly through the opening. Built from primitives +
@@ -2695,25 +2851,22 @@ function buildGate(e, pal) {
   innerRing.scale.setScalar(R);
   orient.add(innerRing);
 
-  // EVENT HORIZON — swirling additive disc filling the opening.
-  const portalMat = getMaterial(isWormhole ? 'gate:portal:wh' : 'gate:portal', () => {
-    const tex = getTexture(isWormhole ? 'grad:portal:wh' : 'grad:portal', () => makeGradientTexture({
-      type: 'radial',
-      stops: isWormhole
-        ? [[0, '#f0c0ff'], [0.35, '#9030ff'], [0.7, '#3a0a4a'], [1, '#08000f']]
-        : [[0, '#bff4ff'], [0.4, '#39d0ff'], [1, '#0a1830']],
-    }));
-    const material = new THREE.MeshBasicMaterial({
-      map: tex, transparent: true, opacity: isWormhole ? 0.7 : 0.55,
-      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
-    });
-    configurePlanarAdditiveMaterial(material);
-    return material;
-  });
+  // EVENT HORIZON — structured additive disc filling the opening (see GATE_PORTAL_FRAGMENT):
+  // an infalling fold rosette cut by dark channels, time-driven, not a static gradient card.
+  const portalMat = gatePortalMaterial(isWormhole);
   const portal = new THREE.Mesh(
     getGeometry('gate:disc', () => new THREE.CircleGeometry(0.78, 48)),
     portalMat,
   );
+  // Shared-material clock: every gate of a type writes the same uTime (idempotent — the boltMesh
+  // pattern). nowSec() is the presentation sim clock, so the face holds still with the world on
+  // pause/hit-stop. infrastructureMotion owns the reduced-motion decision and maintains
+  // userData.motionScale (same 0.25 convention as the lens). Guarded so the canvas fallback
+  // material (no uniforms) is left untouched.
+  portal.onBeforeRender = () => {
+    const u = portalMat.uniforms;
+    if (u && u.uTime) u.uTime.value = nowSec() * (portalMat.userData.motionScale || 1);
+  };
   portal.scale.setScalar(R);
   orient.add(portal);
 
@@ -2816,6 +2969,28 @@ function animateGate(host, blinkers) {
       b.material.emissiveIntensity = bl.base * (0.18 + 0.82 * on);
     }
   };
+}
+
+
+function addStationSolidity(g, R, material) {
+  // The fallback ring needs a load-bearing floor below the flight plane, not a
+  // second hull kit or a yard spine several station radii outside its collider.
+  const deck = new THREE.Mesh(
+    getGeometry('stat:solidDeck', () => new THREE.CylinderGeometry(0.84, 0.84, 0.04, 48)),
+    material,
+  );
+  deck.name = 'Station_ContactDeck';
+  deck.position.y = -0.32 * R;
+  deck.scale.setScalar(R);
+  deck.receiveShadow = true;
+  // Keep this one receiver identifiable through static merging. Its true top
+  // plane and inscribed footprint are the contact-shadow contract.
+  deck.userData.contactShadowReceiver = true;
+  g.add(deck);
+  g.userData.contactShadowReceivers = [{
+    nodeName: deck.name, centerX: 0, centerZ: 0, y: 0.02,
+    innerRadius: 0, outerRadius: 0.838,
+  }];
 }
 
 function buildStation(e) {
@@ -2936,6 +3111,7 @@ function buildStation(e) {
   // PAINT PROFILE for stations — the same dirty-vs-clean art direction as ships: grimy frontier
   // outposts (grime + patches), pristine chrome core stations (env-map foil + insignia). Reads the
   // faction personality via resolvePalette's profile, exactly like ships.
+  addStationSolidity(g, R, m);
   applyStructureProfile(g, pal, R, hashId(e.id));
   animateStation(core, blinkers);
   g.userData.kind = 'station';
@@ -3084,13 +3260,21 @@ function buildCreditChip(e) {
 }
 
 function buildPickup(e) {
+  // FB-075: a volatile lot in a pickup body is still the hazard bottle — the silhouette carries
+  // the warning regardless of which spawn path dropped it.
+  if (e.data && (e.data.volatileClass || e.data.volatileLamp)) return buildVolatilePod(e);
   if (e.data && e.data.freightCustodyPod) {
     const canister = buildPayload(e);
     canister.userData.kind = 'pickup';
     canister.userData.interactionKind = 'pickup';
+    canister.userData.pickupRole = PICKUP_ROLE.POD;
     return canister;
   }
-  if (isCreditChipEntity(e)) return buildCreditChip(e);
+  if (isCreditChipEntity(e)) {
+    const chip = buildCreditChip(e);
+    chip.userData.pickupRole = PICKUP_ROLE.CHIP;
+    return chip;
+  }
   const R = e.radius || 2.2;
   const color = commodityColor(e);
   const g = new THREE.Group();
@@ -3110,6 +3294,10 @@ function buildPickup(e) {
   g.add(gem);
   g.userData.kind = 'pickup'; g.userData.gem = gem;
   g.userData.pickupShape = shapeName || 'octahedron';
+  // FB-075: the ore role resolves to the kit's faceted block; other categories keep their own
+  // kit silhouette. The stamp is the inspectable role identity, the geometry stays authored.
+  g.userData.pickupRole = shapeName === 'raw_ore' ? PICKUP_ROLE.ORE
+    : (pickupRoleForEntity(e) || null);
   const ph = (hashId(e.id) % 100) / 100 * Math.PI * 2;
   gem.frustumCulled = false;
   // Emissive glint only — tumble/bob/vortex/intake transforms are owned by
@@ -3308,6 +3496,8 @@ function hulkPackagedFileForEntity(e) {
 }
 
 export function wreckPackagedFile(e) {
+  if (isCeresWorkfleetPlace(e)) return ceresWorkfleetPlaceFile(e);
+  if (isCeresShipbreakSection(e)) return CERES_SHIPBREAK_FILES[e.data.placeId];
   const fragmentFile = fractureFragmentFileForEntity(e);
   if (fragmentFile) return fragmentFile;
   const hulkFile = hulkPackagedFileForEntity(e);
@@ -3650,11 +3840,35 @@ function isLod0Primitive(primitive) {
 }
 
 export function instantiatePackagedPrimitives(record, parent, options = {}) {
-  // Warmth passes set includeAllLods: a dedicated lod1/lod2 file's primitives carry the
-  // non-lod0 tag themselves, and filtering them would warm an empty holder.
+  const it = instantiatePackagedPrimitivesSteps(record, parent, options);
+  for (;;) { const step = it.next(); if (step.done) return step.value; }
+}
+
+// Stepped twin of the flat-primitive mint above: a hulk record's hundreds of
+// primitives pace at strides inside a commit leg instead of minting atomically.
+// Warmth passes set includeAllLods: a dedicated lod1/lod2 file's primitives carry
+// the non-lod0 tag themselves, and filtering them would warm an empty holder.
+// The flat-primitive mount replays the same decoded package the instance route
+// exposes, so the boundary stamp belongs here too: the opening census's
+// productionBoundary walk finds `spacefaceRenderPackage` on descendants (D157) —
+// it runs first so a suspended walk still leaves the provenance visible to any
+// intervening census.
+export function* instantiatePackagedPrimitivesSteps(record, parent, options = {}, tmp = new THREE.Matrix4()) {
   const includeAllLods = options && options.includeAllLods === true;
-  const tmp = new THREE.Matrix4();
-  for (const primitive of record && record.primitives || []) {
+  if (parent && parent.userData && !parent.userData.spacefaceRenderPackage) {
+    const pkg = record && record.renderPackage || null;
+    const assetId = (pkg && pkg.assetId) || (record && record.assetId) || null;
+    if (assetId) {
+      parent.userData.spacefaceRenderPackage = {
+        assetId,
+        contentHash: (pkg && pkg.contentHash) || null,
+      };
+    }
+  }
+  const primitives = (record && record.primitives) || [];
+  for (let i = 0; i < primitives.length; i++) {
+    if (i > 0 && (i % 128) === 0) yield;
+    const primitive = primitives[i];
     if (!primitive || !primitive.geometry || !primitive.material) continue;
     if (!includeAllLods && !isLod0Primitive(primitive)) continue;
     const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
@@ -3682,6 +3896,46 @@ export function fitPackagedGroup(group, targetRadius) {
   group.scale.setScalar(fitScale);
   // The recenter composes with the scale: a child at authored point v lands at
   // position + s·v, so the measured center reaches origin only at position = -s·c.
+  group.position.set(-center.x * fitScale, -center.y * fitScale, -center.z * fitScale);
+}
+
+// Stepped twin: the forced compose yields at strides and the bounds union walks
+// Box3.expandByObject(object, precise=false) iteratively — same pre-order DFS,
+// same object-else-geometry box per node — so a hulk-scale subtree paces inside
+// a commit leg instead of paying two whole-subtree walks atomically.
+export function* fitPackagedGroupSteps(group, targetRadius) {
+  if (!group) return;
+  yield* updateMatrixWorldSteps(group, true);
+  const box = new THREE.Box3();
+  const scratch = new THREE.Box3();
+  const stack = [group];
+  let visited = 0;
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if ((++visited % 1024) === 0) yield;
+    node.updateWorldMatrix(false, false);
+    const geometry = node.geometry;
+    if (geometry !== undefined) {
+      if (node.boundingBox !== undefined) {
+        if (node.boundingBox === null) node.computeBoundingBox();
+        scratch.copy(node.boundingBox);
+      } else {
+        if (geometry.boundingBox === null) geometry.computeBoundingBox();
+        scratch.copy(geometry.boundingBox);
+      }
+      scratch.applyMatrix4(node.matrixWorld);
+      box.union(scratch);
+    }
+    const children = node.children;
+    for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+  }
+  if (box.isEmpty()) return;
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const envelope = Math.max(size.x, size.y, size.z, 1e-6);
+  const radius = Number(targetRadius);
+  const fitScale = Number.isFinite(radius) && radius > 0 ? (radius * 2) / envelope : 1;
+  group.scale.setScalar(fitScale);
   group.position.set(-center.x * fitScale, -center.y * fitScale, -center.z * fitScale);
 }
 
@@ -3827,11 +4081,118 @@ export function deadenPackagedHulk(group, options = {}) {
   return [...clones.values()];
 }
 
+// Stepped twin of deadenPackagedHulk: collect the subtree's meshes in one DFS
+// then run the same per-node deaden body at slice strides — the clone work and
+// the walk pace inside a commit leg instead of one atomic span at hulk scale.
+export function* deadenPackagedHulkSteps(group, options = {}) {
+  const residualLife = options && options.residualLife === true;
+  const clones = new Map();
+  if (group && typeof group.traverse === 'function') {
+    const meshes = [];
+    const stack = [group];
+    let visited = 0;
+    while (stack.length > 0) {
+      const node = stack.pop();
+      if ((++visited % 1024) === 0) yield;
+      if (node && node.isMesh) meshes.push(node);
+      const children = node && node.children;
+      if (children) for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+    }
+    for (let i = 0; i < meshes.length; i++) {
+      const node = meshes[i];
+      const mats = Array.isArray(node.material) ? node.material : [node.material];
+      if (mats.every((m) => m && m.blending === THREE.AdditiveBlending)) {
+        if (residualLife) {
+          node.material = Array.isArray(node.material)
+            ? mats.map((m) => { const c = m.clone(); c.opacity = (m.opacity ?? 1) * 0.35; c.needsUpdate = true; return c; })
+            : (() => { const c = node.material.clone(); c.opacity = (node.material.opacity ?? 1) * 0.35; c.needsUpdate = true; return c; })();
+        } else {
+          node.visible = false;
+        }
+      } else {
+        const dead = mats.map((m) => {
+          if (!m) return m;
+          let clone = clones.get(m);
+          if (!clone) {
+            clone = m.clone();
+            // Material.clone() drops own-property shader patches — without these the dead
+            // material keys a fresh program and links it at the kill moment (the +4
+            // wreck_PackagedBody links). The dead state only moves uniforms, so the clone
+            // should share the live hull's already-linked program.
+            clone.onBeforeCompile = m.onBeforeCompile;
+            clone.customProgramCacheKey = m.customProgramCacheKey;
+            if (clone.color && typeof clone.color.multiplyScalar === 'function') {
+              clone.color.multiplyScalar(HULK_COLOR_SCALE);
+            }
+            // Ember hue at zero intensity: dark now, hot later only through emissiveIntensity.
+            if (clone.emissive && typeof clone.emissive.setHex === 'function') {
+              clone.emissive.setHex(HULK_EMBER_COLOR);
+            }
+            clone.emissiveIntensity = 0;
+            // Heat remains in authored drive/thermal hardware. Heating every hull panel equally
+            // erases the ship's material detail into a solid orange silhouette during the blast.
+            // Uniform-only weights retain the live program identity and add no kill-time shader.
+            const heatName = String(m.name || '').toLowerCase();
+            const baseGain = /drivecore|drive_core|reactor/.test(heatName) ? 1
+              : /engine|radiator|heat|coolant/.test(heatName) ? 0.55
+              : /mechanical/.test(heatName) ? 0.18
+              : /glass|rubber|decal|marking|nav|sensor/.test(heatName) ? 0 : 0.025;
+            clone.userData.hulkEmberGain = residualLife && /emissive|glow|light|strobe|beacon|strip|nav/.test(heatName)
+              ? Math.max(baseGain, 0.2)
+              : baseGain;
+            if ('envMapIntensity' in clone) {
+              clone.envMapIntensity = (Number.isFinite(clone.envMapIntensity) ? clone.envMapIntensity : 1) * HULK_ENVMAP_SCALE;
+            }
+            if ('roughness' in clone && Number.isFinite(clone.roughness)) {
+              clone.roughness = Math.max(clone.roughness, HULK_MIN_ROUGHNESS);
+            }
+            clone.needsUpdate = true;
+            clones.set(m, clone);
+          }
+          return clone;
+        });
+        node.material = Array.isArray(node.material) ? dead : dead[0];
+        node.userData.hulkDeadBody = true;
+      }
+      if ((i % 256) === 255) yield;
+    }
+    group.userData.hulkDeadBody = true;
+  }
+  return [...clones.values()];
+}
+
 // A detached packaged group the admission run still owns: its primitives were minted fresh for
 // this mount, so geometry and material instances die with it. Shared-asset geometries keep
 // their pool pin; texture maps ride the packaged cache and are left alone.
+function* disposeDetachedPackagedGroupSteps(group) {
+  const stack = [group];
+  let visited = 0;
+  while (stack.length) {
+    const object = stack.pop();
+    if (!object) continue;
+    if ((++visited % 128) === 0) yield;
+    if (object.geometry && typeof object.geometry.dispose === 'function'
+      && !(object.geometry.userData && object.geometry.userData.spacefaceSharedAsset)) {
+      object.geometry.dispose();
+    }
+    const materials = Array.isArray(object.material)
+      ? object.material
+      : object.material ? [object.material] : [];
+    for (const material of materials) {
+      if (material && typeof material.dispose === 'function') material.dispose();
+    }
+    const children = object.children || [];
+    for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
+}
+
 function disposeDetachedPackagedGroup(group) {
   if (!group || typeof group.traverse !== 'function') return;
+  // The mid-commit abort legs (orphan/pipeline-fail/stale-run) used to tear the
+  // packaged subtree down atomically inside the commit continuation — the same
+  // presented-beat class the place/commit disposes already pace on the shared
+  // queue. Sync path stays as the no-queue fallback.
+  if (queuePacedDetachedTeardown(group, disposeDetachedPackagedGroupSteps(group))) return;
   group.traverse((object) => {
     if (!object) return;
     if (object.geometry && typeof object.geometry.dispose === 'function'
@@ -3848,7 +4209,15 @@ function disposeDetachedPackagedGroup(group) {
 }
 
 function attachPackagedBody(root, relativeFile, entity) {
-  if (!root || !relativeFile) return root;
+  if (!root || !relativeFile) {
+    // No packaged file resolved — stamp the terminal identity so the root never sits
+    // 'missing' in front of the readiness gate (same wedge class as buildFallback).
+    if (root) {
+      root.userData.authoredAssetState = 'unavailable';
+      root.userData.authoredVisualRoot = 'none-build-failed';
+    }
+    return root;
+  }
   const url = packagedPartUrl(relativeFile);
   // The packaged file IS the victim's own hull only when the hulk selector chose it —
   // a wreck that fell back to a generic aftermath piece must not be dead-stated. ANI-08
@@ -3908,6 +4277,9 @@ function attachPackagedBody(root, relativeFile, entity) {
     // opening-graph release. Attaching straight to the live root linked the packaged materials
     // inside the first bloomScene draw — a hitch at the exact kill moment — and left the
     // pending wreck drawing nothing while 'awaiting-authored-admission'.
+    // Hoisted for the catch: a generator/driver throw mid-commit must still dispose the
+    // detached partial group — nothing else owns it once the run aborts.
+    let detachedCommitGroup = null;
     const completion = loadPart(url, {
       renderer,
       slot: 'place',
@@ -3918,25 +4290,71 @@ function attachPackagedBody(root, relativeFile, entity) {
       ...requestOptions,
     }).then(async (record) => {
       if (!record || !root.parent) {
-        if (!record && staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
+        if (!record && staleAuthoredRunVerdict(root, mintedAdmissionOptions)) {
+          return { status: 'stale-verdict-superseded' };
+        }
         root.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
         if (!record) restorePackagedBodyFallback(root, 'packaged-body-load-missed');
-        return false;
+        return { status: record ? 'orphaned-before-swap' : 'unavailable' };
       }
       const packaged = new THREE.Group();
+      detachedCommitGroup = packaged;
       packaged.name = `${root.userData.kind || 'entity'}_PackagedBody`;
       packaged.userData.packagedAuthoredBody = true;
+      // The publish stretch used to be one contiguous main-thread turn
+      // (createInstance → fit → freeze → mount) landing wherever the microtask
+      // drained — including inside the gap before a presented frame. Yield at
+      // leg boundaries; the body stays admission-hidden until publish so the
+      // spread changes nothing visible. The mount tail (hide → add → canonicalize
+      // → shadow-policy sync) stays atomic so no presented frame sees the graft
+      // with minted default shadow flags.
+      let ruptureRefired = false;
+      // Each resume leg below is contiguous — debit the shared paced ledger so other
+      // frame slicers see its cost instead of stacking their own budget on top.
+      const legNow = () => (
+        typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now()
+      );
+      let legStarted = legNow();
+      const packagedCommitOrphaned = (releaseReason = 'packaged-body-orphaned-mid-commit') => {
+        if (root.parent) return false;
+        releaseBoundaryResidency(renderer, root,
+          releaseReason, mintedAdmissionOptions.admissionEpoch);
+        root.userData.authoredAssetState = 'orphaned-before-swap';
+        // A rupture re-fired on this commit dies with the disposed subtree — restore the
+        // flag so a later re-admission of the same entity fires its kick again.
+        if (ruptureRefired && entity && entity.data) entity.data.fractureRuptureFired = false;
+        return true;
+      };
+      // Drives a Steps twin across its own yields — each internal slice debits the
+      // shared paced ledger, and an orphan detected mid-leg aborts the walk at the
+      // next stride (the commit exits through the same orphaned-before-swap path).
+      const COMMIT_ORPHANED = Symbol('packaged-commit-orphaned');
+      const driveLeg = async (iter) => {
+        for (;;) {
+          const legStep = iter.next();
+          if (legStep.done) return legStep.value;
+          notePacedFrameSpend(legNow() - legStarted);
+          await yieldToBrowser();
+          legStarted = legNow();
+          if (packagedCommitOrphaned()) return COMMIT_ORPHANED;
+        }
+      };
       // Banked packages (mining drone, fracture fragments) mount through the node graph so the
       // MOTION_* pivots the motion bank drives actually exist in the scene — the flat-primitive
       // path bakes every transform into world-space meshes and leaves the rig no nodes.
       const motionControllers = [];
       if (record.motionBank && record.renderPackage
-          && typeof record.renderPackage.createInstance === 'function') {
-        const instance = record.renderPackage.createInstance({
+          && typeof record.renderPackage.createInstanceSteps === 'function') {
+        const instance = await driveLeg(record.renderPackage.createInstanceSteps({
           name: `RenderPackage_PackagedBody_${record.assetId || record.url}`,
           residencyOwner: liveEntity,
           residencyRole: 'live-boundary',
-        });
+        }));
+        if (instance === COMMIT_ORPHANED) {
+          disposeDetachedPackagedGroup(packaged);
+          return { status: 'orphaned-before-swap' };
+        }
         const packageRoot = instance && instance.root;
         if (packageRoot && packageRoot.isObject3D) {
           packageRoot.userData = {
@@ -3958,18 +4376,39 @@ function attachPackagedBody(root, relativeFile, entity) {
           }
           packaged.add(packageRoot);
           packaged.userData.renderPackageInstance = instance;
-          const controller = bindInstanceMotion(packageRoot, record.motionBank);
+          // bindInstanceMotion's name-map collect is a second O(subtree) walk — the
+          // stepped twin paces it under driveLeg rather than paying it atomically.
+          notePacedFrameSpend(legNow() - legStarted);
+          const controller = await driveLeg(bindInstanceMotionSteps(packageRoot, record.motionBank));
+          if (controller === COMMIT_ORPHANED) {
+            disposeDetachedPackagedGroup(packaged);
+            return { status: 'orphaned-before-swap' };
+          }
           if (controller) motionControllers.push(controller);
         } else if (instance && typeof instance.dispose === 'function') {
           instance.dispose();
         }
       }
-      if (!packaged.children.length) instantiatePackagedPrimitives(record, packaged);
+      notePacedFrameSpend(legNow() - legStarted);
+      await yieldToBrowser();
+      legStarted = legNow();
+      if (packagedCommitOrphaned()) {
+        disposeDetachedPackagedGroup(packaged);
+        return { status: 'orphaned-before-swap' };
+      }
       if (!packaged.children.length) {
-        if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
+        if ((await driveLeg(instantiatePackagedPrimitivesSteps(record, packaged))) === COMMIT_ORPHANED) {
+          disposeDetachedPackagedGroup(packaged);
+          return { status: 'orphaned-before-swap' };
+        }
+      }
+      if (!packaged.children.length) {
+        if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) {
+          return { status: 'stale-verdict-superseded' };
+        }
         root.userData.authoredAssetState = 'unavailable';
         restorePackagedBodyFallback(root, 'packaged-body-empty');
-        return false;
+        return { status: 'unavailable' };
       }
       if (motionControllers.length) attachAuthoredMotionDriver(root, liveEntity, motionControllers);
       // ANI-08: hull:fractured fires at spawn — long before this packaged body's async
@@ -3978,15 +4417,20 @@ function attachPackagedBody(root, relativeFile, entity) {
       if (motionControllers.length && entity && entity.data && entity.data.fracturePiece
           && entity.data.fractureRuptureFired !== true) {
         entity.data.fractureRuptureFired = true;
+        ruptureRefired = true;
         const now = factoryPresentationNow() ?? 0;
         for (const controller of motionControllers) {
           controller.handleEvent?.('wreck:rupture', { pieceId: entity.id }, now);
         }
       }
       if (deadHulk) {
-        const emberMats = deadenPackagedHulk(packaged, {
+        const emberMats = await driveLeg(deadenPackagedHulkSteps(packaged, {
           residualLife: !!(entity && entity.data && entity.data.fracturePiece),
-        });
+        }));
+        if (emberMats === COMMIT_ORPHANED) {
+          disposeDetachedPackagedGroup(packaged);
+          return { status: 'orphaned-before-swap' };
+        }
         packaged.userData.hulkOfDefId = entity && entity.data && entity.data.hulkOfDefId || null;
         if (emberMats.length) {
           root.userData.hulkEmber = {
@@ -3995,13 +4439,28 @@ function attachPackagedBody(root, relativeFile, entity) {
           };
         }
       }
-      fitPackagedGroup(packaged, fractureFragmentFitRadius(entity) || (entity && entity.radius));
-      freezeStaticChildMatrices(packaged);
+      if ((await driveLeg(fitPackagedGroupSteps(packaged, fractureFragmentFitRadius(entity) || (entity && entity.radius)))) === COMMIT_ORPHANED) {
+        disposeDetachedPackagedGroup(packaged);
+        return { status: 'orphaned-before-swap' };
+      }
+      if ((await driveLeg(freezeStaticChildMatricesSteps(packaged))) === COMMIT_ORPHANED) {
+        disposeDetachedPackagedGroup(packaged);
+        return { status: 'orphaned-before-swap' };
+      }
+      // Canonicalization only mutates the packaged subtree's materials and reads no
+      // parentage, so it can run pre-graft instead of inside the atomic mount tail.
+      if ((await driveLeg(canonicalizeObjectSurfaceProgramKeysSteps(packaged))) === COMMIT_ORPHANED) {
+        disposeDetachedPackagedGroup(packaged);
+        return { status: 'orphaned-before-swap' };
+      }
       root.userData.authoredAssetState = 'compiling-pipelines';
       try {
         await prepareAuthoredVisualPipelines(packaged, mintedAdmissionOptions);
       } catch (error) {
         releaseBoundaryResidency(renderer, root, 'packaged-body-pipeline-failed', mintedAdmissionOptions.admissionEpoch);
+        // The freeze/canonicalize/pipeline-prepared subtree is still detached here —
+        // every other exit disposes it; a verdict return would leak its GPU payload.
+        try { disposeDetachedPackagedGroup(packaged); } catch (_) { /* teardown */ }
         if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
         // Same lifecycle abort partsLibrary classifies: an owner that dies mid-admission has no
         // visual to publish — a breadcrumb, not a composition defect.
@@ -4013,29 +4472,32 @@ function attachPackagedBody(root, relativeFile, entity) {
         if (ownerInactive) {
           if (root.parent) {
             markAuthoredBoundaryForReadmission(root, 'packaged-body-owner-inactive');
-          } else {
-            root.userData.authoredAssetState = 'unavailable';
+            return { status: 'awaiting-authored-admission' };
           }
-        } else {
           root.userData.authoredAssetState = 'unavailable';
-          restorePackagedBodyFallback(root, 'packaged-body-pipeline-failed');
-          console.warn('[visualFactory] packaged body pipeline admission failed', error);
+          return { status: 'orphaned-before-swap' };
         }
-        return false;
+        root.userData.authoredAssetState = 'unavailable';
+        restorePackagedBodyFallback(root, 'packaged-body-pipeline-failed');
+        console.warn('[visualFactory] packaged body pipeline admission failed', error);
+        return { status: 'fallback-after-error' };
       }
-      if (!root.parent) {
-        releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-after-compile', mintedAdmissionOptions.admissionEpoch);
-        root.userData.authoredAssetState = 'orphaned-before-swap';
-        return false;
+      if (packagedCommitOrphaned('packaged-body-orphaned-after-compile')) {
+        disposeDetachedPackagedGroup(packaged);
+        return { status: 'orphaned-before-swap' };
       }
       const publicationWait = waitForOpeningGraphPublicationRelease({
         entity: boundaryLiveEntity(root, entity) || entity,
       });
       if (publicationWait) await publicationWait;
-      if (!root.parent) {
-        releaseBoundaryResidency(renderer, root, 'packaged-body-orphaned-before-publication', mintedAdmissionOptions.admissionEpoch);
-        root.userData.authoredAssetState = 'orphaned-before-swap';
-        return false;
+      // The compile + publication gate can span several presents — the tail
+      // debit below must cover the mount tail alone, or the wallet reads a
+      // whole multi-present wait as CPU spent this frame. Same restamp the
+      // scenario-prop twin keeps after its own publication wait.
+      legStarted = legNow();
+      if (packagedCommitOrphaned('packaged-body-orphaned-before-publication')) {
+        disposeDetachedPackagedGroup(packaged);
+        return { status: 'orphaned-before-swap' };
       }
       // Same stale-run guard the cargo/place/ship commits carry: a run parked at the
       // publication wait while its boundary re-admitted under a newer epoch must not mount
@@ -4045,27 +4507,41 @@ function attachPackagedBody(root, relativeFile, entity) {
           || (typeof mintedAdmissionOptions.isAbortedStalledAdmission === 'function' && mintedAdmissionOptions.isAbortedStalledAdmission())
           || admissionOwnerInactive(mintedAdmissionOptions, liveEntity)) {
         disposeDetachedPackagedGroup(packaged);
-        return false;
+        return { status: 'stale-verdict-superseded' };
       }
       // Re-hide in case a retained fallback (or a retry already in flight) re-showed the
       // procedural children while this admission was mid-flight.
       hideProceduralChildren(root);
       root.add(packaged);
-      canonicalizeObjectSurfaceProgramKeys(packaged);
+      carryAdmittedOnceStamp(packaged, root);
+      // The committed subtree's meshes carry three.js castShadow=false until a policy
+      // traverse covers them; re-syncing here applies the live caster policy in this
+      // continuation instead of at the next unrelated band flip.
+      const packagedShadowSync = mintedAdmissionOptions.syncPackagedBodyShadowPolicy;
+      if (typeof packagedShadowSync === 'function') {
+        try { packagedShadowSync(root, liveEntity || entity, packaged); } catch (_) { /* best effort */ }
+      }
+      notePacedFrameSpend(legNow() - legStarted);
       root.userData.hull = packaged;
       root.userData.authoredReadableFallbackRetained = false;
       root.userData.authoredAssetState = 'authored';
       root.userData.authoredVisualRoot = record.assetId || url;
       return true;
     }).catch((error) => {
-      if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) return false;
+      if (detachedCommitGroup && !detachedCommitGroup.parent) {
+        try { disposeDetachedPackagedGroup(detachedCommitGroup); } catch (_) { /* teardown */ }
+      }
+      detachedCommitGroup = null;
+      if (staleAuthoredRunVerdict(root, mintedAdmissionOptions)) {
+        return { status: 'stale-verdict-superseded' };
+      }
       if (root.parent && admissionOwnerInactive(null, entity, error)) {
         markAuthoredBoundaryForReadmission(root, 'packaged-body-owner-inactive');
-      } else {
-        root.userData.authoredAssetState = 'unavailable';
-        restorePackagedBodyFallback(root, 'packaged-body-load-error');
+        return { status: 'awaiting-authored-admission' };
       }
-      return false;
+      root.userData.authoredAssetState = 'unavailable';
+      restorePackagedBodyFallback(root, 'packaged-body-load-error');
+      return { status: root.parent ? 'fallback-after-error' : 'orphaned-before-swap' };
     });
     root.userData.authoredUpgradePromise = completion;
     return completion;
@@ -5309,6 +5785,11 @@ function buildFallback(e) {
   root.visible = false;
   root.userData.visualBuildFailed = true;
   root.userData.failedEntityType = e && e.type || 'unknown';
+  // A builder throw on a gate-bound contact would otherwise sit 'missing' forever and
+  // hold flight-ready hostage; stamp the terminal fail-closed identity like
+  // unavailableVisual so the readiness scan releases it.
+  root.userData.authoredAssetState = 'unavailable';
+  root.userData.authoredVisualRoot = 'none-build-failed';
   return root;
 }
 
@@ -5392,7 +5873,47 @@ function laneTrafficVisualEntity(e) {
   };
 }
 
+// FB-075 — volatile cargo reads as a hazard bottle, not another canister: sphere under a
+// containment collar (fragmentFamilies' 'volatile' role recipe), with the class's lamp color
+// carried in the collar material so the warning survives the chase camera.
+const VOLATILE_LAMP_COLOR = Object.freeze({
+  // keyed by class id and by the stamped lamp name — the sim writes both
+  explosive: 0xffb340, corrosive: 0x7dd66a, superdense: 0xa77dff,
+  amber: 0xffb340, green: 0x7dd66a, violet: 0xa77dff, red: 0xff5c4a,
+  default: 0xffb340,
+});
+
+function volatileLampColor(e) {
+  const lamp = e && e.data && (e.data.volatileClass || e.data.volatileLamp);
+  return VOLATILE_LAMP_COLOR[lamp] || VOLATILE_LAMP_COLOR.default;
+}
+
+function buildVolatilePod(e) {
+  const R = Math.max(1, (e && e.radius) || 3);
+  const g = new THREE.Group();
+  const lamp = volatileLampColor(e);
+  const bottle = new THREE.Mesh(
+    getGeometry('pickup:role:volatile', () => buildPickupRoleGeometry(PICKUP_ROLE.VOLATILE)),
+    getMaterial(`payload:volatile:${e.data.volatileClass || 'any'}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      color: 0x2a2f33, roughness: 0.42, metalness: 0.55,
+      emissive: new THREE.Color(lamp), emissiveIntensity: 0.55,
+    }), SHARED_MATERIAL_ROLE.HULL)),
+  );
+  bottle.name = 'VolatilePod_Bottle';
+  g.add(bottle);
+  g.scale.setScalar(R);
+  g.userData.kind = e && e.type === 'pickup' ? 'pickup' : 'payload';
+  g.userData.interactionKind = g.userData.kind;
+  g.userData.visualLanguage = 'volatile-pressure-bottle';
+  g.userData.pickupRole = PICKUP_ROLE.VOLATILE;
+  g.userData.animated = true;
+  return g;
+}
+
 function buildPayload(e) {
+  // FB-075: a pod carrying a volatile lot is a pressure bottle with a collar, not a canister —
+  // the silhouette is the hazard warning at chase distance.
+  if (e && e.data && (e.data.volatileClass || e.data.volatileLamp)) return buildVolatilePod(e);
   const R = Math.max(1, (e && e.radius) || 3);
   const g = new THREE.Group();
   const commodityId = payloadCommodityId(e && e.data);
@@ -5432,6 +5953,7 @@ function buildPayload(e) {
   g.userData.kind = 'payload';
   g.userData.interactionKind = 'payload';
   g.userData.visualLanguage = 'sealed-cargo-canister';
+  g.userData.pickupRole = PICKUP_ROLE.POD;
   g.userData.animated = true;
   if (presentation) {
     g.userData.commodityPresentationId = presentation.id;
@@ -5463,7 +5985,23 @@ export function invalidateVisualFactoryCaches() {
 }
 
 function stampBuiltVisual(root) {
-  if (root) canonicalizeObjectSurfaceProgramKeys(root);
+  if (root) {
+    canonicalizeObjectSurfaceProgramKeys(root);
+    // Producer-owned marker: every generated visual exits through this stamp, so the opening
+    // census's ensure helper can publish the deterministic leaf recipe as this root's
+    // production boundary (D157). Procedural roots mount no authored byte package, and the
+    // census itself must never synthesize provenance from renderer counters — it only reads
+    // what the producer declared here.
+    if (root.userData && !root.userData.generatedVisualProducer) {
+      root.userData.generatedVisualProducer = 'visual-factory-procedural';
+    }
+    // Character-family builders stamp 'authored' with no visualBounds — the
+    // first drawn-cull consult would pay the box walk inside a presented pass.
+    // Pre-pay it here: builds already run inside paced residency lanes.
+    if (root.userData && String(root.userData.authoredAssetState || '').startsWith('authored')) {
+      primeDrawnCullStamps(root);
+    }
+  }
   return root;
 }
 
@@ -5472,14 +6010,28 @@ export function createVisualFactory() {
     build(e) {
       try {
         if (!e) return null;
+        if (isBorrowedVoiceRing(e)) {
+          const root = new THREE.Group(); root.name = 'BorrowedVoiceRingAuthoredPending'; return root;
+        }
+        if (Number.isInteger(e.data?.veilNurseryRib)) return stampBuiltVisual(buildNurseryMineralRib(e));
+        if (isLatchActor(e) || isTallyThreeAssessor(e)) {
+          const root = new THREE.Group(); root.name = isLatchActor(e) ? 'LatchNineAuthoredPending' : 'TallyThreeAuthoredPending'; return root;
+        }
+        if (e.data?.ruckusPart) return stampBuiltVisual(buildRuckusVisual(e));
+        if (e.data?.ruudPart) return stampBuiltVisual(buildRuudVisual(e));
+        if (e.data?.ravelPart) return stampBuiltVisual(buildRavelVisual(e));
+        if (e.data?.bracketPart) return stampBuiltVisual(buildBracketVisual(e));
+        if (e.data?.solsticePart) return stampBuiltVisual(buildSolsticeVisual(e));
+        // RUBRIC: the marker and its paint marks are authored; the filing hull (rubricPart 'hull') is an ordinary wreck.
+        if (e.data?.rubricPart === 'body' || e.data?.rubricPart === 'mark') return stampBuiltVisual(buildRubricVisual(e));
         switch (e.type) {
           case 'ship': return stampBuiltVisual(optimizeStaticBatches(buildShipMesh(e, resolvePalette(e))));
           case 'asteroid': return stampBuiltVisual(freezeStaticPresentation(buildAsteroid(e), { merge: false }));
           case 'station': return stampBuiltVisual(freezeStaticPresentation(attachStationHlod(buildStation(e), e)));
           case 'pickup': return stampBuiltVisual(buildPickup(e));
           case 'projectile': return stampBuiltVisual(buildProjectile(e));
-          case 'drone': return stampBuiltVisual(e.data?.morrow === true ? buildMorrowVisual(e) : buildDrone(e));
-          case 'payload': return stampBuiltVisual(buildPayload(e));
+          case 'drone': return stampBuiltVisual(e.data?.foldAberrant ? buildFoldAberrantVisual(e) : e.data?.vesper === true ? buildVesperVisual(e) : e.data?.morrow === true ? buildMorrowVisual(e) : buildDrone(e));
+          case 'payload': return stampBuiltVisual(e.data?.foldAberrant ? buildFoldPayloadVisual(e) : buildPayload(e));
           case 'mine': return stampBuiltVisual(buildMine(e));
           case 'vectormine': return stampBuiltVisual(buildVectorMine(e));
           case 'charge': return stampBuiltVisual(buildImpulseCharge(e));

@@ -39,8 +39,8 @@ test('every pad binding the game declares has exactly one row, and no row invent
   assert.equal(new Set(labels).size, labels.length, 'two rows share a label');
 
   const rows = gamepadControlRows(null);
-  assert.equal(rows.length, declared.length + 4,
-    'one row per binding, plus two sticks and two verbs a pad does not own');
+  assert.equal(rows.length, declared.length + 3,
+    'one row per binding, plus two sticks and the one verb a pad does not own');
   for (const expected of ['Accept / confirm', 'Station tab: previous', 'Station tab: next']) {
     assert.ok(rows.some(r => r[0] === expected), `Help is missing a row for "${expected}"`);
   }
@@ -73,6 +73,11 @@ test('a player who never opens Settings still reads the dual Xbox/PlayStation re
   assert.equal(rows.get('Travel burn'), 'L3');
   assert.equal(rows.get('Auto-target'), 'D-Pad Up');
   assert.equal(rows.get('Detonate charge'), 'D-Pad Down');
+  // FB-003: the chord layer prints every button it holds, in the same dual register.
+  assert.equal(rows.get('Scanner pulse'), 'LB / L1 + D-Pad Up');
+  assert.equal(rows.get('Anchor Mass Seed'), 'LB / L1 + D-Pad Down');
+  assert.equal(rows.get('Cloak'), 'RB / R1 + D-Pad Down');
+  assert.equal(rows.get('Cruise drive'), 'RB / R1 + D-Pad Right');
 });
 
 test('the frozen default map and a null map render the same sheet', () => {
@@ -158,6 +163,8 @@ test('the static rows are keyed by label, so inserting a row cannot mis-target o
   const rows = byLabel(gamepadControlRows(null));
   assert.equal(rows.get('Fly (yaw + throttle)'), 'Left stick');
   assert.equal(rows.get('Aim weapons'), 'Right stick');
-  assert.equal(rows.get('Anchor Mass Seed'), 'keyboard verb — rebind under Settings → Controls');
+  // FB-003: the Mass Seed has a real pad seat now (LB + D-Pad Down) — it is an action row, so the
+  // static 'keyboard verb' text is gone and only the mission log stays pad-less.
+  assert.equal(rows.get('Anchor Mass Seed'), 'LB / L1 + D-Pad Down');
   assert.equal(rows.get('Open mission log'), 'Start / Options → Pause → Mission Log');
 });

@@ -52,7 +52,8 @@ export function jumpAbortText(payload) {
     return Number.isFinite(s) && s > 0 ? `Drive cooling — ${Math.ceil(s)}s` : 'Drive still cooling';
   }
   if (ABORT_LINE[reason]) return ABORT_LINE[reason];
-  return `Jump refused — ${reason.replace(/_/g, ' ')}`;
+  // Unknown reason codes still read as a phrase, never a raw slug.
+  return `Jump refused — ${reason.replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()}`;
 }
 
 /** The receipt shape the toast lane takes. Null when the payload says nothing. */

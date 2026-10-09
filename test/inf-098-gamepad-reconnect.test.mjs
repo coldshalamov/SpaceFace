@@ -57,8 +57,31 @@ test('INF-098 disconnect under held fire releases everything and announces', () 
       assert.ok(!anyPressed(gp), 'no edge survives the unplug');
       assert.equal(gp.actions.fire.held, false, 'fire cannot stick');
       assert.ok(events.some((e) => e.name === 'gamepad:disconnected'));
+      const toasts = events.filter((e) => e.name === 'toast');
+      assert.equal(toasts.length, 1, 'the lost device tells the player once');
+      assert.match(toasts[0].payload.text, /disconnected/i);
       assert.deepEqual(gp.drainButtonPresses(), [], 'remap queue drained');
     } finally { restore2(); }
+  } finally { restore(); }
+});
+
+test('INF-098 idle ticks after the loss do not restate the toast', () => {
+  const events = [];
+  const pads = [fakePad([])];
+  const restore = installNavigator(pads);
+  try {
+    const { gp, live } = boot(events);
+    gp.tick(0.016, live, null);
+    pads[0] = null;
+    live.tick = 2;
+    gp.tick(0.016, live, null);
+    assert.equal(events.filter((e) => e.name === 'toast').length, 1);
+    for (let i = 3; i <= 6; i++) {
+      live.tick = i;
+      gp.tick(0.016, live, null);
+    }
+    assert.equal(events.filter((e) => e.name === 'toast').length, 1,
+      'the announcement is once per loss, not once per sample');
   } finally { restore(); }
 });
 

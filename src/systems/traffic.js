@@ -1,3 +1,6 @@
+import { ceresWorkfleetHardwareRoleForRecord } from '../data/ceresWorkfleetHardware.js';
+import { syncCeresWorkfleetHardware, captureCeresWorkfleetHardware, clearCeresWorkfleetControls, reconcileCeresWorkfleetPresentation } from './ceresWorkfleet.js';
+import { registerMachineryReconciliation, unregisterMachineryReconciliation, invalidateMachineryPresentation } from '../core/machineryPresentation.js';
 // Ambient NPC traffic (V2 §28b / cut-list #2 visible-haulers). Spawns benign freighter ships that
 // ply station-to-station routes, making populated space feel ALIVE and — now that the economy
 // wallet bug is fixed — actually moving market prices via aiTrader:requestTrade. This is the §31-Q16
@@ -20,7 +23,10 @@
 //   - Single-writer: traffic owns only its own spawned entities (tracked in state.traffic); it
 //     never touches player state. Economy impact is via the event bus.
 
+import { anvilTrafficMethods } from './anvilWork.js';
+import { raceLeaseActive } from './racingSteer.js';
 import { isRunSealed } from '../core/runSeal.js';
+import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { shouldRunOnTick, takeNearWorkSlice, ownerAiRecord, ownerTeamId, isActiveOwner, hashOwnerKey } from '../core/activityScheduler.js';
 import { SIM_TIER } from '../world/activityClassification.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
@@ -85,6 +91,8 @@ import {
   regionalTrafficRoleWeights,
 } from './regionalEcology.js';
 import {
+  APERTURE_GLOBAL_POS,
+  APERTURE_ID,
   CINDER_SLUICE_SITE_ID,
   CINDER_SLUICE_TRAFFIC_STAGING_POS,
   cinderSluicePhase,
@@ -97,6 +105,7 @@ import {
   CERES_ACTIVITY_SERVICE_SLOTS,
   activityPocketsForSector,
 } from '../data/sectorActivityPockets.js';
+import { stepPallasWorkLoop } from './pallasWorkLoop.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { NPC_JOB_PHASE, NPC_JOB_SCHEMA } from './npcJobs.js';
 import {
@@ -109,6 +118,7 @@ import {
 import { spawnJettisonedCargoPod } from './lootShards.js';
 import { isMasslineLatchedPickup } from './mining.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { admitRichSeamGlint, endRichSeamGlint } from '../render/vfx/worldCueRecipes.js';
 
 const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 // Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
@@ -250,6 +260,9 @@ const CLAIM_CONVOY_MAX_LIVE = 4;              // concurrent manifested claim con
 const CLAIM_CONVOY_DEPART_CLEARANCE_WU = 160; // spawn offset from the claim pad along the route
 const CIVILIAN_DISTRESS_RADIUS_WU = 1800;
 const CIVILIAN_DISTRESS_COOLDOWN_S = 3;
+// Rescue link-up: a cutter stands by a live caller only while its mayday is recent. Past this
+// quiet bound the hull is presumed safe and the cutter stands down instead of escorting forever.
+const RESCUE_CALLER_STANDDOWN_S = 75;
 const AMBUSH_LOADED_HAULER_COMMODITY_ID = 'cmdty_ore_iron';
 const AMBUSH_LOADED_HAULER_QTY = 16;
 const HAULER_SPILL_VEL_FRACTION = 0.45;
@@ -398,7 +411,7 @@ function occupationalJobKind(role) {
 
 // Exported for the PQ-045 identity contract test (distinct hull + label per occupational role);
 // not a new write seam — runtime ownership of role resolution is unchanged.
-export { TRAFFIC_ROLES };
+export { TRAFFIC_ROLES, priorityCourierServiceForSector };
 
 /** WORLD-20 — the memorial sightseer stands on the zone center, inside its radius. */
 export const HELIOS_MEMORIAL_TOURIST = Object.freeze({
@@ -1146,6 +1159,128 @@ function embodimentDensityPayload(state, sectorId) {
   return null;
 }
 
+function sectorServiceSet(sector) {
+  const set = new Set();
+  const stations = sector && sector.stations;
+  if (!Array.isArray(stations)) return set;
+  for (const station of stations) {
+    const services = station && station.services;
+    if (!Array.isArray(services)) continue;
+    for (const service of services) {
+      if (typeof service === 'string' && service) set.add(service);
+    }
+  }
+  return set;
+}
+
+function hazardTypeSet(sector) {
+  const set = new Set();
+  const hazards = sector && sector.hazards;
+  if (!Array.isArray(hazards)) return set;
+  for (const hazard of hazards) {
+    if (hazard && typeof hazard.type === 'string' && hazard.type) set.add(hazard.type);
+  }
+  return set;
+}
+
+/**
+ * FB-029 / FB-133 — flags the mixer already knows how to read, plus the service gates
+ * that field the volatiles tanker and the inspection cutter. Synthetic pockets that
+ * set none of these flags keep the prior weights. Ambient count is not touched.
+ */
+function applySectorPopulationFlags(weights, sector) {
+  const sec = sector || {};
+  const out = weights;
+  const ind = sec.industries && typeof sec.industries === 'object' ? sec.industries : null;
+  const mining = !!(ind && ind.mining);
+  const refinery = !!(ind && ind.refinery);
+  const research = !!(ind && ind.research);
+  if (research && !mining && !refinery) {
+    out.surveyor *= 2.2;
+    out.courier *= 1.25;
+  } else if (research) {
+    out.surveyor *= 1.45;
+  }
+  if (refinery && !mining) {
+    out.hauler *= 1.35;
+    out.ore_carrier *= 1.2;
+  }
+  if (mining && !refinery) out.prospector *= 1.35;
+  if (sec.threat === 'vael') {
+    out.surveyor *= 1.55;
+    out.escort *= 1.18;
+  } else if (sec.threat === 'quiet') {
+    out.smuggler *= 1.9;
+    out.courier *= 0.75;
+  }
+  const hazards = hazardTypeSet(sec);
+  if (hazards.has('nebula')) out.surveyor *= 1.12;
+  if (hazards.has('radiation')) out.tender *= 1.18;
+  if (hazards.has('debris')) out.sweeper *= 1.22;
+  if (hazards.has('dense_asteroid')) out.prospector *= 1.08;
+  const numericSecurity = Number.isFinite(sec.security) ? sec.security : null;
+  const tier = Number.isFinite(sec.tier) ? sec.tier : 0;
+  const threat = sec.threat || sec.danger;
+  const lowBand = threat === 'high' || sec.security === 'lawless'
+    || (numericSecurity != null && numericSecurity <= 0.35) || tier >= 3;
+  if (lowBand && numericSecurity != null) out.patrol *= (0.85 + numericSecurity);
+  const services = sectorServiceSet(sec);
+  const highCore = numericSecurity != null && numericSecurity >= 0.9;
+  const escorted = (out.escort || 0) > 0 || (out.patrol || 0) > 0;
+  if (!highCore && services.has('refuel') && ((out.pirate || 0) <= 0 || escorted)) out.tanker = 6;
+  if (!highCore && (services.has('scan') || services.has('toll'))) out.customs = 6;
+  return out;
+}
+
+// A sector with authored rock is a sector somebody cuts. Field records exist in three shapes: the
+// authored def (`count`), the embodied runtime record (`asteroidIds`), and the live view (`rocks`).
+function sectorHasAuthoredRock(sec) {
+  return Array.isArray(sec && sec.fields) && sec.fields.some((f) => f && (
+    (f.count | 0) > 0
+    || (Array.isArray(f.asteroidIds) && f.asteroidIds.length > 0)
+    || (Array.isArray(f.rocks) && f.rocks.length > 0)
+  ));
+}
+
+function ensureServiceCraftRoles(roles, weights, sector = null) {
+  if (!Array.isArray(roles) || !roles.length || !weights) return roles;
+  const out = roles.slice();
+  const placed = new Set();
+  const place = (role, force = false) => {
+    if (!(weights[role] > 0) || out.includes(role)) return;
+    for (let i = out.length - 1; i >= 0; i--) {
+      if (placed.has(i) || out[i] === 'patrol' || out[i] === 'escort' || out[i] === 'courier') continue;
+      out[i] = role;
+      placed.add(i);
+      return;
+    }
+    // A packed draw leaves no civilian slot: a lawful hull beyond the first yields instead of
+    // growing the roster past the ambient cap. The pair outranks a third patrol in a sector
+    // whose economy is cutting rock; the lawful presence floor itself is never touched.
+    if (!force) return;
+    const lawfulFree = out.filter((r, i) => !placed.has(i) && (r === 'patrol' || r === 'escort')).length;
+    if (lawfulFree <= 1) return;
+    for (let i = out.length - 1; i >= 0; i--) {
+      if (placed.has(i) || (out[i] !== 'patrol' && out[i] !== 'escort')) continue;
+      out[i] = role;
+      placed.add(i);
+      return;
+    }
+  };
+  place('tanker');
+  place('customs');
+  // A sector with declared extraction work also needs its extraction pair: the weighted draw can
+  // roll zero miners/ore_carriers (Helios did once the authored pocket cast consumed the mix),
+  // which silences the whole ore chain — nobody cuts, nobody collects. Same guarantee idiom as
+  // the service craft above, gated on the same condition that boosts their weights below.
+  const sec = sector || {};
+  if ((sec.industries && (sec.industries.mining || sec.industries.refinery)) || sectorHasAuthoredRock(sec)) {
+    place('miner', true);
+    place('ore_carrier', true);
+  }
+  return out;
+}
+
 // Causal role mix for a sector (spec §12.2). Hostile/pirate sectors tilt toward raiders; industrial
 // sectors toward miners/haulers; secure faction sectors toward patrols/escorts.
 export function trafficRoleMixForSector(sector, state = null) {
@@ -1174,7 +1309,7 @@ export function trafficRoleMixForSector(sector, state = null) {
   //
   // Deliberately weaker than the explicit flag (x1.7 vs x2.5) and NOT applied on top of it: a
   // declared mining economy should still out-mine a core sector that merely happens to have rocks.
-  else if (Array.isArray(sec.fields) && sec.fields.some((f) => f && (f.count | 0) > 0)) {
+  else if (sectorHasAuthoredRock(sec)) {
     out.miner *= 1.7;
   }
   // Hostile/danger sectors: more suspicious raiders, fewer civilians.
@@ -1228,7 +1363,7 @@ export function trafficRoleMixForSector(sector, state = null) {
     }
     weights = adjusted;
   }
-  return weights;
+  return applySectorPopulationFlags(weights, sec);
 }
 function pickRole(roleWeights, rng) {
   let total = 0; for (const w of Object.values(roleWeights)) total += Math.max(0, w);
@@ -1236,6 +1371,77 @@ function pickRole(roleWeights, rng) {
   let r = rng() * total;
   for (const [id, w] of Object.entries(roleWeights)) { r -= Math.max(0, w); if (r <= 0) return id; }
   return 'hauler';
+}
+
+// The ship files a live sector:enter can mount through this system, as {defId, factionId}
+// rows for the decode warm. Covers the ambient role-mix anchors (plus every faction-group
+// hull an anchor can substitute to — the spawn path picks ONE member via factionHullFor, so
+// the stub walks the whole group), authored activity-pocket presentation roles, the ceres
+// service slots, and the named lane contacts stamped for this sector (a contact's own ship
+// outranks the faction fleet exactly as the spawn code does). Extra files in the runway
+// cost nothing; a missed hull decodes cold at mount and pops in.
+export function sectorEnterTrafficShipStubs(sector, state) {
+  const out = [];
+  const seen = new Set();
+  const sectorId = sector && sector.id;
+  const factionId = (sector && sector.factionId) || 'faction_free';
+  // Rows carry the mount's trafficRole: wholeShipVisualForEntity resolves role before defId
+  // and the role/defId whole-ship maps are near-disjoint, so a stub without the role warms
+  // the wrong GLB. Dedupe on defId|role — two roles mapping to one hull still need both
+  // role files warmed.
+  const push = (defId, role) => {
+    if (typeof defId !== 'string' || !defId) return;
+    const key = defId + '|' + (role || '');
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ defId, factionId, trafficRole: role || null });
+  };
+  const pushWithFactionGroup = (anchorDefId, role) => {
+    push(anchorDefId, role);
+    const groups = FLEET_BY_FACTION.get(factionId);
+    const group = groups && groups.find((entry) => entry.hullIds.includes(anchorDefId));
+    if (group && group.hullIds.length > 1) {
+      for (const hullId of group.hullIds) push(hullId, role);
+    }
+  };
+  if (!sector) return out;
+  if (ambientCountForSector(sector, state) > 0) {
+    const mix = trafficRoleMixForSector(sector, state);
+    for (const [roleId, w] of Object.entries(mix)) {
+      if (!Number.isFinite(w) || w <= 0) continue;
+      const def = TRAFFIC_ROLES[roleId];
+      if (def && def.ship) pushWithFactionGroup(def.ship, roleId);
+    }
+  }
+  for (const pocket of activityPocketsForSector(sectorId) || []) {
+    for (const slot of (pocket && pocket.actorSlots) || []) {
+      const def = TRAFFIC_ROLES[slot && slot.presentationRole];
+      if (def && def.ship) push(def.ship, slot.presentationRole);
+    }
+  }
+  if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
+    for (const slot of CERES_ACTIVITY_SERVICE_SLOTS) {
+      const def = TRAFFIC_ROLES[slot && slot.presentationRole];
+      if (def && def.ship) push(def.ship, slot.presentationRole);
+    }
+  }
+  for (const contact of NAMED_LANE_CONTACTS) {
+    if (!contact || !Array.isArray(contact.sectorIds)
+        || contact.sectorIds.indexOf(sectorId) < 0) continue;
+    // The spawn stamps trafficRole = contact.role || 'hauler' whether the hull is the
+    // contact's own or a role-default faction pick — the stub mirrors that role so the
+    // warm resolves the same whole-ship file the mount reads. A named contact's own hull
+    // outranks the faction fleet: the spawn does not run factionHullFor for it, so neither
+    // does the stub.
+    const contactRole = contact.role || 'hauler';
+    if (contact.ship) {
+      push(contact.ship, contactRole);
+    } else {
+      const def = TRAFFIC_ROLES[contactRole];
+      if (def && def.ship) pushWithFactionGroup(def.ship, contactRole);
+    }
+  }
+  return out;
 }
 
 /** Ambient count from trafficPerMin — core pockets floor at CORE_MIN_TRAFFIC. Exported for tests. */
@@ -1326,13 +1532,20 @@ function normalizeDepotServices(rows) {
 }
 
 export const traffic = {
+  ...anvilTrafficMethods,
   name: 'traffic',
   // Every serialized field is rebuilt by a normalizer, sliced, or primitive — saveSystem need
   // not defensively clone the (large) traffic payload a second time during autosave capture.
   saveSnapshotOwned: true,
 
+  destroy() {
+    clearCeresWorkfleetControls(this.state);
+    unregisterMachineryReconciliation(this.state, this);
+  },
+
   init(ctx) {
     this.state = ctx.state;
+    registerMachineryReconciliation(this.state, this);
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this._registry = ctx.registry || null;
@@ -1368,6 +1581,7 @@ export const traffic = {
     this._ceresDisabledHaulerImpairmentActor = null;
     this._ceresDisabledHaulerRepairActor = null;
     this._ceresDisabledHaulerRestorePending = false;
+    this._industryHaulDispatched = new Map();
 
     if (this.helpers) {
       this.helpers.traffic = {
@@ -1377,6 +1591,26 @@ export const traffic = {
     }
 
     this.bus.on('sector:enter', (p) => this._onSectorEnter(p));
+    // Census arm: ambient traffic materialization lands inside the sector cook
+    // deterministically (the handler falls back to world.currentSectorId itself). The cook
+    // drives the chunked twin across the census's slice clock — the emit listener drains
+    // the same steps synchronously, so both paths mint the identical roster.
+    this._cookProvider = (sector) => this._onSectorEnterSteps({
+      sector: sector || null,
+      sectorId: (sector && sector.id) || undefined,
+      _viaCook: true,
+    });
+    if (this.helpers) {
+      (this.helpers.sectorCookProviders || (this.helpers.sectorCookProviders = []))
+        .push(this._cookProvider);
+    }
+    // PIC-21: one glint record for the open seam, cleared when the seam is worked.
+    // The listeners fire on the events; nothing here emits per tick.
+    if (!this._richSeamGlintBound && this.bus && typeof this.bus.on === 'function') {
+      this._richSeamGlintBound = true;
+      this.bus.on('field:richSeamOpened', (payload) => admitRichSeamGlint(this.state, payload || {}));
+      this.bus.on('field:richSeamWorked', (payload) => endRichSeamGlint(this.state, payload || {}));
+    }
     // Canonical seam is sector:exit (world never emits sector:leave). Continuous handoffs prune
     // dead tracking only; hard exits fully clean up freighters.
     this.bus.on('sector:exit', (p) => this._onSectorExit(p));
@@ -1391,6 +1625,9 @@ export const traffic = {
     this.bus.on('npcjobs:load', (p) => this._onNpcJobLoad(p || {}));
     this.bus.on('npcjobs:unload', (p) => this._onNpcJobUnload(p || {}));
     this.bus.on('npcjobs:hold', (p) => this._onNpcJobHold(p || {}));
+    // A held worker's route-hold mayday must reach the rescue fleet even when no shot was ever
+    // fired: reshape it into the standard lastDistressCall and the ordinary dispatch path answers.
+    this.bus.on('npcjobs:distress', (p) => this._onNpcJobDistress(p || {}));
     // HELP is an explicit player hail intent. Traffic reserves the finite opportunity for the
     // answering seam miner; physical WORK below remains the sole rich-load/depletion writer.
     this.bus.on('contactHail:response', (p) => this._onContactHailResponse(p || {}));
@@ -1400,6 +1637,7 @@ export const traffic = {
     this.bus.on('freight:recoveryAbandoned', (p) => this._onCeresDisabledHaulerAbandoned(p || {}));
     this.bus.on('pickup:collected', (p) => this._onCeresDisabledHaulerPickup(p || {}));
     this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {}));
+    this.bus.on('uniqueWreck:resolved', (p) => this._onCeresTenderWreckResolved(p || {}));
     this.bus.on('survivorPod:rescued', (p) => this._onSurvivorPodRescued(p || {}));
     // Nearby violence: production hits, aimed ship-to-ship combat:fire (Ambush first shots often
     // apply 0), and opened incidents. Bare/mining fire without a live ship victim is ignored.
@@ -1407,9 +1645,14 @@ export const traffic = {
     this.bus.on('combat:fire', (p) => this._onCombatFire(p || {}));
     this.bus.on('law:incidentOpened', (p) => this._onLawIncidentOpened(p || {}));
     this.bus.on('save:restoring', () => {
+      captureCeresWorkfleetHardware(this);clearCeresWorkfleetControls(this.state);
+      invalidateMachineryPresentation(this.state);
       // Invalidate before the save owner starts destructive restore. Old synchronous owner stacks
       // may still unwind afterward, but their private reservation tokens no longer own this run.
       this._restoreEpochPending = true;
+      // Sector materialization reuses numeric IDs before save:loaded. This roster belongs
+      // to the outgoing run; cleanup must never resolve it against fresh occupants.
+      this._active = [];
       this._ceresDisabledHaulerRestorePending = true;
       this._invalidateCausalRunEpoch();
     });
@@ -1493,10 +1736,15 @@ export const traffic = {
       // Held tools publish progress every fixed tick. Traffic topology changes only on completion;
       // projecting all sites and scanning freighters for every partial tick is pure hot-path waste.
       if (receipt?.complete !== true) return;
+      syncCeresWorkfleetHardware(this);
       const record = siteId && this.state.sites && this.state.sites.worldById && this.state.sites.worldById[siteId];
       this._applyWorldSiteTrafficHooks(record && record.sectorId);
     });
+    // A full hangar depot or a jammed aperture asks for one haul. The job kernel flies it.
+    this.bus.on('industry:haulRequested', (p) => this._onIndustryHaulRequested(p || {}));
   },
+
+  _reconcileCeresWorkfleetPresentation() { reconcileCeresWorkfleetPresentation(this); },
 
   heaveToEntity(entityId, {
     durationS = TRAFFIC_HEAVE_TO_DURATION_S,
@@ -1538,6 +1786,7 @@ export const traffic = {
   },
 
   _onSectorExit(p) {
+    captureCeresWorkfleetHardware(this);clearCeresWorkfleetControls(this.state);
     if (p && (p.continuous || p.noTeleport)) {
       this._pruneDead();
       return;
@@ -1552,9 +1801,57 @@ export const traffic = {
   },
 
   _onSectorEnter(p) {
+    // Live GPU + flight + hard enter: defer into the cook's FIFO — the census drains
+    // this same body under its slice clock in listener order instead of paying the
+    // whole cohort synchronously inside the emit.
+    if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
+    // Sync lane (emit listener, tests): drain the chunked steps inline.
+    for (const _ of this._onSectorEnterSteps(p)) { /* inline */ }
+  },
+
+  // Chunked cook-provider twin: yields between atomic spawn units so the sliced sector
+  // census can interleave presentation between hulls. Dedupe stamps mint in the first
+  // synchronous step (pre-loop); a yield never separates spawnEntity from its record link.
+  *_onSectorEnterSteps(p) {
     if (this.state.run?.kind === 'survival' && this.state.run.phase !== 'inactive') return;
+    // A tail-drained emit carries the epoch of the enter that minted it: a replayed payload
+    // whose enterEpoch no longer matches the world's serial is stale — minting/cleanup for
+    // it would wipe the live roster and remint the departed sector's hulls. Synthetic
+    // payloads (tests, the census cook) carry no epoch and always run.
+    if (p && p.enterEpoch != null && this.state.world && this.state.world.enterSerial != null
+        && p.enterEpoch !== this.state.world.enterSerial) return;
+    // The emit listener precedes the census cook on the live enter path, so each side can
+    // only skip on the other's stamp: a replayed emit for an enter the cook or the first
+    // emit already handled, and a census cook for an enter the emit just handled (re-running
+    // would cleanup + remint the freighters the emit minted moments earlier). Continuous/
+    // noTeleport payloads are a different enter and must always run. Minted payloads
+    // discriminate by enterEpoch (a frozen simTime can't alias a second real enter). The
+    // simTime fallback applies only where the serial machinery doesn't exist — on a minted
+    // world an un-minted payload is a synthetic enter that must never be suppressed.
+    const _serialNow = this.state.world && this.state.world.enterSerial;
+    if (p && p._viaCook && p.sector && p.sector === this._emittedSector
+      && (Number.isFinite(this._emittedEpoch)
+        ? _serialNow === this._emittedEpoch
+        : (!Number.isFinite(_serialNow) && this.state.simTime === this._emittedSimTime))) {
+      return;
+    }
+    if (p && !p._viaCook && p.sector && !(p.continuous || p.noTeleport)
+      && ((p.sector === this._cookedSector
+          && (Number.isFinite(p.enterEpoch)
+            ? p.enterEpoch === this._cookedEnterEpoch
+            : (!Number.isFinite(_serialNow) && this.state.simTime === this._cookedSimTime)))
+        || (p.sector === this._emittedSector
+          && (Number.isFinite(p.enterEpoch)
+            ? p.enterEpoch === this._emittedEpoch
+            : (!Number.isFinite(_serialNow) && this.state.simTime === this._emittedSimTime))))) {
+      return;
+    }
+    const sector = p && p.sector;
+    // Gate the wipe on sector resolution: a payload that passes dedupe but carries no
+    // resolvable sector must not destroy active freighters unstamped.
+    if (!sector || !this.helpers || !this.helpers.spawnEntity) return;
     const continuous = !!(p && (p.continuous || p.noTeleport));
-    const requestedSectorId = (p && p.sector && p.sector.id)
+    const requestedSectorId = sector.id
       || (p && p.sectorId)
       || (this.state.world && this.state.world.currentSectorId)
       || 'unknown';
@@ -1569,8 +1866,18 @@ export const traffic = {
     } else {
       this._cleanup(); // hard enter: wipe previous sector's freighters (view-gated)
     }
-    const sector = p && p.sector;
-    if (!sector || !this.helpers || !this.helpers.spawnEntity) return;
+    if (p._viaCook) {
+      this._cookedSector = sector;
+      this._cookedSimTime = this.state.simTime;
+      // The cook runs synchronously inside the emit it cooks for, so the world's serial is
+      // already minted for this enter — stamp it so the emit's replay matches by epoch.
+      const serial = this.state.world && this.state.world.enterSerial;
+      this._cookedEnterEpoch = Number.isFinite(serial) ? serial : null;
+    } else {
+      this._emittedSector = sector;
+      this._emittedSimTime = this.state.simTime;
+      this._emittedEpoch = Number.isFinite(p.enterEpoch) ? p.enterEpoch : null;
+    }
     const sectorId = sector.id || requestedSectorId;
     if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
       this._retireLegacyCeresTraffic();
@@ -1598,7 +1905,13 @@ export const traffic = {
     // Density from trafficPerMin; high-sec cores floor at CORE_MIN_TRAFFIC (spec2/04 core pocket).
     // Explicit trafficPerMin:0 still means "hollow" (frontier silence).
     const count = ambientCountForSector(sector, this.state);
-    if (count <= 0) return;
+    if (count <= 0) {
+      // Hollow rims keep a zero ambient count. A named face, when one is authored, still
+      // stamps onto one hull so the sector is not anonymous.
+      const faceStations = this._sectorStations();
+      if (faceStations.length >= 1) this._ensureNamedLaneContact(sectorId, sector, faceStations);
+      return;
+    }
 
     const stations = this._sectorStations();
     if (stations.length < 1) return; // nowhere to haul to
@@ -1622,9 +1935,13 @@ export const traffic = {
     const roleWeights = trafficRoleMixForSector(sector, this.state);
     const roles = [];
     for (let i = 0; i < need; i++) roles.push(pickRole(roleWeights, () => this._rng()));
-    const pocketRoles = ensurePocketRoleMix(roles, sector);
+    // Courier reservation runs on the drawn roles before service guarantees: an appended service
+    // hull is not a civilian slot the courier may rewrite, and service placement leaves the
+    // reserved courier alone.
+    const pocketRolesBase = ensurePocketRoleMix(roles, sector);
     const priorityService = priorityCourierServiceForSector(sectorId);
-    const priorityCourierSlot = reservePriorityCourierRole(pocketRoles, sectorId);
+    const priorityCourierSlot = reservePriorityCourierRole(pocketRolesBase, sectorId);
+    const pocketRoles = ensureServiceCraftRoles(pocketRolesBase, roleWeights, sector);
 
     // Pocket anchor: cluster the first freighters near the busiest station so sensor-range
     // density holds for the first-hour Helios play space (not scattered to far yards only).
@@ -1635,9 +1952,12 @@ export const traffic = {
       const role = pocketRoles[i] || 'hauler';
       const def = TRAFFIC_ROLES[role] || TRAFFIC_ROLES.hauler;
       const priorityCourier = !!priorityService && i === priorityCourierSlot;
+      // Slots a service guarantee rewrote anchor to the same pocket as the first wave — a far
+      // random berth leaves the ore barge a sector-length flight from the work it exists for.
+      const clustered = i < Math.min(4, need) || pocketRoles[i] !== pocketRolesBase[i];
       let station = priorityCourier
         ? (this._stationForPriorityCourier(stations, priorityService.stops[0]) || stations[0])
-        : (i < Math.min(4, need) && pocketStation)
+        : (clustered && pocketStation)
         ? pocketStation
         : (stations[Math.floor(this._rng() * stations.length)] || stations[0]);
       if (!this._leftoverStationOpenForTopUp(station, leftoverDisrupted)) {
@@ -1646,7 +1966,7 @@ export const traffic = {
       }
       // spawn near the station but offset so they don't overlap it
       const ang = this._rng() * Math.PI * 2;
-      const r = (i < Math.min(4, need))
+      const r = clustered
         ? (90 + this._rng() * (POCKET_CLUSTER_R * 0.45))
         : (140 + this._rng() * 120);
       const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
@@ -1702,6 +2022,8 @@ export const traffic = {
       // jobId. No-op when the runtime is absent (e.g. the sf-sim golden harness) or the route can't
       // be built (no asteroid field / too few stations) — the hull keeps its ambient stepper.
       if (!priorityCourier) this._maybeAssignJob(ent, role, station, target, stations, sectorId);
+      // Atomic unit complete: hull minted, identity stamped, record linked, job assigned.
+      yield;
     }
     this._ensurePriorityCourierService(sectorId, stations);
     this._ensurePassengerLinerService(sectorId, stations);
@@ -1733,6 +2055,7 @@ export const traffic = {
     for (const [recordId, record] of Object.entries(records)) {
       const home = record && (record.homeSectorId || record.sectorId);
       if (!record || record.kind !== RECORD_KIND.CONVOY || !record.trafficRole
+        || ceresWorkfleetHardwareRoleForRecord(record)==='breaker'
         || home !== CERES_ACTIVITY_SECTOR_ID || authoredRecordIds.has(recordId)
         || record.itinerary?.kind === 'claim_depot'
         || record.itinerary?.kind === 'claim_convoy'
@@ -1776,7 +2099,7 @@ export const traffic = {
         reservedByWorldRecordId: recordId,
         reservedByActivityActorSlotId: CERES_SEAM_MINER_SLOT_ID,
         reservedByJobId: `job:${recordId}`,
-        simTime: this.state.simTime,
+        simTime: deferredEnterNow(this.state),
       });
       if (missed && this.bus && typeof this.bus.emit === 'function') {
         this.bus.emit('field:richSeamMissed', { ...missed, reason: 'owner_invalidated' });
@@ -2137,7 +2460,7 @@ export const traffic = {
     data.worldRecordId = recordId;
     data.identityKey = entry.slot.worldRecordSlotId;
     data.durable = true;
-    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = this.state.tick | 0;
+    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = deferredEnterTick(this.state) | 0;
     data.activityActorSlotId = entry.slot.id;
     data.ceresActivityCast = true;
     data.ceresActivityJobOwned = !entry.service;
@@ -2172,6 +2495,12 @@ export const traffic = {
   _materializeAuthoredActivityCast(sector, pockets) {
     if (!sector || !Array.isArray(pockets) || pockets.length === 0) return 0;
     if (!this.helpers || !this.helpers.spawnEntity) return 0;
+    // The authored shift is durable world content: every slot mints a stable worldRecordId and is
+    // custodied by the registry's world/jobs owners across sector residency. A detached fork has
+    // no composed runtime to custody it — minting the shift there would additive-spawn a second
+    // full roster over the ambient records the fork is testing, and durable hulls no owner could
+    // capture. Ambient fill owns the enter in that context.
+    if (!this._registry) return 0;
     this._ensureState();
     const sectorId = sector.id;
     const seed = (this.state.meta && this.state.meta.seed) || 1;
@@ -2274,7 +2603,7 @@ export const traffic = {
     data.worldRecordId = recordId;
     data.identityKey = entry.slot.worldRecordSlotId;
     data.durable = true;
-    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = this.state.tick | 0;
+    if (!Number.isFinite(data.recordCreatedTick)) data.recordCreatedTick = deferredEnterTick(this.state) | 0;
     data.activityActorSlotId = entry.slot.id;
     data.authoredActivityCast = true;
     data.authoredActivityJobOwned = true;
@@ -2346,7 +2675,12 @@ export const traffic = {
           && !(entity.data && (entity.data.jobId
             || entity.data.namedLaneContactId
             || entity.data.worldSiteTrafficHookId
-            || entity.data.claimTravelTrafficHookId)))
+            || entity.data.claimTravelTrafficHookId
+            // An authored activity slot (pocket cast, starter shift) already owns its hull —
+            // same exclusion convention as industryHaulerEligible.
+            || entity.data.activityActorSlotId
+            || entity.data.ceresActivityCast === true
+            || entity.data.authoredActivityCast === true)))
         .sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)));
       // World-record rematerialization preserves the durable entity tag but rebuilds the transient
       // traffic record. Rebind that same ambient slot before looking for a new one; otherwise the
@@ -2472,7 +2806,10 @@ export const traffic = {
           && !(entity.data && (entity.data.jobId
             || entity.data.namedLaneContactId
             || entity.data.worldSiteTrafficHookId
-            || entity.data.claimTravelTrafficHookId)))
+            || entity.data.claimTravelTrafficHookId
+            || entity.data.activityActorSlotId
+            || entity.data.ceresActivityCast === true
+            || entity.data.authoredActivityCast === true)))
         .sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)));
       const marked = this.state.traffic.freighters
         .map((rec) => ({ rec, entity: liveEntity(this.state, rec && rec.id) }))
@@ -2916,6 +3253,132 @@ export const traffic = {
     return true;
   },
 
+  /**
+   * A full depot or a jammed aperture asked for one haul. Bind an idle hauler, or
+   * retask one plain hauler run, onto that source → destination route through the
+   * existing job kernel. The receipt stays empty until that job and its actor both exist.
+   */
+  _onIndustryHaulRequested(payload) {
+    const receipt = payload && payload.receipt;
+    if (!receipt || typeof receipt !== 'object') return;
+    if (typeof receipt.jobId === 'string' && receipt.jobId && receipt.entityId != null) return;
+    const kind = payload.kind === 'redirect' || payload.kind === 'repair-parts' ? payload.kind : null;
+    const sourceId = typeof payload.sourceId === 'string' ? payload.sourceId : '';
+    const destinationId = typeof payload.destinationId === 'string' ? payload.destinationId : '';
+    const commodityId = typeof payload.commodityId === 'string' ? payload.commodityId : '';
+    const qty = Math.floor(Number(payload.qty));
+    if (!kind || !sourceId || !destinationId || sourceId === destinationId
+      || !commodityId || !Number.isSafeInteger(qty) || qty <= 0) return;
+
+    this._ensureState();
+    if (!this._industryHaulDispatched) this._industryHaulDispatched = new Map();
+    const key = `${kind}|${sourceId}|${destinationId}|${commodityId}|${qty}`;
+    const remembered = this._recalledIndustryHaul(key, sourceId, destinationId);
+    if (remembered) {
+      receipt.jobId = remembered.jobId;
+      receipt.entityId = remembered.entityId;
+      return;
+    }
+
+    const source = this._industryHaulPoint(sourceId);
+    const destination = this._industryHaulPoint(destinationId);
+    if (!source || !destination) return;
+    const chosen = this._idleIndustryHauler();
+    if (!chosen) return;
+    const assign = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.assign;
+    const getJob = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.get;
+    if (typeof assign !== 'function' || typeof getJob !== 'function') return;
+
+    const sectorId = (this.state.world && this.state.world.currentSectorId) || null;
+    const jobId = assign(chosen.entity, {
+      kind: 'hauler',
+      sectorId,
+      speed: TRAFFIC_ROLES.hauler.speed,
+      route: [
+        industryHaulWaypointSpec(sourceId, source, 'origin'),
+        industryHaulWaypointSpec(destinationId, destination, 'dest'),
+      ],
+      payload: {
+        haulKind: kind,
+        commodityId,
+        qty,
+        sourceId,
+        destinationId,
+      },
+    });
+    if (typeof jobId !== 'string' || !jobId) return;
+    const entry = getJob(jobId);
+    const job = entry && entry.job;
+    if (!job || job.kind !== 'hauler' || job.corrupt === true || entry.entityId !== chosen.entity.id) return;
+    if (!industryHaulRouteAims(job.route, sourceId, source.pos, destinationId, destination.pos)) return;
+    const actor = liveEntity(this.state, chosen.entity.id);
+    if (!actor || !actor.data || actor.data.jobId !== jobId) return;
+
+    this._industryHaulDispatched.set(key, { jobId, entityId: actor.id });
+    receipt.jobId = jobId;
+    receipt.entityId = actor.id;
+  },
+
+  _recalledIndustryHaul(key, sourceId, destinationId) {
+    const remembered = this._industryHaulDispatched && this._industryHaulDispatched.get(key);
+    if (!remembered || typeof remembered.jobId !== 'string') return null;
+    const getJob = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.get;
+    if (typeof getJob !== 'function') return null;
+    const entry = getJob(remembered.jobId);
+    const job = entry && entry.job;
+    const actor = liveEntity(this.state, remembered.entityId);
+    if (!job || job.kind !== 'hauler' || job.corrupt === true || !actor || !actor.data
+      || actor.data.jobId !== remembered.jobId) return null;
+    const source = this._industryHaulPoint(sourceId);
+    const destination = this._industryHaulPoint(destinationId);
+    if (!source || !destination
+      || !industryHaulRouteAims(job.route, sourceId, source.pos, destinationId, destination.pos)) {
+      return null;
+    }
+    return remembered;
+  },
+
+  _industryHaulPoint(pointId) {
+    if (pointId === APERTURE_ID) {
+      return {
+        pos: { x: APERTURE_GLOBAL_POS.x, z: APERTURE_GLOBAL_POS.z },
+        label: 'Hangar aperture',
+        targetRef: `site:${APERTURE_ID}`,
+      };
+    }
+    const station = this._sectorStations().find((row) => stationIdentity(row) === pointId);
+    if (!station || !station.pos || !Number.isFinite(station.pos.x) || !Number.isFinite(station.pos.z)) return null;
+    const id = stationIdentity(station);
+    return {
+      pos: { x: station.pos.x, z: station.pos.z },
+      label: stationName(station, id),
+      targetRef: `station:${id}`,
+    };
+  },
+
+  _idleIndustryHauler() {
+    const jobs = this.helpers && this.helpers.npcJobs;
+    const getJob = jobs && jobs.get;
+    const rows = (this.state.traffic && this.state.traffic.freighters) || [];
+    const idle = [];
+    for (let i = 0; i < rows.length; i++) {
+      const rec = rows[i];
+      const entity = liveEntity(this.state, rec && rec.id);
+      if (!rec || !entity || !industryHaulerEligible(rec, entity)) continue;
+      const worldRecordId = entity.data.worldRecordId;
+      const existingId = typeof entity.data.jobId === 'string' ? entity.data.jobId : null;
+      const entry = typeof getJob === 'function'
+        ? (existingId && getJob(existingId)) || getJob(`job:${worldRecordId}`)
+        : null;
+      // A hauler already on a run stays on it. The depot marker waits for an idle hull.
+      if (existingId || entry) continue;
+      idle.push({ rec, entity });
+    }
+    if (!idle.length) return null;
+    idle.sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)));
+    return idle[0];
+  },
+
   // PQ-014 — natural NPC job assignment. Civilian traffic IS the natural producer for the three
   // job kinds: role 'miner' → miner job (home refinery ↔ asteroid field), 'hauler' → hauler job
   // (origin → destination terminal run), 'patrol' → patrol job (cyclic beat around a station).
@@ -3139,7 +3602,7 @@ export const traffic = {
   },
 
   _newPriorityCourierItinerary(stations, originStationId, destinationStationId, legSeq = 0) {
-    const departureAt = (Number.isFinite(this.state.simTime) ? this.state.simTime : 0)
+    const departureAt = (Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0)
       + PRIORITY_COURIER_SERVICE.dwellS;
     const dueAt = this._priorityCourierDueAt(stations, originStationId, destinationStationId, departureAt);
     if (!Number.isFinite(dueAt)) return null;
@@ -3174,7 +3637,7 @@ export const traffic = {
     if (job && (job.phase === NPC_JOB_PHASE.FLEE || jobEntry.control)) return 'INTERRUPTED';
     const escort = itinerary && itinerary.escort || {};
     const creditS = Number.isFinite(escort.creditS) ? Math.max(0, escort.creditS) : 0;
-    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const now = Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0;
     if (now > itinerary.dueAt + creditS) return 'LATE';
     if (!entity.data.jobId && now < itinerary.departureAt) return 'BERTH';
     return 'ON_TIME';
@@ -3438,7 +3901,7 @@ export const traffic = {
   _newPassengerLinerItinerary(entity, originStationId, destinationStationId, legSeq = 0) {
     const worldRecordId = entity && entity.data && entity.data.worldRecordId;
     if (typeof worldRecordId !== 'string' || !worldRecordId) return null;
-    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const now = Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0;
     const departureAt = now + PASSENGER_LINER_SERVICE.dwellS;
     const ids = passengerLinerLegIds(worldRecordId, legSeq);
     return {
@@ -3856,10 +4319,42 @@ export const traffic = {
    * (or spawn a dedicated freighter if none match the contact's role). Reuses freight causality
    * manifests — no parallel economy authority. Idempotent per sector presence.
    */
+  _offerCeresTenderRumor() {
+    this._ensureState();
+    const trafficState = this.state.traffic;
+    if (trafficState.ceresTenderRumorSent) return;
+    trafficState.ceresTenderRumorSent = true;
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    this.bus.emit('uniqueWreck:rumorHeard', {
+      wreckId: 'wreck_dmc_refinery_tender',
+      sourceRef: 'bar.station_ceres.refinery_tender',
+      channelId: 'bar',
+      text: 'A refinery tender went dark on the Ceres seam. The manifest is still aboard.',
+    });
+  },
+
+  _onCeresTenderWreckResolved(payload) {
+    if (!payload || payload.wreckId !== 'wreck_dmc_refinery_tender') return;
+    this._ensureState();
+    const effects = this.state.traffic.ceresPocketEffects
+      || (this.state.traffic.ceresPocketEffects = {});
+    const now = this.state.simTime || 0;
+    if (payload.choiceId === 'strip') {
+      effects.salvorQuietUntil = now + 600;
+      effects.tenderJob = 'quiet';
+      return;
+    }
+    if (payload.choiceId === 'return_manifest') {
+      effects.tenderJob = 'resumed';
+      effects.salvorQuietUntil = 0;
+    }
+  },
+
   _ensureNamedLaneContact(sectorId, sector, stations) {
     this._ensureState();
     const list = this.state.traffic.freighters || [];
     if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
+      this._offerCeresTenderRumor();
       const seed = (this.state.meta && this.state.meta.seed) || 1;
       const contact = pickNamedLaneContact(sectorId, seed);
       if (!contact || contact.id !== 'lane_rell_moisture') return;
@@ -3882,9 +4377,23 @@ export const traffic = {
             entity.data.trafficLabel = (TRAFFIC_ROLES[role] || TRAFFIC_ROLES.hauler).label;
           }
           if (entity.data.ai && entity.data.ai.name === contact.name) delete entity.data.ai.name;
+          if (entity.data.ai && entity.data.ai.namedLaneContactId === contact.id) {
+            delete entity.data.ai.namedLaneContactId;
+          }
         }
       }
       if (miner) this._stampNamedLaneContact(miner, contact);
+      const second = NAMED_LANE_CONTACTS.find((row) => row && row.id === 'lane_jorah_seam_haul');
+      if (second) {
+        for (const rec of list) {
+          const entity = rec && liveEntity(this.state, rec.id);
+          if (!entity || !entity.data) continue;
+          if (entity.data.activityActorSlotId !== CERES_REFINERY_HAULER_SLOT_ID) continue;
+          if (entity.data.namedLaneContactId && entity.data.namedLaneContactId !== second.id) continue;
+          this._stampNamedLaneContact(entity, second);
+          break;
+        }
+      }
       return;
     }
     // Tethys has one explicit Kess service. Never let the generic named-contact fallback append a
@@ -3973,13 +4482,18 @@ export const traffic = {
     ent.data.gimmick = contact.gimmick;
     ent.data.trafficLabel = contact.callsign;
     ent.data.scanLabel = contact.callsign;
-    if (ent.data.ai) {
-      ent.data.ai.name = contact.name;
-      // Named patrol keeps lawful; named freighter stays passive civilian.
-      if (lawPresenceRole(contact.role)) {
-        ent.data.ai.lawful = true;
-        ent.data.ai.spawnContext = 'patrol';
-      }
+    if (contact.hail) ent.data.hail = contact.hail;
+    if (contact.memoryHook) ent.data.memoryHook = contact.memoryHook;
+    if (!ent.data.ai) ent.data.ai = {};
+    ent.data.ai.name = contact.name;
+    // NXI-165: the contact id also rides the durable ai record (captured by worldRecords and
+    // rebound with the hull), so a rematerialized/re-adopted worker can heal its live stamp —
+    // the name follows the stable worker record instead of being re-picked onto a second hull.
+    ent.data.ai.namedLaneContactId = contact.id;
+    // Named patrol keeps lawful; named freighter stays passive civilian.
+    if (lawPresenceRole(contact.role)) {
+      ent.data.ai.lawful = true;
+      ent.data.ai.spawnContext = 'patrol';
     }
   },
 
@@ -4078,7 +4592,6 @@ export const traffic = {
     ent.data.role = 'arclight';
     ent.data.trafficLabel = def.label;
     ent.data.scanLabel = 'HELIOS ARCLIGHT';
-    ent.flags = Object.assign({}, ent.flags, { persistent: true });
     const target = this._nearestStationTo(stations, station) || station;
     const manifest = this._assignManifest(ent, 'arclight', target, sectorId);
     this._active.push(ent.id);
@@ -4132,7 +4645,6 @@ export const traffic = {
     ent.data.role = 'tanker';
     ent.data.trafficLabel = def.label;
     ent.data.scanLabel = 'VOLATILES TANKER';
-    ent.flags = Object.assign({}, ent.flags, { persistent: true });
     const target = this._nearestStationTo(stations, station) || station;
     const manifest = this._assignManifest(ent, 'tanker', target, sectorId);
     this._active.push(ent.id);
@@ -4186,7 +4698,6 @@ export const traffic = {
     ent.data.role = 'customs';
     ent.data.trafficLabel = def.label;
     ent.data.scanLabel = 'INSPECTION CUTTER';
-    ent.flags = Object.assign({}, ent.flags, { persistent: true });
     const target = this._nearestStationTo(stations, station) || station;
     this._active.push(ent.id);
     const rec = {
@@ -4279,6 +4790,19 @@ export const traffic = {
       ent.data.activityActorSlotId = 'helios_starter_ore_carrier';
       syncEntityActivitySlotMembership(this.state && this.state.entityIndex, ent);
       requestActivityReclassify(this.state, ent);
+      // The collected lot must survive Continue, same custody precedent as a towed payload.
+      ent.flags = Object.assign({}, ent.flags, { persistent: true });
+    }
+    // The starter cutter's slot id normally lands when npcJobs commissions it — a World Site or
+    // claim-travel hook runs first and would steal the shift's only hull. Reserve the slot here;
+    // the adoption path stamps the same id and isHeliosCuttingMiner already accepts the carrier.
+    if (sectorId === 'sector_helios_prime' && role === 'miner'
+      && !(this.state.entityList || []).some((other) => other !== ent && other.alive !== false
+        && other.data && other.data.activityActorSlotId === 'helios_starter_cutter')) {
+      ent.data = ent.data || {};
+      ent.data.activityActorSlotId = 'helios_starter_cutter';
+      syncEntityActivitySlotMembership(this.state && this.state.entityIndex, ent);
+      requestActivityReclassify(this.state, ent);
     }
     if (!ent.data) ent.data = {};
     ent.data.trafficRole = role;
@@ -4307,7 +4831,6 @@ export const traffic = {
       ent.data.tourist = true;
       if (!ent.data.trafficLabel) ent.data.trafficLabel = 'Sightseer';
     }
-    ent.flags = Object.assign({}, ent.flags, { persistent: true });
     if (ent.data.worldRecordId) {
       this._indexWorldRecordId(ent);
       return;
@@ -4320,7 +4843,7 @@ export const traffic = {
     ent.data.worldRecordId = recordId;
     ent.data.identityKey = key;
     ent.data.durable = true;
-    ent.data.recordCreatedTick = this.state.tick | 0;
+    ent.data.recordCreatedTick = deferredEnterTick(this.state) | 0;
     this._indexWorldRecordId(ent);
   },
 
@@ -4350,11 +4873,32 @@ export const traffic = {
       if (!d.trafficRole) return;
       const home = e.homeSectorId || d.homeSectorId || d.sectorId;
       if (home && home !== sectorId) return;
+      // NXI-165: a durable rebind restores data.ai (the captured ai record) but never the live
+      // namedLaneContactId stamp — heal it from the record so the SAME worker keeps her name and
+      // the "already have a live named contact" checks see her instead of re-picking the
+      // identity onto a second hull. A stale id with no authored contact is dropped. The heal
+      // also loses to a live holder: when the enter race twins her (a shelved row plus the
+      // fixture's re-mint both promote in one pass), the first stamp wins and the runner-up
+      // keeps only her durable ai id — never two live hulls wearing one contact's face.
+      if (!d.namedLaneContactId && d.ai && typeof d.ai.namedLaneContactId === 'string'
+        && d.ai.namedLaneContactId) {
+        const contact = NAMED_LANE_CONTACTS.find((c) => c && c.id === d.ai.namedLaneContactId);
+        if (!contact) delete d.ai.namedLaneContactId;
+        else {
+          let held = false;
+          for (const other of this.state.entityList) {
+            if (!other || other === e || other.alive === false || other.type !== 'ship') continue;
+            if (other.data && other.data.namedLaneContactId === contact.id) { held = true; break; }
+          }
+          if (!held) this._stampNamedLaneContact(e, contact);
+        }
+      }
       if (tracked.has(e.id)) return;
       if (sectorId === 'sector_helios_prime' && d.trafficRole === 'ore_carrier') {
         d.activityActorSlotId = 'helios_starter_ore_carrier';
         syncEntityActivitySlotMembership(this.state && this.state.entityIndex, e);
         requestActivityReclassify(this.state, e);
+        e.flags = Object.assign({}, e.flags, { persistent: true });
       }
       // Ensure durable stamps survive even if rematerialize omitted a field.
       if (!e.homeSectorId && !d.homeSectorId) {
@@ -4537,6 +5081,47 @@ export const traffic = {
       rec.farActorId = null;
       return;
     }
+    this._readoptPromotedTraffic(p);
+  },
+
+  /**
+   * A traffic hull can promote from the far table with no roster record at all: a boot-time
+   * enter shelves her before the enter's roster rebuilds finish, and a rebuild that keeps
+   * only live entities drops her row. The lean far row keeps data.ai (so the NXI-165 contact
+   * id and the express itinerary survive) but not the live contact stamps, and no stepper
+   * owns a recordless hull — she promotes anonymous and parked. Re-adoption through the same
+   * path a save takes restores the record (motion/freight) and the express route; the contact
+   * identity is re-stamped AFTER adoption so the callsign wins the scanner label back,
+   * matching the fixture's stamp order (durable → route → contact).
+   */
+  _readoptPromotedTraffic(p) {
+    if (!p || p.trafficRole == null) return;
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    if (!sectorId) return;
+    const ent = this.state.entities && this.state.entities.get(p.id);
+    if (!ent || ent.alive === false || ent.isPlayer || ent.type !== 'ship') return;
+    const d = ent.data || (ent.data = {});
+    if (d.trafficRole !== p.trafficRole) return;
+    const home = ent.homeSectorId || d.homeSectorId || d.sectorId;
+    if (home && home !== sectorId) return;
+    // Slot-owned cast hulls recover through their own materializer, never generic adoption.
+    if (d.activityActorSlotId || d.ceresActivityCast || d.authoredActivityCast) return;
+    this._adoptRematerializedTraffic(sectorId, this._sectorStations());
+    const contactId = d.ai && typeof d.ai.namedLaneContactId === 'string'
+      ? d.ai.namedLaneContactId : null;
+    if (!contactId) return;
+    const contact = NAMED_LANE_CONTACTS.find((c) => c && c.id === contactId);
+    if (!contact) { delete d.ai.namedLaneContactId; return; }
+    // Only one live hull may wear a contact's face — the fixture's own guard. The enter race
+    // can twin her: a shelved row persists across a sector round trip, the fixture re-mints a
+    // fresh courier pocket-side, and both rows promote in one approach pass. The first
+    // re-stamp wins; the second stays anonymous (her durable ai id kept for a later heal when
+    // the holder dies) instead of doubling the named presence on one lane.
+    for (const other of this.state.entityList) {
+      if (!other || other === ent || other.alive === false || other.type !== 'ship') continue;
+      if (other.data && other.data.namedLaneContactId === contactId) return;
+    }
+    this._stampNamedLaneContact(ent, contact);
   },
 
   _pruneDead() {
@@ -4618,13 +5203,19 @@ export const traffic = {
   update(dt, state) {
     if (state.mode !== 'flight') return;
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
+    if (raceLeaseActive(state)) return;
     ensureActivityClassified(state);
     this._ensureState();
+    if (state.world && state.world.currentSectorId === 'sector_pallas_drift') {
+      stepPallasWorkLoop(state, dt);
+    }
     if ((state.simTime || 0) >= (this._nextDepotDispatchAt || 0)) {
       this._nextDepotDispatchAt = (state.simTime || 0) + 1;
       this._maintainClaimDepotTraffic();
       this._maintainClaimConvoys();
     }
+    syncCeresWorkfleetHardware(this);
+    this._stepAnvilWork(dt, state);
     const list = state.traffic.freighters;
     const stations = this._sectorStations();
     // Even with zero freighters, a wreck can still call a cutter into the sector.
@@ -4695,8 +5286,17 @@ export const traffic = {
     // site through a full entity scan was O(routedFreighters × entities) at 60 Hz. The index is
     // built before the stepper loop, whose world-site branch only reads positions and writes
     // intent, so the entity set it snapshots is the same one each per-freighter scan saw.
+    // Live index read when available: the stepper only needs get/set, and misses fall
+    // through to the same reseeding entity walk either way — so copying the whole map into a
+    // scratch Map every tick buys nothing once byWorldRecordId is the source.
+    const liveWorldRecordMap = anyWorldSiteRoute
+      && state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1 === true
+      && state.entityIndex.ready === true
+      && state.entityIndex.byWorldRecordId instanceof Map
+      ? state.entityIndex.byWorldRecordId : null;
     const worldRecordIndex = anyWorldSiteRoute
-      ? buildWorldRecordIndex(state, this._worldRecordIndexScratch || (this._worldRecordIndexScratch = new Map()))
+      ? liveWorldRecordMap
+        || buildWorldRecordIndex(state, this._worldRecordIndexScratch || (this._worldRecordIndexScratch = new Map()))
       : null;
     // Retained per-tick options record: _ambientPlanGate reads playerId/playerTeam/
     // authorityRadius/origin synchronously, so the same object is rewritten each update.
@@ -4779,12 +5379,13 @@ export const traffic = {
         }
         continue;
       }
+      if (e.data?.itinerary?.kind === 'anvil_work') continue;
       if (e.data && e.data.jobId) continue;
       if (e.data?.claimDepotId) continue; // wait for the depot's next berth job, never ambient rerouting
       const role = TRAFFIC_ROLES[rec.role] || TRAFFIC_ROLES.hauler;
 
       if (rec.worldSiteRoute) {
-        this._stepWorldSiteRoute(e, rec, stations, dt, worldRecordIndex);
+        this._stepWorldSiteRoute(e, rec, stations, dt, worldRecordIndex, worldRecordIndex === liveWorldRecordMap);
         this._syncTrafficRecordToData(e, rec);
         continue;
       }
@@ -4880,11 +5481,14 @@ export const traffic = {
     this._maintainYardTugJobs();
   },
 
-  _stepWorldSiteRoute(entity, rec, stations, dt, worldRecordIndex = null) {
+  _stepWorldSiteRoute(entity, rec, stations, dt, worldRecordIndex = null, worldRecordIndexIsLive = false) {
     const route = rec.worldSiteRoute;
     // The per-tick map can miss a carrier stamped with its record id after spawn; the helper
     // resolves those through the same entity walk and reseeds the index map on a hit.
     let site = worldRecordIndex && worldRecordIndex.get(route.siteWorldRecordId);
+    // Live index rows aren't alive-filtered like the scratch copy — a dead-but-still-mapped
+    // carrier resolves the same way the copy's undefined did: through the walk below.
+    if (site && site.alive === false) site = null;
     if (!site) {
       // A permanently-absent site is the index's documented negative hole: the map cannot
       // cache a miss, so every routed freighter otherwise re-walks the entity set per tick.
@@ -4900,7 +5504,10 @@ export const traffic = {
       if (!memo.ids.has(route.siteWorldRecordId)) {
         site = entityWithWorldRecord(this.state, route.siteWorldRecordId);
         if (site) {
-          if (worldRecordIndex) worldRecordIndex.set(route.siteWorldRecordId, site);
+          // A walk-hit on the live index already registered itself (count + marker + lane
+          // via registerEntityWorldRecordId inside indexedWorldRecordEntity) — a bare set
+          // would diverge the bookkeeping. The scratch copy still needs its per-tick reseed.
+          if (worldRecordIndex && !worldRecordIndexIsLive) worldRecordIndex.set(route.siteWorldRecordId, site);
         } else {
           memo.ids.add(route.siteWorldRecordId);
         }
@@ -5220,6 +5827,49 @@ export const traffic = {
       }
     }
 
+    return payload;
+  },
+
+  /**
+   * Route-hold mayday (npcJobsRuntime._holdForRouteThreat): a worker parked in a hot lane cries
+   * for help on a bounded cadence. No combat fire may ever land, so traffic's violence
+   * broadcasts never fire for it. Reshape that cry into the exact lastDistressCall shape
+   * _broadcastCivilianDistress produces (cause 'route_hold') so the nearest rescue craft
+   * dispatches through the ordinary _findNearbyRescueTarget path and _stepRescue can track the
+   * caller live. Stamps the caller's lastDistressSimT like a real broadcast, which is the
+   * freshness signal the rescue stand-down bound reads.
+   */
+  _onNpcJobDistress(p) {
+    const state = this.state;
+    if (!state || !state.traffic) return null;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const caller = p.hullId != null && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(p.hullId)
+      : null;
+    const data = caller ? (caller.data || (caller.data = {})) : null;
+    const pos = caller && caller.pos
+      ? { x: caller.pos.x, z: caller.pos.z }
+      : (p.pos && Number.isFinite(p.pos.x) && Number.isFinite(p.pos.z)
+        ? { x: p.pos.x, z: p.pos.z }
+        : null);
+    if (!pos) return null;
+    if (data) data.lastDistressSimT = now;
+    const payload = {
+      callerId: caller ? caller.id : (p.hullId != null ? p.hullId : null),
+      callerRole: (data && (data.trafficRole || data.role)) || p.kind || 'civilian',
+      callerName: (data && data.trafficLabel) || (caller && caller.name) || 'Civilian Craft',
+      pos,
+      threatId: p.threatId != null ? p.threatId : null,
+      cause: 'route_hold',
+      radius: CIVILIAN_DISTRESS_RADIUS_WU,
+      routedToPlayer: false,
+      recipients: [],
+      simTime: now,
+    };
+    state.traffic.lastDistressCall = payload;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('distress:call', payload);
+    }
     return payload;
   },
 
@@ -6006,10 +6656,31 @@ export const traffic = {
     } else if (rec.rescueTargetType === 'distress' && rec.rescueTargetPos) {
       const call = state.traffic && state.traffic.lastDistressCall;
       const age = (state.simTime || 0) - (call ? call.simTime : 0);
-      if (call && age < 45) {
+      // Live-caller mayday: the snapshot goes stale the moment the caller moves. While the
+      // caller hull still lives and its mayday is recent, chase the hull. Its death hands the
+      // scene to the pod scan (Phase 3 priority 1) and the existing aftermath; a mayday that
+      // has gone quiet past the stand-down bound ends the escort instead of holding it forever.
+      const caller = rec.rescueCallerId != null && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(rec.rescueCallerId)
+        : null;
+      const lastMaydayT = caller && caller.data && Number.isFinite(caller.data.lastDistressSimT)
+        ? caller.data.lastDistressSimT
+        : (call ? call.simTime : -Infinity);
+      if (caller && caller.alive !== false && caller.pos) {
+        if ((state.simTime || 0) - lastMaydayT > RESCUE_CALLER_STANDDOWN_S) {
+          rec.rescueTargetPos = null;
+          rec.rescueCallerId = null;
+          rec.rescueOnSceneSimT = null;
+          rec.rescueTargetType = null;
+        } else {
+          targetObj = { kind: 'distress', pos: caller.pos, callerEnt: caller };
+        }
+      } else if (!caller && call && age < 45) {
         targetObj = { kind: 'distress', pos: rec.rescueTargetPos };
       } else {
         rec.rescueTargetPos = null;
+        rec.rescueCallerId = null;
+        rec.rescueOnSceneSimT = null;
         rec.rescueTargetType = null;
       }
     } else if (rec.rescueTargetType === 'disabled' && rec.rescueTargetId != null) {
@@ -6032,6 +6703,8 @@ export const traffic = {
           rec.rescueTargetId = found.entity.id;
         } else if (found.kind === 'distress') {
           rec.rescueTargetPos = found.pos;
+          rec.rescueCallerId = found.callerId != null ? found.callerId : null;
+          rec.rescueOnSceneSimT = null; // fresh link-up episode: one on-scene call is owed
         } else if (found.kind === 'disabled') {
           rec.rescueTargetId = found.entity.id;
         }
@@ -6058,6 +6731,42 @@ export const traffic = {
       }
 
       if (targetObj.kind === 'distress') {
+        // Live caller: link up and hold station with the hull instead of circling the snapshot
+        // point it called from. One throttled on-scene call per link-up; the latch holds until
+        // the caller dies (pod scan takes over), nearby violence (the flee path wins), or the
+        // stand-down bound in Phase 2.
+        let callerEnt = targetObj.callerEnt || null;
+        if (!callerEnt && rec.rescueCallerId != null && state.entities && typeof state.entities.get === 'function') {
+          const live = state.entities.get(rec.rescueCallerId);
+          if (live && live.alive !== false && live.pos) callerEnt = live;
+        }
+        if (callerEnt) {
+          const cdx = callerEnt.pos.x - e.pos.x;
+          const cdz = callerEnt.pos.z - e.pos.z;
+          const cdist = Math.hypot(cdx, cdz);
+          const caim = Math.atan2(cdz, cdx);
+          if (cdist < 80) {
+            rec.civilianReaction = 'standing_by_caller';
+            setIntent(e, 0, 0, false, true, null, caim);
+            if (e.data && e.data.intent) e.data.intent.brake = true;
+            if (rec.rescueOnSceneSimT == null) {
+              rec.rescueOnSceneSimT = state.simTime || 0;
+              if (this.bus && typeof this.bus.emit === 'function') {
+                this.bus.emit('comms:message', {
+                  sender: (e.data && e.data.trafficLabel) || 'Rescue Craft',
+                  channel: 'distress',
+                  text: `On scene, ${(callerEnt.data && callerEnt.data.trafficLabel) || callerEnt.name || 'Civilian Craft'} — hang together.`,
+                  callerId: callerEnt.id,
+                  pos: { x: callerEnt.pos.x, z: callerEnt.pos.z },
+                });
+              }
+            }
+          } else {
+            rec.civilianReaction = 'responding_distress';
+            setIntent(e, 0, 1, false, false, null, caim);
+          }
+          return true;
+        }
         rec.civilianReaction = 'responding_distress';
         if (dist < 80) {
           // Reached distress scene — check if any pods appeared
@@ -6066,10 +6775,14 @@ export const traffic = {
             rec.rescueTargetType = 'pod';
             rec.rescueTargetId = nearbyPod.entity.id;
             rec.rescueTargetPos = null;
+            rec.rescueCallerId = null;
+            rec.rescueOnSceneSimT = null;
           } else {
             // Scene cleared
             rec.rescueTargetType = null;
             rec.rescueTargetPos = null;
+            rec.rescueCallerId = null;
+            rec.rescueOnSceneSimT = null;
             rec.civilianReaction = null;
             return false;
           }
@@ -6413,7 +7126,7 @@ export const traffic = {
   },
 
   _listSalvageTargets() {
-    const tick = this.state && Number.isInteger(this.state.tick) ? this.state.tick : 0;
+    const tick = Number.isInteger(deferredEnterTick(this.state)) ? deferredEnterTick(this.state) : 0;
     if (this._salvageTargetCache
         && this._salvageTargetCacheTick != null
         && tick - this._salvageTargetCacheTick < 4
@@ -6456,7 +7169,7 @@ export const traffic = {
     for (const target of this._listSalvageTargets()) {
       const claim = this._salvorClaimantOf(target);
       if (claim) continue;
-      if (!this._salvorNoticeReady(target, this.state.simTime || 0)) continue;
+      if (!this._salvorNoticeReady(target, deferredEnterNow(this.state) || 0)) continue;
       const dx = target.pos.x - ax;
       const dz = target.pos.z - az;
       const d2 = dx * dx + dz * dz;
@@ -6683,8 +7396,6 @@ export const traffic = {
     ent.data.role = 'salvor';
     ent.data.trafficLabel = def.label;
     ent.data.generalSalvor = true;
-    // Persist mid-job cutters + carried cargo across Continue (save only keeps flags.persistent).
-    ent.flags = Object.assign({}, ent.flags, { persistent: true });
     // Empty hold on commission — value is claimed from the wreck/payload, never pre-rolled.
     const empty = this._emptySalvorManifest(ent, 0);
     this._setTrafficManifest(ent, null, empty);
@@ -6752,7 +7463,7 @@ export const traffic = {
     let bestId = '';
     for (const target of this._listSalvageTargets()) {
       if (!this._isTowableBody(target)) continue;
-      if (!this._salvorNoticeReady(target, this.state.simTime || 0)) continue;
+      if (!this._salvorNoticeReady(target, deferredEnterNow(this.state) || 0)) continue;
       const dx = target.pos.x - ax;
       const dz = target.pos.z - az;
       const d2 = dx * dx + dz * dz;
@@ -6796,8 +7507,6 @@ export const traffic = {
     ent.data.role = 'tug';
     ent.data.trafficLabel = def.label;
     ent.data.yardTug = true;
-    // A tug mid-tow must survive Continue, exactly as a mid-job cutter does.
-    ent.flags = Object.assign({}, ent.flags, { persistent: true });
     this._active.push(ent.id);
     const rec = {
       id: ent.id,
@@ -7045,7 +7754,7 @@ export const traffic = {
     for (const target of targets) {
       if (active >= MAX_GENERAL_SALVORS_PER_SECTOR) break;
       if (this._salvorClaimantOf(target)) continue;
-      if (!this._salvorNoticeReady(target, this.state.simTime || 0)) continue;
+      if (!this._salvorNoticeReady(target, deferredEnterNow(this.state) || 0)) continue;
       // The authored Vesta cutter must return to Forge, not whichever pocket station happens to
       // be first in the current entity ordering. Missing Forge means no Vesta dispatch, never a
       // fallback trip to another sector's service route.
@@ -7219,6 +7928,16 @@ export const traffic = {
       market: market || FREIGHT_MARKET_KEYS_FALLBACK,
       ...((role === 'ore_carrier' || role === 'miner') && sectorId === 'sector_helios_prime' ? { capacity: 0 } : {}),
     });
+    if (role === 'tanker' && manifest && Array.isArray(manifest.lines)) {
+      const cryoId = 'cmdty_ice_water';
+      if (!manifest.lines.some((line) => line && (line.commodityId === cryoId || line.commodityId === 'cmdty_gas_helium3'))) {
+        const qty = Math.max(1, Math.floor((manifest.totalQty || 8) / 2) || 1);
+        manifest.lines = [{ commodityId: cryoId, qty }, ...manifest.lines];
+        let totalQty = 0;
+        for (const line of manifest.lines) totalQty += Math.max(0, line && line.qty || 0);
+        manifest.totalQty = totalQty;
+      }
+    }
     if (ent) {
       if (!ent.data) ent.data = {};
       ent.data.cargoManifest = manifest;
@@ -9430,7 +10149,7 @@ export const traffic = {
     if (this._ceresCausal && this._ceresCausal.schema === CERES_CAUSAL_CHAIN_SCHEMA) {
       return this._ceresCausal;
     }
-    const simTime = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const simTime = Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0;
     this._ceresCausal = {
       schema: CERES_CAUSAL_CHAIN_SCHEMA,
       cycle: 0,
@@ -9457,7 +10176,8 @@ export const traffic = {
   _rebaseCeresCausalPhaseEnds() {
     const chain = this._ceresCausal;
     if (!chain || !Array.isArray(chain.active) || !chain.active.length) return;
-    const simTime = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    const deferredNow = deferredEnterNow(this.state);
+    const simTime = Number.isFinite(deferredNow) ? deferredNow : 0;
     for (let i = 0; i < chain.active.length; i++) {
       const live = chain.active[i];
       if (!live) continue;
@@ -9641,7 +10361,7 @@ export const traffic = {
       schema: CERES_CAUSAL_CHAIN_SCHEMA,
       kind: String(kind || 'tick'),
       sectorId: CERES_ACTIVITY_SECTOR_ID,
-      simTime: Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0,
+      simTime: Number.isFinite(deferredEnterNow(this.state)) ? deferredEnterNow(this.state) : 0,
       cycle: chain ? chain.cycle | 0 : 0,
       activeCount: chain && Array.isArray(chain.active) ? chain.active.length : 0,
       completed: chain && Array.isArray(chain.completed) ? chain.completed.slice() : [],
@@ -10907,7 +11627,7 @@ export const traffic = {
 
   _resetRngForSector(sectorId) {
     this._ensureState();
-    this.state.traffic.rngSeed = hash32(this.state.meta && this.state.meta.seed, 'traffic', sectorId, this.state.tick || 0);
+    this.state.traffic.rngSeed = hash32(this.state.meta && this.state.meta.seed, 'traffic', sectorId, deferredEnterTick(this.state) || 0);
   },
 
   _rng() {
@@ -10916,6 +11636,7 @@ export const traffic = {
   },
 
   serialize() {
+    captureCeresWorkfleetHardware(this);
     this._ensureState();
     return {
       schema: CERES_MINER_HAULER_SAVE_SCHEMA,
@@ -11019,6 +11740,14 @@ export const traffic = {
     this._invalidateCausalRunEpoch();
     this._restoreEpochPending = false;
     this._active = [];
+    // Enter-dedupe stamps: sector-object identity already makes a stale match impossible,
+    // but reset them so a new world can't carry previous-run epoch/simTime tokens forward.
+    this._emittedSector = null;
+    this._emittedSimTime = 0;
+    this._emittedEpoch = null;
+    this._cookedSector = null;
+    this._cookedSimTime = 0;
+    this._cookedEnterEpoch = null;
     this._ensureCausalLedgerSets();
     for (const ledger of [
       this._pendingJobActionIds,
@@ -11059,6 +11788,45 @@ function setIntent(e, moveX, moveZ, boost, fire, fireGroup, aimAngle) {
   intent.fire = fire;
   intent.fireGroup = fireGroup;
   intent.aimAngle = aimAngle;
+}
+
+const INDUSTRY_HAUL_TARGET_REF = /^[a-z][a-z0-9-]*(?::[a-z_][a-z0-9_.-]*)+$/;
+
+function industryHaulWaypointSpec(pointId, point, prefix) {
+  const waypoint = {
+    id: `${prefix}:${pointId}`,
+    pos: { x: point.pos.x, z: point.pos.z },
+    label: point.label,
+  };
+  if (typeof point.targetRef === 'string' && INDUSTRY_HAUL_TARGET_REF.test(point.targetRef)) {
+    waypoint.targetRef = point.targetRef;
+  }
+  return waypoint;
+}
+
+function industryHaulWaypointMatches(waypoint, pointId, pos) {
+  if (!waypoint || !waypoint.pos || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return false;
+  const id = typeof waypoint.id === 'string' ? waypoint.id : '';
+  if (id !== `origin:${pointId}` && id !== `dest:${pointId}`) return false;
+  const dx = waypoint.pos.x - pos.x;
+  const dz = waypoint.pos.z - pos.z;
+  return dx * dx + dz * dz <= 1;
+}
+
+function industryHaulRouteAims(route, sourceId, sourcePos, destinationId, destPos) {
+  if (!Array.isArray(route) || route.length < 2) return false;
+  return industryHaulWaypointMatches(route[0], sourceId, sourcePos)
+    && industryHaulWaypointMatches(route[route.length - 1], destinationId, destPos);
+}
+
+function industryHaulerEligible(rec, entity) {
+  const data = entity && entity.data;
+  if (!data || typeof data.worldRecordId !== 'string' || !data.worldRecordId) return false;
+  if (data.worldSiteTrafficHookId || data.claimTravelTrafficHookId || data.namedLaneContactId) return false;
+  if (data.ceresActivityCast === true || data.authoredActivityCast === true) return false;
+  if (data.activityActorSlotId || data.claimDepotId) return false;
+  const role = (rec && rec.role) || data.trafficRole;
+  return role === 'hauler' || data.jobKind === 'hauler';
 }
 
 function stationIdentity(station) {

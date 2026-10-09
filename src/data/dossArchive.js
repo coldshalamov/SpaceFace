@@ -3,6 +3,8 @@
 // The archive deliberately does not own a new progression bag. Each entry is derived from the
 // existing physical record that produced it, so replays and Continue cannot award it twice.
 
+import { lastShiftArchiveEvidence } from './lastShift.js';
+
 export const DOSS_ARCHIVE_CONTACT_ID = 'contact_halev_doss';
 export const DOSS_ARCHIVE_COUNTER_ID = 'doss.sources';
 
@@ -29,6 +31,10 @@ export const DOSS_ARCHIVE_SOURCES = Object.freeze([
     flag: 'doss_lung_of_charon_case',
     title: 'The Lung of Charon',
   }),
+]);
+// Optional sources enrich the register without changing the original Candle Fleet route gate.
+export const DOSS_ARCHIVE_OPTIONAL_SOURCES = Object.freeze([
+  Object.freeze({ id: 'ceres_last_shift', flag: 'doss_ceres_last_shift', title: 'The Last Shift' }),
 ]);
 
 const SOURCE_BY_ID = new Map(DOSS_ARCHIVE_SOURCES.map((source) => [source.id, source]));
@@ -155,7 +161,7 @@ function lungEvidence(state) {
 
 /** Read only the durable source records. Invalid or partial receipts deliberately disappear. */
 export function dossArchiveEvidence(state) {
-  return [vestaEvidence(state), obeliskEvidence(state), lungEvidence(state)].filter(Boolean);
+  return [vestaEvidence(state), obeliskEvidence(state), lungEvidence(state), lastShiftArchiveEvidence(state)].filter(Boolean);
 }
 
 export function dossArchiveSourceCount(state) {
@@ -163,7 +169,8 @@ export function dossArchiveSourceCount(state) {
 }
 
 export function dossArchiveComplete(state) {
-  return dossArchiveSourceCount(state) === DOSS_ARCHIVE_SOURCES.length;
+  const retained = new Set(dossArchiveEvidence(state).map(entry => entry.id));
+  return DOSS_ARCHIVE_SOURCES.every(source => retained.has(source.id));
 }
 
 export function dossArchiveMapOffer(state) {

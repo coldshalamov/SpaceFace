@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3b4e0e4a4fd198c03246ac767a152fabcd9ece752740e02a6a1f387f89ca829e",
+  "contentHash": "ad32abcd53c01aa70322dadb5647a7f3e01a04249a43d25d63d1f75daba91336",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1482,8 +1482,8 @@
       "uri": "place_solar_array.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -1594,9 +1594,9 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 14,
+      "hull": 12,
       "mechanical": 2,
-      "signal": 1
+      "signal": 3
     },
     "materialProfiles": [
       {
@@ -1672,12 +1672,12 @@
       {
         "allowTextures": false,
         "planIndex": 19,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 20,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2151,7 +2151,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_solar_array.glb"
   },
-  "runtimeHash": "ecfb1a1c88e0263c7ab3907017874b59e08aa66d724be90fe0c84ca36f2fe76a",
+  "runtimeHash": "39a831714c27b954ebd9555cefbeae1334427fdacb658c524e48d9059ccf2ebc",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

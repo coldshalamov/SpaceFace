@@ -121,7 +121,15 @@ export function createExhaustLag(opts = {}) {
       // `count` is the ring's live sample total in this closure; the station total is `stations`.
       const stations = Math.max(2, p.count | 0);
       const step = (Number(p.jetLength) || 0) / (stations - 1);
-      const headHeading = Number(p.heading) || 0;
+      let headHeading = Number(p.heading) || 0;
+      // History is stored unwrapped but the live heading arrives wrapped (atan2). Bridge the seam
+      // so a turn through ±π compares on the same branch: without this the wrapped head sits ~2π
+      // off the unwrapped history and the jet kinks to the soft cap (~80°) sideways. Cosine/sine
+      // below are 2π-periodic, so the branch choice moves only the bend, never the spine's aim.
+      if (count >= 2) {
+        while (headHeading - lastHeading > Math.PI) headHeading -= Math.PI * 2;
+        while (headHeading - lastHeading < -Math.PI) headHeading += Math.PI * 2;
+      }
       const maxBend = Number(p.maxBendRad) || 0;
       let x = Number(p.x) || 0;
       let y = Number(p.y) || 0;

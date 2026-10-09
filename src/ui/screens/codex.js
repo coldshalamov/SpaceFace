@@ -15,10 +15,13 @@
 // state.story + the pure-data narrative tables; never mutates sim state.
 
 import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, PERSISTENT_CARGO } from '../../data/narrative.js';
+import { writtenEndingArchive } from '../../story/endings/index.js';
 import { TETHYS_BLACK_MARKET_DISCOVERY } from '../../data/frontierRumors.js';
 import { CANONICAL_PORTRAITS, PORTRAIT_ASSET_ROOT } from '../../data/portraits.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { explorationDiscoveryPlates, galaxyExplorationSummary } from '../../world/explorationJournal.js';
+import { lossesFor } from '../../systems/lossLedger.js';
+import { discoveryKnowledge } from '../sim/discoveryKnowledge.js';
 import { decorateEntityNode } from '../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from '../shipLedgerPanel.js';
@@ -33,6 +36,11 @@ import { decrypt, rollTo } from '../orrery/text.js';
 import { reducedMotion, createSpring } from '../orrery/motion.js';
 import { syncScrollExtent } from '../orrery/scrollExtent.js';
 import { dressLampKey } from '../orrery/lampKey.js';
+import { uniqueWreckById } from '../../data/uniqueWrecks.js';
+import { knownAces, stanceForRecord, rememberedBarkFor } from '../../data/namedAces.js';
+import { FACTION_LABELS } from '../../data/encounters.js';
+import { buildStoryView, rankViews, recallText } from '../../chronicler/narrative.js';
+import { hash32 } from '../../core/rng.js';
 
 /** Set a CSS custom property where the host supports it (test shims carry a plain style object). */
 function setVar(node, name, value) {
@@ -83,13 +91,14 @@ function nav(ctx, method, arg) {
   ctx.bus.emit('ui:' + method, { id: arg });
 }
 
-const TABS = ['Story', 'Comms', 'Discoveries', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
+const TABS = ['Story', 'Comms', 'Discoveries', 'World', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
 
 /** The live tab's one-line description under the title. */
 const TAB_LINES = Object.freeze({
   Story: 'The eight beats, and what the endgame offers.',
   Comms: 'Every signal you have received, filed by kind.',
   Discoveries: 'Plates from the sites you have flown down to.',
+  World: 'Wrecks you resolved, captains who remember, what is still held, and the stories told.',
   Graffiti: 'What was written on the walls you passed.',
   Figures: 'The people whose names keep turning up.',
   Ship: "The Tessera's sealed history, and what travels with you.",
@@ -270,6 +279,67 @@ function countEncounteredGraffiti(story = {}) {
   return count;
 }
 
+function surveyedLossId(entry) {
+  const id = entry && typeof entry.id === 'string' ? entry.id : '';
+  return id.startsWith('survey:') ? id.slice('survey:'.length) : '';
+}
+
+/** The name the ledger filed for this hull. A coordinate is not a name. */
+function ledgerDisplayTitle(loss) {
+  if (!loss || typeof loss !== 'object') return '';
+  for (const value of [loss.victimCallsign, loss.victimName, loss.title]) {
+    if (typeof value !== 'string') continue;
+    const clean = value.replace(/\s+/g, ' ').trim();
+    if (clean) return clean;
+  }
+  return '';
+}
+
+function titleForSurveyedLoss(state, entry) {
+  const lossId = surveyedLossId(entry);
+  if (!lossId) return '';
+  const inSector = entry && entry.sectorId ? lossesFor(state, entry.sectorId) : [];
+  let loss = inSector.find((row) => row && row.lossId === lossId) || null;
+  if (!loss) {
+    const all = state && state.lossLedger && Array.isArray(state.lossLedger.entries)
+      ? state.lossLedger.entries : [];
+    loss = all.find((row) => row && row.lossId === lossId) || null;
+  }
+  return ledgerDisplayTitle(loss);
+}
+
+export function surveyedLossCodexLine(state) {
+  const titles = [];
+  let count = 0;
+  for (const entry of discoveryKnowledge(state).entries) {
+    if (!entry || entry.tier !== 'survey') continue;
+    count += 1;
+    const title = titleForSurveyedLoss(state, entry);
+    if (title) titles.push(title);
+  }
+  if (count <= 0) return '';
+  const named = titles.length ? ': ' + titles.join(', ') : '';
+  if (count === 1) return 'One loss identified' + named;
+  return count + ' losses identified' + named;
+}
+
+/** Discoveries survey sentence. Counts only — never a place. */
+export function confirmedRumorCodexLine(state) {
+  let count = 0;
+  for (const entry of discoveryKnowledge(state).entries) {
+    if (entry && entry.tier === 'resolved' && entry.source === 'frontierRumor') count += 1;
+  }
+  if (count <= 0) return '';
+  if (count === 1) return 'One rumor confirmed';
+  return count + ' rumors confirmed';
+}
+
+export function surveyStatusBody(state) {
+  const base = 'Fly close to unresolved signals and triangulate them to chart the frontier.';
+  const extra = [surveyedLossCodexLine(state), confirmedRumorCodexLine(state)].filter(Boolean);
+  return extra.length ? base + ' ' + extra.join('. ') + '.' : base;
+}
+
 export function codexProgressSummary(story = {}, state = null) {
   const beat = storyBeatIndex(story);
   let commsTotal = COLD_START.length;
@@ -296,12 +366,17 @@ export function codexProgressSummary(story = {}, state = null) {
   ];
   if (state) {
     const gal = galaxyExplorationSummary(state);
-    items.push({ key: 'Survey', value: gal.overallPercent + '% (' + gal.foundPois + '/' + gal.totalPois + ' sites)' });
+    const surveyed = surveyedLossCodexLine(state);
+    const confirmed = confirmedRumorCodexLine(state);
+    const surveyValue = gal.overallPercent + '% (' + gal.foundPois + '/' + gal.totalPois + ' sites)'
+      + (surveyed ? ' · ' + surveyed : '')
+      + (confirmed ? ' · ' + confirmed : '');
+    items.push({ key: 'Survey', value: surveyValue });
   }
   return {
     beat,
     phase,
-    note: 'Locked counts mean future entries are intentionally hidden until story progress, encounter flags, or conditional signal triggers reveal them.',
+    note: 'Locked entries are hidden on purpose until you reach them in the story.',
     items,
   };
 }
@@ -380,6 +455,147 @@ function makeEntry({ id, name, sub = '', title = null, meta = null, body = '', n
     id, name, sub, signal, locked, article, measure, mark, heading, titleSpan, titleText,
     image: typeof image === 'string' && image ? image : null, art, requested: false,
   };
+}
+
+// ── World tab derivation (FB-037) ──────────────────────────────────────────────
+// Pure and read-only: four already-saved bags shaped into entry specs for makeEntry.
+// "Do not compute in the UI" is honored by keeping all of it in this one pure function;
+// the render path adds nothing but DOM. No coordinates are ever printed — a bearing the
+// player bought is a name and a state, never a map.
+
+const WRECK_PHASE_META = Object.freeze({
+  rumored: 'Bearing heard',
+  fixed: 'Position fixed',
+  decision: 'Decision pending',
+  salvaged: 'Resolved',
+});
+const WRECK_PHASE_BODY = Object.freeze({
+  rumored: 'A bearing was heard. The hull itself is unsurveyed.',
+  fixed: 'Its position is fixed. The wreck has not been read.',
+  decision: 'The hull was read. A decision still waits aboard.',
+  salvaged: 'The site was worked. What was decided there is on record.',
+});
+const ACE_STANCE_META = Object.freeze({
+  hunts: 'Holds a grudge',
+  fears: 'Fears your return',
+  offers_work: 'Remembers the debt',
+});
+const CHAIN_OUTCOME_VERB = Object.freeze({
+  destroyed: 'destroyed',
+  surrendered_secured: 'surrendered — secured',
+  surrendered_escaped: 'surrendered — escaped',
+  surrendered_lost: 'surrendered — lost',
+  disengaged: 'disengaged',
+  recovered: 'recovered',
+  abandoned: 'abandoned',
+  repelled: 'repelled',
+  raided: 'raided',
+  witnessed_only: 'witnessed',
+});
+const WORLD_STORY_CAP = 16;
+
+/**
+ * @returns {{wrecks: object[], aces: object[], chains: object[], stories: object[]}}
+ * Entry specs per section, in stable order (wreck id, roster order, chain order, story rank).
+ */
+export function worldCodexEntries(state) {
+  const groups = { wrecks: [], aces: [], chains: [], stories: [] };
+  const player = state && state.player || {};
+
+  // Unique wrecks — state and last decision. Location never prints, whatever the phase.
+  const bearings = player.uniqueWrecks && player.uniqueWrecks.bearings;
+  if (bearings && typeof bearings === 'object') {
+    for (const wreckId of Object.keys(bearings).sort()) {
+      const rec = bearings[wreckId];
+      if (!rec || typeof rec !== 'object') continue;
+      const def = uniqueWreckById(wreckId);
+      const choice = def && rec.choiceId
+        ? (((def.decision && def.decision.choices) || [])).find((c) => c && c.id === rec.choiceId)
+        : null;
+      const phase = WRECK_PHASE_META[rec.phase] ? rec.phase : 'rumored';
+      const body = [WRECK_PHASE_BODY[phase]];
+      if (choice && choice.label) body.push(`Last decision: ${choice.label}.`);
+      groups.wrecks.push({
+        id: `world:wreck:${wreckId}`,
+        name: rec.name || (def && def.name) || wreckId,
+        sub: 'Unique wreck',
+        meta: WRECK_PHASE_META[phase],
+        body: body.join('\n'),
+        note: choice && choice.receiptTitle ? `Receipt: ${choice.receiptTitle}.` : '',
+      });
+    }
+  }
+
+  // Named captains — the remembered-bark line, seeded exactly like the owner's voice.
+  const memory = state && state.aceMemory;
+  if (memory && typeof memory === 'object') {
+    const seed = state && state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed >>> 0 : 0;
+    for (const ace of knownAces()) {
+      const rec = memory[ace.id];
+      if (!rec || rec.encountered !== true) continue;
+      const stance = stanceForRecord(rec);
+      if (!ACE_STANCE_META[stance.stance]) continue;
+      const line = rememberedBarkFor(ace, rec, stance, hash32(seed, ace.id, 'codex-world'));
+      if (!line) continue;
+      groups.aces.push({
+        id: `world:ace:${ace.id}`,
+        name: ace.name,
+        sub: 'Named captain',
+        meta: ACE_STANCE_META[stance.stance],
+        body: line,
+      });
+    }
+  }
+
+  // Provenance chains — what is still held against you, and the closing verb when it settled.
+  const chains = state && state.provenance && Array.isArray(state.provenance.chains)
+    ? state.provenance.chains : [];
+  for (const chain of chains) {
+    if (!chain || !Array.isArray(chain.nodes) || !chain.nodes.length) continue;
+    const nodes = chain.nodes;
+    const factionId = (nodes.find((n) => n && n.factionId) || {}).factionId || null;
+    const faction = factionId && FACTION_LABELS[factionId] || null;
+    const act = nodes.find((n) => n && n.k === 'act' && n.text)
+      || nodes.find((n) => n && n.text) || null;
+    const open = chain.open === true;
+    const held = [];
+    if (open) {
+      if (chain.bountyPending === true) held.push('a bounty still stands');
+      if (chain.amendsActive === true) held.push('amends are still owed');
+      if (!held.length) held.push(faction ? `${faction} still holds it` : 'it is still held');
+    }
+    const verb = CHAIN_OUTCOME_VERB[chain.outcome] || (open ? 'open' : 'closed');
+    groups.chains.push({
+      id: `world:chain:${chain.id || groups.chains.length}`,
+      name: act && act.text ? act.text : (faction ? `${faction} — an incident chain` : 'An incident chain'),
+      sub: 'Provenance',
+      meta: open ? 'Held against you' : 'Settled',
+      body: held.length ? `Held against you: ${held.join('; ')}.` : '',
+      note: `Closing verb: ${verb}.`,
+    });
+  }
+
+  // Chronicler stories — the recall text, cited back to its record revision.
+  const stories = state && state.chronicler && Array.isArray(state.chronicler.stories)
+    ? state.chronicler.stories : [];
+  if (stories.length) {
+    const now = state && Number.isFinite(state.simTime) ? state.simTime : 0;
+    const views = rankViews(
+      stories.map((story) => story && buildStoryView(story)).filter(Boolean),
+      {}, now,
+    ).slice(0, WORLD_STORY_CAP);
+    for (const view of views) {
+      groups.stories.push({
+        id: `world:story:${view.id}:r${view.revision}`,
+        name: view.title || 'A recorded story',
+        sub: 'Chronicler record',
+        meta: view.kind || 'record',
+        body: recallText(view, now),
+        note: `Cited ${view.id}:r${view.revision}.`,
+      });
+    }
+  }
+  return groups;
 }
 
 /** Take the reader's chrome (filed-under line, plate, turn) off an entry, leaving its own words. */
@@ -630,6 +846,9 @@ export const codexScreen = {
     this._unsubs.push(ctx.bus.on('comms:popup', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('graffiti:show', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('discovery:plateUnlocked', refreshIfVisible));
+    // The story owner emits the filed ending's manuscript when it is written (and on archive
+    // open); the Archive tab reads it straight from state on the next render.
+    this._unsubs.push(ctx.bus.on('endgame:archive', refreshIfVisible));
 
     this._render(ctx);
     rootEl.dataset.kReady = '1';
@@ -742,6 +961,7 @@ export const codexScreen = {
       case 'Story':    this._renderStory(ctx); break;
       case 'Comms':    this._renderComms(ctx); break;
       case 'Discoveries': this._renderDiscoveries(ctx); break;
+      case 'World':    this._renderWorld(ctx); break;
       case 'Graffiti': this._renderGraffiti(ctx); break;
       case 'Figures':  this._renderFigures(ctx); break;
       case 'Ship':     this._renderShip(ctx); break;
@@ -1087,7 +1307,30 @@ export const codexScreen = {
 
   // Signal Archive — every recovered signal an entry on the dial (its still in the aperture); PLAY
   // runs the clip through the UI system's shared cinematic player (ui.playCinematic).
-  _renderArchive() {
+  _renderArchive(ctx) {
+    // FB-129 — the written ending is part of the ship's own record. Once the story owner files it
+    // (state.story.writtenFinale), the Archive carries the manuscript itself: the transmission
+    // that played, then the epilogue — cited back to its receipt. Read-only; the story owner
+    // remains the only writer.
+    const archive = writtenEndingArchive(
+      ctx && ctx.state && ctx.state.story ? ctx.state.story.writtenFinale : null,
+    );
+    if (archive) {
+      const body = archive.transmission
+        .map((b) => `${b.sender}: ${b.text}`)
+        .join('\n');
+      const epilogue = (archive.epilogue || []).join('\n');
+      this._section('Filed Ending', [makeEntry({
+        id: 'endgame:filed',
+        name: archive.title,
+        sub: 'Filed ending',
+        title: archive.title,
+        meta: `${archive.subtitle ? archive.subtitle + ' · ' : ''}filed under ${archive.receiptId}`,
+        body: body || archive.subtitle || '',
+        note: epilogue || 'The record stands.',
+        signal: true,
+      })]);
+    }
     // Each recovered signal is an entry: its still in the aperture, its log as the reading, and
     // PLAY, the tab's one Lamp Key, under it (the clip runs through the UI's shared player).
     const entries = SIGNAL_ARCHIVE.map((c) => {
@@ -1180,6 +1423,22 @@ export const codexScreen = {
     this._alignReading();
   },
 
+  /**
+   * World tab (FB-037) — the world you changed, read from the four saved bags the other tabs
+   * never open: unique-wreck dispositions, named-ace memories, provenance chains still held,
+   * and the chronicler's ranked stories. worldCodexEntries is the pure derivation (read-only;
+   * no new state, no location leaks for unread wrecks); this render only maps it through
+   * makeEntry like every other tab.
+   */
+  _renderWorld(ctx) {
+    const groups = worldCodexEntries(ctx && ctx.state);
+    const toEntries = (specs) => specs.map((spec) => makeEntry(spec));
+    this._section('Unique Wrecks', toEntries(groups.wrecks), 'No unique wreck bears your record yet.');
+    this._section('Captains', toEntries(groups.aces), 'No captain remembers you by name.');
+    this._section('Held Against You', toEntries(groups.chains), 'Nothing is held against you.');
+    this._section('Stories', toEntries(groups.stories), 'The chronicler holds no story of yours yet.');
+  },
+
   _renderDiscoveries(ctx) {
     const state = ctx && ctx.state;
     const gal = galaxyExplorationSummary(state);
@@ -1191,7 +1450,7 @@ export const codexScreen = {
       sub: gal.overallPercent + '% · ' + gal.foundPois + '/' + gal.totalPois + ' sites',
       title: 'Galaxy Cartography & Survey Status',
       meta: 'Survey',
-      body: 'Fly close to unresolved signatures or perform deep triangulations to expand known frontier cartography.',
+      body: surveyStatusBody(state),
     });
     survey.article.setAttribute('aria-label', 'Survey and cartography summary');
     const heroes = el('div', 'k-words k-words--row');
@@ -1684,7 +1943,7 @@ export const codexScreen = {
       });
       const sectionLabel = label + ' (' + visible.length + '/' + entries.length + ')';
       if (!visible.length) {
-        this._section(sectionLabel, [], key === 'traps' ? '— no conditional signals encountered yet —' : '— nothing encountered yet —');
+        this._section(sectionLabel, [], key === 'traps' ? '— none found yet —' : '— nothing encountered yet —');
         continue;
       }
       this._section(sectionLabel, visible.map((c) => makeEntry({

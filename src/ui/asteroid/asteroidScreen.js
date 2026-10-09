@@ -13,11 +13,11 @@
 // Split per law: this shell owns lifecycle + DOM + events; asteroidRenderer3d owns pixels;
 // asteroidController owns modes/input. Excavation sim stays in systems/drill.js; durable
 // structures/production in systems/asteroidSites.js.
-import { DRILL_CONST, tileIndex } from '../../systems/drill.js';
+import { DRILL_CONST, tileIndex, generateDrillField } from '../../systems/drill.js';
 import { BINDINGS } from '../bindings.js';
 import { resolveDrillControlMap } from '../screens/drill.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
-import { machineName } from './asteroidRenderer2d.js';
+import { machineName, createStrataCache } from './asteroidRenderer2d.js';
 import { createAsteroidRenderer3d } from './asteroidRenderer3d.js';
 import {
   createAsteroidController,
@@ -30,6 +30,7 @@ import {
 } from './inspector.js';
 import { createBuildPalette, PALETTE_ITEMS, CORE_ID } from './buildPalette.js';
 import { SITE_BALANCE, SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID } from '../../data/sites.js';
+import { industryReadoutFromState } from '../screens/industryReadout.js';
 
 // PQ-130.06 — the cursor lens (law §6.4) landed and the context bay is gone (law §10). Timings
 // here are law: the card appears after LENS_DELAY_S of hover while driving, instantly in build
@@ -38,6 +39,23 @@ import { SITE_BALANCE, SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID } from '../../data/
 const LENS_DELAY_S = 0.15;
 
 const { COLS, ROWS } = DRILL_CONST;
+
+// ORRERY Surface 1 (F1): the unclaimed rock is staged, not blank. One fixed seed, so the same
+// rock always stages the same way; the 2D strata painter is the honest cross-section, dimmed.
+const EMPTY_ROCK_SEED = 20260928;
+
+// ORRERY Surface 1 (F5): the Arc Gauge pair. One semicircle, drawn once per gauge; the value
+// snaps and the ghost trails it on a CSS transition, so a falling reading leaves a delta.
+const ARC_CX = 60;
+const ARC_CY = 58;
+const ARC_R = 44;
+const ARC_LEN = Math.PI * ARC_R;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function arcPoint(pct) {
+  const a = Math.PI * Math.max(0, Math.min(1, pct));
+  return { x: ARC_CX - ARC_R * Math.cos(a), y: ARC_CY - ARC_R * Math.sin(a) };
+}
 
 export function syncAsteroidConsoleModeButtons(driveButton, buildButton, mode) {
   const buildSelected = mode === MODES.BUILD;
@@ -141,7 +159,7 @@ export function transferRefusalText(res) {
 }
 
 /**
- * The Site drawer's whole model, INCLUDING the four operator verbs bound to their owner APIs.
+ * The Site drawer's whole model, INCLUDING the operator verbs bound to their owner APIs.
  *
  * The context bay carried these four affordances and was deleted by law §10; the PQ-130.06 receipt
  * recorded that the owner APIs survived untouched and that this drawer is where they re-bind. They
@@ -187,16 +205,21 @@ export function siteDrawerModel({
   };
 
   const fleet = (projection && projection.fleet) || (site && site.fleet) || null;
+  const dest = (projection && projection.courier) || null;
   const courier = {
     podsReady: fleet ? Math.floor(fleet.podsReady) : 0,
     podTarget: fleet ? fleet.podTarget : 0,
     launches: fleet ? fleet.launches : 0,
     delivered: fleet ? fleet.delivered : 0,
     lost: fleet ? fleet.lost : 0,
+    destinationId: dest ? dest.destinationId : null,
+    stations: (dest && Array.isArray(dest.stations) ? dest.stations : [])
+      .map((st) => ({ id: st.id, name: st.name })),
     inFlight: (fleet && Array.isArray(fleet.inFlight) ? fleet.inFlight : []).map((pod) => ({
       etaS: Math.max(0, Math.round((Number(pod.arriveT) || 0) - (Number(now) || 0))),
       units: Math.round(Object.values(pod.cargo || {}).reduce((a, b) => a + (Number(b) || 0), 0)),
       lost: !!pod.lost,
+      dest: pod.stationName || null,
     })),
   };
 
@@ -276,6 +299,16 @@ export function siteDrawerModel({
           () => siteSys.setPodTarget(site.id, target), { ok: false, reason: 'no-site' },
         ),
       },
+      podDestination: {
+        owner: 'setPodDestination',
+        stations: courier.stations,
+        value: courier.destinationId,
+        disabled: !site || !courier.stations.length,
+        reason: !site ? NO_SITE_REASON : (courier.stations.length ? null : 'This sector lists no station to sell to.'),
+        apply: (stationId) => call(
+          () => siteSys.setPodDestination(site.id, stationId), { ok: false, reason: 'no-site' },
+        ),
+      },
       machineMode: {
         owner: 'setMachineMode',
         machines: modeMachines,
@@ -337,7 +370,18 @@ export const asteroidScreen = {
     claimChip.className = 'aw-chip';
     claimChip.dataset.chip = 'claim';
     claimChip.textContent = 'No claim';
+    // ORRERY Surface 1 (F3): the unclaimed state reads on the board + the Lamp Key, never as a
+    // pill. The element stays (probes read its claimed text) but hides while there is no site.
+    claimChip.style.display = 'none';
     hudEls.claim = claimChip;
+
+    // FB-055: the same industrial sentence the automation panel prints. One crest
+    // chip, inside the 40px band — not a second board.
+    const industryChip = document.createElement('span');
+    industryChip.className = 'aw-chip';
+    industryChip.dataset.chip = 'industry';
+    industryChip.textContent = industryReadoutFromState(state).crest;
+    hudEls.industry = industryChip;
 
     // Claim-survey assay chip (PQ-024): volatile cold-state progress beside the claim it threatens;
     // committed/producing read from the durable record.
@@ -407,8 +451,17 @@ export const asteroidScreen = {
       + '<path d="M5 6.5h14"/><path d="M7 10.5h10"/>'
       + '<rect x="3.2" y="14.2" width="17.6" height="6.6" rx="2.2"/></svg>';
     crestRight.append(drawerBtn, creditsEl, hold, leaveBtn);
+    // ORRERY Surface 1 (F8): the drawer key is labelled — an 18px mystery glyph fails first
+    // sight. This sits OUTSIDE the drawerBtn slice the drawers test reads (that slice ends at
+    // the crestRight.append line above), and the label is aria-hidden: the button's aria-label
+    // already names it for assistive tech.
+    const drawerLabel = document.createElement('span');
+    drawerLabel.className = 'aw-drawer-label';
+    drawerLabel.setAttribute('aria-hidden', 'true');
+    drawerLabel.textContent = 'Log';
+    drawerBtn.appendChild(drawerLabel);
 
-    crest.append(nameEl, claimChip, assayChip, alertEl, crestRight);
+    crest.append(nameEl, claimChip, assayChip, industryChip, alertEl, crestRight);
     wrap.appendChild(crest);
 
     // ---------- the board (law §4): sovereign stage + rig cluster ----------
@@ -423,12 +476,18 @@ export const asteroidScreen = {
     stage.appendChild(canvas);
 
     const rig = document.createElement('div');
-    // The instrument cluster stands in the kit's SUNK bench plate — the recessed well the design
-    // system reserves for instruments — instead of a flat fill with a CSS shadow under it. The
-    // gauges inside are the kit's own segmented bar (bar.seg.bezel + bar.seg.off): the plate is
-    // the hardware, the bezel is the instrument.
+    // ORRERY Surface 1 (F5): the rig is an instrument on glass, not a bench plate — one Arc
+    // Gauge per reading (track + ghost delta + bloom head), bone at rest, red only for threat.
+    // The fh-plate markers stay so the markup still names the hardware family; the paint is the
+    // instrument's own.
     rig.className = 'aw-rig fh-plate fh-plate--sunk';
     rig.setAttribute('aria-label', 'Rig instruments');
+    function arcEl(tag, cls, attrs) {
+      const el = document.createElementNS(SVG_NS, tag);
+      el.setAttribute('class', cls);
+      for (const k of Object.keys(attrs || {})) el.setAttribute(k, attrs[k]);
+      return el;
+    }
     function buildGauge(kind, label) {
       const row = document.createElement('div');
       row.className = `aw-gauge aw-gauge-${kind}`;
@@ -437,23 +496,44 @@ export const asteroidScreen = {
       lbl.textContent = label;
       const track = document.createElement('div');
       track.className = 'aw-gauge-track';
-      const ticks = document.createElement('div');
-      ticks.className = 'ticks';
-      const fill = document.createElement('div');
-      fill.className = 'aw-gauge-fill';
-      track.append(ticks, fill);
+      const svg = document.createElementNS(SVG_NS, 'svg');
+      svg.setAttribute('class', 'aw-arc');
+      svg.setAttribute('viewBox', '0 0 120 66');
+      svg.setAttribute('aria-hidden', 'true');
+      svg.setAttribute('focusable', 'false');
+      const d = `M ${ARC_CX - ARC_R} ${ARC_CY} A ${ARC_R} ${ARC_R} 0 0 1 ${ARC_CX + ARC_R} ${ARC_CY}`;
+      const dash = { 'stroke-dasharray': ARC_LEN.toFixed(2), 'stroke-dashoffset': ARC_LEN.toFixed(2) };
+      svg.appendChild(arcEl('path', 'aw-arc-trackbloom', { d }));
+      svg.appendChild(arcEl('path', 'aw-arc-track', { d }));
+      for (const p of [0, 0.25, 0.5, 0.75, 1]) {
+        const a = Math.PI * p;
+        const x1 = ARC_CX - 47 * Math.cos(a);
+        const y1 = ARC_CY - 47 * Math.sin(a);
+        const x2 = ARC_CX - 51.5 * Math.cos(a);
+        const y2 = ARC_CY - 51.5 * Math.sin(a);
+        svg.appendChild(arcEl('line', 'aw-arc-tick', {
+          x1: x1.toFixed(1), y1: y1.toFixed(1), x2: x2.toFixed(1), y2: y2.toFixed(1),
+        }));
+      }
+      const ghost = arcEl('path', 'aw-arc-ghost', { d, ...dash });
+      const value = arcEl('path', 'aw-arc-value', { d, ...dash });
+      const p0 = arcPoint(0);
+      const headBloom = arcEl('circle', 'aw-arc-headbloom', { cx: p0.x.toFixed(1), cy: p0.y.toFixed(1) });
+      const head = arcEl('circle', 'aw-arc-head', { cx: p0.x.toFixed(1), cy: p0.y.toFixed(1) });
+      svg.append(ghost, value, headBloom, head);
+      track.appendChild(svg);
       const val = document.createElement('span');
       val.className = 'aw-gauge-val';
       val.textContent = '0%';
       row.append(lbl, track, val);
       rig.appendChild(row);
-      return { fill, val };
+      return { arc: svg, value, ghost, head, headBloom, val };
     }
     const heat = buildGauge('heat', 'Heat');
     const charge = buildGauge('charge', 'Charge');
-    hudEls.tempFill = heat.fill;
+    hudEls.tempArc = heat;
     hudEls.temp = heat.val;
-    hudEls.energyFill = charge.fill;
+    hudEls.energyArc = charge;
     hudEls.energy = charge.val;
     stage.appendChild(rig);
 
@@ -534,6 +614,15 @@ export const asteroidScreen = {
       lastLaneOv = s && s.overlays ? s.overlays.lane : null;
       lastMachineCount = s && s.machines ? s.machines.length : 0;
       projDirty = false;
+      if (hudEls.industry) {
+        const view = projection ? {
+          siteName: s && s.name,
+          exportRatePerMin: projection.exportRatePerMin,
+          machines: projection.machines,
+          lanes: projection.lanes,
+        } : null;
+        hudEls.industry.textContent = industryReadoutFromState(state, view ? [view] : []).crest;
+      }
     }
 
     // Consume projDirty first (a tick can mutate rates/progress without replacing identity),
@@ -599,6 +688,70 @@ export const asteroidScreen = {
         if (controller.state.mode !== MODES.BUILD) controller.setMode(MODES.BUILD);
       },
       motionReduce,
+    });
+
+    // ---------- ORRERY Surface 1 (F1/F2): the staged rock + the one verb ----------
+    //
+    // With no claim the screen is a place, not a null pointer: the unclaimed cross-section stages
+    // dimly behind the one Lamp Key. The key is NOT an .aw-build-key — the earned palette owns
+    // that class and the theater check demands its absence before a Core. Once a site exists the
+    // layer hides; with a live session the 3D board is the rock, so only the dim staging canvas
+    // stands down and the key stays until the claim lands.
+    const emptyLayer = document.createElement('div');
+    emptyLayer.className = 'aw-empty';
+    const emptyRock = document.createElement('canvas');
+    emptyRock.className = 'aw-empty-rock';
+    emptyRock.setAttribute('aria-hidden', 'true');
+    const stakeBtn = document.createElement('button');
+    stakeBtn.type = 'button';
+    stakeBtn.className = 'aw-stake-key';
+    stakeBtn.textContent = 'Stake claim';
+    stakeBtn.setAttribute('aria-label', 'Stake claim: open build mode to place the Massline Core');
+    emptyLayer.append(emptyRock, stakeBtn);
+    stage.appendChild(emptyLayer);
+
+    function paintEmptyRock() {
+      const w = Math.max(2, Math.round(stage.clientWidth || 1280));
+      const h = Math.max(2, Math.round(stage.clientHeight || 720));
+      const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
+      emptyRock.width = Math.round(w * dpr);
+      emptyRock.height = Math.round(h * dpr);
+      const g = emptyRock.getContext('2d');
+      if (!g) return;
+      const cache = createStrataCache({ cols: COLS, rows: ROWS, isSurveyed: () => true, drillTier: () => 99 });
+      cache.buildAll(generateDrillField(EMPTY_ROCK_SEED));
+      const src = cache.canvas;
+      const want = (w * dpr) / (h * dpr);
+      const have = src.width / src.height;
+      let sw; let sh; let sx; let sy;
+      if (have > want) {
+        sh = src.height; sw = sh * want; sx = (src.width - sw) / 2; sy = 0;
+      } else {
+        sw = src.width; sh = sw / want; sx = 0; sy = (src.height - sh) * 0.35;
+      }
+      g.drawImage(src, sx, sy, sw, sh, 0, 0, emptyRock.width, emptyRock.height);
+      g.fillStyle = 'rgba(5, 7, 10, 0.62)';
+      g.fillRect(0, 0, emptyRock.width, emptyRock.height);
+    }
+    paintEmptyRock();
+    const onEmptyResize = () => {
+      if (!emptyLayer.hidden && !state.drill) paintEmptyRock();
+    };
+    window.addEventListener('resize', onEmptyResize);
+
+    function syncEmptyState(unclaimed) {
+      const session = !!state.drill;
+      if (hudCache.emptyUnclaimed === unclaimed && hudCache.emptySession === session) return;
+      hudCache.emptyUnclaimed = unclaimed;
+      hudCache.emptySession = session;
+      emptyLayer.hidden = !unclaimed;
+      emptyRock.style.display = session ? 'none' : '';
+    }
+
+    stakeBtn.addEventListener('click', () => {
+      if (controller.state.mode !== MODES.BUILD) controller.setMode(MODES.BUILD);
+      announce('Build mode. Place the Massline Core to stake this rock.');
+      canvas.focus({ preventScroll: true });
     });
 
     // ---------- §6.3 the earned palette: what exists, and what it costs ----------
@@ -1066,7 +1219,7 @@ export const asteroidScreen = {
     }
 
     // ---------- Site: production totals, courier log, the four operator verbs ----------
-    const siteUi = { built: false, model: null, exportBtns: new Map(), exportSig: null, modeBtns: [] };
+    const siteUi = { built: false, model: null, exportBtns: new Map(), exportSig: null, modeBtns: [], destBtns: [] };
     let transferQty = 5;
 
     function siteBlock(host, title) {
@@ -1187,6 +1340,11 @@ export const asteroidScreen = {
       siteUi.modeChips = verbRow(mode);
       siteUi.modeReason = siteReason(mode);
 
+      // verb 5 — siteSys.setPodDestination
+      const destBlock = siteBlock(grid, 'Pod destination');
+      siteUi.destChips = verbRow(destBlock);
+      siteUi.destReason = siteReason(destBlock);
+
       // verb 4 — siteSys.transferGoods
       const xfer = siteBlock(grid, 'Rover transfer');
       const pickRow = verbRow(xfer);
@@ -1288,6 +1446,20 @@ export const asteroidScreen = {
       refreshDrawer();
     }
 
+    function applyPodDestination(stationId) {
+      const verb = siteUi.model && siteUi.model.verbs.podDestination;
+      if (!verb || verb.disabled) return;
+      const row = verb.stations.find((s) => s.id === stationId);
+      if (!row) return;
+      const res = verb.apply(stationId);
+      if (res && res.ok && res.reason !== 'no-change') {
+        projDirty = true;
+        pushLedgerLine('info', `Pods re-addressed to ${row.name}.`);
+        announce(`Pods re-addressed to ${row.name}.`);
+      }
+      refreshDrawer();
+    }
+
     function runTransfer(dir) {
       const verb = siteUi.model && siteUi.model.verbs.transfer;
       if (!verb || verb.disabled) return;
@@ -1337,7 +1509,7 @@ export const asteroidScreen = {
       setNodeText(siteUi.delivered, String(c.delivered));
       setNodeText(siteUi.lost, String(c.lost));
       setNodeText(siteUi.exportedU, unitText(t.exportedU));
-      setNodeText(siteUi.creditedCr, `${t.creditedCr}cr`);
+      setNodeText(siteUi.creditedCr, `${t.creditedCr} cr`);
       siteUi.flights.textContent = '';
       for (const pod of c.inFlight) {
         const li = document.createElement('li');
@@ -1346,7 +1518,9 @@ export const asteroidScreen = {
         dot.className = `aw-dot ${pod.lost ? 'coral' : 'sky'}`;
         dot.setAttribute('aria-hidden', 'true');
         const text = document.createElement('span');
-        text.textContent = `${unitText(pod.units)} in flight`;
+        text.textContent = pod.dest
+          ? `${unitText(pod.units)} to ${pod.dest}`
+          : `${unitText(pod.units)} in flight`;
         const eta = document.createElement('span');
         eta.className = 'aw-ledger-clock';
         eta.textContent = drawerClock(pod.etaS);
@@ -1415,6 +1589,33 @@ export const asteroidScreen = {
         chip.setAttribute('aria-pressed', String(on));
       }
       setDisabledWith(siteUi.modeReason, [siteUi.modeSelect, ...siteUi.modeBtns], modeVerb.reason);
+
+      // verb 5 — pod destination (one chip per station; the lit chip is where pods sell)
+      const destVerb = model.verbs.podDestination;
+      const destSig = destVerb.stations.map((s) => s.id).join(',');
+      if (siteUi.destSig !== destSig) {
+        siteUi.destSig = destSig;
+        siteUi.destChips.textContent = '';
+        siteUi.destBtns = [];
+        for (const st of destVerb.stations) {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'aw-verb-chip fh-key fh-key--legend';
+          chip.dataset.station = st.id;
+          chip.textContent = st.name;
+          chip.addEventListener('click', () => applyPodDestination(st.id));
+          siteUi.destChips.appendChild(chip);
+          siteUi.destBtns.push(chip);
+        }
+      }
+      // null means the auto lane — the sector's first station — so that chip reads as lit too.
+      const destOn = destVerb.value || (destVerb.stations.length ? destVerb.stations[0].id : null);
+      for (const chip of siteUi.destBtns) {
+        const on = chip.dataset.station === destOn;
+        chip.classList.toggle('on', on);
+        chip.setAttribute('aria-pressed', String(on));
+      }
+      setDisabledWith(siteUi.destReason, siteUi.destBtns, destVerb.reason);
 
       // verb 4 — rover transfer
       const xferVerb = model.verbs.transfer;
@@ -1675,6 +1876,14 @@ export const asteroidScreen = {
       inspElapsed = 10;
     }));
 
+    // The approach cam gives ~1.2 s between the commit and the push — spend it on the
+    // WebGLRenderer instead of paying context creation inside the approachCompleted frame.
+    // begin() still runs at onShow; a cancelled approach just leaves the context warm for the
+    // next one (one renderer per mounted screen either way).
+    unsubs.push(ctx.bus.on('drill:approachStarted', () => {
+      try { ensureRenderer3d(); } catch (e) { console.error(e); }
+    }));
+
     function syncLedgerFromSite() {
       const s = site();
       if (!s || !s.ledger.length) return;
@@ -1710,6 +1919,27 @@ export const asteroidScreen = {
       el.style.width = `${Math.max(0, Math.min(100, pct))}%`;
       el.className = `aw-gauge-fill ${cls}`.trim();
     }
+    // ORRERY Surface 1 (F5): the value arc snaps to the reading and the ghost trails it on its
+    // own slower CSS transition, so the delta between them is the recent direction of travel.
+    function setArc(refs, key, pct, mode) {
+      if (!refs) return;
+      const v = Math.max(0, Math.min(100, pct));
+      const sig = `${v.toFixed(1)}|${mode}`;
+      if (hudCache[key] === sig) return;
+      hudCache[key] = sig;
+      const off = (ARC_LEN * (1 - v / 100)).toFixed(2);
+      refs.value.style.strokeDashoffset = off;
+      refs.ghost.style.strokeDashoffset = off;
+      const p = arcPoint(v / 100);
+      const cx = p.x.toFixed(1);
+      const cy = p.y.toFixed(1);
+      refs.head.setAttribute('cx', cx);
+      refs.head.setAttribute('cy', cy);
+      refs.headBloom.setAttribute('cx', cx);
+      refs.headBloom.setAttribute('cy', cy);
+      refs.arc.classList.toggle('warn', mode === 'warn');
+      refs.arc.classList.toggle('bad', mode === 'bad');
+    }
 
     function updateHud() {
       const d = state.drill;
@@ -1731,11 +1961,11 @@ export const asteroidScreen = {
       // rig cluster — gauges confirm what the rover's body already shows (law §6.2)
       const temp = Math.round(d.drillTemp || 0);
       setText(hudEls.temp, 't', `${temp}%`);
-      setBar(hudEls.tempFill, 'tb', temp, d.overheated ? 'bad' : (temp > 60 ? 'warn' : ''));
+      setArc(hudEls.tempArc, 'tb', temp, d.overheated ? 'bad' : (temp > 60 ? 'warn' : ''));
       setCn(hudEls.temp, 'tcn', d.overheated ? 'aw-gauge-val bad' : 'aw-gauge-val');
       const energy = Math.round(d.drillEnergy ?? 100);
       setText(hudEls.energy, 'e', `${energy}%`);
-      setBar(hudEls.energyFill, 'eb', energy, d.energyDepleted ? 'bad' : (energy < 25 ? 'bad' : ''));
+      setArc(hudEls.energyArc, 'eb', energy, d.energyDepleted || energy < 25 ? 'bad' : '');
       setCn(hudEls.energy, 'ecn', d.energyDepleted || energy < 25 ? 'aw-gauge-val bad' : 'aw-gauge-val');
 
       // claim-survey assay chip + claim chip (PQ-024): cold progress is volatile knowledge and
@@ -1766,6 +1996,14 @@ export const asteroidScreen = {
         : (!s.anchored ? 'Unanchored' : (survey && survey.state === 'producing' ? 'Producing' : 'Anchored'));
       setText(hudEls.claim, 'dc', claimText);
       setCn(hudEls.claim, 'dccn', !s ? 'aw-chip' : (s.anchored ? 'aw-chip ok' : 'aw-chip bad'));
+      // ORRERY Surface 1 (F3): no pill for the absence of a claim — the board + Lamp Key say it.
+      const claimHidden = !s;
+      if (hudCache.claimHide !== claimHidden) {
+        hudCache.claimHide = claimHidden;
+        hudEls.claim.style.display = claimHidden ? 'none' : '';
+      }
+      // ORRERY Surface 1 (F1/F2): the staged rock + Lamp Key stand down once a site exists.
+      syncEmptyState(!s);
       if (s && !s.anchored && bannerKind == null) {
         showBanner('unanchored', 'Unanchored — stake a machine before leaving', 'warn');
       } else if (s && s.anchored) {
@@ -1915,6 +2153,17 @@ export const asteroidScreen = {
     }
 
     // ---------- lifecycle ----------
+    const ensureRenderer3d = () => {
+      if (renderer3d) return;
+      renderer3d = createAsteroidRenderer3d({
+        canvas,
+        wrapEl: stage,
+        drillSys,
+        getDrill: () => state.drill,
+        getSite: site,
+        getProjection: () => projection,
+      });
+    };
     const startSession = () => {
       const pendingId = (state.ui && state.ui.pendingDrillAsteroidId) || null;
       if (state.ui) state.ui.pendingDrillAsteroidId = null;
@@ -1923,6 +2172,7 @@ export const asteroidScreen = {
       controller.cancel();
       controller.setMode(MODES.DRIVE);
       wrap.dataset.mode = 'drive'; // setMode is a no-op when it is already DRIVE
+      wrap.dataset.session = 'live'; // the hold scale + yield only exist once a session does (F6)
       delete wrap.dataset.cursor;    // a new session has aimed at nothing yet
       hudElapsed = 0;
       inspElapsed = 0;
@@ -1976,16 +2226,7 @@ export const asteroidScreen = {
 
       // One renderer (one WebGL context) per mounted screen; each session rebuilds its scene
       // from the live field.
-      if (!renderer3d) {
-        renderer3d = createAsteroidRenderer3d({
-          canvas,
-          wrapEl: stage,
-          drillSys,
-          getDrill: () => state.drill,
-          getSite: site,
-          getProjection: () => projection,
-        });
-      }
+      ensureRenderer3d();
       renderer3d.begin({ motionReduce });
       // Law §9, immediately after begin() (which resets the register to work): a site with
       // machines opens pulled back so the first second reads lit / flowing / dark.
@@ -2013,6 +2254,9 @@ export const asteroidScreen = {
       this._active = false;
       cancelAnimationFrame(rafId);
       controller.cancel();
+      delete wrap.dataset.session;
+      emptyLayer.hidden = false;
+      emptyRock.style.display = '';
       hideLens();
       forceCloseDrawer(); // never leave a sheet — or its close timer — running past the session
       siteZoomHold = false;
@@ -2118,6 +2362,7 @@ export const asteroidScreen = {
     this._startSession = startSession;
     this._cleanup = () => {
       stopSession();
+      window.removeEventListener('resize', onEmptyResize);
       lens.destroy();
       palette.destroy();
       if (renderer3d) {

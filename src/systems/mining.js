@@ -1,3 +1,4 @@
+import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
 // Mining system (ARCHITECTURE §2.3 step 9). Owns asteroid extraction, ore ejection as
 // collectible pickups, the magnet auto-collect pull, and wreck salvage.
 //
@@ -15,6 +16,7 @@
 // Single-writer (§0.6): cargo is owned by the cargo module; we route ore through its addCargo
 // helper / pickup:collected event and only fall back to a direct write while cargo is a stub.
 import { ORES, ASTEROIDS, BEAMS, deriveAsteroidSeams } from '../data/mining.js';
+import { magnetMultiplier } from '../data/swarmHangar.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { COMMODITIES } from '../data/commodities.js';
@@ -24,6 +26,7 @@ import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.
 import { queryCombatTableEntities, combatTableRowDistance, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { collectDirtyIds, markDirty, DIRTY } from '../core/dirtyJournal.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import { bumpCollidesFlipEpoch } from '../world/livingWorldViews.js';
 import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
@@ -35,6 +38,7 @@ import {
   pickupAcceptanceRetryBlocks,
   resolvePickupAcceptance,
   setPickupAcceptanceRetry,
+  writePickupRemainder,
 } from '../core/pickupAcceptance.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
@@ -93,6 +97,24 @@ export const BULK_CORE_RADIUS_FRAC = 0.58; // parent radii — reads as oversize
 export const BULK_CORE_MASS_FRAC = 0.6;    // parent mass; strictly lighter than the rock you just
                                            // tethered, so this cannot load a line harder than the
                                            // parent already could (Massline stays unbreakable).
+const BEAM_REFUSAL_TEXT = Object.freeze({
+  'no-target': 'The beam has nothing to take',
+  'rock-mined-out': 'That rock is mined out',
+  'worked-out': 'Nothing left to take',
+  'not-alive': 'The beam lost that target',
+  'no-cuttable-component': 'Nothing to cut on that',
+  'wrong-type': 'The beam won\'t take that',
+  'mined-out': 'Nothing left to take',
+  'beam-locked': 'That body is locked to the site',
+  'hull-intact': 'Nothing to repair there',
+  'insufficient-resources': 'Need scrap or credits to weld',
+  'invalid-receiver': 'Can\'t send the load there',
+  'no-cargo': 'No cargo to transfer',
+  'presentation-unavailable': 'The beam won\'t work that',
+  'operation-unavailable': 'That job isn\'t open',
+  'operation-no-progress': 'The beam isn\'t moving that',
+});
+
 const PICKUP_RADIUS = 2.2;      // wu collectible radius
 const PICKUP_COLLECT_PAD = 14;  // ship-radius pad for scoop contact (generous so flybys don't miss)
 const PICKUP_TTL = 90;          // s before an uncollected pickup despawns
@@ -159,6 +181,36 @@ const BEAM_BY_ID = new Map(BEAMS.map((b) => [b.id, b]));
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
 
+// ── FB-090 owner-local quiet latch ─────────────────────────────────────────────
+// Bench A/B: production default ON. Mining's tick is a chain of self-gated no-ops at rest —
+// parked-ore flush (empty lists), beam edge (not firing), heat cool (heat==0), rich-core watch
+// (resolved), noise decay (noise==0), and the pickup sweep (empty pickup index, no dirty rows).
+// The latch proves that rest state once, then skips the tail until a wake signal lands:
+// fireGroup 2 polled live, spawn/loot/pickup membership bumps the entity-index version, the
+// mining event handlers clear it directly, and a 0.5 s rescan bounds any stray writer.
+let MINING_QUIET_LATCH = true;
+export function setMiningQuietLatchForBench(enabled) {
+  MINING_QUIET_LATCH = enabled !== false;
+}
+export function getMiningQuietLatchForBench() {
+  return MINING_QUIET_LATCH !== false;
+}
+
+/** Membership rescan while latched (0.5 s @ 60 Hz). */
+const MINING_QUIET_RESCAN_TICKS = 30;
+
+function miningEntityIndexVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+    ? index.version
+    : null;
+}
+
+function publishMiningQuiet(state, latched) {
+  const rt = state.miningRuntime || (state.miningRuntime = {});
+  rt.quietLatched = !!latched;
+}
+
 export const mining = {
   name: 'mining',
 
@@ -187,6 +239,7 @@ export const mining = {
     this._beaming = false;     // was the player beam active last tick (start/stop edges)
     this._lockTargetId = null; // currently soft-locked asteroid/wreck id
     this._activeBeamLine = null;
+    this._miningQuiet = null;  // FB-090 quiet latch
     // Vent rhythm bookkeeping. `_pulseOre` is the ore (fractional units) this beam-on window has
     // already delivered; venting inside the amber band cashes a fraction of it as a bonus burst.
     this._pulseOre = 0;
@@ -197,20 +250,24 @@ export const mining = {
     this._ventTaught = false;
 
     const bus = this.bus;
+    // FB-090: every subscription that can create tick work also drops the quiet latch; the
+    // entity-index version signal inside update() is the redundant second wake.
+    const wakeQuiet = () => { this._miningQuiet = null; };
     // Combat spawns a wreck on ship death so the player can salvage it.
-    bus.on('entity:killed', (p) => this._onShipDestroyed(p));
+    bus.on('entity:killed', (p) => { wakeQuiet(); this._onShipDestroyed(p); });
     // Combat loot drops → materialize as collectible pickups (shared pickup path).
-    bus.on('loot:drop', (p) => this._onLootDrop(p));
+    bus.on('loot:drop', (p) => { wakeQuiet(); this._onLootDrop(p); });
     // Collect ore/cargo pickups into the hold (physics emits this on contact; we also self-emit).
-    bus.on('pickup:collected', (p) => this._onPickupCollected(p));
-    bus.on('dock:docked', (p) => this._onDocked(p));
+    bus.on('pickup:collected', (p) => { wakeQuiet(); this._onPickupCollected(p); });
+    bus.on('dock:docked', (p) => { wakeQuiet(); this._onDocked(p); });
     // Hull-burst overhaul slice A (combat.arcadeLoot): leaving banks the loot still in flight.
-    bus.on('dock:docked', () => this._bankCombatLoot());
-    bus.on('jump:start', () => this._bankCombatLoot());
-    bus.on('sector:exit', () => this._bankCombatLoot());
+    bus.on('dock:docked', () => { wakeQuiet(); this._bankCombatLoot(); });
+    bus.on('jump:start', () => { wakeQuiet(); this._bankCombatLoot(); });
+    bus.on('sector:exit', () => { wakeQuiet(); this._bankCombatLoot(); });
     // Fresh world context → drop the stale beam lock and vent bookkeeping (a save loaded
     // mid-beam must not carry pulse credit or a lock target into the restored field).
     const resetMiningSession = () => {
+      wakeQuiet();
       this._setLockTargetId(null);
       this._stopBeam();
       this._resetBeamHeat();
@@ -226,14 +283,63 @@ export const mining = {
   // ---- main per-tick update -------------------------------------------------
   update(dt, state) {
     resetMiningDiagnostics(this._diag);
-    this._flushParkedOre();
     const player = state.entities.get(state.playerId);
     const firing = !!player && player.alive && !player.flags.docked
       && state.mode === 'flight' && state.input.fireGroup === 2;
+    if (!firing) {
+      this._beamRefusalTold = null;
+      this._beamSpentThisHold = false;
+      this._emptyBeamTicks = 0;
+    }
 
     let beam = null;
+    if (player) beam = this._beamRuntime(player);
+
+    // FB-090 quiet latch. Every piece of the tail is provably a no-op at rest when ALL of these
+    // hold; the first unlatched tick is what settles them (creates the miningNoise field, emits
+    // the beam-cold receipt, parks nothing), so they are arm conditions, not skips-with-drift:
+    //   • !firing && !this._beaming        — no beam edge to process
+    //   • beam heat fully cooled AND the cold receipt already emitted (else the emit edge is due)
+    //   • miningNoise field exists at exactly 0 (undefined refuses so the first write lands)
+    //   • richCore absent or resolved; parked ore lists empty; pickup+payload index empty
+    //   • entity-index version stable and inside the 0.5 s rescan window
+    // The gate below keeps all the real writes on the unlatched path; while latched, every
+    // skipped call would only re-derive identical zeros.
+    const membership = miningEntityIndexVersion(state);
+    const tick = state.tick | 0;
+    const heatIdle = beam == null || (!(beam.heat > 0) && this._heatEmitPct === 0);
+    const noiseIdle = !!(state.player && state.player.miningNoise === 0);
+    const richCore = state.player && state.player.mining && state.player.mining.richCore;
+    const coreIdle = !richCore || richCore.resolved === true;
+    const parkedIdle = !(this._parkedAsteroids && this._parkedAsteroids.length)
+      && !(this._unreleasedOre && this._unreleasedOre.length);
+    const pickupsIdle = hasAuthoritativeEmptyPickupIndex(state);
+    const stillQuiet = !firing
+      && !this._beaming
+      && heatIdle
+      && noiseIdle
+      && coreIdle
+      && parkedIdle
+      && pickupsIdle
+      && membership != null;
+    if (MINING_QUIET_LATCH !== false) {
+      const quiet = this._miningQuiet;
+      if (quiet
+          && stillQuiet
+          && quiet.membership === membership
+          && ((tick - (quiet.armedTick | 0)) < MINING_QUIET_RESCAN_TICKS)) {
+        publishMiningQuiet(state, true);
+        return;
+      }
+      this._miningQuiet = stillQuiet ? { membership, armedTick: tick } : null;
+      publishMiningQuiet(state, !!this._miningQuiet);
+    } else if (this._miningQuiet) {
+      this._miningQuiet = null;
+      publishMiningQuiet(state, false);
+    }
+
+    this._flushParkedOre();
     if (player) {
-      beam = this._beamRuntime(player);
       // Heat never gates the beam: a pegged gauge keeps extracting at full rate for as long as the
       // player holds the tool on the rock. The old peg-lockout read heat as a circuit breaker and
       // cut the beam off mid-hold, punishing exactly the sustained mining the tool exists for.
@@ -272,9 +378,25 @@ export const mining = {
     return beam;
   },
 
+  _noteBeamRefusal(reason) {
+    const text = BEAM_REFUSAL_TEXT[reason];
+    if (!text || !this.bus || this._beamRefusalTold === reason) return;
+    this._beamRefusalTold = reason;
+    this.bus.emit('toast', { text, kind: 'warn', ttl: 1.6 });
+  },
+
   _runPlayerBeam(player, beam, dt, state) {
     const target = this._acquireTarget(player, beam.range, state);
-    if (!target) { this._stopBeam(); return; }
+    if (!target) {
+      this._stopBeam();
+      if (!this._beamSpentThisHold) {
+        this._emptyBeamTicks = (this._emptyBeamTicks || 0) + 1;
+        if (this._emptyBeamTicks >= 2) this._noteBeamRefusal('no-target');
+      }
+      return;
+    }
+    this._emptyBeamTicks = 0;
+    this._beamSpentThisHold = false;
 
     // F12: the same beam, aimed at a jettisoned cargo pod, cracks it open — it never reaches the
     // verb resolver (pods are not mined), never consumes ammo, and never gains a lockout.
@@ -312,6 +434,7 @@ export const mining = {
 
     if (!resolved.ok) {
       this.bus.emit('beam:denied', { minerId: player.id, targetId: target.id, verb: resolved.verb, reason: resolved.reason });
+      this._noteBeamRefusal(resolved.reason);
       return;
     }
 
@@ -358,6 +481,7 @@ export const mining = {
         minerId: player.id, targetId: target.id, verb: component && component.verb || 'extract',
         reason: 'presentation-unavailable',
       });
+      this._noteBeamRefusal('presentation-unavailable');
       return { ok: false, duplicate: false, reason: 'presentation-unavailable', moved: 0 };
     }
     // A completed component advertises no verb or operation (its authored work is a durable
@@ -374,6 +498,7 @@ export const mining = {
         verb: component.verb || 'extract',
         reason,
       });
+      this._noteBeamRefusal(reason);
       return { ok: false, duplicate: false, reason, moved: 0 };
     }
     if (!completedOffer && (!component || !component.verb || !component.operationId)
@@ -384,6 +509,7 @@ export const mining = {
         verb: component && component.verb || 'extract',
         reason: 'operation-unavailable',
       });
+      this._noteBeamRefusal('operation-unavailable');
       return { ok: false, reason: 'operation-unavailable' };
     }
 
@@ -416,6 +542,7 @@ export const mining = {
         verb: component.verb,
         reason: result.reason || 'operation-no-progress',
       });
+      this._noteBeamRefusal(result.reason || 'operation-no-progress');
       return result;
     }
 
@@ -558,6 +685,9 @@ export const mining = {
     const prev = Number.isFinite(beam.heat) ? beam.heat : 0;
     let heat;
     if (working) {
+      if (this._lockTargetId != null && state.player && state.player.miningTargetId == null) {
+        this._lockTargetId = null;
+      }
       const target = this._lockTargetId != null && state.entities && state.entities.get
         ? state.entities.get(this._lockTargetId)
         : null;
@@ -697,6 +827,14 @@ export const mining = {
     if (tetherTarget !== undefined) return tetherTarget;
 
     if (this._beaming && this._lockTargetId != null) {
+      // Entity ids recycle: when the locked body dies, the lifetime sweep's
+      // clearRecycledEntityPointers nulls player.miningTargetId but cannot reach this system's
+      // private _lockTargetId. If the two disagree the locked body is already gone, and
+      // entities.get would resolve the NEW occupant of the same number — one silent bite into a
+      // rock the player never locked, or a wholesale lock transfer when it resolves a different
+      // verb. A dead lock reports no-target this tick; the free aim scan may still pick the same
+      // body next tick, but as a fresh lock with its own start edge.
+      if (state.player && state.player.miningTargetId !== this._lockTargetId) return null;
       const locked = state.entities.get(this._lockTargetId);
       if (locked && this._isValidMineableTarget(locked, ship, range, state)) return locked;
       return null;
@@ -895,6 +1033,10 @@ export const mining = {
       this.bus.emit('asteroid:destroyed', { id: ast.id, typeId: d.typeId || (def && def.id), pos: { x: ast.pos.x, z: ast.pos.z } });
       d.respawnAt = state.simTime + ((def && def.respawnSec) || 90); // world reads this to repopulate
       ast.alive = false;
+      if (minerId === state.playerId && this._lockTargetId === ast.id) {
+        this._beamSpentThisHold = true;
+        this._noteBeamRefusal('rock-mined-out');
+      }
       d.depletedAtT = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0);
     }
     persistTouchedResourceBody(state, ast);
@@ -1309,8 +1451,10 @@ export const mining = {
     const data = payloadEntity.data || {};
     let collectedAny = false;
     if (data.salvagePool && typeof data.salvagePool === 'object' && Object.keys(data.salvagePool).length > 0) {
-      const pool = data.salvagePool;
-      for (const [commodityId, qty] of Object.entries(pool)) {
+      // The drain writes through data.salvagePool itself each pass — the shared remainder
+      // writer replaces a frozen pool object on data, so a reference captured before the
+      // loop could go stale mid-manifest.
+      for (const [commodityId, qty] of Object.entries(data.salvagePool)) {
         const requested = finiteWholePickupAmount(qty);
         if (requested <= 0) continue;
         const eventPayload = {
@@ -1330,11 +1474,38 @@ export const mining = {
         const acceptance = resolvePickupAcceptance(eventPayload, requested);
         if (acceptance.accepted > 0) {
           collectedAny = true;
-          pool[commodityId] = acceptance.rejected;
-          if (acceptance.rejected <= 0) delete pool[commodityId];
+          if (commodityId === data.commodityId && !Object.isFrozen(data)
+            && finiteWholePickupAmount(data.amount) === requested) {
+            // The pool entry IS the pod's own quantity stamp — the jettisoned-cargo
+            // contract stamps amount and salvagePool[commodityId] at the same figure.
+            // Route the remainder through the shared writer so data.amount follows the
+            // drain with every other mirror (custody, rich lot). A pool-only write
+            // leaves amount stale, and the volatile-vent reader would then size a
+            // split off units already delivered — a net unit mint. A frozen pod record
+            // cannot take a remainder at all, so it keeps the direct pool write too.
+            writePickupRemainder(data, acceptance.rejected);
+          } else {
+            // Manifest entries data.amount does not track — multi-commodity pools
+            // carry no pod amount at all, and writePickupRemainder would mint one and
+            // skip the drain — keep the direct pool write, replacing a frozen pool on
+            // data under the remainder writer's own convention.
+            const live = data.salvagePool;
+            if (live && typeof live === 'object') {
+              if (Object.isFrozen(live)) {
+                const next = { ...live };
+                if (acceptance.rejected > 0) next[commodityId] = acceptance.rejected;
+                else delete next[commodityId];
+                data.salvagePool = next;
+              } else {
+                live[commodityId] = acceptance.rejected;
+                if (acceptance.rejected <= 0) delete live[commodityId];
+              }
+            }
+          }
         }
       }
-      if (Object.keys(pool).length === 0) {
+      const remainingPool = data.salvagePool && typeof data.salvagePool === 'object' ? data.salvagePool : {};
+      if (Object.keys(remainingPool).length === 0) {
         payloadEntity.alive = false;
         clearPickupAcceptanceRetry(data);
       }
@@ -1498,7 +1669,9 @@ export const mining = {
       mass,
       hull: 1,
       hullMax: 1,
-      physicsBody: { shape: 'capsule' },
+      // SFQ-B025: author the named mass on the body so normalization keeps it instead of
+      // substituting the generic wreck-density value every tether/impact consumer reads.
+      physicsBody: { shape: 'capsule', mass },
       data: {
         parentType: 'ship',
         kind: 'wreck',
@@ -1571,7 +1744,7 @@ export const mining = {
     // Consume the pod before spawning so no observer can see the split source alive twice.
     pod.alive = false;
     data.salvagePool = {};
-    data.amount = 0;
+    writePickupRemainder(data, 0);
     // Site bookkeeping: the pool moved onto the spilled pickups; the durable record reads
     // empty until the payload capture folds live spills back into remainingPool.
     this._syncWorldSiteRemainingPool(data);
@@ -1596,6 +1769,7 @@ export const mining = {
   },
 
   _drainWreck(player, wreck, dps, dt) {
+    if (isCeresWorkfleetHardware(wreck)) return 0;
     const d = wreck.data || (wreck.data = {});
     const sourceKey = typeof d.salvageSourceKey === 'string' ? d.salvageSourceKey : null;
     const salvageApi = sourceKey && this.helpers && this.helpers.salvage;
@@ -1608,6 +1782,10 @@ export const mining = {
         d.salvagePool = {};
         d._salvaged = true;
         wreck.alive = false;
+        if (source && (source.extracted || !(source.remainingQty > 0))) {
+          this._beamSpentThisHold = true;
+          this._noteBeamRefusal('worked-out');
+        }
         this._stopBeam();
         return;
       }
@@ -1686,6 +1864,10 @@ export const mining = {
       // here means the player did recover cargo (vs an untouched wreck despawning).
       d._salvaged = true;
       wreck.alive = false;
+      if (remaining <= 0) {
+        this._beamSpentThisHold = true;
+        this._noteBeamRefusal('worked-out');
+      }
       this._stopBeam();
     }
   },
@@ -1711,7 +1893,7 @@ export const mining = {
     const now = (state && state.simTime) || 0;
     spawnDebrisCachePods(this.bus, wreck, cache, now);
     this.bus.emit('toast', {
-      text: 'The beam cracked a sealed cache in the debris!',
+      text: 'The beam cracked a sealed cache in the debris.',
       kind: 'good', ttl: 4,
     });
     this.bus.emit('scan:debrisCache', {
@@ -1748,14 +1930,29 @@ export const mining = {
     // resolves either stamp, so the bark names the hull that filed it.
     let victimEntityId = null;
     let crewName = 'Salvor crew';
-    const list = state.entityList;
-    if (Array.isArray(list)) {
-      for (const e of list) {
-        if (e && e.alive !== false && e.data
-          && (e.data.worldRecordId === claimantId || e.data.salvorClaimId === claimantId)) {
-          victimEntityId = e.id;
-          crewName = e.data.callsign || e.data.shipName || e.data.name || crewName;
-          break;
+    const index = state.entityIndex;
+    // The worldRecordId carrier is provably unique at count === 1 — its liveness
+    // alone answers the first stamp. Any other shape (dead, absent, multi-carrier,
+    // or a salvorClaimId-only crew) falls through to the walk.
+    const wrCarrier = index && index.__spacefaceEntityIndexV1 === true
+      && index.ready === true
+      && index.byWorldRecordId instanceof Map
+      && index.byWorldRecordIdCount instanceof Map
+      && index.byWorldRecordIdCount.get(claimantId) === 1
+      ? index.byWorldRecordId.get(claimantId) : null;
+    if (wrCarrier && wrCarrier.alive !== false) {
+      victimEntityId = wrCarrier.id;
+      crewName = (wrCarrier.data && (wrCarrier.data.callsign || wrCarrier.data.shipName || wrCarrier.data.name)) || crewName;
+    } else {
+      const list = state.entityList;
+      if (Array.isArray(list)) {
+        for (const e of list) {
+          if (e && e.alive !== false && e.data
+            && (e.data.worldRecordId === claimantId || e.data.salvorClaimId === claimantId)) {
+            victimEntityId = e.id;
+            crewName = e.data.callsign || e.data.shipName || e.data.name || crewName;
+            break;
+          }
         }
       }
     }
@@ -2222,10 +2419,19 @@ export const mining = {
         wallet: pickup.data.wallet || null,
       } : {}),
       ...(pickup.data.richLotSource ? {
-        richLotSource: {
-          ...pickup.data.richLotSource,
-          richQty: Math.min(requested, Math.max(0, Math.floor(Number(pickup.data.richLotSource.richQty) || 0))),
-        },
+        richLotSource: (() => {
+          const source = pickup.data.richLotSource;
+          const stamped = { ...source };
+          // Clamp only the provenance quantity fields the source actually carries.
+          // Vesta/Pallas cache lots stamp lotQty alone — injecting richQty: 0 would
+          // shadow lotQty in cargo's reader (richQty != null wins) and silently drop
+          // the lot's provenance on the mining collection path.
+          for (const key of ['richQty', 'lotQty']) {
+            if (stamped[key] == null) continue;
+            stamped[key] = Math.min(requested, Math.max(0, Math.floor(Number(stamped[key]) || 0)));
+          }
+          return stamped;
+        })(),
       } : {}),
       ...(pickup.data.worldSiteId ? {
         worldSiteId: pickup.data.worldSiteId,
@@ -2241,7 +2447,7 @@ export const mining = {
       pickup.alive = false;
       clearPickupAcceptanceRetry(pickup.data);
     } else {
-      if (acceptance.accepted > 0) pickup.data.amount = acceptance.rejected;
+      if (acceptance.accepted > 0) writePickupRemainder(pickup.data, acceptance.rejected);
       const ownerRetryAt = Number(payload.acceptanceRetryAt);
       setPickupAcceptanceRetry(
         pickup.data,
@@ -2264,8 +2470,13 @@ export const mining = {
     const player = state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
     if (!player || !Array.isArray(state.entityList)) return 0;
     let banked = 0;
-    for (let i = 0; i < state.entityList.length && banked < 256; i++) {
-      const e = state.entityList[i];
+    const idx = state.entityIndex;
+    const pickupsFresh = idx && idx.ready === true && Array.isArray(idx.pickups)
+      && idx._sourceList === state.entityList && idx._sourceLength === state.entityList.length;
+    // Snapshot the lane: collection can despawn the pickup (index splice) mid-walk.
+    const candidates = pickupsFresh ? idx.pickups.slice() : state.entityList;
+    for (let i = 0; i < candidates.length && banked < 256; i++) {
+      const e = candidates[i];
       if (!e || e.alive === false || e.type !== 'pickup' || !e.data || e.data.combatLoot !== true) continue;
       clearPickupAcceptanceRetry(e.data);
       this._collectPickupViaEvent(e, player);
@@ -2578,6 +2789,7 @@ export function beamRangeFor(player, state) {
 }
 
 export function isBeamTargetEligible(entity, state) {
+  if (isCeresWorkfleetHardware(entity)) return false;
   if (!entity || entity.alive === false) return false;
   if (!verbAcceptsType('mine', entity.type) && !isBeamSplittableCargoPod(entity)
     && !weldableHullForBeam(entity, state)) return false;
@@ -2807,9 +3019,15 @@ export function richCoreWindowPctForTier(tier) {
   return RICH_CORE_WINDOW_HI + (RICH_CORE_WINDOW_LO - RICH_CORE_WINDOW_HI) * t;
 }
 
+// Phase 2b #10 (tuning lab): within a tier the rich-core ore is the CHEAPEST rare, then id. The tie
+// used to break on id alone, so cmdty_gem_emerald (1676 cr, the dearest tier-3 rare) won every tier
+// 0–3 core by alphabet: one core on a starter rock paid 5–13k cr, the loop's income swung by a
+// coefficient of variation ~0.9 and cores were 70–96 % of a session's credits. Cheapest-first pays
+// cmdty_ore_platinoid (140 cr) x 3–8 there — about one minute of ordinary mining per core.
 function richOreForTier(tier) {
   const target = Math.max(1, Math.floor(Number(tier) || 0) + 1);
-  const sorted = ORES.slice().sort((a, b) => (a.tier - b.tier) || a.id.localeCompare(b.id));
+  const sorted = ORES.slice().sort((a, b) => (a.tier - b.tier)
+    || (Number(a.baseValue) || 0) - (Number(b.baseValue) || 0) || a.id.localeCompare(b.id));
   const rare = sorted.find((ore) => ore.tier >= target && ore.tags && ore.tags.includes('rare'));
   const tiered = sorted.find((ore) => ore.tier >= target);
   return (rare || tiered || sorted[sorted.length - 1] || { id: 'cmdty_ore_iron' }).id;
@@ -2933,8 +3151,13 @@ export function playerPickupMagnetRange(state, playerEntity = null) {
   if (!(Number.isFinite(fromDerived) && fromDerived > 0)) {
     fromDerived = maxFittedMagnetRange(player);
   }
-  if (Number.isFinite(fromDerived) && fromDerived > MAGNET_RANGE) return fromDerived;
-  return MAGNET_RANGE;
+  let range = Number.isFinite(fromDerived) && fromDerived > MAGNET_RANGE ? fromDerived : MAGNET_RANGE;
+  if (state && state.run && state.run.kind === 'survival') {
+    const hangar = state.run.telemetry && state.run.telemetry.hangar;
+    const mul = magnetMultiplier(hangar);
+    if (mul > 1) range *= mul;
+  }
+  return range;
 }
 
 function maxFittedMagnetRange(player) {
@@ -2985,12 +3208,19 @@ export function isMasslineLatchedPickup(state, player, entity) {
   if (d && d.tetherPayload && !salvagePoolHasCargo(d)) return true;
   if (entity.masslineLatched || entity.latched || entity.tethered) return true;
 
-  // 2. state.player.tether mirror or player.tether entity field
+  // 2. state.player.tether mirror or player.tether entity field. The mirror's only live id is
+  //    targetId — tetherGameplay mirrors it from the attachment record; attachedId and
+  //    targetEntityId have no writers. A recycled id can still name the stale occupant until
+  //    the authority sweeps, so validate against the tether's own record when it stamps one.
+  const attachments = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  const entityGen = occupantGenerationOf(entity);
   const tether = (state && state.player && state.player.tether) || (player && player.tether);
   if (tether && tether.active !== false) {
-    if (tether.targetId != null && (tether.targetId === id || String(tether.targetId) === idStr)) return true;
-    if (tether.attachedId != null && (tether.attachedId === id || String(tether.attachedId) === idStr)) return true;
-    if (tether.targetEntityId != null && (tether.targetEntityId === id || String(tether.targetEntityId) === idStr)) return true;
+    if (tether.targetId != null && (tether.targetId === id || String(tether.targetId) === idStr)) {
+      const rec = attachments && tether.attachmentId != null ? attachments[tether.attachmentId] : null;
+      const recGen = rec && rec.targetGeneration;
+      if (recGen == null || recGen === entityGen) return true;
+    }
   }
 
   // 3. state.player.masslineTelemetry
@@ -2999,9 +3229,12 @@ export function isMasslineLatchedPickup(state, player, entity) {
     return true;
   }
 
-  // 4. Combat attachments authority (SG-02 / SG-03)
+  // 4. Combat attachments authority (SG-02 / SG-03). Only att.targetId is a live field —
+  //    attachedId/bodyBId/targetEntityId have no writers. Generation-proof the read the same
+  //    way the authority's occupantMismatch does: a recorded generation that no longer matches
+  //    the live occupant means the id was recycled; legacy records without a stamp keep the
+  //    bare read.
   const playerId = (player && player.id != null) ? player.id : (state && state.playerId);
-  const attachments = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
   if (attachments && typeof attachments === 'object') {
     const pStr = playerId != null ? String(playerId) : null;
     for (const att of Object.values(attachments)) {
@@ -3012,10 +3245,8 @@ export function isMasslineLatchedPickup(state, player, entity) {
         (att.bodyAId != null && String(att.bodyAId) === pStr)
       );
       if (isPlayerAttachment) {
-        if (att.targetId != null && (att.targetId === id || String(att.targetId) === idStr)) return true;
-        if (att.attachedId != null && (att.attachedId === id || String(att.attachedId) === idStr)) return true;
-        if (att.bodyBId != null && (att.bodyBId === id || String(att.bodyBId) === idStr)) return true;
-        if (att.targetEntityId != null && (att.targetEntityId === id || String(att.targetEntityId) === idStr)) return true;
+        if (att.targetId != null && (att.targetId === id || String(att.targetId) === idStr)
+          && (att.targetGeneration == null || att.targetGeneration === entityGen)) return true;
       }
     }
   }

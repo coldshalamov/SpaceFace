@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "db821da1033130fa4ae770ecf4c2f8cd6141141efa39c361d5678c40d8debb2b",
+  "contentHash": "53a5e813d5e1a4b1b0123f6e2d0b619f36caf4933b79487bfed3e7733883b785",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1671,8 +1671,8 @@
       "uri": "place_aftermath_wreck_liner_boatbay_authored_down.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -2246,7 +2246,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_boatbay_authored_down.glb"
   },
-  "runtimeHash": "7db9cb32935eac4a863bd6f968094307cbe1f226851866d79d4b7775da530fd4",
+  "runtimeHash": "d8c7508b65d58339ba70f9c90cef29f2e32ca5b1b849a528eebb837efb2f0f72",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

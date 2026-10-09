@@ -8,6 +8,7 @@
 
 import * as THREE from 'three';
 import { machineKindById } from '../data/precursorMachines.js';
+import { creatureSkin } from './creatureSkinLibrary.js';
 
 const PALE_METAL = 0xb9c4bd;   // nacre-adjacent pale metal
 const DARK_SEAM = 0x2a3430;    // recessed seam material
@@ -15,8 +16,14 @@ const COLD_LIGHT = 0xa8e8dc;   // controlled emissive — cold teal-white
 const SHADOW_INNER = 0x1a2320;
 
 function metalMat() {
+  // Pale metal wears generated nacre plating (creatureSkinLibrary.js) once it has decoded: fine growth-line
+  // layers and hairline seams instead of a bare grey primitive. The pale-metal colour still tints it.
+  const skin = creatureSkin('nacre');
   return new THREE.MeshStandardMaterial({
-    color: PALE_METAL, roughness: 0.35, metalness: 0.85,
+    color: skin ? new THREE.Color(0xffffff).lerp(new THREE.Color(PALE_METAL), 0.5) : PALE_METAL,
+    map: skin ? skin.baseColor : null,
+    normalMap: skin ? skin.normal : null,
+    roughness: 0.35, metalness: 0.85,
     emissive: 0x0c1210, emissiveIntensity: 0.1,
   });
 }

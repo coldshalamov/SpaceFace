@@ -133,7 +133,7 @@ function testNoFireRingMoodCue() {
   const first = watch.weaponDrawn(inside, [station]);
   assert.equal(first, station.id, 'inside the no-fire core, the station names itself as the source');
   assert.equal(calls.length, 1, 'first weapon draw inside no-fire speaks exactly once');
-  assert.equal(calls[0].channel, 'warn', 'no-fire mood uses the warn channel');
+  assert.equal(calls[0].channel, 'alert', 'no-fire mood uses the alert channel');
   assert.equal(calls[0].kind, 'noFireZone', 'no-fire cue is typed for UI/comms consumers');
   assert.equal(calls[0].factionId, station.factionId, 'no-fire cue keeps station faction attribution');
 

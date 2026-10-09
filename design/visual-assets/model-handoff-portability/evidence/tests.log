@@ -1,0 +1,18 @@
+test_changed_dependency_rejected (test_portable.PortableTests.test_changed_dependency_rejected) ... ok
+test_exact_geometry_passes (test_portable.PortableTests.test_exact_geometry_passes) ... ok
+test_existing_output_refused (test_portable.PortableTests.test_existing_output_refused) ... ok
+test_external_path_rejected (test_portable.PortableTests.test_external_path_rejected) ... ok
+test_image_change_fails (test_portable.PortableTests.test_image_change_fails) ... ok
+test_index_reorder_preserves_triangle (test_portable.PortableTests.test_index_reorder_preserves_triangle) ... ok
+test_material_change_fails (test_portable.PortableTests.test_material_change_fails) ... ok
+test_motion_reseal_required (test_portable.PortableTests.test_motion_reseal_required) ... ok
+test_output_inside_repository_refused (test_portable.PortableTests.test_output_inside_repository_refused) ... ok
+test_position_change_fails (test_portable.PortableTests.test_position_change_fails) ... ok
+test_symlink_path_rejected (test_portable.PortableTests.test_symlink_path_rejected) ... ok
+test_transform_change_fails (test_portable.PortableTests.test_transform_change_fails) ... ok
+test_winding_change_fails (test_portable.PortableTests.test_winding_change_fails) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.007s
+
+OK

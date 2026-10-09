@@ -120,6 +120,24 @@ export function plumeSocketNameFromNames(names) {
   return trails[0] || null;
 }
 
+// The recorded-wake anchor is the mirror of the plume pick: authored 'vfx' trail stations
+// (SOCKET_Trail_*) sit where the exhaust stream leaves the body — slightly aft of the nozzle
+// face on a conventional hull, on the rear rim for bodies like ship_saucer whose engine mount
+// is a ventral core at hull center. History recorded from the mount face detaches from the
+// silhouette there, so the wake prefers the trail station and falls back to the nozzle.
+export function trailSocketNameFromNames(names) {
+  const list = Array.isArray(names) ? names.map((name) => String(name || '')) : [];
+  const trails = list.filter((name) => name.startsWith('SOCKET_Trail_'));
+  trails.sort((a, b) => {
+    if (a === 'SOCKET_Trail_Main') return -1;
+    if (b === 'SOCKET_Trail_Main') return 1;
+    return a.localeCompare(b);
+  });
+  if (trails.length) return trails[0];
+  const engines = list.filter((name) => name.startsWith('SOCKET_Engine_')).sort();
+  return engines[0] || null;
+}
+
 export function plumeWorldFromRow(row, entity) {
   const names = (row && Array.isArray(row.sockets) ? row.sockets : []).map((socket) => socket && socket.name);
   const name = plumeSocketNameFromNames(names);

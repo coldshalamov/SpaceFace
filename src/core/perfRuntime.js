@@ -266,6 +266,7 @@ export function ensurePerfRuntime(state) {
       dynamicFullRebuilds: 0,
       dynamicReinserts: 0,
       dynamicUnchanged: 0,
+      gateSkips: 0,
       queries: 0,
       candidates: 0,
     },
@@ -987,6 +988,7 @@ export function ensurePerfRuntime(state) {
       dynamicFullRebuilds = 0,
       dynamicReinserts = 0,
       dynamicUnchanged = 0,
+      gateSkips = 0,
       queries = 0,
       candidates = 0,
     } = {}) {
@@ -995,6 +997,7 @@ export function ensurePerfRuntime(state) {
       counters.spatialHash.dynamicFullRebuilds += dynamicFullRebuilds | 0;
       counters.spatialHash.dynamicReinserts += dynamicReinserts | 0;
       counters.spatialHash.dynamicUnchanged += dynamicUnchanged | 0;
+      counters.spatialHash.gateSkips += gateSkips | 0;
       counters.spatialHash.queries += queries | 0;
       counters.spatialHash.candidates += candidates | 0;
       // Tier-1 causal mirror: query candidates are the broad-phase work unit. Disabled = one
@@ -1175,6 +1178,7 @@ export function ensurePerfRuntime(state) {
       counters.spatialHash.dynamicFullRebuilds = 0;
       counters.spatialHash.dynamicReinserts = 0;
       counters.spatialHash.dynamicUnchanged = 0;
+      counters.spatialHash.gateSkips = 0;
       counters.spatialHash.queries = 0;
       counters.spatialHash.candidates = 0;
       counters.vfxTrails.trailCandidates = 0;

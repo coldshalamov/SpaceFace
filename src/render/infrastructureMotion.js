@@ -13,6 +13,8 @@
 //
 // PURE RENDER-ONLY PRESENTATION: Determinism-safe, zero per-frame allocation.
 
+import { resolveStationSideEventVfxProfile } from './stationSideEventVfx.js';
+
 function hashId(id) {
   const s = String(id || '');
   let h = 0x811c9dc5;
@@ -98,14 +100,81 @@ export function resolveRingSizeFactor(radius) {
   return clamp(Math.sqrt(60 / r), 0.4, 1.6);
 }
 
+// --- Station work arms (FB-076) ---------------------------------------------------------------
+// station:sideEvent is the station's real operating state — while an event is live the matching
+// hardware articulates once: reach, hold, settle. Constant decorative spinning was rejected
+// (SF-215); nothing here moves without a live event. The kind → articulation mapping lives on
+// the VFX profiles in stationSideEventVfx.js — one profile row owns both the light and the arm.
+export function resolveStationArmArticulation(kind) {
+  const profile = resolveStationSideEventVfxProfile(kind);
+  return (profile && profile.arm) || null;
+}
+
+// Arm/crane/loader/gantry/boom hardware on the station model — same lazy-scan convention as the
+// sensor dishes above: authored kits that name nodes this way articulate for free.
+const ARM_NODE_PATTERN = /arm|crane|loader|gantry|clamp|boom/i;
+
+/**
+ * The shared reach envelope: swing out over the first fifth, hold on target through the work,
+ * settle home by the end. 0..1, NaN-safe. Reduced motion scales amplitude at the caller —
+ * the envelope itself, and therefore the reach direction, never changes.
+ */
+export function resolveStationArmReach(ageS, durationS) {
+  const duration = Math.max(0.5, Number.isFinite(durationS) ? durationS : 0.5);
+  const progress = clamp((Number(ageS) || 0) / duration, 0, 1);
+  const out = clamp(progress / 0.22, 0, 1);
+  const back = clamp((progress - 0.74) / 0.26, 0, 1);
+  const outE = out * out * (3 - 2 * out);
+  const backE = back * back * (3 - 2 * back);
+  return outE * (1 - backE);
+}
+
+/**
+ * Per-event arm pose in deltas off the captured node base. `bearingLocal` is the work site's
+ * bearing relative to the station's own yaw, so a reach swings TOWARD the work, a release
+ * swings away, and a slide/stroke ride their own axes. Returns {reach01, stroke01, yaw, slide,
+ * pitch} — the caller adds them to captured bases; nothing here accumulates.
+ */
+export function resolveStationArmPose(articulation, ageS, durationS, bearingLocal, reducedMotion) {
+  const pose = { reach01: 0, stroke01: 0, yaw: 0, slide: 0, pitch: 0 };
+  if (!articulation) return pose;
+  const reach = resolveStationArmReach(ageS, durationS);
+  const amp = articulation.amplitude * (reducedMotion ? 0.5 : 1);
+  const progress = clamp((Number(ageS) || 0) / Math.max(0.5, Number.isFinite(durationS) ? durationS : 0.5), 0, 1);
+  pose.reach01 = reach;
+  const bearing = Number.isFinite(bearingLocal) ? bearingLocal : 0;
+  const toward = clamp(bearing, -1, 1); // radians of swing toward the work site
+  if (articulation.duty === 'release-and-return') {
+    pose.yaw = -toward * reach * amp * 2 - reach * amp * 0.4; // open the cradle away from the lane
+  } else if (articulation.duty === 'slide-track') {
+    pose.slide = reach * amp;
+  } else if (articulation.duty === 'stroke-and-return') {
+    // The loader pumps twice per event: a double stroke on the reach envelope.
+    pose.stroke01 = Math.abs(Math.sin(progress * Math.PI * 2)) * reach;
+    pose.pitch = pose.stroke01 * amp;
+  } else if (articulation.duty === 'sweep') {
+    pose.yaw = Math.sin(progress * Math.PI * 2) * reach * amp;
+  } else {
+    pose.yaw = toward * reach * amp * 2 + reach * amp * 0.4;  // arm reaches toward the berth side
+    pose.pitch = reach * amp * 0.25;
+  }
+  return pose;
+}
+
 export function createInfrastructureMotionTracker() {
   const infrastructureStates = new Map();
+  // Boundary root → record side index (keyed by boundaryRoot stamps) — batched
+  // releases probe it instead of rescanning every record's dish/arm refs.
+  const boundaryIndex = new Map();
   let busSubscribers = [];
   let lastSimTime = 0;
   // Latest berthing pulse. dock:docked carries { stationId }; dock:undocked carries {} so the
   // undock pulse reuses the last docked station — berths always release where they seated.
   const dockPulse = { stationId: null, kind: null, t0: -1 };
   const gatePulse = { sectorId: null, kind: null, t0: -1 };
+  // FB-076 — one live articulation record per station, keyed off the same stationId the dock
+  // pulse uses. start/settle stamps make the record inspectable; the envelope writes the pose.
+  const armWork = new Map();
 
   function onDocked(payload) {
     const stationId = payload && (payload.stationId != null ? payload.stationId : payload.id);
@@ -131,6 +200,23 @@ export function createInfrastructureMotionTracker() {
       gatePulse.kind = payload.type || payload.kind || null;
       gatePulse.t0 = lastSimTime;
     }));
+    // FB-076 — a side event is the station doing work: arm one articulation record per event.
+    busSubscribers.push(bus.on('station:sideEvent', (payload) => {
+      if (!payload) return;
+      const articulation = resolveStationArmArticulation(payload.kind);
+      const stationId = payload.stationId != null ? String(payload.stationId) : null;
+      if (!articulation || !stationId) return;
+      armWork.set(stationId, {
+        kind: payload.kind,
+        articulationId: articulation.id,
+        eventId: payload.eventId != null ? String(payload.eventId) : null,
+        t0: lastSimTime,
+        durationS: Number.isFinite(payload.durationS) ? payload.durationS : null,
+        bearing: Number.isFinite(payload.bearing) ? payload.bearing : 0,
+        startedS: lastSimTime,
+        settledS: -1,
+      });
+    }));
   }
 
   function unbindEvents() {
@@ -145,6 +231,7 @@ export function createInfrastructureMotionTracker() {
     gatePulse.sectorId = null;
     gatePulse.kind = null;
     gatePulse.t0 = -1;
+    armWork.clear();
   }
 
   function getState(entityId) {
@@ -172,16 +259,52 @@ export function createInfrastructureMotionTracker() {
         hash: h,
         dishNodes: null,   // lazy [{ node, baseY }] — swept sensor hardware, scanned once
         dishScanned: false,
+        armNodes: null,    // lazy [{ node, baseY, baseZ, basePX }] — articulating work hardware
+        armScanned: false,
+        boundaryRoot: null, // boundary root the scanned refs live under — the release index key
       };
       infrastructureStates.set(entityId, rec);
     }
     return rec;
   }
 
+  function noteBoundaryRoot(rec, mesh) {
+    if (rec.boundaryRoot !== mesh) {
+      if (rec.boundaryRoot && boundaryIndex.get(rec.boundaryRoot) === rec) {
+        boundaryIndex.delete(rec.boundaryRoot);
+      }
+      rec.boundaryRoot = mesh;
+      const displaced = boundaryIndex.get(mesh);
+      // A mesh re-seat steals the index entry — clear the displaced owner's
+      // root field so its later drop can't delete our live mapping.
+      if (displaced && displaced !== rec) displaced.boundaryRoot = null;
+      boundaryIndex.set(mesh, rec);
+    }
+  }
+
+  function dropBoundaryIndex(rec) {
+    if (rec && rec.boundaryRoot) {
+      // Ownership-checked: a displaced entry now names a different rec — its
+      // live mapping must survive this drop.
+      if (boundaryIndex.get(rec.boundaryRoot) === rec) boundaryIndex.delete(rec.boundaryRoot);
+      rec.boundaryRoot = null;
+    }
+  }
+
+  function releaseInfrastructureRefs(rec) {
+    if (!rec) return;
+    dropBoundaryIndex(rec);
+    rec.dishNodes = null;
+    rec.dishScanned = false;
+    rec.armNodes = null;
+    rec.armScanned = false;
+  }
+
   function updateGateMotion(entity, mesh, simTime, frameDt, playerEntity, options = {}) {
     if (!entity || !mesh) return;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getState(entity.id);
+    noteBoundaryRoot(rec, mesh);
     const reducedMotion = options.motionReduce === true;
     lastSimTime = simTime;
 
@@ -229,6 +352,13 @@ export function createInfrastructureMotionTracker() {
         if (portal.scale && typeof portal.scale.setScalar === 'function') {
           portal.scale.setScalar(rec.portalBase * rec.portalScale);
         }
+        // The face's internal drift (event-horizon shader) rides the same reduced-motion
+        // convention as the lens: the mesh's onBeforeRender multiplies its clock by this.
+        // Named motionScale — the cosmetic shader clock is not the sim's audited timeScale.
+        const portalMat = portal.material;
+        if (portalMat && portalMat.userData && portalMat.uniforms && portalMat.uniforms.uTime) {
+          portalMat.userData.motionScale = reducedMotion ? 0.25 : 1.0;
+        }
       }
       if (hubGlow) {
         if (rec.hubGlowBase < 0) {
@@ -245,6 +375,7 @@ export function createInfrastructureMotionTracker() {
     if (!entity || !mesh) return;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getState(entity.id);
+    noteBoundaryRoot(rec, mesh);
     const reducedMotion = options.motionReduce === true;
     lastSimTime = simTime;
 
@@ -317,6 +448,59 @@ export function createInfrastructureMotionTracker() {
       }
     }
 
+    // Station work arms (FB-076): a live side event articulates the matching arm/crane/loader/
+    // gantry/boom node once — reach, hold, settle — then rests at its captured base. Reduced
+    // motion halves amplitude but keeps the reach direction. No event: no motion.
+    if (!rec.armScanned) {
+      rec.armScanned = true;
+      if (mesh.children) {
+        for (const child of mesh.children) {
+          const n = child.name ? String(child.name) : '';
+          if (n && ARM_NODE_PATTERN.test(n) && child.rotation) {
+            if (!rec.armNodes) rec.armNodes = [];
+            rec.armNodes.push({
+              node: child,
+              baseY: Number.isFinite(child.rotation.y) ? child.rotation.y : 0,
+              baseZ: Number.isFinite(child.rotation.z) ? child.rotation.z : 0,
+              basePX: child.position && Number.isFinite(child.position.x) ? child.position.x : 0,
+            });
+          }
+        }
+      }
+    }
+    const armStationId = data.stationId != null ? String(data.stationId) : String(entity.id);
+    const work = armWork.get(armStationId) || armWork.get(String(entity.id)) || null;
+    if (work && rec.armNodes && rec.armNodes.length) {
+      const articulation = resolveStationArmArticulation(work.kind);
+      const durationS = work.durationS || 30;
+      const age = simTime - work.t0;
+      if (age <= durationS && articulation) {
+        // The work site's bearing, carried by the event, in the station's own frame.
+        const stationRot = Number.isFinite(entity.rot) ? entity.rot : 0;
+        const bearingLocal = work.bearing - stationRot;
+        const pose = resolveStationArmPose(articulation, age, durationS, bearingLocal, reducedMotion);
+        const slideWu = Math.max(2, Math.min(24, (Number(entity.radius) || 10) * 0.3));
+        for (const a of rec.armNodes) {
+          a.node.rotation.y = a.baseY + pose.yaw;
+          a.node.rotation.z = a.baseZ + pose.pitch;
+          if (a.node.position && typeof a.node.position.set === 'function') {
+            a.node.position.set(a.basePX + pose.slide * slideWu, a.node.position.y, a.node.position.z);
+          } else if (a.node.position) {
+            a.node.position.x = a.basePX + pose.slide * slideWu;
+          }
+        }
+      } else {
+        // Settle: the event ended — arms come home and the record closes out.
+        for (const a of rec.armNodes) {
+          a.node.rotation.y = a.baseY;
+          a.node.rotation.z = a.baseZ;
+          if (a.node.position) a.node.position.x = a.basePX;
+        }
+        work.settledS = simTime;
+        armWork.delete(armStationId);
+      }
+    }
+
     // Dock contact thump on the root scale (multiplicative off the captured base — the fence
     // never writes scale, so this cannot drift against pose updates).
     if (mesh.scale && (scalePing !== 1 || rec.stationScaleDirty)) {
@@ -341,6 +525,7 @@ export function createInfrastructureMotionTracker() {
     if (!entity || !mesh) return;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getState(entity.id);
+    noteBoundaryRoot(rec, mesh);
     const reducedMotion = options.motionReduce === true;
     lastSimTime = simTime;
 
@@ -381,33 +566,32 @@ export function createInfrastructureMotionTracker() {
     }
   }
 
-  function nodeInsideTree(node, root) {
-    for (let cur = node; cur; cur = cur.parent) {
-      if (cur === root) return true;
-    }
-    return false;
+  /** FB-076 — the live articulation record for a station, or null when no work is armed. */
+  function stationArmRecord(stationId) {
+    return stationId == null ? null : (armWork.get(String(stationId)) || null);
   }
 
   // Same teardown contract as the other motion trackers: the entity outlives its mesh, so
-  // the record drops Object3D references (scanned dish nodes) while keeping motion state.
+  // the record drops Object3D references (scanned dish/arm nodes) while keeping motion state.
   function releaseEntityMesh(entityId) {
-    const rec = infrastructureStates.get(entityId);
-    if (!rec) return;
-    rec.dishNodes = null;
-    rec.dishScanned = false;
+    releaseInfrastructureRefs(infrastructureStates.get(entityId));
   }
 
-  // Ids recycle across save restore; a record keyed by a reused id can keep dish node
-  // references into a retired station mesh — release by mesh identity too.
+  // Ids recycle across save restore; a record keyed by a reused id can keep dish/arm node
+  // references into a retired station mesh — release by mesh identity too. The boundary-root
+  // side index keys each record on the root its scanned refs hang under; a missed entry pins
+  // the record's refs until the periodic prune — the same outcome an unbatched release gave.
   function releaseMesh(mesh) {
     if (!mesh) return;
-    for (const rec of infrastructureStates.values()) {
-      if (!rec.dishNodes) continue;
-      const hit = rec.dishNodes.some((entry) => entry && entry.node && nodeInsideTree(entry.node, mesh));
-      if (hit) {
-        rec.dishNodes = null;
-        rec.dishScanned = false;
-      }
+    releaseInfrastructureRefs(boundaryIndex.get(mesh));
+  }
+
+  // Batched twin of releaseMesh for mass-despawn sweeps: O(pending.size) via
+  // the boundary-root index instead of one registry pass per evicted root.
+  function releaseMeshSet(meshes) {
+    if (!meshes || meshes.size === 0) return;
+    for (const mesh of meshes) {
+      releaseInfrastructureRefs(boundaryIndex.get(mesh));
     }
   }
 
@@ -415,6 +599,7 @@ export function createInfrastructureMotionTracker() {
     if (!activeEntityIds || typeof activeEntityIds.has !== 'function') return;
     for (const id of infrastructureStates.keys()) {
       if (!activeEntityIds.has(id)) {
+        dropBoundaryIndex(infrastructureStates.get(id));
         infrastructureStates.delete(id);
       }
     }
@@ -429,6 +614,8 @@ export function createInfrastructureMotionTracker() {
     prune,
     releaseEntityMesh,
     releaseMesh,
+    releaseMeshSet,
+    stationArmRecord,
   };
 }
 

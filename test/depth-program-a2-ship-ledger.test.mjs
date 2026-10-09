@@ -86,6 +86,12 @@ function playedState() {
         stationId: 'station_helios', commodityId: 'cmdty_refined_metals', side: 'sell',
         qty: 7, total: 847, seenAt: 720,
       }],
+      // FB-014 — a stunt-minted right and its claim are durable receipts like the trades above.
+      salvageRightsLog: [
+        { id: 'srmint:ep-fixture:900', kind: 'mint', at: 900, amount: 2,
+          trickId: 'wrecking_ball', name: 'Wrecking Ball', episodeId: 'ep-fixture', rarity: 'uncommon' },
+        { id: 'srclaim:pick_1:1500', kind: 'claim', at: 1500, amount: 2, grantReason: 'stunt_claim' },
+      ],
       uniqueWrecks: {
         bearings: {
           wreck_isc_vigilant: {
@@ -104,6 +110,11 @@ function playedState() {
       flags: { volsEchoUnlocked: true, endgame: true },
       recoveredNames: [{ id: 'senna-name-ada', name: 'Ada Venn', recoveredAt: 2100 }],
       titlesSeen: [{ id: 'thunderchild', title: 'Thunderchild', seenAt: 2400 }],
+      // FB-127 — the career decision is a durable story fact like any other.
+      facts: [{
+        kind: 'career', id: 'road:hauler', text: 'hauler was offered and declined',
+        citation: 'career.outcome.v1', atS: 2600,
+      }],
       depthProgramEncounters: {
         completed: {
           depth_h1_distress_from_inside: { outcome: 'listen' },
@@ -195,10 +206,11 @@ function findNode(root, predicate) {
 test('A2 prose bank has at least four distinct variants for every ledger entry type', () => {
   const validation = validateShipLedgerTemplates();
   assert.deepEqual(validation, { ok: true, errors: [] });
-  // Eight archive families plus the three PQ-142.01 hull-history families (scar / patch / renown).
+  // Eight archive families, the three PQ-142.01 hull-history families (scar / patch / renown),
+  // FB-127's career record, and FB-014's salvage-rights receipt family.
   // design/VISION.md Part II: "The ship accumulates history — scars, repairs, odd fittings, a
   // reputation by hull — until it is my fucking ship."
-  assert.equal(SHIP_LEDGER_ENTRY_TYPES.length, 12);
+  assert.equal(SHIP_LEDGER_ENTRY_TYPES.length, 14);
   for (const type of SHIP_LEDGER_ENTRY_TYPES) {
     assert.ok(SHIP_LEDGER_TEMPLATES[type].length >= 4, `${type} must have four variants`);
     assert.equal(new Set(SHIP_LEDGER_TEMPLATES[type].map((entry) => entry.text)).size,
@@ -307,6 +319,8 @@ test('archive is capped and paginated so a panel never receives an unbounded row
   state.player.ownedShips = [];
   state.story.depthProgramEncounters.history = [];
   state.story.recoveredNames = [];
+  state.story.facts = [];
+  state.player.salvageRightsLog = [];
   state.story.titlesSeen = Array.from({ length: 600 }, (_, index) => ({
     id: `title-${index}`, title: `Passing Title ${index}`, seenAt: index * 10,
   }));
@@ -357,6 +371,8 @@ test('mounted panel renders one bounded page and keeps archive controls operable
   state.player.ownedShips = [];
   state.story.depthProgramEncounters.history = [];
   state.story.recoveredNames = [];
+  state.story.facts = [];
+  state.player.salvageRightsLog = [];
   state.story.titlesSeen = Array.from({ length: 25 }, (_, index) => ({
     id: `mounted-title-${index}`, title: `Mounted Title ${index}`, seenAt: index * 10,
   }));

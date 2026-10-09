@@ -910,6 +910,17 @@ export async function performSaveLoad(runtime, state, options = {}) {
         && recreateSystems.length > 0;
 
       if (!wantRecreate) {
+        // sanitizeRestoredSettings resets gameplay backends to the shipped defaults on every
+        // load. Capture what this runtime booted with and put it back after the restore, or
+        // the per-tick gates that read settings (SG-02 authority, aiPorts, massline flavor)
+        // silently flip away from the running slots mid-lab. Same contract as the 47-A
+        // harness reload path.
+        const bootedBackends = state.settings && state.settings.gameplay
+          ? {
+            physicsBackend: state.settings.gameplay.physicsBackend,
+            aiBackend: state.settings.gameplay.aiBackend,
+          }
+          : null;
         const ok = saveSys.loadEnvelope(envelope, 'lab-save-load');
         if (!ok) {
           return { ok: false, exitClass: 3, status: 'infra', reason: 'save loadEnvelope returned false' };
@@ -926,6 +937,10 @@ export async function performSaveLoad(runtime, state, options = {}) {
         }
         if (state.settings && state.settings.gameplay) {
           state.settings.gameplay.flightBackend = 'v3';
+          if (bootedBackends) {
+            state.settings.gameplay.physicsBackend = bootedBackends.physicsBackend;
+            state.settings.gameplay.aiBackend = bootedBackends.aiBackend;
+          }
         }
         // Soft prepare: re-bind without destroying restored body state.
         const physicsSys = runtime.getSystem('physics');

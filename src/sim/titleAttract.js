@@ -14,8 +14,8 @@
 //   - Fixed seed (TITLE_ATTRACT_SEED). Two worlds built with the same seed produce
 //     the same fight tick-for-tick.
 //   - Sim systems read state.rng / state.simTime only — no Math.random, no wall clock.
-//   - The world never steps until start() is called; the title calls it once the
-//     screen is visibly up and idle (ATTRACT_IDLE_MS in screens/mainMenu.js).
+//   - The world never steps until start() is called. The shipped menu does not call it;
+//     bake-title-attract.mjs and the title-attract tests do. The stage plays the tape.
 //   - dispose() runs system teardown and clears the bus; nothing keeps stepping and
 //     no listener escapes into the live game.
 //

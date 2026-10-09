@@ -1,0 +1,79 @@
+--- a/src/core/physicsAuthority.js
++++ b/src/core/physicsAuthority.js
+@@ -38,6 +38,9 @@
+ // exactly its published shape ({schemaVersion, control, impulses, torqueImpulses, bodyResponse})
+ // for consumers and for key-enumerating diagnostics.
+ const CONSUMED_COMMANDS = new WeakSet();
++// Optional opaque ownership for opt-in controllers. Public command shape stays unchanged.
++const PENDING_OWNED_CONTROLS = new WeakMap();
++const OWNED_CONTROL_RECEIPTS = new WeakMap();
+ const CONTROL_RECORDS = new WeakMap();       // entity -> reusable control record
+ const BODY_RESPONSE_RECORDS = new WeakMap(); // entity -> reusable {massScale,inertiaScale}
+ // Retained projectile-continuation bookkeeping lives in side-channel maps so the queued
+@@ -57,6 +60,7 @@
+ /** Replace the continuous force/torque command for this tick. */
+ export function writePhysicsControl(entity, control = {}) {
+   if (!entity || typeof entity !== 'object') return null;
++  PENDING_OWNED_CONTROLS.delete(entity);
+   const command = commandFor(entity);
+   let value = CONTROL_RECORDS.get(entity);
+   if (!value) {
+@@ -79,6 +83,50 @@
+   value.maxSpeed = positive(control.maxSpeed, Infinity);
+   command.control = value;
+   return value;
++}
++
++/** Issue a one-use opaque receipt for exactly this continuous-control submission.
++ * A later control write always revokes pending ownership, even with identical numbers/source.
++ * This token is process-local, never serialized or accepted from a copied data record.
++ */
++export function writeOwnedPhysicsControl(entity, control = {}) {
++  const value = writePhysicsControl(entity, control);
++  if (!value) return null;
++  const receipt = Object.freeze({});
++  OWNED_CONTROL_RECEIPTS.set(receipt, {
++    entity, life: entity.occupantGeneration, bodySpec: entity.physicsBody,
++    command: COMMANDS.get(entity), control: value,
++  });
++  PENDING_OWNED_CONTROLS.set(entity, receipt);
++  return receipt;
++}
++
++function ownedControlRecord(entity, receipt, command) {
++  const issued = receipt && OWNED_CONTROL_RECEIPTS.get(receipt);
++  return issued && issued.entity === entity && issued.life === entity.occupantGeneration
++    && issued.bodySpec === entity.physicsBody && issued.command === command
++    && issued.control === command?.control && PENDING_OWNED_CONTROLS.get(entity) === receipt
++    ? issued : null;
++}
++
++/** Cancel only this still-pending exact submission. Other controls and impulses survive. */
++export function cancelOwnedPhysicsControl(entity, receipt) {
++  const command = entity && COMMANDS.get(entity);
++  if (!command || CONSUMED_COMMANDS.has(command) || !ownedControlRecord(entity, receipt, command)) return false;
++  command.control = null;
++  PENDING_OWNED_CONTROLS.delete(entity);
++  return true;
++}
++
++/** Native owner only: capture exact ownership while consuming this command, once.
++ * The native owner publishes it only after successfully applying and stepping the control.
++ * A generic consume, a source label, or matching force numbers is not a native witness.
++ */
++export function takeConsumedPhysicsControlReceipt(entity, command) {
++  const receipt = entity && PENDING_OWNED_CONTROLS.get(entity);
++  if (!command || !CONSUMED_COMMANDS.has(command) || !ownedControlRecord(entity, receipt, command)) return null;
++  PENDING_OWNED_CONTROLS.delete(entity);
++  return receipt;
+ }
+ 
+ /** Queue a world-space linear impulse. The physics owner applies it on its next tick. */
+@@ -184,6 +232,7 @@
+   if (!entity || typeof entity !== 'object') return;
+   COMMANDS.delete(entity);
+   CONTROL_RECORDS.delete(entity);
++  PENDING_OWNED_CONTROLS.delete(entity);
+   BODY_RESPONSE_RECORDS.delete(entity);
+   PROJECTILE_CONTINUATIONS.delete(entity);
+   TELEMETRY.delete(entity);

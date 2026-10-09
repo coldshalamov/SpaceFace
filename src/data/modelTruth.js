@@ -2,6 +2,7 @@
 // scripts/model-truth-census.mjs. Sim, camera, weapons, and labels import this module.
 
 import census from './modelTruthCensus.json' with { type: 'json' };
+import { isMothlightTender, MOTHLIGHT_GUN_SOCKET } from './mothlightBody.js';
 import {
   CAMERA_NEAR_MARGIN_WU,
   colliderRadiusAt,
@@ -23,6 +24,7 @@ import {
   nozzleWorldFromRow,
   placeDrawScaleFromRow,
   plumeSocketNameFromNames,
+  trailSocketNameFromNames,
   plumeWorldFromRow,
   ropeEndFromRow,
   shotWorldFromRow,
@@ -365,6 +367,11 @@ export function modelTruthSocketWorld(entity, socketName) {
 }
 
 export function modelTruthShotOrigin(entity, weapon) {
+  if (isMothlightTender(entity)) {
+    if (weapon?.defId !== 'wpn_railgun_m' || weapon.slotIndex !== 0) return null;
+    const p=MOTHLIGHT_GUN_SOCKET,c=Math.cos(entity.rot||0),s=Math.sin(entity.rot||0);
+    return {x:entity.pos.x+c*p.x-s*p.z,z:entity.pos.z+s*p.x+c*p.z,y:p.y};
+  }
   const row = rowFor(entity);
   if (!row) return null;
   const slot = weapon && Number.isFinite(weapon.slotIndex) ? weapon.slotIndex : 0;
@@ -380,6 +387,14 @@ export function modelTruthPlumeSocketName(entity) {
   if (!row) return null;
   const names = (row.sockets || []).map((socket) => socket && socket.name);
   return plumeSocketNameFromNames(names);
+}
+
+/** The recorded-wake anchor: authored SOCKET_Trail_* stations first, nozzle as fallback. */
+export function modelTruthTrailSocketName(entity) {
+  const row = rowFor(entity);
+  if (!row) return null;
+  const names = (row.sockets || []).map((socket) => socket && socket.name);
+  return trailSocketNameFromNames(names);
 }
 
 export function modelTruthPlumeOrigin(entity) {

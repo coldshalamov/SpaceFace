@@ -35,6 +35,9 @@ import {
   SURVIVAL_ARENA_INTRO_TICKS,
   SURVIVAL_WAVE_INTRO_TICKS,
 } from './survivalRun.js';
+import { playerBearingName } from '../core/playerCompass.js';
+import { CRYO_ARENA_ID } from './cryoDriftArena.js';
+import { GATE_BEARINGS } from './waveMaterialization.js';
 
 /**
  * Hard ceiling on player-facing lines per wave. Counts voice:say AND alert, because alerts.js
@@ -55,20 +58,16 @@ export const MAX_HINTS_PER_WAVE = 1;
  * is explicit that the chase camera "follows player POSITION only (never yaw)" — north is always
  * the same direction on screen.
  *
- * The convention is proved by the data itself: GATE_BEARINGS.nw is {x:-R2, z:-R2}
- * (waveMaterialization.js:35), which is only "northwest" if -z is north and -x is west. front/rear/
- * diagonal_a/diagonal_b fall out of that as north/south/west/east.
+ * The words are derived from GATE_BEARINGS through playerCompass (+z is north, screen up).
+ * A hand-written table here is how a second north gets back in. The old −z-is-north
+ * reading pointed every callout at the bottom of the flight view.
  */
-const BEARING_WORD = Object.freeze({
-  front: 'the north',
-  ne: 'the northeast',
-  diagonal_b: 'the east',
-  se: 'the southeast',
-  rear: 'the south',
-  sw: 'the southwest',
-  diagonal_a: 'the west',
-  nw: 'the northwest',
-});
+const BEARING_WORD = Object.freeze(Object.fromEntries(
+  Object.keys(GATE_BEARINGS).map((gateGroup) => {
+    const bearing = GATE_BEARINGS[gateGroup];
+    return [gateGroup, `the ${playerBearingName(bearing.x, bearing.z)}`];
+  }),
+));
 
 /**
  * Player-facing prose for the authored counterHint tokens in src/data/enemies.js.
@@ -187,7 +186,7 @@ function displayName(enemyId) {
  * Shape: what is coming, from where, and what closes the wave. Every clause is checked against the
  * plan, so it can never promise a body the plan does not contain.
  *
- *   "Wave 1. Six hostiles from the north. Clear the arena."
+ *   "Wave 1. Six hostiles from the south. Clear the arena."
  *   "Wave 5. Seven hostiles from the north and the south. Corsair Raider leads. Kill the elite and
  *    clear the rest."
  *   "Wave 10. Seven hostiles from the northwest and the east. Dreadnought 'Iron Maw' leads. Kill it
@@ -330,6 +329,7 @@ export const survivalAnnounce = {
     this._unsubs.push(this.bus.on('run:transitioned', (p) => this._onTransitioned(p)));
     this._unsubs.push(this.bus.on('run:ended', () => { this._muted = true; }));
     this._unsubs.push(this.bus.on('boss:defeated', (p) => this._onBossDefeated(p || {})));
+    this._unsubs.push(this.bus.on('survivalArena:installed', (p) => this._onArenaInstalled(p)));
   },
 
   destroy() {
@@ -362,6 +362,7 @@ export const survivalAnnounce = {
     this._closedWave = 0;
     this._waveIntroArmed = 0;
     this._waveIntroTicks = 0;
+    this._compassWave = 0;
   },
 
   // ── emit helpers ──────────────────────────────────────────────────────────────────────────────
@@ -474,6 +475,23 @@ export const survivalAnnounce = {
       const question = questionClauseFor(wave, this._plan, arenaId);
       if (question) this._say('objective', `survival:w${wave}:why`, question, 6);
     }
+  },
+
+  /**
+   * Cryo halves that name north or south. The install note is already in the player compass;
+   * this is the line the combat net speaks so the pilot hears the same north as the wave callout.
+   * East/west halves already matched and stay on the install payload alone.
+   */
+  _onArenaInstalled(payload) {
+    if (this._muted) return;
+    if (!liveSurvivalRun(this.state)) return;
+    if (!payload || payload.arenaId !== CRYO_ARENA_ID) return;
+    const note = typeof payload.note === 'string' ? payload.note : '';
+    if (!/\b(north|south)\b/.test(note)) return;
+    const wave = payload.wave;
+    if (!Number.isInteger(wave) || wave < 1 || this._compassWave === wave) return;
+    this._compassWave = wave;
+    this._say('objective', `survival:w${wave}:compass`, note, 6);
   },
 
   _onWaveStarted(payload) {

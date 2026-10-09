@@ -10,16 +10,16 @@ const SHIP_ID = NEW_GAME.shipId;
 const GENERALIST_FITTINGS = Object.freeze(NEW_GAME.fittedModules.slice());
 const CAREER_BUILD_COPY = Object.freeze({
   hauler: Object.freeze({
-    benefit: 'Lightest career utility fit, preserving the best speed and turn authority of the three role kits.',
-    tradeoff: 'Uses the Hitch utility slot and adds a small mass and power cost without expanding the hold.',
+    benefit: 'On a freight leg it keeps the most speed and turn authority of the three career kits, with a live station-price feed aboard.',
+    tradeoff: 'Uses the Hitch utility slot for the uplink; a small mass and power cost, no hold growth, and nothing when the run turns physical.',
   }),
   hunter: Object.freeze({
-    benefit: 'Heaviest career fit, giving the physics body the most collision inertia of the three role kits.',
-    tradeoff: 'Uses the Hitch utility slot and gives up more speed and turn authority than either other role kit.',
+    benefit: 'In a short fight its plate turns hull contact into the weapon; the heaviest of the three career kits carries the most momentum into a hit.',
+    tradeoff: 'Uses the Hitch utility slot and gives up the most speed and turn authority of the three kits — the plate costs acceleration on every other run.',
   }),
   prospector: Object.freeze({
-    benefit: 'Faster Massline reel rate now, with higher load capacity reserved for future extreme-scale operations.',
-    tradeoff: 'Uses the Hitch utility slot and carries more mass and power draw than the route-runner fit.',
+    benefit: 'On a tow-recovery it reels the Massline in faster and swings a line from farther out than the other career kits.',
+    tradeoff: 'Uses the Hitch utility slot, draws the most power of the three kits, and its extra mass costs speed and turn authority.',
   }),
 });
 
@@ -64,8 +64,8 @@ export const STARTER_BUILDS = Object.freeze([
     verb: 'adapt',
     fittings: GENERALIST_FITTINGS,
     acquisition: acquisition('new_game'),
-    benefit: 'Open utility slot plus the Hitch baseline fit\'s best speed and turn authority.',
-    tradeoff: 'Keeps the utility slot open; flexible now, without a career-specific edge.',
+    benefit: 'Open utility slot and the lightest of the four fits — on the same freight, tow and fight runs it keeps the most speed and turn authority.',
+    tradeoff: 'Keeps the utility slot open; flexible now, but no winch, plate or price feed when a specific job calls for one.',
   }),
   careerBuild('hauler', 'Hitch Route Runner', 'carry'),
   careerBuild('hunter', 'Hitch Warrant Chaser', 'intercept'),

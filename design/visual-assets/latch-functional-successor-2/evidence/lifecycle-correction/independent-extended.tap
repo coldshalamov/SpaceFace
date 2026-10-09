@@ -1,0 +1,36 @@
+TAP version 13
+# (node:12) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../latch-lifecycle-correction-overlay/overlay-loader.mjs", pathToFileURL("./")); register("../latch-lifecycle-correction-overlay/overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# DISABLED_DEATH_CONSEQUENCE {"afterKill":{"saved":{"met":true,"cleanArrivals":0,"incidentIds":[],"destroyed":true},"budget":0,"ownedActorRetained":false},"afterContinue":{"freshActor":false,"budget":0,"destroyed":true}}
+# Subtest: independent: disabled actor death consequence across JSON semantic Continue
+ok 1 - independent: disabled actor death consequence across JSON semantic Continue
+  ---
+  duration_ms: 85.723039
+  type: 'test'
+  ...
+# (node:13) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("../latch-lifecycle-correction-overlay/overlay-loader.mjs", pathToFileURL("./")); register("../latch-lifecycle-correction-overlay/overlay-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# HIDDEN_ROOT_RESULT {"emitted":0,"active":0,"lit":[]}
+# Subtest: independent: hiding the entity root withdraws isolated pooled plumes
+ok 2 - independent: hiding the entity root withdraws isolated pooled plumes
+  ---
+  duration_ms: 194.485199
+  type: 'test'
+  ...
+# Subtest: independent: root replacement and material disposal restore every original material exactly once
+ok 3 - independent: root replacement and material disposal restore every original material exactly once
+  ---
+  duration_ms: 67.767655
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1023.515373

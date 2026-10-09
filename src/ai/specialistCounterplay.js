@@ -28,6 +28,9 @@
 import { specialistPlanByEnemyId } from './specialistPlans.js';
 import { wrapAngle } from './contracts.js';
 import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
+import { entityLocalPointToWorld } from '../combat/geometry.js';
+import { physicsBodyNativeReady } from '../core/physicsAuthority.js';
+import { SCISSORWAKE } from '../data/scissorwake.js';
 
 const CUT_COOLDOWN_TICKS = 90;
 const DISRUPT_COOLDOWN_TICKS = 120;
@@ -44,6 +47,34 @@ const DISRUPT_COMMIT_LOCK_TICKS = 60;
 // Per-state ledger of the currently committed pass: { kind, untilTick }. Keyed by the GameState
 // object (never serialized) and advanced purely by sim ticks — no ambient randomness.
 const commitLedger = new WeakMap();
+// The screen function still RETURNS the warden (damage routes the hit onto that hull).
+// The warded id is a side channel so the halo can mark the hull that is being covered
+// until a later weapon/action check of the same pair finds no screen.
+const wardPublications = new WeakMap();
+
+export function publishedWardTarget(state) {
+  const pub = state ? wardPublications.get(state) : null;
+  return pub && pub.wardedId != null ? pub.wardedId : null;
+}
+
+export function refreshWardScreenPublication(state) {
+  const pub = state ? wardPublications.get(state) : null;
+  if (!pub) return null;
+  const ships = shipsOf(state);
+  let attacker = null;
+  let target = null;
+  for (const ent of ships) {
+    if (!ent) continue;
+    if (ent.id === pub.attackerId) attacker = ent;
+    if (ent.id === pub.wardedId) target = ent;
+  }
+  if (!attacker || !target || attacker.alive === false || target.alive === false) {
+    wardPublications.delete(state);
+    return null;
+  }
+  wardScreenTarget(state, attacker, target, { kind: 'weapon' });
+  return publishedWardTarget(state);
+}
 
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
@@ -129,6 +160,18 @@ export function wardScreenTarget(state, attacker, target, origin) {
     best = ent;
     bestDist = dist;
   }
+  if (state) {
+    const prev = wardPublications.get(state);
+    if (best) {
+      wardPublications.set(state, {
+        wardedId: target.id,
+        wardenId: best.id,
+        attackerId: attacker.id,
+      });
+    } else if (prev && prev.wardedId === target.id && prev.attackerId === attacker.id) {
+      wardPublications.delete(state);
+    }
+  }
   return best;
 }
 
@@ -209,11 +252,86 @@ function interruptDisruptWork(state, data, tick) {
   data._pq140LastVerbTick = tick;
 }
 
+function scissorwakeCut({ state, specialist, doctrine, doctrinePhase, tick, attachments, plan }) {
+  const data = specialist.data, player = state.entities?.get(state.playerId);
+  const miss = reason => {
+    const commit = data._cutterCommit;
+    if (commit) data.scissorwakeLastResolvedAttack = commit.attackId;
+    missCutterPass(data, tick, SCISSORWAKE.recoveryTicks);
+    data.scissorwakeOutcome = reason;
+    releaseCommitLock(state, 'cut_line');
+    return null;
+  };
+  if (!CUT_PHASES.has(doctrinePhase)) return data._cutterCommit ? miss('miss_window') : null;
+  if (tick < (data._cutterRecoverUntil || 0) || tick - (data._pq140LastVerbTick ?? -Infinity) < CUT_COOLDOWN_TICKS
+    || commitLockHeld(state, tick, 'cut_line')) return null;
+  const sourceRuntime = state.combat?.entities?.[String(specialist.id)];
+  if (!player?.alive || specialist.hull <= 0 || data.disabled === true || data.stunned === true
+    || sourceRuntime?.capabilities?.drive === false || !physicsBodyNativeReady(specialist)) {
+    return data._cutterCommit ? miss('miss_disabled') : null;
+  }
+  const line = playerAttachments(attachments, player).find(a => a.state === 'active'
+    && String(a.id) === String(doctrine?.cutterAttachmentId));
+  const owner = line && state.entities.get(line.ownerId), target = line && state.entities.get(line.targetId);
+  const corridor = doctrine?.attackLine;
+  if (!line || !owner?.alive || !target?.alive || !corridor?.origin || !corridor?.dir) {
+    return data._cutterCommit ? miss('miss_line') : null;
+  }
+  let commit = data._cutterCommit;
+  if (!commit) {
+    // A restored/late attach window must announce a fresh cue before it can do anything.
+    if (doctrinePhase !== 'spool_cue') return null;
+    const attackId = `${specialist.id}:${specialist.occupantGeneration}:${doctrine.phaseStartedTick}`;
+    if (data.scissorwakeLastResolvedAttack === attackId) return null;
+    commit = data._cutterCommit = { attackId, attachmentId: line.id,
+      sourceLife: specialist.occupantGeneration, ownerLife: owner.occupantGeneration,
+      targetLife: target.occupantGeneration, ownerId: owner.id, targetId: target.id,
+      committedTick: tick, deadline: tick + plan.commitTicks,
+      corridor: { origin: { ...corridor.origin }, dir: { ...corridor.dir }, range: corridor.range, halfWidth: corridor.halfWidth },
+      lastPos: { x: specialist.pos.x, z: specialist.pos.z } };
+    delete data.scissorwakeOutcome;
+    claimCommitLock(state, tick, 'cut_line', commit.deadline);
+    return null;
+  }
+  if (commit.attachmentId !== line.id || commit.sourceLife !== specialist.occupantGeneration
+    || commit.ownerId !== owner.id || commit.targetId !== target.id
+    || commit.ownerLife !== owner.occupantGeneration || commit.targetLife !== target.occupantGeneration) return miss('miss_life');
+  if (tick > commit.deadline) return miss('miss_expired');
+  const cutLine = commit.corridor;
+  const end = { x: cutLine.origin.x + cutLine.dir.x * cutLine.range, z: cutLine.origin.z + cutLine.dir.z * cutLine.range };
+  if (pointSegmentDistance(specialist.pos, cutLine.origin, end) > cutLine.halfWidth + (specialist.radius || 17)) return miss('miss_displaced');
+  const previous = commit.lastPos, current = { x: specialist.pos.x, z: specialist.pos.z };
+  commit.lastPos = current;
+  if (doctrinePhase !== 'attach_window' || tick - commit.committedTick < SCISSORWAKE.windupTicks) return null;
+  const dx = current.x - previous.x, dz = current.z - previous.z;
+  const forward = dx * cutLine.dir.x + dz * cutLine.dir.z;
+  if (forward < -0.01) return miss('miss_reversed');
+  if (!(forward > 0.01)) return null;
+  const a = entityLocalPointToWorld(owner, line.sourceAnchorLocal || { x: 0, z: 0 });
+  const b = entityLocalPointToWorld(target, line.targetAnchorLocal || { x: 0, z: 0 });
+  const cross = (p, q, r) => (q.x - p.x) * (r.z - p.z) - (q.z - p.z) * (r.x - p.x);
+  const boundsOverlap = Math.max(Math.min(previous.x, current.x), Math.min(a.x, b.x)) <= Math.min(Math.max(previous.x, current.x), Math.max(a.x, b.x))
+    && Math.max(Math.min(previous.z, current.z), Math.min(a.z, b.z)) <= Math.min(Math.max(previous.z, current.z), Math.max(a.z, b.z));
+  const crossing = boundsOverlap && cross(previous, current, a) * cross(previous, current, b) <= 0
+    && cross(a, b, previous) * cross(a, b, current) <= 0;
+  const separation = Math.min(pointSegmentDistance(a, previous, current), pointSegmentDistance(b, previous, current),
+    pointSegmentDistance(previous, a, b), pointSegmentDistance(current, a, b));
+  if (!crossing && separation > SCISSORWAKE.bladeRadiusWu) return null;
+  const result = specialistBreakLine(attachments, line.id, specialist.id);
+  if (!result?.ok) return miss('miss_owner');
+  data._pq140LastVerbTick = tick; data.scissorwakeLastResolvedAttack = commit.attackId;
+  data.scissorwakeOutcome = 'cut'; delete data._cutterCommit;
+  data._cutterRecoverUntil = tick + SCISSORWAKE.recoveryTicks;
+  releaseCommitLock(state, 'cut_line');
+  return { verb: 'cut_line', ok: true, attackId: commit.attackId };
+}
+
 export function applySpecialistCounterplay({
   state,
   specialist,
   enemyId,
   doctrinePhase,
+  doctrine = null,
   tick,
   attachments,
   fields,
@@ -224,6 +342,7 @@ export function applySpecialistCounterplay({
   const plan = specialistPlanByEnemyId(id);
   if (!plan || !specialist || specialist.alive === false) return null;
   const data = specialist.data || (specialist.data = {});
+  if (plan.engineeredPass) return scissorwakeCut({ state, specialist, doctrine, doctrinePhase, tick, attachments, plan });
   const last = Number.isFinite(data._pq140LastVerbTick) ? data._pq140LastVerbTick : -Infinity;
   if (plan.verb === 'cut_line') {
     const commitTicks = Number.isFinite(plan.commitTicks) ? plan.commitTicks : 45;
@@ -396,20 +515,29 @@ export function applySpecialistCounterplay({
       ? state.entities.get(state.playerId)
       : null;
     if (!player) return null;
-    // Screen targets resolve to hulls — the roster lanes (ships/drones/stations) when the
-    // index is ready, the full pool when it is not.
+    // Screen targets resolve to hulls — wardScreenTarget gates on type==='ship', so the
+    // stations lane is dead iteration: every member is rejected at the type check. The
+    // shipLike lane alone answers identically; the unindexed pool keeps its full walk.
     const index = state && state.entityIndex;
-    const pool = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
-      && Array.isArray(index.shipLike) && Array.isArray(index.stations)
-      ? index.shipLike.concat(index.stations)
-      : shipsOf(state);
-    for (const ent of pool) {
-      if (!ent || ent.alive === false || ent.id === specialist.id || ent.id === player.id) continue;
-      if (ent.team != null && specialist.team != null && ent.team !== specialist.team) continue;
-      const blocked = wardScreenTarget(state, player, ent, { kind: 'weapon' });
-      if (blocked && blocked.id === specialist.id) return { verb: 'ward_screen', ok: true, targetId: ent.id };
+    const indexed = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+      && Array.isArray(index.shipLike);
+    const pool = indexed ? null : shipsOf(state);
+    const lanes = indexed ? [index.shipLike] : [pool];
+    // Pick the lowest entity id among valid screeners, not first-in-lane: the shipLike lane's
+    // append order and entityList's swap-pop order diverge, and a replay/test pinning a
+    // targetId must observe the same pick on both paths.
+    let best = null;
+    for (const lane of lanes) {
+      for (const ent of lane) {
+        if (!ent || ent.alive === false || ent.id === specialist.id || ent.id === player.id) continue;
+        if (ent.team != null && specialist.team != null && ent.team !== specialist.team) continue;
+        if (best !== null && ent.id >= best) continue;
+        const blocked = wardScreenTarget(state, player, ent, { kind: 'weapon' });
+        if (blocked && blocked.id === specialist.id) best = ent.id;
+      }
     }
-    return null;
+    if (best === null) return null;
+    return { verb: 'ward_screen', ok: true, targetId: best };
   }
   return null;
 }

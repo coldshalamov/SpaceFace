@@ -37,6 +37,7 @@ import {
   COMMS, GRAFFITI, BEAT_CONTENT, POST_SPINE_BEAT_CONTENT, KURTZ,
   COLD_START, ENDING_AIRLOCK_GRAFFITI, ENDING_RETURN_ACK, ENDING_STATION_ACK,
   HELIOS_BAY7, STORY_ENTRY_CONTACT, THREAD_B_FRAGMENT_ID,
+  CHARACTER_INTERRUPTS,
 } from '../data/narrative.js';
 import {
   ORRIN_WITNESS_CONTACT_ID,
@@ -123,6 +124,12 @@ const AMBIENT_MAX_S = 90;
 // Phase 3 ambient cools to one every 2–4 min (the channel has gone quiet; the system stopped needing to talk).
 const AMBIENT_MIN_S_P3 = 120;
 const AMBIENT_MAX_S_P3 = 240;
+// Character interrupts (SFQ-B068) poll at this cadence; conds are steady-state observable facts,
+// so a poll that holds off simply catches the same fact on a later tick (eligibility survives).
+const CHARACTER_INTERRUPT_POLL_S = 5;
+// The exact ids whose voice:surface receipt spends the once-per-save (review hardening: a future
+// system must not inherit the spend by reusing the `char_` prefix).
+const CHARACTER_INTERRUPT_IDS = new Set(CHARACTER_INTERRUPTS.map((def) => def.id));
 
 export const story = {
   name: 'story',
@@ -155,6 +162,9 @@ export const story = {
     // player instead of dying on the bus. Tone changes only update the registry.
     bus.on('ambientComms:register', (p) => this._onAmbientCommsRegister(p || {}));
     bus.on('ambientComms:toneChanged', (p) => this._onAmbientCommsToneChanged(p || {}));
+    // The arbiter's surface receipt is what spends a character interrupt's once-per-save (SFQ-B068):
+    // queued-then-dropped lines stay eligible; only a line the player actually heard is seen.
+    bus.on('voice:surface', (p) => this._onCharInterruptSurfaced(p || {}));
     // ── An encounter's vultured winner turning on the player deserves a warning line. ─────────
     bus.on('encounter:winnerHostile', (p) => this._onEncounterWinnerHostile(p || {}));
     // When the first-hour tutorial finishes (spec2/03), release the cold-start voice it deferred.
@@ -170,8 +180,29 @@ export const story = {
     bus.on('career:origin:declined', (p) => this._recordCareer('declined', p || {}));
     bus.on('career:origins:declined', (p) => this._recordCareer('declined', p || {}));
     bus.on('career:origins:accepted', (p) => this._recordCareer('chosen', p || {}));
+    // The bundle emits one row per live offer; only offers the player can actually take are
+    // recorded as "offered" so the ledger never lists a door it never really opened.
+    bus.on('career:origins:offered', (p) => {
+      const offers = p && Array.isArray(p.offers) ? p.offers : [];
+      for (const offer of offers) {
+        if (offer && offer.canAccept === true) this._recordCareer('offered', offer);
+      }
+    });
+    bus.on('career:origins:abandoned', (p) => this._recordCareer('abandoned', p || {}));
+    bus.on('career:ladder:offered', (p) => this._recordCareer('offered', p || {}));
     bus.on('career:ladder:choose', (p) => this._recordCareer('chosen', p || {}));
+    bus.on('career:ladder:stepActive', (p) => {
+      // Committing a run's first step IS the career choice; the fact id dedupes later activations.
+      if (p && (p.stepIndex | 0) === 0) this._recordCareer('chosen', p);
+    });
+    bus.on('career:ladder:choiceResolved', (p) => this._recordCareer('choice', p || {}));
     bus.on('career:ladder:stepDone', (p) => this._recordCareer('ladder', p || {}));
+    bus.on('career:ladder:stepRecovered', (p) => this._recordCareer('recovered', p || {}));
+    bus.on('career:ladder:completed', (p) => this._recordCareer('completed', p || {}));
+    bus.on('career:ladder:progress', (p) => {
+      if (p && p.status === 'declined') this._recordCareer('declined', p);
+      else if (p && p.status === 'abandoned') this._recordCareer('abandoned', p);
+    });
     // While the tutorial owns the one-voice channel, suppress its tutorial-line windows so ambient
     // comms can't stomp a beat's verb. The tutorial system announces each line via tutorial:say.
     bus.on('tutorial:say', () => { this._lastTutorialSayS = (this.state.simTime || 0); });
@@ -233,6 +264,9 @@ export const story = {
     bus.on('scan:completed', (p) => this._onPostEndingSignal('scan:completed', p || {}));
     bus.on('scan:completed', (p) => this._onHeliosBay7ScanPulse(p || {}));
     bus.on('signal:scanResults', (p) => this._onHeliosBay7ScanPulse(p || {}));
+    // NXI-179 — a revised clue reading gets a story response that explains the change and keeps
+    // the earlier sighting on record, instead of the detail line silently rewriting itself.
+    bus.on('signal:scanResults', (p) => this._onSignalClueRevision(p || {}));
     // UI intent: player opened/took/dropped the ledger with the Kurtz figure.
     bus.on('ui:kurtzInteract', (p) => this._onKurtzInteract(p || {}));
     bus.on('ui:heliosBay7Scan', () => this._onHeliosBay7Scan());
@@ -262,6 +296,14 @@ export const story = {
     if ((s.trapNextAtS || 0) <= (state.simTime || 0)) {
       s.trapNextAtS = (state.simTime || 0) + 5;
       this._fireEligibleTraps();
+    }
+    // Character-interrupt poll clock is INSTANCE state (like _lastTutorialSayS), never state.story:
+    // the 47a authoritative hash snapshots state.story (simSnapshot.js), so per-tick bookkeeping
+    // here must not persist. Lazy init mirrors the traps' deserialize heal (first poll at +5s).
+    if (this._charNextAtS == null) this._charNextAtS = (state.simTime || 0) + CHARACTER_INTERRUPT_POLL_S;
+    if (this._charNextAtS <= (state.simTime || 0)) {
+      this._charNextAtS = (state.simTime || 0) + CHARACTER_INTERRUPT_POLL_S;
+      this._fireCharacterInterrupts();
     }
     void dt;
 
@@ -419,6 +461,64 @@ export const story = {
     }
   },
 
+  // SFQ-B068 — character interrupts. A named character calls the player because an observable
+  // world/mission fact holds (def.cond over state — cargo aboard, sector security, dwell, rep).
+  // Hold-off law mirrors the rest of the overlay: while the tutorial owns the one-voice channel,
+  // or a fight owns the narrative calm window, the poll holds off WITHOUT marking the line seen,
+  // so the same fact can earn the line on a later tick (re-queue by poll, never by wall clock).
+  // Once voiced, the line routes through _fireComms → helpers.voice, so the LIVE voice arbiter —
+  // not this system — decides whether it takes the floor or queues behind a higher-priority voice
+  // (danger > story). seenComms is marked only when the arbiter actually SURFACES the line
+  // (voice:surface), never at enqueue time: a queued interrupt the arbiter stale-drops behind a
+  // louder voice is re-armed by the poll and spoken at the next opportunity, so once-per-save
+  // means HEARD once. Pending bookkeeping is instance state — the 47a authoritative hash
+  // snapshots state.story (simSnapshot.js) and must not drift. At most one character interrupt
+  // per poll keeps voices from stacking.
+  _fireCharacterInterrupts() {
+    const state = this.state;
+    const s = state.story;
+    if (!s) return;
+    if (this._onboardingActive() && this._recentTutorialLine(8)) return;
+    if ((Number(state.simTime) || 0) < (s.narrativeCalmUntilS || 0)) return;
+    const pending = this._pendingCharInterrupts || (this._pendingCharInterrupts = new Map());
+    const now = Number(state.simTime) || 0;
+    for (const [id, expireAtS] of pending) {
+      if (now >= expireAtS) pending.delete(id); // unheard past its window — eligible to speak again
+    }
+    for (const def of CHARACTER_INTERRUPTS) {
+      if (s.seenComms && s.seenComms[def.id]) continue;
+      if (pending.has(def.id)) continue; // voiced, awaiting the arbiter's floor decision
+      let ok = false;
+      try { ok = !!def.cond(state); } catch (e) { ok = false; }
+      if (!ok) continue;
+      const ttl = def.ttl || 7;
+      const voiced = this._fireComms({
+        id: def.id, sender: def.sender, text: def.text,
+        category: 'personal', ttl, persist: false,
+      });
+      if (voiced && voiced._viaVoice) {
+        // Handed to the arbiter — heard-status arrives via voice:surface. The window mirrors the
+        // arbiter's queued-staleness ttl (+1s of step slack); past it the line re-arms.
+        pending.set(def.id, now + ttl + 1);
+      } else {
+        // No arbiter on this route (headless/popup-feed only): the feed WAS the presentation.
+        s.seenComms[def.id] = true;
+      }
+      return; // one character voice per poll; the arbiter owns the rest of the ordering
+    }
+  },
+
+  // The arbiter surfaced a spoken line. A character interrupt that reached the floor has been
+  // heard: spend its once-per-save now (covers surfaces that arrive after the pending window too).
+  _onCharInterruptSurfaced({ id } = {}) {
+    if (!id || !CHARACTER_INTERRUPT_IDS.has(id)) return;
+    const s = this.state && this.state.story;
+    if (!s) return;
+    if (this._pendingCharInterrupts) this._pendingCharInterrupts.delete(id);
+    s.seenComms = s.seenComms || {};
+    s.seenComms[id] = true;
+  },
+
   _fireCommsById(commsId) {
     const s = this.state.story;
     // Search personal + late + story catalogs.
@@ -459,6 +559,7 @@ export const story = {
     // "not for you" chatter is unmarked and still fills the feed as the designed channel texture.
     if (said) p._viaVoice = true;
     this.bus.emit('comms:popup', p);
+    return p; // callers (character interrupts) read _viaVoice to know the arbiter took the line
   },
 
   _sayStoryLine(text, ttl = 6) {
@@ -997,6 +1098,9 @@ export const story = {
       // The finite accept line yields to the first transmission. Do not stack another toast here.
       if (!plan.writtenFinale) this._sayStoryLine(plan.resolution || plan.title, 8);
       this.bus.emit('endgame:finaleReady', this.getWrittenEndingArchive());
+      // The Codex Archive refreshes off this signal so the filed ending lands in the ship's
+      // own record at the moment it is written, not the next time the Archive is opened.
+      this.bus.emit('endgame:archive', this.getWrittenEndingArchive());
       this._announceFinaleReady();
     }
     this._schedulePostEndingObjective();
@@ -1716,6 +1820,60 @@ export const story = {
   },
 
   // =========================================================================================
+  // CLUE REVISION — the story answer when evidence moves (NXI-179 on NXB-045's clue book).
+  // =========================================================================================
+  // A later scan can stale out or contradict a filed clue. The scanner already rewrites the
+  // signal panel's detail line; this response says WHY in the story voice, ONCE per actual
+  // revision: circumstances changed (stale fix) or the evidence conflicts (contradicted
+  // manifest), and the first sighting is named as still on file rather than silently deleted.
+  // A duplicate pulse (same claim, same fix) mints no revision and no line; the next genuine
+  // revision speaks again under its own stamp.
+  _onSignalClueRevision(payload) {
+    const s = this.state && this.state.story;
+    if (!s) return false;
+    const signals = payload && Array.isArray(payload.signals) ? payload.signals : [];
+    const scannedAt = Number(payload && payload.scannedAt);
+    let revised = null;
+    for (const row of signals) {
+      const clue = row && row.clue;
+      if (!clue || !Array.isArray(clue.history) || !clue.history.length) continue;
+      // Only a reading filed by THIS pulse speaks. A superseded clue from an earlier scan
+      // (history already present, observedAt in the past) already had its line.
+      if (Number.isFinite(scannedAt) && Number(clue.observedAt) !== scannedAt) continue;
+      revised = clue;
+      break;
+    }
+    if (!revised) return false;
+    this._ensureState();
+    // history[history.length - 1] is the immediately-PREVIOUS sighting — after the clue book's
+    // CLUE_HISTORY_CAP splice (scanClues.js) it is the oldest SURVIVOR, not the first reading.
+    // The copy must stay truthful about that: it quotes a prior reading and never claims "first".
+    const prior = revised.history[revised.history.length - 1];
+    const stale = prior && prior.status === 'stale';
+    const claim = String(revised.claim || 'the sighting').replace(/\s+/g, ' ').trim().slice(0, 80);
+    const priorClaim = prior && prior.claim
+      ? String(prior.claim).replace(/\s+/g, ' ').trim().slice(0, 80)
+      : '';
+    const commsId = `clue_revision_${revised.subjectId}_${revised.observedAt}`;
+    if (s.seenComms[commsId]) return false;
+    s.seenComms[commsId] = true;
+    const kept = priorClaim
+      ? ` Prior reading ("${priorClaim}") stays on file.`
+      : ' The earlier reading stays on file.';
+    this._fireComms({
+      id: commsId,
+      sender: 'SIGNAL LOG',
+      text: stale
+        ? `SIGNAL LOG: circumstances changed — "${claim}" reads differently this pass. The earlier fix went stale; it stays on file, not struck.${priorClaim ? '' : kept}`
+        : `SIGNAL LOG: the evidence conflicts — a later reading contradicts the prior one on "${claim}".${kept}`,
+      category: 'story',
+      ttl: 8,
+      persist: false,
+    });
+    return true;
+  },
+
+  // =========================================================================================
   // SECTOR ENTRY — surface graffiti on arrival; Ashfall POI override.
   // =========================================================================================
   _onSectorEnter({ sectorId, firstVisit }) {
@@ -1762,6 +1920,11 @@ export const story = {
   // =========================================================================================
   _onNewGame(payload = {}) {
     this._ensureState(true);
+    // A same-session new game rewinds state.simTime (src/main.js) into these SAME system
+    // instances — drop the session clocks so the lazy init re-arms at simTime+5 (the traps'
+    // deserialize heal), instead of a stale deadline from the dead session gating every poll.
+    this._charNextAtS = null;
+    this._pendingCharInterrupts = null;
     const legacy = storyNewGamePlusRecord(payload.newGamePlus, this.state.meta && this.state.meta.seed);
     if (legacy) {
       // Declared receipt only. The overlay's player, cargo, claims, and entity ids never land.
@@ -1881,7 +2044,12 @@ export const story = {
     const gameplay = this.state && this.state.settings && this.state.settings.gameplay;
     if (gameplay && gameplay.tutorialHints === false) return false;
     const ob = this.state && this.state.onboarding;
-    return !ob || (ob.active && !ob.finished) || ob.finished === false;
+    // NXB-046 — the tutorial owns the one-voice channel only while it is actually
+    // running. A torn-down rail (save:loaded mid-tutorial, abandon without B5) leaves
+    // {active:false, finished:false}; reading "never finished" as ownership strands the
+    // deferred cold start permanently, because tutorial:finished can never fire again.
+    // `!ob` stays conservative: before onboarding begins, a tutorial may still start.
+    return !ob || !!(ob.active && !ob.finished);
   },
 
   _onboardingActive() {
@@ -1987,6 +2155,10 @@ export const story = {
 
   _onLoaded() {
     this._ensureState();
+    // A load restores an arbitrary (possibly earlier) simTime into these SAME instances
+    // (src/save/saveSystem.js) — re-arm the session clocks exactly like a new game.
+    this._charNextAtS = null;
+    this._pendingCharInterrupts = null;
     // Migrate at the load boundary only. Old resolved saves receive no fabricated retrospective
     // life, no replayed payout, and no reset to the beginning of a transmitted finale.
     this.state.story.writtenFinale = this._validatedWrittenFinale(this.state.story.writtenFinale);
@@ -2201,7 +2373,13 @@ export const story = {
     const s = this.state.story;
     const entry = s.storyEntry;
     if (!entry.pending || entry.voiced) return false;
-    if (entry.deferred && !opts.released) return false;
+    if (entry.deferred && !opts.released) {
+      // NXB-046 — a persisted deferral only holds while a tutorial actually owns the
+      // opening; otherwise the flag self-heals instead of stranding the entry forever.
+      if (this._tutorialOwnsOpening()) return false;
+      entry.deferred = false;
+      this._coldStartDeferred = false;
+    }
     if (!opts.released && this._onboardingActive()) return false;
     const now = Number(this.state.simTime) || 0;
     if (now < (s.narrativeCalmUntilS || 0)) return false;

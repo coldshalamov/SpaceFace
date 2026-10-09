@@ -36,8 +36,11 @@ import {
 import {
   armGhostPlayback,
   beginGhostRecording,
+  loadCrucibleMeta,
   sampleGhostPoseFromState,
 } from './survivalRecords.js';
+import { applyHangarToPlayer } from './swarmHangar.js';
+import { swarmThreatMutatorIds } from '../data/swarmThreats.js';
 
 export const SURVIVAL_RUN_WAVE_COUNT = SURVIVAL_ARC_LENGTH;
 export const SURVIVAL_REFIT_EVERY = 10;
@@ -238,6 +241,18 @@ export const survivalRun = {
       run.arenaMutators = queued.mutators.slice();
       if (queued.ruleset) run.ruleset = queued.ruleset;
     }
+    // SWARM-06: the Threat cards that rewrite the run's rules ride the mutator machinery — the
+    // draft/reroll blocks read `run.arenaMutators`, so a No Re-rolls wager is the same contract
+    // as the mutator of the same name, stacked honestly on top of any queued challenge.
+    if (run && isSwarmRuleset(run.ruleset)) {
+      const threatMutators = swarmThreatMutatorIds(run.telemetry && run.telemetry.threats);
+      if (threatMutators.length) {
+        run.arenaMutators = normalizeMutators([
+          ...(Array.isArray(run.arenaMutators) ? run.arenaMutators : []),
+          ...threatMutators,
+        ]);
+      }
+    }
     if (run) {
       this._launchSeed = Number.isInteger(run.seed) ? run.seed : null;
       beginGhostRecording({
@@ -316,6 +331,14 @@ export const survivalRun = {
     // on draft entry, and the tick machine carries draft→wave_intro once flight resumes —
     // so a run can only reach wave one through the shop the way every later wave does.
     if (isSwarmRuleset(run.ruleset)) {
+      const entities = this.state && this.state.entities;
+      const player = entities && this.state.playerId != null && typeof entities.get === 'function'
+        ? entities.get(this.state.playerId)
+        : null;
+      if (player) {
+        const stamped = run.telemetry && run.telemetry.hangar;
+        applyHangarToPlayer(this.state, stamped || loadCrucibleMeta().hangar);
+      }
       this._requestTransition('loadout', 'draft', REASON_DRAFT_OPEN);
       return;
     }
@@ -389,6 +412,12 @@ export const survivalRun = {
       // off it. Telemetry holds it because run state is closed schema and stakes never save.
       swarmStake: run.telemetry && typeof run.telemetry.swarmStake === 'string'
         ? run.telemetry.swarmStake
+        : null,
+      // SWARM-06: the Threat wager rides the same seam — the planner multiplies pressure and
+      // trims the purse off it, and the swarm-elites runtime reads the same list for the
+      // per-body stamps.
+      swarmThreats: swarm && run.telemetry && Array.isArray(run.telemetry.threats)
+        ? run.telemetry.threats
         : null,
       teachOpening: swarm && nextWave === 1 && this._openingLesson === true,
     });

@@ -73,7 +73,7 @@ let serverChild, browser;
 const errors = [];
 try {
   const port = await findFreePort(8731);
-  serverChild = spawn(process.execPath, ['server.js', String(port)], {
+  serverChild = spawn(process.execPath, ['server.js', String(port)], {env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' }, 
     cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
   });
   serverChild.stdout.on('data', () => {});

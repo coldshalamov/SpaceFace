@@ -3,6 +3,9 @@
 // This module is deliberately read-only. Scanner owns request validation and transient lifetime;
 // pirateParley remains the sole authority for toll choices/payment/escalation.
 import { hash32 } from '../core/rng.js';
+import { tallyThreeHail } from './tallyThree.js';
+import { RED_KITE } from './redKite.js';
+import { PALLET_JACK } from './palletJack.js';
 import { COMMODITIES } from './commodities.js';
 import { MODULES } from './modules.js';
 import { SHIPS } from './ships.js';
@@ -48,6 +51,7 @@ export const CONTACT_HAIL_ACTION_RECOVER = 'recover';
 export const CONTACT_HAIL_ACTION_STEAL = 'steal';
 export const CONTACT_HAIL_ACTION_ABANDON = 'abandon';
 export const CONTACT_HAIL_ACTION_ASSIST = 'assist';
+export const CONTACT_HAIL_ACTION_TOW_ASSIST = 'tow_assist';
 const CERES_ACTIVITY_SECTOR_ID = 'sector_ceres_belt';
 const CERES_TENDER_SLOT_ID = 'ceres_refinery_tender';
 const CERES_SEAM_MINER_SLOT_ID = 'ceres_seam_miner';
@@ -334,6 +338,69 @@ export function ceresDisabledHaulerManifestTruth(state, entity, incident = null,
   return { incident: active, handoff, manifest, canonical };
 }
 
+// ── SF-138 — hired tow (read-only view) ─────────────────────────────────────────────────────
+// A working tug/tender/salvor can be leased to drag a loose body to a sink. This module only
+// answers WHICH body a hire would move (the nearest towable in the worker's reach); the actual
+// lease, attachment and billing live in npcJobsRuntime. Same towability gates as the tug's own
+// job: real loose cargo bodies, never authored scenery or pinned mass.
+const TOW_ASSIST_WORKER_KINDS = new Set(['hauler', 'tender', 'salvor']);
+const TOW_ASSIST_REACH = 2600;
+const TOW_ASSIST_PINNED_MASS = 1e6;
+
+function finitePoolQty(pool) {
+  if (!pool || typeof pool !== 'object') return 0;
+  let total = 0;
+  for (const key of Object.keys(pool)) total += Math.max(0, Math.floor(Number(pool[key]) || 0));
+  return total;
+}
+
+function towableAssistBody(entity) {
+  if (!entity || entity.alive === false || (entity.type !== 'payload' && entity.type !== 'wreck')) return false;
+  const data = entity.data || {};
+  if (data.npcTowedByJobId != null) return false;
+  if (data.worldSiteId != null || data.worldObjectId != null) return false;
+  if (Number(entity.mass) >= TOW_ASSIST_PINNED_MASS) return false;
+  const manifestQty = data.cargoManifest && Array.isArray(data.cargoManifest.lines)
+    ? data.cargoManifest.lines.reduce((a, l) => a + Math.max(0, (l && l.qty) | 0), 0) : 0;
+  return finitePoolQty(data.salvagePool) > 0 || (data.towable === true && manifestQty > 0);
+}
+
+/** The live job entry a tow hire would claim, or null when the contact cannot pull a load. */
+export function towAssistWorkerEntry(state, entity) {
+  const data = entity && entity.data || {};
+  const jobId = typeof data.jobId === 'string' ? data.jobId : null;
+  const entry = jobId && state && state.npcJobs && state.npcJobs.byId
+    ? state.npcJobs.byId[jobId] : null;
+  if (!jobId || !entry || !entry.job || !TOW_ASSIST_WORKER_KINDS.has(entry.job.kind)) return null;
+  if (entry.control || entry.towAssist) return null;
+  if (!entity || entity.alive === false || entity.team !== 2 || !entity.pos) return null;
+  return { jobId, entry };
+}
+
+/** Nearest towable body inside the worker's reach — deterministic pick (id tiebreak). */
+export function towAssistBodyFor(state, worker) {
+  if (!towAssistWorkerEntry(state, worker)) return null;
+  const entities = state && state.entities && typeof state.entities.values === 'function'
+    ? state.entities.values() : [];
+  let best = null;
+  let bestD2 = Infinity;
+  let bestId = '';
+  for (const candidate of entities) {
+    if (!candidate || candidate === worker || !candidate.pos || !towableAssistBody(candidate)) continue;
+    const dx = candidate.pos.x - worker.pos.x;
+    const dz = candidate.pos.z - worker.pos.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 > TOW_ASSIST_REACH * TOW_ASSIST_REACH) continue;
+    const id = String(candidate.id);
+    if (d2 < bestD2 || (d2 === bestD2 && id < bestId)) {
+      best = candidate;
+      bestD2 = d2;
+      bestId = id;
+    }
+  }
+  return best;
+}
+
 export function ceresDisabledHaulerTruth(state, entity) {
   const incident = state && state.traffic && state.traffic.ceresDisabledHaulerIncident;
   const data = entity && entity.data || {};
@@ -362,6 +429,46 @@ function callsign(entity) {
   const data = entity && entity.data || {};
   return String(data.callsign || data.trafficLabel || data.scanLabel || data.name || 'UNIDENTIFIED VESSEL')
     .replace(/\s+/g, ' ').trim().toUpperCase();
+}
+
+// ── NXB-042 rescued-worker memory ─────────────────────────────────────────────────────────────
+// A worker who was pulled out of a survivor pod and returned to their real job remembers the
+// player — once, in their own voice. This read is pure: the durable person record lives in the
+// uniqueWrecks owner bag (rescuedWorkerReturn.js) and the live hull carries the person stamp.
+// The line is earned only when the record proves the SAME person (personKey + worldRecordId)
+// actually returned to work and the one-time acknowledgment has not already played. A lost,
+// ransomed, abandoned, or stale-stamped hull never gets the line (NXI-168).
+const RESCUED_WORKER_VOICE = Object.freeze({
+  miner: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE SEAM — WHAT DO YOU NEED?',
+  hauler: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE LANE — WHAT DO YOU NEED?',
+  ore_carrier: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE ORE RUN — WHAT DO YOU NEED?',
+  salvor: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE WRECKS — WHAT DO YOU NEED?',
+  tender: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON TENDER DUTY — WHAT DO YOU NEED?',
+  courier: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE MAIL RUN — WHAT DO YOU NEED?',
+  patrol: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON WATCH — WHAT DO YOU NEED?',
+  surveyor: 'YOU PULLED MY POD OUT OF THE DARK. BACK ON THE SURVEY — WHAT DO YOU NEED?',
+});
+const RESCUED_WORKER_VOICE_DEFAULT = 'YOU PULLED MY POD OUT OF THE DARK. BACK AT WORK — WHAT DO YOU NEED?';
+
+export function rescuedWorkerMemoryFor(state, entity) {
+  const data = entity && entity.data || {};
+  const personKey = typeof data.rescuedWorkerPerson === 'string' && data.rescuedWorkerPerson
+    ? data.rescuedWorkerPerson : null;
+  if (!personKey) return null;
+  const record = state && state.player && state.player.uniqueWrecks
+    && state.player.uniqueWrecks.rescuedWorkers
+    && state.player.uniqueWrecks.rescuedWorkers.people
+    && state.player.uniqueWrecks.rescuedWorkers.people[personKey];
+  if (!record || record.personKey !== personKey) return null;
+  if (record.outcome !== 'returned') return null; // dead, ransomed or adrift people never answer
+  if (typeof data.worldRecordId !== 'string' || !data.worldRecordId
+    || record.worldRecordId !== data.worldRecordId) return null; // same durable hull only
+  if (record.hailAcknowledgedAtS != null) return null; // the memory is named exactly once
+  return record;
+}
+
+function rescuedWorkerVoiceLine(record) {
+  return RESCUED_WORKER_VOICE[record && record.role] || RESCUED_WORKER_VOICE_DEFAULT;
 }
 
 function priorityCourierItinerary(state, entity) {
@@ -453,6 +560,21 @@ export function contactHailAvailability(state) {
   if (!state || state.mode !== 'flight' || state.ui && state.ui.docked) return unavailable('not_in_flight');
   if (!target) return unavailable('unresolved_target');
   if (target.alive === false) return unavailable('dead_target');
+  if (target.data?.redKiteActorId === RED_KITE.actorId || target.data?.redKiteMark === 'poi_red_kite_start') {
+    if (!player?.alive) return unavailable('no_player');
+    if (state.world?.currentSectorId !== RED_KITE.sectorId || distanceBetween(player, target) > RED_KITE.hailRange) return unavailable('out_of_reveal_range');
+    return { enabled: true, reason: null, targetId: target.id, kind: 'red_kite',
+      label: 'HAIL RED KITE', distance: distanceBetween(player, target), entity: target };
+  }
+  if (target.data?.persistenceOwner === PALLET_JACK.owner
+    && (target.data?.palletJackActorId === PALLET_JACK.actorId || target.data?.palletJackCargoId)) {
+    if (!player?.alive) return unavailable('no_player');
+    if (distanceBetween(player, target) > PALLET_JACK.hailRange) return unavailable('out_of_reveal_range');
+    return { enabled: true, reason: null, targetId: target.id, kind: 'pallet_jack',
+      label: 'HAIL PALLET JACK', distance: distanceBetween(player, target), entity: target };
+  }
+  const tally=tallyThreeHail(state,target,player);
+  if(tally)return tally;
   if (target.type !== 'ship' && target.type !== 'drone') return unavailable('unsupported_target');
   if (unresolvedContact(target)) return unavailable('unresolved_target');
   if (!player || player.alive === false) return unavailable('no_player');
@@ -479,6 +601,10 @@ export function contactHailAvailability(state) {
       && playerHasFittedCargoScanner(state)
       && !!traderManifestForTarget(state, target),
     disabledHauler: ceresDisabledHaulerTruth(state, target),
+    rescuedWorkerMemory: rescuedWorkerMemoryFor(state, target),
+    towAssistBodyId: classification.kind === 'worker'
+      ? (towAssistBodyFor(state, target) || {}).id ?? null
+      : null,
   };
 }
 
@@ -789,13 +915,17 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     // A source-backed cutter uses the existing, read-only manifest response rather than a new
     // action type. The compact scanner presenter still receives at most three choices.
     actions.push(salvorSource ? { id: 'manifest', label: 'MANIFEST' } : { id: 'identify', label: 'IDENTIFY' });
+    if (availability.towAssistBodyId != null) {
+      actions.push({ id: CONTACT_HAIL_ACTION_TOW_ASSIST, label: 'HIRE TOW' });
+    }
     if (availability.richSeamHelpAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HELP, label: 'HELP' });
     if (availability.heaveToAvailable && actions.length < 3) {
       actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
     }
+    const remembered = availability.rescuedWorkerMemory;
     return {
       requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
-      lines: [`${name} · WORKING TRAFFIC`, voice],
+      lines: [`${name} · WORKING TRAFFIC`, remembered ? rescuedWorkerVoiceLine(remembered) : voice],
       actions,
     };
   }
@@ -830,9 +960,10 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
   const actions = [{ id: 'route', label: 'ROUTE' }];
   if (availability.manifestAvailable) actions.push({ id: 'manifest', label: 'MANIFEST' });
   if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
+  const remembered = availability.rescuedWorkerMemory;
   return {
     requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
-    lines: [`${name} · CIVILIAN FREIGHT`, voice],
+    lines: [`${name} · CIVILIAN FREIGHT`, remembered ? rescuedWorkerVoiceLine(remembered) : voice],
     actions,
   };
 }
@@ -937,6 +1068,16 @@ function manifestText(state, target, manifestOverride = undefined) {
 
 function liveEntityForWorldRecord(state, worldRecordId) {
   if (!state || typeof worldRecordId !== 'string' || !worldRecordId) return null;
+  const index = state.entityIndex;
+  // A proven-unique live carrier resolves O(1) — the count gate reproduces the fail-closed
+  // ambiguity rule below: any second carrier keeps the walk (which then returns null).
+  if (index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+    && index.byWorldRecordId instanceof Map && index.byWorldRecordIdCount instanceof Map
+    && index.byWorldRecordIdCount.get(worldRecordId) === 1) {
+    const holder = index.byWorldRecordId.get(worldRecordId);
+    if (holder && holder.alive !== false && holder.data
+      && holder.data.worldRecordId === worldRecordId) return holder;
+  }
   const entities = state.entities && typeof state.entities.values === 'function'
     ? state.entities.values()
     : state.entityList || [];
@@ -1233,7 +1374,7 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
       ? 'STATUS · WEAPONS AUTHORIZED. HEAVE TO.'
       : 'STATUS · HOLD FIRE. FLY CLEAN.';
   } else if (offer.kind === 'patrol' && id === 'identify') {
-    line = `${callsign(target)} · LAWFUL PATROL · ACTIVE BEAT`;
+    line = `${callsign(target)} · LAWFUL PATROL · SWEEPING THE LANE`;
   } else if (offer.kind === 'worker' && id === 'status') {
     line = workerStatusText(target, state);
   } else if (offer.kind === 'worker' && id === 'identify') {
@@ -1252,11 +1393,20 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
         .find((candidate) => candidate && candidate.sectorId === CERES_ACTIVITY_SECTOR_ID
           && candidate.state === 'open' && !candidate.reservationId)
       : null;
-    line = opportunity ? `HELP · RICH SEAM +${opportunity.bonusU}u · MINER TAKING THE HOT CUT` : 'HELP · NO OPEN SEAM';
+    line = opportunity ? `HELP · RICH SEAM · +${opportunity.bonusU}u BONUS ON OFFER` : 'HELP · NO OPEN SEAM';
+  } else if (offer.kind === 'worker' && id === CONTACT_HAIL_ACTION_TOW_ASSIST) {
+    const hire = authority.towAssist || {};
+    if (hire.granted === true) {
+      line = hire.feeCr > 0
+        ? `HIRE TOW · LINE ON THE LOAD · ${hire.feeCr}CR ON THE TAB.`
+        : 'HIRE TOW · LINE ON THE LOAD.';
+    } else if (hire.reason === 'no_load') line = 'HIRE TOW · NOTHING LOOSE IN REACH.';
+    else if (hire.reason === 'claim_refused' || hire.reason === 'already_claimed') line = 'HIRE TOW · CREW ALREADY COMMITTED.';
+    else line = 'HIRE TOW · CREW UNAVAILABLE.';
   } else if (offer.kind === 'worker'
     && [CONTACT_HAIL_ACTION_RECOVER, CONTACT_HAIL_ACTION_STEAL, CONTACT_HAIL_ACTION_ABANDON].includes(id)) {
     const disabled = ceresDisabledHaulerTruth(state, target);
-    if (!disabled) line = `${id.toUpperCase()} · RECOVERY WINDOW CLOSED.`;
+    if (!disabled) line = 'TOO LATE · THE RECOVERY WINDOW HAS CLOSED.';
     else if (id === CONTACT_HAIL_ACTION_RECOVER) line = 'RECOVER · MASSLINE THE HULL TO LAWFUL COVER.';
     else if (id === CONTACT_HAIL_ACTION_STEAL) line = 'STEAL · MANIFEST JETTISON REQUESTED.';
     else line = 'ABANDON · DISTRESS RELAY CLOSED.';

@@ -24,6 +24,7 @@ export function ensureAsteroidField(state) {
   let field = world.asteroidField;
   if (field && field.schema === ASTEROID_FIELD_SCHEMA && Array.isArray(field.rocks)) {
     if (!(field.byId instanceof Map)) field.byId = new Map(field.rocks.map((row) => [row.id, row]));
+    if (!(field.dirtyPoseIds instanceof Set)) field.dirtyPoseIds = new Set();
     if (!(field.grid instanceof Map)) rebuildGrid(field);
     return field;
   }
@@ -32,10 +33,36 @@ export function ensureAsteroidField(state) {
     version: 0,
     rocks: [],
     byId: new Map(),
+    dirtyPoseIds: new Set(),
     grid: new Map(),
+    // Ledger-collect walk markers (presentationSources sizes the rock query disc
+    // from these): high-water dormant-row |vel| and the lowest lastExactT among
+    // rows that ever carried drift, so a shelved rock's stored↔ballistic pos gap
+    // stays covered by the walk disc. Conservative both ways — never decrease.
+    maxRockSpeed: 0,
+    minDriftRockLastExactT: null,
   };
   world.asteroidField = field;
   return field;
+}
+
+// High-water drift markers for the ledger walk disc. Called wherever a field row
+// gains or refreshes vel (insert, ballistic catch-up). A row that slows keeps the
+// older, larger marker — that only ever widens the query disc, so it stays a safe
+// superset of the rows the collect verdict can admit.
+function noteFieldRockMotion(field, rec) {
+  if (!field || !rec) return;
+  const vx = finite(rec.vel && rec.vel.x);
+  const vz = finite(rec.vel && rec.vel.z);
+  const speed = (vx !== 0 || vz !== 0) ? Math.hypot(vx, vz) : 0;
+  if (!(speed > 0)) return;
+  if (!(Number.isFinite(field.maxRockSpeed) && field.maxRockSpeed >= speed)) {
+    field.maxRockSpeed = speed;
+  }
+  if (!Number.isFinite(field.minDriftRockLastExactT)
+    || rec.lastExactT < field.minDriftRockLastExactT) {
+    field.minDriftRockLastExactT = rec.lastExactT;
+  }
 }
 
 export function shouldKeepLiveAsteroid(options = {}) {
@@ -138,6 +165,8 @@ export function insertAsteroidFieldRock(state, spec = {}) {
   field.rocks.push(rec);
   field.byId.set(id, rec);
   gridAdd(field, rec);
+  field.dirtyPoseIds.add(id);
+  noteFieldRockMotion(field, rec);
   field.version++;
   markAuxRowDirty(field, id);
   return rec;
@@ -149,7 +178,12 @@ export function getAsteroidFieldRock(state, id) {
   return field.byId.get(id) || null;
 }
 
-export function queryAsteroidField(state, pos, radius, out = []) {
+// Chunked twin: yields per grid column (cell path) or per `batchRows` scanned
+// keys (oversize-disc path) so a corridor-wide refill can ride a slice clock.
+// `out` accumulates across suspensions; the caller commits its memo key only
+// on completion. Row order (therefore `out` contents) is identical to the
+// sync drain.
+export function* queryAsteroidFieldSteps(state, pos, radius, out = [], batchRows = 1024) {
   out.length = 0;
   const field = state && state.world && state.world.asteroidField;
   if (!field || !pos || !Number.isFinite(radius) || !(radius > 0)) return out;
@@ -158,7 +192,6 @@ export function queryAsteroidField(state, pos, radius, out = []) {
   const x = finite(pos.x);
   const z = finite(pos.z);
   const r = radius;
-  const r2 = r * r;
   const minC = Math.floor((x - r) / ASTEROID_FIELD_CELL);
   const maxC = Math.floor((x + r) / ASTEROID_FIELD_CELL);
   const minR = Math.floor((z - r) / ASTEROID_FIELD_CELL);
@@ -171,21 +204,28 @@ export function queryAsteroidField(state, pos, radius, out = []) {
       const dx = rec.pos.x - x;
       const dz = rec.pos.z - z;
       const reach = r + finite(rec.radius);
-      if (dx * dx + dz * dz <= reach * reach || dx * dx + dz * dz <= r2) out.push(rec);
+      // reach >= r always (rec.radius >= 0.5), so a second d2 <= r*r branch is dead.
+      if (dx * dx + dz * dz <= reach * reach) out.push(rec);
     }
   };
   const cellSpan = (maxC - minC + 1) * (maxR - minR + 1);
+  const batch = Number.isFinite(batchRows) ? Math.max(1, batchRows | 0) : Infinity;
   if (!Number.isSafeInteger(minC) || !Number.isSafeInteger(maxC)
       || !Number.isSafeInteger(minR) || !Number.isSafeInteger(maxR)
       || !Number.isFinite(cellSpan) || cellSpan > grid.size) {
     const keys = [];
+    let scanned = 0;
     for (const key of grid.keys()) {
       const cx = Math.floor(key / CELL_KEY_STRIDE) - CELL_KEY_OFFSET;
       const cz = (key % CELL_KEY_STRIDE) - CELL_KEY_OFFSET;
       if (cx >= minC && cx <= maxC && cz >= minR && cz <= maxR) keys.push(key);
+      if (++scanned % batch === 0) yield;
     }
     keys.sort((a, b) => a - b);
-    for (let i = 0; i < keys.length; i++) inspectBucket(grid.get(keys[i]));
+    for (let i = 0; i < keys.length; i++) {
+      inspectBucket(grid.get(keys[i]));
+      if ((i + 1) % batch === 0) yield;
+    }
     return out;
   }
   for (let cx = minC; cx <= maxC; cx++) {
@@ -194,6 +234,71 @@ export function queryAsteroidField(state, pos, radius, out = []) {
     for (let cz = minR; cz <= maxR; cz++) {
       inspectBucket(grid.get(rowBase + cz));
     }
+    yield;
+  }
+  return out;
+}
+
+// Nearest-first whole-field twin: emits every live unpromoted record exactly
+// once, bucketed outward from the player's cell by Chebyshev ring. The collect
+// is chunked (key scan + a yield every `batchRows` emitted records) so a
+// whole-field walk rides a slice clock; the O(R log R) distance sort it
+// replaces couldn't suspend. `maxRadius` stops emission once a ring's
+// minimum center distance exceeds it (+CELL slack covers centers anywhere
+// inside a boundary cell plus rec.radius reach — the margin over-selects,
+// never under). Ordering is nearest-first by cell — the field's own radius
+// queries already accept mint-cell imprecision for drifted rocks, and the
+// caller's promote contract is coverage over the key space with proximity
+// preference only.
+export function* queryAsteroidFieldNearestSteps(state, pos, out = [], batchRows = 1024,
+    maxRadius = Infinity) {
+  out.length = 0;
+  const field = state && state.world && state.world.asteroidField;
+  if (!field || !pos) return out;
+  const grid = field.grid;
+  if (!grid || grid.size === 0) return out;
+  const x = finite(pos.x);
+  const z = finite(pos.z);
+  const px = Math.floor(x / ASTEROID_FIELD_CELL);
+  const pz = Math.floor(z / ASTEROID_FIELD_CELL);
+  const batch = Number.isFinite(batchRows) ? Math.max(1, batchRows | 0) : Infinity;
+  const radiusCap = Number.isFinite(maxRadius) ? finite(maxRadius) : Infinity;
+  const rings = new Map();
+  let scanned = 0;
+  for (const key of grid.keys()) {
+    const cx = Math.floor(key / CELL_KEY_STRIDE) - CELL_KEY_OFFSET;
+    const cz = (key % CELL_KEY_STRIDE) - CELL_KEY_OFFSET;
+    const ring = Math.max(Math.abs(cx - px), Math.abs(cz - pz));
+    let keys = rings.get(ring);
+    if (!keys) { keys = []; rings.set(ring, keys); }
+    keys.push(key);
+    if (++scanned % batch === 0) yield;
+  }
+  const order = [...rings.keys()].sort((a, b) => a - b);
+  let emitted = 0;
+  for (let i = 0; i < order.length; i++) {
+    const ring = order[i];
+    // Ring k's records sit at least (k-1)*CELL away — a record can only be
+    // in-radius while (k-1)*CELL <= radiusCap + rec.radius <= radiusCap + CELL.
+    if (radiusCap !== Infinity && (ring - 1) * ASTEROID_FIELD_CELL > radiusCap + ASTEROID_FIELD_CELL) break;
+    for (const key of rings.get(ring)) {
+      const bucket = grid.get(key);
+      if (!bucket) continue;
+      for (const rec of bucket) {
+        if (!rec || rec.alive === false || rec.liveEntityId != null || !rec.pos) continue;
+        out.push(rec);
+        if (++emitted % batch === 0) yield;
+      }
+    }
+    yield;
+  }
+  return out;
+}
+
+export function queryAsteroidField(state, pos, radius, out = []) {
+  const iterator = queryAsteroidFieldSteps(state, pos, radius, out, Infinity);
+  for (;;) {
+    if (iterator.next().done) break;
   }
   return out;
 }
@@ -225,12 +330,13 @@ export function dropAsteroidFieldSector(state, sectorId) {
   return dropped;
 }
 
-function catchUpFieldRock(rec, simTime, field = null) {
+function catchUpFieldRock(field, rec, simTime) {
   if (!rec) return rec;
   const toT = Number.isFinite(simTime) ? simTime : 0;
   const fromT = Number.isFinite(rec.lastExactT) ? rec.lastExactT : toT;
   if (!(toT > fromT)) {
     rec.lastExactT = toT;
+    noteFieldRockMotion(field, rec);
     markAuxRowDirty(field, rec.id);
     return rec;
   }
@@ -250,6 +356,9 @@ function catchUpFieldRock(rec, simTime, field = null) {
     rec.angVel = finite(advanced.angVel, rec.angVel);
   }
   rec.lastExactT = toT;
+  if (field && field.dirtyPoseIds instanceof Set) field.dirtyPoseIds.add(rec.id);
+  noteFieldRockMotion(field, rec);
+  if (field && Number.isFinite(field.version)) field.version++;
   markAuxRowDirty(field, rec.id);
   return rec;
 }
@@ -314,7 +423,7 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
     : null;
   if (!spawn) return null;
   const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
-  catchUpFieldRock(rec, simTime, state.world && state.world.asteroidField);
+  catchUpFieldRock(ensureAsteroidField(state), rec, simTime);
   const data = rec.data && typeof rec.data === 'object' ? { ...rec.data } : {};
   delete data.fieldResident;
   const optic = isOpticRockData(data);
@@ -374,10 +483,16 @@ export function demoteOpticAsteroidToField(state, entity, helpers, reason = 'opt
     data: entity.data && typeof entity.data === 'object' ? { ...entity.data } : {},
   };
   const remove = helpers && typeof helpers.removeEntity === 'function' ? helpers.removeEntity : null;
+  // The demote removes before the field row claims the id, so the removal path sees a
+  // recyclable id and drops the player's lock — re-arm it on the row that still resolves
+  // (the reserved claim needs the body gone first, so a reorder cannot fix this).
+  const wasTargeted = !!(state.player && state.player.targetId === id);
   if (remove) remove(id, { immediate: true, reason: String(reason || 'optic-shelve') });
   else entity.alive = false;
   snapshot.data.opticShelveReason = String(reason || 'optic-shelve');
-  return insertAsteroidFieldRock(state, snapshot);
+  const row = insertAsteroidFieldRock(state, snapshot);
+  if (wasTargeted && row && row.id === id) state.player.targetId = id;
+  return row;
 }
 
 function opticTableRadii(state, player) {
@@ -399,6 +514,14 @@ export function getOpticFarQuietLatchForBench() {
 
 /** Membership / field-version rescan while latched (0.5 s @ 60 Hz). */
 const OPTIC_FAR_QUIET_RESCAN_TICKS = 30;
+// Per-tick promote/demote budgets: crossing a dense optic pocket used to run
+// every in-disc promote (catchUp + ship-scan + spawnEntity + ~24-listener
+// entity:spawned fan + Rapier mint) inside ONE sim step — the same burst class
+// the first-flight cook paces 4-per-yield and far-actors gate on
+// budget.request. Deferred records stay field-resident (identical sim reads)
+// until their tick — indistinguishable from slightly-later boundary entry.
+const OPTIC_PROMOTE_PER_TICK = 4;
+const OPTIC_DEMOTE_PER_TICK = 4;
 
 function entityIndexVersion(state) {
   const index = state && state.entityIndex;
@@ -476,6 +599,10 @@ export function tickOpticFieldRocks(state, helpers) {
     const dz = rec.pos.z - pz;
     if (dx * dx + dz * dz > radii.enter2) continue;
     opticInterest = true;
+    // Past the per-tick budget the record stays field-resident — it simulates
+    // identically and promotes on a later tick instead of stacking spawn
+    // transactions inside this one.
+    if (promoted >= OPTIC_PROMOTE_PER_TICK) continue;
     const ent = promoteAsteroidFieldRock(state, rec.id, helpers, 'optic-approach');
     if (ent) promoted += 1;
   }
@@ -492,6 +619,9 @@ export function tickOpticFieldRocks(state, helpers) {
     const dx = entity.pos.x - px;
     const dz = entity.pos.z - pz;
     if (dx * dx + dz * dz <= radii.exit2) continue;
+    // Symmetric budget: a mass exit shelves N more bodies next tick rather
+    // than paying N removal fans inside this step.
+    if (shelved >= OPTIC_DEMOTE_PER_TICK) continue;
     if (demoteOpticAsteroidToField(state, entity, helpers, 'optic-exit')) shelved += 1;
   }
 

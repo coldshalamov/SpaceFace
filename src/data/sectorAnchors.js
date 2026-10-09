@@ -4,9 +4,11 @@
 
 import { FRONTIER_ANCHORS, FRONTIER_CORE_GATE_PATCHES } from './frontierRegions/index.js';
 import { PQ019_FACILITY_ANCHORS } from './heistFacilities.js';
+import { BOLUS_ANCHORS } from './theBolus.js';
 
 const GATE_R = 0.82;
 
+export const CERES_SECOND_MEASURE_LOCAL_POS = Object.freeze({ x: -500, z: 1600 });
 export const CERES_WRECK_CATHEDRAL_LOCAL_POS = Object.freeze({ x: 300, z: 2700 });
 export const CERES_THROUGHLINE_BEACON_LOCAL_POS = Object.freeze({ x: 3040, z: -920 });
 
@@ -84,8 +86,13 @@ const CORE_SECTOR_ANCHORS = {
         position: CERES_THROUGHLINE_BEACON_LOCAL_POS,
         landmarkGlb: 'place_lane_beacon',
         landmark: true,
+        // PQ-020 transit no-presence contract: this route pin stays a non-colliding marker
+        // even though it is a landmark draw (world must not grow a keep-out wall mid-lane).
+        collides: false,
       },
       { id: 'world_site_wreck_cathedral', pos: CERES_WRECK_CATHEDRAL_LOCAL_POS, landmark: true },
+      { id: 'world_site_ceres_second_measure', pos: CERES_SECOND_MEASURE_LOCAL_POS, landmark: true,
+        visualRadius: 210, dressingExclusionRadius: 740 },
     ],
   },
   sector_tethys_junction: {
@@ -112,6 +119,7 @@ const CORE_SECTOR_ANCHORS = {
   sector_vesta_forge: {
     stations: [
       { id: 'station_forge', pos: { x: -480, z: 720 }, archetypeGlb: 'place_station_fab', landmark: true },
+      { id: 'station_vesta_outlying_yard', pos: { x: -820, z: 280 }, archetypeGlb: 'place_station_fab' },
       { id: 'station_depot3', pos: { x: 1120, z: -560 }, archetypeGlb: 'place_station_mining' },
     ],
     gates: [
@@ -260,6 +268,7 @@ export const SECTOR_ANCHORS = {
       : anchor];
   })),
   ...FRONTIER_ANCHORS,
+  ...BOLUS_ANCHORS,
 };
 
 /** Merge anchor overlays into a sector definition (pure data). */

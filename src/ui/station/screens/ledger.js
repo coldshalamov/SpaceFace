@@ -35,7 +35,7 @@ import {
 
 const STYLE_ID = 'sf-station-ledger-fh';
 const LOSS_TYPES = new Set(['loss', 'scar', 'patch']);
-const GAIN_TYPES = new Set(['trade', 'renown', 'title', 'name']);
+const GAIN_TYPES = new Set(['trade', 'renown', 'title', 'name', 'salvage']);
 
 function ensureLedgerStyle() {
   ensureInteriorStyle();
@@ -95,6 +95,18 @@ export function readingOf(entry) {
       return { hero: '', unit: '', title: str(t.title), kicker: kick(type, cycle) };
     case 'name':
       return { hero: '', unit: '', title: str(t.name), kicker: kick(type, cycle) };
+    case 'salvage': {
+      // FB-014 — a stunt-minted right: the chit count is the hero, the act that minted (or
+      // redeemed) it is the title, and the kicker names the direction like trade does.
+      const redeemed = str(t.verbPast) === 'redeemed';
+      const rights = Number(t.rights);
+      return {
+        hero: Number.isFinite(rights) ? `${redeemed ? '' : '+'}${rights}` : str(t.rights),
+        unit: 'salvage chits',
+        title: str(t.trick),
+        kicker: kick(type, redeemed ? 'redeemed' : 'minted'),
+      };
+    }
     default: {
       const digits = cycleDigits(cycle);
       return { hero: digits, unit: 'cycle', title: '', kicker: kick(type) };

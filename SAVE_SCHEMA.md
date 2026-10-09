@@ -10,6 +10,13 @@ Current save version: `14`
 - `player`
 - `cargo`
 - `morrow`
+- `vesper`
+- `bracket`
+- `ravel`
+- `solstice`
+- `rubric`
+- `ruckus`
+- `ruud`
 - `salvage`
 - `survivorPod`
 - `economy`
@@ -18,7 +25,10 @@ Current save version: `14`
 - `world`
 - `entities`
 - `combat`
+- `physics`
 - `bombs`
+- `snares`
+- `charges`
 - `stunts`
 - `fields`
 - `missions`
@@ -38,6 +48,18 @@ Current save version: `14`
 - `nemesis`
 - `nemesisDeployment`
 - `enemyMind`
+- `latchNine`
+- `scissorwake`
+- `lastShift`
+- `redKite`
+- `sableVenn`
+- `ilexArk`
+- `kilnback`
+- `mothlight`
+- `palletJack`
+- `secondRinse`
+- `towlineTable`
+- `borrowedVoice`
 - `lossLedger`
 - `provenance`
 - `factionPresence`
@@ -53,6 +75,7 @@ Current save version: `14`
 - `tensionDirector`
 - `regionalEcology`
 - `stationServices`
+- `onboarding`
 - `encounterDirector`
 - `flight`
 - `nav`
@@ -124,6 +147,8 @@ Current save version: `14`
 | `$.automation.traders` | array | length 0 |
 | `$.bandRadio` | object | {} |
 | `$.bombs` | object | {} |
+| `$.borrowedVoice` | null | null |
+| `$.bracket` | object | {} |
 | `$.capitalBoss` | null | null |
 | `$.careerLadders` | object | {} |
 | `$.careerOrigins` | object | {} |
@@ -131,6 +156,7 @@ Current save version: `14`
 | `$.cargo.capMass` | number | 60 |
 | `$.cargo.capVolume` | number | 40 |
 | `$.cargo.items` | object | {} |
+| `$.charges` | null | null |
 | `$.chronicler` | object | {} |
 | `$.claims` | object | {} |
 | `$.claims.bodies` | array | length 0 |
@@ -146,6 +172,7 @@ Current save version: `14`
 | `$.combat.attachments.nextId` | number | 1 |
 | `$.combat.combatSchemaVersion` | number | 1 |
 | `$.combat.entities` | array | length 0 |
+| `$.combat.lastPlayerDefeat` | null | null |
 | `$.combat.schemaVersion` | number | 1 |
 | `$.combat.statusNextPendingSeq` | number | 1 |
 | `$.crafting` | object | {} |
@@ -155,6 +182,10 @@ Current save version: `14`
 | `$.encounterDirector` | object | {} |
 | `$.enemyMind` | null | null |
 | `$.entities` | object | {} |
+| `$.entities.ceresWorkfleetRefs` | array | length 0 |
+| `$.entities.freeIds` | array | length 0 |
+| `$.entities.nextEntityId` | number | 2 |
+| `$.entities.nextOccupantGeneration` | null | null |
 | `$.entities.persistent` | array | length 0 |
 | `$.entities.player` | object | {} |
 | `$.entities.player._isPlayer` | boolean | true |
@@ -205,6 +236,10 @@ Current save version: `14`
 | `$.flight.modeReason` | string | save |
 | `$.flight.previousMode` | string | manual |
 | `$.formations` | object | {} |
+| `$.ilexArk` | null | null |
+| `$.kilnback` | null | null |
+| `$.lastShift` | null | null |
+| `$.latchNine` | null | null |
 | `$.lawSecurity` | object | {} |
 | `$.livingPoiBehaviors` | object | {} |
 | `$.lossLedger` | object | {} |
@@ -237,6 +272,7 @@ Current save version: `14`
 | `$.missions.story.phase` | number | 1 |
 | `$.missions.story.seenComms` | object | {} |
 | `$.morrow` | object | {} |
+| `$.mothlight` | null | null |
 | `$.nav` | object | {} |
 | `$.nav.autopilot` | object | {} |
 | `$.nav.autopilot.active` | boolean | false |
@@ -251,6 +287,9 @@ Current save version: `14`
 | `$.nemesis` | null | null |
 | `$.nemesisDeployment` | null | null |
 | `$.npcJobs` | object | {} |
+| `$.onboarding` | null | null |
+| `$.palletJack` | null | null |
+| `$.physics` | null | null |
 | `$.player` | object | {} |
 | `$.player.activeShipIndex` | number | 0 |
 | `$.player.boostActive` | boolean | false |
@@ -299,6 +338,7 @@ Current save version: `14`
 | `$.player.miningBeam.dps` | number | 18 |
 | `$.player.miningBeam.range` | number | 220 |
 | `$.player.miningBeam.tierId` | string | beam_mk1 |
+| `$.player.miningTargetId` | null | null |
 | `$.player.moduleInventory` | array | length 0 |
 | `$.player.ownedShips` | array | length 1 |
 | `$.player.ownedShips[]` | object | {} |
@@ -318,8 +358,14 @@ Current save version: `14`
 | `$.player.stats.tradesCount` | number | 0 |
 | `$.player.targetId` | null | null |
 | `$.provenance` | object | {} |
+| `$.ravel` | object | {} |
 | `$.recoveryEncounters` | object | {} |
+| `$.redKite` | null | null |
 | `$.regionalEcology` | object | {} |
+| `$.rubric` | object | {} |
+| `$.ruckus` | object | {} |
+| `$.ruud` | object | {} |
+| `$.sableVenn` | null | null |
 | `$.salvage` | object | {} |
 | `$.scenario` | object | {} |
 | `$.scenario.active` | null | null |
@@ -328,6 +374,8 @@ Current save version: `14`
 | `$.scenario.facts` | object | {} |
 | `$.scenario.schemaVersion` | number | 1 |
 | `$.scenario.unresolvedActorIds` | array | length 0 |
+| `$.scissorwake` | null | null |
+| `$.secondRinse` | null | null |
 | `$.sectorSim` | object | {} |
 | `$.settings` | object | {} |
 | `$.settings.accessibility` | object | {} |
@@ -338,7 +386,9 @@ Current save version: `14`
 | `$.settings.accessibility.colorblindMode` | string | none |
 | `$.settings.accessibility.dyslexiaFont` | boolean | false |
 | `$.settings.accessibility.flashReduce` | boolean | false |
+| `$.settings.accessibility.haptics` | string | full |
 | `$.settings.accessibility.highContrast` | boolean | false |
+| `$.settings.accessibility.holdToToggle` | object | {} |
 | `$.settings.accessibility.motionAsked` | boolean | false |
 | `$.settings.accessibility.motionDefaultVersion` | number | 1 |
 | `$.settings.accessibility.motionPreference` | string | full |
@@ -360,12 +410,20 @@ Current save version: `14`
 | `$.settings.controls.bindings` | null | null |
 | `$.settings.controls.flightMode` | string | assisted |
 | `$.settings.controls.gamepad` | object | {} |
+| `$.settings.controls.gamepad.curve` | string | linear |
 | `$.settings.controls.gamepad.deadzone` | number | 0.12 |
+| `$.settings.controls.gamepad.deadzoneRight` | number | 0.12 |
 | `$.settings.controls.gamepad.enabled` | boolean | true |
+| `$.settings.controls.gamepad.glyphSet` | string | xb |
 | `$.settings.controls.gamepad.invertY` | boolean | false |
 | `$.settings.controls.gamepad.scheme` | string | drive |
 | `$.settings.controls.gamepad.schemeSuggested` | boolean | false |
+| `$.settings.controls.gamepad.sensitivityAim` | number | 1 |
+| `$.settings.controls.gamepad.sensitivityFly` | number | 1 |
 | `$.settings.controls.masslineBindingProfile` | string | space-v1 |
+| `$.settings.controls.mouse` | object | {} |
+| `$.settings.controls.mouse.invertY` | boolean | false |
+| `$.settings.controls.mouse.sensitivity` | number | 1 |
 | `$.settings.gameplay` | object | {} |
 | `$.settings.gameplay.aiBackend` | string | sg06-tactical |
 | `$.settings.gameplay.autosaveIntervalS` | number | 120 |
@@ -378,12 +436,14 @@ Current save version: `14`
 | `$.settings.gameplay.orbitAssistStrength` | string | standard |
 | `$.settings.gameplay.pauseOnFocusLoss` | boolean | true |
 | `$.settings.gameplay.physicsBackend` | string | rapier-dynamic |
+| `$.settings.gameplay.pursuitSlotAssist` | boolean | false |
 | `$.settings.gameplay.stuntMoments` | string | cinematic |
 | `$.settings.gameplay.targetAssistStrength` | string | full |
 | `$.settings.gameplay.tutorialHints` | boolean | true |
 | `$.settings.showDamageNumbers` | boolean | true |
 | `$.settings.uiScale` | number | 1 |
 | `$.settings.video` | object | {} |
+| `$.settings.video.arcadeEffects` | string | full |
 | `$.settings.video.bloom` | boolean | true |
 | `$.settings.video.bloomLevels` | number | 2 |
 | `$.settings.video.bloomStrength` | number | 0.52 |
@@ -410,14 +470,18 @@ Current save version: `14`
 | `$.settings.video.vsync` | boolean | true |
 | `$.signalInvestigation` | object | {} |
 | `$.sites` | object | {} |
+| `$.snares` | null | null |
+| `$.solstice` | object | {} |
 | `$.stationServices` | object | {} |
 | `$.stunts` | null | null |
 | `$.survivorPod` | object | {} |
 | `$.tensionDirector` | null | null |
+| `$.towlineTable` | null | null |
 | `$.traffic` | object | {} |
 | `$.uiScreenMemory` | object | {} |
 | `$.uiScreenMemory.bags` | object | {} |
 | `$.uiScreenMemory.v` | number | 1 |
 | `$.uiWatchlist` | array | length 0 |
 | `$.v2Flavor` | object | {} |
+| `$.vesper` | object | {} |
 | `$.world` | object | {} |

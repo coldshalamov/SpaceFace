@@ -37,18 +37,18 @@ function injectStyle() {
   --orr-mute:var(--dp-ink-mute, #8f8c80);
   --orr-hand:var(--dp-hand, var(--dp-lamp, #f2b950));
   --orr-danger:var(--dp-danger, #ff5038);
-  --dp-glass:rgb(22 29 40 / .66);
+  --dp-glass:rgb(26 35 48 / .82);
   background:
-    linear-gradient(to bottom, rgb(var(--orr-bone) / .07), rgb(var(--orr-bone) / 0) 24%),
+    linear-gradient(to bottom, rgb(var(--orr-bone) / .09), rgb(var(--orr-bone) / 0) 24%),
     var(--dp-glass);
   -webkit-backdrop-filter:blur(18px) saturate(1.15);
   backdrop-filter:blur(18px) saturate(1.15);
   border:0; border-radius:0; box-shadow:none;
   padding:0; min-width:0; max-width:min(94vw, 1120px);
   overflow:hidden; isolation:isolate; z-index:101;
-  -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%), linear-gradient(to right, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+  -webkit-mask-image:linear-gradient(to bottom, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%), linear-gradient(to right, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%);
   -webkit-mask-composite:source-in;
-  mask-image:linear-gradient(to bottom, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%), linear-gradient(to right, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%);
+  mask-image:linear-gradient(to bottom, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%), linear-gradient(to right, rgb(0 0 0 / .65) 0, #000 16px, #000 calc(100% - 16px), rgb(0 0 0 / .65) 100%);
   mask-composite:intersect;
 }
 #screens .screen.sf-menu.orr-base.orr-base.is-empty {
@@ -106,7 +106,12 @@ html.sf-reduce-motion #screens .screen.sf-menu.orr-base.orr-base.is-claimed { an
   font-size:14px; line-height:1.45; color:var(--orr-ink); margin:0; padding:0;
 }
 #screens .orr-base #sf-base .base-sub + .base-sub { color:var(--orr-dim); }
-#screens .orr-base #sf-base .base-foot { display:flex; align-items:center; gap:20px; justify-content:flex-end; margin:24px 0 0; padding:0; }
+/* The foot (chart key, Close, Dispatch) stands at the plate's bottom edge whenever the plate scrolls, on a
+   fade in the glass tone: the way out is never scrolled away, and the fade says there is more above it.
+   The offsets mirror #sf-base's own padding (52px 56px 48px; 28px 40px 24px on short screens). */
+#screens .orr-base #sf-base .base-foot { display:flex; align-items:center; gap:20px; justify-content:flex-end;
+  margin:24px -56px -48px; padding:28px 56px 48px; position:sticky; bottom:-48px; z-index:3;
+  background:linear-gradient(to top, rgb(26 35 48 / .995) 0, rgb(26 35 48 / .995) 90%, rgb(26 35 48 / 0) 100%); }
 #screens .orr-base #sf-base .base-foot .orr-base__chartkey { margin-right:auto; }
 #screens .orr-base #sf-base .orr-base__esc, #screens .orr-base #sf-base .orr-base__key {
   display:inline-flex; align-items:center; justify-content:center;
@@ -115,7 +120,7 @@ html.sf-reduce-motion #screens .screen.sf-menu.orr-base.orr-base.is-claimed { an
   clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
   font-family:"Archivo", "Instrument Sans", system-ui, sans-serif;
   font-size:12px; font-weight:600; letter-spacing:.12em; text-transform:uppercase;
-  color:rgb(var(--orr-bone) / .8); white-space:nowrap;
+  color:rgb(var(--orr-bone) / .95); white-space:nowrap;
 }
 #screens .orr-base #sf-base .orr-base__esc::before, #screens .orr-base #sf-base .orr-base__key::before { display:none; }
 #screens .orr-base #sf-base .k-word.orr-base__chip:disabled {
@@ -472,7 +477,7 @@ html.sf-reduce-motion #screens .orr-base #sf-base .orr-base__cand::after { trans
   #screens .orr-base #sf-base .base-ledger-heronum { font-size:64px; }
   #screens .orr-base #sf-base .base-ledger-grid { gap:8px 16px; }
   #screens .orr-base #sf-base .base-ledger-v { font-size:14px; margin:2px 0 0; }
-  #screens .orr-base #sf-base .base-foot { margin:12px 0 0; }
+  #screens .orr-base #sf-base .base-foot { margin:12px -40px -24px; padding:22px 40px 24px; bottom:-24px; }
   #screens .orr-base #sf-base .orr-base__moon { width:min(240px, 34%); top:10px; right:12px; }
 }
   `;
@@ -841,6 +846,7 @@ function mountBaseLattice(rootEl) {
       }
     };
     repaint();
+    rootEl._orrBaseRepaint = repaint;
     try {
       if (rootEl._orrBaseRO) rootEl._orrBaseRO.disconnect();
     } catch (_) {
@@ -1119,6 +1125,10 @@ export const baseScreen = {
         }
       });
     }
+    // The lattice is decor — data-independent, so it mounts once here (under the hidden
+    // warm, not the open frame) and _render() preserves it across its rebuild clears.
+    // Its ResizeObserver repaints when the screen first lays out.
+    mountBaseLattice(rootEl);
   },
 
   // Arm one survey tick without rebuilding the glass (keys, pointer, walk all land here).
@@ -1184,8 +1194,19 @@ export const baseScreen = {
 
     rootEl.classList.remove('is-claimed');
     rootEl.classList.add('is-empty');
-    rootEl.innerHTML = '';
-    mountBaseLattice(rootEl);
+    // Clear the rebuilt body but preserve the lattice canvas mounted at mount() — a full
+    // remount would re-create the canvas, repaint, and churn a ResizeObserver inside every
+    // open/commit frame for identical decor. The preserved canvas only needs a repaint at
+    // the now-laid-out size (its RO also covers later resizes).
+    const lattice = rootEl._orrBaseCanvas;
+    for (const node of Array.from(rootEl.childNodes)) {
+      if (node !== lattice) node.remove();
+    }
+    if (!lattice || lattice.parentNode !== rootEl) {
+      mountBaseLattice(rootEl);
+    } else if (typeof rootEl._orrBaseRepaint === 'function') {
+      rootEl._orrBaseRepaint();
+    }
     const wrap = document.createElement('div');
     wrap.id = 'sf-base';
 

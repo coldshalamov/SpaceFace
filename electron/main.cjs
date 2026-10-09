@@ -8,7 +8,7 @@
 // window creation, fixed-port-for-saves, packaged→bundle root selection.
 // `npm run check:launch-policy` enforces that both launchers share that module.
 const electron = require('electron');
-const { app, BrowserWindow, ipcMain, powerMonitor, dialog } = electron;
+const { app, BrowserWindow, ipcMain, powerMonitor, dialog, screen } = electron;
 const path = require('path');
 // Bytecode-cache the shell's own module graph under userData so launches after the first skip
 // recompiling the main-process modules below. Isolated evidence keeps its cache inside the
@@ -38,6 +38,13 @@ const {
   writePlayerStoreKeysSync,
 } = require('../scripts/lib/playerSaveStore.cjs');
 const { publicBuildInfo, resolveReleaseIdentity } = require('./releaseIdentity.cjs');
+const {
+  WINDOW_STATE_FILE,
+  readWindowStateFile,
+  sanitizeWindowState,
+  applyWindowMode,
+  writeWindowStateFile,
+} = require('./windowState.cjs');
 const { configureAutoUpdate } = require('./autoUpdate.cjs');
 const steamworks = require('./steamworks.cjs');
 const workshopMods = require('./workshopMods.cjs');
@@ -46,6 +53,12 @@ const workshopMods = require('./workshopMods.cjs');
 // the project root so `npm run electron` and `node server.js 8123` run the same source route even
 // when a stale build/web directory exists from an earlier package build.
 const PROJECT_ROOT = path.join(__dirname, '..');
+// The SpaceFace emblem (assets/brand): taskbar / window icon. Packaged builds embed the exe icon from the electron-builder
+// config; this covers the live window and the unpackaged run. Windows takes the multi-size ICO (it carries the
+// hand-tuned 16/24/32 px frames for the taskbar and title bar); other platforms take the 256 px PNG. A missing
+// file leaves Electron's default.
+const APP_ICON = path.join(PROJECT_ROOT, 'assets', 'brand', 'exports',
+  process.platform === 'win32' ? 'spaceface.ico' : 'spaceface-launcher-256.png');
 const BUNDLE_ROOT = path.join(PROJECT_ROOT, 'build', 'web');
 
 // SAVE PERSISTENCE: the port MUST be fixed. localStorage (where saveSystem.js persists) is keyed by
@@ -167,6 +180,33 @@ ipcMain.handle(SHELL_PERF_METRICS_CHANNEL, () => app.getAppMetrics().map((m) => 
   cpuPercent: m.cpu && Number.isFinite(m.cpu.percentCPUUsage) ? m.cpu.percentCPUUsage : 0,
   workingSetKiB: m.memory && Number.isFinite(m.memory.workingSetSize) ? m.memory.workingSetSize : 0,
 })));
+
+// FB-106: Settings asks the shell which mode this window is in. The answer is the
+// sender's window only. Isolated evidence never reaches this with a persisted file;
+// the launch fullscreen flag above is untouched.
+const SHELL_WINDOW_MODE_GET = 'spaceface:window-mode-get';
+const SHELL_WINDOW_MODE_SET = 'spaceface:window-mode-set';
+function senderWindow(event) {
+  const contents = event && event.sender;
+  if (!contents || typeof BrowserWindow.fromWebContents !== 'function') return null;
+  const win = BrowserWindow.fromWebContents(contents);
+  if (!win || (typeof win.isDestroyed === 'function' && win.isDestroyed())) return null;
+  return win;
+}
+ipcMain.handle(SHELL_WINDOW_MODE_GET, (event) => {
+  const win = senderWindow(event);
+  if (!win) return { ok: false, reason: 'no-window' };
+  const mode = win.isFullScreen() ? 'fullscreen' : win.isMaximized() ? 'maximized' : 'windowed';
+  return { ok: true, mode };
+});
+ipcMain.handle(SHELL_WINDOW_MODE_SET, (event, payload) => {
+  const win = senderWindow(event);
+  const mode = applyWindowMode(win, payload && payload.mode);
+  if (!mode) return { ok: false, reason: 'bad-mode' };
+  // Native fullscreen transitions settle asynchronously; report the accepted request.
+  // Subsequent getWindowMode reads the native state after the transition.
+  return { ok: true, mode };
+});
 
 // PQ-033.03 Steam: the optional steamworks.js binding (absent unless a Steam build adds it) behind two
 // allowlisted channels. Unlock requests carry only a known achievement id; status is the public view.
@@ -661,16 +701,88 @@ function readAppPath(name) {
   catch { return null; }
 }
 
+// ── FB-106: the desktop shell remembers its window ────────────────────────────────────────────
+// One window-state.json under userData: bounds + mode, written on resize/move/mode changes
+// (debounced) and flushed on close. Restored on the next create and validated against the
+// CURRENT displays, so a monitor that went away can never strand the window off-screen.
+// Isolated evidence keeps its launch contract: a throwaway profile, no persistence, and the
+// default fullscreen exactly as before — the launch must not change shape because a probe ran.
+const WINDOW_STATE_SAVE_DEBOUNCE_MS = 600;
+
+function collectDisplayAreas() {
+  try {
+    if (typeof screen.getAllDisplays !== 'function') return [];
+    return screen.getAllDisplays().map((display) => ({
+      bounds: display && display.bounds,
+      workArea: display && display.workArea,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+function captureWindowState(win) {
+  if (!win || win.isDestroyed()) return null;
+  try {
+    const bounds = typeof win.getNormalBounds === 'function' ? win.getNormalBounds() : win.getBounds();
+    const mode = win.isFullScreen() ? 'fullscreen' : win.isMaximized() ? 'maximized' : 'windowed';
+    return {
+      x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height,
+      mode,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function bindWindowStatePersistence(win, windowStatePath) {
+  if (!windowStatePath) return;
+  let saveTimer = null;
+  const flush = () => {
+    if (saveTimer !== null) {
+      try { clearTimeout(saveTimer); } catch { /* ignore */ }
+      saveTimer = null;
+    }
+    // A minimized window's bounds are meaningless; keep the last good ones.
+    if (win.isDestroyed() || win.isMinimized()) return;
+    const state = captureWindowState(win);
+    if (state) writeWindowStateFile(windowStatePath, state);
+  };
+  const schedule = () => {
+    if (saveTimer !== null) return;
+    saveTimer = setTimeout(() => { saveTimer = null; flush(); }, WINDOW_STATE_SAVE_DEBOUNCE_MS);
+    if (saveTimer && typeof saveTimer.unref === 'function') saveTimer.unref();
+  };
+  for (const eventName of ['resize', 'move', 'maximize', 'unmaximize', 'enter-full-screen', 'leave-full-screen']) {
+    win.on(eventName, schedule);
+  }
+  win.on('close', flush);
+}
+
 async function createWindow() {
   installPowerLifecycleListeners();
   // macOS keeps the application process alive after the last window closes. Reuse the one
   // process-owned fixed-origin listener when Dock activation creates a replacement window; a
   // second bind would collide with our own server and strand the player without a window.
   const port = await ensureGameServerPort();
+  // FB-106: restore the remembered window before the renderer loads. Isolated evidence keeps
+  // its throwaway profile and never persists; its fullscreen launch contract is unchanged.
+  const windowStatePath = launchConfig.isolatedEvidence
+    ? null
+    : path.join(app.getPath('userData'), WINDOW_STATE_FILE);
+  const rememberedWindow = windowStatePath
+    ? sanitizeWindowState(readWindowStateFile(windowStatePath), collectDisplayAreas())
+    : null;
   const win = new BrowserWindow({
-    width: 1480, height: 920, minWidth: 1024, minHeight: 640,
-    backgroundColor: '#05070d', title: 'SpaceFace', show: false,
-    fullscreen: !launchConfig.isolatedEvidence,
+    width: rememberedWindow ? rememberedWindow.width : 1480,
+    height: rememberedWindow ? rememberedWindow.height : 920,
+    x: rememberedWindow && rememberedWindow.mode === 'windowed' ? rememberedWindow.x : undefined,
+    y: rememberedWindow && rememberedWindow.mode === 'windowed' ? rememberedWindow.y : undefined,
+    minWidth: 1024, minHeight: 640,
+    backgroundColor: '#05070d', title: 'SpaceFace', show: false, icon: APP_ICON,
+    fullscreen: rememberedWindow
+      ? rememberedWindow.mode === 'fullscreen'
+      : !launchConfig.isolatedEvidence,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -690,6 +802,9 @@ async function createWindow() {
     },
   });
   const gameUrl = `http://127.0.0.1:${port}/`;
+  // FB-106: a remembered maximized shell comes back maximized; fullscreen already applied above.
+  if (rememberedWindow && rememberedWindow.mode === 'maximized') win.maximize();
+  bindWindowStatePersistence(win, windowStatePath);
   let canonicalLoadCommitted = false;
   let initialCanonicalLoadPending = false;
   installWindowSecurity(win, gameUrl);
@@ -814,6 +929,12 @@ async function runPlayerStoreMigration() {
     if (!win.isDestroyed()) win.destroy();
     app.quit();
   }
+}
+
+// Windows taskbar identity: same id as package.json build.appId, so the taskbar button, pinned shortcut and
+// Alt-Tab entry all resolve to the SpaceFace icon instead of the host Electron's. No-op off Windows.
+if (process.platform === 'win32' && typeof app.setAppUserModelId === 'function') {
+  app.setAppUserModelId('com.spaceface.game');
 }
 
 // Single-instance lock: a second launch focuses the existing window instead of starting a rival

@@ -2778,7 +2778,7 @@
       "priority": "P1",
       "file": "places/place_conveyor_barge.glb",
       "tris": 12232,
-      "bytes": 1013152,
+      "bytes": 1015148,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2806,6 +2806,15 @@
       },
       "hooks": [],
       "sockets": [
+        "SOCKET_Barge_Bridge",
+        "SOCKET_Container_Aft",
+        "SOCKET_Container_Fore",
+        "SOCKET_Container_Mid",
+        "SOCKET_Drive_Plume",
+        "SOCKET_Emissive",
+        "SOCKET_Status_Port",
+        "SOCKET_Status_Starboard",
+        "SOCKET_Structure_Core",
         "SOCKET_Trail_Main"
       ],
       "mount": "origin",
@@ -6979,7 +6988,7 @@
       "status": "integration_candidate",
       "wiringStatus": "live_player_hornet",
       "tris": 16076,
-      "bytes": 1167784,
+      "bytes": 1167952,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6995,16 +7004,17 @@
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
-        "SOCKET_Engine_Main",
+        "SOCKET_Engine_Port",
+        "SOCKET_Engine_Starboard",
         "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
-        "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Weapon_Front"
+        "SOCKET_Weapon_Port",
+        "SOCKET_Weapon_Starboard"
       ],
       "mount": "origin",
       "bounds": {
@@ -8017,6 +8027,67 @@
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Survey Pin, live traffic role surveyor; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (4104/666/284 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
     },
     {
+      "id": "wholeship_ship_stormshift_collector_v01",
+      "category": "wholeships",
+      "priority": "P2",
+      "file": "wholeships/ship_stormshift_collector_v01.glb",
+      "tris": 33094,
+      "bytes": 2319116,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "mount": "origin",
+      "note": "PR-209 Stormshift salvage collector (tools/blender/forge/ships/stormshift_collector.py): low storm jaws, folding ceramic radiator fans, exposed canister saddles; transit stow narrows the silhouette.",
+      "bounds": {
+        "min": [
+          -9.195877075195312,
+          -0.800000011920929,
+          -8.740227699279785
+        ],
+        "max": [
+          8.895713806152344,
+          2.047304153442383,
+          8.740845680236816
+        ],
+        "dimensionsM": [
+          18.091590881347656,
+          2.8473041653633118,
+          17.4810733795166
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Collector",
+        "SOCKET_Engine_Main",
+        "SOCKET_Load_0",
+        "SOCKET_Load_1",
+        "SOCKET_Load_2",
+        "SOCKET_Load_3",
+        "SOCKET_Mining_Front",
+        "SOCKET_Nozzle_Port",
+        "SOCKET_Nozzle_Starboard",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Transfer",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ]
+    },
+    {
       "id": "wholeship_volatiles_tanker",
       "category": "wholeships",
       "priority": "P2",
@@ -8363,7 +8434,7 @@
       "priority": "P1",
       "file": "wholeships/hornet_scn_interdictor.glb",
       "tris": 23197,
-      "bytes": 1584748,
+      "bytes": 1584780,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -8379,16 +8450,17 @@
       "sockets": [
         "SOCKET_Camera_Focus",
         "SOCKET_Cargo_Ventral",
-        "SOCKET_Engine_Main",
+        "SOCKET_Engine_Port",
+        "SOCKET_Engine_Starboard",
         "SOCKET_Mining_Front",
         "SOCKET_RCS_Port",
         "SOCKET_RCS_Starboard",
         "SOCKET_Tether_Massline",
-        "SOCKET_Trail_Main",
         "SOCKET_Trail_Port",
         "SOCKET_Trail_Starboard",
         "SOCKET_Utility_Dorsal",
-        "SOCKET_Weapon_Front"
+        "SOCKET_Weapon_Port",
+        "SOCKET_Weapon_Starboard"
       ],
       "mount": "origin",
       "bounds": {
@@ -8988,6 +9060,492 @@
         ]
       },
       "triangleMetric": "lod0"
+    },
+    {
+      "id": "place_ceres_second_measure",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_ceres_second_measure.glb",
+      "textureSize": 1024,
+      "mount": "origin",
+      "tris": 138628,
+      "bytes": 8031740,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Section_Crossbeam",
+        "SOCKET_Section_Keel",
+        "SOCKET_Section_LongPlate",
+        "SOCKET_Structure_Core",
+        "SOCKET_Support_A",
+        "SOCKET_Support_B",
+        "SOCKET_Support_C"
+      ],
+      "triangleMetric": "all",
+      "note": "P03 Second Measure matched structural shipbreak. Source origin, two through-passages and independent keel mouth. Runtime collision is world-site owned.",
+      "bounds": {
+        "min": [
+          -90,
+          -12.199999809265137,
+          -33.82500076293945
+        ],
+        "max": [
+          90,
+          14,
+          49.5
+        ],
+        "dimensionsM": [
+          180,
+          26.199999809265137,
+          83.32500076293945
+        ]
+      }
+    },
+    {
+      "id": "place_ceres_second_measure_long_plate",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_ceres_second_measure_long_plate.glb",
+      "textureSize": 1024,
+      "mount": "origin",
+      "tris": 13770,
+      "bytes": 1006192,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Cut_A",
+        "SOCKET_Cut_B",
+        "SOCKET_Recovery",
+        "SOCKET_Tow"
+      ],
+      "triangleMetric": "all",
+      "note": "P03 Second Measure matched structural shipbreak. Source origin, two through-passages and independent keel mouth. Runtime collision is world-site owned.",
+      "bounds": {
+        "min": [
+          -17,
+          -2.5,
+          -27.5
+        ],
+        "max": [
+          17,
+          2.5,
+          27.5
+        ],
+        "dimensionsM": [
+          34,
+          5,
+          55
+        ]
+      }
+    },
+    {
+      "id": "place_ceres_second_measure_crossbeam",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_ceres_second_measure_crossbeam.glb",
+      "textureSize": 1024,
+      "mount": "origin",
+      "tris": 11692,
+      "bytes": 887356,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Cut_A",
+        "SOCKET_Cut_B",
+        "SOCKET_Recovery",
+        "SOCKET_Tow"
+      ],
+      "triangleMetric": "all",
+      "note": "P03 Second Measure matched structural shipbreak. Source origin, two through-passages and independent keel mouth. Runtime collision is world-site owned.",
+      "bounds": {
+        "min": [
+          -17,
+          -3,
+          -27.5
+        ],
+        "max": [
+          17,
+          3,
+          27.5
+        ],
+        "dimensionsM": [
+          34,
+          6,
+          55
+        ]
+      }
+    },
+    {
+      "id": "place_ceres_second_measure_keel",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_ceres_second_measure_keel.glb",
+      "textureSize": 1024,
+      "mount": "origin",
+      "tris": 4750,
+      "bytes": 500848,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Cut_A",
+        "SOCKET_Cut_B",
+        "SOCKET_Recovery",
+        "SOCKET_Tow"
+      ],
+      "triangleMetric": "all",
+      "note": "P03 Second Measure matched structural shipbreak. Source origin, two through-passages and independent keel mouth. Runtime collision is world-site owned.",
+      "bounds": {
+        "min": [
+          -17.5,
+          -3,
+          -5
+        ],
+        "max": [
+          17.5,
+          3,
+          5
+        ],
+        "dimensionsM": [
+          35,
+          6,
+          10
+        ]
+      }
+    },
+    {
+      "id": "wholeship_ceres_breaker",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/ceres_breaker.glb",
+      "tris": 44846,
+      "bytes": 4606960,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "note": "Original Ceres open-gantry breaker. Authored source origin at 2 WU/metre, physical passive stops, native swept shoe articulation and explicit compound load well.",
+      "hooks": [
+        "LOD0_HOOK_CERES_THRUSTER_MAIN_PORT_OUTER_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_MAIN_PORT_OUTER_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_MAIN_PORT_OUTER_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_MAIN_PORT_INNER_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_MAIN_PORT_INNER_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_MAIN_PORT_INNER_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_MAIN_STARBOARD_INNER_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_MAIN_STARBOARD_INNER_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_MAIN_STARBOARD_INNER_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_MAIN_STARBOARD_OUTER_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_MAIN_STARBOARD_OUTER_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_MAIN_STARBOARD_OUTER_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RETRO_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RETRO_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RETRO_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RETRO_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RETRO_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RETRO_STARBOARD_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RCS_BOW_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RCS_BOW_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RCS_BOW_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RCS_BOW_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RCS_BOW_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RCS_BOW_STARBOARD_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RCS_STERN_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RCS_STERN_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RCS_STERN_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RCS_STERN_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RCS_STERN_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RCS_STERN_STARBOARD_glow_drive"
+      ],
+      "sockets": [
+        "SOCKET_Bridle_Port",
+        "SOCKET_Bridle_Starboard",
+        "SOCKET_CERES_THRUSTER_MAIN_PORT_INNER",
+        "SOCKET_CERES_THRUSTER_MAIN_PORT_OUTER",
+        "SOCKET_CERES_THRUSTER_MAIN_STARBOARD_INNER",
+        "SOCKET_CERES_THRUSTER_MAIN_STARBOARD_OUTER",
+        "SOCKET_CERES_THRUSTER_RCS_BOW_PORT",
+        "SOCKET_CERES_THRUSTER_RCS_BOW_STARBOARD",
+        "SOCKET_CERES_THRUSTER_RCS_STERN_PORT",
+        "SOCKET_CERES_THRUSTER_RCS_STERN_STARBOARD",
+        "SOCKET_CERES_THRUSTER_RETRO_PORT",
+        "SOCKET_CERES_THRUSTER_RETRO_STARBOARD",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cutter_Dock",
+        "SOCKET_Engine_Main",
+        "SOCKET_Load_Center",
+        "SOCKET_Shoe_Port",
+        "SOCKET_Shoe_Starboard",
+        "SOCKET_Tether_Massline"
+      ],
+      "mount": "origin",
+      "triangleMetric": "lod0",
+      "bounds": {
+        "min": [
+          -45,
+          -6,
+          -31
+        ],
+        "max": [
+          45,
+          11,
+          31
+        ],
+        "dimensionsM": [
+          90,
+          17,
+          62
+        ]
+      }
+    },
+    {
+      "id": "place_ceres_section_cradle",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_ceres_section_cradle.glb",
+      "tris": 29456,
+      "bytes": 3127044,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical"
+      },
+      "note": "Original Ceres open sectional receiver. Authored source origin at 2 WU/metre, native retention pads and explicit compound receiving void.",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Section_Receiver",
+        "SOCKET_Service_Head",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "triangleMetric": "lod0",
+      "bounds": {
+        "min": [
+          -42.5,
+          -5,
+          -37.5
+        ],
+        "max": [
+          42.5,
+          10,
+          37.5
+        ],
+        "dimensionsM": [
+          85,
+          15,
+          75
+        ]
+      }
+    },
+    {
+      "id": "place_ceres_breaker_cutter_head",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_ceres_breaker_cutter_head.glb",
+      "tris": 7424,
+      "bytes": 979980,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "thruster": "Material_Thruster"
+      },
+      "note": "Original detachable Ceres cutter head. Authored source origin at 2 WU/metre, aligned cut and mounting sockets and explicit compound solids.",
+      "hooks": [
+        "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive"
+      ],
+      "sockets": [
+        "SOCKET_CERES_THRUSTER_AXIAL_AFT_PORT",
+        "SOCKET_CERES_THRUSTER_AXIAL_AFT_STARBOARD",
+        "SOCKET_CERES_THRUSTER_AXIAL_FORE_PORT",
+        "SOCKET_CERES_THRUSTER_AXIAL_FORE_STARBOARD",
+        "SOCKET_CERES_THRUSTER_LATERAL_PORT",
+        "SOCKET_CERES_THRUSTER_LATERAL_STARBOARD",
+        "SOCKET_Cut",
+        "SOCKET_Mount"
+      ],
+      "mount": "origin",
+      "triangleMetric": "lod0",
+      "bounds": {
+        "min": [
+          -4,
+          -2,
+          -3
+        ],
+        "max": [
+          4,
+          2,
+          3
+        ],
+        "dimensionsM": [
+          8,
+          4,
+          6
+        ]
+      }
+    },
+    {
+      "id": "place_latch_nine",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_latch_nine.glb",
+      "tris": 24040,
+      "bytes": 2392052,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "mechanical": "Material_Mechanical",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_LATCH_MAIN_PORT",
+        "SOCKET_LATCH_MAIN_STBD",
+        "SOCKET_LATCH_PORT_AFT",
+        "SOCKET_LATCH_PORT_FORE",
+        "SOCKET_LATCH_REVERSE_PORT",
+        "SOCKET_LATCH_REVERSE_STBD",
+        "SOCKET_LATCH_STBD_AFT",
+        "SOCKET_LATCH_STBD_FORE"
+      ],
+      "mount": "origin",
+      "triangleMetric": "lod0",
+      "note": "NEW editable Forge Latch Nine signal tender; source-origin1WU/metre,27 fixed structural slabs and3 native swept paddles; eight physically witnessed thruster channels; art admission tracked separately.",
+      "bounds": {
+        "min": [
+          -10.10045337677002,
+          -0.800000011920929,
+          -5.502060413360596
+        ],
+        "max": [
+          8.199999809265137,
+          2.119999885559082,
+          8.149999618530273
+        ],
+        "dimensionsM": [
+          18.300453186035156,
+          2.919999897480011,
+          13.65206003189087
+        ]
+      }
+    },
+    {
+      "id": "place_pip_spanner",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_pip_spanner.glb",
+      "tris": 16920,
+      "bytes": 1141468,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "mechanical": "Material_Mechanical"
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "triangleMetric": "lod0",
+      "note": "Forge Pip and Spanner: six independent rigid groups for receipt-driven armory presentation. UI only; no world body or collision.",
+      "bounds": {
+        "min": [
+          -10.885000228881836,
+          -0.699999988079071,
+          -5.695106506347656
+        ],
+        "max": [
+          7.0965094566345215,
+          3.2939066886901855,
+          4.510000228881836
+        ],
+        "dimensionsM": [
+          17.981509685516357,
+          3.9939066767692566,
+          10.205106735229492
+        ]
+      }
+    },
+    {
+      "id": "place_tally_three",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_tally_three.glb",
+      "tris": 16242,
+      "bytes": 1836148,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "mechanical": "Material_Mechanical"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_CLAIM_CRADLE",
+        "SOCKET_Camera_Focus",
+        "SOCKET_Engine_Main",
+        "SOCKET_TALLY_SCAN",
+        "SOCKET_TALLY_STAMP"
+      ],
+      "mount": "origin",
+      "triangleMetric": "lod0",
+      "bounds": {
+        "min": [
+          -10.681609,
+          -1.41,
+          -5.630055
+        ],
+        "max": [
+          11.175684,
+          4.21171,
+          5.117123
+        ],
+        "dimensionsM": [
+          21.86007308959961,
+          5.621710419654846,
+          10.756716251373291
+        ]
+      },
+      "note": "Tally-3 claim assessor: authored origin at one metre per WU. Arms, scan aperture and receipt press are noncolliding presentation instruments; pressure spine owns native contact."
     }
   ],
   "runtimeSlots": {
@@ -9027,7 +9585,8 @@
       "wholeships/apron_shuttle.glb",
       "wholeships/wasp_free_militia.glb",
       "wholeships/wasp_mts_escort.glb",
-      "wholeships/wasp_scn_patrol.glb"
+      "wholeships/wasp_scn_patrol.glb",
+      "wholeships/ceres_breaker.glb"
     ],
     "cockpit": [
       "cockpits/cockpit_dome.glb",
@@ -9117,7 +9676,16 @@
       "places/place_breakaway_fork.glb",
       "places/place_landmark_candle_fleet.glb",
       "places/place_landmark_resonant_cathedral.glb",
-      "places/place_landmark_skerris_throne.glb"
+      "places/place_landmark_skerris_throne.glb",
+      "places/place_ceres_second_measure.glb",
+      "places/place_ceres_second_measure_long_plate.glb",
+      "places/place_ceres_second_measure_crossbeam.glb",
+      "places/place_ceres_second_measure_keel.glb",
+      "places/place_ceres_section_cradle.glb",
+      "places/place_ceres_breaker_cutter_head.glb",
+      "places/place_latch_nine.glb",
+      "places/place_pip_spanner.glb",
+      "places/place_tally_three.glb"
     ]
   }
 }

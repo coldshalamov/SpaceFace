@@ -1,0 +1,40 @@
+{
+  "schema": "spaceface.generatedArt.v1",
+  "set": "rubric hull marker",
+  "use": "src/render/rubricSkinLibrary.js: 'atlas' rows (primer, witness, scarred, memorial) wrap the marker's paint tank; 'wheel' is the five-cartridge stencil drum read through the visor window.",
+  "date": "2026-10-04",
+  "generator": "tools/art/rubric_skins.mjs — Canvas2D painted in headless Chromium from one seeded stream; no image model, no third-party source",
+  "license": "Painted for SpaceFace by the project; no third-party source image supplied.",
+  "files": {
+    "atlas": {
+      "file": "rubric_skin_atlas.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "rows": [
+        "primer",
+        "witness",
+        "scarred",
+        "memorial"
+      ],
+      "rowHeight": 256
+    },
+    "wheel": {
+      "file": "rubric_stencil_wheel.png",
+      "size": [
+        2048,
+        576
+      ],
+      "cells": [
+        "level bars",
+        "working dots",
+        "alarm wedges",
+        "struck eyes",
+        "blank"
+      ],
+      "cellWidth": 409.6,
+      "pxPerWorldUnit": 125
+    }
+  }
+}

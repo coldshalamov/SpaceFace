@@ -513,7 +513,12 @@ class HudElement {
     this.children.length = 0;
     children.forEach((child) => this.appendChild(child));
   }
-  append(...children) { children.forEach((child) => this.appendChild(child)); }
+  // Real append() stringifies non-node children into text nodes — the Speed Dial mixes
+  // (element, 'wu/s') and the bare shim used to die on the string.
+  append(...children) {
+    children.forEach((child) => this.appendChild(
+      typeof child === 'object' && child !== null ? child : new HudText(String(child))));
+  }
   prepend(child) { child.parentNode = this; this.children.unshift(child); return child; }
   removeChild(child) {
     const i = this.children.indexOf(child);
@@ -575,6 +580,7 @@ class HudDocument {
     this.activeElement = this.body;
   }
   createElement(tagName) { return new HudElement(this, tagName); }
+  createTextNode(text) { return new HudText(String(text)); }
   createElementNS(_ns, tagName) { return this.createElement(tagName); }
   getElementById(id) { return findElement([this.head, this.body], (node) => node.id === id); }
   querySelector(selector) { return this.head.querySelector(selector) || this.body.querySelector(selector); }

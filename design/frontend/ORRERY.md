@@ -92,9 +92,20 @@ Existing Deckplate tokens are reused wherever they already mean the right thing.
 | `--dp-glass` (new) | `rgb(8 11 16 / .62)` | the instrument's glass |
 | `--dp-ink` / `-dim` / `-mute` (existing) | `#E8E2D4` / `#B7B4A6` / `#B0AEA6` | words; **and the rest-state light of every ring, scale and rule** (at 14–40 % alpha) |
 | `--dp-phos` (existing) | `#DFEEFF` | readings — the numbers the world tells you |
-| `--dp-ice` (new) | `#8FCBFF` | **data in motion only**: a beam's travelling pulse, the lattice's event ripple, a route being computed. Never a structural line, never a ring at rest, never a box. |
+| `--dp-ice` (new) | `#8FCBFF` | **data in motion only**: a beam's travelling pulse, the lattice's event ripple, a route being computed. Never a structural line, never a ring at rest, never a box. **One extension (2026-10-04):** the owner asked for a speed gauge whose colour shifts as speed rises. The Speed Dial answers with a blue-shift ramp — bone → phos → ice (the reference gate) → azure → violet (V-MAX) — because speed is the purest data in motion. The binding rule is that the ramp never warms toward amber or red (`test/orrery-speed-dial.test.mjs` pins it); the exact hues are the implementer's choice (`SPEED_RAMP` in `src/ui/orrery/speedDial.js`) and the frontend lane may revise them. |
 | `--dp-lamp` / `-hot` / `-dim` (existing) — alias `--dp-hand` | `#F2B950` / `#FFD98C` / `#8A6B3A` | **the Hand**: yours, chosen, actionable. At most one amber *thing* leads each screen |
 | `--dp-danger` (existing) | `#FF5038` | **threat only**: hostile, incoming, loss, irreversible |
+
+**One extension (owner, 2026-10-04): the map's ground and the minimap's contacts carry colour.** The owner
+asked for "more contrast, colour coding and glow" on the Chart and the radar, because both read as bone
+wireframes in play. The answer is scoped: the Chart's GROUND (each holder's territory wash, the border where
+two holders meet, border posts, lane tints, a halo on each token; `src/ui/orrery/chartWorld.js`) and the
+radar's CONTACTS (class hues with a halo; `src/ui/radar.js`) may be colour. Every structure, word, rail and
+key on both stays bone. Two lines hold: **amber stays the Hand** (the course, the objective) and **red stays
+threat** (a war front, danger haze, hostile contacts). A faction whose own hue sat on either is re-tinted for
+the ground (Meridian's gold → yellow-lime, Reach's crimson → rose, Drift/Pitborn rust softened); the
+crests and the rest of the interface keep their authored colours. Glow is geometry (gradient washes and
+pre-rendered sprites), never a filter in flight.
 
 **Why the rest light is warm bone, not blue.** The owner's recorded rejection is "hard cyan
 wireframe on black reads as generic AI sci-fi". Blue hairlines at rest would be that look however
@@ -233,8 +244,11 @@ a grammar without looking alike.
 ### Flight (always on)
 - **The Cluster** (bottom-left, one instrument, replacing ~8 boxes): the hull's top silhouette at
   the centre of a ring stack — shield (outer), armour, hull (inner) as Arc Gauges; energy and heat as
-  two opposed arcs; speed as a 96 px thin numeral on a curved Scale with the reference tick; boost
-  as a charge arc.
+  two opposed arcs; speed as the **Speed Dial** (`speedDial.js`, upper-left of the Cluster): 50 lit
+  blades on a 240° sweep, the numeral at its pivot, the reference speed as a gate at blade 30 and the
+  travel drive's V-MAX as the last blade, a needle with a wake that stretches under acceleration, and
+  boost as the charge arc inside it. Its tint follows the speed; the gate throws one ring when first
+  crossed; a faint streak ring turns faster as the hull does.
 - **Ordnance Arc**: the weapon/fieldwork/rig keys ride an arc hugging the Cluster's right side,
   each with its cooldown arc and key hint; the armed one lit by the Hand.
 - **Objective**: a compass tape top-centre with the objective's bearing marker and a Counter for

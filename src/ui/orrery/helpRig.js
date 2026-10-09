@@ -422,6 +422,22 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
     else layout();
   };
   if (typeof ResizeObserver === 'function') { ro = new ResizeObserver(() => schedule()); ro.observe(host); }
+  // Station columns are sized from each verb's measured width, and the DOM localization bridge
+  // rewrites those verbs on a microtask after mount (D136): a column sized in English is too
+  // narrow the moment its words widen. Re-lay out in the same checkpoint the station text
+  // changes — filtered to station subtrees so the dial's own SVG churn cannot retrigger it.
+  let textObserver = null;
+  if (typeof MutationObserver === 'function') {
+    textObserver = new MutationObserver((records) => {
+      const inStation = (t) => {
+        const el = t && t.nodeType === 3 ? t.parentElement : t;
+        return !!(el && typeof el.closest === 'function' && el.closest('.orr-hrig__st'));
+      };
+      if (!records.some((r) => inStation(r.target) || [...(r.addedNodes || [])].some(inStation))) return;
+      if (host.isConnected) layout();
+    });
+    textObserver.observe(host, { characterData: true, childList: true, subtree: true });
+  }
 
   function glyphHtml(spec) {
     const kb = spec.kb || {};
@@ -507,12 +523,15 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
       colW[k] = Math.max(colW[k], Math.ceil(el.offsetWidth || 150));
     }
     const gap = Math.round(Math.max(22, Math.min(46, W * 0.034)));
-    // the image square: the berth's outer band edge sits at 0.49 of it
-    const S = Math.max(200, Math.min(availH / 0.99, small ? Infinity : availH * 0.84, (W - colW.L - colW.R - 2 * gap - 8) / 0.98));
-    const block = colW.L + gap + S * 0.98 + gap + colW.R;
+    // the image square: the berth's outer band edge sits at 0.49 of it. The flat 36 reserves the
+    // worst-case half-band plus the keycap's 3px bleed a station paints past its own box on each
+    // side, so a wider set of station columns (a grown locale) shrinks the ring instead of pushing
+    // a station's edge past the rig's own box.
+    const S = Math.max(200, Math.min(availH / 0.99, small ? Infinity : availH * 0.84, (W - colW.L - colW.R - 2 * gap - 36) / 0.98));
+    const bandW = Math.round(Math.max(14, Math.min(22, S * 0.03)));
+    const block = colW.L + gap + S * 0.98 + gap + colW.R + bandW + 6;
     const cx = Math.max(0, (W - block) / 2) + colW.L + gap + S * 0.49;
     const cy = top + availH / 2;
-    const bandW = Math.round(Math.max(14, Math.min(22, S * 0.03)));
     const Rb = S * 0.49 - bandW / 2;         // band centre radius
     const Rout = Rb + bandW / 2;
     const Rin = Rb - bandW / 2;
@@ -972,6 +991,7 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
     relayout: schedule,
     dispose() {
       if (ro) ro.disconnect();
+      if (textObserver) textObserver.disconnect();
       host.removeEventListener('pointermove', onSpot);
       host.removeEventListener('pointerleave', offSpot);
       if (frame && typeof globalThis.cancelAnimationFrame === 'function') globalThis.cancelAnimationFrame(frame);
@@ -1008,10 +1028,18 @@ export function createInputEcho({ root, rigHost = null, onInput }) {
   if (!doc || typeof doc.addEventListener !== 'function' || typeof onInput !== 'function') return { dispose() {}, pointer: () => null };
   let pointer = null;
   const downKeys = new Set();
-  const send = (ev) => { try { onInput(ev); } catch (e) { console.warn('[help] echo failed', e); } };
+  // Help is mounted during screen prewarm, before it ever becomes the visible modal.
+  // Document-level listeners must not echo flight/system keys from that cached screen.
+  const active = () => root.isConnected !== false && !root.inert
+    && root.getAttribute?.('aria-hidden') !== 'true'
+    && !root.closest?.('[inert], [aria-hidden="true"], [hidden]');
+  const send = (ev) => {
+    if (!active()) return;
+    try { onInput(ev); } catch (e) { console.warn('[help] echo failed', e); }
+  };
 
   const onKeyDown = (e) => {
-    if (isTextEntry(e.target)) return;
+    if (!active() || isTextEntry(e.target)) return;
     const code = e.code || '';
     if (!code || e.repeat) return;
     downKeys.add(code);
@@ -1028,7 +1056,7 @@ export function createInputEcho({ root, rigHost = null, onInput }) {
     return !!(host && t && typeof host.contains === 'function' && host.contains(t));
   };
   const isControl = (t) => !!(t && typeof t.closest === 'function' && t.closest('button, a, input, textarea, select, [role="tab"], [tabindex]:not([tabindex="-1"])'));
-  const onPointerMove = (e) => { pointer = { x: e.clientX, y: e.clientY }; };
+  const onPointerMove = (e) => { if (active()) pointer = { x: e.clientX, y: e.clientY }; };
   const mouseCode = (b) => (b === 0 ? 'Mouse0' : b === 2 ? 'Mouse2' : b === 1 ? 'Mouse1' : `Mouse${b}`);
   const onPointerDown = (e) => {
     pointer = { x: e.clientX, y: e.clientY };
@@ -1067,6 +1095,11 @@ export function createInputEcho({ root, rigHost = null, onInput }) {
     return null;
   };
   const poll = () => {
+    if (!active()) {
+      prev = [];
+      prevAxes = { up: false, down: false, left: false, right: false, aim: false };
+      return true;
+    }
     const p = readPad();
     if (!p) { if (prev.length) { prev.forEach((on, i) => { if (on) send({ device: 'pad', button: PAD_STD_NAMES[i], down: false }); }); prev = []; } return true; }
     const now = (p.buttons || []).map((b) => !!(b && (b.pressed || (typeof b.value === 'number' && b.value > 0.5))));

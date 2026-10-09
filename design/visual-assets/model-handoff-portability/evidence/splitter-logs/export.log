@@ -1,0 +1,418 @@
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender').
+ERROR Draco mesh compression is not available because library could not be found at /usr/bin/4.3/python/lib/python3.13/site-packages/libextern_draco.so
+19:54:58 | INFO: Starting glTF 2.0 export
+19:54:58 | INFO: Extracting primitive: Collision_axial_convex_01
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_axial_convex_02
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_axial_convex_03
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_axial_convex_04
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_axial_convex_05
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_axial_convex_06
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_axial_convex_07
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_axial_convex_08
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_axial_convex_09
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_axial_convex_10
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_axial_convex_11
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_axial_convex_12
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_axial_convex_13
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_axial_convex_14
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_axial_convex_15
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_axial_convex_16
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_port_convex_01
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_port_convex_02
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_port_convex_03
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_port_convex_04
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_port_convex_05
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_port_convex_06
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_starboard_convex_01
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_starboard_convex_02
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_starboard_convex_03
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_starboard_convex_04
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_starboard_convex_05
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_starboard_convex_06
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: Collision_starboard_convex_07
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD0_AXIAL_Carapace
+19:54:58 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD0_AXIAL_Membrane
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD1_AXIAL_Carapace
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD1_AXIAL_Membrane
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD2_AXIAL_Carapace
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD2_AXIAL_Membrane
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: A3_axial_mandible_1.002
+19:54:58 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:54:58 | INFO: Primitives created: 2
+19:54:58 | INFO: Extracting primitive: A3_axial_mandible_1.003
+19:54:58 | INFO: Primitives created: 2
+19:54:58 | INFO: Extracting primitive: A3_axial_mandible_1.005
+19:54:58 | INFO: Primitives created: 2
+19:54:58 | INFO: Extracting primitive: A3_axial_mandible_-1.002
+19:54:58 | INFO: Primitives created: 2
+19:54:58 | INFO: Extracting primitive: A3_axial_mandible_-1.003
+19:54:58 | INFO: Primitives created: 2
+19:54:58 | INFO: Extracting primitive: A3_axial_mandible_-1.005
+19:54:58 | INFO: Primitives created: 2
+19:54:58 | INFO: Extracting primitive: LOD0_PORT_Carapace
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD0_PORT_Chitin
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD0_PORT_Membrane
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD1_PORT_Carapace
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD1_PORT_Chitin
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD1_PORT_Membrane
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD2_PORT_Carapace
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD2_PORT_Chitin
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD2_PORT_Membrane
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD0_STARBOARD_Carapace
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD0_STARBOARD_Chitin
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD0_STARBOARD_Membrane
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD1_STARBOARD_Carapace
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD1_STARBOARD_Chitin
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD1_STARBOARD_Membrane
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD2_STARBOARD_Carapace
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD2_STARBOARD_Chitin
+19:54:58 | INFO: Primitives created: 1
+19:54:58 | INFO: Extracting primitive: LOD2_STARBOARD_Membrane
+19:54:58 | INFO: Primitives created: 1
+19:54:59 | INFO: Finished glTF 2.0 export in 0.4065418243408203 s
+
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender').
+19:54:59 | INFO: Starting glTF 2.0 export
+19:54:59 | INFO: Extracting primitive: Collision_axial_convex_01
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_axial_convex_02
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_axial_convex_03
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_axial_convex_04
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_axial_convex_05
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_axial_convex_06
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_axial_convex_07
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_axial_convex_08
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_axial_convex_09
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_axial_convex_10
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_axial_convex_11
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_axial_convex_12
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_axial_convex_13
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_axial_convex_14
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_axial_convex_15
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_axial_convex_16
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: LOD0_AXIAL_Carapace
+19:54:59 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: LOD0_AXIAL_Membrane
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: LOD1_AXIAL_Carapace
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: LOD1_AXIAL_Membrane
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: LOD2_AXIAL_Carapace
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: LOD2_AXIAL_Membrane
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: A3_axial_mandible_1.002
+19:54:59 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:54:59 | INFO: Primitives created: 2
+19:54:59 | INFO: Extracting primitive: A3_axial_mandible_1.003
+19:54:59 | INFO: Primitives created: 2
+19:54:59 | INFO: Extracting primitive: A3_axial_mandible_1.005
+19:54:59 | INFO: Primitives created: 2
+19:54:59 | INFO: Extracting primitive: A3_axial_mandible_-1.002
+19:54:59 | INFO: Primitives created: 2
+19:54:59 | INFO: Extracting primitive: A3_axial_mandible_-1.003
+19:54:59 | INFO: Primitives created: 2
+19:54:59 | INFO: Extracting primitive: A3_axial_mandible_-1.005
+19:54:59 | INFO: Primitives created: 2
+19:54:59 | INFO: Finished glTF 2.0 export in 0.16272187232971191 s
+
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender').
+19:54:59 | INFO: Starting glTF 2.0 export
+19:54:59 | INFO: Extracting primitive: Collision_port_convex_01
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_port_convex_02
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_port_convex_03
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_port_convex_04
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_port_convex_05
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: Collision_port_convex_06
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: LOD0_PORT_Carapace
+19:54:59 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: LOD0_PORT_Chitin
+19:54:59 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: LOD0_PORT_Membrane
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: LOD1_PORT_Carapace
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: LOD1_PORT_Chitin
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: LOD1_PORT_Membrane
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: LOD2_PORT_Carapace
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: LOD2_PORT_Chitin
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Extracting primitive: LOD2_PORT_Membrane
+19:54:59 | INFO: Primitives created: 1
+19:54:59 | INFO: Finished glTF 2.0 export in 0.07663846015930176 s
+
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender').
+19:55:00 | INFO: Starting glTF 2.0 export
+19:55:00 | INFO: Extracting primitive: Collision_starboard_convex_01
+19:55:00 | INFO: Primitives created: 1
+19:55:00 | INFO: Extracting primitive: Collision_starboard_convex_02
+19:55:00 | INFO: Primitives created: 1
+19:55:00 | INFO: Extracting primitive: Collision_starboard_convex_03
+19:55:00 | INFO: Primitives created: 1
+19:55:00 | INFO: Extracting primitive: Collision_starboard_convex_04
+19:55:00 | INFO: Primitives created: 1
+19:55:00 | INFO: Extracting primitive: Collision_starboard_convex_05
+19:55:00 | INFO: Primitives created: 1
+19:55:00 | INFO: Extracting primitive: Collision_starboard_convex_06
+19:55:00 | INFO: Primitives created: 1
+19:55:00 | INFO: Extracting primitive: Collision_starboard_convex_07
+19:55:00 | INFO: Primitives created: 1
+19:55:00 | INFO: Extracting primitive: LOD0_STARBOARD_Carapace
+19:55:00 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:55:00 | INFO: Primitives created: 1
+19:55:00 | INFO: Extracting primitive: LOD0_STARBOARD_Chitin
+19:55:00 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:55:00 | INFO: Primitives created: 1
+19:55:00 | INFO: Extracting primitive: LOD0_STARBOARD_Membrane
+19:55:00 | INFO: Primitives created: 1
+19:55:00 | INFO: Extracting primitive: LOD1_STARBOARD_Carapace
+19:55:00 | INFO: Primitives created: 1
+19:55:00 | INFO: Extracting primitive: LOD1_STARBOARD_Chitin
+19:55:00 | INFO: Primitives created: 1
+19:55:00 | INFO: Extracting primitive: LOD1_STARBOARD_Membrane
+19:55:00 | INFO: Primitives created: 1
+19:55:00 | INFO: Extracting primitive: LOD2_STARBOARD_Carapace
+19:55:00 | INFO: Primitives created: 1
+19:55:00 | INFO: Extracting primitive: LOD2_STARBOARD_Chitin
+19:55:00 | INFO: Primitives created: 1
+19:55:00 | INFO: Extracting primitive: LOD2_STARBOARD_Membrane
+19:55:00 | INFO: Primitives created: 1
+19:55:00 | INFO: Finished glTF 2.0 export in 0.0769340991973877 s
+
+[
+  {
+    "id": "brood_splitter",
+    "sha256": "46c1ccebb9fa5167844c27a0485a03f7482843682c0e2a6ea7b61d4248ad7a64",
+    "bytes": 4613008,
+    "materials": 3,
+    "images": 2,
+    "trianglesByLod": [
+      53460,
+      35530,
+      23016
+    ],
+    "drawsByLod": [
+      12,
+      12,
+      12
+    ],
+    "collisionPrimitives": 29,
+    "motion": {
+      "presentation": "static-rest",
+      "timingOwner": "src/data/broodAttackProfiles.js",
+      "rigs": [],
+      "identityBasis": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "sourceSha256": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+    "geometryContractSha256": "7cab7c2b83d3a7baf57b68fb41f66296f90557ee10b11d75e85e2c3588b2a70f"
+  },
+  {
+    "id": "brood_splitter_axial",
+    "sha256": "2140af0e5628034df46b54a0f9413bc87dbb8ae85ddf25728ca23e44d3b0f753",
+    "bytes": 2526172,
+    "materials": 3,
+    "images": 2,
+    "trianglesByLod": [
+      31264,
+      19386,
+      11764
+    ],
+    "drawsByLod": [
+      6,
+      6,
+      6
+    ],
+    "collisionPrimitives": 16,
+    "motion": {
+      "presentation": "static-rest",
+      "timingOwner": "src/data/broodAttackProfiles.js",
+      "rigs": [],
+      "identityBasis": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "sourceSha256": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+    "geometryContractSha256": "af05851820f74f3d59d85c72f7d28d5f6360d8822318d5eb9a5e02823dd4218b"
+  },
+  {
+    "id": "brood_splitter_port",
+    "sha256": "ab5993d54a4a48ea5a8ec3ee9b509d914aaae5649eefe4ac2de5d08ced2651f3",
+    "bytes": 1106136,
+    "materials": 3,
+    "images": 2,
+    "trianglesByLod": [
+      11104,
+      8104,
+      5624
+    ],
+    "drawsByLod": [
+      3,
+      3,
+      3
+    ],
+    "collisionPrimitives": 6,
+    "motion": {
+      "presentation": "static-rest",
+      "timingOwner": "src/data/broodAttackProfiles.js",
+      "rigs": [],
+      "identityBasis": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "sourceSha256": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+    "geometryContractSha256": "8e36fbb4045266e9d29f297f4f77dc91c2ff48cefa0a34896d70c03b39dc5fe5"
+  },
+  {
+    "id": "brood_splitter_starboard",
+    "sha256": "495e5095904636a2d918233a6f12145368a22ffe662fb04eda5d65738135768c",
+    "bytes": 1109952,
+    "materials": 3,
+    "images": 2,
+    "trianglesByLod": [
+      11092,
+      8040,
+      5628
+    ],
+    "drawsByLod": [
+      3,
+      3,
+      3
+    ],
+    "collisionPrimitives": 7,
+    "motion": {
+      "presentation": "static-rest",
+      "timingOwner": "src/data/broodAttackProfiles.js",
+      "rigs": [],
+      "identityBasis": [
+        [
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "sourceSha256": "56caeb6efbf38d414ef57817b9a0cdc488ca3a2ed0b204cb6c41717644ab4b13",
+    "geometryContractSha256": "97036f2222328e07dad607a74b9eb56f008128b8dde361fe0fa35e8d6c9ddf31"
+  }
+]
+Blender 4.3.2
+
+Blender quit

@@ -26,6 +26,7 @@ import { reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import {
   uniqueWreckCassandraHardliners,
+  uniqueWreckCeresRefineryTender,
   uniqueWreckChoirTenderInvestigator,
   uniqueWreckHeldMass,
   uniqueWreckLongChordWarden,
@@ -39,6 +40,9 @@ import { ActivityKind, RulesOfEngagement, setEntityDoctrine } from '../ai/doctri
 import { isPdScreenActor } from '../ai/pdScreen.js';
 import { buildEncounterCausality } from '../world/encounterCausality.js';
 import { bumpCollidesFlipEpoch } from '../world/livingWorldViews.js';
+import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { writePickupRemainder } from '../core/pickupAcceptance.js';
 
 // ── shared tuning ─────────────────────────────────────────────────────────────────────────────────
 const TOLL_PAY_DIST = 520;        // brake inside this of the toll leader to hand over the toll
@@ -187,6 +191,9 @@ function steerToward(e, tx, tz, slow) {
   const stop = (slow || 90);
   const data = e.data || (e.data = {});
   const intent = data.intent || (data.intent = {});
+  // The stamped goal point is observability only: readers of intent see WHERE the passive
+  // hull is being asked to go (a stand-off point reads differently from the route endpoint).
+  intent.tx = tx; intent.tz = tz;
   if (d2 <= stop * stop) { intent.moveZ = 0; intent.moveX = 0; intent.fire = false; return; }
   const len = Math.sqrt(d2) || 1;
   const ux = dx / len, uz = dz / len;
@@ -447,8 +454,13 @@ const patrolScan = {
   event(d, live, state, name, p) {
     // routed only while this scan is live; a berth-sourced bust belongs to the checkpoint
     // that docked the player, a weir-bolt bust belongs to the gate that flagged the runner,
-    // and a jump-gate bust belongs to the jump — none is this patrol's own scan result.
-    if (name === 'contrabandScanned' && !(p && (p.source === 'dock' || p.source === 'customs_weir_bolt' || p.source === 'jump'))) live.data.scan = p;
+    // a jump-gate bust belongs to the jump, and a weir/cone pod read belongs to the gate
+    // or scanner that dwelled it — none is this patrol's own scan result (D179/D180: an
+    // adopted gate read resolved the offer 'fined' at 0 credits).
+    if (name === 'contrabandScanned' && !(p && (
+      p.source === 'dock' || p.source === 'customs_weir_bolt' || p.source === 'jump'
+      || p.source === 'customs_weir' || p.source === 'customs_scan_cone'
+    ))) live.data.scan = p;
   },
 };
 
@@ -898,6 +910,31 @@ function attachConvoyCargoManifests(d, live, commodityId, perHauler) {
   }
 }
 
+const predationStalkTelegraphs = new WeakMap();
+
+/**
+ * Publish encounter:predationTelegraph once per stalk, before the commit.
+ * A second call for the same raid or encounter id does not telegraph again.
+ * Pairing odds stay with the caller; this only gates the telegraph event.
+ */
+export function emitPredationStalkTelegraph(state, payload, emit) {
+  if (!state || !payload || typeof emit !== 'function') return false;
+  const key = payload.raidId != null && payload.raidId !== ''
+    ? payload.raidId
+    : payload.encounterId;
+  if (key == null || key === '') return false;
+  let seen = predationStalkTelegraphs.get(state);
+  if (!seen) {
+    seen = new Set();
+    predationStalkTelegraphs.set(state, seen);
+  }
+  const id = String(key);
+  if (seen.has(id)) return false;
+  seen.add(id);
+  emit('encounter:predationTelegraph', payload);
+  return true;
+}
+
 function initializeConvoyPredation(d, live, state) {
   const config = live.plan.predation;
   const carriers = d.entsOf(live, config.carrierRole || 'hauler').slice().sort(compareEntityIds);
@@ -1026,7 +1063,7 @@ function initializeConvoyPredation(d, live, state) {
   live.data.predationDeadlineAt = Math.min(live.deadlineAt, d.now() + objectiveS);
   live.data.predationAwaySince = null;
   live.data.predationEndReason = null;
-  d.emit('encounter:predationTelegraph', {
+  emitPredationStalkTelegraph(state, {
     encounterId: live.id,
     raiderId: raider.id,
     raiderIdentityKey: raider.data.predationIdentityKey,
@@ -1040,7 +1077,7 @@ function initializeConvoyPredation(d, live, state) {
     deadlineAt: live.data.predationDeadlineAt,
     sectorId: live.sectorId,
     zoneId: live.zoneId,
-  });
+  }, (name, body) => d.emit(name, body));
   d.emit('ai:telegraph', {
     entityId: raider.id,
     targetId: target.id,
@@ -1209,18 +1246,50 @@ function authoredManifestLine(carrier) {
   return { manifest, commodityId: lines[0].commodityId, qty };
 }
 
+// PQ-047 residual — the raid's selected carrier. Identity stamps on the entity can be wiped by a
+// predation clear, but live.data.predationTargetId survives it; the squadKill routing uses the same
+// live field, so selection is judged by exactly that field.
+function isSelectedFreightCarrier(live, carrier) {
+  return !!(live && live.data && carrier
+    && live.data.predationTargetId === carrier.id);
+}
+
+// PQ-047 residual — a second custody-stamped hauler (an authored multi-hauler predation convoy)
+// keeps its custody record beside, never in, the single slot the whole custody stack reads. The
+// selected carrier's ledger stays byte-identical; the side ledger exists so the side hauler's
+// death can spill through the same writer without displacing the raid's live record.
+function sideFreightCustodyRecord(live, carrier) {
+  // the stamp's own key is canonical: store and lookup read the same field, so the two can never
+  // diverge into a silent overwrite (the predation key and stamp key agree by construction, but
+  // only one of them should name the slot)
+  const key = carrier && carrier.data && carrier.data.freightCustody
+    && carrier.data.freightCustody.carrierIdentityKey;
+  if (key == null || !live.data.freightSideCustody) return null;
+  return live.data.freightSideCustody[key] || null;
+}
+
 function ensureFreightCargoCustody(d, live, state, carrier) {
-  const existing = live.data.freightCargoCustody;
+  const sideCarrier = !isSelectedFreightCarrier(live, carrier)
+    && !!(carrier && carrier.data && carrier.data.freightCustody
+      && carrier.data.freightCustody.carrierIdentityKey != null);
+  const existing = sideCarrier
+    ? sideFreightCustodyRecord(live, carrier)
+    : live.data.freightCargoCustody;
+  // one canonical identity per path: the slot reads the predation stamp, the side ledger reads
+  // the freight stamp it was minted under — the two agree by construction, and the store key,
+  // the lookup key and this match key can never silently diverge
+  const carrierIdentityKey = sideCarrier
+    ? carrier.data.freightCustody.carrierIdentityKey
+    : carrier.data.predationIdentityKey;
   if (existing) {
     return existing.carrierId === carrier.id
-      && existing.carrierIdentityKey === carrier.data.predationIdentityKey
+      && existing.carrierIdentityKey === carrierIdentityKey
       && existing.manifestId === carrier.data.cargoManifest?.manifestId
       ? existing
       : null;
   }
   const source = authoredManifestLine(carrier);
   if (!source) return null;
-  const carrierIdentityKey = carrier.data.predationIdentityKey;
   const custodyId = `${source.manifest.manifestId}:custody:${carrierIdentityKey}`;
   const now = d.now();
   const civilianOwner = carrier.team === 2
@@ -1281,8 +1350,19 @@ function ensureFreightCargoCustody(d, live, state, carrier) {
     escapeTarget: null,
     transitionSeq: 0,
   };
-  record.carrierPersistenceOwned = claimFreightCustodyPersistence(carrier, record, 'carrier');
-  live.data.freightCargoCustody = record;
+  if (sideCarrier) {
+    // The side hauler is already dead when this record opens: there is no custody window left to
+    // keep a hull present for, so no persistence claim — the spilled pods carry the freight.
+    // Side ledgers are runtime-transient: the durable open-custody channel would evict a real
+    // envelope under its cap, and a restore would promote a side record into the raid's slot.
+    record.sideCustody = true;
+    const map = live.data.freightSideCustody
+      || (live.data.freightSideCustody = {});
+    map[carrierIdentityKey] = record;
+  } else {
+    record.carrierPersistenceOwned = claimFreightCustodyPersistence(carrier, record, 'carrier');
+    live.data.freightCargoCustody = record;
+  }
   return record;
 }
 
@@ -1355,6 +1435,72 @@ function releaseFreightCustodyActors(live, state, record) {
   releaseFreightCustodyPersistence(raider, record, record.raiderPersistenceOwned);
   record.carrierPersistenceOwned = false;
   record.raiderPersistenceOwned = false;
+}
+
+/**
+ * SF-157 — a clean getaway is a trail, not a reset. The escaped raider hands its take to the
+ * durable ai.stolenLoot bag — the same shape a cleared ambient raid writes
+ * (clearAmbientPredationBinding), so the generic kill/pressure paths in ambientPredation.js
+ * respill it later with victim/manifest provenance — and keeps the flags.persistent mark the
+ * custody stack already gave it while it held the cargo. The thief stays a real body on its
+ * finite escape leg: findable again by returning to the scene, shedding freight under pursuit
+ * fire, spilling the take on a later kill. No marker or ledger tracks it — the trail is
+ * physical, and a save/shelf boundary keeps the loot on the thief's own ai bag.
+ *
+ * This replaces the older release-and-despawn exit, under which the secured cargo ceased to
+ * exist the moment the leash crossed. Custody accounting is unchanged: the record still books
+ * the escaped qty once via accountFreightDiversion at finish.
+ */
+function releaseEscapedFreightRaider(live, record, raider) {
+  if (!raider || raider.alive === false || !raider.data) return false;
+  const data = raider.data;
+  const ai = data.ai || (data.ai = {});
+  const secured = record.pods
+    .filter((pod) => pod.status === 'raider_secured')
+    .map((pod) => ({ commodityId: record.commodityId, qty: Math.floor(Number(pod.qty) || 0) }))
+    .filter((line) => line.qty > 0);
+  if (secured.length) {
+    const loot = ai.stolenLoot && typeof ai.stolenLoot === 'object' ? ai.stolenLoot : null;
+    const lines = loot && Array.isArray(loot.lines) ? loot.lines : [];
+    for (const line of secured) {
+      const existing = lines.find((row) => row.commodityId === line.commodityId);
+      if (existing) existing.qty += line.qty;
+      else lines.push(line);
+    }
+    ai.stolenLoot = {
+      lines,
+      // Ambient shape: victimId is the carrier's entity id when known; the stable custody
+      // identity key is the fallback so provenance still names the victim it came off.
+      victimId: record.carrierId != null ? record.carrierId
+        : (record.carrierIdentityKey != null ? record.carrierIdentityKey
+          : (loot && loot.victimId != null ? loot.victimId : null)),
+      manifestId: record.manifestId || (loot && loot.manifestId) || null,
+    };
+  }
+  // Custody's claim is settled; the body's own persistence stays on. Only the custody marker
+  // and the escape despawn timer leave — the thief now rides the ordinary actor lifecycle.
+  if (data.freightCustodyPersistence && data.freightCustodyPersistence.custodyId === record.custodyId) {
+    delete data.freightCustodyPersistence;
+  }
+  if (data.despawnAt != null) delete data.despawnAt;
+  // The raid binding is over. Strip encounter/roster membership so resolve/abort/despawnAll and
+  // the save/sector lifecycle sweeps treat the thief as a free actor again, and so the terminal
+  // record can never rebind it. The FLEE doctrine already stamped still runs its finite leg;
+  // when it lapses, ordinary AI resumes — exactly like a released ambient raider.
+  delete data.predationEncounterId;
+  delete data.predationRole;
+  delete data.predationIdentityKey;
+  delete data.freightCustodyRaiderIdentityKey;
+  ai.predationStatus = 'cleared';
+  ai.predationEndReason = 'escaped';
+  delete ai.predationTargetId;
+  delete ai.predationTargetIdentityKey;
+  delete ai.predationObjective;
+  delete ai.predationLeashRadius;
+  const rosterIndex = live.ids.indexOf(raider.id);
+  if (rosterIndex !== -1) live.ids.splice(rosterIndex, 1);
+  if (live.roles) delete live.roles[raider.id];
+  return true;
 }
 
 function liveFreightPodQty(record) {
@@ -1462,6 +1608,28 @@ function finishFreightCustody(d, live, record, outcome) {
   return true;
 }
 
+/**
+ * PQ-047 residual — a non-selected custody-stamped hauler's ledger ends at its death spill: its
+ * pods carry their own custody provenance and survive on their authored TTL (SF-150 keeps the
+ * encounter's closing sweep off persistent pickups). Nothing is released or booked here —
+ * releaseFreightCustodyActors resolves the selected pair by live selection, and the side carrier
+ * is already gone. Open side records from a side drive-disable spill stay open on purpose:
+ * the later death spill continues them through ensureFreightCargoCustody and closes them here.
+ */
+function finishSideFreightCustody(d, live, record) {
+  if (!record || record.terminal) return false;
+  record.terminal = true;
+  record.outcome = 'carrier_destroyed';
+  record.resolvedAt = d.now();
+  if (typeof d.clearOpenFreightCustody === 'function') d.clearOpenFreightCustody(record.custodyId);
+  const snapshot = publishFreightCustody(d, live, record, record.outcome);
+  if (!record.receiptEmitted) {
+    record.receiptEmitted = true;
+    d.emit('freight:custodyReceipt', { ...snapshot, outcome: record.outcome });
+  }
+  return true;
+}
+
 function spawnFreightCargo(d, live, state, carrier, cause) {
   if (!live.plan.predation || live.plan.predation.enabled !== true) return false;
   const record = ensureFreightCargoCustody(d, live, state, carrier);
@@ -1482,7 +1650,9 @@ function spawnFreightCargo(d, live, state, carrier, cause) {
     ? Math.max(1, Math.floor(record.carrierQty / 2))
     : record.carrierQty;
   const chunks = splitFreightQty(requested, cause === 'drive_disabled' ? Math.min(1, available) : available);
-  const rng = d.stream(live, `freight-cargo:${cause}`);
+  // seeded per custody chain, not per cause: two haulers dying the same death scatter their own
+  // pods — a label shared across carriers would lay both spills on identical angles and radii
+  const rng = d.stream(live, `freight-cargo:${cause}:${record.custodyId}`);
   let spawnedQty = 0;
   for (const qty of chunks) {
     const podIndex = record.nextPodIndex++;
@@ -1536,7 +1706,12 @@ function spawnFreightCargo(d, live, state, carrier, cause) {
   if (spawnedQty <= 0) return false;
   record.carrierQty -= spawnedQty;
   updateCarrierManifest(record, carrier);
-  clearConvoyPredation(d, live, cause === 'carrier_destroyed' ? 'target_destroyed' : 'target_disabled');
+  // PQ-047 residual — only the selected target's loss ends the predation relation; a second
+  // custody-stamped hauler spills its own cargo while the raid on the selected carrier runs on.
+  const sideSpill = !isSelectedFreightCarrier(live, carrier);
+  if (!sideSpill) {
+    clearConvoyPredation(d, live, cause === 'carrier_destroyed' ? 'target_destroyed' : 'target_disabled');
+  }
   publishFreightCustody(d, live, record, cause, carrier);
   d.emit('freight:cargoSpilled', {
     encounterId: live.id,
@@ -1548,6 +1723,7 @@ function spawnFreightCargo(d, live, state, carrier, cause) {
     podCount: record.pods.length,
     t: d.now(),
   });
+  if (sideSpill && cause === 'carrier_destroyed') finishSideFreightCustody(d, live, record);
   return true;
 }
 
@@ -1590,6 +1766,9 @@ function settleFreightPod(d, live, state, record, pod, status, reason) {
   annotation.status = status;
   if (entity.collides !== false) bumpCollidesFlipEpoch();
   entity.collides = false;
+  // T→F flip: the player_collected leg skips retireFreightPickup (which also re-keys),
+  // so this is the only place the stale collidable/spatial member gets vacated.
+  syncEntityCollisionIndexMembership(state && state.entityIndex, entity);
   if (entity.flags) delete entity.flags.persistent;
   if (status !== 'player_collected') d.retireFreightPickup(entity, status);
   publishFreightCustody(d, live, record, reason);
@@ -1597,10 +1776,25 @@ function settleFreightPod(d, live, state, record, pod, status, reason) {
 }
 
 function collectFreightPod(d, live, state, payload) {
-  const record = live.data.freightCargoCustody;
-  if (!record || record.terminal || !payload || payload.pickupId == null) return false;
-  const pod = record.pods.find((candidate) => candidate.entityId === payload.pickupId);
-  if (!pod || pod.status !== 'live' || payload.kind !== 'cargo'
+  if (!payload || payload.pickupId == null) return false;
+  // the pod's record lives in the raid's one slot — or, for a second custody-stamped hauler, in
+  // the side ledger that hauler's own death minted. A side record is already terminal (its ledger
+  // closed at the death spill) but its pods are live world objects: collection still settles its
+  // bookkeeping and the lawful-theft report through the same writers (PQ-047 residual).
+  let record = live.data.freightCargoCustody;
+  let pod = record && !record.terminal
+    ? record.pods.find((candidate) => candidate.entityId === payload.pickupId)
+    : null;
+  if (!pod && live.data.freightSideCustody) {
+    for (const key of Object.keys(live.data.freightSideCustody)) {
+      const side = live.data.freightSideCustody[key];
+      const found = side && side.pods
+        && side.pods.find((candidate) => candidate.entityId === payload.pickupId);
+      if (found) { record = side; pod = found; break; }
+    }
+  }
+  if (!record || !pod || (!record.sideCustody && record.terminal)) return false;
+  if (pod.status !== 'live' || payload.kind !== 'cargo'
     || payload.commodityId !== record.commodityId || Math.floor(Number(payload.amount) || 0) !== pod.qty) return false;
   if (payload.collectorId === state.playerId) {
     const accepted = Number(payload.acceptedAmount);
@@ -1614,11 +1808,12 @@ function collectFreightPod(d, live, state, payload) {
       if (!entity) return false;
       record.playerCollectedQty += accepted;
       pod.qty = rejected;
-      entity.data.freightCustodyPod.qty = rejected;
+      // The annotation on data.freightCustodyPod is a mirror of the same remainder — both
+      // branches write it through writePickupRemainder (frozen-safe), never in place.
       if (typeof d.resizeFreightPickup === 'function') {
         d.resizeFreightPickup(entity, record.commodityId, rejected);
       } else {
-        entity.data.amount = rejected;
+        writePickupRemainder(entity.data, rejected);
       }
       if (typeof d.reportFreightTheft === 'function') d.reportFreightTheft(live, record, pod, entity);
       publishFreightCustody(d, live, record, 'player_partially_collected');
@@ -1893,15 +2088,27 @@ function tickFreightCargoCustody(d, live, state, now) {
     ) >= escapeRadius * escapeRadius;
     if (!record.raiderEscaped && escapedLeash) {
       record.raiderEscaped = true;
-      releaseFreightCustodyPersistence(operationalRaider, record, record.raiderPersistenceOwned);
+      releaseEscapedFreightRaider(live, record, operationalRaider);
       record.raiderPersistenceOwned = false;
-      operationalRaider.data.despawnAt = now + 0.5;
       d.emit('freight:raiderEscaped', {
         encounterId: live.id,
         custodyId: record.custodyId,
         raiderId: operationalRaider.id,
         qty: record.raiderSecuredQty,
         reason: 'leash',
+        // SF-157 — the bounded clue, not a tracker: what was taken, who took it, and where the
+        // thief was last seen headed. A listener can name the theft without ever being handed
+        // a live position; the thief's own body is the only trail.
+        manifestId: record.manifestId,
+        freighterKey: record.freighterKey,
+        commodityId: record.commodityId,
+        raiderIdentityKey: record.raiderIdentityKey,
+        raiderFactionId: operationalRaider.factionId || null,
+        sectorId: live.sectorId || null,
+        zoneId: live.zoneId || null,
+        lastObservedPos: record.raiderLastPos ? { ...record.raiderLastPos } : null,
+        lastObservedVel: record.raiderLastVel ? { ...record.raiderLastVel } : null,
+        escapeTarget: record.escapeTarget ? { ...record.escapeTarget } : null,
         t: now,
       });
       if (record.carrierDead || record.carrierRecovered || record.carrierQty <= 0) {
@@ -2211,6 +2418,185 @@ function restoreFreightCargoCustody(d, state, envelope) {
   return live;
 }
 
+// ── NXB-015 ordered passage at a narrow obstruction ────────────────────────────────────────────
+// One moving convoy meets one narrow obstruction: a stable latched order sends the leading
+// freight through the gap while the rest of the freight waits at hull-clearance stand-off
+// points and the escort keeps station on its ward. The blocker is ordinary colliding geometry —
+// a parked tow, a wreck, a station edge — found by ONE bounded spatial probe inside the convoy's
+// lane stripe, never a universe scan. A stalled commitment releases the local order (the convoy
+// steers free for a beat) rather than pinning the convoy on a wait that can never finish.
+const CONVOY_GAP_LOOKAHEAD = 560;   // corridor probe reach ahead of the convoy's front hull
+const CONVOY_GAP_MARGIN = 26;       // open water beside the lane that still reads as "narrow"
+const CONVOY_GAP_ARRIVE_SKIP = 260; // dock approach inside this of the endpoint steers free
+const CONVOY_HOLD_CLEAR = 16;       // air kept between a stand-off point and the body ahead of it
+const CONVOY_STALL_S = 18;          // a committed hull this long without progress drops the order
+const CONVOY_RELEASE_S = 14;        // after a release the convoy steers free before re-queuing
+const CONVOY_PASS_EPS = 4;          // a hull counts as through the gap this far past the disc
+const _gapProbeScratch = [];
+
+/** The nearest foreign solid inside the convoy's lane stripe. Own members are excluded by
+ * identity (live.ids), never by distance; pickups and projectiles are not obstruction-grade. */
+function convoyGapBlocker(state, live, front, rearT, headT, dirX, dirZ) {
+  const probeR = CONVOY_GAP_LOOKAHEAD + Math.max(0, headT - rearT);
+  const near = queryNearbyEntities(state, front.pos, probeR, _gapProbeScratch, null);
+  let blocker = null, blockerT = Infinity;
+  for (const e of near) {
+    if (!e || !e.pos || e === front) continue;
+    if (e.alive === false || e.collides === false) continue;
+    if (e.type === 'pickup' || e.type === 'projectile' || e.type === 'beam') continue;
+    if (live.ids && live.ids.indexOf(e.id) >= 0) continue;
+    const t = e.pos.x * dirX + e.pos.z * dirZ;
+    if (t <= rearT + CONVOY_PASS_EPS || t > headT + CONVOY_GAP_LOOKAHEAD) continue;
+    const lateral = Math.abs((e.pos.x - front.pos.x) * dirZ - (e.pos.z - front.pos.z) * dirX);
+    if (lateral >= (e.radius || 8) + CONVOY_GAP_MARGIN) continue;
+    if (!blocker || t < blockerT || (t === blockerT && compareEntityIds(e, blocker) < 0)) {
+      blocker = e; blockerT = t;
+    }
+  }
+  return blocker;
+}
+
+/** Ordered passage steering for the whole transit group. Returns nothing; only writes intent
+ * on this encounter's own passive hulls — the same sanctioned writer the route already uses. */
+function convoyPassageSteering(d, live, state, haulers, escorts, end, now) {
+  const data = live.data;
+  const movers = haulers.filter((e) => !convoyTargetDisabled(state, e));
+  const steerAll = () => {
+    for (const e of [...movers, ...escorts]) {
+      if (!convoyTargetDisabled(state, e)) steerToward(e, end.x, end.z, 120);
+    }
+  };
+  if (!movers.length) { steerAll(); return; }
+  // A released order steers free for a beat before the corridor probe may re-queue it: this is
+  // the release half of "release/recompute", so a dead wait can never pin the convoy forever.
+  if (data.passageHoldUntil != null && now < data.passageHoldUntil) { steerAll(); return; }
+
+  let cx = 0, cz = 0;
+  for (const m of movers) { cx += m.pos.x; cz += m.pos.z; }
+  cx /= movers.length; cz /= movers.length;
+  let dirX = end.x - cx, dirZ = end.z - cz;
+  const dLen = Math.hypot(dirX, dirZ) || 1;
+  dirX /= dLen; dirZ /= dLen;
+  const projOf = (e) => e.pos.x * dirX + e.pos.z * dirZ;
+  let front = movers[0], rear = movers[0];
+  for (const m of movers) {
+    if (projOf(m) > projOf(front)) front = m;
+    if (projOf(m) < projOf(rear)) rear = m;
+  }
+  if (dist2(front.pos.x, front.pos.z, end.x, end.z) <= CONVOY_GAP_ARRIVE_SKIP * CONVOY_GAP_ARRIVE_SKIP) {
+    delete data.passage;
+    steerAll();
+    return;
+  }
+  const blocker = convoyGapBlocker(state, live, front, projOf(rear), projOf(front), dirX, dirZ);
+  // The gap is a geometric slot, not a timer: while a blocking body is present the slot tracks
+  // it, and once the body clears — the player towing off, a wreck nudged aside — the latched
+  // slot drains the order one committed member at a time instead of a simultaneous surge
+  // (NXI-059). The record dies only when the whole order has passed the slot.
+  let gapT, gapR, gapX, gapZ;
+  if (blocker) {
+    gapT = projOf(blocker);
+    gapR = blocker.radius || 8;
+    gapX = blocker.pos.x;
+    gapZ = blocker.pos.z;
+  } else if (data.passage && Number.isFinite(data.passage.gapT)) {
+    gapT = data.passage.gapT;
+    gapR = data.passage.gapR;
+    gapX = data.passage.gapX;
+    gapZ = data.passage.gapZ;
+  } else {
+    delete data.passage;
+    steerAll();
+    return;
+  }
+
+  // The passage order is latched once from the live formation — frontmost freight first, ties by
+  // stable id — then kept while the gap lasts. Lost or disabled members are filtered out of the
+  // wait condition every tick (NXI-058) so nobody queues behind a hull that can no longer move.
+  let passage = data.passage;
+  if (!passage) {
+    const ordered = movers.slice().sort((a, b) => {
+      const dt = projOf(b) - projOf(a);
+      return dt !== 0 ? dt : compareEntityIds(a, b);
+    });
+    passage = data.passage = {
+      order: ordered.map((m) => m.id),
+      committedId: null,
+      bestT: -Infinity,
+      progressAt: now,
+      gapT, gapR, gapX, gapZ,
+    };
+  } else if (blocker) {
+    passage.gapT = gapT;
+    passage.gapR = gapR;
+    passage.gapX = gapX;
+    passage.gapZ = gapZ;
+  }
+  const passT = gapT + gapR + CONVOY_PASS_EPS;
+  const pending = [];
+  for (const id of passage.order) {
+    const m = state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) : null;
+    if (!m || m.alive === false || convoyTargetDisabled(state, m)) continue;
+    if (projOf(m) > passT + (m.radius || 8)) continue;   // already through the gap — free
+    pending.push(m);
+  }
+  for (const m of movers) {
+    if (passage.order.indexOf(m.id) < 0 && projOf(m) <= passT + (m.radius || 8)) pending.push(m);
+  }
+  if (!pending.length) { delete data.passage; steerAll(); return; }
+
+  const committed = pending[0];
+  const committedT = projOf(committed);
+  if (passage.committedId !== committed.id) {
+    passage.committedId = committed.id;
+    passage.bestT = committedT;
+    passage.progressAt = now;
+  } else if (committedT > passage.bestT + 1) {
+    passage.bestT = committedT;
+    passage.progressAt = now;
+  } else if (now - passage.progressAt > CONVOY_STALL_S) {
+    delete data.passage;
+    data.passageHoldUntil = now + CONVOY_RELEASE_S;
+    steerAll();
+    return;
+  }
+  steerToward(committed, end.x, end.z, 120);   // leading freight commits to the gap
+
+  // Followers wait at physical stand-off points: a single file behind the gap mouth, each point
+  // spaced by the real hull diameters of the pair, never one shared parking point (NXI-057).
+  let chainT = gapT - gapR - CONVOY_HOLD_CLEAR;
+  for (let i = 1; i < pending.length; i++) {
+    const prev = pending[i - 1], m = pending[i];
+    chainT -= (prev.radius || 8) + (m.radius || 8) + CONVOY_HOLD_CLEAR;
+    const trailT = projOf(prev) - (prev.radius || 8) - (m.radius || 8) - CONVOY_HOLD_CLEAR;
+    const holdT = Math.min(chainT, trailT);
+    steerToward(m, gapX + dirX * (holdT - gapT), gapZ + dirZ * (holdT - gapT), 26);
+  }
+  // Freight already through the gap keeps steering for the endpoint.
+  for (const m of movers) {
+    if (pending.indexOf(m) < 0) steerToward(m, end.x, end.z, 120);
+  }
+
+  // The escort keeps its guard target — the rear hauler — while the line waits (NXI-060):
+  // one flank station per escort, trailing the ward so the lane mouth stays clear. A rostered
+  // (weapons-free) escort is left to tacticalAI exactly as before.
+  const ward = rear;
+  for (let i = 0; i < escorts.length; i++) {
+    const e = escorts[i];
+    if (convoyTargetDisabled(state, e)) continue;
+    const ai = e.data && e.data.ai;
+    if (ai && ai.passive === false) continue;
+    const rE = e.radius || 8, rW = ward.radius || 8;
+    const side = (i % 2 === 0) ? 1 : -1;
+    const back = rW + rE + CONVOY_HOLD_CLEAR + Math.floor(i / 2) * (rE * 2 + CONVOY_HOLD_CLEAR);
+    const flank = (rW + rE + 14) * side;
+    steerToward(e,
+      ward.pos.x - dirX * back - dirZ * flank,
+      ward.pos.z - dirZ * back + dirX * flank,
+      30);
+  }
+}
+
 function convoyTick(d, live, state, now, isConvoy) {
   const p = d.player();
   const haulers = d.entsOf(live, 'hauler');
@@ -2256,10 +2642,10 @@ function convoyTick(d, live, state, now, isConvoy) {
   const end = live.data.end;
   if (!end) return;
   // Only route-owned passive hulls receive director intent. The selected raider is rostered and
-  // tacticalAI remains the sole writer of its movement/fire decisions.
-  for (const e of [...haulers, ...d.entsOf(live, 'escort')]) {
-    if (!convoyTargetDisabled(state, e)) steerToward(e, end.x, end.z, 120);
-  }
+  // tacticalAI remains the sole writer of its movement/fire decisions. NXB-015: at a narrow
+  // obstruction the same intents carry a stable passage order — leading freight commits, the
+  // rest of the freight waits at hull-clearance stand-off points, escorts keep their wards.
+  convoyPassageSteering(d, live, state, haulers, d.entsOf(live, 'escort'), end, now);
   if (p && !live.data.noticed) {
     for (const h of haulers) {
       if (dist2(p.pos.x, p.pos.z, h.pos.x, h.pos.z) <= CONVOY_NOTICE_R * CONVOY_NOTICE_R) { live.data.noticed = true; break; }
@@ -2284,7 +2670,25 @@ function convoyTick(d, live, state, now, isConvoy) {
 
   // Arrival: surviving cargo applies bounded supply pressure at the destination market.
   clearConvoyPredation(d, live, 'carrier_arrived');
-  const arrivingQty = custody ? custody.carrierQty : haulers.length * (live.data.perHauler | 0);
+  // a second custody-stamped hauler arrives with its own manifest: its freight presses the market
+  // like the lead's, and its stamp closes so the post-arrival sweep cannot spill a delivered
+  // manifest (PQ-047 residual — the delivery leg of the same fix). The gate is the same endpoint
+  // geometry the lead just proved — a side hauler still holding station back at the spill site or
+  // disabled mid-route keeps its 'carrier' stamp and its manifest resolves through the custody
+  // loss path, never as arrival pressure it did not earn.
+  let sideArrivingQty = 0;
+  for (const h of haulers) {
+    if (isSelectedFreightCarrier(live, h)) continue;
+    const stamp = h.data && h.data.freightCustody;
+    if (stamp && stamp.status === 'carrier' && stamp.carrierId === h.id
+        && h.pos && dist2(h.pos.x, h.pos.z, end.x, end.z) <= CONVOY_ARRIVE_R * CONVOY_ARRIVE_R) {
+      sideArrivingQty += Math.max(0, Number(h.data.cargoManifest && h.data.cargoManifest.totalQty) || 0);
+      stamp.status = 'delivered';
+    }
+  }
+  const arrivingQty = custody
+    ? custody.carrierQty + sideArrivingQty
+    : haulers.length * (live.data.perHauler | 0);
   const units = Math.min(TRADE_PRESSURE_CAP, arrivingQty);
   if (live.data.destId && units > 0) d.tradePressure(live.data.destId, live.data.cargoId, units);
   if (custody && !custody.terminal) {
@@ -2375,6 +2779,17 @@ const convoy = {
         if (record && p.targetId === record.raiderId) {
           const raider = selectedFreightRaider(live, state, true);
           respillFreightFromRaider(d, live, state, record, raider, 'raider_drive_disabled');
+        } else {
+          // a second custody-stamped hauler drive-disabled off the selected target: its manifest
+          // spills through the same writer into a side record that stays open for collection —
+          // a disabled hull sits with its freight, it does not swallow it (PQ-047 residual)
+          const carrier = state.entities.get(p.targetId);
+          const data = carrier && carrier.data;
+          const stamp = data && data.freightCustody;
+          if (stamp && stamp.status === 'carrier' && stamp.carrierId === carrier.id
+            && data.cargoManifest && Number(data.cargoManifest.totalQty) > 0) {
+            spawnFreightCargo(d, live, state, carrier, 'drive_disabled');
+          }
         }
       }
       return;
@@ -2480,6 +2895,18 @@ const convoy = {
             const record = live.data.freightCargoCustody;
             if (record) record.carrierDestructionPending = false;
           }
+        } else {
+          // PQ-047 residual — a second custody-stamped hauler owns its own manifest: its death
+          // spills ITS cargo through the same writer instead of deleting it with the hull the
+          // raid was not pointed at. Gate on the hauler's own stamp and manifest (both survive a
+          // predation clear) so un-stamped convoys and duplicate kill events never spill.
+          const carrier = state.entities.get(p.id);
+          const data = carrier && carrier.data;
+          const stamp = data && data.freightCustody;
+          if (stamp && stamp.status === 'carrier' && stamp.carrierId === carrier.id
+            && data.cargoManifest && Number(data.cargoManifest.totalQty) > 0) {
+            spawnFreightCargo(d, live, state, carrier, 'carrier_destroyed');
+          }
         }
         if (p.id === live.data.predationTargetId) clearConvoyPredation(d, live, 'target_destroyed');
         if (p.byPlayer) {
@@ -2570,8 +2997,28 @@ const salvageSignal = {
     if (name === 'cacheGone' && live.data.cacheId && p && p.id === live.data.cacheId) {
       d.resolve(live, 'stripped');
     }
+    if (name === 'deliverCargo') {
+      const entity = p && p.receiverId != null && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(p.receiverId)
+        : null;
+      live.data.lastHandover = handoverCargoToReceiver(entity, p || {});
+    }
   },
 };
+
+/** A destroyed or departed receiver cannot take cargo. No replacement is spawned. */
+export function receiverCanAccept(entity) {
+  if (!entity || entity.alive === false || (entity.data && entity.data.departed === true)) {
+    return { ok: false, reason: 'receiver-gone', consumed: 0, spawned: false };
+  }
+  return { ok: true, reason: null, consumed: 0, spawned: false };
+}
+
+export function handoverCargoToReceiver(entity, _delivery = {}) {
+  const gate = receiverCanAccept(entity);
+  if (!gate.ok) return { ...gate, ledgerUnchanged: true };
+  return { ok: true, reason: null, consumed: 0, spawned: false, entityId: entity.id };
+}
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // H. ANOMALY WHISPER — a discovery chain. The line is the clue; a physical source is placed
@@ -3162,4 +3609,5 @@ export const ENCOUNTER_SCRIPTS = Object.freeze({
   uniqueWreckCassandraHardliners: withShapeMeter(uniqueWreckCassandraHardliners),
   uniqueWreckNestbreakerAdmirers: withShapeMeter(uniqueWreckNestbreakerAdmirers),
   uniqueWreckChoirTenderInvestigator: withShapeMeter(uniqueWreckChoirTenderInvestigator),
+  uniqueWreckCeresRefineryTender: withShapeMeter(uniqueWreckCeresRefineryTender),
 });

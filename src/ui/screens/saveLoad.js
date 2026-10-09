@@ -4,18 +4,19 @@ import { createSaveStage } from '../views/saveFrame.js';
 // (src/ui/orrery/saveFilmstrip.js), each save a frame of its hull on its own station, an empty slot an
 // open station; the amber Hand swings along the rail to the chosen save. Its hull stands alone on the
 // glass; beside it the page of its record (where, how rich, how long, when, and the hull's scars,
-// titles, rap sheet and grudge): the credits roll, the readings decrypt, and its one primary verb is
+// yard repairs, titles, rap sheet and grudge): the credits roll, the readings decrypt, and its one primary verb is
 // the Lamp Key (composition: src/ui/orrery/saveLayouts.js). Keys for Load / Save here / Delete / Export /
 // Import / Back; every slot and confirm stays reachable. UI emits game:save/game:load {slot}; the save system owns persistence. Slot index
 // is read defensively from the save system's public API if present, else from localStorage
 // (manifest: SaveLoadScreen reads sf.save.index).
 
-import { livingHullScars } from '../../core/livingHull.js';
+import { livingHullPatchedScars, livingHullScars, normalizeLivingHull } from '../../core/livingHull.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { SHIPS } from '../../data/ships.js';
 import { THUNDERCHILD, THUNDERCHILD_TITLE_ID, TITLES } from '../../data/titles.js';
 import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength, selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { WANTED_TIER, wantedTierInfo } from '../../systems/heat.js';
+import { wantedClearClause } from '../wantedReason.js';
 import { confirm } from '../confirm.js';
 import { el, rows, words, hero, settle, cue } from '../kit/index.js';
 import { decorateEntityNode } from '../entityResolver.js';
@@ -28,6 +29,15 @@ import { createSaveFilmstrip } from '../orrery/saveFilmstrip.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { rollTo, decrypt } from '../orrery/text.js';
 import { hullPosterUrl } from '../hullPosters.js';
+import { capturePhotoPng } from './pause.js';
+import {
+  backupKeptLine,
+  importDestination,
+  profileImportedLine,
+  recoveryFailedLine,
+  recoveryNotice,
+  importResultLine,
+} from './saveNotices.js';
 
 const SLOT_COUNT = 5;        // quick + 4 manual slots shown
 const LS_PREFIX = 'sf.save.';
@@ -198,7 +208,7 @@ function paintSlotRow(row, selected) {
 }
 
 export const SAVE_PORTRAIT_SEED = 15610;
-export const SAVE_PORTRAIT_FIELDS = Object.freeze(['hull', 'scars', 'titles', 'rapSheet', 'grudge']);
+export const SAVE_PORTRAIT_FIELDS = Object.freeze(['hull', 'scars', 'repairs', 'titles', 'rapSheet', 'grudge']);
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
@@ -389,7 +399,26 @@ function deleteConfirmBody(id, meta) {
 
 export function importConfirmBody(file) {
   const name = (typeof file === 'string' ? file : (file && file.name)) || 'selected save file';
-  return 'Importing ' + name + ' will validate and load that save immediately. Unsaved progress is lost.';
+  const dest = importSlotWord || 'the selected slot';
+  return 'Importing ' + name + ' into ' + dest + ' will validate and load that save immediately. Unsaved progress is lost.';
+}
+
+let importSlotWord = '';
+
+export function armImportDestination(slot) {
+  importSlotWord = slot ? (slot === 'quick' || slot === 'autosave' || slot === 'auto'
+    ? slot.charAt(0).toUpperCase() + slot.slice(1)
+    : 'Slot ' + slot) : 'the selected slot';
+  return importSlotWord;
+}
+
+/** Import success belongs to the save authority, including asynchronous compressed saves. */
+export async function importValidatedSave(sys, text, slot) {
+  try {
+    if (sys && typeof sys.importString === 'function') return !!(await sys.importString(text, slot));
+    if (sys && typeof sys.importSave === 'function') return !!(await sys.importSave(text, slot));
+  } catch { /* the importer refused; never overwrite its destination with raw JSON */ }
+  return false;
 }
 
 export function slotObjectiveSummary(meta) {
@@ -443,12 +472,16 @@ export function shouldOfferNewGameShortcut(meta, saveAllowed) {
   return !isOccupied(meta) && !saveAllowed;
 }
 
-/** The save's hull id (the index stores the def id under shipName); the starter when a save has none. */
+/** The save's hull id (the index stores the def id under shipName); the starter when a save has
+ * none — or names a hull this build no longer ships: saves outlive the catalog, and the stage can
+ * only draw a def it can resolve (the readable label stays the save's own via shipLabel). */
 function slotShipId(meta, player) {
   const fromPlayer = activeOwnedShip(player) && activeOwnedShip(player).defId;
-  if (typeof fromPlayer === 'string' && /^ship_/.test(fromPlayer)) return fromPlayer;
+  if (typeof fromPlayer === 'string' && /^ship_/.test(fromPlayer) && SHIP_NAME_BY_ID.has(fromPlayer)) {
+    return fromPlayer;
+  }
   const id = meta && typeof meta.shipName === 'string' && /^ship_/.test(meta.shipName) ? meta.shipName : null;
-  return id || NEW_GAME.shipId;
+  return (id && SHIP_NAME_BY_ID.has(id)) ? id : NEW_GAME.shipId;
 }
 
 function unwrapSaveData(input) {
@@ -586,6 +619,33 @@ function buildScarsField(livingHull, meta) {
   return { count: 0, open: 0, patched: 0, line: portraitLine(meta && meta.scars, 'Clean plates') };
 }
 
+function countPhrase(n, singular, plural) {
+  const count = Math.max(0, Math.floor(Number(n) || 0));
+  const word = count < COUNT_WORDS.length ? COUNT_WORDS[count] : String(count);
+  return word + ' ' + (count === 1 ? singular : plural);
+}
+
+/** Yard repairs are the living hull's repair count, plus scars the yard already covered. */
+function buildRepairsField(livingHull, meta) {
+  if (!livingHull || typeof livingHull !== 'object' || Array.isArray(livingHull)) {
+    return {
+      repairPatches: 0,
+      patchedScars: 0,
+      line: portraitLine(meta && meta.repairs, 'No yard repairs'),
+    };
+  }
+  const hull = normalizeLivingHull(livingHull, 0);
+  const patches = hull.repairPatches;
+  const patched = livingHullPatchedScars(hull);
+  if (!patches && patched.length === 0) {
+    return { repairPatches: 0, patchedScars: 0, line: 'No yard repairs' };
+  }
+  const parts = [];
+  if (patches) parts.push(countPhrase(patches, 'yard repair', 'yard repairs'));
+  if (patched.length) parts.push(countPhrase(patched.length, 'scar patched', 'scars patched'));
+  return { repairPatches: patches, patchedScars: patched.length, line: parts.join(' · ') };
+}
+
 function buildTitlesField(story, meta) {
   const names = collectPlayerTitles(story);
   if (names.length) return { names, line: names.join(' · ') };
@@ -599,7 +659,11 @@ function buildRapSheetField(player, meta) {
   const bounty = Number(player && player.bounty);
   const info = wantedTierInfo(Number.isFinite(heat) ? heat : 0);
   const parts = [];
-  if (info && info.id && info.id !== WANTED_TIER.NONE) parts.push(info.label);
+  if (info && info.id && info.id !== WANTED_TIER.NONE) {
+    parts.push(info.label);
+    const clock = wantedClearClause(Number.isFinite(heat) ? heat : 0).replace(/^ · /, '');
+    if (clock) parts.push(clock);
+  }
   if (Number.isFinite(bounty) && bounty > 0) parts.push(fmtCredits(bounty) + ' bounty');
   if (parts.length) return { tier: info.id, heat: Number.isFinite(heat) ? heat : 0, bounty: bounty || 0, line: parts.join(' · ') };
   return {
@@ -623,7 +687,7 @@ function buildGrudgeField(memory, meta) {
   return { aceId: null, name: '', returnTier: 0, line: portraitLine(meta && meta.grudge, 'No one hunts you') };
 }
 
-/** Headless model of the load-stage portrait: hull + scars + titles + rap sheet + grudge. */
+/** Headless model of the load-stage portrait: hull + scars + repairs + titles + rap sheet + grudge. */
 export function buildSavePortrait(source = {}) {
   const data = unwrapSaveData(source.data || source.envelope || source.save);
   const state = source.state && typeof source.state === 'object' && !Array.isArray(source.state)
@@ -648,6 +712,7 @@ export function buildSavePortrait(source = {}) {
   return {
     hull: { id: defId, name: hullName, fittings, line: hullName },
     scars: buildScarsField(ship && ship.livingHull, meta),
+    repairs: buildRepairsField(ship && ship.livingHull, meta),
     titles: buildTitlesField(story, meta),
     rapSheet: buildRapSheetField(player, meta),
     grudge: buildGrudgeField(aceMemory, meta),
@@ -678,6 +743,7 @@ export function paintSavePortrait(nodes, portrait) {
   if (!nodes || !portrait) return portrait;
   paintEntityLine(nodes.hull, portrait.hull && portrait.hull.id ? 'hull:' + portrait.hull.id : null, portrait.hull.line);
   if (nodes.scars) nodes.scars.textContent = portrait.scars.line;
+  if (nodes.repairs) nodes.repairs.textContent = portrait.repairs.line;
   if (nodes.titles) nodes.titles.textContent = portrait.titles.line;
   if (nodes.rapSheet) nodes.rapSheet.textContent = portrait.rapSheet.line;
   paintEntityLine(nodes.grudge, portrait.grudge && portrait.grudge.aceId ? 'captain:' + portrait.grudge.aceId : null, portrait.grudge.line);
@@ -771,7 +837,7 @@ export const saveLoadScreen = {
       },
     }) : null;
 
-    const { stage, caption, shipName, portrait, scars, titles, rapSheet, grudge, objective, credits, fine, actions } = createSaveStage();
+    const { stage, caption, shipName, portrait, scars, repairs, titles, rapSheet, grudge, objective, credits, fine, actions } = createSaveStage();
     stage.classList.add('sf-save-stage');
     caption.classList.add('sf-save-ledger');
     // The slot card's name is a content header (the header voice, set by the sheet), not a title.
@@ -792,7 +858,7 @@ export const saveLoadScreen = {
     facts.setAttribute('aria-label', 'Save facts');
     caption.insertBefore(facts, portrait);
     portrait.prepend(el('p', 'sf-ledger-head', 'Hull record'));
-    for (const [node, label] of [[scars, 'Scars'], [titles, 'Titles'], [rapSheet, 'Rap sheet'], [grudge, 'Grudge']]) {
+    for (const [node, label] of [[scars, 'Scars'], [repairs, 'Repairs'], [titles, 'Titles'], [rapSheet, 'Rap sheet'], [grudge, 'Grudge']]) {
       if (!node) continue;
       const line = el('div', 'sf-ledger-line');
       portrait.insertBefore(line, node);
@@ -842,10 +908,55 @@ export const saveLoadScreen = {
       if (refs) this._render(ctx);
       if (this.hull.hasMount()) this.hull.activate(ctx);
     });
+    // SFQ-B228: a restore that fails before the start transition emits save:error, not
+    // game:startFailed — the shell lifts (loadingPresenter) but this screen kept the load
+    // latched and its stage hull released. Reset the same way so the slot is retryable now,
+    // not after the next full remount. Load-shaped means the restore receipts AND the
+    // envelope-stage refusals a requested load can die behind (parse/checksum/version/
+    // migration/size — the _prepareEnvelope* vocabulary); a latched load that never reached
+    // a restore must still give the stage back. The loadRequested guard keeps write-path
+    // and import noise (this screen's own importer, autosave quota) away from the stage.
+    const LOAD_STAGE_REASONS = new Set([
+      'load_failed', 'restore_prepare_failed',
+      'read_failed', 'no_save', 'no_data', 'parse_failed', 'bad_format', 'checksum',
+      'newer_version', 'migration_failed', 'invalid_player', 'save_size_limit',
+    ]);
+    const unsubLoadFailed = ctx.bus.on('save:error', (payload = {}) => {
+      const reason = payload && payload.reason;
+      if (!LOAD_STAGE_REASONS.has(reason) && !String(reason || '').startsWith('import_')) return;
+      if (!loadRequested) return;
+      loadRequested = false;
+      cancelHullRelease();
+      if (!this.hull) return;
+      if (this.hull.restore() && refs) refs.shownShipId = null;
+      if (refs) this._render(ctx);
+      if (this.hull.hasMount()) this.hull.activate(ctx);
+    });
     // The slot list re-reads the store the moment it changes, not on the next periodic tick.
     const unsubSynced = ctx.bus.on('save:store-synced', () => { if (refs) this._render(ctx); });
     const unsubValidated = ctx.bus.on('save:slotsValidated', () => { if (refs) this._render(ctx); });
     const unsubCompleted = ctx.bus.on('save:completed', () => { if (refs) this._render(ctx); });
+    this._notices = this._notices || {};
+    const noteAndRender = (note) => {
+      if (!note || note.slot == null || note.slot === '') return;
+      const prev = this._notices[note.slot];
+      if (note.kind === 'backup' && prev && prev.kind === 'recovered') return;
+      this._notices[note.slot] = note;
+      if (refs) this._render(ctx);
+    };
+    const unsubRecovered = ctx.bus.on('save:recovered', (payload) => noteAndRender(recoveryNotice(payload)));
+    const unsubBackup = ctx.bus.on('save:backup', (payload) => noteAndRender(backupKeptLine(payload)));
+    const unsubRecoveryFailed = ctx.bus.on('save:error', (payload = {}) => {
+      noteAndRender(recoveryFailedLine(payload));
+    });
+    const unsubProfile = ctx.bus.on('save:profile-imported', (payload) => {
+      const note = profileImportedLine(payload);
+      this._importLine = note.text;
+      if (note.focus && refs) refs.selected = note.focus;
+      noteAndRender(note);
+      const row = refs && refs.list && refs.list.querySelector('[data-id="' + note.focus + '"]');
+      if (row && typeof row.focus === 'function') row.focus();
+    });
 
     // Foot: Export, Import (the hidden file input stays), Back.
     const foot = el('footer', orr ? 'k-foot' : 'k-foot of-pause');
@@ -873,10 +984,11 @@ export const saveLoadScreen = {
 
     refs = {
       root: rootEl, title, heading, vacantWord, sub, hang, stage, foot, list: null, orr, factCells: null, arrive: false,
-      caption, shipName, portrait, scars, titles, rapSheet, grudge,
+      caption, shipName, portrait, scars, repairs, titles, rapSheet, grudge,
       objective, credits, fine, actions, facts,
       selected: null, shownShipId: null, ids: [], slots: {},
-      cancelHullRelease, unsubLoading, unsubStartFailed, unsubSynced, unsubValidated, unsubCompleted,
+      cancelHullRelease, unsubLoading, unsubStartFailed, unsubLoadFailed, unsubSynced, unsubValidated, unsubCompleted,
+      unsubRecovered, unsubBackup, unsubRecoveryFailed, unsubProfile,
       markLoadRequested: () => { loadRequested = true; },
       clearLoadRequest: () => { loadRequested = false; },
     };
@@ -914,12 +1026,13 @@ export const saveLoadScreen = {
       const meta = slots[id];
       const occupied = isOccupied(meta);
       const summary = slotSummaryLines(meta);
+      const note = this._notices && this._notices[id];
       return {
         id,
-        name: slotLabel(id),
+        name: (meta && meta.label) || slotLabel(id),
         sub: occupied
-          ? [shipLabel(meta.shipName), meta.sectorName, fmtPlaytime(meta.playtimeS)].filter(Boolean).join(' · ') || 'Saved game'
-          : summary.context,
+          ? [shipLabel(meta.shipName), meta.sectorName, fmtPlaytime(meta.playtimeS), note && note.text].filter(Boolean).join(' · ') || 'Saved game'
+          : [summary.context, note && note.text].filter(Boolean).join(' · '),
         num: occupied ? fmtCredits(meta.credits) : '',
         selected: refs.selected === id,
         occupied,
@@ -944,7 +1057,9 @@ export const saveLoadScreen = {
         const frame = el('span', 'sf-slot-frame');
         frame.setAttribute('aria-hidden', 'true');
         frame.appendChild(el('span', 'sf-slot-berth'));
-        const art = item.occupied ? hullPosterUrl(slotShipId(slots[item.id], null), 'side') : null;
+        const filed = slots[item.id];
+        const still = filed && typeof filed.thumbnail === 'string' ? filed.thumbnail : null;
+        const art = item.occupied ? (still || hullPosterUrl(slotShipId(slots[item.id], null), 'side')) : null;
         if (art) {
           const img = el('img', 'sf-slot-thumb');
           img.alt = '';
@@ -1067,17 +1182,19 @@ export const saveLoadScreen = {
     // Which slot, and when: the etched line at the top of the page.
     const badges = occupied ? slotBadges(id, meta, currentSlot, latestOccupiedSlot(refs.slots)) : [];
     const flown = occupied ? fmtLastFlown(meta.savedAt || meta.lastSavedAt) : '';
+    const notice = this._notices && this._notices[id];
     refs.fine.textContent = [
       slotLabel(id) + ' save',
       ...badges.filter((badge) => !/^v\d/.test(badge)),
       occupied ? (flown ? 'flown ' + flown : 'filed') : 'empty',
-    ].join(' · ');
+      notice && notice.text,
+    ].filter(Boolean).join(' · ');
 
     paintEntityLine(refs.shipName, occupied && defId ? 'hull:' + defId : null,
       occupied ? ((portrait && portrait.hull.line) || shipDisplayName(ctx, defId)) : 'Empty slot');
     if (occupied && portrait) {
       paintSavePortrait({
-        scars: refs.scars, titles: refs.titles, rapSheet: refs.rapSheet, grudge: refs.grudge,
+        scars: refs.scars, repairs: refs.repairs, titles: refs.titles, rapSheet: refs.rapSheet, grudge: refs.grudge,
       }, portrait);
       if (!refs.portrait.parentNode) refs.caption.insertBefore(refs.portrait, refs.actions);
     } else if (refs.portrait.parentNode) {
@@ -1149,6 +1266,31 @@ export const saveLoadScreen = {
       items.push({ action: 'newGame', label: 'New game', primary: true });
     }
     refs.actions.innerHTML = '';
+    if (!refs.labelField) {
+      const field = el('label', 'sf-slot-label');
+      field.style.display = 'grid';
+      field.style.gap = '4px';
+      field.style.width = 'min(28ch, 100%)';
+      field.appendChild(el('span', 'k-caps', 'Name'));
+      const input = el('input', 'k-input');
+      input.type = 'text';
+      input.maxLength = 48;
+      input.setAttribute('aria-label', 'Save name');
+      input.placeholder = 'Name this save';
+      input.autocomplete = 'off';
+      input.spellcheck = false;
+      field.appendChild(input);
+      refs.labelField = field;
+      refs.labelInput = input;
+    }
+    if (refs.labelField.parentNode !== refs.caption) refs.caption.insertBefore(refs.labelField, refs.actions);
+    refs.labelField.hidden = !saveAllowed;
+    refs.labelField.style.display = saveAllowed ? 'grid' : 'none';
+    refs.labelInput.disabled = !saveAllowed;
+    if (refs.labelInput && document.activeElement !== refs.labelInput) {
+      const next = (occupied && meta && meta.label) || '';
+      if (refs.labelInput.value !== next) refs.labelInput.value = next;
+    }
     if (!items.length) return;
     const list = words(items, {
       row: true, size: 'emph', ariaLabel: slotLabel(id) + ' actions',
@@ -1249,7 +1391,23 @@ export const saveLoadScreen = {
         if (!ok) return;
       }
       refs.selected = id;
-      ctx.bus.emit('game:save', { slot: id });
+      const presenting = !!(ctx.state && ctx.state.render && ctx.state.render.photoMode && ctx.state.render.photoMode.active);
+      let thumbnail;
+      let thumbnailSource;
+      if (!presenting && typeof document !== 'undefined' && typeof document.querySelector === 'function') {
+        const canvas = document.querySelector('canvas');
+        const shot = capturePhotoPng(canvas);
+        if (shot && shot.ok) {
+          thumbnail = shot.dataUrl;
+          thumbnailSource = canvas;
+        }
+      }
+      ctx.bus.emit('game:save', {
+        slot: id,
+        label: refs.labelInput ? refs.labelInput.value : '',
+        thumbnail,
+        thumbnailSource,
+      });
       setTimeout(() => this._render(ctx), 120);
       return;
     }
@@ -1315,6 +1473,7 @@ export const saveLoadScreen = {
   },
 
   async _import(ctx, fileIn) {
+    this._importLine = '';
     const f = fileIn.files && fileIn.files[0];
     if (!f) return;
     const rejectOversize = (actual) => {
@@ -1332,6 +1491,8 @@ export const saveLoadScreen = {
       rejectOversize(fileBytes);
       return;
     }
+    const slot = importDestination(refs && refs.selected, refs && refs.ids);
+    const destinationWord = armImportDestination(slot);
     const confirmed = await confirm({
       title: 'Import save file?',
       body: importConfirmBody(f),
@@ -1339,16 +1500,23 @@ export const saveLoadScreen = {
     });
     if (!confirmed) { fileIn.value = ''; return; }
     const finish = (ok) => {
-      ctx.bus.emit('toast', { text: ok ? 'Save imported' : 'Import failed', kind: ok ? 'good' : 'warn', ttl: 2800 });
+      const spoken = this._importLine;
+      this._importLine = '';
+      ctx.bus.emit('toast', {
+        text: importResultLine(ok, destinationWord, spoken),
+        kind: ok ? 'good' : 'warn',
+        ttl: 2800,
+      });
       fileIn.value = '';
       this._render(ctx);
     };
     const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
     if (sys && typeof sys.importFile === 'function') {
-      try { sys.importFile(f, finish); return; } catch (e) {}
+      try { sys.importFile(f, finish, slot); } catch (e) { finish(false); }
+      return;
     }
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const text = String(reader.result || '');
       // A synthetic/legacy File may not expose a trustworthy size. Keep the raw-text check before
       // any fallback JSON.parse or save-system import call in that case.
@@ -1357,19 +1525,7 @@ export const saveLoadScreen = {
         rejectOversize(textBytes);
         return;
       }
-      let ok = false;
-      if (sys && typeof sys.importString === 'function') { try { ok = !!sys.importString(text, 'quick'); } catch (e) {} }
-      else if (sys && typeof sys.importSave === 'function') { try { ok = !!sys.importSave(text); } catch (e) {} }
-      if (!ok) {
-        try {
-          JSON.parse(text);
-          if (typeof localStorage !== 'undefined') { localStorage.setItem(LS_PREFIX + 'import', text); ok = true; }
-        } catch (e) {
-          ctx.bus.emit('toast', { text: 'Import failed: file is not valid JSON', kind: 'warn', ttl: 3000 });
-          ok = false;
-        }
-      }
-      finish(ok);
+      finish(await importValidatedSave(sys, text, slot));
     };
     reader.onerror = () => finish(false);
     reader.readAsText(f);
@@ -1377,6 +1533,16 @@ export const saveLoadScreen = {
 
   onShow(ctx) {
     if (!refs) return;
+    // Screen instances outlive runs. Only the save authority's current receipt
+    // can describe this run's recovery; discard cached receipts before hydration.
+    for (const [slot, note] of Object.entries(this._notices || {})) {
+      if (note.kind === 'recovered') delete this._notices[slot];
+    }
+    const retained = ctx && ctx.state && ctx.state.save && ctx.state.save.lastRecovery;
+    if (retained) {
+      const note = recoveryNotice(retained);
+      if (note) this._notices[note.slot] = note;
+    }
     cue('open');
     refs.cancelHullRelease();
     refs.clearLoadRequest();
@@ -1424,12 +1590,17 @@ export const saveLoadScreen = {
       refs.cancelHullRelease();
       try { refs.unsubLoading(); } catch (e) { /* bus already gone */ }
       try { refs.unsubStartFailed(); } catch (e) { /* bus already gone */ }
+      try { refs.unsubLoadFailed(); } catch (e) { /* bus already gone */ }
       try { refs.unsubSynced(); } catch (e) { /* bus already gone */ }
       try { refs.unsubValidated(); } catch (e) { /* bus already gone */ }
       try { refs.unsubCompleted(); } catch (e) { /* bus already gone */ }
+      for (const key of ['unsubRecovered', 'unsubBackup', 'unsubRecoveryFailed', 'unsubProfile']) {
+        if (typeof refs[key] === 'function') refs[key]();
+      }
     }
     if (this.hull) { this.hull.dispose(); this.hull = null; }
     if (this._film) { this._film.dispose(); this._film = null; }
     refs = null;
+    this._notices = null;
   },
 };

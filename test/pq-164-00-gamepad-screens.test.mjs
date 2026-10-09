@@ -146,10 +146,11 @@ test('PQ-164.00: the live screen catalog is real and pad UI is one shared modal 
 function drivePad(id, locked, pressedIdx) {
   installPad(-1);
   const bus = createBus();
-  const seen = { confirm: 0, cancel: 0, navigate: 0 };
+  const seen = { confirm: 0, cancel: 0, navigate: 0, cues: [] };
   bus.on('ui:confirm', () => { seen.confirm += 1; });
   bus.on('ui:cancel', () => { seen.cancel += 1; });
   bus.on('ui:navigate', () => { seen.navigate += 1; });
+  bus.on('audio:cue', (p) => { seen.cues.push(p && p.id); });
   const pops = [];
   const state = {
     mode: 'flight',
@@ -186,6 +187,19 @@ test('PQ-164.00: accept confirms on every registered screen through createUiInpu
   }
 });
 
+test('PQ-164.00: one pad accept voices exactly one confirm', async () => {
+  // The audio system binds ui:confirm to the confirm recipe. Any extra cue resolving to the same
+  // recipe on the same press is the doubled click this pins against.
+  const { resolveAudioCueRecipeId } = await import('../src/audio/audioSystem.js');
+  const audioSrc = readFileSync(fileURLToPath(new URL('../src/audio/audioSystem.js', import.meta.url)), 'utf8');
+  assert.match(audioSrc, /bus\.on\('ui:confirm', \(\) => this\._onCue\('confirm'\)\)/);
+  const confirmRecipe = resolveAudioCueRecipeId('confirm');
+  assert.ok(confirmRecipe, 'confirm resolves to a real recipe');
+  const { seen } = drivePad('pause', false, 0);
+  assert.equal(seen.confirm, 1);
+  assert.deepEqual(seen.cues.filter((id) => resolveAudioCueRecipeId(id) === confirmRecipe), []);
+});
+
 test('PQ-164.00: cancel pops a normal screen and traps a locked one', () => {
   const normal = drivePad('pause', false, 1);
   assert.ok(normal.pops.includes('pause') || normal.seen.cancel >= 1, 'pause B pops');
@@ -199,6 +213,50 @@ test('PQ-164.00: dpad on a modal emits ui:navigate via the shared route', () => 
   document.activeElement = btnA;
   const { seen } = drivePad('settings', false, 13);
   assert.ok(seen.navigate >= 1, 'D-pad down must navigate inside a modal');
+});
+
+test('PQ-164.00: shoulder tab cycling on the station screen ticks hover like every other nav gesture', () => {
+  const tabA = stubEl({ tabindex: '0' });
+  const tabB = stubEl({ tabindex: '-1' });
+  tabA.getAttribute = (n) => (n === 'role' ? 'tab' : n === 'data-tab' ? 'bridge' : n === 'tabindex' ? '0' : null);
+  tabB.getAttribute = (n) => (n === 'role' ? 'tab' : n === 'data-tab' ? 'yard' : n === 'tabindex' ? '-1' : null);
+  tabA.classList.contains = (cls) => cls === 'active';
+  tabA.parentNode = screenRoot;
+  tabB.parentNode = screenRoot;
+  screenRoot.dataset.screen = 'station';
+  const prevQSA = screenRoot.querySelectorAll;
+  screenRoot.querySelectorAll = () => [tabA, tabB];
+  const prevFocus = document.activeElement;
+  try {
+    const bus = createBus();
+    const seen = { nav: 0, hover: 0 };
+    bus.on('ui:navigate', () => { seen.nav += 1; });
+    bus.on('audio:cue', (p) => { if (p && p.id === 'hover') seen.hover += 1; });
+    const state = {
+      mode: 'flight', timeScale: 0, tick: 1, ui: {},
+      settings: { controls: { gamepad: { enabled: true } } },
+      entities: new Map(), player: {},
+    };
+    const gp = createGamepad({ bus, state });
+    const screenManager = {
+      isOpen: () => true,
+      top: () => 'station',
+      getActiveScreenDef: () => ({ id: 'station' }),
+      locked: () => false,
+      popScreen() {}, pushScreen() {},
+    };
+    const input = createUiInput({ bus, state, gamepad: gp, registry: null }, screenManager);
+    installPad(5); // r1 → tabNext
+    input.tick(0.016);
+    input.dispose();
+    assert.ok(seen.nav >= 1, 'tab cycle still emits the navigate intent');
+    assert.ok(seen.hover >= 1, 'the hover tick rides the tab gesture');
+    assert.ok((tabB._clicks || 0) >= 1, 'the next tab activates');
+  } finally {
+    screenRoot.querySelectorAll = prevQSA;
+    screenRoot.dataset.screen = 'pause';
+    document.activeElement = prevFocus;
+  }
 });
 
 test('PQ-164.00 seed 16400: kit words with roving tabindex stay pad-focusable', () => {

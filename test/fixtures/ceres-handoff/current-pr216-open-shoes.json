@@ -1,0 +1,303 @@
+{
+  "schema": "ceres.current-open-shoes-observation.v1",
+  "sourceClosure": "5b623ee595bd15384ef93ddc96112bf6e80d5eb443628578fad0d4e8844a6c09",
+  "tick": 54000,
+  "phase": "unshoe",
+  "description": "Measured current-PR216 body/line sample. Test reconstructs open carrier shoes explicitly; this is a reduced physical fixture, not native-byte replay or full-world proof.",
+  "section": {
+    "id": 470,
+    "pos": {
+      "x": -13137.971984863281,
+      "y": 0,
+      "z": 9513.274291992188
+    },
+    "vel": {
+      "x": 0.057176027446985245,
+      "y": 0,
+      "z": -1.1892015933990479
+    },
+    "rot": 0.010563571402984247,
+    "angVel": 0.018490105867385864,
+    "mass": 1800
+  },
+  "hardware": [
+    {
+      "id": 507,
+      "role": "cutterHead",
+      "pos": {
+        "x": -13167.911071777344,
+        "y": 0,
+        "z": 9446.044189453125
+      },
+      "vel": {
+        "x": 0.21500679850578308,
+        "y": 0,
+        "z": -10.713403701782227
+      },
+      "rot": 1.5748341615897614,
+      "angVel": 0.004166853614151478,
+      "mass": 60,
+      "hull": 120
+    },
+    {
+      "id": 505,
+      "role": "breaker",
+      "pos": {
+        "x": -13138.026428222656,
+        "y": 0,
+        "z": 9484.049560546875
+      },
+      "vel": {
+        "x": -0.02439696155488491,
+        "y": 0,
+        "z": -8.822613716125488
+      },
+      "rot": 1.5731040687533195,
+      "angVel": -0.011565707623958588,
+      "mass": 3200,
+      "hull": 1657.4732000000013
+    },
+    {
+      "id": 506,
+      "role": "cradle",
+      "pos": {
+        "x": -13138,
+        "y": 0,
+        "z": 9512
+      },
+      "vel": {
+        "x": 0,
+        "y": 0,
+        "z": 0
+      },
+      "rot": 0,
+      "angVel": 0,
+      "mass": 6000,
+      "hull": 2148.288000000004
+    }
+  ],
+  "lines": [
+    {
+      "id": "att_000003",
+      "defId": "attachment_transport_clamp",
+      "ownerId": 507,
+      "targetId": 505,
+      "controlMode": "ceres_workfleet",
+      "ownerGeneration": 107,
+      "targetGeneration": 105,
+      "controllerGeneration": null,
+      "sourceSocketId": "SOCKET_Mount",
+      "targetSocketId": "SOCKET_Cutter_Dock",
+      "sourceAnchorLocal": {
+        "x": -8.000000000000183,
+        "z": -8.397969650144731e-14
+      },
+      "targetAnchorLocal": {
+        "x": -46.00000000000119,
+        "z": 30.000000000001034
+      },
+      "physicsHandle": {
+        "id": "att_000003"
+      },
+      "state": "active",
+      "createdTick": 6668,
+      "brokenTick": null,
+      "breakReason": null,
+      "restLength": 0.026060374168755757,
+      "lastTension": 32.00682606361649,
+      "lastImpulse": 0.5334471010602748,
+      "nearBreakWarned": false,
+      "actionInstanceId": null,
+      "tetherPolicy": {
+        "break": {
+          "maxTension": 10500000,
+          "maxImpulse": 190000,
+          "maxYank": 150000,
+          "graceTicks": 4
+        },
+        "reelRate": 0
+      },
+      "lastYank": 17.75429526742915,
+      "physicsSpringState": {
+        "slackS": 0,
+        "captureT": 0.15,
+        "captureActive": false,
+        "wasTaut": true,
+        "reelSlip": false,
+        "phase": "overload",
+        "breakRequested": false,
+        "lastStretch": 0.11557088663162357,
+        "lastRelativeSpeed": -2.1216898215794084,
+        "lastFrameErrorSpeed": 0,
+        "lastYank": 17.75429526742915,
+        "lastTension": 0,
+        "lastImpulse": 0,
+        "lastStoredEnergy": 4.2741215477822685,
+        "lastSpentEnergy": 7.307464963192686
+      }
+    },
+    {
+      "id": "att_000004",
+      "defId": "tether_standard",
+      "ownerId": 505,
+      "targetId": 470,
+      "controlMode": "ceres_workfleet",
+      "ownerGeneration": 105,
+      "targetGeneration": 70,
+      "controllerGeneration": null,
+      "sourceSocketId": "SOCKET_Tether_Massline",
+      "targetSocketId": "socket_tether_anchor",
+      "sourceAnchorLocal": {
+        "x": -46.00000000000042,
+        "z": 7.614608796339918e-13
+      },
+      "targetAnchorLocal": {
+        "x": 0,
+        "z": -55
+      },
+      "physicsHandle": {
+        "id": "att_000004"
+      },
+      "state": "active",
+      "createdTick": 6668,
+      "brokenTick": null,
+      "breakReason": null,
+      "restLength": 18,
+      "lastTension": 7415.721945271197,
+      "lastImpulse": 123.59536575451995,
+      "nearBreakWarned": false,
+      "actionInstanceId": null,
+      "tetherPolicy": {
+        "break": {
+          "maxTension": 10500000,
+          "maxImpulse": 190000,
+          "maxYank": 150000,
+          "graceTicks": 4,
+          "stiffness": 90,
+          "damping": 6
+        },
+        "reelRate": 69,
+        "maxLength": 390,
+        "strengthRevision": 2,
+        "payoutRevision": 1
+      },
+      "lastYank": 5.901801491390852,
+      "physicsSpringState": {
+        "slackS": 0,
+        "captureT": 0.35,
+        "captureActive": false,
+        "wasTaut": true,
+        "reelSlip": false,
+        "phase": "loaded",
+        "breakRequested": false,
+        "lastStretch": 2.1440121672142887,
+        "lastRelativeSpeed": 7.933413880724488,
+        "lastFrameErrorSpeed": 0,
+        "lastYank": -5.901801491390852,
+        "lastTension": 7415.721945271197,
+        "lastImpulse": 123.59536575451995,
+        "lastStoredEnergy": 321.7751721214038,
+        "lastSpentEnergy": 0
+      },
+      "masslineRuntime": {
+        "schemaVersion": 1,
+        "state": "holding",
+        "restLength": 18,
+        "targetLength": 18,
+        "reelVelocity": 0,
+        "heat": 0.0013333333333333333,
+        "integrity": 1,
+        "overloadS": 0,
+        "overheatLatched": false,
+        "workJ": 0,
+        "lastTension": 7415.721945271197,
+        "lastImpulse": 123.59536575451995,
+        "recentLoad": 4444.058283950908,
+        "cutReason": null
+      },
+      "masslineTelemetry": {
+        "attachmentId": "att_000004",
+        "state": "holding",
+        "distance": 20.234600859678626,
+        "restLength": 18,
+        "targetLength": 18,
+        "slack": 0,
+        "tension": 7415.721945271197,
+        "impulse": 123.59536575451995,
+        "yank": -5.901801491390852,
+        "tensionFraction": 0.0007062592328829711,
+        "overloadRatio": 0.0007062592328829711,
+        "heatFraction": 1.3333333333333333e-05,
+        "integrity": 1,
+        "reelVelocity": 0,
+        "massResponse": {
+          "ownerMotionShare": 0.36,
+          "targetMotionShare": 0.64,
+          "reducedMass": 1152,
+          "massRatio": 1.7777777777777777
+        }
+      },
+      "reelRevision": 12180,
+      "lastReelTick": 33487
+    },
+    {
+      "id": "att_000007",
+      "defId": "attachment_transport_clamp",
+      "ownerId": 506,
+      "targetId": 470,
+      "controlMode": "ceres_workfleet",
+      "ownerGeneration": 106,
+      "targetGeneration": 70,
+      "controllerGeneration": null,
+      "sourceSocketId": "SOCKET_Service_Head",
+      "targetSocketId": "socket_tether_anchor",
+      "sourceAnchorLocal": {
+        "x": 0,
+        "z": 63
+      },
+      "targetAnchorLocal": {
+        "x": 4.5102810375396984e-17,
+        "z": 55.00000000000026
+      },
+      "physicsHandle": {
+        "id": "att_000007"
+      },
+      "state": "active",
+      "createdTick": 52830,
+      "brokenTick": null,
+      "breakReason": null,
+      "restLength": 7.073129641424319,
+      "lastTension": 2914.2621099243383,
+      "lastImpulse": 48.57103516540564,
+      "nearBreakWarned": false,
+      "actionInstanceId": null,
+      "tetherPolicy": {
+        "break": {
+          "maxTension": 10500000,
+          "maxImpulse": 190000,
+          "maxYank": 150000,
+          "graceTicks": 4
+        },
+        "reelRate": 0
+      },
+      "lastYank": 0,
+      "physicsSpringState": {
+        "slackS": 0.2333333333333333,
+        "captureT": 0,
+        "captureActive": false,
+        "wasTaut": false,
+        "reelSlip": false,
+        "phase": "slack",
+        "breakRequested": false,
+        "lastStretch": 0,
+        "lastRelativeSpeed": 0,
+        "lastFrameErrorSpeed": 0,
+        "lastYank": 0,
+        "lastTension": 0,
+        "lastImpulse": 0,
+        "lastStoredEnergy": 0,
+        "lastSpentEnergy": 0
+      }
+    }
+  ]
+}

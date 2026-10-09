@@ -625,7 +625,9 @@ test('reinforcement faction enters makeEnemySpawnSpec before doctrine/contact de
 test('Iron Maw calls its authored Wasp screen once below half hull', () => {
   const sim = createSimulation({ seed: 47, systems: [spawnBudget, aiEncounter] });
   const boss = sim.helpers.spawnEntity(makeEnemySpawnSpec('dreadnought_boss', 10, { x: 400, z: -200 }));
-  boss.hull = boss.hullMax * 0.49;
+  // FB-020: the authored trigger is turret-loss; the hull path is the mercy fallback at 0.35.
+  // 0.49 sat above the mercy line and silently stopped calling — 0.30 is still "below half".
+  boss.hull = boss.hullMax * 0.30;
 
   sim.step();
 

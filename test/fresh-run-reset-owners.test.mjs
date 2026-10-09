@@ -8,6 +8,8 @@ import { VESTA_DERELICT_SALVAGE_SOURCE } from '../src/data/sectorZones.js';
 import { lawSecurity as lawSecurityProto } from '../src/systems/lawSecurity.js';
 import { npcJobsRuntime as npcJobsRuntimeProto } from '../src/systems/npcJobsRuntime.js';
 import { salvage as salvageProto } from '../src/systems/salvage.js';
+import { bountyHunt as bountyHuntProto } from '../src/systems/bountyHunt.js';
+import { QUARRY_TUNING } from '../src/data/bountyHunters.js';
 
 function bootOwner(proto, seed) {
   const state = createGameState(seed);
@@ -91,12 +93,33 @@ test('canonical New Game clears the durable Vesta extraction ledger', () => {
   stale.claimId = null;
   stale.extractedBy = 'old-salvor';
   stale.extracted = true;
+  state.salvage.sortPockets = [{ id: 'old-sort-pocket', phase: 'held' }];
 
   resetOnly('salvage', system);
 
-  assert.deepEqual(state.salvage, { points: [], plannedSectorId: null, sources: {} });
+  // The salvage owner's canonical default also clears physical sorting-pocket ownership.
+  // Keep the exact empty-state assertion rather than accepting a stale pocket across New Game.
+  assert.deepEqual(state.salvage, { points: [], plannedSectorId: null, sortPockets: [], sources: {} });
   const fresh = system._sourceRecord(sourceKey, true);
   assert.equal(fresh.extracted, false);
   assert.equal(system._claimSource({ sourceKey, claimantId: 'fresh-salvor' }).ok, true);
   assert.equal(system._takeSource({ sourceKey, claimantId: 'fresh-salvor' }).ok, true);
+});
+
+test('canonical New Game resets the retained bounty schedule and outcome ledger without re-init', () => {
+  const { state, system } = bootOwner(bountyHuntProto, 4242);
+  const subscriptions = system._subs.slice();
+  state.bountyHunt = { schemaVersion: 1, outcomes: { old: { paid: true } },
+    stageSerial: 19, nextStageAt: 900, activeStaged: { contractId: 'old', stagedAt: 700 } };
+  system._huntersQuiet = { membership: 12 };
+  system._hunterWakeSeq = 88;
+  resetOnly('bountyHunt', system);
+  assert.deepEqual(state.bountyHunt, { schemaVersion: 1, outcomes: {}, stageSerial: 0,
+    nextStageAt: null, activeStaged: null });
+  assert.deepEqual(system._subs, subscriptions);
+  assert.equal(system._huntersQuiet, null);
+  assert.equal(system._hunterWakeSeq, 0);
+  state.mode = 'flight'; state.simTime = 0;
+  system.update(1 / 60, state);
+  assert.equal(state.bountyHunt.nextStageAt, QUARRY_TUNING.firstStageDelayS);
 });

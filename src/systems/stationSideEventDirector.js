@@ -91,9 +91,11 @@ export const stationSideEventDirector = {
       this._onGone = (p) => this._onEntityDestroyed(p);
       this._onExit = () => this._onSectorExit();
       this._onLoaded = () => this._onSaveLoaded();
+      this._onYard = (p) => this._onYardDispatch(p);
       this.bus.on('entity:destroyed', this._onGone);
       this.bus.on('sector:exit', this._onExit);
       this.bus.on('save:loaded', this._onLoaded);
+      this.bus.on('npcjobs:yardDispatch', this._onYard);
     }
   },
 
@@ -313,6 +315,41 @@ export const stationSideEventDirector = {
     }
   },
 
+  // WORLD-29: a real yard tug leaving dock to reach a dead-drive player is a dock-side event,
+  // not just a toast. Schedule ONE cosmetic cargo_tractor seam item on the yard (the current
+  // visible anchor), bearing out toward the stranded ship so the mover reads as "the tender is
+  // coming to you." Same pending/pump path as the seeded plan — pacing and anchor gating intact,
+  // no new side-event kind, no cadence change.
+  _onYardDispatch(payload) {
+    const state = this.state;
+    if (!state || (state.mode && state.mode !== 'flight')) return;
+    if (isDocked(state) || isTutorialActive(state)) return;
+    const station = this._resolveAnchor(state);
+    if (!station) return;                          // no visible yard → nothing to stage the mover on
+    const s = ensureState(state);
+    const now = state.simTime || 0;
+    const def = SIDE_EVENTS.cargo_tractor || { durationS: 40 };
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    const bearing = station.pos && player && player.pos
+      ? Math.atan2(player.pos.z - station.pos.z, player.pos.x - station.pos.x)
+      : 0;
+    const jobKey = payload && payload.jobId != null ? String(payload.jobId) : 'tender';
+    const tickKey = Number.isInteger(state.tick) ? state.tick : Math.floor(now);
+    s.pending.push({
+      eventId: `sse:yard-dispatch:${jobKey}#${tickKey}`,
+      kind: 'cargo_tractor',
+      budget: 0,
+      path: 'outbound-past-traffic',
+      durationS: def.durationS,
+      dueAt: now,
+      bearing: Math.round(bearing * 1e6) / 1e6,
+      sectorId: currentSectorId(state),
+      stationId: stationKey(station),
+    });
+  },
+
   _onSectorExit() {
     const s = ensureState(this.state);
     s.pending = [];
@@ -331,8 +368,9 @@ export const stationSideEventDirector = {
       if (this._onGone) this.bus.off('entity:destroyed', this._onGone);
       if (this._onExit) this.bus.off('sector:exit', this._onExit);
       if (this._onLoaded) this.bus.off('save:loaded', this._onLoaded);
+      if (this._onYard) this.bus.off('npcjobs:yardDispatch', this._onYard);
     }
-    this._onGone = this._onExit = this._onLoaded = null;
+    this._onGone = this._onExit = this._onLoaded = this._onYard = null;
   },
 };
 

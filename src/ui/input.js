@@ -15,6 +15,7 @@ import {
   BINDINGS,
   setPromptDevice,
   setGamepadPromptBindings,
+  setGamepadGlyphSet,
   getGamepadCaptureHandler,
 } from './bindings.js';
 import { resolveActionLabel, selectedWorldSiteTarget } from '../systems/input.js';
@@ -22,6 +23,7 @@ import { resolveGamepadBindings } from '../systems/gamepad.js';
 import { MAP_FOCUS, openGalaxyMap, isMapScreenId } from './mapAuthority.js';
 import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveDockDeny } from './dockDenyBanner.js';
+import { createDockIntent } from '../core/dockIntent.js';
 
 const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline']);
 
@@ -130,6 +132,7 @@ export function createUiInput(ctx, screenManager) {
   let _seenTouchSeq = -1;
   let _lastPromptDevice = 'kbm';
   let _seenPadBindings;
+  let _seenPadGlyphSet;
   function noteDevice(d) {
     _deviceOrder[d] = ++_deviceCounter;
   }
@@ -144,6 +147,14 @@ export function createUiInput(ctx, screenManager) {
     if (custom !== _seenPadBindings) {
       _seenPadBindings = custom;
       setGamepadPromptBindings(resolveGamepadBindings(state && state.settings));
+    }
+    // The face-button register follows the settings address, so a glyph-set switch re-labels
+    // live prompt chips and pad speech the same tick.
+    const glyphSet = state && state.settings && state.settings.controls
+      && state.settings.controls.gamepad ? state.settings.controls.gamepad.glyphSet : undefined;
+    if (glyphSet !== _seenPadGlyphSet) {
+      _seenPadGlyphSet = glyphSet;
+      setGamepadGlyphSet(glyphSet);
     }
     if (dev !== _lastPromptDevice) {
       _lastPromptDevice = dev;
@@ -169,8 +180,12 @@ export function createUiInput(ctx, screenManager) {
   // Emit the dock intent; uiRoot's dock:docked handler owns setting ui.docked + pushing the
   // station hub (single owner of the flight→dock transition, avoids a double-push).
   function doDock() {
+    // A live jump owns the sector transition — docking mid-charge/mid-tunnel would leave the
+    // ui.docked latch on while the jump machine moves the hull into the next sector.
     if (isUiInteractionFenced(state) || !dockInRange || (state.ui && state.ui.docked)) return;
-    const attempt = { stationId: dockStationId };
+    const jumpState = state.jump && state.jump.state;
+    if (jumpState === 'CHARGING' || jumpState === 'JUMPING') return;
+    const attempt = createDockIntent(state, { stationId: dockStationId });
     // Publish the attempt before deciding so the existing faction-voiced denial surface can explain
     // a refusal. The same pure selector is the command gate; a banner can never be the authority.
     bus.emit('dock:attempt', attempt);
@@ -246,6 +261,17 @@ export function createUiInput(ctx, screenManager) {
       const def = screenManager.getActiveScreenDef();
       if (key === 'Escape') {
         ev.preventDefault();
+        // A screen mid-gesture gets first refusal before the generic back/pop (J6): the chart's
+        // laid line / filling hold cancels here, so the first Escape undoes the player's current
+        // intention instead of losing the whole screen. Locked surfaces keep precedence — a
+        // screen that traps ESC (root title, mid-transaction) never receives the refusal.
+        const lockedNow = !!(
+          (screenManager.locked && screenManager.locked()) || (def && def.data && def.data.locked)
+        );
+        if (!lockedNow && def && typeof def.onEscape === 'function') {
+          try { if (def.onEscape(ev, ctx) === true) return; }
+          catch (e) { console.error('[uiInput] screen onEscape error:', e); }
+        }
         closeActiveModal(def);
         return;
       }
@@ -325,6 +351,13 @@ export function createUiInput(ctx, screenManager) {
     // --- pure flight: UI-owned global keys only (mode must be flight) ---
     if (state.mode !== 'flight') return;
 
+    if (matchesBinding(ev, BINDINGS.steeringView)) {
+      if (ev.repeat || ev.shiftKey || ev.ctrlKey || ev.altKey || ev.metaKey) return;
+      ev.preventDefault();
+      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+      bus.emit('race:toggleView', { source: 'keyboard' });
+      return;
+    }
     if (matchesBinding(ev, BINDINGS.band)) {
       ev.preventDefault();
       bus.emit('band:cycle', { source: 'keyboard' });
@@ -467,6 +500,8 @@ export function createUiInput(ctx, screenManager) {
         bus.emit('ui:toggleCargo');
         return;
       case 'o': case 'O':
+        // Auto-repeat must not strobe the contacts-strip pin: one toggle per keypress.
+        if (ev.repeat) return;
         ev.preventDefault();
         bus.emit('ui:toggleOverview');
         return;
@@ -542,7 +577,7 @@ export function createUiInput(ctx, screenManager) {
       const interaction = interactionProfileForEntity(wreck);
       if (interaction.hazardous) {
         bus.emit('toast', {
-          text: 'Hazardous reactor wreck — it can explode if its reactor timer expires. '
+          text: 'Hazardous reactor wreck — it explodes when its reactor timer runs out. '
             + `${BINDINGS.drill.label} drills asteroids; hold the mining control to salvage this wreck or tow it clear.`,
           kind: 'warn',
           ttl: 5,
@@ -584,7 +619,7 @@ export function createUiInput(ctx, screenManager) {
       const dist = Math.hypot(dx, dz);
       const surfaceDist = Math.max(0, dist - (ast.radius || 0) - (player.radius || 0));
       if (surfaceDist > 220) {
-        bus.emit('toast', { text: 'Too far to establish drill link! Fly closer to the asteroid.', kind: 'warn', ttl: 3 });
+        bus.emit('toast', { text: 'Too far to drill. Fly closer to the asteroid.', kind: 'warn', ttl: 3 });
         return;
       }
     }
@@ -599,7 +634,7 @@ export function createUiInput(ctx, screenManager) {
       const latchHint = tetherKey
         ? `Launch a tether (${tetherKey}) to lock onto the asteroid first.`
         : 'Launch a tether to lock onto the asteroid first.';
-      bus.emit('toast', { text: `No massline link! ${latchHint}`, kind: 'warn', ttl: 3.5 });
+      bus.emit('toast', { text: `No Massline link. ${latchHint}`, kind: 'warn', ttl: 3.5 });
       return;
     }
     if (activeTether.defId !== 'tether_standard') {
@@ -654,7 +689,7 @@ export function createUiInput(ctx, screenManager) {
     if (!state.ui) state.ui = {};
     state.ui.pendingClaimBodyId = body.id;
     if (screenManager.hasScreen && !screenManager.hasScreen('base')) {
-      bus.emit('toast', { text: 'Base interface initializing — press ' + BINDINGS.claimBase.label + ' again in a moment', kind: 'info', ttl: 3 });
+      bus.emit('toast', { text: 'Base screen is still loading — press ' + BINDINGS.claimBase.label + ' again in a moment', kind: 'info', ttl: 3 });
       return true;
     }
     screenManager.pushScreen('base');
@@ -995,10 +1030,12 @@ export function createUiInput(ctx, screenManager) {
       if (def && def.id === 'station') {
         if (gp.actions.tabPrev && gp.actions.tabPrev.pressed && cycleStationTab(-1)) {
           bus.emit('ui:navigate', {});
+          bus.emit('audio:cue', { id: 'hover' });
           return;
         }
         if (gp.actions.tabNext && gp.actions.tabNext.pressed && cycleStationTab(1)) {
           bus.emit('ui:navigate', {});
+          bus.emit('audio:cue', { id: 'hover' });
           return;
         }
       }
@@ -1014,8 +1051,9 @@ export function createUiInput(ctx, screenManager) {
       // Accept / Cancel (A / B).
       if (gp.actions.accept && gp.actions.accept.pressed) {
         activateFocused();
+        // The audio system voices ui:confirm itself; a second ui_confirm cue here played the
+        // same sample twice on every pad accept.
         bus.emit('ui:confirm', {});
-        bus.emit('audio:cue', { id: 'ui_confirm' });
       }
       if (gp.actions.cancel && gp.actions.cancel.pressed) {
         if (def && def.id === 'station') undock();
@@ -1106,6 +1144,9 @@ export function createUiInput(ctx, screenManager) {
   }
 
   function tick(dt) {
+    // Gesture capture must own the sample itself. Applying this after gp.tick commits the
+    // first modifier as a solo press, and eats the first ordinary press after cancellation.
+    if (gp) gp.captureMode = !!getGamepadCaptureHandler();
     // Poll the pad whenever a modal owns input, not only when timeScale has already dropped.
     // A first-frame push can race the pause request; D-pad/A/B still have to land.
     const modalOpen = !!(screenManager && screenManager.isOpen && screenManager.isOpen());

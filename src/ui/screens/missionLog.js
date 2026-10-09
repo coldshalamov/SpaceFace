@@ -26,6 +26,7 @@ import {
 import { ENDING_IDS, endingDef } from '../../story/endings/endingDefs.js';
 import { escapeHtml } from '../comms.js';
 import { unsatisfiedRequiredConditions } from '../../data/contractClauses.js';
+import { missionNextActionRow } from '../sim/missionNextAction.js';
 import { BINDINGS } from '../bindings.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import {
@@ -479,7 +480,7 @@ export function continueRecap(state) {
   return { objective, location, risk };
 }
 
-function nextStepText(m) {
+function nextStepText(m, state) {
   const p = m.params || {};
   const dest = m.destStationId ? destStationName(m.destStationId) : 'the tracked marker';
   const wreckName = p.wreckName || 'the marked wreck';
@@ -508,18 +509,46 @@ function nextStepText(m) {
     const choice = titleCaseWords(p.wreckChoiceId || 'wreck outcome');
     return `Next: confirm ${choice} for ${wreckName}; this is a disposition receipt, not a freight handoff.`;
   }
+  // SF-246: the shared sim row knows the phase the static type-switch cannot see — a held
+  // contract term, a wiped-out hunt, a hold short of the manifest, a berth a sector away.
+  // Set-piece lanes above keep their authored lines; every other phase falls to the switch.
+  const next = state ? missionNextActionRow(state, m) : null;
+  if (next) {
+    if (next.phase === 'blocked') {
+      const clause = next.blockedClauses[0] || {};
+      return `Next: ${clause.pendingText || clause.label || 'settle the held contract term'}`;
+    }
+    if (next.phase === 'target_lost') {
+      return 'Next: no marked target remains — report the hunt to settle the contract.';
+    }
+    if (next.phase === 'acquire' && next.action) {
+      const short = Math.max(0, Number(next.action.qty) || 0);
+      const name = cmdtyName(next.action.commodityId);
+      const partial = next.carry && next.carry.partialSettlement;
+      return partial && partial.deliverQty > 0
+        ? `Next: ${short} ${name} short — load the rest, or settle ${partial.deliverQty} at ${dest} for ${partial.payCr} cr.`
+        : `Next: ${short} ${name} short — load the rest before ${dest}.`;
+    }
+    if (next.phase === 'travel' && next.destination && next.destination.sectorId) {
+      const sector = SECTOR_BY_ID.get(next.destination.sectorId);
+      const sectorName = sector && sector.name ? sector.name : 'the destination sector';
+      return `Next: travel to ${sectorName} — ${dest} is another sector over.`;
+    }
+  }
   switch (m.type) {
     case 'cargo_delivery':
     case 'passenger_transport':
-      return 'Next: follow tracked nav to ' + dest + ', dock, and complete the handoff.';
+      return m.destStationId
+        ? 'Next: follow tracked nav to ' + dest + ', dock, and hand over the cargo.'
+        : 'Next: follow tracked nav, dock, and hand over the cargo.';
     case 'bulk_trade':
-      return 'Next: buy or carry ' + cmdtyName(p.cmdtyId) + ', then sell into the tracked destination market.';
+      return 'Next: buy or carry ' + cmdtyName(p.cmdtyId) + ', then sell at the destination market.';
     case 'mining_quota':
-      return 'Next: mine ' + cmdtyName(p.cmdtyId) + ' in an asteroid field, keep cargo space open, then follow the tracker.';
+      return 'Next: mine ' + cmdtyName(p.cmdtyId) + ' in an asteroid field and keep cargo space free.';
     case 'salvage_retrieval':
       return 'Next: recover the marked cargo, keep enough hold space, and deliver it to ' + dest + '.';
     case 'bounty_hunt':
-      return 'Next: follow tracked nav, engage the target, then check this log for completion.';
+      return 'Next: follow tracked nav and take down the target.';
     case 'patrol_clear':
       return 'Next: follow tracked nav and clear hostiles until the progress bar fills.';
     case 'escort':
@@ -531,7 +560,7 @@ function nextStepText(m) {
     case 'smuggling_run':
       return 'Next: deliver quietly to ' + dest + '; avoid scans and keep an escape route.';
     default:
-      return 'Next: track this mission, undock, and follow the nav/objective marker.';
+      return 'Next: track this mission, undock, and follow the objective marker.';
   }
 }
 
@@ -871,7 +900,7 @@ export function missionCommandBrief(m, state) {
   return Object.freeze({
     what: objectiveText(m),
     where: destLabel(m),
-    how: stripNextPrefix(nextStepText(m)),
+    how: stripNextPrefix(nextStepText(m, state)),
     why: missionPurposeText(m),
     reward: term('Pays', 'close cleanly'),
     risk: [term('Risk', 'R0 / route pending'), stake ? stake.text : 'no collateral'].join(' · '),
@@ -1826,7 +1855,7 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
       tone: 'primary',
       label: 'TRACKED',
       title: missionTitle(tracked),
-      body: stripNextPrefix(nextStepText(tracked)),
+      body: stripNextPrefix(nextStepText(tracked, state)),
       meta: missionProgressLabel(tracked),
       brief,
       missionId: tracked.id,
@@ -2132,6 +2161,37 @@ export const missionLogScreen = {
       toggle.setAttribute('aria-expanded', this._compVisible ? 'true' : 'false');
       cue('confirm');
       if (this._compVisible) this._renderCompleted();
+      if (this._corrVisible) this._renderCorridorLog();
+      this._placeHand(true);
+    });
+
+    // Corridor log (U9): the encounter receipts ring, finally readable. A beat's outcome
+    // text used to live only as a transient toast; the saved ring now has a reader, folded
+    // behind the same fine Show/Hide word as Completed.
+    const corrH = el('div', 'k-row k-row--static sf-mlog-section-corr');
+    corrH.appendChild(el('div', 'k-caps', 'Corridor log'));
+    const corrToggle = el('button', 'k-word k-word--fine sf-mlog-toggle', 'Show');
+    corrToggle.type = 'button';
+    corrToggle.setAttribute('aria-expanded', 'false');
+    corrToggle.setAttribute('aria-controls', 'sf-mlog-corridor-list');
+    corrH.appendChild(corrToggle);
+    body.appendChild(corrH);
+    this._corrHeader = corrH;
+
+    const corrList = el('div', 'sf-mlog-comp-list');
+    corrList.id = 'sf-mlog-corridor-list';
+    corrList.hidden = true;
+    body.appendChild(corrList);
+    this._corrListEl = corrList;
+    this._corrVisible = false;
+
+    corrToggle.addEventListener('click', () => {
+      this._corrVisible = !this._corrVisible;
+      corrList.hidden = !this._corrVisible;
+      corrToggle.textContent = this._corrVisible ? 'Hide' : 'Show';
+      corrToggle.setAttribute('aria-expanded', this._corrVisible ? 'true' : 'false');
+      cue('confirm');
+      if (this._corrVisible) this._renderCorridorLog();
       this._placeHand(true);
     });
 
@@ -2481,6 +2541,7 @@ export const missionLogScreen = {
       this._focusedId = null;
       this._renderStage(state, null, tracked);
       if (this._compVisible) this._renderCompleted();
+      if (this._corrVisible) this._renderCorridorLog();
       this._placeHand();
       this._rootEl.dataset.kReady = '1';
       return;
@@ -2540,6 +2601,7 @@ export const missionLogScreen = {
 
     this._renderStage(state, activeMissions.find((m) => m.id === this._focusedId) || null, tracked);
     if (this._compVisible) this._renderCompleted();
+    if (this._corrVisible) this._renderCorridorLog();
     this._restoreFocusToken(focusToken);
     if (this._observeHangRows) this._observeHangRows();
     this._placeHand();
@@ -2870,7 +2932,7 @@ export const missionLogScreen = {
       rollTo(digits, Math.round(frac * 100));
     }
     card.appendChild(el('h2', 'k-display k-t-title', titleText));
-    if (!isTracked) card.appendChild(el('p', 'k-sentence k-sentence--emph sf-mlog-next', stripNextPrefix(nextStepText(m))));
+    if (!isTracked) card.appendChild(el('p', 'k-sentence k-sentence--emph sf-mlog-next', stripNextPrefix(nextStepText(m, state))));
     else card.appendChild(el('p', 'k-sentence k-sentence--emph sf-mlog-obj', objectiveText(m)));
 
     const reward = Math.max(0, Number(m.reward_cr) || 0);
@@ -3013,7 +3075,7 @@ export const missionLogScreen = {
           '<div class="k-row__sub sf-mlog-rec-body">' + escapeHtml((a.brief && a.brief.how) || a.body || '') + '</div>' +
           (a.meta ? '<div class="k-row__sub sf-mlog-rec-meta">' + escapeHtml(wordText(a.meta)) + '</div>' : '') +
           '<div class="k-row__sub sf-mlog-rec-marker">' + escapeHtml(wordText(a.mapAction
-            ? '◆ BRIGHT AMBER DIAMOND = CURRENT GOAL'
+            ? '◆ THE AMBER DIAMOND IS YOUR CURRENT GOAL'
             : (a.action === 'track' ? 'NO GOAL MARKER · TRACK NAV TO CREATE ONE' : 'NO GOAL MARKER YET'))) + '</div>' +
         '</div>' +
         '<span class="k-row__num sf-mlog-rec-label">' + escapeHtml(wordText(a.label || 'NEXT')) + '</span>' +
@@ -3159,5 +3221,37 @@ export const missionLogScreen = {
       frag.appendChild(totals);
     }
     this._compListEl.appendChild(frag);
+  },
+
+  // U9 — the corridor log: the encounter director's saved receipts ring, newest first.
+  // Saved with the game (RECEIPT_CAP 12), so the log survives Continue.
+  _renderCorridorLog() {
+    if (!this._corrListEl || !this._ctx) return;
+    const dir = this._ctx.state.encounterDirector;
+    const receipts = Array.isArray(dir && dir.receipts) ? dir.receipts.slice(-5).reverse() : [];
+    this._corrListEl.innerHTML = '';
+    if (!receipts.length) {
+      this._corrListEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-38">Nothing worth logging yet. Fly the lane.</p></div>';
+      return;
+    }
+    const now = Number(this._ctx.state.simTime) || 0;
+    const frag = document.createDocumentFragment();
+    const list = el('div', 'k-rows sf-mlog-corridor-rows');
+    for (const rec of receipts) {
+      const ageS = Math.max(0, now - (Number(rec.t) || 0));
+      const age = ageS >= 120 ? `${Math.round(ageS / 60)} min ago` : `${Math.round(ageS)} s ago`;
+      const title = String(rec.shape || 'encounter').replace(/_/g, ' ').toUpperCase();
+      const outcome = String(rec.outcome || '').replace(/_/g, ' ').toUpperCase();
+      const row = el('div', 'k-row k-row--static sf-mlog-receipt-row sf-mlog-receipt-row--corridor');
+      row.innerHTML =
+        '<div>' +
+          '<span class="k-38 sf-mlog-receipt-title">' + escapeHtml(title) + '</span>' +
+          '<div class="k-row__sub sf-mlog-receipt-body">' + escapeHtml(rec.text || '') + '</div>' +
+        '</div>' +
+        '<span class="k-38 sf-mlog-receipt-outcome">' + escapeHtml(outcome ? `${outcome} · ${age}` : age) + '</span>';
+      list.appendChild(row);
+    }
+    frag.appendChild(list);
+    this._corrListEl.appendChild(frag);
   },
 };

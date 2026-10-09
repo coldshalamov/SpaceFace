@@ -2409,6 +2409,12 @@ export function decidePq017ReleasedLaunchGateControl({
     reason: 'target-aligned-nudge',
     inputAuthorized: true,
     appliedTurnDirection: 0,
+    // A nudge is an atomic single-tick thrust pulse: the batch window may stretch to four
+    // unobserved ticks under catch-up, and an unbounded W hold inside it can inject enough
+    // speed to exceed the service-speed gate the next plan iteration enforces. One fixed
+    // tick stays recoverable at any authored drive authority; the nudgeCooldown coast below
+    // is already the designed observation between pulses.
+    maximumHoldTicks: 1,
     nextState: { nudgeCooldown: true },
     gateEvaluation: evaluation,
     brakeAudit,

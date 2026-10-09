@@ -50,15 +50,15 @@ export const WEST_ORIGIN_CELLS = Object.freeze({
 // Inlined from sectors.js SECTOR_PALETTE_CLASSES — existing vocab only, no import.
 const PALETTE = Object.freeze({
   core: Object.freeze({
-    key: 0xd8e8ff, rim: 0x7a6cff, fill: 0x4ad8ff, ambient: 0x384868,
+    key: 0xffe2bd, rim: 0x82baf0, fill: 0xa3b4dd, ambient: 0x45516f,
     fog: 0x05070b, fogDensity: 0, nebulaTint: 0x2450a0, dust: 0x8ec0e8,
   }),
   belt: Object.freeze({
-    key: 0xffd59a, rim: 0xb56d2f, fill: 0xffb13d, ambient: 0x594a42,
+    key: 0xffd59a, rim: 0x71a4bf, fill: 0xbca58d, ambient: 0x594a52,
     fog: 0x090705, fogDensity: 0.00002, nebulaTint: 0x8a4a1e, dust: 0xc0793d,
   }),
   fringe: Object.freeze({
-    key: 0xffb07a, rim: 0xff3f2d, fill: 0xffaa66, ambient: 0x584343,
+    key: 0xffb07a, rim: 0x9875ce, fill: 0xbc91a6, ambient: 0x51435d,
     fog: 0x090504, fogDensity: 0.00003, nebulaTint: 0x8a1e1e, dust: 0xc15032,
   }),
   anomaly: Object.freeze({
@@ -136,6 +136,7 @@ const REGION_NYX = freezeRegion({
     security: 0.28,
     charted: false,
     factionId: 'faction_quiet',
+    threat: 'quiet',
     position: { x: NYX_CELL.x, y: NYX_CELL.y },
     worldRadius: 5000,
     palette: PALETTE.fringe,
@@ -249,6 +250,7 @@ const REGION_HYPERION = freezeRegion({
     security: 0.38,
     charted: false,
     factionId: 'faction_dmc',
+    industries: { mining: true, refinery: true },
     position: { x: HYPERION_CELL.x, y: HYPERION_CELL.y },
     worldRadius: 4800,
     palette: PALETTE.belt,
@@ -277,6 +279,10 @@ const REGION_HYPERION = freezeRegion({
         factionId: 'faction_dmc',
         size: 'S',
         services: ['trade', 'ore_buy', 'missions'],
+        // The claim crews run drills and haulers off cells and burn the ration by mid-shift —
+        // a standing fuel-cell shortage. Same shared price curve; only this listing's stock
+        // equilibrium moves (dear end of the Ceres Refinery cell run, one bridge gate up-lane).
+        marketEquilibriumFactors: { cmdty_fuel_cells: 0.1 },
         chartNote: 'Claim crews buy ore at the seam and post dangerous short-haul work.',
       },
     ],
@@ -515,7 +521,9 @@ const REGION_ORCUS = freezeRegion({
     tier: 4,
     security: 0.06,
     charted: false,
-    factionId: 'faction_vael',
+    factionId: 'faction_archive',
+    threat: 'vael',
+    industries: { research: true },
     position: { x: ORCUS_CELL.x, y: ORCUS_CELL.y },
     worldRadius: 5400,
     palette: PALETTE.anomaly,
@@ -531,7 +539,7 @@ const REGION_ORCUS = freezeRegion({
         id: 'station_orcus_shadow',
         name: 'Shadow Cache',
         type: 'research',
-        factionId: 'faction_vael',
+        factionId: 'faction_archive',
         size: 'S',
         services: ['scan_tech', 'repair', 'refuel', 'missions'],
         chartNote: 'The only Vael dock in the dark. Scan work goes only to pilots they admit.',
@@ -616,7 +624,7 @@ const REGION_ORCUS = freezeRegion({
       id: 'zone_orcus_research',
       name: 'Shadow Cache',
       type: 'civilian_core',
-      factionId: 'faction_vael',
+      factionId: 'faction_archive',
       reason: 'A thin Vael research outpost — the only dock for light-years, if they let you land.',
       center: { x: 420, z: -960 },
       radius: 720,

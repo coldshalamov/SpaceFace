@@ -1,5 +1,6 @@
 // Only remap references backed by the save owner's actual old-to-new body map.
-const IDS=new Set(['id','actorId','sourceId','targetId','senderId','receiverId','speakerId','entityId','ownerId']);
+const IDS=new Set(['id','actorId','sourceId','targetId','senderId','receiverId','speakerId','entityId','ownerId',
+  'projectileId','projectileOwnerId','surfaceId','aId','bId']);
 const LISTS=new Set(['threatIds','boundaryIds','secondaryIds','witnessIds','knownWitnesses']);
 function mappedIdentity(value,remap) {
   if(typeof value!=='string'||!value.startsWith('entity:'))return value;

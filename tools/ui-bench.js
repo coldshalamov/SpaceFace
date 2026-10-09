@@ -9,6 +9,7 @@
 import { createGameState } from '../src/core/gameState.js';
 import { BENCH_HELIOS_BOARD } from './ui-bench-board.js';
 import { createRunState } from '../src/core/runState.js';
+import { runSession } from '../src/systems/runSession.js';
 import { TRAVEL_FLAGS } from '../src/data/featureFlags.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../src/data/combatLabSetups.js';
 import { survivalDraft } from '../src/systems/survivalDraft.js';
@@ -26,6 +27,7 @@ import { BACKDROPS, resolveShot, UI_BENCH_SHOTS } from '../scripts/lib/uiBenchCa
 import { createBenchSaveSystem } from './ui-bench-saves.js';
 import { benchWorldFor, loadBenchWorld, seedChartShot, unseedChartShot } from './ui-bench-chart.js';
 import { seedFootprintShot, unseedFootprintShot } from './ui-bench-footprint.js';
+import { MOBILE_CSS } from '../src/systems/mobile/styles.js';
 
 window.__BENCH_READY = false;
 window.__BENCH_OVERLAY = '';
@@ -48,6 +50,7 @@ const SCREENS = Object.freeze({
   missionLog: () => import('../src/ui/screens/missionLog.js').then((m) => m.missionLogScreen),
   credits: () => import('../src/ui/screens/credits.js').then((m) => m.creditsScreen),
   achievements: () => import('../src/ui/screens/achievements.js').then((m) => m.achievementsScreen),
+  statistics: () => import('../src/ui/screens/statistics.js').then((m) => m.statisticsScreen),
   gameOver: () => import('../src/ui/screens/gameOver.js').then((m) => m.gameOverScreen),
   techTree: () => import('../src/ui/screens/techTree.js').then((m) => m.techTreeScreen),
   range: () => import('../src/ui/screens/range.js').then((m) => m.rangeScreen),
@@ -87,6 +90,16 @@ const stillInput = document.getElementById('bench-still');
 const bgEl = document.getElementById('bench-bg');
 
 const params = new URLSearchParams(location.search);
+// ?phone=1 (ui-bench --phone): the page is a touch phone — the deck's own CSS and root flag, exactly as
+// the mobile layer stamps them in the game, so menus are judged against the cascade a phone gets.
+const PHONE = params.get('phone') === '1';
+if (PHONE) {
+  document.documentElement.dataset.sfMobile = '1';
+  const phoneStyle = document.createElement('style');
+  phoneStyle.id = 'sf-mobile-style';
+  phoneStyle.textContent = MOBILE_CSS;
+  document.head.append(phoneStyle);
+}
 const log = [];
 const stack = [];
 
@@ -234,7 +247,13 @@ function seedCrucibleRun(gameState, { ruleset, phase, wave, credits, score, fitt
   gameState.player.ownedShips = [{ defId: starter.hullId, fittings: fitted }];
   gameState.player.activeShipIndex = 0;
   gameState.player.moduleInventory = spares.map((defId, index) => ({ instanceId: 9100 + index, defId }));
-  const run = createRunState({ kind: 'survival', ruleset, seed: 4242 });
+  // Mint the same process-local lifetime the live run owner gives every armory action.
+  // A bare schema record intentionally cannot authorize a preparation receipt.
+  gameState.run = createRunState();
+  const runOwner = Object.create(runSession);
+  Object.assign(runOwner, { state: gameState, bus: { emit() {} } });
+  runOwner.begin({ kind: 'survival', ruleset, seed: 4242, arenaId: 'helios_core' });
+  const run = gameState.run;
   Object.assign(run, { arenaId: 'helios_core', phase, wave, credits, score, xp: wave * 110 });
   gameState.run = run;
   const ownerBus = benchOwnerBus(gameState);
@@ -830,7 +849,11 @@ async function finishShot(shot) {
         const button = [...screensEl.querySelectorAll('button')].find((el) => (el.textContent || '').toUpperCase().includes(want));
         button?.click();
       }
-      if (shot.overlay) await openOverlay(shot.overlay);
+      if (shot.overlay) {
+        await openOverlay(shot.overlay);
+        // The live loop keeps ticking the HUD under an open radial (the travel tape yields to it).
+        for (let i = 0; i < 24; i += 1) { try { window.__benchHud?.frame?.(1 / 30); } catch { /* still only */ } }
+      }
     }
   } catch (error) {
     showBroken(shot.screen || shot.id, `mount threw: ${error && error.message ? error.message : String(error)}`);
@@ -850,6 +873,7 @@ async function goto(rawId) {
   window.__BENCH_READY = false;
   window.__BENCH_OVERLAY = '';
   window.__BENCH_OVERLAY_EL = null;
+  if (window.__benchMobile) { try { window.__benchMobile.destroy(); } catch { /* already gone */ } window.__benchMobile = null; }
   const shot = resolveShot(rawId) || { id: rawId, screen: rawId, backdrop: 'title' };
   const id = shot.screen;
   applyBackdrop(shot);
@@ -879,7 +903,7 @@ async function goto(rawId) {
       await mountLoadingShot();
       current = id;
       currentScreen = null;
-    } else if (id === 'flight' || id === 'crucibleHud') {
+    } else if (id === 'flight' || id === 'crucibleHud' || id === 'mobileFlight') {
       restoreBaseline();
       unseedDrillShot(state);
       unseedBaseShot(state);
@@ -890,6 +914,7 @@ async function goto(rawId) {
       document.body.dataset.kScreen = id;
       if (id === 'crucibleHud') await mountCrucibleHud();
       else await mountFlightHud();
+      if (id === 'mobileFlight') await mountMobileDeck(shot);
       current = id;
       currentScreen = null;
     } else {
@@ -963,9 +988,19 @@ async function openOverlay(kind) {
     const contact = {
       id: 7, type: 'ship', alive: true, team: 2, radius: 14,
       pos: { x: 80, y: 0, z: 40 }, vel: { x: 0, y: 0, z: 0 },
-      data: { callsign: 'HAULER 12', trafficRole: 'hauler', ai: { passive: true, archetype: 'fleeing_trader' } },
+      data: {
+        callsign: 'HAULER 12',
+        trafficRole: 'hauler',
+        jobId: 'job_hauler_12',
+        cargoManifest: { lines: [{ commodityId: 'cmdty_fuel_cells', qty: 20 }], totalQty: 20 },
+        ai: { passive: true, archetype: 'fleeing_trader' },
+      },
     };
     state.player.targetId = 7;
+    const activeShip = state.player.ownedShips?.[state.player.activeShipIndex || 0];
+    if (activeShip) {
+      activeShip.fittings = ['wpn_autocannon_s', null, null, null, null, 'mod_cargo_scanner_s', 'mod_thruster_stock_s'];
+    }
     state.entities.set(7, contact);
     if (!state.entityList.some((entity) => entity.id === 7)) state.entityList.push(contact);
     const { createCommsRadial } = await import('../src/ui/commsRadial.js');
@@ -989,6 +1024,59 @@ async function openOverlay(kind) {
     window.__BENCH_OVERLAY = node && !node.hidden ? 'wingman open' : 'wingman did not open';
     if (node && !node.hidden) window.__BENCH_OVERLAY_EL = node;
   }
+}
+
+/** The phone deck over the flight HUD: the real mobile view with the real gesture model, its contacts
+ *  driven through the view's own pointer handlers (synthetic touch PointerEvents on the HUD root and the
+ *  powers handle), so the picture is what a thumb produces. shot.mobile picks the pose:
+ *  idle | stick | boost | brake | wheel | wheel-pinned. ?layout=lefty mirrors the deck. */
+async function mountMobileDeck(shot) {
+  const [{ MobileGestures, stickRadius }, { mountMobileView }] = await Promise.all([
+    import('../src/systems/mobile/model.js'),
+    import('../src/systems/mobile/view.js'),
+  ]);
+  const model = new MobileGestures();
+  const cfg = { layout: params.get('layout') || 'standard', scale: Number(params.get('scale')) || 1 };
+  const view = mountMobileView({ state, model, activate() {}, reset() {}, config: () => cfg, saveConfig() {}, doc: document, win: window });
+  window.__benchMobile = view;
+  window.__benchModel = model;
+  const w = window.innerWidth, h = window.innerHeight, radius = stickRadius(w, h, cfg.scale);
+  const touch = (type, target, x, y, id) => target.dispatchEvent(new PointerEvent(type, {
+    pointerId: id, pointerType: 'touch', isPrimary: true, clientX: x, clientY: y, bubbles: true, cancelable: true, composed: true,
+  }));
+  const field = document.getElementById('hud');
+  const pose = shot.mobile || 'idle';
+  const toward = Number(params.get('deg') || 38) * Math.PI / 180;   // 0 = up, clockwise
+  const ox = w * 0.3, oy = h * 0.64;
+  const reach = (k) => [ox + Math.sin(toward) * radius * k, oy - Math.cos(toward) * radius * k];
+  if (pose === 'stick' || pose === 'boost' || pose === 'brake') {
+    touch('pointerdown', field, ox, oy, 11);
+    if (pose !== 'brake') {
+      const [x, y] = reach(pose === 'boost' ? 1.62 : Number(params.get('push') || 0.72));
+      touch('pointermove', field, x, y, 11);
+    }
+    // the fixed-step sampler is what latches boost dwell and brake dwell: run it the way the sim would
+    for (let i = 0; i < 30; i += 1) model.sample(1 / 60);
+    view.render({ flight: { brake: pose === 'brake' }, actions: {} });
+  } else if (pose === 'wheel' || pose === 'wheel-pinned') {
+    const edge = document.querySelector('.mf-edge');
+    const r = edge.getBoundingClientRect();
+    const ex = r.left + r.width / 2, ey = r.top + r.height / 2;
+    touch('pointerdown', edge, ex, ey, 12);
+    if (pose === 'wheel') {
+      const g = document.querySelector('.mf-wheel-art').getBoundingClientRect();
+      const cx = g.left + g.width / 2, cy = g.top + g.height / 2, rad = g.width / 2.7;
+      const a = (Number(params.get('slot') || 2) + 0.5) * Math.PI / 6;
+      const side = (cfg.layout === 'lefty') ? 1 : -1;
+      touch('pointermove', edge, cx + side * Math.sin(a) * rad * 0.76, cy - Math.cos(a) * rad * 0.76, 12);
+    } else {
+      touch('pointerup', edge, ex, ey, 12);
+    }
+    view.render({ flight: { brake: false }, actions: {} });
+  } else {
+    view.render({ flight: { brake: false }, actions: {} });
+  }
+  note('— phone deck mounted (' + pose + ', ' + cfg.layout + ')');
 }
 
 /** Mount the always-on flight HUD into #hud (the bench page carries the node) over the held
@@ -1209,6 +1297,7 @@ function scrollHold(el) {
   const rect = el.getBoundingClientRect();
   for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
     const style = styleOf(node);
+    if (style.display === 'contents') continue;
     const scrolls = /auto|scroll/.test(`${style.overflowY} ${style.overflowX}`);
     const clips = /hidden|clip/.test(`${style.overflowY} ${style.overflowX} ${style.overflow}`);
     if (!scrolls && !clips) continue;
@@ -1509,6 +1598,8 @@ function severedType(runs) {
     // Text truncated with an ellipsis is deliberately shortened and SAYS so; the reader can see
     // there is more. That is a content decision, not a panel eating its own copy.
     if (/ellipsis/.test(styleOf(run.host).textOverflow || '')) continue;
+    // An animated continuous marquee ticker (e.g. .orr-mkt-tape) deliberately flows outside its bounds
+    if (run.host.closest && run.host.closest('.orr-mkt-tape, [data-marquee], .marquee')) continue;
     const held = scrollHold(run.host);
     if (!held || held.kind !== "clipped") continue;
     found.push(String.fromCharCode(34) + shortText(run.text) + String.fromCharCode(34) + " is cut off by its own panel");

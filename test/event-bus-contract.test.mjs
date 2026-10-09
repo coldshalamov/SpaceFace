@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createBus, SECTOR_ENTER_LISTENER_BUDGET, SECTOR_ENTER_DRAIN_BUDGET } from '../src/core/eventBus.js';
+import { createBus, busFaultSummary, SECTOR_ENTER_LISTENER_BUDGET, SECTOR_ENTER_DRAIN_BUDGET } from '../src/core/eventBus.js';
 
 test('duplicate on() of the same listener delivers once and a single off() removes it', () => {
   const bus = createBus();
@@ -41,6 +41,85 @@ test('one listener fault never starves the rest of the dispatch', () => {
   bus.on('e', () => seen.push('after-fault'));
   assert.doesNotThrow(() => bus.emit('e'));
   assert.deepEqual(seen, ['after-fault']);
+});
+
+test('unprintable thrown values and a broken logger cannot interrupt event delivery', () => {
+  const bus = createBus();
+  const seen = [];
+  const failures = [Object.create(null), { get message() { throw new Error('message getter'); } },
+    { toString() { throw new Error('string conversion'); } }];
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    for (const [index, value] of failures.entries()) {
+      const event = `unprintable-fault:${index}`;
+      bus.on(event, () => { throw value; });
+      bus.on(event, () => seen.push(index));
+      assert.doesNotThrow(() => bus.emit(event));
+      assert.equal(busFaultSummary(512).find(row => row.event === event)?.lastErrorHead,
+        '(unprintable thrown value)');
+    }
+    console.error = () => { throw new Error('logger unavailable'); };
+    bus.on('logger-fault', () => { throw new Error('listener failed'); });
+    bus.on('logger-fault', () => seen.push('logger'));
+    assert.doesNotThrow(() => bus.emit('logger-fault'));
+  } finally { console.error = originalError; }
+  assert.deepEqual(seen, [0, 1, 2, 'logger']);
+});
+
+test('fault history stays bounded and a continuing evicted listener reappears', () => {
+  const bus = createBus();
+  const error = new Error('shared throwing listener');
+  const listener = () => { throw error; };
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    bus.on('continuing-fault', listener);
+    for (let i = 0; i < 20; i++) bus.emit('continuing-fault');
+    // One long-lived function can serve many short-lived event names. Removing only
+    // the summary row must not leave every old row in its private lookup forever.
+    for (let i = 0; i < 520; i++) {
+      const event = `fault-history-churn:${i}`;
+      const off = bus.on(event, listener);
+      bus.emit(event);
+      off();
+    }
+    assert.equal(busFaultSummary(1000).length, 512);
+    assert.equal(busFaultSummary(1000).some(row => row.event === 'continuing-fault'), false);
+    bus.emit('continuing-fault');
+    const resumed = busFaultSummary(1000).find(row => row.event === 'continuing-fault');
+    assert.ok(resumed, 'a currently throwing listener must remain diagnosable after history churn');
+    assert.equal(resumed.lastErrorHead, error.message);
+    assert.equal(busFaultSummary(1000).length, 512);
+    const retained = busFaultSummary(1000).find(row => row.event === 'fault-history-churn:519');
+    bus.on('fault-history-churn:519', listener);
+    bus.emit('fault-history-churn:519');
+    assert.equal(busFaultSummary(1000).find(row => row.event === retained.event).faults, retained.faults + 1,
+      're-registration preserves a retained listener row and its fault count');
+  } finally { console.error = originalError; }
+});
+
+test('a burst of bad payloads never suppresses the next valid event or another bus', () => {
+  const first = createBus();
+  const second = createBus();
+  const seen = [];
+  const handler = (payload) => {
+    if (!payload.valid) throw new Error('invalid payload');
+    seen.push(payload.id);
+  };
+  first.on('cargo:grant', handler);
+  second.on('cargo:grant', handler);
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    for (let i = 0; i < 12; i++) first.emit('cargo:grant', { valid: false });
+    first.emit('cargo:grant', { valid: true, id: 'same-bus' });
+    second.emit('cargo:grant', { valid: true, id: 'other-bus' });
+  } finally {
+    console.error = originalError;
+  }
+  assert.deepEqual(seen, ['same-bus', 'other-bus'],
+    'error logging may be throttled, but delivery must not depend on wall-clock fault history');
 });
 
 test('once() fires exactly once even when the payload handler re-emits', () => {
@@ -284,6 +363,9 @@ test('a sliced emit arriving behind a pending slice drains all earlier events in
   bus.emit('sector:enter', 'a');
   assert.deepEqual(seen, ['l0:a'], 'only the inline slice ran');
   bus.emit('sector:enter', 'c');
+  assert.deepEqual(seen, ['l0:a', 'l1:a', 'l2:a', 'l0:b'], 'the bounded flush left the b tail and queued c');
+  assert.equal(bus.pendingEmitSliceCount(), 3, 'b tail plus the queued c emit');
+  bus.drainEmitSlice(SECTOR_ENTER_DRAIN_BUDGET);
   assert.deepEqual(seen, ['l0:a', 'l1:a', 'l2:a', 'l0:b', 'l1:b', 'l2:b', 'l0:c'], 'a and b fully finish before c begins; no b tail is lost');
   assert.equal(bus.pendingEmitSliceCount(), 2, 'only the c tail remains');
   bus.drainEmitSlice(SECTOR_ENTER_DRAIN_BUDGET);
@@ -394,4 +476,106 @@ test('clear() drops the presentation queue; a claimed bus keeps slicing after cl
   bus.emit('e');
   bus.drainPresentationTail(Number.MAX_SAFE_INTEGER);
   assert.deepEqual(seen, ['fresh'], 'the claim survives clear(): the runner still owns the frame pump');
+});
+
+test('clear() also drops the lifecycle priority queue', () => {
+  const bus = createBus();
+  bus.claimPresentationDrain();
+  const seen = [];
+  bus.on('entity:destroyed', () => seen.push('gone'), { presentation: true });
+  bus.emit('entity:destroyed', { id: 1 });
+  bus.clear();
+  assert.equal(bus.pendingPresentationCount(), 0, 'clear() aborts queued priority tails');
+  bus.drainPresentationTail(Number.MAX_SAFE_INTEGER);
+  assert.deepEqual(seen, [], 'no phantom lifecycle presents after clear');
+});
+
+test('kill-burst overflow cannot evict once-only spawn tails under their deeper floor', () => {
+  const bus = createBus();
+  bus.claimPresentationDrain();
+  const seen = [];
+  bus.on('entity:destroyed', (p) => seen.push(`d:${p.id}`), { presentation: true });
+  bus.on('entity:spawned', (p) => seen.push(`s:${p.id}`), { presentation: true });
+  // 20 spawn tails armed, then a 100-destroy clump: combined 120 > 64-cap → 56 must shed.
+  // entity:spawned is once-only (materializeT0/spiralDone stamps): under the 32-slice
+  // once-only floor all 20 survive and the priority lane pays the whole overflow.
+  for (let i = 0; i < 20; i++) bus.emit('entity:spawned', { id: i });
+  for (let i = 0; i < 100; i++) bus.emit('entity:destroyed', { id: 1000 + i });
+  bus.drainPresentationTail(Number.MAX_SAFE_INTEGER);
+  const spawned = seen.filter((s) => s.startsWith('s:')).length;
+  assert.equal(spawned, 20, 'once-only spawn tails are fully retained below the 32-slice floor');
+  const destroyed = seen.filter((s) => s.startsWith('d:')).length;
+  assert.equal(destroyed, 44, 'the priority lane sheds its own oldest while the floor holds');
+});
+
+test('once-only spawn tails shed their own oldest past the 32-slice floor', () => {
+  const bus = createBus();
+  bus.claimPresentationDrain();
+  const seen = [];
+  bus.on('entity:destroyed', (p) => seen.push(`d:${p.id}`), { presentation: true });
+  bus.on('entity:spawned', (p) => seen.push(`s:${p.id}`), { presentation: true });
+  // 40 spawn tails + 60 destroys: combined 100 → 36 must shed. The once-only floor is 32,
+  // so 8 spawn tails shed their oldest first; the remaining 28 overflow slots come out of
+  // the priority lane (60 → 32).
+  for (let i = 0; i < 40; i++) bus.emit('entity:spawned', { id: i });
+  for (let i = 0; i < 60; i++) bus.emit('entity:destroyed', { id: 1000 + i });
+  bus.drainPresentationTail(Number.MAX_SAFE_INTEGER);
+  const spawned = seen.filter((s) => s.startsWith('s:'));
+  assert.equal(spawned.length, 32, 'once-only floor retains the newest 32 spawn tails');
+  assert.equal(spawned[0], 's:8', 'the floor sheds the OLDEST once-only slices');
+  const destroyed = seen.filter((s) => s.startsWith('d:')).length;
+  assert.equal(destroyed, 32, 'the priority lane pays the remaining overflow');
+});
+
+test('zero-priority overflow prefers non-once-only cosmetics before spawn tails', () => {
+  const bus = createBus();
+  bus.claimPresentationDrain();
+  const seen = [];
+  bus.on('entity:spawned', (p) => seen.push(`s:${p.id}`), { presentation: true });
+  bus.on('hud:fx', (p) => seen.push(`f:${p.id}`), { presentation: true });
+  // 40 spawn tails + 40 plain cosmetics, priority lane empty: combined 80 → 16 shed.
+  // The trim must skip past the once-only slices to the first non-once-only row —
+  // an unconditional head-drop would eat spawn stamps the floor exists to protect.
+  for (let i = 0; i < 40; i++) bus.emit('entity:spawned', { id: i });
+  for (let i = 0; i < 40; i++) bus.emit('hud:fx', { id: 1000 + i });
+  bus.drainPresentationTail(Number.MAX_SAFE_INTEGER);
+  const spawned = seen.filter((s) => s.startsWith('s:')).length;
+  assert.equal(spawned, 40, 'non-once-only cosmetics shed before any spawn tail');
+  const fx = seen.filter((s) => s.startsWith('f:')).length;
+  assert.equal(fx, 24, 'the overflow comes out of the non-once-only lane oldest-first');
+});
+
+test('pure once-only overflow past the floor sheds its own oldest with no priority lane', () => {
+  const bus = createBus();
+  bus.claimPresentationDrain();
+  const seen = [];
+  bus.on('entity:spawned', (p) => seen.push(`s:${p.id}`), { presentation: true });
+  // 70 once-only slices, nothing else: the queue is 100% once-only past the 32-slice
+  // floor, so the trim sheds the oldest spawn tails to hold the 64-slice cap.
+  for (let i = 0; i < 70; i++) bus.emit('entity:spawned', { id: i });
+  bus.drainPresentationTail(Number.MAX_SAFE_INTEGER);
+  const spawned = seen.filter((s) => s.startsWith('s:'));
+  assert.equal(spawned.length, 64, 'the cap still holds with no other lane to pay');
+  assert.equal(spawned[0], 's:6', 'the trim sheds the oldest once-only slices');
+});
+
+test('a sustained priority burst cannot starve the cosmetic lane — bounded interleave', () => {
+  const bus = createBus();
+  bus.claimPresentationDrain();
+  const seen = [];
+  bus.on('entity:destroyed', (p) => seen.push(`d:${p.id}`), { presentation: true });
+  bus.on('entity:spawned', (p) => seen.push(`s:${p.id}`), { presentation: true });
+  // 30 destroys + 5 spawn tails pending: the drain must interleave cosmetics every K=8
+  // priority invocations instead of starving them for the whole burst.
+  for (let i = 0; i < 30; i++) bus.emit('entity:destroyed', { id: i });
+  for (let i = 0; i < 5; i++) bus.emit('entity:spawned', { id: 100 + i });
+  while (bus.pendingPresentationCount() > 0) bus.drainPresentationTail(Number.MAX_SAFE_INTEGER);
+  const firstSpawn = seen.findIndex((s) => s.startsWith('s:'));
+  assert.ok(firstSpawn !== -1 && firstSpawn <= 8,
+    `a cosmetic tail drains within 8 priority invocations (first spawn at ${firstSpawn})`);
+  const lastDestroyed = seen.lastIndexOf('d:29');
+  assert.ok(firstSpawn < lastDestroyed, 'cosmetics interleave before the burst fully drains');
+  // Per-lane FIFO is preserved within each event family.
+  const spawns = seen.filter((s) => s.startsWith('s:'));
+  assert.deepEqual(spawns, ['s:100', 's:101', 's:102', 's:103', 's:104']);
 });

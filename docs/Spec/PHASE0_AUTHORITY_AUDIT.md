@@ -32,6 +32,7 @@ Allowed current call sites:
 | `src/ui/orrery/waveform.js` | cosmetic UI | ORRERY station waveform bars: draws land in `--orr-wave-*` CSS custom properties (rest offset, animation duration/delay/spread, opacity range) on the bar element — presentation variance only. |
 | `src/ui/screens/sandbox.js` | seed mint | The Combat Lab "roll" button. The boot-seed case in miniature: a human presses roll, the value lands in the seed input, and everything downstream runs from that explicit seed — nothing authoritative reads the raw draw. The screen is additionally DEV ONLY (IS_DEV folds false at build time; uiRoot registers it only behind that flag), so it cannot reach a player build. |
 | `src/ui/screens/crucible.js` | cosmetic UI | Crucible seed "Counter" roll animation: draws pick transient scramble digits written to `seedInput.value` while the real seed tumbles into place, then the interval restores `freeSeed`. Programmatic `.value` writes fire no `input` event, so the explicit run seed never picks up an ambient draw. |
+| `src/ui/screens/newGame.js` | seed mint | `randomSeedText()` fills the seed field with a fresh suggestion. Same boot-seed case as `src/main.js`: the draw lands in a text input, and the run's seed is whatever the field says when Launch is pressed — everything downstream runs from that explicit seed. |
 
 Forbidden classes:
 
@@ -53,18 +54,36 @@ Classification scope (`check:phase0-slice-contract`):
 
 ## Wall-Clock Catalogue
 
-Authoritative sim code must use `dt`, `state.tick`, or `state.simTime`.
+Authoritative sim code must use `dt`, `state.tick`, or `state.simTime`. FB-095 makes this a
+scanned guard: `check:phase0-slice-contract` rejects any unclassified `performance.now(` /
+`Date.now(` invocation under the simulation-owner directories (`src/systems/`, `src/core/`,
+`src/ai/`, `src/combat/`, `src/world/`). Diagnostics that genuinely need wall time read it
+through `perfNow()` in `src/core/perfRuntime.js` — the single classified instrumentation seam.
 
-Current tolerated wall-clock owners:
+Current classified wall-clock owners:
 
 | Owner | Classification | Rationale |
 |---|---|---|
-| `src/core/loop.js` | frame driver | Measures elapsed real time only to feed the fixed-step accumulator. |
-| `src/core/perfRuntime.js` | diagnostics | Measures performance budgets and exposes dev diagnostics. |
-| `src/core/physics.js` / `src/systems/flight.js` | profiling helpers | Timing is diagnostic, not part of state evolution. |
-| `src/systems/telemetry.js` | local analytics | Human-readable session timestamps and debounced local persistence. |
+| `src/core/loop.js` | frame driver | Measures elapsed real time only to feed the fixed-step accumulator (receives RAF/host stamps; no direct read today). |
+| `src/core/eventBus.js` | frame driver | `flush(maxMs)` bounds how long a queued emit slice may hold the frame — wall stamps set a delivery deadline, never a sim outcome. Stays dependency-free, so it does not route through `perfNow()`. |
+| `src/core/sectorEnterDefer.js` | frame driver | The chunked deferred-enter drain runs until a millisecond work budget expires — wall stamps bound per-tick work. Sim stamps ride separately on `_deferredEnterClock`/`_deferredEnterTick`. |
+| `src/core/perfRuntime.js` | diagnostics | The instrumentation clock. `perfNow()` is the exported seam; per-tick `tickMs` diagnostics in `src/core/physics.js`, `src/systems/flightV3.js`, and `src/systems/flight.js` call it instead of reading wall time locally (FB-095). |
+| `src/core/presentationRunner.js` | presentation | Cue/presentation pacing over wall time; owns no sim outcomes. |
+| `src/core/runtimeWitness.js` | diagnostics | 1 Hz flight recorder (`window.__SF_WITNESS__`); wall stamps label human-facing reports. |
+| `src/core/renderUpdatePhase.js` | diagnostics | Render-phase timing instrumentation. |
+| `src/core/bootScheduler.js` | diagnostics | Boot scheduling measurements; no sim ownership. |
+| `src/systems/input.js` | input adapter (diagnostic stamp) | Input→photon latency stamp; measurement-only, kept off serialized `state.input` — device arbitration uses the `(tick, seq)` pair. |
+| `src/systems/gamepad.js` | input adapter (diagnostic stamp) | `lastActiveMs` device diagnostic plus an idle-skip self-benchmark that measures its own cost. |
+| `src/systems/touch.js` | input adapter (diagnostic stamp) | Prefers `ev.timeStamp`; wall clock is only the diagnostic fallback. |
+| `src/systems/telemetry.js` | local analytics | Human-readable session id/timestamps and debounced local persistence; not read by simulation. |
+| `src/systems/automation.js` | offline-progress exception | The single sanctioned sim-adjacent read: `resolveAutomationOfflineNow` uses `Date.now()` only when `settings.gameplay.wallClockOfflineProgress === true` (explicit host opt-in). Lab and deterministic runs leave it off — "now" resolves to `simTimeMs(state)` or an injected `opts.nowMs`/`offlineElapsedSec`, so identical runs produce identical saves. |
 | UI, audio, capture, and probe scripts | presentation/tooling | DOM animation, media scheduling, browser capture, watchdogs, and visual probes. |
 
-Known Phase 0 risk to resolve before full SG-01 exit:
+Resolved Phase 0 risk (FB-095):
 
-- `src/systems/automation.js` and `src/systems/sectorSim.js` still use wall-clock timestamps for offline catch-up baselines. That is acceptable for current save UX, but 47-A replay/policy runs must disable or virtualize offline catch-up so load/continue parity is driven by sim-time evidence, not machine time.
+- `src/systems/automation.js` offline catch-up is now explicitly gated behind
+  `wallClockOfflineProgress === true`; deterministic runs resolve "now" from sim time.
+- `src/systems/sectorSim.js` carries no wall-clock read — its catch-up bookkeeping serializes
+  sim-time stamps only (F2 comments).
+- `src/core/physics.js`, `src/systems/flightV3.js`, and `src/systems/flight.js` no longer read
+  wall clocks; their `tickMs` diagnostics go through `perfNow()`.

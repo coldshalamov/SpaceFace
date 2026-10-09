@@ -1,0 +1,7489 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.kilnback-lod1.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.399999976158142,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentNodeId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.399999976158142,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.anchor.socket-cask-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0,
+        -10,
+        1
+      ],
+      "nodeName": "SOCKET_CASK_PORT",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentNodeId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0,
+        -10,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.anchor.socket-cask-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0,
+        10,
+        1
+      ],
+      "nodeName": "SOCKET_CASK_STARBOARD",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentNodeId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0,
+        10,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.699999809265137,
+        -0.15000000596046448,
+        -2.299999952316284,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentNodeId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.699999809265137,
+        -0.15000000596046448,
+        -2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.anchor.socket-engine-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.699999809265137,
+        -0.15000000596046448,
+        -2.299999952316284,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Port",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentNodeId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.699999809265137,
+        -0.15000000596046448,
+        -2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.anchor.socket-engine-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.699999809265137,
+        -0.15000000596046448,
+        2.299999952316284,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Starboard",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentNodeId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.699999809265137,
+        -0.15000000596046448,
+        2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.anchor.socket-jet",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        14,
+        0.15000000596046448,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_JET",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentNodeId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        14,
+        0.15000000596046448,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -14.100000381469727,
+        -0.15000000596046448,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentNodeId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -14.100000381469727,
+        -0.15000000596046448,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.kilnback-lod1",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "de6a4b73bff2e55f8c5f32358c1f374ca40444e54262c46221b7f0743f3fc6b3",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-armor.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-armor"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-ceramic.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-ceramic"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-lights-cyan.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-lights-cyan"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-livery.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-livery"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-mechanicaldark.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-mechanicaldark"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-armor.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-armor"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-ceramic.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-ceramic"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-lights-cyan.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-lights-cyan"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-livery.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-livery"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-mechanicaldark.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-mechanicaldark"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-armor.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-armor"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-beacon-amber.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-beacon-amber"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-mechanicaldark.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-mechanicaldark"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-armor.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-armor"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-beacon-amber.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-beacon-amber"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-mechanicaldark.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-mechanicaldark"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-armor.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-armor"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-beacon-amber.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-beacon-amber"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-mechanicaldark.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-mechanicaldark"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-armor.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-armor"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-beacon-amber.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-beacon-amber"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-mechanicaldark.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-mechanicaldark"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-armor.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-armor"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-beacon-amber.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-beacon-amber"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-mechanicaldark.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-mechanicaldark"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-armor.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-armor"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-beacon-amber.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-beacon-amber"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-mechanicaldark.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-mechanicaldark"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.motion-kilnback-cask-port.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.motion-kilnback-cask-port"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.motion-kilnback-cask-starboard.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.motion-kilnback-cask-starboard"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.motion-kilnback-slat-1.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-1"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.motion-kilnback-slat-2.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-2"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.motion-kilnback-slat-3.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-3"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.motion-kilnback-slat-4.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-4"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.motion-kilnback-slat-5.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-5"
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.motion-kilnback-slat-6.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-6"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          2.500286340713501,
+          1.5178555250167847,
+          -8.481718063354492
+        ],
+        "min": [
+          -4.50028657913208,
+          -1.5178555250167847,
+          -11.518282890319824
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2ef64278926e9dc5e78573ec3e5842e362d05dde6bffbbd62c80ff40ee20678e",
+      "id": "sf.render.kilnback-lod1.node.collision-kilnback-cask-port.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_KILNBACK_CASK_PORT",
+      "nodeId": "sf.render.kilnback-lod1.node.collision-kilnback-cask-port",
+      "primitiveIndex": 0,
+      "vertexCount": 842
+    },
+    {
+      "bounds": {
+        "max": [
+          2.500286340713501,
+          1.5178555250167847,
+          11.518282890319824
+        ],
+        "min": [
+          -4.50028657913208,
+          -1.5178555250167847,
+          8.481718063354492
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a66558ad27390b7e5addc95f5ccc1c52e77b8d55ccba8e2f5dd326d2ce36b1bc",
+      "id": "sf.render.kilnback-lod1.node.collision-kilnback-cask-starboard.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_KILNBACK_CASK_STARBOARD",
+      "nodeId": "sf.render.kilnback-lod1.node.collision-kilnback-cask-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 842
+    },
+    {
+      "bounds": {
+        "max": [
+          13.995122909545898,
+          3.394089937210083,
+          6.799490451812744
+        ],
+        "min": [
+          -13.721355438232422,
+          -3.3457672595977783,
+          -6.799490451812744
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "be798b316005de4bcc9a456f42df63997ce36f192694df2b79c79ba54d4ed88d",
+      "id": "sf.render.kilnback-lod1.node.collision-kilnback-core.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_KILNBACK_CORE",
+      "nodeId": "sf.render.kilnback-lod1.node.collision-kilnback-core",
+      "primitiveIndex": 0,
+      "vertexCount": 822
+    },
+    {
+      "bounds": {
+        "max": [
+          12.550000190734863,
+          3.287407636642456,
+          4.850637912750244
+        ],
+        "min": [
+          -12.298096656799316,
+          -1.5992509126663208,
+          -4.850637912750244
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f0bc593e5e1be367130e40fcd771b104df3fe4184fca1d7b7630019e758f7082",
+      "id": "sf.render.kilnback-lod1.node.lod1-armor.primitive.0",
+      "indexCount": 1356,
+      "indexed": true,
+      "materialHash": "ee853317e7d398ff08adab589c04723ced5ddd53ec8a3483293830debb5f0c79",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Armor",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 445
+    },
+    {
+      "bounds": {
+        "max": [
+          13.075000762939453,
+          2.4362497329711914,
+          1.7089755535125732
+        ],
+        "min": [
+          11.991315841674805,
+          -0.5490203499794006,
+          -1.7089755535125732
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "65606d042602ec64eb5487b40acbb06e77f26ae3f468c58c58de998de1b1798c",
+      "id": "sf.render.kilnback-lod1.node.lod1-beacon-amber.primitive.0",
+      "indexCount": 492,
+      "indexed": true,
+      "materialHash": "95b3e0491638f7fe0b25aa2b64998353da0d254b0d709254523869499db42b58",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Beacon_Amber",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 296
+    },
+    {
+      "bounds": {
+        "max": [
+          6.700101375579834,
+          4.329829692840576,
+          1.3497477769851685
+        ],
+        "min": [
+          3.799790382385254,
+          3.7601590156555176,
+          -1.3501695394515991
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1cdd5d242783fc5209f87d575f8798e976f89b0bc2d13acff2bfe9fc2de558fd",
+      "id": "sf.render.kilnback-lod1.node.lod1-canopy.primitive.0",
+      "indexCount": 756,
+      "indexed": true,
+      "materialHash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_CANOPY",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 193
+    },
+    {
+      "bounds": {
+        "max": [
+          13.999953269958496,
+          1.6100940704345703,
+          2.870000123977661
+        ],
+        "min": [
+          13.000046730041504,
+          -1.3100939989089966,
+          -2.870000123977661
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bc411ab11e919063751f2a52fa6d2a89014c9fa0d369b1d942ea809d76d07550",
+      "id": "sf.render.kilnback-lod1.node.lod1-ceramic.primitive.0",
+      "indexCount": 1590,
+      "indexed": true,
+      "materialHash": "00092562ffc834fd4cbecefad65bf86983e37a2f35810b0a4b88bb89e2e8e678",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Ceramic",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-ceramic",
+      "primitiveIndex": 0,
+      "vertexCount": 521
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.349006652832031,
+          1.076950192451477,
+          3.533750057220459
+        ],
+        "min": [
+          -13.719993591308594,
+          -1.3769501447677612,
+          -3.533750057220459
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dd0a4f935d85ed50c277f369ab6501f028136821bb4dcdd9fd3019697030f192",
+      "id": "sf.render.kilnback-lod1.node.lod1-hook-drive-core.primitive.0",
+      "indexCount": 870,
+      "indexed": true,
+      "materialHash": "63b85f6c99cbf912dd66a59b87f4e8e39e4308f2a0f01aea9fc590fa870691d1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 310
+    },
+    {
+      "bounds": {
+        "max": [
+          4.054999828338623,
+          0.8385018110275269,
+          -6.49500036239624
+        ],
+        "min": [
+          3.944999933242798,
+          0.761498212814331,
+          -6.605000019073486
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "008c1c68bb2eb252383d2d953fd7d32b5cd0df29f6378127042f7f7a4ea22519",
+      "id": "sf.render.kilnback-lod1.node.lod1-hook-nav-port.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_PORT",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-hook-nav-port",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          4.054999828338623,
+          0.8385018110275269,
+          6.605000019073486
+        ],
+        "min": [
+          3.944999933242798,
+          0.761498212814331,
+          6.49500036239624
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4d62de11a84731dc31b3da375f0fd81fae6fce2c7c034f3152ad7c5c32c3cf3c",
+      "id": "sf.render.kilnback-lod1.node.lod1-hook-nav-starboard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-hook-nav-starboard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          12.75001049041748,
+          3.3999133110046387,
+          6.799387454986572
+        ],
+        "min": [
+          -13.619444847106934,
+          -2.3267340660095215,
+          -6.799387454986572
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "88e266e26178f40c1dfd8e422f78e5f59a72574eebd4f19dfd60446cbac5d0f2",
+      "id": "sf.render.kilnback-lod1.node.lod1-hull.primitive.0",
+      "indexCount": 1152,
+      "indexed": true,
+      "materialHash": "00bc767a32c12bcfb61c4d16992b3ee49be37aab147cb83c7c293c99a83dc793",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Hull",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 272
+    },
+    {
+      "bounds": {
+        "max": [
+          6.6496381759643555,
+          4.073513984680176,
+          1.0889756679534912
+        ],
+        "min": [
+          6.610289096832275,
+          3.9264872074127197,
+          -1.0889756679534912
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c1c571bda2cb4f535496e3633d86f64ea810cfb2700dc6391a802e67cae4721f",
+      "id": "sf.render.kilnback-lod1.node.lod1-lights-warm.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "7f6a2eef4df28f474efb4f0f3a97fa6f9737765981907d11baa8a7016a7d2045",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Lights_Warm",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-lights-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 89
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5131780505180359,
+          1.1980655193328857,
+          8.723135948181152
+        ],
+        "min": [
+          -2.5131778717041016,
+          0.8019344806671143,
+          -8.723135948181152
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d4005aa7bfcd1ed1731e3faeb9aee722eb05fea4a36a7fb5dd12633606a60244",
+      "id": "sf.render.kilnback-lod1.node.lod1-livery.primitive.0",
+      "indexCount": 834,
+      "indexed": true,
+      "materialHash": "6241932292a392647f613f9c31edce8a9370737788d64800f19d9ed0f5207ec3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Livery",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 302
+    },
+    {
+      "bounds": {
+        "max": [
+          0.3990158140659332,
+          2.198352098464966,
+          8.649349212646484
+        ],
+        "min": [
+          -2.3990156650543213,
+          0.9270955920219421,
+          -8.649349212646484
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2cfd969a5ad21aed0edb550d3a2474663ac7e2a58565ab76733dab709dc23fa2",
+      "id": "sf.render.kilnback-lod1.node.lod1-mechanical.primitive.0",
+      "indexCount": 936,
+      "indexed": true,
+      "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Mechanical",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 364
+    },
+    {
+      "bounds": {
+        "max": [
+          13.022395133972168,
+          3.795365810394287,
+          9.497966766357422
+        ],
+        "min": [
+          -13.739999771118164,
+          -3.35036563873291,
+          -9.497966766357422
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8ecc48c62b9c30571390d1235b6916fbdb400051aa1da58842539d2ebe90ba8f",
+      "id": "sf.render.kilnback-lod1.node.lod1-mechanicaldark.primitive.0",
+      "indexCount": 6348,
+      "indexed": true,
+      "materialHash": "dd561c3542e7148a59592c481f9d7b683bc9c5068bbb3d7ca670e08938bf2677",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MechanicalDark",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 2186
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8793694972991943,
+          1.5192891216461435,
+          -8.48083771703794
+        ],
+        "min": [
+          -3.879166841506958,
+          -1.5192891216461435,
+          -11.519415960330225
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7f45c54b7299db36d9d508f1b5fb058286d8e9f2dd0f3998f7daa5e072059f71",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-armor.primitive.0",
+      "indexCount": 1176,
+      "indexed": true,
+      "materialHash": "ee853317e7d398ff08adab589c04723ced5ddd53ec8a3483293830debb5f0c79",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_CASK_PORT_Armor",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 286
+    },
+    {
+      "bounds": {
+        "max": [
+          2.500065803527832,
+          1.4998145679291448,
+          -8.500185432070856
+        ],
+        "min": [
+          -4.500065803527832,
+          -1.4998145679291448,
+          -11.499814567929144
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "68210c4b129967fcbd8c6dedd14545d100265ead31f6cbf1c014772bd4d13f45",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-ceramic.primitive.0",
+      "indexCount": 1266,
+      "indexed": true,
+      "materialHash": "00092562ffc834fd4cbecefad65bf86983e37a2f35810b0a4b88bb89e2e8e678",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_CASK_PORT_Ceramic",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-ceramic",
+      "primitiveIndex": 0,
+      "vertexCount": 301
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.027217835187911987,
+          1.5652001382128256,
+          -9.932311672179464
+        ],
+        "min": [
+          -1.9727822542190552,
+          1.5347997664197428,
+          -10.067688327820536
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5c5cb5c5ed021b31f2f86b6c5a05f809d73cdbce37383580e06abe4efa31ea6d",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9fe725acc1b7a8daa90d7bc110cc91c62f12ef3445d00ffcf6500648fcb5d104",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_CASK_PORT_Lights_Cyan",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8636853694915771,
+          1.5194567721090941,
+          -8.480670066574987
+        ],
+        "min": [
+          -3.8636860847473145,
+          -1.5194567721090941,
+          -11.519583610793177
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "384949e7b1face628194757255cea2e9fe4f33c51d10182d13863577aff5a0aa",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-livery.primitive.0",
+      "indexCount": 336,
+      "indexed": true,
+      "materialHash": "6241932292a392647f613f9c31edce8a9370737788d64800f19d9ed0f5207ec3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_CASK_PORT_Livery",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 134
+    },
+    {
+      "bounds": {
+        "max": [
+          2.649614095687866,
+          1.5332758953586727,
+          -9.78103702665776
+        ],
+        "min": [
+          -2.1981754302978516,
+          -0.21915999853765067,
+          -10.218961065993607
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7babee995ca8cb73141590bae2849774989d05234616eb40c0e200b5d642e58e",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-mechanicaldark.primitive.0",
+      "indexCount": 570,
+      "indexed": true,
+      "materialHash": "dd561c3542e7148a59592c481f9d7b683bc9c5068bbb3d7ca670e08938bf2677",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_CASK_PORT_MechanicalDark",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 208
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8793694972991943,
+          1.5192891216461435,
+          11.519415960330225
+        ],
+        "min": [
+          -3.879166841506958,
+          -1.5192891216461435,
+          8.48083771703794
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8975e204197f9e0a80313cb85a3e6c7304b0971ff619605a1dd1e3ad0b8667b0",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-armor.primitive.0",
+      "indexCount": 1176,
+      "indexed": true,
+      "materialHash": "ee853317e7d398ff08adab589c04723ced5ddd53ec8a3483293830debb5f0c79",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_Armor",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 286
+    },
+    {
+      "bounds": {
+        "max": [
+          2.500065803527832,
+          1.4998145679291448,
+          11.499814567929144
+        ],
+        "min": [
+          -4.500065803527832,
+          -1.4998145679291448,
+          8.500185432070856
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9acacdba2749bb728b3270a829405489a7daf5ab005afb4252dac84e12fb5e4f",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-ceramic.primitive.0",
+      "indexCount": 1260,
+      "indexed": true,
+      "materialHash": "00092562ffc834fd4cbecefad65bf86983e37a2f35810b0a4b88bb89e2e8e678",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_Ceramic",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-ceramic",
+      "primitiveIndex": 0,
+      "vertexCount": 300
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.027217933908104897,
+          1.5652001383729015,
+          10.067688328533373
+        ],
+        "min": [
+          -1.9727823734283447,
+          1.5347997662596669,
+          9.932311671466627
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d824adcecd40bdb217f4b800b2f45da272c9399a7bfa5476866cb22086e677cf",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-lights-cyan.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "9fe725acc1b7a8daa90d7bc110cc91c62f12ef3445d00ffcf6500648fcb5d104",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_Lights_Cyan",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8636853694915771,
+          1.5194567721090941,
+          11.519583610793177
+        ],
+        "min": [
+          -3.8636860847473145,
+          -1.5194567721090941,
+          8.480670066574987
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "07cdbc07505243a2e463f277b8c3c8b17ecb503a5b8001d1b7f51fc1edd410ce",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-livery.primitive.0",
+      "indexCount": 336,
+      "indexed": true,
+      "materialHash": "6241932292a392647f613f9c31edce8a9370737788d64800f19d9ed0f5207ec3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_Livery",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-livery",
+      "primitiveIndex": 0,
+      "vertexCount": 134
+    },
+    {
+      "bounds": {
+        "max": [
+          2.649614095687866,
+          1.533275873006931,
+          10.218961065993607
+        ],
+        "min": [
+          -2.1981754302978516,
+          -0.21916002088939246,
+          9.78103702665776
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f4e47c54ab47b4582906f111b67ee13071d0641a811382a8d96e555ed1f45a9b",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-mechanicaldark.primitive.0",
+      "indexCount": 576,
+      "indexed": true,
+      "materialHash": "dd561c3542e7148a59592c481f9d7b683bc9c5068bbb3d7ca670e08938bf2677",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_MechanicalDark",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 210
+    },
+    {
+      "bounds": {
+        "max": [
+          2.395735740661621,
+          4.039762865959694,
+          3.4765988823390113
+        ],
+        "min": [
+          -6.296736240386963,
+          3.770237076819847,
+          2.53113637004136
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d234a285bebcca83c17c79154aad9466a4f27db908149b26e148abaafae2ab2b",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-armor.primitive.0",
+      "indexCount": 192,
+      "indexed": true,
+      "materialHash": "ee853317e7d398ff08adab589c04723ced5ddd53ec8a3483293830debb5f0c79",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_1_Armor",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 69
+    },
+    {
+      "bounds": {
+        "max": [
+          0.649590253829956,
+          4.072027279990351,
+          3.052216906457613
+        ],
+        "min": [
+          -5.549639701843262,
+          4.037972853524053,
+          2.947783331960966
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "50c126b84d5a37d2250c30ad481df00fac2c828845b0c1635ff06791d68ebe82",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-beacon-amber.primitive.0",
+      "indexCount": 528,
+      "indexed": true,
+      "materialHash": "95b3e0491638f7fe0b25aa2b64998353da0d254b0d709254523869499db42b58",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_1_Beacon_Amber",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 207
+    },
+    {
+      "bounds": {
+        "max": [
+          2.4000000953674316,
+          4.037180124038008,
+          3.4800439624400448
+        ],
+        "min": [
+          -6.300000190734863,
+          3.772731127030107,
+          2.5199560375599552
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2f1502501d103ad5f7e2ba8b5f94b067a20ba1d129b652662692cd0f40515845",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-mechanicaldark.primitive.0",
+      "indexCount": 486,
+      "indexed": true,
+      "materialHash": "dd561c3542e7148a59592c481f9d7b683bc9c5068bbb3d7ca670e08938bf2677",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_1_MechanicalDark",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 169
+    },
+    {
+      "bounds": {
+        "max": [
+          2.3957231044769287,
+          4.039762670055833,
+          2.2765985050770996
+        ],
+        "min": [
+          -6.296736240386963,
+          3.7702372727237083,
+          1.3311373671915772
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7a7e0947dd456cda45feb22ce112c0a0159a790e852db8ca5383d5c7aeb1ca0e",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-armor.primitive.0",
+      "indexCount": 201,
+      "indexed": true,
+      "materialHash": "ee853317e7d398ff08adab589c04723ced5ddd53ec8a3483293830debb5f0c79",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_2_Armor",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 71
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6495903134346008,
+          4.072027145253694,
+          1.8522120944424136
+        ],
+        "min": [
+          -5.549590587615967,
+          4.0379729882607105,
+          1.7477793463305966
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e4850e269207fe92134a2cd5c121d7e80303a088a8ed689d3f03a00470a48081",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-beacon-amber.primitive.0",
+      "indexCount": 528,
+      "indexed": true,
+      "materialHash": "95b3e0491638f7fe0b25aa2b64998353da0d254b0d709254523869499db42b58",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_2_Beacon_Amber",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 236
+    },
+    {
+      "bounds": {
+        "max": [
+          2.4000000953674316,
+          4.0362507045099845,
+          2.2800439743609737
+        ],
+        "min": [
+          -6.300000190734863,
+          3.772863751666774,
+          1.3199560494808842
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1d40f987223343e0649aea824b16039c2b1412aeac4b4ec7c993a2132486f806",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-mechanicaldark.primitive.0",
+      "indexCount": 477,
+      "indexed": true,
+      "materialHash": "dd561c3542e7148a59592c481f9d7b683bc9c5068bbb3d7ca670e08938bf2677",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_2_MechanicalDark",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 170
+    },
+    {
+      "bounds": {
+        "max": [
+          2.3967397212982178,
+          4.03977843107592,
+          1.07665360350518
+        ],
+        "min": [
+          -6.296736240386963,
+          3.7702215117036206,
+          0.13108189027400258
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "92d64ff2d453e4752bb855fea1e1c151ce1c1f4e5d32e44f62eb9b697d8b4119",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-armor.primitive.0",
+      "indexCount": 201,
+      "indexed": true,
+      "materialHash": "ee853317e7d398ff08adab589c04723ced5ddd53ec8a3483293830debb5f0c79",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_3_Armor",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6495903134346008,
+          4.072022750201062,
+          0.6522168413945599
+        ],
+        "min": [
+          -5.549639701843262,
+          4.037968323407337,
+          0.5477832658938007
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3c9905523b07b96dfb3c1520b5712818d49ebe5818c747168c346bd3d7484f9a",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-beacon-amber.primitive.0",
+      "indexCount": 528,
+      "indexed": true,
+      "materialHash": "95b3e0491638f7fe0b25aa2b64998353da0d254b0d709254523869499db42b58",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_3_Beacon_Amber",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 214
+    },
+    {
+      "bounds": {
+        "max": [
+          2.4000000953674316,
+          4.037180124038008,
+          1.0800439825566124
+        ],
+        "min": [
+          -6.300000190734863,
+          3.772731127030107,
+          0.11995605767652279
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fdd32e7d21adbbda4aebeb3ddabc8c749efd3b0e85f3cf08b114d5e6b7ff6ae9",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-mechanicaldark.primitive.0",
+      "indexCount": 477,
+      "indexed": true,
+      "materialHash": "dd561c3542e7148a59592c481f9d7b683bc9c5068bbb3d7ca670e08938bf2677",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_3_MechanicalDark",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          2.3967394828796387,
+          4.039778427379621,
+          -0.12334634911126952
+        ],
+        "min": [
+          -6.296736240386963,
+          3.77022151539992,
+          -1.0689180364101425
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d296e8a3ae6a8a2d0f78714401953bca7286b8613b49a18cb7302ce2f9efc34e",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-armor.primitive.0",
+      "indexCount": 204,
+      "indexed": true,
+      "materialHash": "ee853317e7d398ff08adab589c04723ced5ddd53ec8a3483293830debb5f0c79",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_4_Armor",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6495903134346008,
+          4.072027145253694,
+          -0.5477836497859493
+        ],
+        "min": [
+          -5.549590587615967,
+          4.0379729882607105,
+          -0.6522163978977665
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e4dc7aba03f4748d148a3f11343b990aacdfbfebdea746c50a7004bbc5734877",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-beacon-amber.primitive.0",
+      "indexCount": 528,
+      "indexed": true,
+      "materialHash": "95b3e0491638f7fe0b25aa2b64998353da0d254b0d709254523869499db42b58",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_4_Beacon_Amber",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 217
+    },
+    {
+      "bounds": {
+        "max": [
+          2.4000000953674316,
+          4.0362507045099845,
+          -0.11995605767652279
+        ],
+        "min": [
+          -6.300000190734863,
+          3.772863751666774,
+          -1.0800439825566124
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8bf5579fa84d658102a0903f3bb48c0637a9cc46ed162200fdb6569336ea4a3a",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-mechanicaldark.primitive.0",
+      "indexCount": 474,
+      "indexed": true,
+      "materialHash": "dd561c3542e7148a59592c481f9d7b683bc9c5068bbb3d7ca670e08938bf2677",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_4_MechanicalDark",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 166
+    },
+    {
+      "bounds": {
+        "max": [
+          2.3896377086639404,
+          4.040198523506318,
+          -1.3232024889184109
+        ],
+        "min": [
+          -6.296736717224121,
+          3.769801419273223,
+          -2.2690621633337864
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c9f651a2f3aaadc494bf2545ec06361eba54f93454791c878bd00b4f85679915",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-armor.primitive.0",
+      "indexCount": 195,
+      "indexed": true,
+      "materialHash": "ee853317e7d398ff08adab589c04723ced5ddd53ec8a3483293830debb5f0c79",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_5_Armor",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 67
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6495903134346008,
+          4.072027383672273,
+          -1.7477793463305966
+        ],
+        "min": [
+          -5.549590587615967,
+          4.03797322667929,
+          -1.8522120944424136
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0169a446d8e7551722310c4b5508ea7a379168e0fae2f1127b489eba3f07b975",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-beacon-amber.primitive.0",
+      "indexCount": 528,
+      "indexed": true,
+      "materialHash": "95b3e0491638f7fe0b25aa2b64998353da0d254b0d709254523869499db42b58",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_5_Beacon_Amber",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 237
+    },
+    {
+      "bounds": {
+        "max": [
+          2.4000000953674316,
+          4.0362507045099845,
+          -1.3199560494808842
+        ],
+        "min": [
+          -6.300000190734863,
+          3.772863751666774,
+          -2.2800439743609737
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d8acad99e35311d24e7dbd40f28ac9d55d4eaa8b359692cb07d92f93a759df2a",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-mechanicaldark.primitive.0",
+      "indexCount": 483,
+      "indexed": true,
+      "materialHash": "dd561c3542e7148a59592c481f9d7b683bc9c5068bbb3d7ca670e08938bf2677",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_5_MechanicalDark",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 173
+    },
+    {
+      "bounds": {
+        "max": [
+          2.3957359790802,
+          4.039762869655993,
+          -2.523400985485547
+        ],
+        "min": [
+          -6.296736240386963,
+          3.770237073123548,
+          -3.4688635237155028
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "99c4f87128818c3d8970b896a981390dad444456b8df5a8ca898c986e1424998",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-armor.primitive.0",
+      "indexCount": 192,
+      "indexed": true,
+      "materialHash": "ee853317e7d398ff08adab589c04723ced5ddd53ec8a3483293830debb5f0c79",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_6_Armor",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 69
+    },
+    {
+      "bounds": {
+        "max": [
+          0.649590253829956,
+          4.0720272813000635,
+          -2.9477836855723836
+        ],
+        "min": [
+          -5.54964017868042,
+          4.037972852214341,
+          -3.052217268101933
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aaf06dffda9186cbe6352074cf64eb1fc2347274404a9020dc56a6f6cbc6048f",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-beacon-amber.primitive.0",
+      "indexCount": 528,
+      "indexed": true,
+      "materialHash": "95b3e0491638f7fe0b25aa2b64998353da0d254b0d709254523869499db42b58",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_6_Beacon_Amber",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-beacon-amber",
+      "primitiveIndex": 0,
+      "vertexCount": 208
+    },
+    {
+      "bounds": {
+        "max": [
+          2.4000000953674316,
+          4.037180124038008,
+          -2.5199560375599552
+        ],
+        "min": [
+          -6.300000190734863,
+          3.772731127030107,
+          -3.4800439624400448
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "577d06ca0dd2713eb3b297e43311bb7848e0489a55d78d8f64af3c243886047e",
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-mechanicaldark.primitive.0",
+      "indexCount": 486,
+      "indexed": true,
+      "materialHash": "dd561c3542e7148a59592c481f9d7b683bc9c5068bbb3d7ca670e08938bf2677",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_KILNBACK_SLAT_6_MechanicalDark",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 170
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7003754377365112,
+          -0.6503783464431763,
+          9.600000381469727
+        ],
+        "min": [
+          -3.700375556945801,
+          -1.449621558189392,
+          -9.600000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6ba6cbfc70e6964c2709ff90daaf73bf086089517e1ee3d0abfc68685a26027d",
+      "id": "sf.render.kilnback-lod1.node.lod1-warning.primitive.0",
+      "indexCount": 1602,
+      "indexed": true,
+      "materialHash": "ae2db8ea6f6ccefc651040042529a8d9241ddbd8d82f5d608648c3898492ea68",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Warning",
+      "nodeId": "sf.render.kilnback-lod1.node.lod1-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 518
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "00092562ffc834fd4cbecefad65bf86983e37a2f35810b0a4b88bb89e2e8e678",
+      "id": "material:00092562ffc834fd4cbecefa",
+      "name": "Material_Ceramic",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "00bc767a32c12bcfb61c4d16992b3ee49be37aab147cb83c7c293c99a83dc793",
+      "id": "material:00bc767a32c12bcfb61c4d16",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
+      "id": "material:1ee807a3355d83d28693fa8c",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "6241932292a392647f613f9c31edce8a9370737788d64800f19d9ed0f5207ec3",
+      "id": "material:6241932292a392647f613f9c",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "63b85f6c99cbf912dd66a59b87f4e8e39e4308f2a0f01aea9fc590fa870691d1",
+      "id": "material:63b85f6c99cbf912dd66a59b",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
+      "id": "material:6a5417b004bdbc8e05e1f1ee",
+      "name": "Material_Emissive_NavRed",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
+      "id": "material:7dbce0f058ce69aeee64664b",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "7f6a2eef4df28f474efb4f0f3a97fa6f9737765981907d11baa8a7016a7d2045",
+      "id": "material:7f6a2eef4df28f474efb4f0f",
+      "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "95b3e0491638f7fe0b25aa2b64998353da0d254b0d709254523869499db42b58",
+      "id": "material:95b3e0491638f7fe0b25aa2b",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "9fe725acc1b7a8daa90d7bc110cc91c62f12ef3445d00ffcf6500648fcb5d104",
+      "id": "material:9fe725acc1b7a8daa90d7bc1",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "ae2db8ea6f6ccefc651040042529a8d9241ddbd8d82f5d608648c3898492ea68",
+      "id": "material:ae2db8ea6f6ccefc65104004",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cec17a80b2afb25553594f506512c249d51bfee676f65952a1318365312b50f1",
+      "id": "material:cec17a80b2afb25553594f50",
+      "name": "Material_Emissive_NavGreen",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "dd561c3542e7148a59592c481f9d7b683bc9c5068bbb3d7ca670e08938bf2677",
+      "id": "material:dd561c3542e7148a59592c48",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ee853317e7d398ff08adab589c04723ced5ddd53ec8a3483293830debb5f0c79",
+      "id": "material:ee853317e7d398ff08adab58",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.kilnback-lod1.node.collision-kilnback-cask-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_KILNBACK_CASK_PORT",
+      "nodeName": "COLLISION_KILNBACK_CASK_PORT",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.collision-kilnback-cask-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_KILNBACK_CASK_STARBOARD",
+      "nodeName": "COLLISION_KILNBACK_CASK_STARBOARD",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.collision-kilnback-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_KILNBACK_CORE",
+      "nodeName": "COLLISION_KILNBACK_CORE",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Armor",
+      "nodeName": "LOD1_Armor",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-beacon-amber",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Beacon_Amber",
+      "nodeName": "LOD1_Beacon_Amber",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-canopy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_CANOPY",
+      "nodeName": "LOD1_CANOPY",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-ceramic",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Ceramic",
+      "nodeName": "LOD1_Ceramic",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-hook-drive-core",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_DRIVE_CORE",
+      "nodeName": "LOD1_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-hook-nav-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_PORT",
+      "nodeName": "LOD1_HOOK_NAV_PORT",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-hook-nav-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_NAV_STARBOARD",
+      "nodeName": "LOD1_HOOK_NAV_STARBOARD",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Hull",
+      "nodeName": "LOD1_Hull",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-lights-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Lights_Warm",
+      "nodeName": "LOD1_Lights_Warm",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-livery",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Livery",
+      "nodeName": "LOD1_Livery",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Mechanical",
+      "nodeName": "LOD1_Mechanical",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MechanicalDark",
+      "nodeName": "LOD1_MechanicalDark",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-armor",
+      "localTransform": [
+        2.879268169403076,
+        0,
+        0,
+        0,
+        0,
+        2.879268169403076,
+        0,
+        0,
+        0,
+        0,
+        2.879268169403076,
+        0,
+        0.00010132789611816406,
+        0,
+        -0.00012683868408203125,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_CASK_PORT_Armor",
+      "nodeName": "LOD1_MOTION_KILNBACK_CASK_PORT_Armor",
+      "nodePath": [
+        0,
+        16,
+        0
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-cask-port",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        2.879268169403076,
+        0,
+        0,
+        0,
+        0,
+        2.879268169403076,
+        0,
+        0,
+        0,
+        0,
+        2.879268169403076,
+        0,
+        -0.9998986721038818,
+        0,
+        -10.000126838684082,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-ceramic",
+      "localTransform": [
+        3.500065803527832,
+        0,
+        0,
+        0,
+        0,
+        3.500065803527832,
+        0,
+        0,
+        0,
+        0,
+        3.500065803527832,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_CASK_PORT_Ceramic",
+      "nodeName": "LOD1_MOTION_KILNBACK_CASK_PORT_Ceramic",
+      "nodePath": [
+        0,
+        16,
+        1
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-cask-port",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        3.500065803527832,
+        0,
+        0,
+        0,
+        0,
+        3.500065803527832,
+        0,
+        0,
+        0,
+        0,
+        3.500065803527832,
+        0,
+        -1,
+        0,
+        -10,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-lights-cyan",
+      "localTransform": [
+        0.9727822095155716,
+        0,
+        0,
+        0,
+        0,
+        0.9727822095155716,
+        0,
+        0,
+        0,
+        0,
+        0.9727822095155716,
+        0,
+        -4.470348358154297e-8,
+        1.5499999523162842,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_CASK_PORT_Lights_Cyan",
+      "nodeName": "LOD1_MOTION_KILNBACK_CASK_PORT_Lights_Cyan",
+      "nodePath": [
+        0,
+        16,
+        2
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-cask-port",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        0.9727822095155716,
+        0,
+        0,
+        0,
+        0,
+        0.9727822095155716,
+        0,
+        0,
+        0,
+        0,
+        0.9727822095155716,
+        0,
+        -1.0000000447034836,
+        1.5499999523162842,
+        -10,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-livery",
+      "localTransform": [
+        2.863685727119446,
+        0,
+        0,
+        0,
+        0,
+        2.863685727119446,
+        0,
+        0,
+        0,
+        0,
+        2.863685727119446,
+        0,
+        -3.5762786865234375e-7,
+        0,
+        -0.00012683868408203125,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_CASK_PORT_Livery",
+      "nodeName": "LOD1_MOTION_KILNBACK_CASK_PORT_Livery",
+      "nodePath": [
+        0,
+        16,
+        3
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-cask-port",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        2.863685727119446,
+        0,
+        0,
+        0,
+        0,
+        2.863685727119446,
+        0,
+        0,
+        0,
+        0,
+        2.863685727119446,
+        0,
+        -1.0000003576278687,
+        0,
+        -10.000126838684082,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-mechanicaldark",
+      "localTransform": [
+        2.423894762992859,
+        0,
+        0,
+        0,
+        0,
+        2.423894762992859,
+        0,
+        0,
+        0,
+        0,
+        2.423894762992859,
+        0,
+        1.2257193326950073,
+        0.657057948410511,
+        9.5367431640625e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_CASK_PORT_MechanicalDark",
+      "nodeName": "LOD1_MOTION_KILNBACK_CASK_PORT_MechanicalDark",
+      "nodePath": [
+        0,
+        16,
+        4
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-cask-port",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        2.423894762992859,
+        0,
+        0,
+        0,
+        0,
+        2.423894762992859,
+        0,
+        0,
+        0,
+        0,
+        2.423894762992859,
+        0,
+        0.22571933269500732,
+        0.657057948410511,
+        -9.999999046325684,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-armor",
+      "localTransform": [
+        2.879268169403076,
+        0,
+        0,
+        0,
+        0,
+        2.879268169403076,
+        0,
+        0,
+        0,
+        0,
+        2.879268169403076,
+        0,
+        0.00010132789611816406,
+        0,
+        0.00012683868408203125,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_Armor",
+      "nodeName": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_Armor",
+      "nodePath": [
+        0,
+        17,
+        0
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-cask-starboard",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        2.879268169403076,
+        0,
+        0,
+        0,
+        0,
+        2.879268169403076,
+        0,
+        0,
+        0,
+        0,
+        2.879268169403076,
+        0,
+        -0.9998986721038818,
+        0,
+        10.000126838684082,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-ceramic",
+      "localTransform": [
+        3.500065803527832,
+        0,
+        0,
+        0,
+        0,
+        3.500065803527832,
+        0,
+        0,
+        0,
+        0,
+        3.500065803527832,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_Ceramic",
+      "nodeName": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_Ceramic",
+      "nodePath": [
+        0,
+        17,
+        1
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-cask-starboard",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        3.500065803527832,
+        0,
+        0,
+        0,
+        0,
+        3.500065803527832,
+        0,
+        0,
+        0,
+        0,
+        3.500065803527832,
+        0,
+        -1,
+        0,
+        10,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-lights-cyan",
+      "localTransform": [
+        0.9727822197601199,
+        0,
+        0,
+        0,
+        0,
+        0.9727822197601199,
+        0,
+        0,
+        0,
+        0,
+        0.9727822197601199,
+        0,
+        -1.5366822481155396e-7,
+        1.5499999523162842,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_Lights_Cyan",
+      "nodeName": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_Lights_Cyan",
+      "nodePath": [
+        0,
+        17,
+        2
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-cask-starboard",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        0.9727822197601199,
+        0,
+        0,
+        0,
+        0,
+        0.9727822197601199,
+        0,
+        0,
+        0,
+        0,
+        0.9727822197601199,
+        0,
+        -1.0000001536682248,
+        1.5499999523162842,
+        10,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-livery",
+      "localTransform": [
+        2.863685727119446,
+        0,
+        0,
+        0,
+        0,
+        2.863685727119446,
+        0,
+        0,
+        0,
+        0,
+        2.863685727119446,
+        0,
+        -3.5762786865234375e-7,
+        0,
+        0.00012683868408203125,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_Livery",
+      "nodeName": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_Livery",
+      "nodePath": [
+        0,
+        17,
+        3
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-cask-starboard",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        2.863685727119446,
+        0,
+        0,
+        0,
+        0,
+        2.863685727119446,
+        0,
+        0,
+        0,
+        0,
+        2.863685727119446,
+        0,
+        -1.0000003576278687,
+        0,
+        10.000126838684082,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-mechanicaldark",
+      "localTransform": [
+        2.423894762992859,
+        0,
+        0,
+        0,
+        0,
+        2.423894762992859,
+        0,
+        0,
+        0,
+        0,
+        2.423894762992859,
+        0,
+        1.2257193326950073,
+        0.6570579260587692,
+        -9.5367431640625e-7,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_MechanicalDark",
+      "nodeName": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_MechanicalDark",
+      "nodePath": [
+        0,
+        17,
+        4
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-cask-starboard",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        2.423894762992859,
+        0,
+        0,
+        0,
+        0,
+        2.423894762992859,
+        0,
+        0,
+        0,
+        0,
+        2.423894762992859,
+        0,
+        0.22571933269500732,
+        0.6570579260587692,
+        9.999999046325684,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-armor",
+      "localTransform": [
+        4.346235990524292,
+        0,
+        0,
+        0,
+        0,
+        4.346235990524292,
+        0,
+        0,
+        0,
+        0,
+        4.346235990524292,
+        0,
+        0.0494997501373291,
+        0.125,
+        -0.46613240242004395,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_1_Armor",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_1_Armor",
+      "nodePath": [
+        0,
+        18,
+        0
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-1",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        4.346235990524292,
+        0,
+        0,
+        0,
+        0,
+        4.346235990524292,
+        0,
+        0,
+        0,
+        0,
+        4.346235990524292,
+        0,
+        -1.950500249862671,
+        3.9049999713897705,
+        3.0038676261901855,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-beacon-amber",
+      "localTransform": [
+        3.099614977836609,
+        0,
+        0,
+        0,
+        0,
+        3.099614977836609,
+        0,
+        0,
+        0,
+        0,
+        3.099614977836609,
+        0,
+        -0.45002472400665283,
+        0.27500009536743164,
+        -0.46999990940093994,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_1_Beacon_Amber",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_1_Beacon_Amber",
+      "nodePath": [
+        0,
+        18,
+        1
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-1",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        3.099614977836609,
+        0,
+        0,
+        0,
+        0,
+        3.099614977836609,
+        0,
+        0,
+        0,
+        0,
+        3.099614977836609,
+        0,
+        -2.450024724006653,
+        4.055000066757202,
+        3.0000001192092896,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-mechanicaldark",
+      "localTransform": [
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0.04999995231628418,
+        0.12495565414428711,
+        -0.4700000286102295,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_1_MechanicalDark",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_1_MechanicalDark",
+      "nodePath": [
+        0,
+        18,
+        2
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-1",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        -1.9500000476837158,
+        3.9049556255340576,
+        3,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-armor",
+      "localTransform": [
+        4.346229672431946,
+        0,
+        0,
+        0,
+        0,
+        4.346229672431946,
+        0,
+        0,
+        0,
+        0,
+        4.346229672431946,
+        0,
+        0.04949343204498291,
+        0.125,
+        -0.4661320447921753,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_2_Armor",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_2_Armor",
+      "nodePath": [
+        0,
+        19,
+        0
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-2",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        4.346229672431946,
+        0,
+        0,
+        0,
+        0,
+        4.346229672431946,
+        0,
+        0,
+        0,
+        0,
+        4.346229672431946,
+        0,
+        -1.950506567955017,
+        3.9049999713897705,
+        1.8038679361343384,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-beacon-amber",
+      "localTransform": [
+        3.099590450525284,
+        0,
+        0,
+        0,
+        0,
+        3.099590450525284,
+        0,
+        0,
+        0,
+        0,
+        3.099590450525284,
+        0,
+        -0.450000137090683,
+        0.27500009536743164,
+        -0.47000426054000854,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_2_Beacon_Amber",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_2_Beacon_Amber",
+      "nodePath": [
+        0,
+        19,
+        1
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-2",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        3.099590450525284,
+        0,
+        0,
+        0,
+        0,
+        3.099590450525284,
+        0,
+        0,
+        0,
+        0,
+        3.099590450525284,
+        0,
+        -2.450000137090683,
+        4.055000066757202,
+        1.7999957203865051,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-mechanicaldark",
+      "localTransform": [
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0.04999995231628418,
+        0.1245572566986084,
+        -0.4699999690055847,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_2_MechanicalDark",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_2_MechanicalDark",
+      "nodePath": [
+        0,
+        19,
+        2
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-2",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        -1.9500000476837158,
+        3.904557228088379,
+        1.800000011920929,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-armor",
+      "localTransform": [
+        4.34673798084259,
+        0,
+        0,
+        0,
+        0,
+        4.34673798084259,
+        0,
+        0,
+        0,
+        0,
+        4.34673798084259,
+        0,
+        0.05000174045562744,
+        0.125,
+        -0.4661323055624962,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_3_Armor",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_3_Armor",
+      "nodePath": [
+        0,
+        20,
+        0
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-3",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        4.34673798084259,
+        0,
+        0,
+        0,
+        0,
+        4.34673798084259,
+        0,
+        0,
+        0,
+        0,
+        4.34673798084259,
+        0,
+        -1.9499982595443726,
+        3.9049999713897705,
+        0.6038677468895912,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-beacon-amber",
+      "localTransform": [
+        3.0996150076389313,
+        0,
+        0,
+        0,
+        0,
+        3.0996150076389313,
+        0,
+        0,
+        0,
+        0,
+        3.0996150076389313,
+        0,
+        -0.45002469420433044,
+        0.2749955654144287,
+        -0.4699999988079071,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_3_Beacon_Amber",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_3_Beacon_Amber",
+      "nodePath": [
+        0,
+        20,
+        1
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-3",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        3.0996150076389313,
+        0,
+        0,
+        0,
+        0,
+        3.0996150076389313,
+        0,
+        0,
+        0,
+        0,
+        3.0996150076389313,
+        0,
+        -2.4500246942043304,
+        4.054995536804199,
+        0.6000000536441803,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-mechanicaldark",
+      "localTransform": [
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0.04999995231628418,
+        0.12495565414428711,
+        -0.4700000323355198,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_3_MechanicalDark",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_3_MechanicalDark",
+      "nodePath": [
+        0,
+        20,
+        2
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-3",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        -1.9500000476837158,
+        3.9049556255340576,
+        0.6000000201165676,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-armor",
+      "localTransform": [
+        4.346737861633301,
+        0,
+        0,
+        0,
+        0,
+        4.346737861633301,
+        0,
+        0,
+        0,
+        0,
+        4.346737861633301,
+        0,
+        0.05000162124633789,
+        0.125,
+        -0.46613219752907753,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_4_Armor",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_4_Armor",
+      "nodePath": [
+        0,
+        21,
+        0
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-4",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        4.346737861633301,
+        0,
+        0,
+        0,
+        0,
+        4.346737861633301,
+        0,
+        0,
+        0,
+        0,
+        4.346737861633301,
+        0,
+        -1.949998378753662,
+        3.9049999713897705,
+        -0.596132192760706,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-beacon-amber",
+      "localTransform": [
+        3.099590450525284,
+        0,
+        0,
+        0,
+        0,
+        3.099590450525284,
+        0,
+        0,
+        0,
+        0,
+        3.099590450525284,
+        0,
+        -0.450000137090683,
+        0.27500009536743164,
+        -0.4700000286102295,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_4_Beacon_Amber",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_4_Beacon_Amber",
+      "nodePath": [
+        0,
+        21,
+        1
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-4",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        3.099590450525284,
+        0,
+        0,
+        0,
+        0,
+        3.099590450525284,
+        0,
+        0,
+        0,
+        0,
+        3.099590450525284,
+        0,
+        -2.450000137090683,
+        4.055000066757202,
+        -0.6000000238418579,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-mechanicaldark",
+      "localTransform": [
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0.04999995231628418,
+        0.1245572566986084,
+        -0.4700000248849392,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_4_MechanicalDark",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_4_MechanicalDark",
+      "nodePath": [
+        0,
+        21,
+        2
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-4",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        -1.9500000476837158,
+        3.904557228088379,
+        -0.6000000201165676,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-armor",
+      "localTransform": [
+        4.343187212944031,
+        0,
+        0,
+        0,
+        0,
+        4.343187212944031,
+        0,
+        0,
+        0,
+        0,
+        4.343187212944031,
+        0,
+        0.04645049571990967,
+        0.125,
+        -0.4661322832107544,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_5_Armor",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_5_Armor",
+      "nodePath": [
+        0,
+        22,
+        0
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-5",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        4.343187212944031,
+        0,
+        0,
+        0,
+        0,
+        4.343187212944031,
+        0,
+        0,
+        0,
+        0,
+        4.343187212944031,
+        0,
+        -1.9535495042800903,
+        3.9049999713897705,
+        -1.7961323261260986,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-beacon-amber",
+      "localTransform": [
+        3.099590450525284,
+        0,
+        0,
+        0,
+        0,
+        3.099590450525284,
+        0,
+        0,
+        0,
+        0,
+        3.099590450525284,
+        0,
+        -0.450000137090683,
+        0.27500033378601074,
+        -0.4699956774711609,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_5_Beacon_Amber",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_5_Beacon_Amber",
+      "nodePath": [
+        0,
+        22,
+        1
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-5",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        3.099590450525284,
+        0,
+        0,
+        0,
+        0,
+        3.099590450525284,
+        0,
+        0,
+        0,
+        0,
+        3.099590450525284,
+        0,
+        -2.450000137090683,
+        4.055000305175781,
+        -1.7999957203865051,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-mechanicaldark",
+      "localTransform": [
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0.04999995231628418,
+        0.1245572566986084,
+        -0.4699999690055847,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_5_MechanicalDark",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_5_MechanicalDark",
+      "nodePath": [
+        0,
+        22,
+        2
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-5",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        -1.9500000476837158,
+        3.904557228088379,
+        -1.800000011920929,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-armor",
+      "localTransform": [
+        4.3462361097335815,
+        0,
+        0,
+        0,
+        0,
+        4.3462361097335815,
+        0,
+        0,
+        0,
+        0,
+        4.3462361097335815,
+        0,
+        0.04949986934661865,
+        0.125,
+        -0.4661322832107544,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_6_Armor",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_6_Armor",
+      "nodePath": [
+        0,
+        23,
+        0
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-6",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        4.3462361097335815,
+        0,
+        0,
+        0,
+        0,
+        4.3462361097335815,
+        0,
+        0,
+        0,
+        0,
+        4.3462361097335815,
+        0,
+        -1.9505001306533813,
+        3.9049999713897705,
+        -2.996132254600525,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-beacon-amber",
+      "localTransform": [
+        3.099615216255188,
+        0,
+        0,
+        0,
+        0,
+        3.099615216255188,
+        0,
+        0,
+        0,
+        0,
+        3.099615216255188,
+        0,
+        -0.45002496242523193,
+        0.27500009536743164,
+        -0.4700005054473877,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_6_Beacon_Amber",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_6_Beacon_Amber",
+      "nodePath": [
+        0,
+        23,
+        1
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-6",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        3.099615216255188,
+        0,
+        0,
+        0,
+        0,
+        3.099615216255188,
+        0,
+        0,
+        0,
+        0,
+        3.099615216255188,
+        0,
+        -2.450024962425232,
+        4.055000066757202,
+        -3.000000476837158,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-mechanicaldark",
+      "localTransform": [
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0.04999995231628418,
+        0.12495565414428711,
+        -0.4700000286102295,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_MOTION_KILNBACK_SLAT_6_MechanicalDark",
+      "nodeName": "LOD1_MOTION_KILNBACK_SLAT_6_MechanicalDark",
+      "nodePath": [
+        0,
+        23,
+        2
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.motion-kilnback-slat-6",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        0,
+        0,
+        0,
+        4.3500001430511475,
+        0,
+        -1.9500000476837158,
+        3.9049556255340576,
+        -3,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.lod1-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Warning",
+      "nodeName": "LOD1_Warning",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.motion-kilnback-cask-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0,
+        -10,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KILNBACK_CASK_PORT",
+      "nodeName": "MOTION_KILNBACK_CASK_PORT",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0,
+        -10,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.motion-kilnback-cask-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0,
+        10,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KILNBACK_CASK_STARBOARD",
+      "nodeName": "MOTION_KILNBACK_CASK_STARBOARD",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0,
+        10,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.motion-kilnback-slat-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2,
+        3.7799999713897705,
+        3.4700000286102295,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KILNBACK_SLAT_1",
+      "nodeName": "MOTION_KILNBACK_SLAT_1",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2,
+        3.7799999713897705,
+        3.4700000286102295,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.motion-kilnback-slat-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2,
+        3.7799999713897705,
+        2.2699999809265137,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KILNBACK_SLAT_2",
+      "nodeName": "MOTION_KILNBACK_SLAT_2",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2,
+        3.7799999713897705,
+        2.2699999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.motion-kilnback-slat-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2,
+        3.7799999713897705,
+        1.0700000524520874,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KILNBACK_SLAT_3",
+      "nodeName": "MOTION_KILNBACK_SLAT_3",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2,
+        3.7799999713897705,
+        1.0700000524520874,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.motion-kilnback-slat-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2,
+        3.7799999713897705,
+        -0.12999999523162842,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KILNBACK_SLAT_4",
+      "nodeName": "MOTION_KILNBACK_SLAT_4",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2,
+        3.7799999713897705,
+        -0.12999999523162842,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.motion-kilnback-slat-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2,
+        3.7799999713897705,
+        -1.3300000429153442,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KILNBACK_SLAT_5",
+      "nodeName": "MOTION_KILNBACK_SLAT_5",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2,
+        3.7799999713897705,
+        -1.3300000429153442,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.motion-kilnback-slat-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2,
+        3.7799999713897705,
+        -2.5299999713897705,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_KILNBACK_SLAT_6",
+      "nodeName": "MOTION_KILNBACK_SLAT_6",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2,
+        3.7799999713897705,
+        -2.5299999713897705,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_SHIP_KILNBACK_ROOT",
+      "nodeName": "SF_SHIP_KILNBACK_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.399999976158142,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.399999976158142,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.socket-cask-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0,
+        -10,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_CASK_PORT",
+      "nodeName": "SOCKET_CASK_PORT",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0,
+        -10,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.socket-cask-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0,
+        10,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_CASK_STARBOARD",
+      "nodeName": "SOCKET_CASK_STARBOARD",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1,
+        0,
+        10,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.socket-engine-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.699999809265137,
+        -0.15000000596046448,
+        -2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Main",
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.699999809265137,
+        -0.15000000596046448,
+        -2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.socket-engine-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.699999809265137,
+        -0.15000000596046448,
+        -2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Port",
+      "nodeName": "SOCKET_Engine_Port",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.699999809265137,
+        -0.15000000596046448,
+        -2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.socket-engine-starboard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.699999809265137,
+        -0.15000000596046448,
+        2.299999952316284,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Engine_Starboard",
+      "nodeName": "SOCKET_Engine_Starboard",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -13.699999809265137,
+        -0.15000000596046448,
+        2.299999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.socket-jet",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        14,
+        0.15000000596046448,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_JET",
+      "nodeName": "SOCKET_JET",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        14,
+        0.15000000596046448,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.kilnback-lod1.node.socket-trail-main",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -14.100000381469727,
+        -0.15000000596046448,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Trail_Main",
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.kilnback-lod1.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -14.100000381469727,
+        -0.15000000596046448,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "11037348a443162259361db0cfb3cad4a96e49075a50c71fc31597d4415bfd5f"
+    },
+    "sourceGlb": {
+      "bytes": 573740,
+      "sha256": "f80a7ff4344cede7ed25685e89fa132fdcb587a20fc57eacd86e10c1eae3a3d5",
+      "uri": "kilnback_lod1.glb"
+    },
+    "sourceManifest": {
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 730532,
+    "sha256": "a285dae4c565258afc7b25dceec5897edbf3f7110b1a099fd34d30a261de67c8",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.12997674942016602,
+        0.489732027053833,
+        0
+      ],
+      "max": [
+        13.999953269958496,
+        4.329829692840576,
+        11.519583610793177
+      ],
+      "min": [
+        -13.739999771118164,
+        -3.35036563873291,
+        -11.519583610793177
+      ],
+      "size": [
+        27.73995304107666,
+        7.680195331573486,
+        23.039167221586354
+      ]
+    },
+    "hidden": [
+      2,
+      3,
+      4
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1,
+          0,
+          -10,
+          1
+        ],
+        "name": "MOTION_KILNBACK_CASK_PORT",
+        "planIndex": 18,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kilnback_cask_port",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -1
+            ],
+            [
+              0,
+              1,
+              0,
+              10
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KILNBACK_CASK_PORT",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "kilnback_cask_port"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KILNBACK_CASK_PORT",
+            "recordIds": [
+              "sf.render.kilnback-lod1.node.motion-kilnback-cask-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1,
+          0,
+          10,
+          1
+        ],
+        "name": "MOTION_KILNBACK_CASK_STARBOARD",
+        "planIndex": 24,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kilnback_cask_starboard",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -1
+            ],
+            [
+              0,
+              1,
+              0,
+              -10
+            ],
+            [
+              0,
+              0,
+              1,
+              0
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KILNBACK_CASK_STARBOARD",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "kilnback_cask_starboard"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KILNBACK_CASK_STARBOARD",
+            "recordIds": [
+              "sf.render.kilnback-lod1.node.motion-kilnback-cask-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2,
+          3.7799999713897705,
+          3.4700000286102295,
+          1
+        ],
+        "name": "MOTION_KILNBACK_SLAT_1",
+        "planIndex": 30,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kilnback_slat_1",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -2
+            ],
+            [
+              0,
+              1,
+              0,
+              -3.4700000286102295
+            ],
+            [
+              0,
+              0,
+              1,
+              3.7799999713897705
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KILNBACK_SLAT_1",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "kilnback_slat_1"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KILNBACK_SLAT_1",
+            "recordIds": [
+              "sf.render.kilnback-lod1.node.motion-kilnback-slat-1"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2,
+          3.7799999713897705,
+          2.2699999809265137,
+          1
+        ],
+        "name": "MOTION_KILNBACK_SLAT_2",
+        "planIndex": 34,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kilnback_slat_2",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -2
+            ],
+            [
+              0,
+              1,
+              0,
+              -2.2699999809265137
+            ],
+            [
+              0,
+              0,
+              1,
+              3.7799999713897705
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KILNBACK_SLAT_2",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "kilnback_slat_2"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KILNBACK_SLAT_2",
+            "recordIds": [
+              "sf.render.kilnback-lod1.node.motion-kilnback-slat-2"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2,
+          3.7799999713897705,
+          1.0700000524520874,
+          1
+        ],
+        "name": "MOTION_KILNBACK_SLAT_3",
+        "planIndex": 38,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kilnback_slat_3",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -2
+            ],
+            [
+              0,
+              1,
+              0,
+              -1.0700000524520874
+            ],
+            [
+              0,
+              0,
+              1,
+              3.7799999713897705
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KILNBACK_SLAT_3",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "kilnback_slat_3"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KILNBACK_SLAT_3",
+            "recordIds": [
+              "sf.render.kilnback-lod1.node.motion-kilnback-slat-3"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2,
+          3.7799999713897705,
+          -0.12999999523162842,
+          1
+        ],
+        "name": "MOTION_KILNBACK_SLAT_4",
+        "planIndex": 42,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kilnback_slat_4",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -2
+            ],
+            [
+              0,
+              1,
+              0,
+              0.12999999523162842
+            ],
+            [
+              0,
+              0,
+              1,
+              3.7799999713897705
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KILNBACK_SLAT_4",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "kilnback_slat_4"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KILNBACK_SLAT_4",
+            "recordIds": [
+              "sf.render.kilnback-lod1.node.motion-kilnback-slat-4"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2,
+          3.7799999713897705,
+          -1.3300000429153442,
+          1
+        ],
+        "name": "MOTION_KILNBACK_SLAT_5",
+        "planIndex": 46,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kilnback_slat_5",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -2
+            ],
+            [
+              0,
+              1,
+              0,
+              1.3300000429153442
+            ],
+            [
+              0,
+              0,
+              1,
+              3.7799999713897705
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KILNBACK_SLAT_5",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "kilnback_slat_5"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KILNBACK_SLAT_5",
+            "recordIds": [
+              "sf.render.kilnback-lod1.node.motion-kilnback-slat-5"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2,
+          3.7799999713897705,
+          -2.5299999713897705,
+          1
+        ],
+        "name": "MOTION_KILNBACK_SLAT_6",
+        "planIndex": 50,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "kilnback_slat_6",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -2
+            ],
+            [
+              0,
+              1,
+              0,
+              2.5299999713897705
+            ],
+            [
+              0,
+              0,
+              1,
+              3.7799999713897705
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_KILNBACK_SLAT_6",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "kilnback_slat_6"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_KILNBACK_SLAT_6",
+            "recordIds": [
+              "sf.render.kilnback-lod1.node.motion-kilnback-slat-6"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          1.399999976158142,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 54,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.kilnback-lod1.anchor.socket-camera-focus",
+              "sf.render.kilnback-lod1.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1,
+          0,
+          -10,
+          1
+        ],
+        "name": "SOCKET_CASK_PORT",
+        "planIndex": 55,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_CASK_PORT",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_CASK_PORT",
+            "recordIds": [
+              "sf.render.kilnback-lod1.anchor.socket-cask-port",
+              "sf.render.kilnback-lod1.node.socket-cask-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1,
+          0,
+          10,
+          1
+        ],
+        "name": "SOCKET_CASK_STARBOARD",
+        "planIndex": 56,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_CASK_STARBOARD",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_CASK_STARBOARD",
+            "recordIds": [
+              "sf.render.kilnback-lod1.anchor.socket-cask-starboard",
+              "sf.render.kilnback-lod1.node.socket-cask-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -13.699999809265137,
+          -0.15000000596046448,
+          -2.299999952316284,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 57,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.kilnback-lod1.anchor.socket-engine-main",
+              "sf.render.kilnback-lod1.node.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -13.699999809265137,
+          -0.15000000596046448,
+          -2.299999952316284,
+          1
+        ],
+        "name": "SOCKET_Engine_Port",
+        "planIndex": 58,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Port",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Port",
+            "recordIds": [
+              "sf.render.kilnback-lod1.anchor.socket-engine-port",
+              "sf.render.kilnback-lod1.node.socket-engine-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -13.699999809265137,
+          -0.15000000596046448,
+          2.299999952316284,
+          1
+        ],
+        "name": "SOCKET_Engine_Starboard",
+        "planIndex": 59,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Starboard",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Starboard",
+            "recordIds": [
+              "sf.render.kilnback-lod1.anchor.socket-engine-starboard",
+              "sf.render.kilnback-lod1.node.socket-engine-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          14,
+          0.15000000596046448,
+          0,
+          1
+        ],
+        "name": "SOCKET_JET",
+        "planIndex": 60,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_JET",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_JET",
+            "recordIds": [
+              "sf.render.kilnback-lod1.anchor.socket-jet",
+              "sf.render.kilnback-lod1.node.socket-jet"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -14.100000381469727,
+          -0.15000000596046448,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 61,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.kilnback-lod1.anchor.socket-trail-main",
+              "sf.render.kilnback-lod1.node.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "ceramic": 3,
+      "drive": 1,
+      "glass": 1,
+      "hull": 13,
+      "mechanical": 10,
+      "signal": 12,
+      "warning": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "ceramic"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 47,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 48,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 49,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 51,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 52,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "mechanical"
+      }
+    ],
+    "motionBank": {
+      "bytes": 6742,
+      "rigId": "kilnback_controls",
+      "sha256": "f12941fce46ad04d4e298cb6f04abfcb13e3e3936e347c5f4575400fc187a2f6",
+      "uri": "assets/ships/motions/kilnback.motion.json"
+    },
+    "nodeCount": 62,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Armor",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Beacon_Amber",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_CANOPY",
+        "planIndex": 7,
+        "tags": {
+          "canopy": true,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Ceramic",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_HOOK_DRIVE_CORE",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_PORT",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_HOOK_NAV_STARBOARD",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "damageRole": "navLight",
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Hull",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Lights_Warm",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Livery",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Mechanical",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_MechanicalDark",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Warning",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.879268169403076,
+          0,
+          0,
+          0,
+          0,
+          2.879268169403076,
+          0,
+          0,
+          0,
+          0,
+          2.879268169403076,
+          0,
+          -0.9998986721038818,
+          0,
+          -10.000126838684082,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_CASK_PORT_Armor",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.500065803527832,
+          0,
+          0,
+          0,
+          0,
+          3.500065803527832,
+          0,
+          0,
+          0,
+          0,
+          3.500065803527832,
+          0,
+          -1,
+          0,
+          -10,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_CASK_PORT_Ceramic",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9727822095155716,
+          0,
+          0,
+          0,
+          0,
+          0.9727822095155716,
+          0,
+          0,
+          0,
+          0,
+          0.9727822095155716,
+          0,
+          -1.0000000447034836,
+          1.5499999523162842,
+          -10,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_CASK_PORT_Lights_Cyan",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.863685727119446,
+          0,
+          0,
+          0,
+          0,
+          2.863685727119446,
+          0,
+          0,
+          0,
+          0,
+          2.863685727119446,
+          0,
+          -1.0000003576278687,
+          0,
+          -10.000126838684082,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_CASK_PORT_Livery",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.423894762992859,
+          0,
+          0,
+          0,
+          0,
+          2.423894762992859,
+          0,
+          0,
+          0,
+          0,
+          2.423894762992859,
+          0,
+          0.22571933269500732,
+          0.657057948410511,
+          -9.999999046325684,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_CASK_PORT_MechanicalDark",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.879268169403076,
+          0,
+          0,
+          0,
+          0,
+          2.879268169403076,
+          0,
+          0,
+          0,
+          0,
+          2.879268169403076,
+          0,
+          -0.9998986721038818,
+          0,
+          10.000126838684082,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_Armor",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.500065803527832,
+          0,
+          0,
+          0,
+          0,
+          3.500065803527832,
+          0,
+          0,
+          0,
+          0,
+          3.500065803527832,
+          0,
+          -1,
+          0,
+          10,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_Ceramic",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.9727822197601199,
+          0,
+          0,
+          0,
+          0,
+          0.9727822197601199,
+          0,
+          0,
+          0,
+          0,
+          0.9727822197601199,
+          0,
+          -1.0000001536682248,
+          1.5499999523162842,
+          10,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_Lights_Cyan",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.863685727119446,
+          0,
+          0,
+          0,
+          0,
+          2.863685727119446,
+          0,
+          0,
+          0,
+          0,
+          2.863685727119446,
+          0,
+          -1.0000003576278687,
+          0,
+          10.000126838684082,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_Livery",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.423894762992859,
+          0,
+          0,
+          0,
+          0,
+          2.423894762992859,
+          0,
+          0,
+          0,
+          0,
+          2.423894762992859,
+          0,
+          0.22571933269500732,
+          0.6570579260587692,
+          9.999999046325684,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_CASK_STARBOARD_MechanicalDark",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.346235990524292,
+          0,
+          0,
+          0,
+          0,
+          4.346235990524292,
+          0,
+          0,
+          0,
+          0,
+          4.346235990524292,
+          0,
+          -1.950500249862671,
+          3.9049999713897705,
+          3.0038676261901855,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_1_Armor",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.099614977836609,
+          0,
+          0,
+          0,
+          0,
+          3.099614977836609,
+          0,
+          0,
+          0,
+          0,
+          3.099614977836609,
+          0,
+          -2.450024724006653,
+          4.055000066757202,
+          3.0000001192092896,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_1_Beacon_Amber",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.3500001430511475,
+          0,
+          0,
+          0,
+          0,
+          4.3500001430511475,
+          0,
+          0,
+          0,
+          0,
+          4.3500001430511475,
+          0,
+          -1.9500000476837158,
+          3.9049556255340576,
+          3,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_1_MechanicalDark",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.346229672431946,
+          0,
+          0,
+          0,
+          0,
+          4.346229672431946,
+          0,
+          0,
+          0,
+          0,
+          4.346229672431946,
+          0,
+          -1.950506567955017,
+          3.9049999713897705,
+          1.8038679361343384,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_2_Armor",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.099590450525284,
+          0,
+          0,
+          0,
+          0,
+          3.099590450525284,
+          0,
+          0,
+          0,
+          0,
+          3.099590450525284,
+          0,
+          -2.450000137090683,
+          4.055000066757202,
+          1.7999957203865051,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_2_Beacon_Amber",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.3500001430511475,
+          0,
+          0,
+          0,
+          0,
+          4.3500001430511475,
+          0,
+          0,
+          0,
+          0,
+          4.3500001430511475,
+          0,
+          -1.9500000476837158,
+          3.904557228088379,
+          1.800000011920929,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_2_MechanicalDark",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.34673798084259,
+          0,
+          0,
+          0,
+          0,
+          4.34673798084259,
+          0,
+          0,
+          0,
+          0,
+          4.34673798084259,
+          0,
+          -1.9499982595443726,
+          3.9049999713897705,
+          0.6038677468895912,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_3_Armor",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.0996150076389313,
+          0,
+          0,
+          0,
+          0,
+          3.0996150076389313,
+          0,
+          0,
+          0,
+          0,
+          3.0996150076389313,
+          0,
+          -2.4500246942043304,
+          4.054995536804199,
+          0.6000000536441803,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_3_Beacon_Amber",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.3500001430511475,
+          0,
+          0,
+          0,
+          0,
+          4.3500001430511475,
+          0,
+          0,
+          0,
+          0,
+          4.3500001430511475,
+          0,
+          -1.9500000476837158,
+          3.9049556255340576,
+          0.6000000201165676,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_3_MechanicalDark",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.346737861633301,
+          0,
+          0,
+          0,
+          0,
+          4.346737861633301,
+          0,
+          0,
+          0,
+          0,
+          4.346737861633301,
+          0,
+          -1.949998378753662,
+          3.9049999713897705,
+          -0.596132192760706,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_4_Armor",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.099590450525284,
+          0,
+          0,
+          0,
+          0,
+          3.099590450525284,
+          0,
+          0,
+          0,
+          0,
+          3.099590450525284,
+          0,
+          -2.450000137090683,
+          4.055000066757202,
+          -0.6000000238418579,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_4_Beacon_Amber",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.3500001430511475,
+          0,
+          0,
+          0,
+          0,
+          4.3500001430511475,
+          0,
+          0,
+          0,
+          0,
+          4.3500001430511475,
+          0,
+          -1.9500000476837158,
+          3.904557228088379,
+          -0.6000000201165676,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_4_MechanicalDark",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.343187212944031,
+          0,
+          0,
+          0,
+          0,
+          4.343187212944031,
+          0,
+          0,
+          0,
+          0,
+          4.343187212944031,
+          0,
+          -1.9535495042800903,
+          3.9049999713897705,
+          -1.7961323261260986,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_5_Armor",
+        "planIndex": 47,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.099590450525284,
+          0,
+          0,
+          0,
+          0,
+          3.099590450525284,
+          0,
+          0,
+          0,
+          0,
+          3.099590450525284,
+          0,
+          -2.450000137090683,
+          4.055000305175781,
+          -1.7999957203865051,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_5_Beacon_Amber",
+        "planIndex": 48,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.3500001430511475,
+          0,
+          0,
+          0,
+          0,
+          4.3500001430511475,
+          0,
+          0,
+          0,
+          0,
+          4.3500001430511475,
+          0,
+          -1.9500000476837158,
+          3.904557228088379,
+          -1.800000011920929,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_5_MechanicalDark",
+        "planIndex": 49,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.3462361097335815,
+          0,
+          0,
+          0,
+          0,
+          4.3462361097335815,
+          0,
+          0,
+          0,
+          0,
+          4.3462361097335815,
+          0,
+          -1.9505001306533813,
+          3.9049999713897705,
+          -2.996132254600525,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_6_Armor",
+        "planIndex": 51,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.099615216255188,
+          0,
+          0,
+          0,
+          0,
+          3.099615216255188,
+          0,
+          0,
+          0,
+          0,
+          3.099615216255188,
+          0,
+          -2.450024962425232,
+          4.055000066757202,
+          -3.000000476837158,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_6_Beacon_Amber",
+        "planIndex": 52,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          4.3500001430511475,
+          0,
+          0,
+          0,
+          0,
+          4.3500001430511475,
+          0,
+          0,
+          0,
+          0,
+          4.3500001430511475,
+          0,
+          -1.9500000476837158,
+          3.9049556255340576,
+          -3,
+          1
+        ],
+        "name": "LOD1_MOTION_KILNBACK_SLAT_6_MechanicalDark",
+        "planIndex": 53,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod1",
+          "motionGroup": true
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/kilnback_lod1.glb"
+  },
+  "runtimeHash": "65c161917bb06757469ee9ddcd5e1f00e231a1a307e333e51dccd3f49638e5f7",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          13.999953269958496,
+          4.329829692840576,
+          11.519583610793177
+        ],
+        "min": [
+          -13.739999771118164,
+          -3.35036563873291,
+          -11.519583610793177
+        ]
+      },
+      "id": "sf.render.kilnback-lod1.body",
+      "nodeIds": [
+        "sf.render.kilnback-lod1.node.collision-kilnback-cask-port",
+        "sf.render.kilnback-lod1.node.collision-kilnback-cask-starboard",
+        "sf.render.kilnback-lod1.node.collision-kilnback-core",
+        "sf.render.kilnback-lod1.node.lod1-armor",
+        "sf.render.kilnback-lod1.node.lod1-beacon-amber",
+        "sf.render.kilnback-lod1.node.lod1-canopy",
+        "sf.render.kilnback-lod1.node.lod1-ceramic",
+        "sf.render.kilnback-lod1.node.lod1-hook-drive-core",
+        "sf.render.kilnback-lod1.node.lod1-hook-nav-port",
+        "sf.render.kilnback-lod1.node.lod1-hook-nav-starboard",
+        "sf.render.kilnback-lod1.node.lod1-hull",
+        "sf.render.kilnback-lod1.node.lod1-lights-warm",
+        "sf.render.kilnback-lod1.node.lod1-livery",
+        "sf.render.kilnback-lod1.node.lod1-mechanical",
+        "sf.render.kilnback-lod1.node.lod1-mechanicaldark",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-armor",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-ceramic",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-lights-cyan",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-livery",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-port-mechanicaldark",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-armor",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-ceramic",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-lights-cyan",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-livery",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-cask-starboard-mechanicaldark",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-armor",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-beacon-amber",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-1-mechanicaldark",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-armor",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-beacon-amber",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-2-mechanicaldark",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-armor",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-beacon-amber",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-3-mechanicaldark",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-armor",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-beacon-amber",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-4-mechanicaldark",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-armor",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-beacon-amber",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-5-mechanicaldark",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-armor",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-beacon-amber",
+        "sf.render.kilnback-lod1.node.lod1-motion-kilnback-slat-6-mechanicaldark",
+        "sf.render.kilnback-lod1.node.lod1-warning",
+        "sf.render.kilnback-lod1.node.motion-kilnback-cask-port",
+        "sf.render.kilnback-lod1.node.motion-kilnback-cask-starboard",
+        "sf.render.kilnback-lod1.node.motion-kilnback-slat-1",
+        "sf.render.kilnback-lod1.node.motion-kilnback-slat-2",
+        "sf.render.kilnback-lod1.node.motion-kilnback-slat-3",
+        "sf.render.kilnback-lod1.node.motion-kilnback-slat-4",
+        "sf.render.kilnback-lod1.node.motion-kilnback-slat-5",
+        "sf.render.kilnback-lod1.node.motion-kilnback-slat-6",
+        "sf.render.kilnback-lod1.node.sf-ship-kilnback-root",
+        "sf.render.kilnback-lod1.node.socket-camera-focus",
+        "sf.render.kilnback-lod1.node.socket-cask-port",
+        "sf.render.kilnback-lod1.node.socket-cask-starboard",
+        "sf.render.kilnback-lod1.node.socket-engine-main",
+        "sf.render.kilnback-lod1.node.socket-engine-port",
+        "sf.render.kilnback-lod1.node.socket-engine-starboard",
+        "sf.render.kilnback-lod1.node.socket-jet",
+        "sf.render.kilnback-lod1.node.socket-trail-main"
+      ]
+    }
+  ]
+}

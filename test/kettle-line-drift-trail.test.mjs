@@ -72,8 +72,9 @@ test('each tell names the true bearing and range to the next piece; the stern en
     const dx = b.x - a.x;
     const dz = b.z - a.z;
     const range = Math.round(Math.hypot(dx, dz) / 50) * 50;
+    // Screen compass: +z is north (the top of the flight view), +x is east.
     const octant = ['east', 'north-east', 'north', 'north-west', 'west', 'south-west', 'south', 'south-east'][
-      (Math.round(Math.atan2(-dz, dx) / (Math.PI / 4)) + 8) % 8
+      (Math.round(Math.atan2(dz, dx) / (Math.PI / 4)) + 8) % 8
     ];
     assert.ok(copy.detail.includes(octant), `"${from}" tell names the true octant (${octant})`);
     assert.ok(copy.detail.includes(String(range)), `"${from}" tell names the true rounded range (${range} WU)`);
@@ -113,7 +114,7 @@ test('a real pulse resolves the hopper row into the Kettle tell', () => {
   const row = events.results[0].signals.find((entry) => entry.sourceId === 'poi_kettle_hopper');
   assert.ok(row, 'the hopper appears in the pulse results');
   assert.equal(row.classification, 'KETTLE LINE SHARD');
-  assert.ok(row.detail.includes('south-west') && row.detail.includes('2100'),
+  assert.ok(row.detail.includes('north-west') && row.detail.includes('2100'),
     `the tell reads the authored bearing ("${row.detail}")`);
   assert.equal(row.manualInvestigation, true, 'the row asks to be investigated in person');
 });

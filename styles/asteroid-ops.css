@@ -26,6 +26,18 @@
   --aw-mono: "Spline Sans Mono", ui-monospace, Consolas, monospace;
   --aw-name-font: "Bricolage Grotesque", var(--aw-font);
 
+  /* ORRERY Surface 1 — the instrument light. Bone at rest, one amber verb, red only
+     for threat. Deckplate tokens where the route provides them, literals where not. */
+  --orr-bone: #ece6d8;
+  --orr-bone-hot: #fffdf6;
+  --orr-bone-dim: #b7b4a6;
+  --orr-phos: #dfeeff;
+  --orr-hand: var(--dp-hand, #f2b950);
+  --orr-hand-hot: var(--dp-hand-hot, #ffd98c);
+  --orr-hand-ink: #1a1206;
+  --orr-glass: var(--dp-glass, rgb(8 11 16 / .62));
+  --orr-danger: var(--dp-danger, #ff5038);
+
   display: flex;
   flex-direction: column;
   /* Fill the screen shell. The shell is 100vw until an ultrawide, where the grammar safe-frame
@@ -106,17 +118,46 @@
 
 /* ---------------------------------------------------------------- §6.1 crest */
 .aw-crest {
+  position: relative;
   flex: 0 0 40px;
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 0 16px 0 18px;
-  background-color: rgba(23, 19, 16, 0.92); /* --aw-bg at 92%: the darkest chrome ever gets */
-  /* the machined seam where the crest meets the board — the kit's etched hairline,
-     not a 1px border the browser invented */
-  background-image: linear-gradient(180deg, var(--dp-rule, rgb(232 226 212 / .10)) 1px, transparent 0);
-  background-repeat: repeat-x;
+  /* ORRERY Surface 1 (F4): a real glass crest — deep tint, a bone rule the band is
+     measured against (≥2:1 on the glass), corner ticks instead of an edge. */
+  background-color: rgb(8 11 16 / .82);
+  background-image: linear-gradient(180deg, transparent calc(100% - 2px), rgb(236 230 216 / .42) 0);
+  background-repeat: no-repeat;
   background-position: bottom left;
+  background-size: 100% 100%;
+}
+.aw-crest::before,
+.aw-crest::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  width: 16px;
+  height: 12px;
+  pointer-events: none;
+}
+.aw-crest::before {
+  left: 0;
+  background-image:
+    linear-gradient(180deg, rgb(236 230 216 / .8) 0 2px, transparent 2px),
+    linear-gradient(90deg, rgb(236 230 216 / .8) 0 2px, transparent 2px);
+  background-size: 16px 2px, 2px 12px;
+  background-position: left bottom, left bottom;
+  background-repeat: no-repeat;
+}
+.aw-crest::after {
+  right: 0;
+  background-image:
+    linear-gradient(180deg, rgb(236 230 216 / .8) 0 2px, transparent 2px),
+    linear-gradient(90deg, transparent calc(100% - 2px), rgb(236 230 216 / .8) 0);
+  background-size: 16px 2px, 2px 12px;
+  background-position: right bottom, right bottom;
+  background-repeat: no-repeat;
 }
 .aw-crest-name {
   font: 600 20px/1 var(--aw-name-font);
@@ -126,39 +167,53 @@
   /* The name is "AST-<id>". A figure that is not tabular fails the grammar numeral face. */
   font-variant-numeric: tabular-nums;
 }
-/* The claim and assay chips are LEGEND STRIPS: the kit's stamped status bar, whose
-   lit / red variants carry the state instead of a tinted pill. */
+/* ORRERY Surface 1 (F9): the name is demoted to a small crest label — bone-dim with a
+   scale tick, equipment-tagged rather than stranded between hero and label. The pinned
+   Bricolage 600/20px rule above is untouched; this only re-inks it. */
+.ast-screen .aw-crest-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--orr-bone-dim);
+}
+.ast-screen .aw-crest-name::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 2px;
+  height: 14px;
+  background: rgb(236 230 216 / .55);
+}
+/* The claim and assay readings are bare words on the glass — no strips, no pills. State
+   is the ink: bone for settled, red for at-risk (an unanchored claim or a volatile assay
+   is a loss waiting to happen, which is what red is for). */
 .aw-chip {
   display: inline-flex;
   align-items: center;
   min-height: 26px;
   padding: 0;
   box-sizing: border-box;
-  background: transparent;
-  font: 500 var(--fh-size-fine)/1 var(--aw-font);
+  background: none;
+  font: 500 var(--fh-size-fine)/1.4 var(--aw-font);
   letter-spacing: var(--fh-track-display);
   font-variant-numeric: tabular-nums;
-  color: var(--aw-ink-2);
+  color: var(--orr-bone-dim);
   white-space: nowrap;
-  border-style: solid;
-  border-color: transparent;
-  border-width: 8px 14px;
-  background: var(--dp-stock-face) border-box;
-  box-shadow: var(--dp-stock-edge);
+  border: 0;
+  box-shadow: none;
 }
 .aw-chip.ok {
-  color: var(--aw-mint);
-  background: linear-gradient(176deg, #2a2418, #1d1a12) border-box;
+  color: var(--orr-bone);
+  background: none;
   box-shadow: none;
 }
 .aw-chip.bad {
-  color: var(--aw-coral);
-  background: linear-gradient(176deg, #2a1614, #1d0f0e) border-box;
+  color: var(--orr-danger);
+  background: none;
   box-shadow: none;
 }
 .aw-chip.warn {
-  color: var(--aw-gold);
-  background: linear-gradient(176deg, #2a2418, #1d1a12) border-box;
+  color: var(--orr-bone-hot);
+  background: none;
   box-shadow: none;
 }
 
@@ -173,15 +228,15 @@
   font: 500 13px/1.2 var(--aw-font);
   text-align: center;
   visibility: hidden;
-  color: var(--aw-ink-2);
+  color: var(--orr-bone-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .aw-alert.live { visibility: visible; }
-.aw-alert.warn { color: var(--aw-gold); }
-.aw-alert.bad { color: var(--aw-coral); }
-.aw-alert.good { color: var(--aw-mint); }
+.aw-alert.warn { color: var(--orr-bone-hot); }
+.aw-alert.bad { color: var(--orr-danger); }
+.aw-alert.good { color: var(--orr-bone); }
 
 .aw-crest-right {
   display: flex;
@@ -190,105 +245,133 @@
   white-space: nowrap;
 }
 .aw-credits {
-  font: 500 15px/1 var(--aw-mono);
+  /* A reading, in the reading voice: thin Archivo numerals, ice-white. */
+  font-family: "Archivo", var(--aw-font);
+  font-weight: 250;
+  font-stretch: 100%;
+  font-size: 15px;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
-  color: var(--aw-ink);
+  color: var(--orr-phos);
+}
+/* ORRERY Surface 1 (F6): no session, no hold to meter — the scale and the yield only
+   exist once a session does, so the cold crest never shows dead blocks. */
+.ast-screen:not([data-session]) .aw-hold,
+.ast-screen:not([data-session]) .aw-credits {
+  display: none;
 }
 
-/* ---- gauge wells (§6.1 hold, §6.2 heat/charge) -----------------------------
-   One shared build: the kit's `bar.seg.bezel` nine-slice IS the well, the kit's
-   `bar.seg.off` cell tiles the empty run, and the fill lights the same 12px
-   segment pitch. Meaning stays in colour (mint fine / gold hot / coral stop) —
-   the kit only supplies the metal. Authored height is the sprite's own 28px:
-   8px of bezel top and bottom leaves a 12px lit channel. */
+/* ---- the hold scale (§6.1) --------------------------------------------------
+   ORRERY Surface 1 (F6): the 8 dead blocks are folded into the crest as a Scale with
+   a light cursor — a ruled line, ticked, with a bead riding the fill head. Bone until
+   the hold is genuinely full, which is the one state that stops the mine (red). */
 .aw-hold { display: flex; align-items: center; gap: 8px; }
-.aw-hold-track,
 .aw-gauge-track {
   position: relative;
-  height: 28px;
   box-sizing: border-box;
-  background: transparent;
-  overflow: hidden;
-  border-style: solid;
-  border-color: transparent;
-  border-width: 8px 10px;
-  background: var(--dp-well-face) border-box;
-  box-shadow: var(--dp-well-sink);
+  background: none;
+  border: 0;
+  box-shadow: none;
 }
-.aw-hold-track { width: 112px; }
-.aw-hold-track .ticks,
-.aw-gauge-track .ticks {
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(90deg, rgb(232 226 212 / .16) 9px, transparent 0);
-  background-repeat: repeat-x;
-  background-size: 12px 100%;
+.aw-hold-track {
+  position: relative;
+  width: 112px;
+  height: 18px;
+  box-sizing: border-box;
+  border: 0;
+  background-color: transparent;
+  background-image:
+    repeating-linear-gradient(90deg, rgb(236 230 216 / .55) 0 1px, transparent 1px 12px),
+    repeating-linear-gradient(90deg, rgb(236 230 216 / .85) 0 2px, transparent 2px 56px),
+    linear-gradient(180deg, transparent 8px, rgb(236 230 216 / .5) 8px 10px, transparent 10px);
+  background-size: 100% 6px, 100% 9px, 100% 18px;
+  background-position: left top, left top, left top;
+  background-repeat: repeat-x, repeat-x, no-repeat;
+  box-shadow: none;
 }
-.aw-hold-fill,
-.aw-gauge-fill {
+.aw-hold-track .ticks { display: none; }
+/* setBar() publishes the hold cursor under the `aw-gauge-fill` class with `hot`/`full`
+   states — the selector below is that contract, not a leftover. */
+.aw-hold .aw-gauge-fill {
   position: absolute;
-  inset: 0 auto 0 0;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
   width: 0%;
-  /* the lit run keeps the well's own segment pitch: colour is the meaning,
-     the 12px rhythm is the hardware */
-  background-image: repeating-linear-gradient(
-    90deg,
-    transparent 0 10px,
-    var(--fh-under-shadow) 10px 12px
-  );
+  background: rgb(236 230 216 / .9);
+  background-image: none;
   transition: width 160ms var(--k-ease), background-color 160ms var(--k-ease);
 }
-.aw-hold-fill { background-color: var(--aw-mint); }
-.aw-hold-fill.hot { background-color: var(--aw-gold); }
-.aw-hold-fill.full { background-color: var(--aw-coral); }
+.aw-hold .aw-gauge-fill::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  top: -5px;
+  width: 2px;
+  height: 12px;
+  background: var(--orr-bone);
+  box-shadow: 0 0 6px rgb(236 230 216 / .8);
+}
+.aw-hold .aw-gauge-fill.hot { background-color: var(--orr-bone-hot); }
+.aw-hold .aw-gauge-fill.full { background-color: var(--orr-danger); }
+.aw-hold .aw-gauge-fill.full::after {
+  background: var(--orr-danger);
+  box-shadow: 0 0 6px rgb(255 80 56 / .8);
+}
 
-/* Leave is a real key. It used to declare `background: var(--aw-raised)` at one
-   class of specificity, which `.ast-screen button { background: none }` outranked —
-   so the word sat bare on the crest with no plate under it at all. Scoped under
-   .ast-screen here, wearing the kit's small key through its five authored states. */
+/* ORRERY Surface 1 (F7): Leave is a bone ghost key — no plate, no slab. The Esc hint
+   rides its own scale tick. (The fh-key markers stay; this paint outranks the kit.) */
 .ast-screen .aw-leave {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-height: 30px;
-  padding: 0 12px;
+  padding: 0 4px;
   box-sizing: border-box;
-  background: transparent;
+  background: none;
   font: 600 var(--fh-size-fine)/1 var(--aw-font);
   letter-spacing: var(--fh-track-display);
-  color: var(--aw-ink-2);
+  color: var(--orr-bone-dim);
   transition: color 120ms var(--k-ease);
-  border: 10px solid transparent;
-  background: var(--dp-cap-rest) border-box;
-  box-shadow: var(--dp-cap-lift);
+  border: 0;
+  box-shadow: none;
 }
 .ast-screen .aw-leave:hover {
-  color: var(--aw-ink);
-  background: var(--dp-cap-hover) border-box;
+  color: var(--orr-bone);
+  background: none;
+  box-shadow: none;
+  transform: none;
 }
 .ast-screen .aw-leave:focus-visible {
-  box-shadow: var(--dp-cap-lift);
+  background: none;
+  box-shadow: none;
 }
 .ast-screen .aw-leave:active {
-  background: var(--dp-cap-press) border-box;
-  box-shadow: var(--dp-cap-sink);
+  background: none;
+  box-shadow: none;
+  transform: none;
+  color: var(--orr-bone-hot);
 }
-/* The keycap is ENGRAVED into the key, not a second box inside it: a plate on a
-   plate is the soft-rectangle habit this pass is removing. */
+/* The Esc hint rides its own scale tick (F7) — engraved, never a second box. Bone-dim
+   holds 4.5:1 on the glass; amber is reserved for the screen's one Lamp Key. */
 .aw-key {
+  position: relative;
   font: 500 var(--fh-size-fine)/1 var(--aw-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: var(--fh-track-display);
-  /* NOT --fh-legend-rest. The kit's resting legend is amber at 45% alpha, which composites to
-     2.9:1 on these plates — under the 4.5:1 floor, and this screen's labels are text, not
-     decoration. The Field Hardware voice here is the TRACKING and the size step; the ink stays
-     the law's own §3.2 ramp, which measures 8.9:1 (ink-2) and 4.6:1 (ink-3) on the sunk plate.
-     Amber is reserved for LIT state, where it arrives as the key's own authored `.lit` face.
-     Raised to ink-2 on 2026-09-22: the plate under it is now a printed field, and ink-3 measured
-     3.72:1 against the composited frame (scripts/ui-contrast.mjs). */
-  color: var(--aw-ink-2);
+  color: var(--orr-bone-dim);
   background: none;
-  padding: 0;
+  padding: 0 0 0 10px;
+}
+.aw-key::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  translate: 0 -50%;
+  width: 2px;
+  height: 12px;
+  background: rgb(236 230 216 / .55);
 }
 
 /* ---------------------------------------------------------------- §4 the board */
@@ -309,14 +392,91 @@
 }
 .ast-canvas:focus-visible { box-shadow: none; border-radius: 4px; }
 
+/* ---------------------------------------------------------------- empty state
+   ORRERY Surface 1 (F1/F2): with no claim the rock stages dimly behind the screen's
+   one Lamp Key. The layer never intercepts the board — only the key takes the pointer —
+   so a live-but-unclaimed rock stays drivable around it. */
+.aw-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 4; /* under the §6.4 lens (6) and the §6.6 sheet (7), over the board */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.aw-empty[hidden] { display: none !important; }
+.aw-empty-rock {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.aw-empty::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 50% 45%, transparent 40%, rgb(5 7 10 / .55) 100%);
+  pointer-events: none;
+}
+/* The one primary verb: an amber field, dark ink, one 45° cut, a sheen crossing every
+   6s. Sentence case — the law bans every uppercase transform on this screen. Scoped under
+   .ast-screen like .aw-build-key: the bare class loses to `.ast-screen button { background:
+   none }` (0,1,1 beats 0,1,0) and degrades to naked inherited text. */
+.ast-screen .aw-stake-key {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+  min-width: 200px;
+  min-height: 56px;
+  padding: 0 34px;
+  box-sizing: border-box;
+  background: var(--orr-hand);
+  color: var(--orr-hand-ink);
+  font-family: "Archivo", var(--aw-font);
+  font-weight: 800;
+  font-stretch: 125%;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+  overflow: hidden;
+  transition: background-color 120ms var(--k-ease);
+}
+.aw-stake-key:hover { background: var(--orr-hand-hot); }
+.aw-stake-key:active { background: #e0a33e; }
+.ast-screen .aw-stake-key:focus-visible {
+  outline: 2px solid var(--orr-bone);
+  outline-offset: 4px;
+}
+.aw-stake-key::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* The crossing sheen travels as background-position, not transform: a translated slab
+     sticks out past the key and inflates its scroll overflow, which the bench reads as
+     "Stake claim is cut off". Backgrounds never affect scroll overflow. Same 6s beat,
+     same left-to-right crossing. */
+  background: linear-gradient(105deg, transparent 42%, rgb(255 255 255 / .38) 50%, transparent 58%);
+  background-size: 280% 100%;
+  background-position: 115% 0;
+  background-repeat: no-repeat;
+  animation: aw-stake-sheen 6s var(--k-ease) infinite;
+  pointer-events: none;
+}
+@keyframes aw-stake-sheen {
+  0% { background-position: 115% 0; }
+  22%, 100% { background-position: -15% 0; }
+}
+
 /* ---------------------------------------------------------------- §6.2 rig cluster */
-/* The rig is a SUNK BENCH PLATE — the kit's recessed well, the surface the whole
-   design system reserves for instruments. It replaces a flat fill plus a generic
-   0 2px 8px drop shadow. */
+/* ORRERY Surface 1 (F5): the rig is an instrument on borderless glass — the Arc Gauge
+   pair floats over a deep tint whose edge is implied by corner ticks, never a plate. */
 /* Scoped under `.ast-screen`, not left bare, because asteroidScreen.js marks this element with
    the kit's own `fh-plate` family and index.html loads kit.css AFTER this sheet: at a bare
    (0,1,0) this rule TIES `.fh-plate` and loses the tie, so the cluster would silently take the
-   kit's 24px border and 16px padding instead of the 16px/4px geometry chosen here — whichever
+   kit's 24px border and 16px padding instead of the geometry chosen here — whichever
    `--raised/--sunk/--edge` variant the marker names. Same for `.aw-drawer` and `.aw-site-block`
    below. Keep all three selectors scoped if the markers are ever re-pointed. */
 .ast-screen .aw-rig {
@@ -325,44 +485,116 @@
   bottom: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 4px 6px;
+  gap: 4px;
+  padding: 12px 14px 10px;
   box-sizing: border-box;
-  background: transparent;
-  border: 16px solid transparent;
-  background: var(--dp-well-face) border-box;
-  box-shadow: var(--dp-well-sink);
+  background: rgb(8 11 16 / .66);
+  border: 0;
+  box-shadow: none;
+}
+.ast-screen .aw-rig::before,
+.ast-screen .aw-rig::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10px;
+  pointer-events: none;
+}
+.ast-screen .aw-rig::before {
+  top: 0;
+  background-image:
+    linear-gradient(90deg, rgb(236 230 216 / .8) 0 2px, transparent 2px),
+    linear-gradient(180deg, rgb(236 230 216 / .8) 0 2px, transparent 2px),
+    linear-gradient(90deg, transparent calc(100% - 2px), rgb(236 230 216 / .8) 0),
+    linear-gradient(180deg, rgb(236 230 216 / .8) 0 2px, transparent 2px);
+  background-size: 2px 10px, 14px 2px, 2px 10px, 14px 2px;
+  background-position: left top, left top, right top, right top;
+  background-repeat: no-repeat;
+}
+.ast-screen .aw-rig::after {
+  bottom: 0;
+  background-image:
+    linear-gradient(90deg, rgb(236 230 216 / .8) 0 2px, transparent 2px),
+    linear-gradient(180deg, transparent calc(100% - 2px), rgb(236 230 216 / .8) 0),
+    linear-gradient(90deg, transparent calc(100% - 2px), rgb(236 230 216 / .8) 0),
+    linear-gradient(180deg, transparent calc(100% - 2px), rgb(236 230 216 / .8) 0);
+  background-size: 2px 10px, 14px 2px, 2px 10px, 14px 2px;
+  background-position: left bottom, left bottom, right bottom, right bottom;
+  background-repeat: no-repeat;
 }
 .aw-gauge { display: flex; align-items: center; gap: 10px; }
-/* Quiet type: the kit's fine step, legend tracking, resting legend amber. The
-   value keeps full ink so the eye lands on the number, not its label. */
+/* The reading's name: small, dim, equipment-tagged. The value keeps full ink so the
+   eye lands on the number, not its label. */
 .aw-gauge-label {
   flex: 0 0 auto;
   /* Floor, not a cap: English stays the 56px the rig was measured at; a longer
      reading (pseudo-locale) grows instead of clipping inside the label. */
   min-width: 56px;
   width: auto;
-  font: 500 var(--fh-size-fine)/1 var(--aw-font);
+  font: 600 var(--fh-size-fine)/1 var(--aw-font);
   letter-spacing: var(--fh-track-display);
-  color: var(--aw-ink-2); /* 8.9:1 on the sunk plate — see the note on .aw-key */
+  color: var(--orr-bone-dim);
 }
-.aw-gauge-track { width: 148px; }
-/* Meaning by colour on the shared well built above; `background-color` (not the
-   `background` shorthand) so the segment pitch painted into background-image survives. */
-.aw-gauge-heat .aw-gauge-fill { background-color: var(--aw-heat); }
-.aw-gauge-heat .aw-gauge-fill.warn { background-color: var(--aw-gold); }
-.aw-gauge-heat .aw-gauge-fill.bad { background-color: var(--aw-coral); }
-.aw-gauge-charge .aw-gauge-fill { background-color: var(--aw-mint); }
-.aw-gauge-charge .aw-gauge-fill.bad { background-color: var(--aw-coral); }
+.aw-gauge-track { width: 120px; height: 66px; flex: 0 0 auto; }
+/* The Arc Gauge: a bone track that exists before it has data, a ghost delta trailing
+   the value, a bloom head riding the tip. Red is threat-only (overheated, depleted);
+   a hot-but-running rig reads as brighter bone, never amber — amber is the Lamp Key. */
+.aw-arc { display: block; width: 120px; height: 66px; overflow: visible; }
+.aw-arc-trackbloom {
+  fill: none;
+  stroke: rgb(236 230 216 / .14);
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+.aw-arc-track {
+  fill: none;
+  stroke: rgb(236 230 216 / .42);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.aw-arc-tick {
+  stroke: rgb(236 230 216 / .55);
+  stroke-width: 2;
+  stroke-linecap: butt;
+}
+.aw-arc-ghost {
+  fill: none;
+  stroke: rgb(236 230 216 / .7);
+  stroke-width: 2;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 600ms var(--k-ease);
+}
+.aw-arc-value {
+  fill: none;
+  stroke: var(--orr-bone);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 180ms var(--k-ease);
+}
+.aw-arc.warn .aw-arc-value { stroke: var(--orr-bone-hot); }
+.aw-arc.warn .aw-arc-head { fill: var(--orr-bone-hot); }
+.aw-arc.bad .aw-arc-value { stroke: var(--orr-danger); }
+.aw-arc.bad .aw-arc-ghost { stroke: rgb(255 80 56 / .55); }
+.aw-arc.bad .aw-arc-head { fill: var(--orr-danger); }
+.aw-arc.bad .aw-arc-headbloom { fill: rgb(255 80 56 / .3); }
+.aw-arc-headbloom { fill: rgb(236 230 216 / .25); }
+.aw-arc-head { fill: var(--orr-bone); }
+.aw-arc-headbloom, .aw-arc-head { r: 6; }
+.aw-arc-head { r: 2.6; }
 .aw-gauge-val {
   flex: 0 0 auto;
-  min-width: 42px;
+  min-width: 46px;
   text-align: right;
-  font: 500 var(--fh-size-data)/1 var(--aw-mono);
+  font-family: "Archivo", var(--aw-font);
+  font-weight: 250;
+  font-stretch: 100%;
+  font-size: 16px;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
-  color: var(--aw-ink);
+  color: var(--orr-bone);
 }
-.aw-gauge-val.bad { color: var(--aw-coral); }
+.aw-gauge-val.bad { color: var(--orr-danger); }
 
 /* ---------------------------------------------------------------- §6.3 build palette
    "A short row of tactile lit keys, like a hardware sampler, that gets longer as the game
@@ -372,13 +604,12 @@
    padding, no background behind them — and it stops 16px clear of the §6.2 rig cluster. */
 .aw-palette {
   position: absolute;
-  /* The rig cluster grew when its gauges became the kit's own 28px segmented bezels, so this
-     offset is re-derived rather than inherited: 16px right margin + the rig's real width
-     (16+16 plate border, 6+6 padding, then 56 label + 10 + 148 track + 10 + 42 value = 266)
-     = 326px, plus 26px of clear air. The check in scripts/check-asteroid-theater.mjs asserts
-     these two boxes never intersect; re-derive this if either the rig's plate border, its
-     gauge track width or the --fh type step changes. */
-  right: 352px;
+  /* Re-derived for the Arc Gauge rig: 16px right margin + the rig's real width
+     (14+14 padding, then 56 label + 10 + 120 arc + 10 + 46 value = 242) = 286px,
+     plus 30px of clear air. The check in scripts/check-asteroid-theater.mjs asserts
+     these two boxes never intersect; re-derive this if the rig's padding, the arc
+     width or the --fh type step changes. */
+  right: 316px;
   bottom: 16px;
   z-index: 5;   /* under the §6.4 lens (6), over the board */
   display: flex;
@@ -386,14 +617,13 @@
   gap: 6px;
 }
 
-/* The sampler key is the kit's SOCKET — a modelled square cap with its own lit top
-   edge, in six authored states. It is a background sprite rather than a nine-slice
-   because law §6.3 and scripts/check-asteroid-theater.mjs pin this key to exactly
-   46x46 with an 8px radius, and a background image leaves that box untouched (a
-   border-image would eat the box and shift the hotkey numeral inward).
-   The plate colour under the sprite stays declared: the theater check reads
-   computed `backgroundColor` per state precisely because this key lost its plate
-   once before to `.ast-screen button { background: none }`. */
+/* ORRERY Surface 1 (populated path): the sampler key is a slip of glass — a deep tint
+   with a bone crown line, the 22px silhouette floating over the board. The geometry is
+   pinned, not the paint: law §6.3, the render test and the theater check pin this key to
+   exactly 46x46 with an 8px radius, and the theater check reads computed
+   `backgroundColor` per state precisely because this key lost its plate once before
+   to `.ast-screen button { background: none }`. Every state below keeps a declared,
+   opaque-to-the-check colour for that reason. */
 .ast-screen .aw-build-key {
   position: relative;
   flex: 0 0 auto;
@@ -403,21 +633,20 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background-color: var(--fh-plate);
-  background-image: linear-gradient(225deg, transparent 7px, rgb(232 226 212 / .08) 0);
-  background-size: 46px 46px;
+  background-color: rgb(8 11 16 / .88);
+  background-image: linear-gradient(180deg, rgb(236 230 216 / .5) 0 2px, transparent 2px);
+  background-size: 100% 100%;
   background-repeat: no-repeat;
-  background-position: center;
-  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.55);
-  color: var(--aw-ink-2);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  color: var(--orr-bone);
   transition:
-    transform 120ms var(--k-ease),
     background-color 120ms var(--k-ease),
     color 120ms var(--k-ease),
     box-shadow 120ms var(--k-ease);
 }
 .ast-screen .aw-build-key:focus-visible {
-  background-image: var(--dp-bracket), linear-gradient(225deg, transparent 7px, rgb(232 226 212 / .14) 0);
+  outline: 2px solid var(--orr-bone);
+  outline-offset: 2px;
 }
 /* The silhouette IS the key. 22px of filled mass in currentColor, so every state tints it free. */
 .aw-build-glyph {
@@ -431,51 +660,56 @@
   right: 5px;
   font: 500 var(--fh-size-fine)/1 var(--aw-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--aw-ink-2); /* legible over the socket cap — see the note on .aw-key */
+  color: var(--orr-bone-dim);
   pointer-events: none;
 }
 
-/* ready — seated socket, ink-2 glyph; hover lifts 1px onto the kit's hover cap */
+/* ready — glass at rest, bone glyph; hover brightens the glass and the glyph. No lift:
+   the light is the feedback, here as on every other ghost on this screen. */
 .ast-screen .aw-build-key:hover {
-  transform: translateY(-1px);
-  background-color: var(--fh-plate-raised);
-  background-image: var(--dp-cut-lit), linear-gradient(225deg, transparent 7px, rgb(232 226 212 / .14) 0);
-  color: var(--aw-ink);
+  background-color: rgb(16 21 29 / .92);
+  color: var(--orr-bone-hot);
 }
 .ast-screen .aw-build-key:active {
-  transform: translateY(1px);
-  background-image: linear-gradient(225deg, transparent 7px, rgb(232 226 212 / .05) 0);
+  background-color: rgb(8 11 16 / .88);
+  color: var(--orr-bone-dim);
 }
 
-/* armed — gold ring + gold glyph. Outside build mode nothing is being aimed, so the ring
-   reads as a quiet inner hint instead of shouting a selection the player is not making. */
+/* armed — one key is always armed, even in drive, so outside build mode the ring reads
+   as a quiet bone inner hint instead of shouting a selection the player is not making.
+   The inset ring is what the theater check reads as "armed carries its own shadow". */
 .ast-screen .aw-build-key.armed {
+  color: var(--orr-bone-hot);
   box-shadow:
-    0 2px 8px rgba(8, 5, 2, 0.5);
+    inset 0 0 0 2px rgb(236 230 216 / .55),
+    0 4px 14px rgba(0, 0, 0, 0.5);
 }
-/* live + armed is the kit's LIT socket — the cap itself is energised, so the ring
-   is confirming a key that is already glowing rather than doing the work alone. */
+/* live + armed is the populated state's one amber thing: the chosen key, carrying the
+   Hand's own meaning (yours, chosen, actionable — §3.3). The stake Lamp Key stands down
+   once a site exists, so this ring never shares the frame with it. */
 .ast-screen .aw-palette.live .aw-build-key.armed {
-  color: var(--aw-gold);
-  background-color: var(--fh-plate-raised);
-  background-image: var(--dp-cut-lit), linear-gradient(225deg, transparent 7px, rgb(242 185 80 / .20) 0);
-  box-shadow: 0 0 0 2px var(--aw-gold), 0 3px 10px rgba(8, 5, 2, 0.55);
+  color: var(--orr-hand);
+  background-color: rgb(14 11 5 / .92);
+  background-image: linear-gradient(180deg, rgb(242 185 80 / .65) 0 2px, transparent 2px);
+  box-shadow: 0 0 0 2px var(--orr-hand), 0 4px 16px rgba(0, 0, 0, 0.55);
 }
 
-/* unaffordable — the kit's disabled socket, ink-3 glyph, no lift; the hover tip carries
-   the coral shortfall. Armed still rings it: "this is what you are aiming, and you cannot
-   pay for it." The sunk plate colour keeps `ready` and `unaffordable` two distinct paints. */
+/* unaffordable — flat dim glass, dimmed glyph; the hover tip carries the shortfall.
+   Armed still rings it, in bone: "this is what you are aiming, and you cannot pay for
+   it." Ready and unaffordable are two distinct paints (bg and ink both differ) and the
+   flat key carries no shadow — the theater check reads all three. */
 .ast-screen .aw-build-key.poor,
 .ast-screen .aw-build-key.poor:hover {
-  transform: none;
-  background-color: var(--fh-plate-sunk);
-  background-image: linear-gradient(225deg, transparent 7px, rgb(232 226 212 / .04) 0);
+  background-color: rgb(8 11 16 / .55);
+  background-image: none;
   box-shadow: none;
-  color: var(--aw-ink-3);
+  color: rgb(236 230 216 / .38);
 }
 .ast-screen .aw-palette.live .aw-build-key.poor.armed {
-  color: var(--aw-ink-3);
-  box-shadow: 0 0 0 2px var(--aw-gold);
+  color: rgb(236 230 216 / .55);
+  background-color: rgb(8 11 16 / .55);
+  background-image: none;
+  box-shadow: 0 0 0 2px rgb(236 230 216 / .55);
 }
 
 /* The key's name lives here and nowhere else (law §2.5): hidden — not merely transparent —
@@ -489,18 +723,16 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 0 2px 1px;
+  padding: 7px 12px 8px;
   box-sizing: border-box;
-  /* the kit's HUD-scale edge plate — thinner edge, lighter grain, authored for
-     exactly this: a small card floating over a live board */
-  background: transparent;
+  /* a slip of glass over the board — no plate, no edge. */
+  background: rgb(8 11 16 / .9);
   white-space: nowrap;
   pointer-events: none;
   visibility: hidden;
   opacity: 0;
-  border: 10px solid transparent;
-  background: var(--dp-stock-face) border-box;
-  box-shadow: var(--dp-stock-edge);
+  border: 0;
+  box-shadow: 0 8px 24px rgb(0 0 0 / .5);
 }
 .ast-screen .aw-build-key:hover .aw-build-tip,
 .ast-screen .aw-build-key:focus-visible .aw-build-tip {
@@ -509,12 +741,12 @@
 }
 .aw-build-tip-name {
   font: 500 13px/1.15 var(--aw-font);
-  color: var(--aw-ink);
+  color: var(--orr-bone);
 }
 .aw-build-tip-cost {
   font: 500 12px/1.15 var(--aw-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--aw-coral);
+  color: var(--orr-bone-dim);
 }
 .aw-build-tip-cost:empty { display: none; }
 
@@ -528,9 +760,10 @@
 
 /* ---------------------------------------------------------------- §6.4 cursor lens
    "A little field-notebook tag next to their cursor — a colour, a number, two or three
-   stamps." Max 260px, --aw-surface, r10, soft shadow, NO border. Absolutely placed inside
-   the stage (not fixed to the viewport) so a transformed screen stack cannot shift it, and
-   pointer-transparent so the card can never eat the hover that created it. */
+   stamps." Max 260px, a slip of glass with a bone crown line, NO border box. Absolutely
+   placed inside the stage (not fixed to the viewport) so a transformed screen stack
+   cannot shift it, and pointer-transparent so the card can never eat the hover that
+   created it. */
 .aw-lens {
   position: absolute;
   left: 0;
@@ -540,19 +773,18 @@
   display: flex;
   flex-direction: column;
   gap: 7px;
-  /* The kit's HUD edge plate carries the card. Its 16px slice is drawn at 10px so
-     the interior measure stays ~240px — law §6.4 caps the card at 260px wide and
-     two text lines, and a fatter frame would start wrapping the material names. */
-  padding: 0 1px 1px;
+  padding: 10px 12px 11px;
   box-sizing: border-box;
-  background: transparent;
-  color: var(--aw-ink-2);
+  background: rgb(8 11 16 / .88);
+  background-image: linear-gradient(180deg, rgb(236 230 216 / .5) 0 2px, transparent 2px);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  color: var(--orr-bone-dim);
   pointer-events: none;
   overflow: hidden;
   contain: layout style;
-  border: 10px solid transparent;
-  background: var(--dp-stock-face) border-box;
-  box-shadow: var(--dp-stock-edge);
+  border: 0;
+  box-shadow: 0 10px 30px rgb(0 0 0 / .55);
 }
 .aw-lens[hidden] { display: none !important; }
 
@@ -576,23 +808,24 @@
   border-radius: 7px;
 }
 .aw-lens-swatch[hidden] { display: none; }
-/* Claim-formation membership, wordless: mint = committed to the claim record, gold = assayed but
-   still volatile (it wants a Core). The inline box-shadow from the material sampler is the inner
-   ring; these add the outer one. */
-.aw-lens-swatch.claim-mint { outline: 2px solid var(--aw-mint); outline-offset: 2px; }
-.aw-lens-swatch.claim-gold { outline: 2px solid var(--aw-gold); outline-offset: 2px; }
-/* Machines and placement ghosts trade the swatch for a status lamp dot. */
+/* Claim-formation membership, wordless: a solid bone ring is committed to the claim
+   record, a dashed ring is assayed but still volatile (it wants a Core). The inline
+   box-shadow from the material sampler is the inner ring; these add the outer one. */
+.aw-lens-swatch.claim-mint { outline: 2px solid var(--orr-bone); outline-offset: 2px; }
+.aw-lens-swatch.claim-gold { outline: 2px dashed rgb(236 230 216 / .8); outline-offset: 2px; }
+/* Machines and placement ghosts trade the swatch for a status lamp. Running is a filled
+   bone lamp; throttled/starved is the same lamp as a hollow ring; a fault is red. */
 .aw-lens-swatch.lamp {
   width: 12px;
   height: 12px;
   margin: 0 5px;
   border-radius: 50%;
-  background: var(--aw-ink-3);
+  background: var(--orr-bone-dim);
 }
-.aw-lens-swatch.lamp.mint { background: var(--aw-mint); box-shadow: 0 0 9px rgba(124, 217, 162, 0.5); }
-.aw-lens-swatch.lamp.gold { background: var(--aw-gold); box-shadow: 0 0 9px color-mix(in srgb, var(--sf-goal) 50%, transparent); }
-.aw-lens-swatch.lamp.coral { background: var(--aw-coral); box-shadow: 0 0 9px rgba(255, 98, 66, 0.5); }
-.aw-lens-swatch.lamp.idle { background: var(--aw-ink-3); }
+.aw-lens-swatch.lamp.mint { background: var(--orr-bone); box-shadow: 0 0 9px rgb(236 230 216 / .5); }
+.aw-lens-swatch.lamp.gold { background: transparent; outline: 2px solid var(--orr-bone); box-shadow: none; }
+.aw-lens-swatch.lamp.coral { background: var(--orr-danger); box-shadow: 0 0 9px rgb(255 80 56 / .5); }
+.aw-lens-swatch.lamp.idle { background: var(--orr-bone-dim); }
 
 /* The name is the identity: it never shrinks. When the row is tight the NUMERALS give way — a
    truncated "Geol…" is a broken card, a truncated rate is a missing decimal. */
@@ -600,7 +833,7 @@
   flex: 0 0 auto;
   max-width: 100%;
   font: 500 14px/1.25 var(--aw-font);
-  color: var(--aw-ink);
+  color: var(--orr-bone);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -610,7 +843,7 @@
   min-width: 0;
   font: 500 13px/1.25 var(--aw-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--aw-ink-2);
+  color: var(--orr-bone-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -622,61 +855,57 @@
   width: 34px;
   height: 6px;
   border-radius: 3px;
-  background: rgba(8, 5, 2, 0.45);
+  background: rgb(236 230 216 / .16);
   overflow: hidden;
 }
 .aw-lens-hp i {
   display: block;
   height: 100%;
   border-radius: 3px;
-  background: var(--aw-ink-2);
+  background: var(--orr-bone-dim);
 }
-.aw-lens-hp i.low { background: var(--aw-gold); }
+.aw-lens-hp i.low { background: var(--orr-bone-hot); }
 
-/* Pill chips: 20px tall, icon glyph + word, colour by meaning (§3.2). */
+/* Stamp chips: 20px tall, icon glyph + word. Bare words on the glass — settled reads
+   bone, a fault reads red, nothing else spends a hue. */
 .aw-lens-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 5px 12px;
 }
 .aw-lens-chips[hidden] { display: none; }
-/* A chip is a stamped legend strip at HUD scale — law §6.4 fixes it at 20px tall,
-   so the kit's 12/16 slice is drawn at 5/8 to fit inside that height. */
 .aw-lens-chip {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 20px;
-  padding: 0 2px;
+  min-height: 20px;
+  padding: 0;
   box-sizing: border-box;
-  background: transparent;
-  font: 500 var(--fh-size-fine)/1 var(--aw-font);
-  color: var(--aw-ink-2);
+  background: none;
+  font: 500 var(--fh-size-fine)/1.4 var(--aw-font);
+  color: var(--orr-bone-dim);
   white-space: nowrap;
-  border-style: solid;
-  border-color: transparent;
-  border-width: 5px 8px;
-  background: var(--dp-stock-face) border-box;
-  box-shadow: var(--dp-stock-edge);
+  border: 0;
+  box-shadow: none;
 }
 .aw-lens-chip.gold,
 .aw-lens-chip.mint {
-  background: linear-gradient(176deg, #2a2418, #1d1a12) border-box;
+  background: none;
   box-shadow: none;
 }
 .aw-lens-chip.coral {
-  background: linear-gradient(176deg, #2a1614, #1d0f0e) border-box;
+  background: none;
   box-shadow: none;
 }
 .aw-lens-chip svg { flex: 0 0 auto; display: block; }
-.aw-lens-chip.gold { color: var(--aw-gold); }
-.aw-lens-chip.mint { color: var(--aw-mint); }
-.aw-lens-chip.coral { color: var(--aw-coral); }
+.aw-lens-chip.gold { color: var(--orr-bone-hot); }
+.aw-lens-chip.mint { color: var(--orr-bone); }
+.aw-lens-chip.coral { color: var(--orr-danger); }
 
 /* One body line, max — the machine's cause. Never tutorial copy. */
 .aw-lens-body {
   font: 500 13px/1.3 var(--aw-font);
-  color: var(--aw-ink-2);
+  color: var(--orr-bone-dim);
 }
 .aw-lens-body[hidden] { display: none; }
 
@@ -688,11 +917,13 @@
   gap: 2px;
 }
 .aw-lens-ring[hidden] { display: none; }
+/* ORRERY Surface 1 (populated path): the survey ring reads on the bone ramp — a
+   surveyed cell is lit bone, an unsurveyed one a faint tick. */
 .aw-lens-ring-cell {
   border-radius: 2px;
-  background: var(--aw-raised);
+  background: rgb(236 230 216 / .55);
 }
-.aw-lens-ring-cell.hollow { background: rgba(8, 5, 2, 0.5); }
+.aw-lens-ring-cell.hollow { background: rgb(236 230 216 / .14); }
 .aw-lens-ring-cell.center {
   background: transparent;
   box-shadow: none;
@@ -713,29 +944,38 @@
   pointer-events: auto;
 }
 .ast-summary-modal.active { opacity: 1; }
-/* the report is a raised bench plate, and its one verb is the kit's PRIMARY key */
+/* ORRERY Surface 1 (populated path): the report is a slip of glass over the world —
+   an Archivo display title, bone ledger rows, the yield numerals in full bone. Its one
+   verb stays the kit's PRIMARY key: wave-c4-drill-kit pins the className and the two
+   fh-key rules below, and the amber plate is this overlay's own Lamp Key. */
 .ast-summary-box {
-  background: transparent;
+  background: rgb(8 11 16 / .92);
+  background-image: linear-gradient(180deg, rgb(236 230 216 / .5) 0 2px, transparent 2px);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
   box-sizing: border-box;
-  padding: 0;
+  padding: 22px 26px 24px;
   width: min(420px, calc(100vw - 32px));
   display: flex;
   flex-direction: column;
   gap: 10px;
-  color: var(--aw-ink-2, #bfae94);
+  color: var(--orr-bone-dim);
   font-family: var(--aw-font, system-ui, sans-serif);
   text-transform: none;
-  border: 24px solid transparent;
-  background: var(--dp-cap-rest) border-box;
-  box-shadow: var(--dp-cap-lift);
+  border: 0;
+  box-shadow: 0 24px 70px rgb(0 0 0 / .6);
 }
 .ast-summary-box .title {
-  font: 600 20px/1.2 var(--aw-font, sans-serif);
+  font-family: "Archivo", var(--aw-font, sans-serif);
+  font-weight: 800;
+  font-stretch: 125%;
+  font-size: 24px;
+  line-height: 1.2;
   letter-spacing: var(--fh-track-display);
-  color: var(--aw-ink, #f2e8d5);
+  color: var(--orr-bone);
   padding-bottom: 10px;
   border: 0;
-  background-image: linear-gradient(180deg, var(--dp-rule, rgb(232 226 212 / .10)) 1px, transparent 0);
+  background-image: linear-gradient(180deg, rgb(236 230 216 / .3) 1px, transparent 0);
   background-repeat: repeat-x;
   background-position: bottom left;
 }
@@ -748,7 +988,7 @@
 .ast-summary-box .row .val {
   font-family: var(--aw-mono, monospace);
   font-variant-numeric: tabular-nums;
-  color: var(--aw-gold, #ffb648);
+  color: var(--orr-bone);
 }
 .ast-summary-box .sf-btn { align-self: center; min-width: 150px; }
 /* The report's close verb is a kit fh-key: keep the visible focus ring on it and take the hover
@@ -838,6 +1078,8 @@ html:not([data-locale="en-US"]) .aw-alert {
   .aw-leave:hover, .aw-build-key:hover,
   .ast-screen .sf-btn:hover, .ast-summary-box .sf-btn:hover { transform: none; }
   .aw-palette.settle { animation: none; }
+  .aw-arc-ghost, .aw-arc-value { transition: none; }
+  .aw-stake-key::after { animation: none; }
 }
 html.sf-reduce-motion .ast-summary-modal,
 html.sf-reduce-motion .aw-hold-fill,
@@ -845,8 +1087,11 @@ html.sf-reduce-motion .aw-build-key,
 html.sf-reduce-motion .ast-screen .aw-leave,
 html.sf-reduce-motion .ast-screen .sf-btn,
 html.sf-reduce-motion .ast-summary-box .sf-btn,
-html.sf-reduce-motion .aw-gauge-fill { transition: none; }
-html.sf-reduce-motion .aw-palette.settle { animation: none; }
+html.sf-reduce-motion .aw-gauge-fill,
+html.sf-reduce-motion .aw-arc-ghost,
+html.sf-reduce-motion .aw-arc-value { transition: none; }
+html.sf-reduce-motion .aw-palette.settle,
+html.sf-reduce-motion .aw-stake-key::after { animation: none; }
 html.sf-reduce-motion .aw-build-key:hover,
 html.sf-reduce-motion .ast-screen .sf-btn:hover,
 html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
@@ -906,6 +1151,20 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   .aw-lens-swatch, .aw-lens-ring-cell { border: 1px solid CanvasText; }
   .aw-lens-hp i { background: Highlight; }
   .aw-key { color: CanvasText; }
+  .aw-drawer-label { color: CanvasText; }
+  /* Without its own edge the amber field flattens onto the canvas and the one verb
+     vanishes; a system edge keeps it a key. Scoped: the bare class loses to
+     `.ast-screen button { background: none }` here too. */
+  .ast-screen .aw-stake-key {
+    border: 1px solid ButtonText;
+    background: ButtonFace;
+    color: ButtonText;
+  }
+  .aw-stake-key::after { display: none; }
+  .aw-arc-track, .aw-arc-value, .aw-arc-ghost { stroke: CanvasText; }
+  .aw-arc-trackbloom, .aw-arc-headbloom { stroke: none; fill: none; }
+  .aw-arc-head { fill: CanvasText; }
+  .aw-arc-tick { stroke: CanvasText; }
   /* The resets above clear the RESTING sprite, but fh.css owns the STATE sprites — `.fh-key:hover`,
      `.fh-key--primary:hover/:active` and `.fh-key--legend[aria-selected='true']` are all (0,2,0),
      exactly the weight of the rules here, and styles/kit.css loads later, so each of them wins the
@@ -929,9 +1188,9 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
    15-word budget on bookkeeping. The [hidden] rule below needs !important for exactly the
    reason .aw-lens[hidden] does: a plain class rule with `display:flex` outranks the UA
    sheet's `[hidden] { display: none }`. */
-/* The sheet is a RAISED BENCH PLATE: the kit's one-step-lighter surface, the one
-   the system reserves for the active panel. It replaces a flat fill with rounded
-   top corners and a hand-rolled 20px shadow. */
+/* The sheet is borderless glass over the board's bottom edge — the pinned law §6.6
+   declarations (280px cap, bottom edge, r10 top corners, surface token, 200ms ease)
+   stay exactly as the drawers test reads them; only the plate layers are gone. */
 .ast-screen .aw-drawer {
   position: absolute;
   left: 0;
@@ -942,22 +1201,18 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 0 4px 0;
+  padding: 10px 18px 14px;
   box-sizing: border-box;
   border-radius: 10px 10px 0 0;
-  /* the plate's `fill` middle covers this, so law §3.2's token stays the honest
-     fallback if the sprite never arrives */
   background: var(--aw-surface);
-  color: var(--aw-ink-2);
+  background: rgb(8 11 16 / .9);
+  color: var(--orr-bone-dim);
   transform: translateY(102%);
   opacity: 0;
   transition: transform 200ms var(--k-ease), opacity 200ms var(--k-ease);
   overflow: hidden;
-  border-style: solid;
-  border-color: transparent;
-  border-width: 14px 14px 16px;
-  background: var(--dp-cap-rest) border-box;
-  box-shadow: var(--dp-cap-lift);
+  border: 0;
+  box-shadow: 0 -14px 44px rgb(0 0 0 / .55);
 }
 .aw-drawer[hidden] { display: none !important; }
 .aw-drawer.open { transform: translateY(0); opacity: 1; }
@@ -968,32 +1223,35 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   width: 44px;
   height: 4px;
   margin: 0 auto;
-  background: var(--fh-edge);
+  background: rgb(236 230 216 / .35);
+  border-radius: 2px;
 }
 
 .aw-drawer-tabs {
   flex: 0 0 auto;
   display: flex;
-  gap: 8px;
+  gap: 20px;
   align-items: center;
 }
-/* Tabs are the kit's LEGEND KEY, and the selected tab is that key's authored LIT
-   face — the light is the state, which is the whole premise of the system. */
+/* Tabs are bone words; the open tab carries a light cursor under its word. */
 .ast-screen .aw-drawer-tab {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
   min-height: 30px;
-  padding: 0 10px;
+  padding: 0 2px;
   box-sizing: border-box;
-  background: transparent;
-  color: var(--aw-ink-2);
-  font: 500 var(--fh-size-fine)/1.1 var(--aw-font);
+  background: none;
+  color: var(--orr-bone-dim);
+  font: 600 var(--fh-size-fine)/1.1 var(--aw-font);
   letter-spacing: var(--fh-track-display);
   transition: color 120ms var(--k-ease);
-  border: 11px solid transparent;
-  background: none;
+  border: 0;
   box-shadow: none;
 }
 .ast-screen .aw-drawer-tab:hover {
-  color: var(--aw-ink);
+  color: var(--orr-bone);
   background: none;
   box-shadow: none;
 }
@@ -1002,9 +1260,17 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   box-shadow: none;
 }
 .ast-screen .aw-drawer-tab.on {
-  color: var(--fh-ground);
+  color: var(--orr-bone);
   background: none;
   box-shadow: none;
+}
+.ast-screen .aw-drawer-tab.on::after {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: var(--orr-bone);
+  box-shadow: 0 0 6px rgb(236 230 216 / .7);
 }
 
 .aw-drawer-body {
@@ -1018,55 +1284,60 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
 }
 .aw-drawer-body > [hidden] { display: none !important; }
 
-/* the crest affordance (law §2.5: one small icon, no visible word) — the kit's
-   small key, so the one icon on this screen sits on real hardware */
+/* the crest affordance (F8): a labelled ghost key — the glyph plus its bone word, no
+   plate, no mystery. The aria-label still names all three drawers for assistive tech. */
 .ast-screen .aw-drawer-key {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
+  gap: 8px;
+  width: auto;
   height: 30px;
-  padding: 0;
+  padding: 0 6px;
   box-sizing: border-box;
-  background: transparent;
-  color: var(--aw-ink-2);
-  transition: color 120ms var(--k-ease), transform 120ms var(--k-ease);
-  border: 9px solid transparent;
-  background: var(--dp-cap-rest) border-box;
-  box-shadow: var(--dp-cap-lift);
+  background: none;
+  color: var(--orr-bone-dim);
+  transition: color 120ms var(--k-ease);
+  border: 0;
+  box-shadow: none;
 }
 .ast-screen .aw-drawer-key:hover {
-  color: var(--aw-ink);
-  transform: translateY(-1px);
-  background: var(--dp-cap-hover) border-box;
+  color: var(--orr-bone);
+  transform: none;
+  background: none;
+  box-shadow: none;
 }
 .ast-screen .aw-drawer-key:focus-visible {
-  box-shadow: var(--dp-cap-lift);
+  background: none;
+  box-shadow: none;
 }
 .ast-screen .aw-drawer-key[aria-expanded="true"] {
-  color: var(--aw-gold);
-  background: var(--dp-cap-press) border-box;
-  box-shadow: var(--dp-cap-sink);
+  color: var(--orr-bone);
+  background: none;
+  box-shadow: none;
 }
 .aw-drawer-key svg { display: block; }
+.aw-drawer-label {
+  font: 500 12px/1 var(--aw-font);
+  letter-spacing: var(--fh-track-display);
+}
 
-/* severity dot — the ledger's whole severity vocabulary, no words spent on it.
-   These are the kit's LIGHTS: modelled 12px lamps with a real bloom, not flat
-   CSS circles. Tone maps onto the four authored lamp colours. */
+/* severity dot — the ledger's whole severity vocabulary, no words spent on it. Bone
+   carries every settled state (brightness is the rank); red is fault and loss. */
 .aw-dot {
   flex: 0 0 auto;
   width: 12px;
   height: 12px;
   background: none;
-  background-image: radial-gradient(closest-side, rgb(232 226 212 / .22) 98%, transparent);
+  background-image: radial-gradient(closest-side, rgb(236 230 216 / .35) 98%, transparent);
   background-size: 12px 12px;
   background-repeat: no-repeat;
 }
-.aw-dot.mint { background-image: radial-gradient(closest-side, var(--dp-ink, #e8e2d4) 98%, transparent); }
-.aw-dot.gold { background-image: radial-gradient(closest-side, var(--dp-lamp, #f2b950) 98%, transparent); }
-.aw-dot.coral { background-image: radial-gradient(closest-side, var(--dp-danger, #ff5038) 98%, transparent); }
-.aw-dot.sky { background-image: radial-gradient(closest-side, var(--dp-ink-dim, #c9c4b6) 98%, transparent); }
-.aw-dot.ink { background-image: radial-gradient(closest-side, var(--dp-lamp-dim, #8a6b3a) 98%, transparent); }
+.aw-dot.mint { background-image: radial-gradient(closest-side, var(--orr-bone) 98%, transparent); }
+.aw-dot.gold { background-image: radial-gradient(closest-side, transparent 28%, var(--orr-bone) 32%, var(--orr-bone) 62%, transparent 66%); }
+.aw-dot.coral { background-image: radial-gradient(closest-side, var(--orr-danger) 98%, transparent); }
+.aw-dot.sky { background-image: radial-gradient(closest-side, var(--orr-bone-dim) 98%, transparent); }
+.aw-dot.ink { background-image: radial-gradient(closest-side, rgb(236 230 216 / .5) 98%, transparent); }
 
 /* ---- Ledger tab: newest first, mono clock, one line per event ---- */
 .aw-ledger { margin: 0; padding: 0; list-style: none; }
@@ -1076,11 +1347,10 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   gap: 10px;
   padding: 5px 2px;
   font: 400 13px/1.35 var(--aw-font);
-  color: var(--aw-ink-2);
+  color: var(--orr-bone-dim);
 }
-/* rows are separated by the kit's etched hairline, not an invented inset shadow */
 .aw-ledger-row + .aw-ledger-row {
-  background-image: linear-gradient(180deg, var(--dp-rule, rgb(232 226 212 / .10)) 1px, transparent 0);
+  background-image: linear-gradient(180deg, rgb(236 230 216 / .14) 1px, transparent 0);
   background-repeat: repeat-x;
   background-position: top left;
 }
@@ -1089,13 +1359,13 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   flex: 0 0 auto;
   font: 500 var(--fh-size-fine)/1.35 var(--aw-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--aw-ink-3); /* 4.6:1 on the raised sheet — see the note on .aw-key */
+  color: var(--orr-bone-dim);
 }
-.aw-ledger-text { color: var(--aw-ink); }
+.aw-ledger-text { color: var(--orr-bone); }
 .aw-ledger-empty {
   padding: 8px 2px;
   font: 400 13px/1.35 var(--aw-font);
-  color: var(--aw-ink-3);
+  color: var(--orr-bone-dim);
 }
 
 /* ---- Help tab: the keys, taught once ---- */
@@ -1106,28 +1376,35 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   align-items: center;
   gap: 6px 12px;
 }
-/* A keycap in the help map is a real keycap: the kit's small key, so the control
-   map reads as the hardware the player is about to press. */
+/* A key in the help map is bright bone mono with a scale tick — the control map as
+   an equipment list, not a tray of caps. */
 .aw-help-keys {
   justify-self: start;
   display: inline-flex;
   align-items: center;
+  gap: 8px;
   min-height: 26px;
-  padding: 0 4px;
+  padding: 0;
   box-sizing: border-box;
-  background: transparent;
+  background: none;
   font: 500 var(--fh-size-fine)/1.1 var(--aw-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--aw-ink);
+  color: var(--orr-bone);
   white-space: nowrap;
-  border: 9px solid transparent;
-  background: var(--dp-cap-rest) border-box;
-  box-shadow: var(--dp-cap-lift);
+  border: 0;
+  box-shadow: none;
+}
+.aw-help-keys::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 2px;
+  height: 12px;
+  background: rgb(236 230 216 / .55);
 }
 .aw-help-label {
   margin: 0;
   font: 400 13px/1.3 var(--aw-font);
-  color: var(--aw-ink-2);
+  color: var(--orr-bone-dim);
 }
 
 /* ---- Site tab: production totals, courier log, the four operator verbs ---- */
@@ -1137,26 +1414,26 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   gap: 10px 18px;
   align-items: start;
 }
-/* each block is a sunk well on the sheet — the kit's recessed surface for rows
-   and readouts, drawn at 12px so a 230px column keeps its measure */
+/* each block is a breath of shade on the sheet — a recess tint with a bone crown,
+   never a box. */
 .ast-screen .aw-site-block {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 0 2px;
+  padding: 10px 12px 11px;
   box-sizing: border-box;
-  background: transparent;
-  border: 12px solid transparent;
-  background: var(--dp-well-face) border-box;
-  box-shadow: var(--dp-well-sink);
+  background: rgb(236 230 216 / .045);
+  background-image: linear-gradient(180deg, rgb(236 230 216 / .3) 0 2px, transparent 2px);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  border: 0;
+  box-shadow: none;
 }
-/* Quiet type: the block heading is a legend, tracked and in resting amber, so the
-   numbers under it are what the eye lands on. */
 .aw-site-title {
   margin: 0 0 2px;
   font: 600 var(--fh-size-fine)/1.2 var(--aw-font);
   letter-spacing: var(--fh-track-display);
-  color: var(--aw-ink); /* a block heading is read, not glanced — see the note on .aw-key */
+  color: var(--orr-bone);
 }
 .aw-site-stat {
   display: flex;
@@ -1165,11 +1442,11 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   gap: 12px;
   font: 400 13px/1.4 var(--aw-font);
 }
-.aw-site-stat-label { color: var(--aw-ink-2); }
+.aw-site-stat-label { color: var(--orr-bone-dim); }
 .aw-site-stat-val {
   font: 500 var(--fh-size-data)/1.4 var(--aw-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--aw-ink);
+  color: var(--orr-bone);
 }
 .aw-site-rates, .aw-verb-row {
   display: flex;
@@ -1178,22 +1455,19 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   gap: 6px;
   margin-top: 4px;
 }
-/* a rate is a stamped legend strip, lit because it is a live production number */
+/* a rate is a live production numeral, bare on the shade */
 .aw-rate-chip {
   display: inline-flex;
   align-items: center;
   min-height: 24px;
-  padding: 0 2px;
+  padding: 0;
   box-sizing: border-box;
-  background: transparent;
+  background: none;
   font: 500 var(--fh-size-fine)/1.3 var(--aw-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--aw-mint);
-  border-style: solid;
-  border-color: transparent;
-  border-width: 7px 12px;
-  background: var(--dp-stock-face) border-box;
-  box-shadow: var(--dp-stock-edge);
+  color: var(--orr-bone);
+  border: 0;
+  box-shadow: none;
 }
 .aw-site-flights { margin: 4px 0 0; padding: 0; list-style: none; }
 .aw-site-flight {
@@ -1202,31 +1476,43 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   gap: 8px;
   padding: 3px 0;
   font: 400 13px/1.3 var(--aw-font);
-  color: var(--aw-ink-2);
+  color: var(--orr-bone-dim);
 }
 
-/* The four operator verbs — real keys, bound straight to the owner APIs, and now
-   literally the kit's keys: legend for the toggles and actions, small for the
-   steppers, each running the sprite states the kit already authored. A toggle
-   that is ON wears the LIT face rather than a ring drawn around a flat pill. */
+/* The four operator verbs — ghost words bound straight to the owner APIs. A toggle
+   that is ON carries a bone bead ahead of its word; hover only brightens the ink. */
 .ast-screen .aw-verb-chip,
 .ast-screen .aw-verb-btn,
 .ast-screen .aw-verb-step {
   min-height: 30px;
   box-sizing: border-box;
-  background: transparent;
-  border-style: solid;
-  color: var(--aw-ink-2);
+  background: none;
+  border: 0;
+  color: var(--orr-bone-dim);
   font: 500 var(--fh-size-fine)/1.1 var(--aw-font);
   letter-spacing: var(--fh-track-display);
-  transition: color 120ms var(--k-ease), transform 120ms var(--k-ease);
+  transition: color 120ms var(--k-ease);
 }
 .ast-screen .aw-verb-chip,
 .ast-screen .aw-verb-btn {
-  padding: 0 8px;
-  border: 11px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
   background: none;
   box-shadow: none;
+}
+.ast-screen .aw-verb-chip::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgb(236 230 216 / .3);
+}
+.ast-screen .aw-verb-chip.on::before {
+  background: var(--orr-bone);
+  box-shadow: 0 0 6px rgb(236 230 216 / .8);
 }
 .ast-screen .aw-verb-step {
   display: inline-flex;
@@ -1235,22 +1521,23 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   width: 30px;
   padding: 0;
   font-family: var(--aw-mono);
+  font-size: 15px;
   letter-spacing: normal;
-  border: 9px solid transparent;
-  background: var(--dp-cap-rest) border-box;
-  box-shadow: var(--dp-cap-lift);
+  background: none;
+  box-shadow: none;
 }
 .ast-screen .aw-verb-chip:hover:not(:disabled),
 .ast-screen .aw-verb-btn:hover:not(:disabled) {
-  color: var(--aw-ink);
-  transform: translateY(-1px);
+  color: var(--orr-bone);
+  transform: none;
   background: none;
   box-shadow: none;
 }
 .ast-screen .aw-verb-step:hover:not(:disabled) {
-  color: var(--aw-ink);
-  transform: translateY(-1px);
-  background: var(--dp-cap-hover) border-box;
+  color: var(--orr-bone);
+  transform: none;
+  background: none;
+  box-shadow: none;
 }
 .ast-screen .aw-verb-chip:focus-visible,
 .ast-screen .aw-verb-btn:focus-visible {
@@ -1258,66 +1545,66 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   box-shadow: none;
 }
 .ast-screen .aw-verb-step:focus-visible {
-  box-shadow: var(--dp-cap-lift);
+  background: none;
+  box-shadow: none;
 }
 .ast-screen .aw-verb-step:active:not(:disabled) {
-  background: var(--dp-cap-press) border-box;
-  box-shadow: var(--dp-cap-sink);
+  background: none;
+  box-shadow: none;
+  color: var(--orr-bone-hot);
 }
 .ast-screen .aw-verb-chip.on {
-  color: var(--fh-ground);
+  color: var(--orr-bone);
   background: none;
   box-shadow: none;
 }
 .ast-screen .aw-verb-chip:disabled,
 .ast-screen .aw-verb-btn:disabled {
-  color: var(--aw-ink-3);
+  color: rgb(236 230 216 / .38);
   transform: none;
   background: none;
   box-shadow: none;
 }
 .ast-screen .aw-verb-step:disabled {
-  color: var(--aw-ink-3);
+  color: rgb(236 230 216 / .38);
   transform: none;
-  background: var(--dp-cap-off) border-box;
-  box-shadow: var(--dp-cap-off-edge);
+  background: none;
+  box-shadow: none;
 }
 .aw-verb-num {
   min-width: 42px;
   text-align: center;
   font: 500 var(--fh-size-emphasis)/1.1 var(--aw-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--aw-ink);
+  color: var(--orr-bone);
 }
-/* a picker is the kit's underlined input, which lights on focus — the one control
-   grammar the system uses for "type or choose here" */
+/* a picker is bone words on breath of shade — no channel, no underline */
 .ast-screen .aw-verb-select {
   min-height: 34px;
   max-width: 100%;
-  padding: 0 4px;
+  padding: 0 8px;
   box-sizing: border-box;
-  background: transparent;
-  color: var(--aw-ink);
+  background: rgb(236 230 216 / .06);
+  color: var(--orr-bone);
   font: 500 var(--fh-size-fine)/1.2 var(--aw-font);
   text-transform: none;
-  border: 10px solid transparent;
-  background: var(--dp-chan-rest) border-box;
+  border: 0;
   box-shadow: none;
 }
 .ast-screen .aw-verb-select:focus-visible {
-  background: var(--dp-chan-live) border-box;
+  background: rgb(236 230 216 / .12);
   box-shadow: none;
 }
 .ast-screen .aw-verb-select:disabled {
-  color: var(--aw-ink-3);
-  background: linear-gradient(180deg, var(--dp-rule) 1px, transparent 0) border-box;
+  color: rgb(236 230 216 / .38);
+  background: transparent;
   box-shadow: none;
 }
 .ast-screen .aw-verb-select option { background: var(--aw-surface); color: var(--aw-ink); }
 .aw-site-reason {
   margin: 4px 0 0;
   font: 400 13px/1.3 var(--aw-font);
-  color: var(--aw-ink-3);
+  color: var(--orr-bone-dim);
 }
 .aw-site-reason[hidden] { display: none !important; }
 

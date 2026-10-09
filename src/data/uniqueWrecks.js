@@ -91,6 +91,9 @@ function wreck(spec) {
     encounterRefs: [],
     salvagePool: { cmdty_scrap_metal: 1 },
     bonusCargo: [],
+    // Optional like every other list field: a wreck entry with no unique-drop table must not
+    // crash the module-load drop index. validateUniqueWreckRegistry still flags the absence.
+    uniqueDrops: [],
     reactor: null,
     ...spec,
   };
@@ -365,12 +368,21 @@ const RAW_UNIQUE_WRECKS = [
   }),
   wreck({
     id: 'wreck_choir_tender', programSlot: 'D10', name: 'Relief-Freighter Choir-Tender', victimLabel: 'Choir-Tender',
+    // SF-149: the Choir vigil SP1 chain (data/missions.js `choir_vigil`) owns this hull as its
+    // dedicated three-visit site — the same `wreckChainId` binding the D13-D16 wrecks carry.
+    wreckChainId: 'choir_vigil',
     wreckClass: 'fresh', sectorId: 'sector_helios_prime', factionId: 'faction_choir',
     scanLabel: 'RELIEF-FREIGHTER CHOIR-TENDER · REACTOR LEAK',
     uniqueDropId: 'unique_knitbots',
     uniqueDrops: [{ id: 'unique_knitbots', kind: 'module', baseId: 'mod_repair_nanobots_m' }],
     bearingSourceRef: 'news.tragedy_at_helios',
-    rumorSources: [{ id: 'tragedy_at_helios', sourceRef: 'news.tragedy_at_helios', channelId: 'news' }],
+    rumorSources: [
+      { id: 'tragedy_at_helios', sourceRef: 'news.tragedy_at_helios', channelId: 'news' },
+      // SF-149: accepting the vigil chain reprints the same public loss report through the
+      // mission channel — the chain's accept is the native bearing carrier, same law as the
+      // D13-D16 mission sources.
+      { id: 'sp1_choir_vigil_assignment', sourceRef: 'news.tragedy_at_helios', channelId: 'mission' },
+    ],
     provenance: { lossId: 'loss_choir_tender', incidentId: 'incident_helios_relief_reactor', sourceRef: 'news.tragedy_at_helios', recordType: 'fresh_civilian_loss' },
     hazardContext: { label: 'Helios outer yard', anchorType: 'sector', anchorId: 'sector_helios_prime', zoneId: 'zone_helios_core', hazardTypes: [], placementRule: 'near_spawn_outer_yard', approachGate: null },
     complications: [
@@ -380,6 +392,18 @@ const RAW_UNIQUE_WRECKS = [
     ],
     encounterRefs: ['unique_wreck_choir_tender_investigator'],
     bonusCargo: [{ commodityId: 'cmdty_medical', qty: 50 }], reactor: { timerS: 60, damage: 12 },
+    // SF-141 warm-site freight: the relief lot that tore loose on impact is physically on the
+    // field — real persistent pods owned by the attendant's durable record, so scooping them is
+    // cargo-first theft the law can price while Mercy and the attendant still need help. The
+    // spawn is one-shot per site (uniqueWrecks.state.warm); offsets are galactic-global deltas
+    // from the materialized hull.
+    warm: {
+      cargoPods: [
+        { id: 'choir_medical_triage', commodityId: 'cmdty_medical', amount: 4, unitMass: 0.4, radius: 6, offset: { x: 96, z: -54 } },
+        { id: 'choir_relief_provisions', commodityId: 'cmdty_food', amount: 6, unitMass: 0.7, radius: 5, offset: { x: -78, z: 84 } },
+        { id: 'choir_patch_alloy', commodityId: 'cmdty_alloys', amount: 3, unitMass: 0.6, radius: 5, offset: { x: 44, z: 118 } },
+      ],
+    },
     placement: { anchorLocal: { x: 0, z: 0 }, minRadius: 700, maxRadius: 920, bearingRadiusMin: 260, bearingRadiusMax: 420 },
     decision: salvageDecision({
       headline: 'CHOIR-TENDER RECOVERY CLAIM',
@@ -587,7 +611,72 @@ const RAW_UNIQUE_WRECKS = [
   }),
 ];
 
+// FB-038 — the Ceres seam tender. It is not a D1–D16 reservation slot. The closed program stays
+// sixteen; this wreck is still findable by id and by its bar source, and the salvage system pays
+// exactly one choice.
+const CERES_REFINERY_TENDER = wreck({
+    id: 'wreck_dmc_refinery_tender', programSlot: 'D17', name: 'Ceres Refinery Tender', victimLabel: 'Refinery Tender',
+    wreckChainId: 'refinery_shift',
+    wreckClass: 'fresh', sectorId: 'sector_ceres_belt', factionId: 'faction_dmc',
+    scanLabel: 'CERES REFINERY TENDER · MANIFEST STILL ABOARD',
+    bearingSourceRef: 'bar.station_ceres.refinery_tender',
+    rumorSources: [{ id: 'ceres_dock_tender_rumour', sourceRef: 'bar.station_ceres.refinery_tender', channelId: 'bar', stationId: 'station_ceres' }],
+    bearings: [
+      { id: 'bearing_refinery_seam_a', zoneId: 'zone_ceres_belt' },
+      { id: 'bearing_refinery_seam_b', zoneId: 'zone_ceres_refinery' },
+    ],
+    provenance: { lossId: 'loss_dmc_refinery_tender', incidentId: 'incident_ceres_tender_dark', sourceRef: 'bar.station_ceres.refinery_tender', recordType: 'shift_loss' },
+    hazardContext: { label: 'Ceres refinery seam', anchorType: 'zone', anchorId: 'zone_ceres_belt', zoneId: 'zone_ceres_belt', hazardTypes: [], placementRule: 'inside_working_seam', approachGate: null },
+    salvagePool: { cmdty_scrap_metal: 1 },
+    placement: { anchorLocal: { x: 180, z: -40 }, minRadius: 140, maxRadius: 360, bearingRadiusMin: 200, bearingRadiusMax: 420 },
+    decision: {
+      headline: 'REFINERY TENDER MANIFEST',
+      prompt: 'The tender is dark on the seam. Return the manifest, or strip the hull.',
+      choices: [
+        {
+          id: 'return_manifest',
+          label: 'RETURN THE MANIFEST',
+          consequence: 'File the manifest. The tender job resumes. The yard pays nothing.',
+          outcome: 'returned',
+          uniqueDrop: false,
+          bonusCargo: false,
+          credits: 0,
+          repDelta: 8,
+          receiptTitle: 'MANIFEST RETURNED',
+          receiptDetail: 'Drift logged the tender manifest. The shift goes back to work.',
+          siteStamp: 'MANIFEST FILED WITH DRIFT',
+        },
+        {
+          id: 'strip',
+          label: 'STRIP THE TENDER',
+          consequence: 'Take the credits. The salvor pocket goes quiet for a day.',
+          outcome: 'stripped',
+          uniqueDrop: false,
+          bonusCargo: false,
+          credits: 4200,
+          repDelta: 0,
+          receiptTitle: 'TENDER STRIPPED',
+          receiptDetail: 'The tender paid out in credits. The seam salvors stay quiet until tomorrow.',
+          siteStamp: 'STRIPPED ON THE SEAM',
+        },
+      ],
+    },
+    followup: { id: 'refinery_tender_settled', text: 'REFINERY TENDER SETTLED; THE SEAM EITHER WORKS AGAIN OR STAYS QUIET FOR A DAY.' },
+});
+
 export const UNIQUE_WRECKS = deepFreeze(RAW_UNIQUE_WRECKS);
+
+// The bearing phases the system's _materialize gate accepts — a unique wreck only mounts
+// once its bearing is minted into one of these. Kept beside the registry so non-system
+// enumerators (the sector decode warms) can grade the same gate without importing the
+// system module.
+export const UNIQUE_WRECK_MATERIALIZE_PHASES = Object.freeze(new Set([
+  'rumored',
+  'fixed',
+  'decision',
+  'salvaged',
+]));
+export const CERES_ACTIVITY_WRECKS = Object.freeze([deepFreeze(CERES_REFINERY_TENDER)]);
 
 // PQ-133.11 — reserved uniques that never ride a wreck: artifacts recovered at authored sites.
 // The Mirrorjaw Pulse is the Forge's own salvage relic (zone_vesta_forge): the ricochet room's
@@ -604,6 +693,10 @@ const UNIQUE_WRECK_BY_DROP = new Map();
 for (const def of UNIQUE_WRECKS) {
   for (const source of def.rumorSources) UNIQUE_WRECK_BY_SOURCE.set(source.sourceRef, def);
   for (const drop of def.uniqueDrops) UNIQUE_WRECK_BY_DROP.set(drop.id, def);
+}
+for (const def of CERES_ACTIVITY_WRECKS) {
+  UNIQUE_WRECK_BY_ID.set(def.id, def);
+  for (const source of def.rumorSources) UNIQUE_WRECK_BY_SOURCE.set(source.sourceRef, def);
 }
 
 export function uniqueWreckById(id) {
@@ -724,8 +817,14 @@ export function validateUniqueWreckRegistry() {
     }
     if (!Array.isArray(def.rumorSources) || !def.rumorSources.length) errors.push(`${def.id}: no rumor sources`);
     for (const source of def.rumorSources || []) {
-      if (!source.sourceRef || sources.has(source.sourceRef)) errors.push(`${def.id}: duplicate/missing source ${source.sourceRef || '<empty>'}`);
-      sources.add(source.sourceRef);
+      // A public report may ride several carriers (SF-149: the Helios loss news reprints
+      // through the vigil chain's mission:accepted). Uniqueness is per source+channel pair —
+      // the same ref through a second channel is one source, not a duplicate provenance.
+      const sourceKey = `${source.sourceRef || '<empty>'}|${source.channelId || '<none>'}`;
+      if (!source.sourceRef || sources.has(sourceKey)) {
+        errors.push(`${def.id}: duplicate/missing source ${source.sourceRef || '<empty>'} (${source.channelId || 'no channel'})`);
+      }
+      sources.add(sourceKey);
       channels.add(source.channelId);
     }
     if (!(def.rumorSources || []).some((source) => source.sourceRef === def.bearingSourceRef)) errors.push(`${def.id}: bearing source is not authored`);

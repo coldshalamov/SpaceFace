@@ -16,6 +16,8 @@
 //   - the card is pointer-transparent, so it can never steal the hover that created it.
 import { SITE_MACHINE_BY_ID } from '../../data/sites.js';
 import { COMMODITIES } from '../../data/commodities.js';
+import { arcGauge } from '../orrery/instruments.js';
+import { injectOrrery } from '../orrery/tokens.js';
 import { MATERIALS, ORE_TINTS } from './asteroidRenderer2d.js';
 import { drillTierReqForOre } from '../../systems/drill.js';
 
@@ -462,6 +464,9 @@ function icon(name) {
  * Returns { root, render(model), showAt(clientX, clientY), hide(), visible, destroy }.
  */
 export function createCursorLens(host) {
+  // The orrery token sheet styles .orr-core/.orr-phos/... ; guarded, so screens that already
+  // injected it are untouched.
+  injectOrrery();
   const root = document.createElement('div');
   root.className = 'aw-lens';
   root.hidden = true;
@@ -479,10 +484,27 @@ export function createCursorLens(host) {
   numEl.className = 'aw-lens-num';
   head.append(mark, nameEl, numEl);
 
+  // HP as an instrument, not a bar: the orrery arc gauge (hud.js mounts the same element into
+  // its vitals rows). Same dial convention — 270° sweep, spring fed settled values only. The
+  // base .aw-lens-hp track styles (34x6, clipped) are released by inline overrides — screens
+  // may not grow their own stylesheets, so the dial's box is element-level presentation.
   const hpEl = document.createElement('span');
   hpEl.className = 'aw-lens-hp';
-  const hpFill = document.createElement('i');
-  hpEl.appendChild(hpFill);
+  hpEl.style.width = 'auto';
+  hpEl.style.height = 'auto';
+  hpEl.style.background = 'none';
+  hpEl.style.overflow = 'visible';
+  const hpSvg = document.createElementNS(SVG_NS, 'svg');
+  hpSvg.setAttribute('class', 'orr-svg');
+  hpSvg.setAttribute('viewBox', '0 0 30 30');
+  hpSvg.setAttribute('aria-hidden', 'true');
+  hpSvg.setAttribute('focusable', 'false');
+  hpSvg.style.width = '16px';
+  hpSvg.style.height = '16px';
+  hpSvg.style.display = 'block';
+  const hpGauge = arcGauge({ cx: 15, cy: 15, r: 11.5, from: -135, to: 135, width: 3, tone: 'phos' });
+  hpSvg.appendChild(hpGauge.el);
+  hpEl.appendChild(hpSvg);
 
   const chipRow = document.createElement('div');
   chipRow.className = 'aw-lens-chips';
@@ -577,8 +599,11 @@ export function createCursorLens(host) {
     if (model.hp == null) {
       if (hpEl.parentNode) hpEl.remove();
     } else {
-      hpFill.style.width = `${Math.round(model.hp * 100)}%`;
-      hpFill.className = model.hp < 0.34 ? 'low' : '';
+      // The same remaining-integrity fraction the bar carried; instant keeps the orrery spring
+      // a pure painter (hud mountVitalArc convention) — the lens re-renders on model change,
+      // never per frame. Amber 'hand' tone below 34%, where the bar turned gold.
+      hpGauge.set(model.hp, { instant: true });
+      hpGauge.setTone(model.hp < 0.34 ? 'hand' : 'phos');
       if (!hpEl.parentNode) head.appendChild(hpEl);
     }
 
@@ -666,6 +691,6 @@ export function createCursorLens(host) {
     showAt,
     hide,
     get visible() { return visible; },
-    destroy() { root.remove(); },
+    destroy() { hpGauge.dispose(); root.remove(); },
   };
 }

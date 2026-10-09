@@ -1,0 +1,90 @@
+// Authored circuit presentation: real vertical apertures, route line and a visible pace beacon.
+// Four draw calls at most. Every object is non-colliding and consumes the mission owner's truth.
+import * as THREE from 'three';
+import { activeAuthoredRace } from '../systems/racingSteer.js';
+import { circuitPacePoint, gateApproach } from '../systems/racingGeometry.js';
+import { raceGateGlobals } from '../data/raceLevels.js';
+import { readFrameOrigin } from './frameCoordinates.js';
+
+export function createRacingCourseView(scene, state) {
+  const root = new THREE.Group(); root.name = 'Racing course'; root.visible = false;
+  scene.add(root);
+  const ringGeometry = new THREE.TorusGeometry(1, 0.024, 6, 48);
+  const ringMaterial = new THREE.MeshBasicMaterial({ color:0xffffff, toneMapped:false });
+  const nextMaterial = new THREE.MeshBasicMaterial({ color:0xffe4a8, toneMapped:false });
+  const lineMaterial = new THREE.LineBasicMaterial({ color:0x567485, toneMapped:false });
+  const paceMaterial = new THREE.MeshBasicMaterial({ color:0xffe956, toneMapped:false });
+  const paceGeometry = new THREE.ConeGeometry(7, 22, 4);
+  const target = new THREE.Mesh(ringGeometry, nextMaterial); target.name='Next checkpoint';
+  const pace = new THREE.Mesh(paceGeometry, paceMaterial); pace.name='Draft pace beacon';
+  root.add(target, pace);
+  const dummy = new THREE.Object3D(), origin = {}, from = {}, pacePoint = {};
+  const up = new THREE.Vector3(0,1,0), forward = new THREE.Vector3();
+  const base = new THREE.Color(0x90b2c8), cleared = new THREE.Color(0x3c515c), burn = new THREE.Color(0xffe956);
+  let owner = null, rings = null, line = null, globals = null, sectorX = 0, sectorZ = 0, lastGate = -1, lastLap = -1, disposed=false;
+  function releaseCourse() {
+    if(rings){root.remove(rings);rings.dispose();rings=null;}
+    if(line){root.remove(line);line.geometry.dispose();line=null;}
+    owner=null;globals=null;
+  }
+  function rebuild(params) {
+    releaseCourse(); owner=params;
+    const gates=params.gates;
+    globals=raceGateGlobals(params);
+    if(!Array.isArray(gates)||gates.length<2||globals.length!==gates.length)return;
+    sectorX=globals[0].x-gates[0].x; sectorZ=globals[0].z-gates[0].z;
+    const count=Math.min(128,params.closedCircuit?gates.length-1:gates.length);
+    const radius=Number(params.gateRadiusWU)||90;
+    rings=new THREE.InstancedMesh(ringGeometry,ringMaterial,count);rings.name='Checkpoint apertures';
+    for(let i=0;i<count;i++){
+      const approach=gateApproach(gates,i,from);
+      if(!approach)continue;
+      dummy.position.set(gates[i].x,0,gates[i].z);
+      dummy.rotation.set(0,Math.atan2(approach.nx,approach.nz),0);
+      dummy.scale.setScalar(radius);dummy.updateMatrix();rings.setMatrixAt(i,dummy.matrix);
+      rings.setColorAt(i,i===params.boostGateIndex?burn:base);
+    }
+    rings.instanceMatrix.needsUpdate=true;rings.computeBoundingSphere();root.add(rings);
+    const vertices=new Float32Array(Math.min(128,gates.length)*3);
+    for(let i=0;i<vertices.length/3;i++){vertices[i*3]=gates[i].x;vertices[i*3+1]=-3;vertices[i*3+2]=gates[i].z;}
+    const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(vertices,3));
+    line=new THREE.Line(geometry,lineMaterial);line.name='Circuit racing line';root.add(line);
+    lastGate=lastLap=-1;
+  }
+  return {
+    root,
+    frame(){
+      if(disposed)return;
+      const race=activeAuthoredRace(state);
+      root.visible=!!race&&state.mode==='flight'&&!state.ui?.docked
+        &&state.world?.currentSectorId===race.params.courseSectorId;
+      if(!root.visible)return;
+      const p=race.params;
+      if(owner!==p)rebuild(p);
+      if(!rings||!globals){root.visible=false;return;}
+      readFrameOrigin(state,origin);root.position.set(sectorX-origin.x,0,sectorZ-origin.z);
+      const next=Math.max(0,Math.min(p.gates.length-1,p.nextGate|0));
+      if(next!==lastGate||(p.lap|0)!==lastLap){
+        lastGate=next;lastLap=p.lap|0;
+        for(let i=0;i<rings.count;i++)rings.setColorAt(i,i===p.boostGateIndex?burn:i<next?cleared:base);
+        rings.instanceColor.needsUpdate=true;
+        const approach=gateApproach(p.gates,next,from),g=p.gates[next];
+        target.position.set(g.x,0,g.z);
+        if(approach)target.rotation.set(0,Math.atan2(approach.nx,approach.nz),0);
+        target.scale.setScalar((Number(p.gateRadiusWU)||90)*1.005);
+      }
+      // This is the very same sampler and speed the slipstream impulse uses, not an AI rival.
+      const racing=Number.isFinite(p.raceStartSimS);
+      pace.visible=racing&&p.racingKind==='draft';
+      if(pace.visible&&circuitPacePoint(globals,Math.max(0,(state.simTime||0)-p.raceStartSimS)*640+70,pacePoint)){
+        pace.position.set(pacePoint.x-sectorX,0,pacePoint.z-sectorZ);
+        forward.set(Math.cos(pacePoint.heading),0,Math.sin(pacePoint.heading));
+        pace.quaternion.setFromUnitVectors(up,forward);
+      }
+    },
+    dispose(){
+      if(disposed)return;disposed=true;releaseCourse();root.removeFromParent();
+      ringGeometry.dispose();paceGeometry.dispose();ringMaterial.dispose();nextMaterial.dispose();lineMaterial.dispose();paceMaterial.dispose();
+    },
+  };
+}

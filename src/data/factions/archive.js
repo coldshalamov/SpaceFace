@@ -1,7 +1,7 @@
 export const faction = {
   id: 'faction_archive', name: 'The Archive', short: 'Archive', color: '#3A2A5A',
   personality: 'archivist', startingRep: 0,
-  homeSectors: ['sector_pallas_drift'],
+  homeSectors: ['sector_pallas_drift', 'sector_orcus_shadow'],
   controls: ['the Severed Codex', 'reading-room stations', 'document exchange'],
   fleetClass: 'monastic', aggression: 0.1,
   relations: {

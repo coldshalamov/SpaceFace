@@ -117,12 +117,16 @@ test('Package C: dynamic compound collider eligibility and properties', async ()
   assert.equal(isCompoundSkinDynamicEligible(colossus), true, 'Colossus capital ship is eligible');
   assert.equal(isCompoundSkinDynamicEligible(dreadnought), true, 'Dreadnought is eligible');
   assert.equal(isCompoundSkinDynamicEligible(wreck), true, 'Aftermath wreck is eligible');
-  assert.equal(isCompoundSkinDynamicEligible(kestrel), false, 'Kestrel fighter is not eligible');
+  // eb1869826 ("make contacts solid and keep player heading true") admitted craft to
+  // SKIN_DYNAMIC_TYPES: every ship takes its measured skin (the kestrel resolves
+  // skin:ship_kestrel:polygon in measured-skin-dynamics). Stale pre-admission expectations
+  // updated to that shipped truth.
+  assert.equal(isCompoundSkinDynamicEligible(kestrel), true, 'Craft are skin-eligible');
 
   assert.equal(measuredSkinAllowedFor(colossus), true);
   assert.equal(measuredSkinAllowedFor(dreadnought), true);
   assert.equal(measuredSkinAllowedFor(wreck), true);
-  assert.equal(measuredSkinAllowedFor(kestrel), false);
+  assert.equal(measuredSkinAllowedFor(kestrel), true);
 
   // Manifests resolve for eligible dynamic bodies
   colossus.data.collisionProxy = 'skin:ship_colossus';
@@ -170,7 +174,10 @@ test('Package C: dynamic compound collider eligibility and properties', async ()
     assert.equal(dreadRec.body.isCcdEnabled(), true, 'Dreadnought has CCD enabled');
 
     const wreckRec = owner.records.get(wreck.id);
-    assert.ok(wreckRec.colliders.length > 1, 'Wreck has compound colliders');
+    // The ore freighter bow's closed silhouette fits the census tolerance, so its skin
+    // compacts to a single tolerance-checked convex hull (Package C compaction); an
+    // ill-fitting silhouette would keep the bounded compound instead.
+    assert.ok(wreckRec.colliders.length >= 1, 'Wreck carries measured skin colliders');
     assert.ok(wreckRec.colliders.length <= 32, 'Wreck collider count <= 32');
     for (const c of wreckRec.colliders) {
       assert.equal(c.density(), 0, 'Wreck collider has density 0');
@@ -179,7 +186,9 @@ test('Package C: dynamic compound collider eligibility and properties', async ()
     assert.equal(wreckRec.effectiveInertiaY, wreckRec.spec.inertiaY, 'Wreck effectiveInertiaY matches spec');
 
     const kestrelRec = owner.records.get(kestrel.id);
-    assert.equal(kestrelRec.colliders.length, 1, 'Kestrel keeps single capsule collider');
+    assert.ok(kestrelRec.proxyId && kestrelRec.proxyId.startsWith('skin:ship_kestrel'),
+      `Kestrel rides its measured skin (${kestrelRec.proxyId})`);
+    assert.ok(kestrelRec.colliders.length >= 1, 'Kestrel carries measured colliders');
   } finally {
     owner.dispose();
   }

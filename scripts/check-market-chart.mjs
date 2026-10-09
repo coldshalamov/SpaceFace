@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { COMMODITIES } from '../src/data/commodities.js';
+import { settleCredits } from '../src/economy/economyMath.js';
 import { economy, getCycle as liveCycleFor } from '../src/systems/economy.js';
 import { cycleFactorAt, maybeAdvanceRegime, predictPriceCurve, rawCycleFactorAt, regimeLabel } from '../src/systems/economyCycles.js';
 import { initPriceHistory, getPriceHistory, loadHistory } from '../src/ui/priceHistory.js';
@@ -106,7 +107,7 @@ function testMarketScreenChartSourceContract() {
     [/export function buildChart\(history, average, gradientId, label/, 'builds the selected commodity chart', MARKET_PRESENTATION_SOURCE],
     [/class="sx-mkt-chart"/, 'renders the selected commodity sparkline', MARKET_PRESENTATION_SOURCE],
     [/data-history-line/, 'plots the live history as the chart line', MARKET_PRESENTATION_SOURCE],
-    [/<circle cx="\$\{endX\}" cy="\$\{endY\}" r="3"\/>/, 'marks the latest sample', MARKET_PRESENTATION_SOURCE],
+    [/sx-mkt-instrument__dot" style="left:\$\{px\(end\.x\)\}/, 'marks the latest sample', MARKET_PRESENTATION_SOURCE],
     // Selection follows focus over the register rows (Arrow / Home / End / PageUp / PageDown).
     [/selectCommodity\(rows\[next\]\.getAttribute\('data-cmdty'\), \{ focus: true \}\)/, 'keeps the commodity register keyboard-selectable', STATION_MARKET_SOURCE],
     [/const go = ev\.target\.closest\('\[data-go\]'\);/, 'keeps the visible buy/sell control wired', STATION_MARKET_SOURCE],
@@ -134,8 +135,10 @@ function testBulkQuoteMatchesExecutedTrade() {
     'Max steps down when one credit short instead of leaving Confirm disabled');
   assert.equal(maxAffordableQuantity({ limit: 2, credits: 1000000, quote }), 2,
     'Max cannot exceed physical stock or hold capacity');
-  assert.equal(buyQuote.total, Math.round(buyQuote.unitAvg * qty),
-    'quantity quote owns the rounded transaction total');
+  // Settlement rounds against the trader (buy ceil / sell floor) so split lots cannot shave
+  // the consideration; the quote's displayed total is that settled figure, not a symmetric round.
+  assert.equal(buyQuote.total, settleCredits(buyQuote.unitAvg * qty, 'buy'),
+    'quantity quote owns the conservatively settled transaction total');
   const beforeBuy = state.player.credits;
   const bought = econ.execute(stationId, commodityId, 'buy', qty);
   assert.equal(bought.ok, true, 'quoted purchase executes');
@@ -193,7 +196,10 @@ function testSeededStationMarketHistory() {
   const restored = { ...economy };
   restored.init({ state: restoredState, bus: makeBus(), helpers: {}, registry: { get: () => null } });
   restored.deserialize(structuredClone(saved));
-  assert.deepEqual(restoredState.economy.markets[stationId][ids[0]].history, market[ids[0]].history,
+  // Compare the timeline values: live points carry a session-only prototype stamp (`origin`) that
+  // saves deliberately drop, so the restored trace is plain objects by design.
+  const timeline = (points) => points.map(({ t, mid }) => ({ t, mid }));
+  assert.deepEqual(timeline(restoredState.economy.markets[stationId][ids[0]].history), timeline(market[ids[0]].history),
     'loading a save keeps the existing market timeline instead of bootstrapping a generic one');
 
   const currentCycle = liveCycleFor(stationId, ids[0]);

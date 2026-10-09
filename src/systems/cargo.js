@@ -11,6 +11,42 @@ import {
   PICKUP_ACCEPTANCE_RETRY_S,
 } from '../core/pickupAcceptance.js';
 import { spawnJettisonedCargoPod, volatileThrowSpeedScale } from './lootShards.js';
+import { getDerivedStats, shipworksStationAccess } from './ships.js';
+import { TALLY_THREE, tallyThreeBody, tallyThreeSource, tallyThreeFingerprint } from '../data/tallyThree.js';
+
+/** Explicit SF20-03 receiver intent. Source and payment owners commit before Massline retires. */
+export function deliverTallyThreeCrate(state,quote,registry) {
+  const source=tallyThreeSource(state),salvage=registry?.get('salvage'),economy=registry?.get('economy');
+  if(source?.delivery)return economy?.settleTallyThreeDelivery(source.delivery)||{ok:false,reason:'receiver-unavailable'};
+  const crate=tallyThreeBody(state,TALLY_THREE.worldRecordId),receiver=quote?.receiver;
+  const player=state?.entities?.get(state.playerId);
+  if(!crate||!player||player.alive===false||crate!==quote?.crate||crate.occupantGeneration!==quote.generation
+    ||state.entities.get(crate.id)!==crate||!receiver||receiver.alive===false||state.entities.get(receiver.id)!==receiver
+    ||receiver.type!=='station'||receiver.data?.stationId!==TALLY_THREE.homeStationId
+    ||state.world?.currentSectorId!==TALLY_THREE.sectorId)return {ok:false,reason:'body-or-receiver-changed'};
+  if(source?.extracted||tallyThreeFingerprint(source)!==quote.fingerprint)return {ok:false,reason:'claim-or-contents-changed'};
+  if(source.claimId&&source.claimId!==TALLY_THREE.claimId)return {ok:false,reason:'claim-disputed'};
+  const line=Object.values(state.combat?.attachments?.byId || {}).find(a=>a?.state==='active'
+    &&a.ownerId===state.playerId&&a.targetId===crate.id&&a.defId==='tether_standard'
+    &&a.ownerGeneration===player.occupantGeneration&&a.targetGeneration===crate.occupantGeneration);
+  const nativeLine=line&&registry.get('physics')?._sg02CombatPhysics?.getAttachmentTelemetry({attachmentId:line.id,physicsHandle:line.physicsHandle,tick:state.tick});
+  if(!line||!nativeLine)return {ok:false,reason:'player-custody-required'};
+  const ring=Math.max(0,Number(receiver.data?.dockRadius)||Number(receiver.radius)||0)+TALLY_THREE.receiverMargin;
+  if(Math.hypot(crate.pos.x-receiver.pos.x,crate.pos.z-receiver.pos.z)+crate.radius>ring)return {ok:false,reason:'crate-outside-receiver'};
+  if(Math.hypot(player.pos.x-receiver.pos.x,player.pos.z-receiver.pos.z)>ring+80)return {ok:false,reason:'pilot-outside-receiver'};
+  if(Math.hypot(crate.vel.x-receiver.vel.x,crate.vel.z-receiver.vel.z)>TALLY_THREE.maxDeliverySpeed)return {ok:false,reason:'relative-speed-too-high'};
+  const current=economy?.quoteTallyThreeCrate(source);
+  if(!current?.ok||current.quoteCr!==quote.quoteCr||current.qty!==quote.qty)return {ok:false,reason:'value-quote-changed'};
+  const receipt={receiptId:'tally-three:'+TALLY_THREE.worldRecordId,sourceKey:TALLY_THREE.sourceKey,
+    worldRecordId:TALLY_THREE.worldRecordId,stationId:TALLY_THREE.homeStationId,
+    commodityId:'cmdty_salvage_electronics',qty:quote.qty,quoteCr:quote.quoteCr,
+    claimId:source.claimId,manifestId:TALLY_THREE.manifestId,tick:state.tick};
+  const settled=salvage?._settleTallyCrate({fingerprint:quote.fingerprint,receipt});
+  if(!settled?.ok)return settled||{ok:false,reason:'source-unavailable'};
+  registry.get('combat')?.kernel?.attachments?.breakAttachment(line,'accepted_delivery',state.playerId);
+  const paid=economy.settleTallyThreeDelivery(settled.receipt);
+  return paid.ok?paid:{...paid,custodyAccepted:true,paymentPending:true,receiptId:receipt.receiptId,qty:receipt.qty};
+}
 
 // commodityId -> { volPerU, massPerU } lookup, built once from the static registry.
 const VOL = Object.create(null);
@@ -235,6 +271,13 @@ export function selectedJettisonLot(state) {
   return ids[0] || null;
 }
 
+function jettisonRefusalText(state) {
+  const items = state && state.player && state.player.cargo && state.player.cargo.items;
+  if (!items || typeof items !== 'object') return 'Hold is empty';
+  const held = Object.keys(items).some((id) => Number(items[id]) > 0);
+  return held ? 'That lot is sealed — it stays aboard' : 'Hold is empty';
+}
+
 // Exported addCargo/removeCargo calls need their state-local bus without relying on whichever
 // system instance initialized most recently. Bindings are weakly keyed by state so isolated
 // runtimes cannot cross-talk and disposed states do not stay alive through this module.
@@ -407,6 +450,11 @@ export function addCargo(state, commodityId, qty, lotSource = null) {
   if (!def || requested <= 0) return 0;
   const volPerU = volumePerUnit(def);
   const free = cargo.capVolume - cargo.usedVolume;
+  // Fail closed when the hold caches are unknowable: a non-finite free must read as "no
+  // room" for volume-capped goods, never produce a NaN accepted count that callers would
+  // mistake for a successful add (a NaN capVolume previously made a market buy settle
+  // nothing yet report ok:true). Zero-volume items are uncapped and skip the check.
+  if (volPerU > 0 && !Number.isFinite(free)) return 0;
   // floor so a bulky item (vol>1) only takes whole units that fit; max(0) guards over-capacity/float drift.
   const accepted = volPerU === 0 ? Math.max(0, requested) : Math.max(0, Math.min(requested, Math.floor(free / volPerU)));
   if (accepted > 0) {
@@ -441,13 +489,24 @@ export function salvageBayCap(state) {
   return Math.max(SALVAGE_BAY.capFloor, hold * SALVAGE_BAY.capMult);
 }
 
-/** What the UI shows: { used, cap, units } or null when the bay has never held anything. Pure. */
+/** What the UI shows: { used, cap, units, summary? } or null when the bay has never held anything. Pure. */
 export function salvageBayReading(state) {
   const bay = state && state.player && state.player.salvageBay;
   if (!bay) return null;
   let units = 0;
   for (const id in bay.items) units += Number(bay.items[id]) || 0;
-  return { used: Math.round(Number(bay.usedVolume) || 0), cap: Math.round(salvageBayCap(state)), units };
+  const reading = { used: Math.round(Number(bay.usedVolume) || 0), cap: Math.round(salvageBayCap(state)), units };
+  // Read only. Same id sort as cash-in, so the tip does not follow insertion order.
+  if (units > 0 && bay.items) {
+    const parts = [];
+    for (const id of Object.keys(bay.items).sort()) {
+      const qty = Number(bay.items[id]);
+      if (!Number.isFinite(qty) || qty <= 0) continue;
+      parts.push(`${commodityName(id)}: ${qty}`);
+    }
+    if (parts.length) reading.summary = parts.join(', ');
+  }
+  return reading;
 }
 
 function ensureBay(state) {
@@ -550,9 +609,22 @@ export const cargo = {
       if (!cargo || (cargo.items && cargo.items[payload.id] > 0)) return;
       addCargo(state, payload.id, 1);
     });
+    // An armed hot-dock spill receipt is run-scoped: it lives on this instance, never in save
+    // data, so a quit-while-docked New Game or a save load can never carry it across. Leaving
+    // it armed lets the fresh run's first undock announce pods that were never beside that
+    // berth. Every run boundary clears it — game:new and the legacy game:newGame alias for New
+    // Game, save:loaded for restores.
+    const clearRunScopedSpillLatch = () => {
+      this._pendingSpillAnnounce = null;
+      this._lastHotDockSpillTick = -1;
+    };
+    subscribe(binding, 'game:new', clearRunScopedSpillLatch);
+    subscribe(binding, 'game:newGame', clearRunScopedSpillLatch);
+
     // Saves made while the grant seam was dead carry the story lock but an empty hold: backfill
     // the missing persistent items on load so the manifest matches the narrative again.
     subscribe(binding, 'save:loaded', () => {
+      clearRunScopedSpillLatch();
       const locked = state.story && state.story.persistentCargo;
       if (!Array.isArray(locked)) return;
       for (const id of locked) {
@@ -594,6 +666,7 @@ export const cargo = {
       } else if (kind === 'module') {
         // physics only hands us a commodityId → treat it as the module defId; mint a deterministic instanceId.
         const count = typeof commodityId === 'string' && commodityId.length > 0 ? qty : 0;
+        if (count > 0 && !Array.isArray(state.player.moduleInventory)) state.player.moduleInventory = [];
         for (let i = 0; i < count; i++) {
           state.player.moduleInventory.push({ instanceId: nextLooseModuleInstanceId(state), defId: commodityId });
         }
@@ -632,6 +705,15 @@ export const cargo = {
       if (derived && typeof derived.cargoCap === 'number') setCap(shipId, derived.cargoCap);
     });
 
+    // FB-061 — the hold is part of the hull. Ships announces a berth swap before it flips
+    // activeShipIndex; cargo does the whole move here so state.player.cargo keeps one writer:
+    // the live hold parks onto the outgoing record, the incoming hull's parked hold loads in,
+    // and anything over the new capacity simply stays parked aboard that hull.
+    subscribe(binding, 'ship:parkedHoldSwap', (payload) => this._swapParkedHold(payload || {}));
+    // The cargo-deck verb: docked at a shipyard with a second hull parked, the deck crew moves
+    // units between the live hold and that hull's hold. UI emits the intent only.
+    subscribe(binding, 'ui:transferParkedCargo', (payload) => this._transferParkedCargo(payload || {}));
+
     this.recompute(); // seed caches from whatever the starting hold contains
   },
 
@@ -639,7 +721,14 @@ export const cargo = {
     if (state && state.input && state.input.actions && state.input.actions.jettisonLot) {
       state.input.actions.jettisonLot = false;
       const commodityId = selectedJettisonLot(state);
-      if (commodityId) this.jettison(commodityId, 1);
+      const dumped = commodityId ? this.jettison(commodityId, 1) : 0;
+      if (!(dumped > 0) && this.bus) {
+        this.bus.emit('toast', {
+          text: commodityId ? 'That lot is sealed — it stays aboard' : jettisonRefusalText(state),
+          kind: 'warn',
+          ttl: 1.6,
+        });
+      }
     }
     const binding = stateBindings.get(state);
     const dirty = binding ? binding.dirty : this._dirty;
@@ -703,6 +792,184 @@ export const cargo = {
 
   removeCargo(commodityId, qty) {
     return removeCargo(this.state, commodityId, qty);
+  },
+
+  // ---- FB-061: parked holds ---------------------------------------------------------------
+  // `ownedShip.cargo` is the hold aboard a hull that is not flying: { items, richLots,
+  // usedVolume, usedMass }. Written only here; absent on old saves and created the first time a
+  // hull actually parks with units aboard (an empty store deletes itself, records stay lean).
+
+  _parkedStore(owned) {
+    const store = owned.cargo && typeof owned.cargo === 'object'
+      ? owned.cargo
+      : (owned.cargo = { items: {}, richLots: [] });
+    if (!store.items || typeof store.items !== 'object') store.items = {};
+    if (!Array.isArray(store.richLots)) store.richLots = [];
+    return store;
+  },
+
+  _syncParkedCaches(state, store) {
+    let vol = 0;
+    let mass = 0;
+    for (const id of Object.keys(store.items)) {
+      const def = defOf(state, id);
+      if (!def) continue;
+      const qty = Math.floor(Number(store.items[id]) || 0);
+      if (qty <= 0) continue;
+      vol += qty * volumePerUnit(def);
+      mass += qty * def.mass;
+    }
+    store.usedVolume = vol;
+    store.usedMass = mass;
+    return store;
+  },
+
+  /**
+   * Berth swap, run on `ship:parkedHoldSwap` before ships flips activeShipIndex: the live hold
+   * merges onto the outgoing record (adding to any remainder already parked aboard that hull),
+   * then the incoming hull's parked hold loads into the live hold under the new capacity.
+   * Cargo the pilot cannot put down — sealed contract freight, story items — never parks; if it
+   * alone would overflow the new hold the swap refuses before anything moves. What does not fit
+   * stays aboard the parked hull. Nothing is created or lost: every unit is held somewhere.
+   */
+  _swapParkedHold(payload) {
+    const state = this.state;
+    const p = state && state.player;
+    const live = p && p.cargo;
+    if (!p || !Array.isArray(p.ownedShips) || !live || !live.items) return false;
+    const from = p.ownedShips[payload && payload.fromIndex];
+    const to = p.ownedShips[payload && payload.toIndex];
+    if (!from || !to || from === to) return false;
+    const cap = Math.max(0, Number(payload && payload.cargoCapVolume) || 0);
+
+    // Feasibility first: reserved units ride with the pilot, so they have to fit the new hold.
+    let mustCarryVol = 0;
+    for (const id of Object.keys(live.items)) {
+      const held = Math.floor(Number(live.items[id]) || 0);
+      const keep = Math.min(held, reservedCargoQuantity(state, id));
+      if (keep <= 0) continue;
+      const def = defOf(state, id);
+      if (def) mustCarryVol += keep * volumePerUnit(def);
+    }
+    if (mustCarryVol > cap) {
+      if (payload) payload.refused = 'sealed_cargo_overflow';
+      return false;
+    }
+
+    const store = this._parkedStore(from);
+    for (const id of Object.keys(live.items)) {
+      const held = Math.floor(Number(live.items[id]) || 0);
+      const keep = Math.min(held, reservedCargoQuantity(state, id));
+      const parkedQty = held - keep;
+      if (parkedQty <= 0) continue;
+      store.items[id] = (store.items[id] || 0) + parkedQty;
+      if (keep > 0) live.items[id] = keep;
+      else delete live.items[id];
+      for (const lot of richLotSourcesForQty(live, id, parkedQty)) store.richLots.push({ ...lot });
+      decrementRichLots(live, id, parkedQty);
+    }
+
+    // The live hold now carries only what must ride with the pilot; adopt the incoming cap so
+    // the parked hold's load phase obeys it before ships re-derives the entity.
+    live.capVolume = cap;
+    this.recompute(state);
+
+    const parked = to.cargo && to.cargo.items ? to.cargo : null;
+    let movedUnits = 0;
+    if (parked) {
+      const ids = Object.keys(parked.items)
+        .filter((id) => Math.floor(Number(parked.items[id]) || 0) > 0)
+        .sort();
+      for (const id of ids) {
+        const qty = Math.floor(Number(parked.items[id]) || 0);
+        if (qty <= 0 || !defOf(state, id)) continue;
+        const accepted = addCargo(state, id, qty);
+        if (accepted <= 0) continue;
+        const left = qty - accepted;
+        if (left > 0) parked.items[id] = left;
+        else delete parked.items[id];
+        for (const lot of richLotSourcesForQty(parked, id, accepted)) appendRichLot(live, lot, id, lot.richQty);
+        decrementRichLots(parked, id, accepted);
+        movedUnits += accepted;
+      }
+      this._syncParkedCaches(state, parked);
+      if (!Object.keys(parked.items).length) delete to.cargo;
+    }
+    this._syncParkedCaches(state, store);
+    if (!Object.keys(store.items).length) delete from.cargo;
+    const bus = busForState(state);
+    if (bus) bus.emit('cargo:parkedHoldSwapped', { fromIndex: payload.fromIndex, toIndex: payload.toIndex, loadedUnits: movedUnits });
+    return true;
+  },
+
+  /**
+   * The cargo-deck verb (`ui:transferParkedCargo`): docked at a shipyard with a second hull in
+   * the berths, move units between the live hold and that parked hull's hold. `direction` is
+   * 'load' (parked → live hold, under the live cap) or 'stow' (live → parked, under the parked
+   * hull's own derived hold cap). Sealed/persistent units never leave the pilot's hold.
+   */
+  _transferParkedCargo({ shipIndex, direction, commodityId, qty }) {
+    const state = this.state;
+    const access = shipworksStationAccess(state);
+    if (!access.hull) {
+      const bus = busForState(state);
+      if (bus) bus.emit('toast', { text: access.hullReason || 'Dock at a shipyard', kind: 'error', ttl: 3 });
+      return false;
+    }
+    const p = state.player;
+    if (!p || !Array.isArray(p.ownedShips) || p.ownedShips.length < 2) return false;
+    const index = Number(shipIndex);
+    const live = p.cargo;
+    if (!Number.isInteger(index) || index === p.activeShipIndex || !live || !live.items) return false;
+    const owned = p.ownedShips[index];
+    if (!owned) return false;
+    const dir = direction === 'stow' ? 'stow' : 'load';
+    const source = dir === 'load' ? (owned.cargo && owned.cargo.items ? owned.cargo : null) : live;
+    if (!source) return false;
+    const target = dir === 'load' ? live : this._parkedStore(owned);
+    const capVolume = dir === 'load'
+      ? Math.max(0, Number(live.capVolume) || 0)
+      : Math.max(0, Number(getDerivedStats(owned.defId, owned.fittings || [], p).cargoCap) || 0);
+    const ids = (commodityId ? [commodityId] : Object.keys(source.items))
+      .filter((id) => Math.floor(Number(source.items[id]) || 0) > 0)
+      .sort();
+    let moved = 0;
+    for (const id of ids) {
+      const def = defOf(state, id);
+      if (!def) continue;
+      let want = Math.floor(Number(source.items[id]) || 0);
+      if (dir === 'stow') want = Math.min(want, sellableCargoQuantity(state, id));
+      if (qty != null) want = Math.min(want, Math.max(0, Math.floor(Number(qty) || 0)));
+      if (want <= 0) continue;
+      const volPerU = volumePerUnit(def);
+      const free = capVolume - (Number(target.usedVolume) || 0);
+      const accepted = volPerU === 0 ? want : Math.max(0, Math.min(want, Math.floor(free / volPerU)));
+      if (accepted <= 0) continue;
+      target.items[id] = (target.items[id] || 0) + accepted;
+      target.usedVolume = (Number(target.usedVolume) || 0) + accepted * volPerU;
+      target.usedMass = (Number(target.usedMass) || 0) + accepted * def.mass;
+      const left = Math.floor(Number(source.items[id]) || 0) - accepted;
+      if (left > 0) source.items[id] = left;
+      else delete source.items[id];
+      for (const lot of richLotSourcesForQty(source, id, accepted)) appendRichLot(target, lot, id, lot.richQty);
+      decrementRichLots(source, id, accepted);
+      moved += accepted;
+    }
+    this._syncParkedCaches(state, dir === 'load' ? source : target);
+    if (owned.cargo && owned.cargo.items && !Object.keys(owned.cargo.items).length) delete owned.cargo;
+    this.recompute(state);
+    const bus = busForState(state);
+    if (bus) {
+      bus.emit('cargo:parkedTransfer', { shipIndex: index, direction: dir, movedUnits: moved });
+      bus.emit('toast', {
+        text: moved > 0
+          ? `Deck crew moved ${moved} unit${moved === 1 ? '' : 's'} ${dir === 'load' ? 'aboard' : 'onto the parked hull'}.`
+          : 'Nothing the deck crew could move.',
+        kind: moved > 0 ? 'success' : 'info',
+        ttl: 3,
+      });
+    }
+    return moved > 0;
   },
 
   _spillHotArrival(payload = {}) {

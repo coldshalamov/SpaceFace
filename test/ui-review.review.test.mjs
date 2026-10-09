@@ -4,7 +4,7 @@ import test from 'node:test';
 import { BLUEPRINTS } from '../src/data/blueprints.js';
 import { createScreenManager } from '../src/ui/screenManager.js';
 import { stationScreen } from '../src/ui/station/stationScreen.js';
-import { attemptIndustryBuild, industryReadiness } from '../src/ui/station/screens/industry.js';
+import { attemptIndustryBuild, industryBlocker, industryReadiness } from '../src/ui/station/screens/industry.js';
 import { marketCardDrivers } from '../src/ui/marketDriverPresenter.js';
 
 function installMinimalDom() {
@@ -143,6 +143,67 @@ test('a rejected Industry build does not play the acceptance cue', () => {
   });
   assert.equal(accepted, false);
   assert.equal(bus.events.some((event) => event.type === 'audio:cue' && event.payload?.id === 'ui_accept'), false);
+});
+
+// P02 — the Industry ladder reads the FREE, unsealed quantity: freight sealed for an active
+// contract still rides in the hold, so "have" must never count it as buildable stock.
+test('Industry readiness and input counts read free quantity, not sealed freight', () => {
+  const blueprint = BLUEPRINTS.find((item) => item.id === 'bp_refine_metals');
+  const state = {
+    player: {
+      researchedNodes: [],
+      cargo: { items: { cmdty_ore_iron: 6, cmdty_ore_titanium: 1 } },
+      moduleInventory: [],
+      ownedShips: [],
+    },
+    missions: {
+      active: [{
+        id: 'm_sealed', type: 'cargo_delivery', status: 'active',
+        preloadedCargo: true, params: { cmdtyId: 'cmdty_ore_iron', qty: 3 },
+      }],
+    },
+  };
+  // held 6, sealed 3 → free 3 ≥ need 3: the rung is buildable and spends only the free units.
+  assert.equal(industryReadiness(blueprint, state, 'refinery').state, 'ready');
+  state.missions.active[0].params.qty = 6;
+  // held 6, sealed 6 → free 0: the manifest is custody, not stock.
+  assert.equal(industryReadiness(blueprint, state, 'refinery').state, 'materials');
+});
+
+// P10 — a blocker names its own remedy: only a facility mismatch sends the player to the
+// chart; missing research opens the tech tree and a missing source module goes to this
+// station's Shipworks — never "another station" for a recipe this fabricator could run.
+test('Industry blockers route each readiness reason to its own remedy', () => {
+  const shieldBp = BLUEPRINTS.find((item) => item.id === 'bp_aug_shield_s_to_m');
+  const refineBp = BLUEPRINTS.find((item) => item.id === 'bp_refine_metals');
+  const base = {
+    player: {
+      researchedNodes: [],
+      cargo: { items: {} },
+      moduleInventory: [],
+      ownedShips: [],
+    },
+  };
+  // Missing tech at a valid fabricator → the tech tree, not the sector chart.
+  const techR = industryReadiness(shieldBp, base, 'fab');
+  const techBlock = industryBlocker(shieldBp, techR);
+  assert.equal(techR.state, 'tech');
+  assert.equal(techBlock.verb, 'tech');
+  assert.match(techBlock.note, /Deflector Theory/i, 'the blocker names the missing research');
+  // Missing source module at a valid fabricator → Shipworks, not another station.
+  const sourceR = { ...techR, state: 'source', label: 'Needs Shield Booster S' };
+  const sourceBlock = industryBlocker(shieldBp, sourceR);
+  assert.equal(sourceBlock.verb, 'shipworks');
+  assert.match(sourceBlock.verbLabel, /Shipworks/i);
+  // A real facility mismatch keeps the chart way out.
+  const stationR = industryReadiness(refineBp, base, 'fab');
+  const stationBlock = industryBlocker(refineBp, stationR);
+  assert.equal(stationR.state, 'station');
+  assert.equal(stationBlock.verb, 'chart');
+  assert.match(stationBlock.verbLabel, /refinery/i);
+  // Ready and materials rows carry no blocked plate at all.
+  assert.equal(industryBlocker(refineBp, { state: 'materials', label: 'Missing materials' }), null);
+  assert.equal(industryBlocker(refineBp, { state: 'ready', label: 'Ready to build' }), null);
 });
 
 test('Market cards omit station-wide and neutral driver repetition', () => {

@@ -17,7 +17,7 @@
 // no deploy; it is always on while fitted.
 //
 // Deploy trigger: the player presses the countermeasure keybind (default X, remappable); AI ships
-// auto-deploy when a missile is locked onto them or within a close threshold. Effects are timed
+// auto-deploy when a live inbound missile targets them. Effects are timed
 // (durationS) and cooldown-gated (cooldownS) — NOT consumable ammo, keeping the equipment loop simple.
 //
 // A refused press is never a silent drop: _tryDeploy emits countermeasure:denied {kind, reason,
@@ -279,24 +279,25 @@ export const countermeasures = {
     // 1. Tick cooldowns + active-effect timers on every ship, and expire finished effects. When an
     //    ECM effect expires, restore the turnRate on missiles it jammed (stored in _jammedTurnRate).
     for (const e of countermeasureShipCandidates(state)) {
-      if (e.type !== 'ship' || !e.alive) continue;
+      if (e.type !== 'ship') continue;
       const cm = e.data && e.data.cm;
       if (!cm) continue;
+      // A ship destroyed mid-effect never reaches its expiry tick — release its ECM victims now.
+      if (!e.alive) {
+        if (cm.effect) {
+          releaseEcmJams(state, e);
+          cm.effect = null;
+          cm.effectT = 0;
+        }
+        continue;
+      }
       if (cm.cooldownT > 0) cm.cooldownT = Math.max(0, cm.cooldownT - dt);
       if (cm.effectT > 0) {
         cm.effectT = Math.max(0, cm.effectT - dt);
         if (cm.effectT <= 0) {
           // ECM effect ending: un-jam any missile this ship jammed (restore its real turnRate).
           if (cm.effect && cm.effect.cfg && cm.effect.cfg.kind === 'ecm') {
-            const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
-            for (const p of projectiles) {
-              if (p.type !== 'projectile' || !p.alive) continue;
-              const d = p.data;
-              if (d && d._jammedTurnRate != null && d._jammedBy === e.id) {
-                d.turnRate = d._jammedTurnRate;
-                delete d._jammedTurnRate; delete d._jammedBy;
-              }
-            }
+            releaseEcmJams(state, e);
           }
           cm.effect = null;
         }
@@ -312,8 +313,8 @@ export const countermeasures = {
       if (player) this._tryDeploy(player);
     }
 
-    // 3. AI auto-deploy: ships with a countermeasure deploy when a missile is locked onto them or
-    //    closing fast. Cheap check — only ships that HAVE a countermeasure run the threat scan.
+    // 3. AI auto-deploy: ships with a countermeasure deploy when a live inbound missile is on
+    //    them. Cheap check — only ships that HAVE a countermeasure run the threat scan.
     for (const e of countermeasureShipCandidates(state)) {
       if (e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
       const eq = equippedCountermeasure(e.data && e.data.fittings);
@@ -477,8 +478,9 @@ export const countermeasures = {
       this._denyDeploy(e, cfg.kind, 'cooldown', cm.cooldownT);
       return false; // not ready
     }
-    // Chaff and ECM answer an incoming lock or missile. A decoy buoy is bait you place
-    // before anyone has a lock, so that case is not this refusal.
+    // Chaff and ECM answer a live seeker in the air — the thing the lineage anchors on.
+    // A building lock with nothing flying is refused as no_lock (a deploy there answered
+    // nothing); a decoy buoy is bait you place before anyone fires, so it is not this refusal.
     if (cfg.kind !== 'decoy') {
       ensureCountermeasureRuntime(this);
       if (!this._missileThreat(e, this.state)) {
@@ -489,11 +491,13 @@ export const countermeasures = {
 
     if (stock != null) cm.stock = stock - 1;
 
-    // One deploy breaks one eligible lineage. A building lock with nothing in the air,
-    // and every other shooter who already has a missile, keep their solutions.
+    // One deploy answers one eligible lineage. A building lock with nothing in the air,
+    // and every other shooter who already has a missile, keep their solutions. The answer may
+    // be a round whose lock the launch already spent — the deploy still diverts that missile;
+    // `brokenLockShipId` only ever names a lock that was actually there and got broken.
     const breakPct = cfg.lockBreakPct != null ? cfg.lockBreakPct : 1.0;
-    const brokenLineage = breakOneLockLineage(this.state, e, breakPct);
-    const brokenLockShipId = brokenLineage ? brokenLineage.shooterId : null;
+    const answered = breakOneLockLineage(this.state, e, breakPct);
+    const brokenLockShipId = answered && answered.brokeLock ? answered.lineage.shooterId : null;
 
     // Spawn the timed effect. Chaff and the decoy buoy create a point seekers divert to (not a
     // live entity — weapons._steerHoming homes on divertPos); the decoy's point is the buoy and
@@ -507,7 +511,7 @@ export const countermeasures = {
       decoyId,
       originX: decoy ? decoy.x : e.pos.x,
       originZ: decoy ? decoy.z : e.pos.z,
-      lineage: brokenLineage,
+      lineage: answered ? answered.lineage : null,
     };
     cm.effectT = cfg.durationS;
     cm.cooldownT = cfg.cooldownS;
@@ -558,8 +562,11 @@ export const countermeasures = {
     this.bus.emit('audio:cue', { id: 'ui_deny' });
   },
 
-  // Cheap threat check for AI auto-deploy: is any live missile targeting this ship, or is any ship
-  // building a lock on it? Returns true if a countermeasure is warranted.
+  // Cheap live-seeker check for BOTH deploy gates (player accept + AI auto-deploy pre-gate):
+  // is any live missile targeting this ship inside the threat radius? A bare building lock is
+  // not a threat — a deploy's lineage anchors on the round in the air (selectLockLineage), so
+  // accepting on lock progress alone spent stock + cooldown on a puff that answered nothing.
+  // The honest refusal for that case is the 'no_lock' deny.
   _missileThreat(e, state) {
     const projectiles = projectilesNear(state, e.pos, 900, this._projectileScratch);
     if (projectiles === this._projectileScratch) this._diag.threatSpatialQueries++;
@@ -573,18 +580,13 @@ export const countermeasures = {
         if (dx * dx + dz * dz < 900 * 900) return true;
       }
     }
-    // Someone locking onto this ship?
-    for (const other of countermeasureShipCandidates(state)) {
-      if (other.type !== 'ship' || !other.alive || other.id === e.id) continue;
-      const oc = other.data && other.data.combat;
-      if (oc && oc.lockTarget === e.id && (oc.lockProgress || 0) > 0.5) return true;
-    }
     return false;
   },
 };
 
 function inboundMissiles(state, targetId) {
   const owned = new Set();
+  const ownedList = [];
   const loose = [];
   const list = (state.entityIndex && state.entityIndex.projectiles) || state.entityList || [];
   for (const p of list) {
@@ -592,10 +594,10 @@ function inboundMissiles(state, targetId) {
     const d = p.data;
     if (!d || d.kind !== 'missile' || d.targetId !== targetId) continue;
     const owner = d.ownerId != null ? d.ownerId : p.ownerId;
-    if (owner != null) owned.add(owner);
+    if (owner != null) { owned.add(owner); ownedList.push(p); }
     else loose.push(p);
   }
-  return { owned, loose };
+  return { owned, ownedList, loose };
 }
 
 function lockObservationCurrent(shooter, target) {
@@ -642,16 +644,31 @@ export function selectLockLineage(state, deployer) {
     }
   }
   if (best) return best;
-  const loose = inbound.loose.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)))[0];
-  if (!loose) return null;
-  const data = loose.data || {};
+  // THE ROUND IS THE LINEAGE. weapons.js consumes the shooter's lock the moment a missile
+  // leaves the tube ("each missile needs a fresh lock"), and a dead shooter holds nothing at
+  // all — yet the live round still names its owner, its lock generation and the target
+  // generation it was fired at. With no live-lock shooter selectable, a deploy used to spend
+  // itself as pure theater: the puff fired, the cooldown ran, and the answering state matched
+  // nothing, so the missile that triggered it flew straight through the countermeasure.
+  // Anchor the lineage on the live round itself — the same construction the loose-round branch
+  // always used, extended to owned rounds.
+  // Code-unit ordering, not localeCompare: the anchor pick is a determinism-sensitive sim
+  // choice and must not drift with the host's ICU locale (the held-lock tiebreak above is
+  // already a plain string <).
+  const anchor = inbound.loose.concat(inbound.ownedList)
+    .sort((a, b) => {
+      const x = String(a.id), y = String(b.id);
+      return x < y ? -1 : x > y ? 1 : 0;
+    })[0];
+  if (!anchor) return null;
+  const data = anchor.data || {};
   return {
-    shooterId: data.ownerId != null ? data.ownerId : loose.id,
+    shooterId: data.ownerId != null ? data.ownerId : anchor.id,
     targetId: deployer.id,
     generation: data.lockGeneration | 0,
     targetGeneration: data.targetGeneration != null ? data.targetGeneration : targetIdentityGeneration(deployer),
     progress: 1,
-    missileId: loose.id,
+    missileId: anchor.id,
   };
 }
 
@@ -667,19 +684,22 @@ export function missileMatchesLineage(data, lineage, projectile) {
   return true;
 }
 
+/**
+ * Answers ONE lineage: breaks the shooter's lock when one is there to break, and always
+ * returns the selected lineage so the deploy's timed effect can answer the round in the air.
+ * `brokeLock` is false when the lineage was anchored on the round itself (the launch already
+ * consumed the shooter's lock, or the shooter is dead) — the deploy still diverts the missile;
+ * it just does not claim a broken lock it did not break.
+ */
 function breakOneLockLineage(state, deployer, breakPct) {
   const lineage = selectLockLineage(state, deployer);
   if (!lineage) return null;
   for (const other of countermeasureShipCandidates(state)) {
     if (!other || other.id !== lineage.shooterId) continue;
     const oc = other.data && other.data.combat;
-    if (!oc || oc.lockTarget !== deployer.id) return null;
-    oc.lockBroken = {
-      shooterId: other.id,
-      targetId: deployer.id,
-      generation: lineage.generation,
-      targetGeneration: lineage.targetGeneration,
-    };
+    if (!other.alive || !oc || oc.lockTarget !== deployer.id) return { lineage, brokeLock: false };
+    // (The old `oc.lockBroken` receipt write lived here — repo-wide grep found no reader, so
+    // the break is carried entirely by the progress/suppression/perception mutations below.)
     oc.lockTargetGeneration = lineage.targetGeneration;
     const nextProgress = Math.max(0, (oc.lockProgress || 0) * (1 - breakPct));
     if (nextProgress <= 0) {
@@ -691,9 +711,9 @@ function breakOneLockLineage(state, deployer, breakPct) {
     if (Array.isArray(other.data.perceptionContacts)) {
       other.data.perceptionContacts = suppressDefeatedLock(other.data.perceptionContacts, lineage);
     }
-    return lineage;
+    return { lineage, brokeLock: true };
   }
-  return lineage;
+  return { lineage, brokeLock: false };
 }
 
 function projectilesNear(state, pos, radius, out) {
@@ -735,6 +755,19 @@ function countermeasureShipCandidates(state) {
   const index = state && state.entityIndex;
   if (index && index.__spacefaceEntityIndexV1 && index.ships) return index.ships;
   return (state && state.entityList) || [];
+}
+
+// Restore the real turnRate on every live missile this ship's ECM is or was jamming.
+function releaseEcmJams(state, ship) {
+  const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
+  for (const p of projectiles) {
+    if (p.type !== 'projectile' || !p.alive) continue;
+    const d = p.data;
+    if (d && d._jammedTurnRate != null && d._jammedBy === ship.id) {
+      d.turnRate = d._jammedTurnRate;
+      delete d._jammedTurnRate; delete d._jammedBy;
+    }
+  }
 }
 
 function resetCountermeasureDiagnostics(diag) {

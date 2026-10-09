@@ -209,6 +209,24 @@ test('reveal for compile opens a zero drawRange so residency can upload the buff
   assert.equal(geometry.drawRange.count, 0);
 });
 
+test('reveal for compile hides a null-geometry sprite instead of revealing it into the draw', () => {
+  // D102: isSprite joined requiresGeometry — a torn-down sprite whose shared
+  // quad reference was nulled reaches the same WebGLGeometries.get geometry.id
+  // read as a null-geometry mesh, so the reveal must not force it visible.
+  const sprite = {
+    isSprite: true,
+    visible: true,
+    frustumCulled: true,
+    geometry: null,
+  };
+  const restore = revealSubjectForCompile(sprite);
+  assert.equal(sprite.visible, false,
+    'a visible geometryless sprite is hidden for the compile draw, not revealed into it');
+  assert.equal(sprite.frustumCulled, true, 'frustum culling untouched for the hidden node');
+  restore();
+  assert.equal(sprite.visible, true, 'visibility restored after the reveal');
+});
+
 test('reveal with ancestors unhides the holder chain so a parked subject actually draws', () => {
   // render() skips a hidden object's whole subtree: a pool mesh held under a visible:false
   // holder was "touched" without ever drawing, so its program still linked inside the first

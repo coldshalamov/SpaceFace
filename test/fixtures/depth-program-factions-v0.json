@@ -108,7 +108,7 @@
     "startingRep": -120,
     "homeSectors": ["sector_veil_nebula", "sector_ashfall_reach"],
     "controls": ["far-rim sectors", "exotic tech", "unique commodities"],
-    "fleetClass": "alien",
+    "fleetClass": "contractual",
     "relations": {
       "faction_scn": -0.5,
       "faction_mts": 0,
@@ -166,7 +166,7 @@
     "color": "#8B9CB8",
     "personality": "paper",
     "startingRep": 0,
-    "homeSectors": [],
+    "homeSectors": ["sector_sedna_dark"],
     "controls": ["contract allocation", "variance audits", "dock-deny paperwork"],
     "fleetClass": "none",
     "relations": {

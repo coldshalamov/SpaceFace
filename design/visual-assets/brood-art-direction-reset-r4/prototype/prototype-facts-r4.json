@@ -1,0 +1,25 @@
+{
+  "status": "design prototype, not runtime accepted",
+  "axes": "Blender +X forward +Y port +Z up; glTF standard Y-up conversion",
+  "materialSlots": 4,
+  "meshCount": 40,
+  "triangles": 20236,
+  "boundsBlender": {
+    "min": [
+      -5.28000020980835,
+      -4.327169895172119,
+      -0.5663298964500427
+    ],
+    "max": [
+      6.000341892242432,
+      4.327098846435547,
+      1.5344938039779663
+    ]
+  },
+  "runtimeEdits": false,
+  "rigged": false,
+  "uvBaked": false,
+  "lodsBuilt": false,
+  "trueGameLookVerified": false,
+  "sourceGlbSha256": "db47472d89da31f3126445add35bc023b510b0fbaf74f2cd4495d8817166232a"
+}

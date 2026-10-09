@@ -352,7 +352,7 @@ async function launchBrowser(root) {
       activateWindow: () => windowActivator.activate(),
     }).initialize();
     canonicalUrlTracker = createCanonicalUrlTracker(page, server.baseUrl);
-    const issueTracker = collectPageIssues(page, { includeWarnings: false, ignoreProbeWarnings: true });
+    const issueTracker = collectPageIssues(page, { playerStoreMounted: false, includeWarnings: false, ignoreProbeWarnings: true });
     await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
     const browserWindowDriver = await createBrowserWindowLifecycleDriver(null, page);
     return {

@@ -300,10 +300,23 @@ export function openImpoundBill(state, payload) {
 export function applyImpoundWork(state, payload) {
   const bill = impoundBillFor(state);
   if (!bill || bill.status !== 'open') return null;
+  // PB-CONS-D / SF-164 — yard labor settles only the bill it was worked against. A
+  // shift event naming a different bill credits nothing; an unlabeled one still
+  // lands on the single open bill (there is never more than one).
+  const forBill = payload && typeof payload.billId === 'string' && payload.billId ? payload.billId : null;
+  if (forBill && bill.billId && forBill !== bill.billId) return bill;
   const dt = Number(payload && payload.dt);
   if (!(dt > 0)) return bill;
   bill.workS = Math.min(bill.workNeedS, (Number(bill.workS) || 0) + dt);
-  if (bill.workS >= bill.workNeedS) bill.remainingCr = 0;
+  // PB-CONS-D / SF-153 / SF-164 — confirmed work credits the bill as it accrues, not
+  // only at shift end. Half the shift owes half the bill, so paying the remainder in
+  // credits stays a real door and a partial shift leaves an exact partial debt.
+  // Credit is capped at the obligation itself: labor shrinks a debt, never mints
+  // money, and never raises what is still owed.
+  const earnedCr = bill.workNeedS > 0
+    ? Math.min(bill.owedCr, Math.round(bill.owedCr * (bill.workS / bill.workNeedS)))
+    : bill.owedCr;
+  bill.remainingCr = Math.max(0, Math.min(bill.remainingCr, bill.owedCr - earnedCr));
   return bill;
 }
 

@@ -340,6 +340,15 @@ export const SUBSYSTEM_DEFS = Object.freeze([
     // Field-unrepairable by design: a clamp bolt is either whole or gone.
     repair: { fieldRatePerTick: 0, dockRatePerTick: 2 }, cueId: 'combat.subsystem.clamp.disabled',
   },
+  {
+    // SF20-09: the visible front clamp. Its loss releases the existing constraint only.
+    id: 'subsystem_pallet_jack_clamp', version: 1, tags: ['transport_clamp'],
+    volume: { shape: 'box', space: 'normalized', center: [.35, 0], halfExtents: [.24, .43] },
+    health: 26, armor: { flat: 0, multipliers: { kinetic: 1, thermal: 1, ion: 1.15, plasma: 1, phase: 1 } },
+    dependencies: ['subsystem_power'],
+    disabledBehavior: { capabilities: { transport_clamp: false }, breakOwnedAttachments: true },
+    repair: { fieldRatePerTick: 0, dockRatePerTick: 2 }, cueId: 'combat.subsystem.clamp.disabled',
+  },
 ]);
 
 export const ATTACHMENT_DEFS = Object.freeze([
@@ -433,9 +442,53 @@ export const ATTACHMENT_DEFS = Object.freeze([
     limits: { maxPerOwner: 1 },
     cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
   },
+  {
+    // SF-029 (PB-MASS-B): the salvage-sort clamp — a wreck's held core bolt, not a rope. The
+    // opposite contract from the transport clamp above: a DELIBERATE massline tow must tear the
+    // core free, so this clamp is the breakable end of the sort job. The envelope sits far below
+    // the player line's own budget, gives a 0.2 s sustained-load grace (a graze never shears it),
+    // and a near-rigid short spring keeps the core seated at its wreck until the pilot actually
+    // pulls. No massline block: like the snarl, this def keeps the kernel's automatic break
+    // enforcement — the tension telemetry, not a phase flag, is the physical truth of separation.
+    id: 'attachment_salvage_clamp', version: 1,
+    sourceSocketTags: ['tether'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: false },
+    maxLength: 40,
+    break: { maxTension: 3600, maxImpulse: 900, maxYank: 2600, graceTicks: 12 },
+    spring: { K: 220, zeta: 0.9, captureS: 0.2, maxStretchRatio: 0.6 },
+    limits: { maxPerOwner: 4 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
 ]);
 
 export const COMBAT_PROFILES = Object.freeze([
+  {
+    id:'combat_profile_ceres_breaker',version:1,entityTypes:['ship'],
+    heat:{max:100,dissipationPerTick:.5},immunityTags:[],
+    subsystemIds:['subsystem_drive','subsystem_tether_spool','subsystem_power'],
+    sockets:[
+      {id:'SOCKET_Tether_Massline',tags:['tether_spool'],localPos:[-46/110,0],maxAttachments:1},
+      {id:'SOCKET_Cutter_Dock',tags:['tether'],localPos:[-46/110,30/110],maxAttachments:1},
+      {id:'socket_hull',tags:['tether'],localPos:[0,0],maxAttachments:2},
+    ],capabilities:{drive:true,weapon:false,sensor:true,tether:true,power:true},
+  },
+  {
+    id:'combat_profile_ceres_cutter_head',version:1,entityTypes:['wreck'],
+    heat:{max:0,dissipationPerTick:0},immunityTags:[],subsystemIds:[],
+    sockets:[
+      {id:'SOCKET_Mount',tags:['transport_clamp'],localPos:[-.8,0],maxAttachments:1},
+      {id:'socket_hull',tags:['tether'],localPos:[0,0],maxAttachments:1},
+    ],capabilities:{drive:true,weapon:false,sensor:false,tether:false,power:true,transport_clamp:true},
+  },
+  {
+    id:'combat_profile_ceres_cradle',version:1,entityTypes:['wreck'],
+    heat:{max:0,dissipationPerTick:0},immunityTags:[],subsystemIds:[],
+    sockets:[
+      {id:'SOCKET_Service_Head',tags:['transport_clamp'],localPos:[0,63/114],maxAttachments:1},
+      {id:'socket_hull',tags:['tether'],localPos:[0,0],maxAttachments:1},
+    ],capabilities:{drive:false,weapon:false,sensor:false,tether:false,power:true,transport_clamp:true},
+  },
+
   {
     id: 'combat_profile_standard_ship', version: 1, entityTypes: ['ship', 'drone'],
     heat: { max: 100, dissipationPerTick: 0.50 },
@@ -493,6 +546,16 @@ export const COMBAT_PROFILES = Object.freeze([
       { id: 'socket_transport_clamp', tags: ['transport_clamp'], localPos: [-0.62, 0], maxAttachments: 1 },
     ],
     capabilities: { drive: true, weapon: true, sensor: true, tether: true, power: true, transport_clamp: true },
+  },
+  {
+    id: 'combat_profile_pallet_jack', version: 1, entityTypes: ['ship'],
+    heat: { max: 100, dissipationPerTick: .5 }, immunityTags: [],
+    subsystemIds: ['subsystem_drive', 'subsystem_sensor', 'subsystem_tether_spool', 'subsystem_power', 'subsystem_pallet_jack_clamp'],
+    sockets: [
+      { id: 'socket_hull', tags: ['tether'], localPos: [0, 0], maxAttachments: 4 },
+      { id: 'socket_tether_spool', tags: ['tether_spool'], localPos: [-.5, 0], maxAttachments: 1 },
+      { id: 'socket_pallet_clamp', tags: ['transport_clamp'], localPos: [.35, 0], maxAttachments: 1 },
+    ], capabilities: { drive: true, weapon: false, sensor: true, tether: true, power: true, transport_clamp: true },
   },
 ]);
 

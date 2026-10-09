@@ -63,11 +63,17 @@ function boot({ withIndex }) {
   add({ type: 'mine', team: 1, mass: 5, radius: 3, collides: true, physicsBody: true, pos: { x: 29, z: -2 }, vel: { x: 0, z: 0 } });
   const corpse = add({ type: 'ship', team: 1, mass: 32, radius: 6, pos: { x: 30, z: 2 }, vel: { x: 0, z: 0 }, rot: 0 });
   corpse.alive = false;
+  // SFQ-B035: fauna joined the blast scan — a kinematic grazer in the fireball takes the blast
+  // (damage yes, statuses/shove no) through both the index path and the fallback scan.
+  const grazer = add({
+    type: 'fauna', mass: 20, radius: 5, collides: false, physicsBody: false,
+    pos: { x: 28, z: 3 }, vel: { x: 0, z: 0 }, rot: 0, hull: 60, hullMax: 60,
+  });
 
   if (withIndex) {
     // A ready canonical index partitioned by type. The corpse stays bucketed on purpose: the
     // live alive re-check must filter it exactly as the full scan does.
-    const buckets = { ships: [], drones: [], stations: [], asteroids: [], wrecks: [], pickups: [], payloads: [], bombs: [] };
+    const buckets = { ships: [], drones: [], stations: [], asteroids: [], wrecks: [], pickups: [], payloads: [], bombs: [], fauna: [] };
     for (const e of state.entityList) {
       if (e.type === 'ship') buckets.ships.push(e);
       else if (e.type === 'drone') buckets.drones.push(e);
@@ -77,6 +83,7 @@ function boot({ withIndex }) {
       else if (e.type === 'pickup') buckets.pickups.push(e);
       else if (e.type === 'payload') buckets.payloads.push(e);
       else if (e.type === 'bomb') buckets.bombs.push(e);
+      else if (e.type === 'fauna') buckets.fauna.push(e);
     }
     state.entityIndex = { __spacefaceEntityIndexV1: true, ready: true, ...buckets };
     // The dropped bomb spawns through the harness (no index append): admit it like spawnEntity does.

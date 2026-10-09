@@ -20,6 +20,13 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   'npcJobsRuntime',
   // Clear durable extraction records before world entry replans authored salvage sources.
   'salvage',
+  // Encounter-cover placement and spin use a private per-run stream. Reset it before
+  // world/encounter owners can rematerialize content on a retained New Game instance.
+  'terrainAnchors',
+  // Lane carriers are ephemeral exact-life bindings, not durable numeric entity IDs.
+  'travelLanes',
+  // Ambient contract scheduling is run-local even when no hunter currently exists.
+  'bountyHunt',
   'world',
   'regionalEcology',
   'factions',
@@ -48,6 +55,16 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   // Scanner pulse cooldown keys on absolute simTime and signal investigation state persists
   // on state.signalInvestigation — both must clear before the fresh run's clock restarts.
   'scanner',
+  'latchNine', 'scissorwake',
+  'tallyThree', 'lastShift', 'lastShiftPrompt',
+  'redKite', 'redKitePrompt', 'sableVenn',
+  'ilexArk', 'ilexArkPrompt',
+  'kilnback',
+  'mothlight', 'mothlightPrompt',
+  'palletJack', 'palletJackPrompt',
+  'secondRinse',
+  'towlineTable', 'towlineTablePrompt',
+  'borrowedVoice', 'borrowedVoicePrompt',
   // Bark receipts/suppression are keyed per entity id and per run; a fresh run must not
   // inherit the previous run's said-latches on recycled ids.
   'barkDirector',

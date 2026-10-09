@@ -18,6 +18,7 @@ import {
   thermalShockEligible,
 } from '../combat/thermalShock.js';
 import { createLineage, DEFAULT_CONSTRAINTS } from '../combat/attackLineage.js';
+import { cryoThermalSentence } from '../core/playerCompass.js';
 
 export const CRYO_ARENA_ID = 'cryo_drift';
 
@@ -318,7 +319,7 @@ export function planCryoInstall({
   switch (phase) {
     case 'idle':
     case 'shutter_slow':
-      out.note = 'west is cold, east is hot; momentum keeps, the helm does not';
+      out.note = `${cryoThermalSentence(thermal) || 'west is cold, east is hot'}; momentum keeps, the helm does not`;
       break;
     case 'furnace_active':
       out.note = 'three quadrants vent heat; one cold pocket remains';
@@ -327,9 +328,12 @@ export function planCryoInstall({
       out.note = 'coolant tanks adrift; a tank is a portable cold pocket';
       out.cover = true;
       break;
-    case 'shutter_alternating':
-      out.note = 'the halves have rotated; north is cold, south is hot';
+    case 'shutter_alternating': {
+      // nw/ne (the cold pair) sit on +z, which is player north — the top of the flight view.
+      const halves = cryoThermalSentence(thermal);
+      out.note = halves ? `the halves have rotated; ${halves}` : 'the halves have rotated';
       break;
+    }
     case 'shutter_lane_close': {
       out.note = 'the transition lanes are mined; crossing still costs';
       const mouth = along(at, lane, 260);

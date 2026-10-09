@@ -363,7 +363,7 @@ if (!helpSrc.includes("['Touch (phone / tablet)'")
   || !helpSrc.includes("['Open local map', null, 'Map button'")
   || !helpSrc.includes("['Open mission log', null, 'Log button'")
   || !helpSrc.includes("['Open star-map', null, 'Star button'")
-  || !helpSrc.includes("['Pause / Help route', null, 'Pause button -> Help / Controls'")) {
+  || !helpSrc.includes("['Pause / Help route', null, 'Pause button → Help / Controls'")) {
   console.log('FAIL helpScreen - touch controls must document Dock/Map/Log/Star/Pause on-screen buttons');
   fail++;
 } else {
@@ -452,7 +452,7 @@ if (!onboardingHudAttentionImport
   }
 }
 if (!helpSrc.includes("['Recover from losses'")
-  || !helpSrc.includes('Services -> Hull Insurance -> launch')
+  || !helpSrc.includes('Services → Hull Insurance → launch')
   || !helpSrc.includes('normal death returns to a station with cargo loss and 3s shields')
   || !helpSrc.includes('Ironman is final: Run Over shows loss cause and sortie stats')
   || !helpSrc.includes('Saves avoid death/respawn limbo')
@@ -568,7 +568,7 @@ if (!gameOverSrc.includes("if (ctx.state) ctx.state.mode = 'menu';") || gameOver
     || !gameOverSrc.includes('ctx.telemetry')
     || !mainSrc.includes('ctx.telemetry = telemetry')
     || deathCauseLabel({ cause: 'environmental' }) !== 'Environmental hazard'
-    || deathSummary.cause !== 'Destroyed by Capital (Vael)'
+    || deathSummary.cause !== 'Destroyed by Capital (The Vael)'
     || deathSummary.lifespan !== '2m 5s') {
     console.log('FAIL gameOverScreen - run summary must show latest death cause and final sortie duration from telemetry');
     fail++;

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c93d1c1264335997aec6b5893873851bf6a0bbc284b1fc12a2366f484df50fc9",
+  "contentHash": "8b54dffd75e0e6abb3ef3d9cecae7b7bfa4042dcf8d2efd8bd00abdaadf73055",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1132,8 +1132,8 @@
       "uri": "place_container_rack_abandoned.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -1169,8 +1169,9 @@
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 2,
-      "mechanical": 12
+      "hull": 1,
+      "mechanical": 12,
+      "rubber": 1
     },
     "materialProfiles": [
       {
@@ -1241,7 +1242,7 @@
       {
         "allowTextures": false,
         "planIndex": 16,
-        "role": "hull"
+        "role": "rubber"
       }
     ],
     "nodeCount": 17,
@@ -1629,7 +1630,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_container_rack_abandoned.glb"
   },
-  "runtimeHash": "6529d062d2594bffcdad969df08f257866e8d43b78f1b5a46ba7870658547cc8",
+  "runtimeHash": "b33b2c1f7002bced571b9a77fac7a47402f5c4229eea8e56231de7b95291707d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

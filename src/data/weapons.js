@@ -162,7 +162,7 @@ const SHIPPED_WEAPONS = [
     sentence: 'Fire-and-forget hunters: each hit carries a real shoulder, and they keep coming.',
     mount: 'launcher',
     dmg: 70, splashDmg: 35, splashRadius: 40, rof: 0.8, dps: 56, damageType: 'explosive', energyCost: 4,
-    projSpeed: 320, projSpeedMin: 180, range: 280, tracking: 'homing', turnRate: 3.5, lockTimeS: 1.2,
+    projSpeed: 320, projSpeedMin: 180, range: 280, tracking: 'homing', turnRate: 1.5, lockTimeS: 1.2,
     impulsePerHit: 150, tumbleTorque: 22, impulseProvenance: 'missile_detonation',
   },
   {
@@ -170,7 +170,7 @@ const SHIPPED_WEAPONS = [
     sentence: 'The missile rack tuned for volume: more hunters in the air and more shoulder per second, each hit a little lighter.',
     mount: 'launcher',
     dmg: 49, splashDmg: 24.5, splashRadius: 40, rof: 0.8, dps: 78.4, damageType: 'explosive', energyCost: 4,
-    projSpeed: 320, projSpeedMin: 180, range: 280, tracking: 'homing', turnRate: 3.5, lockTimeS: 1.2,
+    projSpeed: 320, projSpeedMin: 180, range: 280, tracking: 'homing', turnRate: 1.5, lockTimeS: 1.2,
     splitCount: 2, submunitions: { count: 2, damageMult: 0.70 },
     purchasable: false, unique: true, salvageOnly: true,
     variantBonuses: { submunitionCount: 2, perMissileDamagePct: -0.30 },

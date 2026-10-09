@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import { hasUnclassifiedTextures } from './lib/modelTextureRoles.mjs';
+import { authoredCompoundMeasurement, authoredCompoundCoverage, isAuthoredNonRenderHelper } from './lib/modelTruthAuthoredCompound.mjs';
+import { authoredWorldSiteMeasurement, measureWorldSiteAssetChain } from './lib/modelTruthWorldSite.mjs';
 // Measure every live solid the loader resolves and write src/data/modelTruthCensus.json.
 // The game does not read this file until a later pass. Re-running with --check fails
 // when the committed census disagrees with a fresh measurement.
@@ -50,6 +53,10 @@ const OUT = resolve(ROOT, 'src/data/modelTruthCensus.json');
 const RELEASE_ROOT = resolve(ROOT, PART_LIBRARY_CONTRACT.releaseRoot);
 const CHECK = process.argv.includes('--check');
 const ONLY = (process.argv.find((arg) => arg.startsWith('--only=')) || '').slice('--only='.length);
+
+const UPDATE_SELECTED = process.argv.includes('--update-selected');
+const ONLY_IDS = new Set(ONLY.split(',').filter(Boolean));
+if (UPDATE_SELECTED && !ONLY_IDS.size) throw new Error('--update-selected requires explicit --only IDs or family');
 
 const AST_DISPLACE = {
   ast_common_rock: { detail: 2, displace: 0.20 },
@@ -115,7 +122,7 @@ function quantKey(p) {
   return `${Math.round(p.x * 1000)},${Math.round(p.y * 1000)},${Math.round(p.z * 1000)}`;
 }
 
-async function measureGlb(absPath) {
+async function measureGlb(absPath, { excludeHelpers = false } = {}) {
   const bytes = statSync(absPath).size;
   const doc = await io.read(absPath);
   // KHR_mesh_quantization stores int16 positions. Reading them raw inflates a buoy to
@@ -143,6 +150,7 @@ async function measureGlb(absPath) {
   };
 
   for (const node of root.listNodes()) {
+    if (excludeHelpers && isAuthoredNonRenderHelper(node)) continue;
     const name = node.getName() || '';
     const mesh = node.getMesh();
     if (/^SOCKET_/i.test(name) && !mesh) {
@@ -186,7 +194,7 @@ async function measureGlb(absPath) {
         const i3 = index * 3;
         return transformPoint(matrix, array[i3], array[i3 + 1], array[i3 + 2]);
       };
-      const stride = Math.max(1, Math.floor((indices ? indices.length : array.length / 3) / 12000));
+      const stride = excludeHelpers ? 1 : Math.max(1, Math.floor((indices ? indices.length : array.length / 3) / 12000));
       for (let i = 0; i < (indices ? indices.length : array.length / 3); i += stride) {
         const point = at(indices ? indices[i] : i);
         // Every mesh in the file contributes to that file's outline. A LOD1 file whose
@@ -239,7 +247,8 @@ async function measureGlb(absPath) {
   materials.sort((a, b) => a.name.localeCompare(b.name) || a.role.localeCompare(b.role));
   const generator = String(root.getAsset?.()?.getGenerator?.() || '');
   const imageCount = typeof root.listTextures === 'function' ? root.listTextures().length : 0;
-  const legacyTextureRole = imageCount > 0 && !(root.listMaterials?.() || []).some((material) => {
+  const legacyTextureRole = excludeHelpers ? hasUnclassifiedTextures(root)
+    : imageCount > 0 && !(root.listMaterials?.() || []).some((material) => {
     const extras = material.getExtras?.() || {};
     return extras.textureRole || extras.spacefaceTextureRole || extras.textureRoleMode;
   });
@@ -259,6 +268,7 @@ async function measureGlb(absPath) {
     generator,
     imageCount,
     legacyTextureRole,
+    ...(excludeHelpers ? { authoredCompoundCertificate: root.getAsset().extras?.authoredCompound || root.getAsset().extras?.ceresWorkfleet } : {}),
   };
 }
 
@@ -289,14 +299,15 @@ function withTaste(row, measured, status) {
 }
 
 const glbCache = new Map();
-async function cachedGlb(file) {
+async function cachedGlb(file, options = {}) {
   const abs = releasePath(file);
   if (!abs || !existsSync(abs)) return { missing: true, abs };
-  if (glbCache.has(abs)) return glbCache.get(abs);
-  const measured = await measureGlb(abs);
+  const key = options.excludeHelpers ? `${abs}|visible` : abs;
+  if (glbCache.has(key)) return glbCache.get(key);
+  const measured = await measureGlb(abs, options);
   measured.abs = abs;
   measured.url = `assets/ships/release/parts/${String(file).replace(/\\/g, '/').replace(/^assets\/ships\/release\/parts\//, '')}`;
-  glbCache.set(abs, measured);
+  glbCache.set(key, measured);
   return measured;
 }
 
@@ -546,7 +557,11 @@ async function measureRow(row) {
     };
   }
 
-  const measured = await cachedGlb(row.file);
+  const authoredWorldSite = authoredWorldSiteMeasurement(row);
+  const worldSiteEvidence = authoredWorldSite ? await measureWorldSiteAssetChain(ROOT, row, authoredWorldSite) : null;
+  const authoredCompound = authoredCompoundMeasurement(row);
+  const authoredPlace = row.fit === 'authored-place-origin';
+  const measured = await cachedGlb(row.file, { excludeHelpers: !!authoredCompound || authoredPlace });
   if (measured.missing) {
     const status = rowStatus(row, { missing: true, overTolerance: false, throatSealed: false, lod: null });
     return {
@@ -575,10 +590,13 @@ async function measureRow(row) {
       dockRadius: size?.dockRadius || row.dockRadius,
       placeScale: row.placeScale,
     };
-    const fit = drawFit(row.fit === 'station' ? 'station' : row.fit, measured.bounds, fitSpec);
+    const fit = authoredCompound?.fit || (authoredPlace ? { scale: row.placeScale, offset: [0, 0, 0] }
+      : drawFit(row.fit === 'station' ? 'station' : row.fit, measured.bounds, fitSpec));
     const world = applyFit(measured.points, fit);
-    const collider = colliderFor(row, fitSpec, proportions);
+    const collider = authoredWorldSite?.collider || authoredCompound?.collider || colliderFor(row, fitSpec, proportions);
     const evaluated = evaluateOutline(world, collider.primitives, row.opening || null);
+    if (authoredCompound) Object.assign(evaluated, authoredCompoundCoverage(world, authoredCompound, measured.authoredCompoundCertificate));
+    if (worldSiteEvidence) Object.assign(evaluated, worldSiteEvidence);
     if (!worst || evaluated.gapWu > worst.gapWu || evaluated.throatSealed) {
       worst = {
         gapWu: evaluated.gapWu,
@@ -632,7 +650,7 @@ async function measureRow(row) {
     ? (worst.dockRadius || row.dockRadius || worst.entityRadius)
     : (worst.entityRadius || row.entityRadius || 1);
   let skin = null;
-  if (row.solid && worstEval.slice && worstEval.slice.length) {
+  if (row.solid && !authoredCompound && !authoredPlace && worstEval.slice && worstEval.slice.length) {
     skin = buildPlanarSkin(worstEval.slice, { referenceRadius: reference, opening: row.opening || null });
     const fitted = scaleProxyPrimitives(skin.primitives, reference);
     const opening = skin.mouthBearingDeg == null ? null : {
@@ -665,6 +683,10 @@ async function measureRow(row) {
     lod,
   });
 
+  if (worldSiteEvidence) {
+    if (!worldSiteEvidence.authoredClearVolumesPreserved) status.reasons.push('authored-clear-volume-intrusion');
+    status.note = 'Existing world-site body ownership and forward triangle coverage measured. Reverse projected samples are diagnostic; no filled-volume or bidirectional surface-equivalence claim.';
+  }
   const built = {
     id: row.id,
     family: row.family,
@@ -674,7 +696,7 @@ async function measureRow(row) {
     triangles: measured.triangles,
     meshes: measured.meshes,
     nodes: measured.nodes,
-    pivot: stable(measured.bounds.center),
+    pivot: authoredCompound || authoredPlace ? [0, 0, 0] : stable(measured.bounds.center),
     forwardAxis: '+X',
     bounds: stable(measured.bounds),
     drawScale: roundWu(row.anchorFitScale ?? worstFit.scale),
@@ -705,6 +727,14 @@ async function measureRow(row) {
     collider: {
       kind: worstCollider.kind,
       id: worstCollider.id,
+      ...(authoredCompound ? {
+        referenceState: authoredCompound.referenceState,
+        compoundBoxesWU: stable(authoredCompound.compoundBoxesWU),
+        coverageMetric: worstEval.coverageMetric,
+        sourceCompoundParity: worstEval.sourceCompoundParity,
+        authoredClearVolumesPreserved: worstEval.authoredClearVolumesPreserved,
+      } : {}),
+      ...(worldSiteEvidence ? { worldSiteEvidence } : {}),
       gapWu: worstEval.gapWu,
       toleranceWu: worstEval.toleranceWu,
       coverageWu: worstEval.coverageWu,
@@ -729,7 +759,9 @@ async function measureRow(row) {
 }
 
 async function buildCensus() {
-  const catalog = liveSolidGlbCatalog().filter((row) => !ONLY || row.family === ONLY || row.id === ONLY);
+  const fullCatalog = liveSolidGlbCatalog();
+  if ([...ONLY_IDS].some(id => !fullCatalog.some(row => row.id === id || row.family === id))) throw new Error('Unknown --only selection');
+  const catalog = fullCatalog.filter((row) => !ONLY || ONLY_IDS.has(row.family) || ONLY_IDS.has(row.id));
   const rows = [];
   let index = 0;
   for (const row of catalog) {
@@ -770,7 +802,18 @@ async function buildCensus() {
   };
 }
 
-const census = stable(await buildCensus());
+let census = stable(await buildCensus());
+if (UPDATE_SELECTED) {
+  const previous = JSON.parse(readFileSync(OUT, 'utf8'));
+  const selected = new Map(census.rows.map(row => [row.id, row]));
+  if (!selected.size || [...selected.keys()].some(id => !previous.rows.some(row => row.id === id))) {
+    throw new Error('Selected update refuses empty selection or rows absent from the existing census');
+  }
+  const rows = previous.rows.map(row => selected.get(row.id) || row);
+  const red = rows.filter(row => row.status === 'red').length;
+  census = { ...previous, counts: { ...previous.counts, rows: rows.length, red, green: rows.length - red }, rows };
+  console.log(`[model-truth] refreshed only ${selected.size} rows; preserved ${rows.length - selected.size} prior rows without remeasurement`);
+}
 const text = `${JSON.stringify(census, null, 2)}\n`;
 if (CHECK) {
   if (!existsSync(OUT)) {

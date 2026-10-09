@@ -1,0 +1,3401 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.anchor.socket-borrowed-receiver",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Borrowed_Receiver",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentNodeId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.7000000476837158,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentNodeId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.7000000476837158,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.borrowed-voice-ring-lod2",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "918697faec26daa821cf11b6d21d5aa0a6dc346f696c93aa5d4f6c32cd2ba309",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-1-stone.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-1-stone"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-2-stone.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-2-stone"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-3-stone.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-3-stone"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-4-stone.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-4-stone"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-5-stone.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-5-stone"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-6-stone.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-6-stone"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-1.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-1"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-2.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-2"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-3.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-3"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-4.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-4"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-5.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-5"
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-6.dynamic",
+      "kind": "moving-part",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-6"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          17.9963436126709,
+          1.699792504310608,
+          12.533221244812012
+        ],
+        "min": [
+          10.040508270263672,
+          -1.699792504310608,
+          0.19584164023399353
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8d161b048f5bad413df02a11c487f83b05a966489473268ab47a2586c74fa4bd",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-1.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_1",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-1",
+      "primitiveIndex": 0,
+      "vertexCount": 750
+    },
+    {
+      "bounds": {
+        "max": [
+          17.9963436126709,
+          1.699792504310608,
+          -0.19584164023399353
+        ],
+        "min": [
+          10.040508270263672,
+          -1.699792504310608,
+          -12.533221244812012
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bce4982950ece7bfb16c6bf5d7f6295b9ebad3ea4ca7a890dfe72dc2a891151b",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-2.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_2",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-2",
+      "primitiveIndex": 0,
+      "vertexCount": 752
+    },
+    {
+      "bounds": {
+        "max": [
+          12.533221244812012,
+          1.699792504310608,
+          -10.040508270263672
+        ],
+        "min": [
+          0.19584164023399353,
+          -1.699792504310608,
+          -17.9963436126709
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d42acaafe95ffb6c5a9e5098c83d60e481f2179cc3709520b144ff427cfedff5",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-3.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_3",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-3",
+      "primitiveIndex": 0,
+      "vertexCount": 754
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.19584164023399353,
+          1.699792504310608,
+          -10.040508270263672
+        ],
+        "min": [
+          -12.533221244812012,
+          -1.699792504310608,
+          -17.9963436126709
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0a57bc16966af5865fa853475747a2fcb45893531b694133a1ccaa0f0ba780ca",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-4.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_4",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-4",
+      "primitiveIndex": 0,
+      "vertexCount": 754
+    },
+    {
+      "bounds": {
+        "max": [
+          -10.040508270263672,
+          1.699792504310608,
+          -0.19584164023399353
+        ],
+        "min": [
+          -17.9963436126709,
+          -1.699792504310608,
+          -12.533221244812012
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ee9be98ca481e35c50c2edf5c5877b76a69c8b01e0c613575fbc1f3d46e0a6f8",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-5.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "opaque",
+      "meshName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_5",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-5",
+      "primitiveIndex": 0,
+      "vertexCount": 752
+    },
+    {
+      "bounds": {
+        "max": [
+          13.712533950805664,
+          1.851901650428772,
+          5.864742755889893
+        ],
+        "min": [
+          -13.712533950805664,
+          1.728029727935791,
+          -13.7120361328125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c6f1de7323c1d445e8ada1fd337fa6027e50ca6480582c0670e917b3f9fb8834",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-armor.primitive.0",
+      "indexCount": 594,
+      "indexed": true,
+      "materialHash": "a83c085336fbe0985abdcc6eda48bbc549d210cb6b9abcae5db017b3340be2aa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Armor",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 258
+    },
+    {
+      "bounds": {
+        "max": [
+          16.124114990234375,
+          1.8728283643722534,
+          11.238590240478516
+        ],
+        "min": [
+          -16.124114990234375,
+          1.727171540260315,
+          -16.124229431152344
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ade25aee682ef2e78f8c8fcd1b49516e10e038d9d18cd68d18c9a8344776822b",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-brushedmetal.primitive.0",
+      "indexCount": 1020,
+      "indexed": true,
+      "materialHash": "cebf1c2761571fb66d07b59444c4b81048fcdedac0adec97237bf6fbf43a3d1b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_BrushedMetal",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-brushedmetal",
+      "primitiveIndex": 0,
+      "vertexCount": 400
+    },
+    {
+      "bounds": {
+        "max": [
+          15.510103225708008,
+          1.7168231010437012,
+          8.70405101776123
+        ],
+        "min": [
+          13.166927337646484,
+          1.6831203699111938,
+          3.1823816299438477
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8b3bdfa5cfa3886223c8fa05a0b5f3ced9e1ac4a3f145b05fa9ccbad45641a40",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-1-lights-cyan.primitive.0",
+      "indexCount": 150,
+      "indexed": true,
+      "materialHash": "a646327bd55f7d89a3d0b743e9866d23712fd562a28962466fb3a299a27c3a13",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_BORROWED_SIGNAL_1_Lights_Cyan",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-1-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 62
+    },
+    {
+      "bounds": {
+        "max": [
+          15.509918212890625,
+          1.717113733291626,
+          -3.1820807456970215
+        ],
+        "min": [
+          13.167264938354492,
+          1.6827348470687866,
+          -8.704109191894531
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b89bcf0a5d961a938c9644c243b81120403ed3e9f569fc9c854ba3b3c648d393",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-2-lights-cyan.primitive.0",
+      "indexCount": 150,
+      "indexed": true,
+      "materialHash": "a646327bd55f7d89a3d0b743e9866d23712fd562a28962466fb3a299a27c3a13",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_BORROWED_SIGNAL_2_Lights_Cyan",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-2-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 64
+    },
+    {
+      "bounds": {
+        "max": [
+          8.70405101776123,
+          1.7168231010437012,
+          -13.166927337646484
+        ],
+        "min": [
+          3.1823816299438477,
+          1.6831203699111938,
+          -15.510103225708008
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "70fb549fe0b068ac00fc4d9cf1baf0a104807e174623958218518ec4694018e3",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-3-lights-cyan.primitive.0",
+      "indexCount": 150,
+      "indexed": true,
+      "materialHash": "a646327bd55f7d89a3d0b743e9866d23712fd562a28962466fb3a299a27c3a13",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_BORROWED_SIGNAL_3_Lights_Cyan",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-3-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 62
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.1820807456970215,
+          1.717113733291626,
+          -13.167264938354492
+        ],
+        "min": [
+          -8.704109191894531,
+          1.6827348470687866,
+          -15.509918212890625
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "06440608c1414e291ab4ab1c6fcaa3481e23cc403f6c02fa04eb475576d2856f",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-4-lights-cyan.primitive.0",
+      "indexCount": 150,
+      "indexed": true,
+      "materialHash": "a646327bd55f7d89a3d0b743e9866d23712fd562a28962466fb3a299a27c3a13",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_BORROWED_SIGNAL_4_Lights_Cyan",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-4-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 64
+    },
+    {
+      "bounds": {
+        "max": [
+          -13.166927337646484,
+          1.7168231010437012,
+          -3.1823816299438477
+        ],
+        "min": [
+          -15.510103225708008,
+          1.6831203699111938,
+          -8.70405101776123
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "06957dbe75937cd0cabd9a6b2795d195d25ada5aed7b005c18e4816be79111a9",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-5-lights-cyan.primitive.0",
+      "indexCount": 150,
+      "indexed": true,
+      "materialHash": "a646327bd55f7d89a3d0b743e9866d23712fd562a28962466fb3a299a27c3a13",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_BORROWED_SIGNAL_5_Lights_Cyan",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-5-lights-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 62
+    },
+    {
+      "bounds": {
+        "max": [
+          17.97461700439453,
+          1.6962008476257324,
+          12.518595695495605
+        ],
+        "min": [
+          -17.974607467651367,
+          -1.6960842609405518,
+          -17.97576332092285
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa29fec9eb404382cadd706face2e5742e187ad294f755449a4bd17fea1e42ef",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hull.primitive.0",
+      "indexCount": 390,
+      "indexed": true,
+      "materialHash": "ec27027f0909f2e9270e4da9e94a30d4796a18129ef94bacf3c37edd2f495420",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Hull",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 150
+    },
+    {
+      "bounds": {
+        "max": [
+          17.992080688476562,
+          1.8663331270217896,
+          12.545214653015137
+        ],
+        "min": [
+          -17.992080688476562,
+          -1.6961724758148193,
+          -17.991958618164062
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "af645dd8c4914b1231d2b98621dbefee056c6d71aefb94b8d6d4e2f2972e2c2d",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-mechanicaldark.primitive.0",
+      "indexCount": 2370,
+      "indexed": true,
+      "materialHash": "7a429208dbfb1a57e18f91a4cd01be0491b566cfb769ac049b1007337aee8e10",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MechanicalDark",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-mechanicaldark",
+      "primitiveIndex": 0,
+      "vertexCount": 987
+    },
+    {
+      "bounds": {
+        "max": [
+          16.350639245033292,
+          2.9879564108307077,
+          11.26489543914795
+        ],
+        "min": [
+          13.89301500606534,
+          1.6285105882232473,
+          8.006064414978027
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3be7a4d8877fc952f73250ca5e9b2fd76748a0de3a727c256dc139c75e37493d",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-1-stone.primitive.0",
+      "indexCount": 1242,
+      "indexed": true,
+      "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BORROWED_VOICE_FAN_1_Stone",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-1-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 384
+    },
+    {
+      "bounds": {
+        "max": [
+          14.837408976075078,
+          2.9886349157450725,
+          -5.99182653427124
+        ],
+        "min": [
+          11.881135983946894,
+          1.6292499585987996,
+          -10.760370254516602
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "77077d9c232fc07e5f8cf71aa2b8511eb581b3e3823437e881154ea351cd1c5c",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-2-stone.primitive.0",
+      "indexCount": 1176,
+      "indexed": true,
+      "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BORROWED_VOICE_FAN_2_Stone",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-2-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 380
+    },
+    {
+      "bounds": {
+        "max": [
+          11.143426895141602,
+          2.917307842662585,
+          -13.73646570635216
+        ],
+        "min": [
+          8.53980541229248,
+          1.633812319347608,
+          -15.763535247322157
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "18a9e439d3d96a79f4e259f1df3df41c078c0a78b8c5ef960f24b055eba49d48",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-3-stone.primitive.0",
+      "indexCount": 1560,
+      "indexed": true,
+      "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BORROWED_VOICE_FAN_3_Stone",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-3-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 463
+    },
+    {
+      "bounds": {
+        "max": [
+          5.283568859100342,
+          2.988008435569888,
+          -16.324830917693305
+        ],
+        "min": [
+          1.198266863822937,
+          1.6284021774901096,
+          -18.943304153107476
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1aefe564e1e956cdc8635e26d0158cee02553e57e51929cbae66b9df8cc5e532",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-4-stone.primitive.0",
+      "indexCount": 1176,
+      "indexed": true,
+      "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BORROWED_VOICE_FAN_4_Stone",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-4-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 372
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.544479846954346,
+          2.987824694968872,
+          -12.289064032770904
+        ],
+        "min": [
+          -10.104679107666016,
+          1.6310516430361939,
+          -15.154584305546967
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8c121029d797a2d2a2cdb55d978a79f6f44dfb162195b7a5d63c795302125162",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-5-stone.primitive.0",
+      "indexCount": 1176,
+      "indexed": true,
+      "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BORROWED_VOICE_FAN_5_Stone",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-5-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 380
+    },
+    {
+      "bounds": {
+        "max": [
+          -14.759970531853044,
+          2.988349109306892,
+          -6.498948574066162
+        ],
+        "min": [
+          -16.964885844794907,
+          1.628889650687615,
+          -9.622530937194824
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "967cdd31afcd1fe7a88143cfcea51d8f3ebae5493c1dff352f8f8a3ff6c5694c",
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-6-stone.primitive.0",
+      "indexCount": 1476,
+      "indexed": true,
+      "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_BORROWED_VOICE_FAN_6_Stone",
+      "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-6-stone",
+      "primitiveIndex": 0,
+      "vertexCount": 456
+    }
+  ],
+  "hlods": [],
+  "kind": "prop",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "7a429208dbfb1a57e18f91a4cd01be0491b566cfb769ac049b1007337aee8e10",
+      "id": "material:7a429208dbfb1a57e18f91a4",
+      "name": "Material_MechanicalDark",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_machinery_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
+      "id": "material:9a70f6005f98ebde63c9c948",
+      "name": "Material_Stone",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "a646327bd55f7d89a3d0b743e9866d23712fd562a28962466fb3a299a27c3a13",
+      "id": "material:a646327bd55f7d89a3d0b743",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "a83c085336fbe0985abdcc6eda48bbc549d210cb6b9abcae5db017b3340be2aa",
+      "id": "material:a83c085336fbe0985abdcc6e",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "cebf1c2761571fb66d07b59444c4b81048fcdedac0adec97237bf6fbf43a3d1b",
+      "id": "material:cebf1c2761571fb66d07b594",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ec27027f0909f2e9270e4da9e94a30d4796a18129ef94bacf3c37edd2f495420",
+      "id": "material:ec27027f0909f2e9270e4da9",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_BORROWED_VOICE_RING_SEGMENT_1",
+      "nodeName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_1",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_BORROWED_VOICE_RING_SEGMENT_2",
+      "nodeName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_2",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_BORROWED_VOICE_RING_SEGMENT_3",
+      "nodeName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_3",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_BORROWED_VOICE_RING_SEGMENT_4",
+      "nodeName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_4",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "COLLISION_BORROWED_VOICE_RING_SEGMENT_5",
+      "nodeName": "COLLISION_BORROWED_VOICE_RING_SEGMENT_5",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Armor",
+      "nodeName": "LOD2_Armor",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-brushedmetal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_BrushedMetal",
+      "nodeName": "LOD2_BrushedMetal",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-1-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_BORROWED_SIGNAL_1_Lights_Cyan",
+      "nodeName": "LOD2_HOOK_BORROWED_SIGNAL_1_Lights_Cyan",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-2-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_BORROWED_SIGNAL_2_Lights_Cyan",
+      "nodeName": "LOD2_HOOK_BORROWED_SIGNAL_2_Lights_Cyan",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-3-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_BORROWED_SIGNAL_3_Lights_Cyan",
+      "nodeName": "LOD2_HOOK_BORROWED_SIGNAL_3_Lights_Cyan",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-4-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_BORROWED_SIGNAL_4_Lights_Cyan",
+      "nodeName": "LOD2_HOOK_BORROWED_SIGNAL_4_Lights_Cyan",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-5-lights-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_BORROWED_SIGNAL_5_Lights_Cyan",
+      "nodeName": "LOD2_HOOK_BORROWED_SIGNAL_5_Lights_Cyan",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Hull",
+      "nodeName": "LOD2_Hull",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-mechanicaldark",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MechanicalDark",
+      "nodeName": "LOD2_MechanicalDark",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-1-stone",
+      "localTransform": [
+        1.629415512084961,
+        0,
+        0,
+        0,
+        0,
+        1.629415512084961,
+        0,
+        0,
+        0,
+        0,
+        1.629415512084961,
+        0,
+        1.0024118423461914,
+        0.5982334613800049,
+        0.5315189361572266,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BORROWED_VOICE_FAN_1_Stone",
+      "nodeName": "LOD2_MOTION_BORROWED_VOICE_FAN_1_Stone",
+      "nodePath": [
+        0,
+        14,
+        0
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-1",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1.629415512084961,
+        0,
+        0,
+        0,
+        0,
+        1.629415512084961,
+        0,
+        0,
+        0,
+        0,
+        1.629415512084961,
+        0,
+        15.121827125549316,
+        2.3082334995269775,
+        9.635479927062988,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-2-stone",
+      "localTransform": [
+        2.3842718601226807,
+        0,
+        0,
+        0,
+        0,
+        2.3842718601226807,
+        0,
+        0,
+        0,
+        0,
+        2.3842718601226807,
+        0,
+        -1.2806458473205566,
+        0.5989423990249634,
+        -0.135176420211792,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BORROWED_VOICE_FAN_2_Stone",
+      "nodeName": "LOD2_MOTION_BORROWED_VOICE_FAN_2_Stone",
+      "nodePath": [
+        0,
+        15,
+        0
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-2",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        2.3842718601226807,
+        0,
+        0,
+        0,
+        0,
+        2.3842718601226807,
+        0,
+        0,
+        0,
+        0,
+        2.3842718601226807,
+        0,
+        13.359272480010986,
+        2.308942437171936,
+        -8.376098394393921,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-3-stone",
+      "localTransform": [
+        1.3018107414245605,
+        0,
+        0,
+        0,
+        0,
+        1.3018107414245605,
+        0,
+        0,
+        0,
+        0,
+        1.3018107414245605,
+        0,
+        0.4571061134338379,
+        0.5655600428581238,
+        -0.8154759407043457,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BORROWED_VOICE_FAN_3_Stone",
+      "nodeName": "LOD2_MOTION_BORROWED_VOICE_FAN_3_Stone",
+      "nodePath": [
+        0,
+        16,
+        0
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-3",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1.3018107414245605,
+        0,
+        0,
+        0,
+        0,
+        1.3018107414245605,
+        0,
+        0,
+        0,
+        0,
+        1.3018107414245605,
+        0,
+        9.841616153717041,
+        2.2755600810050964,
+        -14.750000476837158,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-4-stone",
+      "localTransform": [
+        2.0426509976387024,
+        0,
+        0,
+        0,
+        0,
+        2.0426509976387024,
+        0,
+        0,
+        0,
+        0,
+        2.0426509976387024,
+        0,
+        0.18862003087997437,
+        0.5982052683830261,
+        -1.1136722564697266,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BORROWED_VOICE_FAN_4_Stone",
+      "nodeName": "LOD2_MOTION_BORROWED_VOICE_FAN_4_Stone",
+      "nodePath": [
+        0,
+        17,
+        0
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-4",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        2.0426509976387024,
+        0,
+        0,
+        0,
+        0,
+        2.0426509976387024,
+        0,
+        0,
+        0,
+        0,
+        2.0426509976387024,
+        0,
+        3.2409178614616394,
+        2.308205306529999,
+        -17.63406753540039,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-5-stone",
+      "localTransform": [
+        2.280099630355835,
+        0,
+        0,
+        0,
+        0,
+        2.280099630355835,
+        0,
+        0,
+        0,
+        0,
+        2.280099630355835,
+        0,
+        -0.1756899356842041,
+        0.5994381308555603,
+        1.2359328269958496,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BORROWED_VOICE_FAN_5_Stone",
+      "nodeName": "LOD2_MOTION_BORROWED_VOICE_FAN_5_Stone",
+      "nodePath": [
+        0,
+        18,
+        0
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-5",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        2.280099630355835,
+        0,
+        0,
+        0,
+        0,
+        2.280099630355835,
+        0,
+        0,
+        0,
+        0,
+        2.280099630355835,
+        0,
+        -7.824579477310181,
+        2.309438169002533,
+        -13.721824169158936,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-6-stone",
+      "localTransform": [
+        1.561791181564331,
+        0,
+        0,
+        0,
+        0,
+        1.561791181564331,
+        0,
+        0,
+        0,
+        0,
+        1.561791181564331,
+        0,
+        -0.9046711921691895,
+        0.5986193418502808,
+        -0.4118502140045166,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_MOTION_BORROWED_VOICE_FAN_6_Stone",
+      "nodeName": "LOD2_MOTION_BORROWED_VOICE_FAN_6_Stone",
+      "nodePath": [
+        0,
+        19,
+        0
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-6",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1.561791181564331,
+        0,
+        0,
+        0,
+        0,
+        1.561791181564331,
+        0,
+        0,
+        0,
+        0,
+        1.561791181564331,
+        0,
+        -15.862428188323975,
+        2.3086193799972534,
+        -8.060739755630493,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        14.119415283203125,
+        1.7100000381469727,
+        9.103960990905762,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_BORROWED_VOICE_FAN_1",
+      "nodeName": "MOTION_BORROWED_VOICE_FAN_1",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        14.119415283203125,
+        1.7100000381469727,
+        9.103960990905762,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        14.639918327331543,
+        1.7100000381469727,
+        -8.240921974182129,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_BORROWED_VOICE_FAN_2",
+      "nodeName": "MOTION_BORROWED_VOICE_FAN_2",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        14.639918327331543,
+        1.7100000381469727,
+        -8.240921974182129,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        9.384510040283203,
+        1.7100000381469727,
+        -13.934524536132812,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_BORROWED_VOICE_FAN_3",
+      "nodeName": "MOTION_BORROWED_VOICE_FAN_3",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        9.384510040283203,
+        1.7100000381469727,
+        -13.934524536132812,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.052297830581665,
+        1.7100000381469727,
+        -16.520395278930664,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_BORROWED_VOICE_FAN_4",
+      "nodeName": "MOTION_BORROWED_VOICE_FAN_4",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        3.052297830581665,
+        1.7100000381469727,
+        -16.520395278930664,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.648889541625977,
+        1.7100000381469727,
+        -14.957756996154785,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_BORROWED_VOICE_FAN_5",
+      "nodeName": "MOTION_BORROWED_VOICE_FAN_5",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.648889541625977,
+        1.7100000381469727,
+        -14.957756996154785,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -14.957756996154785,
+        1.7100000381469727,
+        -7.648889541625977,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "MOTION_BORROWED_VOICE_FAN_6",
+      "nodeName": "MOTION_BORROWED_VOICE_FAN_6",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -14.957756996154785,
+        1.7100000381469727,
+        -7.648889541625977,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SF_PLACE_BORROWED_VOICE_RING_ROOT",
+      "nodeName": "SF_PLACE_BORROWED_VOICE_RING_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.socket-borrowed-receiver",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Borrowed_Receiver",
+      "nodeName": "SOCKET_Borrowed_Receiver",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.borrowed-voice-ring-lod2.node.socket-camera-focus",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.7000000476837158,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "SOCKET_Camera_Focus",
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.borrowed-voice-ring-lod2.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1.7000000476837158,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "abc91e6cf673652fb070167b23c3016c3e11c8a7a0d2da379b1d7b4a6d1baf85"
+    },
+    "sourceGlb": {
+      "bytes": 439232,
+      "sha256": "ca7017c87e76e149034c0daf67b5a6776b665b899fd7c9fc049853308e607c40",
+      "uri": "borrowed_voice_ring_lod2.glb"
+    },
+    "sourceManifest": {
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 525300,
+    "sha256": "f7a9c4fe2e7e9ce345f6e7903b1a1c81efd23371c787cf8a391e9e6b42bd56fa",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        0.6444212057172323,
+        -3.19904475004617
+      ],
+      "max": [
+        17.9963436126709,
+        2.9886349157450725,
+        12.545214653015137
+      ],
+      "min": [
+        -17.9963436126709,
+        -1.699792504310608,
+        -18.943304153107476
+      ],
+      "size": [
+        35.9926872253418,
+        4.68842742005568,
+        31.488518806122613
+      ]
+    },
+    "hidden": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          14.119415283203125,
+          1.7100000381469727,
+          9.103960990905762,
+          1
+        ],
+        "name": "MOTION_BORROWED_VOICE_FAN_1",
+        "planIndex": 16,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "borrowed_voice_fan_1",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              14.119415283203125
+            ],
+            [
+              0,
+              1,
+              0,
+              -9.103960990905762
+            ],
+            [
+              0,
+              0,
+              1,
+              1.7100000381469727
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_BORROWED_VOICE_FAN_1",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "borrowed_voice_fan_1"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_BORROWED_VOICE_FAN_1",
+            "recordIds": [
+              "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-1"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          14.639918327331543,
+          1.7100000381469727,
+          -8.240921974182129,
+          1
+        ],
+        "name": "MOTION_BORROWED_VOICE_FAN_2",
+        "planIndex": 18,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "borrowed_voice_fan_2",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              14.639918327331543
+            ],
+            [
+              0,
+              1,
+              0,
+              8.240921974182129
+            ],
+            [
+              0,
+              0,
+              1,
+              1.7100000381469727
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_BORROWED_VOICE_FAN_2",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "borrowed_voice_fan_2"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_BORROWED_VOICE_FAN_2",
+            "recordIds": [
+              "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-2"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          9.384510040283203,
+          1.7100000381469727,
+          -13.934524536132812,
+          1
+        ],
+        "name": "MOTION_BORROWED_VOICE_FAN_3",
+        "planIndex": 20,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "borrowed_voice_fan_3",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              9.384510040283203
+            ],
+            [
+              0,
+              1,
+              0,
+              13.934524536132812
+            ],
+            [
+              0,
+              0,
+              1,
+              1.7100000381469727
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_BORROWED_VOICE_FAN_3",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "borrowed_voice_fan_3"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_BORROWED_VOICE_FAN_3",
+            "recordIds": [
+              "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-3"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          3.052297830581665,
+          1.7100000381469727,
+          -16.520395278930664,
+          1
+        ],
+        "name": "MOTION_BORROWED_VOICE_FAN_4",
+        "planIndex": 22,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "borrowed_voice_fan_4",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              3.052297830581665
+            ],
+            [
+              0,
+              1,
+              0,
+              16.520395278930664
+            ],
+            [
+              0,
+              0,
+              1,
+              1.7100000381469727
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_BORROWED_VOICE_FAN_4",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "borrowed_voice_fan_4"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_BORROWED_VOICE_FAN_4",
+            "recordIds": [
+              "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-4"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7.648889541625977,
+          1.7100000381469727,
+          -14.957756996154785,
+          1
+        ],
+        "name": "MOTION_BORROWED_VOICE_FAN_5",
+        "planIndex": 24,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "borrowed_voice_fan_5",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -7.648889541625977
+            ],
+            [
+              0,
+              1,
+              0,
+              14.957756996154785
+            ],
+            [
+              0,
+              0,
+              1,
+              1.7100000381469727
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_BORROWED_VOICE_FAN_5",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "borrowed_voice_fan_5"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_BORROWED_VOICE_FAN_5",
+            "recordIds": [
+              "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-5"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -14.957756996154785,
+          1.7100000381469727,
+          -7.648889541625977,
+          1
+        ],
+        "name": "MOTION_BORROWED_VOICE_FAN_6",
+        "planIndex": 26,
+        "tags": {
+          "instance": false,
+          "motionGroup": true,
+          "socket": true
+        },
+        "userData": {
+          "forge_motion_pivot": "borrowed_voice_fan_6",
+          "forge_motion_rest": [
+            [
+              1,
+              0,
+              0,
+              -14.957756996154785
+            ],
+            [
+              0,
+              1,
+              0,
+              7.648889541625977
+            ],
+            [
+              0,
+              0,
+              1,
+              1.7100000381469727
+            ],
+            [
+              0,
+              0,
+              0,
+              1
+            ]
+          ],
+          "name": "MOTION_BORROWED_VOICE_FAN_6",
+          "spaceface": {
+            "instance": false,
+            "motionGroup": "borrowed_voice_fan_6"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "MOTION_BORROWED_VOICE_FAN_6",
+            "recordIds": [
+              "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-6"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Borrowed_Receiver",
+        "planIndex": 28,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Borrowed_Receiver",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "attachment",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Borrowed_Receiver",
+            "recordIds": [
+              "sf.render.borrowed-voice-ring-lod2.anchor.socket-borrowed-receiver",
+              "sf.render.borrowed-voice-ring-lod2.node.socket-borrowed-receiver"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          1.7000000476837158,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 29,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.borrowed-voice-ring-lod2.anchor.socket-camera-focus",
+              "sf.render.borrowed-voice-ring-lod2.node.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "geology": 6,
+      "hull": 7,
+      "mechanical": 2,
+      "signal": 5
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "geology"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "geology"
+      }
+    ],
+    "motionBank": {
+      "bytes": 5392,
+      "rigId": "borrowed_voice_ring_controls",
+      "sha256": "67f711049273d8bf1816f33bfe0704c251214b7a82a1a6e58f2f06785da81e45",
+      "uri": "assets/ships/motions/borrowed-voice-ring.motion.json"
+    },
+    "nodeCount": 30,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Armor",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_BrushedMetal",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_HOOK_BORROWED_SIGNAL_1_Lights_Cyan",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_HOOK_BORROWED_SIGNAL_2_Lights_Cyan",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_HOOK_BORROWED_SIGNAL_3_Lights_Cyan",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_HOOK_BORROWED_SIGNAL_4_Lights_Cyan",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_HOOK_BORROWED_SIGNAL_5_Lights_Cyan",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Hull",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_MechanicalDark",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.629415512084961,
+          0,
+          0,
+          0,
+          0,
+          1.629415512084961,
+          0,
+          0,
+          0,
+          0,
+          1.629415512084961,
+          0,
+          15.121827125549316,
+          2.3082334995269775,
+          9.635479927062988,
+          1
+        ],
+        "name": "LOD2_MOTION_BORROWED_VOICE_FAN_1_Stone",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.3842718601226807,
+          0,
+          0,
+          0,
+          0,
+          2.3842718601226807,
+          0,
+          0,
+          0,
+          0,
+          2.3842718601226807,
+          0,
+          13.359272480010986,
+          2.308942437171936,
+          -8.376098394393921,
+          1
+        ],
+        "name": "LOD2_MOTION_BORROWED_VOICE_FAN_2_Stone",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.3018107414245605,
+          0,
+          0,
+          0,
+          0,
+          1.3018107414245605,
+          0,
+          0,
+          0,
+          0,
+          1.3018107414245605,
+          0,
+          9.841616153717041,
+          2.2755600810050964,
+          -14.750000476837158,
+          1
+        ],
+        "name": "LOD2_MOTION_BORROWED_VOICE_FAN_3_Stone",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.0426509976387024,
+          0,
+          0,
+          0,
+          0,
+          2.0426509976387024,
+          0,
+          0,
+          0,
+          0,
+          2.0426509976387024,
+          0,
+          3.2409178614616394,
+          2.308205306529999,
+          -17.63406753540039,
+          1
+        ],
+        "name": "LOD2_MOTION_BORROWED_VOICE_FAN_4_Stone",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          2.280099630355835,
+          0,
+          0,
+          0,
+          0,
+          2.280099630355835,
+          0,
+          0,
+          0,
+          0,
+          2.280099630355835,
+          0,
+          -7.824579477310181,
+          2.309438169002533,
+          -13.721824169158936,
+          1
+        ],
+        "name": "LOD2_MOTION_BORROWED_VOICE_FAN_5_Stone",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.561791181564331,
+          0,
+          0,
+          0,
+          0,
+          1.561791181564331,
+          0,
+          0,
+          0,
+          0,
+          1.561791181564331,
+          0,
+          -15.862428188323975,
+          2.3086193799972534,
+          -8.060739755630493,
+          1
+        ],
+        "name": "LOD2_MOTION_BORROWED_VOICE_FAN_6_Stone",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "instance": false,
+          "lod": "lod2",
+          "motionGroup": true
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/borrowed_voice_ring_lod2.glb"
+  },
+  "runtimeHash": "a13f03b852b03567fdb6030c89dcedcae335e3482a38de0b021d4906dd2bc4a4",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          17.9963436126709,
+          2.9886349157450725,
+          12.545214653015137
+        ],
+        "min": [
+          -17.9963436126709,
+          -1.699792504310608,
+          -18.943304153107476
+        ]
+      },
+      "id": "sf.render.borrowed-voice-ring-lod2.body",
+      "nodeIds": [
+        "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-1",
+        "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-2",
+        "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-3",
+        "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-4",
+        "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-5",
+        "sf.render.borrowed-voice-ring-lod2.node.lod2-armor",
+        "sf.render.borrowed-voice-ring-lod2.node.lod2-brushedmetal",
+        "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-1-lights-cyan",
+        "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-2-lights-cyan",
+        "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-3-lights-cyan",
+        "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-4-lights-cyan",
+        "sf.render.borrowed-voice-ring-lod2.node.lod2-hook-borrowed-signal-5-lights-cyan",
+        "sf.render.borrowed-voice-ring-lod2.node.lod2-hull",
+        "sf.render.borrowed-voice-ring-lod2.node.lod2-mechanicaldark",
+        "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-1-stone",
+        "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-2-stone",
+        "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-3-stone",
+        "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-4-stone",
+        "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-5-stone",
+        "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-6-stone",
+        "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-1",
+        "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-2",
+        "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-3",
+        "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-4",
+        "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-5",
+        "sf.render.borrowed-voice-ring-lod2.node.motion-borrowed-voice-fan-6",
+        "sf.render.borrowed-voice-ring-lod2.node.sf-place-borrowed-voice-ring-root",
+        "sf.render.borrowed-voice-ring-lod2.node.socket-borrowed-receiver",
+        "sf.render.borrowed-voice-ring-lod2.node.socket-camera-focus"
+      ]
+    }
+  ]
+}

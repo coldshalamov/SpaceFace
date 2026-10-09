@@ -4,7 +4,7 @@ import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import test from 'node:test';
 
-import { CombatDoctrineRuntime } from '../src/ai/combatDoctrine.js';
+import { CombatDoctrineRuntime, IDENTITY_OWNED_RANGE_DOCTRINES } from '../src/ai/combatDoctrine.js';
 import { normalizeFactionBehaviorProfile } from '../src/ai/factionBehavior.js';
 import { SquadCommander } from '../src/ai/squad.js';
 import { hash32 } from '../src/core/rng.js';
@@ -85,8 +85,16 @@ test('the production squad and combat-doctrine consumers expose each sampled pro
       perception: perception(entityId, profile, 0.99),
       directive: ready.directives.get(entityId),
     });
-    assert.equal(combat.preferredRange, profile.preferredRange,
-      `${kit.id} preferred range must reach the combat doctrine runtime`);
+    // Identity doctrines own their engagement band (IDENTITY_OWNED_RANGE_DOCTRINES): the
+    // doctrine's staged band intentionally replaces the faction's sampled range, so the wiring
+    // check only applies to doctrines that consume the profile value.
+    if (IDENTITY_OWNED_RANGE_DOCTRINES.has(profile.combatDoctrineId)) {
+      assert(Number.isFinite(combat.preferredRange) && combat.preferredRange > 0,
+        `${kit.id} identity doctrine must still emit an authored engagement band`);
+    } else {
+      assert.equal(combat.preferredRange, profile.preferredRange,
+        `${kit.id} preferred range must reach the combat doctrine runtime`);
+    }
   }
 });
 

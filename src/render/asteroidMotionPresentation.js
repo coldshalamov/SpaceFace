@@ -274,6 +274,11 @@ const veinScratchForRig = {
 
 export function createAsteroidMotionTracker() {
   const asteroidStates = new Map();
+  // Boundary root → record side index: releases match interior refs by ancestor
+  // walk, so the index keys on the root the refs hang under instead of the refs
+  // themselves. A missed entry pins the record's refs until the periodic prune
+  // — the same outcome an unbatched release produced.
+  const boundaryIndex = new Map();
   let busSubscribers = [];
   let currentMinedTargetId = null;
   let lastSimTime = 0;
@@ -324,6 +329,7 @@ export function createAsteroidMotionTracker() {
         baseScaleY: 1,
         baseScaleZ: 1,
         veinRig: null,
+        boundaryRoot: null,
         lastTime: 0,
       };
       asteroidStates.set(asteroidId, rec);
@@ -442,10 +448,41 @@ export function createAsteroidMotionTracker() {
     if (rec) rec.chargeT0 = -1;
   }
 
+  // Shockwave sweep pass (src/combat/shockwaveSweep.js): the blast wave's front just
+  // overtook this rock. The receipt already carries the graded shove (level, deltaV,
+  // push direction, deterministic lever bias) — translate it into the same lever-arm
+  // body language a solver impact produces: contact shudder along the push axis, spin
+  // tilted by the wave's oblique arrival. Render-only; the sim delivered the real Δv.
+  function onShockwavePass(payload) {
+    if (!payload || payload.targetId == null) return;
+    const rec = asteroidStates.get(payload.targetId);
+    if (!rec) return;
+    const dv = Math.min(40, Number(payload.deltaV) || 0);
+    const pushX = Number(payload.dirX) || 0;
+    const pushZ = Number(payload.dirZ) || 0;
+    const tumble = payload.level === 'tumble';
+    rec.wobbleMag = Math.min(0.3, rec.wobbleMag + (tumble ? 0.1 + dv * 0.008 : 0.045));
+    if (!(pushX || pushZ)) return;
+    const kick = Math.min(3.2, (tumble ? 0.6 : 0.25) + dv * 0.22);
+    rec.shoveVelX += pushX * kick;
+    rec.shoveVelZ += pushZ * kick;
+    const lever = Number(payload.lever) || 0;
+    // spinYaw already carries the sim's ω ∝ 1/R inertia law, and the tumble advance
+    // multiplies every spin axis by the size factor again (big rocks carry spin slowly)
+    // — pre-divide the yaw or a large rock under-answers the same wave ~5x vs a solver
+    // hit. The lever axes are flat dv terms with no inertia law of their own: they keep
+    // the size scaling so a big rock's pitch/roll stays heavy.
+    const sizeFactor = resolveAsteroidSizeFactor(rec.radius) || 1;
+    rec.spinY += (Number(payload.spinYaw) || 0) / sizeFactor;
+    rec.spinX += lever * dv * 0.012;
+    rec.spinZ -= lever * dv * 0.012;
+  }
+
   function bindEvents(bus) {
     if (!bus || typeof bus.on !== 'function') return;
     busSubscribers.push(bus.on('combat:damage', onDamage, { presentation: true }));
     busSubscribers.push(bus.on('physics:impact', onImpact, { presentation: true }));
+    busSubscribers.push(bus.on('combat:shockwavePass', onShockwavePass, { presentation: true }));
     // `mining:beamContact` is never emitted by the sim — the live beam lifecycle pair is
     // mining:start / mining:stop (src/systems/mining.js). Keep combat:beamStop as a failsafe.
     busSubscribers.push(bus.on('mining:start', onMiningContact));
@@ -468,10 +505,28 @@ export function createAsteroidMotionTracker() {
     currentMinedTargetId = null;
   }
 
+  function dropBoundaryIndex(rec) {
+    if (rec && rec.boundaryRoot) {
+      // Ownership-checked: a displaced entry now names a different rec — its
+      // live mapping must survive this drop.
+      if (boundaryIndex.get(rec.boundaryRoot) === rec) boundaryIndex.delete(rec.boundaryRoot);
+      rec.boundaryRoot = null;
+    }
+  }
+
   function updateAsteroidMotion(entity, mesh, simTime, frameDt, options = {}) {
     if (!entity || !mesh) return;
     const dt = Math.min(0.05, Math.max(0.001, frameDt));
     const rec = getState(entity.id);
+    if (rec.boundaryRoot !== mesh) {
+      dropBoundaryIndex(rec);
+      rec.boundaryRoot = mesh;
+      const displaced = boundaryIndex.get(mesh);
+      // A mesh re-seat steals the index entry — clear the displaced owner's
+      // root field so its later drop can't delete our live mapping.
+      if (displaced && displaced !== rec) displaced.boundaryRoot = null;
+      boundaryIndex.set(mesh, rec);
+    }
     const reducedMotion = options.motionReduce === true;
     lastSimTime = simTime;
 
@@ -662,18 +717,12 @@ export function createAsteroidMotionTracker() {
     }
   }
 
-  function nodeInsideTree(node, root) {
-    for (let cur = node; cur; cur = cur.parent) {
-      if (cur === root) return true;
-    }
-    return false;
-  }
-
   // The asteroid survives its boundary: keep the tumble/motion state but release the
   // Object3D references (body + vein rig) so an evicted or disposed mesh tree can retire.
   function releaseEntityMesh(asteroidId) {
     const rec = asteroidStates.get(asteroidId);
     if (!rec) return;
+    dropBoundaryIndex(rec);
     rec.veinRig = null;
     rec.scaleBodyRef = null;
   }
@@ -682,10 +731,22 @@ export function createAsteroidMotionTracker() {
   // rig references still point into a dead mesh tree — release by mesh identity as well.
   function releaseMesh(mesh) {
     if (!mesh) return;
-    for (const rec of asteroidStates.values()) {
-      const rigHit = rec.veinRig && nodeInsideTree(rec.veinRig, mesh);
-      const bodyHit = rec.scaleBodyRef && nodeInsideTree(rec.scaleBodyRef, mesh);
-      if (rigHit || bodyHit) {
+    const rec = boundaryIndex.get(mesh);
+    if (rec) {
+      dropBoundaryIndex(rec);
+      rec.veinRig = null;
+      rec.scaleBodyRef = null;
+    }
+  }
+
+  // Batched twin of releaseMesh for mass-despawn sweeps: O(pending.size) via
+  // the boundary-root index instead of one registry pass per evicted root.
+  function releaseMeshSet(meshes) {
+    if (!meshes || meshes.size === 0) return;
+    for (const mesh of meshes) {
+      const rec = boundaryIndex.get(mesh);
+      if (rec) {
+        dropBoundaryIndex(rec);
         rec.veinRig = null;
         rec.scaleBodyRef = null;
       }
@@ -696,6 +757,7 @@ export function createAsteroidMotionTracker() {
     if (!activeEntityIds || typeof activeEntityIds.has !== 'function') return;
     for (const id of asteroidStates.keys()) {
       if (!activeEntityIds.has(id)) {
+        dropBoundaryIndex(asteroidStates.get(id));
         asteroidStates.delete(id);
       }
     }
@@ -716,6 +778,7 @@ export function createAsteroidMotionTracker() {
     prune,
     releaseEntityMesh,
     releaseMesh,
+    releaseMeshSet,
   };
 }
 

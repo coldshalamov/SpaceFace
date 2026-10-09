@@ -1,0 +1,1006 @@
+{
+  "about": "Forge fleet registry: which live body each forge ship file replaces. tools/blender/forge/publish.mjs reads it.",
+  "ships": {
+    "hornet": {
+      "layout": "player",
+      "file": "hornet_production_v1",
+      "asset_id": "SF_HORNET_PRODUCTION_V1",
+      "part_id": "wholeship_hornet_production_v1",
+      "root": "HORNET",
+      "note": "PQ-050.01 forge-v1 rebuild (tools/blender/forge/ships/hornet.py): yellow-jacket interceptor, cranked delta with flap row and tip cannon pods, twin drives, shared forge panel surface set."
+    },
+    "helios_lark": {
+      "layout": "npc",
+      "file": "helios_lark",
+      "asset_id": "SF_WHOLESHIP_HELIOS_LARK",
+      "part_id": "wholeship_helios_lark",
+      "npc_root": "SF_M4_HELIOS_LARK_ROOT",
+      "note": "Forge-v1 rebuild (tools/blender/forge/ships/helios_lark.py): Helios civil courier, ivory hull, teal courier band, lit cabin, swept pod drives, parcel rack."
+    },
+    "wasp": {
+      "layout": "player",
+      "file": "wasp_production_v1",
+      "asset_id": "SF_WASP_PRODUCTION_V1",
+      "part_id": "wasp_production_v1",
+      "root": "WASP_PRODUCTION_V1"
+    },
+    "pelican": {
+      "layout": "player",
+      "file": "pelican_production_v1",
+      "asset_id": "SF_PELICAN_PRODUCTION_V1",
+      "part_id": "pelican_production_v1",
+      "root": "PELICAN_PRODUCTION_V1"
+    },
+    "mule": {
+      "layout": "player",
+      "file": "mule_production_v1",
+      "asset_id": "SF_MULE_PRODUCTION_V1",
+      "part_id": "mule_production_v1",
+      "root": "MULE_PRODUCTION_V1"
+    },
+    "drifter": {
+      "layout": "player",
+      "file": "drifter_production_v1",
+      "asset_id": "SF_DRIFTER_PRODUCTION_V1",
+      "part_id": "drifter_production_v1",
+      "root": "DRIFTER"
+    },
+    "ranger": {
+      "layout": "player",
+      "file": "ranger_production_v1",
+      "asset_id": "SF_RANGER_PRODUCTION_V1",
+      "part_id": "ranger_production_v1",
+      "root": "RANGER"
+    },
+    "ironback": {
+      "layout": "player",
+      "file": "ironback_production_v1",
+      "asset_id": "SF_IRONBACK_PRODUCTION_V1",
+      "part_id": "ironback_production_v1",
+      "root": "IRONBACK"
+    },
+    "bastion": {
+      "layout": "player",
+      "file": "bastion_production_v1",
+      "asset_id": "SF_BASTION_PRODUCTION_V1",
+      "part_id": "bastion_production_v1",
+      "root": "BASTION"
+    },
+    "atlas": {
+      "layout": "player",
+      "file": "atlas_production_v1",
+      "asset_id": "SF_ATLAS_PRODUCTION_V1",
+      "part_id": "atlas_production_v1",
+      "root": "ATLAS"
+    },
+    "warden": {
+      "layout": "player",
+      "file": "warden_production_v1",
+      "asset_id": "SF_WARDEN_PRODUCTION_V1",
+      "part_id": "warden_production_v1",
+      "root": "WARDEN"
+    },
+    "colossus": {
+      "layout": "player",
+      "file": "colossus_production_v1",
+      "asset_id": "SF_COLOSSUS_PRODUCTION_V1",
+      "part_id": "colossus_production_v1",
+      "root": "COLOSSUS"
+    },
+    "leviathan": {
+      "layout": "player",
+      "file": "leviathan_production_v1",
+      "asset_id": "SF_LEVIATHAN_PRODUCTION_V1",
+      "part_id": "leviathan_production_v1",
+      "root": "LEVIATHAN"
+    },
+    "saucer": {
+      "layout": "player",
+      "file": "saucer_production_v1",
+      "asset_id": "SF_SAUCER_PRODUCTION_V1",
+      "part_id": "wholeship_saucer_production_v1",
+      "root": "SAUCER",
+      "note": "Forge-v1 production build (tools/blender/forge/ships/saucer.py): inertialess exotic player hull \u2014 lenticular gunmetal disc, cyan rim light chain, ventral drive core."
+    },
+    "ashline_dart": {
+      "layout": "npc",
+      "file": "ashline_dart",
+      "asset_id": "SF_WHOLESHIP_ASHLINE_DART",
+      "part_id": "wholeship_ashline_dart",
+      "npc_root": "SF_M4_ASHLINE_DART_ROOT"
+    },
+    "ashline_lode": {
+      "layout": "npc",
+      "file": "ashline_lode",
+      "asset_id": "SF_WHOLESHIP_ASHLINE_LODE",
+      "part_id": "wholeship_ashline_lode",
+      "npc_root": "SF_M4_ASHLINE_LODE_ROOT"
+    },
+    "ashline_rig": {
+      "layout": "npc",
+      "file": "ashline_rig",
+      "asset_id": "SF_WHOLESHIP_ASHLINE_RIG",
+      "part_id": "wholeship_ashline_rig",
+      "npc_root": "SF_M4_ASHLINE_RIG_ROOT"
+    },
+    "ashline_rig_corsair_blade": {
+      "layout": "npc",
+      "file": "ashline_rig_corsair_blade",
+      "asset_id": "SF_WHOLESHIP_ASHLINE_RIG_CORSAIR_BLADE",
+      "part_id": "wholeship_ashline_rig_corsair_blade",
+      "npc_root": "SF_M4_ASHLINE_RIG_CORSAIR_BLADE_ROOT"
+    },
+    "helios_cradle": {
+      "layout": "npc",
+      "file": "helios_cradle",
+      "asset_id": "SF_WHOLESHIP_HELIOS_CRADLE",
+      "part_id": "wholeship_helios_cradle",
+      "npc_root": "SF_M4_HELIOS_CRADLE_ROOT"
+    },
+    "helios_span": {
+      "layout": "npc",
+      "file": "helios_span",
+      "asset_id": "SF_WHOLESHIP_HELIOS_SPAN",
+      "part_id": "wholeship_helios_span",
+      "npc_root": "SF_M4_HELIOS_SPAN_ROOT"
+    },
+    "ore_barge": {
+      "layout": "npc",
+      "file": "ore_barge",
+      "asset_id": "SF_WHOLESHIP_ORE_BARGE",
+      "part_id": "wholeship_ore_barge",
+      "npc_root": "SF_NPCWORK_ORE_BARGE_ROOT"
+    },
+    "repair_tender": {
+      "layout": "npc",
+      "file": "repair_tender",
+      "asset_id": "SF_WHOLESHIP_REPAIR_TENDER",
+      "part_id": "wholeship_repair_tender",
+      "npc_root": "SF_NPCWORK_REPAIR_TENDER_ROOT"
+    },
+    "salvage_cutter": {
+      "layout": "npc",
+      "file": "salvage_cutter",
+      "asset_id": "SF_WHOLESHIP_SALVAGE_CUTTER",
+      "part_id": "wholeship_salvage_cutter",
+      "npc_root": "SF_NPCWORK_SALVAGE_CUTTER_ROOT"
+    },
+    "survey_pin": {
+      "layout": "npc",
+      "file": "survey_pin",
+      "asset_id": "SF_WHOLESHIP_SURVEY_PIN",
+      "part_id": "wholeship_survey_pin",
+      "npc_root": "SF_NPCWORK_SURVEY_PIN_ROOT"
+    },
+    "stormshift_collector": {
+      "layout": "npc",
+      "file": "ship_stormshift_collector_v01",
+      "asset_id": "SF_STORMSHIFT_COLLECTOR_V01",
+      "part_id": "wholeship_stormshift_collector",
+      "npc_root": "STORMSHIFT_COLLECTOR_ROOT",
+      "note": "Stormshift salvage collector (tools/blender/forge/ships/stormshift_collector.py): low storm jaws, folding ceramic radiator fans, exposed canister saddles \u2014 harvest pose open, transit stow narrows the silhouette."
+    },
+    "yard_tug": {
+      "layout": "npc",
+      "file": "yard_tug",
+      "asset_id": "SF_WHOLESHIP_YARD_TUG",
+      "part_id": "wholeship_yard_tug",
+      "npc_root": "SF_NPCWORK_YARD_TUG_ROOT"
+    },
+    "kestrel": {
+      "layout": "player",
+      "file": "kestrel",
+      "asset_id": "SF_K0_KESTREL_BORROWED_TIME_V4",
+      "part_id": "wholeship_kestrel",
+      "root": "KESTREL_V4",
+      "note": "SF-K0 Borrowed Time (Hitch) forge-v1 rebuild of the owner's design (tools/blender/forge/ships/kestrel.py): pressure hull on an axial drive drum, armoured shoulder sponsons with radiator combs, dorsal spine over a long canopy, twin bow guns, chin mining head, salvage-green repair pod, dorsal dish. Clean forge surfaces replace the grime/scratch texture stack.",
+      "lod_prefix": "per_file",
+      "wiring": [
+        "live_player_only",
+        "retained_lod_family_member",
+        "retained_lod_family_member"
+      ]
+    },
+    "apron_shuttle": {
+      "layout": "npc",
+      "file": "apron_shuttle",
+      "asset_id": "SF_WHOLESHIP_APRON_SHUTTLE",
+      "part_id": "wholeship_apron_shuttle",
+      "npc_root": "SF_NPCWORK_APRON_SHUTTLE_ROOT"
+    },
+    "rescue_lifter": {
+      "layout": "npc",
+      "file": "rescue_lifter",
+      "asset_id": "SF_WHOLESHIP_RESCUE_LIFTER",
+      "part_id": "wholeship_rescue_lifter",
+      "npc_root": "SF_NPCWORK_RESCUE_LIFTER_ROOT"
+    },
+    "prospector_skiff": {
+      "layout": "npc",
+      "file": "prospector_skiff",
+      "asset_id": "SF_WHOLESHIP_PROSPECTOR_SKIFF",
+      "part_id": "wholeship_prospector_skiff",
+      "npc_root": "SF_NPCWORK_PROSPECTOR_SKIFF_ROOT"
+    },
+    "scrap_sweeper": {
+      "layout": "npc",
+      "file": "scrap_sweeper",
+      "asset_id": "SF_WHOLESHIP_SCRAP_SWEEPER",
+      "part_id": "wholeship_scrap_sweeper",
+      "npc_root": "SF_NPCWORK_SCRAP_SWEEPER_ROOT"
+    },
+    "volatiles_tanker": {
+      "layout": "npc",
+      "file": "volatiles_tanker",
+      "asset_id": "SF_WHOLESHIP_VOLATILES_TANKER",
+      "part_id": "wholeship_volatiles_tanker",
+      "npc_root": "SF_NPCWORK_VOLATILES_TANKER_ROOT"
+    },
+    "inspection_cutter": {
+      "layout": "npc",
+      "file": "inspection_cutter",
+      "asset_id": "SF_WHOLESHIP_INSPECTION_CUTTER",
+      "part_id": "wholeship_inspection_cutter",
+      "npc_root": "SF_NPCWORK_INSPECTION_CUTTER_ROOT"
+    },
+    "helios_arclight": {
+      "layout": "npc",
+      "file": "helios_arclight",
+      "asset_id": "SF_WHOLESHIP_HELIOS_ARCLIGHT",
+      "part_id": "wholeship_helios_arclight",
+      "npc_root": "SF_M4_HELIOS_ARCLIGHT_ROOT"
+    },
+    "wasp_scn_patrol": {
+      "layout": "npc",
+      "file": "wasp_scn_patrol",
+      "asset_id": "SF_WASP_SCN_PATROL",
+      "part_id": "wholeship_wasp_scn_patrol",
+      "npc_root": "WASP_SCN_PATROL_ROOT"
+    },
+    "wasp_mts_escort": {
+      "layout": "npc",
+      "file": "wasp_mts_escort",
+      "asset_id": "SF_WASP_MTS_ESCORT",
+      "part_id": "wholeship_wasp_mts_escort",
+      "npc_root": "WASP_MTS_ESCORT_ROOT"
+    },
+    "wasp_free_militia": {
+      "layout": "npc",
+      "file": "wasp_free_militia",
+      "asset_id": "SF_WASP_FREE_MILITIA",
+      "part_id": "wholeship_wasp_free_militia",
+      "npc_root": "WASP_FREE_MILITIA_ROOT"
+    },
+    "helios_span_dmc": {
+      "layout": "npc",
+      "file": "helios_span_dmc",
+      "asset_id": "SF_WHOLESHIP_HELIOS_SPAN_DMC",
+      "part_id": "wholeship_helios_span_dmc",
+      "npc_root": "SF_M4_HELIOS_SPAN_DMC_ROOT"
+    },
+    "helios_span_mts": {
+      "layout": "npc",
+      "file": "helios_span_mts",
+      "asset_id": "SF_WHOLESHIP_HELIOS_SPAN_MTS",
+      "part_id": "wholeship_helios_span_mts",
+      "npc_root": "SF_M4_HELIOS_SPAN_MTS_ROOT"
+    },
+    "helios_span_reach": {
+      "layout": "npc",
+      "file": "helios_span_reach",
+      "asset_id": "SF_WHOLESHIP_HELIOS_SPAN_REACH",
+      "part_id": "wholeship_helios_span_reach",
+      "npc_root": "SF_M4_HELIOS_SPAN_REACH_ROOT"
+    },
+    "hornet_scn_interdictor": {
+      "layout": "npc",
+      "file": "hornet_scn_interdictor",
+      "asset_id": "SF_HORNET_SCN_INTERDICTOR",
+      "part_id": "wholeship_hornet_scn_interdictor",
+      "npc_root": "HORNET_SCN_INTERDICTOR_ROOT"
+    },
+    "wasp_quiet_ghost": {
+      "layout": "npc",
+      "file": "wasp_quiet_ghost",
+      "asset_id": "SF_WASP_QUIET_GHOST",
+      "part_id": "wholeship_wasp_quiet_ghost",
+      "npc_root": "WASP_QUIET_GHOST_ROOT"
+    },
+    "ashline_dart_choir": {
+      "layout": "npc",
+      "file": "ashline_dart_choir",
+      "asset_id": "SF_WHOLESHIP_ASHLINE_DART_CHOIR",
+      "part_id": "wholeship_ashline_dart_choir",
+      "npc_root": "SF_M4_ASHLINE_DART_CHOIR_ROOT"
+    },
+    "ashline_lode_vael": {
+      "layout": "npc",
+      "file": "ashline_lode_vael",
+      "asset_id": "SF_WHOLESHIP_ASHLINE_LODE_VAEL",
+      "part_id": "wholeship_ashline_lode_vael",
+      "npc_root": "SF_M4_ASHLINE_LODE_VAEL_ROOT"
+    },
+    "ashline_rig_quiet": {
+      "layout": "npc",
+      "file": "ashline_rig_quiet",
+      "asset_id": "SF_WHOLESHIP_ASHLINE_RIG_QUIET",
+      "part_id": "wholeship_ashline_rig_quiet",
+      "npc_root": "SF_M4_ASHLINE_RIG_QUIET_ROOT"
+    },
+    "helios_cradle_dmc": {
+      "layout": "npc",
+      "file": "helios_cradle_dmc",
+      "asset_id": "SF_WHOLESHIP_HELIOS_CRADLE_DMC",
+      "part_id": "wholeship_helios_cradle_dmc",
+      "npc_root": "SF_M4_HELIOS_CRADLE_DMC_ROOT"
+    },
+    "massline_express_liner": {
+      "layout": "player",
+      "file": "massline_express_liner_v1",
+      "asset_id": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+      "part_id": "massline_express_liner_v1",
+      "root": "LINER",
+      "note": "PQ-049 liner, forge-v1 rebuild (tools/blender/forge/ships/massline_express_liner.py): framed operations wedge with structural windshield, stepped faceted pressure drum, dorsal spine, two lit passenger decks, boarding dock, keel tether fairlead, three drives."
+    },
+    "place_cargo_pod_standard": {
+      "layout": "place",
+      "file": "place_cargo_pod_standard",
+      "asset_id": "place_cargo_pod_standard",
+      "part_id": "place_cargo_pod_standard",
+      "note": "Forge-v1 cargo pod (tools/blender/forge/ships/place_cargo_pod_standard.py): ribbed teal intermodal container, charcoal frame and corner castings, hazard bands, grapple lug, status lamps."
+    },
+    "place_station_refinery": {
+      "layout": "place",
+      "file": "place_station_refinery",
+      "asset_id": "SF_PLACE_STATION_REFINERY",
+      "part_id": "place_station_refinery"
+    },
+    "place_station_mining": {
+      "layout": "place",
+      "file": "place_station_mining",
+      "asset_id": "SF_PLACE_STATION_MINING",
+      "part_id": "place_station_mining"
+    },
+    "place_station_fab": {
+      "layout": "place",
+      "file": "place_station_fab",
+      "asset_id": "SF_PLACE_STATION_FAB",
+      "part_id": "place_station_fab"
+    },
+    "place_station_military": {
+      "layout": "place",
+      "file": "place_station_military",
+      "asset_id": "SF_PLACE_STATION_MILITARY",
+      "part_id": "place_station_military"
+    },
+    "place_station_research": {
+      "layout": "place",
+      "file": "place_station_research",
+      "asset_id": "SF_PLACE_STATION_RESEARCH",
+      "part_id": "place_station_research"
+    },
+    "place_station_blackmarket": {
+      "layout": "place",
+      "file": "place_station_blackmarket",
+      "asset_id": "SF_PLACE_STATION_BLACKMARKET",
+      "part_id": "place_station_blackmarket"
+    },
+    "place_gate_jump_ring": {
+      "layout": "place",
+      "file": "place_gate_jump_ring",
+      "asset_id": "SF_PLACE_GATE_JUMP_RING",
+      "part_id": "place_gate_jump_ring"
+    },
+    "place_lane_beacon": {
+      "layout": "place",
+      "file": "place_lane_beacon",
+      "asset_id": "SF_PLACE_HELIOS_SUPPORT_GANTRY",
+      "part_id": "place_lane_beacon"
+    },
+    "place_nav_buoy": {
+      "layout": "place",
+      "file": "place_nav_buoy",
+      "asset_id": "SF_PLACE_HELIOS_NAV_SPIRE",
+      "part_id": "place_nav_buoy"
+    },
+    "place_mining_drone": {
+      "layout": "place",
+      "file": "place_mining_drone",
+      "asset_id": "SF_PART_PLACE_MINING_DRONE",
+      "part_id": "place_mining_drone"
+    },
+    "place_worklight_tower": {
+      "layout": "place",
+      "file": "place_worklight_tower",
+      "asset_id": "place_worklight_tower",
+      "part_id": "place_worklight_tower"
+    },
+    "place_container_rack": {
+      "layout": "place",
+      "file": "place_container_rack",
+      "asset_id": "place_container_rack",
+      "part_id": "place_container_rack"
+    },
+    "place_sensor_mast": {
+      "layout": "place",
+      "file": "place_sensor_mast",
+      "asset_id": "place_sensor_mast",
+      "part_id": "place_sensor_mast"
+    },
+    "place_landmark_candle_fleet": {
+      "layout": "place",
+      "file": "place_landmark_candle_fleet",
+      "asset_id": "SF_PLACE_LANDMARK_CANDLE_FLEET",
+      "part_id": "place_landmark_candle_fleet",
+      "new_place": true
+    },
+    "place_landmark_resonant_cathedral": {
+      "layout": "place",
+      "file": "place_landmark_resonant_cathedral",
+      "asset_id": "SF_PLACE_LANDMARK_RESONANT_CATHEDRAL",
+      "part_id": "place_landmark_resonant_cathedral",
+      "new_place": true
+    },
+    "place_landmark_skerris_throne": {
+      "layout": "place",
+      "file": "place_landmark_skerris_throne",
+      "asset_id": "SF_PLACE_LANDMARK_SKERRIS_THRONE",
+      "part_id": "place_landmark_skerris_throne",
+      "new_place": true
+    },
+    "place_station_trade_hub": {
+      "layout": "place",
+      "file": "place_station_trade_hub",
+      "asset_id": "SF_PLACE_STATION_TRADE_HUB",
+      "part_id": "place_station_trade_hub"
+    },
+    "var_station_trade_hub_free_overlay_v01": {
+      "layout": "place",
+      "file": "var_station_trade_hub_free_overlay_v01",
+      "asset_id": "SF_PLACE_STATION_TRADE_HUB_FREE_OVERLAY",
+      "part_id": "var_station_trade_hub_free_overlay_v01",
+      "note": "Forge rebuild of the Free Frontier claim on the Helios hub: welded habitat pods, wall patch plates and a stern lean-to, lash trusses, cyan bands and slit lights. Ships/var file."
+    },
+    "var_station_trade_hub_mts_overlay_v01": {
+      "layout": "place",
+      "file": "var_station_trade_hub_mts_overlay_v01",
+      "asset_id": "SF_PLACE_STATION_TRADE_HUB_MTS_OVERLAY",
+      "part_id": "var_station_trade_hub_mts_overlay_v01",
+      "note": "Forge rebuild of the Meridian claim on the Helios hub: elevated halo ring on crowns and pylons, gold bands, lit text-free ad faces, gate arch over the harbour mouth."
+    },
+    "var_station_trade_hub_scn_overlay_v01": {
+      "layout": "place",
+      "file": "var_station_trade_hub_scn_overlay_v01",
+      "asset_id": "SF_PLACE_STATION_TRADE_HUB_SCN_OVERLAY",
+      "part_id": "var_station_trade_hub_scn_overlay_v01",
+      "note": "Forge rebuild of the Concord claim on the Helios hub: armoured cladding band with a blue rail, four diagonal bastion keeps, six masts, terminal docking-boom gate."
+    },
+    "place_dead_hulk": {
+      "layout": "place",
+      "file": "place_dead_hulk",
+      "asset_id": "place_dead_hulk",
+      "part_id": "place_dead_hulk",
+      "note": "Forge rebuild of the dead hulk landmark: gutted freighter with a blown-open starboard-dorsal rupture, exposed frame rings, torn plates, dark interior, one dying beacon."
+    },
+    "place_debris_chunk": {
+      "layout": "place",
+      "file": "place_debris_chunk",
+      "asset_id": "place_debris_chunk",
+      "part_id": "place_debris_chunk",
+      "note": "Forge rebuild of the debris chunk landmark: a sheared hull section, torn plate shells on a bent frame, embedded pressure tank, drifting shrapnel."
+    },
+    "place_station_billboard": {
+      "layout": "place",
+      "file": "place_station_billboard",
+      "asset_id": "SF_PLACE_HELIOS_SUPPORT_DOCK_ARM",
+      "part_id": "place_station_billboard",
+      "note": "Forge rebuild of the station information billboard: a framed twin-face lit display on a truss mast with service platform, no text."
+    },
+    "place_lane_pin": {
+      "layout": "place",
+      "file": "place_lane_pin",
+      "asset_id": "SF_PLACE_LANE_PIN",
+      "part_id": "place_lane_pin",
+      "note": "Forge rebuild of the lane pin: a tall navigation mast on a tripod ballast foot, chevron light housing, vane rings, speed lamps."
+    },
+    "place_tally_post": {
+      "layout": "place",
+      "file": "place_tally_post",
+      "asset_id": "SF_PLACE_TALLY_POST",
+      "part_id": "place_tally_post",
+      "note": "Forge rebuild of the tally post: a cargo-weigh gantry with a mast, hung yoke and tongs, operator deck with rails, scale house and invoice lamp."
+    },
+    "place_claim_mark": {
+      "layout": "place",
+      "file": "place_claim_mark",
+      "asset_id": "SF_PLACE_CLAIM_MARK",
+      "part_id": "place_claim_mark",
+      "note": "Forge rebuild of the claim mark: a prospector's staked beacon \u00e2\u20ac\u201d driven shaft, weld collar, cage frame, lamp lens and streamer tabs."
+    },
+    "place_ash_pin": {
+      "layout": "place",
+      "file": "place_ash_pin",
+      "asset_id": "SF_PLACE_ASH_PIN",
+      "part_id": "place_ash_pin",
+      "note": "Forge rebuild of the ash pin: a squat memorial cairn \u00e2\u20ac\u201d ballast base, offering cage, hung tokens, name plate, one warm lamp."
+    },
+    "place_whistle": {
+      "layout": "place",
+      "file": "place_whistle",
+      "asset_id": "SF_PLACE_WHISTLE",
+      "part_id": "place_whistle",
+      "note": "Forge rebuild of the whistle: a message-drum buoy on a tripod boot, chain-hung basket cage, crank, whip antennae and signal lamp."
+    },
+    "place_cold_locker": {
+      "layout": "place",
+      "file": "place_cold_locker",
+      "asset_id": "SF_PLACE_COLD_LOCKER",
+      "part_id": "place_cold_locker",
+      "note": "Forge rebuild of the cold locker: a tall vacuum-insulated storage rack \u00e2\u20ac\u201d latticed tower of locked cryo drawers on a bond-ring foot."
+    },
+    "place_memorial_array": {
+      "layout": "place",
+      "file": "place_memorial_array",
+      "asset_id": "SF_PLACE_MEMORIAL_ARRAY",
+      "part_id": "place_memorial_array",
+      "note": "Forge rebuild of the memorial array prop: a low spine carrying a row of vigil lamps and name plates with truss outriggers."
+    },
+    "place_quiessence_freighter_a": {
+      "layout": "place",
+      "file": "place_quiessence_freighter_a",
+      "asset_id": "SF_PLACE_QUIESSENCE_FREIGHTER_A",
+      "part_id": "place_quiessence_freighter_a",
+      "new_place": true,
+      "note": "Quiessence becalmed freighter A (new place): long intact hauler, charcoal-violet hull, cold engines, rows of warm bunk windows, one faint violet beacon."
+    },
+    "place_quiessence_freighter_b": {
+      "layout": "place",
+      "file": "place_quiessence_freighter_b",
+      "asset_id": "SF_PLACE_QUIESSENCE_FREIGHTER_B",
+      "part_id": "place_quiessence_freighter_b",
+      "new_place": true,
+      "note": "Quiessence becalmed freighter B (new place): shorter container-spine hauler, stacked box rows, cold engines, warm bunk windows, faint violet beacon."
+    },
+    "place_quiessence_freighter_c": {
+      "layout": "place",
+      "file": "place_quiessence_freighter_c",
+      "asset_id": "SF_PLACE_QUIESSENCE_FREIGHTER_C",
+      "part_id": "place_quiessence_freighter_c",
+      "new_place": true,
+      "note": "Quiessence becalmed freighter C (new place): tank-line hauler with saddle tanks and aft bridge, cold engines, warm bunk windows, faint violet beacon."
+    },
+    "place_claim_outpost_base": {
+      "layout": "place",
+      "file": "place_claim_outpost_base",
+      "asset_id": "SF_PLACE_CLAIM_OUTPOST_BASE",
+      "note": "Forge rebuild of the claim anchor: claim rock wrapped by a service ring, four module pads, dock arm, ops pod.",
+      "part_id": "place_claim_outpost_base"
+    },
+    "place_claim_outpost_bastion": {
+      "layout": "place",
+      "file": "place_claim_outpost_bastion",
+      "asset_id": "SF_PLACE_CLAIM_OUTPOST_BASTION",
+      "note": "Forge rebuild: claim ring with armoured defence casemate and gun slits.",
+      "part_id": "place_claim_outpost_bastion"
+    },
+    "place_claim_outpost_catcher": {
+      "layout": "place",
+      "file": "place_claim_outpost_catcher",
+      "asset_id": "SF_PLACE_CLAIM_OUTPOST_CATCHER",
+      "note": "Forge rebuild: claim ring with cargo-capture cradle arm and net frame.",
+      "part_id": "place_claim_outpost_catcher"
+    },
+    "place_claim_outpost_fence": {
+      "layout": "place",
+      "file": "place_claim_outpost_fence",
+      "asset_id": "SF_PLACE_CLAIM_OUTPOST_FENCE",
+      "note": "Forge rebuild: claim ring with perimeter defence pylons and beam emitters.",
+      "part_id": "place_claim_outpost_fence"
+    },
+    "place_claim_outpost_refinery": {
+      "layout": "place",
+      "file": "place_claim_outpost_refinery",
+      "asset_id": "SF_PLACE_CLAIM_OUTPOST_REFINERY",
+      "note": "Forge rebuild: claim ring with process tanks, furnace stack and pipe runs.",
+      "part_id": "place_claim_outpost_refinery"
+    },
+    "place_claim_outpost_relay": {
+      "layout": "place",
+      "file": "place_claim_outpost_relay",
+      "asset_id": "SF_PLACE_CLAIM_OUTPOST_RELAY",
+      "note": "Forge rebuild: claim ring with comms mast and dish, doubles as site relay.",
+      "part_id": "place_claim_outpost_relay"
+    },
+    "place_conveyor_barge": {
+      "layout": "place",
+      "file": "place_conveyor_barge",
+      "asset_id": "SF_PLACE_CONVEYOR_BARGE",
+      "note": "Forge rebuild: autonomous ore-transfer barge, hopper spine with conveyor throat.",
+      "part_id": "place_conveyor_barge"
+    },
+    "place_conveyor_truss": {
+      "layout": "place",
+      "file": "place_conveyor_truss",
+      "asset_id": "place_conveyor_truss",
+      "note": "Forge rebuild: span-gauge bucket conveyor with drive house.",
+      "part_id": "place_conveyor_truss"
+    },
+    "place_drill_platform": {
+      "layout": "place",
+      "file": "place_drill_platform",
+      "asset_id": "place_drill_platform",
+      "note": "Forge rebuild: anchored seam drill, four outriggers, ring deck, lit bit.",
+      "part_id": "place_drill_platform"
+    },
+    "place_extraction_mast": {
+      "layout": "place",
+      "file": "place_extraction_mast",
+      "asset_id": "place_extraction_mast",
+      "note": "Forge rebuild: extraction yard mast, three amber floods and claim strobe on a wide base.",
+      "part_id": "place_extraction_mast"
+    },
+    "place_freight_platform": {
+      "layout": "place",
+      "file": "place_freight_platform",
+      "asset_id": "place_freight_platform",
+      "note": "Forge rebuild: open freight apron, rack rows, crew cab, flood masts.",
+      "part_id": "place_freight_platform"
+    },
+    "place_radiator_bank": {
+      "layout": "place",
+      "file": "place_radiator_bank",
+      "asset_id": "place_radiator_bank",
+      "note": "Forge rebuild: six-fin heat rejection bank, furnace-amber cores.",
+      "part_id": "place_radiator_bank"
+    },
+    "place_slurry_tank": {
+      "layout": "place",
+      "file": "place_slurry_tank",
+      "asset_id": "place_slurry_tank",
+      "note": "Forge rebuild: three formed spheres in a hazard-ended cradle with downpipe.",
+      "part_id": "place_slurry_tank"
+    },
+    "place_transfer_arm": {
+      "layout": "place",
+      "file": "place_transfer_arm",
+      "asset_id": "place_transfer_arm",
+      "note": "Forge rebuild: slew-ring cargo crane, two-segment boom, grapple.",
+      "part_id": "place_transfer_arm"
+    },
+    "place_maintenance_gantry": {
+      "layout": "place",
+      "file": "place_maintenance_gantry",
+      "asset_id": "place_maintenance_gantry",
+      "note": "Forge rebuild: portal gantry a small hull parks under, trolley hoist and tool booms.",
+      "part_id": "place_maintenance_gantry"
+    },
+    "place_transponder_gate": {
+      "layout": "place",
+      "file": "place_transponder_gate",
+      "asset_id": "place_transponder_gate",
+      "note": "Forge rebuild: lane-reader gate \u00e2\u20ac\u201d twin pylons, lit crossbar, lane-centre beacon.",
+      "part_id": "place_transponder_gate"
+    },
+    "place_interdiction_buoy": {
+      "layout": "place",
+      "file": "place_interdiction_buoy",
+      "asset_id": "place_interdiction_buoy",
+      "note": "Forge rebuild: Concord field buoy \u00e2\u20ac\u201d octagonal drum, emitter cage, authority lights.",
+      "part_id": "place_interdiction_buoy"
+    },
+    "place_ceres_bait_wreck": {
+      "layout": "place",
+      "file": "place_ceres_bait_wreck",
+      "asset_id": "SF_PLACE_CERES_BAIT_WRECK",
+      "note": "Forge rebuild: Throughline bait wreck \u00e2\u20ac\u201d gutted liner bow, torn boatbay, deadmetal derelict.",
+      "part_id": "place_ceres_bait_wreck"
+    },
+    "place_ceres_grave_shard": {
+      "layout": "place",
+      "file": "place_ceres_grave_shard",
+      "asset_id": "SF_PLACE_CERES_GRAVE_SHARD",
+      "note": "Forge rebuild: Cathedral grave shard \u00e2\u20ac\u201d leaning torn plate with rib arches, tether mast.",
+      "part_id": "place_ceres_grave_shard"
+    },
+    "place_scrap_cage": {
+      "layout": "place",
+      "file": "place_scrap_cage",
+      "asset_id": "place_scrap_cage",
+      "note": "Forge rebuild: driller's scrap cage \u00e2\u20ac\u201d corner-post pen with gate leaf and heaped salvage.",
+      "part_id": "place_scrap_cage"
+    },
+    "place_improvised_dock": {
+      "layout": "place",
+      "file": "place_improvised_dock",
+      "asset_id": "place_improvised_dock",
+      "note": "Forge rebuild: stolen berth \u00e2\u20ac\u201d leaning truss arm with clamp cradle, improvised teal/rust.",
+      "part_id": "place_improvised_dock"
+    },
+    "place_47a_rescue_capsule": {
+      "layout": "place",
+      "file": "place_47a_rescue_capsule",
+      "asset_id": "SF_PLACE_47A_RESCUE_CAPSULE",
+      "note": "Forge rebuild: the 47-A lifeboat \u00e2\u20ac\u201d ceramic pressure hull, distress band, airlock collar.",
+      "part_id": "place_47a_rescue_capsule"
+    },
+    "pod_cargo_container": {
+      "layout": "place",
+      "parts_dir": "pods",
+      "file": "pod_cargo_container",
+      "asset_id": "SF_POD_CARGO_CONTAINER",
+      "part_id": "pod_cargo_container",
+      "slot": "pod",
+      "lod_levels": [
+        0
+      ],
+      "note": "Forge rebuild: the generic tow can \u2014 corrugated ISO shell, door latches, freight band, tow eye (same pods/ file and contract as the PQ-era body)."
+    },
+    "pod_47a_evidence_spindle": {
+      "layout": "place",
+      "parts_dir": "pods",
+      "file": "pod_47a_evidence_spindle",
+      "asset_id": "SF_POD_47A_EVIDENCE_SPINDLE",
+      "part_id": "pod_47a_evidence_spindle",
+      "slot": "pod",
+      "lod_levels": [
+        0
+      ],
+      "note": "Forge rebuild: the 47-A evidence can \u2014 sealed ISO body, custody straps, evidence bands, ledger case, padlocked door (same pods/ file and contract as the PQ-193.04 body)."
+    },
+    "place_breakaway_fork": {
+      "layout": "place",
+      "file": "place_breakaway_fork",
+      "asset_id": "SF_PLACE_BREAKAWAY_FORK",
+      "note": "Forge rebuild: capture fork \u00e2\u20ac\u201d mouth frame at origin, two diverging tines, seat + service.",
+      "part_id": "place_breakaway_fork"
+    },
+    "place_breakaway_sp07": {
+      "layout": "place",
+      "file": "place_breakaway_sp07",
+      "asset_id": "SF_PLACE_BREAKAWAY_SP07",
+      "note": "Forge rebuild: SP-07 flywheel \u00e2\u20ac\u201d spoked wheel in a cradle cage, tow eyes fore/aft.",
+      "part_id": "place_breakaway_sp07"
+    },
+    "place_asteroid_rock_a": {
+      "layout": "place",
+      "file": "place_asteroid_rock_a",
+      "asset_id": "SF_PLACE_HELIOS_ROCK_A",
+      "note": "Forge rebuild: Helios metallic rock \u2014 faceted boulder cluster, quarried face, dark specular veins.",
+      "part_id": "place_asteroid_rock_a"
+    },
+    "place_asteroid_rock_b": {
+      "layout": "place",
+      "file": "place_asteroid_rock_b",
+      "asset_id": "SF_PLACE_HELIOS_ROCK_B",
+      "note": "Forge rebuild: Helios icy rock \u2014 faceted core with pale frost caps and ice veins.",
+      "part_id": "place_asteroid_rock_b"
+    },
+    "place_asteroid_rock_c": {
+      "layout": "place",
+      "file": "place_asteroid_rock_c",
+      "asset_id": "SF_PLACE_HELIOS_ROCK_C",
+      "note": "Forge rebuild: Helios crystalline rock \u2014 faceted core with a spiked crystal cluster, faint glow.",
+      "part_id": "place_asteroid_rock_c"
+    },
+    "place_asteroid_seamed": {
+      "layout": "place",
+      "file": "place_asteroid_seamed",
+      "asset_id": "SF_PLACE_ASTEROID_SEAMED_GEOLOGY_V3",
+      "note": "Forge rebuild: seamed asteroid \u2014 banded mineral vein cut across the rock, faint warm seam.",
+      "part_id": "place_asteroid_seamed"
+    },
+    "place_asteroid_graffiti": {
+      "layout": "place",
+      "file": "place_asteroid_graffiti",
+      "asset_id": "SF_PLACE_ASTEROID_GRAFFITI_GEOLOGY_V3",
+      "note": "Forge rebuild: graffiti rock \u2014 quarried face with modelled miners' paint bands, survey stakes, lamp.",
+      "part_id": "place_asteroid_graffiti"
+    },
+    "place_dock_interior": {
+      "layout": "place",
+      "file": "place_dock_interior",
+      "asset_id": "place_dock_interior",
+      "part_id": "place_dock_interior",
+      "lod_levels": [
+        0
+      ],
+      "note": "Forge rebuild: shipworks hangar bay \u2014 landing deck, gantry cranes, bay walls (LOD0-only for shipPreviewMount).",
+      "no_collision": true
+    },
+    "place_dock_interior_grit": {
+      "layout": "place",
+      "file": "place_dock_interior_grit",
+      "asset_id": "SF_PLACE_DOCK_INTERIOR_GRIT",
+      "part_id": "place_dock_interior_grit",
+      "lod_levels": [
+        0
+      ],
+      "note": "Forge rebuild: grit variant \u2014 patched civilian yard, rust patches, extra work lamps (LOD0-only).",
+      "no_collision": true
+    },
+    "place_dock_interior_military": {
+      "layout": "place",
+      "file": "place_dock_interior_military",
+      "asset_id": "SF_PLACE_DOCK_INTERIOR_MILITARY",
+      "part_id": "place_dock_interior_military",
+      "lod_levels": [
+        0
+      ],
+      "note": "Forge rebuild: military variant \u2014 clean armoured bay, navy band, red/white deck lines (LOD0-only).",
+      "no_collision": true
+    },
+    "wasp_frag_bow": {
+      "layout": "place",
+      "file": "place_wasp_frag_bow",
+      "asset_id": "SF_WASP_FRAG_BOW",
+      "part_id": "wasp_frag_bow",
+      "note": "ANI-08 wasp rupture bow fragment: nose+canopy+chine sheared at x=1.2, torn collar/ribs/ember edge, two residual-motion torn flaps."
+    },
+    "wasp_frag_aft": {
+      "layout": "place",
+      "file": "place_wasp_frag_aft",
+      "asset_id": "SF_WASP_FRAG_AFT",
+      "part_id": "wasp_frag_aft",
+      "note": "ANI-08 wasp rupture aft fragment: aft fuselage+nacelles+wings+tail sheared at x=1.2, torn collar/ribs/ember edge, residual torn flap + mast whip."
+    },
+    "place_ceres_second_measure": {
+      "layout": "place",
+      "file": "place_ceres_second_measure",
+      "source": "place_ceres_second_measure.py",
+      "asset_id": "SF_PLACE_CERES_SECOND_MEASURE",
+      "part_id": "place_ceres_second_measure",
+      "new_place": true,
+      "no_collision": true,
+      "dynamicNameIncludes": [],
+      "note": "P03 Second Measure matched structural shipbreak. Source origin, two through-passages and independent keel mouth. Runtime collision is world-site owned."
+    },
+    "place_ceres_second_measure_long_plate": {
+      "layout": "place",
+      "file": "place_ceres_second_measure_long_plate",
+      "source": "place_ceres_second_measure_long_plate.py",
+      "asset_id": "SF_PLACE_CERES_SECOND_MEASURE_LONG_PLATE",
+      "part_id": "place_ceres_second_measure_long_plate",
+      "new_place": true,
+      "no_collision": true,
+      "dynamicNameIncludes": [],
+      "note": "P03 Second Measure matched structural shipbreak. Source origin, two through-passages and independent keel mouth. Runtime collision is world-site owned."
+    },
+    "place_ceres_second_measure_crossbeam": {
+      "layout": "place",
+      "file": "place_ceres_second_measure_crossbeam",
+      "source": "place_ceres_second_measure_crossbeam.py",
+      "asset_id": "SF_PLACE_CERES_SECOND_MEASURE_CROSSBEAM",
+      "part_id": "place_ceres_second_measure_crossbeam",
+      "new_place": true,
+      "no_collision": true,
+      "dynamicNameIncludes": [],
+      "note": "P03 Second Measure matched structural shipbreak. Source origin, two through-passages and independent keel mouth. Runtime collision is world-site owned."
+    },
+    "place_ceres_second_measure_keel": {
+      "layout": "place",
+      "file": "place_ceres_second_measure_keel",
+      "source": "place_ceres_second_measure_keel.py",
+      "asset_id": "SF_PLACE_CERES_SECOND_MEASURE_KEEL",
+      "part_id": "place_ceres_second_measure_keel",
+      "new_place": true,
+      "no_collision": true,
+      "dynamicNameIncludes": [],
+      "note": "P03 Second Measure matched structural shipbreak. Source origin, two through-passages and independent keel mouth. Runtime collision is world-site owned."
+    },
+    "ceres_breaker": {
+      "layout": "npc",
+      "file": "ceres_breaker",
+      "source": "ceres_breaker.py",
+      "asset_id": "SF_WHOLESHIP_CERES_BREAKER",
+      "part_id": "wholeship_ceres_breaker",
+      "dynamicNameIncludes": [
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR",
+        "MOTION_",
+        "HOOK_CERES_THRUSTER_MAIN_PORT_OUTER",
+        "HOOK_CERES_THRUSTER_MAIN_PORT_INNER",
+        "HOOK_CERES_THRUSTER_MAIN_STARBOARD_INNER",
+        "HOOK_CERES_THRUSTER_MAIN_STARBOARD_OUTER",
+        "HOOK_CERES_THRUSTER_RETRO_PORT",
+        "HOOK_CERES_THRUSTER_RETRO_STARBOARD",
+        "HOOK_CERES_THRUSTER_RCS_BOW_PORT",
+        "HOOK_CERES_THRUSTER_RCS_BOW_STARBOARD",
+        "HOOK_CERES_THRUSTER_RCS_STERN_PORT",
+        "HOOK_CERES_THRUSTER_RCS_STERN_STARBOARD"
+      ],
+      "note": "Original Ceres open-gantry breaker. Authored source origin at 2 WU/metre, physical passive stops, native swept shoe articulation and explicit compound load well.",
+      "hooks": [
+        "LOD0_HOOK_CERES_THRUSTER_MAIN_PORT_OUTER_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_MAIN_PORT_OUTER_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_MAIN_PORT_OUTER_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_MAIN_PORT_INNER_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_MAIN_PORT_INNER_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_MAIN_PORT_INNER_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_MAIN_STARBOARD_INNER_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_MAIN_STARBOARD_INNER_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_MAIN_STARBOARD_INNER_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_MAIN_STARBOARD_OUTER_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_MAIN_STARBOARD_OUTER_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_MAIN_STARBOARD_OUTER_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RETRO_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RETRO_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RETRO_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RETRO_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RETRO_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RETRO_STARBOARD_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RCS_BOW_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RCS_BOW_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RCS_BOW_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RCS_BOW_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RCS_BOW_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RCS_BOW_STARBOARD_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RCS_STERN_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RCS_STERN_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RCS_STERN_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RCS_STERN_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RCS_STERN_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RCS_STERN_STARBOARD_glow_drive"
+      ]
+    },
+    "place_ceres_section_cradle": {
+      "layout": "place",
+      "file": "place_ceres_section_cradle",
+      "source": "place_ceres_section_cradle.py",
+      "asset_id": "SF_PLACE_CERES_SECTION_CRADLE",
+      "part_id": "place_ceres_section_cradle",
+      "new_place": true,
+      "dynamicNameIncludes": [
+        "MOTION_",
+        "HOOK_CERES_DEPTH_KEEPER"
+      ],
+      "note": "Original Ceres open sectional receiver. Authored source origin at 2 WU/metre, native retention pads and explicit compound receiving void."
+    },
+    "place_ceres_breaker_cutter_head": {
+      "layout": "place",
+      "file": "place_ceres_breaker_cutter_head",
+      "source": "place_ceres_breaker_cutter_head.py",
+      "asset_id": "SF_PLACE_CERES_BREAKER_CUTTER_HEAD",
+      "part_id": "place_ceres_breaker_cutter_head",
+      "new_place": true,
+      "dynamicNameIncludes": [
+        "HOOK_CERES_THRUSTER_AXIAL_AFT_PORT",
+        "HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD",
+        "HOOK_CERES_THRUSTER_AXIAL_FORE_PORT",
+        "HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD",
+        "HOOK_CERES_THRUSTER_LATERAL_PORT",
+        "HOOK_CERES_THRUSTER_LATERAL_STARBOARD"
+      ],
+      "note": "Original detachable Ceres cutter head. Authored source origin at 2 WU/metre, aligned cut and mounting sockets and explicit compound solids.",
+      "hooks": [
+        "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive"
+      ]
+    },
+    "latch_nine": {
+      "layout": "place",
+      "file": "place_latch_nine",
+      "asset_id": "SF_PLACE_LATCH_NINE",
+      "part_id": "latch-nine",
+      "new_place": true,
+      "note": "Latch Nine: reconstructed editable physical signal tender; source-reviewed, shipping Look review pending"
+    }
+  }
+}

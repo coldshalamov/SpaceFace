@@ -18,7 +18,7 @@ async function findFreePort(start) {
 }
 
 const port = await findFreePort(8300);
-const child = spawn(process.execPath, ['server.js', String(port)], { cwd: ROOT, stdio: 'ignore' });
+const child = spawn(process.execPath, ['server.js', String(port)], {env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },  cwd: ROOT, stdio: 'ignore' });
 const url = `http://127.0.0.1:${port}/`;
 for (let i = 0; i < 80; i++) {
   try { const r = await fetch(url); if (r.ok) break; } catch (_) {}

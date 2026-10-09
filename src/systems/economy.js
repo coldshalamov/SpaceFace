@@ -23,6 +23,8 @@
 //   stock target. We honor the schema field names (equilibrium = role-modified drift target,
 //   baseEq = fixed reference). Absolute early ROI is now moderated for M3 career parity.
 import { COMMODITIES } from '../data/commodities.js';
+import { TALLY_THREE, tallyThreeSource } from '../data/tallyThree.js';
+import { ILEX_ARK, validIlexOutcome } from '../data/ilexArk.js';
 import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
 import { averageBoundedPrice, averageLivePrice, normalizedTradeQuantity, settleCredits, recoverStock } from '../economy/economyMath.js';
 import { resourceIntent, restoreResourceWork, serializeResourceWork } from '../economy/economyResources.js';
@@ -33,7 +35,10 @@ import { KILL_REWARD_RECIPES } from '../data/killRewards.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { RESEARCH_GRANTS } from '../data/researchGrants.js';
 import { SECTORS } from '../data/sectors.js';
+import { BOLUS_SECTOR_ID, BOLUS_STATION_ID } from '../data/theBolus.js';
+import { SHIPS } from '../data/ships.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
+import { effectiveDangerTierFor } from './sectorSim.js';
 import {
   FIRST_UPGRADE,
   FIRST_UPGRADE_MINUTES,
@@ -65,7 +70,7 @@ import {
 } from '../economy/customsRisk.js';
 import { allRegionalPressureRecipes } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
-import { priceModForState } from './factions.js';
+import { priceModForState, rankServiceDiscount } from './factions.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import { contaminationSaleMult } from '../data/alienEcology.js'; // AE-077/078 biohazard market policy
@@ -111,6 +116,20 @@ const FINE_MULT = { legal: 0, restricted: 0.8, illegal: 1.2, contraband: 1.5 };
 const BRIBE_FRAC = 0.30;
 const DEBT_STALE_DAYS = 2;          // unpaid debt older than this starts converting to bounty
 const DEBT_TO_BOUNTY_DAILY_FRAC = 0.25; // posted bounty grows by this fraction of debt per stale day
+// FB-049 — a note is bounded by what you already hold plus the standing the berth's faction
+// extends; a stranger with an empty hull still gets the base note.
+const LOAN_BASE_CR = 800;
+const LOAN_NET_WORTH_FRAC = 0.35;
+const LOAN_REP_STEP_CR = 500;
+const LOAN_CAP_CR = 10000;
+// FB-124 — a cargo policy prices on the legal manifest at this berth, lasts one trip, and pays
+// the covered fraction of what a defeat actually destroys. Contraband is never insurable.
+const CARGO_POLICY_BASE_RATE = 0.08;
+const CARGO_POLICY_DANGER_MULT = 0.5;
+const CARGO_POLICY_COVER_FRAC = 0.6;
+// FB-101 — the hardship floor: the smallest fill that can still make a jump, once a day, filed
+// as debt. BASE_FUEL·LY·tier lands a real shortest leg at ~4–8u; eight covers it.
+const EMERGENCY_FUEL_U = 8;
 export const TRADE_LEDGER_MAX = 10;
 const SALVAGE_INTAKE_RECEIPT_CAP = 256;
 const NPC_SALVAGE_INTAKE_COMMODITY_ID = 'cmdty_scrap_metal';
@@ -151,6 +170,7 @@ export const ECONOMY_PRICE_TUNING = Object.freeze({
 const FUEL_UNIT_CR = 6;            // cr per fuel unit
 const REPAIR_HP_CR = 0.9;          // cr per hull/armor point restored
 const AMMO_UNIT_CR = 12;           // cr per munition
+export const AMMO_BATCH = 100;     // munitions per ammo purchase — the dock verb's default fill
 const HULL_WASH_CR = 75;           // cosmetic berth service; history survives the wash
 // PQ-155.03 sink: a Pitborn yard buys out a claimed salvage right at a premium over a medium
 // kill's chip line (2 chips × 60–120 cr). Rights stay scarce by mint, not by a cheap sink.
@@ -162,6 +182,31 @@ export const SERVICE_PRICES = Object.freeze({
   hullWashCr: HULL_WASH_CR,
   salvageRightCr: SALVAGE_RIGHT_CR,
 });
+
+/**
+ * Docked-service unit price after the standing discount — the one source the quote layer and
+ * the charge both read, so the number on the button is the number the yard takes. The rank
+ * that matters is the player's standing with the docked station's own faction; only a docked
+ * service honors it, so the off-station emergency reserve and depot running costs stay at list.
+ */
+export function serviceUnitCr(state, baseCr) {
+  const stationId = state && state.ui && state.ui.dockedStationId;
+  const info = stationId ? stationInfo(state, stationId) : null;
+  return baseCr * (1 - rankServiceDiscount(state, info && info.factionId));
+}
+
+/**
+ * Whether the docked berth actually runs this service — the contract the yard's own
+ * enqueue gate enforces (stationServices.enqueuePlayerJob refuses a job the berth does not
+ * offer) and the quote layer is expected to mirror. A berth with no services list is read
+ * the same way the yard reads it: unknown, so the verb stays allowed.
+ */
+export function stationOffersService(state, service) {
+  const stationId = state && state.ui && state.ui.dockedStationId;
+  const info = stationId ? stationInfo(state, stationId) : null;
+  if (!info || !Array.isArray(info.services) || !info.services.length) return true;
+  return info.services.includes(service);
+}
 
 /** Live hull-insurance defaults. The deductible is the named sink PQ-155.01 reads. */
 export const INSURANCE_DEFAULTS = Object.freeze({
@@ -302,6 +347,66 @@ function commodityDef(state, id) {
 /** A station tolerates contraband/illegal goods iff it is a blackmarket (smuggler/pirate den). */
 function toleratesContraband(info) {
   return !!(info && info.type === 'blackmarket');
+}
+
+const SHIP_PRICE_BY_ID = new Map(SHIPS.map((s) => [s && s.id, Number(s && s.price) || 0]));
+
+/**
+ * FB-124 — the insurable manifest: legal cargo only, valued at catalog base price. Contraband
+ * is never insurable and smuggling gear does not change the number the policy prices from.
+ */
+export function legalManifestValueCr(state) {
+  const items = state && state.player && state.player.cargo && state.player.cargo.items;
+  if (!items || typeof items !== 'object') return 0;
+  let total = 0;
+  for (const [id, qtyRaw] of Object.entries(items)) {
+    const qty = Math.max(0, Math.floor(Number(qtyRaw) || 0));
+    if (!(qty > 0)) continue;
+    const def = commodityDef(state, id);
+    if (!def || (def.legality && def.legality !== 'legal')) continue;
+    total += qty * (Number(def.basePrice) || 0);
+  }
+  return Math.round(total);
+}
+
+/**
+ * FB-049 — the note a berth will write: bounded by what you already hold plus the standing the
+ * docked faction extends. Debt is the economy's own field; this only reads it.
+ */
+export function loanLimitFor(state, stationId) {
+  const player = state && state.player;
+  if (!player) return 0;
+  const credits = Math.max(0, Math.round(Number(player.credits) || 0));
+  const idx = Math.max(0, Math.floor(Number(player.activeShipIndex) || 0));
+  const owned = Array.isArray(player.ownedShips) ? player.ownedShips[idx] : null;
+  const hullCr = owned && owned.defId ? (SHIP_PRICE_BY_ID.get(owned.defId) || 0) : 0;
+  const netWorth = credits + hullCr + legalManifestValueCr(state);
+  const info = stationId ? stationInfo(state, stationId) : null;
+  const rep = info && info.factionId && state.factions && state.factions[info.factionId]
+    ? Number(state.factions[info.factionId].rep) || 0 : 0;
+  return Math.max(0, Math.min(LOAN_CAP_CR,
+    Math.round(LOAN_BASE_CR + netWorth * LOAN_NET_WORTH_FRAC + rep * LOAN_REP_STEP_CR)));
+}
+
+/**
+ * FB-124 — the cargo-policy quote at this berth: the premium scales the legal manifest by the
+ * sector's real danger tier; a claim pays a fixed fraction of the manifest actually lost.
+ */
+export function cargoPolicyQuoteFor(state) {
+  const manifestCr = legalManifestValueCr(state);
+  if (!(manifestCr > 0)) return null;
+  const sectorId = (state && state.world && state.world.currentSectorId) || null;
+  const tier = effectiveDangerTierFor(state, sectorId);
+  const rate = CARGO_POLICY_BASE_RATE * (1 + tier * CARGO_POLICY_DANGER_MULT);
+  const premiumCr = Math.max(1, Math.round(manifestCr * rate));
+  return {
+    manifestCr,
+    dangerTier: tier,
+    rate,
+    premiumCr,
+    coverFrac: CARGO_POLICY_COVER_FRAC,
+    coverCr: Math.round(manifestCr * CARGO_POLICY_COVER_FRAC),
+  };
 }
 
 // Shared empty demand-driver row set. demandModel already returns frozen rows; this covers the
@@ -686,10 +791,13 @@ function ensurePlayerMarketMemory(player) {
 }
 
 function ensurePlayerTradeState(player) {
-  if (!player) return { ledger: [], lots: {} };
+  if (!player) return { ledger: [], lots: {}, margins: {} };
   if (!Array.isArray(player.tradeLedger)) player.tradeLedger = [];
   if (!player.tradeLots || typeof player.tradeLots !== 'object' || Array.isArray(player.tradeLots)) player.tradeLots = {};
-  return { ledger: player.tradeLedger, lots: player.tradeLots };
+  // FB-047: lifetime per-commodity margin roll-up — bounded by the commodity catalog, so the ten-
+  // receipt ledger cap no longer erases a pilot's session trading record.
+  if (!player.tradeMargins || typeof player.tradeMargins !== 'object' || Array.isArray(player.tradeMargins)) player.tradeMargins = {};
+  return { ledger: player.tradeLedger, lots: player.tradeLots, margins: player.tradeMargins };
 }
 
 function normalizeSalvageIntakeIds(raw) {
@@ -1263,6 +1371,7 @@ export const economy = {
     this._lastDockedStation = null;
     this._stationServiceBerth = null;
     this._syntheticHistoryKeys = new Set();
+    this._restoredQuoteKeys = new Set();
     economy._instance = this; // so exported quote()/execute() reach the live system
 
     const state = this.state, bus = this.bus;
@@ -1317,6 +1426,7 @@ export const economy = {
     // ---- SOLE credits writer (§0.6) -------------------------------------------------------
     bus.on('economy:grantCredits', (p) => this.grantCredits((p && p.amount) || 0, p && p.reason));
     bus.on('economy:chargeCredits', (p) => this._onChargeCreditsRequest(p));
+    bus.on('economy:releaseDebt', (p) => this._releaseDebt(p && p.amount));
     bus.on('freight:cargoSpilled', (p) => this.levyRestitutionSink(p));
     bus.on('economy:payBounty', (p) => {
       const payload = (p && typeof p === 'object') ? p : {};
@@ -1380,6 +1490,9 @@ export const economy = {
         this.ensureStationMarkets(p.stationId);
         this.snapshotIntel(p.stationId);
         this._runDockedCustomsPost(p.stationId);
+        // FB-124: a cargo policy covers one trip. Docking under your own power ends it — a
+        // defeat claim was already priced into the recovery plan before the rescue berth.
+        this._expireTripServices();
       }
     });
     bus.on('dock:undocked', () => {
@@ -1390,6 +1503,11 @@ export const economy = {
 
     // ---- services (refuel / repair / ammo) ------------------------------------------------
     bus.on('ui:service', (p) => { if (p) this.handleService(p); });
+    // FB-101 — a dry tank with no pump in the sector still has a door: one smallest-jump
+    // reserve per day, filed as debt, announced with the figure it costs.
+    bus.on('fuel:empty', (p) => this._onFuelEmpty(p));
+    // FB-111 — the tow charge is a credit move plus a debt filing; both stay on this writer.
+    bus.on('economy:towCharge', (p) => { if (p) this._settleTowCharge(p); });
 
     // ---- contraband scanning (jump-gate use / patrol proximity) ---------------------------
     bus.on('jump:start', (p) => this.runScan({ security: this.currentSecurity(), via: p && p.via, source: 'jump' }));
@@ -1778,12 +1896,20 @@ export const economy = {
     const market = state && state.economy && state.economy.markets && state.economy.markets[stationId];
     if (!market) return false;
     const frontier = this.frontierPenaltyFor(state, stationId);
+    const restoredQuotes = this._restoredQuoteKeys instanceof Set ? this._restoredQuoteKeys : null;
     let changed = false;
     for (const cid in market) {
       const entry = market[cid];
       const def = commodityDef(state, cid);
       if (!entry || !def) continue;
       const listingChanged = this.refreshListingDemand(entry, def, stationId);
+      // A quote carried verbatim from the save still belongs to the pulse that stamped it; the
+      // load-time rebuild refreshes demand fields only and the next repricing event resumes
+      // the curve on its normal cadence.
+      if (restoredQuotes && restoredQuotes.delete(`${stationId}\u001f${cid}`)) {
+        changed = listingChanged || changed;
+        continue;
+      }
       const cycle = getCycleCore(state, stationId, cid, () => this._rng(), state.simTime || 0);
       this.recomputePrices(entry, def, frontier, cycle, state.simTime || 0);
       if (listingChanged && recordHistory) {
@@ -1849,6 +1975,13 @@ export const economy = {
     // sim-internal paths keep their own deterministic mint order independent of quote timing.
     if (this.eagerMarketMint) this._materializePendingMarket(stationId);
     if (markets[stationId]) return markets[stationId];
+    // The Swallowed Rib is not part of the galactic price census. Building it
+    // from a Helios boot would take the shared economy stream and move every
+    // later station's cycle, including the 47-A golden. Prices exist once the
+    // player is actually in the throat.
+    if (stationId === BOLUS_STATION_ID && state.world?.currentSectorId !== BOLUS_SECTOR_ID) {
+      return null;
+    }
     const info = stationInfo(state, stationId);
     const type = stationTypeId || (info && info.type) || 'trade_hub';
     const sz = size || (info && info.size) || 'M';
@@ -2310,9 +2443,39 @@ export const economy = {
       tNow,
     );
     const priceImpactPct = beforeMid > 0 ? ((afterMid - beforeMid) / beforeMid) * 100 : 0;
+    // NXI-102: the commit also binds whole-unit hold capacity on a buy. The quote names that
+    // accepted quantity under the same capacity rule and prices it on the same curve, so a
+    // nearly full hold cannot preview a fraction the settlement rejects or reprices. The
+    // market answer (qty/unitAvg/total) stays the pure book side for intel and automation reads.
+    let acceptQty = qty;
+    let acceptUnitAvg = unitAvg;
+    let acceptTotal = total;
+    if (side === 'buy' && state.player && state.player.cargo) {
+      const freeVolume = (Number(state.player.cargo.capVolume) || 0) - (Number(state.player.cargo.usedVolume) || 0);
+      const volPerUnit = def.volPerU > 0 ? def.volPerU : 1;
+      const canFit = Math.max(0, Math.floor(freeVolume / volPerUnit));
+      if (canFit < qty) {
+        acceptQty = canFit;
+        if (acceptQty > 0) {
+          const acceptStockAfter = entry.stock - acceptQty;
+          const acceptMid = averageLivePrice({
+            basePrice: def.basePrice, baseEq: entry.baseEq, elasticity: el,
+            stockLo: Math.min(entry.stock, acceptStockAfter), stockHi: Math.max(entry.stock, acceptStockAfter),
+            demand: applyPersistentDemand(1, entry.demandMult), cycle: cycleFactorAt(cycle, tNow),
+            priceLo: PRICE_MULT_LO, priceHi: PRICE_MULT_HI,
+          });
+          acceptUnitAvg = acceptMid * (1 + spread / 2) * standingPriceMultiplier;
+          acceptTotal = settleCredits(acceptUnitAvg * acceptQty, side);
+        } else {
+          acceptUnitAvg = 0;
+          acceptTotal = 0;
+        }
+      }
+    }
     return {
       ok: true, stationId, commodityId, side, qty, requestedQty, partial: qty !== requestedQty,
       unitAvg, total,
+      acceptQty, acceptUnitAvg, acceptTotal, holdLimited: acceptQty < qty,
       priceImpactPct, stockAfter,
       standingPriceMultiplier,
       stationSurchargeWaived: side === 'buy' && standing.surchargeWaived,
@@ -2438,9 +2601,10 @@ export const economy = {
     if (side === 'buy') {
       if (entry.stock - qty < 1) qty = Math.max(0, Math.floor(entry.stock - 1)); // can't drain below 1u
       if (qty <= 0) return { ok: false, reason: 'no_stock' };
-      // cargo volume check (volume is the ONLY hard cap §0.13)
+      // cargo volume check (volume is the ONLY hard cap §0.13). Fail closed on a non-finite
+      // hold cache: an unknowable free means "no room", never a NaN canFit that skips the clamp.
       const free = state.player.cargo.capVolume - state.player.cargo.usedVolume;
-      const canFit = Math.floor(free / (def.volPerU > 0 ? def.volPerU : 1));
+      const canFit = Number.isFinite(free) ? Math.floor(free / (def.volPerU > 0 ? def.volPerU : 1)) : 0;
       if (canFit < qty) qty = canFit;
       if (qty <= 0) return { ok: false, reason: 'cargo_full' };
       const fq = this.quote(stationId, commodityId, 'buy', qty);
@@ -2453,7 +2617,9 @@ export const economy = {
       }
       // APPLY
       const added = this.addToCargo(cargoSys, state, commodityId, qty);
-      if (added <= 0) return { ok: false, reason: 'cargo_full' };
+      // Fail closed on any non-positive or non-finite accepted count: settling past this
+      // line has already loaded goods, so a bad count must never reach the stock/charge legs.
+      if (!(added > 0)) return { ok: false, reason: 'cargo_full' };
       const realQty = added;
       const realCost = realQty === qty ? cost : round(this.quote(stationId, commodityId, 'buy', realQty).total);
       entry.stock = Math.max(1, entry.stock - realQty);
@@ -2479,7 +2645,8 @@ export const economy = {
       }
       // APPLY
       const removed = this.removeFromCargo(cargoSys, state, commodityId, qty);
-      if (removed <= 0) return { ok: false, reason: 'no_cargo' };
+      // Same fail-closed rule as the buy leg: a bad count must never reach stock/credits.
+      if (!(removed > 0)) return { ok: false, reason: 'no_cargo' };
       const realQty = removed;
       const realGross = realQty === qty ? gross : round(this.quote(stationId, commodityId, 'sell', realQty).total);
       entry.stock = entry.stock + realQty;
@@ -2724,7 +2891,7 @@ export const economy = {
   recordTradeLedger(state, stationId, commodityId, side, qty, unitAvg, total, def) {
     const player = state && state.player;
     if (!player || !commodityId || qty <= 0) return null;
-    const { ledger, lots } = ensurePlayerTradeState(player);
+    const { ledger, lots, margins } = ensurePlayerTradeState(player);
     const cleanQty = Math.max(0, Math.floor(Number(qty) || 0));
     const cleanUnit = Number(unitAvg) || 0;
     let basisUnit = cleanUnit;
@@ -2737,6 +2904,17 @@ export const economy = {
       basisUnit = this.consumeTradeLots(lots, commodityId, cleanQty, def);
       marginPerUnit = cleanUnit - basisUnit;
       profitCr = Math.round(marginPerUnit * cleanQty);
+      // FB-047: roll the margin into the lifetime per-commodity bucket — the ten-receipt ledger
+      // forgets, the roll-up survives the whole career.
+      const margin = margins[commodityId] || (margins[commodityId] = {
+        sales: 0, units: 0, profitCr: 0, bestMarginUnit: null, worstMarginUnit: null,
+      });
+      margin.sales += 1;
+      margin.units += cleanQty;
+      margin.profitCr += profitCr;
+      const marginUnit = Math.round(marginPerUnit);
+      if (margin.bestMarginUnit == null || marginUnit > margin.bestMarginUnit) margin.bestMarginUnit = marginUnit;
+      if (margin.worstMarginUnit == null || marginUnit < margin.worstMarginUnit) margin.worstMarginUnit = marginUnit;
     }
     const tradeSequence = nextTradeSequence(player, ledger);
     const seed = (Number(state && state.meta && state.meta.seed) >>> 0) || 1;
@@ -2938,6 +3116,53 @@ export const economy = {
     }
     this.bus.emit('economy:freightAccepted', { ...accepted });
     return { ok: true, duplicate: false, receiptId, qty };
+  },
+
+  quoteTallyThreeCrate(source) {
+    const qty=Math.floor(Number(source?.remainingPool?.cmdty_salvage_electronics)||0);
+    if(source?.sourceKey!==TALLY_THREE.sourceKey||source.extracted||qty<=0||qty>TALLY_THREE.pool.cmdty_salvage_electronics)return {ok:false,reason:'no-crate-contents'};
+    const info=stationInfo(this.state,TALLY_THREE.homeStationId);
+    const market=info&&(this.state.economy.markets[TALLY_THREE.homeStationId]||this.ensureMarket(TALLY_THREE.homeStationId,info.type,info.size));
+    const price=market?.cmdty_salvage_electronics?.lastSell;
+    if(!Number.isFinite(price)||price<0)return {ok:false,reason:'receiver-listing-unavailable'};
+    return {ok:true,qty,quoteCr:Math.max(0,Math.floor(price*qty))};
+  },
+
+  // A finite first planting from physically accepted original vaults, after its growth delay.
+  // The existing market stock authority owns the product; seeds never become player cargo.
+  applyIlexSeedHarvest(receiptId) {
+    const receipt = this.registryGet('ilexArk')?.outcomeReceipt?.(receiptId);
+    if (!validIlexOutcome(receipt)) return { ok: false, reason: 'unaccepted_seed_custody' };
+    if (this.state.simTime < receipt.harvestAt) return { ok: false, reason: 'planting_pending' };
+    const intents = ensureCommittedIntents(this.state), key = `${receipt.id}:first-harvest`, prior = intents[key];
+    if (prior) return { ok: true, duplicate: true, ...prior.result };
+    const market = this.state.economy.markets[ILEX_ARK.stationId] || this.ensureMarket(ILEX_ARK.stationId);
+    if (!market?.cmdty_food) return { ok: false, reason: 'greenhouse_receiver_pending' };
+    const qty = receipt.deliveredVaultIds.length * ILEX_ARK.provisionsPerVault;
+    const result = { receiptId: key, stationId: ILEX_ARK.stationId, commodityId: 'cmdty_food', qty,
+      deliveredVaultIds: [...receipt.deliveredVaultIds], at: this.state.simTime };
+    intents[key] = { receipt: { ...receipt, deliveredVaultIds: [...receipt.deliveredVaultIds] }, result };
+    if (qty) this.applyStockPressure(ILEX_ARK.stationId, 'cmdty_food', 'sell', qty);
+    this.bus.emit('ilexArk:harvested', { ...result, deliveredVaultIds: [...result.deliveredVaultIds] });
+    this.bus.emit('toast', { text: qty ? `Ceres greenhouse — first planting yielded ${qty}u Provisions from ${receipt.deliveredVaultIds.length}/6 seed lines.`
+      : 'Ceres greenhouse — no seed lines arrived. No planting or Provisions were created.', kind: 'info', ttl: 6 });
+    return { ok: true, duplicate: false, ...result };
+  },
+  settleTallyThreeDelivery(receipt) {
+    const source=tallyThreeSource(this.state),canonical=source?.delivery;
+    if(!canonical||JSON.stringify(canonical)!==JSON.stringify(receipt)
+      ||receipt.receiptId!=='tally-three:'+TALLY_THREE.worldRecordId)return {ok:false,reason:'unaccepted-custody'};
+    const intents=ensureCommittedIntents(this.state),key=receipt.receiptId,prior=intents[key];
+    if(prior)return {ok:true,duplicate:true,...prior.result};
+    const before=normalizeCredits(this.state.player.credits);
+    const creditedCr=normalizeCredits(before+receipt.quoteCr)-before;
+    const result={receiptId:receipt.receiptId,qty:receipt.qty,creditedCr,stationId:receipt.stationId};
+    // Reserve before any credit/stock event can recursively replay this same accepted crate.
+    intents[key]={receipt:{...receipt},result};
+    this.grantCredits(receipt.quoteCr,'salvage:tally-three-return');
+    this.applyStockPressure(receipt.stationId,receipt.commodityId,'sell',receipt.qty);
+    this.bus.emit('cargo:tallyThreeDelivered',{...result,worldRecordId:receipt.worldRecordId});
+    return {ok:true,duplicate:false,...result};
   },
 
   /**
@@ -3163,6 +3388,107 @@ export const economy = {
     });
   },
 
+  /**
+   * File a new debit on the note — the same accrual the fine path performs inline. Fresh debt
+   * restarts the stale clock so new balances age through the grace window before escalation.
+   */
+  _fileDebt(amountCr) {
+    const state = this.state;
+    const player = state && state.player;
+    const amount = Math.max(0, Math.round(Number(amountCr) || 0));
+    if (!player || amount <= 0) return 0;
+    player.debt = Math.max(0, Math.round(Number(player.debt) || 0)) + amount;
+    player.debtSinceDay = Number.isInteger(state.days) ? state.days : 0;
+    delete player.debtStaleDay;
+    return amount;
+  },
+
+  /**
+   * Release part of the note — the inverse of _fileDebt for work the yard never delivered
+   * (stationServices aborts a paid job and returns the undelivered share). A note paid off to
+   * zero stops aging like any settled balance; a remaining balance keeps its original stale
+   * clock rather than getting a fresh grace window out of a partial refund.
+   */
+  _releaseDebt(amountCr) {
+    const state = this.state;
+    const player = state && state.player;
+    const amount = Math.max(0, Math.round(Number(amountCr) || 0));
+    if (!player || amount <= 0) return 0;
+    if (!(Number(player.debt) > 0)) return 0;
+    player.debt = Math.max(0, Math.round(Number(player.debt)) - amount);
+    if (player.debt <= 0) {
+      player.debtSinceDay = null;
+      delete player.debtStaleDay;
+    }
+    return amount;
+  },
+
+  /**
+   * FB-101 — a dry tank in a sector with no refuel berth still has a door: the smallest fill
+   * that can make a jump, once per day, filed on the note. Dry near a pump is a choice, not a
+   * rescue case — stations with 'refuel' service suppress the grant entirely.
+   */
+  _onFuelEmpty(p) {
+    const state = this.state;
+    const player = state && state.player;
+    const fuel = state && state.fuel;
+    if (!player || !fuel) return;
+    // A dry tank on a berth is a refuel quote, not a rescue case — the docked hardship
+    // branch in handleService owns that door.
+    if (state.ui && state.ui.docked === true) return;
+    const sector = state.world && state.world.activeSector;
+    const stations = sector && Array.isArray(sector.stations) ? sector.stations : [];
+    const pumpHere = stations.some((st) => {
+      const id = st && (st.stationId || st.id);
+      const info = id ? stationInfo(state, id) : null;
+      return info && Array.isArray(info.services) && info.services.includes('refuel');
+    });
+    if (pumpHere) return;
+    const day = Number.isInteger(state.days) ? state.days
+      : Math.floor((Number(state.simTime) || 0) / 600);
+    if (player.emergencyFuelDay === day) return;
+    player.emergencyFuelDay = day;
+    const grant = Math.min(EMERGENCY_FUEL_U, Math.max(0, (Number(fuel.max) || 0) - (Number(fuel.current) || 0)));
+    if (grant <= 0) return;
+    const cost = Math.round(grant * FUEL_UNIT_CR);
+    fuel.current = Math.min(Number(fuel.max) || 0, (Number(fuel.current) || 0) + grant);
+    this._fileDebt(cost);
+    this.bus.emit('fuel:changed', { current: fuel.current, max: fuel.max });
+    this.bus.emit('alert', {
+      key: 'fuel:reserve', sev: 'warn',
+      text: `EMERGENCY RESERVE — ${grant}u filed as ${cost} cr debt`,
+      ttl: 5,
+    });
+    this.bus.emit('service:completed', {
+      type: 'emergency_fuel', units: grant, debtCr: cost,
+      sectorId: (p && p.sectorId) || (state.world && state.world.currentSectorId) || null,
+      atT: Number(state.simTime) || 0,
+    });
+  },
+
+  /** FB-124 — single-trip services expire at the dock that ends the trip. */
+  _expireTripServices() {
+    const player = this.state && this.state.player;
+    if (player && player.cargoPolicy) delete player.cargoPolicy;
+  },
+
+  /**
+   * FB-111 — the tow settles like a recovery: charge what the wallet holds, file the rest on
+   * the note. One intent, one writer; the payload carries the outcome back to the caller.
+   */
+  _settleTowCharge(p) {
+    const state = this.state;
+    const player = state && state.player;
+    if (!player) { if (p) p.ok = false; return; }
+    const quoted = Math.max(0, Math.round(Number(p.quotedCr) || 0));
+    const paid = Math.min(quoted, normalizeCredits(player.credits));
+    if (paid > 0) this.chargeCredits(paid, 'service:stuck_tow');
+    const debtCr = this._fileDebt(quoted - paid);
+    p.ok = true;
+    p.chargedCr = paid;
+    p.debtCr = debtCr;
+  },
+
   // -------------------------------------------------------------------------------------------
   // SERVICES — refuel / repair / ammo / hull wash (ui:service {type, amount}).
   // -------------------------------------------------------------------------------------------
@@ -3174,16 +3500,54 @@ export const economy = {
       this.bus.emit('toast', { text: 'Dock first', kind: 'error', ttl: 2 });
       return;
     }
+    // The berth's own services list is the contract: a trade post with no pump does not fill
+    // your tank, and a mining outpost with no yard does not weld your hull. Without this gate
+    // the yard refuses the job and the instant-fallback below silently becomes the pump.
+    if (type === 'refuel' || type === 'repair') {
+      const need = type === 'refuel' ? 'refuel' : 'repair';
+      if (!stationOffersService(state, need)) {
+        this.bus.emit('toast', {
+          text: need === 'refuel'
+            ? 'No fuel berth here — the yard has no pump'
+            : 'No repair yard here — the yard cannot weld',
+          kind: 'error', ttl: 3,
+        });
+        return;
+      }
+    }
     if (type === 'refuel') {
       const fuel = state.fuel || (state.fuel = { current: 0, max: 100 });
       const want = p.amount != null ? p.amount : (fuel.max - fuel.current);
       const units = Math.max(0, Math.min(want, fuel.max - fuel.current));
-      const cost = round(units * FUEL_UNIT_CR);
-      if (units <= 0) return;
+      const fuelUnit = serviceUnitCr(state, FUEL_UNIT_CR);
+      const cost = round(units * fuelUnit);
+      if (units <= 0) {
+        // The tank is already full — the same word the repair bench gives an intact hull.
+        this.bus.emit('toast', { text: 'Tank already full', kind: 'info', ttl: 2 });
+        return;
+      }
       const credits = normalizeCredits(state.player.credits);
-      const realUnits = credits < cost ? Math.max(0, Math.min(units, Math.floor(credits / FUEL_UNIT_CR))) : units;
-      if (realUnits <= 0) { this.bus.emit('toast', { text: 'Insufficient credits for fuel', kind: 'error', ttl: 2 }); return; }
-      const realCost = round(realUnits * FUEL_UNIT_CR);
+      const realUnits = credits < cost ? Math.max(0, Math.min(units, Math.floor(credits / fuelUnit))) : units;
+      if (realUnits <= 0) {
+        // FB-101 hardship branch: a broke pilot still gets the smallest fill that can jump —
+        // the berth files the unpaid units on the note instead of stranding the hull.
+        const reserve = Math.min(EMERGENCY_FUEL_U, units);
+        const debtCr = this._fileDebt(Math.round(reserve * fuelUnit));
+        const fuelYard = this._serviceYard();
+        const stationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null;
+        if (fuelYard && fuelYard.enqueuePlayerJob({
+          type: 'refuel', units: reserve, stationId,
+          meta: { cost: 0, debtCr },
+        })) {
+          this.bus.emit('toast', { text: `Refuel on the note (${round(reserve)}u — ${debtCr} cr filed)`, kind: 'warn', ttl: 3 });
+        } else {
+          fuel.current = Math.min(fuel.max, fuel.current + reserve);
+          this.bus.emit('fuel:changed', { current: fuel.current, max: fuel.max });
+          this.bus.emit('toast', { text: `Emergency fuel (${round(reserve)}u — ${debtCr} cr filed as debt)`, kind: 'warn', ttl: 3 });
+        }
+        return;
+      }
+      const realCost = round(realUnits * fuelUnit);
       this.chargeCredits(realCost, 'service:refuel');
       // The yard owns timed delivery when the player is on a live dock (fuel is a pump, not an
       // instant fill). Harness docks without the production latch keep the instant path below.
@@ -3193,11 +3557,11 @@ export const economy = {
         stationId: (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null,
         meta: { cost: realCost },
       })) {
-        this.bus.emit('toast', { text: `Refuel underway (${round(realUnits)}u, ${realCost}cr)`, kind: 'success', ttl: 2 });
+        this.bus.emit('toast', { text: `Refuel underway (${round(realUnits)}u, ${realCost} cr)`, kind: 'success', ttl: 2 });
       } else {
         fuel.current = Math.min(fuel.max, fuel.current + realUnits);
         this.bus.emit('fuel:changed', { current: fuel.current, max: fuel.max });
-        this.bus.emit('toast', { text: `${realUnits < units ? 'Partial refuel' : 'Refueled'} (${round(realUnits)}u, ${realCost}cr)`, kind: realUnits < units ? 'warn' : 'success', ttl: 2 });
+        this.bus.emit('toast', { text: `${realUnits < units ? 'Partial refuel' : 'Refueled'} (${round(realUnits)}u, ${realCost} cr)`, kind: realUnits < units ? 'warn' : 'success', ttl: 2 });
       }
     } else if (type === 'repair') {
       const e = state.entities && state.entities.get(state.playerId);
@@ -3212,7 +3576,8 @@ export const economy = {
       const missArmor = Math.max(0, (e.armorMax || 0) - (e.armorHp || 0));
       const totalMiss = missHull + missArmor;
       if (totalMiss <= 0.5) { this.bus.emit('toast', { text: 'Hull already intact', kind: 'info', ttl: 2 }); return; }
-      const cost = round(totalMiss * REPAIR_HP_CR);
+      const repairUnit = serviceUnitCr(state, REPAIR_HP_CR);
+      const cost = round(totalMiss * repairUnit);
       const credits = normalizeCredits(state.player.credits);
       const repairYard = this._serviceYard();
       const yardUnits = credits < cost ? totalMiss * (cost > 0 ? credits / cost : 0) : totalMiss;
@@ -3234,10 +3599,10 @@ export const economy = {
         if (credits < cost) {
           actualCost = credits;
           this.chargeCredits(credits, 'service:repair');
-          this.bus.emit('toast', { text: 'Partial repair booked (out of credits)', kind: 'warn', ttl: 2 });
+          this.bus.emit('toast', { text: 'Partial repair booked — out of credits', kind: 'warn', ttl: 2 });
         } else {
           this.chargeCredits(cost, 'service:repair');
-          this.bus.emit('toast', { text: `Repair underway (${cost}cr)`, kind: 'success', ttl: 2 });
+          this.bus.emit('toast', { text: `Repair underway (${cost} cr)`, kind: 'success', ttl: 2 });
         }
       } else {
         let actualCost = cost;
@@ -3248,11 +3613,11 @@ export const economy = {
           e.armorHp = Math.min(e.armorMax, (e.armorHp || 0) + missArmor * frac);
           actualCost = credits;
           this.chargeCredits(credits, 'service:repair');
-          this.bus.emit('toast', { text: 'Partial repair (out of credits)', kind: 'warn', ttl: 2 });
+          this.bus.emit('toast', { text: 'Partial repair — out of credits', kind: 'warn', ttl: 2 });
         } else {
           e.hull = e.hullMax; e.armorHp = e.armorMax;
           this.chargeCredits(cost, 'service:repair');
-          this.bus.emit('toast', { text: `Repaired (${cost}cr)`, kind: 'success', ttl: 2 });
+          this.bus.emit('toast', { text: `Repaired (${cost} cr)`, kind: 'success', ttl: 2 });
         }
         this.bus.emit('service:completed', {
           type: 'repair',
@@ -3282,7 +3647,7 @@ export const economy = {
         return;
       }
       if (normalizeCredits(player.credits) < HULL_WASH_CR) {
-        this.bus.emit('toast', { text: 'Insufficient credits for hull wash', kind: 'error', ttl: 2 });
+        this.bus.emit('toast', { text: 'Not enough credits for a hull wash', kind: 'error', ttl: 2 });
         return;
       }
       this.chargeCredits(HULL_WASH_CR, 'service:hull_wash');
@@ -3293,18 +3658,23 @@ export const economy = {
         stationId,
         atT: Number(state.simTime) || 0,
       });
-      this.bus.emit('toast', { text: `Hull washed (${HULL_WASH_CR}cr)`, kind: 'success', ttl: 2 });
+      this.bus.emit('toast', { text: `Hull washed (${HULL_WASH_CR} cr)`, kind: 'success', ttl: 2 });
     } else if (type === 'ammo') {
-      const units = Math.max(0, Math.floor(p.amount || 0));
-      if (units <= 0) return;
+      // A missing amount means "a batch, hold and wallet permitting" — the same default
+      // semantics the refuel and repair verbs carry. An explicit 0 is an answer: nothing asked.
+      const units = Math.max(0, Math.floor(p.amount != null ? p.amount : AMMO_BATCH));
+      if (units <= 0) {
+        this.bus.emit('toast', { text: 'No munitions requested', kind: 'info', ttl: 2 });
+        return;
+      }
       const cost = round(units * AMMO_UNIT_CR);
-      if (normalizeCredits(state.player.credits) < cost) { this.bus.emit('toast', { text: 'Insufficient credits for munitions', kind: 'error', ttl: 2 }); return; }
+      if (normalizeCredits(state.player.credits) < cost) { this.bus.emit('toast', { text: 'Not enough credits for munitions', kind: 'error', ttl: 2 }); return; }
       // ammo is tracked as a cargo commodity (cmdty_munitions) so it integrates with the hold.
       const added = this.addToCargo(this.registryGet && this.registryGet('cargo'), state, 'cmdty_munitions', units);
       if (added <= 0) { this.bus.emit('toast', { text: 'Cargo hold full', kind: 'error', ttl: 2 }); return; }
       const realCost = round(added * AMMO_UNIT_CR);
       this.chargeCredits(realCost, 'service:ammo');
-      this.bus.emit('toast', { text: `Bought ${added} munitions (${realCost}cr)`, kind: 'success', ttl: 2 });
+      this.bus.emit('toast', { text: `Bought ${added} munitions (${realCost} cr)`, kind: 'success', ttl: 2 });
     } else if (type === 'redeem_rights') {
       // Stunt-paid claim currency (PQ-155.03): a Pitborn yard/fence buys out held rights for
       // credits plus a standing notice. Trick pay never opened the wallet; the sink only
@@ -3327,7 +3697,11 @@ export const economy = {
         return;
       }
       const want = p.amount != null ? Math.min(held, Math.max(0, Math.floor(Number(p.amount)))) : held;
-      if (want <= 0) return;
+      if (want <= 0) {
+        // An explicit zero is an answer: the player asked to redeem nothing.
+        this.bus.emit('toast', { text: 'No rights asked for', kind: 'info', ttl: 2 });
+        return;
+      }
       player.salvageRights = held - want;
       const payout = round(want * SALVAGE_RIGHT_CR);
       this.grantCredits(payout, 'service:redeem_rights');
@@ -3335,7 +3709,7 @@ export const economy = {
       this.bus.emit('service:completed', {
         type: 'redeem_rights', rights: want, payout, stationId, atT: Number(state.simTime) || 0,
       });
-      this.bus.emit('toast', { text: `Redeemed ${want} salvage right${want === 1 ? '' : 's'} (+${payout}cr)`, kind: 'success', ttl: 2 });
+      this.bus.emit('toast', { text: `Redeemed ${want} salvage right${want === 1 ? '' : 's'} (+${payout} cr)`, kind: 'success', ttl: 2 });
     } else if (type === 'insurance') {
       const ins = state.player.insurance || (state.player.insurance = {
         rate: INSURANCE_DEFAULTS.rate,
@@ -3347,16 +3721,108 @@ export const economy = {
       if (enable) {
         if (ins.insuredModules) { this.bus.emit('toast', { text: 'Hull insurance already active', kind: 'info', ttl: 2 }); return; }
         const cost = Math.max(0, Math.round(ins.deductibleCr || 0));
-        if (normalizeCredits(state.player.credits) < cost) { this.bus.emit('toast', { text: 'Insufficient credits for insurance', kind: 'error', ttl: 2 }); return; }
+        if (normalizeCredits(state.player.credits) < cost) { this.bus.emit('toast', { text: 'Not enough credits for insurance', kind: 'error', ttl: 2 }); return; }
         if (cost) this.chargeCredits(cost, 'service:insurance');
         ins.insuredModules = true;
         ins.lastStationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || ins.lastStationId;
-        this.bus.emit('toast', { text: `Hull insurance active (${cost}cr)`, kind: 'success', ttl: 2 });
+        this.bus.emit('toast', { text: `Hull insurance active (${cost} cr)`, kind: 'success', ttl: 2 });
       } else {
         if (!ins.insuredModules) { this.bus.emit('toast', { text: 'Hull insurance already inactive', kind: 'info', ttl: 2 }); return; }
         ins.insuredModules = false;
         this.bus.emit('toast', { text: 'Hull insurance cancelled', kind: 'info', ttl: 2 });
       }
+    } else if (type === 'loan') {
+      // FB-049 — the note as an instrument: borrow against what you hold and the standing this
+      // berth's faction extends. Stale notes age into bounty through the existing day:tick rule.
+      const player = state.player;
+      const stationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null;
+      const limit = loanLimitFor(state, stationId);
+      const outstanding = Math.max(0, Math.round(Number(player.debt) || 0));
+      const room = Math.max(0, limit - outstanding);
+      const want = p.amount != null ? Math.max(0, Math.floor(Number(p.amount))) : room;
+      const take = Math.min(room, want);
+      if (take <= 0) {
+        this.bus.emit('toast', { text: 'The note is already at its limit', kind: 'error', ttl: 2 });
+        return;
+      }
+      this._fileDebt(take);
+      this.grantCredits(take, 'service:loan');
+      this.bus.emit('service:completed', {
+        type: 'loan', amount: take, debtCr: Math.round(Number(player.debt) || 0),
+        stationId, atT: Number(state.simTime) || 0,
+      });
+      this.bus.emit('toast', {
+        text: `Borrowed ${take} cr — the note stands at ${Math.round(Number(player.debt) || 0)} cr`,
+        kind: 'success', ttl: 3,
+      });
+    } else if (type === 'settle') {
+      // FB-049 — paying the note down: a cleared ledger drops the stale clock and stops the
+      // daily bounty levy at the next day:tick.
+      const player = state.player;
+      const debt = Math.max(0, Math.round(Number(player.debt) || 0));
+      if (debt <= 0) {
+        this.bus.emit('toast', { text: 'No note on the ledger', kind: 'info', ttl: 2 });
+        return;
+      }
+      const want = p.amount != null ? Math.min(debt, Math.max(0, Math.floor(Number(p.amount)))) : debt;
+      const pay = Math.min(want, normalizeCredits(player.credits));
+      if (pay <= 0) {
+        this.bus.emit('toast', { text: 'Nothing to settle it with', kind: 'error', ttl: 2 });
+        return;
+      }
+      this.chargeCredits(pay, 'service:settle');
+      player.debt = debt - pay;
+      if (player.debt <= 0) {
+        player.debtSinceDay = null;
+        delete player.debtStaleDay;
+      }
+      const stationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null;
+      this.bus.emit('service:completed', {
+        type: 'settle', amount: pay, debtCr: player.debt,
+        stationId, atT: Number(state.simTime) || 0,
+      });
+      this.bus.emit('toast', {
+        text: player.debt > 0
+          ? `Paid ${pay} cr — the note stands at ${player.debt} cr`
+          : `Note settled (${pay} cr)`,
+        kind: 'success', ttl: 2,
+      });
+    } else if (type === 'cargo_insurance') {
+      // FB-124 — a one-trip policy on the legal manifest, priced at this berth by the sector's
+      // real danger tier. The claim is honored in the recovery plan at defeat time.
+      const player = state.player;
+      if (player.cargoPolicy) {
+        this.bus.emit('toast', { text: 'Cargo policy already active until the next dock', kind: 'info', ttl: 2 });
+        return;
+      }
+      const quote = cargoPolicyQuoteFor(state);
+      if (!quote) {
+        this.bus.emit('toast', { text: 'No legal cargo in the hold to cover', kind: 'info', ttl: 2 });
+        return;
+      }
+      if (normalizeCredits(player.credits) < quote.premiumCr) {
+        this.bus.emit('toast', { text: 'Not enough credits for a cargo policy', kind: 'error', ttl: 2 });
+        return;
+      }
+      this.chargeCredits(quote.premiumCr, 'service:cargo_insurance');
+      const stationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null;
+      player.cargoPolicy = {
+        manifestCr: quote.manifestCr,
+        coverFrac: quote.coverFrac,
+        coverCr: quote.coverCr,
+        premiumCr: quote.premiumCr,
+        dangerTier: quote.dangerTier,
+        stationId,
+        issuedAt: Number(state.simTime) || 0,
+      };
+      this.bus.emit('service:completed', {
+        type: 'cargo_insurance', premiumCr: quote.premiumCr, manifestCr: quote.manifestCr,
+        coverCr: quote.coverCr, stationId, atT: Number(state.simTime) || 0,
+      });
+      this.bus.emit('toast', {
+        text: `Cargo policy written (${quote.premiumCr} cr — covers ${quote.coverCr} cr until the next dock)`,
+        kind: 'success', ttl: 3,
+      });
     }
   },
 
@@ -3570,7 +4036,7 @@ export const economy = {
   payBribe(p) {
     const fine = p.fine || 0;
     const cost = round(fine * BRIBE_FRAC);
-    if (normalizeCredits(this.state.player.credits) < cost) { this.bus.emit('toast', { text: 'Cannot afford bribe', kind: 'error', ttl: 2 }); return { ok: false }; }
+    if (normalizeCredits(this.state.player.credits) < cost) { this.bus.emit('toast', { text: 'Not enough credits for the bribe', kind: 'error', ttl: 2 }); return { ok: false }; }
     this.chargeCredits(cost, 'bribe:contraband');
     return { ok: true, cost };
   },
@@ -3847,6 +4313,7 @@ export const economy = {
     state.player.marketMemory = {};
     state.player.tradeLedger = [];
     state.player.tradeLots = {};
+    state.player.tradeMargins = {};
     state.player.tradeReceiptSeq = 0;
     state.player.sessionSinks = [];
     state.player.sessionSinkSeq = 0;
@@ -3856,7 +4323,13 @@ export const economy = {
     this._nextEventId = 1;
     this._eventAccumulator = 0;
     this._syntheticHistoryKeys = new Set();
+    this._restoredQuoteKeys = new Set();
     this._offlineSummaryRefresh = null;
+    // Session berth latches are run-scoped: a quit-while-docked New Game must not let
+    // dockedStationId()/_stationServicesDocked() resolve the previous run's berth — trade and
+    // service gates would then fail open against a station the player is not at.
+    this._lastDockedStation = null;
+    this._stationServiceBerth = null;
     // warm the home sector's markets so prices exist before first dock
     const home = (state.world && state.world.currentSectorId) || 'sector_helios_prime';
     const sec = SECTORS.find((s) => s.id === home);
@@ -3944,6 +4417,7 @@ export const economy = {
     econ.pulse = restoreEconomyPulse(data.pulse, this.state.simTime);
     econ.balanceVersion = BALANCE.version;
     this._syntheticHistoryKeys = new Set();
+    this._restoredQuoteKeys = new Set();
     // Restore formula state before pricing so mid includes the saved wave, not a fresh invent.
     deserializeCycles(this.state, data.cycles);
     econ.markets = {};
@@ -3975,6 +4449,7 @@ export const economy = {
             entry.lastMid = e.lastMid;
             entry.lastBuy = e.lastBuy;
             entry.lastSell = e.lastSell;
+            this._restoredQuoteKeys.add(`${sid}\u001f${cid}`);
           } else this.recomputeLivePrices(entry, def, sid, cid);
           const cycle = getCycleCore(this.state, sid, cid, () => this._rng(), this.state.simTime || 0);
           const restoredHistory = sanitizeHistory(e.history);

@@ -151,7 +151,7 @@ test('a modelled past and an observed sample are different marks', () => {
       hist: entry.history, forecast, now: state.simTime,
       quoteAge: 'fresh', quoteSource: 'live',
     });
-    assert.match(html, /data-modelled[^>]*>Modelled past</);
+    assert.match(html, /data-modelled[^>]*>Estimated</);
     assert.match(html, /data-observed[^>]*>Observed</);
     assert.match(html, /data-history-origin="mixed"/);
     assert.match(html, /data-forecast-band/);

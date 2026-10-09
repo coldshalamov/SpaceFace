@@ -16,6 +16,7 @@ import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
 import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { createArcRail } from '../orrery/arcRail.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { isPhoneLayout } from '../../systems/mobile/model.js';
 
 const LS_PREFIX = 'sf.save.';
 /** Show or hide Continue's row on the dial, and re-seat the dial when it changes. */
@@ -58,12 +59,12 @@ function isDisabled(button) { return button.getAttribute('aria-disabled') === 't
 function setScreenButtonReady(button, ctx, id, label) {
   if (!button) return;
   const ready = screenReady(ctx, id);
-  setDisabled(button, !ready, ready ? '' : label + ' is initializing');
+  setDisabled(button, !ready, ready ? '' : label + ' is still loading');
 }
 function pushWhenReady(ctx, id, label) {
   if (!screenReady(ctx, id)) {
     if (ctx && ctx.bus && ctx.bus.emit) {
-      ctx.bus.emit('toast', { text: label + ' is initializing - try again in a moment', kind: 'info', ttl: 2200 });
+      ctx.bus.emit('toast', { text: label + ' is still loading — try again in a moment', kind: 'info', ttl: 2200 });
     }
     return;
   }
@@ -367,6 +368,7 @@ export const mainMenuScreen = {
     // Wave B11: Physics lab / Sandbox toy on front door.
     const asideItems = [
       { action: 'archive', label: 'Archive' },
+      { action: 'circuits', label: 'Circuits' },
       { action: 'sandbox', label: 'Sandbox' },
     ];
 
@@ -402,11 +404,14 @@ export const mainMenuScreen = {
     // its pivot to whichever verb is awake. The rail only positions the list and draws behind it.
     if (arcRail) arcRail.dispose();
     injectOrreryScreens();
-    rootEl.classList.add('orr-title');
+    // A phone has no room for the dial (its rim is wider than the screen): the verbs stand as the plain
+    // Deckplate column under the logotype, in big thumb-sized words, and the world is the backdrop.
+    const phone = isPhoneLayout();
+    rootEl.classList.add(phone ? 'orr-title--phone' : 'orr-title');
     // The emblem sits BEHIND the logotype (ORRERY 6): its upper third runs under the name, its rim is
     // lettered, and the verbs ride its right side from just above east down to the south-east, so the name
     // and the choice are one object and the lower left goes back to the key art.
-    arcRail = createArcRail({ host: stage, list, frame: rootEl, extra: [aside],
+    arcRail = phone ? null : createArcRail({ host: stage, list, frame: rootEl, extra: [aside],
       // T-S1: the title's signature — the Hand follows the pointer round the dial, the rings answer
       freeTrack: true,
       // the pivot keeps the rim's ticks clear of the frame (re + 33) at every height
@@ -438,6 +443,7 @@ export const mainMenuScreen = {
     const bLoad = byAction('load');
     const bCrucible = byAction('crucible');
     const bArchive = byAction('archive');
+    const bCircuits = byAction('circuits');
     const bSettings = byAction('settings');
     const bSandbox = byAction('sandbox');
     const bQuit = byAction('quit');
@@ -484,8 +490,8 @@ export const mainMenuScreen = {
 
     refs = {
       root: rootEl, backdrop, title, list, version, versionText, bCredits, bAchievements, saveSummary, status,
-      bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive,
-      buttons: [bContinue, bNew, bLoad, bCrucible, bArchive, bSettings, bSandbox, bQuit].filter(Boolean),
+      bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive, bCircuits,
+      buttons: [bContinue, bNew, bLoad, bCrucible, bArchive, bCircuits, bSettings, bSandbox, bQuit].filter(Boolean),
     };
 
     // data-k-ready is owned by the screen manager once `stage` is declared: live, plate, or
@@ -534,6 +540,7 @@ export const mainMenuScreen = {
       case 'load': pushWhenReady(ctx, 'saveLoad', 'Load Game'); return;
       case 'crucible': pushWhenReady(ctx, 'crucible', 'Crucible'); return;
       case 'archive': requestCodexTab('Archive'); pushWhenReady(ctx, 'codex', 'Signal Archive'); return;
+      case 'circuits': pushWhenReady(ctx, 'raceBoard', 'Circuits'); return;
       case 'settings': pushWhenReady(ctx, 'settings', 'Settings'); return;
       case 'credits': pushWhenReady(ctx, 'credits', 'Credits'); return;
       case 'achievements': pushWhenReady(ctx, 'achievements', 'Achievements'); return;
@@ -555,6 +562,7 @@ export const mainMenuScreen = {
       screenReady(ctx, 'saveLoad') ? '1' : '0',
       screenReady(ctx, 'settings') ? '1' : '0',
       screenReady(ctx, 'sandbox') ? '1' : '0',
+      screenReady(ctx, 'raceBoard') ? '1' : '0',
       screenReady(ctx, 'crucible') ? '1' : '0',
     ].join('');
   },
@@ -566,6 +574,7 @@ export const mainMenuScreen = {
     setScreenButtonReady(refs.bLoad, ctx, 'saveLoad', 'Load Game');
     setScreenButtonReady(refs.bSettings, ctx, 'settings', 'Settings');
     if (refs.bSandbox) setScreenButtonReady(refs.bSandbox, ctx, 'sandbox', 'Sandbox');
+    if (refs.bCircuits) setScreenButtonReady(refs.bCircuits, ctx, 'raceBoard', 'Circuits');
     if (refs.bCrucible) setScreenButtonReady(refs.bCrucible, ctx, 'crucible', 'Crucible');
     const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
     const syncPending = !!(sys && typeof sys.isSharedStoreSyncPending === 'function' && sys.isSharedStoreSyncPending());

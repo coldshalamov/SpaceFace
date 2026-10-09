@@ -114,6 +114,31 @@ test('a hot dock arrival spills two recoverable cargo pods', () => {
   }
 });
 
+test('run boundaries retire the armed spill receipt — no phantom announce next run', () => {
+  for (const boundary of ['game:new', 'game:newGame', 'save:loaded']) {
+    const harness = makeHarness({ x: 25, z: 0 });
+    const toasts = [];
+    harness.bus.on('toast', (t) => toasts.push(t));
+    try {
+      harness.bus.emit('dock:docked', { stationId: STATION_ID });
+      assert.equal(harness.spillReceipts.length, 1, 'the hot dock spilled and armed the receipt');
+      assert.equal(harness.system._pendingSpillAnnounce !== null, true, 'receipt armed for undock');
+
+      // Quit while docked → New Game (both aliases) or a save load: the in-memory latch must
+      // not carry into a run whose berth never saw those pods.
+      harness.bus.emit(boundary, {});
+      harness.bus.emit('dock:undocked', { stationId: 'station_vesta' });
+
+      assert.equal(
+        toasts.filter((t) => /Came in hot/.test(t.text || '')).length, 0,
+        `${boundary} must retire the stale receipt before the next run's first undock`,
+      );
+    } finally {
+      harness.system.destroy();
+    }
+  }
+});
+
 test('a dock arrival at the legal speed keeps the hold sealed', () => {
   const harness = makeHarness({ x: 20, z: 0 });
   try {

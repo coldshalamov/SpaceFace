@@ -8,6 +8,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { save } from '../src/save/saveSystem.js';
 import { ensurePerfRuntime } from '../src/core/perfRuntime.js';
 import {
+  decodeSaveEnvelopeText,
   encodeSavePayload,
   handleSaveWorkerRequest,
   SAVE_WORKER_SOURCE,
@@ -144,7 +145,7 @@ test('worker validation accepts a save through bounded string chunks', () => {
   assert.equal(response.result.checksum, fnv1a(JSON.stringify(data)));
 });
 
-test('bundled Blob worker source executes the same encoder without a separate runtime file', () => {
+test('bundled Blob worker source executes the same encoder without a separate runtime file', async () => {
   let listener = null;
   let response = null;
   const self = {
@@ -161,9 +162,13 @@ test('bundled Blob worker source executes the same encoder without a separate ru
       data,
     },
   } });
+  // FB-093 — the bundled encoder bounds + compresses asynchronously now; await its postMessage.
+  await waitForCondition(() => response !== null);
   assert.equal(response.type, 'encoded');
   assert.equal(response.checksum, fnv1a(JSON.stringify(data)));
-  const parsed = JSON.parse(response.json).data;
+  const decoded = await decodeSaveEnvelopeText(response.json);
+  assert.equal(decoded.ok, true);
+  const parsed = JSON.parse(decoded.text).data;
   assert.equal(Object.values(parsed).reduce((sum, value) => (
     sum + (value && Array.isArray(value.history) ? value.history.length : 0)
   ), 0), 760);

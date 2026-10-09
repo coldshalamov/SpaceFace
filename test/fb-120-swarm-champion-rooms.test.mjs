@@ -38,7 +38,7 @@ function installFor(bossRoom, wave = 20) {
   return install;
 }
 
-test('six champion rooms, six distinct recipes — all inside the two-field budget', () => {
+test('every champion room is a distinct recipe — all inside the two-field budget', () => {
   const signatures = new Map();
   for (const boss of SWARM_BOSS_ROTATION) {
     const install = installFor(boss.room);

@@ -18,6 +18,7 @@ import {
   requestCombatActionAudio,
 } from '../audio/minimalActionAudio.js';
 import { bindAttackCausalBus } from '../combat/attackHit.js';
+import { endRichSeamGlint } from '../render/vfx/worldCueRecipes.js';
 
 export const PRESENTATION_ORCHESTRATOR_SCHEMA_VERSION = 1;
 
@@ -105,14 +106,14 @@ export const presentationOrchestrator = {
         // tetherGameplay publishes the semantic ordinary-release pair. Treating `tether_cut` as a
         // failure here made a normal pilot release fire the full break camera/audio/UI/VFX recipe
         // before the release recoil. Other reasons remain genuine line failures or authored cuts.
-        if (payload && payload.reason === 'tether_cut') return false;
-        // INF-018: one disappearing rope for every cause was the bug. Overload, externally
-        // severed lines, and vanished endpoints each get their own restrained cue; voluntary
-        // releases stay suppressed here because the releaseRated tiers own that moment.
+        // Voluntary cuts and boundary drops are not snaps. tether_cut is the pilot's
+        // release; accepted is a receiver taking the load; the rest is leaving the
+        // line behind (dock, flight exit, sector). They must not banner MASSLINE BROKEN.
         const cueId = tetherBreakCueForReason(payload && payload.reason);
+        if (!cueId) return false;
         return this._emitCue(cueId, payload || {}, {
           sourceEvent: 'tether:broken',
-          sourceId: payload && payload.actorId,
+          sourceId: tetherBreakCueSourceId(this.state, payload),
           targetId: payload && payload.targetId,
           material: 'massline',
           magnitude: Math.max(1, Number(payload && payload.tension) || 0, Number(payload && payload.impulse) || 0),
@@ -191,6 +192,13 @@ export const presentationOrchestrator = {
       this.bus.on('signal:scanResults', (payload) => this._onMiningSignalResults(payload || {})),
       this.bus.on('signal:tracked', (payload) => this._onMiningSignalTracked(payload || {})),
       this.bus.on('signal:investigated', (payload) => this._onMiningSignalInvestigated(payload || {})),
+      // FB-131 — the scanner speaks: escape, each counted bearing (anomaly triangulation and
+      // the band's canonical receipt share the bearing voice), wreck reveal, debris cache.
+      this.bus.on('scanner:ghostEscaped', (payload) => this._onSurveyGhostEscaped(payload || {})),
+      this.bus.on('anomaly:bearing', (payload) => this._onSurveyBearing('anomaly:bearing', payload || {})),
+      this.bus.on('band:bearingReceipt', (payload) => this._onSurveyBearing('band:bearingReceipt', payload || {})),
+      this.bus.on('scan:wreckRevealed', (payload) => this._onSurveyRevealed('scan:wreckRevealed', payload || {})),
+      this.bus.on('scan:debrisCache', (payload) => this._onSurveyRevealed('scan:debrisCache', payload || {})),
       this.bus.on('mining:start', (payload) => this._onMiningStart(payload || {})),
       this.bus.on('mining:stop', (payload) => this._onMiningStop(payload || {})),
       this.bus.on('mining:tick', (payload) => this._onMiningTick(payload || {})),
@@ -211,6 +219,7 @@ export const presentationOrchestrator = {
       this.bus.on('cargo:full', (payload) => this._onMiningCargoFull(payload || {})),
       this.bus.on('fieldDepletion:changed', (payload) => this._onMiningFieldAftermath(payload || {})),
       this.bus.on('field:regrown', (payload) => this._onMiningFieldRegrown(payload || {})),
+      this.bus.on('field:richSeamMissed', (payload) => this._onRichSeamMissed(payload || {})),
       this.bus.on('drill:warn', (payload) => this._onMiningDrillWarning(payload || {})),
       this.bus.on('drill:start', () => { this._drillContactBand = null; }),
       this.bus.on('drill:scanPulse', (payload) => this._onMiningDrillScan(payload || {})),
@@ -970,6 +979,57 @@ export const presentationOrchestrator = {
     });
   },
 
+  // FB-131 — the scanner speaks. A ghost that slips the net is already dead (alive=false) when
+  // the event lands, so the mark anchors at its last-known position via an explicit position,
+  // not a body lookup that would fail closed on the corpse.
+  _onSurveyGhostEscaped(payload) {
+    const entityId = payload.entityId ?? null;
+    const ghost = entityId != null && this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(entityId)
+      : null;
+    const gpos = ghost && ghost.pos;
+    const position = payload.position || (gpos && Number.isFinite(gpos.x) && Number.isFinite(gpos.z)
+      ? { x: gpos.x, y: Number.isFinite(gpos.y) ? gpos.y : 0, z: gpos.z }
+      : null);
+    this._emitCue('mining.survey.escaped', { ...payload, position }, {
+      sourceEvent: 'scanner:ghostEscaped',
+      sourceId: this.state.playerId,
+      targetId: entityId,
+      sequence: entityId ?? currentTick(this.state),
+      tags: ['escaped'],
+      accessibilityText: 'Contact escaped sensor range.',
+    });
+  },
+
+  // A bearing counted toward a fix speaks at a pitch step per accepted ping — magnitude carries
+  // the count, sequence keys the dedupe so step N+1 is a new cue while a replayed step N is not.
+  // Never anchor the cue at the anomaly: until the required pings land, its position is hidden.
+  _onSurveyBearing(sourceEvent, payload) {
+    if (payload.accepted === false) return;
+    const count = Math.max(1, Math.floor(Number(payload.sampleCount ?? payload.count) || 1));
+    const key = payload.poiId ?? payload.requestId ?? payload.wreckId ?? payload.sectorId ?? 'fix';
+    this._emitCue('mining.survey.bearing', payload, {
+      sourceEvent,
+      sourceId: this.state.playerId,
+      magnitude: count,
+      sequence: `${key}:${count}`,
+      tags: ['bearing'],
+      accessibilityText: count > 1 ? `Bearing ${count} acquired.` : 'Bearing acquired.',
+    });
+  },
+
+  _onSurveyRevealed(sourceEvent, payload) {
+    const entityId = payload.entityId ?? payload.wreckId ?? null;
+    this._emitCue('mining.survey.revealed', payload, {
+      sourceEvent,
+      sourceId: this.state.playerId,
+      targetId: entityId,
+      sequence: `${sourceEvent}:${entityId ?? 'unknown'}`,
+      tags: sourceEvent === 'scan:debrisCache' ? ['revealed', 'cache'] : ['revealed'],
+      accessibilityText: sourceEvent === 'scan:debrisCache' ? 'Debris cache found.' : 'Wreck revealed.',
+    });
+  },
+
   _onMiningStart(payload) {
     const sourceId = payload.minerId ?? this.state.playerId;
     const targetId = payload.targetId ?? null;
@@ -1198,6 +1258,38 @@ export const presentationOrchestrator = {
     });
   },
 
+  /**
+   * A rich seam expired unclaimed, or its NPC reservation collapsed (owner_lost /
+   * owner_invalidated). The live glint on its rock is now a lie — end it (worked seams end on
+   * field:richSeamWorked). An in-sector miss is also player-visible: the bright ore reads
+   * ordinary now. The line records on news:headline for the chronicler and publishes once —
+   * cited — for the ticker; a miss in another sector is world bookkeeping, not news.
+   */
+  _onRichSeamMissed(payload) {
+    endRichSeamGlint(this.state, payload);
+    const sectorId = payload.sectorId || null;
+    const currentSectorId = this.state && this.state.world && this.state.world.currentSectorId;
+    if (sectorId && currentSectorId && sectorId !== currentSectorId) return;
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const headline = 'The bright seam went cold — its ore reads ordinary rock now.';
+    const stamp = Math.round(Number(payload.resolvedAtT) || Number(this.state && this.state.simTime) || 0);
+    const eventId = `richSeam:missed:${payload.fieldId || ''}:${payload.activityObjectSlotId || ''}:${stamp}`;
+    this.bus.emit('news:headline', {
+      headline, text: headline, kind: 'rich-seam-missed',
+      sectorId, fieldId: payload.fieldId || null,
+      activityObjectSlotId: payload.activityObjectSlotId || null,
+      reason: payload.reason || null,
+      eventId,
+    });
+    this.bus.emit('news:publish', {
+      // `source` is load-bearing twice: it cites the emit on the ticker record, and it marks
+      // marketNews's re-broadcast as an echo so the chronicler's record filter drops it (the
+      // direct headline above already holds the fact).
+      id: eventId, text: headline, kind: 'rich-seam-missed', sectorId,
+      source: 'field:richSeamMissed',
+    });
+  },
+
   _onMiningDrillWarning(payload) {
     const kind = classifyDrillWarning(payload.text);
     if (!kind) return;
@@ -1355,7 +1447,10 @@ export const presentationOrchestrator = {
   },
 
   _onReleaseRated(payload) {
-    const cueId = RELEASE_CUE_BY_CLASSIFICATION[payload && payload.classification];
+    // A snap and a lost target also emit a rating, with deliberate false. Those are
+    // failures. Only a cut the pilot chose wears CLEAN CUT / RAZOR CUT.
+    if (!payload || payload.deliberate !== true) return;
+    const cueId = RELEASE_CUE_BY_CLASSIFICATION[payload.classification];
     // "messy" maps to undefined → no recipe → _emitCue suppresses via missing_recipe, so messy
     // releases get no premium feedback, exactly as Prompt 03 requires.
     if (!cueId) return;
@@ -1390,7 +1485,13 @@ export const presentationOrchestrator = {
 
   _onMasslineReleaseValidated(payload) {
     if (payload && payload.schema !== 'spaceface.masslineReleaseValidation.v1') return false;
-    if (!payload || !payload.prediction || payload.prediction.onSolution !== false) return false;
+    // RELEASE-TRUTH C1: Missed names a missed WINDOW, so a valid attempted solution must have
+    // existed. An untargeted throw or cut is a lawful neutral release — the producer already
+    // reports it as prediction.valid=false — not a failed aim, and it must not wear the
+    // missed-window mark. A deliberately aimed release whose valid solution was off-window
+    // still speaks; an on-solution release obviously stays silent too.
+    const prediction = payload && payload.prediction;
+    if (!prediction || prediction.valid !== true || prediction.onSolution !== false) return false;
     if (typeof payload.releaseId !== 'string' || !payload.releaseId.trim()) return false;
     if (payload.kind !== 'throw' && payload.kind !== 'self-sling') return false;
 
@@ -1554,6 +1655,9 @@ export const presentationOrchestrator = {
     // Reduced-mode intent likewise travels with the cue when the recipe declares it.
     if (recipe.reducedMotionMode) event.reducedMotionMode = recipe.reducedMotionMode;
     if (recipe.reducedFlashMode) event.reducedFlashMode = recipe.reducedFlashMode;
+    // FB-072 — the declared shape tier (silhouette/layout/signaturePrimitive) rides the cue so
+    // the render record shows WHICH shape carried severity, not only how much was spent.
+    if (recipe.shape) event.shape = recipe.shape;
 
     const suppressReason = this._suppressionReason(event, recipe);
     if (suppressReason) return this._suppress(cueId, payload, options, suppressReason, event);
@@ -1651,12 +1755,12 @@ const RELEASE_CUE_BY_CLASSIFICATION = Object.freeze({
   razor: 'tether.release.razor',
 });
 
-// INF-018 — break-reason → presentation cue. Voluntary releases (`tether_cut`) stay
-// suppressed at the call site because the releaseRated tiers own that moment; everything here
-// is an involuntary separation. Overload is the line failing under its own load; severed is an
-// external action interposed across it (hostile blade or specialist cut — the obstruction
-// case); endpoint is the far end ceasing to exist (destroyed, despawned, or sector-changed).
-// Anything unlisted keeps the generic break cue rather than going silent.
+// INF-018 — break-reason → presentation cue. A chosen cut, a handoff, and leaving
+// the line behind (dock, flight exit, sector) stay quiet: releaseRated owns the
+// deliberate cut, and a boundary is not a snap. Overload is the line failing under
+// its own load; severed is an external action interposed across it (hostile blade or
+// specialist cut); endpoint is the far end ceasing to exist. Anything else unlisted
+// keeps the generic break cue rather than going silent.
 export const TETHER_BREAK_OVERLOAD_REASONS = Object.freeze(new Set([
   'threshold', 'overload', 'sustained-overload', 'catastrophic-overload', 'snap', 'integrity-failure',
 ]));
@@ -1666,11 +1770,31 @@ export const TETHER_BREAK_SEVERED_REASONS = Object.freeze(new Set([
 export const TETHER_BREAK_ENDPOINT_REASONS = Object.freeze(new Set([
   'target_lost', 'controller_lost', 'endpoint_lost',
 ]));
+// Not snaps: a chosen cut, a receiver taking the load, or the line left behind.
+export const TETHER_BREAK_QUIET_REASONS = Object.freeze(new Set([
+  'tether_cut', 'accepted', 'pilot', 'controller_attachment_limit',
+  'controller_unavailable', 'flight_exit',
+  'sector_exit', 'sector_enter', 'sector_changed',
+]));
 export function tetherBreakCueForReason(reason) {
+  if (TETHER_BREAK_QUIET_REASONS.has(reason)) return null;
   if (TETHER_BREAK_OVERLOAD_REASONS.has(reason)) return 'tether.break.overload';
   if (TETHER_BREAK_SEVERED_REASONS.has(reason)) return 'tether.break.severed';
   if (TETHER_BREAK_ENDPOINT_REASONS.has(reason)) return 'tether.break.endpoint';
   return 'tether.break';
+}
+
+/** Who the break cue is about. A sever's actorId is the cutter, not the line. */
+export function tetherBreakCueSourceId(state, payload) {
+  const pid = state && state.playerId;
+  const sever = !!(payload && TETHER_BREAK_SEVERED_REASONS.has(payload.reason));
+  if (payload && pid != null && (
+    payload.ownerId === pid || payload.controllerId === pid || payload.targetId === pid
+  )) return pid;
+  if (sever && payload && (payload.ownerId != null || payload.controllerId != null)) {
+    return payload.ownerId != null ? payload.ownerId : payload.controllerId;
+  }
+  return payload && payload.actorId;
 }
 
 // SF-023 — the committed-blade read is its own cue: the banner/marker voice names an inbound

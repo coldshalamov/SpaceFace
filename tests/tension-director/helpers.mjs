@@ -1,5 +1,5 @@
 import { TensionDirector } from '../../src/ai/tensionDirector.js';
-import { createBus } from '../../../fixture/eventBus.js';
+import { createBus } from './fixture/eventBus.js';
 import { createTensionDirectorSystem } from '../../src/systems/tensionDirector.js';
 
 export const healthy = Object.freeze({ eligible: true, hull: 1, shield: 1, profile: 'standard',

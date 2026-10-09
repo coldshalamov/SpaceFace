@@ -122,12 +122,27 @@ export const GAMEPAD_ROW_ACTIONS = Object.freeze([
   ['Travel burn', 'travelBurn', (g) => g],
   ['Auto-target', 'autoTarget', (g) => g],
   ['Detonate charge', 'chargeDetonate', (g) => g],
+  // FB-003 chord layer — LB is the survey/deploy layer, RB the combat-state layer.
+  ['Scanner pulse', 'scanPulse', (g) => g],
+  ['Anchor Mass Seed', 'deployMassSeed', (g) => g],
+  ['Deploy attractive Well', 'deployWell', (g) => g],
+  ['Clearing Cone', 'toggleClearingCone', (g) => g],
+  ['Skim collector', 'toggleSkimCollector', (g) => g],
+  ['World Site beam', 'siteBeam', (g) => g],
+  ['Bullet time', 'bulletTime', (g) => g],
+  ['Cloak', 'cloak', (g) => g],
+  ['Throw impulse charge', 'chargeThrow', (g) => g],
+  ['Cruise drive', 'cruise', (g) => g],
+  ['Deploy nav beacon', 'deployBeacon', (g) => g],
+  ['Jettison cargo lot', 'jettisonLot', (g) => g],
+  ['Gyre Snare (hold: lash; release: bowl)', 'gyreSnare', (g) => g],
 ]);
 
-// Rows with no pad action: analogue sticks, and two verbs a pad does not own. Keyed by LABEL, not
-// by index — an index set silently starts freezing the wrong row the first time one is inserted.
+// Rows with no pad action: the analogue sticks and the one verb a pad does not own. Keyed by
+// LABEL, not by index — an index set silently starts freezing the wrong row the first time one
+// is inserted.
 const GAMEPAD_STATIC_LABELS = Object.freeze(new Set([
-  'Fly (yaw + throttle)', 'Aim weapons', 'Anchor Mass Seed', 'Open mission log',
+  'Fly (yaw + throttle)', 'Aim weapons', 'Open mission log',
 ]));
 
 // Every entry of GAMEPAD_DEFAULT_BINDINGS gets a row, so the row list IS the sheet's order.
@@ -135,17 +150,19 @@ const GAMEPAD_STATIC_LABELS = Object.freeze(new Set([
 const GAMEPAD_ROW_ORDER = Object.freeze([
   'Fly (yaw + throttle)', 'Aim weapons',
   'Fire', 'Mine beam', 'Boost', 'Brake / reverse', 'Shove (repulsor)', 'Accept / confirm',
-  'Massline', 'Anchor Mass Seed', 'Countermeasure', 'Drop bomb', 'Cycle bomb-bay payload',
+  'Massline', 'Countermeasure', 'Drop bomb', 'Cycle bomb-bay payload',
   'Cycle target', 'Open star-map', 'Open codex', 'Open mission log', 'Pause', 'Dock / activate',
   'Cancel / back', 'Station tab: previous', 'Station tab: next', 'Travel burn', 'Auto-target',
-  'Detonate charge',
+  'Detonate charge', 'Throw impulse charge', 'Cloak', 'Bullet time', 'Cruise drive',
+  'Scanner pulse', 'Anchor Mass Seed', 'Deploy attractive Well', 'Clearing Cone',
+  'Skim collector', 'World Site beam', 'Deploy nav beacon', 'Jettison cargo lot',
+  'Gyre Snare (hold: lash; release: bowl)',
 ]);
 
 // The static rows carry no action, so their text is authored here. Everything else is derived.
 const GAMEPAD_STATIC_TEXT = Object.freeze({
   'Fly (yaw + throttle)': 'Left stick',
   'Aim weapons': 'Right stick',
-  'Anchor Mass Seed': 'keyboard verb — rebind under Settings → Controls',
   'Open mission log': 'Start / Options → Pause → Mission Log',
 });
 
@@ -211,10 +228,22 @@ export function controlSections(state) {
       ['Massline dedicated reel in', 'reelIn'],
       ['Massline dedicated pay out', 'reelOut'],
       ['Deploy anchor Mass Seed (toward aim; locks on arrival, then latch it)', 'deployMassSeed'],
-      ['Deploy attractive Well (at aim; pulls light bodies & shots — heavy ships shrug)', 'deployWell'],
+      ['Deploy Well (at aim; pulls light bodies and shots — heavy ships shrug)', 'deployWell'],
       ['Deploy Repulsor (drops at ship; shoves bodies outward)', 'deployRepulsor'],
-      ['Toggle Clearing Cone (forward gravitic snowplow; toggle on/off)', 'toggleClearingCone'],
-      ['Open a scoop sheet and harvest by grazing a planet band', 'toggleSkimCollector'],
+      ['Toggle Clearing Cone (forward gravitic snowplow)', 'toggleClearingCone'],
+      ['Gyre Snare (hold to beam a mass basin ahead; the first body to reach its heart is tethered in orbit — nearby mass absorbs in, katamari-style; release to bowl the clump)', 'gyreSnare'],
+      ['Skim collector (open a scoop sheet; harvest by grazing a planet band)', 'toggleSkimCollector'],
+      // The keyboard sheet is COMPLETE: every live rebindable flight verb gets a row, same as the
+      // pad sheet. These seven shipped bound (scanPulse KeyC is the scanner verb the first-hour
+      // seam beat orders: "Pulse the scanner.") but were listed only on the pad sheet — a keyboard
+      // pilot who opened Help at the scanner moment found no answer anywhere.
+      ['Scanner pulse (reveals contacts and bright seams)', 'scanPulse'],
+      ['World Site beam (selected target)', 'siteBeam'],
+      ['Cruise drive (charge/drop)', 'cruise'],
+      ['Bullet time (hold)', 'bulletTime'],
+      ['Cloak toggle', 'cloak'],
+      ['Deploy nav beacon (open space)', 'deployBeacon'],
+      ['Jettison cargo lot', 'jettisonLot'],
       ['Drop bomb (releases at ship velocity; payload from the bomb bay)', 'dropBomb'],
       ['Cycle bomb-bay payload', 'cycleBomb'],
       ['Throw impulse charge (sticks where it lands; detonate later)', 'chargeThrow'],
@@ -234,6 +263,7 @@ export function controlSections(state) {
       ['Star-map', null, BINDINGS.starmap.label],
       ['Local system map', null, BINDINGS.localmap.label],
       ['Tech tree', null, BINDINGS.techTree.label],
+      ['Chase / overhead camera', null, BINDINGS.steeringView.label],
       ['Mission log', null, BINDINGS.missionLog.label],
       ['Cargo hold', null, BINDINGS.cargo.label],
       ['Comms log', null, BINDINGS.comms.label],
@@ -252,7 +282,7 @@ export function controlSections(state) {
       ['Open local map', null, 'Map button'],
       ['Open mission log', null, 'Log button'],
       ['Open star-map', null, 'Star button'],
-      ['Pause / Help route', null, 'Pause button -> Help / Controls'],
+      ['Pause / Help route', null, 'Pause button → Help / Controls'],
     ]],
   ];
 }
@@ -265,12 +295,12 @@ function keyLabel(state, action, def) {
 const TABS = ['Controls', 'Loops', 'Ships', 'Commodities', 'Ores', 'Factions'];
 
 const GAMEPLAY_LOOPS = [
-  ['Dock and choose work', `${BINDINGS.dock.label} near a station -> Missions or Bar -> Accept + Track -> Undock`, 'Contracts become Mission Log entries and tracked nav markers; rewards fund ship upgrades and supplies.'],
-  ['Trade for upgrades', 'Market -> buy cheap cargo -> Best Trades Set Nav -> sell high', 'Cargo space turns into credits; credits buy hulls, modules, repairs, and fuel.'],
-  ['Mine into economy', 'Asteroid field -> mine ore -> sell at mining/refinery markets or manufacture', 'Mining rewards cargo space and mining slots; refined goods feed modules and hull production.'],
-  ['Refit for a job', 'Shipyard for hull role -> Outfitting for modules -> Services before launch', 'Hull choice sets capacity and slots; modules decide whether the ship fights, hauls, mines, scans, or survives.'],
-  ['Recover from losses', 'Services -> Hull Insurance -> launch; normal death returns to a station with cargo loss and 3s shields', 'Ironman is final: Run Over shows loss cause and sortie stats. Saves avoid death/respawn limbo, but Save/F5 before quitting.'],
-  ['Track objectives', `Mission Log (${BINDINGS.missionLog.label}) -> Track Nav -> HUD marker / local map (${BINDINGS.localmap.label}) / star-map (${BINDINGS.starmap.label})`, 'The log is the active objective home when you forget what the current flight is for.'],
+  ['Dock and choose work', `${BINDINGS.dock.label} near a station → Missions or Bar → Accept + Track → Undock`, 'Contracts become Mission Log entries and tracked nav markers; rewards fund ship upgrades and supplies.'],
+  ['Trade for upgrades', 'Market → buy cheap cargo → Best Trades Set Nav → sell high', 'Cargo space turns into credits; credits buy hulls, modules, repairs, and fuel.'],
+  ['Mine into economy', 'Asteroid field → mine ore → sell at mining/refinery markets or manufacture', 'Mining rewards cargo space and mining slots; refined goods feed modules and hull production.'],
+  ['Refit for a job', 'Shipyard for hull role → Outfitting for modules → Services before launch', 'Hull choice sets capacity and slots; modules decide whether the ship fights, hauls, mines, scans, or survives.'],
+  ['Recover from losses', 'Services → Hull Insurance → launch; normal death returns to a station with cargo loss and 3s shields', 'Ironman is final: Run Over shows loss cause and sortie stats. Saves avoid death/respawn limbo, but Save/F5 before quitting.'],
+  ['Track objectives', `Mission Log (${BINDINGS.missionLog.label}) → Track Nav → HUD marker / local map (${BINDINGS.localmap.label}) / star-map (${BINDINGS.starmap.label})`, 'The log is the active objective home when you forget what the current flight is for.'],
 ];
 
 // ------------------------------------------------------------------------------------------------
@@ -308,6 +338,7 @@ function fixedRowCodes() {
     ['Star-map', code(BINDINGS.starmap)],
     ['Local system map', code(BINDINGS.localmap)],
     ['Tech tree', code(BINDINGS.techTree)],
+    ['Chase / overhead camera', code(BINDINGS.steeringView)],
     ['Mission log', code(BINDINGS.missionLog)],
     ['Cargo hold', code(BINDINGS.cargo)],
     ['Comms log', code(BINDINGS.comms)],

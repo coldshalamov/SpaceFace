@@ -113,6 +113,10 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
     }
   }
   const freshRecord = (baseline) => ({ baseline, stamps: new Map(), seeded: true });
+  // Calendar membership is fixed at partition time; updateDt is called for every queued
+  // system every step, so the non-calendar early-out must not re-derive the clock from
+  // the manifest by name on each call.
+  const calendarSet = new Set(calendar);
   let clockRecords = new WeakMap();
   if (state && typeof state === 'object') {
     clockRecords.set(state, freshRecord(Number(state.simTime)));
@@ -132,9 +136,9 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
     }
   }
   function updateDt(system, fixedDt, currentState) {
+    if (!calendarSet.has(system)) return fixedDt;
     const host = currentState && typeof currentState === 'object' ? currentState : null;
     if (!host || !isProductionClockState(host)) return fixedDt;
-    if (!system || getSystemClock(system.name) !== SYSTEM_CLOCK.CALENDAR) return fixedDt;
     const simTime = Number(host.simTime);
     if (!Number.isFinite(simTime)) return fixedDt;
     let record = clockRecords.get(host);
@@ -142,8 +146,9 @@ export function partitionUpdateSystems(systems, { state = null, bus = null } = {
       record = { baseline: NaN, stamps: new Map(), seeded: false };
       clockRecords.set(host, record);
     }
-    const hasStamp = record.stamps.has(system);
-    const prev = hasStamp ? record.stamps.get(system) : record.baseline;
+    const stamped = record.stamps.get(system);
+    const hasStamp = stamped !== undefined;
+    const prev = hasStamp ? stamped : record.baseline;
     record.stamps.set(system, simTime);
     if (!hasStamp && !record.seeded) return fixedDt;
     if (!Number.isFinite(prev)) return fixedDt;

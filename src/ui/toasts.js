@@ -23,6 +23,7 @@ import { jumpAbortReceipt } from './jumpNotice.js';
 import { resolveObjectiveHudLayout } from './hud.js';
 import { glyphSvg } from './glyphs.js';
 import { bindAutomationPayoffUi } from './automationPayoff.js';
+import { bindReturningPilotSummary } from './dockArrival.js';
 
 const MAX = RECEIPT_MAX;
 // Receipt kind icons — inline SVG from src/ui/glyphs.js (was text ✓ ✕ ! ¢ ◈, which leaned on
@@ -207,11 +208,22 @@ export function createToasts(ctx) {
         }
         const decay = r.el.querySelector ? r.el.querySelector(':scope > .sf-toast__decay') : null;
         if (decay && decay.style) {
-          decay.style.animation = 'none';
-          void decay.offsetWidth; // reflow so the re-armed animation restarts from full
-          decay.style.animation = '';
+          if (typeof decay.getAnimations === 'function') {
+            // WAAPI restart — no forced reflow: cancel yanks the run, play re-arms it from full
+            // under the refreshed --sf-toast-ttl. Empty set (reduced motion hides the bar) no-ops.
+            const anims = decay.getAnimations();
+            for (const a of anims) { a.cancel(); a.play(); }
+          } else {
+            decay.style.animation = 'none';
+            void decay.offsetWidth; // reflow so the re-armed animation restarts from full
+            decay.style.animation = '';
+          }
         }
+        // Fresh TTL window ends any tail fade early: hand opacity back to CSS for this window —
+        // tick re-arms --jsfade when (and only when) the ramp owns the property again.
         r.el.style.opacity = '';
+        r._sfOpacity = null;
+        r.el.classList.remove('sf-toast--jsfade');
         if (!r.badge) {
           const badge = document.createElement('span');
           badge.className = 'sf-toast__count';
@@ -267,15 +279,32 @@ export function createToasts(ctx) {
     while (live.length > MAX) dismiss(live[live.length - 1]);
   }
 
-  function dismiss(rec) {
-    if (!rec) return;
+  function dismiss(rec, opts = {}) {
+    if (!rec || rec._dismissing) return;
     const i = live.indexOf(rec);
     if (i < 0 && !rec.el) return;
     const hadFocus = elementHoldsFocus(rec.el);
     if (i >= 0) live.splice(i, 1);
-    rec.el.classList.remove('sf-toast--in');
-    rec.el.classList.add('sf-toast--out');
-    if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+    rec._dismissing = true;
+    if (rec.el) {
+      if (opts.instant) {
+        // Session-boundary teardown: the scene is swapping underneath, so there is nothing
+        // to fade out over — drop the card synchronously instead of the exit beat.
+        if (rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+      } else {
+        // The tick's inline opacity ramp would pin the card mid-fade; hand the exit to the class.
+        // --jsfade goes with it: its transition:none would kill the exit beat armed just below.
+        rec.el.style.opacity = '';
+        rec.el.classList.remove('sf-toast--jsfade');
+        rec.el.classList.remove('sf-toast--in');
+        rec.el.classList.add('sf-toast--out');
+        // The exit fade is real: removal waits one transition beat so a click-dismiss reads as a
+        // departure, not a snap. Expiry already fades via tick(); the beat there is invisible
+        // (opacity is ~0) and keeps one removal path. Focus restore below stays synchronous.
+        const el = rec.el;
+        setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 170);
+      }
+    }
     if (hadFocus) restoreFocusAfterDismiss(i >= 0 ? i : 0);
     recomputeNextWake();
   }
@@ -294,6 +323,10 @@ export function createToasts(ctx) {
       if (left < 300) {
         const nextOpacity = String(Math.max(0, left / 300));
         if (rec._sfOpacity !== nextOpacity) {
+          // The base class carries `transition: opacity .16s ease`, which would lag this per-frame
+          // ramp — on the first write of a fade window, sf-toast--jsfade (hudStyles) suspends it
+          // while JS owns opacity. Regroup in push() and the dismiss exit drop the class again.
+          if (rec._sfOpacity == null) rec.el.classList.add('sf-toast--jsfade');
           rec._sfOpacity = nextOpacity;
           rec.el.style.opacity = nextOpacity;
         }
@@ -313,11 +346,19 @@ export function createToasts(ctx) {
   }
 
   bus.on('toast', push);
+  // Session boundary (SF-283): receipts live when a save loads or a new run starts were minted by
+  // the pre-save session — dismiss them rather than letting their TTL finish over the restored
+  // scene. Bound BEFORE the bind*Ui calls below: automationPayoff emits its "while you were away"
+  // receipt on save:loaded, and that new-session receipt must land in the lane AFTER this clear.
+  for (const name of ['save:loaded', 'game:new', 'game:newGame']) {
+    bus.on(name, () => { while (live.length) dismiss(live[live.length - 1], { instant: true }); });
+  }
   bindStuntReceipts(bus);
   bindCombatDenialToasts(bus, () => ctx.state);
   bindJumpDenialToasts(bus, () => ctx.state);
   bindExportRecoveryToasts(bus);
   bindAutomationPayoffUi(bus, () => ctx.state);
+  bindReturningPilotSummary(bus, ctx && ctx.state);
 
   return { push, tick };
 }
@@ -352,6 +393,8 @@ export function formatCombatActionRejectLine(reason) {
   if (raw.startsWith('cooldown:')) return 'Not ready yet';
   if (raw.startsWith('busy:')) return 'Still busy';
   if (raw.startsWith('disabled:')) {
+    const named = disabledActionLine(raw.slice('disabled:'.length));
+    if (named) return named;
     const part = raw.slice('disabled:'.length).replace(/_/g, ' ');
     return part ? `${part} disabled` : 'System disabled';
   }
@@ -384,8 +427,64 @@ export function combatDenialToastSpec(payload) {
     && !reason.startsWith('busy:') && !reason.startsWith('disabled:') && !reason.startsWith('physics_')) {
     return null;
   }
-  const hint = REJECT_HINT[reason] || '';
+  const hint = REJECT_HINT[reason] || disabledActionHint(reason) || '';
   return { text, kind: 'error', ttl: 3.5, hint };
+}
+
+/**
+ * A refused verb names the gate that actually fired.
+ * `capability:*` is a dead part (checked before tags). `tag:dash` and `tag:tether` are a tumble.
+ * `tag:weapon` names the status or subsystem that blocked it when the reason carries one.
+ */
+function disabledActionLine(rest) {
+  const parts = String(rest || '').split(':');
+  const kind = parts[0];
+  const name = String(parts[1] || '').toLowerCase();
+  const cause = parts.slice(2).join(':');
+  if (kind === 'capability') {
+    if (name === 'tether') return 'Massline spool out — the rope will not hold';
+    if (name === 'transport_clamp') return 'Clamp out — the load is no longer held';
+    if (name === 'drive') return 'Drive out — the ship is not pushing';
+    if (name === 'weapon') return 'Guns out — the battery is dark';
+    if (name === 'power') return 'Reactor out — the ship is starving';
+    if (name === 'sensor') return 'Sensors aren\'t answering — jammed or out';
+    return '';
+  }
+  if (kind === 'tag') {
+    if (name === 'attach' || name === 'reel') return 'Massline spool out — the rope will not hold';
+    if (name === 'clamp') return 'Clamp out — the load is no longer held';
+    if (name === 'sling') return 'Can\'t throw — the drive or the Massline spool is out';
+    if (name === 'dash') return 'Can\'t dash — the ship is tumbling';
+    if (name === 'tether') return 'Can\'t use the rope — the ship is tumbling';
+    if (name === 'weapon' || name === 'burst') {
+      if (cause === 'status_tumbling') return 'Guns won\'t answer — the ship is tumbling';
+      if (cause === 'status_overheated') return 'Guns won\'t answer — cooked';
+      if (cause === 'subsystem_weapon') return 'Guns won\'t answer — the battery is dark';
+      return name === 'burst'
+        ? 'Guns won\'t answer — cooked or out'
+        : 'Guns won\'t answer — out, tumbling, or cooked';
+    }
+    if (name === 'sensor' || name === 'lock') return 'Sensors aren\'t answering — jammed or out';
+    return '';
+  }
+  return '';
+}
+
+function disabledActionHint(reason) {
+  if (!String(reason || '').startsWith('disabled:')) return '';
+  const rest = String(reason).slice('disabled:'.length);
+  if (!disabledActionLine(rest)) return '';
+  const parts = rest.split(':');
+  const kind = parts[0];
+  const name = String(parts[1] || '').toLowerCase();
+  const cause = parts.slice(2).join(':');
+  if (kind === 'tag' && (name === 'dash' || name === 'tether')) return 'Wait until the tumble stops';
+  if (kind === 'tag' && cause === 'status_tumbling') return 'Wait until the tumble stops';
+  if (kind === 'tag' && cause === 'status_overheated') return 'Ease off until heat falls';
+  if (kind === 'tag' && cause === 'subsystem_weapon') return 'Repair the battery';
+  if (kind === 'tag' && (name === 'weapon' || name === 'burst')) return 'Wait it out, or repair the battery';
+  if (name === 'sensor' || name === 'lock') return 'Wait out the jam, or repair the sensors';
+  return 'Repair it, or wait for the part to come back';
 }
 
 /**

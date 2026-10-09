@@ -6,6 +6,7 @@ import { createRunState } from '../src/core/runState.js';
 import {
   SWARM_BOSS_ROTATION,
   SWARM_ROSTER,
+  bossPackagesFor,
 } from '../src/data/swarmMode.js';
 import { survivalArena } from '../src/systems/survivalArena.js';
 
@@ -54,7 +55,9 @@ function boot(t, { ruleset = 'swarm', wave = 1 } = {}) {
 function expectedSwarmEnemyIds() {
   const ids = new Set(SWARM_ROSTER.map((entry) => entry.enemyId));
   for (const boss of SWARM_BOSS_ROTATION) {
-    for (const pkg of boss.packages || []) ids.add(pkg.enemyId);
+    // bossPackagesFor, not boss.packages: single-hull bosses (mirrorjaw_foreman, forge_regent)
+    // carry a bare enemyId and no packages array — the same read survivalArena itself uses.
+    for (const pkg of bossPackagesFor(boss)) ids.add(pkg.enemyId);
   }
   return [...ids].sort();
 }

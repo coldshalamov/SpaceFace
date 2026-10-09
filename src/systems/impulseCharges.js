@@ -154,6 +154,36 @@ function liveChargeList(state) {
   return indexedTypeScan(state, 'charges');
 }
 
+// FB-015 — saved entity ids only ever refer to bodies combat persistence can name: the player
+// and flags.persistent actors. The restore's sessionEntityIdRemap carries their new ids; a
+// non-persistent endpoint is honestly gone (no id recycling across the boundary).
+function resolveSavedEntityId(state, savedId) {
+  if (savedId == null) return null;
+  const remap = state && state.sessionEntityIdRemap;
+  if (remap && typeof remap.get === 'function') {
+    const mapped = remap.get(String(savedId));
+    return mapped == null ? null : mapped;
+  }
+  // Harness restores that never opened a remap keep numeric ids verbatim; save ids are
+  // String()-ified, so coerce back to the map's key shape.
+  const key = Number.isFinite(Number(savedId)) ? Number(savedId) : savedId;
+  const direct = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(key)
+    : null;
+  return direct && direct.alive !== false ? key : null;
+}
+
+// A saved ref may only name durable bodies — the player or a flags.persistent hull; anything
+// else is honestly gone across the boundary and serializes as null.
+function durableSaveId(state, entityId) {
+  if (entityId == null || !state) return null;
+  if (entityId === state.playerId) return String(entityId);
+  const e = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(entityId)
+    : null;
+  return e && e.flags && e.flags.persistent ? String(entityId) : null;
+}
+
 function activeCharges(state, ownerId) {
   const out = [];
   for (const e of liveChargeList(state)) {
@@ -250,7 +280,7 @@ export const impulseCharges = {
           this._onDetonatorDeath(p);
         }),
         this.bus.on('game:new', () => this._resetChainState()),
-        this.bus.on('save:loaded', () => this._resetChainState()),
+        this.bus.on('save:loaded', () => this._onSaveLoaded()),
         this.bus.on('sector:exit', () => this._resetChainState()),
       ];
     }
@@ -298,6 +328,133 @@ export const impulseCharges = {
     this._detonatedEnts = new WeakSet();
     this._cookoffDepth = 0;
     this._slamScratch = [];
+    // A staged save record dies with the chain it describes — init/game:new/sector:exit all
+    // route through here, so a half-restored apply can never leak into the next boundary.
+    this._pendingRestoredChain = null;
+  },
+
+  // ── FB-015: deployables survive a save ────────────────────────────────────────────────────
+  // Live charge entities and the primed chain are a player investment: the plate network the
+  // pilot laid is still owed on load. Entity ids never persist — charge records carry poses
+  // and ids re-resolve through the restore's sessionEntityIdRemap (persistent refs only).
+  serialize() {
+    const state = this.state;
+    const charges = [];
+    if (state) {
+      for (const e of liveChargeList(state)) {
+        if (!e || e.alive === false || e.type !== 'charge') continue;
+        const d = e.data;
+        if (!d || typeof d !== 'object') continue;
+        charges.push({
+          pos: { x: e.pos.x, z: e.pos.z },
+          vel: { x: e.vel ? e.vel.x : 0, z: e.vel ? e.vel.z : 0 },
+          rot: Number.isFinite(e.rot) ? e.rot : 0,
+          radius: e.radius,
+          mass: e.mass,
+          team: e.team,
+          data: {
+            ...d,
+            // Endpoint refs serialize as durable save ids — a plate stuck on a transient hull
+            // honestly records hostId:null and falls off at the boundary.
+            ownerId: durableSaveId(state, d.ownerId),
+            hostId: durableSaveId(state, d.hostId),
+            localOffset: d.localOffset ? { x: d.localOffset.x, z: d.localOffset.z } : null,
+            spawnPos: d.spawnPos ? { x: d.spawnPos.x, z: d.spawnPos.z } : null,
+          },
+        });
+      }
+    }
+    const primed = [];
+    if (this._primedBodies) {
+      for (const entity of this._primedBodies) {
+        if (!entity || entity.alive === false) continue;
+        // Only persistent hulls can re-resolve after load — a primed sector NPC is honestly gone.
+        if (!(entity.flags && entity.flags.persistent)) continue;
+        const rec = this._primed.get(entity);
+        if (!rec) continue;
+        primed.push({
+          saveId: String(entity.id),
+          until: rec.until,
+          // The attribution ref follows the same durable-body rule as the host: a transient
+          // initiator serializes as null rather than naming a dead id after load.
+          byId: durableSaveId(state, rec.byId),
+          reason: rec.reason,
+          link: rec.link,
+          primedTick: rec.primedTick,
+        });
+      }
+    }
+    return { version: 1, charges, primed };
+  },
+
+  deserialize(d) {
+    const payload = d && typeof d === 'object' ? d : {};
+    const charges = Array.isArray(payload.charges)
+      ? payload.charges
+        .filter((c) => c && c.pos && c.data && typeof c.data === 'object')
+        .map((c) => ({
+          pos: { x: Number(c.pos.x) || 0, z: Number(c.pos.z) || 0 },
+          vel: { x: c.vel ? Number(c.vel.x) || 0 : 0, z: c.vel ? Number(c.vel.z) || 0 : 0 },
+          rot: Number.isFinite(c.rot) ? c.rot : 0,
+          radius: Number.isFinite(c.radius) ? c.radius : 1.2,
+          mass: Number.isFinite(c.mass) ? c.mass : 0.5,
+          team: c.team,
+          data: { ...c.data },
+        }))
+      : [];
+    const primed = Array.isArray(payload.primed)
+      ? payload.primed
+        .filter((rec) => rec && rec.saveId != null && Number.isFinite(rec.until))
+      : [];
+    this._pendingRestoredChain = { charges, primed };
+  },
+
+  // The pending record applies AT save:loaded — the same boundary that used to wipe the chain —
+  // so a live session's stale maps die and only the loaded ledger survives.
+  _onSaveLoaded() {
+    const saved = this._pendingRestoredChain;
+    this._pendingRestoredChain = null;
+    this._resetChainState();
+    if (!saved) return;
+    this._applyRestoredChain(saved);
+  },
+
+  _applyRestoredChain(saved) {
+    const state = this.state;
+    const spawn = this.helpers && this.helpers.spawnEntity;
+    if (state && typeof spawn === 'function') {
+      for (const c of saved.charges) {
+        const data = { ...c.data };
+        data.ownerId = resolveSavedEntityId(state, data.ownerId);
+        data.hostId = resolveSavedEntityId(state, data.hostId);
+        spawn({
+          type: 'charge',
+          pos: { x: c.pos.x, z: c.pos.z },
+          vel: { x: c.vel.x, z: c.vel.z },
+          rot: c.rot,
+          radius: c.radius,
+          mass: c.mass,
+          collides: false,
+          team: c.team,
+          ownerId: data.ownerId,
+          data,
+        });
+      }
+    }
+    if (!state || !state.entities) return;
+    for (const rec of saved.primed) {
+      const id = resolveSavedEntityId(state, rec.saveId);
+      const entity = id != null ? state.entities.get(id) : null;
+      if (!entity || entity.alive === false) continue;
+      this._primed.set(entity, {
+        until: rec.until,
+        byId: resolveSavedEntityId(state, rec.byId),
+        reason: rec.reason,
+        link: rec.link,
+        primedTick: rec.primedTick,
+      });
+      this._primedBodies.add(entity);
+    }
   },
 
   /** Read-only view of a hull's primed state, for the HUD, the bench and tests. */

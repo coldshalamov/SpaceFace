@@ -1,7 +1,7 @@
 export const faction = {
   id: 'faction_understory', name: 'The Understory', short: 'Understory', color: '#8FA82E',
   personality: 'saprophyte', startingRep: 0,
-  homeSectors: ['sector_charon_expanse'],
+  homeSectors: ['sector_charon_expanse', 'sector_eunomia_gulf'],
   controls: ['graveyard salvage', 'post-battle wreck recovery', 'wreckage exchange'],
   fleetClass: 'biological', aggression: 0.3, // BIOLOGICAL/UNDERSTORY presentation (alien-ecology doc 12)
   relations: {

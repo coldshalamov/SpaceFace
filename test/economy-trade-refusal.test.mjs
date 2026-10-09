@@ -1,17 +1,21 @@
-// test/economy-trade-refusal.test.mjs — ECON-03: failed trade audible refusal with captioned reason
+// test/economy-trade-refusal.test.mjs — ECON-03: a failed trade refuses aloud on the comms
+// voice. The row's DO-NOT forbids the UI blip: no sfx_ui_error, the voice line carries the
+// reason word and is captioned by the voice pipeline. (A duplicate _onTradeFailed that played
+// the blip + a second caption shadowed this handler until it was removed — keep this test
+// asserting the voice route so the shadow cannot quietly return.)
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
-import { audio, TRADE_REFUSAL_CAPTIONS } from '../src/audio/audioSystem.js';
+import { audio, TRADE_REFUSAL_WORD } from '../src/audio/audioSystem.js';
 import { economy } from '../src/systems/economy.js';
 
-test('ECON-03: trade refusal dictionary maps known failure reasons to readable captions', () => {
-  assert.equal(TRADE_REFUSAL_CAPTIONS.credits, 'Insufficient Credits');
-  assert.equal(TRADE_REFUSAL_CAPTIONS.cargo_full, 'Hold Full');
-  assert.equal(TRADE_REFUSAL_CAPTIONS.tier_unavailable, 'Tier Unavailable');
-  assert.equal(TRADE_REFUSAL_CAPTIONS.no_cargo, 'No Cargo');
-  assert.equal(TRADE_REFUSAL_CAPTIONS.no_stock, 'Out of Stock');
+test('ECON-03: the refusal word table maps known failure reasons to spoken words', () => {
+  assert.equal(TRADE_REFUSAL_WORD.credits, 'insufficient credits');
+  assert.equal(TRADE_REFUSAL_WORD.cargo_full, 'hold full');
+  assert.equal(TRADE_REFUSAL_WORD.no_cargo, 'nothing aboard to sell');
+  assert.equal(TRADE_REFUSAL_WORD.no_stock, 'out of stock');
+  assert.equal(TRADE_REFUSAL_WORD.not_docked, 'not docked');
 });
 
 test('ECON-03: on seed 4242 economy:tradeFailed routes to the refusal voice with reason captioned', () => {
@@ -21,7 +25,7 @@ test('ECON-03: on seed 4242 economy:tradeFailed routes to the refusal voice with
   // Mock audio system instance without real WebAudio context
   const audioInst = Object.create(audio);
   const played = [];
-  const captions = [];
+  const said = [];
 
   audioInst.state = state;
   audioInst.bus = bus;
@@ -31,12 +35,12 @@ test('ECON-03: on seed 4242 economy:tradeFailed routes to the refusal voice with
     return { stop: () => {} };
   };
 
-  bus.on('presentation:caption', (c) => captions.push(c));
+  bus.on('voice:say', (p) => said.push(p));
 
   // Initialize audio system event wiring
   audioInst.init({ state, bus });
 
-  // 1. Emit direct tradeFailed for insufficient credits
+  // 1. Insufficient credits: one comms line naming the reason, no menu blip
   bus.emit('economy:tradeFailed', {
     stationId: 'station_helios',
     commodityId: 'cmdty_quantum_cores',
@@ -45,15 +49,14 @@ test('ECON-03: on seed 4242 economy:tradeFailed routes to the refusal voice with
     reason: 'credits',
   });
 
-  assert.equal(played.length, 1, 'refusal sound should play');
-  assert.equal(played[0].id, 'sfx_ui_error', 'refusal voice should be sfx_ui_error');
-  assert.equal(captions.length, 1, 'presentation:caption should be emitted');
-  assert.equal(captions[0].text, 'Insufficient Credits');
-  assert.equal(captions[0].assertive, true);
+  assert.equal(said.length, 1, 'the refusal voice answers once');
+  assert.equal(said[0].channel, 'comms');
+  assert.equal(said[0].id, 'economy:tradeFailed:credits');
+  assert.match(said[0].text, /insufficient credits/i);
+  assert.equal(played.filter((p) => p.id === 'sfx_ui_error').length, 0, 'the refusal is not the UI blip');
 
-  // 2. Emit tradeFailed for hold full
-  played.length = 0;
-  captions.length = 0;
+  // 2. Hold full speaks its own word
+  said.length = 0;
   bus.emit('economy:tradeFailed', {
     stationId: 'station_helios',
     commodityId: 'cmdty_ore_iron',
@@ -62,35 +65,18 @@ test('ECON-03: on seed 4242 economy:tradeFailed routes to the refusal voice with
     reason: 'cargo_full',
   });
 
-  assert.equal(played.length, 1);
-  assert.equal(played[0].id, 'sfx_ui_error');
-  assert.equal(captions.length, 1);
-  assert.equal(captions[0].text, 'Hold Full');
-
-  // 3. Emit tradeFailed for tier_unavailable
-  played.length = 0;
-  captions.length = 0;
-  bus.emit('economy:tradeFailed', {
-    stationId: 'station_helios',
-    commodityId: 'cmdty_quantum_cores',
-    side: 'buy',
-    qty: 1,
-    reason: 'tier_unavailable',
-  });
-
-  assert.equal(played.length, 1);
-  assert.equal(played[0].id, 'sfx_ui_error');
-  assert.equal(captions.length, 1);
-  assert.equal(captions[0].text, 'Tier Unavailable');
+  assert.equal(said.length, 1);
+  assert.equal(said[0].id, 'economy:tradeFailed:cargo_full');
+  assert.match(said[0].text, /hold full/i);
 });
 
-test('ECON-03: economy.handleTrade failure automatically drives refusal voice and caption on seed 4242', () => {
+test('ECON-03: economy.handleTrade failure automatically drives the refusal voice on seed 4242', () => {
   const state = createGameState(4242);
   const bus = new EventBus();
 
   const audioInst = Object.create(audio);
   const played = [];
-  const captions = [];
+  const said = [];
 
   audioInst.state = state;
   audioInst.bus = bus;
@@ -100,7 +86,7 @@ test('ECON-03: economy.handleTrade failure automatically drives refusal voice an
     return { stop: () => {} };
   };
 
-  bus.on('presentation:caption', (c) => captions.push(c));
+  bus.on('voice:say', (p) => said.push(p));
   audioInst.init({ state, bus });
 
   const econ = Object.create(economy);
@@ -109,6 +95,8 @@ test('ECON-03: economy.handleTrade failure automatically drives refusal voice an
   // Player attempts trade while not docked -> fails with not_docked
   econ.handleTrade('cmdty_ore_iron', 'buy', 1);
 
-  assert.ok(played.some((p) => p.id === 'sfx_ui_error'), 'refusal voice played on trade failure');
-  assert.ok(captions.some((c) => c.text === 'Not Docked'), 'caption emitted for trade failure reason');
+  assert.ok(said.some((p) => p.channel === 'comms' && /not docked/i.test(p.text)),
+    'the comms voice names the refusal reason');
+  // handleTrade also raises an error toast, whose own blip is a separate authored route —
+  // the previous test pins that tradeFailed itself never triggers sfx_ui_error.
 });

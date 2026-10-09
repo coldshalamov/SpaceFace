@@ -15,19 +15,24 @@ import {
 import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
 import { stepLatchRepair } from '../combat/latchRepair.js';
 import { entityLocalPointToWorld } from '../combat/geometry.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { modelTruthRopeEnd } from '../data/modelTruth.js';
 import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
 import { createMasslineRuntime } from '../core/constraints/masslineController.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
-import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
+import { isDynamicPhysicsBodyEntity, queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
+import { resolveEntitySelection } from '../ui/sim/stableSelection.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { isMassSeedTetherEligible, massSeedLatchPreview } from './massSeed.js';
 import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
 import { lineSweepContact } from './masslineImpacts.js';
 
 import { createCadenceWinch, stepCadenceWinch, readCadencePair, rateCadenceTechnique } from './masslineControlLaw.js';
+// FB-013 — the copy owner for first-use lines. Pure data (no DOM, no Three.js), the same module
+// onboarding's _showHint speaks through, so a head's line and a rail line share one vocabulary.
+import { firstUseLine } from '../ui/hudAttention.js';
 
 const TETHER_DEF_ID = 'tether_standard';
 // PQ-137.09 — the tag a shared helm loss carries, and the loop guard. A shared tumble never
@@ -49,6 +54,21 @@ export const ELASTIC_WHIP_SPRING_ZETA = 0.28;
 export const ELASTIC_WHIP_MAX_STRETCH_RATIO = 1.44;
 export const ELASTIC_WHIP_GLOW_STRETCH_RATIO = 0.28;
 const MONOFILAMENT_HEAD_ID = 'monofilament_sweep';
+// FB-013 — every head announces itself: one hud:firstUse line per silent head, keyed to the
+// head's defining event (tractor capture, coupler lock, sweep cut, whip snap). Copy lives in
+// hudAttention.FIRST_USE_LINE; once-only bookkeeping rides state.player.hints like _showHint.
+const HEAD_FIRST_USE_KEYS = Object.freeze({
+  tractor: 'masslineTractor',
+  frame_coupler: 'masslineCoupler',
+  [MONOFILAMENT_HEAD_ID]: 'masslineSweep',
+  [ELASTIC_WHIP_HEAD_ID]: 'masslineWhip',
+});
+// FB-006 — hitchhiking is a named state, not a traffic flag: a taut line to an anchor that
+// outpaces the player by RIDE_SPEED_MARGIN_WU_S for RIDE_ENTER_S continuously IS a ride. The
+// margin is absolute (a liner two hulls over is not a ride) and the window is sim-time, so a
+// fixed seed reproduces it exactly.
+export const RIDE_SPEED_MARGIN_WU_S = 6;
+export const RIDE_ENTER_S = 0.5;
 // One taut cut spends the winch's own integrity. Slack never reaches this spend.
 export const MONOFILAMENT_CUT_INTEGRITY_COST = 0.2;
 // Full reduced-mass coupling: the blade dumps its transverse momentum into what it cuts.
@@ -117,6 +137,16 @@ const DRILL_APPROACH_TIMEOUT_S = 8;
 // answer about whether that ratio can actually culminate in automatic failure.
 const LOAD_STRAIN_GAIN = 2.5;
 const LOAD_BASE_BY_PHASE = Object.freeze({ slack: 0, capture: 0.35, loaded: 0.55, overload: 0.9 });
+// SFQ-B026 — the actionable tension estimate. The raw input is the SAME three-leg comparison the
+// attachment authority's break decision reads (lastTension/lastImpulse/lastYank vs the live
+// breakPolicy, src/combat/attachments.js updateTelemetryAndBreak) — real constraint load vs real
+// breaking threshold, never invented from line length or phase. Only the DISPLAYED number is
+// smoothed: fast attack so a climb toward the envelope is readable inside the 15-tick (250 ms)
+// warning lease the authority grants, slower release so the bar does not chatter. The physical
+// inputs and tether.strain are never smoothed, rescaled, or written by this (scale contract:
+// the SCALE WARNING inside _emitStrain below).
+const ESTIMATE_ATTACK_TAU_S = 0.09;
+const ESTIMATE_RELEASE_TAU_S = 0.35;
 // Authored payloads and loose pickups are sensor bodies: they intentionally do not collide, so the
 // collidable-only spatial hash cannot be their sole acquisition source.
 const NON_COLLIDING_ACQUISITION_TYPES = new Set(['payload', 'pickup']);
@@ -129,6 +159,7 @@ const LINE_CONTROL_DENIAL_COPY = Object.freeze({
   maximum_length: 'maximum line length reached',
   reel_unavailable: 'winch unavailable',
   attachment_missing: 'line no longer attached',
+  spool_out: 'the spool is out',
 });
 const CUT_DENIAL_COPY = Object.freeze({
   attachment_missing: 'line already gone',
@@ -136,7 +167,20 @@ const CUT_DENIAL_COPY = Object.freeze({
   physics_port_unavailable: 'winch unavailable',
   cut_rejected: 'the line holds',
 });
+// Fallback when a denial reason has no authored line: a readable phrase, never a raw slug.
+function humanizeReasonSlug(reason) {
+  return String(reason).replaceAll('_', ' ').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+}
 const NO_REEL_RESULT = Object.freeze({ changed: false, reason: null, attachment: null });
+
+/** The player's own spool is dead. A hull with no spool subsystem is not blocked. */
+export function playerTetherSpoolOut(state, player) {
+  const book = state && state.combat && state.combat.entities;
+  if (!book || !player || player.id == null) return false;
+  const runtime = book[String(player.id)];
+  const spool = runtime && runtime.subsystems && runtime.subsystems.subsystem_tether_spool;
+  return !!(spool && spool.effectiveDisabled === true);
+}
 
 export const tetherGameplay = {
   id: 'tetherGameplay',
@@ -153,6 +197,7 @@ export const tetherGameplay = {
     this._fieldTargetScratch = [];
     this._candidateSeen = new Set();
     this._active = null;
+    this._tensionEstimate = 0;
     this._lastStrainT = -Infinity;
     this._noRelatchUntil = -Infinity;
     this._pendingCut = null;
@@ -192,6 +237,10 @@ export const tetherGameplay = {
       this._pendingCut = null;
       this._ignoreReleaseCutUntilReelIdle = false;
       this._lastStrainT = -Infinity;
+      // SFQ-B026: the display smoother is per-run state, never persisted. A re-adopted live line
+      // must warm-start its estimate from 0 exactly like a cold-restarted load, or the uninterrupted
+      // run and the reload disagree on tether.tensionEstimate for ~1 s (the release tau).
+      this._tensionEstimate = 0;
       this._npcBridleCutTicks.clear();
       this._monofilamentCutIds.clear();
       this._monofilamentKickIds.clear();
@@ -211,6 +260,7 @@ export const tetherGameplay = {
       this._monofilamentKickIds.clear();
       this._hostileSweepCutIds.clear();
       this._monofilamentLatchId = null;
+      this._tensionEstimate = 0;
       this._resetAcquisitionRuntime(this.state);
       this._resetTwinBridleRuntime(this.state, 'new_game', false);
       this._releaseSnagLatch(this.state, this._snag, 'ended');
@@ -305,6 +355,10 @@ export const tetherGameplay = {
     this._cutNpcLinesWithMonofilament(attachments, state, player, dt);
     this._staggerLightsWithMonofilament(attachments, state, player, dt);
     this._cutPlayerLinesWithHostileSweep(attachments, state, player);
+    // The sweep breaks the line after the reconcile above, and the broken listener
+    // no-ops while this update owns the tick. Drop the mirror now so the snap pill
+    // is not cleared as if the cable were still live.
+    this._reconcileActive(attachments, state);
     this._startPendingDrillApproach(attachments, state, player);
     this._reconcileTwinBridle(attachments, state, player, now);
     this._adoptTwinBridle(attachments, state, player);
@@ -358,7 +412,14 @@ export const tetherGameplay = {
       // Liveness belt-and-braces on the gameplay side: if the target vanished this tick and the
       // service sweep hasn't caught it yet, force the cut ourselves rather than orbit a ghost.
       const target = state.entities.get(this._active.targetId);
-      if (!target || target.alive === false || !target.pos
+      // Id-recycle guard on top of the alive checks: the bound attachment's recorded target
+      // generation proves which body this line named; a live occupant with a different token
+      // is a replacement, so the line is target_lost even though the id still resolves.
+      const boundAttachment = attachments && typeof attachments.get === 'function'
+        ? attachments.get(this._active.attachmentId) : null;
+      const targetRecycled = !!(boundAttachment && boundAttachment.targetGeneration != null
+        && occupantGenerationOf(target) !== boundAttachment.targetGeneration);
+      if (!target || target.alive === false || !target.pos || targetRecycled
           || !Number.isFinite(target.pos.x) || !Number.isFinite(target.pos.z)) {
         this._cancelDrillApproach('target_lost');
         attachments.cut(this._active.attachmentId, player.id, 'target_lost');
@@ -381,9 +442,14 @@ export const tetherGameplay = {
         ? approachReelDelta
         : lineLengthCommand;
       const lineCommandIsAxis = !Number.isFinite(approachReelDelta);
-      const reelResult = effectiveLineLengthCommand === 0
-        ? NO_REEL_RESULT
-        : this._reelActive(
+      const spoolOut = playerTetherSpoolOut(state, player);
+      let reelResult = NO_REEL_RESULT;
+      if (spoolOut && effectiveLineLengthCommand !== 0) {
+        this._emitLineControlDenied(state, 'spool_out', effectiveLineLengthCommand, boundAttachment);
+      } else {
+        reelResult = effectiveLineLengthCommand === 0
+          ? NO_REEL_RESULT
+          : this._reelActive(
           attachments,
           effectiveLineLengthCommand,
           dt,
@@ -392,6 +458,7 @@ export const tetherGameplay = {
           target,
           { normalizedAxis: lineCommandIsAxis },
         );
+      }
       const approachSpooling = !!approach && effectiveLineLengthCommand !== 0;
       this._updateReelStrength(approachSpooling || reelHeld, reelResult.changed, dt);
       if (approach && approachSpooling && !reelResult.changed) {
@@ -406,7 +473,7 @@ export const tetherGameplay = {
         if (this._drillApproachSettled(attachments, player, target)) this._completeDrillApproach(state);
         else this._queueDrillApproachAssist(attachments, player, target, dt);
       }
-      this._emitStrain(attachments, state);
+      this._emitStrain(attachments, state, dt);
       const att = attachments.get(this._active.attachmentId);
       const phase = this._phaseFor(state, att, dt, this._lastStrainRatio || 0);
       const attDef = attachmentDef(kernel, att && att.defId || this._active.type);
@@ -433,6 +500,10 @@ export const tetherGameplay = {
     this._resetPhaseMirror();
     this._mirror(state, null, 0);
     const wantsLatch = !!(actions && actions.tetherFire);
+    if (wantsLatch && playerTetherSpoolOut(state, player)) {
+      this.bus.emit('tether:latchDenied', { reason: 'spool_out' });
+      return;
+    }
     const bridleHeadActive = player.data?.derived?.masslineHeadId === TWIN_BRIDLE_HEAD_ID
       && massline2Flag('masslineHeadTwinBridle', state.runtime && state.runtime.features);
     const remoteBridleActive = state.player?.remoteMassline?.active
@@ -567,6 +638,18 @@ export const tetherGameplay = {
         && (publishedTargetId == null || publishedTargetId === target.id),
     });
     this.bus.emit('camera:shake', { amount: 0.06 });
+    // FB-013 — the tractor's defining moment is the capture: one distinct receipt naming the
+    // pull, and the head's first-use line once. Other heads announce on their own events.
+    const captureHeadId = player && player.data && player.data.derived
+      && player.data.derived.masslineHeadId;
+    if (captureHeadId === 'tractor') {
+      this.bus.emit('tether:tractorCapture', {
+        sourceId: player.id,
+        targetId: target.id,
+        attachmentId: this._active && this._active.attachmentId,
+      });
+      this._announceHead(state, 'tractor', target.id);
+    }
     // The consumed receipt deliberately SURVIVES this tick. state.player.tether was mirrored
     // inactive earlier in this same tick, so neither the cable nor a stale preview is drawn yet —
     // the latch completes visually on the next frame, where the _active branch above clears the
@@ -779,12 +862,18 @@ export const tetherGameplay = {
 
   _reconcileTwinBridle(attachments, state, player, now) {
     if (this._bridleSetup) {
-      const source = state.entities?.get ? state.entities.get(this._bridleSetup.sourceId) : null;
-      const sameSector = this._bridleSetup.sectorId === currentSectorId(state);
-      if (!source || source.alive === false || !sameSector) {
-        this._cancelTwinBridleSetup(state, sameSector ? 'endpoint_lost' : 'sector_changed');
-      } else if (now >= this._bridleSetup.expiresAt) {
-        this._cancelTwinBridleSetup(state, 'setup_expired');
+      const published = state.masslineBridle;
+      const publishedSource = published && published.sourceId;
+      if (publishedSource == null || publishedSource !== this._bridleSetup.sourceId) {
+        this._cancelTwinBridleSetup(state, 'endpoint_lost');
+      } else {
+        const source = state.entities?.get ? state.entities.get(this._bridleSetup.sourceId) : null;
+        const sameSector = this._bridleSetup.sectorId === currentSectorId(state);
+        if (!source || source.alive === false || !sameSector) {
+          this._cancelTwinBridleSetup(state, sameSector ? 'endpoint_lost' : 'sector_changed');
+        } else if (now >= this._bridleSetup.expiresAt) {
+          this._cancelTwinBridleSetup(state, 'setup_expired');
+        }
       }
     }
     if (!this._bridleActive) return;
@@ -792,9 +881,12 @@ export const tetherGameplay = {
     const attachment = attachments.get(this._bridleActive.attachmentId);
     if (!attachment || attachment.state !== 'active') {
       const reason = attachment && attachment.breakReason || 'line_broken';
+      const ended = this._bridleActive;
       this._endTwinBridleMirror(state, reason);
       this.bus.emit('massline:bridleEnded', {
-        attachmentId: this._bridleActive && this._bridleActive.attachmentId,
+        attachmentId: ended && ended.attachmentId,
+        sourceId: ended && ended.sourceId != null ? ended.sourceId : null,
+        targetId: ended && ended.targetId != null ? ended.targetId : null,
         reason,
       });
       this._bridleActive = null;
@@ -809,7 +901,12 @@ export const tetherGameplay = {
       const reason = sameSector ? 'endpoint_lost' : 'sector_changed';
       attachments.cut(attachment.id, player.id, reason);
       this._endTwinBridleMirror(state, reason);
-      this.bus.emit('massline:bridleEnded', { attachmentId: attachment.id, reason });
+      this.bus.emit('massline:bridleEnded', {
+        attachmentId: attachment.id,
+        sourceId: attachment.ownerId != null ? attachment.ownerId : null,
+        targetId: attachment.targetId != null ? attachment.targetId : null,
+        reason,
+      });
       this._bridleActive = null;
       return;
     }
@@ -930,6 +1027,7 @@ export const tetherGameplay = {
     mirror.targetShare = shares.target;
     mirror.shareSourceId = source.id;
     mirror.shareTargetId = target.id;
+    if (!emit || !this.bus || typeof this.bus.emit !== 'function') return null;
     const payload = {
       schemaVersion: 1,
       kind: 'twin_bridle',
@@ -944,9 +1042,7 @@ export const tetherGameplay = {
       share: shares.source,
       tick: state.tick | 0,
     };
-    if (emit && this.bus && typeof this.bus.emit === 'function') {
-      this.bus.emit('chain:tetherShare', payload);
-    }
+    this.bus.emit('chain:tetherShare', payload);
     return payload;
   },
 
@@ -1016,12 +1112,20 @@ export const tetherGameplay = {
       || (mirror && mirror.kind === TWIN_BRIDLE_HEAD_ID)
       || (state && Object.prototype.hasOwnProperty.call(state, 'masslineBridle')));
     if (!hasRuntime) return;
-    const attachmentId = this._bridleActive && this._bridleActive.attachmentId;
+    const ended = this._bridleActive;
+    const attachmentId = ended && ended.attachmentId;
     const attachments = combatKernel(this)?.attachments;
     if (attachmentId && attachments) attachments.cut(attachmentId, state.playerId, reason);
     this._cancelTwinBridleSetup(state, reason);
     this._resetTwinBridleRuntime(state, reason, false);
-    if (attachmentId) this.bus.emit('massline:bridleEnded', { attachmentId, reason });
+    if (attachmentId) {
+      this.bus.emit('massline:bridleEnded', {
+        attachmentId,
+        sourceId: ended.sourceId != null ? ended.sourceId : null,
+        targetId: ended.targetId != null ? ended.targetId : null,
+        reason,
+      });
+    }
   },
 
   _refreshAcquisitionPreview(player, def, state, now, force = false, pressOverride = false) {
@@ -1076,7 +1180,11 @@ export const tetherGameplay = {
     }
 
     const target = state.entities && state.entities.get ? state.entities.get(selected.targetId) : null;
-    const denial = validateAcquisitionTarget(this, player, target, def, state);
+    // A published pick whose occupant token no longer matches means the id recycled between
+    // preview and press — the latch must name the dead pick as lost, not weld onto its heir.
+    const denial = (selected.occupantGeneration != null && occupantGenerationOf(target) !== selected.occupantGeneration)
+      ? 'target-lost'
+      : validateAcquisitionTarget(this, player, target, def, state);
     if (denial) {
       this._lastLatchDenial = { reason: denial, targetId: selected.targetId };
       invalidateAcquisitionReceipt(state, denial);
@@ -1179,6 +1287,10 @@ export const tetherGameplay = {
         : null;
       if (!target || target.alive === false || !target.pos
           || !Number.isFinite(target.pos.x) || !Number.isFinite(target.pos.z)) continue;
+      // A record whose stored target generation no longer matches the occupant binds the dead
+      // body, not the replacement holding the id — never adopt it as the live line.
+      if (attachment.targetGeneration != null
+          && occupantGenerationOf(target) !== attachment.targetGeneration) continue;
       this._active = {
         attachmentId: attachment.id,
         targetId: attachment.targetId,
@@ -1495,7 +1607,7 @@ export const tetherGameplay = {
     });
     const verb = direction === 'reel_in' ? 'reel-in' : 'pay-out';
     this.bus.emit('toast', {
-      text: `Massline ${verb} blocked: ${LINE_CONTROL_DENIAL_COPY[reason] || String(reason).replaceAll('_', ' ')}`,
+      text: `Massline ${verb} blocked: ${LINE_CONTROL_DENIAL_COPY[reason] || humanizeReasonSlug(reason)}`,
       kind: 'warn',
       ttl: 2,
     });
@@ -1509,15 +1621,25 @@ export const tetherGameplay = {
     if (!reelHeld && this._reelStrength < 0.01) this._reelStrength = 0;
   },
 
-  _emitStrain(attachments, state) {
+  _emitStrain(attachments, state, dt) {
     if (!this._active) return;
     const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
-    if (now - this._lastStrainT < STRAIN_EVENT_INTERVAL_S) return;
     const attachment = attachments.get(this._active.attachmentId);
-    if (!attachment || attachment.state !== 'active') return;
+    const policy = attachment && typeof attachments.breakPolicy === 'function'
+      ? attachments.breakPolicy(attachment.id)
+      : null;
     const kernel = combatKernel(this);
-    const def = attachmentDef(kernel, attachment.defId);
-    const policy = typeof attachments.breakPolicy === 'function' ? attachments.breakPolicy(attachment.id) : null;
+    const def = attachment ? attachmentDef(kernel, attachment.defId) : null;
+    // SFQ-B026: the displayed estimate steps EVERY tick off the real three-leg load, so an
+    // approach to the envelope is continuous; the strain event below keeps its 5 Hz cadence and
+    // its tension-only ratio untouched.
+    this._tensionEstimate = stepTensionEstimate(
+      this._tensionEstimate,
+      attachment && attachment.state === 'active' ? constraintLoadRatio(attachment, policy, def) : 0,
+      dt,
+    );
+    if (!attachment || attachment.state !== 'active') return;
+    if (now - this._lastStrainT < STRAIN_EVENT_INTERVAL_S) return;
     const threshold = positive(
       (policy && policy.maxTension) || (def && (def.breakTension || (def.break && def.break.maxTension))),
       0,
@@ -1650,6 +1772,8 @@ export const tetherGameplay = {
             integrity,
             contact,
           });
+          // FB-013 — the sweep's defining moment is its one-pass cut: announce the head once.
+          this._announceHead(state, MONOFILAMENT_HEAD_ID, other.ownerId);
         }
       }
     }
@@ -1801,7 +1925,7 @@ export const tetherGameplay = {
       if (this._lastCutDenial !== key) {
         this._lastCutDenial = key;
         this.bus.emit('toast', {
-          text: `Massline cut refused: ${CUT_DENIAL_COPY[reason] || String(reason).replaceAll('_', ' ')}`,
+          text: `Massline cut refused: ${CUT_DENIAL_COPY[reason] || humanizeReasonSlug(reason)}`,
           kind: 'warn',
           ttl: 2,
         });
@@ -1841,6 +1965,94 @@ export const tetherGameplay = {
     t.slingshot = t.slingshotT > 0;
   },
 
+  // FB-013 — every head announces itself: one first-use line per Massline head, spoken on the
+  // head's first defining event through the hud:firstUse presentation path onboarding's _showHint
+  // already uses. state.player.hints is the same once-only store, so a head line and a rail line
+  // can never both queue behind one key.
+  _announceHead(state, headId, entityId) {
+    const key = headId && HEAD_FIRST_USE_KEYS[headId];
+    if (!key || !state || !state.player || !this.bus || typeof this.bus.emit !== 'function') {
+      return false;
+    }
+    if (!state.player.hints) state.player.hints = {};
+    if (state.player.hints[key]) return false;
+    state.player.hints[key] = true;
+    this.bus.emit('hud:firstUse', { verbId: key, text: firstUseLine(key), entityId: entityId ?? null });
+    return true;
+  },
+
+  // FB-006 — the ride derivation. Taut (loaded/overload) plus an anchor outpacing the player by
+  // RIDE_SPEED_MARGIN_WU_S for RIDE_ENTER_S continuously names a ride on the tether mirror. The
+  // anchor is never assumed to be a liner: express traffic merely owes its speed to this physics.
+  // Once earned, a ride stays named until the line ends — the chip's numbers keep measuring, and
+  // the release grade reads the truth at the cut.
+  _updateRide(state, t, targetId) {
+    const now = finite(state && state.simTime, 0);
+    const dt = this._rideClock != null ? Math.max(0, now - this._rideClock) : 0;
+    this._rideClock = now;
+    if (!t || !t.active || targetId == null
+      || (t.phase !== 'loaded' && t.phase !== 'overload')) {
+      this._rideTautS = 0;
+      if (t) t.ride = null;
+      return;
+    }
+    const get = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get.bind(state.entities) : null;
+    const anchor = get ? get(targetId) : null;
+    const player = get ? get(state.playerId) : null;
+    const speedOf = (e) => Math.hypot(finite(e && e.vel && e.vel.x), finite(e && e.vel && e.vel.z));
+    const anchorSpeed = speedOf(anchor);
+    const playerSpeed = speedOf(player);
+    const faster = anchorSpeed > playerSpeed + RIDE_SPEED_MARGIN_WU_S;
+    this._rideTautS = faster ? this._rideTautS + dt : 0;
+    if (!t.ride || t.ride.active !== true) {
+      if (this._rideTautS < RIDE_ENTER_S) {
+        t.ride = null;
+        return;
+      }
+      t.ride = {
+        active: true,
+        anchorId: targetId,
+        since: now,
+        startPlayerSpeed: playerSpeed,
+        anchorSpeed,
+        playerSpeed,
+        speedGained: 0,
+        heldS: 0,
+      };
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('massline:rideStarted', {
+          sourceId: state.playerId,
+          targetId,
+          attachmentId: t.attachmentId,
+          anchorSpeed,
+          tick: state.tick,
+        });
+      }
+      this._announceRide(state, targetId);
+      return;
+    }
+    t.ride.anchorSpeed = anchorSpeed;
+    t.ride.playerSpeed = playerSpeed;
+    t.ride.speedGained = Math.max(0, playerSpeed - finite(t.ride.startPlayerSpeed));
+    t.ride.heldS = Math.max(0, now - finite(t.ride.since));
+  },
+
+  // FB-006 — the ride speaks the existing hitchhiking line once, through the same hud:firstUse
+  // presentation path and the same once-only state.player.hints store onboarding's latch lesson
+  // uses, so a ride and a latch can never double-speak one line.
+  _announceRide(state, entityId) {
+    const key = 'masslineHitchhiking';
+    if (!state || !state.player) return false;
+    if (!state.player.hints) state.player.hints = {};
+    if (state.player.hints[key]) return false;
+    state.player.hints[key] = true;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('hud:firstUse', { verbId: key, text: firstUseLine(key), entityId: entityId ?? null });
+    }
+    return true;
+  },
+
   _emitWhipSnapIfStored(state, targetId) {
     const t = state && state.player && state.player.tether;
     if (!t || t.headId !== ELASTIC_WHIP_HEAD_ID) return false;
@@ -1853,6 +2065,8 @@ export const tetherGameplay = {
         strainGlow: finite(t.strainGlow, 0),
       });
     }
+    // FB-013 — the whip's defining moment is the snap: announce the head once.
+    this._announceHead(state, ELASTIC_WHIP_HEAD_ID, targetId);
     return true;
   },
 
@@ -2289,6 +2503,10 @@ export const tetherGameplay = {
     t.restLength = restLength || 0;
     t.phase = t.active ? normalizePhase(phase) : 'slack';
     t.load = t.active ? computeTetherLoad(t.phase, t.strain) : 0;
+    // SFQ-B026 — the smoothed display read of real constraint load vs break threshold. A gone line
+    // clears it with the rest of its mirror; consumers degrade to strain when the field is absent.
+    t.tensionEstimate = t.active ? Math.min(2, Math.max(0, finite(this._tensionEstimate, 0))) : 0;
+    if (!t.active) this._tensionEstimate = 0;
     t.attachmentId = this._active ? this._active.attachmentId : null;
     t.lineControl = !!(t.active && command && command.lineControl);
     t.lineLengthRate = t.lineControl ? finite(lineLengthCommand, 0) : 0;
@@ -2327,9 +2545,30 @@ export const tetherGameplay = {
       this.bus.emit('massline:cadenceChanged', { sourceId: state.playerId, targetId,
         attachmentId: t.attachmentId, phase: view.phase, tick: state.tick });
     }
+    // FB-013 — the frame coupler's defining moment is its rigid lock: the first taut phase of a
+    // latch under that head. One distinct receipt, one first-use line, once per latch.
+    if (t.active && t.headId === 'frame_coupler' && (t.phase === 'loaded' || t.phase === 'overload')) {
+      if (this._couplerLockLatchedId !== t.attachmentId) {
+        this._couplerLockLatchedId = t.attachmentId;
+        if (this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('tether:couplerLock', {
+            sourceId: state.playerId,
+            targetId,
+            attachmentId: t.attachmentId,
+          });
+        }
+        this._announceHead(state, 'frame_coupler', targetId);
+      }
+    } else if (!t.active) {
+      this._couplerLockLatchedId = null;
+    }
     if (t.active && t.headId === ELASTIC_WHIP_HEAD_ID) {
       t.load = Math.max(t.load, strainGlow);
     }
+    // FB-006 — the ride derivation runs where the live pair is already in hand, after every
+    // other mirror field is final. Publishes t.ride for the HUD chip, the release grade and the
+    // first-ride line; a slack/inactive line clears it.
+    this._updateRide(state, t, targetId);
   },
 };
 
@@ -2408,11 +2647,23 @@ function contextualRemoteAttachmentWorlds(source, target) {
   };
 }
 
+/** Does this body anchor a tow line at its center of mass? COM exists to keep the joint off a
+ * lever arm: a hull-offset anchor torques a body the constraint can actually rotate and quietly
+ * becomes an attitude controller. A COM-type body that cannot rotate under the joint — an
+ * authored-static placed slab/cradle (`physicsBody.dynamic === false`), or `physicsBody: false`
+ * (no live body at all) — keeps the readable hull endpoint the player latched, the same rule
+ * terrain and stations already follow. */
+function towAnchorAtCenterOfMass(entity) {
+  if (!entity || !TOW_TARGET_COM_TYPES.has(entity.type)) return false;
+  if (entity.physicsBody === false) return false;
+  return isDynamicPhysicsBodyEntity(entity);
+}
+
 function remoteAttachmentWorld(entity, toward) {
   if (!entity || !entity.pos) return { x: 0, y: 0, z: 0 };
   // Moving payloads/craft attach through COM. A hull-offset world-to-world rope would apply yaw
   // torque and become an accidental facing controller; static scenery keeps the visible surface hit.
-  if (TOW_TARGET_COM_TYPES.has(entity.type)) {
+  if (towAnchorAtCenterOfMass(entity)) {
     return { x: entity.pos.x, y: 0, z: entity.pos.z };
   }
   return surfacePointToward(entity, toward);
@@ -2762,6 +3013,9 @@ function acquisitionReceiptEntry(snapshot, record, overrideReason) {
   const seedPreview = target && target.type === 'massSeed' ? massSeedLatchPreview(target) : null;
   const entry = {
     targetId: record.id,
+    // The receipt is consumed after publication; if the id recycled in between, this token is
+    // the proof the picked body is still the one the preview named.
+    occupantGeneration: occupantGenerationOf(target),
     targetType: target && target.type || 'unknown',
     targetLabel: masslineTargetLabel(target),
     context: snapshot.context.id,
@@ -2906,10 +3160,29 @@ function preciseCursorScore(entity, aim) {
 }
 
 function masslineRouteTargetId(state) {
-  const waypointId = state && state.nav && state.nav.waypoint && state.nav.waypoint.targetEntityId;
-  if (waypointId != null) return waypointId;
-  const autopilotId = state && state.nav && state.nav.autopilot && state.nav.autopilot.targetEntityId;
-  return autopilotId != null ? autopilotId : null;
+  const nav = state && state.nav;
+  const waypoint = nav && nav.waypoint;
+  if (waypoint) {
+    if (waypoint.stable) {
+      // The stamped bind is the authority for which entity the armed course meant: a durable
+      // bind follows the re-materialized body, and a closed stamp means the slot's occupant is
+      // not the course target — returning the bare id would inject (and prioritize) an
+      // unrelated body into acquisition.
+      const entity = resolveEntitySelection(state, waypoint.stable);
+      if (entity && entity.alive) return entity.id;
+    } else if (waypoint.targetEntityId != null) {
+      return waypoint.targetEntityId;
+    }
+  }
+  const autopilot = nav && nav.autopilot;
+  if (autopilot) {
+    if (autopilot.stable) {
+      const entity = resolveEntitySelection(state, autopilot.stable);
+      return entity && entity.alive ? entity.id : null;
+    }
+    return autopilot.targetEntityId != null ? autopilot.targetEntityId : null;
+  }
+  return null;
 }
 
 function latchedLoadRemaining(entity) {
@@ -2970,13 +3243,16 @@ function masslineTargetLabel(target) {
 /** Resolve physical world anchors once at latch time. Both ends of a dynamic attachment are
  * the bodies' centers of mass — the standing remoteAttachmentWorld contract: a constraint
  * hung on a hull socket applies steering torque by itself and becomes an accidental attitude
- * controller. Static/terrain anchors keep the readable surface endpoint the player latched. */
+ * controller. A COM-type body the joint cannot rotate (authored-static socket-less wrecks —
+ * placed aftermath slabs, the salvage cradle) falls back to the measured hardpoint or the
+ * acquired surface endpoint, so the line lands on the hull instead of floating at body center.
+ * Static/terrain anchors keep the readable surface endpoint the player latched. */
 export function contextualAttachmentWorlds(player, target, acquiredTargetWorld) {
   const source = modelTruthRopeEnd(player);
-  const sourceWorld = TOW_TARGET_COM_TYPES.has(player && player.type) && player.pos
+  const sourceWorld = towAnchorAtCenterOfMass(player) && player.pos
     ? { x: player.pos.x, y: 0, z: player.pos.z }
     : (source ? { x: source.x, y: 0, z: source.z } : { x: player.pos.x, y: 0, z: player.pos.z });
-  const targetWorld = target && TOW_TARGET_COM_TYPES.has(target.type) && target.pos
+  const targetWorld = target && towAnchorAtCenterOfMass(target) && target.pos
     ? { x: target.pos.x, y: 0, z: target.pos.z }
     : (modelTruthRopeEnd(target) || acquiredTargetWorld);
   return { sourceWorld, targetWorld };
@@ -3049,6 +3325,40 @@ export function computeTetherLoad(phase, strain) {
   return clamp(Math.max(s * LOAD_STRAIN_GAIN, base), 0, 1);
 }
 
+// SFQ-B026 — display smoothing ONLY. Fast attack (a climb toward the envelope is readable inside
+// the authority's 15-tick warning lease), slower release (the bar does not chatter, and slack
+// decays to an exact 0). The physical inputs this was computed from are never smoothed.
+export function stepTensionEstimate(prev, raw, dt) {
+  const from = Number.isFinite(prev) && prev > 0 ? prev : 0;
+  const target = Number.isFinite(raw) && raw > 0 ? raw : 0;
+  const step = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.25) : 0;
+  if (!(step > 0)) return from;
+  const tau = target > from ? ESTIMATE_ATTACK_TAU_S : ESTIMATE_RELEASE_TAU_S;
+  const next = from + (target - from) * (1 - Math.exp(-step / tau));
+  return next < 1e-4 ? 0 : next;
+}
+
+// The authority's own near-break comparison (src/combat/attachments.js updateTelemetryAndBreak):
+// the max of the tension, impulse and yank legs against the live break policy — real constraint
+// load vs real breaking threshold. Read-only mirror of that formula: no policy is decided here,
+// no attachment field is written, and a leg with no threshold contributes 0 rather than a fake
+// overload. Same degrade chain _emitStrain has always used for the tension threshold. Unlike the
+// authority's near-break check this omits the break-grace and automaticMasslineBreakAllowed gates
+// (src/combat/attachments.js), so the display may warn a few ticks before the authority may break
+// — deliberate: the display leads, it never lags a real approach.
+function constraintLoadRatio(attachment, policy, def) {
+  const tensionLimit = positive(
+    (policy && policy.maxTension) || (def && (def.breakTension || (def.break && def.break.maxTension))),
+    0,
+  );
+  const impulseLimit = positive((policy && policy.maxImpulse) || (def && def.break && def.break.maxImpulse), 0);
+  const yankLimit = positive((policy && policy.maxYank) || (def && def.break && def.break.maxYank), 0);
+  const tensionLeg = tensionLimit > 0 ? Math.max(0, finite(attachment.lastTension)) / tensionLimit : 0;
+  const impulseLeg = impulseLimit > 0 ? Math.max(0, finite(attachment.lastImpulse)) / impulseLimit : 0;
+  const yankLeg = yankLimit > 0 ? Math.max(0, finite(attachment.lastYank)) / yankLimit : 0;
+  return Math.min(2, Math.max(tensionLeg, impulseLeg, yankLeg));
+}
+
 // CADENCE release rating reads the current pair, before cut authority clears its mirror.
 // Technique is tangency and earned relative speed; the physical break rating remains telemetry.
 // No claim about hitting a victim is made here: the throw forecast owns that separate question.
@@ -3080,6 +3390,19 @@ export function rateRelease(state, targetId, opts) {
   const rating = rateCadenceTechnique(pair, { phase: tether && tether.phase });
   const apexOmega = finite(telemetry && telemetry.maxAngularSpeedSinceLatch);
   const omegaNow = Math.abs(finite(pair.omega));
+  const playerSpeed = Math.hypot(finite(owner && owner.vel && owner.vel.x), finite(owner && owner.vel && owner.vel.z));
+  // FB-006 — a release out of a ride grades the ride: how much of the anchor's speed the pilot
+  // kept at the cut. The ride mirror is still live here (the emitters rate before clearing it).
+  const ride = tether && tether.ride && tether.ride.active === true ? tether.ride : null;
+  const rideGrade = ride
+    ? {
+      anchorSpeed: finite(ride.anchorSpeed),
+      speedGained: finite(ride.speedGained),
+      keptFraction: finite(ride.anchorSpeed) > 0.5
+        ? clamp01(playerSpeed / finite(ride.anchorSpeed))
+        : 0,
+    }
+    : null;
   return {
     targetId, sourceId: state && state.playerId != null ? state.playerId : null,
     // CV-THROW-1: deliberate marks a player release — the grade verdict teaches only
@@ -3089,10 +3412,12 @@ export function rateRelease(state, targetId, opts) {
     radialSpeed: pair.radialSpeed, tangentialSpeed: pair.tangentialSpeed,
     angularSpeed: pair.omega, distance: pair.distance, restLength,
     strain: finite(tether && tether.strain, finite(telemetry && telemetry.strain)),
-    playerSpeed: Math.hypot(finite(owner && owner.vel && owner.vel.x), finite(owner && owner.vel && owner.vel.z)),
+    playerSpeed,
     maxStrainSinceLatch: finite(telemetry && telemetry.maxStrainSinceLatch),
     maxTangentialSpeedSinceLatch: finite(telemetry && telemetry.maxTangentialSpeedSinceLatch),
     maxAngularSpeedSinceLatch: apexOmega,
+    // FB-006 — the ride's kept-speed receipt, present only when the release ended a ride.
+    ride: rideGrade,
     // True only on a deliberate cut released at the crest of a real swing. Breaks and target
     // loss emit this rating too; they are never an apex.
     releasedAtApex: !!(opts && opts.deliberate === true)

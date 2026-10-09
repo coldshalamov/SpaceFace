@@ -745,14 +745,18 @@ export const provenanceLedger = {
     this._listen('surrender:recoveryLost', (payload) => this._onActOutcome(payload || {}, 'surrendered_lost'));
     this._listen('freight:recovery', (payload) => this._onActOutcome(payload || {}, 'recovered'));
     this._listen('freight:recoveryAbandoned', (payload) => this._onActOutcome(payload || {}, 'abandoned'));
-    this._listen('claim:raided', (payload) => this._onClaimOutcome(payload || {}, 'raided'));
+    this._listen('claim:raided', (payload) => {
+      if (!this._claimOutcomeIsDefenseEcho(payload)) this._onClaimOutcome(payload || {}, 'raided');
+    });
     // A jumped salvage stake is a raid on someone's working claim: same ledger memory.
     this._listen('salvage:claimJumped', (payload) => this._onClaimOutcome({
       bodyId: payload && payload.wreckId != null ? `wreck:${payload.wreckId}` : '',
       text: `${(payload && payload.crewName) || 'Salvor crew'}'s salvage stake jumped by the player.`,
       sectorId: (payload && payload.sectorId) || null,
     }, 'raided'));
-    this._listen('claim:raidRepelled', (payload) => this._onClaimOutcome(payload || {}, 'repelled'));
+    this._listen('claim:raidRepelled', (payload) => {
+      if (!this._claimOutcomeIsDefenseEcho(payload)) this._onClaimOutcome(payload || {}, 'repelled');
+    });
     this._listen('claim:defenseResolved', (payload) => this._onClaimDefense(payload || {}));
     this._listen('lossLedger:recorded', (payload) => this._onLossRecorded(payload || {}));
     this._listen('namedAce:appeared', (payload) => this._onAceEvent(payload || {}, 'appeared'));
@@ -1326,6 +1330,17 @@ export const provenanceLedger = {
     if (!outcome) return;
     if (outcome === 'defended') this._onClaimOutcome(payload, 'repelled');
     else this._onClaimOutcome(payload, 'raided');
+    // claims._settleDefense emits claim:raided/claim:raidRepelled immediately after
+    // claim:defenseResolved for the same defenseId. The detailed node just recorded carries
+    // the real text; the generic twin would only add a "Claim raid succeeded." duplicate on
+    // the same chain, so the next generic event naming this defense is skipped.
+    this._lastClaimDefense = { defenseId: asString(payload.defenseId), tick: nowTick(this.state) };
+  },
+
+  _claimOutcomeIsDefenseEcho(payload) {
+    const last = this._lastClaimDefense;
+    const defenseId = asString(payload && payload.defenseId);
+    return !!(defenseId && last && last.defenseId === defenseId && last.tick === nowTick(this.state));
   },
 
   _onLossRecorded(payload) {

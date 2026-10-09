@@ -6,11 +6,14 @@
 // Literal `assets/ships/release/...` URLs are the retail bodies the live loader
 // already packages. Incubator donor paths must never appear in this table.
 //
-// Helios fixtures, not ambient-mix rows. The volatiles tanker (role `tanker`) and the
-// inspection cutter (role `customs`) are already spawned on Helios. They stay OUT of
-// OCCUPATIONAL_TRAFFIC_CRAFT so they never enter the weighted mix. Their job light is an
-// existing signature profile (see FIELD_JOB_SIGNATURE_CRAFT) — heavy burn / clean burn for
-// the tanker, the pin sweep for the cutter. No profile is invented per hull.
+// The volatiles tanker (role `tanker`) and the inspection cutter (role `customs`) stay OUT of
+// OCCUPATIONAL_TRAFFIC_CRAFT so a service-less pocket never rolls them from the generic craft
+// list. Traffic fields them by service: refuel sectors draw the tanker (volatile cryo lot,
+// hauler graph) and customs scan/toll sectors draw the cutter (patrol graph, pin sweep).
+// High-sec cores keep mix weight zero; Helios still meets them as fixtures, with escorts
+// already in that pocket. Their job light is an existing signature profile
+// (see FIELD_JOB_SIGNATURE_CRAFT) — heavy burn / clean burn for the tanker, the pin sweep
+// for the cutter. No profile is invented per hull.
 //
 // The tug row below is a bounded draft wiring; its final admission remains an owner decision.
 //
@@ -68,6 +71,8 @@ export const FIELD_JOB_SIGNATURE_CRAFT = Object.freeze([
     craftId: 'volatiles_tanker',
     role: 'tanker',
     jobKind: 'hauler',
+    fielded: true,
+    service: 'refuel',
     loadedProfileId: 'heavy_burn',
     emptyProfileId: 'clean_burn',
   }),
@@ -75,6 +80,8 @@ export const FIELD_JOB_SIGNATURE_CRAFT = Object.freeze([
     craftId: 'inspection_cutter',
     role: 'customs',
     jobKind: 'patrol',
+    fielded: true,
+    service: 'customs',
     profileId: 'on_the_pin',
   }),
 ]);
@@ -82,4 +89,12 @@ export const FIELD_JOB_SIGNATURE_CRAFT = Object.freeze([
 export const OCCUPATIONAL_JOB_KIND_BY_ROLE = Object.freeze({
   ...Object.fromEntries(OCCUPATIONAL_TRAFFIC_CRAFT.map((row) => [row.role, row.jobKind])),
   ...Object.fromEntries(FIELD_JOB_SIGNATURE_CRAFT.map((row) => [row.role, row.jobKind])),
+});
+
+// P03's named single worker is commissioned by brace_long_plate, never weighted ambient traffic.
+export const CERES_BREAKER_CRAFT = Object.freeze({
+  craftId:'ceres_breaker',role:'ceres_breaker',file:'wholeships/ceres_breaker.glb',
+  assetId:'SF_WHOLESHIP_CERES_BREAKER',jobKind:'ceres_workfleet',
+  releaseUrl:'assets/ships/release/parts/wholeships/ceres_breaker.glb',
+  worldRecordId:'ceres:second_measure:breaker',
 });

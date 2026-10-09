@@ -1,0 +1,290 @@
+{
+ "schema": "spaceface.rigidMotionBank.v1",
+ "rigId": "ceres_section_cradle_hydraulics",
+ "sourceAssetId": "SF_PLACE_CERES_SECTION_CRADLE",
+ "sourceGlbSha256": "0dba45cf17d6e5105f82718beb84be66e5fcef1841bf3270ae34fee6a480d60e",
+ "fps": 60,
+ "bindings": [
+  {
+   "id": "retention_port",
+   "node": "MOTION_RETENTION_PORT",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     -37.5,
+     0,
+     0
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0,
+    1,
+    2
+   ]
+  },
+  {
+   "id": "retention_ram_port_0",
+   "node": "MOTION_RETENTION_RAM_PORT_0",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     -42,
+     0,
+     -24
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0,
+    1,
+    2
+   ]
+  },
+  {
+   "id": "retention_ram_port_1",
+   "node": "MOTION_RETENTION_RAM_PORT_1",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     -42,
+     0,
+     24
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0,
+    1,
+    2
+   ]
+  },
+  {
+   "id": "retention_starboard",
+   "node": "MOTION_RETENTION_STARBOARD",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     37.5,
+     0,
+     0
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0,
+    1,
+    2
+   ]
+  },
+  {
+   "id": "retention_ram_starboard_0",
+   "node": "MOTION_RETENTION_RAM_STARBOARD_0",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     42,
+     0,
+     -24
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0,
+    1,
+    2
+   ]
+  },
+  {
+   "id": "retention_ram_starboard_1",
+   "node": "MOTION_RETENTION_RAM_STARBOARD_1",
+   "parent": null,
+   "restPose": {
+    "translation": [
+     42,
+     0,
+     24
+    ],
+    "rotation": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "scale": [
+     1,
+     1,
+     1
+    ]
+   },
+   "requiredAtLod": [
+    0,
+    1,
+    2
+   ]
+  }
+ ],
+ "clips": [
+  {
+   "name": "source_open_pose",
+   "durationS": 0.016666666666666666,
+   "loop": false,
+   "endMode": "hold",
+   "channels": [
+    {
+     "group": "retention_port",
+     "path": "translation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "interpolation": "linear"
+    },
+    {
+     "group": "retention_ram_port_0",
+     "path": "translation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "interpolation": "linear"
+    },
+    {
+     "group": "retention_ram_port_1",
+     "path": "translation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "interpolation": "linear"
+    },
+    {
+     "group": "retention_starboard",
+     "path": "translation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "interpolation": "linear"
+    },
+    {
+     "group": "retention_ram_starboard_0",
+     "path": "translation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "interpolation": "linear"
+    },
+    {
+     "group": "retention_ram_starboard_1",
+     "path": "translation",
+     "times": [
+      0.0,
+      0.016666666666666666
+     ],
+     "values": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "interpolation": "linear"
+    }
+   ]
+  }
+ ],
+ "simulationAuthority": "Ceres native actual slide fraction; renderer applies after bank update"
+}

@@ -74,7 +74,7 @@ try {
   });
 
   const baselinePage = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 1 });
-  const baselineIssues = collectPageIssues(baselinePage, { ignoreProbeWarnings: true });
+  const baselineIssues = collectPageIssues(baselinePage, { playerStoreMounted: false, ignoreProbeWarnings: true });
   await baselinePage.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 });
   // Boot is wall-clock work on the host (server fetch + first-frame pipeline); on a saturated
   // machine it legitimately needs several minutes. SPACEFACE_M3_BOOT_MS overrides.
@@ -170,7 +170,7 @@ try {
     process.stdout.write(`[route] server-restarted-for-travel — ${server.baseUrl}\n`);
   }
   const travelPage = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 1 });
-  const travelIssues = collectPageIssues(travelPage, { ignoreProbeWarnings: true });
+  const travelIssues = collectPageIssues(travelPage, { playerStoreMounted: false, ignoreProbeWarnings: true });
   await travelPage.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
   const travel = await runProfessionalTravelPublicRoute({
     page: travelPage,
@@ -378,6 +378,8 @@ async function proveEngineeringPreview(page) {
       slotIndex: wantedSlot,
       expectedPreview,
       expectedDelta,
+      afterMetrics: Object.fromEntries(['shieldMax', 'hullMax', 'cargoCap', 'maxSpeed', 'operationalMass']
+        .map((key) => [key, presenter.previewMetricValue(expectedPreview.after, key)])),
       actual: {
         stationShell: document.querySelector('[data-screen="station"] .sx-app') ? 'orbital-command' : null,
         rowText: String(document.querySelector(`.sx-modrow[data-preview-module="${CSS.escape(wanted)}"]`)?.innerText || '')
@@ -414,13 +416,12 @@ async function proveEngineeringPreview(page) {
   assert.equal(snapshot.actual.previewMode, 'module', 'hover must visibly enter module-preview mode');
   assert.deepEqual(JSON.parse(snapshot.actual.previewFittings), [...snapshot.expectedPreview.afterFittings],
     'preview geometry must use the canonical after-fittings loadout');
-  for (const [key, expected] of Object.entries({
-    shieldMax: snapshot.expectedPreview.after.shieldMax,
-    hullMax: snapshot.expectedPreview.after.hullMax,
-    cargoCap: snapshot.expectedPreview.after.cargoCap,
-    maxSpeed: snapshot.expectedPreview.after.maxSpeed,
-    operationalMass: snapshot.expectedPreview.after.operationalMass,
-  })) {
+  // Resolve expectations through the same canonical presenter the mirror stamps: motion keys
+  // (maxSpeed, turnRate, thrust, travelCeiling) read the capability owner's live channels —
+  // governed fight cap, kernel yaw ceiling, forward accel — not the legacy same-name spec fields
+  // the panel no longer prints (NXB-030).
+  for (const key of ['shieldMax', 'hullMax', 'cargoCap', 'maxSpeed', 'operationalMass']) {
+    const expected = snapshot.afterMetrics[key];
     assert.equal(snapshot.actual.metrics[key], expected, `visible ${key} must match getDerivedStats`);
   }
   return snapshot;

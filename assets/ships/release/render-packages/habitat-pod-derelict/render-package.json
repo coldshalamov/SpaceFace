@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "de9cdb3114d49f6ef305ec17d910f1f76f03ec733c82ab5234539ffdb0bd662f",
+  "contentHash": "5b9b38f15c6dddaa471bf3cb14aad6b78a68cde99768db8fdd2163be54739948",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1308,8 +1308,8 @@
       "uri": "place_habitat_pod_derelict.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -1345,7 +1345,9 @@
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 16
+      "glass": 5,
+      "hull": 10,
+      "rubber": 1
     },
     "materialProfiles": [
       {
@@ -1386,32 +1388,32 @@
       {
         "allowTextures": false,
         "planIndex": 10,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
         "planIndex": 11,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
         "planIndex": 12,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
         "planIndex": 13,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
         "planIndex": 14,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
         "planIndex": 15,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
@@ -1868,7 +1870,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_habitat_pod_derelict.glb"
   },
-  "runtimeHash": "cdbd228054004b4ecf1acb209467f52b5f3754403666620de2fcf76a99654d5a",
+  "runtimeHash": "d50188016771772963d815953f03c52e981696ca88734e2e077a5d526f7727eb",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -136,6 +136,11 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   const isEntityJournaled = typeof options.isEntityJournaled === 'function'
     ? options.isEntityJournaled
     : () => true;
+  // Entities whose spawn actually recorded. Eligibility flags are mutable post-spawn
+  // (the renderer latches _noMesh after build failures), so a suppressed destroy must
+  // only apply to entities that were never journaled — a journaled entity that loses
+  // eligibility mid-life still needs its destroy to close the generation.
+  const journaledEntities = new WeakSet();
   const records = Array.from({ length: size }, () => createPresentationJournalRecord());
 
   let generations = new Uint32Array(initialEntityCapacity + 1);
@@ -143,6 +148,9 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   let revisions = new Uint32Array(initialEntityCapacity + 1);
   let lastTransformSequence = new Float64Array(initialEntityCapacity + 1);
   let lastVisualSequence = new Float64Array(initialEntityCapacity + 1);
+  // Newest appended record per entity, any kind — the tail of the forward
+  // same-entity chain threaded through slot.nextEntitySeq at append time.
+  let lastAnySequence = new Float64Array(initialEntityCapacity + 1);
   let highestEntityId = 0;
 
   let read = 0;
@@ -152,6 +160,29 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   let lastRecordTick = -1;
   let lastDiscardedSequence = 0;
   let rebuildRequired = false;
+  // True only while a stepped rebuild is suspended between presents — a foreign write
+  // landing in that window is dropped by the same rebuildRequired early-outs it would
+  // hit in a sync rebuild, but also flags the attempt so it re-collects instead of
+  // committing a set that predates the dropped write.
+  let rebuildInProgress = false;
+  let rebuildInvalidatedDuringSteps = false;
+  // Entity ids the suspended stepped rebuild collected — a suppressed transform/visual
+  // write for one of them re-derives on that entity's next write, so only writes for
+  // entities outside the set (and destroys, which never re-write) must invalidate.
+  let rebuildSourceIds = null;
+  // …except a member whose spawn row the publish already minted: its suppressed write
+  // would never replay. The commit tail re-emits live transform+visual for every id
+  // collected here (publish progress is tracked in rebuildPublishedIds; sources in
+  // rebuildSourceEntities).
+  let rebuildSourceEntities = null;
+  let rebuildPublishedIds = null;
+  let rebuildStalePublishedIds = null;
+  // Suppressed destroys recorded while rebuildRequired holds — the only
+  // suppression class that can corrupt a collect set: a member that dies after
+  // its row was collected still gets a published spawn and never writes again.
+  // Transform/spawn suppression self-heals (publish re-reads live pose, or the
+  // next write trips *-without-spawn), so the runner only dooms on this set.
+  const suppressedDestroyIds = new Set();
   let rebuildReason = null;
   let rebuildGeneration = 0;
   let lastRebuildStart = 0;
@@ -165,6 +196,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   let visualCount = 0;
   let transformCoalesceCount = 0;
   let visualCoalesceCount = 0;
+  let refreshScanCount = 0;
   let discardCount = 0;
   let overflowCount = 0;
   let suppressedCount = 0;
@@ -173,6 +205,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   let rebuildRequestCount = 0;
   let rebuildCount = 0;
   let rebuildFailureCount = 0;
+  let rebuildStaleReplayCount = 0;
   let closed = false;
   let closeCount = 0;
   let pendingAtClose = 0;
@@ -192,16 +225,19 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     const nextRevisions = new Uint32Array(nextSize);
     const nextTransforms = new Float64Array(nextSize);
     const nextVisuals = new Float64Array(nextSize);
+    const nextAny = new Float64Array(nextSize);
     nextGenerations.set(generations);
     nextActive.set(activeGenerations);
     nextRevisions.set(revisions);
     nextTransforms.set(lastTransformSequence);
     nextVisuals.set(lastVisualSequence);
+    nextAny.set(lastAnySequence);
     generations = nextGenerations;
     activeGenerations = nextActive;
     revisions = nextRevisions;
     lastTransformSequence = nextTransforms;
     lastVisualSequence = nextVisuals;
+    lastAnySequence = nextAny;
   }
 
   function ensureEntityId(source) {
@@ -227,14 +263,23 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     rebuildRequestCount++;
     rebuildRequired = true;
     rebuildReason = typeof reason === 'string' && reason ? reason : 'requested';
+    // A suspended stepped publish is filling the ring this call just wiped — flag it
+    // so the attempt re-collects instead of committing a truncated range.
+    if (rebuildInProgress) rebuildInvalidatedDuringSteps = true;
     clearRetained();
     lastRecordTick = -1;
     return true;
   }
 
-  function prepareRecord(tick) {
+  function prepareRecord(tick, entityId = 0, kind = null) {
     if (rebuildRequired) {
       suppressedCount++;
+      if (kind === 'destroy' && entityId > 0) suppressedDestroyIds.add(entityId);
+      if (rebuildInProgress
+          && (kind === 'destroy' || entityId === 0
+            || !rebuildSourceIds || !rebuildSourceIds.has(entityId))) {
+        rebuildInvalidatedDuringSteps = true;
+      }
       return false;
     }
     if (!Number.isSafeInteger(tick) || tick < 0) {
@@ -265,19 +310,24 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   }
 
   function refreshCoalescedRecords(startSequence, tick, entityId, generation, revision, source) {
-    const newestSequence = count > 0
-      ? records[(write - 1 + size) % size].sequence
-      : 0;
-    for (let sequence = startSequence; sequence <= newestSequence; sequence++) {
+    // Walk the same-entity chain append() threads through slot.nextEntitySeq
+    // instead of scanning every interleaved slot through the window's newest —
+    // the flat scan made dense mixed-kind ticks pay O(entities) slot visits per
+    // coalesced write (D130 journal-append leg). A hop that fails retention or
+    // identity is a stale/drained link: chain ends.
+    for (let sequence = startSequence; sequence !== 0;) {
       const slot = retainedSlot(sequence);
       if (!slot || slot.entityId !== entityId
-        || slot.generation !== generation) continue;
+        || slot.generation !== generation) return;
       // Coalesced writes (same-tick or cross-tick while retained) can precede another kind for
       // the same entity. Refresh later retained records too so sequence-order consumers never
       // observe a revision, tick, or scalar snapshot moving backwards.
       if (slot.tick < tick) slot.tick = tick;
       slot.revision = revision;
       fillPose(slot, source);
+      refreshScanCount++;
+      const next = slot.nextEntitySeq;
+      sequence = Number.isSafeInteger(next) && next > sequence ? next : 0;
     }
   }
 
@@ -291,6 +341,18 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     slot.generation = generation;
     slot.revision = revision;
     fillPose(slot, source);
+    // Thread the forward same-entity link: the entity's previous retained record
+    // (when still retained) points here, and this record is the new chain tail.
+    // Writer-private — the field stays off the exported record shape.
+    slot.nextEntitySeq = 0;
+    if (entityId > 0) {
+      const previous = lastAnySequence[entityId];
+      if (previous !== 0) {
+        const previousSlot = retainedSlot(previous);
+        if (previousSlot) previousSlot.nextEntitySeq = writeSequence;
+      }
+      lastAnySequence[entityId] = writeSequence;
+    }
     write = (write + 1) % size;
     count++;
     lastRecordTick = tick;
@@ -299,9 +361,12 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
   }
 
   function publishSpawn(tick, entity, rebuilding = false) {
-    if (!rebuilding && !prepareRecord(tick)) return 0;
     const entityId = ensureEntityId(entity);
-    if (entityId === 0 || rebuildRequired && !rebuilding) return 0;
+    if (!rebuilding && !prepareRecord(tick, entityId, 'spawn')) return 0;
+    if (entityId === 0 || rebuildRequired && !rebuilding) {
+      if (rebuildInProgress) rebuildInvalidatedDuringSteps = true;
+      return 0;
+    }
     if (activeGenerations[entityId] !== 0) {
       identityErrorCount++;
       requestRebuild(rebuilding ? 'rebuild-duplicate-id' : 'duplicate-spawn');
@@ -321,6 +386,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
       1,
       entity,
     );
+    journaledEntities.add(entity);
     spawnCount++;
     return sequence;
   }
@@ -333,9 +399,9 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
 
   function recordDestroy(tick, source) {
     assertOpen();
-    if (!isEntityJournaled(source)) return 0;
-    if (!prepareRecord(tick)) return 0;
+    if (!isEntityJournaled(source) && !journaledEntities.has(source)) return 0;
     const entityId = ensureEntityId(source);
+    if (!prepareRecord(tick, entityId, 'destroy')) return 0;
     if (entityId === 0 || rebuildRequired) return 0;
     const generation = activeGenerations[entityId];
     if (generation === 0) {
@@ -356,6 +422,9 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     activeGenerations[entityId] = 0;
     lastTransformSequence[entityId] = 0;
     lastVisualSequence[entityId] = 0;
+    // The destroy record closes the chain: the next generation must not link
+    // forward from a slot whose refresh predicate would reject it anyway.
+    lastAnySequence[entityId] = 0;
     destroyCount++;
     return sequence;
   }
@@ -364,6 +433,14 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     if (!isEntityJournaled(entity)) return 0;
     if (rebuildRequired) {
       suppressedCount++;
+      const entityId = ensureEntityId(entity);
+      if (rebuildInProgress) {
+        if (entityId === 0 || !rebuildSourceIds || !rebuildSourceIds.has(entityId)) {
+          rebuildInvalidatedDuringSteps = true;
+        } else if (rebuildPublishedIds && rebuildPublishedIds.has(entityId)) {
+          rebuildStalePublishedIds.add(entityId);
+        }
+      }
       return 0;
     }
     if (!Number.isSafeInteger(tick) || tick < 0 || lastRecordTick > tick) {
@@ -476,6 +553,30 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     return visited;
   }
 
+  // Stepped twin — same walk, throws, and return, yielding every sliceEvery
+  // applied records so a dense retained range paces across presents instead
+  // of paying one atomic apply pass per consume.
+  function* visitRangeSteps(startExclusive, endInclusive, target, visitor, sliceEvery = 256) {
+    assertOpen();
+    if (typeof visitor !== 'function') {
+      throw new TypeError('PresentationJournal visitRange requires a visitor');
+    }
+    if (!hasRange(startExclusive, endInclusive)) {
+      throw new Error(`PresentationJournal range is not retained (${startExclusive}, ${endInclusive}]`);
+    }
+    const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+    let visited = 0;
+    for (let sequence = startExclusive + 1; sequence <= endInclusive; sequence++) {
+      if (!copySequence(sequence, target)) {
+        throw new Error(`PresentationJournal record ${sequence} is not retained`);
+      }
+      visitor(target);
+      visited++;
+      if ((visited % every) === 0) yield;
+    }
+    return visited;
+  }
+
   function discardThrough(sequence) {
     assertOpen();
     if (!Number.isSafeInteger(sequence) || sequence < 0) return 0;
@@ -490,7 +591,12 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     return discarded;
   }
 
-  function rebuildFrom(entities, tick) {
+  // Stepped twin: the validation + reset legs stay atomic, then the publish loop yields
+  // per batch so the runner can spread a dense-sector rebuild across presents. While
+  // suspended, rebuildRequired stays set — foreign writes early-out exactly as in the
+  // sync form — and each dropped write flags rebuildInvalidatedDuringSteps so the
+  // attempt re-collects instead of committing a set that predates it.
+  function* rebuildFromSteps(entities, tick) {
     assertOpen();
     if (!Array.isArray(entities) || !Number.isSafeInteger(tick) || tick < 0) {
       rebuildFailureCount++;
@@ -500,9 +606,13 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
 
     let aliveCount = 0;
     let maxEntityId = 0;
+    const sourceIds = new Set();
+    const sourceEntities = new Map();
     for (const entity of entities) {
       if (!entity || entity.alive === false) continue;
       const entityId = sourceEntityId(entity);
+      sourceIds.add(entityId);
+      sourceEntities.set(entityId, entity);
       if (entityId === 0) {
         rebuildFailureCount++;
         identityErrorCount++;
@@ -523,26 +633,84 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     if (highestEntityId > 0) activeGenerations.fill(0, 0, highestEntityId + 1);
     clearRetained();
     lastRecordTick = -1;
-    rebuildRequired = false;
     rebuildGeneration = nextCounter(rebuildGeneration);
+    rebuildInProgress = true;
+    rebuildInvalidatedDuringSteps = false;
+    rebuildSourceIds = sourceIds;
+    rebuildSourceEntities = sourceEntities;
+    rebuildPublishedIds = new Set();
+    rebuildStalePublishedIds = new Set();
     lastRebuildStart = writeSequence;
     lastRebuildRecordCount = 0;
 
-    for (const entity of entities) {
-      if (!entity || entity.alive === false) continue;
-      if (publishSpawn(tick, entity, true) === 0) {
-        rebuildFailureCount++;
-        requestRebuild('rebuild-publication-failed');
-        return false;
+    try {
+      for (const entity of entities) {
+        if (!entity || entity.alive === false) continue;
+        if (publishSpawn(tick, entity, true) === 0) {
+          rebuildFailureCount++;
+          requestRebuild('rebuild-publication-failed');
+          return false;
+        }
+        rebuildPublishedIds.add(sourceEntityId(entity));
+        if (++lastRebuildRecordCount % 64 === 0) {
+          // A flagged attempt is doomed — bail at the slice boundary rather than
+          // finishing a publish that can never commit.
+          if (rebuildInvalidatedDuringSteps) break;
+          yield;
+        }
       }
-      lastRebuildRecordCount++;
+      // A coalescible write suppressed after its entity's spawn already minted was
+      // dropped without invalidating the attempt — re-emit the live transform and
+      // visual here so a write-silent entity can't present publish-stale pose/flags.
+      if (!rebuildInvalidatedDuringSteps && rebuildStalePublishedIds.size > 0) {
+        if (count + rebuildStalePublishedIds.size * 2 > size) {
+          rebuildInvalidatedDuringSteps = true;
+          requestRebuild('rebuild-replay-capacity');
+        } else {
+          for (const staleId of rebuildStalePublishedIds) {
+            const source = rebuildSourceEntities.get(staleId);
+            const generation = source ? activeGenerations[staleId] : 0;
+            if (generation === 0) continue;
+            let revision = nextCounter(revisions[staleId]);
+            revisions[staleId] = revision;
+            lastTransformSequence[staleId] = append(
+              PRESENTATION_JOURNAL_KINDS.TRANSFORM, tick, staleId, generation, revision, source);
+            revision = nextCounter(revisions[staleId]);
+            revisions[staleId] = revision;
+            lastVisualSequence[staleId] = append(
+              PRESENTATION_JOURNAL_KINDS.VISUAL, tick, staleId, generation, revision, source);
+            transformCount++;
+            visualCount++;
+            rebuildStaleReplayCount++;
+          }
+        }
+      }
+    } finally {
+      rebuildInProgress = false;
+      rebuildSourceIds = null;
+      rebuildSourceEntities = null;
+      rebuildPublishedIds = null;
+      rebuildStalePublishedIds = null;
     }
 
+    if (rebuildInvalidatedDuringSteps) {
+      rebuildInvalidatedDuringSteps = false;
+      requestRebuild('rebuild-mid-write');
+      return 'invalidated';
+    }
     lastRecordTick = tick;
     lastRebuildEnd = writeSequence;
     rebuildReason = null;
+    rebuildRequired = false;
     rebuildCount++;
     return true;
+  }
+
+  function rebuildFrom(entities, tick) {
+    const it = rebuildFromSteps(entities, tick);
+    let step = it.next();
+    while (!step.done) step = it.next();
+    return step.value === true;
   }
 
   function close() {
@@ -558,6 +726,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     revisions = new Uint32Array(0);
     lastTransformSequence = new Float64Array(0);
     lastVisualSequence = new Float64Array(0);
+    lastAnySequence = new Float64Array(0);
     highestEntityId = 0;
     lastRecordTick = -1;
     rebuildRequired = false;
@@ -575,18 +744,25 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
     copySequence,
     hasRange,
     visitRange,
+    visitRangeSteps,
     discardThrough,
     requestRebuild,
     rebuildFrom,
+    rebuildFromSteps,
     close,
     isClosed: () => closed,
     needsRebuild: () => rebuildRequired,
+    getRebuildInProgress: () => rebuildInProgress,
     getWriteSequence: () => writeSequence,
     getOldestSequence: () => count > 0 ? records[read].sequence : 0,
     getPendingCount: () => count,
     getRebuildGeneration: () => rebuildGeneration,
     getLastRebuildStart: () => lastRebuildStart,
     getLastRebuildEnd: () => lastRebuildEnd,
+    getLastRebuildRecordCount: () => lastRebuildRecordCount,
+    getSuppressedCount: () => suppressedCount,
+    getSuppressedDestroyIds: () => suppressedDestroyIds,
+    clearSuppressedDestroyIds: () => suppressedDestroyIds.clear(),
     getDiagnostics() {
       return {
         closed,
@@ -608,6 +784,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
         visualCount,
         transformCoalesceCount,
         visualCoalesceCount,
+        refreshScanCount,
         discardCount,
         overflowCount,
         suppressedCount,
@@ -622,6 +799,7 @@ export function createPresentationJournal(capacity = DEFAULT_RECORD_CAPACITY, op
         lastRebuildStart,
         lastRebuildEnd,
         lastRebuildRecordCount,
+        rebuildStaleReplayCount,
       };
     },
   };

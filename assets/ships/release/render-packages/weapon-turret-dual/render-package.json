@@ -54,7 +54,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "428541d5c86f57a98d60112439b41da394f06205ba0201d20229a918bfea762e",
+  "contentHash": "f40671f075d6bda6e267691aac05d13792d24db075eb877686d1f51e5b6b52cb",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1740,8 +1740,8 @@
       "uri": "weapon_turret_dual.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -1901,14 +1901,14 @@
     ],
     "materialProfileRoles": {
       "ceramic": 1,
-      "hull": 1,
-      "mechanical": 8
+      "hull": 3,
+      "mechanical": 6
     },
     "materialProfiles": [
       {
         "allowTextures": true,
         "planIndex": 4,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -1948,7 +1948,7 @@
       {
         "allowTextures": true,
         "planIndex": 25,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -2227,7 +2227,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_turret_dual.glb"
   },
-  "runtimeHash": "2c5848022456b41537b78e08d4eae9675405d3d631a6d05a415c07bc4c0de12c",
+  "runtimeHash": "d53bfca7ddeca5582d56b8020dc3fe95d059c0149ec80d58c36b98c27e1470ed",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

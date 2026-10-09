@@ -35,6 +35,13 @@ function normalizedCursor(cursor) {
     branchId: cursor && cursor.branchId != null ? String(cursor.branchId) : null,
     attempt: Math.max(0, Math.trunc(Number(cursor && cursor.attempt) || 0)),
     wreckId: cursor && cursor.wreckId != null ? String(cursor.wreckId) : null,
+    // FB-041: a loss-bound chain carries the investigated loss through every stage so the
+    // terminal verdict receipt names the case it adjudicated. Both stay null on every
+    // ambient chain — the cause/receipt shapes below stay byte-identical when absent.
+    lossId: cursor && cursor.lossId != null ? String(cursor.lossId) : null,
+    lossLabel: cursor && cursor.lossLabel != null
+      ? String(cursor.lossLabel).replace(/\s+/g, ' ').trim().slice(0, 140) || null
+      : null,
   };
 }
 
@@ -46,8 +53,13 @@ function saveSeed(state) {
 }
 
 function chainIdFor(state, cursor) {
-  const suffix = hash32(
-    saveSeed(state), cursor.archetypeId, cursor.startEpoch, 'sp1-set-piece',
+  // FB-041: a loss-bound run keeps the sp1_<arch>_<epoch>_<hash> chainId shape
+  // (setPieceEpochFrom still parses its startEpoch) but mixes the loss id into the hash so a
+  // promoted-loss hearing is a distinct deterministic chain from the epoch's ambient row —
+  // never a silent fingerprint collision, and two losses never share one chain.
+  const suffix = (cursor.lossId
+    ? hash32(saveSeed(state), cursor.archetypeId, cursor.startEpoch, 'sp1-set-piece', String(cursor.lossId))
+    : hash32(saveSeed(state), cursor.archetypeId, cursor.startEpoch, 'sp1-set-piece')
   ).toString(36);
   return `sp1_${cursor.archetypeId}_${cursor.startEpoch}_${suffix}`;
 }
@@ -116,10 +128,18 @@ function longReadTarget(state, cursor) {
   return candidates[index];
 }
 
-function primaryRumorSource(wreck) {
-  return wreck && (wreck.rumorSources || []).find((entry) => (
+function primaryRumorSource(wreck, chainOwned = false) {
+  // For a chain that owns its hull the accept IS the native bearing carrier: when the wreck
+  // declares a mission-channel row for its bearing source (D13-D16 natively, the Choir-Tender's
+  // vigil via SF-149), the offer carries 'mission' so the synchronous mission:accepted mint is
+  // the delivery. A dynamic long_read pick stays on the wreck's public row — its rumor-purchase
+  // reprint goes out through the same news/bar/campaign channel the rumor census audits.
+  const sources = wreck && (wreck.rumorSources || []).filter((entry) => (
     entry && entry.sourceRef === wreck.bearingSourceRef
-  )) || null;
+  ));
+  if (!sources || !sources.length) return null;
+  if (chainOwned) return sources.find((entry) => entry.channelId === 'mission') || sources[0];
+  return sources[0];
 }
 
 function serializableClause(clauseId) {
@@ -196,7 +216,9 @@ function buildOffer(state, definition, cursor, stage, branch, wreck = null) {
   ));
   const existingBearing = wreck && state && state.player && state.player.uniqueWrecks
     && state.player.uniqueWrecks.bearings && state.player.uniqueWrecks.bearings[wreck.id];
-  const knownRumorOpening = definition.id === 'long_read' && cursor.stageIndex === 0 && !!existingBearing;
+  // SF-149: the known-bearing reconcile is the same for every wreck-bound opening, not only
+  // long_read's dynamic pick — a Choir vigil re-run over a fixed site is a reconcile too.
+  const knownRumorOpening = !!wreck && cursor.stageIndex === 0 && !!existingBearing;
   const title = knownRumorOpening
     ? `Reconcile the Known Bearing: ${wreck.name}`
     : stage.title || `${definition.title}: ${String(stage.id || 'stage').replace(/_/g, ' ')}`;
@@ -205,7 +227,7 @@ function buildOffer(state, definition, cursor, stage, branch, wreck = null) {
     .map(serializableClause)
     .filter(Boolean);
   const witness = witnessFor(state, definition, cursor, chainId);
-  const source = primaryRumorSource(wreck);
+  const source = primaryRumorSource(wreck, !!definition.wreckId && definition.wreckId === (wreck && wreck.id));
   const summary = knownRumorOpening
     ? `${wreck.name} is already in your ledger. Reconcile its bearing and proceed to recovery.`
     : textFor(stage.instructionRef, instructionFallback);
@@ -254,6 +276,12 @@ function buildOffer(state, definition, cursor, stage, branch, wreck = null) {
     sourceRef: wreck && wreck.bearingSourceRef || null,
     channelId: source && source.channelId || null,
   };
+  if (cursor.lossId) {
+    // FB-041: the adjudicated loss rides the whole run — boards, the active mission, retries,
+    // and every follow-on stage copy this same provenance.
+    cause.lossId = cursor.lossId;
+    cause.lossLabel = cursor.lossLabel || null;
+  }
   // A wreck-bound stage runs where its hull lies: long_read's first two stages and every stage
   // carrying a wreck-bound setPieceObjective resolve to the wreck's home sector.
   const stageBoundToWreck = !!(wreck && (
@@ -308,10 +336,13 @@ export function buildSetPieceMissionOffers(state, rawCursor) {
     && state.player.uniqueWrecks.bearings
     && state.player.uniqueWrecks.bearings[wreck.id];
   const branchChoiceIndex = Array.isArray(definition.commonStages) ? definition.commonStages.length : 0;
-  if (definition.id === 'long_read' && cursor.stageIndex >= branchChoiceIndex
+  // SF-149: same rule for every wreck-bound chain — a disposition already filed on the hull
+  // prunes the contradictory sibling offer, so only the matching branch ever posts.
+  if (wreck && cursor.stageIndex >= branchChoiceIndex
     && bearing && bearing.phase === 'salvaged' && bearing.choiceId) {
     rows = rows.filter(({ stage }) => (
-      stage && stage.params && stage.params.wreckChoiceId === bearing.choiceId
+      !stage.params || stage.params.wreckChoiceId == null
+      || stage.params.wreckChoiceId === bearing.choiceId
     ));
   }
   return rows.map(({ stage, branch }) => (
@@ -324,7 +355,12 @@ function receiptFor(definition, stage, cause, settlement, offers) {
   const fallback = completed
     ? `${definition.title} records ${stage.title || stage.id} complete and closes this part of the file.`
     : `${definition.title} records ${stage.title || stage.id} unresolved under ${settlement.reason || settlement.outcome}.`;
-  const houseText = textFor(completed ? stage.successRef : stage.failureRef, fallback);
+  let houseText = textFor(completed ? stage.successRef : stage.failureRef, fallback);
+  if (cause.lossLabel) {
+    // FB-041: the verdict names the real loss — the clause rides comms:popup, the
+    // mission:setPieceTransition event fields, and the durable receipts row unchanged.
+    houseText = `${houseText} The file names ${cause.lossLabel}.`;
+  }
   const recoveryText = completed || offers.length === 0 ? null : textFor(
     stage.recoveryRef,
     `${definition.title} leaves one reduced-stake recovery posting open for the same obligation.`,
@@ -345,6 +381,7 @@ function receiptFor(definition, stage, cause, settlement, offers) {
     nextStationId: nextStationIds.length === 1 ? nextStationIds[0] : null,
     nextStationIds,
     wreckId: cause.wreckId || null,
+    ...(cause.lossId ? { lossId: cause.lossId, lossLabel: cause.lossLabel || null } : {}),
   };
 }
 
@@ -380,6 +417,8 @@ export function advanceSetPieceMission(state, settledMission, rawSettlement) {
       branchId: cause.branchId || null,
       attempt: 0,
       wreckId: cause.wreckId || null,
+      lossId: cause.lossId || null,
+      lossLabel: cause.lossLabel || null,
     };
     offers = buildSetPieceMissionOffers(state, nextCursor);
     if (offers.length === 2) status = 'branch_available';
@@ -392,6 +431,8 @@ export function advanceSetPieceMission(state, settledMission, rawSettlement) {
       branchId: cause.branchId || null,
       attempt: 1,
       wreckId: cause.wreckId || null,
+      lossId: cause.lossId || null,
+      lossLabel: cause.lossLabel || null,
     });
     status = offers.length ? 'retry' : 'completed';
   }

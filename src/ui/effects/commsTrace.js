@@ -1,4 +1,5 @@
 import { createMorphLabel } from './morphLabel.js';
+import { prefersReducedMotion } from './effectRuntime.js';
 import { factionIcon } from '../station/icons.js';
 
 export const CUE = Object.freeze({
@@ -56,6 +57,7 @@ export function createCommsTrace(mountEl, opts = {}) {
   let active = false;
   let phase = 0;
   let lastAmplitude = 0;
+  let lastHeldAmplitude = 0;
   let lastFaction = '';
   let lastText = '';
 
@@ -74,6 +76,7 @@ export function createCommsTrace(mountEl, opts = {}) {
     if (!active) {
       lastText = '';
       lastAmplitude = 0;
+      lastHeldAmplitude = 0;
       morph.set('');
     }
   }
@@ -88,11 +91,23 @@ export function createCommsTrace(mountEl, opts = {}) {
     setFaction(state.factionId || opts.factionId || DEFAULT_FACTION);
     const amplitude = clamp01(state.amplitude);
     const density = clamp01(state.density);
-    phase += Math.max(0.12, finite(state.phaseStep, 0.42)) + density * 0.31;
-    const text = buildTraceText(amplitude, density, phase);
-    if (text !== lastText) {
-      morph.set(text, { dir: amplitude >= lastAmplitude ? 'up' : 'down' });
-      lastText = text;
+    if (prefersReducedMotion(opts)) {
+      // Static wave: hold the glyph row, refreshing it only when loudness has moved materially —
+      // a transmission that starts quiet must not stay frozen as a row of dots once it gets loud.
+      // No phase advance, no per-frame rebuild.
+      if (!lastText || Math.abs(amplitude - lastHeldAmplitude) > 0.2) {
+        const text = buildTraceText(amplitude, density, phase);
+        morph.set(text);
+        lastText = text;
+        lastHeldAmplitude = amplitude;
+      }
+    } else {
+      phase += Math.max(0.12, finite(state.phaseStep, 0.42)) + density * 0.31;
+      const text = buildTraceText(amplitude, density, phase);
+      if (text !== lastText) {
+        morph.set(text, { dir: amplitude >= lastAmplitude ? 'up' : 'down' });
+        lastText = text;
+      }
     }
     lastAmplitude = amplitude;
     root.style.setProperty('--sf-comms-amp', String(Math.round(amplitude * 1000) / 1000));

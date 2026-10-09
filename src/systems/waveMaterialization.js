@@ -44,6 +44,13 @@ const GATE_FALLBACK = GATE_BEARINGS.front;
 // Half of one 45-degree gate sector, so bodies from one gate spread but never wander into the next.
 const GATE_SPREAD_RAD = Math.PI / 8;
 const RADIUS_JITTER = 0.18;
+// SWARM-03: clumps, not streams. A Swarm batch lands as ONE throw-shaped group — bodies
+// inside SWARM_CLUMP_RADIUS_WU of the pack centre — so a single impulse charge (blast
+// radius ~105 wu) or one swung body can honestly take three. The gate bearing still
+// decides WHICH side the pack arrives on, and depth jitter keeps the approach read;
+// only the fan inside the batch is gone. Adventure/Crucible waves keep the sector fan.
+export const SWARM_CLUMP_RADIUS_WU = 44;
+const SWARM_CLUMP_DEPTH_JITTER = 0.10;
 
 /** Deterministic per-batch stream. Same run seed + wave + package + batch => same placement. */
 export function batchStreamSeed(seed, wave, packageIndex, batchIndex) {
@@ -150,17 +157,36 @@ export function materializeWaveBatch(ctx, request) {
   ));
 
   const spawnedIds = [];
+  // SWARM-03: a swarm batch of 2+ arrives as one clump — same gate, same distance band,
+  // one tight pack instead of the sector fan. Deterministic: the same batch stream draws
+  // the clump centre first, then each body's offset inside it.
+  const clumped = req.swarm === true && granted > 1;
+  let clumpX = 0;
+  let clumpZ = 0;
+  if (clumped) {
+    const clumpAngle = baseAngle + (rng() - 0.5) * GATE_SPREAD_RAD;
+    const clumpDist = distance * (1 + (rng() - 0.5) * 2 * SWARM_CLUMP_DEPTH_JITTER);
+    clumpX = anchor.x + Math.cos(clumpAngle) * clumpDist;
+    clumpZ = anchor.z + Math.sin(clumpAngle) * clumpDist;
+  }
   try {
     for (let i = 0; i < granted; i++) {
-      // Spread deterministically across the gate sector so a six-body batch is an arriving
-      // formation, not a stack of coincident hulls at one point.
-      const lane = granted === 1 ? 0 : (i / (granted - 1)) * 2 - 1;
-      const angle = baseAngle + lane * GATE_SPREAD_RAD + (rng() - 0.5) * GATE_SPREAD_RAD * 0.5;
-      const radius = distance * (1 + (rng() - 0.5) * 2 * RADIUS_JITTER);
-      const pos = {
-        x: anchor.x + Math.cos(angle) * radius,
-        z: anchor.z + Math.sin(angle) * radius,
-      };
+      let pos;
+      if (clumped) {
+        const a = rng() * Math.PI * 2;
+        const r = Math.sqrt(rng()) * SWARM_CLUMP_RADIUS_WU;
+        pos = { x: clumpX + Math.cos(a) * r, z: clumpZ + Math.sin(a) * r };
+      } else {
+        // Spread deterministically across the gate sector so a six-body batch is an arriving
+        // formation, not a stack of coincident hulls at one point.
+        const lane = granted === 1 ? 0 : (i / (granted - 1)) * 2 - 1;
+        const angle = baseAngle + lane * GATE_SPREAD_RAD + (rng() - 0.5) * GATE_SPREAD_RAD * 0.5;
+        const radius = distance * (1 + (rng() - 0.5) * 2 * RADIUS_JITTER);
+        pos = {
+          x: anchor.x + Math.cos(angle) * radius,
+          z: anchor.z + Math.sin(angle) * radius,
+        };
+      }
       const spec = makeEnemySpawnSpec(req.enemyId, level, pos);
       if (!spec) continue;
       spec.data = spec.data || {};
@@ -224,6 +250,10 @@ export function materializeWaveBatch(ctx, request) {
       }
       spec.data.runWave = Number.isInteger(req.wave) ? req.wave : 0;
       if (typeof req.role === 'string') spec.data.runRole = req.role;
+      // The champion mark travels with the body (SWARM-02): the arcade juice layer and any
+      // later boss surface find the round's boss bodies without re-deriving the wave owner's
+      // requireBoss ledger, exactly like runRole/runWave above.
+      if (req.champion === true) spec.data.swarmChampion = true;
       const bossDressing = lawArenaBossDressing(req.arenaId, req.enemyId, req.role);
       if (bossDressing) spec.data.bossDressing = bossDressing;
       const spawned = helpers.spawnEntity(spec);

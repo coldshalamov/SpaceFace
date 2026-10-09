@@ -970,6 +970,801 @@ if (new Set(HELIOS_POCKET_ACTOR_SLOT_ORDER).size !== HELIOS_POCKET_ACTOR_SLOT_OR
 assertDistinctRouteTopology(HELIOS_ACTIVITY_POCKETS, HELIOS_ROUTE_TOPOLOGY, 'Helios');
 
 // ───────────────────────────────────────────────────────────────────────────────────────────────
+// FB-030 — Pallas Drift works a seam, a hub, an ambush, and a grave. Same band and topology
+// laws as Ceres. No Ceres pocket id is copied.
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+
+export const PALLAS_ACTIVITY_SECTOR_ID = 'sector_pallas_drift';
+export const PALLAS_AUTHORED_ACTIVITY_CAPACITY = 8;
+
+const pallasZones = requireArray(SECTOR_ZONES[PALLAS_ACTIVITY_SECTOR_ID], 'Pallas sector zones');
+const pallasAnchors = requireRecord(SECTOR_ANCHORS[PALLAS_ACTIVITY_SECTOR_ID], 'Pallas sector anchors');
+const pallasBelt = findById(pallasZones, 'zone_pallas_belt', 'Pallas belt zone');
+const pallasDrift = findById(pallasZones, 'zone_pallas_drift', 'Pallas drift zone');
+const pallasAmbushZone = findById(pallasZones, 'zone_pallas_ambush', 'Pallas ambush zone');
+const pallasGraveField = findById(pallasAnchors.fields, 'f_pallas_3', 'Pallas grave field');
+
+const pallasSeamId = 'pallas_working_seam';
+const pallasHubId = 'pallas_hub_pocket';
+const pallasAmbushId = 'pallas_ambush_run';
+const pallasGraveId = 'pallas_nebula_grave';
+
+function pallasActor(id, pocketId, role, jobKind, spawn, routeId, durationS, marks, lawful = false) {
+  return actor({
+    id,
+    pocketId,
+    namespace: 'pallas',
+    presentationRole: role,
+    jobKind,
+    lawful,
+    passive: true,
+    spawnOffset: spawn,
+    route: route({ id: routeId, jobKind, durationS, marks }),
+  });
+}
+
+export const PALLAS_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: pallasSeamId,
+    label: 'Independent Seam',
+    identity: Object.freeze({ zoneId: pallasBelt.id, fieldId: 'f_pallas_1' }),
+    anchor: canonicalAnchor({
+      kind: 'zone', id: pallasBelt.id, zoneId: pallasBelt.id, localPos: pallasBelt.center,
+    }),
+    actorSlots: Object.freeze([
+      pallasActor('pallas_seam_miner', pallasSeamId, 'miner', 'miner', point(30, -20),
+        'pallas_seam_extraction', 24, [
+          mark('pallas_miner_a', 103.4, 37.6),
+          mark('pallas_miner_b', -9.2, 104.6),
+        ]),
+      pallasActor('pallas_seam_surveyor', pallasSeamId, 'miner', 'miner', point(-24, 18),
+        'pallas_seam_survey', 28, [
+          mark('pallas_survey_a', -91.9, 77.1),
+          mark('pallas_survey_b', -34.2, -94),
+        ]),
+    ]),
+    objectSlots: Object.freeze([
+      objectSlot({
+        id: 'pallas_seam_ore_face', pocketId: pallasSeamId, kind: 'world_owned_asteroid_slot',
+        offset: point(-40, 20), runtimeOwner: 'world', targetRef: 'field:f_pallas_1',
+      }),
+    ]),
+    sectorId: PALLAS_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: pallasHubId,
+    label: 'Hollow Hub',
+    identity: Object.freeze({ zoneId: pallasDrift.id, placeId: 'station_smuggler' }),
+    anchor: canonicalAnchor({
+      kind: 'zone', id: pallasDrift.id, zoneId: pallasDrift.id, localPos: pallasDrift.center,
+    }),
+    actorSlots: Object.freeze([
+      pallasActor('pallas_hub_hauler', pallasHubId, 'hauler', 'hauler', point(40, 10),
+        'pallas_hub_haul', 26, [
+          mark('pallas_haul_a', 115, 0),
+          mark('pallas_haul_b', -115, 0),
+        ]),
+      // The tender flies the proven survey kernel (a hub check is a scan loop — the Vesta relay
+      // pattern): 'tender' as the runtime jobKind is outside CERES_ACTIVITY_JOB_KINDS, so the
+      // slot materialized jobless — a named hull parked with no work.
+      pallasActor('pallas_hub_tender', pallasHubId, 'tender', 'surveyor', point(-20, 28),
+        'pallas_hub_tender_loop', 22, [
+          mark('pallas_tender_a', 86.6, 50),
+          mark('pallas_tender_b', -60, 103.9),
+        ]),
+    ]),
+    objectSlots: Object.freeze([
+      objectSlot({
+        id: 'pallas_hub_pod', pocketId: pallasHubId, kind: 'cargo_staging_pod',
+        offset: point(50, -16), runtimeOwner: 'world',
+      }),
+    ]),
+    sectorId: PALLAS_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: pallasAmbushId,
+    label: 'Sker-Run Ambush',
+    identity: Object.freeze({ zoneId: pallasAmbushZone.id }),
+    anchor: canonicalAnchor({
+      kind: 'zone', id: pallasAmbushZone.id, zoneId: pallasAmbushZone.id, localPos: pallasAmbushZone.center,
+    }),
+    actorSlots: Object.freeze([
+      pallasActor('pallas_ambush_hauler', pallasAmbushId, 'hauler', 'hauler', point(22, -30),
+        'pallas_ambush_run_loop', 24, [
+          mark('pallas_ambush_a', 98.5, 17.4),
+          mark('pallas_ambush_b', -90.6, 42.3),
+        ]),
+      pallasActor('pallas_ambush_escort', pallasAmbushId, 'patrol', 'patrol', point(-36, 12),
+        'pallas_ambush_escort_loop', 26, [
+          mark('pallas_escort_a', 85.8, 72),
+          mark('pallas_escort_b', -92.1, 33.5),
+        ], true),
+    ]),
+    objectSlots: Object.freeze([
+      objectSlot({
+        id: 'pallas_ambush_bait', pocketId: pallasAmbushId, kind: 'bait_wreck_visual',
+        offset: point(60, 12), runtimeOwner: 'world',
+      }),
+    ]),
+    sectorId: PALLAS_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: pallasGraveId,
+    label: 'Grave Drift',
+    identity: Object.freeze({ fieldId: pallasGraveField.id }),
+    anchor: canonicalAnchor({
+      kind: 'field', id: pallasGraveField.id, localPos: pallasGraveField.center,
+    }),
+    actorSlots: Object.freeze([
+      pallasActor('pallas_grave_salvor', pallasGraveId, 'salvor', 'salvor', point(18, 24),
+        'pallas_grave_salvor_loop', 30, [
+          mark('pallas_salvor_a', 42.4, 116.5),
+          mark('pallas_salvor_b', -88.3, -51),
+        ]),
+      pallasActor('pallas_grave_patrol', pallasGraveId, 'patrol', 'patrol', point(-16, -22),
+        'pallas_grave_patrol_loop', 28, [
+          mark('pallas_patrol_a', 98.5, 17.4),
+          mark('pallas_patrol_b', 28.5, 106.3),
+        ], true),
+    ]),
+    objectSlots: Object.freeze([
+      objectSlot({
+        id: 'pallas_grave_shard', pocketId: pallasGraveId, kind: 'grave_shard',
+        offset: point(-28, 40), runtimeOwner: 'world',
+      }),
+    ]),
+    sectorId: PALLAS_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const PALLAS_ROUTE_TOPOLOGY = Object.freeze(PALLAS_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+export const PALLAS_POCKET_ACTOR_SLOT_ORDER = Object.freeze(PALLAS_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+
+if (PALLAS_POCKET_ACTOR_SLOT_ORDER.length !== PALLAS_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Pallas authored capacity mismatch: ${PALLAS_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+assertDistinctRouteTopology(PALLAS_ACTIVITY_POCKETS, PALLAS_ROUTE_TOPOLOGY, 'Pallas');
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+// CV-DAY — Vesta Forge: the feedstock day. Two gates from the start on the default route, and its
+// zone copy already promises a working day nobody could see: "Ore haulers shuttle from these seams
+// to the foundry lines around the clock" (zone_vesta_belt); "A freighter died at the sector edge;
+// its manifest was never recovered" (zone_vesta_derelict). These pockets are that promise made
+// visible — arriving mid-shift: a seam miner cutting the Feedstock Belt while a hauler runs ore to
+// station_forge's foundry approach, scavenger cutters working the Dead Freighter Drift around
+// poi_freighter, and a slag-relay tender holding its loop past the Slag Radiation Field. The chain
+// continues whether or not you touch it, and every actor flies a job kind the runtime already owns.
+// Same band and topology laws as Ceres; no Ceres pocket id is copied. Bearings are taken from the
+// geography that exists: the miner's offload leg aims at the foundry's true bearing, the drift
+// cutter works around the dead hulk's own shard bearing, the relay's legs aim at the outlying
+// yard's service side and the dump-run edge.
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+
+export const VESTA_ACTIVITY_SECTOR_ID = 'sector_vesta_forge';
+/** Four pockets × two actors: the seam, the haul, the drift, and the relay. */
+export const VESTA_AUTHORED_ACTIVITY_CAPACITY = 8;
+
+const vestaZones = requireArray(SECTOR_ZONES[VESTA_ACTIVITY_SECTOR_ID], 'Vesta sector zones');
+const vestaAnchors = requireRecord(SECTOR_ANCHORS[VESTA_ACTIVITY_SECTOR_ID], 'Vesta sector anchors');
+const vestaBeltZone = findById(vestaZones, 'zone_vesta_belt', 'Vesta feedstock belt zone');
+const vestaForgeZone = findById(vestaZones, 'zone_vesta_forge', 'Vesta foundry zone');
+const vestaDerelictZone = findById(vestaZones, 'zone_vesta_derelict', 'Vesta derelict zone');
+const stationForge = findById(vestaAnchors.stations, 'station_forge', 'Vesta foundry station anchor');
+const stationVestaYard = findById(vestaAnchors.stations, 'station_vesta_outlying_yard', 'Vesta outlying yard anchor');
+const freighterPoi = findById(vestaAnchors.pois, 'poi_freighter', 'Vesta dead freighter POI');
+const slagRelayPoi = findById(vestaAnchors.pois, 'poi_vesta_slag_relay', 'Vesta slag relay POI');
+
+// The freighter died where the drift says it did, and the foundry stands at its own zone's heart.
+assertSamePoint(freighterPoi.pos, vestaDerelictZone.center, 'poi_freighter / zone_vesta_derelict');
+assertSamePoint(stationForge.pos, vestaForgeZone.center, 'station_forge / zone_vesta_forge');
+
+const vestaSeamId = 'vesta_feedstock_seam';
+const vestaHaulId = 'vesta_forge_haul';
+const vestaDriftId = 'vesta_derelict_drift';
+const vestaRelayId = 'vesta_slag_relay';
+
+function vestaActor(id, pocketId, role, jobKind, spawn, routeId, durationS, marks, { lawful = false, receiptType = null } = {}) {
+  return actor({
+    id,
+    pocketId,
+    namespace: 'vesta',
+    presentationRole: role,
+    jobKind,
+    lawful,
+    passive: true,
+    spawnOffset: spawn,
+    route: route({ id: routeId, jobKind, durationS, receiptType, marks }),
+  });
+}
+
+const vestaSeamObjects = Object.freeze([
+  objectSlot({
+    id: 'vesta_seam_ore_clast',
+    pocketId: vestaSeamId,
+    kind: 'world_owned_asteroid_slot',
+    offset: point(-45, -54),
+    runtimeOwner: 'world',
+    targetRef: 'field:slot:vesta_seam_ore_clast',
+  }),
+]);
+
+const vestaHaulObjects = Object.freeze([
+  objectSlot({
+    id: 'vesta_forge_ore_pod',
+    pocketId: vestaHaulId,
+    kind: 'cargo_staging_pod',
+    offset: point(62, 30),
+    runtimeOwner: 'world',
+    targetRef: 'object:vesta_forge_ore_pod',
+  }),
+]);
+
+const vestaDriftObjects = Object.freeze([
+  objectSlot({
+    id: 'vesta_derelict_hulk_shard',
+    pocketId: vestaDriftId,
+    kind: 'grave_shard',
+    offset: point(-30, 44),
+    runtimeOwner: 'world',
+    targetRef: 'object:vesta_derelict_hulk_shard',
+  }),
+]);
+
+const vestaRelayObjects = Object.freeze([
+  objectSlot({
+    id: 'vesta_relay_slag_skip',
+    pocketId: vestaRelayId,
+    kind: 'cargo_staging_pod',
+    offset: point(-52, 18),
+    runtimeOwner: 'world',
+    targetRef: 'object:vesta_relay_slag_skip',
+  }),
+]);
+
+const vestaSeamActors = Object.freeze([
+  // The belt's own sentence: a miner cutting a bounded parcel while the haulers shuttle past.
+  vestaActor('vesta_seam_miner', vestaSeamId, 'miner', 'miner', point(-42, 24),
+    'vesta_seam_extraction', 24, [
+      mark('vesta_seam_ore_face', -71, -84, 'field:slot:vesta_seam_ore_clast'),
+      mark('vesta_seam_offload_pad', -85, 70, 'dest:station_forge'),
+    ], { receiptType: 'mining:npcExtraction' }),
+  vestaActor('vesta_seam_surveyor', vestaSeamId, 'surveyor', 'surveyor', point(50, 30),
+    'vesta_seam_survey', 26, [
+      mark('vesta_seam_scan_a', 108, 38, 'activity:vesta-seam-scan-a'),
+      mark('vesta_seam_scan_b', 18, 119, 'activity:vesta-seam-scan-b'),
+    ]),
+]);
+
+const vestaHaulActors = Object.freeze([
+  // The other half of the belt's sentence: ore arriving at the foundry approach, around the clock.
+  vestaActor('vesta_forge_hauler', vestaHaulId, 'hauler', 'hauler', point(-30, -20),
+    'vesta_forge_haul_run', 22, [
+      mark('vesta_haul_belt_leg', 89, -73, 'activity:vesta-foundry-run-inbound'),
+      mark('vesta_haul_berth_leg', -89, 73, 'dest:station_forge'),
+    ], { receiptType: 'freight:arrival' }),
+  // The foundry's own authored presence (zone_vesta_forge patrols) walking its home approach.
+  vestaActor('vesta_forge_patrol', vestaHaulId, 'patrol', 'patrol', point(40, -28),
+    'vesta_forge_beat', 28, [
+      mark('vesta_forge_beat_a', -105, 42, 'activity:vesta-forge-beat-a'),
+      mark('vesta_forge_beat_b', -38, -112, 'activity:vesta-forge-beat-b'),
+    ], { lawful: true }),
+]);
+
+const vestaDriftActors = Object.freeze([
+  // The derelict's sentence: scavengers working the hulk the manifest never left. Both passive
+  // cutters — the drift is Reach ground, but these pockets author work, not hostility.
+  vestaActor('vesta_drift_cutter', vestaDriftId, 'salvor', 'salvor', point(18, -26),
+    'vesta_drift_salvage_loop', 30, [
+      mark('vesta_drift_hull_face', -63, 92, 'object:vesta_derelict_hulk_shard'),
+      mark('vesta_drift_far_plate', 105, 38, 'activity:vesta-drift-far-plate'),
+    ]),
+  vestaActor('vesta_drift_prowler', vestaDriftId, 'salvor', 'salvor', point(-36, 14),
+    'vesta_drift_sweep_run', 26, [
+      mark('vesta_drift_sweep_a', -101, -55, 'activity:vesta-drift-sweep-a'),
+      mark('vesta_drift_sweep_b', 66, 98, 'activity:vesta-drift-sweep-b'),
+    ]),
+]);
+
+const vestaRelayActors = Object.freeze([
+  // The tender holds its loop past the radiation field: one leg to the outlying yard's service
+  // side, one to the dump-run edge. The `tender` hull flies the proven survey kernel — a relay
+  // check is a scan loop — so the shift is a real job, not a loiter.
+  vestaActor('vesta_relay_tender', vestaRelayId, 'tender', 'surveyor', point(24, 30),
+    'vesta_relay_service_loop', 28, [
+      mark('vesta_relay_yard_leg', 84, -74, 'station:station_vesta_outlying_yard:service-berth'),
+      mark('vesta_relay_field_edge', 29, 115, 'activity:vesta-slag-field-edge'),
+    ]),
+  // Slag runs out from the forge past the relay toward the dump field — the corner the relay marks.
+  vestaActor('vesta_slag_runner', vestaRelayId, 'hauler', 'hauler', point(-28, -34),
+    'vesta_slag_dump_run', 26, [
+      mark('vesta_slag_forge_leg', 96, 58, 'dest:station_forge'),
+      mark('vesta_slag_field_leg', 104, -49, 'activity:vesta-slag-dump-run'),
+    ], { receiptType: 'freight:arrival' }),
+]);
+
+export const VESTA_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: vestaSeamId,
+    label: 'Feedstock Seam',
+    identity: Object.freeze({ zoneId: vestaBeltZone.id, fieldId: 'f_vesta_1' }),
+    anchor: canonicalAnchor({
+      kind: 'zone', id: vestaBeltZone.id, zoneId: vestaBeltZone.id,
+      placeId: null, localPos: vestaBeltZone.center,
+    }),
+    actorSlots: vestaSeamActors,
+    objectSlots: vestaSeamObjects,
+    sectorId: VESTA_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: vestaHaulId,
+    label: 'Foundry Run',
+    identity: Object.freeze({ zoneId: vestaForgeZone.id, stationId: stationForge.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationForge.id, zoneId: vestaForgeZone.id,
+      placeId: stationForge.id, localPos: stationForge.pos,
+    }),
+    actorSlots: vestaHaulActors,
+    objectSlots: vestaHaulObjects,
+    sectorId: VESTA_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: vestaDriftId,
+    label: 'Dead Freighter Drift',
+    identity: Object.freeze({ zoneId: vestaDerelictZone.id, placeId: freighterPoi.id }),
+    anchor: canonicalAnchor({
+      kind: 'poi', id: freighterPoi.id, zoneId: vestaDerelictZone.id,
+      placeId: freighterPoi.id, localPos: freighterPoi.pos,
+    }),
+    actorSlots: vestaDriftActors,
+    objectSlots: vestaDriftObjects,
+    sectorId: VESTA_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: vestaRelayId,
+    label: 'Slag Relay',
+    identity: Object.freeze({ zoneId: vestaForgeZone.id, placeId: slagRelayPoi.id }),
+    anchor: canonicalAnchor({
+      kind: 'poi', id: slagRelayPoi.id, zoneId: vestaForgeZone.id,
+      placeId: slagRelayPoi.id, localPos: slagRelayPoi.pos,
+    }),
+    actorSlots: vestaRelayActors,
+    objectSlots: vestaRelayObjects,
+    sectorId: VESTA_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const VESTA_ACTIVITY_POCKET_ORDER = Object.freeze(VESTA_ACTIVITY_POCKETS.map((entry) => entry.id));
+export const VESTA_ACTIVITY_POCKETS_BY_ID = Object.freeze(Object.fromEntries(
+  VESTA_ACTIVITY_POCKETS.map((entry) => [entry.id, entry]),
+));
+export const VESTA_POCKET_ACTOR_SLOT_ORDER = Object.freeze(VESTA_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const VESTA_ROUTE_TOPOLOGY = Object.freeze(VESTA_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+
+if (VESTA_POCKET_ACTOR_SLOT_ORDER.length !== VESTA_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Vesta authored capacity mismatch: ${VESTA_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(VESTA_POCKET_ACTOR_SLOT_ORDER).size !== VESTA_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Vesta authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(VESTA_ACTIVITY_POCKETS, VESTA_ROUTE_TOPOLOGY, 'Vesta');
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+// CV-DAY / CR-WEIR — Tethys Junction: the checkpoint day. The same registry that just gained Vesta,
+// opposite flavor: Vesta's day is foundry work at the sector's heart; Tethys's day is the border.
+// Its authored material already promised it with no pockets: "Concord scans inbound cargo here;
+// contraband is seized, smugglers are flagged" (zone_tethys_checkpoint); "Convoys run this line
+// between Helios, Ceres and Io — the arteries of the core economy" (zone_tethys_lane); "Contraband
+// changes hands off the exchange lanes, away from Meridian eyes" (zone_tethys_blackmkt); and
+// station_customs — toll, scan, refuel — whose own chart line is the day: "Everything transits;
+// nothing transits unread." These pockets are that promise made visible — arriving mid-shift at the
+// border: a toll hauler holding in the checkpoint queue at station_customs, an scn patrol walking
+// the trade lane, and a Quiet Cache runner whose route slides past the checkpoint — lawful-lane
+// work and outlaw-lane work sharing the same water, neither a hostile spawn. That is the CR-WEIR /
+// CV-DAY overlap: law you can fly, arriving mid-shift. The chain continues whether or not you touch
+// it, and every actor flies a job kind the runtime already owns. Same band and topology laws as
+// Ceres; no Ceres pocket id is copied. Bearings are taken from the geography that exists: the toll
+// hauler's hold mark sits on the true bearing of the tally queue head, the lane convoy's outbound
+// leg aims at the Io gate's own bearing, the Quiet runner's transit leg aims at the checkpoint's
+// true bearing, and the log cutter's yard leg aims at the customs station it sells to.
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+
+export const TETHYS_ACTIVITY_SECTOR_ID = 'sector_tethys_junction';
+/** Four pockets × two actors: the queue, the lane, the cache, and the log. */
+export const TETHYS_AUTHORED_ACTIVITY_CAPACITY = 8;
+
+const tethysZones = requireArray(SECTOR_ZONES[TETHYS_ACTIVITY_SECTOR_ID], 'Tethys sector zones');
+const tethysAnchors = requireRecord(SECTOR_ANCHORS[TETHYS_ACTIVITY_SECTOR_ID], 'Tethys sector anchors');
+const tethysCheckpointZone = findById(tethysZones, 'zone_tethys_checkpoint', 'Tethys checkpoint zone');
+const tethysLaneZone = findById(tethysZones, 'zone_tethys_lane', 'Tethys trade lane zone');
+const tethysBlackmktZone = findById(tethysZones, 'zone_tethys_blackmkt', 'Tethys Quiet Cache zone');
+const stationCustoms = findById(tethysAnchors.stations, 'station_customs', 'Tethys customs station anchor');
+const blackmktPoi = findById(tethysAnchors.pois, 'poi_blackmkt', 'Tethys black market POI');
+const customsLogPoi = findById(tethysAnchors.pois, 'poi_tethys_customs_log', 'Tethys customs log POI');
+
+// The checkpoint is where its gate station stands, and the cache is where its buoy floats.
+assertSamePoint(stationCustoms.pos, tethysCheckpointZone.center, 'station_customs / zone_tethys_checkpoint');
+assertSamePoint(blackmktPoi.pos, tethysBlackmktZone.center, 'poi_blackmkt / zone_tethys_blackmkt');
+
+const tethysQueueId = 'tethys_checkpoint_queue';
+const tethysLaneId = 'tethys_lane_patrol';
+const tethysCacheId = 'tethys_quiet_cache';
+const tethysLogId = 'tethys_customs_log';
+
+function tethysActor(id, pocketId, role, jobKind, spawn, routeId, durationS, marks, { lawful = false, receiptType = null } = {}) {
+  return actor({
+    id,
+    pocketId,
+    namespace: 'tethys',
+    presentationRole: role,
+    jobKind,
+    lawful,
+    passive: true,
+    spawnOffset: spawn,
+    route: route({ id: routeId, jobKind, durationS, receiptType, marks }),
+  });
+}
+
+const tethysQueueObjects = Object.freeze([
+  objectSlot({
+    id: 'tethys_customs_hold_pod',
+    pocketId: tethysQueueId,
+    kind: 'cargo_staging_pod',
+    offset: point(-58, 34),
+    runtimeOwner: 'world',
+    targetRef: 'object:tethys_customs_hold_pod',
+  }),
+]);
+
+const tethysLaneObjects = Object.freeze([
+  objectSlot({
+    id: 'tethys_lane_weigh_pod',
+    pocketId: tethysLaneId,
+    kind: 'cargo_staging_pod',
+    offset: point(44, 26),
+    runtimeOwner: 'world',
+    targetRef: 'object:tethys_lane_weigh_pod',
+  }),
+]);
+
+const tethysCacheObjects = Object.freeze([
+  objectSlot({
+    id: 'tethys_quiet_cache_pod',
+    pocketId: tethysCacheId,
+    kind: 'cargo_staging_pod',
+    offset: point(-36, 20),
+    runtimeOwner: 'world',
+    targetRef: 'object:tethys_quiet_cache_pod',
+  }),
+]);
+
+const tethysLogObjects = Object.freeze([
+  objectSlot({
+    id: 'tethys_log_hull_shard',
+    pocketId: tethysLogId,
+    kind: 'grave_shard',
+    offset: point(-30, 44),
+    runtimeOwner: 'world',
+    targetRef: 'object:tethys_log_hull_shard',
+  }),
+]);
+
+const tethysQueueActors = Object.freeze([
+  // The gate's own sentence: a toll hauler holding in the queue that runs in past the tally to
+  // the Customs Gate scan face. The hold mark sits on the true bearing of the tally queue head;
+  // the cleared leg resolves to the real customs berth. Slow — a queue is a place you wait.
+  tethysActor('tethys_toll_hauler', tethysQueueId, 'hauler', 'hauler', point(-48, 22),
+    'tethys_queue_hold_run', 30, [
+      mark('tethys_queue_hold', -92.89, 36.97, 'activity:tethys-queue-hold'),
+      mark('tethys_queue_gate_leg', 82.3, 75.96, 'dest:station_customs'),
+    ], { receiptType: 'freight:arrival' }),
+  // The scn walk between the gate face and the Helios approach side — the law in the checkpoint
+  // is present and patrolling, not hunting: same passive kernel as every other actor here.
+  tethysActor('tethys_customs_patrol', tethysQueueId, 'patrol', 'patrol', point(30, -26),
+    'tethys_gate_beat', 26, [
+      mark('tethys_gate_beat_a', -104.39, -18.41, 'activity:tethys-gate-beat-a'),
+      mark('tethys_gate_beat_b', 18.41, -104.39, 'activity:tethys-gate-beat-b'),
+    ], { lawful: true }),
+]);
+
+const tethysLaneActors = Object.freeze([
+  // The lane's own sentence: convoys run this line. Inbound leg resolves to the real hub berth;
+  // the outbound leg sits on the Io gate's true bearing — the artery, end to end.
+  tethysActor('tethys_lane_convoy', tethysLaneId, 'hauler', 'hauler', point(-26, 18),
+    'tethys_lane_run', 24, [
+      mark('tethys_lane_io_leg', 80.47, 74.98, 'activity:tethys-lane-io-leg'),
+      mark('tethys_lane_hub_leg', 47.61, -96.94, 'dest:station_tethys'),
+    ], { receiptType: 'freight:arrival' }),
+  // The patrol walking the lane while the convoy runs it: a beat across the artery's quadrants,
+  // never through it — the widest read of "law you can fly" without a single hostile hull.
+  tethysActor('tethys_lane_patrol', tethysLaneId, 'patrol', 'patrol', point(24, -30),
+    'tethys_lane_beat', 28, [
+      mark('tethys_lane_beat_a', 3.66, 104.94, 'activity:tethys-lane-beat-a'),
+      mark('tethys_lane_beat_b', -76.79, -71.61, 'activity:tethys-lane-beat-b'),
+    ], { lawful: true }),
+]);
+
+const tethysCacheActors = Object.freeze([
+  // The Quiet's sentence: contraband changes hands off the exchange lanes. The runner loads at
+  // the cache and its transit leg slides out on the checkpoint's true bearing — past the law,
+  // not at it. A smuggler hull flying the proven haul kernel: outlaw-lane work, not a hostile
+  // spawn; it never arrives shooting, and the checkpoint patrol never arrives swinging.
+  tethysActor('tethys_quiet_runner', tethysCacheId, 'smuggler', 'hauler', point(-30, -24),
+    'tethys_quiet_transit_run', 26, [
+      mark('tethys_cache_hold', -83.87, 54.46, 'activity:tethys-cache-hold'),
+      mark('tethys_quiet_transit_leg', 47, -101.66, 'activity:tethys-quiet-transit'),
+    ], { receiptType: 'freight:arrival' }),
+  // The cache keeper holds the dark side of the buoy, checking stashes on the scan kernel —
+  // a relay check is a scan loop, so the cache has a working body, not a loiter.
+  tethysActor('tethys_quiet_keeper', tethysCacheId, 'tender', 'surveyor', point(26, 30),
+    'tethys_cache_stash_sweep', 30, [
+      mark('tethys_cache_stash_a', 72.13, 72.13, 'activity:tethys-cache-stash-a'),
+      mark('tethys_cache_stash_b', -51, 88.33, 'activity:tethys-cache-stash-b'),
+    ]),
+]);
+
+const tethysLogActors = Object.freeze([
+  // The log relay's own scavengers: the last log before the line sits where seized hulks were
+  // scanned and left, and a cutter picks them — unlicensed ground work, but passive, the same
+  // work-not-hostility law as Vesta's drift. The yard leg aims at the customs station the cut
+  // plate sells to.
+  tethysActor('tethys_log_salvor', tethysLogId, 'salvor', 'salvor', point(18, -22),
+    'tethys_log_salvage_run', 30, [
+      mark('tethys_log_yard_leg', 52.96, -102.13, 'dest:station_customs'),
+      mark('tethys_log_hulk_face', -52.5, 90.93, 'activity:tethys-log-hulk'),
+    ]),
+  // The count's own rig: cataloging the hulk field so the tally stays honest. The tightest
+  // wedge at Tethys — close, repetitive scan work beside one hull face.
+  tethysActor('tethys_log_surveyor', tethysLogId, 'surveyor', 'surveyor', point(-20, -18),
+    'tethys_log_scan_sweep', 28, [
+      mark('tethys_log_scan_a', -93.97, -34.2, 'activity:tethys-log-scan-a'),
+      mark('tethys_log_scan_b', -17.37, -98.48, 'activity:tethys-log-scan-b'),
+    ]),
+]);
+
+export const TETHYS_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: tethysQueueId,
+    label: 'Checkpoint Queue',
+    identity: Object.freeze({ zoneId: tethysCheckpointZone.id, stationId: stationCustoms.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationCustoms.id, zoneId: tethysCheckpointZone.id,
+      placeId: stationCustoms.id, localPos: stationCustoms.pos,
+    }),
+    actorSlots: tethysQueueActors,
+    objectSlots: tethysQueueObjects,
+    sectorId: TETHYS_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: tethysLaneId,
+    label: 'Junction Lane',
+    identity: Object.freeze({ zoneId: tethysLaneZone.id }),
+    anchor: canonicalAnchor({
+      kind: 'zone', id: tethysLaneZone.id, zoneId: tethysLaneZone.id,
+      placeId: null, localPos: tethysLaneZone.center,
+    }),
+    actorSlots: tethysLaneActors,
+    objectSlots: tethysLaneObjects,
+    sectorId: TETHYS_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: tethysCacheId,
+    label: 'The Quiet Cache',
+    identity: Object.freeze({ zoneId: tethysBlackmktZone.id, placeId: blackmktPoi.id }),
+    anchor: canonicalAnchor({
+      kind: 'poi', id: blackmktPoi.id, zoneId: tethysBlackmktZone.id,
+      placeId: blackmktPoi.id, localPos: blackmktPoi.pos,
+    }),
+    actorSlots: tethysCacheActors,
+    objectSlots: tethysCacheObjects,
+    sectorId: TETHYS_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: tethysLogId,
+    label: 'Customs Log Relay',
+    identity: Object.freeze({ zoneId: tethysCheckpointZone.id, placeId: customsLogPoi.id }),
+    anchor: canonicalAnchor({
+      kind: 'poi', id: customsLogPoi.id, zoneId: tethysCheckpointZone.id,
+      placeId: customsLogPoi.id, localPos: customsLogPoi.pos,
+    }),
+    actorSlots: tethysLogActors,
+    objectSlots: tethysLogObjects,
+    sectorId: TETHYS_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const TETHYS_ACTIVITY_POCKET_ORDER = Object.freeze(TETHYS_ACTIVITY_POCKETS.map((entry) => entry.id));
+export const TETHYS_ACTIVITY_POCKETS_BY_ID = Object.freeze(Object.fromEntries(
+  TETHYS_ACTIVITY_POCKETS.map((entry) => [entry.id, entry]),
+));
+export const TETHYS_POCKET_ACTOR_SLOT_ORDER = Object.freeze(TETHYS_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const TETHYS_ROUTE_TOPOLOGY = Object.freeze(TETHYS_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+
+if (TETHYS_POCKET_ACTOR_SLOT_ORDER.length !== TETHYS_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Tethys authored capacity mismatch: ${TETHYS_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(TETHYS_POCKET_ACTOR_SLOT_ORDER).size !== TETHYS_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Tethys authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(TETHYS_ACTIVITY_POCKETS, TETHYS_ROUTE_TOPOLOGY, 'Tethys');
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+// CR-HOLLOW — Sedna Dark: the occupied-quiet day. The last frontier sector runs trafficPerMin 0 —
+// authored silence — yet its own material already promised a watch nobody could see: the Sedna
+// Survey Post is Helix's sensor desk at the dark rim, charted "Sensors and hull patches at the
+// dark rim; no fuel, no rescue, few questions" (station_sedna), and past every authored zone the
+// Ringworld Arc waits — "a colossal arc segment of an ancient orbital megastructure orbiting the
+// frozen dark" (poi_sedna_ringworld). These pockets are that promise made visible — not density:
+// two pockets, four bodies. A repair tender and a survey rig make the survey rounds out of the
+// post toward the arc, and at the rim a drift-watcher holds the post's bearing while a salvage
+// cutter works a sheared plate off the dead megastructure — a wreck nobody is hurrying. The
+// hush is authored: nothing here is lawful (Helix is paper; its presence is the audit desk, not
+// a hull), nothing arrives shooting, and the watcher's crawl is deliberately the slowest route
+// in the module — parked is a speed, not a missing route. Same band and topology laws as Ceres;
+// no earlier pocket id is copied. Bearings are taken from the geography that exists: the tender's
+// arc leg aims from station_sedna at the Ringworld Arc's true bearing, and the watcher's post-line
+// mark aims back down the same line at the post's true bearing — the rounds are one string.
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+
+export const SEDNA_ACTIVITY_SECTOR_ID = 'sector_sedna_dark';
+/** Two pockets × two actors: the rounds at the post, the watch at the rim. Quiet by count. */
+export const SEDNA_AUTHORED_ACTIVITY_CAPACITY = 4;
+
+const sednaZones = requireArray(SECTOR_ZONES[SEDNA_ACTIVITY_SECTOR_ID], 'Sedna sector zones');
+const sednaAnchors = requireRecord(SECTOR_ANCHORS[SEDNA_ACTIVITY_SECTOR_ID], 'Sedna sector anchors');
+const sednaSurveyZone = findById(sednaZones, 'zone_sedna_survey', 'Sedna survey zone');
+const stationSedna = findById(sednaAnchors.stations, 'station_sedna', 'Sedna survey post anchor');
+const ringworldPoi = findById(sednaAnchors.pois, 'poi_sedna_ringworld', 'Sedna Ringworld Arc POI');
+
+// The post stands at its zone's heart; the arc stands past every zone — the rim is the point.
+assertSamePoint(stationSedna.pos, sednaSurveyZone.center, 'station_sedna / zone_sedna_survey');
+
+const sednaRoundsId = 'sedna_survey_rounds';
+const sednaRimId = 'sedna_rim_watch';
+
+function sednaActor(id, pocketId, role, jobKind, spawn, routeId, durationS, marks, { lawful = false, receiptType = null } = {}) {
+  return actor({
+    id,
+    pocketId,
+    namespace: 'sedna',
+    presentationRole: role,
+    jobKind,
+    lawful,
+    passive: true,
+    spawnOffset: spawn,
+    route: route({ id: routeId, jobKind, durationS, receiptType, marks }),
+  });
+}
+
+const sednaRoundsObjects = Object.freeze([
+  objectSlot({
+    id: 'sedna_post_supply_pod',
+    pocketId: sednaRoundsId,
+    kind: 'cargo_staging_pod',
+    offset: point(55, -40),
+    runtimeOwner: 'world',
+    targetRef: 'object:sedna_post_supply_pod',
+  }),
+]);
+
+const sednaRimObjects = Object.freeze([
+  // The plate the cutter is working: a sheared fragment of the arc, close in on the post side —
+  // the wreck nobody is hurrying. Descriptor-only, like every non-Ceres object slot: the
+  // targetRef gives the route marks a name to point at, not a materialized body.
+  objectSlot({
+    id: 'sedna_arc_sheared_plate',
+    pocketId: sednaRimId,
+    kind: 'grave_shard',
+    offset: point(-48, 30),
+    runtimeOwner: 'world',
+    targetRef: 'object:sedna_arc_sheared_plate',
+  }),
+]);
+
+const sednaRoundsActors = Object.freeze([
+  // The post's own sentence: a survey tender making the rounds between the post and the arc.
+  // Transit lane, 179.6 deg / 224.9 WU — the one route at Sedna that still runs straight through
+  // its anchor, because the round between two fixed points IS a lane. The arc leg sits on the
+  // Ringworld Arc's true bearing from the post (12.9 deg vs the arc's own 13.0); the post leg
+  // resolves to the service berth the chart note sells — sensors and hull patches.
+  sednaActor('sedna_rounds_tender', sednaRoundsId, 'tender', 'surveyor', point(40, -30),
+    'sedna_rounds_tender_run', 34, [
+      mark('sedna_tender_arc_leg', 109, 25, 'activity:sedna-arc-run'),
+      mark('sedna_tender_post_leg', -110, -26, 'station:station_sedna:service-berth'),
+    ]),
+  // The dishes half: "Sensors" is the post's first service, and a sensor post earns it by walking
+  // a scan wedge across the quiet quadrant the tender's lane does not cross. Tight wedge,
+  // 71.3 deg / 132.0 WU — close, repetitive scan work beside one hull of air.
+  sednaActor('sedna_rounds_dish', sednaRoundsId, 'surveyor', 'surveyor', point(-35, 45),
+    'sedna_dish_sweep_loop', 30, [
+      mark('sedna_dish_sweep_a', 66, 92, 'activity:sedna-dish-sweep-a'),
+      mark('sedna_dish_sweep_b', -66, 92, 'activity:sedna-dish-sweep-b'),
+    ]),
+]);
+
+const sednaRimActors = Object.freeze([
+  // The rim's own sentence: a drift-watcher parked at the arc, holding the post's line. Tightest
+  // wedge and shortest span in the sector, 42.7 deg / 81.6 WU over 44 s — under 2 WU/s, because a
+  // parked watch is work at walking pace, not a loiter. The post-line mark sits on station_sedna's
+  // true bearing back from the arc (-166.7 deg vs the post's own -167.0); the dark leg turns a
+  // corner toward the empty rim the cadence pin still points into.
+  sednaActor('sedna_drift_watcher', sednaRimId, 'surveyor', 'surveyor', point(-30, 20),
+    'sedna_rim_watch_loop', 44, [
+      mark('sedna_watch_post_line', -110, -26, 'activity:sedna-watch-post-line'),
+      mark('sedna_watch_dark_leg', -62, -92, 'activity:sedna-watch-dark'),
+    ]),
+  // The wreck nobody is hurrying: a cutter working the arc's sheared plate on a long, slow
+  // quarter around the curve — 118.9 deg / 200.0 WU — the widest sweep that still goes around
+  // the hulk instead of through it. The face mark's targetRef names the plate (descriptor-only,
+  // so the cut is presentation work — no custody); the far leg is the arc's far curve, the same
+  // site one corner on.
+  sednaActor('sedna_arc_salvor', sednaRimId, 'salvor', 'salvor', point(30, 40),
+    'sedna_arc_salvage_loop', 40, [
+      mark('sedna_arc_cut_face', 100, 60, 'object:sedna_arc_sheared_plate'),
+      mark('sedna_arc_far_face', -100, 58, 'activity:sedna-arc-far-face'),
+    ]),
+]);
+
+export const SEDNA_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: sednaRoundsId,
+    label: 'Survey Rounds',
+    identity: Object.freeze({ zoneId: sednaSurveyZone.id, stationId: stationSedna.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationSedna.id, zoneId: sednaSurveyZone.id,
+      placeId: stationSedna.id, localPos: stationSedna.pos,
+    }),
+    actorSlots: sednaRoundsActors,
+    objectSlots: sednaRoundsObjects,
+    sectorId: SEDNA_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: sednaRimId,
+    label: 'Rim Watch',
+    // The arc is past every authored zone — the rim is why the pocket exists, so the anchor
+    // claims the landmark POI itself and no zone it does not sit in.
+    identity: Object.freeze({ placeId: ringworldPoi.id }),
+    anchor: canonicalAnchor({
+      kind: 'poi', id: ringworldPoi.id, zoneId: null,
+      placeId: ringworldPoi.id, localPos: ringworldPoi.pos,
+    }),
+    actorSlots: sednaRimActors,
+    objectSlots: sednaRimObjects,
+    sectorId: SEDNA_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const SEDNA_ACTIVITY_POCKET_ORDER = Object.freeze(SEDNA_ACTIVITY_POCKETS.map((entry) => entry.id));
+export const SEDNA_ACTIVITY_POCKETS_BY_ID = Object.freeze(Object.fromEntries(
+  SEDNA_ACTIVITY_POCKETS.map((entry) => [entry.id, entry]),
+));
+export const SEDNA_POCKET_ACTOR_SLOT_ORDER = Object.freeze(SEDNA_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const SEDNA_ROUTE_TOPOLOGY = Object.freeze(SEDNA_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+
+if (SEDNA_POCKET_ACTOR_SLOT_ORDER.length !== SEDNA_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Sedna authored capacity mismatch: ${SEDNA_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(SEDNA_POCKET_ACTOR_SLOT_ORDER).size !== SEDNA_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Sedna authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(SEDNA_ACTIVITY_POCKETS, SEDNA_ROUTE_TOPOLOGY, 'Sedna');
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
 // The registry. Everything downstream reads this instead of a Ceres constant, which is the whole
 // reason a second sector can exist here at all.
 // ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -979,6 +1774,10 @@ const EMPTY_POCKETS = Object.freeze([]);
 export const ACTIVITY_POCKETS_BY_SECTOR = Object.freeze({
   [CERES_ACTIVITY_SECTOR_ID]: CERES_ACTIVITY_POCKETS,
   [HELIOS_ACTIVITY_SECTOR_ID]: HELIOS_ACTIVITY_POCKETS,
+  [PALLAS_ACTIVITY_SECTOR_ID]: PALLAS_ACTIVITY_POCKETS,
+  [VESTA_ACTIVITY_SECTOR_ID]: VESTA_ACTIVITY_POCKETS,
+  [TETHYS_ACTIVITY_SECTOR_ID]: TETHYS_ACTIVITY_POCKETS,
+  [SEDNA_ACTIVITY_SECTOR_ID]: SEDNA_ACTIVITY_POCKETS,
 });
 
 export const ACTIVITY_POCKET_SECTOR_IDS = Object.freeze(Object.keys(ACTIVITY_POCKETS_BY_SECTOR));

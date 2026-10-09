@@ -19,6 +19,7 @@ import { createConstellation } from '../orrery/constellation.js';
 import { injectConstellationScreens, legendStarSvg } from '../orrery/constellationLayouts.js';
 import { rollTo, decrypt } from '../orrery/text.js';
 import { TECH_NODES } from '../../data/tech.js';
+import { hourVerbCurveLine, verbForNodeId } from '../../data/techVerbLadder.js';
 import { SHIPS } from '../../data/ships.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
@@ -233,6 +234,9 @@ export const techTreeScreen = {
     head.appendChild(heading);
     const branchLine = el('p', 'k-t-emph k-62 con-sub', 'Select a node');
     head.appendChild(branchLine);
+    const curveLine = el('p', 'k-t-fine con-curve', hourVerbCurveLine());
+    curveLine.dataset.hourVerbCurve = '1';
+    head.appendChild(curveLine);
     rootEl.appendChild(head);
 
     // .k-corner — credits, research points, unlocked n/N as three thin readings.
@@ -577,6 +581,9 @@ export const techTreeScreen = {
       : `<p class="con-sentence">No prerequisites.</p>`;
     const unlockRows = unlockRowsHtml(n.unlocks);
     const effects = formatUnlocks(n.unlocks);
+    // FB-053 — the dossier reads as the thing you can DO: the verb-ladder line, then the
+    // efficiency rider on its own line when the node folds one, then any remaining effect notes.
+    const reading = techNodeReading(n);
     // A locked node's first question is what stands in the way, so its requirements come first.
     const requiresHtml = `<div class="con-caps">Requires</div>${prereqHtml}`;
     const owned = readiness.state === 'researched';
@@ -592,7 +599,9 @@ export const techTreeScreen = {
         ${costCellHtml('Research points', Math.round(cost.rp || 0), Math.round(player.researchPoints || 0), (v) => v.toLocaleString())}
       </dl>`}
       ${readiness.state === 'locked' ? requiresHtml : ''}
-      ${effects || !unlockRows ? `<p class="con-sentence">${effects || 'No listed effects.'}</p>` : ''}
+      <p class="con-sentence con-dossier__verb">${escapeHtml(reading.verb)}</p>
+      ${reading.rider ? `<p class="con-sentence con-dossier__rider">${reading.rider}</p>` : ''}
+      ${effects ? `<p class="con-sentence">${effects}</p>` : ''}
       ${unlockRows ? `<div class="con-caps">Unlocks</div><ul class="con-rows con-unlocks" aria-label="Unlocks">${unlockRows}</ul>` : ''}
       ${readiness.state === 'locked' ? '' : requiresHtml}
     `;
@@ -620,9 +629,11 @@ export const techTreeScreen = {
     if (!n) return;
     cue('confirm');
     // ships handles ui:unlockTech (charges credits/RP, sets researchedNodes, emits tech:researched).
+    // Research P07 residual: that owner is synchronous and toasts the one terminal line itself —
+    // "Researched X" on success, the blocker-naming error on refusal — so this screen adds no
+    // toast of its own. An optimistic "Researching…" here landed AFTER the owner's line on both
+    // outcomes: on a refusal the player read the real error plus a false promise of work.
     this._ctx.bus.emit('ui:unlockTech', { nodeId: n.id });
-    this._ctx.bus.emit('toast', { text: `Researching ${n.name}…`, kind: 'info', ttl: 3000 });
-    // optimistic-free: refresh on next event-driven cycle; refresh now in case ships is synchronous
     this.refresh(this._ctx);
   },
 
@@ -713,16 +724,33 @@ function unlockRowsHtml(u) {
 function formatUnlocks(u) {
   if (!u) return '';
   const parts = [];
-  if (u.efficiency) {
-    const e = Object.entries(u.efficiency).map(([k, v]) => `${escapeHtml(k)} ${(v > 0 ? '+' : '') + Math.round(v * 100)}%`);
-    parts.push(`Bonuses: ${e.join(', ')}`);
-  }
   if (u.droneTierCap != null) parts.push(`Drone tier cap ${escapeHtml(String(u.droneTierCap))}`);
   if (u.npcTraderHiring) parts.push('Unlocks NPC trader hiring');
   if (u.outpostConstruction) parts.push('Unlocks outpost construction');
   if (u.extraDronePerBay) parts.push(`+${escapeHtml(String(u.extraDronePerBay))} drone per bay`);
   if (u.flags && u.flags.length) parts.push(`Flags: ${u.flags.map(escapeHtml).join(', ')}`);
   return parts.length ? parts.join(' · ') + '.' : '';
+}
+
+/** The efficiency rider (FB-053): the node's folded passive bonuses, its own line ('' absent). */
+function formatEfficiencyRider(u) {
+  if (!u || !u.efficiency) return '';
+  const e = Object.entries(u.efficiency).map(([k, v]) => `${escapeHtml(k)} ${(v > 0 ? '+' : '') + Math.round(v * 100)}%`);
+  return `Bonuses: ${e.join(', ')}.`;
+}
+
+/**
+ * The node's player-facing reading (FB-053): `verb` is the authored one-line action from the
+ * verb ladder — what you can DO with this research — and `rider` is the efficiency line printed
+ * beneath it when the node folds a passive bonus. `verb` is raw text (escape at render);
+ * `rider` arrives pre-escaped like the formatUnlocks sentence.
+ */
+export function techNodeReading(node) {
+  const u = (node && node.unlocks) || {};
+  return {
+    verb: verbForNodeId(node && node.id),
+    rider: formatEfficiencyRider(u),
+  };
 }
 
 function cleanId(id) {

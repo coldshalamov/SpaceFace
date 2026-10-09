@@ -174,6 +174,30 @@ test('PQ-152.00 seed 15200 posts all three types on route boards', () => {
   }
 });
 
+test('SF-117 tow offers scale to the fit’s real tow class and name the load', () => {
+  const h = boot(SEED);
+  // No derived block → the standard band is unchanged.
+  const base = h.missionsSys._rollParams('tow_recovery', {}, {}, 1, () => 0.5);
+  assert.equal(base.massU, 37, 'the plain fit sees the ordinary band');
+
+  // A drive that puts 100 t on the line: force = accel × mass, tow class = force/40 − mass.
+  h.player.data = { derived: { propulsion: { mainAccel: 120 }, operationalMass: 50 } };
+  const heavy = h.missionsSys._rollParams('tow_recovery', {}, {}, 1, () => 0.999);
+  assert.ok(heavy.massU > 45, 'a stronger drive posts heavier cores on the board');
+  assert.ok(heavy.massU <= 115, 'the ceiling is the real tow class, not a free roll');
+  // Pay scales through the recorded terms (mass × price), never a bonus multiplier.
+  assert.equal(heavy.cargoValue, heavy.massU * 22);
+
+  // The offer names the physical load so the fit-screen verb maps onto the opportunity.
+  const origin = stationInfo('station_helios');
+  const offer = h.missionsSys._rollOffer('tow_recovery', {
+    id: origin.id, name: origin.name, type: origin.type, size: origin.size || 'L',
+    factionId: origin.factionId, sectorId: origin.sectorId,
+  }, () => 0.999, 0, 0, { attachConditions: false });
+  assert.match(offer.title, /\d+ t slag core/i);
+  h.sim.dispose();
+});
+
 test('PQ-152.00 tow_recovery completes by tow_in and sling_in', () => {
   for (const method of METHODS.tow_recovery) {
     const h = boot(SEED);

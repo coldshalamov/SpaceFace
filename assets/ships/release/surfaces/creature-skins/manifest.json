@@ -1,0 +1,22 @@
+{
+  "schema": "spaceface.generatedArt.v1",
+  "set": "creature skins",
+  "use": "src/render/creatureSkinLibrary.js: 'tissue' is worn by every alien fauna body (faunaVisuals.js tissueMat, tinted by the strain colour); 'nacre' by the Verge-Layer machines (machineVisuals.js metalMat, tinted by the pale-metal colour).",
+  "date": "2026-10-03",
+  "generator": "OpenAI image generation via codex exec -m gpt-5.5 (ChatGPT account); tools/art/imagegen_variants.py (3 variants per job, each taken from its own session folder), reviewed by eye, then tools/art/finish_generated.py tile",
+  "license": "Generated for SpaceFace by the project; no third-party source image supplied.",
+  "finishing": "1254 px source resized to 512, seamless by offset-and-blend, normal map derived from the high-passed albedo luminance",
+  "files": {
+    "tissue": {
+      "files": ["tissue_basecolor.jpg", "tissue_normal.png"],
+      "chosen": "skin_tissue v1 (of 3; v3 returned a round vignetted patch, not a tile)",
+      "subject": "pale desaturated alien living tissue: branching translucent veins under soft mottled skin, pores and folds, a slight wet sheen, near-neutral so the strain colour tints it"
+    },
+    "nacre": {
+      "files": ["nacre_basecolor.jpg", "nacre_normal.png"],
+      "chosen": "skin_nacre v1 (of 3), centre 760 px crop: every variant came back as a round vignetted patch, so only the clean centre is kept",
+      "subject": "pale mother-of-pearl nacre plating of an ancient precise machine civilisation: overlapping growth-line layers, hairline seams, a faint teal and lilac shimmer, no wear"
+    }
+  },
+  "prompt": "A flat-lit, shadowless, perfectly top-down orthographic square material swatch, 1024 by 1024, seamlessly tileable, no perspective, no horizon, no text, no objects. A surface texture of <per-skin subject above>."
+}

@@ -11,6 +11,8 @@ import {
 import { AIInspectionEndpoint } from '../ai/inspection.js';
 import { createSG03ActionPort } from '../ai/sg03ActionPort.js';
 import { TacticalAIStack } from '../ai/stack.js';
+import { kilnbackDecision } from '../ai/kilnback.js';
+import { palletJackDecision } from '../ai/palletJack.js';
 import {
   ManeuverKind,
   NORMALIZED_THRUSTER_REQUEST_FLAG,
@@ -253,6 +255,7 @@ export function createTacticalAISystem({
       seed: seed == null ? (state && state.meta && state.meta.seed) || 1 : seed,
       ports,
       config: runtimeConfig,
+      shapeBehavior: (behavior, entityId) => palletJackDecision(behavior, state, entityId),
     });
     bindHullResolver(stack);
     inspection = new AIInspectionEndpoint(stack);
@@ -370,7 +373,9 @@ export function createTacticalAISystem({
         ? entities.get(id)
         : null;
       if (entity && entityNeedsAiThink(entity, state) === false) continue;
-      maneuverPort.request(retickManeuverRequest(request, tick));
+      const sourceCurrent = entity?.data?.kilnback
+        ? kilnbackDecision({ entityId: id, maneuver: request }, state).maneuver : request;
+      maneuverPort.request(retickManeuverRequest(sourceCurrent, tick));
     }
   }
 
@@ -473,7 +478,9 @@ export function createTacticalAISystem({
       }
       lastDecisionTick = tick;
       lastManeuverRequests.length = 0;
-      for (const decision of result.decisions || []) {
+      for (const sourceDecision of result.decisions || []) {
+        const decision = kilnbackDecision(sourceDecision, state);
+        if (decision !== sourceDecision && decision.maneuver) liveStack.ports.maneuver.request(decision.maneuver);
         const entity = state && state.entities && decision && decision.entityId != null
           && typeof state.entities.get === 'function'
           ? state.entities.get(decision.entityId)
@@ -528,6 +535,7 @@ export function createTacticalAISystem({
             specialist: entity,
             enemyId,
             doctrinePhase: doctrine && doctrine.phase,
+            doctrine,
             tick,
             attachments: kernel && kernel.attachments,
             fields: fieldsSys,
@@ -609,7 +617,7 @@ export function revalidateCachedAIFiringIntents(liveStack, state, entityRefs = n
     const expectedEntity = entityRefs && typeof entityRefs.get === 'function' ? entityRefs.get(id) : null;
     if (expectedEntity && entity !== expectedEntity) continue;
     if (entity && entityNeedsAiThink(entity, state) === false) continue;
-    applyMindAwareFiringIntent(decision, state);
+    applyMindAwareFiringIntent(palletJackDecision(kilnbackDecision(decision, state), state), state);
     applyNemesisFireGate(entity, state);
   }
   return decisions.length;
@@ -664,7 +672,7 @@ export function applyTurretEdgeEffects(entity, doctrine, state) {
     setThrusterHealth(entity, 'rcs-starboard', 0.4);
     const bus = state && state.bus;
     if (bus && typeof bus.emit === 'function') {
-      bus.emit('toast', { text: 'Iron Maw\'s bow plate is torn — cross the prow!', kind: 'warn', ttl: 3 });
+      bus.emit('toast', { text: 'Iron Maw\'s bow plate is torn — cross the prow.', kind: 'warn', ttl: 3 });
       bus.emit('audio:cue', { id: 'combat.subsystem.disabled' });
     }
   }
@@ -1079,7 +1087,11 @@ function driveCohortMembers(liveStack, state, tick, shipLikeList = indexedShipLi
       inspection = inspectionByCohortId.get(cohortId);
     }
     stampFodder(entity, choreographyPlan, inspection);
-    if (entityNeedsAiThink(entity, state) === false) continue;
+    // Cohort plans are published fresh every tick and the desired-state chain assumes a
+    // per-tick submission: a quiet-latched member reusing its last maneuver would fly its
+    // old slot while the plan redirects it — a thrown body's clearance nudge, a dodge —
+    // and grind through exactly the contact the plan is avoiding (M11 5↔6/6↔10). Active
+    // cohorts only exist inside a live encounter, so this stays off the quiet-host path.
     const request = planChoreographyManeuver(liveStack, state, entity, tick);
     if (request && maneuverPort && typeof maneuverPort.request === 'function') {
       maneuverPort.request(request);

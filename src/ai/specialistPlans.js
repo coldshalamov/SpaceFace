@@ -1,6 +1,7 @@
 // PQ-140.02 — four specialists, each breaking one player plan.
 // Data only. Silhouette ids are the live enemy catalog; behaviour is the doctrine / verb.
 // No new hulls (PQ-050 owns form). Two plans share bruiser_armor; mass and speed separate them.
+import { SCISSORWAKE } from '../data/scissorwake.js';
 
 export const SPECIALIST_PLANS = Object.freeze([
   Object.freeze({
@@ -63,15 +64,26 @@ export const SPECIALIST_PLANS = Object.freeze([
   // doctrine by the tactical stack.
 ]);
 
+// A named realization of the cutter verb, rather than a fifth detach authority.
+const SCISSORWAKE_PLAN = Object.freeze({ ...SPECIALIST_PLANS[0],
+  id: 'scissorwake', enemyId: SCISSORWAKE.enemyId, doctrineId: SCISSORWAKE.doctrineId,
+  engineeredPass: true, cutRangeWu: SCISSORWAKE.acquireRangeWu,
+  commitTicks: SCISSORWAKE.windupTicks + SCISSORWAKE.passTicks,
+  missRecoveryTicks: SCISSORWAKE.recoveryTicks,
+});
+
 export function specialistPlanById(id) {
+  if (id === SCISSORWAKE_PLAN.id) return SCISSORWAKE_PLAN;
   return SPECIALIST_PLANS.find((row) => row.id === id) || null;
 }
 
 export function specialistPlanByEnemyId(enemyId) {
+  if (enemyId === SCISSORWAKE.enemyId) return SCISSORWAKE_PLAN;
   return SPECIALIST_PLANS.find((row) => row.enemyId === enemyId) || null;
 }
 
 export function specialistPlanByDoctrine(doctrineId) {
+  if (doctrineId === SCISSORWAKE.doctrineId) return SCISSORWAKE_PLAN;
   return SPECIALIST_PLANS.find((row) => row.doctrineId === doctrineId) || null;
 }
 

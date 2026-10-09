@@ -14,7 +14,6 @@ import {
   SURVIVAL_ARC_LENGTH,
   WAVE_30_FINALE_ENEMY_ID,
   WAVE_30_SYSTEM_EVENT,
-  bodyCount,
   templateWaveOf,
 } from '../src/data/survivalActs.js';
 import { peakConcurrentDemand } from '../src/data/survivalWaves.js';
@@ -43,10 +42,28 @@ test('wave 30 crowns the Mirrorjaw core; wave 10 keeps the Foreman', () => {
   const ten = planWave({ seed: SEED, arenaId: FOUNDRY, wave: 10 });
   assert.ok(finale && finale.ok !== false, 'the finale plans');
   assert.equal(eliteOf(ten).enemyId, 'mirrorjaw_foreman');
-  assert.equal(eliteOf(finale).enemyId, WAVE_30_FINALE_ENEMY_ID);
-  assert.equal(eliteOf(finale).count, 1);
-  // The crown is a rewrite of the authored slot, not an added body: same body count and caps.
-  assert.equal(bodyCount(finale.packages), bodyCount(ten.packages));
+  const finaleElite = eliteOf(finale);
+  assert.equal(finaleElite.enemyId, WAVE_30_FINALE_ENEMY_ID);
+  assert.equal(finaleElite.count, 1);
+  // The crown is a rewrite of the authored elite slot, not an added body: one elite on the
+  // same slot shape and schedule the Foreman held.
+  assert.deepEqual(
+    {
+      atTick: finaleElite.atTick,
+      count: finaleElite.count,
+      batchSize: finaleElite.batchSize,
+      batchGapTicks: finaleElite.batchGapTicks,
+    },
+    { atTick: 0, count: 1, batchSize: 1, batchGapTicks: 0 },
+  );
+  // The escort around the crown is the act's own composition growth (FB-026 — the arc's
+  // difficulty is the company the elite keeps, not hit points). A non-Mirrorjaw arena's
+  // uncrowned wave 30 fields the identical escort, gate bearings aside.
+  const escortsOf = (plan) => (plan.packages || [])
+    .filter((pkg) => pkg.role !== 'elite')
+    .map(({ gateGroup, ...rest }) => rest);
+  const uncrowned = planWave({ seed: SEED, arenaId: OTHER, wave: 30 });
+  assert.deepEqual(escortsOf(finale), escortsOf(uncrowned));
   assert.ok(peakConcurrentDemand(finale.packages) <= 24);
 });
 

@@ -44,6 +44,7 @@ export const HEADLINE_TEMPLATES = Object.freeze({
     '{station}: {noun} overstock, MTS dumps below cost',
     'Bumper {noun} run into {station} tanks the spread',
     '{name} boom at {station} — the syndicate is selling',
+    'Dock cranes stack {noun} to the ceiling at {station} — buyers wanted',
   ],
   blockade: [
     '{station} sealed — {noun} traffic frozen under blockade',

@@ -107,13 +107,14 @@ function named(h, event) {
   return h.emitted.filter((e) => e.event === event);
 }
 
-test('the rotation walks six champions — capital scores at wave 20 and wave 30', () => {
-  const order = ['iron_maw', 'mirrorjaw_foreman', 'forge_regent', 'corsair_wing', 'the_anvil', 'quiet_choir'];
-  for (const [i, wave] of [10, 20, 30, 40, 50, 60].entries()) {
+test('the rotation walks eight champions — capital scores at wave 20, 30, 70 and 80', () => {
+  const order = ['iron_maw', 'mirrorjaw_foreman', 'forge_regent', 'corsair_wing', 'the_anvil',
+    'quiet_choir', 'brood_queen', 'brood_tendril'];
+  for (const [i, wave] of [10, 20, 30, 40, 50, 60, 70, 80].entries()) {
     const boss = swarmBossFor(wave);
     assert.equal(boss && boss.id, order[i], `wave ${wave}`);
   }
-  assert.equal(swarmBossFor(70).id, 'iron_maw', 'the rotation wraps after the sixth');
+  assert.equal(swarmBossFor(90).id, 'iron_maw', 'the rotation wraps after the eighth');
   const w20 = planFor(20).swarm;
   assert.equal(w20.bossScoreId, 'capital_boss_foreman');
   assert.equal(w20.bossEnemyId, 'mirrorjaw_foreman');

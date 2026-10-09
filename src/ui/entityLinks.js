@@ -29,7 +29,7 @@
 // than a door into an empty room.
 
 import { resolveEntity } from './entityResolver.js';
-import { pinKindForRef, isWatched, toggleWatchPin } from './watchlist.js';
+import { pinKindForRef, isWatched, toggleWatchPin, watchlistPins } from './watchlist.js';
 
 const MAX_BACK = 12;   // capped: the trail is a convenience, not a history feature (J6 owns history)
 
@@ -247,6 +247,42 @@ export function createEntityLinks(ctx) {
         }
       });
       verbs.push(btn);
+      // FB-050: a watching price pin can arm an alert at the quote it was pinned at — 'tell me
+      // when this moves past what I saw'. Cycle above → below → off; the pin persists the arm.
+      if (watched && watchKind === 'price') {
+        const pin = watchlistPins(state).find((p) => p.ref === d.ref);
+        // A flight-pinned price carries no station quote to arm against — the verb would be inert.
+        const canArm = !!(pin && pin.stationId && Number(pin.priceAt) > 0);
+        const alertBtn = el('button', 'sf-drawer__verb sf-drawer__verb--quiet', {
+          text: !canArm
+            ? 'Price alert needs a docked quote'
+            : (pin && pin.target != null
+              ? `Alert ${pin.direction === 'below' ? '≤' : '≥'} ${pin.target} cr — tap to ${pin.direction === 'below' ? 'disarm' : 'reverse'}`
+              : 'Alert me when the price moves'),
+          attrs: { type: 'button', ...(canArm ? {} : { disabled: 'disabled' }) },
+        });
+        alertBtn.addEventListener('click', () => {
+          const live = watchlistPins(state).find((p) => p.ref === d.ref);
+          if (!live || !canArm) return;
+          if (live.target == null) {
+            const base = Number(live.priceAt) || 0;
+            if (!(base > 0)) return;
+            live.target = Math.round(base);
+            live.direction = 'above';
+            live.alertFired = false;
+          } else if (live.direction === 'above') {
+            live.direction = 'below';
+            live.alertFired = false;
+          } else {
+            delete live.target;
+            delete live.direction;
+            delete live.alertFired;
+          }
+          if (bus && bus.emit) bus.emit('watch:changed', { ref: d.ref, pinned: true });
+          show(d.ref, { push: false });
+        });
+        verbs.push(alertBtn);
+      }
     }
     const closeBtn = el('button', 'sf-drawer__verb sf-drawer__verb--quiet', { text: 'Close', attrs: { type: 'button' } });
     closeBtn.addEventListener('click', () => close());

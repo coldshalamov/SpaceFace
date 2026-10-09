@@ -187,6 +187,7 @@ const SHIPPED_MODULES = [
   {
     // G10 — charge-throw drops a heat lure that drags heat-hunters off your plume (60s).
     id: 'mod_heat_lure_s', name: 'Heat Lure Beacon', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 13500,
+    requiresTech: 'tech_heat_lure',
     energyDraw: 2,
     mods: { heatLure: true },
     description: 'Charge-thrown bait: a burn-flag beacon that reads hotter than your reactor. Predators chase the lie for a minute.',
@@ -209,7 +210,7 @@ const SHIPPED_MODULES = [
   {
     // G13 — the cradle: a latched animal released under it reaches the hold alive.
     id: 'mod_capture_cradle_m', name: 'Capture Cradle', slotType: 'utility', size: 'M', tier: 3, mass: 6, price: 32000,
-    requiresTech: 'tech_tractor_systems',
+    requiresTech: 'tech_capture_cradle',
     energyDraw: 4,
     mods: { captureSurvivalMult: 0.85 },
     description: 'A padded field cage for the massline. Release the latch while it is fitted and the animal comes aboard alive.',
@@ -225,6 +226,7 @@ const SHIPPED_MODULES = [
   {
     // K03 — quarantine paperwork as equipment: custody refusal softens to a discount.
     id: 'mod_containment_seal_s', name: 'Containment Seal Kit', slotType: 'utility', size: 'S', tier: 3, mass: 2, price: 28000,
+    requiresTech: 'tech_containment_seal',
     energyDraw: 1,
     mods: { containmentSeal: true },
     description: 'Registry-stamped quarantine seals. Stations that would refuse a biological lot instead take it at surrender prices.',
@@ -491,6 +493,15 @@ const SHIPPED_MODULES = [
     energyDraw: 2, mods: { swingDrive: true },
   },
   {
+    // VEIL STEP — the rogue's boost. While this is fitted, Shift is not a thruster.
+    // Hold it and a shadow of the hull sits ahead; release and the ship is there,
+    // paid from the same boost meter. Helios keeps one on the rack with no research
+    // stop so a starter bay can fit it the hour it is bought.
+    id: 'mod_veil_step', name: 'Veil Step', slotType: 'utility', size: 'S', tier: 1, mass: 2, price: 9800,
+    shopOffers: { station_helios: { price: 4200 } },
+    energyDraw: 1, mods: { phaseBlink: true },
+  },
+  {
     // LOOT MAGNET — reach without the line. Debris shards and jettisoned pods inside the ring are
     // drawn to the hull (bounded attraction through physics authority), so salvage is a fly-by
     // instead of a latch-per-piece. Consumed via derived.lootMagnetRange by systems/lootShards.js.
@@ -714,6 +725,39 @@ const SHIPPED_MODULES = [
     id: 'mod_storm_carom', name: 'Storm Carom', slotType: 'utility', size: 'S', tier: 4, mass: 6, price: 96000,
     requiresTech: 'tech_ricochet_ballistics', energyDraw: 6, legality: 'restricted',
   },
+  // ── FACTION EXCLUSIVES — standing-gated hardware (`exclusivity: { factionId, minRep }`). The
+  // owning faction fits these only at Allied standing (rep ≥ 400, the tier systems/factions.js
+  // names at min 400): ships.isUnlocked answers the standing ledger, the research tree plays no
+  // part, and no station rack bypasses the gate — faction yards do not stock rivals' exclusives.
+  // The buy price still quotes through the normal standing-discount path. Every `mods` key below
+  // is one the derived-stats fold in systems/ships.js actually reads.
+  {
+    // CONCORD SANCTION SPOOL — the Navy's own tow line, one step past the Industrial Spool
+    // (tetherSpoolMult 4 vs 3; the fold takes the strongest fitted spool).
+    id: 'mod_sanction_spool', name: 'Concord Sanction Spool', slotType: 'utility', size: 'M', tier: 4,
+    mass: 14, price: 88000, energyDraw: 6,
+    exclusivity: { factionId: 'faction_scn', minRep: 400 },
+    mods: { tetherSpoolMult: 4 },
+  },
+  {
+    // COLLECTIVE DEEP-SCOOP — the miners' pickup reach. The freeflight ore scoop resolves
+    // max(floor 800, derived.magnetRange) in systems/mining.js, so a bigger radius is ore taken
+    // at a pass — a wired physical fact, not a catalog promise.
+    id: 'mod_deep_scoop_array_m', name: 'Deep-Scoop Array M', slotType: 'utility', size: 'M', tier: 4,
+    mass: 10, price: 82000, energyDraw: 5,
+    exclusivity: { factionId: 'faction_dmc', minRep: 400 },
+    mods: { magnetRange: 2000 },
+  },
+  {
+    // REACH SPLITBURNER — the smugglers' door out. The afterburner envelope keys are
+    // capability ratings (strongest fitted burner wins) that land in derived.boost and drive the
+    // boost cap in systems/flightV3.js: hotter, longer, and back on the pipe sooner than the
+    // stock Afterburner M (0.40 / 4 s / 12 s).
+    id: 'mod_splitburner_m', name: 'Reach Splitburner M', slotType: 'utility', size: 'M', tier: 4,
+    mass: 7, price: 86000, energyDraw: 12,
+    exclusivity: { factionId: 'faction_reach', minRep: 400 },
+    mods: { boostTopSpeedPct: 0.55, boostDurS: 6, boostCdS: 10 },
+  },
 ];
 
 // ─────────────────────────────── user content (PQ-172.00) ───────────────────────────────
@@ -825,9 +869,9 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_market_data_s: 'Streams live exchange quotes from every station in this sector while you fly it.',
   mod_triangulation_suite_s: 'Closes an anomaly fix in two scans instead of three.',
   mod_shield_hardener_m: 'The same hit takes less out of the hull.',
-  mod_afterburner_m: 'You carry its mass. It does not change the boost you fly.',
+  mod_afterburner_m: 'Hold boost for a four-second burn: much faster, then the drive needs twelve seconds before it lights again.',
   mod_repair_nanobots_m: 'The hull knits itself back together between fights.',
-  unique_knitbots: 'Heals the hull a little faster between fights than the stock nanobots.',
+  unique_knitbots: 'Heals the hull a little faster between fights than the stock nanobots, and knits parked drones back to strength.',
   mod_tractor_beam_m: 'Picks up ore and wrecks without stopping on them.',
   unique_tideline_tractor: 'Picks up a whole wreck, from farther out than a stock tractor.',
   unique_no_cut_filament: 'A taut swing cuts a hostile line.',
@@ -854,6 +898,7 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_winch_hd: 'Reels a line in faster, and you can swing from farther away.',
   mod_swing_drive_m: 'A dash on a taut line swings you around the anchor instead of off it.',
   mod_swing_drive_s: 'The same swing-around dash, in the small bay a starter hull can fit.',
+  mod_veil_step: 'Hold Shift and a shadow of the ship sits ahead. Release, and you are there. The thruster boost is gone while this is fitted.',
   mod_loot_magnet_s: 'Debris and pods drift into the hull as you fly past.',
   mod_mass_flail_rig_m: 'While you tow something heavier than you, a bump hits with the load\'s mass.',
   mod_massline_spool_m: 'A longer line, so you can swing off things much farther away.',
@@ -894,6 +939,31 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_cryo_gyros: 'Two orbiting nodes freeze whatever passes close.',
   mod_herald_fan: 'The volley spreads wider and runs a little hotter. The damage does not change.',
   mod_storm_carom: 'A bounced hit storms through ionized targets. A direct hit cannot jump.',
+  mod_sanction_spool: 'Concord yards fit this spool only for captains the Navy trusts at its back.',
+  mod_deep_scoop_array_m: 'The Collective fits this scoop for crews who bring the whole ring home.',
+  mod_splitburner_m: 'The Reach fits this burner for its runners: a hotter, longer burn, back on the pipe sooner.',
+  mod_filter_stack_s: 'Contaminated space fouls the hull more slowly.',
+  mod_filter_stack_m: 'Contaminated space fouls the hull much more slowly than the small filter.',
+  mod_bio_spectral_pass_s: 'Biological contacts resolve one classification rung earlier.',
+  mod_field_coherence_meter: 'Inside a colonized field, the flight log notes whether that ecology is still coherent.',
+  mod_quarantine_locker_s: 'Biohazard cargo in the hold does not foul the hull.',
+  mod_hull_purge_ring_m: 'Dock once and a fouled hull is scrubbed clean.',
+  mod_heat_lure_s: 'Throw a charge that burns hotter than you, and heat-hunters chase it.',
+  mod_quiet_mask_s: 'Animals that hunt by heat notice this hull later.',
+  mod_relay_needle_s: 'A relay organism reports whether its broadcast is still coherent.',
+  mod_capture_cradle_m: 'Release a latched animal and it comes aboard alive, if the hold has room.',
+  mod_precursor_handshake_s: 'A machine site finishes reading your compliance in half the time.',
+  mod_containment_seal_s: 'A station that would refuse a biological lot will take it.',
+  mod_filament_contrast_s: 'Phantom contacts in a colonized field are marked with a question mark.',
+  mod_host_cartography_s: 'Crossing into a colonized field names the hull under the growth.',
+  mod_echo_recorder_s: 'Relay pulses that stay in phase leave a note in the flight log.',
+  mod_resonant_massline_m: 'Mining strikes read as dead matter, so sleeping fauna do not wake.',
+  mod_quiet_equation_s: 'A machine directive keeps its own words, then adds a line you can read.',
+  mod_lattice_coupler_s: 'Approaching a machine site echoes its standing directive on the comms.',
+  unique_quadrille_box_reader: 'Reads what another hull is carrying, from farther out than a stock scanner.',
+  unique_double_entry_mask: 'You read quieter than a stock scrambler, and the scan reaches a little farther.',
+  unique_first_notch_marker: 'Closes an anomaly fix in two scans instead of three, and the scan reaches farther.',
+  unique_regular_mass_shifter: 'More room in the hold than the hull was built with.',
 });
 
 function attachAirSentences(list) {

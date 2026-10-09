@@ -54,11 +54,11 @@ export function channelOutput(audio = {}, key = 'master') {
 }
 
 const CATEGORY_LINES = Object.freeze({
-  Audio: 'Seven channels under one master. Ride a level and watch what reaches the speakers.',
-  Video: 'How the world is drawn and how the flight HUD glows. The miniature is the HUD you fly with.',
-  Gameplay: 'How the ship flies, how hard the sector fights back, and what the HUD tells you.',
-  Access: 'Contrast, motion, type and captions. Each one shows on the HUD as you set it.',
-  Controls: 'Every flight verb and the key it answers to. Pick a row, then press the new key.',
+  Audio: 'Seven channels under one master. Drag a level and watch the mix move.',
+  Video: 'How the world is drawn and how the HUD glows. The preview is your live HUD.',
+  Gameplay: 'Flight handling, difficulty and HUD hints.',
+  Access: 'Contrast, motion, text size and captions. Changes show on the HUD instantly.',
+  Controls: 'Every flight verb and its key. Pick a row, then press the new key.',
 });
 
 /** One line per setting: what it does (the legend). Numbers the row does not show are derived here. */
@@ -840,6 +840,11 @@ function buildHud(doc) {
         const c0 = clusterPoint(250, 350);
         // outside the speed scale's ticks and the heading track's chevron
         if (c0 && k) circles.push({ x: c0.x, y: c0.y, r: 192 * k });
+        // the Speed Dial is a circle too, read from its own rendered face: a box would be dropped whenever the
+        // aim point (the ring stack's top) sits within its padding, which it does
+        const face = frame.querySelector('.orr-speeddial__face');
+        const fb = face && face.getBoundingClientRect ? face.getBoundingClientRect() : null;
+        if (fb && fb.width) circles.push({ x: fb.left + fb.width / 2, y: fb.top + fb.height / 2, r: fb.width / 2 + 34 * k });   // out to the REF and ceiling labels
       }
       return { boxes, circles };
     },
@@ -850,11 +855,11 @@ function buildHud(doc) {
 // ---- the preview ---------------------------------------------------------------------------------
 const MODE_BY_TAB = Object.freeze({ Audio: 'mixer', Video: 'hud', Gameplay: 'hud', Access: 'hud', Controls: 'dial' });
 const FOOT_BY_TAB = Object.freeze({
-  Audio: 'Live · the mix as it reaches the speakers',
-  Video: 'Live · the flight HUD as these settings draw it',
-  Gameplay: 'Live · the flight HUD as these settings draw it',
-  Access: 'Live · the flight HUD as these settings draw it',
-  Controls: 'Live · the key each verb answers to',
+  Audio: 'Live mix',
+  Video: 'Live HUD',
+  Gameplay: 'Live HUD',
+  Access: 'Live HUD',
+  Controls: 'Live keys',
 });
 const SCHEME_NAMES = Object.freeze({ pilot: 'Pilot scheme · keyboard steers · mouse aims', 'helm-assist': 'Helm assist · mouse steering', classic: 'Classic throttle' });
 
@@ -1189,7 +1194,7 @@ export function createSettingsPreview(doc = globalThis.document) {
       settingsNow = settings || {};
       el.dataset.mode = MODE_BY_TAB[tab];
       el.dataset.tab = tab.toLowerCase();
-      kicker.textContent = `${tab} · applies live`;
+      kicker.textContent = tab;
       foot.textContent = FOOT_BY_TAB[tab];
       mixer.set(settingsNow.audio || {});
       hud.set(settingsNow, { tab });

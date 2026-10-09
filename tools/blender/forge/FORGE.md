@@ -30,7 +30,10 @@ The camera is a 60° top-down chase at 144 WU (ship ≈ 170 px wide) with an opt
    value with its chroma deepened, so a saturated mid-dark paint reads rich, not pastel. Look,
    then adjust.
 3. **One identity colour, carried in bands.** Stripes and bands are cut into the geometry with
-   `band()`, so they follow the form and stay crisp at any zoom. No painted-on decals, no text.
+   `band()`, so they follow the form and stay crisp at any zoom. No painted-on decals, no text,
+   **except authored decals** (owner ruling 2026-10-03, see rule 6): a hand-directed or generated
+   image of a real mark (a livery stripe, a hull number, a service stencil, a faction crest) placed
+   deliberately on a decal quad, tinted by the paint colours, never as a noise layer.
 4. **Layered construction.** Panels are raised or recessed (`panel()`, `band(inset, depth)`),
    control surfaces are separate plates with a dark hinge gap, armour sits proud of the skin.
 5. **Light is part of the ship.** Engine cores, red port / green starboard nav lights at the
@@ -43,6 +46,16 @@ The camera is a 60° top-down chase at 144 WU (ship ≈ 170 px wide) with an opt
    near-uniform albedo so it never reads as a checkerboard of tinted tiles. No grain, grime,
    scratches or rust noise: at this camera broadband noise reads as leather. Wear, if a ship
    needs it, is a design element (a patched plate, a scorched nozzle ring), modelled.
+   **Owner ruling 2026-10-03: authored 2D images are allowed where they look better than code.**
+   The ban above is on *broadband procedural noise*, which is what read as leather. Art-directed
+   images are a different thing and are the way to fix "nothing looks used" and the repeating
+   panel grid: a trim sheet of directed wear (coolant streaks, scorch fans, dock rash, chipped
+   paint at edges, oil weeps), a very-low-frequency breakup map that ends the tile repetition,
+   and the livery / stencil decals of rule 3. They are placed (decal quads, or a macro map on
+   chosen parts), never sprayed uniformly. Rules that stay: judge by the real picture at the
+   gameplay camera; no generated lettering (words are set in code from an authored alphabet);
+   generated images stay out of the normal / ORM channels; share the sheets across the fleet
+   (one trim sheet, not one texture per hull) and compress them.
 7. **The finish is lacquer.** The Look ([`docs/visual-assets/LOOK.md`](../../../docs/visual-assets/LOOK.md))
    puts a clear coat on smooth dielectric paint: a sun glint, a mirror of the sky at the limb and a
    coloured rim. It comes from the finish's own roughness and metalness, so a ship gets it by

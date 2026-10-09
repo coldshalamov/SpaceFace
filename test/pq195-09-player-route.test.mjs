@@ -305,7 +305,6 @@ test('(a) a player recovers the assembly and feeds it through the Concord fork, 
   t.bus.on('heist:receiverCommitted', (r) => { committed = r; });
   const grants = [];
   t.bus.on('economy:grantCredits', (r) => grants.push(r));
-
   const pLocal = (pos) => (pos.x - mouth.x) * mouth.nx + (pos.z - mouth.z) * mouth.nz;
   const lLocal = (pos) => -(pos.x - mouth.x) * mouth.nz + (pos.z - mouth.z) * mouth.nx;
 
@@ -326,11 +325,27 @@ test('(a) a player recovers the assembly and feeds it through the Concord fork, 
     if (dl < 360 && latchTick % 8 === 0) t.input.actions.tetherFire = true;
   }, 20000, 'a live latch on the freed assembly');
 
+  // A cut_line specialist in the pressure element severs the bridle mid-recovery — a real
+  // player sees the line go and re-latches. Same grammar as the first latch: intercept the
+  // body's drift line, hold the aim on it, fire inside acquisition range. `fed` exempts the
+  // intentional delivery cut — that line is supposed to stay down.
+  let relatchTick = 0;
+  let fed = null;
+  const relatch = () => {
+    const l = t.load();
+    if (!l || fed || t.latchActive()) return false;
+    steerTo(t.state, interceptPoint(p, l), { arrive: 25 });
+    const dl = dist(p.pos, l.pos);
+    if (dl < 800) aimAt(t.state, l.pos);
+    relatchTick++;
+    if (dl < 360 && relatchTick % 8 === 0) t.input.actions.tetherFire = true;
+    return true;
+  };
+
   // HANDS OFF through the swing: the line couples the pair and the flight assist bleeds it —
   // thrusting or reeling during the swing only pumps it. Drive the moment the pair is coherent.
   // If the body's own drift ever lines the mouth up on its own, that's the free delivery —
   // cut and let it go.
-  let fed = null;
   t.until(() => {
     const l = t.load();
     if (!l || fed) return true;
@@ -339,6 +354,7 @@ test('(a) a player recovers the assembly and feeds it through the Concord fork, 
   }, () => {
     const l = t.load();
     if (!l || fed) return;
+    if (relatch()) return;
     const fw = l.vel.x * mouth.nx + l.vel.z * mouth.nz;
     const sw = -l.vel.x * mouth.nz + l.vel.z * mouth.nx;
     const dep = pLocal(l.pos), lat0 = lLocal(l.pos);
@@ -351,12 +367,15 @@ test('(a) a player recovers the assembly and feeds it through the Concord fork, 
 
   // THE FEED. Velocity-want steering onto the mouth axis — the pair carries downlane momentum
   // that has to be MORPHED, not stopped, so the nose goes on the velocity error (desired minus
-  // current) and the speed budget shrinks with remaining depth. The aim point leads the TRAILER
-  // (a straight tow preserves the load's lateral offset), and inside ~170 WU the run is a
-  // committed drive-through: parking at the mouth leaves the body hovering outside the gate.
+  // current) and the speed budget shrinks with remaining depth. The aim point leads the TRAILER:
+  // a straight tow preserves the load's lateral offset, so the tug mirrors that offset across
+  // the centre-line (EMA-smoothed — steering at the swing's own frequency only pumps it).
+  // Chasing the raw load position overcorrects and keeps the mouth forever out of reach.
+  let towOffset = 0;
   t.until(() => fed || committed || !t.load(), () => {
     const l = t.load();
     if (!l || fed) return;
+    if (relatch()) return;
     const pDep = pLocal(p.pos);
     const dpl = dist(l.pos, p.pos) || 1;
     const lvx = (l.pos.x - p.pos.x) / dpl, lvz = (l.pos.z - p.pos.z) / dpl;
@@ -371,7 +390,8 @@ test('(a) a player recovers the assembly and feeds it through the Concord fork, 
       const lDepNow = pLocal(l.pos), lLatNow = lLocal(l.pos);
       const near = lDepNow > -170 && Math.abs(lLatNow) < 45;
       const aimDepth = near ? pDep + Math.max(lead, 110) : Math.min(pDep + lead, -60);
-      const aimLat = Math.max(-80, Math.min(80, -lLatNow * 1.3));
+      towOffset += ((lLatNow - lLocal(p.pos)) - towOffset) * 0.02;
+      const aimLat = Math.max(-80, Math.min(80, -towOffset));
       const aimPt = {
         x: mouth.x + mouth.nx * aimDepth + latx * aimLat,
         z: mouth.z + mouth.nz * aimDepth + latz * aimLat,
@@ -471,13 +491,22 @@ test('(b) the same recovery dragged into the Quiet fence pays the illicit terms,
     if (dl < 360 && latchTick % 8 === 0) t.input.actions.tetherFire = true;
   }, 20000, 'a live latch on the freed assembly');
 
-  // Hands off through the swing — same settle as the lawful run.
+  // Hands off through the swing — same settle as the lawful run — except the specialist still
+  // takes the line when it can: a cut here is not a toss, chase the capsule and re-latch.
   t.until(() => {
     const l = t.load();
     if (!l) return true;
     const rel = Math.hypot(l.vel.x - p.vel.x, l.vel.z - p.vel.z);
     return rel < 12 && speedOf(l) < 45 && speedOf(p) < 45;
-  }, () => {}, 12000, 'the pair to settle coherent on the line');
+  }, () => {
+    const l = t.load();
+    if (!l || t.latchActive()) return;
+    steerTo(t.state, interceptPoint(p, l), { arrive: 25 });
+    const dl = dist(p.pos, l.pos);
+    if (dl < 800) aimAt(t.state, l.pos);
+    latchTick++;
+    if (dl < 360 && latchTick % 8 === 0) t.input.actions.tetherFire = true;
+  }, 12000, 'the pair to settle coherent on the line');
   assert.ok(t.load(), 'the assembly is on the line');
 
   // The Quiet fence is a CONTACT receiver that only collides with payloads: custody moves on the
@@ -523,7 +552,21 @@ test('(b) the same recovery dragged into the Quiet fence pays the illicit terms,
       }
     }
     if (dlh < 130) nearHead = true; else if (dlh > 240) nearHead = false;
-    if (!t.latchActive() && !nearHead) return; // cut already gone — hands off, the toss does the rest
+    if (!t.latchActive() && !nearHead) {
+      // A cut this far out is the specialist's, not a delivery — every intentional release in
+      // this run happens inside the near-head endgame. Unless the loose capsule is already
+      // sailing into the head, a player chases it down and re-latches.
+      if (lv > 5) {
+        const tStar = (rv.x * l.vel.x + rv.z * l.vel.z) / (lv * lv);
+        if (tStar > 0 && Math.hypot(rv.x - l.vel.x * tStar, rv.z - l.vel.z * tStar) < 24) return;
+      }
+      stage = null;
+      runIn = false;
+      steerTo(t.state, interceptPoint(p, l), { arrive: 25 });
+      if (dpl < 800) aimAt(t.state, l.pos);
+      if (dpl < 360 && haulTick % 8 === 0) t.input.actions.tetherFire = true;
+      return;
+    }
     const pv = speedOf(p);
     let aimPt;
     let vDes;
@@ -563,6 +606,17 @@ test('(b) the same recovery dragged into the Quiet fence pays the illicit terms,
         }
       }
       if (aAlong < 30) { // at the collider without a window — swerve before pinning
+        // ... unless the trailer's own track is already aimed through: cut it loose at
+        // the last moment and let the toss finish while the hull peels clear.
+        if (lv > 5 && dlh < 120) {
+          const tStar = (rv.x * l.vel.x + rv.z * l.vel.z) / (lv * lv);
+          if (tStar > 0 && Math.hypot(rv.x - l.vel.x * tStar, rv.z - l.vel.z * tStar) < 16) {
+            t.cutTether();
+            swerveUntil = haulTick + 90;
+            runIn = false;
+            return;
+          }
+        }
         swerveUntil = haulTick + 60;
         runIn = false;
       }
@@ -653,13 +707,19 @@ test('(b) the same recovery dragged into the Quiet fence pays the illicit terms,
               return;
             }
           } else {
-            // Otherwise hold the tug OUTSIDE the trailer's orbit radius: the capsule's
-            // velocity is always tangent to its circle, and a tangent can only aim at
-            // the receiver when the receiver sits outside that circle (dd > dpl).
-            const ring = Math.max(70, Math.min(170, dpl + 25));
-            const wx = (p.pos.x - h.pos.x) / dd, wz = (p.pos.z - h.pos.z) / dd;
-            aimPt = { x: h.pos.x + wx * ring, z: h.pos.z + wz * ring };
-            vDes = Math.min(26, Math.max(8, (ring - dd) * 0.4 + 6));
+            // Nothing in this geometry presses: haul back out to the staged approach and
+            // run the drag-through again — orbiting the head only ever arrives tangentially.
+            if (stage) {
+              const dStage = dist(p.pos, stage);
+              if (dStage < 35 && pv < 12) runIn = true;
+              aimPt = stage;
+              vDes = Math.min(26, Math.max(6, (dStage - 15) * 0.22));
+            } else {
+              const wx = (p.pos.x - h.pos.x) / dd, wz = (p.pos.z - h.pos.z) / dd;
+              aimPt = { x: h.pos.x + wx * 480, z: h.pos.z + wz * 480 };
+              vDes = 24;
+            }
+            if (tang < 8 && dpl > 70) t.input.actions.reelDelta = -1;
           }
         }
       } else {

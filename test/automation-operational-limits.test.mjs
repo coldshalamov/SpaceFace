@@ -9,10 +9,12 @@ import {
   OPERATING_STATE,
   applyFuelShortage,
   boundDemandQty,
+  cycleSnapshot,
   describeProgrammedMinerOperation,
   evaluateProgrammedMiner,
   migrateDroneOperation,
   operatingCostPerMin,
+  recordGrossUnits,
 } from '../src/systems/automationOperations.js';
 import { addToShipment, shipmentQty } from '../src/systems/cargoCustody.js';
 import { automationNextAction } from '../src/ui/screens/automationPanel.js';
@@ -316,6 +318,112 @@ test('PQ-177.07 migrate keeps a fuel-empty machine from an old save', () => {
   assert.equal(group.status, OPERATING_STATE.STRANDED);
   assert.equal(group.operation.operatingState, OPERATING_STATE.STRANDED);
   assert.ok(group.operation);
+});
+
+test('SF-115 a closed cycle reconciles mined inputs, service costs and the sale receipt', () => {
+  const { inst, econ } = bootAutomation();
+  inst._capBudget = 0;
+  const group = programmedGroup();
+  const def = { mineRate: 1, fuelRate: 1, bufferCap: 40, upkeepPerMin: 6 };
+  recordGrossUnits(group, 5);
+  addToShipment(group, 'cmdty_ore_iron', 5, 40);
+  group.operation.operatingCostPerMin = 6; // as stamped by _syncProgrammedOperation each tick
+  inst._burnOperatingFuel(group, def, 60);
+  const expected = econ.quoteAutomationIntake('station_helios', 'cmdty_ore_iron', 5);
+  const result = inst._programSellCargo(group, 'station_helios');
+  assert.equal(result.ok, true);
+  const cycle = group.operation.lastCycle;
+  assert.ok(cycle, 'a realised sale closes the accounting cycle');
+  assert.equal(cycle.minedUnits, 5);
+  assert.equal(cycle.quantity, 5);
+  assert.equal(cycle.credited, expected.total);
+  assert.equal(cycle.fuelUsed, 60, 'fuel burned while running is booked');
+  assert.equal(cycle.upkeepAccrued, 6, 'a minute of running upkeep is booked');
+  assert.equal(cycle.heldUnits, 0);
+  assert.equal(cycle.netCr, cycle.credited - cycle.upkeepAccrued);
+  assert.equal(
+    cycle.carryInUnits + cycle.minedUnits,
+    cycle.quantity + cycle.withdrawnUnits + cycle.heldUnits,
+    'the breakdown sums to real inventory movements',
+  );
+  const readout = describeProgrammedMinerOperation(group, def);
+  assert.match(readout.cycleText, /net -?\d+ cr/i);
+  assert.match(readout.accessibleSummary, /last run/i);
+});
+
+test('SF-115 a demand-bound sale keeps the refused stock as held inventory, not income', () => {
+  const { inst, econ } = bootAutomation();
+  inst._capBudget = 0;
+  const group = programmedGroup();
+  const def = { mineRate: 1, fuelRate: 1, bufferCap: 40, upkeepPerMin: 6 };
+  econ.bus.emit('economy:applyTradePressure', {
+    stationId: 'station_helios', good: 'cmdty_ore_iron',
+    vol: econ.quoteAutomationIntake('station_helios', 'cmdty_ore_iron', 100000).fillable - 3,
+  });
+  recordGrossUnits(group, 8);
+  addToShipment(group, 'cmdty_ore_iron', 8, 40);
+  group.operation.operatingCostPerMin = 6;
+  inst._burnOperatingFuel(group, def, 30);
+  const result = inst._programSellCargo(group, 'station_helios');
+  assert.equal(result.ok, true);
+  assert.equal(result.receipt.quantity, 3);
+  const cycle = group.operation.lastCycle;
+  assert.equal(cycle.heldUnits, 5, 'the depot refused 5u — they stay aboard as held stock');
+  assert.equal(cycle.credited, result.receipt.credited, 'income is only the receipt');
+  assert.equal(group.operation.cycle.carryInUnits, 5,
+    'the refused load carries into the next cycle so it is never counted twice');
+});
+
+test('SF-115 a stalled depot books nothing: stock and inputs stay unresolved', () => {
+  const { inst, econ } = bootAutomation();
+  const group = programmedGroup();
+  const def = { mineRate: 1, fuelRate: 1, bufferCap: 40, upkeepPerMin: 6 };
+  econ.bus.emit('economy:applyTradePressure', {
+    stationId: 'station_helios', good: 'cmdty_ore_iron',
+    vol: econ.quoteAutomationIntake('station_helios', 'cmdty_ore_iron', 100000).fillable,
+  });
+  recordGrossUnits(group, 8);
+  addToShipment(group, 'cmdty_ore_iron', 8, 40);
+  group.operation.operatingCostPerMin = 6;
+  inst._burnOperatingFuel(group, def, 30);
+  const result = inst._programSellCargo(group, 'station_helios');
+  assert.equal(result.ok, false);
+  assert.ok(group.operation.lastCycle == null, 'no sale, no closed cycle, no booked income');
+  const open = cycleSnapshot(group, 8);
+  assert.equal(open.minedUnits, 8);
+  assert.equal(open.credited, 0);
+  assert.equal(open.heldUnits, 8, 'everything mined is still held — unresolved, not income');
+});
+
+test('SF-115 a destroyed machine leaves a reconciled ledger in the loss log', () => {
+  const { state, inst } = bootAutomation();
+  const group = programmedGroup();
+  const def = { mineRate: 1, fuelRate: 1, bufferCap: 40, upkeepPerMin: 6 };
+  recordGrossUnits(group, 6);
+  addToShipment(group, 'cmdty_ore_iron', 6, 40);
+  group.operation.operatingCostPerMin = 6;
+  inst._burnOperatingFuel(group, def, 12);
+  state.automation.drones.push(group);
+  inst._loseAsset('drone', group, 240, 'sector_helios_prime');
+  const log = state.automation.meta.lostAssetsLog;
+  const entry = log[log.length - 1];
+  assert.ok(entry.breakdown, 'the loss entry carries the closed ledger');
+  assert.equal(entry.breakdown.minedUnits, 6);
+  assert.equal(entry.breakdown.withdrawnUnits, 6, 'the lost shipment is named, not silently zero');
+  assert.equal(entry.breakdown.soldUnits, 0);
+  assert.equal(entry.breakdown.credited, 0);
+});
+
+test('SF-115 a recalled machine books its banked stock as withdrawn, not sold', () => {
+  const { state, inst } = bootAutomation();
+  const group = programmedGroup();
+  recordGrossUnits(group, 4);
+  addToShipment(group, 'cmdty_ore_iron', 4, 40);
+  state.automation.drones.push(group);
+  inst.recallDrone('drone-1');
+  assert.equal(group.operation.cycle.withdrawnUnits, 4,
+    'stock banked at recall price leaves the ledger as a withdrawal');
+  assert.equal(group.operation.cycle.soldUnits, 0);
 });
 
 test('PQ-177.07 the operations board asks to refuel a waiting drone', () => {

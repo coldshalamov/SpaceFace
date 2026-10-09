@@ -14,6 +14,10 @@ const travelVariants=Object.freeze({
 });
 export const isComposedTravelCue=id=>Object.hasOwn(travelVariants,id);
 const miningVariants=Object.freeze({
+  // A short cut settles onto the rock's surface at beam admission. Survey is a
+  // spatial return, this is a local groove, and yield deposits material: three
+  // causal constructions on the shared geometry owner, without sprite overlays.
+  'mining.extraction.locked':{...recipe('grind','deposition',0xe7b779,.36),surfaceWork:true},
   'mining.fracture.anticipation':{...recipe('grind','deposition',0xe7b779,.8),surfaceWork:true},
   'mining.fracture.released':{...recipe('harvest','deposition',0xd5c8a6,.95),surfaceWork:true},
   'mining.rich_core.exposed':{...recipe('repair','deposition',0xbda3ff,1.05),surfaceWork:true},
@@ -21,14 +25,33 @@ const miningVariants=Object.freeze({
   'mining.chunk.tether_required':{...recipe('catch','capture',0xe6ba7c,.95),surfaceWork:true,surfaceCapture:true},
   'mining.yield.collected':{...recipe('harvest','deposition',0xd4dcad,.78),surfaceWork:true},
 });
-export const isComposedMiningCue=id=>Object.hasOwn(miningVariants,id);
+export const isComposedMiningCue=id=>typeof id==='string'&&id.startsWith('mining.')&&Object.hasOwn(variants,id);
+// FB-142 — the planet verbs have a shape. The collector mouth opening (skim intake), the
+// settled yield depositing into the hold, a refused deposit priming on the closed hold (the
+// mining.cargo.full register — a capacity warning, never a success), the plunge ring advancing
+// a stage, and the recovery burn shoving back out of the well. planetRuntime emits one cue
+// beside each planet:* event; the receipt anchors on the working ship, not the planet centre.
+const planetVariants=Object.freeze({
+  'planet.skim.intake':recipe('catch','capture',0x9fd8e8,.7),
+  'planet.harvest.deposit':recipe('harvest','deposition',0xc9e6a0,.78),
+  'planet.harvest.denied':recipe('prime','capture',0xd9a970,.68),
+  'planet.plunge.stage':recipe('ignition','compression',0xff8a5c,.8),
+  'planet.recovery.burn':recipe('ignition','compression',0xffb070,.7),
+});
+export const isComposedPlanetCue=id=>Object.hasOwn(planetVariants,id);
 const variants=Object.freeze({
-  ...travelVariants,...miningVariants,
+  ...travelVariants,...miningVariants,...planetVariants,
   'mining.survey.pulse':recipe('survey','pressure',0x78bdcc,1.05),
   'mining.survey.resolved':recipe('cool','deposition',0x96c2c6,.62),
   'mining.survey.classified':recipe('command','induction',0x94dcd1,.82),
   'mining.survey.tracked':recipe('catch','capture',0x82c5dc,.68),
   'mining.survey.investigated':recipe('cool','deposition',0xbbd3bb,.90),
+  // FB-131 — the scanner speaks: a ghost that slips past range leaves a fading mark at its
+  // last-known position, a counted bearing ticks at the player's own instrument, and a
+  // revealed wreck/cache blooms where the reveal happened. No new layer, no anomaly position.
+  'mining.survey.escaped':recipe('cool','deposition',0x9fb4c4,.85),
+  'mining.survey.bearing':recipe('survey','induction',0x9fd4e8,.55),
+  'mining.survey.revealed':recipe('command','capture',0xaedecf,.95),
   'mining.seam.reward':recipe('harvest','deposition',0xeac081,.88),
   'mining.drill.seismic_pulse':recipe('survey','pressure',0xb5b58f,.74),
   'mining.drill.contact':{...recipe('grind','deposition',0xcfaa78,.40),surfaceWork:true},
@@ -57,9 +80,14 @@ export const WORLD_CUE_ACTION_RECIPE=Object.freeze({
 });
 
 const SOURCE_CUES=new Set(['mining.survey.pulse','mining.survey.resolved',
+  // FB-131: a bearing is an instrument tick at the player's hull — never an anchor on the
+  // (still unrevealed) anomaly the bearing points toward.
+  'mining.survey.bearing',
   'mining.heat.overheated','mining.vent.ready','mining.cargo.full']);
 const HARDWARE_CUES=new Set(['mining.heat.overheated','mining.vent.ready','mining.cargo.full']);
-const DETACHED_CUES=new Set(['mining.survey.pulse','mining.drill.seismic_pulse','mining.drill.break']);
+const DETACHED_CUES=new Set(['mining.survey.pulse','mining.drill.seismic_pulse','mining.drill.break',
+  // The escaped ghost is already gone; its mark is a memory at last-known position, not a track.
+  'mining.survey.escaped']);
 const TRACKED_BODY_CUES=new Set(['salvage.cooker.tracked','salvage.core.tracked']);
 const point=p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.z);
 const body=(state,id)=>id==null?null:state.entities?.get?.(id);
@@ -141,4 +169,77 @@ export function resolveWorldCueReceipt(payload,state={}){
   return {kind,targetId,sourceId,pos:copy(anchor),direction,bodySurface:!!atBodyCenter,
     sourcePos:point(source?.pos)?copy(source.pos):undefined,
     attachToTarget:!!liveTarget&&!DETACHED_CUES.has(kind)};
+}
+
+const seamKey = (payload) => `${payload && payload.fieldId || ''}:${payload && payload.activityObjectSlotId || ''}`;
+
+function seamRock(state, payload) {
+  const entities = state && state.entities;
+  if (!entities || typeof entities.values !== 'function') return null;
+  const fieldId = payload && payload.fieldId;
+  const slot = payload && payload.activityObjectSlotId;
+  const asteroidId = payload && payload.asteroidId;
+  let fallback = null;
+  for (const entity of entities.values()) {
+    if (!entity || entity.alive === false || entity.type !== 'asteroid') continue;
+    if (asteroidId != null && entity.id === asteroidId) return entity;
+    const data = entity.data || {};
+    if (fieldId && slot && data.fieldId === fieldId && data.activityObjectSlotId === slot) return entity;
+    if (fieldId && data.fieldId === fieldId && data.activityObjectSlotId) fallback = fallback || entity;
+  }
+  return fallback;
+}
+
+/** One glint on the open seam rock. A second open for the same seam returns that record. */
+export function admitRichSeamGlint(state, payload = {}) {
+  if (!state) return null;
+  const presentation = state.presentation && typeof state.presentation === 'object'
+    ? state.presentation
+    : (state.presentation = {});
+  const key = seamKey(payload);
+  const prev = presentation.richSeamGlint;
+  if (prev && prev.ended !== true && prev.key === key) return prev;
+  const rock = seamRock(state, payload);
+  const record = {
+    id: 'rich-seam-glint',
+    kind: 'glint',
+    key,
+    targetId: rock ? rock.id : null,
+    fieldId: payload.fieldId || null,
+    activityObjectSlotId: payload.activityObjectSlotId || null,
+    pos: rock && rock.pos && Number.isFinite(rock.pos.x) && Number.isFinite(rock.pos.z)
+      ? { x: rock.pos.x, y: Number.isFinite(rock.pos.y) ? rock.pos.y : 0, z: rock.pos.z }
+      : null,
+    ended: false,
+    mapMarker: false,
+  };
+  presentation.richSeamGlint = record;
+  if (rock) {
+    if (!rock.data) rock.data = {};
+    rock.data.richSeamGlint = record.id;
+  }
+  return record;
+}
+
+/** field:richSeamWorked / field:richSeamMissed ends the one live glint. */
+export function endRichSeamGlint(state, payload = {}) {
+  const presentation = state && state.presentation;
+  const rec = presentation && presentation.richSeamGlint;
+  if (!rec || rec.ended === true) return null;
+  // Only ONE glint is ever live, and several seams may hold open records — a resolution
+  // receipt that names a different seam must not kill this one. A payload carrying no
+  // seam identity (legacy emits) keeps the old unconditional end.
+  const key = seamKey(payload);
+  if (key !== ':' && rec.key && key !== rec.key) return null;
+  rec.ended = true;
+  const rock = seamRock(state, { ...payload, asteroidId: rec.targetId })
+    || (rec.targetId != null && state.entities && state.entities.get && state.entities.get(rec.targetId));
+  if (rock && rock.data && rock.data.richSeamGlint === rec.id) delete rock.data.richSeamGlint;
+  presentation.richSeamGlint = null;
+  return rec;
+}
+
+export function richSeamGlintRecord(state) {
+  const rec = state && state.presentation && state.presentation.richSeamGlint;
+  return rec && rec.ended !== true ? rec : null;
 }

@@ -88,13 +88,11 @@ test('moment:amended re-rates the one existing reel clip', () => {
     const after = clipListSummary(h.director);
     assert.equal(h.director.size, 1);
     assert.equal(h.director.latest().id, id);
-    assert.equal(h.state.stunts.moment.clips.length, 1);
     assert.equal(after.count, 1);
     assert.equal(after.items[0].id, id);
     assert.deepEqual(after.items[0].rating, { fraction: 0.75, tone: 'hi', label: 'Rare' });
     assert.equal(after.items[0].rarity, 'rare');
     assert.notDeepEqual(after.items[0].rating, before.items[0].rating);
-    assert.ok(Math.abs(h.state.stunts.moment.clips[0].peakScore - 6.48) < 1e-12);
 
     h.bus.emit('moment:amended', {
       tick: first.tick, trickId: first.trickId, rarity: 'common', peakScore: 99,

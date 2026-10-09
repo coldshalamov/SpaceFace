@@ -57,16 +57,16 @@
   --k-scrim: rgb(7 9 15 / 0);
 
   /* the scale (px at 1920; 12 px floor) */
-  --k-fs-fine:  max(12px, calc(12px  * var(--k-s)));
-  --k-fs-data:  max(12px, calc(14px  * var(--k-s)));
-  --k-fs-body:  max(12px, calc(16px  * var(--k-s)));
-  --k-fs-emph:  calc(20px  * var(--k-s));
-  --k-fs-sub:   calc(28px  * var(--k-s));
-  --k-fs-menu:  calc(40px  * var(--k-s));
-  --k-fs-num:   calc(56px  * var(--k-s));
-  --k-fs-title: calc(80px  * var(--k-s));
-  --k-fs-hero:  calc(112px * var(--k-s));
-  --k-fs-name:  calc(160px * var(--k-s));
+  --k-fs-fine:  max(12px, calc((max(12px, calc(12px  * var(--k-s)))) * var(--sf-text-scale, 1)));
+  --k-fs-data:  max(12px, calc((max(12px, calc(14px  * var(--k-s)))) * var(--sf-text-scale, 1)));
+  --k-fs-body:  max(12px, calc((max(12px, calc(16px  * var(--k-s)))) * var(--sf-text-scale, 1)));
+  --k-fs-emph:  max(12px, calc((calc(20px  * var(--k-s))) * var(--sf-text-scale, 1)));
+  --k-fs-sub:   max(12px, calc((calc(28px  * var(--k-s))) * var(--sf-text-scale, 1)));
+  --k-fs-menu:  max(12px, calc((calc(40px  * var(--k-s))) * var(--sf-text-scale, 1)));
+  --k-fs-num:   max(12px, calc((calc(56px  * var(--k-s))) * var(--sf-text-scale, 1)));
+  --k-fs-title: max(12px, calc((calc(80px  * var(--k-s))) * var(--sf-text-scale, 1)));
+  --k-fs-hero:  max(12px, calc((calc(112px * var(--k-s))) * var(--sf-text-scale, 1)));
+  --k-fs-name:  max(12px, calc((calc(160px * var(--k-s))) * var(--sf-text-scale, 1)));
 
   /* layout */
   --k-margin: 5vw;                         /* 96 px at 1920 */

@@ -42,9 +42,12 @@ test('the wiring voids fairly on third-party kills and never respawns the mark',
     /if \(!byPlayer\) \{ this\._voidLostBountyTargets\(p\); return; \}/,
     'non-player kills take the void path, not the ignore path',
   );
+  // FB-068 (c6b41e6a7) widened the honest void to ANY objective killed by a non-player actor —
+  // 'failed_external' joins 'target_lost'. The pin tracks the whole expression so the next
+  // widening still trips here for adjudication.
   assert.match(
     source,
-    /const voided = reason === 'target_lost';/,
+    /const voided = reason === 'target_lost' \|\| reason === 'failed_external';/,
     'the fail path knows a void from a failure',
   );
   assert.match(

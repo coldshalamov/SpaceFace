@@ -35,7 +35,10 @@ function makeWorld(seed = 47) {
     pos: { x: 800, z: 0 }, vel: { x: 0, z: 0 }, rot: Math.PI, radius: 8, flags: {},
     data: {
       ai: {},
-      weapons: [{ defId: 'wpn_missile_rack_m' }],
+      // The committed lock-reach gate (weapons._tickLock) now refuses to grow a solution on a
+      // target outside the rack's authored 280 wu reach; the hunter sits 800 away for the
+      // sensor/pulse choreography, so this instance authors the reach the choreography needs.
+      weapons: [{ defId: 'wpn_missile_rack_m', range: 1600 }],
       combat: { targetId: 1 },
     },
   };

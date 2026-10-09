@@ -1,0 +1,46 @@
+{
+  "id": "SF20-01-clearance-adapter",
+  "status": "local-review-only-unregistered",
+  "upstreamBase": "dc142c0108ce7663bc03574349623c3fda1033fa",
+  "compositionCommitAtStart": "21c4bbb6d01ff130ddbf53361ef761f3af4bc2fd",
+  "syntheticLocalCommit": "46739bf0264a340a258eb91a80710bd1d5ae6027",
+  "files": [
+    {
+      "path": "src/core/physics.js",
+      "preimageSha256": "58612fab2c1ccd6de132cf4c8bf4392db9bcaeca77d5f8543426738ad13383d7",
+      "postimageSha256": "7d0ed36c8b09155fdbfa332c0d00fb85d6286390b1f8dafc7bf24b73bc2621ea",
+      "bytes": 87824
+    },
+    {
+      "path": "src/core/dockRange.js",
+      "preimageSha256": null,
+      "postimageSha256": "62045dc6fe72da7668f835f682bf17b3ef64504d73bf6c47e00b7c8bbcf279fc",
+      "bytes": 2892
+    },
+    {
+      "path": "src/core/dockAccess.js",
+      "preimageSha256": null,
+      "postimageSha256": "1bb2b8a09c8dc53c076ec3dbb83c2234191e303fdfe7e6b26aceb198d838cfea",
+      "bytes": 3123
+    },
+    {
+      "path": "src/ui/dockDenyBanner.js",
+      "preimageSha256": "ebc200a48d55f1d783a52fe13fbc9ce43957dc2058fa5fe2b2e5c503a2bb422d",
+      "postimageSha256": "1e1e1388a08e8cf00b64bae45e838f750a090bcd3738c8e8e063230aaab0faaf",
+      "bytes": 6526
+    },
+    {
+      "path": "src/systems/latchNineService.js",
+      "preimageSha256": null,
+      "postimageSha256": "182149ef6e428ed9a5eb82846b41fba76e422cfdaf3ea7dafa5a0ec54aeea434",
+      "bytes": 8832
+    },
+    {
+      "path": "test/latch-nine-service.test.mjs",
+      "preimageSha256": null,
+      "postimageSha256": "e406112fb0b3856559280c16341fc2a1d1dd1829140a4ccc107707376563f7ba",
+      "bytes": 13841
+    }
+  ],
+  "patchSha256": "5b30771fbd1e82cf6c0298d8f74f1a02fc3aa3fefe5470d2529b31ff35601ee7"
+}

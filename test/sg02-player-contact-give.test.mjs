@@ -297,6 +297,73 @@ test('one contact episode gets one budget: the event bridge is the measured flic
     `${VISION}: a re-contact inside 1.5 s continues the SAME event and draws on its remaining budget`);
 });
 
+test('ordinary knock budget does not rewrite a live rope contact response', async () => {
+  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });
+  try {
+    const player = makeCraft(1, { isPlayer: true, x: 0, z: 0, vx: 20 });
+    player.combatSpeed = 100;
+    const anchor = makeRock(20, { x: -200, z: 0 });
+    owner.syncFromEntities([player, anchor]);
+    assert.ok(owner.createAttachment({ attachmentId: 'live-rope', defId: 'tether_standard',
+      ownerId: player.id, targetId: anchor.id, restLength: 220,
+      sourceWorld: player.pos, targetWorld: anchor.pos }));
+    owner.step(DT);
+    owner.drainContactImpacts();
+    const rec = owner.records.get(player.id);
+    owner._stepContactReceipts = [{ aId: player.id, bId: anchor.id, preSolveClosingSpeed: 0 }];
+    const response = () => {
+      rec.body.setLinvel({ x: rec.expected.vx + 20, y: 0, z: rec.expected.vz }, true);
+      rec.postStep.vDirty = true;
+      return owner._applyPlayerStructuralGive(rec);
+    };
+    assert.equal(response(), 20, 'the rope keeps the solver response below the numerical safety bound');
+    owner.cutAttachment({ attachmentId: 'live-rope' });
+    owner._refreshSleepPolicy();
+    rec._playerContactCumulativeDeltaV = 0;
+    assert.equal(response(), 10, 'uncoupled ordinary flight still receives the 10% cruise budget');
+  } finally {
+    owner.dispose();
+  }
+});
+
+test('a receiptless grind on a touching hull is contact work; uncoupled delta-V stays preserved', async () => {
+  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });
+  try {
+    const player = makeCraft(1, { isPlayer: true, x: 0, z: 0, vx: 20 });
+    player.combatSpeed = 100;
+    owner.syncFromEntities([player]);
+    owner.step(DT);
+    owner.drainContactImpacts();
+    const rec = owner.records.get(player.id);
+    // D142: contact-force receipts are gated by SG02_CONTACT_FORCE_EVENT_THRESHOLD_N per pair,
+    // so a sustained light grind — or a scrape spread across the many primitives of a compound
+    // collider — does real contact work without ever producing a receipt. "No receipt" is only
+    // solver-preserved momentum when the hull is genuinely touching nothing.
+    owner._stepContactReceipts = [];
+    const response = () => {
+      rec.body.setLinvel({ x: rec.expected.vx + 20, y: 0, z: rec.expected.vz }, true);
+      rec.postStep.vDirty = true;
+      return owner._applyPlayerStructuralGive(rec);
+    };
+    const nativeContactPairsWith = owner.world.contactPairsWith;
+    try {
+      owner.world.contactPairsWith = (collider, cb) => cb({ handle: -1 });
+      rec._playerContactCumulativeDeltaV = 0;
+      assert.equal(response(), 10,
+        'a touching hull with no receipts is ordinary contact and draws the 10% cruise budget');
+      owner.world.contactPairsWith = () => {};
+      rec._playerContactCumulativeDeltaV = 0;
+      assert.equal(response(), 20,
+        'receiptless delta-V with nothing touching is preserved solver momentum, not contact work');
+    } finally {
+      owner.world.contactPairsWith = nativeContactPairsWith;
+    }
+    owner._stepContactReceipts = null;
+  } finally {
+    owner.dispose();
+  }
+});
+
 test('physics adapter forwards appliedPlayerDeltaV without aliasing raw playerDeltaV', () => {
   const bus = createBus();
   const payloads = [];

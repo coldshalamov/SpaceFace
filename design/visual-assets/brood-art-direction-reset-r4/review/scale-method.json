@@ -1,0 +1,11 @@
+{
+  "sourceGlbSha256": "db47472d89da31f3126445add35bc023b510b0fbaf74f2cd4495d8817166232a",
+  "method": "Crop cold-import RGBA render to alpha > 8 bounds, Lanczos-scale silhouette to explicit width; composite on neutral RGB 47/55/61. No painted geometry.",
+  "widths": [
+    450,
+    170,
+    96
+  ],
+  "actualGameCamera": false,
+  "gameplaySizeClaim": false
+}

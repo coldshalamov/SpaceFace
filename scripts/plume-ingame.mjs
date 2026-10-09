@@ -16,7 +16,7 @@ async function waitReachable(url) { for (let i = 0; i < 120; i++) { try { const 
 let serverChild, browser;
 try {
   const port = await findFreePort(8291);
-  serverChild = spawn(process.execPath, ['server.js', String(port)], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+  serverChild = spawn(process.execPath, ['server.js', String(port)], {env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },  cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
   serverChild.stdout.on('data', () => {}); serverChild.stderr.on('data', () => {});
   await waitReachable(`http://127.0.0.1:${port}/`);
   const chrome = [process.env.CHROME_PATH, 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'].filter(Boolean).find((c) => { try { return existsSync(c); } catch { return false; } });

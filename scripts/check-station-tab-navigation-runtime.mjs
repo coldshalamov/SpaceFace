@@ -14,14 +14,21 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
-import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
+import { installCspSafePlaywrightPolling, installFrameKeepalive } from './lib/playwrightCspPolling.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const START_TIMEOUT_MS = 90000;
+// This check asserts the undock autosave mirror reaches the shared player store, so it is
+// store-dependent: the store is mounted, but on an isolated temp dir (D178) — never the
+// machine's real player save drawer.
+const PLAYER_STORE_DIR = mkdtempSync(join(tmpdir(), 'sf-station-tab-'));
 // Headless software GL stretches the pre-menu warmup (SF reports mode 'menu' early; the menu screen
 // element itself measured ~9s on the reference machine, past the old 15s under load). Same
 // environment rationale as START_TIMEOUT_MS: budget the environment, assert the behavior.
@@ -44,6 +51,9 @@ try {
   // the established fix (see check-electron-new-game-launch.mjs); it also covers the post-dock
   // waits, since the docked station idles between interactions the same way.
   installCspSafePlaywrightPolling(page);
+  // The docked station is event-rendered and produces no frames while idle; a pinned 1px
+  // compositor animation keeps native selector waits/actionability polling alive (D33 pattern).
+  await installFrameKeepalive(page);
   issues = collectPageIssues(page, { includeWarnings: true });
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
@@ -428,6 +438,7 @@ try {
   // assertion above still fails the check if a PUT aborts or errors.
   const isHandledStoreProbeAbort = (issue) =>
     issue.type === 'error'
+    && issue.method === 'GET'
     && String(issue.text).startsWith('Request failed')
     && String(issue.text).includes('__spaceface_player_store')
     && String(issue.text).includes('net::ERR_ABORTED');
@@ -441,6 +452,7 @@ try {
 } finally {
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
+  try { rmSync(PLAYER_STORE_DIR, { recursive: true, force: true }); } catch (_) {}
 }
 
 // ---- helpers ----
@@ -516,7 +528,10 @@ async function startFreshServer() {
 }
 
 function spawnProbeServer(port) {
-  const child = spawn(process.execPath, ['server.js', String(port)], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+  const child = spawn(process.execPath, ['server.js', String(port)], {
+    cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true,
+    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: PLAYER_STORE_DIR },
+  });
   let output = '';
   const capture = (chunk) => { output = (output + String(chunk)).slice(-4000); };
   child.stdout.on('data', capture);

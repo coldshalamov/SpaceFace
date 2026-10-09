@@ -25,6 +25,7 @@ import {
   sectorGlobalOrigin,
 } from '../data/sectorCoordinates.js';
 import { SECTORS } from '../data/sectors.js';
+import { resolveEntitySelection } from '../ui/sim/stableSelection.js';
 
 /** A ballistic path that enters a gate's disc this soon is treated as jump intent. */
 export const PREDICT_GATE_ARM_SECONDS = 30;
@@ -96,9 +97,14 @@ export function predictNextSector(state, options = {}) {
   const entityById = (id) => (entities && typeof entities.get === 'function' ? entities.get(id) : null);
   const autopilot = nav && nav.autopilot;
 
-  // 2. Autopilot actively aimed at a gate entity.
+  // 2. Autopilot actively aimed at a gate entity. The stable stamp is the authority for which
+  //    entity the armed target id meant — a durable selection follows the re-materialized gate
+  //    across sector re-entry (where the bare id would read the despawned slot, or worse its new
+  //    occupant), and a transient one resolves closed on recycle.
   if (autopilot && autopilot.active === true) {
-    const target = entityById(autopilot.targetEntityId);
+    const target = autopilot.stable
+      ? resolveEntitySelection(state, autopilot.stable)
+      : entityById(autopilot.targetEntityId);
     const hit = sectorResult(gateDestination(target), 'autopilot-gate', currentSectorId);
     if (hit) return hit;
     // 3. Waypoint aimed at a sector's gate (set by world._onSetCourse / the map).
@@ -106,7 +112,9 @@ export function predictNextSector(state, options = {}) {
     if (waypoint) {
       const hit = sectorResult(waypoint.targetSectorId, 'waypoint-sector', currentSectorId);
       if (hit) return hit;
-      const waypointGate = entityById(waypoint.targetEntityId);
+      const waypointGate = waypoint.stable
+        ? resolveEntitySelection(state, waypoint.stable)
+        : entityById(waypoint.targetEntityId);
       const gateHit = sectorResult(gateDestination(waypointGate), 'autopilot-gate', currentSectorId);
       if (gateHit) return gateHit;
     }

@@ -91,7 +91,7 @@ export function createRadarOrrery({ shipId = 'ship_kestrel', rangeLabel = '4.0k 
   scope.appendChild(el('span', 'orr-radar__sweep'));
   root.appendChild(scope);
   for (const r of [42, 84]) s.appendChild(ring({ cx: c, cy: c, r, tone: 'faint', width: 1, dash: '2 5' }));
-  s.appendChild(ring({ cx: c, cy: c, r: 126, tone: 'rest', width: 1, bloom: 4 }));
+  s.appendChild(ring({ cx: c, cy: c, r: 126, tone: 'hi', width: 1.5, bloom: 5 }));
   s.appendChild(svg('path', { d: `M ${c} ${c - 126} L ${c} ${c + 126} M ${c - 126} ${c} L ${c + 126} ${c}`, class: 'orr-core orr-faint', 'stroke-width': 1, 'stroke-dasharray': '1 6' }));
   const orbit = orbitRing({ cx: c, cy: c, r: 136, count: 72, major: 6, len: 3, majorLen: 7, tone: 'rest', drift: -2400, inward: false });
   s.appendChild(orbit.el);

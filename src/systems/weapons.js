@@ -8,6 +8,7 @@
 // not ours. We emit ONLY combat:fire (+ combat:beamStop on release). Damage application and
 // projectile:hit/combat:damage are owned by physics + combat.
 import { WEAPONS } from '../data/weapons.js';
+import { mothlightAllowsFire } from '../data/mothlight.js';
 import {
   modelTruthBoltRadius,
   modelTruthFlashOrigin,
@@ -32,6 +33,7 @@ import {
   masslineOwnsGuns,
 } from '../combat/tetherFireControl.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import {
@@ -115,8 +117,24 @@ const CLOAK_SEEKER_RESIDUAL = 0.25;      // fraction of authored turnRate left o
 // Player-facing weapon recharge pacing — cap/heat recover ~15% faster than the baseline authored
 // rates so burst-and-recharge stays tactical without long dead-air waits.
 const WEAPON_RECHARGE_MULT = 1.15;
+
+/** Combat heatDissipation (overheat status is 0.35). A missing multiplier stays full rate. */
+function weaponHeatDissipScale(state, entity) {
+  const book = state && state.combat && state.combat.entities;
+  if (!book || !entity || entity.id == null) return 1;
+  const runtime = book[String(entity.id)];
+  const value = runtime && runtime.multipliers && runtime.multipliers.heatDissipation;
+  return Number.isFinite(value) ? Math.max(0, value) : 1;
+}
 const WEAPON_VENT_S = 2 / WEAPON_RECHARGE_MULT;
 const WEAPON_VENT_DUMP = 1.6 * WEAPON_RECHARGE_MULT;
+
+// SF-2b #6: a continuous beam pays the target's flat armor once per BEAM_ARMOR_PACKET_S, not once
+// per tick. The damage router deducts armorFlat once per packet and a beam emits one packet per
+// tick, so at 60 Hz a 60-dps beam lands 1-damage packets and flat 1 erased nearly all of them (Beam
+// Laser M did 1.9 dps to a Bruiser and could not kill 7 of 16 enemy types in 60 s). 0.25 s = the
+// beam reads to armor like a 4-rps gun: flat 3 still costs it 12 of its 60 dps.
+export const BEAM_ARMOR_PACKET_S = 0.25;
 
 // Enemy mount roles (authored in enemies.js as `occasional`/`defensiveOnly`, preserved by
 // combat.resolveEnemyWeapon). `occasional` opens a deterministic sim-time window — a seeded
@@ -368,23 +386,43 @@ export const weapons = {
         this.bus.emit('weapons:inertialShunt', applied);
       }
     });
-    on('sector:enter', () => {
-      handlePayloadSectorTransition(this.state, this.helpers);
-      clearAllMomentumSinkPlants(this.state);
-      if (this._shuntCooldown) this._shuntCooldown.clear();
-      if (this._opticFamilies) this._opticFamilies.clear();
-      // sector:enter fires after materialization, so cells the durable ledger restored dark
-      // are live entities here — pick their ids up for the rekindle watch.
-      this._opticSpent = collectOpticSpentIds(this.state);
-      // Review fix: a boundary transition can land a fresh version lineage under a
-      // latched membership — drop the quiet latch so the first tick re-evaluates.
-      this._weaponsQuiet = null;
+    on('sector:enter', (p) => {
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the
+      // entity-list walks below otherwise run atomic inside the presented
+      // transition frame's emit tail. The deferred drain steps the legs under
+      // its slice clock in listener order.
+      if (deferSectorEnterMaterialization(this.state, p, () => this._onSectorEnterSteps())) return;
+      this._onSectorEnter();
     });
     this._playerIncomingLock = false;
     this._opticSpent = new Set();
     on('game:new', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); this._weaponsQuiet = null; });
     on('game:started', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); this._weaponsQuiet = null; });
     on('save:loaded', () => { this._playerIncomingLock = false; this._opticSpent = collectOpticSpentIds(this.state); this._weaponsQuiet = null; });
+  },
+
+  _onSectorEnter() {
+    handlePayloadSectorTransition(this.state, this.helpers);
+    clearAllMomentumSinkPlants(this.state);
+    if (this._shuntCooldown) this._shuntCooldown.clear();
+    if (this._opticFamilies) this._opticFamilies.clear();
+    // sector:enter fires after materialization, so cells the durable ledger restored dark
+    // are live entities here — pick their ids up for the rekindle watch.
+    this._opticSpent = collectOpticSpentIds(this.state);
+    // Review fix: a boundary transition can land a fresh version lineage under a
+    // latched membership — drop the quiet latch so the first tick re-evaluates.
+    this._weaponsQuiet = null;
+  },
+
+  *_onSectorEnterSteps() {
+    handlePayloadSectorTransition(this.state, this.helpers);
+    yield;
+    clearAllMomentumSinkPlants(this.state);
+    yield;
+    if (this._shuntCooldown) this._shuntCooldown.clear();
+    if (this._opticFamilies) this._opticFamilies.clear();
+    this._opticSpent = collectOpticSpentIds(this.state);
+    this._weaponsQuiet = null;
   },
 
   update(dt, state) {
@@ -505,6 +543,7 @@ export const weapons = {
           if (autoTarget && autoTarget.alive && autoTarget.pos) forcedTarget = autoTarget;
         }
       }
+      if (!(state.input && state.input.fire)) this._releasePlayerOrdnanceNotices(player);
       const aimAngle = tetherGate
         ? tetherGate.angle
         : (Number.isFinite(state.input.aimAngle) ? state.input.aimAngle : player.rot);
@@ -519,8 +558,9 @@ export const weapons = {
           : (state.player.targetId != null ? state.player.targetId : null);
       }
       this._serviceShip(player, firing, /*isPlayer*/ true, dt, state, aimAngle, forcedTarget, tetherGate);
-    } else if (state.player && state.player.gunTargetId != null) {
-      state.player.gunTargetId = null;
+    } else {
+      if (player && !(state.input && state.input.fire)) this._releasePlayerOrdnanceNotices(player);
+      if (state.player && state.player.gunTargetId != null) state.player.gunTargetId = null;
     }
     const ships = (state.entityIndex && (state.entityIndex.weaponShips || state.entityIndex.ships))
       || state.entityList;
@@ -528,7 +568,8 @@ export const weapons = {
       if (e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
       const intent = e.data && e.data.intent;
       const firing = !!(intent && intent.fire)
-        && presentationAllowsPlayerFacingAction(e, state);
+        && presentationAllowsPlayerFacingAction(e, state)
+        && mothlightAllowsFire(state, e);
       if (e.physicsSleeping === true && !firing) continue;
       // NPC aim = its intent aimAngle (already a lead/intercept angle from ai.js). fall back to nose.
       const aimAngle = (intent && intent.aimAngle != null) ? intent.aimAngle : e.rot;
@@ -582,6 +623,7 @@ export const weapons = {
         firing = !!state.input.fire;
         if (state.input.actions?.tetherFire) firing = false;
       }
+      if (!(state.input && state.input.fire)) this._releasePlayerOrdnanceNotices(player);
       let tetherGate = null;
       const fireControl = massline2Flag('fireControl');
       if (fireControl) {
@@ -615,8 +657,9 @@ export const weapons = {
           ? state.player.targetId
           : null;
       }
-    } else if (state.player && state.player.gunTargetId != null) {
-      state.player.gunTargetId = null;
+    } else {
+      if (player && !(state.input && state.input.fire)) this._releasePlayerOrdnanceNotices(player);
+      if (state.player && state.player.gunTargetId != null) state.player.gunTargetId = null;
     }
 
     // beamsIdle — prev/current empty; emit is a no-op Set walk
@@ -636,7 +679,7 @@ export const weapons = {
           const def = this._byId.get(w.defId) || {};
           if (w._cooldown > 0) w._cooldown = Math.max(0, w._cooldown - dt);
           const baseDissip = w.heatDissip != null ? w.heatDissip : (def.heatDissip || 0);
-          const dissip = baseDissip * WEAPON_RECHARGE_MULT;
+          const dissip = baseDissip * WEAPON_RECHARGE_MULT * weaponHeatDissipScale(state, player);
           if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
         }
         this._tickVent(player, dt, state);
@@ -659,7 +702,7 @@ export const weapons = {
           const def = this._byId.get(w.defId) || {};
           if (w._cooldown > 0) w._cooldown = Math.max(0, w._cooldown - dt);
           const baseDissip = w.heatDissip != null ? w.heatDissip : (def.heatDissip || 0);
-          const dissip = baseDissip * WEAPON_RECHARGE_MULT;
+          const dissip = baseDissip * WEAPON_RECHARGE_MULT * weaponHeatDissipScale(state, e);
           if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
         }
         // Forced-vent lockout (player only) — see WEAPON_VENT_S. Runs after the normal cooldown so a
@@ -1035,13 +1078,17 @@ export const weapons = {
     let capLeft = cap;
     if (aimAngle == null) aimAngle = e.rot;
     const combatRuntime = combatRuntimeOf(state, e);
+    let disabledMounts = 0;
+    let liveMounts = 0;
     for (const w of ws) {
       const def = this._byId.get(w.defId) || {};
       const bank = weaponBankReadiness(w, combatRuntime);
       if (bank.disabled) {
+        disabledMounts += 1;
         if (def.emergentPrimitive) clearEmergentRay(state, e.id);
         continue;
       }
+      liveMounts += 1;
       if (!this._mountRoleOpen(e, w, def, state, forceTarget, fireGate)) {
         // A sustained emergent ray opened by this mount would leak into world.ray forever if the
         // role gate simply skips its service — _serviceEmergent's !firing branch is the only
@@ -1067,6 +1114,7 @@ export const weapons = {
     }
     // write the drained capacitor back (cap pool is ours to spend; regen is combat's, §0.6 note)
     if (typeof e.cap === 'number') e.cap = capLeft;
+    if (isPlayer && firing && disabledMounts > 0 && liveMounts === 0) this._noteGunsOut();
   },
 
   // Emergent primitives spend no capacitor and no heat, so they cannot vent-lock or starve
@@ -1101,6 +1149,8 @@ export const weapons = {
     const heatMax = w.heatMax != null ? w.heatMax : def.heatMax || Infinity;
     const range = w.range != null ? w.range : def.range || 0;
     const overheated = (w._heat || 0) >= heatMax;
+    if (!overheated) w._overheatTold = false;
+    else if (firing && e.id === state.playerId) this._noteWeaponOverheat(w);
     let beamAim = aimAngle;
     const arcadeTarget = fireGate?.target || forceTarget;
     const arcadeAim = arcadeGunTarget(e, arcadeTarget, state);
@@ -1117,6 +1167,10 @@ export const weapons = {
     }
     if (arcadeAim) beamAim = this._arcadeMountAngle(e, w, arcadeTarget, 0);
     const canFire = firing && !solutionBlocked && !overheated && capLeft >= energyCost * dt;
+    if (e.id === state.playerId && firing && !solutionBlocked && !overheated
+      && energyCost > 0 && capLeft < energyCost * dt) {
+      this._noteCapacitorEmpty();
+    }
     if (!canFire) {
       // Heat already dissipates once in `_tickWeapons`. A second idle pass made beams cool twice
       // as fast as projectile mounts.
@@ -1124,7 +1178,13 @@ export const weapons = {
     }
     capLeft -= energyCost * dt;
     w._heat = (w._heat || 0) + heatPerSec * dt;
-    if (w._heat >= heatMax) w._heat = heatMax;
+    if (w._heat >= heatMax) {
+      w._heat = heatMax;
+      // SF-2b #6: trip the forced vent here, like the projectile paths do. The vent check in
+      // _tickWeapons runs after the next tick's dissipation, which always pulled a clamped beam
+      // back under heatMax first, so a beam never vented and held full damage forever.
+      this._beginVent(e, state, w);
+    }
 
     // A continuous beam still originates from its hardpoint facing and gimbal-assists toward aim.
     const dir = arcadeAim || pilotAim ? beamAim : this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0);
@@ -1155,7 +1215,7 @@ export const weapons = {
         from: { x: origin.x, z: origin.z }, to,
         dmgType: damageType,
         dpsThisTick: damage,
-        damagePacket: buildWeaponDamagePacket(w, def, damage, damageType),
+        damagePacket: beamDamagePacket(w, def, damage, damageType, dt),
         beamKey,
         opticFamilyId: beamMeta.opticFamilyId,
       });
@@ -1187,6 +1247,41 @@ export const weapons = {
     }
   },
 
+  _noteWeaponOverheat(w) {
+    if (!w || w._overheatTold) return;
+    w._overheatTold = true;
+    if (this.bus) this.bus.emit('toast', { text: 'Weapon overheated', kind: 'warn', ttl: 1.6 });
+  },
+
+  /**
+   * One capacitor line for the whole ship, per trigger hold. A passed energy check must not
+   * re-arm it — the next mount, or the next round of the same hold, would speak again.
+   * Vent and cruise force `firing` false while the button is still down; only a real release
+   * (`state.input.fire` clear) drops the latch, including on the quiet idle skip.
+   */
+  _noteCapacitorEmpty() {
+    if (this._playerCapEmptyTold) return;
+    this._playerCapEmptyTold = true;
+    if (this.bus) this.bus.emit('toast', { text: 'Capacitor empty', kind: 'warn', ttl: 1.6 });
+  },
+
+  _noteGunsOut() {
+    if (this._playerGunsOutTold) return;
+    this._playerGunsOutTold = true;
+    if (this.bus) this.bus.emit('toast', { text: 'Guns out — the battery is dark', kind: 'warn', ttl: 1.6 });
+  },
+
+  _releasePlayerOrdnanceNotices(player) {
+    this._playerCapEmptyTold = false;
+    this._playerGunsOutTold = false;
+    const ws = player && player.data && player.data.weapons;
+    if (!ws) return;
+    for (let i = 0; i < ws.length; i++) {
+      const w = ws[i];
+      if (w) w._mineBankTold = false;
+    }
+  },
+
   // Projectile weapon: gate on cooldown/cap/heat (+lock/+arc), spawn a projectile, emit combat:fire.
   _serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget, fireGate = null) {
     const pilotAim = isPlayer && state.settings?.gameplay?.controlScheme === 'pilot';
@@ -1194,11 +1289,10 @@ export const weapons = {
     if (this._releaseMomentumSinkIfReady(e, w, def, state)) return capLeft;
 
     const energyCost = w.energyCost != null ? w.energyCost : def.energyCost || 0;
-    if (capLeft < energyCost) return capLeft;
-
     // Prefer instance heat when authored (ships.makeWeaponRuntime copies heatPerShot → heat).
     // Treat heatMax as inactive when there is no positive heat cost so default heatMax:100 on
-    // non-heat weapons cannot invent a false lockout path.
+    // non-heat weapons cannot invent a false lockout path. Heat speaks before an empty capacitor:
+    // a cooked gun cannot fire even after the cap recovers.
     const heatPerShot = (() => {
       if (w.heat != null && Number.isFinite(w.heat) && w.heat > 0) return w.heat;
       if (def.heatPerShot != null && Number.isFinite(def.heatPerShot)) return def.heatPerShot;
@@ -1206,7 +1300,15 @@ export const weapons = {
     })();
     const heatMaxRaw = w.heatMax != null ? w.heatMax : (def.heatMax != null ? def.heatMax : Infinity);
     const heatMax = heatPerShot > 0 && Number.isFinite(heatMaxRaw) && heatMaxRaw > 0 ? heatMaxRaw : Infinity;
-    if ((w._heat || 0) >= heatMax) return capLeft;            // overheated
+    if ((w._heat || 0) >= heatMax) {
+      if (isPlayer) this._noteWeaponOverheat(w);
+      return capLeft;            // overheated
+    }
+    w._overheatTold = false;
+    if (capLeft < energyCost) {
+      if (isPlayer && energyCost > 0) this._noteCapacitorEmpty();
+      return capLeft;
+    }
 
     const tracking = w.tracking || def.tracking || 'fixed';
     const isMissile = tracking === 'homing';
@@ -1281,7 +1383,12 @@ export const weapons = {
       // Freelancer feel — front guns track the cursor up to a cone, then fire straight.
       let fixedAim = mountGate ? mountGate.angle : (aimAngle != null ? aimAngle : e.rot);
       if (!mountGate && forceTarget && forceTarget.pos) {
-        fixedAim = this._leadAngle(e, forceTarget, mountProjSpeed);
+        // A locked player shot leaves the real muzzle, not the hull centre: solve from there with
+        // the same muzzle + launch-model solve G mode uses. Hull-centre lead put off-axis mounts
+        // 3-10 deg wide of the solution. NPC aim keeps the hull-centre lead (balance unchanged).
+        fixedAim = isPlayer
+          ? this._arcadeMountAngle(e, w, forceTarget, mountProjSpeed)
+          : this._leadAngle(e, forceTarget, mountProjSpeed);
       }
       // G trades manual barrel alignment for independent dodging. Use the same physical shot
       // model, but no cone clamp or random aim error on this explicit hostile solution.
@@ -1402,9 +1509,9 @@ export const weapons = {
     // bullets INHERIT the shooter's full velocity too — weighty strafing runs at the cost of aim-true
     // fire. A deliberate feel inversion kept behind a default-off flag so the golden (and normal play)
     // are unchanged; enable it only for playtesting.
-    const vel = (isMissile || combatFlag('momentumInherit'))
+    const vel = isMissile
       ? { x: cf * launchSpeed + e.vel.x, z: sf * launchSpeed + e.vel.z }
-      : aimTrueProjectileVelocity(dir, launchSpeed, e.vel);
+      : launchVelocity(dir, launchSpeed, e.vel);
 
     // Engagement range stays on maxDistance for AI, locks, and the targeting computer.
     // The body itself keeps a long flight budget so a shot can leave the frame, hit,
@@ -1569,19 +1676,30 @@ export const weapons = {
     if (!combatFlag('weaponImpulseConsequences')) return capLeft;
     if ((w._cooldown || 0) > 0) return capLeft;
     const energyCost = w.energyCost != null ? w.energyCost : def.energyCost || 0;
-    if (capLeft < energyCost) return capLeft;
     const heatPerShot = (w.heat != null && Number.isFinite(w.heat) && w.heat > 0) ? w.heat
       : (Number.isFinite(def.heatPerShot) ? def.heatPerShot : 0);
     const heatMaxRaw = w.heatMax != null ? w.heatMax : (def.heatMax != null ? def.heatMax : Infinity);
     const heatMax = heatPerShot > 0 && Number.isFinite(heatMaxRaw) && heatMaxRaw > 0 ? heatMaxRaw : Infinity;
-    if ((w._heat || 0) >= heatMax) return capLeft;
+    if ((w._heat || 0) >= heatMax) {
+      if (isPlayer) this._noteWeaponOverheat(w);
+      return capLeft;
+    }
+    w._overheatTold = false;
+    if (capLeft < energyCost) {
+      if (isPlayer && energyCost > 0) this._noteCapacitorEmpty();
+      return capLeft;
+    }
     // Active-mine cap: refuse to deploy past mineMaxActive (the oldest is NOT auto-culled — the pilot
     // must let mines resolve, so placement stays deliberate rather than a spammed field).
     const maxActive = Math.max(1, def.mineMaxActive || 3);
     if (this._countOwnerVectorMines(state, e.id, def.deployKind || 'vector_mine') >= maxActive) {
-      if (isPlayer && this.bus) this.bus.emit('toast', { text: 'Mine bank full', kind: 'warn', ttl: 1.5 });
+      if (isPlayer && !w._mineBankTold && this.bus) {
+        w._mineBankTold = true;
+        this.bus.emit('toast', { text: 'Mine bank full', kind: 'warn', ttl: 1.5 });
+      }
       return capLeft;
     }
+    w._mineBankTold = false;
 
     capLeft -= energyCost;
     if (heatPerShot) {
@@ -1864,6 +1982,12 @@ export const weapons = {
       angle = speed > 0 ? this._leadAngle({ pos: origin, vel: e.vel }, target, speed)
         : Math.atan2(target.pos.z - origin.z, target.pos.x - origin.x);
     }
+    // The relative-frame lead assumes the round leaves at projSpeed relative to the shooter.
+    // The real launch (_spawnProjectile) only compensates lateral shooter velocity while that
+    // is below projSpeed; a hull sliding sideways faster than its own rounds (boost, dash) gets
+    // a round at projSpeed in WORLD space instead, and the relative solve misses by degrees.
+    // Re-solve against the round's actual world velocity until the two agree.
+    if (speed > 0) angle = refineLeadForLaunch(angle, speed, e.vel, target, (a) => this._muzzle(e, w, a));
     return angle;
   },
 
@@ -1959,6 +2083,34 @@ function liveVectorMineList(state) {
 // the returned angle points at the target's WORLD future position because spawned bullets travel on
 // that world-space line (aimTrueProjectileVelocity). Returning the relative-frame angle here made a
 // strafing player's rounds lead in the opposite direction and miss moving targets by whole hulls.
+/** World velocity of a bullet launched along `angle` (the model _spawnProjectile uses). */
+export function launchVelocity(angle, projSpeed, shooterVel) {
+  if (combatFlag('momentumInherit')) {
+    const v = shooterVel || { x: 0, z: 0 };
+    return { x: Math.cos(angle) * projSpeed + (v.x || 0), z: Math.sin(angle) * projSpeed + (v.z || 0) };
+  }
+  return aimTrueProjectileVelocity(angle, projSpeed, shooterVel);
+}
+
+/**
+ * Fixed-point refinement of a lead angle against the real launch model: solve the intercept in
+ * the world frame at the round's actual world speed (and heading offset, if momentum is
+ * inherited) from the muzzle that angle implies. Exact where the relative solve already is
+ * (lateral shooter speed below projSpeed); fixes it where the launch stops compensating.
+ */
+export function refineLeadForLaunch(angle, projSpeed, shooterVel, target, muzzleAt, iterations = 4) {
+  let a = angle;
+  for (let i = 0; i < iterations; i++) {
+    const origin = muzzleAt(a);
+    const u = launchVelocity(a, projSpeed, shooterVel);
+    const worldSpeed = Math.hypot(u.x, u.z);
+    if (!(worldSpeed > 1e-6)) break;
+    const offset = wrapAngle(Math.atan2(u.z, u.x) - a);
+    a = solveLeadAngle({ pos: origin, vel: { x: 0, z: 0 } }, target, worldSpeed) - offset;
+  }
+  return a;
+}
+
 export function solveLeadAngle(shooter, tgt, projSpeed) {
   const sp = (shooter && shooter.pos) || { x: 0, z: 0 };
   const sv = (shooter && shooter.vel) || { x: 0, z: 0 };
@@ -2019,7 +2171,9 @@ export function weaponBankReadiness(mount, runtime) {
 
 function combatRuntimeOf(state, entity) {
   const bag = state && state.combat && state.combat.entities;
-  if (bag && entity && entity.id != null && bag[String(entity.id)]) return bag[String(entity.id)];
+  // Numeric keys coerce inside the dictionary lookup — String(id) would allocate
+  // a boxed key per weapon-tick per ship for the same answer.
+  if (bag && entity && entity.id != null && bag[entity.id]) return bag[entity.id];
   return (entity && entity.data && entity.data.combatRuntime) || null;
 }
 
@@ -2396,6 +2550,13 @@ function resetWeaponDiagnostics(diag) {
   if (!diag) return;
   diag.autoFireSpatialQueries = 0;
   diag.autoFireCandidates = 0;
+}
+
+/** One tick of a continuous beam: the authored packet plus its share of the armor window. */
+export function beamDamagePacket(w, def, damage, damageType, dt) {
+  const packet = buildWeaponDamagePacket(w, def, damage, damageType);
+  if (dt > 0) packet.armorFlatScale = Math.min(1, dt / BEAM_ARMOR_PACKET_S);
+  return packet;
 }
 
 export function buildWeaponDamagePacket(w, def, damage, damageType, pos = null) {

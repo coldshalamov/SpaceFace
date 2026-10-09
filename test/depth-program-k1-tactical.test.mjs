@@ -395,7 +395,20 @@ test('CombatDoctrineRuntime consumes sampled range and egresses when disable-the
     perception: tacticalPerception(profile, 1),
     directive: tacticalDirective(profile),
   });
-  assert.equal(initial.preferredRange, profile.preferredRange);
+  // Identity doctrines own their engagement band (IDENTITY_OWNED_RANGE_DOCTRINES): the flyby's
+  // ingress band is authored at 150 WU and must not flatten onto the faction's sampled range.
+  assert.equal(initial.preferredRange, 150);
+
+  const bandless = { ...profile, combatDoctrineId: 'ranged_disengager' };
+  const sampled = new CombatDoctrineRuntime({ seed: 0x47a }).update({
+    tick: 100,
+    entityId: 7,
+    doctrineId: bandless.combatDoctrineId,
+    perception: tacticalPerception(bandless, 1),
+    directive: tacticalDirective(bandless),
+  });
+  assert.equal(sampled.preferredRange, profile.preferredRange,
+    'a doctrine without an owned band must consume the faction\'s sampled range');
 
   const disabledTarget = tacticalPerception(profile, 1);
   disabledTarget.contacts[0].disabled = true;

@@ -24,6 +24,7 @@
 // Init-order only: event-driven, never registered in PRODUCTION_UPDATE_ORDER, never ticks.
 
 import { validateRunState } from '../core/runState.js';
+import { runLifetime } from './runSession.js';
 import { MODULES } from '../data/modules.js';
 import { SHIPS } from '../data/ships.js';
 import {
@@ -33,6 +34,7 @@ import {
   offerDraft,
   rerollPrice,
   swarmPurchasePrice,
+  swarmSellPrice,
   fittingName,
 } from '../data/survivalDraft.js';
 import {
@@ -47,10 +49,22 @@ import {
   EVOLUTION_OFFER_KIND,
   evolutionOffersFor,
 } from '../data/survivalEvolutions.js';
-import { runModifierRecord, validateRunModifier } from '../data/runModifiers.js';
+import {
+  runModifierRecord,
+  summarizeRunBuild,
+  validateRunModifier,
+  verbBuildFamily,
+} from '../data/runModifiers.js';
 import { WEAPONS } from '../data/weapons.js';
 import { buildSlotList, fits, getDerivedStats } from './ships.js';
 import { swarmHullPrice } from '../data/swarmCatalog.js';
+import {
+  brokerMultiplier,
+  consumeHangarReroll,
+  hangarRank,
+  hangarRerollState,
+} from '../data/swarmHangar.js';
+import { runHasPerk } from '../data/swarmPerks.js';
 import { addCargo } from './cargo.js';
 
 export const CRUCIBLE_DRAFT_SCREEN_ID = 'crucibleDraft';
@@ -73,6 +87,14 @@ const SWARM_ORDNANCE_RACK_MAX = 6;
  */
 export const CRUCIBLE_REROLL_SPEND_REASON = 'crucible:draftReroll';
 export const CRUCIBLE_PURCHASE_SPEND_REASON = 'crucible:purchase';
+
+/**
+ * SWARM-06 — Gambler's bench: two free re-deals a run on top of the Hangar's, then paid draws
+ * at half the curve the gauntlet charges. The perk's "re-rolls cost half and deal one deeper"
+ * reads honest here: the bench is deeper, and the paid tail is half-priced.
+ */
+const SWARM_GAMBLER_FREE_REROLLS = 2;
+const SWARM_GAMBLER_PRICE_MULT = 0.5;
 
 const MODULE_DEF_BY_ID = new Map([
   ...MODULES.map((def) => [def.id, def]),
@@ -143,6 +165,11 @@ export const survivalDraft = {
     this._unsubs.push(this.bus.on('run:refitCloseRequested', (p) => this.closeRefit(p)));
     this._unsubs.push(this.bus.on('run:refitFitRequested', (p) => this.refitFit(p)));
     this._unsubs.push(this.bus.on('run:refitStripRequested', (p) => this.refitStrip(p)));
+    // SWARM-05 §7.3 — sell-back and card hold. Both stay on the owner's seam: a sale consumes
+    // through ships and pays through the wallet's award receipt; a held card re-enters the
+    // next armory's stock as data, with live legality re-judged like any re-entrant row.
+    this._unsubs.push(this.bus.on('run:refitSellRequested', (p) => this.refitSell(p)));
+    this._unsubs.push(this.bus.on('run:draftLockRequested', (p) => this.lockOffer(p)));
     this._unsubs.push(this.bus.on('run:draftRerollRequested', () => this.requestReroll()));
     // The wallet's own receipts. We never read a balance and decide it was fine — runSession says
     // whether the charge landed, and only then do the cards change.
@@ -208,6 +235,8 @@ export const survivalDraft = {
       const replaces = (current || offer).replaces ?? null;
       return { ...offer, ...(current || {}), price, purchased, demoed, replaces,
         replacesName: replaces ? fittingName(replaces) : null,
+        held: !!(this._locked && this._locked.id === offer.id),
+        lockedIn: !!(this._lockedInto && this._lockedInto.has(offer.id)),
         available: !purchased && legal && price != null && run.credits >= price,
         unavailableReason: purchased ? 'Fitted' : !legal ? 'No compatible slot' :
           run.credits < price ? `Save ${price - run.credits} more cr` : null };
@@ -218,6 +247,8 @@ export const survivalDraft = {
       const purchased = this._purchased?.has(entry.id) === true;
       rows.push({ ...entry, purchased,
         demoed: Number.isInteger(entry.slotIndex) && this._trials?.get(entry.slotIndex)?.defId === entry.defId,
+        held: !!(this._locked && this._locked.id === entry.id),
+        lockedIn: !!(this._lockedInto && this._lockedInto.has(entry.id)),
         available: !purchased && run.credits >= entry.price,
         unavailableReason: purchased ? 'Fitted' : run.credits < entry.price ? `Save ${entry.price - run.credits} more cr` : null });
     }
@@ -240,6 +271,8 @@ export const survivalDraft = {
       // freeze it, or buying a second hull locks the first out of the cradle for the round.
       const spent = purchased && entry.kind !== SWARM_HULL_OFFER_KIND;
       rows.push({ ...entry, purchased,
+        held: !!(this._locked && this._locked.id === entry.id),
+        lockedIn: !!(this._lockedInto && this._lockedInto.has(entry.id)),
         available: !spent && !blocked && run.credits >= entry.price,
         unavailableReason: spent ? 'Done' : blocked
           || (run.credits < entry.price ? `Save ${entry.price - run.credits} more cr` : null) });
@@ -267,6 +300,56 @@ export const survivalDraft = {
   },
 
   /**
+   * SWARM-05 §7.3 — "Recommended for your build", the old three-card draft feel kept as the
+   * shelf's headline. The build's dominant family comes off the same immutable modifier
+   * records the wave planner reads; the picks are the unpurchased, non-hull, non-service
+   * cards whose verb feeds it — fittable first, then cheapest. Empty until the run's own
+   * picks name a family; the catalogue below stays the whole shelf either way.
+   */
+  recommendedOffers() {
+    const run = liveSurvivalRun(this.state);
+    if (!run || !isSwarmRuleset(run.ruleset) || !this._offers) return [];
+    const build = summarizeRunBuild(run.modifiers);
+    if (!build.dominant) return [];
+    return this.currentOffers()
+      .filter((offer) => !offer.purchased
+        && offer.kind !== SWARM_HULL_OFFER_KIND
+        && offer.kind !== SWARM_SERVICE_OFFER_KIND
+        && verbBuildFamily(offer.verb) === build.dominant)
+      .sort((a, b) => (b.available === true) - (a.available === true)
+        || a.price - b.price
+        || String(a.name).localeCompare(String(b.name)))
+      .slice(0, 3);
+  },
+
+  /**
+   * SWARM-05 §7.3 — hold a card for the next armory. The shelf re-deals every round; a hold
+   * rides this._locked into the next _openDraft, which stocks the card first with live
+   * legality re-judged like any re-entrant row. One hold at a time; asking again on the
+   * held card lets it go, and a hold on a spent row or the service counter refuses.
+   */
+  lockOffer(request) {
+    const run = liveSurvivalRun(this.state);
+    if (!run || !isSwarmRuleset(run.ruleset) || run.phase !== 'draft' || !this._offers) return false;
+    const offerId = request && request.offerId;
+    if (this._locked && this._locked.id === offerId) {
+      this._locked = null;
+      this._emit('run:draftLockChanged', { wave: this._wave, offerId, locked: false });
+      return true;
+    }
+    const offer = this.currentOffers().find((entry) => entry.id === offerId);
+    // A bought card is no longer on the shelf to carry; the service counter is a live check
+    // (a held weld that stopped mattering would pay for nothing); the flown hull is already
+    // in the cradle — none of those can ride a hold.
+    if (!offer || offer.purchased || offer.kind === SWARM_SERVICE_OFFER_KIND || offer._flying) {
+      return false;
+    }
+    this._locked = { ...offer };
+    this._emit('run:draftLockChanged', { wave: this._wave, offerId, locked: true });
+    return true;
+  },
+
+  /**
    * The last refusal, in words a player can read. The surfaces poll this instead of subscribing,
    * so a re-render months after the event still says what happened rather than going quiet.
    */
@@ -274,7 +357,48 @@ export const survivalDraft = {
     return this._notice || null;
   },
 
+  /** A presentation receipt belongs to this particular armory, never to campaign saves. */
+  preparationReceipt() {
+    const saved = this._preparationReceipt;
+    if (!saved || !saved.lifetime || saved.lifetime !== runLifetime(this.state?.run) || saved.player !== this.state?.player
+      || saved.value.generation !== this._armoryGeneration || saved.value.wave !== this._wave
+      || this.state?.run?.phase !== 'draft' || this._resolved) return null;
+    return { ...saved.value };
+  },
+
+  preparationGeneration() { return this._armoryGeneration; },
+
+  _preparationCurrent(pending, { allowHullChange = false } = {}) {
+    return !!pending && !!pending.lifetime && pending.lifetime === runLifetime(this.state?.run) && pending.player === this.state?.player
+      && pending.generation === this._armoryGeneration && pending.wave === this._wave
+      && this.state.run.phase === 'draft'
+      && (allowHullChange || pending.ship === this.state.player.ownedShips?.[this.state.player.activeShipIndex])
+      && (pending.offer?.service !== 'weld' || pending.entity === this._playerEntity());
+  },
+
+  _recordPreparation(pending, outcome) {
+    if (!this._preparationCurrent(pending, { allowHullChange: true })) return;
+    const offer = pending.offer;
+    const entity = this._playerEntity();
+    const value = Object.freeze({
+      sequence: pending.sequence, generation: pending.generation, wave: pending.wave,
+      outcome, offerId: offer?.id ?? pending.offerId, name: offer?.name || offer?.defId || 'Equipment',
+      kind: offer?.kind || 'module', defId: offer?.defId || null, slotIndex: offer?.slotIndex ?? null,
+      price: pending.paid && !pending.refunded ? offer.price : 0,
+      charged: !!pending.paid && !pending.refunded,
+      restoredHull: entity === pending.entity ? Math.max(0, (entity?.hull || 0) - pending.hull) : 0,
+      restoredArmor: entity === pending.entity ? Math.max(0, (entity?.armorHp || 0) - pending.armor) : 0,
+      text: this._notice || (outcome === 'accepted' ? 'Preparation complete.'
+        : outcome === 'pending' ? 'Preparation in progress.' : 'Preparation refused.'),
+    });
+    this._preparationReceipt = { lifetime: pending.lifetime, player: pending.player, value };
+  },
+
   _reset() {
+    this._armoryGeneration = (this._armoryGeneration || 0) + 1;
+    this._preparationSequence = this._preparationSequence || 0;
+    this._preparationPending = null;
+    this._preparationReceipt = null;
     this._offers = null;
     this._wave = 0;
     this._resolved = true;
@@ -285,6 +409,9 @@ export const survivalDraft = {
     this._pendingPurchase = null;
     this._purchased = new Set();
     this._trials = new Map();
+    this._locked = null;
+    this._lockedInto = new Map();
+    this._gamblerUsed = 0;
   },
 
   _onTransitioned(payload) {
@@ -307,6 +434,8 @@ export const survivalDraft = {
   _openDraft() {
     const run = liveSurvivalRun(this.state);
     if (!run) return;
+    this._armoryGeneration = (this._armoryGeneration || 0) + 1;
+    this._preparationReceipt = null;
     // A swarm run passes THROUGH `draft` between every wave, because cleanup has no legal edge
     // straight back to wave_intro. On the four waves in five that are not upgrade waves, that
     // pass-through must be invisible: resolve it here rather than opening a surface for one frame.
@@ -357,6 +486,20 @@ export const survivalDraft = {
     }
     const held = heldDefIds(this.state);
     this._offers = this._offers.filter((offer) => !isNoOpDuplicateOffer(offer, held, run.ruleset));
+    // SWARM-05 §7.3 — a held card leads the shelf it was locked on. Re-entry is stock-shaped
+    // data: legality, price and availability re-judge live in currentOffers like any
+    // re-entrant row, so a build that can no longer take it still shows it, honestly marked.
+    // The snapshot rides _lockedInto so the extras path (a held hull) and a mid-armory
+    // re-roll both honour the same carry.
+    this._lockedInto = new Map();
+    if (this._locked) {
+      const carry = this._locked;
+      this._locked = null;
+      this._lockedInto.set(carry.id, { ...carry, lockedIn: true });
+      if (!this._offers.some((offer) => offer.id === carry.id)) {
+        this._offers.unshift({ ...carry, lockedIn: true });
+      }
+    }
     if (this._offers.length === 0) {
       // Nothing legal to offer on this hull. Resolve immediately rather than opening an empty
       // surface the player cannot dismiss.
@@ -406,7 +549,48 @@ export const survivalDraft = {
   rerollState() {
     const run = liveSurvivalRun(this.state);
     if (run && isSwarmRuleset(run.ruleset)) {
-      return { open: false, credits: run.credits, available: false, reason: 'armory' };
+      const hangarInfo = hangarRerollState(run);
+      const drafting = run.phase === 'draft' && !this._resolved;
+      // SWARM-06 — Gambler's bench: two free draws a run ride after the Hangar's, then paid
+      // draws at half price once every bench is empty. `reason` stays 'hangar_reroll' while a
+      // free draw of either kind remains — requestReroll consumes the Hangar's first.
+      const gamblerLeft = runHasPerk(run, 'gambler')
+        ? Math.max(0, SWARM_GAMBLER_FREE_REROLLS - (this._gamblerUsed || 0))
+        : 0;
+      if (hangarInfo.available === true || gamblerLeft > 0) {
+        return {
+          open: drafting,
+          credits: run.credits,
+          ...hangarInfo,
+          available: drafting,
+          reason: 'hangar_reroll',
+          freeRerolls: hangarInfo.freeRerolls + gamblerLeft,
+          gambler: gamblerLeft > 0,
+        };
+      }
+      if (runHasPerk(run, 'gambler') && drafting && this._draftInput) {
+        const wave = this._draftInput.wave;
+        const rerolls = this._rerolls || 0;
+        const price = Math.max(1, Math.round(rerollPrice(wave, rerolls) * SWARM_GAMBLER_PRICE_MULT));
+        const credits = Number.isFinite(run.credits) ? run.credits : 0;
+        const base = { open: true, wave, rerolls, price, credits };
+        const next = this._peekOffers(rerolls + 1);
+        const changes = next.some((entry) => !(this._offers || []).some((shown) => shown.id === entry.id));
+        if (!changes) {
+          const info = { ...base, available: false, reason: 'pool_exhausted' };
+          return { ...info, note: this._rerollRefusalText(info) };
+        }
+        if (credits < price) {
+          const info = { ...base, available: false, reason: 'insufficient_credits' };
+          return { ...info, note: this._rerollRefusalText(info) };
+        }
+        return { ...base, available: true, reason: 'gambler_paid', note: '' };
+      }
+      return {
+        open: false,
+        credits: run.credits,
+        ...hangarInfo,
+      };
     }
     const offers = this._offers || [];
     const rerolls = this._rerolls || 0;
@@ -449,7 +633,12 @@ export const survivalDraft = {
    * run cannot stall on a purchase.
    */
   requestReroll() {
+    if (this._preparationPending) return false;
     const info = this.rerollState();
+    if (info && info.reason === 'hangar_reroll' && info.available) {
+      if (!info.open) return false;
+      return this._applyHangarReroll();
+    }
     if (!info.open) return false;
     if (!info.available) {
       this._notice = this._rerollRefusalText(info);
@@ -482,6 +671,21 @@ export const survivalDraft = {
       const pending = this._pendingPurchase;
       if (!pending || payload.credits !== pending.price) return;
       this._pendingPurchase = null;
+      const preparation = this._preparationPending;
+      if (preparation) {
+        preparation.paid = true;
+        const quote = this.currentOffers().find(offer => offer.id === pending.id);
+        const sameQuote = quote && quote.price === pending.price && quote.defId === pending.defId
+          && quote.slotIndex === pending.slotIndex && quote.kind === pending.kind;
+        if (!this._preparationCurrent(preparation) || !sameQuote) {
+          // The old run may already have been discarded by a callback. Never credit its successor.
+          if (preparation.lifetime === runLifetime(this.state?.run) && this.state.run.phase === 'draft') {
+            this._emit('run:awardRequested', { credits: pending.price, reason: 'crucible:purchaseRefund' });
+          }
+          this._notice = 'The selected build changed. Inspect the current offer before preparing it.';
+          return;
+        }
+      }
       if (pending.kind === EVOLUTION_OFFER_KIND) {
         this._resolveEvolutionPurchase(pending);
         return;
@@ -514,7 +718,10 @@ export const survivalDraft = {
         this._emit('run:modifierRecordRequested', {
           record: {
             kind: 'catalog', offerId: pending.id, defId: pending.defId,
-            slotIndex: pending.slotIndex, replaced: pending.replaces ?? null, wave: this._wave,
+            // Same 1-based law the validator holds _noteModifier to — the opening armory's
+            // internal wave is 0, but the ledger never names a wave the player cannot see.
+            slotIndex: pending.slotIndex, replaced: pending.replaces ?? null,
+            wave: Math.max(1, this._wave),
           },
           draft: {
             wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: pending.id,
@@ -536,7 +743,7 @@ export const survivalDraft = {
     if (!pending) return;
     if (!payload || payload.reason !== CRUCIBLE_REROLL_SPEND_REASON) return;
     this._pendingReroll = null;
-    const offers = this._peekOffers(pending.next);
+    const offers = this._redealOffers(pending.next);
     // Paid-for-nothing is not a state we ship. rerollState already refused an empty round, so this
     // is belt and braces: keep the standing offers rather than blanking a surface the run waits on.
     if (offers.length === 0) return;
@@ -599,6 +806,7 @@ export const survivalDraft = {
     const run = liveSurvivalRun(this.state);
     if (!run || run.phase !== 'draft') return false;
     if (this._resolved) return false;
+    if (this._preparationPending) return false;
     const offers = this._offers || [];
     const offerId = request && request.offerId;
     if (isSwarmRuleset(run.ruleset) && offerId != null && request && request.demo === true) {
@@ -652,7 +860,31 @@ export const survivalDraft = {
   },
 
   _purchase(offerId) {
-    if (this._pendingPurchase || this._pendingReroll) return false;
+    if (this._preparationPending || this._pendingPurchase || this._pendingReroll) return false;
+    const entity = this._playerEntity();
+    const pending = {
+      sequence: ++this._preparationSequence, generation: this._armoryGeneration, wave: this._wave,
+      lifetime: runLifetime(this.state.run), player: this.state.player,
+      ship: this.state.player?.ownedShips?.[this.state.player.activeShipIndex], entity,
+      hull: Number(entity?.hull) || 0, armor: Number(entity?.armorHp) || 0, offerId,
+      offer: this.currentOffers().find(entry => entry.id === offerId), paid: false, refunded: false,
+    };
+    this._preparationPending = pending;
+    this._notice = null;
+    this._recordPreparation(pending, 'pending');
+    try {
+      const accepted = this._purchaseOffer(offerId);
+      if (this._preparationReceipt?.value.sequence === pending.sequence
+        && this._preparationReceipt.value.outcome === 'pending') this._recordPreparation(pending, 'denied');
+      return accepted && this._preparationCurrent(pending, { allowHullChange: true });
+    } finally {
+      if (this._preparationReceipt?.value.sequence === pending.sequence
+        && this._preparationReceipt.value.outcome === 'pending') this._preparationReceipt = null;
+      if (this._preparationPending === pending) this._preparationPending = null;
+    }
+  },
+
+  _purchaseOffer(offerId) {
     const offer = this.currentOffers().find(entry => entry.id === offerId);
     if (!offer || !offer.available) {
       this._notice = offer?.unavailableReason || 'That offer is no longer available.';
@@ -680,6 +912,7 @@ export const survivalDraft = {
           this._notice = 'A synthesis part would not come off. Nothing was charged.';
           return false;
         }
+        if (!this._preparationCurrent(this._preparationPending)) return false;
       }
     }
     // Hulls and services never meet the hardpoint blocker — their legality was judged live in
@@ -691,14 +924,67 @@ export const survivalDraft = {
         return false;
       }
     }
+    if (!this._preparationCurrent(this._preparationPending)) return false;
     this._pendingPurchase = offer;
     this._emit('run:spendRequested', { credits: offer.price, reason: CRUCIBLE_PURCHASE_SPEND_REASON });
     if (this._pendingPurchase) {
       this._pendingPurchase = null;
-      this._notice = 'The run wallet did not answer. Nothing was charged.';
+      this._notice = 'The run wallet did not answer. Preparation was not completed.';
       return false;
     }
     return this._purchased.has(offer.id);
+  },
+
+  /**
+   * One re-deal, whichever bench paid for it: the peeked round plus the swarm shelf's evolution
+   * and armory rows, and a held card riding the re-deal exactly like the hangar path taught it.
+   */
+  _redealOffers(nextCount) {
+    let offers = this._peekOffers(nextCount);
+    const run = liveSurvivalRun(this.state);
+    if (run && isSwarmRuleset(run.ruleset)) {
+      const loadout = this._activeLoadout();
+      offers = offers.concat(this._evolutionOffers(loadout), this._armoryExtras(loadout, run));
+      for (const [id, carry] of this._lockedInto || []) {
+        if (!offers.some((offer) => offer.id === id)) offers.unshift({ ...carry });
+      }
+    }
+    return offers;
+  },
+
+  _applyHangarReroll() {
+    const run = liveSurvivalRun(this.state);
+    if (!run) return false;
+    const nextCount = (this._rerolls || 0) + 1;
+    const offers = this._redealOffers(nextCount);
+    if (offers.length === 0) return false;
+    const consumed = consumeHangarReroll(run.telemetry && run.telemetry.hangar);
+    if (!consumed.ok) {
+      // SWARM-06 — the Hangar's bench is empty; Gambler's own two free draws still stand.
+      if (!runHasPerk(run, 'gambler') || (this._gamblerUsed || 0) >= SWARM_GAMBLER_FREE_REROLLS) {
+        return false;
+      }
+      this._gamblerUsed += 1;
+    } else {
+      if (!run.telemetry || typeof run.telemetry !== 'object') run.telemetry = {};
+      run.telemetry.hangar = consumed.hangar;
+    }
+    this._rerolls = nextCount;
+    this._offers = offers;
+    this._notice = null;
+    this._emit('run:draftRerolled', {
+      wave: this._wave,
+      rerolls: nextCount,
+      price: 0,
+      credits: Number.isFinite(run.credits) ? run.credits : null,
+      reason: 'hangar_reroll',
+    });
+    this._emit('run:draftOffered', {
+      wave: this._wave,
+      offers: offers.map((entry) => ({ ...entry })),
+      rerolls: nextCount,
+    });
+    return true;
   },
 
   /**
@@ -709,6 +995,12 @@ export const survivalDraft = {
    */
   _armoryExtras(loadout, run) {
     if (!isSwarmRuleset(run.ruleset)) return [];
+    const hangar = this.state && this.state.run && this.state.run.telemetry
+      ? this.state.run.telemetry.hangar
+      : null;
+    const brokerOn = hangarRank(hangar, 'broker') > 0;
+    const mul = brokerOn ? brokerMultiplier(hangar) : 1;
+    const ask = (price) => (brokerOn ? Math.max(0, Math.round(price * mul)) : price);
     const extras = [];
     const player = this.state && this.state.player;
     const entity = this._playerEntity();
@@ -720,7 +1012,7 @@ export const survivalDraft = {
       id: 'svc_weld', kind: SWARM_SERVICE_OFFER_KIND, service: 'weld',
       verb: 'Weld', name: 'Hull weld',
       blurb: 'Plate, weld and rinse the scars. Back to full before the next pack.',
-      price: SWARM_WELD_PRICE, category: 'Service', slotLabel: 'Hull & armor',
+      price: ask(SWARM_WELD_PRICE), category: 'Service', slotLabel: 'Hull & armor',
       _serviceHurt: hurt,
     });
     const held = player && player.cargo && player.cargo.items
@@ -729,7 +1021,7 @@ export const survivalDraft = {
       id: 'svc_ordnance', kind: SWARM_SERVICE_OFFER_KIND, service: 'ordnance',
       verb: 'Rack', name: 'Ordnance top-up',
       blurb: 'Impulse charges racked to full for the charge-rack builds.',
-      price: SWARM_ORDNANCE_PRICE, category: 'Service', slotLabel: 'Cargo',
+      price: ask(SWARM_ORDNANCE_PRICE), category: 'Service', slotLabel: 'Cargo',
       _serviceCharges: held,
     });
     const cargoUsed = player && player.cargo && Number.isFinite(player.cargo.usedVolume)
@@ -750,7 +1042,7 @@ export const survivalDraft = {
         blurb: owned
           ? `On your manifest · ${ship.role} · ${buildSlotList(ship).length} hardpoints`
           : `${ship.role} hull · tier ${ship.tier} · ${buildSlotList(ship).length} hardpoints`,
-        price: owned ? 0 : swarmHullPrice(ship), category: 'Hulls', slotLabel: 'Ship cradle',
+        price: owned ? 0 : ask(swarmHullPrice(ship)), category: 'Hulls', slotLabel: 'Ship cradle',
         _flying: ship.id === (loadout && loadout.hullId),
         _cargoBlocked: cargoUsed > cargoCap,
         _ownedIndex: ownedIndex >= 0 ? ownedIndex : null,
@@ -866,7 +1158,7 @@ export const survivalDraft = {
     this._purchased.add(pending.id);
     this._notice = `${pending.name} is yours for the run. The shelf just re-priced your hardpoints — build it.`;
     this._emit('run:modifierRecordRequested', {
-      record: { kind: 'hull', offerId: pending.id, defId: pending.defId, wave: this._wave },
+      record: { kind: 'hull', offerId: pending.id, defId: pending.defId, wave: Math.max(1, this._wave) },
       draft: { wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: pending.id },
       wave: this._wave,
     });
@@ -897,7 +1189,7 @@ export const survivalDraft = {
     this._retireAllTrials();
     this._notice = `${offer.name} back in the cradle — the shelf just re-priced your hardpoints.`;
     this._emit('run:modifierRecordRequested', {
-      record: { kind: 'hull', offerId: offer.id, defId: offer.defId, wave: this._wave },
+      record: { kind: 'hull', offerId: offer.id, defId: offer.defId, wave: Math.max(1, this._wave) },
       draft: { wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: offer.id },
       wave: this._wave,
     });
@@ -1114,6 +1406,77 @@ export const survivalDraft = {
   },
 
   /**
+   * SWARM-05 §7.3 — sell a run fitting back to the armory for half its shelf price. A fitted
+   * part leaves through ships.takeFittedModuleInstance, a spare through its hold-side twin
+   * takeInventoryModuleInstance — the consume paths, never a hand-splice — and the payout is
+   * the wallet's own award receipt, never a balance write. Swarm only: the gauntlet has no
+   * shop, so nothing there has a price to halve. The def is read BEFORE the take, so a
+   * refused sell still has its name — and nothing is consumed before the price is known.
+   */
+  refitSell(request) {
+    const run = liveSurvivalRun(this.state);
+    if (!run || !isSwarmRuleset(run.ruleset)) return false;
+    if (run.phase !== 'refit' && run.phase !== 'draft') return false;
+    const ships = this._ships();
+    if (!ships) return false;
+    const slotIndex = request && request.slotIndex;
+    const instanceId = request && request.instanceId;
+    const loadout = this._activeLoadout();
+    let defId = null;
+    let take = null;
+    if (Number.isInteger(slotIndex) && typeof ships.takeFittedModuleInstance === 'function') {
+      defId = loadout.fittings[slotIndex] || null;
+      take = () => ships.takeFittedModuleInstance(loadout.shipIndex, slotIndex);
+    } else if (instanceId != null && typeof ships.takeInventoryModuleInstance === 'function') {
+      const inventory = this.state && this.state.player && this.state.player.moduleInventory;
+      const item = Array.isArray(inventory)
+        ? inventory.find((entry) => entry && entry.instanceId === instanceId)
+        : null;
+      defId = item ? item.defId : null;
+      take = () => ships.takeInventoryModuleInstance(instanceId);
+    }
+    const refund = defId ? swarmSellPrice(defId) : null;
+    if (!defId || !take || refund == null) {
+      this._notice = 'Nothing there the armory will buy back.';
+      this._emit('run:refitChanged', {
+        wave: run.wave, slotIndex: Number.isInteger(slotIndex) ? slotIndex : null,
+        action: 'sell', ok: false, reason: this._notice,
+      });
+      return false;
+    }
+    const taken = take();
+    if (!taken) {
+      this._notice = 'That part is no longer in the run.';
+      this._emit('run:refitChanged', {
+        wave: run.wave, slotIndex: Number.isInteger(slotIndex) ? slotIndex : null,
+        action: 'sell', ok: false, reason: this._notice,
+      });
+      return false;
+    }
+    // A sold trial is already gone — the consume path does not emit module:unequipped, so the
+    // record is retired here. Left standing it would hunt the newest same-defId copy next
+    // armory and eat a paid one.
+    if (this._trials instanceof Map) {
+      for (const [trialSlot, trial] of [...this._trials]) {
+        if (trial && trial.defId === defId
+          && (Number.isInteger(slotIndex) ? trialSlot === slotIndex : true)) {
+          this._trials.delete(trialSlot);
+        }
+      }
+    }
+    const credits = Math.max(0, refund);
+    if (credits > 0) {
+      this._emit('run:awardRequested', { credits, reason: 'swarm:sellBack' });
+    }
+    this._notice = `Sold ${fittingName(defId) || 'the part'} for ${credits} cr.`;
+    this._emit('run:refitChanged', {
+      wave: run.wave, slotIndex: Number.isInteger(slotIndex) ? slotIndex : null,
+      action: 'sell', ok: true, credits, defId,
+    });
+    return true;
+  },
+
+  /**
    * Every hardpoint on the run's hull, with EVERY spare that could legally go in it.
    *
    * The surface used to reach one spare — the newest — so a player who had drafted five weapons
@@ -1196,7 +1559,11 @@ export const survivalDraft = {
    * refuses a malformed one. Refusal does not undo a fit that already landed.
    */
   _noteModifier(args, draft) {
-    const record = runModifierRecord(args);
+    // `run.wave` counts cleared waves, so the OPENING armory sits at 0 — but the record's
+    // contract is "the 1-based wave that offered it", and the validator drops wave 0.
+    // The shop before wave 1 is wave 1's shop: stamp it so, rather than losing the run's
+    // first purchase to an internal counter the player never sees.
+    const record = runModifierRecord({ ...args, wave: Math.max(1, args && args.wave) });
     if (!validateRunModifier(record).ok) return false;
     this._emit('run:modifierRecordRequested', { record, draft, wave: record.wave });
     return true;
@@ -1303,6 +1670,13 @@ export const survivalDraft = {
   },
 
   _emit(event, payload) {
+    const preparation = this._preparationPending;
+    if (preparation && event === 'run:awardRequested' && payload?.reason === 'crucible:purchaseRefund') {
+      preparation.refunded = true;
+    }
+    if (preparation && event === 'run:shopPurchased' && payload?.offerId === preparation.offerId) {
+      this._recordPreparation(preparation, 'accepted');
+    }
     if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
   },
 };

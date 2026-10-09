@@ -26,12 +26,28 @@ import {
   DOSS_ARCHIVE_CONTACT_ID,
   DOSS_ARCHIVE_COUNTER_ID,
   DOSS_ARCHIVE_SOURCES,
+  DOSS_ARCHIVE_OPTIONAL_SOURCES,
   dossArchiveEvidence,
 } from '../data/dossArchive.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((def) => [def.id, def]));
 const MAX_TRAFFIC_RECEIPTS = 8;
 const MAX_PENDING_VONN_RECEIPTS = 8;
+// Station deed notices (U6): the pocket station keeps the latest notable lane event per
+// sector and its dock card speaks it while the news is fresh. One slot per sector, bounded.
+const DEED_MAX_SECTORS = 8;
+const DEED_NEWS_TTL_S = 1800;
+const DEED_OUTCOME_LINES = Object.freeze({
+  repaired: 'A lane casualty went home under its own power — the watch named its escort.',
+  tender_lost: 'A yard tug was lost on this lane answering a mayday.',
+  casualty_lost: 'A lane casualty broke up under watch; the spilled lot is still disputed.',
+  scene_lost: 'The salvage watch lost everything — casualty, tug, and the habit of answering.',
+  grandee_lost: 'The Grandee of Helion did not clear this pocket.',
+  transit_harried: 'The Grandee made her run angry — her escort logged fire in this pocket.',
+  defended: 'A hauler under attack was defended on the lane.',
+  robbed: 'A freighter was robbed on the lane; the thief left with the hold.',
+  hauler_destroyed: 'A freighter went down on the lane under watch.',
+});
 
 function ensureContactBag(state) {
   const player = state.player || (state.player = {});
@@ -56,6 +72,10 @@ function ensureLifeState(state) {
   if (!state.stationLife.rescueNotices || typeof state.stationLife.rescueNotices !== 'object'
     || Array.isArray(state.stationLife.rescueNotices)) {
     state.stationLife.rescueNotices = {};
+  }
+  if (!state.stationLife.deeds || typeof state.stationLife.deeds !== 'object'
+    || Array.isArray(state.stationLife.deeds)) {
+    state.stationLife.deeds = {};
   }
   return state.stationLife;
 }
@@ -204,6 +224,7 @@ export const stationContacts = {
     on('freight:custodyReceipt', (payload = {}) => this._recordVonnFreightCustody(payload));
     on('aftermathWreck:completed', (payload = {}) => this._recordVonnWreckCompletion(payload));
     on('recovery:completed', (payload = {}) => this._noteRescueNotice(payload));
+    on('encounter:resolved', (payload = {}) => this._noteDeed(payload));
     on('survivorPod:promoted', (payload = {}) => this._notePodReceipt(payload, 'promoted'));
     on('survivorPod:delivered', (payload = {}) => this._notePodReceipt(payload, 'delivered'));
     on('survivorPod:rescued', (payload = {}) => this._notePodReceipt(payload, 'rescued'));
@@ -214,10 +235,12 @@ export const stationContacts = {
     on('discovery:plateUnlocked', (payload = {}) => {
       if (isDossDiscoveryPlate(payload)) this._reconcileDossArchive('discovery-plate');
     });
+    on('lastShift:archived', () => this._reconcileDossArchive('last-shift-filed'));
     on('save:loaded', () => {
       this._reconcileDossArchive('save-loaded');
       this._normalizeVonnFreightLoss('save-loaded');
       this._normalizeRescueNotices();
+      this._normalizeDeeds();
       this._syncWitnessSeamVoice();
     });
     this._reconcileDossArchive('init');
@@ -227,7 +250,7 @@ export const stationContacts = {
     if (!this.state) return;
     this.state.player.stationContacts = {};
     this.state.player.stationContactCounters = createInitialStationContactCounters();
-    this.state.stationLife = { traffic: [], rescueNotices: {} };
+    this.state.stationLife = { traffic: [], rescueNotices: {}, deeds: {} };
     this._clearVonnFreightReceipts();
     this._syncWitnessSeamVoice();
   },
@@ -449,6 +472,46 @@ export const stationContacts = {
     return true;
   },
 
+  /**
+   * U6: the pocket remembers the notable lane events that happened in it. Only outcomes on
+   * the deed table write — an evidence-backed notice by construction, exactly like the
+   * rescue-gossip seam. Record-only: no rep, credits, or cargo move on this path.
+   */
+  _noteDeed(payload) {
+    if (!payload || payload.outcome == null) return false;
+    const line = DEED_OUTCOME_LINES[payload.outcome];
+    const sectorId = String(payload.sectorId || '').trim();
+    if (!line || !sectorId) return false;
+    const life = ensureLifeState(this.state);
+    const keys = Object.keys(life.deeds);
+    if (!life.deeds[sectorId] && keys.length >= DEED_MAX_SECTORS) {
+      const oldest = keys.reduce((a, b) => ((life.deeds[a].simTime || 0) <= (life.deeds[b].simTime || 0) ? a : b));
+      delete life.deeds[oldest];
+    }
+    const rec = {
+      sectorId: sectorId.slice(0, 96),
+      outcome: String(payload.outcome).slice(0, 48),
+      shapeId: String(payload.shape || '').slice(0, 64),
+      encounterId: String(payload.encounterId || '').slice(0, 96),
+      text: line,
+      simTime: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
+    };
+    life.deeds[sectorId] = rec;
+    this.bus.emit('stationLife:deedNoticed', { ...rec });
+    return true;
+  },
+
+  _normalizeDeeds() {
+    const life = ensureLifeState(this.state);
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    for (const [sectorId, deed] of Object.entries(life.deeds)) {
+      if (!deed || !deed.sectorId || !deed.text
+        || now - (Number(deed.simTime) || 0) > DEED_NEWS_TTL_S) {
+        delete life.deeds[sectorId];
+      }
+    }
+  },
+
   _normalizeRescueNotices() {
     const life = ensureLifeState(this.state);
     for (const [sectorId, notice] of Object.entries(life.rescueNotices)) {
@@ -491,7 +554,7 @@ export const stationContacts = {
     const hadRecord = !!bag[DOSS_ARCHIVE_CONTACT_ID];
     const previous = normalizeStationContactRecord(bag[DOSS_ARCHIVE_CONTACT_ID]);
     const flags = { ...previous.flags };
-    for (const source of DOSS_ARCHIVE_SOURCES) delete flags[source.flag];
+    for (const source of [...DOSS_ARCHIVE_SOURCES, ...DOSS_ARCHIVE_OPTIONAL_SOURCES]) delete flags[source.flag];
     for (const flag of evidenceFlags) flags[flag] = true;
     const next = normalizeStationContactRecord({ ...previous, flags });
     if (hadRecord || evidence.length) {

@@ -1,0 +1,259 @@
+{
+  "schema": "spaceface.broodBody.v1",
+  "sourceScale": 1,
+  "coordinates": {
+    "forward": "+X",
+    "up": "+Y",
+    "starboard": "+Z",
+    "unit": "WU"
+  },
+  "identity": "Brood independent living organism",
+  "materialFamily": "brood-carapace-v1",
+  "materialFinishes": [
+    "carapace",
+    "chitin",
+    "membrane",
+    "glow_brood"
+  ],
+  "productionCap": 40,
+  "densityProbes": [
+    100,
+    200,
+    400
+  ],
+  "enemyId": "brood_mite",
+  "id": "brood_mite",
+  "assetId": "SF_BROOD_MITE_V01",
+  "partId": "wholeship_brood_mite_v01",
+  "file": "wholeships/brood_mite_v01.glb",
+  "idea": "Three pearl lobes, split bite",
+  "mass": 22,
+  "radius": 7.1,
+  "centerOfMass": [
+    -0.7,
+    0,
+    0
+  ],
+  "bounds": {
+    "min": [
+      -6,
+      -1,
+      -5
+    ],
+    "max": [
+      6,
+      2.3,
+      5
+    ]
+  },
+  "collision": {
+    "kind": "bounded-compound",
+    "neverUseConvexHull": true,
+    "units": "WU",
+    "outlineErrorMaxWU": 0.12,
+    "primitives": [
+      {
+        "id": "dorsal_lobe",
+        "kind": "capsule",
+        "ax": -3.15,
+        "az": 0,
+        "bx": -0.8,
+        "bz": 0,
+        "r": 2.15
+      },
+      {
+        "id": "port_jaw",
+        "kind": "capsule",
+        "ax": -0.2,
+        "az": -1.7,
+        "bx": 2.5,
+        "bz": -2.4,
+        "r": 1.15
+      },
+      {
+        "id": "port_fang",
+        "kind": "capsule",
+        "ax": 2.7,
+        "az": -2.4,
+        "bx": 5.6,
+        "bz": -1.6,
+        "r": 0.4
+      },
+      {
+        "id": "starboard_jaw",
+        "kind": "capsule",
+        "ax": -0.2,
+        "az": 1.7,
+        "bx": 2.5,
+        "bz": 2.4,
+        "r": 1.15
+      },
+      {
+        "id": "starboard_fang",
+        "kind": "capsule",
+        "ax": 2.7,
+        "az": 2.4,
+        "bx": 5.6,
+        "bz": 1.6,
+        "r": 0.4
+      },
+      {
+        "id": "port_scute",
+        "kind": "capsule",
+        "ax": -1.5,
+        "az": -2.2,
+        "bx": -5.3,
+        "bz": -3.5,
+        "r": 0.7,
+        "surfaceSlackWU": 0.4
+      },
+      {
+        "id": "starboard_scute",
+        "kind": "capsule",
+        "ax": -1.5,
+        "az": 2.2,
+        "bx": -5.3,
+        "bz": 3.5,
+        "r": 0.7,
+        "surfaceSlackWU": 0.4
+      }
+    ],
+    "yMin": -0.65,
+    "yMax": 0.08
+  },
+  "clearVolumes": [
+    {
+      "id": "jaw_split",
+      "min": [
+        2,
+        -4,
+        -0.65
+      ],
+      "max": [
+        6.6,
+        4,
+        0.65
+      ]
+    }
+  ],
+  "sockets": {
+    "SOCKET_BROOD_CONTACT_PORT": {
+      "position": [
+        6,
+        0,
+        -1.6
+      ],
+      "forward": [
+        1,
+        0,
+        0
+      ],
+      "role": "contact"
+    },
+    "SOCKET_BROOD_CONTACT_STARBOARD": {
+      "position": [
+        6,
+        0,
+        1.6
+      ],
+      "forward": [
+        1,
+        0,
+        0
+      ],
+      "role": "contact"
+    },
+    "SOCKET_BROOD_TETHER_DORSAL": {
+      "position": [
+        -0.7,
+        1.86,
+        0
+      ],
+      "forward": [
+        0,
+        1,
+        0
+      ],
+      "role": "attachment"
+    },
+    "SOCKET_BROOD_SIGNAL": {
+      "position": [
+        0.8,
+        0.58,
+        0
+      ],
+      "forward": [
+        1,
+        0,
+        0
+      ],
+      "role": "vfx"
+    }
+  },
+  "motion": {
+    "rigs": [
+      {
+        "id": "mite_membrane_port",
+        "node": "MOTION_MITE_MEMBRANE_PORT",
+        "pivot": [
+          -3,
+          0.18,
+          -2.45
+        ],
+        "axis": "x",
+        "foldRadians": 0.3,
+        "support": "port_scute",
+        "collisionAuthority": "fixed-solid-scute"
+      },
+      {
+        "id": "mite_membrane_starboard",
+        "node": "MOTION_MITE_MEMBRANE_STARBOARD",
+        "pivot": [
+          -3,
+          0.18,
+          2.45
+        ],
+        "axis": "x",
+        "foldRadians": -0.3,
+        "support": "starboard_scute",
+        "collisionAuthority": "fixed-solid-scute"
+      }
+    ],
+    "poses": {
+      "approach": 0,
+      "windup": 1,
+      "attack": 0.1,
+      "recovery": 0.6
+    },
+    "timings": {
+      "windup": 0.5,
+      "attack": 0.8,
+      "recovery": 0.8
+    },
+    "description": "Paired membrane vanes fold above fixed solid lower scutes; contact jaws never animate"
+  },
+  "budget": {
+    "trianglesByLod": [
+      3500,
+      1600,
+      900
+    ],
+    "drawsByLod": [
+      6,
+      6,
+      6
+    ],
+    "rigidPivots": 2,
+    "materialCount": 4
+  },
+  "fragments": {
+    "maxActive": 3,
+    "lifetimeSeconds": 1.6,
+    "physics": "pooled-cosmetic-no-extra-damage",
+    "groups": [
+      "dorsal_lobe",
+      "port_lobe",
+      "starboard_lobe"
+    ]
+  }
+}

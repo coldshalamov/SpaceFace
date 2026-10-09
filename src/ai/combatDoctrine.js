@@ -14,11 +14,14 @@ import {
 import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
 import { CAPITAL_BOSS_CHOREOGRAPHY } from '../data/combatDefs.js';
 import { capitalOpeningAnnouncement, resolveCapitalOpening } from '../combat/subsystems.js';
+import { SCISSORWAKE } from '../data/scissorwake.js';
+import { validMothlightGunCadence } from '../data/mothlight.js';
 
 export const CombatDoctrineId = Object.freeze({
   INTERCEPTOR_FLYBY: 'interceptor_flyby',
   BRAWLER_COMMIT: 'brawler_commit',
   TETHER_CONTROL_RAIDER: 'tether_control_raider',
+  SCISSORWAKE: 'scissorwake',
   FIELD_ANCHOR_CONTROLLER: 'field_anchor_controller',
   RANGED_DISENGAGER: 'ranged_disengager',
   RANGED_STALKER: 'ranged_stalker',
@@ -38,6 +41,18 @@ export const DOCTRINE_TELEGRAPH_TICKS = 30;
 const IDS = new Set(Object.values(CombatDoctrineId));
 const INTERCEPTOR_STRIKE_MIN_TICKS = 24;
 const INTERCEPTOR_STRIKE_MAX_TICKS = 54;
+// SF-2b (#4): the strike's max clock only runs once the pass is inside its band. A run that has not
+// closed yet keeps closing (bounded by STRIKE_CLOSE_CAP_TICKS) instead of timing out at 290 WU and
+// "extending" from a pass that never happened.
+const INTERCEPTOR_STRIKE_BAND_WU = 225;
+const SWARM_STRIKE_BAND_WU = 180;
+const STRIKE_CLOSE_CAP_TICKS = 240;
+// SF-2b (#4): an egress leg (extend / breakaway / peel / disengage / escape) must point out of the
+// target's reach: its heading is clamped into a cone of this cosine around the away-from-target
+// bearing, keeping the run's sweep side. Master followed the current velocity, which on a pass that
+// had not crossed yet pointed straight back into the target (wasp extend closed 118 -> 66 WU).
+const EGRESS_AWAY_MIN_COS = 0.8;
+const EGRESS_PHASES = new Set(['extend', 'breakaway', 'peel', 'disengage', 'escape']);
 const INTERCEPTOR_EXTEND_TICKS = 75;
 const INTERCEPTOR_EXTEND_MAX_TICKS = 180;
 const INTERCEPTOR_REFORM_TICKS = 45;
@@ -81,6 +96,10 @@ const FIELD_ANCHOR_RECOVER_MAX_TICKS = 200;
 const RANGED_REPOSITION_TICKS = 45;
 const RANGED_FIRE_TICKS = 18;
 const RANGED_RESET_TICKS = 18;
+// The panic leg's clock (same bound the interceptor extend hatch uses). Its authored exit demands
+// the pursuer fully ease off — 520 WU AND press < 10 — so any sustained closing speed would hold
+// the hull in retreat forever, guns dark, and the break would never re-commit.
+const RANGED_RETREAT_MAX_TICKS = 180;
 // Panic floor for the disengager ring. Post-A5 the shared engagement envelope is ~240-280 WU and
 // faction presence standoffs sample inside it, so the press trigger must sit below the lowest
 // authored standoff band (170 WU) instead of above the doctrine's own 240 WU default orbit.
@@ -107,7 +126,9 @@ const STALKER_RELOCATE_MAX_TICKS = 75;
 const SWARM_STRIKE_MIN_TICKS = 20;
 const SWARM_STRIKE_MAX_TICKS = 44;
 const SWARM_EXTEND_TICKS = 30;
-const SWARM_EXTEND_MAX_TICKS = 90;
+// SF-2b (#4): 90 ticks was shorter than a light hull needs to turn off a pass and open range, so
+// most swarm extends ended still inside the strike band. The 320 WU exit is unchanged.
+const SWARM_EXTEND_MAX_TICKS = 150;
 const SWARM_REFORM_TICKS = 24;
 // Start the full half-second cue before the close pass, while a light hull still has room to
 // line up its fixed gun. At 200 WU the target crosses most of the firing band during the cue;
@@ -160,7 +181,10 @@ const DETONATOR_REFORM_TICKS = 50;
 // Identity doctrines own their engagement band: factionBehavior.preferredRange would otherwise
 // re-flatten every identity onto its faction's sampled range and re-collapse the vocabulary.
 // The boss choreographies are staged the same way — the act table owns the standoff.
-const IDENTITY_OWNED_RANGE_DOCTRINES = new Set([
+export const IDENTITY_OWNED_RANGE_DOCTRINES = new Set([
+  CombatDoctrineId.SCISSORWAKE,
+  CombatDoctrineId.INTERCEPTOR_FLYBY,
+  CombatDoctrineId.BRAWLER_COMMIT,
   CombatDoctrineId.SWARM_PACK,
   CombatDoctrineId.MINE_LAYER_WAKE,
   CombatDoctrineId.SHIELD_BREAKER,
@@ -335,6 +359,8 @@ export class CombatDoctrineRuntime {
       updateInterceptor(record, tick, self, target, distance, securityDispatched(directive, self));
     } else if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) {
       updateBrawler(record, tick, self, target, distance);
+    } else if (doctrineId === CombatDoctrineId.SCISSORWAKE) {
+      updateScissorwake(record, tick, perception, self, target);
     } else if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
       updateTetherRaider(record, tick, entityId, perception, self, target, distance);
     } else if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) {
@@ -356,6 +382,7 @@ export class CombatDoctrineRuntime {
     } else {
       updateRanged(record, tick, self, target, distance);
     }
+    trackEgressPoint(record, self, target);
     return snapshot(record, target, directive, factionBehavior, self);
   }
 
@@ -472,7 +499,7 @@ function updateInterceptor(record, tick, self, target, distance, dispatched = fa
   } else if (record.phase === 'strike') {
     record.closestDistance = Math.min(record.closestDistance, distance);
     const passed = runHasPassed(record, self, target, distance);
-    if ((age >= INTERCEPTOR_STRIKE_MIN_TICKS && passed) || age >= INTERCEPTOR_STRIKE_MAX_TICKS) {
+    if ((age >= INTERCEPTOR_STRIKE_MIN_TICKS && passed) || strikeTimedOut(record, tick, age, distance, INTERCEPTOR_STRIKE_MAX_TICKS, INTERCEPTOR_STRIKE_BAND_WU)) {
       if (dispatched && interceptorTargetStationary(target)) beginReform(record, tick);
       else beginEgress(record, 'extend', tick, self, target, 'attack_run_complete');
     }
@@ -568,6 +595,40 @@ function updateTetherRaider(record, tick, entityId, perception, self, target, di
     (distance >= 700 || age >= TETHER_ESCAPE_MAX_TICKS)) beginReform(record, tick);
   else if (record.phase === 'reform' && age >= TETHER_REFORM_TICKS) advanceCycle(record, tick, 'flank');
   record.actionTargetId = tether ? (tether.attachmentId || tether.id) : target.id;
+}
+
+function updateScissorwake(record, tick, perception, self, target) {
+  const age = tick - record.phaseStartedTick;
+  const lines = (perception.contacts || []).filter(c => c.kind === ContactKind.TETHER
+    && c.alive === true && c.valid === true && c.visible === true && c.pos
+    && (String(c.ownerId) === String(target.id) || String(c.targetId) === String(target.id)));
+  if (record.phase === 'flank') {
+    lines.sort((a, b) => distance2(self.pos, a.pos) - distance2(self.pos, b.pos) || compareIds(a.id, b.id));
+    const line = lines[0];
+    if (!line || distance2(self.pos, line.pos) > SCISSORWAKE.acquireRangeWu) return;
+    const dx = line.pos.x - self.pos.x, dz = line.pos.z - self.pos.z, length = Math.hypot(dx, dz);
+    if (!(length > SCISSORWAKE.bladeRadiusWu)) return;
+    const dir = { x: dx / length, z: dz / length };
+    record.cutterAttachmentId = line.attachmentId || line.id;
+    record.cutterCorridor = Object.freeze({ origin: Object.freeze({ x: self.pos.x, z: self.pos.z }),
+      dir: Object.freeze(dir), heading: Math.atan2(dir.z, dir.x),
+      range: SCISSORWAKE.passRangeWu, halfWidth: SCISSORWAKE.bladeRadiusWu });
+    record.flightPoint = { x: self.pos.x + dir.x * SCISSORWAKE.passRangeWu,
+      z: self.pos.z + dir.z * SCISSORWAKE.passRangeWu };
+    enter(record, 'spool_cue', tick, 'attach_spool');
+    record.telegraph = Object.freeze({ ...record.telegraph, durationTicks: SCISSORWAKE.windupTicks });
+  } else if (record.phase === 'spool_cue' || record.phase === 'attach_window') {
+    if (!lines.some(c => String(c.attachmentId || c.id) === String(record.cutterAttachmentId))) {
+      beginEgress(record, 'escape', tick, self, target, 'line_lost');
+    } else if (record.phase === 'spool_cue' && age >= SCISSORWAKE.windupTicks) {
+      enter(record, 'attach_window', tick, null);
+    } else if (record.phase === 'attach_window' && age >= SCISSORWAKE.passTicks) {
+      beginEgress(record, 'escape', tick, self, target, 'pass_complete');
+    }
+  } else if (record.phase === 'escape' && age >= SCISSORWAKE.recoveryTicks) {
+    record.cutterCorridor = null; record.cutterAttachmentId = null;
+    beginReform(record, tick);
+  } else if (record.phase === 'reform' && age >= TETHER_REFORM_TICKS) advanceCycle(record, tick, 'flank');
 }
 
 function updateFieldAnchor(record, tick, self, target, distance) {
@@ -760,7 +821,7 @@ function egressPhaseFor(record) {
     return record && record.flightProfile === 'brawler_commit' ? 'breakaway' : 'extend';
   }
   if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) return 'breakaway';
-  if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'escape';
+  if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER || doctrineId === CombatDoctrineId.SCISSORWAKE) return 'escape';
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'recover';
   if (doctrineId === CombatDoctrineId.ESCORT_SCREEN) return 'regroup';
   if (doctrineId === CombatDoctrineId.SWARM_PACK) return 'extend';
@@ -807,7 +868,51 @@ function updateRanged(record, tick, self, target, distance) {
     return;
   }
   if (record.phase === 'retreat') {
-    if (distance >= 520 && press < 10) enter(record, 'outer_standoff', tick, null);
+    // Distance-gated egress exits need a clock (see INTERCEPTOR_EXTEND_MAX): a player who keeps
+    // any MODERATE closing speed on the hull would otherwise pin it in retreat forever — one
+    // volley, then a kite chase that never fights again. The hatch re-arms the cycle so a lazy
+    // chase is answered with a fresh telegraphed volley. A constant hard press (>55) never
+    // reaches this branch: the closing interrupt's early return preempts the whole leg, so the
+    // hull simply stays running until the press eases — and because the clock keeps growing
+    // through the leg, the re-arm lands on the first tolerated tick. Authored floor, unchanged:
+    // inside RANGED_PRESS_FLOOR_WU the interrupt fires regardless of press, so a point-blank
+    // chase (distance < 140) still pins the panic leg — outside this doctrine's volley envelope
+    // by design.
+    if ((distance >= 520 && press < 10) || age >= RANGED_RETREAT_MAX_TICKS) {
+      // Release a stale egress point before re-arming: a disabled-target break pins this leg
+      // with a flightPoint 960 WU out (beginEgress -> egressPoint), and a set flightPoint
+      // outranks every maneuver in the planner — without the release the re-armed cycle
+      // charges its volley while steering for the stale point. Same release beginReform and
+      // advanceCycle make, and the same failure class the capital shift path fixes before
+      // re-entering broadside_charge.
+      record.flightPoint = null;
+      enter(record, 'outer_standoff', tick, null);
+    }
+    return;
+  }
+  // Mothlight's iris is the sole warning clock. Keep the ordinary ranged press/retreat,
+  // pressure, target and action gates, but do not race a second autonomous volley timer.
+  const iris = self?.mothlightGunCadence;
+  if (iris && !stalker) {
+    if (!validMothlightGunCadence(iris, self, tick) || iris.targetId !== target.id
+      || (target.occupantGeneration != null && iris.targetLife !== target.occupantGeneration)) {
+      enter(record, 'reset', tick, null); return;
+    }
+    if (iris.phase === 'true_charge') {
+      const firing = tick === iris.nextAttackTick;
+      if (record.mothlightChargeStart !== iris.phaseStartTick) {
+        record.mothlightChargeStart = iris.phaseStartTick;
+        enter(record, 'charge_cue', iris.phaseStartTick, 'weapon_charge');
+        record.telegraph = Object.freeze({ kind: 'weapon_charge', startedTick: iris.phaseStartTick,
+          durationTicks: iris.nextAttackTick - iris.phaseStartTick });
+        record.aimCommitBearing = corridorBearing(self, target);
+      }
+      if (firing) enter(record, 'fire_window', tick, null);
+      else if (tick > iris.nextAttackTick) enter(record, 'reset', tick, null);
+    } else {
+      record.mothlightChargeStart = null;
+      enter(record, iris.phase === 'retreat' || iris.phase === 'lost' ? 'retreat' : 'outer_standoff', tick, null);
+    }
     return;
   }
   // The charge floor must meet the retreat trigger exactly: between them the doctrine had no
@@ -1040,7 +1145,7 @@ function updateSwarmPack(record, tick, self, target, distance) {
   } else if (record.phase === 'strike') {
     record.closestDistance = Math.min(record.closestDistance, distance);
     const passed = runHasPassed(record, self, target, distance);
-    if ((age >= SWARM_STRIKE_MIN_TICKS && passed) || age >= SWARM_STRIKE_MAX_TICKS) {
+    if ((age >= SWARM_STRIKE_MIN_TICKS && passed) || strikeTimedOut(record, tick, age, distance, SWARM_STRIKE_MAX_TICKS, SWARM_STRIKE_BAND_WU)) {
       beginEgress(record, 'extend', tick, self, target, 'swarm_pass_complete');
     }
   } else if (record.phase === 'extend' && age >= SWARM_EXTEND_TICKS &&
@@ -1112,6 +1217,7 @@ function makeRecord(seed, tick, entityId, doctrineId, targetId, flightProfile) {
     fireWindow: false,
     outcome: null,
     closestDistance: Infinity,
+    strikeBandTick: null,
     flightPoint: null,
     ramAuthorized: false,
     preferredRange: null,
@@ -1205,7 +1311,9 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
   // leaves both the hull line and the volley stale.
   const aimCommitted = (phase === 'charge_cue' || phase === 'fire_window')
     && Number.isFinite(record.aimCommitBearing);
-  const faceAngle = aimCommitted ? record.aimCommitBearing : null;
+  const cutterCommitted = doctrineId === CombatDoctrineId.SCISSORWAKE
+    && (phase === 'spool_cue' || phase === 'attach_window') && record.cutterCorridor;
+  const faceAngle = cutterCommitted ? record.cutterCorridor.heading : aimCommitted ? record.aimCommitBearing : null;
   let maneuverKind = ManeuverKind.INTERCEPT;
   let preferredRange = 180;
   let allowedActionId = null;
@@ -1235,6 +1343,14 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     preferredRange = phase === 'extend' || phase === 'breakaway' ? 240
       : (brawler && phase === 'commit' ? 140 : (brawler ? 190 : 150));
     if (phase === 'strike' || phase === 'commit') allowedActionId = 'action_burst';
+  } else if (doctrineId === CombatDoctrineId.SCISSORWAKE) {
+    formationLocked = false;
+    lateralSign = 0;
+    if (phase === 'spool_cue') { maneuverKind = ManeuverKind.HOLD; maneuverTargetId = null; }
+    else if (phase === 'escape') { maneuverKind = ManeuverKind.RETREAT; maneuverTargetId = null; }
+    else if (phase === 'reform') { maneuverKind = ManeuverKind.FORMATION; maneuverTargetId = null; }
+    else { maneuverKind = ManeuverKind.INTERCEPT; if (phase === 'attach_window') maneuverTargetId = null; }
+    preferredRange = phase === 'flank' ? 60 : phase === 'attach_window' ? 0 : 160;
   } else if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
     formationLocked = phase === 'reform';
     if (phase === 'escape') {
@@ -1428,6 +1544,7 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
   if (assignedTargetBreak) formationLocked = false;
   return Object.freeze({
     doctrineId,
+    cutterAttachmentId: doctrineId === CombatDoctrineId.SCISSORWAKE ? record.cutterAttachmentId || null : null,
     flightProfile: record.flightProfile,
     phase,
     phaseStartedTick: record.phaseStartedTick,
@@ -1452,7 +1569,7 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     phaseChanged: !!target && record.phaseChangedTick === record.lastTick,
     formationLocked,
     maneuverTargetId,
-    flightPoint: record.flightPoint,
+    flightPoint: doctrineId === CombatDoctrineId.SCISSORWAKE && phase === 'spool_cue' ? null : record.flightPoint,
     openingOpen: record.openingOpen === true,
     openingCue: record.openingCue || null,
     openingTransitionId: record.openingTransitionId || null,
@@ -1475,6 +1592,8 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
  * Active during attack cue (engine_flare/charge_cue) and firing pass (strike/commit/fire_window).
  */
 export function attackLineFor(record, self) {
+  if (record?.doctrineId === CombatDoctrineId.SCISSORWAKE
+    && (record.phase === 'spool_cue' || record.phase === 'attach_window')) return record.cutterCorridor || null;
   if (!self || !self.pos) return null;
   const phase = record && record.phase;
   const active = phase === 'strike' || phase === 'engine_flare'
@@ -1607,7 +1726,7 @@ function bandScore(value, ordered) {
 }
 
 function initialPhase(doctrineId) {
-  if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'flank';
+  if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER || doctrineId === CombatDoctrineId.SCISSORWAKE) return 'flank';
   if (doctrineId === CombatDoctrineId.RANGED_DISENGAGER
     || doctrineId === CombatDoctrineId.RANGED_STALKER) return 'outer_standoff';
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'approach';
@@ -1631,7 +1750,7 @@ function flightProfileFor(doctrineId, self) {
     return 'brawler_commit';
   }
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) return 'flyby';
-  if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'tether_raider';
+  if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER || doctrineId === CombatDoctrineId.SCISSORWAKE) return 'tether_raider';
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'field_anchor';
   // The identity doctrines reuse published flight profiles: their motion vocabulary (a close
   // pass, a standoff wake line, a hit-and-run pass) is already expressed by the planner through
@@ -1659,6 +1778,15 @@ function interceptorTargetStationary(target) {
   const vel = target && target.vel;
   if (!vel || !Number.isFinite(vel.x) || !Number.isFinite(vel.z)) return false;
   return Math.hypot(vel.x, vel.z) <= INTERCEPTOR_STATIONARY_TARGET_SPEED;
+}
+
+// The strike's max clock starts when the pass first enters its band (re-armed per strike phase);
+// a pass that never closes still ends at STRIKE_CLOSE_CAP_TICKS.
+function strikeTimedOut(record, tick, age, distance, maxTicks, bandWu) {
+  if (record.strikeBandTick == null || record.strikeBandTick < record.phaseStartedTick) {
+    record.strikeBandTick = distance <= bandWu ? tick : null;
+  }
+  return (record.strikeBandTick != null && tick - record.strikeBandTick >= maxTicks) || age >= STRIKE_CLOSE_CAP_TICKS;
 }
 
 function runHasPassed(record, self, target, distance) {
@@ -1718,6 +1846,34 @@ function committedChargePoint(self, target, distance) {
   });
 }
 
+// Unit heading (dx, dz) clamped into the away cone around the bearing from target to self,
+// keeping its tangential sign (the run's sweep side). Returns null when already inside the cone.
+function clampIntoAwayCone(dx, dz, ux, uz, minCos) {
+  if (dx * ux + dz * uz >= minCos) return null;
+  const sweep = -dx * uz + dz * ux >= 0 ? 1 : -1;
+  const sin = Math.sqrt(Math.max(0, 1 - minCos * minCos));
+  return { x: ux * minCos - uz * sin * sweep, z: uz * minCos + ux * sin * sweep };
+}
+
+// Keep a committed egress leg pointed out of the LIVE target's reach. The stored point is re-aimed
+// only when its bearing has left the away cone (the target moved, or the hull is still carrying
+// momentum past it); a leg that is already opening keeps its point.
+function trackEgressPoint(record, self, target) {
+  if (!record.flightPoint || !EGRESS_PHASES.has(record.phase) || !self || !self.pos || !target || !target.pos) return;
+  const sx = finite(self.pos.x);
+  const sz = finite(self.pos.z);
+  const fx = record.flightPoint.x - sx;
+  const fz = record.flightPoint.z - sz;
+  const fl = Math.hypot(fx, fz);
+  const ax = sx - finite(target.pos.x);
+  const az = sz - finite(target.pos.z);
+  const al = Math.hypot(ax, az);
+  if (!(fl > 1) || !(al > 1)) return;
+  const dir = clampIntoAwayCone(fx / fl, fz / fl, ax / al, az / al, EGRESS_AWAY_MIN_COS);
+  if (!dir) return;
+  record.flightPoint = Object.freeze({ x: sx + dir.x * RUN_EGRESS_DISTANCE, z: sz + dir.z * RUN_EGRESS_DISTANCE });
+}
+
 function egressPoint(self, target, side) {
   const sx = finite(self && self.pos && self.pos.x);
   const sz = finite(self && self.pos && self.pos.z);
@@ -1736,6 +1892,15 @@ function egressPoint(self, target, side) {
     }
   }
   const lateral = side < 0 ? -1 : 1;
+  if (target && target.pos) {
+    const ax = sx - finite(target.pos.x);
+    const az = sz - finite(target.pos.z);
+    const al = Math.hypot(ax, az);
+    if (al > 1) {
+      const dir = clampIntoAwayCone(dx, dz, ax / al, az / al, EGRESS_AWAY_MIN_COS);
+      if (dir) { dx = dir.x; dz = dir.z; }
+    }
+  }
   return Object.freeze({
     x: sx + dx * RUN_EGRESS_DISTANCE - dz * lateral * 80,
     z: sz + dz * RUN_EGRESS_DISTANCE + dx * lateral * 80,

@@ -87,7 +87,26 @@ export function parleyRemainingSeconds(deadlineAt, simTime) {
   return Math.max(0, Number(deadlineAt || 0) - Number(simTime || 0));
 }
 
+// ── surrendered crew's offered yield ────────────────────────────────────────
+// A yielded squad asks for passage, not tribute. No cargo requirement — the pods land in the
+// drift either way — and Helios jurisdiction doesn't apply: nobody is robbing anyone.
+
+export function shouldSurfaceYield(payload, state) {
+  if (!payload || !payload.squadId || !payload.offerUntil) return false;
+  if (!state || state.mode !== 'flight' || state.ui && state.ui.docked) return false;
+  return Number(payload.offerUntil) > Number(state.simTime || 0);
+}
+
+export function yieldReceiptText(payload) {
+  if (payload && payload.accepted === true) {
+    const pods = numberText(payload.pods != null ? payload.pods : 1);
+    return `YIELD TAKEN · ${pods} pod${payload.pods === 1 ? '' : 's'} in the drift · they ran clean`;
+  }
+  return 'LET GO · they keep their take · weapons stay cold';
+}
+
 const DECK_ID = 'pirateParley';
+const YIELD_DECK_ID = 'pirateYield';
 
 export function createPirateParleyPrompt(ctx = {}) {
   const state = ctx.state || {};
@@ -157,8 +176,47 @@ export function createPirateParleyPrompt(ctx = {}) {
   };
   function wasLive(squadId) { return liveSquadId != null && String(liveSquadId) === String(squadId); }
 
+  const showYield = (payload) => {
+    if (!shouldSurfaceYield(payload, state)) return false;
+    const deck = getPromptDeck();
+    if (!deck) return false;
+    return deck.offerDecision({
+      id: YIELD_DECK_ID,
+      kind: 'info',
+      sender: parleyHailerText({ hailerId: payload.leaderId, factionId: payload.factionId }, state).toUpperCase(),
+      statusFlag: 'THEY YIELD',
+      headline: 'WEAPONS COLD — THEY YIELD',
+      detail: 'Passage for their take. Taking it leaves stolen goods in your drift; letting go leaves them to drift.',
+      deadlineAt: Number(payload.offerUntil),
+      choices: [
+        { id: 'accept', label: 'TAKE THE YIELD' },
+        { id: 'refuse', label: 'LET THEM GO', cancel: true },
+      ],
+      onChoose: (choiceId, source) => (
+        bus.emit('pirateDisengage:verdict', {
+          squadId: payload.squadId,
+          accept: choiceId === 'accept',
+          source,
+        })
+      ),
+    });
+  };
+
+  const showYieldReceipt = (payload) => {
+    if (!payload || !payload.squadId) return false;
+    const deck = getPromptDeck();
+    if (deck) deck.resolveDecision(YIELD_DECK_ID);
+    return !!bus.emit('toast', {
+      text: yieldReceiptText(payload),
+      kind: payload.accepted === true ? 'info' : 'warn',
+      ttl: RECEIPT_TTL_S,
+    });
+  };
+
   bus.on('pirateParley:demand', surface);
   bus.on('pirateParley:resolved', showReceipt);
+  bus.on('pirateDisengage:surrenderOffer', showYield);
+  bus.on('pirateDisengage:yieldResolved', showYieldReceipt);
   // game:new / game:load / sector transitions are deck-owned now.
 
   return {
@@ -168,8 +226,10 @@ export function createPirateParleyPrompt(ctx = {}) {
     destroy: () => {
       try { bus.off && bus.off('pirateParley:demand', surface); } catch (_) {}
       try { bus.off && bus.off('pirateParley:resolved', showReceipt); } catch (_) {}
+      try { bus.off && bus.off('pirateDisengage:surrenderOffer', showYield); } catch (_) {}
+      try { bus.off && bus.off('pirateDisengage:yieldResolved', showYieldReceipt); } catch (_) {}
     },
-    showDemand, showReceipt,
+    showDemand, showReceipt, showYield, showYieldReceipt,
     choose: () => false,
   };
 }
@@ -177,7 +237,8 @@ export function createPirateParleyPrompt(ctx = {}) {
 function inertPrompt() {
   return {
     el: null, tick: () => {}, hide: () => false, destroy: () => {},
-    showDemand: () => false, showReceipt: () => false, choose: () => false,
+    showDemand: () => false, showReceipt: () => false,
+    showYield: () => false, showYieldReceipt: () => false, choose: () => false,
   };
 }
 

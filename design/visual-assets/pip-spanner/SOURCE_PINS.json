@@ -1,0 +1,150 @@
+{
+  "assets/ships/parts/parts_manifest.json": {
+    "sha256": "076c073ede5e6a0a8f8afece9bd7434292aafcf0cff6bc4f7f9a1e191752321c",
+    "bytes": 279972
+  },
+  "assets/ships/parts/places/place_pip_spanner.glb": {
+    "sha256": "32b9d623fd8f9166109b5b4690ccf7712d90d5d3dde25a14a61329daa0d7c2cd",
+    "bytes": 1140560
+  },
+  "src/systems/runSession.js": {
+    "sha256": "84f778cfed0f0c294a85b21cb5a99e3fdb491154df1a462f48dfdf657848e0b8",
+    "bytes": 15263
+  },
+  "src/systems/survivalDraft.js": {
+    "sha256": "1212a5720ac9c10ecc0a28ecb59d8f744a10dbecbae19780680efc94f850cefa",
+    "bytes": 88305
+  },
+  "src/ui/orrery/crucibleArmory.js": {
+    "sha256": "c3759e39b1f47946e7cf15f233acbf6a884e8b38a201a5bda0d01d008705ae1e",
+    "bytes": 6282
+  },
+  "src/ui/orrery/cruciblePreparationLayouts.js": {
+    "sha256": "1d18b8621f7d179c22e3af3436734f94001aec3e59ba18961334ba50fbe5fa3b",
+    "bytes": 38659
+  },
+  "src/ui/orrery/pipSpannerCrew.js": {
+    "sha256": "f4c15323ffa823f8d8342b2d9210dcf532fab9945c7f1bed930ff343ccd80c76",
+    "bytes": 12544
+  },
+  "src/ui/orrery/pipSpannerPreview.js": {
+    "sha256": "3b61958295eb03241ddcfb468bc9349bb80daecd5e372a82fbabddd1be294056",
+    "bytes": 12380
+  },
+  "src/ui/screens/crucibleDraft.js": {
+    "sha256": "25ab63b155075c653f2a7aac9a50371f34af4f70b49cf1eec16ffd71f00107bf",
+    "bytes": 104083
+  },
+  "test/crucible-visual-preparation.test.mjs": {
+    "sha256": "3ce10e50dfde62f92aad1416bd66e03a66ed30ddc4b9a38b9f2c2757ea1afd86",
+    "bytes": 6009
+  },
+  "test/pip-spanner-purchase-receipts.test.mjs": {
+    "sha256": "f87d875dad4eb7226d0b823f172d7adf1af10b185f48313a9d82b38cbb701276",
+    "bytes": 31716
+  },
+  "test/pip-spanner-screen-route.test.mjs": {
+    "sha256": "f25f5df40ae9717c10fcafc44160f0f2687fe4e6b9ef693bd3f9b857ef7e944a",
+    "bytes": 14783
+  },
+  "test/pip-spanner-ui.test.mjs": {
+    "sha256": "a839589895daec46304d46130b6128bc761dd25656c7ba294571e662e56b1646",
+    "bytes": 13662
+  },
+  "tools/blender/forge/ships/pip_spanner.py": {
+    "sha256": "e8aefd36276d1af21df114e6ec470fc966c768ebaa2df0b62182f7663055b660",
+    "bytes": 17003
+  },
+  "tools/blender/forge/source_assets/pip_spanner/README.md": {
+    "sha256": "f41058934ad15bcd23e6a7ee83cf90c1a08dc9f4eef440a9f23636af241c1d9d",
+    "bytes": 10462
+  },
+  "tools/blender/forge/source_assets/pip_spanner/evidence/author-250x190-confirm.png": {
+    "sha256": "b21eb950ee257547d2a6b9582e5099bae8bf7f20c23fcd6d4123ef794c3f4807",
+    "bytes": 64741
+  },
+  "tools/blender/forge/source_assets/pip_spanner/evidence/author-250x190-working.png": {
+    "sha256": "3502747592b3d15901db2e46d3530aae2f36537683795c486651d2294b5ef348",
+    "bytes": 64095
+  },
+  "tools/blender/forge/source_assets/pip_spanner/evidence/author-250x190.png": {
+    "sha256": "64e4a3b5e22a4e3c0b4f1bb96627df0f6a5e1ae2251f05ac3533d89ab6ac103c",
+    "bytes": 64032
+  },
+  "tools/blender/forge/source_assets/pip_spanner/evidence/author-360x216-confirm.png": {
+    "sha256": "394f1eb18b1fe2e2f8e0a70a14280ed63e3f8577e565b505556e6f8563a5e138",
+    "bytes": 107634
+  },
+  "tools/blender/forge/source_assets/pip_spanner/evidence/author-360x216-working.png": {
+    "sha256": "635aa63d002fff876bdaede2f203b01d8e2c1936e884515a96c074ecc0b71145",
+    "bytes": 105876
+  },
+  "tools/blender/forge/source_assets/pip_spanner/evidence/author-360x216.png": {
+    "sha256": "42f52331e596dae503c761984abefd5c981650f012dfce4395fc0d094f8c3055",
+    "bytes": 106139
+  },
+  "tools/blender/forge/source_assets/pip_spanner/evidence/author-inspect.png": {
+    "sha256": "9fe45f4eca1f5273f9d8145f6cb43413f2b0130b8d7032546118110122d7bd44",
+    "bytes": 942995
+  },
+  "tools/blender/forge/source_assets/pip_spanner/evidence/camera-contract.json": {
+    "sha256": "ac3ddf7e9203b87b8f7e4f003bdbca5959038288818b0129b132464b53ff7814",
+    "bytes": 3613
+  },
+  "tools/blender/forge/source_assets/pip_spanner/evidence/runtime-contract-check.json": {
+    "sha256": "faaf579faab7ff89ffc9d2cf1cc88a90ca5396269ede59946216524b2f5edfc7",
+    "bytes": 5353
+  },
+  "tools/blender/forge/source_assets/pip_spanner/measured-contract.json": {
+    "sha256": "0b6bf430d206824b5e6bbfdacaadaa0d9f806a1bc189f21bd12e5e5f4a7e75f2",
+    "bytes": 3486
+  },
+  "tools/blender/forge/source_assets/pip_spanner/pip_spanner.blend": {
+    "sha256": "6bd642ac606f6c3b9010df6bcd4103182d4cd4b7079198ca97832f7ab6aabfcc",
+    "bytes": 2328741
+  },
+  "tools/blender/forge/source_assets/pip_spanner/pip_spanner.motion.json": {
+    "sha256": "f1ae5fead5b8ee68744a837aab053e4880fc6f9c8405d5f1b9423349ba6be18f",
+    "bytes": 3302
+  },
+  "tools/blender/forge/source_assets/pip_spanner/pip_spanner_lod1.glb": {
+    "sha256": "6a72437db665c5e5cff66e669186d7551b1b6a24169164c473a55214ce2e6d2b",
+    "bytes": 664924
+  },
+  "tools/blender/forge/source_assets/pip_spanner/pip_spanner_lod2.glb": {
+    "sha256": "b8c3fb3fbd8f1b67f0a77055eb242934a9f4c740c87f4c3dc2b4ea60dfb05646",
+    "bytes": 498572
+  },
+  "tools/blender/forge/source_assets/pip_spanner/provenance.json": {
+    "sha256": "9192d554d35ba9120b97381698fbe1e3576cea51828ff41ec22bcff5f994c83c",
+    "bytes": 2516
+  },
+  "src/core/runState.js": {
+    "sha256": "db4505661ba9800c0dc4f55315b49f64a5c65620f3104e5c5b43b3317c3c1a6e",
+    "bytes": 14046
+  },
+  "assets/ships/release/parts/places/place_pip_spanner.glb": {
+    "sha256": "247a57ec9b5d9066b79c9d0f09d3197fd45c51c47ec469af988ad11cfd6245f0",
+    "bytes": 422152
+  },
+  "assets/ships/release/release_manifest.json": {
+    "sha256": "3e898247438690b60f50dbcfe6c6af6be5bc63753e22d6ca4e1bbaa340c599c2",
+    "bytes": 227483
+  },
+  "assets/ships/render-packages/pilots.json": {
+    "sha256": "a1699dc9f810d4ce11df32a7c32186a9e466f817779c822b9b8bf8d98d76b60d",
+    "bytes": 228138
+  },
+  "src/render/renderPackageManifest.js": {
+    "sha256": "7fd87548ea5c102b425e72ffce0c7b81f12e4ad6b8920f983cb4db23118aa1d1",
+    "bytes": 157580
+  },
+  "assets/ships/release/render-packages/pip-spanner/render.glb": {
+    "sha256": "1f9f4165e1639c856f9ee09d6df7cc5cd52ea7f99617337990c509913d2485f5",
+    "bytes": 743632
+  },
+  "assets/ships/release/render-packages/pip-spanner/render-package.json": {
+    "sha256": "82b0219eb68ac43323200149bb4801e2111908297041dad2fb8b5e6df66acc55",
+    "bytes": 73447
+  }
+}

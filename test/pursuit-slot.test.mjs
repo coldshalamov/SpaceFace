@@ -207,7 +207,14 @@ test('the shipped route uses the dynamic combat stick while removing pursuit imp
 
   assert.doesNotMatch(inputSource, /adjustPursuitSlot|pursuitPressed|createPursuitSlot/);
   assert.match(inputSource, /recordAutoTargetStick|publishAutoTargetStick|recordDynamicFlightStick/);
-  assert.doesNotMatch(flightSource, /stepPursuitSlotAssist|pursuitSlot\.impulse/);
+  // FB-001 (2026-10-02): the pursuit-slot assist is re-surfaced as an OPT-IN assisted-flight
+  // option — flightV3 steps it only behind the gameplay.pursuitSlotAssist setting (default off),
+  // so the dynamic combat stick remains the shipped hand route and G still never creates a slot.
+  // What stays retired is the UNCONDITIONAL pursuit route: the gate must be present, input.js
+  // must stay out of slot creation, the old autopursuit path stays dead, and there is still no
+  // pursuit HUD (asserted below).
+  assert.match(flightSource, /stepPursuitSlotAssist/);
+  assert.match(flightSource, /gameplay\.pursuitSlotAssist/, 'the assist must be gated behind its setting');
   assert.doesNotMatch(flightSource, /pursuitFollowPoint|AUTOPURSUIT_FOLLOW_DIST/);
   assert.match(assistSource, /requestPointerLock|exitPointerLock|pointerlockchange/);
   assert.match(modeSource, /inp\.aimAngle\s*=|inp\.aimWorld\.[xz]\s*=|followAutoTargetPath/);

@@ -163,12 +163,14 @@ export const pirateDisguise = {
         channel: 'bark',
         text: reveal.text,
         kind: 'pirateDisguise',
-        ttl: 1,
+        // ttl is the queue stale-drop deadline as well as the floor hold — 1 s expired under
+        // the 1.5 s bark gap, so the reveal never spoke when it mattered (a fight just ended).
+        ttl: 3,
         id: `pirateDisguise:${entity.id}`,
         factionId: entity.factionId,
       });
     } else {
-      this._emit('toast', { text: reveal.text, kind: 'pirateDisguise', ttl: 1 });
+      this._emit('toast', { text: reveal.text, kind: 'pirateDisguise', ttl: 3 });
     }
     this._emit('pirateDisguise:voice', {
       entityId: entity.id,
@@ -225,9 +227,13 @@ function recordLaunderLedger(state, spec) {
   if (!Array.isArray(player.launderLedger)) player.launderLedger = [];
   const ledger = player.launderLedger;
   const seed = (Number(state.meta && state.meta.seed) >>> 0) || 1;
-  const seq = ledger.length + 1;
+  // The ledger truncates to a fixed cap, so its length is not a sequence — carry the max seq forward.
+  let seq = 0;
+  for (let i = 0; i < ledger.length; i++) seq = Math.max(seq, Number(ledger[i] && ledger[i].seq) || 0);
+  seq += 1;
   const entry = {
     receiptId: `launder:${seed.toString(36)}:${seq.toString(36)}`,
+    seq,
     stationId: spec.stationId || null,
     factionId: spec.factionId || null,
     side: 'launder',

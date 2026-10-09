@@ -366,7 +366,9 @@ test('the opening budgets stay the existing ceilings and a failed package does n
   const loader = readFileSync(new URL('../src/render/renderPackageLoader.js', import.meta.url), 'utf8');
   assert.match(readiness, /Math\.max\(timeoutMs, 360000\)/);
   assert.match(readiness, /Math\.max\(timeoutMs, 120000\)/);
-  assert.match(main, /waitForOpeningGpuResources\(state, 20000\)/);
+  // 1e75f5b68 added the settle-tail options argument to the same 20000 opening budget;
+  // the ceiling, not the call's arity, is the contract this pin guards.
+  assert.match(main, /waitForOpeningGpuResources\(state, 20000[,)]/);
   assert.match(main, /void cook\.catch/);
   assert.match(main, /admissionRunGeneration = transitionToken\.generation/);
   assert.match(loader, /if \(cache\.get\(contentHash\) === entry\) cache\.delete\(contentHash\)/);

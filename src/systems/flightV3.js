@@ -1,3 +1,4 @@
+import { consumeCeresBreakerControl, publishCeresWorkfleetActuation } from './ceresWorkfleet.js';
 // SpaceFace Flight V3 — production adapter.
 //
 // Drop-in intent: replace the registry's import of src/systems/flight.js with this
@@ -11,7 +12,11 @@
 // intent.boost (no resource model), exactly as in the legacy controller — AI never used e.boost.
 
 import { measureThrusterAuthority, queuePhysicsImpulse, writePhysicsControl } from '../core/physicsAuthority.js';
-import { composePlayerDriveAuthority } from '../core/flight/driveAuthority.js';
+import { cancelPhaseBlink, stepPhaseBlink } from './phaseBlink.js';
+// FB-095: _diag.tickMs is diagnostics-only — it reads the classified instrumentation clock
+// (perfNow in perfRuntime) so this simulation owner never touches wall time itself.
+import { perfNow } from '../core/perfRuntime.js';
+import { composePlayerDriveAuthority, DAMAGED_DRIVE_AUTHORITY_FLOOR } from '../core/flight/driveAuthority.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import {
   cryoLockStickLive,
@@ -21,18 +26,24 @@ import {
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { applyFeelEnvelope, hullIdFromEntity, pathFollowBlocksFeel } from '../data/flightFeelEnvelopes.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
-import { computeFlightTelemetry } from '../core/flight/flightTelemetry.js';
-import { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
+import { computeFlightTelemetry, computeSweptHullAdvisory, SWEPT_HULL_DEFAULTS } from '../core/flight/flightTelemetry.js';
+import { orbitHeadingThrustGate, orbitSwingThrottleScale, stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
+// FB-001: the authored pursuit-slot chase assist. Pure module; flightV3 is its only caller and
+// gates it behind the opt-in gameplay.pursuitSlotAssist setting (default off).
+import { createPursuitSlot, stepPursuitSlotAssist } from '../core/flight/pursuitSlotAssist.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
+import { raceGridHolding } from './racingSteer.js';
 import {
   corridorStateFor,
   proxyScaleFor,
   resolveBerthWorld,
   resolveCollisionProxyManifest,
   resolveCorridorAxisWorld,
+  resolveDockAnchor,
 } from '../data/collisionProxyManifests.js';
 import { entityNeedsFlightStep } from '../world/activityRuntime.js';
+import { resolveEntitySelection } from '../ui/sim/stableSelection.js';
 
 // Coordinated banking: roll follows the ACTUAL turn state (yaw rate × forward speed), not the
 // stick. A ship carving at speed rolls into the turn like an aircraft; the same ship pivoting
@@ -108,9 +119,23 @@ const DEFAULT_BOOST_RESOURCE = Object.freeze({
   dashCost: 28,
   dashCd: 3,
   dashCdT: 0,
+  // FB-054 afterburner envelope, derived in ships from mods.boostTopSpeedPct/boostDurS/boostCdS.
+  // burnDurS > 0 means a burner is fitted: one boost run lasts at most burnDurS, then burnCdS
+  // must elapse before the next; topSpeedPct scales the boost speed cap while the burn runs.
+  topSpeedPct: 0,
+  burnDurS: 0,
+  burnCdS: 0,
 });
 const NEUTRAL_INPUT = Object.freeze({ moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false });
 const SG02_INPUT_DT = 1 / 60;   // fixed-step fallback for normalizeCraftInput's slew
+
+// SF-012 swept-hull advisory (PB-HAND-A): publication policy for the hand-flown slide telemetry.
+// The geometry lives in flightTelemetry (computeSweptHullAdvisory, pure); this adapter only
+// decides when it reaches the bus. Face changes — activation, a different obstruction, the slide
+// flag flipping — emit immediately; a held face re-emits on a simTime cooldown so a subscriber
+// that missed the edge still sees the state. It is edge+latch driven, never a per-tick spam, and
+// it never reads the nav target or feeds an avoidance force: warn, never steer.
+const SWEPT_HULL_REEMIT_S = 0.75;
 
 export const flightV3 = {
   name: 'flight',
@@ -127,6 +152,9 @@ export const flightV3 = {
     // Dash-earned momentum window (simTime seconds). Instance state, not sim state: it is derived
     // presentation-free input tagging, so it must not enter the save or the sim snapshot.
     this._dashEarnedUntil = 0;
+    // Swept-hull advisory face latch (SF-012): which advisory state the bus last saw. Derived
+    // publication state only — never saved, never sim-authoritative.
+    this._sweptHull = { active: false, contactId: null, sliding: false, emittedAt: -Infinity };
     // Player-only. NPC steps overwrite _driveAuthority; the instrument must not
     // unscale the player's request by the last NPC's drive.
     this._playerDriveAuthority = null;
@@ -152,11 +180,12 @@ export const flightV3 = {
       this.bus.on('save:loaded', () => {
         this._masslineSlingUntil = 0;
         this._dashEarnedUntil = 0;
+        this._resetSweptHullLatch();
         this._sanitizeAllRuntime();
         this._cancelPlayerBoostOnRestore();
         this._setFlightMode('manual', 'load');
       });
-      this.bus.on('game:started', () => { this._masslineSlingUntil = 0; this._dashEarnedUntil = 0; this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
+      this.bus.on('game:started', () => { this._masslineSlingUntil = 0; this._dashEarnedUntil = 0; this._resetSweptHullLatch(); this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
       this.bus.on('tether:latched', () => this._setFlightMode('manual', 'tether'));
       this.bus.on('massline:selfSling', () => {
         if (!massline2Flag('throw')) return;
@@ -173,7 +202,7 @@ export const flightV3 = {
   },
 
   update(dt, state) {
-    const t0 = nowMs();
+    const t0 = perfNow();
     const backend = state.settings && state.settings.gameplay && state.settings.gameplay.physicsBackend;
     this._diag.physicsBackend = backend || 'custom';
 
@@ -185,7 +214,7 @@ export const flightV3 = {
         console.warn('[flight-v3] waiting for rapier-dynamic physics authority; no craft motion commands emitted');
       }
       this._settleAllBanks(dt, state);
-      this._diag.tickMs = Math.max(0, nowMs() - t0);
+      this._diag.tickMs = Math.max(0, perfNow() - t0);
       return;
     }
     this._warnedBackend = false;
@@ -193,7 +222,10 @@ export const flightV3 = {
     const player = state.entities && state.entities.get(state.playerId);
     if (player && playerFlightSimActive(state, player)) {
       const active = playerFlightControlsActive(state, player);
-      if (!active) this._cancelPlayerBoost(player);
+      if (!active) {
+        this._cancelPlayerBoost(player);
+        cancelPhaseBlink(player);
+      }
       const raw = active ? state.input : neutralInput();
       this._stepCraft(player, raw, dt, state, true);
       // Emit boost start/stop on the TRUE transition. _stepCraft set flags.boosting to the
@@ -206,6 +238,7 @@ export const flightV3 = {
     } else if (player) {
       settleBank(player, dt);
       this._cancelPlayerBoost(player);
+      cancelPhaseBlink(player);
     }
 
     for (const entity of flightCraftCandidates(state)) {
@@ -213,13 +246,15 @@ export const flightV3 = {
       if (entity.type !== 'ship' && entity.type !== 'drone') continue;
       // Abstract/dormant/aggregate stay under catch-up unless a wake carries intent.
       if (!entityNeedsFlightStep(entity)) continue;
+      const ceresControl=consumeCeresBreakerControl(entity,state);
+      if(ceresControl){writePhysicsControl(entity,ceresControl);publishCeresWorkfleetActuation(entity,ceresControl,state.tick,state);continue;}
       if (!npcFlightNeedsCommand(entity)) continue;
       const intent = entity.data && entity.data.intent;
       if (intent) this._stepCraft(entity, intent, dt, state, false);
       else this._stepCraft(entity, neutralInput(), dt, state, false);
     }
 
-    this._diag.tickMs = Math.max(0, nowMs() - t0);
+    this._diag.tickMs = Math.max(0, perfNow() - t0);
     if (player) this._publishPlayerDiagnostics(player, state);
   },
 
@@ -232,6 +267,7 @@ export const flightV3 = {
     const runtime = propulsionRuntime(entity, baseProfile);
     let input = normalizeCraftInput(entity, rawInput, runtime, state, isPlayer, dt,
       isPlayer ? _stepInputPlayer : _stepInputNpc);
+    const gridHeld = isPlayer && raceGridHolding(state);
     const tether = isPlayer && state.player && state.player.tether;
     let profile = isPlayer && state.input?.autoFire
       ? applyAutoTargetHelmProfile(baseProfile)
@@ -241,7 +277,8 @@ export const flightV3 = {
     }
     let autopilot = null;
     if (isPlayer) {
-      autopilot = resolveAutopilotInput(this, entity, rawInput, input, dt, state, profile);
+      if (gridHeld) stopAutopilot(this, state, 'race-grid');
+      else autopilot = resolveAutopilotInput(this, entity, rawInput, input, dt, state, profile);
       if (autopilot && autopilot.input) {
         input = autopilot.input;
       }
@@ -260,9 +297,51 @@ export const flightV3 = {
     );
     this._driveAuthority = driveAuthority;
     if (isPlayer) this._playerDriveAuthority = driveAuthority;
+    // Hoisted above the player boost block: the boost state machine only queues impulses and
+    // spends energy, so this snapshot is identical to one taken after it. The orbit-chord probe
+    // below needs it to ask the assist itself whether it will own yaw this tick.
+    const body = bodySnapshotInto(entity, profile, _stepBody);
+    const orbitAnchor = isPlayer && tether && tether.targetId != null && state.entities
+      && typeof state.entities.get === 'function'
+      ? state.entities.get(tether.targetId)
+      : null;
     let boosting = input.boost;
     if (isPlayer) {
       const autoBoost = !!(autopilot && autopilot.active);
+      // Veil Step (mod_veil_step → derived.phaseBlink) replaces the thruster boost.
+      // Shift throws a shadow ahead and the release puts the hull there. The
+      // capacitor still refills through the boost machine, with the key forced
+      // off so a dash impulse and the afterburner cannot also fire.
+      const veil = !autoBoost && !!(entity.data && entity.data.derived && entity.data.derived.phaseBlink);
+      let veilBusy = false;
+      if (veil) {
+        const phase = stepPhaseBlink({
+          entity,
+          held: !!(rawInput && rawInput.boost),
+          dt,
+          state,
+          bus: this.bus,
+          now: finite(state && state.simTime, 0),
+        });
+        veilBusy = !!(phase && phase.busy);
+        input.boost = false;
+      }
+      // A held tether-orbit chord and a dash impulse are incompatible control contracts. The
+      // orbit helper can continuously trim yaw and the swing coordinator can lower sustained
+      // boost to the speed the hull can actually track, but a boost press also carries a discrete
+      // dash impulse (170 wu/s on the Wasp). That impulse lands outside the throttle governor and
+      // can jump angular speed past the line's yaw ceiling in one tick. While the explicit
+      // forward+turn orbit chord owns the
+      // helm, Shift therefore means continuous boost only; release either chord key (or turn the
+      // assist Off) and the ordinary dash press is immediately available again.
+      //
+      // The predicate IS the assist: the same pure step the steering call below runs, probed with
+      // the same body/anchor/intent it will see, so suppression can never drift from the yaw it
+      // protects. Only `.active` is read here; the steering call still runs after boost so its
+      // input spread carries the resource-gated boost flag.
+      const orbitOwnsBoostPress = craftOrbitAssistStep(
+        state, entity, body, orbitAnchor, rawInput, input, tether, profile, dt,
+      ).active === true;
       // Input owns the latch. Read its published state before stepping boost so an engaged burn
       // does not also regenerate the same capacitor in this tick; the burn debit below is the
       // only new consumer and remains player-only.
@@ -270,13 +349,18 @@ export const flightV3 = {
         && state && state.input && state.input.travelDrive
         && state.input.travelDrive.state === 'engaged';
       boosting = this._stepPlayerBoost(entity, input.boost, dt, state, {
-        suppressDash: autoBoost,
-        suppressRegen: requestedTravelBurn,
+        suppressDash: autoBoost || orbitOwnsBoostPress || veil,
+        suppressRegen: requestedTravelBurn || veilBusy,
       });
       input.boost = boosting;
       if (boosting && finite(state && state.simTime, 0) < finite(entity.boost && entity.boost._overshootUntil, 0)) {
         // F6: boost onset overshoots its accel mult for ~0.2 s — the kick after the dash impulse.
         profile = { ...profile, boostAccelMult: positive(profile.boostAccelMult, 1) * BOOST_ACCEL_OVERSHOOT };
+      }
+      // FB-054: a fitted burner's topSpeedPct lifts the boost speed cap while the run is live.
+      const burnerTopSpeedPct = finite(entity.boost && entity.boost.topSpeedPct, 0);
+      if (boosting && burnerTopSpeedPct > 0) {
+        profile = { ...profile, boostSpeedMult: positive(profile.boostSpeedMult, 1) * (1 + burnerTopSpeedPct) };
       }
       applyMasslineFlightModifiers(input, state, this._masslineSlingUntil, this._dashEarnedUntil);
       // Velocity-vectoring assist (design/FEEL_CONTRACT.md §C; docs/TUNING_JOBS.md job 1). A
@@ -298,51 +382,76 @@ export const flightV3 = {
       input.unvectoredCruiseSteering = vectoringSetting === false
         && !(autopilot && autopilot.active)
         && !(tether && tether.active === true);
-      if (travelFlag('travelBurn') && input.travelDrive && input.travelDrive.state === 'engaged') {
-        const energyBefore = finiteNonNeg(entity.boost && entity.boost.energy, 0);
-        if (!(energyBefore > 0)) {
-          // The input system consumes this one-shot request next tick and owns the actual
-          // Engaged -> Cooldown transition. Suppress the local kernel input now so depletion
-          // cannot buy one free burn tick while the latch catches up.
-          requestTravelBurnDepletion(state);
-          input.travelDrive = travelDriveCooldownInput(input.travelDrive);
-        } else {
-          const spent = Math.min(energyBefore, travelBurnCost(entity.boost, dt));
-          entity.boost.energy = Math.max(0, energyBefore - spent);
-          if (!(entity.boost.energy > 0)) {
-            // A partial final payment is still honored, but the exhausted tick must not
-            // contribute an engaged kernel cap. Input consumes the request next tick; this local
-            // copy keeps the current simulation honest until then.
-            requestTravelBurnDepletion(state);
-            input.travelDrive = travelDriveCooldownInput(input.travelDrive);
-          }
-        }
-      }
+      if (!gridHeld) debitTravelBurn(this, entity, input, dt, state);
     }
 
-    const body = bodySnapshotInto(entity, profile, _stepBody);
     let orbitAssist = null;
+    let orbitSwingScale = 1;
+    let pursuitSlot = null;
     if (isPlayer) {
-      const anchor = tether && tether.targetId != null && state.entities
-        && typeof state.entities.get === 'function'
-        ? state.entities.get(tether.targetId)
-        : null;
-      orbitAssist = stepAnchorRelativeOrbitAssist({
-        dt,
-        host: body,
-        anchor,
-        tether,
-        flightIntent: {
-          forward: finite(rawInput && (rawInput.moveZ ?? rawInput.throttle)),
-          lateral: finite(rawInput && (rawInput.turnIntent ?? rawInput.turn)),
-        },
-        input,
-        profile,
-        strength: state.settings && state.settings.gameplay
-          && state.settings.gameplay.orbitAssistStrength,
-        controlsBlocked: !playerFlightControlsActive(state, entity) || !!input.drawFlight,
+      // Same step the pre-boost probe ran; re-run with the post-boost input so the returned
+      // packet carries the resource-gated boost flag and the keys the boost block attached.
+      orbitAssist = craftOrbitAssistStep(
+        state, entity, body, orbitAnchor, rawInput, input, tether, profile, dt,
+      );
+      // Direction latch memory lives on the entity and is written only after this steering call,
+      // so the pre-boost probe and this call read the same previous-tick latch (both stay pure).
+      entity._orbitDirectionLatch = orbitAssist.active ? (orbitAssist.telemetry.latchedDirection || 0) : 0;
+      if (orbitAssist.active) {
+        input = orbitAssist.input;
+        // Line-locked yaw: the taut line already carries the hull round at the orbital rate, so
+        // the helper may ask for more than the hull's own maxYawRate (up to the physics ceiling).
+        // Lend that rate, and scale yaw accel/brake by the same ratio, for this tick only.
+        const lent = orbitAssist.telemetry.lentYawRate;
+        if (lent && lent > positive(profile.maxYawRate, 1)) {
+          const ratio = lent / positive(profile.maxYawRate, 1);
+          const yawAccel = positive(profile.yawAccel, 8);
+          profile = {
+            ...profile,
+            maxYawRate: lent,
+            yawAccel: yawAccel * ratio,
+            yawBrake: positive(profile.yawBrake, yawAccel * 1.4) * ratio,
+          };
+        }
+        // A nose still swinging onto the tangent must not thrust across (or against) the orbit
+        // it is chasing: forward throttle follows cos(heading error) while the assist steers.
+        const headingGate = orbitHeadingThrustGate(orbitAssist.telemetry);
+        if (headingGate < 1 && input.throttle > 0) {
+          input = { ...input, throttle: input.throttle * headingGate };
+        }
+        // Swing/yaw coordination: the yaw helper is exact only while the nose can turn as fast
+        // as the line swings. Past that (short rope, boost, fast hull) an unthrottled orbit pegs
+        // yaw at the envelope while the nose lags 100°+ behind the tangent — uncontrolled
+        // circling. Holding forward thrust at the trackable swing keeps the requested rate the
+        // exact inverse-radius feed-forward. Unsaturated orbits read scale 1: untouched.
+        orbitSwingScale = orbitSwingThrottleScale(
+          orbitAssist.telemetry, commandedTranslationSpeed(input, profile),
+        );
+        if (orbitSwingScale < 1 && input.throttle > 0) {
+          input = { ...input, throttle: input.throttle * orbitSwingScale };
+        }
+      }
+      // FB-001: the pursuit-slot assist, reachable as an opt-in assisted-flight option beside
+      // the orbit assist. Strict gate (setting must be exactly true; default off keeps every
+      // golden and the default feel untouched), a held lock on a moving target, and manual
+      // flight owns the tick (no rope, no autopilot, no blocked controls, no held brake).
+      // The module returns ONE bounded additive impulse from thrust the hull already has —
+      // it never writes velocity and never clamps earned speed.
+      const pursuitSlotStep = this._stepPursuitSlot(entity, body, input, profile, dt, state, {
+        controlsBlocked: gridHeld || !playerFlightControlsActive(state, entity) || !!input.drawFlight,
+        tetherLive: !!(tether && tether.active === true),
+        autopilotActive: !!(autopilot && autopilot.active),
       });
-      if (orbitAssist.active) input = orbitAssist.input;
+      pursuitSlot = pursuitSlotStep;
+      if (pursuitSlot.active && pursuitSlot.impulse) {
+        queuePhysicsImpulse(entity, pursuitSlot.impulse);
+      }
+    }
+    if (gridHeld) {
+      input.throttle = input.strafe = input.turn = 0;
+      input.boost = input.boostPressed = false;
+      input.brake = true;
+      input.drawFlight = input.travelDrive = undefined;
     }
     _stepArgs.dt = dt;
     _stepArgs.body = body;
@@ -385,11 +494,66 @@ export const flightV3 = {
       frame.autopursuit = null;
       frame.autopilot = autopilot && autopilot.active ? autopilot.telemetry : null;
       frame.orbitAssist = orbitAssist
-        ? { active: orbitAssist.active, ...orbitAssist.telemetry }
+        ? { active: orbitAssist.active, ...orbitAssist.telemetry, swingThrottleScale: orbitSwingScale }
         : { active: false, reason: 'unavailable' };
+      // FB-001: published-state telemetry for the opt-in pursuit-slot assist (instrument and
+      // tests read this; nothing consumes it to steer). Mirrors the orbitAssist row above.
+      frame.pursuitSlot = pursuitSlot
+        ? { active: pursuitSlot.active, ...(pursuitSlot.telemetry || {}) }
+        : { active: false, reason: 'unavailable' };
+      // SF-012: untargeted swept-hull advisory for the hand-flown slide. Published state only —
+      // the profile may carry boost shaping from earlier in this step, but nothing here writes
+      // back into input, profile, or the physics command.
+      frame.sweptHull = this._publishSweptHullAdvisory(entity, state, profile, {
+        handFlown: !(autopilot && autopilot.active),
+        controlsActive: playerFlightControlsActive(state, entity),
+      });
       emitThrustCue(this.bus, state, entity, input, result.telemetry);
     }
     emitPropulsionEvents(this.bus, entity, result.events);
+  },
+
+  // FB-001 pursuit-slot assist. Opt-in via gameplay.pursuitSlotAssist (strict === true, default
+  // off — goldens and default-route feel are untouched). While the pilot holds a lock on a moving
+  // ship and flies by hand, the slot forms once per lock at the pilot's current bearing/range from
+  // the target and the pure module then holds that slot with bounded thrust the hull already has.
+  // Returns { active, impulse, telemetry }; the caller queues the impulse through the same
+  // physics-authority membrane as the dash. The slot lives on entity._pursuitSlot, a runtime
+  // field like _flightFrame — never serialized, recreated on the next lock.
+  _stepPursuitSlot(entity, body, input, profile, dt, state, flags) {
+    const inactive = (reason) => ({ active: false, impulse: null, telemetry: { active: false, reason } });
+    const gameplay = state && state.settings && state.settings.gameplay;
+    if (!gameplay || gameplay.pursuitSlotAssist !== true) {
+      delete entity._pursuitSlot;
+      return inactive('assist-off');
+    }
+    if (flags.controlsBlocked || flags.tetherLive || flags.autopilotActive || input.brake) {
+      return inactive('manual-override');
+    }
+    const targetId = state.player && state.player.targetId;
+    const target = targetId != null && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(targetId)
+      : null;
+    const usableTarget = target && target !== entity
+      && target.alive !== false
+      && (target.type === 'ship' || target.type === 'drone')
+      && target.vel
+      && Math.hypot(finite(target.vel.x), finite(target.vel.z)) > 0.5
+      ? target
+      : null;
+    if (!usableTarget) {
+      delete entity._pursuitSlot;
+      return inactive('target-lost');
+    }
+    let slot = entity._pursuitSlot;
+    if (!slot || slot.targetId !== usableTarget.id) {
+      slot = createPursuitSlot({ host: body, target: usableTarget, source: 'g' });
+      if (slot.active) entity._pursuitSlot = slot;
+      else delete entity._pursuitSlot;
+    }
+    const result = stepPursuitSlotAssist({ dt, host: body, target: usableTarget, slot, profile });
+    if (!result.active) delete entity._pursuitSlot;
+    return result;
   },
 
   // Player boost/dash state machine. Returns the resource-gated boosting flag to feed back into
@@ -399,45 +563,129 @@ export const flightV3 = {
   _stepPlayerBoost(e, rawBoostHeld, dt, state, opts = {}) {
     const boost = normalizeBoostResource(e);
     if (boost.dashCdT > 0) boost.dashCdT = Math.max(0, boost.dashCdT - dt);
+    // FB-054 afterburner window (mods.boostDurS/boostCdS → derived.boost → e.boost): once a burn
+    // is lit it ticks down whether or not the key stays held — you lit it, it burns — and only
+    // after it dies does burnCdS start gating the next light. The energy capacitor below still
+    // applies inside the window.
+    if (boost._burnCdT > 0) boost._burnCdT = Math.max(0, boost._burnCdT - dt);
+    let burnerJustSpent = false;
+    if (boost._burnT > 0) {
+      const live = boost._burnActive === true;
+      boost._burnT = Math.max(0, boost._burnT - dt);
+      if (boost._burnT <= 0) {
+        boost._burnCdT = boost.burnCdS;
+        burnerJustSpent = live;
+      }
+    }
 
     const controlsBlocked = !!(state.ui && state.ui.screenStack && state.ui.screenStack.length);
     const suppressBoost = !!this._suppressBoostUntilRelease;
     const boostHeld = !!rawBoostHeld && !suppressBoost;
     const boostWasHeld = !!this._prevBoost;
+    let dashSpoken = false;
     if (boostHeld && !boostWasHeld && !opts.suppressDash) {
       // Press edge: fire the dash immediately and arm the acceleration-overshoot window (~0.2 s).
       // Holding past this point is just boost. The pre-kick event carries the 80 ms anticipation
       // beat to presentation (FOV/plume/audio) only when the press can actually produce thrust —
       // an empty capacitor stays silent rather than mimicking the success cue.
-      if (boost.energy > 1) {
-        boost._overshootUntil = finite(state && state.simTime, 0) + BOOST_ACCEL_OVERSHOOT_S;
-        if (this.bus && typeof this.bus.emit === 'function') {
-          this.bus.emit('ship:boostPreKick', { shipId: e.id, windowS: BOOST_PREKICK_S });
+      const dashed = this._triggerDash(e, boost, state);
+      if (!dashed && boost.dashImpulse > 0) dashSpoken = true;
+      else if (dashed && boost.energy <= 1) {
+        // The dash already spent the tank under the sustain floor. Disarm now, or regen
+        // on this same hold climbs back through `energy > 1` and the burn relights.
+        boost._boostArmed = false;
+        if (boost.burnDurS > 0 && !(boost._burnT > 0) && boost._burnCdT > 0) this._burnerCoolTold = true;
+        if (!travelBurnEngaged(state) && this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('toast', { text: 'Boost spent', kind: 'warn', ttl: 1.6 });
         }
       }
-      this._triggerDash(e, boost, state);
     }
     if (!rawBoostHeld && suppressBoost && !controlsBlocked) this._suppressBoostUntilRelease = false;
     this._prevBoost = boostHeld;
+    if (!boostHeld) {
+      this._burnerCoolTold = false;
+      this._dashSpokeThisHold = false;
+      this._dashEmptyThisHold = false;
+    }
+    if (dashSpoken) {
+      this._dashSpokeThisHold = true;
+      // An empty tank never starts dashCdT, so the excuse has to last the whole hold.
+      // Otherwise the cooling line arrives on the next frame beside "Boost empty".
+      if (!(boost.dashCdT > 0)) this._dashEmptyThisHold = true;
+    }
+    if (burnerJustSpent && boostHeld) {
+      this._burnerCoolTold = true;
+      // A tank already under the sustain floor has said "Boost spent". The window
+      // ending on that same hold must not add a second sentence.
+      if (boost.energy > 1 && this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('toast', { text: 'Afterburner spent', kind: 'warn', ttl: 1.6 });
+      }
+    }
 
-    // Sustained boost with hysteresis gating (cut-out at 0, re-arm at 35%).
+    // Sustained boost with hysteresis gating (cut-out at the energy>1 floor, re-arm at 35%).
     if (!('_boostArmed' in boost)) boost._boostArmed = true;
+    // Travel burn debits this same tank after the boost step. A hold can arrive already
+    // under the floor while still armed; regen would otherwise relight it for one frame.
+    if (boostHeld && boost.max > 0 && boost._boostArmed && boost.energy <= 1) {
+      boost._boostArmed = false;
+      // Travel burn debits this tank after the boost step and already said so.
+      if (!dashSpoken && !this._travelSpentTold && !travelBurnEngaged(state) && this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('toast', { text: 'Boost spent', kind: 'warn', ttl: 1.6 });
+      }
+    }
+    const burnerFitted = boost.burnDurS > 0;
     let boosting = false;
     if (boostHeld && boost.max > 0) {
       if (boost._boostArmed && boost.energy > 1) {
-        boosting = true;
-        boost.energy = Math.max(0, boost.energy - boost.drainRate * dt);
-        if (boost.energy <= 0) boost._boostArmed = false;   // cut out; must regen to re-arm
+        // With a burner fitted, boost only exists inside a lit window; light it when the
+        // cooldown has elapsed. Without one the capacitor governs alone, exactly as before.
+        if (burnerFitted && boost._burnT <= 0 && boost._burnCdT <= 0) boost._burnT = boost.burnDurS;
+        if (!burnerFitted || boost._burnT > 0) {
+          boosting = true;
+          boost.energy = Math.max(0, boost.energy - boost.drainRate * dt);
+          // The sustain gate is `energy > 1`. A 60 Hz drain is smaller than that gap, so the
+          // tank stops inside (0, 1] and used to stay armed — the hold relit as soon as regen
+          // crossed 1. Cut out on the same floor. A dash refusal already spoke this tick.
+          if (boost.energy <= 1) {
+            boost._boostArmed = false;
+            if (!dashSpoken && !travelBurnEngaged(state) && this.bus && typeof this.bus.emit === 'function') {
+              this.bus.emit('toast', { text: 'Boost spent', kind: 'warn', ttl: 1.6 });
+            }
+          }
+        }
       }
     } else if (boost.energy > boost.max * 0.35) {
       boost._boostArmed = true;
     }
-    if (!boosting && !opts.suppressRegen) boost.energy = Math.min(boost.max, boost.energy + boost.regenRate * dt);
+    boost._burnActive = boosting && burnerFitted && boost._burnT > 0;
+    const burnerCooling = burnerFitted && boost._burnT <= 0 && boost._burnCdT > 0;
+    const dashExcuseOver = !this._dashSpokeThisHold
+      || (!(boost.dashCdT > 0) && !this._dashEmptyThisHold);
+    if (burnerCooling && boostHeld && boost.energy > 1 && !this._burnerCoolTold && !dashSpoken && dashExcuseOver) {
+      this._burnerCoolTold = true;
+      if (this.bus && typeof this.bus.emit === 'function') {
+        const left = Math.max(1, Math.ceil(boost._burnCdT));
+        this.bus.emit('toast', { text: `Afterburner cooling — ${left}s`, kind: 'warn', ttl: 1.6 });
+      }
+    }
+    if (!boosting && !opts.suppressRegen) {
+      boost.energy = Math.min(boost.max, boost.energy + boost.regenRate * boostCapRegenScale(state, e) * dt);
+    }
     return boosting;
   },
 
   _triggerDash(e, boost, state) {
-    if (!(boost.dashImpulse > 0) || boost.dashCdT > 0 || boost.energy < boost.dashCost) return false;
+    if (!(boost.dashImpulse > 0)) return false;
+    if (boost.dashCdT > 0 || boost.energy < boost.dashCost) {
+      // The press already happened. Don't play the success kick; say which gate held.
+      if (e && state && e.id === state.playerId && this.bus && typeof this.bus.emit === 'function') {
+        const text = boost.dashCdT > 0
+          ? `Boost recharging — ${Math.max(1, Math.ceil(boost.dashCdT))}s`
+          : 'Boost empty';
+        this.bus.emit('toast', { text, kind: 'warn', ttl: 1.6 });
+      }
+      return false;
+    }
     const cf = Math.cos(finite(e.rot)), sf = Math.sin(finite(e.rot));
     let imp = boost.dashImpulse;
     let dirX = cf, dirZ = sf;
@@ -468,6 +716,15 @@ export const flightV3 = {
         swung = true;
       }
     }
+    if (!swung && tether && tether.active && tether.targetId != null) {
+      // On a live line a dash may only lift the speed along its direction to the boosted speed
+      // cap. Chord-break dashes (release the turn key, tap boost, re-press) otherwise pumped a
+      // tethered spin to 2x+ what the drive can sustain. The swing-drive verb is exempt.
+      const dashProfile = resolvePropulsionProfile(e, state);
+      const vAlong = finite(e.vel && e.vel.x) * dirX + finite(e.vel && e.vel.z) * dirZ;
+      const dashCap = positive(dashProfile.combatSpeed, 150) * positive(dashProfile.boostSpeedMult, 1.55);
+      imp = Math.min(imp, Math.max(0, dashCap - vAlong));
+    }
     const mass = positive(e.physicsBody && e.physicsBody.mass, positive(e.mass, 1));
     // Rapier authority path: queue the impulse (mass-scaled so delta-v is `imp` units/s),
     // matching src/systems/flight.js:176-179. The physics owner applies it next solve.
@@ -477,6 +734,15 @@ export const flightV3 = {
       ? this._driveAuthority.forward
       : 1;
     const scaled = imp * driveScale * cryoScale;
+    // A live rope can already carry more speed than a dash may add. A zero shove is
+    // not a dash: keep the capacitor/cooldown and all success cues for a useful press.
+    if (!(scaled > 1e-6)) return false;
+    if (boost.energy > 1) {
+      boost._overshootUntil = finite(state && state.simTime, 0) + BOOST_ACCEL_OVERSHOOT_S;
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('ship:boostPreKick', { shipId: e.id, windowS: BOOST_PREKICK_S });
+      }
+    }
     queuePhysicsImpulse(e, { x: dirX * scaled * mass, y: 0, z: dirZ * scaled * mass });
     boost.energy = Math.max(0, boost.energy - boost.dashCost);
     boost.dashCdT = boost.dashCd;
@@ -487,6 +753,13 @@ export const flightV3 = {
       finite(this._dashEarnedUntil, 0),
       finite(state && state.simTime, 0) + TRAVEL_DASH_TAG_S
     );
+    if (e && state && e.id === state.playerId && driveScale <= DAMAGED_DRIVE_AUTHORITY_FLOOR + 1e-4) {
+      const runtime = state.combat && state.combat.entities && state.combat.entities[String(e.id)];
+      const drive = runtime && runtime.subsystems && runtime.subsystems.subsystem_drive;
+      if (drive && drive.effectiveDisabled === true && this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('toast', { text: 'Drive out — thrust is down to a crawl', kind: 'warn', ttl: 1.6 });
+      }
+    }
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('ship:dash', { shipId: e.id, impulse: imp, swung });
       if (swung) this.bus.emit('ship:swingDash', { shipId: e.id, impulse: imp });
@@ -504,6 +777,7 @@ export const flightV3 = {
     this._prevBoost = false;
     boost._boostHoldT = 0;
     boost._dashCandidate = false;
+    boost._burnActive = false;
     if (!e.flags) e.flags = {};
     const wasBoosting = !!(e.flags.boosting || e._wasBoosting);
     e.flags.boosting = false;
@@ -513,11 +787,67 @@ export const flightV3 = {
     }
   },
 
+  // Save/load fidelity: the serialized boost state is the truth. A burn saved mid-window
+  // continues rather than dying silently on continue, a still-held key is not a new press edge
+  // (which would re-fire the dash impulse), and a fresh hold after load presses cleanly. Only
+  // the double-tap dash gesture resets — a tap pair may not span a save. The menu/docked
+  // cancel path (_cancelPlayerBoost) is unchanged; its stale-key suppression still applies
+  // where input was interrupted rather than re-seated.
   _cancelPlayerBoostOnRestore() {
     const state = this.state;
     const player = state && state.entities && state.playerId
       ? state.entities.get(state.playerId) : null;
-    this._cancelPlayerBoost(player);
+    this._restorePlayerBoost(player);
+  },
+
+  _restorePlayerBoost(e) {
+    if (!e || !e.boost) { this._prevBoost = false; return; }
+    const boost = e.boost;
+    boost._boostHoldT = 0;
+    boost._dashCandidate = false;
+    const boosting = !!(e.flags && e.flags.boosting);
+    e._wasBoosting = boosting;
+    this._prevBoost = boosting;
+    this._suppressBoostUntilRelease = false;
+  },
+
+  _resetSweptHullLatch() {
+    // Lazily rebuilt by _publishSweptHullAdvisory when the system instance skipped init()
+    // (probe harnesses build bare Object.create(flightV3) hosts).
+    this._sweptHull = { active: false, contactId: null, sliding: false, emittedAt: -Infinity };
+  },
+
+  /**
+   * SF-012 swept-hull advisory for hand-flown slides — publish untargeted telemetry.
+   *
+   * Returns the bounded advisory object the player's `_flightFrame.sweptHull` carries each tick,
+   * and emits `flight:sweptHull` on the existing event bus when the advisory face changes (or on
+   * the re-emit cooldown while held). The sweep only runs for the live player with active
+   * controls and no flight computer: autopilot has its own targeted avoidance telemetry, and a
+   * pilot behind a menu cannot act on a warning, so neither gets one. NPCs never publish —
+   * this is hand-flight instrumentation.
+   */
+  _publishSweptHullAdvisory(entity, state, profile, gate) {
+    const contacts = gate.handFlown && gate.controlsActive
+      ? sweptHullContacts(state, entity)
+      : null;
+    const advisory = computeSweptHullAdvisory(entity, profile, contacts);
+    const latch = this._sweptHull
+      || (this._sweptHull = { active: false, contactId: null, sliding: false, emittedAt: -Infinity });
+    if (advisory.active && this.bus && typeof this.bus.emit === 'function') {
+      const now = finite(state && state.simTime, 0);
+      const faceChanged = !latch.active
+        || latch.contactId !== advisory.contactId
+        || latch.sliding !== advisory.sliding;
+      if (faceChanged || now - latch.emittedAt >= SWEPT_HULL_REEMIT_S) {
+        this.bus.emit('flight:sweptHull', sweptHullEventPayload(entity.id, advisory));
+        latch.emittedAt = now;
+      }
+    }
+    latch.active = advisory.active;
+    latch.contactId = advisory.contactId;
+    latch.sliding = advisory.sliding;
+    return advisory;
   },
 
   _publishPlayerDiagnostics(player, state) {
@@ -558,7 +888,10 @@ export const flightV3 = {
       entity.data.propulsionRuntime = {
         ...createPropulsionRuntime(profile),
         ...(entity.data.propulsionRuntime || {}),
-        previousBoost: false,
+        // previousBoost rides the serialized packet on purpose: a craft saved mid-boost keeps
+        // its edge state through save:loaded instead of re-firing a phantom press (and the dash
+        // impulse that rides it) on the first tick after restore.
+        previousBoost: !!(entity.data.propulsionRuntime && entity.data.propulsionRuntime.previousBoost),
       };
     }
   },
@@ -658,6 +991,15 @@ export function applyMasslineFlightModifiers(input, state, eventSlingUntil = 0, 
 // Idempotent boost-resource normalizer (port of src/systems/flight.js:306-329). Guarantees the
 // player's `e.boost` block is well-formed every tick and after save load. Saves are validated
 // defensively by saveSystem, so this only repairs in-memory drift — it never rejects a save.
+/** Same cap-regen multiplier the gun capacitor uses. A dead reactor is 0.2, not a full dash tank. */
+function boostCapRegenScale(state, entity) {
+  const book = state && state.combat && state.combat.entities;
+  if (!book || !entity || entity.id == null) return 1;
+  const runtime = book[String(entity.id)];
+  const value = runtime && runtime.multipliers && runtime.multipliers.capRegen;
+  return Number.isFinite(value) ? Math.max(0, value) : 1;
+}
+
 function normalizeBoostResource(e) {
   let boost = e.boost;
   if (!boost || typeof boost !== 'object' || Array.isArray(boost)) {
@@ -676,6 +1018,12 @@ function normalizeBoostResource(e) {
   boost.dashCost = finiteNonNeg(boost.dashCost, DEFAULT_BOOST_RESOURCE.dashCost);
   boost.dashCd = finiteNonNeg(boost.dashCd, DEFAULT_BOOST_RESOURCE.dashCd);
   boost.dashCdT = Math.min(boost.dashCd, finiteNonNeg(boost.dashCdT, DEFAULT_BOOST_RESOURCE.dashCdT));
+  boost.topSpeedPct = finiteNonNeg(boost.topSpeedPct, DEFAULT_BOOST_RESOURCE.topSpeedPct);
+  boost.burnDurS = finiteNonNeg(boost.burnDurS, DEFAULT_BOOST_RESOURCE.burnDurS);
+  boost.burnCdS = finiteNonNeg(boost.burnCdS, DEFAULT_BOOST_RESOURCE.burnCdS);
+  boost._burnT = Math.min(boost.burnDurS, finiteNonNeg(boost._burnT, 0));
+  boost._burnCdT = Math.min(boost.burnCdS > 0 ? boost.burnCdS : Infinity,
+    finiteNonNeg(boost._burnCdT, 0));
   if ('_boostHoldT' in boost && !Number.isFinite(boost._boostHoldT)) boost._boostHoldT = 0;
   if ('_dashCandidate' in boost && typeof boost._dashCandidate !== 'boolean') boost._dashCandidate = false;
   if ('_boostArmed' in boost && typeof boost._boostArmed !== 'boolean') boost._boostArmed = true;
@@ -686,10 +1034,47 @@ function finiteNonNeg(value, fallback) {
   return Number.isFinite(value) ? Math.max(0, value) : fallback;
 }
 
+function travelBurnEngaged(state) {
+  const drive = state && state.input && state.input.travelDrive;
+  return !!(travelFlag('travelBurn') && drive && drive.state === 'engaged');
+}
+
 /** Cost for one engaged Travel Burn tick. The fitted boost drain is the sole authored rate. */
 export function travelBurnCost(boost, dt) {
   const rate = finiteNonNeg(boost && boost.drainRate, 0);
   return rate * TRAVEL_BURN_DRAIN_MULT * Math.max(0, finite(dt, 0));
+}
+
+/** Travel burn spends the boost tank after the boost step. An empty tank drops the latch. */
+export function debitTravelBurn(host, entity, input, dt, state) {
+  const drive = input && input.travelDrive;
+  const engaged = travelFlag('travelBurn')
+    && drive && drive.state === 'engaged';
+  if (!engaged) {
+    host._travelSpentTold = false;
+    return;
+  }
+  const energyBefore = finiteNonNeg(entity.boost && entity.boost.energy, 0);
+  let empty = !(energyBefore > 0);
+  if (!empty) {
+    const spent = Math.min(energyBefore, travelBurnCost(entity.boost, dt));
+    entity.boost.energy = Math.max(0, energyBefore - spent);
+    empty = !(entity.boost.energy > 0);
+  }
+  if (!empty) return;
+  // The input system consumes this one-shot request next tick and owns the actual
+  // Engaged -> Cooldown transition. Suppress the local kernel input now so depletion
+  // cannot buy one free burn tick while the latch catches up. A partial final payment
+  // is still honored above; the exhausted tick must not contribute an engaged kernel cap.
+  requestTravelBurnDepletion(state);
+  input.travelDrive = travelDriveCooldownInput(input.travelDrive);
+  if (host._travelSpentTold) return;
+  host._travelSpentTold = true;
+  // The boost hold reads this latch next tick and does not add "Boost spent" for the
+  // same empty tank.
+  if (host.bus && typeof host.bus.emit === 'function') {
+    host.bus.emit('toast', { text: 'Travel burn spent', kind: 'warn', ttl: 1.6 });
+  }
 }
 
 function requestTravelBurnDepletion(state) {
@@ -729,6 +1114,48 @@ const _diagBody = { pos: null, vel: null, rot: 0, angVel: 0, mass: 1, inertia: 1
 const _diagControl = { telemetry: null };
 const _diagArgs = { body: null, profile: null, control: _diagControl };
 
+/**
+ * One argument-binding for the tether orbit helper, shared by the pre-boost suppression probe
+ * and the post-boost steering call. The two calls differ only in `input` (pre- vs post-boost
+ * packet, and the helper reads just `brake` from it, which the boost block never touches), so
+ * the probe's `.active` is always the steering call's `.active`: suppression owns exactly the
+ * ticks the assist owns.
+ */
+function craftOrbitAssistStep(state, entity, body, anchor, rawInput, input, tether, profile, dt) {
+  return stepAnchorRelativeOrbitAssist({
+    dt,
+    host: body,
+    anchor,
+    tether,
+    flightIntent: {
+      forward: finite(rawInput && (rawInput.moveZ ?? rawInput.throttle)),
+      lateral: finite(rawInput && (rawInput.turnIntent ?? rawInput.turn)),
+      lateralFromAim: !!(rawInput && rawInput.turnIntentFromAim),
+    },
+    latchedDirection: entity._orbitDirectionLatch || 0,
+    input,
+    profile,
+    strength: state.settings && state.settings.gameplay
+      && state.settings.gameplay.orbitAssistStrength,
+    controlsBlocked: !playerFlightControlsActive(state, entity) || !!input.drawFlight,
+  });
+}
+
+/**
+ * Translation speed the current input packet drives toward: the assisted governor's
+ * commandFraction × combatSpeed (× boost), mirrored from the propulsion kernel so the orbit
+ * swing coordinator caps demand against the same ceiling the kernel will actually hold.
+ */
+function commandedTranslationSpeed(input, profile) {
+  const fraction = clamp(
+    Math.hypot(Math.max(0, finite(input && input.throttle)), finite(input && input.strafe)), 0, 1,
+  );
+  const governed = positive(profile && profile.combatSpeed, 0);
+  if (!(fraction > 0) || !(governed > 0)) return 0;
+  const boostMult = input && input.boost ? positive(profile && profile.boostSpeedMult, 1.55) : 1;
+  return fraction * governed * boostMult;
+}
+
 function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG02_INPUT_DT, out = null) {
   const boost = !!raw.boost;
   const previousBoost = !!runtime.previousBoost;
@@ -749,16 +1176,22 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
     rt.cmdThrottle = throttle;
     rt.cmdStrafe = strafe;
   }
+  const gridHeld = isPlayer && raceGridHolding(state);
+  if (gridHeld) {
+    turn = 0;
+    throttle = 0;
+    strafe = 0;
+  }
   const o = out || {};
   o.throttle = throttle;
   o.strafe = strafe;
   o.turn = clamp(turn, -1, 1);
-  o.boost = boost;
-  o.boostPressed = boost && !previousBoost;
-  o.boostReleased = !boost && previousBoost;
-  o.brake = !!(raw.brake || raw.fullStop || raw.flipBurn || (isPlayer && !raw.drawFlight?.active && throttle < -0.55));
+  o.boost = boost && !gridHeld;
+  o.boostPressed = o.boost && !previousBoost;
+  o.boostReleased = !o.boost && previousBoost;
+  o.brake = !gridHeld && !!(raw.brake || raw.fullStop || raw.flipBurn || (isPlayer && !raw.drawFlight?.active && throttle < -0.55));
   o.assistMode = resolveAssistMode(entity, state, raw);
-  o.drawFlight = isPlayer && raw.drawFlight?.active && state.input?.autoFire ? raw.drawFlight : undefined;
+  o.drawFlight = isPlayer && !gridHeld && raw.drawFlight?.active && state.input?.autoFire ? raw.drawFlight : undefined;
   // Reset every key downstream code may have written last tick: autopilot/orbit-assist
   // substitution and the massline/travelDrive/vectoring blocks above write optional keys onto
   // the packet, so a reused scratch must drop them before they can leak into the next craft.
@@ -786,6 +1219,7 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     clearAutopilotAvoidance(autopilot, true);
     return null;
   }
+  if (releaseAutopilotIfDriveOut(host, state, entity)) return null;
   if (!playerFlightControlsActive(state, entity)) return null;
   if (hasManualFlightInput(rawInput)) {
     stopAutopilot(host, state, 'manual');
@@ -1011,6 +1445,25 @@ function syncAutopilotInput(state, input, telemetry) {
   actions.brake = !!input.brake;
 }
 
+function autopilotDriveOut(state, entity) {
+  const book = state && state.combat && state.combat.entities;
+  if (!book || !entity || entity.id == null) return false;
+  const runtime = book[String(entity.id)];
+  const drive = runtime && runtime.subsystems && runtime.subsystems.subsystem_drive;
+  return !!(drive && drive.effectiveDisabled === true);
+}
+
+/** Stop a local autopilot when the drive is dead. An engaged route owns its own drop. */
+export function releaseAutopilotIfDriveOut(host, state, entity) {
+  const nav = state && state.nav;
+  const autopilot = nav && nav.autopilot;
+  if (!autopilot || autopilot.active !== true) return false;
+  if (!autopilotDriveOut(state, entity)) return false;
+  const routeOwnsIt = !!(nav.executor && nav.executor.engaged === true);
+  if (!routeOwnsIt) stopAutopilot(host, state, 'drive-out');
+  return true;
+}
+
 function stopAutopilot(host, state, reason) {
   const nav = state && state.nav;
   const autopilot = nav && nav.autopilot;
@@ -1023,6 +1476,10 @@ function stopAutopilot(host, state, reason) {
   clearAutopilotAvoidance(autopilot, true);
   autopilot.active = false;
   autopilot.status = reason || 'idle';
+  // Retire the stamped bind with the burn: it is inert only while readers gate on active, and
+  // a stale stamp on the object is a trap for any future in-place re-arm (review).
+  autopilot.targetEntityId = null;
+  autopilot.stable = null;
   if (state && state.input) {
     state.input.autopilot = false;
     if (state.input.actions) state.input.actions.brake = false;
@@ -1031,25 +1488,60 @@ function stopAutopilot(host, state, reason) {
   if (bus && typeof bus.emit === 'function') {
     bus.emit('nav:autopilot', autopilot);
     bus.emit('toast', {
-      text: reason === 'arrived' ? 'Autopilot arrived' : 'Autopilot disengaged',
+      text: reason === 'arrived' ? 'Autopilot arrived'
+        : reason === 'drive-out' ? 'Drive out — autopilot can\'t hold'
+        : 'Autopilot disengaged',
       kind: reason === 'arrived' ? 'good' : 'info',
       ttl: 2,
     });
   }
 }
 
+// Phase 2b #9 (tuning lab): the station a docking autopilot targets is excluded from its own
+// obstacle list, so a hull starting behind the station flew the straight line to the corridor mouth
+// THROUGH the station and ground against its proxy forever (measured: every 180° start, every hull,
+// ~7000 contacts at up to 158 wu/s, never docked). A far-side approach now rounds the station on a
+// circle of DOCK_ORBIT_RADIUS_MULT x mouth radius, aiming a carrot DOCK_ORBIT_STEP_DEG ahead toward
+// the corridor axis, until the hull is within that angle of the axis — then the authored mouth aim
+// takes over unchanged. Starts already inside the circle keep the mouth aim (the exit path).
+export const DOCK_ORBIT_RADIUS_MULT = 1.3;
+export const DOCK_ORBIT_STEP_DEG = 60;
+export function dockOrbitWaypoint(entity, axis, mouthRadius, player) {
+  if (!player || !player.pos || !(mouthRadius > 0)) return null;
+  const R = mouthRadius * DOCK_ORBIT_RADIUS_MULT;
+  const rx = finite(player.pos.x) - finite(entity.pos.x);
+  const rz = finite(player.pos.z) - finite(entity.pos.z);
+  const along = rx * axis.x + rz * axis.z;
+  const lateral = rx * -axis.z + rz * axis.x;
+  const theta = Math.atan2(lateral, along);
+  const step = DOCK_ORBIT_STEP_DEG * Math.PI / 180;
+  if (Math.abs(theta) <= step || Math.hypot(rx, rz) < R * 0.9) return null;
+  const tw = theta - Math.sign(theta) * step;
+  const c = Math.cos(tw);
+  const s = Math.sin(tw);
+  return {
+    x: finite(entity.pos.x) + (axis.x * c - axis.z * s) * R,
+    z: finite(entity.pos.z) + (axis.z * c + axis.x * s) * R,
+  };
+}
+
 export function resolveAutopilotTarget(state, autopilot) {
   if (!state || !autopilot) return null;
   const id = autopilot.targetEntityId;
   let entity = null;
-  if (id != null && state.entities && typeof state.entities.get === 'function') {
+  if (autopilot.stable) {
+    // SF-244: the course owner stamped what the bind meant at arm time — a recycled id
+    // resolves closed and the burn falls back to the fix, never onto the new holder.
+    entity = resolveEntitySelection(state, autopilot.stable);
+  } else if (id != null && state.entities && typeof state.entities.get === 'function') {
     entity = state.entities.get(id);
     if (!entity && typeof id === 'string') {
       const numeric = Number(id);
       if (Number.isFinite(numeric)) entity = state.entities.get(numeric);
     }
   }
-  if (entity && entity.alive !== false && entity.pos) {
+  if (entity && entity.alive !== false && entity.pos
+      && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
     // PQ-008 stations with truthful collision geometry dock at an authored berth, not at the
     // legacy center-radius ring. A station waypoint still identifies the live entity, but default
     // flight resolves its terminal point into the manifest-owned corridor. Its terminal radius is
@@ -1070,7 +1562,6 @@ export function resolveAutopilotTarget(state, autopilot) {
         manifest.docking.capture && manifest.docking.capture.halfWidth,
         0,
       ) * positive(scale, 1);
-      const dockingArrivalRadius = berthDockRadius;
       const player = state.playerId != null && state.entities && typeof state.entities.get === 'function'
         ? state.entities.get(state.playerId)
         : null;
@@ -1105,15 +1596,27 @@ export function resolveAutopilotTarget(state, autopilot) {
       const approachSwitchRadius = Math.max(AUTOPILOT_ARRIVAL_RADIUS + 7, captureHalfWidth);
       const berthStage = !player || !player.pos || inLane
         || (approachDistance <= approachSwitchRadius && alignedWithLane);
+      // SF-130: the terminal anchor is the hull's own dock anchor — the deck berth when its
+      // planar envelope clears the pocket, else the corridor-axis mooring standoff. Same
+      // anchor the physics dock:range gate uses, so the autopilot can never park the hull
+      // somewhere the dock prompt will not fire.
+      const dockAnchor = resolveDockAnchor(entity, manifest, player) || {
+        x: berth.x, z: berth.z,
+        dockRadius: berthDockRadius,
+        speedGate: positive(manifest.docking.berth && manifest.docking.berth.speedGate, 12),
+        kind: 'berth',
+      };
+      const orbit = berthStage ? null : dockOrbitWaypoint(entity, axis, mouthRadius, player);
       return {
-        x: berthStage ? berth.x : approach.x,
-        z: berthStage ? berth.z : approach.z,
+        x: berthStage ? dockAnchor.x : orbit ? orbit.x : approach.x,
+        z: berthStage ? dockAnchor.z : orbit ? orbit.z : approach.z,
         radius: 0,
-        arrivalRadius: dockingArrivalRadius,
+        arrivalRadius: dockAnchor.dockRadius,
         dockingProxyId: manifest.id || null,
         dockingStage: berthStage ? 'berth' : 'corridor-mouth',
+        dockAnchorKind: dockAnchor.kind,
         corridorInLane: inLane,
-        dockSpeedGate: positive(manifest.docking.berth && manifest.docking.berth.speedGate, 12),
+        dockSpeedGate: dockAnchor.speedGate,
         approachPoint: approach,
         entity,
         label: autopilot.label || entity.name || (entity.data && entity.data.name) || 'Station berth',
@@ -1305,6 +1808,86 @@ function autopilotObstacles(state, player, target, baseX, baseZ, maxProjection) 
     out.push(e);
   }
   return out;
+}
+
+// Reused scratch for the player's swept-hull advisory (same discipline as the autopilot obstacle
+// scratch above: consumed synchronously inside the tick, nothing downstream retains the array).
+const SWEPT_HULL_OBSTACLE_SCRATCH = [];
+const SWEPT_HULL_QUERY_SCRATCH = [];
+const SWEPT_HULL_QUERY_POS = { x: 0, z: 0 };
+const SWEPT_HULL_NO_CONTACTS = [];
+
+// The sweep capsule runs along the CURRENT velocity out to the advisory horizon. One circle
+// covering that capsule returns every possible contributor — the hash buckets entities by their
+// full radius coverage, so a large-radius hull whose center sits off-axis is still captured (the
+// same reasoning as autopilotObstacles; the fallback path returns the entity list and the
+// per-entity predicate below stays the authority either way). The predicate is deliberately
+// identical to the autopilot's: what counts as a hull must not depend on who is asking.
+function sweptHullContacts(state, entity) {
+  const vx = finite(entity.vel && entity.vel.x);
+  const vz = finite(entity.vel && entity.vel.z);
+  const speed = Math.hypot(vx, vz);
+  if (!(speed > 0.001)) return SWEPT_HULL_NO_CONTACTS;
+  const hullRadius = positive(entity.radius, 0);
+  const halfProjection = (SWEPT_HULL_DEFAULTS.horizonS * speed) * 0.5;
+  const px = finite(entity.pos && entity.pos.x);
+  const pz = finite(entity.pos && entity.pos.z);
+  SWEPT_HULL_QUERY_POS.x = px + (vx / speed) * halfProjection;
+  SWEPT_HULL_QUERY_POS.z = pz + (vz / speed) * halfProjection;
+  const list = queryNearbyEntities(
+    state,
+    SWEPT_HULL_QUERY_POS,
+    halfProjection + hullRadius + SWEPT_HULL_DEFAULTS.grazeGapWU,
+    SWEPT_HULL_QUERY_SCRATCH,
+  );
+  const out = SWEPT_HULL_OBSTACLE_SCRATCH;
+  out.length = 0;
+  for (const e of list) {
+    if (!e || e === entity || e.alive === false || e.collides === false || !e.pos) continue;
+    if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
+    const radius = Number.isFinite(e.radius) ? e.radius : 0;
+    if (radius <= 0 && e.type !== 'station' && e.type !== 'asteroid' && e.type !== 'wreck' && e.type !== 'ship') continue;
+    out.push(e);
+  }
+  return out;
+}
+
+// Retained emit payload — `flight:sweptHull` subscribers read synchronously during emit, mirroring
+// the ship:thrust contract. No field aliases a per-tick advisory object.
+const _sweptHullPayload = {
+  shipId: null, active: true, sliding: false, speed: 0, forwardSpeed: 0, lateralSpeed: 0,
+  driftAngle: 0, contactId: null, contactType: null, contactRadius: 0, timeToContactS: null,
+  contactDistance: 0, closestGapWU: 0, closestTimeS: 0, contactPoint: null,
+  canStopBeforeContact: false, stopDistanceWU: 0,
+};
+const _sweptHullPoint = { x: 0, z: 0 };
+
+function sweptHullEventPayload(shipId, advisory) {
+  const P = _sweptHullPayload;
+  P.shipId = shipId;
+  P.active = advisory.active;
+  P.sliding = advisory.sliding;
+  P.speed = advisory.speed;
+  P.forwardSpeed = advisory.forwardSpeed;
+  P.lateralSpeed = advisory.lateralSpeed;
+  P.driftAngle = advisory.driftAngle;
+  P.contactId = advisory.contactId;
+  P.contactType = advisory.contactType;
+  P.contactRadius = advisory.contactRadius;
+  P.timeToContactS = advisory.timeToContactS;
+  P.contactDistance = advisory.contactDistance;
+  P.closestGapWU = advisory.closestGapWU;
+  P.closestTimeS = advisory.closestTimeS;
+  if (advisory.contactPoint) {
+    _sweptHullPoint.x = advisory.contactPoint.x;
+    _sweptHullPoint.z = advisory.contactPoint.z;
+    P.contactPoint = _sweptHullPoint;
+  } else {
+    P.contactPoint = null;
+  }
+  P.canStopBeforeContact = advisory.canStopBeforeContact;
+  P.stopDistanceWU = advisory.stopDistanceWU;
+  return P;
 }
 
 function counterVelocityInput(entity) {
@@ -1503,7 +2086,6 @@ function npcIntentIsLive(entity, intent) {
 function normalizeFlightComputerMode(mode) {
   return mode === 'cruise' || mode === 'lane' ? mode : 'manual';
 }
-function nowMs() { return typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now(); }
 function damp(cur, target, lambda, dt) { return cur + (target - cur) * (1 - Math.exp(-lambda * dt)); }
 function wrapAngle(v) { let x = finite(v) % (Math.PI * 2); if (x <= -Math.PI) x += Math.PI * 2; if (x > Math.PI) x -= Math.PI * 2; return x; }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }

@@ -1,8 +1,10 @@
 import { shouldStartHeavyAdmission } from './admissionSliceBudget.js';
+import { forcedFrameSpend, FORCED_FRAME_BUDGET_MS, noteForcedFrameSpend } from './decodeTaskBudget.js';
 import { reportBootWork } from '../core/bootWork.js';
 import { armCallbackAfterPresent } from './compilePresentSlice.js';
 import { cookLiveSceneGpu } from './liveSceneCook.js';
 import { settleOpeningCompositionTail } from './precompile.js';
+import { yieldToBrowser } from './startupGpuResidency.js';
 
 function gpuContextIsLost(state) {
   const render = state && state.render;
@@ -134,12 +136,21 @@ export function createSlicedYield(yieldFn, options = {}) {
   if (typeof yieldFn !== 'function') throw new TypeError('createSlicedYield requires a yield function');
   const sliceMs = Number.isFinite(Number(options.sliceMs)) ? Math.max(0, Number(options.sliceMs)) : 8;
   const now = typeof options.now === 'function' ? options.now : ledgerNow;
+  const shouldYield = typeof options.shouldYield === 'function' ? options.shouldYield : null;
+  const debit = typeof options.debit === 'function' ? options.debit : null;
+  // `debitGate` is sampled where `sliceStarted` is minted so a gating term that
+  // flips mid-slice can't forfeit (or double-count) the slice's posted spend.
+  const debitGate = typeof options.debitGate === 'function' ? options.debitGate : null;
+  let debitArmed = debitGate ? !!debitGate() : true;
   let sliceStarted = now();
   const sliced = async (force = false) => {
-    if (force !== true && now() - sliceStarted < sliceMs) return false;
+    const tick = now();
+    if (force !== true && tick - sliceStarted < sliceMs && !(shouldYield && shouldYield())) return false;
     sliced.yields += 1;
+    if (debit && debitArmed) debit(tick - sliceStarted);
     await yieldFn();
     sliceStarted = now();
+    if (debitGate) debitArmed = !!debitGate();
     return true;
   };
   sliced.yields = 0;
@@ -203,7 +214,22 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   const urgentRuns = new Map();
   let quietTimer = null;
   let maxTimer = null;
-  let compileTail = Promise.resolve();
+  // Compile batches stay strictly serial — render-target selection is global renderer
+  // state. The tail is a pull-queue rather than an eager .then chain: link specs wait
+  // in linkSpecs until the in-flight link settles, so an urgent spec splices ahead of
+  // still-queued ambient links (behind earlier urgents) instead of chaining behind
+  // every link that happened to be queued first. tailSettle shadows the old
+  // compileTail for callers that only want "everything started so far" drained.
+  const linkSpecs = [];
+  let linkActive = false;
+  let tailSettle = Promise.resolve();
+  // Every bound in the admission system sits on a waiter — the link run itself had
+  // none: a compile/link that never settles would keep linkActive forever and wedge
+  // every later spec (ambient AND urgent). Race each run against a bound well above
+  // the 20s KHR drain; on timeout the entries resolve with a tagged outcome and the
+  // pump advances — refused subjects re-admit through the normal lanes.
+  const LINK_RUN_TAIL_TIMEOUT_MS = 50000;
+  const LINK_TAIL_TIMEOUT_RESULT = Object.freeze({ tailTimeout: true });
   let nextAdmissionId = 0;
   let settledAdmissions = 0;
   let boundedResume = false;
@@ -291,6 +317,45 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     };
   }
 
+  /** The old compileTail role: resolves once every link started so far has settled. */
+  function laneSettled() {
+    return tailSettle;
+  }
+
+  function enqueueLink(subjects, path, compileOptions, { urgent = false } = {}) {
+    let resolveRun;
+    const run = new Promise((resolve) => { resolveRun = resolve; });
+    const spec = { subjects, path, compileOptions, urgent, resolveRun };
+    if (urgent) {
+      let pos = linkSpecs.length;
+      while (pos > 0 && linkSpecs[pos - 1].urgent === true) pos -= 1;
+      linkSpecs.splice(pos, 0, spec);
+    } else {
+      linkSpecs.push(spec);
+    }
+    pumpLinks();
+    return run;
+  }
+
+  function pumpLinks() {
+    if (linkActive) return;
+    const spec = linkSpecs.shift();
+    if (!spec) return;
+    linkActive = true;
+    const run = Promise.resolve().then(() => invokeCompileBatch(
+      spec.subjects, spec.path, spec.compileOptions,
+    ));
+    observePipelineAdmission(run, onRejected);
+    const bounded = Promise.race([
+      run,
+      new Promise((resolve) => setTimeout(() => resolve(LINK_TAIL_TIMEOUT_RESULT), LINK_RUN_TAIL_TIMEOUT_MS)),
+    ]);
+    spec.resolveRun(bounded);
+    tailSettle = tailSettle.then(() => bounded.catch(() => null));
+    const next = () => { linkActive = false; pumpLinks(); };
+    bounded.then(next, next);
+  }
+
   function flushQueuedThrough(
     watermark = Number.POSITIVE_INFINITY,
     path = 'queued',
@@ -311,16 +376,12 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     if (batch.length === 0) {
       queued = remaining;
       if (scheduleRemaining && queued.length > 0) scheduleFlush();
-      return compileTail;
+      return laneSettled();
     }
     clearTimers();
     queued = remaining;
     const subjects = batch.map((entry) => entry.subject);
-    const run = compileTail.then(() => invokeCompileBatch(subjects, path, batchCompileOptions(batch)));
-    observePipelineAdmission(run, onRejected);
-    // Render-target selection is global renderer state. Keep batches serialized even if a second
-    // runway fills while the first one is still waiting on the graphics driver.
-    compileTail = run.catch(() => null);
+    const run = enqueueLink(subjects, path, batchCompileOptions(batch));
     run.then(
       (result) => {
         for (const entry of batch) {
@@ -364,14 +425,29 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
         scheduleResumedBatch();
         return;
       }
+      // The skip-then-force resume is a forced start — consult the shared
+      // forced wallet like the sibling skip-cap lanes. Forced-but-broke parks
+      // again with the streak flag uncommitted, so the next schedule still
+      // counts as the earned resume instead of re-skipping.
+      if (forcedFrameSpend() >= FORCED_FRAME_BUDGET_MS && !ranSynchronously) {
+        // Async hosts park until a later frame. An inline scheduler has no
+        // later frame; falling through is the only way the queued compile runs.
+        scheduleResumedBatch();
+        return;
+      }
       skippedResumeForLatePresent = false;
+      // The consult above makes this a forced lane — debit the dispatch head's
+      // measured spend on the shared forced wallet it just checked (the link
+      // work itself is serialized through pumpLinks and debits its own legs).
+      const resumeStartedAt = ledgerNow();
       observePipelineAdmission(flushResumedBatch());
+      noteForcedFrameSpend(Math.min(ledgerNow() - resumeStartedAt, FORCED_FRAME_BUDGET_MS));
     });
     ranSynchronously = false;
   }
 
   function flushResumedBatch() {
-    if (deferAutoFlush() || queued.length === 0) return compileTail;
+    if (deferAutoFlush() || queued.length === 0) return laneSettled();
     const run = flushQueuedThrough(
       Number.POSITIVE_INFINITY,
       'resumed',
@@ -399,26 +475,60 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     return Object.freeze([...new Set(entries.map((entry) => entry.subject))]);
   }
 
-  async function waitForCaptured(plan) {
+  async function waitForCaptured(plan, options = {}) {
     const entries = capturedPlans.get(plan);
     if (!entries) throw new TypeError('pipeline tracker requires a captured admission plan');
+    const stale = typeof options.stale === 'function' ? options.stale : null;
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(0, options.timeoutMs) : null;
+    const result = () => ({
+      watermark: plan.watermark,
+      capturedCount: entries.length,
+      remainingCount: pending.size,
+    });
+    if (stale && stale()) return { ...result(), superseded: true };
     flushQueuedThrough(plan.watermark, 'captured');
-    await Promise.all(entries.map((entry) => entry.completion));
+    const completions = Promise.all(entries.map((entry) => entry.completion));
+    if (timeoutMs == null) {
+      await completions;
+    } else {
+      const outcome = await Promise.race([
+        completions.then(() => 'resolved', () => 'rejected'),
+        new Promise((resolve) => setTimeout(() => resolve('timeout'), timeoutMs)),
+      ]);
+      if (outcome === 'timeout') return { ...result(), timedOut: true };
+      await completions;
+    }
+    if (stale && stale()) return { ...result(), superseded: true };
     // Exact-root callers advance to residency/publication in their await continuations. Give those
     // already-registered consumers deterministic turns without joining any admission after watermark.
     await Promise.resolve();
     await Promise.resolve();
-    return {
-      watermark: plan.watermark,
-      capturedCount: entries.length,
-      remainingCount: pending.size,
-    };
+    return result();
   }
 
-  async function waitForPending() {
+  // Test-only wait: each iteration pays a whole-queue flushQueued() — production
+  // waits go through waitForCaptured (watermark-scoped, batch-capped).
+  async function waitForPending(options = {}) {
+    const stale = typeof options.stale === 'function' ? options.stale : null;
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(0, options.timeoutMs) : null;
+    const deadline = timeoutMs == null ? null : Date.now() + timeoutMs;
     while (pending.size > 0) {
+      if (stale && stale()) return { skipped: false, pendingCount: pending.size, superseded: true };
+      if (deadline != null && Date.now() >= deadline) {
+        return { skipped: false, pendingCount: pending.size, timedOut: true };
+      }
       flushQueued();
-      await Promise.all([...pending].map((entry) => entry.completion));
+      const completions = Promise.all([...pending].map((entry) => entry.completion));
+      if (deadline == null) {
+        await completions;
+      } else {
+        const outcome = await Promise.race([
+          completions.then(() => 'resolved', () => 'rejected'),
+          new Promise((resolve) => setTimeout(() => resolve('timeout'), Math.max(0, deadline - Date.now()))),
+        ]);
+        if (outcome === 'timeout') return { skipped: false, pendingCount: pending.size, timedOut: true };
+        await completions;
+      }
     }
     // Admission consumers commit their already-built roots in promise continuations. Yield through
     // those continuations before the startup guard is allowed to publish the first flight frame.
@@ -451,13 +561,12 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
           break;
         }
         if (folded) queued.splice(queued.indexOf(folded), 1);
-        const run = compileTail.then(() => invokeCompileBatch(
+        const run = enqueueLink(
           [subject],
           'urgent',
           { ...compileOptions, skipSharedBatch: true },
-        ));
-        observePipelineAdmission(run, onRejected);
-        compileTail = run.catch(() => null);
+          { urgent: true },
+        );
         urgentRuns.set(subject, run);
         run.then(
           (result) => {
@@ -513,9 +622,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
         ...(compileOptions || {}),
         ...batchCompileOptions([explicitEntry, ...ambient]),
       };
-      const run = compileTail.then(() => invokeCompileBatch(merged, 'explicit', mergedOptions));
-      observePipelineAdmission(run, onRejected);
-      compileTail = run.catch(() => null);
+      const run = enqueueLink(merged, 'explicit', mergedOptions, { urgent: true });
       run.then(
         (result) => {
           for (const entry of ambient) {
@@ -538,14 +645,14 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
         // Resuming inside the hold must leave the lane alive: clearTimers() just removed the only
         // thing that would have re-entered it. Poll the hold instead of returning a dead queue.
         scheduleResumedBatch();
-        return compileTail;
+        return laneSettled();
       }
       return observePipelineAdmission(flushResumedBatch());
     },
     waitForPending,
     flushOneAfterPresent() {
       // The empty lane reuses its already-observed tail without allocating on every present.
-      if (queued.length === 0) return compileTail;
+      if (queued.length === 0) return laneSettled();
       return observePipelineAdmission(flushQueuedThrough(Number.POSITIVE_INFINITY, 'after-present', 1, true));
     },
     get pendingCount() { return pending.size; },
@@ -601,22 +708,56 @@ export function createGpuResidencyAdmissionTracker(prepare) {
     });
   }
 
-  async function waitForCaptured(plan) {
+  async function waitForCaptured(plan, options = {}) {
     const entries = capturedPlans.get(plan);
     if (!entries) throw new TypeError('GPU residency tracker requires a captured admission plan');
-    await Promise.all(entries.map((entry) => entry.completion));
-    await Promise.resolve();
-    await Promise.resolve();
-    return {
+    const stale = typeof options.stale === 'function' ? options.stale : null;
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(0, options.timeoutMs) : null;
+    const result = () => ({
       watermark: plan.watermark,
       capturedCount: entries.length,
       remainingCount: pending.size,
-    };
+    });
+    if (stale && stale()) return { ...result(), superseded: true };
+    const completions = Promise.all(entries.map((entry) => entry.completion));
+    if (timeoutMs == null) {
+      await completions;
+    } else {
+      const outcome = await Promise.race([
+        completions.then(() => 'resolved', () => 'rejected'),
+        new Promise((resolve) => setTimeout(() => resolve('timeout'), timeoutMs)),
+      ]);
+      if (outcome === 'timeout') return { ...result(), timedOut: true };
+      await completions;
+    }
+    if (stale && stale()) return { ...result(), superseded: true };
+    await Promise.resolve();
+    await Promise.resolve();
+    return result();
   }
 
-  async function waitForPending() {
+  // Test-only wait: each iteration pays a whole-queue flushQueued() — production
+  // waits go through waitForCaptured (watermark-scoped, batch-capped).
+  async function waitForPending(options = {}) {
+    const stale = typeof options.stale === 'function' ? options.stale : null;
+    const timeoutMs = Number.isFinite(options.timeoutMs) ? Math.max(0, options.timeoutMs) : null;
+    const deadline = timeoutMs == null ? null : Date.now() + timeoutMs;
     while (pending.size > 0) {
-      await Promise.all([...pending].map((entry) => entry.completion));
+      if (stale && stale()) return { skipped: false, pendingCount: pending.size, superseded: true };
+      if (deadline != null && Date.now() >= deadline) {
+        return { skipped: false, pendingCount: pending.size, timedOut: true };
+      }
+      const completions = Promise.all([...pending].map((entry) => entry.completion));
+      if (deadline == null) {
+        await completions;
+      } else {
+        const outcome = await Promise.race([
+          completions.then(() => 'resolved', () => 'rejected'),
+          new Promise((resolve) => setTimeout(() => resolve('timeout'), Math.max(0, deadline - Date.now()))),
+        ]);
+        if (outcome === 'timeout') return { skipped: false, pendingCount: pending.size, timedOut: true };
+        await completions;
+      }
     }
     // Boundary admission commits in the await continuation registered before this aggregate wait.
     // Give that continuation a deterministic turn before startup checks committed visual readiness.
@@ -736,7 +877,32 @@ export async function waitForCurrentRenderPipelines(state, timeoutMs = 20000) {
     }
     let submissionPlan = null;
     try {
-      submissionPlan = captureSubmission();
+      const captureSteps = render.captureOpeningSubmissionPlanSteps;
+      if (typeof captureSteps === 'function') {
+        // The capture is a chain of whole-scene censuses; pace its stepped legs
+        // under the boot yield instead of donating one atomic window.
+        const steps = captureSteps();
+        // A world flip inside the drive must abandon the capture entirely —
+        // resuming it commits rows minted under the departed world's census.
+        const driveWorld = state.world;
+        const driveRender = state.render;
+        const driveSerial = driveWorld && driveWorld.enterSerial;
+        for (;;) {
+          const step = steps.next();
+          if (step.done) {
+            submissionPlan = step.value;
+            break;
+          }
+          if (state.world !== driveWorld || state.render !== driveRender
+              || !driveWorld || driveWorld.enterSerial !== driveSerial) {
+            submissionPlan = null;
+            break;
+          }
+          await yieldToBrowser();
+        }
+      } else {
+        submissionPlan = captureSubmission();
+      }
       if (!submissionPlan || submissionPlan.complete !== true
         || !submissionPlan.firstPlayablePipelineSet
         || submissionPlan.firstPlayablePipelineSet.complete !== true) return false;
@@ -998,6 +1164,11 @@ export function commitRequiredPackageAdmission(render, capturedGeneration, class
  * No new timer: a cook that has not settled stays pending, and a late result whose
  * generation changed writes nothing.
  */
+// This path fires exactly when the bounded gates already judged the cook too slow — awaiting
+// the same cook's real completion would park embark for minutes on a contended host with no
+// rejection route. The settle borrows the gate's own contract: bounded, then classify.
+const REQUIRED_PACKAGE_SETTLE_TIMEOUT_MS = 45000;
+
 export async function settleRequiredPackageAdmission(state) {
   const render = state && state.render;
   if (!render) return null;
@@ -1007,19 +1178,11 @@ export async function settleRequiredPackageAdmission(state) {
   const livePromise = render.liveScenePresentReady;
   let prepareSettled = null;
   if (preparePromise && typeof preparePromise.then === 'function') {
-    try {
-      prepareSettled = { ok: true, value: await preparePromise };
-    } catch (error) {
-      prepareSettled = { ok: false, error };
-    }
+    prepareSettled = await settleWithin(preparePromise, REQUIRED_PACKAGE_SETTLE_TIMEOUT_MS);
   }
   let liveSettled = null;
   if (livePromise && typeof livePromise.then === 'function') {
-    try {
-      liveSettled = { ok: true, value: await livePromise };
-    } catch (error) {
-      liveSettled = { ok: false, error };
-    }
+    liveSettled = await settleWithin(livePromise, REQUIRED_PACKAGE_SETTLE_TIMEOUT_MS);
   }
   if (render.admissionRunGeneration !== generation) {
     return classifyRequiredPackageAdmission({

@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8850c0b6568827a06d89dbc2a10d383ee858851ec300f54700fbfff60c303134",
+  "contentHash": "fecfb3dff45194987f35687f6cbbfce4dc67832e7bde8aff39a4b3239a983087",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1929,8 +1929,8 @@
       "uri": "place_inspection_platform.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -2041,13 +2041,15 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 23
+      "glass": 1,
+      "hull": 15,
+      "signal": 7
     },
     "materialProfiles": [
       {
         "allowTextures": false,
         "planIndex": 2,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2057,12 +2059,12 @@
       {
         "allowTextures": false,
         "planIndex": 5,
-        "role": "hull"
+        "role": "glass"
       },
       {
         "allowTextures": false,
         "planIndex": 6,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2112,7 +2114,7 @@
       {
         "allowTextures": false,
         "planIndex": 17,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2122,7 +2124,7 @@
       {
         "allowTextures": false,
         "planIndex": 19,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2132,7 +2134,7 @@
       {
         "allowTextures": false,
         "planIndex": 21,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2152,12 +2154,12 @@
       {
         "allowTextures": false,
         "planIndex": 27,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 28,
-        "role": "hull"
+        "role": "signal"
       }
     ],
     "nodeCount": 29,
@@ -2788,7 +2790,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_inspection_platform.glb"
   },
-  "runtimeHash": "a49b563d23e2af2b14ff15f79979a8a65a38ee785062c3cc19f859a7f349f197",
+  "runtimeHash": "0f61c06ae1a644e3f659bfdea6266e0921ad53d5cee0980313ddbec81cebf7cc",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

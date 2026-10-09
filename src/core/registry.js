@@ -12,8 +12,11 @@ import { survivalArena } from '../systems/survivalArena.js';
 import { swarmArena } from '../systems/swarmArena.js';
 import { swarmSupply } from '../systems/swarmSupply.js';
 import { swarmChain } from '../systems/swarmChain.js';
+import { swarmJuice } from '../systems/swarmJuice.js';
+import { swarmElites } from '../systems/swarmElites.js';
 import { survivalRewards } from '../systems/survivalRewards.js';
 import { survivalHud } from '../ui/survivalHud.js';                 // Crucible run readout (DOM-guarded)
+import { swarmJuiceHud } from '../ui/swarmJuiceHud.js';             // Swarm arcade juice layer (DOM-guarded)
 import { crucibleFocus } from '../ui/crucibleFocus.js';             // hides campaign chrome in a run (DOM-guarded)
 import { survivalWave } from '../systems/survivalWave.js';
 import { survivalRun } from '../systems/survivalRun.js';
@@ -26,6 +29,26 @@ import { mines } from '../systems/mines.js';
 import { bombs } from '../systems/bombs.js';
 import { dockingCorridor } from '../systems/dockingCorridor.js'; // PQ-008: truthful exterior corridor/capture docking (assist via physics membrane)
 import { scanReveal } from '../systems/scanReveal.js';
+import { latchNine } from '../systems/latchNine.js';
+import { scissorwake } from '../systems/scissorwake.js';
+import { tallyThree } from '../systems/tallyThree.js';
+import { lastShift } from '../systems/lastShift.js';
+import { lastShiftPrompt } from '../ui/lastShiftPrompt.js';
+import { redKite } from '../systems/redKite.js';
+import { redKitePrompt } from '../ui/redKitePrompt.js';
+import { sableVenn } from '../systems/sableVenn.js';
+import { ilexArk } from '../systems/ilexArk.js';
+import { ilexArkPrompt } from '../ui/ilexArkPrompt.js';
+import { kilnback } from '../systems/kilnback.js';
+import { mothlight } from '../systems/mothlight.js';
+import { mothlightPrompt } from '../ui/mothlightPrompt.js';
+import { palletJack } from '../systems/palletJack.js';
+import { palletJackPrompt } from '../ui/palletJackPrompt.js';
+import { secondRinse } from '../systems/secondRinse.js';
+import { towlineTable } from '../systems/towlineTable.js';
+import { towlineTablePrompt } from '../ui/towlineTablePrompt.js';
+import { borrowedVoice } from '../systems/borrowedVoice.js';
+import { borrowedVoicePrompt } from '../ui/borrowedVoicePrompt.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity } from '../systems/lawSecurity.js';
 import { pirateDisguise } from '../systems/pirateDisguise.js';
@@ -62,11 +85,13 @@ import { impulseCharges } from '../systems/impulseCharges.js';
 import { hullBurst } from '../systems/hullBurst.js';                   // hull-burst overhaul slice C: timed front-wedge hurl (Gravity Bumper)
 import { massSeed } from '../systems/massSeed.js';               // PQ-011/SF-11 deployable anchor Mass Seed
 import { fields } from '../systems/fields.js';                   // PQ-012/SF-12 continuous field kernel (Well/Repulsor/Cone)
+import { gyreSnare } from '../systems/gyreSnare.js';             // Gyre Snare: held-key telekinetic katamari lash (Quote)
 import { emergentPrimitives } from '../systems/emergentPrimitives.js';
 import { environmentalMachinery } from '../systems/environmentalMachinery.js'; // PQ-027/SF-22 timed Ceres current + World Site adapter
 import { planetRuntime } from '../systems/planetRuntime.js';     // PQ-013/SF-14 planetary site (sling/skim/harvest/reentry)
 import { massSeedHud } from '../ui/massSeedHud.js';              // PQ-011: seed status pill + lock-point marker (DOM-guarded)
 import { fieldHud } from '../ui/fieldHud.js';                    // PQ-012: field state/cooldown/denial chip (DOM-guarded)
+import { gyreHud } from '../ui/gyreHud.js';                      // Gyre Snare lash state pill (DOM-guarded)
 import { planetHud } from '../ui/planetHud.js';                  // PQ-013: band pill + heat readout (DOM-guarded)
 import { miningHud } from '../ui/miningHud.js';                  // INF: mining beam's vent/rich-core/seam rhythms at the contact (DOM-guarded)
 // Massline Physics Identity — Wave M2 (design/revamp/MASSLINE_PHYSICS_IDENTITY.md). All eight are
@@ -81,6 +106,7 @@ import { cloak } from '../systems/cloak.js';                          // §4.2 c
 import { lootShards } from '../systems/lootShards.js';                // §4.3 kill shards over the shipped loot:drop seam
 import { terrainAnchors } from '../systems/terrainAnchors.js';        // §4.4 big-and-few rocks per encounter bubble
 import { jettisonImpulse } from '../systems/jettisonImpulse.js';      // §5.3 cargo dump reaction impulse
+import { volatileExposure } from '../systems/volatileExposure.js';    // NXB-008: exposure-driven volatile load state (shock/heat facts, vent/rupture)
 import { masslineHud } from '../ui/masslineHud.js';                   // M2 surfacing: release indicator + cloak ring + meters (DOM-guarded)
 import { mining } from '../systems/mining.js';
 import { fieldDepletion } from '../systems/fieldDepletion.js';
@@ -132,6 +158,13 @@ import { pirateRumor } from '../systems/pirateRumor.js';             // BP-13/B1
 import { ambushSignatures } from '../systems/ambushSignatures.js';   // BP-13/B14 passive pre-ambush scan tells
 import { bountyHunt } from '../systems/bountyHunt.js';               // BP-13/B16 neutral bounty hunter contracts
 import { morrow } from '../systems/morrow.js';
+import { vesper } from '../systems/vesper.js';
+import { bracket } from '../systems/bracket.js';
+import { ravel } from '../systems/ravel.js';
+import { solstice } from '../systems/solstice.js';
+import { rubric } from '../systems/rubric.js';
+import { ruckus } from '../systems/ruckus.js';
+import { ruud } from '../systems/ruud.js';
 import { salvage } from '../systems/salvage.js';                     // derelict-field discovery loop
 import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voice at a time" priority queue (ctx.helpers.voice)
 // BP-11 Sector Atmosphere (Wave 3, design/revamp/detail/A_sector_station.md) — SYSTEMS-only
@@ -139,7 +172,7 @@ import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voi
 import { sectorPostcard } from '../ui/sectorPostcard.js';             // A1: arrival identity card + one 'news' rumor line
 import { dockDenyBanner } from '../ui/dockDenyBanner.js';             // A3: dockDeny.js surfaced — scan line + one 'comms' denial
 import { stationBroadcast } from '../systems/stationBroadcast.js';    // A5: ambient station flavor (window-timer only; lowest voice priority)
-import { hazardHints } from '../data/hazardLanguage.js';               // A7: once-per-type 'warn' counterplay hint + state.ui.hazardRead
+import { hazardHints } from '../data/hazardLanguage.js';               // A7: once-per-type counterplay hint (tutorial channel) + state.ui.hazardRead
 import { noFireAdvisory } from '../data/stationBubbles.js';            // BP-11 A2: station no-fire ring 'warn' advisory on player fire
 import { bulkHaulTag } from '../ui/prompts/bulkHaulTag.js';             // T3-17: TOW-THE-CHUNK oversized mining chunk prompt
 import { dangerGradient } from '../ui/dangerGradient.js';              // A9: dangerTier tint+badge overlay on existing starmap nodes (guarded applier)
@@ -151,6 +184,7 @@ import { causeLedger } from '../ui/causeLedger.js';                    // E: "wh
 import { customsPrompt } from '../ui/customsPrompt.js';                // CUSTOMS_MOMENT: scan decision panel (submit/bribe/run) over the shipped runScan
 import { impoundPayPrompt } from '../ui/impoundPayPrompt.js';          // impound clerk counter: pay verb over the shipped _payWantedImpound (choice, not overlap)
 import { moralTrapPrompt } from '../ui/moralTrapPrompt.js';            // moral-trap fork: deck verbs over the shipped moralTrap:choose intent
+import { stuckTowPrompt } from '../ui/stuckTowPrompt.js';              // FB-111: wedged-hull tow offer as deck verbs over world:stuckTowAccept
 import { wreckChoicePrompt } from '../ui/wreckChoicePrompt.js';        // wreck communicator/survivor-pod choices: deck verbs over wreckMission:choose + survivorPod:choose
 import { cargoConscience } from '../ui/cargoConscience.js';            // CARGO_REPUTATION_GLYPH: hold moral-color lean glyph (read-only)
 import { securityReadoutSystem } from '../ui/securityReadout.js';      // SECURITY_RESPONSE_READ: "patrols responding" map line over driver.danger
@@ -401,6 +435,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['survivalWave', survivalWave],
     ['survivalRewards', survivalRewards],
     ['survivalHud', survivalHud],
+    ['swarmJuiceHud', swarmJuiceHud],
     ['crucibleFocus', crucibleFocus],
     ['survivalDraft', survivalDraft],
     ['survivalResults', survivalResults],
@@ -411,6 +446,8 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['swarmArena', swarmArena],
     ['swarmSupply', swarmSupply],
     ['swarmChain', swarmChain],
+    ['swarmJuice', swarmJuice],
+    ['swarmElites', swarmElites],
     ['survivalRun', survivalRun],
     ['voiceArbiter', voiceArbiter],
     ['input', input],
@@ -445,8 +482,29 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['massSeed', massSeed],
     ['uniqueLootAbilities', uniqueLootAbilities],
     ['fields', fields],
+    ['gyreSnare', gyreSnare],
     ['emergentPrimitives', emergentPrimitives],
     ['environmentalMachinery', environmentalMachinery],
+    ['latchNine', latchNine],
+    ['scissorwake', scissorwake],
+    ['tallyThree', tallyThree],
+    ['lastShift', lastShift],
+    ['lastShiftPrompt', lastShiftPrompt],
+    ['redKite', redKite],
+    ['redKitePrompt', redKitePrompt],
+    ['sableVenn', sableVenn],
+    ['ilexArk', ilexArk],
+    ['ilexArkPrompt', ilexArkPrompt],
+    ['kilnback', kilnback],
+    ['mothlight', mothlight],
+    ['mothlightPrompt', mothlightPrompt],
+    ['palletJack', palletJack],
+    ['palletJackPrompt', palletJackPrompt],
+    ['secondRinse', secondRinse],
+    ['towlineTable', towlineTable],
+    ['towlineTablePrompt', towlineTablePrompt],
+    ['borrowedVoice', borrowedVoice],
+    ['borrowedVoicePrompt', borrowedVoicePrompt],
     ['planetRuntime', planetRuntime],
     ['combat', combat],
     ['combatOutcome', combatOutcome],
@@ -466,6 +524,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['lootShards', lootShards],
     ['terrainAnchors', terrainAnchors],
     ['jettisonImpulse', jettisonImpulse],
+    ['volatileExposure', volatileExposure],
     ['mining', mining],
     ['fieldDepletion', fieldDepletion],
     ['cargo', cargo],
@@ -507,6 +566,13 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['difficultyDirector', difficultyDirector],
     ['gateControlDirector', gateControlDirector],
     ['morrow', morrow],
+    ['vesper', vesper],
+    ['bracket', bracket],
+    ['ravel', ravel],
+    ['solstice', solstice],
+    ['rubric', rubric],
+    ['ruckus', ruckus],
+    ['ruud', ruud],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],
@@ -539,6 +605,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['masslineHud', masslineHud],
     ['massSeedHud', massSeedHud],
     ['fieldHud', fieldHud],
+    ['gyreHud', gyreHud],
     ['planetHud', planetHud],
     ['miningHud', miningHud],
     ['sectorPostcard', sectorPostcard],
@@ -552,6 +619,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['customsPrompt', customsPrompt],
     ['impoundPayPrompt', impoundPayPrompt],
     ['moralTrapPrompt', moralTrapPrompt],
+    ['stuckTowPrompt', stuckTowPrompt],
     ['wreckChoicePrompt', wreckChoicePrompt],
     ['cargoConscience', cargoConscience],
     ['securityReadoutSystem', securityReadoutSystem],
@@ -783,6 +851,11 @@ export function createRegistry(ctx) {
   // reason) settle BEFORE physics' reconcile pass, so a collapsed seed can never leave a ghost
   // constraint. It is deliberately NOT in the sf-sim curated harness list — the 47-A golden never
   // presses deploy, so the system is a strict no-op there.
+  // gyreSnare (Gyre Snare katamari lash) shares fields' slot: it reads the settled flight/input
+  // commands then queues its cone-pull, hold-orbit, suck, and launch impulses on the same
+  // physics-command membrane, so this tick's SG-02 solve applies them. It is input-only — the
+  // beam never activates without the held verb — it is NOT in the sf-sim curated list, and the
+  // 47-A golden never presses the key; the runtime mirror (state.gyreSnare) is never serialized.
   // fields (PQ-012) sits immediately before physics, after the massSeed/uniqueLootAbilities/
   // dockingCorridor deployable family: the continuous-field kernel reads the settled flight/input
   // commands, then queues its bounded, coupling-selective accelerations on the physics-command
@@ -938,6 +1011,8 @@ export function createRegistry(ctx) {
       // state.simTime stays frozen, so the seeded client schedule holds still with it.
       const yard = byName.get('stationServices');
       if (yard && typeof yard.update === 'function' && wallDt > 0) yard.update(wallDt, state);
+      const latch = byName.get('latchNine');
+      if (latch && typeof latch.keepalive === 'function') latch.keepalive(wallDt);
     },
     step(dt, tickBoundary = null) {
       const state = ctx.state;

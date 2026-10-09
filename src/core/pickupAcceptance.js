@@ -50,6 +50,68 @@ export function successfulPickupAmount(payload, requestedAmount) {
     : resolvePickupAcceptance(payload, requestedAmount).successfulAmount;
 }
 
+// A partial acceptance leaves the physical remainder on the same body — and every quantity
+// mirror that body carries must shrink with data.amount or raw readers over-report the
+// residual. The mirrors and their own conventions:
+//   • richLotSource.richQty / .lotQty — provenance fractions: the accepted side already
+//     recorded min(offered, accepted) on the receipt (cargo.appendRichLot), so the remainder
+//     keeps old − taken, clamped at zero.
+//   • freightCustodyPod.qty — the custody annotation IS the pod's quantity
+//     (podEntityForRecord requires annotation.qty === data.amount), so it takes the
+//     remainder itself, on a shrink or a regrow.
+//   • salvagePool[commodityId] — a pool stamped at the full quantity drains by the same
+//     delta (the volatile-vent split) or a later scoop credits units already delivered.
+//     Key deletion at zero mirrors the pool's own drain convention.
+// Mirrors are mutated in place when mutable and replaced on data when frozen — the pod's
+// own record is authoritative either way.
+// Precondition: `data` itself must be writable — amount is reassigned and a frozen mirror
+// is swapped through it. A frozen pod record cannot take a remainder; rather than throw
+// mid-tick the writer leaves it untouched and reports the stamped amount back, and the
+// caller's collector keeps the body alive (the aperture commit path already guards on
+// !Object.isFrozen(data) before calling).
+export function writePickupRemainder(data, remainder) {
+  if (!data || typeof data !== 'object') return 0;
+  if (Object.isFrozen(data)) return Math.max(0, Math.floor(Number(data.amount) || 0));
+  const left = Math.max(0, Math.floor(Number(remainder) || 0));
+  const before = Math.max(0, Math.floor(Number(data.amount) || 0));
+  const taken = Math.max(0, before - left);
+  data.amount = left;
+  const freight = data.freightCustodyPod;
+  if (freight && typeof freight === 'object' && freight.qty !== left) {
+    if (Object.isFrozen(freight)) data.freightCustodyPod = { ...freight, qty: left };
+    else freight.qty = left;
+  }
+  if (!(taken > 0)) return left;
+  const rich = data.richLotSource;
+  if (rich && typeof rich === 'object') {
+    let shrunk = null;
+    for (const key of ['richQty', 'lotQty']) {
+      if (rich[key] == null) continue;
+      const value = Math.max(0, Math.max(0, Math.floor(Number(rich[key]) || 0)) - taken);
+      if (value !== rich[key]) (shrunk = shrunk || {})[key] = value;
+    }
+    if (shrunk) {
+      if (Object.isFrozen(rich)) data.richLotSource = { ...rich, ...shrunk };
+      else Object.assign(rich, shrunk);
+    }
+  }
+  const pool = data.salvagePool;
+  if (pool && typeof pool === 'object' && data.commodityId != null
+    && Object.prototype.hasOwnProperty.call(pool, data.commodityId)) {
+    const value = Math.max(0, Math.max(0, Math.floor(Number(pool[data.commodityId]) || 0)) - taken);
+    if (value !== pool[data.commodityId]) {
+      if (Object.isFrozen(pool)) {
+        const next = { ...pool };
+        if (value > 0) next[data.commodityId] = value;
+        else delete next[data.commodityId];
+        data.salvagePool = next;
+      } else if (value > 0) pool[data.commodityId] = value;
+      else delete pool[data.commodityId];
+    }
+  }
+  return left;
+}
+
 export function clearPickupAcceptanceRetry(data) {
   if (!data || typeof data !== 'object') return;
   delete data.pickupAcceptanceRetryAt;

@@ -172,6 +172,14 @@
       "part_id": "wholeship_survey_pin",
       "npc_root": "SF_NPCWORK_SURVEY_PIN_ROOT"
     },
+    "stormshift_collector": {
+      "layout": "npc",
+      "file": "ship_stormshift_collector_v01",
+      "asset_id": "SF_STORMSHIFT_COLLECTOR_V01",
+      "part_id": "wholeship_stormshift_collector",
+      "npc_root": "STORMSHIFT_COLLECTOR_ROOT",
+      "note": "Stormshift salvage collector (tools/blender/forge/ships/stormshift_collector.py): low storm jaws, folding ceramic radiator fans, exposed canister saddles — harvest pose open, transit stow narrows the silhouette."
+    },
     "yard_tug": {
       "layout": "npc",
       "file": "yard_tug",
@@ -834,6 +842,324 @@
       "asset_id": "SF_WASP_FRAG_AFT",
       "part_id": "wasp_frag_aft",
       "note": "ANI-08 wasp rupture aft fragment: aft fuselage+nacelles+wings+tail sheared at x=1.2, torn collar/ribs/ember edge, residual torn flap + mast whip."
+    },
+    "place_ceres_second_measure": {
+      "layout": "place",
+      "file": "place_ceres_second_measure",
+      "source": "place_ceres_second_measure.py",
+      "asset_id": "SF_PLACE_CERES_SECOND_MEASURE",
+      "part_id": "place_ceres_second_measure",
+      "new_place": true,
+      "no_collision": true,
+      "dynamicNameIncludes": [],
+      "note": "P03 Second Measure matched structural shipbreak. Source origin, two through-passages and independent keel mouth. Runtime collision is world-site owned."
+    },
+    "place_ceres_second_measure_long_plate": {
+      "layout": "place",
+      "file": "place_ceres_second_measure_long_plate",
+      "source": "place_ceres_second_measure_long_plate.py",
+      "asset_id": "SF_PLACE_CERES_SECOND_MEASURE_LONG_PLATE",
+      "part_id": "place_ceres_second_measure_long_plate",
+      "new_place": true,
+      "no_collision": true,
+      "dynamicNameIncludes": [],
+      "note": "P03 Second Measure matched structural shipbreak. Source origin, two through-passages and independent keel mouth. Runtime collision is world-site owned."
+    },
+    "place_ceres_second_measure_crossbeam": {
+      "layout": "place",
+      "file": "place_ceres_second_measure_crossbeam",
+      "source": "place_ceres_second_measure_crossbeam.py",
+      "asset_id": "SF_PLACE_CERES_SECOND_MEASURE_CROSSBEAM",
+      "part_id": "place_ceres_second_measure_crossbeam",
+      "new_place": true,
+      "no_collision": true,
+      "dynamicNameIncludes": [],
+      "note": "P03 Second Measure matched structural shipbreak. Source origin, two through-passages and independent keel mouth. Runtime collision is world-site owned."
+    },
+    "place_ceres_second_measure_keel": {
+      "layout": "place",
+      "file": "place_ceres_second_measure_keel",
+      "source": "place_ceres_second_measure_keel.py",
+      "asset_id": "SF_PLACE_CERES_SECOND_MEASURE_KEEL",
+      "part_id": "place_ceres_second_measure_keel",
+      "new_place": true,
+      "no_collision": true,
+      "dynamicNameIncludes": [],
+      "note": "P03 Second Measure matched structural shipbreak. Source origin, two through-passages and independent keel mouth. Runtime collision is world-site owned."
+    },
+    "ceres_breaker": {
+      "layout": "npc",
+      "file": "ceres_breaker",
+      "source": "ceres_breaker.py",
+      "asset_id": "SF_WHOLESHIP_CERES_BREAKER",
+      "part_id": "wholeship_ceres_breaker",
+      "dynamicNameIncludes": [
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR",
+        "MOTION_",
+        "HOOK_CERES_THRUSTER_MAIN_PORT_OUTER",
+        "HOOK_CERES_THRUSTER_MAIN_PORT_INNER",
+        "HOOK_CERES_THRUSTER_MAIN_STARBOARD_INNER",
+        "HOOK_CERES_THRUSTER_MAIN_STARBOARD_OUTER",
+        "HOOK_CERES_THRUSTER_RETRO_PORT",
+        "HOOK_CERES_THRUSTER_RETRO_STARBOARD",
+        "HOOK_CERES_THRUSTER_RCS_BOW_PORT",
+        "HOOK_CERES_THRUSTER_RCS_BOW_STARBOARD",
+        "HOOK_CERES_THRUSTER_RCS_STERN_PORT",
+        "HOOK_CERES_THRUSTER_RCS_STERN_STARBOARD"
+      ],
+      "note": "Original Ceres open-gantry breaker. Authored source origin at 2 WU/metre, physical passive stops, native swept shoe articulation and explicit compound load well.",
+      "hooks": [
+        "LOD0_HOOK_CERES_THRUSTER_MAIN_PORT_OUTER_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_MAIN_PORT_OUTER_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_MAIN_PORT_OUTER_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_MAIN_PORT_INNER_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_MAIN_PORT_INNER_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_MAIN_PORT_INNER_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_MAIN_STARBOARD_INNER_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_MAIN_STARBOARD_INNER_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_MAIN_STARBOARD_INNER_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_MAIN_STARBOARD_OUTER_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_MAIN_STARBOARD_OUTER_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_MAIN_STARBOARD_OUTER_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RETRO_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RETRO_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RETRO_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RETRO_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RETRO_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RETRO_STARBOARD_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RCS_BOW_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RCS_BOW_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RCS_BOW_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RCS_BOW_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RCS_BOW_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RCS_BOW_STARBOARD_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RCS_STERN_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RCS_STERN_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RCS_STERN_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_RCS_STERN_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_RCS_STERN_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_RCS_STERN_STARBOARD_glow_drive"
+      ]
+    },
+    "place_ceres_section_cradle": {
+      "layout": "place",
+      "file": "place_ceres_section_cradle",
+      "source": "place_ceres_section_cradle.py",
+      "asset_id": "SF_PLACE_CERES_SECTION_CRADLE",
+      "part_id": "place_ceres_section_cradle",
+      "new_place": true,
+      "dynamicNameIncludes": [
+        "MOTION_",
+        "HOOK_CERES_DEPTH_KEEPER"
+      ],
+      "note": "Original Ceres open sectional receiver. Authored source origin at 2 WU/metre, native retention pads and explicit compound receiving void."
+    },
+    "place_ceres_breaker_cutter_head": {
+      "layout": "place",
+      "file": "place_ceres_breaker_cutter_head",
+      "source": "place_ceres_breaker_cutter_head.py",
+      "asset_id": "SF_PLACE_CERES_BREAKER_CUTTER_HEAD",
+      "part_id": "place_ceres_breaker_cutter_head",
+      "new_place": true,
+      "dynamicNameIncludes": [
+        "HOOK_CERES_THRUSTER_AXIAL_AFT_PORT",
+        "HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD",
+        "HOOK_CERES_THRUSTER_AXIAL_FORE_PORT",
+        "HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD",
+        "HOOK_CERES_THRUSTER_LATERAL_PORT",
+        "HOOK_CERES_THRUSTER_LATERAL_STARBOARD"
+      ],
+      "note": "Original detachable Ceres cutter head. Authored source origin at 2 WU/metre, aligned cut and mounting sockets and explicit compound solids.",
+      "hooks": [
+        "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_AXIAL_AFT_STARBOARD_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_AXIAL_FORE_STARBOARD_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_LATERAL_PORT_glow_drive",
+        "LOD0_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+        "LOD1_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive",
+        "LOD2_HOOK_CERES_THRUSTER_LATERAL_STARBOARD_glow_drive"
+      ]
+    },
+    "latch_nine": {
+      "layout": "place",
+      "file": "place_latch_nine",
+      "asset_id": "SF_PLACE_LATCH_NINE",
+      "part_id": "latch-nine",
+      "new_place": true,
+      "note": "Latch Nine: reconstructed editable physical signal tender; source-reviewed, shipping Look review pending"
+    },
+    "tally_three": {
+      "layout": "place",
+      "file": "place_tally_three",
+      "source": "tally_three.py",
+      "asset_id": "SF_PLACE_TALLY_3",
+      "part_id": "tally-three",
+      "new_place": true,
+      "dynamicNameIncludes": [
+        "MOTION_TALLY_ARM_LEFT",
+        "MOTION_TALLY_ARM_RIGHT",
+        "MOTION_TALLY_STAMP",
+        "MOTION_TALLY_SCAN"
+      ],
+      "note": "Distinct claim assessor; source origin fit, examination and accepted-receipt instrument motion."
+    },
+    "red_kite": {
+      "layout": "npc",
+      "file": "red_kite",
+      "asset_id": "SF_SHIP_RED_KITE",
+      "part_id": "wholeship_red_kite",
+      "npc_root": "SF_SHIP_RED_KITE_ROOT",
+      "note": "Original asymmetrical Red Kite courier: open fork stern, pressure dart, sail, seated handoff case and actual nine source-projected native assemblies."
+    },
+    "sable_patchwork": {
+      "layout": "npc",
+      "file": "sable_patchwork",
+      "asset_id": "SF_SHIP_SABLE_PATCHWORK",
+      "part_id": "wholeship_sable_patchwork",
+      "npc_root": "SF_SHIP_SABLE_PATCHWORK_ROOT",
+      "note": "Original Sable Venn workshop: three pressure pontoons with two physical bridges and actual longitudinal gaps; captive tools, warm-window office and finite articulated trial/purchase gestures."
+    },
+    "ilex_ark": {
+      "layout": "npc",
+      "file": "ilex_ark",
+      "asset_id": "SF_SHIP_ILEX_ARK",
+      "part_id": "wholeship_ilex_ark",
+      "npc_root": "SF_SHIP_ILEX_ARK_ROOT",
+      "note": "Captain Ilex: original pressure ark with six source-aligned removable conservatories and native mass custody."
+    },
+    "ilex_vault": {
+      "layout": "npc",
+      "file": "ilex_vault",
+      "asset_id": "SF_PROP_ILEX_VAULT",
+      "part_id": "wholeship_ilex_vault",
+      "npc_root": "SF_PROP_ILEX_VAULT_ROOT",
+      "note": "Original recoverable botanical vault: same geometry as each attached Ilex conservatory, source scale1 and canonical payload admission."
+    },
+    "kilnback": {
+      "layout": "npc",
+      "file": "kilnback",
+      "asset_id": "SF_SHIP_KILNBACK",
+      "part_id": "wholeship_kilnback",
+      "npc_root": "SF_SHIP_KILNBACK_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "kilnback_cask": {
+      "layout": "npc",
+      "file": "kilnback_cask",
+      "asset_id": "SF_PROP_KILNBACK_CASK",
+      "part_id": "wholeship_kilnback_cask",
+      "npc_root": "SF_PROP_KILNBACK_CASK_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "scissorwake": {
+      "layout": "npc",
+      "file": "scissorwake",
+      "asset_id": "SF_SHIP_SCISSORWAKE",
+      "part_id": "wholeship_scissorwake",
+      "npc_root": "SF_SHIP_SCISSORWAKE_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "towline_mara": {
+      "layout": "npc",
+      "file": "towline_mara",
+      "asset_id": "SF_SHIP_TOWLINE_MARA",
+      "part_id": "wholeship_towline_mara",
+      "npc_root": "SF_SHIP_TOWLINE_MARA_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "towline_odo": {
+      "layout": "npc",
+      "file": "towline_odo",
+      "asset_id": "SF_SHIP_TOWLINE_ODO",
+      "part_id": "wholeship_towline_odo",
+      "npc_root": "SF_SHIP_TOWLINE_ODO_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "towline_kit": {
+      "layout": "npc",
+      "file": "towline_kit",
+      "asset_id": "SF_SHIP_TOWLINE_KIT",
+      "part_id": "wholeship_towline_kit",
+      "npc_root": "SF_SHIP_TOWLINE_KIT_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "towline_debris": {
+      "layout": "npc",
+      "file": "towline_debris",
+      "asset_id": "SF_PROP_TOWLINE_DEBRIS",
+      "part_id": "wholeship_towline_debris",
+      "npc_root": "SF_PROP_TOWLINE_DEBRIS_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "borrowed_voice_ring": {
+      "layout": "npc",
+      "file": "borrowed_voice_ring",
+      "asset_id": "SF_PLACE_BORROWED_VOICE_RING",
+      "part_id": "wholeship_borrowed_voice_ring",
+      "npc_root": "SF_PLACE_BORROWED_VOICE_RING_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "borrowed_voice_a": {
+      "layout": "npc",
+      "file": "borrowed_voice_a",
+      "asset_id": "SF_PROP_BORROWED_VOICE_A",
+      "part_id": "wholeship_borrowed_voice_a",
+      "npc_root": "SF_PROP_BORROWED_VOICE_A_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "borrowed_voice_b": {
+      "layout": "npc",
+      "file": "borrowed_voice_b",
+      "asset_id": "SF_PROP_BORROWED_VOICE_B",
+      "part_id": "wholeship_borrowed_voice_b",
+      "npc_root": "SF_PROP_BORROWED_VOICE_B_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "borrowed_voice_c": {
+      "layout": "npc",
+      "file": "borrowed_voice_c",
+      "asset_id": "SF_PROP_BORROWED_VOICE_C",
+      "part_id": "wholeship_borrowed_voice_c",
+      "npc_root": "SF_PROP_BORROWED_VOICE_C_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "pallet_jack": {
+      "layout": "npc",
+      "file": "pallet_jack",
+      "asset_id": "SF_SHIP_PALLET_JACK",
+      "part_id": "wholeship_pallet_jack",
+      "npc_root": "SF_SHIP_PALLET_JACK_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "mothlight": {
+      "layout": "npc",
+      "file": "mothlight",
+      "asset_id": "SF_SHIP_MOTHLIGHT_TENDER",
+      "part_id": "wholeship_mothlight",
+      "npc_root": "SF_SHIP_MOTHLIGHT_TENDER_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "mothlight_lamp": {
+      "layout": "npc",
+      "file": "mothlight_lamp",
+      "asset_id": "SF_PROP_MOTHLIGHT_LAMP",
+      "part_id": "wholeship_mothlight_lamp",
+      "npc_root": "SF_PROP_MOTHLIGHT_LAMP_ROOT",
+      "note": "Original SF20 source with measured native collision and causal runtime presentation."
     }
   }
 }

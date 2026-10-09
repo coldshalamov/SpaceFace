@@ -38,6 +38,13 @@ const TICK = (w = 12, a = 0.5, h = 2) => `content:"" !important; display:block !
   box-shadow:none !important; transform:none !important; translate:none !important; scale:none !important; rotate:none !important; clip-path:none !important; opacity:1 !important; mask:none !important; -webkit-mask:none !important;`;
 
 const CSS = `
+/* The canvas is the map's whole interaction surface (hover, click, drag to pan, wheel, lay the line).
+   It sits at a negative z-index inside the screen root, so the root's own box was hit ABOVE it and a real
+   pointer never reached it (the stage column was also pointer-events:none, which the canvas inherited).
+   The root now lets pointers through to the canvas; the chrome (header words, rail, inspector, foot, the
+   interaction layer) opts back in on its own. */
+${C} { pointer-events:none; }
+${C} .gm-viewport, ${C} .gm-viewport canvas { pointer-events:auto; }
 /* ============================ THE HEADER ============================================ */
 ${C} .gm-title { text-shadow:0 2px 28px rgb(5 7 10 / .7); }
 ${C} .gm-stamp { ${LABEL} font-size:12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .7) !important; }
@@ -195,13 +202,13 @@ ${C} .gm-ins-section { background-image:linear-gradient(90deg, rgb(${BONE} / .34
 ${C} .gm-ins-section:first-child { background-image:none !important; }
 ${C} .gm-ins-row-val { color:var(--dp-phos, #dfeeff) !important; }
 /* the chosen sector's own render heads its record, slowly turning toward the pointer (a tilt plate) */
-${C} .gm-ins-plate { position:relative; display:grid; grid-template-columns:auto minmax(0, 1fr); align-items:center; gap:14px; margin:0 0 6px; padding:8px 0 12px 8px; overflow:visible; }
+${C} .gm-ins-plate { position:relative; display:grid; grid-template-columns:auto minmax(0, 1fr); align-items:center; gap:12px; margin:0 0 6px; padding:8px 0 12px 8px; overflow:visible; --gm-plate:108px; }
 ${C} .gm-ins-plate__art { position:relative; width:var(--gm-plate, 128px); height:var(--gm-plate, 128px); border-radius:50%;
   background:radial-gradient(closest-side, rgb(5 7 10 / .95), rgb(5 7 10 / .9) 82%, rgb(5 7 10 / 0));
   box-shadow:0 0 0 1.5px rgb(${BONE} / .52), 0 0 0 6px rgb(${BONE} / .12); transform:perspective(600px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)); transition:transform .3s var(--dp-ease-out); }
 ${C} .gm-ins-plate__art img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
 ${C} .gm-ins-plate__crest { width:26px; height:26px; object-fit:contain; opacity:.9; }
-${C} .gm-ins-plate .gm-ins-target-name { margin:0; }
+${C} .gm-ins-plate .gm-ins-target-name { margin:0; font-size:clamp(18px, 1.15vw, 23px) !important; overflow-wrap:normal !important; word-break:normal !important; hyphens:none; }
 ${C} .gm-ins-plate .gm-ins-kind { white-space:nowrap; }
 html.sf-reduce-motion ${C} .gm-ins-plate__art { transition:none; transform:none; }
 
@@ -255,6 +262,62 @@ ${C} .gm-navfoot.is-locking::after { content:""; position:absolute; left:0; top:
 @keyframes orr-chart-lock { from { transform:translateX(-20%); opacity:.2; } 70% { opacity:1; } to { transform:translateX(455%); opacity:0; } }
 html.sf-reduce-motion ${C} .gm-navfoot.is-locking::after { animation:none; display:none; }
 
+/* ============================ THE WIDE CHART (owner 2026-10-04: the map takes the screen) ========= */
+/* The map is the hero. Above 820 px the page margin tightens, the header folds to two rows, and the
+   lens rail becomes a DOCK: its lenses are icon beads at rest, and it opens over the map (never
+   pushing it) while the pointer or the focus is in it. The clear field the chart fits itself to grows
+   by about half, and nothing moves when the dock opens. */
+@media (min-height: 820px) {
+  ${C} { --k-margin: clamp(28px, 2.4vw, 48px); row-gap:10px !important; }
+  ${C} .gm-head { grid-template-columns:minmax(0, 1fr) auto auto auto !important; grid-template-rows:auto auto !important; row-gap:6px !important; }
+  ${C} .gm-title-lockup { grid-column:1 !important; grid-row:1 !important; flex-direction:row !important; align-items:baseline !important; gap:0 26px !important; flex-wrap:wrap; }
+  ${C} .gm-title { font-size:clamp(22px, 1.6vw, 30px) !important; }
+  ${C} .gm-rail { grid-column:1 !important; grid-row:2 !important; align-self:end; }
+  ${C} .gm-search-container { grid-column:2 !important; grid-row:1 !important; width:clamp(220px, 19vw, 360px) !important; }
+  ${C} .gm-hint-btn { grid-column:3 !important; grid-row:1 !important; }
+  ${C} .gm-close { grid-column:4 !important; grid-row:1 !important; }
+  ${C} .gm-weather { grid-column:2 / span 3 !important; grid-row:2 !important; align-self:end; }
+  ${C} .gm-weather-bar { display:none !important; }
+  ${C} .gm-navfoot { padding-top:20px !important; }
+  ${C} .gm-navfoot .gm-nav-row::before { top:-16px; }
+  ${C} .gm-navfoot .gm-nav-row[data-tone="tracked"]::before { top:-17px; }
+  ${C} .gm-navfoot .gm-nav-row[data-tone="tracked"]:not(:first-child)::after { top:-13px; }
+}
+/* the foot keeps the stage's width on an ultrawide, like the header and the stage above it */
+${C} .gm-apron { width:min(100%, var(--sf-stage-max)); margin-inline:auto; }
+/* the dock: one spine of icon beads; the words open over the map on pointer or focus */
+@media (min-height: 1px) {
+  ${C}[data-layout="wide"] { --gm-rail-w:52px; }
+  ${C}[data-layout="wide"] .gm-left-rail { position:relative; z-index:6; width:var(--gm-rail-w); overflow:hidden; align-self:start; max-height:100%; transition:width .3s var(--dp-ease-out, cubic-bezier(.2, .8, .2, 1)); }
+  ${C}[data-layout="wide"] .gm-left-rail.is-open { width:252px; overflow:hidden auto;
+    background:linear-gradient(90deg, rgb(4 5 7 / .9), rgb(4 5 7 / .84) 70%, rgb(4 5 7 / 0)), ${SPINE}; background-attachment:local; }
+  /* at rest: only the lenses, only their icons */
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) { background:none !important; padding-right:0 !important; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) :is(.gm-rail-sec:not([data-rail-sec="lenses"]), .gm-rail-sum, .gm-layer-bank-title, .gm-rail-commodity) { display:none !important; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-rail-sec[data-rail-sec="lenses"] { padding:0 !important; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-rail-body { padding:0 !important; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-layer-buttons { gap:14px !important; align-items:center; position:relative; padding:6px 0; }
+  /* the spine behind the beads */
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-layer-buttons::before { content:""; position:absolute; left:calc(50% - 3px); top:0; bottom:0; width:6px; z-index:0; pointer-events:none;
+    background:linear-gradient(90deg, transparent 2px, rgb(${BONE} / .6) 2px 4px, transparent 4px), linear-gradient(90deg, rgb(${BONE} / .3) 0 6px); }
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-layer-bank { gap:2px !important; align-items:center; position:relative; z-index:1; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-layer-btn.k-word { ${PLAIN} width:44px !important; min-height:32px !important; padding:0 !important; justify-content:center !important;
+    margin:0 4px !important; position:relative; }
+  /* the bead's own ground: a pool of shade so the spine never prints through the glyph */
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-layer-btn.k-word::after { content:"" !important; display:block !important; position:absolute !important; inset:-4px 3px !important; z-index:-1;
+    background:radial-gradient(closest-side, rgb(5 7 10 / 1), rgb(5 7 10 / .96) 62%, rgb(5 7 10 / 0)) !important; border:0 !important; box-shadow:none !important; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-layer-btn.k-word:focus-visible { outline:none !important; ${SEG(1, '-1px')} }
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-layer-btn.k-word::before { display:none !important; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-layer-state { display:none !important; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-layer-name { ${SR} }
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-layer-ico { display:inline-flex !important; width:24px; height:24px; color:rgb(${BONE} / .42); }
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-layer-ico svg { width:24px; height:24px; }
+  /* the glyphs carry an amber accent in the Deckplate set; the Hand is the only amber, so it reads in bone here */
+  ${C}[data-layout="wide"] .gm-left-rail .gm-layer-ico .dp-icon .accent { fill:currentColor !important; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-layer-btn.k-word:is([aria-pressed="true"], .active) .gm-layer-ico { color:rgb(252 249 240); filter:none; }
+  ${C}[data-layout="wide"] .gm-left-rail:not(.is-open) .gm-layer-btn.k-word:is([aria-pressed="true"], .active) .gm-layer-ico { filter:drop-shadow(0 0 5px rgb(255 240 214 / .55)); }
+}
+
 /* ============================ SHORT SCREENS (below 820 px) ============================ */
 /* The map is the hero: the heading and the foot fold to one short line each, and the chart takes
    the height (the clear field runs under the fading chrome). */
@@ -262,7 +325,7 @@ html.sf-reduce-motion ${C} .gm-navfoot.is-locking::after { animation:none; displ
   ${C} { padding-top:20px !important; padding-bottom:14px !important; row-gap:10px !important; }
   ${C} .gm-head { row-gap:4px !important; }
   ${C} .gm-title-lockup { grid-row:1 !important; flex-direction:row !important; align-items:baseline !important; gap:0 22px !important; flex-wrap:wrap; }
-  ${C} .gm-title { font-size:clamp(30px, 5.6vh, 44px) !important; }
+  ${C} .gm-title { font-size:clamp(20px, 3.4vh, 28px) !important; }
   ${C} .gm-stamp { white-space:nowrap; }
   ${C} .gm-rail { grid-row:2 / span 2 !important; align-self:end; }
   ${C} .gm-hint-btn, ${C} .gm-close { min-height:28px !important; }
@@ -283,6 +346,16 @@ html.sf-reduce-motion ${C} .gm-navfoot.is-locking::after { animation:none; displ
   ${C} .gm-navfoot .gm-nav-row-v { white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; flex:0 1 auto !important; min-width:0 !important; }
   ${C} .gm-tab.k-word { padding:2px 0 10px !important; }
   ${C} .gm-ins-plate { --gm-plate:72px; padding:4px 0 8px 6px; }
+  /* the inspector's pinned verbs share the column with the sector's readings: on a short screen the
+     explanatory sentences stand down to the screen reader and the framing words share one row, so the
+     readings (the accordion) keep some of the column */
+  ${C} :is(.gm-frame-reason, .gm-plot-reason, .gm-engage-reason) { ${SR} }
+  ${C} .gm-frame-group { flex-wrap:nowrap !important; gap:0 18px !important; }
+  ${C} .gm-frame-group .gm-frame-btn { min-height:26px !important; }
+  ${C} .gm-inspector-actions { gap:2px !important; }
+  ${C} :is(#gm-set-course-btn, .gm-plot-btn) { font-size:14px !important; padding:2px 0 4px 12px !important; }
+  ${C} #gm-engage-route-btn.orr-lampkey { margin-top:2px !important; }
+  ${C} .gm-place-actions { gap:0 14px !important; }
 }
 
 @media (forced-colors:active) {

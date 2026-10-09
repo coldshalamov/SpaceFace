@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0fbd5b45853c3a6b213184fb7384695a5d7c711c12d95ea1488380ecd564ae3d",
+  "contentHash": "7331a24e6eff7cd31f565269e4f7ad60d36d22a3a38037ebce51b3494b71bf64",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1421,8 +1421,8 @@
       "uri": "weapon_lance.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -1544,8 +1544,8 @@
     "materialProfileRoles": {
       "accent": 1,
       "ceramic": 2,
-      "hull": 1,
-      "mechanical": 3
+      "hull": 2,
+      "mechanical": 2
     },
     "materialProfiles": [
       {
@@ -1571,7 +1571,7 @@
       {
         "allowTextures": true,
         "planIndex": 21,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -1779,7 +1779,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_lance.glb"
   },
-  "runtimeHash": "ac302b51255036f6c27c143d2e83f6eb00de48fca594e786caec811ac0a7bc34",
+  "runtimeHash": "74db724c61401de94028f411efa109132cf6f5870e55015694fee7bdce3def7b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

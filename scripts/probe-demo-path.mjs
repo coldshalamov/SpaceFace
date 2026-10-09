@@ -3,7 +3,8 @@
 //   node scripts/probe-demo-path.mjs            (headed)
 //   node scripts/probe-demo-path.mjs --headless
 //
-// Route: title -> Crucible door -> Quick play -> rounds until the player REALLY dies or clears
+// Route: title -> Crucible door -> Quick play -> opening armory -> rounds until the player
+// REALLY dies or clears (the armory returns between rounds; press its forward word, never buy)
 // round 5 (never the run-end API) -> results -> "Take it to the belt" -> adventure (dock, one
 // job, undock, one physical problem en route, paid at the delivery dock, fit one upgrade at a
 // shipyard, fly out) -> demo end card.
@@ -135,6 +136,81 @@ async function clickWord(pattern, timeoutMs = 15_000) {
     await sleep(250);
   }
   throw new Error(`no visible word matching ${pattern}`);
+}
+
+// The swarm Crucible parks the run on a locked surface before round 1 and again between
+// rounds: the armory (run.phase 'draft', screen crucibleDraft) and, on a bench wave, the refit
+// (phase 'refit', screen crucibleRefit). The sim legitimately waits on the player there — the
+// only way on is the surface's forward word, pressed through the public UI as a real click on
+// the visible enabled button reading "Launch round N" / "Keep current loadout" / "Continue".
+// A shader warm hold draws that verb disabled as "Readying the field…" and re-arms itself once
+// the compile batch settles, so a held verb needs patience, not another click. When the surface
+// is up but no forward word can be found, Escape is bound to the same verb on both surfaces —
+// dispatched at the screen root so the key can never leak to the flight handler and open Pause.
+// It is never fired blind: a 'draft'/'refit' phase with no surface is a pass-through the run
+// resolves itself (or one still held behind the loading gate until game:started re-opens it).
+async function passCrucibleDraft(timeoutMs = 60_000) {
+  const deadline = Date.now() + timeoutMs;
+  const out = { opened: false, clicks: 0, escapes: 0, timedOut: false, last: null };
+  while (Date.now() < deadline) {
+    const act = await page.evaluate(() => {
+      const st = window.SF && window.SF.state;
+      const phase = st && st.run && st.run.phase;
+      const top = document.body.dataset.kScreen || '';
+      const draftScreen = top === 'crucibleDraft' || top === 'crucibleRefit';
+      if (!draftScreen && phase !== 'draft' && phase !== 'refit') {
+        return { done: true, phase, screen: top };
+      }
+      const root = draftScreen ? document.querySelector(`[data-screen="${top}"]`) : null;
+      const forward = /^\s*(Launch round \d+|Keep current loadout|Continue)/i;
+      const seen = [];
+      let pick = null; let heldLabel = null;
+      if (root) {
+        for (const b of root.querySelectorAll('button, [role="button"], .k-word')) {
+          const label = (b.textContent || '').replace(/\s+/g, ' ').trim();
+          if (!label || !b.getClientRects().length) continue;
+          if (seen.length < 14) seen.push(label.slice(0, 44));
+          const disabled = b.disabled === true || b.getAttribute('aria-disabled') === 'true';
+          if (forward.test(label)) {
+            if (!disabled) { pick = b; break; }
+            heldLabel = label; // a forward word drawn dead — wait for it to re-arm
+            continue;
+          }
+          if (disabled && heldLabel == null && /readying|field/i.test(label)) heldLabel = label;
+        }
+      }
+      if (pick) {
+        pick.click();
+        return { clicked: (pick.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 80), phase, screen: top };
+      }
+      return { phase, screen: top, held: heldLabel, noVerb: draftScreen && heldLabel == null, seen };
+    }).catch((e) => ({ evalError: String((e && e.message) || e).slice(0, 120) }));
+    out.last = act;
+    if (act.done) return out;
+    out.opened = true;
+    if (act.clicked) {
+      out.clicks += 1;
+      console.log(`  [armory] ${act.screen || act.phase}: clicked "${act.clicked}"`);
+      await sleep(400);
+      continue;
+    }
+    if (act.noVerb) {
+      out.escapes += 1;
+      await page.evaluate(() => {
+        const top = document.body.dataset.kScreen || '';
+        const root = top && document.querySelector(`[data-screen="${top}"]`);
+        if (root) root.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      }).catch(() => {});
+      console.log(`  [armory] ${act.screen}: no forward word; Escape (saw: ${(act.seen || []).join(' | ') || 'no buttons'})`);
+      await sleep(400);
+      continue;
+    }
+    // act.held: the forward verb is gated on a warm hold that re-arms itself. Otherwise the
+    // phase is draft/refit with no surface yet — wait for it rather than firing blind.
+    await sleep(500);
+  }
+  out.timedOut = true;
+  return out;
 }
 
 const port = await freePort();
@@ -744,18 +820,43 @@ try {
 
   // ---------------------------------------------------------------- step 3: first control
   const flightStep = await step('crucible-flight', 'launch -> first playable frame', async () => {
-    await page.waitForFunction(() => {
-      const st = window.SF.state;
-      const p = st.entities && st.entities.get(st.playerId);
-      return st.mode === 'flight' && !!p && p.alive !== false;
-    }, null, { timeout: 240_000 });
+    // Quick play's first stop is the swarm ARMORY (run.phase 'draft', wave 0), not the arena —
+    // the run waits on that surface's forward word before round 1 exists. Poll for real flight,
+    // pressing through whatever draft/refit surface is up on the way, then keep the original
+    // gates (flight mode + live player + first playable frame).
+    const deadline = Date.now() + 240_000;
+    const armoryT0 = Date.now();
+    const armory = { opened: false, clicks: 0, escapes: 0 };
+    let lastDraft = null;
+    for (;;) {
+      const pass = await passCrucibleDraft(Math.max(2_000, deadline - Date.now()));
+      armory.opened = armory.opened || pass.opened;
+      armory.clicks += pass.clicks;
+      armory.escapes += pass.escapes;
+      if (pass.last) lastDraft = pass.last;
+      const flying = await page.evaluate(() => {
+        const st = window.SF.state;
+        const p = st.entities && st.entities.get(st.playerId);
+        const held = st.run && (st.run.phase === 'draft' || st.run.phase === 'refit');
+        const surface = /^(crucibleDraft|crucibleRefit)$/.test(document.body.dataset.kScreen || '');
+        return st.mode === 'flight' && !!p && p.alive !== false && !held && !surface;
+      }).catch(() => false);
+      if (flying) break;
+      if (Date.now() >= deadline) {
+        throw new Error(`never reached flight control inside 240s — draft surface state: ${JSON.stringify(lastDraft)}`);
+      }
+      await sleep(400);
+    }
+    armory.seconds = +((Date.now() - armoryT0) / 1000).toFixed(1);
     await page.waitForFunction(() => Number.isFinite(window.SF.state.render
       && window.SF.state.render.firstPlayableFrameAt), null, { timeout: 180_000 });
-    return page.evaluate(() => ({
+    const detail = await page.evaluate(() => ({
       simTime: +window.SF.state.simTime.toFixed(1),
       firstPlayableFrameAt: window.SF.state.render && window.SF.state.render.firstPlayableFrameAt,
       wave: window.SF.state.run && window.SF.state.run.wave,
     }));
+    detail.armory = armory;
+    return detail;
   });
   const launchToControlS = flightStep.seconds;
 
@@ -787,6 +888,10 @@ try {
     let dieTargetId = null;
     let yawHeld = false;
     let outcome = null;
+    // Armory/refit wall time is the game waiting on the player, not host starvation.
+    let armoryWallMs = 0;
+    let armories = 0;
+    let armoryStuck = 0;
     const waves = [];
     const snapTrace = [];
     while (Date.now() < deadline) {
@@ -820,6 +925,26 @@ try {
           screen: document.body.dataset.kScreen || null,
         };
       });
+      // The armory/bench parks the run between rounds on a locked draft/refit surface — press
+      // its forward word (never buying) and keep the loop going. The sim legitimately waits on
+      // the player here, so this wall time is kept out of the starved-host rate below.
+      if (snap.phase === 'draft' || snap.phase === 'refit'
+        || snap.screen === 'crucibleDraft' || snap.screen === 'crucibleRefit') {
+        snapTrace.push({ wall: Date.now() - t0, ...snap });
+        const heldAt = Date.now();
+        const pass = await passCrucibleDraft(60_000);
+        armoryWallMs += Date.now() - heldAt;
+        armories += 1;
+        if (pass.timedOut) {
+          armoryStuck += 1;
+          console.log(`  [rounds] armory surface did not clear in 60s (phase=${snap.phase} screen=${snap.screen} last=${JSON.stringify(pass.last)})`);
+          if (armoryStuck >= 3) {
+            fs.writeFileSync(path.join(OUT_DIR, 'rounds-trace.json'), JSON.stringify(snapTrace.filter((_, i) => i % 5 === 0), null, 1));
+            throw new Error(`armory forward control never cleared the draft (phase=${snap.phase} screen=${snap.screen} last=${JSON.stringify(pass.last)}) — the run is parked on a surface that does not answer; trace -> rounds-trace.json`);
+          }
+        } else armoryStuck = 0;
+        continue;
+      }
       if (simStart == null && snap.simTime != null && snap.mode === 'flight') { simStart = snap.simTime; loopT0 = now; }
       const weaving = dieStartSim == null && snap.mode === 'flight'
         && (simStart == null || snap.simTime - simStart < WEAVE_SIM_S)
@@ -918,7 +1043,10 @@ try {
       // over the loop's own window (simStart/loopT0 share one baseline) after a 30 s
       // observation window — judging against process-start wall time self-triggers.
       if (simStart != null && snap.simTime != null && loopT0 != null && now - loopT0 > 30_000) {
-        const simRate = (snap.simTime - simStart) / ((now - loopT0) / 1000);
+        // Armory/refit dwell is the sim paused on the player — excluding it keeps a long shop
+        // stop from masquerading as a starved host.
+        const playedWallS = Math.max(1, (now - loopT0 - armoryWallMs) / 1000);
+        const simRate = (snap.simTime - simStart) / playedWallS;
         if (simRate < 0.15) {
           fs.writeFileSync(path.join(OUT_DIR, 'rounds-trace.json'), JSON.stringify(snapTrace.filter((_, i) => i % 5 === 0), null, 1));
           throw new Error(`host-starved: sim advancing at ${(simRate * 100).toFixed(1)}% of wall — this machine cannot play the demo in real time (env contention, not a game defect); trace -> rounds-trace.json`);
@@ -946,7 +1074,7 @@ try {
     // Results plate may mount a beat after the kill; wait for it.
     await waitScreen('crucibleResults', 60_000).catch(() => {});
     fs.writeFileSync(path.join(OUT_DIR, 'rounds-trace.json'), JSON.stringify(snapTrace.filter((_, i) => i % 5 === 0), null, 1));
-    return { ...outcome, waves };
+    return { ...outcome, waves, armories, armoryWallS: +(armoryWallMs / 1000).toFixed(1) };
   });
 
   // ---------------------------------------------------------------- step 5: results plate

@@ -381,6 +381,47 @@ test('actors absent from a complete tactical batch release stale target ownershi
   }, 'a ship no longer present in the complete live decision batch must not hold a slot');
 });
 
+test('reserve objectives cannot consume attacker slots meant for committed attackers', () => {
+  const state = ownershipState([15, 16, 17]);
+  // A screen member's live decision shape: the objective names the target it watches, the
+  // doctrine is forgotten, and a blocked action selection still carries the target it wanted.
+  const screenDecision = (entityId, actionId = null) => ({
+    entityId,
+    directive: {
+      tactic: 'convoy_screen',
+      objective: {
+        kind: ObjectiveKind.SCREEN,
+        targetId: state.playerId,
+        reason: 'reserve_screen',
+      },
+    },
+    action: { actionId, targetId: state.playerId, status: actionId ? 'running' : 'blocked' },
+    combatDoctrine: null,
+  });
+
+  refreshFirstSessionAttackerOwnership(state, [
+    ownershipDecision(15, 'strike', 'action_burst'),
+    ownershipDecision(16, 'strike', 'action_burst'),
+    screenDecision(17),
+  ]);
+  assert.deepEqual(inspectFirstSessionAttackerOwnership(state, state.playerId), {
+    targetId: state.playerId,
+    owners: [15, 16],
+    waiting: [],
+  }, 'a screen reserve watching the target must not starve a committed attacker of a slot');
+
+  refreshFirstSessionAttackerOwnership(state, [
+    ownershipDecision(15, 'strike', 'action_burst'),
+    screenDecision(16),
+    screenDecision(17, 'action_burst'),
+  ]);
+  assert.deepEqual(inspectFirstSessionAttackerOwnership(state, state.playerId), {
+    targetId: state.playerId,
+    owners: [15, 17],
+    waiting: [],
+  }, 'a screen member flying a started attack action is a de facto attacker and takes the freed slot');
+});
+
 test('CONTROL-dispatched security responders fire outside the novice cap without consuming slots', () => {
   const state = ownershipState([2, 3]);
   const responderAI = authorizedAI({

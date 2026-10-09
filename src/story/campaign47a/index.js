@@ -119,6 +119,8 @@ export {
   getFailureRecovery,
   getNamedCaptainBinding,
   getPhysicalContact,
+  headlineVerbForBeat,
+  headlineVerbMapForBeat,
   isCanonicalContactSignal,
   isCanonicalIntentEvent,
   isNextPhysicalContact,

@@ -2,7 +2,10 @@
 //
 // The previous implementation drew wide glowing arcs around the screen edge. That read like a
 // cockpit visor, obscured the playfield, and conveyed every hit as the same red alarm. This pooled
-// replacement is a compact non-diegetic gauge: direction chevron + redundant S/A/H layer shape.
+// replacement is a compact non-diegetic gauge: the kit's damage wedge for direction + a shape-led
+// S/A/H layer mark (ring / diamond / solid square; the letter is fine print, not the signal).
+// Marks are drawn inline SVG in the kit's voice (currentColor over --impact-tone) — no bordered
+// boxes, no mono letterplates.
 // Exact attacker/weapon copy remains in the single anchored LAST IMPACT receipt (commandBar.js),
 // while this surface answers the time-critical question: where did it come from, and which layer
 // is failing? No damage numbers, speech, modal, or sim mutation lives here.
@@ -44,6 +47,22 @@ export function buildNearMissCue(payload = {}) {
     sourceKey: payload.projectileId == null ? 'nearmiss:unknown' : `nearmiss:${payload.projectileId}`,
   };
 }
+
+// Kit geometry, ported inline (assets/ui/kit/assets/svg/). The damage wedge is a 45° pie authored
+// pointing "up"; objective.chevron (plates/) is the same voice at 24 units. Drawn marks replace the
+// old border-trick chevron and boxed letters.
+const WEDGE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" aria-hidden="true">'
+  + '<path fill="currentColor" fill-opacity="0.85" d="M60,60 L60,6 A54,54 0 0,1 98,22 Z"/></svg>';
+
+// One shared layer plate per marker; CSS reveals exactly the shape the cue names, so a pooled
+// marker swaps meaning by class alone (no per-hit DOM mutation). Shapes: ring=shield,
+// diamond=armor, solid square=hull, dash=near miss — meaning survives without the letter.
+const LAYER_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">'
+  + '<circle class="sf-dmgind-shape sf-dmgind-shape-shield" cx="12" cy="12" r="6.4" stroke="currentColor" stroke-width="2.6"/>'
+  + '<path class="sf-dmgind-shape sf-dmgind-shape-armor" stroke="currentColor" stroke-width="2.6" d="M12 3.9 L20.1 12 L12 20.1 L3.9 12 Z"/>'
+  + '<rect class="sf-dmgind-shape sf-dmgind-shape-hull" x="4.9" y="4.9" width="14.2" height="14.2" fill="currentColor"/>'
+  + '<rect class="sf-dmgind-shape sf-dmgind-shape-nearmiss" x="4" y="10.8" width="16" height="2.4" rx="1.2" fill="currentColor"/>'
+  + '<circle class="sf-dmgind-ring" cx="12" cy="12" r="10.9" stroke="currentColor" stroke-width="1.5"/></svg>';
 
 function pct(value, max) {
   return max > 0 ? Math.max(0, Math.min(100, Math.round((Number(value) || 0) / max * 100))) : 0;
@@ -95,39 +114,39 @@ function injectStyle() {
 }
 .sf-dmgind-marker {
   --impact-tone:var(--sf-danger, #ff5c5c);
-  position:absolute; left:0; top:0; width:44px; height:28px;
+  position:absolute; left:0; top:0;
   display:none; align-items:center; justify-content:center; gap:7px;
   pointer-events:none; opacity:0; will-change:transform,opacity;
 }
+/* Direction: the kit damage wedge, rotated onto the attacker by tick(). */
 .sf-dmgind-marker__chevron {
-  width:13px; height:13px; flex:0 0 auto;
-  border-top:3px solid var(--impact-tone);
-  border-right:3px solid var(--impact-tone);
-  transform:rotate(45deg);
-  transform-origin:center;
-}
-.sf-dmgind-marker__layer {
-  display:flex; align-items:center; justify-content:center;
-  width:20px; height:20px; box-sizing:border-box;
-  border:2px solid var(--impact-tone);
-  background:rgba(5,9,18,.88);
+  width:14px; height:14px; flex:0 0 auto;
   color:var(--impact-tone);
-  font:700 12px/1.35 var(--mono, monospace);
-  letter-spacing:0;
+}
+.sf-dmgind-marker__chevron > svg { width:100%; height:100%; display:block; }
+/* Layer: drawn shape carries the signal; the letter is fine print in the game's face. */
+.sf-dmgind-marker__layer {
+  display:flex; align-items:center; gap:4px;
+  color:var(--impact-tone);
+}
+.sf-dmgind-marker__layer > svg { width:22px; height:22px; display:block; }
+.sf-dmgind-shape { display:none; }
+.sf-dmgind-marker.layer-shield .sf-dmgind-shape-shield { display:block; }
+.sf-dmgind-marker.layer-armor .sf-dmgind-shape-armor { display:block; }
+.sf-dmgind-marker.layer-hull .sf-dmgind-shape-hull { display:block; }
+.sf-dmgind-marker.layer-nearmiss .sf-dmgind-shape-nearmiss { display:block; }
+.sf-dmgind-marker.layer-nearmiss .sf-dmgind-marker__letter { display:none; }
+.sf-dmgind-marker__letter {
+  font-family:var(--dp-face-label, "Archivo");
+  font-size:12px; font-weight:600; line-height:1; letter-spacing:.08em;
 }
 .sf-dmgind-marker.layer-nearmiss { --impact-tone:var(--sf-quiet, #9fb4c8); }
-.sf-dmgind-marker.layer-shield { --impact-tone:var(--sf-shield, #4f8fdd); }
+.sf-dmgind-marker.layer-shield { --impact-tone:var(--sf-shield, #39d0ff); }
 .sf-dmgind-marker.layer-armor { --impact-tone:var(--sf-warn, #ffb35c); }
 .sf-dmgind-marker.layer-hull { --impact-tone:var(--sf-danger, #ff5c5c); }
-.sf-dmgind-marker.layer-shield .sf-dmgind-marker__layer { border-radius:50%; }
-.sf-dmgind-marker.layer-armor .sf-dmgind-marker__layer {
-  width:18px; height:18px; transform:rotate(45deg);
-}
-.sf-dmgind-marker.layer-armor .sf-dmgind-marker__layer > span { transform:rotate(-45deg); }
-.sf-dmgind-marker.layer-hull .sf-dmgind-marker__layer { border-radius:2px; }
-.sf-dmgind-marker.severity-critical .sf-dmgind-marker__layer {
-  outline:2px solid var(--impact-tone); outline-offset:2px;
-}
+/* Critical hull: a drawn alert ring around the shape, not an outline around a letterbox. */
+.sf-dmgind-ring { opacity:0; }
+.sf-dmgind-marker.severity-critical .sf-dmgind-ring { opacity:1; }
   `;
   document.head.appendChild(style);
 }
@@ -160,9 +179,12 @@ export function createDamageIndicators() {
     element.setAttribute('aria-hidden', 'true');
     const chevron = document.createElement('div');
     chevron.className = 'sf-dmgind-marker__chevron';
+    chevron.innerHTML = WEDGE_SVG;
     const layer = document.createElement('div');
     layer.className = 'sf-dmgind-marker__layer';
+    layer.innerHTML = LAYER_SVG;
     const glyph = document.createElement('span');
+    glyph.className = 'sf-dmgind-marker__letter';
     layer.appendChild(glyph);
     element.appendChild(chevron);
     element.appendChild(layer);
@@ -176,6 +198,9 @@ export function createDamageIndicators() {
       angle: 0,
       age: Infinity,
       sourcePoint: { x: 0, y: 0, z: 0 },
+      // Last valid on-screen direction (unit vector); NaN until a trustworthy projection lands.
+      dirX: NaN,
+      dirY: NaN,
     });
   }
 
@@ -191,6 +216,8 @@ export function createDamageIndicators() {
     marker._sfChevron = '';
     marker.cue = null;
     marker.age = Infinity;
+    marker.dirX = NaN;
+    marker.dirY = NaN;
     if (activeCount > 0) activeCount--;
   }
 
@@ -224,6 +251,8 @@ export function createDamageIndicators() {
     selected.cue = cue;
     selected.angle = angle;
     selected.age = 0;
+    selected.dirX = NaN; // a stolen slot must not inherit the previous hit's direction
+    selected.dirY = NaN;
     selected.glyph.textContent = cue.glyph;
     selected.element.className = `sf-dmgind-marker layer-${cue.layer} severity-${cue.severity}`;
     return true;
@@ -234,6 +263,8 @@ export function createDamageIndicators() {
     marker.cue = cue;
     marker.angle = angle;
     marker.age = 0;
+    marker.dirX = NaN;
+    marker.dirY = NaN;
     marker.glyph.textContent = cue.glyph;
     marker.element.className = `sf-dmgind-marker layer-${cue.layer} severity-${cue.severity}`;
   }
@@ -286,11 +317,30 @@ export function createDamageIndicators() {
       marker.sourcePoint.x = player.pos.x + Math.cos(marker.angle) * 600;
       marker.sourcePoint.z = player.pos.z - Math.sin(marker.angle) * 600;
       const projected = worldToScreen(marker.sourcePoint, _diScreen);
-      let dx = (Number(projected && projected.x) || width * 0.5) - width * 0.5;
-      let dy = (Number(projected && projected.y) || height * 0.5) - height * 0.5;
-      const length = Math.hypot(dx, dy) || 1;
-      dx /= length;
-      dy /= length;
+      // A failed or behind-camera projection returns the {0,0} sentinel or mirrored coords; the
+      // old `|| half-viewport` fallback turned the sentinel into a dead-centre marker and the
+      // mirrored coords flipped the wedge 180°. Latch the last valid on-screen direction and
+      // hold it across bad ticks — never feed either failure through the direction math.
+      if (projected && projected.onScreen !== false
+        && Number.isFinite(projected.x) && Number.isFinite(projected.y)) {
+        const rawDx = projected.x - width * 0.5;
+        const rawDy = projected.y - height * 0.5;
+        const length = Math.hypot(rawDx, rawDy);
+        if (length > 0) { // a dead-centre projection carries no direction; keep the last latch
+          marker.dirX = rawDx / length;
+          marker.dirY = rawDy / length;
+        }
+      }
+      let dx = marker.dirX;
+      let dy = marker.dirY;
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) {
+        // No valid projection yet this marker's life. The chase camera never yaws (camera.js),
+        // so the fixed ground→screen mapping — +X reads screen-left, +Z reads screen-up —
+        // approximates the wedge from the world angle alone. angleToSource is atan2(-dz, dx),
+        // which makes (−cos a, sin a) exactly that mapping.
+        dx = -Math.cos(marker.angle);
+        dy = Math.sin(marker.angle);
+      }
       const x = width * 0.5 + dx * extentX;
       const y = height * 0.5 + dy * extentY;
       const screenAngle = Math.atan2(dy, dx);
@@ -312,7 +362,8 @@ export function createDamageIndicators() {
         marker._sfHudTransform = nextTransform;
         marker.element.style.transform = nextTransform;
       }
-      const nextChevron = `rotate(${screenAngle + Math.PI * 0.25}rad)`;
+      // The kit wedge is authored pointing up; screen angle 0 is right, so swing the extra 90°.
+      const nextChevron = `rotate(${screenAngle + Math.PI * 0.5}rad)`;
       if (marker._sfChevron !== nextChevron) {
         marker._sfChevron = nextChevron;
         marker.chevron.style.transform = nextChevron;

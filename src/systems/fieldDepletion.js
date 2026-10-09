@@ -39,7 +39,10 @@ export const RICH_SEAM_OPPORTUNITY_WINDOW_S = 180;
 export const RICH_SEAM_BONUS_U = 8;
 
 function freshState() {
-  return { schemaVersion: STATE_VERSION, fields: {}, opportunities: {}, nextFields: {}, receipts: [] };
+  return {
+    schemaVersion: STATE_VERSION, fields: {}, opportunities: {}, opportunitiesOpen: 0,
+    nextFields: {}, receipts: [],
+  };
 }
 
 function clamp01(value) {
@@ -77,6 +80,11 @@ export function ensureFieldDepletionState(state) {
   if (!own.opportunities || typeof own.opportunities !== 'object' || Array.isArray(own.opportunities)) {
     own.opportunities = {};
   }
+  // Open-window count for the per-tick expire skip. Recomputed only when absent/invalid
+  // (fresh state, pre-count saves); maintained incrementally at every write site.
+  if (!Number.isInteger(own.opportunitiesOpen) || own.opportunitiesOpen < 0) {
+    own.opportunitiesOpen = countOpenOpportunities(own);
+  }
   if (!own.nextFields || typeof own.nextFields !== 'object' || Array.isArray(own.nextFields)) {
     own.nextFields = {};
   }
@@ -92,6 +100,35 @@ function opportunityKey(fieldId, activityObjectSlotId) {
 
 function finiteNonNegative(value, fallback = 0) {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
+function countOpenOpportunities(own) {
+  let n = 0;
+  for (const key of Object.keys(own.opportunities)) {
+    const rec = own.opportunities[key];
+    if (rec && rec.state === 'open') n += 1;
+  }
+  return n;
+}
+
+// The per-tick expire pass early-returns when nothing is open, so the count is
+// adjusted at every write site instead of rescanned each tick.
+function storeOpportunityRecord(own, key, rec) {
+  const prev = own.opportunities[key];
+  const wasOpen = !!(prev && prev.state === 'open');
+  const nowOpen = !!(rec && rec.state === 'open');
+  if (wasOpen !== nowOpen) {
+    own.opportunitiesOpen = Math.max(0, (own.opportunitiesOpen | 0) + (nowOpen ? 1 : -1));
+  }
+  own.opportunities[key] = rec;
+}
+
+function removeOpportunityRecord(own, key) {
+  const prev = own.opportunities[key];
+  if (prev && prev.state === 'open') {
+    own.opportunitiesOpen = Math.max(0, (own.opportunitiesOpen | 0) - 1);
+  }
+  delete own.opportunities[key];
 }
 
 function normalizeRichSeamOpportunity(input, key = null) {
@@ -198,7 +235,7 @@ export function openRichSeamOpportunity(state, payload = {}) {
     expiresAtT: now + durationS,
     bonusU: payload.bonusU,
   }, key);
-  own.opportunities[key] = rec;
+  storeOpportunityRecord(own, key, rec);
   return { ...rec };
 }
 
@@ -234,7 +271,7 @@ export function reserveRichSeamOpportunity(state, payload = {}) {
     rec.state = 'missed';
     rec.resolution = 'miss';
     rec.resolvedAtT = now;
-    own.opportunities[key] = rec;
+    storeOpportunityRecord(own, key, rec);
     return null;
   }
   const reservationId = typeof payload.reservationId === 'string' && payload.reservationId
@@ -256,7 +293,7 @@ export function reserveRichSeamOpportunity(state, payload = {}) {
   rec.reservedByActivityActorSlotId = payload.reservedByActivityActorSlotId;
   rec.reservedByJobId = payload.reservedByJobId;
   rec.reservedAtT = now;
-  own.opportunities[key] = rec;
+  storeOpportunityRecord(own, key, rec);
   return { ...rec };
 }
 
@@ -270,7 +307,7 @@ export function claimRichSeamOpportunity(state, payload = {}) {
     rec.state = 'missed';
     rec.resolution = 'miss';
     rec.resolvedAtT = now;
-    own.opportunities[key] = rec;
+    storeOpportunityRecord(own, key, rec);
     return null;
   }
   if (typeof payload.claimId !== 'string' || !payload.claimId
@@ -289,7 +326,7 @@ export function claimRichSeamOpportunity(state, payload = {}) {
     ? payload.resolution
     : rec.reservationId && payload.claimedByKind === 'npc' ? 'help' : 'work';
   rec.resolvedAtT = now;
-  own.opportunities[key] = rec;
+  storeOpportunityRecord(own, key, rec);
   return { ...rec };
 }
 
@@ -308,7 +345,7 @@ export function missReservedRichSeamOpportunity(state, payload = {}) {
     rec.state = 'missed';
     rec.resolution = 'miss';
     rec.resolvedAtT = now;
-    own.opportunities[key] = rec;
+    storeOpportunityRecord(own, key, rec);
     return { ...rec };
   }
   return null;
@@ -316,12 +353,15 @@ export function missReservedRichSeamOpportunity(state, payload = {}) {
 
 export function expireRichSeamOpportunities(state, simTime = state && state.simTime) {
   const own = ensureFieldDepletionState(state);
+  // Only 'open' records can expire; with none, the loop below would just re-normalize
+  // terminal records (identity) every tick — skip it entirely.
+  if (!own.opportunitiesOpen) return [];
   const now = finiteNonNegative(simTime);
   const expired = [];
   for (const key of Object.keys(own.opportunities)) {
     const rec = normalizeRichSeamOpportunity(own.opportunities[key], key);
     if (!rec) {
-      delete own.opportunities[key];
+      removeOpportunityRecord(own, key);
       continue;
     }
     if (rec.state === 'open' && now >= rec.expiresAtT) {
@@ -330,7 +370,7 @@ export function expireRichSeamOpportunities(state, simTime = state && state.simT
       rec.resolvedAtT = now;
       expired.push({ ...rec });
     }
-    own.opportunities[key] = rec;
+    storeOpportunityRecord(own, key, rec);
   }
   return expired;
 }
@@ -821,12 +861,13 @@ export const fieldDepletion = {
       yield 'fields-record';
     }
     own.opportunities = {};
+    own.opportunitiesOpen = 0;
     const opportunities = data && data.opportunities && typeof data.opportunities === 'object'
       ? data.opportunities
       : {};
     for (const key of Object.keys(opportunities)) {
       const rec = normalizeRichSeamOpportunity(opportunities[key], key);
-      if (rec) own.opportunities[key] = rec;
+      if (rec) storeOpportunityRecord(own, key, rec);
       yield 'fields-opportunity';
     }
     own.receipts = Array.isArray(data && data.receipts)

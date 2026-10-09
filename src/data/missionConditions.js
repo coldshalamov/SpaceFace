@@ -223,6 +223,34 @@ export const MISSION_CONDITIONS = Object.freeze({
     },
   }),
 
+  // ── 5b. FRAGILE GRADED — SF-114 damage clause ─────────────────────────────────────────────
+  // The negotiated alternative to intact-or-void: a smaller handling premium that survives a
+  // crack. Breach forfeits the premium only — the contract stays live, the spilled units are
+  // physically gone (re-scoopable or lost), and whatever still sits in the hold settles on the
+  // recorded per-unit terms through the NXB-028 partial path. Same `isFragile` gate as
+  // fragile_intact, same 'fragile' group — the two terms never co-attach to one offer.
+  fragile_graded: Object.freeze({
+    id: 'fragile_graded',
+    kind: 'forbid',
+    event: 'cargo:fragileLost',
+    count: 1,
+    onBreach: 'forfeit',
+    rewardMult: 1.15,
+    label: 'Fragile — graded terms',
+    prose: 'Freight priced by the unit on arrival. A hard knock costs the handling premium and whatever cracked — the rest still settles.',
+    brief: 'Cracks cost the premium; the survivors still pay.',
+    breachText: 'Handling premium lost: fragile freight cracked on impact — the survivors still settle.',
+    appliesTo: ['cargo_delivery', 'salvage_retrieval', 'bulk_trade'],
+    minRisk: 0,
+    fits(offer, ctx) {
+      const cmdtyId = offer && offer.params && offer.params.cmdtyId;
+      return !!(cmdtyId && ctx && typeof ctx.isFragile === 'function' && ctx.isFragile(cmdtyId));
+    },
+    match(payload) {
+      return !!payload && (payload.totalQty == null || Number(payload.totalQty) > 0);
+    },
+  }),
+
   // ── 6. WEAPONS COLD ─────────────────────────────────────────────────────────────────────────
   // "Clear it without firing a shot — use mass." Emitter verified: src/systems/weapons.js:553/:687
   // emit combat:fire { ownerId }. DELIBERATELY NOT on bounty_hunt / patrol_clear: a mass kill does

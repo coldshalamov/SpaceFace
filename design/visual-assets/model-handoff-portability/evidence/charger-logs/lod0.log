@@ -1,0 +1,42 @@
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender').
+{'candidate': 'charger', 'lod': 0, 'triangles': 3712, 'meshCount': 15, 'boundsBlender': {'min': [-9.699999809265137, -8.133986473083496, -1.2799999713897705], 'max': [11.0, 8.133986473083496, 3.3814001083374023]}, 'decimation': False, 'actualGameLookVerified': False, 'physicsTuningChanged': False}
+Info: Saved "charger-LOD0-source.blend"
+ERROR Draco mesh compression is not available because library could not be found at /usr/bin/4.3/python/lib/python3.13/site-packages/libextern_draco.so
+19:54:45 | INFO: Starting glTF 2.0 export
+19:54:45 | INFO: Extracting primitive: CHARGER_fixed_keel
+19:54:45 | INFO: Primitives created: 1
+19:54:45 | INFO: Extracting primitive: CHARGER_unified_ramming_carapace
+19:54:45 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:54:45 | INFO: Primitives created: 2
+19:54:45 | INFO: Extracting primitive: CHARGER_central_pronotal_crown
+19:54:45 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+19:54:45 | INFO: Primitives created: 1
+19:54:45 | INFO: Extracting primitive: CHARGER_port_ram_shield
+19:54:45 | INFO: Primitives created: 1
+19:54:45 | INFO: Extracting primitive: CHARGER_starboard_ram_shield
+19:54:45 | INFO: Primitives created: 1
+19:54:45 | INFO: Extracting primitive: CHARGER_stabilizer_support_PORT
+19:54:45 | INFO: Primitives created: 2
+19:54:45 | INFO: Extracting primitive: CHARGER_stabilizer_support_STARBOARD
+19:54:45 | INFO: Primitives created: 2
+19:54:45 | INFO: Extracting primitive: CHARGER_oral_corner_PORT
+19:54:45 | INFO: Primitives created: 1
+19:54:45 | INFO: Extracting primitive: CHARGER_oral_corner_STARBOARD
+19:54:45 | INFO: Primitives created: 1
+19:54:45 | INFO: Extracting primitive: CHARGER_labrum
+19:54:45 | INFO: Primitives created: 1
+19:54:45 | INFO: Extracting primitive: CHARGER_folding_paddle_PORT
+19:54:45 | INFO: Primitives created: 1
+19:54:45 | INFO: Extracting primitive: CHARGER_folding_paddle_STARBOARD
+19:54:45 | INFO: Primitives created: 1
+19:54:45 | INFO: Extracting primitive: CHARGER_telescoping_anterior
+19:54:45 | INFO: Primitives created: 1
+19:54:45 | INFO: Extracting primitive: CHARGER_telescoping_middle
+19:54:45 | INFO: Primitives created: 1
+19:54:45 | INFO: Extracting primitive: CHARGER_telescoping_posterior
+19:54:45 | INFO: Primitives created: 1
+19:54:45 | INFO: Finished glTF 2.0 export in 0.04764723777770996 s
+
+Blender 4.3.2
+
+Blender quit

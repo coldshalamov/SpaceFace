@@ -5,6 +5,11 @@ These are live station-bar/contact portraits, not flight-HUD framing.
 ## Sources of truth
 
 - Registry and keys: `src/data/portraits.js`.
+- Station-local pool (procedural bar contacts, not authored cast): `src/data/localPortraits.js`, files and
+  provenance under `assets/portraits/locals/`, briefs in `tools/art/local_portrait_briefs.py` (owner ruling
+  2026-10-03: generated faces replace the canvas doodle). It is a pool of distinct individuals per role, never a
+  role mask: each face is one authored person, a local gets exactly one by station and bar slot, and the registry
+  above still refuses any role-to-photo mapping. Grow a role's pool by adding its files and raising its count.
 - Loader/fallback: `src/ui/portraitArt.js`.
 - Player-facing consumer: `src/ui/screens/bar.js` and related comms/station surfaces.
 - Bundle/reachability: bundle configuration plus `check:asset-reachability`.

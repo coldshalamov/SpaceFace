@@ -1,0 +1,268 @@
+TAP version 13
+# Subtest: motion bank naming maps group ids to MOTION_ nodes both ways
+ok 1 - motion bank naming maps group ids to MOTION_ nodes both ways
+  ---
+  duration_ms: 4.60546
+  type: 'test'
+  ...
+# Subtest: validateMotionBank accepts the canonical shape
+ok 2 - validateMotionBank accepts the canonical shape
+  ---
+  duration_ms: 0.688254
+  type: 'test'
+  ...
+# Subtest: validateMotionBank rejects illegal channel scopes
+ok 3 - validateMotionBank rejects illegal channel scopes
+  ---
+  duration_ms: 0.630618
+  type: 'test'
+  ...
+# Subtest: slerp takes the short signed arc; mirrored angles land opposite
+ok 4 - slerp takes the short signed arc; mirrored angles land opposite
+  ---
+  duration_ms: 0.298529
+  type: 'test'
+  ...
+# Subtest: evaluateMotionClip composes rest-relative deltas at any sample time
+ok 5 - evaluateMotionClip composes rest-relative deltas at any sample time
+  ---
+  duration_ms: 0.594513
+  type: 'test'
+  ...
+# Subtest: bindAuthoredMotion throws when the bank was not validated against this tree
+ok 6 - bindAuthoredMotion throws when the bank was not validated against this tree
+  ---
+  duration_ms: 0.779842
+  type: 'test'
+  ...
+# Subtest: bindAuthoredMotion throws on rest-pose drift
+ok 7 - bindAuthoredMotion throws on rest-pose drift
+  ---
+  duration_ms: 0.471338
+  type: 'test'
+  ...
+# Subtest: two instances bound to one bank sweep independently
+ok 8 - two instances bound to one bank sweep independently
+  ---
+  duration_ms: 1.434616
+  type: 'test'
+  ...
+# Subtest: rest end mode parks the rig exactly at its authored rest pose
+ok 9 - rest end mode parks the rig exactly at its authored rest pose
+  ---
+  duration_ms: 0.507813
+  type: 'test'
+  ...
+# Subtest: binding clears the frozen-matrix flag up the chain
+ok 10 - binding clears the frozen-matrix flag up the chain
+  ---
+  duration_ms: 0.440061
+  type: 'test'
+  ...
+# Subtest: attachAuthoredMotionDriver exposes update + detach hooks and disposes cleanly
+ok 11 - attachAuthoredMotionDriver exposes update + detach hooks and disposes cleanly
+  ---
+  duration_ms: 0.850027
+  type: 'test'
+  ...
+# Subtest: installAuthoredMotionBus gates foreign pulses and replays
+ok 12 - installAuthoredMotionBus gates foreign pulses and replays
+  ---
+  duration_ms: 1.164199
+  type: 'test'
+  ...
+# Subtest: dock:range / dock:denied retriggers mid-clip are ignored; a finished clip plays again
+ok 13 - dock:range / dock:denied retriggers mid-clip are ignored; a finished clip plays again
+  ---
+  duration_ms: 1.129026
+  type: 'test'
+  ...
+# Subtest: service + armor gates are independent per channel on the shared bank
+ok 14 - service + armor gates are independent per channel on the shared bank
+  ---
+  duration_ms: 1.128496
+  type: 'test'
+  ...
+# Subtest: hull hit during an active repair still stows the arm
+ok 15 - hull hit during an active repair still stows the arm
+  ---
+  duration_ms: 0.615214
+  type: 'test'
+  ...
+# Subtest: service:aborted blends the service rig home instead of snapping to the stow pose
+ok 16 - service:aborted blends the service rig home instead of snapping to the stow pose
+  ---
+  duration_ms: 0.803698
+  type: 'test'
+  ...
+# Subtest: a repair completing mid-peel settles the cap from its live pose
+ok 17 - a repair completing mid-peel settles the cap from its live pose
+  ---
+  duration_ms: 0.564017
+  type: 'test'
+  ...
+# Subtest: a repair completing inside the deploy window settles instead of snapping to stow
+ok 18 - a repair completing inside the deploy window settles instead of snapping to stow
+  ---
+  duration_ms: 0.502464
+  type: 'test'
+  ...
+# Subtest: completions for other job types or job ids never consume the arm flag
+ok 19 - completions for other job types or job ids never consume the arm flag
+  ---
+  duration_ms: 0.491919
+  type: 'test'
+  ...
+# Subtest: createAuthoredClock follows sim while it advances and wall time while frozen
+ok 20 - createAuthoredClock follows sim while it advances and wall time while frozen
+  ---
+  duration_ms: 0.27323
+  type: 'test'
+  ...
+# Subtest: simTime-carrying payloads are translated onto the authored clock across a dock freeze
+ok 21 - simTime-carrying payloads are translated onto the authored clock across a dock freeze
+  ---
+  duration_ms: 0.529385
+  type: 'test'
+  ...
+# Subtest: a flag whose rig lost its clips is pruned — a late completion cannot pop a stow
+ok 22 - a flag whose rig lost its clips is pruned — a late completion cannot pop a stow
+  ---
+  duration_ms: 0.580782
+  type: 'test'
+  ...
+# Subtest: a payload-less abort neither crashes nor consumes a jobId-flagged deploy
+ok 23 - a payload-less abort neither crashes nor consumes a jobId-flagged deploy
+  ---
+  duration_ms: 0.453602
+  type: 'test'
+  ...
+# Subtest: a held peel keeps its flag at any age — the repair still lands the armor fix
+ok 24 - a held peel keeps its flag at any age — the repair still lands the armor fix
+  ---
+  duration_ms: 0.414703
+  type: 'test'
+  ...
+# Subtest: the attach kick arms the ambient loop once, on the first update
+ok 25 - the attach kick arms the ambient loop once, on the first update
+  ---
+  duration_ms: 0.345829
+  type: 'test'
+  ...
+# Subtest: ambient loop re-enters when the last event clip drains
+ok 26 - ambient loop re-enters when the last event clip drains
+  ---
+  duration_ms: 0.655575
+  type: 'test'
+  ...
+# Subtest: hasActiveClipsIn ignores channels a newer clip superseded
+ok 27 - hasActiveClipsIn ignores channels a newer clip superseded
+  ---
+  duration_ms: 0.314362
+  type: 'test'
+  ...
+# Subtest: clipElapsed scales by rateScale
+ok 28 - clipElapsed scales by rateScale
+  ---
+  duration_ms: 0.194613
+  type: 'test'
+  ...
+# Subtest: settle merges only live (non-superseded) channel poses
+ok 29 - settle merges only live (non-superseded) channel poses
+  ---
+  duration_ms: 0.398298
+  type: 'test'
+  ...
+# Subtest: reserved clip names and translation slerp are rejected
+ok 30 - reserved clip names and translation slerp are rejected
+  ---
+  duration_ms: 0.358328
+  type: 'test'
+  ...
+# Subtest: Forge republish preserves explicit Tally motion and existing mixed authored groups
+ok 31 - Forge republish preserves explicit Tally motion and existing mixed authored groups
+  ---
+  duration_ms: 1.420343
+  type: 'test'
+  ...
+# Subtest: Forge missing-row defaults and flight-static no-dynamic policy are unchanged
+ok 32 - Forge missing-row defaults and flight-static no-dynamic policy are unchanged
+  ---
+  duration_ms: 0.176215
+  type: 'test'
+  ...
+# Subtest: first registration preserves existing rows, order, evidence and red results
+ok 33 - first registration preserves existing rows, order, evidence and red results
+  ---
+  duration_ms: 1.445581
+  type: 'test'
+  ...
+# Subtest: a genuinely failed new measurement is recorded as red, never promoted by append
+ok 34 - a genuinely failed new measurement is recorded as red, never promoted by append
+  ---
+  duration_ms: 0.157546
+  type: 'test'
+  ...
+# Subtest: append refuses empty selection without mutating previous data
+ok 35 - append refuses empty selection without mutating previous data
+  ---
+  duration_ms: 0.256876
+  type: 'test'
+  ...
+# Subtest: append refuses existing ID replacement without mutating previous data
+ok 36 - append refuses existing ID replacement without mutating previous data
+  ---
+  duration_ms: 0.179801
+  type: 'test'
+  ...
+# Subtest: append refuses duplicate selected ID without mutating previous data
+ok 37 - append refuses duplicate selected ID without mutating previous data
+  ---
+  duration_ms: 0.136946
+  type: 'test'
+  ...
+# Subtest: append refuses duplicate prior ID without mutating previous data
+ok 38 - append refuses duplicate prior ID without mutating previous data
+  ---
+  duration_ms: 0.111477
+  type: 'test'
+  ...
+# Subtest: append refuses missing selected ID without mutating previous data
+ok 39 - append refuses missing selected ID without mutating previous data
+  ---
+  duration_ms: 0.115523
+  type: 'test'
+  ...
+# Subtest: append refuses incompatible schema without mutating previous data
+ok 40 - append refuses incompatible schema without mutating previous data
+  ---
+  duration_ms: 0.08678
+  type: 'test'
+  ...
+# Subtest: append refuses changed measurement law without mutating previous data
+ok 41 - append refuses changed measurement law without mutating previous data
+  ---
+  duration_ms: 0.169405
+  type: 'test'
+  ...
+# Subtest: append refuses changed generator without mutating previous data
+ok 42 - append refuses changed generator without mutating previous data
+  ---
+  duration_ms: 3.468331
+  type: 'test'
+  ...
+# Subtest: equivalent rule key ordering does not invent policy drift
+ok 43 - equivalent rule key ordering does not invent policy drift
+  ---
+  duration_ms: 0.372038
+  type: 'test'
+  ...
+1..43
+# tests 43
+# suites 0
+# pass 43
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 262.559888

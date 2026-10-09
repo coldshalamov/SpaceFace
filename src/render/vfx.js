@@ -1,3 +1,4 @@
+import { isLatchActor,latchNinePropulsionAwake,createLatchNinePlumeBatch } from './latchNineVisuals.js';
 // VFX system (ARCHITECTURE §2.4, §4.4; design/specs/10). A purely-cosmetic presentation layer.
 // It owns a pooled GPU shard cloud, folded impulse sheets, baked density-film transients and
 // a sorted normal-blended smoke bucket, and is
@@ -29,7 +30,9 @@
 //   Event→handler wiring: see _subscribe (L256). Full event routing map: docs/EVENT_ROUTING.md
 // ── end index ──
 import * as THREE from 'three';
-import { modelTruthPlumeSocketName } from '../data/modelTruth.js';
+import { bolusCableStyle, applyBolusCableProfile } from './bolusCable.js';
+import { modelTruthPlumeSocketName, modelTruthTrailSocketName } from '../data/modelTruth.js';
+import { isCeresWorkfleetPropulsion, ceresWorkfleetPropulsionAwake, createCeresWorkfleetPlumeBatch } from './ceresWorkfleetVisuals.js';
 import { ActionVfx, ACTION_VFX_EVENTS } from './actionVfx.js';
 import { StationOperationVfx } from './vfx/stationOperationVfx.js';
 import { BombDetonationVfx } from './vfx/bombDetonationVfx.js';
@@ -38,6 +41,7 @@ import { CombatContactVfx } from './vfx/combatContactVfx.js';
 import { DamagedPortVfxPlanner } from './vfx/damagedPortVfx.js';
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
+import { GyreSnarePresentation } from './forceLanguage/gyreSnarePresentation.js';
 import { createEmergentPrimitivePools } from './forceLanguage/emergentPrimitivePools.js';
 import { fieldSignature } from './forceLanguage/catalog.js';
 import { createForceSurfacePrecompileMesh } from './forceLanguage/sweptSurfaceBatch.js';
@@ -75,8 +79,10 @@ import {
   assertProjectileTrailProfileContracts,
 } from './vfxProfiles.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
+import { createBroodPresentation } from './broodPresentation.js';
 import { presentedAnchorRot, presentedAnchorXZ } from './presentedAnchor.js';
 import { readOwnedExceptionalSpeed } from './velocityLanguage.js';
+import { noteShadowCensusLightMutation } from './shadowDepthAdmission.js';
 import {
   lootMagnetFocusDelta,
   shouldDrawLootMagnetTrail,
@@ -85,19 +91,22 @@ import {
   TABLE_LOOT_MAGNET_CAP_WU,
   tableDoctrineTellCueWu,
   tableLookAtDelta,
+  tableLookAtOrigin,
   tableNpcTrailTier,
   tableVfxDrawWuFromState,
   projectileOnReadableFrame,
 } from './tabletopPolicy.js';
+import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { PROJECTILE_DRAW_PAD_WU } from '../combat/projectileFlight.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
+import { presetFor, scalePreset } from './vfxColorLightDirector.js';
 import {
   collectStatusAttachedVictims,
   planStatusAttachedEmit,
   statusAttachedAccessibility,
 } from './statusAttachedVfx.js';
 import { addShieldContact } from './weapons/shieldContacts.js';
-import { impactAxisAngle, impactRead } from './combat/impactRead.js';
+import { collisionThrowRead, impactAxisAngle, impactRead } from './combat/impactRead.js';
 import {
   collisionDisplayDeltaV,
   collisionImpactLight,
@@ -105,7 +114,7 @@ import {
 } from './combat/collisionImpactScale.js';
 import { readWantedSearchVolume } from '../presentation/wantedSearchVolume.js';
 import { readCustomsWeir } from '../presentation/customsWeir.js';
-import { routeRibbon, ROUTE_RIBBON_BRIGHTNESS } from '../presentation/routeRibbon.js';
+import { routeRibbon, ROUTE_RIBBON_BRIGHTNESS, setPieceRibbons } from '../presentation/routeRibbon.js';
 import {
   broadcastDishBeatRecord,
   createStationSideEventVfxFrameScratch,
@@ -273,6 +282,7 @@ import {
 import {
   createDockingCradle,
   createDockingCradleGeometry,
+  releaseDockingCradle,
   resetDockingCradle,
   updateDockingCradle,
   writeDockingCradleGeometry,
@@ -296,6 +306,24 @@ import {
   STRUCTURAL_FX_CUE_KIND,
 } from '../presentation/cueArbitration.js';
 import { resolveCausalVfxPresentation } from '../presentation/causalVfxGrammar.js';
+import { CauseMarkLayer } from './vfx/causeMarks.js';
+import {
+  plumeAchievedPicture,
+  collisionEventClass,
+  hullLocalHit,
+  createSpectacleBook,
+  spectacleFor,
+  createProjectileBodies,
+  stepProjectileBody,
+  stopProjectileBody,
+  releaseCuePicture,
+  releaseCutMark,
+  bindKillStreak,
+  ricochetSecondPath,
+  duplicateBombDropsFlash,
+  causeSilhouetteSegments,
+} from './vfx/effectsCause.js';
+import { resolveAdditionalActionVfxReceipt } from './vfx/actionEventRecipes.js';
 import { spawnCausalStructuralBurst } from './combat/causalStructuralBurst.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 
@@ -312,8 +340,65 @@ function vfxMembershipVersion(state, lanes) {
   const laneVersion = entityIndexLaneVersion(state, lanes);
   return laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
 }
+
+// FB-096 — contact scratch is part of slot construction, never a first-contact gift.
+// A working hull's first weld/sampler beat used to mint three Vector3s, a Box3, and the
+// traverse closure inside the presenting frame; every npc-job signature slot and the pirate
+// scratch now owns them from pool fill. `_emitNpcJobContact` keeps this as its defensive
+// fallback for harness-built bare slots only — pool slots never re-enter it.
+export function initNpcJobContactScratch(slot) {
+  slot.contactVertex = new THREE.Vector3();
+  slot.contactPoint = new THREE.Vector3();
+  slot.contactFrom = new THREE.Vector3();
+  slot.contactBox = new THREE.Box3();
+  slot.contactVisit = (part) => {
+    const attr = part.isMesh && part.geometry && part.geometry.attributes.position;
+    if (!attr) return;
+    const stride = Math.max(1, Math.ceil(attr.count / 128));
+    for (let i = 0; i < attr.count; i += stride) {
+      slot.contactVertex.fromBufferAttribute(attr, i).applyMatrix4(part.matrixWorld);
+      const d2 = slot.contactVertex.distanceToSquared(slot.contactFrom);
+      if (d2 < slot.contactBest) {
+        slot.contactBest = d2;
+        slot.contactPoint.copy(slot.contactVertex);
+      }
+    }
+  };
+  return slot;
+}
+
+// SF-266 — deterministic order for spatial-hash candidate lists. EntityList/index order is
+// not guaranteed inside a radius result, so seam-marker iteration sorts by stable id.
+// The query opts stay a frozen constant: a literal in the 20 Hz beat would allocate.
+const SEAM_MARKER_QUERY_OPTS = Object.freeze({ countDiagnostics: false });
+function compareSeamCandidateIds(left, right) {
+  const a = left && left.id, b = right && right.id;
+  if (Number.isFinite(a) && Number.isFinite(b)) return a - b;
+  const sa = String(a), sb = String(b);
+  return sa < sb ? -1 : sa > sb ? 1 : 0;
+}
+
+// Release-side counterpart: a recycled slot drops its target and sampled surface without
+// allocating — vectors and the box are reset in place so the next claim starts empty, never
+// holding a departed client's transform or mesh root.
+export function resetNpcJobContactScratch(slot) {
+  slot.contactRef = null;
+  slot.contactRefreshAt = 0;
+  slot.contactTarget = null;
+  slot.contactBest = Infinity;
+  slot.contactSurfaceRoot = null;
+  slot.contactSurfaceUntil = 0;
+  if (slot.contactVertex) slot.contactVertex.set(0, 0, 0);
+  if (slot.contactPoint) slot.contactPoint.set(0, 0, 0);
+  if (slot.contactFrom) slot.contactFrom.set(0, 0, 0);
+  if (slot.contactBox) slot.contactBox.makeEmpty();
+  return slot;
+}
+
 const EMPTY_PROJECTILE_DATA = Object.freeze({});
 const EMPTY_VIDEO_SETTINGS = Object.freeze({});
+// Shared no-options token for _eventLight so light calls stay allocation-free.
+const _FLASH_LIGHT_BLANK_OPTS = Object.freeze({});
 // Entity `type` → entityIndex bucket name, for indexed contact-target lookup.
 const INDEX_BUCKET_BY_TYPE = {
   ship: 'ships',
@@ -983,6 +1068,7 @@ function emptyVfxSubsystemDiag() {
     tetherCable: 0,
     masslineReleaseArc: 0,
     swingTrace: 0,      // attached-body swept-path ribbon (luminous arc of the flail's travel)
+    brood: 0,           // SWARM-07: the Brood tier, instanced bodies drawn this frame
     masslineChainReadout: 0, // thrown mass's accepted release→contact→kill ancestry trace
     monofilamentBlade: 0, // taut monofilament chord: one world-XZ segment, gone the tick it slacks
     dockingCradle: 0,   // holo berth pad on the bay floor while a corridor engagement is live
@@ -1398,7 +1484,7 @@ export const vfx = {
     this._cadenceNpcJobSignature = 0;
     this._npcJobSignatureSlots = [];
     for (let i = 0; i < NPC_JOB_SIGNATURE_CAPACITY; i++) {
-      this._npcJobSignatureSlots.push({
+      const slot = initNpcJobContactScratch({
         jobId: null,
         profileId: null,
         elapsed: 0,
@@ -1410,7 +1496,8 @@ export const vfx = {
         reactionT: 0,     // 0 .. 1 as the player closes
         frame: createNpcJobSignatureFrameScratch(),
         // Contact-effect scratch (see _npcJobContactTarget / _emitNpcJobContact). Declared up
-        // front so the first contact beat never reshapes the slot's hidden class.
+        // front so the first contact beat never reshapes the slot's hidden class; the
+        // Vector3/Box3/visit objects are filled by initNpcJobContactScratch above (FB-096).
         contactRef: null,
         contactRefreshAt: 0,
         contactTarget: null,
@@ -1420,12 +1507,14 @@ export const vfx = {
         contactVertex: null,
         contactPoint: null,
         contactFrom: null,
+        contactBox: null,
         contactVisit: null,
       });
+      this._npcJobSignatureSlots.push(slot);
     }
     // One reused scratch for pirate intercept light. Pirates are not npcJobs; the hunt beam
     // is pulled from live combat/activity targets and must not reshape a job slot.
-    this._pirateInterceptScratch = {
+    this._pirateInterceptScratch = initNpcJobContactScratch({
       elapsed: 0,
       lastEmitStep: -1,
       jobId: null,
@@ -1445,10 +1534,11 @@ export const vfx = {
       contactVertex: null,
       contactPoint: null,
       contactFrom: null,
+      contactBox: null,
       contactVisit: null,
       job: { kind: 'pirate', phase: 'hold', routeIndex: 0, route: null },
       cadence: { cadenceHz: 3.2, reducedCadenceHz: 1.2 },
-    };
+    });
     this._npcJobSignatureActive = 0;
     this._npcJobSignatureDrawn = 0;
     // Quiet settled flight: empty npcJobs bag still paid existence probe +
@@ -1682,6 +1772,11 @@ export const vfx = {
     this._explosionRupture = null;
     invokeVfxDisposer(this._tetherWebFx, 'Snarl cables');
     this._tetherWebFx = null;
+    // The gyre presentation holds ShaderMaterials/geometries/a lump pool + a scene handle —
+    // skipping teardown leaks GPU resources and leaves _initGyreSnare's stale-handle early
+    // return permanently muting gyre VFX after a scene rebuild.
+    invokeVfxDisposer(this._gyreSnareFx, 'gyre snare');
+    this._gyreSnareFx = null;
 
     invokeVfxDisposer(this._overflowJets, 'overflow jets');
     this._overflowJets = null;
@@ -2094,6 +2189,7 @@ export const vfx = {
     this._initApexFlare();
     this._initSelectionSigil();
     this._initSeamMarkers();
+    this._initBroodPresentation();
     this._initCombatBeams();
     this._initArcadeStructural();
     this._initFieldGeometry();
@@ -2344,8 +2440,10 @@ export const vfx = {
       this._pCol[dst3] = old._cr0[src] + (old._cr1[src] - old._cr0[src]) * t;
       this._pCol[dst3 + 1] = old._cg0[src] + (old._cg1[src] - old._cg0[src]) * t;
       this._pCol[dst3 + 2] = old._cb0[src] + (old._cb1[src] - old._cb0[src]) * t;
-      this._pSize[dst] = old._size0[src] + (old._size1[src] - old._size0[src]) * t;
-      this._pAlpha[dst] = 1 - t;
+      this._pSize[dst] = particleLifeSize(old._size0[src], old._size1[src], t);
+      let mSeed = (old._particleAdmissionSerial[src] * 0.618033988749895) % 1;
+      if (mSeed < 0) mSeed += 1;
+      this._pAlpha[dst] = particleLifeAlpha(t, mSeed);
       this._pTrailAxis[dst] = old._particleTrailAxis[src];
       this._pTrailStretch[dst] = old._particleTrailStretch[src];
       this._alive[dst] = 1;
@@ -2395,8 +2493,12 @@ export const vfx = {
     const bus = this.bus;
     const add = (name, fn, opts) => this._subs.push(bus.on(name, fn, opts));
     for (const name of ACTION_VFX_EVENTS) add(name, (p) => this._onActionVfx(name, p));
+    // FB-073 — undock also plays the docking cradle backwards (brackets release, chevrons run
+    // outbound over the same 0.28 s fade). The ACTION_VFX_EVENTS row above owns the vent
+    // primitive; this subscription is the cradle hologram's half of the same departure.
+    add('dock:undocked', () => this._releaseDockingCradle());
     for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'save:restoring', 'save:loaded']) {
-      add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); });
+      add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); this._releaseTransientEventLights(); });
       add(name, () => this._resetDamagedPortVfx());
     }
     const clearTumbleCadenceFor = (p) => {
@@ -2454,7 +2556,9 @@ export const vfx = {
       this._markEntityCacheDirtyIfTrailType(p);
       this._onDestroyed(p);
     }, { presentation: true });
-    add('entity:spawned', (p) => { this._markEntityCacheDirtyIfTrailType(p); this._onChainEntitySpawned(p); });
+    add('entity:spawned', (p) => { this._markEntityCacheDirtyIfTrailType(p); this._onChainEntitySpawned(p); this._offerWreckHandoff(p); });
+    add('weapons:mineDeployed', (p) => this._noteWellDeployed(p));
+    add('weapons:mineExpired', (p) => { if (this._causeMarks && p) this._causeMarks.forgetWell(p.mineId); });
     // NXB-050 chain readout — accepted ancestry of one thrown body. Whip/sweep contacts
     // carry the real contact point on the record; kills and wreck markers close the chain.
     add('tether:whipImpact', (p) => this._onChainContactPayload(p, 'victimId'));
@@ -2516,6 +2620,9 @@ export const vfx = {
     add('bombs:detonated', (p) => this._onBombDetonated(p));
     add('bombs:fieldEnded', (p) => this._onBombFieldEnded(p));
     add('bombs:destroyed', (p) => this._onBombDestroyed(p));
+    // Hull-burst shockwave sweep: each body the sim front overtakes answers with one
+    // small surface read — the wave becomes a sequence of responses, nearest first.
+    add('combat:shockwavePass', (p) => this._onShockwavePass(p));
     add('ai:telegraph', (p) => this._onAiTelegraph(p));
     add('ai:flee', (p) => this._onAiFlee(p));
     add('ai:formationBroken', (p) => this._onAiFormationBroken(p));
@@ -3225,26 +3332,21 @@ export const vfx = {
   _trailSocketWorldPose(e) {
     const sockets = this._trailSocketObjects(e);
     if (sockets.length) return this._trailSocketPoseFromObject(sockets[0]);
-    const socketName = modelTruthPlumeSocketName(e);
-    if (!socketName) return null;
-    if (this.helpers.socketWorldPose) {
-      const pose = this.helpers.socketWorldPose(e.id, socketName);
-      if (pose) {
-        return this._writeTrailSocketPose(
-          pose.x, pose.y || 0, pose.z,
-          pose.forwardX, pose.forwardY, pose.forwardZ,
-        );
-      }
+    return namedTrailSocketPose(this, e, modelTruthPlumeSocketName(e));
+  },
+
+  // The recorded wake anchors at the authored 'vfx' trail stations (SOCKET_Trail_*), not the
+  // nozzle mount face: on a hull whose drive mount is not its trailing edge — ship_saucer's
+  // ventral field core sits at hull center — a nozzle-anchored ribbon head records history
+  // from mid-body, visibly detached from the silhouette. Nozzle-less hulls fall back to the
+  // same census chain the plume pose uses, with the trail-preferred name pick.
+  _wakeTrailSocketWorldPose(e) {
+    this._trailSocketObjects(e);
+    const cache = e && e.view && e.view.__vfxTrailSockets;
+    if (cache && Array.isArray(cache.wake) && cache.wake.length) {
+      return this._trailSocketPoseFromObject(cache.wake[0]);
     }
-    if (this.helpers.socketWorldPos) {
-      const pos = this.helpers.socketWorldPos(e.id, socketName);
-      if (pos) {
-        const cf = Math.cos(e && e.rot || 0);
-        const sf = Math.sin(e && e.rot || 0);
-        return this._writeTrailSocketPose(pos.x, pos.y || 0, pos.z, -cf, 0, -sf);
-      }
-    }
-    return null;
+    return namedTrailSocketPose(this, e, modelTruthTrailSocketName(e));
   },
 
   _trailSocketObjects(e) {
@@ -3275,6 +3377,9 @@ export const vfx = {
           compositionId,
           childCount,
           sockets: nozzles.length ? nozzles : (sockets.length ? sockets : drivePlumes),
+          // Recorded-wake anchors prefer the authored 'vfx' trail stations; the nozzle mount
+          // face remains the fallback when a hull authors no SOCKET_Trail_* objects.
+          wake: sockets.length ? sockets : (nozzles.length ? nozzles : drivePlumes),
         };
         view.__vfxTrailSocket = { root, socket: cache.sockets[0] || null };
       }
@@ -3560,7 +3665,11 @@ export const vfx = {
       this._spawnProjectileTrailStreak(mx, 0.16, mz, 0.085 * sm, 0.22 * sm, 3.2 * sm,
         0.72, profile.coreColor || '#ffffff', Math.cos(base) * 20, Math.sin(base) * 20);
     }
-    this._flashLight({ x: origin.x, z: origin.z }, profile.coreColor || '#ffffff', (rail ? 4.2 : 2.4) * sm, 12, rail ? 150 : 78);
+    this._eventLight({ x: origin.x, z: origin.z }, 'muzzle', {
+      severity: rail ? 'rail' : undefined,
+      color: profile.coreColor,
+      sizeMul: sm,
+    });
     if (!rail) this._spawnMuzzleCasings(origin, base, profile, burst);
   },
 
@@ -3613,8 +3722,11 @@ export const vfx = {
       this._spawnProjectileTrailStreak(mx, 0.20, mz, 0.095, 0.24 * sm, 4.8 * sm,
         0.78, profile.coreColor || '#e8f8ff', Math.cos(base) * 25, Math.sin(base) * 25);
     }
-    this._flashLight({ x: origin.x, z: origin.z }, profile.lightColor || col,
-      (emp ? 3.8 : thermal ? 3.2 : pulse ? 2.8 : 2.1) * sm, 11, emp ? 145 : pulse ? 125 : 105);
+    this._eventLight({ x: origin.x, z: origin.z }, 'muzzle', {
+      severity: emp ? 'emp' : (thermal ? 'thermal' : (pulse ? 'pulse' : undefined)),
+      color: profile.lightColor || col,
+      sizeMul: sm,
+    });
   },
 
   _spawnMuzzleExplosive(origin, base, profile, burst) {
@@ -3631,7 +3743,11 @@ export const vfx = {
     this._spawnSprite(SPR_PUFF, origin.x - Math.cos(base) * 0.9, 0, origin.z - Math.sin(base) * 0.9,
       0.38 * sm, 1.15 * sm, 3.6 * sm, 0.24, 0.0, '#3a312d',
       -Math.cos(base) * 8, -Math.sin(base) * 8, 2.6, base + Math.PI);
-    this._flashLight({ x: origin.x, z: origin.z }, profile.lightColor || col, (torpedo ? 4.4 : 3.1) * sm, 10, torpedo ? 160 : 115);
+    this._eventLight({ x: origin.x, z: origin.z }, 'muzzle', {
+      severity: torpedo ? 'torpedo' : 'explosive',
+      color: profile.lightColor || col,
+      sizeMul: sm,
+    });
   },
 
   _spawnMuzzleBeam(origin, base, profile, burst) {
@@ -3642,7 +3758,10 @@ export const vfx = {
     this._spawnProjectileTrailStreak(mx, 0.24, mz, 0.09 * sm,
       0.22 * sm, 5.4 * sm, 0.88, profile.coreColor || '#d8f0ff',
       Math.cos(base) * 18, Math.sin(base) * 18);
-    this._flashLight({ x: mx, z: mz }, profile.lightColor || col, 2.4 * sm, 18, 70);
+    this._eventLight({ x: mx, z: mz }, 'beam', {
+      color: profile.lightColor || col,
+      sizeMul: sm,
+    });
   },
 
   // resolve a heading angle from a payload `dir` that may be a number (radians), a {x,z} vector, or
@@ -3655,6 +3774,10 @@ export const vfx = {
   },
 
   _onProjectileHit(p) {
+    if (p && p.projectileId != null) {
+      if (!this._projectileBodies) this._projectileBodies = createProjectileBodies();
+      stopProjectileBody(this._projectileBodies, p.projectileId);
+    }
     if (!this._scene) return;
     const pos = this._posFrom(p, p.targetId);
     if (!pos) return;
@@ -4044,8 +4167,11 @@ export const vfx = {
       this._spawnProjectileTrailStreak(pos.x, 0.18, pos.z, 0.18, 0.19 * scale, 2.7 * scale,
         0.38, shieldColor, 0, 0, -tx, -tz);
     }
-    this._flashLight({ x: pos.x, z: pos.z }, hitShield ? shieldColor : profile.accentColor,
-      profile.lightPeak * scale, 13, 110 * scale);
+    this._eventLight({ x: pos.x, z: pos.z }, hitShield ? 'shield' : 'impact', {
+      color: hitShield ? shieldColor : profile.accentColor,
+      peak: profile.lightPeak * scale,
+      distance: 110 * scale,
+    });
   },
 
   // One directional shock sheet + ribbon + cone along a REAL signed shove. Used by impulse-charge
@@ -4148,7 +4274,8 @@ export const vfx = {
     if (hitShield) return false;
     const variant = recipe && recipe.variant;
     if (variant !== 'autocannon' && variant !== 'flak'
-      && variant !== 'railgun' && variant !== 'siege-lance') return false;
+      && variant !== 'railgun' && variant !== 'siege-lance'
+      && variant !== 'wedge' && variant !== 'driver-slug') return false;
     const approach = (p && (p.approach || p.dir)) || null;
     const normal = (p && p.normal) || null;
     if (!approach || !normal) return false;
@@ -4169,15 +4296,20 @@ export const vfx = {
     const reflectAngle = Math.atan2(skip.rz, skip.rx);
     const heavy = variant === 'railgun' || variant === 'siege-lance';
     const speedScale = (reduced ? 0.7 : 1) * (heavy ? 1.25 : 1);
+    const proj = p && p.projectileId != null ? this._ent(p.projectileId) : null;
+    const terminated = !proj || proj.alive === false;
+    const second = ricochetSecondPath(skip.graze, terminated);
     this._impactParticleCone(sx, sz, reflectAngle, 0.42,
       55 * speedScale, 120 * speedScale,
       Math.max(4, Math.round(9 * burst * (reduced ? 0.5 : 1))),
       0.3, 0.9, '#ffffff', '#ff7a2a', 2.2);
-    this._spawnProjectileTrailStreak(sx, 0.22, sz, 0.3, 0.14 * scale, 7.5 * scale, 0.85,
-      '#fff6e8', skip.rx * 90 * speedScale, skip.rz * 90 * speedScale, skip.rx, skip.rz);
-    if (!reduced) {
-      this._spawnProjectileTrailStreak(sx, 0.18, sz, 0.24, 0.08 * scale, 4.5 * scale, 0.5,
-        '#ffb36a', skip.rx * 70, skip.rz * 70, skip.rx, skip.rz);
+    if (second && second.showOutgoing) {
+      this._spawnProjectileTrailStreak(sx, 0.22, sz, 0.3, 0.14 * scale, 7.5 * scale, 0.85,
+        '#fff6e8', skip.rx * 90 * speedScale, skip.rz * 90 * speedScale, skip.rx, skip.rz);
+      if (!reduced) {
+        this._spawnProjectileTrailStreak(sx, 0.18, sz, 0.24, 0.08 * scale, 4.5 * scale, 0.5,
+          '#ffb36a', skip.rx * 70, skip.rz * 70, skip.rx, skip.rz);
+      }
     }
     return true;
   },
@@ -4328,7 +4460,7 @@ export const vfx = {
 
     // The shared event-light pool supplies a brief hot reflection; accessibility scales or removes
     // it, while the directional geometry above remains the readable receipt.
-    this._flashLight(pos, '#d7efff', 2.8 * scale, 14, 86);
+    this._eventLight(pos, 'pickup', { sizeMul: scale });
   },
 
   _onDamage(p) {
@@ -4342,10 +4474,22 @@ export const vfx = {
     let nz = p && p.normal && Number(p.normal.z);
     if (!Number.isFinite(nx) || !Number.isFinite(nz) || Math.hypot(nx, nz) < 1e-6) {
       const approach = p && p.approach;
-      nx = approach && Number.isFinite(approach.x) ? -approach.x : 1;
+      nx = approach && Number.isFinite(approach.x) ? -approach.x : 0;
       nz = approach && Number.isFinite(approach.z) ? -approach.z : 0;
     }
+    if (!Number.isFinite(nx) || !Number.isFinite(nz) || Math.hypot(nx, nz) < 1e-6) {
+      // SFQ-B183 — the packet carries no measured direction (a DoT, a field tick). The receipt's
+      // own contact point relative to the struck body is the honest placement hint; an invented
+      // +X is not. When even that is degenerate the axis stays zero and the read draws unaimed.
+      if (tgt && tgt.pos && p && p.pos) {
+        nx = Number(p.pos.x) - Number(tgt.pos.x);
+        nz = Number(p.pos.z) - Number(tgt.pos.z);
+      }
+    }
     const normalLength = Math.hypot(nx, nz) || 1;
+    // A measured axis is signed; the degenerate all-zero case (no normal, no approach, no usable
+    // pos offset) is not, and normalAngle's atan2(0,0) = 0 must never aim a cone at +X.
+    const normalSigned = normalLength > 1e-6;
     nx /= normalLength;
     nz /= normalLength;
     const normalAngle = Math.atan2(nz, nx);
@@ -4370,7 +4514,7 @@ export const vfx = {
 
       if (p.brokeShield) {
         // Shield break: the tear, not the scar as well. Five fixed tangent tears crawl the shell.
-        if (!reducedFlash) this._flashLight({ x: cx, z: cz }, '#39d0ff', 7.2, 9, 240);
+        if (!reducedFlash) this._eventLight({ x: cx, z: cz }, 'shield', { severity: 'break' });
         if (this._weaponPresenter && this._weaponPresenter.quarks) {
           const local = this._toLocalXZ(cx, cz, this._spawnLocalXZ);
           this._weaponPresenter.quarks.spawnShieldBreak(local.x, 0.35, local.z, 24);
@@ -4395,7 +4539,7 @@ export const vfx = {
       } else if (tgt) {
         // Ordinary shield receipt is the contact scar only. A second streak reads as a second hit.
         addShieldContact(tgt.id, nx, 0.12, nz, 1.0);
-        if (!reducedFlash) this._flashLight({ x: pos.x, z: pos.z }, col, 2.8, 11, 110);
+        if (!reducedFlash) this._eventLight({ x: pos.x, z: pos.z }, 'shield', { severity: 'contact', color: col });
       }
     }
     if (p.armorHit) {
@@ -4418,14 +4562,16 @@ export const vfx = {
         Math.max(0.05, Math.min(0.26, 0.05 + (Number(p.amount) || 0) * 0.004)),
         'armor', Math.max(0.8, ((tgt && tgt.radius) || 6) * 0.22), _impactOpts,
       );
-      if (!armored) {
+      if (!armored && normalSigned) {
+        // The cone is the mount-unavailable fallback; with no measured axis it would aim at a
+        // fabricated +X, so a directionless armor tick refuses it (SFQ-B183).
         const count = Math.max(5, Math.min(10, Math.round(8 * (this._burst || 1))));
         this._impactParticleCone(pos.x, pos.z, normalAngle, 0.82, 24, 56, count,
           0.23, 0.82, '#f6ead2', '#514c46', 2.8);
       }
       this._spawnProjectileTrailStreak(pos.x, 0.16, pos.z, 0.17, 0.18, 2.2,
         0.44, '#b7aa96', 0, 0, nx, nz);
-      if (!this._isReduced()) this._flashLight({ x: pos.x, z: pos.z }, '#d8c39e', 1.6, 13, 72);
+      if (!this._isReduced()) this._eventLight({ x: pos.x, z: pos.z }, 'graze');
     }
     if (p.hullHit) {
       this._emitJuiceCue('combat.damage.hull', p, 1);
@@ -4451,12 +4597,16 @@ export const vfx = {
         Math.max(0.28, Math.min(0.55, 0.28 + (Number(p.amount) || 0) * 0.006)),
         'hull', Math.max(1.2, ((tgt && tgt.radius) || 6) * 0.3), _impactOpts,
       );
-      if (!breached) {
-        this._impactParticleCone(pos.x, pos.z, hitRead.shapeId === 'hull-cone' ? impulseAngle : normalAngle, 0.95, 9, 24,
+      if (!breached && normalSigned) {
+        // An aimed cone needs a measured direction: the impulse axis when the hit carries one,
+        // else the contact axis rebuilt above from the receipt geometry. With neither, no cone
+        // draws — atan2(0,0) = 0 would aim one at a fabricated +X (SFQ-B183).
+        const coneAngle = hitRead.signed ? impulseAngle : normalAngle;
+        this._impactParticleCone(pos.x, pos.z, coneAngle, 0.95, 9, 24,
           Math.max(3, Math.round(5 * (this._burst || 1))), 0.48, 0.78,
           '#ffb36a', '#3a1710', 1.2);
       }
-      if (!this._isReduced()) this._flashLight({ x: pos.x, z: pos.z }, '#ff7040', 2.2, 11, 90);
+      if (!this._isReduced()) this._eventLight({ x: pos.x, z: pos.z }, 'impact', { severity: 'hull' });
     }
   },
 
@@ -4506,13 +4656,16 @@ export const vfx = {
       const off = i - (maxLights - 1) * 0.5;
       const dx = Math.cos(angle + Math.PI / 2) * off * radius * 0.35;
       const dz = Math.sin(angle + Math.PI / 2) * off * radius * 0.35;
-      if (this._flashLight(
+      if (this._eventLight(
         { x: pos.x + dx, z: pos.z + dz },
-        style.lightColor || style.color0,
-        style.lightPeak,
-        style.lightDecay,
-        style.lightDistance,
-        admissionPriority,
+        'cue',
+        {
+          color: style.lightColor || style.color0,
+          peak: style.lightPeak,
+          decay: style.lightDecay,
+          distance: style.lightDistance,
+          priority: admissionPriority,
+        },
       )) {
         lightsActivated++;
       }
@@ -4575,7 +4728,7 @@ export const vfx = {
       const seam = Math.random() * Math.PI * 2;
       this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.7, radius * 0.3, radius * 1.5, 0.82, 0, '#8d66ff', 0, 0, 0.28, seam);
       this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 1.0, radius * 0.18, radius * 1.05, 0.58, 0, '#d7e6ff', 0, 0, 0.2, seam + 0.5);
-      this._flashLight({ x: pos.x, z: pos.z }, '#8d66ff', 2.8, 8, 150);
+      this._eventLight({ x: pos.x, z: pos.z }, 'vein');
       return;
     }
     if (id === 'mining.rich_core.charge') {
@@ -4597,7 +4750,7 @@ export const vfx = {
         this._spawnParticle(pos.x, pos.z, Math.cos(a) * speed, Math.sin(a) * speed,
           0.65 + Math.random() * 0.3, 3.0, 0.45, this._c0, this._c1, 1.6, 0, 3 + Math.random() * 4);
       }
-      this._flashLight({ x: pos.x, z: pos.z }, '#d7e6ff', 3.8, 7, 180);
+      this._eventLight({ x: pos.x, z: pos.z }, 'vein', { severity: 'payout' });
       return;
     }
     if (id === 'mining.rich_core.fizzle') {
@@ -4913,6 +5066,16 @@ export const vfx = {
     if (id === 'combat.vectorMine.detonate') {
       return presentationStyle('#e6f2ff', '#5aa0ff', SPR_FLASH, { radial: true, lightPeak: 3.2, lightDistance: 170, speed0: 52, speedJitter: 40, life0: 0.32, size0: 1.8, size1: 0.2, drag: 1.1 });
     }
+    // Hull-burst shockwave sweep — the wave the blast shove belongs to. A broad, slow,
+    // cool-white ring racing the sim front outward (echoRing repeats it), so the eye reads
+    // one expanding pressure front rather than a fireball; objects flash as the ring
+    // overtakes them via combat:shockwavePass.
+    if (id === 'combat.shockwaveSweep') {
+      return presentationStyle('#eef6ff', '#8fb6ff', SPR_RING, {
+        radial: true, echoRing: true, lightPeak: 2.2, lightDistance: 190,
+        speed0: 64, speedJitter: 46, life0: 0.5, size0: 2.2, size1: 0.3, drag: 0.9,
+      });
+    }
     // SF-10 RCS-disruptor tell — small, fast ion-blue sparks skittering off the hull (attitude
     // drift), a punch-flash spark spray distinct from both the tumble puff and the mine shove.
     if (id === 'ship.rcsDisrupt') {
@@ -5061,9 +5224,111 @@ export const vfx = {
     return hash | 0;
   },
 
+  _causeNow() {
+    return Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : (this._t || 0);
+  },
+
+  _ensureCauseMarks() {
+    if (this._causeMarks || !this._scene) return this._causeMarks || null;
+    this._causeMarks = new CauseMarkLayer(this._scene, (x, z, out) => this._toLocalXZ(x, z, out));
+    this._causeSectorId = this.state && this.state.sectorId;
+    return this._causeMarks;
+  },
+
+  _spectacleGate(kind, x, z) {
+    if (!this._spectacle) this._spectacle = createSpectacleBook();
+    return spectacleFor(this._spectacle, kind, this._causeNow(), x, z, this._isReduced());
+  },
+
+  _updateCauseMarks() {
+    const layer = this._causeMarks || this._ensureCauseMarks();
+    if (!layer) return;
+    const sector = this.state && this.state.sectorId;
+    if (sector !== this._causeSectorId) {
+      this._causeSectorId = sector;
+      layer.clear();
+    }
+    const entities = this.state && this.state.entities;
+    const now = this._causeNow();
+    if (entities && typeof entities.get === 'function') {
+      bindKillStreak(layer.handoff, entities, now, indexedTypeScan(this.state, 'wrecks'));
+    }
+    layer.update(now, (id) => this._ent(id), this._isReduced(), entities);
+  },
+
+  _noteHullScarFromContact(p, tx, tz, severity) {
+    const layer = this._ensureCauseMarks();
+    if (!layer || !p || !p.pos) return;
+    const ids = [p.aId, p.bId, p.targetId, p.otherId];
+    let hull = null;
+    for (let i = 0; i < ids.length; i++) {
+      const ent = this._ent(ids[i]);
+      if (!ent || !ent.pos || ent.alive === false) continue;
+      if (ent.type === 'ship' || ent.type === 'drone' || ent.type === 'wreck' || ent.type === 'station') {
+        hull = ent;
+        break;
+      }
+    }
+    if (!hull) return;
+    const local = hullLocalHit(hull, p.pos.x, p.pos.z, tx, tz);
+    layer.noteScar({
+      hullId: hull.id,
+      lx: local.lx,
+      lz: local.lz,
+      tx: local.tx,
+      tz: local.tz,
+      severity,
+      now: this._causeNow(),
+    });
+  },
+
+  _noteKillHandoff(p, pos) {
+    const layer = this._ensureCauseMarks();
+    if (!layer || !p || !pos) return;
+    const now = this._causeNow();
+    layer.noteKill({ ...p, pos: { x: pos.x, z: pos.z } }, now);
+    const entities = this.state && this.state.entities;
+    if (entities && typeof entities.get === 'function') {
+      bindKillStreak(layer.handoff, entities, now, indexedTypeScan(this.state, 'wrecks'));
+    }
+  },
+
+  _offerWreckHandoff(p) {
+    if (!p) return;
+    const id = p.id != null ? p.id : (p.entity && p.entity.id);
+    if (id == null) return;
+    const entity = this._ent(id);
+    if (!entity || entity.type !== 'wreck') return;
+    const layer = this._ensureCauseMarks();
+    if (!layer) return;
+    layer.offerWreck(entity, this._causeNow());
+  },
+
+  _noteWellDeployed(p) {
+    if (!p || p.mineId == null) return;
+    const ent = this._ent(p.mineId);
+    const data = ent && ent.data;
+    const weaponId = String((p && p.weaponId) || (data && data.weaponId) || '');
+    if ((data && data.kind) !== 'gravity_well' && weaponId !== 'wpn_gravity_well_m') return;
+    const layer = this._ensureCauseMarks();
+    if (!layer) return;
+    layer.noteWell({
+      id: p.mineId,
+      radius: Number(data && data.blastRadius) || 0,
+      expireAt: Number(data && data.dieAt),
+      now: this._causeNow(),
+    });
+  },
+
+  _stepShotBody(entity, dt) {
+    if (!this._projectileBodies) this._projectileBodies = createProjectileBodies();
+    return stepProjectileBody(this._projectileBodies, entity, dt);
+  },
+
   _emitLowCollisionContact(p) {
     if (!this._scene || !p || !p.pos) return false;
-    if (this._emitCombatContact('contact', p)) return true;
+    // The contact seat can draw and still must not skip the slam class or the scar.
+    const seated = this._emitCombatContact('contact', p) === true;
     const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
     const reduced = accessibility.flashOpacityScale < 1;
     const base = this._collisionContactAxis(p);
@@ -5079,6 +5344,7 @@ export const vfx = {
     const severity = Math.max(0.06, Math.min(0.95, 0.06 + impactDp / 14000));
     const mag = 0.7 + severity * 0.9;
     const pairCount = reduced ? 1 : 2;
+    if (!seated) {
     this._c0.set('#fff4dc');
     this._c1.set('#8b6b4b');
     for (let pair = 0; pair < pairCount; pair++) {
@@ -5093,8 +5359,12 @@ export const vfx = {
           this._c0, this._c1, 2.6, 0, 0, angle, (reduced ? 1.8 : 2.6) * mag);
       }
     }
+    }
     // Opposed tangent scars and dust tongues keep the contact axis readable without inventing an
     // outward half-space or escalating a routine solver contact into damage/control/destruction.
+    const gate = this._spectacleGate('impact', p.pos.x, p.pos.z);
+    this._noteHullScarFromContact(p, tx, tz, severity);
+    if (!seated) {
     for (const side of [-1, 1]) {
       this._spawnProjectileTrailStreak(
         p.pos.x + nx * side * 0.06, 0.16, p.pos.z + nz * side * 0.06,
@@ -5102,27 +5372,31 @@ export const vfx = {
         (reduced ? 0.24 : 0.46) * accessibility.flashOpacityScale,
         '#ead6b8', 0, 0, tx * side, tz * side,
       );
-      this._spawnSprite(SPR_PUFF,
-        p.pos.x + nx * side * 0.12, 0.04, p.pos.z + nz * side * 0.12,
-        reduced ? 0.36 : 0.52, 0.45 * mag, (reduced ? 1.1 : 1.8) * mag,
-        (reduced ? 0.12 : 0.22) * accessibility.flashOpacityScale, 0,
-        '#786a5b', nx * side * 1.2 * mag, nz * side * 1.2 * mag, 2.2, base,
-      );
+      if (gate.drawSprites) {
+        this._spawnSprite(SPR_PUFF,
+          p.pos.x + nx * side * 0.12, 0.04, p.pos.z + nz * side * 0.12,
+          reduced ? 0.36 : 0.52, 0.45 * mag, (reduced ? 1.1 : 1.8) * mag,
+          (reduced ? 0.12 : 0.22) * accessibility.flashOpacityScale * gate.peakScale, 0,
+          '#786a5b', nx * side * 1.2 * mag, nz * side * 1.2 * mag, 2.2, base,
+        );
+      }
     }
-    // IMPACTS: the composed contact. axisSigned is FALSE — an SG-02 solver normal is an axis, and
-    // its sign is an artifact of collider ordering. The recipe therefore draws a mirrored pair.
-    // The legacy quarks spall call above is superseded by the debris layer that emitImpact
-    // composes; drop the block below once the debris lane's entry point is wired.
+    }
+    // IMPACTS: the composed contact. The receipt normal is oriented aId→bId now (SFQ-B183), but
+    // the composed contact keeps axisSigned FALSE on purpose: two bodies met, so the recipe draws
+    // a mirrored pair and neither half is "outward". The legacy quarks spall call above is
+    // superseded by the debris layer that emitImpact composes; drop the block below once the
+    // debris lane's entry point is wired.
     _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
     _impactOpts.serial = serial;
     _impactOpts.targetId = p.aId ?? p.targetId ?? null;
-    _impactOpts.eventClass = undefined;
+    _impactOpts.eventClass = collisionEventClass(severity);
     _impactOpts.priority = 0.3 + severity * 0.4;
     _impactOpts.hero = false;
     const composed = this._composeImpact(
       p.pos.x, 0.2, p.pos.z, nx, 0, nz, false, severity, 'hull', 1.6 * mag, _impactOpts,
     );
-    if (!composed && this._weaponPresenter && this._weaponPresenter.quarks) {
+    if (!seated && !composed && this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(p.pos.x, p.pos.z, this._spawnLocalXZ);
       this._weaponPresenter.quarks.spawnCollisionSpall(local.x, 0.2, local.z, nx, 0.4, nz, reduced ? 6 : 12);
     }
@@ -5229,7 +5503,10 @@ export const vfx = {
     const now = Number.isFinite(this.state && this.state.simTime)
       ? this.state.simTime : (this._t || 0);
     const pos = this._posFrom(p, p && p.id);
-    if (pos && this._scene) this._emitOverloadFlare(pos, scaledRadius, p);
+    if (pos && this._scene) {
+      this._emitOverloadFlare(pos, scaledRadius, p);
+      this._noteKillHandoff(p, pos);
+    }
     // No juice cue here: the raw entity:killed audio route already owns the whine + delayed boom
     // (audioSystem._onKilled). Emitting a second semantic id would only double the voice.
     // Pool pressure: under a massacre the oldest queued tell detonates immediately rather than
@@ -5820,8 +6097,12 @@ export const vfx = {
       if (phase === 'ignition' || phase === 'contact-compression' || phase === 'rupture') {
         const family = explosionRuptureFamily(entry);
         if (accessibility.eventLightPeakScale > 0) {
-          this._flashLight({ x: entry.x, z: entry.z }, family === 'reactor' ? '#91dfff' : '#ffb05b',
-            (phase === 'rupture' ? 8 : 5) * accessibility.eventLightPeakScale, 10, 100 + entry.radius * 4);
+          // _flashLight applies eventLightPeakScale internally — the raw preset peak goes in.
+          this._eventLight({ x: entry.x, z: entry.z }, 'explosion', {
+            severity: (family === 'reactor' ? 'reactor' : 'beat')
+              + (phase === 'rupture' ? '-rupture' : ''),
+            distance: 100 + entry.radius * 4,
+          });
         }
         if (phase === 'rupture') this.bus.emit('camera:shake', {
           amount: (accessibility.id === 'full' ? 0.28 : 0.12) * (entry.classId === 'capital' ? 1.5 : 1),
@@ -5933,7 +6214,13 @@ export const vfx = {
           r * 0.05 * scale, r * (entry.classId === 'capital' ? 0.55 : 0.40) * scale,
           reduced ? 0.30 : 0.52, 0.0, '#fff0c0', 0, 0);
       }
-      this._flashLight({ x, z }, '#fff0c0', (entry.classId === 'capital' ? 12 : 7.5) * scale, 11, 120 + r * 5);
+      // FB-074 — the capital kill is bound to the authored `explosionCapital` identity so the
+      // audio's five-part beat has a matching light plan in the record.
+      this._eventLight({ x, z }, 'explosion', {
+        severity: entry.classId === 'capital' ? 'capital' : 'ignition',
+        sizeMul: scale,
+        distance: 120 + r * 5,
+      });
       this._emitDestructionLightBeats(entry, scale, reduced);
       return;
     }
@@ -6108,7 +6395,11 @@ export const vfx = {
             shearX, shearZ);
         }
       }
-      this._flashLight({ x, z }, '#ffa050', (entry.classId === 'capital' ? 13 : 8.0) * scale, 5.5, 180 + r * 7);
+      this._eventLight({ x, z }, 'explosion', {
+        severity: entry.classId === 'capital' ? 'burst-capital' : 'burst',
+        sizeMul: scale,
+        distance: 180 + r * 7,
+      });
       const shake = entry.classId === 'capital' ? 0.62 : (entry.classId === 'small' ? 0.16 : 0.34);
       // A ship blowing up is a WORLD event: send where it happened so the consumer can fall it off
       // with distance. Untagged, this kicked the player's camera identically whether the wreck was on
@@ -6290,7 +6581,9 @@ export const vfx = {
       this._spawnCauseFragment(entry, x, z, contactAngle, reduced ? 0.24 : 0.34,
         0.08 * scale, 2.8 * scale, 0.66 * opacityScale, '#f1d2a0', 18, travelScale);
       if (accessibility.eventLightPeakScale > 0) {
-        this._flashLight({ x, z }, '#ffc080', 6.4 * scale, 12, 100 + r * 3);
+        this._eventLight({ x, z }, 'explosion', {
+          severity: 'compression', sizeMul: scale, distance: 100 + r * 3,
+        });
       }
       return;
     }
@@ -6331,7 +6624,9 @@ export const vfx = {
         r * 0.25 * scale,
         0.84, 0, '#ffffff', 0, 0, 2.6, contactAngle);
       if (accessibility.eventLightPeakScale > 0) {
-        this._flashLight({ x, z }, '#dcecff', 6.8 * scale, 12, 110 + r * 3);
+        this._eventLight({ x, z }, 'explosion', {
+          severity: 'shear', sizeMul: scale, distance: 110 + r * 3,
+        });
       }
       return;
     }
@@ -6361,8 +6656,11 @@ export const vfx = {
         }
       }
       if (accessibility.eventLightPeakScale > 0) {
-        this._flashLight({ x, z }, cause === 'kinetic' ? '#fff0d0' : '#ff9a48',
-          (cause === 'kinetic' ? 5.8 : 8.2) * scale, 11, 110 + r * 4);
+        this._eventLight({ x, z }, 'explosion', {
+          severity: cause === 'kinetic' ? 'kinetic-ignition' : 'thermal-ignition',
+          sizeMul: scale,
+          distance: 110 + r * 4,
+        });
       }
       this._emitDestructionLightBeats(entry, scale, reduced);
       return;
@@ -6448,7 +6746,9 @@ export const vfx = {
         0.90, 0, '#ffffff',
         Math.cos(ruptureAngle) * 3, Math.sin(ruptureAngle) * 3, 2.7, ruptureAngle);
       if (accessibility.eventLightPeakScale > 0) {
-        this._flashLight({ x, z }, '#ff9a50', 8.4 * scale, 7, 140 + r * 5);
+        this._eventLight({ x, z }, 'explosion', {
+          severity: 'tear', sizeMul: scale, distance: 140 + r * 5,
+        });
       }
       this.bus.emit('camera:shake', {
         amount: (reduced ? 0.16 : 0.30) * (entry.classId === 'capital' ? 1.5 : 1),
@@ -6911,18 +7211,20 @@ export const vfx = {
     const pulseSerial = ctrl.consumeWantedPulse && ctrl.consumeWantedPulse();
     if (pulseSerial) {
       const pp = this._playerPos();
-      // _flashLight already multiplies by eventLightPeakScale. Under reduced-motion that scale is
-      // 0, so use the sustained-light path for a calm landed accent that still respects no
-      // full-screen flash (bounded pool slot + short lifetime handled by the stamp).
+      // _flashLight already multiplies by eventLightPeakScale. FB-077 keeps a 0.1 floor under
+      // reduced motion, so this branch still runs there — the 'calm' severity is its authored
+      // reduced form. Only a zeroed floor takes the sustained-light path for a calm landed
+      // accent that still respects no full-screen flash.
       if (peakScale > 0) {
-        const peak = (reducedMotion ? 2.2 : 4.8) * flashDim;
-        this._flashLight(
+        this._eventLight(
           { x: pp.x || 0, z: pp.z || 0 },
-          LAW_HEAT_COLORS.wantedFlip,
-          peak,
-          reducedMotion ? 6 : 9,
-          160,
-          LAW_HEAT_ADMISSION.WANTED_FLIP,
+          'law',
+          {
+            severity: reducedMotion ? 'calm' : undefined,
+            color: LAW_HEAT_COLORS.wantedFlip,
+            peakMul: flashDim,
+            priority: LAW_HEAT_ADMISSION.WANTED_FLIP,
+          },
         );
       } else {
         // Calm one-shot via a short sustained claim that the stamp lifetime will release.
@@ -7052,8 +7354,7 @@ export const vfx = {
     const pirateSlot = this._pirateInterceptScratch;
     if (pirateSlot) {
       pirateSlot.elapsed = 0;
-      pirateSlot.contactRef = null;
-      pirateSlot.contactTarget = null;
+      resetNpcJobContactScratch(pirateSlot);
     }
   },
 
@@ -7273,13 +7574,15 @@ export const vfx = {
     emitted += this._emitNpcPirateIntercepts(player, drawWu, reducedMotion);
 
     // Release slots whose job vanished this tick, so a departed hull's cache cannot be mistaken for
-    // a live one when ids are recycled.
+    // a live one when ids are recycled. Contact scratch is reset in place (FB-096) — the next
+    // claim re-samples its own client's surface rather than reusing a dead job's cached root.
     for (let i = 0; i < slots.length; i++) {
       if (slots[i].gen !== gen && slots[i].jobId !== null) {
         slots[i].jobId = null;
         slots[i].profileId = null;
         slots[i].lastEmitStep = -1;
         slots[i].elapsed = 0;
+        resetNpcJobContactScratch(slots[i]);
       }
     }
 
@@ -7472,24 +7775,9 @@ export const vfx = {
       // metal, with a bounded sample per submesh; never a collision-radius point in empty space.
       const origin = this.state.world && this.state.world.frameOrigin;
       const ox = origin && origin.x || 0, oz = origin && origin.z || 0;
-      if (!slot.contactVertex) {
-        slot.contactVertex = new THREE.Vector3();
-        slot.contactPoint = new THREE.Vector3();
-        slot.contactFrom = new THREE.Vector3();
-        slot.contactVisit = (part) => {
-          const attr = part.isMesh && part.geometry && part.geometry.attributes.position;
-          if (!attr) return;
-          const stride = Math.max(1, Math.ceil(attr.count / 128));
-          for (let i = 0; i < attr.count; i += stride) {
-            slot.contactVertex.fromBufferAttribute(attr, i).applyMatrix4(part.matrixWorld);
-            const d2 = slot.contactVertex.distanceToSquared(slot.contactFrom);
-            if (d2 < slot.contactBest) {
-              slot.contactBest = d2;
-              slot.contactPoint.copy(slot.contactVertex);
-            }
-          }
-        };
-      }
+      // Pool slots own their contact scratch from construction (FB-096); only a bare
+      // harness-built slot arrives here without it.
+      if (!slot.contactVisit) initNpcJobContactScratch(slot);
       const now = this.state.simTime || 0;
       if (slot.contactSurfaceRoot !== root || now >= (slot.contactSurfaceUntil || 0)) {
         slot.contactFrom.set(x - ox, y, z - oz);
@@ -7560,6 +7848,7 @@ export const vfx = {
       let weldY = endY;
       const weldRoot = target.view && target.view.root;
       if (weldRoot) {
+        // Pool-owned scratch (FB-096); bare harness slots still get one on first weld.
         if (!slot.contactBox) slot.contactBox = new THREE.Box3();
         slot.contactBox.setFromObject(weldRoot);
         if (Number.isFinite(slot.contactBox.max.y)) weldY = slot.contactBox.max.y + 0.15;
@@ -8630,7 +8919,8 @@ export const vfx = {
   },
 
   _updateWantedSearchRing() {
-    const volume = readWantedSearchVolume(this.state);
+    const volume = readWantedSearchVolume(this.state,
+      this._wantedVolume || (this._wantedVolume = {}));
     if (!this._wantedRing && this._scene) {
       const geo = new THREE.RingGeometry(0.985, 1, 64);
       geo.rotateX(-Math.PI / 2);
@@ -8661,7 +8951,8 @@ export const vfx = {
     mesh.visible = true;
   },
 
-  // Two edges, not a disc: Helios is a corridor, Tethys is a cone. Brighter while you are inside.
+  // Two edges, not a disc: Helios is a corridor, Tethys is a cone, Dione is a funnel.
+  // Brighter while you are inside.
   _updateCustomsWeirLines() {
     const live = readCustomsWeir(this.state);
     const segments = live && live.segments ? live.segments : [];
@@ -8680,19 +8971,36 @@ export const vfx = {
     const ribbon = routeRibbon(this.state);
     if (!ribbon || ribbon.active !== true) {
       if (this._routeRibbon) this._routeRibbon.mesh.visible = false;
-      return;
+    } else {
+      const start = ribbon.points[0];
+      const end = ribbon.points[1];
+      this._writeWorldSegment(
+        '_routeRibbon',
+        0xc8a15a,
+        start.x,
+        start.z,
+        end.x,
+        end.z,
+        (ROUTE_RIBBON_BRIGHTNESS / 6.5) * 0.4,
+      );
     }
-    const start = ribbon.points[0];
-    const end = ribbon.points[1];
-    this._writeWorldSegment(
-      '_routeRibbon',
-      0xc8a15a,
-      start.x,
-      start.z,
-      end.x,
-      end.z,
-      (ROUTE_RIBBON_BRIGHTNESS / 6.5) * 0.4,
-    );
+    // FB-137 — spoken set-piece travel lines ride as second-destination ribbons: distinct
+    // teal, dimmer than the primary route, one slot per mission id, hidden the frame the
+    // model stops returning them (transition settled or the run left the sector).
+    const lines = setPieceRibbons(this.state) || [];
+    const seen = this._setPieceRibbonSeen || (this._setPieceRibbonSeen = new Map());
+    for (const key of seen.keys()) seen.set(key, false);
+    for (const line of lines.slice(0, 3)) {
+      const slot = `_setPieceLine_${String(line.missionId).replace(/\W/g, '_')}`;
+      seen.set(slot, true);
+      const a = line.points[0];
+      const b = line.points[1];
+      this._writeWorldSegment(slot, 0x5ac8a1, a.x, a.z, b.x, b.z,
+        (line.brightness / 6.5) * 0.4);
+    }
+    for (const [slot, live] of seen) {
+      if (!live && this[slot]) this[slot].mesh.visible = false;
+    }
   },
 
   _arcPreviewActive() {
@@ -8722,6 +9030,10 @@ export const vfx = {
     // Teardown is not a release: dispose outright so no half-folded instrument is left behind.
     if (this._selectionSigil) this._selectionSigil.dispose();
     this._selectionSigil = null;
+  },
+  _resetBroodPresentation() {
+    if (this._broodPresentation) this._broodPresentation.dispose();
+    this._broodPresentation = null;
   },
   _updateSelectionSigil(dt) {
     const sigil = this._selectionSigil;
@@ -8844,9 +9156,13 @@ export const vfx = {
       input.liveTarget = arc.postTarget.targetId != null ? this._ent(arc.postTarget.targetId) : null;
     } else if (preActive) {
       input.releaseTarget = throwState.releaseTarget;
-      input.liveTarget = throwState.releaseTarget.targetId != null
-        ? this._ent(throwState.releaseTarget.targetId)
-        : null;
+      // The annulus rides the per-tick resolved holder — the seeded targetId names a slot that
+      // can recycle mid-swing; only an unstamped bind still trusts its seed id.
+      const liveId = throwState.aimTargetId != null
+        ? throwState.aimTargetId
+        : (throwState.releaseTarget && !throwState.releaseTarget.stable
+          ? throwState.releaseTarget.targetId : null);
+      input.liveTarget = liveId != null ? this._ent(liveId) : null;
     } else {
       input.releaseTarget = null;
       input.liveTarget = null;
@@ -8866,6 +9182,31 @@ export const vfx = {
   // -------------------------------------------------------------------------
   _masslineSwingTrace: null,
   _monofilamentBlade: null,
+
+  // -------------------------------------------------------------------------
+  // SWARM-07 B1 — the Brood tier. One InstancedMesh over the sim's flat arrays;
+  // the room's second population costs one draw call. Hidden whenever the run
+  // fields no brood; reduced motion drops the idle bob, never the bodies.
+  // -------------------------------------------------------------------------
+  _broodPresentation: null,
+
+  _initBroodPresentation() {
+    if (!this._scene || this._broodPresentation) return;
+    this._broodPresentation = createBroodPresentation(this._scene, 400);
+  },
+
+  _updateBroodPresentation(dt) {
+    const pres = this._broodPresentation;
+    if (!pres) return false;
+    const state = this.state;
+    const view = state && state.swarmBrood;
+    if (!view || !(view.aliveCount > 0)) return pres.update(null, dt, {});
+    const settings = state.settings || null;
+    const video = settings && settings.video;
+    const access = settings && settings.accessibility;
+    const reducedMotion = !!(video && video.motionReduce) || !!(access && access.flashReduce);
+    return pres.update(view, dt, { simTime: state.simTime, reducedMotion });
+  },
 
   _initMasslineSwingTrace() {
     if (!this._scene) return;
@@ -9346,6 +9687,14 @@ export const vfx = {
     this._dockingCradleQuietHidden = false;
   },
 
+  _releaseDockingCradle() {
+    const dc = this._dockingCradle;
+    if (!dc) return;
+    releaseDockingCradle(dc.cradle);
+    // A quiet-latched cradle would otherwise skip the whole beat — wake it for the fade.
+    this._dockingCradleQuietHidden = false;
+  },
+
   _resetDockingCradle() {
     const dc = this._dockingCradle;
     if (!dc) return;
@@ -9502,6 +9851,8 @@ export const vfx = {
     const sourceEnt = live ? source : this._ent(cable.lastSourceId);
     const anchorEnt = live ? target : this._ent(cable.lastTargetId);
     if (!sourceEnt || !anchorEnt) { setTetherCableVisible(cable, false); return; }
+    const bolusStyle = live && !remote && anchorEnt.data?.bolus?.role === 'uvula'
+      ? bolusCableStyle(this.state) : null;
 
     // Ordinary line: player nose -> target surface. Remote heads: source surface -> target surface;
     // the player remains the controller but is never smuggled in as a physical third endpoint.
@@ -9572,7 +9923,7 @@ export const vfx = {
     if (Math.abs(tangential) > 4) cable.bowSide = tangential > 0 ? -1 : 1;
     // The bow flattens as the line works. Keyed off the smoothed load, not strainSmooth: against a
     // 10.5M breakTension the old term was a constant 1.0 and the bow never straightened.
-    const slackBow = Math.min(slack * 0.42, 24)
+    const slackBow = bolusStyle ? bolusStyle.sag * cable.bowSide : Math.min(slack * 0.42, 24)
       * Math.max(0.15, 1 - Math.min(1, Math.max(cable.loadSmooth, cable.strainSmooth)))
       * cable.bowSide;
 
@@ -9604,6 +9955,7 @@ export const vfx = {
     cable.reelGlow += (reelTarget - cable.reelGlow) * (1 - Math.exp(-(reelTarget > cable.reelGlow ? 11 : 6) * Math.max(0, dt || 0)));
     if (l < 0.55) this._ctmp.lerpColors(this._tetherColorCool, this._tetherColorWarm, l / 0.55);
     else this._ctmp.lerpColors(this._tetherColorWarm, this._tetherColorHot, (l - 0.55) / 0.45);
+    if (bolusStyle && tether.phase !== 'overload') this._ctmp.setHex(bolusStyle.tint);
     // Winching lifts the line's heat, but it must not erase the tension colour: with the shader's
     // own reel term this used to triple-count and a fully-winched cable read as a plain white
     // noodle, losing the one channel that tells you how hard it is pulling.
@@ -9720,6 +10072,7 @@ export const vfx = {
     // and it does so purely in geometry - no burst, no light, no change to either event's timing.
     profileInput.parting = snapping;
     const profile = resolveMasslineCableProfile(profileInput, cable.profile);
+    applyBolusCableProfile(profile, bolusStyle);
 
     const curve = cable.curveFrame;
     curve.ax = ax; curve.az = az;
@@ -9850,7 +10203,7 @@ export const vfx = {
     const pulse = 0.82 + 0.18 * Math.sin(this._t * 4.2);
     const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     let n = 0;
-    const list = indexedTypeScan(state, 'asteroids');
+    const list = this._seamMarkerCandidates(state, player, drawWu);
     for (let i = 0; i < list.length && n < sm.CAP; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'asteroid') continue;
@@ -10029,7 +10382,7 @@ export const vfx = {
       // The recoil ring is a shock, not a smoke cloud: fast, thin and hot. At 16 wu it swallowed the
       // whole ship in a flat orange donut for a third of a second.
       this._spawnSprite(SPR_RING, endX, 0.9, endZ, 0.26, 1.4, 8.5, 0.55, 0.0, '#ffc9a0', 0, 0);
-      this._flashLight({ x: endX, z: endZ }, '#ffb0a0', 5.4, 12, 200);
+      this._eventLight({ x: endX, z: endZ }, 'tether', { severity: 'snap' });
     }
   },
 
@@ -10064,6 +10417,17 @@ export const vfx = {
       0.16, 4.2, 8.6, 0.72, 0, '#d7f7ff',
       ux * 18, uz * 18, 3.2, roll, priority,
     );
+    const cue = releaseCuePicture(
+      ux, uz, target.vel && target.vel.x, target.vel && target.vel.z, this._isReduced(),
+    );
+    this._spectacleGate(
+      'release', (endpoints.ax + endpoints.bx) * 0.5, (endpoints.az + endpoints.bz) * 0.5,
+    );
+    const layer = this._ensureCauseMarks();
+    const mark = releaseCutMark(cue, endpoints);
+    if (layer && mark && mark.sprite !== true && mark.vanish !== true) {
+      layer.noteCut(mark, this._causeNow());
+    }
 
     cable.fadeRate = TETHER_RELEASE_FADE_RATE;
     const last = this._lastMasslineReleaseVfx;
@@ -10081,8 +10445,14 @@ export const vfx = {
         && this.state.massline2.throw.releaseTarget;
       const postTarget = arc.postTarget;
       clearMasslineReleaseTarget(postTarget);
-      const capturedEntity = captured && captured.targetId != null
-        ? this._ent(captured.targetId)
+      // The captured frame anchors to the resolved holder at release — the seeded targetId can
+      // name a recycled slot by then; only an unstamped bind still trusts its seed id.
+      const throwRuntime = this.state.massline2 && this.state.massline2.throw;
+      const liveId = throwRuntime && throwRuntime.aimTargetId != null
+        ? throwRuntime.aimTargetId
+        : (captured && !captured.stable ? captured.targetId : null);
+      const capturedEntity = liveId != null
+        ? this._ent(liveId)
         : null;
       if (capturedEntity && capturedEntity.alive !== false && capturedEntity.pos
         && Number.isFinite(capturedEntity.pos.x) && Number.isFinite(capturedEntity.pos.z)) {
@@ -10247,7 +10617,7 @@ export const vfx = {
           0.28 + Math.random() * 0.24, 1.55, 0.0, this._c0, this._c1, 3.4, 0, 0);
       }
       this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.07, 3.0, 5.8, 0.9, 0.0, '#a6f0ff', 0, 0);
-      this._flashLight({ x: pos.x, z: pos.z }, '#39d0ff', 3.2, 12, 140);
+      this._eventLight({ x: pos.x, z: pos.z }, 'tether');
     }
     if (!anchor) return;
     const ship = ends[0];
@@ -10256,7 +10626,7 @@ export const vfx = {
     const chord = Math.hypot(dirX, dirZ);
     // Simultaneous anchor flash + light: both ends firing together is the connection read.
     this._spawnSprite(SPR_FLASH, anchor.x, 0, anchor.z, 0.07, 3.0, 5.8, 0.9, 0.0, '#a6f0ff', 0, 0);
-    this._flashLight({ x: anchor.x, z: anchor.z }, '#39d0ff', 3.2, 12, 140);
+    this._eventLight({ x: anchor.x, z: anchor.z }, 'tether');
     if (!(chord > 1e-3)) return;
     dirX /= chord;
     dirZ /= chord;
@@ -10350,8 +10720,13 @@ export const vfx = {
     _impactOpts.hero = false;
     this._composeImpact(pos.x, 0.2, pos.z, 0, 0, 1, false, 0.62, 'hull', r * 0.45, _impactOpts);
     if (acc.eventLightPeakScale > 0) {
-      this._flashLight({ x: pos.x, z: pos.z }, profile.accentColor || '#39d0ff',
-        4.2 * neon.lightPeak * acc.eventLightPeakScale, 8, 180);
+      // _flashLight already applies eventLightPeakScale — the neon gain is the authored runtime
+      // multiplier the preset peak doesn't own.
+      this._eventLight({ x: pos.x, z: pos.z }, 'impact', {
+        severity: 'detonation',
+        color: profile.accentColor,
+        peakMul: neon.lightPeak,
+      });
     }
   },
 
@@ -10368,7 +10743,51 @@ export const vfx = {
     return this._bombDetonationVfx.emit(event, p, this.state);
   },
 
-  _onBombDetonated(p) { return this._emitBombMaterial('bombs:detonated', p); },
+  _bombFlashDropped(p) {
+    if (!p || typeof p !== 'object') return false;
+    if (!this._bombSpectacleSeen) this._bombSpectacleSeen = new WeakMap();
+    if (this._bombSpectacleSeen.has(p)) return this._bombSpectacleSeen.get(p);
+    let drop = false;
+    const pos = p.pos;
+    if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) {
+      drop = duplicateBombDropsFlash(this._spectacleGate('field', pos.x, pos.z));
+    }
+    this._bombSpectacleSeen.set(p, drop);
+    return drop;
+  },
+
+  _onBombDetonated(p) {
+    if (p && p.pos && Number.isFinite(p.pos.x) && Number.isFinite(p.pos.z)) this._bombFlashDropped(p);
+    return this._emitBombMaterial('bombs:detonated', p);
+  },
+
+  // One surface read per body the shockwave front overtakes: a small ring + directional
+  // shimmer along the push, the visual counterpart of the sweep's graded shove. The sim
+  // already moved the body; this is the wave's arrival mark, kept deliberately cheap
+  // (two sprites, table draw distance, reduced-motion drops the particles).
+  _onShockwavePass(p) {
+    if (!this._scene || !p || p.level == null || this.state?.render?.openingVfxFrozen === true) return;
+    const body = this._ent(p.targetId);
+    const pos = body && body.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+    const player = this._ent(this.state?.playerId);
+    if (player && player.pos) {
+      const look = tableLookAtDelta(this.state, player.pos, pos, _tableLookAtScratch);
+      if (!shouldDrawTableVfx(look.x, look.z, this._tableVfxDrawWu || tableVfxDrawWuFromState(this.state))) return;
+    }
+    const reduced = this._isReduced();
+    const tumble = p.level === 'tumble';
+    const dirX = Number(p.dirX) || 0;
+    const dirZ = Number(p.dirZ) || 0;
+    const size = Math.max(2.4, (Number(body.radius) || 6) * 2.1);
+    this._spawnSprite(SPR_RING, pos.x, 0.12, pos.z,
+      reduced ? 0.16 : 0.26, size * 0.35, size, tumble ? 0.4 : 0.26, 0, '#b8d8ff', dirX * 10, dirZ * 10, 1, null, 0.72);
+    if (!reduced && (dirX || dirZ)) {
+      this._spawnSprite(SPR_PUFF, pos.x + dirX * (Number(body.radius) || 6) * 0.5, 0.1,
+        pos.z + dirZ * (Number(body.radius) || 6) * 0.5,
+        0.2, size * 0.22, 0.06, tumble ? 0.34 : 0.2, 0, '#e8f2ff', dirX * 26, dirZ * 26, 1, null, 0.66);
+    }
+  },
   _onBombFieldEnded(p) { return this._emitBombMaterial('bombs:fieldEnded', p); },
   _onBombDestroyed(p) { return this._emitBombMaterial('bombs:destroyed', p); },
 
@@ -10401,9 +10820,18 @@ export const vfx = {
     req.y = NaN;
     req.classId = 'ordinary';
     req.radius = Math.max(2, Number(victim && victim.radius) || 6);
-    req.dirX = Math.cos(axisAngle);
-    req.dirZ = Math.sin(axisAngle);
-    req.hasDir = 0;
+    // SFQ-B183 — a signed throw rides the burst's directional channel (hasDir = 1); the unsigned
+    // axis keeps the unoriented read, exactly as before.
+    const reqThrow = collisionThrowRead(p);
+    if (reqThrow.signed) {
+      req.dirX = reqThrow.x;
+      req.dirZ = reqThrow.z;
+      req.hasDir = 1;
+    } else {
+      req.dirX = Math.cos(axisAngle);
+      req.dirZ = Math.sin(axisAngle);
+      req.hasDir = 0;
+    }
     req.velX = victim && victim.vel && Number.isFinite(victim.vel.x) ? victim.vel.x : 0;
     req.velY = victim && victim.vel && Number.isFinite(victim.vel.y) ? victim.vel.y : 0;
     req.velZ = victim && victim.vel && Number.isFinite(victim.vel.z) ? victim.vel.z : 0;
@@ -10422,6 +10850,28 @@ export const vfx = {
     if (!realControl && !realDamage) return false;
     this._rememberMediumCollision(p);
     if (this._emitCombatContact('consequence', p)) {
+      // The seat drew. The class and the scar still have to land on the hull the player sees.
+      const seatAngle = this._collisionContactAxis(p);
+      const seatNx = Math.cos(seatAngle);
+      const seatNz = Math.sin(seatAngle);
+      const seatDp = Number(p && p.exchangedMomentum)
+        || Number(p && p.dp)
+        || Math.abs(Number(p && p.impulse))
+        || 0;
+      const seatSeverity = Math.max(0.06, Math.min(0.95, 0.06 + seatDp / 14000));
+      this._noteHullScarFromContact(p, -seatNz, seatNx, seatSeverity);
+      // No impact-beats composition at the seat. The collision receipt's structural answer is the
+      // ONE family burst below — arcs and shards on a tumble, nothing on a stagger (the arbiter's
+      // verdict; a stag composing a graze sheet here leaked blades the family does not own). And
+      // every consequence-bearing contact carries a physics:impact sibling whose low-contact rung
+      // already owns the graze/slam/breakup matter ladder, so a seat compose double-spawned the
+      // pools for real contacts. Matter seat, scar, light and throw spray still draw.
+      // SFQ-B183 — a signed throw names which way the contact THREW the hull: this additive fan
+      // draws only the thrown side at the receipt contact point, so the shove's displacement has
+      // a visible cause before the drift begins. Unsigned receipts draw nothing — no direction,
+      // no fan.
+      const seatThrow = collisionThrowRead(p);
+      if (seatThrow.signed) this._spawnCollisionThrowSpray(p, seatThrow);
       // Keep receipt admission/audio and the separate physical debris event. Geometry
       // now maps body extent and closing speed, never dimensionless camera trauma.
       if (p.control === 'tumble') {
@@ -10434,7 +10884,11 @@ export const vfx = {
         this._admitAndSpawnArcadeStructural('combat:collisionConsequence', p);
       }
       const light = collisionImpactLight(p);
-      this._flashLight(p.pos, p.surface === 'terrain' ? '#ffcaa0' : '#bcd8ff', light.intensity, 9, light.range);
+      this._eventLight(p.pos, 'collision', {
+        severity: p.surface === 'terrain' ? 'terrain' : undefined,
+        peak: light.intensity,
+        distance: light.range,
+      });
       return true;
     }
     const pos = p.pos;
@@ -10452,10 +10906,16 @@ export const vfx = {
     const axisX = Math.cos(axisAngle), axisZ = Math.sin(axisAngle);
     const tx = -axisZ, tz = axisX;
     const terrain = p.surface === 'terrain';
-    // No signed causal direction exists at this rung. Opposed compression bars and tangent fans
-    // present the receipted contact axis without pretending either normal half is outward.
+    // SFQ-B183 — the axis stays the presentation spine. Without a signed throw, the opposed bars
+    // and tangent fans present the receipted contact axis without pretending either normal half
+    // is outward. With one, the fan collapses to the thrown side: the spray names the direction
+    // the hull was actually thrown, and nothing is drawn on the unthrown half.
+    const fallbackThrow = collisionThrowRead(p);
+    const sides = fallbackThrow.signed
+      ? [Math.sign(Math.cos(fallbackThrow.angle) * axisX + Math.sin(fallbackThrow.angle) * axisZ) || 1]
+      : [-1, 1];
     const puffsPerSide = reduced ? 1 : (hard ? 3 : 2);
-    for (const side of [-1, 1]) {
+    for (const side of sides) {
       this._spawnSprite(SPR_FLASH,
         pos.x + axisX * side * 0.08 * authoredScale, 0,
         pos.z + axisZ * side * 0.08 * authoredScale,
@@ -10506,8 +10966,11 @@ export const vfx = {
     }
     if (acc.eventLightPeakScale > 0) {
       const light = collisionImpactLight(p);
-      this._flashLight({ x: pos.x, z: pos.z }, terrain ? '#ffcaa0' : '#bcd8ff',
-        light.intensity, 9, light.range);
+      this._eventLight({ x: pos.x, z: pos.z }, 'collision', {
+        severity: terrain ? 'terrain' : undefined,
+        peak: light.intensity,
+        distance: light.range,
+      });
     }
     this._fillCollisionStructuralReq(p);
     // A stagger is a control, not a structural hit. The arbiter already refuses it.
@@ -10528,8 +10991,51 @@ export const vfx = {
     return true;
   },
 
-  // Deterministic paired debris from the receipt. SG-02 supplies an unoriented contact axis, so
-  // fragments leave in opposed pairs; choosing one normal half would fabricate causality.
+  // SFQ-B183 — the one-sided displacement read, shared by the seat and fallback rungs of
+  // _onCollisionConsequence. Streaks and dust leave ALONG the signed throw, anchored at the
+  // receipt contact point; reduced motion shortens travel and keeps the counts. Never called
+  // for an unsigned receipt — no throw, no fan.
+  _spawnCollisionThrowSpray(p, throwRead) {
+    if (!this._scene || !p || !p.pos || !throwRead || !throwRead.signed) return false;
+    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const reduced = acc.flashOpacityScale < 1;
+    const pos = p.pos;
+    const serial = this._collisionPatternSerial(p);
+    const terrain = p.surface === 'terrain';
+    const tx = -throwRead.z, tz = throwRead.x;
+    const streaks = reduced ? 1 : 2;
+    for (let k = 0; k < streaks; k++) {
+      const spread = explosionPatternSigned(serial, 'throw', k, 41) * 0.38;
+      const angle = throwRead.angle + spread;
+      const cx = Math.cos(angle), cz = Math.sin(angle);
+      this._spawnProjectileTrailStreak(
+        pos.x + cx * 0.08, 0.18, pos.z + cz * 0.08,
+        reduced ? 0.26 : 0.4,
+        (reduced ? 0.07 : 0.1) * 1.2,
+        (reduced ? 2.4 : 4.4) * 1.2,
+        (reduced ? 0.3 : 0.58) * acc.flashOpacityScale,
+        terrain ? '#f0d0a0' : '#d4e6f5',
+        cx * (reduced ? 5 : 11), cz * (reduced ? 5 : 11),
+        cx, cz,
+      );
+    }
+    const puffs = reduced ? 1 : 3;
+    for (let k = 0; k < puffs; k++) {
+      const spread = (k - (puffs - 1) * 0.5) * 0.42;
+      const vx = throwRead.x * 12 + tx * spread * 12;
+      const vz = throwRead.z * 12 + tz * spread * 12;
+      this._spawnSprite(SPR_PUFF,
+        pos.x + throwRead.x * 0.12, 0.05, pos.z + throwRead.z * 0.12,
+        0.5, 1.4, 3.6,
+        0.4 * acc.flashOpacityScale, 0.0, terrain ? '#c9a878' : '#aac4e0', vx, vz,
+        1.8, Math.atan2(vz, vx));
+    }
+    return true;
+  },
+
+  // Deterministic paired debris from the receipt. The contact axis is oriented aId→bId now
+  // (SFQ-B183), but the aftermath stays deliberately bilateral: chips fly both ways off a
+  // compression, and a debris half chosen by pair order would still be causality theater.
   _onCollisionDebris(p) {
     if (!this._scene || !p || !p.pos || !this._consumeMediumCollision(p)) return false;
     const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
@@ -10833,7 +11339,10 @@ export const vfx = {
       this._spawnSprite(SPR_FLASH, x, 0, z, reduced ? 0.28 : 0.22, s0 * 0.4, s0 * 1.1, style.coreOp, 0.0, style.color1, 0, 0);
     }
     if (style.useLight && isStart) {
-      this._flashLight({ x, z }, style.light, reduced ? 1.4 : 2.6, 9, 140);
+      this._eventLight({ x, z }, 'tell', {
+        severity: reduced ? 'mark-calm' : 'mark',
+        color: style.light,
+      });
     }
   },
 
@@ -10978,7 +11487,7 @@ export const vfx = {
       this._spawnSprite(SPR_PUFF, cx + ux * 8, 0, cz + uz * 8, life, 4.0, 10.0, style.linkOp, 0.0, style.color1, ux * 12, uz * 12);
     }
     if (style.useLight && isStart) {
-      this._flashLight({ x: cx, z: cz }, style.light, 1.8, 10, 110);
+      this._eventLight({ x: cx, z: cz }, 'tell', { severity: 'link', color: style.light });
     }
   },
 
@@ -11090,7 +11599,7 @@ export const vfx = {
       }
     }
     // Strong ore-tinted dynamic light at contact — brighter, wider
-    this._flashLight({ x: pos.x, z: pos.z }, col, 4.6, 3.8, 155);
+    this._eventLight({ x: pos.x, z: pos.z }, 'mining', { severity: 'contact', color: col });
     if (this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
       const nx = backA != null ? Math.cos(backA) : 0;
@@ -11178,7 +11687,7 @@ export const vfx = {
         occluderRadius: rockR * 0.9,
       });
     }
-    this._flashLight({ x: pos.x, z: pos.z }, col, 6.0, 4.5, 200);
+    this._eventLight({ x: pos.x, z: pos.z }, 'mining', { severity: 'yield', color: col });
     if (this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
       this._weaponPresenter.quarks.spawnMiningEjecta(local.x, 0.3, local.z, 0, 1, 0, Math.min(12, 4 + qty), p.commodityId);
@@ -11238,7 +11747,7 @@ export const vfx = {
         occluderRadius: rockR * 0.7,
       });
     }
-    this._flashLight({ x: pos.x, z: pos.z }, col, 5.0, 4.0, 170);
+    this._eventLight({ x: pos.x, z: pos.z }, 'mining', { severity: 'shatter', color: col });
     this._emitJuiceCue(
       chunked ? 'presentation.mining.chunk' : 'presentation.mining.shatter',
       { pos },
@@ -11307,6 +11816,7 @@ export const vfx = {
    * last fleet endFrame (trails run before energy in the frame; sticky avoids dual draw).
    */
   _usesProductionThruster(e) {
+    if (isCeresWorkfleetPropulsion(e)) return true;
     if (!e || e.type !== 'ship') return false;
     if (e.id === this.state.playerId) return true;
     const owned = this._productionOwnedIds;
@@ -11374,7 +11884,7 @@ export const vfx = {
       this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.14, 3.5, 7.5, 0.78, 0.0, '#ffffff', 0, 0);
       this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.22, 4.5, 10, 0.46, 0.0, col, 0, 0);
       this._spawnSprite(SPR_RING, bx, 0, bz, 0.18, 2, 8, 0.45, 0.0, col, exhaustX * 5, exhaustZ * 5);
-      this._flashLight({ x: bx, z: bz }, col, 2.2, 14, 80);
+      this._eventLight({ x: bx, z: bz }, 'thrust', { severity: 'boost', color: col });
       this._c0.set('#ffffff'); this._c1.set(col);
       const baseA = sock ? sock.angle : Math.atan2(-sf, -cf);
       const n = Math.max(10, Math.round(22 * (this._burst || 1)));
@@ -11408,7 +11918,7 @@ export const vfx = {
     this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.18, 5.5, 11, 0.95, 0.0, HOT, 0, 0);
     this._spawnSprite(SPR_FLASH, bx, 0, bz, 0.28, 4.0, 12, 0.7, 0.0, VIOLET, 0, 0);
     this._spawnSprite(SPR_RING, bx, 0, bz, 0.26, 2.5, 10, 0.75, 0.0, VIOLET, exhaustX * 7, exhaustZ * 7);
-    this._flashLight({ x: bx, z: bz }, VIOLET, 2.8, 16, 95);
+    this._eventLight({ x: bx, z: bz }, 'thrust', { severity: 'afterburner', color: VIOLET });
     // Afterburner streak: fast rear particles (hot core → purple exhaust)
     this._c0.set(HOT); this._c1.set(DEEP);
     const baseA = sock ? sock.angle : Math.atan2(-sf, -cf);
@@ -11490,7 +12000,7 @@ export const vfx = {
       this._spawnParticle(p.x, p.z, Math.cos(a) * sp, Math.sin(a) * sp,
         0.4 + Math.random() * 0.3, 1.3, 0.1, this._c0, this._c1, 1.8, 0.15, 0);
     }
-    this._flashLight({ x: p.x, z: p.z }, '#ff8a3a', 2.6 * scale, 12, 90);
+    this._eventLight({ x: p.x, z: p.z }, 'explosion', { severity: 'breach', sizeMul: scale });
   },
 
   _onShipDeathFlash(p) {
@@ -11513,7 +12023,9 @@ export const vfx = {
       this._spawnParticle(p.x, p.z, Math.cos(a) * sp, Math.sin(a) * sp,
         0.5 + Math.random() * 0.5, 1.6, 0.15, this._c0, this._c1, 1.2, 0.2, 0);
     }
-    this._flashLight({ x: p.x, z: p.z }, '#fff0d0', 7.5 * scale, 11, 120 + r * 5);
+    this._eventLight({ x: p.x, z: p.z }, 'explosion', {
+      severity: 'detonation', sizeMul: scale, distance: 120 + r * 5,
+    });
   },
 
   // The render alpha the renderer posed this frame's hulls with (accumulator/fixedDt, set in
@@ -11721,9 +12233,25 @@ export const vfx = {
 
   _onActionVfx(name, payload) {
     if (!this._scene) return false;
+    if (name === 'bombs:detonated' && this._bombFlashDropped(payload)) return false;
+    this._noteCauseSilhouette(name, payload);
     if (!this._actionVfx) this._actionVfx = new ActionVfx(this._scene,
       this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)));
     return this._actionVfx.emit(name, payload, this.state);
+  },
+
+  _noteCauseSilhouette(name, payload) {
+    if (!this._scene || !payload || !this.state) return;
+    const receipt = resolveAdditionalActionVfxReceipt(name, payload, this.state);
+    if (!receipt || !receipt.pos || !Number.isFinite(receipt.pos.x) || !Number.isFinite(receipt.pos.z)) return;
+    const dir = receipt.direction;
+    const mark = causeSilhouetteSegments(name, receipt.pos.x, receipt.pos.z, dir && dir.x, dir && dir.z);
+    if (!mark || mark.sprite === true || mark.vanish === true) return;
+    // Create the layer only when a receipt actually marks — receipts that never silhouette must
+    // not park an empty mesh in the scene.
+    const layer = this._ensureCauseMarks();
+    if (!layer) return;
+    layer.noteSilhouette(mark, this._causeNow());
   },
 
   _updateFieldGeometry(dt) {
@@ -11732,6 +12260,23 @@ export const vfx = {
       this._initFieldGeometry();
     }
     if (this._fieldGeom) return this._fieldGeom.update(dt, this.state);
+  },
+
+  // Gyre Snare presentation: the published state.gyreSnare mirror owns existence —
+  // the beam exists while phase !== 'off' and the clump overlay while the bowling ball flies.
+  _gyreRelevant() {
+    const g = this.state && this.state.gyreSnare;
+    return !!g && (g.phase !== 'off' || g.launchedId != null);
+  },
+  _initGyreSnare() {
+    if (!this._scene || this._gyreSnareFx) return;
+    this._gyreSnareFx = new GyreSnarePresentation(this._scene, {
+      toLocal: this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)),
+    });
+  },
+  _updateGyreSnare(dt) {
+    if (!this._gyreSnareFx && this._gyreRelevant()) this._initGyreSnare();
+    if (this._gyreSnareFx) this._gyreSnareFx.update(dt, this.state);
   },
 
   _fieldFlowRelevant() {
@@ -11779,6 +12324,7 @@ export const vfx = {
     if (!(dt > 0)) return;
     if (dt > 0.1) dt = 0.1; // clamp pauses/tab-switches so particles don't teleport
     this._t += dt;
+    this._updateCauseMarks(dt);
     this._tableVfxDrawWu = tableVfxDrawWuFromState(this.state);
     if (this._weaponPresenter) {
       const render = this.state && this.state.render;
@@ -11841,6 +12387,7 @@ export const vfx = {
       sub.tetherCable = 0;
     }
     sub.swingTrace = this._updateMasslineSwingTrace(dt) ? 1 : 0;
+    sub.brood = this._updateBroodPresentation(dt) ? 1 : 0;
     sub.masslineChainReadout = this._updateMasslineChainReadout(dt) ? 1 : 0;
     sub.monofilamentBlade = this._updateMonofilamentBlade() ? 1 : 0;
     sub.dockingCradle = this._updateDockingCradle(dt) ? 1 : 0;
@@ -11945,6 +12492,7 @@ export const vfx = {
       const fields = this._updateFieldGeometry(dt);
       sub.fieldFlow = fields ? fields.surfaces : 0;
     } else sub.fieldFlow = 0;
+    if (this._gyreRelevant() || this._gyreSnareFx) this._updateGyreSnare(dt);
     if (this._actionVfx) this._actionVfx.update(this.state);
     if (this._bombDetonationVfx) this._bombDetonationVfx.update(this.state);
     if (this._statusMatterVfx) this._statusMatterVfx.update(this.state);
@@ -12751,6 +13299,24 @@ export const vfx = {
     if (!commitDynamicBufferOwner(sm.dynamicBufferOwner, 0) && sm.mesh.count) sm.mesh.count = 0;
   },
 
+  // SF-266 — seam markers only ever draw inside the live table disc, but the candidate walk
+  // used to visit every asteroid in the universe each beat. With a live spatial hash the
+  // disc's colliders are the candidate set: queryRadius returns a conservative cell-level
+  // superset, the loop's shouldDrawTableVfx predicate re-filters exactly, and iteration is
+  // sorted by entity id so the emitted markers stay deterministic. Without a live hash the
+  // lane falls back to the indexed type scan, unchanged.
+  _seamMarkerCandidates(state, player, drawWu) {
+    const hash = state && state.spatialHash;
+    if (!hasActiveSpatialHash(hash)) return indexedTypeScan(state, 'asteroids');
+    const candidates = this._seamMarkerCandidateList || (this._seamMarkerCandidateList = []);
+    candidates.length = 0;
+    const origin = tableLookAtOrigin(state, player.pos,
+      this._seamMarkerOrigin || (this._seamMarkerOrigin = { x: 0, z: 0 }));
+    hash.queryRadius(origin.x, origin.z, drawWu, candidates, SEAM_MARKER_QUERY_OPTS);
+    candidates.sort(compareSeamCandidateIds);
+    return candidates;
+  },
+
   _energyMaterialsEnabled() {
     const video = this.state.settings && this.state.settings.video;
     return !!(video && video.energyMaterials);
@@ -12790,6 +13356,7 @@ export const vfx = {
   // false-wake into the full relevant path (hide latch still early-returns); must
   // not miss a real thrust/coast wake. Soft-GPU fps not claimed.
   _energyQuietMaybeAwake() {
+    if (ceresWorkfleetPropulsionAwake(this.state) || latchNinePropulsionAwake(this.state)) return true;
     const energy = this._energy;
     if (energy && (
       energy.plumeDrive > 0.02
@@ -12798,7 +13365,7 @@ export const vfx = {
       || this._energyJetsFading(energy)
     )) return true;
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
-    if (player && player.alive && player.type === 'ship' && this._usesProductionThruster(player)) {
+    if (player && player.alive && player.type === 'ship' && !isCeresWorkfleetPropulsion(player) && this._usesProductionThruster(player)) {
       const actuators = this._actuatorsFor(player);
       if (actuators && (
         Math.abs(actuators.lateral || 0) > 0.001
@@ -12832,7 +13399,7 @@ export const vfx = {
     if (list) {
       for (let i = 0; i < list.length; i++) {
         const e = list[i];
-        if (!e || !e.alive || e.type !== 'ship') continue;
+        if (!e || !e.alive || e.type !== 'ship' || isCeresWorkfleetPropulsion(e)) continue;
         if (player && e.id === player.id) continue;
         if (e.flags && e.flags.docked) continue;
         if (e.flags && e.flags.boosting) return true;
@@ -12878,6 +13445,7 @@ export const vfx = {
 
   _energyPlumeRelevant() {
     if (!this._productionThrusterEnabled()) return false;
+    if (ceresWorkfleetPropulsionAwake(this.state) || latchNinePropulsionAwake(this.state)) return true;
     const energy = this._energy;
     if (energy && (
       energy.plumeDrive > 0.02
@@ -12888,7 +13456,7 @@ export const vfx = {
     // Activity-gated, never "alive ship = awake": the idle-sleep invariant requires the energy
     // subsystem to do zero work when no ship is thrusting (master semantics, fleet-extended).
     const player = this.state.entities && this.state.entities.get(this.state.playerId);
-    if (player && player.alive && player.type === 'ship' && this._usesProductionThruster(player)) {
+    if (player && player.alive && player.type === 'ship' && !isCeresWorkfleetPropulsion(player) && this._usesProductionThruster(player)) {
       const actuators = this._actuatorsFor(player);
       if (actuators && (
         Math.abs(actuators.lateral || 0) > 0.001
@@ -12915,7 +13483,7 @@ export const vfx = {
     if (list) {
       for (let i = 0; i < list.length; i++) {
         const e = list[i];
-        if (!e || !e.alive || e.type !== 'ship') continue;
+        if (!e || !e.alive || e.type !== 'ship' || isCeresWorkfleetPropulsion(e)) continue;
         if (player && e.id === player.id) continue;
         if (e.flags && e.flags.docked) continue;
         const d = this._engineDriveFor(e);
@@ -13263,6 +13831,8 @@ export const vfx = {
     const seen = new Set();
     const livePlumes = [];
     if (energy.plumeSystem) livePlumes.push(energy.plumeSystem);
+    if (energy.ceresWorkfleet?.plume) livePlumes.push(energy.ceresWorkfleet.plume);
+    if(energy.latchNine?.plume)livePlumes.push(energy.latchNine.plume);
     if (energy.fleet && Array.isArray(energy.fleet.families)) {
       for (const family of energy.fleet.families) {
         if (family && family.plume) livePlumes.push(family.plume);
@@ -13331,6 +13901,17 @@ export const vfx = {
     const pack = resolveThrusterRecipes(profileId);
     this._productionEngineProfileId = pack.profileId;
 
+    // Exact source nozzles, including the wreck-typed cutter head, share the production
+    // continuous batch writer with sixteen retained independent channel responses.
+    const ceresPlume = new ContinuousPlumeSystem(THREE, resolveThrusterRecipes('engine_industrial').main, {
+      textures, maxSockets: 16, distortionEnabled: false,
+    });
+    this._scene.add(ceresPlume.group);
+    ceresPlume.bindDynamicBuffers(this._scene);
+    const ceresWorkfleet = createCeresWorkfleetPlumeBatch(ceresPlume, THREE.Vector3);
+    const latchPlume=new ContinuousPlumeSystem(THREE,resolveThrusterRecipes('engine_industrial').main,{textures,maxSockets:8,distortionEnabled:false});this._scene.add(latchPlume.group);latchPlume.bindDynamicBuffers(this._scene);
+    const latchNine=createLatchNinePlumeBatch(latchPlume,THREE.Vector3);
+
     // Unified plasma stream: player hero thruster (soft particles for root + history wake).
     // Solid ribbon + continuous card plume remain for NPCs / fallback; player hero uses plasma.
     const plasmaStream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
@@ -13363,6 +13944,8 @@ export const vfx = {
     const playerRcs = fleet.playerRcsSystem() || fleet.families[0].rcs;
     this._energy = {
       fleet,
+      ceresWorkfleet,
+      latchNine,
       plumeSystem: playerPlume,
       rcsSystem: playerRcs,
       plasmaStream,
@@ -13456,7 +14039,7 @@ export const vfx = {
         energy.plasmaStream.update(
           dt,
           socketCount > 0 ? this._productionPlumeSocketView : null,
-          driveInfo,
+          plumeAchievedPicture(driveInfo, this._actuatorsFor(player)),
           a11y,
           player,
         );
@@ -13487,6 +14070,8 @@ export const vfx = {
       return;
     }
 
+    const ceresActive = energy.ceresWorkfleet?.update(this.state, dt, a11y) || 0;
+    const latchActive=energy.latchNine?.update(this.state,dt,a11y)||0;
     const fleet = energy.fleet;
     fleet.beginFrame(a11y);
 
@@ -13500,7 +14085,7 @@ export const vfx = {
     // Phase 1 — reclaim persistent slots only (no stale-slot reuse).
     // Player hero exhaust is the unified plasma stream (not continuous card plume).
     // Keep the fleet slot for RCS ownership, but write zero continuous-plume sockets/drive.
-    if (player && player.alive && player.type === 'ship') {
+    if (player && player.alive && player.type === 'ship' && !isCeresWorkfleetPropulsion(player)) {
       const profileId = this._engineProfileIdFor(player);
       const ship = fleet.retainShip(player.id, profileId, true);
       if (ship) {
@@ -13515,7 +14100,7 @@ export const vfx = {
           energy.plasmaStream.update(
             dt,
             this._productionPlumeSocketView,
-            driveInfo,
+            plumeAchievedPicture(driveInfo, this._actuatorsFor(player)),
             a11y,
             player,
           );
@@ -13541,7 +14126,7 @@ export const vfx = {
     // budget here: retainShip would return null anyway, but tier resolution is not free.
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
-      if (!e || !e.alive || e.type !== 'ship') continue;
+      if (!e || !e.alive || e.type !== 'ship' || isCeresWorkfleetPropulsion(e)) continue;
       if (player && e.id === player.id) continue;
       if (e.flags && e.flags.docked) continue;
       if (!fleet.hadEntity(e.id)) continue;
@@ -13562,7 +14147,7 @@ export const vfx = {
     // Phase 2 — only true newcomers (!hadEntity) after every survivor had a retain chance.
     // Each candidate is tier-resolved in exactly one phase (no double screen-check cost).
     fleet.beginAdmitPhase();
-    if (player && player.alive && player.type === 'ship' && !fleet.hasEntity(player.id)) {
+    if (player && player.alive && player.type === 'ship' && !isCeresWorkfleetPropulsion(player) && !fleet.hasEntity(player.id)) {
       const profileId = this._engineProfileIdFor(player);
       const ship = fleet.admitShip(player.id, profileId, true);
       if (ship) {
@@ -13576,7 +14161,7 @@ export const vfx = {
           energy.plasmaStream.update(
             dt,
             this._productionPlumeSocketView,
-            driveInfo,
+            plumeAchievedPicture(driveInfo, this._actuatorsFor(player)),
             this._productionThrusterA11y || {},
             player,
           );
@@ -13593,7 +14178,7 @@ export const vfx = {
     }
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
-      if (!e || !e.alive || e.type !== 'ship') continue;
+      if (!e || !e.alive || e.type !== 'ship' || isCeresWorkfleetPropulsion(e)) continue;
       if (player && e.id === player.id) continue;
       if (e.flags && e.flags.docked) continue;
       if (fleet.hadEntity(e.id)) continue;
@@ -13626,7 +14211,7 @@ export const vfx = {
     this._productionOwnedCount = owned;
     // Awake signal is thrust, not admission: a parked nearby ship must not pin the energy
     // subsystem awake (idle-sleep invariant).
-    energy.plumeDrive = diag && (diag.shipsActive - (diag.idleShips || 0)) > 0 ? 1 : 0;
+    energy.plumeDrive = latchActive > 0 || ceresActive > 0 || diag && (diag.shipsActive - (diag.idleShips || 0)) > 0 ? 1 : 0;
     // Player drive snapshot for sleep/relevance heuristics.
     if (player && player.alive) {
       const pd = this._engineDriveFor(player);
@@ -13787,6 +14372,11 @@ export const vfx = {
   },
 
   _updateProductionRcs(player, dt, a11y) {
+    if (isCeresWorkfleetPropulsion(player)) {
+      this._energy?.retroVolume?.reset();
+      this._energy?.rcsSystem?.reset();
+      return;
+    }
     const energy = this._energy;
     if (!energy) return;
     const actuators = this._actuatorsFor(player);
@@ -14017,6 +14607,8 @@ export const vfx = {
       this._energyQuietHidden = true;
       return;
     }
+    if (energy.ceresWorkfleet) energy.ceresWorkfleet.reset();
+    energy.latchNine?.reset();
     if (energy.plasmaStream) energy.plasmaStream.reset();
     if (energy.retroVolume) energy.retroVolume.reset();
     if (energy.fleet) energy.fleet.reset();
@@ -14099,6 +14691,8 @@ export const vfx = {
   _disposeEnergy() {
     this._releasePlayerPlumeEventLight();
     if (!this._energy) return;
+    this._energy.ceresWorkfleet?.dispose();
+    this._energy.latchNine?.dispose();
     if (this._energy.plasmaStream) {
       this._energy.plasmaStream.dispose();
       this._energy.plasmaStream = null;
@@ -14177,7 +14771,7 @@ export const vfx = {
         cruise: 0, reverse: 0, retroOnly: false, brake: 0,
       };
     }
-    if (!e) {
+    if (!e || isCeresWorkfleetPropulsion(e)) {
       out.drive = 0; out.throttle = 0; out.speed = 0; out.speedDrive = 0; out.boost = 0;
       out.cruise = 0; out.reverse = 0; out.retroOnly = false; out.brake = 0;
       out.dashFired = false;
@@ -14570,6 +15164,10 @@ export const vfx = {
     this._freeLightCount = this._LIGHT_NPOOL;
     // Retained as an inspectable last-grab cursor; free allocation is stack-backed.
     this._lightCur = 0;
+    // The pool mounts are a real light-census mutation (the deferred _initPools
+    // path can land after lit programs linked) — bump the epoch so the census
+    // memo and parked-lightSig compares re-verify instead of riding stale sigs.
+    noteShadowCensusLightMutation();
   },
 
   _findSustainedEventLight(key) {
@@ -14644,6 +15242,18 @@ export const vfx = {
     );
   },
 
+  // Session/sector boundary: a mid-decay flash is yesterday's spectacle — an explosion flash
+  // claimed before save:restoring must not light the restored scene at stale coordinates.
+  // Sustained slots (the player plume) are live-state presentation that re-derives from flight
+  // state every frame, so they ride through the boundary untouched.
+  _releaseTransientEventLights() {
+    const pool = this._lights;
+    if (!pool || this._activeLightCount <= 0) return;
+    for (const slot of pool) {
+      if (slot && slot.active && slot.sustainedKey == null) this._retireEventLightSlot(slot);
+    }
+  },
+
   _upsertPlayerPlumeEventLight(source) {
     const finiteSource = source && source.alive
       && Number.isFinite(source.x) && Number.isFinite(source.y) && Number.isFinite(source.z)
@@ -14681,11 +15291,47 @@ export const vfx = {
     return true;
   },
 
+  // FB-074 — every event light resolves its authored identity through the light director before
+  // it reaches the pool. A call site names the event KIND and an optional severity (a tier,
+  // phase or cause qualifier — 'capital', 'break', 'terrain', 'reactor-rupture'); the preset row
+  // supplies colour, peak, decay, distance and admission priority. Options carry only size and
+  // authored runtime sources, never a fresh identity: `color` for a colour the weapon profile,
+  // doctrine style or ore tint already owns, `peak`/`decay`/`distance`/`priority` for values an
+  // authored scaler (collisionImpactLight, force-neon metrics, LAW dimming, cue style) owns,
+  // `peakMul` for a runtime gain, `sizeMul`/`boost` for the scalePreset curve.
+  // The resolved identity lands on _lastEventLightPlan so probes/tests can audit WHICH authored
+  // plan carried the event.
+  _eventLight(pos, kind, opts) {
+    const o = opts || _FLASH_LIGHT_BLANK_OPTS;
+    const scaled = scalePreset(presetFor(kind, o.severity), o);
+    if (!scaled) return false;
+    const ok = this._flashLight(
+      pos,
+      o.color || scaled.color,
+      (o.peak != null ? o.peak : scaled.peak) * (o.peakMul != null ? o.peakMul : 1),
+      o.decay != null ? o.decay : scaled.decay,
+      o.distance != null ? o.distance : scaled.distance,
+      o.priority != null ? o.priority : scaled.priority,
+    );
+    if (ok) {
+      this._lastEventLightPlan = {
+        kind,
+        severity: o.severity || null,
+        presetColor: scaled.color,
+        color: o.color || scaled.color,
+        peak: o.peak != null ? o.peak : scaled.peak,
+      };
+    }
+    return ok;
+  },
+
   // Grab a pool light, position it at {x,z} (y lifted slightly above the plane), set its color +
   // peak intensity, and arm a decay rate. Intensity eases up over ~50ms then decays exponentially
   // — reads as a sharp flash, not a fade-in. `decayRate` ~ 6-10 (higher = snappier).
   // `color` may be a hex number (0xffb060) OR a CSS string ('#ffb060') — normalized internally.
   // `pos` is galactic-global XZ (same as entity.pos / event payloads); GPU placement is frame-local.
+  // FB-074: callers should route through _eventLight so the light director owns the identity;
+  // direct _flashLight use is reserved for sites carrying externally-authored plans.
   _flashLight(pos, color, peak, decayRate, dist, admissionPriority) {
     const pool = this._lights;
     if (!pool || !pos) return false;
@@ -15077,6 +15723,8 @@ export const vfx = {
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'projectile') continue;
+      const bodyRec = this._stepShotBody(e, dt);
+      if (bodyRec && (bodyRec.reset || bodyRec.stopped)) continue;
       const data = e.data || EMPTY_PROJECTILE_DATA;
       const recipe = resolveWeaponRecipe(data.weaponId, data);
       if (recipeUsesRibbonWake(recipe)) continue;
@@ -15349,6 +15997,7 @@ export const vfx = {
         this._retireRibbonTrail(e.id, !isPlayer);
         continue;
       }
+      if (isCeresWorkfleetPropulsion(e)) {this._retireRibbonTrail(e.id, true);continue;}
       const driveInfo = this._engineDriveFor(e);
       const speed = Math.hypot((e.vel && e.vel.x) || 0, (e.vel && e.vel.z) || 0);
       if (speed < 4 && driveInfo.drive < 0.04) {
@@ -15394,7 +16043,7 @@ export const vfx = {
       const anchorRot = presentedAnchorRot(e, anchorAlpha);
       const cf = Math.cos(anchorRot), sf = Math.sin(anchorRot);
       const back = (e.radius || 14) * 0.88;
-      const sock = this._trailSocketWorldPose(e);
+      const sock = this._wakeTrailSocketWorldPose(e);
       const anchor = presentedAnchorXZ(e, anchorAlpha, this._presentedAnchorXZScratch());
       const txG = sock ? sock.x : anchor.x - cf * back;
       const tzG = sock ? sock.z : anchor.z - sf * back;
@@ -15533,6 +16182,7 @@ export const vfx = {
     const pos = this._pPos, col = this._pCol, size = this._pSize, alpha = this._pAlpha;
     const active = this._activeParticles;
     const packedSlots = this._pPackedParticleSlots;
+    const admissionSerials = this._particleAdmissionSerial;
     let cursor = 0;
     while (cursor < this._liveCount) {
       const i = active[cursor];
@@ -15560,8 +16210,10 @@ export const vfx = {
       col[i3] = this._cr0[i] + (this._cr1[i] - this._cr0[i]) * t;
       col[i3 + 1] = this._cg0[i] + (this._cg1[i] - this._cg0[i]) * t;
       col[i3 + 2] = this._cb0[i] + (this._cb1[i] - this._cb0[i]) * t;
-      size[cursor] = this._size0[i] + (this._size1[i] - this._size0[i]) * t;
-      alpha[cursor] = 1 - t;
+      let seed = admissionSerials ? (admissionSerials[i] * 0.618033988749895) % 1 : 0.5;
+      if (seed < 0) seed += 1;
+      size[cursor] = particleLifeSize(this._size0[i], this._size1[i], t);
+      alpha[cursor] = particleLifeAlpha(t, seed);
       if (!packedSlots || packedSlots[cursor] !== i) {
         this._pTrailAxis[cursor] = this._particleTrailAxis[i];
         this._pTrailStretch[cursor] = this._particleTrailStretch[i];
@@ -15608,7 +16260,10 @@ export const vfx = {
       s.x += s.vx * dt;
       s.z += s.vz * dt;
       const scale = s.size0 + (s.size1 - s.size0) * t;
-      const op = s.op0 * (1 - t * 0.85);
+      // Hold the authored streak brightness, then erode the final stretch to nothing:
+      // the streak runs out of material instead of popping out while still 15% visible.
+      const erode = t < 0.55 ? 1 : 1 - smoothstep01((t - 0.55) / 0.45);
+      const op = s.op0 * (1 - t * 0.85) * erode;
       this._writeTrailStreakInstance(i, cursor, scale, op);
       cursor++;
     }
@@ -15640,9 +16295,13 @@ export const vfx = {
       if (t >= 1) { this._retireSprite(i); continue; }
       let scale, op;
       if (s.kind === SPR_RING) {
-        const e = easeOutCubic(t);
+        // A shock front arrives early, then cools in place: it reaches its radius while
+        // radiance is still falling, instead of expanding at full brightness to a uniform
+        // fade that dies exactly at maximum extent. Per-seed timing desynchronizes
+        // simultaneous rings so they never share one terminal beat.
+        const e = easeOutCubic(Math.min(1, t * (1.25 + 0.5 * s.seed)));
         scale = s.size0 + (s.size1 - s.size0) * e;
-        op = s.op0 * (1 - t);
+        op = s.op0 * Math.pow(1 - t, 1.15 + 0.5 * s.seed);
       } else if (s.kind === SPR_FRESNEL) {
         // shield ripple: snap out to full radius fast (rim feel), then a short bright pulse fade
         const e = easeOutCubic(Math.min(1, t * 2.2));
@@ -15651,7 +16310,9 @@ export const vfx = {
         op = s.op0 * (1 - t) * (0.6 + 0.4 * Math.cos(t * Math.PI * 3));
         if (op < 0) op = 0;
       } else if (s.kind === SPR_PUFF) {
-        scale = s.size0 + (s.size1 - s.size0) * t;
+        // Billow then settle: dust reaches most of its dilution early and hangs as a
+        // residual volume, instead of expanding at constant rate until the frame it dies.
+        scale = s.size0 + (s.size1 - s.size0) * spritePuffGrowth(t, s.seed);
         op = s.op0 + (s.op1 - s.op0) * t;
         s.x += s.vx * dt; s.z += s.vz * dt;
       } else if (s.kind === SPR_COMBUSTION) {
@@ -15726,7 +16387,7 @@ export const vfx = {
     for (let orderIndex = 0; orderIndex < smokeCount; orderIndex++) {
       const s = st[smokeOrder[orderIndex]];
       const t = s.age / s.life;
-      const scale = s.size0 + (s.size1 - s.size0) * t;
+      const scale = s.size0 + (s.size1 - s.size0) * spritePuffGrowth(t, s.seed);
       writeInstancedSpriteFields(
         this._spriteBatches,
         'smoke',
@@ -16228,6 +16889,31 @@ export function createSeamMarkerPipelineMesh({ visibleInstances = 0 } = {}) {
 // ---------------------------------------------------------------------------
 // pure helpers (module scope)
 // ---------------------------------------------------------------------------
+// Census-name socket pose for hulls whose live view carries no socket objects. Module scope so
+// the .call probe seam in test/model-truth-mounts.test.mjs keeps working with just helpers and
+// _writeTrailSocketPose on `this`.
+function namedTrailSocketPose(ctx, e, socketName) {
+  if (!socketName) return null;
+  if (ctx.helpers && ctx.helpers.socketWorldPose) {
+    const pose = ctx.helpers.socketWorldPose(e.id, socketName);
+    if (pose) {
+      return ctx._writeTrailSocketPose(
+        pose.x, pose.y || 0, pose.z,
+        pose.forwardX, pose.forwardY, pose.forwardZ,
+      );
+    }
+  }
+  if (ctx.helpers && ctx.helpers.socketWorldPos) {
+    const pos = ctx.helpers.socketWorldPos(e.id, socketName);
+    if (pos) {
+      const cf = Math.cos(e && e.rot || 0);
+      const sf = Math.sin(e && e.rot || 0);
+      return ctx._writeTrailSocketPose(pos.x, pos.y || 0, pos.z, -cf, 0, -sf);
+    }
+  }
+  return null;
+}
+
 function isNozzleSocketObject(object) {
   if (!object || !object.userData || !object.userData.spacefaceSocket) return false;
   return /^SOCKET_Engine_/i.test(String(object.name || ''));
@@ -16364,6 +17050,40 @@ function disposeVfxRoot(root, state) {
 
 function dirOf(rot) { return { x: Math.cos(rot), z: Math.sin(rot) }; }
 function easeOutCubic(x) { return 1 - Math.pow(1 - x, 3); }
+function smoothstep01(x) {
+  const t = x < 0 ? 0 : x > 1 ? 1 : x;
+  return t * t * (3 - 2 * t);
+}
+
+// Pooled-particle lifecycle: ignition is instant (a hit has no spool-up), radiance holds
+// while the fragment is compact and hot, then material erodes to nothing exactly at the
+// retirement plane. The stable per-element seed staggers hold and cooling rate, so a burst
+// thins out as fragments run out at different moments instead of blinking off together.
+function particleLifeAlpha(t, seed) {
+  const hold = 0.08 + 0.14 * seed;
+  if (t <= hold) return 1;
+  const u = (t - hold) / (1 - hold);
+  return u >= 1 ? 0 : Math.pow(1 - u, 1.5 + 1.4 * seed);
+}
+
+// Matter rhythm follows what the fragment is: dispersing matter (smoke, dust) billows out
+// fast then settles into its residual volume; a cooling fragment holds its size while hot,
+// then collapses late. Authored size0->size1 direction selects the curve.
+function particleLifeSize(size0, size1, t) {
+  if (size1 > size0) {
+    const g = 1 - (1 - t) * (1 - t);
+    return size0 + (size1 - size0) * g;
+  }
+  if (size1 < size0) {
+    const s = Math.pow(1 - t, 1.8);
+    return size1 + (size0 - size1) * s;
+  }
+  return size0;
+}
+
+// Smoke/dust billow shared by both sprite publish passes: fast early dilation, settling
+// tail, with per-seed rate so simultaneous puffs never dilate in lockstep.
+function spritePuffGrowth(t, seed) { return 1 - Math.pow(1 - t, 1.6 + seed); }
 
 function budgetInt(value) {
   const n = Number(value);

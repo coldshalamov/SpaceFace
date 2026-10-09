@@ -13,7 +13,7 @@
 // 'watch:changed'. DOM is rebuilt only when the rendered lines actually change.
 
 import { openingInstructionSolo } from './hudAttention.js';
-import { resolveWatchlist, watchKindWord, WATCHLIST_MAX } from './watchlist.js';
+import { resolveWatchlist, watchKindWord, checkWatchlistAlerts, WATCHLIST_MAX } from './watchlist.js';
 
 const REFRESH_MS = 1000;
 
@@ -64,9 +64,31 @@ export function createWatchlistHud(ctx) {
     box.style.display = '';
   }
 
+  // FB-050 — crossing announcements on the two moments market memory refreshes. One news line
+  // per fired pin; the pin's own re-arm bookkeeping lives in checkWatchlistAlerts.
+  const announce = () => {
+    if (destroyed) return;
+    const hits = checkWatchlistAlerts(state);
+    for (const hit of hits) {
+      const { pin, price, target, direction } = hit;
+      const word = direction === 'below' ? 'down to' : 'up to';
+      if (bus && typeof bus.emit === 'function') {
+        // news:publish drops records without provenance — the pin's own identity is the citation.
+        bus.emit('news:publish', {
+          text: `Watch: ${pin.label} ${word} ${target} cr — quoting ${price}.`,
+          kind: 'watchlist_price',
+          sourceRef: `watchlist:${pin.ref}@${pin.stationId}`,
+          stationId: pin.stationId || null,
+        });
+      }
+    }
+    if (hits.length) render();
+  };
   const timer = setInterval(render, REFRESH_MS);
   if (timer && typeof timer.unref === 'function') timer.unref();
   const off = bus && bus.on ? bus.on('watch:changed', render) : null;
+  const offDock = bus && bus.on ? bus.on('dock:docked', announce) : null;
+  const offEnter = bus && bus.on ? bus.on('sector:enter', announce) : null;
   render();
 
   return {
@@ -75,6 +97,8 @@ export function createWatchlistHud(ctx) {
       destroyed = true;
       clearInterval(timer);
       if (typeof off === 'function') off();
+      if (typeof offDock === 'function') offDock();
+      if (typeof offEnter === 'function') offEnter();
       if (box.parentNode) box.parentNode.removeChild(box);
     },
   };

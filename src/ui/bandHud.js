@@ -4,6 +4,7 @@ import { BAND_CHANNEL_BY_ID } from '../data/bandRadio.js';
 import QUIESSENCE_PACK from '../data/flavor/060-quiessence.js';
 import { createHudDragController } from './hudLayout.js';
 import { BINDINGS } from './bindings.js';
+import { bearingRefusalLine, paintBearingRefusal, BEARING_REFUSAL_HOLD_MS } from './orrery/bearingRefusal.js';
 
 const QUIESSENCE_INDEXES = new Set(QUIESSENCE_PACK.entries.map((entry) => entry.shipIndex));
 
@@ -38,6 +39,8 @@ export const BAND_HUD_CSS = `
     border-color:rgba(124,196,218,.86); background:rgba(8,16,28,.96); outline:none; }
   .sf-band-hud__button:focus-visible { box-shadow:0 0 0 2px rgba(124,196,218,.24); }
   .sf-band-hud__button[data-off="true"] { border-left-color:rgba(130,145,155,.5); color:rgba(174,189,202,.72); }
+  .sf-band-hud__button[data-bearing-refusal] { text-transform:none; letter-spacing:.01em; font-weight:560;
+    color:var(--dp-danger, #ff5038); white-space:normal; text-align:left; line-height:1.25; }
   @media (prefers-reduced-motion: reduce) { .sf-band-hud__button { transition:none; } }
   @media (max-width: 820px) { .sf-band-hud { right:12px; top:112px; bottom:auto; }
     .sf-band-hud__button { min-width:148px; font-size:12px; } }
@@ -75,7 +78,10 @@ export function createBandHud(ctx, options = {}) {
   let lastDataSilence = null;
   let lastAriaLabel = null;
   let lastEffectiveChannel = null;
+  let lastLive = null;
   let lastSig = null;
+  let refusalReason = null;
+  let refusalTimer = 0;
   const unsubscribers = [];
   const onClick = (event) => {
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
@@ -85,10 +91,25 @@ export function createBandHud(ctx, options = {}) {
   button.addEventListener('click', onClick);
   if (bus && typeof bus.on === 'function') {
     unsubscribers.push(bus.on('band:status', (payload) => { status = payload || null; update(); }));
+    unsubscribers.push(bus.on('band:bearingUnavailable', (payload) => {
+      refusalReason = (payload && payload.reason) || 'unavailable';
+      if (refusalTimer) clearTimeout(refusalTimer);
+      refusalTimer = setTimeout(() => {
+        refusalTimer = 0;
+        refusalReason = null;
+        update();
+      }, BEARING_REFUSAL_HOLD_MS);
+      update();
+    }));
     unsubscribers.push(bus.on('v2:flavorPresented', (payload) => {
       if (payload && payload.sourceRef === 'landmark_c14_quiessence') update();
     }));
-    unsubscribers.push(bus.on('save:loaded', () => { status = null; update(); }));
+    unsubscribers.push(bus.on('save:loaded', () => {
+      status = null;
+      refusalReason = null;
+      if (refusalTimer) { clearTimeout(refusalTimer); refusalTimer = 0; }
+      update();
+    }));
   }
 
   function update() {
@@ -105,8 +126,9 @@ export function createBandHud(ctx, options = {}) {
     // scalar projection inputs before any of the string formatting runs at all.
     const census = sourceId === 'landmark_quiessence' ? quiessenceCensusProgress(state) : null;
     const bandKeyLabel = (BINDINGS.band && BINDINGS.band.label) || 'Shift+O';
+    const refusalLine = refusalReason ? bearingRefusalLine(refusalReason) : '';
     const sig = `${channelId}|${effectiveId}|${sourceId}|${strength >= 0.72 ? 3 : strength >= 0.38 ? 2 : strength >= 0.08 ? 1 : 0}`
-      + `|${silence ? 1 : 0}|${hidden ? 1 : 0}|${census ? census.scanned + '/' + census.total : ''}|${bandKeyLabel}`;
+      + `|${silence ? 1 : 0}|${hidden ? 1 : 0}|${census ? census.scanned + '/' + census.total : ''}|${bandKeyLabel}|${refusalLine}`;
     if (sig === lastSig) return;
     lastSig = sig;
 
@@ -124,32 +146,41 @@ export function createBandHud(ctx, options = {}) {
       ? `Band tuner, ${label}, ${silence ? 'radio silence' : signalLabel(strength)}.${censusAria} Activate for next channel.`
       : 'Band tuner, off. Activate for next channel.';
     const effectiveChannel = effectiveId || 'off';
+    const shownText = refusalLine || text;
+    const shownAria = refusalLine ? `${refusalLine}.` : ariaLabel;
+    const shownLive = refusalLine ? 'polite' : 'off';
     // Signal strength is published at 5 Hz, but the chip renders four threshold buckets. Key the
     // cache to the exact DOM projection so within-bucket strength changes do not repaint identical
     // text and attributes while every visible/accessibility transition still invalidates it.
-    if (hidden === lastHidden && text === lastText && dataOff === lastDataOff
-      && dataSilence === lastDataSilence && ariaLabel === lastAriaLabel
-      && effectiveChannel === lastEffectiveChannel) return;
+    if (hidden === lastHidden && shownText === lastText && dataOff === lastDataOff
+      && dataSilence === lastDataSilence && shownAria === lastAriaLabel
+      && effectiveChannel === lastEffectiveChannel && shownLive === lastLive) return;
     lastHidden = hidden;
-    lastText = text;
+    lastText = shownText;
     lastDataOff = dataOff;
     lastDataSilence = dataSilence;
-    lastAriaLabel = ariaLabel;
+    lastAriaLabel = shownAria;
     lastEffectiveChannel = effectiveChannel;
+    lastLive = shownLive;
     root.hidden = hidden;
-    button.textContent = text;
     button.setAttribute('data-off', dataOff);
     button.setAttribute('data-silence', dataSilence);
-    button.setAttribute('aria-label', ariaLabel);
-    // Key label comes from the binding table, not a hardcode — a rebind makes "Shift+O" a lie.
     button.setAttribute('aria-keyshortcuts', bandKeyLabel);
     button.setAttribute('title', `[ ${bandKeyLabel} ] Cycle Band channel`);
     button.setAttribute('data-effective-channel', effectiveChannel);
+    if (refusalLine) paintBearingRefusal(button, refusalReason);
+    else {
+      button.textContent = text;
+      button.removeAttribute('data-bearing-refusal');
+      button.setAttribute('aria-live', 'off');
+      button.setAttribute('aria-label', ariaLabel);
+    }
   }
 
   function destroy() {
     if (destroyed) return;
     destroyed = true;
+    if (refusalTimer) { clearTimeout(refusalTimer); refusalTimer = 0; }
     button.removeEventListener('click', onClick);
     layoutDrag.destroy();
     for (const unsub of unsubscribers) {

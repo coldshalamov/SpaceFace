@@ -1,6 +1,7 @@
 // Contact portrait mounting — authored contact images with procedural canvas fallback.
 import { FACTION_META } from '../data/factions.js';
 import { portraitAssetForContact } from '../data/portraits.js';
+import { localPortraitForContact } from '../data/localPortraits.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 
@@ -53,7 +54,9 @@ export function drawProceduralAvatar(canvas, contact) {
 export function mountContactPortrait(host, contact, options = {}) {
   const className = options.className || 'st-bar-avatar';
   const size = options.size || 64;
-  const src = portraitAssetForContact(contact);
+  // Authored cast keep their own identity portrait; a procedural station local gets one face from its role's
+  // pool of distinct individuals (data/localPortraits.js); no authored face at all falls back to the canvas.
+  const src = portraitAssetForContact(contact) || localPortraitForContact(contact);
   host.textContent = '';
 
   if (src) {

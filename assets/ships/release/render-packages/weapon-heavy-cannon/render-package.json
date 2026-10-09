@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "27182d8d26bf69a34543f6ee81855458f64624504693ba6097215de775208ec1",
+  "contentHash": "a35072f296d28d00f375fdb62bcf2ceaddf3e65d65eb005879b405877f35a408",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1540,8 +1540,8 @@
       "uri": "weapon_heavy_cannon.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -1663,8 +1663,8 @@
     "materialProfileRoles": {
       "accent": 1,
       "ceramic": 1,
-      "hull": 1,
-      "mechanical": 3
+      "hull": 2,
+      "mechanical": 2
     },
     "materialProfiles": [
       {
@@ -1690,7 +1690,7 @@
       {
         "allowTextures": true,
         "planIndex": 25,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -1865,7 +1865,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_heavy_cannon.glb"
   },
-  "runtimeHash": "8cb257e4193b1143ca33faba5a29b4d78e0b48bff1a22d3becfe5ef17b089b91",
+  "runtimeHash": "682e3e661df0efd2dd59150b9c42c23e25a1cecc7e5c1f459aad1d75f8d924a9",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

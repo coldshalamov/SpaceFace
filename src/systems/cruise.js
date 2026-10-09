@@ -19,7 +19,10 @@ const STUMBLE_REARM_S = 1.5;        // s — a drop inside the window does not r
 const DAMAGE_DROP_FLOOR = 25;       // authored def.dmg — one heavy packet is a real hit at any mercy scale
 const CHIP_WINDOW_S = 1.25;         // rolling window for sustained weapon pressure
 const CHIP_WINDOW_FLOOR = 36;       // applied dmg in-window — above sustained starter fire (~31), below beams
-const DROP_REASONS = Object.freeze({ DAMAGE: 'damage', MASSLOCK: 'masslock', MANUAL: 'manual', SNARED: 'snared' });
+const DROP_REASONS = Object.freeze({
+  DAMAGE: 'damage', MASSLOCK: 'masslock', MANUAL: 'manual', SNARED: 'snared', DRIVE: 'drive',
+  BOOST: 'boost', FIRED: 'fired',
+});
 
 // Weapons whose hit IS the verb, not the damage number: EMP/subsystem spikes, latch/status
 // payloads, RCS disruptors, and deployable ordnance. Their packet reads as chip damage on the
@@ -56,10 +59,10 @@ export const cruise = {
       this._drop(DROP_REASONS.DAMAGE);
     });
     this.bus.on('ship:boostStart', (p) => {
-      if (p && p.shipId === this.state.playerId) this._cancelIfCharging(DROP_REASONS.DAMAGE);
+      if (p && p.shipId === this.state.playerId) this._cancelIfCharging(DROP_REASONS.BOOST);
     });
     this.bus.on('combat:fire', (p) => {
-      if (p && p.ownerId === this.state.playerId) this._cancelIfCharging(DROP_REASONS.DAMAGE);
+      if (p && p.ownerId === this.state.playerId) this._cancelIfCharging(DROP_REASONS.FIRED);
     });
     // Interdiction hook (encounter director ambush shape): an external snare drops cruise with
     // the full SNARED stumble. Only meaningful while cruising — otherwise a strict no-op.
@@ -81,10 +84,18 @@ export const cruise = {
     const edge = action && !this._wasCruiseAction;
     this._wasCruiseAction = action;
 
-    // Manual toggle: off→charge, charging/cruising→manual drop.
-    if (edge) {
+    // A dead main drive cannot hold the travel tier. Starting it would lock the guns
+    // for a charge the hull cannot finish. Dropping it must not yaw-stumble.
+    const driveOut = playerDriveOut(state, player);
+    if (driveOut && cruise.phase !== 'off') {
+      this._drop(DROP_REASONS.DRIVE);
+    } else if (edge) {
       if (cruise.phase === 'off') {
-        this._startCharge(cruise);
+        if (driveOut) {
+          this.bus.emit('toast', { text: 'Drive out — cruise can\'t hold', kind: 'warn', ttl: 1.6 });
+        } else {
+          this._startCharge(cruise);
+        }
       } else {
         this._drop(DROP_REASONS.MANUAL);
       }
@@ -185,12 +196,28 @@ export const cruise = {
     // Re-arm cooldown: a drop inside the window does not stack a second yaw stumble — under
     // sustained real fire the stick otherwise stays spongy for as long as the hits keep landing.
     // The authored snare always stumbles; the interdiction beat is supposed to be felt.
-    if (reason === DROP_REASONS.SNARED || cruise.stumbleCdT <= 0) {
+    if (reason !== DROP_REASONS.DRIVE && (reason === DROP_REASONS.SNARED || cruise.stumbleCdT <= 0)) {
       cruise.stumbleT = STUMBLE_S;
       cruise.stumbleCdT = STUMBLE_REARM_S;
     }
     if (reason === DROP_REASONS.SNARED) this.bus.emit('cruise:snared', { sourceId, playerId: this.state.playerId });
     this.bus.emit('cruise:dropped', { reason, was, playerId: this.state.playerId, snare: reason === DROP_REASONS.SNARED });
+    // A manual cut is the pilot's own verb. Mass lock is the one that kills cruise
+    // with no shot and no button, so it has to say why.
+    if (reason === DROP_REASONS.MASSLOCK && this.bus) {
+      this.bus.emit('toast', { text: 'Cruise dropped — mass lock', kind: 'warn', ttl: 1.6 });
+    }
+    if (reason === DROP_REASONS.DRIVE && this.bus) {
+      this.bus.emit('toast', { text: 'Drive out — cruise can\'t hold', kind: 'warn', ttl: 1.6 });
+    }
+    // kind error: a fight or a hurt hull drops warn receipts, and these two drops
+    // happen in exactly that window. Boost and firing cancel a charge without a sentence.
+    if (reason === DROP_REASONS.DAMAGE && this.bus) {
+      this.bus.emit('toast', { text: 'Cruise lost — the ship took damage', kind: 'error', ttl: 1.6 });
+    }
+    if (reason === DROP_REASONS.SNARED && this.bus) {
+      this.bus.emit('toast', { text: 'Cruise lost — mass snare', kind: 'error', ttl: 1.6 });
+    }
   },
 
   _cancelIfCharging(reason) {
@@ -216,6 +243,14 @@ export const cruise = {
     return false;
   },
 };
+
+function playerDriveOut(state, player) {
+  const book = state && state.combat && state.combat.entities;
+  if (!book || !player || player.id == null) return false;
+  const runtime = book[String(player.id)];
+  const drive = runtime && runtime.subsystems && runtime.subsystems.subsystem_drive;
+  return !!(drive && drive.effectiveDisabled === true);
+}
 
 // Query helpers used by other systems (camera, vfx, flight profile hooks).
 export function isCruising(state) {

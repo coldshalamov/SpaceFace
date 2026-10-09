@@ -1,0 +1,679 @@
+{
+  "counts": {
+    "green": 0,
+    "red": 1,
+    "rows": 1
+  },
+  "generatedBy": "scripts/model-truth-census.mjs",
+  "law": {
+    "cameraNearMarginWu": 1,
+    "flightPlaneStickOut": "max(2 WU, 12% of silhouette radius)",
+    "lodOutline": "max(4 WU, 8% of LOD0 radius)",
+    "maxProxyPrimitives": 32
+  },
+  "rows": [
+    {
+      "bounds": {
+        "center": [
+          0.248364,
+          1.400855,
+          -0.257119
+        ],
+        "max": [
+          11.178338,
+          4.21171,
+          5.121239
+        ],
+        "min": [
+          -10.681609,
+          -1.41,
+          -5.635477
+        ],
+        "size": [
+          21.859947,
+          5.62171,
+          10.756716
+        ]
+      },
+      "bytes": 1883244,
+      "collider": {
+        "kind": "convex-spine",
+        "id": "tally3:spine-v1",
+        "referenceState": "folded",
+        "compactHullWU": [
+          {
+            "x": -10.549168,
+            "z": -1.079689
+          },
+          {
+            "x": -10.545009,
+            "z": -1.327984
+          },
+          {
+            "x": -10.499655,
+            "z": -1.398245
+          },
+          {
+            "x": -8.9,
+            "z": -2.15
+          },
+          {
+            "x": -5,
+            "z": -2.3
+          },
+          {
+            "x": 2.2,
+            "z": -1.9099999999999997
+          },
+          {
+            "x": 6.1,
+            "z": -1.49
+          },
+          {
+            "x": 8.051457,
+            "z": -0.762131
+          },
+          {
+            "x": 8.076634,
+            "z": -0.732167
+          },
+          {
+            "x": 8.097053,
+            "z": -0.668623
+          },
+          {
+            "x": 8.098882,
+            "z": 0.520786
+          },
+          {
+            "x": 8.097053,
+            "z": 0.668623
+          },
+          {
+            "x": 8.094303,
+            "z": 0.687615
+          },
+          {
+            "x": 8.052662,
+            "z": 0.758095
+          },
+          {
+            "x": 6.1,
+            "z": 1.49
+          },
+          {
+            "x": 2.2,
+            "z": 1.9099999999999997
+          },
+          {
+            "x": -5,
+            "z": 2.3
+          },
+          {
+            "x": -8.9,
+            "z": 2.15
+          },
+          {
+            "x": -10.499655,
+            "z": 1.398245
+          },
+          {
+            "x": -10.545008,
+            "z": 1.327985
+          },
+          {
+            "x": -10.545836,
+            "z": 1.268709
+          }
+        ],
+        "coverageMetric": "decoded-COLLISION_HULL-XZ-to-native-compactHull-bidirectional-boundary",
+        "sourceSpineParity": true,
+        "coverageWu": 6.073788898635482e-7,
+        "stickWu": 5.655921753849088e-7,
+        "gapWu": 6.073788898635482e-7,
+        "toleranceWu": 0.00001,
+        "overTolerance": false,
+        "throatSealed": false,
+        "outline": null,
+        "worstSize": null,
+        "tally3SpineEvidence": {
+          "fit": {
+            "scale": 1,
+            "offset": [
+              0,
+              0,
+              0
+            ]
+          },
+          "assetId": "SF_PLACE_TALLY_3",
+          "nativeHullWU": [
+            {
+              "x": -10.549168,
+              "z": -1.079689
+            },
+            {
+              "x": -10.545009,
+              "z": -1.327984
+            },
+            {
+              "x": -10.499655,
+              "z": -1.398245
+            },
+            {
+              "x": -8.9,
+              "z": -2.15
+            },
+            {
+              "x": -5,
+              "z": -2.3
+            },
+            {
+              "x": 2.2,
+              "z": -1.9099999999999997
+            },
+            {
+              "x": 6.1,
+              "z": -1.49
+            },
+            {
+              "x": 8.051457,
+              "z": -0.762131
+            },
+            {
+              "x": 8.076634,
+              "z": -0.732167
+            },
+            {
+              "x": 8.097053,
+              "z": -0.668623
+            },
+            {
+              "x": 8.098882,
+              "z": 0.520786
+            },
+            {
+              "x": 8.097053,
+              "z": 0.668623
+            },
+            {
+              "x": 8.094303,
+              "z": 0.687615
+            },
+            {
+              "x": 8.052662,
+              "z": 0.758095
+            },
+            {
+              "x": 6.1,
+              "z": 1.49
+            },
+            {
+              "x": 2.2,
+              "z": 1.9099999999999997
+            },
+            {
+              "x": -5,
+              "z": 2.3
+            },
+            {
+              "x": -8.9,
+              "z": 2.15
+            },
+            {
+              "x": -10.499655,
+              "z": 1.398245
+            },
+            {
+              "x": -10.545008,
+              "z": 1.327985
+            },
+            {
+              "x": -10.545836,
+              "z": 1.268709
+            }
+          ],
+          "collider": {
+            "kind": "convex-spine",
+            "id": "tally3:spine-v1",
+            "primitives": [],
+            "compactHullWU": [
+              {
+                "x": -10.549168,
+                "z": -1.079689
+              },
+              {
+                "x": -10.545009,
+                "z": -1.327984
+              },
+              {
+                "x": -10.499655,
+                "z": -1.398245
+              },
+              {
+                "x": -8.9,
+                "z": -2.15
+              },
+              {
+                "x": -5,
+                "z": -2.3
+              },
+              {
+                "x": 2.2,
+                "z": -1.9099999999999997
+              },
+              {
+                "x": 6.1,
+                "z": -1.49
+              },
+              {
+                "x": 8.051457,
+                "z": -0.762131
+              },
+              {
+                "x": 8.076634,
+                "z": -0.732167
+              },
+              {
+                "x": 8.097053,
+                "z": -0.668623
+              },
+              {
+                "x": 8.098882,
+                "z": 0.520786
+              },
+              {
+                "x": 8.097053,
+                "z": 0.668623
+              },
+              {
+                "x": 8.094303,
+                "z": 0.687615
+              },
+              {
+                "x": 8.052662,
+                "z": 0.758095
+              },
+              {
+                "x": 6.1,
+                "z": 1.49
+              },
+              {
+                "x": 2.2,
+                "z": 1.9099999999999997
+              },
+              {
+                "x": -5,
+                "z": 2.3
+              },
+              {
+                "x": -8.9,
+                "z": 2.15
+              },
+              {
+                "x": -10.499655,
+                "z": 1.398245
+              },
+              {
+                "x": -10.545008,
+                "z": 1.327985
+              },
+              {
+                "x": -10.545836,
+                "z": 1.268709
+              }
+            ]
+          },
+          "referenceState": "folded",
+          "entityRadius": 11.42,
+          "schema": "spaceface.tally3SpineMeasurement.v1",
+          "sourceFile": "assets/ships/parts/places/place_tally_3.glb",
+          "sourceSha256": "85ae67b12d490606224052c9e2b60f9f352b3d05984e5bec4a28b85674de7f77",
+          "recipeSha256": "dc30ff8ad1dee7bffee8132bf5714fef1b88df0f72b66c275dcfa6ef8f1e1d2f",
+          "sourceReferenceState": "folded-20-degrees",
+          "sourceTransform": {
+            "rootMatrix": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "spineMatrix": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "renderScale": 1
+          },
+          "solidMeasurement": {
+            "node": "COLLISION_HULL",
+            "indexedVertexCount": 900,
+            "uniqueVertexCount": 152,
+            "triangleCount": 300,
+            "bounds": {
+              "min": [
+                -10.54916763305664,
+                -1.409999966621399,
+                -2.299999952316284
+              ],
+              "max": [
+                8.098881721496582,
+                0.8899999856948853,
+                2.299999952316284
+              ],
+              "size": [
+                18.648049354553223,
+                2.299999952316284,
+                4.599999904632568
+              ]
+            },
+            "sourceHullWU": [
+              {
+                "x": -10.54916763305664,
+                "z": -1.0796891450881958
+              },
+              {
+                "x": -10.545008659362793,
+                "z": -1.3279844522476196
+              },
+              {
+                "x": -10.499654769897461,
+                "z": -1.3982446193695068
+              },
+              {
+                "x": -8.899999618530273,
+                "z": -2.1500000953674316
+              },
+              {
+                "x": -5,
+                "z": -2.299999952316284
+              },
+              {
+                "x": 2.200000047683716,
+                "z": -1.909999966621399
+              },
+              {
+                "x": 6.099999904632568,
+                "z": -1.4900000095367432
+              },
+              {
+                "x": 8.051457405090332,
+                "z": -0.7621314525604248
+              },
+              {
+                "x": 8.076634407043457,
+                "z": -0.7321673035621643
+              },
+              {
+                "x": 8.097052574157715,
+                "z": -0.6686229705810547
+              },
+              {
+                "x": 8.098881721496582,
+                "z": 0.5207856297492981
+              },
+              {
+                "x": 8.097052574157715,
+                "z": 0.6686229705810547
+              },
+              {
+                "x": 8.094303131103516,
+                "z": 0.6876148581504822
+              },
+              {
+                "x": 8.052661895751953,
+                "z": 0.7580945491790771
+              },
+              {
+                "x": 6.099999904632568,
+                "z": 1.4900000095367432
+              },
+              {
+                "x": 2.200000047683716,
+                "z": 1.909999966621399
+              },
+              {
+                "x": -5,
+                "z": 2.299999952316284
+              },
+              {
+                "x": -8.899999618530273,
+                "z": 2.1500000953674316
+              },
+              {
+                "x": -10.499654769897461,
+                "z": 1.3982445001602173
+              },
+              {
+                "x": -10.545007705688477,
+                "z": 1.3279845714569092
+              },
+              {
+                "x": -10.545836448669434,
+                "z": 1.2687091827392578
+              }
+            ]
+          },
+          "intentionallyNonSolid": [
+            "arms",
+            "stamp",
+            "cradle",
+            "scan"
+          ],
+          "coverageMetric": "decoded-COLLISION_HULL-XZ-to-native-compactHull-bidirectional-boundary",
+          "coverageWu": 6.073788898635482e-7,
+          "stickWu": 5.655921753849088e-7,
+          "gapWu": 6.073788898635482e-7,
+          "toleranceWu": 0.00001,
+          "overTolerance": false,
+          "sourceSpineParity": true,
+          "sourceToNativeBoundaryWU": 6.073788898635482e-7,
+          "nativeToSourceBoundaryWU": 5.655921753849088e-7,
+          "receiver": {
+            "centerXZ": [
+              9.6,
+              0
+            ],
+            "sensorRadiusWU": 1.45,
+            "eligibleCargoRadiusWU": 1.2,
+            "centerToleranceWU": 0.25,
+            "conservativeSpineClearanceWU": 0.051118278503418324
+          },
+          "scope": "source geometry and native planar-spine parity only; no all-visible solid coverage, release-package, game-camera or performance acceptance"
+        }
+      },
+      "drawOffset": [
+        0,
+        0,
+        0
+      ],
+      "drawScale": 1,
+      "family": "tally-3",
+      "forwardAxis": "+X",
+      "frozenMesh": false,
+      "gameplay": {
+        "ballFactor": null,
+        "colliderId": "tally3:spine-v1",
+        "colliderKind": "convex-spine",
+        "dockRadius": null,
+        "entityRadius": 11.42,
+        "proportions": null,
+        "sizes": null
+      },
+      "id": "place_tally_3",
+      "lod": {
+        "lod0": true,
+        "lod1": true,
+        "lod2": true,
+        "note": "Source LOD presence only; no package/LOD parity claim",
+        "outlineDeltaWu": null
+      },
+      "materials": [
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Accent",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_Cyan",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavGreen",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Emissive_NavRed",
+          "role": "emissive"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Hull",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_Mechanical",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": true,
+          "doubleSided": false,
+          "name": "Material_MechanicalDark",
+          "role": "opaqueHull"
+        },
+        {
+          "additive": false,
+          "alphaMode": "OPAQUE",
+          "depthWrite": false,
+          "doubleSided": false,
+          "name": "Material_Thruster",
+          "role": "emissive"
+        }
+      ],
+      "measuredProportions": null,
+      "meshHash": null,
+      "meshes": 34,
+      "nodes": 44,
+      "note": "source geometry and native planar-spine parity only; no all-visible solid coverage, release-package, game-camera or performance acceptance",
+      "opening": null,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "proposedSkin": null,
+      "reasons": [
+        "source-spine-only-release-chain-unverified"
+      ],
+      "shell": {
+        "boundaryEdges": 74,
+        "inwardFaceFraction": 0.409,
+        "silhouetteRadius": null,
+        "sliceY": null
+      },
+      "sockets": [
+        {
+          "name": "SOCKET_Camera_Focus",
+          "position": [
+            -0.3,
+            0.8,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_CLAIM_CRADLE",
+          "position": [
+            9.6,
+            0.31,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_Engine_Main",
+          "position": [
+            -11.15,
+            -0.18,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_TALLY_SCAN",
+          "position": [
+            7.876,
+            0.54,
+            0
+          ]
+        },
+        {
+          "name": "SOCKET_TALLY_STAMP",
+          "position": [
+            -7.07,
+            2.5,
+            0
+          ]
+        }
+      ],
+      "solid": true,
+      "source": "glb",
+      "status": "red",
+      "tasteBudget": null,
+      "triangles": 24867,
+      "unmeasuredHitVolumes": [],
+      "url": "assets/ships/parts/places/place_tally_3.glb",
+      "worldSize": [
+        21.859947,
+        5.62171,
+        10.756716
+      ]
+    }
+  ],
+  "schema": "spaceface.modelTruthCensus.v1"
+}

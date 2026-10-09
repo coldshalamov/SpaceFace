@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer as createNetServer } from 'node:net';
-import { dirname } from 'node:path';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
@@ -14,6 +15,16 @@ const STALE_MODAL = !!argv.staleModal || !!argv['stale-modal'];
 const SHOT = argv.shot || `.devshots/perf/boot-flow${BAD_SAVE ? '-bad-save' : ''}.jpg`;
 const WIDTH = Number(argv.width || 1280);
 const HEIGHT = Number(argv.height || 800);
+
+// D131: the spawned dev server must NOT mount the machine save drawer. Without an
+// override, server.js falls back to the real player store (resolveMountedPlayerStoreDir)
+// whose per-request readdirSync + readFileSync of every slot file can block the shared
+// server event loop long enough for the boot contract fetch's own 15 s
+// AbortSignal.timeout (main.js loadScenarioContract) to consume the whole overlay
+// budget — the fresh-profile "boot overlay never hides, mode null" stall this check
+// kept hitting on the shared host. A mounted-but-empty temp store keeps the production
+// store code path while making the boot deterministic; mods stay unmounted.
+const PLAYER_STORE_DIR = mkdtempSync(join(tmpdir(), 'sf-boot-flow-'));
 
 const chrome = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -40,9 +51,18 @@ try {
   await cdp.send('Network.enable');
   await cdp.send('Runtime.enable');
   await cdp.send('Log.enable');
+  // Headless Chrome reports prefers-reduced-motion: reduce, so a fresh profile lands on the
+  // first-boot motionAsk gate instead of the menu (and the whole flow would measure the
+  // reduced-motion route). Emulate a normal player machine, same as probe-dod-crowded-scene.
+  await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
   await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: bootSetupScript(BAD_SAVE) });
   await cdp.send('Page.navigate', { url: String(url) });
-  await waitFor(cdp, () => snapshotExpression(), (snap) => snap.bootOverlayHidden, 15000, 'boot overlay to hide');
+  // The contract fetch owns a hard 15 s abort (main.js loadScenarioContract) that surfaces
+  // a visible .boot-error on a true failure — a merely-slow cold boot under shared-host
+  // load must not be read as that failure, so the overlay wait runs well past the
+  // contract's own cap. The abortIf arm fails fast when the overlay itself reports dead.
+  await waitFor(cdp, () => snapshotExpression(), (snap) => snap.bootOverlayHidden, 45000,
+    'boot overlay to hide', (snap) => !!snap.bootError);
 
   const menuSnap = await waitForUsableMenu(cdp);
   assert(!menuSnap.emptyPreGameHud,
@@ -71,7 +91,13 @@ try {
     assert.equal(midLoad.bootBarVisible, false, 'the retired 2px boot bar must stay hidden while the ring owns progress');
   }
 
-  const flight = await waitFor(cdp, () => snapshotExpression(), (snap) => snap.flightPlayable, 45000, 'playable flight HUD');
+  // The new-run transition does real work under headless SwiftShader — the witness trail shows
+  // authored-visuals → gpu-resources climbing for ~50-70 s on this host — and the opening
+  // package-admission settle behind it is itself bounded at 45 s
+  // (pipelineReadiness REQUIRED_PACKAGE_SETTLE_TIMEOUT_MS). A loaded shared host can therefore
+  // legitimately need ~110 s before flight publishes; 150 s keeps a true hang distinguishable
+  // (the witness trail names the parked stage) without flaking on load variance.
+  const flight = await waitFor(cdp, () => snapshotExpression(), (snap) => snap.flightPlayable, 150000, 'playable flight HUD');
   assert.equal(flight.emptyPreGameHud, false, 'flight should not be the empty pre-game HUD');
 
   if (STALE_MODAL) {
@@ -100,6 +126,7 @@ try {
   if (currentServerChild) {
     try { currentServerChild.kill(); } catch (_) {}
   }
+  try { rmSync(PLAYER_STORE_DIR, { recursive: true, force: true }); } catch (_) {}
 }
 
 async function startFreshServer() {
@@ -108,7 +135,16 @@ async function startFreshServer() {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
+    env: {
+      ...process.env,
+      SPACEFACE_PLAYER_STORE_DIR: PLAYER_STORE_DIR,
+      SPACEFACE_USER_CONTENT_DIR: '',
+    },
   });
+  // Drain the pipes: an undrained stdout/stderr can back-pressure a chatty child
+  // (same reason launchChrome drains), and the server is the check's own static host.
+  currentServerChild.stdout.on('data', () => {});
+  currentServerChild.stderr.on('data', () => {});
   await waitReachable(`http://127.0.0.1:${port}/`, currentServerChild);
   return { baseUrl: `http://127.0.0.1:${port}/` };
 }
@@ -204,6 +240,18 @@ async function waitForUsableMenu(cdp) {
       await sleep(200);
       continue;
     }
+    // First-boot motionAsk gate: locked (no ESC), and it owns the screen stack while it is up, so
+    // mainMenu never becomes visible until it is answered. Emulation should keep it off this route;
+    // if it still appears (e.g. a profile whose motionAsked marker was not persisted) answer Full,
+    // the primary choice, rather than stall the flow on an accessibility prompt a player answers.
+    if (snap.motionAskVisible) {
+      await cdp.send('Runtime.evaluate', {
+        expression: `[...document.querySelectorAll('[data-screen="motionAsk"] button')]
+          .find((b) => b.dataset && b.dataset.action === 'full')?.click()`,
+      });
+      await sleep(300);
+      continue;
+    }
     if (snap.mainMenuVisible || snap.flightPlayable) return snap;
     if (snap.emptyPreGameHud) {
       if (!emptySince) emptySince = Date.now();
@@ -217,26 +265,72 @@ async function waitForUsableMenu(cdp) {
 }
 
 async function clickButton(cdp, label, snap = null) {
+  // Exact-text match must be limited to VISIBLE buttons: several hidden screens
+  // (gameOver, crucible, saveLoad) carry same-labeled buttons earlier in DOM order
+  // than the live menu, and a DOM click on a hidden button still fires its handler
+  // (gameOver "New Game" jumps straight into loading, so the New Game screen the
+  // flow waits for never appears — the D131 fresh-profile stall signature).
   const expr = `(() => {
-    const button = [...document.querySelectorAll('button')].find((b) => (b.textContent || '').trim() === ${JSON.stringify(label)});
-    if (!button) return { ok: false, buttons: [...document.querySelectorAll('button')].map((b) => (b.textContent || '').trim()).filter(Boolean).slice(0, 16) };
+    const visible = (el) => {
+      const cs = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      return cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity || 1) > 0.05 && r.width > 2 && r.height > 2;
+    };
+    const all = [...document.querySelectorAll('button')].filter((b) => (b.textContent || '').trim() === ${JSON.stringify(label)});
+    const button = all.find(visible);
+    if (!button) {
+      return {
+        ok: false,
+        matched: all.length,
+        hiddenMatches: all.length,
+        buttons: [...document.querySelectorAll('button')].filter(visible)
+          .map((b) => (b.textContent || '').trim()).filter(Boolean).slice(0, 24),
+      };
+    }
+    const where = (button.closest('[data-screen]') || {}).dataset
+      ? button.closest('[data-screen]').dataset.screen : null;
     button.click();
-    return { ok: true };
+    return { ok: true, screen: where, action: button.dataset ? button.dataset.action || null : null };
   })()`;
   const res = await cdp.send('Runtime.evaluate', { expression: expr, returnByValue: true });
   const value = res.result?.value || {};
-  assert.equal(value.ok, true, `button "${label}" should exist; buttons=${JSON.stringify(value.buttons || [])}; snap=${JSON.stringify(snap)}`);
+  assert.equal(value.ok, true, `visible button "${label}" should exist; matched=${value.matched || 0}; buttons=${JSON.stringify(value.buttons || [])}; snap=${JSON.stringify(snap)}`);
+  return value;
 }
 
-async function waitFor(cdp, exprFactory, predicate, timeoutMs, label) {
+async function waitFor(cdp, exprFactory, predicate, timeoutMs, label, abortIf = null) {
   const start = Date.now();
   let last = null;
+  // Stall witness: a true hang must name its phase — whether window.SF exists yet,
+  // which loading stage the overlay is parked on, and whether it already surfaced a
+  // boot error. The trail records only changes so a slow boot and a dead boot read
+  // differently at a glance.
+  const trail = [];
+  let lastKey = '';
+  const witness = () => ({
+    t: Math.round(Date.now() - start),
+    sf: !!(last && last.sfPresent),
+    mode: last && last.mode || null,
+    stage: last && last.bootLoadingStage || null,
+    pct: last && last.bootLoadingPct || null,
+    bootError: last && last.bootError || null,
+  });
   while (Date.now() - start < timeoutMs) {
     last = await evalJson(cdp, exprFactory());
     if (predicate(last)) return last;
+    const key = JSON.stringify(witness());
+    if (key !== lastKey) {
+      lastKey = key;
+      trail.push(witness());
+    }
+    if (typeof abortIf === 'function' && abortIf(last)) {
+      throw new Error(`Aborted waiting for ${label} (fatal signal). Last snapshot: `
+        + `${JSON.stringify(last)}. Witness trail: ${JSON.stringify(trail.slice(-24))}`);
+    }
     await sleep(250);
   }
-  throw new Error(`Timed out waiting for ${label}. Last snapshot: ${JSON.stringify(last)}`);
+  throw new Error(`Timed out waiting for ${label}. Last snapshot: ${JSON.stringify(last)}`
+    + `. Witness trail: ${JSON.stringify(trail.slice(-24))}`);
 }
 
 async function evalJson(cdp, expression) {
@@ -263,6 +357,7 @@ function snapshotExpression() {
     const continueButton = [...document.querySelectorAll('button')]
       .find((button) => (button.textContent || '').trim() === 'Continue') || null;
     const bootOverlay = document.getElementById('boot-overlay');
+    const bootError = document.querySelector('#boot-overlay .boot-error');
     const hullText = [...document.querySelectorAll('.sf-barrow')].find((row) => /HULL/.test(row.textContent || ''))?.querySelector('.sf-barrow__num')?.textContent || '0';
     const weaponText = document.querySelector('[data-k="weapons"]')?.textContent || '';
     const classText = document.querySelector('[data-k="role"]')?.textContent || '';
@@ -275,6 +370,7 @@ function snapshotExpression() {
     const cinematicVisible = visible(document.getElementById('cinematic-splash'));
     const mainMenuVisible = visible(mainMenu);
     const newGameVisible = visible(newGame);
+    const motionAskVisible = visible(document.querySelector('[data-screen="motionAsk"]'));
     const modalOpen = document.body.classList.contains('ui-modal-open');
     const hudVisible = visible(hud);
     const backdropVisible = visible(backdrop);
@@ -282,14 +378,20 @@ function snapshotExpression() {
     return {
       bootOverlayHidden: !bootOverlay || bootOverlay.classList.contains('hidden'),
       bootBarVisible: visible(document.querySelector('#boot-overlay .boot-progress')),
+      sfPresent: !!sf,
+      bootLoadingStage: bootOverlay && bootOverlay.dataset
+        ? (bootOverlay.dataset.loadingStage || null) : null,
+      bootLoadingPct: (document.querySelector('[data-loading-pct]') || {}).textContent || '',
+      bootError: bootError ? (bootError.textContent || '') : '',
       cinematicVisible,
       mainMenuVisible,
       newGameVisible,
+      motionAskVisible,
       flightPlayable,
       hudVisible,
       bodyModalOpen: modalOpen,
       backdropVisible,
-      emptyPreGameHud: !cinematicVisible && !mainMenuVisible && !newGameVisible && !flightPlayable && hudVisible && !modalOpen,
+      emptyPreGameHud: !cinematicVisible && !mainMenuVisible && !newGameVisible && !motionAskVisible && !flightPlayable && hudVisible && !modalOpen,
       mode: state && state.mode || null,
       playerId: state && state.playerId || null,
       entityCount: state && state.entityList && state.entityList.length || 0,

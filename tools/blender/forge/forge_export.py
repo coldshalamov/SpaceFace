@@ -43,7 +43,10 @@ LOD_RATIOS = {1: 0.40, 2: 0.18}
 
 SOCKET_ROLES = {
     'SOCKET_Weapon_Front': ('weapon', (1, 0, 0)), 'SOCKET_Mining_Front': ('mining', (1, 0, 0)),
-    'SOCKET_Engine_Main': ('engine', (-1, 0, 0)), 'SOCKET_Trail_Main': ('vfx', (-1, 0, 0)),
+    'SOCKET_Weapon_Port': ('weapon', (1, 0, 0)), 'SOCKET_Weapon_Starboard': ('weapon', (1, 0, 0)),
+    'SOCKET_Engine_Main': ('engine', (-1, 0, 0)), 'SOCKET_Engine_Port': ('engine', (-1, 0, 0)),
+    'SOCKET_Engine_Starboard': ('engine', (-1, 0, 0)),
+    'SOCKET_Trail_Main': ('vfx', (-1, 0, 0)),
     'SOCKET_Trail_Port': ('vfx', (-1, 0, 0)), 'SOCKET_Trail_Starboard': ('vfx', (-1, 0, 0)),
     'SOCKET_Utility_Dorsal': ('utility', (0, 1, 0)), 'SOCKET_Cargo_Ventral': ('cargo', (0, -1, 0)),
     'SOCKET_Camera_Focus': ('camera', (1, 0, 0)), 'SOCKET_RCS_Port': ('vfx', (0, 0, -1)),

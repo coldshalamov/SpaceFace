@@ -9,6 +9,10 @@ export const BOOT_MEDIA = Object.freeze({
   poster: 'assets/cinematics/boot-visualizer.jpg',
 });
 
+/** Owner direction: the boot movie reads too slow at 1.0 — present it 15% faster.
+ * The fallback ORIGINAL movie keeps its own authored pace. */
+export const BOOT_PLAYBACK_RATE = 1.15;
+
 export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 2500,
   motionReduced = () => false, flashReduced = () => false, hidden = () => false,
   onState = () => {}, onFallback = () => {}, sources = BOOT_MEDIA } = {}) {
@@ -93,9 +97,11 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
     // start(), progress reporting nor a new loading stage resets the movie.
     video.src = source;
     video.preload = 'auto'; video.muted = true; video.loop = true;
-    video.playsInline = true; video.playbackRate = 1;
+    video.playsInline = true;
     notify('probing');
     try { video.load(); } catch (error) { fail(error?.name || 'load-failed'); return; }
+    // load() resets the rate to defaultPlaybackRate; the 15% faster pace is set after it.
+    try { video.playbackRate = source === sources.original ? 1 : BOOT_PLAYBACK_RATE; } catch {}
     play();
   }
   function refresh() {

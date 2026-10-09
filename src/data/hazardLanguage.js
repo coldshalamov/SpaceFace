@@ -14,7 +14,7 @@
 //     Zone-type colors are DERIVED from ZONE_TYPES (one source of truth); the same phenomenon
 //     keeps the same glyph across its sector-hazard and zone forms (radiation ≡ radiation_field).
 //   • hazardHints — SYSTEMS-only entry (registry, NOT UPDATE_ORDER): on the FIRST entry into a
-//     hazard *type* per session it speaks ONE counterplay hint via voice.say({channel:'warn'}),
+//     hazard *type* per session it speaks ONE counterplay hint via voice.say({channel:'tutorial'}),
 //     then stays silent for that type (tutorial-memory; packet failureMode: hint spam). It also
 //     mirrors the active hazard's language onto additive UI state (state.ui.hazardRead) for the
 //     HUD/render layer to read. No DOM, no window needed — headless-clean.
@@ -120,8 +120,17 @@ export const hazardHints = {
     this._bus = ctx && ctx.bus;
     this._state = ctx && ctx.state;
     this._hinted = new Set();   // hazard types hinted THIS session (tutorial-memory; not saved)
-    this._onHazardEnter = (p) => this._enter(p, 'hazard');
-    this._onHazardExit = (p) => this._exit(p && p.zoneType, 'hazard');
+    // hazard:enter/exit carries entityId on world-zone crossings (player-only emitters)
+    // and zoneId/siteId on machinery boundaries (implicitly the player) - honor the guard
+    // when present, pass through when absent.
+    this._onHazardEnter = (p) => {
+      if (p && p.entityId != null && p.entityId !== (this._state && this._state.playerId)) return;
+      this._enter(p, 'hazard');
+    };
+    this._onHazardExit = (p) => {
+      if (p && p.entityId != null && p.entityId !== (this._state && this._state.playerId)) return;
+      this._exit(p && p.zoneType, 'hazard');
+    };
     this._onZoneEnter = (p) => this._enter(p, 'zone');
     this._onZoneExit = () => this._exit(null, 'zone');
     this._onPhaseChanged = (p) => this._refreshClock(p);
@@ -165,7 +174,9 @@ export const hazardHints = {
     this._hinted.add(type);
     const helpers = (this._ctx && this._ctx.helpers) || {};
     if (helpers.voice && typeof helpers.voice.say === 'function') {
-      helpers.voice.say({ channel: 'warn', text: entry.hint, kind: 'hazardHint' });
+      // 'warn' is not an arbiter channel — it fell to info priority and lost the floor to
+      // barks/news exactly when the hint mattered. This is teaching, so it rides 'tutorial'.
+      helpers.voice.say({ channel: 'tutorial', text: entry.hint, kind: 'hazardHint' });
     }
   },
 
@@ -182,6 +193,24 @@ export const hazardHints = {
     if (!read) return;
     if (read.source !== source) return;              // the other overlay is still active
     if (type && read.type !== type) return;          // a different hazard took over the readout
+    // Disc-in-disc: leaving one zone may leave another same-type disc still holding the
+    // player (a machine mouth nested inside an authored field). Keep the readout while
+    // any same-type zone still contains them - and when a machine's field drops at calm
+    // onset the same law keeps the readout alive until the player crosses the charted rim.
+    if (source === 'hazard' && type) {
+      const player = state.entities && state.entities.get(state.playerId);
+      const zones = state.world && state.world.activeSector && state.world.activeSector.hazards;
+      if (player && player.pos && Array.isArray(zones)) {
+        for (const zone of zones) {
+          if (!zone || zone.type !== type || !zone.center) continue;
+          const r = Number(zone.radius);
+          if (!Number.isFinite(r) || r <= 0) continue;
+          const dx = player.pos.x - zone.center.x;
+          const dz = player.pos.z - zone.center.z;
+          if (dx * dx + dz * dz <= r * r) return;
+        }
+      }
+    }
     state.ui.hazardRead = null;
   },
 

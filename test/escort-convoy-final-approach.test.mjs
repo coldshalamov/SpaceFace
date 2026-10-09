@@ -49,6 +49,7 @@ function makeHarness({ ambushSize = 2, convoySize = 3 } = {}) {
   state.entities.set(player.id, player);
   state.entityIndex = {
     __spacefaceEntityIndexV1: true,
+    ready: true,
     byStationId: new Map([[DEST_STATION, station]]),
     stations: [station],
     shipLike: [player],

@@ -59,7 +59,7 @@ test('collect origin and keep-radius origin are the same point', () => {
   assert.deepEqual(tableLookAtOrigin(state, { x: 7, z: 9 }), { x: 7, z: 9 });
 });
 
-test('the ledger collect disc centers on the look-at so collect stays inside keep', () => {
+test('the ledger collect disc unions look-at and player so collect stays inside keep', () => {
   const LEAD = 4000;
   const state = flightState({ focus: { x: LEAD, z: 0 } });
   const collectR = residencyPrefetchRadius(tableTravelSpeed(state), 144, 50, 16 / 9, 60);
@@ -68,24 +68,33 @@ test('the ledger collect disc centers on the look-at so collect stays inside kee
   const nearLookAt = insertAsteroidFieldRock(state, {
     id: 201, pos: { x: LEAD + collectR * 0.5, z: 0 }, radius: 10,
   });
-  // Hugging the player but far behind the led look-at: keep has already dropped
-  // it, so collect feeding it would only build-then-evict on every poll.
+  // Near the player but outside the focus disc: this is the post-relocate lag
+  // cohort — collect feeds it on the player leg and keep holds it on the same leg,
+  // so it cooks during the crawl instead of popping when the glass lands.
   const nearPlayer = insertAsteroidFieldRock(state, {
     id: 202, pos: { x: -collectR * 0.5, z: 0 }, radius: 10,
+  });
+  // Outside both legs: nothing the union feeds.
+  const beyondBoth = insertAsteroidFieldRock(state, {
+    id: 203, pos: { x: LEAD + collectR * 4, z: 0 }, radius: 10,
   });
 
   const ids = collectMeshPresentationEntities(state).map((row) => row.id);
   assert.ok(ids.includes(nearLookAt.id),
-    'a row inside the look-at collect disc must be fed to the mesh pass');
-  assert.ok(!ids.includes(nearPlayer.id),
-    'a row outside the keep radius must not be collected just because it sits near the player');
+    'a row inside the look-at collect leg must be fed to the mesh pass');
+  assert.ok(ids.includes(nearPlayer.id),
+    'a row inside the player collect leg must be fed to the mesh pass during the lag');
+  assert.ok(!ids.includes(beyondBoth.id),
+    'a row outside both legs must not be collected');
 
   // The leaf's real invariant: nothing the disc feeds is immediately dropped by
-  // the residency policy measuring from the other origin.
+  // the residency policy measuring from the other origin — keep unions the legs.
   assert.equal(isEntityRenderRelevant(nearLookAt, state), true,
-    'collected rows must survive the keep-radius test on the same origin');
-  assert.equal(isEntityRenderRelevant(nearPlayer, state), false,
-    'uncollected rows must also fail keep — collect and keep cannot disagree');
+    'focus-leg rows must survive the keep test');
+  assert.equal(isEntityRenderRelevant(nearPlayer, state), true,
+    'player-leg rows must survive the keep test — collect and keep cannot disagree');
+  assert.equal(isEntityRenderRelevant(beyondBoth, state), false,
+    'a row outside both legs must also fail keep');
 });
 
 test('a live-glass entity survives the residency poll even when the activity frame omits it', () => {

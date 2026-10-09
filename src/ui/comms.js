@@ -769,6 +769,11 @@ function injectCommsCss() {
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .sf-comm__body { line-height:1.38; color:var(--hud-paper,#e7edf5); }
   .sf-comm--personal .sf-comm__body, .sf-comm--late .sf-comm__body, .sf-comm--story .sf-comm__body { color:#eaf4ff; }
+  /* Player-addressed traffic stands forward of the ambient channel noise: personal lines set one
+     step larger and brighter, ambient lines recede. Tag-only difference was unreadable at speed. */
+  .sf-comm--personal { font-size:13px; }
+  .sf-comm--personal .sf-comm__body { color:#f2f7ff; }
+  .sf-comm--ambient { opacity:.85; }
 
   /* Joined top-left utility rail: explicit words beat another ambiguous glyph. */
   .sf-comm-backlog-btn { position:absolute; left:20px; top:20px; width:66px; height:32px; z-index:1060;
@@ -807,13 +812,13 @@ function injectCommsCss() {
   .sf-comm-backlog__empty { padding:30px 16px; text-align:center; color:var(--ink-mute); font-style:italic; }
 
   /* ===== bulkhead graffiti (player's own ship) ===== */
-  .sf-bulkhead { position:absolute; left:clamp(220px, 18vw, 340px); bottom:22%; transform:none; z-index:9;
+  .sf-bulkhead { position:absolute; left:clamp(300px, 24vw, 460px); top:24%; transform:none; z-index:9;
     pointer-events:none; opacity:0; transition:opacity 1.2s ease; max-width:min(420px, 32vw); text-align:left; }
   .sf-bulkhead--visible { opacity:.22; }
   .sf-bulkhead__line { font-family:var(--mono); font-size:clamp(11px, 1.2vw, 13px); letter-spacing:.06em;
     color:#b9c4d6; text-transform:uppercase; text-shadow:0 0 12px rgba(0,0,0,.85), 0 1px 2px #000;
     transform:rotate(-1.5deg); }
-  @media (max-width: 760px) { .sf-bulkhead { left:18px; right:18px; bottom:150px; max-width:none; } .sf-bulkhead__line { font-size:12px; letter-spacing:.06em; }
+  @media (max-width: 760px) { .sf-bulkhead { left:18px; right:18px; top:auto; bottom:150px; max-width:none; } .sf-bulkhead__line { font-size:12px; letter-spacing:.06em; }
     #ui-root > #sf-comms { width:260px; top:88px; }
     .sf-comm-backlog-btn { top:12px; }
     .sf-comm { font-size:12px; padding:6px 9px; } }

@@ -1,0 +1,233 @@
+{
+  "author-top": {
+    "sourceCameraPosition": [
+      -1.8,
+      1.0,
+      32
+    ],
+    "sourceTarget": [
+      -1.8,
+      1.0,
+      0
+    ],
+    "gltfCameraPosition": [
+      -1.8,
+      32,
+      -1.0
+    ],
+    "gltfTarget": [
+      -1.8,
+      0,
+      -1.0
+    ],
+    "orthographicHorizontalWidthMetres": 22,
+    "pixelSize": [
+      1080,
+      760
+    ],
+    "frame": 0,
+    "itemAnchorPixel": [
+      689.727,
+      429.091
+    ],
+    "basis": "Blender authoring render; not shipping runtime"
+  },
+  "author-chase": {
+    "sourceCameraPosition": [
+      10,
+      -20,
+      35
+    ],
+    "sourceTarget": [
+      -1.8,
+      1.0,
+      0.7
+    ],
+    "gltfCameraPosition": [
+      10,
+      35,
+      20
+    ],
+    "gltfTarget": [
+      -1.8,
+      0.7,
+      -1.0
+    ],
+    "orthographicHorizontalWidthMetres": 23,
+    "pixelSize": [
+      1080,
+      760
+    ],
+    "frame": 0,
+    "itemAnchorPixel": [
+      641.854,
+      468.216
+    ],
+    "basis": "Blender authoring render; not shipping runtime"
+  },
+  "author-360x216": {
+    "sourceCameraPosition": [
+      -1.8,
+      -19,
+      33
+    ],
+    "sourceTarget": [
+      -1.8,
+      1,
+      0.7
+    ],
+    "gltfCameraPosition": [
+      -1.8,
+      33,
+      19
+    ],
+    "gltfTarget": [
+      -1.8,
+      0.7,
+      -1
+    ],
+    "orthographicHorizontalWidthMetres": 20.5,
+    "pixelSize": [
+      360,
+      216
+    ],
+    "frame": 0,
+    "itemAnchorPixel": [
+      233.561,
+      122.006
+    ],
+    "basis": "Blender authoring render; not shipping runtime"
+  },
+  "author-250x190": {
+    "sourceCameraPosition": [
+      -1.8,
+      -19,
+      33
+    ],
+    "sourceTarget": [
+      -1.8,
+      1,
+      0.7
+    ],
+    "gltfCameraPosition": [
+      -1.8,
+      33,
+      19
+    ],
+    "gltfTarget": [
+      -1.8,
+      0.7,
+      -1
+    ],
+    "orthographicHorizontalWidthMetres": 20.5,
+    "pixelSize": [
+      250,
+      190
+    ],
+    "frame": 0,
+    "itemAnchorPixel": [
+      162.195,
+      104.726
+    ],
+    "basis": "Blender authoring render; not shipping runtime"
+  },
+  "author-360x216-confirm": {
+    "sourceCameraPosition": [
+      -1.8,
+      -19,
+      33
+    ],
+    "sourceTarget": [
+      -1.8,
+      1,
+      0.7
+    ],
+    "gltfCameraPosition": [
+      -1.8,
+      33,
+      19
+    ],
+    "gltfTarget": [
+      -1.8,
+      0.7,
+      -1
+    ],
+    "orthographicHorizontalWidthMetres": 20.5,
+    "pixelSize": [
+      360,
+      216
+    ],
+    "frame": 24,
+    "itemAnchorPixel": [
+      233.561,
+      122.006
+    ],
+    "basis": "Blender authoring render; not shipping runtime"
+  },
+  "author-250x190-confirm": {
+    "sourceCameraPosition": [
+      -1.8,
+      -19,
+      33
+    ],
+    "sourceTarget": [
+      -1.8,
+      1,
+      0.7
+    ],
+    "gltfCameraPosition": [
+      -1.8,
+      33,
+      19
+    ],
+    "gltfTarget": [
+      -1.8,
+      0.7,
+      -1
+    ],
+    "orthographicHorizontalWidthMetres": 20.5,
+    "pixelSize": [
+      250,
+      190
+    ],
+    "frame": 24,
+    "itemAnchorPixel": [
+      162.195,
+      104.726
+    ],
+    "basis": "Blender authoring render; not shipping runtime"
+  },
+  "author-confirm-midpose": {
+    "sourceCameraPosition": [
+      10,
+      -20,
+      31
+    ],
+    "sourceTarget": [
+      -2,
+      1,
+      0.7
+    ],
+    "gltfCameraPosition": [
+      10,
+      31,
+      20
+    ],
+    "gltfTarget": [
+      -2,
+      0.7,
+      -1
+    ],
+    "orthographicHorizontalWidthMetres": 23,
+    "pixelSize": [
+      1080,
+      720
+    ],
+    "frame": 24,
+    "itemAnchorPixel": [
+      649.204,
+      448.108
+    ],
+    "basis": "Blender authoring render; not shipping runtime"
+  }
+}

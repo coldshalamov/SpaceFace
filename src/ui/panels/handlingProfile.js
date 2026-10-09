@@ -13,6 +13,7 @@
 import { SHIPS } from '../../data/ships.js';
 import { getDerivedStats } from '../../systems/ships.js';
 import { getPropulsionProfile } from '../../core/flight/propulsionCatalog.js';
+import { towableHullFor, towClassMassFor, towCoversRoster } from '../../systems/shipCapabilities.js';
 
 // The propulsion families name their numbers differently (a reaction drive has `reverseAccel` and
 // `combatSpeed`; an interceptor profile has `maxBrakeAccel` and `maxSpeed`; a freighter has
@@ -117,6 +118,12 @@ export function handlingProfileForShip(shipId, options = {}) {
   const travelCeiling = firstLive(propulsion, ['travelCeiling', 'maxSpeed']).value;
   const reverseAccel = firstLive(propulsion, HANDLING_PROFILE_AXES[3].fields).value;
   const maxYawRate = firstLive(propulsion, ['maxYawRate']).value;
+  // LG-TOW-PREDICT (row 278): tow class before you pay. The same derived block the bars
+  // read feeds the live tow law, so the prediction can never drift from the sentence
+  // shipCapabilityVerbs prints for the same fit: one law, two readers. The named hull is
+  // the one a player tow holds within 20% of the under-way bar.
+  const towClassMassT = towClassMassFor(derived);
+  const towableHull = towableHullFor(derived);
   const predictions = Object.freeze({
     combatSpeed: Number.isFinite(combatSpeed) ? combatSpeed : null,
     travelCeiling: Number.isFinite(travelCeiling) ? travelCeiling : null,
@@ -128,6 +135,10 @@ export function handlingProfileForShip(shipId, options = {}) {
       ? round3(combatSpeed / maxYawRate)
       : null,
     massLoadFactor: propulsion ? finite(propulsion.massLoadFactor, 1) : 1,
+    towClassMassT: Number.isFinite(towClassMassT) ? round3(towClassMassT) : null,
+    towableHullId: towableHull ? towableHull.id : null,
+    towableHullName: towableHull ? (towableHull.name || towableHull.id) : null,
+    towCoversRoster: towCoversRoster(derived),
   });
 
   return Object.freeze({

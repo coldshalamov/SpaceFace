@@ -34,8 +34,21 @@ across the five unit suites at 1b6478e5; baseline 11/11.
 1. Multi-hauler predation convoys: custody stamps land on every hauler but death-spill routes only
    the selected target — a second hauler's cargo would vanish. No authored encounter produces one
    today (`329-curtain-convoy.js` ships size [1,1]).
+   **LANDED 2026-10-04 (a509e1d6b):** either hauler's death spills that hauler's custody freight
+   through the existing `spawnFreightCargo` writer; side custody records keyed per carrier,
+   selected-carrier semantics unchanged; killing B no longer clears the raid on A; admission floor
+   compositional (carriers + 2, min 3); `329-curtain-convoy.js` ships size [2,2]. Pinned by
+   `test/convoy-hauler-death-spill.test.mjs` (both kill orders, conservation, no re-spill) —
+   3/3; custody/predation cluster 155/155.
 2. `carrierDestructionPending` is write-only (no reachable trigger; give it a consumer or remove
    it when next touched).
+3. **Open residual (adversarial review of a509e1d6b, 2026-10-04, LOW):** after a predation clear,
+   a side hauler's custody record mints `legalOwnerKind:'other'`, `legalOwnerStableId:null`, pods
+   `custodySourceKind:'other_carrier'` — `clearPredationBindingOnEntity` deletes `predationRole`
+   while the stamp survives, so the same hauler's freight loses its lawful-owner provenance
+   depending on spill timing vs the clear. `civilianOwner` still reads `predationRole`; it should
+   read the stamp's persisted owner. (The review's two medium findings — side-pod grabs unbooked
+   and the side-envelope save-cap eviction — were fixed by the custody follow-up lane in-tree.)
 
 ## Residuals
 

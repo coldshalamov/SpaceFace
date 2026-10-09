@@ -38,6 +38,21 @@ export const MASSLINE_PITCH_RATE_MIN = 0.82;
 export const MASSLINE_PITCH_RATE_SPAN = 0.70;
 export const MASSLINE_REEL_COOLDOWN_TICKS = 12;
 
+// CV-THROW — the ear learns the cut. Everywhere else this instrument maps energy to pitch
+// (tension→rate, strain→grit); a release's *grade* is the energy the cut kept, so the snap
+// climbs the same ladder: a razor rings highest and brightest, a merely-good cut lands flat.
+// Messy/unclassified releases never reach this table — the owned snap speaks for them.
+export const MASSLINE_RELEASE_GRADE_RATE = Object.freeze({ razor: 1.45, clean: 1.18, good: 0.94 });
+export const MASSLINE_RELEASE_GRADE_GAIN = Object.freeze({ razor: 0.85, clean: 0.78, good: 0.7 });
+function releaseGradeRate(klass) {
+  const r = MASSLINE_RELEASE_GRADE_RATE[klass];
+  return Number.isFinite(r) ? r : MASSLINE_RELEASE_GRADE_RATE.good;
+}
+function releaseGradeGain(klass) {
+  const g = MASSLINE_RELEASE_GRADE_GAIN[klass];
+  return Number.isFinite(g) ? g : MASSLINE_RELEASE_GRADE_GAIN.good;
+}
+
 function clamp(v, lo, hi) {
   const n = Number(v);
   if (!Number.isFinite(n)) return lo;
@@ -106,14 +121,28 @@ export const TETHER_TONE_ATTACK_S = 0.05;      // the bed's existing clickless e
 export const TETHER_TONE_RELEASE_S = 1 / 60;   // silence returns within a tick of release
 export const TETHER_TONE_TAUT_PHASES = Object.freeze(['capture', 'loaded', 'overload']);
 
-export function resolveTetherTone(input = {}) {
-  const tether = input.tether || null;
+/**
+ * The published line read both hum backends share: playing while the line is taut, load =
+ * the strain-folded mirror value lifted by the tow's own mass (FB-079) so a heavy tow
+ * creaks even before strain climbs. The lift only applies while playing — a slack line
+ * stays silent — and a missing or non-finite mass is exactly the bare-line read. One
+ * writer so the legacy hum and the Elementary rope voice cannot drift apart.
+ */
+export function resolveTetherLineLoad(tether, towMass) {
   const phase = String((tether && tether.phase) || '');
   const playing = !!(tether && (tether.active === true || TETHER_TONE_TAUT_PHASES.includes(phase)));
   const raw = playing
     ? (Number.isFinite(tether.load) ? tether.load : Number(tether.strain) || 0)
     : 0;
-  const load = clamp(raw, 0, 1.25);
+  const tow = Number.isFinite(towMass) ? towMass
+    : Number(tether && (tether.towMass != null ? tether.towMass : tether.towedMass));
+  const towLift = playing && Number.isFinite(tow) && tow > 0 ? clamp(tow / 200, 0.2, 1) : 0;
+  return { playing, load: Math.max(clamp(raw, 0, 1.25), towLift) };
+}
+
+export function resolveTetherTone(input = {}) {
+  const tether = input.tether || null;
+  const { playing, load } = resolveTetherLineLoad(tether, input.towMass);
   const motionScale = input.motionReduce ? TETHER_TONE_MOTION_REDUCE : 1;
   const duck = Number.isFinite(input.duck) ? clamp(input.duck, 0, 1) : 1;
   return Object.freeze({
@@ -160,7 +189,7 @@ export function resolveMasslineInstrument(input = {}) {
   const caption = MASSLINE_CAPTIONS[event];
   const rate = event === 'strain' || event === 'reel'
     ? masslinePitchRate(event === 'reel' ? Math.min(1, reelDelta(input) * 4 + tension) : tension)
-    : event === 'release' ? 1.18
+    : event === 'release' ? releaseGradeRate(klass)
       : event === 'break' ? 0.92
         : event === 'bridle' ? 1.0
           : 1.0;
@@ -177,7 +206,7 @@ export function resolveMasslineInstrument(input = {}) {
     grit: Math.round(grit * 1000) / 1000,
     humHz: Math.round(masslineHumHz(strain) * 100) / 100,
     gain: event === 'break' ? 0.92
-      : event === 'release' ? 0.78
+      : event === 'release' ? releaseGradeGain(klass)
         : event === 'reel' ? 0.42 + grit * 0.28
           : event === 'bridle' ? 0.7
             : event === 'strain' ? 0.55 + grit * 0.3

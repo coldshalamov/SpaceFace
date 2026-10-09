@@ -18,6 +18,7 @@ import {
 import { createSquadFrameDirector } from './squadFrame.js';
 import { temperamentFor } from './temperament.js';
 import {
+  REFLEX_KIND,
   emptyReflexState,
   evaluateReflexes,
   reflexAllowedForIntent,
@@ -27,6 +28,118 @@ function bodyRadius(body) {
   const measured = Number(body && body.planarRadius);
   if (measured > 0) return measured;
   return Number(body && body.radius) || 0;
+}
+
+const GAP_QUEUE_PAD = 4;
+// Braking deceleration assumed by the choreography slot chase's arrival damping. Deliberately
+// conservative (real hulls brake harder), so the cap opens early and never strafes a chase.
+const COMMIT_ARRIVAL_BRAKE = 60;
+
+/**
+ * Waiting points behind a narrow gap. Centers are separated by each hull's own
+ * clearance (body radius, not collisionRadius) in stable id order. Returns null
+ * when fewer than two hulls are waiting or the gap is wide enough to pass abreast.
+ * Does not write radius or collisionRadius.
+ */
+export function gapWaitingPositions(anchor, members, obstacles) {
+  const roster = [];
+  for (const member of members || []) {
+    if (!member || !member.pos) continue;
+    if (!Number.isFinite(member.pos.x) || !Number.isFinite(member.pos.z)) continue;
+    roster.push(member);
+  }
+  if (roster.length < 2 || !anchor || !Number.isFinite(anchor.x) || !Number.isFinite(anchor.z)) return null;
+  const gap = narrowWaitingGap(obstacles, roster);
+  if (!gap) return null;
+  const near = Math.hypot(anchor.x - gap.mouth.x, anchor.z - gap.mouth.z);
+  let largest = 0;
+  for (const member of roster) largest = Math.max(largest, bodyRadius(member));
+  if (near > largest * 2 + gap.width + 40) return null;
+  const ordered = roster.slice().sort((a, b) => {
+    const as = String(a.id);
+    const bs = String(b.id);
+    if (as < bs) return -1;
+    if (as > bs) return 1;
+    return 0;
+  });
+  let cx = 0;
+  let cz = 0;
+  for (const member of ordered) {
+    cx += member.pos.x;
+    cz += member.pos.z;
+  }
+  cx /= ordered.length;
+  cz /= ordered.length;
+  let bx = cx - gap.mouth.x;
+  let bz = cz - gap.mouth.z;
+  const bl = Math.hypot(bx, bz);
+  if (bl < 1e-4) {
+    bx = -gap.axis.x;
+    bz = -gap.axis.z;
+  } else {
+    bx /= bl;
+    bz /= bl;
+  }
+  const points = new Map();
+  let cursor = 0;
+  for (const member of ordered) {
+    const radius = bodyRadius(member);
+    cursor += radius;
+    points.set(member.id, {
+      x: gap.mouth.x + bx * cursor,
+      z: gap.mouth.z + bz * cursor,
+    });
+    cursor += radius + GAP_QUEUE_PAD;
+  }
+  return points;
+}
+
+function narrowWaitingGap(obstacles, members) {
+  const solids = [];
+  for (const contact of obstacles || []) {
+    if (!contact || !contact.pos) continue;
+    if (contact.kind === ContactKind.SHIP && contact.alive !== false) continue;
+    const tags = contact.tags;
+    const solid = contact.kind === ContactKind.HAZARD || (Array.isArray(tags) && tags.includes('solid'));
+    if (!solid) continue;
+    solids.push(contact);
+  }
+  if (solids.length < 2) return null;
+  const radii = members.map((member) => bodyRadius(member)).sort((a, b) => b - a);
+  const abreast = (radii[0] || 0) + (radii[1] || 0);
+  let best = null;
+  for (let i = 0; i < solids.length; i++) {
+    for (let j = i + 1; j < solids.length; j++) {
+      const a = solids[i];
+      const b = solids[j];
+      const dx = b.pos.x - a.pos.x;
+      const dz = b.pos.z - a.pos.z;
+      const dist = Math.hypot(dx, dz);
+      if (!(dist > 1e-4)) continue;
+      const width = dist - bodyRadius(a) - bodyRadius(b);
+      if (!(width > 0) || width >= abreast) continue;
+      const mouthT = (bodyRadius(a) + width * 0.5) / dist;
+      const mouth = { x: a.pos.x + dx * mouthT, z: a.pos.z + dz * mouthT };
+      const candidate = { width, mouth, axis: { x: dx / dist, z: dz / dist } };
+      if (!best || width < best.width) best = candidate;
+    }
+  }
+  return best;
+}
+
+function queuedGapSlot(self, anchor, ships, obstacles) {
+  const members = [];
+  if (self && self.pos) members.push(self);
+  for (const contact of ships || []) {
+    if (!contact || contact.kind !== ContactKind.SHIP || !contact.pos) continue;
+    if (self && contact.id === self.id) continue;
+    if (self && self.team != null && contact.team !== self.team) continue;
+    if (contact.alive === false) continue;
+    members.push(contact);
+  }
+  const points = gapWaitingPositions(anchor, members, obstacles);
+  if (!points || !self) return null;
+  return points.get(self.id) || null;
 }
 
 export const MANEUVER_SPEED_CAPS = Object.freeze({
@@ -84,6 +197,15 @@ const DEFAULTS = Object.freeze({
   escapeSpeed: MANEUVER_SPEED_CAPS.escapeSpeed,
   clearDeadlockSpeed: 82,
   maxOrbitClosingSpeed: 24,
+  // SF-2b (#4): the 24 WU/s orbit closing cap is a ring-keeping brake. Applied to a hull far
+  // outside its ring it parked strikers at ~290 WU for the whole strike window, so beyond
+  // ring + orbitFarClosingMargin the orbit closes at intercept pace (x orbitFarClosingScale).
+  orbitFarClosingMargin: 60,
+  orbitFarClosingScale: 1.5,
+  // SF-2b (#4): a lateral burst reflex (volley jink / hit weave) owns the strafe channel at this
+  // authority. At the kind's own authority (0.24 intercept) and with the x0.35 closing-brake cut a
+  // jink moved the hull ~3 WU, so a dodge never made a shot miss.
+  reflexStrafeAuthority: 0.7,
   maxApproachClosingSpeed: 34,
   friendlySeparationRadius: 118,
   friendlySeparationWeight: 0.82,
@@ -196,7 +318,7 @@ export class ManeuverPlanner {
       breakFormation: directive.formation.breakFormation,
       reason: 'no_behavior_intent',
     };
-    const intent = choreo ? applyChoreographyIntent(baseIntent, choreo, selfPose) : baseIntent;
+    let intent = choreo ? applyChoreographyIntent(baseIntent, choreo, selfPose) : baseIntent;
     const contacts = Array.isArray(perception.contacts) ? perception.contacts : [];
     const contactIndex = this.contactIndexing ? this._contactIndexFor(perception) : null;
     const target = intent.targetId == null
@@ -205,6 +327,18 @@ export class ManeuverPlanner {
         ? contactIndex.byId.get(intent.targetId) || null
         : findContactById(contacts, intent.targetId, this.workCounters);
     const contactSource = contactIndex || { ships: contacts, tethers: contacts, obstacles: contacts };
+    // Two unequal hulls holding one slot behind a narrow gap queue by hull clearance.
+    // A wide gap or a solo hull keeps the shared slot. collisionRadius is never written.
+    if (!choreo && intent.breakFormation !== true
+      && (intent.kind === ManeuverKind.HOLD || intent.kind === ManeuverKind.FORMATION)) {
+      const queued = queuedGapSlot(
+        selfPose,
+        intent.formationSlot || selfPose.pos,
+        contactSource.ships,
+        contactSource.obstacles,
+      );
+      if (queued) intent = { ...intent, formationSlot: { x: queued.x, z: queued.z } };
+    }
     // The sensor frame carries no angular-velocity channel, so differentiate the wrapped
     // heading between plan calls; the yaw request below closes on this measured rate
     // (see yawRateTorqueFor).
@@ -380,6 +514,13 @@ export class ManeuverPlanner {
         }
       }
     }
+    if (kind === ManeuverKind.ORBIT && target) {
+      const ringRadius = Number.isFinite(intent.preferredRange) ? intent.preferredRange : this.config.orbitRadius;
+      if (distance2(selfPose.pos, target.pos) > ringRadius + this.config.orbitFarClosingMargin) {
+        envelope.maxClosingSpeed = this.config.interceptSpeed * this.config.orbitFarClosingScale *
+          (hullScale && hullScale.closing > 0 ? hullScale.closing : 1);
+      }
+    }
     const closing = target ? closingSpeed(selfPose, target) : 0;
     const localClosingLimit = target
       ? closeApproachLimit(kind, intent, selfPose, target, this.config, envelope.maxClosingSpeed)
@@ -401,19 +542,23 @@ export class ManeuverPlanner {
     const tracked = desired.control === 'track' && desired.desiredPos && kind !== ManeuverKind.CLEAR_DEADLOCK;
     let rawForward;
     let rawRight;
+    const lateralBurst = isLateralBurst(reflex);
+    const strafeAuthority = lateralBurst
+      ? Math.max(strafeAuthorityForKind(kind), this.config.reflexStrafeAuthority)
+      : strafeAuthorityForKind(kind);
     if (tracked) {
       const axes = desiredAxes(selfPose, desired, desiredUnit, hullScale, this.config);
       rawForward = allowReverse ? axes.forward : Math.max(0, axes.forward);
-      rawRight = axes.right * strafeAuthorityForKind(kind);
+      rawRight = axes.right * strafeAuthority;
       if (Math.abs(angleError) > turnGate) rawForward *= 0.35;
       if (envelope.maxSpeed > 0 && speed > envelope.maxSpeed) rawForward *= throttle;
     } else {
       rawForward = (allowReverse ? forwardDot : Math.max(0, forwardDot)) * throttle;
-      rawRight = rightDot * throttle * strafeAuthorityForKind(kind);
+      rawRight = rightDot * (lateralBurst ? Math.max(throttle, this.config.reflexStrafeAuthority) : throttle) * strafeAuthority;
     }
     if (speedLimited || (!intent.crossingLane && closingLimited)) {
       rawForward = Math.min(rawForward, speedLimited ? 0.04 : 0.18);
-      if (!intent.crossingLane) {
+      if (!intent.crossingLane && !lateralBurst) {
         rawRight *= 0.35;
       }
     }
@@ -436,7 +581,7 @@ export class ManeuverPlanner {
       forward: rawForward,
       right: rawRight,
       torqueYaw: rawTorqueYaw,
-    }, this.config, { emergency: emergencyManeuver, slew: hullScale.slew * poiseSlew });
+    }, this.config, { emergency: emergencyManeuver || lateralBurst, slew: hullScale.slew * poiseSlew });
 
     const boostWanted = ((kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
       speed < envelope.maxSpeed * 0.85 && Math.abs(angleError) < 0.78)
@@ -870,15 +1015,24 @@ function commitPoint(self, point, commitSpeed, feedVel = ZERO_VEL) {
   const distance = Math.hypot(dx, dz);
   const inv = distance > 1e-9 ? 1 / distance : 0;
   const speed = Math.max(8, commitSpeed || 0);
+  // Arrival damping: a formation slot is a place, not a direction. The raised pursuit caps
+  // made full-speed slot chases overshoot and oscillate around the slot — formation mates
+  // crossed centers and ground hull-to-hull during settle and reform (M6 left↔right at
+  // spawn, lead↔left in the reform turn). Cap the SELF-driven approach by the braking
+  // distance to the slot, on top of the slot's own recede rate along the bearing — a
+  // receding slot is pursued at full cap, a settled slot glides in.
   const feed = feedVel || ZERO_VEL;
+  const recede = distance > 1e-9 ? ((feed.x || 0) * dx + (feed.z || 0) * dz) * inv : 0;
+  const arriveSpeed = recede + Math.sqrt(2 * COMMIT_ARRIVAL_BRAKE * Math.max(0, distance - 6));
+  const chase = Math.min(speed, Math.max(speed * 0.35, arriveSpeed));
   return {
     x: dx,
     z: dz,
     arrivalDistance: distance,
     desiredPos: target,
     desiredVel: {
-      x: (feed.x || 0) * 0.35 + dx * inv * speed,
-      z: (feed.z || 0) * 0.35 + dz * inv * speed,
+      x: (feed.x || 0) * 0.35 + dx * inv * chase,
+      z: (feed.z || 0) * 0.35 + dz * inv * chase,
     },
     control: 'track',
   };
@@ -1109,6 +1263,11 @@ function motionEnvelope(kind, intent, arrival, formationDistance, formationBound
     maxSpeed: maxSpeed * speed,
     maxClosingSpeed: Number.isFinite(maxClosingSpeed) ? maxClosingSpeed * closing : maxClosingSpeed,
   };
+}
+
+function isLateralBurst(reflex) {
+  return !!reflex && (reflex.kind === REFLEX_KIND.VOLLEY_JINK || reflex.kind === REFLEX_KIND.HIT_WEAVE) &&
+    Math.abs(reflex.lateral || 0) >= 0.5;
 }
 
 function strafeAuthorityForKind(kind) {

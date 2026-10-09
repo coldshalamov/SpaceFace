@@ -29,6 +29,20 @@ function swarmEnemyIds() {
   return [...new Set([...SWARM_ROSTER.map((r) => r.enemyId), ...champions])];
 }
 
+/**
+ * The subset that can hold you in a fight — every archetype above EXCEPT one-way ordnance.
+ * A kamikaze hull (detonator_dart today) makes exactly one terminal run: it never orbits
+ * your firing arc, never screens you, and never creates the attrition-you-cannot-leave
+ * these guards measure. Its authored counterplay is intercept — fragile hull, throw-class
+ * mass, a counter hint that reads kill-at-range / shove / tether — not outrun: its own
+ * fixture pins it as the fastest thing in the room. A warhead every starter outran in a
+ * straight line would be a wave slot that does nothing, so "can you out-run them" is a
+ * question asked of the sustained roster, not of the ordnance flying through it.
+ */
+function sustainedCombatIds() {
+  return swarmEnemyIds().filter((id) => ENEMY_BY_ID.get(id).aiArchetype !== 'kamikaze');
+}
+
 /** The derived flight model of a starter package, as the game builds it. */
 function starterFlight(pkg) {
   const ship = SHIPS.find((s) => s.id === pkg.hullId);
@@ -44,7 +58,7 @@ test('every swarm archetype resolves, so the comparison below is over the real r
 });
 
 test('BREAK: every starter hull out-runs everything the swarm can field', () => {
-  const fastest = Math.max(...swarmEnemyIds().map((id) => ENEMY_BY_ID.get(id).maxSpeed));
+  const fastest = Math.max(...sustainedCombatIds().map((id) => ENEMY_BY_ID.get(id).maxSpeed));
   for (const pkg of COMBAT_LAB_STARTER_PACKAGES) {
     const { derived } = starterFlight(pkg);
     assert.ok(
@@ -56,7 +70,7 @@ test('BREAK: every starter hull out-runs everything the swarm can field', () => 
 });
 
 test('TURN: every starter hull out-turns everything the swarm can field', () => {
-  const spinniest = Math.max(...swarmEnemyIds().map((id) => ENEMY_BY_ID.get(id).turnRate));
+  const spinniest = Math.max(...sustainedCombatIds().map((id) => ENEMY_BY_ID.get(id).turnRate));
   for (const pkg of COMBAT_LAB_STARTER_PACKAGES) {
     const { derived } = starterFlight(pkg);
     assert.ok(
@@ -98,6 +112,6 @@ test('the rope hull carries the drive it needs, not just the rope', () => {
     'it starts with a drive fitted',
   );
   const { derived } = starterFlight(rig);
-  const fastest = Math.max(...swarmEnemyIds().map((id) => ENEMY_BY_ID.get(id).maxSpeed));
+  const fastest = Math.max(...sustainedCombatIds().map((id) => ENEMY_BY_ID.get(id).maxSpeed));
   assert.ok(derived.maxSpeed > fastest * 1.2, 'and clears the roster with room, not by a hair');
 });

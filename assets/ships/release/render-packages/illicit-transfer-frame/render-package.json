@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "68dcad8cd81d9d1efc1a3baea091f6fa95e135601ad6bf95c15fb8093d8acbb6",
+  "contentHash": "ae980df2f0a7f8ce647ca8e1ae645132a70a8da6af1a5b51e6bf9befdc307b95",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2094,8 +2094,8 @@
       "uri": "place_illicit_transfer_frame.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -2206,7 +2206,9 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 24,
+      "hull": 21,
+      "rubber": 1,
+      "signal": 2,
       "warning": 1
     },
     "materialProfiles": [
@@ -2293,7 +2295,7 @@
       {
         "allowTextures": false,
         "planIndex": 21,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2308,7 +2310,7 @@
       {
         "allowTextures": false,
         "planIndex": 25,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2333,7 +2335,7 @@
       {
         "allowTextures": false,
         "planIndex": 32,
-        "role": "hull"
+        "role": "rubber"
       }
     ],
     "nodeCount": 33,
@@ -3018,7 +3020,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_illicit_transfer_frame.glb"
   },
-  "runtimeHash": "d3955cb47a91b184a102238909025a865016ead56722272e58260bf46e6e951d",
+  "runtimeHash": "27d0e94492c001b298b1b1f76609af24177bb2b9e3c33b35a66be2895531abd0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -1,0 +1,47 @@
+{
+  "status": "New portable regeneration recipe; no art acceptance, runtime admission or byte identity promise",
+  "copies": [
+    {
+      "portablePath": "recipes/charger/build_charger.py",
+      "historicalPath": "design/visual-assets/brood-charger-unfinished/source/build_charger.py",
+      "historicalSHA256": "a968df8e4134dbc2169f50d50e2d184f6cf7e85d05799820b75ff0051d3c07a3",
+      "changes": "Explicit input/output/contract/Forge paths; Charger disables optional rendering. Geometry, material and motion algorithms retained."
+    },
+    {
+      "portablePath": "recipes/charger/assemble_candidate.py",
+      "historicalPath": "design/visual-assets/brood-charger-unfinished/source/assemble_candidate.py",
+      "historicalSHA256": "40f521a4f54d58d9715aa9b577676819457cdf6d4bcc851492956304d4c86ee6",
+      "changes": "Explicit input/output/contract/Forge paths; Charger disables optional rendering. Geometry, material and motion algorithms retained."
+    },
+    {
+      "portablePath": "recipes/charger/bake_motion.py",
+      "historicalPath": "design/visual-assets/brood-charger-unfinished/source/bake_motion.py",
+      "historicalSHA256": "7a321a6a08190a2d20ab871be8e378774a92259e05f98225d50d7b64ac1dec38",
+      "changes": "Explicit input/output/contract/Forge paths; Charger disables optional rendering. Geometry, material and motion algorithms retained."
+    },
+    {
+      "portablePath": "recipes/charger/verify_source.py",
+      "historicalPath": "design/visual-assets/brood-charger-unfinished/source/verify_source.py",
+      "historicalSHA256": "619efd796b81e53c651ddec0e103971f84899d0d9db5ddbe4d7bf5589df21ba8",
+      "changes": "Explicit input/output/contract/Forge paths; Charger disables optional rendering. Geometry, material and motion algorithms retained."
+    },
+    {
+      "portablePath": "recipes/mite/export_lods.py",
+      "historicalPath": "design/visual-assets/brood-mite-unfinished/source/export_lods.py",
+      "historicalSHA256": "92efe9d944f374d8573ad4a312f765bfa7c72c812cb4137c14a0b5e4016029eb",
+      "changes": "Explicit input/output/contract/Forge paths; Charger disables optional rendering. Geometry, material and motion algorithms retained."
+    },
+    {
+      "portablePath": "recipes/mite/assemble_candidate.py",
+      "historicalPath": "design/visual-assets/brood-mite-unfinished/source/assemble_candidate.py",
+      "historicalSHA256": "e4ce45f7205b9f5b3548ccc84658c28e095e1faf5691241655d26ee06461ab6e",
+      "changes": "Explicit input/output/contract/Forge paths; Charger disables optional rendering. Geometry, material and motion algorithms retained."
+    }
+  ],
+  "addedFrozenInput": {
+    "path": "inputs/frozen-mite-motion.json",
+    "historicalPath": "brood-mite-redesign/contracts/frozen-mite-motion.json",
+    "sha256": "a3f50bf6c71d105e0cb6d9e4c48e2082e866a590d1de64907ee2550813c42053",
+    "reason": "Historical Mite assembler requires this file; absent from the original 39-file review manifest. Exact original bytes preserved here."
+  }
+}

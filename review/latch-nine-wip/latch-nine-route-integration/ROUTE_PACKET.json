@@ -1,0 +1,100 @@
+{
+  "id": "SF20-01-route-observer",
+  "status": "local-review-only-release-unpromoted",
+  "prerequisitePatchSha256": "5b30771fbd1e82cf6c0298d8f74f1a02fc3aa3fefe5470d2529b31ff35601ee7",
+  "syntheticLocalCommit": "fb82ae219767441fd70cc033a44cbf59f2c6cecc",
+  "patchSha256": "abcd840e961c7d401fbf2e85022cf30431775e903f4811e08ff63e63cc9637a6",
+  "files": [
+    {
+      "path": "src/core/registry.js",
+      "preimageSha256": "4042d8344b3cdfc21d791f93875d4a2b32970cf320e1c06339d1654c123b0284",
+      "postimageSha256": "f2b5a1d7a4b82be1273a3d3fc330ddbec5424b37fc4ae576cef58458e343250e",
+      "bytes": 57953
+    },
+    {
+      "path": "src/core/runReset.js",
+      "preimageSha256": "991f246a7be808c4f1b6c3402626a5cd7c476c5c274d67b8d28fe93548665631",
+      "postimageSha256": "0407a27b03dd0340476d83e0044a4cfcc62614881c5feeb716fdc0a4be55c4fc",
+      "bytes": 3131
+    },
+    {
+      "path": "src/runtime/authoritativeSystemManifest.js",
+      "preimageSha256": "b102309b94cd173f39b7bc180a94c57abffcf290c65b77e12a1c2bc9bcc48aa1",
+      "postimageSha256": "0386954b6f6ed6ccd8aa286f76187f23a134ea463ce384128cb96d11e6105f82",
+      "bytes": 27858
+    },
+    {
+      "path": "src/runtime/nodeSystemFactoryTable.js",
+      "preimageSha256": "95539776639bf886dc59a6a5cbf98c19223c751bb51e4cade8083c21b624a243",
+      "postimageSha256": "17b9c80abf9735b29e1bcb9f77d365f2c5dd8f4debfb490dd982097b258829c8",
+      "bytes": 18931
+    },
+    {
+      "path": "src/save/saveSystem.js",
+      "preimageSha256": "44f473f9038563d6dec96139c5ed810092ef14d23111b323327b457142a7fbdb",
+      "postimageSha256": "97f91fa7ae830f4701a8d362db57c781f72a81f310b634ec42c50867af1d5b97",
+      "bytes": 354133
+    },
+    {
+      "path": "src/ui/uiRoot.js",
+      "preimageSha256": "74e834c0fb6d6a76d70d6b12557a755c1c2d00f421bf63f819014186075fec03",
+      "postimageSha256": "e5678eb639cb25904cc22b6f8ae0602f006434c74354cf30f0e4ea2284ac49a8",
+      "bytes": 102131
+    },
+    {
+      "path": "src/ui/dockStateCommit.js",
+      "preimageSha256": null,
+      "postimageSha256": "adc05ab92713b1ee2f538856e4dff6bdcfc09c59dc4c994b027b9214097861d5",
+      "bytes": 1177
+    },
+    {
+      "path": "src/data/latchNine.js",
+      "preimageSha256": null,
+      "postimageSha256": "6731a9199fe2b33e15f3b37e5a9410c669ce68948f170db89b308dd85f9a6223",
+      "bytes": 2402
+    },
+    {
+      "path": "src/systems/latchNine.js",
+      "preimageSha256": null,
+      "postimageSha256": "5614769d4e7ba61d7b3829279f914fbe411f06240400577cd617602277794f6c",
+      "bytes": 5569
+    },
+    {
+      "path": "src/systems/latchNineService.js",
+      "preimageSha256": "182149ef6e428ed9a5eb82846b41fba76e422cfdaf3ea7dafa5a0ec54aeea434",
+      "postimageSha256": "c1961a62d4c94a34a3a8f39261067a8f5c72b27fb8e99645ee6dc78388b83450",
+      "bytes": 9193
+    },
+    {
+      "path": "test/latch-nine-runtime.test.mjs",
+      "preimageSha256": null,
+      "postimageSha256": "a16565da5904a22733f26de12438c9d2b191ed2ef1ffb80fa4afd05e0d5caab0",
+      "bytes": 16744
+    },
+    {
+      "path": "src/ui/input.js",
+      "preimageSha256": "2f4929054d6cddb4c9370bc26c132ab0159e7fa5ed765dc07bde9ab763350377",
+      "postimageSha256": "88dfc4ed5133e34985f674cc48edd97b11d2bbb5ee1c8ee1ed4b3317c479175d",
+      "bytes": 53685
+    },
+    {
+      "path": "src/systems/world.js",
+      "preimageSha256": "9851a5039dfd38e16ce7799ba99cf0b65aeab19d4bca84572da0c042a9ec8de2",
+      "postimageSha256": "66a13213fbb64dd92f7d9696d5ae74f3c6026e04bc08c78e0be187da022e534f",
+      "bytes": 335224
+    },
+    {
+      "path": "src/core/dockIntent.js",
+      "preimageSha256": null,
+      "postimageSha256": "7b7b172f3ff43e8eee32f0bdea441a1382c10d4e9903b4b1d59ea0fe29a2c7f9",
+      "bytes": 2073
+    }
+  ],
+  "tests": {
+    "focused": 46,
+    "pass": 46,
+    "fullNormalRoute": "not run; missing accepted model",
+    "fullSaveContinue": "not run; real Save hooks tested with narrow fixtures"
+  },
+  "promotion": false
+}

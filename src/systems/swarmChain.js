@@ -105,6 +105,10 @@ export const swarmChain = {
     this._reset();
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p)));
+    // SWARM-07 B1 — the Brood tier's deaths are not entity kills (brood are not entities), so
+    // they arrive as batched receipts from the brood engine. The chain owner stays the sole
+    // writer of chain state: this path walks the same continue/step/milestone logic per body.
+    this._unsubs.push(this.bus.on('swarm:broodKills', (p) => this._onBroodKills(p)));
     this._unsubs.push(this.bus.on('run:ended', () => this._onRunEnded()));
   },
 
@@ -233,6 +237,44 @@ export const swarmChain = {
     // instead of calculating a second score of its own. INF-031. `at` anchors the readout's
     // depletion mark to the same sim clock the lapse check runs on — slow time and pause
     // slow and freeze the mark with the window itself. INF-032.
+    this._emit('swarm:chain', { chain: this._chain, best: this._best, cause, step, at: now, wave: run.wave });
+  },
+
+  /**
+   * SWARM-07 B1 — one brood-kill receipt from the Brood tier. Every body in the batch walks the
+   * same continue/step logic an entity kill uses, so a 40-body room wipe climbs the chain
+   * exactly as 40 ship kills would. The receipt is the once-only accounting: the engine kills
+   * each body once, and nothing else consumes brood deaths.
+   */
+  _onBroodKills(payload) {
+    const run = liveSwarmRun(this.state);
+    if (!run || !payload) return;
+    const count = Math.max(0, Math.trunc(Number(payload.count) || 0));
+    if (count <= 0) return;
+    const now = simTimeOf(this.state);
+    const cause = typeof payload.cause === 'string' && payload.cause ? payload.cause : null;
+    let step = 0;
+    for (let i = 0; i < count; i++) {
+      const continues = this._chain > 0 && (now - this._lastKillAt) <= SWARM_CHAIN_WINDOW_S;
+      step = continues ? swarmChainStep(cause, this._lastCause) : SWARM_CHAIN_STEP;
+      this._chain = continues ? this._chain + step : step;
+      this._lastCause = cause;
+      this._lastStep = step;
+    }
+    this._lastKillAt = now;
+    this._warned = false;
+    if (this._chain > this._best) this._best = this._chain;
+
+    const bonus = swarmChainBonus(this._chain);
+    if (bonus > 0) {
+      this._emit('run:awardRequested', { score: bonus, reason: 'chain', wave: run.wave });
+    }
+
+    const milestone = swarmChainMilestone(this._chain, this._milestone);
+    if (milestone) {
+      this._milestone = milestone;
+      if (milestone > this._pendingMilestone) this._pendingMilestone = milestone;
+    }
     this._emit('swarm:chain', { chain: this._chain, best: this._best, cause, step, at: now, wave: run.wave });
   },
 

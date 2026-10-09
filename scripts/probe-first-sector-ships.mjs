@@ -118,7 +118,7 @@ async function snapshot() {
         ({ key, status, durationMs, startedAtMs, endedAtMs })),
       partLoads: diagnostics.partLoads?.slice(-4).map(({ url, durationMs }) => ({ url, durationMs })),
     },
-    residency: state?.render?.assetResidencyDiagnostics || null,
+    residency: state?.render?.assetResidency || null,
     onGlassPending: state?.render?.onGlassPending || null,
     playerHull: player?.hull,
     input: state?.input && { thrust: state.input.thrust, axes: state.input.axes },

@@ -124,8 +124,15 @@ test('independent 30/60/90 Hunter public-route cells stay inside the healthy ban
     // Horizons are independent runs, not cumulative — longer windows must still progress.
     assert.ok(report.cells[90].completedContracts > report.cells[30].completedContracts);
     assert.ok(report.cells[90].earnedValue > report.cells[30].earnedValue);
-    assert.equal(report.cells[60].first15kAtMin, 51.69);
-    assert.equal(report.cells[90].first15kAtMin, 51.69);
+    // Trajectory canary: the minute the wallet first crosses 15k on the default seed. The pin
+    // was already stale at HEAD (51.69 → measured 45.79). Re-pinned 2026-10-04 for D85: while a
+    // board's faction has not Accepted the player, every bounty-capable board now splices one
+    // anchored Neutral-band entry writ at the head, so the sub-30 route rides the guaranteed
+    // writ (and its one extra rng draw shifts the board's later rolls). The crossing moved to
+    // 65.51 min — the 60-minute cell honestly reports null because the wallet never reaches
+    // 15k inside its window (ends 14,015). Cells stay independent runs sharing a prefix.
+    assert.equal(report.cells[60].first15kAtMin, null);
+    assert.equal(report.cells[90].first15kAtMin, 65.51);
   } finally {
     restoreNondeterminism();
   }

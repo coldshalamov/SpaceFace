@@ -137,8 +137,11 @@ test('unwrapping survives the ±π seam: turning through it bends the same small
   const a = recordTurn(lagA, Math.PI - 0.1);
   const b = recordTurn(lagB, 0.4);
   assert.ok(Math.abs((a.h - (Math.PI - 0.1)) - (b.h - 0.4)) < 1e-9, 'same total turn');
-  const spineA = buildSpine(lagA, { heading: a.h, nowS: a.t, tipAgeS: 0.6 });
-  const spineB = buildSpine(lagB, { heading: b.h, nowS: b.t, tipAgeS: 0.6 });
+  // The build heading follows the production convention too: plasmaStream passes live atan2
+  // output (wrapped), never the recorder's unwrapped branch. Passing the unwrapped head here
+  // hid the seam kink (a ~2π phantom bend saturating at the soft cap) behind a green test.
+  const spineA = buildSpine(lagA, { heading: wrap(a.h), nowS: a.t, tipAgeS: 0.6 });
+  const spineB = buildSpine(lagB, { heading: wrap(b.h), nowS: b.t, tipAgeS: 0.6 });
   assert.ok(spineA.tipBend > 0.2, 'the turn bends');
   assert.ok(Math.abs(spineA.tipBend - spineB.tipBend) < 1e-6,
     `wrap must not alias: ${spineA.tipBend} vs ${spineB.tipBend}`);

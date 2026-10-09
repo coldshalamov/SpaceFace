@@ -10,7 +10,6 @@ import { fileURLToPath } from 'node:url';
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { meshopt } from '@gltf-transform/functions';
 import { ktx2 } from 'ktx2-encoder/gltf-transform';
 import JPEG from 'jpeg-js';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
@@ -27,7 +26,7 @@ import {
 } from '../tools/art/lib/ktx2MaterialRoleValidation.mjs';
 import { publishFileSetTransaction } from '../tools/art/lib/multiFileTransaction.mjs';
 import { parseStrictEmbeddedGlb } from '../tools/art/lib/strictGlbValidation.mjs';
-import { RELEASE_MESHOPT_OPTIONS } from './lib/releaseMeshoptProfile.mjs';
+import { releasePlaceGeometryCompression } from './lib/releaseStrictClearancePrecision.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -227,9 +226,10 @@ export async function buildSelectedPlaceReleaseAssets(selectedIds, options = {})
           }),
         );
       }
-      transforms.push(meshopt({
+      transforms.push(releasePlaceGeometryCompression({
+        assetId: asset.id,
+        certificate: document.getRoot().getAsset().extras?.ceresSecondMeasure,
         encoder: MeshoptEncoder,
-        ...RELEASE_MESHOPT_OPTIONS,
       }));
 
       await document.transform(...transforms);
@@ -473,18 +473,22 @@ export function patchPlaceManifestRows(manifest, builtEntries) {
     throw new Error('place manifest patch requires at least one built entry');
   }
   const next = structuredClone(manifest);
+  const builtIds = new Set();
   for (const entry of builtEntries) {
+    if (builtIds.has(entry.id)) throw new Error('place manifest build contains duplicate ids');
+    builtIds.add(entry.id);
     const matchingIndices = [];
     for (const [index, asset] of next.assets.entries()) {
       if (asset?.id === entry.id) matchingIndices.push(index);
     }
-    if (matchingIndices.length !== 1) {
+    if (matchingIndices.length > 1) {
       throw new Error(
         `release manifest must contain exactly one row for ${entry.id}; `
         + `found ${matchingIndices.length}`,
       );
     }
-    next.assets[matchingIndices[0]] = placeManifestRow(entry);
+    if (matchingIndices.length === 0) next.assets.push(placeManifestRow(entry));
+    else next.assets[matchingIndices[0]] = placeManifestRow(entry);
   }
   return next;
 }
@@ -496,12 +500,16 @@ export function validatePatchedPlaceManifest(previousManifest, nextManifest, bui
   }
   const previousIds = previousManifest.assets.map((asset) => asset?.id);
   const nextIds = nextManifest.assets.map((asset) => asset?.id);
-  if (JSON.stringify(nextIds) !== JSON.stringify(previousIds)) {
-    throw new Error('patched release manifest changed asset row order or membership');
-  }
   const expectedRows = new Map(builtEntries.map((entry) => [entry.id, placeManifestRow(entry)]));
   if (expectedRows.size !== builtEntries.length) {
     throw new Error('patched release manifest build contains duplicate ids');
+  }
+  if (new Set(previousIds).size !== previousIds.length) {
+    throw new Error('previous release manifest contains duplicate ids');
+  }
+  const addedIds = builtEntries.map(entry => entry.id).filter(id => !previousIds.includes(id));
+  if (JSON.stringify(nextIds) !== JSON.stringify([...previousIds, ...addedIds])) {
+    throw new Error('patched release manifest changed asset row order or membership');
   }
   for (const [index, previousRow] of previousManifest.assets.entries()) {
     const expected = expectedRows.get(previousRow?.id);
@@ -511,6 +519,11 @@ export function validatePatchedPlaceManifest(previousManifest, nextManifest, bui
       }
     } else if (JSON.stringify(nextManifest.assets[index]) !== JSON.stringify(previousRow)) {
       throw new Error(`patched release manifest changed untouched row ${previousRow?.id ?? index}`);
+    }
+  }
+  for (const [index, id] of addedIds.entries()) {
+    if (JSON.stringify(nextManifest.assets[previousIds.length + index]) !== JSON.stringify(expectedRows.get(id))) {
+      throw new Error(`patched release manifest row mismatch for ${id}`);
     }
   }
   return true;

@@ -35,7 +35,7 @@ try {
   // Playwright's default rAF polling never runs — waits time out while their own predicates are
   // already true. The CSP-safe timer polling is the established fix (check-electron-new-game-launch).
   installCspSafePlaywrightPolling(page);
-  issues = collectPageIssues(page, { includeWarnings: true });
+  issues = collectPageIssues(page, { playerStoreMounted: false, includeWarnings: true });
   await page.addInitScript(() => { try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {} });
 
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
@@ -153,16 +153,7 @@ try {
   await page.waitForFunction(() => window.SF.state.ui.docked === false && window.SF.state.mode === 'flight',
     null, { timeout: DOCK_TIMEOUT_MS });
 
-  // The boot store probe caps itself at 10s (sharedPlayerStore.js) so a stalled store can never pin
-  // the main menu's Continue button; under heavy load the loopback GET can exceed the cap and
-  // abort, handled by design via the local merge fallback. That handled probe timeout is not a
-  // page error; anything else — including store PUT failures — still fails this check.
-  const isHandledStoreProbeAbort = (issue) =>
-    issue.type === 'error'
-    && String(issue.text).startsWith('Request failed')
-    && String(issue.text).includes('__spaceface_player_store')
-    && String(issue.text).includes('net::ERR_ABORTED');
-  assert.deepEqual(issues.errorIssues().filter((issue) => !isHandledStoreProbeAbort(issue)), [],
+  assert.deepEqual(issues.errorIssues(), [],
     'station egress probe should not record page errors');
   console.log('Station egress OK: dock -> Esc/backdrop confirm (no strand) -> Undock -> flight restored, sim resumed');
   console.log('Dock target:', dockTarget.stationId);
@@ -216,7 +207,7 @@ async function startFreshServer() {
 }
 
 function spawnProbeServer(port) {
-  const child = spawn(process.execPath, ['server.js', String(port)], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+  const child = spawn(process.execPath, ['server.js', String(port)], { env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' }, cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
   let output = '';
   const capture = (chunk) => { output = (output + String(chunk)).slice(-4000); };
   child.stdout.on('data', capture);

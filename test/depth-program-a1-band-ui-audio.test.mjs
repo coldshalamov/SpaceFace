@@ -34,6 +34,7 @@ class MiniElement {
   removeChild(child) { this.children = this.children.filter((item) => item !== child); child.parentNode = null; }
   remove() { if (this.parentNode) this.parentNode.removeChild(this); }
   setAttribute(name, value) { this.attributeWrites += 1; this.attributes.set(name, String(value)); }
+  removeAttribute(name) { this.attributeWrites += 1; this.attributes.delete(name); }
   getAttribute(name) { return this.attributes.get(name) || null; }
   addEventListener(name, fn) { this.listeners.set(name, fn); }
   removeEventListener(name) { this.listeners.delete(name); }

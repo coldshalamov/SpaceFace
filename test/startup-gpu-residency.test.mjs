@@ -39,7 +39,9 @@ test('startup GPU residency uploads shared textures once and yields between each
   assert.equal(result.skipped, false);
   assert.equal(result.textures, 2);
   assert.equal(result.uploads.length, 2);
-  assert.deepEqual(timeline, ['yield', 'shared', 'yield', 'normal', 'yield']);
+  // The work-mint boundary yield lands between the texture leg and the
+  // geometry leg's early-out; the post leg keeps its own yield.
+  assert.deepEqual(timeline, ['yield', 'shared', 'yield', 'normal', 'yield', 'yield']);
 });
 
 test('startup GPU residency fails open when explicit uploads are unsupported', async () => {
@@ -81,8 +83,10 @@ test('live VFX roots join the loading-stage texture upload instead of waiting fo
   }, roots, { yieldToMain: async () => {} });
   assert.equal(result.textures, textures.length);
   assert.deepEqual(new Set(uploaded), new Set(textures));
+  // The two anchors sit in the same startup function; the window is a proximity pin, not a line count
+  // (renderer.js growth had pushed them past the old 1800-character window).
   assert.match(RENDERER_SOURCE,
-    /openingSubmissionPlan[\s\S]{0,1800}prepareStartupGpuResidency\(renderer, plan\.residencySubjects/,
+    /openingSubmissionPlan[\s\S]{0,4000}prepareStartupGpuResidency\(renderer, plan\.residencySubjects/,
     'the loading-stage renderer must derive GPU uploads from the exact opening submission plan');
   system.destroy();
   assert.equal(state.render.collectVfxGpuResidencyRoots, undefined);
@@ -172,7 +176,7 @@ test('startup GPU residency reports one blocking slice per attempted upload with
   assert.equal(result.skipped, false);
   assert.equal(result.textures, 2);
   assert.equal(result.uploads.length, 2);
-  assert.deepEqual(timeline, ['yield', 'shared', 'yield', 'normal', 'yield']);
+  assert.deepEqual(timeline, ['yield', 'shared', 'yield', 'normal', 'yield', 'yield']);
   assert.equal(slices.length, 2, 'deduped textures still report one slice per attempted upload');
   assert.equal(slices[0].kind, 'gpuResidencyUpload');
   assert.equal(slices[0].durationMs, 3);

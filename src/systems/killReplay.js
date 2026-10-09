@@ -1,10 +1,22 @@
 // §22 B9 — the last five seconds of a kill, from the positions the sim already stepped.
 // Round end plays that path back. Skip leaves the results model alone.
 // The ring is fixed-size. Nothing here writes velocity, credits, or the run.
+//
+// ADVENTURE TAPE — the flight side of the same instrument. The replay surface is a tape: it
+// needs ticks, a seed, an input ring to read boost burns from, and event marks. This producer
+// keeps the last TAPE window of flight ticks in fixed typed arrays (one Map.get + one byte per
+// tick, no per-tick allocation) and publishes it at state.replay.recording — the exact field
+// the Replay surface resolves when nothing else published a tape. Event marks are stored in the
+// window's own tick space so old marks age out with the tape instead of pointing past it.
 
 export const KILL_REPLAY_S = 5;
 export const KILL_REPLAY_DT = 1 / 60;
 const CAP = Math.round(KILL_REPLAY_S / KILL_REPLAY_DT);
+
+/** The Adventure tape window (the surface's own tape length). */
+export const ADVENTURE_TAPE_S = 30;
+const TAPE_CAP = Math.round(ADVENTURE_TAPE_S * 60);
+const TAPE_MAX_MARKS = 32;
 
 const ring = {
   count: 0,
@@ -138,22 +150,158 @@ export function skipKillReplay(result) {
   return result;
 }
 
+// ── the Adventure tape ──────────────────────────────────────────────────────
+
+const tape = {
+  count: 0,            // samples held (≤ TAPE_CAP)
+  total: 0,            // flight ticks stepped since the tape started
+  head: 0,             // next write slot
+  boost: new Uint8Array(TAPE_CAP),
+  marks: [],           // { at (absolute tape tick), type, label } — windowed on publish
+  marksVersion: 0,     // bumped only when marks change; the published list rebuilds then
+  publishedVersion: -1,
+};
+
+function resetAdventureTape() {
+  tape.count = 0;
+  tape.total = 0;
+  tape.head = 0;
+  tape.marks.length = 0;
+  tape.marksVersion += 1;
+}
+
+function tapeBoostAt(absoluteTick) {
+  const base = tape.total - tape.count;
+  if (absoluteTick < base || absoluteTick >= tape.total) return 0;
+  return tape.boost[absoluteTick % TAPE_CAP];
+}
+
+function entityLabel(entity) {
+  const data = entity && entity.data || {};
+  const value = data.callsign || data.displayName || data.name
+    || (data.def && data.def.name) || data.defId || entity && entity.name;
+  const text = String(value || '').trim();
+  return text || 'Kill';
+}
+
+function recordTape(state) {
+  if (!state || state.mode !== 'flight') return;
+  const player = state.entities && state.playerId != null
+    ? state.entities.get(state.playerId)
+    : null;
+  if (!player) return;
+  const intent = player.data && player.data.intent || null;
+  tape.boost[tape.head] = intent && intent.boost === true ? 1 : 0;
+  tape.head = (tape.head + 1) % TAPE_CAP;
+  if (tape.count < TAPE_CAP) tape.count += 1;
+  tape.total += 1;
+
+  const recording = state.replay && state.replay.recording;
+  if (!recording) return;
+  const ticks = tape.count;
+  recording.ticks = ticks;
+  recording.seconds = ticks * KILL_REPLAY_DT;
+  recording.base = tape.total - ticks;
+  if (tape.marksVersion !== tape.publishedVersion) {
+    rebuildTapeMarks(recording, recording.base);
+  } else if (recording.events.length && tape.count >= TAPE_CAP) {
+    // The full window slides one tick; the published marks slide with it in place — no
+    // per-tick allocation. Aged-out marks go negative and the surface's own guards skip them.
+    for (let i = 0; i < recording.events.length; i += 1) recording.events[i].tick -= 1;
+  }
+}
+
+function rebuildTapeMarks(recording, base) {
+  recording.events.length = 0;
+  for (let i = 0; i < tape.marks.length; i += 1) {
+    const mark = tape.marks[i];
+    const at = mark.at - base;
+    if (at >= 0) recording.events.push({ tick: at, type: mark.type, label: mark.label });
+  }
+  tape.publishedVersion = tape.marksVersion;
+}
+
+function addTapeMark(state, type, label) {
+  if (tape.total <= 0) return;
+  tape.marks.push({ at: tape.total - 1, type, label });
+  if (tape.marks.length > TAPE_MAX_MARKS) tape.marks.shift();
+  tape.marksVersion += 1;
+  // Publish eagerly: a pause right after the kill must not lose the mark.
+  const recording = state && state.replay && state.replay.recording;
+  if (recording) rebuildTapeMarks(recording, tape.total - tape.count);
+}
+
+/** Test seam: the windowed tape in its published shape. */
+export function adventureTapeRecording(state) {
+  if (!state) return null;
+  state.replay = state.replay || {};
+  if (!state.replay.recording) {
+    state.replay.recording = {
+      seed: state.meta && state.meta.seed != null ? state.meta.seed : 0,
+      tickRate: 60,
+      ticks: 0,
+      seconds: 0,
+      base: 0,
+      snapshotRing: null,
+      events: [],
+      inputRing: {
+        read(winTick) {
+          const boost = tapeBoostAt((state.replay.recording.base || 0) + winTick);
+          return { data: { boost: boost === 1 } };
+        },
+      },
+    };
+  }
+  return state.replay.recording;
+}
+
 export const killReplay = {
   name: 'killReplay',
 
   init(ctx) {
     this.state = ctx && ctx.state;
     resetKillReplay();
+    resetAdventureTape();
+    if (this.state) adventureTapeRecording(this.state);
+    const bus = ctx && ctx.bus;
+    if (bus && typeof bus.on === 'function') {
+      this._offTapeNew = bus.on('game:new', () => {
+        resetAdventureTape();
+        if (this.state) {
+          const recording = adventureTapeRecording(this.state);
+          recording.ticks = 0;
+          recording.seconds = 0;
+          recording.base = 0;
+          recording.events.length = 0;
+        }
+      });
+      this._offTapeKill = bus.on('entity:killed', (p) => {
+        if (!p || p.killerId == null || !this.state) return;
+        if (p.killerId !== this.state.playerId) return;
+        const victim = this.state.entities
+          ? this.state.entities.get(p.id) : null;
+        addTapeMark(this.state, 'kill', entityLabel(victim));
+      });
+      this._offTapeTrick = bus.on('stunt:trickDetected', (p) => {
+        if (!this.state || !p) return;
+        const actor = p.actorId != null ? p.actorId : null;
+        if (actor != null && actor !== this.state.playerId) return;
+        addTapeMark(this.state, 'stunt', String(p.name || p.trickId || 'Stunt'));
+      });
+    }
   },
 
   update(_dt, state) {
     const live = state || this.state;
-    if (!liveRun(live)) return;
-    const player = live.entities && live.playerId != null ? live.entities.get(live.playerId) : null;
-    if (!player || !player.pos) return;
-    const other = nearestOther(live, player);
-    const bx = other && other.pos ? other.pos.x : player.pos.x;
-    const bz = other && other.pos ? other.pos.z : player.pos.z;
-    pushSample(player.pos.x, player.pos.z, bx, bz);
+    if (liveRun(live)) {
+      const player = live.entities && live.playerId != null ? live.entities.get(live.playerId) : null;
+      if (!player || !player.pos) return;
+      const other = nearestOther(live, player);
+      const bx = other && other.pos ? other.pos.x : player.pos.x;
+      const bz = other && other.pos ? other.pos.z : player.pos.z;
+      pushSample(player.pos.x, player.pos.z, bx, bz);
+      return;
+    }
+    recordTape(live);
   },
 };

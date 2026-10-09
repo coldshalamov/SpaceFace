@@ -62,8 +62,8 @@ function buildKbmPrompts(state) {
   const mapChart = `${BINDINGS.localmap.label} map  •  ${BINDINGS.starmap.label} chart`;
 
   const classic = {
-    flight: `${forward} thrust  •  ${brake} or ${reverse} brake  •  ${yaw} steer  •  Mouse aim  •  ${fire} fire  •  ${tether} Massline  •  ${shove} shove  •  ${seed} anchor seed  •  ${mine} select · hold to use  •  ${beam} selected Site beam  •  ${boost} boost  •  ${counter} countermeasure  •  Tab target  •  ${maps}`,
-    mining: `${mine} select · hold to mine  •  ${beam} beam selected Site  •  Release to cool  •  Fly through cargo drift  •  ${BINDINGS.drill.label} drill view  •  Tab next signal`,
+    flight: `${forward} thrust  •  ${brake} or ${reverse} brake  •  ${yaw} steer  •  Mouse aim  •  ${fire} fire  •  ${tether} Massline  •  ${shove} shove  •  ${seed} anchor seed  •  ${mine} select · hold to use  •  ${beam} site beam  •  ${boost} boost  •  ${counter} countermeasure  •  Tab target  •  ${maps}`,
+    mining: `${mine} select · hold to mine  •  ${beam} site beam  •  Release to cool  •  Fly through cargo drift  •  ${BINDINGS.drill.label} drill view  •  Tab next signal`,
     combat: `${fire} fire  •  ${tether} Massline  •  ${shove} shove  •  Mouse aim at target  •  Tab cycle hostiles  •  ${counter} countermeasure  •  ${bomb} bomb  •  ${bombCycle} cycle bombs  •  ${autoFire} auto-target  •  ${boost} boost to dodge`,
     station: `${BINDINGS.dock.label} dock  •  Hub: arrow keys change tabs  •  Enter/Space act  •  ${BINDINGS.dock.label}/Esc undock`,
     gate: `${BINDINGS.starmap.label} open Star Map  •  Select destination  •  Jump to travel between systems`,

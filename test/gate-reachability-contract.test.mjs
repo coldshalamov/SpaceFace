@@ -7,6 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import * as ciReport from '../scripts/check-ci-report.mjs';
 import {
   auditReachability,
   collectReachable,
@@ -207,5 +208,69 @@ test('the atlas program suite is pinned and reachable, not merely green', () => 
   for (const gate of atlasGates) {
     assert.ok(reachable.has(gate), `${gate} must be reachable from the CI matrix roots`);
     assert.ok(baseline.mustGate.includes(gate), `${gate} must be pinned in the baseline`);
+  }
+});
+
+// These quick Node acceptance files are independent matrix leaves, not a browser or broad-suite job.
+test('CI reaches the combat query and station exit regressions exactly once in one static shard', () => {
+  const packageScripts = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts;
+  const matrix = ciReport.buildCommandMatrix(
+    resolveAggregateCommand(packageScripts, 'check:ci'), packageScripts,
+  );
+  for (const path of [
+    'test/combat-table-query-scratch.test.mjs',
+    'test/station-exit-confirmation.test.mjs',
+  ]) {
+    const matches = matrix.flatMap((def) => ciReport.resolveLeafCommands(def.command, packageScripts)
+      .filter((leaf) => leaf.split(/\s+/).includes(path)).map((leaf) => ({ def, leaf })));
+    assert.equal(matches.length, 1, `${path} must run exactly once through check:ci`);
+    const { def, leaf } = matches[0];
+    assert.equal(leaf, `node --test ${path}`, 'run the focused file without a duplicated broad batch');
+    assert.equal(ciReport.classifyCommandGroup(def, packageScripts), 'static');
+    const group = ciReport.selectGroup(matrix, 'static', packageScripts);
+    const shards = [1, 2, 3].flatMap((index) => ciReport.selectShard(group, { index, total: 3 }));
+    assert.equal(shards.filter((entry) => entry.id === def.id).length, 1);
+  }
+});
+
+
+test('planar physics and attachment prerequisite regressions run once before program control', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/check.yml', import.meta.url), 'utf8');
+  const start = workflow.indexOf('      - name: Validate planar physics and attachment residency');
+  assert.ok(start >= 0 && start < workflow.indexOf('      - name: Validate program control plane'));
+  const next = workflow.indexOf('\n      - name:', start + 1);
+  const step = workflow.slice(start, next < 0 ? undefined : next);
+  assert.ok(step.includes('if: ${{ !cancelled() && matrix.shard == 1 }}'));
+  const scripts = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts;
+  const matrix = ciReport.buildCommandMatrix(resolveAggregateCommand(scripts, 'check:ci'), scripts);
+  for (const path of ['test/sg02-planar-prism-depth.test.mjs', 'test/sg02-planar-prism-restore.test.mjs',
+    'test/sg02-planar-prism-settings.test.mjs', 'test/activity-broken-attachment-continuation.test.mjs']) {
+    const direct = workflow.split(/\r?\n/).filter(line => /node --test\s/.test(line))
+      .flatMap(line => line.trim().split(/\s+/)).filter(token => token === path);
+    const indirect = matrix.flatMap(def => ciReport.resolveLeafCommands(def.command, scripts))
+      .flatMap(command => command.split(/\s+/)).filter(token => token === path);
+    assert.equal(direct.length, 1); assert.equal(indirect.length, 0);
+    assert.ok(step.split(/\s+/).includes(path));
+  }
+});
+
+
+test('native transaction regressions run once before program control', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/check.yml', import.meta.url), 'utf8');
+  const start = workflow.indexOf('      - name: Validate native restore transactions');
+  assert.ok(start >= 0 && start < workflow.indexOf('      - name: Validate program control plane'));
+  const next = workflow.indexOf('\n      - name:', start + 1);
+  const step = workflow.slice(start, next < 0 ? undefined : next);
+  assert.ok(step.includes('if: ${{ !cancelled() && matrix.shard == 1 }}'));
+  const scripts = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts;
+  const matrix = ciReport.buildCommandMatrix(resolveAggregateCommand(scripts, 'check:ci'), scripts);
+  for (const path of ['test/sg02-native-save-reconciliation.test.mjs', 'test/sg02-native-save-duplicate-record.test.mjs',
+    'test/sg02-native-attachment-policy.test.mjs', 'test/sg02-native-save-supersession.test.mjs']) {
+    const direct = workflow.split(/\r?\n/).filter(line => /node --test\s/.test(line))
+      .flatMap(line => line.trim().split(/\s+/)).filter(token => token === path);
+    const indirect = matrix.flatMap(def => ciReport.resolveLeafCommands(def.command, scripts))
+      .flatMap(command => command.split(/\s+/)).filter(token => token === path);
+    assert.equal(direct.length, 1); assert.equal(indirect.length, 0);
+    assert.ok(step.split(/\s+/).includes(path));
   }
 });

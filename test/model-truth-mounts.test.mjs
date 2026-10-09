@@ -104,14 +104,26 @@ test('a wreck with no tether socket uses the measured hardpoint', () => {
     pos: { x: 80, z: 20 },
     rot: 0,
     radius: wreck.gameplay.entityRadius || 12,
+    // A placed aftermath slab is authored-static scenery, not a towable hulk — the same body
+    // spec worldSiteRuntime/salvage stamp for socket-less static wrecks. A joint lever cannot
+    // rotate it, so the COM tow-anchor exemption does not apply and the line lands on the hull.
+    physicsBody: { dynamic: false, radius: wreck.gameplay.entityRadius || 12, mass: 1e9 },
     data: { placeId: wreck.id },
   };
   const ends = contextualAttachmentWorlds(player, target, { x: target.pos.x, y: 0, z: target.pos.z });
   const measured = modelTruthRopeEnd(target);
   assert.ok(dist(ends.targetWorld, measured) <= 0.5);
   assert.ok(dist(ends.targetWorld, target.pos) > 0.5, 'far end is not the origin');
-  const playerEnd = modelTruthRopeEnd(player);
-  assert.ok(dist(ends.sourceWorld, playerEnd) <= 0.5);
+  // The player end is a dynamic ship: the joint anchors at center of mass (a hull-offset lever
+  // would torque the player's own hull — check-massline2's "every tether leaves the player
+  // center of mass"). SOCKET_Tether_Massline is where the rope is DRAWN from, not the lever.
+  assert.deepEqual(ends.sourceWorld, { x: player.pos.x, y: 0, z: player.pos.z });
+  // The same hull as a live tow body keeps the COM anchor: a hull-offset joint lever torques a
+  // dynamic wreck into an accidental attitude controller. The hardpoint fallback is for bodies
+  // the joint cannot rotate, not for wrecks generally.
+  const towed = { ...target, physicsBody: { shape: 'capsule', mass: 60 } };
+  const towEnds = contextualAttachmentWorlds(player, towed, { x: towed.pos.x, y: 0, z: towed.pos.z });
+  assert.deepEqual(towEnds.targetWorld, { x: 80, y: 0, z: 20 }, 'dynamic tow wreck keeps its COM anchor');
 });
 
 test('the radius stand-in and the old mount tables are gone', () => {

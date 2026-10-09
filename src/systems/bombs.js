@@ -9,12 +9,17 @@ import { BOMB_DEFS, BOMB_DRIFT, BOMB_RACK, BOMB_STARTER_KIT, bombDef } from '../
 import { shipworksStationAccess } from './ships.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
+import {
+  SHOCKWAVE_PASS_EVENT, SHOCKWAVE_SWEEP_LAW,
+  advanceSweepFront, createShockwaveSweep, resolveSweepPass, sweptMassOf,
+} from '../combat/shockwaveSweep.js';
+import { combatFlag } from '../data/featureFlags.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { Masks } from '../core/entity.js';
 import { FIELD_COUPLING } from '../data/fields.js';
 import {
   integrateBombDrift, sweptBombContact, compareBombEntityIds, bombSurfaceFalloff,
-  bombRadialDirection, bombFieldEnvelope, fillBombViscosityImpulse,
+  bombRadialDirection, bombFieldEnvelope, fillBombViscosityImpulse, bombInteractionState,
 } from '../combat/bombDynamics.js';
 import { bumpCollidesFlipEpoch, indexedTypeScan, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 
@@ -30,6 +35,79 @@ const DAMAGE_TYPES = new Set(['ship', 'drone', 'station']);
 // trigger and shootable-hull law. Displacement preserves the mine's owner/arm/eligibility
 // because those ride the entity's own data.
 const LOOSE_TYPES = new Set(['asteroid', 'wreck', 'pickup', 'payload', 'mine']);
+// SFQ-B035 fauna eligibility, explicit on every axis a blast or bomb field touches (the target
+// predicates used to omit fauna entirely — silence, not a decision):
+//   damage  — YES, blast and field crush alike. Fauna are killable world actors (hull,
+//             entity:killed -> the ecology's rupture/panic/harvest listeners). A blast that
+//             kills a station kills a grazer; a well that crushes a ship crushes the fauna in it.
+//   statuses— NO, deliberately craft-only, blast riders and field re-application alike (goo
+//             wallow, ionized subsystems, pinned massScale, tumbling helm): every bomb status is
+//             a craft-control verb; scheduling one on a fauna runtime the ecology drive never
+//             reads would be the silent no-op the packet forbids. Organisms take the damage,
+//             never the rider.
+//   motion  — only with a real dynamic physics body (physics species: ram, glassback): the
+//             blast shove, the singularity pull and goo drag all ride blastShoveEligible, so a
+//             body that can be blasted can also be pulled into the well it stands in. Kinematic
+//             fauna are motion-owned by the ecology drive; physicsAuthority would refuse them
+//             anyway, so the predicate says so up front.
+//   hitstun — none. _publishHitstun's ship/drone type gate exempts EVERY fauna, dynamic body
+//             or not; the shove gate only decides who is moved. Entry spin stays craft law.
+//   fuze    — craft only (unchanged, _findTriggerVictim): a drifting grazer must not cook the
+//             player's own bay.
+const faunaBlastEligible = (e) => e?.type === 'fauna';
+
+/**
+ * SFQ-B032 — one verdict for every class the packet names. Machine is an explicit
+ * no: precursor machines are scripted, physicsBody false, and authored to ignore
+ * stray fire. Silence (not in the scan, not in a predicate) was the hole.
+ * Blast damage does not team-filter — the packet sets ignoreFriendlyFire — so an
+ * ally hull and the owner's own hull are damage-eligible. Proximity fuze is not:
+ * the owner and the bomb's team never cook the bay.
+ */
+export function ordnanceClassVerdict(entity) {
+  if (!entity || typeof entity !== 'object') {
+    return { class: 'none', damage: false, shove: false, status: false, trigger: false, reason: 'missing' };
+  }
+  if (entity.type === 'machine') {
+    return { class: 'machine', damage: false, shove: false, status: false, trigger: false, reason: 'scripted_kinematic' };
+  }
+  const cls = entity.type === 'ship' || entity.type === 'drone' ? 'craft'
+    : entity.type === 'station' ? 'station'
+    : entity.type === 'wreck' ? 'wreck'
+    : entity.type === 'pickup' ? 'pickup'
+    : entity.type === 'fauna' ? 'fauna'
+    : entity.type === 'asteroid' ? 'asteroid'
+    : entity.type || 'other';
+  return {
+    class: cls,
+    damage: DAMAGE_TYPES.has(entity.type) || faunaBlastEligible(entity),
+    shove: blastShoveEligible(entity),
+    status: DAMAGE_TYPES.has(entity.type),
+    trigger: craft(entity),
+    reason: null,
+  };
+}
+
+/** Fuze law: craft only, never the dropper, never the bomb's own team. */
+export function proximityTriggerEligible(victim, bomb, ownerId) {
+  if (!victim || victim.alive === false || !craft(victim)) return false;
+  if (ownerId != null && victim.id === ownerId) return false;
+  if (bomb && bomb.team != null && victim.team != null && victim.team === bomb.team) return false;
+  return true;
+}
+// Same rule hullBurst applies to its tells: either accessibility flag drops the wave's
+// own cue to the reduced variant downstream.
+function flashReduced(state) {
+  const settings = state && state.settings;
+  const v = settings && settings.video;
+  const a = settings && settings.accessibility;
+  return !!((v && (v.motionReduce || v.flashReduce)) || (a && a.flashReduce));
+}
+// Same two-gate shape as movable(): an authored physicsBody:false fauna has no body at all
+// (substanceFor falls through falsy authored values to the dynamic default), so the authored
+// no-body contract is the first gate and the substance's dynamic flag the second.
+const faunaShoveEligible = (e) => faunaBlastEligible(e) && e?.physicsBody !== false && isDynamicPhysicsBodyEntity(e);
+const blastShoveEligible = (e) => movable(e) || faunaShoveEligible(e);
 const EMPTY = Object.freeze([]);
 const simNow = state => Number.isFinite(state?.simTime) ? state.simTime : (state?.tick || 0) / 60;
 
@@ -104,13 +182,14 @@ function publishBombsQuiet(state, latched) {
 }
 // Typed buckets whose union is exactly the population the target predicate can accept:
 // DAMAGE_TYPES (ship/drone/station) plus LOOSE_TYPES (asteroid/wreck/pickup/payload/mine) for
-// the movable() branch. Craft is ship/drone, so no other entity type can ever pass — the union
-// cannot omit a valid target, including noncolliding movable cargo and wrecks. Buckets are
-// disjoint by entity type (one switch push per type in coreSystem.appendEntityIndex), so no
-// candidate is visited twice. The live predicate is still applied per candidate, so in-place
-// deaths (alive flip with no list change) filter exactly as the full scan did. Anything but a
-// ready index with all eight buckets falls back to the complete scan.
-const BOMB_TARGET_BUCKETS = Object.freeze(['ships', 'drones', 'stations', 'asteroids', 'wrecks', 'pickups', 'payloads', 'mines']);
+// the movable() branch, plus 'fauna' (SFQ-B035 — blast damage is explicitly fauna-eligible).
+// Craft is ship/drone, so no other entity type can ever pass — the union cannot omit a valid
+// target, including noncolliding movable cargo and wrecks. Buckets are disjoint by entity type
+// (one switch push per type in coreSystem.appendEntityIndex), so no candidate is visited twice.
+// The live predicate is still applied per candidate, so in-place deaths (alive flip with no
+// list change) filter exactly as the full scan did. Anything but a ready index with all nine
+// buckets falls back to the complete scan.
+const BOMB_TARGET_BUCKETS = Object.freeze(['ships', 'drones', 'stations', 'asteroids', 'wrecks', 'pickups', 'payloads', 'mines', 'fauna']);
 function bombTargetBuckets(index) {
   if (!index?.__spacefaceEntityIndexV1 || index.ready !== true) return null;
   const buckets = [];
@@ -122,7 +201,17 @@ function bombTargetBuckets(index) {
   return buckets;
 }
 function pushBombTarget(out, e) {
-  if (e?.alive && e.pos && (DAMAGE_TYPES.has(e.type) || movable(e))) out.push(e);
+  // Machine is a named refusal, not a type the scan forgot. See ordnanceClassVerdict.
+  if (e?.type === 'machine') return;
+  if (e?.alive && e.pos && (DAMAGE_TYPES.has(e.type) || movable(e) || faunaBlastEligible(e))) out.push(e);
+}
+// Shockwave-sweep eligibility: the loose DYNAMIC matter a wave can actually move (the
+// physics authority would refuse fixed landmark rocks, and a pass it cannot push must not
+// spend the tick's pass budget or flash a receipt) plus dynamic-body fauna, mirroring
+// blastShoveEligible minus craft.
+function pushSweepBody(out, e) {
+  if (e?.alive && e.pos && !craft(e) && (LOOSE_TYPES.has(e?.type) || faunaShoveEligible(e))
+    && isDynamicPhysicsBodyEntity(e)) out.push(e);
 }
 // ---- fitted rack (PQ-205.03) ----------------------------------------------------------
 // state.bombs is the player's one bomb-bay bag, additive over the pre-rack shape:
@@ -498,6 +587,28 @@ export function redirectLiveBomb(bomb, impulse, contributorId, tick = 0) {
   };
 }
 
+/**
+ * Target metadata for the live arming/expiry state. `available` is the interaction
+ * a panel may offer; a spent remnant is not that offer. Fuze and field clocks are
+ * not read or written here.
+ */
+export function syncBombTargetInteraction(bomb) {
+  if (!bomb || bomb.type !== BOMB_TYPE || !bomb.data) return null;
+  const described = bombInteractionState(bomb);
+  if (!described) {
+    bomb.data.interaction = null;
+    return null;
+  }
+  const available = described.interactable === true ? described.state : null;
+  bomb.data.lockable = described.lockable === true;
+  bomb.data.interaction = {
+    state: described.state,
+    available,
+    label: described.label,
+  };
+  return bomb.data.interaction;
+}
+
 /** A destroyed casing is not a lock or a selected target. Dissipating effects are left alone. */
 export function clearDestroyedBombLocks(state, bomb) {
   if (!bomb) return;
@@ -531,6 +642,7 @@ export const bombs = {
     this.destroy();
     Object.assign(this, { state: ctx.state, bus: ctx.bus, helpers: ctx.helpers, registry: ctx.registry });
     this._active = [];
+    this._sweeps = [];
     this._targets = [];
     this._gooCoverage = [];
     this._motion = {};
@@ -582,6 +694,7 @@ export const bombs = {
   },
   destroy() {
     this.releaseAll('destroy');
+    this._sweeps = [];
     for (const off of this._unsubs || EMPTY) if (typeof off === 'function') off();
     this._unsubs = [];
     this._ownerCooldowns?.clear();
@@ -612,7 +725,7 @@ export const bombs = {
           publishBombsQuiet(state, true);
           return;
         }
-        if (!anyLiveBomb(state)) {
+        if (!anyLiveBomb(state) && !this._sweeps.length) {
           this._bombsQuiet = { membership, armedTick: tick };
           publishBombsQuiet(state, true);
           return;
@@ -643,6 +756,7 @@ export const bombs = {
       }
     }
     this._tickBombs(dt, state);
+    this._tickSweeps(dt, state);
     if (dropEdge) {
       actions.dropBomb = false;
       if (!blocked(state, player)) {
@@ -651,7 +765,7 @@ export const bombs = {
           // A live bomb means the empty latch must not re-arm until the bay drains.
           this._bombsQuiet = null;
         } else {
-          this.bus.emit('toast', { text: 'Bomb rack empty — re-arm at a station shipworks.', kind: 'info', ttl: 1.6 });
+          this.bus.emit('toast', { text: 'Bomb rack empty — rearm at a station shipworks.', kind: 'info', ttl: 1.6 });
         }
       }
     }
@@ -665,7 +779,7 @@ export const bombs = {
     const loaded = loadedCells(rt);
     if (!loaded.length) {
       this.bus.emit('bombs:denied', { reason: 'empty_rack' });
-      this.bus.emit('toast', { text: 'Bomb rack empty — re-arm at a station shipworks.', kind: 'info', ttl: 1.6 });
+      this.bus.emit('toast', { text: 'Bomb rack empty — rearm at a station shipworks.', kind: 'info', ttl: 1.6 });
       return null;
     }
     const index = loaded.findIndex((c) => c.id === rt.selectedId);
@@ -916,6 +1030,12 @@ export const bombs = {
     this._targets.sort(compareBombEntityIds);
   },
 
+  /** A press that did not drop. Other ships stay silent — their bay is not the player's. */
+  _notePlayerBombRefusal(owner, state, text) {
+    if (!owner || !state || owner.id !== state.playerId || !this.bus) return;
+    this.bus.emit('toast', { text, kind: 'info', ttl: 1.6 });
+  },
+
   // Public common release path for player and NPC doctrine. NPCs call this plus commandDetonate
   // (src/ai/npcBombMirror.js); they do not copy fuze/cooldown/effect code.
   // Caller must hold a live entity; it cannot smuggle an unregistered owner into attribution.
@@ -931,12 +1051,16 @@ export const bombs = {
       cell = rt.rack.cells.find((c) => c && c.id === payloadId && c.count > 0) || null;
       if (!cell) {
         this.bus.emit('bombs:denied', { ownerId: owner.id, reason: 'not_loaded', payloadId });
+        this._notePlayerBombRefusal(owner, state, 'That bomb is not loaded');
         return null;
       }
     }
     let bay = isPlayer ? rt : this._ownerCooldowns.get(owner.id);
     if (!bay) this._ownerCooldowns.set(owner.id, bay = { cooldownUntil: 0, cooldowns: {} });
-    if (now < Math.max(bay.cooldownUntil || 0, bay.cooldowns[payloadId] || 0)) return null;
+    if (now < Math.max(bay.cooldownUntil || 0, bay.cooldowns[payloadId] || 0)) {
+      this._notePlayerBombRefusal(owner, state, 'Bomb bay cycling');
+      return null;
+    }
     let owned = 0, total = 0;
     for (const e of liveBombList(state)) {
       if (!e?.alive || e.type !== BOMB_TYPE) continue;
@@ -944,8 +1068,11 @@ export const bombs = {
       if (e.data?.ownerId === owner.id) owned++;
     }
     if (owned >= BOMB_DRIFT.maxActive || total >= BOMB_DRIFT.maxWorldActive) {
-      this.bus.emit('bombs:denied', { ownerId: owner.id, reason: owned >= BOMB_DRIFT.maxActive ? 'bay_full' : 'world_full' });
-      if (owner.id === state.playerId) this.bus.emit('toast', { text: 'Bomb bay full — trigger armed ordnance or let its fuze finish.', kind: 'info', ttl: 1.6 });
+      const reason = owned >= BOMB_DRIFT.maxActive ? 'bay_full' : 'world_full';
+      this.bus.emit('bombs:denied', { ownerId: owner.id, reason });
+      this._notePlayerBombRefusal(owner, state, reason === 'world_full'
+        ? 'The field is full of armed ordnance — wait for one to finish'
+        : 'Bomb bay full — trigger armed ordnance or let its fuze finish.');
       return null; // no cooldown, no eviction, no free explosion
     }
     const def = bombDef(payloadId), vx = Number(owner.vel?.x) || 0, vz = Number(owner.vel?.z) || 0;
@@ -992,6 +1119,7 @@ export const bombs = {
       }
       this.bus.emit('bombs:stockChanged', { payloadId, loaded: cell.count, delta: -1 });
     }
+    syncBombTargetInteraction(bomb);
     this.bus.emit('bombs:dropped', { bombId: bomb.id, payloadId, ownerId: owner.id, pos, vel: { x: vx, z: vz }, radius: def.radius });
     this.bus.emit('audio:cue', { id: 'massline.bombDrop', position: pos, gain: 0.5 });
     return bomb;
@@ -1046,6 +1174,7 @@ export const bombs = {
       adaptBombProjectileProxy(bomb);
       if (d.phase === 'field') {
         if (now >= d.fieldEndsAt) this._endField(bomb, state, 'expired');
+        syncBombTargetInteraction(bomb);
         continue;
       }
       if (!d.armed && now >= d.armedAt) {
@@ -1058,6 +1187,7 @@ export const bombs = {
         } else if (now >= d.detonateAt - BOMB_DRIFT.warningS) this._prime(bomb, 'fuze', now);
       }
       if (d.phase === 'warning' && now + 1e-9 >= d.resolveAt) this._detonate(bomb, d, state, d.trigger);
+      syncBombTargetInteraction(bomb);
     }
     // Resolve ALL lifecycle transitions before fields sample one another. New fields get no
     // retroactive force for time before opening; expired ones contribute no final ghost impulse.
@@ -1070,7 +1200,7 @@ export const bombs = {
       if (def.field?.kind !== 'goo') continue;
       for (let i = 0; i < this._targets.length; i++) {
         const ent = this._targets[i];
-        if (ent.alive && movable(ent) && bombSurfaceFalloff(Math.hypot(ent.pos.x - bomb.pos.x, ent.pos.z - bomb.pos.z), ent.radius, def.radius) > 0) this._gooCoverage[i]++;
+        if (ent.alive && blastShoveEligible(ent) && bombSurfaceFalloff(Math.hypot(ent.pos.x - bomb.pos.x, ent.pos.z - bomb.pos.z), ent.radius, def.radius) > 0) this._gooCoverage[i]++;
       }
     }
     for (const bomb of this._active) {
@@ -1082,7 +1212,7 @@ export const bombs = {
     let best = null, bestT = Infinity;
     const def = bombDef(d.bombId);
     for (const e of this._targets) {
-      if (!e.alive || !craft(e) || e.id === d.ownerId || (bomb.team != null && e.team != null && e.team === bomb.team)) continue;
+      if (!proximityTriggerEligible(e, bomb, d.ownerId)) continue;
       const t = sweptBombContact(e.pos.x - x0, e.pos.z - z0,
         e.pos.x + (e.vel?.x || 0) * dt - bomb.pos.x,
         e.pos.z + (e.vel?.z || 0) * dt - bomb.pos.z,
@@ -1098,11 +1228,13 @@ export const bombs = {
     d.triggered = true; d.detonatedTick = state.tick;
     const result = def.field?.kind === 'singularity' ? null
       : this._blastVictims(state, { pos, def, ownerId: d.ownerId, originId: bomb.id, trigger });
+    this._spawnSweep(bomb, def, pos, state);
     if (def.field) {
       d.phase = 'field'; d.fieldStartedAt = simNow(state); d.fieldEndsAt = d.fieldStartedAt + def.field.durationS;
       d.nextFieldTick = state.tick + def.field.tickEveryTicks;
     } else { d.phase = 'spent'; d.retired = true; bomb.alive = false; }
     this._emitDetonated(bomb, d, def, state, pos, trigger, result);
+    syncBombTargetInteraction(bomb);
     return true;
   },
   _emitDetonated(bomb, d, def, state, pos, trigger, result) {
@@ -1117,6 +1249,115 @@ export const bombs = {
       id: cueId, position: pos, gain: 0.65,
       bombId: bomb.id, payloadId: def.id, trigger, trackId: bomb.id,
     });
+  },
+
+  // The traveling half of every blast (hull-burst overhaul family, `combat.tumbleFling`).
+  // The instant impulse shoves; this front re-pushes loose bodies as it overtakes them,
+  // nearest first, so a detonation reads as a wave sweeping the field instead of one
+  // simultaneous teleport. Ships and drones are excluded — their shove/hitstun economy is
+  // tuned end to end (SHOVE_BEAT_LAW, HITSTUN_LAW); the wave's added push is for the loose
+  // world, where the tumble threshold (SHOCKWAVE_SWEEP_LAW.tumbleDeltaV) decides whether an
+  // object visibly tumbles, shudders, or barely stirs. Gated like every slice-A rule: OFF
+  // in legacy47a keeps the frozen goldens byte-identical.
+  _spawnSweep(bomb, def, pos, state, impulseOverride = null) {
+    if (!combatFlag('tumbleFling')) return;
+    // The wave carries a fixed fraction of the payload's OWN impulse budget: a
+    // zero-impulse payload (the singularity's opening, goo) births no wave at all —
+    // "does not blast on arrival" must not grow a shove, evict a live front's slot,
+    // or play the ring. The collapse passes its authored collapseImpulse instead.
+    const impulseBudget = Math.max(0, Number(impulseOverride != null ? impulseOverride : def.impulse) || 0)
+      * SHOCKWAVE_SWEEP_LAW.passImpulseFrac;
+    if (!(impulseBudget > 0)) return;
+    // Replacement before eviction: a re-detonation reuses its own record in place and
+    // must never push the oldest unrelated front out of the cap.
+    const existing = this._sweeps.find((s) => s.bombId === bomb.id);
+    if (!existing && this._sweeps.length >= SHOCKWAVE_SWEEP_LAW.maxLiveSweeps) this._sweeps.shift();
+    const sweep = createShockwaveSweep({
+      bombId: bomb.id,
+      ownerId: bomb.data && bomb.data.ownerId,
+      weaponId: def.id,
+      passImpulseWu: impulseBudget,
+      x: pos.x, z: pos.z, blastRadius: def.radius,
+      existing,
+    });
+    if (sweep && !this._sweeps.includes(sweep)) this._sweeps.push(sweep);
+    this._bombsQuiet = null;
+    if (this.bus) {
+      // The wave's own tell: an outward-racing ring, distinct from the payload's material
+      // release (BombDetonationVfx) and the vector mine's punch-flash.
+      this.bus.emit('presentation:vfxCue', {
+        id: 'combat.shockwaveSweep', lane: 'combat', particles: 24, lights: 1,
+        magnitude: Math.max(0.6, def.radius / 150), position: { x: pos.x, z: pos.z },
+        material: 'impulse', sourceId: bomb.data && bomb.data.ownerId, targetId: null,
+        flashReduced: flashReduced(state),
+      });
+    }
+  },
+
+  _tickSweeps(dt, state) {
+    if (!this._sweeps.length || !(dt > 0)) return;
+    const physics = this.helpers && this.helpers.combatPhysics;
+    // The candidate field does not depend on the sweep: enumerate once per tick.
+    const candidates = this._sweepCandidates(state);
+    let passBudget = SHOCKWAVE_SWEEP_LAW.maxPassesPerTick;
+    for (let i = this._sweeps.length - 1; i >= 0; i--) {
+      if (passBudget <= 0) break;
+      const sweep = this._sweeps[i];
+      const front = advanceSweepFront(sweep, dt);
+      // Resolve the final annulus BEFORE retiring: the last tick's band plus body
+      // radii is a real pass the outermost bodies are owed. Distance order keeps the
+      // wave nearest-first within a tick AND makes budget deferral fall on the farthest
+      // bodies deterministically (bucket insertion order must never decide physics).
+      candidates.sort((x, y) => this._sweepDist2(x, sweep) - this._sweepDist2(y, sweep));
+      for (const ent of candidates) {
+        if (passBudget <= 0) break;
+        const pass = resolveSweepPass(sweep, ent, front.radius);
+        if (!pass) continue;
+        passBudget--;
+        if (physics && typeof physics.applyImpulse === 'function') {
+          // The applied impulse is the graded deltaV TIMES THE BODY'S REAL MASS: the
+          // floor belongs to the grade (threshold stability), never to the delivery —
+          // a floor-mass impulse divided by a real 0.1-mass pickup would deliver a
+          // 60 WU/s receipt as a 1200 WU/s launch. sweptMassOf is the same read the
+          // grade used, so the receipt is the physical truth.
+          const mag = pass.deltaV * sweptMassOf(ent);
+          const provenance = {
+            actorId: sweep.ownerId == null ? null : sweep.ownerId,
+            weaponId: sweep.weaponId,
+            tag: 'bomb_shockwave',
+            appliedTick: state.tick | 0,
+          };
+          const accepted = physics.applyImpulse({
+            entityId: ent.id, impulse: { x: pass.dirX * mag, z: pass.dirZ * mag }, point: null,
+            reason: 'shockwave_sweep', tick: state.tick, provenance,
+          });
+          if (accepted !== false) recordImpulseProvenance(ent, { ...provenance, magnitude: mag });
+        }
+        if (this.bus) this.bus.emit(SHOCKWAVE_PASS_EVENT, pass);
+      }
+      if (!front.alive) this._sweeps.splice(i, 1);
+    }
+  },
+
+  _sweepDist2(entity, sweep) {
+    const dx = (entity.pos && entity.pos.x) - sweep.x;
+    const dz = (entity.pos && entity.pos.z) - sweep.z;
+    return dx * dx + dz * dz;
+  },
+
+  // Loose matter the wave can touch: the movable family minus craft, plus dynamic-body
+  // fauna — the same eligibility the blast shove grants, read from the same typed index
+  // _collect uses (a spatial hash alone would silently drop noncolliding loose bodies).
+  _sweepCandidates(state) {
+    const out = this._sweepScratch || (this._sweepScratch = []);
+    out.length = 0;
+    const buckets = bombTargetBuckets(state && state.entityIndex);
+    if (buckets) {
+      for (const list of buckets) for (const e of list) pushSweepBody(out, e);
+    } else {
+      for (const e of (state && state.entityList) || EMPTY) pushSweepBody(out, e);
+    }
+    return out;
   },
 
   _blastVictims(state, { pos, def, ownerId, originId, trigger, impulseOverride = null, damageOverride = null }) {
@@ -1137,14 +1378,29 @@ export const bombs = {
         dirX = (dirX - dirZ * q) / norm; dirZ = (dirZ + x * q) / norm;
       }
       const magnitude = impulse * falloff;
-      if (magnitude > 0 && (dirX !== 0 || dirZ !== 0) && movable(ent) && this._applyImpulse(ent, dirX * magnitude, dirZ * magnitude, state, 'bomb_blast')) {
+      // SFQ-B035 — the blast-facing surface contact: where the radial load actually lands on
+      // this hull (center minus the radial direction times the hull radius). The impulse and
+      // the supported torque cap read it as real surface data. For the SIGNED SIDE its job is
+      // replacing the fabricated +z offset the old route fed signedHitSide — that fake
+      // dominated the surface-point branch via sign(world x) whenever the shove had any x.
+      // On the blast axis the point's own cross is exactly zero (it lies on the impulse line),
+      // so the sign is decided by signedHitSide's hull-heading read, and a dead-nose hit takes
+      // the id-parity fallback as that function documents.
+      const surfaceR = Math.max(0, Number(ent.radius) || 0);
+      const hitPos = Object.freeze({ x: ent.pos.x - dirX * surfaceR, z: ent.pos.z - dirZ * surfaceR });
+      if (magnitude > 0 && (dirX !== 0 || dirZ !== 0) && blastShoveEligible(ent)
+        && this._applyImpulse(ent, dirX * magnitude, dirZ * magnitude, state, 'bomb_blast',
+          { point: hitPos, maxTorque: def.tumbleTorque })) {
         considerShove(shoves, ent.id, dirX, dirZ, magnitude);
-        this._publishHitstun(state, ent, { dirX, dirZ, magnitude, ownerId, attackerMass, payloadId: def.id, trigger });
+        this._publishHitstun(state, ent, { dirX, dirZ, magnitude, ownerId, attackerMass, payloadId: def.id, trigger, hitPos });
       }
-      if (DAMAGE_TYPES.has(ent.type) && (damage > 0 || def.statuses?.length)) {
+      if ((DAMAGE_TYPES.has(ent.type) || faunaBlastEligible(ent)) && (damage > 0 || def.statuses?.length)) {
         const packet = scalarHitToDamagePacket({
           damage: damage * falloff, damageType: def.damageType, pos,
-          penetration: def.penetration || 0, heat: def.heat || 0, statuses: def.statuses || EMPTY,
+          penetration: def.penetration || 0, heat: def.heat || 0,
+          // Bomb statuses are craft-control verbs (see the fauna eligibility note above) —
+          // organisms take the blast damage, never the status rider.
+          statuses: DAMAGE_TYPES.has(ent.type) ? (def.statuses || EMPTY) : EMPTY,
           subsystemShare: def.subsystemShare ?? null, shieldBypass: def.shieldBypass || 0,
           source: { kind: 'bomb', payloadId: def.id, bombId: originId },
         });
@@ -1179,9 +1435,9 @@ export const bombs = {
     const deltaV = input.magnitude / victimMass;
     if (!(deltaV > 0)) return;
     const hitSide = signedHitSide(victim, { x: input.dirX, z: input.dirZ }, {
-      pos: {
+      pos: input.hitPos || {
         x: Number(victim.pos && victim.pos.x) || 0,
-        z: (Number(victim.pos && victim.pos.z) || 0) + Math.max(4, (victim.radius || 8) * 0.75),
+        z: Number(victim.pos && victim.pos.z) || 0,
       },
     }, victim.id);
     const provenance = Object.freeze({
@@ -1230,18 +1486,24 @@ export const bombs = {
       const dist = radial.dist > 0 ? radial.dist : Math.hypot(dx, dz);
       const falloff = bombSurfaceFalloff(dist, ent.radius, def.radius);
       if (!(falloff > 0)) continue;
-      if (f.kind === 'singularity' && movable(ent) && radial.dist > 0) {
+      // Field motion rides the same eligibility as the blast shove (SFQ-B035): a dynamic-body
+      // fauna is pulled into the well and slowed by tar exactly like the craft next to it;
+      // kinematic fauna stay motion-owned by the ecology drive.
+      if (f.kind === 'singularity' && blastShoveEligible(ent) && radial.dist > 0) {
         const mass = massOf(ent), couple = Math.max(FIELD_COUPLING.minShipCouple, FIELD_COUPLING.refMass / Math.max(mass, FIELD_COUPLING.refMass));
         const j = f.strength * envelope * falloff * couple * mass * dt;
         queuePhysicsImpulse(ent, { x: radial.x * j, z: radial.z * j });
-      } else if (f.kind === 'goo' && movable(ent)) {
+      } else if (f.kind === 'goo' && blastShoveEligible(ent)) {
         const coverage = this._gooCoverage[targetIndex] || 1;
         if (fillBombViscosityImpulse(this._viscosity, ent.vel, bomb.vel, effectiveMass(state, ent), dt, f.dragPerS * falloff, 1 / Math.max(1, coverage))) {
           queuePhysicsImpulse(ent, this._viscosity);
         }
       }
-      if (!applyStatusTick || !craft(ent)) continue;
+      if (!applyStatusTick) continue;
+      // Crush is damage — fauna-eligible like blast damage. The goo re-application is a craft
+      // status rider — fauna stay excluded, the same law as blast statuses.
       const crush = f.kind === 'singularity' && Math.max(0, dist - (ent.radius || 0)) <= f.crushInnerRadius;
+      if (!craft(ent) && !(crush && faunaBlastEligible(ent))) continue;
       if (f.kind !== 'goo' && !crush) continue;
       const packet = scalarHitToDamagePacket({
         damage: crush ? f.crushDamage : 0, damageType: crush ? 'plasma' : 'kinetic', pos: bomb.pos,
@@ -1257,19 +1519,75 @@ export const bombs = {
     if (!bomb.alive || bomb.data.phase !== 'field') return;
     const d = bomb.data, def = bombDef(d.bombId), pos = { x: bomb.pos.x, z: bomb.pos.z };
     bomb.alive = false; d.phase = 'spent'; d.retired = true;
+    if (def.field?.kind === 'goo') this._shedGooFieldStatus(bomb, state, def);
     if (reason === 'expired' && def.field?.kind === 'singularity') {
       const result = this._blastVictims(state, { pos, def, ownerId: d.ownerId, originId: bomb.id, trigger: 'collapse',
         impulseOverride: def.field.collapseImpulse, damageOverride: def.field.collapseDamage });
+      this._spawnSweep(bomb, def, pos, state, def.field.collapseImpulse);
       this._emitDetonated(bomb, d, def, state, pos, 'collapse', result);
     }
     this.bus?.emit('bombs:fieldEnded', {
       schemaVersion: 2, bombId: bomb.id, payloadId: def.id, ownerId: d.ownerId, pos,
       trigger: reason === 'expired' && def.field?.kind === 'singularity' ? 'collapse' : reason,
     });
+    syncBombTargetInteraction(bomb);
   },
-  _applyImpulse(ent, x, z, state, reason) {
+
+  // NXI-040 — a dying tar field sheds only its own status contribution. The status record is
+  // keyed by status id, never by source, so this scans the same coverage law the live tick
+  // uses: a target still inside another live goo field keeps the record that field is
+  // feeding, while a target this was the last live source for sheds it now rather than
+  // wearing the cloud for seconds after it is gone. Only 'status_goo' is ever cleared —
+  // never the whole status bag, and never a record another live field still covers.
+  _shedGooFieldStatus(bomb, state, def) {
+    const combat = this.registry?.get?.('combat');
+    const kernel = combat && typeof combat.ensureKernel === 'function' ? combat.ensureKernel() : null;
+    if (!kernel || !kernel.statuses || typeof kernel.statuses.clear !== 'function') return;
+    const combatEntities = state.combat && state.combat.entities;
+    if (!combatEntities) return;
+    const now = simNow(state), targets = this._targets || EMPTY;
+    for (const ent of targets) {
+      if (!ent || ent.alive === false || !craft(ent)) continue;
+      const dist = Math.hypot(ent.pos.x - bomb.pos.x, ent.pos.z - bomb.pos.z);
+      if (!(bombSurfaceFalloff(dist, ent.radius, def.radius) > 0)) continue;
+      let covered = false;
+      for (const other of this._active || EMPTY) {
+        if (other === bomb || !other.alive) continue;
+        const od = other.data;
+        if (!od || od.retired || od.phase !== 'field' || od.fieldStartedAt >= now) continue;
+        const odef = bombDef(od.bombId);
+        if (odef.field?.kind !== 'goo') continue;
+        const odist = Math.hypot(ent.pos.x - other.pos.x, ent.pos.z - other.pos.z);
+        if (bombSurfaceFalloff(odist, ent.radius, odef.radius) > 0) { covered = true; break; }
+      }
+      if (covered) continue;
+      const runtime = combatEntities[String(ent.id)];
+      if (runtime && kernel.statuses.clear(ent, runtime, 'status_goo')) {
+        // clear() does not emit. The callout and the tar loop both listen for expiry.
+        this.bus?.emit('combat:statusExpired', {
+          targetId: ent.id, statusId: 'status_goo', data: null, reason: 'field_shed',
+        });
+      }
+    }
+  },
+  // SFQ-B035: the blast hands the physics authority its surface contact point and the def's
+  // supported torque cap (`sg02DynamicBodyOwner.applyImpulse` applies the off-center arm /
+  // clamped yaw torque itself, and keeps its own player off-center exemption). A point on the
+  // impulse line — a radial blast's facing surface on a circular hull — correctly produces no
+  // direct torque; the signed spin still reads the surface hit through the hitstun law.
+  _applyImpulse(ent, x, z, state, reason, opts = {}) {
     const physics = this.helpers?.combatPhysics;
-    return !!physics?.applyImpulse && physics.applyImpulse({ entityId: ent.id, impulse: { x, z }, point: null, reason, tick: state.tick }) !== false;
+    if (!physics?.applyImpulse) return false;
+    return physics.applyImpulse({
+      entityId: ent.id,
+      impulse: { x, z },
+      point: opts.point || null,
+      // A finite cap passes through verbatim (0 = the def explicitly refuses torque — the
+      // singularity's clean collapse snap); only an absent cap leaves the authority uncapped.
+      maxTorque: Number.isFinite(opts.maxTorque) ? Math.max(0, opts.maxTorque) : undefined,
+      reason,
+      tick: state.tick,
+    }) !== false;
   },
   _routeDamage(request) {
     if (typeof this.helpers?.routeCombatDamage === 'function') return this.helpers.routeCombatDamage(request);
@@ -1313,9 +1631,8 @@ export const bombs = {
       d.phase = 'spent';
     }
     adaptBombProjectileProxy(bomb);
-    d.lockable = false;
-    d.interaction = null;
     clearDestroyedBombLocks(state, bomb);
+    syncBombTargetInteraction(bomb);
     this.bus?.emit('bombs:destroyed', {
       bombId, payloadId, ownerId, shotBy, pos, reason, trigger: reason,
     });
@@ -1331,9 +1648,13 @@ export const bombs = {
       if (e.data?.phase === 'field') this._endField(e, this.state, reason);
       e.alive = false;
       if (e.data) { e.data.phase = 'spent'; e.data.retired = true; }
+      syncBombTargetInteraction(e);
       count++;
     }
     this._ownerCooldowns?.clear();
+    // A sector transition or a load must not leave a front expanding from stale
+    // detonation coordinates into the wrong world.
+    this._sweeps = [];
     this._bombsQuiet = null;
     if (this.state) publishBombsQuiet(this.state, false);
     if (count) this.bus?.emit('bombs:released', { count, reason });
@@ -1341,6 +1662,7 @@ export const bombs = {
   },
   _resetRuntime(reason) {
     this.releaseAll(reason);
+    this._sweeps = [];
     this._prepQuotes = new WeakMap();
     this._preparationInFlight = false;
     if (!this.state) return;

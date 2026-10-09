@@ -15,12 +15,14 @@
 // takes the only copy with it. If workers are unavailable, the worker errors, answers with an error, or
 // does not answer in time, the hash is computed on the calling thread: the previous behaviour.
 
+import { runtimeWorkerUrl } from './runtimeWorkers.js';
+
 const WORKER_NAME = 'spaceface-render-package-digest';
 const REQUEST_TIMEOUT_MS = 20_000;
 
 function defaultWorkerUrl() {
   try {
-    return new URL('./renderPackageDigestWorker.js', import.meta.url).href;
+    return runtimeWorkerUrl('digest', import.meta.url);
   } catch (_) {
     return null;
   }
@@ -83,6 +85,7 @@ export function createRenderPackageDigester(options = {}) {
       if (event && typeof event.preventDefault === 'function') event.preventDefault();
       retire();
     });
+    worker.addEventListener('messageerror', () => retire());
     return worker;
   };
 
@@ -130,8 +133,9 @@ export function createRenderPackageDigester(options = {}) {
         if (timeoutMs > 0) {
           timer = setTimeout(() => {
             if (!pending.has(id)) return;
-            pending.delete(id);
-            entry.fallback();
+            // A silent worker may still own transferred GLB buffers. Terminate it,
+            // settle all callers, and use the verified calling-thread path thereafter.
+            retire();
           }, timeoutMs);
         }
         const buffer = view.buffer;
@@ -170,8 +174,9 @@ export function createRenderPackageDigester(options = {}) {
         if (timeoutMs > 0) {
           timer = setTimeout(() => {
             if (!pending.has(id)) return;
-            pending.delete(id);
-            entry.fallback();
+            // A silent worker may still own transferred GLB buffers. Terminate it,
+            // settle all callers, and use the verified calling-thread path thereafter.
+            retire();
           }, timeoutMs);
         }
         try {

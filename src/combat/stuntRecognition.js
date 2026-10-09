@@ -47,7 +47,9 @@ export function classifyStuntEvidence(receipt) {
   add('bolas',swing&&release&&within(tick,release.tick,180)&&!victimIsPayload&&r.sourceType==='ship'&&r.sourceDeathTick==null&&p.closingSpeed>=0.5*u);
   add('wrecking_ball',constraint&&attached&&constraint.loadedTicks>=15&&constraint.loadedTicks<=120&&constraint.sweep>=45
     &&!victimIsPayload&&r.reference.mass>=0.5*targetRef.mass&&p.closingSpeed>=0.5*targetRef.cruise);
-  add('tow_kill',constraint&&attached&&victimIsPayload&&r.sourceType==='ship'&&r.sourceDeathTick==null&&receipt.targetKilled&&constraint.loadedTicks>=18&&constraint.loadedTicks<=180
+  // Quarter-second load, same floor as the other tether primaries. Two hull lengths of
+  // displacement is what makes a tow; a faster haul is still one.
+  add('tow_kill',constraint&&attached&&victimIsPayload&&r.sourceType==='ship'&&r.sourceDeathTick==null&&receipt.targetKilled&&constraint.loadedTicks>=15&&constraint.loadedTicks<=180
     &&constraint.displacement>=2*r.reference.length&&(terrain||(receipt.otherMass>=150)));
   add('dead_mans_mass',!victimIsPayload&&r.sourceDeathTick!=null&&r.tick>r.sourceDeathTick&&within(tick,r.tick,180)
     &&r.reference.mass>=0.2*(r.sceneReferenceMass??16)&&(angleBetween(r.before,r.after)>=25||Math.hypot(r.dv.x,r.dv.z)>=0.3*u));

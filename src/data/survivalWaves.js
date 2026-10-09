@@ -1042,6 +1042,9 @@ export const SURVIVAL_WAVES = freezeDeep([
   ...tenWaveBlock('cinder_sluice', 'front', 'rear'),
   ...tenWaveBlock('cryo_drift', 'se', 'nw'),
   ...tenWaveBlock('storm_lattice', 'diagonal_b', 'front'),
+  // SWARM-07 B4 — the new biomes join the catalog with their own authored thirty.
+  ...tenWaveBlock('asteroid_mill', 'ne', 'sw'),
+  ...tenWaveBlock('the_hive', 'rear', 'diagonal_a'),
 ]);
 
 /** First wave that is not part of the authored thirty. Default planWave still rejects it. */

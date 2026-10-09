@@ -43,6 +43,16 @@ export function swarmPurchasePrice(defId) {
   return prices[tier];
 }
 
+/**
+ * SWARM-05 §7.3 — sell-back is half the shelf price, rounded down. The armory's label and the
+ * refit's refund both read this so the number on the word is always the number the wallet gets.
+ * A fitting the shop never prices (no def) sells for null — nothing the owner will pay out.
+ */
+export function swarmSellPrice(defId) {
+  const price = swarmPurchasePrice(defId);
+  return price == null ? null : Math.floor(price / 2);
+}
+
 const WEAPON_BY_ID = new Map(WEAPONS.map((def) => [def.id, def]));
 // Weapons AND modules, because the swarm pool offers attack traits — a Piercing Core is a fitting
 // like any other. The arc's pool is weapons only and reads the same map; a module id it never
@@ -394,6 +404,10 @@ function offerDraftInner(input) {
   for (const offer of pool) {
     const def = FITTING_BY_ID.get(offer.defId);
     if (!def) continue;
+    // Authored cards can carry a debut wave (FB-021): a card is not on the shelf before its
+    // `fromWave`, the same gate the swarm enemy roster uses. Generated catalog rows are
+    // wave-agnostic and carry no gate.
+    if (Number.isInteger(offer.fromWave) && wave < offer.fromWave) continue;
     // Swarm can build a battery of a favourite gun. Gauntlet keeps its variety-focused draft;
     // support modules remain distinct choices instead of stacking the same passive repeatedly.
     const duplicateGun = src.ruleset === SWARM_RULESET && def.slotType === 'weapon';
@@ -413,6 +427,7 @@ function offerDraftInner(input) {
       // categories from defId prefixes, so a generated row files itself correctly.
       category: offer.category || swarmCategoryFor(def),
       catalog: offer.catalog === true,
+      fromWave: Number.isInteger(offer.fromWave) ? offer.fromWave : null,
       slotIndex: target.slotIndex,
       replaces: target.replaces,
     });

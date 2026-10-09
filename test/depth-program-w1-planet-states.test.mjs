@@ -36,13 +36,13 @@ const EXPECTED_PLACEMENTS = Object.freeze([
 
 const SCANNER_KINDS = new Set(['distress', 'anomaly', 'salvage', 'ambush', 'ship', 'ore']);
 const ASSIGNED_SECTOR_SEMANTIC_HASHES = Object.freeze({
-  // Re-pinned 2026-09-27: landmark POI records grew authored draw fields across the
-  // landmark lane (PQ-153.02 review data, D54 placeTargetRadius) — POI content moved,
-  // topology/neighbors/hazards/faction ownership did not.
-  sector_charon_expanse: 4287834606,
-  sector_vesta_forge: 158446882,
-  sector_sker_haven: 3318080732,
-  sector_ashfall_reach: 4151033349,
+  // Re-pinned with the Bolus: Charon and Ashfall each gain one neighbor
+  // (sector_the_bolus). Vesta and Sker match the live master cards — the
+  // 2026-09-27 pins had already drifted before this sector existed.
+  sector_charon_expanse: 1612218097,
+  sector_vesta_forge: 945901903,
+  sector_sker_haven: 475978936,
+  sector_ashfall_reach: 2336580282,
 });
 
 function assertDeepFrozen(value, path = 'value', seen = new Set()) {
@@ -221,7 +221,7 @@ test('sector decorator adds only planetStates and preserves every prior field by
 });
 
 test('live SECTORS exposes six additive W1 assignments without changing sector semantics', () => {
-  assert.equal(SECTORS.length, 24, 'W1 must not change the canonical sector count');
+  assert.equal(SECTORS.length, 25, 'canonical sector count includes the Bolus');
   const assigned = SECTORS.filter((sector) => Array.isArray(sector.planetStates));
   assert.deepEqual(
     assigned.map((sector) => sector.id).sort(),

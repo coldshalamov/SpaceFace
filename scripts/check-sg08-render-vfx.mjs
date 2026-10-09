@@ -258,8 +258,10 @@ function makeHarness(overrides = {}) {
   const inspect = system.inspect();
   assert.equal(inspect.presentation.applied, 1, 'motion-reduced renderer should still consume cues');
   assert.equal(inspect.presentation.last.lightsRequested, 1, 'motion-reduced renderer should record requested lights');
-  assert.equal(inspect.presentation.last.lightsActivated, 0, 'motion-reduced renderer should suppress dynamic event lights');
-  assert.equal(inspect.activeLights, 0, 'motion-reduced renderer should keep light pool inactive');
+  // FB-077: reduced motion holds the event light at the 0.1-peak floor — nothing is
+  // deleted outright (vfxAccessibility.REDUCED_MOTION.eventLightPeakScale).
+  assert.equal(inspect.presentation.last.lightsActivated, 1, 'motion-reduced renderer should hold the event light at the reduced floor');
+  assert.equal(inspect.activeLights, 1, 'motion-reduced renderer should keep the held light in the pool');
 }
 
 {

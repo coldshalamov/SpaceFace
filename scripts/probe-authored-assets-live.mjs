@@ -150,6 +150,8 @@ try {
       error: reportError && reportError.message ? reportError.message : String(reportError),
     }));
     const startupTrace = await getStartupTrace(cdp).catch(() => []);
+    const liveReadiness = await evalJson(cdp, `(() => { try { return window.SF && window.SF.authoredVisualReadiness ? window.SF.authoredVisualReadiness() : null; } catch (e) { return { evalError: String(e && e.message || e) }; } })()`).catch((e) => ({ collectError: String(e && e.message || e) }));
+    startupReport.liveReadiness = liveReadiness;
     throw new Error(`seeded flight session did not become playable before authored asset proof: ${JSON.stringify(compactStartupFailure(startupReport, startupTrace, error, pageIssues), null, 2)}`);
   }
   const startTick = playable.tick;
@@ -1678,8 +1680,15 @@ function collectPageIssues(cdp) {
       const text = (msg.params.args || []).map((arg) => arg.value || arg.description || '').join(' ');
       warnings.push({ type: 'warning', text });
     } else if (msg.method === 'Log.entryAdded' && msg.params && msg.params.entry && msg.params.entry.level === 'error') {
-      const issue = { type: 'error', text: msg.params.entry.text || '' };
-      if (!isIgnorablePageIssue(issue)) issues.push(issue);
+      const entry = msg.params.entry;
+      // The probe server runs unmounted (SPACEFACE_PLAYER_STORE_DIR: ''), so the app's boot
+      // store probe logs a resource 404/abort against a route that is absent by design — same
+      // class the shared collector swallows in browser-issues.mjs. Keyed on entry.url so a
+      // genuine missing authored asset (a different URL) still lands as an error.
+      if (!isAbsentPlayerStoreEntry(entry)) {
+        const issue = { type: 'error', text: entry.text || '' };
+        if (!isIgnorablePageIssue(issue)) issues.push(issue);
+      }
     } else if (msg.method === 'Log.entryAdded' && msg.params && msg.params.entry && msg.params.entry.level === 'warning') {
       warnings.push({ type: 'warning', text: msg.params.entry.text || '' });
     }
@@ -1698,6 +1707,11 @@ function isIgnorablePageIssue(issue) {
   const text = String(issue && issue.text || '').trim();
   return /^(?:THREE\.)+WebGLProgram: Shader Error (?:0|1282) - VALIDATE_STATUS false/.test(text)
     && /Program Info Log:\s*$/.test(text);
+}
+
+function isAbsentPlayerStoreEntry(entry) {
+  const url = String(entry && entry.url || '').split('?')[0];
+  return url.endsWith('/__spaceface_player_store');
 }
 
 async function captureScreenshot(cdp, file) {
@@ -1795,7 +1809,7 @@ export async function startFreshServer(options = {}) {
 }
 
 function spawnProbeServer(port) {
-  const child = spawn(process.execPath, ['server.js', String(port)], {
+  const child = spawn(process.execPath, ['server.js', String(port)], {env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' }, 
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
@@ -2231,6 +2245,7 @@ function compactStartupFailure(report, startupTrace, cause, pageIssues) {
       error: loader.error,
     },
     startupTrace: Array.isArray(startupTrace) ? startupTrace.slice(-12) : [],
+    liveReadiness: report && report.liveReadiness,
     criticalStations: report && Array.isArray(report.criticalStations) ? report.criticalStations : [],
     authoredUpgradeDiagnostics: report && report.authoredUpgradeDiagnostics || null,
     pageIssues: {

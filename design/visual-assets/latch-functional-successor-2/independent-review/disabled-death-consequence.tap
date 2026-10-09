@@ -1,0 +1,36 @@
+TAP version 13
+# (node:23) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+# --import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs", pathToFileURL("./")); register("/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs", pathToFileURL("./"));'
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# DISABLED_DEATH_CONSEQUENCE {"afterKill":{"saved":{"met":true,"cleanArrivals":0,"incidentIds":[],"destroyed":false},"budget":1,"ownedActorRetained":true},"afterContinue":{"freshActor":true,"budget":1,"destroyed":false}}
+# Subtest: independent: disabled actor death consequence across JSON semantic Continue
+not ok 1 - independent: disabled actor death consequence across JSON semantic Continue
+  ---
+  duration_ms: 72.340383
+  type: 'test'
+  location: '/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/disabled-death-consequence.test.mjs:2:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Killed owned actor must remain destroyed
+    
+    false !== true
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/disabled-death-consequence.test.mjs:2:866)
+    async Test.run (node:internal/test_runner/test:1389:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 508.435975

@@ -399,3 +399,15 @@ test('leftover mechanic names only leftover scar classes the hull carries', () =
   assert.doesNotMatch(hotLine, /Nothing on this hull to file/);
   assert.match(hotLine, /The law already filed the rap\./);
 });
+
+test('a hull carrying every scar class gets the two worst named and the rest counted, not a wall', () => {
+  let hull = defaultLivingHull(0);
+  hull = livingHullWithScar(hull, leftoverScar('crushing', 'bow', 2), 2);
+  hull = livingHullWithScar(hull, leftoverScar('heavy', 'port bow', 3), 3);
+  hull = livingHullWithScar(hull, leftoverScar('hard', 'starboard bow', 4), 4);
+  hull = livingHullWithScar(hull, leftoverScar('graze', 'port bow', 5), 5);
+  const line = leftoverMechanicLine(leftoverOwnedHull(hull));
+  assert.match(line, /Crushing scar on the bow\. The frame kept it\. Heavy scar on the port bow\. Do not call it weather\./);
+  assert.match(line, /Two lighter marks besides\./);
+  assert.doesNotMatch(line, /Hard scar|Graze on/);
+});

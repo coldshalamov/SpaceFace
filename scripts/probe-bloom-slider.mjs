@@ -16,7 +16,7 @@ let browser = null;
 
 try {
   const port = await findFreePort(8240);
-  serverChild = spawn(process.execPath, ['server.js', String(port)], {
+  serverChild = spawn(process.execPath, ['server.js', String(port)], {env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' }, 
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,

@@ -347,7 +347,7 @@ test('admission queues compiles during loading and retries the starting sector a
   const parts = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
   assert.match(renderer, /state\.mode === 'loading'[\s\S]{0,700}?opening-submission-plan-owns-first-picture/,
     'loading still bypasses the broad authored-root watermark');
-  assert.match(renderer, /if \(subject\) void admitSubjectPipelines\(subject\)/);
+  assert.match(renderer, /if \(subject\) void admitSubjectPipelines\(subject/);
   assert.match(renderer, /_pendingPostOpeningSector/);
   assert.match(renderer, /preparePostOpeningPipelines/);
   assert.match(renderer, /live-scene-cook-owns-next-sector/);

@@ -87,6 +87,7 @@ const checks = [
   'check:massline:release',
   'check:massline:release-feedback',
   'check:massline:load',
+  'check:massline:tension-estimate',
   'check:massline:snapcatch',
   'check:massline:reelpump',
   'check:massline:target-scoring',
@@ -112,6 +113,7 @@ const checks = [
 // Anything not listed is one of the seventeen sub-second children.
 const COST_HINT_MS = {
   'check:47a:physical-branches': 36_250,
+  'check:massline:tension-estimate': 5_000,
   'check:47a:civilian-priority': 7_800,
   'check:47a:debris-sling': 6_430,
   'check:47a:recovery-contested': 5_260,

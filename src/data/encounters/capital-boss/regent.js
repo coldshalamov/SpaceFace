@@ -71,7 +71,7 @@ export const REGENT = freezeDeep({
         packet: packet({ thermal: 22 }), expose: THROW_WINDOW,
         counter: 'Both flanks burn but the front and stern stay open. The crown is slow; the coast is yours.' }),
       beat({ id: 'last_beam', title: 'LAST FURNACE', cue: 'maw.last_starboard',
-        requires: ['weapon'], trackTicks: 54, tellTicks: 132, activeTicks: 48, recoverTicks: 228,
+        requires: ['weapon'], trackTicks: 54, tellTicks: 144, activeTicks: 48, recoverTicks: 228,
         motion: { forward: 0.55, brake: false },
         shapes: [lane(0, 22, 560, 34, 0, 'target')], packet: packet({ thermal: 28 }),
         expose: THROW_WINDOW,

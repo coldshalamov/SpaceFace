@@ -127,6 +127,9 @@ export const runtime = Object.freeze({
     live.data.axis = axis;
     live.data.parleySince = null;
     live.data.parleyOffered = false;
+    live.data.termsSpoken = false;
+    live.data.withdrawNoted = false;
+    live.data.custodyCommit = null;
     live.data.delivered = 0;
     live.phase = 'offer';
     d.say(live, 'alert',
@@ -200,30 +203,84 @@ export const runtime = Object.freeze({
       return d.resolve(live, 'deal_done', { speak: true });
     }
 
-    // The join read: stand inside the ring unarmed for a stretch and the seller treats you
-    // as market, not threat. A Quiet contact in the ledger is the payoff.
+    // The join read is a real commitment boundary (NXB-040): inside the ring the seller
+    // speaks the exact terms once (inspection) — that alone moves no freight and pays
+    // nothing. Stepping out before the window closes is the one honest withdraw: the
+    // manifest stays the seller's and the deal plays on without you. Still holding
+    // station when the window closes is acceptance — one pod is cut off the conveyor,
+    // restamped to the player's hull and shoved toward it. That stamp on a persistent
+    // body is the actual custody transfer; it settles once and no late cancel reverses it.
     const player = d.player();
     if (player && player.pos && !live.data.parleyOffered) {
       const pdx = player.pos.x - seller.pos.x, pdz = player.pos.z - seller.pos.z;
       const inRing = pdx * pdx + pdz * pdz <= PARLEY_WU * PARLEY_WU;
       if (inRing) {
-        if (live.data.parleySince == null) live.data.parleySince = now;
-        else if (now - live.data.parleySince >= PARLEY_S) {
+        if (live.data.parleySince == null) {
+          live.data.parleySince = now;
+          if (!live.data.termsSpoken) {
+            live.data.termsSpoken = true;
+            d.emit('comms:log', {
+              from: 'QUIET RUNNER',
+              text: 'Terms, since you parked quiet: one pod off the line takes your name on the manifest, plus a cut for carrying it. Hold station to take it — drift off and we never met.',
+              kind: 'encounter',
+            });
+          }
+        } else if (now - live.data.parleySince >= PARLEY_S) {
           live.data.parleyOffered = true;
-          d.rep('faction_quiet', 2, 'handoff_contact');
-          d.grant(60, 'handoff:quiet_lay');
-          d.emit('comms:log', {
-            from: 'QUIET RUNNER',
-            text: 'You fly quiet enough. There\u2019s a cut for the careful \u2014 the Den remembers faces.',
-            kind: 'encounter',
-          });
-          // The deal finishes around the new contact; nothing forces an exit.
+          // Acceptance = holding station through the inspection window. The custody
+          // transfer is physical, not a dialogue: the tail pod (furthest from the
+          // buyer, least committed to its deal) leaves the line under the player's name.
+          let escrow = null, escrowDist2 = -1;
+          for (const pid of live.data.pods || []) {
+            const pod = state.entities.get(pid);
+            if (!pod || pod.alive === false || !pod.pos) continue;
+            if (pod.data && pod.data.deliveredBy === live.id) continue; // already the buyer's
+            const bdx = pod.pos.x - buyer.pos.x, bdz = pod.pos.z - buyer.pos.z;
+            const bd2 = bdx * bdx + bdz * bdz;
+            if (bd2 > escrowDist2) { escrowDist2 = bd2; escrow = pod; }
+          }
+          if (escrow) {
+            const idx = live.data.pods.indexOf(escrow.id);
+            if (idx >= 0) live.data.pods.splice(idx, 1);
+            escrow.data = escrow.data || {};
+            escrow.data.ownerId = player.id;
+            escrow.data.ownerName = 'BONDED — OFF-BOOK MANIFEST';
+            escrow.data.bondedBy = live.id;
+            escrow.data.committedTo = player.id;
+            // A shove toward the player's hull at the conveyor's own crawl — the pod is a
+            // dumb body on a real trajectory; wherever it ends up, the name stays on it.
+            const ddx = player.pos.x - escrow.pos.x, ddz = player.pos.z - escrow.pos.z;
+            const dl = Math.hypot(ddx, ddz) || 1;
+            escrow.vel = { x: (ddx / dl) * POD_SPEED, z: (ddz / dl) * POD_SPEED };
+            live.data.custodyCommit = {
+              podId: escrow.id, playerId: player.id, acceptedAt: now, settled: false,
+            };
+            if (!live.data.custodyCommit.settled) {
+              live.data.custodyCommit.settled = true;
+              d.rep('faction_quiet', 2, 'handoff_contact');
+              d.grant(60, 'handoff:quiet_lay');
+              d.emit('comms:log', {
+                from: 'QUIET RUNNER',
+                text: 'Done. One pod wears your name now \u2014 bonded freight, and the Den pays the careful. Walk it wherever you like; there\u2019s no handing it back.',
+                kind: 'encounter',
+              });
+            }
+          }
+          // The deal finishes around the new owner; nothing forces an exit.
           scatter(seller); scatter(buyer);
           releaseCast(live);
           return d.resolve(live, 'contact_made', { speak: true });
         }
       } else if (live.data.parleySince != null) {
         live.data.parleySince = null; // stepped out of the ring — the window resets
+        if (live.data.termsSpoken && !live.data.withdrawNoted) {
+          live.data.withdrawNoted = true;
+          d.emit('comms:log', {
+            from: 'QUIET RUNNER',
+            text: 'Drifting already? Fine \u2014 we never met. The line keeps its own ledger.',
+            kind: 'encounter',
+          });
+        }
       }
     }
 

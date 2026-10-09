@@ -1,0 +1,111 @@
+{
+  "assets/ships/parts/parts_manifest.json": {
+    "baseSha256": "e2b72b19fc7605c275900a0efb0e0fbab877f836cd534ee37e221dc2e036b651",
+    "row": {
+      "id": "place_latch_nine",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_latch_nine.glb",
+      "tris": 24040,
+      "bytes": 2392052,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "mechanical": "Material_Mechanical",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_LATCH_MAIN_PORT",
+        "SOCKET_LATCH_MAIN_STBD",
+        "SOCKET_LATCH_PORT_AFT",
+        "SOCKET_LATCH_PORT_FORE",
+        "SOCKET_LATCH_REVERSE_PORT",
+        "SOCKET_LATCH_REVERSE_STBD",
+        "SOCKET_LATCH_STBD_AFT",
+        "SOCKET_LATCH_STBD_FORE"
+      ],
+      "mount": "origin",
+      "triangleMetric": "lod0",
+      "note": "NEW editable Forge Latch Nine signal tender; source-origin1WU/metre,27 fixed structural slabs and3 native swept paddles; eight physically witnessed thruster channels; art admission tracked separately.",
+      "bounds": {
+        "min": [
+          -10.10045337677002,
+          -0.800000011920929,
+          -5.502060413360596
+        ],
+        "max": [
+          8.199999809265137,
+          2.119999885559082,
+          8.149999618530273
+        ],
+        "dimensionsM": [
+          18.300453186035156,
+          2.919999897480011,
+          13.65206003189087
+        ]
+      }
+    },
+    "key": "parts",
+    "selector": "id"
+  },
+  "assets/ships/release/release_manifest.json": {
+    "baseSha256": "1d5962d65c71479bb4adcbef1747511af87440e1b66f50b10ff100a5e8be7163",
+    "row": {
+      "id": "place_latch_nine",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_latch_nine.glb",
+      "release": "assets/ships/release/parts/places/place_latch_nine.glb",
+      "sourceSha256": "9f50438e1576c6a61375584f48ce941635c49cd4b67769cbb1b67fdd1029d4d5",
+      "releaseSha256": "c3550bccf5ff6c191008619616f68e2e22ff01f8be8bb19a9c4e1d3fd380b80c",
+      "sourceBytes": 2392052,
+      "releaseBytes": 879144,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 349,
+      "contractNodeCount": 101,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    "key": "assets",
+    "selector": "id"
+  },
+  "assets/ships/render-packages/pilots.json": {
+    "baseSha256": "25c76ed3ab9f65ef1171b5a61a6eb236476b407f78d75ae3a2481c67a0bdbaf9",
+    "row": {
+      "key": "latch-nine",
+      "assetId": "sf.render.latch-nine",
+      "runtimeAssetId": "SF_PLACE_LATCH_NINE",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_latch_nine",
+      "sourceUrl": "assets/ships/release/parts/places/place_latch_nine.glb",
+      "releaseSha256": "c3550bccf5ff6c191008619616f68e2e22ff01f8be8bb19a9c4e1d3fd380b80c",
+      "releaseBytes": 879144,
+      "sceneRoot": true,
+      "dynamicNameIncludes": [
+        "MOTION_",
+        "HOOK_LATCH_THRUSTER_"
+      ],
+      "outputDir": "assets/ships/release/render-packages/latch-nine",
+      "metadataUrl": "assets/ships/release/render-packages/latch-nine/render-package.json"
+    },
+    "key": "pilots",
+    "selector": "key"
+  },
+  "tools/blender/forge/fleet.json": {
+    "key": "ships",
+    "selector": "latch_nine",
+    "row": {
+      "layout": "place",
+      "file": "place_latch_nine",
+      "asset_id": "SF_PLACE_LATCH_NINE",
+      "part_id": "latch-nine",
+      "new_place": true,
+      "note": "Latch Nine: reconstructed editable physical signal tender; source-reviewed, shipping Look review pending"
+    }
+  }
+}

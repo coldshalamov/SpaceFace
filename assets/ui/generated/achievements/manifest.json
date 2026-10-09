@@ -19,8 +19,29 @@
     "same_seed_same_day": "medal-same-seed-same-day.webp",
     "walked_out": "medal-walked-out.webp",
     "paperwork_filed": "medal-paperwork-filed.webp",
-    "six_figures": "medal-six-figures.webp"
+    "six_figures": "medal-six-figures.webp",
+    "returning_caller": "medal-returning-caller.webp",
+    "ten_permits": "medal-ten-permits.webp",
+    "the_hundred_thousand": "medal-the-hundred-thousand.webp",
+    "quarry": "medal-quarry.webp",
+    "long_haul": "medal-long-haul.webp",
+    "salvage_crew": "medal-salvage-crew.webp"
   },
+  "additions": [
+    {
+      "date": "2026-10-03",
+      "source": "one 3x2 sheet from codex gpt-5.5 image generation, 3 variants generated and the best chosen by review (variant 1: the only one with the first sheet's soft glow and ring hatching), given two existing medals as style references, cut by alpha bounds, tone gained onto the first sheet's bone white (tools/art/finish_generated.py medals --tone 252,249,242)",
+      "medals": ["returning_caller", "ten_permits", "the_hundred_thousand", "quarry", "long_haul", "salvage_crew"],
+      "subjects": {
+        "returning_caller": "a station ring with ten berth notches and a small ship approaching a docking port",
+        "ten_permits": "a fan of ten stamped permit cards with a round seal pressed on top",
+        "the_hundred_thousand": "a vault wheel with one large credit chip at its hub",
+        "quarry": "a faceted ore nugget cradled in a cargo net beside a salvage plate",
+        "long_haul": "a long route line passing through jump-gate rings that shrink into the distance",
+        "salvage_crew": "a rock on a long tether swung in an arc around a grapple hook"
+      }
+    }
+  ],
   "base": "medal-base.webp",
   "prompt": "A 4 by 4 grid of sixteen circular achievement medals for a sci-fi game ... made purely of warm white light (bone white, #F8F4EA), transparent background, no text"
 }

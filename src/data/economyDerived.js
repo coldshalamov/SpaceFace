@@ -1118,6 +1118,7 @@ export const ECONOMY_BALANCE = deepFreeze({
       "tow_recovery": 697,
       "demolition": 635,
       "rescue_under_fire": 739,
+      "race": 370,
       "authored_set_piece": 863,
       "capital_boss": 1237
     },
@@ -1187,6 +1188,10 @@ export const ECONOMY_BALANCE = deepFreeze({
         "taskS": 240,
         "legs": 2
       },
+      "race": {
+        "taskS": 80,
+        "legs": 1
+      },
       "authored_set_piece": {
         "taskS": 300,
         "legs": 2
@@ -1211,7 +1216,8 @@ export const ECONOMY_BALANCE = deepFreeze({
       "recon_scan": 2,
       "tow_recovery": 4,
       "demolition": 2,
-      "rescue_under_fire": 1
+      "rescue_under_fire": 1,
+      "race": 1
     },
     "refinery": {
       "cargo_delivery": 4,
@@ -1226,7 +1232,8 @@ export const ECONOMY_BALANCE = deepFreeze({
       "recon_scan": 1,
       "tow_recovery": 3,
       "demolition": 1,
-      "rescue_under_fire": 1
+      "rescue_under_fire": 1,
+      "race": 1
     },
     "fab": {
       "cargo_delivery": 3,
@@ -1241,7 +1248,8 @@ export const ECONOMY_BALANCE = deepFreeze({
       "recon_scan": 2,
       "tow_recovery": 2,
       "demolition": 4,
-      "rescue_under_fire": 1
+      "rescue_under_fire": 1,
+      "race": 1
     },
     "trade_hub": {
       "cargo_delivery": 4,
@@ -1256,7 +1264,8 @@ export const ECONOMY_BALANCE = deepFreeze({
       "recon_scan": 2,
       "tow_recovery": 2,
       "demolition": 1,
-      "rescue_under_fire": 1
+      "rescue_under_fire": 1,
+      "race": 2
     },
     "military": {
       "cargo_delivery": 1,
@@ -1271,7 +1280,8 @@ export const ECONOMY_BALANCE = deepFreeze({
       "recon_scan": 3,
       "tow_recovery": 1,
       "demolition": 2,
-      "rescue_under_fire": 3
+      "rescue_under_fire": 3,
+      "race": 0
     },
     "research": {
       "cargo_delivery": 2,
@@ -1286,7 +1296,8 @@ export const ECONOMY_BALANCE = deepFreeze({
       "recon_scan": 4,
       "tow_recovery": 1,
       "demolition": 1,
-      "rescue_under_fire": 2
+      "rescue_under_fire": 2,
+      "race": 1
     },
     "blackmarket": {
       "cargo_delivery": 2,
@@ -1301,7 +1312,8 @@ export const ECONOMY_BALANCE = deepFreeze({
       "recon_scan": 2,
       "tow_recovery": 2,
       "demolition": 2,
-      "rescue_under_fire": 2
+      "rescue_under_fire": 2,
+      "race": 1
     },
     "bounty_board": {
       "cargo_delivery": 1,
@@ -1316,7 +1328,8 @@ export const ECONOMY_BALANCE = deepFreeze({
       "recon_scan": 3,
       "tow_recovery": 0,
       "demolition": 0,
-      "rescue_under_fire": 0
+      "rescue_under_fire": 0,
+      "race": 1
     },
     "contracts_hub": {
       "cargo_delivery": 5,
@@ -1331,7 +1344,8 @@ export const ECONOMY_BALANCE = deepFreeze({
       "recon_scan": 3,
       "tow_recovery": 0,
       "demolition": 0,
-      "rescue_under_fire": 0
+      "rescue_under_fire": 0,
+      "race": 2
     }
   },
   "offerMixByTier": {
@@ -1349,7 +1363,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 2,
         "tow_recovery": 4,
         "demolition": 2,
-        "rescue_under_fire": 1
+        "rescue_under_fire": 1,
+        "race": 1
       },
       {
         "cargo_delivery": 3,
@@ -1364,7 +1379,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 2.4,
         "tow_recovery": 4.8,
         "demolition": 2.4,
-        "rescue_under_fire": 1.2
+        "rescue_under_fire": 1.2,
+        "race": 1.2
       },
       {
         "cargo_delivery": 3,
@@ -1379,7 +1395,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 2.8,
         "tow_recovery": 5.6,
         "demolition": 2.8,
-        "rescue_under_fire": 1.4
+        "rescue_under_fire": 1.4,
+        "race": 1.4
       },
       {
         "cargo_delivery": 3,
@@ -1394,7 +1411,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 3.2,
         "tow_recovery": 6.4,
         "demolition": 3.2,
-        "rescue_under_fire": 1.6
+        "rescue_under_fire": 1.6,
+        "race": 1.6
       },
       {
         "cargo_delivery": 3,
@@ -1409,7 +1427,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 3.6,
         "tow_recovery": 7.2,
         "demolition": 3.6,
-        "rescue_under_fire": 1.8
+        "rescue_under_fire": 1.8,
+        "race": 1.8
       },
       {
         "cargo_delivery": 3,
@@ -1424,7 +1443,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 4,
         "tow_recovery": 8,
         "demolition": 4,
-        "rescue_under_fire": 2
+        "rescue_under_fire": 2,
+        "race": 2
       }
     ],
     "refinery": [
@@ -1441,7 +1461,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 1,
         "tow_recovery": 3,
         "demolition": 1,
-        "rescue_under_fire": 1
+        "rescue_under_fire": 1,
+        "race": 1
       },
       {
         "cargo_delivery": 4,
@@ -1456,7 +1477,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 1.2,
         "tow_recovery": 3.6,
         "demolition": 1.2,
-        "rescue_under_fire": 1.2
+        "rescue_under_fire": 1.2,
+        "race": 1.2
       },
       {
         "cargo_delivery": 4,
@@ -1471,7 +1493,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 1.4,
         "tow_recovery": 4.2,
         "demolition": 1.4,
-        "rescue_under_fire": 1.4
+        "rescue_under_fire": 1.4,
+        "race": 1.4
       },
       {
         "cargo_delivery": 4,
@@ -1486,7 +1509,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 1.6,
         "tow_recovery": 4.8,
         "demolition": 1.6,
-        "rescue_under_fire": 1.6
+        "rescue_under_fire": 1.6,
+        "race": 1.6
       },
       {
         "cargo_delivery": 4,
@@ -1501,7 +1525,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 1.8,
         "tow_recovery": 5.4,
         "demolition": 1.8,
-        "rescue_under_fire": 1.8
+        "rescue_under_fire": 1.8,
+        "race": 1.8
       },
       {
         "cargo_delivery": 4,
@@ -1516,7 +1541,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 2,
         "tow_recovery": 6,
         "demolition": 2,
-        "rescue_under_fire": 2
+        "rescue_under_fire": 2,
+        "race": 2
       }
     ],
     "fab": [
@@ -1533,7 +1559,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 2,
         "tow_recovery": 2,
         "demolition": 4,
-        "rescue_under_fire": 1
+        "rescue_under_fire": 1,
+        "race": 1
       },
       {
         "cargo_delivery": 3,
@@ -1548,7 +1575,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 2.4,
         "tow_recovery": 2.4,
         "demolition": 4.8,
-        "rescue_under_fire": 1.2
+        "rescue_under_fire": 1.2,
+        "race": 1.2
       },
       {
         "cargo_delivery": 3,
@@ -1563,7 +1591,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 2.8,
         "tow_recovery": 2.8,
         "demolition": 5.6,
-        "rescue_under_fire": 1.4
+        "rescue_under_fire": 1.4,
+        "race": 1.4
       },
       {
         "cargo_delivery": 3,
@@ -1578,7 +1607,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 3.2,
         "tow_recovery": 3.2,
         "demolition": 6.4,
-        "rescue_under_fire": 1.6
+        "rescue_under_fire": 1.6,
+        "race": 1.6
       },
       {
         "cargo_delivery": 3,
@@ -1593,7 +1623,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 3.6,
         "tow_recovery": 3.6,
         "demolition": 7.2,
-        "rescue_under_fire": 1.8
+        "rescue_under_fire": 1.8,
+        "race": 1.8
       },
       {
         "cargo_delivery": 3,
@@ -1608,7 +1639,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 4,
         "tow_recovery": 4,
         "demolition": 8,
-        "rescue_under_fire": 2
+        "rescue_under_fire": 2,
+        "race": 2
       }
     ],
     "trade_hub": [
@@ -1625,7 +1657,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 2,
         "tow_recovery": 2,
         "demolition": 1,
-        "rescue_under_fire": 1
+        "rescue_under_fire": 1,
+        "race": 2
       },
       {
         "cargo_delivery": 4,
@@ -1640,7 +1673,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 2.4,
         "tow_recovery": 2.4,
         "demolition": 1.2,
-        "rescue_under_fire": 1.2
+        "rescue_under_fire": 1.2,
+        "race": 2.4
       },
       {
         "cargo_delivery": 4,
@@ -1655,7 +1689,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 2.8,
         "tow_recovery": 2.8,
         "demolition": 1.4,
-        "rescue_under_fire": 1.4
+        "rescue_under_fire": 1.4,
+        "race": 2.8
       },
       {
         "cargo_delivery": 4,
@@ -1670,7 +1705,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 3.2,
         "tow_recovery": 3.2,
         "demolition": 1.6,
-        "rescue_under_fire": 1.6
+        "rescue_under_fire": 1.6,
+        "race": 3.2
       },
       {
         "cargo_delivery": 4,
@@ -1685,7 +1721,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 3.6,
         "tow_recovery": 3.6,
         "demolition": 1.8,
-        "rescue_under_fire": 1.8
+        "rescue_under_fire": 1.8,
+        "race": 3.6
       },
       {
         "cargo_delivery": 4,
@@ -1700,7 +1737,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 4,
         "tow_recovery": 4,
         "demolition": 2,
-        "rescue_under_fire": 2
+        "rescue_under_fire": 2,
+        "race": 4
       }
     ],
     "military": [
@@ -1717,7 +1755,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 3,
         "tow_recovery": 1,
         "demolition": 2,
-        "rescue_under_fire": 3
+        "rescue_under_fire": 3,
+        "race": 0
       },
       {
         "cargo_delivery": 1,
@@ -1732,7 +1771,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 3.6,
         "tow_recovery": 1.2,
         "demolition": 2.4,
-        "rescue_under_fire": 3.6
+        "rescue_under_fire": 3.6,
+        "race": 0
       },
       {
         "cargo_delivery": 1,
@@ -1747,7 +1787,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 4.2,
         "tow_recovery": 1.4,
         "demolition": 2.8,
-        "rescue_under_fire": 4.2
+        "rescue_under_fire": 4.2,
+        "race": 0
       },
       {
         "cargo_delivery": 1,
@@ -1762,7 +1803,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 4.8,
         "tow_recovery": 1.6,
         "demolition": 3.2,
-        "rescue_under_fire": 4.8
+        "rescue_under_fire": 4.8,
+        "race": 0
       },
       {
         "cargo_delivery": 1,
@@ -1777,7 +1819,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 5.4,
         "tow_recovery": 1.8,
         "demolition": 3.6,
-        "rescue_under_fire": 5.4
+        "rescue_under_fire": 5.4,
+        "race": 0
       },
       {
         "cargo_delivery": 1,
@@ -1792,7 +1835,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 6,
         "tow_recovery": 2,
         "demolition": 4,
-        "rescue_under_fire": 6
+        "rescue_under_fire": 6,
+        "race": 0
       }
     ],
     "research": [
@@ -1809,7 +1853,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 4,
         "tow_recovery": 1,
         "demolition": 1,
-        "rescue_under_fire": 2
+        "rescue_under_fire": 2,
+        "race": 1
       },
       {
         "cargo_delivery": 2,
@@ -1824,7 +1869,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 4.8,
         "tow_recovery": 1.2,
         "demolition": 1.2,
-        "rescue_under_fire": 2.4
+        "rescue_under_fire": 2.4,
+        "race": 1.2
       },
       {
         "cargo_delivery": 2,
@@ -1839,7 +1885,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 5.6,
         "tow_recovery": 1.4,
         "demolition": 1.4,
-        "rescue_under_fire": 2.8
+        "rescue_under_fire": 2.8,
+        "race": 1.4
       },
       {
         "cargo_delivery": 2,
@@ -1854,7 +1901,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 6.4,
         "tow_recovery": 1.6,
         "demolition": 1.6,
-        "rescue_under_fire": 3.2
+        "rescue_under_fire": 3.2,
+        "race": 1.6
       },
       {
         "cargo_delivery": 2,
@@ -1869,7 +1917,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 7.2,
         "tow_recovery": 1.8,
         "demolition": 1.8,
-        "rescue_under_fire": 3.6
+        "rescue_under_fire": 3.6,
+        "race": 1.8
       },
       {
         "cargo_delivery": 2,
@@ -1884,7 +1933,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 8,
         "tow_recovery": 2,
         "demolition": 2,
-        "rescue_under_fire": 4
+        "rescue_under_fire": 4,
+        "race": 2
       }
     ],
     "blackmarket": [
@@ -1901,7 +1951,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 2,
         "tow_recovery": 2,
         "demolition": 2,
-        "rescue_under_fire": 2
+        "rescue_under_fire": 2,
+        "race": 1
       },
       {
         "cargo_delivery": 2,
@@ -1916,7 +1967,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 2.4,
         "tow_recovery": 2.4,
         "demolition": 2.4,
-        "rescue_under_fire": 2.4
+        "rescue_under_fire": 2.4,
+        "race": 1.2
       },
       {
         "cargo_delivery": 2,
@@ -1931,7 +1983,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 2.8,
         "tow_recovery": 2.8,
         "demolition": 2.8,
-        "rescue_under_fire": 2.8
+        "rescue_under_fire": 2.8,
+        "race": 1.4
       },
       {
         "cargo_delivery": 2,
@@ -1946,7 +1999,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 3.2,
         "tow_recovery": 3.2,
         "demolition": 3.2,
-        "rescue_under_fire": 3.2
+        "rescue_under_fire": 3.2,
+        "race": 1.6
       },
       {
         "cargo_delivery": 2,
@@ -1961,7 +2015,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 3.6,
         "tow_recovery": 3.6,
         "demolition": 3.6,
-        "rescue_under_fire": 3.6
+        "rescue_under_fire": 3.6,
+        "race": 1.8
       },
       {
         "cargo_delivery": 2,
@@ -1976,7 +2031,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 4,
         "tow_recovery": 4,
         "demolition": 4,
-        "rescue_under_fire": 4
+        "rescue_under_fire": 4,
+        "race": 2
       }
     ],
     "bounty_board": [
@@ -1993,7 +2049,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 3,
         "tow_recovery": 0,
         "demolition": 0,
-        "rescue_under_fire": 0
+        "rescue_under_fire": 0,
+        "race": 1
       },
       {
         "cargo_delivery": 1,
@@ -2008,7 +2065,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 3.6,
         "tow_recovery": 0,
         "demolition": 0,
-        "rescue_under_fire": 0
+        "rescue_under_fire": 0,
+        "race": 1.2
       },
       {
         "cargo_delivery": 1,
@@ -2023,7 +2081,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 4.2,
         "tow_recovery": 0,
         "demolition": 0,
-        "rescue_under_fire": 0
+        "rescue_under_fire": 0,
+        "race": 1.4
       },
       {
         "cargo_delivery": 1,
@@ -2038,7 +2097,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 4.8,
         "tow_recovery": 0,
         "demolition": 0,
-        "rescue_under_fire": 0
+        "rescue_under_fire": 0,
+        "race": 1.6
       },
       {
         "cargo_delivery": 1,
@@ -2053,7 +2113,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 5.4,
         "tow_recovery": 0,
         "demolition": 0,
-        "rescue_under_fire": 0
+        "rescue_under_fire": 0,
+        "race": 1.8
       },
       {
         "cargo_delivery": 1,
@@ -2068,7 +2129,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 6,
         "tow_recovery": 0,
         "demolition": 0,
-        "rescue_under_fire": 0
+        "rescue_under_fire": 0,
+        "race": 2
       }
     ],
     "contracts_hub": [
@@ -2085,7 +2147,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 3,
         "tow_recovery": 0,
         "demolition": 0,
-        "rescue_under_fire": 0
+        "rescue_under_fire": 0,
+        "race": 2
       },
       {
         "cargo_delivery": 5,
@@ -2100,7 +2163,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 3.6,
         "tow_recovery": 0,
         "demolition": 0,
-        "rescue_under_fire": 0
+        "rescue_under_fire": 0,
+        "race": 2.4
       },
       {
         "cargo_delivery": 5,
@@ -2115,7 +2179,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 4.2,
         "tow_recovery": 0,
         "demolition": 0,
-        "rescue_under_fire": 0
+        "rescue_under_fire": 0,
+        "race": 2.8
       },
       {
         "cargo_delivery": 5,
@@ -2130,7 +2195,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 4.8,
         "tow_recovery": 0,
         "demolition": 0,
-        "rescue_under_fire": 0
+        "rescue_under_fire": 0,
+        "race": 3.2
       },
       {
         "cargo_delivery": 5,
@@ -2145,7 +2211,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 5.4,
         "tow_recovery": 0,
         "demolition": 0,
-        "rescue_under_fire": 0
+        "rescue_under_fire": 0,
+        "race": 3.6
       },
       {
         "cargo_delivery": 5,
@@ -2160,7 +2227,8 @@ export const ECONOMY_BALANCE = deepFreeze({
         "recon_scan": 6,
         "tow_recovery": 0,
         "demolition": 0,
-        "rescue_under_fire": 0
+        "rescue_under_fire": 0,
+        "race": 4
       }
     ]
   },

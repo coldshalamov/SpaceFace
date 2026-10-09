@@ -1,10 +1,16 @@
 // The sole writer of state.nemesis. Entity, damage, budget, UI and faction owners remain separate.
 import { NEMESIS_RIVAL as RIVAL, NEMESIS_KITS, NEMESIS_CHAPTERS, NEMESIS_LINES,
   NEMESIS_STYLES } from '../data/nemesisRival.js';
+import { WEAPONS } from '../data/weapons.js';
+import { GYRE_EVENTS } from '../data/gyreSnare.js';
 import { LIMITS, clone, finite, integer, freshNemesis, freshEpisode, normalizeNemesis,
   boundedPush, keyForId } from '../nemesis/model.js';
 import { admitEvidence, classifyPlayerKill, prepareNemesisPlan,
   predictionWasWrong } from '../nemesis/learning.js';
+
+const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
+// Homing and deployed hardpoint loads are ordnance; every other fire profile is gunnery.
+const ORDNANCE_TRACKING = new Set(['homing', 'deploy']);
 
 const TERMINAL = new Set(['spared', 'destroyed', 'lost']);
 const entity = (state, id) => state && state.entities && state.entities.get(id);
@@ -28,6 +34,18 @@ export function createNemesisSystem() {
       on('combat:kill', (p) => this._killed(p));
       on('massline:tumbled', (p) => this._tumbled(p));
       on('nemesis:observation', (p) => this._observation(p));
+      // The observation channel's production emitter. Orra reads what the player DOES during a
+      // live encounter, not only what they kill: each tool use classifies to a style and enters
+      // through the designed bus event, so _observation still owns every trust gate (witnessing,
+      // the 5s per-style window, the per-episode budget). The bridge claims no sight of its own.
+      this._techWindows = { encounterId: null, keys: new Set() };
+      on('combat:fire', (p) => this._observeTool(this._fireStyle(p), p && p.ownerId));
+      on('tether:attached', (p) => this._observeTool('tether', p && p.actorId));
+      on('bombs:dropped', (p) => this._observeTool('ordnance', p && p.ownerId));
+      on('mines:placed', (p) => this._observeTool('ordnance', p && p.ownerId));
+      on('detonator:detonated', (p) => this._observeTool('ordnance', p && p.killerId));
+      on('fields:deployed', (p) => this._observeTool('field', this._fieldActorId(p)));
+      on(GYRE_EVENTS.thrown, () => this._observeTool('tether', this.state && this.state.playerId));
       on('nemesis:encounterStarted', (p) => this._started(p));
       on('nemesis:encounterRejected', (p) => this._rejected(p));
       on('nemesis:escaped', (p) => this._escaped(p));
@@ -43,8 +61,12 @@ export function createNemesisSystem() {
       // Guard hasOwn: an uninitialized prototype fork must not detach its parent's listeners.
       if (Object.hasOwn(this, '_offs')) for (const off of this._offs || []) if (typeof off === 'function') off();
       this._offs = [];
+      this._techWindows = { encounterId: null, keys: new Set() };
     },
-    newGame() { this.state.nemesis = freshNemesis(nowOf(this.state)); },
+    newGame() {
+      this.state.nemesis = freshNemesis(nowOf(this.state));
+      this._techWindows = { encounterId: null, keys: new Set() };
+    },
     serialize() { return clone(this.state.nemesis); },
     deserialize(data) { this.state.nemesis = normalizeNemesis(data, nowOf(this.state)); },
     inspect() { return this.serialize(); },
@@ -59,6 +81,15 @@ export function createNemesisSystem() {
         situation, text, evidence, t: nowOf(this.state) });
     },
     _flight() { return this.state.mode === 'flight' && alive(entity(this.state, this.state.playerId)); },
+    _pacingAllows() {
+      const approve = this.helpers && this.helpers.canStartNemesisEncounter;
+      // Missing pacing stays the host's fail-closed refusal, which carries its own receipt.
+      if (typeof approve !== 'function') return true;
+      try {
+        return approve({ requestId: null, sectorId: sector(this.state), aceId: RIVAL.id, preflight: true },
+          this.state) === true;
+      } catch (_) { return false; }
+    },
     _sensorFrame() {
       const a = this.state.nemesis.active;
       const sensors = this.helpers.aiSensors;
@@ -96,7 +127,8 @@ export function createNemesisSystem() {
     },
     _killed(p) {
       const m = this.state.nemesis, a = m.active;
-      if (!a || !p || m.ending) return;
+      if (!p || m.ending) return;
+      if (!a) { this._killedLeaving(p); return; }
       const id = p.id ?? p.victimId;
       const kill = classifyPlayerKill(p, this.state.playerId, m.tumbles, nowOf(this.state));
       // Orra directly experiences their own hull's final hit, even after the sensor drops it.
@@ -108,6 +140,27 @@ export function createNemesisSystem() {
           ? p.presentation.playerCaused : p.killerId === this.state.playerId;
         this._finish(caused ? 'destroyed' : 'lost');
       } else if (id === this.state.playerId) this._finish('player_defeated');
+    },
+    // An escaped captain is still a real hull while the encounter host flies it out. Run it down
+    // before it clears the area and the arc ends here — the next return would resurrect Orra.
+    _killedLeaving(p) {
+      const rows = this.state.nemesisDeployment && this.state.nemesisDeployment.departures;
+      if (!Array.isArray(rows) || !rows.length) return;
+      const m = this.state.nemesis, id = p.id ?? p.victimId;
+      const row = rows.find((r) => r && r.id === id);
+      const ship = entity(this.state, id);
+      if (!row || (ship && !localTag(ship, row.requestId))) return;
+      const caused = p.presentation && typeof p.presentation.playerCaused === 'boolean'
+        ? p.presentation.playerCaused : p.killerId === this.state.playerId;
+      const outcome = caused ? 'destroyed' : 'lost', now = nowOf(this.state);
+      if (m.pending) this._cancelPending('rival destroyed after escape');
+      m.ending = outcome; m.phase = 'resolved';
+      this._log('outcome', `${outcome} while leaving after an escape`, row.requestId);
+      this._voice(outcome, NEMESIS_LINES[outcome], null, row.requestId);
+      const receipt = { encounterId: row.requestId, bossId: id, crewIds: [id], aceId: RIVAL.id,
+        outcome, afterEscape: true, t: now };
+      this._emit('namedAce:defeated', { aceId: RIVAL.id, entityId: id, t: now });
+      this._emit('nemesis:resolved', { ...receipt, ending: outcome });
     },
     _observation(p) {
       const a = this.state.nemesis.active;
@@ -122,6 +175,51 @@ export function createNemesisSystem() {
       const window = Math.floor(nowOf(this.state) / LIMITS.evidenceWindowS);
       this._admit({ key: `sample:${a.id}:${p.style}:${window}`, style: p.style,
         source: p.source === 'crew_report' ? 'report' : 'direct' });
+    },
+    _fireStyle(p) {
+      if (!p || p.ownerId !== this.state.playerId) return null;
+      if (p.deploy === true || p.detonation === true) return 'ordnance';
+      const def = WEAPON_BY_ID.get(p.weaponId);
+      return def && ORDNANCE_TRACKING.has(def.tracking) ? 'ordnance' : 'gunnery';
+    },
+    _fieldActorId(p) {
+      if (!p || p.npc === true) return null;
+      // Player powers carry the emitter entity's id as sourceId; planted fields declare an
+      // owner. Environmental/NPC sources resolve to their own ids and filter out below.
+      const src = entity(this.state, p.sourceId);
+      if (!src) return null;
+      if (src.data && src.data.fieldEmitter === true) return src.data.ownerId ?? null;
+      return src.ownerId ?? (src.data && src.data.ownerId) ?? null;
+    },
+    _observeTool(style, actorId) {
+      const m = this.state && this.state.nemesis, a = m && m.active;
+      if (!a || m.ending || !this._flight()) return;
+      if (actorId !== this.state.playerId || !NEMESIS_STYLES.includes(style)) return;
+      if (!this._techWindows || this._techWindows.encounterId !== a.id) {
+        this._techWindows = { encounterId: a.id, keys: new Set() };
+      }
+      const window = Math.floor(nowOf(this.state) / LIMITS.evidenceWindowS);
+      const key = `${style}:${window}`;
+      if (this._techWindows.keys.has(key)) return;
+      this._techWindows.keys.add(key);
+      // Direct first: Orra's own sighting weighs two units and wins the window outright. If the
+      // boss cannot see the act the handler drops it and the crew report can still land.
+      this._emit('nemesis:observation', { encounterId: a.id, actorId, style });
+      const sensors = this.helpers.aiSensors;
+      if (sensors && typeof sensors.frameFor === 'function') {
+        for (const id of a.crewIds) {
+          if (id === a.bossId) continue;
+          const frame = sensors.frameFor(id, this.state.tick);
+          const contact = frame && Array.isArray(frame.contacts)
+            && frame.contacts.find((c) => c.id === actorId);
+          if (contact && contact.visible === true && contact.valid !== false
+              && finite(contact.confidence, 1) >= 0.55) {
+            this._emit('nemesis:observation', { encounterId: a.id, actorId, style,
+              source: 'crew_report', witnessId: id });
+            break;
+          }
+        }
+      }
     },
     update(dt, state) {
       this.state = state;
@@ -145,6 +243,10 @@ export function createNemesisSystem() {
         return;
       }
       if (now < m.nextContactAt) return;
+      // Warn only for an arrival the host's pacing would admit now. A refused deployment retries in
+      // 15 s, so announcing first turned every refusal (onboarding, a run, docking, low hull) into a
+      // COUNTEREXAMPLE INBOUND warning every ~21 s with nobody arriving.
+      if (!this._pacingAllows()) { m.nextContactAt = now + LIMITS.retryS; return; }
       // No RNG consumed. Alternating handedness is deliberate choreography, not random sampling.
       const plan = prepareNemesisPlan(m, m.completed % 2 ? -1 : 1);
       m.requestSerial += 1;

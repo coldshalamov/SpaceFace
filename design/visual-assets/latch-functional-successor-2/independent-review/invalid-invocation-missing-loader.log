@@ -1,0 +1,235 @@
+
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs' imported from /workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at nextResolve (node:internal/modules/esm/hooks:785:28)
+    at AsyncLoaderHooksOnLoaderHookWorker.resolve (node:internal/modules/esm/hooks:269:30)
+    at #resolve (node:internal/modules/esm/loader:680:37)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)
+    at node:internal/modules/esm/loader:632:32
+    at TracingChannel.tracePromise (node:diagnostics_channel:362:14)
+    at ModuleLoader.import (node:internal/modules/esm/loader:628:21) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs'
+}
+
+Node.js v24.19.0
+✖ test/dock-intent-live-command.test.mjs (188.486735ms)
+
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs' imported from /workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at nextResolve (node:internal/modules/esm/hooks:785:28)
+    at AsyncLoaderHooksOnLoaderHookWorker.resolve (node:internal/modules/esm/hooks:269:30)
+    at #resolve (node:internal/modules/esm/loader:680:37)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)
+    at node:internal/modules/esm/loader:632:32
+    at TracingChannel.tracePromise (node:diagnostics_channel:362:14)
+    at ModuleLoader.import (node:internal/modules/esm/loader:628:21) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs'
+}
+
+Node.js v24.19.0
+✖ test/latch-nine-guidance-consumer.test.mjs (160.405182ms)
+
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs' imported from /workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at nextResolve (node:internal/modules/esm/hooks:785:28)
+    at AsyncLoaderHooksOnLoaderHookWorker.resolve (node:internal/modules/esm/hooks:269:30)
+    at #resolve (node:internal/modules/esm/loader:680:37)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)
+    at node:internal/modules/esm/loader:632:32
+    at TracingChannel.tracePromise (node:diagnostics_channel:362:14)
+    at ModuleLoader.import (node:internal/modules/esm/loader:628:21) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs'
+}
+
+Node.js v24.19.0
+✖ test/latch-nine-normal-route.test.mjs (162.732244ms)
+
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs' imported from /workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at nextResolve (node:internal/modules/esm/hooks:785:28)
+    at AsyncLoaderHooksOnLoaderHookWorker.resolve (node:internal/modules/esm/hooks:269:30)
+    at #resolve (node:internal/modules/esm/loader:680:37)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)
+    at node:internal/modules/esm/loader:632:32
+    at TracingChannel.tracePromise (node:diagnostics_channel:362:14)
+    at ModuleLoader.import (node:internal/modules/esm/loader:628:21) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs'
+}
+
+Node.js v24.19.0
+✖ test/latch-nine-package-presentation.test.mjs (163.486937ms)
+
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs' imported from /workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at nextResolve (node:internal/modules/esm/hooks:785:28)
+    at AsyncLoaderHooksOnLoaderHookWorker.resolve (node:internal/modules/esm/hooks:269:30)
+    at #resolve (node:internal/modules/esm/loader:680:37)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)
+    at node:internal/modules/esm/loader:632:32
+    at TracingChannel.tracePromise (node:diagnostics_channel:362:14)
+    at ModuleLoader.import (node:internal/modules/esm/loader:628:21) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs'
+}
+
+Node.js v24.19.0
+✖ test/latch-nine-reconstruction.test.mjs (182.497933ms)
+
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs' imported from /workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at nextResolve (node:internal/modules/esm/hooks:785:28)
+    at AsyncLoaderHooksOnLoaderHookWorker.resolve (node:internal/modules/esm/hooks:269:30)
+    at #resolve (node:internal/modules/esm/loader:680:37)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)
+    at node:internal/modules/esm/loader:632:32
+    at TracingChannel.tracePromise (node:diagnostics_channel:362:14)
+    at ModuleLoader.import (node:internal/modules/esm/loader:628:21) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs'
+}
+
+Node.js v24.19.0
+✖ test/latch-nine-runtime.test.mjs (163.893307ms)
+
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs' imported from /workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at nextResolve (node:internal/modules/esm/hooks:785:28)
+    at AsyncLoaderHooksOnLoaderHookWorker.resolve (node:internal/modules/esm/hooks:269:30)
+    at #resolve (node:internal/modules/esm/loader:680:37)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)
+    at node:internal/modules/esm/loader:632:32
+    at TracingChannel.tracePromise (node:diagnostics_channel:362:14)
+    at ModuleLoader.import (node:internal/modules/esm/loader:628:21) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs'
+}
+
+Node.js v24.19.0
+✖ test/latch-nine-service.test.mjs (171.321339ms)
+
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs' imported from /workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at nextResolve (node:internal/modules/esm/hooks:785:28)
+    at AsyncLoaderHooksOnLoaderHookWorker.resolve (node:internal/modules/esm/hooks:269:30)
+    at #resolve (node:internal/modules/esm/loader:680:37)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)
+    at node:internal/modules/esm/loader:632:32
+    at TracingChannel.tracePromise (node:diagnostics_channel:362:14)
+    at ModuleLoader.import (node:internal/modules/esm/loader:628:21) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs'
+}
+
+Node.js v24.19.0
+✖ test/physics-owned-control.test.mjs (175.4025ms)
+
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs' imported from /workspace/scratch/d2415e46e35b/recovery-latch-20261004/normal-route-v2/
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at nextResolve (node:internal/modules/esm/hooks:785:28)
+    at AsyncLoaderHooksOnLoaderHookWorker.resolve (node:internal/modules/esm/hooks:269:30)
+    at #resolve (node:internal/modules/esm/loader:680:37)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)
+    at node:internal/modules/esm/loader:632:32
+    at TracingChannel.tracePromise (node:diagnostics_channel:362:14)
+    at ModuleLoader.import (node:internal/modules/esm/loader:628:21) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///workspace/scratch/d2415e46e35b/latch-independent-review-functional-20261004/audit-loader.mjs'
+}
+
+Node.js v24.19.0
+✖ test/place-release-builder-contract.test.mjs (142.507535ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 0
+ℹ fail 9
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 315.675182
+
+✖ failing tests:
+
+test at test/dock-intent-live-command.test.mjs:1:1
+✖ test/dock-intent-live-command.test.mjs (188.486735ms)
+  'test failed'
+
+test at test/latch-nine-guidance-consumer.test.mjs:1:1
+✖ test/latch-nine-guidance-consumer.test.mjs (160.405182ms)
+  'test failed'
+
+test at test/latch-nine-normal-route.test.mjs:1:1
+✖ test/latch-nine-normal-route.test.mjs (162.732244ms)
+  'test failed'
+
+test at test/latch-nine-package-presentation.test.mjs:1:1
+✖ test/latch-nine-package-presentation.test.mjs (163.486937ms)
+  'test failed'
+
+test at test/latch-nine-reconstruction.test.mjs:1:1
+✖ test/latch-nine-reconstruction.test.mjs (182.497933ms)
+  'test failed'
+
+test at test/latch-nine-runtime.test.mjs:1:1
+✖ test/latch-nine-runtime.test.mjs (163.893307ms)
+  'test failed'
+
+test at test/latch-nine-service.test.mjs:1:1
+✖ test/latch-nine-service.test.mjs (171.321339ms)
+  'test failed'
+
+test at test/physics-owned-control.test.mjs:1:1
+✖ test/physics-owned-control.test.mjs (175.4025ms)
+  'test failed'
+
+test at test/place-release-builder-contract.test.mjs:1:1
+✖ test/place-release-builder-contract.test.mjs (142.507535ms)
+  'test failed'

@@ -7,6 +7,7 @@ import { BANK_STONE_MATERIAL, withBankStone } from '../src/core/surfaceContact.j
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import {
+  SWARM_BOSS_EVERY,
   SWARM_BOSS_ROTATION,
   swarmDoctrineStamp,
   swarmOpeningPackages,
@@ -132,7 +133,14 @@ test('five door arenas and four champions each change the room', () => {
   const wing = swarmOpeningPackages(20, () => 0.2).filter((pkg) => pkg.champion);
   assert.ok(wing.length >= 1);
   assert.ok(wing.every((pkg) => pkg.gateGroup === wing[0].gateGroup));
-  const choir = swarmOpeningPackages(40, () => 0.2).filter((pkg) => pkg.enemyId === 'quiet_ghost');
+  // The Quiet Choir's ghosts hold a far gate at standoff and never chase. Its wave follows
+  // its slot in the boss rotation — resolve it rather than pin a number, since the wave-40
+  // slot became the Corsair Wing when the rotation grew capital champions (quiet_choir is
+  // index 5, so its first boss wave is 60).
+  const choirWave = (SWARM_BOSS_ROTATION.findIndex((boss) => boss.id === 'quiet_choir') + 1)
+    * SWARM_BOSS_EVERY;
+  const choir = swarmOpeningPackages(choirWave, () => 0.2).filter((pkg) => pkg.enemyId === 'quiet_ghost');
+  assert.ok(choir.length >= 1, 'the Quiet Choir still fields its ghosts');
   assert.ok(choir[0].distance > 200);
 });
 

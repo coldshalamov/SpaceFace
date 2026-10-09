@@ -26,15 +26,16 @@ import { injectSaveLayouts } from '../orrery/saveLayouts.js';
 import { svg, arcD, polar, ticksD } from '../orrery/svg.js';
 import { decrypt, rollTo } from '../orrery/text.js';
 import { createSortieTape, fmtSortieTime } from '../orrery/saveSortieTape.js';
-import { entitySpanHtml, decorateEntityNode } from '../entityResolver.js';
+import { entitySpanHtml, decorateEntityNode, entityLabel } from '../entityResolver.js';
 import { hullPosterUrl } from '../hullPosters.js';
-import { NEW_GAME } from '../../data/newGameDefaults.js';
+import { NEW_GAME, DEFAULT_STARTER_ID, starterById } from '../../data/newGameDefaults.js';
 import { escapeHtml } from '../comms.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { laneSetMode } from '../../core/simLaneCommands.js';
 import { confirm } from '../confirm.js';
 import { loadConfirmBody } from './saveLoad.js';
+import { rangeRungIndex } from './range.js';
 
 /** The career ring's stations: [label, bearing in dial degrees (0 = up, clockwise)]. Time flown reads
  *  at the hub; the lost hull's life sits by the red arc it names (top left). */
@@ -110,6 +111,10 @@ function fmtMs(ms) {
   return fmtTime(s);
 }
 
+function catalogLabel(kind, id) {
+  return (id && entityLabel(kind + ':' + id)) || prettyLabel(id);
+}
+
 function prettyLabel(value) {
   return String(value || 'unknown')
     .replace(/^(faction|ship|sector|station)_/, '')
@@ -131,6 +136,13 @@ function telemetryHandle(ctx) {
   return globalTelemetry && typeof globalTelemetry.getSessionStats === 'function' ? globalTelemetry : null;
 }
 
+/** The glass title. A logged "Destroyed by …" line names the hull; otherwise the receipt does. */
+export function afterActionCause(receipt, deathCause) {
+  if (typeof deathCause === 'string' && /^Destroyed by /.test(deathCause)) return deathCause;
+  if (receipt && (receipt.fatalSummary || receipt.cause)) return receipt.fatalSummary || receipt.cause;
+  return deathCause || '';
+}
+
 export function deathCauseLabel(entry = null) {
   if (!entry) return 'Unknown loss';
   const cause = String(entry.cause || 'unknown');
@@ -138,8 +150,9 @@ export function deathCauseLabel(entry = null) {
   if (cause === 'self') return 'Self-inflicted damage';
   if (cause.startsWith('collision:')) return 'Collision with ' + prettyLabel(cause.slice('collision:'.length));
   if (cause.startsWith('ship:')) {
-    const killer = prettyLabel(entry.killerType || cause.slice('ship:'.length));
-    const faction = entry.killerFaction ? ' (' + prettyLabel(entry.killerFaction) + ')' : '';
+    const named = typeof entry.killerName === 'string' ? entry.killerName.trim() : '';
+    const killer = named || prettyLabel(entry.killerType || cause.slice('ship:'.length));
+    const faction = entry.killerFaction ? ' (' + catalogLabel('faction', entry.killerFaction) + ')' : '';
     return 'Destroyed by ' + killer + faction;
   }
   return cause === 'unknown' ? 'Unknown loss' : prettyLabel(cause);
@@ -199,11 +212,11 @@ export function sortieRecord(ctx = {}) {
     const d = e.data || {};
     kind = e.type;
     switch (e.type) {
-      case 'dock:docked': push(e.atMs, 'Docked' + (d.stationId ? ' · ' + prettyLabel(d.stationId) : '')); break;
-      case 'jump:arrive': push(e.atMs, d.interdicted ? 'Interdicted' : 'Jumped' + (d.sectorId ? ' · ' + prettyLabel(d.sectorId) : ''), !!d.interdicted); break;
+      case 'dock:docked': push(e.atMs, 'Docked' + (d.stationId ? ' · ' + catalogLabel('station', d.stationId) : '')); break;
+      case 'jump:arrive': push(e.atMs, d.interdicted ? 'Interdicted' : 'Jumped' + (d.sectorId ? ' · ' + catalogLabel('sector', d.sectorId) : ''), !!d.interdicted); break;
       case 'entity:killed': push(e.atMs, 'Kill' + (d.victimClass ? ' · ' + prettyLabel(d.victimClass) : '')); break;
       case 'economy:tradeCompleted': push(e.atMs, d.side === 'sell' ? 'Sold cargo' : 'Bought cargo'); break;
-      case 'mining:yield': push(e.atMs, 'Mined' + (d.commodityId ? ' · ' + prettyLabel(d.commodityId) : '')); break;
+      case 'mining:yield': push(e.atMs, 'Mined' + (d.commodityId ? ' · ' + catalogLabel('commodity', d.commodityId) : '')); break;
       case 'mission:accepted': push(e.atMs, 'Contract taken'); break;
       case 'mission:completed': push(e.atMs, 'Contract done'); break;
       case 'mission:failed': push(e.atMs, 'Contract failed', true); break;
@@ -223,6 +236,28 @@ export function sortieRecord(ctx = {}) {
 export function currentDefeat(ctx = {}) {
   const state = ctx.state || {};
   return state.combat && state.combat.lastPlayerDefeat || null;
+}
+
+/**
+ * SF-285 — the save boundary consult for the after-action surface. A save written mid-defeat is
+ * legal and restores the wreck with its durable defeated flag; that hull is owed this screen
+ * again — the recovery offer (or, in Ironman, the final run-over summary) is the only reachable
+ * resolution for a dead ship. Reads the entity flag, not the receipt: an older save may lack a
+ * serialized receipt yet the wreck and its derived recovery berth are still truthful.
+ */
+export function restoredDefeatIntent(state = {}) {
+  const player = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  return !!player && (player.alive === false || !!(player.flags && player.flags.defeated));
+}
+
+/** One offer line when the receipt names a real Range rung. Empty for every other death. */
+export function deathRangeOfferText(receipt) {
+  const offer = receipt && receipt.rangeOffer;
+  if (!offer || !offer.line || !offer.rungId) return '';
+  if (rangeRungIndex(offer.rungId) < 0) return '';
+  return String(offer.line);
 }
 
 /**
@@ -381,6 +416,10 @@ export const gameOverScreen = {
     const insurance = el('p', 'k-sentence');
     this._summaryEls.insurance = insurance;
     stage.appendChild(insurance);
+    const rangeOffer = el('p', 'k-sentence');
+    rangeOffer.hidden = true;
+    this._summaryEls.rangeOffer = rangeOffer;
+    stage.appendChild(rangeOffer);
     const recovery = el('p', 'k-sentence sf-go-recovery', 'Recovery receipt pending.');
     this._recoveryEl = recovery;
     stage.appendChild(recovery);
@@ -472,6 +511,19 @@ export const gameOverScreen = {
     const bNew = wordItem(list, 'New Game');
     bNew.title = 'Start a fresh run';
     bNew.setAttribute('aria-label', 'Start a fresh run');
+    // The death sheet is pure dwell and this verb's launch is a fixed shape (default
+    // sector + starter, fresh seed) — hover/focus time is warm lead the click arm wastes.
+    const armFreshRunWarm = () => {
+      if (!ctx || !ctx.bus) return;
+      const starter = starterById(DEFAULT_STARTER_ID);
+      ctx.bus.emit('game:embarkSpeculation', {
+        sectorId: NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime',
+        seed: null,
+        shipDefId: starter && starter.shipId,
+      });
+    };
+    bNew.addEventListener('pointerenter', armFreshRunWarm);
+    bNew.addEventListener('focusin', armFreshRunWarm);
     bNew.addEventListener('click', () => {
       cue('confirm');
       const mgr = getManager(ctx);
@@ -653,7 +705,7 @@ export const gameOverScreen = {
     if (this._tape) {
       const record = sortieRecord(ctx);
       const receipt = currentDefeat(ctx);
-      const killLabel = (receipt && (receipt.fatalSummary || receipt.cause)) || lastDeathSummary(ctx).cause;
+      const killLabel = afterActionCause(receipt, lastDeathSummary(ctx).cause);
       this._sortie = record;
       this._tape.paint({ lengthS: record.lengthS, events: record.events, killLabel: /^unknown loss$/i.test(killLabel) ? 'The loss' : killLabel });
       this._onSortieScrub(record.lengthS || 0, null, true);
@@ -846,6 +898,7 @@ export const gameOverScreen = {
       recovery.hardshipCoveredCr, recovery.cargoLostQty, recovery.persistentCargoProtected,
       recovery.insuranceStatus, recovery.coverageNote,
       recovery.policyName, recovery.premiumCr, recovery.deductibleCr,
+      deathRangeOfferText(receipt),
       latestSlot,
     ].join('|');
     if (sig === this._summarySig) return;
@@ -865,7 +918,7 @@ export const gameOverScreen = {
       ? `${fmtCr(charged)} charged · ${fmtCr(quoted)} quote · ${fmtCr(recoveryFund)} recovery fund`
       : fmtCr(charged);
     const values = {
-      cause: receipt && (receipt.fatalSummary || receipt.cause) || death.cause,
+      cause: afterActionCause(receipt, death.cause),
       lifespan: death.lifespan,
       // "aft hull, main drive · shield 0% · armour 0% · hull 0%": where it struck, then what was left
       damage: receipt ? [
@@ -884,6 +937,11 @@ export const gameOverScreen = {
       if (key === 'cause') continue; // the title carries the cause (below)
       const text = key === 'insurance' ? LABEL.insurance + ': ' + values[key] : values[key];
       if (els[key] && els[key].textContent !== text) els[key].textContent = text;
+    }
+    if (els.rangeOffer) {
+      const offerText = deathRangeOfferText(receipt);
+      if (els.rangeOffer.textContent !== offerText) els.rangeOffer.textContent = offerText;
+      els.rangeOffer.hidden = !offerText;
     }
     // The named recovery berth is a station door, not just a caption.
     if (els.dock && recovery.stationId) decorateEntityNode(els.dock, 'station:' + recovery.stationId);

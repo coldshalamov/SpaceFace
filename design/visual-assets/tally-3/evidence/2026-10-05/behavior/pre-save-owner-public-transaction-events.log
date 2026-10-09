@@ -1,0 +1,39 @@
+✔ Save/reentry at cargo:changed preserves exact original law fact and applies heat once (7.722183ms)
+✔ Save/reentry at law:incidentReceipt preserves exact original law fact and applies heat once (1.147915ms)
+✔ Save/reentry at law:reportIncidentReceipt preserves exact original law fact and applies heat once (1.297539ms)
+✔ narrow cargo callback failure preserves accepted quantity and ordinary addCargo behavior (1.011359ms)
+✔ law callback failure cannot duplicate cargo or invent an accepted incident (0.469806ms)
+✔ public Save/loadEnvelope from cargo:changed retains witnessed theft once (46.198764ms)
+✖ public Save/loadEnvelope from law:incidentReceipt retains witnessed theft once (13.505292ms)
+✔ public Save/loadEnvelope from law:reportIncidentReceipt retains witnessed theft once (14.007266ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 7
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 909.642912
+
+✖ failing tests:
+
+test at test/tally3-atomic-cargo.test.mjs:39:88
+✖ public Save/loadEnvelope from law:incidentReceipt retains witnessed theft once (13.505292ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 0.22
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/tally-maker-v1/candidate/test/tally3-atomic-cargo.test.mjs:48:80)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 0.22,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

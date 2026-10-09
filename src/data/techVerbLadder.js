@@ -11,6 +11,7 @@
 
 import { NEW_GAME } from './newGameDefaults.js';
 import { TECH_NODES } from './tech.js';
+import { MODULES } from './modules.js';
 import { STORY_BEATS } from './missions.js';
 import { RESEARCH_GRANTS } from './researchGrants.js';
 
@@ -80,12 +81,21 @@ export const FOLDED_TECH_NODES = Object.freeze([
   }),
 ]);
 
-/** Strict leftover: no ship and no module. */
-export const STRICT_STAT_ONLY_IDS = Object.freeze([
-  'tech_drone_swarm',
-  'tech_autonomous_fleets',
-  'tech_outpost_charter',
+/**
+ * FB-053 — unlock keys that are themselves live verbs even though they name no ship or module:
+ * a second drone off one bay (extraDronePerBay), hiring an NPC trader (npcTraderHiring), and
+ * raising a depot/battery on a claimed body (outpostConstruction). A node carrying any of these
+ * is a verb under strict classification. droneTierCap stays a stat — a cap bump alone is not a
+ * thing you can do.
+ */
+export const VERB_UNLOCK_KEYS = Object.freeze([
+  'extraDronePerBay',
+  'npcTraderHiring',
+  'outpostConstruction',
 ]);
+
+/** Strict leftover: no ship, no module, and no verb unlock key. Empty as of FB-053. */
+export const STRICT_STAT_ONLY_IDS = Object.freeze([]);
 
 /**
  * Broad leftover: hull-license-only ships, plus two modules that only enlarge
@@ -97,12 +107,6 @@ export const BROAD_PASSIVE_IDS = Object.freeze([
 ]);
 
 export const STAT_ONLY_JUSTIFICATIONS = Object.freeze({
-  tech_drone_swarm:
-    'No ship or module. Raises droneTierCap and extraDronePerBay on the bay unlocked at drone_control. Folding into drone_control would collapse the tier ladder bay tests pin. Keep until a distinct swarm chassis exists.',
-  tech_autonomous_fleets:
-    'No ship or module. Hire-trader flag plus a tier cap. Hiring is a menu, not a field verb. Folding into drone_swarm would bury the hire behind a cap bump.',
-  tech_outpost_charter:
-    'No ship or module. Outpost-construction flag plus a tier cap. Placement is not yet a field verb on the default route. Folding into fleets would bury a late flag.',
   tech_industrial_mining:
     'Hull license only (Ironback). Same mining verb as the starter laser, on a barge. Not folded: ships.js keys the hull to this id (ships.js is out of this write set).',
   tech_strike_craft:
@@ -146,10 +150,10 @@ const VERBS = Object.freeze({
   tech_long_range_survey: 'Fly the Ranger; open a wormhole',
   tech_tractor_systems: 'Tow, whip, or couple a body; magnet salvage; flail a tow; fly the Hawser tug',
   tech_drone_control: 'Launch a drone from a bay',
-  tech_drone_swarm: 'More drones / higher tier (no new chassis)',
-  tech_autonomous_fleets: 'Hire an NPC trader (menu, not a field verb)',
+  tech_drone_swarm: 'Fly a second drone off one bay',
+  tech_autonomous_fleets: 'Hire an NPC trader to fly your routes',
   tech_nanofabrication: 'Repair with nanobots',
-  tech_outpost_charter: 'Plant an outpost flag (not yet a field verb)',
+  tech_outpost_charter: 'Raise a depot or battery on a claimed body',
 });
 
 function list(value) {
@@ -161,13 +165,24 @@ export function nodeUnlocksShipOrModule(node) {
   return list(unlocks.ships).length + list(unlocks.modules).length > 0;
 }
 
+/**
+ * FB-053 — a node is a verb when it unlocks a ship/module OR carries a verb unlock key with a
+ * live consumer (see VERB_UNLOCK_KEYS). The three logistics nodes moved here; droneTierCap by
+ * itself still counts for nothing.
+ */
+export function nodeUnlocksVerb(node) {
+  if (nodeUnlocksShipOrModule(node)) return true;
+  const unlocks = node && node.unlocks ? node.unlocks : {};
+  return VERB_UNLOCK_KEYS.some((key) => unlocks[key] != null && unlocks[key] !== false && unlocks[key] !== 0);
+}
+
 export function isHullLicenseOnly(node) {
   const unlocks = node && node.unlocks ? node.unlocks : {};
   return list(unlocks.ships).length > 0 && list(unlocks.modules).length === 0;
 }
 
 export function classifyTechNode(node, mode = 'strict') {
-  if (!nodeUnlocksShipOrModule(node)) return 'stat-only';
+  if (!nodeUnlocksVerb(node)) return 'stat-only';
   if (mode === 'broad' && (isHullLicenseOnly(node) || BROAD_PASSIVE_IDS.includes(node.id))) {
     return 'stat-only';
   }
@@ -503,4 +518,109 @@ export function assertCommittedLadder(ladder = TECH_VERB_LADDER) {
     errors.push('15-minute wish constant drifted');
   }
   return { ok: errors.length === 0, errors, firstUpgrade: FIRST_UPGRADE };
+}
+
+const MODULE_BY_ID = new Map(MODULES.map((mod) => [mod.id, mod]));
+
+/**
+ * LG-VERB-CURVE. Ten verb keys whose first station door opens in that hour of
+ * the authored ladder, and not the hour before. Helios rack offers and modules
+ * with no research gate count as hour 0. Salvage-only hulls are not a door on
+ * this route. Seed 4242 does not reshuffle the table: hours come from costs.
+ */
+export const HOUR_VERB_CURVE = Object.freeze([
+  Object.freeze({ hour: 1, nodeId: 'tech_impulse_ballistics', moduleId: 'mod_charge_vector_rack', verbKey: 'bombPropulsion', label: 'Propelled charge' }),
+  Object.freeze({ hour: 2, nodeId: 'tech_fire_control', moduleId: 'mod_pds_servo_s', verbKey: 'pointDefense', label: 'Point defense' }),
+  Object.freeze({ hour: 3, nodeId: 'tech_drone_control', moduleId: 'mod_drone_bay_l', verbKey: 'droneBay', label: 'Launch a drone' }),
+  Object.freeze({ hour: 4, nodeId: 'tech_ricochet_ballistics', moduleId: 'mod_repulsion_trap_s', verbKey: 'repulsionTrap', label: 'Repulsion trap' }),
+  Object.freeze({ hour: 5, nodeId: 'tech_drone_swarm', moduleId: null, verbKey: 'extraDronePerBay', label: 'Second drone' }),
+  Object.freeze({ hour: 6, nodeId: 'tech_heat_lure', moduleId: 'mod_heat_lure_s', verbKey: 'heatLure', label: 'Heat lure' }),
+  Object.freeze({ hour: 7, nodeId: 'tech_autonomous_fleets', moduleId: null, verbKey: 'npcTraderHiring', label: 'Hire a trader' }),
+  Object.freeze({ hour: 8, nodeId: 'tech_containment_seal', moduleId: 'mod_containment_seal_s', verbKey: 'containmentSeal', label: 'Containment seal' }),
+  Object.freeze({ hour: 9, nodeId: 'tech_capture_cradle', moduleId: 'mod_capture_cradle_m', verbKey: 'captureSurvivalMult', label: 'Capture cradle' }),
+  Object.freeze({ hour: 10, nodeId: 'tech_outpost_charter', moduleId: null, verbKey: 'outpostConstruction', label: 'Raise an outpost' }),
+]);
+
+function moduleCarriesVerbKey(mod, verbKey) {
+  if (!mod || !verbKey) return false;
+  if (mod[verbKey] != null) return true;
+  return !!(mod.mods && mod.mods[verbKey] != null);
+}
+
+/** One line the research screen prints under its title. */
+export function hourVerbCurveLine(curve = HOUR_VERB_CURVE) {
+  return curve.map((row) => `${row.hour} ${row.label}`).join(' · ');
+}
+
+/**
+ * Earliest hour a purchasable door grants this verb key on the opening route.
+ * Helios rack offers and ungated modules are hour 0. Infinity when nothing
+ * sellable carries the key.
+ */
+export function verbKeyFirstHour(verbKey, ladder = TECH_VERB_LADDER, nodes = TECH_NODES) {
+  const hourOf = new Map(ladder.map((row) => [row.nodeId, row.hour]));
+  let best = Infinity;
+  for (const mod of MODULES) {
+    if (!mod || mod.purchasable === false || mod.salvageOnly) continue;
+    if (!moduleCarriesVerbKey(mod, verbKey)) continue;
+    let hour = 0;
+    const helios = mod.shopOffers && mod.shopOffers.station_helios;
+    if (!helios && mod.requiresTech) {
+      const gated = hourOf.get(mod.requiresTech);
+      if (typeof gated !== 'number') continue;
+      hour = gated;
+    }
+    if (hour < best) best = hour;
+  }
+  for (const node of nodes) {
+    if (!node || !node.unlocks || node.unlocks[verbKey] == null) continue;
+    const hour = hourOf.get(node.id);
+    if (typeof hour === 'number' && hour < best) best = hour;
+  }
+  return best;
+}
+
+/**
+ * Empty when each curve hour is the first hour that verb can be bought, the
+ * named node is what opens it, and hours 1–10 are all present.
+ */
+export function hourVerbCurveGaps(curve = HOUR_VERB_CURVE, ladder = TECH_VERB_LADDER, nodes = TECH_NODES) {
+  const gaps = [];
+  const hours = new Set();
+  const keys = new Set();
+  const byNode = new Map(nodes.map((node) => [node.id, node]));
+  for (const row of curve) {
+    if (hours.has(row.hour)) gaps.push(`hour ${row.hour} repeated`);
+    hours.add(row.hour);
+    if (keys.has(row.verbKey)) gaps.push(`verb ${row.verbKey} repeated`);
+    keys.add(row.verbKey);
+    const node = byNode.get(row.nodeId);
+    if (!node) {
+      gaps.push(`missing node ${row.nodeId}`);
+      continue;
+    }
+    if (row.moduleId) {
+      const modules = node.unlocks && node.unlocks.modules;
+      if (!Array.isArray(modules) || !modules.includes(row.moduleId)) {
+        gaps.push(`${row.nodeId} does not unlock ${row.moduleId}`);
+      }
+      const mod = MODULE_BY_ID.get(row.moduleId);
+      if (!moduleCarriesVerbKey(mod, row.verbKey)) {
+        gaps.push(`${row.moduleId} does not carry ${row.verbKey}`);
+      }
+      if (!mod || mod.requiresTech !== row.nodeId) {
+        gaps.push(`${row.moduleId} is not gated by ${row.nodeId}`);
+      }
+    } else if (!node.unlocks || node.unlocks[row.verbKey] == null) {
+      gaps.push(`${row.nodeId} does not grant ${row.verbKey}`);
+    }
+    const first = verbKeyFirstHour(row.verbKey, ladder, nodes);
+    if (!(first > row.hour - 1 && first <= row.hour)) {
+      gaps.push(`${row.verbKey} first opens at ${first}, not during hour ${row.hour}`);
+    }
+  }
+  for (let hour = 1; hour <= 10; hour += 1) {
+    if (!hours.has(hour)) gaps.push(`missing hour ${hour}`);
+  }
+  return gaps;
 }

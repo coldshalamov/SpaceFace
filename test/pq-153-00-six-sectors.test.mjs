@@ -40,8 +40,9 @@ function sectorIds() {
 
 test('PQ-153.00: the confirmation table names exactly these six existing sectors', () => {
   assert.equal(WAY_OF_LIFE_SECTOR_IDS.length, 6);
-  assert.equal(SECTOR_WAY_OF_LIFE.length, 6);
+  assert.equal(SECTOR_WAY_OF_LIFE.length, sectorIds().size);
   assert.deepEqual([...WAY_OF_LIFE_SECTOR_IDS], EXPECTED_SIX.map((row) => row.id));
+  assert.deepEqual(SECTOR_WAY_OF_LIFE.slice(0, 6).map((row) => row.id), EXPECTED_SIX.map((row) => row.id));
 
   const live = sectorIds();
   for (const expected of EXPECTED_SIX) {
@@ -71,7 +72,7 @@ test('PQ-153.00: every row carries the required way-of-life columns', () => {
 test('PQ-153.00: lookup is by existing id and the last three stay swappable by name', () => {
   assert.equal(WAY_OF_LIFE_OWNER_LOCKED_COUNT, 3);
   assert.equal(SECTOR_WAY_OF_LIFE_BY_ID.sector_helios_prime.name, 'Helios Prime');
-  assert.equal(getSectorWayOfLife('sector_io_reach'), null);
+  assert.ok(getSectorWayOfLife('sector_io_reach'));
   assert.equal(getSectorWayOfLife('sector_not_a_place'), null);
 
   const locked = WAY_OF_LIFE_SECTOR_IDS.slice(0, WAY_OF_LIFE_OWNER_LOCKED_COUNT);

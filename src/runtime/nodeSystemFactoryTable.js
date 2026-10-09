@@ -14,6 +14,9 @@ import { survivalArena } from '../systems/survivalArena.js';
 import { swarmArena } from '../systems/swarmArena.js';
 import { swarmSupply } from '../systems/swarmSupply.js';
 import { swarmChain } from '../systems/swarmChain.js';
+import { swarmJuice } from '../systems/swarmJuice.js';
+import { swarmElites } from '../systems/swarmElites.js';
+import { swarmJuiceHud } from '../ui/swarmJuiceHud.js';
 import { survivalRewards } from '../systems/survivalRewards.js';
 import { survivalWave } from '../systems/survivalWave.js';
 import { survivalRun } from '../systems/survivalRun.js';
@@ -25,6 +28,19 @@ import { scanner } from '../systems/scanner.js';
 import { mines } from '../systems/mines.js';
 import { bombs } from '../systems/bombs.js';
 import { dockingCorridor } from '../systems/dockingCorridor.js';
+import { latchNine } from '../systems/latchNine.js';
+import { scissorwake } from '../systems/scissorwake.js';
+import { tallyThree } from '../systems/tallyThree.js';
+import { lastShift } from '../systems/lastShift.js';
+import { redKite } from '../systems/redKite.js';
+import { sableVenn } from '../systems/sableVenn.js';
+import { ilexArk } from '../systems/ilexArk.js';
+import { kilnback } from '../systems/kilnback.js';
+import { mothlight } from '../systems/mothlight.js';
+import { palletJack } from '../systems/palletJack.js';
+import { secondRinse } from '../systems/secondRinse.js';
+import { towlineTable } from '../systems/towlineTable.js';
+import { borrowedVoice } from '../systems/borrowedVoice.js';
 import { scanReveal } from '../systems/scanReveal.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity } from '../systems/lawSecurity.js';
@@ -61,11 +77,13 @@ import { impulseCharges } from '../systems/impulseCharges.js';
 import { hullBurst } from '../systems/hullBurst.js';
 import { massSeed } from '../systems/massSeed.js';
 import { fields } from '../systems/fields.js';
+import { gyreSnare } from '../systems/gyreSnare.js';
 import { emergentPrimitives } from '../systems/emergentPrimitives.js';
 import { environmentalMachinery } from '../systems/environmentalMachinery.js';
 import { planetRuntime } from '../systems/planetRuntime.js';
 import { massSeedHud } from '../ui/massSeedHud.js';
 import { fieldHud } from '../ui/fieldHud.js';
+import { gyreHud } from '../ui/gyreHud.js';
 import { planetHud } from '../ui/planetHud.js';
 import { miningHud } from '../ui/miningHud.js';
 import { survivalHud } from '../ui/survivalHud.js';
@@ -80,6 +98,7 @@ import { cloak } from '../systems/cloak.js';
 import { lootShards } from '../systems/lootShards.js';
 import { terrainAnchors } from '../systems/terrainAnchors.js';
 import { jettisonImpulse } from '../systems/jettisonImpulse.js';
+import { volatileExposure } from '../systems/volatileExposure.js';
 import { masslineHud } from '../ui/masslineHud.js';
 import { mining } from '../systems/mining.js';
 import { fieldDepletion } from '../systems/fieldDepletion.js';
@@ -132,6 +151,13 @@ import { pirateRumor } from '../systems/pirateRumor.js';
 import { ambushSignatures } from '../systems/ambushSignatures.js';
 import { bountyHunt } from '../systems/bountyHunt.js';
 import { morrow } from '../systems/morrow.js';
+import { vesper } from '../systems/vesper.js';
+import { bracket } from '../systems/bracket.js';
+import { ravel } from '../systems/ravel.js';
+import { solstice } from '../systems/solstice.js';
+import { rubric } from '../systems/rubric.js';
+import { ruckus } from '../systems/ruckus.js';
+import { ruud } from '../systems/ruud.js';
 import { salvage } from '../systems/salvage.js';
 import { voiceArbiter } from '../ui/voiceArbiter.js';
 import { sectorPostcard } from '../ui/sectorPostcard.js';
@@ -146,6 +172,7 @@ import { customsPrompt } from '../ui/customsPrompt.js';
 import { impoundPayPrompt } from '../ui/impoundPayPrompt.js';
 import { moralTrapPrompt } from '../ui/moralTrapPrompt.js';
 import { wreckChoicePrompt } from '../ui/wreckChoicePrompt.js';
+import { stuckTowPrompt } from '../ui/stuckTowPrompt.js';
 import { cargoConscience } from '../ui/cargoConscience.js';
 import { securityReadoutSystem } from '../ui/securityReadout.js';
 import { priceForecastSystem } from '../ui/priceForecast.js';
@@ -203,6 +230,14 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['swarmArena', swarmArena],
     ['swarmSupply', swarmSupply],
     ['swarmChain', swarmChain],
+    // The manifest marks swarmJuice node-safe (sim-phase juice detector) and swarmJuiceHud
+    // domGuarded — without table rows every Node production-fidelity boot throws
+    // "missing system swarmJuice for init order" before the first tick.
+    ['swarmJuice', swarmJuice],
+    ['swarmJuiceHud', swarmJuiceHud],
+    // swarmElites is nodeSafe (sim-phase Threat/affix/perk runtime, SWARM-06) — without a row
+    // every Node production-fidelity boot throws "missing system swarmElites for init order".
+    ['swarmElites', swarmElites],
     ['survivalRun', survivalRun],
     ['voiceArbiter', voiceArbiter],
     ['input', input],
@@ -237,6 +272,20 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['massSeed', massSeed],
     ['uniqueLootAbilities', uniqueLootAbilities],
     ['fields', fields],
+    ['gyreSnare', gyreSnare],
+    ['latchNine', latchNine],
+    ['scissorwake', scissorwake],
+    ['tallyThree', tallyThree],
+    ['lastShift', lastShift],
+    ['redKite', redKite],
+    ['sableVenn', sableVenn],
+    ['ilexArk', ilexArk],
+    ['kilnback', kilnback],
+    ['mothlight', mothlight],
+    ['palletJack', palletJack],
+    ['secondRinse', secondRinse],
+    ['towlineTable', towlineTable],
+    ['borrowedVoice', borrowedVoice],
     ['emergentPrimitives', emergentPrimitives],
     ['environmentalMachinery', environmentalMachinery],
     ['planetRuntime', planetRuntime],
@@ -261,6 +310,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['lootShards', lootShards],
     ['terrainAnchors', terrainAnchors],
     ['jettisonImpulse', jettisonImpulse],
+    ['volatileExposure', volatileExposure],
     ['mining', mining],
     ['fieldDepletion', fieldDepletion],
     ['cargo', cargo],
@@ -297,6 +347,13 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['stationContactLoadBoundary', stationContactLoadBoundary],
     ['gateControlDirector', gateControlDirector],
     ['morrow', morrow],
+    ['vesper', vesper],
+    ['bracket', bracket],
+    ['ravel', ravel],
+    ['solstice', solstice],
+    ['rubric', rubric],
+    ['ruckus', ruckus],
+    ['ruud', ruud],
     ['salvage', salvage],
     ['lossInvestigation', lossInvestigation],
     ['salvageActions', salvageActions],
@@ -329,6 +386,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['masslineHud', masslineHud],
     ['massSeedHud', massSeedHud],
     ['fieldHud', fieldHud],
+    ['gyreHud', gyreHud],
     ['planetHud', planetHud],
     ['miningHud', miningHud],
     ['survivalHud', survivalHud],
@@ -345,6 +403,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['impoundPayPrompt', impoundPayPrompt],
     ['moralTrapPrompt', moralTrapPrompt],
     ['wreckChoicePrompt', wreckChoicePrompt],
+    ['stuckTowPrompt', stuckTowPrompt],
     ['cargoConscience', cargoConscience],
     ['securityReadoutSystem', securityReadoutSystem],
     ['priceForecastSystem', priceForecastSystem],

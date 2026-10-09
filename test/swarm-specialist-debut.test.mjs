@@ -101,7 +101,9 @@ test('the debut flag rides the schedule so materialization can protect it', () =
 });
 
 test('non-debut waves never carry a debut package', () => {
-  for (const w of [3, 7, 9, 11, 13, 15, 20, 30]) {
+  // The lawful roster (FB-023) turned 9/13/15 into debut waves — warden_escort, customs_cutter
+  // and patrol_lawman now unlock there — so the non-debut list keeps only waves no fromWave claims.
+  for (const w of [3, 7, 11, 20, 30]) {
     const plan = swarmPlan(w);
     assert.ok(!plan.error);
     assert.equal(plan.packages.filter((pkg) => pkg.debut === true).length, 0, `wave ${w}`);

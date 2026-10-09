@@ -197,7 +197,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0a1cfe61a6befe87050f6550ebe7e8e79da17b1ce9ce092220bdff10eaf0bc9f",
+  "contentHash": "535d731a4515b47038f9e10c9d41bedd8accf25839b9d3bdc2ad4c0a9e3d0e0d",
   "dynamicGroups": [
     {
       "id": "sf.render.mining.node.lod0-hook-drive-core.dynamic",
@@ -6895,8 +6895,8 @@
       "uri": "place_station_mining.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -9897,7 +9897,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_mining.glb"
   },
-  "runtimeHash": "4b3f7ee23f377a79ed5b9f4462bfd2b7a7a44532657c7f3196ff82208d07a26a",
+  "runtimeHash": "9ed0cf51040d51f07007ad7d19a236a57117e70b34fbc38f89aae97cbb8ac7a7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8bc0cb1a9f6d9dee8dbac6e9c8ae6692b670c29a9507ea9ca799c6a1f2bb9608",
+  "contentHash": "20741b7da8559bd0686afb55ef2aed2a48b197640c3e23e60ef0bfc5e0e859b7",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1637,8 +1637,8 @@
       "uri": "place_crusher_module.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -1749,21 +1749,22 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 2,
-      "mechanical": 12,
-      "signal": 1,
+      "hull": 4,
+      "mechanical": 7,
+      "rubber": 2,
+      "signal": 2,
       "warning": 4
     },
     "materialProfiles": [
       {
         "allowTextures": false,
         "planIndex": 2,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": false,
         "planIndex": 3,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": false,
@@ -1778,7 +1779,7 @@
       {
         "allowTextures": false,
         "planIndex": 6,
-        "role": "mechanical"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
@@ -1808,7 +1809,7 @@
       {
         "allowTextures": false,
         "planIndex": 13,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1818,7 +1819,7 @@
       {
         "allowTextures": false,
         "planIndex": 15,
-        "role": "mechanical"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
@@ -2371,7 +2372,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_crusher_module.glb"
   },
-  "runtimeHash": "cadef86484196eed0cf046fd97d53d53918dbb4726b12c1c9e8f5814a8c626d1",
+  "runtimeHash": "742835d190b151aa9226b26002ab7cb43212630f8ad62085d2f39a284ef7ad17",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

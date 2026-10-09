@@ -6,8 +6,8 @@
  * agree about which layer a shot actually chewed. These pins run `createFloatingText` on a
  * stub DOM and the real `combat:damage` payloads:
  *
- *   1. Player-caused shield damage spawns the ring pip (`○`) at the target.
- *   2. Armor-dominant and hull-only hits paint the chevron (`❯`) and cross (`✕`).
+ *   1. Player-caused shield damage spawns the ring mark at the target (drawn SVG, empty label).
+ *   2. Armor-dominant and hull-only hits paint the drawn diamond and square marks.
  *   3. The pip answers `gameplay.hitPips` and STAYS lit when damage numbers are off —
  *      it is a control receipt, not a number.
  *   4. NPC-on-NPC damage paints nothing — the pip confirms MY trigger only.
@@ -25,8 +25,12 @@ import { createFloatingText } from '../src/ui/floatingText.js';
 // ── minimal DOM stub ─────────────────────────────────────────────────────────
 function stubEl(tag) {
   return {
-    tag, id: '', className: '', textContent: '', children: [],
+    tag, id: '', className: '', children: [],
     style: {},
+    // Drawn-mark pass: the pip's shape is an SVG mark child and its label is empty, so the
+    // stub derives textContent the way a real element does instead of storing a flat string.
+    get textContent() { return this._text !== undefined ? this._text : this.children.map((c) => c.textContent).join(''); },
+    set textContent(v) { this.children.length = 0; this._text = v; },
     appendChild(child) { this.children.push(child); child.parent = this; return child; },
   };
 }
@@ -77,7 +81,7 @@ test('FB-019: shield-layer damage paints the ring pip at the target', () => {
   const nodes = liveNodes(world);
   const pip = nodes.find((el) => el.className.includes('sf-ft--pip'));
   assert.ok(pip, 'a player-caused shield hit must paint a pip');
-  assert.equal(pip.textContent, '○');
+  assert.equal(pip.textContent, '');
   assert.ok(pip.className.includes('sf-ft--pip-shield'));
 });
 
@@ -88,9 +92,9 @@ test('FB-019: armor and hull hits paint their own marks', () => {
   world.bus.emit('combat:damage', hit('npc_1', { applied: 20 }));
   const pips = liveNodes(world).filter((el) => el.className.includes('sf-ft--pip'));
   assert.equal(pips.length, 2, 'different layers paint separate marks');
-  assert.equal(pips[0].textContent, '❯', 'armor bite is the chevron');
+  assert.equal(pips[0].textContent, '', 'armor bite is the drawn diamond mark');
   assert.ok(pips[0].className.includes('sf-ft--pip-armor'));
-  assert.equal(pips[1].textContent, '✕', 'hull hit is the cross');
+  assert.equal(pips[1].textContent, '', 'hull hit is the drawn square mark');
   assert.ok(pips[1].className.includes('sf-ft--pip-hull'));
 });
 

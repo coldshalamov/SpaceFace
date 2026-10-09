@@ -4,8 +4,11 @@ const REQUIRED_FIELDS = ['key', 'rim', 'fill', 'ambient', 'fog', 'fogDensity', '
 const COLOR_FIELDS = ['key', 'rim', 'fill', 'ambient', 'fog', 'nebulaTint', 'dust'];
 const CLASS_ENTRIES = Object.entries(SECTOR_PALETTE_CLASSES);
 const CORE_LUMINANCE = combinedLightLuminance(SECTOR_PALETTE_CLASSES.core);
-const MIN_LUMINANCE = CORE_LUMINANCE * 0.8;
-const MAX_LUMINANCE = CORE_LUMINANCE * 1.2;
+// Envelope around the authored class system, not just core: the Lacquer & Starlight retune
+// sits fringe's ambient+fill at ~0.75× core (its authored dark-negative-space look), so the
+// floor is 0.7× — still catches a real luminance collapse without re-pinning the class table.
+const MIN_LUMINANCE = CORE_LUMINANCE * 0.7;
+const MAX_LUMINANCE = CORE_LUMINANCE * 1.3;
 
 const issues = [];
 const usedClasses = new Set();

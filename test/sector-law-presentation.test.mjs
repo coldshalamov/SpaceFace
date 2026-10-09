@@ -107,3 +107,10 @@ test('law lifecycle keeps telemetry/audio data without duplicating the visible p
   assert.doesNotMatch(sayBody[1], /voice\.say|this\._emit\('toast'/,
     'sector-law presenter is the sole visible text owner');
 });
+
+test('the intercept card names the aggressor once', async () => {
+  const { authorityAggressorText } = await import('../src/ui/sectorLawPresenter.js');
+  assert.equal(authorityAggressorText('YOU · AGGRESSOR'), 'YOU · AGGRESSOR');
+  assert.equal(authorityAggressorText('UNKNOWN AGGRESSOR'), 'UNKNOWN AGGRESSOR');
+  assert.equal(authorityAggressorText('RAIDER KESS'), 'AGGRESSOR RAIDER KESS');
+});

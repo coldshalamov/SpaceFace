@@ -695,4 +695,62 @@ console.log('ok   stationExitNeedsConfirm gates implicit and explicit risk-unhel
   console.log('ok   first dock dismissal persists without changing tutorial progress');
 }
 
+// Every quoted vital service must mount through the same live station shell. In particular,
+// a normal fresh credit line used to throw before the player could reach any station tab.
+for (const scenario of [
+  { id: 'loan', type: 'loan', label: 'Draw', configure() {},
+    closeQuote(state) { state.player.debt = 1e9; } },
+  { id: 'settle', type: 'settle', label: 'Settle',
+    configure(state) { state.player.credits = 2000; state.player.debt = 200; },
+    closeQuote(state) { state.player.debt = 0; } },
+  { id: 'cargoInsure', type: 'cargo_insurance', label: 'Cover',
+    configure(state) {
+      state.player.credits = 2000;
+      state.player.cargo.items = { cmdty_ore_iron: 20 };
+      state.player.cargo.usedVolume = 20;
+    },
+    closeQuote(state) { state.player.cargoPolicy = { coverCr: 100, manifestCr: 200 }; } },
+  { id: 'rights', type: 'redeem_rights', label: 'Redeem',
+    configure(state) {
+      state.ui.dockedStationId = 'station_ceres';
+      state.world.currentSectorId = 'sector_ceres_belt';
+      state.player.salvageRights = 2;
+      state.factions.faction_pitborn = { ...state.factions.faction_pitborn, rep: 0 };
+    },
+    closeQuote(state) { state.player.salvageRights = 0; } },
+]) {
+  installDom();
+  const ctx = makeCtx(42);
+  scenario.configure(ctx.state);
+  const quote = serviceQuote(scenario.type, ctx.state, ctx.state.entities.get(ctx.state.playerId));
+  assert.equal(quote.disabled, false, `${scenario.id} fixture must offer the real service`);
+  const { app, rootEl } = mountStationApp(ctx, { serviceQuote });
+  try {
+    const button = rootEl.querySelector(`[data-vital-act="${scenario.id}"]`);
+    assert.ok(button, `${scenario.id} is reachable on its live vital row`);
+    assert.equal(button.getAttribute('data-station-control'), scenario.id);
+    assert.equal(button.getAttribute('data-control-label'), scenario.label);
+    assert.ok(button.getAttribute('aria-label').includes(quote.detail),
+      `${scenario.id} keeps the live quote's amount, terms and warning in its accessible name`);
+    if (scenario.id === 'loan') {
+      assert.match(button.getAttribute('aria-label'), /stale notes levy 25%\/day to bounty/);
+    }
+    const playerBefore = structuredClone(ctx.state.player);
+    const intents = () => ctx.emitted.filter(e => e.event === 'ui:service' && e.payload.type === scenario.type);
+    button.dispatchEvent(new FakeEvent('click', { target: button, bubbles: true }));
+    assert.deepEqual(intents().map(e => e.payload), [{ type: scenario.type, amount: quote.amount }],
+      `${scenario.id} sends one existing economy intent with the current quote amount`);
+    assert.deepEqual(ctx.state.player, playerBefore, `${scenario.id} does not bypass the economy owner`);
+    scenario.closeQuote(ctx.state);
+    button.dispatchEvent(new FakeEvent('click', { target: button, bubbles: true }));
+    assert.equal(intents().length, 1, `${scenario.id} cannot commit a stale disabled quote`);
+    assert.ok(ctx.emitted.some(e => e.event === 'toast' && e.payload.kind === 'warn'),
+      `${scenario.id} explains its stale-quote refusal`);
+    await new Promise(resolve => setTimeout(resolve, 80));
+    console.log(`ok   quoted ${scenario.id} mounts with its binding label, live aria detail and single owner intent`);
+  } finally {
+    app.dispose();
+  }
+}
+
 console.log('station-exit-confirmation: all acceptance tests PASS');

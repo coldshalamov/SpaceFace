@@ -5,6 +5,10 @@ import * as THREE from 'three';
 
 import * as partsLibrary from '../src/render/partsLibrary.js';
 import { getAssetResidency } from '../src/render/assetResidency.js';
+import {
+  TABLE_DECODE_RUNWAY_SECONDS,
+  TABLE_REFERENCE_SPEED_WU,
+} from '../src/render/tabletopPolicy.js';
 
 function residencyFixtureLoader(renderer, controls = {}) {
   const registry = getAssetResidency(renderer);
@@ -220,7 +224,11 @@ test('startup readiness gates the authored opening runway without waiting on dis
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, false);
   hub.mesh.userData.authoredAssetState = 'authored';
   player.pos = { x: 0, z: 0 };
-  hub.pos = { x: 1800, z: 0 };
+  // The critical-hub gate reaches TABLE_DECODE_RUNWAY_SECONDS of travel — the owner-widened
+  // authored decode window (6.0 s legs ⇒ 2160 WU at reference speed) put a bare 1800 inside
+  // it, where a still-loading hub correctly holds the flight. Site the beyond-runway hub
+  // outside the live band so the pin keeps measuring the contract it names.
+  hub.pos = { x: TABLE_DECODE_RUNWAY_SECONDS * TABLE_REFERENCE_SPEED_WU + 800, z: 0 };
   hub.mesh.userData.authoredAssetState = 'loading';
   npc.pos = { x: 3000, z: 0 };
   npc.mesh.userData.authoredAssetState = 'loading';

@@ -247,6 +247,8 @@ function installDom({ width = 1280, height = 800, touchDevice = true } = {}) {
 
   const fire = (map, type, event) => { for (const fn of map.get(type) || []) fn(event); };
   const overlay = () => doc.getElementById('sf-touch-overlay');
+  let lastMoveX = NaN;
+  let lastMoveY = NaN;
 
   return {
     doc,
@@ -263,9 +265,17 @@ function installDom({ width = 1280, height = 800, touchDevice = true } = {}) {
         preventDefault() {}, stopPropagation() {},
       });
     },
-    move(x, y) {
+    move(x, y, movementX = null, movementY = null) {
+      // Browsers report movementX/Y as the delta between successive pointer packets. Emit the
+      // real delta — the dynamic combat stick's deadzone recenter (SFQ-B011) bleeds sub-deadzone
+      // packets, so a constant 1px-per-event stream can never accumulate into a command.
+      if (!Number.isFinite(lastMoveX)) { lastMoveX = x; lastMoveY = y; }
+      if (!Number.isFinite(movementX)) movementX = x - lastMoveX;
+      if (!Number.isFinite(movementY)) movementY = y - lastMoveY;
+      lastMoveX = x;
+      lastMoveY = y;
       fire(winListeners, 'mousemove', {
-        type: 'mousemove', clientX: x, clientY: y, movementX: 1, movementY: 1, target: body,
+        type: 'mousemove', clientX: x, clientY: y, movementX, movementY, target: body,
         preventDefault() {}, stopPropagation() {},
       });
     },
@@ -366,6 +376,10 @@ function newSession(domOpts = {}) {
     state,
     bus,
     helpers: { raycastToPlane: (ndc) => ({ x: ndc.x * 100, z: -ndc.y * 100 }) },
+    // The phone deck replaced the dual-stick overlay on the live route (pinned by
+    // test/mobile-flight.test.mjs and scripts/probe-mobile-flight.mjs). This check keeps the legacy
+    // overlay's verbs honest through the facade's `legacy` seam.
+    mobileSeams: { legacy: true },
   };
   input.init(ctx);
   return {
@@ -632,10 +646,10 @@ for (let slot = 0; slot < DEFAULTS.SCHEMES.pilot.tether.length; slot++) {
   s.tick();
   checkEqual(s.state.input.autoTargetPath.points.length, 0,
     'entering combat-stick mode clears stale draw-path geometry');
-  // The harness emits movementX/Y=1 per move. Cross the authored 10 px deadzone deliberately;
-  // sub-deadzone tremor is supposed to remain neutral.
+  // Feed deliberate relative motion as well as absolute coordinates. Palm-noise packets
+  // intentionally recenter inside the deadzone and cannot accumulate into a flight command.
   for (let i = 0; i < 18; i += 1) {
-    s.dom.move(300 + i * 12, 220 + i * 9);
+    s.dom.move(300 + i * 12, 220 + i * 9, 12, 9);
     s.tick();
   }
   check(s.state.input.autoTargetVector.active

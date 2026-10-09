@@ -10,6 +10,7 @@ import { createRegistry } from './core/registry.js';
 import { resolveSimLaneFlags, createSimLaneRuntime } from './core/simLaneMain.js';
 import { startLoop } from './core/loop.js';
 import { createPresentationJournal } from './core/presentationJournal.js';
+import { entityIsJournaled } from './world/presentationSources.js';
 import { createPresentationRuntimeCloser } from './core/presentationRunner.js';
 import { canonicalStringify } from './core/simSnapshot.js';
 import { installLiveClipDirector } from './ui/screens/clips.js';
@@ -37,7 +38,7 @@ import {
 import { applyAccessibility } from './ui/accessibility.js';
 import { ensureStylesheet as ensureStationStylesheet } from './ui/station/stationStyles.js';
 import { createLoadingPresenter } from './ui/loadingPresenter.js';
-import { createRuntimeFailurePresenter } from './ui/runtimeFailurePresenter.js';
+import { createRuntimeFailurePresenter, describeBootFailure } from './ui/runtimeFailurePresenter.js';
 import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
 import { settleOpeningCompositionTail } from './render/precompile.js';
 import {
@@ -83,12 +84,12 @@ function installGlobalErrorBoundary() {
     // Debounce the toast: at most one per second, and collapse a burst into a count.
     const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     if (now - lastToastAt < 1000) { toastCount++; return; }
-    const burst = toastCount > 0 ? ` (${toastCount + 1} errors)` : '';
+    const burst = toastCount > 0 ? ` ${toastCount + 1} errors were logged.` : ' The error was logged.';
     toastCount = 0; lastToastAt = now;
     try {
       const sf = window.SF;
       if (sf && sf.bus && typeof sf.bus.emit === 'function') {
-        sf.bus.emit('toast', { text: 'Something went wrong — see console.' + burst, kind: 'warn', ttl: 5 });
+        sf.bus.emit('toast', { text: 'Something went wrong.' + burst, kind: 'warn', ttl: 5 });
       }
     } catch (_) { /* game may not be up yet; the console log is enough */ }
   };
@@ -135,9 +136,16 @@ async function boot() {
       seedOf: () => state && state.meta && state.meta.seed,
       tickOf: () => state && state.tick,
     });
-    const presentationJournal = createPresentationJournal();
+    // Mirrors pushAlive()'s mesh test in presentationSources.js: entities the
+    // rebuild collect can never republish must never journal — a spawn
+    // suppressed during a pending rebuild would otherwise leave the entity
+    // permanently journaled-out, tripping a rebuild once per tick for life.
+    const presentationJournal = createPresentationJournal(undefined, {
+      isEntityJournaled: entityIsJournaled,
+    });
     const loadingPresenter = createLoadingPresenter({ document, bus, state });
-    const failurePresenter = createRuntimeFailurePresenter({ document });
+    // SFQ-B228: the same instance showBootError uses — one pane owner over #boot-overlay.
+    const failurePresenter = bootRecoveryPresenter();
     bus.emit('game:loadingProgress', { id: 'boot-contract', progress: .18, ceiling: .20,
       label: 'Preparing flight systems', detail: 'Reading the opening scenario' });
     const contract = await contractPromise;
@@ -185,7 +193,7 @@ async function boot() {
       onProgress({ completed, total }) {
         bus.emit('game:loadingProgress', {
           id: 'boot-systems', progress: .20 + .72 * (total ? completed / total : 1), ceiling: .94,
-          label: 'Initializing flight systems', detail: `${completed} of ${total} systems initialized`,
+          label: 'Starting flight systems', detail: `${completed} of ${total} online`,
         });
       },
     });
@@ -196,8 +204,12 @@ async function boot() {
     // authority is never re-armed under the running sim. finalizeLoadedGame adopts the
     // promise below (and kicks itself if this lane never ran).
     let earlyContinuePhysicsPrep = null;
+    let earlyContinueKickPending = false;
     const kickEarlyContinuePhysicsPrep = () => {
-      if (earlyContinuePhysicsPrep) return;
+      // An emit landing while a doomed prep pends skips its re-mint; flag it so the
+      // settle-clear re-kicks instead of waiting on the next emit or finalize.
+      if (earlyContinuePhysicsPrep) { earlyContinueKickPending = true; return; }
+      earlyContinueKickPending = false;
       if (state.mode === 'flight') return;
       const physicsSystem = registry.get('physics');
       if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return;
@@ -208,9 +220,20 @@ async function boot() {
       // restored world exactly as before.
       if (typeof physicsSystem.hasResolvedSg02Owner === 'function'
           && physicsSystem.hasResolvedSg02Owner()) return;
-      earlyContinuePhysicsPrep = Promise.resolve()
+      const prep = Promise.resolve()
         .then(() => physicsSystem.prepareBackend(state));
-      earlyContinuePhysicsPrep.catch(() => {});
+      earlyContinuePhysicsPrep = prep;
+      // A stale settle (the SG-02 token guard's false, or a rejection) must not
+      // latch: clear it so the next envelope kick re-mints instead of the gate
+      // inheriting a verdict from a dead authority. A skipped emit then re-kicks
+      // immediately rather than serializing its fresh prepare inside the gate.
+      const settleClear = () => {
+        if (earlyContinuePhysicsPrep === prep) earlyContinuePhysicsPrep = null;
+        if (earlyContinueKickPending && !earlyContinuePhysicsPrep) kickEarlyContinuePhysicsPrep();
+      };
+      prep.then((verdict) => {
+        if (verdict !== true) settleClear();
+      }, settleClear);
     };
     // Speculative prepare fires during menu dwell — WASM bring-up reads no envelope data,
     // so it can overlap the dwell instead of serializing inside the Continue gate.
@@ -229,7 +252,13 @@ async function boot() {
       // of dead time before the slot scans and worker dispatch could even start.
       nextFrame().then(restore).catch((error) => {
         console.error('[SpaceFace] deferred save restore failed', error);
-        bus.emit('save:error', { slot: 'latest', reason: 'load_failed' });
+        // SFQ-B228: name the cause so the recovery toast can state it — the saveSystem's own
+        // failure receipts already carry `error`; this outer catch was the bare one.
+        bus.emit('save:error', {
+          slot: 'latest',
+          reason: 'load_failed',
+          error: error && error.message ? error.message : String(error),
+        });
       });
       return true;
     };
@@ -238,6 +267,11 @@ async function boot() {
       // listener on game:loadingProgress that starts a new-game transition would otherwise take the
       // generation first and the save restore would proceed under a token it no longer owns.
       const token = runTransitionGuard.begin('load');
+      // Continue runs the same admission-generation machinery as game:new — without a fresh
+      // generation here, a New Game attempt that ended 'pending'/'rejected' stamps a record
+      // whose generation never advances, and waitForOpeningGpuResources' owned-run bareStamp
+      // short-circuits to false → the save throws unreachable until another New Game.
+      if (state.render) state.render.admissionRunGeneration = token.generation;
       bus.emit('game:loadingProgress', {
         id: 'restoring-save',
         progress: 0.05,
@@ -249,6 +283,7 @@ async function boot() {
     helpers.finalizeLoadedGame = (payload) => {
       const inherited = earlyContinuePhysicsPrep;
       earlyContinuePhysicsPrep = null;
+      earlyContinueKickPending = false;
       return finalizeLoadedGame(
         state,
         bus,
@@ -260,6 +295,10 @@ async function boot() {
     let loopController = null;
     const closeRuntime = createPresentationRuntimeCloser({
       stopPresentation() {
+        // Retire async Launch/Continue and GPU admissions before any teardown can settle their
+        // gates. A late success must not publish flight into a runtime whose loop is stopped.
+        const cancelledToken = runTransitionGuard.begin('runtime-closed');
+        if (state.render) state.render.admissionRunGeneration = cancelledToken.generation;
         const errors = [];
         try { loadingPresenter.destroy(); } catch (error) { errors.push(error); }
         try { loopController?.stop?.(); } catch (error) { errors.push(error); }
@@ -344,23 +383,33 @@ async function boot() {
     });
 
     bus.on('game:exitToMenu', () => {
+      // Returning to the menu also owns outstanding readiness work. Without a new generation,
+      // an old Launch/Continue can settle afterward and put the player straight back in flight.
+      const cancelledToken = runTransitionGuard.begin('exit-to-menu');
+      if (state.render) state.render.admissionRunGeneration = cancelledToken.generation;
       const previousMode = state.mode;
       laneSetMode(state, bus, 'menu');
       if (previousMode !== 'menu') bus.emit('mode:changed', { mode: 'menu', previousMode });
     });
 
+    const recoverRuntimeFailure = (failure) => {
+      const receipt = closeRuntime();
+      if (receipt.errorCount > 0) {
+        console.error('[SpaceFace] runtime teardown completed with errors:', receipt.errors);
+      }
+      failurePresenter.show(failure);
+    };
     loopController = startLoop(state, registry, {
       // Under the flip the presentation lane reads the transport journal and
       // steps the worker-backed runner; identical shapes on the main lane.
       presentationJournal: simLaneRuntime ? simLaneRuntime.journal : presentationJournal,
       simulationRunner: simLaneRuntime ? simLaneRuntime.runner : undefined,
-      onSimulationFailure(failure) {
-        const receipt = closeRuntime();
-        if (receipt.errorCount > 0) {
-          console.error('[SpaceFace] runtime teardown completed with errors:', receipt.errors);
-        }
-        failurePresenter.show(failure);
-      },
+      // Gates that pay a paint boundary only need one when nothing has drawn
+      // recently — the runner's accepted presents are exactly that evidence,
+      // while its suspended/restoring window correctly stops stamping.
+      onPresented() { lastPaintAt = nowMs(); },
+      onSimulationFailure: recoverRuntimeFailure,
+      onPresentationFailure: recoverRuntimeFailure,
     });
     ctx.simStep = () => loopController.stepOnce();
     const loopDebug = {
@@ -383,7 +432,7 @@ async function boot() {
     // on hide it also stops and destroys the boot artwork's worker/WebGL2 context, which
     // otherwise kept rendering into the hidden canvas for the rest of the session.
     bus.emit('game:loadingProgress', { id: 'boot-menu', progress: .96, ceiling: .997,
-      label: 'Opening the command deck', detail: 'Flight systems initialized' });
+      label: 'Opening the command deck', detail: 'All systems online' });
     await nextPaint();
     loadingPresenter.hide();
 
@@ -674,10 +723,19 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
           const physicsSystem = registry.get('physics');
           if (!physicsSystem || typeof physicsSystem.prepareBackend !== 'function') return true;
           physicsPrep = Promise.resolve()
-            .then(() => physicsSystem.prepareBackend(state, { reset: true }));
+            .then(() => physicsSystem.prepareBackend(state, { reset: true, initTimeoutMs: 20000 }));
         }
         try {
-          return await physicsPrep;
+          // Same outer bound the Continue gate runs (main.js ~1052): prepareBackend's
+          // internal init race only bounds one leg — a wedge anywhere else inside it
+          // would hold the loading shell forever.
+          return await Promise.race([
+            physicsPrep,
+            new Promise((_, reject) => setTimeout(
+              () => reject(new Error('physics backend preparation timed out after 20000ms')),
+              20000,
+            )),
+          ]);
         } catch (error) {
           console.warn('[startup] physics backend preparation failed', error);
           return false;
@@ -717,6 +775,7 @@ function discardPreparedNewGameScene(state, bus, runTransitionGuard, transitionT
       pos: { x: entity.pos.x, z: entity.pos.z },
       radius: entity.radius,
       factionId: entity.factionId,
+      reason: 'run_reset',
     });
     if (!runTransitionGuard.isCurrent(transitionToken)) return false;
   }
@@ -737,7 +796,12 @@ function startLoadingGatePulse(bus, runTransitionGuard, transitionToken, transit
   let lastText = null;
   const emit = () => {
     try {
-      if (!runTransitionGuard.isCurrent(transitionToken)) return;
+      if (!runTransitionGuard.isCurrent(transitionToken)) {
+        // A leaked pulse (its gate threw before stop ran) must not outlive the
+        // transition — self-clear instead of waking every 500 ms forever.
+        clearInterval(timer);
+        return;
+      }
       const detail = detailOf();
       if (detail == null || detail === lastText) return;
       lastText = detail;
@@ -781,20 +845,25 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
   // save:envelopePrepared may already have started it at envelope decode (payload.physicsPrep)
   // — adopt that promise so a restore-time bring-up is never paid twice.
   let continuePhysicsPrep = payload.physicsPrep || null;
-  if (!continuePhysicsPrep) {
-    const physicsSystem = registry.get('physics');
-    if (physicsSystem && typeof physicsSystem.prepareBackend === 'function') {
-      continuePhysicsPrep = Promise.resolve()
-        .then(() => physicsSystem.prepareBackend(state));
-      continuePhysicsPrep.catch(() => {});
-    }
+  const physicsSystem = registry.get('physics');
+  if (physicsSystem && typeof physicsSystem.prepareBackend === 'function') {
+    // A spec-armed prep can go stale before adoption: a New Game attempt between
+    // the envelope kick and this Continue bumps _sg02Token and disposes the
+    // authority it resolved against, so the inherited verdict no longer describes
+    // the backend the gate is checking. Re-validate at adoption — a fresh non-reset
+    // prepare is idempotent (joins _sg02Init mid-settle, re-mints only when torn
+    // down); never {reset:true} — that would dispose a live owner mid-restore.
+    continuePhysicsPrep = Promise.resolve(continuePhysicsPrep)
+      .then(() => physicsSystem.prepareBackend(state, { initTimeoutMs: 20000 }),
+        () => physicsSystem.prepareBackend(state, { initTimeoutMs: 20000 }));
+    continuePhysicsPrep.catch(() => {});
   }
   try {
     bus.emit('game:loadingProgress', {
       id: 'authored-library',
       progress: 0.25,
       label: 'Loading the ships',
-      detail: 'Bringing the saved sector back with its ships intact',
+      detail: 'Hulls, stations and traffic',
       transition: 'continue',
     });
     // Paint the stage boundary before the wait's synchronous prefix — the loader's easing
@@ -806,8 +875,12 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       return elapsed > 8000 ? 'Still loading the saved sector' : 'Bringing the saved sector back with its ships intact';
     });
     const gateStartedMs = nowMs();
-    const libraryReady = await waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
-    stopLibraryPulse();
+    let libraryReady;
+    try {
+      libraryReady = await waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
+    } finally {
+      stopLibraryPulse();
+    }
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!libraryReady) {
       throw new Error('Authored ship asset library did not preload after save load; refusing to enter flight with procedural fallback ships.');
@@ -830,13 +903,17 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
         ? `Placing ships and stations — ${pending} still staging`
         : 'Placing ships and stations before you arrive';
     });
-    const visualsReady = await waitForInitialAuthoredVisualsWithRetry(
-      state,
-      INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
-      () => runTransitionGuard.isCurrent(transitionToken),
-      bus,
-    );
-    stopVisualsPulse();
+    let visualsReady;
+    try {
+      visualsReady = await waitForInitialAuthoredVisualsWithRetry(
+        state,
+        INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
+        () => runTransitionGuard.isCurrent(transitionToken),
+        bus,
+      );
+    } finally {
+      stopVisualsPulse();
+    }
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!visualsReady) {
       throw new Error('Loaded authored ship visuals did not become ready; refusing to enter flight with procedural fallback ships.');
@@ -845,7 +922,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       id: 'render-pipelines',
       progress: 0.78,
       label: 'Preparing the visuals',
-      detail: 'Warming up so the opening runs smooth',
+      detail: 'Warming the renderer so the first minute runs smooth',
       transition: 'continue',
     });
     // Single-frame breath: the gpu-resources boundary below still pays the full
@@ -865,7 +942,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       id: 'gpu-resources',
       progress: 0.9,
       label: 'Preparing the opening route',
-      detail: 'Loading the opening stretch smoothly',
+      detail: 'Loading the first stretch of space',
       transition: 'continue',
     });
     await nextPaintSliced();
@@ -890,10 +967,12 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
             console.warn('[startup] continue GPU cook failed', error);
           });
         } else {
-          try {
-            await cook;
-          } catch (error) {
-            console.warn('[startup] continue GPU cook failed', error);
+          const gpuReady = await cook;
+          if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+          // The awaited readiness verdict owns handover, just as it does for New Game.
+          // Refusal (including pending admission) must never silently release control.
+          if (gpuReady !== true) {
+            throw new Error('Loaded game GPU resources were not accepted; refusing to enter flight before the opening route is ready.');
           }
         }
       } finally {
@@ -904,12 +983,36 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
     {
       // Same D26 gate as New Game: the loaded world must enter flight only after the
       // SG-02 authority exists. No reset — save:loaded already rebound the retained
-      // player record; the promise kicked at function top just resolves here.
+      // player record; the promise kicked at function top just resolves here. This
+      // gate needs the same pulse loop New Game runs under 'physics-authority' —
+      // an un-pulsed await reads as a frozen shell while a slow WASM bring-up
+      // settles, and an unbounded one freezes the transition forever on a wedge.
       if (continuePhysicsPrep) {
-        const physicsReady = await continuePhysicsPrep;
-        if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
-        if (physicsReady === false) {
-          throw new Error('The dynamic physics backend did not initialize after save load; refusing to enter flight frozen in place.');
+        const stopPhysicsPulse = startGatePulse('physics-authority', 0.94, 'Preparing flight dynamics',
+          () => 'Waking the flight authority');
+        try {
+          // The prepare has overlapped the whole GPU chain by now — whatever is
+          // still outstanding 20 s later is a wedged bring-up, not a slow one.
+          // A rejected prepare used to fold into the same false as a timeout —
+          // capture its reason so the readiness error carries the real cause
+          // instead of an opaque wedge.
+          let physicsPrepError = null;
+          const physicsReady = await Promise.race([
+            continuePhysicsPrep.catch((err) => { physicsPrepError = err || null; return false; }),
+            new Promise((resolve) => setTimeout(() => resolve(false), 20000)),
+          ]);
+          if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
+          if (physicsReady === false) {
+            const readinessError = new GameStartReadinessError(
+              'PHYSICS_BACKEND_UNAVAILABLE',
+              'physics-authority',
+              'The dynamic physics backend did not initialize after save load; refusing to enter flight frozen in place.',
+            );
+            if (physicsPrepError != null) readinessError.cause = physicsPrepError;
+            throw readinessError;
+          }
+        } finally {
+          stopPhysicsPulse();
         }
       }
     }
@@ -918,7 +1021,7 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       id: 'entering-flight',
       progress: 0.96,
       label: 'Handing over flight control',
-      detail: 'Final checks before handover',
+      detail: 'Final checks',
       transition: 'continue',
     });
     runTransitionGuard.commit(transitionToken, () => {
@@ -964,7 +1067,11 @@ function enterLoadingMode(state, bus) {
       renderer.setClearColor(_loadingClearColor, prevAlpha);
     }
   } catch (_) { /* best effort — the shell still covers the handoff */ }
-  if (previousMode !== 'loading') bus.emit('mode:changed', { mode: 'loading', previousMode });
+  // A foundry HDRI that armed while a presented surface was up bakes its PMREM
+  // convolve here — the held frame is already black and the veil is coming up,
+  // so the one bounded convolve lands where presented frames never run.
+  try { state.render && state.render._drainFoundryEnvPending?.(); } catch (_) { /* env optional */ }
+  if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
 }
 
 function enterFlightMode(state, bus) {
@@ -1038,7 +1145,7 @@ async function waitForInitialAuthoredVisualsWithRetry(state, timeoutMs, isCurren
       id: 'authored-visuals',
       progress: 0.5,
       label: 'Building the opening scene',
-      detail: 'Still placing ships and stations — giving it another moment',
+      detail: 'Still placing ships and stations. Almost there.',
       transition,
     });
   }
@@ -1177,10 +1284,29 @@ function nowMs() {
 }
 
 
+// SFQ-B228: a boot-stage failure (missing scenario asset, failed fetch, init throw) used to
+// dump a raw stack into the overlay — a cause, but no exit: a dead screen. The recovery pane
+// owner (runtimeFailurePresenter) renders instead: named cause + Retry, saves untouched.
+// The raw stack stays the fallback (and always reaches the console for devtools).
+// One presenter instance is shared by both dead-end classes — boot()'s flight-interrupted
+// path and this boot-error path — because two instances over #boot-overlay would stack
+// capture-phase keydown listeners and orphan the first instance's destroy path.
+let bootFailurePresenterInstance = null;
+function bootRecoveryPresenter() {
+  if (!bootFailurePresenterInstance) {
+    bootFailurePresenterInstance = createRuntimeFailurePresenter({ document });
+  }
+  return bootFailurePresenterInstance;
+}
 function showBootError(err) {
+  console.error('[boot]', err);
+  try {
+    if (bootRecoveryPresenter().show(describeBootFailure(err))) return;
+  } catch (paneError) {
+    console.error('[boot] recovery pane failed; falling back to raw boot error', paneError);
+  }
   const o = document.getElementById('boot-overlay');
   if (o) o.innerHTML = '<div class="boot-error">BOOT ERROR\n\n' + ((err && err.stack) || err) + '</div>';
-  console.error('[boot]', err);
 }
 
 async function loadScenarioContract(url, path) {

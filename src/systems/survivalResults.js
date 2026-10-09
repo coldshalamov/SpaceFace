@@ -11,6 +11,7 @@ import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { attackerLabel, weaponLabel } from '../combat/playerDefeat.js';
 import { validateRunState } from '../core/runState.js';
 import { SWARM_RULESET } from '../data/swarmMode.js';
+import { swarmZoneIndexFor } from '../data/swarmLadder.js';
 import { SURVIVAL_ARC_LENGTH } from '../data/survivalActs.js';
 import { settleCrucibleRun } from './survivalRecords.js';
 import { challengeFromRun } from './survivalMutators.js';
@@ -481,6 +482,9 @@ export const survivalResults = {
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:started', () => this._reset()));
     this._unsubs.push(this.bus.on('entity:killed', (p) => this._onEntityKilled(p)));
+    // Brood deaths are not entities — they arrive only as these batched receipts, so without
+    // this count the results plate's KILLS reads zero beside a hundred-body chain.
+    this._unsubs.push(this.bus.on('swarm:broodKills', (p) => this._onBroodKills(p)));
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('combat:damage', (p) => this._onDamage(p)));
@@ -505,6 +509,14 @@ export const survivalResults = {
           wave: p && Number.isInteger(p.wave) && p.wave > 0 ? p.wave : this._deepestWave,
           simTime: this._simNow(),
         };
+      }
+      // SWARM-04: the ladder's third star asks for the chain INSIDE the zone, not the run's
+      // peak — a chain that carried across the boundary peaks wherever it stood highest.
+      const wave = p && Number.isInteger(p.wave) && p.wave > 0 ? p.wave : null;
+      const chain = p && Number.isFinite(p.chain) ? p.chain : 0;
+      if (wave && chain > 0) {
+        const key = String(swarmZoneIndexFor(wave));
+        if (chain > (this._zoneChains[key] || 0)) this._zoneChains[key] = chain;
       }
     }));
     // swarmChain also publishes the peak as it drops state on run:ended. Latch it so a
@@ -559,6 +571,8 @@ export const survivalResults = {
     this._kills = 0;
     this._bestChain = 0;
     this._chainPeak = null;
+    this._zoneChains = {};
+    this._zoneDeaths = {};
     this._wavesCleared = 0;
     this._deepestWave = 0;
     this._damageTrail = [];
@@ -733,6 +747,25 @@ export const survivalResults = {
     }
   },
 
+  _onBroodKills(payload) {
+    const run = liveSurvivalRun(this.state);
+    if (!run || !payload) return;
+    const count = Math.max(0, Math.trunc(Number(payload.count) || 0));
+    if (count <= 0) return;
+    this._kills += count;
+    if (this._runStartSimTime == null) this._runStartSimTime = this._simNow();
+    if (this._firstKillSimTime == null) this._firstKillSimTime = this._simNow();
+    const wave = Number.isInteger(payload.wave) && payload.wave > 0
+      ? payload.wave
+      : (Number.isInteger(run.wave) ? run.wave : 0);
+    this._killsByWave.set(wave, (this._killsByWave.get(wave) || 0) + count);
+    // SF-075: terrain and collision brood deaths are the room doing the killing — the same
+    // improvised-kill ledger the entity path keeps for thrown hulls and slams.
+    if (payload.cause === 'terrain' || payload.cause === 'collision') {
+      this._improvisedKills += count;
+    }
+  },
+
   _pushProvisionalStunt(victimId, fields) {
     if (victimId != null && this._stuntKills.some((row) => row && row.victimId === victimId && row.provisional !== true)) return;
     this._stuntKills.push({
@@ -848,6 +881,13 @@ export const survivalResults = {
     this._defeatReceipt = payload || null;
     this._deathMark = { tick: this._tickNow(), simTime: this._simNow() };
     this._stopReason = 'player_death';
+    // SWARM-04: where the defeat landed, in zone terms — the ladder's second star asks
+    // whether the hull ever went down INSIDE the zone it cleared. Today one death ends the
+    // run, so this records the attempted zone; the day a revive lets a run continue, the
+    // spent Second Wind already files against the right zone.
+    const deathWave = Number.isInteger(run.wave) && run.wave > 0 ? run.wave : 1;
+    const deathZone = String(swarmZoneIndexFor(deathWave));
+    this._zoneDeaths[deathZone] = (this._zoneDeaths[deathZone] || 0) + 1;
     // A Crucible death is the end of the run — there is no recovery berth in an arena.
     this._emit('run:endRequested', {
       outcome: 'defeat',
@@ -1026,6 +1066,12 @@ export const survivalResults = {
     result.unlocksEarned = [];
     result.highestRoundEntered=this._highestEntered;
     result.lastRoundCleared=this._deepestWave;
+    // SWARM-04: the facts the ladder settles from — where the run began (a checkpoint start
+    // begins mid-ladder), each zone's peak chain, and each zone's defeat count.
+    result.startWave = run.telemetry && Number.isInteger(run.telemetry.startWave)
+      ? run.telemetry.startWave : 1;
+    result.zoneChains = { ...this._zoneChains };
+    result.zoneDeaths = { ...this._zoneDeaths };
     result.roundThreatBudget=run.threatBudget;
     result.roundThreatResolved=run.resolvedThreat;
     result.remainingEnemies=Math.max(0,(run.threatBudget??0)-(run.resolvedThreat??0));
@@ -1034,6 +1080,14 @@ export const survivalResults = {
     result.swarmStake = run.telemetry && typeof run.telemetry.swarmStake === 'string'
       ? run.telemetry.swarmStake
       : null;
+    // SWARM-06: the Threat wager and the perk loadout the run flew under — flat on the result
+    // like the stake, so the plate and the settlement read the same stamp the run began with.
+    if (challenge.ruleset === SWARM_RULESET) {
+      const threats = run.telemetry && Array.isArray(run.telemetry.threats) ? run.telemetry.threats : [];
+      if (threats.length) result.threats = threats.slice();
+      const perks = run.telemetry && Array.isArray(run.telemetry.perks) ? run.telemetry.perks : [];
+      if (perks.length) result.perks = perks.slice();
+    }
     result.bestLine=this.state.stunts?.combo?.bestLine?structuredClone(this.state.stunts.combo.bestLine):null;
     result.stuntKills = this._stuntKills.map((s) => ({ ...s }));
     result.killReplay = this._lastKillReplay
@@ -1050,6 +1104,33 @@ export const survivalResults = {
     try {
       const settled = settleCrucibleRun({ result, run });
       result.unlocksEarned = settled.unlocksEarned.slice();
+      const row = settled && settled.result;
+      if (row) {
+        result.bankedBounty = row.bankedBounty;
+        result.hangarBounty = row.hangarBounty;
+        result.cashOut = row.cashOut;
+        // SWARM-04: the stars/checkpoint the run just settled onto the ladder — the results
+        // surface reads this straight, never re-derives eligibility itself.
+        if (row.ladderDelta) result.ladderDelta = row.ladderDelta;
+        // SWARM-05 §7.4: the NEW BEST stamp rides the settlement — the plate never re-judges
+        // whether the line it just flew was a record.
+        if (row.bestLineId) result.bestLineId = row.bestLineId;
+        // SWARM-06 §8: the depth rows the settle wrote — the crossover hull the run proved,
+        // the challenge purses it claimed, and the Threat wager's bounty bonus. The plate
+        // prints what settled, never a re-derived guess.
+        if (Array.isArray(row.crossoverEarned) && row.crossoverEarned.length) {
+          result.crossoverEarned = row.crossoverEarned.slice();
+        }
+        if (Array.isArray(row.challengeRewards) && row.challengeRewards.length) {
+          result.challengeRewards = row.challengeRewards.map((entry) => ({ ...entry }));
+        }
+        if (Number.isFinite(row.threatBountyBonus) && row.threatBountyBonus > 0) {
+          result.threatBountyBonus = row.threatBountyBonus;
+        }
+        const banked = Number.isFinite(row.bankedBounty) ? row.bankedBounty : 0;
+        const chest = Number.isFinite(row.hangarBounty) ? row.hangarBounty : 0;
+        result.bankLine = `The hangar banked ${banked} from this run and the chest now holds ${chest}.`;
+      }
     } catch {
       // A local-record failure must not swallow the results the player is owed.
     }

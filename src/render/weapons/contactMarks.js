@@ -225,6 +225,10 @@ export class HullScorchPool {
       r: 0.2,
       g: 0.55,
       b: 0.85,
+      attached: false,
+      persistent: false,
+      boundKey: null,
+      scarId: null,
     }));
     this.geometry = new THREE.PlaneGeometry(1, 1);
     this.pos = dynamicAttribute(this.capacity * 3, 3);
@@ -258,6 +262,8 @@ export class HullScorchPool {
     this._cursor = 0;
     this._spawnSerial = 0;
     this.live = 0;
+    this.retainedScars = [];
+    this._disposed = false;
     this.dynamicBufferOwner = scene ? registerDynamicBufferOwner(scene, {
       id: 'weapon-hull-scorch',
       mesh: this.mesh,
@@ -278,6 +284,13 @@ export class HullScorchPool {
       const i = this._cursor;
       this._cursor = (this._cursor + 1) % this.capacity;
       if (!this.slots[i].alive) { slot = i; break; }
+    }
+    if (slot < 0) {
+      for (let n = 0; n < this.capacity; n++) {
+        const i = this._cursor;
+        this._cursor = (this._cursor + 1) % this.capacity;
+        if (!this.slots[i].persistent) { slot = i; break; }
+      }
     }
     if (slot < 0) {
       slot = this._cursor;
@@ -309,7 +322,26 @@ export class HullScorchPool {
     s.r = finiteOr(spec.r, 0.2);
     s.g = finiteOr(spec.g, 0.55);
     s.b = finiteOr(spec.b, 0.85);
+    s.attached = spec.attached === true;
+    s.persistent = spec.persistent === true;
+    s.boundKey = spec.boundKey != null ? spec.boundKey : null;
+    s.scarId = spec.scarId != null ? spec.scarId : null;
     return slot;
+  }
+
+  // Drop transient flashes for one entity. Persistent scars and the shared material stay.
+  releaseTransient(entityId = null) {
+    let alive = 0;
+    for (const s of this.slots) {
+      if (!s.alive) continue;
+      if (!s.persistent && (entityId == null || s.targetId === entityId)) {
+        s.alive = 0;
+        continue;
+      }
+      alive++;
+    }
+    this.live = alive;
+    return alive;
   }
 
   update(dt, resolvePose) {
@@ -317,15 +349,20 @@ export class HullScorchPool {
     // mesh already count=0/visible=false after the frame that retired the last slot.
     // Keep one idle publish when mesh.count>0 so a trailing clear still hides.
     if (!(this.live > 0) && !(this.mesh.count > 0)) return 0;
-    let live = 0;
+    let drawn = 0;
+    let alive = 0;
+    const step = Math.max(0, finiteOr(dt, 0));
     for (let i = 0; i < this.capacity; i++) {
       const s = this.slots[i];
       if (!s.alive) continue;
-      s.age += Math.max(0, finiteOr(dt, 0));
-      if (s.age >= s.life) {
-        s.alive = 0;
-        this.live = Math.max(0, this.live - 1);
-        continue;
+      if (s.persistent) {
+        if (s.age < s.life) s.age = Math.min(s.life, s.age + step);
+      } else {
+        s.age += step;
+        if (s.age >= s.life) {
+          s.alive = 0;
+          continue;
+        }
       }
       let x = s.localX;
       let y = s.localY;
@@ -335,43 +372,75 @@ export class HullScorchPool {
       let nz = s.nz;
       if (resolvePose) {
         const pose = resolvePose(s);
-        if (pose) {
-          x = pose.x; y = pose.y; z = pose.z;
-          if (pose.nx != null) { nx = pose.nx; ny = pose.ny; nz = pose.nz; }
+        // false retires a transient flash. null holds the slot and draws nothing,
+        // so a LOD/refit gap cannot publish the local offset as a world card.
+        if (pose === false) {
+          if (!s.persistent) {
+            s.alive = 0;
+            continue;
+          }
+          alive++;
+          continue;
         }
+        if (!pose) {
+          alive++;
+          continue;
+        }
+        x = pose.x; y = pose.y; z = pose.z;
+        if (pose.nx != null) { nx = pose.nx; ny = pose.ny; nz = pose.nz; }
       }
-      const fade = (s.age < 0.08 ? s.age / 0.08 : Math.max(0, 1 - (s.age - 0.08) / (s.life - 0.08))) * s.opacity;
+      alive++;
+      const fadeRaw = (s.age < 0.08 ? s.age / 0.08 : Math.max(0, 1 - (s.age - 0.08) / (s.life - 0.08))) * s.opacity;
+      const fade = s.persistent ? Math.max(fadeRaw, 0.7 * s.opacity) : fadeRaw;
       const heat = scorchHeatForAge(s.age, s.life, s.heat0);
-      this.pos.setXYZ(live, x, y, z);
-      this.normal.setXYZ(live, nx, ny, nz);
-      this.size.setXYZW(live, s.width, s.height, fade, heat);
-      this.color.setXYZ(live, s.r, s.g, s.b);
-      this.mark.setXYZ(live, s.markKind, s.fracture, s.seed);
+      this.pos.setXYZ(drawn, x, y, z);
+      this.normal.setXYZ(drawn, nx, ny, nz);
+      this.size.setXYZW(drawn, s.width, s.height, fade, heat);
+      this.color.setXYZ(drawn, s.r, s.g, s.b);
+      this.mark.setXYZ(drawn, s.markKind, s.fracture, s.seed);
       if (this.dynamicBufferOwner) {
-        markDynamicBufferItems(this.dynamicBufferOwner, 0, live);
-        markDynamicBufferItems(this.dynamicBufferOwner, 1, live);
-        markDynamicBufferItems(this.dynamicBufferOwner, 2, live);
-        markDynamicBufferItems(this.dynamicBufferOwner, 3, live);
-        markDynamicBufferItems(this.dynamicBufferOwner, 4, live);
+        markDynamicBufferItems(this.dynamicBufferOwner, 0, drawn);
+        markDynamicBufferItems(this.dynamicBufferOwner, 1, drawn);
+        markDynamicBufferItems(this.dynamicBufferOwner, 2, drawn);
+        markDynamicBufferItems(this.dynamicBufferOwner, 3, drawn);
+        markDynamicBufferItems(this.dynamicBufferOwner, 4, drawn);
       }
-      live++;
+      drawn++;
     }
-    this.live = live;
+    this.live = alive;
     if (this.dynamicBufferOwner) {
-      commitDynamicBufferOwner(this.dynamicBufferOwner, live);
+      commitDynamicBufferOwner(this.dynamicBufferOwner, drawn);
     } else {
-      this.mesh.count = live;
+      this.mesh.count = drawn;
       this.pos.needsUpdate = true;
       this.normal.needsUpdate = true;
       this.size.needsUpdate = true;
       this.color.needsUpdate = true;
       this.mark.needsUpdate = true;
     }
-    this.mesh.visible = live > 0;
-    return live;
+    this.mesh.visible = drawn > 0;
+    return drawn;
   }
 
   dispose() {
+    if (this._disposed) return;
+    this._disposed = true;
+    const retained = [];
+    for (const s of this.slots) {
+      if (!s.alive || !s.persistent) continue;
+      retained.push({
+        scarId: s.scarId,
+        targetId: s.targetId,
+        boundKey: s.boundKey,
+        localX: s.localX,
+        localY: s.localY,
+        localZ: s.localZ,
+        nx: s.nx,
+        ny: s.ny,
+        nz: s.nz,
+      });
+    }
+    this.retainedScars = retained;
     unregisterDynamicBufferOwner(this.dynamicBufferOwner);
     this.dynamicBufferOwner = null;
     if (this.mesh.parent) this.mesh.parent.remove(this.mesh);

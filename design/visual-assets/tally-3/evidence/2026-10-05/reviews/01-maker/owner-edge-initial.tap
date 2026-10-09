@@ -1,0 +1,100 @@
+✖ witnessed theft saved at cargo:changed must retain its original real law consequence (8.002399ms)
+✖ a denied first partial theft must not license a later newly witnessed transfer (0.854153ms)
+✖ continuous membership exit keeps the live persistent assessor budgeted (13.863581ms)
+✖ scan-driven dispute gesture withdraws after selection disappears without an open prompt (7.728387ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 0
+ℹ fail 4
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1025.596915
+
+✖ failing tests:
+
+test at packet/independent-review/owner-edge-repros.test.mjs:16:1
+✖ witnessed theft saved at cargo:changed must retain its original real law consequence (8.002399ms)
+  AssertionError [ERR_ASSERTION]: Continue must not turn a witnessed transfer into historical_witness_unverified
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/tally-maker-v1/packet/independent-review/owner-edge-repros.test.mjs:25:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at packet/independent-review/owner-edge-repros.test.mjs:29:1
+✖ a denied first partial theft must not license a later newly witnessed transfer (0.854153ms)
+  AssertionError [ERR_ASSERTION]: remaining cargo taken next to station must be evaluated against the real witness
+  
+  false !== true
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/tally-maker-v1/packet/independent-review/owner-edge-repros.test.mjs:36:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at packet/independent-review/owner-edge-repros.test.mjs:40:1
+✖ continuous membership exit keeps the live persistent assessor budgeted (13.863581ms)
+  AssertionError [ERR_ASSERTION]: live actor has not left or been removed
+  + actual - expected
+  
+  + null
+  - 'salvage:tally3'
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/tally-maker-v1/packet/independent-review/owner-edge-repros.test.mjs:45:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: 'salvage:tally3',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at packet/independent-review/owner-edge-repros.test.mjs:50:1
+✖ scan-driven dispute gesture withdraws after selection disappears without an open prompt (7.728387ms)
+  AssertionError [ERR_ASSERTION]: phase target lost even though no prompt was opened
+  + actual - expected
+  
+  + 'disputed'
+  - 'withdraw'
+  
+      at TestContext.<anonymous> (file:///workspace/scratch/d2415e46e35b/tally-maker-v1/packet/independent-review/owner-edge-repros.test.mjs:55:12)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'disputed',
+    expected: 'withdraw',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

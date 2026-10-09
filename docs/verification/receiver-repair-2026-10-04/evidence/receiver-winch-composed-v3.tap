@@ -1,0 +1,13 @@
+✔ receiver handoff retains both lines through disturbed open-shoe motion and physically secures through typed Continue (6477.987775ms)
+✔ receiver release gate rejects unsettled and laterally drifting cargo without changing any kinematics (2.092005ms)
+✔ receiver takes up measured post-field slack through repeated typed Saves without minting custody or repairing motion (906.729536ms)
+✔ foreign pad obstruction stalls receiver take-up and removing it resumes the same original line (370.549219ms)
+✔ cut or stale receiver custody never creates a replacement or runs the winch (217.075193ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8817.206747

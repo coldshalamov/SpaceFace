@@ -2,8 +2,8 @@
 //
 // This module intentionally has no registry slot, init(), event subscriptions, serializer, or
 // state mutation. Source systems remain the sole writers. Dock UI asks for a page and receives a
-// deterministic snapshot assembled from loss, trade, wreck, encounter, title, and recovered-name
-// state that already round-trips through saves.
+// deterministic snapshot assembled from loss, trade, wreck, encounter, title, career, and
+// recovered-name state that already round-trips through saves.
 
 import { hash32 } from '../core/rng.js';
 import { livingHullScars, livingHullRenown } from '../core/livingHull.js';
@@ -138,6 +138,7 @@ const SESSION_SINK_EVENT = Object.freeze({
   insurance: 'hull insurance',
   restitution: 'restitution',
   impound: 'an impound',
+  toll: 'a toll',
 });
 
 function sessionSinkEventPhrase(kind) {
@@ -513,6 +514,34 @@ function collectCandidates(state, options = {}) {
     candidates.push(candidate);
   }
 
+  // FB-014 — stunt-minted salvage rights and their claims are durable economy receipts in
+  // player.salvageRightsLog (stuntGrammar is the single writer); this projector only reads
+  // them, exactly like the session sinks above. The prose is the ledger's own 'salvage' bank.
+  if (sourceArray(state && state.player && state.player.salvageRightsLog).length) {
+    const playerEntity = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    const salvageShip = text(playerEntity && playerEntity.data && playerEntity.data.shipName,
+      'the hull');
+    for (const record of sourceArray(state.player.salvageRightsLog)) {
+      if (!record || (record.kind !== 'mint' && record.kind !== 'claim')) continue;
+      const claimed = record.kind === 'claim';
+      const sourceId = text(record.id, `salvage:${record.kind}:${record.at || 0}`);
+      add({
+        type: 'salvage',
+        sourceId,
+        sourceKind: 'player.salvageRightsLog',
+        at: record.at,
+        tokens: {
+          ship: salvageShip,
+          rights: Math.max(0, Math.floor(finite(record.amount, 0))),
+          trick: text(record.name || record.trickId, 'a stunt'),
+          verb: claimed ? 'redeemed' : 'minted',
+          verbPast: claimed ? 'redeemed' : 'minted',
+        },
+      });
+    }
+  }
+
   const bearings = sourceObjectValues(state && state.player && state.player.uniqueWrecks
     && state.player.uniqueWrecks.bearings);
   for (const record of bearings) {
@@ -660,6 +689,28 @@ function collectCandidates(state, options = {}) {
       tokens: {
         event: ENCOUNTER_TITLES[record.shapeId] || humanizeId(record.shapeId, 'an unfiled encounter'),
         outcome: humanizeId(record.outcome, 'unresolved'),
+      },
+    });
+    if (probe && probe.done) return probeResult();
+  }
+
+  // FB-127 — career origin and ladder decisions are already durable story facts (the story owner
+  // records them off the career outcome events); the ledger projects each fact as its own row so
+  // the ship's record keeps the road taken and the road declined beside the rest of the hull's
+  // history. Offered-then-declined shares one fact id, so it reads as one "road not taken" line.
+  for (const fact of sourceArray(state && state.story && state.story.facts)) {
+    if (!fact || fact.kind !== 'career') continue;
+    const factId = text(fact.id, '');
+    if (!factId) continue;
+    add({
+      type: 'career',
+      sourceId: `career:${factId}`,
+      sourceKind: 'story.facts.career',
+      at: fact.atS,
+      tokens: {
+        career: humanizeId(factId.split(':')[1], 'an unnamed career'),
+        record: text(fact.text, 'a decision kept on file'),
+        citation: text(fact.citation, ''),
       },
     });
     if (probe && probe.done) return probeResult();
@@ -945,6 +996,44 @@ export function shipLedgerHasFactOutside(state, excludeTypes) {
   return collectCandidates(state || {}, { probe: { exclude } }).probeHit;
 }
 
+// FB-046 — the session-sink roll-up. `player.sessionSinks` is the durable 48-entry record of
+// where the money went; the ledger projects each row as a witnessed debit. This is the one-line
+// answer "what did this hull cost me lately" — per-kind totals from the same live records the
+// entries read, never a second ledger. Read-only.
+const SINK_ROLLUP_LABEL = Object.freeze({
+  repair: 'repairs',
+  fine: 'fines',
+  insurance: 'insurance',
+  restitution: 'restitution',
+  impound: 'impounds',
+  toll: 'tolls',
+});
+export function sessionSinkRollup(state) {
+  const sinks = sourceArray(state && state.player && state.player.sessionSinks);
+  if (!sinks.length) return null;
+  const byKind = new Map();
+  let total = 0;
+  let count = 0;
+  for (const record of sinks) {
+    if (!record) continue;
+    const kind = text(record.kind, '');
+    const amount = Math.round(Math.abs(finite(record.amount, 0)));
+    if (!kind || !(amount > 0)) continue;
+    const bucket = byKind.get(kind) || { kind, label: SINK_ROLLUP_LABEL[kind] || sessionSinkEventPhrase(kind), amount: 0, count: 0 };
+    bucket.amount += amount;
+    bucket.count += 1;
+    byKind.set(kind, bucket);
+    total += amount;
+    count += 1;
+  }
+  if (!(count > 0)) return null;
+  return {
+    total,
+    count,
+    byKind: [...byKind.values()].sort((a, b) => b.amount - a.amount || a.kind.localeCompare(b.kind)),
+  };
+}
+
 /**
  * Neutral fallback for optional module/equipment instance provenance (NXI-126).
  * Legacy owned modules without provenance retain full usability and resolve
@@ -961,6 +1050,33 @@ export function formatInstanceProvenance(instance) {
     if (typeof raw.source === 'string' && raw.source.trim()) return raw.source.trim();
   }
   return 'unrecorded';
+}
+
+/** Condition readout for a module instance: accepts a word ('worn'), a 0–1 ratio, or a
+ *  percent number; returns display text ('62% condition') or '' when absent. */
+export function instanceConditionText(condition) {
+  if (condition == null || condition === '') return '';
+  if (typeof condition === 'string') return condition.trim();
+  const n = Number(condition);
+  if (!Number.isFinite(n)) return '';
+  const pct = n <= 1 ? Math.round(n * 100) : Math.round(n);
+  return pct + '% condition';
+}
+
+/**
+ * NXI-127 — one-line instance identity for Shipworks detail. Returns '' for an instance
+ * with nothing recorded, so ordinary catalog units stay pristine; a recovered or worn unit
+ * names itself ('recovered · 62% condition') wherever it is shown — fitted or in the hold.
+ * Reads only player-owned instance records: never NPC loadout provenance.
+ */
+export function instanceIdentityText(instance) {
+  if (!instance || typeof instance !== 'object') return '';
+  const bits = [];
+  const prov = formatInstanceProvenance(instance);
+  if (prov !== 'unrecorded') bits.push(prov);
+  const cond = instanceConditionText(instance.condition);
+  if (cond) bits.push(cond);
+  return bits.join(' · ');
 }
 
 export default buildShipLedger;

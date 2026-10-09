@@ -128,8 +128,9 @@ export class CombatContactVfx {
     const motion=age*(reduced?.25:1),phase=s.seed*6.28318;
     if(s.kind==='contact'||s.kind==='consequence'){
       const hard=s.kind==='consequence';
-      // A solver normal is an unsigned axis. Both shoulders answer; the grazing
-      // slip runs tangent to that axis, with independently delayed torn crests.
+      // Two bodies met: the seat answers both shoulders regardless of the receipt normal's
+      // oriented sign (SFQ-B183), the grazing slip running tangent to that axis, with
+      // independently delayed torn crests.
       for(let side=-1;side<=1;side+=2){
         const h=a+(side<0?Math.PI:0),reach=r*(.16+(1-Math.exp(-motion*5.4))*.88);
         p.piece(4,x,z,h,-.64,.69,r*.24,r*(hard?.34:.22),0,0,reach,phase+side,

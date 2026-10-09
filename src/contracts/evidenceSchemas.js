@@ -25,6 +25,7 @@ const ENVELOPE_KEYS = new Set([
 ]);
 const ACCEPTANCE_KEYS = new Set([
   'authoritativeHash',
+  'authoritativeHashByReloadAt',
   'firstMeaningfulSteeringTickMax',
   'firstTetherAttachTickMax',
   'firstHostileShotTickMax',
@@ -35,6 +36,9 @@ const ACCEPTANCE_KEYS = new Set([
   'canonicalLongBranchId',
   'canonicalLongBranchFactChanges',
 ]);
+// Keys an envelope may omit. With save-time world canonicalization the final hash depends
+// on which tick the save canonicalized at, so alternate reload points pin their own values.
+const OPTIONAL_ACCEPTANCE_KEYS = new Set(['authoritativeHashByReloadAt']);
 const ALPHA_EVIDENCE_KEYS = new Set([
   'schema',
   'taskId',
@@ -54,6 +58,9 @@ const ALPHA_VIEWPORT_KEYS = new Set(['width', 'height']);
 const ALPHA_RUNTIME_KEYS = new Set(['kind', 'gpu']);
 const ALPHA_CHECK_KEYS = new Set(['name', 'status']);
 const ALPHA_ARTIFACT_KEYS = new Set(['kind', 'path']);
+// Optional artifact integrity hash: producers that stamp byte hashes keep them; the m3 record
+// has carried them since it landed. Absent stays legal (a {kind,path} report artifact is valid).
+const ALPHA_ARTIFACT_OPTIONAL_KEYS = new Set(['sha256']);
 const ALPHA_CAPTURE_KINDS = new Set(['browser', 'electron', 'blender', 'synthetic']);
 const ALPHA_RUNTIME_KINDS = new Set(['browser', 'electron', 'node', 'blender']);
 const ALPHA_INPUT_SOURCES = new Set(['keyboard-mouse', 'gamepad', 'touch', 'public-intents', 'fixture']);
@@ -189,10 +196,14 @@ function validateAlphaArtifacts(artifacts, issues, file) {
       addIssue(issues, file, itemPath, 'type', 'artifact must be an object');
       return;
     }
-    validateKnownKeys(artifact, ALPHA_ARTIFACT_KEYS, itemPath, issues, file);
+    validateKnownKeys(artifact, new Set([...ALPHA_ARTIFACT_KEYS, ...ALPHA_ARTIFACT_OPTIONAL_KEYS]), itemPath, issues, file);
     requireKeys(artifact, ALPHA_ARTIFACT_KEYS, itemPath, issues, file);
     requireEnum(artifact.kind, ALPHA_ARTIFACT_KINDS, `${itemPath}.kind`, issues, file);
     validateArtifactPath(artifact.path, `${itemPath}.path`, issues, file);
+    if (artifact.sha256 != null
+      && (typeof artifact.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(artifact.sha256))) {
+      addIssue(issues, file, `${itemPath}.sha256`, 'hash', 'sha256 must be a 64-character lowercase sha256 hex string');
+    }
   });
 }
 
@@ -426,10 +437,25 @@ function validateAcceptanceCriteria(value, issues, file) {
   }
   validateKnownKeys(value, ACCEPTANCE_KEYS, path, issues, file);
   for (const key of ACCEPTANCE_KEYS) {
+    if (OPTIONAL_ACCEPTANCE_KEYS.has(key)) continue;
     if (!(key in value)) addIssue(issues, file, `${path}.${key}`, 'required', 'required acceptance criterion is missing');
   }
   if (value.authoritativeHash != null && !/^[a-f0-9]{64}$/.test(value.authoritativeHash)) {
     addIssue(issues, file, `${path}.authoritativeHash`, 'hash', 'authoritativeHash must be null or a 64-character lowercase sha256 hex string');
+  }
+  if (value.authoritativeHashByReloadAt != null) {
+    if (!isPlainObject(value.authoritativeHashByReloadAt)) {
+      addIssue(issues, file, `${path}.authoritativeHashByReloadAt`, 'type', 'authoritativeHashByReloadAt must be an object mapping reload tick to sha256');
+    } else {
+      for (const [tick, hash] of Object.entries(value.authoritativeHashByReloadAt)) {
+        if (!/^\d+$/.test(tick)) {
+          addIssue(issues, file, `${path}.authoritativeHashByReloadAt`, 'key', `reload key ${tick} must be a non-negative integer tick`);
+        }
+        if (typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash)) {
+          addIssue(issues, file, `${path}.authoritativeHashByReloadAt[${tick}]`, 'hash', 'authoritativeHashByReloadAt values must be 64-character lowercase sha256 hex strings');
+        }
+      }
+    }
   }
   requireIntegerOrNull(value.firstMeaningfulSteeringTickMax, `${path}.firstMeaningfulSteeringTickMax`, issues, file, { min: 0 });
   requireIntegerOrNull(value.firstTetherAttachTickMax, `${path}.firstTetherAttachTickMax`, issues, file, { min: 0 });

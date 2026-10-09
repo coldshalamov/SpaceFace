@@ -23,7 +23,10 @@ test('swarm lines up during its full warning, then leaves a bounded firing windo
     assert.equal(warning.allowedActionId, null);
   }
   assert.equal(step(30).fireWindow, true);
-  const recovery = step(150);
+  // SF-2b (#4): a pass that never closes into its 180 WU band keeps closing instead of timing out
+  // 44 ticks after the cue; it is still bounded, by the 240-tick strike cap.
+  assert.equal(step(150).phase, 'strike', 'a pass still 330 WU out has not happened yet');
+  const recovery = step(30 + 240);
   assert.equal(recovery.phase, 'extend', 'a missed pass still ends, giving the player a counterattack');
   assert.equal(recovery.fireWindow, false);
 });

@@ -13,7 +13,7 @@ import {
 } from '../data/sectorCoordinates.js';
 import { isPlayerWanted } from '../systems/heat.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
-import { distance2, stableId } from './contracts.js';
+import { ObjectiveKind, distance2, stableId } from './contracts.js';
 import { resolveCapitalOpening } from '../combat/subsystems.js';
 
 const TICKS_PER_SECOND = 60;
@@ -37,6 +37,9 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
   // key fail-closed every live brawler shot even while the snapshot said the guns were hot.
   brawler_commit: new Set(['commit']),
   ranged_disengager: new Set(['fire_window']),
+  // Quiet Ghost uses the same gun window as the disengager. enter() sets fireWindow on
+  // fire_window for both; a missing key fail-closes the stalker after it telegraphs.
+  ranged_stalker: new Set(['fire_window']),
   tether_control_raider: new Set(),
   // The anchor's guns are live only while it is committed to its drag-field hold. Its authored
   // hull carries a non-defensive autocannon and roe weapons_free; without this entry the label
@@ -458,15 +461,22 @@ export function isHostileForAI(state, self, other) {
   // Team 0 is the player flight (player + wingmen). Lawful WANTED gating must cover the whole
   // flight — wingmen share the player's team but not the playerId, so id-only checks left them
   // exposed to team-mismatch hostility while the clean player was ignored.
-  if (selfIsPlayer) return isHostileToPlayer(other, self.team, state);
-  if (otherIsPlayer) return isHostileToPlayer(self, other.team, state);
+  if (selfIsPlayer) return lawfulAwareHostileToPlayer(other, self.team, state);
+  if (otherIsPlayer) return lawfulAwareHostileToPlayer(self, other.team, state);
+  // The fold is the player's category error, not the sector's. Wingmen and civilians
+  // do not inherit it; the player already answered above.
+  if ((selfData && selfData.foldAberrant) || (otherData && otherData.foldAberrant)) return false;
   const selfIsPlayerSide = self.team === 0;
   const otherIsPlayerSide = other.team === 0;
 
   if ((selfAi && selfAi.passive) || (otherAi && otherAi.passive)
     || self.team === 2 || other.team === 2) return false;
-  if (selfAi && selfAi.lawful && otherIsPlayerSide) return isPlayerWanted(state);
-  if (otherAi && otherAi.lawful && selfIsPlayerSide) return isPlayerWanted(state);
+  if (selfAi && selfAi.lawful && otherIsPlayerSide) {
+    return isPlayerWanted(state) && !acceptedPlayerSurrenderCovers(state);
+  }
+  if (otherAi && otherAi.lawful && selfIsPlayerSide) {
+    return isPlayerWanted(state) && !acceptedPlayerSurrenderCovers(state);
+  }
   return self.team !== other.team;
 }
 
@@ -778,13 +788,60 @@ function isDispatchedSecurityResponse(ai, target) {
     && ai.securityTargetId === target.id);
 }
 
+/**
+ * NXI-056 — the parent settlement identity for an accepted player surrender. A lawful
+ * observer arriving late validates this disposition instead of reopening the surrendered
+ * lot as a fresh accusation. It counts only while custody is `accepted` AND carries its
+ * cause identity — a provisional or malformed hold suppresses nothing. The hold is
+ * session-scoped like the rest of the surrender state; settling the bill clears the sheet
+ * itself, and a genuinely new cause reopens engagement through the normal authority (a
+ * dispatch mark, retaliation, faction aggro), not through this read.
+ */
+function acceptedPlayerSurrenderCovers(state) {
+  const hold = state && state.lawSecurity && state.lawSecurity.playerSurrender;
+  return !!(hold && hold.phase === 'accepted' && nonEmpty(hold.causeId));
+}
+
+/**
+ * `isHostileToPlayer`'s lawful line is a dispatch mark OR the WANTED sheet OR declared
+ * faction aggro. The accepted surrender disposition covers the sheet term alone — the
+ * surrendered lot — so a second lawful observer evaluating the same freight does not
+ * reopen it. The mark and aggro terms are causes outside the lot and keep their answer.
+ * Every early-out in the scanner's oracle (passive, same team, team 2) is preserved by
+ * reading its answer first.
+ */
+function lawfulAwareHostileToPlayer(observer, playerTeam, state) {
+  const base = isHostileToPlayer(observer, playerTeam, state);
+  if (!base || !acceptedPlayerSurrenderCovers(state)) return base;
+  const ai = observer && observer.data && observer.data.ai;
+  if (!ai || ai.lawful !== true) return base;
+  const playerId = state && state.playerId;
+  if (ai.securityTargetId === playerId) return true;
+  const standing = state.factions && observer.factionId != null
+    ? state.factions[observer.factionId]
+    : null;
+  return !!(standing && standing.aggro === true);
+}
+
+// An attacker slot is a *commitment to fire*, so candidacy follows the stack's own
+// combat-ordered set (stack.js runs a doctrine for ENGAGE/FOCUS/TUG members only). A reserve
+// posture — SCREEN, HOLD, REFORM, RETREAT — carries a target the ship watches, not a lane it
+// can shoot: its doctrine is forgotten and the engagement gate already refuses it on
+// doctrine_fire_window, so counting the objective's targetId can only starve a committed
+// attacker of a slot the reserve member can never spend.
+const COMMITTED_OBJECTIVE_KINDS = new Set([ObjectiveKind.ENGAGE, ObjectiveKind.FOCUS, ObjectiveKind.TUG]);
+
 function committedTargetId(decision) {
   const doctrineTarget = decision && decision.combatDoctrine && decision.combatDoctrine.targetId;
   if (doctrineTarget != null) return doctrineTarget;
   const objective = decision && decision.directive && decision.directive.objective;
-  if (objective && objective.targetId != null) return objective.targetId;
-  const actionTarget = decision && decision.action && decision.action.targetId;
-  return actionTarget == null ? null : actionTarget;
+  if (objective && objective.targetId != null && COMMITTED_OBJECTIVE_KINDS.has(objective.kind)) {
+    return objective.targetId;
+  }
+  // A blocked or idle action selection carries the target it *wanted*, not one it is flying —
+  // only a started action is a de facto attack commitment worth an owner slot.
+  const action = decision && decision.action;
+  return action && action.actionId != null && action.targetId != null ? action.targetId : null;
 }
 
 function entityById(state, id) {

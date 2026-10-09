@@ -5,6 +5,7 @@
 // WebRenderer mounts on the AudioContext the game already owns (see audioSystem).
 
 import { el } from '@elemaudio/core';
+import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 import { THROTTLE_WINDOWS } from '../presentation/throttleAnswer.js';
 import {
   MASSLINE_HUM_BASE_HZ,
@@ -15,7 +16,7 @@ import {
   TETHER_TONE_MOTION_REDUCE,
   TETHER_TONE_RELEASE_S,
   TETHER_TONE_SILENCE,
-  TETHER_TONE_TAUT_PHASES,
+  resolveTetherLineLoad,
 } from './masslineInstrument.js';
 
 /** Existing engine-hum fundamentals. Idle is silent; the others are the authored tiers. */
@@ -52,10 +53,22 @@ function approach(current, target, dt, riseTau, fallTau) {
 
 export function readDriveSpeed01(player) {
   const vel = player && player.vel;
-  const speed = Math.hypot(Number(vel && vel.x) || 0, Number(vel && vel.z) || 0);
-  const derived = player && player.data && player.data.derived;
-  const cap = Number(derived && derived.maxSpeed);
-  if (!(cap > 0) || !Number.isFinite(speed)) return null;
+  if (!vel) return null;
+  const vx = Number(vel.x);
+  const vz = Number(vel.z);
+  if (!Number.isFinite(vx) || !Number.isFinite(vz)) return null;
+  const speed = Math.hypot(vx, vz);
+  // BM-01: the load fraction keys to the governed combat speed — the speed the assisted
+  // governor actually holds — not the legacy derived top speed, which sits ~30% lower
+  // on the starter and drifts with engine fittings the governor ignores. A missing
+  // velocity still reads null so the authored tier fundamental is left alone.
+  let cap = 0;
+  try { cap = Number(resolveGovernedCombatSpeed(player)); } catch (_) { cap = 0; }
+  if (!(cap > 0)) {
+    const derived = player && player.data && player.data.derived;
+    cap = Number(derived && derived.maxSpeed);
+  }
+  if (!(cap > 0)) return null;
   return clamp(speed / cap, 0, 1);
 }
 
@@ -123,14 +136,14 @@ export function readPublishedThrottle(source = {}) {
   return clamp(Math.max(0, physics, pilot, strafe), 0, 1);
 }
 
-/** Taut line only. Slack and a missing tether publish load 0 and playing false. */
-export function readTetherLoad(tether) {
-  const phase = String((tether && tether.phase) || '');
-  const playing = !!(tether && (tether.active === true || TETHER_TONE_TAUT_PHASES.includes(phase)));
-  const raw = playing
-    ? (Number.isFinite(tether.load) ? tether.load : Number(tether.strain) || 0)
-    : 0;
-  return { playing, load: clamp(raw, 0, 1.25) };
+/**
+ * Taut line only. Slack and a missing tether publish load 0 and playing false. FB-079:
+ * the caller's resolved tow mass lifts the read through the same law the legacy hum's
+ * resolveTetherTone uses — one writer (resolveTetherLineLoad), so a heavy tow creaks on
+ * this backend exactly as authored there, and never through a slack line.
+ */
+export function readTetherLoad(tether, towMass) {
+  return resolveTetherLineLoad(tether, towMass);
 }
 
 /**

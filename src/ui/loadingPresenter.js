@@ -17,7 +17,6 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   const detail = document.querySelector?.('[data-loading-detail]');
   const progress = document.querySelector?.('[data-loading-progress]');
   const pctEl = document.querySelector?.('[data-loading-pct]');
-  const waveformCanvas = document.getElementById?.('boot-waveform-canvas');
   const host = document.defaultView || globalThis;
   const raf = host.requestAnimationFrame?.bind(host);
   const cancelRaf = host.cancelAnimationFrame?.bind(host);

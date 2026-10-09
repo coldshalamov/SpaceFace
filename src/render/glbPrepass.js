@@ -13,184 +13,140 @@
 // GLB back inside the result so the stock parse still runs on the same bytes. When workers are
 // unavailable the prepass resolves to the input buffer untouched, which is the stock path.
 import { activeDecodeClass, resolveDecodeTaskBudgetLimit, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
+import { runtimeWorkerUrl } from './runtimeWorkers.js';
 
 const WORKER_NAME = 'spaceface-glb-prepass';
 const REQUEST_TIMEOUT_MS = 20_000;
+const QUEUE_TIMEOUT_MS = 120_000;
 
 function defaultWorkerUrl() {
-  try {
-    return new URL('./glbPrepassWorker.js', import.meta.url).href;
-  } catch (_) {
-    return null;
-  }
+  try { return runtimeWorkerUrl('prepass', import.meta.url); }
+  catch (_) { return null; }
 }
 
 export function createGlbPrepasser(options = {}) {
-  const WorkerImpl = Object.prototype.hasOwnProperty.call(options, 'WorkerImpl') ? options.WorkerImpl : globalThis.Worker;
+  const WorkerImpl = Object.hasOwn(options, 'WorkerImpl') ? options.WorkerImpl : globalThis.Worker;
   const workerUrl = options.workerUrl || defaultWorkerUrl();
   const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : REQUEST_TIMEOUT_MS;
+  const queueTimeoutMs = Number.isFinite(options.queueTimeoutMs) ? options.queueTimeoutMs : QUEUE_TIMEOUT_MS;
+  const setTimer = options.setTimer || setTimeout, clearTimer = options.clearTimer || clearTimeout;
   const budget = options.budget || sharedDecodeTaskBudget();
-  const cores = Number.isFinite(options.cores)
-    ? options.cores
-    : (typeof navigator !== 'undefined' && Number.isFinite(navigator.hardwareConcurrency)
-      ? navigator.hardwareConcurrency : 4);
-  // Pool size matches the shared decode budget: the budget only ever lets that many decode tasks
-  // run at once, so more workers would sit token-starved and fewer would strand budget capacity.
+  const cores = Number.isFinite(options.cores) ? options.cores
+    : (Number.isFinite(globalThis.navigator?.hardwareConcurrency) ? navigator.hardwareConcurrency : 4);
   const poolSize = Math.max(1, resolveDecodeTaskBudgetLimit(cores));
-  const workers = [];
-  const queue = [];
-  let unavailable = typeof WorkerImpl !== 'function' || !workerUrl;
-  let nextId = 1;
+  const workers = [], queue = [];
+  let unavailable = typeof WorkerImpl !== 'function' || !workerUrl, nextId = 1;
 
-  const settle = (worker, job, result) => {
-    if (worker.current !== job) return;
-    worker.current = null;
-    clearTimeout(job.timer);
-    job.timer = null;
-    if (job.release) { const release = job.release; job.release = null; release(); }
-    job.resolve(result);
-    pump();
-  };
-
-  // The worker died mid-job. If postMessage already transferred the buffer it is gone — resolve
-  // null so the caller re-reads the package; otherwise the caller still owns it and gets it back.
-  const settleLost = (job) => {
-    clearTimeout(job.timer);
-    job.timer = null;
+  const passthrough = glb => ({ glb, bufferViews: null, sourceBytes: null });
+  const finish = (job, result) => {
+    if (job.finished) return;
+    job.finished = true;
+    clearTimer(job.timer); job.timer = null;
+    // A disposed/expired queued job must also leave the shared semaphore's wait list.
+    job.controller.abort();
     if (job.release) { job.release(); job.release = null; }
-    if (job.glb && job.glb.byteLength > 0) {
-      job.resolve({ glb: job.glb, bufferViews: null, sourceBytes: null });
-    } else {
-      job.resolve(null);
-    }
+    job.resolve(result);
   };
-
+  const settleLost = job => finish(job, job.glb?.byteLength > 0 ? passthrough(job.glb) : null);
   const retire = () => {
     unavailable = true;
-    const stuck = queue.splice(0);
-    for (const worker of workers) {
-      const job = worker.current;
+    const pending = queue.splice(0);
+    for (const worker of workers.splice(0)) {
+      if (worker.current) pending.push(worker.current);
       worker.current = null;
       try { worker.object.terminate(); } catch (_) { /* already gone */ }
-      if (job) settleLost(job);
     }
-    workers.length = 0;
-    for (const job of stuck) settleLost(job);
+    for (const job of pending) settleLost(job);
   };
-
+  const settle = (worker, job, result) => {
+    if (worker.current !== job || job.finished) return;
+    worker.current = null;
+    finish(job, result);
+    pump();
+  };
   const spawn = () => {
-    let object = null;
-    try {
-      object = new WorkerImpl(workerUrl, { name: WORKER_NAME, type: 'module' });
-    } catch (_) {
-      unavailable = true;
-      return false;
-    }
-    const worker = { object, current: null };
-    object.addEventListener('message', (event) => {
-      const data = (event && event.data) || {};
-      const job = worker.current;
+    let object;
+    try { object = new WorkerImpl(workerUrl, { name: WORKER_NAME, type: 'module' }); }
+    catch (_) { retire(); return false; }
+    const worker = { object, current: null, urgentStreak: 0 };
+    object.addEventListener('message', event => {
+      const data = event?.data || {}, job = worker.current;
       if (!job || data.id !== job.id) return;
-      if (data.ok === true) {
-        settle(worker, job, {
-          glb: data.glb,
-          bufferViews: new Map(data.decoded || []),
-          sourceBytes: new Map(data.images || []),
-        });
-      } else if (data.glb) {
-        // Clean worker-side failure with the buffer handed back: caller parses it stock.
-        settle(worker, job, { glb: data.glb, bufferViews: null, sourceBytes: null });
-      } else {
-        settle(worker, job, null);
-      }
+      if (data.ok === true) settle(worker, job, {
+        glb: data.glb, bufferViews: new Map(data.decoded || []), sourceBytes: new Map(data.images || []),
+      });
+      else settle(worker, job, data.glb ? passthrough(data.glb) : null);
     });
-    object.addEventListener('error', (event) => {
-      if (event && typeof event.preventDefault === 'function') event.preventDefault();
-      retire();
-    });
+    object.addEventListener('error', event => { event?.preventDefault?.(); retire(); });
+    object.addEventListener('messageerror', () => retire());
     workers.push(worker);
     return true;
   };
-
   const pump = () => {
+    if (unavailable) return;
+    // Instantiate only demanded workers, not hardwareConcurrency-2 WASM heaps for ONE GLB.
+    // Keep the existing maximum and shared CPU budget; asset fidelity is unchanged.
+    let idle = workers.reduce((n, worker) => n + (worker.current ? 0 : 1), 0);
+    while (queue.length > idle && workers.length < poolSize) {
+      if (!spawn()) return;
+      idle += 1;
+    }
     for (const worker of workers) {
-      if (!queue.length) return;
+      if (!queue.length) break;
       if (worker.current) continue;
-      // Urgent-class jobs splice ahead of queued ambient jobs (FIFO within each class),
-      // mirroring the shared decode budget's waiter order — visible outranks deadline, and
-      // neither may sit behind a deep ambient queue waiting for a free worker. A sustained
-      // urgent stream must not starve ambient work forever either: after two consecutive
-      // urgent pickups the oldest waiting ambient job ages into a slot.
-      const isUrgent = (job) => job.decodeClass === 'visible' || job.decodeClass === 'deadline';
-      let idx = queue.findIndex((job) => job.decodeClass === 'visible');
-      if (idx < 0) idx = queue.findIndex((job) => job.decodeClass === 'deadline');
-      if (idx < 0) idx = 0;
-      else if ((worker.urgentStreak || 0) >= 2) {
-        const ambientIdx = queue.findIndex((job) => !isUrgent(job));
-        if (ambientIdx >= 0) idx = ambientIdx;
+      const urgent = job => job.decodeClass === 'visible' || job.decodeClass === 'deadline';
+      let index = queue.findIndex(job => job.decodeClass === 'visible');
+      if (index < 0) index = queue.findIndex(job => job.decodeClass === 'deadline');
+      if (index < 0) index = 0;
+      else if (worker.urgentStreak >= 2) {
+        const ambient = queue.findIndex(job => !urgent(job));
+        if (ambient >= 0) index = ambient;
       }
-      const job = queue.splice(idx, 1)[0];
-      worker.urgentStreak = isUrgent(job) ? (worker.urgentStreak || 0) + 1 : 0;
+      const job = queue.splice(index, 1)[0];
+      worker.urgentStreak = urgent(job) ? worker.urgentStreak + 1 : 0;
       worker.current = job;
-      budget.acquire(job.decodeClass).then((release) => {
-        if (worker.current !== job) { release(); return; } // retired while waiting for the token
-        job.release = release;
-        try {
-          worker.object.postMessage({ id: job.id, glb: job.glb }, [job.glb]);
-        } catch (_) {
-          // postMessage threw before the transfer happened: the caller still owns its buffer.
-          settle(worker, job, { glb: job.glb, bufferViews: null, sourceBytes: null });
-        }
-      });
+      Promise.resolve().then(() => budget.acquire({ decodeClass: job.decodeClass, signal: job.controller.signal }))
+        .then(release => {
+          if (job.finished || worker.current !== job) { release(); return; }
+          job.release = release;
+          // Queue contention is not a silent worker. Start the execution deadline only
+          // once the job owns a decode token and is actually being posted.
+          clearTimer(job.timer); job.timer = null;
+          if (timeoutMs > 0) job.timer = setTimer(retire, timeoutMs);
+          try { worker.object.postMessage({ id: job.id, glb: job.glb }, [job.glb]); }
+          catch (_) { settle(worker, job, job.glb?.byteLength > 0 ? passthrough(job.glb) : null); }
+        }, () => {
+          if (!job.finished) settle(worker, job, passthrough(job.glb));
+        });
     }
   };
-
   const prepasser = {
-    get usingWorker() {
-      return !unavailable && workers.length > 0;
-    },
-    /**
-     * Runs the structural pre-pass on a transferred GLB ArrayBuffer. Resolves
-     * { glb, bufferViews, sourceBytes } — glb is always the buffer to parse (either the same one
-     * handed back, or the untouched input when no worker is available); bufferViews/sourceBytes
-     * are Maps keyed by bufferView index, or null when the worker declined/failed. Resolves null
-     * only when the buffer was lost with the worker: the caller must re-read the package.
-     */
-    prepass(glb, options = {}) {
-      if (unavailable) return Promise.resolve({ glb, bufferViews: null, sourceBytes: null });
-      while (workers.length < poolSize) {
-        if (!spawn()) break;
-      }
-      if (!workers.length) return Promise.resolve({ glb, bufferViews: null, sourceBytes: null });
-      return new Promise((resolve) => {
-        const job = {
-          id: nextId++,
-          glb,
-          resolve,
-          release: null,
-          timer: null,
-          decodeClass: options.decodeClass
-            || activeDecodeClass(),
-        };
-        if (timeoutMs > 0) {
-          job.timer = setTimeout(() => {
-            // A silent worker is retired whole: the buffer went with it.
-            retire();
-          }, timeoutMs);
-        }
+    get usingWorker() { return !unavailable && workers.length > 0; },
+    prepass(glb, request = {}) {
+      if (unavailable) return Promise.resolve(passthrough(glb));
+      return new Promise(resolve => {
+        const job = { id: nextId++, glb, resolve, release: null, timer: null, finished: false,
+          controller: new AbortController(), decodeClass: request.decodeClass || activeDecodeClass() };
+        if (queueTimeoutMs > 0) job.timer = setTimer(() => {
+          // Only this caller waited too long. Its bytes have never left this thread;
+          // return them intact without killing unrelated workers/forcing GLB rereads.
+          const index = queue.indexOf(job);
+          if (index >= 0) queue.splice(index, 1);
+          const worker = workers.find(entry => entry.current === job);
+          if (worker) worker.current = null;
+          finish(job, passthrough(glb));
+          pump();
+        }, queueTimeoutMs);
         queue.push(job);
         pump();
       });
     },
-    dispose() {
-      retire();
-    },
+    dispose: retire,
   };
   return prepasser;
 }
 
 let sharedPrepasser = null;
-
 /** Process-wide pre-pass pool shared by every render-package decode. */
 export function sharedGlbPrepasser() {
   if (!sharedPrepasser) sharedPrepasser = createGlbPrepasser();

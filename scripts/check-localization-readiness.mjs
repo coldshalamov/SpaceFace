@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { buildLocalizationInventory, renderGeneratedCatalog } from './lib/localizationInventory.mjs';
+import { LOCALE_REVIEWED_GATE, SHIPPED_LOCALES, localeReadiness, unreviewedKeys } from '../src/localization/pipeline.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const surfaces = JSON.parse(await readFile(path.join(ROOT, 'scripts/localization-surfaces.json'), 'utf8'));
@@ -24,6 +25,24 @@ const adoptionPercent = adoption.documentBridgeInstalled
   : candidateCount > 0 ? round(Math.min(candidateCount, adoption.callSites) / candidateCount * 100) : 0;
 const ok = catalogCurrent && inventory.conflicts.length === 0
   && inventory.exemptionErrors.length === 0 && inventory.stats.unresolved === 0;
+
+// FB-107: per-locale REVIEWED coverage over the strings a player meets. A string is reviewed
+// only when it resolves from an authored table (PHRASES, reviewed barks, reviewed store copy) —
+// never through the machine glossary pass. Locales under LOCALE_REVIEWED_GATE carry the
+// "(machine preview)" picker label; the fifty most-visible unreviewed keys ride along as the
+// reviewed batch's working list. This measurement does not gate `ok`: extraction readiness and
+// reviewed readiness are different truths.
+const localeCoverage = SHIPPED_LOCALES.map((id) => {
+  const readiness = localeReadiness(id);
+  return {
+    locale: readiness.locale,
+    reviewed: readiness.reviewed,
+    total: readiness.total,
+    coverage: readiness.coverage,
+    preview: readiness.preview,
+    unreviewedSample: readiness.preview ? unreviewedKeys(id, 50) : [],
+  };
+});
 
 const report = {
   schema: 'spaceface.localizationReadiness.v1',
@@ -48,9 +67,14 @@ const report = {
   },
   translationStatus: {
     sourceCatalogs: catalogCurrent ? 1 : 0,
-    translatedLocales: 0,
+    translatedLocales: localeCoverage.filter((row) => !row.preview).length,
     productionTranslationClaim: false,
     statement: 'Source copy is inventoried and the public pseudo-locale route is bridged at the document boundary; production translations are not claimed until translated catalogs ship.',
+  },
+  localeReviewedCoverage: {
+    gate: LOCALE_REVIEWED_GATE,
+    note: 'reviewed = authored table hit (PHRASES / reviewed bark / reviewed store copy); unreviewedSample is the fifty most-visible keys a reviewed batch would land',
+    locales: localeCoverage,
   },
 };
 

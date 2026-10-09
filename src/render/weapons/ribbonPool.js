@@ -304,7 +304,11 @@ export class WeaponRibbonPool {
     this.material.uniforms.uModulation.value = reducedFlash ? 0 : 1;
     // Quiet path: capacity linger walk + _writeVertices when live===0 was pure CPU;
     // mesh already visible=false and slots cleared after the frame that retired the last wake.
-    if (!(this.live > 0)) return;
+    if (!(this.live > 0)) {
+      // Nothing is published on a quiet frame; say so, or the diagnostic keeps the last live frame's bytes.
+      this.uploadedBytesLastFrame = 0;
+      return;
+    }
     for (let i = 0; i < this.capacity; i++) {
       if (!this.alive[i]) continue;
       if (!reducedMotion) this.age[i] += elapsed;

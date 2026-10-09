@@ -1,0 +1,27 @@
+{
+  "schema": "spaceface.generatedArt.v1",
+  "set": "asteroid surface families",
+  "use": "src/render/rockFamilyLibrary.js: surface maps for the metallic, crystalline and exotic asteroid types (ast_metallic, ast_crystalline, ast_rare_exotic) in visualFactory.astMaterial. Common rock keeps its packed-ORM library; ice and gas cloud are translucent and keep their glass materials.",
+  "date": "2026-10-03",
+  "generator": "OpenAI image generation via codex exec -m gpt-5.5 (ChatGPT account); tools/art/imagegen_variants.py (3 variants per job, each taken from its own session folder), reviewed by eye, then tools/art/finish_generated.py tile",
+  "license": "Generated for SpaceFace by the project; no third-party source image supplied. The existing common-rock basecolor was given as a scale/sharpness reference only.",
+  "finishing": "1254 px source resized to 512, made seamless by offset-and-blend, normal map derived from the high-passed albedo luminance (generated pictures never feed PBR data directly), glow map keyed from the albedo by colour so only crystals / veins glow",
+  "files": {
+    "metal": {
+      "files": ["metal_basecolor.jpg", "metal_normal.png"],
+      "chosen": "rock_metal v2 (of 3; v3 was a different job's image swapped in by a concurrent run and is not used)",
+      "subject": "dark gunmetal iron-nickel asteroid crust: pitted and rough, oxide-brown and blue-steel streaks, bright metallic flecks and fine shear scratches"
+    },
+    "crystal": {
+      "files": ["crystal_basecolor.jpg", "crystal_normal.png", "crystal_emissive.jpg"],
+      "chosen": "rock_crystal v1 (of 3)",
+      "subject": "violet-black crystalline crust studded with angular amethyst facets, small geode cavities and pale lilac mineral veins"
+    },
+    "exotic": {
+      "files": ["exotic_basecolor.jpg", "exotic_normal.png", "exotic_emissive.jpg"],
+      "chosen": "rock_exotic v1 (of 3; v2 came back as flat line art and was rejected)",
+      "subject": "very dark basalt crust cut by thin branching veins of hot glowing magenta mineral"
+    }
+  },
+  "prompt": "A flat-lit, shadowless, perfectly top-down orthographic square material swatch, 1024 by 1024, seamlessly tileable (detail continues naturally across all four edges, no vignette, no large focal feature, evenly distributed detail), no perspective, no horizon, no text, no objects; a surface texture of <per-family subject above>. Match the scale and sharpness of the attached reference rock swatch."
+}

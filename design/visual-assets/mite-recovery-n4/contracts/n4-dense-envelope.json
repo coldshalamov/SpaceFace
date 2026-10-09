@@ -1,0 +1,51 @@
+{
+  "candidate": "N4 NEW",
+  "sourceSha256": "f2703799b6beef7b84471185293e95d058d6603a8236c9a17244ff5870652107",
+  "sourceCoordinateFrame": "+X forward, +Y up, +Z starboard",
+  "denseRadiusWU": 2.4,
+  "sourceScaleToDense": 0.3521721885745643,
+  "method": "Decoded all-LOD vertices, exact endpoint and stationary-angle extrema for every retained fan angle within0..side*0.3 radians",
+  "gameplay": "Radius-only dense-tier compromise; does not prove jaw-gap or articulated native collision",
+  "rows": [
+    {
+      "lod": 0,
+      "maximumPlanarRadiusWU": 6.814400701232624,
+      "decodedVertices": 12443,
+      "normalizedMaximumRadiusWU": 2.399842408777139
+    },
+    {
+      "lod": 1,
+      "maximumPlanarRadiusWU": 6.814751105516651,
+      "decodedVertices": 3816,
+      "normalizedMaximumRadiusWU": 2.3999658114207305
+    },
+    {
+      "lod": 2,
+      "maximumPlanarRadiusWU": 6.8148381846738895,
+      "decodedVertices": 1869,
+      "normalizedMaximumRadiusWU": 2.3999964782781142
+    }
+  ],
+  "sockets": {
+    "SOCKET_BROOD_CONTACT_PORT": [
+      6.0,
+      0.0,
+      -1.600000023841858
+    ],
+    "SOCKET_BROOD_CONTACT_STARBOARD": [
+      6.0,
+      0.0,
+      1.600000023841858
+    ],
+    "SOCKET_BROOD_SIGNAL": [
+      0.800000011920929,
+      1.3859453201293945,
+      0.0
+    ],
+    "SOCKET_BROOD_TETHER_DORSAL": [
+      -0.699999988079071,
+      1.8600000143051147,
+      0.0
+    ]
+  }
+}

@@ -27,6 +27,8 @@ import { WEAPONS } from '../data/weapons.js';
 import { BODY_MODULES } from '../data/claimableBodies.js';
 import { aceById, knownAces } from '../data/namedAces.js';
 import { stuntDossierForNetwork } from '../combat/stuntWitnesses.js';
+import { airSentenceForId } from './ship/fitReadout.js';
+import { handlingBandModel } from './ship/shipBandModels.js';
 
 export const ENTITY_TYPES = Object.freeze([
   'faction', 'commodity', 'station', 'hull', 'module', 'captain', 'sector', 'contract',
@@ -174,7 +176,12 @@ function factionDossier(state, id) {
   }
   if (Array.isArray(f.controls) && f.controls.length) lines.push({ label: 'Controls', text: f.controls.join(' · ') });
   const doctrine = FACTION_DOCTRINES && FACTION_DOCTRINES[id];
-  if (doctrine && doctrine.id) lines.push({ label: 'Doctrine', text: String(doctrine.id).replace(/_/g, ' ') });
+  if (doctrine && doctrine.id) {
+    lines.push({
+      label: 'Fleet doctrine',
+      text: String(doctrine.id).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    });
+  }
 
   // Relations are the reason a rep hit spreads to somebody you have never met (J6's spillover).
   // Carrying contraband THIS faction outlaws is the single most actionable fact about them, and it
@@ -316,10 +323,13 @@ function hullDossier(state, id) {
     { k: 'Price', v: creditText(s.price), tone: 'goal', num: true },
   ];
   const lines = [];
-  // Mass and handling are why it flies the way it does — J2's band. Stated as the fact, not a verb;
-  // handlingProfile owns the roster-relative reading and this must not contradict it.
   if (s.mass != null) lines.push({ label: 'Mass', text: String(s.mass) });
-  if (s.handling != null) lines.push({ label: 'Handling', text: String(s.handling) });
+  // The same sentences the fit screen prints, so a hull you open before you pay
+  // does not contradict the yard.
+  const band = handlingBandModel({ shipId: id, fittings: [], player: null });
+  if (band && band.crestSentence) lines.push({ label: 'Flies', text: band.crestSentence });
+  const brake = band && Array.isArray(band.bars) ? band.bars.find((row) => row.id === 'brake') : null;
+  if (brake && brake.why) lines.push({ label: 'Stops', text: brake.why });
   return { kicker: 'Hull · tier ' + String(s.tier ?? '?'), facts, lines, links: [], route: { screen: 'ship', focus: 'hull:' + id } };
 }
 
@@ -335,9 +345,14 @@ function moduleDossier(state, id) {
   // Naming it here is the cheapest place that gap becomes visible before J2 lands.
   if (m.energyDraw != null) facts.push({ k: 'Power draw', v: String(m.energyDraw), tone: m.energyDraw > 0 ? 'foe' : 'calm', num: true });
   const lines = [];
-  const mods = m.mods && Object.keys(m.mods);
-  if (mods && mods.length) {
-    lines.push({ label: 'Changes', text: mods.map((k) => `${k.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()} ${m.mods[k] > 0 ? '+' : ''}${m.mods[k]}`).join(' · ') });
+  const sentence = airSentenceForId(id);
+  if (sentence) {
+    lines.push({ label: 'Does', text: sentence });
+  } else {
+    const mods = m.mods && Object.keys(m.mods);
+    if (mods && mods.length) {
+      lines.push({ label: 'Changes', text: mods.map((k) => `${k.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()} ${m.mods[k] > 0 ? '+' : ''}${m.mods[k]}`).join(' · ') });
+    }
   }
   if (m.desc) lines.push({ label: 'About', text: String(m.desc) });
   const kind = m.slotType === 'weapon' ? 'Weapon' : (m.slotType ? 'Module' : 'Installation');
@@ -485,7 +500,7 @@ export function searchEntities(state, query, { limit = 14 } = {}) {
     if (!name.toLowerCase().includes(q)) return;
     const ref = type + ':' + id;
     if (!entityExists(ref)) return;
-    rows.push({ ref, label: name, type, kicker: DOSSIERS[type] ? type : 'entity', detail });
+    rows.push({ ref, label: name, type, kicker: DOSSIERS[type] ? type : 'Contact', detail });
   };
 
   for (const f of FACTION_META) push('faction', f.id, f.name);

@@ -174,7 +174,7 @@ assert.match(partsLibrary, /authored\.wholeShip\s*===\s*true/,
 assert.doesNotMatch(assetLoader, /fetch\(url,\s*\{\s*cache:\s*['"]force-cache['"]\s*\}\)/,
   'whole-ship validation must not pin stale GLBs on Electron stable origins');
 assert.match(assetLoader,
-  /loadGltfDocument\(url,\s*loader,\s*fetchImpl\s*=\s*globalThis\.fetch\)/,
+  /loadGltfDocument\(url,\s*loader,\s*fetchImpl\s*=\s*globalThis\.fetch[,\s)]/,
   'whole-ship validation must retain a production fetch default and an injectable test seam');
 assert.match(assetLoader, /fetchImpl\(url,\s*\{\s*cache:\s*['"]no-cache['"]\s*\}\)/,
   'whole-ship validation must revalidate current on-disk GLBs through the injected fetch seam');

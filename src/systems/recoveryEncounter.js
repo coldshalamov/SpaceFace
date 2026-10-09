@@ -8,6 +8,7 @@
 // post-scan 10% still-powered surprise; it requests one defense drone through world spawn authority.
 
 import { hash32 } from '../core/rng.js';
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { CONTACT_HAIL_RANGE } from '../data/contactHail.js';
 import { SECTORS } from '../data/sectors.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
@@ -284,8 +285,30 @@ export const recoveryEncounter = {
     this._listen('entity:destroyed', (payload) => this._onWreckGone(payload || {}));
     this._listen('salvage:placed', (payload) => this._rebindSector(payload && payload.sectorId));
     this._listen('sector:exit', (payload) => this._onSectorExit(payload || {}));
-    this._listen('sector:enter', (payload) => this._rebindSector(payload && payload.sectorId));
+    this._listen('sector:enter', (payload) => {
+      const sectorId = payload && payload.sectorId;
+      // A tail-drained emit carries the epoch of the enter that minted it: a replayed
+      // payload whose enterEpoch no longer matches the world's serial is stale — do not
+      // adopt-or-spawn its derelict wrecks under the live world's id. Synthetic payloads
+      // carry no epoch and always run.
+      if (payload && payload.enterEpoch != null && this.state && this.state.world
+          && this.state.world.enterSerial != null
+          && payload.enterEpoch !== this.state.world.enterSerial) return;
+      // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+      // drains the same rebind under its slice clock in listener order.
+      if (deferSectorEnterMaterialization(this.state, payload, this._cookProvider)) return;
+      this._rebindSector(sectorId);
+    });
     this._listen('entity:spawned', (payload) => this._onEntitySpawned(payload && payload.entity));
+    // The enter materialization (adopt-or-spawn derelict wrecks) registers for the
+    // deterministic cook census instead of depending on listener order.
+    if (this.helpers) {
+      this._cookProvider = (sector) => this._rebindSectorSteps((sector && sector.id)
+        || (this.state && this.state.world && this.state.world.currentSectorId));
+      (this.helpers.sectorCookProviders
+        || (this.helpers.sectorCookProviders = []))
+        .push(this._cookProvider);
+    }
   },
 
   _listen(event, fn) {
@@ -628,10 +651,20 @@ export const recoveryEncounter = {
   },
 
   _rebindSector(sectorId) {
+    // Sync lane (emit listener, salvage:placed): drain the chunked steps inline —
+    // the census drive holds the same generator across its slices.
+    for (const _ of this._rebindSectorSteps(sectorId)) { /* inline */ }
+  },
+
+  *_rebindSectorSteps(sectorId) {
     if (!sectorId) return;
     const own = ensureState(this.state);
     for (const record of Object.values(own.records)) {
+      yield;
       if (!record || record.sectorId !== sectorId) continue;
+      // Records retire mid-slice while this pass is suspended — claiming a salvage
+      // point and materializing for a dead row leaves an orphan husk.
+      if (record.id != null && own.records[record.id] !== record) continue;
       this._claimSalvagePoint(record);
       const wreck = this._materialize(record);
       if (wreck) this._applyRecordToWreck(record, wreck);
@@ -662,7 +695,8 @@ export const recoveryEncounter = {
       mass: 1800,
       hull: 1,
       hullMax: 1,
-      physicsBody: { shape: 'capsule' },
+      // SFQ-B025: the named 1800-mass hulk is the body's own mass, not a density re-derive.
+      physicsBody: { shape: 'capsule', mass: 1800 },
       data: {
         parentType: record.sourceKind === 'distress' ? 'communicator' : 'ship',
         proportions: WRECK_COLLIDER_PROPORTIONS,

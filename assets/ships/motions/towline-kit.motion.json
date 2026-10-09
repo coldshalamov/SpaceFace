@@ -1,0 +1,64 @@
+{
+  "schema": "spaceface.rigidMotionBank.v1",
+  "rigId": "towline_kit_controls",
+  "sourceAssetId": "SF_SHIP_TOWLINE_KIT",
+  "sourceGlbSha256": "c7c30f1c1d66295dadf804a81c623a6e8809ec90088cb0dd78385d06b213fef7",
+  "fps": 60,
+  "bindings": [
+    {
+      "id": "towline_acknowledge",
+      "node": "MOTION_TOWLINE_ACKNOWLEDGE",
+      "parent": null,
+      "requiredAtLod": [
+        0,
+        1,
+        2
+      ],
+      "restPose": {
+        "translation": [
+          -1.7999999523162842,
+          2.4800000190734863,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  ],
+  "clips": [
+    {
+      "name": "source_rest_pose",
+      "durationS": 0.016666666666666666,
+      "loop": false,
+      "endMode": "hold",
+      "channels": [
+        {
+          "group": "towline_acknowledge",
+          "path": "translation",
+          "times": [
+            0,
+            0.016666666666666666
+          ],
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "interpolation": "linear"
+        }
+      ]
+    }
+  ]
+}

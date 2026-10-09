@@ -53,6 +53,66 @@ const FULLSCREEN_VERT = /* glsl */`
   }
 `;
 
+// FB-085 — photo mode's filter flag becomes a final grade pass: three authored looks over the
+// finished composite (lift/gamma/gain + a luma-weighted saturation pull). LUT-free by design
+// (no casual deps); the pass runs ONLY while photo mode's filters are on — off adds zero
+// passes, zero targets, zero cost (see setPhotoFilters / _photoFiltersActive).
+const PHOTO_GRADE_FRAG = /* glsl */`
+  precision highp float;
+  varying vec2 vUv;
+  uniform sampler2D tSource;
+  uniform vec3 uFilterLift;
+  uniform float uFilterGamma;
+  uniform vec3 uFilterGain;
+  uniform float uFilterSaturation;
+
+  void main() {
+    vec3 c = texture2D(tSource, vUv).rgb;
+    c = c * uFilterGain + uFilterLift;
+    c = max(c, vec3(0.0));
+    c = pow(c, vec3(1.0 / max(uFilterGamma, 0.01)));
+    float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    c = mix(vec3(luma), c, uFilterSaturation);
+    gl_FragColor = vec4(c, 1.0);
+  }
+`;
+
+// The three authored looks. `id` order is the overlay's cycle order; camera.js's
+// PHOTO_FILTER_LOOK_DEFAULT names the first entry (keep the two in step).
+export const PHOTO_FILTER_LOOKS = Object.freeze([
+  Object.freeze({
+    id: 'chrome',
+    label: 'Chrome',
+    lift: Object.freeze([0.0, 0.0, 0.008]),
+    gamma: 1.06,
+    gain: Object.freeze([1.04, 1.0, 0.97]),
+    saturation: 1.08,
+  }),
+  Object.freeze({
+    id: 'warm',
+    label: 'Ember',
+    lift: Object.freeze([0.012, 0.004, 0.0]),
+    gamma: 0.96,
+    gain: Object.freeze([1.06, 1.0, 0.9]),
+    saturation: 1.12,
+  }),
+  Object.freeze({
+    id: 'mono',
+    label: 'Mono',
+    lift: Object.freeze([0.0, 0.0, 0.0]),
+    gamma: 1.1,
+    gain: Object.freeze([1.0, 1.0, 1.0]),
+    saturation: 0.0,
+  }),
+]);
+
+const PHOTO_FILTER_LOOK_BY_ID = new Map(PHOTO_FILTER_LOOKS.map((look) => [look.id, look]));
+
+/** The authored look for `id`; unknown or missing ids resolve to the first authored look. */
+export function resolvePhotoFilterLook(id) {
+  return PHOTO_FILTER_LOOK_BY_ID.get(id) || PHOTO_FILTER_LOOKS[0];
+}
+
 const AO_FRAG = /* glsl */`
   precision highp float;
   varying vec2 vUv;
@@ -280,6 +340,18 @@ export class SpaceRenderGraph {
     });
     // The shared presentation block reads the Look; attach the same objects the native route uses.
     Object.assign(this.compositeMaterial.uniforms, LOOK_POST_UNIFORMS);
+    this.gradeMaterial = shaderMaterial(PHOTO_GRADE_FRAG, {
+      tSource: null,
+      uFilterLift: new THREE.Vector3(0, 0, 0),
+      uFilterGamma: 1,
+      uFilterGain: new THREE.Vector3(1, 1, 1),
+      uFilterSaturation: 1,
+    });
+    this.gradeMaterial.name = 'SpaceRenderGraph:photo-grade';
+    // FB-085: the photo filter stage starts off — no pass, no target, no cost. setPhotoFilters
+    // brings it up (and takes it down) when photo mode's filter flag moves.
+    this._photoFilters = { enabled: false, look: null };
+    this.gradeTarget = null;
     this.distortionField = null;
     this.distortionProducers = null;
     this.distortionTarget = null;
@@ -378,7 +450,11 @@ export class SpaceRenderGraph {
       }
       if (this._bloomActive()) this._renderBloom();
       this._renderDistortion(camera);
-      this._renderComposite(frame.outputTarget || null);
+      // FB-085: the grade is the LAST stage. Off — the default — composite lands on the output
+      // directly and the graph runs exactly the passes it ran before this stage existed.
+      const filtersOn = this._photoFiltersActive();
+      this._renderComposite(filtersOn ? this._ensureGradeTarget() : (frame.outputTarget || null));
+      if (filtersOn) this._renderPhotoGrade(frame.outputTarget || null);
     } finally {
       scene.overrideMaterial = previousOverride;
       renderer.autoClear = previousAutoClear;
@@ -395,6 +471,51 @@ export class SpaceRenderGraph {
   // SpaceRenderGraph only runs when settings.video.renderGraph is true.
   attachDistortionField(field) {
     this.distortionField = field || null;
+  }
+
+  /**
+   * FB-085 — the photo-mode filter stage. `enabled` gates the one extra fullscreen pass (and the
+   * full-res intermediate it needs); `look` picks the authored grade. Off — the default and the
+   * state after every photo session — leaves the graph bit-identical to before this stage existed.
+   */
+  setPhotoFilters({ enabled = false, look = null } = {}) {
+    const nextEnabled = enabled === true;
+    const nextLook = resolvePhotoFilterLook(look);
+    const unchanged = this._photoFilters.enabled === nextEnabled
+      && this._photoFilters.look === nextLook.id;
+    this._photoFilters.enabled = nextEnabled;
+    this._photoFilters.look = nextLook.id;
+    if (unchanged && (nextEnabled === (this.gradeTarget != null))) return;
+    const u = this.gradeMaterial.uniforms;
+    u.uFilterLift.value.set(nextLook.lift[0], nextLook.lift[1], nextLook.lift[2]);
+    u.uFilterGamma.value = nextLook.gamma;
+    u.uFilterGain.value.set(nextLook.gain[0], nextLook.gain[1], nextLook.gain[2]);
+    u.uFilterSaturation.value = nextLook.saturation;
+    if (!nextEnabled && this.gradeTarget) {
+      this.gradeTarget.dispose();
+      this.gradeTarget = null;
+    }
+  }
+
+  _photoFiltersActive() {
+    return this._photoFilters.enabled === true;
+  }
+
+  /** The full-res intermediate the grade reads. Allocated only while the stage is on. */
+  _ensureGradeTarget() {
+    if (!this.gradeTarget
+      || this.gradeTarget.width !== Math.max(1, Math.floor(this.width * this.options.renderScale))
+      || this.gradeTarget.height !== Math.max(1, Math.floor(this.height * this.options.renderScale))) {
+      if (this.gradeTarget) this.gradeTarget.dispose();
+      this.gradeTarget = hdrTarget(
+        Math.max(1, Math.floor(this.width * this.options.renderScale)),
+        Math.max(1, Math.floor(this.height * this.options.renderScale)),
+        false,
+        0,
+      );
+      this.gradeTarget.texture.name = 'SpaceRenderGraph:PhotoGrade';
+    }
+    return this.gradeTarget;
   }
 
   // Stable preallocated collection (weapon haze + well DistortionField pool). The graph never
@@ -444,7 +565,9 @@ export class SpaceRenderGraph {
         bloom: this._bloomActive() ? this.bloomTargets.length : 0,
         distortion: this._distortionLive ? 1 : 0,
         composite: 1,
+        photoGrade: this._photoFiltersActive() ? 1 : 0,
       },
+      photoFilterLook: this._photoFiltersActive() ? this._photoFilters.look : null,
       distortionProducers: this._distortionProducerLiveCount,
       temporal: false,
       capabilities: this.capabilities,
@@ -455,6 +578,7 @@ export class SpaceRenderGraph {
     const materials = [this.compositeMaterial];
     if (this.options.ao) materials.push(this.normalMaterial, this.aoMaterial, this.blurMaterial);
     if (this._bloomActive()) materials.push(this.bloomMaterial);
+    if (this._photoFiltersActive()) materials.push(this.gradeMaterial);
     return materials;
   }
 
@@ -472,6 +596,7 @@ export class SpaceRenderGraph {
       ...(this._bloomActive() ? this.bloomTargets : []),
       // Composite warms against this private destination, but never samples it during admission.
       this.distortionTarget,
+      ...(this._photoFiltersActive() ? [this._ensureGradeTarget()] : []),
     ].filter(Boolean);
     const previousTarget = typeof renderer.getRenderTarget === 'function'
       ? renderer.getRenderTarget()
@@ -511,6 +636,7 @@ export class SpaceRenderGraph {
       this.aoTarget,
       this.aoBlurTarget,
       this.distortionTarget,
+      this.gradeTarget,
       ...(this.bloomTargets || []),
     ].filter(Boolean);
   }
@@ -522,6 +648,9 @@ export class SpaceRenderGraph {
     this.blurMaterial.dispose();
     this.bloomMaterial.dispose();
     this.compositeMaterial.dispose();
+    if (this.gradeTarget) this.gradeTarget.dispose();
+    this.gradeTarget = null;
+    this.gradeMaterial.dispose();
     this.neutralAoTexture.dispose();
     this.blackBloomTexture.dispose();
     this.quad.dispose();
@@ -584,6 +713,13 @@ export class SpaceRenderGraph {
     u.uBloomStrength.value = this._effectiveBloomStrength();
     u.uGrainFrame.value = Math.floor(this.time * POST_GRAIN_FPS);
     this.quad.render(this.renderer, this.compositeMaterial, outputTarget);
+  }
+
+  /** FB-085: the photo grade — one fullscreen pass over the composite, photo mode only. */
+  _renderPhotoGrade(outputTarget) {
+    const u = this.gradeMaterial.uniforms;
+    u.tSource.value = this.gradeTarget.texture;
+    this.quad.render(this.renderer, this.gradeMaterial, outputTarget);
   }
 
   _effectiveBloomStrength() {

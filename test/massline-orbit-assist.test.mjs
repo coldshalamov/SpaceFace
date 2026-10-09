@@ -3,7 +3,11 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import * as flightV3Module from '../src/systems/flightV3.js';
-import { ORBIT_ASSIST_TUNING_V1 } from '../src/core/flight/orbitAssist.js';
+import {
+  ORBIT_ASSIST_TUNING_V1,
+  ORBIT_SWING_TRACK_MARGIN,
+  orbitSwingThrottleScale,
+} from '../src/core/flight/orbitAssist.js';
 import * as masslineLab from '../scripts/lib/masslineControlLab.mjs';
 import { createGameState } from '../src/core/gameState.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
@@ -305,6 +309,240 @@ test('a loaded line does not change ordinary manual yaw authority', () => {
   assert.equal(step(loaded), step(baseline));
   assert.equal(loaded.player._flightFrame.orbitAssist.active, false,
     'turn without forward remains raw manual yaw even while tethered');
+});
+
+test('swing coordination leaves trackable orbits at full throttle', () => {
+  // Starter-ish hull on the default rope at cruise: the swing fits inside yaw authority.
+  const scale = orbitSwingThrottleScale(
+    { maxYawRate: 2.65, radius: 70, tangentialSpeed: 129 },
+    129,
+  );
+  assert.equal(scale, 1);
+});
+
+test('swing coordination holds the swing at the trackable rate', () => {
+  // Same hull reeled to 30 WU: 129 WU/s of swing needs 4.3 rad/s of yaw the hull lacks.
+  const trackable = 2.65 * 30 * ORBIT_SWING_TRACK_MARGIN;
+  const scale = orbitSwingThrottleScale(
+    { maxYawRate: 2.65, radius: 30, tangentialSpeed: 129 },
+    129,
+  );
+  assert.ok(Math.abs(scale - trackable / 129) < 1e-12);
+  assert.ok(scale < 1 && scale > 0);
+});
+
+test('swing coordination caps demand before the swing outruns the nose', () => {
+  // Still accelerating (live swing small) but the commanded cruise already outruns tracking.
+  const trackable = 2.65 * 30 * ORBIT_SWING_TRACK_MARGIN;
+  const scale = orbitSwingThrottleScale(
+    { maxYawRate: 2.65, radius: 30, tangentialSpeed: 10 },
+    200,
+  );
+  assert.ok(Math.abs(scale - trackable / 200) < 1e-12);
+});
+
+test('swing coordination reads swing magnitude and fails open', () => {
+  const against = orbitSwingThrottleScale(
+    { maxYawRate: 2.65, radius: 30, tangentialSpeed: -129 },
+    0,
+  );
+  const withGrain = orbitSwingThrottleScale(
+    { maxYawRate: 2.65, radius: 30, tangentialSpeed: 129 },
+    0,
+  );
+  assert.equal(against, withGrain);
+  assert.equal(orbitSwingThrottleScale({ maxYawRate: 2.65, radius: 0, tangentialSpeed: 129 }, 129), 1);
+  assert.equal(orbitSwingThrottleScale({ maxYawRate: 0, radius: 30, tangentialSpeed: 129 }, 129), 1);
+  assert.equal(orbitSwingThrottleScale(null, 129), 1);
+});
+
+test('Flight V3 shapes forward thrust while the orbit outruns yaw authority', () => {
+  // Same ship, same speed, same chord — only the rope differs. The long rope tracks; the short
+  // rope's swing needs more yaw than even the line-locked ceiling allows (7.5 rad/s against the
+  // physics owner's 6.0), so the coordinator must hold thrust back to keep the nose on the tangent.
+  // (A 30 WU rope at 150 WU/s, 5 rad/s, is now trackable: the line lends the hull its yaw rate.)
+  const trackable = makeFlightHarness();
+  const saturated = makeFlightHarness();
+  trackable.player.vel = { x: 0, z: 150 };
+  saturated.player.vel = { x: 0, z: 150 };
+  saturated.anchor.pos = { x: 100, z: 0 };
+  saturated.state.player.tether.restLength = 20;
+  const forwardForce = (harness) => {
+    const system = Object.create(flightV3Module.flightV3);
+    system.init({ state: harness.state, bus: harness.bus });
+    system.update(DT, harness.state);
+    const command = consumePhysicsCommand(harness.player);
+    const force = command.control.force;
+    return force.x * Math.cos(harness.player.rot) + force.z * Math.sin(harness.player.rot);
+  };
+  const trackableForce = forwardForce(trackable);
+  const saturatedForce = forwardForce(saturated);
+  const trackableFrame = trackable.player._flightFrame.orbitAssist;
+  const saturatedFrame = saturated.player._flightFrame.orbitAssist;
+  assert.equal(trackableFrame.active, true);
+  assert.equal(trackableFrame.swingThrottleScale, 1,
+    'a trackable orbit keeps full thrust: byte-identical behavior');
+  assert.equal(saturatedFrame.active, true);
+  assert.ok(saturatedFrame.swingThrottleScale < 1 && saturatedFrame.swingThrottleScale > 0,
+    `an untrackable swing must shed thrust, got ${saturatedFrame.swingThrottleScale}`);
+  assert.equal(saturatedFrame.saturated, true);
+  assert.ok(saturatedForce < trackableForce,
+    `the scale must reach the physics command: ${saturatedForce} vs ${trackableForce}`);
+});
+
+test('boost press inside the live orbit chord uses sustained boost without an orbit-breaking dash', () => {
+  const harness = makeFlightHarness();
+  harness.anchor.pos = { x: 90, z: 0 }; // 30 WU live radius from the player at x=120.
+  harness.state.player.tether.restLength = 30;
+  harness.state.input.boost = true;
+  harness.player.boost = {
+    energy: 220,
+    max: 220,
+    drainRate: 36,
+    regenRate: 28,
+    dashImpulse: 170,
+    dashCost: 28,
+    dashCd: 1.8,
+    dashCdT: 0,
+    topSpeedPct: 0,
+    burnDurS: 0,
+    burnCdS: 0,
+  };
+
+  const system = Object.create(flightV3Module.flightV3);
+  system.init({ state: harness.state, bus: harness.bus });
+  system.update(DT, harness.state);
+  const command = consumePhysicsCommand(harness.player);
+  const frame = harness.player._flightFrame.orbitAssist;
+
+  assert.equal(frame.active, true, 'the forward+turn tether chord owns yaw');
+  assert.ok(frame.swingThrottleScale < 1,
+    `short-line boosted demand must be shaped to finite yaw authority; got ${frame.swingThrottleScale}`);
+  assert.equal(harness.player.flags.boosting, true,
+    'the fix must keep continuous boost alive rather than swallowing the boost key');
+  assert.equal(command.impulses.length, 0,
+    'the boost keydown must not inject a discrete dash that jumps angular speed beyond yaw authority');
+  assert.equal(harness.player.boost.dashCdT, 0,
+    'an orbit-suppressed dash must not burn the dash cooldown');
+  assert.ok(harness.player.boost.energy > 210,
+    `only sustained-boost drain should be charged on this tick, got ${harness.player.boost.energy}`);
+});
+
+test('releasing the orbit contract restores the ordinary boost dash immediately', () => {
+  const harness = makeFlightHarness();
+  harness.state.settings.gameplay.orbitAssistStrength = 'off';
+  harness.state.input.boost = true;
+  harness.player.boost = {
+    energy: 220,
+    max: 220,
+    drainRate: 36,
+    regenRate: 28,
+    dashImpulse: 170,
+    dashCost: 28,
+    dashCd: 1.8,
+    dashCdT: 0,
+    topSpeedPct: 0,
+    burnDurS: 0,
+    burnCdS: 0,
+  };
+
+  const system = Object.create(flightV3Module.flightV3);
+  system.init({ state: harness.state, bus: harness.bus });
+  system.update(DT, harness.state);
+  const command = consumePhysicsCommand(harness.player);
+
+  assert.equal(harness.player._flightFrame.orbitAssist.active, false);
+  assert.equal(command.impulses.length, 1,
+    'Orbit Assist Off must preserve the normal press-edge dash verb');
+  assert.ok(harness.player.boost.dashCdT > 0, 'ordinary dash cooldown still arms');
+  assert.ok(harness.player.boost.energy < 200, 'ordinary dash still pays its energy cost');
+});
+
+test('releasing either chord key restores the ordinary boost dash immediately', () => {
+  const harness = makeFlightHarness();
+  harness.state.input.turnIntent = 0; // forward held, turn released: no chord, no assist.
+  harness.state.input.boost = true;
+  harness.player.boost = {
+    energy: 220,
+    max: 220,
+    drainRate: 36,
+    regenRate: 28,
+    dashImpulse: 170,
+    dashCost: 28,
+    dashCd: 1.8,
+    dashCdT: 0,
+    topSpeedPct: 0,
+    burnDurS: 0,
+    burnCdS: 0,
+  };
+
+  const system = Object.create(flightV3Module.flightV3);
+  system.init({ state: harness.state, bus: harness.bus });
+  system.update(DT, harness.state);
+  const command = consumePhysicsCommand(harness.player);
+
+  assert.equal(harness.player._flightFrame.orbitAssist.active, false);
+  assert.equal(command.impulses.length, 1,
+    'releasing the turn key must hand the boost press back to the ordinary dash verb');
+});
+
+test('an unusable orbit geometry leaves the boost press with the normal dash', () => {
+  for (const invalid of ['coincident-anchor', 'non-finite-anchor']) {
+    const harness = makeFlightHarness();
+    if (invalid === 'coincident-anchor') harness.anchor.pos = { ...harness.player.pos };
+    else harness.anchor.vel.z = NaN;
+    harness.state.input.boost = true;
+    harness.player.boost = {
+      energy: 220, max: 220, drainRate: 36, regenRate: 28,
+      dashImpulse: 170, dashCost: 28, dashCd: 1.8, dashCdT: 0,
+      topSpeedPct: 0, burnDurS: 0, burnCdS: 0,
+    };
+    const system = Object.create(flightV3Module.flightV3);
+    system.init({ state: harness.state, bus: harness.bus });
+    system.update(DT, harness.state);
+    const command = consumePhysicsCommand(harness.player);
+    assert.equal(harness.player._flightFrame.orbitAssist.active, false, invalid);
+    assert.equal(command.impulses.length, 1, `${invalid}: input alone must not suppress a dash`);
+    assert.ok(harness.player.boost.dashCdT > 0);
+  }
+});
+
+test('a boost press mid-orbit holds the tangent on a short line', async () => {
+  // Full-production regression: real flightV3 + rapier, 30 WU line, boost pressed mid-orbit and
+  // released later. Before the chord-owned-boost fix the press-edge dash jumped the swing past
+  // finite yaw authority (heading error past 2.9 rad, saturated nearly every tick); after it the
+  // run is indistinguishable from an unboosted orbit. Bounds sit far from both sides.
+  const run = () => masslineLab.runScenario({
+    seed: 47,
+    ticks: 360,
+    lineLength: 30,
+    entrySpeed: 60,
+    anchorMass: 5000,
+    productionOrbitAssist: true,
+    controller: masslineLab.BASELINE_CONTROLLER,
+    reelWindow: [],
+    frames: [
+      { tick: 0, input: { boost: false } },
+      { tick: 120, input: { boost: true } },
+      { tick: 200, input: { boost: false } },
+    ],
+  });
+  const result = await run();
+  const post = result.trace.filter((sample) => sample.tick >= 120);
+  const worstHeadingError = Math.max(...post.map((sample) => Math.abs(sample.orbitHeadingError)));
+  const saturatedTicks = post.filter((sample) => sample.orbitSaturated).length;
+
+  assert.ok(result.trace.every((sample) => sample.attachmentActive),
+    'the line must stay attached through the boost press and release');
+  assert.ok(result.trace.every((sample) => sample.orbitAssistActive),
+    'the chord must keep owning yaw through the boost press and release');
+  assert.ok(worstHeadingError < 0.6,
+    `the nose must stay near the tangent after the press; worst |headingErr| ${worstHeadingError}`);
+  assert.ok(saturatedTicks <= post.length * 0.25,
+    `yaw must not pin at the envelope after the press; saturated ${saturatedTicks}/${post.length}`);
+
+  const repeat = await run();
+  assert.equal(repeat.traceHash, result.traceHash);
 });
 
 test('the production forward-plus-turn controller passes the deterministic orbit matrix', async () => {

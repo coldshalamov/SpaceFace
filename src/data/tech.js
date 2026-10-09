@@ -84,8 +84,8 @@ export const TECH_NODES = [
   },
   {
     id: 'tech_ricochet_ballistics', name: 'Ricochet Ballistics', branch: 'combat', prereqs: ['tech_attack_topology'],
-    cost: { credits: 7500, rp: 10 },
-    unlocks: { modules: ['mod_bank_shot', 'mod_smart_bank', 'mod_bank_relay'] },
+    cost: { credits: 20367, rp: 10 },
+    unlocks: { modules: ['mod_bank_shot', 'mod_smart_bank', 'mod_bank_relay', 'mod_repulsion_trap_s'] },
   },
   {
     id: 'tech_payload_conduction', name: 'Payload Conduction', branch: 'combat', prereqs: ['tech_attack_topology', 'tech_plasma_dynamics'],
@@ -139,7 +139,9 @@ export const TECH_NODES = [
   {
     id: 'tech_graviton_drives', name: 'Graviton Drives', branch: 'drives', prereqs: ['tech_drive_tuning'],
     cost: { credits: 9000, rp: 12 },
-    unlocks: { ships: ['ship_saucer'], modules: ['mod_engine_warp_l', 'mod_gravity_bumper_s', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s', 'wpn_inertial_shunt_s', 'wpn_gravity_well_m'], efficiency: { energyRegenMult: 0.08 } },
+    // SWARM-06: the Saucer left the research tree — it is earned in Swarm (Zone 3 boss) and
+    // bought at shipyards off the crossover ledger. Graviton keeps its drives-family unlocks.
+    unlocks: { ships: [], modules: ['mod_engine_warp_l', 'mod_gravity_bumper_s', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s', 'wpn_inertial_shunt_s', 'wpn_gravity_well_m'], efficiency: { energyRegenMult: 0.08 } },
   },
   {
     id: 'tech_long_range_survey', name: 'Long-Range Survey', branch: 'drives', prereqs: ['tech_drive_tuning'],
@@ -159,17 +161,17 @@ export const TECH_NODES = [
   },
   {
     id: 'tech_drone_control', name: 'Drone Control', branch: 'logistics', prereqs: ['tech_tractor_systems'],
-    cost: { credits: 9000, rp: 12 },
+    cost: { credits: 17700, rp: 12 },
     unlocks: { modules: ['mod_drone_bay_l', 'mod_grip_bumper_s_mk2'], droneTierCap: 1 },
   },
   {
     id: 'tech_drone_swarm', name: 'Drone Swarm', branch: 'logistics', prereqs: ['tech_drone_control'],
-    cost: { credits: 22500, rp: 27 },
+    cost: { credits: 13800, rp: 27 },
     unlocks: { droneTierCap: 2, extraDronePerBay: 1 },
   },
   {
     id: 'tech_autonomous_fleets', name: 'Autonomous Fleets', branch: 'logistics', prereqs: ['tech_drone_swarm'],
-    cost: { credits: 52000, rp: 52 },
+    cost: { credits: 10800, rp: 1 },
     unlocks: { droneTierCap: 3, npcTraderHiring: true },
   },
   {
@@ -179,8 +181,26 @@ export const TECH_NODES = [
   },
   {
     id: 'tech_outpost_charter', name: 'Outpost Charter', branch: 'logistics', prereqs: ['tech_autonomous_fleets'],
-    cost: { credits: 120000, rp: 100 },
+    cost: { credits: 18000, rp: 0 },
     unlocks: { droneTierCap: 4, outpostConstruction: true },
+  },
+  // LG-VERB-CURVE: specialty verbs that used to sit on the counter from minute one.
+  // Each node's price is the whole gate, so the opening route meets the verb in its hour
+  // and not the hour before. See HOUR_VERB_CURVE in techVerbLadder.js.
+  {
+    id: 'tech_heat_lure', name: 'Heat Lure', branch: 'industry', prereqs: [],
+    cost: { credits: 37500, rp: 0 },
+    unlocks: { modules: ['mod_heat_lure_s'] },
+  },
+  {
+    id: 'tech_containment_seal', name: 'Containment Seals', branch: 'industry', prereqs: [],
+    cost: { credits: 49500, rp: 0 },
+    unlocks: { modules: ['mod_containment_seal_s'] },
+  },
+  {
+    id: 'tech_capture_cradle', name: 'Capture Cradle', branch: 'logistics', prereqs: [],
+    cost: { credits: 55500, rp: 0 },
+    unlocks: { modules: ['mod_capture_cradle_m'] },
   },
 ];
 

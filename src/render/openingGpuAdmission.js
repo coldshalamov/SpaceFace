@@ -14,6 +14,52 @@
 // `beginReadinessBatch` to pool that wait. See design/perf/OPENING-COMPILE-BATCH-2026-08-28.md.
 
 import { compileSubjectsAcrossPresents } from './compilePresentSlice.js';
+import {
+  detachedTextureUploadPending,
+  rehydrateDetachedTextures,
+} from './packageCpuDetach.js';
+import { collectStartupTextures, collectStartupTexturesSteps } from './startupGpuResidency.js';
+
+/**
+ * A package texture whose CPU mirror was released after its proven upload still reaches three's
+ * uploader when the next bind re-enters it — a moved version, a different upload-cache key on
+ * the shared dedupe Source, or a properties record recreated after dispose — and uploadTexture
+ * reads mipmaps[0] on the emptied array (D150). Re-attach just those payloads before the touch
+ * loop draws: the forced upload then lands real bytes instead of throwing mid-draw and leaving
+ * the residual work to a presented pass. Still-stamped detached textures keep their release;
+ * the next residency stamp re-detaches whatever this restored. `renderer` is optional — callers
+ * without one skip the census (the texture list needs its properties map).
+ */
+async function reattachDetachedAdmissionTextures(subjects, renderer, yieldToMain) {
+  const properties = renderer && renderer.properties;
+  if (!properties || typeof properties.get !== 'function') return;
+  // The collect walks every cohort subtree — O(roots x nodes) inside the paced
+  // admit loop — so drive the Steps twin under the caller's yield contract.
+  let collected = null;
+  if (typeof collectStartupTexturesSteps === 'function' && typeof yieldToMain === 'function') {
+    const it = collectStartupTexturesSteps(subjects);
+    for (;;) {
+      const step = it.next();
+      if (step.done) { collected = step.value; break; }
+      await yieldToMain();
+    }
+  } else {
+    collected = collectStartupTextures(subjects);
+  }
+  const pending = collected
+    .filter((texture) => detachedTextureUploadPending(texture, properties));
+  if (pending.length === 0) return;
+  let receipt = null;
+  try {
+    receipt = await rehydrateDetachedTextures(pending, { yieldToMain });
+  } catch (error) {
+    console.warn('[render] admission texture reattach failed', error);
+    return;
+  }
+  if (receipt && Array.isArray(receipt.errors) && receipt.errors.length > 0) {
+    console.warn('[render] admission texture reattach errors', JSON.stringify(receipt.errors));
+  }
+}
 
 function isDrawable(object) {
   return !!(object && (
@@ -26,7 +72,7 @@ function isDrawable(object) {
   ));
 }
 
-function materialList(object) {
+export function materialList(object) {
   return Array.isArray(object && object.material)
     ? object.material.filter(Boolean)
     : object && object.material ? [object.material] : [];
@@ -110,6 +156,43 @@ export function captureOpeningAdmissionIdentity(renderer, scene, plan = null) {
         planned: planned.has(object),
       });
     });
+  }
+  return {
+    programKeys: rendererProgramKeys(renderer),
+    objects,
+  };
+}
+
+// Stepped twin: same census, iterative document-order DFS with a yield per batch of
+// visited nodes so the driver can spread the baseline across refused first-draw
+// frames and drain only the remainder inside the presented one.
+export function* captureOpeningAdmissionIdentitySteps(renderer, scene, plan = null) {
+  const planned = new Set(Array.isArray(plan && plan.compileSubjects)
+    ? plan.compileSubjects.filter(Boolean) : []);
+  const objects = new Map();
+  if (scene) {
+    const stack = [scene];
+    let visited = 0;
+    while (stack.length) {
+      const object = stack.pop();
+      if (object && isDrawable(object)) {
+        const materials = new Map();
+        for (const material of materialList(object)) {
+          materials.set(material, materialProgramKeys(renderer, material));
+        }
+        objects.set(object, {
+          geometry: object.geometry || null,
+          geometryDisposeListeners: geometryDisposeListenerCount(object.geometry),
+          materials,
+          planned: planned.has(object),
+        });
+      }
+      const children = object && object.children;
+      if (children && children.length) {
+        for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+      }
+      if (++visited % 512 === 0) yield;
+    }
   }
   return {
     programKeys: rendererProgramKeys(renderer),
@@ -219,6 +302,105 @@ export function describeOpeningAdmissionIdentityDelta(
   };
 }
 
+// Stepped twin of describeOpeningAdmissionIdentityDelta — the deferred diagnostics
+// drive it in ≤4ms timer-gap slices so the O(scene)+per-material pass never lands
+// whole inside one early-flight frame. Every output row/set is sorted or filtered
+// before returning, so the explicit-stack visit order produces identical output.
+export function* describeOpeningAdmissionIdentityDeltaSteps(
+  before, renderer, scene, plan = null, options = {},
+) {
+  const baseline = before || { programKeys: new Set(), objects: new Map() };
+  const afterProgramKeys = rendererProgramKeys(renderer);
+  const newProgramKeys = [...afterProgramKeys]
+    .filter((key) => !baseline.programKeys.has(key))
+    .sort();
+  const newProgramSet = new Set(newProgramKeys);
+  const newProgramFamilyKeys = [...new Set(newProgramKeys.map(openingProgramFamilyKey))].sort();
+  const planned = new Set(Array.isArray(plan && plan.compileSubjects)
+    ? plan.compileSubjects.filter(Boolean) : []);
+  const lateAdmissions = [];
+  const attributedProgramKeys = new Set();
+
+  if (scene && typeof scene.traverse === 'function') {
+    const stack = [scene];
+    let visited = 0;
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if ((++visited % 512) === 0) yield;
+      const children = object.children;
+      if (Array.isArray(children)) {
+        for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+      }
+      if (!isDrawable(object)) continue;
+      const prior = baseline.objects.get(object);
+      const geometryAdmitted = !!object.geometry && (
+        !prior
+        || prior.geometry !== object.geometry
+        || geometryDisposeListenerCount(object.geometry) > prior.geometryDisposeListeners
+      );
+      const materials = materialList(object);
+      const rows = materials.length > 0 ? materials : [null];
+      for (const material of rows) {
+        const priorKeys = prior && prior.materials.get(material) || new Set();
+        const programKeys = [...materialProgramKeys(renderer, material)]
+          .filter((key) => newProgramSet.has(key) && !priorKeys.has(key))
+          .sort();
+        if (!geometryAdmitted && programKeys.length === 0) continue;
+        for (const key of programKeys) attributedProgramKeys.add(key);
+        const root = admissionRoot(object, scene);
+        const row = {
+          root: objectLabel(root),
+          object: objectLabel(object),
+          material: materialLabel(material),
+          materialType: String(material && material.type || 'Material'),
+          geometryAdmitted,
+          programFamilyKeys: [...new Set(programKeys.map(openingProgramFamilyKey))].sort(),
+          programKeys,
+          planned: planned.has(object) || !!(prior && prior.planned),
+          exempted: false,
+          exemptionReason: null,
+        };
+        const reason = exemptionFor(row, options.exemptions);
+        if (reason) {
+          row.exempted = true;
+          row.exemptionReason = reason;
+        }
+        lateAdmissions.push(row);
+      }
+    }
+  }
+
+  lateAdmissions.sort((a, b) => (
+    a.root.localeCompare(b.root)
+    || a.object.localeCompare(b.object)
+    || a.material.localeCompare(b.material)
+  ));
+  const unattributedProgramKeys = newProgramKeys
+    .filter((key) => !attributedProgramKeys.has(key));
+  const unattributedProgramFamilyKeys = [...new Set(
+    unattributedProgramKeys.map(openingProgramFamilyKey),
+  )].sort();
+  const exemptedProgramFamilyKeys = [];
+  const unexplainedProgramFamilies = [];
+  for (const family of unattributedProgramFamilyKeys) {
+    const exemption = exemptionFor({
+      root: '', object: '', material: '', programFamilyKeys: [family],
+    }, options.exemptions);
+    if (exemption) exemptedProgramFamilyKeys.push({ family, reason: exemption });
+    else unexplainedProgramFamilies.push(family);
+  }
+  return {
+    newProgramKeys,
+    newProgramFamilyKeys,
+    lateAdmissions,
+    unattributedProgramKeys,
+    unattributedProgramFamilyKeys: unexplainedProgramFamilies,
+    exemptedProgramFamilyKeys,
+    unexplained: lateAdmissions.some((row) => row.exempted !== true)
+      || unexplainedProgramFamilies.length > 0,
+  };
+}
+
 export function materialHasCompiledProgram(material, getProperties) {
   if (!material || typeof getProperties !== 'function') return false;
   try {
@@ -232,19 +414,30 @@ export function materialHasCompiledProgram(material, getProperties) {
 export function uniqueAdmissionUnits(subjects, options = {}) {
   const programSubjects = [];
   const geometrySubjects = [];
-  const seenMaterials = new Set();
-  const seenGeometries = new Set();
+  // Callers driving the unit construction in slices pass their own dedupe sets —
+  // the sets carry the cross-chunk seen state, so chunked accumulation produces
+  // the same dedupe as one monolithic call.
+  const seenMaterials = options.seenMaterials instanceof Set ? options.seenMaterials : new Set();
+  const seenGeometries = options.seenGeometries instanceof Set ? options.seenGeometries : new Set();
   const skipReady = typeof options.skipReadyMaterial === 'function'
     ? options.skipReadyMaterial
     : null;
   const list = Array.isArray(subjects) ? subjects : [subjects];
-  for (const object of list) {
+  // Sliced drivers pass a window instead of a sliced copy — one fresh array
+  // per chunk per pace tick was pure allocation churn mid-cook.
+  const listStart = Number.isInteger(options.start) ? Math.max(0, options.start) : 0;
+  const listEnd = Number.isInteger(options.end) ? Math.min(list.length, options.end) : list.length;
+  for (let listIndex = listStart; listIndex < listEnd; listIndex++) {
+    const object = list[listIndex];
     if (!object) continue;
     let addedProgram = false;
     for (const material of materialList(object)) {
-      if (skipReady && skipReady(material)) continue;
+      // Dedupe before the readiness probe: a material shared across subjects
+      // would pay the properties.get + currentProgram walk once per owner, and
+      // the probe is a pure read so a shared ready material can join the set too.
       if (seenMaterials.has(material)) continue;
       seenMaterials.add(material);
+      if (skipReady && skipReady(material)) continue;
       if (!addedProgram) {
         programSubjects.push(object);
         addedProgram = true;
@@ -263,17 +456,72 @@ export function uniqueAdmissionUnits(subjects, options = {}) {
   };
 }
 
-export function withOnlySubjectsDrawable(scene, subjects, fn) {
-  const keep = new Set((Array.isArray(subjects) ? subjects : [subjects]).filter(Boolean));
+/**
+ * Reusable drawable-hide session for a batched touch loop. The scene's drawable
+ * enumeration is O(scene) — mint it once per cook and share `drawables` across
+ * the cook's legs. `keep` is per-CALL state (withOnlySubjectsDrawable mints it
+ * per batch); session objects carry no keep set at all — re-drawing every prior
+ * batch's subjects in
+ * each later absorbed pass. Under-hiding is safe by contract — a drawable the
+ * session under-covers just draws inside the absorbed touch pass (which exists
+ * to absorb links), never inside a presented frame; stale entries for detached
+ * nodes hide+restore harmlessly.
+ */
+export function drawableHideSession(scene) {
+  const drawables = [];
+  if (scene && typeof scene.traverse === 'function') {
+    scene.traverse((object) => {
+      if (isDrawable(object)) drawables.push(object);
+    });
+  }
+  return { scene, drawables };
+}
+
+// Stepped twin of the session mint: the O(scene) enumeration yields at stride
+// boundaries so a lazy mid-cook mint paces across presents instead of landing
+// atomic inside the admit leg. Reversed-children push reproduces traverse's
+// pre-order exactly (drawables order is cosmetic — the hide pass only reads
+// membership).
+export function* drawableHideSessionSteps(scene, sliceEvery = 4096) {
+  const drawables = [];
+  if (scene) {
+    const stack = [scene];
+    let visited = 0;
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (isDrawable(object)) drawables.push(object);
+      const children = object.children || [];
+      for (let i = children.length - 1; i >= 0; i -= 1) stack.push(children[i]);
+      if ((++visited % sliceEvery) === 0) yield;
+    }
+  }
+  return { scene, drawables };
+}
+
+export function withOnlySubjectsDrawable(scene, subjects, fn, session) {
+  // `keep` scopes to THIS call's subjects: whileRevealedGroup now holds reveals
+  // across suspension, so a session-accumulated keep re-draws every prior
+  // batch's subjects inside each later absorbed pass (≈N²/48 subject-draws per
+  // cook). Prior-batch members are hidden by the scan below — their programs
+  // already linked in their own batch — and restore in `finally`.
+  const keep = new Set();
   // A drawable ancestor must stay un-hidden: render() skips a hidden object's whole subtree, so
   // hiding one would make the subject's "draw" a silent no-op and leave its program cold. The
   // same holds for descendants — a Group subject whose mesh children are hidden draws nothing.
-  for (const subject of [...keep]) {
-    for (let p = subject.parent; p; p = p.parent) keep.add(p);
+  for (const subject of (Array.isArray(subjects) ? subjects : [subjects])) {
+    if (!subject || keep.has(subject)) continue;
+    keep.add(subject);
+    for (let p = subject.parent; p && !keep.has(p); p = p.parent) keep.add(p);
     if (typeof subject.traverse === 'function') subject.traverse((node) => keep.add(node));
   }
   const saved = [];
-  if (scene && typeof scene.traverse === 'function') {
+  if (session) {
+    for (const object of session.drawables) {
+      if (keep.has(object)) continue;
+      saved.push({ object, visible: object.visible });
+      object.visible = false;
+    }
+  } else if (scene && typeof scene.traverse === 'function') {
     scene.traverse((object) => {
       if (!isDrawable(object) || keep.has(object)) return;
       saved.push({ object, visible: object.visible });
@@ -296,7 +544,7 @@ export function withOnlySubjectsDrawable(scene, subjects, fn) {
  * gets exactly the draw it would get alone (same program, same buffers, same target, same
  * lights); only the whole-scene hide/restore walk and the render call's fixed cost are shared.
  */
-export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camera, lightingScene) {
+export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camera, lightingScene, options = {}) {
   const subjects = (Array.isArray(subject) ? subject : [subject]).filter(Boolean);
   if (!renderer || typeof renderer.render !== 'function' || subjects.length === 0 || !lightingScene) {
     return { skipped: true, reason: 'touch unavailable' };
@@ -315,7 +563,98 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
   // release). Every caller passes content roots/leaves, never an owner boundary.
   const parked = [];
   const cullable = new Set();
+  // D102: a keep-member drawable whose geometry is gone (torn down, or never
+  // committed while its admission was queued) still reaches Three's
+  // WebGLGeometries.get — projectObject runs WebGLObjects.update (which reads
+  // geometry.id) before it ever tests material.visible, so hiding the node via
+  // its MATERIAL cannot prevent the throw; only object.visible === false makes
+  // the traversal skip it. Hiding the node is therefore mandatory — but hiding
+  // its subtree is not, since a null-geometry node can sit on the subject's own
+  // ancestor chain or inside its subtree, and every keep member must stay
+  // drawable for the touch to admit anything. Each such node's children are
+  // moved to the nearest visible in-scene ancestor (or the scene itself for a
+  // detached keep root) through direct children-array edits — no add()/remove(),
+  // so no 'removed'/'added' events fire and residency owners see no boundary
+  // churn — the node itself is hidden for the draw, and all of it is restored
+  // in finally. Sim state, materials, and geometry are untouched.
+  const geometryless = [];
+  {
+    const seen = new Set();
+    const mark = (node, subject) => {
+      if (!node || seen.has(node)) return;
+      seen.add(node);
+      if (!isDrawable(node) || node.visible === false) return;
+      const geometry = node.geometry;
+      if (geometry != null && geometry.id != null) return;
+      geometryless.push({
+        node,
+        subject: objectLabel(subject),
+        object: objectLabel(node),
+        reason: 'null-geometry',
+      });
+    };
+    for (const item of subjects) {
+      if (typeof item.traverse === 'function') item.traverse((node) => mark(node, item));
+      else mark(item, item);
+      for (let p = item && item.parent; p; p = p.parent) mark(p, item);
+    }
+  }
+  const geometrylessNodes = new Set(geometryless.map((row) => row.node));
+  const isUnderScene = (node) => {
+    for (let p = node; p; p = p.parent) if (p === lightingScene) return true;
+    return false;
+  };
+  // The nearest ancestor that projectObject can still reach. Ancestors of keep
+  // members are keep members too, so a visible in-scene ancestor is never hidden
+  // by the keep pass below; a fully detached keep chain roots at the scene.
+  const spliceHostFor = (node) => {
+    for (let p = node.parent; p; p = p.parent) {
+      if (p.visible !== false && isUnderScene(p)) return p;
+    }
+    return lightingScene;
+  };
+  const depthOf = (node) => {
+    let depth = 0;
+    for (let p = node && node.parent; p; p = p.parent) depth += 1;
+    return depth;
+  };
+  // A subject still owes its draw when any subtree member can draw; a subject
+  // whose only drawables are geometryless has nothing to admit.
+  const drawableSubjects = subjects.filter((item) => {
+    const nodes = [];
+    if (typeof item.traverse === 'function') item.traverse((node) => nodes.push(node));
+    else nodes.push(item);
+    return nodes.some((node) => (
+      isDrawable(node) && !geometrylessNodes.has(node) && node.visible !== false
+    ));
+  });
+  const childSplices = [];
+  const hiddenForTouch = new Map();
+  const drawn = [];
   try {
+    // Shallowest-first so a nested null-geometry node is re-seated before its own
+    // children are moved; the finally below restores deepest-first.
+    const orderedGeometryless = geometryless.slice()
+      .sort((a, b) => depthOf(a.node) - depthOf(b.node));
+    for (const row of orderedGeometryless) {
+      const node = row.node;
+      const host = spliceHostFor(node);
+      const children = Array.isArray(node.children) ? node.children.slice() : [];
+      const splice = { node, host: null, children };
+      if (children.length > 0 && host && Array.isArray(host.children)) {
+        splice.host = host;
+        // Seat the children where the node itself sat so sibling order is
+        // otherwise preserved; the keep pass decides their visibility by node.
+        const at = host === node.parent ? host.children.indexOf(node) : -1;
+        for (const child of children) child.parent = host;
+        node.children.length = 0;
+        if (at >= 0) host.children.splice(at, 0, ...children);
+        else host.children.push(...children);
+      }
+      childSplices.push(splice);
+      hiddenForTouch.set(node, node.visible);
+      node.visible = false;
+    }
     for (const item of subjects) {
       if (item === lightingScene) continue;
       let underScene = false;
@@ -349,13 +688,24 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
     for (const node of cullable) node.frustumCulled = false;
     renderer.autoClear = false;
     if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(renderTarget || null);
-    withOnlySubjectsDrawable(lightingScene, subjects, () => {
-      for (const item of subjects) {
-        if (typeof item.updateMatrixWorld === 'function') item.updateMatrixWorld(true);
-      }
-      renderer.render(lightingScene, camera);
-    });
-    return { skipped: false, subjects: subjects.length };
+    if (drawableSubjects.length > 0) {
+      withOnlySubjectsDrawable(lightingScene, drawableSubjects, () => {
+        for (const item of drawableSubjects) {
+          if (typeof item.updateMatrixWorld === 'function') item.updateMatrixWorld(true);
+        }
+        renderer.render(lightingScene, camera);
+      }, options.drawableSession);
+      drawn.push(...drawableSubjects.map((item) => objectLabel(item)));
+    }
+    return {
+      skipped: drawableSubjects.length === 0,
+      subjects: subjects.length,
+      drawn: drawn.length,
+      drawnSubjects: drawn,
+      skippedSubjects: geometryless.length,
+      skippedNullGeometry: geometryless.map(({ node, ...row }) => row),
+      reason: drawableSubjects.length === 0 ? 'null-geometry' : undefined,
+    };
   } finally {
     for (const node of cullable) node.frustumCulled = true;
     // Last-in-first-out: a list holding both an ancestor and its descendant parks them in
@@ -374,6 +724,27 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
       } else if (typeof lightingScene.remove === 'function') {
         lightingScene.remove(item);
       }
+    }
+    // Splice restore runs after the parked restore (a parked subject could itself be a
+    // spliced child — the park returns it to the recorded host first). Deepest-first,
+    // the inverse of the shallow-first seating above, and only for children still under
+    // the recorded host: a child re-parented by something else during the draw keeps
+    // its new parent instead of being forced back.
+    for (let i = childSplices.length - 1; i >= 0; i--) {
+      const { node, host, children } = childSplices[i];
+      if (!host || !Array.isArray(host.children) || !Array.isArray(node.children)) continue;
+      for (const child of children) {
+        if (child.parent !== host) continue;
+        const at = host.children.indexOf(child);
+        if (at >= 0) host.children.splice(at, 1);
+        child.parent = node;
+      }
+      for (const child of children) {
+        if (child.parent === node && !node.children.includes(child)) node.children.push(child);
+      }
+    }
+    for (const [node, wasVisible] of hiddenForTouch) {
+      try { node.visible = wasVisible; } catch (_) { /* teardown race: node already disposed */ }
     }
     renderer.autoClear = previousAutoClear;
     if (typeof renderer.setRenderTarget === 'function') {
@@ -401,6 +772,17 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     seen.add(subject);
     ordered.push(subject);
   }
+  // An empty unit set has nothing to compile or touch — skip the batch-open/drain/
+  // allSettled/close ceremony entirely rather than paying it per call.
+  if (ordered.length === 0) {
+    return {
+      skipped: true,
+      subjects: 0,
+      materials: Number(units.materialCount) || 0,
+      geometries: Number(units.geometryCount) || 0,
+      results: [],
+    };
+  }
   // Without a readiness batch this stays exactly as it was: compile a unit, touch it, yield, next.
   // With one, the shape changes to issue-all / drain-once / touch-all. That matters because
   // `renderer.compile()` under KHR_parallel_shader_compile costs microseconds and only STARTS the
@@ -411,6 +793,8 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     ? options.beginReadinessBatch
     : null;
   if (!beginBatch) {
+    // Compile+touch interleave per unit, so the detach census runs before the first draw.
+    await reattachDetachedAdmissionTextures(ordered, options.renderer, yieldToMain);
     const results = await compileSubjectsAcrossPresents(
       ordered,
       async (subject) => {
@@ -483,7 +867,9 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     }
     issueMs = now() - issueStarted;
     const drainStarted = now();
-    drained = await batch.drain();
+    drained = await batch.drain(
+      deadlineMs > 0 ? { timeoutMs: Math.max(0, deadlineMs - (now() - started)) } : undefined,
+    );
     // One rejected compile must not discard the cohort's touches — every issued unit that skips
     // its draw still links inside the first presented scene pass. Settle each and keep going.
     compiled = (await Promise.allSettled(issued))
@@ -497,6 +883,9 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     await Promise.allSettled(issued);
     if (typeof batch.restoreEntryTarget === 'function') batch.restoreEntryTarget();
   }
+  // Touches run next: restore any cpu-detached payloads a forced upload would read empty before
+  // the first draw binds them. Issue order above stays exactly as it was.
+  await reattachDetachedAdmissionTextures(ordered, options.renderer, yieldToMain);
   const results = [];
   const touchStarted = now();
   // Optional grouped touch: `touchMany(subjects)` draws a whole group in one render. Same subjects
@@ -520,7 +909,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       let touched = null;
       let touchError = null;
       try {
-        touched = touchMany(group);
+        touched = await touchMany(group);
       } catch (error) {
         touchError = error;
       }

@@ -42,7 +42,13 @@
 // for movement so arrow-key players aren't stranded.
 import { emptyDrawFlightPath, emptyDrawFlightGesture } from './drawFlightInput.js';
 import { projectDynamicFlightStick, recordDynamicFlightStick, resetDynamicFlightStick } from './dynamicFlightStick.js';
-import { createGamepad } from './gamepad.js';
+import {
+  createGamepad,
+  normalizePadCurve,
+  normalizePadSensitivity,
+  shapePadAxis,
+  shapePadVector,
+} from './gamepad.js';
 import { createTouch } from './touch.js';
 import { createMasslineInputGrammar } from './masslineInputGrammar.js';
 import { wrapAngle } from '../core/rng.js';
@@ -281,6 +287,14 @@ const VERB_BINDINGS = {
   // tables and ui/bindings.js, same audit as Digit4-7) and sits with the deployable family. The
   // planetRuntime system owns the collector state; yield is path x density, never a hold timer.
   toggleSkimCollector: ['Digit8'], // edge: toggle the atmospheric skim collector (The Anvil bands)
+  // The Gyre Snare — held-key telekinetic katamari lash (gyreSnare system owns the state).
+  // Quote (') is free repo-wide (checked against both scheme tables, ui/bindings.js, and the
+  // UI key router): every letter is claimed, and 'o' in particular was triple-claimed
+  // (Band cycle on Shift+O + the overview-pin toggle on plain 'o'). Quote is right-pinky
+  // reachable, a natural hold verb, and carries no modifier alias or UI claim. Level verb:
+  // hold to beam + hold the clump, release to bowl it; hold-to-toggle latch opt-in via
+  // accessibility.holdToToggle.gyreSnare.
+  gyreSnare:          ['Quote'],    // level: hold to pull/snag/grow a ball, release to bowl it
   // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md). Digit9 is free repo-wide (same audit as
   // Digit4-8; Digit1-3 carry the ORDNANCE band) and completes the deployable row.
   // Comma is free repo-wide (checked against both scheme tables and ui/bindings.js) and sits
@@ -444,6 +458,7 @@ export function formatBindingCode(code, { arrows = 'glyph' } = {}) {
   if (!code) return '';
   if (/^Key[A-Z]$/.test(code)) return code.slice(3);
   if (/^Digit\d$/.test(code)) return code.slice(5);
+  if (/^Numpad\d$/.test(code)) return `Num ${code.slice(6)}`;
   if (code.startsWith('Arrow')) {
     const table = arrows === 'word' ? ARROW_WORDS : ARROW_GLYPHS;
     return table[code] || code;
@@ -458,14 +473,44 @@ export function formatBindingCode(code, { arrows = 'glyph' } = {}) {
   if (code === 'NumLock') return 'Num Lock';
   if (code === 'CapsLock') return 'Caps Lock';
   if (code === 'Backquote') return '`';
+  if (code === 'Quote') return "'";
   if (code === 'Backslash' || code === 'IntlBackslash') return '\\';
   if (code === 'BracketLeft') return '[';
   if (code === 'BracketRight') return ']';
   if (code === 'Comma') return ',';
   if (code === 'Period') return '.';
+  if (code === 'Minus') return '-';
+  if (code === 'Equal') return '=';
+  if (code === 'Semicolon') return ';';
+  if (code === 'Quote') return "'";
+  if (code === 'Slash') return '/';
+  if (code === 'MetaLeft') return 'L-Meta';
+  if (code === 'MetaRight') return 'R-Meta';
+  if (code === 'Enter') return 'Enter';
+  if (code === 'NumpadEnter') return 'Num Enter';
+  if (code === 'NumpadAdd') return 'Num +';
+  if (code === 'NumpadSubtract') return 'Num -';
+  if (code === 'NumpadMultiply') return 'Num *';
+  if (code === 'NumpadDivide') return 'Num /';
+  if (code === 'NumpadDecimal') return 'Num .';
+  if (code === 'PageUp') return 'Pg Up';
+  if (code === 'PageDown') return 'Pg Dn';
+  if (code === 'Insert') return 'Ins';
+  if (code === 'Delete') return 'Del';
+  if (code === 'Home') return 'Home';
+  if (code === 'End') return 'End';
+  if (code === 'Tab') return 'Tab';
+  if (code === 'Escape') return 'Esc';
+  if (code === 'Backspace') return 'Bksp';
+  if (code === 'PrintScreen') return 'PrtSc';
+  if (code === 'ScrollLock') return 'ScrLk';
+  if (code === 'Pause') return 'Pause';
+  if (code === 'ContextMenu') return 'Menu';
   if (code === 'Mouse0' || code === 'mouse0') return MOUSE_ACTION_LABELS.fire;
   if (code === 'Mouse2' || code === 'mouse2') return MOUSE_ACTION_LABELS.mine;
-  return code;
+  // Last resort is never the raw DOM code: strip the mechanical prefix and split the camel case
+  // ('NumpadEnter' never reaches here, 'IntlRo' → 'Ro', 'LaunchApp1' → 'Launch App').
+  return code.replace(/^(Key|Digit|Numpad)/, '').replace(/([a-z])([A-Z])/g, '$1 $2') || code;
 }
 
 /**
@@ -573,6 +618,63 @@ const SAMPLED_EDGE_ACTIONS = new Set([
   'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone',
   'toggleSkimCollector', 'dropBomb', 'cycleBomb', 'cloak', 'travelBurn', 'jettisonLot',
 ]);
+
+// Pad verbs that must re-prove a deliberate press after a lifecycle reset (blur, dock, resume).
+// The first connected sample must be neutral before a held button can re-arm an edge verb — a
+// chord physically held across a dock or a tab-hide must not fire the moment the pad publishes
+// again. The bomb bay verbs always read this gate; adding them here repairs a silent no-op.
+const GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS = Object.freeze([
+  'massline', 'countermeasure', 'travelBurn', 'autoTarget', 'chargeDetonate', 'deployRepulsor',
+  'dropBomb', 'cycleBomb',
+  'scanPulse', 'cruise', 'deployBeacon', 'deployMassSeed', 'deployWell', 'toggleClearingCone',
+  'toggleSkimCollector', 'siteBeam', 'bulletTime', 'cloak', 'chargeThrow', 'jettisonLot',
+  // gyreSnare is a held pad chord (RB+Y): a grip held across a dock or tab-hide must not
+  // re-fire the beam the moment the pad publishes again.
+  'gyreSnare',
+]);
+
+function freshGamepadLifecycleQuarantine() {
+  // A plain object, not Object.create(null): the lifecycle suites deep-compare this map against
+  // an object literal, and the keys are a fixed internal table, never player-supplied names.
+  const q = {};
+  for (const action of GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS) q[action] = true;
+  return q;
+}
+
+// FB-113: hold verbs a player may opt into press-to-toggle latches for. `massline` is the
+// tether/Massline hold; reelIn/reelOut are the dedicated winch keys. Defaults are all off —
+// accessibility.holdToToggle[verb] flips one on. A latch survives until the next press edge or
+// a context change (dock, death, any screen/modal, lifecycle reset).
+export const HOLD_TO_TOGGLE_ACTIONS = Object.freeze([
+  'boost', 'brake', 'bulletTime', 'gyreSnare', 'massline', 'reelIn', 'reelOut',
+]);
+
+function holdToToggleEnabled(state) {
+  const map = state && state.settings && state.settings.accessibility
+    && state.settings.accessibility.holdToToggle;
+  return (verb) => !!(map && map[verb] === true);
+}
+
+/**
+ * FB-113: merge a physical hold with its opt-in latch. `held` is the merged physical sample this
+ * tick; `prev` tracks the previous physical sample so a fresh press edge flips the latch; `latch`
+ * owns the toggled state. A verb not enabled never latches (returns the physical value).
+ */
+function applyHoldToggle(latches, edges, verb, held, enabled) {
+  const prev = !!edges[verb];
+  edges[verb] = !!held;
+  if (!enabled) {
+    latches[verb] = false;
+    return !!held;
+  }
+  if (held && !prev) latches[verb] = !latches[verb];
+  return !!held || latches[verb] === true;
+}
+
+function resetHoldToggleLatches(latches, edges) {
+  if (latches) for (const verb of HOLD_TO_TOGGLE_ACTIONS) latches[verb] = false;
+  if (edges) for (const verb of HOLD_TO_TOGGLE_ACTIONS) edges[verb] = false;
+}
 const KEY_EDGE_CAP = 64;
 
 function flightEdgeQueue(host) {
@@ -925,14 +1027,9 @@ export const input = {
     this._m2UsesUiClock = false;
     this._m2TimerTarget = null;
     this._cmHeld = false;
-    this._gamepadLifecycleQuarantine = {
-      massline: true,
-      countermeasure: true,
-      travelBurn: true,
-      autoTarget: true,
-      chargeDetonate: true,
-      deployRepulsor: true,
-    };
+    this._gamepadLifecycleQuarantine = freshGamepadLifecycleQuarantine();
+    this._holdToggleLatches = Object.create(null);
+    this._holdToggleEdges = Object.create(null);
     this._masslineGrammar = createMasslineInputGrammar();
     // F4/G9: device arbitration uses deterministic (tick, sequence) activity stamps shared
     // across keyboard/gamepad/touch — never performance.now()/Date.now(). Sequence reflects
@@ -1041,9 +1138,11 @@ export const input = {
           || isUiCommandTarget(e.target),
       });
     });
+    // Physical releases must reach the owner even when a modal consumes the event below
+    // window. Otherwise frozen menu ticks preserve a held thrust/fire command on resume.
     listen(windowTarget, 'keyup', (e) => {
       domKeyEvent(this, { type: 'keyup', code: eventCode(e), pressed: false });
-    });
+    }, { capture: true });
     listen(windowTarget, 'blur', () => this.releaseHeldControls('window-blur'));
     const pointerSurface = this._canvas || windowTarget;
     const pointerDescriptor = (e) => ({
@@ -1068,7 +1167,7 @@ export const input = {
       domMouseDownEvent(this, d);
       if (e.button === 1 && typeof e.preventDefault === 'function') e.preventDefault(); // no autoscroll cursor
     });
-    listen(windowTarget, 'mouseup', (e) => domMouseUpEvent(this, { type: 'mouseup', button: e.button }));
+    listen(windowTarget, 'mouseup', (e) => domMouseUpEvent(this, { type: 'mouseup', button: e.button }), { capture: true });
     listen(windowTarget, 'pointercancel', () => this.releaseHeldControls('pointercancel'));
     const pointerLockTarget = typeof document !== 'undefined' ? document : null;
     listen(pointerLockTarget, 'pointerlockchange', () => {
@@ -1189,14 +1288,8 @@ export const input = {
     this._cmHeld = false;
     // Keyboard transitions remain event-owned after restore. Only polled gamepad actions need a
     // connected neutral sample before a hold can become authoritative again.
-    this._gamepadLifecycleQuarantine = {
-      massline: true,
-      countermeasure: true,
-      travelBurn: true,
-      autoTarget: true,
-      chargeDetonate: true,
-      deployRepulsor: true,
-    };
+    this._gamepadLifecycleQuarantine = freshGamepadLifecycleQuarantine();
+    resetHoldToggleLatches(this._holdToggleLatches, this._holdToggleEdges);
     if (this._edgePrev) {
       for (const action in this._edgePrev) this._edgePrev[action] = false;
     }
@@ -1238,7 +1331,7 @@ export const input = {
     const quarantine = this._gamepadLifecycleQuarantine;
     if (!quarantine || !gamepad || typeof gamepad.isConnected !== 'function'
       || !gamepad.isConnected()) return;
-    for (const action of ['massline', 'countermeasure', 'travelBurn', 'autoTarget', 'chargeDetonate', 'deployRepulsor']) {
+    for (const action of GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS) {
       const sample = gamepad.actions && gamepad.actions[action];
       if (quarantine[action] && sample && sample.held === false) quarantine[action] = false;
     }
@@ -1247,6 +1340,20 @@ export const input = {
   _gamepadLifecycleActionAllowed(action) {
     const quarantine = this._gamepadLifecycleQuarantine;
     return !quarantine || quarantine[action] !== true;
+  },
+
+  /** Quarantine-gated pad action edge — FB-003 chord verbs merge through the same seam as stock. */
+  _padEdge(gp, action) {
+    return !!(gp && gp.isConnected()
+      && this._gamepadLifecycleActionAllowed(action)
+      && gp.actions[action] && gp.actions[action].pressed);
+  },
+
+  /** Quarantine-gated pad action hold — same seam for level verbs (bulletTime, siteBeam). */
+  _padHeld(gp, action) {
+    return !!(gp && gp.isConnected()
+      && this._gamepadLifecycleActionAllowed(action)
+      && gp.actions[action] && gp.actions[action].held);
   },
 
   _updateCountermeasureHold(held, inp) {
@@ -1340,6 +1447,7 @@ export const input = {
       bulletTime: false, cloakToggle: false, throwArm: false, travelBurn: false, deployMassSeed: false,
       deployWell: false, deployRepulsor: false, toggleClearingCone: false, toggleSkimCollector: false,
       siteBeam: false, aimedMine: false, dropBomb: false, cycleBomb: false, jettisonLot: false,
+      gyreSnare: false,
     });
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
     if (shouldNeutralizeFlightInput(state, modalInputActive())) {
@@ -1358,6 +1466,13 @@ export const input = {
       acts.deployWell = false; acts.deployRepulsor = false; acts.toggleClearingCone = false;
       acts.toggleSkimCollector = false;
       acts.dropBomb = false; acts.cycleBomb = false; acts.jettisonLot = false;
+      // The gyre verb rides the same modal-preservation contract as massline: a screen
+      // opening must NOT synthesize a falling edge — zeroing it here would bowl the clump
+      // out from under a held key (and re-fire the beam on close). The lash stays held
+      // through the overlay exactly like the tether does.
+      const gyreHeldThroughModal = this._held(state, 'gyreSnare')
+        || !!(gp && gp.isConnected() && gp.actions.gyreSnare && gp.actions.gyreSnare.held);
+      acts.gyreSnare = gyreHeldThroughModal;
       const masslineHeldThroughModal = this._held(state, 'tether')
         || !!(gp && gp.isConnected() && gp.actions.massline && gp.actions.massline.held);
       acts.massline = masslineGrammar.reset(masslineHeldThroughModal);
@@ -1380,6 +1495,27 @@ export const input = {
       this._travelEdge = false;
       if (this._travel) this._travel = neutralTravelDrive();
       if (inp.travelDrive) inp.travelDrive = this._travel || undefined;
+      // FB-113: a hold-to-toggle latch is a flight context, not a player preference — leaving
+      // flight (dock, death, any screen or modal) drops every latch outright. The pilot did not
+      // release it; the context did.
+      resetHoldToggleLatches(this._holdToggleLatches, this._holdToggleEdges);
+      // A key still physically held through the context change is held, not a fresh press —
+      // the same convention _edgePrev follows two lines up. Pin the toggle edges to the live
+      // physical sample so a held-through-dock key cannot re-latch itself on the way back.
+      const htEdges = this._holdToggleEdges;
+      if (htEdges) {
+        const padHeld = (action) => !!(gp && gp.isConnected()
+          && gp.actions && gp.actions[action] && gp.actions[action].held);
+        const tpHeld = (action) => !!(tp && tp.actions && tp.actions[action] && tp.actions[action].held);
+        htEdges.boost = this._held(state, 'boost') || padHeld('boost') || tpHeld('boost');
+        htEdges.brake = this._held(state, 'brake') || this._held(state, 'reverse')
+          || padHeld('brake') || tpHeld('brake');
+        htEdges.bulletTime = this._held(state, 'bulletTime') || padHeld('bulletTime');
+        htEdges.gyreSnare = gyreHeldThroughModal;
+        htEdges.massline = masslineHeldThroughModal;
+        htEdges.reelIn = this._held(state, 'reelIn');
+        htEdges.reelOut = this._held(state, 'reelOut');
+      }
       return;
     }
 
@@ -1454,8 +1590,13 @@ export const input = {
     // PQ-164.04: pad flight scheme is its own axis — 'drive' keeps the wheel map;
     // 'twinstick' turns the left stick into a screen-frame drive vector while the right
     // stick aims and steers the nose (the chase runs below once aimAngle exists).
-    const padScheme = (state.settings && state.settings.controls && state.settings.controls.gamepad
-      && state.settings.controls.gamepad.scheme) === 'twinstick' ? 'twinstick' : 'drive';
+    const padCfg = (state.settings && state.settings.controls && state.settings.controls.gamepad) || {};
+    const padScheme = padCfg.scheme === 'twinstick' ? 'twinstick' : 'drive';
+    // FB-004: response shaping applies to derived intents only — gp.axes keep the raw deadzoned
+    // truth. 'linear' with sensitivity 1 reproduces the shipped numbers exactly.
+    const padCurve = normalizePadCurve(padCfg.curve);
+    const padSensFly = normalizePadSensitivity(padCfg.sensitivityFly);
+    const padSensAim = normalizePadSensitivity(padCfg.sensitivityAim);
     let gpTurn = 0;
     let gpMoveX = 0;
     let gpMoveZ = 0;
@@ -1468,16 +1609,18 @@ export const input = {
     if (gp && gp.isConnected()) {
       if (padScheme === 'twinstick' && p && p.pos) {
         // The stick points where the ship pushes on screen — decomposed into the hull's
-        // forward/strafe axes the same way helm-assist decomposes a brake vector.
-        const wx = gp.axes.leftX;
-        const wz = -gp.axes.leftY;
+        // forward/strafe axes the same way helm-assist decomposes a brake vector. The curve
+        // reshapes the magnitude so the pushed direction survives untouched.
+        const fly = shapePadVector(gp.axes.leftX, -gp.axes.leftY, padCurve, padSensFly);
+        const wx = fly.x;
+        const wz = fly.y;
         const cf = Math.cos(p.rot || 0);
         const sf = Math.sin(p.rot || 0);
         gpMoveZ = wx * cf + wz * sf;
         gpMoveX = wx * -sf + wz * cf;
       } else {
-        gpTurn = gp.axes.leftX;
-        gpMoveZ = -gp.axes.leftY; // stick up = forward
+        gpTurn = shapePadAxis(gp.axes.leftX, padCurve, padSensFly);
+        gpMoveZ = shapePadAxis(-gp.axes.leftY, padCurve, padSensFly); // stick up = forward
       }
       gpBoost = gp.actions.boost && gp.actions.boost.held;
       gpFire = gp.actions.fire && gp.actions.fire.held;
@@ -1537,13 +1680,30 @@ export const input = {
     }
 
     inp.turnIntent = kbdTurn || gpTurn || tpTurn;
+    inp.turnIntentFromAim = false;
     inp.moveX = kbdMoveX || gpMoveX || tpMoveX;
     // Twin-stick keeps the authored drive vector under the brake — LB decomposes counter-
     // velocity below rather than forcing a flat reverse, and hard stick-down is a legit
     // drive direction, not the drive scheme's brake gesture.
     inp.moveZ = kbdMoveZ || (gpBrake && padScheme !== 'twinstick' ? -1 : gpMoveZ) || tpMoveZ;
-    inp.boost = kbdBoost || gpBoost || tpBoost;
-    inp.brake = keyboardBrake || gpBrake
+    // FB-113: opt-in press-to-toggle latches for the hold verbs. The raw samples above are
+    // untouched — the latch only adds an alternative "held" after a fresh press edge, until the
+    // next press or a context change (the neutralize branch drops every latch outright).
+    const toggleFor = holdToToggleEnabled(state);
+    const holdLatches = this._holdToggleLatches || (this._holdToggleLatches = Object.create(null));
+    const holdEdges = this._holdToggleEdges || (this._holdToggleEdges = Object.create(null));
+    // FB-113: death is a context change even in the frames before the death screen mounts —
+    // a dead pilot's latch is off the table and a still-held key reads as held, never as a
+    // fresh toggle edge. applyHoldToggle(disabled) both clears the latch and records the
+    // physical sample, which is exactly the suppression a dead ship needs.
+    const holdToggleDead = !!(state.player && state.player.alive === false);
+    const toggleLive = (verb) => toggleFor(verb) && !holdToggleDead;
+    const boostHeld = applyHoldToggle(holdLatches, holdEdges, 'boost',
+      kbdBoost || gpBoost || tpBoost, toggleLive('boost'));
+    const brakeHeld = applyHoldToggle(holdLatches, holdEdges, 'brake',
+      keyboardBrake || gpBrake, toggleLive('brake'));
+    inp.boost = boostHeld;
+    inp.brake = brakeHeld
       || (this._movementSource === 'gamepad' && padScheme !== 'twinstick' && gpMoveZ < -0.55)
       || (this._movementSource === 'touch' && tpMoveZ < -0.55);
     inp.fire = kbdFire || gpFire || tpFire;
@@ -1561,7 +1721,9 @@ export const input = {
     // dance partner; see mining.activeMineableTetherTarget). Unlatched play is unchanged.
     const selectedSite = selectedWorldSiteTarget(state);
     const contextualSiteBeam = this._held(state, 'siteBeam') && !!selectedSite;
-    const gamepadSiteBeam = gpMine && !!selectedSite;
+    // FB-003: LB+X is the pad's dedicated site-beam channel; LT still doubles while a site is
+    // selected. Both claim the selected-site lane, never ordinary rock mining.
+    const gamepadSiteBeam = (gpMine || this._padHeld(gp, 'siteBeam')) && !!selectedSite;
     const siteBeamHeld = !!(contextualSiteBeam || gamepadSiteBeam);
     this._m2HeldS = this._m2 ? (this._m2HeldS || 0) + dt : 0;
     const mouseToolHeld = !!(this._m2 && (this._m2UsesUiClock
@@ -1599,9 +1761,19 @@ export const input = {
     const aimWorld = inp.aimWorld || (inp.aimWorld = { x: 0, z: 0 });
     if (aimAxes && !kbmRecent && p && p.pos) {
       inp.aimIntentActive = true;
+      // The aim point below is synthetic (300 wu along the stick), not a place the player
+      // pointed at; target acquisition reads this to keep stick aim on nearest-hostile picks.
+      // Minted only here so headless/mouse input objects keep their shape.
+      inp.aimFromStick = true;
       // Right-stick / right-touch aim is independent of the ship nose, like the mouse.
-      const ax = aimAxes.rightX;
-      const ay = -aimAxes.rightY; // world +Z is "up" on the stick
+      // FB-004: pad aim rides the shared response curve + aim sensitivity (touch keeps its own
+      // scale); the raw gp.axes stay untouched either way.
+      const aimIsPad = !!(gp && gp.isConnected() && aimAxes === gp.axes);
+      const shapedAim = aimIsPad
+        ? shapePadVector(aimAxes.rightX, -aimAxes.rightY, padCurve, padSensAim)
+        : { x: aimAxes.rightX, y: -aimAxes.rightY };
+      const ax = shapedAim.x;
+      const ay = shapedAim.y; // world +Z is "up" on the stick
       const angle = Math.atan2(ay, ax);
       const dist = 300;
       inp.aimAngle = angle;
@@ -1612,14 +1784,23 @@ export const input = {
       const controllerDrawToFly = inp.autoFire && gpAimActive && !tpAimActive && !kbmRecent;
       writeAutoTargetVector(inp, ax, ay, controllerDrawToFly);
     } else {
+      if (inp.aimFromStick) delete inp.aimFromStick;
       // Mouse aim is INDEPENDENT of the nose: weapons gimbal toward the cursor (Phase 2).
+      // FB-004: the raw _ndc stays the device truth; sensitivity and Y inversion apply to the
+      // derived aim channel only (amplified or flipped NDC still raycasts — the aim just points
+      // further out or mirrored across the horizon).
+      const mouseCfg = (state.settings && state.settings.controls && state.settings.controls.mouse) || {};
+      const mouseSens = normalizePadSensitivity(mouseCfg.sensitivity);
+      const aimNdc = this._aimNdc || (this._aimNdc = { x: 0, y: 0 });
+      aimNdc.x = this._ndc.x * mouseSens;
+      aimNdc.y = this._ndc.y * mouseSens * (mouseCfg.invertY ? -1 : 1);
       const hit = this.helpers && this.helpers.raycastToPlane
-        ? this.helpers.raycastToPlane(this._ndc, this._rayHit || (this._rayHit = { x: 0, z: 0 }))
+        ? this.helpers.raycastToPlane(aimNdc, this._rayHit || (this._rayHit = { x: 0, z: 0 }))
         : null;
       const w = hit && Number.isFinite(hit.x) && Number.isFinite(hit.z) ? hit : { x: 0, z: 0 };
       aimWorld.x = w.x; aimWorld.z = w.z;
       if (p && p.pos) inp.aimAngle = Math.atan2(w.z - p.pos.z, w.x - p.pos.x);
-      inp.mouseNdc.x = this._ndc.x; inp.mouseNdc.y = this._ndc.y;
+      inp.mouseNdc.x = aimNdc.x; inp.mouseNdc.y = aimNdc.y;
       const pointerScreen = inp.pointerScreen || (inp.pointerScreen = { x: 0, y: 0, active: false });
       pointerScreen.x = this._screen.x;
       pointerScreen.y = this._screen.y;
@@ -1662,12 +1843,20 @@ export const input = {
     // Dock is its own button (§22 E1). A stay on the rope even while the dock prompt is up.
     const gpMasslineHeld = !!(this._gamepadLifecycleActionAllowed('massline')
       && gpMassline && gpMassline.held);
-    const masslineHeld = tetherHeld || gpMasslineHeld;
+    // FB-113: the Massline hold is itself a toggleable verb — press once to stay on the line,
+    // press again to come off. The grammar still sees honest held/release edges on the merged
+    // value, so tap-to-cut physics never changes for players who leave the toggle off.
+    const masslineHeld = applyHoldToggle(holdLatches, holdEdges, 'massline',
+      tetherHeld || gpMasslineHeld, toggleLive('massline'));
     const tetherActive = !!(state.player && (
       (state.player.tether && state.player.tether.active)
       || (state.player.remoteMassline && state.player.remoteMassline.active)
     ));
-    const dedicatedLineLength = (this._held(state, 'reelOut') ? 1 : 0) - (this._held(state, 'reelIn') ? 1 : 0);
+    const reelInHeld = applyHoldToggle(holdLatches, holdEdges, 'reelIn',
+      this._held(state, 'reelIn'), toggleLive('reelIn'));
+    const reelOutHeld = applyHoldToggle(holdLatches, holdEdges, 'reelOut',
+      this._held(state, 'reelOut'), toggleLive('reelOut'));
+    const dedicatedLineLength = (reelOutHeld ? 1 : 0) - (reelInHeld ? 1 : 0);
     const rawLineLength = dedicatedLineLength || -inp.moveZ;
     // In twin-stick, strafe is the orbit direction analog of the drive scheme's yaw stick.
     const rawOrbitDirection = kbdLineOrbit || gpTurn || gpMoveX || tpTurn;
@@ -1677,32 +1866,35 @@ export const input = {
         lineLength: rawLineLength,
         orbitDirection: rawOrbitDirection,
         pump: inp.boost,
-        source: tetherHeld ? 'keyboard' : (gpMasslineHeld ? 'gamepad' : null),
-        silentRelease: !!(gp && gp.deviceLostThisFrame) && !tetherHeld,
+        source: tetherHeld ? 'keyboard' : (gpMasslineHeld ? 'gamepad' : (masslineHeld ? 'latch' : null)),
+        silentRelease: !!(gp && gp.deviceLostThisFrame) && !masslineHeld,
       });
     const nearestTetherMode = !!(this._keys.ControlLeft || this._keys.ControlRight);
     acts.massline = masslineCommand;
     acts.tetherFire = masslineCommand.latch;
     acts.tetherCut = masslineCommand.cut;
     inp.tetherMode = masslineCommand.latch && nearestTetherMode ? 'nearest' : null;
-    acts.chargeThrow = edge('chargeThrow');
+    // FB-003: every verb below also listens on its pad binding (stock chords or a player remap)
+    // through the same quarantine gate the stock pad verbs already used. `_padEdge`/`_padHeld`
+    // read gp.actions.<name>, which the chord layer resolves before this merge runs.
+    acts.chargeThrow = edge('chargeThrow') || this._padEdge(gp, 'chargeThrow');
     acts.chargeDetonate = edge('chargeDetonate') || !!(gp && gp.isConnected()
       && this._gamepadLifecycleActionAllowed('chargeDetonate')
       && gp.actions.chargeDetonate && gp.actions.chargeDetonate.pressed);
-    acts.scanPulse = edge('scanPulse');
-    acts.cruise = edge('cruise');
+    acts.scanPulse = edge('scanPulse') || this._padEdge(gp, 'scanPulse');
+    acts.cruise = edge('cruise') || this._padEdge(gp, 'cruise');
     acts.autopursuit = false;
-    acts.deployBeacon = edge('deployBeacon');
+    acts.deployBeacon = edge('deployBeacon') || this._padEdge(gp, 'deployBeacon');
     // PQ-011 anchor Mass Seed: ordinary edge verb (Digit4 default, rebindable like every flight verb).
-    acts.deployMassSeed = edge('deployMassSeed');
+    acts.deployMassSeed = edge('deployMassSeed') || this._padEdge(gp, 'deployMassSeed');
     // PQ-012 field tools: three ordinary edge verbs (Digit5-7 default, rebindable like every flight verb).
-    acts.deployWell = edge('deployWell');
+    acts.deployWell = edge('deployWell') || this._padEdge(gp, 'deployWell');
     acts.deployRepulsor = edge('deployRepulsor') || !!(gp && gp.isConnected()
       && this._gamepadLifecycleActionAllowed('deployRepulsor')
       && gp.actions.deployRepulsor && gp.actions.deployRepulsor.pressed);
-    acts.toggleClearingCone = edge('toggleClearingCone');
+    acts.toggleClearingCone = edge('toggleClearingCone') || this._padEdge(gp, 'toggleClearingCone');
     // PQ-013 skim collector: ordinary edge verb (Digit8 default, rebindable like every flight verb).
-    acts.toggleSkimCollector = edge('toggleSkimCollector');
+    acts.toggleSkimCollector = edge('toggleSkimCollector') || this._padEdge(gp, 'toggleSkimCollector');
     // Drift-bomb bay: two ordinary edge verbs (Digit9/Comma default, rebindable like every flight
     // verb), OR-ed with the pad edges (dRight/dLeft default) behind the same lifecycle gate as
     // travelBurn. The bombs system consumes them; input only reports the edges.
@@ -1714,10 +1906,16 @@ export const input = {
       && gp.actions.cycleBomb && gp.actions.cycleBomb.pressed);
     // Massline Wave M2 verbs. bulletTime is a LEVEL (hold-to-dilate; the system owns the meter and
     // may refuse when empty); cloakToggle is an edge; throwArm was resolved above where the mining
-    // beam routing is decided (single owner for the RMB arbitration).
-    acts.bulletTime = this._held(state, 'bulletTime');
-    acts.cloakToggle = edge('cloak');
+    // beam routing is decided (single owner for the RMB arbitration). FB-003: RB+D-pad-down is the
+    // pad cloak edge; FB-113: bulletTime joins the hold-to-toggle verbs.
+    acts.bulletTime = applyHoldToggle(holdLatches, holdEdges, 'bulletTime',
+      this._held(state, 'bulletTime') || this._padHeld(gp, 'bulletTime'), toggleLive('bulletTime'));
+    acts.cloakToggle = edge('cloak') || this._padEdge(gp, 'cloak');
     acts.throwArm = throwArmHeld;
+    // The Gyre Snare is a LEVEL verb like bulletTime/massline: hold to run the beam and hold the
+    // clump; the falling edge is the bowl. Opt-in press-to-toggle latch rides the same FB-113 path.
+    acts.gyreSnare = applyHoldToggle(holdLatches, holdEdges, 'gyreSnare',
+      this._held(state, 'gyreSnare') || this._padHeld(gp, 'gyreSnare'), toggleLive('gyreSnare'));
     // Travel Burn latch (D5/W1-5). Edge-triggered toggle; the state machine below owns what a
     // press MEANS in each state (arm a spool, cancel a spool, disengage a burn).
     const travelPressed = edge('travelBurn') || !!(gp && gp.isConnected()
@@ -1725,7 +1923,7 @@ export const input = {
       && gp.actions.travelBurn && gp.actions.travelBurn.pressed);
     this._travelEdge = travelPressed;
     acts.travelBurn = travelPressed;
-    acts.jettisonLot = edge('jettisonLot');
+    acts.jettisonLot = edge('jettisonLot') || this._padEdge(gp, 'jettisonLot');
     // Positive reelDelta lengthens the authoritative line; line-control uses ship-local axes.
     acts.reelDelta = masslineCommand.lineControl ? masslineCommand.lineLength : dedicatedLineLength;
     // M6: while line control owns the forward axis (W reels in, S pays out), the same key must
@@ -1752,6 +1950,7 @@ export const input = {
         inp.turnIntent = Math.abs(err) < HELM_DEADBAND
           ? 0
           : Math.max(-1, Math.min(1, err / HELM_SOFT_ANGLE));
+        inp.turnIntentFromAim = true;
       }
       if (inp.brake) {
         // Brake-to-stop: decompose the counter-velocity direction into the SAME ship axes
@@ -1781,6 +1980,7 @@ export const input = {
         inp.turnIntent = Math.abs(err) < HELM_DEADBAND
           ? 0
           : Math.max(-1, Math.min(1, err / HELM_SOFT_ANGLE));
+        inp.turnIntentFromAim = true;
       }
       if (inp.brake && p.vel) {
         const speed = Math.hypot(p.vel.x, p.vel.z);

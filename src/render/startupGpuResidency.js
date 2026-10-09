@@ -89,8 +89,13 @@ function enqueueGeometryResidencyBatches(renderer, work, options = {}) {
   return run;
 }
 
-function materialTextures(material, textures) {
+function materialTextures(material, textures, seenMaterials) {
   if (!material || typeof material !== 'object') return;
+  // Cloned ship parts and pooled VFX share materials. Census each material once per pass:
+  // walking every mesh otherwise repeats its full property/uniform scan, even though the
+  // texture set already deduplicates the result. Keep this local so later passes see edits.
+  if (seenMaterials.has(material)) return;
+  seenMaterials.add(material);
   for (const value of Object.values(material)) {
     if (value && value.isTexture) textures.add(value);
   }
@@ -108,6 +113,7 @@ function subjectRoots(subjects) {
 
 export function collectStartupTextures(subjects) {
   const textures = new Set();
+  const seenMaterials = new Set();
   const roots = subjectRoots(subjects);
   for (const root of roots) {
     if (root && root.isTexture === true) {
@@ -119,8 +125,47 @@ export function collectStartupTextures(subjects) {
       const materials = Array.isArray(object.material)
         ? object.material
         : object.material ? [object.material] : [];
-      for (const material of materials) materialTextures(material, textures);
+      for (const material of materials) materialTextures(material, textures, seenMaterials);
     });
+  }
+  return [...textures];
+}
+
+/**
+ * Stepped twin — identical traversal (explicit stack, same pre-order as
+ * traverse) and identical texture-set contents; yields every `sliceEvery`
+ * visited objects so an async admission driver paces a cohort's collect
+ * instead of paying the whole traverse inside one task.
+ */
+export function* collectStartupTexturesSteps(subjects, sliceEvery = 256) {
+  const textures = new Set();
+  const seenMaterials = new Set();
+  const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+  let visited = 0;
+  // Row-count yields alone under-pace: a fat stride of material-heavy nodes
+  // can still overrun — same wall-clock disjunct as the census family.
+  let strideAt = clockNow();
+  for (const root of subjectRoots(subjects)) {
+    if (root && root.isTexture === true) {
+      textures.add(root);
+      continue;
+    }
+    if (!root || typeof root.traverse !== 'function') continue;
+    const stack = [root];
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (!object) continue;
+      if ((++visited % every) === 0 || clockNow() - strideAt >= 2) {
+        strideAt = clockNow();
+        yield;
+      }
+      const materials = Array.isArray(object.material)
+        ? object.material
+        : object.material ? [object.material] : [];
+      for (const material of materials) materialTextures(material, textures, seenMaterials);
+      const children = object.children;
+      if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+    }
   }
   return [...textures];
 }
@@ -175,6 +220,53 @@ export function collectStartupGeometryDrawables(subjects, options = {}) {
 }
 
 /**
+ * Stepped twin — identical drawable set via an explicit stack (same pre-order as traverse),
+ * yielding every `sliceEvery` visited objects so an async residency leg paces the cohort
+ * collect instead of paying the whole traverse inside one task.
+ */
+export function* collectStartupGeometryDrawablesSteps(subjects, options = {}, sliceEvery = 256) {
+  const drawables = [];
+  const seen = new Set();
+  const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+  let visited = 0;
+  let strideAt = clockNow();
+  const visit = (object) => {
+    if (!drawableHasWork(object, options) || seen.has(object)) return;
+    seen.add(object);
+    drawables.push(object);
+    const tiers = object.userData && object.userData.spacefaceQualityTierGeometries;
+    if (Array.isArray(tiers)) {
+      for (const tierGeo of tiers) {
+        if (!tierGeo || tierGeo === object.geometry) continue;
+        const facade = Object.create(object);
+        facade.geometry = tierGeo;
+        drawables.push(facade);
+      }
+    }
+  };
+  for (const root of subjectRoots(subjects)) {
+    if (!root) continue;
+    if (typeof root.traverse !== 'function') {
+      visit(root);
+      continue;
+    }
+    const stack = [root];
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (!object) continue;
+      if ((++visited % every) === 0 || clockNow() - strideAt >= 2) {
+        strideAt = clockNow();
+        yield;
+      }
+      visit(object);
+      const children = object.children;
+      if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+    }
+  }
+  return drawables;
+}
+
+/**
  * Instanced drawables whose backing geometry never passed a residency prepare. Scene-level
  * instance pools (authored package pools, asteroid batches) have no per-subject admission
  * owner: the only stamp they ever get comes from a whole-scene seal, so a cook that skips or
@@ -197,6 +289,40 @@ export function collectUnresidentInstancedDrawables(subjects) {
   return drawables;
 }
 
+/** Stepped twin — same unstamped-instanced set via an explicit stack, yielding per slice. */
+export function* collectUnresidentInstancedDrawablesSteps(subjects, sliceEvery = 256) {
+  const drawables = [];
+  const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+  let visited = 0;
+  let strideAt = clockNow();
+  const visit = (object) => {
+    if (!object || object.isInstancedMesh !== true || !object.geometry) return;
+    const data = object.geometry.userData;
+    if (data && data.spacefaceGpuResident === true) return;
+    drawables.push(object);
+  };
+  for (const root of subjectRoots(subjects)) {
+    if (!root) continue;
+    if (typeof root.traverse !== 'function') {
+      visit(root);
+      continue;
+    }
+    const stack = [root];
+    while (stack.length > 0) {
+      const object = stack.pop();
+      if (!object) continue;
+      if ((++visited % every) === 0 || clockNow() - strideAt >= 2) {
+        strideAt = clockNow();
+        yield;
+      }
+      visit(object);
+      const children = object.children;
+      if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+    }
+  }
+  return drawables;
+}
+
 /**
  * Whether any drawable under root holds geometry the residency lane has never uploaded.
  * Shared cached geometries carry the stamp from their first admission, so live-built
@@ -204,15 +330,22 @@ export function collectUnresidentInstancedDrawables(subjects) {
  * upload inside the presented pass report unready.
  */
 export function hasUnresidentGeometry(root) {
-  let unready = false;
-  const visit = (object) => {
-    if (unready || !object || !object.geometry) return;
-    if (!(object.geometry.userData
-        && object.geometry.userData.spacefaceGpuResident === true)) unready = true;
-  };
-  if (root && typeof root.traverse === 'function') root.traverse(visit);
-  else visit(root);
-  return unready;
+  if (!root) return false;
+  const unresident = (object) => !!(object && object.geometry
+    && !(object.geometry.userData && object.geometry.userData.spacefaceGpuResident === true));
+  if (typeof root.traverse !== 'function') return unresident(root);
+  // traverse() cannot early-exit, so a live consult visited every descendant
+  // before answering. Explicit-stack DFS stops at the first unresident
+  // geometry — an all-resident subtree still walks in full.
+  const stack = [root];
+  while (stack.length > 0) {
+    const object = stack.pop();
+    if (!object) continue;
+    if (unresident(object)) return true;
+    const children = object.children;
+    if (children) for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+  }
+  return false;
 }
 
 function attributeByteLength(attribute) {
@@ -259,6 +392,33 @@ function createGeometryWorkItems(drawables, options = {}) {
   return { work, uniqueGeometries: seenGeometries.size };
 }
 
+// Stepped twin — the drawable scan is linear but unbounded; a cohort of tens
+// of thousands paid one atomic mint behind the boundary yield. Yields at
+// stride boundaries keep the same work list semantics.
+function* createGeometryWorkItemsSteps(drawables, options = {}) {
+  const work = [];
+  const seenGeometries = new Set();
+  const ignoreStamps = options.ignoreResidentStamps === true;
+  let visited = 0;
+  for (const object of drawables) {
+    if ((++visited % 1024) === 0) yield;
+    const geometry = object.geometry;
+    const firstGeometryUse = !seenGeometries.has(geometry);
+    if (firstGeometryUse) seenGeometries.add(geometry);
+    if (!firstGeometryUse && !object.isInstancedMesh) continue;
+    if (!ignoreStamps
+        && geometry.userData && geometry.userData.spacefaceGpuResident === true
+        && !object.isInstancedMesh) continue;
+    let estimatedBytes = firstGeometryUse ? geometryByteLength(geometry) : 0;
+    if (object.isInstancedMesh) {
+      estimatedBytes += attributeByteLength(object.instanceMatrix);
+      estimatedBytes += attributeByteLength(object.instanceColor);
+    }
+    work.push({ object, geometry, estimatedBytes });
+  }
+  return { work, uniqueGeometries: seenGeometries.size };
+}
+
 function partitionGeometryWork(work, options = {}) {
   const maxDrawables = Math.max(1, Number(options.geometryBatchDrawables)
     || STARTUP_GEOMETRY_BATCH_DRAWABLES);
@@ -268,6 +428,32 @@ function partitionGeometryWork(work, options = {}) {
   let current = [];
   let bytes = 0;
   for (const item of work) {
+    if (current.length > 0
+        && (current.length >= maxDrawables || bytes + item.estimatedBytes > maxBytes)) {
+      batches.push({ work: current, estimatedBytes: bytes });
+      current = [];
+      bytes = 0;
+    }
+    current.push(item);
+    bytes += item.estimatedBytes;
+  }
+  if (current.length > 0) batches.push({ work: current, estimatedBytes: bytes });
+  return batches;
+}
+
+// Stepped twin — same linear scan; yields at stride boundaries so a giant
+// work list does not mint its batches inside one atomic leg.
+function* partitionGeometryWorkSteps(work, options = {}) {
+  const maxDrawables = Math.max(1, Number(options.geometryBatchDrawables)
+    || STARTUP_GEOMETRY_BATCH_DRAWABLES);
+  const maxBytes = Math.max(1, Number(options.geometryBatchBytes)
+    || STARTUP_GEOMETRY_BATCH_BYTES);
+  const batches = [];
+  let current = [];
+  let bytes = 0;
+  let visited = 0;
+  for (const item of work) {
+    if ((++visited % 1024) === 0) yield;
     if (current.length > 0
         && (current.length >= maxDrawables || bytes + item.estimatedBytes > maxBytes)) {
       batches.push({ work: current, estimatedBytes: bytes });
@@ -416,8 +602,39 @@ function restoreRendererState(renderer, state) {
  * attaching them to the visible scene or changing their production materials.
  */
 export async function prepareStartupGeometryResidency(renderer, subjects, options = {}) {
-  const drawables = collectStartupGeometryDrawables(subjects, options);
-  const { work, uniqueGeometries } = createGeometryWorkItems(drawables, options);
+  const collectYield = typeof options.yieldToMain === 'function'
+    ? options.yieldToMain
+    : yieldToBrowser;
+  let drawables;
+  if (typeof collectStartupGeometryDrawablesSteps === 'function') {
+    const collectIt = collectStartupGeometryDrawablesSteps(subjects, options);
+    for (;;) {
+      const collectStep = collectIt.next();
+      if (collectStep.done) { drawables = collectStep.value; break; }
+      await collectYield();
+    }
+  } else {
+    drawables = collectStartupGeometryDrawables(subjects, options);
+  }
+  // The work-list mint rides its Steps twin under the boundary yield — a big
+  // cohort no longer pays the whole drawable scan inside one task, while the
+  // unconditional yield keeps a small cohort's collect->mint fuse broken the
+  // way the boundary always did.
+  await collectYield();
+  let work, uniqueGeometries;
+  if (typeof createGeometryWorkItemsSteps === 'function') {
+    const workIt = createGeometryWorkItemsSteps(drawables, options);
+    for (;;) {
+      const workStep = workIt.next();
+      if (workStep.done) {
+        ({ work, uniqueGeometries } = workStep.value);
+        break;
+      }
+      await collectYield();
+    }
+  } else {
+    ({ work, uniqueGeometries } = createGeometryWorkItems(drawables, options));
+  }
   if (!renderer || typeof renderer.render !== 'function'
       || typeof renderer.setRenderTarget !== 'function'
       || typeof renderer.getRenderTarget !== 'function') {
@@ -452,8 +669,19 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
   // page's task queue for ~25 s this way — CI run 36486329212).
   const paceQueue = typeof options.paceQueue === 'function'
     ? options.paceQueue
-    : makeGpuQueuePacer(renderer);
-  const batches = partitionGeometryWork(work, options);
+    : makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
+  await yieldToMain();
+  let batches;
+  if (typeof partitionGeometryWorkSteps === 'function') {
+    const partitionIt = partitionGeometryWorkSteps(work, options);
+    for (;;) {
+      const partitionStep = partitionIt.next();
+      if (partitionStep.done) { batches = partitionStep.value; break; }
+      await yieldToMain();
+    }
+  } else {
+    batches = partitionGeometryWork(work, options);
+  }
   const geometryProgress = beginBootWork(renderer, 'geometry', batches.length);
   const material = residencyMaterialFor(renderer);
   const target = residencyScratchTargetFor(renderer);
@@ -560,8 +788,18 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
   // without a per-texture drain the queue drains inside one forced finish downstream.
   const paceQueue = typeof options.paceQueue === 'function'
     ? options.paceQueue
-    : makeGpuQueuePacer(renderer);
-  const textures = collectStartupTextures(subjects);
+    : makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
+  let textures;
+  if (typeof collectStartupTexturesSteps === 'function') {
+    const collectIt = collectStartupTexturesSteps(subjects);
+    for (;;) {
+      const collectStep = collectIt.next();
+      if (collectStep.done) { textures = collectStep.value; break; }
+      await yieldToMain();
+    }
+  } else {
+    textures = collectStartupTextures(subjects);
+  }
   for (const texture of Array.isArray(options.textures) ? options.textures : []) {
     if (texture && texture.isTexture === true && !textures.includes(texture)) textures.push(texture);
   }
@@ -578,6 +816,7 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
   const hasDeadline = Number.isFinite(deadlineMs) && deadlineMs >= 0;
   const startedAt = now();
   let hitDeadline = false;
+  let scanStrideAt = startedAt;
   for (let index = 0; index < count; index++) {
     if (hasDeadline && now() - startedAt >= deadlineMs) {
       hitDeadline = true;
@@ -597,6 +836,13 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       detachPackageTexture(texture);
       residentTextures += 1;
       textureProgress.update(index + 1);
+      // Resident rows skip the upload path's yield — a mostly-resident
+      // re-verify (recook/F9/context restore) would otherwise run the whole
+      // O(N) scan atomically: detach + DOM progress write per row.
+      if ((index & 255) === 255 || now() - scanStrideAt >= 2) {
+        scanStrideAt = now();
+        await yieldToMain();
+      }
       continue;
     }
     if (isPackageTextureDetached(texture)) {
@@ -605,6 +851,10 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       // copy, so count it resident and skip.
       residentTextures += 1;
       textureProgress.update(index + 1);
+      if ((index & 255) === 255 || now() - scanStrideAt >= 2) {
+        scanStrideAt = now();
+        await yieldToMain();
+      }
       continue;
     }
     await yieldToMain();

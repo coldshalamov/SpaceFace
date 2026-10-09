@@ -11,6 +11,19 @@ and cannot advance the Physics-as-Spectacle R5/five-minute-Ceres/R8 dependency c
 
 ---
 
+## Current design and execution route
+
+The [mature game target and asset-family design](world-depth-2026-10-02/README.md) makes the
+experience and missing physical vocabulary explicit. Read that target before choosing an asset
+batch; inexpensive reuse must not determine what the finished game is allowed to become.
+The historical experiments below remain evidence for their exact scenes, not current asset or
+runtime truth. Use current manifests/consumers and the selected slice's ordinary route.
+
+For execution, `INFERENCE_LANES.md` §0.2 and the existing FINISH_LANES area own bounded section
+work. The older loop/reviewer recipes in §§2 and 8 are supporting research, not mandatory model
+assignments, an unlimited run, a human-review gate or an instruction to seek perfection. A
+finished slice has evidence for its actual claim and a clear next step where broader work remains.
+
 ## 1. The single most important prior result
 
 A previous lane ran **twelve controlled experiments** trying to raise the independent reviewer's score

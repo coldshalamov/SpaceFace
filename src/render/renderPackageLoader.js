@@ -13,7 +13,7 @@ import {
   getAssetResidency,
 } from './assetResidency.js';
 import * as THREE from 'three';
-import { activeDecodeClass, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
+import { activeDecodeClass, regradeGltfCompile, regradeGltfParse, scheduleGltfCompile, scheduleGltfParse, sharedDecodeTaskBudget } from './decodeTaskBudget.js';
 import { createAsyncAdmission } from './asyncAdmission.js';
 import { createRenderPackageDigester } from './renderPackageDigest.js';
 import { sharedGlbPrepasser } from './glbPrepass.js';
@@ -23,6 +23,7 @@ import {
   packageDetachDiagnostics,
 } from './packageCpuDetach.js';
 import { dedupeGltfTextureSources } from './imageSourceDedupe.js';
+import { dedupWarn } from '../core/warnDedup.js';
 
 const ABSOLUTE_URL_RE = /^[a-z][a-z\d+.-]*:/i;
 const SHA256_RE = /^[a-f0-9]{64}$/;
@@ -84,13 +85,13 @@ export function createRenderPackageLoader(options = {}) {
     try {
       const resolved = await admission.wait(resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'no-cache'));
       try {
-        return await admission.wait(loadResolved(resolved.metadata, resolved.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions, admission));
+        return await admission.wait(loadResolved(resolved.metadata, resolved.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions, admission, metadataOrUrl));
       } catch (error) {
         // A stale immutable cache may win once at Electron's persistent origin.
         if (!isStalePackageCacheError(error) || typeof metadataOrUrl !== 'string') throw error;
         admission.assertActive();
         const reloaded = await admission.wait(resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'reload'));
-        return await admission.wait(loadResolved(reloaded.metadata, reloaded.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions, admission));
+        return await admission.wait(loadResolved(reloaded.metadata, reloaded.baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions, admission, metadataOrUrl));
       }
     } finally {
       admission.finish();
@@ -98,7 +99,7 @@ export function createRenderPackageLoader(options = {}) {
     }
   }
 
-  async function loadResolved(metadataValue, baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions = {}, requestAdmission) {
+  async function loadResolved(metadataValue, baseUrl, expectedContentHash, expectedRuntimeHash, loadOptions = {}, requestAdmission, metadataUrl = null) {
     requestAdmission.assertActive();
     if (disposed) throw new Error('Render package loader has been disposed.');
     assertValidRenderPackage(metadataValue);
@@ -149,6 +150,17 @@ export function createRenderPackageLoader(options = {}) {
     // inside that gap sends the loader into a decode→evict→retry livelock (the PQ-033.02
     // save/load station-shell hang: the gate-required package was always the eviction victim).
     const consumerOwner = loadOptions.residencyOwner || null;
+    // A source-URL task can represent several owners above this content-hash cache. Read
+    // that live set at both compile and commit: B may join after A posted the decode, and
+    // only B's own active residency claim may protect the result when A has departed.
+    const sharedConsumers = () => typeof loadOptions.getSharedDecodeConsumers === 'function'
+      ? loadOptions.getSharedDecodeConsumers()
+      : [loadOptions];
+    const consumerIsActive = (consumer) => typeof consumer.isResidencyOwnerActive !== 'function'
+      || consumer.isResidencyOwnerActive() === true;
+    const decodeConsumerActive = typeof loadOptions.getSharedDecodeConsumers === 'function'
+      ? () => sharedConsumers().some(consumerIsActive)
+      : loadOptions.isResidencyOwnerActive;
     // Warm-purpose decodes must carry the flag through this route too — a retracted prewarm or
     // runway residue otherwise reads identical to ambient package-cache residue and loses the
     // soft-eviction LRU race first, exactly the pop the flag exists to prevent.
@@ -158,29 +170,47 @@ export function createRenderPackageLoader(options = {}) {
     // sort last instead of first. Without a consumer owner the load is ambient, not served.
     const decodeServed = !decodeWarm && !!consumerOwner;
     const retainConsumer = (key) => {
-      if (!consumerOwner || requestAdmission.signal.aborted
-        || (typeof loadOptions.isResidencyOwnerActive === 'function'
-          && loadOptions.isResidencyOwnerActive() !== true)) return;
-      residency.retain(key, consumerOwner, {
-        role: loadOptions.residencyRole || 'live-boundary',
-        sectorId: loadOptions.residencySectorId || null,
-        decodeWarm,
-        decodeServed,
-        // Ownerless warms carry the same soft lease the GLB lane gives them — without it the
-        // session fallback owner makes this package immune to every soft-eviction pass.
-        ...(loadOptions.residencySoftLease === true ? { softLease: true } : {}),
-      });
+      if (requestAdmission.signal.aborted) return;
+      for (const consumer of sharedConsumers()) {
+        const owner = consumer.residencyOwner;
+        if (!owner || !consumerIsActive(consumer)) continue;
+        const warm = /warm|runway|prewarm|armory|predicted/i.test(String(consumer.residencyRole || ''));
+        residency.retain(key, owner, {
+          role: consumer.residencyRole || 'live-boundary',
+          sectorId: consumer.residencySectorId || null,
+          decodeWarm: warm,
+          decodeServed: !warm,
+          // Ownerless warms keep their existing soft lease; an active joiner is never
+          // permission to turn the creator's warm or departed owner into a hard retain.
+          ...(consumer.residencySoftLease === true ? { softLease: true } : {}),
+        });
+      }
     };
     const existing = cache.get(contentHash);
     if (existing) {
       if (existing.signature !== signature) {
         throw new Error(`Render package content hash collision for ${contentHash}.`);
       }
+      // Joiner liveness rides the shared entry: the compile tail skips genuinely-dead work
+      // only when no consumer remains — a departed creator must not null-settle the entry
+      // under a live joiner (the null would also poison every later caller of this hash).
+      if (typeof decodeConsumerActive === 'function') {
+        (existing.liveConsumers || (existing.liveConsumers = [])).push(decodeConsumerActive);
+      }
       const loaded = await existing.promise;
       requestAdmission.assertActive();
       if (existing.evicted) {
         if (cache.get(contentHash) === existing) cache.delete(contentHash);
-        return loadResolved(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions, requestAdmission);
+        return loadResolved(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions, requestAdmission, metadataUrl);
+      }
+      // Same dead-tail window as the GLB lane: the shared entry null-settled before this
+      // joiner's liveness registered — re-admit against a fresh entry under the joiner's
+      // own options rather than inheriting the miss into the caller's retry arm.
+      if (loaded == null) {
+        if (cache.get(contentHash) === existing) cache.delete(contentHash);
+        if (typeof loadOptions.isResidencyOwnerActive === 'function'
+          && !loadOptions.isResidencyOwnerActive()) return null;
+        return loadResolved(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions, requestAdmission, metadataUrl);
       }
       retainConsumer(existing.key);
       // retainPackageOwner owns both cases: an entry still held bumps its lease count, an
@@ -188,12 +218,6 @@ export function createRenderPackageLoader(options = {}) {
       // re-decode keeps its soft-eviction protection (and a failed reacquire still throws).
       if (!retainPackageOwner(existing, decodeWarm, decodeServed)) {
         throw new Error(`Render package ${metadata.assetId} could not reacquire residency.`);
-      }
-      // A live-boundary serve upgrades a speculation-warm package lease in place — residency
-      // .retain merges decodeServed onto the existing owner record.
-      else if (existing.packageOwner && decodeServed === true) {
-        residency.retain(existing.key, existing.packageOwner,
-          { role: 'render-package-cache', decodeWarm, decodeServed });
       }
       return loaded;
     }
@@ -203,6 +227,7 @@ export function createRenderPackageLoader(options = {}) {
       key: `render-package:${contentHash}`,
       signature,
       metadata,
+      metadataUrl: typeof metadataUrl === 'string' ? metadataUrl : null,
       renderUrl,
       promise: null,
       loaded: null,
@@ -210,7 +235,14 @@ export function createRenderPackageLoader(options = {}) {
       request: null,
       evicted: false,
       admission: newAdmission(`render-package:${metadata.assetId || contentHash}`),
+      // The decode's parse start keys its queued entry under this token so a
+      // later joiner can re-grade it (the parse lanes live inside
+      // scheduleGltfParse; the metadata object is unique per decode).
+      parseToken: metadata,
       refCount: 1,
+      liveConsumers: typeof decodeConsumerActive === 'function'
+        ? [decodeConsumerActive]
+        : [],
     };
     entry.request = residency.beginRequest(entry.key, entry.packageOwner, {
       role: 'render-package-cache',
@@ -222,7 +254,34 @@ export function createRenderPackageLoader(options = {}) {
         if (counters && counters.isEnabled()) counters.countPackageDecode(metadata.assetId);
         return decodeGlb(renderUrl, metadata);
       })
-      .then(async (decoded) => {
+      // Package decodes resolve in clusters exactly like source-GLB parses, and this path is the
+      // dominant decode route — an unpaced tail stacks K plan+bind continuations (traverse,
+      // per-vertex layout rebake, canonicalize) inside one microtask drain. Pace it through the
+      // same class lanes; the class travels by the caller's decode-class flag window, which a
+      // joiner's wrap holds through settle — so joined tasks classify at the joiner's class too.
+      .then((decoded) => scheduleGltfCompile(() => {
+        // Same owner-activity re-check the source-GLB tail runs at drain time: an owner that
+        // departed while the tail queued skips the compile — but the pending residency
+        // request and the decoded payload must be released by hand, mirroring the GLB lane's
+        // 'owner-departed-during-decode' cancel (a commit or a promise rejection would do the
+        // teardown; a plain null settle does neither).
+        const consumers = entry.liveConsumers;
+        if (consumers && consumers.length > 0 && !consumers.some((isLive) => isLive())) {
+          disposeDecodedResources(decoded);
+          if (entry.request) {
+            entry.request.cancel('owner-departed-during-compile');
+            entry.request = null;
+          }
+          // A null settle resolves, not rejects — evict by hand or every later caller of
+          // this hash inherits the miss forever (the GLB lane's settled-null eviction).
+          if (cache.get(contentHash) === entry) cache.delete(contentHash);
+          return null;
+        }
+        return preparePackageTail(decoded);
+      }, activeDecodeClass(), entry.promise));
+
+  function preparePackageTail(decoded) {
+    return (async () => {
         try { entry.admission.assertActive(); } catch (error) {
           disposeDecodedResources(decoded);
           throw error;
@@ -307,10 +366,11 @@ export function createRenderPackageLoader(options = {}) {
             collectResources: collectImmutableResources,
           });
         } catch (error) {
-          if (typeof console !== 'undefined') console.warn('[renderPackageLoader] cpu detach manifest failed', error);
+          dedupWarn('renderPackageLoader:cpu-detach-manifest', '[renderPackageLoader] cpu detach manifest failed', error);
         }
         return loaded;
-      });
+      })();
+  }
     entry.promise = entry.admission.wait(decodeWork);
     cache.set(contentHash, entry);
     const admissionSettled = () => {
@@ -330,6 +390,12 @@ export function createRenderPackageLoader(options = {}) {
     if (disposed || entry.evicted) return false;
     if (entry.packageOwner) {
       entry.refCount = (entry.refCount || 1) + 1;
+      // A live-boundary serve upgrades a speculation-warm package lease in place —
+      // residency .retain merges decodeServed onto the existing owner record.
+      if (decodeServed === true) {
+        residency.retain(entry.key, entry.packageOwner,
+          { role: 'render-package-cache', decodeWarm, decodeServed });
+      }
       return true;
     }
     const owner = createOwner('package-cache', entry.metadata.contentHash);
@@ -416,9 +482,33 @@ export function createRenderPackageLoader(options = {}) {
     });
   }
 
+  /**
+   * Re-grade a queued package compile tail to `joinClass` for the package loaded from
+   * `metadataUrl`. The dominant decode route's tail enqueues under the class that was active
+   * when its decode resolved — a deadline/visible joiner landing after the enqueue would
+   * otherwise sit behind every queued ambient compile. Returns true when a queued entry was
+   * re-graded; a settled or unstarted tail resolves false and the caller's flag window
+   * covers anything still to enqueue.
+   */
+  function regradeCompileFor(metadataUrl, joinClass) {
+    if (typeof metadataUrl !== 'string' || !metadataUrl) return false;
+    for (const entry of cache.values()) {
+      if (entry.metadataUrl === metadataUrl) {
+        // Re-grade the parse start AND the compile tail — a joiner's decode
+        // still queued for its parse would otherwise sit behind every ambient
+        // warm ahead of it even after the tail promotes.
+        const parse = entry.parseToken ? regradeGltfParse(entry.parseToken, joinClass) : false;
+        const compile = entry.promise ? regradeGltfCompile(entry.promise, joinClass) : false;
+        return parse || compile;
+      }
+    }
+    return false;
+  }
+
   return Object.freeze({
     load,
     loadWithSourceFallback,
+    regradeCompileFor,
     release,
     dispose,
     diagnostics,
@@ -698,6 +788,16 @@ class LoadedRenderPackage {
   }
 
   createInstance(instanceOptions = {}) {
+    const iter = this.createInstanceSteps(instanceOptions);
+    let step = iter.next();
+    while (!step.done) step = iter.next();
+    return step.value;
+  }
+
+  // Stepped twin: identical instantiation body, yielding per 512 plan nodes so an
+  // async driver can pace the clone loop across browser beats. Sync callers
+  // exhaust it inline for the same result; failure paths release identically.
+  *createInstanceSteps(instanceOptions = {}) {
     if (this.released || this.evicted || !this.#lifecycle.entry.packageOwner) {
       throw new Error(`Render package ${this.assetId} must be retained before creating an instance.`);
     }
@@ -733,6 +833,9 @@ class LoadedRenderPackage {
       // the record->node resolution now happened once, at load, in buildInstancePlan.
       const objects = new Array(count);
       for (let i = 0; i < count; i++) {
+        // objects[] is index-addressed so a stride boundary costs nothing; the
+        // partial instance is unreachable outside this leg until it returns.
+        if (i > 0 && (i % 512) === 0) yield;
         const entry = entries[i];
         const created = createNode ? createNode({
           source: entry.source,
@@ -1102,7 +1205,7 @@ export function startMeshoptWorkerPool(MeshoptDecoder, options = {}) {
     }
     meshoptWorkerPoolStarted = true;
   } catch (error) {
-    console.warn('[renderPackageLoader] meshopt worker decode unavailable; decoding on the present thread', error);
+    dedupWarn('renderPackageLoader:meshopt-worker-decode', '[renderPackageLoader] meshopt worker decode unavailable; decoding on the present thread', error);
   }
 }
 
@@ -1147,10 +1250,11 @@ function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
       });
     }
     if (typeof configureGltfLoader === 'function') await configureGltfLoader(loader, metadata);
-    const gltf = await loader.parseAsync(buffer, resourceBaseUrl(url));
+    const gltf = await scheduleGltfParse(() => loader.parseAsync(buffer, resourceBaseUrl(url)), metadata);
     // Cross-package image-source dedupe: embedded PNG/JPEG copies collapse onto one THREE.Source
     // per distinct byte payload; embedded KTX2 sources already dedupe inside the texture plugin.
-    await dedupeGltfTextureSources(gltf);
+    // Paced through the class lanes so clustered parse replies can't stack the sync walk.
+    await scheduleGltfCompile(() => dedupeGltfTextureSources(gltf), activeDecodeClass());
     return gltf;
   };
 }

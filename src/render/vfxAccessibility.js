@@ -10,8 +10,10 @@ const REDUCED_MOTION = Object.freeze({
   id: 'reduced-motion',
   flashOpacityScale: 0.58,
   flashSizeScale: 0.84,
-  flashMinLife: 0.09,
-  eventLightPeakScale: 0,
+  // FB-077 — reduced motion holds the cue longer (the grammar's 1.8× hold on the ~0.09 s flash
+  // floor) and no event light is deleted outright: the light floor is 0.1 of authored peak.
+  flashMinLife: 0.16,
+  eventLightPeakScale: 0.1,
 });
 
 const REDUCED_FLASH = Object.freeze({
@@ -25,7 +27,9 @@ const REDUCED_FLASH = Object.freeze({
 const REDUCED_BOTH = Object.freeze({
   ...REDUCED_FLASH,
   id: 'reduced-motion-and-flash',
-  eventLightPeakScale: 0,
+  // Reduced motion is the stricter read for light: the 0.1 floor, not the flash profile's 0.24
+  // and never zero — a kill still carries its authored light, just held, not strobe-cut.
+  eventLightPeakScale: 0.1,
 });
 
 /** Resolve shared immutable policy so hot VFX paths do not allocate per effect. */

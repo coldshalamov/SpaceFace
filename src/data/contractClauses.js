@@ -109,11 +109,12 @@ export const CONTRACT_CLAUSES = Object.freeze({
     },
   }),
 
-  // Time limit — the contract must complete before a deadline. AUTHORED-ONLY today: no system
-  // emits a 'time_limit' bus event and contractClausesSystem has no deadline tick, so attachClauses'
-  // observed-event filter keeps generated offers from ever receiving it (the live deadline a
-  // generated offer would need is not a seam that exists). Authored offers may still carry it via
-  // clauseIds — the mission's own deadline machinery (m.deadline_s) settles the fiction.
+  // Time limit — the contract must complete before its deadline. `event` is the internally
+  // resolved sentinel: no bus event carries it, so contractClausesSystem ticks the predicate
+  // against m.deadline_s on state.simTime, and the mission's own expiry machinery (which runs
+  // first in registry order) settles the fiction — the clause system marks the breach there.
+  // attachClauses offers it only on offers that carry a real duration_s, since a deadline-free
+  // contract would make the +5% unconditional: a dead term, not a risk.
   time_limit: Object.freeze({
     id: 'time_limit',
     event: 'time_limit',

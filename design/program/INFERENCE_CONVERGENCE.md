@@ -7,7 +7,8 @@ mindset and memory that make repeated "make it better" batches converge instead
 of polishing the same corner forever.
 
 You are the developer on duty. If [`INFERENCE_IDEAS.md`](./INFERENCE_IDEAS.md)
-has an OPEN catalog line, that line is what needs you: do it, leave the note,
+has an OPEN catalog line and the request is the directed repair loop, that line
+is what needs you: do it, leave the note,
 and take a line from another group. If the catalog is empty, look at the state
 of the game, improve one thing completely, leave a note so the next session
 starts smarter, and go somewhere else next. Open feelings are `build_map.md`
@@ -21,7 +22,7 @@ starts smarter, and go somewhere else next. Open feelings are `build_map.md`
 | Whole-game state | `node scripts/inference-ledger.mjs` (~30 lines) | always, at batch start |
 | One domain's notes | the ledger's `WF-XX` entry (printed by the same command with `--wf`) | only the domain you touch |
 | The domain's standard | that WF file's "One production unit" + failure modes | when grading or finishing |
-| Grunt assignment | [`INFERENCE_IDEAS.md`](./INFERENCE_IDEAS.md) catalog | when any line is OPEN — do the line, do not invent |
+| Grunt assignment | [`INFERENCE_IDEAS.md`](./INFERENCE_IDEAS.md) catalog | for directed-repair requests when a line is OPEN; section requests use §0.2 |
 
 Never read all domain entries. Never sweep `design/`, archives, or transcripts
 for an ordinary unit. If the ledger grows past what fits on one screen, it is
@@ -36,8 +37,11 @@ READ the ledger → PICK → INSPECT → GRADE → IMPROVE → RECORD → ROTATE
 **READ.** Run the ledger. It shows every domain's grade, last touch, whether
 its inspection is still valid, open gaps, and one suggested next move.
 
-**PICK.** If the directed catalog has an OPEN line, take that line (lanes
-§0.1). Otherwise take the weakest or stalest domain you can *verify by looking*
+**PICK.** An explicit section-development request follows lanes §0.2: resume
+the relevant existing FINISH_LANES area, read its current next action, and name
+one bounded slice before selecting another domain. For the directed repair
+loop, if the catalog has an OPEN line, take that line (lanes §0.1). Otherwise
+take the weakest or stalest domain you can *verify by looking*
 — an uninspected domain, a stale inspection, a C/D grade, an open gap. The
 ledger suggests three; looking beats the suggestion. Never pick what you
 just polished because it is familiar.
@@ -52,6 +56,11 @@ If the standard is missing or wrong for what the game needs now, developing
 it is part of the work: a short checklist an agent can grade against, no
 taste allowlists, one-line rationale, versioned by git like everything else.
 
+A domain grade is not the grade of its last repaired leaf. State the inspected
+slice and remaining coverage in the existing finding/next fields; a single
+successful local repair does not establish a whole-domain A. Reinspect stale
+coverage before using its grade to steer work elsewhere.
+
 **IMPROVE.** Fix one thing completely through live owners. Improve means any
 of: build the missing thing, polish the weak thing, simplify the
 overcomplicated thing, optimize the slow thing, delete the thing that misses
@@ -61,8 +70,14 @@ inside the unit, ship the second or third attempt.
 **RECORD.** Update the ledger row in place: grade, inspection (~5 lines:
 what you looked at, what you found), gaps opened/closed, next move. Record
 the production unit in `inference-memory.json` as usual. Small notes or none.
+For section-development work, include the named slice, observed route and
+remaining unproven claim in finding; next names the one remaining causal seam
+or area-acceptance action and its existing owner. Use the existing commands;
+no new schema, per-unit document, or hand-edit of machine memory is needed.
 
-**ROTATE.** Next unit is a different kind of value (parent §3.4). Over
+**ROTATE.** Next unit is a different kind of value (parent §3.4). In explicit
+section-development work, finish the bounded causal slice before rotating;
+a session boundary carries unfinished work forward under §0.2. Over
 batches, rotation plus the ledger's dates is what rounds out the game: a
 fresh A means go elsewhere; an old C means come back.
 

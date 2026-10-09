@@ -8,6 +8,8 @@ export function createSaveStage() {
     portrait.setAttribute('aria-label', 'Save portrait');
     const scars = el('p', 'k-sentence k-t-fine sf-portrait-scars', '');
     scars.dataset.portraitField = 'scars';
+    const repairs = el('p', 'k-sentence k-t-fine sf-portrait-repairs', '');
+    repairs.dataset.portraitField = 'repairs';
     const titles = el('p', 'k-sentence k-t-fine sf-portrait-titles', '');
     titles.dataset.portraitField = 'titles';
     const rapSheet = el('p', 'k-sentence k-t-fine sf-portrait-rap', '');
@@ -15,6 +17,7 @@ export function createSaveStage() {
     const grudge = el('p', 'k-sentence k-t-fine sf-portrait-grudge', '');
     grudge.dataset.portraitField = 'grudge';
     portrait.appendChild(scars);
+    portrait.appendChild(repairs);
     portrait.appendChild(titles);
     portrait.appendChild(rapSheet);
     portrait.appendChild(grudge);
@@ -29,5 +32,5 @@ export function createSaveStage() {
     caption.appendChild(fine);
     caption.appendChild(actions);
     stage.appendChild(caption);
-    return { stage, caption, shipName, portrait, scars, titles, rapSheet, grudge, objective, credits, fine, actions };
+    return { stage, caption, shipName, portrait, scars, repairs, titles, rapSheet, grudge, objective, credits, fine, actions };
 }

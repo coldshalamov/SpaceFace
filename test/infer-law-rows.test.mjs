@@ -301,6 +301,9 @@ test('row 247: a fine can be chosen and a surrender has a price', () => {
   const neighbor = makeLaw({ heat: 0.2, credits: 5000 });
   add(neighbor, { ...station });
   neighbor.bus.emit('dock:docked', { stationId: 'station_tethys' });
+  assert.equal(events(neighbor.bus, 'economy:chargeCredits').length, 0, 'FB-039: the berth assesses, it does not charge');
+  assert.equal(events(neighbor.bus, 'law:fineAssessed').filter((row) => row.payload.offer === true).length, 1);
+  neighbor.bus.emit('law:fineChoice', { choice: 'pay', stationId: 'station_tethys' });
   assert.equal(events(neighbor.bus, 'economy:chargeCredits').length, 1);
   assert.equal(events(neighbor.bus, 'heat:clear').length, 1);
   const paid = events(neighbor.bus, 'law:response').find((row) => row.payload.action === 'fine_paid');
@@ -310,6 +313,9 @@ test('row 247: a fine can be chosen and a surrender has a price', () => {
   add(broke, { ...station });
   broke.bus.emit('dock:docked', { stationId: 'station_tethys' });
   assert.equal(events(broke.bus, 'economy:chargeCredits').length, 0);
+  assert.ok(events(broke.bus, 'law:fineAssessed').some((row) => row.payload.offer === true), 'a broke pilot still gets the offer');
+  broke.bus.emit('law:fineChoice', { choice: 'pay', stationId: 'station_tethys' });
+  assert.equal(events(broke.bus, 'economy:chargeCredits').length, 0, 'a short answer is refused, never charged');
   assert.ok(events(broke.bus, 'law:response').some((row) => row.payload.action === 'fine_unpaid'));
   assert.equal(broke.state.player.heat, 0.2);
 
@@ -318,6 +324,7 @@ test('row 247: a fine can be chosen and a surrender has a price', () => {
   const refused = scan.bus.emit('law:playerSurrender', {}) || scan.law._beginPlayerSurrender();
   assert.equal(refused.reason || events(scan.bus, 'law:surrenderRefused')[0].payload.reason, 'not_in_custody_tier');
   scan.bus.emit('dock:docked', { stationId: 'station_tethys' });
+  scan.bus.emit('law:fineChoice', { choice: 'pay', stationId: 'station_tethys' });
   assert.equal(events(scan.bus, 'economy:chargeCredits').length, 1, 'a refused surrender still leaves the fine payable');
 
   const held = makeLaw({ heat: 0.65, credits: 5000 });

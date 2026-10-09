@@ -10,9 +10,11 @@
 // compact chain readout (the open line's named acts, the raw points, the chain-window scale with
 // its bridge notches, and the banked total).
 //
-// Scope law (PQ-146 non-goal): NO score popups in adventure flight. Every render path gates on a
-// LIVE survival run in flight mode — outside it the layer is hidden and its frame listener is
-// stopped, so adventure and menus pay nothing.
+// Scope law (PQ-146 non-goal, as amended by FB-012): NO score popups in adventure flight —
+// named acts are not score. The Crucible meter (multiplier, raw points, banked, window) gates
+// on a LIVE survival run; the named acts speak wherever the flight HUD is up, adventure
+// included. Outside flight the layer is hidden and its frame listener is stopped, so menus pay
+// nothing.
 //
 // ORRERY (design/frontend/ORRERY.md): light is the only material. Type carries the callouts (caps
 // labels, thin numerals, `--dp-*` tokens via injectOrrery), the chain window is a scale (a ruled
@@ -28,6 +30,7 @@
 
 import { TRICK_DEFINITIONS } from '../combat/stuntRecognition.js';
 import { styleMultiplier } from '../systems/stuntCombo.js';
+import { bombPrimeLine, statusPayoffLine } from '../data/statusPayoffs.js';
 import { injectOrrery } from './orrery/tokens.js';
 import { onFrame } from './orrery/motion.js';
 
@@ -39,6 +42,10 @@ export const MAX_CALLOUT_LINES = 3;
 export const MAX_LINE_NAMES = 3;
 /** Style-sheet id for the layer's namespaced sheet. */
 export const STUNT_CALLOUT_STYLE_ID = 'sf-stuntcall-css';
+export const SPEED_DIAL_SELECTOR = '.orr-speeddial';
+export const SPEED_DIAL_CLEARANCE_PX = 48;
+export const STABLE_LOAD_SELECTOR = '.sf-stableload--visible';
+export const STABLE_LOAD_CLEARANCE_PX = 12;
 
 const BONE = '236 230 216';
 
@@ -73,6 +80,7 @@ const CSS = `
 .sf-stuntcall__rise { animation:sf-stuntcall-rise .34s cubic-bezier(.2, .9, .3, 1) both; }
 @keyframes sf-stuntcall-rise { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:none; } }
 html.sf-reduce-motion .sf-stuntcall__rise { animation:none; }
+@media (prefers-reduced-motion:reduce) { .sf-stuntcall__rise { animation:none; } }
 .sf-stuntcall__sr { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden;
   clip:rect(0 0 0 0); white-space:nowrap; }
 `;
@@ -86,6 +94,88 @@ function injectStyle(doc) {
 }
 
 /* --- pure builders. Everything the layer says is decided here, DOM-free. --------------------- */
+
+/**
+ * Four event seams that were emitted and never subscribed by a player sense.
+ * Open release-window already speaks through audio:cue massline.solutionLock;
+ * the close did not. A ride, a cleared snag, and a throw named themselves
+ * nowhere this event could reach.
+ * Returns null when the edge should stay quiet.
+ */
+export function handlineSenseLine(eventName, payload) {
+  const p = payload || {};
+  if (eventName === 'massline:releaseWindow') {
+    if (p.open === true) return null;
+    return { key: 'window-shut', name: 'WINDOW CLOSED', detail: '' };
+  }
+  if (eventName === 'massline:rideStarted') {
+    const spd = Number.isFinite(p.anchorSpeed) ? Math.round(p.anchorSpeed) : null;
+    return { key: 'ride-started', name: 'RIDE', detail: spd == null ? '' : String(spd) };
+  }
+  if (eventName === 'tether:snagCleared') {
+    return { key: 'line-clear', name: 'LINE CLEAR', detail: '' };
+  }
+  if (eventName === 'massline:throw') {
+    const spd = Number.isFinite(p.payloadSpeed) ? Math.round(p.payloadSpeed) : null;
+    const id = p.releaseId != null ? String(p.releaseId) : 'throw';
+    return { key: `throw:${id}`, name: 'THROWN', detail: spd == null ? '' : String(spd) };
+  }
+  // The latch click and the capture picture do not say whether the snag was clean.
+  if (eventName === 'tether:snapCatch') {
+    const name = p.rating === 'clean' ? 'CLEAN SNAG'
+      : p.rating === 'good' ? 'GOOD SNAG'
+      : p.rating === 'rough' ? 'ROUGH SNAG'
+      : null;
+    if (!name) return null;
+    const kept = Number.isFinite(p.landTangentialSpeed) ? Math.round(p.landTangentialSpeed) : null;
+    return { key: 'snap-catch', name, detail: kept == null ? '' : String(kept) };
+  }
+  // A low or medium pump is the winch. Only the snap-risk stroke gets a word.
+  if (eventName === 'tether:reelPump') {
+    if (p.risk !== 'high') return null;
+    return { key: 'pump-hot', name: 'PUMP HOT', detail: '' };
+  }
+  // Three seams that were emitted and never reached a player sense.
+  if (eventName === 'massline:bridleCut') {
+    return { key: 'bridle-cut', name: 'BRIDLE CUT', detail: '' };
+  }
+  if (eventName === 'well:fling') {
+    if (p.primed !== true) return null;
+    return { key: 'well-fling', name: 'FLING', detail: '' };
+  }
+  if (eventName === 'weapons:inertialShunt') {
+    const dv = Number.isFinite(p.targetDeltaV) ? Math.round(p.targetDeltaV) : null;
+    const id = p.targetId != null ? String(p.targetId) : 'shunt';
+    return { key: `shunt:${id}`, name: 'SHUNT', detail: dv == null ? '' : String(dv) };
+  }
+  return impactGradeLine(eventName, p);
+}
+
+/**
+ * A whip or a sweep already rates glance, solid, or crushing and then says
+ * only "impact". The callout names the grade. An unrated contact stays quiet.
+ * The number is the speed the receipt already carried.
+ */
+export function impactGradeLine(eventName, payload) {
+  const sweep = eventName === 'massline:sweepImpact';
+  const whip = eventName === 'tether:whipImpact';
+  if (!sweep && !whip) return null;
+  const p = payload || {};
+  const name = p.rating === 'crushing' ? (sweep ? 'CRUSHING SWEEP' : 'CRUSHING HIT')
+    : p.rating === 'solid' ? (sweep ? 'SOLID SWEEP' : 'SOLID HIT')
+    : p.rating === 'glance' ? (sweep ? 'GLANCE SWEEP' : 'GLANCE')
+    : null;
+  if (!name) return null;
+  const raw = sweep ? p.transverseSpeed : p.relSpeed;
+  const spd = Number.isFinite(raw) ? Math.round(raw) : null;
+  const id = p.victimId != null ? String(p.victimId) : 'hit';
+  const tick = p.tick != null ? String(p.tick) : '0';
+  return {
+    key: `${sweep ? 'sweep' : 'whip'}:${id}:${tick}`,
+    name,
+    detail: spd == null ? '' : String(spd),
+  };
+}
 
 function trickBaseName(trick) {
   if (trick && typeof trick.name === 'string' && trick.name) return trick.name;
@@ -116,6 +206,20 @@ export function trickCalloutName(trick) {
   if (collateral > 1) parts.push(`Collateral ×${collateral}`);
   if (mods.closeShave === true && trick.trickId !== 'needle_thread') parts.push('Close Shave');
   return parts.join(' · ');
+}
+
+/**
+ * The momentum figure beside a named act. Not a score: available momentum first,
+ * then a raw momentum, then the useful delta-v the receipt already carried.
+ * Zero and missing stay blank so a nameless ordinary kill cannot grow a number.
+ */
+export function trickMomentumText(trick) {
+  const metrics = trick && trick.metrics;
+  if (!metrics || typeof metrics !== 'object') return '';
+  const raw = [metrics.availableMomentum, metrics.momentum, metrics.usefulDeltaV]
+    .find((n) => Number.isFinite(n) && n > 0);
+  if (raw == null) return '';
+  return String(Math.round(raw));
 }
 
 const clamp01 = (x) => Math.min(1, Math.max(0, Number(x) || 0));
@@ -169,6 +273,30 @@ export function selfSlingCalloutText(bonusDv) {
 }
 
 /**
+ * FB-007 — the completed stroke's band, named the way a release is named.
+ * The number beside it is the peak speed the grader already measured.
+ * A missing or unknown band stays quiet. Zero speed stays blank.
+ */
+export function strokeGradeLine(stroke) {
+  if (!stroke || typeof stroke !== 'object') return null;
+  const name = stroke.band === 'razor' ? 'RAZOR STROKE'
+    : stroke.band === 'clean' ? 'CLEAN STROKE'
+    : stroke.band === 'good' ? 'GOOD STROKE'
+    : stroke.band === 'messy' ? 'MESSY STROKE'
+    : null;
+  if (!name) return null;
+  const spd = Number.isFinite(stroke.peakSpeed) && stroke.peakSpeed > 0
+    ? Math.round(stroke.peakSpeed) : null;
+  const dist = Number.isFinite(stroke.distanceWu) ? stroke.distanceWu : 0;
+  const time = Number.isFinite(stroke.timeOnPathS) ? stroke.timeOnPathS : 0;
+  return {
+    key: `stroke:${stroke.band}:${dist}:${time}`,
+    name,
+    detail: spd == null ? '' : String(spd),
+  };
+}
+
+/**
  * The words for a settled bank receipt. A quiet/deadline/round_clear bank is a BANK;
  * a hard crash or death settles the open line at ×1 (SCORING_AND_COMBO §4.5) and the line
  * says so — the player lost composition, not the truth of what happened.
@@ -217,6 +345,14 @@ function mk(doc, tag, className, text) {
   return node;
 }
 
+// SWARM-03 — kill causes reach the stunt line (SWARM_EXPANSION §10): every physics kill
+// already carries its cause word on `swarm:killPopup` (swarmJuice reads the kill-
+// presentation receipt); the line quotes the word so SLAMMED/MINED/BANKED/SLUNG stop
+// being invisible payouts. Gun kills (SHREDDED/DOWN) stay quiet — guns never needed
+// teaching. Repeats inside the TTL roll the count like a pinball display, keyed so the
+// three-line budget is spent on kinds, not on spam.
+const SWARM_CAUSE_WORDS = new Set(['SLAMMED', 'BANKED', 'SLUNG', 'MINED']);
+
 function collectText(node, acc) {
   if (!node) return acc;
   if (typeof node.textContent === 'string' && node.textContent) acc.push(node.textContent);
@@ -241,11 +377,12 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   injectStyle(doc);
 
   const root = mk(doc, 'div', 'sf-stuntcall');
-  root.setAttribute('aria-hidden', 'true');
   root.hidden = true;
   const lines = mk(doc, 'div', 'sf-stuntcall__lines');
+  lines.setAttribute('aria-hidden', 'true');
   root.appendChild(lines);
   const meter = mk(doc, 'div', 'sf-stuntcall__meter');
+  meter.setAttribute('aria-hidden', 'true');
   meter.hidden = true;
   const rowTop = mk(doc, 'div', 'sf-stuntcall__rowtop');
   const mult = mk(doc, 'span', 'sf-stuntcall__mult', '');
@@ -281,16 +418,23 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   let spoken = '';
   let frameOff = null;
   let destroyed = false;
+  const heardStatuses = new Map();
 
   const getState = () => state;
 
-  /** A live survival run in flight, nothing modal on top: the only state this layer speaks in. */
+  /**
+   * FB-012 — a live survival run keeps the full instrument; ADVENTURE now names the act too.
+   * The same flight/modal gates hold in both, and the Crucible's score fields (multiplier,
+   * points, banked, window — the meter and bank lines) stay Crucible-only: adventure has rep
+   * and salvage rights instead of style points. Idle cost is unchanged: with nothing to say the
+   * render step returns false and the frame listener drops until a bus event wakes it.
+   */
   function calloutScope(st) {
-    const run = st && st.run;
-    if (!run || run.kind !== 'survival' || run.phase === 'inactive') return null;
-    if (st.mode !== 'flight') return null;
+    if (!st || st.mode !== 'flight') return null;
     if (st.ui && ((st.ui.screenStack && st.ui.screenStack.length) || st.ui.docked)) return null;
-    return run;
+    const run = st && st.run;
+    if (run && run.kind === 'survival' && run.phase !== 'inactive') return { run, adventure: false };
+    return { run: null, adventure: true };
   }
 
   function motionReduced(st) {
@@ -320,6 +464,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   function addLine(key, nameText, ptsText, now, ttl, isBank) {
     const existing = key != null ? lineNodes.get(key) : null;
     if (existing) {
+      existing.name.textContent = nameText;
       existing.pts.textContent = ptsText;
       existing.until = now + ttl;
       return;
@@ -332,8 +477,39 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     node.appendChild(pts);
     lines.appendChild(node);
     const storedKey = key ?? `anon-${lineOrder + 1}`;
-    lineNodes.set(storedKey, { key: storedKey, node, pts, until: now + ttl, order: ++lineOrder });
+    lineNodes.set(storedKey, { key: storedKey, node, name, pts, until: now + ttl, order: ++lineOrder });
     pruneLines(now);
+  }
+
+  function dismissLine(key, fallbackName = '') {
+    let name = fallbackName;
+    // Opposite statuses consume each other. Clear onset memory even after their
+    // transient line faded, so a fresh application remains audible.
+    for (const statusId of heardStatuses.keys()) {
+      const line = statusPayoffLine(statusId);
+      if (line?.key !== key) continue;
+      name = line.name;
+      heardStatuses.delete(statusId);
+    }
+    const entry = key != null ? lineNodes.get(key) : null;
+    if (entry) {
+      name = entry.name && entry.name.textContent || name;
+      if (entry.node.parentNode) entry.node.parentNode.removeChild(entry.node);
+      lineNodes.delete(key);
+    }
+    // The live region still has the sentence speak() wrote. Dropping the line
+    // without rewriting it leaves a screen reader on a status the hull no longer wears.
+    if (!name || !spoken || spoken.indexOf(name.toLowerCase()) < 0) return;
+    const bits = [];
+    for (const left of lineNodes.values()) {
+      const n = left.name && left.name.textContent || '';
+      const p = left.pts && left.pts.textContent || '';
+      const bit = `${n} ${p}`.trim();
+      if (bit) bits.push(bit);
+    }
+    const next = bits.join(' ');
+    spoken = next.toLowerCase();
+    sr.textContent = next;
   }
 
   function onTrick(trick) {
@@ -347,8 +523,10 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     if (!name) return;
     const now = wallNow();
     const key = `ep:${trick.episodeId ?? trick.trickId}`;
-    addLine(key, name, '', now, CALLOUT_TTL_MS, false);
+    const mom = trickMomentumText(trick);
+    addLine(key, name, mom, now, CALLOUT_TTL_MS, false);
     spoken = trickSpokenText(trick);
+    if (mom) spoken = `${spoken}, ${mom}`;
     sr.textContent = spoken;
     wake();
   }
@@ -356,11 +534,72 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   function onBank(bank) {
     if (destroyed) return;
     const st = getState();
-    if (!calloutScope(st)) return;
+    const scope = calloutScope(st);
+    // FB-012 — the bank IS a score field: it stays Crucible-only. Adventure never says "+N BANKED".
+    if (!scope || scope.adventure) return;
     const text = bankCalloutText(bank);
     if (!text) return;
     addLine(`bank:${bank && bank.bankId}`, text, '', wallNow(), CALLOUT_TTL_MS + 600, true);
     spoken = text.replace(/×/g, ' at ').replace(/\+/g, '');
+    sr.textContent = spoken;
+    wake();
+  }
+
+  // ── FB-014 — the four stunt economy events find their consumers here. A minted right is
+  // money the player is owed; a claimed right is the confirm; a completed line contract is an
+  // earned name; a bridge is the combo tick. All ride the same quiet scope gate and the same
+  // three-line column as every other named act.
+
+  function onSalvageRights(p) {
+    if (destroyed) return;
+    const st = getState();
+    if (!calloutScope(st)) return;
+    const amount = Math.max(0, Math.floor(Number(p && p.salvageRights) || 0));
+    if (amount <= 0) return;
+    const name = trickCalloutName(p);
+    if (!name) return;
+    addLine(`rights:${p && p.episodeId}`, `SALVAGE RIGHT · ${name}`, `+${amount}`,
+      calloutNow(), CALLOUT_TTL_MS + 400, true);
+    spoken = `Salvage right, ${amount}. ${trickSpokenText(p)}`;
+    sr.textContent = spoken;
+    wake();
+  }
+
+  function onSalvageRightsClaimed(p) {
+    if (destroyed) return;
+    const st = getState();
+    if (!calloutScope(st)) return;
+    const amount = Math.max(0, Math.floor(Number(p && p.salvageRights) || 0));
+    if (amount <= 0) return;
+    addLine('rights-claimed', 'RIGHTS CLAIMED', `+${amount}`, calloutNow(), CALLOUT_TTL_MS, true);
+    spoken = `Rights claimed, ${amount}.`;
+    sr.textContent = spoken;
+    wake();
+  }
+
+  function onLineContract(card) {
+    if (destroyed) return;
+    const st = getState();
+    if (!calloutScope(st)) return;
+    const name = card && typeof card.name === 'string' ? card.name : '';
+    if (!name) return;
+    addLine(`contract:${card && card.contractId}`, `LINE CONTRACT · ${name}`, '',
+      calloutNow(), CALLOUT_TTL_MS, false);
+    spoken = `Line contract, ${name}.`;
+    sr.textContent = spoken;
+    wake();
+  }
+
+  function onBridgeTick(p) {
+    if (destroyed) return;
+    const st = getState();
+    const scope = calloutScope(st);
+    if (!scope) return;
+    // In a run the meter's notches already carry the bridge; the line is the adventure's read.
+    if (!scope.adventure) return;
+    const name = p && typeof p.name === 'string' && p.name ? p.name : 'Bridge';
+    addLine(`bridge:${p && p.tick}`, `BRIDGE · ${name}`, '', calloutNow(), CALLOUT_TTL_MS, false);
+    spoken = `Bridge, ${name}.`;
     sr.textContent = spoken;
     wake();
   }
@@ -397,19 +636,38 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   function update(now) {
     if (destroyed) return false;
     const st = getState();
-    const run = calloutScope(st);
-    if (!run) {
+    const scope = calloutScope(st);
+    if (!scope) {
       root.hidden = true;
       return false;
     }
-    const combo = st.stunts && typeof st.stunts === 'object' ? st.stunts.combo : null;
+    // FB-012 — the chain meter is Crucible-only; adventure speaks through the callout lines.
+    const combo = !scope.adventure && st.stunts && typeof st.stunts === 'object'
+      ? st.stunts.combo : null;
     const readout = comboReadout(combo, st.tick);
     pruneLines(Number.isFinite(Number(now)) ? Number(now) : wallNow());
     const hasLines = lineNodes.size > 0;
+    const wasHidden = root.hidden;
     root.hidden = !hasLines && !readout;
     if (root.hidden) return false;
+    if (wasHidden) seatClearOfSpeedDial();
     renderMeter(readout);
     return true;
+  }
+
+  function seatClearOfSpeedDial() {
+    const view = doc.defaultView;
+    if (!view || typeof doc.querySelector !== 'function' || typeof root.getBoundingClientRect !== 'function') return;
+    const ownRect = root.getBoundingClientRect();
+    let top = Infinity;
+    for (const [selector, gap] of [[SPEED_DIAL_SELECTOR, SPEED_DIAL_CLEARANCE_PX], [STABLE_LOAD_SELECTOR, STABLE_LOAD_CLEARANCE_PX]]) {
+      const node = doc.querySelector(selector);
+      if (!node || typeof node.getBoundingClientRect !== 'function') continue;
+      const rect = node.getBoundingClientRect();
+      if (!(rect.height > 0) || rect.left >= ownRect.right || rect.right <= ownRect.left) continue;
+      top = Math.min(top, rect.top - gap);
+    }
+    root.style.bottom = Number.isFinite(top) ? `max(32vh, ${Math.round(view.innerHeight - top)}px)` : '';
   }
 
   function wake() {
@@ -424,6 +682,28 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
   }
 
   const unsubs = [];
+  // word -> { count, until } — the physics-cause counters that ride the same TTL the
+  // line does, so "SLAMMED ×4" is four kills inside one beat, not a lifetime total.
+  const causeRuns = new Map();
+  function onSwarmKill(p) {
+    if (destroyed) return;
+    const st = getState();
+    const scope = calloutScope(st);
+    // Runs only: the word stream is swarm-authored, and adventure has no swarm bus events.
+    if (!scope || scope.adventure) return;
+    const word = p && p.word;
+    if (!SWARM_CAUSE_WORDS.has(word)) return;
+    const now = calloutNow();
+    let rec = causeRuns.get(word);
+    if (!rec || rec.until <= now) rec = { count: 0 };
+    rec.count += 1;
+    rec.until = now + CALLOUT_TTL_MS;
+    causeRuns.set(word, rec);
+    addLine(`kc:${word}`, word, rec.count > 1 ? `×${rec.count}` : '', now, CALLOUT_TTL_MS, false);
+    spoken = rec.count > 1 ? `${word.toLowerCase()}, ${rec.count} in a row` : word.toLowerCase();
+    sr.textContent = spoken;
+    wake();
+  }
   if (bus && typeof bus.on === 'function') {
     unsubs.push(bus.on('stunt:trickDetected', (t) => onTrick(t)));
     unsubs.push(bus.on('stunt:trickAmended', (t) => onTrick(t)));
@@ -433,12 +713,110 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
       const whole = payload && payload.selfSlingBonusDv;
       addLine('self-sling', selfSlingCalloutText(whole), '', calloutNow(), CALLOUT_TTL_MS, false);
     }));
+    // FB-014 — the minted right, its claim, the completed line contract and the combo bridge
+    // tick were emit-only. The callout column is their eye; the ship ledger (FB-014's projector)
+    // is their record.
+    unsubs.push(bus.on('stunt:salvageRights', (p) => onSalvageRights(p)));
+    unsubs.push(bus.on('stunt:salvageRightsClaimed', (p) => onSalvageRightsClaimed(p)));
+    unsubs.push(bus.on('stunt:lineContractCompleted', (p) => onLineContract(p)));
+    unsubs.push(bus.on('stunt:bridge', (p) => onBridgeTick(p)));
+    // Silent seams: the event itself had no subscriber that a pilot could see or hear.
+    const speak = (line) => {
+      if (!line) return;
+      addLine(line.key, line.name, line.detail, calloutNow(), CALLOUT_TTL_MS, false);
+      spoken = line.detail ? `${line.name.toLowerCase()} ${line.detail}` : line.name.toLowerCase();
+      sr.textContent = spoken;
+      wake();
+    };
+    const onHandlineSense = (eventName) => (payload) => {
+      if (destroyed) return;
+      if (!calloutScope(getState())) return;
+      speak(handlineSenseLine(eventName, payload));
+    };
+    const onOwnedSense = (eventName, owns) => (payload) => {
+      if (destroyed) return;
+      const st = getState();
+      if (!calloutScope(st)) return;
+      if (typeof owns === 'function' && !owns(st, payload || {})) return;
+      speak(handlineSenseLine(eventName, payload));
+    };
+    unsubs.push(bus.on('massline:releaseWindow', onHandlineSense('massline:releaseWindow')));
+    unsubs.push(bus.on('massline:rideStarted', onHandlineSense('massline:rideStarted')));
+    unsubs.push(bus.on('tether:snagCleared', onHandlineSense('tether:snagCleared')));
+    unsubs.push(bus.on('massline:throw', onHandlineSense('massline:throw')));
+    unsubs.push(bus.on('tether:snapCatch', onHandlineSense('tether:snapCatch')));
+    unsubs.push(bus.on('tether:reelPump', onHandlineSense('tether:reelPump')));
+    unsubs.push(bus.on('tether:whipImpact', onHandlineSense('tether:whipImpact')));
+    unsubs.push(bus.on('massline:sweepImpact', onHandlineSense('massline:sweepImpact')));
+    unsubs.push(bus.on('massline:bridleCut', onHandlineSense('massline:bridleCut')));
+    unsubs.push(bus.on('well:fling', onOwnedSense('well:fling', (st, payload) =>
+      payload.targetId === st.playerId || payload.victimId === st.playerId)));
+    unsubs.push(bus.on('weapons:inertialShunt', onOwnedSense('weapons:inertialShunt', (st, payload) =>
+      payload.shunterId === st.playerId || payload.targetId === st.playerId)));
+    // SFQ-B033 — the status the player is wearing, and a bomb they primed, say the payoff.
+    unsubs.push(bus.on('combat:statusApplied', (payload) => {
+      if (destroyed) return;
+      const st = getState();
+      if (!calloutScope(st) || !payload || payload.targetId !== st.playerId) return;
+      const line = statusPayoffLine(payload.statusId);
+      if (!line) return;
+      if (line.clears) {
+        for (let i = 0; i < line.clears.length; i++) dismissLine(line.clears[i]);
+      }
+      const rawStacks = Number(payload.stacks);
+      const stacks = Number.isFinite(rawStacks) ? Math.max(1, Math.floor(rawStacks)) : 1;
+      const previous = heardStatuses.get(payload.statusId);
+      const tick = Number(st.tick) || 0;
+      heardStatuses.set(payload.statusId, { stacks,
+        expiresTick: Number.isFinite(payload.expiresTick) ? payload.expiresTick : tick + 60 });
+      // A refreshed field status is still the same condition. Speak onset and
+      // increased severity; never hammer the reading floor once per damage tick.
+      if (previous && previous.expiresTick > tick && previous.stacks >= stacks) return;
+      const detail = stacks > 1 ? `${line.detail} ×${stacks}` : line.detail;
+      speak(detail === line.detail ? line : { key: line.key, name: line.name, detail });
+    }));
+    unsubs.push(bus.on('combat:statusExpired', (payload) => {
+      if (destroyed || !payload || payload.targetId !== getState()?.playerId) return;
+      heardStatuses.delete(payload.statusId);
+      const line = statusPayoffLine(payload.statusId);
+      if (line) dismissLine(line.key, line.name);
+    }));
+    for (const event of ['game:newGame', 'save:loaded']) unsubs.push(bus.on(event, () => {
+      heardStatuses.clear();
+      for (const entry of lineNodes.values()) if (entry.node.parentNode) entry.node.parentNode.removeChild(entry.node);
+      lineNodes.clear();
+      sr.textContent = '';
+      root.hidden = true;
+    }));
+    unsubs.push(bus.on('bombs:primed', (payload) => {
+      if (destroyed) return;
+      const st = getState();
+      if (!calloutScope(st) || !payload || payload.ownerId !== st.playerId) return;
+      speak(bombPrimeLine(payload));
+    }));
+    // SWARM-03 — the physics cause tag, on the lane that already names tricks.
+    unsubs.push(bus.on('swarm:killPopup', (p) => onSwarmKill(p)));
   }
 
   return {
     root,
     update,
     active: () => !destroyed && !root.hidden,
+    announceStroke(stroke) {
+      if (destroyed) return false;
+      if (!calloutScope(getState())) return false;
+      const line = strokeGradeLine(stroke);
+      if (!line) return false;
+      const now = calloutNow();
+      const seen = lineNodes.has(line.key);
+      addLine(line.key, line.name, line.detail, now, CALLOUT_TTL_MS, false);
+      if (!seen) {
+        spoken = line.detail ? `${line.name.toLowerCase()} ${line.detail}` : line.name.toLowerCase();
+        sr.textContent = spoken;
+      }
+      wake();
+      return true;
+    },
     destroy() {
       destroyed = true;
       if (frameOff) { frameOff(); frameOff = null; }
@@ -465,8 +843,16 @@ export function ensureStuntCallout(ctx) {
   liveCallout = createStuntCallout({
     state: ctx && ctx.state,
     bus: ctx && ctx.bus,
+    host: ctx && ctx.host,
+    doc: ctx && ctx.doc,
   });
   return liveCallout;
+}
+
+/** The massline HUD calls this the frame a completed stroke first lands. No live callout, no speech. */
+export function announceStrokeGrade(stroke) {
+  if (!liveCallout || typeof liveCallout.announceStroke !== 'function') return false;
+  return liveCallout.announceStroke(stroke);
 }
 
 /** Release the mount (results screen dispose). Dormant-after-menu sessions re-ensure on next door. */

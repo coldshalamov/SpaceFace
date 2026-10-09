@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2d41571e5981e7a27032c0faa27f5e425fd29169946a6a296c869284c14cc618",
+  "contentHash": "f74403f638e4097048066e1fa2ded80373271e6152701243ec13fec2b57f3b3b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1242,8 +1242,8 @@
       "uri": "place_cargo_pod_standard_breached.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -1279,18 +1279,19 @@
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 15
+      "hull": 11,
+      "rubber": 4
     },
     "materialProfiles": [
       {
         "allowTextures": false,
         "planIndex": 4,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
         "planIndex": 5,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
@@ -1350,12 +1351,12 @@
       {
         "allowTextures": false,
         "planIndex": 17,
-        "role": "hull"
+        "role": "rubber"
       },
       {
         "allowTextures": false,
         "planIndex": 18,
-        "role": "hull"
+        "role": "rubber"
       }
     ],
     "nodeCount": 19,
@@ -1770,7 +1771,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_cargo_pod_standard_breached.glb"
   },
-  "runtimeHash": "dc020fcb3d45417e81b10674e3399f8b502e2d0766be58155cce41df31dee945",
+  "runtimeHash": "0fd5759e7f9ce544d81fcec4cdd073ee40b7b531a79dcd580d08e7b6be6098cc",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

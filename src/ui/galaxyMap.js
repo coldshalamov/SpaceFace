@@ -1,3 +1,4 @@
+import { playerBearingLetter } from '../core/playerCompass.js';
 import { navigationFrameHtml } from './views/navigationFrame.js';
 import { CSS } from './views/navigationStyles.js';
 import { bindMapMarkup, MAP_CONTROLS, mapControlAttrs, mapControlLabel } from './map/mapControlMap.js';
@@ -10,6 +11,8 @@ import {
   sectorTokenUrl, factionCrestUrl, drawLabelLeader, trimPolylineSegments,
 } from './orrery/chartInstruments.js';
 import { placeChartLabels, placeChartCallout } from './orrery/chartLabels.js';
+import { planChartGround, drawDominionLane, drawTokenAura, releaseChartWorld, dominionRgb, drawSystemGround, drawGlow, CLASS_RGB } from './orrery/chartWorld.js';
+import { mountChartHub, enhanceInspectorSections } from './orrery/chartHub.js';
 import { dressLampKey } from './orrery/lampKey.js';
 // src/ui/galaxyMap.js — ONE zoomable navigation map (GDD pillar 2).
 //
@@ -33,6 +36,7 @@ import { dressLampKey } from './orrery/lampKey.js';
 // Flight/nav/jump ownership stays in world.js; the map never mutates jump/sector state directly.
 
 import { SECTORS } from '../data/sectors.js';
+import { wreckEcologyMarkers } from './wreckEcologyMarkers.js';
 import { chartMarkSizes } from '../data/modelTruth.js';
 import { asteroidScanGlyph } from '../data/mining.js';
 import { drawGlyph } from './glyphs.js';
@@ -52,6 +56,12 @@ import { enhanceSelects, dataStateHtml } from './uiPrimitives.js';
 import { dpIcon, injectDeckplate } from './deckplate/index.js';
 import { entityAttr } from './entityResolver.js';
 import {
+  captureEntitySelection,
+  refreshEntitySelection,
+  resolveEntitySelection,
+} from './sim/stableSelection.js';
+import { canNavigateToKnowledge, discoveryKnowledge, selectionKnowledgeLine } from './sim/discoveryKnowledge.js';
+import {
   careersTabAvailability, careersTabHtml, careersOverviewLineHtml,
 } from './map/careersReadout.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
@@ -67,7 +77,7 @@ import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { mapFactionPresenceNodes } from '../data/factionPresence.js';
 import { sectorSignalFor, forecastTransitFor } from '../systems/sectorSim.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
-import { conflictPairsForSector } from '../data/conflictZones.js';
+import { conflictPairsForSector, CONTESTED_SECTOR_BY_PAIR } from '../data/conflictZones.js';
 import { isPlayerWanted, heatLevelFor, heatClearSecondsForLevel } from '../systems/heat.js';
 import { regionalEcologyReadout } from '../systems/regionalEcology.js';
 import { REGIONAL_ECONOMY_PROFILES } from '../data/regionalEconomyProfiles.js';
@@ -513,8 +523,12 @@ export function mapSearchTargetPriority(state, target) {
   if (!target) return -1;
   const waypoint = state && state.nav && state.nav.waypoint;
   const targetEntityId = target.entityId ?? target.targetEntityId ?? target.id;
-  if (waypoint && waypoint.targetEntityId != null
-    && String(targetEntityId) === String(waypoint.targetEntityId)) return 1_000;
+  // Promote the body the course actually armed: the stamped bind resolves the live holder, so a
+  // recycled slot's new occupant cannot inherit the boost meant for the old one.
+  const boundId = waypoint && waypoint.stable
+    ? ((resolveEntitySelection(state, waypoint.stable) || {}).id ?? null)
+    : (waypoint && waypoint.targetEntityId != null ? waypoint.targetEntityId : null);
+  if (boundId != null && String(targetEntityId) === String(boundId)) return 1_000;
   const trackedMissionId = state && state.ui && state.ui.trackedMissionId;
   const trackedMission = trackedMissionId && state.missions && Array.isArray(state.missions.active)
     ? state.missions.active.find((mission) => mission && mission.status === 'active' && mission.id === trackedMissionId)
@@ -792,6 +806,7 @@ export function resolveMapOpenTarget(state, intent) {
         x: e.pos.x,
         z: e.pos.z,
         entityId: e.id,
+        stable: captureEntitySelection(e),
         stationId,
         factionId: e.factionId || (e.data && e.data.factionId) || null,
         sectorId: sectorId || currentSectorId(state),
@@ -813,6 +828,7 @@ export function resolveMapOpenTarget(state, intent) {
           x: p.x,
           z: p.z,
           entityId: p.entityId || null,
+          stable: p.stable || null,
           stationId: p.stationId || stationId,
           factionId: p.factionId || null,
           sectorId: sid,
@@ -1287,6 +1303,7 @@ export function describeClaimMapMarker(body = {}, ledger = null, liveEntity = nu
       attackerName: defense.attackerName || null, attackerCount: defense.attackerCount || 0,
     } : null,
     targetEntityId: liveEntity && liveEntity.id || null,
+    stable: liveEntity ? captureEntitySelection(liveEntity) : null,
     kind: def ? `claim-${def.id.replace(/^spec_/, '')}` : 'claim',
     role,
     glyph: def ? def.mapGlyph : '◆',
@@ -1410,6 +1427,7 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
         id: `depot-patrol:${body.id}`,
         claimId: body.id,
         targetEntityId: hull && hull.id != null ? hull.id : null,
+        stable: hull ? captureEntitySelection(hull) : null,
         kind: 'depot-patrol',
         role: 'PATROL',
         glyph: '◆',
@@ -1427,6 +1445,65 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
       });
     }
   }
+  // One emission path for a constructed travel corridor: ring + relay markers and the charted
+  // route line. Claim Throughlines and NXB-036 grown-station approach corridors share it — the
+  // chart must not invent a second presentation for the same consumed record.
+  const pushInfrastructureMarkers = ({ infrastructure, ownerId, ownerName, kind, idPrefix, verb, consequence, risk }) => {
+    if (!infrastructure || !infrastructure.from || !infrastructure.support || !infrastructure.to) return;
+    const operational = infrastructure.operational === true;
+    const status = operational
+      ? 'ONLINE'
+      : infrastructure.stage === 'aligning' ? 'ALIGNING' : 'OFFLINE';
+    const travelRoute = {
+      id: infrastructure.id,
+      claimId: ownerId,
+      stage: infrastructure.stage,
+      operational,
+      lineStyle: operational ? 'solid' : infrastructure.stage === 'aligning' ? 'long-dash' : 'short-dash',
+      color: operational ? INK.ink0 : INK.ink2,
+      from: { x: Number(infrastructure.from.x) || 0, z: Number(infrastructure.from.z) || 0 },
+      support: { x: Number(infrastructure.support.x) || 0, z: Number(infrastructure.support.z) || 0 },
+      to: { x: Number(infrastructure.to.x) || 0, z: Number(infrastructure.to.z) || 0 },
+    };
+    travelRoute.drawFrom = globalToSectorLocalForSector(travelRoute.from, sid);
+    travelRoute.drawSupport = globalToSectorLocalForSector(travelRoute.support, sid);
+    travelRoute.drawTo = globalToSectorLocalForSector(travelRoute.to, sid);
+    for (const partDef of [
+      { id: 'ring', role: 'SLING', glyph: '◎', pos: infrastructure.from, name: 'Acceleration Ring' },
+      { id: 'relay', role: 'RELAY', glyph: '◇', pos: infrastructure.support, name: 'Nav Relay' },
+    ]) {
+      const live = liveByInfrastructurePart.get(`${infrastructure.id}:${partDef.id}`) || null;
+      const point = live && live.pos || partDef.pos;
+      const partMarker = {
+        id: `${idPrefix}:${infrastructure.id}:${partDef.id}`,
+        claimId: ownerId,
+        targetEntityId: live && live.id || null,
+        stable: live ? captureEntitySelection(live) : null,
+        kind,
+        role: partDef.role,
+        glyph: partDef.glyph,
+        color: operational ? INK.ink0 : INK.ink2,
+        name: `${partDef.role} · ${ownerName} ${partDef.name}`,
+        status,
+        statusLine: `${status} · ${Math.round(infrastructure.distanceWU || 0).toLocaleString('en-US')} WU route · ×${Number(infrastructure.ceilingMult || 1).toFixed(1)} Travel Burn`,
+        playerVerb: verb,
+        consequence,
+        riskLine: risk,
+        x: Number(point.x) || 0,
+        z: Number(point.z) || 0,
+        infrastructure: {
+          id: infrastructure.id,
+          part: partDef.id,
+          stage: infrastructure.stage,
+          operational,
+          stationId: infrastructure.stationId,
+        },
+        travelRoute: partDef.id === 'ring' ? travelRoute : null,
+      };
+      partMarker.drawPos = globalToSectorLocalForSector(partMarker, sid);
+      markers.push(partMarker);
+    }
+  };
   for (const body of bodies) {
     if (!body || body.owned !== true || body.sectorId !== sid) continue;
     const ledger = claimsSystem && typeof claimsSystem.ledger === 'function'
@@ -1460,61 +1537,39 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
       raidMarker.drawPos = globalToSectorLocalForSector(raidMarker, sid);
       markers.push(raidMarker);
     }
-    const infrastructure = body.infrastructure;
-    if (!infrastructure || !infrastructure.from || !infrastructure.support || !infrastructure.to) continue;
-    const operational = infrastructure.operational === true;
-    const status = operational
-      ? 'ONLINE'
-      : infrastructure.stage === 'aligning' ? 'ALIGNING' : 'OFFLINE';
-    const travelRoute = {
-      id: infrastructure.id,
-      claimId: body.id,
-      stage: infrastructure.stage,
-      operational,
-      lineStyle: operational ? 'solid' : infrastructure.stage === 'aligning' ? 'long-dash' : 'short-dash',
-      color: operational ? INK.ink0 : INK.ink2,
-      from: { x: Number(infrastructure.from.x) || 0, z: Number(infrastructure.from.z) || 0 },
-      support: { x: Number(infrastructure.support.x) || 0, z: Number(infrastructure.support.z) || 0 },
-      to: { x: Number(infrastructure.to.x) || 0, z: Number(infrastructure.to.z) || 0 },
-    };
-    travelRoute.drawFrom = globalToSectorLocalForSector(travelRoute.from, sid);
-    travelRoute.drawSupport = globalToSectorLocalForSector(travelRoute.support, sid);
-    travelRoute.drawTo = globalToSectorLocalForSector(travelRoute.to, sid);
-    for (const partDef of [
-      { id: 'ring', role: 'SLING', glyph: '◎', pos: infrastructure.from, name: 'Acceleration Ring' },
-      { id: 'relay', role: 'RELAY', glyph: '◇', pos: infrastructure.support, name: 'Nav Relay' },
-    ]) {
-      const live = liveByInfrastructurePart.get(`${infrastructure.id}:${partDef.id}`) || null;
-      const point = live && live.pos || partDef.pos;
-      const partMarker = {
-        id: `player-infrastructure:${infrastructure.id}:${partDef.id}`,
-        claimId: body.id,
-        targetEntityId: live && live.id || null,
+    pushInfrastructureMarkers({
+      infrastructure: body.infrastructure,
+      ownerId: body.id,
+      ownerName: body.name,
+      kind: 'claim-throughline',
+      idPrefix: 'player-infrastructure',
+      verb: 'Set a course to the physical corridor and engage Travel Burn inside its marked tube.',
+      consequence: 'Multiplies the pilot’s own drive ceiling and ramp only inside the constructed route.',
+      risk: 'If the industrial claim goes cold or is raided, ordinary unassisted flight remains available.',
+    });
+  }
+  // NXB-036: a station grown to the top of its ladder by player freight publishes the same
+  // constructed corridor the claim Throughline does — chart it with the same markers and route
+  // line, sourced from the durable growth record, not a second renderer guess.
+  const stationGrowth = state && state.claims && state.claims.stationGrowth;
+  if (stationGrowth) {
+    for (const growthStationId in stationGrowth) {
+      const rec = stationGrowth[growthStationId];
+      const route = rec && rec.growthRoute;
+      if (!route || rec.sectorId !== sid) continue;
+      pushInfrastructureMarkers({
+        infrastructure: route,
+        ownerId: `station-growth:${growthStationId}`,
+        ownerName: rec.name || growthStationId,
         kind: 'claim-throughline',
-        role: partDef.role,
-        glyph: partDef.glyph,
-        color: operational ? INK.ink0 : INK.ink2,
-        name: `${partDef.role} · ${body.name} ${partDef.name}`,
-        status,
-        statusLine: `${status} · ${Math.round(infrastructure.distanceWU || 0).toLocaleString('en-US')} WU route · ×${Number(infrastructure.ceilingMult || 1).toFixed(1)} Travel Burn`,
-        playerVerb: 'Set a course to the physical corridor and engage Travel Burn inside its marked tube.',
+        idPrefix: 'station-growth-infrastructure',
+        verb: 'Set a course to the physical corridor and engage Travel Burn inside its marked tube.',
         consequence: 'Multiplies the pilot’s own drive ceiling and ramp only inside the constructed route.',
-        riskLine: 'If the industrial claim goes cold or is raided, ordinary unassisted flight remains available.',
-        x: Number(point.x) || 0,
-        z: Number(point.z) || 0,
-        infrastructure: {
-          id: infrastructure.id,
-          part: partDef.id,
-          stage: infrastructure.stage,
-          operational,
-          stationId: infrastructure.stationId,
-        },
-        travelRoute: partDef.id === 'ring' ? travelRoute : null,
-      };
-      partMarker.drawPos = globalToSectorLocalForSector(partMarker, sid);
-      markers.push(partMarker);
+        risk: 'A charted station approach stays open — ordinary unassisted flight always remains available beside it.',
+      });
     }
   }
+  for (const mark of wreckEcologyMarkers(state, sid)) markers.push(mark);
   return markers;
 }
 
@@ -1688,9 +1743,83 @@ function anchorFrames(anchor, sid, localZ) {
  * player entity; it is never a fabricated origin position.
  *
  * @returns {{ level:'system', sectorId, sectorName, zones:Array, points:Array, ownership:Array,
- *             bearings:Array,
+ *             bearings:Array, wrecks:Array,
  *             player:{id,x,z,drawPos,rot,inSector,bearing,distance}|null }}
  */
+function aftermathCauseLine(marker) {
+  const cause = marker && marker.cause;
+  if (typeof cause === 'string' && cause.trim()) return cause.replace(/\s+/g, ' ').trim();
+  if (cause && typeof cause === 'object') {
+    if (typeof cause.line === 'string' && cause.line.trim()) return cause.line.replace(/\s+/g, ' ').trim();
+    if (cause.actor) {
+      const victim = marker.victimLabel || marker.victimClass || 'ship';
+      const zone = marker.zoneName || 'a local zone';
+      const motive = cause.motiveId ? ` to ${cause.motiveId}` : '';
+      return `${victim} destroyed in ${zone}; evidence links ${cause.actor}${motive}.`;
+    }
+  }
+  if (marker && marker.headline) return String(marker.headline).replace(/\s+/g, ' ').trim();
+  return '';
+}
+
+/** WORLD-41 — chart projection only. Retirement stays with the wreck system. */
+export function noteAftermathWreckRetired(state, payload) {
+  if (!state || !payload || payload.markerId == null || payload.markerId === '') return false;
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  if (!state.ui.retiredAftermathChart || typeof state.ui.retiredAftermathChart !== 'object') {
+    state.ui.retiredAftermathChart = {};
+  }
+  const markerId = String(payload.markerId);
+  state.ui.retiredAftermathChart[markerId] = {
+    markerId,
+    sectorId: payload.sectorId || null,
+    causeCleared: true,
+  };
+  return true;
+}
+
+export function installAftermathChartListener(bus, state) {
+  if (!bus || typeof bus.on !== 'function' || !state) return () => {};
+  if (!state.ui || typeof state.ui !== 'object') state.ui = {};
+  if (state.ui._aftermathChartBound) return () => {};
+  state.ui._aftermathChartBound = true;
+  const off = bus.on('aftermathWreck:retired', (payload) => noteAftermathWreckRetired(state, payload));
+  return () => {
+    if (typeof off === 'function') off();
+  };
+}
+
+/** Aftermath wrecks the chart still lists. A retired id drops the marker and its cause line. */
+export function aftermathChartMarkers(state, sectorId) {
+  const own = state && state.aftermathWrecks;
+  const list = own && own.bySector && sectorId ? own.bySector[sectorId] : null;
+  if (!Array.isArray(list)) return [];
+  const retired = state && state.ui && state.ui.retiredAftermathChart;
+  const rows = [];
+  for (const marker of list) {
+    if (!marker || marker.markerId == null || marker.markerId === '') continue;
+    const markerId = String(marker.markerId);
+    if (retired && retired[markerId]) continue;
+    const causeLine = aftermathCauseLine(marker);
+    const pos = marker.pos || { x: 0, z: 0 };
+    rows.push({
+      id: `wreck:${markerId}`,
+      markerId,
+      kind: 'wreck',
+      name: marker.victimLabel || marker.wreckClassLabel || 'Aftermath wreck',
+      causeLine,
+      statusLine: causeLine,
+      x: Number(pos.x) || 0,
+      z: Number(pos.z) || 0,
+      drawPos: globalToSectorLocalForSector(pos, sectorId),
+      entityId: null,
+      stationId: null,
+      sectorId,
+    });
+  }
+  return rows;
+}
+
 export function buildSystemModel(state, sectorId, options = {}) {
   const sid = sectorId || currentSectorId(state);
   const record = sectorRecordById(state, sid);
@@ -1759,6 +1888,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
           x: e.pos.x, z: e.pos.z,
           drawPos: globalToSectorLocalForSector(e.pos, sid),
           entityId: e.id,
+          stable: captureEntitySelection(e),
           stationId: data.stationId || null,
           factionId: e.factionId || data.factionId || null,
           targetSectorId: isGate
@@ -1899,9 +2029,12 @@ export function buildSystemModel(state, sectorId, options = {}) {
     };
   }
 
+  const wrecks = aftermathChartMarkers(state, sid);
+  for (const wreck of wrecks) points.push(wreck);
+
   return {
     level: 'system', sectorId: sid, sectorName, ...confidence,
-    zones, points, ownership, bearings, player: playerMark,
+    zones, points, ownership, bearings, wrecks, player: playerMark,
   };
 }
 
@@ -1954,6 +2087,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
       hostile,
       factionId: e.factionId || null,
       entityId: e.id,
+      stable: captureEntitySelection(e),
       stationId: (e.type === 'station' && e.data && e.data.stationId) || null,
       named: !!(e.data && (e.data.namedLaneContactId || e.data.callsign || e.data.name)),
       scanHighlightUntil: kind === 'asteroid' ? (Number(e.data && e.data.scanHighlightUntil) || 0) : 0,
@@ -2024,6 +2158,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
     contacts,
     ownership: buildClaimOwnershipMarkers(state, sectorId, options.claimsSystem || null),
     bearings: discoveryBearingReadouts(state, sectorId),
+    wrecks: aftermathChartMarkers(state, sectorId),
   };
 }
 
@@ -2042,6 +2177,35 @@ export function buildMapModel(state, zoom, opts) {
 // ---------------------------------------------------------------------------------------------
 // CLICK -> ui:setCourse payload resolution (pure; the screen just emits what this returns).
 // ---------------------------------------------------------------------------------------------
+
+/**
+ * System-chart click records for unresolved scanner pings in one sector.
+ * The marks come from discoveryKnowledge (tier ping only), so a rumored wreck's
+ * exact position never becomes this course. Same name and arrival the local map uses.
+ */
+export function chartPingCourseTargets(state, sectorId) {
+  const wanted = sectorId == null ? null : String(sectorId);
+  const targets = [];
+  for (const entry of discoveryKnowledge(state).entries) {
+    if (!entry || entry.tier !== 'ping' || entry.source !== 'ping' || !entry.pos) continue;
+    if (canNavigateToKnowledge(entry)) continue;
+    if (wanted && entry.sectorId !== wanted) continue;
+    const prefix = `ping:${entry.sectorId}:`;
+    const pingId = entry.id.startsWith(prefix) ? entry.id.slice(prefix.length) : entry.id;
+    targets.push({
+      id: entry.id,
+      kind: 'ping',
+      name: entry.label || 'Unresolved contact',
+      courseLabel: entry.label || 'Unresolved contact',
+      x: entry.pos.x,
+      z: entry.pos.z,
+      targetEntityId: pingId,
+      courseArrivalRadius: 44,
+      sectorId: entry.sectorId,
+    });
+  }
+  return targets;
+}
 
 /**
  * Resolve a clicked map target into the exact payload for the EXISTING "ui:setCourse" event.
@@ -2107,6 +2271,71 @@ export function resolveCourseTarget(target) {
 }
 
 /**
+ * Re-resolve a held map marker's captured stable identity against the live entity set
+ * (src/ui/sim/stableSelection.js — SF-244). A marker stamped at build time answers:
+ *
+ *   - the identity is still live -> the same marker (or a rebound copy when a durable identity
+ *     moved to a fresh instance: the selection follows the station, not the dead id);
+ *   - nothing holds that identity any more -> NULL. A destroyed transient whose entity id was
+ *     recycled must close the selection rather than paint the ring, inspector and course commit
+ *     onto the body that inherited the id.
+ *
+ * Markers without a stamp keep their historical bare-id behaviour and pass through unchanged.
+ */
+export function reconcileMapSelection(state, target) {
+  if (!target || !target.stable) return target || null;
+  const entity = resolveEntitySelection(state, target.stable);
+  if (!entity) return null;
+  if (entity.id === target.stable.entityId) return target;
+  const next = {
+    ...target,
+    stable: refreshEntitySelection(state, target.stable) || target.stable,
+    entityId: entity.id,
+  };
+  // A marker whose display id IS the entity id follows the re-materialized instance; authored
+  // marker ids (claims, readouts, sector nodes) are already durable and keep their own.
+  if (target.id === target.stable.entityId) next.id = entity.id;
+  if (target.targetEntityId === target.stable.entityId) next.targetEntityId = entity.id;
+  if (entity.pos) { next.x = entity.pos.x; next.z = entity.pos.z; }
+  // resolveCourseTarget prefers a carried coursePos over x/z — a stale fix would outrank the
+  // rebound position, so the rebind clears it rather than committing to where the body WAS.
+  if (next.coursePos) delete next.coursePos;
+  return next;
+}
+
+/**
+ * The entityId a course commit may bind for this marker, resolved through its stable stamp.
+ * A stamp that no longer resolves (destroyed + recycled id) answers NULL — the caller drops
+ * `targetEntityId` and the payload's position stays the fail-closed place the sim contracts.
+ * Unstamped markers answer the raw id they always carried.
+ */
+export function resolveCourseEntityId(state, target) {
+  if (!target) return null;
+  if (target.stable) {
+    const entity = resolveEntitySelection(state, target.stable);
+    return entity ? entity.id : null;
+  }
+  const raw = target.targetEntityId != null ? target.targetEntityId : target.entityId;
+  return raw != null ? raw : null;
+}
+
+/**
+ * The ONE gated course resolution — resolveCourseTarget plus the stable-identity bind check.
+ * Every commit path (double-click, released line, the inspector's primary action) must go through
+ * here: a stamped mark whose identity is gone arms only its position, never a recycled id; a
+ * durable identity re-materialized onto a new instance rebinds to that instance.
+ */
+export function commitCoursePayload(state, target) {
+  const payload = resolveCourseTarget(target);
+  if (payload && target && target.stable) {
+    const liveId = resolveCourseEntityId(state, target);
+    if (liveId == null) delete payload.targetEntityId;
+    else payload.targetEntityId = liveId;
+  }
+  return payload;
+}
+
+/**
  * True when `targetSectorId` is a direct graph neighbor of the player's current sector.
  * Pure: used by the inspector primary action and headless contract tests.
  */
@@ -2130,7 +2359,7 @@ export function isOneHopNeighbor(state, targetSectorId) {
  */
 export function resolveGalaxyMapPrimaryAction(state, target) {
   if (!target) return null;
-  const coursePayload = resolveCourseTarget(target);
+  const coursePayload = commitCoursePayload(state, target);
 
   if (target.kind === 'sector') {
     const sectorId = target.sectorId || target.id;
@@ -2641,7 +2870,9 @@ const HINT_ROWS = Object.freeze([
   ['Lay the line (preview, release to set)', 'Drag from you'],
   ['Cycle overlays', 'Tab'],
   ['Inspector tabs', '← →'],
-  ['Search the chart', '/'],
+  ['Search · palette', '/ · Ctrl K'],
+  ['Menu for a mark', 'Right-click'],
+  ['Zoom · fit', '+ · − · 0'],
   ['Close the chart', 'Esc'],
 ]);
 
@@ -2857,6 +3088,10 @@ function stationNameById(state, stationId) {
 
 const COMMODITY_NAME_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c.name]));
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+export function commodityMapLabel(commodityId) {
+  const id = String(commodityId || '');
+  return String(COMMODITY_NAME_BY_ID.get(id) || id.replace(/^cmdty_/, '').replace(/_/g, ' ')).toUpperCase();
+}
 const REGIONAL_ECONOMY_PROFILE_BY_SECTOR = new Map(
   REGIONAL_ECONOMY_PROFILES.map((profile) => [profile && profile.sectorId, profile]),
 );
@@ -3084,6 +3319,12 @@ function mapPressureLabel(value) {
   return n > 0 ? 'Scarcity' : 'Surplus';
 }
 
+function esc1(value) { return escapeMapHtml(value); }
+/** The one word a double-click does for this mark (the card's hint). */
+function shortVerb(action) {
+  if (!action) return 'go';
+  return action.kind === 'jump' ? 'jump' : action.kind === 'route' ? 'plot' : action.kind === 'waypoint' ? 'track' : 'go';
+}
 function escapeMapHtml(value) {
   return String(value == null ? '' : value)
     .replace(/&/g, '&amp;')
@@ -3345,6 +3586,7 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
         drawPos: p.drawPos,
         stationId: p.stationId,
         entityId: p.entityId || null,
+        stable: p.stable || null,
         targetSectorId: p.targetSectorId || null,
         factionId: p.factionId,
         searchText: p.searchText,
@@ -3379,18 +3621,23 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
     const goal = activeMapGoal(state);
     const waypoint = state && state.nav && state.nav.waypoint;
     if (goal && goal.pos) {
-      targets.push({
+      const goalTarget = {
         id: goal.id,
         name: goal.label,
         kind: 'waypoint',
         x: goal.pos.x,
         z: goal.pos.z,
         targetEntityId: waypoint && waypoint.targetEntityId != null ? waypoint.targetEntityId : null,
+        // Carry the proven bind — stampWaypointTarget resolving the bare id alone would bless
+        // whatever body currently holds a recycled slot instead of the body the course armed.
+        stable: waypoint && waypoint.stable ? waypoint.stable : null,
         missionId: goal.missionId,
         objective: true,
         markerKind: goal.markerKind,
         detail: 'Active objective · Navigation fix',
-      });
+      };
+      stampWaypointTarget(state, goalTarget);
+      targets.push(goalTarget);
     }
     // Search results must carry the same scanner classification as the painted LOCAL layer.
     // Falling back to data.hostile here made named accepted warrants inspect as `Hostile NO`
@@ -3404,6 +3651,7 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
         x: c.x,
         z: c.z,
         entityId: c.entityId,
+        stable: c.stable || null,
         factionId: c.factionId,
         hostile: c.hostile,
         detail: `Contact · ${c.kind.toUpperCase()}`,
@@ -3852,6 +4100,10 @@ export const galaxyMapScreen = {
   _selectedCommodity: 'cmdty_ore_iron',
   _searchResultsList: [],
   _searchSelectedIdx: 0,
+  // The normalized query that produced `_searchResultsList`. A result is committable only while it
+  // still answers the CURRENT visible query — a blank field, a no-match repaint, or a selection
+  // consumed by Enter/click clears both, so stale hits can never be committed blind (J1).
+  _searchResultsQuery: null,
   _currentLayerFocus: 'route',
   _lastRouteDest: null,
   _routeAnimTime: 0,
@@ -3862,6 +4114,7 @@ export const galaxyMapScreen = {
   mount(rootEl, ctx) {
     injectStyle();
     this._ctx = ctx;
+    installAftermathChartListener(ctx && ctx.bus, ctx && ctx.state);
     if (HAS_DOC && rootEl && this._setCourseButton && this._setCourseHandler) {
       this._setCourseButton.removeEventListener('click', this._setCourseHandler);
     }
@@ -4252,16 +4505,32 @@ export const galaxyMapScreen = {
     const searchInput = rootEl.querySelector('.gm-search-input');
     const resultsContainer = rootEl.querySelector('.gm-search-results');
 
+    const clearSearchResults = () => {
+      this._searchResultsList = [];
+      this._searchSelectedIdx = 0;
+      this._searchResultsQuery = null;
+    };
+    // A result row is eligible to commit only while the list it came from is the live, painted
+    // answer to the text currently in the field (J1). The stamp also catches value writes that
+    // never fired an `input` event — the old list must outlive nothing it no longer answers.
+    const searchResultsCurrent = () => (
+      this._searchResultsList
+      && this._searchResultsList.length > 0
+      && resultsContainer.hidden === false
+      && this._searchResultsQuery === searchInput.value.trim().toLowerCase()
+    );
+
     searchInput.addEventListener('input', () => {
       const q = searchInput.value.trim().toLowerCase();
       if (!q) {
         resultsContainer.hidden = true;
         resultsContainer.innerHTML = '';
+        clearSearchResults();
         return;
       }
 
       const state = this._ctx && this._ctx.state;
-      if (!state) return;
+      if (!state) { clearSearchResults(); return; }
 
       const targets = getSearchTargets(
         state,
@@ -4281,6 +4550,7 @@ export const galaxyMapScreen = {
       if (filtered.length === 0) {
         resultsContainer.innerHTML = '<div class="gm-search-item gm-search-empty k-t-fine k-38">No results found</div>';
         resultsContainer.hidden = false;
+        clearSearchResults();
         return;
       }
 
@@ -4289,11 +4559,14 @@ export const galaxyMapScreen = {
 
       this._searchResultsList = filtered;
       this._searchSelectedIdx = 0;
+      this._searchResultsQuery = q;
     });
 
     searchInput.addEventListener('keydown', (ev) => {
-      const list = this._searchResultsList || [];
-      if (!list.length) return;
+      // Arrows and Enter own the field only while a real result list is answering it; a stale,
+      // hidden or empty list leaves every key to its normal text-entry behavior.
+      if (!searchResultsCurrent()) return;
+      const list = this._searchResultsList;
       if (ev.key === 'ArrowDown') {
         ev.preventDefault();
         this._searchSelectedIdx = (this._searchSelectedIdx + 1) % list.length;
@@ -4309,17 +4582,20 @@ export const galaxyMapScreen = {
           this._selectSearchTarget(selected);
           searchInput.value = '';
           resultsContainer.hidden = true;
+          clearSearchResults();
         }
       }
     });
 
     resultsContainer.addEventListener('click', (ev) => {
+      if (!searchResultsCurrent()) return;
       const itemEl = ev.target.closest('.gm-search-item');
       const idx = itemEl && parseInt(itemEl.getAttribute('data-idx'));
-      if (idx != null && this._searchResultsList && this._searchResultsList[idx]) {
+      if (idx != null && this._searchResultsList[idx]) {
         this._selectSearchTarget(this._searchResultsList[idx]);
         searchInput.value = '';
         resultsContainer.hidden = true;
+        clearSearchResults();
       }
     });
 
@@ -4337,6 +4613,12 @@ export const galaxyMapScreen = {
     this._canvas.addEventListener('wheel', (ev) => this._onWheel(ev), { passive: false });
     this._canvas.addEventListener('click', (ev) => this._onCanvasClick(ev));
     this._canvas.addEventListener('dblclick', (ev) => this._onCanvasDblClick(ev));
+    this._canvas.addEventListener('contextmenu', (ev) => this._onContextMenu(ev));
+
+    // The interaction layer (src/ui/orrery/chartHub.js): hover card, context menu, palette, toolbar and
+    // the wire. It asks this screen through the adapter and never forks a verb.
+    if (this._hub && typeof this._hub.dispose === 'function') this._hub.dispose();
+    this._hub = mountChartHub(rootEl, this._hubAdapter(), { searchInput, searchResults: resultsContainer });
 
     if (typeof ResizeObserver !== 'undefined') {
       this._ro = new ResizeObserver(() => this._resize());
@@ -4448,6 +4730,7 @@ export const galaxyMapScreen = {
     this._domRefreshPending = true;
     this._syncPublicIdentity();
     this._syncScaleButtons();
+    if (this._hub) this._hub.refresh();
     this._wake();
   },
 
@@ -4462,6 +4745,8 @@ export const galaxyMapScreen = {
     this._animFrame = null;
     this._unsubscribeKills();
     this._rememberScreenState();
+    if (this._hub) this._hub.closeAll();
+    releaseChartWorld();
     this._localLiveContacts = 0;
     this._localModelDirty = true;
     this._inspectorPending = false;
@@ -4926,6 +5211,31 @@ _stepAnimation(now) {
       return true;
     }
 
+    // The keyboard's way to the context menu: the ContextMenu key or Shift+F10 opens the verbs for the
+    // selected mark (or, with nothing selected, the empty chart's), seated at the mark.
+    if (key === 'contextmenu' || (event.shiftKey && key === 'f10')) {
+      event.preventDefault();
+      this._openMenuAtSelection();
+      return true;
+    }
+    // The open context menu owns the arrows and Enter.
+    if (this._hub && this._hub.key(event)) {
+      if (event && typeof event.preventDefault === 'function') event.preventDefault();
+      return true;
+    }
+    // Ctrl/Cmd K opens the palette (the search, opened).
+    if ((event.ctrlKey || event.metaKey) && key === 'k') {
+      event.preventDefault();
+      if (this._hub) this._hub.focusPalette();
+      return true;
+    }
+    // The view keys: + and - zoom, 0 frames you and your destination.
+    if (!event.ctrlKey && !event.metaKey && !event.altKey && (key === '+' || key === '=' || key === '-' || key === '_' || key === '0')) {
+      event.preventDefault();
+      this._hubTool(key === '0' ? 'fit' : (key === '+' || key === '=') ? 'zoomIn' : 'zoomOut');
+      return true;
+    }
+
     // Focus search
     if (key === '/') {
       const input = this._root.querySelector('.gm-search-input');
@@ -4961,15 +5271,35 @@ _stepAnimation(now) {
     }
 
     // Esc lets a line being laid go before it closes the chart.
-    if (key === 'escape' && (this._line || this._hold)) {
-      this._hold = null;
-      if (this._line) this._endLine({ commit: false });
-      if (event && typeof event.preventDefault === 'function') event.preventDefault();
-      return true;
-    }
+    if (key === 'escape' && this._cancelChartGesture(event)) return true;
 
     if (key === 'escape' || key === 'm' || key === 'n') {
       popCurrentScreen(ctx || this._ctx);
+      return true;
+    }
+    return false;
+  },
+
+  /**
+   * First refusal on Escape (J6): the UI router asks the active screen before the generic
+   * back/pop runs. While a line is being laid or a hold ring is filling, one Escape lets the
+   * gesture go — never commits a course, never pops the screen — and the NEXT Escape closes the
+   * chart. Every other moment declines so the router's ordinary close stays untouched.
+   */
+  onEscape(event) {
+    // the topmost thing the hub has open lets go first (menu, wire, palette, card); the chart stays
+    if (this._hub && this._hub.escape()) {
+      if (event && typeof event.preventDefault === 'function') event.preventDefault();
+      return true;
+    }
+    return this._cancelChartGesture(event);
+  },
+
+  _cancelChartGesture(event) {
+    if (this._line || this._hold) {
+      this._hold = null;
+      if (this._line) this._endLine({ commit: false });
+      if (event && typeof event.preventDefault === 'function') event.preventDefault();
       return true;
     }
     return false;
@@ -5181,7 +5511,7 @@ _stepAnimation(now) {
           <div class="gm-ins-plate">
             <div class="gm-ins-plate__art" aria-hidden="true"><img src="${escapeMapHtml(sectorTokenUrl(t.id))}" alt="" loading="eager" onerror="this.remove()"></div>
             <div>
-              <div class="gm-ins-kind">Sector record · [${Math.round(t.x || 0)}, ${Math.round(t.y || 0)}]</div>
+              <div class="gm-ins-kind">Sector · ${escapeMapHtml(factionNameOf(t.factionId))}</div>
               <div class="gm-ins-target-name">${escapeMapHtml(t.name)}</div>
             </div>
           </div>
@@ -5272,7 +5602,7 @@ _stepAnimation(now) {
           const tint = memoryTint(marketData.ageS);
           html += `
             <div class="gm-ins-section">
-              <div class="gm-ins-title">Best Known Sell (${this._selectedCommodity.replace('cmdty_', '').replace('_', ' ').toUpperCase()})</div>
+              <div class="gm-ins-title">Best Known Sell (${escapeMapHtml(commodityMapLabel(this._selectedCommodity))})</div>
               <div class="gm-ins-row">
                 <span>Station</span>
                 <span class="gm-ins-row-val">${escapeMapHtml(marketData.stationName)}</span>
@@ -5363,7 +5693,7 @@ _stepAnimation(now) {
               <div class="gm-ins-title">Market Memory</div>
               <div class="gm-ins-row">
                 <span>Commodity</span>
-                <span class="gm-ins-row-val">${this._selectedCommodity.replace('cmdty_', '').replace('_', ' ').toUpperCase()}</span>
+                <span class="gm-ins-row-val">${escapeMapHtml(commodityMapLabel(this._selectedCommodity))}</span>
               </div>
               <div class="gm-ins-row">
                 <span>Buy / Sell</span>
@@ -5494,6 +5824,8 @@ _stepAnimation(now) {
     if (this._inspectorDetailsHtml !== tabbed) {
       detailsEl.innerHTML = tabbed;
       this._inspectorDetailsHtml = tabbed;
+      // a long tab (a sector's overview is nine sections) reads as an accordion
+      enhanceInspectorSections(detailsEl, { tab: this._activeTab });
     }
     if (btn.textContent !== buttonLabel) btn.textContent = buttonLabel;
     if (primary && primary.coursePayload) {
@@ -5652,7 +5984,7 @@ _stepAnimation(now) {
         });
 
     const offers = bestKnownSellOffers(state, this._selectedCommodity, 3);
-    const commodityLabel = String(this._selectedCommodity || '').replace('cmdty_', '').replace(/_/g, ' ').toUpperCase();
+    const commodityLabel = commodityMapLabel(this._selectedCommodity);
     const feedStale = offers.length > 0 && offers.every((offer) => Number(offer.ageS) >= AGE_HOLLOW_S);
     const offersHtml = feedStale
       ? dataStateHtml('error', {
@@ -5853,6 +6185,7 @@ _stepAnimation(now) {
         <span class="gm-ins-note">${escapeMapHtml(cache.detail)}</span>
         <span class="gm-ins-note">${escapeMapHtml(cache.objective)}</span>
       </button>`).join('');
+    const knownLine = selectionKnowledgeLine(state, t && t.id);
     return `
       <div class="gm-ins-section">
         <div class="gm-ins-kind">Survey record</div>
@@ -5861,9 +6194,10 @@ _stepAnimation(now) {
         <div class="gm-ins-row"><span>Confidence</span><span class="gm-ins-row-val">${pct == null ? 'Unknown' : `${pct}%`}${confidence && confidence.band ? ` · ${escapeMapHtml(String(confidence.band))}` : ''}</span></div>
         <div class="gm-ins-row"><span>Scanned</span><span class="gm-ins-row-val">${disc && disc.scanned ? 'Yes' : 'No'}</span></div>
         <div class="gm-ins-row"><span>Exploration</span><span class="gm-ins-row-val">${exploration.percent == null ? 'No authored sites' : `${exploration.percent}% · ${exploration.found}/${exploration.total} sites`}</span></div>
+        ${knownLine ? `<div class="gm-ins-note">${escapeMapHtml(knownLine)}</div>` : ''}
       </div>
       <div class="gm-ins-section">
-        <div class="gm-ins-note">Confidence decays with time since survey. Re-scan a sector to refresh what the chart is willing to assert about it.</div>
+        <div class="gm-ins-note">Confidence fades with time since survey. Re-scan a sector to refresh it.</div>
       </div>
       ${rumorRows}
       ${vestaRows}
@@ -5947,8 +6281,8 @@ _stepAnimation(now) {
     }
     const html = acts.map((a) => {
       // Ignore is a claim-defense verb, not a chart-control id. The place-action button is enough.
-      const control = a.id === 'ignore-defense' ? '' : mapControlAttrs(a.id);
-      return `<button ${control} class="gm-place-btn fh-key fh-key--small" type="button" data-place-action="${a.id}"
+      // The call stays inline in the tag so the binding-map label check can see it.
+      return `<button ${a.id === 'ignore-defense' ? '' : mapControlAttrs(a.id)} class="gm-place-btn fh-key fh-key--small" type="button" data-place-action="${a.id}"
       ${a.available ? '' : 'tabindex="0"'} aria-disabled="${!a.available}" data-why="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`;
     }).join('');
     if (this._lastPlaceActionsHtml !== html) {
@@ -6262,6 +6596,7 @@ _stepAnimation(now) {
     this._updateRailSections(state);
     this._updateHeaderWeather(state);
     this._updateCargoDeck(state);
+    if (this._hub) this._hub.refresh();
     this._domRefreshPending = false;
   },
 
@@ -6687,7 +7022,7 @@ _stepAnimation(now) {
     if (shapes.length === 2 && shapes[0] === shapes[1]) {
       rows.push('<div class="gm-ins-note">Both objectives choose the same path here — cheapest is also shortest.</div>');
     }
-    rows.push(`<div class="gm-ins-note">${escapeMapHtml(target.note)} Selecting an alternative re-plots the route. It does not engage it — plot and engage stay separate acts.</div>`);
+    rows.push(`<div class="gm-ins-note">${escapeMapHtml(target.note)} Selecting an alternative re-plots the route without engaging it.</div>`);
     return rows.join('');
   },
 
@@ -6785,6 +7120,231 @@ _stepAnimation(now) {
       .slice(-8);
     this._updateRailSections(state);
     return true;
+  },
+
+  // ───────────────────────────── the interaction layer's verbs (chartHub.js) ─────────────────────────────
+
+  /** What the hub may ask of this screen. Every verb is one this screen already owns. */
+  _hubAdapter() {
+    const screen = this;
+    return {
+      field: () => {
+        const w = screen._canvas ? screen._canvas.width / (screen._dpr || 1) : 0;
+        const h = screen._canvas ? screen._canvas.height / (screen._dpr || 1) : 0;
+        return screen._clearField(w, h);
+      },
+      describe: (t) => screen._describeTarget(t),
+      menuFor: (t) => screen._menuFor(t),
+      tool: (id) => screen._hubTool(id),
+      toolState: () => {
+        const a = screen._lastFramingActions;
+        return { fit: !!(a && a.frameShipAndDestination && a.frameShipAndDestination.available), ship: !!(a && a.returnToShip && a.returnToShip.available) };
+      },
+      situations: () => screen._situations(),
+      focusSector: (id) => screen._focusSectorById(id),
+      palette: () => screen._paletteItems(),
+      // what the chart has drawn (names and marks): a hover card keeps off it
+      obstacles: () => {
+        const out = [];
+        for (const lb of screen._lastLabelLayout || []) if (lb && lb.visible) out.push({ x: lb.x, y: lb.y, width: lb.width, height: lb.height });
+        for (const t of screen._clickTargets || []) {
+          if (!t || t.kind === 'zone' || !Number.isFinite(t.sx)) continue;
+          const r = Math.min(60, t.radiusPx || 12);
+          out.push({ x: t.sx - r, y: t.sy - r, width: r * 2, height: r * 2 });
+        }
+        return out;
+      },
+    };
+  },
+
+  /** The card a dwell opens: the quiet answer to "what is this?" before a click commits to anything. */
+  _describeTarget(t) {
+    const state = this._ctx && this._ctx.state;
+    if (!state || !t) return null;
+    const action = resolveGalaxyMapPrimaryAction(state, t);
+    const verb = action && action.label && action.kind !== 'closed' ? action.label : null;
+    if (t.kind === 'sector') {
+      const id = t.sectorId || t.id;
+      const sig = sectorSignalFor(state, id);
+      const conflict = sectorConflictSignal(state, id);
+      const rec = sectorRecordById(state, id);
+      const owner = (state.world && state.world.sectors && state.world.sectors[id] && state.world.sectors[id].owner) || t.factionId || null;
+      const sec = Number.isFinite(t.security) ? t.security : (rec && Number.isFinite(rec.security) ? rec.security : null);
+      const danger = sig && Number.isFinite(sig.danger) ? sig.danger : (sec != null ? 1 - sec : 0);
+      const rows = [];
+      if (owner) rows.push({ k: 'Holder', v: factionNameOf(owner), swatch: true });
+      if (sec != null) rows.push({ k: 'Security', v: `${sec.toFixed(2)} · ${sec >= 0.7 ? 'policed' : sec >= 0.34 ? 'ordinary' : sec >= 0.1 ? 'thin' : 'lawless'}`, hot: sec < 0.1 });
+      rows.push({ k: 'Danger', v: danger >= 0.66 ? 'High' : danger >= 0.33 ? 'Moderate' : 'Low', meter: danger, hot: danger >= 0.66 });
+      if (rec && Number.isFinite(rec.trafficPerMin)) rows.push({ k: 'Traffic', v: `${Math.round(rec.trafficPerMin)} / min` });
+      if (conflict.wars > 0) rows.push({ k: 'Front', v: 'At war', hot: true });
+      else if (conflict.tense > 0) rows.push({ k: 'Front', v: 'Tense', warm: true });
+      if (!t.current) {
+        const plan = this._previewPathTo(id);
+        const cost = plan ? formatRoutePlanCost(plan.route, plan.ids) : null;
+        if (cost) rows.push({ k: 'Route', v: cost.replace(/\s*\(.*\)$/, '').toLowerCase().replace(/^./, (c) => c.toUpperCase()) + (cost.includes('Fuel:') ? ` · ${cost.match(/Fuel: (\d+)/)[1]} fuel` : '') });
+      }
+      return {
+        eyebrow: `Sector${t.current ? ' · you are here' : ''}`,
+        title: t.name || id,
+        rows,
+        hue: dominionRgb(owner, owner ? factionColorOf(owner) : null).join(' '),
+        hint: verb ? `<b>Click</b> inspect · <b>2×</b> ${esc1(shortVerb(action))}` : '<b>Click</b> inspect',
+      };
+    }
+    const KIND = { station: 'Station', gate: 'Gate', poi: 'Point of interest', ship: 'Contact', asteroid: 'Rock', claim: 'Holding', zone: 'Zone', waypoint: 'Waypoint', bearing: 'Bearing' };
+    return {
+      eyebrow: KIND[t.kind] || String(t.kind || 'Mark'),
+      title: t.name || 'Unnamed',
+      rows: [],
+      sub: t.detail && t.detail !== t.name ? String(t.detail).slice(0, 140) : '',
+      hue: '236 230 216',
+      hint: verb ? `<b>Click</b> inspect · <b>2×</b> ${esc1(shortVerb(action))}` : '<b>Click</b> inspect',
+    };
+  },
+
+  /** Open the context menu for the selected mark from the keyboard, seated on the mark. */
+  _openMenuAtSelection() {
+    if (!this._hub || !this._canvas || typeof this._canvas.getBoundingClientRect !== 'function') return;
+    const rect = this._canvas.getBoundingClientRect();
+    const sel = this._selectedTarget;
+    const live = sel && this._clickTargets.find((t) => t && t.id === sel.id && Number.isFinite(t.sx));
+    const field = this._clearField(rect.width, rect.height);
+    const x = rect.left + (live ? live.sx : field.x + field.width / 2);
+    const y = rect.top + (live ? live.sy : field.y + field.height / 2);
+    this._hub.contextMenu({ clientX: x, clientY: y }, live || null);
+  },
+
+  _onContextMenu(ev) {
+    if (!ev || !this._canvas) return;
+    ev.preventDefault();
+    if (!this._hub) return;
+    const rect = this._canvas.getBoundingClientRect();
+    const best = pickMapTargetAt(this._clickTargets, ev.clientX - rect.left, ev.clientY - rect.top);
+    this._hub.contextMenu(ev, best);
+  },
+
+  /** The verbs for a mark (or, with none, for the empty chart). */
+  _menuFor(t) {
+    const state = this._ctx && this._ctx.state;
+    if (!state) return null;
+    const items = [];
+    const frames = this._lastFramingActions || resolveMapFramingActions(this._navContext(state));
+    if (t) {
+      const action = resolveGalaxyMapPrimaryAction(state, t);
+      items.push({ glyph: 'inspect', label: 'Inspect', key: 'Click', run: () => { this._selectedTarget = t; this.refresh(); } });
+      if (action && action.kind === 'closed') items.push({ glyph: 'route', label: action.label, disabled: true, reason: action.reason });
+      else if (action) items.push({ glyph: 'route', label: action.label, key: 'Dbl-click', run: () => this._commitCourse(t) });
+      items.push({ glyph: 'frame', label: 'Select and frame', run: () => this._selectSearchTarget(t) });
+      items.push({ glyph: 'flag', label: 'Bookmark this view', sepBefore: true, run: () => this._addBookmark() });
+      return { title: t.name || 'Mark', items };
+    }
+    const level = this._activeLevel();
+    items.push({ glyph: 'fit', label: 'Frame ship + destination', key: '0', disabled: !(frames.frameShipAndDestination && frames.frameShipAndDestination.available), reason: frames.frameShipAndDestination && frames.frameShipAndDestination.reason, run: () => this._activateFraming('frame-both') });
+    items.push({ glyph: 'ship', label: 'Return to ship', disabled: !(frames.returnToShip && frames.returnToShip.available), reason: frames.returnToShip && frames.returnToShip.reason, run: () => this._activateFraming('return-to-ship') });
+    for (const [focus, label] of [['galaxy', 'Galaxy'], ['system', 'System'], ['local', 'Local']]) {
+      if (level !== focus) items.push({ glyph: 'scale', label: `View · ${label}`, sepBefore: items.length === 2, run: () => this._setScaleFocus(focus) });
+    }
+    items.push({ glyph: 'flag', label: 'Bookmark this view', sepBefore: true, run: () => this._addBookmark() });
+    return { title: 'Chart', items };
+  },
+
+  _zoomStep(factor) {
+    if (!this._canvas || !this._canvas.getBoundingClientRect) return;
+    const rect = this._canvas.getBoundingClientRect();
+    const w = rect.width, h = rect.height;
+    const field = this._clearField(w, h);
+    const ev = { preventDefault() {}, clientX: rect.left + field.x + field.width / 2, clientY: rect.top + field.y + field.height / 2, deltaY: factor > 1 ? -1 : 1 };
+    // two wheel notches ~ one step (1.15 squared), through the one zoom path
+    this._onWheel(ev);
+    this._onWheel(ev);
+  },
+
+  _hubTool(id) {
+    if (id === 'zoomIn') this._zoomStep(1.3);
+    else if (id === 'zoomOut') this._zoomStep(1 / 1.3);
+    else if (id === 'ship') this._activateFraming('return-to-ship');
+    else if (id === 'fit') {
+      const a = this._lastFramingActions;
+      if (a && a.frameShipAndDestination && a.frameShipAndDestination.available) this._activateFraming('frame-both');
+      else this._setScaleFocus('galaxy');
+    }
+  },
+
+  /** Select a sector by id and frame it with your own, as a search result does. */
+  _focusSectorById(sectorId) {
+    const state = this._ctx && this._ctx.state;
+    if (!state || !sectorId) return;
+    const node = buildGalaxyModel(state).nodes.find((n) => n.id === sectorId);
+    if (!node) return;
+    this._selectSearchTarget({
+      id: node.id, name: node.name, kind: 'sector', sectorId: node.id, x: node.x, y: node.y,
+      factionId: node.factionId, security: node.security, presence: node.presence, searchText: node.searchText,
+      detail: `Sector · ${factionNameOf(node.factionId)} · Sec: ${node.security ? node.security.toFixed(2) : '0.00'}`,
+    });
+  },
+
+  /** What is happening across charted space, from state only: fronts at war or tense, dangerous sectors, your own heat. */
+  _situations() {
+    const state = this._ctx && this._ctx.state;
+    if (!state) return [];
+    const out = [];
+    const seen = new Set();
+    for (const [pairKey, sectorId] of Object.entries(CONTESTED_SECTOR_BY_PAIR)) {
+      const rec = state.conflicts && state.conflicts[pairKey];
+      const tension = Number(rec && rec.tension) || 0;
+      const stance = String(rec && rec.state || 'cold').toLowerCase();
+      const tone = (stance === 'war' || tension >= 75) ? 'war' : (stance === 'tense' || tension >= 40) ? 'tense' : null;
+      if (!tone) continue;
+      const [a, b] = pairKey.split(':');
+      out.push({ tone, label: tone === 'war' ? 'War' : 'Tense', title: `${factionNameOf(a)} vs ${factionNameOf(b)}`, sub: `${sectorNameOf(state, sectorId)} · tension ${Math.round(tension)}`, sectorId, rank: tone === 'war' ? 0 : 2 });
+      seen.add(sectorId);
+    }
+    try {
+      if (isPlayerWanted(state)) {
+        const here = currentSectorId(state);
+        out.push({ tone: 'danger', label: 'Wanted', title: 'You are wanted', sub: `Heat is up in ${sectorNameOf(state, here)}`, sectorId: here, rank: 0.5 });
+      }
+    } catch (_) { /* heat unavailable */ }
+    const hot = [];
+    for (const n of buildGalaxyModel(state).nodes) {
+      if (!n.charted || seen.has(n.id)) continue;
+      const sig = sectorSignalFor(state, n.id);
+      const danger = sig && Number.isFinite(sig.danger) ? sig.danger : 0;
+      if (danger >= 0.72) hot.push({ tone: 'danger', label: 'Danger', title: n.name, sub: `Danger ${Math.round(danger * 100)}% · ${factionNameOf(n.ownerId || n.factionId)} space`, sectorId: n.id, rank: 1 - danger * 0.1 });
+    }
+    hot.sort((x, y) => x.rank - y.rank);
+    out.push(...hot.slice(0, 4));
+    out.sort((x, y) => x.rank - y.rank);
+    return out;
+  },
+
+  /** The palette's suggestions: where to go, how to look, what to remember. */
+  _paletteItems() {
+    const state = this._ctx && this._ctx.state;
+    if (!state) return [];
+    const items = [];
+    const frames = this._lastFramingActions || resolveMapFramingActions(this._navContext(state));
+    const goal = activeMapGoal(state);
+    if (goal && goal.sectorId) items.push({ group: 'Go to', label: `Goal · ${goal.label || 'Objective'}`, sub: sectorNameOf(state, goal.sectorId), run: () => this._focusSectorById(goal.sectorId) });
+    const here = currentSectorId(state);
+    if (here) items.push({ group: 'Go to', label: 'Your sector', sub: sectorNameOf(state, here), run: () => this._focusSectorById(here) });
+    if (frames.frameShipAndDestination && frames.frameShipAndDestination.available) items.push({ group: 'Go to', label: 'Frame ship + destination', key: '0', run: () => this._activateFraming('frame-both') });
+    if (frames.returnToShip && frames.returnToShip.available) items.push({ group: 'Go to', label: 'Return to ship', run: () => this._activateFraming('return-to-ship') });
+    const level = this._activeLevel();
+    for (const [focus, label] of [['galaxy', 'Galaxy'], ['system', 'System'], ['local', 'Local']]) {
+      if (level !== focus) items.push({ group: 'View', label: `${label} scale`, run: () => this._setScaleFocus(focus) });
+    }
+    for (const id of ['faction', 'events', 'security', 'market']) {
+      const def = LAYER_DEFS.find((l) => l.id === id);
+      if (!def) continue;
+      items.push({ group: 'Lenses', label: `${def.name} lens`, sub: this._layers[id] ? 'On' : 'Off', run: () => {
+        const btn = this._root && this._root.querySelector(`.gm-layer-btn[data-layer="${id}"]`);
+        if (btn && typeof btn.click === 'function') btn.click();
+      } });
+    }
+    (this._bookmarks || []).slice(-4).reverse().forEach((b) => items.push({ group: 'Bookmarks', label: b.label, run: () => this._setCameraFraming(b) }));
+    items.push({ group: 'Remember', label: 'Bookmark this view', run: () => this._addBookmark() });
+    return items;
   },
 
   _activateSelectedCourse() {
@@ -7007,6 +7567,7 @@ _stepAnimation(now) {
     if (!state) return;
 
     this._selectedTarget = target;
+    this._pinCardSoon = true;
 
     // Selecting a search result frames the result. The camera is driven in the GLOBAL frame in every
     // branch — which is what makes "search, then zoom out, then zoom back in" land on the same
@@ -7100,6 +7661,7 @@ _onMouseDown(ev) {
    */
   _onPointerDown(ev) {
     if (!ev || ev.button !== 0) return;
+    if (this._hub) this._hub.closeAll();
     const rect = this._canvas.getBoundingClientRect();
     const x = ev.clientX - rect.left;
     const y = ev.clientY - rect.top;
@@ -7220,6 +7782,7 @@ _onMouseMove(ev) {
     }
     // A still press becomes a line; a press that moves is a pan.
     if (this._hold && Math.hypot(mx - this._hold.x, my - this._hold.y) > 5) this._hold = null;
+    if (this._dragging && this._hub) this._hub.cancelHover();
 
     if (this._dragging && this._dragStart) {
       const dx = ev.clientX - this._dragStart.mx;
@@ -7257,6 +7820,8 @@ _onMouseMove(ev) {
     this._drawPending = true;
     this._wake();
     this._canvas.style.cursor = best ? 'pointer' : (this._isYouAt(mx, my) ? 'grab' : 'crosshair');
+    // a dwell on a mark opens its card (a still, a hold or a drag never does)
+    if (this._hub) this._hub.hover(this._hold ? null : best, { x: mx, y: my });
   },
 
   _onMouseUp() {
@@ -7266,6 +7831,7 @@ _onMouseMove(ev) {
 
 _onMouseLeave() {
     if (this._line) return; // a captured line keeps its pointer until it is released
+    if (this._hub) this._hub.cancelHover();
     this._dragging = false;
     this._dragStart = null;
     this._hold = null;
@@ -7277,6 +7843,7 @@ _onMouseLeave() {
 
   _onWheel(ev) {
     ev.preventDefault();
+    if (this._hub) this._hub.cancelHover();
     const rect = this._canvas.getBoundingClientRect();
     const mx = ev.clientX - rect.left;
     const my = ev.clientY - rect.top;
@@ -7383,7 +7950,9 @@ _onCanvasDblClick(ev) {
    * A sector asks the world's planner for the route; everything is then armed through ui:setCourse.
    */
   _commitCourse(target, { lock = false } = {}) {
-    const payload = resolveCourseTarget(target);
+    // The ONE commit path, shared with the inspector's primary action: a stamped mark whose
+    // identity is gone arms only its position, never the body that inherited a recycled id.
+    const payload = commitCoursePayload(this._ctx && this._ctx.state, target);
     if (!payload || !this._ctx || !this._ctx.bus) return false;
     if (payload.type === 'sector' && payload.sectorId) {
       this._ctx.bus.emit('world:requestRoute', { targetSectorId: payload.sectorId, mode: 'fuel' });
@@ -7466,6 +8035,12 @@ _draw() {
     this._clickTargets.length = 0;
     this._lastAmbientDraw = this._nowMs();
     if (!state) return;
+    // The world moves under an open chart: a selection stamped with a stable identity follows
+    // its body onto a fresh instance, while a destroyed transient whose entity id was recycled
+    // closes instead of painting the ring and inspector onto the hull that inherited the id.
+    if (this._selectedTarget && this._selectedTarget.stable) {
+      this._selectedTarget = reconcileMapSelection(state, this._selectedTarget);
+    }
     // The screen has drawn its first frame — the capture protocol (KIT_SPEC §13) waits for this.
     if (this._root && this._root.dataset && this._root.dataset.kReady !== '1') this._root.dataset.kReady = '1';
 
@@ -7507,6 +8082,15 @@ _draw() {
 
     // SLICE C: the ribbon rides the shared draw path so it cannot stop tracking the executor at one scale.
     this._updateRibbon(state);
+
+    // A selection made by search or by a key has no pointer to dwell on: show its card once, now that
+    // this frame has placed its mark.
+    if (this._pinCardSoon && this._hub) {
+      this._pinCardSoon = false;
+      const sel = this._selectedTarget;
+      const live = sel && this._clickTargets.find((t) => t && t.id === sel.id && Number.isFinite(t.sx) && !t.edgeTick);
+      if (live) this._hub.pin(live, { x: live.sx, y: live.sy });
+    }
 
     // Hover: a lens of light under a mark the pointer rests on (tokens and marks lift themselves; this
     // is the quieter ring for everything else). Resolved against THIS frame's click targets.
@@ -7683,7 +8267,15 @@ _draw() {
     const lever = rectOf('.gm-rail');
     // No chrome laid out (a headless fixture, or the frame before layout): the whole canvas.
     if (!rail && !insp && !lever) return fallback;
-    if (rail && rail.width < w * 0.5 && rail.left < w * 0.3) left = Math.max(left, rail.right + 18);
+    // The wide chart's lens rail is a dock that opens OVER the map: the field is fitted to its grid
+    // cell (its resting width), never its hover-opened box, so nothing moves when the dock opens.
+    let railRight = rail ? rail.right : 0;
+    if (rail && this._root.dataset && this._root.dataset.layout === 'wide' && typeof getComputedStyle === 'function') {
+      const stage = typeof this._root.querySelector === 'function' ? this._root.querySelector('.gm-body-container') : null;
+      const cell = stage ? parseFloat(String(getComputedStyle(stage).gridTemplateColumns || '').split(/\s+/)[0]) : NaN;
+      if (Number.isFinite(cell) && cell > 0) railRight = Math.min(rail.right, rail.left + cell);
+    }
+    if (rail && rail.width < w * 0.5 && rail.left < w * 0.3) left = Math.max(left, railRight + 18);
     if (insp && insp.width < w * 0.5 && insp.left > w * 0.5) right = Math.min(right, insp.left - 18);
     if (lever && lever.bottom < h * 0.5) top = Math.max(top, lever.bottom + 12);
     if (apron && apron.top > h * 0.5) bottom = Math.min(bottom, apron.top - (h < 820 ? 16 : 30));
@@ -7986,10 +8578,6 @@ _drawGalaxy(g, state, w, h) {
     const fieldPad = 14;
     const inGalaxyField = (x, y) => x >= field.x - fieldPad && x <= field.x + field.width + fieldPad
       && y >= field.y - fieldPad && y <= field.y + field.height + fieldPad;
-    g.save();
-    g.beginPath();
-    g.rect(field.x - fieldPad, field.y - fieldPad, field.width + fieldPad * 2, field.height + fieldPad * 2);
-    g.clip();
 
     // The token's rest size follows the chart's scale: about half the shortest charted lane, so the
     // produced art reads (≈64-80 px at the default framing) and neighbours never touch.
@@ -7998,7 +8586,7 @@ _drawGalaxy(g, state, w, h) {
       if (!e.charted) continue;
       shortest = Math.min(shortest, Math.hypot((e.bx - e.ax) * graphScale, (e.by - e.ay) * graphScale));
     }
-    const tokenCap = Math.max(84, Math.min(w, h) * 0.08);
+    const tokenCap = Math.max(84, Math.min(w, h) * 0.094);
     const tokenSize = Math.max(36, Math.min(tokenCap, Number.isFinite(shortest) ? shortest * 0.44 : 68));
     const tokenR = tokenSize / 2;
     this._galaxyTokenR = tokenR;
@@ -8006,12 +8594,54 @@ _drawGalaxy(g, state, w, h) {
     for (const n of model.nodes) screenOf.set(n.id, { x: sx(n.x), y: sy(n.y) });
     this._galaxyScreen = screenOf;
 
+    // THE GROUND (src/ui/orrery/chartWorld.js): who holds the space, where holders meet, where it is
+    // dangerous, where the shooting is — painted across the WHOLE canvas, under the clip, so the world
+    // runs to every edge of the screen while the marks and their names keep to the clear field.
+    let ground = null;
+    try {
+      const groundNodes = model.nodes.map((n) => {
+        const at = screenOf.get(n.id);
+        const sig = n.charted ? sectorSignalFor(state, n.id) : null;
+        const conflict = n.charted ? sectorConflictSignal(state, n.id) : null;
+        return {
+          id: n.id, x: at.x, y: at.y, charted: n.charted, ownerId: n.ownerId, color: n.color,
+          danger: sig && Number.isFinite(sig.danger) ? sig.danger : (n.security != null ? 1 - n.security : 0),
+          wars: conflict ? conflict.wars : 0, tense: conflict ? conflict.tense : 0, current: !!n.current,
+        };
+      });
+      // The fronts: each holder pair the factions system has at war or at tension (read, never written).
+      const fronts = new Map();
+      for (const pairKey of Object.keys(CONTESTED_SECTOR_BY_PAIR)) {
+        const rec = state.conflicts && state.conflicts[pairKey];
+        const tension = Number(rec && rec.tension) || 0;
+        const stance = String(rec && rec.state || 'cold').toLowerCase();
+        if (stance === 'war' || tension >= 75) fronts.set(pairKey, 'war');
+        else if (stance === 'tense' || tension >= 40) fronts.set(pairKey, 'tense');
+      }
+      ground = planChartGround(w, h, {
+        nodes: groundNodes, edges: model.edges, layers: this._layers, tokenR, field, dpr, reduced, animT, nameOf: factionNameOf, fronts,
+      });
+      if (ground) ground.nodeById = new Map(groundNodes.map((n) => [n.id, n]));
+    } catch (_) { ground = null; }
+
+    g.save();
+    g.beginPath();
+    g.rect(field.x - fieldPad, field.y - fieldPad, field.width + fieldPad * 2, field.height + fieldPad * 2);
+    g.clip();
+
     // Lanes. A charted lane is a band of light with body under a crisp edge; a lane into unknown
     // space is only a stub of light leaving what you know, fading into rumour.
     for (const e of model.edges) {
       const ax = sx(e.ax), ay = sy(e.ay), bx = sx(e.bx), by = sy(e.by);
       if (e.charted) {
-        drawBand(g, (c) => { c.moveTo(ax, ay); c.lineTo(bx, by); }, { band: 8, bandA: 0.27, edge: 1.7, edgeA: 0.62, halo: 20, haloA: 0.04 });
+        const ga = ground && ground.nodeById.get(e.from);
+        const gb = ground && ground.nodeById.get(e.to);
+        if (ga && gb && this._layers.faction) {
+          // each lane runs from one holder's hue to the other's; a lane between holders at war runs hot
+          drawDominionLane(g, ga, gb, ground.colours, { war: !!this._layers.events && ground.frontOf(ga.ownerId, gb.ownerId) === 'war' });
+        } else {
+          drawBand(g, (c) => { c.moveTo(ax, ay); c.lineTo(bx, by); }, { band: 8, bandA: 0.27, edge: 1.7, edgeA: 0.62, halo: 20, haloA: 0.04 });
+        }
         continue;
       }
       if (!this._layers.discovery) continue;
@@ -8159,6 +8789,7 @@ _drawGalaxy(g, state, w, h) {
 
       // The token: the sector's produced art (or its bone fallback), lifted under the pointer.
       const lift = (n.id === hoverId || n.id === snapId) ? this._liftAmount(now) : 0;
+      if (ground && this._layers.faction && n.ownerId) drawTokenAura(g, x, y, r, ground.colours, n.ownerId, { a: stale ? 0.5 : 1 });
       const drawnR = drawSectorToken(g, n.id, x, y, tokenSize, {
         dpr, lift, stale, berths: sectorBerthCount(state, n.id), onReady: this._tokenReadyHandler(),
       });
@@ -8427,6 +9058,18 @@ _drawGalaxy(g, state, w, h) {
       reserved: galaxyReserved, discs: wellDiscs, segments: laneSegs,
     });
     this._lastLabelLayout = galaxyLabelLayout;
+    // The ground goes down once the labels are solved (its holder names keep off them), behind
+    // everything drawn so far: the field-edge fade above would otherwise erase it inside the clip and
+    // leave a crisp step. The labels, drawn next, land on top of it.
+    if (ground && ground.paint) {
+      const obstacles = [];
+      for (const lb of galaxyLabelLayout) if (lb && lb.visible) obstacles.push({ x: lb.x, y: lb.y, width: lb.width, height: lb.height });
+      for (const r of galaxyReserved) obstacles.push(r);
+      g.save();
+      g.globalCompositeOperation = 'destination-over';
+      try { ground.paint(g, { obstacles, requestRedraw: () => { galaxyMapScreen._drawPending = true; galaxyMapScreen._wake(); } }); } catch (_) { /* the chart reads without its ground */ }
+      g.restore();
+    }
     for (const placement of galaxyLabelLayout) {
       if (placement.visible) drawMapLabelBlock(g, placement);
     }
@@ -8520,6 +9163,10 @@ _drawSystem(g, state, w, h) {
     for (const bearing of model.bearings) {
       const point = bearing.drawFixedPos || bearing.drawCenter;
       if (point) pts.push({ x: point.x, z: point.z, r: bearing.drawFixedPos ? 0 : bearing.radius });
+    }
+    for (const ping of chartPingCourseTargets(state, model.sectorId)) {
+      const local = globalToSectorLocalForSector({ x: ping.x, z: ping.z }, model.sectorId);
+      if (local) pts.push({ x: local.x, z: local.z, r: 0 });
     }
     // The waypoint's resolved presentation position is GLOBAL. It reaches the span independently
     // of the model, so an armed waypoint reproduced the blowout on its own.
@@ -8691,12 +9338,14 @@ _drawSystem(g, state, w, h) {
     if (dial) { g.beginPath(); g.arc(dial.x, dial.y, Math.max(8, dial.r - 6), 0, Math.PI * 2); g.clip(); }
     g.save();
     g.globalCompositeOperation = 'lighten';
+    const poolOwner = (state.world && state.world.sectors && state.world.sectors[model.sectorId] && state.world.sectors[model.sectorId].owner) || (SECTOR_BY_ID.get(model.sectorId) || {}).factionId || null;
+    const poolTint = this._layers.faction ? dominionRgb(poolOwner, factionColorOf(poolOwner)).join(',') : '236,230,216';
     for (const pool of pools) {
       const grad = g.createRadialGradient ? g.createRadialGradient(pool.x, pool.y, 0, pool.x, pool.y, pool.r) : null;
       if (grad) {
-        grad.addColorStop(0, CHART_INK.bone(this._layers.faction ? 0.2 : 0.18));
-        grad.addColorStop(0.7, CHART_INK.bone(0.08));
-        grad.addColorStop(1, CHART_INK.bone(0.03));
+        grad.addColorStop(0, `rgba(${poolTint},0.3)`);
+        grad.addColorStop(0.7, `rgba(${poolTint},0.12)`);
+        grad.addColorStop(1, `rgba(${poolTint},0.04)`);
       }
       g.fillStyle = grad || CHART_INK.bone(0.06);
       g.beginPath(); g.arc(pool.x, pool.y, pool.r, 0, Math.PI * 2); g.fill();
@@ -8711,7 +9360,7 @@ _drawSystem(g, state, w, h) {
         g.arc(other.x, other.y, Math.max(1, other.r - 1), 0, Math.PI * 2, true);
         g.clip('evenodd');
       }
-      drawBandRing(g, pool.x, pool.y, pool.r, { band: 6, bandA: 0.34, edge: 1.5, edgeA: 0.72 });
+      drawBandRing(g, pool.x, pool.y, pool.r, { rgb: poolTint, band: 7, bandA: 0.34, edge: 1.6, edgeA: 0.8 });
       g.restore();
     }
     g.restore();
@@ -8788,18 +9437,18 @@ _drawSystem(g, state, w, h) {
         const glyph = asteroidScanGlyph(f.type);
         const fieldName = `${FIELD_NAME_BY_TYPE[f.type] || 'Ore'} field`;
         g.save();
-        g.fillStyle = CHART_INK.bone(0.05);
+        g.fillStyle = `rgba(${CLASS_RGB.ore},0.1)`;
         g.beginPath(); g.arc(fx, fy, fr, 0, Math.PI * 2); g.fill();
         const grains = Math.max(10, Math.min(40, Math.round(fr * 0.9)));
         for (let i = 0; i < grains; i += 1) {
           const a = i * 2.39996 + cosmeticHash01(String(f.id) + i) * 0.6;
           const rr = Math.sqrt((i + 0.5) / grains) * fr * 0.92;
           const s = 1.2 + cosmeticHash01(String(f.id) + ':s' + i) * 1.6;
-          g.fillStyle = CHART_INK.bone(0.34 + cosmeticHash01(String(f.id) + ':a' + i) * 0.3);
+          g.fillStyle = `rgba(${CLASS_RGB.ore},${0.46 + cosmeticHash01(String(f.id) + ':a' + i) * 0.34})`;
           g.beginPath(); g.arc(fx + Math.cos(a) * rr, fy + Math.sin(a) * rr * 0.86, s, 0, Math.PI * 2); g.fill();
         }
         g.restore();
-        drawBandRing(g, fx, fy, fr, { band: 5, bandA: 0.26, edge: 1.3, edgeA: 0.5 });
+        drawBandRing(g, fx, fy, fr, { rgb: CLASS_RGB.ore, band: 6, bandA: 0.2, edge: 1.4, edgeA: 0.6 });
         // What it is and the ore it carries, named at the field's crown through the label solver.
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `field:${f.id || glyph}`,
@@ -8876,6 +9525,23 @@ _drawSystem(g, state, w, h) {
           named: true,
         }));
       }
+
+      // Scanner pings: same named course as the local map. Draw the sector-local point;
+      // the click keeps the global x/z so the course arms in the nav frame.
+      for (const ping of chartPingCourseTargets(state, model.sectorId)) {
+        const local = globalToSectorLocalForSector({ x: ping.x, z: ping.z }, model.sectorId);
+        if (!local) continue;
+        const pw = warp(sx(local.x), sz(local.z));
+        g.save();
+        g.fillStyle = CHART_INK.ice(0.16);
+        g.beginPath(); g.arc(pw.x, pw.y, 9, 0, Math.PI * 2); g.fill();
+        g.fillStyle = CHART_INK.ice(0.9);
+        g.beginPath();
+        g.moveTo(pw.x, pw.y - 5); g.lineTo(pw.x + 5, pw.y); g.lineTo(pw.x, pw.y + 5); g.lineTo(pw.x - 5, pw.y);
+        g.closePath(); g.fill();
+        g.restore();
+        this._clickTargets.push({ ...ping, sx: pw.x, sy: pw.y, radiusPx: 16 });
+      }
     }
 
     // THE HAND at system scale: the course from the ship to its waypoint, drawn in, a packet running it.
@@ -8915,7 +9581,7 @@ _drawSystem(g, state, w, h) {
       const pointMark = chartMarkSizes(p, pxPerWU);
       const target = {
         sx: x, sy: y, radiusPx: Math.max(pointMark.pipPx, isStation || isGate ? 14 : 10), kind: p.kind, id: p.id, x: p.x, z: p.z,
-        entityId: p.entityId, stationId: p.stationId, targetSectorId: p.targetSectorId,
+        entityId: p.entityId, stationId: p.stationId, stable: p.stable || null, targetSectorId: p.targetSectorId,
         name: displayName, factionId: p.factionId,
         mapKind: p.mapKind, stageId: p.stageId, stageLabel: p.stageLabel,
         coursePos: p.coursePos, courseLabel: p.courseLabel,
@@ -9068,7 +9734,7 @@ _drawSystem(g, state, w, h) {
     let wpScreen = null;
     if (wpDraw && (this._layers.route || this._layers.mission)) {
       let { x: wx, y: wy } = warp(sx(wpDraw.x), sz(wpDraw.z));
-      const target = waypointClickTarget(wp, wpPos, wx, wy);
+      const target = waypointClickTarget(wp, wpPos, wx, wy, state);
       if (!inField(wx, wy, 6)) {
         // The goal off the clear field: its tick on the field's border, pointing the way, and its
         // words beside the tick — never printed under the rails or the tape.
@@ -9174,6 +9840,15 @@ _drawSystem(g, state, w, h) {
         this._clickTargets.push({ ...tick.target, sx: tick.x, sy: tick.y, radiusPx: 14, edgeTick: true });
       }
     }
+    // THE GROUND: the holder's hue washes the canvas around the gate ring and lights its rim, behind
+    // everything drawn (src/ui/orrery/chartWorld.js).
+    if (dial && this._layers.faction) {
+      const owner = (state.world && state.world.sectors && state.world.sectors[model.sectorId] && state.world.sectors[model.sectorId].owner) || (SECTOR_BY_ID.get(model.sectorId) || {}).factionId || null;
+      g.save();
+      g.globalCompositeOperation = 'destination-over';
+      try { drawSystemGround(g, w, h, { x: dial.x, y: dial.y, r: dial.r, ownerId: owner, fallbackHex: factionColorOf(owner) }); } catch (_) { /* the chart reads without its ground */ }
+      g.restore();
+    }
   },
 
   // --- LOCAL DRAW ---
@@ -9272,8 +9947,11 @@ _drawLocal(g, state, w, h) {
     // Range rings: bands of light round the ship, each reading its radius on its crown.
     const shipX = sx(px), shipY = sz(pz);
     const ringBase = Math.min(field.width, field.height) * 0.46;
+    const localOwner = (state.world && state.world.sectors && state.world.sectors[model.sectorId] && state.world.sectors[model.sectorId].owner) || (SECTOR_BY_ID.get(model.sectorId) || {}).factionId || null;
+    const localTint = this._layers.faction ? dominionRgb(localOwner, factionColorOf(localOwner)) : [236, 230, 216];
+    const localTintStr = `${Math.round(localTint[0] * 0.55 + 236 * 0.45)},${Math.round(localTint[1] * 0.55 + 230 * 0.45)},${Math.round(localTint[2] * 0.55 + 216 * 0.45)}`;
     for (const rr of [0.33, 0.66, 1.0]) {
-      drawBandRing(g, shipX, shipY, ringBase * rr, { band: 7, bandA: rr === 1 ? 0.34 : 0.3, edge: 1.5, edgeA: rr === 1 ? 0.6 : 0.5 });
+      drawBandRing(g, shipX, shipY, ringBase * rr, { rgb: localTintStr, band: 8, bandA: rr === 1 ? 0.4 : 0.32, edge: 1.7, edgeA: rr === 1 ? 0.78 : 0.62 });
     }
     // Minor graduations on the outer ring: an instrument, not a circle.
     g.save();
@@ -9349,22 +10027,19 @@ _drawLocal(g, state, w, h) {
         }));
       }
 
-      // Scanner pings: where the sweep found something unclassified — ice, data in motion.
-      const pings = state.world && state.world.scanPings && state.world.scanPings[model.sectorId];
-      if (Array.isArray(pings)) {
-        for (const ping of pings) {
-          if (!ping || !ping.pos) continue;
-          const x = sx(ping.pos.x), y = sz(ping.pos.z);
-          if (offView(x, y)) continue;
-          g.save();
-          g.fillStyle = CHART_INK.ice(0.16);
-          g.beginPath(); g.arc(x, y, 9, 0, Math.PI * 2); g.fill();
-          g.fillStyle = CHART_INK.ice(0.9);
-          g.beginPath();
-          g.moveTo(x, y - 5); g.lineTo(x + 5, y); g.lineTo(x, y + 5); g.lineTo(x - 5, y);
-          g.closePath(); g.fill();
-          g.restore();
-        }
+      // Scanner pings: the sweep's unclassified mark is a named course, same as the local map.
+      for (const ping of chartPingCourseTargets(state, model.sectorId)) {
+        const x = sx(ping.x), y = sz(ping.z);
+        if (offView(x, y)) continue;
+        g.save();
+        g.fillStyle = CHART_INK.ice(0.16);
+        g.beginPath(); g.arc(x, y, 9, 0, Math.PI * 2); g.fill();
+        g.fillStyle = CHART_INK.ice(0.9);
+        g.beginPath();
+        g.moveTo(x, y - 5); g.lineTo(x + 5, y); g.lineTo(x, y + 5); g.lineTo(x - 5, y);
+        g.closePath(); g.fill();
+        g.restore();
+        this._clickTargets.push({ ...ping, sx: x, sy: y, radiusPx: 16 });
       }
     }
 
@@ -9395,7 +10070,7 @@ _drawLocal(g, state, w, h) {
     if (wpPos && this._layers.route) {
       let ex = sx(wpPos.x), ey = sz(wpPos.z);
       if (offView(ex, ey)) {
-        wpTick = ringPinTick(shipX, shipY, pinRadius, ex, ey, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, ex, ey) || undefined);
+        wpTick = ringPinTick(shipX, shipY, pinRadius, ex, ey, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, ex, ey, state) || undefined);
         ex = wpTick.x; ey = wpTick.y;
       }
       const progress = reduced ? 1 : Math.min(1, Math.max(0, (this._nowMs() - (this._routeDrawStart == null ? -1e9 : this._routeDrawStart)) / 520));
@@ -9460,7 +10135,7 @@ _drawLocal(g, state, w, h) {
           pushEdgeTick(x, y, c.hostile && c.kind !== 'station' && c.kind !== 'gate' ? INK.red : INK.ink0,
             c.kind === 'gate' ? 'gate' : c.kind === 'station' ? 'station' : 'hostile', {
               kind: c.kind, id: c.id, x: c.x, z: c.z,
-              entityId: c.entityId, stationId: c.stationId, name: displayName, factionId: c.factionId,
+              entityId: c.entityId, stationId: c.stationId, stable: c.stable || null, name: displayName, factionId: c.factionId,
               hostile: c.hostile,
               detail: `Contact · ${displayName} · off-view ${c.kind.toUpperCase()}`,
             });
@@ -9471,7 +10146,7 @@ _drawLocal(g, state, w, h) {
       const contactMark = chartMarkSizes(c, baseScale * cam.zoom);
       this._clickTargets.push({
         sx: x, sy: y, radiusPx: Math.max(contactMark.pipPx, c.kind === 'asteroid' ? 6 : 11), kind: c.kind, id: c.id, x: c.x, z: c.z,
-        entityId: c.entityId, stationId: c.stationId, name: displayName, factionId: c.factionId,
+        entityId: c.entityId, stationId: c.stationId, stable: c.stable || null, name: displayName, factionId: c.factionId,
         hostile: c.hostile,
         closed: c.closed === true,
         statusLine: c.statusLine || null,
@@ -9653,12 +10328,12 @@ _drawLocal(g, state, w, h) {
       let wx = sx(wpPos.x);
       let wy = sz(wpPos.z);
       if (offView(wx, wy)) {
-        const tick = wpTick || ringPinTick(shipX, shipY, pinRadius, wx, wy, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, wx, wy) || undefined);
+        const tick = wpTick || ringPinTick(shipX, shipY, pinRadius, wx, wy, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, wx, wy, state) || undefined);
         edgeTicks.push(tick);
         wx = tick.x; wy = tick.y;
       } else {
         wpScreen = { x: wx, y: wy };
-        const target = waypointClickTarget(wp, wpPos, wx, wy);
+        const target = waypointClickTarget(wp, wpPos, wx, wy, state);
         if (target) this._clickTargets.push(target);
       }
       const objectiveLabel = waypointMapLabel(wp);
@@ -9722,6 +10397,13 @@ _drawLocal(g, state, w, h) {
           edgeTick: true,
         });
       }
+    }
+    // THE GROUND: the holder's hue washes the scope and lights its outer ring, behind everything.
+    if (this._layers.faction) {
+      g.save();
+      g.globalCompositeOperation = 'destination-over';
+      try { drawSystemGround(g, w, h, { x: shipX, y: shipY, r: ringBase, ownerId: localOwner, fallbackHex: factionColorOf(localOwner), dashed: false }); } catch (_) { /* the chart reads without its ground */ }
+      g.restore();
     }
   },
 };
@@ -9787,9 +10469,10 @@ function drawStationMark(g, x, y) {
   // A station is a place you dock: a lit hub inside a berth ring of light, four mooring arms on the
   // diagonals (clear of the label, which always sits on an axis).
   const r = 8.5;
-  drawBandRing(g, x, y, r, { band: 6, bandA: 0.24, edge: 1.7, edgeA: 0.9 });
+  drawGlow(g, x, y, 26, CLASS_RGB.station, 0.6);
+  drawBandRing(g, x, y, r, { rgb: CLASS_RGB.station, band: 7, bandA: 0.3, edge: 1.9, edgeA: 0.98 });
   g.save();
-  g.strokeStyle = CHART_INK.bone(0.82);
+  g.strokeStyle = `rgba(${CLASS_RGB.station},0.95)`;
   g.lineWidth = 2;
   g.lineCap = 'butt';
   for (let i = 0; i < 4; i += 1) {
@@ -9817,12 +10500,13 @@ function drawGateMark(g, g_x, g_y, angle = 0) {
   // tongue leaving the mouth the way the lane goes.
   const x = g_x, y = g_y, r = 7.5;
   const gap = 0.62;
-  const style = { band: 6, bandA: 0.24, edge: 2, edgeA: 0.92 };
+  drawGlow(g, x, y, 24, CLASS_RGB.gate, 0.55);
+  const style = { rgb: CLASS_RGB.gate, band: 7, bandA: 0.3, edge: 2.1, edgeA: 0.98 };
   drawBand(g, (c) => c.arc(x, y, r, angle + gap, angle + Math.PI - gap), style);
   drawBand(g, (c) => c.arc(x, y, r, angle + Math.PI + gap, angle + Math.PI * 2 - gap), style);
   const ca = Math.cos(angle), sa = Math.sin(angle);
   drawBand(g, (c) => { c.moveTo(x + ca * 2, y + sa * 2); c.lineTo(x + ca * (r + 6), y + sa * (r + 6)); },
-    { band: 5, bandA: 0.22, edge: 2, edgeA: 0.95 });
+    { rgb: CLASS_RGB.gate, band: 5, bandA: 0.26, edge: 2, edgeA: 0.98 });
   drawBead(g, x + ca * (r + 6), y + sa * (r + 6), 2.2, { bloom: 2.4, bloomA: 0.3 });
 }
 
@@ -9835,10 +10519,11 @@ function drawGateMark(g, g_x, g_y, angle = 0) {
  */
 function drawPoiMark(g, x, y) {
   // A point of interest: a small lit diamond in its own soft light.
+  drawGlow(g, x, y, 20, '236,230,216', 0.34);
   g.save();
   g.fillStyle = CHART_INK.bone(0.14);
   g.beginPath(); g.arc(x, y, 8, 0, Math.PI * 2); g.fill();
-  g.fillStyle = CHART_INK.lit(0.9);
+  g.fillStyle = CHART_INK.lit(0.95);
   const s = 4.2;
   g.beginPath();
   g.moveTo(x, y - s); g.lineTo(x + s, y); g.lineTo(x, y + s); g.lineTo(x - s, y);
@@ -9907,12 +10592,16 @@ function drawManufacturedTravelRoute(g, route, sx, sz, useDrawFrame, warp = null
 
 /** Neutral ship: a heading chevron in quiet ink. */
 function drawShipChevron(g, x, y, rot, color) {
+  // a contact wears its class hue (traffic: the radar's blue-grey) with a soft halo, so the local scope
+  // reads at a glance the way the radar does
+  if (!color) drawGlow(g, x, y, 17, CLASS_RGB.neutral, 0.42);
   g.save();
-  g.fillStyle = CHART_INK.bone(0.12);
+  g.fillStyle = color ? CHART_INK.bone(0.12) : `rgba(${CLASS_RGB.neutral},0.16)`;
   g.beginPath(); g.arc(x, y, 8.5, 0, Math.PI * 2); g.fill();
   g.translate(x, y);
   g.rotate(Math.PI + (rot || 0));
-  g.fillStyle = color || CHART_INK.lit(0.92);
+  if (!color) g.scale(1.3, 1.3);
+  g.fillStyle = color || `rgba(${CLASS_RGB.neutral},0.98)`;
   g.beginPath();
   g.moveTo(6.5, 0); g.lineTo(-5, -4.2); g.lineTo(-2.8, 0); g.lineTo(-5, 4.2);
   g.closePath(); g.fill();
@@ -9988,11 +10677,13 @@ function drawPlayerFixMark(g, x, y, rot, options = {}) {
 
 /** Hostile: a red open diamond, rotated to heading — threat reads before color-blind shape. */
 function drawHostileMark(g, x, y, rot) {
+  drawGlow(g, x, y, 24, CLASS_RGB.hostile, 0.7);
   g.save();
-  g.fillStyle = CHART_INK.danger(0.16);
+  g.fillStyle = CHART_INK.danger(0.2);
   g.beginPath(); g.arc(x, y, 10, 0, Math.PI * 2); g.fill();
   g.translate(x, y);
   g.rotate(Math.PI + (rot || 0));
+  g.scale(1.3, 1.3);
   g.fillStyle = CHART_INK.danger(0.92);
   g.beginPath();
   g.moveTo(6.5, 0); g.lineTo(0, -4.6); g.lineTo(-6.5, 0); g.lineTo(0, 4.6);
@@ -10057,9 +10748,9 @@ function asteroidGlyphPath(seedId) {
 export function drawAsteroidMark(g, x, y, seedId) {
   const path = asteroidGlyphPath(seedId);
   g.save();
-  g.fillStyle = INK.ink2;
-  g.strokeStyle = INK.ink1;
-  g.lineWidth = 0.8;
+  g.fillStyle = `rgba(${CLASS_RGB.ore},0.5)`;
+  g.strokeStyle = `rgba(${CLASS_RGB.ore},0.85)`;
+  g.lineWidth = 0.9;
   if (path && typeof g.translate === 'function'
     && typeof g.fill === 'function' && typeof g.stroke === 'function') {
     g.translate(x, y);
@@ -10380,13 +11071,9 @@ function mutedZoneColor(hex, amount = 0.45) {
 
 /** Octant bearing for disambiguating same-named gates on the survey table (N/NE/E…). */
 function compassOctant(dx, dz) {
-  if (!Number.isFinite(dx) || !Number.isFinite(dz)) return '';
-  // North is -Z, matching the chart rather than the world: `sz()` maps world +Z to increasing screen
-  // y, so -Z is the top of the table and that is the bearing a pilot reads as "north" here.
-  const angle = Math.atan2(dx, -dz);
-  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-  const idx = Math.round(((angle + Math.PI * 2) % (Math.PI * 2)) / (Math.PI / 4)) % 8;
-  return dirs[idx];
+  // Flight north is +z (screen up). This table's sz() adds z, so the mark sits
+  // toward the bottom of the chart. The letter stays the flight word.
+  return playerBearingLetter(dx, dz);
 }
 
 /**
@@ -10708,10 +11395,39 @@ function drawWaypointPin(g, x, y, label, viewportWidth = Infinity, labelPlacemen
   if (labelPlacement) drawMapLabelBlock(g, labelPlacement);
 }
 
-function waypointClickTarget(wp, pos, sx, sy) {
+/**
+ * Give a waypoint/goal marker's carried entityId its stable-identity witness — or take the id
+ * away. `nav.waypoint.targetEntityId` persists past entity death by contract, so it is the
+ * stalest id field on the chart: a holder that no longer resolves drops the bind (the mark's
+ * position stays the destination); a live holder is stamped so the commit gate can re-verify
+ * the id was not recycled under it.
+ */
+function stampWaypointTarget(state, target) {
+  // A null id with a surviving durable stamp is not a dead marker — the holder may simply have
+  // rematerialized under a new runtime id; resolve the stamp before giving up.
+  if (!target || (target.targetEntityId == null && !target.stable)) return target;
+  // The armed course's own stamp is the authority for which entity the waypoint meant — the
+  // bare id alone can have recycled onto an unrelated body, and stamping THAT occupant would
+  // send the chart marker's clicks to it.
+  const holder = target.stable
+    ? resolveEntitySelection(state, target.stable)
+    : resolveEntityById(state, target.targetEntityId);
+  if (!holder || holder.alive === false) {
+    target.targetEntityId = null;
+    target.stable = null;
+    return target;
+  }
+  // A durable stamp can resolve to a rematerialized instance under a NEW id — the marker points
+  // at the live holder, so both the id and the stamp agree on it.
+  target.targetEntityId = holder.id;
+  target.stable = captureEntitySelection(holder);
+  return target;
+}
+
+function waypointClickTarget(wp, pos, sx, sy, state) {
   if (!wp || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
   const label = waypointMapLabel(wp);
-  return {
+  return stampWaypointTarget(state, {
     sx,
     sy,
     radiusPx: 22,
@@ -10731,8 +11447,9 @@ function waypointClickTarget(wp, pos, sx, sy) {
     detail: wp.reason || wp.label || wp.mapLabel || 'Active navigation waypoint',
     missionId: wp.missionId || null,
     targetEntityId: wp.targetEntityId,
+    stable: wp.stable || null,
     stationId: wp.stationId,
-  };
+  });
 }
 
 export default galaxyMapScreen;

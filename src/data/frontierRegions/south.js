@@ -52,10 +52,10 @@ export const SOUTH_ORIGINS = Object.freeze({
 
 /** Palette blocks mirrored from SECTOR_PALETTE_CLASSES (no shared import). */
 const PALETTE_CORE = Object.freeze({
-  key: 0xe8edf4,
-  rim: 0x8fa4bf,
-  fill: 0xb8c2cc,
-  ambient: 0x3e4652,
+  key: 0xffe2bd,
+  rim: 0x82baf0,
+  fill: 0xa3b4dd,
+  ambient: 0x45516f,
   fog: 0x05070b,
   fogDensity: 0,
   nebulaTint: 0x2450a0,
@@ -64,9 +64,9 @@ const PALETTE_CORE = Object.freeze({
 
 const PALETTE_FRINGE = Object.freeze({
   key: 0xffb07a,
-  rim: 0xff3f2d,
-  fill: 0xffaa66,
-  ambient: 0x584343,
+  rim: 0x9875ce,
+  fill: 0xbc91a6,
+  ambient: 0x51435d,
   fog: 0x090504,
   fogDensity: 0.00003,
   nebulaTint: 0x8a1e1e,
@@ -93,10 +93,11 @@ export const SOUTH_SECTORS = Object.freeze([
   Object.freeze({
     id: 'sector_eunomia_gulf',
     name: 'Eunomia Gulf',
+    threat: 'vael',
     tier: 3,
     security: 0.10,
     charted: false,
-    factionId: 'faction_vael',
+    factionId: 'faction_understory',
     position: Object.freeze({ x: 10, y: 14 }),
     worldRadius: 5200,
     paletteClass: 'fringe',
@@ -112,7 +113,7 @@ export const SOUTH_SECTORS = Object.freeze([
         id: 'station_eunomia',
         name: 'Eunomia Fence',
         type: 'blackmarket',
-        factionId: 'faction_vael',
+        factionId: 'faction_understory',
         size: 'S',
         services: Object.freeze(['black_market', 'repair']),
         chartNote: 'Vael-licensed salvage changes hands here; fuel and hospitality do not.',
@@ -170,10 +171,12 @@ export const SOUTH_SECTORS = Object.freeze([
   Object.freeze({
     id: 'sector_sedna_dark',
     name: 'Sedna Dark',
+    threat: 'vael',
+    industries: { research: true },
     tier: 4,
     security: 0.06,
     charted: false,
-    factionId: 'faction_vael',
+    factionId: 'faction_helix',
     position: Object.freeze({ x: 5, y: 15 }),
     worldRadius: 5400,
     paletteClass: 'anomaly',
@@ -190,9 +193,13 @@ export const SOUTH_SECTORS = Object.freeze([
         id: 'station_sedna',
         name: 'Sedna Survey Post',
         type: 'research',
-        factionId: 'faction_vael',
+        factionId: 'faction_helix',
         size: 'S',
         services: Object.freeze(['scan_tech', 'repair']),
+        // No 'missions' desk: the hub no longer advertises "contracts here", the board rolls
+        // no procedural work (missions.js desklessOutpost), and remote salvage reroutes can
+        // no longer point at a station that cannot fuel the trip. The Ringworld reading still
+        // files through the board — a filed record is not desk work.
         chartNote: 'Sensors and hull patches at the dark rim; no fuel, no rescue, few questions.',
       }),
     ]),

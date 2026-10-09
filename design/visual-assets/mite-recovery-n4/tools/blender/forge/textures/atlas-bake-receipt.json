@@ -1,0 +1,30 @@
+{
+  "status": "reversible shared trim bake study, not final creature UV/bake",
+  "normalSource": "Actual original editable high relief patch baked selected-to-active onto a low UV patch",
+  "highReliefQuads": 262144,
+  "atlasSize": [
+    1024,
+    512
+  ],
+  "regions": {
+    "shell": [
+      0.015,
+      0.585
+    ],
+    "soft": [
+      0.62,
+      0.795
+    ],
+    "bone": [
+      0.83,
+      0.985
+    ]
+  },
+  "images": [
+    "brood-shared-anatomy-normal.png",
+    "brood-shared-anatomy-roughness.png"
+  ],
+  "roughnessSource": "Continuous anatomy-zone authoring, not a texture bake",
+  "albedoNoise": false,
+  "missingAnatomyPaintedIn": false
+}

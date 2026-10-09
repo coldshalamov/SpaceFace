@@ -1,0 +1,223 @@
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender').
+ERROR Draco mesh compression is not available because library could not be found at /usr/bin/4.3/python/lib/python3.13/site-packages/libextern_draco.so
+22:08:42 | INFO: Starting glTF 2.0 export
+22:08:42 | INFO: Extracting primitive: COLLISION_HULL
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD0_Armor
+22:08:42 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD0_HOOK_DRIVE_CORE
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD0_HOOK_NAV_PORT
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD0_HOOK_NAV_STARBOARD
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD0_Hull
+22:08:42 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD0_Livery
+22:08:42 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD0_Mechanical
+22:08:42 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD0_MechanicalDark
+22:08:42 | WARNING: More than one shader node tex image used for a texture. The resulting glTF sampler will behave like the first shader node tex image.
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD1_Armor
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD1_HOOK_DRIVE_CORE
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD1_HOOK_NAV_PORT
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD1_HOOK_NAV_STARBOARD
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD1_Hull
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD1_Livery
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD1_Mechanical
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD1_MechanicalDark
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD2_Armor
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD2_HOOK_DRIVE_CORE
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD2_HOOK_NAV_PORT
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD2_HOOK_NAV_STARBOARD
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD2_Hull
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD2_Livery
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD2_Mechanical
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD2_MechanicalDark
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD0_MOTION_TALLY_ARM_LEFT_Livery
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD0_MOTION_TALLY_ARM_LEFT_Mechanical
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD1_MOTION_TALLY_ARM_LEFT_Livery
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD1_MOTION_TALLY_ARM_LEFT_Mechanical
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD2_MOTION_TALLY_ARM_LEFT_Livery
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD2_MOTION_TALLY_ARM_LEFT_Mechanical
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD0_MOTION_TALLY_ARM_RIGHT_Livery
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD0_MOTION_TALLY_ARM_RIGHT_Mechanical
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD1_MOTION_TALLY_ARM_RIGHT_Livery
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD1_MOTION_TALLY_ARM_RIGHT_Mechanical
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD2_MOTION_TALLY_ARM_RIGHT_Livery
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD2_MOTION_TALLY_ARM_RIGHT_Mechanical
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD0_MOTION_TALLY_SCAN_Lights_Cyan
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD0_MOTION_TALLY_SCAN_Mechanical
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD1_MOTION_TALLY_SCAN_Lights_Cyan
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD1_MOTION_TALLY_SCAN_Mechanical
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD2_MOTION_TALLY_SCAN_Lights_Cyan
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD2_MOTION_TALLY_SCAN_Mechanical
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD0_MOTION_TALLY_STAMP_Livery
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD0_MOTION_TALLY_STAMP_Mechanical
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD1_MOTION_TALLY_STAMP_Livery
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD1_MOTION_TALLY_STAMP_Mechanical
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD2_MOTION_TALLY_STAMP_Livery
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Extracting primitive: LOD2_MOTION_TALLY_STAMP_Mechanical
+22:08:42 | INFO: Primitives created: 1
+22:08:42 | INFO: Finished glTF 2.0 export in 0.21800541877746582 s
+Blender 4.3.2
+Fra:1 Mem:45.18M (Peak 45.18M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ROOT_TALLY__CollisionSpine
+Fra:1 Mem:45.18M (Peak 45.18M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRaisedShoulder1
+Fra:1 Mem:47.21M (Peak 47.21M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardNavigation
+Fra:1 Mem:47.36M (Peak 47.36M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortNavigation
+Fra:1 Mem:47.42M (Peak 47.42M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanOpticSlit
+Fra:1 Mem:47.46M (Peak 47.46M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanOpticCarrier
+Fra:1 Mem:47.46M (Peak 47.46M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRaisedShoulder2
+Fra:1 Mem:47.46M (Peak 47.46M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortRaisedShoulder3
+Fra:1 Mem:47.61M (Peak 47.61M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ScanProtectiveBrow
+Fra:1 Mem:47.60M (Peak 47.61M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortForeCheek
+Fra:1 Mem:47.59M (Peak 47.61M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortLongitudinalRail
+Fra:1 Mem:47.63M (Peak 47.63M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortHingeFoundation
+Fra:1 Mem:47.67M (Peak 47.67M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SCAN_SOCKET__RecessedAperture
+Fra:1 Mem:47.65M (Peak 47.67M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortFixedHingeAxle
+Fra:1 Mem:47.69M (Peak 47.69M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortBearingLowerRace
+Fra:1 Mem:47.77M (Peak 47.77M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortBearingUpperRace
+Fra:1 Mem:47.81M (Peak 47.81M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleMountPin
+Fra:1 Mem:47.88M (Peak 47.88M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortBearingCap
+Fra:1 Mem:47.90M (Peak 47.90M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleInnerBumper
+Fra:1 Mem:47.92M (Peak 47.92M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder0
+Fra:1 Mem:47.96M (Peak 47.96M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder1
+Fra:1 Mem:47.98M (Peak 47.98M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder2
+Fra:1 Mem:48.07M (Peak 48.07M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardGoldTriangularPad
+Fra:1 Mem:48.06M (Peak 48.07M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardRaisedShoulder3
+Fra:1 Mem:48.12M (Peak 48.12M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardForeCheek
+Fra:1 Mem:48.18M (Peak 48.18M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardLongitudinalRail
+Fra:1 Mem:48.16M (Peak 48.18M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardHingeFoundation
+Fra:1 Mem:48.17M (Peak 48.18M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardFixedHingeAxle
+Fra:1 Mem:48.16M (Peak 48.18M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardCradleRoot
+Fra:1 Mem:48.34M (Peak 48.34M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardBearingLowerRace
+Fra:1 Mem:48.35M (Peak 48.35M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardBearingUpperRace
+Fra:1 Mem:48.40M (Peak 48.40M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleMountPin
+Fra:1 Mem:48.44M (Peak 48.44M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StarboardBearingCap
+Fra:1 Mem:48.46M (Peak 48.46M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleInnerBumper
+Fra:1 Mem:48.51M (Peak 48.51M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DorsalLedgerCover
+Fra:1 Mem:48.50M (Peak 48.51M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ChannelCrossRibs
+Fra:1 Mem:48.60M (Peak 48.60M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ShoulderFasteners
+Fra:1 Mem:48.61M (Peak 48.61M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortGoldTriangularPad
+Fra:1 Mem:49.19M (Peak 49.19M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | PortCradleRoot
+Fra:1 Mem:49.33M (Peak 49.33M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightCalibrationCollar
+Fra:1 Mem:49.34M (Peak 49.34M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-1-8.0
+Fra:1 Mem:49.71M (Peak 49.71M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightLargeScanGrilles
+Fra:1 Mem:49.82M (Peak 49.82M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-1-4.2
+Fra:1 Mem:49.89M (Peak 49.89M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightScanHeadOchreBezel
+Fra:1 Mem:50.03M (Peak 50.03M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers-12.2
+Fra:1 Mem:50.04M (Peak 50.04M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers1-8.0
+Fra:1 Mem:50.23M (Peak 50.23M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightScanHead
+Fra:1 Mem:50.10M (Peak 50.23M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers1-4.2
+Fra:1 Mem:50.41M (Peak 50.41M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightHeadNeck
+Fra:1 Mem:50.37M (Peak 50.41M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SeatedCoolingLouvers12.2
+Fra:1 Mem:50.26M (Peak 50.41M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | DriveCrosshead
+Fra:1 Mem:50.36M (Peak 50.41M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SupportedMainNozzle-0.9
+Fra:1 Mem:50.44M (Peak 50.44M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SupportedMainNozzle0.9
+Fra:1 Mem:50.62M (Peak 50.62M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | rightArmRootClevis
+Fra:1 Mem:50.60M (Peak 50.62M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampFoot-1
+Fra:1 Mem:50.63M (Peak 50.63M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampUpright-1
+Fra:1 Mem:50.62M (Peak 50.63M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuide-1
+Fra:1 Mem:50.63M (Peak 50.63M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ARM_RIGHT__OpenCage
+Fra:1 Mem:50.77M (Peak 50.77M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampFoot1
+Fra:1 Mem:50.84M (Peak 50.84M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampUpright1
+Fra:1 Mem:50.80M (Peak 50.84M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuide1
+Fra:1 Mem:50.81M (Peak 50.84M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftCalibrationCollar
+Fra:1 Mem:50.93M (Peak 50.93M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | SolidUYokeCrossbar
+Fra:1 Mem:50.96M (Peak 50.96M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftLargeScanGrilles
+Fra:1 Mem:50.96M (Peak 50.96M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampRamHousing
+Fra:1 Mem:50.97M (Peak 50.97M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampRamCollar
+Fra:1 Mem:50.99M (Peak 50.99M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | STAMP__OchrePressRing
+Fra:1 Mem:51.15M (Peak 51.15M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampRecessedRim
+Fra:1 Mem:51.15M (Peak 51.15M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampThreeRaisedBars
+Fra:1 Mem:51.33M (Peak 51.33M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftScanHeadOchreBezel
+Fra:1 Mem:51.65M (Peak 51.65M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampBridgeArms
+Fra:1 Mem:51.92M (Peak 51.92M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampMovingSpindle
+Fra:1 Mem:52.08M (Peak 52.08M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuideSleeve-1
+Fra:1 Mem:52.04M (Peak 52.08M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftScanHead
+Fra:1 Mem:52.07M (Peak 52.08M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | StampGuideSleeve1
+Fra:1 Mem:52.12M (Peak 52.12M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | ARM_LEFT__OpenCage
+Fra:1 Mem:52.09M (Peak 52.12M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftArmRootClevis
+Fra:1 Mem:52.08M (Peak 52.12M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftMovingHub
+Fra:1 Mem:52.11M (Peak 52.12M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | leftHeadNeck
+Fra:1 Mem:51.99M (Peak 52.12M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Initializing
+Fra:1 Mem:51.70M (Peak 52.12M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_albedo.png
+Fra:1 Mem:51.70M (Peak 52.12M) | Time:00:00.01 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images | Loading forge_machinery_normal.png
+Fra:1 Mem:64.72M (Peak 65.70M) | Time:00:00.01 | Mem:1.00M, Peak:1.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_albedo.png
+Fra:1 Mem:71.72M (Peak 72.72M) | Time:00:00.01 | Mem:2.00M, Peak:2.00M | Scene, ViewLayer | Updating Images | Loading forge_panel_orm.png
+Fra:1 Mem:63.62M (Peak 78.72M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Waiting for render to start
+Failed to denoise, build has no OpenImageDenoise support
+Fra:1 Mem:63.62M (Peak 78.72M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:63.62M (Peak 78.72M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Scene
+Fra:1 Mem:63.62M (Peak 78.72M) | Time:00:00.02 | Mem:15.00M, Peak:15.00M | Scene, ViewLayer | Updating Shaders
+Fra:1 Mem:63.71M (Peak 78.72M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Loading denoising kernels (may take a few minutes the first time)
+Fra:1 Mem:63.71M (Peak 78.72M) | Time:00:00.02 | Mem:15.01M, Peak:15.01M | Scene, ViewLayer | Failed to denoise, build has no OpenImageDenoise support
+Traceback (most recent call last):
+  File "/workspace/scratch/d2415e46e35b/tally-maker-v1/candidate/tools/blender/forge/ships/tally_3.py", line 309, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/workspace/scratch/d2415e46e35b/tally-maker-v1/candidate/tools/blender/forge/ships/tally_3.py", line 303, in main
+    render(camera,'top',(0,0,42),(0,.6,0),28)
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/scratch/d2415e46e35b/tally-maker-v1/candidate/tools/blender/forge/ships/tally_3.py", line 276, in render
+    bpy.context.scene.render.filepath=str(RENDERS/(name+'.png'));bpy.ops.render.render(write_still=True)
+                                                                 ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/usr/share/blender/scripts/modules/bpy/ops.py", line 109, in __call__
+    ret = _op_call(self.idname_py(), kw)
+RuntimeError: Error: Failed to denoise, build has no OpenImageDenoise support
+Error: Failed to denoise, build has no OpenImageDenoise support
+
+
+Info: Packed 6 file(s)
+Info: Saved "tally_3.blend"
+TALLY_EXPORT_STATS {"0": {"triangles": 32068, "drawPrimitives": 16}, "1": {"triangles": 12824, "drawPrimitives": 16}, "2": {"triangles": 4210, "drawPrimitives": 16}}
+TALLY_BOUNDS {"folded": {"min": [-10.6899995803833, -5.1182942390441895, -1.409999966621399], "max": [11.17573070526123, 5.631324768066406, 4.220000267028809], "size": [21.86573028564453, 10.749619007110596, 5.6300002336502075]}, "deployed": {"min": [-10.6899995803833, -8.552592277526855, -1.409999966621399], "max": [11.17573070526123, 10.001480102539062, 4.220000267028809], "size": [21.86573028564453, 18.554072380065918, 5.6300002336502075]}, "disputed": {"min": [-10.6899995803833, -7.9543070793151855, -1.409999966621399], "max": [11.17573070526123, 10.166359901428223, 4.220000267028809], "size": [21.86573028564453, 18.120666980743408, 5.6300002336502075]}}
+Error: Failed to denoise, build has no OpenImageDenoise support
+Error: Failed to denoise, build has no OpenImageDenoise support
+
+Blender quit

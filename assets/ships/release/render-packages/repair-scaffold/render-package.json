@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "034bda1582df89d1062bc9ee4dec69c43c98e75423d9b8d5e0c19bf40ff04b73",
+  "contentHash": "eaf0748a1d3a201f8e0a068662ebcf6d0077f5bb108c8b783dfdcebf85e69760",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1260,8 +1260,8 @@
       "uri": "place_repair_scaffold.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -1335,8 +1335,9 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 12,
-      "service": 3
+      "hull": 10,
+      "service": 3,
+      "signal": 2
     },
     "materialProfiles": [
       {
@@ -1382,12 +1383,12 @@
       {
         "allowTextures": false,
         "planIndex": 11,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 12,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -1827,7 +1828,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_repair_scaffold.glb"
   },
-  "runtimeHash": "9601e41eac4cb7b1119ce724d417d2a96dd0030a213eb67c961e5cc6cb0a7a3f",
+  "runtimeHash": "086e9ae6ef3c61169309a926e08c32e87785212bd153c3a68a38c8401f56fcd7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

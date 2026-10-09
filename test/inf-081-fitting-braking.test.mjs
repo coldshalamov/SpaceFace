@@ -15,12 +15,14 @@ import {
 } from '../src/ui/panels/massDelta.js';
 import { getDerivedStats } from '../src/systems/ships.js';
 import { estimateBrakingSolution } from '../src/core/flight/flightTelemetry.js';
+import { governedFightSpeedFor } from '../src/systems/shipCapabilities.js';
 
 const SHIP = 'ship_kestrel';
 
 function independentLiveStop(shipId, fittings) {
   const derived = getDerivedStats(shipId, fittings, null);
-  const speed = derived.maxSpeed;
+  // Same probe the panel states: the governed fight cap (NXB-030), not the legacy spec speed.
+  const speed = governedFightSpeedFor(derived);
   const solution = estimateBrakingSolution(
     { pos: { x: 0, z: 0 }, vel: { x: speed, z: 0 }, rot: 0, angVel: 0 },
     derived.propulsion || {},
@@ -70,7 +72,7 @@ test('fit stats stay unconditional while braking states its assumption', () => {
   }
   const stop = stopMetric(delta);
   assert.equal(stop.basis, 'situational', 'braking is a forecast');
-  assert.match(stop.assumption, /top speed/i, 'the assumption is stated');
+  assert.match(stop.assumption, /fight speed/i, 'the assumption names the governed-speed probe');
   assert.equal(stop.source, 'flight.brakingSolution', 'the source names the live path');
 });
 

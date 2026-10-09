@@ -86,7 +86,10 @@ function killAt(h, pos, id, label) {
 }
 
 function wrecks(state) {
-  return state.entityList.filter((e) => e && e.type === 'wreck' && e.alive !== false);
+  // Arena shards (data.arenaShardOf) are kill-tick dressing — deliberately unbound, never
+  // rematerialized. The F15 "still there tomorrow" set is the marker-bound wreck only.
+  return state.entityList.filter(
+    (e) => e && e.type === 'wreck' && e.alive !== false && !(e.data && e.data.arenaShardOf));
 }
 
 function dropLiveWrecks(state) {

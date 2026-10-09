@@ -7,6 +7,7 @@ import { SECTORS } from '../src/data/sectors.js';
 import { UNIQUE_WRECKS, uniqueWreckById } from '../src/data/uniqueWrecks.js';
 import { FLAVOR_SOURCE_BY_REF } from '../src/data/flavor/index.generated.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
+import { TETHYS_BLACK_MARKET_DISCOVERY, TETHYS_BLACK_MARKET_RUN } from '../src/data/frontierRumors.js';
 import { missionReceiptFor, missions } from '../src/systems/missions.js';
 import { RUMOR_EVENT_BY_CHANNEL, uniqueWrecks } from '../src/systems/uniqueWrecks.js';
 import { missionCommandBrief, objectiveText } from '../src/ui/screens/missionLog.js';
@@ -39,6 +40,7 @@ const EXPECTED_ARCHETYPES = new Set([
   'blockade_run',
   'investigation_chain',
   'lung_run',
+  'choir_vigil',
 ]);
 const STATION_TO_SECTOR = new Map();
 for (const sector of SECTORS) {
@@ -237,18 +239,18 @@ function walkRoute(api, state, definition, branchId, startEpoch = 4) {
   assert.fail(`${definition.id}/${branchId}: route did not resolve within the 3-4 stage contract`);
 }
 
-test('SP1 catalog has six authored archetypes, one branch point each, and twelve valid 3-4 stage routes', () => {
+test('SP1 catalog has seven authored archetypes, one branch point each, and fourteen valid 3-4 stage routes', () => {
   const definitions = missionData.SET_PIECE_MISSIONS;
   assert.ok(Array.isArray(definitions), 'missions data exports SET_PIECE_MISSIONS');
-  assert.equal(definitions.length, 6);
+  assert.equal(definitions.length, 7);
   assert.deepEqual(new Set(definitions.map((entry) => entry.id)), EXPECTED_ARCHETYPES);
   assert.equal(typeof missionData.validateSetPieceMissionCatalog, 'function',
     'missions data exports validateSetPieceMissionCatalog()');
   const validation = missionData.validateSetPieceMissionCatalog();
   assert.equal(validation.ok, true, (validation.errors || []).join('\n'));
   assert.deepEqual(validation.errors || [], []);
-  assert.equal(validation.archetypes, 6);
-  assert.equal(validation.playableRoutes, 12);
+  assert.equal(validation.archetypes, 7);
+  assert.equal(validation.playableRoutes, 14);
 
   for (const definition of definitions) {
     assert.ok(definition.title && definition.title.length >= 8, `${definition.id}: authored title`);
@@ -640,8 +642,12 @@ test('repeatable Long Read uses every unsettled wreck before finite all-salvaged
       channelId: wreck.rumorSources.find((source) => source.sourceRef === wreck.bearingSourceRef).channelId,
     }])),
   };
+  // Eleven open D-loop targets: the four chain-dedicated hulls plus the Choir-Tender's vigil
+  // wreck (SF-149) are reserved by their own chains and never enter the long_read pool.
+  const expectedTargets = UNIQUE_WRECKS.filter((wreck) => !wreck.wreckChainId).length;
+  assert.equal(expectedTargets, 11);
   const reserved = new Set();
-  for (let epoch = 0; epoch < 12; epoch++) {
+  for (let epoch = 0; epoch < expectedTargets; epoch++) {
     const offer = api.buildSetPieceMissionOffers(state, initialCursor('long_read', epoch))[0];
     assert.ok(offer, `epoch ${epoch}: another unsettled canon wreck remains contractible`);
     assert.ok(uniqueWreckById(offer.wreckId));
@@ -653,9 +659,9 @@ test('repeatable Long Read uses every unsettled wreck before finite all-salvaged
     reserved.add(offer.wreckId);
     state.player.uniqueWrecks.bearings[offer.wreckId] = { phase: 'salvaged' };
   }
-  assert.equal(reserved.size, 12, 'all twelve D-loop targets participate before exhaustion');
-  assert.deepEqual(api.buildSetPieceMissionOffers(state, initialCursor('long_read', 12)), [],
-    'the only terminal exhaustion is deliberate: all twelve one-per-save wrecks are settled');
+  assert.equal(reserved.size, expectedTargets, 'all eleven D-loop targets participate before exhaustion');
+  assert.deepEqual(api.buildSetPieceMissionOffers(state, initialCursor('long_read', expectedTargets)), [],
+    'the only terminal exhaustion is deliberate: all eleven one-per-save wrecks are settled');
 });
 
 test('known-rumor acceptance charges no service fee and posted or active chains reserve their wreck', async () => {
@@ -1183,6 +1189,18 @@ test('every compiled stage uses the normal standing ladder before any credit, ca
     const threshold = missionData.missionMinRepForRisk(offer.riskTier);
     const state = baseState({ seed: 921 });
     state.factions[offer.factionId] = { rep: threshold - 1 };
+    // The berth gate is a world precondition beside the offer's standing ladder: the fixture's
+    // pilot has already earned the same access the live berth requires (repGated berths are
+    // covered by the rep-500 factions; the closed Den needs the delivered entrance run).
+    state.world.frontierRumors = {
+      byId: {
+        [TETHYS_BLACK_MARKET_DISCOVERY.rumorId]: {
+          phase: 'contacted',
+          contactId: TETHYS_BLACK_MARKET_DISCOVERY.contactId,
+          entranceRun: { runId: TETHYS_BLACK_MARKET_RUN.runId, phase: 'delivered' },
+        },
+      },
+    };
     state.missions.boards[offer.stationId] = { refreshEpoch: offer.cause.startEpoch, slots: [offer] };
     const bus = new Bus();
     const missionSystem = { ...missions };

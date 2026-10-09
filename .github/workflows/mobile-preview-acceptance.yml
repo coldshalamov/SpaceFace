@@ -1,0 +1,69 @@
+name: mobile-preview-acceptance
+# Read-only proof against an immutable Vercel candidate URL, not moving production.
+# The caller must name the intended completed candidate; never silently test an old preview.
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: Public candidate deployment URL
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: mobile-preview-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  hosted-phone:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [webkit, chromium]
+    env:
+      MOBILE_PROBE_ENGINE: ${{ matrix.engine }}
+      MOBILE_PROBE_URL: ${{ inputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout: scripts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install only browser probe dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/mobile-probe" --no-audit --no-fund playwright@1.61.1
+          ln -s "$RUNNER_TEMP/mobile-probe/node_modules" node_modules
+          node "$RUNNER_TEMP/mobile-probe/node_modules/playwright/cli.js" install --with-deps "$MOBILE_PROBE_ENGINE"
+      - name: Wait for candidate workers to become publicly reachable
+        run: |
+          for attempt in $(seq 1 90); do
+            if curl -fsS --max-time 10 "${MOBILE_PROBE_URL%/}/workers/renderPackageDigestWorker.js" -o /tmp/digest-worker.js; then
+              if grep -q 'postMessage' /tmp/digest-worker.js; then exit 0; fi
+            fi
+            sleep 5
+          done
+          echo 'Candidate deployment did not expose its runtime worker; see Vercel deployment status.'
+          exit 1
+      - name: Hosted worker and mobile launch acceptance
+        run: |
+          node scripts/check-runtime-worker-browser.mjs
+          mkdir -p .devshots/mobile-deployment/"$MOBILE_PROBE_ENGINE"
+          set -o pipefail
+          DEBUG=pw:browser node scripts/probe-deployed-mobile.mjs 2>&1 | tee .devshots/mobile-deployment/"$MOBILE_PROBE_ENGINE"/browser-process.log
+      - name: Existing multi-touch flight and power interaction acceptance
+        if: matrix.engine == 'chromium'
+        run: node scripts/probe-mobile-flight.mjs --url="$MOBILE_PROBE_URL" --tag=vercel-candidate --boot-timeout=300
+      - name: Preserve real deployment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-preview-${{ matrix.engine }}
+          path: |
+            .devshots/mobile-deployment/
+            .devshots/mobile-workers/
+            .devshots/mobile-live/
+          retention-days: 7
+          if-no-files-found: warn

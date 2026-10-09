@@ -121,8 +121,10 @@ export function createCycle(rng, def, simTime) {
   // (~±1.5 cr swing minimum at base). High-priced goods use the percent band only.
   const base = def && def.basePrice > 0 ? def.basePrice : 50;
   // Compensate the authored minimum for CYCLE_WEIGHT so cheap one-credit listings still cross an
-  // integer boundary on the chart after the short-term overlay is demoted.
-  const minReadableAmp = clamp(1.5 / (base * CYCLE_WEIGHT), 0.02, 0.20);
+  // integer boundary on the chart after the short-term overlay is demoted. The cap must stay above
+  // the floor the cheapest authored base (7 cr) needs at the tuned weight, or it silently
+  // re-flattens exactly the listings the floor exists for.
+  const minReadableAmp = clamp(1.5 / (base * CYCLE_WEIGHT), 0.02, 0.70);
 
   // Amplitude budget scales with commodity volatility; families further modulate it.
   let amp = Math.max(minReadableAmp, randRange(rng, 0.06, 0.18) * vs);
@@ -608,7 +610,15 @@ export function predictPriceCurve(state, stationId, cmdtyId, steps = 24, stepS =
   const market = econ && econ.markets && econ.markets[stationId];
   const entry = market && market[cmdtyId];
   const def = CMDTY_BY_ID.get(cmdtyId);
-  if (!entry || !def) return [];
+  if (!entry || !def) {
+    // Same named-prop shape as the normal path: callers can read .band/.eventIds/.statedRate
+    // on any return value. Named props do not survive JSON/spread — never persist this array.
+    const empty = [];
+    empty.statedRate = FORECAST_CONE_STATED_RATE;
+    empty.band = null;
+    empty.eventIds = Object.freeze([]);
+    return empty;
+  }
   const cycle = getCycle(state, stationId, cmdtyId, null, state.simTime || 0);
   const frozenStock = Number(entry.stock);
   const stockMid = listingStockMid(def, entry, frozenStock);
@@ -633,18 +643,41 @@ export function predictPriceCurve(state, stationId, cmdtyId, steps = 24, stepS =
     out.push({ t, mid, lo, hi, statedRate: FORECAST_CONE_STATED_RATE });
   }
   out.statedRate = FORECAST_CONE_STATED_RATE;
+  // LG-FORECAST-PROOF (row 279): the cone is falsifiable. `band` is the envelope it quotes
+  // at its horizon — what a reader holds it to at arrival — and `eventIds` are the live sim
+  // event ids whose mods sit on this listing (the same ids economy stamps on it): equilibrium/
+  // drift fields move the cone's mid and band, spread-only fields move the quotes the player
+  // pays. Named props do not survive JSON/spread — never persist this array.
+  const lastPoint = out.length ? out[out.length - 1] : null;
+  out.band = lastPoint
+    ? Object.freeze({ lo: lastPoint.lo, hi: lastPoint.hi, t: lastPoint.t, statedRate: FORECAST_CONE_STATED_RATE })
+    : null;
+  const causeIds = [];
+  for (const m of (Array.isArray(entry.eventMods) ? entry.eventMods : [])) {
+    if (m && m.eventId != null && !causeIds.includes(m.eventId)) causeIds.push(m.eventId);
+  }
+  out.eventIds = Object.freeze(causeIds);
   return out;
 }
+
+// An observed remote quote is only "present" while its sighting is fresh. Past this window
+// (the same 900 s the docked freight comparison and the market-intel hollow band use) the
+// sighting is an estimate, never a fresh observation.
+const REMOTE_QUOTE_STALE_S = 900;
 
 /**
  * One two-leg freight comparison. Leg two cannot spend credits, stock or volume it will not have.
  * A later price that is not a present quote stays an estimate and is never a guaranteed settlement.
+ * `leg2.seenAt` / `leg2.stale` carry the remote quote's observation basis and `now` the caller's
+ * simTime; the basis is retained, never restamped — a load-size change cannot make an old remote
+ * quote read as freshly observed.
  */
 export function evaluateTwoLegItinerary({
   credits = 0,
   cargoFree = 0,
   leg1 = {},
   leg2 = {},
+  now = null,
 } = {}) {
   const unit1 = Math.max(0, Number(leg1.unitCr) || 0);
   const fee1 = Math.max(0, Number(leg1.feeCr) || 0);
@@ -656,7 +689,13 @@ export function evaluateTwoLegItinerary({
   const taken = Math.min(want1, affordable1, room1, stock1);
   const spent = taken > 0 ? taken * unit1 + fee1 : 0;
   const creditsAfter = credits - spent;
-  const estimate = leg2.quoted !== true;
+  const seenAt = Number.isFinite(Number(leg2.seenAt)) ? Math.max(0, Number(leg2.seenAt)) : null;
+  const nowS = Number.isFinite(Number(now)) ? Number(now) : null;
+  // A carried sighting is fresh only while the caller's clock proves it inside the window;
+  // an unverifiable or old sighting stays an estimate instead of reading as a live quote.
+  const stale = leg2.stale === true
+    || (seenAt != null && !(nowS != null && nowS - seenAt < REMOTE_QUOTE_STALE_S));
+  const estimate = leg2.quoted !== true || stale;
   const fee2 = Math.max(0, Number(leg2.feeCr) || 0);
   const sellUnit = estimate ? null : Math.max(0, Number(leg2.unitCr) || 0);
   const sellWant = Math.max(0, Math.floor(Number(leg2.qty) || taken));
@@ -689,6 +728,9 @@ export function evaluateTwoLegItinerary({
     leg2BuyQty: estimate ? 0 : bought,
     limit,
     estimate,
+    quoted: leg2.quoted === true,
+    stale,
+    seenAt,
     guaranteed: false,
     settlement: 'market',
   };

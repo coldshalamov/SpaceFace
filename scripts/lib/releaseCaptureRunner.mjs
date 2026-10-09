@@ -137,7 +137,7 @@ export async function runReleaseCapture({ log = defaultLog, producerEntrypoint }
     });
     activePage = await activeContext.newPage();
     activeTracker = createCanonicalUrlTracker(activePage, canonicalUrl);
-    const shotIssues = collectPageIssues(activePage, { includeWarnings: false, ignoreProbeWarnings: true });
+    const shotIssues = collectPageIssues(activePage, { playerStoreMounted: false, includeWarnings: false, ignoreProbeWarnings: true });
     activePage.setDefaultTimeout(30_000);
     activePage.setDefaultNavigationTimeout(60_000);
     await gotoCanonicalRoot(activePage, canonicalUrl, activeTracker);
@@ -384,7 +384,7 @@ async function captureGameplayVideo({ browser, canonicalUrl, stagingRoot, public
   // accepted WebM inside 58-65 seconds without storage injection or recording a long setup pass.
   const setupPage = await context.newPage();
   const setupTracker = createCanonicalUrlTracker(setupPage, canonicalUrl);
-  const setupIssues = collectPageIssues(setupPage, { includeWarnings: false, ignoreProbeWarnings: true });
+  const setupIssues = collectPageIssues(setupPage, { playerStoreMounted: false, includeWarnings: false, ignoreProbeWarnings: true });
   await gotoCanonicalRoot(setupPage, canonicalUrl, setupTracker);
   await dismissSplashWithKeyboard(setupPage, publicActions);
   const settings = await applyMaximumQualityThroughUi(setupPage, publicActions);
@@ -393,7 +393,7 @@ async function captureGameplayVideo({ browser, canonicalUrl, stagingRoot, public
 
   const page = await context.newPage();
   const tracker = createCanonicalUrlTracker(page, canonicalUrl);
-  const issues = collectPageIssues(page, { includeWarnings: false, ignoreProbeWarnings: true });
+  const issues = collectPageIssues(page, { playerStoreMounted: false, includeWarnings: false, ignoreProbeWarnings: true });
   const startedAt = Date.now();
   let videoHandle = null;
   let trackerReport = null;

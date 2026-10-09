@@ -8,6 +8,7 @@ import { scanner } from '../src/systems/scanner.js';
 import { aftermathWrecks, aftermathForSector } from '../src/systems/aftermathWrecks.js';
 import { save as saveSystem } from '../src/save/saveSystem.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import { zonesForSector } from '../src/data/sectorZones.js';
 
 assert.equal(typeof window, 'undefined', 'this check must run headless');
 assert.ok(existsSync(new URL('../src/systems/aftermathWrecks.js', import.meta.url)),
@@ -109,6 +110,9 @@ function testZoneKillsRecordBoundedProvenanceAndNews() {
   assert.match(t.log.news[0].headline, /Sker-Run Ambush|wreckage/i,
     'headline names the authored zone or aftermath');
 
+  // 77786438c reversed the evanescent contract deliberately: a kill outside a named zone now
+  // leaves a zone-less "open space" marker that feeds the same bounded wreck-field ecology,
+  // rather than vanishing. The pin asserts the new contract, not the retired one.
   t.bus.emit('entity:killed', {
     id: 99999,
     killerId: t.state.playerId,
@@ -116,8 +120,13 @@ function testZoneKillsRecordBoundedProvenanceAndNews() {
     pos: sectorLocalToGlobalForSector({ x: -2400, z: -2400 }, 'sector_pallas_drift'),
     victimClass: 'out_of_zone',
   });
-  assert.equal(aftermathForSector(t.state, 'sector_pallas_drift').length, 3,
-    'kills outside named zones do not record markers');
+  const withOpenSpace = aftermathForSector(t.state, 'sector_pallas_drift');
+  assert.equal(withOpenSpace.length, 4,
+    'a kill outside named zones now records a zone-less marker');
+  const openSpace = withOpenSpace.find((marker) => marker && marker.victimId === 99999);
+  assert.ok(openSpace, 'the open-space kill records its own marker');
+  assert.equal(openSpace.zoneId, null, 'a zone-less kill carries no authored zone id');
+  assert.equal(openSpace.zoneName, 'open space', 'a zone-less kill reads as open space');
 
   t.bus.emit('entity:killed', {
     id: t.state.playerId,
@@ -126,15 +135,20 @@ function testZoneKillsRecordBoundedProvenanceAndNews() {
     pos: sectorLocalToGlobalForSector({ x: 1420, z: 760 }, 'sector_pallas_drift'),
     victimClass: 'player_ship',
   });
-  assert.equal(aftermathForSector(t.state, 'sector_pallas_drift').length, 3,
+  assert.equal(aftermathForSector(t.state, 'sector_pallas_drift').length, 4,
     'player death does not create a salvage marker');
 
   for (let i = 3; i < 12; i++) emitKill(t, i);
   const capped = aftermathForSector(t.state, 'sector_pallas_drift');
   assert.equal(capped.length, 8, 'per-sector aftermath ring buffer caps at eight markers');
   assert.equal(capped[0].victimLabel, 'Raider 11', 'ring buffer is newest-first');
-  assert.ok(capped.every((marker) => marker.zoneId === 'zone_pallas_ambush'),
-    'each marker carries the matching authored zone id');
+  // The authored zone these coordinates belong to is whatever the live map resolves — the Empty
+  // Foundry anomaly site (alien-ecology 6cb78f147) overlaps the ambush lane and wins zoneAt's
+  // smallest-radius rule. The contract is that every marker names a real authored zone of this
+  // sector, not a specific zone id that shifts under the map.
+  const authoredZoneIds = new Set(zonesForSector('sector_pallas_drift').map((zone) => zone.id));
+  assert.ok(capped.every((marker) => marker.zoneId != null && authoredZoneIds.has(marker.zoneId)),
+    'each marker carries a real authored zone id');
   assert.ok(capped.every((marker) => marker.killerId === t.state.playerId),
     'each marker preserves killer provenance');
   ok('zone kills record bounded provenance and station-news headlines');
@@ -241,7 +255,9 @@ function testPackageRegistryAndSchemaWiring() {
   const saveSrc = readFileSync(new URL('../src/save/saveSystem.js', import.meta.url), 'utf8');
   assert.match(saveSrc, /data\.aftermathWrecks\s*=\s*this\._callSerialize\('aftermathWrecks'\)/,
     'save data includes aftermathWrecks');
-  assert.match(saveSrc, /this\._callDeserialize\('aftermathWrecks', data\.aftermathWrecks\)/,
+  // The restore may ride the plain or the chunked deserialize seam — SFQ-B228 moves regions
+  // between them; the contract is that aftermathWrecks restores through a deserialize call.
+  assert.match(saveSrc, /this\._callDeserialize(?:Chunked)?\('aftermathWrecks', data\.aftermathWrecks\)/,
     'load restore hydrates aftermathWrecks');
 
   const migrationSrc = readFileSync(new URL('../src/save/migrations.js', import.meta.url), 'utf8');

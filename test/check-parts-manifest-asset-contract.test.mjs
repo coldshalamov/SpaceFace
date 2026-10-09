@@ -78,7 +78,11 @@ test('works place rows match their published runtime path only', () => {
 });
 
 test('dequantizes the actual quantized trade-hub POSITION bounds', () => {
-  const gltf = readGlbJson('assets/ships/parts/places/place_station_trade_hub.glb');
+  // The released (packed) build is the authoritative quantized artifact: assets/ships/release/
+  // carries the meshopt + KHR_mesh_quantization + KTX2 runtime GLBs, while assets/ships/parts/
+  // now holds the float Forge authoring exports. The decode contract still applies to the asset
+  // the game actually ships.
+  const gltf = readGlbJson('assets/ships/release/parts/places/place_station_trade_hub.glb');
   const primitive = gltf.meshes.flatMap((mesh) => mesh.primitives).find((entry) => {
     const position = gltf.accessors[entry.attributes?.POSITION];
     return position?.componentType === 5122 && position.normalized;

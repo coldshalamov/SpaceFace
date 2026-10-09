@@ -40,7 +40,8 @@ import { createMasslineCadenceReadout } from './masslineCadenceReadout.js';
 // only on both sides — the cue never touches release authority.
 import { isLawProtectedBody } from '../systems/lawSecurity.js';
 import { isMassSeedTetherEligible, massSeedLatchPreview } from '../systems/massSeed.js';
-import { resolveThrowCollateral } from '../combat/masslineReleaseGeometry.js';
+import { resolveThrowCollateral, resolveThrowOwnRouteRisk } from '../combat/masslineReleaseGeometry.js';
+import { announceStrokeGrade } from './stuntCallout.js';
 
 // Lead moving intercept targets by half a fixed sim step. The 60 ms CSS tween then bridges the
 // slower real-time cadence when bullet time reduces sim updates to ~21 Hz.
@@ -49,6 +50,9 @@ const MARK_PREDICTION_S = 1 / 120;
 // M3: denied latches get a 1.2 s floor pill — long enough to read the reason, short enough not
 // to outlive the next attempt.
 const MASSLINE_DENIAL_PILL_S = 1.2;
+
+// FB-007 — the drawn stroke fades over 2 s after it completes (the packet's fade law).
+export const DRAW_INK_FADE_S = 2;
 
 // CV-THROW-1: a deliberate release gets a 1.8 s verdict pill anchored where the payload left —
 // the grade (razor/clean/good/messy) plus the one cause the cadence law measured, so the next
@@ -69,7 +73,15 @@ const VERDICT_CAUSE_COPY = Object.freeze({
 });
 export function releaseVerdictCopy(rating) {
   if (!rating || typeof rating !== 'object') return '';
+  // A failure snap is not a grade. Ordinary release keeps the crest/swing copy below.
+  if (rating.broke === true) return 'LINE BROKE';
+  if (rating.severed === true) return 'LINE CUT';
   const grade = VERDICT_GRADE_COPY[rating.classification] || 'RELEASED';
+  // FB-006 — a release that ends a ride grades the ride: how much of the anchor's speed the
+  // pilot kept at the cut. The ride cause names the specific lesson before the generic swing.
+  if (rating.ride && Number.isFinite(rating.ride.keptFraction)) {
+    return `${grade} · KEPT ${Math.round(Math.max(0, Math.min(1, rating.ride.keptFraction)) * 100)}%`;
+  }
   if (rating.releasedAtApex) return `${grade} · AT THE APEX`;
   const cause = rating.classification === 'razor' || rating.classification === 'clean'
     ? 'CREST RELEASE'
@@ -78,7 +90,7 @@ export function releaseVerdictCopy(rating) {
 }
 // The verdict reuses the shared preview pill/mark — every renderer that takes the slot next
 // must clear these classes so a stale grade never leaks onto a denial or acquisition frame.
-const VERDICT_GRADE_CLASSES = Object.freeze(['razor', 'clean', 'good', 'messy']);
+const VERDICT_GRADE_CLASSES = Object.freeze(['razor', 'clean', 'good', 'messy', 'break']);
 function clearVerdictClasses(dom) {
   if (!dom) return;
   setClass(dom.previewEl, 'ml2-preview-verdict', false);
@@ -107,6 +119,7 @@ const DENIAL_NEXT_ACTION = Object.freeze({
   'SCRIPTED MOTION': 'PICK A PHYSICAL BODY',
   'CANNOT LATCH': 'PICK ANOTHER TARGET',
   'UNAVAILABLE': 'REPOSITION AND RETRY',
+  'SPOOL OUT': 'REPAIR THE SPOOL',
 });
 export function denialNextAction(status, reason) {
   return DENIAL_NEXT_ACTION[previewStatusCopy(status, reason)] ?? 'REPOSITION AND RETRY';
@@ -124,11 +137,12 @@ const BRACKET_DENIAL_REASON = Object.freeze({
   'WOULD FORM LOOP': 'WOULD FORM LOOP',
   'CUT ACTIVE LINE': 'CUT ACTIVE LINE',
   'NO TARGET': 'NO BODY AIMED',
-  'LINE FAILED': 'LINE DID NOT',
+  'LINE FAILED': 'NO LINE FORMED',
   'MACHINE, NOT CARGO': 'MACHINE, NOT CARGO',
   'SCRIPTED MOTION': 'SCRIPTED MOTION',
   'CANNOT LATCH': 'CANNOT LATCH',
   'UNAVAILABLE': 'LATCH NOT READY',
+  'SPOOL OUT': 'SPOOL IS OUT',
 });
 
 export function resolveMasslineBracketRead(status, reason) {
@@ -262,6 +276,56 @@ export function resolveMassInterpretation(playerMass, targetMass) {
   return { key: 'comparable', short: 'EVEN', title: 'Comparable mass — both bodies move' };
 }
 
+/** Mass the live solver couples: physics-body mass, else the authored entity mass. */
+export function couplingBodyMass(entity) {
+  const body = Number(entity && entity.physicsBody && entity.physicsBody.mass);
+  if (Number.isFinite(body) && body > 0) return body;
+  const mass = Number(entity && entity.mass);
+  return Number.isFinite(mass) && mass > 0 ? mass : NaN;
+}
+
+/**
+ * SFQ-B022 — throw, mutual swing, or self-sling, named from the two masses the
+ * constraint actually couples. Null when either mass is missing. Not a hull-class label.
+ */
+export function latchCouplingRead(player, target) {
+  return resolveMassInterpretation(couplingBodyMass(player), couplingBodyMass(target));
+}
+
+// SFQ-B023 — a cable failure is not a release grade. These reasons are the
+// authored overload/threshold snaps. A deliberate cut, an accepted handoff, and
+// a lost target stay off this set so they cannot wear LINE BROKE.
+export const LINE_BREAK_REASONS = Object.freeze([
+  'threshold', 'overload', 'snap', 'physics_break', 'integrity',
+  'integrity-failure', 'catastrophic-overload', 'sustained-overload',
+]);
+const LINE_BREAK_REASON_SET = new Set(LINE_BREAK_REASONS);
+
+export function isLineBreakReason(reason) {
+  return LINE_BREAK_REASON_SET.has(reason);
+}
+
+// A hostile blade or specialist cut is not an overload and not a grade.
+// Same three reasons presentationOrchestrator treats as tether.break.severed.
+export const LINE_SEVER_REASONS = Object.freeze([
+  'ace_cut', 'specialist_cut', 'monofilament_sweep',
+]);
+const LINE_SEVER_REASON_SET = new Set(LINE_SEVER_REASONS);
+
+export function isLineSeverReason(reason) {
+  return LINE_SEVER_REASON_SET.has(reason);
+}
+
+/** The player's own line: they own it, they are the load, or they control it.
+ *  A sever's actorId is the cutter, not the line, so it does not count. */
+export function lineBreakInvolvesPlayer(state, payload) {
+  if (!state || !payload || state.playerId == null) return false;
+  const pid = state.playerId;
+  if (payload.ownerId === pid || payload.controllerId === pid || payload.targetId === pid) return true;
+  if (isLineSeverReason(payload.reason)) return false;
+  return payload.actorId === pid;
+}
+
 // INF-014 — line-load warning with hysteresis. Strain is the solver-owned break ratio the
 // telemetry already mirrors (tether.strain); trend is strain per second. The warning turns on
 // at high load (or moderate load climbing fast) and stays until the line relaxes well below
@@ -363,10 +427,12 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-preview.ml2-verdict-clean { color:#a9e8d0; }
 #sf-ml2 .ml2-preview.ml2-verdict-good { color:var(--dp-ink, #e8e2d4); }
 #sf-ml2 .ml2-preview.ml2-verdict-messy { color:#ffd08a; border-style:dashed; }
+#sf-ml2 .ml2-preview.ml2-verdict-break { color:#ff8d7a; border-style:solid; }
 #sf-ml2 .ml2-preview-mark.ml2-verdict-razor { color:#85e9ca; }
 #sf-ml2 .ml2-preview-mark.ml2-verdict-clean { color:#a9e8d0; }
 #sf-ml2 .ml2-preview-mark.ml2-verdict-good { color:var(--dp-ink, #e8e2d4); }
 #sf-ml2 .ml2-preview-mark.ml2-verdict-messy { color:#ffd08a; }
+#sf-ml2 .ml2-preview-mark.ml2-verdict-break { color:#ff8d7a; }
 @keyframes ml2preview { 0%,100% { opacity:0.78; } 50% { opacity:1; } }
 /* §22 F1 — the release ghost: a thin predicted arc of the payload's own post-release path,
    drawn from the same solution the diamond reads. Cooler and thinner than the intercept mark —
@@ -375,6 +441,22 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-ghost-path { fill:none; stroke:rgba(140,190,235,0.5); stroke-width:1.4;
   stroke-dasharray:3 7; stroke-linecap:round; vector-effect:non-scaling-stroke; }
 #sf-ml2 svg.ml2-ghost.ml2-hot .ml2-ghost-path { stroke:rgba(255,217,140,0.85); }
+/* FB-007 — the drawn stroke is ink on the same glass: the flown prefix dims behind the ship,
+   the ink ahead stays bright, and the whole ribbon fades over DRAW_INK_FADE_S once graded. */
+#sf-ml2 svg.ml2-ink { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+#sf-ml2 .ml2-ink-ahead { fill:none; stroke:rgba(242,185,80,0.55); stroke-width:1.6;
+  stroke-dasharray:5 4; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+#sf-ml2 .ml2-ink-flown { fill:none; stroke:rgba(242,185,80,0.22); stroke-width:1.6;
+  stroke-linecap:round; vector-effect:non-scaling-stroke; }
+/* A graded stroke keeps the verdict colours the release pill already uses. Live ink stays gold. */
+#sf-ml2 svg.ml2-ink[data-grade="razor"] .ml2-ink-ahead { stroke:rgba(133,233,202,0.92); }
+#sf-ml2 svg.ml2-ink[data-grade="razor"] .ml2-ink-flown { stroke:rgba(133,233,202,0.38); }
+#sf-ml2 svg.ml2-ink[data-grade="clean"] .ml2-ink-ahead { stroke:rgba(169,232,208,0.9); }
+#sf-ml2 svg.ml2-ink[data-grade="clean"] .ml2-ink-flown { stroke:rgba(169,232,208,0.36); }
+#sf-ml2 svg.ml2-ink[data-grade="good"] .ml2-ink-ahead { stroke:rgba(232,226,212,0.88); }
+#sf-ml2 svg.ml2-ink[data-grade="good"] .ml2-ink-flown { stroke:rgba(232,226,212,0.34); }
+#sf-ml2 svg.ml2-ink[data-grade="messy"] .ml2-ink-ahead { stroke:rgba(255,208,138,0.9); stroke-dasharray:2 6; }
+#sf-ml2 svg.ml2-ink[data-grade="messy"] .ml2-ink-flown { stroke:rgba(255,208,138,0.4); }
 #sf-ml2 .ml2-throw { width:26px; height:26px; margin:-13px 0 0 -13px; }
 #sf-ml2 .ml2-throw .ml2-diamond { width:100%; height:100%; transform:rotate(45deg);
   border:2px solid var(--ml2-c,var(--dp-lamp, #f2b950)); box-shadow:0 0 10px var(--ml2-c,var(--dp-lamp, #f2b950));
@@ -530,9 +612,13 @@ export function meetingDiamondHidden(throwState, state) {
 export function resolveThrowMarkWorldPoint(throwState, state) {
   if (!throwState || !state || !state.entities || typeof state.entities.get !== 'function') return null;
   const releaseTarget = throwState.releaseTarget;
-  const targetId = releaseTarget && releaseTarget.targetId != null
-    ? releaseTarget.targetId
-    : throwState.aimTargetId;
+  // aimTargetId is the per-tick resolved holder; releaseTarget.targetId is the seed-time id and
+  // only trustworthy while the bind carries no stable stamp — a stamped-but-unresolved bind means
+  // the slot recycled, and its new occupant must not inherit the meeting diamond (the file's own
+  // throwCollateralSpots already prefers the resolved id).
+  const targetId = throwState.aimTargetId != null
+    ? throwState.aimTargetId
+    : (releaseTarget && !releaseTarget.stable ? releaseTarget.targetId : null);
   if (targetId != null) {
     const entity = state.entities.get(targetId);
     if (entity && entity.alive !== false && entity.pos
@@ -674,6 +760,11 @@ function writeMasslineHudFields(fields, state, player) {
   // CV-THROW-1: a live release verdict is world-anchored DOM work — it must leave the
   // quiescent path or the grade would never paint (post-release IS the idle case).
   const verdict0 = state.masslineReleaseVerdict;
+  // FB-007: a live drawn stroke is world-anchored ink — it leaves the quiescent path too, or
+  // the line would never paint while the pilot flies it.
+  const drawnStroke = state.input && state.input.autoTargetPath;
+  const inkActive = !!(drawnStroke && drawnStroke.active === true
+    && Array.isArray(drawnStroke.points) && drawnStroke.points.length >= 2);
   const quiescent = !throwState.armed && !solution.valid && !solution.onSolution
     && !selfSolution.onSolution && selfSolution.targetId == null
     && throwState.payloadId == null && throwState.aimTargetId == null
@@ -685,7 +776,7 @@ function writeMasslineHudFields(fields, state, player) {
     && !(playerState.tether && playerState.tether.active)
     && !(state.massSeed && state.massSeed.latchPreview && state.massSeed.latchPreview.word)
     && !cloak.active && !bulletTime.active
-    && denial0 == null && verdict0 == null;
+    && denial0 == null && verdict0 == null && !inkActive;
   if (quiescent) {
     fields[index++] = 'idle';
     fields[index++] = video.fov;
@@ -790,6 +881,10 @@ function writeMasslineHudFields(fields, state, player) {
   fields[index++] = verdict ? verdict.technique : null;
   fields[index++] = verdict ? verdict.targetId : null;
   fields[index++] = verdict ? (verdict.releasedAtApex === true) : false;
+  // LINE BROKE and LINE CUT share a null grade. Without these two bits a hostile
+  // cut lands on the same target in the same time bucket and the glass keeps BROKE.
+  fields[index++] = verdict ? (verdict.broke === true) : false;
+  fields[index++] = verdict ? (verdict.severed === true) : false;
   fields[index++] = verdict ? Math.max(0, Math.ceil((finite(verdict.untilSimTime) - finite(state.simTime)) * 4)) : 0;
   fields[index++] = selected.status;
   fields[index++] = selected.reason;
@@ -838,6 +933,38 @@ function writeMasslineHudFields(fields, state, player) {
     strain = Math.round(finite(raw) * 50) / 50;
   }
   fields[index++] = strain;
+  // SFQ-B026: the LINE pill's displayed value — the display-smoothed real load-vs-break-threshold
+  // estimate, quantized like strain so the signature rolls with visible bar steps, not per-tick
+  // smoothing noise.
+  let tensionEstimate = 0;
+  if (playerState.tether && playerState.tether.active) {
+    const rawEstimate = Number.isFinite(playerState.tether.tensionEstimate)
+      ? playerState.tether.tensionEstimate
+      : finite(playerState.masslineTelemetry && playerState.masslineTelemetry.tensionEstimate);
+    tensionEstimate = Math.round(finite(rawEstimate) * 50) / 50;
+  }
+  fields[index++] = tensionEstimate;
+  // FB-006 — the RIDE chip repaints when the state flips or the measured figures move a step.
+  const rideMirror = playerState.tether && playerState.tether.ride;
+  fields[index++] = !!(rideMirror && rideMirror.active === true);
+  fields[index++] = rideMirror && rideMirror.active === true
+    ? Math.round(finite(rideMirror.speedGained) * 2) / 2 : 0;
+  fields[index++] = rideMirror && rideMirror.active === true
+    ? Math.round(finite(rideMirror.anchorSpeed) * 2) / 2 : 0;
+  // FB-007 — the drawn-stroke ink: presence, flown head, band and quantized fade so the lines
+  // repaint as the stroke grows, grades and fades without churning the whole signature.
+  fields[index++] = inkActive;
+  fields[index++] = inkActive ? drawnStroke.points.length : 0;
+  fields[index++] = inkActive ? finite(drawnStroke.pointIndex, 1) : 0;
+  const inkStroke = inkActive && drawnStroke.stroke && drawnStroke.stroke.band
+    ? drawnStroke.stroke : null;
+  fields[index++] = inkStroke ? inkStroke.band : null;
+  // The completed stroke fades over DRAW_INK_FADE_S; the alpha step joins the signature so the
+  // fade repaints in visible steps instead of churning the whole signature every tick.
+  const inkFade = inkStroke && state.masslineInk
+    ? 1 - Math.max(0, finite(state.simTime) - finite(state.masslineInk.fadeStart)) / DRAW_INK_FADE_S
+    : 1;
+  fields[index++] = inkStroke ? Math.max(0, Math.ceil(finite(inkFade) * 8)) : 0;
   fields[index++] = bridle.phase
     ? Math.max(0, Math.ceil(Number(bridle.expiresAt) - Number(state.simTime)))
     : '';
@@ -900,6 +1027,47 @@ export function masslineHudInputsUnchanged(state, player) {
   return hudFieldsUnchanged(state, 'masslineHud', writeMasslineHudFields, player);
 }
 
+// FB-007 — the drawn stroke as a paint model, pure over state: the ink ahead of the ship, the
+// flown prefix behind it, and the completed stroke's grade. The follower owns the measurement
+// (src/combat/drawFlightPath.js publishes `route.stroke`); this only decides what the glass says.
+// Returns null with no live stroke — an inactive route paints nothing.
+export function resolveDrawFlightInk(state) {
+  const input = state && state.input;
+  const route = input && input.autoTargetPath;
+  if (!route || route.active !== true || !Array.isArray(route.points) || route.points.length < 2) {
+    return null;
+  }
+  const points = route.points;
+  const flownIndex = Math.max(1, Math.min(points.length, finite(route.pointIndex, 1)));
+  const stroke = route.stroke && route.stroke.band ? route.stroke : null;
+  const fade = stroke && state.masslineInk
+    ? Math.max(0, Math.min(1, 1 - (finite(state.simTime) - finite(state.masslineInk.fadeStart)) / DRAW_INK_FADE_S))
+    : 1;
+  return {
+    ahead: points.slice(Math.min(flownIndex - 1, points.length - 1)),
+    flown: points.slice(0, flownIndex),
+    stroke,
+    fade,
+    points: points.length,
+    grade: drawInkGrade(stroke && stroke.band),
+  };
+}
+
+/** The verdict colour a completed stroke may wear. Live ink, and any band the law does not name, stays unmarked. */
+export function drawInkGrade(band) {
+  if (band === 'razor' || band === 'clean' || band === 'good' || band === 'messy') return band;
+  return '';
+}
+
+function paintInkGrade(svg, grade) {
+  if (!svg || typeof svg.getAttribute !== 'function') return;
+  const next = grade || '';
+  const current = svg.getAttribute('data-grade') || '';
+  if (current === next) return;
+  if (next) svg.setAttribute('data-grade', next);
+  else if (typeof svg.removeAttribute === 'function') svg.removeAttribute('data-grade');
+}
+
 export const masslineHud = {
   id: 'masslineHud',
   name: 'masslineHud',
@@ -947,13 +1115,57 @@ export const masslineHud = {
           classification: p.classification,
           technique: p.technique,
           releasedAtApex: p.releasedAtApex === true,
+          // FB-006 — the ride grade rides the same pill; releaseVerdictCopy names the kept share.
+          ride: p.ride && Number.isFinite(p.ride.keptFraction)
+            ? { keptFraction: Math.max(0, Math.min(1, p.ride.keptFraction)) }
+            : null,
           targetId: p.targetId != null ? p.targetId : null,
           atX: Number.isFinite(target && target.pos && target.pos.x) ? target.pos.x : null,
           atZ: Number.isFinite(target && target.pos && target.pos.z) ? target.pos.z : null,
           untilSimTime: now + MASSLINE_VERDICT_PILL_S,
         };
       });
+      // SFQ-B023 — overload snap names itself. A deliberate cut emits tether:broken
+      // with reason tether_cut and must keep the release grade, not LINE BROKE.
+      ctx.bus.on('tether:broken', (p) => {
+        if (!this.state || !p || !lineBreakInvolvesPlayer(this.state, p)) return;
+        if (isLineBreakReason(p.reason)) this._assignLineFailure(p, 'broke');
+        else if (isLineSeverReason(p.reason)) this._assignLineFailure(p, 'severed');
+      });
+      // The twin bridle the player is holding is not always one of its endpoints.
+      // An involuntary end still belongs on their glass; a deliberate cut does not.
+      ctx.bus.on('massline:bridleEnded', (p) => {
+        if (!this.state || !p) return;
+        if (isLineBreakReason(p.reason) || p.reason === 'line_broken') {
+          this._assignLineFailure(p, 'broke');
+        } else if (isLineSeverReason(p.reason)) {
+          this._assignLineFailure(p, 'severed');
+        }
+      });
     }
+  },
+
+  _assignLineFailure(payload, kind) {
+    const state = this.state;
+    if (!state) return;
+    const now = finite(state.simTime);
+    const targetId = payload.targetId != null ? payload.targetId
+      : (payload.sourceId != null ? payload.sourceId : null);
+    const target = targetId != null && state.entities
+      && typeof state.entities.get === 'function'
+      ? state.entities.get(targetId) : null;
+    state.masslineReleaseVerdict = {
+      broke: kind === 'broke',
+      severed: kind === 'severed',
+      classification: null,
+      technique: null,
+      releasedAtApex: false,
+      ride: null,
+      targetId,
+      atX: Number.isFinite(target && target.pos && target.pos.x) ? target.pos.x : null,
+      atZ: Number.isFinite(target && target.pos && target.pos.z) ? target.pos.z : null,
+      untilSimTime: now + MASSLINE_VERDICT_PILL_S,
+    };
   },
 
   destroy() {
@@ -968,6 +1180,7 @@ export const masslineHud = {
     if (this.state) {
       this.state.masslineDenial = null;
       this.state.masslineReleaseVerdict = null;
+      this.state.masslineInk = null;
     }
     clearHudSignatures(this.state);
   },
@@ -998,6 +1211,7 @@ export const masslineHud = {
     this._updateSnagMark(dom, state, w2s);
     this._updateCloakRing(dom, ml2.cloak, player, w2s);
     this._updateOrbitRing(dom, player, state, w2s);
+    this._updateDrawInk(dom, state, w2s);
     this._updateMeters(dom, ml2, state);
     this._updateCadenceReadout(state);
   },
@@ -1022,7 +1236,11 @@ export const masslineHud = {
     }
     // CV-THROW-1: a fresh release verdict owns the slot while it lives — the grade lands at
     // the body that was let go, which is where the pilot's eye already is.
-    if (state.masslineReleaseVerdict && state.player && state.player.tether && state.player.tether.active) {
+    // A grade while the line is up is stale (re-latch). A failure can land in the
+    // same tick the mirror still says active — that pill is the snap, keep it.
+    // tether:latched clears a failure once a new line is actually up.
+    if (state.masslineReleaseVerdict && state.player && state.player.tether && state.player.tether.active
+        && state.masslineReleaseVerdict.broke !== true && state.masslineReleaseVerdict.severed !== true) {
       state.masslineReleaseVerdict = null;
     }
     const verdict = state.masslineReleaseVerdict;
@@ -1245,8 +1463,11 @@ export const masslineHud = {
     const pinned = offscreen ? pinToCueRing(screen.x, screen.y, viewportWidth, viewportHeight) : null;
     const cueX = pinned ? pinned.x : screen.x;
     const cueY = pinned ? pinned.y : screen.y;
-    const grade = VERDICT_GRADE_COPY[verdict.classification] ? verdict.classification : 'messy';
-    const earned = grade === 'razor' || grade === 'clean';
+    const failed = verdict.broke === true || verdict.severed === true;
+    const grade = failed
+      ? 'break'
+      : (VERDICT_GRADE_COPY[verdict.classification] ? verdict.classification : 'messy');
+    const earned = !failed && (grade === 'razor' || grade === 'clean');
     const text = releaseVerdictCopy(verdict);
     const captionWidth = estimateCaptionWidth(text);
     const placed = placeBracketWords(
@@ -1282,7 +1503,7 @@ export const masslineHud = {
     for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
       setClass(dom.previewEl, `ml2-preview-${name}`, false);
     }
-    for (const g of ['razor', 'clean', 'good', 'messy']) {
+    for (const g of VERDICT_GRADE_CLASSES) {
       if (g !== grade) setClass(dom.previewEl, `ml2-verdict-${g}`, false);
     }
   },
@@ -1483,10 +1704,23 @@ export const masslineHud = {
     // corridor is NAMED, never vetoed: this only extends the caption, release authority
     // and law adjudication are untouched. Stale/degraded solutions and unknown bodies
     // stay silent via the corridor helper's own suppression.
+    // SF-027: the pilot's own route is the one victim class the protected-body spots cannot
+    // carry; it joins the SAME single advisory and the nearer of the two wins — still one
+    // named victim, still no veto.
     if (!degradedThrow) {
-      const collateral = resolveThrowCollateral(solution,
-        throwPayloadPoint(throwState, state), throwPayloadRadius(throwState, state),
+      const payloadPoint = throwPayloadPoint(throwState, state);
+      let collateral = resolveThrowCollateral(solution,
+        payloadPoint, throwPayloadRadius(throwState, state),
         throwCollateralSpots(state, throwState));
+      const pilot = state && state.entities && state.entities.get
+        ? state.entities.get(state.playerId) : null;
+      const ownRoute = pilot && pilot.pos
+        ? resolveThrowOwnRouteRisk(solution, payloadPoint, throwPayloadRadius(throwState, state),
+          pilot.pos, pilot.vel, pilot.radius)
+        : null;
+      if (ownRoute && (!collateral || ownRoute.clearance < collateral.clearance)) {
+        collateral = ownRoute;
+      }
       if (collateral) {
         const advisory = `${cue.label} · COLLATERAL RISK · ${collateral.label}`;
         if (dom.throwLabel && dom.throwLabel.textContent !== advisory) {
@@ -1662,6 +1896,54 @@ export const masslineHud = {
     setAttr(dom.ringCircle, 'r', String(r));
   },
 
+  // FB-007 — the drawn stroke on the glass: the model decides what is true (resolveDrawFlightInk),
+  // this only projects and paints. A completed stroke stamps its fade start once (state.masslineInk,
+  // so the HUD signature can roll with the fade) and both paths fade out over DRAW_INK_FADE_S.
+  _updateDrawInk(dom, state, w2s) {
+    const svg = dom.inkSvg;
+    if (!svg) return;
+    const ink = resolveDrawFlightInk(state);
+    if (!ink) {
+      if (state && state.masslineInk) state.masslineInk = null;
+      paintInkGrade(svg, '');
+      setStyle(svg, 'display', 'none');
+      return;
+    }
+    if (ink.fade <= 0) {
+      setStyle(svg, 'display', 'none');
+      return;
+    }
+    if (ink.stroke && !state.masslineInk) {
+      state.masslineInk = { fadeStart: finite(state.simTime) };
+      // The follower published the band and never said it. One announce, on the frame it lands.
+      announceStrokeGrade(ink.stroke);
+    }
+    paintInkGrade(svg, ink.grade);
+    const paint = (path, points) => {
+      let d = '';
+      for (const p of points) {
+        if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
+        const s = projectWorld(w2s, p.x, p.z);
+        if (!s || !Number.isFinite(s.x) || !Number.isFinite(s.y)) continue;
+        d += `${d === '' ? 'M' : 'L'}${Math.round(s.x * 10) / 10} ${Math.round(s.y * 10) / 10}`;
+      }
+      return d;
+    };
+    const flownD = paint(dom.inkFlownPath, ink.flown);
+    const aheadD = paint(dom.inkAheadPath, ink.ahead);
+    if (flownD && dom.inkDFlown !== flownD) {
+      dom.inkDFlown = flownD;
+      dom.inkFlownPath.setAttribute('d', flownD);
+    }
+    if (aheadD && dom.inkDAhead !== aheadD) {
+      dom.inkDAhead = aheadD;
+      dom.inkAheadPath.setAttribute('d', aheadD);
+    }
+    setStyle(svg, 'display', 'block');
+    if (ink.stroke) setStyle(svg, 'opacity', String(Math.max(0, Math.min(1, ink.fade))));
+    else if (svg.style.opacity !== '1') svg.style.opacity = '1';
+  },
+
   // VERB-29: the ring the orbit assist is holding the pilot to, centered on the tether anchor.
   _updateOrbitRing(dom, player, state, w2s) {
     const ring = resolveOrbitAssistRing(state, player);
@@ -1705,30 +1987,70 @@ export const masslineHud = {
     const strain = active
       ? (Number.isFinite(tether.strain) ? tether.strain : finite(telemetry && telemetry.strain))
       : 0;
+    // SFQ-B026: the pill displays the display-smoothed estimate of REAL constraint load vs the
+    // live break envelope — the same three legs the break authority reads, not tension alone — so
+    // a pilot can release, reel, or ease thrust before a failure lands. A save or fixture without
+    // the field degrades to the physical strain read exactly as before.
+    const shown = active
+      ? (Number.isFinite(tether.tensionEstimate)
+        ? tether.tensionEstimate
+        : (telemetry && Number.isFinite(telemetry.tensionEstimate) ? telemetry.tensionEstimate : strain))
+      : 0;
     const now = finite(state && state.simTime);
     const prev = this._lineLoad || null;
-    const trend = prev && now > prev.t ? (strain - prev.strain) / Math.max(1e-3, now - prev.t) : 0;
-    const warned = resolveLineLoadWarning(strain, trend, !!(prev && prev.warned));
-    this._lineLoad = { strain, t: now, warned };
+    // The trend is computed from the DISPLAYED estimate; the stored field keeps that name so a
+    // future editor cannot quietly re-point it at the physical strain.
+    const trend = prev && now > prev.t ? (shown - prev.shown) / Math.max(1e-3, now - prev.t) : 0;
+    const warned = resolveLineLoadWarning(shown, trend, !!(prev && prev.warned));
+    this._lineLoad = { shown, t: now, warned };
+    // Fail closed on the break clause: automaticBreakAllowed is the authority's canonical answer
+    // (tetherGameplay mirror — absent/false means load telemetry is informational, never a break
+    // alarm), so an endpoint that can never auto-break gets the load-only wording.
+    const breakAlarm = !!(tether && tether.automaticBreakAllowed === true);
     const share = resolveTetherShareHud(state && state.player && state.player.remoteMassline);
-    const showStrain = (active && strain > 0.02) || !!share;
+    let coupling = null;
+    if (active && !share && tether && tether.targetId != null
+      && state.entities && typeof state.entities.get === 'function') {
+      coupling = latchCouplingRead(
+        state.entities.get(state.playerId),
+        state.entities.get(tether.targetId),
+      );
+    }
+    const showStrain = (active && (shown > 0.02 || !!coupling)) || !!share;
     setStyle(dom.strainPill, 'display', showStrain ? 'flex' : 'none');
     if (showStrain) {
-      const bar = share && !(strain > 0.02)
+      const bar = share && !(shown > 0.02)
         ? Math.max(share.source, share.target)
-        : strain;
+        : shown;
       setStyle(dom.strainFill, 'transform', `scaleX(${clamp01(bar)})`);
       setClass(dom.strainPill, 'ml2-warn', warned && !share);
-      const label = share ? share.text : 'LINE';
+      const label = share ? share.text : (coupling ? coupling.short : 'LINE');
       if (dom.strainText && dom.strainText.textContent !== label) dom.strainText.textContent = label;
       setAttr(dom.strainPill, 'aria-label', share
         ? `Load split ${share.text}`
         : warned
-          ? `Massline line load high and ${trend > 0 ? 'rising' : 'holding'} — ease the turn before it breaks`
-          : `Massline line load ${Math.round(clamp01(strain) * 100)} percent`);
+          ? (breakAlarm
+            ? `Massline line load high and ${trend > 0 ? 'rising' : 'holding'} — ease the turn before it breaks`
+            : `Massline line load high and ${trend > 0 ? 'rising' : 'holding'} — ease the turn`)
+          : coupling
+            ? `${coupling.title}. Line load ${Math.round(clamp01(shown) * 100)} percent`
+            : `Massline line load ${Math.round(clamp01(shown) * 100)} percent`);
     } else if (prev && prev.warned) {
       setClass(dom.strainPill, 'ml2-warn', false);
       if (dom.strainText && dom.strainText.textContent !== 'LINE') dom.strainText.textContent = 'LINE';
+    }
+    // FB-006 — the RIDE chip. The fill is the share of the anchor's speed the ride has lent the
+    // player; the words stay in the pill grammar (FOCUS/CLOAK/LINE) with the numbers in the
+    // reading. Exists only beside a live tether, so the quiescent gate already covers idle.
+    const ride = active ? tether.ride : null;
+    const showRide = !!(ride && ride.active === true);
+    if (dom.ridePill) setStyle(dom.ridePill, 'display', showRide ? 'flex' : 'none');
+    if (showRide) {
+      const gained = finite(ride.speedGained);
+      const anchorSpeed = Math.max(1, finite(ride.anchorSpeed));
+      if (dom.rideFill) setStyle(dom.rideFill, 'transform', `scaleX(${clamp01(gained / anchorSpeed)})`);
+      setAttr(dom.ridePill, 'aria-label',
+        `Riding the anchor — gained ${Math.round(gained)} of ${Math.round(finite(ride.anchorSpeed))} wu per second`);
     }
   },
 
@@ -1759,6 +2081,9 @@ export const masslineHud = {
     setStyle(dom.btPill, 'display', 'none');
     setStyle(dom.ckPill, 'display', 'none');
     if (dom.strainPill) setStyle(dom.strainPill, 'display', 'none');
+    if (dom.ridePill) setStyle(dom.ridePill, 'display', 'none');
+    if (dom.inkSvg) setStyle(dom.inkSvg, 'display', 'none');
+    this._ink = null;
     this._lineLoad = null;
     // The panel gates itself on tether.active, not on flight/docked — hide it explicitly here so
     // it never outlives the flight HUD (docked, flag off, dead player). hide() keeps the
@@ -1834,6 +2159,20 @@ export const masslineHud = {
     ghostPath.setAttribute('class', 'ml2-ghost-path');
     ghostSvg.appendChild(ghostPath);
     root.appendChild(ghostSvg);
+
+    // FB-007 — the drawn-stroke ink. Sits UNDER the marks like the ghost: the stroke is the
+    // future and the past of this flight, not a target.
+    const inkSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    inkSvg.setAttribute('class', 'ml2-ink');
+    inkSvg.style.display = 'none';
+    inkSvg.setAttribute('aria-hidden', 'true');
+    const inkFlownPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    inkFlownPath.setAttribute('class', 'ml2-ink-flown');
+    inkSvg.appendChild(inkFlownPath);
+    const inkAheadPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    inkAheadPath.setAttribute('class', 'ml2-ink-ahead');
+    inkSvg.appendChild(inkAheadPath);
+    root.appendChild(inkSvg);
 
     const throwEl = document.createElement('div');
     throwEl.className = 'ml2-mark ml2-throw';
@@ -1936,6 +2275,8 @@ export const masslineHud = {
     const bt = makePill('FOCUS', 'ml2-bt');
     const ck = makePill('CLOAK', 'ml2-cloak');
     const strain = makePill('LINE', 'ml2-strain');
+    // FB-006 — the RIDE chip: the same pill grammar, naming the hitchhike state while it lives.
+    const ride = makePill('RIDE', 'ml2-ride');
     root.appendChild(meters);
 
     // Cadence instrument slot (mid-left column). The component owns its subtree; this system owns
@@ -1963,11 +2304,13 @@ export const masslineHud = {
     this._dom = {
       root, previewEl, previewMark, previewSourceMark, previewSvg, previewLine,
       ghostSvg, ghostPath, ghostD: null,
+      inkSvg, inkAheadPath, inkFlownPath, inkD: null,
       throwEl, throwLabel, selfEl, selfLabel, ringSvg, ringCircle,
       orbitSvg, orbitCircle,
       threatMark, threatMarkLabel, snagMark, snagMarkLabel,
       btPill: bt.pill, btFill: bt.bar, ckPill: ck.pill, ckFill: ck.bar,
       strainPill: strain.pill, strainFill: strain.bar, strainText: strain.text,
+      ridePill: ride.pill, rideFill: ride.bar,
     };
     // A recreated DOM tree must receive its first complete paint even when the state object was
     // reused across a route/new-run boundary and its previous signature happens to match.
@@ -2008,10 +2351,20 @@ function previewStatusCopy(status, reason) {
     || r === 'attachment_authority_unavailable' || r === 'authority_unavailable') {
     return 'LINE FAILED';
   }
+  // Attachments create-fail reasons that used to read as a generic UNAVAILABLE.
+  if (r === 'target_missing' || r === 'endpoint_stale') return 'ENDPOINT LOST';
+  if (r === 'owner_missing' || r === 'controller_missing') return 'CANNOT LATCH';
+  if (r === 'physics_port_unavailable' || r === 'source_socket_unavailable'
+    || r === 'target_socket_unavailable' || r === 'physics_create_rejected'
+    || r === 'physics_create_failed' || r === 'spawn_authority_unavailable'
+    || r === 'endpoint_spawn_failed') {
+    return 'LINE FAILED';
+  }
   // SFQ-B021 — the ineligible classes name themselves instead of a generic UNAVAILABLE.
   if (r === 'site-machinery') return 'MACHINE, NOT CARGO';
   if (r === 'scripted-body') return 'SCRIPTED MOTION';
   if (r === 'not-tetherable') return 'CANNOT LATCH';
+  if (r === 'spool_out' || r === 'spool-out') return 'SPOOL OUT';
   return 'UNAVAILABLE';
 }
 

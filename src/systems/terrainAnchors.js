@@ -81,8 +81,7 @@ export const terrainAnchors = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
-    const seed = (ctx.state.meta && ctx.state.meta.seed) || 1;
-    this._rng = ctx.helpers.mulberry32(ctx.helpers.hash32(seed, 'terrainAnchors'));
+    this._resetRunRandom();
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('encounter:telegraph', (p) => this._onTelegraph(p || {})));
@@ -101,6 +100,17 @@ export const terrainAnchors = {
   destroy() {
     for (const off of this._unsubs || []) { if (typeof off === 'function') off(); }
     this._unsubs = [];
+  },
+
+  newGame() {
+    this._resetRunRandom();
+  },
+
+  // A retained system must start the new run's stream at the same point as a fresh
+  // instance. Continue and ordinary wave/sector transitions keep their current stream.
+  _resetRunRandom() {
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    this._rng = this.helpers.mulberry32(this.helpers.hash32(seed, 'terrainAnchors'));
   },
 
   update() {},

@@ -8,6 +8,7 @@ import { writeStationSideEventVfxFrame, createStationSideEventVfxFrameScratch } 
 import { CERES_JOB_ACTION_VFX_PROFILES } from '../ceresJobActionVfx.js';
 import { readFrameOrigin } from '../frameCoordinates.js';
 import { shouldDrawTableVfx, tableLookAtDelta, tableVfxDrawWuFromState } from '../tabletopPolicy.js';
+import { machineryPicture } from './effectsCause.js';
 
 const STATIONS=6,JOBS=8,TAU=Math.PI*2;
 const JOB_PROFILES=[CERES_JOB_ACTION_VFX_PROFILES.oreCut,CERES_JOB_ACTION_VFX_PROFILES.transfer,
@@ -109,9 +110,14 @@ export class StationOperationVfx {
       alpha*Math.sin(Math.PI*from),feed,-.1,heat*1.25);
   }
   _station(s,now,reduced,flash,state){
-    const n=s.native,age=now-s.born,duration=s.recipe.life,progress=clamp(age/duration);
+    const n=s.native;
+    const motion=machineryPicture(n,state?.paused===true||state?.simTimeScale===0,reduced);
+    if(!motion.advance){if(s._heldAge==null)s._heldAge=Math.max(0,now-s.born);}
+    else s._heldAge=null;
+    const age=s._heldAge!=null?s._heldAge:now-s.born,duration=s.recipe.life,progress=clamp(age/duration);
+    const held=reduced||!motion.advance;
     const f=writeStationSideEventVfxFrame(s.profile,age,duration,n.fromX,n.fromZ,n.toX,n.toZ,
-      n.centerX,n.centerZ,n.bearing,reduced,s.frame);
+      n.centerX,n.centerZ,n.bearing,held,s.frame);
     const mover=state.entities?.get?.(n.entityId);
     if(n.entityId!=null&&(!mover||mover.alive===false||!point(mover.pos)))return;
     if(mover){f.x=mover.pos.x;f.z=mover.pos.z;const a=finite(mover.rot);f.dirX=Math.cos(a);f.dirZ=Math.sin(a);}
@@ -119,7 +125,9 @@ export class StationOperationVfx {
     if(!this._visible(s,state))return;
     const p=this.composer,w=clamp(s.radius*.35,1.25,2.7),a=s.angle;
     const feed=clamp(age/.18),cut=clamp((age-(duration-.48))/.42)-.1;
-    const alpha=smooth(age/.10)*(1-smooth((progress-.87)/.13))*(flash?.64:1);
+    let alpha=smooth(age/.10)*(1-smooth((progress-.87)/.13))*(flash?.64:1);
+    if(motion.silhouette==='dark-arm')alpha*=.22;
+    else if(motion.silhouette==='bound-arm')alpha*=.55;
     p.slot=s;
     if(n.kind==='hauler_dock'||n.kind==='quiet_dock'){
       const quiet=n.kind==='quiet_dock',light=alpha*(quiet?.40:.84);
@@ -141,7 +149,7 @@ export class StationOperationVfx {
       this._connection(s,s.x,s.z,dx,dz,w*.50,alpha,feed,cut,.8);
       for(let i=0;i<2;i++)p.piece(3,dx,dz,normal+Math.PI/2,-w*1.4,w*1.4,w*.70,w*.30,0,(i-.5)*w*.7,0,
         i*2.8,alpha,clamp(feed-i*.16),cut+i*.12,.75);
-      const scan=reduced?.5:.5+.5*Math.sin(age*4.2+s.seed*TAU);
+      const scan=held?.5:.5+.5*Math.sin(age*4.2+s.seed*TAU);
       p.piece(5,dx,dz,normal+Math.PI/2,-w+w*scan,w*.4+w*scan,w*.35,w*.3,w*.25,0,0,2,alpha,feed,cut,1.2);
     }else if(n.kind==='cargo_tractor'){
       this._surface(s.station,s.x,s.z,this.a,true);this._connection(s,this.a.x,this.a.z,s.x,s.z,w*.68,alpha,feed,cut,.9);
@@ -149,7 +157,7 @@ export class StationOperationVfx {
         alpha,clamp(feed-.13),cut+(side+1)*.08,.7);
     }else if(n.kind==='sensor_sweep'){
       this._surface(s.station,s.x,s.z,this.a,true);s.x=this.a.x;s.z=this.a.z;s.y=this.a.y;
-      const axis=Math.atan2(f.z-s.z,f.x-s.x),scan=reduced?0:Math.sin(age*1.8+s.seed)*.18;
+      const axis=Math.atan2(f.z-s.z,f.x-s.x),scan=held?0:Math.sin(age*1.8+s.seed)*.18;
       for(let i=0;i<3;i++)p.piece(5,s.x,s.z,axis+scan+(i-1)*.30,0,w*(3.2+i*.8),w*(.43-i*.05),w*.35,
         w*(i-1)*.4,0,0,i*2.2,alpha*.77,clamp(feed-i*.12),cut+i*.09,.9);
       p.piece(3,s.x,s.z,axis+Math.PI/2,-w,w,w*.65,w*.28,0,0,0,3,alpha*.70,feed,cut,.5);

@@ -36,7 +36,7 @@
 import * as THREE from 'three';
 import { recordPostRenderTargetAllocation } from './postTelemetry.js';
 import { touchSubjectOnExactTarget } from './openingGpuAdmission.js';
-import { revealSubjectWithAncestors } from './compilePresentSlice.js';
+import { postTaskAtBackgroundPriorityBounded, revealSubjectWithAncestors } from './compilePresentSlice.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { CAS_FRAG, CAS_SHARPNESS, applyCasSetup, createCasUniforms, resolveCasSharpenActive } from './cas.js';
 import { LOOK_POST_UNIFORMS } from './look.js';
@@ -351,7 +351,7 @@ function finiteNumber(value) {
 }
 // Multi-scale pyramid energy runs hotter than a single separable blur; composite multiplies by
 // this before uStrength scales the halo perceptually (0.02 ≈ subtle, 0.52 ≈ default).
-const BLOOM_PYRAMID_NORM = 1.5;
+const BLOOM_PYRAMID_NORM = 1.32;
 
 /**
  * Compile one Object3D subtree against the exact output target used by the live renderer.
@@ -525,7 +525,7 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
   // links overlap on purpose and pacing would serialize them). Each call yields one task-queue
   // slot then finishes the GL queue while it is still ~one unit deep, so a whole cohort never
   // drains inside one compositor readback. Callers invoke it between issued units.
-  const paceQueue = makeGpuQueuePacer(renderer);
+  const paceQueue = makeGpuQueuePacer(renderer, { scheduleTask: postTaskAtBackgroundPriorityBounded });
   batch.handle = {
     paceQueue,
     join(gl, programs, settle) {
@@ -900,8 +900,8 @@ const DOWNSAMPLE_FRAG = /* glsl */`
 
 // Multi-scale composite weights: tight core glow (1/2 res, weight 1), body halo (1/8), wide
 // atmosphere (1/16). Each level is sampled directly with hardware bilinear — no upsample RT or pass.
-const BLOOM_MID_WEIGHT = 0.62;
-const BLOOM_WIDE_WEIGHT = 0.48;
+const BLOOM_MID_WEIGHT = 0.52;
+const BLOOM_WIDE_WEIGHT = 0.38;
 
 // Composite: tonemap the scene first, THEN add strength-scaled multi-scale bloom on top. Adding bloom
 // before ACES saturated highlights and made the strength slider appear dead (1% looked like 100%).
@@ -994,15 +994,70 @@ const COMPOSITE_FRAG = /* glsl */`
 // so all three bracket their presented draws with the same hide→render→restore pair.
 const UNREADY_SCENE_CAP = 512;
 
+// Three's material properties describe the last-bound program, not every linked variant.
+// WebGLPrograms places instancing/color/morph in bits 0–2 of its first boolean mask. Memoize
+// alternate keys per live program so alternating shared Mesh/InstancedMesh draws allocate
+// no strings or arrays once warm. All other cache-key fields remain byte-for-byte unchanged.
+const instancingVariantKeys = new WeakMap();
+
+function instancingFlags(object) {
+  if (!object || object.isInstancedMesh !== true) return 0;
+  return 1 | (object.instanceColor !== null ? 2 : 0) | (object.morphTexture !== null ? 4 : 0);
+}
+
+function linkedInstancingVariant(rec, material, object) {
+  const current = rec && rec.currentProgram;
+  if (!current || typeof rec.instancing !== 'boolean' || material.isRawShaderMaterial === true) return current;
+  const wanted = instancingFlags(object);
+  const bound = (rec.instancing ? 1 : 0) | (rec.instancingColor ? 2 : 0) | (rec.instancingMorph ? 4 : 0);
+  if (wanted === bound) return current;
+  const variants = rec.programs;
+  if (!variants || typeof variants.get !== 'function') return null;
+  if (rec.__version !== undefined && rec.__version !== material.version) return null;
+  let keys = instancingVariantKeys.get(current);
+  if (!keys) {
+    const key = current.cacheKey;
+    if (typeof key !== 'string' || typeof material.customProgramCacheKey !== 'function') return null;
+    let customKey;
+    try { customKey = material.customProgramCacheKey(); } catch (_) { return null; }
+    customKey = customKey == null ? '' : String(customKey);
+    // The custom suffix can contain commas (including a complete onBeforeCompile function).
+    // Remove its exact length before locating the two boolean masks and output color space.
+    const customDelimiter = key.length - customKey.length - 1;
+    if (customDelimiter < 0 || key[customDelimiter] !== ',' || !key.endsWith(customKey)) return null;
+    const colorDelimiter = key.lastIndexOf(',', customDelimiter - 1);
+    const secondMaskDelimiter = key.lastIndexOf(',', colorDelimiter - 1);
+    const firstMaskDelimiter = key.lastIndexOf(',', secondMaskDelimiter - 1);
+    if (firstMaskDelimiter < 0 || secondMaskDelimiter <= firstMaskDelimiter) return null;
+    const maskText = key.slice(firstMaskDelimiter + 1, secondMaskDelimiter);
+    if (!/^\d+$/.test(maskText)) return null;
+    const mask = Number(maskText);
+    if (!Number.isSafeInteger(mask) || (mask & 7) !== bound) return null;
+    keys = {
+      mask,
+      prefix: key.slice(0, firstMaskDelimiter + 1),
+      suffix: key.slice(secondMaskDelimiter),
+      variants: new Array(8),
+    };
+    instancingVariantKeys.set(current, keys);
+  }
+  let alternateKey = keys.variants[wanted];
+  if (alternateKey === undefined) {
+    alternateKey = keys.prefix + ((keys.mask & ~7) | wanted) + keys.suffix;
+    keys.variants[wanted] = alternateKey;
+  }
+  return variants.get(alternateKey) || null;
+}
+
 // Draw-time safety net for the hide→render→restore pair below. The scene walk exits
 // early once every known program reports ready, so a stamped authored/shared material
 // that has NEVER compiled (a shader-hook-dropping clone, a late variant) reaches the
 // draw with no currentProgram and would link synchronously inside the presented frame.
-// While a guarded pass is active, a stamped material with no currentProgram skips its
-// draw and queues pipeline admission for that mesh; everything else draws unchanged.
+// While a guarded pass is active, a stamped material with no currentProgram or any compiled
+// material missing its draw's instancing variant queues admission instead of linking on glass.
 // The wrapper is per-renderer — this guard exists twice per renderer (bloom's own and
 // the renderer's route-level instance) — and composes with the perf-counter drawObject
-// wrapper whichever installs first. No allocation on the draw path.
+// wrapper whichever installs first. Warm variants allocate nothing on the draw path.
 function installUnreadyDrawGuard(renderer) {
   if (!renderer || renderer.__sfUnreadyDrawGuardWrapped === true) return;
   if (typeof renderer.renderBufferDirect !== 'function') return;
@@ -1011,28 +1066,39 @@ function installUnreadyDrawGuard(renderer) {
   renderer.renderBufferDirect = function unreadyDrawGuard(camera, scene, geometry, material, object, group) {
     if (renderer.__sfUnreadyDrawGuardDepth > 0 && material) {
       const data = material.userData;
-      if (data && (data.spacefaceSharedMaterialRole != null || data.spacefaceProgramCanon != null)) {
-        const props = renderer.properties;
-        // Unknown properties state must behave exactly like today — draw.
-        let compiled = true;
-        try {
-          if (props && typeof props.get === 'function') {
-            const rec = props.get(material);
-            compiled = !!(rec && rec.currentProgram);
+      const stamped = data && (data.spacefaceSharedMaterialRole != null || data.spacefaceProgramCanon != null);
+      const props = renderer.properties;
+      // Unknown properties state and cold unstamped materials keep their existing behavior.
+      let compiled = true;
+      try {
+        if (props && typeof props.get === 'function') {
+          const rec = props.get(material);
+          const current = rec && rec.currentProgram;
+          if (current) {
+            const variant = linkedInstancingVariant(rec, material, object);
+            if (variant !== current) {
+              compiled = !!variant;
+              if (compiled && typeof variant.isReady === 'function') {
+                try { compiled = variant.isReady() === true; } catch (_) { compiled = false; }
+              }
+            }
+          } else if (stamped) {
+            compiled = false;
           }
-        } catch (_) { /* draw as today */ }
-        if (!compiled) {
-          // Same material stamp dedupe as hideIfProgramUnready: one admission
-          // in flight per material while the draw keeps being skipped.
-          const queueAdmission = renderer.userData && renderer.userData.spacefaceQueuePipelineAdmission;
-          if (data.__sfPipelineAdmission !== true && typeof queueAdmission === 'function') {
-            data.__sfPipelineAdmission = true;
-            Promise.resolve(queueAdmission(object))
-              .catch(() => null)
-              .finally(() => { data.__sfPipelineAdmission = false; });
-          }
-          return undefined;
         }
+      } catch (_) { /* draw as today */ }
+      if (!compiled) {
+        const admissionData = data || (material.userData = {});
+        // Same material stamp dedupe as hideIfProgramUnready: one admission
+        // in flight per material while the draw keeps being skipped.
+        const queueAdmission = renderer.userData && renderer.userData.spacefaceQueuePipelineAdmission;
+        if (admissionData.__sfPipelineAdmission !== true && typeof queueAdmission === 'function') {
+          admissionData.__sfPipelineAdmission = true;
+          Promise.resolve(queueAdmission(object))
+            .catch(() => null)
+            .finally(() => { admissionData.__sfPipelineAdmission = false; });
+        }
+        return undefined;
       }
     }
     return inner.call(this, camera, scene, geometry, material, object, group);
@@ -1074,6 +1140,12 @@ export function createUnreadyDrawableGuard(renderer) {
   // a changed set with an empty drain means an add path bypassed the hook → full traverse once.
   const unreadyMountedRoots = [];
   let mountWatchScene = null;
+  // Pending-only windows scope the unready scan to the pending subjects' subtrees and
+  // instrumented mounts; every Nth such frame still runs the full traverse as the
+  // failsafe for mounts that bypassed scene.add (bounded to N presented-frame draws
+  // for an interior never-compiled mount during a pending window).
+  const UNREADY_PENDING_SWEEP_FRAMES = 30;
+  let unreadyPendingSweep = 0;
   function ensureSceneMountWatch(scene) {
     if (!scene || typeof scene.add !== 'function' || mountWatchScene === scene) return;
     mountWatchScene = scene;
@@ -1119,13 +1191,18 @@ export function createUnreadyDrawableGuard(renderer) {
     // drivers, so the program-readiness scan below can never see them — drawing one would link
     // its variants synchronously inside this presented frame. Hide the root (subtree included)
     // until its admission resolves; restoreUnreadySceneDrawables re-shows it after the pass.
+    // An sfAdmittedOnce root already has linked content worth drawing — a re-admission on it
+    // (a late-mounted drawable discovered under it, a live-geometry re-link) must not blank
+    // the whole ship for the admission window: the per-material scan below and the
+    // renderBufferDirect guard still cover its never-compiled children.
     const pendingSubjects = renderer && renderer.userData
       ? renderer.userData.spacefacePendingPipelineSubjects
       : null;
     if (pendingSubjects && pendingSubjects.size > 0) {
       for (const subject of pendingSubjects) {
         if (unreadySceneCount >= UNREADY_SCENE_CAP) break;
-        if (subject && subject.visible === true) {
+        if (subject && subject.visible === true
+            && !(subject.userData && subject.userData.sfAdmittedOnce === true)) {
           unreadySceneScratch[unreadySceneCount] = subject;
           unreadySceneCount += 1;
           subject.visible = false;
@@ -1195,11 +1272,42 @@ export function createUnreadyDrawableGuard(renderer) {
     // Anything still queued was detached before this pass or covered by the full traverse —
     // drop it so stale roots never accumulate.
     unreadyMountedRoots.length = 0;
-    if (unreadyProgramsPending || (pendingSubjects && pendingSubjects.size > 0)
-        || (sceneSetChanged && drainRoots === null) || !drainRoots) {
-      // Program-level trigger, pending-subject trigger, or the uninstrumented-mutation
-      // failsafe: any existing drawable could hold the unready program — full traverse.
+    const pendingOnlyWindow = unreadyProgramsPending !== true
+      && pendingSubjects && pendingSubjects.size > 0;
+    // The pending-PROGRAM latch shares the pending-subject window's scoped
+    // contract: per-frame work stays O(pendingSubjects ∪ instrumented mounts)
+    // and the 30-frame full sweep remains the failsafe for binds no mount path
+    // instrumented (a material swap on a live mounted mesh waits at most one
+    // sweep window — the draw-time renderBufferDirect guard already refuses
+    // on-glass links for stamped materials in the meantime).
+    const scopedPendingWindow = pendingOnlyWindow || unreadyProgramsPending === true;
+    if ((sceneSetChanged && drainRoots === null)
+        || (!scopedPendingWindow && !drainRoots)) {
+      // Uninstrumented growth with nothing queued, or no pending latch at all:
+      // any existing drawable could hold the unready program — full traverse.
+      unreadyPendingSweep = 0;
       scanPresentedDrawables(scene);
+    } else if (scopedPendingWindow) {
+      // The pending latch already hides those roots; the scoped scan still catches
+      // interior mounts inside them and inside the instrumented drain, and the
+      // periodic sweep below keeps the uninstrumented-mount failsafe bounded.
+      unreadyPendingSweep = (unreadyPendingSweep + 1) % UNREADY_PENDING_SWEEP_FRAMES;
+      if (unreadyPendingSweep === 0) {
+        scanPresentedDrawables(scene);
+      } else {
+        if (pendingSubjects) {
+          for (const subject of pendingSubjects) {
+            if (subject && typeof subject.traverse === 'function') {
+              scanPresentedDrawables(subject);
+            }
+          }
+        }
+        if (drainRoots) {
+          for (const root of drainRoots) {
+            if (root && typeof root.traverse === 'function') scanPresentedDrawables(root);
+          }
+        }
+      }
     } else {
       for (let i = 0; i < drainRoots.length; i++) {
         if (drainRoots[i] && typeof drainRoots[i].traverse === 'function') {
@@ -1295,9 +1403,16 @@ export function createUnreadyDrawableGuard(renderer) {
 
   function restoreUnreadySceneDrawables() {
     if (renderer) renderer.__sfUnreadyDrawGuardDepth = Math.max(0, (renderer.__sfUnreadyDrawGuardDepth || 0) - 1);
+    // Dev instrumentation: remember what was hidden during the pass so the ?drawhist
+    // sampler (which runs after visibility is restored) can still skip it. Bounded —
+    // the sampler clears the set each frame; when it is unarmed the set saturates.
+    const hiddenLog = renderer
+      ? (renderer.__sfLastHiddenDrawables || (renderer.__sfLastHiddenDrawables = new Set()))
+      : null;
     for (let i = 0; i < unreadySceneCount; i++) {
       const object = unreadySceneScratch[i];
       if (object) object.visible = true;
+      if (object && hiddenLog && hiddenLog.size < 4096) hiddenLog.add(object);
       unreadySceneScratch[i] = null;
     }
     unreadySceneCount = 0;
@@ -1706,6 +1821,14 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // threshold, so the traversal cost cannot matter; keep it armed for the same reason the brick
   // warning itself is always armed.
   const seenBloomGeometryUuids = new Set();
+  // A sustained slow stretch bricks EVERY frame — and each brick used to pay
+  // three scene traverses plus a report serialization inside the presented
+  // pass, worsening the frame it was diagnosing. Dedup: the first brick and
+  // every 120th carry the full describe payload; bricks ≥1 s apart emit a
+  // cheap summary; everything between is counted and suppressed.
+  let brickSeq = 0;
+  let brickLastWarnAt = -Infinity;
+  let brickSuppressed = 0;
 
   function describeUnstampedVisibleGeometries(scene) {
     if (!scene || typeof scene.traverse !== 'function') return [];
@@ -1781,13 +1904,59 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // harmless; an unbounded uuid set across sectors and generations is not.
   const SEEN_BLOOM_GEOMETRY_CAP = 2000;
 
-  function rememberBloomGeometries(scene) {
+  // The refill used to pay a full scene traverse inside the frames that had
+  // already bricked. The walk is parked as a stepped iterator instead: each
+  // request advances a bounded slice and registers uuids as visited, so the
+  // seen set stays honest while the refill amortizes across the storm's own
+  // frames. A geometry added inside an already-visited branch reports "new"
+  // once — diagnostic noise, not a contract breach (same as the cap reset).
+  let bloomGeometryWalkIter = null;
+  let bloomGeometryWalkScene = null;
+
+  function* bloomGeometryWalkSteps(root) {
+    const stack = [root];
+    while (stack.length) {
+      const object = stack.pop();
+      if (object) {
+        const geometry = object.geometry;
+        if (geometry && geometry.uuid && seenBloomGeometryUuids.size < SEEN_BLOOM_GEOMETRY_CAP) {
+          seenBloomGeometryUuids.add(geometry.uuid);
+        }
+        const children = object.children;
+        if (children) {
+          for (let i = children.length - 1; i >= 0; i--) stack.push(children[i]);
+        }
+      }
+      yield;
+    }
+  }
+
+  function driveBloomGeometryWalk(scene, drainAll) {
     if (!scene || typeof scene.traverse !== 'function') return;
-    if (seenBloomGeometryUuids.size >= SEEN_BLOOM_GEOMETRY_CAP) seenBloomGeometryUuids.clear();
-    scene.traverse((object) => {
-      const geometry = object && object.geometry;
-      if (geometry && geometry.uuid) seenBloomGeometryUuids.add(geometry.uuid);
-    });
+    if (bloomGeometryWalkScene !== scene) {
+      bloomGeometryWalkIter = null;
+      bloomGeometryWalkScene = scene;
+    }
+    if (!bloomGeometryWalkIter) {
+      if (seenBloomGeometryUuids.size >= SEEN_BLOOM_GEOMETRY_CAP) seenBloomGeometryUuids.clear();
+      bloomGeometryWalkIter = bloomGeometryWalkSteps(scene);
+    }
+    let visited = 0;
+    while (bloomGeometryWalkIter && (drainAll || visited < 256)) {
+      let step = null;
+      try { step = bloomGeometryWalkIter.next(); }
+      catch (_) { bloomGeometryWalkIter = null; return; }
+      if (step && step.done) { bloomGeometryWalkIter = null; return; }
+      visited += 1;
+    }
+  }
+
+  function rememberBloomGeometries(scene) {
+    driveBloomGeometryWalk(scene, false);
+  }
+
+  function drainBloomGeometryWalk(scene) {
+    driveBloomGeometryWalk(scene, true);
   }
 
   function describeNewProgramOwners(scene, seenKeys) {
@@ -1909,28 +2078,46 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         const grewGeometries = geometriesAfter != null && geometriesBefore != null
           && geometriesAfter > geometriesBefore;
         if (brick) {
-          console.warn(`[GPU brick] bloomScene ${elapsedMs.toFixed(1)}ms ${JSON.stringify({
-            // Owners first: probe collectors truncate long warning payloads, so the fields that
-            // NAME the producer must precede the bulky key lists.
-            owners: describeNewProgramOwners(scene, new Set(exactNewProgramKeys(programsBefore))),
-            newGeometries: grewGeometries
-              ? describeNewGeometryOwners(scene, seenBloomGeometryUuids)
-              : [],
-            unstampedVisible: describeUnstampedVisibleGeometries(scene),
-            programsBefore,
-            programsAfter: Array.isArray(info?.programs) ? info.programs.length : null,
-            geometriesBefore,
-            geometriesAfter,
-            texturesBefore,
-            texturesAfter: Number.isFinite(info?.memory?.textures) ? info.memory.textures : null,
-            // Three appends to info.programs as it acquires them, so the tail beyond
-            // programsBefore is EXACTLY what this render call linked. The old diff-against-the-
-            // previous-brick set reported every program acquired since the last brick — dozens of
-            // legitimately warm ones — which made the payload unusable for naming a producer.
-            newPrograms: exactNewProgramKeys(programsBefore).slice(0, 8).map((key) => key.slice(0, 512)),
-          })}`);
+          brickSeq += 1;
+          const brickNow = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+            ? performance.now() : Date.now();
+          const sampled = brickSeq === 1 || (brickSeq % 120) === 0;
+          const heartbeat = brickNow - brickLastWarnAt >= 1000;
+          if (sampled || heartbeat) {
+            brickLastWarnAt = brickNow;
+            const suppressed = brickSuppressed;
+            brickSuppressed = 0;
+            console.warn(`[GPU brick] bloomScene ${elapsedMs.toFixed(1)}ms ${JSON.stringify(sampled ? {
+              // Owners first: probe collectors truncate long warning payloads, so the fields that
+              // NAME the producer must precede the bulky key lists.
+              owners: describeNewProgramOwners(scene, new Set(exactNewProgramKeys(programsBefore))),
+              newGeometries: grewGeometries
+                ? describeNewGeometryOwners(scene, seenBloomGeometryUuids)
+                : [],
+              unstampedVisible: describeUnstampedVisibleGeometries(scene),
+              programsBefore,
+              programsAfter: Array.isArray(info?.programs) ? info.programs.length : null,
+              geometriesBefore,
+              geometriesAfter,
+              texturesBefore,
+              texturesAfter: Number.isFinite(info?.memory?.textures) ? info.memory.textures : null,
+              // Three appends to info.programs as it acquires them, so the tail beyond
+              // programsBefore is EXACTLY what this render call linked. The old diff-against-the-
+              // previous-brick set reported every program acquired since the last brick — dozens of
+              // legitimately warm ones — which made the payload unusable for naming a producer.
+              newPrograms: exactNewProgramKeys(programsBefore).slice(0, 8).map((key) => key.slice(0, 512)),
+              suppressedBricks: suppressed,
+            } : {
+              programsAfter: Array.isArray(info?.programs) ? info.programs.length : null,
+              geometriesAfter,
+              suppressedBricks: suppressed,
+            })}`);
+          } else {
+            brickSuppressed += 1;
+          }
         }
         if (brick || grewGeometries) rememberBloomGeometries(scene);
+        else if (bloomGeometryWalkIter) driveBloomGeometryWalk(scene, false);
       }
     }
   }
@@ -1953,7 +2140,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       renderer.setRenderTarget(rtScene);
       renderer.clear(true, true, false);
       renderer.render(scene, camera);
-      rememberBloomGeometries(scene);
+      drainBloomGeometryWalk(scene);
       // The rehearsal's GL work sits in the driver's queue until something forces the flush —
       // without a drain here the deferred cost lands inside the presented frame it exists to
       // protect. gl.finish() moves that drain into the held gate.
@@ -2085,8 +2272,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     );
   }
 
-  function touchScenePipelines(subject, camera, lightingScene = subject) {
-    return touchSubjectOnExactTarget(renderer, rtScene, subject, camera, lightingScene);
+  function touchScenePipelines(subject, camera, lightingScene = subject, options) {
+    return touchSubjectOnExactTarget(renderer, rtScene, subject, camera, lightingScene, options);
   }
 
   async function prepareResources(yieldToMain = () => Promise.resolve()) {

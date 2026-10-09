@@ -39,16 +39,19 @@ function makeSystem(credits) {
   return { sys, bus, state };
 }
 
+// The refusal toast is not the last event any more: module:fitRefused follows it. Read the last TOAST.
+const lastToastText = (sys) => sys.bus.events.filter((event) => event.name === 'toast').at(-1).payload.text;
+
 let h = makeSystem(500);
 assert.equal(h.sys.buyModule({ defId: 'mod_shield_booster_s' }), false);
-assert.equal(h.bus.events.at(-1).payload.text, 'Need 5,500 more cr for Shield Booster S');
-assert.doesNotMatch(h.bus.events.at(-1).payload.text, /Insufficient credits|6000/);
+assert.equal(lastToastText(h), 'Need 5,500 more cr for Shield Booster S');
+assert.doesNotMatch(lastToastText(h), /Insufficient credits|6000/);
 assert.equal(h.state.player.moduleInventory.length, 0, 'failed module purchases must not grant inventory');
 
 h = makeSystem(500);
 assert.equal(h.sys.buyShip({ defId: 'ship_pelican' }), false);
-assert.equal(h.bus.events.at(-1).payload.text, 'Need 14,500 more cr for Pelican');
-assert.doesNotMatch(h.bus.events.at(-1).payload.text, /Insufficient credits|15000/);
+assert.equal(lastToastText(h), 'Need 14,500 more cr for Pelican');
+assert.doesNotMatch(lastToastText(h), /Insufficient credits|15000/);
 assert.equal(h.state.player.ownedShips.length, 1, 'failed ship purchases must not grant a hull');
 
 console.log('Ship purchase guidance OK - direct purchase blockers show missing credits and target names.');

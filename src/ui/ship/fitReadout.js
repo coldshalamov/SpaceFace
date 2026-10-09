@@ -192,6 +192,7 @@ function composeModuleLine(def) {
   if (mods.masslineHeadId === 'twin_bridle') return 'Anchors two points at once.';
   if (mods.weaponHeatDissipPct) return 'The guns shed heat faster, so a burst lasts longer.';
   if (mods.swingDrive) return 'A dash on a taut line swings you around the anchor.';
+  if (mods.phaseBlink) return 'Hold Shift. A shadow of the ship sits ahead. Release, and you are there.';
   if (mods.countermeasure && mods.countermeasure.kind === 'chaff') return 'Breaks a missile lock and pulls the shot off you.';
   if (mods.countermeasure && mods.countermeasure.kind === 'ecm') return 'Jams a missile so it stops turning toward you.';
   if (mods.countermeasure && mods.countermeasure.kind === 'decoy') return 'Puts a false contact in the water and missiles go for it.';

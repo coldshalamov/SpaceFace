@@ -2,6 +2,7 @@
 // Cosmetic only; sim never imports this module.
 import { WEAPONS } from '../data/weapons.js';
 import { SHIPS } from '../data/ships.js';
+import { classifyWeaponFamily } from '../data/vfxProfiles.js';
 
 const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -347,68 +348,12 @@ export function resolveEngineProfile(meta, factionThruster) {
   };
 }
 
-const WEAPON_PRESENTATION = Object.freeze({
-  beam: Object.freeze({ family: 'beam', variant: 'continuous-beam' }),
-  missile: Object.freeze({ family: 'missile', variant: 'missile' }),
-  torpedo: Object.freeze({ family: 'missile', variant: 'torpedo' }),
-  emp: Object.freeze({ family: 'emp', variant: 'disruptor' }),
-  rail: Object.freeze({ family: 'rail', variant: 'railgun' }),
-  siegeRail: Object.freeze({ family: 'rail', variant: 'siege-lance' }),
-  thermal: Object.freeze({ family: 'plasma', variant: 'thermal-bolt' }),
-  pulse: Object.freeze({ family: 'plasma', variant: 'pulse-bolt' }),
-  flak: Object.freeze({ family: 'kinetic', variant: 'flak' }),
-  kinetic: Object.freeze({ family: 'kinetic', variant: 'autocannon' }),
-  // SF-10 physics-first families. Each is mechanically distinct from the DPS weapons AND from each
-  // other (STEP 9 forbidden shortcut #5 — the three must not share one VFX). The RCS disruptor
-  // deliberately keeps the emp family: it IS a disruption weapon, so concussion / mine / emp are
-  // three different families across the trio.
-  concussion: Object.freeze({ family: 'concussion', variant: 'concussion-slug' }),
-  mine: Object.freeze({ family: 'mine', variant: 'vector-mine' }),
-});
-
+// FB-071 — the weapon->family classification is owned by src/data/vfxProfiles.js so the audio
+// layer resolves the SAME family the picture does. The canonical family->presentation table
+// (WEAPON_FAMILY_PRESENTATION, incl. the gravitic / latch / ram / web provenance families) lives
+// there; this resolver is a thin alias kept for the render call sites.
 export function resolveWeaponPresentationFamily(weaponId, weaponData = null, fallbackData = null) {
-  const fallback = fallbackData || (weaponId ? WEAPON_BY_ID.get(weaponId) : null) || null;
-  const data = weaponData || fallback;
-  const id = String(weaponId || (data && data.id) || (fallback && fallback.id) || '').toLowerCase();
-  const tracking = String((data && data.tracking) ?? (fallback && fallback.tracking) ?? '').toLowerCase();
-  const damageType = String(
-    (data && (data.damageType ?? data.dmgType))
-      ?? (fallback && (fallback.damageType ?? fallback.dmgType))
-      ?? '',
-  ).toLowerCase();
-  const continuous = (data && data.continuous) ?? (fallback && fallback.continuous);
-  const projSpeed = (data && data.projSpeed) ?? (fallback && fallback.projSpeed);
-
-  if (continuous || projSpeed === Infinity || tracking === 'hitscan') {
-    return WEAPON_PRESENTATION.beam;
-  }
-  // SF-10: a deployed vector mine is neither projectile nor beam — resolve it to its own family
-  // (this also fills the missing "mine" particle family the graphics checkpoint calls out).
-  if (tracking === 'deploy' || id.includes('vector_mine')) {
-    return WEAPON_PRESENTATION.mine;
-  }
-  if (tracking === 'homing' || id.includes('missile') || id.includes('torpedo') || id.includes('rack')) {
-    return id.includes('torpedo') ? WEAPON_PRESENTATION.torpedo : WEAPON_PRESENTATION.missile;
-  }
-  if (damageType === 'emp' || id.includes('emp') || id.includes('disruptor')) {
-    return WEAPON_PRESENTATION.emp;
-  }
-  if (id.includes('railgun') || id.includes('siege_lance') || id.includes('siege-lance')) {
-    return id.includes('siege') ? WEAPON_PRESENTATION.siegeRail : WEAPON_PRESENTATION.rail;
-  }
-  if (damageType === 'thermal' || damageType === 'plasma' || id.includes('plasma')) {
-    return WEAPON_PRESENTATION.thermal;
-  }
-  if (damageType === 'energy' || id.includes('pulse_laser')) {
-    return WEAPON_PRESENTATION.pulse;
-  }
-  // SF-10: the concussion slug is kinetic mechanically but must NOT read as an autocannon tracer —
-  // give it its own heavy-slam family before the generic kinetic fallback.
-  if (id.includes('concussion')) {
-    return WEAPON_PRESENTATION.concussion;
-  }
-  if (id.includes('flak')) return WEAPON_PRESENTATION.flak;
-  return WEAPON_PRESENTATION.kinetic;
+  return classifyWeaponFamily(weaponId, weaponData, fallbackData);
 }
 
 const IMPACT_PRESENTATION_PROFILES = Object.freeze({
@@ -447,6 +392,42 @@ const IMPACT_PRESENTATION_PROFILES = Object.freeze({
     mode: 'radial-shove', primaryShape: 'shockfront', life: 0.36, fragmentCount: 18,
     coreColor: '#cfe8ff', accentColor: '#5aa0ff', lightPeak: 2.6,
   }),
+  web: Object.freeze({
+    mode: 'filament-snag', primaryShape: 'strand', life: 0.48, fragmentCount: 4,
+    coreColor: '#d7fff4', accentColor: '#3d8f86', lightPeak: 1.1,
+  }),
+  gravitic: Object.freeze({
+    mode: 'marker-ring', primaryShape: 'field-ring', life: 0.7, fragmentCount: 8,
+    coreColor: '#7ee7ff', accentColor: '#2450aa', lightPeak: 1.5,
+  }),
+  latch: Object.freeze({
+    mode: 'catch-loop', primaryShape: 'loop', life: 0.9, fragmentCount: 3,
+    coreColor: '#ffb15a', accentColor: '#6a3418', lightPeak: 1.3,
+  }),
+  well: Object.freeze({
+    mode: 'inward-collar', primaryShape: 'collar', life: 1.1, fragmentCount: 6,
+    coreColor: '#9ecbff', accentColor: '#3a4d88', lightPeak: 1.4,
+  }),
+  ram: Object.freeze({
+    mode: 'wedge-shove', primaryShape: 'wedge', life: 0.26, fragmentCount: 5,
+    coreColor: '#e7eefc', accentColor: '#6d7ea8', lightPeak: 2.4,
+  }),
+  sticky: Object.freeze({
+    mode: 'adhered-charge', primaryShape: 'charge', life: 0.8, fragmentCount: 2,
+    coreColor: '#ffcf70', accentColor: '#a85a18', lightPeak: 1.7,
+  }),
+  primer: Object.freeze({
+    mode: 'arc-bridge', primaryShape: 'fork', life: 0.22, fragmentCount: 6,
+    coreColor: '#d8f4ff', accentColor: '#1f8fd0', lightPeak: 1.6,
+  }),
+  cooker: Object.freeze({
+    mode: 'seam-heat', primaryShape: 'seam', life: 0.55, fragmentCount: 2,
+    coreColor: '#ff7a32', accentColor: '#ffd2a8', lightPeak: 2.1,
+  }),
+  driver: Object.freeze({
+    mode: 'slug-bar', primaryShape: 'bar', life: 0.16, fragmentCount: 4,
+    coreColor: '#f4f0e4', accentColor: '#8a8172', lightPeak: 2.8,
+  }),
 });
 
 // PQ-023 family (a). Impact identity is normally keyed by FAMILY, which left flak sharing the
@@ -483,10 +464,23 @@ export function resolveImpactPresentationProfile(weaponId, weaponData = null) {
   return { ...base, family: presentation.family, variant: presentation.variant, scale };
 }
 
+const VARIANT_MUZZLE_COLORS = Object.freeze({
+  filament: Object.freeze({ coreColor: '#d7fff4', accentColor: '#3d8f86', lightColor: '#b6ffe8' }),
+  'field-ring': Object.freeze({ coreColor: '#7ee7ff', accentColor: '#2450aa', lightColor: '#9af0ff' }),
+  'filament-latch': Object.freeze({ coreColor: '#ffb15a', accentColor: '#6a3418', lightColor: '#ffc888' }),
+  'well-collar': Object.freeze({ coreColor: '#9ecbff', accentColor: '#3a4d88', lightColor: '#c6dcff' }),
+  wedge: Object.freeze({ coreColor: '#e7eefc', accentColor: '#6d7ea8', lightColor: '#f4f7ff' }),
+  'sticky-charge': Object.freeze({ coreColor: '#ffcf70', accentColor: '#a85a18', lightColor: '#ffe0a0' }),
+  'primer-arc': Object.freeze({ coreColor: '#d8f4ff', accentColor: '#1f8fd0', lightColor: '#e8fbff' }),
+  'cooker-seam': Object.freeze({ coreColor: '#ff7a32', accentColor: '#ffd2a8', lightColor: '#ff9a55' }),
+  'driver-slug': Object.freeze({ coreColor: '#f4f0e4', accentColor: '#8a8172', lightColor: '#fff6e4' }),
+});
+
 function muzzleLaneForFamily(family) {
-  if (family === 'beam') return 'beam';
-  if (family === 'plasma' || family === 'emp') return 'energy';
-  if (family === 'missile') return 'explosive';
+  if (family === 'beam' || family === 'cooker') return 'beam';
+  if (family === 'plasma' || family === 'emp' || family === 'web' || family === 'gravitic'
+    || family === 'primer' || family === 'well') return 'energy';
+  if (family === 'missile' || family === 'sticky' || family === 'latch') return 'explosive';
   // A concussion slug launches with a heavy recoil (smoke + ring), not a light tracer flash; a
   // vector mine is lobbed. Keeps their muzzles off the autocannon's identity.
   if (family === 'concussion') return 'explosive';
@@ -511,10 +505,11 @@ export function resolveMuzzleProfile(weaponId, weaponPartId) {
   const partBase = weaponPartId && MUZZLE_PART_PROFILES[weaponPartId] ? MUZZLE_PART_PROFILES[weaponPartId] : null;
   const presentation = resolveWeaponPresentationFamily(weaponId);
   const lane = weaponId ? muzzleLaneForFamily(presentation.family) : ((partBase && partBase.lane) || 'ballistic');
-  const colors = presentation.variant === 'pulse-bolt'
-    ? { coreColor: '#34cfff', accentColor: '#5ff0ff', lightColor: '#39d0ff' }
-    : muzzleColorsForLane(lane);
-  return {
+  const colors = VARIANT_MUZZLE_COLORS[presentation.variant]
+    || (presentation.variant === 'pulse-bolt'
+      ? { coreColor: '#34cfff', accentColor: '#5ff0ff', lightColor: '#39d0ff' }
+      : muzzleColorsForLane(lane));
+  const muzzle = {
     ...DEFAULT_MUZZLE,
     ...partBase,
     lane,
@@ -524,6 +519,8 @@ export function resolveMuzzleProfile(weaponId, weaponPartId) {
     weaponPartId: weaponPartId || null,
     ...colors,
   };
+  if (presentation.variant === 'cooker-seam') muzzle.sizeMul = 1.85;
+  return muzzle;
 }
 
 function blendHex(a, b, t) {
@@ -691,6 +688,51 @@ export const PROJECTILE_TRAIL_PROFILES = Object.freeze({
     tailColor: '#28527a',
     drag: 0.8,
   }),
+  filament: Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'kinetic', mode: 'streak', life: 0.28, size0: 0.22, stretch: 3.4,
+    streakLen: 8.4, streakOpacity: 0.72, coreColor: '#d7fff4', tailColor: '#1d4f48', drag: 0.08,
+  }),
+  'field-ring': Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'emp', mode: 'streak', life: 0.1, size0: 0.9, stretch: 0.6,
+    streakLen: 1.4, streakOpacity: 0.55, coreColor: '#7ee7ff', tailColor: '#16306a', drag: 0.4,
+  }),
+  'filament-latch': Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'missile', mode: 'streak', life: 0.4, size0: 0.55, stretch: 1.8,
+    streakLen: 3.6, streakOpacity: 0.6, coreColor: '#ffb15a', tailColor: '#4a2410', drag: 0.3,
+  }),
+  'well-collar': Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'mine', mode: 'streak', life: 0.05, size0: 0.2, stretch: 0.2,
+    streakLen: 0.4, streakOpacity: 0.2, coreColor: '#9ecbff', tailColor: '#243058', drag: 0.9,
+  }),
+  wedge: Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'kinetic', mode: 'tracer', life: 0.09, size0: 1.1, stretch: 0.7,
+    streakLen: 1.6, streakOpacity: 0.8, coreColor: '#e7eefc', tailColor: '#3a445c', drag: 0.55,
+  }),
+  'sticky-charge': Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'missile', mode: 'tracer', life: 0.22, size0: 0.7, stretch: 1.2,
+    streakLen: 2.4, streakOpacity: 0.66, coreColor: '#ffcf70', tailColor: '#6a3810', drag: 0.45,
+  }),
+  'primer-arc': Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'emp', mode: 'streak', life: 0.16, size0: 0.36, stretch: 2.4,
+    streakLen: 4.8, streakOpacity: 0.7, coreColor: '#d8f4ff', tailColor: '#145888', drag: 0.16,
+  }),
+  'cooker-seam': Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'plasma', mode: 'streak', life: 0.34, size0: 0.48, stretch: 2.1,
+    streakLen: 6.2, streakOpacity: 0.74, coreColor: '#ff7a32', tailColor: '#6a280c', drag: 0.2,
+  }),
+  'driver-slug': Object.freeze({
+    ...PROJECTILE_TRAIL_BASE,
+    class: 'kinetic', mode: 'tracer', life: 0.11, size0: 0.8, stretch: 1.6,
+    streakLen: 4.4, streakOpacity: 0.78, coreColor: '#f4f0e4', tailColor: '#4a463c', drag: 0.5,
+  }),
 });
 
 const PROJECTILE_TRAIL_VARIANTS = Object.freeze({
@@ -706,6 +748,15 @@ const PROJECTILE_TRAIL_VARIANTS = Object.freeze({
   autocannon: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.kinetic, variant: 'autocannon' }),
   'concussion-slug': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.concussion, variant: 'concussion-slug' }),
   'vector-mine': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.mine, variant: 'vector-mine' }),
+  filament: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.filament, variant: 'filament' }),
+  'field-ring': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES['field-ring'], variant: 'field-ring' }),
+  'filament-latch': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES['filament-latch'], variant: 'filament-latch' }),
+  'well-collar': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES['well-collar'], variant: 'well-collar' }),
+  wedge: Object.freeze({ ...PROJECTILE_TRAIL_PROFILES.wedge, variant: 'wedge' }),
+  'sticky-charge': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES['sticky-charge'], variant: 'sticky-charge' }),
+  'primer-arc': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES['primer-arc'], variant: 'primer-arc' }),
+  'cooker-seam': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES['cooker-seam'], variant: 'cooker-seam' }),
+  'driver-slug': Object.freeze({ ...PROJECTILE_TRAIL_PROFILES['driver-slug'], variant: 'driver-slug' }),
 });
 
 export function resolveProjectileTrailProfile(weaponId, projectileData = null) {

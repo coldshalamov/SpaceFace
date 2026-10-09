@@ -13,6 +13,7 @@ import { barFrameHtml } from '../../views/stationFrames.js';
 import {
   generateContacts,
   installGhostConvoyBarListener,
+  installOreLotBarListener,
   getChoices,
   buildReply,
   emitBarContactChoice,
@@ -126,6 +127,7 @@ function offerWord(attrs, label) {
 
 export function createBarScreen(ctx) {
   installGhostConvoyBarListener(ctx && ctx.bus, ctx && ctx.state);
+  installOreLotBarListener(ctx && ctx.bus, ctx && ctx.state);
   const el = document.createElement('div');
   el.className = 'k-panel sx-bar';
   el.innerHTML = barFrameHtml();
@@ -680,7 +682,7 @@ export function createBarScreen(ctx) {
       const credits = Math.max(0, Math.floor(Number(ctx.state && ctx.state.player && ctx.state.player.credits) || 0));
       if (credits < offer.price) {
         saidText = `You need ${fmt(offer.price)} cr for that rumor card.`;
-        if (ctx.bus) ctx.bus.emit('toast', { text: 'Insufficient credits for rumor card', kind: 'warn', ttl: 3 });
+        if (ctx.bus) ctx.bus.emit('toast', { text: 'Not enough credits for a rumor card', kind: 'warn', ttl: 3 });
         renderStage(ctx.state || {});
         return;
       }

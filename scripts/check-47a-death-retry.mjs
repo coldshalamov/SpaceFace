@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { validateEvidenceDocument, formatEvidenceIssue } from '../src/contracts/evidenceSchemas.js';
+import { buildDefeatReceipt } from '../src/combat/playerDefeat.js';
 import { combat } from '../src/systems/combat.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -40,7 +41,12 @@ combat.bus = {
   },
 };
 
-combat.respawnPlayer(player, 'hostile_massline_interdictor');
+// Live defeat flow (post-respawnPlayer): a recoverable kill goes through
+// beginPlayerDefeat -> recoverPendingPlayer, which is what the death banner's
+// Continue path actually invokes.
+const receipt = buildDefeatReceipt(state, player, 'hostile_massline_interdictor', {});
+combat.beginPlayerDefeat(player, receipt);
+combat.recoverPendingPlayer({ source: 'check' });
 
 const death = events.find((entry) => entry.event === 'player:death');
 const respawn = events.find((entry) => entry.event === 'player:respawn');
@@ -55,14 +61,17 @@ assert(retryTicks <= retryCeilingTicks,
   `death-to-retry exceeded envelope ceiling: ${retryTicks} > ${retryCeilingTicks}`);
 
 assert.equal(respawn.payload.stationId, 'station_helios', 'retry should restore from the insured station');
-assert.equal(player.pos.x, 320, 'retry should move player to the station x coordinate');
+// Recovery berths beside the station (station x + RECOVERY_BERTH_CLEARANCE_WU = 320 + 140).
+assert.equal(player.pos.x, 460, 'retry should berth beside the station x coordinate');
 assert.equal(player.pos.z, -80, 'retry should move player to the station z coordinate');
 assert.equal(player.vel.x, 0, 'retry should clear player x velocity');
 assert.equal(player.vel.z, 0, 'retry should clear player z velocity');
 assert.equal(player.hull, player.hullMax, 'retry should restore hull');
 assert.equal(player.shield, player.shieldMax, 'retry should restore shields');
 assert.equal(player.cap, player.capMax, 'retry should restore capacitor');
-assert.equal(player.flags.invuln, true, 'retry should grant short spawn protection');
+// The recovery path grants no invuln window by design — lawful-station engagement
+// authority already prevents attackers firing into the berth.
+assert.equal(player.flags.invuln, false, 'retry should not grant a spawn-protection hack');
 
 console.log(`47-A death-to-retry checks OK (${retryTicks} ticks <= ${retryCeilingTicks})`);
 
@@ -77,6 +86,7 @@ function makeState() {
     playerId: 1,
     meta: { seed: 47 },
     content: {},
+    combat: {},
     player: {
       credits: 100,
       insurance: {

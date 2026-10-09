@@ -4,6 +4,8 @@
 // plain data fields that UI/render layers can read. No wall-clock; durations are simTime-based.
 // Ghost reveal uses entity-keyed deterministic streams (hash32), not ambient Math.random.
 import { asteroidScanGlyph } from '../data/mining.js';
+import { mothlightScannerReading } from '../data/mothlight.js';
+import { borrowedVoiceScannerReading } from './borrowedVoice.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { maxFittedModuleMod, sumFittedModuleMod } from '../core/fittedModules.js';
 import { hash32 } from '../core/rng.js';
@@ -34,6 +36,11 @@ import {
   shipmentReadingFromReveal,
 } from '../data/scanClues.js';
 import {
+  anomalyRuleLesson,
+  discoveryPlaceCandidates,
+  normalizeDiscoveryMemory,
+} from './scanReveal.js';
+import {
   PLANET_STATE_DEFS,
   PLANET_SIGNAL_RANGE,
   planetSignalAnchor,
@@ -43,15 +50,59 @@ import {
   CONTACT_HAIL_RANGE,
   CONTACT_HAIL_REQUEST_TTL_S,
   CONTACT_HAIL_ACTION_HEAVE_TO,
+  CONTACT_HAIL_ACTION_TOW_ASSIST,
   contactHailAvailability,
   createContactHailOffer,
   createContactHailResponse,
   pirateParleyDemandForHandoff,
+  towAssistBodyFor,
 } from '../data/contactHail.js';
+import { TOW_ASSIST_FEE_CR } from '../data/yardContracts.js';
 import { entityIndexVersion, entityIndexLaneVersion, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { makeShipEntitySpec } from './ships.js';
+import {
+  captureEntitySelection,
+  liveEntityById,
+  resolveEntitySelection,
+} from '../ui/sim/stableSelection.js';
 
 export const SCANNER_CONTACT_RANGE = CONTACT_HAIL_RANGE;
+
+/**
+ * The live body a signal record still points at. A record written with `entityStable` resolves
+ * through the identity stamp — a recycled id can never satisfy it — and returns the CURRENT
+ * instance (a durable target rebinds after an instance swap). Pre-stamp saves and non-entity
+ * signals fall back to the legacy bare-id resolve, dead holders included nowhere.
+ */
+function recordEntity(state, record) {
+  if (!record) return null;
+  if (record.entityStable) {
+    try { return resolveEntitySelection(state, record.entityStable); } catch { return null; }
+  }
+  return liveEntityById(state, record.entityId);
+}
+
+const HAIL_REFUSAL_TEXT = Object.freeze({
+  unresolved_target: 'No contact to hail',
+  stale_target: 'That isn\'t the contact you\'re locked on',
+  dead_target: 'No answer — that contact is gone',
+  unsupported_target: 'That contact doesn\'t take a hail',
+  unsupported_contact: 'That contact doesn\'t take a hail',
+  out_of_reveal_range: 'Too far to hail — close in',
+  parley_expired: 'The demand has already expired',
+});
+
+/** 'out' when the sensor bank is dead, 'jammed' when a status killed the capability, else null. */
+export function playerSensorBlock(state, player) {
+  const book = state && state.combat && state.combat.entities;
+  if (!book || !player || player.id == null) return null;
+  const runtime = book[String(player.id)];
+  if (!runtime) return null;
+  const sensor = runtime.subsystems && runtime.subsystems.subsystem_sensor;
+  if (sensor && sensor.effectiveDisabled === true) return 'out';
+  if (runtime.capabilities && runtime.capabilities.sensor === false) return 'jammed';
+  return null;
+}
 
 const PULSE_COOLDOWN_S = 8;
 const NEAR_SCAN_RADIUS = 1200;
@@ -439,6 +490,39 @@ function upsertUnknownPing(state, sectorId, ping) {
   return true;
 }
 
+// A ping row may exist only while its source POI still qualifies for one (hidden or an anomaly,
+// triangulation answered, cache signal live) — the SAME predicate the upsert in
+// _pingHiddenPois grants, minus the pulse radius, so an out-of-range fix stays remembered.
+// When the source is answered — the POI discovered (world.js poi:discovered flips .hidden),
+// a named cache consumed, an untriangulated anomaly regressed — the row would otherwise live
+// forever (upsert is create-only; the bucket rides the save), and every map surface would keep
+// offering an 'Unresolved contact' course to a question that has been answered. Runs on the
+// pulse that refreshes the bucket, in this single-writer file; keyed on the POI identity
+// (poi.poiId || poi_<entity id>), never on a signal-string namespace.
+function pruneResolvedPings(state, sectorId, pois) {
+  const bucket = state.world && state.world.scanPings;
+  const list = bucket && bucket[sectorId];
+  if (!Array.isArray(list) || !list.length) return;
+  const live = new Set();
+  for (const poi of pois || []) {
+    if (!poi || !(poi.hidden || poi.type === 'anomaly')) continue;
+    const entity = state.entities && state.entities.get && state.entities.get(poi.id);
+    if (entity && entity.data && entity.data.requiresTriangulation && !entity.data.anomalyTriangulated) continue;
+    if (!vestaOreCacheSignalAvailable(state, poi.poiId || poi.id)
+      || !pallasHiddenCacheSignalAvailable(state, poi.poiId || poi.id)) continue;
+    live.add(poi.poiId || `poi_${poi.id}`);
+  }
+  // An id no current POI claims is an orphan only once the sector is cooked (a non-empty poi
+  // list answers "who could own a ping here"); a transiently empty list must not wipe the
+  // remembered fixes the bucket exists to keep.
+  const cooked = Array.isArray(pois) && pois.length > 0;
+  bucket[sectorId] = list.filter((ping) => {
+    if (!ping || ping.id == null) return false;
+    if (live.has(ping.id)) return true;
+    return !cooked;
+  });
+}
+
 export function signalStrengthFor(distance, range) {
   const r = Math.max(1, Number(range) || 1);
   return Math.max(0, Math.min(1, 1 - Math.max(0, Number(distance) || 0) / r));
@@ -492,6 +576,7 @@ function freshSignalState() {
   return {
     schemaVersion: 2, records: {}, completed: {}, receipts: [], triangulations: {}, trackedId: null,
     clues: emptyClueBook(),
+    discoveryMemory: { subjects: {} },
   };
 }
 
@@ -506,6 +591,10 @@ function ensureSignalState(state) {
   if (!own.clues || typeof own.clues !== 'object' || Array.isArray(own.clues)) own.clues = emptyClueBook();
   else if (!own.clues.subjects || typeof own.clues.subjects !== 'object' || Array.isArray(own.clues.subjects)) {
     own.clues.subjects = {};
+  }
+  if (!own.discoveryMemory || typeof own.discoveryMemory !== 'object' || Array.isArray(own.discoveryMemory)
+    || !own.discoveryMemory.subjects || typeof own.discoveryMemory.subjects !== 'object') {
+    own.discoveryMemory = { subjects: {} };
   }
   return own;
 }
@@ -576,6 +665,13 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     const range = Math.max(1, Number(candidate.range) || NEAR_SCAN_RADIUS);
     if (distance > range) return;
     const row = { ...candidate, distance, range, pos: pos2(candidate.pos) };
+    // Stamp what the entityId means at record time — a signal record can outlive the body,
+    // and the free-id pool reissues ids; the stamp is the record's proof of WHICH holder.
+    if (row.entityId != null && row.entityStable == null) {
+      const bound = liveEntityById(state, row.entityId);
+      const stable = bound ? captureEntitySelection(bound) : null;
+      if (stable) row.entityStable = stable;
+    }
     const previous = byId.get(row.id);
     if (!previous || row.distance < previous.distance) byId.set(row.id, row);
   };
@@ -587,9 +683,12 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     // authored sourceId rather than a transient numeric entity id.
     if (entity.data && entity.data.poi) continue;
     if (entity.data && entity.data.requiresTriangulation) continue;
-    const kind = signalKindForEntity(entity);
+    const sourceReading = mothlightScannerReading(state, entity) || borrowedVoiceScannerReading(state, entity);
+    const kind = sourceReading?.kind || signalKindForEntity(entity);
     if (!kind) continue;
-    const shipment = kind === 'ship' ? shipmentReadingFromReveal(entity.data && entity.data.scanRevealed) : null;
+    const revealed = entity.data && entity.data.scanRevealed;
+    const discovery = revealed && revealed.discovery;
+    const shipment = kind === 'ship' ? shipmentReadingFromReveal(revealed) : null;
     // Trusted traffic keeps the ordinary signature. Only a declared or conflicting
     // hold reading becomes a clue, so a patrol flyby does not mint shipment memory.
     const fileShipment = shipment && shipment.observedReading !== 'trusted';
@@ -601,6 +700,9 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
       pos: entity.pos,
       range: profile.nearRadius,
       repeatableScannerSignal: entity.data && entity.data.repeatableScannerSignal === true,
+      ...(sourceReading ? { resolvedLabel: sourceReading.label, resolvedDetail: sourceReading.detail } : {}),
+      ...(discovery ? { discovery } : {}),
+      ...(discovery && discovery.trackable === false ? { trackable: false } : {}),
       ...(fileShipment ? {
         observedClaim: shipment.observedClaim,
         observedReading: shipment.observedReading,
@@ -709,6 +811,8 @@ function collectSignalCandidates(state, sectorId, origin, nearby = [], profile =
     });
   }
 
+  for (const place of discoveryPlaceCandidates(state, origin, state.simTime || 0, nearby)) add(place);
+
   return [...byId.values()].sort(compareSignalRows);
 }
 
@@ -763,6 +867,14 @@ function cloneSignalRecord(record) {
       ? { ...record.triangulation }
       : null,
   };
+  if (clone.discovery && typeof clone.discovery === 'object') {
+    clone.discovery = {
+      ...clone.discovery,
+      actionPos: clone.discovery.actionPos ? { ...clone.discovery.actionPos } : null,
+      parts: clone.discovery.parts && typeof clone.discovery.parts === 'object'
+        ? { ...clone.discovery.parts } : null,
+    };
+  }
   if (record.clue && record.clue.subjectId) {
     const cloned = cloneClueBook({ subjects: { [record.clue.subjectId]: record.clue } });
     const subject = cloned.subjects[record.clue.subjectId];
@@ -824,6 +936,7 @@ function cloneSignalState(own) {
     triangulations,
     trackedId: own.trackedId && records[own.trackedId] && !completed[own.trackedId] ? own.trackedId : null,
     clues: cloneClueBook(own.clues),
+    discoveryMemory: normalizeDiscoveryMemory(own.discoveryMemory),
   };
 }
 
@@ -861,6 +974,7 @@ function normalizeSignalState(data) {
   normalized.trackedId = source.trackedId && normalized.records[source.trackedId]
     && !normalized.completed[source.trackedId] ? source.trackedId : null;
   normalized.clues = normalizeClueBook(source.clues);
+  normalized.discoveryMemory = normalizeDiscoveryMemory(source.discoveryMemory);
   pruneSignalRecords(normalized);
   return normalized;
 }
@@ -924,9 +1038,26 @@ export const scanner = {
     actions.scanPulse = false;
 
     const now = state.simTime || 0;
-    if (now < this._cooldownUntil) return;
-
     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (player && player.alive) {
+      const block = playerSensorBlock(state, player);
+      if (block) {
+        this.bus.emit('toast', {
+          text: block === 'jammed'
+            ? 'Sensors aren\'t answering — jammed'
+            : 'Sensors out — the board is blind',
+          kind: 'warn',
+          ttl: 1.6,
+        });
+        return;
+      }
+    }
+    if (now < this._cooldownUntil) {
+      const left = Math.max(1, Math.ceil(this._cooldownUntil - now));
+      this.bus.emit('toast', { text: `Scanner recharging — ${left}s`, kind: 'warn', ttl: 1.6 });
+      return;
+    }
+
     if (!player || !player.alive) return;
 
     this._cooldownUntil = now + PULSE_COOLDOWN_S;
@@ -1044,6 +1175,15 @@ export const scanner = {
         data.manifest = buildWreckManifest(entity);
         if (!data.weakPoint) data.weakPoint = weakPointFor(entity);
         if (firstResolve) {
+          // The resolve names the hull it was: an aftermath wreck's provenance carries the
+          // victim's own callsign, so the hulk reads "Hulk of MERIDIA SPOKE" on every scanLabel
+          // surface (lock, comms, roster) instead of the salvage-kit tag (CV-SO).
+          const provenance = data.provenance && typeof data.provenance === 'object' ? data.provenance : null;
+          const victim = provenance && provenance.victimLabel;
+          if (victim && victim !== provenance.victimClass && data.playerWreck !== true) {
+            const named = `Hulk of ${victim}`;
+            if (data.scanLabel !== named) data.scanLabel = named;
+          }
           // A targeted per-hull resolution — the law's wreck-provenance loop keys on markerId,
           // so a generic sector pulse can never mass-report every wreck it merely pinged.
           this.bus.emit('scan:wreckResolved', {
@@ -1119,7 +1259,9 @@ export const scanner = {
 
   _pingHiddenPois(state, sectorId, origin, scanRadius = HIDDEN_POI_RADIUS) {
     const active = state.world && state.world.activeSector;
-    for (const poi of active && active.pois || []) {
+    const pois = active && active.pois || [];
+    pruneResolvedPings(state, sectorId, pois);
+    for (const poi of pois) {
       if (!poi || !(poi.hidden || poi.type === 'anomaly')) continue;
       const entity = state.entities && state.entities.get && state.entities.get(poi.id);
       if (entity && entity.data && entity.data.requiresTriangulation && !entity.data.anomalyTriangulated) continue;
@@ -1194,6 +1336,7 @@ export const scanner = {
             sourceKind: candidate.kind,
             sourceId: candidate.sourceId || null,
             entityId: candidate.entityId || null,
+            entityStable: candidate.entityStable || null,
             signalPriority: candidate.signalPriority || 0,
             // Before the fix, this is the pilot's sample origin—not the hidden target position.
             pos: pos2(origin),
@@ -1236,6 +1379,7 @@ export const scanner = {
         sourceKind: candidate.kind,
         sourceId: candidate.sourceId || null,
         entityId: candidate.entityId || null,
+        entityStable: candidate.entityStable || null,
         signalPriority: candidate.signalPriority || 0,
         pos: pos2(candidate.pos),
         classification: signalClassLabel(candidate.kind, stage),
@@ -1301,6 +1445,26 @@ export const scanner = {
         record.trackable = false;
       }
       this._noteClue(own, candidate, record, now);
+      if (candidate.discovery && candidate.discovery.sentence) {
+        record.discovery = candidate.discovery;
+        if (candidate.discovery.lesson === true) record.discoveryLesson = true;
+        record.detail = candidate.discovery.sentence;
+        if (candidate.discovery.trackable === false) record.trackable = false;
+      } else if (candidate.kind === 'anomaly' && !resonanceSignal && !discoveryCopy) {
+        const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+        const rule = anomalyRuleLesson(player, candidates, candidate.pos, candidate.entityId);
+        if (rule) {
+          record.discovery = {
+            sf: 'SF-171',
+            lesson: false,
+            sentence: rule.sentence,
+            actionPos: null,
+            trackable: true,
+            parts: { 'SF-171': rule },
+          };
+          if (record.detail === signalDetail(candidate.kind, stage)) record.detail = rule.sentence;
+        }
+      }
       own.records[record.id] = record;
       rows.push(record);
     }
@@ -1348,11 +1512,21 @@ export const scanner = {
       this.bus.emit('signal:tracked', { ...record, pos: { ...record.pos } });
       return this._retargetClue(record);
     }
+    const discovery = record.discovery;
+    const lessonPos = discovery && discovery.lesson === true && discovery.trackable !== false
+      && discovery.actionPos && Number.isFinite(discovery.actionPos.x) && Number.isFinite(discovery.actionPos.z)
+      ? discovery.actionPos : null;
+    const aim = lessonPos || record.pos;
+    // Emit the entity the record still proves it means — a dead or recycled holder binds
+    // nothing and the course keeps the honest recorded fix instead of a stranger's hull.
+    const holder = lessonPos ? null : recordEntity(state, record);
     const course = {
-      pos: { x: record.pos.x, z: record.pos.z },
-      targetEntityId: record.entityId,
+      pos: { x: aim.x, z: aim.z },
+      targetEntityId: holder ? holder.id : null,
       label: record.classification,
-      reason: `Investigate ${record.classification.toLowerCase()}`,
+      reason: lessonPos && discovery.sentence
+        ? discovery.sentence
+        : `Investigate ${record.classification.toLowerCase()}`,
       waypointKind: 'signal',
       arrivalRadius: SIGNAL_INVESTIGATE_RADIUS,
       autopilot: true,
@@ -1388,9 +1562,10 @@ export const scanner = {
   _retargetClue(record) {
     const route = record && record.clue && record.clue.route;
     if (!route || !route.pos || !this.bus || typeof this.bus.emit !== 'function') return false;
+    const holder = recordEntity(this.state, record);
     this.bus.emit('ui:setCourse', {
       pos: { x: route.pos.x, z: route.pos.z },
-      targetEntityId: record.entityId || null,
+      targetEntityId: holder ? holder.id : null,
       label: route.label || record.classification,
       reason: route.reason,
       waypointKind: 'signal',
@@ -1400,17 +1575,34 @@ export const scanner = {
     return true;
   },
 
+  _noteHailRefusal(reason) {
+    const text = HAIL_REFUSAL_TEXT[reason];
+    if (!text || !this.bus) return;
+    this.bus.emit('toast', { text, kind: 'warn', ttl: 1.6 });
+  },
+
   _requestContactHail(payload) {
     const state = this.state;
     const availability = contactHailAvailability(state);
     if (!availability.enabled || payload.targetId != null && payload.targetId !== availability.targetId) {
       this._clearContactHail('request_invalid');
+      const reason = !availability.enabled ? availability.reason : 'stale_target';
+      this._noteHailRefusal(reason);
       return false;
+    }
+    if (availability.kind === 'red_kite') {
+      this._clearContactHail('relay_handoff');
+      return this.registry.get('redKite')?.offer() === true;
+    }
+    if (availability.kind === 'pallet_jack') {
+      this._clearContactHail('freight_handoff');
+      return this.registry.get('palletJack')?.offer() === true;
     }
     if (availability.kind === 'toll') {
       const demand = pirateParleyDemandForHandoff(availability.parley);
       if (!demand || !(Number(demand.deadlineAt) > Number(state.simTime || 0))) {
         this._clearContactHail('parley_invalid');
+        this._noteHailRefusal('parley_expired');
         return false;
       }
       this._clearContactHail('parley_handoff');
@@ -1425,7 +1617,9 @@ export const scanner = {
     }
     const now = Number(state.simTime) || 0;
     const requestId = `contact-hail:${availability.kind}:${String(availability.targetId)}:${state.tick | 0}:${Math.round(now * 1000)}`;
-    const offer = createContactHailOffer(
+    const offer = availability.kind==='tally_three'
+      ?this.registry.get('tallyThree')?.offer(availability,requestId,now+CONTACT_HAIL_REQUEST_TTL_S)
+      :createContactHailOffer(
       state,
       availability,
       requestId,
@@ -1456,17 +1650,26 @@ export const scanner = {
       return false;
     }
     const target = availability.entity;
+    if(availability.kind==='tally_three'){
+      const response=this.registry.get('tallyThree')?.choose(active,String(payload.choice||'').toLowerCase());
+      if(!response)return false;
+      this._contactHail=null;this.bus.emit('contactHail:response',cloneContactHailPayload(response));return true;
+    }
     const ai = target && target.data && target.data.ai || {};
     const wanted = isPlayerWanted(state);
     const choice = String(payload.choice || '').toLowerCase();
     const heaveTo = choice === CONTACT_HAIL_ACTION_HEAVE_TO
       ? this._requestContactHeaveTo(target, availability, { wanted, ai })
       : null;
+    const towAssist = choice === CONTACT_HAIL_ACTION_TOW_ASSIST
+      ? this._requestContactTowAssist(target)
+      : null;
     const response = createContactHailResponse(state, active, payload.choice, {
       wanted,
       weaponsAuthorized: wanted || ai.securityTargetId === state.playerId,
       roe: ai.roe || null,
       heaveTo,
+      towAssist,
     });
     if (!response) return false;
     this._contactHail = null;
@@ -1515,6 +1718,62 @@ export const scanner = {
       };
     }
     return result;
+  },
+
+  // SF-138 — hire the hailed worker to tow the nearest loose body to a sink. The data layer
+  // answers which body; a live mission may claim a specific destination for it (yard berth,
+  // dock ring), otherwise the nearest station is the honest default. The hire fee is billed
+  // by the runtime; whatever the load is worth is settled by whoever owns the destination.
+  _requestContactTowAssist(worker) {
+    const state = this.state;
+    const body = worker ? towAssistBodyFor(state, worker) : null;
+    if (!body) return { granted: false, reason: 'no_load' };
+    const jobApi = this.helpers && this.helpers.npcJobs
+      ? this.helpers.npcJobs
+      : this.registry && this.registry.get && this.registry.get('npcJobsRuntime');
+    if (!jobApi || typeof jobApi.requestTowAssist !== 'function') {
+      return { granted: false, reason: 'no_owner' };
+    }
+    let dest = null;
+    let missionId = null;
+    let deliverW = null;
+    const missionsApi = this.registry && this.registry.get && this.registry.get('missions');
+    if (missionsApi && typeof missionsApi.towAssistDestFor === 'function') {
+      const hint = missionsApi.towAssistDestFor(body.id);
+      if (hint && hint.pos) {
+        dest = hint.pos;
+        missionId = hint.missionId || null;
+        deliverW = Number.isFinite(hint.deliverW) ? hint.deliverW : null;
+      }
+    }
+    if (!dest) dest = this._nearestStationPosTo(body) || { x: body.pos.x, z: body.pos.z };
+    const out = jobApi.requestTowAssist(worker.id, body.id, dest, {
+      holder: 'contactHail',
+      missionId,
+      deliverW,
+      feeCr: TOW_ASSIST_FEE_CR,
+    });
+    // The runtime bills take-what-they-have and records the settled fee — a short tab reads
+    // back the real amount on the line, never the sticker price.
+    if (out && out.granted === true) {
+      return { granted: true, feeCr: Number.isFinite(out.feeCr) ? out.feeCr : TOW_ASSIST_FEE_CR };
+    }
+    return { granted: false, reason: out && out.reason || 'claim_refused' };
+  },
+
+  _nearestStationPosTo(entity) {
+    const entities = this.state && this.state.entities;
+    if (!entities || !entity || !entity.pos) return null;
+    let best = null;
+    let bestD2 = Infinity;
+    for (const e of entities.values()) {
+      if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+      const dx = e.pos.x - entity.pos.x;
+      const dz = e.pos.z - entity.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < bestD2) { bestD2 = d2; best = e; }
+    }
+    return best ? { x: best.pos.x, z: best.pos.z } : null;
   },
 
   _updateContactHail(state) {
@@ -1593,7 +1852,7 @@ export const scanner = {
     if (record.sectorId && sectorId && record.sectorId !== sectorId) return;
     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
     if (!player || !player.alive || !player.pos) return;
-    const target = record.entityId && state.entities && state.entities.get && state.entities.get(record.entityId);
+    const target = recordEntity(state, record);
     const pos = target && target.pos || record.pos;
     if (!pos) return;
     record.pos = pos2(pos);
@@ -1619,6 +1878,7 @@ export const scanner = {
     const state = this.state;
     const own = state && ensureSignalState(state);
     if (!own || !record || own.completed[record.id]) return false;
+    if (record.discovery && record.discovery.lesson === true) return false;
     const receipt = {
       id: `signal-receipt:${record.id}`,
       signalId: record.id,
@@ -1798,6 +2058,10 @@ export function isHostileToPlayer(e, playerTeam, state) {
   // passive hulls and team-2 civilians returned above, noncombat traffic roles and unarmed hulls
   // are filtered inside the check, and lawful hulls already answered through their own gate.
   if (factionAggro && aggroCombatCapable(e, ai, data, state)) return true;
+  // The Unclosed is hostile only while it has classified the hull (combat.targetId,
+  // already returned above). A scar, a quiet body, or a shed plate must not inherit
+  // lane-danger hostility just because Ashfall is a high tier.
+  if (data.foldAberrant) return false;
   const security = finiteNumber(ai && ai.sectorSecurity, currentSectorSecurity(state));
   const tier = finiteNumber(ai && ai.sectorTier, currentSectorTier(state));
   if ((security <= UNSAFE_PLAYER_SECURITY || tier >= 2) && playerIsInLaneDanger(state)) return true;
@@ -1813,6 +2077,17 @@ export function contactStateWord(e, playerTeam, state) {
   if (data.poiType === 'cache' || data.kind === 'cache') return 'CACHE';
   if (isWreckLike(e)) return 'DERELICT';
   if (e && e.data && e.data.echoOfPlayer === true) return 'ECHO';
+  // The Unclosed is not traffic. A quiet body is not a trader, and a classified
+  // one is the fold, not a generic hostile. Scars, plates, and corners keep their own word.
+  if (data.foldAberrant) {
+    const role = data.foldAberrant.role;
+    if (role === 'scar') return 'SCAR';
+    if (role === 'plate') return 'PLATE';
+    if (role === 'corner') return 'CORNER';
+    const classified = !!(data.combat && state && state.playerId != null
+      && data.combat.targetId === state.playerId);
+    return classified ? 'FOLD' : 'QUIET';
+  }
   const playerId = state && state.playerId;
   if (e.team === 0 && e.id !== playerId) return (e.data && e.data.isWingman) ? 'WINGMAN' : 'ALLY';
   const ai = data.ai;

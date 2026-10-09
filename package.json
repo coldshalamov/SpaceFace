@@ -1,7 +1,7 @@
 {
   "name": "spaceface",
   "version": "0.1.0",
-  "description": "SpaceFace — a semi-3D top-down space trading/combat/mining game (Three.js).",
+  "description": "SpaceFace \u2014 a semi-3D top-down space trading/combat/mining game (Three.js).",
   "type": "module",
   "main": "electron/main.cjs",
   "engines": {
@@ -26,6 +26,8 @@
     "check:contracts": "node scripts/sf.mjs validate test/47a.inputs.json test/47a.telemetry.expected.json src/data/scenarios/47a.scenario.json && node scripts/check-src-reachability.mjs && node scripts/sync-modulepreload.mjs --check",
     "check:playtest:gates": "node scripts/check-playtest-gates.mjs",
     "check:adventure-decisions": "node --test test/adventure-decisions.test.mjs",
+    "check:sfq-b192": "node --test test/sfq-b192-massline-four-voices.test.mjs",
+    "check:sim:gyre-snare": "node --test test/gyreSnare.test.mjs",
     "check:alpha:evidence": "node scripts/check-alpha-evidence.mjs",
     "check:alpha:evidence:contract": "node scripts/check-alpha-evidence.mjs --self-test",
     "check:time-effects": "node test/time-effects.test.mjs",
@@ -80,6 +82,7 @@
     "check:crucible:arc": "node --test test/crucible-thirty-wave-arc.test.mjs test/crucible-survival-style.test.mjs test/crucible-no-hp-scaling.test.mjs",
     "check:attack-spec": "node --test test/attack-spec.test.mjs test/attack-lineage.test.mjs test/surface-contact.test.mjs test/attack-chain-payload.test.mjs test/attack-live-wiring.test.mjs test/orbit-cryo-reactions.test.mjs test/weapons-five-verified-defects.test.mjs",
     "check:all": "node scripts/check-ci-report.mjs",
+    "check:sweep-recovery": "node --test --test-concurrency=2 test/input-pointer-lock-recovery.test.mjs test/input-gamepad-capture-boundary.test.mjs test/input-modal-release-boundary.test.mjs test/input-haptics-rejection.test.mjs test/startup-route-cancellation.test.mjs test/world-object-picking-motion.test.mjs test/world-catchup-bounded-angle.test.mjs test/wingmen-damage-and-moving-rock.test.mjs test/ships-instance-id-continue.test.mjs test/save-gzip-read-bound.test.mjs test/save-utf8-write-bound.test.mjs",
     "check:draw-to-fly": "node --test test/draw-to-fly-path-tracking.test.mjs test/draw-to-fly-stroke-speed.test.mjs",
     "check:colour-tokens": "node scripts/check-colour-tokens.mjs",
     "check:type-floor": "node scripts/check-type-floor.mjs",
@@ -95,6 +98,7 @@
     "check:bark-silence": "node scripts/check-bark-silence.mjs",
     "check:proof-ritual": "node scripts/check-proof-ritual.mjs",
     "check:event-bus-contract": "node --test test/event-bus-contract.test.mjs",
+    "check:live-sector-cook-owners": "node --test test/live-sector-cook-owner-runtime.test.mjs test/authored-decode-prefetch-lifetime.test.mjs test/render-package-loader.test.mjs",
     "check:save-envelope-fidelity": "node --test test/save-envelope-fidelity.test.mjs",
     "check:asteroid-promote-overlap-guard": "node --test test/asteroid-promote-overlap-guard.test.mjs",
     "check:pq146-stunt-proofs": "node --test test/pq146-escape-routes.test.mjs test/pq146-evidence.test.mjs test/pq146-projectiles.test.mjs test/pq146-save-roundtrip.test.mjs test/pq146-save-episodes.test.mjs test/pq146-clothesline-route.test.mjs test/pq146-narrative.test.mjs test/pq146-field-routes.test.mjs test/pq146-flight-evidence.test.mjs",
@@ -168,10 +172,11 @@
     "check:massline:release-feedback": "node scripts/check-massline-release-feedback.mjs",
     "check:massline:lab": "node --test test/massline-control-lab.test.mjs && node scripts/massline-control-lab.mjs --matrix --self-check",
     "check:massline:load": "node scripts/check-massline-load.mjs",
+    "check:massline:tension-estimate": "node scripts/check-massline-tension-estimate.mjs",
     "check:massline:snapcatch": "node scripts/check-massline-snapcatch.mjs",
     "check:massline:reelpump": "node scripts/check-massline-reelpump.mjs",
     "check:massline:target-scoring": "node scripts/check-massline-target-scoring.mjs",
-    "check:massline:acquisition-contract": "node --test test/tether-latch-eligibility.test.mjs test/massline-acquisition-preview.test.mjs test/massline-controlled-attachments.test.mjs test/massline-break-recovery.test.mjs test/render-update-isolation.test.mjs",
+    "check:massline:acquisition-contract": "node --test test/tether-latch-eligibility.test.mjs test/massline-acquisition-preview.test.mjs test/massline-controlled-attachments.test.mjs test/massline-break-recovery.test.mjs test/render-update-isolation.test.mjs test/sfq-b192-massline-four-voices.test.mjs",
     "check:massline:auto-target": "node scripts/check-massline-auto-target.mjs",
     "check:massline:threats": "node scripts/check-massline-threats.mjs",
     "check:massline:threat-feedback": "node scripts/check-massline-threat-feedback.mjs",
@@ -339,7 +344,7 @@
     "check:confirm-dialog": "node scripts/check-confirm-dialog-safety.mjs",
     "check:departure-prompts": "node scripts/check-departure-check-prompts.mjs",
     "check:first-dock-handoff": "node scripts/check-first-dock-handoff.mjs",
-    "check:station-shell": "node scripts/check-station-shell.mjs",
+    "check:station-shell": "node scripts/check-station-shell.mjs && node --test test/station-exit-confirmation.test.mjs",
     "check:pq021-ledger": "node --test test/pq021-ledger-natural-earning.test.mjs test/pq021-ledger-route-manifest.test.mjs && node scripts/check-pq021-ledger-hosts.mjs && node scripts/check-pq021-ledger-keyboard-route.mjs",
     "check:station-hub-classes": "node scripts/check-station-hub-classes.mjs",
     "check:station-mission-card-keyboard": "node scripts/check-station-mission-card-keyboard.mjs",
@@ -347,7 +352,7 @@
     "check:experience": "node scripts/probe-game-experience.mjs",
     "check:experience:strict": "node scripts/probe-game-experience.mjs --strict-experience",
     "check:first-15-runtime": "node scripts/check-first-15-runtime.mjs",
-    "check:combat": "node scripts/check-combat-grammar.mjs && npm run check:sg03:save-reload",
+    "check:combat": "node scripts/check-combat-grammar.mjs && npm run check:sg03:save-reload && node --test test/combat-table-query-scratch.test.mjs",
     "check:combat-ceiling": "node scripts/check-combat-ceiling.mjs",
     "check:story-beats": "node scripts/check-story-beats.mjs",
     "check:wave15-flight-boot": "node scripts/check-wave15-flight-boot.mjs",
@@ -358,6 +363,7 @@
     "bench:fun:headed": "node scripts/run-fun-bench.mjs --headed",
     "check:fun-bench": "node --test test/fun-bench.test.mjs",
     "check:feel:scenarios": "node --test test/feel-regression.test.mjs test/fun-bench-scenario-modules.test.mjs test/fun-bench-flight-scenarios.test.mjs test/rope-swing-release.test.mjs test/terrain-slam.test.mjs test/hitstun-curve.test.mjs test/draw-to-fly-stroke-speed.test.mjs test/knock-budget.test.mjs test/feel-collision-impact.test.mjs test/feel-bars-contract.test.mjs test/feel-shove-bars.test.mjs test/world-reaction-bars.test.mjs",
+    "check:sfq-b011-gstick": "node --test test/sfq-b011-gstick-verification.test.mjs test/sfq-b011-gstick-seed-4242.test.mjs",
     "build:whole-ships": "node tools/art/finalize_whole_ship.mjs",
     "build:sg04:release-assets": "node scripts/build-sg04-release-assets.mjs",
     "build:dock-interiors": "node scripts/build-dock-interiors.mjs",
@@ -372,7 +378,8 @@
     "build:indexes": "node scripts/build-encounter-index.mjs && node scripts/build-flavor-index.mjs && node scripts/build-code-index.mjs",
     "generate:save-schema": "node scripts/generate-save-schema.mjs --write",
     "check:save-schema": "node scripts/generate-save-schema.mjs --check",
-    "check:save-import-safety": "node --test test/save-restore-atomicity.test.mjs test/save-import-bounds.test.mjs test/save-import-html-safety.test.mjs",
+    "check:save-import-safety": "node --test test/save-restore-atomicity.test.mjs test/save-import-bounds.test.mjs test/save-import-html-safety.test.mjs test/traffic-restore-roster.test.mjs",
+    "check:save-fuzz": "node scripts/fb-fuzz-save-envelope.mjs",
     "check:opening-mesh-defer": "node --test test/opening-mesh-defer.test.mjs",
     "check:smooth-flight": "node --test test/presentation-continuity.test.mjs test/presentation-runner.test.mjs test/simulation-runner.test.mjs test/snapshot-fence-span-alpha.test.mjs",
     "check:ci:report": "node scripts/check-ci-report.mjs",
@@ -552,6 +559,9 @@
     "probe:body-scale": "node scripts/probe-body-scale.mjs",
     "probe:solid-world": "node scripts/probe-solid-world.mjs --headless",
     "probe:frame-solid": "node scripts/probe-frame-solid.mjs",
+    "probe:heap-verify": "node scripts/probe-heap-verify.mjs",
+    "probe:main-thread": "node scripts/probe-main-thread-profile.mjs",
+    "probe:crucible-cpu": "node scripts/probe-crucible-cpu-profile.mjs",
     "check:concept-index": "node scripts/check-concept-index.mjs",
     "check:asset-pipeline-contract": "node scripts/check-asset-pipeline-contract.mjs",
     "build:render-package-pilots": "node scripts/build-render-package-pilots.mjs",
@@ -610,7 +620,7 @@
     "check:perf-packets": "node --test test/shadow-caster-policy.test.mjs test/perf-combat-count-gates.test.mjs test/flight-compose-gate.test.mjs test/perf-submit-lod-archetype.test.mjs test/ship-pitch-presentation.test.mjs test/vfx-field-geometry-sleep.test.mjs test/renderer-shadow-frame.test.mjs test/renderer-projection-camera-guard.test.mjs test/space-background-boot-tier-single-build.test.mjs test/hud-contact-roster-keyed-rows.test.mjs test/audio-parameter-churn.test.mjs",
     "check:pq023:corridor-cues": "node --test test/pq023-corridor-cues.test.mjs && node scripts/check-pq023-corridor-cues.mjs",
     "check:pq024:survey-claim": "node --test test/pq024-survey-claim.test.mjs",
-    "check": "npm run check:save-schema && npm run check:save-import-safety && npm run check:m1:tether-mass && npm run check:massline:acquisition-contract && npm run check:deep-field && npm run check:sim:v3 && npm run check:sim:v3:compare && npm run check:depth-program:contracts && npm run check:alpha:evidence:contract && npm run check:alpha:baseline:contracts && npm run check:launch-policy && npm run check:time-effects && npm run check:flyby-focus && node scripts/check-data.mjs && node scripts/check-data-refs.mjs && npm run check:balance && npm run check:sg02 && npm run check:player-knock && npm run check:sg05 && npm run check:sg06 && npm run check:combat && npm run check:save-resume-confidence && npm run check:event-bus-contract && npm run check:save-envelope-fidelity && npm run check:asteroid-promote-overlap-guard && npm run check:pq146-stunt-proofs && npm run check:title-continue-runtime && npm run check:title-attract && npm run check:save-load-slot-trust && npm run check:settings-profile && npm run check:controls-discoverability && npm run check:ui:control-labels && npm run check:cargo-jettison-copy && npm run check:player-facing-labels && npm run check:new-game-first-run && npm run check:pause-brief && npm run check:gamepad-mission-log && npm run check:confirm-dialog && node scripts/check-ui-screen-imports.mjs && node scripts/check-ui-a11y.mjs && npm run check:ui-effects && npm run check:ui:native-titles && npm run check:command-deck-ui && npm run check:ui:perf && npm run check:bar:narrative && npm run check:bar:mission-readiness && npm run check:station-departure && npm run check:station-egress && npm run check:station-tabs && npm run check:station-interact-undock && npm run check:faction-standings && npm run check:mission-standing-ladder && npm run check:crafting-guidance && npm run check:services-readiness && npm run check:outfitting-buy-fit && npm run check:mount-classes && npm run check:ship-purchase-guidance && node scripts/check-codex-narrative.mjs && node scripts/check-wcag-contrast.mjs && node scripts/check-input-modalities.mjs && node scripts/check-countermeasures.mjs && node scripts/check-onboarding.mjs && npm run check:first-dock-handoff && npm run check:station-shell && npm run check:departure-prompts && npm run check:mission-board-recommendation && npm run check:mission-preflight && npm run check:mission-handoff && npm run check:mission-cargo-loading && npm run check:mission-navigation && npm run check:starmap-objective && npm run check:map-authority && npm run check:mission-log-map && npm run check:mission-log-contract-terms && npm run check:mission-receipts && npm run check:mission-conditions && npm run check:automation-board && npm run check:recommended-next && npm run check:tech-tree-guidance && npm run check:tech-display-names && npm run check:first-15-runtime && npm run check:market-nav && npm run check:market-first-loop && npm run check:localmap-routes && npm run check:claim-base && npm run check:base-build-guidance && npm run check:claims-guidance && node scripts/check-wingmen.mjs && npm run check:contracts && npm run check:replay && npm run check:presentation && npm run check:camera && node scripts/check-gameplay-core.mjs && npm run check:sim && npm run check:sim:compare && npm run check:sim:profile && npm run check:sim:long && npm run check:sim:long:compare && npm run check:47a:tactics && npm run check:47a:live-branch && npm run check:47a:live-cold-open && npm run check:47a:counterplay && npm run check:47a:death-retry && npm run check:gameover-recovery-copy && npm run check:slice-scope && node scripts/check-phase0-slice-contract.mjs && npm run check:flight:v3 && npm run check:flight:clean && node scripts/check-sectorSim.mjs && npm run check:atlas && npm run check:art && npm run check:bundle && npm run check:perf-packets && npm run check:perf-counters && npm run check:hitch-attribution && npm run check:asteroid-works-render && npm run check:draw-to-fly && npm run check:attack-spec && npm run check:crucible:arc && npm run check:crucible:meta && npm run check:colour-tokens && npm run check:type-floor && npm run check:arcade-structural-fx && npm run check:gate-reachability && npm run check:lab-chromium-parity && npm run check:vision:assertions && npm run check:pq172 && npm run check:progression-verb-audit",
+    "check": "npm run check:sweep-recovery && npm run check:save-schema && npm run check:save-import-safety && npm run check:save-fuzz && npm run check:m1:tether-mass && npm run check:massline:acquisition-contract && npm run check:deep-field && npm run check:sim:v3 && npm run check:sim:v3:compare && npm run check:depth-program:contracts && npm run check:alpha:evidence:contract && npm run check:alpha:baseline:contracts && npm run check:launch-policy && npm run check:time-effects && npm run check:flyby-focus && node scripts/check-data.mjs && node scripts/check-data-refs.mjs && npm run check:balance && npm run check:sg02 && npm run check:player-knock && npm run check:sg05 && npm run check:sg06 && npm run check:combat && npm run check:save-resume-confidence && npm run check:event-bus-contract && npm run check:live-sector-cook-owners && npm run check:save-envelope-fidelity && npm run check:asteroid-promote-overlap-guard && npm run check:pq146-stunt-proofs && npm run check:title-continue-runtime && npm run check:title-attract && npm run check:save-load-slot-trust && npm run check:settings-profile && npm run check:controls-discoverability && npm run check:ui:control-labels && npm run check:cargo-jettison-copy && npm run check:player-facing-labels && npm run check:new-game-first-run && npm run check:pause-brief && npm run check:gamepad-mission-log && npm run check:confirm-dialog && node scripts/check-ui-screen-imports.mjs && node scripts/check-ui-a11y.mjs && npm run check:ui-effects && npm run check:ui:native-titles && npm run check:command-deck-ui && npm run check:ui:perf && npm run check:bar:narrative && npm run check:bar:mission-readiness && npm run check:station-departure && npm run check:station-egress && npm run check:station-tabs && npm run check:station-interact-undock && npm run check:faction-standings && npm run check:mission-standing-ladder && npm run check:crafting-guidance && npm run check:services-readiness && npm run check:outfitting-buy-fit && npm run check:mount-classes && npm run check:ship-purchase-guidance && node scripts/check-codex-narrative.mjs && node scripts/check-wcag-contrast.mjs && node scripts/check-input-modalities.mjs && node scripts/check-countermeasures.mjs && node scripts/check-onboarding.mjs && npm run check:first-dock-handoff && npm run check:station-shell && npm run check:departure-prompts && npm run check:mission-board-recommendation && npm run check:mission-preflight && npm run check:mission-handoff && npm run check:mission-cargo-loading && npm run check:mission-navigation && npm run check:starmap-objective && npm run check:map-authority && npm run check:mission-log-map && npm run check:mission-log-contract-terms && npm run check:mission-receipts && npm run check:mission-conditions && npm run check:automation-board && npm run check:recommended-next && npm run check:tech-tree-guidance && npm run check:tech-display-names && npm run check:first-15-runtime && npm run check:market-nav && npm run check:market-first-loop && npm run check:localmap-routes && npm run check:claim-base && npm run check:base-build-guidance && npm run check:claims-guidance && node scripts/check-wingmen.mjs && npm run check:contracts && npm run check:replay && npm run check:presentation && npm run check:camera && node scripts/check-gameplay-core.mjs && npm run check:sim && npm run check:sim:compare && npm run check:sim:profile && npm run check:sim:long && npm run check:sim:long:compare && npm run check:sim:gyre-snare && npm run check:47a:tactics && npm run check:47a:live-branch && npm run check:47a:live-cold-open && npm run check:47a:counterplay && npm run check:47a:death-retry && npm run check:gameover-recovery-copy && npm run check:slice-scope && node scripts/check-phase0-slice-contract.mjs && npm run check:flight:v3 && npm run check:flight:clean && node scripts/check-sectorSim.mjs && npm run check:atlas && npm run check:art && npm run check:bundle && npm run check:perf-packets && npm run check:perf-counters && npm run check:hitch-attribution && npm run check:asteroid-works-render && npm run check:draw-to-fly && npm run check:attack-spec && npm run check:crucible:arc && npm run check:crucible:meta && npm run check:colour-tokens && npm run check:type-floor && npm run check:arcade-structural-fx && npm run check:gate-reachability && npm run check:lab-chromium-parity && npm run check:vision:assertions && npm run check:pq172 && npm run check:progression-verb-audit",
     "check:ci": "npm run check:ci:report",
     "check:safe-agent-runner": "node scripts/check-safe-agent-runner.mjs",
     "check:dispatch-discipline": "node scripts/check-dispatch-discipline.mjs",
@@ -643,7 +653,10 @@
     "check:vision:assertions": "node scripts/check-vision-assertions.mjs",
     "check:deep-field": "node --test test/deep-field-design.test.mjs test/deep-field-renderer.test.mjs test/deep-field-stars.test.mjs && node scripts/check-parallax-layers.mjs",
     "check:vfx-field-lifecycle": "node --test test/vfx-field-lifecycle.test.mjs",
-    "capture:vfx-force-language": "python scripts/capture-vfx-field-lifecycle.py"
+    "capture:vfx-force-language": "python scripts/capture-vfx-field-lifecycle.py",
+    "check:ceres-workfleet": "node --max-old-space-size=256 --test --test-concurrency=1 test/ceres-workfleet-runtime.test.mjs test/ceres-workfleet-recovery.test.mjs test/ceres-workfleet-attachment-save.test.mjs test/ceres-cradle-layout-compat.test.mjs test/ceres-workfleet-articulation.test.mjs test/ceres-receiver-keeper.test.mjs test/ceres-receiver-handoff.test.mjs test/ceres-native-lifecycle.test.mjs test/native-failure-query-eligibility.test.mjs test/ceres-workfleet-admission.test.mjs test/ceres-cradle-layout-visibility.test.mjs test/ceres-head-return.test.mjs test/ceres-head-return-continuation.test.mjs test/ceres-head-relative-frame.test.mjs test/ceres-head-late-sweep.test.mjs test/ceres-reacquire-safety.test.mjs test/ceres-dock-binding.test.mjs test/ceres-return-deadline.test.mjs test/ceres-reacquire-cycle.test.mjs",
+    "check:ceres-presentation": "node --max-old-space-size=256 --test --test-concurrency=1 test/ceres-presentation-census.test.mjs test/ceres-presentation-lifecycle.test.mjs test/ceres-shipbreak-presentation.test.mjs test/ceres-workfleet-geometry.test.mjs test/ceres-workfleet-motion.test.mjs test/ceres-workfleet-propulsion.test.mjs test/ceres-workfleet-source-assets.test.mjs test/ceres-workfleet-release-assets.test.mjs test/ceres-world-site-census.test.mjs test/ceres-shipbreak-binding-provenance.test.mjs test/ceres-shell-release-precision.test.mjs test/ceres-source-manifest-metadata.test.mjs",
+    "probe:ceres-production-cycle": "node scripts/probe-ceres-production-cycle.mjs"
   },
   "private": true,
   "devDependencies": {
@@ -672,15 +685,20 @@
     },
     "files": [
       "build/web/**",
+      "assets/brand/exports/spaceface-launcher-256.png",
+      "assets/brand/exports/spaceface.ico",
       "electron/main.cjs",
       "electron/preload.cjs",
       "electron/autoUpdate.cjs",
       "electron/releaseIdentity.cjs",
+      "electron/workshopMods.cjs",
+      "electron/windowState.cjs",
       "electron/steamworks.cjs",
       "electron/steamAchievements.json",
       "scripts/lib/gameServer.cjs",
       "scripts/lib/electronLaunchProtocol.cjs",
       "scripts/lib/playerSaveStore.cjs",
+      "scripts/lib/userContentStore.cjs",
       "scripts/lib/staticCachePolicy.cjs",
       "package.json",
       "NOTICE"
@@ -691,16 +709,19 @@
       "repo": "SpaceFace"
     },
     "win": {
+      "icon": "assets/brand/exports/spaceface.ico",
       "target": "nsis",
       "artifactName": "SpaceFace-Setup-${version}.${ext}"
     },
     "mac": {
+      "icon": "assets/brand/exports/spaceface.icns",
       "target": [
         "dmg",
         "zip"
       ]
     },
     "linux": {
+      "icon": "assets/brand/exports/spaceface-launcher-512.png",
       "target": "AppImage"
     }
   },

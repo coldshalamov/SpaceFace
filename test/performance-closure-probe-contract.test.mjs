@@ -69,7 +69,7 @@ test('profile and closure probes share scene metrics and bounded measurement gat
   ]);
   assert.match(profile, /import\('\/scripts\/lib\/performanceSceneMetrics\.mjs'\)/);
   assert.match(profile, /collectPerformanceSceneStructure/);
-  assert.match(profile, /authoredAssetStatus\(state\)/);
+  assert.match(profile, /authoredAssetStatus\(state/);
   assert.match(profile, /rafHitches: sampled\.raf\.hitches \|\| \[\]/);
   assert.match(profile, /strictWorktreeFingerprint\(ROOT\)/,
     'the strict player-route profile must bind evidence to the exact clean worktree');

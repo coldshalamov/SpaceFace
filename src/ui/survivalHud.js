@@ -337,6 +337,25 @@ export const survivalHud = {
       if (dom.killFig) this._setHidden(dom.killFig, true);
     }
 
+    // SWARM-05 §7.5 — the boss bar, beside the hostiles census. The champion's own hull
+    // fraction: a boss that took the whole room's opening still reads as a boss, and the
+    // bar empties as it dies. No champion on the field, no row — an ordinary wave never
+    // carries it.
+    const bossVitals = swarm && run.phase === 'active' && dom.boss ? this._bossVitals(st) : null;
+    if (dom.boss) {
+      this._setHidden(dom.boss, !bossVitals);
+      if (bossVitals) {
+        const pct = bossVitals.pct == null ? null : Math.max(0, Math.min(1, bossVitals.pct));
+        this._setText(dom.bossWord, bossVitals.count > 1 ? `BOSS ×${bossVitals.count}` : 'BOSS');
+        this._setText(dom.bossFig, pct == null ? '—' : `${Math.round(pct * 100)}%`);
+        this._setStyle(dom.bossFill, 'width', `${pct == null ? 0 : Math.round(pct * 100)}%`);
+        this._setAttr(dom.boss, 'aria-label', pct == null
+          ? 'Boss hull'
+          : `Boss hull ${Math.round(pct * 100)} percent`);
+        this._setAttr(dom.boss, 'aria-valuenow', String(pct == null ? 0 : Math.round(pct * 100)));
+      }
+    }
+
     // The chain, if the ruleset has one. A swarm run shows the chain and hides the style
     // multiplier: they measure the same instinct — vary how you kill — and the chain is the one
     // that says so in a number the player is already watching.
@@ -522,6 +541,36 @@ export const survivalHud = {
     this._chainAt = null;
   },
 
+  /**
+   * SWARM-05 §7.5 — the live boss census. Every champion materialized this wave wears
+   * data.swarmChampion (the mark SWARM-02 stamped for this surface), so the bar is a pure
+   * read of the entity bag: no owner publish, no run write. Pooled hull fraction across the
+   * marked bodies still standing; null when none are — the row then leaves the glass.
+   */
+  _bossVitals(state) {
+    const entities = state && state.entities;
+    if (!entities || typeof entities.values !== 'function') return null;
+    let count = 0;
+    let hull = 0;
+    let max = 0;
+    for (const entity of entities.values()) {
+      if (!entity || entity.alive === false) continue;
+      const data = entity.data;
+      if (!data || data.swarmChampion !== true) continue;
+      count += 1;
+      const hullMax = Number.isFinite(entity.hullMax) ? entity.hullMax
+        : Number.isFinite(entity.data.hullMax) ? entity.data.hullMax : 0;
+      const hullNow = Number.isFinite(entity.hull) ? Math.max(0, entity.hull)
+        : Number.isFinite(entity.data.hull) ? Math.max(0, entity.data.hull) : 0;
+      if (hullMax > 0) {
+        hull += hullNow;
+        max += hullMax;
+      }
+    }
+    if (count === 0) return null;
+    return { count, pct: max > 0 ? hull / max : null };
+  },
+
   // ---- DOM ------------------------------------------------------------------
 
   _hide() {
@@ -621,6 +670,21 @@ export const survivalHud = {
     const threatFill = make('span', 'sf-crun__fill sf-crun__fill--foe', threatTrack);
     const threatFig = make('span', 'sf-crun__fig', threat);
 
+    // SWARM-05 §7.5 — the boss bar. The wave's champion bodies carry the swarmChampion mark
+    // stamped at materialization (SWARM-02 left it for exactly this surface), so the readout
+    // scans the live entities and never asks an owner to publish. It rides the same
+    // word/track/figure grammar as the threat meter, and leaves when the last boss falls.
+    const boss = make('div', 'sf-crun__threat sf-crun__boss', root);
+    boss.setAttribute('role', 'meter');
+    boss.setAttribute('aria-valuemin', '0');
+    boss.setAttribute('aria-valuemax', '100');
+    boss.hidden = true;
+    const bossWord = make('span', 'sf-crun__word', boss);
+    bossWord.textContent = 'BOSS';
+    const bossTrack = make('span', 'sf-crun__track', boss);
+    const bossFill = make('span', 'sf-crun__fill sf-crun__fill--foe sf-crun__fill--boss', bossTrack);
+    const bossFig = make('span', 'sf-crun__fig', boss);
+
     // THE CHAIN GETS ITS OWN LINE, and it is the biggest thing here.
     //
     // Everything else in this readout is a status you glance at between fights. The chain is the
@@ -681,6 +745,7 @@ export const survivalHud = {
     host.appendChild(root);
     this._dom = {
       root, label, waveN, phase, intro, threat, threatWord, threatFill, threatFig,
+      boss, bossWord, bossFill, bossFig,
       chainRow, chainFig, chainCause, chainBest, chainDeplete,
       score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn, death, line,
     };

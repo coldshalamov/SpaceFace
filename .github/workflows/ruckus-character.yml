@@ -1,0 +1,46 @@
+name: RUCKUS character checks
+on:
+  pull_request:
+    paths:
+      - 'src/**/ruckus*'
+      - 'src/core/registry.js'
+      - 'src/runtime/**'
+      - 'src/data/sectors.js'
+      - 'src/data/audioRecipes.js'
+      - 'src/save/saveSystem.js'
+      - 'src/render/visualFactory.js'
+      - 'assets/characters/ruckus/**'
+      - 'test/ruckus*'
+      - 'tools/ruckus/**'
+      - '.github/workflows/ruckus-character.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  character:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            src
+            test
+            scripts
+            assets/ui
+            assets/characters/ruckus
+            tools/ruckus
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node --test test/ruckus.test.mjs test/ruckus-model.test.mjs test/bracket.test.mjs test/character-far-actor-residency.test.mjs test/sg02-yaw-mapping.test.mjs test/authoritative-manifest.test.mjs
+      - run: npx playwright install --with-deps chromium
+      - run: node tools/ruckus/playtest.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ruckus-browser-proof
+          path: artifacts/ruckus/browser/
+          retention-days: 7

@@ -17,14 +17,19 @@
 // zoneId, …)); NEVER Math.random. The per-zone hash stream is independent of live state.world.rng
 // draw-order, so interleaving with other sector:enter consumers can't shift our rolls.
 
+import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 import { zonesForSector, VESTA_DERELICT_SALVAGE_SOURCE } from '../data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { SECTORS } from '../data/sectors.js';
+import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { pickWreckMission, wreckMissionById } from '../data/wreckMissions.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
+import { COMMODITIES } from '../data/commodities.js';
 import { WRECK_ECOLOGY_DAY_S, isPlayerWreckMarker, playerWreckMarker } from './aftermathWrecks.js';
+import { addSalvage } from './cargo.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { combatVerbRecipe } from '../audio/combatVerbCues.js';
+import { TALLY_THREE, tallyThreeBody, tallyThreeFingerprint } from '../data/tallyThree.js';
 
 // Tuning (kept conservative so we never blow the ship/entity budget — brief: ≤2 salvage per zone).
 const MAX_SALVAGE_PER_ZONE = 2;     // hard cap on entities placed per derelict zone
@@ -46,10 +51,48 @@ const DEBRIS_POOLS = [
   { cmdty_scrap_metal: 4 },
 ];
 
+// SF-029 (PB-MASS-B) — the wreck-side salvage-sorting job. A rolled debris wreck holds its
+// valuable core under a breakable clamp, ringed by light dangerous debris, with a static cradle
+// a tow away. The job is the SAME combat grammar as everything else on the line: latch the core,
+// pull until the clamp's own break envelope gives, then fly the tow — the two authored gaps in
+// the ring are the safe pull directions, the straight run to the cradle is the risky fast route,
+// and every unit paid follows the delivered integrity the real geometry actually left. This is
+// deliberately NOT a missions row: no board, no phase advancement — the reward is real salvage
+// bay custody routed through the cargo owner's addSalvage, and the job lives and dies with the
+// physical pocket.
+const SORT_POCKET_ODDS = 0.35;      // per debris-wreck roll (independent rng stream, never zone rng)
+const SORT_CORE_RADIUS = 5;
+const SORT_CORE_MASS = 620;         // truthful heavy mass — the readout must say "heavy"
+const SORT_CORE_HULL = 60;
+const SORT_DEBRIS_COUNT = 7;
+const SORT_DEBRIS_MASS = 45;        // light dangerous debris against the heavy core
+const SORT_RING_INNER = 60;         // debris ring around the wreck (core sits inside it)
+const SORT_RING_OUTER = 110;
+const SORT_GAP_HALF_RAD = 0.55;     // half-width of each authored safe pull lane
+const SORT_CRADLE_DISTANCE = 320;   // one 90°-off-gap bearing: the risky fast route through the ring
+const SORT_CRADLE_RADIUS = 14;
+const SORT_CRADLE_MASS = 1e9;
+const SORT_CLAMP_DEF_ID = 'attachment_salvage_clamp';
+const SORT_DELIVER_MAX_SPEED = 25;  // wu/s relative to the static cradle — a docked tow, not a fly-through
+const SORT_IMPACT_DAMAGE = 0.15;    // integrity per debris impact; floor(qty × integrity) is what pays
+const SORT_CORE_OFFSET = 2;         // center gap between wreck skin and core skin at spawn
+
 // A communicator's contract names real cargo: whatever the offer asks the player to haul must be
 // physically in the wreck for the job to close, so haul-type templates fold their authored
 // commodity into the wreck's salvage pool at spawn (no invented cargo — recovery, not delivery).
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
+
+const BASE_PRICE_BY_ID = new Map((COMMODITIES || []).map((row) => [row.id, Math.max(0, Math.floor(Number(row.basePrice) || 0))]));
+
+// D130 structural counter (headless/quantum safe): how many entities the fallback
+// salvage-point walk visited on its last call. Runtime-only on the system instance —
+// never on state.salvage, so read-path lookups cannot drift the save payload/goldens.
+function noteSalvagePointScanVisits(sys, visited) {
+  if (!sys || typeof sys !== 'object') return;
+  try {
+    ((sys._rt && typeof sys._rt === 'object') ? sys._rt : (sys._rt = {})).lastPointScanVisits = visited | 0;
+  } catch (_) { /* transient probe field only */ }
+}
 
 export const salvage = {
   name: 'salvage',
@@ -58,6 +101,7 @@ export const salvage = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    this.registry = ctx.registry;
     const state = this.state;
     this._ensureState();
     if (this.helpers) {
@@ -71,11 +115,39 @@ export const salvage = {
         releaseSourceClaim: (request) => this._releaseSourceClaim(request),
         takeSource: (request) => this._takeSource(request),
         drainSource: (request) => this._drainSource(request),
+        settleTallyCrate: (request) => this._settleTallyCrate(request),
+        observeTallyManifest: (entity) => this._observeTallyManifest(entity),
+        contestTallyClaim: () => this._contestTallyClaim(),
+        noteTally: (field) => this._noteTally(field),
       };
     }
 
     // On sector entry, (re)plan salvage for this sector's derelict fields.
-    this.bus.on('sector:enter', (p) => this._planForSector(p && p.sectorId));
+    // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
+    // drains the same plan under its slice clock in listener order.
+    this.bus.on('sector:enter', (p) => {
+      // A tail-sliced emit's payload can outlive the enter that minted it: entering B
+      // while A's tail drains would replan A's sector on the live world and filter
+      // state.salvage.points to the dead sector. Synthetic payloads (tests, census)
+      // carry no epoch and always run.
+      if (p && p.enterEpoch != null && this.state && this.state.world
+          && this.state.world.enterSerial != null
+          && p.enterEpoch !== this.state.world.enterSerial) return;
+      if (deferSectorEnterMaterialization(this.state, p, this._cookProvider)) return;
+      this._planForSector(p && p.sectorId);
+    });
+
+    // Census mount (vesper pattern): register a cook provider so derelict salvage points
+    // plan inside the renderer's deterministic sector census (jump + opening) instead of
+    // relying on this listener's emit position. _planForSector's plannedSectorId guard
+    // makes the emit listener's own call a no-op — ordering insurance, not a second plan.
+    if (this.helpers) {
+      this._cookProvider = (sector) => this._planForSectorSteps((sector && sector.id)
+        || (this.state && this.state.world && this.state.world.currentSectorId));
+      (this.helpers.sectorCookProviders
+        || (this.helpers.sectorCookProviders = []))
+        .push(this._cookProvider);
+    }
     this.bus.on('aftermathWreck:recorded', (p) => this._onPlayerWreckMarker(p));
     this.bus.on('aftermathWreck:spawned', (p) => this._onPlayerWreckSpawned(p));
     // Scanning a communicator is an alternate trigger to reaching it (scan:completed carries a target).
@@ -85,6 +157,7 @@ export const salvage = {
     this.bus.on('save:restoring', () => {
       state.salvage.points = [];
       state.salvage.plannedSectorId = null;
+      if (Array.isArray(state.salvage.sortPockets)) state.salvage.sortPockets = [];
     });
     // The haul stays quiet. This fires only once the reactor is clear of the blast.
     this.bus.on('salvage:reactorTowedClear', () => this._onReactorTowedClear());
@@ -104,10 +177,13 @@ export const salvage = {
   },
 
   newGame() {
+    const body=tallyThreeBody(this.state,TALLY_THREE.worldRecordId);
+    if(body)this.helpers.removeEntity?.(body.id);
     this.state.salvage = freshSalvageState();
   },
 
   serialize() {
+    this._captureTallyMotion();
     const state = this._ensureState();
     const sources = {};
     for (const sourceKey of Object.keys(state.sources).sort((a, b) => a.localeCompare(b))) {
@@ -132,6 +208,7 @@ export const salvage = {
     }
     const salvageState = this.state.salvage;
     if (!Array.isArray(salvageState.points)) salvageState.points = [];
+    if (!Array.isArray(salvageState.sortPockets)) salvageState.sortPockets = [];
     if (!salvageState.sources || typeof salvageState.sources !== 'object' || Array.isArray(salvageState.sources)) {
       salvageState.sources = {};
     }
@@ -159,6 +236,52 @@ export const salvage = {
     return record ? snapshotSourceRecord(record, sourceDescriptor(sourceKey)) : null;
   },
 
+  _captureTallyMotion() {
+    const record=this.state.salvage?.sources?.[TALLY_THREE.sourceKey];
+    const body=tallyThreeBody(this.state,TALLY_THREE.worldRecordId);
+    if(record&&!record.extracted&&body&&[body.pos.x,body.pos.z,body.vel.x,body.vel.z,body.rot,body.angVel].every(Number.isFinite)){
+      record.motion={pos:{x:body.pos.x,z:body.pos.z},vel:{x:body.vel.x,z:body.vel.z},rot:body.rot,angVel:body.angVel};
+      record.remainingHull=Math.max(0,Math.min(80,Number(body.hull)||0));
+    }
+  },
+
+  _noteTally(field) {
+    if(!['met','assessorLost'].includes(field))return false;
+    const record=this._sourceRecord(TALLY_THREE.sourceKey,false);if(!record)return false;
+    record[field]=true;return true;
+  },
+
+  _observeTallyManifest(entity) {
+    if(entity!==tallyThreeBody(this.state,TALLY_THREE.worldRecordId))return false;
+    const record=this._sourceRecord(TALLY_THREE.sourceKey,false);
+    if(!record||record.extracted||record.evidenceObserved)return false;
+    record.evidenceObserved=true;record.evidenceRevision+=1;
+    return true;
+  },
+
+  _contestTallyClaim() {
+    const record=this._sourceRecord(TALLY_THREE.sourceKey,false);
+    const body=tallyThreeBody(this.state,TALLY_THREE.worldRecordId);
+    if(!record||record.extracted||!body||!record.evidenceObserved)return {ok:false,reason:'manifest-not-observed'};
+    const owner=body.data?.cargoIdentity?.ownerId;
+    if(owner!==TALLY_THREE.claimId||record.claimId===owner)return {ok:false,reason:'claim-agrees-with-manifest'};
+    record.claimId=owner;record.disputedBy=null;record.evidenceRevision+=1;
+    body.data.salvorClaimedBy=owner;
+    return {ok:true,source:this._sourceSnapshot(TALLY_THREE.sourceKey)};
+  },
+
+  _settleTallyCrate({fingerprint,receipt}={}) {
+    const record=this._sourceRecord(TALLY_THREE.sourceKey,false);
+    if(record?.delivery)return {ok:true,duplicate:true,receipt:{...record.delivery}};
+    if(!record||record.extracted||fingerprint!==tallyThreeFingerprint(record)
+      ||receipt?.sourceKey!==TALLY_THREE.sourceKey||receipt?.worldRecordId!==TALLY_THREE.worldRecordId
+      ||receipt?.stationId!==TALLY_THREE.homeStationId)return {ok:false,reason:'source-changed'};
+    record.delivery={...receipt};record.extracted=true;record.remainingPool={};record.claimId=null;
+    record.extractedBy='player';record.workId=receipt.receiptId;
+    this._retireSourceEntity(record,TALLY_THREE.sourceKey);
+    return {ok:true,duplicate:false,receipt:{...record.delivery}};
+  },
+
   _entityForPoint(salvagePointId, sourceKey = null) {
     const salvageState = this._ensureState();
     const wantedPointId = cleanIdentity(salvagePointId);
@@ -175,12 +298,35 @@ export const salvage = {
       const entity = entities.get(point.entityId);
       if (entity && entity.alive !== false) return entity;
     }
-    if (!entities || typeof entities.values !== 'function') return null;
-    for (const entity of entities.values()) {
+    // Salvage-point fallback: bound the walk to the live index buckets that can
+    // carry a salvagePointId — wrecks (husk/debris/cradle), payloads (sort-pocket
+    // core), and fx (POI recovery markers) — or, when the index is not ready, a
+    // single entityList pass. One pass either way: per-type scans in the cold path
+    // would re-walk the same fat list three times.
+    let visited = 0;
+    const consider = (entity) => {
+      visited += 1;
       const data = entity && entity.data;
-      if (entity && entity.alive !== false && data && data.salvagePointId === wantedPointId
-        && (!wantedSourceKey || data.salvageSourceKey === wantedSourceKey)) return entity;
+      return entity && entity.alive !== false && data && data.salvagePointId === wantedPointId
+        && (!wantedSourceKey || data.salvageSourceKey === wantedSourceKey) ? entity : null;
+    };
+    const index = this.state && this.state.entityIndex;
+    const indexReady = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true);
+    let scanLists = indexReady
+      ? [index.wrecks, index.payloads, index.fx].filter((list) => Array.isArray(list))
+      : [];
+    // No-arg bucket: indexedTypeScan falls back to the fat entityList (single pass).
+    if (scanLists.length === 0) scanLists = [indexedTypeScan(this.state)];
+    for (const list of scanLists) {
+      for (let i = 0; i < list.length; i++) {
+        const hit = consider(list[i]);
+        if (hit) {
+          noteSalvagePointScanVisits(this, visited);
+          return hit;
+        }
+      }
     }
+    noteSalvagePointScanVisits(this, visited);
     return null;
   },
 
@@ -298,6 +444,12 @@ export const salvage = {
   // PLACEMENT (deterministic, on sector entry)
   // =====================================================================================
   _planForSector(sectorId) {
+    // Sync lane (emit listener): drain the chunked steps inline — the census drive
+    // holds the same generator across its slices.
+    for (const _ of this._planForSectorSteps(sectorId)) { /* inline */ }
+  },
+
+  *_planForSectorSteps(sectorId) {
     const state = this.state;
     if (!sectorId) return;
     // Idempotent within a visit: re-entering the same sector without leaving keeps the same layout.
@@ -305,7 +457,15 @@ export const salvage = {
 
     // Drop stale points from other sectors (their wreck entities are culled by world teardown).
     state.salvage.points = state.salvage.points.filter((s) => s.sectorId === sectorId);
-    state.salvage.plannedSectorId = sectorId;
+    // plannedSectorId stamps in the tail: a census-spliced run (iterator.return mid-scatter)
+    // must not latch the sector as planned on a partial point set — the re-run adopts
+    // existing rows by id below and finishes the same deterministic layout.
+    // Sort pockets share the points' lifecycle: rebuilt with the sector, transient by design.
+    if (Array.isArray(state.salvage.sortPockets)) {
+      state.salvage.sortPockets = state.salvage.sortPockets.filter((p) => p && p.sectorId === sectorId);
+    }
+    const byId = new Set();
+    for (const p of state.salvage.points) if (p && p.id != null) byId.add(p.id);
 
     const zones = (typeof zonesForSector === 'function' ? zonesForSector(sectorId) : [])
       .filter((z) => z && z.type === 'derelict_field' && z.center);
@@ -319,10 +479,16 @@ export const salvage = {
     const seed = state.meta && state.meta.seed;
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
 
+    if(sectorId===TALLY_THREE.sectorId){
+      const rec=this._makeSourceSalvagePoint(sectorId,{id:TALLY_THREE.zoneId},TALLY_THREE,spawnEntity);
+      if(rec&&!byId.has(rec.id)){byId.add(rec.id);state.salvage.points.push(rec);}
+    }
+
     for (const zone of zones) {
+      yield;
       if (zone.salvageCutterSource) {
         const rec = this._makeSourceSalvagePoint(sectorId, zone, zone.salvageCutterSource, spawnEntity);
-        if (rec) state.salvage.points.push(rec);
+        if (rec && !byId.has(rec.id)) { byId.add(rec.id); state.salvage.points.push(rec); }
         continue;
       }
       const rng = mulberry32(hash32(seed, sectorId, zone.id, 'salvage'));
@@ -333,11 +499,17 @@ export const salvage = {
       const wantComm = rng() < COMMUNICATOR_CHANCE;
 
       for (let i = 0; i < count; i++) {
+        yield;
         const ang = rng() * Math.PI * 2;
         const r = SCATTER_MIN + Math.sqrt(rng()) * (radius - SCATTER_MIN);
         const pos = { x: zone.center.x + Math.cos(ang) * r, z: zone.center.z + Math.sin(ang) * r };
         const isCommunicator = wantComm && i === 0;   // at most one communicator per zone, first slot
-        const rec = this._makeSalvagePoint(sectorId, zone, i, pos, isCommunicator, rng, spawnEntity);
+        // A killed first run left this row pushed — still roll its identical rng draws
+        // so the remaining slots roll the same stream, but skip the spawn and push
+        // (null spawnEntity short-circuits the wreck + sort-pocket mint inside).
+        const rec = this._makeSalvagePoint(sectorId, zone, i, pos, isCommunicator, rng,
+          byId.has(`${zone.id}:sal${i}`) ? null : spawnEntity, seed);
+        if (byId.has(rec.id)) continue;
         // A durable recovery sidecar may already own this stable point across Continue. Reserve it
         // before salvage:placed so survivor/loss promotion systems cannot claim the same wreck.
         const recovery = Object.values(state.recoveryEncounters && state.recoveryEncounters.records || {})
@@ -347,9 +519,11 @@ export const salvage = {
           rec.recoveryEncounterId = recovery.id;
         }
         state.salvage.points.push(rec);
+        byId.add(rec.id);
       }
     }
 
+    state.salvage.plannedSectorId = sectorId;
     if (state.salvage.points.length) {
       this.bus.emit('salvage:placed', {
         sectorId,
@@ -439,7 +613,7 @@ export const salvage = {
     return rec;
   },
 
-  _makeSalvagePoint(sectorId, zone, idx, localPos, isCommunicator, rng, spawnEntity) {
+  _makeSalvagePoint(sectorId, zone, idx, localPos, isCommunicator, rng, spawnEntity, seed = null) {
     // Zone scatter is authored in sector-local XZ. Entity positions, discovery records and the
     // wreckField:source consumed by scavenger ecology all use galactic-global XZ, just like world.
     const pos = sectorLocalToGlobalForSector(localPos, sectorId);
@@ -455,6 +629,7 @@ export const salvage = {
     }
 
     let entityId = null;
+    let wreckEntity = null;
     if (typeof spawnEntity === 'function') {
       // A wreck entity: tether-compatible (ATTACHABLE_TYPES includes 'wreck') and drainable by the
       // salvage beam (mining._drainWreck reads data.salvagePool / data.salvageTimeLeft). The
@@ -466,7 +641,9 @@ export const salvage = {
         mass: WRECK_MASS,
         hull: 1,
         hullMax: 1,
-        physicsBody: { shape: 'capsule' },
+        // SFQ-B025: author the named mass on the body — normalization keeps it instead of
+        // substituting the generic wreck-density value.
+        physicsBody: { shape: 'capsule', mass: WRECK_MASS },
         data: {
           parentType: isCommunicator ? 'communicator' : 'debris',
           proportions: WRECK_COLLIDER_PROPORTIONS,
@@ -480,6 +657,14 @@ export const salvage = {
         },
       });
       entityId = ent ? ent.id : null;
+      wreckEntity = ent || null;
+    }
+
+    // SF-029: a rolled wreck hosts the salvage-sorting pocket. The roll draws from its OWN
+    // seed-hashed stream — never from the zone rng above — so existing placement rolls stay
+    // byte-identical whether or not the pocket lands.
+    if (wreckEntity && !isCommunicator && seed != null) {
+      this._makeSortPocket(sectorId, zone, id, wreckEntity, seed, spawnEntity);
     }
 
     return {
@@ -494,6 +679,327 @@ export const salvage = {
     };
   },
 
+  // =====================================================================================
+  // SF-029 — salvage-sorting pocket: spawn, clamp adoption, integrity, cradle delivery
+  // =====================================================================================
+
+  _makeSortPocket(sectorId, zone, pointId, wreck, seed, spawnEntity) {
+    if (typeof spawnEntity !== 'function' || !wreck || wreck.alive === false) return null;
+    const hash32 = (this.helpers && this.helpers.hash32) || fallbackHash32;
+    const mulberry32 = (this.helpers && this.helpers.mulberry32) || fallbackMulberry32;
+    const rng = mulberry32(hash32(seed, sectorId, zone.id, 'sort', pointId));
+    if (rng() >= SORT_POCKET_ODDS) return null;
+    // The core is the wreck's own leading pool entry — no invented cargo, the job is a SORT of
+    // what this wreck already truthfully carries.
+    const wreckPool = wreck.data && wreck.data.salvagePool && typeof wreck.data.salvagePool === 'object'
+      ? wreck.data.salvagePool : null;
+    const commodityId = wreckPool ? Object.keys(wreckPool).find((cid) => Math.floor(Number(wreckPool[cid]) || 0) > 0) : null;
+    const poolQty = commodityId ? Math.floor(Number(wreckPool[commodityId])) : 0;
+    if (!commodityId || poolQty <= 0) return null;
+
+    const pocketId = `${pointId}:sort`;
+    const wx = wreck.pos.x, wz = wreck.pos.z;
+    const TAU = Math.PI * 2;
+    const gapA = rng() * TAU;
+    const gapB = (gapA + Math.PI) % TAU;
+    // The core starts seated at the wreck under its clamp.
+    const coreAng = rng() * TAU;
+    const coreDist = WRECK_RADIUS + SORT_CORE_RADIUS + SORT_CORE_OFFSET;
+    // The cradle sits 90° off the first safe gap: the straight run crosses the ring (the risky
+    // fast route); the two gaps are the safe pull directions that then curve to the cradle.
+    const cradleAng = (gapA + (rng() < 0.5 ? 1 : -1) * Math.PI / 2) % TAU;
+
+    const core = spawnEntity({
+      type: 'payload',
+      pos: { x: wx + Math.cos(coreAng) * coreDist, z: wz + Math.sin(coreAng) * coreDist },
+      vel: { x: 0, z: 0 },
+      radius: SORT_CORE_RADIUS,
+      mass: SORT_CORE_MASS,
+      hull: SORT_CORE_HULL,
+      hullMax: SORT_CORE_HULL,
+      // Sensor body like every authored payload: no component impacts, but SG-02 keeps a real
+      // dynamic body so the massline can attach and the clamp can hold it.
+      collides: false,
+      physicsBody: {
+        dynamic: true,
+        radius: SORT_CORE_RADIUS,
+        mass: SORT_CORE_MASS,
+        inertiaY: 0.5 * SORT_CORE_MASS * SORT_CORE_RADIUS * SORT_CORE_RADIUS,
+        ccd: false,
+        material: 'massline_sensor',
+      },
+      data: {
+        parentType: 'sort_core',
+        role: 'sort_core',
+        loot: [],
+        salvagePool: { [commodityId]: poolQty },
+        salvagePointId: pointId,
+        scanLabel: 'Wreck Drive Core',
+        sortPocketId: pocketId,
+        transientSector: false,
+      },
+    });
+    if (!core || core.alive === false) return null;
+
+    // Light dangerous debris ring with two authored gaps. Angular placement retries are bounded
+    // and seeded; geometry is real — the lanes are actually clear.
+    const debrisIds = [];
+    for (let k = 0; k < SORT_DEBRIS_COUNT; k++) {
+      let placed = false;
+      for (let attempt = 0; attempt < 6 && !placed; attempt++) {
+        const ang = (k / SORT_DEBRIS_COUNT) * TAU + rng() * (TAU / SORT_DEBRIS_COUNT);
+        const nearGap = angularNear(ang, gapA, SORT_GAP_HALF_RAD) || angularNear(ang, gapB, SORT_GAP_HALF_RAD);
+        if (nearGap) continue;
+        const r = SORT_RING_INNER + rng() * (SORT_RING_OUTER - SORT_RING_INNER);
+        const debris = spawnEntity({
+          type: 'wreck',
+          pos: { x: wx + Math.cos(ang) * r, z: wz + Math.sin(ang) * r },
+          vel: { x: 0, z: 0 },
+          radius: 3 + rng() * 2,
+          mass: SORT_DEBRIS_MASS,
+          hull: 1,
+          hullMax: 1,
+          physicsBody: { shape: 'capsule', mass: SORT_DEBRIS_MASS },
+          data: {
+            parentType: 'sort_debris',
+            loot: [],
+            authoredSalvagePool: { cmdty_scrap_metal: 1 },
+            authoredScanLabel: 'Light Debris',
+            salvagePointId: pointId,
+            sortPocketId: pocketId,
+          },
+        });
+        if (debris && debris.alive !== false) debrisIds.push(debris.id);
+        placed = true;
+      }
+    }
+
+    const cradlePos = { x: wx + Math.cos(cradleAng) * SORT_CRADLE_DISTANCE, z: wz + Math.sin(cradleAng) * SORT_CRADLE_DISTANCE };
+    const cradle = spawnEntity({
+      type: 'wreck',
+      pos: cradlePos,
+      vel: { x: 0, z: 0 },
+      radius: SORT_CRADLE_RADIUS,
+      mass: SORT_CRADLE_MASS,
+      hull: 1e9,
+      hullMax: 1e9,
+      // SG-02 substance law: a static destination needs the authored static body.
+      collides: true,
+      physicsBody: {
+        dynamic: false,
+        radius: SORT_CRADLE_RADIUS,
+        mass: SORT_CRADLE_MASS,
+      },
+      data: {
+        parentType: 'sort_cradle',
+        loot: [],
+        authoredSalvagePool: {},
+        authoredScanLabel: 'Salvage Cradle',
+        salvagePointId: pointId,
+        sortPocketId: pocketId,
+      },
+    });
+    if (!cradle || cradle.alive === false) return null;
+
+    const salvageState = this._ensureState();
+    const pocket = {
+      id: pocketId,
+      schema: 'spaceface.salvageSort.v1',
+      sectorId,
+      zoneId: zone.id,
+      wreckId: wreck.id,
+      coreId: core.id,
+      cradleId: cradle.id,
+      debrisIds,
+      commodityId,
+      poolQty,
+      gapAngles: [gapA, gapB],
+      clampId: null,
+      phase: 'held',          // held → free → delivered | lost
+      integrity: 1,
+      prevCorePos: null,
+      contacts: null,         // debris ids currently touching the towed core (lazily a Set)
+    };
+    salvageState.sortPockets.push(pocket);
+    return pocket;
+  },
+
+  _sortAttachments() {
+    const registry = this.registry;
+    if (!registry || typeof registry.get !== 'function') return null;
+    const actions = registry.get('actions');
+    if (actions && actions.kernel && actions.kernel.attachments) return actions.kernel.attachments;
+    const combat = registry.get('combat');
+    return combat && combat.kernel && combat.kernel.attachments ? combat.kernel.attachments : null;
+  },
+
+  _updateSortPockets(dt, state) {
+    const pockets = state.salvage && state.salvage.sortPockets;
+    if (!pockets || !pockets.length) return;
+    if (state.mode && state.mode !== 'flight') return;
+    const attachments = this._sortAttachments();
+    const entities = state.entities;
+    if (!entities || typeof entities.get !== 'function') return;
+    const bus = this.bus;
+    for (const pocket of pockets) {
+      if (!pocket || pocket.phase === 'delivered' || pocket.phase === 'lost') continue;
+      const core = entities.get(pocket.coreId);
+      if (!core || core.alive === false) { this._loseSortPocket(pocket, 'core_lost'); continue; }
+      const wreck = entities.get(pocket.wreckId);
+      const cradle = entities.get(pocket.cradleId);
+      if (!cradle || cradle.alive === false) { this._loseSortPocket(pocket, 'cradle_lost'); continue; }
+
+      // Clamp truth: adopted once both bodies are live, then read from the attachment authority.
+      // ONLY an ADOPTED clamp observed no-longer-active shears the core — the kernel keeps broken
+      // records in its byId map, so a non-active state IS the kernel's own break verdict, and a
+      // record the authority lost outright means the constraint is physically gone either way.
+      // A failed CREATION attempt (the physics port can still be booting) is transient: it stays
+      // 'held' silently and retries next tick — a boot race never reads as a shear, and a core
+      // under an unadopted pocket stays uncollectible.
+      if (pocket.clampId == null) {
+        if (!wreck || wreck.alive === false) {
+          // The wreck died holding the core: the clamp authority breaks with it.
+          this._separateSortCore(pocket, 'wreck_lost');
+        } else if (attachments) {
+          const created = attachments.create({
+            defId: SORT_CLAMP_DEF_ID,
+            ownerId: wreck.id,
+            targetId: core.id,
+            sourceWorld: { x: wreck.pos.x, y: 0, z: wreck.pos.z },
+            targetWorld: { x: core.pos.x, y: 0, z: core.pos.z },
+          });
+          if (created && created.ok) {
+            pocket.clampId = created.attachment ? created.attachment.id : created.id;
+            pocket.phase = 'held';
+          }
+          // else: creation can fail while the physics port boots — retry next tick, still held.
+        }
+      } else {
+        const clamp = attachments ? attachments.get(pocket.clampId) : null;
+        if (attachments && clamp && clamp.state !== 'active') {
+          this._separateSortCore(pocket, 'clamp_broken');
+        }
+      }
+
+      if (pocket.phase === 'free') {
+        this._sortDebrisContact(pocket, core, entities);
+        // Delivery: free core, inside the cradle, slow enough to be set down. While the clamp
+        // still holds, the core CANNOT be collected — the acceptance case that keeps the job
+        // physical instead of a proximity timer.
+        const dx = cradle.pos.x - core.pos.x, dz = cradle.pos.z - core.pos.z;
+        const reach = (Number(cradle.radius) || 0) + (Number(core.radius) || 0);
+        const speed = Math.hypot(Number(core.vel && core.vel.x) || 0, Number(core.vel && core.vel.z) || 0);
+        if (dx * dx + dz * dz <= reach * reach && speed <= SORT_DELIVER_MAX_SPEED) {
+          this._deliverSortPocket(pocket, core, cradle, state);
+          continue;
+        }
+      }
+      pocket.prevCorePos = { x: core.pos.x, z: core.pos.z };
+    }
+  },
+
+  _separateSortCore(pocket, reason) {
+    pocket.phase = 'free';
+    if (!this.bus) return;
+    this.bus.emit('salvage:sortSeparated', {
+      schema: 'spaceface.salvageSort.v1', pocketId: pocket.id,
+      wreckId: pocket.wreckId, coreId: pocket.coreId, reason,
+    });
+    if (reason !== 'wreck_lost') {
+      // One honest line: the clamp is a physical thing that broke under load.
+      this.bus.emit('comms:log', {
+        from: 'WRECK FIELD',
+        text: 'CLAMP SHEARED — the drive core is loose. Cradle marks the drop.',
+        kind: 'salvage',
+      });
+    }
+  },
+
+  _sortDebrisContact(pocket, core, entities) {
+    if (!pocket.prevCorePos) return;
+    if (!pocket.contacts) pocket.contacts = new Set();
+    for (const debrisId of pocket.debrisIds) {
+      const debris = entities.get(debrisId);
+      if (!debris || debris.alive === false) continue;
+      const rSum = (Number(core.radius) || 0) + (Number(debris.radius) || 0);
+      // Swept between ticks: the towed core's segment against the debris disk, so a fast tow
+      // cannot tunnel through the light debris without the contact being read.
+      const ax = pocket.prevCorePos.x, az = pocket.prevCorePos.z;
+      const bx = core.pos.x, bz = core.pos.z;
+      const dx = bx - ax, dz = bz - az;
+      const len2 = dx * dx + dz * dz;
+      const t = len2 > 1e-12
+        ? Math.max(0, Math.min(1, ((debris.pos.x - ax) * dx + (debris.pos.z - az) * dz) / len2))
+        : 0;
+      const nx = ax + dx * t - debris.pos.x, nz = az + dz * t - debris.pos.z;
+      const hit = nx * nx + nz * nz <= rSum * rSum;
+      if (hit && !pocket.contacts.has(debrisId)) {
+        pocket.contacts.add(debrisId);
+        pocket.integrity = Math.max(0, pocket.integrity - SORT_IMPACT_DAMAGE);
+        if (this.bus) {
+          this.bus.emit('salvage:sortImpact', {
+            schema: 'spaceface.salvageSort.v1', pocketId: pocket.id,
+            debrisId, integrity: pocket.integrity,
+          });
+          this.bus.emit('toast', {
+            text: `Core scored by debris — integrity ${Math.round(pocket.integrity * 100)}%.`,
+            kind: 'warn', ttl: 3,
+          });
+        }
+      } else if (!hit && pocket.contacts.has(debrisId)) {
+        pocket.contacts.delete(debrisId);
+      }
+    }
+  },
+
+  _deliverSortPocket(pocket, core, cradle, state) {
+    const paid = Math.floor(pocket.poolQty * pocket.integrity);
+    const accepted = addSalvage(state, pocket.commodityId, paid);
+    const lost = Math.max(0, pocket.poolQty - paid);
+    const repairEstimateCr = lost > 0 ? lost * (BASE_PRICE_BY_ID.get(pocket.commodityId) || 0) : 0;
+    pocket.phase = 'delivered';
+    // The cradle took the core; this runtime spawned it and retires it.
+    core.alive = false;
+    if (!this.bus) return;
+    const receipt = {
+      schema: 'spaceface.salvageSort.v1',
+      pocketId: pocket.id,
+      cradleId: pocket.cradleId,
+      commodityId: pocket.commodityId,
+      poolQty: pocket.poolQty,
+      integrity: pocket.integrity,
+      paid,
+      accepted,
+      lost,
+      repairEstimateCr,
+    };
+    this.bus.emit('salvage:sortDelivered', receipt);
+    const pct = Math.round(pocket.integrity * 100);
+    this.bus.emit('toast', {
+      text: accepted > 0
+        ? `Cradle took the core — ${accepted}u ${pocket.commodityId.replace('cmdty_', '').replaceAll('_', ' ')} to the bay (${pct}% integrity).`
+        : 'Cradle took the core — the salvage bay could not take one more unit.',
+      kind: accepted > 0 ? 'info' : 'warn', ttl: 4,
+    });
+    if (lost > 0) {
+      this.bus.emit('comms:log', {
+        from: 'SALVAGE CRADLE',
+        text: `Delivery short: ${lost}u scored. That is ${repairEstimateCr} cr of core repair you are eating.`,
+        kind: 'salvage',
+      });
+    }
+    this.bus.emit('audio:cue', { id: 'scan_resolve', gain: 0.6 });
+  },
+
+  _loseSortPocket(pocket, reason) {
+    pocket.phase = 'lost';
+    if (this.bus) {
+      this.bus.emit('salvage:sortLost', {
+        schema: 'spaceface.salvageSort.v1', pocketId: pocket.id, reason,
+      });
+    }
+  },
+
   _makeSourceSalvagePoint(sectorId, zone, descriptor, spawnEntity) {
     if (!descriptor || descriptor.sectorId !== sectorId || descriptor.zoneId !== zone.id) return null;
     const sourceKey = cleanIdentity(descriptor.sourceKey);
@@ -504,13 +1010,14 @@ export const salvage = {
     let entityId = existing ? existing.id : null;
     if (!existing && typeof spawnEntity === 'function') {
       const ent = spawnEntity({
-        type: 'wreck',
-        pos: { x: descriptor.pos.x, z: descriptor.pos.z },
-        radius: WRECK_RADIUS,
-        mass: WRECK_MASS,
-        hull: 1,
-        hullMax: 1,
-        physicsBody: { shape: 'capsule' },
+        type: descriptor===TALLY_THREE?'payload':'wreck',
+        pos: { ...(record.motion?.pos || descriptor.pos) },
+        ...(descriptor===TALLY_THREE?{vel:{...record.motion.vel},rot:record.motion.rot,angVel:record.motion.angVel,flags:{persistent:true}}:{}),
+        radius: descriptor.radius || WRECK_RADIUS,
+        mass: descriptor.mass || WRECK_MASS,
+        hull: descriptor===TALLY_THREE?record.remainingHull:1,
+        hullMax: descriptor===TALLY_THREE?80:1,
+        physicsBody: { shape: 'capsule', mass: descriptor.mass || WRECK_MASS },
         data: {
           parentType: 'freighter',
           proportions: WRECK_COLLIDER_PROPORTIONS,
@@ -521,7 +1028,11 @@ export const salvage = {
           salvageSourceKey: sourceKey,
           isCommunicator: false,
           wreckMissionId: null,
-          scanLabel: 'Dead Freighter Drift',
+          scanLabel: descriptor===TALLY_THREE?'Claim Crate — Ceres Refinery':'Dead Freighter Drift',
+          ...(descriptor===TALLY_THREE?{worldRecordId:TALLY_THREE.worldRecordId,sectorId,homeSectorId:sectorId,
+            transientSector:false,role:'tally_claim_crate',kind:'cargo',commodityId:'cmdty_salvage_electronics',
+            salvorClaimedBy:record.claimId,cargoIdentity:{ownerId:TALLY_THREE.claimId,ownerName:TALLY_THREE.ownerName,
+              originId:TALLY_THREE.homeStationId,destinationId:TALLY_THREE.homeStationId},manifestId:TALLY_THREE.manifestId}:{}),
         },
       });
       entityId = ent ? ent.id : null;
@@ -543,6 +1054,9 @@ export const salvage = {
   // TRIGGER (proximity OR scan) → reveal log + offer mission
   // =====================================================================================
   update(dt, state) {
+    // SF-029: sort pockets tick first — their clamp/damage/delivery reads are flight-mode gated
+    // and a strict no-op until a pocket actually rolled.
+    this._updateSortPockets(dt, state);
     const list = state.salvage && state.salvage.points;
     if (!list || !list.length) return;             // no salvage → strict no-op (golden-sim safe)
     if (state.mode && state.mode !== 'flight') return;
@@ -639,15 +1153,26 @@ export const salvage = {
     return wreckMissionByIdSafe(id);
   },
 
+  _repOf(factionId) {
+    const rec = factionId && this.state && this.state.factions ? this.state.factions[factionId] : null;
+    return rec ? (rec.rep || 0) : 0;
+  },
+
   // Deterministic origin/destination station for the wreck contract: the sector's own
   // mission-capable dock (a communicator offer is a local recovery job, not a courier leg).
   // hash32(point.id) picks the slot so re-entering the sector re-issues the same board row.
   _wreckStation(point) {
     const sec = SECTOR_BY_ID.get(point && point.sectorId);
     if (!sec) return null;                    // an uncharted sector id can host no board at all
+    // The filing desk must be a berth this pilot can reach: the dock gate's own floor —
+    // explicit minRep first, repGated meaning positive standing — plus the dynamic
+    // access rules (the Den's entrance run). A rep-5 pilot files at Sker locally; a
+    // Quiet -50 pilot cannot file at the Outpost.
+    const dockable = (s, sectorFactionId) => !!s
+      && stationBerthAdmits(s, this._repOf(s.factionId || sectorFactionId), this.state);
     const stations = sec.stations || [];
-    const capable = stations.filter((s) => s && s.services && s.services.includes('missions') && !s.repGated);
-    const pool = capable.length ? capable : stations.filter((s) => s && !s.repGated);
+    const capable = stations.filter((s) => s.services && s.services.includes('missions') && dockable(s, sec.factionId));
+    const pool = capable.length ? capable : stations.filter((s) => dockable(s, sec.factionId));
     if (pool.length) {
       const idx = fallbackHash32(point.id, 'salvage-station') % pool.length;
       return pool[idx] || pool[0] || null;
@@ -659,7 +1184,7 @@ export const salvage = {
     const remote = [];
     for (const sector of SECTORS) {
       for (const s of (sector && sector.stations) || []) {
-        if (s && !s.repGated && s.services && s.services.includes('missions')) remote.push(s);
+        if (dockable(s, sector.factionId) && s.services && s.services.includes('missions')) remote.push(s);
       }
     }
     if (!remote.length) return null;
@@ -746,11 +1271,20 @@ function truncate(s, n) {
   return s.length <= n ? s : s.slice(0, n - 1) + '…';
 }
 
+/** Wrap an angle difference to [-PI, PI] and test it against a half-width. */
+function angularNear(ang, center, halfWidth) {
+  let d = (ang - center) % (Math.PI * 2);
+  if (d > Math.PI) d -= Math.PI * 2;
+  if (d < -Math.PI) d += Math.PI * 2;
+  return Math.abs(d) <= halfWidth;
+}
+
 function freshSalvageState() {
-  return { points: [], plannedSectorId: null, sources: {} };
+  return { points: [], plannedSectorId: null, sortPockets: [], sources: {} };
 }
 
 function sourceDescriptor(sourceKey) {
+  if(sourceKey===TALLY_THREE.sourceKey)return TALLY_THREE;
   if (sourceKey !== VESTA_DERELICT_SALVAGE_SOURCE.sourceKey) return null;
   return VESTA_DERELICT_SALVAGE_SOURCE;
 }
@@ -762,11 +1296,12 @@ function freshSourceRecord(descriptor) {
     sectorId: descriptor.sectorId,
     zoneId: descriptor.zoneId,
     remainingPool: clonePool(descriptor.pool),
-    claimId: null,
+    claimId: descriptor.claimId || null,
     workId: null,
     extractedBy: null,
     disputedBy: null,
     extracted: false,
+    ...(descriptor===TALLY_THREE?tallySourceFields({}):{}),
   };
 }
 
@@ -797,6 +1332,7 @@ function normalizeSourceRecord(raw, descriptor) {
     extractedBy: cleanIdentity(raw.extractedBy),
     disputedBy: cleanIdentity(raw.disputedBy),
     extracted,
+    ...(descriptor===TALLY_THREE?tallySourceFields(raw):{}),
   };
 }
 
@@ -816,7 +1352,21 @@ function snapshotSourceRecord(record, descriptor) {
     extractedBy: cleanIdentity(record.extractedBy),
     disputedBy: cleanIdentity(record.disputedBy),
     extracted: record.extracted === true || poolTotal(remainingPool) <= 0,
+    ...(descriptor===TALLY_THREE?tallySourceFields(record):{}),
   };
+}
+
+function tallySourceFields(raw) {
+  const m=raw.motion;
+  const valid=[m?.pos?.x,m?.pos?.z,m?.vel?.x,m?.vel?.z,m?.rot,m?.angVel].every(Number.isFinite);
+  const delivery=raw.delivery?.sourceKey===TALLY_THREE.sourceKey&&raw.delivery?.worldRecordId===TALLY_THREE.worldRecordId
+    &&raw.delivery?.stationId===TALLY_THREE.homeStationId&&typeof raw.delivery?.receiptId==='string'
+    &&Number.isSafeInteger(raw.delivery?.qty)&&raw.delivery.qty>0&&Number.isSafeInteger(raw.delivery?.quoteCr)&&raw.delivery.quoteCr>=0
+    ?{...raw.delivery}:null;
+  return {motion:valid?{pos:{...m.pos},vel:{...m.vel},rot:m.rot,angVel:m.angVel}:{pos:{...TALLY_THREE.pos},vel:{x:0,z:0},rot:0,angVel:0},
+    remainingHull:Math.max(0,Math.min(80,Number.isFinite(raw.remainingHull)?raw.remainingHull:80)),
+    met:raw.met===true,assessorLost:raw.assessorLost===true,evidenceObserved:raw.evidenceObserved===true,
+    evidenceRevision:Math.max(0,Math.min(Number.MAX_SAFE_INTEGER,Math.trunc(Number(raw.evidenceRevision)||0))),delivery};
 }
 
 function normalizePool(raw) {

@@ -58,6 +58,10 @@ function feelHost() {
     entities: new Map([
       [1, { id: 1, type: 'ship', mass: HULL_MASS, pos: { x: 0, z: 0 } }],
       [2, { id: 2, type: 'asteroid', mass: 1000, pos: { x: 40, z: 0 } }],
+      // A remote NPC pair for the player-caused receipt: the live channel's beat now belongs to
+      // contacts the player caused without taking part in (the F9 whip chain).
+      [3, { id: 3, type: 'ship', mass: HULL_MASS, pos: { x: 40, z: 0 } }],
+      [4, { id: 4, type: 'asteroid', mass: 1000, pos: { x: 80, z: 0 } }],
     ]),
     render: { cameraCtrl: { addTrauma: (v) => traumas.push(v) } },
     rng: () => { throw new Error('presentation must not consume sim RNG'); },
@@ -131,10 +135,25 @@ for (const seed of SEEDS) {
     }
   });
 
-  test(`seed ${seed}: physics:impact on the live bus scales the beat by preSolveClosingSpeed`, () => {
-    const answers = CLOSING_SPEEDS.map((speed) => {
+  test(`seed ${seed}: physics:impact on the live bus scales the remote player-caused beat by preSolveClosingSpeed`, () => {
+    // Ordinary player-involved contacts are deliberately silent on this channel: the contact-solid
+    // pass removed their camera stall, so the beat now belongs to remote contacts the player
+    // caused without taking part in — the F9 whip chain. The scaling contract itself is unchanged.
+    for (const speed of CLOSING_SPEEDS) {
       const { bus, host, traumas, frame } = feelHost();
       bus.emit('physics:impact', physicsImpact(speed));
+      frame();
+      assert.equal(traumas[0], undefined, `a ${speed} WU/s player contact must not beat on this channel`);
+      assert.equal(host._hsTimer, 0, 'a player contact must not hit-stop the camera');
+    }
+    const answers = CLOSING_SPEEDS.map((speed) => {
+      const { bus, host, traumas, frame } = feelHost();
+      bus.emit('physics:impact', physicsImpact(speed, {
+        aId: 3,
+        bId: 4,
+        playerInvolved: false,
+        provenance: { actorId: 1, rootId: 900, tick: 120 },
+      }));
       frame();
       return { trauma: traumas[0], hsDur: host._hsTimer };
     });
@@ -144,14 +163,19 @@ for (const seed of SEEDS) {
     ));
     for (let i = 1; i < answers.length; i++) {
       assert.ok(answers[i].hsDur > answers[i - 1].hsDur,
-        'hit-stop must strictly increase through the physics:impact subscription');
+        'hit-stop must strictly increase through the remote player-caused receipt');
       assert.ok(answers[i].trauma > answers[i - 1].trauma,
-        'camera trauma must strictly increase through the physics:impact subscription');
+        'camera trauma must strictly increase through the remote player-caused receipt');
     }
     // A receipt missing the pre-solve field answers like the clamped 40 WU/s it carries —
     // the field, not the row's test setup, is what rescues the ram.
     const { bus, host, traumas, frame } = feelHost();
-    bus.emit('physics:impact', physicsImpact(null));
+    bus.emit('physics:impact', physicsImpact(null, {
+      aId: 3,
+      bId: 4,
+      playerInvolved: false,
+      provenance: { actorId: 1, rootId: 900, tick: 120 },
+    }));
     frame();
     const clamped = resolveCollisionFeel(contact(), {
       mode: 'flight', playerDistance: 0, deltaV: SOLVER_CLAMP_DV,

@@ -70,8 +70,9 @@ import { travelFlag } from '../data/featureFlags.js';
 import { resolveTravelCeiling } from '../core/flight/propulsionKernel.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { sectorLocalToGlobalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
-import { LANE_HELIOS_TETHYS, buildLaneGeometry } from '../data/travelLaneRoutes.js';
+import { LANE_HELIOS_TETHYS, buildLaneGeometry, laneDisruptionHeadline } from '../data/travelLaneRoutes.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 export const TRAVEL_LANE_SCHEMA = 'travel_lane_v1';
@@ -96,6 +97,15 @@ const TRAFFIC_SPEED_WU_S = 420;
 /** Traffic materializes a little further out than beacons so convoys are seen approaching. */
 const TRAFFIC_SPAWN_RANGE_WU = 4200;
 
+/**
+ * Arm radius for the ambush decode warm: the player's first tell that a segment is dead is
+ * the moment they enter it, so 'lane:ambushArmed' publishes while they close inside the
+ * corridor — boosted lane travel is fast, so the radius carries several seconds of runway.
+ */
+const LANE_AMBUSH_ARM_RADIUS_WU = 2400;
+/** Re-arm cadence: decode leases expire on the residency sweep, so a long approach re-arms. */
+const LANE_AMBUSH_REARM_S = 20;
+
 function finite(v, fallback = 0) {
   return Number.isFinite(v) ? v : fallback;
 }
@@ -117,8 +127,18 @@ const SLING_RING_RADIUS_WU = 48;
 const SLING_ALIGN_DOT_MIN = 0.85;
 /** Exit bar: at least twice the hull's governed combat cruise. */
 const SLING_EXIT_MULT = 2;
-/** Along-axis catapult acceleration inside the tube (WU/s²). Impulse is a·mass·dt. */
+/** Aim point above the bar so residual losses still land the ride at ≥ the bar. */
+const SLING_EXIT_OVERSHOOT = 1.1;
+/** Along-axis catapult acceleration inside the tube (WU/s²). Impulse is a·mass·dt.
+ *  This is the FLOOR of the boost: the tube's contract is the exit speed, and the
+ *  accel that lands it is solved per body in `_boostSlingBody`. A flat 240 adds
+ *  2·a·L ≈ 46 080 (WU/s)² over the 96 WU tube, which reaches 2× cruise only while
+ *  3·cruise² ≤ that — true when governed cruises topped out near ~120 WU/s, not
+ *  for the current 170–195 hulls. */
 const SLING_ACCEL_WU_S2 = 240;
+/** Bound on the solved accel so a body entering a metre from the exit face cannot
+ *  take an unbounded kick. Well under the one-tick delta the fling already grants. */
+const SLING_ACCEL_MAX_WU_S2 = 4800;
 /** Off-axis throw: exit at least 3× the hull's governed combat cruise. */
 const SLING_THROW_EXIT_MULT = 3;
 /** Sustain accel while an off-axis body is still below the throw bar. */
@@ -130,6 +150,15 @@ const SLING_HAULER_RECYCLE_ALONG_WU = 280;
 const SLING_HAULER_CRUISE_WU_S = 85;
 const SLING_HAULER_MASS = 55;
 const SLING_HAULER_RADIUS = 18;
+/**
+ * Scheduled freight rides a marked side lane, not the approach centreline. The catapult's
+ * contract is a ≥2× exit for a rider on the through-line — it cannot honour that while its
+ * own parked traffic sits on the axis (a boosted rider rear-ends the slower hauler and both
+ * leave at the collision's momentum average, under the bar). 40 keeps the hull inside the
+ * 48-radius boost volume (its edge may kiss the soft cylinder — there is no wall) while
+ * clearing rider+hull contact for any hull up to ~22 radius on the centreline.
+ */
+const SLING_HAULER_LANE_OFFSET_WU = 40;
 /** Solid manufactured ring at infrastructure.from. The claim catapult sits just past it. */
 const MANUFACTURED_RING_RADIUS_WU = 32;
 /**
@@ -375,6 +404,23 @@ export function buildManufacturedLaneGeometry(infrastructure) {
   };
 }
 
+// Ephemeral ownership follows the exact object and its occupant life, never a recycled ID.
+function bindLaneEntity(entity) {
+  return { entity, life: occupantGenerationOf(entity) };
+}
+
+function currentLaneEntity(binding, entity) {
+  return !!entity && entity.alive !== false && binding?.entity === entity
+    && binding.life === occupantGenerationOf(entity);
+}
+
+function isLaneTraffic(entity, laneId, index) {
+  return entity?.alive !== false && entity?.type === 'freighter'
+    && entity.collides === false && entity.physicsBody === false
+    && entity.data?.parentType === 'lane_traffic' && entity.data.laneId === laneId
+    && entity.data.laneTrafficIndex === index;
+}
+
 export const travelLanes = {
   name: 'travelLanes',
 
@@ -391,7 +437,11 @@ export const travelLanes = {
     // ("never live encounters/squads/entity ids").
     this._beaconIds = new Map();   // beacon index -> entity id
     this._trafficIds = [];         // entity ids, index-aligned with the deterministic roster
+    this._trafficBindings = [];    // exact object/life custody for each roster slot
+    this._trafficNeedsRebind = false;
+    this._trafficAmbiguous = new Set();
     this._slingHaulerId = null;
+    this._slingHaulerBinding = null;
     this._slingPlayerActive = false;
     this._claimSlingPlayerActive = false;
     this._slingThrownIds = new Set();
@@ -480,27 +530,71 @@ export const travelLanes = {
     if (bus && typeof bus.on === 'function') {
       // A restored save re-publishes the readout so UI that missed the transition is not blank, and
       // drops entity bookkeeping whose ids no longer refer to anything.
-      bus.on('save:loaded', () => {
-        this._beaconIds.clear();
-        this._trafficIds.length = 0;
-        this._slingHaulerId = null;
-        this._slingPlayerActive = false;
-        this._claimSlingPlayerActive = false;
-        this._slingThrownIds.clear();
-        this._ambushRequested.clear();
-        this._lastPublishedStatus.laneId = null;
-        this._lastPublishedStatus.inLane = null;
-        this._lastPublishedStatus.segmentIndex = null;
-        this._lastPublishedStatus.segmentState = undefined;
-        this._lastPublishedStatus.boosted = null;
-        this._lastPublishedStatus.disrupted = null;
-        this._lastPublishedStatus.driveState = null;
-        this._driveProfileRef = null;
-        this._driveBaseCeiling = 0;
-        this._manufacturedRoutes.length = 0;
-        this._manufacturedCache.clear();
-        this._manufacturedEntityIds.clear();
-      });
+      bus.on('save:loaded', () => this._resetRunBindings(true));
+      bus.on('sector:enter', () => { this._trafficNeedsRebind = true; });
+    }
+  },
+
+  newGame() {
+    this._resetRunBindings(false);
+  },
+
+  _resetRunBindings(rebindOwned) {
+    this._beaconIds.clear();
+    this._trafficIds.length = 0;
+    this._trafficBindings.length = 0;
+    this._trafficNeedsRebind = rebindOwned;
+    this._trafficAmbiguous.clear();
+    this._slingHaulerId = null;
+    this._slingHaulerBinding = null;
+    this._slingPlayerActive = false;
+    this._claimSlingPlayerActive = false;
+    this._slingThrownIds.clear();
+    this._ambushRequested.clear();
+    this._lastPublishedStatus.laneId = null;
+    this._lastPublishedStatus.inLane = null;
+    this._lastPublishedStatus.segmentIndex = null;
+    this._lastPublishedStatus.segmentState = undefined;
+    this._lastPublishedStatus.boosted = null;
+    this._lastPublishedStatus.disrupted = null;
+    this._lastPublishedStatus.driveState = null;
+    this._driveProfileRef = null;
+    this._driveBaseCeiling = 0;
+    this._manufacturedRoutes.length = 0;
+    this._manufacturedCache.clear();
+    this._manufacturedEntityIds.clear();
+  },
+
+  // Save/sector rematerialization may replace owned carrier objects. Re-resolve only
+  // unambiguous authored lane identities at those boundaries; ordinary ID reuse cannot
+  // acquire custody merely by retaining a type or some copied metadata.
+  _rebindOwnedTraffic(state) {
+    this._trafficNeedsRebind = false;
+    this._trafficAmbiguous.clear();
+    const entities = state.entities;
+    if (!entities?.values) return;
+    const candidates = new Map();
+    let hauler = null, haulerCount = 0;
+    for (const entity of entities.values()) {
+      const index = entity?.data?.laneTrafficIndex;
+      if (Number.isInteger(index) && index >= 0 && index < TRAFFIC_COUNT
+        && isLaneTraffic(entity, this.lane.id, index)) {
+        candidates.set(index, candidates.has(index) ? null : entity);
+      }
+      if (entity?.alive !== false && entity?.type === 'ship'
+        && entity.data?.parentType === 'sling_ring_traffic' && entity.data.slingRingId === CERES_SLING_RING.id) {
+        hauler = entity; haulerCount++;
+      }
+    }
+    for (const [index, entity] of candidates) {
+      if (!entity) { this._trafficAmbiguous.add(index); continue; }
+      if (currentLaneEntity(this._trafficBindings[index], entities.get(this._trafficIds[index]))) continue;
+      this._trafficIds[index] = entity.id;
+      this._trafficBindings[index] = bindLaneEntity(entity);
+    }
+    if (haulerCount === 1 && !currentLaneEntity(this._slingHaulerBinding, entities.get(this._slingHaulerId))) {
+      this._slingHaulerId = hauler.id;
+      this._slingHaulerBinding = bindLaneEntity(hauler);
     }
   },
 
@@ -517,6 +611,7 @@ export const travelLanes = {
     const player = playerEntity(state);
     if (!player || !player.pos) return;
     // ── everything past this line runs only in live play, on a real player ──
+    if (this._trafficNeedsRebind) this._rebindOwnedTraffic(state);
 
     const authoredFix = resolveLaneSegmentInto(geometry, player.pos, this._authoredFixScratch);
     const disrupted = !!(authoredFix.inLane && authoredFix.segment && authoredFix.segment.disrupted);
@@ -557,6 +652,7 @@ export const travelLanes = {
     this._applySlingRing(dt, state, player);
     this._applyClaimSlingRings(dt, state, player);
     this._applyDisruption(state, disrupted);
+    this._armAmbushApproach(state, player, authoredFix);
     if (disrupted) this._requestAmbush(state, authoredFix.segment);
     this._updateBeacons(state, player);
     this._updateTraffic(state, player);
@@ -679,10 +775,31 @@ export const travelLanes = {
     if (alignmentDot(entity.vel, ring.axis) < SLING_ALIGN_DOT_MIN) return false;
     const target = Math.max(0, finite(cruise, 0)) * SLING_EXIT_MULT;
     if (!(target > 0)) return false;
-    if (bodyAlongSpeed(entity, ring) >= target * 1.05) return true;
+    const alongSpeed = bodyAlongSpeed(entity, ring);
+    const aim = target * SLING_EXIT_OVERSHOOT;
+    if (alongSpeed >= aim) return true;
+    // The tube's contract is the exit speed, not a fixed shove — and this system
+    // runs on the 2 Hz calendar clock in production, so `dt` is the ELAPSED window
+    // since the last firing, not a frame. A ~0.4 s transit gets ~one firing: a flat
+    // a·dt grant delivers `accel × arbitrary elapsed`, which is how the corridor
+    // under-threw its own traffic (measured +77 WU/s on a +170 bar). Two regimes:
+    //   • At a sparse firing the honest grant is the fling's own idiom — a catch-up
+    //     impulse sized to land the aim, capped at `aim − alongSpeed`. A body caught
+    //     inside leaves at the bar no matter how long the window was.
+    //   • At a per-tick cadence the grant is the authored ride: an accel solved to
+    //     land the aim AT the exit face (v² + 2·a·rem = aim²), floored at the base
+    //     rate so slow hulls keep the same feel and capped against edge spikes.
+    // The catch-up cap binds whichever regime is larger, so fast hulls get the
+    // lift they need and no body is ever granted more than the ride owes it.
+    const remaining = Math.max(1, ring.length * 0.5 - ringAlong(entity.pos, ring));
+    const need = (aim * aim - alongSpeed * alongSpeed) / (2 * remaining);
+    const accel = Math.min(SLING_ACCEL_MAX_WU_S2, Math.max(SLING_ACCEL_WU_S2, need));
+    const deltaV = Math.min(accel * dt, aim - alongSpeed);
+    if (!(deltaV > 0)) return true;
     const mass = bodyMass(entity);
-    const impulse = SLING_ACCEL_WU_S2 * mass * dt;
+    const impulse = deltaV * mass;
     const axis = ring.axis;
+    if (entity.id === 6 && process.env.SF_PROBE6) console.error(`SLING6 boost-impulse dt=${dt.toFixed(3)} dV=${deltaV.toFixed(3)} pos=(${entity.pos.x.toFixed(1)},${entity.pos.z.toFixed(1)}) along=${bodyAlongSpeed(entity, ring).toFixed(1)}`);
     queuePhysicsImpulse(entity, { x: axis.x * impulse, y: 0, z: axis.z * impulse });
     return true;
   },
@@ -723,6 +840,7 @@ export const travelLanes = {
     if (id != null && !this._slingThrownIds.has(id)) {
       this._slingThrownIds.add(id);
       const need = target - along;
+      if (entity.id === 6 && process.env.SF_PROBE6) console.error(`SLING6 fling-catchup dt=${dt.toFixed(3)} need=${need.toFixed(3)} pos=(${entity.pos.x.toFixed(1)},${entity.pos.z.toFixed(1)}) along=${along.toFixed(1)}`);
       if (need > 0) {
         const impulse = need * mass;
         queuePhysicsImpulse(entity, { x: dir.x * impulse, y: 0, z: dir.z * impulse });
@@ -731,6 +849,7 @@ export const travelLanes = {
     }
     if (along >= target) return true;
     const impulse = SLING_THROW_ACCEL_WU_S2 * mass * dt;
+    if (entity.id === 6 && process.env.SF_PROBE6) console.error(`SLING6 fling-sustain dt=${dt.toFixed(3)} pos=(${entity.pos.x.toFixed(1)},${entity.pos.z.toFixed(1)}) along=${along.toFixed(1)}`);
     queuePhysicsImpulse(entity, { x: dir.x * impulse, y: 0, z: dir.z * impulse });
     return true;
   },
@@ -840,10 +959,11 @@ export const travelLanes = {
 
     const existingId = this._slingHaulerId;
     const existing = existingId != null ? entities.get(existingId) : null;
-    if (existing && existing.alive !== false) {
+    if (currentLaneEntity(this._slingHaulerBinding, existing)) {
       if (ringAlong(existing.pos) > SLING_HAULER_RECYCLE_ALONG_WU) {
         existing.alive = false;
         this._slingHaulerId = null;
+        this._slingHaulerBinding = null;
       } else {
         const data = existing.data || (existing.data = {});
         const intent = data.intent || (data.intent = {});
@@ -854,16 +974,21 @@ export const travelLanes = {
       }
     } else if (existingId != null) {
       this._slingHaulerId = null;
+      this._slingHaulerBinding = null;
     }
 
     if (!near || this._slingHaulerId != null) return;
 
     const axis = CERES_SLING_RING.axis;
+    const perp = CERES_SLING_RING.throwPerp;
     const cruise = SLING_HAULER_CRUISE_WU_S;
     const spawnAlong = 12;
     const entity = spawnEntity({
       type: 'ship',
-      pos: { x: origin.x + axis.x * spawnAlong, z: origin.z + axis.z * spawnAlong },
+      pos: {
+        x: origin.x + axis.x * spawnAlong + perp.x * SLING_HAULER_LANE_OFFSET_WU,
+        z: origin.z + axis.z * spawnAlong + perp.z * SLING_HAULER_LANE_OFFSET_WU,
+      },
       vel: { x: axis.x * cruise, z: axis.z * cruise },
       rot: this._slingHaulerHeading,
       radius: SLING_HAULER_RADIUS,
@@ -881,7 +1006,10 @@ export const travelLanes = {
         intent: { moveZ: 1, aimAngle: this._slingHaulerHeading },
       },
     });
-    if (entity && entity.id != null) this._slingHaulerId = entity.id;
+    if (entity && entity.id != null) {
+      this._slingHaulerId = entity.id;
+      this._slingHaulerBinding = bindLaneEntity(entity);
+    }
   },
 
   // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -912,6 +1040,52 @@ export const travelLanes = {
     }
     const drive = p.travelDrive || (p.travelDrive = {});
     drive.disrupted = true;
+  },
+
+  /**
+   * Publish the ambush arm while the player approaches a disrupted segment inside the
+   * corridor — the squad's hulls only need the same deterministic plan the fire replays,
+   * and this is the only positional lead that exists ahead of the segment boundary.
+   * `_ambushArmAt` caps one emit per LANE_AMBUSH_REARM_S per (lane, segment).
+   */
+  _armAmbushApproach(state, player, fix) {
+    if (!fix || !fix.inLane || !player || !player.pos) return;
+    const geometry = this.geometry;
+    const lane = this.lane;
+    if (!geometry || !lane || !lane.ambushShapeId) return;
+    const now = Math.max(0, finite(state && state.simTime, 0));
+    const armedAt = this._ambushArmAt || (this._ambushArmAt = new Map());
+    const radiusSq = LANE_AMBUSH_ARM_RADIUS_WU * LANE_AMBUSH_ARM_RADIUS_WU;
+    for (let i = 0; i < geometry.segments.length; i++) {
+      const segment = geometry.segments[i];
+      if (!segment || !segment.disrupted) continue;
+      const key = `${lane.id}:${segment.index}`;
+      // Already fired (or requested) this runtime — the encounter is live or resolved.
+      if (this._ambushRequested.has(key)) continue;
+      const mid = segment.midpoint;
+      if (!mid) continue;
+      const dx = finite(player.pos.x) - finite(mid.x);
+      const dz = finite(player.pos.z) - finite(mid.z);
+      if (dx * dx + dz * dz > radiusSq) continue;
+      const last = armedAt.get(key);
+      if (last != null && now - last < LANE_AMBUSH_REARM_S) continue;
+      const sectorId = sectorMembershipAtGlobal(mid);
+      if (!sectorId) continue;
+      armedAt.set(key, now);
+      this._emit('lane:ambushArmed', {
+        laneId: lane.id,
+        segmentIndex: segment.index,
+        encounterId: `lane_ambush_${lane.id}_${segment.index}`,
+        sectorId,
+        shapeId: lane.ambushShapeId,
+        anchor: { x: mid.x, z: mid.z },
+        zoneId: `${lane.id}_seg${segment.index}`,
+        zoneName: `${lane.name} — dead segment ${segment.index}`,
+        zoneType: 'ambush_lane',
+        zoneRadius: geometry.radiusWU,
+        data: { laneId: lane.id, laneSegmentIndex: segment.index },
+      });
+    }
   },
 
   /**
@@ -957,13 +1131,17 @@ export const travelLanes = {
     // cell must be retried on a later tick, not silently swallowed forever.
     if (result && result.ok) {
       this._ambushRequested.add(key);
+      const headline = laneDisruptionHeadline({ id: this.lane.id, name: this.lane.name });
       this._emit('lane:disrupted', {
         laneId: this.lane.id,
+        laneName: this.lane.name,
         segmentIndex: segment.index,
         encounterId: result.encounterId || null,
         anchor: { x: anchor.x, z: anchor.z },
         sectorId,
+        sourceRef: headline.sourceRef,
       });
+      this._emit('news:publish', headline);
     }
   },
 
@@ -1064,6 +1242,7 @@ export const travelLanes = {
     const pz = finite(player.pos.z);
 
     for (let i = 0; i < TRAFFIC_COUNT; i++) {
+      if (this._trafficAmbiguous.has(i)) continue;
       // Deterministic stagger: evenly spaced phases, alternating direction so the lane reads as
       // two-way infrastructure rather than a conveyor.
       const outbound = i % 2 === 0;
@@ -1079,9 +1258,11 @@ export const travelLanes = {
 
       const existingId = this._trafficIds[i];
       const existing = existingId != null ? entities.get(existingId) : null;
-      if (existing) {
-        if (existing.alive === false) {
+      if (existingId != null) {
+        if (!currentLaneEntity(this._trafficBindings[i], existing)
+          || !isLaneTraffic(existing, this.lane.id, i)) {
           this._trafficIds[i] = null;
+          this._trafficBindings[i] = null;
         } else {
           // Reposition in place. Entities are never destroyed, so density is constant by construction.
           existing.pos.x = x;
@@ -1113,7 +1294,10 @@ export const travelLanes = {
           laneTrafficIndex: i,
         },
       });
-      if (ent && ent.id != null) this._trafficIds[i] = ent.id;
+      if (ent && ent.id != null) {
+        this._trafficIds[i] = ent.id;
+        this._trafficBindings[i] = bindLaneEntity(ent);
+      }
     }
   },
 

@@ -1,4 +1,5 @@
 import { FIELD_JOB_SIGNATURE_CRAFT } from '../data/occupationalTrafficCraft.js';
+import { shouldDrawTableVfx, tableLookAtDelta, tableVfxDrawWuFromState } from './tabletopPolicy.js';
 
 // Pure presentation grammar for the NPC job seam — "The Working Light" made visible.
 //
@@ -615,4 +616,330 @@ export function writeNpcJobSignatureFrame(
   }
 
   return frame;
+}
+
+// PIC-25 / WORLD-30 — one event, one record. Not a per-tick emitter and not a new profile.
+const ORE_INTAKE_PROFILE_ID = 'mouth_open';
+const _signatureGlassScratch = { x: 0, z: 0 };
+
+/** True when this hull is inside the live table draw. Missing hulls are off glass. */
+export function signatureSubjectOnGlass(state, subject) {
+  if (!state || subject == null) return false;
+  const entities = state.entities;
+  const entity = subject && subject.pos
+    ? subject
+    : entities && typeof entities.get === 'function'
+      ? entities.get(subject)
+      : null;
+  if (!entity || entity.alive === false || !entity.pos) return false;
+  const player = entities && state.playerId != null && typeof entities.get === 'function'
+    ? entities.get(state.playerId)
+    : null;
+  const drawWu = tableVfxDrawWuFromState(state);
+  const delta = tableLookAtDelta(state, player && player.pos, entity.pos, _signatureGlassScratch);
+  return shouldDrawTableVfx(delta.x, delta.z, drawWu);
+}
+
+/**
+ * One intake record for `traffic:oreCollected`. The spark is the existing mouth-open
+ * profile (hatch-spill at the intake). Null when the miner is not on glass.
+ */
+export function oreIntakeSignatureRecord(payload, state) {
+  if (!payload || payload.carrierId == null) return null;
+  if (!signatureSubjectOnGlass(state, payload.carrierId)) return null;
+  const profile = NPC_JOB_SIGNATURE_PROFILES[ORE_INTAKE_PROFILE_ID];
+  if (!profile) return null;
+  return {
+    kind: 'intake',
+    carrierId: payload.carrierId,
+    pickupId: payload.pickupId == null ? null : payload.pickupId,
+    manifestId: payload.manifestId == null ? null : payload.manifestId,
+    profileId: profile.id,
+    profile,
+    contact: profile.contact,
+  };
+}
+
+/** Listen once. A repeat of the same collection does not push a second record. */
+export function bindNpcJobOreIntake(bus, records, stateOf) {
+  if (!bus || typeof bus.on !== 'function' || !records) return () => {};
+  const seen = new Set();
+  const onCollected = (payload) => {
+    const state = typeof stateOf === 'function' ? stateOf() : stateOf;
+    const rec = oreIntakeSignatureRecord(payload, state);
+    if (!rec) return;
+    const key = `${rec.carrierId}|${rec.manifestId}|${rec.pickupId}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    records.push(rec);
+  };
+  bus.on('traffic:oreCollected', onCollected);
+  return () => {
+    if (typeof bus.off === 'function') bus.off('traffic:oreCollected', onCollected);
+  };
+}
+
+/**
+ * One threatened-miner reaction: the same profile a close player already draws
+ * (`go_dark`), not a new marker. Null unless the job is a miner.
+ */
+export function threatenedMinerReactionRecord(payload) {
+  if (!payload || payload.kind !== 'miner' || payload.jobId == null) return null;
+  const close = resolveNpcJobReaction('miner', 0, 'work');
+  if (!close || close.id === NPC_JOB_REACTION.NONE) return null;
+  return {
+    kind: 'threatened',
+    jobId: payload.jobId,
+    reactionId: close.id,
+    intensity: close.intensity,
+    once: true,
+  };
+}
+
+/** One reaction record per miner job. A second `npcjobs:threatened` does not repeat it. */
+export function bindNpcJobThreatReaction(bus, records) {
+  if (!bus || typeof bus.on !== 'function' || !records) return () => {};
+  const seen = new Set();
+  const onThreat = (payload) => {
+    const key = payload && payload.jobId != null ? String(payload.jobId) : '';
+    if (!key || seen.has(key)) return;
+    const rec = threatenedMinerReactionRecord(payload);
+    if (!rec) return;
+    seen.add(key);
+    records.push(rec);
+  };
+  bus.on('npcjobs:threatened', onThreat);
+  return () => {
+    if (typeof bus.off === 'function') bus.off('npcjobs:threatened', onThreat);
+  };
+}
+
+function reducedMotionOf(state) {
+  const settings = state && state.settings || null;
+  const video = settings && settings.video || null;
+  const accessibility = settings && settings.accessibility || null;
+  return !!((video && video.motionReduce) || (accessibility && accessibility.motionPreference === 'reduce'));
+}
+
+function ensureLiveCueState(host) {
+  if (!host._npcIntakePending) host._npcIntakePending = new Map();
+  if (!host._npcIntakeSeen) host._npcIntakeSeen = new Set();
+  if (!host._npcThreatPending) host._npcThreatPending = new Map();
+  if (!host._npcThreatShown) host._npcThreatShown = new Set();
+}
+
+function clearLiveCueState(host) {
+  ensureLiveCueState(host);
+  host._npcIntakePending.clear();
+  host._npcIntakeSeen.clear();
+  host._npcThreatPending.clear();
+  host._npcThreatShown.clear();
+}
+
+function hostEntity(host, id) {
+  if (!host || id == null) return null;
+  if (typeof host._ent === 'function') return host._ent(id);
+  const entities = host.state && host.state.entities;
+  return entities && typeof entities.get === 'function' ? entities.get(id) : null;
+}
+
+function locateMinerJob(host, jobId) {
+  const byId = host && host.state && host.state.npcJobs && host.state.npcJobs.byId;
+  if (!byId || jobId == null) return null;
+  const key = String(jobId);
+  const direct = byId[key] || byId[jobId];
+  if (direct && direct.job && !direct.job.corrupt) {
+    const kind = direct.kind || direct.job.kind;
+    if (kind === 'miner') return { jobId: key, entry: direct, job: direct.job };
+  }
+  for (const id in byId) {
+    if (String(id) !== key) continue;
+    const entry = byId[id];
+    if (!entry || !entry.job || entry.job.corrupt) return null;
+    const kind = entry.kind || entry.job.kind;
+    if (kind !== 'miner') return null;
+    return { jobId: String(id), entry, job: entry.job };
+  }
+  return null;
+}
+
+function minerJobForCarrier(host, carrierId) {
+  const byId = host && host.state && host.state.npcJobs && host.state.npcJobs.byId;
+  if (!byId || carrierId == null) return null;
+  for (const id in byId) {
+    const entry = byId[id];
+    if (!entry || !entry.job || entry.job.corrupt) continue;
+    if (String(entry.entityId) !== String(carrierId)) continue;
+    const kind = entry.kind || entry.job.kind;
+    if (kind !== 'miner') continue;
+    return { jobId: String(id), entry, job: entry.job };
+  }
+  return null;
+}
+
+function slotClaimedThisPass(host, jobId) {
+  const slots = host && host._npcJobSignatureSlots;
+  if (!slots) return null;
+  const gen = host._npcJobSignatureGen;
+  const key = String(jobId);
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i];
+    if (slot && String(slot.jobId) === key && slot.gen === gen) return slot;
+  }
+  return null;
+}
+
+function noteOreCollected(host, payload) {
+  if (!host || !host.state) return;
+  ensureLiveCueState(host);
+  const rec = oreIntakeSignatureRecord(payload, host.state);
+  if (!rec) return;
+  const key = `${rec.carrierId}|${rec.manifestId}|${rec.pickupId}`;
+  if (host._npcIntakeSeen.has(key) || host._npcIntakePending.has(key)) return;
+  host._npcIntakeSeen.add(key);
+  host._npcIntakePending.set(key, rec);
+}
+
+function noteMinerThreatened(host, payload) {
+  if (!host || !host.state) return;
+  ensureLiveCueState(host);
+  const rec = threatenedMinerReactionRecord(payload);
+  if (!rec) return;
+  const id = String(rec.jobId);
+  if (host._npcThreatShown.has(id) || host._npcThreatPending.has(id)) return;
+  const located = locateMinerJob(host, id);
+  if (!located || !signatureSubjectOnGlass(host.state, located.entry.entityId)) return;
+  host._npcThreatPending.set(id, rec);
+}
+
+function intakeScratch(host) {
+  if (host._npcJobIntakeSlot) return host._npcJobIntakeSlot;
+  host._npcJobIntakeSlot = {
+    frame: createNpcJobSignatureFrameScratch(),
+    deploy: 1,
+    elapsed: 0,
+    seed: 1,
+    lastEmitStep: -1,
+    profileId: ORE_INTAKE_PROFILE_ID,
+    jobId: null,
+  };
+  return host._npcJobIntakeSlot;
+}
+
+function drawPendingIntakes(host) {
+  const pending = host && host._npcIntakePending;
+  if (!pending || pending.size === 0 || typeof host._emitNpcJobSignature !== 'function') return 0;
+  const profile = NPC_JOB_SIGNATURE_PROFILES[ORE_INTAKE_PROFILE_ID];
+  if (!profile) return 0;
+  const reduced = reducedMotionOf(host.state);
+  const slot = intakeScratch(host);
+  let extra = 0;
+  for (const [key, rec] of pending) {
+    const ent = hostEntity(host, rec.carrierId);
+    if (!ent || ent.alive === false || !signatureSubjectOnGlass(host.state, ent)) {
+      pending.delete(key);
+      continue;
+    }
+    const located = minerJobForCarrier(host, rec.carrierId);
+    const job = located ? located.job : { kind: 'miner', phase: 'load' };
+    writeNpcJobSignatureFrame(
+      profile, 0,
+      Number.isFinite(ent.rot) ? ent.rot : 0,
+      ent.vel ? ent.vel.x : 0,
+      ent.vel ? ent.vel.z : 0,
+      slot.seed, reduced, slot.frame,
+    );
+    extra += host._emitNpcJobSignature(slot, profile, ent, job, reduced) || 0;
+    host._lastNpcJobSignatureId = profile.id;
+    pending.delete(key);
+  }
+  return extra;
+}
+
+function drawPendingThreats(host) {
+  const pending = host && host._npcThreatPending;
+  if (!pending || pending.size === 0) return 0;
+  const close = resolveNpcJobReaction('miner', 0, 'work');
+  const reduced = reducedMotionOf(host.state);
+  let extra = 0;
+  for (const [jobId] of pending) {
+    const located = locateMinerJob(host, jobId);
+    const ent = located && hostEntity(host, located.entry.entityId);
+    const slot = slotClaimedThisPass(host, jobId);
+    const onGlass = !!(ent && signatureSubjectOnGlass(host.state, ent) && slot);
+    pending.delete(jobId);
+    host._npcThreatShown.add(jobId);
+    if (!onGlass || !close || close.id === NPC_JOB_REACTION.NONE) continue;
+    if (slot.reaction !== close.id) {
+      slot.reaction = close.id;
+      slot.reactionT = close.intensity;
+      if (typeof host._emitNpcJobReaction === 'function') {
+        extra += host._emitNpcJobReaction(slot, ent, reduced) || 0;
+      }
+    }
+    host._lastNpcJobReaction = close.id;
+  }
+  return extra;
+}
+
+function bindNpcJobLiveCues(host) {
+  clearLiveCueState(host);
+  if (typeof host._npcJobLiveCueOff === 'function') {
+    try { host._npcJobLiveCueOff(); } catch { /* listener already gone */ }
+    host._npcJobLiveCueOff = null;
+  }
+  const bus = host.bus;
+  if (!bus || typeof bus.on !== 'function') return;
+  const onOre = (payload) => noteOreCollected(host, payload);
+  const onThreat = (payload) => noteMinerThreatened(host, payload);
+  const onReset = () => clearLiveCueState(host);
+  const offs = [];
+  const add = (name, fn) => {
+    const off = bus.on(name, fn);
+    if (typeof off === 'function') offs.push(off);
+  };
+  add('traffic:oreCollected', onOre);
+  add('npcjobs:threatened', onThreat);
+  add('game:newGame', onReset);
+  const unsub = () => {
+    if (typeof bus.off === 'function') {
+      bus.off('traffic:oreCollected', onOre);
+      bus.off('npcjobs:threatened', onThreat);
+      bus.off('game:newGame', onReset);
+    }
+    for (let i = 0; i < offs.length; i++) offs[i]();
+  };
+  host._npcJobLiveCueOff = unsub;
+  if (Array.isArray(host._subs)) host._subs.push(unsub);
+}
+
+/**
+ * The job-light draw (`vfx._updateNpcJobSignatures`) subscribes here.
+ * One ore collection emits one open-hatch spark. One threat emits one go-dark.
+ */
+export function installNpcJobLiveSignatureDraw(vfxSystem) {
+  if (!vfxSystem || vfxSystem._npcJobLiveSignatureInstalled) return vfxSystem;
+  vfxSystem._npcJobLiveSignatureInstalled = true;
+  const origInit = vfxSystem.init;
+  vfxSystem.init = function npcJobLiveInit(ctx) {
+    const result = origInit.apply(this, arguments);
+    bindNpcJobLiveCues(this);
+    return result;
+  };
+  const origDraw = vfxSystem._updateNpcJobSignatures;
+  vfxSystem._updateNpcJobSignatures = function npcJobLiveDraw(step) {
+    const emitted = origDraw.apply(this, arguments) || 0;
+    return emitted + drawPendingIntakes(this) + drawPendingThreats(this);
+  };
+  const origUpdate = vfxSystem.update;
+  if (typeof origUpdate === 'function') {
+    vfxSystem.update = function npcJobLiveUpdate(dt, state) {
+      const gen = this._npcJobSignatureGen;
+      const result = origUpdate.apply(this, arguments);
+      // The signature cadence did not run. Deliver a queued intake once; do not poll.
+      if (this._npcJobSignatureGen === gen) drawPendingIntakes(this);
+      return result;
+    };
+  }
+  return vfxSystem;
 }

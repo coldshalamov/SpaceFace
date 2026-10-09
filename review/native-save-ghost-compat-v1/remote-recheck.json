@@ -1,0 +1,44 @@
+{
+  "observedAt": "2026-10-04T00:53:00Z",
+  "pr": {
+    "url": "https://github.com/coldshalamov/SpaceFace/pull/221",
+    "number": 221,
+    "state": "open",
+    "merged": false,
+    "mergeable": false,
+    "draft": true,
+    "body": "## Complete original source and integrated plan\n\nThis draft continues the user-authorized expansion after merged PR #216. It starts from verified integration baseline dc142c0108ce7663bc03574349623c3fda1033fa and preserves all unrelated baseline files.\n\nThe first commit publishes the complete original SpaceFace 20 Concepts ZIP byte-for-byte, all 103 extracted files in their original structure, source/checksum history, and the reviewed integrated twenty-concept plan. Everything in the supplied pack is retained as non-runtime reference material; supplied scripts were not executed and reference blockouts were not installed into gameplay.\n\nStart at [the integrated plan](https://github.com/coldshalamov/SpaceFace/blob/dot/spaceface-expansion-handoff-2026-10-03/design/program/world-depth-2026-10-02/TWENTY_CONCEPT_AMENDMENT.md) and [the complete original source pack](https://github.com/coldshalamov/SpaceFace/blob/dot/spaceface-expansion-handoff-2026-10-03/design/program/world-depth-2026-10-02/references/sf20-2026-10-03/README.md).\n\n## Unfinished handoff and acceptance gates\n\nThe user rejected current candidate model quality and asked for reviewable work so another agent can continue. Candidate art needs redesign. Technical test evidence is scoped evidence, not final art approval, browser/GPU acceptance, hardware performance certification or completion of the expansion. The Playfield First v2 scope proposal remains pending reconciliation; all twenty original concepts remain preserved.\n\nReviewed code, editable candidate source, review artifacts and tests will follow in coherent commits with explicit installation and acceptance gates. The initial archive/plan commit contains no new runtime implementation. Newer upstream drift must be reconciled rather than replacing current files with an old whole-tree snapshot.\n\nNo merge or deployment is requested.\n\n## Published review handoff\n\nCommit `d3537205358a0b3985e8fccfba91286c1f7e3880` adds [current execution status](https://github.com/coldshalamov/SpaceFace/blob/dot/spaceface-expansion-handoff-2026-10-03/design/program/world-depth-2026-10-02/EXECUTION_STATUS.md), [the portable art review](https://github.com/coldshalamov/SpaceFace/blob/dot/spaceface-expansion-handoff-2026-10-03/design/program/world-depth-2026-10-02/ART_REVIEW.md), provenance and eight diagnostic sheets. The owner's rejection/redesign requirement supersedes earlier agent-only visual judgments. Exact tree/blob identities were verified; this is reviewable unfinished work, not acceptance of runtime art.\n\n## Editable rejected-art preservation\n\nSeparate verified commits preserve [Charger](https://github.com/coldshalamov/SpaceFace/tree/dot/spaceface-expansion-handoff-2026-10-03/design/visual-assets/brood-charger-unfinished) (`0a977d8e`), [Mite M7](https://github.com/coldshalamov/SpaceFace/tree/dot/spaceface-expansion-handoff-2026-10-03/design/visual-assets/brood-mite-unfinished) (`56c59a55`), and [Splitter diagnostic evidence](https://github.com/coldshalamov/SpaceFace/tree/dot/spaceface-expansion-handoff-2026-10-03/design/visual-assets/brood-splitter-unfinished) (`98d8e3c9`). These include editable Blender inputs, frozen candidate exports, contracts, builders, tests and review images as applicable. Historical builder paths require a portability follow-up; rejection wrappers supersede old agent acceptance language. No rejected model is enabled as a runtime default.\n\n## Current implementation WIP and known failures\n\nThe verified 28-commit batch ending at `d8f31de2fcb7a5f76dfc53a6750e70a0d68f273c` contains 23 separately reviewable current-source runtime packets, Ceres binary dependencies, complete review-only Brood/recovery attempts, editable Splitter source and a truthful result addendum. Exact 233-path final delta and every remote blob identity were verified against frozen manifests. No rejected Brood feature/default activation was imported.\n\n**Ceres current normal-route acceptance is red:** the exact 935-input composition reached 85,000 ticks in `pads`, not `secured`; the original plate/native identity remained valid and Continue was not reached. Prior-source passing runs are not current proof. See [the exact result](https://github.com/coldshalamov/SpaceFace/blob/dot/spaceface-expansion-handoff-2026-10-03/docs/continuation/CURRENT_NORMAL_PROOF_2026-10-03.md).\n\nThe branch deliberately remains based on dc142c. Newer master live-save changes b144f226/d5ea3fa1 need exact reconciliation before merge or final acceptance. GitHub CI, full gameplay completion, final art and GPU acceptance are not claimed.\n\nPortable review tooling follows in `1c927e5508da7fff3f6d3ff3e65acd16e38a4e37`: Charger and Mite regeneration checks pass within their documented scopes; Splitter parent/axial exact comparator still finds one LOD1 tangent difference. Original model bytes are preserved.",
+    "title": "Continue SpaceFace expansion: complete source pack and working handoff",
+    "base": "master",
+    "base_sha": "dc142c0108ce7663bc03574349623c3fda1033fa",
+    "head": "dot/spaceface-expansion-handoff-2026-10-03",
+    "head_sha": "1c927e5508da7fff3f6d3ff3e65acd16e38a4e37",
+    "head_repo_id": 1273938327,
+    "head_repo_full_name": "coldshalamov/SpaceFace",
+    "merge_commit_sha": null,
+    "user": {
+      "login": "coldshalamov",
+      "name": "coldshalamov",
+      "email": null,
+      "avatar_url": "https://avatars.githubusercontent.com/u/214258039?v=4",
+      "id": 214258039
+    },
+    "requested_reviewers": null,
+    "requested_team_reviewers": null,
+    "diff": null,
+    "comments": null,
+    "created_at": "2026-10-03T23:26:32Z",
+    "updated_at": "2026-10-04T00:05:36Z",
+    "closed_at": null,
+    "merged_at": null,
+    "commits": 34,
+    "changed_files": 645,
+    "additions": 175237,
+    "deletions": 6576,
+    "display_url": "https://github.com/coldshalamov/SpaceFace/pull/221",
+    "display_title": "Continue SpaceFace expansion: complete source pack and working handoff"
+  },
+  "runs": {
+    "workflow_runs": []
+  }
+}

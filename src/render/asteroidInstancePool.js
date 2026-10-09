@@ -22,6 +22,7 @@ import {
 export const ASTEROID_INSTANCE_TYPE_ID = 'ast_common_rock';
 export const ASTEROID_INSTANCE_VARIANT_COUNT = 5;
 const INITIAL_CAPACITY = 64;
+const INSTANCE_MATRIX_BYTES = 64;
 const _viewProjection = new THREE.Matrix4();
 const _shadowProjection = new THREE.Matrix4();
 const _viewFrustum = new THREE.Frustum();
@@ -45,6 +46,7 @@ export function createAsteroidInstancePool(scene, options = {}) {
       dynamicBufferOwner: null,
       retiring: null,
       capacity: 0,
+      reservedCapacity: 0,
       records: [],
       entityIds: [],
     };
@@ -56,6 +58,9 @@ export function createAsteroidInstancePool(scene, options = {}) {
     // renderer's hook routes it through the admission latch so its first live draw is not a
     // synchronous link inside a presented pass.
     onMeshCreated: typeof options.onMeshCreated === 'function' ? options.onMeshCreated : null,
+    // Whether the owner can currently run the deferred depth-stage arm that restores a
+    // withheld authored castShadow after the variant links. Read at mint time only.
+    shadowStageGate: typeof options.shadowStageGate === 'function' ? options.shadowStageGate : null,
     variants,
     // Beyond the five fixed common-rock variant buckets, every other repeated asteroid leaf
     // (non-common bodies, tinted rocks, optic cells, and stamped detail children — veins,
@@ -67,6 +72,9 @@ export function createAsteroidInstancePool(scene, options = {}) {
     // Detail records are 1:N per entity (`entityId#d<index>`); they stay out of byEntity so the
     // classified-record dirty check keeps comparing presentation rows to body records 1:1.
     byDetail: new Map(),
+    // entityId -> Set<detailKey> index: a mass-depart evict burst used to scan the
+    // whole byDetail map per released row.
+    byDetailOwner: new Map(),
     stats: {
       registered: 0,
       registeredDetails: 0,
@@ -76,6 +84,9 @@ export function createAsteroidInstancePool(scene, options = {}) {
       matrixReuses: 0,
       matrixEvaluations: 0,
       shadowMatrixUploads: 0,
+      powerOfTwoRebuilds: 0,
+      reservedRosterCount: 0,
+      reservedCapacityCount: 0,
       variants: variantStats,
       keyed: [],
     },
@@ -123,6 +134,7 @@ function createKeyedBucket(key, geometry, material, castShadow, receiveShadow, l
     // Outgoing batch kept drawing while a grown replacement clears the admission latch.
     retiring: null,
     capacity: 0,
+    reservedCapacity: 0,
     records: [],
     entityIds: [],
     retiredOwnerCount: 0,
@@ -174,6 +186,9 @@ function adoptPoolLeaf(pool, entity, ownerRoot, leaf, detail) {
     if (info.poolLeafVisible === undefined) info.poolLeafVisible = leaf.visible !== false;
     record.detailKey = `${entity.id}#${leaf.uuid}`;
     pool.byDetail.set(record.detailKey, { bucket, record });
+    let ownerKeys = pool.byDetailOwner.get(entity.id);
+    if (!ownerKeys) pool.byDetailOwner.set(entity.id, ownerKeys = new Set());
+    ownerKeys.add(record.detailKey);
   } else {
     pool.byEntity.set(entity.id, { bucket, record });
   }
@@ -245,12 +260,16 @@ export function releaseAsteroidInstancesForEntity(pool, entityId) {
     pool.byEntity.delete(entityId);
     released = true;
   }
-  const prefix = `${entityId}#`;
-  for (const [key, ownedDetail] of pool.byDetail) {
-    if (!key.startsWith(prefix)) continue;
-    releasePoolRecord(pool, ownedDetail.bucket, ownedDetail.record);
-    pool.byDetail.delete(key);
-    released = true;
+  const ownedKeys = pool.byDetailOwner.get(entityId);
+  if (ownedKeys) {
+    pool.byDetailOwner.delete(entityId);
+    for (const key of ownedKeys) {
+      const ownedDetail = pool.byDetail.get(key);
+      if (!ownedDetail) continue;
+      releasePoolRecord(pool, ownedDetail.bucket, ownedDetail.record);
+      pool.byDetail.delete(key);
+      released = true;
+    }
   }
   return released;
 }
@@ -279,22 +298,32 @@ export function rekeyAsteroidInstanceEntity(pool, oldId, newId) {
   owned.record.entityId = newId;
   pool.byEntity.set(newId, owned);
   // Detail records ride the same entity id under their `oldId#leaf` composite keys.
-  const prefix = `${oldId}#`;
-  for (const [key, ownedDetail] of pool.byDetail) {
-    if (!key.startsWith(prefix)) continue;
-    pool.byDetail.delete(key);
-    ownedDetail.record.entityId = newId;
-    ownedDetail.record.detailKey = `${newId}#${ownedDetail.record.leaf && ownedDetail.record.leaf.uuid}`;
-    pool.byDetail.set(ownedDetail.record.detailKey, ownedDetail);
+  const ownedKeys = pool.byDetailOwner.get(oldId);
+  if (ownedKeys) {
+    pool.byDetailOwner.delete(oldId);
+    let newKeys = pool.byDetailOwner.get(newId);
+    if (!newKeys) pool.byDetailOwner.set(newId, newKeys = new Set());
+    for (const key of ownedKeys) {
+      const ownedDetail = pool.byDetail.get(key);
+      if (!ownedDetail) continue;
+      pool.byDetail.delete(key);
+      ownedDetail.record.entityId = newId;
+      ownedDetail.record.detailKey = `${newId}#${ownedDetail.record.leaf && ownedDetail.record.leaf.uuid}`;
+      pool.byDetail.set(ownedDetail.record.detailKey, ownedDetail);
+      newKeys.add(ownedDetail.record.detailKey);
+    }
   }
   pool.dirty = true;
   return true;
 }
 
 function releaseEntityDetailRecords(pool, entityId) {
-  const prefix = `${entityId}#`;
-  for (const [key, ownedDetail] of pool.byDetail) {
-    if (!key.startsWith(prefix)) continue;
+  const ownedKeys = pool.byDetailOwner.get(entityId);
+  if (!ownedKeys) return;
+  pool.byDetailOwner.delete(entityId);
+  for (const key of ownedKeys) {
+    const ownedDetail = pool.byDetail.get(key);
+    if (!ownedDetail) continue;
     releasePoolRecord(pool, ownedDetail.bucket, ownedDetail.record);
     pool.byDetail.delete(key);
   }
@@ -304,27 +333,65 @@ export function invalidateAsteroidInstancePool(pool) {
   if (pool && !pool.disposed) pool.dirty = true;
 }
 
+// Origin rebase companion: every stored instanceMatrix is frame-local, so a
+// quantum crossing shifts each stored translation by (dx,dz) — elements 12/14
+// of each column-major 4x4. Translating the stored bytes plus one upload per
+// bucket replaces the full updateWorldMatrix re-eval + per-record compare the
+// invalidate path pays on the next sync; subsequent syncs then compare equal
+// and write nothing.
+export function translateAsteroidInstancePool(pool, dx, dz) {
+  if (!pool || pool.disposed || (!dx && !dz)) return;
+  const shiftBucket = (bucket) => {
+    if (!bucket || !bucket.mesh || !bucket.mesh.instanceMatrix) return;
+    const array = bucket.mesh.instanceMatrix.array;
+    for (let offset = 0; offset + 15 < array.length; offset += 16) {
+      array[offset + 12] += dx;
+      array[offset + 14] += dz;
+    }
+    if (bucket.dynamicBufferOwner) {
+      markDynamicBufferItems(bucket.dynamicBufferOwner, 0, 0, array.length / 16);
+    } else {
+      bucket.mesh.instanceMatrix.needsUpdate = true;
+    }
+  };
+  for (const bucket of pool.variants) shiftBucket(bucket);
+  for (const bucket of pool.keyed.values()) shiftBucket(bucket);
+}
+
 /**
  * Pre-size variant buckets so later registrations never trigger a capacity rebuild — a rebuild
  * allocates a fresh instanceMatrix buffer (a bufferData a fight would otherwise pay mid-round).
- * Buckets with no registered leaf keep no mesh and are untouched: a variant with zero live rocks
- * still lazily creates its chunk on the first registration, which is the only legal path to one.
+ * The reserve is remembered even when the bucket has no mesh yet, so the first create is born
+ * at the roster size. Instance-matrix bytes (64 per slot) stay inside the residency ceiling.
  * @param {object} pool
  * @param {Array<number>} requiredByVariant - total records each variant may ever hold
+ * @param {{rosterCount?: number, byteCeiling?: number}} [options]
  */
-export function reserveAsteroidInstanceCapacity(pool, requiredByVariant) {
+export function reserveAsteroidInstanceCapacity(pool, requiredByVariant, options = {}) {
   if (!pool || pool.disposed || !Array.isArray(requiredByVariant)) return false;
+  const ceiling = Number(options.byteCeiling) > 0 ? Number(options.byteCeiling) : Number.POSITIVE_INFINITY;
+  let byteBudget = ceiling;
+  const rosterCount = Math.max(0, Math.trunc(Number(options.rosterCount) || 0));
+  if (pool.stats) pool.stats.reservedRosterCount = rosterCount;
+  let reservedCapacity = 0;
   let reserved = false;
   for (let variant = 0; variant < pool.variants.length; variant++) {
     const required = Math.max(0, Math.trunc(Number(requiredByVariant[variant]) || 0));
     if (required <= 0) continue;
     const bucket = pool.variants[variant];
-    if (!bucket || !bucket.mesh) continue;
-    if (bucket.capacity < required) {
-      ensureCapacity(pool, bucket, required);
-      reserved = true;
+    if (!bucket) continue;
+    const affordable = Math.floor(byteBudget / INSTANCE_MATRIX_BYTES);
+    const capped = Math.min(required, Math.max(0, affordable));
+    if (capped <= 0) continue;
+    bucket.reservedCapacity = Math.max(bucket.reservedCapacity | 0, capped);
+    reservedCapacity += bucket.reservedCapacity;
+    byteBudget -= capped * INSTANCE_MATRIX_BYTES;
+    if (bucket.mesh && bucket.capacity < bucket.reservedCapacity) {
+      ensureCapacity(pool, bucket, bucket.reservedCapacity);
     }
+    reserved = true;
   }
+  if (pool.stats) pool.stats.reservedCapacityCount = reservedCapacity;
   return reserved;
 }
 
@@ -490,6 +557,17 @@ function settleRetiringBucketMesh(pool, bucket) {
   const nextPending = !!(next && next.userData && next.userData.pipelinesPending === true);
   retiring.frames += 1;
   if (nextPending && retiring.frames < RETIRING_BATCH_MAX_SYNCS) return true;
+  // Cap hit with the replacement still latched: releasing blind lands the
+  // family-wide blink exactly when the admission lane is wedged — the defect
+  // this bridge exists to prevent. Re-kick the admission once (the lane
+  // dedupes a live request) and run one more window; a lane that truly never
+  // settles still releases at the second cap.
+  if (nextPending && retiring.rekick !== true && typeof pool.onMeshCreated === 'function') {
+    retiring.rekick = true;
+    retiring.frames = 0;
+    try { pool.onMeshCreated(next); } catch (_) { /* admission must never break the sync pass */ }
+    return true;
+  }
   bucket.retiring = null;
   disposeOwnedInstanceMesh(retiring.mesh, retiring.owner, pool.scene);
   return false;
@@ -661,6 +739,7 @@ export function clearAsteroidInstancePool(pool) {
   }
   pool.byEntity.clear();
   pool.byDetail.clear();
+  pool.byDetailOwner.clear();
   pool.dirty = true;
 }
 
@@ -683,6 +762,7 @@ export function disposeAsteroidInstancePool(pool) {
   pool.keyed.clear();
   pool.byEntity.clear();
   pool.byDetail.clear();
+  pool.byDetailOwner.clear();
   pool.stats.registered = 0;
   pool.stats.registeredDetails = 0;
   pool.stats.submitted = 0;
@@ -767,9 +847,11 @@ function drawBucketLeavesDirectly(bucket) {
 }
 
 function ensureCapacity(pool, bucket, required, rebuild = false) {
-  if (!rebuild && bucket.mesh && bucket.capacity >= required) return;
-  const capacity = Math.max(INITIAL_CAPACITY, nextPowerOfTwo(required));
+  const need = Math.max(required | 0, bucket.reservedCapacity | 0);
+  if (!rebuild && bucket.mesh && bucket.capacity >= need) return;
+  const capacity = Math.max(INITIAL_CAPACITY, nextPowerOfTwo(Math.max(need, 1)));
   const previous = bucket.mesh;
+  const previousCapacity = bucket.capacity | 0;
   const previousOwner = bucket.dynamicBufferOwner;
   const mesh = new THREE.InstancedMesh(bucket.geometry, bucket.material, capacity);
   const isVariantBucket = bucket.variant >= 0;
@@ -782,10 +864,17 @@ function ensureCapacity(pool, bucket, required, rebuild = false) {
   mesh.count = 0;
   mesh.visible = false;
   mesh.frustumCulled = false;
-  mesh.castShadow = bucket.castShadow !== false;
+  // An authored-cast family first minted mid-session may never have entered the warm
+  // census — minting the flag straight on cold-links its depth variant inside the first
+  // presented shadow refresh. Mint withheld while a live depth-stage latch can queue the
+  // variant's arm (the arm's restore lands the authored flag); pools with no latch —
+  // previews, tests — keep the immediate authored mint.
+  mesh.castShadow = bucket.castShadow !== false
+    && !(pool.shadowStageGate && pool.shadowStageGate() === true);
   mesh.receiveShadow = bucket.receiveShadow !== false;
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   mesh.userData.asteroidInstancePool = true;
+  if (bucket.castShadow !== false) mesh.userData.sfPoolCastAuthored = true;
   if (isVariantBucket) mesh.userData.asteroidInstanceVariant = bucket.variant;
   else mesh.userData.asteroidInstanceBucket = bucket;
   mesh.userData.borrowedGeometryMaterial = true;
@@ -842,10 +931,17 @@ function ensureCapacity(pool, bucket, required, rebuild = false) {
       disposeOwnedInstanceMesh(previous, previousOwner, pool.scene);
     }
   }
+  if (previous && capacity > previousCapacity && pool.stats) {
+    pool.stats.powerOfTwoRebuilds = (pool.stats.powerOfTwoRebuilds | 0) + 1;
+  }
   bucket.mesh = mesh;
   bucket.capacity = capacity;
   pool.dirty = true;
-  if (pool.scene) pool.scene.add(mesh);
+  if (pool.scene) {
+    pool.scene.add(mesh);
+    const notes = pool.scene.userData && pool.scene.userData.shadowMeshNotes;
+    if (notes && typeof notes.added === 'function') notes.added(mesh);
+  }
   // The instanced program variant this mesh needs has never been linked when the mesh is new:
   // without the admission latch its first visible draw links it inside the presented pass.
   if (typeof pool.onMeshCreated === 'function') {
@@ -869,7 +965,11 @@ function disposeOwnedInstanceMesh(mesh, dynamicBufferOwner, scene) {
   else if (mesh.instanceMatrix && typeof mesh.instanceMatrix.dispose === 'function') {
     mesh.instanceMatrix.dispose();
   }
-  if (mesh.parent === scene) scene.remove(mesh);
+  if (mesh.parent === scene) {
+    scene.remove(mesh);
+    const notes = scene.userData && scene.userData.shadowMeshNotes;
+    if (notes && typeof notes.removed === 'function') notes.removed(mesh);
+  }
   if (mesh.instanceMatrix && typeof mesh.instanceMatrix.dispose === 'function' && dynamicBufferOwner) {
     mesh.instanceMatrix.dispose();
   }

@@ -31,10 +31,15 @@ test('kinetic and rail recipes resolve to sharpened Mach-tracer flight', () => {
   assert.equal(rail.flight.boltVariant, BOLT_VARIANT.RAIL);
   assert.ok(rail.flight.dashLength >= 20, `rail dash ${rail.flight.dashLength}`);
   assert.ok(rail.flight.width <= 0.8, `rail width ${rail.flight.width}`);
-  assert.ok(rail.flight.intensity >= 3.5, `rail intensity ${rail.flight.intensity}`);
+  // 697c69f65 re-tuned the needle 4.2→1.85: the contract is the Look's bloom threshold
+  // (1.0 — docs/visual-assets/LOOK.md), so the rail core still reads as a lamp.
+  assert.ok(rail.flight.intensity > 1.0, `rail intensity ${rail.flight.intensity} clears the bloom threshold`);
 
   const siege = resolveWeaponRecipe('wpn_siege_lance_l');
-  assert.ok(siege.flight.dashLength > rail.flight.dashLength, 'siege out-reaches rail');
+  // The same rebuild made siege the fat lance (boltVariant SIEGE, shaft ~6x the rail needle),
+  // not the longer needle it was — reach now belongs to the rail.
+  assert.ok(siege.flight.width >= 4 && siege.flight.width > rail.flight.width,
+    `siege lance carries a heavier shaft than the rail needle (siege ${siege.flight.width} vs rail ${rail.flight.width})`);
   assert.ok(siege.muzzle.lightPeak > rail.muzzle.lightPeak, 'siege seats harder light');
   assert.ok(rail.muzzle.lightDistance >= 20, 'rail light rakes nearby crags');
 });
@@ -179,7 +184,7 @@ test('ballistic muzzles breathe bore gas and carbon; energy stays clean', () => 
 });
 
 test('grazing kinetic hits skip; head-on hits dig in', () => {
-  const capture = (weaponId, approach, normal, shield = 0) => {
+  const capture = (weaponId, approach, normal, shield = 0, projectileId = null) => {
     const calls = { sprites: [], streaks: [], cones: [], lights: [] };
     const host = Object.create(vfx);
     host._scene = {};
@@ -190,23 +195,29 @@ test('grazing kinetic hits skip; head-on hits dig in', () => {
     host._c1 = new THREE.Color();
     host._spawnParticle = () => {};
     host._posFrom = () => ({ x: 10, z: 20 });
-    host._ent = () => ({ factionId: 'test', shield });
+    host._ent = () => ({ factionId: 'test', shield, alive: true });
     host._shieldColor = () => '#66ccff';
     host._spawnSprite = (...args) => calls.sprites.push(args);
     host._spawnProjectileTrailStreak = (...args) => calls.streaks.push(args);
     host._impactParticleCone = (...args) => calls.cones.push(args);
     host._flashLight = (...args) => calls.lights.push(args);
-    host._onProjectileHit({ weaponId, targetId: 17, approach, normal });
+    host._onProjectileHit({ weaponId, targetId: 17, approach, normal, projectileId });
     return calls;
   };
   const grazeApproach = { x: 0.97, z: -0.24 };
   const grazeNormal = { x: 0, z: 1 };
   const headOn = capture('wpn_autocannon_m', { x: 1, z: 0 }, { x: -1, z: 0 });
   assert.equal(headOn.cones.length, 1, 'head-on keeps only the incidence fan');
-  const graze = capture('wpn_autocannon_m', grazeApproach, grazeNormal);
+  // The continuing tracer belongs to the shot, not the burst: physics emits projectile:hit
+  // while the round is still in the air (proj.alive flips after the emit), so a live
+  // projectileId draws the skip leader; ricochetSecondPath suppresses it for a spent round.
+  const graze = capture('wpn_autocannon_m', grazeApproach, grazeNormal, 0, 'shot-1');
   assert.equal(graze.cones.length, 2, 'gouge plus the skipping burst');
   assert.equal(graze.cones[0][3], 0.42, 'skip burst is a tight directional fan');
-  assert.ok(graze.streaks.length > headOn.streaks.length, 'the skipping round draws a leader');
+  assert.ok(graze.streaks.length > headOn.streaks.length, 'a shot still in the air draws a leader');
+  const spent = capture('wpn_autocannon_m', grazeApproach, grazeNormal);
+  assert.equal(spent.cones.length, 2, 'a spent round still gouges and throws the skip burst');
+  assert.equal(spent.streaks.length, headOn.streaks.length, 'no continuing leader once the shot is gone');
   const shielded = capture('wpn_autocannon_m', grazeApproach, grazeNormal, 40);
   assert.equal(shielded.cones.length, 1, 'rounds do not skip off shields');
   const plasma = capture('wpn_plasma_cannon_m', grazeApproach, grazeNormal);

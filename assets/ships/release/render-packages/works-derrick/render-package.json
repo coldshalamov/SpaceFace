@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e748e7f936642cfa16968356019c6ecf594c4f3fe0d0a4f8f2007eb1da33480c",
+  "contentHash": "34359973ecd599030f6593ed05d7c573fcc75f8f5af5beb6c4074d4e044949a5",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1239,8 +1239,8 @@
       "uri": "place_works_derrick.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -1421,7 +1421,8 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 14
+      "hull": 10,
+      "signal": 4
     },
     "materialProfiles": [
       {
@@ -1452,7 +1453,7 @@
       {
         "allowTextures": true,
         "planIndex": 11,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1462,7 +1463,7 @@
       {
         "allowTextures": true,
         "planIndex": 13,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1472,7 +1473,7 @@
       {
         "allowTextures": true,
         "planIndex": 16,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1482,7 +1483,7 @@
       {
         "allowTextures": true,
         "planIndex": 18,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -1880,7 +1881,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_derrick.glb"
   },
-  "runtimeHash": "ba6afa9664e4b8c3000f48f0e50b0fd3f495a0f0080b8010b1e26598a0eaf60b",
+  "runtimeHash": "0e55eff95742566215868756ffc50b5be49181677e19abcc62bc9afad6c903cf",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

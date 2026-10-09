@@ -23,7 +23,7 @@ export const CHECKLIST_ITEMS = Object.freeze([
   Object.freeze({ id: 'contrast', label: 'Contrast', settingsKey: 'accessibility.highContrast' }),
   Object.freeze({ id: 'motion', label: 'Reduced motion', settingsKey: 'accessibility.motionPreference' }),
   Object.freeze({ id: 'remap', label: 'Control remap', settingsKey: 'gameplay.controlScheme' }),
-  Object.freeze({ id: 'textScale', label: 'Text scale', settingsKey: 'uiScale' }),
+  Object.freeze({ id: 'textScale', label: 'Text scale', settingsKey: 'accessibility.textScale' }),
   Object.freeze({ id: 'assists', label: 'Assists', settingsKey: 'gameplay.orbitAssistStrength' }),
   Object.freeze({ id: 'captions', label: 'Captions', settingsKey: 'accessibility.captions' }),
 ]);
@@ -56,7 +56,10 @@ export function flagsFromSettings(settings = {}) {
   const contrast = ac.highContrast === true;
   const motion = ac.motionPreference === 'reduce' || video.motionReduce === true;
   const remap = typeof gameplay.controlScheme === 'string' && gameplay.controlScheme.length > 0;
-  const textScale = Number.isFinite(Number(settings.uiScale)) && Number(settings.uiScale) > 0;
+  const textRaw = ac.textScale;
+  const textScale = textRaw == null
+    ? true
+    : Number.isFinite(Number(textRaw)) && Number(textRaw) > 0;
   const assists = gameplay.orbitAssistStrength !== 'off' && gameplay.orbitAssistStrength != null;
   const captions = Object.prototype.hasOwnProperty.call(ac, 'captions')
     ? ac.captions === true

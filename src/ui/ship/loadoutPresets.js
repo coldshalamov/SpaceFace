@@ -173,25 +173,101 @@ export function presetsForHull(player, hullDefId) {
   return out;
 }
 
+/** "2× Beam Laser M, 1× Shield Bank" — the missing-stock half of a preset blocker. */
+function missingStockList(missingParts) {
+  return missingParts.map((part) => (
+    `${Math.max(1, Math.round(finite(part && part.missing, 1)))}× ${String((part && (part.name || part.defId)) || 'part')}`
+  )).join(', ');
+}
+
+/** "Unavailable hardware: mod_x, wpn_y" / "Needs research: A, B" / each fit refusal sentence. */
+function composeSlotBlockerSegments(slotBlockers) {
+  const unknownIds = [];
+  const researchNames = [];
+  const sentences = [];
+  for (const blocker of slotBlockers) {
+    if (!blocker || typeof blocker !== 'object') continue;
+    if (blocker.reason === 'unknown_module') {
+      unknownIds.push(String(blocker.defId || 'unknown'));
+      continue;
+    }
+    if (blocker.reason === 'research_required') {
+      const tech = String(blocker.text || '').replace(/^Research required:\s*/i, '').trim();
+      researchNames.push(tech || String(blocker.name || blocker.defId || 'part'));
+      continue;
+    }
+    if (blocker.text) sentences.push(String(blocker.text).trim());
+  }
+  const segments = [];
+  if (unknownIds.length) segments.push(`Unavailable hardware: ${unknownIds.join(', ')}`);
+  for (const sentence of sentences) segments.push(sentence);
+  if (researchNames.length) segments.push(`Needs research: ${researchNames.join(', ')}`);
+  return segments;
+}
+
 export function formatLoadoutApplyReason(applyResult, { dockLabel = 'Dock to refit' } = {}) {
   if (applyResult && applyResult.ok) return { ok: true, reason: 'ok', text: '' };
   const reason = (applyResult && applyResult.reason) || 'invalid_preset';
   if (reason === 'dock_to_refit') {
     return { ok: false, reason, text: dockLabel || APPLY_REASON_LABELS.dock_to_refit };
   }
+  // NXI-115 — the apply state names every required part that blocks the preset: missing
+  // owned stock (counted, named) and slot-cause blockers (unavailable, wrong fit,
+  // research) stay distinguishable instead of collapsing to one count.
+  const missingParts = Array.isArray(applyResult && applyResult.missingParts) ? applyResult.missingParts : [];
+  const slotBlockers = Array.isArray(applyResult && applyResult.slotBlockers) ? applyResult.slotBlockers : [];
+  const missingText = missingParts.length ? `Not in hold: ${missingStockList(missingParts)}` : '';
   if (reason === 'missing_modules') {
+    if (missingText) return { ok: false, reason, text: missingText };
     const missingCount = Math.max(1, Math.round(finite(applyResult && applyResult.missingCount, 1)));
     const text = `${missingCount} module${missingCount === 1 ? '' : 's'} not in hold`;
     return { ok: false, reason, text };
   }
-  if (applyResult && typeof applyResult.text === 'string' && applyResult.text.trim()) {
-    return { ok: false, reason, text: applyResult.text.trim() };
+  const segments = composeSlotBlockerSegments(slotBlockers);
+  let text = segments.length
+    ? segments.join(' · ')
+    : (applyResult && typeof applyResult.text === 'string' && applyResult.text.trim())
+      || APPLY_REASON_LABELS[reason]
+      || 'Cannot apply this build';
+  if (missingText) {
+    text += ` · ${missingText.charAt(0).toLowerCase()}${missingText.slice(1)}`;
   }
-  return {
-    ok: false,
-    reason,
-    text: APPLY_REASON_LABELS[reason] || 'Cannot apply this build',
-  };
+  return { ok: false, reason, text };
+}
+
+const RACK_REJECTION_SPEECH = Object.freeze({
+  rack_not_docked: 'Dock to prepare the bomb rack',
+  rack_credits: 'Not enough credits for the rack on this build',
+  rack_no_stock: 'That bomb is not in stock',
+  rack_empty_rack: 'The rack on this build is empty',
+  rack_no_rack_owner: 'This hull has no bomb rack',
+  rack_commit_failed: 'Rack preparation failed — build not applied',
+});
+
+/** The sentence a refused build says on its own control. Rack reasons are specific; the rest reuse the apply labels. */
+export function loadoutRejectionSpeech(reason) {
+  const key = typeof reason === 'string' ? reason : '';
+  return RACK_REJECTION_SPEECH[key] || APPLY_REASON_LABELS[key] || 'Cannot apply this build';
+}
+
+/**
+ * Put that sentence on the preset button: why, invalid, subtitle, label, and focus.
+ * Focus belongs here — the player is in Shipworks, not on the helm.
+ * A second paint of the same reason does not steal focus again.
+ */
+export function applyPresetRejection(button, reason, { focus = true } = {}) {
+  const speech = loadoutRejectionSpeech(reason);
+  if (!button) return speech;
+  const key = typeof reason === 'string' ? reason : '';
+  const prior = button.getAttribute('data-preset-rejection');
+  button.setAttribute('data-why', speech);
+  button.setAttribute('aria-invalid', 'true');
+  button.setAttribute('aria-label', speech);
+  button.setAttribute('data-preset-rejection', key);
+  const sub = typeof button.querySelector === 'function' ? button.querySelector('.sx-sw-preset__sub') : null;
+  if (sub) sub.textContent = speech;
+  if (focus && prior !== key && typeof button.focus === 'function') button.focus();
+  return speech;
 }
 
 export function deriveLoadoutPresetLabel({ hullDefId, fittings = [], player = null } = {}) {
@@ -267,7 +343,7 @@ export function buildLoadoutPresetRailModel({
     // verb; its reasons stay on the preset lozenges, not here.)
     canSave: count < LOADOUT_PRESET_CAP_PER_HULL,
     reasonText: count >= LOADOUT_PRESET_CAP_PER_HULL
-      ? `${LOADOUT_PRESET_CAP_PER_HULL} of ${LOADOUT_PRESET_CAP_PER_HULL} builds on this hull`
+      ? `All ${LOADOUT_PRESET_CAP_PER_HULL} build banks are full on this hull — delete one to save another`
       : '',
     labelKey: saveLabel.labelKey,
     label: saveLabel.label,
@@ -302,7 +378,7 @@ export function canSavePresetForHull(player, hullDefId) {
     cap: LOADOUT_PRESET_CAP_PER_HULL,
     canSave: count < LOADOUT_PRESET_CAP_PER_HULL,
     reasonText: count >= LOADOUT_PRESET_CAP_PER_HULL
-      ? `${LOADOUT_PRESET_CAP_PER_HULL} of ${LOADOUT_PRESET_CAP_PER_HULL} builds on this hull`
+      ? `All ${LOADOUT_PRESET_CAP_PER_HULL} build banks are full on this hull — delete one to save another`
       : '',
   };
 }

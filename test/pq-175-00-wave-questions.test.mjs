@@ -46,7 +46,9 @@ test('PQ-175.00: every authored recipe declares a question and a 174.03 verb', (
   assert.deepEqual(consecutiveQuestionIssues(templateIds), []);
   assert.deepEqual(catalogQuestionIssues(), []);
 
-  assert.equal(SURVIVAL_WAVES.length, 70);
+  // SWARM-07 B4 grew the catalog: nine arenas' authored tens (the two new biomes'
+  // blocks ride the same ten template questions, validated per-recipe below).
+  assert.equal(SURVIVAL_WAVES.length, 90);
   for (const recipe of SURVIVAL_WAVES) {
     const result = validateWaveRecipe(recipe);
     assert.equal(result.ok, true, `${recipe.id}: ${JSON.stringify(result.issues)}`);

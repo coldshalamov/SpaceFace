@@ -108,7 +108,10 @@ function fireAt(h, componentId, tick, dps = 40) {
     stableKey: `wr:${SITE_ID}/component/${componentId}`,
   };
   h.miningSystem._beaming = true;
-  h.miningSystem._lockTargetId = target.id;
+  // The lock lives in two places by contract — _setLockTargetId mirrors _lockTargetId onto
+  // player.miningTargetId, and the acquire path reads a disagreement as "the locked body is
+  // already gone" (recycle safety). Writing the private field alone locks on nothing.
+  h.miningSystem._setLockTargetId(target.id);
   h.miningSystem._activeVerb = null;
   h.miningSystem._runPlayerBeam(h.player, { dps, range: 500, directToCargo: false }, 1, h.state);
   return target;

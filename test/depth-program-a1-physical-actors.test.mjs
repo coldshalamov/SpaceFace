@@ -118,8 +118,10 @@ test('Pallas Drift materializes one buoy and seventeen sector-owned Quiessence s
     hulls.map((entity) => entity.data.quiessenceShipIndex).sort((a, b) => a - b),
     Array.from({ length: 17 }, (_, index) => index + 1),
   );
+  // PQ-153.02: the carriers are becalmed hulks the player can see, so they take real
+  // measured-skin fixed bodies — still fx-type non-combatants, but no fly-through.
   assert.ok(hulls.every((entity) => entity.type === 'fx'
-    && entity.collides === false && entity.physicsBody === false));
+    && entity.collides === true && entity.physicsBody && entity.physicsBody.dynamic === false));
   assert.equal(
     state.world.activeSector.pois.filter((row) => row.poiId.startsWith('poi_quiessence_hull_')
       && row.type === 'anomaly' && row.hidden === true).length,

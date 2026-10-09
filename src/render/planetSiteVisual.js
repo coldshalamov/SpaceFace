@@ -22,6 +22,7 @@
 import * as THREE from 'three';
 import { PLANET_COLORS } from './planetFactory.js';
 import { createMasslineRibbonMaterial, createEnergyMaterial } from './energy/energyMaterials.js';
+import { planetDetailFor, planetDetailParams, whenPlanetDetailReady } from './planetDetailLibrary.js';
 
 // ── deterministic 2D value noise (the shader's hash/vnoise/fbm family, ported for the bake) ──────
 function mix32(h) {
@@ -46,6 +47,17 @@ function fbm(x, z, seed) {
     a *= 0.5;
   }
   return v;
+}
+
+let _neutralDetail = null;
+/** A 1x1 mid-grey: the detail multiplier that changes nothing. Shared; never disposed with a planet. */
+function neutralDetailTexture() {
+  if (!_neutralDetail) {
+    _neutralDetail = new THREE.DataTexture(new Uint8Array([128, 128, 128, 255]), 1, 1, THREE.RGBAFormat);
+    _neutralDetail.wrapS = _neutralDetail.wrapT = THREE.RepeatWrapping;
+    _neutralDetail.needsUpdate = true;
+  }
+  return _neutralDetail;
 }
 
 /** Bake the planet surface (continents + clouds, lighting-free albedo) once. ~0.3 MP; the
@@ -94,25 +106,37 @@ const SURFACE_VERT = /* glsl */`
 varying vec3 vNormal;
 varying vec3 vWorldPos;
 varying vec2 vUv;
+varying vec3 vObjPos;
 void main() {
   vec4 worldPos = modelMatrix * vec4(position, 1.0);
   vWorldPos = worldPos.xyz;
   vNormal = normalize(mat3(modelMatrix) * normal);
   vUv = uv;
+  vObjPos = normalize(position);
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
 `;
 const SURFACE_FRAG = /* glsl */`
 uniform sampler2D uMap;
+uniform sampler2D uDetail;
+uniform float uDetailScale;
+uniform float uDetailAmt;
 uniform vec3 uAtmColor;
 uniform vec3 uSunDir;
 varying vec3 vNormal;
 varying vec3 vWorldPos;
 varying vec2 vUv;
+varying vec3 vObjPos;
 void main() {
   vec3 N = normalize(vNormal);
   vec3 V = normalize(cameraPosition - vWorldPos);
   vec3 surface = texture2D(uMap, vUv).rgb;
+  // Generated terrain / cloud relief: ONE extra fetch, a planar projection down the pole axis (the chase camera
+  // looks straight down at the cap, so a flat xz projection is what it sees), faded out toward the limb where that
+  // projection would squash. The tile is a neutral-grey multiplier (0.5 = x1.0), so the authored palette is kept.
+  float detail = texture2D(uDetail, vObjPos.xz * uDetailScale).r;
+  float cap = smoothstep(0.08, 0.45, abs(vObjPos.y));
+  surface *= mix(1.0, detail * 2.0, uDetailAmt * cap);
   float daylight = dot(N, normalize(uSunDir));
   float lit = smoothstep(-0.12, 0.18, daylight);
   surface *= (0.12 + 0.88 * lit);
@@ -204,11 +228,29 @@ export function buildPlanetSiteVisual(e) {
     fragmentShader: SURFACE_FRAG,
     uniforms: {
       uMap: { value: bakePlanetTexture(site.planetType, site.seed | 0) },
+      // Starts as a neutral grey (a x1.0 multiplier) so the program is final from the first draw; the real tile is a
+      // texture swap only, never a recompile.
+      uDetail: { value: neutralDetailTexture() },
+      uDetailScale: { value: 1 },
+      uDetailAmt: { value: 0 },
       uAtmColor: { value: atm },
       uSunDir: { value: SUN_DIR },
     },
     fog: false,
   });
+  const detailParams = planetDetailParams(site.planetType, R);
+  const applyDetail = () => {
+    const tile = planetDetailFor(site.planetType);
+    if (!tile) return;
+    surfaceMat.uniforms.uDetail.value = tile;
+    surfaceMat.uniforms.uDetailScale.value = detailParams.scale;
+    surfaceMat.uniforms.uDetailAmt.value = detailParams.amount;
+  };
+  applyDetail();
+  if (surfaceMat.uniforms.uDetailAmt.value === 0) {
+    // Not decoded yet (a planet built before the library published): swap the tile in when it lands.
+    whenPlanetDetailReady().then(applyDetail);
+  }
   const body = new THREE.Mesh(geo, surfaceMat);
   body.scale.setScalar(R);
   body.position.y = site.centerY;

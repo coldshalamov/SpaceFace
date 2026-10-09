@@ -9,8 +9,10 @@ import { hash32 } from '../core/rng.js';
 import { zonesForSector, zoneAt } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector, sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { SECTORS } from '../data/sectors.js';
-import { POI_BEHAVIOR_FAMILIES, POI_FAMILY_IDS } from '../data/poiBehaviorFamilies.js';
+import { POI_BEHAVIOR_FAMILIES, POI_FAMILY_IDS, authoredPlacePlansForSector } from '../data/poiBehaviorFamilies.js';
 import { buildPoiCausalOffer } from '../missions/poiCausalOffers.js';
+import { stationBerthAdmits } from '../data/frontierRumors.js';
+import { hasContractsDesk } from '../data/missions.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
 const DAY_SECONDS = 600;
@@ -20,6 +22,15 @@ const DAY_SECONDS = 600;
 const PLAN_BUDGET = 13;
 const RECEIPT_CAP = 48;
 const HIGH_SECURITY = 0.85;
+
+// Families whose resolution sells a causal mission lead at a sector desk. One summary per
+// family — shared by the resolve-time emit and the aftermath re-entry retry (a lead dropped
+// to a closed berth re-offers once standing opens a desk while the aftermath still lives).
+const LEAD_FAMILY_SUMMARIES = Object.freeze({
+  derelict_salvage: 'Recovered records point to another registered loss.',
+  anomaly_research: 'Stable bearings expose a second research signal.',
+  gravity_well_sounding: 'Charted soundings expose a second orbital signal.',
+});
 const SAVE_SCHEMA_VERSION = 2;
 
 export function poiBehaviorFingerprint(row) {
@@ -150,12 +161,19 @@ export const livingPoiBehaviors = {
   newGame() {
     this.state.livingPoiBehaviors = freshState();
     this._deferredAutomaticGuidance.clear();
+    this._syncWorldReadouts();
   },
 
   // Event-driven by design: no timers can silently turn ambience into combat.
   update() {},
 
   _activateSector(payload = {}) {
+    // payload whose enterEpoch no longer matches the world's serial is stale — a queued tail
+    // must not flip activeSectorId/activeByZone to the departed sector.
+    if (payload.enterEpoch != null && this.state && this.state.world
+        && this.state.world.enterSerial != null && payload.enterEpoch !== this.state.world.enterSerial) {
+      return [];
+    }
     const sectorId = payload.sectorId || this.state.world && this.state.world.currentSectorId;
     if (!sectorId) return [];
     const own = ensureState(this.state);
@@ -216,11 +234,39 @@ export const livingPoiBehaviors = {
         row.fingerprint = aftermath.fingerprint;
         row.mapLabel = `${row.mapLabel} · ${aftermath.kind.replaceAll('_', ' ').toUpperCase()}`;
       }
+      // The yard family's contract is literally 'dock at this station' — the plan-time pick
+      // is seed-pure and cannot see standing, so a gated pick (the Mercenary Outpost for a
+      // pilot below Quiet -30) strands the job as dockable-in-name-only. Re-resolve at
+      // materialize: keep the pick when the berth admits, else the same selection over the
+      // berths that do; a fully-closed sector keeps its pick and the dock gate explains why.
+      if (row.familyId === 'lawful_station_yard' && row.stationId && row.status !== 'aftermath') {
+        const sectorStations = (sector && sector.stations) || [];
+        const admits = (st) => stationBerthAdmits(
+          st, repFor(this.state, st && (st.factionId || (sector && sector.factionId))), this.state);
+        const picked = sectorStations.find((st) => st && st.id === row.stationId);
+        if (!picked || !admits(picked)) {
+          const rerouted = selectStationForFamily(
+            sectorStations.filter((st) => st && admits(st)),
+            { factionId: row.factionId, center: row.zoneLocalCenter },
+            row.familyId,
+          );
+          if (rerouted) {
+            row.stationId = rerouted.id;
+            row.beneficiaryFactionId = row.factionId || rerouted.factionId
+              || (sector && sector.factionId) || null;
+          }
+        }
+      }
       own.activeByZone[row.zoneId] = row;
       this._annotateNearestAnchor(row);
       this._emit('poi:behaviorPlanned', readoutOf(row));
     }
     if (priorZoneId && own.activeByZone[priorZoneId]) own.currentZoneId = priorZoneId;
+    own.authoredPlacePlans = authoredPlacePlansForSector(
+      sector,
+      this.state.meta && this.state.meta.seed,
+    );
+    this._syncWorldReadouts(own);
     return rows;
   },
 
@@ -232,6 +278,13 @@ export const livingPoiBehaviors = {
     if (row.status === 'aftermath') {
       this._emit('poi:behaviorReadout', readoutOf(row));
       const aftermath = own.aftermath[row.behaviorId] || null;
+      // A lead dropped to a closed berth is owed one more chance: while the aftermath still
+      // lives, re-walking the site retries the emit — earned standing opens the desk it
+      // could not sell through before. The flag settles it once any emit actually fired.
+      if (aftermath && LEAD_FAMILY_SUMMARIES[row.familyId] && aftermath.leadEmitted !== true
+          && aftermath.expiresDay > Math.floor((this.state.simTime || 0) / DAY_SECONDS)) {
+        this._emitMissionLead(row, LEAD_FAMILY_SUMMARIES[row.familyId]);
+      }
       if (!this._deferAutomaticGuidance(row, 'aftermath')) {
         this._deferredAutomaticGuidance.delete(row.behaviorId);
         this._publishGuidance(row, 'aftermath', aftermath);
@@ -239,6 +292,7 @@ export const livingPoiBehaviors = {
       return;
     }
     if (row.status === 'available') row.status = 'entered';
+    this._syncWorldReadouts(own);
     this._emit('poi:behaviorReadout', readoutOf(row));
     if (own.entered[row.behaviorId]) {
       const deferred = this._deferredAutomaticGuidance.get(row.behaviorId);
@@ -320,6 +374,7 @@ export const livingPoiBehaviors = {
     }
     row.progress = Math.min(row.contract.required, (row.progress || 0) + 1);
     row.status = 'engaged';
+    this._syncWorldReadouts(own);
     this._emit('poi:behaviorProgress', {
       behaviorId: row.behaviorId,
       familyId: row.familyId,
@@ -359,6 +414,7 @@ export const livingPoiBehaviors = {
     own.aftermath[row.behaviorId] = aftermath;
     row.status = 'resolved';
     row.outcome = outcome;
+    this._syncWorldReadouts(own);
     own.receipts.push({
       behaviorId: row.behaviorId,
       familyId: row.familyId,
@@ -397,7 +453,13 @@ export const livingPoiBehaviors = {
     let text;
     let kind = 'info';
     if (phase === 'outcome') {
-      text = `${label} · ${prettyToken(payload.aftermathKind)} · ${family.rewardLabel}`;
+      // A dropped lead (no admitting desk) earned the mark, not the desk sale — say the
+      // aftermath without naming a lead that never posted.
+      const leadSold = !LEAD_FAMILY_SUMMARIES[row.familyId]
+        || (durable && durable.leadEmitted === true);
+      text = leadSold
+        ? `${label} · ${prettyToken(payload.aftermathKind)} · ${family.rewardLabel}`
+        : `${label} · ${prettyToken(payload.aftermathKind)}`;
       kind = 'good';
     } else if (phase === 'aftermath') {
       const remaining = Math.max(1, (durable && durable.expiresDay || 0)
@@ -447,13 +509,9 @@ export const livingPoiBehaviors = {
         });
         break;
       case 'derelict_salvage':
-        this._emitMissionLead(row, 'Recovered records point to another registered loss.');
-        break;
       case 'anomaly_research':
-        this._emitMissionLead(row, 'Stable bearings expose a second research signal.');
-        break;
       case 'gravity_well_sounding':
-        this._emitMissionLead(row, 'Charted soundings expose a second orbital signal.');
+        this._emitMissionLead(row, LEAD_FAMILY_SUMMARIES[row.familyId]);
         break;
       case 'convoy_industrial_route':
         if (row.stationId) this._emit('economy:applyTradePressure', {
@@ -479,10 +537,22 @@ export const livingPoiBehaviors = {
     // binds the offer to the durable aftermath fingerprint; missions still validates, boards,
     // accepts, spawns, settles, and receipts the work through its ordinary authority path.
     const aftermath = ensureState(this.state).aftermath[row.behaviorId];
+    // The plan-time desk pick is seed-pure and cannot see standing — resolve admission here,
+    // at offer time: keep the planned desk when it admits the pilot, reroute to an admitting
+    // desk in the same sector, or drop the lead when nowhere in-sector will have them.
+    const leadSector = SECTOR_BY_ID.get(aftermath && aftermath.sectorId) || null;
+    const sectorStations = (leadSector && leadSector.stations) || [];
+    const admits = (st) => stationBerthAdmits(st, repFor(this.state, st && (st.factionId || (leadSector && leadSector.factionId))), this.state);
+    const deskId = sectorStations.some((st) => st && st.id === row.stationId && admits(st))
+      ? row.stationId
+      : ((sectorStations.find((st) => st && hasContractsDesk(st.services) && admits(st))
+          || sectorStations.find((st) => st && admits(st))
+          || {}).id || null);
+    if (!deskId) return false;
     const offer = buildPoiCausalOffer({
       seed: this.state.meta && this.state.meta.seed || 1,
       aftermath,
-      stationId: row.stationId,
+      stationId: deskId,
       factionId: row.beneficiaryFactionId,
       zoneName: row.zoneName,
     });
@@ -491,6 +561,10 @@ export const livingPoiBehaviors = {
     // causal destination/investigation instruction.
     if (summary) offer.summary = `${summary} ${offer.summary}`;
     this._emit('mission:offered', offer);
+    // The emit fired: mark the aftermath so zone re-entry does not re-post (the board
+    // dedupes on the fingerprint regardless). A dropped desk leaves the flag unset —
+    // earning the vouch later re-offers the lead the next time the pilot walks the site.
+    if (aftermath) aftermath.leadEmitted = true;
     return true;
   },
 
@@ -645,6 +719,21 @@ export const livingPoiBehaviors = {
       entered: migrated.entered,
     };
     this._deferredAutomaticGuidance.clear();
+    this._syncWorldReadouts();
+  },
+
+  // FB-035 — one reader path for the instruments. Every live row publishes its readout on
+  // state.world.poiReadouts keyed by POI (zoneId); the bag is rebuilt at each mutation point so
+  // progress/status stay fresh for the local map and radar. Dormant or unplanned zones publish
+  // nothing, so an absent or empty bag is the quiet case — no subscriptions, no hidden state.
+  _syncWorldReadouts(own = ensureState(this.state)) {
+    const world = this.state && this.state.world;
+    if (!world || typeof world !== 'object') return;
+    const published = {};
+    for (const row of Object.values(own.activeByZone || {})) {
+      if (row && row.zoneId != null) published[row.zoneId] = readoutOf(row);
+    }
+    world.poiReadouts = published;
   },
 
   destroy() {
@@ -664,6 +753,7 @@ function readoutOf(row) {
     sectorId: row.sectorId,
     zoneId: row.zoneId,
     zoneName: row.zoneName,
+    anchorEntityId: row.anchorEntityId != null ? row.anchorEntityId : null,
     pos: { x: Number(pos.x) || 0, z: Number(pos.z) || 0 },
     mapLabel: row.mapLabel,
     radarKind: row.radarKind,
@@ -687,6 +777,11 @@ function sectorOf(state, sectorId) {
   return state.world && state.world.sectors && state.world.sectors[sectorId]
     || SECTOR_BY_ID.get(sectorId)
     || null;
+}
+
+function repFor(state, factionId) {
+  const rec = factionId && state && state.factions ? state.factions[factionId] : null;
+  return rec ? (rec.rep || 0) : 0;
 }
 
 function selectStationForFamily(stations, zone, familyId) {

@@ -111,11 +111,14 @@ ${M} .sx-mkt-browser__mode { margin:0 !important; padding-right:min(46%, 230px) 
 ${M} .sx-mkt-browser__mode { ${LABEL} font-size:12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .72) !important; }
 ${M} .sx-mkt-browser__count { color:rgb(${BONE} / .5) !important; font-weight:600 !important; white-space:nowrap !important; }
 /* the families stand on a ruled scale, each a stop with its tick; the chosen stop's tick stands taller in bone (the Hand lives on the ladder) */
-${M} .sx-mkt-browser__filters { position:relative; flex-wrap:nowrap !important; overflow-x:auto; scrollbar-width:none;
-  -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 44px), transparent); mask-image:linear-gradient(90deg, #000 calc(100% - 44px), transparent);
-  gap:4px 20px !important; margin:10px 0 12px !important; padding:0 40px 18px 0 !important; background:${RULE_H} !important; }
+/* the scale wraps before it hides: a stop a stranger cannot see is a stop that does not exist
+   (D170) — so the ruled line lives on each stop itself, and a second row of stops rules a
+   second line. No scroll, no fade, every family on the board. */
+${M} .sx-mkt-browser__filters { position:relative; flex-wrap:wrap !important; overflow-x:visible; scrollbar-width:none;
+  -webkit-mask-image:none; mask-image:none;
+  gap:8px 20px !important; margin:10px 0 12px !important; padding:0 0 6px 0 !important; background:none !important; }
 ${M} .sx-mkt-browser__filters::-webkit-scrollbar { display:none; }
-${M} .sx-mkt-browser__filters li { flex:none; }
+${M} .sx-mkt-browser__filters li { flex:none; position:relative; padding-bottom:16px; background:${RULE_H} !important; }
 ${M} .sx-mkt-filter { ${PLAIN} ${LABEL} position:relative; min-height:0 !important; min-width:0 !important; height:auto !important; padding:4px 0 2px !important;
   font-size:12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .58) !important; }
 ${M} .sx-mkt-filter::before { display:none !important; }
@@ -216,6 +219,7 @@ ${M} .orr-mkt-subkey__bit b { color:rgb(248 244 234) !important; font-weight:650
 ${M} .sx-mkt-instrument { grid-column:1 !important; min-width:0; }
 ${M} .sx-mkt-chart .of-chart-area { display:none !important; }
 ${M} .sx-mkt-instrument__plot { height:clamp(96px, 12vh, 170px) !important; border-bottom:0 !important; cursor:crosshair; }
+@media (min-height:881px) and (max-height:960px) { ${M} .sx-mkt-instrument__plot { height:clamp(80px, calc(12vh - 20px), 150px) !important; } }
 ${M} .sx-mkt-instrument__plot::before { content:""; position:absolute; right:0; top:0; bottom:0; width:9px; pointer-events:none;
   background:repeating-linear-gradient(180deg, rgb(${BONE} / .4) 0 1.5px, transparent 1.5px 8px) 100% 0 / 5px 100% no-repeat,
     linear-gradient(rgb(${BONE} / .6), rgb(${BONE} / .6)) 100% 0 / 2px 100% no-repeat,
@@ -408,7 +412,7 @@ html.sf-reduce-motion ${M} .orr-lampkey__word.orr-mkt-morph { animation:none; }
 html body #screens > .sx-berth.orr-station .sx-comms__count:not([hidden]) { font-size:0 !important; width:6px; height:6px; padding:0 !important; margin-left:2px;
   border-radius:50% !important; background:rgb(248 244 234) !important; display:inline-block !important; vertical-align:middle; }
 html body #screens > .sx-berth.orr-station .sx-receipt__delta { color:var(--dp-ice, #8fcbff) !important; }
-@media (max-height:800px) {
+@media (max-height:880px) {
   ${M} .sx-mkt__stage { display:grid !important; grid-template-columns:minmax(0, 1fr) 244px !important; grid-template-rows:minmax(0, 1fr) auto; column-gap:28px; }
   ${M} .sx-mkt__analysis { grid-column:1 !important; }
   /* the hero yields width to the trace: a smaller numeral, its words sleep (the verb says it),

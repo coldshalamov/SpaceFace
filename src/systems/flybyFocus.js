@@ -510,7 +510,7 @@ export const flybyFocus = {
         closestSurfaceMiss: pick.closestSurfaceMiss,
       });
       if (!arcade) this.bus.emit('toast', {
-        text: 'FLYBY FOCUS — latch window open',
+        text: 'Time slows — latch the flyby before it clears',
         kind: 'good',
         ttl: 1.6,
       });

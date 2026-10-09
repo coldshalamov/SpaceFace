@@ -433,7 +433,7 @@ function speak(acts) {
     return `I was ${act.doing}, then ${act.then}, so I ${act.so}.`;
   }
   const middle = acts.slice(1, -1).map((act) => act.doing);
-  if (!middle.length) middle.push(acts[acts.length - 1].doing);
+  if (!middle.length) middle.push(acts[0].then);
   const so = acts[acts.length - 1].so;
   return `I was ${acts[0].doing}, then ${middle.join(', then ')}, so I ${so}.`;
 }

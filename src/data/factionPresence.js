@@ -1,10 +1,12 @@
-// Depth Program K1 — pure presence/service planning for the five new factions.
+// Depth Program K1 — pure presence/service planning for the five new factions plus the three
+// previously-absent kits (Choir procession, Helix rim audit, Free homestead watch).
 // Map/UI consumers may read this module without importing a system. It never mutates GameState.
 
 import { SHIPS } from './ships.js';
 import { SECTORS } from './sectors.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { sampleFactionBehavior } from './factionDoctrines.js';
+import { FACTION_KITS } from './factions/index.js';
 import { sectorGlobalOrigin } from './sectorCoordinates.js';
 import { conflictPairsForSector, escalationForConflict } from './conflictZones.js';
 
@@ -71,6 +73,31 @@ export const FACTION_PRESENCE_NODES = freeze([
     kind: 'phase_gated_observer_prism',
     sectorIds: ['sector_veil_nebula', 'sector_ashfall_reach'],
     stationIds: ['station_veil', 'station_ashcache'],
+  },
+  {
+    id: 'presence_choir_pilgrim_walk',
+    factionId: 'faction_choir',
+    label: 'Choir Pilgrim Walk',
+    kind: 'pilgrim_procession',
+    sectorIds: ['sector_vesta_forge'],
+    stationIds: ['station_depot3'],
+  },
+  {
+    // The paper faction (fleetClass 'none'): station-only presence, zero ships ever.
+    id: 'presence_helix_rim_audit',
+    factionId: 'faction_helix',
+    label: 'Helix Rim Audit',
+    kind: 'rep_gated_audit',
+    sectorIds: ['sector_sedna_dark'],
+    stationIds: ['station_sedna'],
+  },
+  {
+    id: 'presence_free_homestead_watch',
+    factionId: 'faction_free',
+    label: 'Free Homestead Watch',
+    kind: 'homestead_loiter',
+    sectorIds: ['sector_io_reach'],
+    stationIds: ['station_reach'],
   },
 ]);
 
@@ -207,6 +234,31 @@ function fulfillmentRouteFrame(sectorId, seed, routeId) {
   });
 }
 
+// The Choir procession echoes the Fulfillment route frame but slower and smaller: a liturgical
+// walk across Vesta Forge, not a logistics convoy.
+const CHOIR_PROCESSION_ROUTE_ID = 'choir_vesta_procession';
+
+function choirProcessionFrame(sectorId, seed, routeId) {
+  const origin = sectorGlobalOrigin(sectorId);
+  const sign = (hash32(seed, routeId, sectorId, 'procession-direction') & 1) ? 1 : -1;
+  return freeze({
+    start: { x: origin.x - 220 * sign, z: origin.z - 110 },
+    end: { x: origin.x + 220 * sign, z: origin.z + 110 },
+    periodS: 56,
+    spacing: 40,
+  });
+}
+
+// K1 hull law: presence plans never invent hulls — every id comes from the faction's own
+// shipRoles table in src/data/factions/.
+function shipRoleHulls(factionId, role) {
+  const kit = FACTION_KITS.find((row) => row.id === factionId);
+  const row = kit && Array.isArray(kit.shipRoles)
+    ? kit.shipRoles.find((entry) => entry.role === role)
+    : null;
+  return (row && Array.isArray(row.hullIds)) ? row.hullIds : [];
+}
+
 function plan({ factionId, shipDefId, sectorId, seed, index = 0, ...extra }) {
   return freeze({
     factionId,
@@ -220,7 +272,10 @@ function plan({ factionId, shipDefId, sectorId, seed, index = 0, ...extra }) {
 
 /**
  * Pure planner. Understory receives explicit loss-ledger rows from the caller and cannot invent a
- * hull. All other hulls are existing SHIPS ids; Verge count/phase derive only from saved inputs.
+ * hull. All other hulls are existing SHIPS ids drawn from the faction's own shipRoles table;
+ * Verge count/phase derive only from saved inputs. The Choir walks a slow two-ship procession in
+ * Vesta Forge; the Free Frontier keeps a 1-2 hull homestead watch in Io Reach; Helix is the paper
+ * faction and returns ZERO ship plans anywhere — its presence is the Sedna audit desk only.
  * Conflict garrisons (planConflictPresence) ride the same additive seam when the caller passes the
  * factions-owned conflicts map; callers that do not pass conflicts get unchanged output.
  */
@@ -314,6 +369,64 @@ export function planFactionPresence({
     }
   }
 
+  if (sectorId === 'sector_vesta_forge') {
+    const hulls = shipRoleHulls('faction_choir', 'pilgrim-transport');
+    if (hulls.length) {
+      const frame = choirProcessionFrame(sectorId, seed, CHOIR_PROCESSION_ROUTE_ID);
+      const hullIndex = hash32(seed, CHOIR_PROCESSION_ROUTE_ID) % hulls.length;
+      const dx = frame.end.x - frame.start.x;
+      const dz = frame.end.z - frame.start.z;
+      const length = Math.hypot(dx, dz) || 1;
+      const px = -dz / length;
+      const pz = dx / length;
+      for (let formationIndex = 0; formationIndex < 2; formationIndex++) {
+        const offset = (formationIndex - 0.5) * frame.spacing;
+        const sampled = sampleFactionBehavior('faction_choir', hash32(seed, sectorId, 4 + formationIndex), 1)[0];
+        plans.push(plan({
+          factionId: 'faction_choir',
+          shipDefId: hulls[(hullIndex + formationIndex) % hulls.length],
+          sectorId,
+          seed,
+          index: 4 + formationIndex,
+          pos: freeze({ x: frame.start.x + px * offset, z: frame.start.z + pz * offset }),
+          // Pilgrim transports are a peaceful procession: they never fire first (so a player
+          // attack flips them defensive like Understory/Archive), and they walk a fixed route
+          // (the generic route updater only animates fixedRoute profiles). The doctrine's
+          // combat-facing values are otherwise kept as sampled.
+          behavior: sampled ? { ...sampled, firstFire: false, fixedRoute: true } : null,
+          passive: true,
+          fixedRoute: true,
+          routeId: CHOIR_PROCESSION_ROUTE_ID,
+          route: ['sector_vesta_forge'],
+          routeStart: frame.start,
+          routeEnd: frame.end,
+          routePeriodS: frame.periodS,
+          formation: 'line',
+          formationIndex,
+          formationCount: 2,
+          formationSpacing: frame.spacing,
+          pilgrimProcession: true,
+        }));
+      }
+    }
+  }
+
+  if (sectorId === 'sector_io_reach') {
+    const hulls = shipRoleHulls('faction_free', 'homestead-guard');
+    const count = hulls.length ? 1 + (hash32(seed, 'free-homestead-watch', sectorId) & 1) : 0;
+    for (let index = 0; index < count; index++) {
+      plans.push(plan({
+        factionId: 'faction_free',
+        shipDefId: hulls[index % hulls.length],
+        sectorId,
+        seed,
+        index: 20 + index,
+        passive: true,
+        homesteadWatch: true,
+      }));
+    }
+  }
+
   if (conflicts) {
     plans.push(...planConflictPresence({ sectorId, seed, conflicts, ownerFactionId }));
   }
@@ -343,6 +456,15 @@ export function presenceServiceForStation(stationId, repByFaction = {}) {
   if (stationId === 'station_expanse') {
     return freeze({
       factionId: 'faction_understory', stationId, services: ['wreck_buy'], available: true, requiredRep: null,
+    });
+  }
+  if (stationId === 'station_sedna') {
+    // The Helix rim audit gates on standing like the Archive reading room, but low: the
+    // Directorate audits everyone's paperwork, it just wants to know yours first.
+    const rep = Number(repByFaction.faction_helix) || 0;
+    return freeze({
+      factionId: 'faction_helix', stationId, services: ['directorate_audit'],
+      available: rep >= 15, requiredRep: 15,
     });
   }
   return null;

@@ -1,62 +1,57 @@
-# SpaceFace emblem — The Unclosed Eye
+# SpaceFace app icon — the Warmask
 
 <img src="spaceface-launcher.svg" width="240" height="240" alt="SpaceFace launcher icon">
 
-Original, hand-authored vector artwork for SpaceFace. **The Unclosed Eye** is a working art title, not a new canonical faction, religion, artifact or story requirement. These notes describe this asset; they do not replace the game's visual direction.
+The mark for everything the **operating system** shows: the taskbar button, title bar, Alt-Tab, the desktop
+shortcut / installer / `.exe`, the macOS dock, the Linux launcher, the browser tab and iOS home screen. It is not
+an in-game UI element (the in-game monogram stays in `assets/ui/kit/marks/`).
 
-## The shape
+## The idea
 
-An asymmetric folded crescent and a detached counterform surround a single ember. The upper fold does not close; the lower cleft remains open. The silhouette can suggest a face, an aperture or an incomplete orbital machine without depicting a spacecraft or literal helmet.
-
-The signature treatment uses restrained bone/alloy planes and amber. The flat and one-color versions retain the same three-part silhouette. The 16–32 px optical master widens the breaks and enlarges the ember instead of shrinking all the detail indiscriminately.
-
-The story can give the mark a meaning later. A found mechanism, a hull stamp or a navigation sign are possibilities, not canon. The design does not depend on any of them.
+A scarred, split-plane helm: bare-steel left half, gunmetal right half, two slit eyes burning ember-orange,
+a fanged jaw cut, and a pair of claw slashes across the right cheek with the heat showing through. No ship, planet,
+star or rocket — it reads as a face first, which is the name. The tile is a chamfered armour plate (asymmetric
+cut corners), not a rounded app-store square, so it is recognisable by silhouette in a row of Windows icons.
 
 ## Files
 
 | File | Use |
 | --- | --- |
-| `spaceface-emblem.svg` | Transparent signature master; satin-alloy vector shading, larger uses on dark backgrounds. |
-| `spaceface-emblem-flat.svg` | Transparent bone/amber version; two-color printing and flat UI. |
-| `spaceface-emblem-mono.svg` | Single filled path, `currentColor`; decals, masks, engraving, inline UI and light backgrounds. Standalone default is black. |
-| `spaceface-emblem-reverse.svg` | Warm-bone one-color version for dark backgrounds. |
-| `spaceface-emblem-small.svg` | Transparent optical master for 16–32 px; wider gaps and larger ember. |
-| `spaceface-launcher.svg` | Signature on a warm gunmetal rounded-square tile. |
-| `spaceface-favicon.svg` | Small optical master on a solid dark tile; uses the available canvas more fully than the large launcher. |
-| `preview.html` | Offline visual specimen, actual-size strip, light/dark applications and links to the SVGs. Open directly in a browser. |
-| `export-icons.py` | Reproducible PNG, Windows ICO and macOS ICNS exporter; validates SVG structure before rendering. |
+| `build-icons.mjs` | **Source of truth.** One geometry; emits every SVG master and every raster. |
+| `spaceface-launcher.svg` | Full mark on the chamfered plate. Source for sizes >= 40 px. |
+| `spaceface-favicon.svg` | Small optical master on the plate: fewer cuts, fatter eyes, no accent bar. Source for 16 / 20 / 24 / 32 px. |
+| `spaceface-emblem.svg` | Transparent full-colour mark (dark backgrounds, store art). |
+| `spaceface-emblem-small.svg` | Transparent optical master for 16-32 px. |
+| `spaceface-emblem-mono.svg` | One colour (black) — decals, engraving, light backgrounds. |
+| `spaceface-emblem-reverse.svg` | One colour (warm bone) — dark backgrounds. |
+| `exports/spaceface.ico` | Windows: 16, 20, 24, 32, 40, 48, 64, 96, 128, 256 — each frame rendered from its own master. |
+| `exports/spaceface.icns` | macOS (128 / 256 / 512 / 1024 PNG payloads). |
+| `exports/spaceface-launcher-*.png` | 16 … 1024 px plates; `-256` is the Electron window icon off Windows, `-512` is Linux. |
+| `exports/spaceface-emblem-*.png` | 256 … 2048 px transparent mark. |
+| `exports/apple-touch-icon.png`, `exports/favicon-32.png` | Browser fallbacks (copied to `assets/ui/app-icon/`). |
 
-All SVGs use a 512 × 512 viewBox. They contain no bitmap images, external resources, fonts, JavaScript or filters. Signature shading is ordinary SVG gradients and closed path facets. Negative space is transparent, not painted black. The launcher and favicon intentionally have backgrounds.
+`assets/ui/app-icon/` (`favicon.svg`, `favicon-32.png`, `apple-touch-icon.png`) is the copy the web bundle ships:
+`scripts/lib/releasePackaging.mjs` copies `assets/ui`, not `assets/brand`. `index.html` links those.
 
-## Practical usage
-
-Keep the supplied orientation and aspect ratio. The internal voids and the separation of the ember are part of the mark, not holes to fill. For an unfamiliar background, use a one-color version or the launcher tile rather than adding an outline or glow.
-
-For ordinary UI embedding:
-
-```html
-<img src="assets/brand/spaceface-emblem.svg" width="64" height="64" alt="SpaceFace">
-```
-
-`currentColor` in the mono file inherits a surrounding color when the SVG markup is **inline**, not through an external `<img>`. For a light symbol in an ordinary `<img>`, use the reverse file. Separate SVG image files have independent ID scopes; when inlining multiple instances in one document, prefix their title, description, gradient and clip IDs and the corresponding references.
-
-No launcher, favicon link, package configuration, gameplay or story file is changed by this asset-only addition. Native exports are ready for a launcher integration but have not been installed into or tested in a packaged SpaceFace build.
-
-## Native exports
-
-The delivery ZIP includes rendered exports. To regenerate from the repository SVGs:
+## Regenerate
 
 ```sh
-python -m pip install -r assets/brand/requirements.txt
-python assets/brand/export-icons.py --out assets/brand/exports
+node assets/brand/build-icons.mjs             # rewrite SVG masters, exports/, assets/ui/app-icon/
+node assets/brand/build-icons.mjs --preview --no-svg --out=<scratch dir>   # contact sheet only, repo untouched
 ```
 
-The Python exporter uses CairoSVG, which requires the Cairo system library on platforms where it is not already installed. The SVG files themselves have no runtime dependency on Python or CairoSVG.
+Needs only `sharp` (already a dev dependency) — no Python or Cairo. The script decodes every ICO frame after writing
+it and fails if a size or alpha channel is wrong. Change the mark by editing the geometry constants at the top of the
+script, never an exported file.
 
-Outputs: launcher PNGs at 16, 20, 24, 32, 40, 48, 64, 128, 256, 512 and 1024 px; transparent signature PNGs at 256, 512, 1024 and 2048 px; `spaceface.ico` with nine individually rendered resolutions; and `spaceface.icns`. The ICO retains the optical master in its small representations instead of deriving every size from a single raster. Each output size is rendered from an SVG, with supersampling for curved edges.
+## Where it is wired
 
-`export-receipt.json` records exact source SHA-256 hashes and export checks. ICO frames are decoded and compared byte-for-byte; the largest ICNS frame is decoded. Those checks are file validation, not a claim of native OS integration testing.
+- `package.json` `build.win.icon` / `build.mac.icon` / `build.linux.icon` — exe, installer, dmg, AppImage.
+- `electron/main.cjs` — `APP_ICON` (ICO on Windows, PNG elsewhere) for the live window, and
+  `setAppUserModelId('com.spaceface.game')` so the taskbar/pinned shortcut bind to this icon.
+- `index.html` — tab icon, 32 px PNG fallback, iOS touch icon.
 
 ## Provenance
 
-Created for this SpaceFace request from newly authored Bézier paths. No third-party logo, stock icon, font glyph, traced image or embedded generated bitmap is used. The existing repository's warm Field Hardware palette informed the material treatment. This is not a trademark-clearance report.
+Newly authored paths and gradients for this repository. No third-party logo, stock icon, font glyph, traced
+image or generated bitmap. Not a trademark-clearance report.

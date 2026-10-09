@@ -64,8 +64,17 @@ const cleanRecipe = PRESENTATION_RECIPES['tether.release.clean'];
 const razorRecipe = PRESENTATION_RECIPES['tether.release.razor'];
 assert.ok(razorRecipe.importance > goodRecipe.importance,
   `razor cue must be more important than good; razor=${razorRecipe.importance} good=${goodRecipe.importance}`);
-assert.ok((razorRecipe.budgets.particles || 0) > (goodRecipe.budgets.particles || 0),
-  `razor cue must budget more particles than good`);
+// FB-072 moved the release-quality ladder off raw budgets onto severity shape tiers
+// (cone → sheet → ring) at a flat tier-1 budget — razor is the biggest SHAPE, not the
+// biggest handful of dots. Pin the differentiation axes the design actually uses.
+assert.ok(razorRecipe.shape && goodRecipe.shape && cleanRecipe.shape,
+  'release cues must declare severity shape tiers');
+assert.ok(razorRecipe.shape.tier > cleanRecipe.shape.tier && cleanRecipe.shape.tier > goodRecipe.shape.tier,
+  `shape tiers must escalate good<clean<razor; got ${goodRecipe.shape.tier}/${cleanRecipe.shape.tier}/${razorRecipe.shape.tier}`);
+assert.ok((razorRecipe.budgets.voices || 0) > (goodRecipe.budgets.voices || 0),
+  'razor still spends more voices than good');
+assert.ok((razorRecipe.budgets.particles || 0) >= (goodRecipe.budgets.particles || 0),
+  'razor must never budget below good');
 
 assertRateReleaseNamesThePlayerAsTheSource();
 await assertMessyReleaseEmitsNoPremiumFeedback();
@@ -74,6 +83,8 @@ await assertCleanReleaseStaysPlayerFacingAtEveryRange();
 await assertRazorReleaseStrongerThanGood();
 await assertReducedMotionAndFlashDoNotCrashAndSuppressMotion();
 assertMissedReleaseUsesStrictPredictionTruth();
+assertUntargetedReleaseIsNeutralNotAMiss();
+assertUntargetedReleaseIsNeutralUnderReducedModesAndReplay();
 assertMissedReleaseIgnoresToleranceAndDedupesExactReceipts();
 assertMissedReleasePreservesThrowAndSelfSlingIdentity();
 assertMalformedReleaseValidationFailsClosed();
@@ -157,16 +168,22 @@ async function assertRazorReleaseStrongerThanGood() {
   assert.equal(razor.cues[0], 'tether.release.razor', 'razor release should map to tether.release.razor');
   assert.notEqual(good.cues[0], razor.cues[0], 'razor and good must produce different cue ids');
 
-  // Razor cue must be observably stronger than good on at least one motion/particle axis.
+  // Razor must be observably stronger than good — and under FB-072 the differentiation is
+  // the severity SHAPE tier the cue carries to the render record, not a bigger dot count.
+  const goodShape = shapeTierOf(good);
+  const razorShape = shapeTierOf(razor);
+  assert.ok(razorShape > goodShape,
+    `razor shape tier (${razorShape}) should exceed good (${goodShape})`);
+
   const goodParticles = particleBudgetOf(good);
   const razorParticles = particleBudgetOf(razor);
-  assert.ok(razorParticles > goodParticles,
-    `razor vfx particle budget (${razorParticles}) should exceed good (${goodParticles})`);
+  assert.ok(razorParticles >= goodParticles,
+    `razor vfx particle budget (${razorParticles}) must not drop below good (${goodParticles})`);
 
   const goodTrauma = cameraTraumaOf(good);
   const razorTrauma = cameraTraumaOf(razor);
-  assert.ok(razorTrauma > goodTrauma,
-    `razor camera trauma (${razorTrauma}) should exceed good (${goodTrauma})`);
+  assert.ok(razorTrauma >= goodTrauma,
+    `razor camera trauma (${razorTrauma}) must not drop below good (${goodTrauma})`);
 
   // Razor UI text must differ from good (stronger/different copy).
   assert.ok(harnessAlertText(razor) !== harnessAlertText(good),
@@ -198,21 +215,89 @@ async function assertReducedMotionAndFlashDoNotCrashAndSuppressMotion() {
   assert.equal(reduced.vfxCues[0].flashReduced, true, 'vfx cue should report flashReduced=true');
 }
 
-// 6. The attempted-window truth is the producer's strict frozen prediction boolean. Values that
-//    happen to be falsy are not equivalent evidence and must fail closed.
+// 6. The attempted-window truth is the producer's strict frozen prediction pair: a valid
+//    attempted solution AND an off-window release. Values that happen to be falsy are not
+//    equivalent evidence and must fail closed — including the untargeted valid:false case,
+//    which is a lawful neutral release, never a failed aim (RELEASE-TRUTH C1).
 function assertMissedReleaseUsesStrictPredictionTruth() {
   const strict = createHarness();
-  emitReleaseValidation(strict, { prediction: { onSolution: false } });
-  assert.equal(missedCues(strict).length, 1, 'strict onSolution=false should emit Missed once');
+  emitReleaseValidation(strict, { prediction: { valid: true, onSolution: false } });
+  assert.equal(missedCues(strict).length, 1,
+    'a valid attempted solution off-window should emit Missed once');
 
-  for (const value of [true, undefined, null, 0, '', 'false', {}, []]) {
+  for (const [label, prediction] of [
+    ['untargeted valid=false', { valid: false, onSolution: false }],
+    ['missing valid', { onSolution: false }],
+    ['missing onSolution', { valid: true }],
+    ['onSolution truthy', { valid: true, onSolution: true }],
+    ['onSolution string', { valid: true, onSolution: 'false' }],
+    ['valid string', { valid: 'false', onSolution: false }],
+    ['valid truthy non-bool', { valid: 1, onSolution: false }],
+    ['valid null', { valid: null, onSolution: false }],
+    ['empty prediction', {}],
+  ]) {
     const harness = createHarness();
-    const prediction = value === undefined ? {} : { onSolution: value };
     emitReleaseValidation(harness, { prediction });
     assert.equal(missedCues(harness).length, 0,
-      `onSolution=${String(value)} must not be coerced into a Missed receipt`);
-    assertNoMissedOutputs(harness, `onSolution=${String(value)}`);
+      `prediction ${label} must not be coerced into a Missed receipt`);
+    assertNoMissedOutputs(harness, label);
   }
+}
+
+// 6b. A lawful UNTARGETED release — RMB with no aim, or a taut F-cut with no sling target —
+//     reports prediction.valid=false and must be neutral: no Missed cue, alert, or caption.
+//     Deliberate aimed misses keep the cue.
+function assertUntargetedReleaseIsNeutralNotAMiss() {
+  for (const [label, overrides] of [
+    ['untargeted throw', {
+      releaseId: 'massline:throw:untargeted',
+      prediction: { valid: false, onSolution: false },
+    }],
+    ['untargeted self-sling cut', {
+      releaseId: 'massline:self-sling:untargeted',
+      kind: 'self-sling',
+      entityId: PLAYER_ID,
+      prediction: { valid: false, onSolution: false },
+    }],
+  ]) {
+    const harness = createHarness();
+    emitReleaseValidation(harness, overrides);
+    assert.equal(missedCues(harness).length, 0, `${label} must stay neutral — no Missed cue`);
+    assertNoMissedOutputs(harness, label);
+    assert.equal(harness.alerts.length, 0, `${label} must surface no HUD alert`);
+    assert.equal(harness.captions.length, 0, `${label} must surface no caption`);
+  }
+}
+
+// 6c. Neutrality survives reduced-motion/reduced-flash handling and replay: an untargeted
+//     receipt under either reduction mode emits nothing, and a replayed duplicate of the
+//     aimed-miss receipt still dedupes to one cue (re-release never re-speaks).
+function assertUntargetedReleaseIsNeutralUnderReducedModesAndReplay() {
+  for (const settings of [
+    { motionReduce: true, flashReduce: false },
+    { motionReduce: false, flashReduce: true },
+    { motionReduce: true, flashReduce: true },
+  ]) {
+    const harness = createHarness(settings);
+    emitReleaseValidation(harness, {
+      releaseId: `massline:throw:untargeted:${settings.motionReduce}:${settings.flashReduce}`,
+      prediction: { valid: false, onSolution: false },
+    });
+    assert.equal(missedCues(harness).length, 0,
+      `untargeted release must stay neutral under motionReduce=${settings.motionReduce} flashReduce=${settings.flashReduce}`);
+    assertNoMissedOutputs(harness, `untargeted reduced ${settings.motionReduce}/${settings.flashReduce}`);
+  }
+
+  const replay = createHarness({ motionReduce: true, flashReduce: true });
+  const receipt = {
+    releaseId: 'massline:throw:replay',
+    prediction: { valid: true, onSolution: false },
+  };
+  emitReleaseValidation(replay, receipt);
+  emitReleaseValidation(replay, receipt); // exact replay — dedupe must still hold
+  emitReleaseValidation(replay, { ...receipt, releaseId: 'massline:throw:replay:2' });
+  assert.equal(missedCues(replay).length, 2,
+    'replayed aimed misses dedupe by releaseId even under reduced modes');
 }
 
 // 7. withinTolerance describes next-tick trajectory divergence, not release-window timing. It may
@@ -222,7 +307,7 @@ function assertMissedReleaseIgnoresToleranceAndDedupesExactReceipts() {
     const harness = createHarness();
     emitReleaseValidation(harness, {
       releaseId: `massline:throw:tolerance:${withinTolerance}`,
-      prediction: { onSolution: false },
+      prediction: { valid: true, onSolution: false },
       withinTolerance,
     });
     assert.equal(missedCues(harness).length, 1,
@@ -232,7 +317,7 @@ function assertMissedReleaseIgnoresToleranceAndDedupesExactReceipts() {
   const dedupe = createHarness();
   const receipt = {
     releaseId: 'massline:throw:dedupe:1',
-    prediction: { onSolution: false },
+    prediction: { valid: true, onSolution: false },
     importance: 1,
     tags: ['critical'],
     dedupeKey: 'forged:first',
@@ -263,7 +348,7 @@ function assertMissedReleasePreservesThrowAndSelfSlingIdentity() {
     releaseId: 'massline:throw:identity',
     kind: 'throw',
     entityId: TARGET_ID,
-    prediction: { onSolution: false },
+    prediction: { valid: true, onSolution: false },
   });
   assertMissedCueIdentity(throwHarness, {
     releaseId: 'massline:throw:identity', kind: 'throw', targetId: TARGET_ID,
@@ -274,7 +359,7 @@ function assertMissedReleasePreservesThrowAndSelfSlingIdentity() {
     releaseId: 'massline:self-sling:identity',
     kind: 'self-sling',
     entityId: PLAYER_ID,
-    prediction: { onSolution: false },
+    prediction: { valid: true, onSolution: false },
   });
   assertMissedCueIdentity(selfSling, {
     releaseId: 'massline:self-sling:identity', kind: 'self-sling', targetId: PLAYER_ID,
@@ -344,7 +429,7 @@ function assertMissedReleaseUsesOnlyPoliteHudAndCaptionLanes() {
     const harness = createHarness(settings);
     emitReleaseValidation(harness, {
       releaseId: `massline:throw:lanes:${settings.motionReduce}`,
-      prediction: { onSolution: false },
+      prediction: { valid: true, onSolution: false },
     });
     assert.equal(harness.alerts.length, 1, 'Missed should emit exactly one bounded HUD alert');
     assert.equal(harness.alerts[0].text, 'MISSED WINDOW');
@@ -434,7 +519,8 @@ function emitReleaseValidation(harness, overrides = {}) {
     entityId: TARGET_ID,
     releaseTick: harness.state.tick - 1,
     validatedTick: harness.state.tick,
-    prediction: { onSolution: false },
+    // The real producer receipt shape: an attempted solution that was valid but off-window.
+    prediction: { valid: true, onSolution: false },
     withinTolerance: true,
     ...overrides,
   });
@@ -490,6 +576,13 @@ function emitRelease(harness, classification) {
   harness.bus.emit('tether:releaseRated', payload);
   // presentation:cue is queued (deferred) by the orchestrator; flush dispatches it to adapters.
   harness.bus.flush();
+}
+
+// The presentation:cue payload carries the recipe's declared severity shape tier (FB-072);
+// the adapters forward the same record into the render-facing vfx event.
+function shapeTierOf(harness) {
+  const cue = harness.cueEvents[harness.cueEvents.length - 1];
+  return cue && cue.shape && Number.isFinite(cue.shape.tier) ? cue.shape.tier : 0;
 }
 
 function particleBudgetOf(harness) {

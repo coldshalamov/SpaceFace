@@ -661,7 +661,7 @@ test('NXI-098: a sealed hold stays listed and its sell control does not fire', (
     assert.equal(emitted.some((entry) => entry.name === 'ui:sell'), false);
     const sealedSale = screen.el.querySelector('[data-sale-line]');
     assert.equal(sealedSale.getAttribute('data-sale-qty'), '0');
-    assert.equal(sealedSale.textContent.includes('Contemplated sale'), false);
+    assert.equal(sealedSale.textContent.includes('If sold'), false);
     const holdArc = screen.el.querySelector('.orr-mkt-holdarc');
     assert.ok(holdArc, 'the hold graphic stays on the counter');
     assert.ok(holdArc.textContent.includes(String(state.player.cargo.usedVolume)));
@@ -682,7 +682,7 @@ test('NXI-098: a sealed hold stays listed and its sell control does not fire', (
     dispatch(typed, 'input');
     assert.equal(typed.value, '0');
     assert.equal(screen.el.querySelector('[data-sale-line]').getAttribute('data-sale-qty'), '0');
-    assert.equal(screen.el.querySelector('[data-sale-line]').textContent.includes('Contemplated sale'), false);
+    assert.equal(screen.el.querySelector('[data-sale-line]').textContent.includes('If sold'), false);
     assert.ok(screen.el.querySelector('.orr-mkt-holdarc').textContent.includes(String(state.player.cargo.usedVolume)));
     assert.equal(emitted.some((entry) => entry.name === 'ui:sell'), false);
 
@@ -721,7 +721,7 @@ test('NXI-098: a hold that is only sealed cargo is not described as empty', () =
     screen.el.querySelector('[data-go]').click();
     assert.equal(emitted.some((entry) => entry.name === 'ui:sell'), false);
     assert.equal(screen.el.querySelector('[data-sale-line]').getAttribute('data-sale-qty'), '0');
-    assert.equal(screen.el.querySelector('[data-sale-line]').textContent.includes('Contemplated sale'), false);
+    assert.equal(screen.el.querySelector('[data-sale-line]').textContent.includes('If sold'), false);
     assert.ok(screen.el.querySelector('.orr-mkt-holdarc').textContent.includes(String(state.player.cargo.usedVolume)));
     screen.el.querySelector('[data-q="1"]').click();
     screen.el.querySelector('[data-q="-1"]').click();

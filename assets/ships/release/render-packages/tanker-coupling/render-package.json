@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c27f4a2b9da888d8746f10902314b7fa0249e953b919349def4216f13881b825",
+  "contentHash": "6a8bb7c0c78c8bcf944ce05651b7b64e26b4dce0ec7b4bfea5d9f78abaef2fde",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1859,8 +1859,8 @@
       "uri": "place_tanker_coupling.glb"
     },
     "sourceManifest": {
-      "bytes": 218953,
-      "sha256": "11dbb245148b409f69baf421af88fad497b7589143bfdbf7f185bed0b35d4cd6",
+      "bytes": 270120,
+      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
       "uri": "pilots.json"
     }
   },
@@ -1971,8 +1971,9 @@
       }
     ],
     "materialProfileRoles": {
-      "hull": 18,
+      "hull": 16,
       "mechanical": 3,
+      "signal": 2,
       "warning": 1
     },
     "materialProfiles": [
@@ -2004,7 +2005,7 @@
       {
         "allowTextures": false,
         "planIndex": 8,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2054,7 +2055,7 @@
       {
         "allowTextures": false,
         "planIndex": 20,
-        "role": "hull"
+        "role": "signal"
       },
       {
         "allowTextures": false,
@@ -2688,7 +2689,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_tanker_coupling.glb"
   },
-  "runtimeHash": "633463bf1aa0e53d36eb543a5fb09fa28ae9b7b1fdeb962d872a729a101f674e",
+  "runtimeHash": "1190249becea1ba668464a5f891837ec4718dd8477d10e849f6d6b9873ae69f0",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

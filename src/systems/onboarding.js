@@ -24,16 +24,29 @@ import { drawSeeded, hash32 } from '../core/rng.js';
 import { IS_DEMO } from '../core/demoMode.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { Masks } from '../core/entity.js';
-import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE } from '../ui/hudAttention.js';
+import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE, shelfVerbLine } from '../ui/hudAttention.js';
+import { bindFirstHourFelt } from '../ui/firstHourFelt.js';
 import { deboxCss, INK_SHADOW } from '../ui/hudBrackets.js';
 import { continueRecap } from '../ui/screens/missionLog.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { activeFieldSnapshot } from './fields.js';
 import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { DROP_KICK_CRUISE_SPEED } from './jettisonImpulse.js';
+import { readCadencePair, rateCadenceTechnique } from './masslineControlLaw.js';
+import { resolveActionLabel } from './input.js';
 import { substanceFor } from '../core/physicsAuthority.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+
+// U5 — the planetary bands' first-contact lines. Instrument register, one line each: what
+// the band is, and the law that governs it. Spoken once per band per body per save.
+const PLANET_BAND_FIRST_LINES = Object.freeze({
+  sling: 'The sling band — speed you carry out of this arc is yours to keep.',
+  skim: 'The working band — the scoop harvests here, and hull heat is climbing.',
+  danger: 'The danger band — drag owns the hull now. The recovery burn is the way back out.',
+  reentry: 'Reentry — everything hot is real. Get the nose up and burn.',
+});
 // TEACH-06: FIELD_ESCAPES is the authored "you are never trapped without a verb" table, and until
 // now nothing in src/ read it. The player had a named escape for every power and no way to learn it.
 import { fieldEscapeOf, FIELD_KINDS } from '../data/fields.js';
@@ -103,10 +116,78 @@ import {
   freshStoreSentenceState,
   stampStoreClause,
 } from '../onboarding/storeSentence.js';
+// FB-002/FB-116 — the verb shelf: every bound verb is spoken exactly once, in the player's own
+// device vocabulary, on a real trigger. The five-verb rail teaches by doing; these seven teach
+// by the moment the verb matters. Table + pure trigger checks live in src/onboarding/verbSpeech.js.
+import {
+  SHELF_LONG_STRAIGHT_S,
+  SHELF_VERBS,
+  shelfHintKey,
+  shelfHostileChargeReady,
+  shelfLongStraightActive,
+  shelfVerbEnabled,
+  verbBindingLabel,
+} from '../onboarding/verbSpeech.js';
+import { isHostileToPlayer } from './scanner.js';
+import { fittedCloakModule } from './cloak.js';
 
 const PANEL_ID = 'sf-onboarding';
 const STYLE_ID = 'sf-onboarding-style';
 const TAU = Math.PI * 2;
+
+// ── Save/load helpers (FB-114) ────────────────────────────────────────────────
+// Rail records are plain JSON-shaped data (beats, flags, actor id slots). Actor ids
+// are session-local and dead after any restore, so a persisted record always
+// serializes with empty id slots and restores them empty.
+function plainClone(v) {
+  if (v == null || typeof v !== 'object') return v == null ? null : v;
+  try { return JSON.parse(JSON.stringify(v)); } catch (_) { return null; }
+}
+
+function emptyIdSlots(ids) {
+  const out = {};
+  if (ids && typeof ids === 'object') {
+    for (const k in ids) out[k] = Array.isArray(ids[k]) ? [] : null;
+  }
+  return out;
+}
+
+function railRecord(rec) {
+  const copy = plainClone(rec);
+  if (!copy || typeof copy !== 'object') return null;
+  copy.ids = emptyIdSlots(rec && rec.ids);
+  return copy;
+}
+
+function restoreRescueRecord(d) {
+  if (!d || typeof d !== 'object') return null;
+  const fresh = freshRescueState();
+  const saved = plainClone(d);
+  const out = Object.assign(fresh, saved);
+  out.ids = fresh.ids; // actor ids never survive a restore
+  out.beats = {};
+  for (const key of RESCUE_ORDER) {
+    // Newer rail beats appear pending on old saves; unknown saved beats drop.
+    out.beats[key] = Object.assign({ state: 'pending', fails: 0, doneAt: null },
+      saved.beats && saved.beats[key]);
+  }
+  return out;
+}
+
+function restoreMissingThreeRecord(d) {
+  if (!d || typeof d !== 'object') return null;
+  const fresh = freshMissingThreeState();
+  const saved = plainClone(d);
+  const out = Object.assign(fresh, saved);
+  out.ids = fresh.ids;
+  for (const key of MISSING_THREE_ORDER) {
+    out.beats[key] = Object.assign({ state: 'pending', fails: 0, doneAt: null },
+      saved.beats && saved.beats[key]);
+    out.used[key] = Object.assign({ count: 0, firstAt: null, prompted: false, unprompted: false },
+      saved.used && saved.used[key]);
+  }
+  return normalizeMissingThreeState(out) || out;
+}
 
 // ── FIRST-HOUR PACING (spec2/03, reworked 2026-09-18: the thesis-first route) ────
 // The fix for "the open teaches five things at once" is PACING, not deletion: one beat → one verb
@@ -278,7 +359,7 @@ const ORE_PREFIXES = [
 
 export const ONBOARDING_OBJECTIVE_MARKER = Object.freeze({
   markerKind: 'mission-objective',
-  mapLabel: '◆ AMBER DIAMOND',
+  mapLabel: '◆ Objective',
 });
 
 // Canonical live waypoint builder shared with headless first-ten-minute acceptance. Marker identity
@@ -307,6 +388,12 @@ export const onboarding = {
     this.registry = ctx.registry || null;
     this.gamepad = ctx.gamepad;
     this.touch = ctx.touch;
+    this._firstHourFelt?.destroy();
+    this._firstHourFelt = bindFirstHourFelt(this.bus, { say: (text, event) => {
+      // The Range pointer already sits beside the current objective. It must
+      // never replace the actionable verb on the tutorial's single voice floor.
+      if (event !== 'onboarding:rangePrompt') this._sayTutorial(text);
+    } });
     this._panel = null;
     this._bodyEl = null;
     this._titleEl = null;
@@ -367,6 +454,9 @@ export const onboarding = {
       this._demoFittedThisDock = null;
       this._gateControlInRange = false;
       this._lastControlMode = null;
+      // FB-114: a first-hour rail serialized mid-flight resumes at its saved beat —
+      // the returning-pilot path (story tracker + recap) is for finished rails only.
+      if (this._resumeSavedRail()) return;
       this._beginStoryMode();
       this._speakContinueRecap(p);
     });
@@ -421,6 +511,18 @@ export const onboarding = {
     // the card. The flag rides state.player.hints like every other one-time flag, so it
     // persists with the save and adds no top-level field.
     bus.on('module:equipped', (p) => this._onDemoModuleEquipped(p || {}));
+
+    // TEACH-04 — fitting the transverse snare head speaks its deploy verb once, naming the
+    // player's own bound key. The head does nothing until it is asked to lay the line, so the
+    // lesson belongs at the fit, not before it and not at the first catch.
+    bus.on('module:equipped', (p) => {
+      if (!p || p.defId !== 'mod_transverse_snare_m') return;
+      if (!massline2Flag('masslineHeadTransverseSnare')) return;
+      const key = resolveActionLabel(this.state, 'tether', { empty: 'LATCH' });
+      this._showHint('masslineSnareHead',
+        `Snare head fitted — ${key} lays the line across their path.`,
+        p);
+    });
     bus.on('dock:undocked', () => this._maybeShowDemoEndCard());
 
     // ── Range pointer & funnel (PQ-163.01 — "The Range is the door") ─────────────────────
@@ -633,7 +735,21 @@ export const onboarding = {
     });
     bus.on('cargo:jettisoned', (p) => {
       if (!massline2Flag('jettisonImpulse')) return;
+      // TEACH-01 — 'Dump aft to push' is the drop-kick lesson; it must be earned at cruise
+      // speed. A parked dump teaches nothing about reaction mass, so it cannot spend the
+      // one-per-profile line.
+      const player = this.state.entities && this.state.entities.get(this.state.playerId);
+      const speed = Math.hypot(
+        Number(player && player.vel && player.vel.x) || 0,
+        Number(player && player.vel && player.vel.z) || 0,
+      );
+      if (!(speed >= DROP_KICK_CRUISE_SPEED)) return;
+      // FB-002: the shelf's jettisonLot listener runs after this one on the same emit — flag
+      // when the kick line actually lands so one dump never speaks two lessons.
+      const before = !!(this.state.player.hints && this.state.player.hints.masslineJettisonImpulse);
       this._showHint('masslineJettisonImpulse', firstUseLine('masslineJettisonImpulse'), p);
+      this._dropKickJustSpoke = !before
+        && !!(this.state.player.hints && this.state.player.hints.masslineJettisonImpulse);
     });
     bus.on('bulletTime:start', (p) => {
       if (!massline2Flag('bulletTime')) return;
@@ -647,11 +763,116 @@ export const onboarding = {
       if (!massline2Flag('bombPropulsion')) return;
       this._showHint('bombPropulsion', firstUseLine('bombPropulsion'), p);
     });
+    // TEACH-05 — the first mass seed deploy is spoken with the warning-then-collapse rule
+    // the seed lives by. Once per profile; a foreign owner's deploy never teaches it.
+    bus.on('massSeed:deployed', (p) => {
+      const playerId = this.state && this.state.playerId;
+      if (p && p.ownerId != null && playerId != null && p.ownerId !== playerId) return;
+      this._showHint('massSeedDeploy', firstUseLine('massSeedDeploy'), p);
+    });
+
+    // ── Verb shelf (FB-002/FB-116): every bound verb is spoken once, in the player's own
+    // device vocabulary, on the moment the verb matters. The five-verb rail already teaches
+    // by doing; these seven have no authored beat, so a real context fires them instead.
+    // Each line is built at fire time so it names the LIVE binding — a rebind mid-career
+    // can never strand the words — and player.hints keeps every line once-per-profile.
+    // A trigger that lands while the staged rail owns the voice is NOT lost: it parks in
+    // _shelfPending and the cadence tick re-tries until the hint actually speaks.
+    this._shelfPending = null;
+    this._shelfStraightS = 0;
+
+    bus.on('module:equipped', (p) => {
+      if (!p || !this.state || p.shipId !== this.state.playerId) return;
+      // bulletTime rides the first fit of any kind — the moment the hull stops being stock.
+      this._speakShelfVerb('bulletTime');
+      // cloak speaks only when the fit actually grants a shroud — teaching a verb with no
+      // hardware behind it is the lie the trigger exists to prevent.
+      if (fittedCloakModule(this.state)) this._speakShelfVerb('cloak');
+    });
+
+    // First-use verbs speak on their own receipts — the player already did the thing, and the
+    // line names the binding that did it.
+    bus.on('beacon:deployed', (p) => this._speakShelfVerb('deployBeacon', p));
+    bus.on('planet:collector', (p) => {
+      if (!p || p.on !== true) return; // toggling off is not the lesson
+      this._speakShelfVerb('toggleSkimCollector', p);
+    });
+    // The planet's bands speak the first time the player reaches them (U5): each band's
+    // receipt names what the band is and the law that governs it — once per save.
+    bus.on('planet:bandFirst', (p) => this._speakBandFirst(p));
+    bus.on('cargo:jettisoned', (p) => {
+      // The drop-kick line owns an at-speed first dump; the shelf defers so the moment
+      // never speaks two lessons. At rest, flag-off, or any later dump the shelf names
+      // the verb itself — jettisonLot stays a bound verb the player used.
+      const deferredToKick = this._dropKickJustSpoke === true;
+      this._dropKickJustSpoke = false;
+      if (deferredToKick) return;
+      this._speakShelfVerb('jettisonLot', p);
+    });
 
     this._lastControlMode = null;
   },
 
+  // Speak one shelf verb once. When the staged rail owns the voice the moment parks in
+  // _shelfPending and _tickShelfVerbs retries on the cadence tick until the hint lands —
+  // a trigger suppressed by silence is deferred, never spent. Returns true when the line
+  // actually fired (its player.hints stamp is set).
+  _speakShelfVerb(verbId, payload) {
+    const st = this.state;
+    const verb = SHELF_VERBS.find((v) => v.key === verbId);
+    if (!verb || !st) return false;
+    const hints = st.player && st.player.hints;
+    if (hints && hints[shelfHintKey(verbId)]) return false;
+    if (!shelfVerbEnabled(verb, st)) return false;
+    if (this._tutorialRailOwnsVoice()) {
+      if (!this._shelfPending) this._shelfPending = new Map();
+      this._shelfPending.set(verbId, payload || null);
+      return false;
+    }
+    const label = verbBindingLabel(st, verb.action);
+    this._showHint(shelfHintKey(verbId), shelfVerbLine(verbId, label), payload);
+    return !!(st.player.hints && st.player.hints[shelfHintKey(verbId)]);
+  },
+
+  // Cadence-tick the context triggers (same 0.2 s gate as the field-escape teacher):
+  // travelBurn's long-straight timer, chargeThrow's first-hostile-with-a-racked-charge,
+  // and any parked shelf lines retrying past the rail's voice.
+  _tickShelfVerbs(dt, state) {
+    if (!state || state.mode !== 'flight') { this._shelfStraightS = 0; return; }
+    const playerEntity = state.entities && state.entities.get && state.entities.get(state.playerId);
+    const playerTeam = playerEntity && playerEntity.team;
+    const isHostile = (e) => isHostileToPlayer(e, playerTeam, state);
+    if (shelfLongStraightActive(state, isHostile)) {
+      this._shelfStraightS = (this._shelfStraightS || 0) + dt;
+      if (this._shelfStraightS >= SHELF_LONG_STRAIGHT_S) this._speakShelfVerb('travelBurn');
+    } else {
+      this._shelfStraightS = 0;
+    }
+    if (shelfHostileChargeReady(state, isHostile)) this._speakShelfVerb('chargeThrow');
+    if (this._shelfPending && this._shelfPending.size) {
+      for (const [verbId, payload] of Array.from(this._shelfPending.entries())) {
+        if (this._speakShelfVerb(verbId, payload)) this._shelfPending.delete(verbId);
+        else if (!this._tutorialRailOwnsVoice()) this._shelfPending.delete(verbId); // spent or gated off
+      }
+      if (!this._shelfPending.size) this._shelfPending = null;
+    }
+  },
+
   // Show a one-time contextual hint via the toast system. The hint key corresponds to a flag in
+  // U5 — one receipt per planetary band, per body, per save. The instrument shows the band
+  // every frame; this is the one time the band explains itself.
+  _speakBandFirst(p) {
+    const st = this.state;
+    if (!p || !st || p.isPlayer !== true) return false;
+    const line = PLANET_BAND_FIRST_LINES[p.band];
+    if (!line) return false;
+    const key = `band_first_${p.siteId || 'body'}_${p.band}`;
+    const hints = st.player && st.player.hints;
+    if (hints && hints[key]) return false;
+    this._showHint(key, line, p);
+    return !!(st.player.hints && st.player.hints[key]);
+  },
+
   // state.player.hints. If the flag is already true (hint was shown before, even in a prior save),
   // this is a no-op. Respects the tutorialHints setting.
   _showHint(key, text, payload) {
@@ -708,6 +929,8 @@ export const onboarding = {
     this._gateControlInRange = false;
     this._lastControlMode = null;
     this._latchDenialStreak = 0;
+    this._shelfPending = null;
+    this._shelfStraightS = 0;
     if (st.run?.kind === 'survival' && st.run.phase !== 'inactive') {
       // The fresh world may already have reused the old tutorial actor IDs.
       this._teardown({ removeActors: false });
@@ -801,6 +1024,124 @@ export const onboarding = {
         ttl: 10,
       });
     } catch (_) { /* never let onboarding break the bus */ }
+  },
+
+  // ── Save/load (FB-114) ─────────────────────────────────────────────────────
+  // The first-hour rail is durable run state: a save written mid-rail resumes at the
+  // saved beat instead of stranding a pilot who was never taught the bound verbs.
+  // Staged props are transient entities (flags.persistent unset) and never serialize,
+  // so the record carries beat progress only — resume re-stages whatever the current
+  // beat needs next to the restored player.
+
+  serialize() {
+    const ob = this.state && this.state.onboarding;
+    if (!ob || typeof ob !== 'object') return null;
+    const rail = ob.missingThree && typeof ob.missingThree === 'object' ? ob.missingThree : null;
+    const rescue = ob.rescue && typeof ob.rescue === 'object' ? ob.rescue : null;
+    const railDone = !rail || rail.completed === true || ob.finished === true;
+    const rescueDone = !rescue || rescue.completed === true;
+    // A finished or never-started first hour carries nothing durable; writing it would
+    // risk a mature save re-firing the tutorial on load.
+    if (railDone && rescueDone) return null;
+    return {
+      version: 1,
+      active: ob.active === true,
+      finished: ob.finished === true,
+      currentBeat: typeof ob.currentBeat === 'number' ? ob.currentBeat : -1,
+      beatDoneAt: plainClone(ob.beatDoneAt),
+      firedFollowups: plainClone(ob.firedFollowups),
+      oreCollected: ob.oreCollected | 0,
+      trainingOre: ob.trainingOre | 0,
+      tetherReeled: ob.tetherReeled === true,
+      tetherBreaks: ob.tetherBreaks | 0,
+      beatAction: typeof ob.beatAction === 'string' ? ob.beatAction : '',
+      rescue: rescue ? railRecord(rescue) : null,
+      raid: ob.raid && typeof ob.raid === 'object' ? railRecord(ob.raid) : null,
+      claimed: ob.claimed && typeof ob.claimed === 'object' ? railRecord(ob.claimed) : null,
+      missingThree: rail ? railRecord(rail) : null,
+      storeSentence: ob.storeSentence ? plainClone(ob.storeSentence) : null,
+    };
+  },
+
+  deserialize(d) {
+    const st = this.state;
+    if (!st) return;
+    const ob = st.onboarding && typeof st.onboarding === 'object' ? st.onboarding : {};
+    if (!d || typeof d !== 'object') {
+      // Pre-rail saves carry no slice: reset to the pre-begin baseline so a live
+      // session's rail cannot bleed into the loaded game.
+      st.onboarding = { active: false, finished: false };
+      return;
+    }
+    ob.active = d.active === true;
+    ob.finished = d.finished === true;
+    ob.currentBeat = typeof d.currentBeat === 'number' ? d.currentBeat : -1;
+    ob.beatDoneAt = plainClone(d.beatDoneAt) || {};
+    ob.firedFollowups = plainClone(d.firedFollowups) || {};
+    ob.oreCollected = d.oreCollected | 0;
+    ob.trainingOre = d.trainingOre | 0;
+    ob.tetherReeled = d.tetherReeled === true;
+    ob.tetherBreaks = d.tetherBreaks | 0;
+    ob.beatAction = typeof d.beatAction === 'string' ? d.beatAction : '';
+    if (d.storeSentence) ob.storeSentence = plainClone(d.storeSentence);
+    ob.rescue = restoreRescueRecord(d.rescue);
+    ob.raid = plainClone(d.raid);
+    ob.claimed = plainClone(d.claimed);
+    ob.missingThree = restoreMissingThreeRecord(d.missingThree);
+    st.onboarding = ob;
+  },
+
+  // Re-enter an unfinished rail after save:loaded tore the live tutorial down.
+  // Sub-rails run in order (rescue → raid → claimed → missingThree); the earliest
+  // incomplete one owns the resume — later rails restage when their turn comes.
+  _resumeSavedRail() {
+    const st = this.state;
+    const ob = st && st.onboarding;
+    // save:loaded runs this AFTER _teardown(), which clears ob.active and the
+    // raid/claimed active flags — the resume gate is the rail records' completion
+    // state, not flags the teardown just rewrote.
+    if (!ob || ob.finished === true) return false;
+    const rescue = ob.rescue;
+    if (rescue && rescue.active === true && rescue.completed !== true) {
+      ob.active = true;
+      this._spawnRescueCast();
+      const cur = rescue.current;
+      if (cur && rescue.beats[cur] && rescue.beats[cur].state === 'current') {
+        const line = rescueBeatLine(cur);
+        ob.beatAction = line;
+        this._sayTutorial(line);
+      }
+      return true;
+    }
+    const raid = ob.raid;
+    if (raid && ob.beatDoneAt.raid == null) {
+      ob.active = true;
+      raid.active = true;
+      this._spawnRaidCast();
+      return true;
+    }
+    const claimed = ob.claimed;
+    if (claimed && claimed.resolved !== true) {
+      ob.active = true;
+      claimed.active = true;
+      this._spawnClaimedCast();
+      return true;
+    }
+    const three = ob.missingThree;
+    if (three && three.active === true && three.completed !== true) {
+      ob.active = true;
+      const cur = three.current;
+      if (cur && three.beats[cur] && three.beats[cur].state === 'current') {
+        // Rewind the current beat to pending so the normal start path re-fires the
+        // line, restages its props, and re-arms the waypoint — a saved-step resume,
+        // never a completed-beat replay.
+        three.current = null;
+        three.beats[cur].state = 'pending';
+        this._startMissingThreeBeat(cur);
+      }
+      return true;
+    }
+    return false;
   },
 
   _retireTutorialPanel() {
@@ -1214,11 +1555,14 @@ export const onboarding = {
     try {
       this._accum = (this._accum || 0) + dt;
       if (this._accum < 0.2) return;
+      const intervalS = this._accum;
       this._accum = 0;
       this._noteMissingThreeUses();
       this._teachFieldEscapes();
+      this._teachCadencePump();
+      this._tickShelfVerbs(intervalS, state);
       if (!ob.active || ob.finished) return;
-            this._tryAdvanceBeat();
+      this._tryAdvanceBeat();
       this._resolveProximityDone();
       this._resolveRescueDone();
       this._resolveRaidDone();
@@ -1293,7 +1637,9 @@ export const onboarding = {
     const wreck = this.helpers.spawnEntity({
       type: 'wreck', pos, vel: { x: 0, z: 0 }, radius: 14, mass: 900,
       hull: 1, hullMax: 1, // derelict — already dead, tether-only
-      physicsBody: { shape: 'capsule' },
+      // SFQ-B025: the authored 900-mass derelict is the rope's real load — the body keeps the
+      // named mass instead of normalizing to the wreck-density value.
+      physicsBody: { shape: 'capsule', mass: 900 },
       data: { parentType: 'ship', proportions: WRECK_COLLIDER_PROPORTIONS, loot: [], salvagePool: {}, salvageTimeLeft: 0, onboarding: true, kind: 'derelict' },
     });
     if (wreck) this._derelictId = wreck.id;
@@ -1496,7 +1842,27 @@ export const onboarding = {
     const actors = this._createRescueCast(rescue);
     if (!actors) return false;
     this._preparedRescue = { state: st, player, rescue, actors };
+    this._warmScriptedCohort();
     return true;
+  },
+
+  // Mid-flight scripted beats spawn real GLB bodies with no lead: the raid raider and
+  // trainer fly a reaver_pirate hull, the claims patrol a patrol_lawman. Publish them
+  // during 'loading' through the roster warm runway so each entity:spawned kick at the
+  // glass is a cache hit; asteroid/wreck/drone/combat exemplars (the raid hauler,
+  // throw rock, pickups) ride the handler's own appended families.
+  _warmScriptedCohort() {
+    const st = this.state;
+    const bus = this.bus;
+    if (!bus || typeof bus.emit !== 'function' || !st) return;
+    const origin = (st.entities && st.entities.get(st.playerId) || {}).pos || { x: 0, z: 0 };
+    const opts = { startedTick: st.tick };
+    const specs = [];
+    const raider = makeEnemySpawnSpec('reaver_pirate', 1, origin, opts);
+    if (raider) { raider.id = 'onboarding_warm_raider'; specs.push(raider); }
+    const patrol = makeEnemySpawnSpec('patrol_lawman', 1, origin, opts);
+    if (patrol) { patrol.id = 'onboarding_warm_patrol'; specs.push(patrol); }
+    bus.emit('onboarding:rosterPrewarm', { specs });
   },
 
   _preparedCastIsAdoptable(prepared) {
@@ -1983,10 +2349,37 @@ export const onboarding = {
       rescue.completedAt = atS;
       const fails = RESCUE_ORDER.reduce((n, k) => n + (rescue.beats[k].fails || 0), 0);
       this.bus.emit('rescue:complete', buildRescueCompleteEvent(atS, fails));
+      this._postOpeningRescueRecognition(atS);
     }
     this._setRescueWaypoint(true);
     this._refreshBeatPanel();
     if (key === 'grab') this._maybeAdvanceMissingThree();
+  },
+
+  // The opening pod is a real rescue. INF-074 already turns recovery:completed
+  // (outcome rescue) into bar gossip — post that receipt once, with no pay, and
+  // never overwrite a notice a later rescue already wrote for this sector.
+  _postOpeningRescueRecognition(atS) {
+    const st = this.state;
+    if (!st || !this.bus) return false;
+    const sectorId = st.world && st.world.currentSectorId;
+    if (!sectorId) return false;
+    const notices = st.stationLife && st.stationLife.rescueNotices;
+    if (notices && notices[sectorId]) return false;
+    const seed = st.meta && st.meta.seed;
+    const recoveryId = `onboarding-pod:${seed == null ? 0 : seed}`;
+    this.bus.emit('recovery:completed', {
+      id: `recovery-receipt:${recoveryId}`,
+      recoveryId,
+      sectorId,
+      outcome: 'rescue',
+      pos: { x: 0, z: 0 },
+      credits: 0,
+      repDelta: 0,
+      cargo: {},
+      completedAt: atS,
+    });
+    return true;
   },
 
   _rescueFail(key, reason) {
@@ -1995,6 +2388,7 @@ export const onboarding = {
     // Never yank a different current verb off the rail.
     if (rescue.current && rescue.current !== key) return;
     const atS = this.state.simTime || 0;
+    const speakRecovery = (rescue.beats[key].fails || 0) === 0;
     rescue.beats[key].fails = (rescue.beats[key].fails || 0) + 1;
     rescue.beats[key].state = 'current';
     rescue.current = key;
@@ -2011,10 +2405,11 @@ export const onboarding = {
     // Stage a fresh tableau for the failed beat only: the rock, scout, and pod are the
     // working bodies; the wreck, wall, and beacon stand.
     this._respawnRescueSlot(key);
-    // Re-speak the verb once (recovery, not a lecture), then silence.
+    // Re-speak the verb once (recovery, not a lecture). Later fails of the same beat
+    // restage the body and keep the waypoint; they do not lecture again.
     const line = rescueBeatLine(key);
     if (this.state.onboarding) this.state.onboarding.beatAction = line;
-    this._sayTutorial(line);
+    if (speakRecovery) this._sayTutorial(line);
     this._setRescueWaypoint(true);
     this._refreshBeatPanel();
   },
@@ -2747,6 +3142,26 @@ export const onboarding = {
       this._showHint('fieldEscape:' + escape.id, escape.name + ' — ' + escape.sentence);
       return; // one lesson per pass — a stack of fields must not stack toasts in one tick
     }
+  },
+
+  /** TEACH-03 — the cadence winch lesson is earned by the first swing that could actually
+   *  pump: the line is live and the pair's own technique rating reads 'swing'. A straight
+   *  tow, a slack line, or a dead payload never qualifies — and player.hints keeps the
+   *  lesson once-per-profile so later swings stay silent. */
+  _teachCadencePump() {
+    if (!massline2Flag('throw')) return;
+    const st = this.state;
+    if (!st || !st.player) return;
+    if (st.player.hints && st.player.hints.masslineCadenceWinch) return;
+    const tether = st.player.tether;
+    if (!tether || tether.active !== true || tether.targetId == null) return;
+    const owner = st.entities && st.entities.get(st.playerId);
+    const payload = st.entities && st.entities.get(tether.targetId);
+    if (!owner || !payload || payload.alive === false) return;
+    const pair = readCadencePair(owner, payload, Number(tether.restLength) || 0);
+    const rated = rateCadenceTechnique(pair, { phase: tether.phase });
+    if (rated.technique !== 'swing') return;
+    this._showHint('masslineCadenceWinch', firstUseLine('masslineCadenceWinch'), { entityId: tether.targetId });
   },
 
   _noteMissingThreeUses() {

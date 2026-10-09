@@ -16,6 +16,7 @@ import { escapeHtml } from '../comms.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import { enhanceSelects } from '../uiPrimitives.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
+import { industryReadoutFromState, renderIndustryStrip, traderCycleLine } from './industryReadout.js';
 
 const DRONE_DISPLAY_ORE_ID = 'cmdty_ore_iron';
 const DRONE_DISPLAY_ORE_VALUE = (COMMODITIES.find((c) => c.id === DRONE_DISPLAY_ORE_ID) || {}).basePrice || 28;
@@ -28,10 +29,10 @@ export function automationRecordRefAttr(value, fallback = '') {
 }
 
 const PROGRAM_OPTIONS = Object.freeze([
-  { value: '', label: 'Manual (mine -> bank)', meta: 'Banks ore in the drone buffer; recall to cash out.' },
-  { value: 'mine_to_depot', label: 'Mine -> Haul -> Sell', meta: 'Loops field mining into depot sales. The board names the stage that is actually stopping work.' },
+  { value: '', label: 'Manual (mine → bank)', meta: 'Banks ore in the drone buffer; recall to cash out.' },
+  { value: 'mine_to_depot', label: 'Mine → Haul → Sell', meta: 'Loops field mining into depot sales. The board names the stage that is actually stopping work.' },
   { value: 'patrol_guard', label: 'Guard Player', meta: 'Keeps the drone close as a defensive escort.' },
-  { value: 'scout_report', label: 'Scout -> Report', meta: 'Tests beacon movement and a short overwatch loop.' },
+  { value: 'scout_report', label: 'Scout → Report', meta: 'Tests beacon movement and a short overwatch loop.' },
 ]);
 
 const TABS = [
@@ -333,6 +334,11 @@ const CSS = `
 #sf-automation .au-metric .v { margin-top: 4px; font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 15px; color: var(--ink); }
 #sf-automation .au-metric .s { margin-top: 3px; font-size: 12px; line-height: 1.35; color: var(--ink-dim); }
 #sf-automation .au-note { font-size: 13px; color: var(--ink-dim); line-height: 1.45; margin-top: 6px; }
+#sf-automation .au-industry { margin: 0; }
+#sf-automation .au-industry .au-note { margin-top: 0; }
+#sf-automation .au-industry-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+#sf-automation .au-industry-rows li { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 13px; line-height: 1.4; color: var(--ink); }
+html body #screens #sf-automation.au-orrery .au-industry-rows li { color: rgb(var(--au-bone)); font-size: 13px; }
 #sf-automation .au-section-h { font-family: var(--sf-body-face); font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ink-dim); border-bottom: 1px solid var(--panel-edge); padding-bottom: 8px; margin-bottom: 2px; }
 #sf-automation .au-card { display: flex; align-items: center; gap: 16px; padding: 14px 16px;
@@ -845,10 +851,33 @@ export const automationScreen = {
       if (!sel) return;
       this._onAction('assignProgram', sel.dataset.ref, sel.dataset.kind, sel.value);
     });
+
+    // A finished trader cycle had no reader. The strip says what the receipt paid.
+    if (this._offCycle) this._offCycle();
+    this._cycleNote = '';
+    if (ctx && ctx.bus && typeof ctx.bus.on === 'function') {
+      const off = ctx.bus.on('automation:traderCycleCompleted', (payload) => {
+        this._cycleNote = traderCycleLine(payload);
+        const node = this._root && this._root.querySelector('[data-industry-cycle]');
+        if (!node) return;
+        node.hidden = !this._cycleNote;
+        node.textContent = this._cycleNote;
+      });
+      if (typeof off === 'function') this._offCycle = off;
+    }
   },
 
   onShow(ctx) { if (ctx) this._ctx = ctx; this.refresh(this._ctx, { forceBody: true }); },
   onHide() { /* cached DOM retained */ },
+  dispose() {
+    if (this._offCycle) this._offCycle();
+    this._offCycle = null;
+    this._root = null;
+    this._ctx = null;
+    this._els = null;
+    this._bodySig = '';
+    this._cycleNote = '';
+  },
 
   // Pop back to whatever pushed us (pause menu in normal play). Mirrors codex.js's Close; ESC also
   // pops (input.js), but a visible exit keeps the screen self-explanatory (taste bar §7).
@@ -1057,7 +1086,13 @@ export const automationScreen = {
           d.operation && d.operation.limitStage || '', d.operation && d.operation.operatingState || '',
           d.operation?.grossUnits, d.operation?.storedUnits, d.operation?.storedCap,
           d.operation?.lastSale?.credited, d.operation?.lastSale?.quantity,
-          d.operation?.operatingCostPerMin, d.operation?.netThroughputPerMin);
+          d.operation?.operatingCostPerMin, d.operation?.netThroughputPerMin,
+          d.operation?.lastCycle && [
+            d.operation.lastCycle.credited, d.operation.lastCycle.netCr,
+            d.operation.lastCycle.minedUnits, d.operation.lastCycle.quantity,
+            d.operation.lastCycle.heldUnits, d.operation.lastCycle.withdrawnUnits,
+            d.operation.lastCycle.fuelUsed, d.operation.lastCycle.upkeepAccrued,
+          ].join('|'));
       }
     } else if (this._tab === 'traders') {
       const hireUnlocked = (player.researchedNodes || []).includes('tech_autonomous_fleets');
@@ -1135,6 +1170,8 @@ export const automationScreen = {
   },
 
   _renderOperationsBoard(frag) {
+    const readout = industryReadoutFromState(this._ctx && this._ctx.state);
+    frag.appendChild(renderIndustryStrip(readout, { cycle: this._cycleNote || '' }));
     const summary = summarizeAutomationOperations(this._ctx.state);
     const next = automationNextAction(this._ctx.state);
     const capLoad = describeAutomationCapLoad(summary);
@@ -1206,7 +1243,8 @@ export const automationScreen = {
               <div><span class="au-flow-k">Limit</span><strong class="au-operation-status ${escapeHtml(readout.tone)}">${escapeHtml(readout.statusLabel)}</strong></div>
               <div><span class="au-flow-k">Last sale</span><strong>${escapeHtml(readout.lastText)}</strong></div>
             </div>
-            <div class="au-note">Operating cost ${escapeHtml(String(readout.operatingCostPerMin))} cr/min · estimated net ${fmtCr(readout.netThroughputPerMin)}/min. ${escapeHtml(readout.reason)}</div>`
+            <div class="au-note">Operating cost ${escapeHtml(String(readout.operatingCostPerMin))} cr/min · estimated net ${fmtCr(readout.netThroughputPerMin)}/min. ${escapeHtml(readout.reason)}</div>
+            ${readout.cycleText ? `<div class="au-note">${escapeHtml(readout.cycleText)}</div>` : ''}`
           : `<div class="au-note">${escapeHtml(programMeta)}</div>`;
         const stranded = d.status === 'stranded';
         const refuelBtn = stranded
@@ -1253,9 +1291,9 @@ export const automationScreen = {
             <span>range ${def.deployRange}</span>
             <span>upkeep ${def.upkeepPerMin}/min</span>
           </div>
-          ${locked ? `<div class="au-note">Research logistics upgrades to unlock this heavier drone tier.</div>` : `<div class="au-note">Best first passive asset: low upkeep, visible in the field, and reversible on recall.</div>`}
+          ${locked ? `<div class="au-note">Research logistics upgrades to unlock this heavier drone tier.</div>` : `<div class="au-note">Best first asset: low upkeep, visible in the field, recallable.</div>`}
         </div>
-        <button class="au-throttle" data-act="conduct" data-ref="drones" data-kind="drone" data-why="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the drones line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
+        <button class="au-throttle" data-act="conduct" data-ref="drones" data-kind="drone" data-why="Focus the drones line on the flow strip" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
         <button class="au-buy" data-act="buyDrone" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
@@ -1326,9 +1364,9 @@ export const automationScreen = {
             <span>loss/cycle ${Math.round(def.baseLossPerCycle * 100)}%</span>
             <span>upkeep ${def.upkeepPerMin}/min</span>
           </div>
-          <div class="au-note">${hireUnlocked ? 'Auto-picks a profitable route now; use Route later to reset heat and find a fresh spread.' : 'Unlocks after Drone Swarm, when the player has seen enough logistics to manage risk.'}</div>
+          <div class="au-note">${hireUnlocked ? 'Auto-picks a profitable route now; use Route later to reset heat and find a fresh spread.' : 'Unlocks after Drone Swarm research.'}</div>
         </div>
-        <button class="au-throttle" data-act="conduct" data-ref="traders" data-kind="trader" data-why="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the traders line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
+        <button class="au-throttle" data-act="conduct" data-ref="traders" data-kind="trader" data-why="Focus the traders line on the flow strip" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
         <button class="au-buy" data-act="hireTrader" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
@@ -1418,7 +1456,7 @@ export const automationScreen = {
           </div>
           <div class="au-note">${buildUnlocked ? 'High upkeep, high commitment: best after you can protect the sector or fund losses.' : 'This is the empire layer; reach it after traders prove the route economy.'}</div>
         </div>
-        <button class="au-throttle" data-act="conduct" data-ref="outposts" data-kind="outpost" data-why="Take the ${escapeHtml(prettyLabel(def.id))} throttle — conduct the outposts line" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
+        <button class="au-throttle" data-act="conduct" data-ref="outposts" data-kind="outpost" data-why="Focus the outposts line on the flow strip" aria-label="Take the ${escapeHtml(prettyLabel(def.id))} throttle">Throttle</button>
         <button class="au-buy" data-act="buildOutpost" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
@@ -1448,7 +1486,7 @@ export const automationScreen = {
               <span>deploy ${deploymentPill(deployment)}</span>
               ${fs.hullPct != null ? `<span>hull ${Math.round(fs.hullPct * 100)}% ${miniBar(fs.hullPct)}</span>` : ''}
             </div>
-            <div class="au-note">${escapeHtml(deployment.detail)} Escort protects you now and can guard automation assets as the fleet layer expands.</div>
+            <div class="au-note">${escapeHtml(deployment.detail)} An escort guards you now and can guard your automation assets later.</div>
           </div>
           <button class="au-order" data-act="orderEscort" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Escort</button>
           <button class="au-order" data-act="orderMine" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Mine</button>
@@ -1477,7 +1515,7 @@ export const automationScreen = {
             <div class="meta"><span>${s.defId ? entitySpanHtml('hull:' + s.defId, escapeHtml(prettyId(s.defId))) : ''}</span><span>starts on escort</span></div>
             <div class="au-note">Assigned ships remain in the automation ledger and spawn as live wingmen in-sector.</div>
           </div>
-          <button class="au-throttle" data-act="conduct" data-ref="fleet" data-kind="ownedShip" data-why="Take the wing throttle — conduct the fleet line" aria-label="Take the wing throttle">Throttle</button>
+          <button class="au-throttle" data-act="conduct" data-ref="fleet" data-kind="ownedShip" data-why="Focus the fleet line on the flow strip" aria-label="Take the wing throttle">Throttle</button>
           <button class="au-buy" data-act="assignFleet" data-ref="${i}" data-kind="ownedShip">Assign as Wingman</button>`;
         frag.appendChild(card);
       }
@@ -1748,8 +1786,8 @@ export function automationNextAction(state) {
       : purchase.state === 'drone_capacity'
         ? 'The active ship has no free drone slot. Recall a deployed drone or fit more Drone Bay capacity.'
         : credits >= (droneMk1.cost || 0)
-          ? 'Start the passive layer with a Mk1 drone. It is cheap, visible in the field, and recallable if the route goes bad.'
-          : 'Earn enough credits for a Mk1 mining drone, then start automation with a reversible low-upkeep asset.';
+          ? 'Start passive income with a Mk1 drone. It is cheap, visible in the field, and you can recall it any time.'
+          : 'Earn enough credits for a Mk1 mining drone. It is cheap to run and easy to recall.';
     const shipworksReady = purchase.state === 'drone_hull' && shipworksStationAccess(state).hull;
     const cta = purchase.state === 'available'
       ? 'Deploy Mk1'
@@ -1777,8 +1815,8 @@ export function automationNextAction(state) {
     const overCap = capLoad.state === 'over-cap';
     return nextAction('drones', 'Raise automation ceiling',
       overCap
-        ? 'Passive production is over the hard cap, so overflow is dropped. Research logistics tiers or rebalance assets before buying more raw output.'
-        : 'Passive production is pressing into the cap. Research logistics tiers or rebalance assets before buying more raw output.',
+        ? 'Production is over the cap, so the overflow is dropped. Research logistics tiers or rebalance before buying more.'
+        : 'Production is near the cap. Research logistics tiers or rebalance before buying more.',
       overCap ? `${fmtCr(capLoad.overagePerMin)} cr/min over cap` : `${Math.round(summary.capUsedPct)}% cap load`,
       'Review Drones');
   }
@@ -1798,7 +1836,7 @@ export function automationNextAction(state) {
         } : { actionTitle: purchase.title });
     }
     return nextAction('traders', 'Research Autonomous Fleets',
-      'Traders unlock after the drone layer, giving the player a second automation verb: managing route heat and danger.',
+      'Traders haul and sell on routes of their own. Research Autonomous Fleets to hire one.',
       'Tech locked', 'View Traders');
   }
   if (!(a.outposts || []).length) {
@@ -1817,12 +1855,12 @@ export function automationNextAction(state) {
         } : { actionTitle: purchase.title });
     }
     return nextAction('outposts', 'Work toward Outpost Charter',
-      'The empire layer should come after traders prove the route economy and the player can fund higher upkeep.',
+      'Outposts pay off once traders carry your route income and you can cover the upkeep. Research the Outpost Charter to unlock them.',
       'Tech locked', 'View Outposts');
   }
   if (!(a.fleet || []).length && spareShips) {
     return nextAction('fleet', 'Assign a spare hull',
-      'Crew a second owned ship as a wingman so automation risk starts feeling protectable, not random.',
+      'Crew a spare ship as a wingman to guard your automation.',
       `${ownedShips.length - 1} spare hulls`, 'Assign Wingman', {
         action: 'assignFleet',
         targetRef: spareShipIndex,

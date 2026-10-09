@@ -1,0 +1,14 @@
+✔ physical tuning, inertia-driving bounds and true contact reach unchanged (1.325455ms)
+✔ proposal is bounded, convex, well-formed, and explicitly not admitted to runtime (0.427123ms)
+✔ source-bound motion bank retains four named phases and two meaningful pivots (1.866961ms)
+✔ three opaque shared finishes, exactly two shared images, nine visible batches per tier (0.257798ms)
+✔ real unrelated impact spends a pass without remote damage to the locked player (0.778682ms)
+✔ every distinct fixed-tick action fraction stays within bidirectional .12 WU geometry target (1.313928ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 194.198065

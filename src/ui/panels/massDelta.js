@@ -7,15 +7,20 @@ import { MODULES } from '../../data/modules.js';
 import { SHIPS } from '../../data/ships.js';
 import { buildSlotList, fits, getDerivedStats } from '../../systems/ships.js';
 import { estimateBrakingSolution } from '../../core/flight/flightTelemetry.js';
+import { governedFightSpeedFor, travelSpeedFor, yawResponseFor } from '../../systems/shipCapabilities.js';
 
 export const MASS_DELTA_METRICS = Object.freeze([
-  Object.freeze({ id: 'turn', label: 'Turn', source: 'derived.turnRate', unit: 'pct', basis: 'fit', verbDown: 'sluggish', verbUp: 'twitchier' }),
-  Object.freeze({ id: 'topSpeed', label: 'Top speed', source: 'derived.maxSpeed', unit: 'pct', basis: 'fit', verbDown: 'slower', verbUp: 'faster' }),
+  // NXB-030: these chips used to read the legacy `turnRate`/`maxSpeed` spec fields, which kept
+  // mass-scaling after the live law stopped — so a cargo pod claimed "Turn -14% · Top speed -22%"
+  // for changes the kernel never commands. 'Turn' now reads yaw response (propulsion.yawAccel,
+  // the channel mass actually moves) and 'Top speed' the travel ceiling the drive publishes.
+  Object.freeze({ id: 'turn', label: 'Turn', source: 'propulsion.yawAccel', unit: 'pct', basis: 'fit', verbDown: 'sluggish', verbUp: 'twitchier' }),
+  Object.freeze({ id: 'topSpeed', label: 'Top speed', source: 'propulsion.travelCeiling', unit: 'pct', basis: 'fit', verbDown: 'slower', verbUp: 'faster' }),
   // INF-081: braking is a SITUATIONAL prediction, not a fit stat — it depends on speed,
   // attitude, and load. The value comes from the live braking solution (same function,
   // same derived propulsion profile the undocked ship flies with), evaluated at the
   // canonical probe: top speed, cruising attitude. Fit stats are unconditional.
-  Object.freeze({ id: 'stopDistance', label: 'Stop distance', source: 'flight.brakingSolution', unit: 'wu', basis: 'situational', assumption: 'best stop from displayed top speed', verbDown: 'shorter stop', verbUp: 'longer stop' }),
+  Object.freeze({ id: 'stopDistance', label: 'Stop distance', source: 'flight.brakingSolution', unit: 'wu', basis: 'situational', assumption: 'best stop from governed fight speed', verbDown: 'shorter stop', verbUp: 'longer stop' }),
   Object.freeze({ id: 'bank', label: 'Bank', source: 'derived.bankFactor', unit: 'raw', basis: 'fit', verbDown: 'flatter', verbUp: 'rollier' }),
   Object.freeze({ id: 'massRatio', label: 'Mass ratio', source: 'derived.mass/baseMass', unit: 'raw', basis: 'fit', verbDown: 'lighter', verbUp: 'heavier' }),
 ]);
@@ -91,8 +96,8 @@ export function summarizeStats(shipId, fittings = [], player = null) {
   const derived = getDerivedStats(shipId, fittings, player);
   const baseMass = finite(shipDef.mass, 1);
   return Object.freeze({
-    turn: finite(derived.turnRate, 0),
-    topSpeed: finite(derived.maxSpeed, 0),
+    turn: yawResponseFor(derived),
+    topSpeed: travelSpeedFor(derived),
     stopDistance: liveStopDistance(derived),
     bank: finite(derived.bankFactor, 0),
     massRatio: baseMass > 0 ? finite(derived.mass, baseMass) / baseMass : 1,
@@ -105,11 +110,14 @@ export function summarizeStats(shipId, fittings = [], player = null) {
  * and the route follower assume — it quoted stops roughly twice as long as the ship
  * actually flies. This feeds the derived propulsion profile of THIS fit (the same shape
  * resolvePropulsionProfile hydrates undocked) into the same estimator, at the canonical
- * probe both displays can share: displayed top speed, cruising attitude. Null when the
+ * probe both displays can share: governed fight speed, cruising attitude. Null when the
  * fit cannot move or cannot brake, so displays render '—' instead of a fantasy number.
  */
 export function liveStopDistance(derived) {
-  const speed = finite(derived && derived.maxSpeed, 0);
+  // The probe speed is the governed fight cap — the same basis the same screen's own stop
+  // forecast reads (shipBandModels.liveStopDistance), never the legacy spec field that used
+  // to masquerade as top speed (NXB-030).
+  const speed = governedFightSpeedFor(derived);
   if (!(speed > 0)) return null;
   const solution = estimateBrakingSolution(
     { pos: { x: 0, z: 0 }, vel: { x: speed, z: 0 }, rot: 0, angVel: 0 },

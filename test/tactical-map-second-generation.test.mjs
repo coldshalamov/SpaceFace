@@ -41,10 +41,12 @@ test('radar projection matches the chase view, rejects corrupt coordinates, and 
   const east = projectRadarPoint({ x: 0, z: 0 }, { x: 1000, z: 0 }, 2000, metrics);
   const north = projectRadarPoint({ x: 0, z: 0 }, { x: 0, z: 1000 }, 2000, metrics);
   assert.equal(east.offRange, false);
-  assert.equal(east.x, 57.5, 'world +X reads left');
+  // Half-range contact lands half a radius off-centre; derived from the live dial metrics (188 px
+  // compact face) so the direction contract survives instrument resizes.
+  assert.equal(east.x, metrics.center - metrics.radius / 2, 'world +X reads left');
   assert.equal(east.y, metrics.center);
   assert.equal(north.x, metrics.center);
-  assert.equal(north.y, 57.5, 'world +Z reads up');
+  assert.equal(north.y, metrics.center - metrics.radius / 2, 'world +Z reads up');
 
   const farEast = projectRadarPoint({ x: 0, z: 0 }, { x: 9000, z: 0 }, 2000, metrics);
   assert.equal(farEast.offRange, true);
@@ -142,7 +144,7 @@ test('the public radar is a native crisp renderer, not a blurred legacy canvas c
   assert.match(radar, /index\.radarContacts/);
   assert.match(radar, /index\.radarAsteroids/);
   assert.match(radar, /prefersReducedMotion\(\)/);
-  assert.match(radar, /`◆ AMBER DIAMOND · \$\{wpLabel\}`/);
+  assert.match(radar, /The amber diamond marks your objective/);
 
   // Radar text is set through canvasFont(weight, size, role) (src/ui/canvasFonts.js), which also
   // clamps to 12px itself; literal CSS/canvas font strings are still read the old way.

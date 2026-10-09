@@ -37,31 +37,12 @@ const BUNDLED_ROOTS = RELEASE_COPY_MAPPINGS
 // 'assets/ui/kit/assets/tiles/x.png'.
 const UI_KIT_ROOT = 'assets/ui/kit';
 
-// Authoring/reference-only assets: AI-generated LABELLED contact-sheet bibles (baked caption text,
-// and in the pilot sheet's case the forbidden helmet/visor motif). They must stay OUT of the runtime
-// game. Each entry must exist on disk (so the allowlist stays real) and must never be live-referenced
-// by src/ or styles/. This list is the machine-readable record of "deliberately not wired, and why",
-// so future passes stop re-discovering these as unwired assets and trying to wire them.
-const REFERENCE_ONLY = {
-  'assets/pilots/pf_spaceface_portraits.jpg':
-    'Labelled pilot-portrait bible sheet of helmet+visor pilots — the exact banned no-visor/no-avatar motif; runtime HUD never uses this. Station bar contacts use assets/portraits/*.jpg instead.',
-  'assets/ores/ore_ice_hero.jpg':
-    'Labelled multi-panel ore contact sheet (baked panel captions). Only 4 of 21 ores have art and no clean per-ore inspection surface exists, so a partial gallery would read broken — left as reference.',
-  'assets/ores/ore_iron_hero.jpg':
-    'Labelled multi-panel ore contact sheet (baked panel captions) — left as reference (see ore_ice_hero reason).',
-  'assets/ores/ore_luminite_hero.jpg':
-    'Labelled multi-panel ore contact sheet (inconsistent layout, baked captions) — left as reference (see ore_ice_hero reason).',
-  'assets/ores/ore_xenium_hero.jpg':
-    'Labelled multi-panel ore contact sheet (baked panel captions) — left as reference (see ore_ice_hero reason).',
-  'assets/fx/fx_explosion_small_elements.jpg':
-    'Labelled FX contact sheet — runtime explosions are procedural (vfx.js glow/ring canvas textures); pasting the sheet rendered its caption text.',
-  'assets/fx/fx_mining_beam.jpg':
-    'Labelled FX contact sheet — the mining beam is procedural additive quads (vfx.js).',
-  'assets/fx/fx_thruster_main.jpg':
-    'Labelled FX contact sheet — engine trails are procedural particles (vfx.js).',
-  'assets/cinematics/menu_background.jpg':
-    'Labelled "MENU / INTRO BACKGROUND TREATMENT" reference still — menus, splash and boot use the clean label-free C-INTRO-01.jpg instead.',
-};
+// Authoring/reference-only assets: AI-generated LABELLED contact-sheet bibles (baked caption text, and in the
+// pilot sheet's case the forbidden helmet/visor motif) must stay OUT of the runtime game. Each entry must exist on
+// disk and must never be live-referenced by src/ or styles/. Owner ruling 2026-10-03: sheets like these are garbage and
+// are deleted outright (the bible boards, the four ore sheets, the three fx sheets, the pilot sheet and the labelled
+// menu reference still were removed that day), so the list is empty; add an entry only for a sheet that must be kept.
+const REFERENCE_ONLY = {};
 
 const SCAN_DIRS = ['src', 'styles'];
 const SCAN_EXT = /\.(m?js|css)$/;
