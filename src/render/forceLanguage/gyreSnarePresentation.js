@@ -51,7 +51,7 @@ uniform vec2 uInner;      // shared with the frag: the interior shell runs the
                           // swallow itself parallaxes between the two skins
 varying vec2 vUv;
 varying vec3 vN;
-varying vec3 vW;
+varying vec3 vV;
 void main() {
   vUv = uv;
   vec3 p = position;
@@ -79,9 +79,13 @@ void main() {
   // meal read as a louder wobble instead of a bulge running aft.
   p.xz += (radial / rl) * swell * 0.05 * uCalm;
   vec4 wp = modelMatrix * vec4(p, 1.0);
-  vW = wp.xyz;
-  vN = normalize(mat3(modelMatrix) * normal);
-  gl_Position = projectionMatrix * viewMatrix * wp;
+  vec4 mv = viewMatrix * wp;
+  vV = -mv.xyz;
+  // normalMatrix (view-space inverse-transpose): mat3(modelMatrix) skewed flank
+  // normals ~2x toward the beam axis under the cone's non-uniform scale, so the
+  // fres/lobe alpha terms read view-dependent wrong — VEIL_RIM's own pattern.
+  vN = normalize(normalMatrix * normal);
+  gl_Position = projectionMatrix * mv;
 }
 `;
 
@@ -103,9 +107,9 @@ uniform vec2 uInner;      // x = band-rate scale, y = band phase — the interio
 uniform float uShellA;    // alpha grade per shell — outer 1, inner ~0.5
 varying vec2 vUv;
 varying vec3 vN;
-varying vec3 vW;
+varying vec3 vV;
 void main() {
-  vec3 V = normalize(cameraPosition - vW);
+  vec3 V = normalize(vV);
   float ndv = abs(dot(normalize(vN), V));
   float fres = pow(1.0 - ndv, 2.3);
   // Glass needs a hard specular cue, not just shimmer: a sharper grazing lobe plus
@@ -309,6 +313,7 @@ export class GyreSnarePresentation {
     this._lastBall = null;   // last tracked ballPos + radius — feeds the ball-death burst
     this._clumpRadius = 0;
     this._discKick = 0;
+    this._prevNet = 0;       // basinCount mirror last frame — the first-fill maw-kick edge
     this._wakeRamp = 1;      // 0→1 over ~150 ms on the OFF→beam edge — the glass "opens" with the shimmer
     this._wakeEase = 0;      // smoothstep'd ramp — read outside the beam block by the basin-glow pool
     this._beamWasOn = false;
@@ -1265,6 +1270,11 @@ export class GyreSnarePresentation {
       // Net anticipation: absorbables already inside the cone make the mouth glow
       // brighter before the catch — "×N IN NET" through the glass itself.
       const net = Math.min(3, finite(mirror.basinCount, 0));
+      // The net's first fill lands a maw-kick too — the sim's basinCatch latch
+      // already chirps ears (sfx_gyre_catch) and hands (gyre:caught) on the same
+      // edge; the disc flashes the beat like every absorb's mealK does.
+      if (net > 0 && this._prevNet === 0) this._discKick = Math.min(2.0, this._discKick + 0.3);
+      this._prevNet = net;
       this._discMat.uniforms.uTime.value = this.time;
       this._discMat.uniforms.uCalm.value = calm;
       // Searching-breathe: an idle lash still reads "active gravity well" — a slow

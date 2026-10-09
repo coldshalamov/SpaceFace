@@ -148,7 +148,10 @@ export function collectFieldLoopSpecs(state, out = []) {
         // so a 90° turn would leave the hum in the wrong ear. A nose-mounted lash hums
         // centered on the hull — honest, and it dies with the player like any track.
         trackId: state.playerId,
-        envelope: Math.min(1, 0.35 + 0.65 * strain + 0.22 * massFrac + 0.25 * windup) * fuseTerm,
+        // Rescaled so the payload arc survives the warn band: the old weights
+        // (0.35+0.65·strain+0.22·massFrac+0.25·windup) hit the 1.0 clamp on
+        // strain alone, killing mass/windup grading exactly at the crest.
+        envelope: Math.min(1, 0.3 + 0.45 * strain + 0.15 * massFrac + 0.1 * windup) * fuseTerm,
         // Heavier load = deeper voice: the hum sags ~13% under a capped moon,
         // the same arc the thrown ball's rumble already grades by mass. The
         // spec pitch folds into the loop's envelope-driven rate (no new infra).
