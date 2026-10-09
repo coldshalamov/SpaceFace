@@ -1607,16 +1607,19 @@ export const gyreSnare = {
         // pad in a continuous buzz exactly where the audio designers decided it should
         // stay a discrete tick. gyre:absorbed still fires per-meal for HUD honesty.
         this.bus.emit(GYRE_EVENTS.absorbTick, { id: core.id, coreId: core.id, mass: em, clumpMass: rt.clumpMass, tick: state.tick });
+        // Escalation reaches the camera too — swallowing a wreck should feel physically
+        // different from swallowing a pebble: heavy meals shake, mid meals get a
+        // micro-shake (30-80t is the most common satisfying meal — it shouldn't be silent),
+        // light meals whisper (10-30t gets every other channel — camera joins at 0.01),
+        // and belt gravel stays quiet. The shake rides the same gate as its ear/hand
+        // siblings: camera trauma ADDS and renders squared, so a 4-meal burst would
+        // stack ~4x the authored single-meal ceiling in one frame — the em that fires
+        // the window grades it, like the tick's rate.
+        // Continuous like the rest of the meal-size grading (knock speedK, cue
+        // rate, gulp mealK): em/2000 rises 0.005->0.04 across 10-80t instead of
+        // stepping, floored at the 10t whisper and capped at the 80t wreck shake.
+        if (em >= 10) this.bus.emit('camera:shake', { amount: Math.max(0.01, Math.min(0.04, em / 2000)) });
       }
-      // Escalation reaches the camera too — swallowing a wreck should feel physically
-      // different from swallowing a pebble: heavy meals shake, mid meals get a
-      // micro-shake (30-80t is the most common satisfying meal — it shouldn't be silent),
-      // light meals whisper (10-30t gets every other channel — camera joins at 0.01),
-      // and belt gravel stays quiet.
-      // Continuous like the rest of the meal-size grading (knock speedK, cue
-      // rate, gulp mealK): em/2000 rises 0.005->0.04 across 10-80t instead of
-      // stepping, floored at the 10t whisper and capped at the 80t wreck shake.
-      if (em >= 10) this.bus.emit('camera:shake', { amount: Math.max(0.01, Math.min(0.04, em / 2000)) });
       // Saturation beat: the absorb that first crosses the cap gets its own voice so
       // the FULL moment lands through the ear, not just the HUD flag.
       if (rt.clumpMass >= D.maxClumpMass && !rt.fullCueLatched) {

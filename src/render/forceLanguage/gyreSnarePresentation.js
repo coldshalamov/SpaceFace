@@ -2072,7 +2072,7 @@ export class GyreSnarePresentation {
         // Same enter-ramp contract as every sibling: a fresh overlay's veil
         // eases in over ~150 ms instead of appearing at full opacity on attach
         // (the lumps get a matching per-lump swell in the bob loop below).
-        this._secVeilIn = Math.min(1.5, (this._secVeilIn || 0) + sdt * 6.7);
+        this._secVeilIn = Math.min(1, (this._secVeilIn || 0) + sdt * 6.7);
         const veilSw = clamp01(this._secVeilIn);
         this._secVeilMat.opacity = (0.05 + 0.04 * Math.min(1, finite(sb.mass) / GYRE_SNARE.maxClumpMass)) * (0.55 + 0.45 * secTtlWarn) * flashCalm
           * (veilSw * veilSw * (3 - 2 * veilSw));
