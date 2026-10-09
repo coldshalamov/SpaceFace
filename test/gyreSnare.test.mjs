@@ -187,6 +187,8 @@ test('net feedback distinguishes legal meals, towed cargo and bodies that cannot
   assert.match(text, /×1 IN NET/);
   assert.match(text, /TOWING ×1/);
   assert.match(text, /TOO HEAVY ×1/);
+  assert.equal((text.match(/TOO HEAVY/g) || []).length, 1,
+    'a mixed net prints the refusal once — handlingTxt already carries it');
   const holdingText = hud._resolve({ phase: 'holding', clumpMass: 2300, maxClumpMass: 2400,
     basinCount: 0, tooHeavyCount: 1, towCount: 1 }, t.state.simTime).text;
   assert.doesNotMatch(holdingText, /\+1/);
@@ -2841,6 +2843,35 @@ test('two balls expiring on the same tick each get a grave — primary ring + wa
   assert.equal(a.data.gyreLaunchMeta, undefined, 'A disarmed on the way out');
   assert.equal(b.data.gyreLaunchMeta, undefined, 'B disarmed on the way out');
   assert.equal(t.sys._rt.ballIds.length, 0, 'watch list empty');
+  t.cleanup();
+});
+
+test('a dead primary still publishes its grave while a survivor promotes same-tick', async () => {
+  const t = await bootPhysics();
+  const a = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < 10; i++) t.sim.step(); // A flying
+  const b = rock(t.sim, T.mawDist + 2, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  for (let i = 0; i < 10; i++) t.sim.step(); // B flying, the HUD's primary
+  assert.equal(t.sys._rt.ballId, b.id);
+
+  // Only the primary's deadline lands: the retire publishes ballGrave AND
+  // _promoteNextBall re-seats launchedId to the survivor in the SAME publish
+  // tick — the presentation's bloom gate must read (tracked id !== launchedId
+  // && ballGrave), never launchedId == null, or the common two-ball grave
+  // (first ball dies while the second still flies) gets no ring.
+  b.data.despawnAt = t.state.simTime + 0.02;
+  t.sim.step();
+  t.sim.step();
+  assert.equal(t.state.gyreSnare.ballGrave, true, 'the dead primary still publishes its grave');
+  assert.equal(t.state.gyreSnare.launchedId, a.id,
+    'the survivor inherits the primary lane on the very tick the grave publishes');
+  assert.equal(t.sys._rt.ballId, a.id);
   t.cleanup();
 });
 

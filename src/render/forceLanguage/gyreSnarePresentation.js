@@ -1249,17 +1249,23 @@ export class GyreSnarePresentation {
 
     // The flying ball's grave is tracked off ballPos only — a newly held core must
     // never poison where the OLD ball died (previously cx could be the held core).
-    if (mirror.launchedId != null && mirror.ballPos) {
+    // Same-id gate: on the tick a younger survivor promotes, launchedId re-seats
+    // but ballPos/ballClumpRadius still carry the corpse — tracking without the
+    // id check would stamp the survivor's radius onto the dead ball's ring.
+    if (mirror.launchedId != null && mirror.ballPos && this._ballId === mirror.launchedId) {
       const lb = this._lastBall || (this._lastBall = { x: 0, z: 0, r: 0 });
       lb.x = mirror.ballPos.x; lb.z = mirror.ballPos.z;
       lb.r = Math.max(1, finite(mirror.ballClumpRadius, this._clumpRadius));
     }
     // Ball-death fires the moment the tracker drops it — even mid-hold, so a ball
     // dying while a new clump orbits still gets its grave burst at its own spot.
-    // Adoption retirements (launchedId dropped with ballGrave=false: a foreign owner
-    // kept the live body) get no ring — the shatter must not bloom under a live ball.
-    if (this._ballId != null && mirror.launchedId == null && this._lastBall) {
-      if (mirror.ballGrave !== false) {
+    // The gate is an id MISMATCH, not launchedId == null: _promoteNextBall re-seats
+    // launchedId to a survivor the same tick the retire publishes ballGrave, so
+    // the common two-ball grave (ball dies while its sibling still flies) must
+    // still bloom. Adoption retirements (ballGrave === false) get no ring — the
+    // shatter must not bloom under a live ball.
+    if (this._ballId != null && this._ballId !== mirror.launchedId && this._lastBall) {
+      if (mirror.ballGrave === true) {
         // r is frozen at the last tracked tick — correct, not a bug: the launch
         // freezes the clump ledger, so a flying ball can never outgrow its ring.
         this._fireBurst(this._lastBall.x, this._lastBall.z, Math.max(6, this._lastBall.r * 1.6), flashCalm);
