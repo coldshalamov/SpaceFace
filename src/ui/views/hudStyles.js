@@ -22,13 +22,16 @@ export function injectHudCss() {
   body.ui-modal-open #alerts,
   body.ui-modal-open #toasts { opacity:0 !important; pointer-events:none !important; }
 
-  /* Reticle reflects aim mode: amber tint + slight pulse when auto-target is tracking hostiles,
-     cyan when the pilot aims/fires manually (Phase 2). */
+  /* Aim feedback follows the mouse; the labeled combat-stick sight stays at center. */
   #aim-reticle { transition:none; }
   #aim-reticle svg * { filter:none !important; }
   #aim-reticle .sf-reticle-shape--bracket { display:none; }
   #aim-reticle[data-mode="auto"] .sf-reticle-shape--open { display:none; }
   #aim-reticle[data-mode="auto"] .sf-reticle-shape--bracket { display:block; }
+  .sf-reticle-mode-label { display:none; position:absolute; top:100%; left:50%;
+    transform:translateX(-50%); white-space:nowrap; font-family:var(--dp-face-etch);
+    font-size:var(--dp-fs-etch); color:var(--dp-ink); background:var(--dp-void); padding:2px 6px; }
+  #aim-reticle[data-mode="auto"] .sf-reticle-mode-label { display:block; }
   #aim-reticle.autofire > svg { animation:sf-reticlepulse 1.4s ease-in-out infinite alternate; }
   @keyframes sf-reticlepulse { from { opacity:.88; } to { opacity:1; } }
 

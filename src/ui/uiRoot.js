@@ -18,6 +18,7 @@ import { createUiInput } from './input.js';
 import { initPriceHistory } from './priceHistory.js';
 import { isConfirmOpen } from './confirm.js';
 import { setPromptScheme, setPromptBindings } from './controlPrompts.js';
+import { resolveActionLabel } from '../systems/input.js';
 import { injectHudCss } from './views/hudStyles.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import {
@@ -60,6 +61,17 @@ const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/sv
     <line x1="61" y1="61" x2="69" y2="69"/>
   </g>
 </svg>`;
+
+// A manual sight belongs to an actual mouse position. Only the explicitly toggled combat
+// stick has a centered sight; cleared pointer state must never invent one in mouse flight.
+export function flightReticlePosition(state, width, height) {
+  const input = state && state.input;
+  if (input && input.autoFire) return { x: width * 0.5, y: height * 0.5 };
+  const pointer = input && input.pointerScreen;
+  if (!pointer || !pointer.active || !Number.isFinite(pointer.x) || !Number.isFinite(pointer.y)
+    || pointer.x < 0 || pointer.y < 0 || pointer.x > width || pointer.y > height) return null;
+  return { x: pointer.x, y: pointer.y };
+}
 // (Removed PILOT_AVATAR_SVG — the helmet/visor pilot circle violated the standing no-visor/no-
 //  cockpit HUD rule (00_MASTER_TASTE §3). The splash now uses a clean non-diegetic signal slate.)
 import { createHud } from './hud.js';
@@ -466,6 +478,7 @@ export const ui = {
   name: 'ui',
 
   init(ctx) {
+    if (this._destroyFlightCursor) this._destroyFlightCursor();
     invalidateScreenRegistrationCycle(this);
     this._screenRegistrationCycle = null;
     if (this.hud && typeof this.hud.destroy === 'function') this.hud.destroy();
@@ -704,15 +717,26 @@ export const ui = {
     // === UI: aiming reticle ===
     // (The pilot-helmet avatar was removed — it read as a first-person-visor motif that doesn't fit
     // this third-person chase-cam game, and it sat on every screen as an unexplained symbol.)
-    // Software-cursor aiming reticle (clean SVG crosshair).
+    // Aim feedback is separate from the native mouse pointer. Keep it outside #hud so HUD
+    // opacity, disruption and blackout effects cannot hide or displace the only locked sight.
     const reticle = document.createElement('div');
     reticle.id = 'aim-reticle';
     reticle.dataset.mode = 'manual';
     reticle.innerHTML = RETICLE_SVG;
+    reticle.setAttribute('aria-hidden', 'true');
+    const reticleModeLabel = document.createElement('span');
+    reticleModeLabel.className = 'sf-reticle-mode-label';
+    reticle.appendChild(reticleModeLabel);
     const hudRoot = document.getElementById('hud');
-    hudRoot.appendChild(reticle);
+    document.getElementById('ui-root').appendChild(reticle);
 
     let hitTickTimeout = null;
+    this._destroyFlightCursor = () => {
+      if (hitTickTimeout) clearTimeout(hitTickTimeout);
+      reticle.remove();
+      this._syncFlightCursor = null;
+      this._destroyFlightCursor = null;
+    };
     const triggerHitTick = (kind) => {
       const el = document.getElementById('aim-reticle') || reticle;
       if (!el) return;
@@ -773,30 +797,28 @@ export const ui = {
     let lastEndpointCx = null;
     let lastEndpointCy = null;
     let lastFlightPathDrawing = null;
-    let lastFlightCursorActive = null;
-    // Drop hysteresis: a one-frame pointer.active dip (focus bounce, a modal boundary
-    // crossing) used to flash the OS cursor back over the reticle for a single frame.
-    let flightCursorDropTimer = null;
-    // Sticky reticle fallback: once the pointer has been seen, its last coordinates stay
-    // valid — teleporting the reticle to screen center on a transient dip read as the
-    // cursor flicking to a different location.
-    let flightPointerSeen = false;
 
     // Bind-sheet copy lives in Help / Settings. The flight windshield no longer mounts a key laundry.
     setPromptScheme(this.state && this.state.settings && this.state.settings.gameplay
       && this.state.settings.gameplay.controlScheme);
     setPromptBindings(this.state);
+    const refreshReticleModeLabel = () => {
+      reticleModeLabel.textContent = `Combat stick · ${resolveActionLabel(this.state, 'autoFire')} to exit`;
+    };
+    refreshReticleModeLabel();
     this.bus.on('settings:changed', () => {
       setPromptScheme(this.state && this.state.settings && this.state.settings.gameplay
         && this.state.settings.gameplay.controlScheme);
       setPromptBindings(this.state);
+      refreshReticleModeLabel();
     });
 
     const syncFlightCursor = (visible, reticleAlive = visible) => {
       const st = this.state;
-      const pointer = st && st.input && st.input.pointerScreen;
-      const active = !!(visible && pointer && pointer.active);
       const autoTarget = !!(visible && st && st.input && st.input.autoFire);
+      const position = flightReticlePosition(st,
+        typeof innerWidth === 'number' ? innerWidth : 0,
+        typeof innerHeight === 'number' ? innerHeight : 0);
       const flightPath = st && st.input && st.input.autoTargetPath;
       const flightStick = st && st.input && st.input.autoTargetVector;
       const pathActive = !!(autoTarget && flightPath && flightPath.active
@@ -812,43 +834,17 @@ export const ui = {
         && typeof document.exitPointerLock === 'function') {
         try { document.exitPointerLock(); } catch (_) { /* best effort: the next frame retries */ }
       }
-      if (active) {
-        if (flightCursorDropTimer) {
-          clearTimeout(flightCursorDropTimer);
-          flightCursorDropTimer = null;
-        }
-        if (!lastFlightCursorActive) {
-          lastFlightCursorActive = true;
-          document.body.classList.add('sf-flight-cursor');
-        }
-      } else if (lastFlightCursorActive) {
-        // Over a screen the OS cursor is the pointer — drop instantly. A pointer dip in
-        // pure flight gets a grace window so one cleared frame cannot blink the cursor.
-        if (!visible) {
-          lastFlightCursorActive = false;
-          document.body.classList.remove('sf-flight-cursor');
-        } else if (flightCursorDropTimer == null) {
-          flightCursorDropTimer = setTimeout(() => {
-            flightCursorDropTimer = null;
-            const p = this.state && this.state.input && this.state.input.pointerScreen;
-            if (!(visible && p && p.active)) {
-              lastFlightCursorActive = false;
-              document.body.classList.remove('sf-flight-cursor');
-            }
-          }, 140);
-        }
-      }
       // `reticle` created above is the only element with id 'aim-reticle': the old
       // getElementById could only ever resolve to it (or nothing) — skip the per-frame lookup.
       const reticleEl = reticle;
-      // reticleAlive keeps the aim marker readable under live (non-pausing) overlays while the
-      // cursor-hiding flight mode stays off (FRONTEND_DIRECTION §3.5: reticle + alerts survive).
-      const nextReticleDisplay = reticleAlive ? 'block' : 'none';
+      // Native mouse cursors remain visible in flight and on controls. Pointer lock alone
+      // hides the OS cursor in G mode, where this independent centered sight replaces it.
+      const nextReticleDisplay = reticleAlive && position ? 'block' : 'none';
       if (lastReticleDisplay !== nextReticleDisplay) {
         lastReticleDisplay = nextReticleDisplay;
         reticleEl.style.display = nextReticleDisplay;
       }
-      const nextReticleMode = autoTarget ? 'auto' : 'manual';
+      const nextReticleMode = st && st.input && st.input.autoFire ? 'auto' : 'manual';
       if (lastReticleMode !== nextReticleMode) {
         lastReticleMode = nextReticleMode;
         reticleEl.dataset.mode = nextReticleMode;
@@ -883,15 +879,10 @@ export const ui = {
         lastFlightPathOpacity = nextFlightPathOpacity;
         autoTargetFlightPath.style.opacity = nextFlightPathOpacity;
       }
-      if (!visible) return;
-      if (active) flightPointerSeen = true;
-      const fallbackX = typeof innerWidth === 'number' ? innerWidth * 0.5 : 0;
-      const fallbackY = typeof innerHeight === 'number' ? innerHeight * 0.5 : 0;
-      const holdLast = flightPointerSeen && Number.isFinite(pointer.x) && Number.isFinite(pointer.y);
-      const x = (active || holdLast) ? pointer.x : fallbackX;
-      const y = (active || holdLast) ? pointer.y : fallbackY;
-      if (!Number.isFinite(lastReticleX) || Math.abs(x - lastReticleX) > 0.1
-        || !Number.isFinite(lastReticleY) || Math.abs(y - lastReticleY) > 0.1) {
+      const x = position && position.x;
+      const y = position && position.y;
+      if (position && (!Number.isFinite(lastReticleX) || Math.abs(x - lastReticleX) > 0.1
+        || !Number.isFinite(lastReticleY) || Math.abs(y - lastReticleY) > 0.1)) {
         const next = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) translate(-50%,-50%)`;
         if (reticleEl._sfHudTransform !== next) {
           reticleEl._sfHudTransform = next;
@@ -900,6 +891,7 @@ export const ui = {
         lastReticleX = x;
         lastReticleY = y;
       }
+      if (!visible) return;
       if (autoTarget) {
         if (!pathActive || !this.helpers || typeof this.helpers.worldToScreen !== 'function') return;
         const projectedPoints = [];
@@ -1654,8 +1646,8 @@ export const ui = {
         this.screenManager.syncHudAccessibility(modalChromeOpen || liveOverlay || docked || !st || st.mode !== 'flight');
       }
       const hudVisible = !!(st && st.mode === 'flight' && !modalChromeOpen && !docked);
-      // Flight cursor (cursor:none) only in pure flight — over any open screen the pointer is a UI
-      // cursor. The reticle itself stays alive under live overlays (second arg).
+      // The native pointer stays visible; explicit combat-stick mode owns pointer lock.
+      // Its sight stays alive under live overlays (second arg).
       if (this._syncFlightCursor) this._syncFlightCursor(hudVisible && !modalOpen, hudVisible);
       if (this.hud) {
         if (hudVisible) {
@@ -1698,6 +1690,7 @@ export const ui = {
   },
 
   destroy() {
+    if (this._destroyFlightCursor) this._destroyFlightCursor();
     // The rest of the UI is process-lifetime today, but the first-session cinematic has temporary
     // global capture listeners and timers. Re-init/destroy must remove them without marking the
     // cinematic seen or opening a menu behind the caller.
