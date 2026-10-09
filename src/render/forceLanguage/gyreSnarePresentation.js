@@ -294,6 +294,7 @@ export class GyreSnarePresentation {
     this._closeSeeds = null; // each element's last live alpha /flashCalm — the ramp starts continuous
     this._closeTear = false; // 'strained' close: the freed clump whips away — rubble rides its track
     this._tearFade = null;   // seconds left on the k² rubble fade once the torn track ends (no one-frame de-rez)
+    this._tearGentle = false;// a core_adopted track ends its fade de-rezzing in place, not scattering
     this._tearBurst = null;  // the tear's ring slot — chases tornPos while the track publishes
     this._swirlMag = 0.9;    // last live tumble magnitude — the tear-follow keeps the dead ball's spin speed
     this._clumpKick = 0;     // absorb squash-pop on the clump (sibling of _discKick on the maw)
@@ -1089,7 +1090,10 @@ export class GyreSnarePresentation {
       // Bodies riding the net quicken + deepen the glass: a funnel holding three
       // meals shimmered identically to an empty search while the disc and the
       // mote pace already read the load. ~8% alpha + 35% amp at a full net.
-      this._coneMat.uniforms.uNet.value = Math.min(3, finite(mirror.basinCount, 0)) / 3;
+      // Eased like uMass — basinCount zeroes on _launch, so a raw write snapped
+      // the shimmer off in one frame on the tautest beat of the vocabulary.
+      this._coneMat.uniforms.uNet.value +=
+        (Math.min(3, finite(mirror.basinCount, 0)) / 3 - this._coneMat.uniforms.uNet.value) * Math.min(1, sdt * 8);
       // Absorb pulse: each katamari hit kicks the maw disc + ring — the mouth flashes
       // as it feeds, so swallow reads visually even before the lump grows in.
       const absorbsNow = finite(mirror.absorbs, 0);
@@ -1606,6 +1610,9 @@ export class GyreSnarePresentation {
           // the grown body plainly still flies. Shrinks gently as it leaves.
           const p = this.toLocal(finite(mirror.tornPos.x), finite(mirror.tornPos.z), this._pt);
           this._clump.position.set(p.x, 0.6, p.z);
+          // Latch the track's exit language while the follow rides — tornGentle
+          // survives into the fade the way _tearFade's own seconds do.
+          this._tearGentle = mirror.tornGentle === true;
           // Signed magnitude + chirality frozen at the whip — _swirlMag/_swirlDir
           // are written only on the live lanes, so the rubble keeps the dead
           // ball's own tumble instead of the unsigned default (+0.9 flips a -1
@@ -1623,12 +1630,19 @@ export class GyreSnarePresentation {
         } else {
           this._tearFade -= sdt;
           const k = Math.max(0, this._tearFade / 0.2);
-          this._scatterLumps(1 - k); // same scatter language as the grave deflate
+          if (this._tearGentle) {
+            // A core_adopted follow tracks a still-alive reclaimed body — the
+            // rubble de-rezzes in place (the _adoptT language) instead of
+            // flinging outward under a body that never died.
+            this._clump.scale.multiplyScalar(Math.exp(-sdt * 8));
+          } else {
+            this._scatterLumps(1 - k); // same scatter language as the grave deflate
+          }
           this._veilMat.opacity *= Math.exp(-sdt * 6);
           this._veil.visible = this._veilMat.opacity > 0.004;
           this._clump.visible = this._tearFade > 0;
           if (this._tearFade <= 0) {
-            this._closeTear = false; this._tearFade = null;
+            this._closeTear = false; this._tearFade = null; this._tearGentle = false;
             this._clump.visible = false; this._clearLumps();
           }
         }
@@ -1665,6 +1679,7 @@ export class GyreSnarePresentation {
       this._deathT = 0; this._adoptT = 0;
       this._closeTear = false; // a re-beam mid-tear-follow hands the clump group to the new core
       this._tearFade = null;
+      this._tearGentle = false;
       const p = this.toLocal(cx, cz, this._pt);
       this._clump.visible = true;
       // Loose zero-G also drifts UP: a slow ±0.3 wu bob seeded on the clump's orbit
@@ -1723,7 +1738,9 @@ export class GyreSnarePresentation {
       // a re-snag mid-flight must not dress the fresh core's veil in the old
       // ball's launch-armed flash for the residual ~0.7 s.
       const veilArmed = phase === 'holding' ? 0 : armed;
-      this._veilMat.opacity = (0.085 + clamp01(finite(mirror.strain01)) * 0.05 + this._clumpKick * 0.05 + fullGlow + veilArmed * 0.1 + massFrac * 0.04) * flashCalm;
+      // _fuseDim like every sibling alpha lane — the ball's own glass sags with
+      // the dying-cap veil window too (was the one continuous lane that skipped it).
+      this._veilMat.opacity = (0.085 + clamp01(finite(mirror.strain01)) * 0.05 + this._clumpKick * 0.05 + fullGlow + veilArmed * 0.1 + massFrac * 0.04) * flashCalm * (this._fuseDim || 1);
       // Warn reaches the veil too — the ball is the object the player is actually
       // watching when strain climbs; cone/maw/disc already warm (strain * 0.6).
       this._veilMat.color.copy(this._colGlass).lerp(this._colWarn, clamp01(finite(mirror.strain01)) * 0.4)

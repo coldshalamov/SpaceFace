@@ -432,7 +432,9 @@ export const gyreSnare = {
       const st = this.state;
       const torn = st && st.entities ? st.entities.get(emitId) : null;
       if (torn && torn.alive !== false && torn.pos) {
-        rt.tornTrack = { id: emitId, ticks: Math.ceil(0.5 * TICKS_PER_S), dir: null };
+        // gentle: the freed body stays alive under its mission owner — the
+        // rubble's exit is a de-rez, not a debris scatter under a live body.
+        rt.tornTrack = { id: emitId, ticks: Math.ceil(0.5 * TICKS_PER_S), dir: null, gentle: reason === 'core_adopted' };
         // Same-tick bloom freshness, like the tear lane: last tick's published
         // spot is stale by up to a step of the freed body's drift.
         const pub = this._ensurePub(st);
@@ -2136,7 +2138,7 @@ export const gyreSnare = {
       basinCount: 0, ballClumpRadius: 0, launchWindup01: 0, launchBurst01: 0, ballGrave: false,
       graves: null, thrownBeat: false, thrownTick: 0, basinSpots: null, dropReason: null, fuseS: 0,
       liveBalls: 0, absorbDir: { x: 0, z: 0 }, absorbR: 0, balls: null,
-      tornId: null, tornPos: { x: 0, z: 0 }, tornDir: { x: 0, z: 0 },
+      tornId: null, tornPos: { x: 0, z: 0 }, tornDir: { x: 0, z: 0 }, tornGentle: false,
       deflectCount: 0, deflectLane: null, ballOverflow: 0,
       // Published unconditionally at rt's rest values — a reader between
       // init and the first publish tick sees these too, not undefined.
@@ -2161,6 +2163,7 @@ export const gyreSnare = {
         pub.tornPos.x = torn.pos.x; pub.tornPos.z = torn.pos.z;
         if (rt.tornTrack.dir) { pub.tornDir.x = rt.tornTrack.dir.x; pub.tornDir.z = rt.tornTrack.dir.z; }
         else { pub.tornDir.x = 0; pub.tornDir.z = 0; } // a dir-less track (polite release) must not leak a stale whip
+        pub.tornGentle = rt.tornTrack.gentle === true;
       } else pub.tornId = null; // dead/expired read — _sweepBallWatch owns the rt clear
     } else pub.tornId = null;
     // The funnel's drawn spiral + the clump's float phase ride the same eased stir /
