@@ -91,6 +91,8 @@
 [hidden] { display: none !important; }
 html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--font); font-variant-numeric: tabular-nums; }
 #gl-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; z-index: 0; }
+/* Applied only while the independently tracked target cursor is visible in pure flight. */
+body.sf-flight-cursor, body.sf-flight-cursor * { cursor: none !important; }
 #ui-root { position: fixed; inset: 0; z-index: 10; pointer-events: none; font-size: calc(15px * var(--ui-scale)); contain: layout style paint; }
 #ui-root > div { position: absolute; }
 /* FB-100: --sf-hud-scale/--sf-hud-opacity (settings.video.hudScale/hudOpacity, applied on the
@@ -282,7 +284,7 @@ button:disabled, .btn:disabled {
   image-rendering: crisp-edges;
 }
 
-/* Aim feedback; the native cursor remains the mouse position in normal flight. */
+/* The flight target cursor sits above instruments and prompts, independently of HUD effects. */
 #aim-reticle {
   position: absolute;
   left: 0;
@@ -291,7 +293,7 @@ button:disabled, .btn:disabled {
   height: 48px;
   transform: translate3d(50vw, 50vh, 0) translate(-50%, -50%);
   pointer-events: none;
-  z-index: 15;
+  z-index: 1200;
   opacity: 1;
   filter: none;
   will-change: transform;

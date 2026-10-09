@@ -62,12 +62,50 @@ const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/sv
   </g>
 </svg>`;
 
-// A manual sight belongs to an actual mouse position. Only the explicitly toggled combat
-// stick has a centered sight; cleared pointer state must never invent one in mouse flight.
-export function flightReticlePosition(state, width, height) {
+// Presentation owns the pointer's location independently of transient gameplay input.
+// Menus, focus release and input fences clear input.pointerScreen.active without moving
+// the mouse, so that flag must never decide whether the player's target cursor exists.
+export function createFlightPointerTracker(win, doc) {
+  const pointer = { x: 0, y: 0, active: false, focused: !doc.hasFocus || doc.hasFocus() };
+  let seen = false;
+  let inside = false;
+  const refresh = () => { pointer.active = seen && inside && pointer.focused; };
+  const move = (event) => {
+    if (event.pointerType === 'touch' || doc.pointerLockElement
+      || !Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return;
+    pointer.x = event.clientX;
+    pointer.y = event.clientY;
+    pointer.focused = !doc.hasFocus || doc.hasFocus();
+    seen = true;
+    inside = true;
+    refresh();
+  };
+  const blur = () => { pointer.focused = false; refresh(); };
+  const focus = () => { pointer.focused = true; refresh(); };
+  const leave = (event) => {
+    if (event.relatedTarget != null) return;
+    inside = false;
+    refresh();
+  };
+  const bindings = [
+    [win, 'pointermove', move, true], [win, 'mousemove', move, true], [win, 'mousedown', move, true],
+    [win, 'blur', blur, false], [win, 'focus', focus, false], [doc, 'mouseout', leave, false],
+  ];
+  for (const [target, type, listener, capture] of bindings) target.addEventListener(type, listener, capture);
+  return {
+    pointer,
+    destroy() {
+      for (const [target, type, listener, capture] of bindings) target.removeEventListener(type, listener, capture);
+    },
+  };
+}
+
+// Only the explicitly toggled combat stick centers the sight. Ordinary mouse flight
+// follows presentation's real pointer, including while gameplay pointer state is cleared.
+export function flightReticlePosition(state, width, height, visualPointer) {
   const input = state && state.input;
   if (input && input.autoFire) return { x: width * 0.5, y: height * 0.5 };
-  const pointer = input && input.pointerScreen;
+  const pointer = visualPointer || (input && input.pointerScreen);
   if (!pointer || !pointer.active || !Number.isFinite(pointer.x) || !Number.isFinite(pointer.y)
     || pointer.x < 0 || pointer.y < 0 || pointer.x > width || pointer.y > height) return null;
   return { x: pointer.x, y: pointer.y };
@@ -721,8 +759,8 @@ export const ui = {
     // === UI: aiming reticle ===
     // (The pilot-helmet avatar was removed — it read as a first-person-visor motif that doesn't fit
     // this third-person chase-cam game, and it sat on every screen as an unexplained symbol.)
-    // Aim feedback is separate from the native mouse pointer. Keep it outside #hud so HUD
-    // opacity, disruption and blackout effects cannot hide or displace the only locked sight.
+    // The target cursor is the mouse pointer in flight. Keep it outside #hud so HUD
+    // opacity, disruption and blackout effects cannot hide or displace it.
     const reticle = document.createElement('div');
     reticle.id = 'aim-reticle';
     reticle.dataset.mode = 'manual';
@@ -733,10 +771,13 @@ export const ui = {
     reticle.appendChild(reticleModeLabel);
     const hudRoot = document.getElementById('hud');
     document.getElementById('ui-root').appendChild(reticle);
+    const flightPointer = createFlightPointerTracker(window, document);
 
     let hitTickTimeout = null;
     this._destroyFlightCursor = () => {
       if (hitTickTimeout) clearTimeout(hitTickTimeout);
+      flightPointer.destroy();
+      document.body.classList.remove('sf-flight-cursor');
       reticle.remove();
       this._syncFlightCursor = null;
       this._destroyFlightCursor = null;
@@ -822,7 +863,7 @@ export const ui = {
       const autoTarget = !!(visible && st && st.input && st.input.autoFire);
       const position = flightReticlePosition(st,
         typeof innerWidth === 'number' ? innerWidth : 0,
-        typeof innerHeight === 'number' ? innerHeight : 0);
+        typeof innerHeight === 'number' ? innerHeight : 0, flightPointer.pointer);
       const flightPath = st && st.input && st.input.autoTargetPath;
       const flightStick = st && st.input && st.input.autoTargetVector;
       const pathActive = !!(autoTarget && flightPath && flightPath.active
@@ -841,9 +882,12 @@ export const ui = {
       // `reticle` created above is the only element with id 'aim-reticle': the old
       // getElementById could only ever resolve to it (or nothing) — skip the per-frame lookup.
       const reticleEl = reticle;
-      // Native mouse cursors remain visible in flight and on controls. Pointer lock alone
-      // hides the OS cursor in G mode, where this independent centered sight replaces it.
-      const nextReticleDisplay = reticleAlive && position ? 'block' : 'none';
+      // Hide the system arrow only when its actual target-cursor replacement is present.
+      // Input activity is not part of this decision; an idle mouse still has a cursor.
+      const targetCursorVisible = !!(reticleAlive && position && flightPointer.pointer.focused
+        && reticleEl.isConnected);
+      document.body.classList.toggle('sf-flight-cursor', visible && targetCursorVisible);
+      const nextReticleDisplay = targetCursorVisible ? 'block' : 'none';
       if (lastReticleDisplay !== nextReticleDisplay) {
         lastReticleDisplay = nextReticleDisplay;
         reticleEl.style.display = nextReticleDisplay;
@@ -1650,8 +1694,8 @@ export const ui = {
         this.screenManager.syncHudAccessibility(modalChromeOpen || liveOverlay || docked || !st || st.mode !== 'flight');
       }
       const hudVisible = !!(st && st.mode === 'flight' && !modalChromeOpen && !docked);
-      // The native pointer stays visible; explicit combat-stick mode owns pointer lock.
-      // Its sight stays alive under live overlays (second arg).
+      // The independent target cursor owns the pointer in flight. Screens restore their
+      // native pointer; the aim marker stays alive under live overlays (second arg).
       if (this._syncFlightCursor) this._syncFlightCursor(hudVisible && !modalOpen, hudVisible);
       if (this.hud) {
         if (hudVisible) {
