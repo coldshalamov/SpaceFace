@@ -880,7 +880,10 @@ export class GyreSnarePresentation {
       // sim's real draw-back (max(13, clumpRadius·0.4) ≈ 24 wu on a capped
       // clump) — a flat 6 wu cap left the glass ~18 wu ahead of the payload
       // on the tautest beat. Pebbles keep the old shallow cock.
-      const coilBack = windup * Math.min(6 + this._clumpRadius * 0.3, endR * 0.5);
+      // The drawn cock-back rides the sim's own pull formula (max(13, r*0.4)
+      // wu at gyreSnare.js:2515) — the rim sits ON the mass it's slinging even
+      // on pebbles, where the old 6+r*0.3 under-read the real 13 wu draw.
+      const coilBack = windup * Math.min(Math.max(13, this._clumpRadius * 0.4), endR * 0.5);
       this._cone.scale.set(coilR, drawLen - coilBack, coilR);
       this._coneBody.scale.set(coilR * 0.97, drawLen - coilBack, coilR * 0.97);
       this._maw.position.set(drawLen - coilBack, 0, 0);
@@ -1401,7 +1404,11 @@ export class GyreSnarePresentation {
       // uneatable pickup dragged into the basin must not warm toward rim-hot
       // like an edible about to be grabbed (the glow lane's TOWING vs IN NET).
       if (s.abs === false) {
-        g.material.color.copy(this._colGlass).lerp(this._colMaw, Math.min(1, finite(s.k, 0.5) * 0.8));
+        // heavy: a body the net can never eat reads refusal on the rock itself —
+        // amber-lean, not the pale tow tint it shares with retrievable loot.
+        g.material.color.copy(this._colGlass).lerp(
+          s.heavy ? this._colWarn : this._colMaw,
+          Math.min(1, finite(s.k, 0.5) * (s.heavy ? 0.55 : 0.8)));
       } else {
         g.material.color.copy(this._colGlass).lerp(this._colHot, Math.min(1, finite(s.k, 0.5) * 1.3));
       }

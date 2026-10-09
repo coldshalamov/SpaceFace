@@ -882,8 +882,11 @@ export function createGamepad(ctx) {
       // Pinned constant: /2400 IS GYRE_SNARE.maxClumpMass — retune with the data
       // file (this layer intentionally carries no data imports).
       const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 2400);
+      // Emitted per coil tick: windW01 (0→1 over the draw) mirrors the audio
+      // twin's per-tick crescendo — a flat pulse left the arc ear-only.
+      const w = payload && Number.isFinite(payload.windW01) ? 0.4 + 0.6 * payload.windW01 : 1;
       const base = HAPTIC_VERB_PULSES['gyre:windup'];
-      startPulse({ strong: base.strong + 0.3 * t, weak: base.weak + 0.15 * t, ms: base.ms + 50 * t }, 'gyre:windup');
+      startPulse({ strong: (base.strong + 0.3 * t) * w, weak: (base.weak + 0.15 * t) * w, ms: base.ms + 50 * t }, 'gyre:windup');
     });
     bus.on('gyre:thrown', (payload) => {
       // The throw crack grades by payload like snagged/windup — but on MASS, not

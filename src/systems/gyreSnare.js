@@ -815,7 +815,9 @@ export const gyreSnare = {
 
   _evidence(tick) {
     const ev = this._evidenceObj || (this._evidenceObj = { kind: PROV_TAG, tick: 0, provenance: null });
-    ev.tick = tick;
+    // `| 0` normalizes a minimal host's missing tick to 0 like the provenance
+    // callsites, instead of writing `tick: undefined` into the evidence.
+    ev.tick = tick | 0;
     return ev;
   },
 
@@ -964,8 +966,13 @@ export const gyreSnare = {
           // them — eased toward the held core's revolution direction via swirlBlend:
           // the funnel stirs the way the clump circles, and a −1-rolling snag re-stirs
           // the spiral smoothly instead of reversing it mid-feed.
-          ax += (dz / distMaw) * D.mawSwirlAccel * this._rt.swirlBlend * couple;
-          az -= (dx / distMaw) * D.mawSwirlAccel * this._rt.swirlBlend * couple;
+          // The helix tapers inside 2× snagRadius (to a 20% floor at the lip):
+          // under basinDamping a light meal used to circle the last ~20 wu for a
+          // beat before coring — going radial there makes the grab land when the
+          // funnel's gulp language promises it. The catch edge itself is unchanged.
+          const swirlTaper = 0.2 + 0.8 * Math.min(1, Math.max(0, distMaw - D.snagRadius) / D.snagRadius);
+          ax += (dz / distMaw) * D.mawSwirlAccel * this._rt.swirlBlend * couple * swirlTaper;
+          az -= (dx / distMaw) * D.mawSwirlAccel * this._rt.swirlBlend * couple * swirlTaper;
         }
         // Frame damping inside the basin: settle relative to the ship so captures stick.
         ax -= (finite(e.vel && e.vel.x) - shipVx) * D.basinDamping;
@@ -991,12 +998,19 @@ export const gyreSnare = {
       // gated on a real pull: a body at the wedge's dead lip isn't being dragged,
       // so it must not fake a glow.
       if (pullK > 0.05 && this._spotScratch.length < D.basinSpotMax * 4) {
-        this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: entityRadius(e), k: pullK, abs: absorbable });
+        // heavy rides through to the victim-glow lane — a body it can never eat
+        // reads refusal on the rock itself, not identical to towed loot.
+        this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: entityRadius(e), k: pullK,
+          abs: absorbable, heavy: admission === 'too-heavy' });
       }
       // Loot in tow: non-absorbable dynamics the beam drags but never eats — the HUD
       // can answer "why won't it snag?" with TOWING N instead of bare SEARCHING.
       // Projectiles excluded: fire streaking through the wedge gets the point-defense
       // tug, but a bullet isn't "loot in tow" — it would fake the retrievable count.
+      // 'protected' cargo still counts as tow: the wreck IS being dragged, so
+      // TOWING honestly answers 'why no snag' — pinned deliberate by the
+      // protected-cargo tug test, not an oversight. (Can't-pocket is distinct
+      // from can't-drag: only too-heavy double-counts in TOO HEAVY.)
       if (!absorbable && admission !== 'too-heavy' && e.type !== 'projectile' && pullK > 0.05) {
         this._rt.towCount += 1;
         this._rt.towLane = 'basin';
@@ -1254,6 +1268,10 @@ export const gyreSnare = {
     // later pebble over-grades the gulp reads (the last-write under-grade's twin).
     rt.absorbRadius = 0;
     if (!queryRadius) return;
+    // The annulus ramps at the cone's own projection speed too — parity with
+    // _pullPass for the ~3 ticks between the snag (wake 0.7) and saturation,
+    // so a meal in the band doesn't eat full suck while basin siblings ramp.
+    const wake = Math.min(1, this._rt.beamWake / 0.15);
     // The band widens with the ball — a capped katamari is hungrier than a fresh
     // snag (katamari escalation legibility; the presentation halo draws the same
     // reach), but stays bounded: ~1.5× the beam's own basin, never ~2× past it.
@@ -1295,7 +1313,7 @@ export const gyreSnare = {
         // toward two different anchors at ~2x the intended ceiling.
         if (dist > 1e-4 && rt.clumpMass < D.maxClumpMass) {
           const tugK = D.nonAbsorbablePull * couplingScale(this._profile(e));
-          const tug = D.suckAccel * tugK;
+          const tug = D.suckAccel * tugK * wake;
           // The courtesy tow keeps the funnel's chirality too — the absorbable
           // suck lane corkscrews at suckSwirlFrac·swirlBlend; a towed pickup
           // spiraling the basin then ray-shooting straight inside the annulus
@@ -1309,6 +1327,8 @@ export const gyreSnare = {
           // too-heavy body already fills TOO HEAVY — without it the same rock counted
           // in BOTH ledgers and both 0->1 cues fired on the same tick at one seat).
           // Without it TOWING drops to 0 exactly while the dragged mass is closest.
+          // Same deliberate protected-in-tow contract as _pullPass — the drag
+          // is real even when the pocket isn't.
           if (admission !== 'too-heavy' && e.type !== 'projectile' && tugK > 0.05) {
             rt.towCount += 1;
             rt.towLane = 'suck'; // the 0->1 tick speaks where the tow was grabbed
@@ -1316,7 +1336,8 @@ export const gyreSnare = {
           // Tugged mass inside the annulus glows at its discounted share too —
           // abs:false: courtesy tows can never be caught, so they never get the hot seat.
           if (this._spotScratch.length < D.basinSpotMax * 4) {
-            this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: er, k: tugK, abs: false });
+            this._spotScratch.push({ x: e.pos.x, z: e.pos.z, r: er, k: tugK,
+              abs: false, heavy: admission === 'too-heavy' });
           }
         }
         continue;
@@ -1343,7 +1364,7 @@ export const gyreSnare = {
         // capped ball doesn't drag leeches against its skin forever.
         if (rt.clumpMass >= D.maxClumpMass) continue;
         const couple = couplingScale(this._profile(e));
-        const pull = D.suckAccel * couple;
+        const pull = D.suckAccel * couple * wake;
         const mass = entityMass(e);
         let ax = (dx / dist) * pull;
         let az = (dz / dist) * pull;
@@ -2487,10 +2508,13 @@ export const gyreSnare = {
         // The graded total, not the flat field — the crescendo + tick-1 latch
         // must fire on the FIRST coil tick whatever the payload's bow length.
         const windW01 = Math.max(0, 1 - rt.launchWindup / Math.max(1, rt.launchWindupTotal || D.launchWindupTicks));
+        if (this.bus) {
+          // The draw CRESCENDOS in the hands too: the pad rides a low rumble
+          // every coil tick, windW01-graded like the audio twin beside it — a
+          // single flat-strength pulse left the arc ear-only.
+          this.bus.emit(GYRE_EVENTS.windup, { id: core.id, mass: rt.ballMass, tick: state.tick, windW01 });
+        }
         if (this.bus && rt.launchWindup === (rt.launchWindupTotal || D.launchWindupTicks) - 1) {
-          // First coil tick: the pad rides a low rumble through the draw — the
-          // slingshot pull-back is the feel-rich part, and silence undersold it.
-          this.bus.emit(GYRE_EVENTS.windup, { id: core.id, mass: rt.ballMass, tick: state.tick });
           // A whisper of camera anticipation on the draw — the pull-back is felt,
           // not only seen/heard. 0.025 is the smallest amount that still reads:
           // it leans the frame into the coil without moving the reticle.
