@@ -428,6 +428,25 @@ test('boost press inside the live orbit chord uses sustained boost without an or
     `only sustained-boost drain should be charged on this tick, got ${harness.player.boost.energy}`);
 });
 
+test('a boost tap inside the orbit chord on a long line still launches (clipped to trackable swing)', () => {
+  const harness = makeFlightHarness();
+  harness.anchor.pos = { x: -80, z: 0 }; // 200 WU live radius: plenty of yaw headroom.
+  harness.state.player.tether.restLength = 200;
+  harness.state.input.boost = true;
+  harness.player.boost = {
+    energy: 220, max: 220, drainRate: 36, regenRate: 28,
+    dashImpulse: 170, dashCost: 28, dashCd: 1.8, dashCdT: 0,
+    topSpeedPct: 0, burnDurS: 0, burnCdS: 0,
+  };
+  const system = Object.create(flightV3Module.flightV3);
+  system.init({ state: harness.state, bus: harness.bus });
+  system.update(DT, harness.state);
+  const command = consumePhysicsCommand(harness.player);
+  assert.equal(harness.player._flightFrame.orbitAssist.active, true);
+  assert.equal(command.impulses.length, 1, 'a long line has headroom: the tap must dash');
+  assert.ok(harness.player.boost.dashCdT > 0);
+});
+
 test('releasing the orbit contract restores the ordinary boost dash immediately', () => {
   const harness = makeFlightHarness();
   harness.state.settings.gameplay.orbitAssistStrength = 'off';

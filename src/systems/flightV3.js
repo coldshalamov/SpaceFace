@@ -27,7 +27,7 @@ import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propuls
 import { applyFeelEnvelope, hullIdFromEntity, pathFollowBlocksFeel } from '../data/flightFeelEnvelopes.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
 import { computeFlightTelemetry, computeSweptHullAdvisory, SWEPT_HULL_DEFAULTS } from '../core/flight/flightTelemetry.js';
-import { orbitHeadingThrustGate, orbitSwingThrottleScale, stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
+import { ORBIT_LINE_YAW_LOCK, ORBIT_SWING_TRACK_MARGIN, orbitHeadingThrustGate, orbitSwingThrottleScale, stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 // FB-001: the authored pursuit-slot chase assist. Pure module; flightV3 is its only caller and
 // gates it behind the opt-in gameplay.pursuitSlotAssist setting (default off).
@@ -339,9 +339,27 @@ export const flightV3 = {
       // the same body/anchor/intent it will see, so suppression can never drift from the yaw it
       // protects. Only `.active` is read here; the steering call still runs after boost so its
       // input spread carries the resource-gated boost flag.
-      const orbitOwnsBoostPress = craftOrbitAssistStep(
+      //
+      // Tap-boost launch: the press is not swallowed outright. The dash is clipped to the swing
+      // speed still trackable at this radius (same yaw ceiling the throttle governor uses), so a
+      // long line gives a real launch kick while a tight, saturated orbit still gets none.
+      const orbitProbe = craftOrbitAssistStep(
         state, entity, body, orbitAnchor, rawInput, input, tether, profile, dt,
-      ).active === true;
+      );
+      let orbitDashHeadroom = Infinity;
+      if (orbitProbe.active === true) {
+        const t = orbitProbe.telemetry;
+        const share = clamp(positive(t.armShare, 1), 0.05, 1);
+        const ceiling = positive(t.yawCeiling, 0);
+        const trackable = (ceiling > 0
+          ? ceiling * ORBIT_LINE_YAW_LOCK.governorMargin
+          : positive(t.maxYawRate, 0) * ORBIT_SWING_TRACK_MARGIN) * positive(t.radius, 0) * (ceiling > 0 ? share : 1);
+        const demand = Math.max(
+          Math.abs(finite(t.tangentialSpeed)) * (ceiling > 0 ? share : 1),
+          commandedTranslationSpeed({ ...input, boost: true }, profile),
+        );
+        orbitDashHeadroom = Math.max(0, trackable - demand);
+      }
       // Input owns the latch. Read its published state before stepping boost so an engaged burn
       // does not also regenerate the same capacitor in this tick; the burn debit below is the
       // only new consumer and remains player-only.
@@ -349,7 +367,8 @@ export const flightV3 = {
         && state && state.input && state.input.travelDrive
         && state.input.travelDrive.state === 'engaged';
       boosting = this._stepPlayerBoost(entity, input.boost, dt, state, {
-        suppressDash: autoBoost || orbitOwnsBoostPress || veil,
+        suppressDash: autoBoost || veil,
+        orbitDashHeadroom,
         suppressRegen: requestedTravelBurn || veilBusy,
       });
       input.boost = boosting;
@@ -588,7 +607,7 @@ export const flightV3 = {
       // Holding past this point is just boost. The pre-kick event carries the 80 ms anticipation
       // beat to presentation (FOV/plume/audio) only when the press can actually produce thrust —
       // an empty capacitor stays silent rather than mimicking the success cue.
-      const dashed = this._triggerDash(e, boost, state);
+      const dashed = this._triggerDash(e, boost, state, opts.orbitDashHeadroom);
       if (!dashed && boost.dashImpulse > 0) dashSpoken = true;
       else if (dashed && boost.energy <= 1) {
         // The dash already spent the tank under the sustain floor. Disarm now, or regen
@@ -674,7 +693,7 @@ export const flightV3 = {
     return boosting;
   },
 
-  _triggerDash(e, boost, state) {
+  _triggerDash(e, boost, state, orbitDashHeadroom = Infinity) {
     if (!(boost.dashImpulse > 0)) return false;
     if (boost.dashCdT > 0 || boost.energy < boost.dashCost) {
       // The press already happened. Don't play the success kick; say which gate held.
@@ -725,6 +744,9 @@ export const flightV3 = {
       const dashCap = positive(dashProfile.combatSpeed, 150) * positive(dashProfile.boostSpeedMult, 1.55);
       imp = Math.min(imp, Math.max(0, dashCap - vAlong));
     }
+    // Inside the forward+turn orbit chord the press still dashes, but only by the swing speed the
+    // nose can still track (zero on a tight, already-saturated orbit -> no dash, nothing charged).
+    if (orbitDashHeadroom < imp) imp = Math.max(0, orbitDashHeadroom);
     const mass = positive(e.physicsBody && e.physicsBody.mass, positive(e.mass, 1));
     // Rapier authority path: queue the impulse (mass-scaled so delta-v is `imp` units/s),
     // matching src/systems/flight.js:176-179. The physics owner applies it next solve.
