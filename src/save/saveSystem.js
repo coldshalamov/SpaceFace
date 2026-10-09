@@ -1433,8 +1433,9 @@ export const save = {
         stringifyMs = nowMs() - t;
       }
       catch (err) { return { ok: false, reason: 'stringify_failed', bytes: 0, stringifyMs, storageMs, indexMs }; }
-      if (json.length > SAVE_WRITE_MAX_BYTES) {
-        return { ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: json.length, bytes: 0, stringifyMs, storageMs, indexMs };
+      const bytes = saveImportByteLength(json);
+      if (bytes > SAVE_WRITE_MAX_BYTES) {
+        return { ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: bytes, bytes: 0, stringifyMs, storageMs, indexMs };
       }
     }
     const primaryKey = LS_PREFIX + slot;
@@ -3100,7 +3101,7 @@ export const save = {
     if (!bound.ok) {
       return this._failAutosave(job, bound.reason, capture, workNowMs() - started);
     }
-    if (encoded.json.length > SAVE_WRITE_MAX_BYTES) {
+    if (saveImportByteLength(encoded.json) > SAVE_WRITE_MAX_BYTES) {
       return this._failAutosave(job, 'save_size_limit', capture, workNowMs() - started);
     }
     const encodeMs = workNowMs() - started;
@@ -3148,7 +3149,7 @@ export const save = {
       const stringifyStarted = workNowMs();
       json = JSON.stringify(envelope);
       stringifyMs = workNowMs() - stringifyStarted;
-      if (json.length > SAVE_WRITE_MAX_BYTES) {
+      if (saveImportByteLength(json) > SAVE_WRITE_MAX_BYTES) {
         return this._failAutosave(job, 'save_size_limit', null, workNowMs() - sliceStarted);
       }
     } catch (err) {
