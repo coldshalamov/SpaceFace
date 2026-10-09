@@ -12,6 +12,7 @@
 
 import { createTouch } from '../touch.js';
 import { laneDomEvent } from '../../core/simLaneCommands.js';
+import { perfNow } from '../../core/perfRuntime.js';
 
 // The bridge's tick wraps the input host for virtual-verb unions and hold
 // latches; on the main realm there is no input host — a stub satisfies the
@@ -75,8 +76,7 @@ export function createLaneTouchSurface({ state, bus, helpers }) {
 
   function drive() {
     if (destroyed) return;
-    const nowMs = (typeof performance !== 'undefined' && performance.now)
-      ? performance.now() : Date.now();
+    const nowMs = perfNow();
     // Gesture clocks are wall-time — the model's flick/tap windows are human
     // timeouts, not sim ticks. Capped so a stalled frame can't mint one giant dt.
     const dt = lastMs ? Math.min((nowMs - lastMs) / 1000, 0.1) : 1 / 60;
