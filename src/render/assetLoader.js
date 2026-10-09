@@ -718,7 +718,7 @@ export async function loadAuthoredPart(url, options = {}) {
     // reclaimWarm refreshes the soft-claim stamp so the idle sort keeps the armed
     // cohort young, and the shared task cache serves the blueprint below.
     && !(ownerlessWarm && typeof residency.reclaimWarm === 'function'
-      && residency.reclaimWarm(cacheKey, residencyOwner))
+      && residency.reclaimWarm(cacheKey, residencyOwner, options.sectorId || null))
     ? residency.beginRequest(cacheKey, residencyOwner, {
       role: options.residencyRole || (options.residencyOwner ? 'live-boundary' : 'runtime-cache'),
       sectorId: options.sectorId || null,

@@ -399,9 +399,28 @@ export function createAssetResidencyRegistry(options = {}) {
         // every pressure wave. Re-pin it — the W130 "re-post re-pins" intent.
         entry.lastWarmClaimAtMs = now();
       }
+      // A second warm arm claiming the same row under a different sector unions
+      // its sector into the claim — corridor rank + the sector index must see the
+      // newest consumer's sector, or the entry evicts first under pressure while
+      // its real consumer sector sits in-corridor (late re-decode pop).
+      if (metadata.sectorId != null) unionOwnerSector(entry, existingMetadata, metadata.sectorId);
+      if (metadata.sectorIds instanceof Set) {
+        for (const sid of metadata.sectorIds) unionOwnerSector(entry, existingMetadata, sid);
+      }
       return false;
     }
     const ownerMetadata = { ...metadata };
+    {
+      // Seed the sector union from both inputs — a request-metadata carrying a
+      // pre-unioned sectorIds set must not drop its scalar's sector either.
+      const seed = new Set(ownerSectorIds(ownerMetadata));
+      if (ownerMetadata.sectorId != null) seed.add(String(ownerMetadata.sectorId));
+      if (seed.size) ownerMetadata.sectorIds = seed;
+      else delete ownerMetadata.sectorIds;
+      if (ownerMetadata.sectorId == null && seed.size) {
+        ownerMetadata.sectorId = seed.values().next().value;
+      }
+    }
     if (ownerMetadata.presentationTier) {
       ownerMetadata.presentationTier = String(ownerMetadata.presentationTier);
     }
@@ -455,13 +474,20 @@ export function createAssetResidencyRegistry(options = {}) {
   // keeps the armed cohort young, then let the shared task cache serve the blueprint.
   // An in-flight request under the same owner carries the decode demand already —
   // a sibling mint per poll is pure ledger churn (the task cache dedupes the decode
-  // itself), so the consult covers it too.
-  function reclaimWarm(key, owner) {
+  // itself), so the consult covers it too. The consult is sector-aware: the shared
+  // session owner can carry demand for several sectors on one row, so a re-post
+  // under a different sectorId unions it into the claim (resident) or into the
+  // pending request's metadata (in-flight → commit→retain unions on settle) —
+  // otherwise the first poster's stale sector ranks the entry outside the
+  // corridor and pressure evicts the file its real consumer sector still needs.
+  function reclaimWarm(key, owner, sectorId = null) {
     if (owner == null) return false;
     const exactKey = String(key || '');
     const entry = assets.get(exactKey);
     if (entry && entry.state === 'resident') {
-      if (!entry.owners.has(owner)) return false;
+      const existingMetadata = entry.owners.get(owner);
+      if (!existingMetadata) return false;
+      unionOwnerSector(entry, existingMetadata, sectorId);
       entry.lastWarmClaimAtMs = now();
       return true;
     }
@@ -469,6 +495,13 @@ export function createAssetResidencyRegistry(options = {}) {
     if (!state || state.released) return false;
     for (const request of state.requests) {
       if (request.key === exactKey && request.active) {
+        if (sectorId != null) {
+          const meta = request.metadata || (request.metadata = {});
+          if (!(meta.sectorIds instanceof Set)) {
+            meta.sectorIds = new Set(meta.sectorId != null ? [String(meta.sectorId)] : []);
+          }
+          meta.sectorIds.add(String(sectorId));
+        }
         // Re-stamp the entry's warm-claim where one exists — its post-settle idle sort
         // keeps the armed cohort young even while the decode is still landing.
         if (entry) entry.lastWarmClaimAtMs = now();
@@ -734,6 +767,47 @@ export function createAssetResidencyRegistry(options = {}) {
   // (b) per-entry soft-class counters — isSoftOnlyEntry/isPackageCacheOnlyEntry
   //     turn O(1) consults instead of an O(owners) scan inside every census row.
   const sectorOwnerIndex = new Map();
+
+  // One owner row can carry warm demand for several sectors — the shared session
+  // owner serves every ownerless warm, so arm A (sector X) and arm B (sector Y)
+  // both claim the same row. `metadata.sectorIds` is the union; `sectorId` stays
+  // the first-claimed scalar for back-compat emit/diagnostic reads. Sector-scoped
+  // consumers (index, corridor rank, ledger re-derive) read the union.
+  function ownerSectorIds(metadata) {
+    if (!metadata) return [];
+    if (metadata.sectorIds instanceof Set) return [...metadata.sectorIds];
+    return metadata.sectorId != null ? [String(metadata.sectorId)] : [];
+  }
+
+  // Union a sector into an owner row's claim and index just that delta — the
+  // soft/role counters are per-owner and must not double-count, so the sector
+  // block alone runs here.
+  function unionOwnerSector(entry, metadata, sectorId) {
+    if (sectorId == null) return;
+    const sid = String(sectorId);
+    if (!(metadata.sectorIds instanceof Set)) {
+      metadata.sectorIds = new Set(metadata.sectorId != null ? [String(metadata.sectorId)] : []);
+    }
+    if (metadata.sectorIds.has(sid)) return;
+    metadata.sectorIds.add(sid);
+    if (metadata.sectorId == null) metadata.sectorId = sid;
+    entry.ownersVersion += 1;
+    residencyMutationSeq += 1;
+    let sectorMap = sectorOwnerIndex.get(sid);
+    if (!sectorMap) {
+      sectorMap = new Map();
+      sectorOwnerIndex.set(sid, sectorMap);
+    }
+    let row = sectorMap.get(entry);
+    if (!row) {
+      row = { total: 0, nonPlayer: 0 };
+      sectorMap.set(entry, row);
+    }
+    row.total += 1;
+    entry.sectorOwnerRefs += 1;
+    if (metadata.role !== 'player') row.nonPlayer += 1;
+  }
+
   function noteOwnerMembershipIndexed(entry, metadata) {
     if (!metadata) return;
     const role = String(metadata.role || '').trim().toLowerCase();
@@ -746,8 +820,7 @@ export function createAssetResidencyRegistry(options = {}) {
     if (role === 'render-package-cache') entry.rpcOwnerCount += 1;
     entry.ownersVersion += 1;
     residencyMutationSeq += 1;
-    if (metadata.sectorId != null) {
-      const sid = String(metadata.sectorId);
+    for (const sid of ownerSectorIds(metadata)) {
       let sectorMap = sectorOwnerIndex.get(sid);
       if (!sectorMap) {
         sectorMap = new Map();
@@ -775,8 +848,7 @@ export function createAssetResidencyRegistry(options = {}) {
     if (role === 'render-package-cache') entry.rpcOwnerCount -= 1;
     entry.ownersVersion += 1;
     residencyMutationSeq += 1;
-    if (metadata.sectorId != null) {
-      const sid = String(metadata.sectorId);
+    for (const sid of ownerSectorIds(metadata)) {
       const sectorMap = sectorOwnerIndex.get(sid);
       if (sectorMap) {
         const row = sectorMap.get(entry);
@@ -872,10 +944,10 @@ export function createAssetResidencyRegistry(options = {}) {
     if (!evictionCorridorRanks) return 0;
     let best = -1;
     for (const metadata of entry.owners.values()) {
-      const sectorId = metadata && metadata.sectorId;
-      if (sectorId == null) continue;
-      const rank = evictionCorridorRanks.get(String(sectorId));
-      if (rank != null && rank > best) best = rank;
+      for (const sectorId of ownerSectorIds(metadata)) {
+        const rank = evictionCorridorRanks.get(String(sectorId));
+        if (rank != null && rank > best) best = rank;
+      }
     }
     return best;
   }
@@ -1105,20 +1177,20 @@ export function createAssetResidencyRegistry(options = {}) {
           soft += 1;
         }
         if (role === 'render-package-cache') rpc += 1;
-        if (metadata.sectorId == null) continue;
-        const sid = String(metadata.sectorId);
-        let sectorMap = sectorIndex.get(sid);
-        if (!sectorMap) {
-          sectorMap = new Map();
-          sectorIndex.set(sid, sectorMap);
+        for (const sid of ownerSectorIds(metadata)) {
+          let sectorMap = sectorIndex.get(sid);
+          if (!sectorMap) {
+            sectorMap = new Map();
+            sectorIndex.set(sid, sectorMap);
+          }
+          let row = sectorMap.get(entry);
+          if (!row) {
+            row = { total: 0, nonPlayer: 0 };
+            sectorMap.set(entry, row);
+          }
+          row.total += 1;
+          if (metadata.role !== 'player') row.nonPlayer += 1;
         }
-        let row = sectorMap.get(entry);
-        if (!row) {
-          row = { total: 0, nonPlayer: 0 };
-          sectorMap.set(entry, row);
-        }
-        row.total += 1;
-        if (metadata.role !== 'player') row.nonPlayer += 1;
       }
       softOwnerCounts.set(entry, soft);
       rpcOwnerCounts.set(entry, rpc);
@@ -1202,20 +1274,20 @@ export function createAssetResidencyRegistry(options = {}) {
             soft += 1;
           }
           if (role === 'render-package-cache') rpc += 1;
-          if (metadata.sectorId == null) continue;
-          const sid = String(metadata.sectorId);
-          let sectorMap = sectorIndexRe.get(sid);
-          if (!sectorMap) {
-            sectorMap = new Map();
-            sectorIndexRe.set(sid, sectorMap);
+          for (const sid of ownerSectorIds(metadata)) {
+            let sectorMap = sectorIndexRe.get(sid);
+            if (!sectorMap) {
+              sectorMap = new Map();
+              sectorIndexRe.set(sid, sectorMap);
+            }
+            let row = sectorMap.get(entry);
+            if (!row) {
+              row = { total: 0, nonPlayer: 0 };
+              sectorMap.set(entry, row);
+            }
+            row.total += 1;
+            if (metadata.role !== 'player') row.nonPlayer += 1;
           }
-          let row = sectorMap.get(entry);
-          if (!row) {
-            row = { total: 0, nonPlayer: 0 };
-            sectorMap.set(entry, row);
-          }
-          row.total += 1;
-          if (metadata.role !== 'player') row.nonPlayer += 1;
         }
         softOwnerRe.set(entry, soft);
         rpcOwnerRe.set(entry, rpc);
@@ -2014,7 +2086,7 @@ export function createAssetResidencyRegistry(options = {}) {
       roles: Object.freeze([...new Set([...entry.owners.values()].map((metadata) => metadata && metadata.role).filter(Boolean))].sort()),
       presentationTiers: Object.freeze([...new Set([...entry.owners.values()]
         .map((metadata) => metadata && metadata.presentationTier).filter(Boolean))].sort()),
-      sectors: Object.freeze([...new Set([...entry.owners.values()].map((metadata) => metadata && metadata.sectorId).filter(Boolean).map(String))].sort()),
+      sectors: Object.freeze([...new Set([...entry.owners.values()].flatMap((metadata) => ownerSectorIds(metadata)))].sort()),
     };
     if (!canonical) row.generation = entry.generation;
     const frozen = Object.freeze(row);
