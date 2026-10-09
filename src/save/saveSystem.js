@@ -2153,6 +2153,40 @@ export const save = {
     return { sig, raws };
   },
 
+  // Async twin of _slotStoreSignature for the Continue lane: same short-circuits and the same
+  // enumerate+getItem materialization, but the walk yields every 16 keys and is
+  // generation-bracketed — a write interleaved mid-walk redoes the pass (bounded attempts,
+  // then the atomic sync walk so a storming writer can't starve the consult). The sync twin
+  // stays authoritative for every sync caller.
+  async _slotStoreSignatureAsync() {
+    if (typeof localStorage === 'undefined') return { sig: 'none', raws: null };
+    installSaveStoreWriteTracking();
+    const sig = 'gen:' + _saveStoreGeneration;
+    const cache = this._slotIndexCache;
+    if (cache && cache.sig === sig) return { sig, raws: null };
+    const collected = this._sharedStoreCollectCache;
+    if (collected && collected.gen === _saveStoreGeneration) {
+      this._sharedStoreCollectCache = null;
+      return { sig, raws: collected.raws };
+    }
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const genBefore = _saveStoreGeneration;
+      const raws = new Map();
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          if (i > 0 && i % 16 === 0) await this._restoreFrameYield();
+          const key = localStorage.key(i);
+          if (!key || (!key.startsWith(LS_PREFIX) && !key.startsWith(RECOVERY_PREFIX))) continue;
+          raws.set(key, localStorage.getItem(key));
+        }
+        if (_saveStoreGeneration === genBefore) return { sig: 'gen:' + genBefore, raws };
+      } catch (err) {
+        return { sig: 'sig-error:' + (this._slotSigErrorSeq = (this._slotSigErrorSeq || 0) + 1), raws };
+      }
+    }
+    return this._slotStoreSignature();
+  },
+
   // `burst` shares one signature walk across a single call chain (a Continue click resolves
   // through _newerUnplayableSkip → _latestSlot → the index scan). Callers own the object and
   // never let it outlive the chain — nothing stale can be served, because a burst is only
@@ -2203,7 +2237,7 @@ export const save = {
   // authoritative for every sync caller (title list, sync load, deleteSlot).
   async _slotIndexWithFallbackAsync(burst = null) {
     const { sig, raws } = burst && burst.sig != null ? burst
-      : (burst ? Object.assign(burst, this._slotStoreSignature()) : this._slotStoreSignature());
+      : (burst ? Object.assign(burst, await this._slotStoreSignatureAsync()) : await this._slotStoreSignatureAsync());
     const cache = this._slotIndexCache;
     if (cache && cache.sig === sig) return { ...cache.merged };
     const inFlight = this._slotIndexValidationInFlight;
@@ -2213,7 +2247,7 @@ export const save = {
       if (settled && settled.sig === sig) return { ...settled.merged };
       // No publish means the generation moved mid-ride — re-sign so the walk below
       // reads current bytes instead of the stale collect.
-      const fresh = this._slotStoreSignature();
+      const fresh = await this._slotStoreSignatureAsync();
       if (fresh.sig !== sig) return this._slotIndexWithFallbackAsync(burst || null);
     }
     // The signature collect above already paid its getItem walk on this task — break
@@ -2558,6 +2592,7 @@ export const save = {
         return list;
       })();
       let n = 0;
+      const pendingVerdicts = [];
       for (const [key, raw] of entries) {
         if (!key || !key.startsWith(LS_PREFIX) || key === INDEX_KEY) continue;
         const slot = key.slice(LS_PREFIX.length);
@@ -2569,20 +2604,31 @@ export const save = {
           delete trusted._blobHash;
           out[slot] = trusted;
         } else {
-          const verdict = await this._prepareEnvelopeMetaAsync(raw);
-          const env = verdict && verdict.ok ? this._prepareEnvelopeMeta(raw) : null;
-          if (env) {
-            // Card straight off the envelope, same as the sync twin — the checksum already
-            // ran inside the meta, so the post-migration re-verify can never misfire.
-            const meta = slotCardFromEnvelopeData(slot, env, null);
-            if (meta) out[slot] = meta;
-          } else {
-            const peek = this._peekSaveEnvelope(raw);
-            const meta = peek && peek.ok ? slotMetaFromGzipEnvelope(slot, peek.env) : null;
-            if (meta) out[slot] = meta;
-          }
+          pendingVerdicts.push({ slot, raw });
         }
         if (++n % 16 === 0) await this._restoreFrameYield();
+      }
+      // The walk above used to await each untrusted blob's worker verdict serially — K
+      // untrusted entries paid K sequential roundtrips on the click consult while the
+      // identical verdicts fan out in _scheduleSlotIndexValidation one function away.
+      // Dispatch in bounded slices so the roundtrips overlap; every slot writes only its
+      // own card key, so fan-out preserves results.
+      for (let i = 0; i < pendingVerdicts.length; i += 4) {
+        await Promise.all(pendingVerdicts.slice(i, i + 4).map(({ slot, raw }) =>
+          Promise.resolve(this._prepareEnvelopeMetaAsync(raw)).then((verdict) => {
+            const env = verdict && verdict.ok ? this._prepareEnvelopeMeta(raw) : null;
+            if (env) {
+              // Card straight off the envelope, same as the sync twin — the checksum already
+              // ran inside the meta, so the post-migration re-verify can never misfire.
+              const meta = slotCardFromEnvelopeData(slot, env, null);
+              if (meta) out[slot] = meta;
+            } else {
+              const peek = this._peekSaveEnvelope(raw);
+              const meta = peek && peek.ok ? slotMetaFromGzipEnvelope(slot, peek.env) : null;
+              if (meta) out[slot] = meta;
+            }
+          })));
+        if (i + 4 < pendingVerdicts.length) await this._restoreFrameYield();
       }
     } catch (err) {
       // localStorage scans are a recovery path; never break title/load screens.
@@ -2643,6 +2689,7 @@ export const save = {
         return list;
       })();
       let n = 0;
+      const pendingVerdicts = [];
       for (const [key, raw] of entries) {
         if (!key || !key.startsWith(RECOVERY_PREFIX)) continue;
         const slot = key.slice(RECOVERY_PREFIX.length);
@@ -2652,18 +2699,26 @@ export const save = {
             && fnv1a(raw) === indexCard._recoveryBlobHash && indexCard._recoveryCard) {
           out[slot] = clonePlain(indexCard._recoveryCard);
         } else {
-          const verdict = await this._prepareEnvelopeMetaAsync(raw);
-          const env = verdict && verdict.ok ? this._prepareEnvelopeMeta(raw) : null;
-          if (env) {
-            const meta = slotCardFromEnvelopeData(slot, env, null);
-            if (meta) out[slot] = meta;
-          } else {
-            const peek = this._peekSaveEnvelope(raw);
-            const meta = peek && peek.ok ? slotMetaFromGzipEnvelope(slot, peek.env) : null;
-            if (meta) out[slot] = meta;
-          }
+          pendingVerdicts.push({ slot, raw });
         }
         if (++n % 16 === 0) await this._restoreFrameYield();
+      }
+      // Same bounded fan-out as _scanStoredSlotsAsync — untrusted recovery blobs verdict
+      // in overlapping slices instead of serial roundtrips on the consult.
+      for (let i = 0; i < pendingVerdicts.length; i += 4) {
+        await Promise.all(pendingVerdicts.slice(i, i + 4).map(({ slot, raw }) =>
+          Promise.resolve(this._prepareEnvelopeMetaAsync(raw)).then((verdict) => {
+            const env = verdict && verdict.ok ? this._prepareEnvelopeMeta(raw) : null;
+            if (env) {
+              const meta = slotCardFromEnvelopeData(slot, env, null);
+              if (meta) out[slot] = meta;
+            } else {
+              const peek = this._peekSaveEnvelope(raw);
+              const meta = peek && peek.ok ? slotMetaFromGzipEnvelope(slot, peek.env) : null;
+              if (meta) out[slot] = meta;
+            }
+          })));
+        if (i + 4 < pendingVerdicts.length) await this._restoreFrameYield();
       }
     } catch (err) {
       // Backup discovery is best-effort; explicit load still attempts the named recovery key.
@@ -2835,8 +2890,19 @@ export const save = {
     if (await this._latestSlotAsync(burst) === best) return null; // newest is playable — no skip
     let primaryRaw = null, backupRaw = null;
     try {
-      primaryRaw = localStorage.getItem(LS_PREFIX + best);
-      backupRaw = localStorage.getItem(RECOVERY_PREFIX + best);
+      // The signature walk the consult above just rode already materialized both blobs
+      // under this generation — a still-matching gen proves the Map's copies identical
+      // to what getItem would return, so the multi-MB re-read stays off the click chain.
+      installSaveStoreWriteTracking();
+      const burstRaws = burst && burst.sig === 'gen:' + _saveStoreGeneration
+        && burst.raws && typeof burst.raws.get === 'function' ? burst.raws : null;
+      if (burstRaws) {
+        primaryRaw = burstRaws.has(LS_PREFIX + best) ? burstRaws.get(LS_PREFIX + best) : null;
+        backupRaw = burstRaws.has(RECOVERY_PREFIX + best) ? burstRaws.get(RECOVERY_PREFIX + best) : null;
+      } else {
+        primaryRaw = localStorage.getItem(LS_PREFIX + best);
+        backupRaw = localStorage.getItem(RECOVERY_PREFIX + best);
+      }
     } catch (err) { return null; }
     const [primary, backup] = await Promise.all([
       this._prepareEnvelopeMetaAsync(primaryRaw),
@@ -4560,8 +4626,9 @@ export const save = {
   async loadAsync(slot) {
     slot = slot || 'quick';
     let skippedNewer = null;
+    let slotBurst = null;
     if (slot === 'latest') {
-      const slotBurst = {};
+      slotBurst = {};
       try { skippedNewer = await this._newerUnplayableSkipAsync(slotBurst); } catch (err) { skippedNewer = null; }
       const resolved = await this._latestSlotAsync(slotBurst);
       if (!resolved) {
@@ -4583,8 +4650,17 @@ export const save = {
       && spec.sig === 'gen:' + _saveStoreGeneration;
     let raw = null;
     if (!specHit) {
-      try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
-      catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
+      // Same freshness proof as specHit: the 'latest' consult's signature walk already
+      // materialized this blob under a still-live generation — the Map's copy is the
+      // bytes getItem would return, so the second multi-MB read stays off the click task.
+      const burstRaws = slotBurst && slotBurst.sig === 'gen:' + _saveStoreGeneration
+        && slotBurst.raws && typeof slotBurst.raws.get === 'function' ? slotBurst.raws : null;
+      if (burstRaws) {
+        raw = burstRaws.has(LS_PREFIX + slot) ? burstRaws.get(LS_PREFIX + slot) : null;
+      } else {
+        try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
+        catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
+      }
     }
     // A spec minted under an older generation still consumes, but only after byte equality
     // proves nothing drifted since it read.
