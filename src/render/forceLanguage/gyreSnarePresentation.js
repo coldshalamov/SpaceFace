@@ -542,6 +542,18 @@ export class GyreSnarePresentation {
     return mat;
   }
 
+  // Lump silhouette hash on the member's own identity — the primary pool AND the
+  // secondary overlay seed from this one formula so a displaced primary or a
+  // promoted secondary hands off pixel-identical rubble instead of re-jittering
+  // into new rocks across the lane switch.
+  _lumpSeed(member) {
+    let h = 31;
+    const tp = member.type || '';
+    for (let c = 0; c < tp.length; c++) h = ((h * 31) + tp.charCodeAt(c)) | 0;
+    return Math.abs(h + Math.round(finite(member.mass) * 7)
+      + Math.round(finite(member.nx) * 977) + Math.round(finite(member.nz) * 1291)) | 0;
+  }
+
   _addLump(member, i, instant = false) {
     let slot = null;
     for (const l of this._lumps) if (!l.used) { slot = l; break; }
@@ -550,12 +562,7 @@ export class GyreSnarePresentation {
       // Seed on the member's own identity, not its ledger index — a want<have
       // rebuild re-adds the same members and their silhouettes should survive
       // it instead of re-jittering into new rocks.
-      let h = 31;
-      const tp = member.type || '';
-      for (let c = 0; c < tp.length; c++) h = ((h * 31) + tp.charCodeAt(c)) | 0;
-      const seed = Math.abs(h + Math.round(finite(member.mass) * 7)
-        + Math.round(finite(member.nx) * 977) + Math.round(finite(member.nz) * 1291)) | 0;
-      const geo = jitterGeometry(new THREE.IcosahedronGeometry(1, 1), 0.28, seed);
+      const geo = jitterGeometry(new THREE.IcosahedronGeometry(1, 1), 0.28, this._lumpSeed(member));
       slot = { mesh: new THREE.Mesh(geo), used: false, baseScale: 1, spawnT: 0 };
       this._clump.add(slot.mesh);
       this._lumps.push(slot);
@@ -1716,11 +1723,21 @@ export class GyreSnarePresentation {
           for (let i = 0; i < n; i++) {
             const member = sbm[i];
             let lm = this._secLumps[i];
+            // The same identity hash the primary pool seeds on — a displaced
+            // primary or a promoted secondary keeps its rubble's silhouette
+            // across the lane hand-off. The slot is pooled by index across
+            // balls, so re-jitter when this slot's member actually changed.
+            const lSeed = this._lumpSeed(member);
             if (!lm) {
               lm = new THREE.Mesh(
-                jitterGeometry(new THREE.IcosahedronGeometry(1, 1), 0.28, 53 + i * 7919));
+                jitterGeometry(new THREE.IcosahedronGeometry(1, 1), 0.28, lSeed));
+              lm.userData.lumpSeed = lSeed;
               this._secLumps.push(lm);
               this._secGroup.add(lm);
+            } else if (lm.userData.lumpSeed !== lSeed) {
+              lm.geometry.dispose();
+              lm.geometry = jitterGeometry(new THREE.IcosahedronGeometry(1, 1), 0.28, lSeed);
+              lm.userData.lumpSeed = lSeed;
             }
             lm.material = this._lumpMaterial(member.type);
             // Same compaction language as the primary lumps — chunks scale with

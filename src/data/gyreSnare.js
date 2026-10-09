@@ -153,6 +153,9 @@ export const GYRE_SNARE = Object.freeze({
   launchTicks: 5,            // ticks the launch impulse is spread over (slingshot feel)
   launchWindupTicks: 6,      // ~100 ms coil before the burst — the slingshot needs a beat
                            // of anticipation, not just mechanical ticks
+  launchWindupTicksMass: 3,  // extra coil ticks at full massFrac — the draw grades by payload
+                           // like the pull distance already does: a capped moon takes the
+                           // longer bow (~150 ms), a pebble stays at the snappy ~100 ms
   launchWindupPullWu: 13,    // wu — the clump drags aft of the maw during the coil; at ~7 the
                            // gather was invisible against a 200 wu beam — 13 reads at a glance
   launchWindupSpringK: 160,  // 1/s² — spring to the coil point (strong, short reach)

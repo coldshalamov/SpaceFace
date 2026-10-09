@@ -127,6 +127,9 @@ function freshRuntime() {
     // Launch bookkeeping.
     launchLeft: 0,         // ticks of the launch impulse burst still owed
     launchWindup: 0,       // ticks of the pre-burst coil (anticipation) still owed
+    launchWindupTotal: 0,  // ticks the coil started at — mass-graded at _launch; the
+                           // windW01/launchWindup01 channels + tick-1 latch read THIS,
+                           // not the flat field, or a graded coil would over-hold the channels
     launchCarry: 0,        // aft-velocity the coil left on the ball — repaid inside the burst
                            // so authored launchSpeed is the FINAL flight speed, not the impulse sum
     launchFwd: 0,          // raw dir-projection velocity at first burst tick — the honest thrown
@@ -255,6 +258,7 @@ export const gyreSnare = {
     rt.absorbDir.x = 0; rt.absorbDir.z = 0; rt.absorbRadius = 0;
     rt.launchLeft = 0;
     rt.launchWindup = 0;
+    rt.launchWindupTotal = 0;
     rt.launchCarry = 0;
     rt.launchFwd = 0;
     rt.launchSpeedEff = 0;
@@ -298,6 +302,9 @@ export const gyreSnare = {
     rt.tooHeavyLatched = false;
     rt.tooHeavyLane = null;
     rt.catchTickPeak = 0;   // the escalation ratchet dies with the beam ledger
+    rt.prevBasinN = 0; rt.prevSuckN = 0; // and the prev-count ledgers with it —
+    // the re-seed sits below the OFF early-return, so a re-opened beam would
+    // otherwise compute its first dBasin/dSuck off the previous beam's tail
     rt.tornTrack = null; // any new drop ends a previous torn body's follow
     // dropped = a live beam/hold released without launch; coreId is null when the beam
     // closed empty (no clump ever snagged) — AND during LAUNCH: the ball is already
@@ -1446,7 +1453,12 @@ export const gyreSnare = {
     this._noseDir(player, dir);
     rt.phase = PHASE.LAUNCH;
     rt.launchLeft = D.launchTicks;
-    rt.launchWindup = D.launchWindupTicks;
+    // The heave grades by payload like the pull distance already does: a capped
+    // moon takes the longer bow (+3 ticks ≈ 150 ms) while a pebble keeps the
+    // snappy ~100 ms draw — the fantasy's biggest throw visibly loads.
+    rt.launchWindupTotal = D.launchWindupTicks
+      + Math.round(D.launchWindupTicksMass * Math.min(1, rt.clumpMass / D.maxClumpMass));
+    rt.launchWindup = rt.launchWindupTotal;
     rt.launchCarry = 0;
     // The aim freezes at the RELEASE edge — the slingshot read. The ball doesn't fly
     // for ~117 ms (windup + first burst), and re-deriving at the burst would let the
@@ -1569,6 +1581,7 @@ export const gyreSnare = {
     rt.members.length = 0;
     rt.absorbDir.x = 0; rt.absorbDir.z = 0; rt.absorbRadius = 0;
     rt.launchWindup = 0;
+    rt.launchWindupTotal = 0;
     rt.launchCarry = 0;   // consumed by the burst — the launch ledger dies with its phase
     rt.launchFwd = 0;
     rt.launchSpeedEff = 0;
@@ -1605,6 +1618,8 @@ export const gyreSnare = {
     rt.tooHeavyLane = null;
     rt.catchTickPeak = 0;         // drop/finishLaunch reset symmetry — the ratchet
     // dies with the funnel: _publish's latch clear covers non-BEAM ticks anyway
+    rt.prevBasinN = 0; rt.prevSuckN = 0; // and the prev-count ledgers — a re-beam
+    // after a completed bowl must not diff its first counts off the thrown beam's tail
     rt.launchedId = null;
     // ballId/ballMass deliberately survive: the clump visual keeps riding the thrown mass until it
     // despawns, and the HUD's "ball live" dot reads the same flag.
@@ -2119,8 +2134,10 @@ export const gyreSnare = {
     // Progress (not remaining): 0 at the release edge, rising to 1.0 on the throw
     // tick and holding through the burst — a "fully wound" cue keys on the ramp END,
     // which a remaining-fraction ramp could never publish.
+    // The denominator is the graded total, not the flat field — a capped moon's
+    // longer bow must still ramp 0→1 across its whole coil, not over-hold at 1.
     pub.launchWindup01 = rt.phase === PHASE.LAUNCH
-      ? (D.launchWindupTicks > 0 ? 1 - rt.launchWindup / D.launchWindupTicks : 1) : 0;
+      ? Math.max(0, Math.min(1, 1 - rt.launchWindup / Math.max(1, rt.launchWindupTotal || D.launchWindupTicks))) : 0;
     // Burst progress on its own channel — windup01 pins at 1.0 through the burst
     // (a "fully wound" cue needs the ramp END), so presentation lanes that want
     // to RE-GROW through the throw (the flight ribbon) need the burst clock.
@@ -2326,8 +2343,10 @@ export const gyreSnare = {
         // Wind-up beat: a ~100 ms coil that drags the clump slightly aft of the maw
         // before the burst — the release reads as a slingshot, not an instant shove.
         rt.launchWindup -= 1;
-        const windW01 = 1 - rt.launchWindup / D.launchWindupTicks;
-        if (this.bus && rt.launchWindup === D.launchWindupTicks - 1) {
+        // The graded total, not the flat field — the crescendo + tick-1 latch
+        // must fire on the FIRST coil tick whatever the payload's bow length.
+        const windW01 = Math.max(0, 1 - rt.launchWindup / Math.max(1, rt.launchWindupTotal || D.launchWindupTicks));
+        if (this.bus && rt.launchWindup === (rt.launchWindupTotal || D.launchWindupTicks) - 1) {
           // First coil tick: the pad rides a low rumble through the draw — the
           // slingshot pull-back is the feel-rich part, and silence undersold it.
           this.bus.emit(GYRE_EVENTS.windup, { id: core.id, mass: rt.ballMass, tick: state.tick });

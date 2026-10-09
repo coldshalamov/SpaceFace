@@ -2882,6 +2882,8 @@ test('a mid-coil yaw cannot steer the throw — the launch frame froze at releas
   for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   release(t);
   const dir = { x: t.sys._rt.launchDir.x, z: t.sys._rt.launchDir.z };
+  assert.equal(t.sys._rt.launchWindupTotal, T.launchWindupTicks,
+    'a pebble keeps the snappy flat draw — the mass grading adds nothing');
   // Ship yaw is flight-owned, not physics-integrated (physics.js "e.rot is NOT
   // integrated here for ships") — a hard +90° mid-coil is exactly the swing a
   // live-maw read would steal the coil anchor and burst onto.
@@ -3969,4 +3971,43 @@ test('an adopter that keeps despawnAt still retires the marked ball on its own T
   assert.equal(kept.physicsBody.impactDamageScale, 1.5, 'the authored scale restored');
   assert.equal(kept.data.gyrePrevImpactScale, undefined, 'the stash consumed');
   assert.ok(!t.sys._rt.ballIds.includes(kept.id), 'the retired ball left the watch list');
+});
+
+test('the coil grades by payload — a capped moon takes the longer bow', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, T.maxClumpMass, 4);
+  hold(t);
+  for (let i = 0; i < 30; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  release(t);
+  const total = t.sys._rt.launchWindupTotal;
+  assert.equal(total, T.launchWindupTicks + T.launchWindupTicksMass,
+    'a capped moon draws the full graded bow');
+  // The tick-1 latch + crescendo denominator ride the graded total: the windup
+  // beat still fires exactly once and the published ramp never leaves [0,1].
+  for (let i = 0; i < total + 1 && t.sys._rt.launchWindup > 0; i++) {
+    t.sim.step();
+    const w = t.state.gyreSnare.launchWindup01;
+    assert.ok(w >= 0 && w <= 1, `launchWindup01 stays in ramp bounds, got ${w}`);
+  }
+  assert.equal(t.sys._rt.launchWindup, 0, 'the graded coil fully unwinds');
+  assert.ok(t.events.some((e) => e.name === 'gyre:windup'),
+    'the tick-1 windup beat still fires on a graded coil');
+  t.cleanup();
+});
+
+test('a closed beam forgets its count ledgers — the next beam diffs from zero', async () => {
+  const t = await bootPhysics();
+  // A body 55 wu behind the maw sits in the 86 wu basin pull but outside the
+  // 34 wu snag — it feeds basinCount without ever becoming the core.
+  rock(t.sim, T.mawDist + 55, 0, T.rockMass, 4);
+  for (let i = 0; i < 4; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.phase, 'beaming');
+  assert.ok(t.sys._rt.prevBasinN > 0,
+    `the fold ledger observed this beam's counts (prevBasinN=${t.sys._rt.prevBasinN})`);
+  t.state.input.actions.gyreSnare = false;
+  t.sim.step(); // released before a snag — the _drop path, not a launch finish
+  assert.equal(t.sys._rt.phase, 'off');
+  assert.equal(t.sys._rt.prevBasinN, 0, 'basin fold ledger reset on drop');
+  assert.equal(t.sys._rt.prevSuckN, 0, 'suck fold ledger reset on drop');
+  t.cleanup();
 });
