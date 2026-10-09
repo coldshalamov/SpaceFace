@@ -2848,6 +2848,27 @@ test('the pre-snag riser speaks while the hottest absorbable closes — never fo
   t.cleanup();
 });
 
+test('thrownTick never regresses across a same-state destroy->init reload', async () => {
+  const t = await bootPhysics();
+  rock(t.sim, T.mawDist, 0, 30, 6);
+  hold(t);
+  t.state.input.actions.gyreSnare = false;
+  for (let i = 0; i < 30 && t.state.gyreSnare.thrownTick === 0; i++) t.sim.step();
+  const tick1 = t.state.gyreSnare.thrownTick;
+  assert.ok(tick1 > 0, 'the first throw ticked');
+  // Same-state reload — the pub mirror survives; rt is rebuilt fresh. A zero
+  // restart would leave 'larger than last seen' consumers permanently behind.
+  t.sys.destroy();
+  t.sys.init({ state: t.state, bus: t.bus, helpers: t.helpers });
+  rock(t.sim, T.mawDist, 0, 30, 6);
+  hold(t);
+  t.state.input.actions.gyreSnare = false;
+  for (let i = 0; i < 30 && t.state.gyreSnare.thrownTick <= tick1; i++) t.sim.step();
+  assert.ok(t.state.gyreSnare.thrownTick > tick1,
+    `the seq must keep climbing across reload (was ${tick1}, got ${t.state.gyreSnare.thrownTick})`);
+  t.cleanup();
+});
+
 test('a heavy clump drags the helm — the lash is not massless to the ship', async () => {
   const t = await bootPhysics();
   const core = rock(t.sim, T.mawDist, 0, 200, 14);

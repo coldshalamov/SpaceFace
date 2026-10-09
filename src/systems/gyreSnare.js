@@ -191,6 +191,11 @@ export const gyreSnare = {
     this.bus = ctx.bus;
     this.helpers = ctx.helpers || {};
     this._rt = freshRuntime();
+    // thrownSeq must never regress across a same-state destroy->init: the pub
+    // mirror survives a system reload and consumers latch 'larger than last
+    // seen' — a fresh zero would swallow every throw until it re-climbed the
+    // stale watermark. Seed from the surviving channel.
+    this._rt.thrownSeq = finite(this.state.gyreSnare && this.state.gyreSnare.thrownTick);
     // Same-state destroy->init (system reload without a save/sector boundary): strip any
     // gyreCore residue AND re-seed the ball watch list from serialized gyreLaunched marks —
     // a live launched ball keeps its retire pass so a later adoption can't orphan the mark.
@@ -272,7 +277,11 @@ export const gyreSnare = {
       droppedRate = this._orbitRate(rt);
       droppedClumpR = rt.clumpRadius; // the whip grades on the clump it WAS
     }
-    rt.dropReason = reason || 'dropped'; // a strain break is a tear, not a polite release — the close reads the reason
+    // Guard on wasOff: a drop landing while already OFF isn't a close — it
+    // must not stomp the previous close's reason (a strain break's 'strained'
+    // re-dressed as 'not_flight' under a dock a few ticks later) or truncate
+    // the torn-follow its ~0.5 s window is still playing out.
+    if (!wasOff) rt.dropReason = reason || 'dropped'; // a strain break is a tear, not a polite release — the close reads the reason
     rt.phase = PHASE.OFF;
     rt.coreId = null;
     rt.clumpMass = 0;
@@ -341,7 +350,7 @@ export const gyreSnare = {
     rt.prevBasinN = 0; rt.prevSuckN = 0; // and the prev-count ledgers with it —
     // the re-seed sits below the OFF early-return, so a re-opened beam would
     // otherwise compute its first dBasin/dSuck off the previous beam's tail
-    rt.tornTrack = null; // any new drop ends a previous torn body's follow
+    if (!wasOff) rt.tornTrack = null; // a real drop ends a torn follow; a re-drop while OFF isn't a close
     // dropped = a live beam/hold released without launch; coreId is null when the beam
     // closed empty (no clump ever snagged) — AND during LAUNCH: the ball is already
     // thrown (or winding), so a live id would read as a clump torn off the lash when
@@ -1703,6 +1712,10 @@ export const gyreSnare = {
     // adoption hand-back (live body, deadline stripped by a foreign owner) drops
     // launchedId without a grave, and must not shatter under a still-live body.
     pub.ballGrave = false;
+    // Ordering contract: this clear and _publish's graves/balls refill run
+    // back-to-back inside update — a reader interposed between them would see
+    // a transient-empty mirror. Keep them adjacent if a third caller ever
+    // lands between the two passes.
     if (pub.graves === null) pub.graves = [];
     pub.graves.length = 0;
     // Retire pass over EVERY watched launched id — not just the HUD's primary ball:
@@ -2247,7 +2260,9 @@ export const gyreSnare = {
     // as the cue latches: a skipped render frame cannot miss a value that only
     // ever grows (the one-tick thrownBeat flag can).
     if (pub.thrownBeat) rt.thrownSeq += 1;
-    pub.thrownTick = rt.thrownSeq;
+    // Non-decreasing at the mirror itself — self-heals any future regression
+    // path that resets rt without seeding from the surviving channel.
+    pub.thrownTick = Math.max(pub.thrownTick || 0, rt.thrownSeq);
     if (core && core.pos) {
       pub.corePos.x = core.pos.x; pub.corePos.z = core.pos.z;
       // The held body's real spin — the VFX lumps ride it instead of an authored rate.
