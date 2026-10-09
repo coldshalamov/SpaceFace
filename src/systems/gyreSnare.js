@@ -49,6 +49,10 @@ const ABSORBABLE = new Set(GYRE_ABSORBABLE_TYPES);
 // the maw (wedge ≈ wedgeAccel·couple·wedgeFalloff·(1−lipT) ≈ ≤100 wu/s²; basin ≈ 380).
 // Emergent point-defense is part of the weapon's identity: you can sweep a volley aside
 // while winding up the ball, at cap cost.
+// 'ship'/'station' get ZERO cone response by scope: the verb's vocabulary is
+// cargo-only — a courtesy tug on a hull is a different weapon (combat grapple),
+// and even a refuse-tint glow could misread a warship as catchable. Hulls keep
+// their own combat/collision lanes; the cone stays honest about its net.
 const PULL_SKIP_TYPES = new Set(['ship', 'station', 'fx', 'fieldEmitter', 'massSeed', 'masslineSnareAnchor', 'masslineSnare']);
 // …except drones, which DO get tugged lightly (coupling-shrugged) — they're listed in neither set.
 const WEAPON_ID = 'wpn_gyre_snare';
@@ -2458,13 +2462,17 @@ export const gyreSnare = {
       if ((rt.phase === PHASE.BEAM || rt.phase === PHASE.HOLD) && shownN > rt.catchTickPeak) {
         rt.catchTickPeak = shownN;
         const n = Math.min(6, shownN);
+        // A dense belt's later arrivals keep narrating — the grading saturates
+        // at 6 but a small gain tail (~+4% per extra meal, capped) keeps each
+        // new peak's voice honest instead of re-speaking the n=6 ceiling.
+        const tail = Math.min(4, Math.max(0, shownN - 6));
         // The lane that grew picks the position — an annulus arrival speaks at
         // the clump's live seat (pub.corePos lags a publish; fall back to it
         // only if the entity lookup itself missed), a basin arrival at the maw.
         const at = dSuck > dBasin ? (core && core.pos ? core.pos : pub.corePos) : maw;
         this.bus.emit('audio:cue', {
           id: 'gyre_snare_catch',
-          gain: 0.16 + 0.03 * n,
+          gain: 0.16 + 0.03 * n + 0.01 * tail,
           rate: 1.3 + 0.05 * n,
           position: { x: at.x, z: at.z },
         });

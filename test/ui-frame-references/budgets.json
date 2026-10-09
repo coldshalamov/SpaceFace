@@ -11,7 +11,7 @@
   "measured": "synchronous registry.get(\"ui\").frame plus authored src/ui requestAnimationFrame callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst combined UI sample per surface over a 600 ms headed window",
   "excluded": "browser layout/paint deferred after the owner callback is outside this CPU window; unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics",
   "seed": 47,
-  "uiSourceDigest": "acbdebde2dc6277a60000a24c72f10a6f5cf55170852b9a0c7528592e6711b8b",
+  "uiSourceDigest": "83c097281873ecdacecd46d8e7eb64688bfa902a1d8cfced95a1dc7a6bcadfcf",
   "surfaces": {
     "asteroid-works": {
       "domNodes": 83,

@@ -1635,6 +1635,16 @@ export class GyreSnarePresentation {
       const s = spots && i < spots.length ? spots[i] : null;
       if (!this.toLocal) { g.visible = false; continue; }
       if (!s) {
+        // A polite/strained close still fades the victim glows with every
+        // sibling: the publish went empty on _drop, so the last live k + parked
+        // mesh position ride the kk ramp — blinking out frame-one of a 250 ms
+        // collapse was the only lane that popped instead of easing.
+        if (this._closing && g.userData.spotK != null) {
+          const kk = this._closeK || 0;
+          g.material.opacity = (0.06 + 0.14 * g.userData.spotK) * flashCalm * kk * this._wakeEase * (this._fuseDim || 1);
+          g.visible = kk > 0.02;
+          continue;
+        }
         // A spot that expires from the ledger mid-collapse rides the same
         // spotFade its still-published siblings get — blinking out a frame
         // early pops under the winding cone.
@@ -2118,6 +2128,10 @@ export class GyreSnarePresentation {
         // the same 0.55→1 sag the rumble envelope + HUD ·Ns keep inside
         // ballTtlWarnS — the drawn veil was the one lane that stayed flat.
         const secTtlWarn = clamp01(finite(sb.ttlS, 99) / Math.max(0.5, GYRE_SNARE.ballTtlWarnS));
+        // The quiet-grave telegraph gets the warn hue too — alpha sag alone
+        // was the only warn channel with no chromatic read; the rim shell
+        // copies this color each frame so the tint rides for free.
+        this._secVeilMat.color.copy(this._colGlass).lerp(this._colWarn, 0.5 * (1 - secTtlWarn));
         // Same enter-ramp contract as every sibling: a fresh overlay's veil
         // eases in over ~150 ms instead of appearing at full opacity on attach
         // (the lumps get a matching per-lump swell in the bob loop below).
