@@ -106,7 +106,9 @@ function collectLaneSaveStorage() {
 
 /**
  * Resolve the sim-lane runtime flags once at boot.
- *   ?simLane=worker  — flip the sim into the whole-sim Worker.
+ *   (default)        — the whole-sim Worker IS the runtime (Stage-E flip).
+ *   ?simLane=main    — escape hatch: run the authoritative sim in-process.
+ *   ?simLane=worker  — explicit worker lane (same as the default).
  *   ?simSab=1        — opt into the SAB journal lane; requires
  *                      crossOriginIsolated (COOP/COEP). Without headers this
  *                      warns and the fallback transfer channel serves.
@@ -120,10 +122,19 @@ export function resolveSimLaneFlags(search) {
       : (typeof location !== 'undefined' ? location.search : '');
     params = new URLSearchParams(raw || '');
   } catch (_) { params = null; }
-  const lane = params && params.get('simLane') === SIM_LANE.WORKER
-    ? SIM_LANE.WORKER
-    : SIM_LANE.MAIN;
+  // Stage-E default: the worker lane is the runtime; ?simLane=main is the
+  // escape hatch back to the in-process sim. An unrecognized value warns and
+  // still takes the default.
+  const requested = params && params.get('simLane');
   const warnings = [];
+  let lane;
+  if (requested === SIM_LANE.MAIN) lane = SIM_LANE.MAIN;
+  else {
+    if (requested && requested !== SIM_LANE.WORKER) {
+      warnings.push(`unrecognized simLane='${requested}' — worker lane serves by default`);
+    }
+    lane = SIM_LANE.WORKER;
+  }
   let sab = !!(params && (params.get('simSab') === '1' || params.get('simSab') === 'true'));
   if (sab) {
     const isolated = typeof globalThis !== 'undefined' && globalThis.crossOriginIsolated === true;
@@ -161,6 +172,17 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   if (!resolved || resolved.lane !== SIM_LANE.WORKER) return null;
   for (const w of resolved.warnings) console.warn(`[simLane] ${w}`);
   console.warn('[simLane] worker lane active — the sim realm runs the whole authoritative step');
+
+  // Worker channel first: a host without Worker support (or a construction-
+  // time throw) degrades to the in-process sim while state is still untouched
+  // — boot-time main fallback with the default lane flipped.
+  let channel;
+  try {
+    channel = (typeof channelFactory === 'function' ? channelFactory : createBrowserChannel)();
+  } catch (error) {
+    console.warn(`[simLane] worker construction failed — in-process sim serves: ${(error && error.message) || error}`);
+    return null;
+  }
 
   const readModel = createReadModel();
   configureDomainMirroring({});
@@ -250,7 +272,6 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   }
 
   // ---- worker channel -------------------------------------------------------------
-  const channel = (typeof channelFactory === 'function' ? channelFactory : createBrowserChannel)();
   const tokenCounter = { value: 0 };
   const pending = new Map();            // seq -> { kind, resolve, reject }
   const pendingRpcs = new Map();        // rpc id -> { resolve, reject }

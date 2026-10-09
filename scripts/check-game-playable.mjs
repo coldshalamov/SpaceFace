@@ -517,7 +517,11 @@ try {
     // nav.waypoint and the worker's own nav:waypoint receipt bridges back; settings:changed
     // drives _writeProfileSettings in the worker whose localStorage write rides the storageOps
     // relay; a sector-typed setCourse + nav:engageRoute exercises the route executor.
-    if (SIM_LANE_ARG === 'worker') {
+    // Keyed off the live lane (simLaneDiag installs only under the worker runtime), so the
+    // Stage-E default flip keeps this gate armed on bare runs too.
+    const laneLive = await page.evaluate(() =>
+      !!(window.SF && typeof window.SF.simLaneDiag === 'function'));
+    if (SIM_LANE_ARG === 'worker' || laneLive) {
       try {
         await page.evaluate(() => {
           window.__laneFwdReceipts = { waypoint: 0, probe: 0, denied: 0 };
