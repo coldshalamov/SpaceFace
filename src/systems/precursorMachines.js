@@ -1025,7 +1025,15 @@ function sorterTargetsForSector(state, sectorId) {
     cache.version = version == null ? -1 : version;
     cache.sectorId = sectorId;
     cache.targets.length = 0;
-    for (const e of state.entityList) {
+    // Same sector-bucket pre-filter as machineScanForSector: homeSectorId is the
+    // canonical chain head, so the bucket holds every match; keep the per-member
+    // type/pos predicates and fall back to the list walk while the lane is unready.
+    const index = state.entityIndex;
+    const pool = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+        && index.bySectorId instanceof Map
+      ? index.bySectorId.get(sectorId)
+      : state.entityList;
+    if (pool) for (const e of pool) {
       if (!e || !e.pos || e.homeSectorId !== sectorId) continue;
       if (e.type !== 'wreck' && e.type !== 'pickup' && e.type !== 'debris') continue;
       cache.targets.push(e);

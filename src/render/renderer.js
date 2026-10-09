@@ -23256,22 +23256,15 @@ export const render = {
   *_publishArrivalRosterSteps(exactSectorId, batchRows = 1024) {
     const state = this.state;
     if (!state || state.mode !== 'flight' || !exactSectorId) return null;
-    // Sector-membership lane: every indexed entity sits in exactly one bySectorId
-    // bucket — its canonical sector claim, or null when unstamped (global, on-stage
-    // in every sector). The roster for a sector is its bucket plus the global bucket:
-    // an O(members+globals) pool instead of an O(entityList) walk per enter. An
-    // unready or missing lane falls back to the whole list, exactly as before.
+    // The roster census has no sector predicate: every live typed entity on stage is
+    // roster-eligible, including foreign-claimed visitors and adopted actors whose
+    // canonical stamp names another sector (e.homeSectorId outlives a cross-sector
+    // adopt by design). Bucketing by claim cannot express "physically present" —
+    // a divergent-stamped entrant sits in a foreign bucket and went invisible to the
+    // warm mint (W126 popin F1). The publish runs once per enter, so the full-list
+    // pool is µs-cheap; the bySectorId lane remains for genuinely sector-scoped readers.
     const entities = Array.isArray(state.entityList) ? state.entityList : [];
-    const index = state.entityIndex;
-    let pool = entities;
-    if (index && index.__spacefaceEntityIndexV1 === true && index.ready === true
-        && index.bySectorId instanceof Map) {
-      const members = index.bySectorId.get(exactSectorId);
-      const globals = index.bySectorId.get(null);
-      pool = [];
-      if (members) for (const e of members) pool.push(e);
-      if (globals) for (const e of globals) pool.push(e);
-    }
+    const pool = entities;
     const rosterOpts = {
       sectorId: exactSectorId,
       seed: state.seed,
