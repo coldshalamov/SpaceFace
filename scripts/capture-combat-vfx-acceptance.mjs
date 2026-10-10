@@ -582,8 +582,11 @@ async function triggerImpact(targetPage, { weaponId, freezeMs }) {
     window.__sfResetCombatVfx?.();
     const approach = spatial.source.forward;
     const normal = { x: -approach.x, z: -approach.z };
+    const targetEntity = window.__sfCombatTargetEntity;
+    if (targetEntity) targetEntity.shield = 0;
     vfx._onProjectileHit({
       weaponId: id,
+      targetId: window.__sfCombatTargetId,
       pos: spatial.target.contact,
       approach,
       normal,
@@ -671,12 +674,32 @@ async function captureVfxBar(targetPage, { origin, explosionOrigin }) {
     window.__sfResetCombatVfx?.();
     const t = window.__sfCombatTargetEntity;
     if (t) { t.hull = Math.max(1, (Number(t.hullMax) || 100) * 0.12); t.shield = 0; }
+    // Damaged-port venting reads the combat subsystem table: one ruptured and one
+    // dependency-cooled subsystem on the target, removed again after the frame.
+    const sf = window.SF;
+    sf.state.combat = sf.state.combat || {};
+    const table = sf.state.combat.entities || (sf.state.combat.entities = {});
+    window.__sfSavedCombatRow = table[t?.id];
+    if (t) {
+      table[t.id] = {
+        ...(table[t.id] || {}),
+        subsystems: {
+          ...((table[t.id] && table[t.id].subsystems) || {}),
+          engine: { ...(((table[t.id] || {}).subsystems || {}).engine || {}), destroyed: true },
+          reactor: { ...(((table[t.id] || {}).subsystems || {}).reactor || {}), effectiveDisabled: true },
+        },
+      };
+    }
     window.__sfFreezeCombatVfx?.(1600, { ambient: ['_updateDamageVenting', '_emitTrails'] });
   });
   await capture('bar-08-damage-smoke.png', 'damaged hull venting smoke'); await settle();
   await targetPage.evaluate(() => {
     const t = window.__sfCombatTargetEntity;
     if (t) { t.hull = t.hullMax; t.shield = t.shieldMax; }
+    const table = window.SF.state.combat?.entities;
+    if (table && t) {
+      if (window.__sfSavedCombatRow) table[t.id] = window.__sfSavedCombatRow; else delete table[t.id];
+    }
   });
 
   // Mining beam onto the target.
@@ -987,6 +1010,20 @@ async function prepareCaptureTarget(targetPage) {
       try { vfx._bombDetonationVfx?.clear?.(); } catch (_) {}
       try { vfx._gas?.clear?.(); } catch (_) {}
       try { vfx._weaponPresenter?.quarks?.reset?.(); } catch (_) {}
+      // Every other presentation owner hanging off the VFX root or the weapon presenter (status
+      // matter, action primitives, scorches, bolts, ribbons, distortion) exposes clear().
+      for (const owner of [vfx, vfx._weaponPresenter]) {
+        if (!owner) continue;
+        for (const key of Object.keys(owner)) {
+          const value = owner[key];
+          if (!value || typeof value !== 'object' || value === vfx || value === owner) continue;
+          if (value instanceof Map || value instanceof Set || Array.isArray(value) || ArrayBuffer.isView(value)) continue;
+          if (key === 'state' || key === 'helpers' || key === '_scene' || key === 'scene') continue;
+          if (typeof value.clear === 'function' && value.clear.length === 0) {
+            try { value.clear(); } catch (_) { /* owner without a live pool */ }
+          }
+        }
+      }
       try { vfx._resetPendingDetonations?.(); } catch (_) {}
       try { vfx._resetCollisionPresentation?.(); } catch (_) {}
       while (vfx._liveTrailStreakCount > 0) vfx._retireTrailStreak(vfx._activeTrailStreaks[0]);
@@ -1050,10 +1087,16 @@ async function setCaptureTargetVisible(targetPage, visible) {
     // resolve it through the entity each time rather than trusting the first mesh reference.
     const targetEntity = window.__sfCombatTargetEntity;
     if (targetEntity) {
+      // The renderer owns entity root visibility every frame, so a real entity is "hidden" by
+      // parking it far off-frame and restored to its contract position.
+      const home = window.__sfCombatSpatialContract?.target?.center;
       targetEntity.__sfCaptureHidden = !nextVisible;
+      if (home) {
+        const px = nextVisible ? home.x : home.x + 6000;
+        targetEntity.pos.x = px; targetEntity.pos.z = home.z;
+        if (targetEntity.prevPos) { targetEntity.prevPos.x = px; targetEntity.prevPos.z = home.z; }
+      }
       const root = window.SF.registry.get('render')?._meshes?.get?.(targetEntity.id) || targetEntity.mesh;
-      if (root) root.visible = nextVisible;
-      if (targetEntity.mesh && targetEntity.mesh !== root) targetEntity.mesh.visible = nextVisible;
       window.__sfCombatVfxCaptureTarget = root || window.__sfCombatVfxCaptureTarget;
     } else if (window.__sfCombatVfxCaptureTarget) window.__sfCombatVfxCaptureTarget.visible = nextVisible;
     if (window.__sfCombatSpatialOverlay) {
@@ -2030,9 +2073,7 @@ async function capture(file, scenario, options = {}) {
   await page.evaluate(async (clean) => {
     window.__sfUpdateCombatSpatialOverlay?.();
     const targetEntity = window.__sfCombatTargetEntity;
-    const targetRoot = targetEntity
-      && (window.SF.registry.get('render')?._meshes?.get?.(targetEntity.id) || targetEntity.mesh);
-    if (targetRoot) targetRoot.visible = !targetEntity.__sfCaptureHidden;
+
     // SF_COMBAT_CAPTURE_CLEAN=1: same frame without the evidence labels, for art review sheets.
     if (clean && window.__sfCombatSpatialOverlay) window.__sfCombatSpatialOverlay.style.visibility = 'hidden';
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
