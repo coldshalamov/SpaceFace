@@ -186,6 +186,10 @@ const FRAGMENT_SHADER = /* glsl */`
       }
     }
 
+    // GRAPHICS BAR: the wobbled radius let the char and crack terms reach the quad's edge
+    // midpoints at a few percent alpha, which drew a faint hard-edged card at grazing angles.
+    // Every mark kind now reaches exactly zero inside the quad.
+    alpha *= 1.0 - smoothstep(0.80, 0.97, max(abs(d.x), abs(d.y)));
     if (alpha < 0.01) discard;
     gl_FragColor = vec4(col, alpha);
   }
