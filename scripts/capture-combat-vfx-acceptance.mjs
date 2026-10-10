@@ -1250,6 +1250,17 @@ async function triggerMaterialImpact(targetPage, { weaponId, index, material, fr
       });
     }
     const targetEntity = window.__sfCombatTargetEntity;
+    // Each material frame starts from a cold, intact shell: earlier hull frames (shield 0) would
+    // otherwise hand this frame a collapse/rupture flash that no single contact produces.
+    const shellRoot = targetEntity
+      && (window.SF.registry.get('render')?._meshes?.get?.(targetEntity.id) || targetEntity.mesh);
+    const shell = shellRoot?.userData?.shieldBubble;
+    if (shell?.material?.uniforms?.uFlash) {
+      shell.material.uniforms.uFlash.value = 0;
+      shell.userData._prevShield = Number(targetEntity.shieldMax) || 200;
+      shell.userData._collapseTimer = 0;
+      shell.userData._sfShieldQuietLatched = false;
+    }
     if (targetEntity) {
       // Real shield bookkeeping: a shield receipt drains shield HP, which is what punches the
       // pooled shell's flash on the next presented frame. Hull receipts leave the shell cold.
