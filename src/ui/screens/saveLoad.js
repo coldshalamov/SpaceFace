@@ -819,9 +819,24 @@ function fillSlotData(ctx, slot) {
   const spec = sys && typeof sys.coveringSpeculativePrepare === 'function'
     ? sys.coveringSpeculativePrepare(slot) : null;
   if (spec && typeof spec.dispatch === 'function') {
-    spec.dispatch();
+    try {
+      Promise.resolve(spec.dispatch()).then((prepared) => {
+        // The spec emit is gated on prepared.ok — a null/failed/empty prepare resolves
+        // without one, and attempted is already latched, so this row would stay
+        // unfilled for the memo generation. Run the lazy tail as the fallback.
+        if (prepared && prepared.ok === true) return;
+        try { fillSlotDataLazy(ctx, slot, entry); } catch (e) { /* best-effort */ }
+      });
+    } catch (e) {
+      try { fillSlotDataLazy(ctx, slot, entry); } catch (e2) { /* best-effort */ }
+    }
     return;
   }
+  fillSlotDataLazy(ctx, slot, entry);
+}
+
+function fillSlotDataLazy(ctx, slot, entry) {
+  if (!entry || entry.data) return;
   const raw = entry.raw != null ? entry.raw : (entry.raw = readSlotBlob(slot));
   if (!raw) return;
   let data = null;

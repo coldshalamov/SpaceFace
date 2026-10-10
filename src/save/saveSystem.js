@@ -2530,6 +2530,7 @@ export const save = {
       // rehashing a multi-MB blob on the main thread.
       raw: typeof rawOrRead === 'string' ? rawOrRead : null,
       promise: null,
+      prepared: null,
       dispatch: null,
       _timer: null,
     };
@@ -2553,7 +2554,12 @@ export const save = {
         spec.promise = Promise.resolve(null);
         return spec.promise;
       }
-      spec.promise = Promise.resolve(this._prepareEnvelopeStringAsync(blob)).catch(() => null);
+      spec.promise = Promise.resolve(this._prepareEnvelopeStringAsync(blob))
+        // Stash the verdict for the synchronous consume lanes — a click that
+        // lands after the worker finished can reuse the validated envelope
+        // instead of re-paying the whole sync prepare chain on the click task.
+        .then((prepared) => { spec.prepared = prepared; return prepared; })
+        .catch(() => null);
       // A prepare that resolves while the menu is still up names the hull/place set the saved
       // sector will rematerialize — the decode runway can start overlapping dwell time instead
       // of the restore window. Restricted emit: only the visuals prefetch subscribes; physics
@@ -4725,12 +4731,12 @@ export const save = {
     }
     // Consume a screen-armed speculative prepare the same way loadAsync does: a
     // same-generation spec already proves the disk bytes, so the multi-MB materialize
-    // stays off the click path. The worker prepare still runs — sync load can't await
-    // its promise — but the raw bytes are the win either way.
+    // stays off the click path. A dispatch that already resolved carries its validated
+    // envelope in spec.prepared — consumed below for free; a still-pending worker
+    // prepare can't be awaited on this lane, so the raw bytes + sync chain run instead.
     const spec = this._speculativeContinuePrepare;
     this._speculativeContinuePrepare = null;
-    // The sync lane consumes only spec.raw — drop any parked dispatch so the worker
-    // doesn't parse a blob nobody will await.
+    // Drop any parked dispatch — a pending worker parse is unconsumable here.
     if (spec && spec._timer != null) { clearTimeout(spec._timer); spec._timer = null; }
     installSaveStoreWriteTracking();
     const specHit = spec && spec.slot === slot
@@ -4740,8 +4746,15 @@ export const save = {
       try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
       catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
     }
-    const primary = this._prepareEnvelopeString(specHit
-      ? (spec.readRaw ? spec.readRaw() : spec.raw) : raw);
+    // The gen: sig proves the armed bytes are the disk bytes, and the worker's
+    // resolved verdict carries the same {ok,env,data,version} shape the sync
+    // chain returns — a resolved prepare skips the multi-MB parse + checksum +
+    // migrate + normalize walks entirely. Anything less (unresolved, non-ok)
+    // falls through to the full sync chain, preserving every failure reason.
+    const primary = (specHit && spec.prepared && spec.prepared.ok === true)
+      ? spec.prepared
+      : this._prepareEnvelopeString(specHit
+        ? (spec.readRaw ? spec.readRaw() : spec.raw) : raw);
     if (primary.ok) {
       return this._restorePreparedEnvelope(primary, slot,
         skippedNewer ? { skippedNewer } : undefined);
@@ -4843,10 +4856,12 @@ export const save = {
       }
     }
     // A spec minted under an older generation still consumes, but only after byte equality
-    // proves nothing drifted since it read.
+    // proves nothing drifted since it read. An unmaterialized thunk arm is tautologically
+    // byte-equal — its readRaw would re-read the identical key on this same task — so only
+    // an already-materialized spec.raw can differ and earn the compare.
     const specByteHit = !specHit && spec && spec.slot === slot
       && typeof raw === 'string'
-      && (spec.readRaw ? spec.readRaw() : spec.raw) === raw;
+      && (spec.raw != null ? spec.raw : raw) === raw;
     // NXI-234: capture the load generation before the worker roundtrip. A restore that
     // commits first bumps _restoreSequence, so a late-completing prepare cannot pass the
     // destructive-commit check in _restore/_restoreAsync and overwrite the newer run.
