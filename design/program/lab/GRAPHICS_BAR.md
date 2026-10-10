@@ -120,7 +120,7 @@ Notes:
 | muzzle flashes | `_onFire`, `_muzzleProfile`, ballistic muzzle exhaust | |
 | projectile trails | `PROJECTILE_TRAIL_PROFILES`, `_emitProjectileTrails` | |
 | impacts / ricochet / spall | `_onProjectileHit`, `_composeImpact`, `combatContactVfx` | |
-| shields | not verifiable here | The harness sends `_onDamage({shieldAbsorbed:true})` against a synthetic `capture-target` id. Shield contacts ride the target entity's shell, so with no entity the frame matches the hull frame. A real shielded target is needed. |
+| shields | `shieldContacts`, `shieldShell`, pooled shield lane | Previously unverifiable: the harness sent `_onDamage({shieldAbsorbed:true})` against a synthetic `capture-target` id. Shield contacts ride the target entity's shell, so with no entity the frame matches the hull frame. A real shielded target is needed. |
 | explosions / destruction | `_onKilled`, `_explode`, causal explosion phases, `bombDetonationVfx`, `fragmentFamilies` | |
 | damage smoke / gas | `_emitDamageSmoke`, gas ablation | |
 | tether / massline | `_initTetherCable`, massline release arc | |
@@ -168,30 +168,69 @@ Not changed, deliberately:
 - **Glass emissive on `cockpit_dome` and `cockpit_recessed`.** Same convention.
 - **LOD material drops.** kestrel LOD1/2 drop the ivory panels and ironback LOD2 its brushed metal. The geometry was decimated away rather than merged, so parity would mean adding triangles back to distance LODs. Logged, not fixed.
 
-## 4. VFX pass: frames and verdicts
-Frames come from `scripts/capture-combat-vfx-acceptance.mjs` at play size (1440x900) on this box's software GL.
-`SF_ALLOW_SOFTWARE_GL=1` is the new frames-only switch; timing claims are void. There are 68 frames and 1 route video.
-Sheet: `/workspace/look-unify/bar/vfx_frames.png` (contact-zone crops of every family/phase plus the destruction and density frames).
+## 4. VFX pass: capture fix, frames and verdicts
+### 4.1 Capture harness (`scripts/capture-combat-vfx-acceptance.mjs`)
+The old freeze stepped six pools on `_t` and left `state.simTime` still, so every simTime-driven owner was dead in the
+frame (rupture sheets, shells, weapon presenter, contact/bomb receipts, gas). The target was a mesh clone with no entity,
+so shield receipts fell through to the hull branch. Both are fixed:
+- **Clock.** `__sfFreezeCombatVfx(ms)` now advances `state.simTime` and `_t` together, 1/60 s per step, through the
+  production `vfx.update`. Only ambient world emitters are stubbed (other ships' trails, ambient projectiles,
+  station/job chatter), and a family frame can opt them back in. The capture target's shell is stepped on the same sim step.
+- **Target.** A real passive ship entity (`makeShipEntitySpec` + `spawnEntity`, same hull as the player, shield 200)
+  stands at the contract position. `_onDamage` resolves its radius, faction and shield, and the renderer's pooled shield
+  lane draws its shell with contacts. Software GL can leave a freshly spawned hull in authored admission for minutes. In
+  that case the harness attaches the production `shipKit.createShieldBubble` shell to the live root, so the material and
+  lane are the same.
+- **Hygiene.** Every presentation owner on the VFX root and the weapon presenter is cleared between frames: rupture,
+  arcade structural, contact matter, gas, quarks, scorches, bolts and so on. Each shield frame starts from a cold,
+  intact shell. Hull impacts land on the real target.
+- **Parity.** On software GL the emergency profile is lifted for evidence frames (full resolution, bloom on), because
+  effects are judged at the shipped look. `SF_COMBAT_CAPTURE_CLEAN=1` hides the evidence labels.
+- **Family sequence.** `SF_COMBAT_VFX_BAR=1` is a compact sequence: per weapon, muzzle / flight / impact / release /
+  shield / hull. Then shield break, small/ordinary/capital explosions, damaged-port smoke, mining beam, tether and
+  engine trail. 39 frames.
 
-| family | verdict | evidence / note |
-|---|---|---|
-| muzzle flashes | pass | Directional, palette-correct per family. Kinetic muzzle frame at 16 ms is empty in every run (capture phase, not render). |
-| projectile trails | pass | Rail reads as the Mach-tracer dash the contract asks for (`vfx-mach-tracers`), plasma as a connected wake, missile as a propelled puff. No bead chains. |
-| impacts (hull) | pass | Oriented spark cones on the contact normal, family-coloured. Small at play size but legible. |
-| shields | not verifiable here | The harness's "shield" material call has no target entity, so `_onProjectileHit` takes the hull branch and the frame matches the hull frame. Needs a target with `shield>0`. |
-| combat beams | not verifiable here | The capture freezes the sim. `PersistentCombatBeamPool` times a beam out after 0.14 s of *render* time, so on software GL (about 1 s frames, dt clamped to 0.1) the beam drains before the shot. In play the sim refreshes every tick. |
-| explosions / destruction | not verifiable here | Same freeze/clock interaction: dense-destruction frames show no burst. |
-| engine trails, smoke, tether, mining beam | no defect found in code audit | All VFX materials set `depthWrite:false` on additive/transparent passes. Procedural textures are mipmapped (fragment atlas 256², trail LUT). There's no z-fight or sorting hazard. |
+Before = 76f4d2dc2 (VFX code identical to master) and after = this branch, both with the same harness at 1440x900.
+Sheet: `/workspace/look-unify/bar/vfx_before_after.png`. Raw frames: `vfx_before/`, `vfx_after/` alongside it.
 
-Outcome: no VFX code changed in this PR. The frames show no defect that a cheap profile tweak would fix. The three
-unverifiable families need a GPU capture, or a harness that advances the VFX clock with the frozen sim. Both are
-follow-ups, and neither belongs in `bloom.js` or `renderer.js` (#220).
+### 4.2 Bar and verdicts
+The bar: readable silhouette at chase distance, palette tied to weapon/faction, no flat cards or hard alpha edges,
+lifetime and falloff that read as cause -> response -> decay, no additive clipping, and coherence with the cleaned-up
+hulls (cool teal/ivory hulls, warm fire, faction-tinted shields).
+
+| family | verdict before | change | after |
+|---|---|---|---|
+| muzzle (5 weapons) | pass: directional, family-coloured | none | unchanged |
+| projectile trails | pass: rail dash, plasma wake, missile puff, no bead chains | none | unchanged |
+| combat beams | pass now that the clock runs: connected body, clean contact | none | unchanged |
+| impacts / spall / scorch | soft, oriented, family-coloured. The hull scorch decal's wobbled radius let char/crack terms reach the quad's edge midpoints at a few % alpha, which is a faint hard-edged card at grazing angles | `contactMarks.js`: every mark kind fades to zero inside its quad (`1-smoothstep(.80,.97,max(abs(d)))`) | no card edge |
+| shields | **fail**: one ordinary round (flash ~0.7) charged nearly every panel and saturated `activity`, so the whole dodecahedral cage lit up as a bright football over the hull | `shieldShell.js`: `panelCharge` follows load² and `activity` leans on contact terms, so an ordinary hit lights the contact and nearby welds. Heavy load and rupture (flash > 1) still charge the full lattice | contact reads, hull reads through, cage restrained |
+| shield break | pass: tangent tears + flash | none | unchanged |
+| explosions (reactor rupture) | **fail**: about 62 % of reactor parcels used a saturated ice-blue ramp peaking at 4.1, so capital/ordinary bursts read as blue crystal shards clashing with the warm combustion family and clipping under bloom | `explosionRupture.js`: the reactor hot ramp is white-gold for most parcels, and the cool minority is a desaturated pale blue (peak 2.35 instead of 4.1) | warm, coherent fireball. Fewer clipped pixels |
+| explosion fire / fuel / mineral / armour | pass | none | unchanged |
+| gas / missile residue smoke | pass: premultiplied density film, filtered edges | none | unchanged |
+| damaged-port venting smoke | not triggered by the harness's injected subsystem table (needs port sockets on an admitted hull). Code audit: quarks venting batch, additive, depthWrite off | none | unverified on frames |
+| mining beam | pass: ore-tinted twisted energy ribbon, soft ends | none | unchanged |
+| tether / massline | pass: thin cable arc, no clipping | none | unchanged |
+| engine trails | pass: blue plume, ribbon wake | none | unchanged |
+
+Perf: no draw call, pass, texture, uniform or particle is added. The three edits change constants and one `smoothstep`
+in existing fragment shaders: about 3 ALU ops per scorch fragment, and a cheaper shell where it now discards more
+alpha. Overdraw is unchanged; the shield and rupture alpha only go down.
+
+Residuals (logged, not changed):
+- A thin dark band sometimes cuts the shell at the target's nose in contact frames. It is not from the scorch, gas or
+  distortion owners, and looks like the pending-admission fallback hull's own geometry in front of the shell.
+- Shell tint differs between runs on the beam frame (faction accent resolution at attach time).
+- The pinned VFX tests pass unchanged: `vfx-shield-shell-and-field-material`, `vfx-radiance-materials`,
+  `explosion-rupture`, `impact-event-grammar`, `no-legacy-explosion-bodies`, `vfx-weapon-variation`,
+  `combat-vfx-presentation-contract`, `vfx-mach-tracers`, `physics-spectacle-cause-vfx` and the scorch-heat test.
 
 ## 5. Rendered before/after (fleet-look, inspect view, SwiftShader; master 38368f739 vs this branch)
 Sheets live in `/workspace/look-unify/bar/`:
 - `worst_parts_close.png` and `worst_parts_inspect.png`: the 20 worst models, before | after. That's the static top 16 plus gas tap, wasp frag, volatiles tanker and ore barge.
 - `all_models.png`: all 280 live models, before | after, most-changed first.
-- `vfx_frames.png`: VFX frames per family and phase. VFX code is unchanged, so before == after.
+- `vfx_frames.png`: the old acceptance frames. Superseded by `vfx_before_after.png` (section 4).
 - `metrics_compare.txt`, `before_m.json`, `after_m.json`: per-model metrics.
 
 ```
