@@ -795,10 +795,18 @@ export class GyreSnarePresentation {
     m.material = this._lumpMaterial(member.type);
     m.scale.setScalar(r * (slot.spawnScale || 0.45));
     const spread = Math.max(0, finite(this._clumpRadius) - r * 0.45);
+    // member.nx/nz are WORLD-frame approach directions; the clump group renders
+    // R_y(-_clumpSpin), so seats + fly-ins need the world->local rotation (the
+    // same transform _coilLd uses) or the stick lands a tumble's worth of azimuth
+    // off — and the gulp-squash proximity weight, which compares basePos angles
+    // to the converted _gulpLocalA, would shove the wrong lump.
+    const scs = Math.cos(this._clumpSpin || 0), ssn = Math.sin(this._clumpSpin || 0);
+    const lnx = finite(member.nx, 0) * scs + finite(member.nz, 0) * ssn;
+    const lnz = -finite(member.nx, 0) * ssn + finite(member.nz, 0) * scs;
     m.position.set(
-      finite(member.nx, 0) * spread,
+      lnx * spread,
       ((i * 0.61803398875) % 1 - 0.5) * r * 1.1,
-      finite(member.nz, 0) * spread,
+      lnz * spread,
     );
     // Loose-rubble drift: each lump bobs in place around its spawn seat so the clump
     // reads as levitating debris in zero-G, not a rigid flywheel.
@@ -808,15 +816,17 @@ export class GyreSnarePresentation {
     // Seed at the contact point, not inside the silhouette: the sim removed the victim
     // at clumpRadius + memberRadius + absorbEpsilonWu, so the lump pops in where the
     // body actually vanished — a capped ball doesn't teleport the meal ~16 wu inward.
-    const touch = finite(this._clumpRadius) + finite(member.radius, 0) + GYRE_SNARE.absorbEpsilonWu;
+    // _preMergeR is the radius BEFORE this member's merge (the published clumpRadius
+    // is already grown) — same-tick siblings share the batch pre-merge value.
+    const touch = finite(this._preMergeR, finite(this._clumpRadius)) + finite(member.radius, 0) + GYRE_SNARE.absorbEpsilonWu;
     if (instant) {
       // A rebuild isn't a meal: seed the fly-in at the seat itself so the same
       // ball doesn't visibly re-travel from its rim (a phantom meal).
       slot.fromX = m.position.x;
       slot.fromZ = m.position.z;
     } else {
-      slot.fromX = finite(member.nx, 0) * touch;
-      slot.fromZ = finite(member.nz, 0) * touch;
+      slot.fromX = lnx * touch;
+      slot.fromZ = lnz * touch;
       // The real approach corkscrewed (suckSwirlFrac, the funnel's whole
       // promise) — rotating the rim entry ~0.45 rad along the clump's spin
       // keeps the stick reading as a spiral-in, not a straight radial slide.
@@ -1849,6 +1859,9 @@ export class GyreSnarePresentation {
         const cs = Math.cos(this._clumpSpin), sn = Math.sin(this._clumpSpin);
         this._coilLd = { x: (dxw / dl) * cs + (dzw / dl) * sn, z: -(dxw / dl) * sn + (dzw / dl) * cs };
       }
+      // Stash the pre-merge radius: lumps added below this write want the
+      // touch distance the SIM measured at removal, not the grown radius.
+      this._preMergeR = this._clumpRadius;
       this._clumpRadius = finite(mirror.clumpRadius, this._clumpRadius);
       // Core veil: the held/grown ball's glass skin — swells with clump radius and
       // breathes faintly with strain, so the ball's heart reads as lash material.
@@ -2179,10 +2192,16 @@ export class GyreSnarePresentation {
             lm.userData.spawnT = this.time + i * 0.012;
             lm.scale.setScalar(r * 0.55);
             const spread = Math.max(0, ballR - r * 0.45);
+            // Same world->local convention the primary lumps use — the overlay
+            // group renders rotation.y, so member.nx/nz land a rotation off raw.
+            const sA = this._secGroup.rotation.y || 0;
+            const sC = Math.cos(sA), sS = Math.sin(sA);
+            const mnx = finite(member.nx, 0) * sC - finite(member.nz, 0) * sS;
+            const mnz = finite(member.nx, 0) * sS + finite(member.nz, 0) * sC;
             lm.position.set(
-              finite(member.nx, 0) * spread,
+              mnx * spread,
               ((i * 0.61803398875) % 1 - 0.5) * r * 1.1,
-              finite(member.nz, 0) * spread);
+              mnz * spread);
             // Levitating bob like the primary's lumps — seat + amplitude pinned at
             // build time so the sway never drifts the rubble apart over a flight.
             lm.userData.baseY = lm.position.y;

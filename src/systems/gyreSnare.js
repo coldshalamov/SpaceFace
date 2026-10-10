@@ -2876,9 +2876,10 @@ export const gyreSnare = {
               gain: 0.5 + 0.4 * launchFrac,
             });
           }
-          // Newton: throwing a small moon pushes back. A gentle mass-scaled counter-Δv
-          // (capped 6 wu/s — a nudge, not a knockback) physically sells the heave.
-          const recoilDv = Math.min(6, 1.2 + rt.ballMass / 500);
+          // Newton: throwing a small moon pushes back. A mass-scaled counter-Δv
+          // (capped 18 wu/s — a capital throw lands ~7% of cruise, a pebble ~2 —
+          // a nudge, not a knockback) physically sells the heave.
+          const recoilDv = Math.min(18, 2 + rt.ballMass / 200);
           const shipMass = entityMass(player);
           queuePhysicsImpulse(player, {
             x: -rt.launchDir.x * recoilDv * shipMass, y: 0, z: -rt.launchDir.z * recoilDv * shipMass,
