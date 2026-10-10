@@ -1,0 +1,56 @@
+# Wave 135 audit — boot-loading lane
+
+Audited `devin/1791504143-perf-w120` @ `dee9cf774` (PR #257 carries W120–W134). Audit-only: no code, no PR, no app run (SwiftShader box — Electron presents 0 frames). Golden pin `0b33dde1` untouched by this audit.
+
+`saturated: false` — one material mechanism-verified gap remains in the W134 fill machinery, plus one minor hygiene item and three bounded analytic notes. Everything else in the spec/prepare lane verified clean.
+
+## Findings
+
+### 1. Suppressed-emit hole — the fill's ok-branch trusts an emit three extra gates can veto — `MECHANISM_VERIFIED` — impact M, effort S, risk low
+
+Evidence: `src/ui/screens/saveLoad.js:823-828` (W134 fallback `.then` early-returns on `prepared.ok === true`) vs the emit gates at `src/save/saveSystem.js:2570-2577` (`this._speculativeContinuePrepare !== spec`, `spec.sig !== 'gen:' + _saveStoreGeneration`, mode `menu || _frozenTickBoundary`).
+
+Mechanism: `fillSlotData`'s covering-spec path assumes an `ok` resolve means `save:envelopeSpecPrepared` will fill `entry.data` (subscriber at `saveLoad.js:1039-1049`, gated `!entry.data`). But the emit carries three gates the fallback doesn't mirror — so an ok verdict can resolve with no emit and no lazy fill:
+
+- **Supersede**: `_pick` emits `save:loadSpeculationTarget` synchronously per selection (`saveLoad.js:1235-1238`) → `speculateLoadPrepare` → `_armSpeculativePrepare` replaces `this._speculativeContinuePrepare` (`saveSystem.js:2525`). Settle A dispatches (180ms debounce + worker RTT ~10-60ms); a pick of B inside that window mints specB → specA's emit returns early at `:2570` → A's fill `.then` returns at `:827` → `entry.data` never set.
+- **Disarm/hide**: `onHide`/`dispose` call `disarmSpeculativePrepare` (`saveLoad.js:1683`, `:1716`) — pick A, Back out before the RTT lands → emit suppressed → reopen Load → same memo entry, `attempted` still latched.
+- **Gen bump**: a mid-dwell write supersedes the sig gate at `:2573` — emit suppressed, `.then` returns on ok. (This one self-heals: the memo is sig-gated at `saveLoad.js:779` so the next consult mints a fresh entry.)
+
+Stickiness: `entry.attempted` latches before the consult (`:814`), and `_slotDataMemo` is module-level + sig-gated — under an unchanged store signature the unfilled entry survives re-pick AND remount indefinitely (only LRU eviction past `_SLOT_DATA_MEMO_MAX = 6` or a generation bump clears it). The row renders its index-card meta but `buildSavePortrait` gets `data: null` — the portrait/detail layer is permanently empty for that card: an incomplete element on the presented screen.
+
+Fix sketch: in the `.then`, only early-return when the emit could actually have fired — e.g. `if (prepared && prepared.ok === true && sys.coveringSpeculativePrepare(slot) === spec) return;` else run the lazy tail (`coveringSpeculativePrepare` re-checks spec identity + slot + live sig in one call, covering supersede/disarm/gen-bump; mode-gate remnants fall through to lazy, which is correct whenever the screen still exists). Alternative: hoist the row-fill signal out of the warm-lane gates (emit the payload for the memo subscriber regardless of spec identity; keep the gates for the residency visual-warm consumers). Worst case either way is a duplicate lazy parse — the pre-W133 behavior.
+
+### 2. `fillSlotDataLazy` writes a captured memo entry — evicted/re-minted rows drop the fill — `MECHANISM_VERIFIED` — impact L, effort S, risk low
+
+Evidence: `saveLoad.js:838-845` writes `entry.raw`/`entry.data` on the `entry` captured at consult time; between consult and the deferred `.then`/lazy run, LRU-6 eviction or a gen bump can replace the memo entry — the write lands on a detached object. The emit subscriber uses the correct re-lookup pattern (`saveLoad.js:1046` `_slotDataMemo.get(slot) || { … }`). Consequence is bounded — a fresh entry's `attempted` is false so a re-pick refills — but the fill work is wasted and the stale-entry write is silently lost.
+
+Fix sketch: first line of `fillSlotDataLazy`: `entry = _slotDataMemo.get(slot) || entry` (keep detached fill harmless) — or have the fallback `.then` re-resolve the live entry before calling.
+
+### 3. Task-hop bound on the covering fallback (ground (d)) — analytic, `MECHANISM_VERIFIED` ordering / magnitude hardware-unverified
+
+For a spec-covered row whose worker verdict resolves non-ok, the portrait fill now lands at settle(+180ms debounce) + dispatch + worker RTT + one microtask, vs the pre-W134 immediate `readSlotBlob`+`JSON.parse` on the settle task. A visible row CAN sit unfilled across the RTT's repaints (bounded tens of ms — clone + worker parse + return). Only the portrait layer is late: the card's index meta renders immediately and `buildSavePortrait` tolerates `data: null`. This is the intended trade for taking the duplicate multi-MB parse off the settle task; no fix recommended. If ever tightened: overlap `entry.raw = readSlotBlob(slot)` with the worker wait — marginal.
+
+### 4. Untracked-writer gap — consequence note (ground (a)) — informational
+
+The documented uncovered writer (devtools-style `localStorage['sf.save.x'] = …`, `installSaveStoreWriteTracking` wraps `Storage.prototype` methods + `storage` events, `saveSystem.js:128-160`) now has an upgraded consequence: on the sync lane, `specHit && spec.prepared.ok` consumes the arm-time verdict (`saveSystem.js:4754-4757`) — an untracked write is silently ignored where pre-W134 sync `load()` re-read and re-validated the fresh disk bytes. Still never hidden corruption — the restored envelope is internally consistent and validated; the new bytes simply lose. The silenced shared-store apply (`_saveStoreApplySilenced`, `:566-583`) is confined to the one-shot boot reconcile before any arm exists — not a live hole. No action.
+
+### 5. Surviving synchronous legs (ground (e)) — informational, designed
+
+The non-painted `load()` lane still pays, on a moved generation, the `_slotStoreSignature` enumerate+getItem walk of every save/recovery blob on the click task (`:2175-2200`), then the full `_prepareEnvelopeString` chain (`:5156-5170`). The painted Continue lane routes `preferAsync` → `loadAsync` (`:368`, `:4714`) whose twins yield every 16 keys (`_slotStoreSignatureAsync` `:2209`, `_scanStoredSlotsAsync` `:2737+`). Sync `load()` is the test/fallback primitive — it cannot await an unresolved worker verdict, so the residue is contractual, not a defect.
+
+## Regression verification — W134 (all PASS) + W133 spot-check
+
+- **Boot F1 — spec-fill fallback — PASS.** `fillSlotData` latches `entry.attempted` before the consult (`saveLoad.js:813-814`), chains `Promise.resolve(spec.dispatch()).then` (`:823`), returns on `prepared.ok === true`, else runs `fillSlotDataLazy` (`:827-828`); sync throw → immediate lazy (`:830-832`); no spec → lazy (`:835`). Lazy tail: `!entry.data` guard (`:839`), hoisted `entry.raw`/ `readSlotBlob` (`:840`), `unwrapSaveData(JSON.parse(raw))` (`:842-843`), re-render only `refs.selected === slot` (`:844`). The F1 mechanism works as built — the residual gap is the emit-suppression hole in Finding 1 (emit has gates the fallback assumed unconditional), reported as a new finding, not a W134 defect.
+- **Boot F2 — thunk byte-hit — PASS.** `specByteHit` reads `(spec.raw != null ? spec.raw : raw) === raw` (`saveSystem.js:4862-4865`). Semantics identical to `spec.readRaw()` on this path: `readRaw` memoizes only string results (`:2538-2545`) — a null/unmaterialized thunk re-reads the same key on the same task → returns `raw` → tautologically equal either way; a materialized `spec.raw` still earns the real compare. One duplicate multi-MB `getItem` removed from the click task.
+- **Boot F3 — prepared stash + sync consume — PASS.** `prepared: null` in the spec literal (`:2533`); stash inside dispatch's `.then` attached before `.catch`, i.e. before `spec.promise` resolves for the emit subscriber (`:2557-2563`) — emit handlers at `:2568+` always observe `spec.prepared` populated. Sync `load()` consumes `specHit && spec.prepared && spec.prepared.ok === true` as `primary` (`:4754-4757`); `_restorePreparedEnvelope` reads only `prepared.data` (`:5329`) — same `{ok,env,data,version}` shape both chains return (`:5220`, `:5272`, worker `validate_*` protocol `:4231+`). Unresolved/non-ok falls through to `_prepareEnvelopeString(specHit ? spec-readRaw : raw)` preserving every reason incl. `compressed_envelope` (`:4763-4765`).
+- **Popin P1 — resident fall-through — PASS.** `reclaimWarm`'s resident branch returns early only when `entry.owners.get(owner)` exists (`assetResidency.js:496-503`); resident-under-other-owner falls through to the `state.requests` scan where a matching active request unions `meta.sectorIds.add(String(sectorId))` + `sectorClaimStamp` (`:513-517`) — no sibling `beginRequest`.
+- **Popin P2 — claim-stamp staleness — PASS.** `sectorClaimAts` is `Map<sid,ms>` (`:422-424`, `:800-803`); `unionOwnerSector` stamps on add (`:857`) and refreshes on the `has()` early-out (`:845-847`); new-member adds first prune lapsed members — Set + ats delete + `unindexOwnerSectorRow` mirroring the index deltas (`:849-855`, `:819-830`); `sectorClaimStampIfMissing` backfills in `noteOwnerMembershipIndexed` (`:889`); mint seed propagates prior ats and stamps missing members (`:422-425`); `entryCorridorRank` skips lapsed (`:1003`); `hasLiveSectorClaim` role-filters (`:1898-1905`) and is required alongside `row.nonPlayer` in both `prepareSectorExit` (`:1922`) and `prepareSectorExitDeferred` (`:1968`). `unindexOwnerSectorRow` keeps ledger deltas atomic — verifyLedgerConsistency consistent.
+- **W133 spot-check — PASS (required: W134 touched the same files).** `sectorIds` union/index/back-compat scalar intact (`assetResidency.js:406-425`); `coveringSpeculativePrepare` consult gated on slot+sig (`saveSystem.js:2643-2648`); lazy raw thunk arm intact (`:2529-2545`); dispatch debounce `SPEC_ARM_DEBOUNCE_MS` parked/cleared/flushed correctly (`:2596-2600`).
+
+## Ground coverage
+
+(a) prepared-consume edge: verdict is a pure function of the raw bytes + build constants (`runMigrations`/`normalizeRestorableData`/`preflightSaveImport`/`readSaveVersion` take only envelope inputs; `CURRENT_VERSION` is a constant) — gen-sig byte-equality is a complete validity proof. Only theoretical hole is the documented devtools-assignment writer — consequence note in Finding 4.
+(b) fallback ordering: emit gates `ok===true`, fallback gates `!ok` — disjoint on the same resolution value; no double-write window across generations (emit's sig gate + subscriber's `!entry.data` + lazy's `!entry.data`). The real defect is the suppressed-emit ok hole — Finding 1.
+(c) re-serve semantics: `dispatch()` early-returns `spec.promise`; consume (`load`/`loadAsync`) detaches the spec and clears `_timer` before use; `disarmSpeculativePrepare` can't double-dispatch; `loadAsync`'s `prepared || fallback` consumes non-ok verdicts directly — consistent.
+(d) task-hop latency: bounded analytic note — Finding 3.
+(e) surviving sync legs: contractual residue on the non-painted lane — Finding 5; `_restoreFrameYield` (starvation-timer fallback `:5814-5843`), `_showContinueFade` (rAF + self-re-arming 200ms timer + 4s cap + mode-bounce lift, `mainMenu.js:815-920`), export (`exportSlotAsync` worker lane) and import (`importFile`) all verified armored.
