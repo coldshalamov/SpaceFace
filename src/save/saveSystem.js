@@ -385,10 +385,23 @@ export const save = {
         const spec = this._speculativeContinuePrepare;
         if (!spec || spec.sig === 'gen:' + _saveStoreGeneration) return;
         if (bumpKey === LS_PREFIX + spec.slot && typeof bumpValue === 'string' && bumpValue) {
-          // The write to the armed slot's own key already holds the new bytes — re-arm
-          // directly from them instead of reading them back inside the writer's task. The
-          // re-arm dispatches immediately: a single targeted arm has no burst to collapse.
-          this.speculateLoadPrepare(spec.slot, { sig: 'gen:' + _saveStoreGeneration, raw: bumpValue, immediate: true });
+          // The write to the armed slot's own key already holds the new bytes — keep them
+          // as the re-arm's raw so the settle pays no getItem. A same-slot burst (import+save,
+          // autosave+promote) coalesces into ONE deferred re-arm: each bump only refreshes
+          // the pending bytes; the settle dispatches a single clone+parse carrying the
+          // freshest write. The pending gen proves the raw still current at settle —
+          // speculateLoadPrepare only accepts it while its own sig matches.
+          const pending = this._pendingSlotRearm || (this._pendingSlotRearm = { slot: null, raw: null, gen: 0, timer: null });
+          pending.slot = spec.slot;
+          pending.raw = bumpValue;
+          pending.gen = _saveStoreGeneration;
+          if (pending.timer == null) {
+            pending.timer = setTimeout(() => {
+              pending.timer = null;
+              try { this.speculateLoadPrepare(pending.slot, { sig: 'gen:' + pending.gen, raw: pending.raw }); }
+              catch (err) { /* speculation is best-effort */ }
+            }, 0);
+          }
           return;
         }
         // Any other write leaves the armed blob's bytes unknown to this handler — defer
@@ -4894,7 +4907,18 @@ export const save = {
     } else {
       rollbackSnapshot = { notNeeded: true };
     }
-    const primary = await primaryPromise;
+    let primary = await primaryPromise;
+    // A spec-derived verdict was computed under the generation the arm was minted in. A store
+    // write landing anywhere in the window (the sliced rollback capture + worker roundtrip)
+    // bumps the generation — the verdict then prepares generation-N bytes while N+1 sits on
+    // disk. Re-verify the arm's signature before trusting it; on mismatch discard and
+    // re-prepare through the same fallback path as a miss on the bytes now on disk.
+    if ((specHit || specByteHit) && spec && spec.sig !== 'gen:' + _saveStoreGeneration) {
+      let freshRaw = null;
+      try { freshRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
+      catch (err) { /* null — the prepare reports its own read reason */ }
+      primary = await this._prepareEnvelopeStringAsync(freshRaw);
+    }
     if (primary.ok) {
       // The envelope tells us exactly which ships/stations/places the saved sector will
       // rematerialize — start those authored decodes now so they overlap the chunked
@@ -4996,6 +5020,33 @@ export const save = {
       if (!prepared.ok) return { ok: false, reason: prepared.reason || 'load_failed' };
       return { ok: true, cardEnv: prepared.cardEnv || null };
     });
+  },
+
+  // The slot fill's card payload — a JSON.parse + small projection only (no migration/
+  // normalize: the portrait reads the stored shape verbatim). The multi-MB parse runs on
+  // the save worker; world tables and thumbnail stay off postMessage. Resolves null on any
+  // failure so the caller can run its identical sync tail.
+  peekSaveCardData(raw) {
+    if (!raw || typeof raw !== 'string') return Promise.resolve(null);
+    if (typeof this._requestSaveWorker !== 'function' || typeof Worker !== 'function') {
+      return Promise.resolve(null);
+    }
+    return new Promise((resolve) => {
+      let settled = false;
+      const settle = (value) => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+      const accepted = this._requestSaveWorker('peek_card_data',
+        { raw },
+        (message) => settle(message && message.result ? message.result : null),
+        () => settle(null),
+        { timeoutMs: 2500 });
+      if (!accepted) settle(null);
+    }).then((prepared) => (prepared && prepared.ok === true && prepared.cardData
+      ? prepared.cardData
+      : null));
   },
 
   _prepareEnvelopeStringAsync(raw) {

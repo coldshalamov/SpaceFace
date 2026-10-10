@@ -838,6 +838,10 @@ function fillSlotData(ctx, slot) {
   fillSlotDataLazy(ctx, slot, entry);
 }
 
+function unwrapSlotDataRaw(raw) {
+  try { return unwrapSaveData(JSON.parse(raw)); } catch (e) { return null; }
+}
+
 function fillSlotDataLazy(ctx, slot, entry) {
   // Re-resolve the live memo entry — between the consult and this deferred run an
   // LRU eviction or a generation bump can replace it; writing the captured object
@@ -846,9 +850,26 @@ function fillSlotDataLazy(ctx, slot, entry) {
   if (!entry || entry.data) return;
   const raw = entry.raw != null ? entry.raw : (entry.raw = readSlotBlob(slot));
   if (!raw) return;
-  let data = null;
-  try { data = unwrapSaveData(JSON.parse(raw)); } catch (e) {}
-  entry.data = data;
+  // The save worker parses + projects the portrait fields off-thread — the same
+  // multi-MB JSON.parse class the spec arm already moved. The sync tail is the
+  // byte-identical fallback for the no-worker lane or a peek failure.
+  const sys = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
+  if (sys && typeof sys.peekSaveCardData === 'function') {
+    let peek = null;
+    try { peek = sys.peekSaveCardData(raw); } catch (e) { peek = null; }
+    if (peek && typeof peek.then === 'function') {
+      peek.then((cardData) => {
+        try {
+          entry = _slotDataMemo.get(slot) || entry;
+          if (!entry || entry.data) return;
+          entry.data = cardData || unwrapSlotDataRaw(raw);
+          if (refs && refs.selected === slot) saveLoadScreen._renderStage(ctx);
+        } catch (e) { /* speculative fill is best-effort */ }
+      });
+      return;
+    }
+  }
+  entry.data = unwrapSlotDataRaw(raw);
   if (refs && refs.selected === slot) saveLoadScreen._renderStage(ctx);
 }
 
@@ -1112,6 +1133,18 @@ export const saveLoadScreen = {
       refs.selected = (ctx.state.save && ctx.state.save.currentSlot && ids.includes(ctx.state.save.currentSlot))
         ? ctx.state.save.currentSlot
         : (latestOccupiedSlot(slots) || 'quick');
+      // A restored selection never gets a pick event — arm its envelope decode on mount
+      // instead of leaving a non-default restore (currentSlot != latest-occupied) to
+      // click cold. Idempotent: the arm early-outs on same slot+sig and self-gates to
+      // frozen/menu + occupied slots.
+      if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
+        const picked = _slotDataMemo.get(refs.selected) || null;
+        ctx.bus.emit('save:loadSpeculationTarget', {
+          slot: refs.selected,
+          raw: picked && picked.raw,
+          sig: picked && picked.sig,
+        });
+      }
     }
     refs.ids = ids;
     refs.slots = slots;

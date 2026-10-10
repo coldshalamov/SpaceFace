@@ -255,6 +255,37 @@ export function preflightSaveImport(value) {
   return { ok: true, nodes };
 }
 
+// Portrait-data projection for the Save/Load screen's lazy fill: everything
+// buildSavePortrait + slotShipId read out of unwrapSaveData(env) — the heavy env.data
+// fields nobody's card consumes (world tables, thumbnail) stay off postMessage, and the
+// multi-MB JSON.parse happens on the worker instead of the settle task.
+export function cardDataFromEnvelope(env) {
+  const source = env && typeof env === 'object'
+    ? (env.data && typeof env.data === 'object' && !Array.isArray(env.data) ? env.data : env)
+    : null;
+  if (!source || typeof source !== 'object') return null;
+  if (!source.player && !source.missions && !source.story && !source.aceMemory) return null;
+  return {
+    player: source.player,
+    story: source.story,
+    missions: source.missions,
+    aceMemory: source.aceMemory,
+    meta: source.meta,
+  };
+}
+
+// JSON.parse + project only — no version/migration/normalize chain: the card reads the
+// stored shape verbatim (the slot fill's own contract — migrations belong to load()).
+export function peekCardDataJson(raw) {
+  if (!raw || typeof raw !== 'string') return { ok: false, reason: 'no_save' };
+  let env;
+  try { env = JSON.parse(raw); } catch (error) {
+    return { ok: false, reason: 'parse_failed' };
+  }
+  const cardData = cardDataFromEnvelope(env);
+  return cardData ? { ok: true, cardData } : { ok: false, reason: 'bad_format' };
+}
+
 export function handleSaveWorkerRequest(message) {
   const request = message || {};
   return handleSaveWorkerRequestCore(request, { asyncFinal: false });
@@ -309,6 +340,16 @@ function handleSaveWorkerRequestCore(request, { asyncFinal } = {}) {
       result = cardEnv ? Object.assign(meta, { cardEnv }) : meta;
     }
     return { id: request.id, type: 'restored_prepare', result, workerCpuMs: workerNow() - started };
+  }
+  if (request.type === 'peek_card_data') {
+    const started = workerNow();
+    let result;
+    try {
+      result = peekCardDataJson(request.payload && request.payload.raw);
+    } catch (error) {
+      result = { ok: false, reason: 'parse_failed' };
+    }
+    return { id: request.id, type: 'peeked_card_data', result, workerCpuMs: workerNow() - started };
   }
   if (request.type === 'validate_begin') {
     validationSessions.set(request.id, {
@@ -690,6 +731,31 @@ function cardEnvFromEnvelope(env) {
     },
   };
 }
+// Portrait-data projection for the Save/Load screen's lazy fill — the heavy env.data
+// fields nobody's card consumes (world tables, thumbnail) stay off postMessage.
+function cardDataFromEnvelope(env) {
+  var source = env && typeof env === 'object'
+    ? (env.data && typeof env.data === 'object' && !Array.isArray(env.data) ? env.data : env)
+    : null;
+  if (!source || typeof source !== 'object') return null;
+  if (!source.player && !source.missions && !source.story && !source.aceMemory) return null;
+  return {
+    player: source.player,
+    story: source.story,
+    missions: source.missions,
+    aceMemory: source.aceMemory,
+    meta: source.meta,
+  };
+}
+function peekCardDataJson(raw) {
+  if (!raw || typeof raw !== 'string') return { ok: false, reason: 'no_save' };
+  var env;
+  try { env = JSON.parse(raw); } catch (error) {
+    return { ok: false, reason: 'parse_failed' };
+  }
+  var cardData = cardDataFromEnvelope(env);
+  return cardData ? { ok: true, cardData: cardData } : { ok: false, reason: 'bad_format' };
+}
 self.addEventListener('message', function (event) {
   const request = event.data || {};
   try {
@@ -742,6 +808,22 @@ self.addEventListener('message', function (event) {
         self.postMessage(Object.assign({ id: request.id, type: 'encoded' }, encoded, {
           workerCpuMs: now() - started,
         }));
+      });
+      return;
+    }
+    if (request.type === 'peek_card_data') {
+      var startedPeek = now();
+      var peekResult;
+      try {
+        peekResult = peekCardDataJson(request.payload && request.payload.raw);
+      } catch (error) {
+        peekResult = { ok: false, reason: 'parse_failed' };
+      }
+      self.postMessage({
+        id: request.id,
+        type: 'peeked_card_data',
+        result: peekResult,
+        workerCpuMs: now() - startedPeek,
       });
       return;
     }
