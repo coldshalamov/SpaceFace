@@ -322,10 +322,10 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     // saturate activity, so one round lit the whole dodecahedral cage as a bright football over the
     // hull. The shell now answers an ordinary hit locally (contact + nearby welds) and only a heavy
     // load (approaching rupture) charges the whole lattice.
-    float panelCharge = clamp(load * load * 1.15 - cell * 0.40, 0.0, 1.0);
+    float panelCharge = clamp(load * load * 0.95 - cell * 0.45, 0.0, 1.0);
     float core = clamp(contact.x, 0.0, 1.4);
     float ring = clamp(contact.y, 0.0, 1.4);
-    float activity = clamp(load * 0.85 + panelCharge * 1.6 + (core + ring) * 2.5 + base * 4.0, 0.0, 1.0);
+    float activity = clamp(load * 0.45 + panelCharge * 1.3 + (core + ring) * 2.5 + base * 4.0, 0.0, 1.0);
 
     // CONSTRUCTED MEMBERS. Three nested frame depths make the membrane read as layered machinery,
     // not one painted sphere. Their phases are offset so the layers breathe through one another.
