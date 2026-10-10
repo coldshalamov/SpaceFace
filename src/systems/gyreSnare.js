@@ -479,7 +479,15 @@ export const gyreSnare = {
           // core_lost joins the tear voice: a clump destroyed in the grip is a
           // shatter, not a polite release — same glassier cue, same close shape.
           id: emitId != null ? ((reason === 'strained' || reason === 'core_lost') ? 'gyre_snare_tear' : 'gyre_snare_drop') : 'gyre_snare_off',
-          gain: emitId != null ? 0.9 : 0.5,
+          // The tear grades by the lost payload like every other mass beat
+          // (grave cue, shake, whoosh, recoil): a moon's shatter lands deeper.
+          // The polite drop stays flat — a tear must never sit under a release.
+          gain: emitId == null ? 0.5
+            : (reason === 'strained' || reason === 'core_lost')
+              ? 0.9 + 0.1 * Math.min(1, droppedMass / D.maxClumpMass)
+              : 0.9,
+          ...(emitId != null && (reason === 'strained' || reason === 'core_lost')
+            ? { rate: 1.05 - 0.3 * Math.min(1, droppedMass / D.maxClumpMass) } : null),
           ...(cueCore && Number.isFinite(cueCore.x) ? { position: { x: cueCore.x, z: cueCore.z } } : null),
         });
         // A strain break is the verb's biggest loss beat — land it in the body too
