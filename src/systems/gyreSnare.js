@@ -2653,13 +2653,15 @@ export const gyreSnare = {
           // snag bite that fires when mass actually grips.
           this.bus.emit('audio:cue', { id: 'gyre_snare_beam', gain: 0.55 });
         }
-      } else if (this.bus && !rt.dryDenyDone) {
+      } else if (!rt.dryDenyDone) {
         // A denied wake is still a wake attempt — the refusal needs the same voice
         // every other tool's no-cap edge gets, or the held key reads dead.
-        this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare needs charge to wake', ttl: 1.6 });
-        this.bus.emit('audio:cue', { id: 'ui_deny', gain: 0.7 });
         rt.dryDenyDone = true; // the flag's contract is 'denied while held' — every
                              // deny lane sets it, not just the cap_dry close sites
+        if (this.bus) {
+          this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare needs charge to wake', ttl: 1.6 });
+          this.bus.emit('audio:cue', { id: 'ui_deny', gain: 0.7 });
+        }
       }
     }
     // A denied press is not a dead key: while the verb stays held the cap climbing
