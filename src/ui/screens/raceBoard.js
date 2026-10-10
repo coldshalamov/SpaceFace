@@ -2,7 +2,7 @@
 import { el, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { confirm } from '../confirm.js';
-import { RACE_LEVELS, courseForLevel, practiceContractForLevel, racingOfferFor, racingSeedFor, storyContracts } from '../../data/raceLevels.js';
+import { RACE_LEVELS, courseForLevel, practiceContractForLevel, raceContractById, raceLevelById, racingOfferFor, racingSeedFor, storyContracts } from '../../data/raceLevels.js';
 import { readRaceRecords, raceRecordKey, normalizeSteeringView, STEERING_VIEWS, activeRaceMission } from '../../systems/racingSteer.js';
 import { armRacingContract, stageRacingLaunch } from '../racingLaunch.js';
 import { setSteeringView, lastRacingResult } from '../racingControls.js';
@@ -55,16 +55,27 @@ export const raceBoardScreen={
     tools.append(view,back);rootEl.appendChild(tools);
     const current=activeRaceMission(ctx?.state);
     if(current)rootEl.appendChild(el('p','k-sentence','A race is active. Finish it or use Leave run in the flight instrument before joining another.'));
+    const launch=async(contractId,level)=>{
+      if(this._launching)return;
+      this._launching=true;rootEl.querySelectorAll('.race-board-launch,.race-board-retry').forEach(b=>b.disabled=true);cue('confirm');
+      try{await runContract(ctx,contractId,level);}finally{this._launching=false;this.refresh(ctx);}
+    };
     const result=lastRacingResult();
     if(result){
       const receipt=el('section','race-board-result dp-glass');receipt.setAttribute('aria-label','Last circuit result');
       receipt.append(el('h2','k-t-sub',`LAST FINISH / ${formatRaceTime(result.raceElapsedS)}`),
         el('p','k-sentence',`${String(result.raceBand||'complete').toUpperCase()} · ${result.raceClean?'Clean run':'Recovery run — not ranked'}`),
         el('p','k-sentence',(result.raceLapTimesS||[]).map((t,i)=>`Lap ${i+1} ${formatRaceTime(t)}`).join(' · ')));
+      const contract=raceContractById(result.racingContractId),level=contract&&raceLevelById(contract.levelId);
+      if(level){
+        const retry=el('button','k-word race-board-retry','Retry in this flight');retry.type='button';
+        retry.disabled=!!current||!!this._launching||!inFlight(ctx)||!!ctx.state.ui?.docked||ctx.state.world?.currentSectorId!==level.sectorId;
+        retry.title=`Undock in ${level.name}'s sector to retry with your current ship. No new game or save reset.`;
+        retry.addEventListener('click',()=>launch(contract.id,level));receipt.appendChild(retry);
+      }
       rootEl.appendChild(receipt);
     }
     const records=readRaceRecords(storageOf()),stories=storyContracts(),grid=el('div','race-board-grid');
-    const buttons=[];
     for(const [index,level] of RACE_LEVELS.entries()){
       const course=courseForLevel(level.id),card=el('section','race-board-course dp-plate');
       card.append(el('p','k-sentence',`CIRCUIT 0${index+1}`),el('h2','k-t-sub',level.name));
@@ -75,13 +86,10 @@ export const raceBoardScreen={
       for(const row of contracts){
         const offer=racingOfferFor(row.id),best=records[raceRecordKey(offer.params)];
         const block=el('div','race-board-contract');
-        const b=el('button','k-word race-board-launch',row.practice?'Practice':row.title);b.type='button';buttons.push(b);
+        const b=el('button','k-word race-board-launch',row.practice?'Practice':row.title);b.type='button';
         b.disabled=!!current||!!this._launching;b.title=row.summary;
-        b.addEventListener('click',async()=>{
-          if(this._launching)return;this._launching=true;buttons.forEach(x=>x.disabled=true);cue('confirm');
-          try{await runContract(ctx,row.id,level);}finally{this._launching=false;this._root?.querySelectorAll('.race-board-launch').forEach(x=>x.disabled=!!activeRaceMission(ctx?.state));}
-        });
-        block.append(b,el('p','k-sentence',`${row.laps} ${row.laps===1?'lap':'laps'} · ${row.practice?'view optional':'chase view required'} · ${Number.isFinite(best)?`clean best ${formatRaceTime(best)}`:'no clean best yet'}`));
+        b.addEventListener('click',()=>launch(row.id,level));
+        block.append(b,el('p','k-sentence',`${row.laps} ${row.laps===1?'lap':'laps'} · ${row.practice?'view optional':offer.params.sectionMission?'chase during course only':'chase view required'} · ${Number.isFinite(best)?`clean best ${formatRaceTime(best)}`:'no clean best yet'}`));
         if(!row.practice)block.appendChild(el('p','k-sentence',row.summary));
         card.appendChild(block);
       }

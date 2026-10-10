@@ -204,7 +204,7 @@ function courseParams(course, extra) {
     courseName: course.courseName,
     courseKind: course.kind,
     closedCircuit: true,
-    courseRevision: 2,
+    courseRevision: Number.isInteger(extra && extra.courseRevision) ? extra.courseRevision : 2,
     courseSectorId: course.sectorId,
     gates: course.gates.map((g) => ({ x: g.x, z: g.z })),
     gateRadiusWU: course.gateRadiusWU,
@@ -236,16 +236,19 @@ const CONTRACTS = Object.freeze([
   Object.freeze({
     id: 'contract_junction_jam',
     levelId: 'level_junction_return',
+    courseRevision: 3,
     practice: false,
     laps: 1,
     steerLock: 'racing',
+    sectionMission: true,
+    steerLockPhases: ['grid', 'chase'],
     racingKind: 'sensors',
     reward_cr: 1100,
     duration_s: 900,
     title: 'Burned canopy',
-    brief: 'Customs cooked the overhead picture on the tally. Fly the stern camera through the queue, the scan gates, and back.',
-    summary: 'The tally circuit. Stern camera locked until the lap is done.',
-    gridLine: 'Hold. The count lamps are the course, not the overhead chart.',
+    brief: 'Customs cooked the overhead picture on the tally. Approach within 70 WU of the line at 8 WU/s or less, align with the first leg and release any tether; fly the course, then dock at the destination station to file.',
+    summary: 'Stop and align at the start line (within 70 WU, at 8 WU/s or less, no tether), run the tally, then dock at the destination station. Stern camera locks at green.',
+    gridLine: 'Approach within 70 WU, slow to 8 WU/s or less, align with the first leg and release any tether. Dock at the destination after the finish.',
   }),
   Object.freeze({
     id: 'contract_veil_laps',
@@ -280,16 +283,21 @@ const CONTRACTS = Object.freeze([
   Object.freeze({
     id: 'contract_junction_draft',
     levelId: 'level_junction_return',
+    courseRevision: 3,
     practice: false,
     laps: 1,
     steerLock: 'racing',
+    sectionMission: true,
+    steerLockPhases: ['grid', 'chase'],
     racingKind: 'draft',
+    draftRequiredS: 2.0,
+    paceSpeedWU: 260,
     reward_cr: 1200,
     duration_s: 900,
     title: 'Pace light',
-    brief: 'A pace light runs the tally ahead of you. Sit in its wake and take the push. The stern camera stays on — that is how dispatch watches the draft.',
-    summary: 'The tally circuit again. Draft the pace light. Stern camera required.',
-    gridLine: 'Hold. The pace light leaves with you. Sit in the wake.',
+    brief: 'Approach within 70 WU of the line at 8 WU/s or less, align with the first leg and release any tether. Track 18–150 WU behind the 260 WU/s pace light, within its 45 WU wake, aligned and moving at 35% pace or faster for 2 cumulative seconds; dock at the destination station after the course.',
+    summary: 'Stop and align at the start line (within 70 WU, at 8 WU/s or less, no tether). Hold the aligned wake 18–150 WU behind the pace light for 2 seconds, then dock at the destination station.',
+    gridLine: 'Approach within 70 WU; slow to 8 WU/s or less, align and release any tether. Hold the 45 WU-wide wake 18–150 WU behind the beacon for 2 seconds, then dock after the finish.',
   }),
 ]);
 
@@ -335,10 +343,18 @@ export function racingOfferFor(contractId) {
     levelId: level.id,
     racingContractId: row.id,
     racingKind: row.racingKind,
+    courseRevision: Number.isInteger(row.courseRevision) ? row.courseRevision : 2,
     laps: row.laps,
     terrain: level.terrain,
     gridLine: row.gridLine || '',
   });
+  if (row.sectionMission) {
+    params.sectionMission = true;
+    params.phase = 'approach';
+    params.steerLockPhases = row.steerLockPhases.slice();
+  }
+  if (Number.isFinite(row.draftRequiredS)) params.draftRequiredS = row.draftRequiredS;
+  if (Number.isFinite(row.paceSpeedWU)) params.paceSpeedWU = row.paceSpeedWU;
   if (row.steerLock) params.steerLock = row.steerLock;
   if (Number.isInteger(row.boostGateIndex)) params.boostGateIndex = row.boostGateIndex;
   if (row.laps > 1) {

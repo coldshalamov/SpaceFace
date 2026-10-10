@@ -1,6 +1,6 @@
 // RACE-01 launch. A fresh flight may enter the circuit's sector. A live campaign save may
 // not: enterSector always charts, and the Veil is charted:false. In-sector arming only
-// posts the offer and relocates onto the grid.
+// posts the offer; section missions approach the grid under their own power.
 
 import { activeRaceMission } from '../systems/racingSteer.js';
 import { raceLevelById, racingOfferFor, racingSeedFor, startLineFor } from '../data/raceLevels.js';
@@ -79,7 +79,8 @@ export function armRacingContract(ctx, contractId, options = {}) {
     toast('Release the Massline before joining the starting grid.');
     return { ok: false, reason: 'tether_active' };
   }
-  if (!world || typeof world.relocatePlayerInSector !== 'function') {
+  const relocate = !offer.params.sectionMission || allowEnterSector;
+  if (relocate && (!world || typeof world.relocatePlayerInSector !== 'function')) {
     toast('The starting grid is not ready.');
     return { ok: false, reason: 'no_relocation' };
   }
@@ -105,7 +106,7 @@ export function armRacingContract(ctx, contractId, options = {}) {
     }
   }
   const now = state && Number.isFinite(state.simTime) ? state.simTime : 0;
-  if (Number(offer.params.gridHoldS) > 0 && !Number.isFinite(offer.params.gridUntilSimS)) {
+  if (!offer.params.sectionMission && Number(offer.params.gridHoldS) > 0 && !Number.isFinite(offer.params.gridUntilSimS)) {
     offer.params.gridUntilSimS = now + Number(offer.params.gridHoldS);
   }
   const result = missions.postAndAcceptAuthoredOffer(offer);
@@ -117,9 +118,15 @@ export function armRacingContract(ctx, contractId, options = {}) {
   }
   try {
     if (here !== level.sectorId) world.enterSector(level.sectorId);
-    const start = startLineFor(offer.params);
-    if (!start || world.relocatePlayerInSector(start, { reason: 'race_grid' }) === false) {
-      throw new Error('Grid relocation refused');
+    if (relocate) {
+      const start = startLineFor(offer.params);
+      if (start && offer.params.sectionMission) {
+        start.x -= Math.cos(start.heading) * 220;
+        start.z -= Math.sin(start.heading) * 220;
+      }
+      if (!start || world.relocatePlayerInSector(start, { reason: 'race_grid' }) === false) {
+        throw new Error('Grid relocation refused');
+      }
     }
   } catch (error) {
     // Acceptance is rolled back via the mission owner, never by splicing its list from UI.

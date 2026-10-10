@@ -1,7 +1,7 @@
 // Authored circuit presentation: real vertical apertures, route line and a visible pace beacon.
 // Four draw calls at most. Every object is non-colliding and consumes the mission owner's truth.
 import * as THREE from 'three';
-import { activeAuthoredRace } from '../systems/racingSteer.js';
+import { activeAuthoredRace, racingPaceSpeed } from '../systems/racingSteer.js';
 import { circuitPacePoint, gateApproach } from '../systems/racingGeometry.js';
 import { raceGateGlobals } from '../data/raceLevels.js';
 import { readFrameOrigin } from './frameCoordinates.js';
@@ -57,7 +57,8 @@ export function createRacingCourseView(scene, state) {
       if(disposed)return;
       const race=activeAuthoredRace(state);
       root.visible=!!race&&state.mode==='flight'&&!state.ui?.docked
-        &&state.world?.currentSectorId===race.params.courseSectorId;
+        &&state.world?.currentSectorId===race.params.courseSectorId
+        &&(!race.params.sectionMission||race.params.phase!=='handoff');
       if(!root.visible)return;
       const p=race.params;
       if(owner!==p)rebuild(p);
@@ -74,9 +75,9 @@ export function createRacingCourseView(scene, state) {
         target.scale.setScalar((Number(p.gateRadiusWU)||90)*1.005);
       }
       // This is the very same sampler and speed the slipstream impulse uses, not an AI rival.
-      const racing=Number.isFinite(p.raceStartSimS);
+      const racing=Number.isFinite(p.raceStartSimS)&&(!p.sectionMission||p.phase==='chase');
       pace.visible=racing&&p.racingKind==='draft';
-      if(pace.visible&&circuitPacePoint(globals,Math.max(0,(state.simTime||0)-p.raceStartSimS)*640+70,pacePoint)){
+      if(pace.visible&&circuitPacePoint(globals,Math.max(0,(state.simTime||0)-p.raceStartSimS)*racingPaceSpeed(p)+70,pacePoint)){
         pace.position.set(pacePoint.x-sectorX,0,pacePoint.z-sectorZ);
         forward.set(Math.cos(pacePoint.heading),0,Math.sin(pacePoint.heading));
         pace.quaternion.setFromUnitVectors(up,forward);

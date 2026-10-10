@@ -20,14 +20,19 @@ export const RACING_RIG_DEFAULT = Object.freeze({
   lookAhead: 36,
 });
 
-const DRAFT_SPEED_WU_S = 640;
 const DRAFT_MIN_WU = 18;
 const DRAFT_MAX_WU = 150;
-const DRAFT_PULSE_S = 0.35;
-const DRAFT_IMPULSE_PER_MASS = 14;
+const DRAFT_WAKE_HALF_WIDTH_WU = 45;
+const DRAFT_ACCEL_WU_S2 = 40;
 const BOOST_IMPULSE_PER_MASS = 42;
 const LEASH_PULSE_S = 0.4;
 const LEASH_BRAKE = 0.22;
+
+export function racingPaceSpeed(params) {
+  const value = params && params.paceSpeedWU;
+  const speed = value == null || value === '' ? NaN : Number(value);
+  return Number.isFinite(speed) ? Math.min(640, Math.max(80, speed)) : 640;
+}
 
 export function normalizeSteeringView(value) {
   return STEERING_VIEWS.includes(value) ? value : 'overhead';
@@ -76,7 +81,9 @@ export function resolveSteeringView(state, opts = {}) {
   const pref = normalizeSteeringView(state && state.settings && state.settings.gameplay
     && state.settings.gameplay.steeringView);
   if (pref === 'racing') return 'racing';
-  if (pref === 'auto' && activeRaceMission(state)) return 'racing';
+  const race = pref === 'auto' ? activeRaceMission(state) : null;
+  if (race && (!race.params?.sectionMission
+    || race.params.phase === 'grid' || race.params.phase === 'chase')) return 'racing';
   return 'overhead';
 }
 
@@ -108,6 +115,8 @@ export function raceGridHolding(state) {
   for (const mission of activeMissions(state)) {
     if (!mission || mission.status !== 'active' || !mission.params) continue;
     if (!mission.params.racingContractId) continue;
+    if (mission.params.sectionMission
+      && mission.params.phase !== 'grid' && mission.params.phase !== 'chase') continue;
     const until = Number(mission.params.gridUntilSimS);
     if (Number.isFinite(until) && now < until) return true;
   }
@@ -118,7 +127,10 @@ export function raceGridHolding(state) {
 export function raceLeaseActive(state) {
   for (const mission of activeMissions(state)) {
     if (!mission || mission.status !== 'active' || !mission.params) continue;
-    if (mission.params.racingContractId && mission.params.raceLease === true) return true;
+    if (!mission.params.racingContractId || mission.params.raceLease !== true) continue;
+    if (mission.params.sectionMission
+      && mission.params.phase !== 'grid' && mission.params.phase !== 'chase') continue;
+    return true;
   }
   return false;
 }
@@ -197,6 +209,49 @@ export function resetPoseLocal(params) {
   };
 }
 
+export function sampleRacingWake(params, player, gatesGlobal, simTime, out = {}) {
+  const sample = out && typeof out === 'object' ? out : {};
+  const paceSpeedWU = racingPaceSpeed(params);
+  sample.active = false;
+  sample.paceSpeedWU = paceSpeedWU;
+  sample.behindWU = null;
+  sample.lateralWU = null;
+  sample.paceHeading = null;
+  if (!params || !player || !player.pos || !player.vel || !Array.isArray(gatesGlobal)
+    || gatesGlobal.length < 2 || !Number.isFinite(simTime)
+    || !Number.isFinite(params.raceStartSimS) || simTime < params.raceStartSimS
+    || !Number.isFinite(player.pos.x) || !Number.isFinite(player.pos.z)
+    || !Number.isFinite(player.vel.x) || !Number.isFinite(player.vel.z)
+    || !Number.isFinite(player.rot)
+    || gatesGlobal.some((gate) => !gate || !Number.isFinite(gate.x) || !Number.isFinite(gate.z))
+    || (Number.isFinite(params.gridUntilSimS) && simTime < params.gridUntilSimS)
+    || params.phase === 'approach' || params.phase === 'grid' || params.phase === 'handoff'
+    || (params.sectionMission && params.phase !== 'chase')) return sample;
+
+  const pace = circuitPacePoint(gatesGlobal,
+    (simTime - params.raceStartSimS) * paceSpeedWU + 70);
+  if (!pace || !Number.isFinite(pace.x) || !Number.isFinite(pace.z)
+    || !Number.isFinite(pace.heading)) return sample;
+  const hx = Math.cos(pace.heading);
+  const hz = Math.sin(pace.heading);
+  const dx = player.pos.x - pace.x;
+  const dz = player.pos.z - pace.z;
+  const behindWU = -(dx * hx + dz * hz);
+  const lateralWU = Math.abs(-dx * hz + dz * hx);
+  const speedWU = Math.hypot(player.vel.x, player.vel.z);
+  const headingDot = Math.cos(player.rot) * hx + Math.sin(player.rot) * hz;
+  const velocityDot = speedWU > 0 ? (player.vel.x * hx + player.vel.z * hz) / speedWU : 0;
+  sample.behindWU = behindWU;
+  sample.lateralWU = lateralWU;
+  sample.paceHeading = pace.heading;
+  sample.active = Number.isFinite(behindWU) && Number.isFinite(lateralWU)
+    && behindWU >= DRAFT_MIN_WU && behindWU <= DRAFT_MAX_WU
+    && lateralWU <= DRAFT_WAKE_HALF_WIDTH_WU
+    && headingDot >= 0.8 && velocityDot >= 0.8
+    && speedWU >= paceSpeedWU * 0.35;
+  return sample;
+}
+
 function massOf(player) {
   const m = Number(player && player.mass);
   return Number.isFinite(m) && m > 0 ? m : 400;
@@ -207,7 +262,7 @@ function massOf(player) {
  * params (pulse clocks) plus world-space impulses. The caller must not invoke this for a
  * procedural board race.
  */
-export function racingAssistIntents({ params, player, simTime, gatesGlobal }) {
+export function racingAssistIntents({ params, player, simTime, gatesGlobal, dt = 0 }) {
   const impulses = [];
   const patch = {};
   if (!params || !player || !player.pos || !Array.isArray(gatesGlobal) || gatesGlobal.length < 2) {
@@ -223,22 +278,23 @@ export function racingAssistIntents({ params, player, simTime, gatesGlobal }) {
   const radius = Math.max(24, Number(params.gateRadiusWU) || 90);
 
   if (params.racingKind === 'draft') {
-    const started = Number.isFinite(params.raceStartSimS) ? params.raceStartSimS : now;
-    const elapsed = Math.max(0, now - started);
-    const pace = circuitPacePoint(gatesGlobal, elapsed * DRAFT_SPEED_WU_S + 70);
-    if (pace) {
-      const dx = pace.x - px;
-      const dz = pace.z - pz;
-      const dist = Math.hypot(dx, dz);
-      const along = fx * dx + fz * dz;
-      const nextAt = Number(params.draftNextSimS) || 0;
-      if (dist >= DRAFT_MIN_WU && dist <= DRAFT_MAX_WU && along > dist * 0.45 && now >= nextAt) {
-        impulses.push({
-          kind: 'draft',
-          impulse: { x: fx * mass * DRAFT_IMPULSE_PER_MASS, y: 0, z: fz * mass * DRAFT_IMPULSE_PER_MASS },
-        });
-        patch.draftNextSimS = now + DRAFT_PULSE_S;
-      }
+    const wake = sampleRacingWake(params, player, gatesGlobal, simTime);
+    const validDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.1) : 0;
+    const requiredS = Number(params.draftRequiredS);
+    const capS = Number.isFinite(requiredS) && requiredS > 0
+      ? Math.min(60, requiredS) : 60;
+    const accruedS = Number.isFinite(params.draftTimeS)
+      ? Math.min(capS, Math.max(0, params.draftTimeS)) : 0;
+    patch.drafting = wake.active;
+    patch.draftTimeS = Math.min(capS, accruedS + (wake.active ? validDt : 0));
+    if (wake.active && validDt > 0) {
+      const hx = Math.cos(wake.paceHeading);
+      const hz = Math.sin(wake.paceHeading);
+      impulses.push({
+        kind: 'draft',
+        impulse: { x: hx * mass * DRAFT_ACCEL_WU_S2 * validDt, y: 0,
+          z: hz * mass * DRAFT_ACCEL_WU_S2 * validDt },
+      });
     }
   }
 
@@ -325,7 +381,9 @@ export function readRaceTape(params, player, gatesGlobal, simTime) {
     wrongWay = spd > 30 && toward < -12 && dist > (Number(params.gateRadiusWU) || 90);
     offRibbon = progress.distance > (Number(params.gateRadiusWU) || 90) * 3.2 && nextGate > 0;
   }
-  const drafting = !!(params && Number.isFinite(params.draftNextSimS) && now < params.draftNextSimS);
+  const wake = params && params.racingKind === 'draft'
+    ? sampleRacingWake(params, player, gates, simTime) : null;
+  const drafting = !!(wake && wake.active);
   return {
     lap: Math.min(laps, lap + 1),
     laps,
@@ -343,6 +401,10 @@ export function readRaceTape(params, player, gatesGlobal, simTime) {
     wrongWay,
     offRibbon,
     drafting,
+    draftTimeS: Math.max(0, Number(params && params.draftTimeS) || 0),
+    draftRequiredS: Number.isFinite(Number(params && params.draftRequiredS))
+      ? Number(params.draftRequiredS) : 0,
+    phase: params && params.phase || null,
     started,
     holding,
     gridLeft: holding ? Math.max(0, gridUntil - now) : 0,
