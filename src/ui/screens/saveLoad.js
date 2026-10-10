@@ -821,10 +821,13 @@ function fillSlotData(ctx, slot) {
   if (spec && typeof spec.dispatch === 'function') {
     try {
       Promise.resolve(spec.dispatch()).then((prepared) => {
-        // The spec emit is gated on prepared.ok — a null/failed/empty prepare resolves
-        // without one, and attempted is already latched, so this row would stay
-        // unfilled for the memo generation. Run the lazy tail as the fallback.
-        if (prepared && prepared.ok === true) return;
+        // An ok verdict only fills the row when the arm's emit still fires — it is
+        // also gated on spec identity, live sig, and mode, so a supersede, disarm,
+        // or generation bump mid-flight resolves ok with no emit and no fill.
+        // Only skip the lazy tail when the emit could still run; coveringSpeculativePrepare
+        // re-proves identity + slot + live sig in one call.
+        if (prepared && prepared.ok === true
+            && sys.coveringSpeculativePrepare(slot) === spec) return;
         try { fillSlotDataLazy(ctx, slot, entry); } catch (e) { /* best-effort */ }
       });
     } catch (e) {
@@ -836,6 +839,10 @@ function fillSlotData(ctx, slot) {
 }
 
 function fillSlotDataLazy(ctx, slot, entry) {
+  // Re-resolve the live memo entry — between the consult and this deferred run an
+  // LRU eviction or a generation bump can replace it; writing the captured object
+  // would be silently lost (the new entry refills on its own consult either way).
+  entry = _slotDataMemo.get(slot) || entry;
   if (!entry || entry.data) return;
   const raw = entry.raw != null ? entry.raw : (entry.raw = readSlotBlob(slot));
   if (!raw) return;
