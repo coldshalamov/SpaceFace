@@ -247,7 +247,7 @@ const CONTRACTS = Object.freeze([
     duration_s: 900,
     title: 'Burned canopy',
     brief: 'Customs cooked the overhead picture on the tally. Approach within 70 WU of the line at 8 WU/s or less, align with the first leg and release any tether; fly the course, then dock at the destination station to file.',
-    summary: 'Stop and align at the start line (within 70 WU, at 8 WU/s or less, no tether), run the tally, then dock at the destination station. Stern camera locks at green.',
+    summary: 'Stop and align at the start line (within 70 WU, at 8 WU/s or less, no tether), run the tally, then dock at the destination station. Chase view during countdown and course.',
     gridLine: 'Approach within 70 WU, slow to 8 WU/s or less, align with the first leg and release any tether. Dock at the destination after the finish.',
   }),
   Object.freeze({
@@ -297,7 +297,7 @@ const CONTRACTS = Object.freeze([
     title: 'Pace light',
     brief: 'Approach within 70 WU of the line at 8 WU/s or less, align with the first leg and release any tether. Track 18–150 WU behind the 260 WU/s pace light, within its 45 WU wake, aligned and moving at 35% pace or faster for 2 cumulative seconds; dock at the destination station after the course.',
     summary: 'Stop and align at the start line (within 70 WU, at 8 WU/s or less, no tether). Hold the aligned wake 18–150 WU behind the pace light for 2 seconds, then dock at the destination station.',
-    gridLine: 'Approach within 70 WU; slow to 8 WU/s or less, align and release any tether. Hold the 45 WU-wide wake 18–150 WU behind the beacon for 2 seconds, then dock after the finish.',
+    gridLine: 'Approach within 70 WU; slow to 8 WU/s or less, align and release any tether. Stay within 45 WU laterally while holding the wake 18–150 WU behind the beacon for 2 seconds, then dock after the finish.',
   }),
 ]);
 

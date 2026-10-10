@@ -7686,7 +7686,7 @@ export const missions = {
         this._refreshTrackedMissionNav(m);
         this.bus.emit('mission:updated', { missionId: m.id });
         this.bus.emit('toast', {
-          text: `Grid set. Chase camera and green light in ${(Number(params.gridHoldS) || 0).toFixed(1)}s.`,
+          text: `Chase view engaged. Green in ${(Number(params.gridHoldS) || 0).toFixed(1)}s.`,
           kind: 'info',
           ttl: 4,
         });

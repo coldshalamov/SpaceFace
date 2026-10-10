@@ -1355,6 +1355,11 @@ export const onboarding = {
 
   _onMissionAccepted(payload) {
     const ob = this.state.onboarding;
+    if (!ob) return;
+    if (payload.source === 'racingCircuit' && ob.active && !ob.finished) {
+      this._finish();
+      return;
+    }
     const beat = ob && BEATS[ob.currentBeat];
     if (!ob || !beat) return;
     if (beat.key === 'dock' && payload.source === FIRST_TRADE_CONTRACT_SOURCE) {

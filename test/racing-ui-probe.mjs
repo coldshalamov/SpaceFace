@@ -20,7 +20,10 @@ const html=`<!doctype html><meta charset="utf-8"><meta name="viewport" content="
 await fs.writeFile(path.join(out,'racing-ui.html'),html);
 if(!process.argv.includes('--bundle-only')){
   const {chromium}=await import('playwright');
-  const browser=await chromium.launch({headless:true});
+  const launchOptions={headless:true};
+  if(process.env.RACING_BROWSER_CHANNEL)launchOptions.channel=process.env.RACING_BROWSER_CHANNEL;
+  if(process.env.RACING_BROWSER_EXECUTABLE)launchOptions.executablePath=process.env.RACING_BROWSER_EXECUTABLE;
+  const browser=await chromium.launch(launchOptions);
   try{
     const page=await browser.newPage({viewport:{width:1440,height:1050},reducedMotion:'reduce'});
     const errors=[];page.on('pageerror',error=>errors.push(String(error)));
@@ -85,6 +88,7 @@ if(!process.argv.includes('--bundle-only')){
     await page.locator('.race-board-launch').first().click();
     assert.ok(await page.getByRole('dialog').isVisible());
     await page.getByRole('button',{name:'Launch circuit',exact:true}).click();
+    await page.waitForFunction(()=>probe.events.some(e=>e[0]==='game:new'&&e[1]?.racingSession===true));
     assert.ok(await page.evaluate(()=>probe.events.some(e=>e[0]==='game:new'&&e[1]?.racingSession===true)));
     await page.evaluate(()=>probe.dispose());assert.equal(await page.locator('#race-tape').count(),0);
     assert.deepEqual(errors,[]);
