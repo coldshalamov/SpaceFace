@@ -415,7 +415,15 @@ export function createAssetResidencyRegistry(options = {}) {
       // pre-unioned sectorIds set must not drop its scalar's sector either.
       const seed = new Set(ownerSectorIds(ownerMetadata));
       if (ownerMetadata.sectorId != null) seed.add(String(ownerMetadata.sectorId));
-      if (seed.size) ownerMetadata.sectorIds = seed;
+      if (seed.size) {
+        ownerMetadata.sectorIds = seed;
+        // Carry the request's own claim stamps (in-flight unions stamp at
+        // consult time); members without one are born at mint.
+        const priorAts = ownerMetadata.sectorClaimAts instanceof Map ? ownerMetadata.sectorClaimAts : null;
+        const ats = ownerMetadata.sectorClaimAts = new Map(priorAts || []);
+        const nowMs = now();
+        for (const sid of seed) { if (!ats.has(sid)) ats.set(sid, nowMs); }
+      }
       else delete ownerMetadata.sectorIds;
       if (ownerMetadata.sectorId == null && seed.size) {
         ownerMetadata.sectorId = seed.values().next().value;
@@ -486,10 +494,14 @@ export function createAssetResidencyRegistry(options = {}) {
     const entry = assets.get(exactKey);
     if (entry && entry.state === 'resident') {
       const existingMetadata = entry.owners.get(owner);
-      if (!existingMetadata) return false;
-      unionOwnerSector(entry, existingMetadata, sectorId);
-      entry.lastWarmClaimAtMs = now();
-      return true;
+      if (existingMetadata) {
+        unionOwnerSector(entry, existingMetadata, sectorId);
+        entry.lastWarmClaimAtMs = now();
+        return true;
+      }
+      // Resident under a different owner — this owner's row can still be pending:
+      // fall through to the in-flight scan so a matching request unions the
+      // sector instead of the caller minting a sibling request.
     }
     const state = owners.get(owner);
     if (!state || state.released) return false;
@@ -501,6 +513,7 @@ export function createAssetResidencyRegistry(options = {}) {
             meta.sectorIds = new Set(meta.sectorId != null ? [String(meta.sectorId)] : []);
           }
           meta.sectorIds.add(String(sectorId));
+          sectorClaimStamp(meta, String(sectorId), now());
         }
         // Re-stamp the entry's warm-claim where one exists — its post-settle idle sort
         // keeps the armed cohort young even while the decode is still landing.
@@ -779,17 +792,69 @@ export function createAssetResidencyRegistry(options = {}) {
     return metadata.sectorId != null ? [String(metadata.sectorId)] : [];
   }
 
+  // Members not re-claimed within this lapse their claim — a member still armed
+  // by a live consumer refreshes its stamp every re-post, so only claims that
+  // outlived their arming context age out.
+  const SECTOR_CLAIM_STALE_MS = 120000;
+
+  function sectorClaimStamp(metadata, sid, nowMs) {
+    let ats = metadata.sectorClaimAts;
+    if (!(ats instanceof Map)) ats = metadata.sectorClaimAts = new Map();
+    ats.set(sid, nowMs);
+  }
+  function sectorClaimStampIfMissing(metadata, sid) {
+    let ats = metadata.sectorClaimAts;
+    if (!(ats instanceof Map)) ats = metadata.sectorClaimAts = new Map();
+    if (!ats.has(sid)) ats.set(sid, now());
+  }
+  // Missing stamp = live (pre-stamp rows and any path that mints membership
+  // without one keep the pre-P2 behavior of counting as claimed).
+  function sectorClaimFresh(metadata, sid, nowMs) {
+    const ats = metadata.sectorClaimAts;
+    if (!(ats instanceof Map)) return true;
+    const at = ats.get(sid);
+    return at == null || nowMs - at <= SECTOR_CLAIM_STALE_MS;
+  }
+
+  function unindexOwnerSectorRow(entry, metadata, sid) {
+    const sectorMap = sectorOwnerIndex.get(sid);
+    if (!sectorMap) return;
+    const row = sectorMap.get(entry);
+    if (!row) return;
+    row.total -= 1;
+    entry.sectorOwnerRefs -= 1;
+    if (metadata.role !== 'player') row.nonPlayer -= 1;
+    if (row.total <= 0) {
+      sectorMap.delete(entry);
+      if (sectorMap.size === 0) sectorOwnerIndex.delete(sid);
+    }
+  }
+
   // Union a sector into an owner row's claim and index just that delta — the
   // soft/role counters are per-owner and must not double-count, so the sector
-  // block alone runs here.
+  // block alone runs here. New-member adds opportunistically prune lapsed
+  // members (with their index rows) so the union tracks live demand instead of
+  // accumulating every sector the owner was ever armed from.
   function unionOwnerSector(entry, metadata, sectorId) {
     if (sectorId == null) return;
     const sid = String(sectorId);
+    const nowMs = now();
     if (!(metadata.sectorIds instanceof Set)) {
       metadata.sectorIds = new Set(metadata.sectorId != null ? [String(metadata.sectorId)] : []);
     }
-    if (metadata.sectorIds.has(sid)) return;
+    if (metadata.sectorIds.has(sid)) {
+      sectorClaimStamp(metadata, sid, nowMs);
+      return;
+    }
+    for (const old of [...metadata.sectorIds]) {
+      if (!sectorClaimFresh(metadata, old, nowMs)) {
+        metadata.sectorIds.delete(old);
+        if (metadata.sectorClaimAts instanceof Map) metadata.sectorClaimAts.delete(old);
+        unindexOwnerSectorRow(entry, metadata, old);
+      }
+    }
     metadata.sectorIds.add(sid);
+    sectorClaimStamp(metadata, sid, nowMs);
     if (metadata.sectorId == null) metadata.sectorId = sid;
     entry.ownersVersion += 1;
     residencyMutationSeq += 1;
@@ -821,6 +886,7 @@ export function createAssetResidencyRegistry(options = {}) {
     entry.ownersVersion += 1;
     residencyMutationSeq += 1;
     for (const sid of ownerSectorIds(metadata)) {
+      sectorClaimStampIfMissing(metadata, sid);
       let sectorMap = sectorOwnerIndex.get(sid);
       if (!sectorMap) {
         sectorMap = new Map();
@@ -849,19 +915,7 @@ export function createAssetResidencyRegistry(options = {}) {
     entry.ownersVersion += 1;
     residencyMutationSeq += 1;
     for (const sid of ownerSectorIds(metadata)) {
-      const sectorMap = sectorOwnerIndex.get(sid);
-      if (sectorMap) {
-        const row = sectorMap.get(entry);
-        if (row) {
-          row.total -= 1;
-          entry.sectorOwnerRefs -= 1;
-          if (metadata.role !== 'player') row.nonPlayer -= 1;
-          if (row.total <= 0) {
-            sectorMap.delete(entry);
-            if (sectorMap.size === 0) sectorOwnerIndex.delete(sid);
-          }
-        }
-      }
+      unindexOwnerSectorRow(entry, metadata, sid);
     }
     rekeySoftBudgetClass(entry);
     rekeyGovernorBlocked(entry);
@@ -943,8 +997,10 @@ export function createAssetResidencyRegistry(options = {}) {
   function entryCorridorRank(entry) {
     if (!evictionCorridorRanks) return 0;
     let best = -1;
+    const nowMs = now();
     for (const metadata of entry.owners.values()) {
       for (const sectorId of ownerSectorIds(metadata)) {
+        if (!sectorClaimFresh(metadata, sectorId, nowMs)) continue;
         const rank = evictionCorridorRanks.get(String(sectorId));
         if (rank != null && rank > best) best = rank;
       }
@@ -1836,6 +1892,19 @@ export function createAssetResidencyRegistry(options = {}) {
     return true;
   }
 
+  // An exit sweep row qualifies only while at least one owner's claim to the
+  // departing sector is still live — a lapsed membership (the arm that posted it
+  // moved on) must not carry the entry into the exit-warm cohort.
+  function hasLiveSectorClaim(entry, sid, includePlayer, nowMs) {
+    for (const metadata of entry.owners.values()) {
+      if (!includePlayer && metadata.role === 'player') continue;
+      for (const memberSid of ownerSectorIds(metadata)) {
+        if (String(memberSid) === sid && sectorClaimFresh(metadata, memberSid, nowMs)) return true;
+      }
+    }
+    return false;
+  }
+
   function prepareSectorExit(sectorId = currentSectorId, options = {}) {
     const exactSectorId = sectorId == null ? null : String(sectorId);
     if (exactSectorId == null) return 0;
@@ -1846,9 +1915,11 @@ export function createAssetResidencyRegistry(options = {}) {
     let retained = 0;
     const exitSectorMap = sectorOwnerIndex.get(exactSectorId);
     if (exitSectorMap) {
+      const nowMs = now();
       // Snapshot as above — the warm retain indexes its own owner into this map.
       for (const [entry, row] of [...exitSectorMap]) {
         if (!includePlayer && row.nonPlayer <= 0) continue;
+        if (!hasLiveSectorClaim(entry, exactSectorId, includePlayer, nowMs)) continue;
         if (retain(entry.key, owner, { role: warmRole, sectorId: exactSectorId })) retained++;
       }
     }
@@ -1890,9 +1961,11 @@ export function createAssetResidencyRegistry(options = {}) {
     const includePlayer = options.includePlayer === true;
     const warmRole = includePlayer ? 'save-restore-hold' : 'warm-previous-sector';
     const exitSectorMap = sectorOwnerIndex.get(exactSectorId);
+    const nowMs = now();
     const rows = exitSectorMap
       ? [...exitSectorMap]
-        .filter(([, row]) => includePlayer || row.nonPlayer > 0)
+        .filter(([entry, row]) => (includePlayer || row.nonPlayer > 0)
+          && hasLiveSectorClaim(entry, exactSectorId, includePlayer, nowMs))
         .map(([entry]) => entry.key)
       : [];
     const owner = Object.freeze({ type: 'asset-warm-sector', sectorId: exactSectorId, generation: assetGeneration });
