@@ -1,6 +1,54 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current recovery — 10 October 2026, 10:08 UTC
+
+Branch: `dot/expansion-recovery-2026-10-10`, based on public master
+`38368f739952f7a8ad062600b5169d113e61e0e2`. The prior unpublished source checkout
+is unavailable. Current public source has been restored without replacing newer
+upstream work. Original plans, assets and reviewer acceptance fields are unchanged.
+
+Previously reported local head `7afd810ffd476358f91a6c6b6d2920dc14921e92` is
+not available from GitHub (checked 10 October, 10:02 UTC). Its historical 1,099-test
+result does not qualify this recovered checkout. Neither the full Orchard source
+nor its native test logs have been recovered. Initial unpublished Thimble payload
+`995ebb492f21e781da8e78bb7f51803f0fbb4b30` and later Orchard changes remain
+recovery obligations. Public continuation branch remains at already-merged
+`1394d2d3d60a0ebae5a113f20d82b22d70b404d0` from PR #246.
+
+Active work and ownership:
+- Integration owner: current source composition, dependency checks, handoff and
+  draft PR delivery. No merge or deployment.
+- Existing field-consequence author: reconstruct and freshly test the bounded
+  passive-planet Well consequence fix in `src/core/fields/fieldKernel.js`,
+  `src/systems/fields.js`, `src/data/planets.js`, `src/systems/planetRuntime.js`
+  and its focused test. Ordinary weapon consequences and field forces must remain.
+- Existing custody author: recover source fragments and tests before rebuilding
+  the missing Orchard base. Release, migration and finite-stock refill remain
+  incomplete and unapproved.
+- Existing independent reviewer: review newly reconstructed source; do not carry
+  prior acceptance forward to different or unverified bytes.
+- Existing route author: recover traffic reader/deadline helpers. No public route
+  is currently running; no complete earnings comparison has passed.
+
+Five review documents and the final traffic reader/deadline helpers have been
+recovered with hashes matching their prior versions. This does not recover their
+referenced source, generated assets or recordings. The last failed public route
+reported two sales totaling 312 recurring credits and a third pod lost to kinetic
+shock; it did not reach refill and remains a failed comparison.
+
+Current checks: locked production dependencies installed; package manifests
+unchanged; actual Rapier initialization and eight continuation-readiness tests
+passed on 10 October at 10:06 UTC. No reconstructed gameplay fix is approved yet.
+The new remote recovery branch was independently read back at the public base at
+10:07 UTC. Branch creation alone is not delivery of new code.
+
+Next: finish the field repair, run its focused and relevant regression checks,
+obtain independent review, commit the coherent source increment and verify its
+remote publication. Continue recovery of the same Orchard unit. All original
+P00–P21 and twenty-concept completion obligations remain open where not accepted.
+Historical sections below are retained as prior source-scoped results.
+
 ## Active continuation — 8 October 2026, 21:56 UTC
 
 Branch: `dot/expansion-continuation-2026-10-08`, starting from current master
