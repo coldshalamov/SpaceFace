@@ -23,6 +23,9 @@ import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const PQ023_H1 = process.env.SF_PQ023_H1 === '1';
+// SF_COMBAT_VFX_BAR=1: compact art-review sequence covering every VFX family (graphics bar sheets);
+// skips the acceptance strips, reel and report checks.
+const VFX_BAR = process.env.SF_COMBAT_VFX_BAR === '1';
 const PQ023_COMBAT_READABILITY_ONLY = process.env.SF_PQ023_COMBAT_READABILITY === '1';
 const PQ023_SMALL_DESTRUCTION_SALIENCE_ONLY =
   process.env.SF_PQ023_SMALL_DESTRUCTION_SALIENCE === '1';
@@ -108,6 +111,11 @@ try {
   });
   const spatialContract = await prepareCaptureTarget(page);
   const origin = spatialContract.target.center;
+  if (VFX_BAR) {
+    await captureVfxBar(page, { origin, explosionOrigin });
+    report = { mode: 'vfx-bar', captures, issues, ok: true };
+    await writeFile(path.join(OUT, 'report.json'), JSON.stringify(report, null, 2));
+  } else {
 
   const weapons = [
     ['kinetic', 'wpn_autocannon_m'],
@@ -536,6 +544,7 @@ try {
   await writeFile(path.join(OUT, 'report.json'), JSON.stringify(report, null, 2));
   if (!report.ok) process.exitCode = 1;
   console.log(JSON.stringify(report, null, 2));
+  }
 } finally {
   const video = page.video();
   await context.close().catch(() => {});
@@ -586,9 +595,157 @@ async function triggerImpact(targetPage, { weaponId, freezeMs }) {
   }, { id: weaponId, holdMs: freezeMs });
 }
 
-async function prepareCaptureTarget(targetPage) {
-  await targetPage.evaluate(async () => {
+async function captureVfxBar(targetPage, { origin, explosionOrigin }) {
+  const weapons = [
+    ['kinetic', 'wpn_autocannon_m', 82],
+    ['rail', 'wpn_railgun_m', 42],
+    ['plasma', 'wpn_plasma_cannon_m', 150],
+    ['beam', 'wpn_beam_laser_m', 30],
+    ['missile', 'wpn_missile_rack_m', 210],
+  ];
+  const settle = () => targetPage.waitForTimeout(220);
+  for (let i = 0; i < weapons.length; i++) {
+    const [family, weaponId, releaseWait] = weapons[i];
+    const tag = `bar-${String(i + 1).padStart(2, '0')}-${family}`;
+    await triggerMuzzle(targetPage, { ...origin, family, weaponId, index: i, freezeMs: 16 });
+    await capture(`${tag}-muzzle.png`, `${family} muzzle`); await settle();
+    await triggerFlight(targetPage, { ...origin, family, weaponId, index: i, freezeMs: 18, motion: false });
+    await capture(`${tag}-flight.png`, `${family} flight`);
+    await stopBeam(targetPage, { family, index: i }); await settle();
+    await triggerImpact(targetPage, { ...origin, weaponId, index: i, freezeMs: 16 });
+    await capture(`${tag}-impact.png`, `${family} impact contact`); await settle();
+    await triggerImpact(targetPage, { ...origin, weaponId, index: i, freezeMs: releaseWait });
+    await capture(`${tag}-release.png`, `${family} impact release`); await settle();
+    await triggerMaterialImpact(targetPage, { ...origin, weaponId, index: i, material: 'shield', freezeMs: 40 });
+    if (i === 0) {
+      console.log('[vfx-bar] shield probe', JSON.stringify(await targetPage.evaluate(() => {
+        const t = window.__sfCombatTargetEntity;
+        const b = t?.mesh?.userData?.shieldBubble;
+        return {
+          id: t?.id, type: t?.type, shield: t?.shield, shieldMax: t?.shieldMax, alive: t?.alive,
+          mesh: !!t?.mesh, bubble: !!b, bubbleVisible: b?.visible, aux: b?.userData?.shipAuxPool || null,
+          flash: b?.material?.uniforms?.uFlash?.value, scale: b?.scale?.x,
+        };
+      })));
+    }
+    await capture(`${tag}-shield.png`, `${family} shield contact`); await settle();
+    await triggerMaterialImpact(targetPage, { ...origin, weaponId, index: i, material: 'hull', freezeMs: 40 });
+    await capture(`${tag}-hull.png`, `${family} hull contact`); await settle();
+  }
+  // Shield break on the real shell.
+  await targetPage.evaluate(() => {
+    const vfx = window.SF.registry.get('vfx');
+    const spatial = window.__sfCombatSpatialContract;
+    window.__sfResetCombatVfx?.();
+    const t = window.__sfCombatTargetEntity;
+    if (t) t.shield = 0;
+    vfx._onDamage({
+      weaponId: 'wpn_plasma_cannon_m', attackerId: spatial.source.entityId,
+      targetId: window.__sfCombatTargetId, pos: spatial.target.contact,
+      approach: spatial.source.forward,
+      normal: { x: -spatial.source.forward.x, z: -spatial.source.forward.z },
+      shieldAbsorbed: true, brokeShield: true, amount: 40,
+    });
+    window.__sfFreezeCombatVfx?.(90);
+  });
+  await capture('bar-06-shield-break.png', 'shield break'); await settle();
+  await targetPage.evaluate(() => {
+    const t = window.__sfCombatTargetEntity;
+    if (t) t.shield = t.shieldMax;
+  });
+
+  await setCaptureTargetVisible(targetPage, false);
+  const blasts = [['small', 4, 70], ['ordinary', 8, 190], ['capital', 15, 430], ['capital', 15, 1030]];
+  for (let i = 0; i < blasts.length; i++) {
+    const [classId, radius, wait] = blasts[i];
+    await triggerExplosion(targetPage, { ...explosionOrigin, classId, radius, freezeMs: wait });
+    await capture(`bar-07-explosion-${classId}-${wait}.png`, `${classId} explosion ${wait}ms`);
+    await targetPage.waitForTimeout(160);
+  }
+  await setCaptureTargetVisible(targetPage, true);
+
+  // Damage smoke / venting on the real target hull.
+  await targetPage.evaluate(() => {
+    window.__sfResetCombatVfx?.();
+    const t = window.__sfCombatTargetEntity;
+    if (t) { t.hull = Math.max(1, (Number(t.hullMax) || 100) * 0.12); t.shield = 0; }
+    window.__sfFreezeCombatVfx?.(1600, { ambient: ['_updateDamageVenting', '_emitTrails'] });
+  });
+  await capture('bar-08-damage-smoke.png', 'damaged hull venting smoke'); await settle();
+  await targetPage.evaluate(() => {
+    const t = window.__sfCombatTargetEntity;
+    if (t) { t.hull = t.hullMax; t.shield = t.shieldMax; }
+  });
+
+  // Mining beam onto the target.
+  await targetPage.evaluate(() => {
+    const vfx = window.SF.registry.get('vfx');
+    window.__sfResetCombatVfx?.();
+    vfx._onMiningStart({ targetId: window.__sfCombatTargetId, verb: 'extract' });
+    window.__sfFreezeCombatVfx?.(700);
+  });
+  await capture('bar-09-mining-beam.png', 'mining beam'); await settle();
+  await targetPage.evaluate(() => {
+    const vfx = window.SF.registry.get('vfx');
+    vfx._onMiningStop();
+    window.__sfFreezeCombatVfx?.(600);
+  });
+
+  // Massline tether onto the target.
+  await targetPage.evaluate(() => {
     const sf = window.SF;
+    window.__sfResetCombatVfx?.();
+    sf.state.player = sf.state.player || {};
+    window.__sfSavedTether = sf.state.player.tether;
+    const target = window.__sfCombatTargetEntity;
+    const player = sf.state.entities.get(sf.state.playerId);
+    const length = target && player ? Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z) : 30;
+    sf.state.player.tether = {
+      ...(window.__sfSavedTether || {}),
+      active: true, targetId: window.__sfCombatTargetId, length, restLength: length, tension: 0.55,
+    };
+    window.__sfFreezeCombatVfx?.(500);
+  });
+  await capture('bar-10-tether.png', 'massline tether'); await settle();
+  await targetPage.evaluate(() => {
+    const sf = window.SF;
+    sf.state.player.tether = window.__sfSavedTether || { active: false };
+    window.__sfFreezeCombatVfx?.(600);
+  });
+
+  // Engine trails: let the real flight model run the player at full throttle for a moment.
+  await targetPage.evaluate(() => {
+    const sf = window.SF;
+    window.__sfResetCombatVfx?.();
+    window.__sfResumeCombatVfx?.();
+    sf.state.timeScale = Number(window.__sfCombatOriginalTimeScale) || 1;
+  });
+  await targetPage.keyboard.down('KeyW');
+  await targetPage.waitForTimeout(1800);
+  await targetPage.evaluate(() => {
+    const sf = window.SF;
+    sf.state.timeScale = 0;
+    sf.state.accumulator = 0;
+    sf.registry.get('vfx').update = () => {};
+  });
+  await targetPage.keyboard.up('KeyW');
+  await capture('bar-11-engine-trail.png', 'engine trail at full throttle');
+}
+
+async function prepareCaptureTarget(targetPage) {
+  await targetPage.evaluate(async (softwareParity) => {
+    const sf = window.SF;
+    if (softwareParity && sf.state.render?.softwareRenderer) {
+      // Software GL boots the emergency profile (bloom off, 0.34 dynamic resolution). Effects are
+      // judged with the shipped hardware presentation, so restore full resolution and bloom here;
+      // the frame rate is irrelevant to a frozen evidence frame.
+      const video = sf.state.settings?.video;
+      if (video) { video.dynamicResolution = false; video.bloom = true; }
+      sf.registry.get('render')?._adaptive?.setEnabled?.(false);
+      sf.state.render.dynResScale = 1;
+      sf.registry.get('render')?._applySize?.();
+      try { sf.state.render.bloom?.setOptions?.({ bloom: true }); } catch (_) { /* best effort */ }
+    }
     const player = sf.state.entities.get(sf.state.playerId);
     const vfx = sf.registry.get('vfx');
     const weaponSystem = sf.registry.get('weapons');
@@ -657,7 +814,18 @@ async function prepareCaptureTarget(targetPage) {
     window.__sfCombatTargetId = targetEntity ? targetEntity.id : 'capture-target';
     if (targetEntity) {
       // Let the renderer build the authored hull and its shield bubble before any trigger.
-      for (let f = 0; f < 90 && !targetEntity.mesh; f++) await new Promise((r) => requestAnimationFrame(r));
+      // Authored hulls admit asynchronously (proxy first); wait for the admitted root that carries
+      // the shield shell, bounded so a missing package cannot hang the capture.
+      const deadline = performance.now() + 45000;
+      const ready = () => {
+        const mesh = targetEntity.mesh;
+        return !!(mesh && mesh.userData && mesh.userData.shieldBubble && !mesh.userData.flightProxy);
+      };
+      while (!ready() && performance.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      // Two more presented frames so the swapped root has its world transform.
+      for (let f = 0; f < 4; f++) await new Promise((r) => requestAnimationFrame(r));
     }
     const target = targetEntity?.mesh || player.mesh.clone(true);
     const local = vfx._toLocalXZ(targetCenter.x, targetCenter.z, { x: 0, z: 0 });
@@ -804,10 +972,12 @@ async function prepareCaptureTarget(targetPage) {
       '_syncNpcJobSignatures', '_updateStationSideEvents', '_updateCeresJobActionVfx',
       '_updateWreckWisps', '_updateSeamMarkers', '_updateLootMagnet',
     ];
-    window.__sfFreezeCombatVfx = (advanceMs = 16) => {
+    window.__sfFreezeCombatVfx = (advanceMs = 16, options = {}) => {
       let remaining = Math.max(1, Number(advanceMs) || 16) / 1000;
       const saved = {};
+      const keep = new Set(options.ambient || []);
       for (const key of AMBIENT_EMITTERS) {
+        if (keep.has(key)) continue;
         if (typeof vfx[key] === 'function') { saved[key] = vfx[key]; vfx[key] = () => 0; }
       }
       try {
@@ -825,7 +995,7 @@ async function prepareCaptureTarget(targetPage) {
       }
       vfx.update = () => {};
     };
-  });
+  }, process.env.SF_ALLOW_SOFTWARE_GL === '1');
   await targetPage.waitForTimeout(900);
   return targetPage.evaluate(() => {
     window.__sfUpdateCombatSpatialOverlay?.();
@@ -835,7 +1005,14 @@ async function prepareCaptureTarget(targetPage) {
 
 async function setCaptureTargetVisible(targetPage, visible) {
   await targetPage.evaluate((nextVisible) => {
-    if (window.__sfCombatVfxCaptureTarget) window.__sfCombatVfxCaptureTarget.visible = nextVisible;
+    // A spawned target's mesh can be swapped by the renderer (authored admission / LOD), so
+    // resolve it through the entity each time rather than trusting the first mesh reference.
+    const targetEntity = window.__sfCombatTargetEntity;
+    if (targetEntity) {
+      targetEntity.__sfCaptureHidden = !nextVisible;
+      if (targetEntity.mesh) targetEntity.mesh.visible = nextVisible;
+      window.__sfCombatVfxCaptureTarget = targetEntity.mesh || window.__sfCombatVfxCaptureTarget;
+    } else if (window.__sfCombatVfxCaptureTarget) window.__sfCombatVfxCaptureTarget.visible = nextVisible;
     if (window.__sfCombatSpatialOverlay) {
       window.__sfCombatSpatialOverlay.style.display = nextVisible ? 'block' : 'none';
       if (nextVisible) window.__sfUpdateCombatSpatialOverlay?.();
@@ -1807,7 +1984,14 @@ async function buildEvidenceSheets() {
 
 async function capture(file, scenario, options = {}) {
   const fullPath = path.join(OUT, file);
-  await page.evaluate(() => window.__sfUpdateCombatSpatialOverlay?.());
+  await page.evaluate(async (clean) => {
+    window.__sfUpdateCombatSpatialOverlay?.();
+    const targetEntity = window.__sfCombatTargetEntity;
+    if (targetEntity?.mesh && !targetEntity.__sfCaptureHidden) targetEntity.mesh.visible = true;
+    // SF_COMBAT_CAPTURE_CLEAN=1: same frame without the evidence labels, for art review sheets.
+    if (clean && window.__sfCombatSpatialOverlay) window.__sfCombatSpatialOverlay.style.visibility = 'hidden';
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  }, process.env.SF_COMBAT_CAPTURE_CLEAN === '1');
   await page.screenshot({ path: fullPath, fullPage: false });
   const bytes = await readFile(fullPath);
   const sha256 = createHash('sha256').update(bytes).digest('hex');
