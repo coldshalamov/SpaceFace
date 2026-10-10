@@ -3152,6 +3152,7 @@ test('the pre-snag riser speaks while the hottest absorbable closes — never fo
   t.sim.step(); // a mid-tick spawn reaches the physics-backed query next step
   for (let i = 0; i < 12; i++) t.sim.step();
   assert.ok(risers().length > 0, 'a closing prey gets its escalation voice');
+  assert.ok(risers()[0].p.gain >= 0.1, `the whisper sits at the sibling floors (got ${risers()[0].p.gain})`);
   assert.ok(risers()[risers().length - 1].p.rate > risers()[0].p.rate,
     'the shimmer rises as the prey closes');
   assert.ok(prey.pos.x !== T.mawDist + 62 || t.sys._rt.phase === 'holding',

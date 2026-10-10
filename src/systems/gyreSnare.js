@@ -34,6 +34,7 @@ import {
   clearImpulseProvenance,
 } from '../combat/impulseKernel.js';
 import { queryAsteroidField, promoteAsteroidFieldRock } from '../world/asteroidField.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { GYRE_SNARE, GYRE_EVENTS, GYRE_ABSORBABLE_TYPES } from '../data/gyreSnare.js';
 
 const D = GYRE_SNARE;
@@ -421,7 +422,8 @@ export const gyreSnare = {
         // reads as the lash LOSING the ball, not rubble de-rezzing mid-flight.
         // The whip's own direction goes out too (pub.tornDir) so the tear ring
         // can stretch along the actual ejection axis, not a guessed radial.
-        rt.tornTrack = { id: emitId, ticks: Math.ceil(0.5 * TICKS_PER_S), dir: { x: ix, z: iz } };
+        rt.tornTrack = { id: emitId, ticks: Math.ceil(0.5 * TICKS_PER_S), dir: { x: ix, z: iz },
+          gen: occupantGenerationOf(torn) };
         // Same-tick freshness: the tear ring blooms where the body IS — coreId
         // clears above, so _publish won't rewrite corePos this tick; last tick's
         // published spot is stale by up to a shove's worth (a teleport past
@@ -441,7 +443,8 @@ export const gyreSnare = {
       if (torn && torn.alive !== false && torn.pos) {
         // gentle: the freed body stays alive under its mission owner — the
         // rubble's exit is a de-rez, not a debris scatter under a live body.
-        rt.tornTrack = { id: emitId, ticks: Math.ceil(0.5 * TICKS_PER_S), dir: null, gentle: reason === 'core_adopted' };
+        rt.tornTrack = { id: emitId, ticks: Math.ceil(0.5 * TICKS_PER_S), dir: null, gentle: reason === 'core_adopted',
+          gen: occupantGenerationOf(torn) };
         // Same-tick bloom freshness, like the tear lane: last tick's published
         // spot is stale by up to a step of the freed body's drift.
         const pub = this._ensurePub(st);
@@ -1909,7 +1912,8 @@ export const gyreSnare = {
     // the same tick the countdown would have anyway.
     if (rt.tornTrack) {
       const torn = state.entities ? state.entities.get(rt.tornTrack.id) : null;
-      if ((rt.tornTrack.ticks -= 1) <= 0 || !torn || torn.alive === false || !torn.pos) rt.tornTrack = null;
+      const recycled = torn && rt.tornTrack.gen != null && occupantGenerationOf(torn) !== rt.tornTrack.gen;
+      if ((rt.tornTrack.ticks -= 1) <= 0 || !torn || torn.alive === false || !torn.pos || recycled) rt.tornTrack = null;
     }
     // The overflow tail isn't tracked by name — recount it ~2x/s against the live
     // entity map instead of letting a quiet overflow death pin `· +N` for its whole
@@ -2226,7 +2230,9 @@ export const gyreSnare = {
     // ramp can fly the rubble off WITH it. Dead entity / elapsed window -> null.
     if (rt.tornTrack) {
       const torn = state.entities ? state.entities.get(rt.tornTrack.id) : null;
-      if (torn && torn.alive !== false && torn.pos && rt.tornTrack.ticks > 0) {
+      const tornOk = torn && torn.alive !== false && torn.pos
+        && (rt.tornTrack.gen == null || occupantGenerationOf(torn) === rt.tornTrack.gen);
+      if (tornOk && rt.tornTrack.ticks > 0) {
         pub.tornId = rt.tornTrack.id;
         pub.tornPos.x = torn.pos.x; pub.tornPos.z = torn.pos.z;
         if (rt.tornTrack.dir) { pub.tornDir.x = rt.tornTrack.dir.x; pub.tornDir.z = rt.tornTrack.dir.z; }
@@ -2445,7 +2451,9 @@ export const gyreSnare = {
           rt.snagRiserT = 5;
           const k = 1 - clamp((dHot - D.snagRadius * 0.4) / (band - D.snagRadius * 0.4), 0, 1);
           this.bus.emit('audio:cue', {
-            id: 'gyre_snare_riser', gain: 0.07, rate: 0.9 + 0.3 * k,
+            // 0.14 puts the whisper at the sibling floors (catch ratchet 0.16,
+            // tow latch 0.2) — at 0.07 the escalation beat sits under the hum.
+            id: 'gyre_snare_riser', gain: 0.14, rate: 0.9 + 0.3 * k,
             position: { x: hx, z: hz },
           });
         }
