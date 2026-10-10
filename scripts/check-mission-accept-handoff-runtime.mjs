@@ -128,8 +128,9 @@ try {
     const settled = await page.evaluate(() => {
       const state = window.SF.state;
       const trackedId = state.ui && state.ui.trackedMissionId;
-      return !!(state.missions.active || []).some((m) => m && m.status === 'active' && m.id === 'handoff_probe_bulk_trade')
-        && trackedId === 'handoff_probe_bulk_trade';
+      // The board offer becomes a newly numbered m_N instance; its sourceOfferId is the receipt.
+      return !!(state.missions.active || []).some((m) => m && m.status === 'active'
+        && m.sourceOfferId === 'handoff_probe_bulk_trade' && trackedId === m.id);
     });
     if (settled) break;
   }

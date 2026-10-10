@@ -970,7 +970,13 @@ export function createContractsScreen(ctx) {
     if (!dossier) return;
     for (const stop of stopDecrypt.splice(0)) stop();
     if (routeInstrument) { routeInstrument.dispose(); routeInstrument = null; }
-    endHold();
+    // A routine repaint may replace the button while the same offer is being held. Keep that
+    // progress only while its identity, stated terms and current eligibility still match.
+    const currentKey = acceptKey();
+    const sameActiveHold = hold && !hold.done && currentKey
+      && currentKey.getAttribute('data-accept') === hold.missionId
+      && hold.terms != null && offerTermsKey(hold.missionId, state) === hold.terms;
+    if (!sameActiveHold) endHold();
     for (const gauge of standGauges.splice(0)) { try { gauge.dispose(); } catch (_) { /* inert */ } }
     paintHoldPath = null;
     lastTetherG = null;
@@ -1136,8 +1142,13 @@ export function createContractsScreen(ctx) {
   function startHold(source) {
     const key = acceptKey();
     if (!key) return;
+    const missionId = key.getAttribute('data-accept');
+    const terms = offerTermsKey(missionId, ctx.state || {});
+    if (terms == null) return;
+    if (hold && (hold.missionId !== missionId || hold.terms !== terms)) endHold();
     if (hold && hold.done) return;
-    if (!hold) hold = { frac: 0, dir: 1, source, ms: acceptHoldMs, last: holdClock(), frame: 0, done: false };
+    if (!hold) hold = { frac: 0, dir: 1, source, ms: acceptHoldMs, last: holdClock(),
+      frame: 0, done: false, missionId, terms };
     else { hold.dir = 1; hold.source = source; }
     if (!hold.frame && typeof requestAnimationFrame === 'function') { hold.last = holdClock(); hold.frame = requestAnimationFrame(stepHold); }
     else if (typeof requestAnimationFrame !== 'function') { hold.frac = 1; fireHold(); }
@@ -1263,6 +1274,7 @@ export function createContractsScreen(ctx) {
     const list = sortBoardOffers(offers(state), state, focusId());
     const m = list.find((x) => String(mid(x)) === selectedId) || list[0];
     if (!m) {
+      endHold();
       mountDataState(dossierEl, 'empty', {
         code: 'BRIEF_UNSELECTED',
         headline: 'No mission selected.',
@@ -1279,6 +1291,7 @@ export function createContractsScreen(ctx) {
       && String(attention.focusMissionId) === String(mid(m));
     const filing = finalDispositionPresentation(m);
     if (filing) {
+      endHold();
       dossierEl.innerHTML = finalDispositionDossierHtml(m, filing, {
         origin: (ctx.station && ctx.station.name) || 'Ash Cache',
         focusAccept,
@@ -1424,7 +1437,9 @@ export function createContractsScreen(ctx) {
   const onAccept = (ev) => (ev.target && ev.target.closest ? ev.target.closest('.sx-ct-commit[data-accept]:not(:disabled)') : null);
   el.addEventListener('pointerdown', (ev) => { if (onAccept(ev) && ev.button === 0) { pointerAt = holdClock(); startHold('pointer'); } });
   for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
-    el.addEventListener(type, (ev) => { if (onAccept(ev)) { pointerAt = holdClock(); releaseHold('pointer'); } }, true);
+    el.addEventListener(type, (ev) => {
+      if (onAccept(ev) || hold?.source === 'pointer') { pointerAt = holdClock(); releaseHold('pointer'); }
+    }, true);
   }
   el.addEventListener('keydown', (ev) => {
     if (!onAccept(ev) || (ev.key !== 'Enter' && ev.key !== ' ')) return;
@@ -1438,6 +1453,21 @@ export function createContractsScreen(ctx) {
     keyAt = holdClock();
     releaseHold('key');
   });
+
+  // A repaint detaches the pressed key, so its release can land on the document instead. Keep
+  // releases authoritative even after focus/pointer ownership leaves the old DOM node.
+  const releaseTarget = el.ownerDocument || globalThis.document;
+  const onPointerReleased = () => {
+    if (hold?.source !== 'pointer') return;
+    pointerAt = holdClock(); releaseHold('pointer');
+  };
+  const onKeyReleased = (ev) => {
+    if (hold?.source !== 'key' || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+    keyAt = holdClock(); releaseHold('key');
+  };
+  releaseTarget?.addEventListener?.('pointerup', onPointerReleased, true);
+  releaseTarget?.addEventListener?.('pointercancel', onPointerReleased, true);
+  releaseTarget?.addEventListener?.('keyup', onKeyReleased, true);
 
   el.addEventListener('click', (ev) => {
     const acc = ev.target.closest('[data-accept]');
@@ -1481,6 +1511,9 @@ export function createContractsScreen(ctx) {
     },
     dispose() {
       if (ctx.bus && ctx.bus.off) ctx.bus.off('mission:updated', onMissionChanged);
+      releaseTarget?.removeEventListener?.('pointerup', onPointerReleased, true);
+      releaseTarget?.removeEventListener?.('pointercancel', onPointerReleased, true);
+      releaseTarget?.removeEventListener?.('keyup', onKeyReleased, true);
       for (const stop of stopDecrypt.splice(0)) stop();
       if (routeInstrument) { routeInstrument.dispose(); routeInstrument = null; }
       cancelPendingCommit();

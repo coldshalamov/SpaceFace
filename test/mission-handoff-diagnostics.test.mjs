@@ -92,3 +92,30 @@ test('snapshot reads real state/screen/DOM surfaces without changing them', () =
   assert.deepEqual(snapshot.dock, { present: false });
   assert.equal(JSON.stringify({ state, player }), before);
 });
+
+test('probe settlement follows the accepted instance receipt and exact tracked identity', async () => {
+  const { missions } = await import('../src/systems/missions.js');
+  const owner = Object.create(missions);
+  owner.state = { meta: { seed: 47 }, simTime: 120, tick: 7200, missions: { nextId: 3 } };
+  const offer = { id: 'handoff_probe_bulk_trade', type: 'bulk_trade',
+    params: { cmdtyId: 'cmdty_ore_iron', qty: 6 } };
+  const instance = owner._instanceFromOffer(offer);
+  assert.equal(instance.id, 'm_3');
+  assert.equal(instance.sourceOfferId, offer.id);
+  const marker = 'const settled = await page.evaluate(';
+  const start = source.indexOf(marker);
+  const end = source.indexOf(');\n    if (settled)', start);
+  assert.ok(start >= 0 && end > start, 'the actual probe settlement predicate must exist');
+  const predicate = source.slice(start + marker.length, end);
+  const state = { missions: { active: [instance] }, ui: { trackedMissionId: instance.id } };
+  const settled = () => runInNewContext(`(${predicate})()`, { window: { SF: { state } } });
+  assert.equal(settled(), true, 'a successful acceptance uses the new instance ID');
+  state.ui.trackedMissionId = offer.id;
+  assert.equal(settled(), false, 'tracking the source offer is not tracking its instance');
+  state.ui.trackedMissionId = instance.id;
+  instance.sourceOfferId = 'unrelated_offer';
+  assert.equal(settled(), false, 'an unrelated tracked contract cannot settle this probe');
+  instance.sourceOfferId = offer.id;
+  instance.status = 'completed';
+  assert.equal(settled(), false, 'only an active instance settles the acceptance probe');
+});

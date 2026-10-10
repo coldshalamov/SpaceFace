@@ -1,7 +1,41 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
-## Current implementation — 10 October 2026, 10:41 UTC
+## Current implementation — 10 October 2026, 11:00 UTC
+
+Verified public draft PR #262 head: `9c959be34de1abc566763a1492b20251c2d36ac8`.
+The schema/save15 and dock-observer increment is published. Its simulation CI
+exposed expected-hash drift. Exact before/after standard, V3 and reload60 snapshots
+show only `meta.version: 14 → 15`; metrics and traces match. Replacing only that
+field reconstructs every old digest. Evidence is in
+[evidence/schema-v15-hash-reconciliation-2026-10-10.json](evidence/schema-v15-hash-reconciliation-2026-10-10.json).
+Only four digest fields in the two expected files are updated; no gameplay metric,
+assertion or tolerance changes. Eight affected/companion replay commands pass.
+Phase0 passed the corrected hash stage and is being rerun after materializing its
+missing public Kestrel assets. This is not a claim of fully green CI.
+
+A separate reproduced Contracts defect is repaired: repainting the unchanged,
+still-eligible offer no longer cancels an active acceptance hold. Selection,
+removal, changed terms/eligibility, hide/disposal and key/pointer release still
+cancel. Document release handlers cover a replaced button and are removed on
+disposal. The existing P04 fixture now exercises real dossier composition; its
+pre-fix red is retained. Thirteen focused author checks pass; integration reran the
+P04/diagnostic selection, ten passing test cases. The handoff probe now follows the
+accepted instance's `sourceOfferId` and tracked instance ID. Its final deadline and
+assertions remain. This reproduces a defect, not the cause of every historical CI
+failure. These owned changes and the digest correction are next for publication.
+
+The same Orchard unit remains active: native construction review found tapered
+prism and claimed-body cleanup defects, with failed source preserved. Authored v4
+receiver proxies correct the actual native hull mismatch without relaxing geometry
+checks or changing visible meshes. Native owner and reviewer are verifying the
+successor. Geometry/render owner is binding actual current native jaw poses;
+packaging owner is rebuilding normal releases/packages/census from corrected
+source. Earlier source previews remain source-only evidence. Release motor,
+finite refill and ordinary earning route remain unfinished. No final acceptance,
+merge or deployment is implied.
+
+## Historical implementation — 10 October 2026, 10:41 UTC
 
 Draft PR #262, branch `dot/expansion-recovery-2026-10-10`, remains based on
 master `38368f739952f7a8ad062600b5169d113e61e0e2` (checked 10:41 UTC).
