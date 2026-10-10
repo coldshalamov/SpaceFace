@@ -43,9 +43,23 @@ passed on 10 October at 10:06 UTC. No reconstructed gameplay fix is approved yet
 The new remote recovery branch was independently read back at the public base at
 10:07 UTC. Branch creation alone is not delivery of new code.
 
-Next: finish the field repair, run its focused and relevant regression checks,
-obtain independent review, commit the coherent source increment and verify its
-remote publication. Continue recovery of the same Orchard unit. All original
+Field consequence reconstruction is complete and independently reviewed on this
+base: 25 focused cases, 99 adjacent cases, 32 differential cases and 14 independent
+review cases pass (overlapping selections, not a summed full-game count). Root
+independently reran the 25 focused cases. Four native actor roles over 360 ticks
+produce byte-identical motion, consumed commands, heat/stage and damage results
+between public baseline and repaired source. No force or planetary damage was
+weakened. The initial native observer had an invalid command-count expectation for
+a coasting prop; that failed attempt is retained, and no source change was needed.
+
+The repair prevents the passive planetary field from applying weapon-Well grind
+priming and exit hitstun. Normal weapon and machinery Wells retain their aggregate
+consequences, including earned release on expiry, destruction and disruption.
+Public route, model activation and whole-expansion acceptance remain open.
+
+Draft delivery: [PR #262](https://github.com/coldshalamov/SpaceFace/pull/262).
+Next: publish and verify this exact reviewed five-path source/test increment, then
+continue reconstruction of the missing Orchard source and custody unit. Continue recovery of the same Orchard unit. All original
 P00–P21 and twenty-concept completion obligations remain open where not accepted.
 Historical sections below are retained as prior source-scoped results.
 

@@ -242,6 +242,8 @@ export const planetRuntime = {
     fsys.registerExternal({
       id: rt.fieldId,
       kind: 'well',
+      // Passive gravity keeps the shared force law, without weapon-style grind/exit stun.
+      wellConsequences: site.field.wellConsequences,
       center: { x: rt.center.x, z: rt.center.z },
       radius: site.field.radius,
       strength: site.field.strength,
