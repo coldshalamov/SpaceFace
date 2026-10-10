@@ -403,9 +403,13 @@ export function createAssetResidencyRegistry(options = {}) {
       // its sector into the claim — corridor rank + the sector index must see the
       // newest consumer's sector, or the entry evicts first under pressure while
       // its real consumer sector sits in-corridor (late re-decode pop).
-      if (metadata.sectorId != null) unionOwnerSector(entry, existingMetadata, metadata.sectorId);
+      // The union members classify by THIS retain's demand class — a warm arm
+      // re-posting onto a shared non-arm row must mint a lapse-able claim over
+      // the same post, not an immortal one keyed to the row's mint-time role.
+      const postArmClass = claimArmClass(metadata);
+      if (metadata.sectorId != null) unionOwnerSector(entry, existingMetadata, metadata.sectorId, postArmClass);
       if (metadata.sectorIds instanceof Set) {
-        for (const sid of metadata.sectorIds) unionOwnerSector(entry, existingMetadata, sid);
+        for (const sid of metadata.sectorIds) unionOwnerSector(entry, existingMetadata, sid, postArmClass);
       }
       return false;
     }
@@ -511,7 +515,10 @@ export function createAssetResidencyRegistry(options = {}) {
     if (entry && entry.state === 'resident') {
       const existingMetadata = entry.owners.get(owner);
       if (existingMetadata) {
-        unionOwnerSector(entry, existingMetadata, sectorId);
+        // The reclaim consult is definitionally arm-side regardless of the row's
+        // mint-time role — a shared runtime-cache row must not mint an immortal
+        // claim for a retracted arm.
+        unionOwnerSector(entry, existingMetadata, sectorId, true);
         entry.lastWarmClaimAtMs = now();
         return true;
       }
@@ -529,7 +536,10 @@ export function createAssetResidencyRegistry(options = {}) {
             meta.sectorIds = new Set(meta.sectorId != null ? [String(meta.sectorId)] : []);
           }
           meta.sectorIds.add(String(sectorId));
-          sectorClaimStamp(meta, String(sectorId), now());
+          // The consult posts arm demand into whatever request is racing it — the
+          // claim must lapse with the arm even when the request itself is not
+          // warm-role (it propagates through priorAts at commit).
+          sectorClaimStamp(meta, String(sectorId), now(), true);
         }
         // Re-stamp the entry's warm-claim where one exists — its post-settle idle sort
         // keeps the armed cohort young even while the decode is still landing.
@@ -817,15 +827,26 @@ export function createAssetResidencyRegistry(options = {}) {
   const SECTOR_CLAIM_PRUNE_INTERVAL_MS = 30000;
 
   // Warm-purpose claim roles (mirror of assetLoader's WARM_PURPOSE_RESIDENCY_ROLE,
-  // duplicated to keep this module a leaf): rows whose role is arm-side mint
-  // lapse-able claims — the re-post cadence is the proof of life. Every other
-  // role's owner row IS the demand (a mounted boundary, a session/decode-cache
-  // pin, the player): it stamps once at admission and never re-posts, so its
-  // claims cannot lapse while the row lives.
+  // duplicated to keep this module a leaf): an arm-side POST mints a lapse-able
+  // claim — the re-post cadence is the proof of life. Any other post is live
+  // demand (a mounted boundary, a session/decode-cache pin, the player): it
+  // stamps once at admission and never re-posts, so its claims cannot lapse
+  // while the row lives. The class is a property of the posting, not the stored
+  // row — an arm post landing on a shared non-arm row (the session/decode-cache
+  // owners) still mints a lapse-able claim, and a live post on an arm-minted row
+  // still mints an immortal one.
   const SECTOR_ARM_CLAIM_ROLE = /warm|runway|prewarm|armory|predicted/i;
 
-  function sectorClaimStamp(metadata, sid, nowMs) {
-    if (SECTOR_ARM_CLAIM_ROLE.test(String(metadata && metadata.role || ''))) {
+  // decodeWarm marks a warm-purpose retain on a non-arm-role row (the decode-cache
+  // owner's boundary-scoped serves carry it): those posts are arm demand too.
+  function claimArmClass(postMeta) {
+    return SECTOR_ARM_CLAIM_ROLE.test(String(postMeta && postMeta.role || ''))
+      || (postMeta && postMeta.decodeWarm === true);
+  }
+
+  function sectorClaimStamp(metadata, sid, nowMs, armClass) {
+    if (armClass == null) armClass = claimArmClass(metadata);
+    if (armClass) {
       let ats = metadata.sectorClaimAts;
       if (!(ats instanceof Map)) ats = metadata.sectorClaimAts = new Map();
       ats.set(sid, nowMs);
@@ -895,7 +916,7 @@ export function createAssetResidencyRegistry(options = {}) {
   // block alone runs here. New-member adds opportunistically prune lapsed
   // members (with their index rows) so the union tracks live demand instead of
   // accumulating every sector the owner was ever armed from.
-  function unionOwnerSector(entry, metadata, sectorId) {
+  function unionOwnerSector(entry, metadata, sectorId, armClass) {
     if (sectorId == null) return;
     const sid = String(sectorId);
     const nowMs = now();
@@ -903,7 +924,7 @@ export function createAssetResidencyRegistry(options = {}) {
       metadata.sectorIds = new Set(metadata.sectorId != null ? [String(metadata.sectorId)] : []);
     }
     if (metadata.sectorIds.has(sid)) {
-      sectorClaimStamp(metadata, sid, nowMs);
+      sectorClaimStamp(metadata, sid, nowMs, armClass);
       // Same-sid re-posts dominate the poll loop — sweep lapsed members here too
       // (amortized) or a live re-post keeps a dead remainder indexed forever.
       const lastPruneAt = typeof metadata.lastSectorClaimPruneAt === 'number'
@@ -917,7 +938,7 @@ export function createAssetResidencyRegistry(options = {}) {
     metadata.lastSectorClaimPruneAt = nowMs;
     pruneLapsedSectorClaims(entry, metadata, sid, nowMs);
     metadata.sectorIds.add(sid);
-    sectorClaimStamp(metadata, sid, nowMs);
+    sectorClaimStamp(metadata, sid, nowMs, armClass);
     if (metadata.sectorId == null) metadata.sectorId = sid;
     entry.ownersVersion += 1;
     residencyMutationSeq += 1;

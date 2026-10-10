@@ -135,6 +135,37 @@ test('same-sid warm re-posts prune lapsed union members (amortized)', () => {
   assert.equal(registry.prepareSectorExit('B'), 0, 'pruned member no longer qualifies for B');
 });
 
+test('claim lapse-ability follows the POSTING class, not the stored row role', () => {
+  const t = clock();
+  const registry = createAssetResidencyRegistry({ now: t.now });
+  registry.registerAsset('k:shared', [gpuResource('s')], { byteSize: 8 });
+  registry.registerAsset('k:cache', [gpuResource('c')], { byteSize: 8 });
+  registry.registerAsset('k:req2', [gpuResource('r2')], { byteSize: 8 });
+  const sharedOwner = { type: 'session-owner' };
+  const decodeOwner = { type: 'decode-cache-owner' };
+
+  // Vector 1 — reclaimWarm posts arm demand onto a runtime-cache-minted shared
+  // row: the arm claim must lapse while the row's own live claim survives.
+  registry.retain('k:shared', sharedOwner, { role: 'runtime-cache', sectorId: 'A' });
+  assert.equal(registry.reclaimWarm('k:shared', sharedOwner, 'B'), true);
+
+  // Vector 2 — a decodeWarm retain on the decode-cache owner is arm provenance
+  // even though the row's role is non-arm.
+  registry.retain('k:cache', decodeOwner, { role: 'decode-cache', sectorId: 'C', decodeWarm: true });
+
+  // Vector 3 — a non-warm request racing a reclaim consult propagates the
+  // consult's arm claim at commit, not a live one keyed to the request role.
+  const request = registry.beginRequest('k:req2', sharedOwner, { role: 'runtime-cache' });
+  registry.reclaimWarm('k:req2', sharedOwner, 'D');
+  assert.equal(request.commit(), true);
+
+  t.advance(STALE_MS + 10000);
+  assert.equal(registry.prepareSectorExit('B'), 0, 'arm post on a shared row lapses');
+  assert.equal(registry.prepareSectorExit('A'), 1, "the row's own live claim survives");
+  assert.equal(registry.prepareSectorExit('C'), 0, 'decodeWarm claim lapses with the arm');
+  assert.equal(registry.prepareSectorExit('D'), 0, 'reclaim stamp on a racing request lapses');
+});
+
 test('request claims pending past the horizon commit clamped to it — not born lapsed', () => {
   const t = clock();
   const registry = createAssetResidencyRegistry({ now: t.now });
