@@ -1082,20 +1082,15 @@ async function prepareCaptureTarget(targetPage) {
 }
 
 async function setCaptureTargetVisible(targetPage, visible) {
-  await targetPage.evaluate((nextVisible) => {
+  await targetPage.evaluate(async (nextVisible) => {
     // A spawned target's mesh can be swapped by the renderer (authored admission / LOD), so
     // resolve it through the entity each time rather than trusting the first mesh reference.
     const targetEntity = window.__sfCombatTargetEntity;
     if (targetEntity) {
-      // The renderer owns entity root visibility every frame, so a real entity is "hidden" by
-      // parking it far off-frame and restored to its contract position.
-      const home = window.__sfCombatSpatialContract?.target?.center;
+      // The renderer owns a real entity's root visibility (and re-admits a moved view slowly on
+      // software GL), so the spawned target simply stays in frame: explosion strips then also
+      // show scale against a real hull. Only the evidence overlay follows the flag.
       targetEntity.__sfCaptureHidden = !nextVisible;
-      if (home) {
-        const px = nextVisible ? home.x : home.x + 6000;
-        targetEntity.pos.x = px; targetEntity.pos.z = home.z;
-        if (targetEntity.prevPos) { targetEntity.prevPos.x = px; targetEntity.prevPos.z = home.z; }
-      }
       const root = window.SF.registry.get('render')?._meshes?.get?.(targetEntity.id) || targetEntity.mesh;
       window.__sfCombatVfxCaptureTarget = root || window.__sfCombatVfxCaptureTarget;
     } else if (window.__sfCombatVfxCaptureTarget) window.__sfCombatVfxCaptureTarget.visible = nextVisible;
