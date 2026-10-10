@@ -833,21 +833,37 @@
         "retail-phone webkit page crash canon",
         "browser(1)(2) skipped by rollup"
       ]
+    },
+    {
+      "wave": 136,
+      "head": "35d35d292",
+      "lanes": {
+        "popin": {
+          "saturated": false,
+          "findings": 3,
+          "landed": "posting-class claim lapse-ability (3-vector mislabel fix) + 2 documented"
+        },
+        "boot": {
+          "saturated": false,
+          "findings": 4,
+          "landed": "gen-guard consume + peek_card_data worker op + mount re-arm + burst coalesce"
+        },
+        "global": {
+          "saturated": false,
+          "verdict": "B1 render-list diet unowned (~11ms/frame); #260 pursue-to-merge; B5 programs + B9 heap unowned"
+        }
+      },
+      "golden": "0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1",
+      "notes": "boot F1-F4 all landed as sketched (F2 chose projection op over full-prepare reuse — no migration drift on card); popin F1 real W135 defect fixed (arm posts on shared non-arm rows minted immortal claims)"
     }
   ],
   "laneStatus": {
-    "lod-in-frame": "closed@w123 (3 consecutive saturated)",
-    "in-flight-hitches": "closed@w128 (3 consecutive saturated)",
-    "popin": {
-      "streak": 0,
-      "lastSaturated": false,
-      "wave": 135
-    },
-    "boot": {
-      "streak": 0,
-      "lastSaturated": false,
-      "wave": 135
-    }
+    "lod": "closed-3x",
+    "popin": "active-0/3",
+    "boot": "active-0/3",
+    "hitches": "closed-3x",
+    "skeptic": "rotating-every-5th",
+    "global": "periodic-every-10-15"
   },
   "s1Spike": {
     "stageA": {
@@ -868,5 +884,6 @@
       "nextStage": "B: cargo:jettison rpc + facade-miss census/gate",
       "completedAt": "2026-10-09"
     }
-  }
+  },
+  "lastUpdated": "2026-10-10T00:00:00Z"
 }

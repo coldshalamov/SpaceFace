@@ -2825,3 +2825,30 @@ Audited `dee9cf774` (the W134 landing) against commits after wave-130. All four 
 - Golden `0b33dde` bit-identical post-edit; focused suites green — sector-claims 5/5, residency accounting/detached-owners/refcounts + decode-runway + presentation + render-poll 65/66 (`headless real release-GLB traversal` 120 s timeout = documented env-bound canon); save-load-integrity 8/9 (`autosave capture plan` pin byte-identical on clean HEAD — canon).
 
 Wave 135 saturation streaks: lod CLOSED, hitches CLOSED, popin 0/3, boot 0/3.
+
+## Wave 136 (complete — HEAD 35d35d292)
+
+Lanes: popin + boot + blind-global reviewer (periodic, incl. PR #260 inspection). Golden `0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1` verified bit-identical post-wave.
+
+### boot — saturated: false
+
+- F1 deferred-consume stale verdict (M, MECHANISM VERIFIED → fixed): `loadAsync` trusted `await primaryPromise` even when a same-slot store write landed in the await window — the spec verdict was minted against pre-write bytes. `loadAsync` now re-verifies `spec.sig === 'gen:' + _saveStoreGeneration` after the await and re-prepares from a fresh `getItem` when the store moved. (`acceptSeq` guards restore-vs-restore, not generations — the sig re-check is the generation guard.)
+- F2 lazy-fill main-thread parse (M, MECHANISM VERIFIED → fixed): `fillSlotDataLazy` paid a full `JSON.parse` + migrate/normalize on the settle task to draw one card. New `peek_card_data` worker op projects `{player, story, missions, aceMemory, meta}` off the stored shape verbatim (no migrations — byte-identical card output), drops world/thumbnail off postMessage. `peekSaveCardData` wraps the consult with a 2500ms timeout resolving `cardData || null`; the sync `unwrapSlotDataRaw` tail is the identical fallback for no-worker/peek-fail.
+- F3 restored selection un-armed (L → fixed): mounting the screen onto a previously-restored `refs.selected` never emitted `save:loadSpeculationTarget`, so the picked row carried no covering spec until the next click. `_render`'s restore branch now emits `{slot, raw: picked.raw, sig: picked.sig}` — idempotent under the arm's same-slot+sig early-out.
+- F4 same-slot burst re-dispatch (L, UNVERIFIED → fixed as sketched): a same-slot write storm re-armed one worker prepare per bump. `_pendingSlotRearm` now coalesces same-slot bumps onto one `setTimeout(0)` re-arm carrying the freshest `{slot, raw: bumpValue, gen}` — later bumps refresh pending bytes only.
+- Probe-verified `peekCardDataJson` headlessly: ok path, world/thumbnail dropped, bad-json → `parse_failed`, markerless → `bad_format`, legacy top-level shape, handler envelope. 6/7 save-load-integrity (autosave-capture-plan pin re-fired — canon); 49/49 focused green.
+
+### popin — saturated: false
+
+- F1 claim lapse-ability keyed to the stored row's role, not the posting's class (M, MECHANISM VERIFIED → fixed): `sectorClaimStamp` classified a new post by `existingMetadata.role`, so every arm-purpose post landing on a shared non-arm row minted an immortal `sectorLiveClaims` member. Three verified vectors: `reclaimWarm` resident union on `runtime-cache`-minted rows; `decode-cache` warm retains (`decodeWarm:true` posts — the dominant vector, one immortal duplicate per boundary-scoped warm load); the `reclaimWarm` request branch propagating live claims at commit via racing non-warm requests. Mechanism: dead claims kept entries qualified on `hasLiveSectorClaim` → every exit-warm mint re-retained retracted-arm entries (cohort dilution scaling with session history), and stale-claimed entries outranked honest no-corridor entries in `entryCorridorRank` under byte pressure → second-order cold re-decode on the honest file. Fix: `claimArmClass(postMeta)` = `SECTOR_ARM_CLAIM_ROLE.test(role) || decodeWarm === true`, threaded per-post through `unionOwnerSector`, `reclaimWarm` (both branches — definitionally arm-side), and the retain merge path; the mint seed + `sectorClaimStampIfMissing` backfill classify on their own posting metadata. New test covers all three vectors; 153/154 residency suite green (headless-GLB 120s = canon).
+- F2 live-claim accrual on shared owners (L, MECHANISM VERIFIED mechanism / UNVERIFIED residual → documented): correctly-labeled live posts accumulate per-served-sector on `decodeCacheOwner`/`bootstrapResidencyOwner` — mostly intended return-visit signal; no fix beyond F1's route; cap-if-bloat note recorded.
+- F3 missing-stamp back-compat hole (UNVERIFIED → note): `sectorClaimFresh` returns true for unstamped members — pure belt today (all four write paths stamp); hardening note recorded.
+- Probes (a/d/e) verified clean; all W135 machinery re-verified PASS (per-sid provenance, symmetric `exitWarmQualifies`, amortized prune, born-lapsed clamp, suppressed-emit fallback).
+
+### global — saturated: false (blind reviewer, ~W135 cadence)
+
+- Lane-coverage map: **B1** (whole-scene `scene.updateMatrixWorld` + `projectObject` traversal ≥2×/frame under the GRAPH route, owner-measured ~11ms pre-park) **missed by every lane**; B3/B4 (econTick 2.7–3.9ms p95 + Rapier FFI allocs) covered by the PR #260 merge; B5 (36 draw-time shader links / ~26 unique programs) unowned; B9 (485MB heap floor) unowned. Recommended order: merge #260 → render-list diet (flat drawable registry — the W121 sketch stands unimplemented) → fence→view direct bind → program consolidation.
+- PR #260 inspection: "pursue to merge" — transport sound, B1/B2/B7 untouched by it.
+- Rejected-approach adjudication recorded in the report (wave136-reports/global.md).
+
+Wave 136 saturation streaks: lod CLOSED (3/3), popin 0/3, boot 0/3, hitches CLOSED (3/3). Campaign saturation: no — B1 render-list diet + B5 program consolidation + B9 heap floor remain unowned and material per the blind reviewer.
