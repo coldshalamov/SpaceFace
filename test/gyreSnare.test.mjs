@@ -1629,6 +1629,9 @@ test('the first net fill emits gyre:caught once on the edge — the pad whisper 
   t.state.input.actions.gyreSnare = true; t.sim.step();
   assert.equal(t.state.gyreSnare.basinCount, 1);
   assert.equal(caught().length, 1, 'the empty→net edge emits exactly once');
+  // The whisper grades by the meal's heft — basinMass rides the payload or a
+  // regression to mass:0 would silently flatten the pad pulse to base.
+  assert.equal(caught()[0].p.mass, 6, 'the edge carries the heaviest meal in the net');
   // A new shown peak re-ticks the AUDIO cue only — the pad edge stays single-shot
   // or a dense belt feed would buzz it on every arrival.
   rock(t.sim, T.mawDist + 50, -20, 6, 4);
