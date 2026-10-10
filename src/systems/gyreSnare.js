@@ -2614,7 +2614,7 @@ export const gyreSnare = {
       } else if (Number.isFinite(tk) && tk >= rt.strainCueNextTick) {
         rt.strainCueNextTick = tk + Math.ceil(0.5 * TICKS_PER_S);
         if (this.bus) this.bus.emit('audio:cue', {
-          id: 'gyre_snare_strain', gain: 0.3 + 0.3 * pub.strain01, rate: 0.9,
+          id: 'gyre_snare_strain', gain: 0.3 + 0.3 * pub.strain01, rate: 0.85 + 0.35 * pub.strain01,
           position: { x: pub.corePos.x, z: pub.corePos.z },
         });
       }

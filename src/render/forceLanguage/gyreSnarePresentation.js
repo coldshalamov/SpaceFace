@@ -1442,7 +1442,7 @@ export class GyreSnarePresentation {
           // mid-collapse while every sibling fades breaks the close's one
           // language. (Invisible rings seed dead — an opacity seed never
           // re-shows a ring the live path already hid.)
-          grip: this._gripMat.opacity * calmA,
+          grip: this._gripMat.uniforms.uOp.value * calmA,
           halo: this._haloMat.opacity * calmA,
           basinHalo: this._basinHaloMat.opacity * calmA,
           // The mote scatter too — kk≈1 on frame 0 stepped the funnel UP to full
@@ -1507,7 +1507,7 @@ export class GyreSnarePresentation {
         this._bodyMat.opacity = sd.body * kk * flashCalm;
         this._mawMat.opacity = sd.maw * kk * flashCalm;
         this._discMat.uniforms.uAlpha.value = sd.disc * kk * flashCalm;
-        this._gripMat.opacity = sd.grip * kk * flashCalm;
+        this._gripMat.uniforms.uOp.value = sd.grip * kk * flashCalm;
         this._haloMat.opacity = sd.halo * kk * flashCalm;
         this._basinHaloMat.opacity = sd.basinHalo * kk * flashCalm;
         this._closeK = kk; // the clump block below shrinks the freed ball on the same ramp

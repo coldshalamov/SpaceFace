@@ -3149,7 +3149,9 @@ export const RECIPES = [
     category: 'weapon',
     type: 'noise_burst',
     noiseColor: 'pink',
-    gainEnvelope: { attack: 0.18, sustain: 0.35, release: 1.4 },
+    // Attack sits past the launch crack's ~0.3 s transient — the flight voice
+    // swells after the launch body's sub clears instead of both peaking together.
+    gainEnvelope: { attack: 0.28, sustain: 0.35, release: 1.4 },
     filterType: 'bandpass', filterFreq: 720, filterQ: 0.9,
   },
   // Windup: the ~100 ms coil's voice (launchWindupTicks=6 @60Hz) — a thin rising glass

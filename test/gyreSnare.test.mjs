@@ -1961,8 +1961,9 @@ test('strain cue latches once above 0.4 and re-arms below 0.25', async () => {
   const strains = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_strain');
   assert.equal(strains.length, 2, `latch + one sustain shimmer in a held excursion (got ${strains.length})`);
   assert.equal(strains[0].p.gain, 0.7, 'the latch edge keeps its full rise');
-  assert.ok(Math.abs(strains[1].p.gain - 0.45) < 1e-6 && strains[1].p.rate === 0.9,
-    'the sustain rides the softer strain-scaled shimmer');
+  assert.ok(Math.abs(strains[1].p.gain - 0.45) < 1e-6
+    && Math.abs(strains[1].p.rate - (0.85 + 0.35 * 0.5)) < 1e-6,
+    'the sustain rides the softer strain-scaled shimmer, pitch climbing with the load');
   // Dip under 0.25 — the latch re-arms and a re-excursion re-speaks at full gain.
   for (let i = 0; i < 5; i++) {
     core.pos.x = t.player.pos.x + T.mawDist + 100; core.pos.z = t.player.pos.z;
