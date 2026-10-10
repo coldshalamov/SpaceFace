@@ -1,7 +1,52 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
-## Current recovery — 10 October 2026, 10:08 UTC
+## Current implementation — 10 October 2026, 10:28 UTC
+
+Draft PR: [#262](https://github.com/coldshalamov/SpaceFace/pull/262), branch
+`dot/expansion-recovery-2026-10-10`, base `38368f739952f7a8ad062600b5169d113e61e0e2`.
+Field-consequence repair was published and independently read back at
+`83968aab95d22d40949a37a544e4d45c8355d336` on 10 October at 10:15 UTC.
+
+The next tested increment fixes two reproduced defects:
+- An empty Anvil collector may finish returning only within the existing 72 WU
+  arrival radius and 8 WU/s relative-speed limit. Previously it could report itself
+  berthed 936 WU away. Actual native approach reaches the unchanged gate after
+  1,897 ticks; no participant pose or velocity is injected after preparation.
+- Planet teardown and witness harvest now require the exact entity generation and
+  site identity. Real Save/Continue previously allowed old numeric IDs to kill
+  unrelated restored convoy/cargo occupants. Teardown retires its old runtime
+  before callbacks, preserving any successor installed by a callback.
+
+The loaded-Continue fixture separately keeps its observer local before saving;
+otherwise ordinary far-shelving legitimately removes the collector from the active
+world. This is a fixture correction, not a change to residency rules. The sling
+fixture now stamps and binds actual entity generations without weakening assertions.
+
+Checks: 55/55 composed arrival, ordinary work, actor ambiguity, sling, restore
+identity and field cases pass. A second 55/55 run selects the previous published
+save/schema/site files, proving this increment without the concurrent Orchard
+schema candidate. Independent identity review has 22/22, loaded Continue 1/1,
+and affected planet/field/arrival selections 71/71; counts overlap. Six changed
+source/test files are frozen and reviewed. Publication of this increment is next.
+
+Active ownership and next executable steps:
+- Integration owner: publish the six frozen source/test paths and this handoff;
+  verify the resulting remote tree before reporting delivery.
+- Orchard custody owner: finish the fresh schema, finite ledger and actual native
+  release/refill integration. The schema candidate has seven passing tests but is
+  not yet published or gameplay accepted. Keep the existing single physics owner.
+- Geometry owner: rebuild editable Orchard frame/pod assets and source-derived
+  colliders, inspect source renders, and obtain game-camera evidence when possible.
+- Independent reviewer: review the new exact Orchard composition and lifecycle
+  gates. Original acceptance fields remain unchanged.
+- CI owner: follow PR checks through terminal results. Several static/browser
+  failure fingerprints also occur on pre-PR master; CI is not declared green.
+
+No complete earning/refill route, live model quality, or final expansion acceptance
+is claimed. All outstanding original concept and implementation obligations remain.
+
+## Historical recovery — 10 October 2026, 10:08 UTC
 
 Branch: `dot/expansion-recovery-2026-10-10`, based on public master
 `38368f739952f7a8ad062600b5169d113e61e0e2`. The prior unpublished source checkout
