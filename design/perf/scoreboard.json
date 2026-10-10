@@ -789,11 +789,65 @@
         "asset-residency-refcounts headless real release-GLB traversal 120s — documented env-bound canon",
         "check-station-tabs PUT-abort, mission-handoff/market-first-loop waitForFunction timeouts, ui-budgets baseline:stale, borrowedSun reachability (upstream 11f12f596), probe flight/ship visual SwiftShader reds, webkit page crash, Vercel rate-limit — documented canon/env set"
       ]
+    },
+    {
+      "wave": 135,
+      "head": "9180e4583",
+      "lanes": {
+        "popin": {
+          "findings": 5,
+          "landed": "9180e4583",
+          "commits": [
+            "9180e4583"
+          ],
+          "headline": "claim staleness scoped to arm-side rows (live claims ride row lifetime); exit-warm gate symmetric across all 4 mint sites; amortized same-sid prune + scalar re-point + born-lapsed clamp"
+        },
+        "boot": {
+          "findings": 2,
+          "landed": "8fbeb417b",
+          "commits": [
+            "8fbeb417b"
+          ],
+          "headline": "suppressed-emit hole closed (covering-spec re-check before early-return); lazy fill re-resolves live memo entry"
+        },
+        "skeptic": {
+          "findings": 4,
+          "landed": "remediated in-wave",
+          "commits": [
+            "9180e4583",
+            "8fbeb417b"
+          ],
+          "headline": "clean:false — all 4 findings map to popin/boot fixes landed this wave"
+        }
+      },
+      "integrity": {
+        "goldenSha256": "0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1",
+        "bitIdentical": true
+      },
+      "ciAdjudication": [
+        "static(1) live-whole-ship-admission env canon",
+        "static(2) ui-budgets baseline:stale canon",
+        "static(3) borrowedSun/thimbleDoor reachability canon (upstream 11f12f596)",
+        "browser(3) PUT __spaceface_player_store ERR_ABORTED canon",
+        "browser(4) check-mission-handoff starved-runner canon",
+        "retail-phone webkit page crash canon",
+        "browser(1)(2) skipped by rollup"
+      ]
     }
   ],
   "laneStatus": {
     "lod-in-frame": "closed@w123 (3 consecutive saturated)",
-    "in-flight-hitches": "closed@w128 (3 consecutive saturated)"
+    "in-flight-hitches": "closed@w128 (3 consecutive saturated)",
+    "popin": {
+      "streak": 0,
+      "lastSaturated": false,
+      "wave": 135
+    },
+    "boot": {
+      "streak": 0,
+      "lastSaturated": false,
+      "wave": 135
+    }
   },
   "s1Spike": {
     "stageA": {
