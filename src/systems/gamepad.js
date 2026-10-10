@@ -906,7 +906,14 @@ export function createGamepad(ctx) {
     bus.on('gyre:full', () => startPulse(HAPTIC_VERB_PULSES['gyre:full'], 'gyre:full'));
     bus.on('gyre:fuseLow', () => startPulse(HAPTIC_VERB_PULSES['gyre:fuseLow'], 'gyre:fuseLow'));
     bus.on('gyre:ballGrave', () => startPulse(HAPTIC_VERB_PULSES['gyre:ballGrave'], 'gyre:ballGrave'));
-    bus.on('gyre:caught', () => startPulse(HAPTIC_VERB_PULSES['gyre:caught'], 'gyre:caught'));
+    bus.on('gyre:caught', (payload) => {
+      // The first fill grades by the meal's heft like snagged/absorbTick — a
+      // pebble's net-fill whispers, a 200 t wreck entering lands on the hands.
+      // /200 matches the snag band (basin meals are pre-katamari mass).
+      const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 200);
+      const base = HAPTIC_VERB_PULSES['gyre:caught'];
+      startPulse({ strong: base.strong + 0.15 * t, weak: base.weak + 0.1 * t, ms: base.ms + 20 * t }, 'gyre:caught');
+    });
     // Worldfeel seams: a developed rock, a grazing face, a volatile stage. Own admit book so a
     // held beam cannot turn the pad into a buzz. The pulse still shares the one-live-pulse gate.
     const worldFeelBook = createWorldFeelBook(bus);

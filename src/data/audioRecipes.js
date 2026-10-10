@@ -3226,7 +3226,9 @@ export const RECIPES = [
     baseFreq: 520, freqSweep: [520, 1420], sweepTimeS: 0.42,
     gainEnvelope: { attack: 0.05, sustain: 0.0, release: 0.55 },
     filterType: 'bandpass', filterFreq: 1600, filterQ: 1.8,
-    pitchRange: [0.94, 1.04],
+    // Re-ticks land 0.85–1.2 rate already; ±6% recipe wobble on top doubled the
+    // effective spread and swam the climb — ±2% keeps the arc's headroom.
+    pitchRange: [0.98, 1.02],
   },
   // Lash loop: the beam's sustained glassy hum while it's live — a quiet presence voice
   // beside the field loops; envelope rides strain01 so a straining clump tightens it.

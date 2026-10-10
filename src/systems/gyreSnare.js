@@ -167,6 +167,7 @@ function freshRuntime() {
     swirlBlend: 1,         // eased stir sign — chases orbitDir over ~0.5 s (dt·4 across a range of 2) so a snag can't flip the funnel's spiral mid-feed
     tornTrack: null,       // {id, ticks} — a strain-freed core's last ~0.5 s: the close lets the lash visibly LOSE the ball
     basinCount: 0,         // absorbables inside the cone — feeds the "×N IN NET" anticipation
+    basinMass: 0,          // heaviest counted meal this tick — grades the first-fill whisper
     suckCount: 0,          // absorbables in the clump's suck annulus during HOLD (the +N read's second half)
     fullCueLatched: false, // gyre_snare_full fires once per clump on first cap-crossing
     basinSpots: [],        // bounded {x,z,r,k} of bodies actually being dragged — the victim-side pull glow
@@ -324,6 +325,7 @@ export const gyreSnare = {
     // ball's absorb count (or reuse its orbit phase) while it searches for a new core.
     rt.totalAbsorbed = 0;
     rt.basinCount = 0;
+    rt.basinMass = 0;
     rt.suckCount = 0;
     rt.towCount = 0;
     rt.deflectCount = 0;
@@ -937,7 +939,8 @@ export const gyreSnare = {
     // ramp's end — every reader clamps vs 0.15, so an unbounded counter in a long
     // hold is dead bookkeeping.
     this._rt.basinCount = 0; // reset above the guard — a helper-less host must not
-    // publish last tick's count. towCount resets at the two callers: _suckPass runs
+    this._rt.basinMass = 0;  // publish last tick's count (same rule for the heaviest meal).
+    // towCount resets at the two callers: _suckPass runs
     // before this lane in HOLD and its annulus tow would be wiped by a local reset here.
     this._rt.basinSpots.length = 0; // same early reset — a helper-less host can't keep last tick's glow spots
     // On the helper-less early return only: clear the scratch so spots _suckPass
@@ -1017,6 +1020,8 @@ export const gyreSnare = {
         && !(e.data && (e.data.gyreCore || e.data.gyreLaunched))
         && !(e.flags && e.flags.persistent) && !(e.data && e.data.worldRecordId)) {
         this._rt.basinCount += 1;
+        this._rt.basinMass = Math.max(this._rt.basinMass, entityMass(e)); // the first-fill
+        // whisper grades by the heaviest meal in the net — gravel vs a 200 t wreck
       }
       if (e.data && e.data.gyreLaunched) continue; // a thrown ball is never pulled back
       // The held core is owned by the orbit spring — a basin grab on it fights the slot and
@@ -1723,6 +1728,7 @@ export const gyreSnare = {
     rt.launchedId = core.id;
     rt.ballId = core.id; // outlives LAUNCH so render/HUD can track the bowling ball to its grave
     rt.basinCount = 0; // the "N in net" read is basin-only — a flying ball owns none
+    rt.basinMass = 0;
     rt.suckCount = 0;  // same for the annulus half — a debugger never reads a stale +N
     rt.towCount = 0;   // no pull lane runs through LAUNCH — don't publish a stale tow
     rt.deflectCount = 0;
@@ -1859,6 +1865,7 @@ export const gyreSnare = {
     // it is the payload's own bookkeeping, not the beam's.
     rt.totalAbsorbed = 0;
     rt.basinCount = 0;
+    rt.basinMass = 0;
     rt.suckCount = 0;
     rt.towCount = 0;
     rt.deflectCount = 0;
@@ -2383,7 +2390,7 @@ export const gyreSnare = {
         // The net's first fill lands in the hands too — a whisper pulse only on
         // this edge; the +N ratchet stays audio-only or a dense belt feed would
         // buzz the pad on every arrival.
-        this.bus.emit(GYRE_EVENTS.caught, { id: player.id, tick: state.tick });
+        this.bus.emit(GYRE_EVENTS.caught, { id: player.id, tick: state.tick, mass: rt.basinMass });
       } else if (!caught) rt.basinCatchLatched = false;
       // "It can't eat that": a too-heavy body crossing into the net was the one
       // arrival class with no voice — the catch tick, +N ratchet, absorb gulp,

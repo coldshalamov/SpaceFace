@@ -47,6 +47,15 @@ export const GYRE_HUD_CSS = `
 .sf-gyre-pill.gyre-launched { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
 .sf-gyre-pill.gyre-ball { border-left-color: var(--dp-lamp-dim, #8a6b3a); }
 .sf-gyre-pill.gyre-full { color: var(--dp-lamp-hot, #ffd98c); border-left-color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
+.sf-gyre-sr {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+.sf-gyre-mass {
+  position: absolute; left: 2px; bottom: 2px; height: 1px; width: 0;
+  background: linear-gradient(90deg, var(--dp-lamp-dim, #8a6b3a), var(--dp-lamp, #f2b950));
+  border-radius: 1px; opacity: .8; pointer-events: none;
+}
 .sf-gyre-fill {
   position: absolute; left: 2px; bottom: 0; height: 2px; width: 0;
   background: linear-gradient(90deg, var(--dp-lamp, #f2b950), var(--dp-danger, #ff5038));
@@ -98,7 +107,7 @@ export const gyreHud = {
     if (!dom) return;
     if (state.mode !== 'flight' || (state.ui && state.ui.docked)) { this._hide(dom); return; }
     const g = state.gyreSnare || null;
-    const { text, cls, strain, fuse } = this._resolve(g, Number.isFinite(state.simTime) ? state.simTime : 0);
+    const { text, cls, strain, fuse, mass } = this._resolve(g, Number.isFinite(state.simTime) ? state.simTime : 0);
     if (!text) { this._hide(dom); return; }
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
     const seat = claimBottomLaneSeat('gyre', LANE_PRIORITY.active, FIELD_LANE_BASE, now);
@@ -119,7 +128,7 @@ export const gyreHud = {
       void dom.pill.offsetWidth;
     }
     this._lastAbsorbs = ab;
-    this._apply(dom, text, cls, strain, fuse);
+    this._apply(dom, text, cls, strain, fuse, mass);
     const eating = now < this._eatUntil;
     dom.pill.classList.toggle('gyre-eat', eating);
     if (eating) dom.pill.style.setProperty('--gyre-eat-scale', (this._eatScale || 1.1).toFixed(3));
@@ -289,15 +298,18 @@ export const gyreHud = {
       // Mass-scaled cap drain makes the fuse legible BEFORE the dry auto-bowl: under ~8 s
       // of burn the readout appends the countdown and the top fuse bar drains with it.
       const fuse = fuseS;
+      // Growth-to-cap rides a second fill while held — the ×t text was the only
+      // channel a swelling-but-not-full clump named its size through.
+      const mfrac = (g.maxClumpMass || 0) > 0 ? Math.min(1, (g.clumpMass || 0) / g.maxClumpMass) : 0;
       if (this._strainOn) {
-        return { text: `GYRE — STRAIN ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-strain', strain: s, fuse };
+        return { text: `GYRE — STRAIN ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-strain', strain: s, fuse, mass: mfrac };
       }
       // Saturation reads: the cap is a hard ceiling, so "why isn't it eating?" gets a flag.
       const full = g.maxClumpMass != null && (g.clumpMass || 0) >= g.maxClumpMass;
       if (full) {
-        return { text: `GYRE — ×${count} · ${mass}t${dmg} FULL${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-full', strain: s, fuse };
+        return { text: `GYRE — ×${count} · ${mass}t${dmg} FULL${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-full', strain: s, fuse, mass: mfrac };
       }
-      return { text: `GYRE — ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-holding', strain: s, fuse };
+      return { text: `GYRE — ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-holding', strain: s, fuse, mass: mfrac };
     }
     // Net anticipation: material already inside the cone names the catch before it
     // lands — "×N IN NET" instead of a bare SEARCHING sweep. A beam towing only
@@ -308,7 +320,7 @@ export const gyreHud = {
       // A mixed net carries the warm face + the refusal count too — an uneatable
       // body inside is the actionable read, same as the tow branch's own rule.
       // handlingTxt already ends in `· TOO HEAVY ×N` — the suffix comes once.
-      return { text: `GYRE — ×${net} IN NET${handlingTxt}${fuseTxt}${ballTxt}${overTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-search', fuse: fuseS };
+      return { text: `GYRE — ×${net} IN NET${handlingTxt}${fuseTxt}${ballTxt}${overTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-holding', fuse: fuseS };
     }
     if (tow > 0) {
       // The too-heavy read is the actionable half of the line — carry the warm
@@ -323,24 +335,33 @@ export const gyreHud = {
     if (deflect > 0) {
       // The defensive-only read: nothing to tow or eat — the cone is purely
       // bending their fire. Its own word so the pill isn't silent SEARCHING
-      // while the weapon's one defensive payoff does real work.
-      return { text: `GYRE — DEFLECTING ×${deflect}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-search', fuse: fuseS };
+      // while the weapon's one defensive payoff does real work — the warm face
+      // like IN NET: the beam is working, not sweeping an empty sky.
+      return { text: `GYRE — DEFLECTING ×${deflect}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-holding', fuse: fuseS };
     }
     return { text: `GYRE — SEARCHING${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-search', fuse: fuseS };
   },
 
-  _apply(dom, text, cls, strain, fuse) {
+  _apply(dom, text, cls, strain, fuse, mass) {
     if (!text) { this._hide(dom); return; }
     if (text !== this._lastText) {
       this._lastText = text;
+      // Volatile telemetry stays out of the live region: aria-atomic would
+      // re-announce the whole pill on every mass/fuse digit tick. pillText is
+      // aria-hidden; the sr-only twin rewrites only on a phase-row change.
       dom.pillText.textContent = text;
-      dom.pill.setAttribute('aria-label', text);
     }
     // The continuous strain01 rides a thin fill bar under the pill — the eye gets
     // the slip building long before the binary STRAIN flag flips at 0.40.
     const s = Math.max(0, Math.min(1, Number.isFinite(strain) ? strain : 0));
     dom.fill.style.width = `${Math.round(s * 100)}%`;
     dom.fill.style.display = s > 0.02 ? 'block' : 'none';
+    // Held mass-to-cap rides the lane above the strain bar (hold rows only —
+    // _resolve returns no mass elsewhere, and a stale bar must not survive a
+    // phase flip into beaming/launching).
+    const m = Number.isFinite(mass) ? Math.max(0, Math.min(1, mass)) : 0;
+    dom.massFill.style.width = `${Math.round(m * 100)}%`;
+    dom.massFill.style.display = m > 0.02 ? 'block' : 'none';
     // Fuse bar (top edge): cap ÷ current drain, clamped to an 8 s window — a shrinking
     // countdown. Every row carries it once fuse < fuseWarnVisS (all _resolve branches
     // return fuseS); a healthy burn pins the draw gate below instead, so the bar
@@ -352,6 +373,9 @@ export const gyreHud = {
     dom.fuse.style.display = f > 0.02 && fuse < GYRE_SNARE.fuseWarnVisS ? 'block' : 'none';
     if (cls !== this._lastClass) {
       this._lastClass = cls;
+      // The one announcement the live region makes: a phase-row flip reads the
+      // current line once (state, not per-tick telemetry).
+      dom.pillSr.textContent = text;
       dom.pill.classList.toggle('gyre-holding', cls === 'gyre-holding');
       dom.pill.classList.toggle('gyre-strain', cls === 'gyre-strain');
       dom.pill.classList.toggle('gyre-launched', cls === 'gyre-launched');
@@ -385,6 +409,7 @@ export const gyreHud = {
     }
     this._visible = false;
     this._lastText = '';
+    this._lastClass = ''; // re-show re-announces the row (and re-toggles faces)
   },
 
   _ensureDom() {
@@ -405,7 +430,15 @@ export const gyreHud = {
     pill.setAttribute('aria-live', 'polite');
     pill.setAttribute('aria-atomic', 'true');
     const pillText = document.createElement('span');
+    pillText.setAttribute('aria-hidden', 'true');
     pill.appendChild(pillText);
+    const pillSr = document.createElement('span');
+    pillSr.className = 'sf-gyre-sr';
+    pill.appendChild(pillSr);
+    const massFill = document.createElement('span');
+    massFill.className = 'sf-gyre-mass';
+    massFill.style.display = 'none';
+    pill.appendChild(massFill);
     const fill = document.createElement('span');
     fill.className = 'sf-gyre-fill';
     fill.style.display = 'none';
@@ -416,7 +449,7 @@ export const gyreHud = {
     pill.appendChild(fuse);
     root.appendChild(pill);
     host.appendChild(root);
-    this._dom = { root, pill, pillText, fill, fuse };
+    this._dom = { root, pill, pillText, pillSr, massFill, fill, fuse };
     this._lastText = '';
     this._lastClass = '';
     this._visible = false;
