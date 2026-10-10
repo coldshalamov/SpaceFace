@@ -12,4 +12,5 @@
 // v13: J4 screen state memory — per-screen UI bags (tab/filter/layer/zoom/selection/scroll) under
 //      data.uiScreenMemory, so the map, ship and station open where the player left them.
 // v14: append-only crime/standing provenance chains persist under data.provenance (Footprint).
-export const CURRENT_VERSION = 14;
+// v15: finite Anvil Orchard socket custody and physical release progress.
+export const CURRENT_VERSION = 15;

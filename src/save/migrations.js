@@ -7,6 +7,7 @@
 // CURRENT_VERSION lives in src/data/saveVersion.js (the single source of truth) and is re-exported
 // here for convenience.
 // When the schema changes: bump CURRENT_VERSION in saveVersion.js and append { from:N-1, to:N, fn }.
+import { readOrchardSaveSection } from '../data/anvilOrchard.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { COORDINATE_SCHEMA } from '../core/coordinates.js';
 import {
@@ -306,6 +307,16 @@ export const MIGRATIONS = [
         && p.openIncidents && typeof p.openIncidents === 'object' && !Array.isArray(p.openIncidents)
         && Number.isFinite(Number(p.nextSeq));
       if (!valid) data.provenance = { v: 1, chains: [], openIncidents: {}, nextSeq: 0 };
+    },
+  },
+  {
+    from: 14,
+    to: 15,
+    fn(data) {
+      // Absence means uncreated; migration never fabricates pods, poses or stock receipts.
+      if (data?.sites && typeof data.sites === 'object' && !Array.isArray(data.sites)) {
+        data.sites.anvilOrchard = readOrchardSaveSection(data.sites);
+      }
     },
   },
 ];

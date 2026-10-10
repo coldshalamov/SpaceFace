@@ -1,7 +1,51 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
-## Current implementation — 10 October 2026, 10:28 UTC
+## Current implementation — 10 October 2026, 10:41 UTC
+
+Draft PR #262, branch `dot/expansion-recovery-2026-10-10`, remains based on
+master `38368f739952f7a8ad062600b5169d113e61e0e2` (checked 10:41 UTC).
+The arrival and generation-safe restore increment is published and its entire
+remote tree verified at `66c77b73851602456d0531077788213c9715651b`.
+
+The next coherent increment adds the finite Orchard save ledger and version14→15
+migration. Forty-eight units are conserved across source and at most twelve lots;
+three sockets retain independent physical-work history. Invalid contradictions,
+future history beyond the canonical saved tick, duplicate lots and corrupt stock
+refuse before restore callbacks or live-state mutation. Older absent/null sections
+remain uncreated. This is save support; native release/refill activation is still
+under implementation.
+
+Independent review approved the exact seven schema paths: 42/42 new author/reviewer
+cases, 24/24 existing save/migration cases, and generated schema check pass. The six
+future-history failures and their pre-fix sources are preserved. Integration ran
+72/72 schema, prior Anvil/restore/field regressions and diagnostic cases with the
+unfinished native/render changes excluded by a read-only source loader.
+
+The same increment includes an eight-case-tested dock-timeout observer. It records
+state, screen/DOM visibility and page issues while preserving the original failure,
+15-second gate, actor flow and assertions. It does not claim a docking runtime fix.
+Publication and remote verification of this increment are next.
+
+Active ownership:
+- Native/custody owner: finish exact-source cold construction and snapshot adoption,
+  then real collar release, current-world readiness, finite refill and public route.
+- Geometry/render owner: editable frame/pod source and strict scale/origin routing;
+  ten geometry/composer checks pass. Source and exported-GLB views were inspected;
+  browser launch at 10:28 UTC failed with socket Operation not permitted, so live
+  game-camera quality remains unverified.
+- Packaging owner: register and package both models through the normal pipeline;
+  preserve moving pivots and exclude explicitly non-render collision proxies.
+- Independent reviewer: schema slice approved; native and packaging acceptance open.
+- CI owner: simulation and feel pass for66c77b7; static failures match earlier
+  master fingerprints. Browser shards remain under investigation; no green claim.
+
+Next executable integration check: `node --test test/anvil-orchard-native-foundation.test.mjs`.
+Continue the same Orchard implementation with these owners. Final expansion,
+ordinary earning/refill routes, original concept obligations and reviewer final
+acceptance remain open. No merge or deployment is authorized by this handoff.
+
+## Historical implementation — 10 October 2026, 10:28 UTC
 
 Draft PR: [#262](https://github.com/coldshalamov/SpaceFace/pull/262), branch
 `dot/expansion-recovery-2026-10-10`, base `38368f739952f7a8ad062600b5169d113e61e0e2`.

@@ -27,7 +27,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1460, height: 900 }, deviceScaleFactor: 1 });
   // The probe server runs with the player store unmounted (see spawnProbeServer) — isolated
   // harnesses never touch the machine save drawer, and store calls take the localStorage path.
-  const issues = collectPageIssues(page, { playerStoreMounted: false });
+  const issues = collectPageIssues(page, { playerStoreMounted: false, includeWarnings: true });
   await page.addInitScript(() => { try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {} });
 
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
@@ -58,7 +58,8 @@ try {
     sf.bus.emit('dock:docked', { stationId: station.data.stationId });
     return { stationId: station.data.stationId };
   });
-  await waitForVisible(page, '[data-screen="station"] .sx-dock', DOCK_TIMEOUT_MS, 'command dock after dock');
+  await waitForVisible(page, '[data-screen="station"] .sx-dock', DOCK_TIMEOUT_MS, 'command dock after dock')
+    .catch((error) => reportDockHandoffFailure(page, dockTarget, issues, error));
 
   // Seed a live commodity contract on this station's board (a bulk_trade the market here can buy).
   const seeded = await page.evaluate(() => {
@@ -217,6 +218,57 @@ try {
 } finally {
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
+}
+
+// Observe a failed handoff without retrying the actor, changing the deadline, or masking its error.
+async function reportDockHandoffFailure(page, dockTarget, issues, originalError) {
+  let timer;
+  try {
+    const snapshot = await Promise.race([
+      page.evaluate(collectDockHandoffSnapshot),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('dock snapshot exceeded 2000ms')), 2000);
+      }),
+    ]);
+    const recent = (rows) => rows.slice(-8).map((row) => ({
+      ...row, text: String(row.text || '').slice(0, 1200),
+    }));
+    console.error('[mission-handoff] dock visibility snapshot:', JSON.stringify({
+      dockTarget, ...snapshot,
+      pageErrors: recent(issues.errorIssues()), pageWarnings: recent(issues.warningIssues()),
+    }));
+  } catch (diagnosticError) {
+    try { console.error('[mission-handoff] dock snapshot unavailable:', diagnosticError?.message); }
+    catch (_) { /* Even a diagnostic logging failure cannot replace the original assertion. */ }
+  } finally {
+    clearTimeout(timer);
+  }
+  throw originalError;
+}
+
+function collectDockHandoffSnapshot() {
+  const sf = window.SF;
+  const state = sf?.state;
+  const player = state?.entities?.get?.(state.playerId);
+  const ui = sf?.registry?.get?.('ui');
+  const inspect = (selector) => {
+    const el = document.querySelector(selector);
+    if (!el) return { present: false };
+    const style = getComputedStyle(el), rect = el.getBoundingClientRect();
+    return { present: true, connected: el.isConnected, hidden: el.hidden,
+      ariaHidden: el.getAttribute('aria-hidden'), display: style.display,
+      visibility: style.visibility, opacity: style.opacity,
+      rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height } };
+  };
+  return {
+    mode: state?.mode ?? null, tick: state?.tick ?? null, simTime: state?.simTime ?? null,
+    player: player ? { id: player.id, alive: player.alive, hull: player.hull } : null,
+    docked: state?.ui?.docked ?? null, dockedStationId: state?.ui?.dockedStationId ?? null,
+    screenStack: Array.isArray(state?.ui?.screenStack) ? state.ui.screenStack.slice() : null,
+    topScreen: ui?.screenManager?.top?.() ?? null,
+    stationRegistered: ui?._registeredScreens?.has?.('station') ?? null,
+    station: inspect('[data-screen="station"]'), dock: inspect('[data-screen="station"] .sx-dock'),
+  };
 }
 
 async function domClick(page, selector) {

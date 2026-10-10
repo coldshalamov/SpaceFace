@@ -1,3 +1,4 @@
+import { readOrchardSaveSection, orchardHistoryFitsTick } from '../data/anvilOrchard.js';
 // save system (ARCHITECTURE §4.5 + design/specs/11). Owns serialization: assembles a versioned
 // envelope from a fixed deps-first registry of systems, writes autosave + manual slots to
 // localStorage and to the shared loopback player store both shells use, plus an exportable
@@ -6445,6 +6446,12 @@ function hasRestorablePlayer(data) {
 function normalizeRestorableData(data) {
   if (!data || typeof data !== 'object') return { ok: false, reason: 'no_data' };
   if (!hasRestorablePlayer(data)) return { ok: false, reason: 'no_player' };
+  // Validate the new custody section on the detached candidate, before restore side effects.
+  try {
+    const orchard = readOrchardSaveSection(data.sites);
+    if (!orchardHistoryFitsTick(orchard, data.entities?.tick)) return { ok: false, reason: 'invalid_orchard_history' };
+    if (data.sites && Object.hasOwn(data.sites, 'anvilOrchard')) data.sites.anvilOrchard = orchard;
+  } catch (_) { return { ok: false, reason: 'invalid_orchard_custody' }; }
   const savedPlayer = data.entities.player;
   if (savedPlayer.type && savedPlayer.type !== 'ship') return { ok: false, reason: 'invalid_player' };
 
