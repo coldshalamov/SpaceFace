@@ -4448,6 +4448,30 @@ test('bus-less host: the tear snap and quiet-TTL retire are sim mutations, not c
   assert.equal(sys._rt.ballIds.length, 0, 'watch list emptied');
 });
 
+test('bus-less host: the deferred grant fires identically (latch is bookkeeping, not emit-gated)', () => {
+  const sim = createSimulation({ seed: 5252, systems: [gyreSnare] });
+  const { state } = sim;
+  state.mode = 'flight';
+  state.input.actions = {};
+  const player = sim.spawn({
+    type: 'ship', team: 0, pos: { x: 0, z: 0 }, radius: 12, collides: true,
+    vel: { x: 0, z: 0 }, rot: 0, angVel: 0,
+    hull: 200, hullMax: 200,
+    flightModel: { inertia: 88 }, flags: {},
+    physicsBody: { schemaVersion: 1, radius: 12, mass: 28, inertiaY: 88, dynamic: true, ccd: true, material: 'ship', revision: 0 },
+    data: { combatProfileId: 'combat_profile_standard_ship' },
+  });
+  state.playerId = player.id;
+  const sys = sim.registry.get('gyreSnare');
+  sys.bus = null;
+  player.cap = T.capActivateMin - 2;
+  state.input.actions.gyreSnare = true; sim.step(); // denied while held
+  assert.equal(sys._rt.dryDenyDone, true, 'the deny latch sets with no bus to speak through');
+  player.cap = T.capActivateMin + 1;
+  state.input.actions.gyreSnare = true; sim.step();
+  assert.equal(sys._rt.phase, 'beaming', 'the crossing grants the deferred wake bus-less');
+});
+
 test('mid-hold protected adoption: a mission-pinned core is handed back, not held', () => {
   const t = boot(9091);
   const core = rock(t.sim, T.mawDist, 0, 6, 4);
