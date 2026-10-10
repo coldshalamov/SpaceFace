@@ -587,7 +587,7 @@ async function triggerImpact(targetPage, { weaponId, freezeMs }) {
 }
 
 async function prepareCaptureTarget(targetPage) {
-  await targetPage.evaluate(() => {
+  await targetPage.evaluate(async () => {
     const sf = window.SF;
     const player = sf.state.entities.get(sf.state.playerId);
     const vfx = sf.registry.get('vfx');
@@ -621,8 +621,45 @@ async function prepareCaptureTarget(targetPage) {
     // same frame. This is the ordinary camera system and projection, not a standalone test camera.
     sf.state.camera.zoom = Math.max(88, Number(sf.state.camera.zoom) || 0);
     const previous = window.__sfCombatVfxCaptureTarget;
-    if (previous?.parent) previous.parent.remove(previous);
-    const target = player.mesh.clone(true);
+    if (previous?.parent && !previous.userData?.entityId) previous.parent.remove(previous);
+    const previousTargetEntity = window.__sfCombatTargetEntity;
+    if (previousTargetEntity) {
+      previousTargetEntity.alive = false;
+      sf.state.entities.delete?.(previousTargetEntity.id);
+    }
+    // A real, shielded ship entity is the target: the production renderer builds its hull and its
+    // pooled shield shell (contacts, flash, collapse) exactly as in play, and _onDamage resolves
+    // radius/position/faction from it. The clone below is kept only as a fallback if spawning fails.
+    let targetEntity = null;
+    try {
+      const { makeShipEntitySpec, fittingsFromDefaultModules } = await import('/src/systems/ships.js');
+      const hullId = player.data?.defId || 'ship_kestrel';
+      targetEntity = sf.helpers.spawnEntity(makeShipEntitySpec(hullId, {
+        team: 1,
+        factionId: 'faction_reavers',
+        fittings: fittingsFromDefaultModules(hullId, []),
+        pos: { x: targetCenter.x, z: targetCenter.z },
+        rot: direction + Math.PI,
+        ai: { role: 'capture_combat_vfx_target', passive: true, roe: 'hold_fire' },
+      }));
+      if (targetEntity) {
+        targetEntity.shieldMax = Math.max(200, Number(targetEntity.shieldMax) || 0);
+        targetEntity.shield = targetEntity.shieldMax;
+        targetEntity.shieldRegenRate = 0;
+        if (targetEntity.vel) { targetEntity.vel.x = 0; targetEntity.vel.z = 0; }
+        if (targetEntity.prevPos) { targetEntity.prevPos.x = targetCenter.x; targetEntity.prevPos.z = targetCenter.z; }
+      }
+    } catch (error) {
+      console.warn('[combat-vfx] target spawn failed; using mesh clone', error);
+      targetEntity = null;
+    }
+    window.__sfCombatTargetEntity = targetEntity;
+    window.__sfCombatTargetId = targetEntity ? targetEntity.id : 'capture-target';
+    if (targetEntity) {
+      // Let the renderer build the authored hull and its shield bubble before any trigger.
+      for (let f = 0; f < 90 && !targetEntity.mesh; f++) await new Promise((r) => requestAnimationFrame(r));
+    }
+    const target = targetEntity?.mesh || player.mesh.clone(true);
     const local = vfx._toLocalXZ(targetCenter.x, targetCenter.z, { x: 0, z: 0 });
     target.name = 'SF_Combat_VFX_Acceptance_Target';
     target.position.set(local.x, player.mesh.position.y, local.z);
@@ -631,10 +668,12 @@ async function prepareCaptureTarget(targetPage) {
     target.rotation.copy(player.mesh.rotation);
     target.rotation.y += Math.PI;
     target.scale.copy(player.mesh.scale);
-    target.traverse((node) => {
-      node.userData = { ...(node.userData || {}), combatVfxAcceptanceTarget: true };
-    });
-    parent.add(target);
+    if (!targetEntity) {
+      target.traverse((node) => {
+        node.userData = { ...(node.userData || {}), combatVfxAcceptanceTarget: true };
+      });
+      parent.add(target);
+    }
     window.__sfCombatVfxCaptureTarget = target;
     window.__sfCombatTargetRadius = targetRadius;
     const contract = {
@@ -758,21 +797,31 @@ async function prepareCaptureTarget(targetPage) {
       vfx._integrateSprites(0);
       vfx._commitTrailStreakInstances();
     };
+    // Ambient emitters that would write unrelated world wakes (other ships' thrusters, ambient
+    // projectiles, station/job chatter) into the evidence pools. Every combat owner still runs.
+    const AMBIENT_EMITTERS = [
+      '_emitTrails', '_updateRibbonTrails', '_emitProjectileTrails', '_updateDamageVenting',
+      '_syncNpcJobSignatures', '_updateStationSideEvents', '_updateCeresJobActionVfx',
+      '_updateWreckWisps', '_updateSeamMarkers', '_updateLootMagnet',
+    ];
     window.__sfFreezeCombatVfx = (advanceMs = 16) => {
       let remaining = Math.max(1, Number(advanceMs) || 16) / 1000;
-      while (remaining > 1e-6) {
-        const step = Math.min(1 / 60, remaining);
-        // Advance only the acceptance-owned combat pools. Calling the full VFX update here also
-        // emits ambient ship thrusters/trails, polluting both the screenshot and the diagnostics
-        // with unrelated instances while the player route continues normally around this frame.
-        vfx._t += step;
-        vfx._explosions?.update(step, vfx._explosionEmitter);
-        vfx._combatBeams?.update(vfx._t, vfx._combatBeamLocalizer, null);
-        vfx._integrateParticles(step);
-        vfx._integrateSprites(step);
-        vfx._integrateTrailStreaks(step);
-        vfx._decayEventLights(step);
-        remaining -= step;
+      const saved = {};
+      for (const key of AMBIENT_EMITTERS) {
+        if (typeof vfx[key] === 'function') { saved[key] = vfx[key]; vfx[key] = () => 0; }
+      }
+      try {
+        while (remaining > 1e-6) {
+          const step = Math.min(1 / 60, remaining);
+          // The effect clock IS the frozen sim clock: advance simTime by the same step so every
+          // simTime-driven owner (rupture, shells, weapon presenter, contact/bomb receipts, gas)
+          // progresses in lockstep with _t, then run the production VFX update once.
+          if (Number.isFinite(sf.state.simTime)) sf.state.simTime += step;
+          originalUpdate.call(vfx, step);
+          remaining -= step;
+        }
+      } finally {
+        for (const key of Object.keys(saved)) vfx[key] = saved[key];
       }
       vfx.update = () => {};
     };
@@ -844,7 +893,7 @@ async function triggerFlight(targetPage, { family, weaponId, index, freezeMs, mo
       vfx._onDamage({
         weaponId: id,
         attackerId: spatial.source.entityId,
-        targetId: 'capture-target',
+        targetId: window.__sfCombatTargetId || 'capture-target',
         pos: spatial.target.contact,
         approach: spatial.source.forward,
         normal: { x: -spatial.source.forward.x, z: -spatial.source.forward.z },
@@ -921,7 +970,7 @@ async function triggerMaterialImpact(targetPage, { weaponId, index, material, fr
     const receipt = {
       weaponId: id,
       attackerId: spatial.source.entityId,
-      targetId: 'capture-target',
+      targetId: window.__sfCombatTargetId || 'capture-target',
       pos: spatial.target.contact,
       approach,
       normal,
@@ -941,6 +990,14 @@ async function triggerMaterialImpact(targetPage, { weaponId, index, material, fr
         to: spatial.target.contact,
         dir: spatial.source.forward,
       });
+    }
+    const targetEntity = window.__sfCombatTargetEntity;
+    if (targetEntity) {
+      // Real shield bookkeeping: a shield receipt drains shield HP, which is what punches the
+      // pooled shell's flash on the next presented frame. Hull receipts leave the shell cold.
+      targetEntity.shield = materialId === 'shield'
+        ? Math.max(1, (Number(targetEntity.shieldMax) || 200) - 24)
+        : 0;
     }
     vfx._onProjectileHit(receipt);
     vfx._onDamage({
@@ -1025,7 +1082,7 @@ async function triggerDenseDestruction(targetPage, { x, z, freezeMs }) {
     vfx._onDamage({
       weaponId: beamReceipt.weaponId,
       attackerId: spatial.source.entityId,
-      targetId: 'capture-target',
+      targetId: window.__sfCombatTargetId || 'capture-target',
       pos: spatial.target.contact,
       approach: spatial.source.forward,
       normal: { x: -spatial.source.forward.x, z: -spatial.source.forward.z },
