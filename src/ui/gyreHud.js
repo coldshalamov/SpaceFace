@@ -82,6 +82,7 @@ export const gyreHud = {
     this._dom = null;
     this._lastText = '';
     this._lastClass = '';
+    this._lastRow = '';
     this._visible = false;
     this._laneSeat = '';
     this._strainOn = false; // hysteresis: enter at 0.40, exit at 0.25 — no boundary flapping
@@ -107,7 +108,7 @@ export const gyreHud = {
     if (!dom) return;
     if (state.mode !== 'flight' || (state.ui && state.ui.docked)) { this._hide(dom); return; }
     const g = state.gyreSnare || null;
-    const { text, cls, strain, fuse, mass } = this._resolve(g, Number.isFinite(state.simTime) ? state.simTime : 0);
+    const { text, cls, strain, fuse, mass, row } = this._resolve(g, Number.isFinite(state.simTime) ? state.simTime : 0);
     if (!text) { this._hide(dom); return; }
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
     const seat = claimBottomLaneSeat('gyre', LANE_PRIORITY.active, FIELD_LANE_BASE, now);
@@ -128,7 +129,7 @@ export const gyreHud = {
       void dom.pill.offsetWidth;
     }
     this._lastAbsorbs = ab;
-    this._apply(dom, text, cls, strain, fuse, mass);
+    this._apply(dom, text, cls, strain, fuse, mass, row);
     const eating = now < this._eatUntil;
     dom.pill.classList.toggle('gyre-eat', eating);
     if (eating) dom.pill.style.setProperty('--gyre-eat-scale', (this._eatScale || 1.1).toFixed(3));
@@ -219,7 +220,7 @@ export const gyreHud = {
           // The mass text names the same payload the DMG× does — _bowlMass is the
           // clumpMass ledger and can diverge from the frozen ball on an adopter edge.
           const bowlT = Math.round(g.ballMass != null ? g.ballMass : (this._bowlMass || 0));
-          return { text: `GYRE — BOWL ×${this._bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-launched', fuse: fuseS };
+          return { text: `GYRE — BOWL ×${this._bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-launched', fuse: fuseS, row: 'bowl' };
         }
         const mass = Math.round(g.ballMass || 0);
         // A sweep-adopted ball has no member ledger (ballMembers never serialized) —
@@ -231,7 +232,7 @@ export const gyreHud = {
         // arc stays legible instead of revealing itself only on impact.
         const dmg = dmgText(g.ballMass || 0);
         const label = mass > 0 ? (count != null ? `GYRE — BALL AWAY ×${count} · ${mass}t · DMG×${dmg}` : `GYRE — BALL AWAY · ${mass}t · DMG×${dmg}`) : 'GYRE — BALL AWAY';
-        return { text: label + ballTxt + overTxt, cls: 'gyre-ball', fuse: fuseS };
+        return { text: label + ballTxt + overTxt, cls: 'gyre-ball', fuse: fuseS, row: 'ball' };
       }
       // No primary, but secondaries are still streaking (one retires before the rest) —
       // the pill shouldn't go dark while balls fly. balls[] is ttlS-sorted: [0] dies first.
@@ -252,7 +253,7 @@ export const gyreHud = {
         }
         const sDmg = dmgText(sMassMax);
         const sMassTxt = sMass > 0 ? ` · ${Math.round(sMass)}t · DMG×${sDmg}` : '';
-        return { text: `GYRE — ${bs.length > 1 ? `${bs.length} BALLS` : 'BALL'} AWAY${sMassTxt}${sTxt}${overTxt}`, cls: 'gyre-ball', fuse: fuseS };
+        return { text: `GYRE — ${bs.length > 1 ? `${bs.length} BALLS` : 'BALL'} AWAY${sMassTxt}${sTxt}${overTxt}`, cls: 'gyre-ball', fuse: fuseS, row: 'ball' };
       }
       return { text: '', cls: '' };
     }
@@ -279,7 +280,7 @@ export const gyreHud = {
       const bowlDmg = dmgText(g.ballMass != null ? g.ballMass : bowlMass);
       // Mass text reads the frozen payload too — one row, one ball.
       const bowlT = Math.round(g.ballMass != null ? g.ballMass : bowlMass);
-      return { text: `GYRE — BOWL ×${bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-launched', fuse: fuseS };
+      return { text: `GYRE — BOWL ×${bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-launched', fuse: fuseS, row: 'bowl' };
     }
     if (g.phase === 'holding') {
       const count = (g.absorbs || 0) + 1;
@@ -302,14 +303,14 @@ export const gyreHud = {
       // channel a swelling-but-not-full clump named its size through.
       const mfrac = (g.maxClumpMass || 0) > 0 ? Math.min(1, (g.clumpMass || 0) / g.maxClumpMass) : 0;
       if (this._strainOn) {
-        return { text: `GYRE — STRAIN ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-strain', strain: s, fuse, mass: mfrac };
+        return { text: `GYRE — STRAIN ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-strain', strain: s, fuse, mass: mfrac, row: 'strain' };
       }
       // Saturation reads: the cap is a hard ceiling, so "why isn't it eating?" gets a flag.
       const full = g.maxClumpMass != null && (g.clumpMass || 0) >= g.maxClumpMass;
       if (full) {
-        return { text: `GYRE — ×${count} · ${mass}t${dmg} FULL${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-full', strain: s, fuse, mass: mfrac };
+        return { text: `GYRE — ×${count} · ${mass}t${dmg} FULL${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-full', strain: s, fuse, mass: mfrac, row: 'full' };
       }
-      return { text: `GYRE — ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-holding', strain: s, fuse, mass: mfrac };
+      return { text: `GYRE — ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-holding', strain: s, fuse, mass: mfrac, row: 'holding' };
     }
     // Net anticipation: material already inside the cone names the catch before it
     // lands — "×N IN NET" instead of a bare SEARCHING sweep. A beam towing only
@@ -320,36 +321,44 @@ export const gyreHud = {
       // A mixed net carries the warm face + the refusal count too — an uneatable
       // body inside is the actionable read, same as the tow branch's own rule.
       // handlingTxt already ends in `· TOO HEAVY ×N` — the suffix comes once.
-      return { text: `GYRE — ×${net} IN NET${handlingTxt}${fuseTxt}${ballTxt}${overTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-holding', fuse: fuseS };
+      return { text: `GYRE — ×${net} IN NET${handlingTxt}${fuseTxt}${ballTxt}${overTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-holding', fuse: fuseS, row: 'net' };
     }
     if (tow > 0) {
       // The too-heavy read is the actionable half of the line — carry the warm
       // face whenever a body it can never eat is inside, not only when tow==0.
       // Same for the defensive payoff: a beam towing loot while it bends a
       // volley names both — the deflect ledger isn't silently discarded.
-      return { text: `GYRE — TOWING ×${tow}${heavy > 0 ? ` · TOO HEAVY ×${heavy}` : ''}${deflect > 0 ? ` · DEFLECT ×${deflect}` : ''}${fuseTxt}${ballTxt}${overTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-search', fuse: fuseS };
+      return { text: `GYRE — TOWING ×${tow}${heavy > 0 ? ` · TOO HEAVY ×${heavy}` : ''}${deflect > 0 ? ` · DEFLECT ×${deflect}` : ''}${fuseTxt}${ballTxt}${overTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-search', fuse: fuseS, row: 'tow' };
     }
     if (heavy > 0) {
-      return { text: `GYRE — TOO HEAVY ×${heavy}${deflect > 0 ? ` · DEFLECT ×${deflect}` : ''}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-heavy', fuse: fuseS };
+      return { text: `GYRE — TOO HEAVY ×${heavy}${deflect > 0 ? ` · DEFLECT ×${deflect}` : ''}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-heavy', fuse: fuseS, row: 'heavy' };
     }
     if (deflect > 0) {
       // The defensive-only read: nothing to tow or eat — the cone is purely
       // bending their fire. Its own word so the pill isn't silent SEARCHING
       // while the weapon's one defensive payoff does real work — the warm face
       // like IN NET: the beam is working, not sweeping an empty sky.
-      return { text: `GYRE — DEFLECTING ×${deflect}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-holding', fuse: fuseS };
+      return { text: `GYRE — DEFLECTING ×${deflect}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-holding', fuse: fuseS, row: 'deflect' };
     }
-    return { text: `GYRE — SEARCHING${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-search', fuse: fuseS };
+    return { text: `GYRE — SEARCHING${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-search', fuse: fuseS, row: 'search' };
   },
 
-  _apply(dom, text, cls, strain, fuse, mass) {
+  _apply(dom, text, cls, strain, fuse, mass, row) {
     if (!text) { this._hide(dom); return; }
     if (text !== this._lastText) {
       this._lastText = text;
       // Volatile telemetry stays out of the live region: aria-atomic would
       // re-announce the whole pill on every mass/fuse digit tick. pillText is
-      // aria-hidden; the sr-only twin rewrites only on a phase-row change.
+      // aria-hidden; the sr-only twin rewrites only on a semantic row change.
       dom.pillText.textContent = text;
+    }
+    // The one announcement the live region makes: a row flip reads the current
+    // line once (state, not per-tick telemetry). Keyed on _resolve's semantic
+    // row — not the cls face: IN NET→HOLDING (the snag, the verb's central
+    // beat) shares the warm 'holding' face now and must still announce.
+    if (row !== this._lastRow) {
+      this._lastRow = row;
+      dom.pillSr.textContent = text;
     }
     // The continuous strain01 rides a thin fill bar under the pill — the eye gets
     // the slip building long before the binary STRAIN flag flips at 0.40.
@@ -373,9 +382,6 @@ export const gyreHud = {
     dom.fuse.style.display = f > 0.02 && fuse < GYRE_SNARE.fuseWarnVisS ? 'block' : 'none';
     if (cls !== this._lastClass) {
       this._lastClass = cls;
-      // The one announcement the live region makes: a phase-row flip reads the
-      // current line once (state, not per-tick telemetry).
-      dom.pillSr.textContent = text;
       dom.pill.classList.toggle('gyre-holding', cls === 'gyre-holding');
       dom.pill.classList.toggle('gyre-strain', cls === 'gyre-strain');
       dom.pill.classList.toggle('gyre-launched', cls === 'gyre-launched');
@@ -410,6 +416,7 @@ export const gyreHud = {
     this._visible = false;
     this._lastText = '';
     this._lastClass = ''; // re-show re-announces the row (and re-toggles faces)
+    this._lastRow = '';
   },
 
   _ensureDom() {
@@ -452,6 +459,7 @@ export const gyreHud = {
     this._dom = { root, pill, pillText, pillSr, massFill, fill, fuse };
     this._lastText = '';
     this._lastClass = '';
+    this._lastRow = '';
     this._visible = false;
     this._laneSeat = '';
     return this._dom;
