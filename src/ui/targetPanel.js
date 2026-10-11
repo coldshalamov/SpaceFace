@@ -25,7 +25,7 @@ import { DAMAGE_MODEL } from '../data/combatDefs.js';
 import { ceresDisabledHaulerTruth, livingWorkStatusText } from '../data/contactHail.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
-import { interactionDisplayName, interactionProfileForEntity, presentationStatusWord } from '../data/entityInteractionProfiles.js';
+import { interactionClassLine, interactionDisplayName, interactionProfileForEntity, presentationStatusWord } from '../data/entityInteractionProfiles.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { isBeamTargetEligible, beamRangeFor } from '../systems/mining.js';
 import { initialMouseToolLane } from '../systems/input.js';
@@ -160,11 +160,8 @@ export function targetDisplayName(e) {
 
 export function targetInteractionClass(e) {
   const interaction = interactionProfileForEntity(e);
-  if (interaction.kind === 'unstable_reactor_wreck') return 'Hazardous Salvage';
-  if (interaction.kind === 'wreck') return 'Salvage';
   if (interaction.kind === 'asteroid') return asteroidClassLine(e);
-  if (interaction.classLabel) return interaction.classLabel;
-  return '';
+  return interactionClassLine(e);
 }
 
 /**
