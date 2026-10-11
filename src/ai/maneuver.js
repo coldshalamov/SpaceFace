@@ -18,6 +18,7 @@ import {
 import { createSquadFrameDirector } from './squadFrame.js';
 import { temperamentFor } from './temperament.js';
 import {
+  MOVING_BODY_MIN_SPEED,
   REFLEX_KIND,
   emptyReflexState,
   evaluateReflexes,
@@ -380,8 +381,9 @@ export class ManeuverPlanner {
     // ARE the reaction. Reflexes shape the desired point, never write the thruster
     // request directly, and never bypass ROE or fire authority.
     let reflex = null;
-    if (!choreo && !mindOwned && reflexAllowedForIntent(intent.kind)) {
+    if (!choreo && reflexAllowedForIntent(intent.kind)) {
       reflex = evaluateReflexes(this.seed, {
+        bodyDodgeOnly: mindOwned,
         entityId,
         tick,
         self: selfPose,
@@ -392,7 +394,7 @@ export class ManeuverPlanner {
         temperament,
         reflexState: runtime.reflex || (runtime.reflex = emptyReflexState()),
       });
-      if (reflex && reflex.lateral) desired = applyReflexToDesired(desired, selfPose, reflex);
+      if (reflex && (reflex.lateral || reflex.dodge)) desired = applyReflexToDesired(desired, selfPose, reflex);
       runtime.lastReflex = reflex ? reflex.kind : null;
     }
     if (desired.obstacleAvoidance === true) reflex = null; // a rock in the dodge cone owns the hull
@@ -819,7 +821,8 @@ function intercept(self, target, horizonTicks, lateralSign = 0, commitSpeed = 72
   const tvx = target.vel && Number.isFinite(target.vel.x) ? target.vel.x : 0;
   const tvz = target.vel && Number.isFinite(target.vel.z) ? target.vel.z : 0;
   const point = { x: target.pos.x + tvx * horizon / 60, z: target.pos.z + tvz * horizon / 60 };
-  if (lateralSign) {
+  // An authorized ram pass is head-on: the crossing-lane offset below exists to avoid contact.
+  if (lateralSign && !explicitRamApproach(intent, self)) {
     const dx = target.pos.x - self.pos.x, dz = target.pos.z - self.pos.z;
     const length = Math.hypot(dx, dz);
     let nx, nz;
@@ -1140,7 +1143,10 @@ function massClearanceFor(contact, intent, self, config) {
 
 function explicitRamApproach(intent, self) {
   if (!intent || intent.ramAuthorized !== true || !self) return false;
-  if (self.operationalMassBand !== 'heavy' && self.operationalMassBand !== 'capital') return false;
+  // `self.ramAuthorized` was minted by aiPorts: heavy/capital by explicitRamAuthorization, or a
+  // named ace's single telegraphed ram pass (T8) at any band — the band gate lives at the source.
+  if (self.operationalMassBand !== 'heavy' && self.operationalMassBand !== 'capital'
+    && self.ramAuthorized !== true) return false;
   const activity = self.activity;
   if (!activity || activity.kind !== 'attack_run') return false;
   return !String(activity.reason || '').includes('station_jurisdiction');
@@ -1173,6 +1179,9 @@ function applyObstacleAvoidance(desired, self, contacts, intent, config, counter
     // stolen ~9 out of 10 plans, the nose chased a whipping dodge route, and fixed mounts sprayed
     // past the target (D38). Dead hulks still count as cover.
     if (contact.kind === ContactKind.SHIP && contact.alive !== false) continue;
+    // A thrown body is not cover: a hazard moving at the thrown-body floor is dodged, not steered around.
+    if (contact.kind === ContactKind.HAZARD && contact.vel
+      && Math.hypot(contact.vel.x, contact.vel.z) >= MOVING_BODY_MIN_SPEED) continue;
     // The maneuver's own objective is never its obstacle: a contact-seeking intent (transit to a
     // pod, tether approach) exists to reach that body, so steering to its shoulder would hold the
     // ship ~1.25 clearances off the target forever (measured: the custody raider parked 49 WU out
@@ -1266,7 +1275,9 @@ function motionEnvelope(kind, intent, arrival, formationDistance, formationBound
 }
 
 function isLateralBurst(reflex) {
-  return !!reflex && (reflex.kind === REFLEX_KIND.VOLLEY_JINK || reflex.kind === REFLEX_KIND.HIT_WEAVE) &&
+  if (!reflex) return false;
+  if (reflex.kind === REFLEX_KIND.BODY_DODGE) return !!reflex.dodge && (reflex.dodgeAmp || 0) >= 0.5;
+  return (reflex.kind === REFLEX_KIND.VOLLEY_JINK || reflex.kind === REFLEX_KIND.HIT_WEAVE) &&
     Math.abs(reflex.lateral || 0) >= 0.5;
 }
 
@@ -1428,13 +1439,20 @@ function stampDesired(source, next) {
  * rotate by the offset angle.
  */
 function applyReflexToDesired(desired, self, reflex) {
-  if (!desired || !reflex || !Number.isFinite(reflex.lateral) || Math.abs(reflex.lateral) < 0.5) {
-    return desired;
+  if (!desired || !reflex) return desired;
+  const world = reflex.dodge && Number.isFinite(reflex.dodgeAmp) ? reflex.dodge : null;
+  const lat = world ? reflex.dodgeAmp : reflex.lateral;
+  if (!Number.isFinite(lat) || Math.abs(lat) < 0.5) return desired;
+  let perpX;
+  let perpZ;
+  if (world) {
+    perpX = world.x;
+    perpZ = world.z;
+  } else {
+    const dir = unit2(desired.x, desired.z, Math.cos(self.rot), Math.sin(self.rot));
+    perpX = -dir.z;
+    perpZ = dir.x;
   }
-  const dir = unit2(desired.x, desired.z, Math.cos(self.rot), Math.sin(self.rot));
-  const perpX = -dir.z;
-  const perpZ = dir.x;
-  const lat = reflex.lateral;
   // desired.x/z is a distance-scaled vector (the solver re-normalizes it), so adding the
   // full lateral term rotates the commanded direction by ~atan(lat / dist) — the jink.
   const out = { ...desired, x: desired.x + perpX * lat, z: desired.z + perpZ * lat };

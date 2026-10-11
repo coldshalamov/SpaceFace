@@ -950,7 +950,8 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     : freeze(subsystemFractions(runtime));
   const activity = effectiveActivityForAI(ai);
   const bands = operationalBandsFor(state, entity, runtime, attachmentIndex);
-  const ramAuthorized = explicitRamAuthorization(entity, ai, activity, bands);
+  const ramAuthorized = explicitRamAuthorization(entity, ai, activity, bands)
+    || acePassAuthorization(state, entity, ai, activity);
   const self = {
     id: entity.id,
     team: entity.team == null ? null : entity.team,
@@ -1013,6 +1014,24 @@ function bestAimProjectileSpeed(weapons) {
     if (Number.isFinite(s) && s > best) best = s;
   }
   return best > 0 ? best : null;
+}
+
+// T8 — a named ace that remembers a bungee/slingshot/ram player is authorized ONE head-on ram pass
+// per return, whatever its mass band, when it carries the `ram-plate` gimmick. aceMemory arms the
+// record (`data.acePass`), speaks the telegraph, and stamps the window; this only reads it, so the
+// pass opens one beat after the bark and closes on its own. The impact itself is the ordinary
+// collision path — mass and momentum decide, no damage constant lives here.
+function acePassAuthorization(state, entity, ai, activity) {
+  const data = entity && entity.data;
+  const pass = data && data.acePass;
+  if (!pass || pass.state !== 'telegraphed') return false;
+  if (data.gimmickTag !== 'ram-plate' || !data.styleKit || data.styleKit.style !== 'ram') return false;
+  const tick = state && Number.isFinite(state.tick) ? state.tick : 0;
+  if (!(tick >= pass.authorizedAtTick && tick <= pass.untilTick)) return false;
+  return !!ai && ai.passive !== true
+    && ai.sanctuaryWithdrawn !== true
+    && !!activity && activity.kind === 'attack_run'
+    && !String(activity.reason || '').includes('station_jurisdiction');
 }
 
 function explicitRamAuthorization(entity, ai, activity, bands) {
@@ -1191,6 +1210,7 @@ function makeSensorContactRecord() {
     targetId: null,
     ownerId: null,
     disabled: false,
+    tumbling: false,
     tethered: false,
     exposed: false,
     ownedBySelf: false,
@@ -1231,6 +1251,7 @@ function fillSensorContact(out, base, confidence, threat, hostile) {
   out.targetId = base.targetId;
   out.ownerId = base.ownerId;
   out.disabled = base.disabled;
+  out.tumbling = base.tumbling;
   out.tethered = base.tethered;
   out.exposed = base.exposed;
   out.ownedBySelf = base.ownedBySelf;
@@ -1410,6 +1431,7 @@ function buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, 
     targetId: other.data && other.data.combat ? other.data.combat.targetId : null,
     ownerId: other.ownerId == null ? null : other.ownerId,
     disabled,
+    tumbling: isTumbling(state, other),
     tethered,
     exposed: false,
     ownedBySelf: false,

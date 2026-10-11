@@ -11,6 +11,7 @@
 import { ContactKind, clamp, hashUnit } from './contracts.js';
 
 export const REFLEX_KIND = Object.freeze({
+  BODY_DODGE: 'body_dodge',
   VOLLEY_JINK: 'volley_jink',
   HIT_WEAVE: 'hit_weave',
   MARKED_WEAVE: 'marked_weave',
@@ -24,6 +25,7 @@ export const REFLEX_KIND = Object.freeze({
 // All ranges are evaluated against the member's own sensor frame — a reflex can never see
 // farther than the ship's own sensors do.
 const TRIGGERS = Object.freeze({
+  [REFLEX_KIND.BODY_DODGE]: Object.freeze({ windowTicks: 30, cooldownTicks: 90, priority: 0 }),
   [REFLEX_KIND.VOLLEY_JINK]: Object.freeze({ windowTicks: 34, cooldownTicks: 120, priority: 1 }),
   [REFLEX_KIND.HIT_WEAVE]: Object.freeze({ windowTicks: 50, cooldownTicks: 160, priority: 2 }),
   [REFLEX_KIND.BRAKE_CHECK]: Object.freeze({ windowTicks: 26, cooldownTicks: 280, priority: 3 }),
@@ -35,6 +37,14 @@ const TRIGGERS = Object.freeze({
 });
 
 const TAU = Math.PI * 2;
+
+// A hazard/objective/tumbling hull moving at least this fast (WU/s) is a thrown body, not cover.
+export const MOVING_BODY_MIN_SPEED = 120;
+const BODY_MIN_CLOSING_SPEED = 100;
+const BODY_MAX_ETA = 1.4;
+const BODY_MISS_PAD = 14;
+const BODY_REAR_ARC = (100 * Math.PI) / 180;
+const BODY_MASS_AMP = Object.freeze({ light: 1, medium: 0.7, heavy: 0.35, capital: 0 });
 
 /**
  * Create a reflex evaluator. One engine per planner; per-entity state is kept in the caller's
@@ -55,6 +65,7 @@ export function emptyReflexState() {
     cooldowns: null,        // Map kind -> cooldown-until tick (lazily allocated)
     lastHull: 1,
     seenAllies: null,       // Map friendly contact id -> alive flag (lazily allocated)
+    bodyWatch: null,        // {bodyId, sinceTick} thrown body this pilot has been tracking
   };
 }
 
@@ -68,22 +79,29 @@ export function emptyReflexState() {
 export function evaluateReflexes(seed, ctx) {
   const { entityId, tick, self, contacts, target, intent, temperament, reflexState } = ctx;
   const rs = reflexState;
+  const bodyOnly = ctx.bodyDodgeOnly === true;
   // The gate lives inside the engine too: callers who skip reflexAllowedForIntent still
   // never get a jink out of a hull that is already doing an emergency maneuver.
   if (!self || !intent || !reflexAllowedForIntent(intent.kind)) return null;
 
   // Update the observation registers every call, burst or not.
-  const hull = Number.isFinite(self.hullFraction) ? self.hullFraction : 1;
-  const hullHit = rs.lastHull - hull;
-  rs.lastHull = hull;
-  const allies = trackAllies(rs, self, contacts);
-  const incoming = nearestIncoming(self, contacts);
+  let hullHit = 0;
+  let allies = NO_ALLY_LOSS;
+  let incoming = null;
+  if (!bodyOnly) {
+    const hull = Number.isFinite(self.hullFraction) ? self.hullFraction : 1;
+    hullHit = rs.lastHull - hull;
+    rs.lastHull = hull;
+    allies = trackAllies(rs, self, contacts);
+    incoming = nearestIncoming(self, contacts);
+  }
+  const body = nearestIncomingBody(seed, entityId, tick, self, contacts, temperament, rs);
 
   // ── stance: simmer ──────────────────────────────────────────────────────────
   // Hot ships throttle off and refuse boost until the plates cool. Continuous,
   // evaluated even while a burst reflex is running (a dodging hull still manages heat).
   const heat = Number.isFinite(self.heatFraction) ? self.heatFraction : 0;
-  const simmer = heat > 0.86;
+  const simmer = !bodyOnly && heat > 0.86;
 
   // ── burst expiry ────────────────────────────────────────────────────────────
   if (rs.burst && tick >= rs.burst.untilTick) rs.burst = null;
@@ -91,7 +109,7 @@ export function evaluateReflexes(seed, ctx) {
   // ── stance: marked weave ────────────────────────────────────────────────────
   // A hostile ship tracking this hull while it is still outside knife range earns a
   // continuous weave — the "rolls and dodges" pilot. Gunners (high aim) stand straighter.
-  const marked = markedByHostile(self, contacts);
+  const marked = !bodyOnly && markedByHostile(self, contacts);
   let stance = null;
   if (marked && temperament.weave > 0.25) {
     stance = {
@@ -106,7 +124,7 @@ export function evaluateReflexes(seed, ctx) {
 
   // ── burst triggers ──────────────────────────────────────────────────────────
   if (!rs.burst) {
-    const burst = pickBurst(seed, ctx, { hullHit, incoming, allies, marked });
+    const burst = pickBurst(seed, ctx, { hullHit, incoming, allies, marked, body, bodyOnly });
     if (burst) rs.burst = burst;
   }
 
@@ -134,6 +152,15 @@ export function evaluateReflexes(seed, ctx) {
     const b = rs.burst;
     const age = tick - b.startTick;
     switch (b.kind) {
+      case REFLEX_KIND.BODY_DODGE: {
+        // Hull integrity beats intent: a hard step off the thrown body's line, easing out.
+        const falloff = 1 - age / Math.max(1, b.untilTick - b.startTick);
+        out.dodge = b.dodge;
+        out.dodgeAmp = b.amp * (0.5 + 0.5 * falloff);
+        out.boost = b.boost === true;
+        out.dropAim = true;
+        break;
+      }
       case REFLEX_KIND.VOLLEY_JINK: {
         // One decisive sideways step, easing off as the window ends.
         const falloff = 1 - age / Math.max(1, b.untilTick - b.startTick);
@@ -183,6 +210,21 @@ function pickBurst(seed, ctx, obs) {
     rs.cooldowns.set(kind, tick + TRIGGERS[kind].cooldownTicks);
   };
   const side = () => (hashUnit(seed, entityId, 'reflex_side', Math.floor(tick / 24)) < 0.5 ? -1 : 1);
+
+  // 0) Body dodge: a thrown wreck/rock/pod/tumbling hull closing on a near-miss course.
+  if (!cooling(REFLEX_KIND.BODY_DODGE) && obs.body && obs.body.ready) {
+    setCooldown(REFLEX_KIND.BODY_DODGE);
+    return {
+      kind: REFLEX_KIND.BODY_DODGE,
+      startTick: tick,
+      untilTick: tick + TRIGGERS[REFLEX_KIND.BODY_DODGE].windowTicks,
+      side: 0,
+      amp: obs.body.amp,
+      dodge: obs.body.dodge,
+      boost: obs.body.boost,
+    };
+  }
+  if (obs.bodyOnly) return null;
 
   // 1) Volley jink: a live projectile on a near-miss course. The highest-priority
   //    reaction — ships that never dodge gunfire read as targets, not pilots.
@@ -278,6 +320,99 @@ function trackAllies(rs, self, contacts) {
     for (const key of seen.keys()) { seen.delete(key); if (seen.size <= 64) break; }
   }
   return { lostRecently };
+}
+
+const NO_ALLY_LOSS = Object.freeze({ lostRecently: false });
+
+function planarBodyRadius(body, fallback = 0) {
+  const measured = Number(body && body.planarRadius);
+  if (measured > 0) return measured;
+  return Number(body && body.radius) || fallback;
+}
+
+function segmentClearance(ax, az, bx, bz, px, pz) {
+  const sx = bx - ax, sz = bz - az;
+  const len2 = sx * sx + sz * sz;
+  const t = len2 > 0 ? clamp(((px - ax) * sx + (pz - az) * sz) / len2, 0, 1) : 0;
+  return Math.hypot(px - (ax + sx * t), pz - (az + sz * t));
+}
+
+function bodyOccluded(self, body, contacts) {
+  for (const c of contacts) {
+    if (c.kind !== ContactKind.HAZARD || c.id === body.id || c.id === self.id || !c.pos) continue;
+    if (segmentClearance(self.pos.x, self.pos.z, body.pos.x, body.pos.z, c.pos.x, c.pos.z) < 0.85 * planarBodyRadius(c)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Thrown-body perception: the most imminent fast body on a near-miss course that this pilot
+ * can see (no rock between), notices (per-pilot gate), and has had long enough to react to.
+ * Returns null or {bodyId, eta, ready, dodge:{x,z}, amp, boost}. Updates rs.bodyWatch only.
+ */
+function nearestIncomingBody(seed, entityId, tick, self, contacts, temperament, rs) {
+  const band = self.operationalMassBand;
+  const bandAmp = Object.prototype.hasOwnProperty.call(BODY_MASS_AMP, band) ? BODY_MASS_AMP[band] : 1;
+  let best = null;
+  if (bandAmp > 0 && self.pos) {
+    const selfR = planarBodyRadius(self, 16);
+    const svx = self.vel ? self.vel.x : 0, svz = self.vel ? self.vel.z : 0;
+    const noticeBase = clamp(0.25 + 0.45 * temperament.dash + 0.25 * (1 - temperament.aim), 0.15, 0.9);
+    for (const c of contacts) {
+      const kind = c.kind;
+      if (c.id === self.id || !c.pos || !c.vel) continue;
+      if (kind === ContactKind.SHIP) {
+        if (c.tumbling !== true && c.disabled !== true) continue;
+      } else if (kind !== ContactKind.HAZARD && kind !== ContactKind.OBJECTIVE) continue;
+      if (Math.hypot(c.vel.x, c.vel.z) < MOVING_BODY_MIN_SPEED) continue;
+      const dx = c.pos.x - self.pos.x, dz = c.pos.z - self.pos.z;
+      const vx = c.vel.x - svx, vz = c.vel.z - svz;
+      const speed2 = vx * vx + vz * vz;
+      if (speed2 < 1) continue;
+      const approach = -(dx * vx + dz * vz);
+      const dist = Math.hypot(dx, dz);
+      if (dist < 1e-6 || approach / dist < BODY_MIN_CLOSING_SPEED) continue;
+      const eta = approach / speed2;
+      if (eta <= 0 || eta > BODY_MAX_ETA) continue;
+      const miss = Math.hypot(dx + vx * eta, dz + vz * eta);
+      if (miss >= selfR + planarBodyRadius(c) + BODY_MISS_PAD) continue;
+      if (best && eta >= best.eta) continue;
+      if (bodyOccluded(self, c, contacts)) continue;
+      const rear = Math.abs(wrapPi(Math.atan2(dz, dx) - (Number.isFinite(self.rot) ? self.rot : 0))) > BODY_REAR_ARC;
+      const notice = noticeBase * (rear ? 0.5 : 1);
+      if (!(hashUnit(seed, entityId, c.id, 'body_dodge_notice') < notice)) continue;
+      best = { c, eta, rear, dx, dz, vx, vz };
+    }
+  }
+  if (!best) {
+    if (rs.bodyWatch) rs.bodyWatch = null;
+    return null;
+  }
+  const bodyId = best.c.id;
+  if (!rs.bodyWatch || rs.bodyWatch.bodyId !== bodyId) rs.bodyWatch = { bodyId, sinceTick: tick };
+  const reactionTicks = 8 + Math.round((1 - temperament.dash) * 18) + (best.rear ? 12 : 0);
+  const speed = Math.sqrt(best.vx * best.vx + best.vz * best.vz);
+  const px = -best.vz / speed, pz = best.vx / speed;
+  const across = best.dx * px + best.dz * pz;
+  const sign = Math.abs(across) > 1e-3
+    ? (across > 0 ? -1 : 1)
+    : (hashUnit(seed, entityId, bodyId, 'body_dodge_side') < 0.5 ? -1 : 1);
+  return {
+    bodyId,
+    eta: best.eta,
+    ready: tick - rs.bodyWatch.sinceTick >= reactionTicks,
+    dodge: { x: px * sign, z: pz * sign },
+    amp: (60 + 60 * temperament.dash) * bandAmp,
+    boost: band == null || band === 'light',
+  };
+}
+
+function wrapPi(a) {
+  while (a > Math.PI) a -= TAU;
+  while (a < -Math.PI) a += TAU;
+  return a;
 }
 
 function nearestIncoming(self, contacts) {
