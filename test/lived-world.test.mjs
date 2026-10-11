@@ -1,12 +1,25 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ENCOUNTERS } from '../src/data/encounters.js';
+import { SECTORS } from '../src/data/sectors.js';
+import { LIVED_SECTOR_OVERLAYS, livedOverlayFor } from '../src/data/livedSectorOverlays.js';
 import { planEncounters } from '../src/systems/encounterDirector.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import { compileVignette } from '../src/systems/vignetteInterpreter.js';
 import { pickLaneErrand, armLaneErrands, applyLaneErrandIntent, LANE_ERRANDS, laneContractOwns } from '../src/systems/laneErrands.js';
-import { livedNextAtFor } from '../src/systems/livedWorldDirector.js';
+import { livedNextAtFor, pickLivedVignette } from '../src/systems/livedWorldDirector.js';
 import { advance, createJob } from '../src/systems/npcJobs.js';
+
+const LIVED_SITUATIONS = [
+  'toll', 'patrol', 'hunt', 'distress', 'salvage', 'trade', 'convoy', 'claim',
+  'anomaly', 'wreck', 'yard', 'archive', 'escort', 'puzzle', 'wake',
+];
+const LIVED_PLACES = [
+  'civilian_core', 'trade_lane', 'patrol_corridor', 'border_checkpoint',
+  'refinery_approach', 'mining_belt', 'colony', 'derelict_field',
+  'outlaw_zone', 'radiation_field', 'nebula_fog', 'ambush_lane',
+  'anomaly_deep', 'planetary_mass',
+];
 
 test('lived vignettes stay out of the seeded day planner', () => {
   const lived = Object.values(ENCOUNTERS).filter((enc) => enc.livedVignette === true);
@@ -31,6 +44,70 @@ test('lived vignettes stay out of the seeded day planner', () => {
       }
     }
   }
+});
+
+test('generated lived vignettes cover situations and configured places evenly', () => {
+  const generated = Object.values(ENCOUNTERS).filter((enc) => (
+    enc.livedVignette === true && enc.id.startsWith('lived_')
+  ));
+  const counts = new Map(LIVED_SITUATIONS.map((situation) => [situation, 0]));
+  for (const enc of generated) {
+    assert.ok(counts.has(enc.shape.situation), `${enc.id} has unknown situation ${enc.shape.situation}`);
+    counts.set(enc.shape.situation, counts.get(enc.shape.situation) + 1);
+  }
+  assert.equal(generated.length, 176);
+  for (const [situation, count] of counts) {
+    assert.ok(count >= 6, `${situation} appears only ${count} times`);
+    assert.ok(count / generated.length <= 0.15, `${situation} appears in ${count}/${generated.length}`);
+  }
+  const places = new Set(generated.map((enc) => enc.shape.place));
+  for (const place of LIVED_PLACES) assert.ok(places.has(place), `missing generated place ${place}`);
+});
+
+test('every sector has a frozen six-line lived overlay with unique lines', () => {
+  assert.ok(Object.isFrozen(LIVED_SECTOR_OVERLAYS));
+  assert.equal(Object.keys(LIVED_SECTOR_OVERLAYS).length, SECTORS.length);
+  const allLines = [];
+  for (const sector of SECTORS) {
+    const overlay = livedOverlayFor(sector.id);
+    assert.ok(overlay, `missing lived overlay for ${sector.id}`);
+    assert.equal(overlay.sectorId, sector.id);
+    assert.ok(overlay.crew);
+    assert.ok(Object.isFrozen(overlay));
+    assert.ok(Object.isFrozen(overlay.situations));
+    assert.ok(Object.isFrozen(overlay.lines));
+    assert.equal(overlay.lines.length, 6, sector.id);
+    for (const situation of overlay.situations) {
+      assert.ok(LIVED_SITUATIONS.includes(situation), `${sector.id} has unknown situation ${situation}`);
+    }
+    allLines.push(...overlay.lines);
+  }
+  assert.equal(new Set(allLines).size, allLines.length, 'overlay lines must be unique across sectors');
+  assert.equal(livedOverlayFor('sector_missing'), null);
+  assert.equal(livedOverlayFor('toString'), null);
+});
+
+test('lived overlay selection is deterministic and prefers matching authored candidates', () => {
+  const overlay = livedOverlayFor('sector_sker_haven');
+  const candidates = [
+    { id: 'authored_trade', shape: { situation: 'trade' } },
+    { id: 'authored_anomaly', shape: { situation: 'anomaly' } },
+    { id: 'lived_toll', shape: { situation: 'toll' } },
+  ];
+  const args = { candidates, overlay, seed: 47, sectorId: overlay.sectorId, zoneKey: 'trade_lane', day: 2 };
+  const first = pickLivedVignette(args);
+  const second = pickLivedVignette(args);
+  assert.equal(first.id, second.id);
+  assert.equal(first.id, 'authored_trade');
+
+  const fallback = pickLivedVignette({
+    ...args,
+    candidates: [
+      { id: 'lived_trade', shape: { situation: 'trade' } },
+      { id: 'lived_anomaly', shape: { situation: 'anomaly' } },
+    ],
+  });
+  assert.equal(fallback.shape.situation, 'trade');
 });
 
 test('a vignette hails, offers, and resolves without writing credits itself', () => {
@@ -92,6 +169,62 @@ test('a vignette hails, offers, and resolves without writing credits itself', ()
   assert.deepEqual(resolved, ['a']);
   assert.equal(state.encounterDirector.stats.livedSeen.unit_kettle, 'a');
   assert.equal(state.player, undefined);
+});
+
+test('lived overlays replace only the work line and label spawned crew', () => {
+  const spec = {
+    id: 'unit_lived_overlay',
+    title: 'GENERIC CREW',
+    factionId: 'faction_free',
+    start: 'spawn',
+    cast: [
+      { role: 'hull_0', archetype: 'mule_trader', dx: 0, dz: 0, scanLabel: 'OLD LABEL A' },
+      { role: 'hull_1', archetype: 'mule_trader', dx: 4, dz: 0, scanLabel: 'OLD LABEL B' },
+    ],
+    phases: [
+      { id: 'spawn', verb: 'spawn', next: 'work_line' },
+      { id: 'work_line', verb: 'say', line: 'VOICE: Holding. This does not hurry.', channel: 'info', next: 'done' },
+      { id: 'done', verb: 'resolve', outcome: 'done' },
+    ],
+  };
+  const runtime = compileVignette(spec);
+
+  function run(data) {
+    const said = [];
+    let spawned;
+    const live = {
+      id: 'L1',
+      shapeId: spec.id,
+      vars: {},
+      ids: [],
+      roles: {},
+      anchor: { x: 0, z: 0 },
+      phase: 'telegraph',
+      data,
+      shape: { title: spec.title },
+    };
+    const state = { encounterDirector: { stats: {} }, entities: new Map() };
+    const d = {
+      now: () => 100,
+      say(_live, _channel, text) { said.push(text); },
+      spawnShips(_live, ships) {
+        spawned = ships;
+        return ships.map((_ship, index) => index + 1);
+      },
+      resolve() {},
+      abort(_live, reason) { throw new Error(`abort ${reason}`); },
+    };
+    runtime.fire(d, live, state);
+    return { said, spawned };
+  }
+
+  const plain = run(undefined);
+  assert.equal(plain.said[0], 'VOICE: Holding. This does not hurry.');
+  assert.deepEqual(plain.spawned.map((ship) => ship.scanLabel), ['OLD LABEL A', 'OLD LABEL B']);
+  const overlayLine = 'We haul through the Quarry Cathedral after the seam unloads.';
+  const overlaid = run({ livedOverlay: { sectorId: 'sector_ceres_belt', crew: 'DMC SEAM CREW', line: overlayLine } });
+  assert.equal(overlaid.said[0], overlayLine);
+  assert.deepEqual(overlaid.spawned.map((ship) => ship.scanLabel), ['DMC SEAM CREW 1', 'DMC SEAM CREW 2']);
 });
 
 test('lane errands are deterministic and do not freeze the job clock', () => {

@@ -91,7 +91,10 @@ function applyMotion(d, live, motion, now) {
 function runVerb(d, live, state, spec, phase) {
   const verb = phase.verb;
   if (verb === 'say') {
-    const text = phase.line || '';
+    const overlay = live.data && live.data.livedOverlay;
+    const text = phase.id === 'work_line' && overlay && overlay.line
+      ? overlay.line
+      : phase.line || '';
     if (text) {
       d.say(live, phase.channel || 'info', text, null, {
         literal: true,
@@ -102,10 +105,11 @@ function runVerb(d, live, state, spec, phase) {
   }
   if (verb === 'spawn') {
     const anchor = live.anchor || { x: 0, z: 0 };
+    const overlay = live.data && live.data.livedOverlay;
     live.ids = live.ids || [];
     live.roles = live.roles || {};
     live.plan = live.plan || {};
-    live.plan.ships = (spec.cast || []).map((member) => ({
+    live.plan.ships = (spec.cast || []).map((member, index) => ({
       archetype: member.archetype,
       level: member.level || 2,
       pos: { x: anchor.x + (member.dx || 0), z: anchor.z + (member.dz || 0) },
@@ -114,7 +118,9 @@ function runVerb(d, live, state, spec, phase) {
       role: member.role,
       passive: true,
       team: 2,
-      scanLabel: member.scanLabel || spec.title,
+      scanLabel: overlay && overlay.crew
+        ? `${overlay.crew} ${index + 1}`
+        : member.scanLabel || spec.title,
     }));
     const ids = d.spawnShips(live, live.plan.ships) || [];
     if (ids.length < (spec.cast || []).length) {

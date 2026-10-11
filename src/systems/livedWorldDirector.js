@@ -5,6 +5,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { ENCOUNTERS } from '../data/encounters.js';
+import { livedOverlayFor } from '../data/livedSectorOverlays.js';
 import { zoneAt } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 
@@ -27,6 +28,23 @@ export function livedNextAtFor(now, lastAmbientAt, ok) {
   if (ok) return now + GAP_S;
   const stamped = Number.isFinite(lastAmbientAt) && lastAmbientAt >= now - 0.05;
   return stamped ? lastAmbientAt + AMBIENT_GAP_S * 2 : now + AMBIENT_GAP_S;
+}
+
+export function pickLivedVignette({ candidates, overlay, seed, sectorId, zoneKey, day }) {
+  if (!Array.isArray(candidates) || !candidates.length) return null;
+  const ordered = [...candidates].sort((a, b) => a.id.localeCompare(b.id));
+  const authored = ordered.filter((enc) => !String(enc.id).startsWith('lived_'));
+  const bucket = hash32(seed, sectorId, zoneKey, day, 'lived-vignette');
+  const pool = authored.length && (bucket % 5) !== 0 ? authored : ordered;
+  const preferred = overlay && Array.isArray(overlay.situations)
+    ? ordered.filter((enc) => overlay.situations.includes(enc.shape && enc.shape.situation))
+    : [];
+  if (preferred.length && (bucket % 3) !== 0) {
+    const preferredPool = preferred.filter((enc) => pool.includes(enc));
+    const choicePool = preferredPool.length ? preferredPool : preferred;
+    return choicePool[bucket % choicePool.length];
+  }
+  return pool[bucket % pool.length] || null;
 }
 
 function survivalLive(state) {
@@ -85,6 +103,7 @@ export function tickLivedVignettes(runtime) {
   if (dir.stats && dir.stats.livedNextAt > now) return;
   if (worldAlreadyFighting(state)) return;
   const sectorId = state.world && state.world.currentSectorId;
+  const overlay = livedOverlayFor(sectorId);
   const player = state.playerId != null && state.entities ? state.entities.get(state.playerId) : null;
   if (!sectorId || !player || player.alive === false || !player.pos) return;
   const local = globalToSectorLocalForSector(player.pos, sectorId);
@@ -103,11 +122,9 @@ export function tickLivedVignettes(runtime) {
   if (!candidates.length) return;
   const seed = (state.meta && state.meta.seed) || 1;
   const day = Math.floor(now / 600);
-  candidates.sort((a, b) => a.id.localeCompare(b.id));
-  const authored = candidates.filter((enc) => !String(enc.id).startsWith('lived_'));
-  const bucket = hash32(seed, sectorId, zone.id || zone.type, day, 'lived-vignette');
-  const pool = authored.length && (bucket % 5) !== 0 ? authored : candidates;
-  const pick = pool[bucket % pool.length];
+  const zoneKey = zone.id || zone.type;
+  const pick = pickLivedVignette({ candidates, overlay, seed, sectorId, zoneKey, day });
+  const bucket = hash32(seed, sectorId, zoneKey, day, 'lived-vignette');
   const ang = (hash32(seed, pick.id, day, 'lived-angle') % 628) / 100;
   const result = director.requestAuthoredEncounter({
     shapeId: pick.id,
@@ -119,6 +136,13 @@ export function tickLivedVignettes(runtime) {
     },
     zoneType: zone.type,
     zoneName: zone.name || zone.id,
+    data: overlay ? {
+      livedOverlay: {
+        sectorId,
+        crew: overlay.crew,
+        line: overlay.lines[hash32(seed, pick.id, day, 'lived-line') % overlay.lines.length],
+      },
+    } : undefined,
     force: true,
   });
   if (!dir.stats) dir.stats = {};

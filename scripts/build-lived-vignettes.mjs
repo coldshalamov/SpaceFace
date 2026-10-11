@@ -69,6 +69,268 @@ const C = (a, b, c) => [
   { id: 'c', label: c[0], playerLine: c[1] },
 ];
 
+const SITUATION_TEXT = {
+  toll: {
+    hail: '${voice}: The ${noun} is due at ${placeLabel}. Pay, dispute, or keep moving.',
+    choices: [
+      ['Pay the count', '${voice}, I will pay for the ${noun} and take the marked lane.'],
+      ['Ask for proof', 'Show me the ${noun} count before I enter ${placeLabel}.'],
+      ['Leave the toll', 'I decline the ${noun}; clear my hull from ${placeLabel}.'],
+    ],
+    receipts: {
+      a: 'Count cleared. The ${noun} crossed ${placeLabel} under your name.',
+      b: 'Dispute logged. ${voice} kept the original count intact.',
+      c: 'Declined. The ${noun} stays on their side of ${placeLabel}.',
+    },
+    color: [
+      'The toll board has one number and three kinds of handwriting.',
+      '${voice} counts the queue by hull, not by promise.',
+    ],
+  },
+  patrol: {
+    hail: '${voice}: Hold at ${placeLabel}. The ${noun} is not on your manifest.',
+    choices: [
+      ['Answer the scan', 'I am holding. Read the ${noun} against my manifest.'],
+      ['File a question', 'Log the stop, ${voice}; I want the rule in writing.'],
+      ['Leave the lane', 'I decline the scan. My hull is leaving ${placeLabel}.'],
+    ],
+    receipts: {
+      a: 'Scan complete. The ${noun} remains in the same place.',
+      b: 'Question filed. ${voice} has to answer it next shift.',
+      c: 'You left. The patrol kept its route through ${placeLabel}.',
+    },
+    color: [
+      'The patrol has one working lamp and no spare explanation.',
+      '${voice} marks the stop before the scanner warms.',
+    ],
+  },
+  hunt: {
+    hail: '${voice}: We found the ${noun} trail crossing ${placeLabel}. Stay outside it.',
+    choices: [
+      ['Track the mark', 'I will follow the ${noun} trail, slow and outside your line.'],
+      ['Share the bearing', 'Send me the last bearing before the mark went cold.'],
+      ['Leave the search', 'I am not joining this hunt. Keep ${placeLabel} clear.'],
+    ],
+    receipts: {
+      a: 'The mark held. Your bearing put the trail back together.',
+      b: 'Bearing shared. ${voice} kept the original search lead.',
+      c: 'You left. The ${noun} trail kept crossing ${placeLabel}.',
+    },
+    color: [
+      'The search grid has a gap where the old beacon failed.',
+      '${voice} reads each empty square before moving the scope.',
+    ],
+  },
+  distress: {
+    hail: '${voice}: A distress call names the ${noun} near ${placeLabel}. Answer or stand clear.',
+    choices: [
+      ['Answer the call', 'I have the ${noun} call. Send its last clean bearing.'],
+      ['Hold a lamp', 'I can hold a lamp outside the caller’s approach.'],
+      ['Leave the call', 'I cannot answer. Keep my hull clear of ${placeLabel}.'],
+    ],
+    receipts: {
+      a: 'Call answered. The bearing stopped moving while you listened.',
+      b: 'Lamp held. ${voice} took the caller through the marked gap.',
+      c: 'You left. The ${noun} call stayed open on their board.',
+    },
+    color: [
+      'The distress tone repeats on the same damaged second.',
+      '${voice} leaves the rescue channel open after the call ends.',
+    ],
+  },
+  salvage: {
+    hail: '${voice}: The ${noun} came loose at ${placeLabel}. We have not called it scrap.',
+    choices: [
+      ['Secure the piece', 'I will secure the ${noun} before it hits the lane.'],
+      ['Mark the owner', 'Put the last owner on record before anyone cuts metal.'],
+      ['Leave the wreck', 'I will not claim it. Leave the ${noun} at ${placeLabel}.'],
+    ],
+    receipts: {
+      a: 'Piece secured. The cut starts after the ownership mark.',
+      b: 'Owner marked. ${voice} kept the saws cold for one shift.',
+      c: 'You left it. The ${noun} remains loose at ${placeLabel}.',
+    },
+    color: [
+      'Their salvage clamp has one tooth bent toward the wreck.',
+      '${voice} tags loose mass before anyone brings a torch.',
+    ],
+  },
+  trade: {
+    hail: '${voice}: The ${noun} is the whole lot. ${placeLabel} has room to bargain.',
+    choices: [
+      ['Take the lot', 'I will take the ${noun} if the seal still reads clean.'],
+      ['Change the terms', 'Cut the price or split the ${noun} across both holds.'],
+      ['Pass the trade', 'No deal from me. Keep the ${noun} off my manifest.'],
+    ],
+    receipts: {
+      a: 'Lot transferred. The seal stayed legible through the handoff.',
+      b: 'Terms changed. ${voice} wrote the smaller number by hand.',
+      c: 'You passed. Their ${noun} goes back under the tarp.',
+    },
+    color: [
+      'The price is chalked on a panel that still has heat.',
+      '${voice} weighs the seal before looking at the buyer.',
+    ],
+  },
+  convoy: {
+    hail: '${voice}: The ${noun} rides with this convoy through ${placeLabel}. Hold formation.',
+    choices: [
+      ['Take rear watch', 'I will take the rear and count every convoy lamp.'],
+      ['Open a lane', 'I can clear the ${placeLabel} crossing for the last hull.'],
+      ['Let them pass', 'I am not joining. Keep the ${noun} inside your formation.'],
+    ],
+    receipts: {
+      a: 'Rear watch held. Every lamp came through in the same order.',
+      b: 'Lane opened. The last hull passed without spending its reserve.',
+      c: 'You let them pass. The ${noun} stayed in convoy.',
+    },
+    color: [
+      'The convoy keeps one empty slot for a hull that never came.',
+      '${voice} calls each lamp by position, not by name.',
+    ],
+  },
+  claim: {
+    hail: '${voice}: The ${noun} sits inside our claim at ${placeLabel}. Keep your cutter out.',
+    choices: [
+      ['Mark the boundary', 'I will mark the ${noun} face and leave your cutters room.'],
+      ['Check the survey', 'Show me the survey pin before you call this ground yours.'],
+      ['Leave the claim', 'I will not work it. Keep the ${noun} inside your line.'],
+    ],
+    receipts: {
+      a: 'Boundary marked. Both cutter tracks stayed on their own side.',
+      b: 'Survey checked. ${voice} added one pin where the line bends.',
+      c: 'You left. The ${noun} face remains under their claim.',
+    },
+    color: [
+      'The claim pins lean away from the deepest cut.',
+      '${voice} counts a boundary by the gaps between markers.',
+    ],
+  },
+  anomaly: {
+    hail: '${voice}: The ${noun} signal repeats from ${placeLabel}. Do not answer its second voice.',
+    choices: [
+      ['Record the return', 'I will record one return and keep the transmitter closed.'],
+      ['Compare the traces', 'Put the first ${noun} trace beside the newest return.'],
+      ['Leave it unread', 'I will not answer. Leave the ${noun} signal alone.'],
+    ],
+    receipts: {
+      a: 'Return recorded. The second voice arrived on the old timestamp.',
+      b: 'Traces aligned. ${voice} found the same missing interval.',
+      c: 'You left it unread. The signal stayed at ${placeLabel}.',
+    },
+    color: [
+      'The instrument needle returns to zero one beat too late.',
+      '${voice} keeps the receiver muted between each pass.',
+    ],
+  },
+  wreck: {
+    hail: '${voice}: The ${noun} is stamped on a wreck at ${placeLabel}. Do not cut yet.',
+    choices: [
+      ['Read the plate', 'I will read the ${noun} plate before anyone starts the tow.'],
+      ['Hold the wreck', 'I can hold the wreck clear while you check the registry.'],
+      ['Leave it drifting', 'I am leaving it here. Keep the ${noun} out of my route.'],
+    ],
+    receipts: {
+      a: 'Plate read. The registry lists a shift, not a final owner.',
+      b: 'Wreck held. The next registry pass can happen without drift.',
+      c: 'You left it. The ${noun} keeps its slow turn at ${placeLabel}.',
+    },
+    color: [
+      'The hull number stops halfway through the last digit.',
+      '${voice} keeps the cutting torch pointed at the deck.',
+    ],
+  },
+  yard: {
+    hail: '${voice}: The ${noun} needs a hand at ${placeLabel}. The shift is already short.',
+    choices: [
+      ['Take the tool', 'I will take the ${noun} tool and finish the loose bracket.'],
+      ['Call relief', 'Send the next shift before the yard light goes dark.'],
+      ['Leave the shift', 'I cannot stay. Leave the ${noun} for the next crew.'],
+    ],
+    receipts: {
+      a: 'Bracket seated. The work light held through the last turn.',
+      b: 'Relief called. ${voice} kept the tool on the bench.',
+      c: 'You left. The unfinished ${noun} stayed inside the yard line.',
+    },
+    color: [
+      'The work light marks one empty station on the bench.',
+      '${voice} records the tool before recording the delay.',
+    ],
+  },
+  archive: {
+    hail: '${voice}: The ${noun} carries a name at ${placeLabel}. Read it without adding one.',
+    choices: [
+      ['Read the name', 'I will read the ${noun} plate exactly as it is cut.'],
+      ['Copy the record', 'Copy the shift mark too; names are not the whole record.'],
+      ['Leave the plate', 'I will not alter it. Leave the ${noun} in the archive.'],
+    ],
+    receipts: {
+      a: 'Name read once. The plate gives no second line.',
+      b: 'Record copied. ${voice} left the blank field blank.',
+      c: 'You left the plate. Its lettering stayed at ${placeLabel}.',
+    },
+    color: [
+      'The archive keeps a space where a crew count should be.',
+      '${voice} reads the date before reading the name.',
+    ],
+  },
+  escort: {
+    hail: '${voice}: Keep the ${noun} behind your drive through ${placeLabel}. No passing.',
+    choices: [
+      ['Take the lead', 'I will take the lead and keep the ${noun} in my wake.'],
+      ['Cover the flank', 'I can cover the outside while your slow hull crosses.'],
+      ['Leave the escort', 'I cannot escort this run. Keep the ${noun} on course.'],
+    ],
+    receipts: {
+      a: 'Lead taken. The escorted hull kept its lamps behind yours.',
+      b: 'Flank clear. No second signal followed the crossing.',
+      c: 'You left. ${voice} kept the ${noun} on the marked course.',
+    },
+    color: [
+      'The escort beacon has been taped over at the wrong end.',
+      '${voice} checks the trailing lamp before calling the lead clear.',
+    ],
+  },
+  puzzle: {
+    hail: '${voice}: The ${noun} count fails at ${placeLabel}. Find which mark does not belong.',
+    choices: [
+      ['Check the first mark', 'I will check the ${noun} mark against the older count.'],
+      ['Compare both books', 'Put both ledgers side by side and read the gap aloud.'],
+      ['Leave it unsolved', 'I will not guess. Leave the ${noun} count open.'],
+    ],
+    receipts: {
+      a: 'First mark checked. The mismatch begins one line below it.',
+      b: 'Books compared. ${voice} found the same missing entry twice.',
+      c: 'You left it open. The count still waits at ${placeLabel}.',
+    },
+    color: [
+      'The answer is written in the part the clerk crossed out.',
+      '${voice} keeps the pencil beside the blank, not the sum.',
+    ],
+  },
+  wake: {
+    hail: '${voice}: Your wake crossed the ${noun} marker at ${placeLabel}. Log it or clear it.',
+    choices: [
+      ['Log the crossing', 'I crossed the ${noun} marker. Put my hull on the record.'],
+      ['Reset the marker', 'I can reset the buoy before another wake hits it.'],
+      ['Leave the mark', 'I will not file it. Leave the ${noun} marker where it drifted.'],
+    ],
+    receipts: {
+      a: 'Crossing logged. The wake line is now attached to your hull.',
+      b: 'Marker reset. ${voice} watched its light settle back on bearing.',
+      c: 'You left the mark. The ${noun} buoy drifted through ${placeLabel}.',
+    },
+    color: [
+      'The buoy records the wake long after the water has gone quiet.',
+      '${voice} checks the bearing before clearing the channel.',
+    ],
+  },
+};
+
+function renderText(template, values) {
+  return template.replace(/\$\{(noun|voice|placeLabel)\}/g, (_, key) => values[key]);
+}
+
 const HAND = [
   scene(372, '372-the-kettle-hold.js', 'cold_kettle', 'trade|civilian_core|none|mule_trader', 'hold_and_talk', 2,
     'KETTLE HOLD', 'BRACK', 'faction_free',
@@ -245,18 +507,22 @@ function moreScenes(startOrder, usedKeys) {
   // trade_lane and never reaches a mining belt. Bucket first, then zip so every
   // place gets a turn before any place gets a second helping.
   const buckets = places.map(() => []);
-  let n = 0;
-  for (const situation of situations) {
-    for (const actor of actors) {
-      for (const twist of twists) {
-        for (let p = 0; p < places.length; p++) {
-          const place = places[p];
-          const key = `${situation}|${place}|${twist}|${actor}`;
-          if (usedKeys.has(key)) continue;
-          if ((n++ % 3) !== 0) continue;
-          buckets[p].push({ place, situation, actor, twist, key });
-        }
+  for (let p = 0; p < places.length; p++) {
+    for (let slot = 0; slot < situations.length; slot++) {
+      const place = places[p];
+      const situation = situations[(slot + p) % situations.length];
+      let candidate = null;
+      for (let rotation = 0; rotation < actors.length * twists.length; rotation++) {
+        const actor = actors[(p * 7 + slot * 5 + rotation) % actors.length];
+        const twist = twists[(p * 5 + slot * 3 + Math.floor(rotation / actors.length)) % twists.length];
+        const key = `${situation}|${place}|${twist}|${actor}`;
+        if (usedKeys.has(key)) continue;
+        candidate = { place, situation, actor, twist, key };
+        usedKeys.add(key);
+        break;
       }
+      if (!candidate) throw new Error(`no unused grammar for ${situation}|${place}`);
+      buckets[p].push(candidate);
     }
   }
   const cursor = buckets.map(() => 0);
@@ -275,11 +541,14 @@ function moreScenes(startOrder, usedKeys) {
       const noun = nouns[order % nouns.length];
       const id = `lived_${place}_${situation}_${actor}_${twist}`.replace(/faction_/g, '').slice(0, 72);
       const title = `${noun.toUpperCase()} ON THE ${place.replace(/_/g, ' ').toUpperCase()}`;
+      const placeLabel = place.replace(/_/g, ' ');
+      const text = SITUATION_TEXT[situation];
+      if (!text) throw new Error(`no situation text for ${situation}`);
+      const values = { noun, voice, placeLabel };
       const hail = voice.startsWith('HX')
         ? `${voice} — VARIANCE FILE OPEN. ${noun.toUpperCase()} IS IN THE LANE. NO ACTION REQUIRED.`
-        : `${voice}: The ${noun} is the whole reason we are stopped. Do not improve it.`;
+        : renderText(text.hail, values);
       const factionId = actor.startsWith('faction_') ? actor : 'faction_free';
-      usedKeys.add(key);
       out.push(scene(
         order,
         `${order}-${id.replace(/_/g, '-').slice(0, 48)}.js`.replace(/--+/g, '-'),
@@ -291,21 +560,16 @@ function moreScenes(startOrder, usedKeys) {
         voice,
         factionId,
         hail,
-        C(
-          [`Tend the ${noun}`, `I'll tend the ${noun}.`],
-          [`Witness and leave`, 'Witnessed. Leaving.'],
-          [`Refuse the stop`, 'Not my stop.'],
-        ),
-        {
-          a: `You tended the ${noun}. The lane kept its reason.`,
-          b: `Witnessed. The ${noun} stays their problem and their pride.`,
-          c: `You refused. The stop continues without a guest.`,
-        },
+        C(...text.choices.map(([label, playerLine]) => [
+          renderText(label, values),
+          renderText(playerLine, values),
+        ])),
+        Object.fromEntries(Object.entries(text.receipts)
+          .map(([choice, receipt]) => [choice, renderText(receipt, values)])),
         [
-          `${voice}: This is not a fight. If it becomes one, you started it.`,
-          `${voice}: ${title} has a receipt. Make yours short.`,
+          ...text.color.map((line) => renderText(line, values)),
           `The ${noun} has a serial someone still loves.`,
-          `${place.replace(/_/g, ' ')} does not get quieter if you boost.`,
+          `${placeLabel} does not get quieter if you boost.`,
         ],
         verb === 'tow_prop' || verb === 'procession' ? noun.toUpperCase() : null,
       ));
@@ -453,7 +717,11 @@ const keep = new Set(names);
 for (const name of readdirSync(DIR)) {
   if (!/^\d{3}-/.test(name)) continue;
   const order = Number(name.slice(0, 3));
-  if (order >= 372 && !keep.has(name)) unlinkSync(join(DIR, name));
+  if (order >= 372 && !keep.has(name)) {
+    const path = join(DIR, name);
+    const header = readFileSync(path, 'utf8').split('\n', 1)[0];
+    if (/^\/\/ .* — lived vignette\. External-only:/.test(header)) unlinkSync(path);
+  }
 }
 for (const row of all) emit(row);
 mkdirSync(join(ROOT, 'src/data/livedWorld'), { recursive: true });
