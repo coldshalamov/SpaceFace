@@ -13,7 +13,7 @@
 import { fnv1a } from './checksum.js';
 // Three already ships fflate (MIT). The existing gzip save wrapper lets the exit lane
 // compress synchronously when localStorage is full; unload cannot await a worker.
-import { gzipSync, strToU8 } from '../../node_modules/three/examples/jsm/libs/fflate.module.js';
+import { gzipSaveEnvelopeSync, decodeSaveEnvelopeForWriter } from './saveSyncGzip.js';
 import { MIGRATIONS, CURRENT_VERSION } from './migrations.js';
 import { createScreenMemory } from '../ui/screenMemory.js';
 import { normalizeWatchlist } from '../ui/watchlist.js';
@@ -1341,6 +1341,56 @@ export const save = {
 
   // ── save (write a slot) ─────────────────────────────────────────────────────────────────────
 
+  // Last-chance synchronous compaction. Keep every primary and its exact decoded envelope;
+  // replacing one validated plaintext slot usually frees enough room for the incoming gzip.
+  _compactPrimariesForQuotaPressure(primaryKey, incoming) {
+    if (!saveGzipAvailable()) return false;
+    const candidates = [];
+    try {
+      for (let i = 0; i < Math.min(localStorage.length, 512); i++) {
+        const key = localStorage.key(i);
+        if (!key || key === primaryKey || key === INDEX_KEY || !key.startsWith(LS_PREFIX)) continue;
+        const raw = localStorage.getItem(key);
+        if (typeof raw === 'string' && raw.length >= 4096 && raw.length <= SAVE_IMPORT_MAX_BYTES
+            && !isGzippedSaveText(raw)) candidates.push({ key, raw });
+      }
+    } catch (_) { return false; }
+    candidates.sort((a, b) => b.raw.length - a.raw.length);
+    let remaining = SAVE_IMPORT_MAX_BYTES;
+    for (const { key, raw } of candidates.slice(0, 16)) {
+      const bytes = saveImportByteLength(raw);
+      if (bytes > remaining) continue;
+      remaining -= bytes;
+      const prepared = this._prepareEnvelopeString(raw);
+      if (!prepared.ok) continue;
+      let replaced = false, verified = false;
+      try {
+        const packed = gzipSaveEnvelopeSync(raw, prepared.env);
+        if (packed.length >= raw.length) continue;
+        // Recheck immediately before replacing: a foreign writer must retain its generation.
+        if (localStorage.getItem(key) !== raw) continue;
+        localStorage.setItem(key, packed);
+        replaced = true;
+        let stored = null;
+        try { stored = localStorage.getItem(key); } catch (_) { /* retry the read below */ }
+        if (stored !== packed) { try { stored = localStorage.getItem(key); } catch (_) {} }
+        if (stored !== packed) {
+          localStorage.setItem(key, raw);
+          continue;
+        }
+        verified = true;
+        this._updateIndex(key.slice(LS_PREFIX.length), prepared.env, packed);
+        this._queueSharedStoreMirror({ [key]: packed });
+      } catch (_) {
+        if (replaced && !verified) { try { localStorage.setItem(key, raw); } catch (_) {} }
+        continue;
+      }
+      try { localStorage.setItem(primaryKey, incoming); return true; }
+      catch (error) { if (error?.name !== 'QuotaExceededError') return false; }
+    }
+    return false;
+  },
+
   /** Serialize the current state and persist it to localStorage under `slot`. */
   save(slot, options = {}) {
     // The public function must obey the same guard as keyboard, interval and exit routes.
@@ -1455,7 +1505,7 @@ export const save = {
 
     // Refuse to destroy the last known-good generation when storage cannot preserve it. A corrupt
     // primary is never rotated over an existing good recovery copy.
-    if (previousRaw) previousPrepared = this._prepareEnvelopeString(previousRaw);
+    if (previousRaw) previousPrepared = this._prepareEnvelopeForWriter(previousRaw);
     let backupCreated = false;
     if (previousPrepared && previousPrepared.ok) {
       try {
@@ -1489,8 +1539,8 @@ export const save = {
         // lost save (release soak hit this at 5MB localStorage quota). The same-slot recovery
         // rotation above can double one slot's footprint; when there is no previous save the
         // pressure is from other slots' backups, so the ladder runs either way:
-        //   1. this slot's recovery copy, 2. every sf.recovery.* backup,
-        //   3. the autosave primary (rolling insurance; rewrites itself next trigger).
+        // First compact valid primaries losslessly, then spend expendable recovery copies.
+        // No primary is deleted to make another slot fit.
         let fitted = false;
         // D181: two plain campaign snapshots can exceed the entire browser allowance.
         // Shrink the incoming generation before evicting anything. Use the normal gzip
@@ -1498,14 +1548,7 @@ export const save = {
         if (saveGzipAvailable() && !isGzippedSaveText(json) && this._prepareEnvelopeString(json).ok) {
           try {
             const t = nowMs();
-            const compressed = gzipSync(strToU8(json), { level: 1, mtime: 0 });
-            let binary = '';
-            for (let i = 0; i < compressed.length; i += 0x8000) {
-              binary += String.fromCharCode(...compressed.subarray(i, i + 0x8000));
-            }
-            const packed = JSON.stringify({ fmt: SAVE_GZIP_FORMAT, gz: 1,
-              version: envelope.version, savedAt: envelope.savedAt || null,
-              checksum: envelope.checksum || null, payload: btoa(binary) });
+            const packed = gzipSaveEnvelopeSync(json, envelope);
             stringifyMs += nowMs() - t;
             if (packed.length < json.length) json = packed;
             const writtenAt = nowMs();
@@ -1515,7 +1558,13 @@ export const save = {
           } catch (_) { /* the same bounded eviction ladder may still make room */ }
         }
         if (!fitted) {
-          try { localStorage.removeItem(recoveryKey); } catch (_) { /* keep retrying anyway */ }
+          const t = nowMs();
+          fitted = this._compactPrimariesForQuotaPressure(primaryKey, json);
+          storageMs += nowMs() - t;
+        }
+        if (!fitted) {
+          // A damaged primary has no authority to spend its surviving recovery generation.
+          if (previousPrepared?.ok) { try { localStorage.removeItem(recoveryKey); } catch (_) {} }
           backupCreated = false;
           try {
             const t = nowMs();
@@ -1524,7 +1573,7 @@ export const save = {
             fitted = true;
           } catch (retryErr) {
             if (!(retryErr && retryErr.name === 'QuotaExceededError')) {
-              if (previousRaw) { try { localStorage.setItem(recoveryKey, previousRaw); } catch (_) { /* recovery already spent */ } }
+              if (previousPrepared?.ok) { try { localStorage.setItem(recoveryKey, previousRaw); } catch (_) { /* recovery already spent */ } }
               console.error('[save] write failed', retryErr);
               return { ok: false, reason: 'write_failed', bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
             }
@@ -1539,19 +1588,8 @@ export const save = {
             fitted = true;
           } catch (_) { /* keep escalating */ }
         }
-        if (!fitted && slot !== AUTOSAVE_SLOT) {
-          // Dropping the autosave primary keeps its rollback: the newest insurance slot
-          // stays loadable from sf.recovery.autosave after this pass.
-          this._evictForQuotaPressure({ includeAutosaveSlot: true, keepRecoverySlot: AUTOSAVE_SLOT });
-          try {
-            const t = nowMs();
-            localStorage.setItem(primaryKey, json);
-            storageMs = nowMs() - t;
-            fitted = true;
-          } catch (_) { /* genuinely out of room */ }
-        }
         if (!fitted) {
-          if (previousRaw) { try { localStorage.setItem(recoveryKey, previousRaw); } catch (_) { /* recovery already spent */ } }
+          if (previousPrepared?.ok) { try { localStorage.setItem(recoveryKey, previousRaw); } catch (_) { /* recovery already spent */ } }
           console.error('[save] write failed: storage quota exceeded');
           return { ok: false, reason: 'quota', bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
         }
@@ -4247,6 +4285,21 @@ export const save = {
     return this._restorePreparedEnvelope(prepared, slot);
   },
 
+  /** Bounded sync validation only for the writer's previous-generation recovery decision. */
+  _prepareEnvelopeForWriter(raw) {
+    const prepared = this._prepareEnvelopeString(raw);
+    if (prepared.reason !== 'compressed_envelope') return prepared;
+    // Only the synchronous writer needs an uncached gzip previous-generation verdict.
+    // Do not move this work onto title scans or the normal async Continue/load route.
+    const decoded = decodeSaveEnvelopeForWriter(raw, SAVE_IMPORT_MAX_BYTES, preflightSaveImport);
+    if (!decoded.ok) return decoded;
+    let env;
+    try { env = JSON.parse(decoded.text); }
+    catch (_) { return { ok: false, reason: 'parse_failed' }; }
+    if (decoded.profile != null && env && typeof env === 'object') env.profile = decoded.profile;
+    return this._prepareEnvelope(env);
+  },
+
   /** Pure validation/migration preparation shared by normal load, recovery, and write verification. */
   _prepareEnvelopeString(raw) {
     if (!raw) return { ok: false, reason: 'no_save' };
@@ -4320,7 +4373,8 @@ export const save = {
 
   // A gzip-compressed stored envelope. The wrapper carries fmt/version/savedAt/checksum at
   // top level so card and quota reads never pay a decode; `data` lives in the payload and is
-  // only decodable through the async worker lane (DecompressionStream has no sync form).
+  // normally decoded through the async worker lane; only writer recovery uses the bounded
+  // synchronous codec. The cheap metadata peek must never become an implicit decode.
   // `_prepareEnvelopeStringAsync` caches each decoded envelope here keyed on its raw string so
   // a generation the async lane proved stays readable to every sync caller downstream.
   _peekSaveEnvelope(raw) {
