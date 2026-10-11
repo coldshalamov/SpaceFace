@@ -70,7 +70,7 @@ const FIELD_LOOSE_TYPES = new Set(['asteroid', 'pickup', 'wreck', 'payload', 'mi
 // vacuums in ("vacuum the loot"), and debris, payloads and rocks still funnel the way the
 // Intake/Tideline reads and the release predictor were built around. It also matches the enemy
 // anchor snare's own words: "the source hull is excluded; escorts and the player are not."
-export const FIELD_VELOCITY_TERM_TYPES = Object.freeze(new Set(['ship', 'drone', 'asteroid', 'wreck', 'pickup', 'payload', 'mine', 'cargo_pod', 'debris']));
+export const FIELD_VELOCITY_TERM_TYPES = Object.freeze(new Set(['ship', 'drone']));
 // THE WORLD ANSWERS C5 — a PLAYER well that drags a loaded route hauler off the line it was
 // flying is a fact the world reads (traffic bunches the escorts, the destination's trade dips).
 // The measure is how far the hull sits from its own dead-reckoned line since it entered the well
