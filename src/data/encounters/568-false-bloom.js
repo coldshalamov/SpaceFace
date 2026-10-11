@@ -270,10 +270,16 @@ export const runtime = Object.freeze({
     bloom.jumperRetryAt = null;
     // The sanctioned explicit-target relation (engagementAuthority: retaliationTargetId outranks
     // the team-2 neutrality) is what lets a raider fire on the passive hand, not only the player.
-    for (const j of d.entsOf(live, 'jumper')) {
+    // Split jobs: the lead goes for the hand, the second for the player. Both stay hostile to the
+    // player (encounter context), so the hand's survival window is the lead's alone while an absent
+    // player can still lose it.
+    const player = d.player();
+    d.entsOf(live, 'jumper').forEach((j, i) => {
       const ai = j.data && j.data.ai;
-      if (ai && hand) ai.retaliationTargetId = hand.id;
-    }
+      if (!ai) return;
+      if (i === 0 && hand) ai.retaliationTargetId = hand.id;
+      else if (player) ai.retaliationTargetId = player.id;
+    });
     d.say(live, 'alert', "CLAIM-JUMPER: That lamp's ours, scrapper. Put it down.", null, { literal: true });
   },
 

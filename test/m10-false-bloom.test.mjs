@@ -297,10 +297,12 @@ test('the claim-jumpers are hostile to the hand and to the player under the real
   const hand = live.ids.map((id) => ent(h, id)).find((e) => e?.data?.ai?.encounterRole === 'hand');
   const jumpers = jumpersOf(h, live);
   assert.equal(jumpers.length, 2);
-  for (const j of jumpers) {
-    assert.equal(isHostileForAI(h.state, j, hand), true, 'a jumper may fire on the hand');
-    assert.equal(isHostileForAI(h.state, j, h.player), true, 'and on the player');
-  }
+  const [lead, second] = jumpers;
+  assert.equal(isHostileForAI(h.state, lead, hand), true, 'the lead jumper goes for the hand');
+  assert.equal(lead.data.ai.retaliationTargetId, hand.id);
+  assert.equal(isHostileForAI(h.state, second, hand), false, 'the second jumper has no job on the hand');
+  assert.equal(second.data.ai.retaliationTargetId, h.player.id, 'it hunts the player');
+  for (const j of jumpers) assert.equal(isHostileForAI(h.state, j, h.player), true, 'both are hostile to the player');
   assert.equal(isHostileForAI(h.state, hand, h.player), false, 'the hand stays a bystander to the player');
 });
 
@@ -447,7 +449,7 @@ test('a jumper that breaks off stops threatening the hand; once every jumper has
   first.data.ai.roe = 'hold_fire';
   h.sim.runTicks(12);
   assert.equal(first.data.ai.retaliationTargetId, undefined, 'a fleeing jumper loses its fire authority on the hand');
-  assert.equal(second.data.ai.retaliationTargetId, hand.id, 'the one still fighting keeps it');
+  assert.equal(second.data.ai.retaliationTargetId, h.player.id, 'the one still fighting keeps its job on the player');
   assert.deepEqual(resolved(h), [], 'one jumper still threatens, so the hand has not filed');
   second.alive = false;
   h.sim.runTicks(120);
