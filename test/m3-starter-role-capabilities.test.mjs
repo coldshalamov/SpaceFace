@@ -37,9 +37,13 @@ test('starter role copy advertises only capabilities exercised by live runtime c
   const hitch = SHIPS.find((entry) => entry.id === generalist.build.shipId);
   const utilitySlot = buildSlotList(hitch).find((slot) => slot.type === 'utility');
   assert.ok(utilitySlot, 'Hitch must expose the utility slot named by the generalist copy');
-  assert.equal(generalist.fittings[utilitySlot.index], null, 'generalist benefit is a genuinely open slot');
-  assert.ok(generalist.derived.maxSpeed > hauler.derived.maxSpeed);
-  assert.ok(generalist.derived.turnRate > hauler.derived.turnRate);
+  // ea6a87ab3: the Hitch utility slot is the drill amp (mass 3), not an empty slot.
+  // The mass-1 market uplink is the lighter fit, so the hauler keeps the speed edge.
+  assert.equal(generalist.fittings[utilitySlot.index], 'mod_drill_amp', 'generalist utility is the hitch drill amp');
+  assert.ok(hauler.derived.maxSpeed > generalist.derived.maxSpeed,
+    'market uplink is lighter than the drill amp');
+  assert.ok(hauler.derived.turnRate > generalist.derived.turnRate,
+    'market uplink keeps more turn authority than the drill amp');
 
   assert.ok(hauler.derived.maxSpeed > hunter.derived.maxSpeed,
     'light hauler kit keeps more live speed than the heavy hunter kit');

@@ -36,21 +36,33 @@ test('each starter-build description names a demonstrated use-case and its cost'
   const generalist = runtime.starter_generalist;
   const career = CAREERS.map((id) => runtime[`starter_${id}`]);
 
-  // The generalist's demonstrated use-case: the same three jobs with no career tool spent.
+  // ea6a87ab3: the generalist wears the drill amp. It is not an open slot, and the
+  // mass-1 uplink is the faster fit. The amp's live consumer is the rich-core window.
   assert.match(generalist.build.benefit, /freight, tow and fight/i,
     'generalist benefit must name the three demonstrated jobs');
-  assert.match(generalist.build.benefit, /open utility slot/i,
-    'generalist benefit must name its open-slot capability');
+  assert.match(generalist.build.benefit, /drill amp/i,
+    'generalist benefit must name the drill amp');
+  assert.match(generalist.build.benefit, /rich-core/i,
+    'generalist benefit must name the rich-core window the amp widens');
   assert.match(generalist.build.tradeoff, /utility slot/i,
-    'generalist tradeoff must name the slot it keeps open');
+    'generalist tradeoff must name the slot the amp holds');
   assert.match(generalist.build.tradeoff, /winch, plate or price feed/i,
     'generalist tradeoff must name the career capabilities it forgoes');
-  for (const other of career) {
-    assert.ok(generalist.derived.maxSpeed > other.derived.maxSpeed,
-      `${other.build.id}: generalist keeps the advertised speed edge on the same runs`);
-    assert.ok(generalist.derived.turnRate > other.derived.turnRate,
-      `${other.build.id}: generalist keeps the advertised turn-authority edge on the same runs`);
-  }
+  const haulerFit = runtime.starter_hauler;
+  const hunterFit = runtime.starter_hunter;
+  const prospectorFit = runtime.starter_prospector;
+  assert.ok(haulerFit.derived.maxSpeed > generalist.derived.maxSpeed,
+    'market uplink keeps the speed edge over the heavier drill amp');
+  assert.ok(haulerFit.derived.turnRate > generalist.derived.turnRate,
+    'market uplink keeps the turn edge over the heavier drill amp');
+  assert.ok(generalist.derived.maxSpeed > hunterFit.derived.maxSpeed,
+    'drill amp stays quicker than the heavier ram plate');
+  assert.ok(generalist.derived.turnRate > hunterFit.derived.turnRate,
+    'drill amp keeps more turn authority than the ram plate');
+  assert.equal(generalist.derived.maxSpeed, prospectorFit.derived.maxSpeed,
+    'drill amp and winch share mass and draw, so speed ties');
+  assert.equal(generalist.derived.turnRate, prospectorFit.derived.turnRate,
+    'drill amp and winch share mass and draw, so turn ties');
 
   // The hauler's demonstrated use-case: the freight leg.
   const hauler = runtime.starter_hauler;
@@ -139,8 +151,9 @@ test('neighboring success: the four builds still place legal fits through the re
       assert.ok(fits(slots[index], FITTABLE_BY_ID.get(moduleId)),
         `${build.id}: ${moduleId} still fits slot ${index}`);
     }
-    seen.add(JSON.stringify(getDerivedStats(build.shipId, placed, null).mass)
-      + getDerivedStats(build.shipId, placed, null).continuousDrain);
+    const derived = getDerivedStats(build.shipId, placed, null);
+    // Drill amp and winch share mass and draw. The winch's reel rate is the split.
+    seen.add(`${derived.mass}|${derived.continuousDrain}|${derived.tetherReelRateMult}`);
     assert.equal(build.acquisition.moduleId,
       build.careerId ? ORIGIN_ROLE_KITS[build.careerId].defId : null,
       `${build.id}: acquisition still names the canonical role kit`);
