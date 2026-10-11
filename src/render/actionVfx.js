@@ -86,7 +86,7 @@ export class ActionVfx {
     this.slots=Array.from({length:32},()=>({alive:false,event:null,kind:null,id:null,sourceId:null,attached:false,born:0,last:0,
       x:0,y:0,z:0,sx:0,sz:0,radius:1,angle:0,angleOffset:0,seed:0,recipe:null,particlePulse:-1,
       tx:0,tz:0,ox:0,oz:0,target:null,source:null,socket:null,sourceSocket:null,hasSource:false,
-      provenance:'none',sourceProvenance:'none'}));
+      provenance:'none',sourceProvenance:'none',cmEffect:null,cmUntil:0,cmClosingAt:-1}));
   }
   emit(name,p={},state={}){
     if(this.disposed)return false;
@@ -111,6 +111,9 @@ export class ActionVfx {
     const sustained=slot.alive&&recipe.continuous;
     if(!slot.alive)this.live++;
     slot.alive=true;slot.event=name;slot.kind=p.kind??null;slot.id=id;slot.sourceId=sourceId;slot.recipe=recipe;
+    slot.cmEffect=name==='countermeasure:deployed'&&p.durationS>0?p.countermeasureEffect:null;
+    slot.cmUntil=slot.cmEffect?now+Math.min(30,p.durationS):0;
+    slot.cmClosingAt=-1;
     slot.target=target;slot.source=source;slot.socket=slot.sourceSocket=null;
     slot.attached=!!target&&(!contact||p.attachToTarget===true)&&recipe.verb!=='grind';
     if(!sustained){slot.born=now;slot.particlePulse=-1;slot.seed=salt(String(id)+':'+name+':'+(p.kind??'')+':'+(++this.serial)+':'+Math.round(now*1000));}
@@ -228,13 +231,47 @@ export class ActionVfx {
       }
     }
   }
+  _countermeasureState(s,now,reduced,flash){
+    // Deployment keeps the authored brief burst. These steady mechanisms then describe the
+    // active diversion point/transmitter; nothing stretches that burst across the field lifetime.
+    const age=Math.max(0,now-s.born),closing=s.cmClosingAt<0?0:Math.min(1,(now-s.cmClosingAt)/.24);
+    const alpha=Math.min(1,age/.18)*(1-closing)*(flash?.6:1);
+    const motion=reduced?0:age,phase=s.seed*Math.PI*2,baseY=s.y;
+    const c=this.composer;c.slot=s;
+    if(s.kind==='chaff'){
+      // Released metal strips drift apart and tumble slowly around the real bait point.
+      for(let i=0;i<7;i++){
+        const a=phase+i*2.399963,spread=(8+i%3*3)*(reduced?1:1-Math.exp(-age*4));
+        const tumble=reduced?0:Math.sin(motion*.8+i)*.55;
+        s.y=baseY+1.3+(i%3)*.75;
+        c.piece(6,s.x+Math.cos(a)*spread,s.z+Math.sin(a)*spread,a+tumble,
+          -1.6-i%2,1.6+i%2,.22,.13,0,0,0,phase+i,alpha*.64,1,-.1,.12);
+      }
+    }else if(s.kind==='ecm'){
+      // Interrupted induction bands stay a fixed size around the moving transmitter.
+      // Gentle azimuthal travel reads as jamming; reduced motion holds the same readable bands.
+      const radius=Math.max(10,s.radius*1.35);
+      for(let i=0;i<4;i++){
+        const a=s.angle+phase+i*Math.PI/2+motion*.16;
+        c.piece(4,s.x,s.z,a,-.44,.44,.38,.65,0,0,radius+(i%2)*5,
+          phase+i,alpha*.58,1,-.1,.22);
+      }
+    }else{
+      // A compact three-prong broadcast lure plus unequal carrier arcs marks the placed buoy.
+      for(let i=0;i<3;i++)c.piece(6,s.x,s.z,phase+i*Math.PI*2/3,
+        1,7,.5,.8,.6,0,0,phase+i,alpha*.72,1,-.1,.24);
+      for(let i=0;i<2;i++)c.piece(4,s.x,s.z,phase+i*Math.PI+motion*.2,
+        -.62,.62,.32,.75,0,0,10+i*5,phase+i,alpha*.5,1,-.1,.2);
+    }
+    s.y=baseY;
+  }
   update(state={}){
     if(this.disposed)return 0;
     const now=finite(state.simTime,this.time),elapsed=Math.max(0,now-this.time);
     if(now<this.time)this.clear();this.time=now;
     if(!this.live&&!this.particles.live)return 0;
     const video=state.settings?.video,a11y=state.settings?.accessibility;
-    const reduced=!!(video?.motionReduce||a11y?.reducedMotion||a11y?.motionReduce);
+    const reduced=!!(video?.motionReduce||a11y?.reducedMotion||a11y?.motionReduce||a11y?.motionPreference==='reduce');
     const flash=!!(video?.flashReduce||a11y?.flashReduce||a11y?.reducedFlash);
     this.particleOptions.reducedMotion=reduced;this.particleOptions.reducedFlash=flash;
     if(reduced)this.particles.clear();else this.particles.update(elapsed,this.particleOptions);
@@ -242,8 +279,19 @@ export class ActionVfx {
     for(const s of this.slots){
       if(!s.alive)continue;
       const since=now-(s.recipe.continuous?s.last:s.born);
-      if(since>=s.recipe.life){s.alive=false;continue;}
-      this.live++;this._follow(s,state);this.composer.render(s,now,reduced,flash);
+      if(s.cmEffect){
+        const source=entity(state,s.sourceId),cm=source?.data?.cm;
+        const ended=now>=s.cmUntil||source!==s.source||source?.alive===false
+          ||cm?.effect!==s.cmEffect||cm?.effectT===0;
+        if(ended&&s.cmClosingAt<0)s.cmClosingAt=Math.min(now,s.cmUntil);
+        if(s.cmClosingAt>=0&&now-s.cmClosingAt>=.24){s.alive=false;continue;}
+        this.live++;this._follow(s,state);
+        if(since<s.recipe.life&&s.cmClosingAt<0)this.composer.render(s,now,reduced,flash);
+        this._countermeasureState(s,now,reduced,flash);
+      }else{
+        if(since>=s.recipe.life){s.alive=false;continue;}
+        this.live++;this._follow(s,state);this.composer.render(s,now,reduced,flash);
+      }
     }
     this.batch.end();this.mesh.visible=this.batch.count>0||this.particles.live>0;return this.live;
   }

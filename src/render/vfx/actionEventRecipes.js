@@ -204,11 +204,14 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
       pos:{x:collector.pos.x+Math.cos(a)*r,z:collector.pos.z+Math.sin(a)*r,y:1.5},attachToTarget:true};
   }
   if (name === 'countermeasure:deployed') {
-    const ship=body(state,p.shipId), effect=ship?.data?.cm?.effect;
+    const ship=body(state,p.shipId), cm=ship?.data?.cm, effect=cm?.effect;
     if (!ship || !effect || !Number.isFinite(effect.originX) || !Number.isFinite(effect.originZ)) return null;
     // Chaff/decoy originate at the actual seeker-diversion point behind the hull.
     // ECM instead follows its real transmitting hull. Receipt x/z is only hull centre.
+    const durationS = Number.isFinite(cm.effectT) ? cm.effectT
+      : Number.isFinite(p.durationS) ? p.durationS : effect.cfg?.durationS;
     return {...p,targetId:ship.id,sourceId:ship.id,
+      countermeasureEffect:effect, durationS,
       pos:{x:effect.originX,z:effect.originZ},attachToTarget:p.kind==='ecm',
       direction:{x:-Math.cos(ship.rot||0),z:-Math.sin(ship.rot||0)}};
   }
