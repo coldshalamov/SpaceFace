@@ -502,15 +502,19 @@ export function cardEnvFromEnvelope(env) {
       player: {
         credits: player.credits,
         activeShipIndex: player.activeShipIndex,
-        ownedShips: ships.map((ship) => (
-          ship && typeof ship === 'object' ? { defId: ship.defId } : ship
-        )),
+        heat: player.heat,
+        bounty: player.bounty,
+        livingHull: player.livingHull,
+        // Full ship records — the slot portrait reads fittings/livingHull off the active
+        // ship, so a defId-only projection degrades the card (W140-G2). Still KB-scale.
+        ownedShips: ships,
       },
       world: { currentSectorId: sectorId, sectors: liteSectors },
       meta: data.meta,
       missions: data.missions,
       story: data.story,
       nav: data.nav,
+      aceMemory: data.aceMemory,
     },
   };
 }
@@ -805,15 +809,19 @@ function cardEnvFromEnvelope(env) {
       player: {
         credits: player.credits,
         activeShipIndex: player.activeShipIndex,
-        ownedShips: ships.map(function (ship) {
-          return ship && typeof ship === 'object' ? { defId: ship.defId } : ship;
-        }),
+        heat: player.heat,
+        bounty: player.bounty,
+        livingHull: player.livingHull,
+        // Full ship records — the slot portrait reads fittings/livingHull off the active
+        // ship, so a defId-only projection degrades the card (W140-G2). Still KB-scale.
+        ownedShips: ships,
       },
       world: { currentSectorId: sectorId, sectors: liteSectors },
       meta: data.meta,
       missions: data.missions,
       story: data.story,
       nav: data.nav,
+      aceMemory: data.aceMemory,
     },
   };
 }
