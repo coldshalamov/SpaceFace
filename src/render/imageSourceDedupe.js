@@ -48,6 +48,26 @@ let hashedBytesTotal = 0;
 let hashMsTotal = 0;
 let digestCalls = 0;
 let digestMemoHits = 0;
+
+// Detach serial: bumped on every CPU-payload release the package-detach pending/rehydrate gates
+// can see — this module's shared-source and per-user releases below, plus packageCpuDetach's
+// manifest detaches (it imports the bump). A restore/admission consult captures the serial at
+// collect time: if it moved during the await window a release landed outside the collected
+// pendings, so the consult must re-collect rather than present a bind on emptied payloads
+// (W143-H1). Monotonic-only — consumers compare values, never the count itself.
+let packageDetachSerial = 0;
+
+/** Record one covered CPU-payload release. Bump once per emptied user/record — never on
+ * rehydrate or no-op paths, or a consult's own refills would re-arm its race check. */
+export function bumpPackageDetachSerial() {
+  packageDetachSerial += 1;
+}
+
+/** The current detach serial — strictly greater after any covered payload release. */
+export function packageDetachSerialNow() {
+  return packageDetachSerial;
+}
+
 // ArrayBuffer -> `${byteOffset}:${byteLength}:${mimeType}` -> Promise<key>. WeakMap so a cached
 // GLB body that gets re-parsed reuses its image digests; entries die with the buffer.
 let keyMemoByBuffer = new WeakMap();
@@ -426,6 +446,7 @@ export function releaseSharedImageSource(texture, isResident, isDetachCovered) {
     if (Array.isArray(user.mipmaps) && user.mipmaps.length > 0) {
       user.mipmaps = [];
       entry.releasedUsers.add(user);
+      bumpPackageDetachSerial();
     }
   }
   if (!allResident || uncoveredSharesSource || entry.sourceReleased === true) return false;
@@ -439,6 +460,7 @@ export function releaseSharedImageSource(texture, isResident, isDetachCovered) {
     source.data = null;
   }
   entry.sourceReleased = true;
+  bumpPackageDetachSerial();
   return true;
 }
 

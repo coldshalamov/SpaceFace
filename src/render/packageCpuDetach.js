@@ -21,10 +21,17 @@
 
 import { BufferAttribute } from 'three';
 import {
+  bumpPackageDetachSerial,
   noteSharedImageSourceRefilled,
   sharedImageSourceEntry,
   sharedImageSourceUserCount,
 } from './imageSourceDedupe.js';
+
+// The detach serial lives in the leaf module so imageSourceDedupe's own shared-source releases
+// bump the same counter a restore consult watches — one serial covers the whole covered-release
+// class (manifest detaches here, shared-source/per-user releases there). Re-exported so consult
+// sites keep a single import site on this module (W143-H1).
+export { packageDetachSerialNow } from './imageSourceDedupe.js';
 
 const manifests = new Map();
 
@@ -401,6 +408,7 @@ export function detachPackageTexture(texture) {
     return false;
   }
   entry.detached = true;
+  bumpPackageDetachSerial();
   entry.freedBytes = freed;
   manifest.totals.detachedTextures += 1;
   manifest.totals.detachedBytes += freed;
@@ -525,6 +533,7 @@ export function detachPackageGeometry(geometry, renderer) {
     return false;
   }
   entry.detached = true;
+  bumpPackageDetachSerial();
   entry.freedBytes = freed;
   manifest.totals.detachedGeometries += 1;
   manifest.totals.detachedGeometryBytes += freed;
