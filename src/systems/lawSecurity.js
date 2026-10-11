@@ -40,6 +40,7 @@ import {
   quoteImpoundBill,
 } from './custodyConsequences.js';
 import { heatLevelFor, isPlayerWanted, wantedTierFor, WANTED_TIER } from './heat.js';
+import { createWarrantHunterWaves } from './warrantHunterWaves.js';
 import {
   BOUNTY_HUNTER_PLAYER_CONTEXT,
   makePlayerWarrantHunterSpec,
@@ -338,11 +339,17 @@ export const lawSecurity = {
       this.bus.on('law:playerSurrender', this._onPlayerSurrender);
       this.bus.on('law:audit', this._onRecordAudit);
     }
+    // THE WORLD REMEMBERS: the WANTED hunter cast and its wave rhythm ride this system's bus,
+    // helpers and lazy save slice. Registered after the listeners above so its kill listener
+    // runs after this system's own kill adjudication.
+    if (this._warrantWaves) this._warrantWaves.destroy();
+    this._warrantWaves = createWarrantHunterWaves(this);
   },
 
   newGame() {
     this._releaseAllJobResponses('new_game');
     if (this.state) this.state.lawSecurity = freshState();
+    if (this._warrantWaves) this._warrantWaves.deserialize(null);
     if (this.state && this.state.player) delete this.state.player.lawfulInspection;
     this._resetInspectionTransient();
     this._resetWeirTransient();
@@ -396,6 +403,9 @@ export const lawSecurity = {
     if (own.fineOffer && own.fineOffer.status && own.fineOffer.status !== 'paid') {
       out.fineOffer = cloneLawPlain(own.fineOffer);
     }
+    // Lazy: the cast's memory exists only after the first wave was rolled.
+    const hunters = this._warrantWaves ? this._warrantWaves.serialize() : null;
+    if (hunters) out.warrantHunters = hunters;
     return out;
   },
 
@@ -436,6 +446,8 @@ export const lawSecurity = {
     // A surrender hold names live hulls. The owed bill, if accepted, is in `composed`.
     delete own.playerSurrender;
     delete own.surrenderRearm;
+    if (this._warrantWaves) this._warrantWaves.deserialize(src.warrantHunters);
+    else delete own.warrantHunters;
     return own;
   },
 
@@ -445,6 +457,7 @@ export const lawSecurity = {
     this._updateFineWork(_dt, state);
     this._updatePlayerSurrender(_dt, state);
     if (state.mode && state.mode !== 'flight') return;
+    if (this._warrantWaves) this._warrantWaves.update(_dt, state);
     this._syncWantedWarrant(state);
     this._syncHighSecWarrant(state, _dt);
     this._syncWantedCheckpoint(state);
@@ -2752,6 +2765,65 @@ export const lawSecurity = {
     return receipt;
   },
 
+  // A licensed contractor's transponder reports its own loss (THE WORLD REMEMBERS): when the
+  // witness gate saw nothing, the pending case it just recorded converts to the SAME signed
+  // lawful_kill receipt a wreck scan would later mint — same reportId, so the later scan dedupes.
+  // Heat prices it; this only signs. Called by warrantHunterWaves for licensed hulls only.
+  _signContractorTransponderLoss(victimStableId) {
+    const state = this.state;
+    if (!state || victimStableId == null) return null;
+    const own = ensureState(state);
+    const pendingMap = own.unreportedKills;
+    const key = String(victimStableId);
+    const pending = pendingMap && typeof pendingMap === 'object' ? pendingMap[key] : null;
+    if (!pending) return null;
+    const reportId = cleanLawId(pending.reportId);
+    if (!reportId) return null;
+    delete pendingMap[key];
+    if (readReportedIncident(state, reportId)) return null;
+    const causalTick = Number.isInteger(pending.causalTick) && pending.causalTick >= 0
+      ? pending.causalTick : (state.tick | 0);
+    const receipt = Object.freeze({
+      accepted: true,
+      incidentReceiptId: `law:kill:${hash32(reportId, pending.kind, pending.victimStableId, causalTick, 'transponder').toString(36)}`,
+      reportId,
+      kind: pending.kind,
+      offenderStableId: 'player',
+      offenderEntityId: state.playerId,
+      payloadStableId: pending.victimStableId,
+      victimEntityId: pending.victimEntityId,
+      victimStableId: pending.victimStableId,
+      victimClass: pending.victimClass || null,
+      killCause: pending.killCause || null,
+      sustainedAssault: pending.sustainedAssault === true,
+      harmEvents: Number.isInteger(pending.harmEvents) ? pending.harmEvents : null,
+      causalTick,
+      stationId: null,
+      factionId: pending.victimFactionId || null,
+      witnessCount: 0,
+      witnessStableIds: Object.freeze([]),
+      validatedWitnessedTheft: false,
+      validatedCrime: true,
+      discovery: true,
+      discoveryVia: 'contractor_transponder',
+      evidence: 'contractor_transponder',
+      evidenceClass: 'discovered',
+      source: 'lawSecurity',
+    });
+    storeReportedIncident(state, receipt);
+    this._recordReceipt({
+      incidentId: receipt.incidentReceiptId,
+      cause: pending.kind,
+      outcome: 'crime_discovered',
+      attackerId: state.playerId,
+      targetId: pending.victimEntityId,
+      stationId: null,
+      text: 'CONTRACTOR LOSS — a licensed hunter\'s transponder names the suspect.',
+    });
+    this._emit('law:reportIncidentReceipt', receipt);
+    return receipt;
+  },
+
   // ── Lawful clearance: pay the assessed fine at a lawful dock ─────────────────────────────
   //
   // The lawful channel for the two escapable tiers. SCAN and BOUNTY already clear by leaving
@@ -4769,6 +4841,7 @@ export const lawSecurity = {
 
   destroy() {
     this._releaseAllJobResponses('destroy');
+    if (this._warrantWaves) { this._warrantWaves.destroy(); this._warrantWaves = null; }
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onDamage) this.bus.off('combat:damage', this._onDamage);
       if (this._onFire) this.bus.off('combat:fire', this._onFire);
