@@ -346,6 +346,16 @@ export function sharedImageSourceUserCount(texture) {
  * WebGLTextures upload cache key (a different key on a shared source forces a fresh upload).
  * Used by the admission-touch failure diagnostics; not on a hot path.
  */
+/**
+ * The dedupe entry a texture adopted through — packageCpuDetach reads `sourceReleased` and
+ * `releasedUsers` off it to fold shared-payload releases into the same pending/detached
+ * bookkeeping as a solo detach (no back-edge notification needed).
+ */
+export function sharedImageSourceEntry(texture) {
+  const key = texture && texture.userData && texture.userData[SHARED_SOURCE_KEY];
+  return (key && entries.get(key)) || null;
+}
+
 export function sharedImageSourceUsers(texture) {
   const key = texture && texture.userData && texture.userData[SHARED_SOURCE_KEY];
   const entry = key && entries.get(key);
@@ -370,6 +380,56 @@ export function sharedImageSourceUsers(texture) {
     mipmaps: Array.isArray(user.mipmaps) ? user.mipmaps.length : -1,
     version: user.version,
   }));
+}
+
+/**
+ * F3: release the canonical shared payload once EVERY live user of the entry is GPU-resident
+ * on the caller's renderer (`isResident(user)` — the residency pass answers with its upload
+ * stamp). Two releases, deliberately split:
+ *
+ * - Canonical `entry.source.data` (adopted PNG/JPEG ImageBitmaps): gated on all-resident — one
+ *   not-yet-uploaded user would still need the bytes for its own first upload.
+ * - Per-user `texture.mipmaps` (shared KTX2 clone chains): eager per resident user. Clone()
+ *   slices the mipmaps ARRAY but shares the records, so clearing one user's array frees the
+ *   bytes only when the last sibling clears — and each clearing lands in `releasedUsers`, where
+ *   the detach gate treats that texture as released (a second-renderer bind would otherwise
+ *   read mipmaps[0] on the empty array).
+ *
+ * Returns true only when every user is resident (the canonical release condition). Safe to
+ * call repeatedly: resident-user mip clearing is idempotent and the canonical release runs once.
+ */
+export function releaseSharedImageSource(texture, isResident) {
+  const key = texture && texture.userData && texture.userData[SHARED_SOURCE_KEY];
+  const entry = key && entries.get(key);
+  if (!entry) return false;
+  const resident = typeof isResident === 'function' ? isResident : () => false;
+  if (!entry.releasedUsers) entry.releasedUsers = new Set();
+  let allResident = true;
+  for (const user of entry.users) {
+    if (!resident(user)) { allResident = false; continue; }
+    if (Array.isArray(user.mipmaps) && user.mipmaps.length > 0) {
+      user.mipmaps = [];
+      entry.releasedUsers.add(user);
+    }
+  }
+  if (!allResident || entry.sourceReleased === true) return false;
+  const source = entry.source || (entry.owner && entry.owner.source);
+  // Compressed entries keep {width,height} dims in source.data — that stub IS the image and
+  // must survive; only uncompressed canonical payloads are released.
+  const payload = entry.owner && entry.owner.isCompressedTexture === true
+    ? null
+    : source && source.data;
+  if (payload) {
+    try { if (typeof payload.close === 'function') payload.close(); } catch (_) {}
+    source.data = null;
+  }
+  entry.sourceReleased = true;
+  return true;
+}
+
+/** Test/diagnostic seam: undo a canonical release flag without refilling bytes. */
+export function noteSharedImageSourceRefilled(entry) {
+  if (entry && entry.sourceReleased === true) entry.sourceReleased = false;
 }
 
 export function imageSourceDedupeStats() {

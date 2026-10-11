@@ -20,10 +20,41 @@
 // clone carrying a copied mark is rejected by the entry.texture identity check.
 
 import { BufferAttribute } from 'three';
-import { sharedImageSourceUserCount } from './imageSourceDedupe.js';
+import {
+  noteSharedImageSourceRefilled,
+  sharedImageSourceEntry,
+  sharedImageSourceUserCount,
+} from './imageSourceDedupe.js';
 
 const manifests = new Map();
-const detachedManifests = new Set();
+
+// Whether a manifest still has any released payload — DERIVED, not ledgered: the F3 shared
+// release lands in imageSourceDedupe without a back-edge into this module, so membership must
+// be read off the entries' own released state each time (a Set of "detached manifests" would
+// silently miss every shared-source release).
+function sharedTextureReleased(entry) {
+  const shared = entry.sharedEntry;
+  if (!shared) return false;
+  if (shared.sourceReleased === true) return true;
+  return !!(shared.releasedUsers && shared.releasedUsers.has(entry.texture));
+}
+
+function textureEntryReleased(entry) {
+  return entry.detached === true || sharedTextureReleased(entry);
+}
+
+function manifestHasDetachedEntries(manifest) {
+  return manifest.entries.some(textureEntryReleased)
+    || manifest.geometryEntries.some((entry) => entry.detached);
+}
+
+function detachedManifestList() {
+  const out = [];
+  for (const manifest of manifests.values()) {
+    if (manifestHasDetachedEntries(manifest)) out.push(manifest);
+  }
+  return out;
+}
 
 function isTextureLike(value) {
   return !!value && typeof value === 'object' && value.isTexture === true;
@@ -192,6 +223,9 @@ export function createPackageDetachManifest(loaded, options = {}) {
         // CompressedTexture stashes {width,height} in source.data via the image setter — that
         // dims object IS the image and must survive; only uncompressed payloads are released.
         hadSourceData: texture.isCompressedTexture !== true && !!(texture.source && texture.source.data),
+        // F3: the dedupe entry this texture adopted through (canonical Source + releasedUsers),
+        // when it has one — the shared release flips THERE, not on this entry.
+        sharedEntry: sharedImageSourceEntry(texture),
       };
     }),
     // WeakSet for the same reason as freedPayloads (W139-N1): a strong Set would retain every
@@ -244,7 +278,7 @@ export function isPackageTextureDetached(texture) {
   if (!mark) return false;
   const manifest = manifests.get(mark.contentHash);
   const entry = manifest && manifest.entries[mark.ordinal];
-  return !!entry && entry.texture === texture && entry.detached === true;
+  return !!entry && entry.texture === texture && textureEntryReleased(entry);
 }
 
 /**
@@ -268,7 +302,11 @@ export function detachPackageTexture(texture) {
   // entry was freed) reads mipmaps[0] on the empty array and throws inside three's uploader.
   // Defer the release until this texture is the entry's last live user — which is also the
   // earliest point the bytes could actually leave.
-  if (sharedImageSourceUserCount(texture) > 1) return false;
+  if (sharedImageSourceUserCount(texture) > 1) {
+    // F3: keep the dedupe-entry link fresh — adoption can land after mark time.
+    if (!entry.sharedEntry) entry.sharedEntry = sharedImageSourceEntry(texture);
+    return false;
+  }
 
   let freed = 0;
   let released = false;
@@ -307,7 +345,6 @@ export function detachPackageTexture(texture) {
   entry.freedBytes = freed;
   manifest.totals.detachedTextures += 1;
   manifest.totals.detachedBytes += freed;
-  detachedManifests.add(manifest);
   return true;
 }
 
@@ -386,7 +423,6 @@ export function detachPackageGeometry(geometry, renderer) {
   entry.freedBytes = freed;
   manifest.totals.detachedGeometries += 1;
   manifest.totals.detachedGeometryBytes += freed;
-  detachedManifests.add(manifest);
   return true;
 }
 
@@ -415,7 +451,6 @@ export function dropPackageDetachManifest(contentHash) {
   if (!manifest) return false;
   manifest.evicted = true;
   manifests.delete(manifest.contentHash);
-  detachedManifests.delete(manifest);
   return true;
 }
 
@@ -493,7 +528,7 @@ async function rehydrateManifest(manifest) {
     entry.freedBytes = 0;
   }
   for (const entry of manifest.entries) {
-    if (!entry.detached) continue;
+    if (!textureEntryReleased(entry)) continue;
     const fresh = freshTextures[entry.ordinal];
     const fp = textureFingerprint(fresh);
     if (!fp || fp.compressed !== entry.compressed || fp.format !== entry.format
@@ -507,9 +542,15 @@ async function rehydrateManifest(manifest) {
     }
     const texture = entry.texture;
     if (entry.hadMipmaps || entry.compressed) texture.mipmaps = fresh.mipmaps;
+    if (entry.sharedEntry && entry.sharedEntry.releasedUsers) {
+      entry.sharedEntry.releasedUsers.delete(texture);
+    }
     if (entry.hadSourceData && texture.source) {
       texture.source.data = fresh.source ? fresh.source.data : null;
     }
+    // Refilling the canonical shared Source serves every adopted user across manifests — clear
+    // the entry's released flag so siblings' released-state re-derives without a second decode.
+    if (entry.sharedEntry) noteSharedImageSourceRefilled(entry.sharedEntry);
     // A version bump invalidates the residency stamp, so the restore re-upload pass — or any
     // later admission — re-uploads the real bytes instead of relying on the stamp alone.
     texture.needsUpdate = true;
@@ -527,7 +568,12 @@ async function rehydrateManifest(manifest) {
   manifest.totals.restoredGeometries += restoredGeometries;
   if (!manifest.entries.some((entry) => entry.detached)
       && !manifest.geometryEntries.some((entry) => entry.detached)) {
-    detachedManifests.delete(manifest);
+    // (detached membership is derived now — nothing to delete.)
+  }
+  // Donor textures may have been adopted as dedupe users during this decode — release the
+  // registration so a never-uploaded donor can't wedge the entry's all-resident check.
+  for (const fresh of freshTextures) {
+    try { if (typeof fresh.dispose === 'function') fresh.dispose(); } catch (_) {}
   }
   return { textures: restored, geometries: restoredGeometries, bytes: restoredBytes };
 }
@@ -630,20 +676,18 @@ export async function rehydrateDetachedGeometries(geometries, options = {}) {
  */
 export async function rehydrateDetachedPackages(options = {}) {
   const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
+  const detached = detachedManifestList();
   const result = {
-    skipped: detachedManifests.size === 0,
+    skipped: detached.length === 0,
     packages: 0,
     textures: 0,
     geometries: 0,
     bytes: 0,
     errors: [],
   };
-  if (detachedManifests.size === 0) return result;
-  for (const manifest of [...detachedManifests]) {
-    if (manifest.evicted) {
-      detachedManifests.delete(manifest);
-      continue;
-    }
+  if (detached.length === 0) return result;
+  for (const manifest of detached) {
+    if (manifest.evicted) continue;
     try {
       const receipt = await rehydrateManifestOnce(manifest);
       result.packages += 1;
@@ -662,7 +706,7 @@ export async function rehydrateDetachedPackages(options = {}) {
 export function packageDetachDiagnostics() {
   const totals = {
     manifests: manifests.size,
-    packagesWithDetachedTextures: detachedManifests.size,
+    packagesWithDetachedTextures: detachedManifestList().length,
     detachedTextures: 0,
     detachedBytes: 0,
     detachedGeometries: 0,
@@ -690,5 +734,4 @@ export function packageDetachDiagnostics() {
 /** Test/reset seam: drops every manifest (used by node --test isolation). */
 export function resetPackageDetachManifestsForTests() {
   manifests.clear();
-  detachedManifests.clear();
 }
