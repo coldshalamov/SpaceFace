@@ -2057,7 +2057,7 @@
       <!-- Select the motion/flash variant before downloading. Native media is the
            artwork; never put the live JS remix canvas over this loading surface. -->
       <video id="boot-intro-video" class="boot-canvas boot-video" muted loop playsinline
-             preload="none" poster="assets/cinematics/boot-visualizer.jpg" aria-hidden="true" data-boot-native="true">
+             preload="none" fetchpriority="high" poster="assets/cinematics/boot-visualizer.jpg" aria-hidden="true" data-boot-native="true">
         <source src="assets/cinematics/boot-visualizer.mp4" type="video/mp4" />
       </video>
       <div class="boot-scrim" aria-hidden="true"></div>

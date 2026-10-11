@@ -5038,12 +5038,12 @@ export const save = {
       rollbackSnapshot = { notNeeded: true };
     }
     let primary = await primaryPromise;
-    // A spec-derived verdict was computed under the generation the arm was minted in. A store
-    // write landing anywhere in the window (the sliced rollback capture + worker roundtrip)
-    // bumps the generation — the verdict then prepares generation-N bytes while N+1 sits on
-    // disk. Re-verify the arm's signature before trusting it; on mismatch discard and
-    // re-prepare through the same fallback path as a miss on the bytes now on disk.
-    if ((specHit || specByteHit) && spec && _saveStoreGeneration !== latchGen) {
+    // A spec-derived verdict was computed under the generation the arm was minted in — and a
+    // spec-miss `raw` was itself getItem'd before this window. A store write landing anywhere
+    // inside it (the sliced rollback capture + worker roundtrip) bumps the generation, so
+    // whatever bytes `primary` prepared may be pre-write. Re-verify unconditionally before
+    // trusting the result; on mismatch discard and re-prepare from the bytes now on disk.
+    if (_saveStoreGeneration !== latchGen) {
       let freshRaw = null;
       try { freshRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
       catch (err) { /* null — the prepare reports its own read reason */ }
