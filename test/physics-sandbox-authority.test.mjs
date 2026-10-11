@@ -9,6 +9,7 @@ import { deliverPhysicalAcceleration, deliverPhysicalImpulse, queryPhysicalBodie
 import { normalizeField, sampleFieldAcceleration } from '../src/core/fields/fieldKernel.js';
 import { FIELD_DEFS } from '../src/data/fields.js';
 import { insertAsteroidFieldRock } from '../src/world/asteroidField.js';
+import { impulseCharges, BOMB_PROPULSION_DIALS } from '../src/systems/impulseCharges.js';
 const DT = 1 / 60;
 function spawn(state, spec = {}) {
   const entity = makeEntity({ id: allocateEntityId(state), type: 'asteroid', radius: 30, pos: { x: 80, z: 0 }, vel: { x: 0, z: 0 }, alive: true, collides: true, data: {}, ...spec });
@@ -33,21 +34,55 @@ test('cone clears production rocks and released rocks retain their earned moment
     assert.ok(rock.pos.x - release >= radius * 2);
   });
 });
+test('the player protection numbers are the plan\'s exact contract', () => {
+  // Owner-specified law: 10% external response, 5 WU/s per rolling half-second (30 ticks),
+  // 8 WU/s^2 continuous cap. A future tuning edit must not drift this silently.
+  assert.deepEqual(PLAYER_EXTERNAL_RESPONSE, { scale: 0.1, impulseBudget: 5, windowTicks: 30, maxAcceleration: 8 });
+});
 test('overlapping external effects obey the player budget and deliberate propulsion bypasses it', async () => lab((state, owner, step) => {
   const player = spawn(state, { type: 'ship', radius: 4, mass: 16, isPlayer: true, pos: { x: 0, z: 0 } }); state.playerId = player.id;
   step(() => { for (let i = 0; i < 10; i++) deliverPhysicalImpulse(state, player, { x: 1600, z: 0 }); });
-  assert.ok(player.vel.x <= PLAYER_EXTERNAL_RESPONSE.impulseBudget + 0.001);
-  assert.ok(player.vel.x >= 23.99, 'a blast must produce a noticeable backward shove');
-  assert.equal(readExternalPhysicsFeedback(player).deltaX, 24);
+  assert.ok(player.vel.x <= 5 + 0.001);
+  assert.ok(player.vel.x >= 5 - 0.001, 'ten overlapping blasts saturate the 5 WU/s budget');
+  assert.equal(readExternalPhysicsFeedback(player).deltaX, 5);
   assert.equal(player.angVel, 0);
   const before = player.vel.x; step(() => queuePhysicsImpulse(player, { x: 160, z: 0 }, { motionIntent: 'player_maneuver' }));
   assert.ok(player.vel.x >= before + 9.99);
 }));
+test('an owned aft-drop plate is deliberate propulsion; the same blast from a hostile owner is budgeted', async () => lab((state, owner, step) => {
+  const player = spawn(state, { type: 'ship', radius: 4, mass: 16, isPlayer: true, pos: { x: 0, z: 0 } });
+  state.playerId = player.id;
+  const charges = Object.create(impulseCharges);
+  charges.state = state; charges.bus = { emit() {} }; charges.helpers = {}; charges._blastScratch = [];
+  const blastPos = { x: player.pos.x - (player.radius + 4), z: player.pos.z };
+  // The vector rack's aft plate: the owner deliberately detonates behind their own hull —
+  // motionIntent 'player_maneuver' puts the shove outside the external-effects budget.
+  charges._blastVictims(state, {
+    pos: blastPos, ownerId: player.id, radius: 40, impulse: 200, damage: 0,
+    aftDrop: true, propulsionImpulseMult: BOMB_PROPULSION_DIALS.selfImpulseMult,
+    chargeId: 'charge_standard', trigger: 'aft_drop', sourceId: player.id,
+  });
+  step();
+  const propulsionDv = Math.hypot(player.vel.x, player.vel.z);
+  assert.ok(propulsionDv > 20, `deliberate propulsion exceeds the 5 WU/s external budget (got ${propulsionDv})`);
+  assert.equal(player.angVel, 0);
+  // The earned propulsion speed persists in the native body; the budgeted read is the delta.
+  // The identical plate and blast owned by a hostile is an external effect — capped.
+  charges._blastVictims(state, {
+    pos: blastPos, ownerId: 424242, radius: 40, impulse: 1600, damage: 0,
+    aftDrop: true, propulsionImpulseMult: BOMB_PROPULSION_DIALS.selfImpulseMult,
+    chargeId: 'charge_standard', trigger: 'aft_drop', sourceId: 424242,
+  });
+  step();
+  const hostileDv = Math.hypot(player.vel.x, player.vel.z) - propulsionDv;
+  assert.ok(hostileDv <= 5 + 0.001, `a hostile plate is still budgeted (got ${hostileDv})`);
+  assert.equal(player.angVel, 0);
+}));
 test('continuous external acceleration is capped jointly while leaving fields noticeable', async () => lab((state, owner, step) => {
   const player = spawn(state, { type: 'ship', radius: 4, mass: 16, isPlayer: true, pos: { x: 0, z: 0 } }); state.playerId = player.id;
   step(() => { for (let i = 0; i < 5; i++) deliverPhysicalAcceleration(state, player, { x: 1000, z: 0 }, DT); });
-  assert.ok(player.vel.x <= PLAYER_EXTERNAL_RESPONSE.maxAcceleration * DT + 0.001);
-  assert.ok(player.vel.x >= 0.79);
+  assert.ok(player.vel.x <= 8 * DT + 0.001);
+  assert.ok(player.vel.x >= 8 * DT - 0.001);
 }));
 test('anchored recoil uses the native pose, respects limits and settles', async () => lab((state, owner, step) => {
   const station = spawn(state, { type: 'station', radius: 40, pos: { x: 0, z: 0 } });

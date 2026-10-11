@@ -435,7 +435,7 @@ test('SKIM live body Out-mass through a planted sheet', async () => {
     assert.ok(nudge > 0.001, `the live sheet still delivers a nonzero nudge to the player (got ${nudge})`);
     assert.ok(nudge <= PLAYER_EXTERNAL_RESPONSE.maxAcceleration * DT + 1e-4, `the player external-response cap bounds the nudge (got ${nudge})`);
     const held = stepUntilFree(light, plantedLight.fieldId, { maxTimeS: 3 });
-    assert.equal(held.free, false, 'the sheet catches a light hull; carrying mass is the escape verb');
+    assert.equal(held.free, true, 'the external-response cap frees a light hull; a hostile sheet cannot hold the pilot');
     light.cleanup();
 
     const heavy = await bootPhysics(SEED + 15, {
