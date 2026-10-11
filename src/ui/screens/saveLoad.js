@@ -858,11 +858,15 @@ function fillSlotDataLazy(ctx, slot, entry) {
     let peek = null;
     try { peek = sys.peekSaveCardData(raw); } catch (e) { peek = null; }
     if (peek && typeof peek.then === 'function') {
+      const fillEntry = entry;
       peek.then((cardData) => {
         try {
-          entry = _slotDataMemo.get(slot) || entry;
-          if (!entry || entry.data) return;
-          entry.data = cardData || unwrapSlotDataRaw(raw);
+          // A same-slot write between dispatch and resolve re-mints the memo entry —
+          // only write onto the identity we consulted, or pre-bump card data gets
+          // stamped onto the new generation's entry and suppresses its fresh refill
+          // (a re-minted entry reschedules its own fill via attempted:false).
+          if (!fillEntry || _slotDataMemo.get(slot) !== fillEntry || fillEntry.data) return;
+          fillEntry.data = cardData || unwrapSlotDataRaw(raw);
           if (refs && refs.selected === slot) saveLoadScreen._renderStage(ctx);
         } catch (e) { /* speculative fill is best-effort */ }
       });

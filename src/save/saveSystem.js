@@ -402,7 +402,21 @@ export const save = {
           if (pending.timer == null) {
             pending.timer = setTimeout(() => {
               pending.timer = null;
-              try { this.speculateLoadPrepare(pending.slot, { sig: 'gen:' + pending.gen, raw: pending.raw }); }
+              const live = this._speculativeContinuePrepare;
+              // Re-arm only while a live STALE arm still owns this slot: a cross-slot
+              // pick or mount restore minted a fresh arm the pending fire would steal
+              // (killing the row the player is selecting); a disarm clears the arm and
+              // the pending timer must not resurrect it after hide/dispose; and an arm
+              // already current needs no re-warm at all.
+              if (!live || live.slot !== pending.slot || live.sig === 'gen:' + _saveStoreGeneration) {
+                pending.raw = null;
+                return;
+              }
+              const raw = pending.raw;
+              // Drop the blob reference the moment it's dispatched — the last bump's
+              // multi-MB raw must not stay pinned on this singleton until the next bump.
+              pending.raw = null;
+              try { this.speculateLoadPrepare(pending.slot, { sig: 'gen:' + pending.gen, raw }); }
               catch (err) { /* speculation is best-effort */ }
             }, 0);
           }
@@ -2744,6 +2758,13 @@ export const save = {
   // would otherwise mint a multi-MB clone + worker parse (and emit the visual warm)
   // inside the next mode's window.
   disarmSpeculativePrepare() {
+    // A coalesced same-slot re-arm parked on the pending lane must die with the arm —
+    // its timer would otherwise re-mint an arm after the screen is gone.
+    const pending = this._pendingSlotRearm;
+    if (pending) {
+      if (pending.timer != null) { clearTimeout(pending.timer); pending.timer = null; }
+      pending.raw = null;
+    }
     const spec = this._speculativeContinuePrepare;
     if (!spec) return;
     if (spec._timer != null) { clearTimeout(spec._timer); spec._timer = null; }
@@ -4954,6 +4975,13 @@ export const save = {
     // generation, so 'gen:' equality makes spec.raw identical to what getItem would return —
     // the multi-MB materialize + byte compare stay off the click path.
     installSaveStoreWriteTracking();
+    // Generation latched at consume time: for specHit this equals the arm's own sig
+    // (the movement predicate is identical either way), but for specByteHit it is the
+    // FIRST generation that could stale the bytes we just byte-proved — the arm's sig
+    // is stale by construction there, so comparing spec.sig to now would discard every
+    // verified byteHit and re-pay the parse the byte-equality exists to skip. Guard on
+    // movement since this latch, not since arm time.
+    const latchGen = _saveStoreGeneration;
     const specHit = spec && spec.slot === slot
       && spec.sig === 'gen:' + _saveStoreGeneration;
     let raw = null;
@@ -5015,7 +5043,7 @@ export const save = {
     // bumps the generation — the verdict then prepares generation-N bytes while N+1 sits on
     // disk. Re-verify the arm's signature before trusting it; on mismatch discard and
     // re-prepare through the same fallback path as a miss on the bytes now on disk.
-    if ((specHit || specByteHit) && spec && spec.sig !== 'gen:' + _saveStoreGeneration) {
+    if ((specHit || specByteHit) && spec && _saveStoreGeneration !== latchGen) {
       let freshRaw = null;
       try { freshRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
       catch (err) { /* null — the prepare reports its own read reason */ }
@@ -5208,11 +5236,15 @@ export const save = {
         if (!normalized.ok) return { ok: false, reason: normalized.reason };
         const preparedResult = { ok: true, env, data, version: ver };
         // A compressed generation the worker just proved stays readable to every sync
-        // caller downstream (rollback verification, slot cards, NG+ prep).
+        // caller downstream (rollback verification, slot cards, NG+ prep). FIFO-capped
+        // like _preparedEnvelopeCache: each generation mints a distinct multi-MB raw key
+        // + full parsed envelope, so an uncapped map is the one unbounded save accretion
+        // (W138 heap-floor F1) — a miss just re-runs this async lane.
         if (isGzippedSaveText(raw)) {
           try {
-            this._decodedSaveEnvelopes = this._decodedSaveEnvelopes || new Map();
-            this._decodedSaveEnvelopes.set(raw, preparedResult);
+            const decoded = this._decodedSaveEnvelopes || (this._decodedSaveEnvelopes = new Map());
+            decoded.set(raw, preparedResult);
+            while (decoded.size > 8) decoded.delete(decoded.keys().next().value);
           } catch (err) { /* a cache miss only forces the async lane again */ }
         }
         this._rememberPreparedEnvelope(raw, preparedResult);

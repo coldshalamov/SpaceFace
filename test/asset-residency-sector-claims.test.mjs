@@ -166,6 +166,40 @@ test('claim lapse-ability follows the POSTING class, not the stored row role', (
   assert.equal(registry.prepareSectorExit('D'), 0, 'reclaim stamp on a racing request lapses');
 });
 
+test('arm posts on a live-claimed member never revoke liveness (W137 F-1)', () => {
+  const t = clock();
+  const registry = createAssetResidencyRegistry({ now: t.now });
+  registry.registerAsset('k:live', [gpuResource('l')], { byteSize: 8 });
+  registry.registerAsset('k:union', [gpuResource('u')], { byteSize: 8 });
+  const owner = { type: 'session-owner' };
+  const unionOwner = { type: 'session-owner-2' };
+
+  // Vector 1 — reclaimWarm arm post on the same sid as a live claim (the
+  // sector-prewarm re-approach vector): must not demote to a lapse-able stamp.
+  registry.retain('k:live', owner, { role: 'runtime-cache', sectorId: 'A', decodeServed: true });
+  registry.reclaimWarm('k:live', owner, 'A');
+
+  // Vector 2 — an arm-role retain reaching the member through unionOwnerSector.
+  registry.retain('k:union', unionOwner, { role: 'runtime-cache', sectorId: 'B', decodeServed: true });
+  registry.retain('k:union', unionOwner, { role: 'sector-prewarm', sectorId: 'B' });
+
+  t.advance(STALE_MS + 10000);
+  assert.equal(registry.prepareSectorExit('A'), 1, 'live claim survives the same-sid reclaim arm');
+  assert.equal(registry.prepareSectorExit('B'), 1, 'live claim survives the unioned arm re-post');
+});
+
+test('second concurrent same-owner request unions its sector claims on commit (W137 F-2)', () => {
+  const t = clock();
+  const registry = createAssetResidencyRegistry({ now: t.now });
+  registry.registerAsset('k:req', [gpuResource('r')], { byteSize: 8 });
+  const owner = { type: 'session-owner' };
+  const req1 = registry.beginRequest('k:req', owner, { role: 'runtime-cache', sectorId: 'A' });
+  const req2 = registry.beginRequest('k:req', owner, { role: 'runtime-cache', sectorId: 'B' });
+  assert.equal(req1.commit(), true);
+  assert.equal(req2.commit(), true);
+  assert.deepEqual(sectorsOf(registry, 'k:req'), ['A', 'B'], 'second commit unions its sector into the held row');
+});
+
 test('request claims pending past the horizon commit clamped to it — not born lapsed', () => {
   const t = clock();
   const registry = createAssetResidencyRegistry({ now: t.now });

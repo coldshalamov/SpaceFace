@@ -407,6 +407,10 @@ export function createAssetResidencyRegistry(options = {}) {
       // re-posting onto a shared non-arm row must mint a lapse-able claim over
       // the same post, not an immortal one keyed to the row's mint-time role.
       const postArmClass = claimArmClass(metadata);
+      // Provenance contract: every live caller posts fresh literals, so no stamped
+      // sectorClaimAts/sectorLiveClaims ever arrive through metadata and the merge
+      // applies THIS posting's class to every unioned sid. If a caller ever forwards
+      // pre-stamped member maps, mirror the seed path's per-sid provenance here.
       if (metadata.sectorId != null) unionOwnerSector(entry, existingMetadata, metadata.sectorId, postArmClass);
       if (metadata.sectorIds instanceof Set) {
         for (const sid of metadata.sectorIds) unionOwnerSector(entry, existingMetadata, sid, postArmClass);
@@ -610,9 +614,28 @@ export function createAssetResidencyRegistry(options = {}) {
         const active = request.shouldDecode();
         finishRequest(request, active ? 'completed' : 'cancelled-after-decode');
         const entry = assets.get(exactKey);
-        const retained = active && entry && entry.owners.has(owner)
-          ? true
-          : (active ? retain(exactKey, owner, request.metadata) : false);
+        const heldMetadata = entry ? entry.owners.get(owner) : null;
+        let retained;
+        if (active && entry && heldMetadata) {
+          // Owner already holds the entry: retain() early-returns, but this request's
+          // sector claims must still union in — a second concurrent same-owner request
+          // carrying different sectorIds loses its only live-claim delivery otherwise.
+          // Mirror of retain's merge-path union, classified by this request's posting.
+          const postArmClass = claimArmClass(request.metadata);
+          if (request.metadata.sectorId != null) {
+            unionOwnerSector(entry, heldMetadata, request.metadata.sectorId, postArmClass);
+          }
+          if (request.metadata.sectorIds instanceof Set) {
+            for (const sid of request.metadata.sectorIds) {
+              unionOwnerSector(entry, heldMetadata, sid, postArmClass);
+            }
+          }
+          retained = true;
+        } else {
+          retained = active && entry && entry.owners.has(owner)
+            ? true
+            : (active ? retain(exactKey, owner, request.metadata) : false);
+        }
         if (!retained) evictIfUnowned(assets.get(exactKey), active ? 'unclaimed-decode' : 'cancelled-decode');
         return retained;
       },
@@ -847,6 +870,12 @@ export function createAssetResidencyRegistry(options = {}) {
   function sectorClaimStamp(metadata, sid, nowMs, armClass) {
     if (armClass == null) armClass = claimArmClass(metadata);
     if (armClass) {
+      // Liveness dominance: a live claim already implies every arm's demand on this
+      // member — an arm post must never revoke it. A re-approach prewarm (or any
+      // arm-class post landing on a live-served sector) would otherwise demote the
+      // immortal claim to a lapse-able ats stamp, and the entry loses its corridor
+      // rank and exit-warm carry 120s after the arm ends.
+      if (metadata.sectorLiveClaims instanceof Set && metadata.sectorLiveClaims.has(sid)) return;
       let ats = metadata.sectorClaimAts;
       if (!(ats instanceof Map)) ats = metadata.sectorClaimAts = new Map();
       ats.set(sid, nowMs);

@@ -3,6 +3,14 @@ import { fnv1a } from './checksum.js';
 const encodeSessions = new Map();
 const validationSessions = new Map();
 
+// A begin whose finish never arrives abandons its assembled payload for the worker's
+// life — cap both maps so orphaned sessions can't accrete save-sized graphs (W138 F5).
+// An evicted orphan's next part fails missing_session and the caller falls back.
+const MAX_WORKER_SESSIONS = 4;
+function capWorkerSessions(map) {
+  while (map.size >= MAX_WORKER_SESSIONS) map.delete(map.keys().next().value);
+}
+
 // FB-093 — write-side bound mirrors the import limit object: same byte ceiling, one law.
 export const SAVE_WRITE_MAX_BYTES = 12 * 1024 * 1024;
 export const SAVE_GZIP_FORMAT = 'spaceface-save-gz';
@@ -392,6 +400,7 @@ function handleSaveWorkerRequestCore(request, { asyncFinal } = {}) {
     return { id: request.id, type: 'peeked_card_data', result, workerCpuMs: workerNow() - started };
   }
   if (request.type === 'validate_begin') {
+    capWorkerSessions(validationSessions);
     validationSessions.set(request.id, {
       currentVersion: request.payload && request.payload.currentVersion,
       chunks: [],
@@ -416,6 +425,7 @@ function handleSaveWorkerRequestCore(request, { asyncFinal } = {}) {
     return done(validateSaveJson(session.chunks.join(''), session.currentVersion));
   }
   if (request.type === 'encode_begin') {
+    capWorkerSessions(encodeSessions);
     encodeSessions.set(request.id, { descriptor: request.payload && request.payload.descriptor || {}, data: {} });
     return null;
   }
@@ -837,7 +847,15 @@ self.addEventListener('message', function (event) {
   try {
     self.__saveEncodeSessions = self.__saveEncodeSessions || new Map();
     self.__saveValidationSessions = self.__saveValidationSessions || new Map();
+    // Same orphan bound as the module sessions — a begin without finish must not pin
+    // its assembled payload in the worker forever (W138 F5).
+    if (!self.__capWorkerSessions) {
+      self.__capWorkerSessions = function (map) {
+        while (map.size >= 4) map.delete(map.keys().next().value);
+      };
+    }
     if (request.type === 'validate_begin') {
+      self.__capWorkerSessions(self.__saveValidationSessions);
       self.__saveValidationSessions.set(request.id, {
         currentVersion: request.payload && request.payload.currentVersion,
         chunks: [],
@@ -866,6 +884,7 @@ self.addEventListener('message', function (event) {
       return;
     }
     if (request.type === 'encode_begin') {
+      self.__capWorkerSessions(self.__saveEncodeSessions);
       self.__saveEncodeSessions.set(request.id, { descriptor: request.payload && request.payload.descriptor || {}, data: {} });
       return;
     }

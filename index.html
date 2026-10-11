@@ -199,12 +199,13 @@
   <link rel="modulepreload" href="./src/render/pipelineReadiness.js" />
   <link rel="modulepreload" href="./src/render/renderCapabilityProfile.js" />
   <link rel="modulepreload" href="./src/render/uiStage.js" />
-            <!-- modulepreload:registry:begin -->
+              <!-- modulepreload:registry:begin -->
   <link rel="modulepreload" href="./node_modules/@floating-ui/core/dist/floating-ui.core.browser.mjs" />
   <link rel="modulepreload" href="./node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs" />
   <link rel="modulepreload" href="./node_modules/quarks.core/dist/quarks.core.esm.js" />
   <link rel="modulepreload" href="./node_modules/three-mesh-bvh/build/index.module.js" />
   <link rel="modulepreload" href="./node_modules/three.quarks/dist/three.quarks.esm.js" />
+  <link rel="modulepreload" href="./node_modules/three/examples/jsm/libs/fflate.module.js" />
   <link rel="modulepreload" href="./src/ai/ambientPredation.js" />
   <link rel="modulepreload" href="./src/ai/capitalBossOrders.js" />
   <link rel="modulepreload" href="./src/ai/combatDoctrine.js" />
@@ -335,6 +336,7 @@
   <link rel="modulepreload" href="./src/combat/opticField.js" />
   <link rel="modulepreload" href="./src/combat/orbitNodes.js" />
   <link rel="modulepreload" href="./src/combat/persistence.js" />
+  <link rel="modulepreload" href="./src/combat/physicalEffects.js" />
   <link rel="modulepreload" href="./src/combat/playerDefeat.js" />
   <link rel="modulepreload" href="./src/combat/projectileFlight.js" />
   <link rel="modulepreload" href="./src/combat/rewardEligibility.js" />
@@ -416,6 +418,7 @@
   <link rel="modulepreload" href="./src/core/perfCounters.js" />
   <link rel="modulepreload" href="./src/core/perfRuntime.js" />
   <link rel="modulepreload" href="./src/core/periodicClock.js" />
+  <link rel="modulepreload" href="./src/core/physicalResponse.js" />
   <link rel="modulepreload" href="./src/core/physics.js" />
   <link rel="modulepreload" href="./src/core/physicsAuthority.js" />
   <link rel="modulepreload" href="./src/core/pickupAcceptance.js" />
@@ -446,12 +449,14 @@
   <link rel="modulepreload" href="./src/data/adventureArenaSites.js" />
   <link rel="modulepreload" href="./src/data/adventureCombatLab.js" />
   <link rel="modulepreload" href="./src/data/adventureDoctrines.js" />
+  <link rel="modulepreload" href="./src/data/adventureSpeedContracts.js" />
   <link rel="modulepreload" href="./src/data/adventureTraitMap.js" />
   <link rel="modulepreload" href="./src/data/alienEcology.js" />
   <link rel="modulepreload" href="./src/data/alienEcologyState.js" />
   <link rel="modulepreload" href="./src/data/alienFauna.js" />
   <link rel="modulepreload" href="./src/data/ambushSignatures.js" />
   <link rel="modulepreload" href="./src/data/arenaModuleLibrary.js" />
+  <link rel="modulepreload" href="./src/data/arsenalIdentity.js" />
   <link rel="modulepreload" href="./src/data/asteroidColliders.js" />
   <link rel="modulepreload" href="./src/data/attackTraits.js" />
   <link rel="modulepreload" href="./src/data/audioRecipes.js" />
@@ -800,6 +805,7 @@
   <link rel="modulepreload" href="./src/data/enemies.js" />
   <link rel="modulepreload" href="./src/data/enemyMindTuning.js" />
   <link rel="modulepreload" href="./src/data/entityInteractionProfiles.js" />
+  <link rel="modulepreload" href="./src/data/environmentMaterials.js" />
   <link rel="modulepreload" href="./src/data/environmentalMachinery.js" />
   <link rel="modulepreload" href="./src/data/everydaySpaceKitDressing.js" />
   <link rel="modulepreload" href="./src/data/factionBerths.js" />
@@ -913,6 +919,8 @@
   <link rel="modulepreload" href="./src/data/precursorMachines.js" />
   <link rel="modulepreload" href="./src/data/raceCourses.js" />
   <link rel="modulepreload" href="./src/data/raceLevels.js" />
+  <link rel="modulepreload" href="./src/data/racingCircuitLayouts.js" />
+  <link rel="modulepreload" href="./src/data/racingLoadouts.js" />
   <link rel="modulepreload" href="./src/data/rangeRails.js" />
   <link rel="modulepreload" href="./src/data/ravel.js" />
   <link rel="modulepreload" href="./src/data/redKite.js" />
@@ -1029,6 +1037,7 @@
   <link rel="modulepreload" href="./src/localization/pipeline.js" />
   <link rel="modulepreload" href="./src/localization/runtime.js" />
   <link rel="modulepreload" href="./src/localization/storeCopy.js" />
+  <link rel="modulepreload" href="./src/missions/adventureSpeedRuntime.js" />
   <link rel="modulepreload" href="./src/missions/capitalBossSpawn.js" />
   <link rel="modulepreload" href="./src/missions/heistArbiter.js" />
   <link rel="modulepreload" href="./src/missions/heistMissionRuntime.js" />
@@ -1387,6 +1396,7 @@
   <link rel="modulepreload" href="./src/save/ironmanChoice.js" />
   <link rel="modulepreload" href="./src/save/migrations.js" />
   <link rel="modulepreload" href="./src/save/saveDirtyJournal.js" />
+  <link rel="modulepreload" href="./src/save/saveSyncGzip.js" />
   <link rel="modulepreload" href="./src/save/saveSystem.js" />
   <link rel="modulepreload" href="./src/save/saveWorker.js" />
   <link rel="modulepreload" href="./src/save/sharedPlayerStore.js" />
@@ -1478,6 +1488,7 @@
   <link rel="modulepreload" href="./src/systems/emergentPrimitives.js" />
   <link rel="modulepreload" href="./src/systems/encounterDirector.js" />
   <link rel="modulepreload" href="./src/systems/encounterScripts.js" />
+  <link rel="modulepreload" href="./src/systems/environmentMaterials.js" />
   <link rel="modulepreload" href="./src/systems/environmentalMachinery.js" />
   <link rel="modulepreload" href="./src/systems/factionPresence.js" />
   <link rel="modulepreload" href="./src/systems/factions.js" />
@@ -1730,6 +1741,8 @@
   <link rel="modulepreload" href="./src/ui/factionStanding.js" />
   <link rel="modulepreload" href="./src/ui/fieldHud.js" />
   <link rel="modulepreload" href="./src/ui/firstHourFelt.js" />
+  <link rel="modulepreload" href="./src/ui/flightCursor.js" />
+  <link rel="modulepreload" href="./src/ui/flightViewProjection.js" />
   <link rel="modulepreload" href="./src/ui/floatingText.js" />
   <link rel="modulepreload" href="./src/ui/forkInstrument.js" />
   <link rel="modulepreload" href="./src/ui/frontierRumorMapLayer.js" />
@@ -1793,6 +1806,7 @@
   <link rel="modulepreload" href="./src/ui/orrery/arcRail.js" />
   <link rel="modulepreload" href="./src/ui/orrery/archiveInstruments.js" />
   <link rel="modulepreload" href="./src/ui/orrery/archiveLayouts.js" />
+  <link rel="modulepreload" href="./src/ui/orrery/arsenalGlyphs.js" />
   <link rel="modulepreload" href="./src/ui/orrery/barReplyDial.js" />
   <link rel="modulepreload" href="./src/ui/orrery/bearingRefusal.js" />
   <link rel="modulepreload" href="./src/ui/orrery/bootRing.js" />
@@ -1874,6 +1888,7 @@
   <link rel="modulepreload" href="./src/ui/promptDeck.js" />
   <link rel="modulepreload" href="./src/ui/prompts/bulkHaulTag.js" />
   <link rel="modulepreload" href="./src/ui/quitGame.js" />
+  <link rel="modulepreload" href="./src/ui/racingCoach.js" />
   <link rel="modulepreload" href="./src/ui/racingControls.js" />
   <link rel="modulepreload" href="./src/ui/racingHud.js" />
   <link rel="modulepreload" href="./src/ui/racingLaunch.js" />
@@ -1978,6 +1993,7 @@
   <link rel="modulepreload" href="./src/ui/wantedReason.js" />
   <link rel="modulepreload" href="./src/ui/watchlist.js" />
   <link rel="modulepreload" href="./src/ui/watchlistHud.js" />
+  <link rel="modulepreload" href="./src/ui/weaponClips.js" />
   <link rel="modulepreload" href="./src/ui/weaponHeat.js" />
   <link rel="modulepreload" href="./src/ui/whyReveal.js" />
   <link rel="modulepreload" href="./src/ui/wingmanRadial.js" />
@@ -1998,8 +2014,8 @@
   <link rel="modulepreload" href="./src/world/farActorTable.js" />
   <link rel="modulepreload" href="./src/world/farEncounterOutcomes.js" />
   <link rel="modulepreload" href="./src/world/livingWorldViews.js" />
-  <link rel="modulepreload" href="./src/world/poseTable.js" />
   <link rel="modulepreload" href="./src/world/presentationSources.js" />
+  <link rel="modulepreload" href="./src/world/racingCorridor.js" />
   <link rel="modulepreload" href="./src/world/resourceBodyRecords.js" />
   <link rel="modulepreload" href="./src/world/solidDressing.js" />
   <link rel="modulepreload" href="./src/world/veilRayNursery.js" />
