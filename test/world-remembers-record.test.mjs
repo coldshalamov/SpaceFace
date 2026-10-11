@@ -62,13 +62,25 @@ test('every subscribed receipt writes one deed with the right kind and place', (
     bus.emit('heat:changed', { previousValue: 0, value: 80, tier: WANTED_TIER.NETS, reason: 'test' });
     bus.emit('combat:tumbleRake', { hullId: 1, factionId: 'faction_reach', victims: [2, 3, 4], tick: 300 });
     bus.emit('stunt:salvageRights', { trickId: 'bolas', name: 'Bolas', rarity: 'rare', tick: 310 });
+    bus.emit('warrant:hunterDisabled', { hunterId: 'wh_ines_garrow', name: 'Writ', byPlayer: true, licensed: true, tier: 'nets', sectorId: 'sector_ceres_belt', grievance: 'disabled' });
+    bus.emit('warrant:hunterEscaped', { hunterId: 'wh_dov_marrow', name: 'Furrow', tier: 'nets', sectorId: 'sector_ceres_belt', tick: 400 });
+    bus.emit('station:strike', { stationId: 'station_ceres', sectorId: 'sector_ceres_belt', factionId: 'faction_dmc', actorId: 1, kills: 2, victimRole: 'miner', tick: 410 });
+    bus.emit('station:grudge', { stationId: 'station_ceres', sectorId: 'sector_ceres_belt', factionId: 'faction_dmc', slams: 3, untilPaidCr: 0, tick: 420 });
+    bus.emit('aceMemory:transition', { aceId: 'ace_vane', aceName: 'Vane Okoro', crew: 'reach', transition: 'defeated', record: { lastSectorId: 'sector_ceres_belt', factionId: 'faction_reach' } });
+    bus.emit('aceMemory:transition', { aceId: 'ace_sable', aceName: 'Sable', crew: 'reach', transition: 'fled', record: { lastSectorId: 'sector_helios_prime', fleeCount: 1, returnTier: 2 } });
+    bus.emit('aceMemory:transition', { aceId: 'ace_sable', aceName: 'Sable', crew: 'reach', transition: 'returned', record: {} });
 
     const kinds = deedsFor(state, {}).map((d) => d.kind).sort();
     assert.deepEqual(kinds, [
-      'base_destroyed', 'bounty_paid', 'dock_slam', 'fence_burned', 'fence_emboldened', 'fence_thanked',
-      'hauler_dragged', 'kill_lawful', 'kill_outlaw', 'ore_flood', 'pod_abandoned', 'pod_captured',
-      'pod_rescued', 'stunt', 'tumble_rake', 'wanted_tier',
+      'ace_defeated', 'ace_routed', 'base_destroyed', 'bounty_paid', 'dock_slam', 'fence_burned', 'fence_emboldened',
+      'fence_thanked', 'hauler_dragged', 'hunter_disabled', 'hunter_outran', 'kill_lawful', 'kill_outlaw', 'ore_flood',
+      'pod_abandoned', 'pod_captured', 'pod_rescued', 'station_grudge', 'station_strike', 'stunt', 'tumble_rake',
+      'wanted_tier',
     ]);
+    const routed = deedsFor(state, { kinds: ['ace_routed'] })[0];
+    assert.equal(routed.sectorId, 'sector_helios_prime');
+    assert.equal(routed.subject, 'Sable');
+    assert.equal(routed.weight, 2.5);
     assert.equal(Object.keys(DEED_KINDS).length, kinds.length, 'every kind has a producer wired');
     const slam = deedsFor(state, { kinds: ['dock_slam'] })[0];
     assert.equal(slam.stationId, 'station_ceres');
@@ -105,6 +117,9 @@ test('gates: foreign actors, unattended pods, downward heat and self-kills write
     bus.emit('heat:changed', { previousValue: 0, value: 5, tier: WANTED_TIER.SCAN });
     bus.emit('combat:tumbleRake', { hullId: 2, victims: [1] });
     bus.emit('combat:tumbleRake', { hullId: 1, victims: [] });
+    bus.emit('warrant:hunterDisabled', { hunterId: 'wh_ines_garrow', byPlayer: false });
+    bus.emit('station:strike', { stationId: 'station_ceres', actorId: 44 });
+    bus.emit('aceMemory:transition', { aceId: 'ace_vane', transition: 'returned', record: {} });
     assert.equal(peekDeedRecord(state), null, `seed ${seed}`);
   }
 });

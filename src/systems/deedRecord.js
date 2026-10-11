@@ -43,6 +43,13 @@ export const DEED_KINDS = Object.freeze({
   wanted_tier:     Object.freeze({ law: -1, street: 1,  weight: 2, label: 'Warrant raised' }),
   tumble_rake:     Object.freeze({ law: 0,  street: 1,  weight: 1, label: 'Tumble rake' }),
   stunt:           Object.freeze({ law: 0,  street: 1,  weight: 1, label: 'Stunt' }),
+  // THE WORLD REMEMBERS consumers that sign their own receipts:
+  hunter_disabled: Object.freeze({ law: -1, street: 1,  weight: 3, label: 'Warrant hunter disabled' }),
+  hunter_outran:   Object.freeze({ law: 0,  street: 1,  weight: 1, label: 'Warrant hunter outran' }),
+  station_strike:  Object.freeze({ law: -1, street: 0,  weight: 2, label: 'Crews walked off' }),
+  station_grudge:  Object.freeze({ law: -1, street: 0,  weight: 2, label: 'Berth refused' }),
+  ace_defeated:    Object.freeze({ law: 1,  street: -1, weight: 4, label: 'Named ace defeated' }),
+  ace_routed:      Object.freeze({ law: 0,  street: -1, weight: 2, label: 'Named ace routed' }),
 });
 
 const WANTED_TIER_WEIGHT = Object.freeze({
@@ -285,6 +292,11 @@ export const deedRecord = {
     this._listen('heat:changed', (p) => this._onHeatChanged(p));
     this._listen('combat:tumbleRake', (p) => this._onTumbleRake(p));
     this._listen('stunt:salvageRights', (p) => this._onStunt(p));
+    this._listen('warrant:hunterDisabled', (p) => this._onHunterDisabled(p));
+    this._listen('warrant:hunterEscaped', (p) => this._onHunterEscaped(p));
+    this._listen('station:strike', (p) => this._onStationCondition('station_strike', p));
+    this._listen('station:grudge', (p) => this._onStationCondition('station_grudge', p));
+    this._listen('aceMemory:transition', (p) => this._onAceTransition(p));
   },
 
   destroy() {
@@ -439,6 +451,63 @@ export const deedRecord = {
       weight: 1 + Math.min(2, (victims - 1) * 0.5),
       detail: { victims },
       tick: p.tick,
+    });
+  },
+
+  _onHunterDisabled(p) {
+    if (!p || p.byPlayer !== true || !p.hunterId) return;
+    recordDeed(this.state, {
+      kind: 'hunter_disabled',
+      sectorId: p.sectorId || this._here(),
+      factionId: p.factionId || null,
+      weight: p.licensed === true ? 3 : 2,
+      subject: p.name || p.hunterId,
+      detail: { hunterId: p.hunterId, licensed: p.licensed === true, grievance: p.grievance || null, tier: p.tier || null },
+    });
+  },
+
+  _onHunterEscaped(p) {
+    if (!p || !p.hunterId) return;
+    recordDeed(this.state, {
+      kind: 'hunter_outran',
+      sectorId: p.sectorId || this._here(),
+      subject: p.name || p.hunterId,
+      detail: { hunterId: p.hunterId, tier: p.tier || null },
+      tick: p.tick,
+    });
+  },
+
+  _onStationCondition(kind, p) {
+    if (!p || !p.stationId) return;
+    if (kind === 'station_strike' && p.actorId != null && !this._isPlayer(p.actorId)) return;
+    recordDeed(this.state, {
+      kind,
+      id: `${kind}:${p.stationId}:${Number.isFinite(p.tick) ? p.tick : (this.state.tick | 0)}`,
+      sectorId: p.sectorId || this._here(),
+      factionId: p.factionId || null,
+      stationId: p.stationId,
+      subject: p.stationId,
+      detail: kind === 'station_strike'
+        ? { kills: p.kills | 0, victimRole: p.victimRole || null }
+        : { slams: p.slams | 0, untilPaidCr: finite(p.untilPaidCr, 0) },
+      tick: p.tick,
+    });
+  },
+
+  _onAceTransition(p) {
+    if (!p || !p.aceId) return;
+    const kind = p.transition === 'defeated' ? 'ace_defeated' : p.transition === 'fled' ? 'ace_routed' : null;
+    if (!kind) return;
+    const rec = p.record || {};
+    recordDeed(this.state, {
+      kind,
+      // One deed per ace per arc beat: a second flee is a louder story, not a duplicate.
+      id: `${kind}:${p.aceId}:${rec.fleeCount | 0}`,
+      sectorId: rec.lastSectorId || this._here(),
+      factionId: p.factionId || rec.factionId || null,
+      weight: kind === 'ace_routed' ? 2 + Math.min(2, (rec.fleeCount | 0) * 0.5) : 4,
+      subject: p.aceName || p.aceId,
+      detail: { aceId: p.aceId, crew: p.crew || null, returnTier: rec.returnTier | 0 },
     });
   },
 

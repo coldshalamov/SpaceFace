@@ -182,6 +182,62 @@ const LINES = {
       (c) => `Saw the ${c.subject || 'stunt'} at ${c.place} on a gun camera. Buy you a drink for that.`,
     ],
   },
+  hunter_disabled: {
+    neutral: [(c) => `Disabled the warrant hunter ${c.subject || 'on your paper'} at ${c.place}.`],
+    grievance: [
+      (c) => `${c.subject || 'A licensed hunter'} came back from ${c.place} on a tow. The guild took that personally.`,
+      (c) => `You put ${c.subject || 'a hunter'} in a repair bay at ${c.place}. Every writ-holder here read the report.`,
+    ],
+    praise: [
+      (c) => `${c.subject || 'That hunter'} went home from ${c.place} on a cable. Nobody here minded.`,
+      (c) => `Word is ${c.subject || 'a writ-holder'} limped out of ${c.place} after meeting you. Drinks were had.`,
+    ],
+  },
+  hunter_outran: {
+    neutral: [(c) => `Outran ${c.subject || 'a warrant hunter'} at ${c.place}.`],
+    grievance: [],
+    praise: [
+      (c) => `${c.subject || 'The hunter'} lost you at ${c.place}. They're still telling it as a tactical withdrawal.`,
+    ],
+  },
+  station_strike: {
+    neutral: [(c) => `Crews at ${c.place} walked off the floor over a killed shift.`],
+    grievance: [
+      (c) => `${c.place}'s crews sat down because of what you did to their shift. They know your hull.`,
+      (c) => `There's a shift at ${c.place} that doesn't come home. The floor remembers who flew that.`,
+    ],
+    praise: [],
+  },
+  station_grudge: {
+    neutral: [(c) => `${c.place} shut its berth to you until the note is paid.`],
+    grievance: [
+      (c) => `${c.place} has a standing order: your hull does not come through the ring until you pay.`,
+      (c) => `Dock control at ${c.place} keeps your silhouette pinned by the berth board. Pay the note.`,
+    ],
+    praise: [
+      (c) => `Banned from ${c.place}'s ring. That's a badge in this bar.`,
+    ],
+  },
+  ace_defeated: {
+    neutral: [(c) => `Brought down ${c.subject || 'a named ace'} at ${c.place}.`],
+    grievance: [
+      (c) => `${c.subject || 'A captain'} is dead at ${c.place}, and the crew that flew under them is drinking to your name. Not kindly.`,
+      (c) => `You killed ${c.subject || 'a name'} at ${c.place}. Their wingman has it written down.`,
+    ],
+    praise: [
+      (c) => `${c.subject || 'That ace'} went down at ${c.place}. Lanes out that way breathe easier.`,
+      (c) => `Patrol pilots at ${c.place} toast the hull that finished ${c.subject || 'the ace'}. That's yours.`,
+    ],
+  },
+  ace_routed: {
+    neutral: [(c) => `Ran ${c.subject || 'a named ace'} off at ${c.place}.`],
+    grievance: [
+      (c) => `${c.subject || 'That captain'} ran from you at ${c.place}, and the crew hasn't let them forget it. They'll be back heavier.`,
+    ],
+    praise: [
+      (c) => `${c.subject || 'The ace'} turned tail at ${c.place}. First time anyone here saw that happen.`,
+    ],
+  },
 };
 
 /**
