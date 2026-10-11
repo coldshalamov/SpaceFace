@@ -1111,7 +1111,10 @@ export const survivorPod = {
       ? 'rescued_survivors'
       : outcome === 'ransomed'
         ? 'ransomed_survivors'
-        : 'abandoned_survivors';
+        // A pirate took the pod: not the same memory as leaving it to drift and die.
+        : outcome === 'captured'
+          ? 'captured_survivors'
+          : 'abandoned_survivors';
     rememberMoralDebt(state, {
       id: rec.memoryId || `survivor:${entityId}`,
       name: 'Survivor Pod',

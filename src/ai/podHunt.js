@@ -24,6 +24,7 @@
 // the errand lapses — it cannot cut a tether it does not own).
 
 import { hash32 } from '../core/rng.js';
+import { podHuntBarkFor } from '../data/barks.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { isActiveCombatant } from '../systems/pirateDisengage.js';
 import { ActivityKind, RulesOfEngagement, setEntityDoctrine } from './doctrine.js';
@@ -42,16 +43,9 @@ export const POD_HUNT = Object.freeze({
   hitEpsilon: 0.01,         // any real hull loss during the errand ends it (self-defence)
 });
 
-const CAPTURE_LINES = Object.freeze([
-  'Survivor pod is ours. Ransom goes to whoever wants them back.',
-  'Pod secured. The crew is worth more breathing — name your price, spacer.',
-  'Got the pod. Survivors ride with us until someone pays.',
-]);
-const DISPATCH_LINES = Object.freeze([
-  'Pod in the drift. Easier ransom than a fight — breaking off.',
-  'Survivors floating loose. We take the pod, you take the rest of the day.',
-  'Cutting off the attack. A drifting pod pays better than you do.',
-]);
+// The two errand barks live in the bark catalogue (src/data/barks.js POD_HUNT_BARKS), faction-voiced.
+const BARK_BREAK = 'pirate_pod_hunt_break';
+const BARK_CAPTURE = 'pirate_pod_hunt_capture';
 
 function entityById(state, id) {
   if (id == null || !state || !state.entities || typeof state.entities.get !== 'function') return null;
@@ -88,18 +82,17 @@ function ensureHunt(own) {
   return h;
 }
 
-function say(ctx, { id, text, kind, factionId }) {
+/** Speak one catalogued bark key in the hunter's own faction voice. Silent on an unknown key. */
+function say(ctx, { id, key, kind, factionId, hunterId }) {
+  const seed = ctx.state.meta && ctx.state.meta.seed;
+  const text = podHuntBarkFor(key, factionId, hash32(seed == null ? 0 : seed, hunterId, key));
+  if (!text) return;
   const voice = ctx.helpers && ctx.helpers.voice;
   if (voice && typeof voice.say === 'function') {
-    voice.say({ channel: 'bark', text, kind, ttl: 4, id, factionId: factionId || 'faction_reach' });
+    voice.say({ channel: 'bark', text, kind, ttl: 4, id, key, factionId: factionId || 'faction_reach' });
   } else if (ctx.bus && typeof ctx.bus.emit === 'function') {
     ctx.bus.emit('toast', { text, kind, ttl: 4 });
   }
-}
-
-function lineFor(lines, state, hunterId, salt) {
-  const seed = state.meta && state.meta.seed;
-  return lines[hash32(seed == null ? 0 : seed, hunterId, salt) % lines.length];
 }
 
 function liveCausalRec(ctx, podId) {
@@ -203,7 +196,8 @@ function claim(ctx, hunter, pod, now) {
   say(ctx, {
     id: `podHunt:go:${pod.id}`,
     kind: 'podHunt',
-    text: lineFor(DISPATCH_LINES, state, hunter.id, 'podHuntGo'),
+    key: BARK_BREAK,
+    hunterId: hunter.id,
     factionId: hunter.factionId,
   });
   return rec;
@@ -384,7 +378,8 @@ function tickErrand(ctx, rec, tick, now) {
       say(ctx, {
         id: `podHunt:took:${rec.podId}`,
         kind: 'podHunt',
-        text: lineFor(CAPTURE_LINES, state, hunter.id, 'podHuntTook'),
+        key: BARK_CAPTURE,
+        hunterId: hunter.id,
         factionId: hunter.factionId,
       });
       startLeaving(ctx, rec, hunter, pod);

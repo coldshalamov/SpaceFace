@@ -20,6 +20,12 @@ import {
   RESCUE_COOL_WINDOW_S,
 } from '../src/systems/heat.js';
 import { POD_HUNT } from '../src/ai/podHunt.js';
+import { POD_HUNT_BARKS, podHuntBarkFor } from '../src/data/barks.js';
+import {
+  ADDITIONAL_ACTION_VFX_RECIPES,
+  SURVIVOR_POD_RETIRE,
+  resolveAdditionalActionVfxReceipt,
+} from '../src/render/vfx/actionEventRecipes.js';
 import { isCausalSurvivorPod, survivorPod } from '../src/systems/survivorPod.js';
 
 const DT = 1 / 60;
@@ -183,8 +189,31 @@ for (const seed of SEEDS) {
 
       assert.equal(h.barks.length, 1, 'one bark through the voice channel');
       assert.equal(h.barks[0].channel, 'bark');
-      assert.match(h.barks[0].text, /pod|survivor/i);
+      assert.equal(h.barks[0].key, 'pirate_pod_hunt_capture');
+      assert.ok(POD_HUNT_BARKS.pirate_pod_hunt_capture.faction_reach.includes(h.barks[0].text),
+        'the line comes from the bark catalogue, in the hunter\'s faction voice');
+      assert.equal(h.barks[0].factionId, 'faction_reach');
       assert.equal(h.barks[0].id, `podHunt:took:${pod.id}`);
+
+      // Remembered as a seizure — a distinct cause from leaving the pod to drift.
+      const debts = Object.values(h.state.story.moralMemory.debts);
+      assert.equal(debts.length, 1);
+      assert.equal(debts[0].cause, 'captured_survivors');
+      assert.equal(debts[0].source, 'survivorPod:captured');
+
+      // Seen as a seizure: the receipt paints a grapple latch from the captor to the pod's point.
+      const painted = resolveAdditionalActionVfxReceipt('survivorPod:resolved', h.rows('survivorPod:resolved')[0], h.state);
+      assert.ok(painted, 'captured paints');
+      assert.equal(painted.kind, 'captured');
+      assert.equal(painted.sourceId, raider.id);
+      assert.equal(painted.targetId, null);
+      assert.equal(painted.attachToTarget, false);
+      assert.ok(painted.direction && Number.isFinite(painted.direction.x));
+      const recipe = ADDITIONAL_ACTION_VFX_RECIPES['survivorPod:resolved'].variants.captured;
+      assert.equal(recipe.verb, 'latch');
+      assert.equal(recipe.primitive, 'connection');
+      assert.notEqual(recipe.color, SURVIVOR_POD_RETIRE.abandoned.color);
+      assert.notEqual(recipe.color, SURVIVOR_POD_RETIRE.ransomed.color);
 
       // Leaves with its prize: flee posture, still not pressing the player.
       assert.equal(raider.data.ai.activity.kind, 'flee');
@@ -321,6 +350,33 @@ for (const seed of SEEDS) {
     } finally { teardown(h); }
   });
 }
+
+test('C7 the hunt barks are catalogued and faction-voiced: one at dispatch, one at capture', () => {
+  for (const key of ['pirate_pod_hunt_break', 'pirate_pod_hunt_capture']) {
+    for (const [factionId, lines] of Object.entries(POD_HUNT_BARKS[key])) {
+      assert.ok(lines.length >= 3, `${key}/${factionId} has variants`);
+      for (const line of lines) assert.ok(line.length > 0 && !line.includes('!'), `${key}/${factionId}: ${line}`);
+      assert.equal(podHuntBarkFor(key, factionId, 0), lines[0]);
+    }
+    assert.equal(podHuntBarkFor(key, 'faction_unknown', 0), POD_HUNT_BARKS[key].faction_reach[0]);
+  }
+  assert.equal(podHuntBarkFor('nope', 'faction_reach', 0), null);
+
+  const h = boot(4242, { voice: true });
+  try {
+    const quiet = h.pirate({ id: 21, x: 260, z: 40, hull: 30, factionId: 'faction_quiet' });
+    const pod = h.eject(h.victim(30));
+    const hunt = () => h.barks.filter((b) => b.kind === 'podHunt');
+    assert.equal(hunt().length, 1, 'one bark at dispatch');
+    assert.equal(hunt()[0].key, 'pirate_pod_hunt_break');
+    assert.equal(hunt()[0].factionId, 'faction_quiet');
+    assert.ok(POD_HUNT_BARKS.pirate_pod_hunt_break.faction_quiet.includes(hunt()[0].text));
+    quiet.pos = { x: pod.pos.x + 8, z: pod.pos.z };
+    h.step(2);
+    assert.equal(hunt().length, 2, 'one more at capture');
+    assert.ok(POD_HUNT_BARKS.pirate_pod_hunt_capture.faction_quiet.includes(hunt()[1].text));
+  } finally { teardown(h); }
+});
 
 test('C7 the dispatch is deterministic: same seed, same hunter, same line', () => {
   const run = (seed) => {

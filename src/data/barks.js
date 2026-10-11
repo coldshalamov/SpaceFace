@@ -2210,6 +2210,84 @@ export function escapeTauntBarkFor(factionId, rng) {
   return typeof line === 'string' && line.length ? line : '...';
 }
 
+// ── A wounded pirate breaks off for an ejected pod (THE WORLD ANSWERS, C7) ───────────────────
+//
+// Event lines, not BARK_SITUATIONS, keyed the way every pirate event corpus is: key → faction →
+// lines. `pirate_pod_hunt_break` is the dispatch — the pirate names the pod it is going for, a
+// line the player can act on (leave the pod, cut the tow and the pursuer stops pressing).
+// `pirate_pod_hunt_capture` is the taking — the pod is theirs, the ransom is the point. Spoken by
+// src/ai/podHunt.js through the voice channel with the hunter's own factionId; the caller derives
+// the index from hash32(seed, hunter id) so a line is stable across save/load with no rng spend.
+// Only the pirate-class registers are authored; any other faction speaks the Reach register.
+export const POD_HUNT_BARKS = Object.freeze({
+  pirate_pod_hunt_break: Object.freeze({
+    faction_reach: Object.freeze([
+      'Pod’s adrift. We’re taking it — stay off the tow and I stay off you.',
+      'Breaking off for that pod. Leave it drifting and we’re square, friend.',
+      'Survivors weigh more than your hull today. Don’t reach for the pod.',
+    ]),
+    faction_quiet: Object.freeze([
+      'The pod. Not you.',
+      'Leave the pod.',
+      'We take the pod. Stand clear.',
+    ]),
+    faction_choir: Object.freeze([
+      'The pod is adrift. We gather it. Stand clear of the verse.',
+      'The line breaks for the pod. Leave it and the line stays broken.',
+      'Something breathes in that pod. We will answer it. Stand clear.',
+    ]),
+    faction_pitborn: Object.freeze([
+      'Pod in the drift, kin. We take it, you keep your hull. Don’t get greedy.',
+      'Breaking off. That pod pays better than your scrap — leave it to us.',
+      'Yard wants that pod. Cut your tow and we forget you.',
+    ]),
+    faction_free: Object.freeze([
+      'Pod’s drifting. We’re taking it — leave it be and we’ll leave you be.',
+      'Breaking off for the pod. Keep your hands off the tow.',
+      'Easier ransom than a fight. Let us have the pod.',
+    ]),
+  }),
+  pirate_pod_hunt_capture: Object.freeze({
+    faction_reach: Object.freeze([
+      'Pod’s ours. Ransom goes to whoever pays.',
+      'Pod’s on the hook. The crew rides with us until someone pays.',
+      'Got the pod, friend. Survivors keep breathing — for a price.',
+    ]),
+    faction_quiet: Object.freeze([
+      'Pod taken.',
+      'The crew is ours.',
+      'Ransom. Not rescue.',
+    ]),
+    faction_choir: Object.freeze([
+      'The pod is gathered. The crew joins the verse.',
+      'Taken in. The survivors will be kept.',
+      'The Pattern holds the pod now. Do not ask for it back.',
+    ]),
+    faction_pitborn: Object.freeze([
+      'Got the pod, kin. Crew rides with the yard till someone pays.',
+      'Pod’s hooked. Survivors are scrap that talks — name a price.',
+      'Pod’s ours. The yard keeps what the lane drops.',
+    ]),
+    faction_free: Object.freeze([
+      'Pod’s aboard. The crew lives — ransom is the fare home.',
+      'Pod secured. Someone pays, or they ride a long way.',
+      'Got the pod. The survivors stay with us until it’s settled.',
+    ]),
+  }),
+});
+
+/**
+ * One pod-hunt line for a pirate hull. Deterministic (integer index); an unknown faction speaks the
+ * Reach register; an unknown key is null so a caller can stay silent rather than invent text.
+ */
+export function podHuntBarkFor(key, factionId, index) {
+  const cell = key && POD_HUNT_BARKS[key];
+  if (!cell) return null;
+  const lines = (factionId && cell[factionId]) || cell.faction_reach;
+  const line = lines[pickIndex(index, lines.length)] || lines[0];
+  return typeof line === 'string' && line.length ? line : null;
+}
+
 // ── Law step receipts: CONTROL voices what the law just did ──────────────────────────────────
 //
 // FB-040 — event lines, not a BARK_SITUATION, and deliberately one line each: these are receipts
@@ -2407,6 +2485,7 @@ export default {
   PURSUIT_BARKS,
   SURRENDER_BARKS,
   ESCAPE_TAUNT_BARKS,
+  POD_HUNT_BARKS,
   LAW_STEP_BARKS,
   FRONTIER_FIRST_NAMES,
   FRONTIER_LAST_NAMES,
@@ -2419,6 +2498,7 @@ export default {
   pursuitBarkFor,
   surrenderBarkFor,
   escapeTauntBarkFor,
+  podHuntBarkFor,
   lawStepBarkFor,
   passengerBeatLine,
   witnessSeamLineFor,
