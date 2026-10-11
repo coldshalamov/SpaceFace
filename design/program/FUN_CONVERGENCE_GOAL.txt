@@ -7,28 +7,45 @@ You are running the Fun Convergence Loop for SpaceFace. Read, in this order, and
   build_map.md section 13C and 15   (the packets; use their IDs, never invent new ones)
 
 Scope: the words after MAKE IT BETTER, if any. Default scope is combat and flight feel in the
-Crucible bench. Adventure feel work waits until the Crucible bench passes (Crucible first).
+Crucible. Select a finite player-visible outcome using build_map section 1.9 and the loop's
+claim-relevant scenario families. Shared combat mechanics converge in the affected Crucible
+scenario before checking their Adventure connection; existing unchanged evidence is reusable.
+An Adventure onboarding, job, shop or recovery repair does not wait for the entire Crucible bench.
 
 Do this, and do not stop after one step:
-1. PLAY the bench on fixed seeds, headless for numbers. A headed strip is optional when a GPU is
-   free and a remaining doubt is purely visual. Do not stall the cycle to capture.
-2. MEASURE every bar the bench reaches plus the fun metrics (verbs per minute, consequences per
-   action, time to first consequence, moments per minute, nothing-happened seconds, deaths by
-   cause, knock budget on the player).
-3. JUDGE from the numbers and the live owner. Name the ONE fundamental. A vision critic on frames
-   is extra, not the gate.
+1. PLAY the relevant existing fixture/scenario on fixed seeds and a fixed input tape where input
+   matters. Exercise the named failure/recovery edge. Boot only when entry, earning/reachability,
+   rendering or a shell boundary is the claim. A session-shape question that focused fixtures
+   cannot express gets one capped route window. Inspect actual rendered appearance for a visual
+   claim; a useful capture has an immediate consumer and a decision or repair, not an archive.
+2. MEASURE the affected bars and readouts that can falsify this hypothesis or expose a material
+   tradeoff. Do not collect every bar or fun metric after each leaf. Numbers establish their
+   measured behavior, not fun, unaided human completion or visual quality.
+3. JUDGE the changed result against the live owner and direct evidence. A coherent cross-system,
+   high-risk or subjective slice gets one independent combined product/engineering critique.
+   Fix material findings and recheck their boundary; no fresh critic plus reviewer per cycle.
 4. NAME THE FUNDAMENTAL in one line: when X happens, rule R in file F does Y, which breaks vision
    sentence S; changing R should move bar B from n to m.
 5. FIX THE GUTS. Numbers, rules, listeners, clamps removed, systems connected. Never add content to
    hide a feel defect, never add drag or clamp given momentum, never give NPCs hidden gyros, never
-   use camera shake or particles as the fix, never change a test or a golden to pass. Ship a test
-   whose assertion message quotes the vision sentence.
-6. COMPARE on the same seeds. Keep only if the bars moved toward target, nothing regressed, and
-   npm run check:baseline is green. Ties revert.
-7. REPORT one page in plain words: WHAT I FOUND, WHAT I CHANGED, WHAT YOU WILL FEEL, THE NUMBERS,
-   NEXT. Commit the change and the report; push the current branch by name.
-8. Take the next lowest bar. Stop only for a stop condition in the loop document, and say which.
+   use camera shake or particles as the fix, never change a test or a golden to pass. Use affected
+   existing checks; add a focused regression for meaningful recurrence or boundary risk, not a
+   test mirroring each reversible edit.
+6. COMPARE the selected fixture/scenario on the same relevant configuration/seeds. Keep a verified
+   behavior improvement or repaired defect without regressing a checked material boundary or hard
+   contract. Run npm run check:baseline when its coverage could plausibly be affected. An equal
+   numeric result may still contain a verified recovery/readability repair; remove unsupported
+   extra tuning instead of repeating samples until a number changes.
+7. COMMIT exact owned production paths. REPORT the integrated result and material limitations
+   compactly in plain words; no committed report or receipt pair per cycle. Record the relevant
+   candidate, seed/configuration, command and result through existing surfaces. Publication follows
+   the user's scope and current repository rules, not an unconditional push instruction.
+8. Continue through material unfinished work inside the requested scope. Stop when the outcome
+   exists, required direct verification passes and nothing unresolved materially changes it or
+   significant risk; no all-bench verdict or weekly owner-play gate.
 
-Rules that never bend: fixed seeds; one hypothesis per cycle; a number in player units before and
-after; headed captures are optional and never the close gate; the owner is never asked to
-adjudicate technical risk; finish the whole cycle before replying.
+Rules that never bend: fixed-seed reproducibility for simulation comparisons; one causal hypothesis
+per cycle; claim-relevant direct verification; determinism, single writers, save/value conservation
+and supported accessibility; actual visual inspection for appearance. Headed captures are not a
+universal gate. The owner is never asked to adjudicate technical risk or supply a play session.
+Finish the requested outcome before replying; evidence work remains proportional to that outcome.

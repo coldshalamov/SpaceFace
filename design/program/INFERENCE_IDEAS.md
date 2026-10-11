@@ -14,18 +14,27 @@ grouped into seams. If `program-dispatch` prints a drained queue, claim a free s
 its rows. Fold an OPEN line into the seam that owns its files. Do not spend the sitting on
 this catalog unless the owner said INFERENCE.
 
+The professional-experience parent is [`build_map.md` §29](../../build_map.md#29-professional-experience--the-complete-starter-region).
+The strong agent resolves its causal/design decisions first, then adds only actual small residual
+changes here with an exact owner, direct done check and parent reference. Do not prefill speculative
+defects, create another starter plan in this file, or hand a smaller model an unresolved system design.
+
 ## How to take a line
 
 1. Take the first OPEN line whose paths are not in a live `NOW.md` row, not named by a
-   CLAIMED line, and not inside a §1C seam another agent has claimed. One line per agent.
+   CLAIMED line, and not inside a §1C seam another agent has claimed. Normally take one line. Under
+   the owner's batching direction, a bounded group of already-resolved leaves of the same cause
+   and owner family may share setup/checks; claim each selected line and exact paths once.
 2. Mark it CLAIMED with today's date and your thread, in the same edit as your NOW row.
 3. Change only the owners the line names. Prove the done sentence on a fixed seed (4242
    unless the line says otherwise) with the live owner or a focused test. Do not add a package
    to finish the line. If a library is the honest fix, write that in one sentence and leave the
    line; a §23 campaign adopts it.
 4. On ship: status SHIPPED, unit id, commit. Do not expand the line into a follow-on feature.
-5. The next line you take is a different group (picture, verb, world, instrument) when one
-   is free.
+5. Finish the coherent same-cause batch before rotating. The next unrelated line is a different
+   group (picture, verb, world, instrument) when one is free. Do not reopen setup, boot the whole
+   game or commission a new reviewer for each sibling leaf; escalate only for a changed material
+   boundary under [`build_map.md` §1.9](../../build_map.md#19-agentic-production--short-learning-loops-complete-outcomes).
 
 Groups may be worked in parallel when their paths do not overlap. Lines that share
 `015-opening-hauler-raid.js` are one agent.

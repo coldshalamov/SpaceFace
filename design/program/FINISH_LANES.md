@@ -26,22 +26,25 @@ older lane wording below asks for long sessions, captures or release qualificati
 
 ## 1. What changed
 
-- **The unit of a finishing session is a lane, not a leaf.** Take one lane, play it, and own it
-  until a stranger would call that area finished. Lanes are disjoint by file ownership; run them
-  in parallel by area. One agent holds one lane at a time; a lane spans as many sessions as it
-  takes, and a later session resumes the same lane rather than starting a parallel copy of it.
+- **A lane supplies context; a coherent player outcome supplies the assignment.** Select a finite
+  slice in one lane or a coordinated sequence across lanes, with exact file ownership. Finish its
+  behavior, presentation and recovery together. Disjoint files may run in parallel; a later session
+  resumes the same work rather than starting a second implementation. Finishing one slice does not
+  claim that every other workflow in the lane is finished.
 - **The named work is a checklist, not a script.** Each lane below lists the queue units, §22
   rows, §23 campaigns, §24 rows, §25 phases and ledger rows that already own part of its area.
   Their done-whens are the floor. Order inside the lane is your judgment, not the queue's.
-- **Review is the job, not a phase after it.** Every lane session opens by playing its area on
-  the default route at the shipping camera and writing down what falls short — bugs, cheapness,
-  dead seams, wonkiness nobody packeted. That list is lane work: fix what is real, hand off or
-  ledger only what is out of area (`AGENTS.md` §7). The named checklist is what we already know
-  is missing; the game is also unfinished in ways nobody wrote down. Finding those is the point
-  of owning the area.
-- **Acceptance is batched at the area level.** A queue unit reading `implemented` closes when the
-  lane owner has seen its surface live and judged it — one honest area pass closes many leaves,
-  instead of a ceremony per leaf. The lanes' own checks run per landing, not per leaf.
+- **Inspection and tuning stay with implementation.** Start from the relevant live owner, existing
+  evidence and the selected workflow. Exercise an unknown or failing boundary at the cheapest layer
+  that observes it; do not boot the whole game before and after every session. Repair real bugs,
+  dead seams and unreadable feedback within the outcome; unrelated findings follow `AGENTS.md` §7.
+- **Verification is batched by changed claim.** Union the affected checks once for an integrated
+  slice. A focused result may close implementation; ordinary-route acceptance requires evidence of
+  that route. Reuse results while their relevant owners/configuration remain unchanged. A rendered
+  picture is required for an appearance judgment; a numeric or structure check cannot certify it.
+  For a coherent cross-system, high-risk or subjective slice, use one independent combined product
+  and engineering critique, fix material findings, then recheck only the repaired boundaries. No
+  fixed reviewer counts, fresh audit after each leaf, or review-only standing queue.
 - **The campaign briefs stay the instructions.** §23's *feeling / what is lying / you invent /
   read / thin* is exactly the open-ended shape a lane keeps. A lane does not shrink a campaign
   into a checklist; the checklist is what the campaign already knows is broken.
@@ -70,8 +73,10 @@ does not answer, cannot judge anything else — and the §15.2 feel-before-conte
 (content built on a ship that cannot turn gets rebuilt). THE FIGHT sits next because swarm is the
 demonstration surface every other lane inherits numbers from. THE WORLD and THE LONG GAME are the
 depth. THE PICTURE, THE INSTRUMENT and THE EAR are the presentation — they run in parallel with
-the depth lanes, not after them; a finished area is finished *with* its presentation. THE RELEASE
-is last and continuous: it keeps the demo path honest while the others land, and closes last.
+the depth lanes, not after them; a finished area is finished *with* its presentation. Product
+repairs to input, accessibility, localization, save/Continue and the demo path remain active with
+their affected workflow owners. THE RELEASE owns final packaging/qualification when release
+preparation is activated; its parked state never parks those product repairs.
 
 A session takes the first lane whose files are free. A lane whose named checklist is empty but
 whose area still fails its bar is still open — that is the open-ended half of the assignment, and
@@ -82,19 +87,29 @@ it is not optional.
 1. Read the lane brief below, then the law files it names. Check `NOW.md` and the demo defect
    ledger ([`DEMO_READINESS_2026-09-20.md` §6](./DEMO_READINESS_2026-09-20.md)) for live rows in
    your files.
-2. **Play the area before touching code.** Boot the default route, spend real time in it at the
-   shipping camera, and write down what falls short of the lane's bar — including and especially
-   the things no packet names. Compare what you found against the lane's checklist; anything
-   already covered is the known work, anything new is your found work. Both are the job.
+2. **Select the outcome and its unanswered question.** Map the current implementation to the
+   relevant checklist; reuse unchanged-owner evidence. Use an existing focused fixture, fixed-seed
+   scenario or targeted interaction to resolve an unknown/failing workflow. Boot only when the
+   changed claim needs the real entry, rendered surface, runtime or shell boundary. Documentation
+   changes need link/dispatch consistency checks, not a gameplay boot.
 3. Work the checklist and the found list in the order that makes the area converge fastest.
    `implemented` units in your lane are yours to judge live and close; `ready`/`planned` units
    are yours to build; deferred units are yours to un-defer when the lane wants them.
-4. Verify per landing, not per leaf: run the checks that cover the change's real failure modes
-   when a slice commits, and the lane's gates when you believe the area is done. The fixed-seed
-   fixtures are the same ones the named rows cite — do not invent a parallel harness.
-5. End every session with the stranger look: the area played again, judged against the lane's
-   done-when. Report in §1.4 words. A lane closes when its checklist is clear **and** the area
-   passes — a clear checklist over a wonky area is a lane still open.
+4. Verify the changed behavior and its relevant denial/interruption/recovery edge. Run affected
+   existing checks once per integrated slice, including named technical checks that guard a changed
+   contract. Reuse the named fixed-seed fixtures. Only a session-shape question that they cannot
+   express calls for one capped ordinary-route session covering the affected window. Broad milestone
+   batteries and quiet-host qualification are not per-leaf gates.
+5. For a coherent cross-system, high-risk or subjective slice, have one independent agent critique
+   the implementation and the same claim-relevant evidence for product and engineering failures.
+   Look at the changed rendered surface for appearance; listen to the changed sound for audio
+   character. Captures must have an immediate consumer and lead to a judgment or repair in-session;
+   unattended captures and archives are not progress. Fix material findings and recheck their
+   boundary, without reopening unchanged work for another general review.
+6. Commit the exact owned files and report in §1.4 words. Stop the finite assignment when its outcome
+   exists, direct verification passes and no material defect remains in scope. Retain honest
+   `implemented`/route-unproven distinctions. Closing a whole lane additionally requires its full
+   substantive checklist and relevant milestone evidence; an empty checklist alone is insufficient.
 
 Two rules keep the lanes honest:
 
@@ -111,10 +126,13 @@ ends with the same heap it started with. Ships and stations arrive as themselves
 at them. Nothing pops into being on the glass and nothing winks out while you are still watching.
 A busy machine slows the flood, never the truth.
 
-**Play it first.** `npm run probe:runtime-witness`, `npm run probe:smooth-flight` and
-`probe:smooth-flight:crucible` on a machine under real load, then a long session — dock, undock,
-jump, fight, save, load. Read the hitch owners, the admission queue, the heap slope, the boot
-ledger. §21.2's laws are the contract you are defending.
+**Inspect the affected boundary.** For a freeze/hitch/loading complaint, start with
+`npm run probe:runtime-witness` and read the relevant boot/admission/frame result, then select a
+named cause. Run the appropriate smooth-flight probe when changing its presentation contract,
+not all probes plus a long session by default. Transition/resource fixes use the affected
+dock/undock/jump/fight/save/load fixture. Absolute timings and soaks are produced only by the
+dedicated quiet host and consumed through `QUIET_HOST_PROGRAM.md`; source/functional repair work
+continues on this box. §21.2's laws remain the contract.
 
 **The named work.** Queue: `PQ-129.11`–`.17` (deferred hitch leaves), `PQ-204.00`–`.04`,
 `PQ-022.h3-performance`, `PQ-038`/`PQ-040`/`PQ-041` native acceptance, `PQ-042` GPU branch,
@@ -152,10 +170,11 @@ world said no. A throw is a decision you made — you understand the line, you w
 the body goes where your cut sent it. Missing is allowed and readable. The first ten minutes hand
 you the power fantasy without a wall of text.
 
-**Play it first.** Fly a fixed-seed Crucible and the adventure opening at the shipping camera:
-every verb, every denial, every stall. `design/FEEL_CONTRACT.md` is the bar; §21's loop-order law
-is the contract; `FUN_CONVERGENCE_LOOP.md` is the method — one hypothesis, fixed seeds, before/after
-numbers.
+**Inspect the selected action.** Use its fixed-seed Crucible fixture and the affected Adventure
+connection; exercise the relevant denial or recovery instead of every verb in both modes each
+session. Inspect the rendered result when camera/cue readability changes. `design/FEEL_CONTRACT.md`
+is the bar; §21's loop-order law is the contract; `FUN_CONVERGENCE_LOOP.md` is the method — one
+hypothesis, fixed seeds, relevant before/after numbers.
 
 **The named work.** Queue: `PQ-135` (flight convergence — judge it live), `PQ-137.08`/`.09`,
 `PQ-139.03`/`.05`, `PQ-141` **the 60-second proof** (the ALPHA gate this lane answers to),
@@ -168,8 +187,11 @@ sings (with THE EAR), **F9** a chain holds a beat, **F17** repair is staying att
 fresh every session either way.
 
 **Done when.** The ALPHA feel gates measure green on the route: B1–B12, the 60-second proof at
-≥ 9 of 11 beats across five seeds, ≥ 12 named stunts detected, and a stranger performs a
-swing-release, a shove and a grab-and-run in the first minutes without reading a wall.
+≥ 9 of 11 beats across five seeds and ≥ 12 named stunts detected. A fresh-start action trace shows
+the opening makes swing-release, shove and grab-and-run reachable with their correct contextual
+cues, without a wall of text. This checks onboarding behavior, not unaided human completion or fun.
+These are lane/milestone claims; a verb repair checks its affected bars and recovery, not all five
+seeds and the complete ALPHA battery after every edit.
 
 **Thin.** Answering feel with content. A homing aid, a guided shot, a damage buff on release, a
 tutorial modal. Retuning thrust curves to fake the answer. A meter that runs out.
@@ -187,9 +209,10 @@ specialist ruins exactly one plan. A kill is bodies: wreck pieces that keep the 
 momentum, lit, at a size you can see — then grabbable. The run is the toy: fling, wreck, fling
 again; die; retry in seconds; the results tell the story back.
 
-**Play it first.** The ordinary Crucible route per §16.2 — a starter, the first encounter, a
-round clear, the shop, a refit, a death, a retry — and watch what a stranger sees at the shipping
-camera, kill included, 400 ms after it.
+**Inspect the affected round boundary.** Use the existing fixture for the selected encounter,
+clear/shop/refit, death or retry transition. Run the ordinary Crucible sequence per §16.2 when
+claiming the connected round experience; inspect the shipping-camera kill and its aftermath when
+changing that presentation. A single cue or data edit does not require the entire sequence.
 
 **The named work.** Queue: `PQ-133.04`/`.07`–`.12` (the remaining Crucible phases; `.13` stays
 deferred research), `PQ-134.02` the causal VFX/audio grammar (with THE PICTURE and THE EAR),
@@ -235,15 +258,18 @@ leaves a body with a job: the convoy died so there is salvage, the pod spilled s
 it, the pirate got away so she can come back. The minutes between jobs are a place, not a loading
 corridor.
 
-**Play it first.** Fly a seeded session in each sector that claims a way of life. Do not accept a
-mission. Watch whether the chain runs without you, whether anything remembers you, whether travel
-has texture. The creative campaigns below are this lane's frontier.
+**Inspect the selected work chain.** Use the existing fixed-seed owners/scenario for the affected
+sector: work and cargo should continue without accepting a mission, consequences should persist,
+and travel should lead somewhere useful. Exercise the relevant interruption and return. A change
+to one chain does not require a session in every sector. Use one capped route window only for an
+unanswered pacing/reachability question the fixtures cannot express. The creative campaigns below
+are this lane's frontier.
 
 **The named work.** Queue: `PQ-138` the world reacts, `PQ-143` ordinary life, `PQ-148` cargo is
 physics, `PQ-149` the storyteller, `PQ-150` people who remember, `PQ-151` the wanted loop,
 `PQ-153` six sectors (`.01`/`.02` open), `PQ-154` wrecks as terrain, `PQ-145` industry authorship,
-`PQ-171` the content grammar, `PQ-045` the Ceres slice's deferred acceptance, `PQ-018`/`PQ-019`/
-`PQ-020` deferred site-presentation captures (with THE PICTURE), `PQ-207.03`, `PQ-209.01` the
+`PQ-171` the content grammar, substantive remaining Ceres/site behavior under `PQ-045` and
+`PQ-018`/`PQ-019`/`PQ-020` (their deferred capture/review ceremonies are retired), `PQ-207.03`, `PQ-209.01` the
 combat→salvage→economy chain. §22: **A1–A4**, **A6** the slice scenario, **B2** the pirate who
 comes back, **B6** one job chain and one physical difference per sector, **B7** three set pieces,
 **E6** the repetition budget, **F3–F8**, **F10–F16** (the world-side signature toys: the hot
@@ -258,8 +284,12 @@ them or cut them, never leave them dead.
 
 **Done when.** §15.1's BETA "alive enough to surprise" column: six sectors each recognisable from
 30 s of unlabeled activity, the storyteller sustaining work→tension→violence→aftermath→quiet over
-a held-out 90-minute session, aces hunting with counter-loadouts, the wanted loop physical at
-every tier, and a stranger can tell one "so then" story per hour from the default route.
+the BETA 90-minute window, aces hunting with counter-loadouts and the wanted loop physical at
+every tier. The default route produces a traceable action→reaction→aftermath sequence, with
+recognizable causes. Inspect appearance for sector identity; a log does not prove recognition or
+fun. Check changed director rules and lifecycle facts in focused fixtures; one held-out bounded
+session supports a whole-window pacing claim when those fixtures cannot. Do not rerun the
+90-minute milestone for each job, bark, listener or data edit.
 
 **Thin.** Decorative ships in orbit. A briefing. A second pocket system. A density slider called
 a way of life. A beacon with flavor text where the campaign asked for a place.
@@ -277,9 +307,11 @@ forecast out-earns a non-reader; a linear spine builds to an ending you earned w
 reachable by a combat run and by a builder run. A new verb every hour for ten hours. A ship that
 is yours: scars, repairs, titles, grudges.
 
-**Play it first.** A new game through the first hours on a fixed seed: count the interesting
-decisions per hour (§17.1 M1), watch the money curve, fit a build and predict it, read the
-campaign's beats as a player would meet them.
+**Inspect the selected progression step.** Use its existing fixed-seed economy/acquisition/fit
+scenario, predict the changed handling and verify purchase→fit→use→save/return, including refusal
+and cancellation. Run a fresh-start segment when earning/reachability or pacing is the claim;
+inspect the affected story beat as it is encountered. Hourly/endgame milestones remain substantive
+targets, not a first-hours playthrough before every stat or copy edit.
 
 **The named work.** Queue: `PQ-142` progression and my ship, `PQ-155` the verb curve, `PQ-156`
 three starters, `PQ-176` customization with consequences, `PQ-177` the readable economy,
@@ -312,9 +344,10 @@ substances, faction as silhouette not recolor. The law of the glass holds: your 
 you act on → the consequence → the threat → the world → the instrument → the sky. The camera is
 art direction: speed opens the frame, impacts kick by delta-V, a signature kill gets a beat.
 
-**Look first.** The opening flyby, a Crucible fight, a station approach, a wreck field — frames
-at the shipping camera, judged against the law of the glass (`ZERO_TO_HERO` §2). In-session
-stills only; nothing is stored.
+**Look at the changed surface.** Select the relevant opening flyby, Crucible fight, station approach
+or wreck field at the shipping camera and judge against the law of the glass (`ZERO_TO_HERO` §2).
+The appearance verdict needs the actual rendered picture. Use a scoped in-session still if useful,
+open it, judge it and fix what it reveals; no four-scene capture package for every surface change.
 
 **The named work.** Queue: `PQ-190` the style slice, `PQ-193` the 3D picture never looks broken
 (waves A–E — complete bodies, the flyby, tubes, the shelf, places), `PQ-050` the fleet remaster
@@ -362,9 +395,11 @@ leader lines over deep glass — produced art, never a card grid. The live pictu
 thing; the instrument sits on it and does not shout over it. Zero persistent sentence cards in
 flight. Nothing reads like a webpage.
 
-**Look first.** `node scripts/ui-bench.mjs --shot=<id>` over every surface in §18.2's manifest —
-open each PNG yourself, fix what you see, `--walk` every control on screens you changed. The
-picture you opened is the evidence; a green matrix over a cheap screen is a fail.
+**Look at the changed screens.** Follow `docs/UI_VISUAL_ITERATION.md`:
+`node scripts/ui-bench.mjs --shot=<id>` for the screens you changed, open each PNG yourself, fix
+what you see, and `--walk` their controls. Use relevant narrow/text/accessibility cases for the
+changed layout or interaction. Review the whole interface only for a whole-interface claim;
+superseded §18/§20 capture matrices and reels do not dispatch a second redesign.
 
 **The named work.** Queue: `PQ-180` the grammar matrix, `PQ-181` the meta shell, `PQ-182` the
 Crucible screens (result-model rows A8/B9 stay THE FIGHT's), `PQ-183` everything is a link,
@@ -383,9 +418,10 @@ results is replay + stunts + **Again**, the demo end card moves onto ORRERY. Dir
 **D35**–**D37** (the works screen under host contention — scheduling stalls and the stale fault
 strip).
 
-**Done when.** The §18.1 matrix is green across the manifest **and** a stranger opening each
-screen at the shipping camera finds it consistent, high-detail, interactive and non-generic —
-the A-list floor is both columns, never one.
+**Done when.** The current ORRERY screen contracts hold, affected controls and supported text/input/
+accessibility states work, and actual visual inspection finds the screens consistent, high-detail,
+interactive and non-generic. Whole-interface completion covers every current screen; one task
+checks its changed screens. A green structure or layout check cannot establish visual quality.
 
 **Thin.** A token rename. A new font over the same boxes. A screenshot left for a later pass.
 Restoring a superseded direction because its folder is still in the tree.
@@ -401,8 +437,10 @@ shut. A crowded fight has a mix: something can drown, something can vanish, and 
 before the thing that matters. The chain you just made is audible. The station is a room, not a
 mute menu. Reduced motion may thin the picture; it never deletes the cue that is information.
 
-**Listen first.** A seeded fight and a docked minute with your eyes off the HUD: which verbs
-collapse onto one sting, which channels fight, where the silence should be and isn't.
+**Listen to the changed cue or composition.** Check recipe/event lifetime and mix ownership in the
+existing fixture, then hear the relevant fight or docked context for an audio-character claim:
+which verbs collapse onto one sting, which channels fight, where the silence should be and isn't.
+Event counts do not establish sound quality; unchanged cues need no fresh audition per leaf.
 
 **The named work.** Queue: `PQ-158` audio direction (authored samples over the oscillator stack,
 the impact ladder by mass × speed, the Massline as an instrument, adaptive themes, voice for the
@@ -435,16 +473,21 @@ adventure, a first dock that feels like arriving, an end card that thanks them �
 game path, on a real machine, in five languages, with a pad or a keyboard. Then the package
 installs and the store page is true.
 
-**Play it first.** The fifteen-minute path (`DEMO_READINESS` §5) end to end on a clean profile —
-then the same again in the demo flag (`?demo=1`) and again with a gamepad. Every seam in that
-walk is this lane's work.
+**Qualification when activated.** Exercise the fifteen-minute path (`DEMO_READINESS` §5) once
+with an isolated save store, then only the distinct demo-flag and modality boundaries not already
+covered by current evidence. Full route repeats need a relevant change or failed check; neither a
+documentation edit nor an unrelated leaf triggers three full playthroughs. Human play is optional
+feedback and never an execution gate.
 
 **The named work.** Queue: `PQ-210.08` the fifteen-minute demo, `PQ-033` the release closeout
 (legal, credits, crash reporting, version, store readiness — `.02`'s min-spec soak is THE
 MACHINE's), `PQ-164` input truth (controller, Deck, trackpad, haptics — flight feel consult THE
-HAND), `PQ-165` accessibility and options, `PQ-166` five languages, `PQ-167` telemetry and the
-weekly playtest, `PQ-191` the independent passover (folded into every lane's review — this lane
-runs the last one over the whole game). §22: **E2** reduced motion keeps the facts, **E4** five
+HAND), `PQ-165` accessibility and options, `PQ-166` five languages, `PQ-167` opt-in telemetry and
+useful session reports. Input/accessibility/localization/save failures are active product work in
+their affected lanes; only final platform/release qualification is parked here. `PQ-167.01`'s
+weekly owner-play protocol and `PQ-191`'s deferred review ceremony are retired. An independent
+combined review at a meaningful release boundary may examine the connected product; it is not a
+fresh reviewer per leaf or a substitute for repairs. §22: **E2** reduced motion keeps the facts, **E4** five
 languages, **E5** one save on both runtimes, **E7** mods load data. §25 Phase 5 (demo flag, live
 title, round zero with THE FIGHT, load with THE MACHINE, end card with THE INSTRUMENT) and Phase
 7 (Electron package, photo-mode store shots from THE PICTURE's mode, the replay-cut trailer from
@@ -478,7 +521,7 @@ Every non-done queue task, wave row, campaign and program lands in exactly one l
 | PICTURE | PQ-049, PQ-050, PQ-131 (art half), PQ-134, PQ-136, PQ-159, PQ-161, PQ-190, PQ-193 | C6–C8, G6 | CV-GLASS, CV-PAINT, CV-MOTION | §8.5; §13B/§13D; §25 Phases 1–2; §26; vm-drop ship/sky/wreck folders |
 | INSTRUMENT | PQ-130–132, PQ-162, PQ-168, PQ-180–185, PQ-187, PQ-188, PQ-192, PQ-194 | C1–C4, E3, G1, G3–G5, G7–G9, G11–G15 | CV-KIT | §11; §18; §20; ORRERY; §25 Phase 4; ledger D35–D37 |
 | EAR | PQ-158, PQ-134.02 (audio half) | C5, G2, G10 | CV-EAR | OPEN_SOURCE_INTAKE audio picks |
-| RELEASE | PQ-033 (rest), PQ-160 (consumers), PQ-164, PQ-165–167, PQ-191, PQ-210 | E2, E4, E5, E7 | — | §25 Phases 5/7; DEMO_WORK_LIST P/S rows not already claimed |
+| RELEASE | PQ-033 (rest), PQ-160 (release consumers), final qualification under PQ-164–167/PQ-210; retired ceremonies PQ-167.01/PQ-191 do not dispatch | E2, E4, E5, E7 final qualification | — | §25 Phases 5/7; DEMO_WORK_LIST P/S rows not already claimed; product failures stay active with affected owners |
 
 Done tasks stay done — they are the foundation the lanes stand on, and a lane finding one of its
 "done" units lying on the route reopens it in place, in the lane.

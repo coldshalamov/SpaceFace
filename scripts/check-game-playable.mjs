@@ -20,15 +20,18 @@
 //   7. CLEAN     no uncaught exception during any of it (catches: a throw killing the frame)
 //   7b. SHADER   no shader compile/link error            (catches: a material drawing black)
 //
-// Run it before you stop working. If it is red, you broke the game, whatever else is green.
+// Run for affected boot/launch/live-hull/thrust/save-return claims at a coherent gameplay
+// integration boundary, or to resolve a failed/conflicting route. Harmless docs/mechanical edits
+// do not need a boot; owner tuning starts with focused tests/fixtures. A red route is a failure
+// to handle, not proof that the latest edit caused it. See docs/VALIDATION_WORKFLOW.md.
 //
 //   node scripts/check-game-playable.mjs            # New Game route
 //   node scripts/check-game-playable.mjs --circuit  # Temporary circuit, selected ship/drive
 //   node scripts/check-game-playable.mjs --verbose  # also dump diagnostics on failure
 //
 // Deliberate non-goals: no screenshots, no pixel comparison, no golden files, no performance
-// budget. Those belong to other checks. This one answers one question and stays fast enough
-// (~60-90s) that there is no excuse for skipping it.
+// budget. Those belong to other checks. This checks basic route liveness, not every gameplay
+// workflow, fun, appearance, or performance; choose an affected route for those claims.
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';

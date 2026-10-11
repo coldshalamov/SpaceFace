@@ -100,6 +100,15 @@ are bookkeeping, not newly built production units; they do not count toward a
 requested production N. If the line fights the vision, CUT it with one causal sentence and record
 `--verdict cut`.
 
+**Owner batching direction, 2026-10-11:** resolved small leaves of the same causal repair and
+owner family may share scenario setup, adjacent checks and the meaningful integration critique.
+Claim each line's exact paths and retain its individual done sentence. Complete that bounded
+batch before rotating to an unrelated group. Count only distinct completed production outcomes;
+shared scaffolding, receipts and already-true reconciliation add no units. A new unresolved
+physical/design/system choice belongs on the build map, not in a grunt assignment. See
+[`build_map.md` §1.9](../../build_map.md#19-agentic-production--short-learning-loops-complete-outcomes)
+and the first integrated parent in [§29](../../build_map.md#29-professional-experience--the-complete-starter-region).
+
 Look-then-rotate is what you do when the catalog has no OPEN line, or the owner named a
 domain (`INFERENCE 3 MISSIONS`) instead of the catalog. A named domain still rotates kinds
 inside that domain. It does not shop the catalog for a different domain unless the owner

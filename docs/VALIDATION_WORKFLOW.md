@@ -3,8 +3,9 @@
 
 This is the repository entry point for choosing proportionate proof. It explains how focused tests,
 the deterministic gameplay lab, the validation broker, and player-facing acceptance fit together.
-The selected active packet still names the exact required commands. Executable schemas, tests, and
-validation manifests remain the machine-enforced truth.
+The selected active packet names the behavior and commands relevant to its change. Apply the cost
+rules below when older packet boilerplate demands unrelated full boots, captures, or batteries.
+Executable schemas, tests, and validation manifests remain the machine-enforced truth.
 
 For program lifecycle, review closure, and receipts, also read
 [`../design/program/roadmap/00_EXECUTION_PROTOCOL.md`](../design/program/roadmap/00_EXECUTION_PROTOCOL.md).
@@ -19,10 +20,13 @@ For lab implementation work, read
    `sf lab` executor.
 4. Prove repeatability and save/load continuation when the feature owns those claims.
 5. Run adjacent ownership/save/integration checks named by the packet.
-6. Only after lower layers pass, use the relevant broker manifest for Browser/Electron acceptance.
+6. When the change owns a Browser/Electron or public-route claim, run that route after its focused
+   gates pass, at the coherent integration boundary described below.
 7. When a unit itself claims a purely visual, accessibility, or performance fact that a number
    cannot falsify, escalate exactly that claim. Headed capture is not the default review method
-   (owner 2026-09-16). Gameplay and feel close on the live owner plus a fixed-seed number.
+   (owner 2026-09-16). Fixed-seed numbers describe handling and causal behavior; they do not prove
+   that play is fun or that a rendered scene looks good. Judge the actual appearance when that is
+   the claim, inspect the result, and use what you see to improve it.
    A capture-harness failure never blocks `implemented`.
 
 Never rerun an unchanged expensive failure. Preserve its fingerprint, classify it, reduce it to a
@@ -31,17 +35,41 @@ acceptance claim.
 
 ## Cost ladder
 
-Run upward. A higher layer never substitutes for a lower layer.
+Choose the smallest layer that can answer the changed behavior's question. Escalate only for a
+named unresolved claim, a failed/conflicting check, or a material risk. Run the lower gates an
+affected route actually requires; the ladder is not a checklist every edit must climb.
 
 | Layer | Proves | Typical surface |
 |---|---|---|
 | L0 | syntax, schema, imports, data shape, changed-doc links | `node --check`, validators, `git diff --check` |
 | L1 | seconds-scale owner behavior | focused `node --test`, pure checks, one lab scenario |
 | L2 | determinism, continuation, ownership, adjacent integration | `sf lab repeat`, `sf lab compare`, focused aggregates |
-| L3 | route claims a unit actually asserts: Browser/Electron behavior, visible/accessibility behavior, feel | validation-broker manifest and current artifacts |
+| L3 | route claims a unit actually asserts: Browser/Electron behavior, rendered feedback, public input, accessibility | affected public route or validation-broker manifest |
 | L4 | matched performance, soak, held-out, and release claims | packet-declared performance/release cells |
 
 Diagnostic doors, not gates: `npm run probe:heap-verify`, `npm run probe:main-thread`, and `npm run probe:crucible-cpu` name a heap leak, a main-thread owner, and a Crucible CPU owner. They stay out of `check:baseline`.
+
+### When to boot, and when to stay at the owner seam
+
+| Change or claim | Development loop and close |
+|---|---|
+| Planning/docs, routing metadata, or a mechanical edit with no plausible runtime effect | Changed links/schema/dispatch as applicable and `git diff --check`; no game boot |
+| Gameplay tuning or connections expressible in a fixture | Changed-owner test and one focused production-system scenario; repeat/save comparison only for determinism or continuation claims |
+| Startup, registry/import wiring, shipped asset admission, Browser/Electron shell, save-return, or an ordinary UI action/transition | Focused owner checks, then the affected public route; browser success does not certify Electron |
+| Appearance, camera composition, visual feedback, or interaction readability | Mount or set up the affected real surface, inspect its rendered result and changed controls, improve it; boot the whole game only when that surface requires it |
+
+Use `check:playable` for its boot/launch/live-hull/thrust/save-return claims at a coherent gameplay
+integration boundary, or to resolve a failed/conflicting route. It is not required after every leaf
+edit. It does not cover every Adventure or Crucible action: select or extend the existing route
+that actually exercises the changed transition. Batch compatible changes before one route run;
+an unresolved route failure remains red and must be handled, not hidden by batching.
+
+Reuse an already observed result when the relevant owner, fixture, harness, runtime, and route
+inputs are unchanged. Name its scope and say when it predates the current edit. Do not relabel
+focused or detached evidence as a fresh rendered/public-route pass. New changes to a covered owner,
+a conflicting observation, or a candidate-bound release/performance claim need fresh affected
+evidence. Absolute performance belongs to the quiet-host program; workstation diagnostics may
+identify a cause but cannot substitute for its matched captures.
 
 Do not run the repository-wide `npm run check` while a focused owner failure is still red. Do not
 use Browser/Electron as an implementation debugger when a deterministic owner-level reproduction is
@@ -53,10 +81,11 @@ exists to discover session-SHAPE defects that no shorter proof can express — i
 hour-3 collapse that way, once. It does not verify ordinary changes: hours of compute and
 log-mountains re-proving what focused fixtures prove in seconds is verification theater, and
 agents imitating each other's battery reruns is how the culture spreads. The rule: default gate
-is L0–L1; run a battery only for a session-shape claim (encounter pacing, spawn policy, economy
-phase targets, director cadence, law-event wiring) that no focused fixture can express, narrowed
-to the affected window — one archetype, one seed, hours capped to the question (default 3), never
-a fixed multi-session matrix as a routine step.
+is L0–L1; run one targeted session only for a session-shape claim (encounter pacing, spawn policy,
+economy phase targets, director cadence, law-event wiring) that no focused fixture can express.
+Use one archetype, one seed, and an explicit affected simulation-time window. A starter-opening
+claim covers that opening; the historical three-hour collapse question does not impose a three-hour
+default on it. Never make a fixed multi-session matrix a routine step.
 
 ## Continuous integration: four parallel groups
 
@@ -174,6 +203,38 @@ Use `run` only when every declared assertion can be decided by one execution arm
 as `run-eq-repeat`, `uninterrupted-eq-save-load`, and Node/Chromium parity are owned by their parent
 executors. A plain `run` must return incomplete rather than fabricate those results. Use `repeat` or
 `compare` for the corresponding claim.
+
+### Fast setup and useful agent readouts already exist
+
+The compiled scenario supplies the seed, tick budget, sector/fixture, entity profiles, starting
+positions/fittings, parameter overlays, and tick-indexed tape. `sf lab trace <scenario>` exposes
+the executed trajectory; run output names metric values/deltas, the first bad tick, failed
+assertions, live systems, and aliases. Use a short local case to compare the actual input → motion
+→ contact → consequence that changed, rather than rerunning an entire opening to reach it.
+
+[`../src/testing/motionScenarios.js`](../src/testing/motionScenarios.js) already exposes individual
+M1/M2/M3/M8 runs. Its [`motionTelemetry.js`](../src/testing/motionTelemetry.js) reports applied
+controls, body trajectories and phases; handling readouts include onset/settle time, stopping
+distance, overshoot, gates missed, heading/velocity lag, and collision recovery. Existing
+[`verb-bench modules`](../scripts/lib/bench/scenarios/README.md) use production physics and report
+seconds, screen depths, hull lengths, and fractions of cruise/hull. Select the affected scenario
+through the existing runner's `scenarioIds` seam; the whole fun-bench matrix is not a tuning loop.
+Treat those values as observations and design bounds, not a numerical certificate of fun.
+
+The existing [`session observer`](../src/observability/sessionObserver.js) is an opt-in recorder:
+callers invoke its input/sim/event/render hooks and drain its buffer. It can record applied input,
+state samples, tick/time-stamped events, asset exposure, and frame samples; it does not automatically
+observe every live route. Use relevant causal events alongside the changed-owner readout and name
+missing hook/coverage gaps. A motion sample is not evidence that a player understood a cue.
+
+The debug-only [`live-route bridge`](../src/testing/lab/liveRouteBridge.js) already provides paused
+fixed-tick stepping, raw flight-key events, snapshots, checkpoints, and one render update. Its V1
+setup supports player-only flight and explicitly rejects non-player entities, attachments, and
+relations. Detached Chromium parity also supports a limited focused flight bundle. Neither is a
+complete starter-region/public-UI executor. If a concrete development row needs a missing phase
+setup or readout, extend that existing owner narrowly in the same row. State fixture setup and
+observation limits explicitly, execute consequences through production systems, and keep ordinary
+route reachability as its own claim. Do not build another simulator or generic agent platform.
 
 CLI exit classes are stable:
 
@@ -297,7 +358,8 @@ The active packet records:
 - the scenario path and the public executor that owns its claim;
 - `requiresScenario` in the broker manifest when that scenario is eligible;
 - an explicit exception naming the unrepresentable browser-only claim or missing lab/schema seam;
-- seeded soak invariants for physics-heavy work, even when the soak executor remains a tracked gap;
+- seeded soak invariants only when the unit owns a long-horizon stability claim that its shorter
+  fixture cannot answer;
 - the rendering, public-input, accessibility, performance, and visual judgments that genuinely
   remain browser-only.
 

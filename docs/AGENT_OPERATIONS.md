@@ -120,22 +120,36 @@ deleting any directory you did not create file-by-file, list reparse points
 **Temp copies of this repo are ~15 GB each.** Anything created under `%TEMP%` or a scratchpad must
 be deleted in the same session.
 
-## Before you stop: prove the game still runs
+## Before you stop: check the changed outcome
 
 ```
 npm run check:playable
 ```
 
-It boots the real game and asserts eight things: the menu appears, flight starts, the player has a
-hull and a gun, the ship mesh is in the scene, the sector has entities, a thrust key moves the ship,
-nothing threw, and every request was served. ~90 seconds.
+`check:playable` boots the real game and checks the menu, launch, live player hull, world, thrust,
+runtime errors, asset/shader admission, and quick-save return. Run it at a coherent gameplay
+integration boundary when those claims are affected, or to resolve a failed/conflicting route.
+Select the affected Browser/Electron route for startup, registry/assets, shell, or save-return work.
 
-**Run it before you report done. A red result means you broke the game, whatever else is green.**
+**Do not boot after every harmless edit.** Planning/docs and mechanical changes with no plausible
+runtime effect close on the applicable links/schema/dispatch and diff checks. Gameplay development
+uses the changed-owner test and a focused production-system fixture; continuation, input recovery,
+and accessibility checks remain required when the change affects those behaviors. Compatible
+changes can share one affected route run at their integration boundary. Reuse unchanged-owner
+evidence with its honest scope, never as a new candidate's route or performance certification.
 
 This exists because the game was unplayable for two days — frozen on the loading screen — while the
 whole check suite stayed green. Roughly 400 checks inspected modules in isolation; not one of them
-asked whether a person could play it. If it is red and you did not cause it, say so plainly. Do not
-loosen it and do not build a second one — extend it.
+asked whether a person could play it. A red result is a real failure to handle; determine whether
+the cause belongs to the game, harness, or environment rather than assuming the latest edit caused
+it. Do not loosen it and do not build a second one — extend the affected existing route.
+
+[`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md) owns the cost ladder, quick scenario setup,
+agent-readable trajectories/events, and escalation rules. Inspect a rendered surface when the
+claim is appearance or interaction readability, then use that observation to improve it. A full
+launch, capture matrix, or hours-long session is not the default development loop. One capped,
+targeted session is appropriate when a real pacing/session-shape question cannot be answered by
+a focused fixture; absolute performance stays with the quiet-host program.
 
 A green check is not proof: several checks here once passed by inspecting a convenient stand-in
 while the real assets were corrupt for weeks. Confirm *what* a check looked at, not just that it
