@@ -21,6 +21,7 @@ import { FACTION_META } from '../data/factions.js';
 import { FACTION_DOCTRINES } from '../data/factionDoctrines.js';
 import { COMMODITIES, COMMODITY_FLAVOR } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
+import { stationServiceOutage } from '../systems/economy.js';
 import { SHIPS } from '../data/ships.js';
 import { MODULES } from '../data/modules.js';
 import { WEAPONS } from '../data/weapons.js';
@@ -238,6 +239,15 @@ function commodityDossier(state, id) {
   };
 }
 
+// A service the station cannot honour right now says so with the time left, before the pilot flies
+// there. economy owns the outage records (a slammed ring clears its repair bay); this only reads.
+function serviceLabel(state, stationId, service) {
+  const outage = stationServiceOutage(state, stationId, service);
+  if (!outage) return service;
+  const minutes = Math.max(1, Math.ceil(outage.remainingS / 60));
+  return `${service} (${service === 'repair' ? 'bay down' : 'down'} ~${minutes} min)`;
+}
+
 function stationDossier(state, id) {
   const st = STATION_BY_ID.get(id);
   if (!st) return null;
@@ -253,7 +263,7 @@ function stationDossier(state, id) {
   const lines = [];
   if (st.chartNote) lines.push({ label: 'On the chart', text: String(st.chartNote) });
   if (Array.isArray(st.services) && st.services.length) {
-    lines.push({ label: 'Services', text: st.services.join(' · ') });
+    lines.push({ label: 'Services', text: st.services.map((service) => serviceLabel(state, st.id, service)).join(' · ') });
   }
   // PQ-146 §6 port dossier: the station's own network keys (its holding faction plus any
   // networkId the live station entity actually received a report on).
