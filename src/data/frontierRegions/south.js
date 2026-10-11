@@ -164,6 +164,10 @@ export const SOUTH_SECTORS = Object.freeze([
         flavorSourceId: 'planet_hush',
         bandProximityRadius: 2400,
         dressingExclusionRadius: 900,
+        discoveryPlate: Object.freeze({
+          title: 'The Hush',
+          body: 'A world-shaped gap in the band. Inside its shadow the receiver loses carrier and static together; gain climbs and the silence stays level. Signal only resumes past the edge of its orbital shadow, as if the planet had closed its mouth around everything that tried to speak.',
+        }),
       }),
     ]),
   }),
