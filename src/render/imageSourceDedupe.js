@@ -395,25 +395,40 @@ export function sharedImageSourceUsers(texture) {
  *   the detach gate treats that texture as released (a second-renderer bind would otherwise
  *   read mipmaps[0] on the empty array).
  *
+ * `isDetachCovered` (optional) answers whether a live detach manifest covers a user — the only
+ * users whose releases the pending gate and rehydrate can see. An uncovered user (an adopted
+ * texture outside `loaded.resources`, or a clone carrying a COPIED mark that fails the
+ * manifest identity check) can never be rehydrated: emptying its mips or its shared source
+ * would leave it one second-context bind away from reading emptied payloads unguarded
+ * (W140-D2). Uncovered users therefore keep their payloads, and a live one still pointing at
+ * the canonical source holds the canonical release off entirely.
+ *
  * Returns true only when every user is resident (the canonical release condition). Safe to
  * call repeatedly: resident-user mip clearing is idempotent and the canonical release runs once.
  */
-export function releaseSharedImageSource(texture, isResident) {
+export function releaseSharedImageSource(texture, isResident, isDetachCovered) {
   const key = texture && texture.userData && texture.userData[SHARED_SOURCE_KEY];
   const entry = key && entries.get(key);
   if (!entry) return false;
   const resident = typeof isResident === 'function' ? isResident : () => false;
+  const covered = typeof isDetachCovered === 'function' ? isDetachCovered : () => true;
   if (!entry.releasedUsers) entry.releasedUsers = new Set();
+  const source = entry.source || (entry.owner && entry.owner.source);
   let allResident = true;
+  let uncoveredSharesSource = false;
   for (const user of entry.users) {
     if (!resident(user)) { allResident = false; continue; }
+    if (!covered(user)) {
+      // Resident but gate-blind: its payload is unrecoverable once cleared.
+      if (source && user.source === source) uncoveredSharesSource = true;
+      continue;
+    }
     if (Array.isArray(user.mipmaps) && user.mipmaps.length > 0) {
       user.mipmaps = [];
       entry.releasedUsers.add(user);
     }
   }
-  if (!allResident || entry.sourceReleased === true) return false;
-  const source = entry.source || (entry.owner && entry.owner.source);
+  if (!allResident || uncoveredSharesSource || entry.sourceReleased === true) return false;
   // Compressed entries keep {width,height} dims in source.data — that stub IS the image and
   // must survive; only uncompressed canonical payloads are released.
   const payload = entry.owner && entry.owner.isCompressedTexture === true
