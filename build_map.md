@@ -90,12 +90,13 @@ wrong still starts at the fun loop (§1.7), then returns here.
 4. If the unit is feel or combat (packets `PQ-137`, `PQ-139`, `PQ-140`, `PQ-146`, `PQ-173`, `PQ-174`, `PQ-175`, `PQ-176`, `PQ-186` and any leaf whose done-when names a `FEEL_CONTRACT` bar), run the
    Fun Convergence Loop: [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md).
    Fixed seeds, one hypothesis, before/after numbers.
-5. Build it, then **iterate on it like a developer.** Play it yourself at the shipping camera, judge
-   it, and fix what you would not ship; the first version that merely meets the bar is a draft. When
-   you are about to close, have another agent look at the actual work for three things: is it
-   finished, what is buggy, and what would make it better. Fix what is real. Do not write review
-   files or store stills. Then run the checks that would catch this change's real failure modes
-   (§7 and the packet's own checks) — you are trusted to know which those are. If other agents are
+ 5. Build it, then **iterate on the affected player outcome.** Use the smallest check that observes
+    the claim (§1.9); inspect the actual rendered result when appearance is the claim. Fix what is
+    unfinished or broken. One independent, combined product/engineering critique belongs at a
+    coherent cross-system, subjective-design or high-risk boundary, not after every small leaf.
+    Give it the candidate and existing evidence; re-review only the material issue a fix changes.
+    Do not write review files or store unused stills. Run the checks that catch this change's real
+    failure modes (§7 and the packet's relevant checks). If other agents are
    live in the tree, leave a checkpoint row (`node scripts/agent-checkpoint.mjs start`) and release
    it when you stop; otherwise skip the ceremony. Commit your files by pathspec.
 6. Set the unit's queue state. A short note for the next engineer only if you learned something
@@ -378,6 +379,63 @@ resource checks; do not produce captures, hunt historical freezes, or claim a ha
 from contended timings. Consume the quiet-host receipt for the broader timing/visual verdict
 and route real failures back to these repair owners. Human play or approval is not a repair gate.
 
+### 1.9 Agentic production — short learning loops, complete outcomes
+
+**Owner direction, 2026-10-11:** development is entirely agentic. Consolidate work around useful
+player outcomes; spend iteration time improving the game. This section supersedes older routine
+capture, human-playtest, multi-reviewer and full-boot prescriptions. It preserves technical
+contracts, direct verification and meaningful visual inspection. External publishing keeps its
+existing authorization; a human gameplay opinion is never an execution gate.
+
+**Two boards, one delivery.** Strong agents take cross-system design, physical behavior, spatial
+encounter composition, tuning and integration here. The first bounded experience is
+[§29](#29-professional-experience--the-complete-starter-region); the existing six
+[compounding bundles](./design/program/PRODUCTION_QUALITY_COMPOUNDING.md#3-consolidation-without-losing-breadth)
+remain the whole-game grouping. Their inherited PQ/NXB/SF obligations survive; do not create a
+parallel plan for the same outcome. Smaller-model work belongs in
+[`INFERENCE_IDEAS.md`](./design/program/INFERENCE_IDEAS.md) only after the parent resolves its design
+and names an exact owner, change, constraint and direct done check. A speculative idea or unresolved
+architecture choice stays with the strong agent. Do not populate the catalog with invented defects.
+
+**Use the existing row as a small kanban.** Ready (OPEN/free/ready) → Working (claimed plus exact
+mutation paths) → Review/fix (candidate, still unfinished) → Done (the existing done/SHIPPED record
+with its actual evidence scope). These are phases mapped to existing board/queue states, not new
+parser values, review queues, dossiers or acceptance files. Already-built work is reused; one
+material finding reopens only its affected outcome. An implementer owns resolution through landing.
+
+**One useful feedback loop:** name the player problem → enter the affected situation cheaply →
+change the production cause → inspect the relevant result → fix or retain → land. Batch small
+leaves of the same resolved cause/owner family so setup, adjacent checks and one integration review
+are shared. Preserve each requested outcome and honest production-unit counting; batching is not
+permission to combine foreign hunks or count support edits as game development.
+
+| Claim being changed | Smallest useful check | Escalate when |
+|---|---|---|
+| Docs, routing, harmless mechanical work | Changed links, dispatch integrity, diff/import check as applicable | A real route or executable owner changed; no automatic game boot for prose |
+| Physics, AI, economy, job or lifecycle behavior | Existing production owner in one seeded, short fixture/input tape; print the causal event and the relevant seconds, distances, velocities or resources | A failing/conflicting check, save boundary, determinism risk, or interaction outside the fixture can change the result |
+| Input/UI/launch/save-return integration | The affected public control and transition, using the ordinary route | At the coherent integration boundary, or after a relevant failure; reuse unchanged-owner evidence instead of booting every leaf |
+| Appearance, camera motion, sound or on-screen loading | Inspect the actual affected rendered/audible sequence | A still/short strip is useful only if opened, diagnosed and used to revise that unit; structural source pins cannot certify appearance |
+| Session shape a short fixture cannot express | One targeted, capped affected window, one archetype and seed | Longer diagnostic work only for a named unresolved question; no routine 20-minute boot/capture battery or human wait |
+
+Reuse `sf lab`, Motion Lab, focused real-path verb modules and the existing live-route bridge;
+[the validation router](./docs/VALIDATION_WORKFLOW.md#agent-loop-quick-setup-and-useful-readouts)
+names their limits. Quick setup may skip unrelated travel, but may not bypass the action being
+tested. A docking API does not check docking controls; an installed flag does not demonstrate a
+new maneuver. Synthetic scenario results must be labeled and cannot close production behavior.
+Add a missing adapter inside the existing owner only when the current outcome needs it.
+
+**Critique must change work.** Low-risk bounded leaves need implementer checks; a coherent design
+or high-risk slice gets one independent critique of the actual changed path and its evidence.
+Challenge the weakest material assumption: fixture shortcuts, an unreadable event, a lost
+consequence, an impossible purchase, or an interruption. Repair findings in that slice or put an
+out-of-area defect in the existing demo ledger. Do not require fresh graders, repeated agreement,
+historic-audit reproduction, all seeds or all benchmarks without a named risk. Metrics explain
+behavior and constrain tuning; they do not certify enjoyment or replace observing a visual claim.
+
+Release qualification, long-session resource diagnosis and absolute performance remain their
+own authorized/quiet-host work. A local functional pass is not a min-spec or hardware verdict.
+Stop the unit when its outcome exists, direct verification passes, and no material issue remains.
+
 ## 1A. Central Brain quality-convergence layer
 
 For the full architecture behind broad autonomous development, read
@@ -531,7 +589,7 @@ Ship them or mark them already true inside that row. They are not an alternate q
 | accept | free | judge work that is already built; quiet-host session produce/land | 60, 63, 64, 284 |
 | imports | done (devin-sweep-oct2) | doc imports only, after code seams | 30 |
 | art | done (devin-oct3-40) | one visible asset defect; skip if the graphics lane is live | 223 |
-| reservoir | devin-oct10-pipeline | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291 |
+| reservoir | free | this map's board tables + the pack catalogs it admits from (write sets live on the rows it mints) | 285, 286, 287, 288, 291 |
 
 **Research-to-production intake:** [bounded repair briefs](./design/program/research-2026-10-02/ADMITTED_REPAIRS.md)
 are attached to their canonical rows below; the linked [discussion list](./design/program/research-2026-10-02/DECISIONS_FOR_REVIEW.md)
@@ -6339,3 +6397,122 @@ contains focused simulation/model/real-Rapier proof and explicitly records its G
 limits. Preserve the character instead of rebuilding it in response to a generic polish prompt.
 MORROW-01…03 at the end of that document are **retained optional expansion briefs**, not claims
 that those missions are already implemented or new entries in the active finish-lane queue.
+
+## 29. Professional experience — the complete starter region
+
+**Owner-directed plan, 2026-10-11.** Mature one complete ordinary Adventure experience before
+expanding another catalog. The reference is the default **Hitch (`ship_kestrel`) in Helios Prime**,
+with tutorials on, the normal fit/credits, real cargo, public controls and authored visuals.
+Aim for a satisfying first circuit of roughly 20–30 minutes; this is a design envelope, not a
+mandatory real-time test, forced itinerary or timer on the player. Pelican/Wasp keep their normal
+routes and capabilities; check their affected shared boundaries, not three full opening batteries.
+
+This is the first integrated delivery across §27's existing HAND, WORLD, LONG GAME, EAR, PICTURE
+and MACHINE owners, using the six compounding bundles in §1.9. It absorbs the relevant residuals
+of `PQ-138/141/143/148/149/151/155/156/158/163/173/177`, §22 A1–A6/B5/B8/F15, and
+CV-DAY/CV-SO/CV-QUIET/CV-HAND/CV-EAR. These IDs keep their other obligations and current lifecycle;
+do not resurrect completed implementations or open a second backlog of the same tasks.
+
+### 29.1 The experience to deliver
+
+1. Control arrives, and the player can understand and use the Massline without a wall of controls.
+2. A real mining/freight operation is already working along the starter corridor: cutting, cargo,
+   a handoff, movement, and somebody with an interest in that cargo.
+3. A readable physical situation gives the player choices: help, manipulate bodies/terrain,
+   take something, or fly on. The world continues through refusal and imperfect execution.
+4. Its aftermath presents a new decision: salvage, rescue/recovery, law/escape, repair or next work.
+   Cause, ownership and consequence are understandable from the live event and existing instruments.
+5. At Helios, a plausible earned haul supports a useful, compatible fitting decision. The player
+   can depart and actually exercise the new capability in the local world.
+6. A return visit reveals a recognizable result of the earlier action. Save → title/restart →
+   Continue preserves that result and the player's chosen work. A next job gives a direction.
+
+The current recommended **Helios → Ceres Fuel Cells delivery** remains available. Taking it is
+a legitimate departure from the local circuit, not a prerequisite for appreciating the first fit
+or choosing local work. Refusing the raid, theft, tutorial or upgrade must leave useful ongoing play.
+This sequence is a set of connected affordances, not a cutscene, mission-failure rail or scripted
+success. Do not add hidden damage, free credits, debug cargo or encounter despawns to make it pass.
+
+### 29.2 Reuse the built seams; know what the checks observe
+
+Read these owners when taking a row. This source map identifies existing machinery, not a claim
+that the complete experience is already accepted. Current concurrent diffs stay protected.
+
+| Built foundation | Source and existing check | Remaining connection or evidence limit |
+|---|---|---|
+| Default start and three real starter fits | [`newGameDefaults.js`](./src/data/newGameDefaults.js), `test/pq-156-00-three-starters.test.mjs` | Hitch starts with 5,000 CR and a drill amp in its small utility bay; a new fit can change which starter jobs are eligible. Preserve that truth. |
+| Thesis-first tutorial and refusable claimed salvage | [`onboarding.js`](./src/systems/onboarding.js), `test/pq-163-opening-choice-pacing.test.mjs`, `test/opening-waypoint-ownership.test.mjs` | The dock beat currently waits for the recommended Ceres delivery before the final job choice. The rail can defer fit-felt speech until it releases the voice. Driven-clock fixtures do not establish human completion rates or normal-control timing. |
+| Living Helios pockets, miner/hauler jobs and freight custody | [`sectorActivityPockets.js`](./src/data/sectorActivityPockets.js), `src/systems/npcJobsRuntime.js`, `test/helios-activity-pocket-chain.test.mjs`, `test/freight-cargo-custody.test.mjs` | Preserve the existing extraction/handoff implementation. Make the starter intervention act on those useful bodies and receipts; catalog placement or an isolated job transition cannot prove a complete moving physical loop. |
+| Physical opening raid and alternative outcomes | [`344-opening-hauler-raid.js`](./src/data/encounters/344-opening-hauler-raid.js), `test/opening-hauler-raid-and-pursuit.test.mjs`, `test/first-hour-opening-choice.test.mjs` | Onboarding also stages a raid tableau. Give their overlapping opening windows an explicit ownership/cue rule and preserve real surviving actors on refusal. Do not assume two producers constitute one causal experience. |
+| Durable wreck identity, salvage, law and world memory | [`aftermathWrecks.js`](./src/systems/aftermathWrecks.js), `src/systems/chronicler.js`, `test/immediate-aftermath-wreck-identity.test.mjs` | Persistence already exists. Connect one first-session consequence to a reachable, recognizable return visit and useful next action; news text alone does not supply the physical aftermath. |
+| Compatible early Swing Drive and truthful fitted-verb teaching | [`modules.js`](./src/data/modules.js), `src/onboarding/fitFeel.js`, `src/ui/station/outfittingGuidance.js`, `test/sfq-b064-fit-felt.test.mjs` | The Hitch-compatible offer is **Swing Drive S, 7,400 CR**, not the M offer. Teaching speaks the live fit/key; demonstrate the actual maneuver after an earned purchase. Resolve the A6 affordability failure below before claiming the loop closed. |
+| Pacing, presentation arbitration and adaptive audio | [`encounterDirector.js`](./src/systems/encounterDirector.js), `src/systems/tensionDirector.js`, `src/systems/difficultyDirector.js`, `src/systems/presentationOrchestrator.js`, `src/audio/audioSystem.js` | Tune their combined behavior during work, a first fight, a transaction and aftermath. Reuse their existing gates, voice budgets and mix; do not add another director or cue authority. |
+| Input/modal recovery and save continuity | `test/input-modal-release-boundary.test.mjs`, `test/input-pointer-lock-recovery.test.mjs`, `test/pb-cont-c-save-continuity.test.mjs` | Focused boundaries exist. Join the relevant interruptions to this circuit, with the chosen job, cargo custody, fit, heat and durable aftermath still coherent. |
+
+**A6 is a useful simulation fixture, not the whole reference route.**
+[`a6OpeningSlice.mjs`](./tools/agentic/a6OpeningSlice.mjs) turns tutorials off, sets docking UI and
+emits dock events, sells through the economy service, and stops after `derived.swingDrive` becomes
+true. Preserve its mechanics coverage; do not label those shortcuts as tutorial-on public-UI or
+upgraded-maneuver acceptance. Its current purchase failure is tracked once in the
+[demo defect ledger](./design/program/DEMO_READINESS_2026-09-20.md#6-the-demo-defect-ledger--everything-a-demo-player-will-hit-live-opened-2026-09-22)
+as **D183**, owned by SR-01. It establishes failure of that pilot's earn→buy sequence; the normal
+player route and whether the cause is the pilot, reward/cargo connection or balance remain distinct.
+
+### 29.3 Finite implementation bundles
+
+Each row is a strong-agent delivery across its named existing owners. Resolve design and production
+connections here; extract only genuinely bounded children to INFERENCE. Check current code first,
+reuse a fulfilled part, and repair the remaining outcome. Do not reopen an entire subsystem from
+one failed leg. Land coherent units by exact paths; another lane's file label blocks only its live
+foreign hunk. No row closes on a report, new harness, counter, reviewer agreement or candidate alone.
+
+| Row / order | Production work and exact likely owners | Done when / smallest direct check |
+|---|---|---|
+| **SR-01 · Earn → buy → fit** — first; LONG GAME, builds/spending | Resolve D183 at the actual failed boundary. Compare the intended local earn/sell path with what A6 really collects; fix the pilot only if it omits an already available step, or repair the production income/cargo/offer connection if that step is missing. Owners: `src/systems/economy.js`, `src/systems/cargo.js`, `src/systems/salvage.js`, `src/systems/ships.js`, `src/data/modules.js`, `src/ui/station/outfittingGuidance.js`; A6 only for its genuine driver defect. Preview replacing the drill amp and resulting job eligibility. Give an unaffordable player a truthful shortfall and usable earning direction; no forced purchase. | One intended legal local haul plus normal starting resources can buy a compatible useful first fit at its quoted price; inventory, fit, derived capability and credits agree, settlement happens once, refusal remains viable. Observe actual cargo/reward→sale→purchase→fit owners. Recheck A6 once after the relevant change; keep public-UI acceptance separate. SR-04 supplies actual upgraded use. |
+| **SR-02 · The first dock yields to the player's plan** — with SR-01; HAND/WORLD/LONG GAME, careers/consequences | Change the dock/choice handoff so local fitting and next-job choice do not wait for a Ceres completion. Reuse the authored trade offer and current alternate-job yield, objective ownership and deferred fit voice. Owners: `src/systems/onboarding.js`, `src/systems/missions.js`, `src/systems/economyContracts.js`, `src/data/economyContractTemplates.js`, `src/ui/missionLog.js` only if the task needs it. Preserve Ceres terms and actual accepted-job tracking. | Sell/fit, decline, or accept the selected next work through ordinary controls without stale tutorial objectives or repeated offers. Fit-felt feedback drains at the relevant departure/handoff. An accepted Ceres delivery owns navigation; ignoring it permits local play. Extend the affected first-trade/choice/waypoint fixture, then check the changed public station controls once. |
+| **SR-03 · One working operation becomes one physical situation** — WORLD, work/cargo/place | Connect the existing Helios extraction/handoff and cargo interests to the introductory intervention. Resolve the teacher-tableau versus encounter raid ownership while keeping ambient civilian work alive. Make approach/alignment, transfer, departure, obstruction, distress and resumed work readable and physically achievable. Owners: `src/data/sectorActivityPockets.js`, `src/systems/npcJobsRuntime.js`, `src/systems/traffic.js`, `src/systems/freightCausality.js`, `src/data/encounters/344-opening-hauler-raid.js`, `src/systems/onboarding.js`, `src/systems/encounterDirector.js`. | A normal arrival can encounter a real cut→cargo→handoff→departure chain without accepting a mission. Intervention changes that chain through existing cargo/law/job receipts; help, theft/collateral and flying on leave coherent actors/outcomes. One short production-system fixture observes moving bodies and custody, not manually emitted completion. Inspect only the relevant rendered work/interruption sequence for readability. |
+| **SR-04 · Space, controls and the new fit make interesting moves** — after SR-01/SR-03; HAND/FIGHT/PICTURE, physical consistency | Compose existing rocks, anchors, hauler lanes, movable bodies and escape space at actual speeds. Tune acquisition, camera anticipation/framing, swing/release, recoil and collision recovery together; include a convenient local opportunity to try the new fitted verb. Owners: `src/data/sectorActivityPockets.js`, `src/data/sectorZones.js`, `src/systems/tetherGameplay.js`, `src/systems/masslineThrow.js`, `src/core/flight/`, `src/render/cameraRig.js` or its current owner. Preserve native ordinary-flight cursor, assisted settle-to-rest, earned momentum and shared Rapier authority. | A simple set of public inputs can make a deliberate tether/release/terrain outcome and recover controllably; the earned fit enables a physically distinguishable maneuver on existing nearby bodies. Read trajectory, timing, distances and interruption reason in a relevant Motion Lab/real-path case; inspect motion/framing where it matters. Add a second seed only for a changed seed-sensitive placement/throw claim. Misses stay honest; no auto-success, hidden impulse or camera-only imitation. |
+| **SR-05 · The aftermath is a place you can return to** — after SR-03; WORLD/LONG GAME, careers/consequences | Bind one chosen starter outcome to durable physical identity and one next action. Reuse wreck markers/custody, witness/law, rescue or named-contact memory and the existing journal/nav/offer surfaces. Keep teacher-prop cleanup separate from economic aftermath. Owners: `src/systems/aftermathWrecks.js`, `src/systems/custodyConsequences.js`, `src/systems/lawSecurity.js`, `src/systems/chronicler.js`, `src/systems/aceMemory.js`, `src/systems/missions.js`, `src/world/`; UI only at the needed readout. | Fly away and return: the same recognizable wreck/damaged operation/contact or its legitimate settled state remains, with the cause and available next action clear. Pickup/repair/settlement is once-only; exhausted salvage stays exhausted, rescued/escaped people retain identity, refusal does not conjure a loss. Extend the existing immediate-aftermath/Continue fixture and check one relevant in-world return; do not build a second memory engine. |
+| **SR-06 · The session breathes and events read together** — across SR-02–05; EAR/HAND/WORLD, readable/dependable product | Coordinate existing tension/encounter/difficulty gates and presentation/audio priority through arrival, work, threat, impact, aftermath, first dock and return. Give NPC preparation/commitment/recovery distinct motion/sound, distinguish ordinary release from break and nudge from slam, and retire stale cues on target loss/modal/load. Owners: `src/systems/tensionDirector.js`, `src/systems/encounterDirector.js`, `src/systems/difficultyDirector.js`, `src/systems/presentationOrchestrator.js`, `src/systems/presentationAdapters.js`, `src/presentation/`, `src/audio/`, needed ORRERY readouts. | The relevant threat/opportunity/cause can be understood while controlling the ship; warnings outrank payoffs, cues match their physical event, and an ongoing fight can finish before respite is consumed. Work/transaction/aftermath windows remain usable, with no queued burst immediately after the rail releases. Focused director/voice/cue tests verify causality and cancellation; inspect/listen to the affected dense sequence. Preserve reduced-motion/flash and accessibility equivalents. No mandatory all-phase 90-minute session or quiet capture. |
+| **SR-07 · Interruptions preserve the same world and chosen work** — with each changed boundary; MACHINE/WORLD/LONG GAME, completed-activity edges | Join the circuit to save/Continue, pause/settings/focus loss, target retirement, transaction cancellation/repeated click and death/retry. Reuse save normalization, stable IDs, input fences and asynchronous owner cancellation. Owners: `src/save/saveSystem.js`, `src/save/sharedPlayerStore.js`, `src/systems/input.js`, `src/systems/onboarding.js`, `src/systems/missions.js`, `src/systems/ships.js`, `src/systems/cargo.js`, relevant runtime/presentation owner. | At the affected mid-work/aftermath/dock/job boundary, reload or interrupt without lost cargo/fit/earned money, ghost tether/target, duplicate payment, repeated opening cast or stale objectives. A failed write keeps the previous slot and a usable route; death/retry leaves coherent recovery and no stale controls. Use the existing save/input/death fixtures for the changed state and one affected public save→title→Continue transition. Browser tests unmount the shared real drawer; shell-specific claims use the affected shell. |
+| **SR-08 · Fast feedback that exercises the actual game** — folded into the owning row; existing `PQ-173`/§1A support | Use selected `sf lab`/Motion Lab/verb scenarios and existing causal traces to enter the affected setup quickly, replay input and compare the first bad tick, transition reason, trajectory and resources. Port the active synthetic `feel.gravity_well` and `world.cargo_spill` fallbacks in `tools/agentic/verbBench.mjs` to the real production owners/modules, or retire their acceptance use explicitly; current module override is by matching scenario ID. Reuse `world.reaction_trio` for real reactions. Extend `src/testing/lab/liveRouteBridge.js` setup only if the selected public-control claim needs its currently unsupported NPC/attachment setup. | A readout identifies what action/owner/transition caused the result; relevant checks fail when the production consequence fails, not when a stand-in formula changes. No fabricated salvor timing/event, detached orbit model, omitted tutorial or installed-flag shortcut closes the claimed behavior. This is support inside a gameplay delivery, not a new platform, universal grader, separate observatory queue or production-unit credit. |
+
+**Dispatch order:** resolve SR-01's failed earn/buy leg and SR-02's local handoff first. SR-03's
+existing-operation connection can proceed on disjoint paths; SR-04 and SR-05 use its real bodies
+and receipts. SR-06/SR-07 are part of each affected delivery, not cleanup postponed to the end.
+SR-08 repairs only the misleading/missing feedback the selected delivery needs. A lane conflict
+changes the safe path split; it does not create a second implementation or stop the whole plan.
+
+### 29.4 Close the experience, then reuse what improved
+
+At a coherent integration boundary, exercise **one tutorial-on starter circuit** using public
+controls on the ordinary route. Quick setup may resume at a relevant saved state for an edge;
+it cannot inject the success under test. Observe the actual upgraded maneuver and one recognizable
+return consequence. Use one targeted session only for the remaining shape question; end at the
+named outcome rather than waiting out 30 minutes. Check the affected Browser/Electron entry or
+save-return seam where a shell-specific failure can change the claim; do not duplicate a complete
+circuit just to increase evidence volume.
+
+One independent combined critique asks: can the action/cause/result be understood, is there a
+real choice and useful next action, did the production world follow through, and did the relevant
+interruption preserve it? Fix material findings; stop when the agreed sequence works. Counts of
+events, time spent, screenshots and model agreement cannot independently establish that it is fun.
+No owner playtest, weekly ritual, reel, new kanban service or stored review dossier is required.
+
+Successful mechanisms then improve the existing six bundles: spatial situation recipes; physical
+NPC action/interrupt behavior; consequence identity and return affordances; fitted-capability
+experiments; cue/director coordination; interruption-safe transactions. Extract resolved small
+leaves into the existing INFERENCE catalog only when an actual remaining change is named. Keep
+other careers, authored world variety, accessibility, long-game progression and release obligations
+in their existing parents; the starter circuit does not certify or replace the whole game.
+
+**Developer precedent, adapted for agents.** Valve describes short gameplay slices and the
+smallest increment that teaches something about the player experience
+([Half-Life 2 process](https://cdn.akamai.steamstatic.com/apps/valve/2006/GDC2006_HL2DesignProcess.pdf)).
+Its [L4D AI account](https://cdn.fastly.steamstatic.com/apps/valve/2009/ai_systems_of_l4d_mike_booth.pdf)
+separates fluid actor behavior, useful transition reasons, accelerated bot diagnosis and dramatic
+pacing. [Factorio's development account](https://www.factorio.com/blog/post/fff-417) shows connective
+progression work around otherwise functional content;
+[Guerrilla's quest ownership](https://www.guerrilla-games.com/read/guerrilla-spotlight-Idris-Grey-MacChruiteir)
+joins beats, AI, systemic interaction and presentation. Those sources inform the production
+priorities; the agent workflow here is our adaptation, not a claim that bots or LLMs certify enjoyment.
