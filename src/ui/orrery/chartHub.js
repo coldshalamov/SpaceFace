@@ -86,6 +86,13 @@ ${C} .gmh-tool[data-tip]::after { content:attr(data-tip); position:absolute; lef
   ${LABEL} font-size:12px; letter-spacing:.12em; color:rgb(248 244 234); background:rgb(6 8 12 / .96); ${FEATHER(8)}
   transition:opacity .12s linear .35s, transform .18s var(--dp-ease-out, cubic-bezier(.2, .8, .2, 1)) .35s; }
 ${C} .gmh-tool[data-tip]:is(:hover, :focus-visible)::after { opacity:1; transform:translate(-50%, 0); }
+/* A pseudo tip is ~1.4× and was the button's scrollWidth (the key stays 44px). Hold the tip
+   inside the key so the toolbar does not clip. English tips stay one centered line. */
+html[data-locale]:not([data-locale="en-US"]) body #screens #sf-galaxymap.of-chart .gmh-tool[data-tip]::after,
+html[data-locale]:not([data-locale="en-US"]) body #screens #sf-galaxymap.of-chart .gmh-tool[data-tip]:is(:hover, :focus-visible)::after {
+  left:0 !important; right:0 !important; width:auto !important; transform:none !important;
+  white-space:normal !important; overflow-wrap:anywhere !important;
+}
 
 /* ===== the wire: what is happening ===== */
 ${C} .gmh-wire { position:absolute; left:50%; top:calc(var(--k-margin, 40px) + 2px); transform:translateX(-50%); width:min(440px, 34vw); pointer-events:auto; z-index:2; }

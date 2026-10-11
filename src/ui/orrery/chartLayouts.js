@@ -163,6 +163,17 @@ ${C} .gm-tab.k-word:hover { color:rgb(${BONE} / .95) !important; }
 ${C} .gm-tab.k-word:focus-visible { outline:none !important; color:rgb(248 244 234) !important; text-shadow:0 0 14px rgb(255 240 214 / .5) !important; }
 ${C} .gm-tab.k-word[aria-selected="true"] { color:rgb(248 244 234) !important; background:none !important; }
 ${C} .gm-tab.k-word.is-empty:not([aria-selected="true"]) { color:rgb(${BONE} / .58) !important; }
+/* Expanded copy is ~1.4× these words. The one-row strip then runs past the inspector, which
+   clips overflow-x. Those locales wrap onto the scales the tab instrument already draws per
+   row (the same wrap the deckplate tab grid used). English, and an unset locale, stays one row. */
+html[data-locale]:not([data-locale="en-US"]) body #screens #sf-galaxymap.of-chart.orr-chart .gm-tabs.k-words {
+  display:flex !important; flex-wrap:wrap !important; align-items:end;
+  width:100% !important; max-width:100% !important; min-width:0 !important;
+}
+html[data-locale]:not([data-locale="en-US"]) body #screens #sf-galaxymap.of-chart.orr-chart .gm-tab.k-word {
+  min-width:0 !important; max-width:100% !important;
+  white-space:normal !important; overflow-wrap:anywhere !important;
+}
 ${C} .orr-chart-tabscale { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:0; }
 /* the two ways back: words with their notch */
 ${C} .gm-frame-group { gap:2px 18px !important; }
