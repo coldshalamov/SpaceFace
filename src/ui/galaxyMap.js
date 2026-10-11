@@ -9193,6 +9193,10 @@ _drawGalaxy(g, state, w, h) {
         g.restore();
       }
     }
+
+    // The scale reads on the edge ruler here too, measured in real WU (graph units are the
+    // authored lattice, so the figure stays comparable with the SYSTEM level's).
+    this._drawEdgeScale(g, field, graphScale / SECTOR_ORIGIN_LATTICE_WU);
   },
 
   // --- SYSTEM DRAW ---
