@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "mining-beam-instrument",
-      "date": "2026-09-28",
-      "wf": "WF-14",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "MiningHud renders the beam's three hidden skill checks (vent band, rich-core window, seam) world-anchored at the contact; play-muted the minigame now still exists",
-      "fingerprint": "verb=render,subject=mining-beam,sector=flight-hud,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "236838e16",
-      "verification": "focused_green"
-    },
-    {
       "id": "wreck-bound-story-chains",
       "date": "2026-09-28",
       "wf": "WF-08",
@@ -1656,6 +1643,19 @@
       "references": [],
       "integration": "live",
       "commit": "1fbd88bfc",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-dock-prompt-name",
+      "date": "2026-10-11",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "the dock prompt names the station in range instead of saying DOCK AT STATION",
+      "fingerprint": "verb=dock,subject=station,sector=any,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "c74096387",
       "verification": "focused_green"
     }
   ],
