@@ -11,21 +11,30 @@
 //   heat         -> heat:scrubRequested                            (heat.js is the only heat writer)
 // It never writes credits, rep, cargo or heat. Receipts (all schemaVersion 1): fence:met,
 // fence:trustChanged, fence:routeOpened, fence:routeLegDue, fence:routeCompleted, fence:scrubbed,
-// law:fenceTip (the hunters subscribe later; this file only emits).
+// fence:ransomed, law:fenceTip (the hunters subscribe later; this file only emits).
+// A survivor pod ransomed at a fence who wants pods pays the lawful rescue fee times that
+// fence's pay scale and earns a point of trust. Any other station changes nothing.
 import { SECTORS } from '../data/sectors.js';
 import { isPlayerWanted, heatLevelFor } from './heat.js';
 import {
   DENIABLE_BURN_EPOCHS, deniableBoardEpoch, isFenceBurned,
 } from '../data/deniableAftermath.js';
 import {
-  FENCES, FENCE_BY_ID, FENCE_ROUTE_CAUSE_TAG, FENCE_ROUTE_LEGS, FENCE_ROUTE_PENDING_EPOCHS,
-  FENCE_FORGIVE_EPOCHS, FENCE_TIP_HEAT_LEVEL, FENCE_TRUST_DELTA,
-  clampTrust, fenceContactId, fenceForStation, fenceLine, fenceScrubCostCr, fenceTipRoll,
-  sanitizeFenceRow,
+  FENCES, FENCE_BY_ID, FENCE_RANSOM_FEE_CR, FENCE_ROUTE_CAUSE_TAG, FENCE_ROUTE_LEGS,
+  FENCE_ROUTE_PENDING_EPOCHS, FENCE_FORGIVE_EPOCHS, FENCE_TIP_HEAT_LEVEL, FENCE_TRUST_DELTA,
+  clampTrust, fenceContactId, fenceForStation, fenceLine, fenceRansomLine, fenceScrubCostCr,
+  fenceTipRoll, sanitizeFenceRow,
 } from '../data/fences.js';
 
 const STATION_SECTOR = new Map();
 for (const sec of SECTORS) for (const st of (sec.stations || [])) STATION_SECTOR.set(st.id, sec.id);
+
+/** Authored pay multiplier: `payMult` if a fence carries one, else the quirk's payScale. */
+function fencePayMult(fence) {
+  const raw = fence && fence.payMult != null ? fence.payMult : fence && fence.quirk && fence.quirk.payScale;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
 
 export class FenceDesk {
   constructor(host) {
@@ -46,6 +55,7 @@ export class FenceDesk {
     bus.on('mission:failed', (p) => this.onSettled(p, 'failed'));
     bus.on('ui:talkContact', (p) => this.onTalk(p));
     bus.on('fence:scrubAsk', (p) => this.scrubFor(p && p.fenceId, p && p.stationId));
+    bus.on('survivorPod:ransomed', (p) => this.onRansomed(p));
   }
 
   // ── ledger access: the only place stats.fences is written ──────────────────────────────────
@@ -93,7 +103,8 @@ export class FenceDesk {
     row.trust = clampTrust(before + delta);
     if (row.trust === before) return false;
     this.receipt('fence:trustChanged', {
-      fenceId: fence.id, stationId: fence.stationId, trust: row.trust, delta: row.trust - before, cause,
+      fenceId: fence.id, stationId: fence.stationId, factionId: fence.factionId,
+      trust: row.trust, delta: row.trust - before, cause,
     });
     return true;
   }
@@ -131,7 +142,7 @@ export class FenceDesk {
         && fenceTipRoll((state.meta && state.meta.seed) || 0, fence.id, epoch, trust)) {
         row.lastTipEpoch = epoch;
         this.receipt('law:fenceTip', {
-          fenceId: fence.id, stationId: fence.stationId,
+          fenceId: fence.id, stationId: fence.stationId, factionId: fence.factionId,
           sectorId: STATION_SECTOR.get(fence.stationId) || null, heatLevel: level,
         });
         this.say(fence, fenceLine(fence, 'unknown'));
@@ -145,7 +156,9 @@ export class FenceDesk {
       if (!row.met) {
         row.met = true;
         row.lastChangeEpoch = epoch;
-        this.receipt('fence:met', { fenceId: fence.id, stationId: fence.stationId, heatLevel: level });
+        this.receipt('fence:met', {
+          fenceId: fence.id, stationId: fence.stationId, factionId: fence.factionId, heatLevel: level,
+        });
         this.say(fence, fenceLine(fence, 'first'));
       }
     }
@@ -192,8 +205,8 @@ export class FenceDesk {
         pendingStationId: null, sinceEpoch: epoch,
       };
       this.receipt('fence:routeOpened', {
-        fenceId: fence.id, stationId: fence.stationId, legs: FENCE_ROUTE_LEGS,
-        destStationId: mission.destStationId || null,
+        fenceId: fence.id, stationId: fence.stationId, factionId: fence.factionId,
+        legs: FENCE_ROUTE_LEGS, destStationId: mission.destStationId || null,
       });
       return;
     }
@@ -230,7 +243,8 @@ export class FenceDesk {
         pendingStationId: route.destStationId, sinceEpoch: epoch,
       };
       this.receipt('fence:routeLegDue', {
-        fenceId: fence.id, stationId: fence.stationId, leg: route.leg + 1, pendingStationId: route.destStationId,
+        fenceId: fence.id, stationId: fence.stationId, factionId: fence.factionId,
+        leg: route.leg + 1, pendingStationId: route.destStationId,
       });
       return;
     }
@@ -248,6 +262,7 @@ export class FenceDesk {
     }
     this.receipt('fence:routeCompleted', {
       fenceId: fence.id, stationId: fence.stationId,
+      factionId: fence.factionId, fenceName: fence.name,
       reward: { kind: reward.kind, amount: reward.amount || 0, defId: reward.defId || null },
     });
     this.say(fence, fenceLine(fence, 'thanks'));
@@ -262,6 +277,34 @@ export class FenceDesk {
     row.lastOutcome = 'lost';
     this.moveTrust(fence, row, FENCE_TRUST_DELTA.routeLost, 'route_lost');
     this.say(fence, fenceLine(fence, 'lost'));
+  }
+
+  // ── a ransomed pod: only a fence who buys them pays, and only by intent ────────────────────
+  onRansomed(p) {
+    if (this.host._saveRestoring) return;
+    const fence = fenceForStation(p && p.stationId);
+    if (!fence || !fence.quirk || fence.quirk.wantsPods !== true) return;
+    const row = this.row(fence.id, true);
+    if (!row) return;
+    row.met = true;
+    row.lastChangeEpoch = this.epoch();
+    const amount = Math.round(FENCE_RANSOM_FEE_CR * fencePayMult(fence));
+    const victimId = p.victimId != null ? p.victimId : null;
+    this.bus.emit('economy:grantCredits', {
+      amount,
+      reason: `fence_ransom:${fence.id}`,
+      fenceId: fence.id,
+      victimId,
+    });
+    this.moveTrust(fence, row, 1, 'ransom');
+    this.say(fence, fenceRansomLine(fence));
+    this.receipt('fence:ransomed', {
+      fenceId: fence.id,
+      stationId: fence.stationId,
+      factionId: fence.factionId,
+      victimId,
+      amountCr: amount,
+    });
   }
 
   // ── the fixer's scrub ──────────────────────────────────────────────────────────────────────
@@ -306,7 +349,8 @@ export class FenceDesk {
     row.met = true;
     row.lastAsk = { kind: 'scrub', ok: true, reason: null };
     this.receipt('fence:scrubbed', {
-      fenceId: fence.id, stationId: fence.stationId, costCr,
+      fenceId: fence.id, stationId: fence.stationId,
+      factionId: fence.factionId, fenceName: fence.name, costCr,
       cooled: res.cooled, before: res.before, after: res.after,
     });
     return true;

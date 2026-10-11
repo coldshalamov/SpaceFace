@@ -38,6 +38,14 @@ export const FENCE_ROUTE_PENDING_EPOCHS = 12; // an unaccepted next leg lapses (
 export const FENCE_ROUTE_LEG_WINDOW = 6;      // board epochs a posted next leg stays on the board
 export const FENCE_TIP_HEAT_LEVEL = 4;        // heat level at which a cold fence may sell you
 export const FENCE_ROUTE_CAUSE_TAG = 'fence_route';
+/**
+ * Base price of a survivor pod sold to a fence who buys them (`quirk.wantsPods`).
+ * Equal to the lawful mayday salvage fee (survivorPod `CAUSAL_RESCUE_SALVAGE_FEE_CR`):
+ * the same money, a different conscience, before that fence's pay scale.
+ */
+export const FENCE_RANSOM_FEE_CR = 420;
+/** Spoken when a wantsPods fence has no authored `lines.ransom`. */
+export const FENCE_RANSOM_FALLBACK_LINE = 'A live pod. I buy those. The note stays, the pay is yours.';
 
 export const clampTrust = (value) => {
   const n = Math.round(Number(value) || 0);
@@ -119,6 +127,7 @@ const FENCE_LIST = [
       lost: 'You lost a crate of paper worth a ship. Paper has a long memory, dear. So do I.',
       thanks: 'Delivered, and no fuss. The Scar likes a quiet courier.',
       unknown: 'I have no idea who you are, and a pilot that hot is worth a phone call. Mind how you dock.',
+      ransom: 'A pod, and still breathing. The families pay late, dear. I pay now, and the Scar keeps them quiet.',
     },
   },
   {
@@ -351,6 +360,12 @@ export function fenceSituation(row, epoch) {
 
 export function fenceLine(fence, situation) {
   return (fence && fence.lines && fence.lines[situation]) || (fence && fence.lines.first) || '';
+}
+
+/** The line spoken when a wantsPods fence buys a pod. Authored `lines.ransom`, else the generic. */
+export function fenceRansomLine(fence) {
+  const authored = fence && fence.lines && fence.lines.ransom;
+  return authored || FENCE_RANSOM_FALLBACK_LINE;
 }
 
 /** Deterministic tip-off roll: pure in (seed, fence, epoch). Colder fences sell you more often. */

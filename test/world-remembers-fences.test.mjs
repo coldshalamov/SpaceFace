@@ -4,7 +4,8 @@
 // (thanked +1, lost -1, burned -3 and the window); trust 0 posts the C11 job, trust >= 1 a bigger
 // haul over a longer leg, trust >= 2 the fence's three-leg ROUTE with a one-time reward; ambush odds
 // fall with trust; the fixer scrubs heat through heat.js by intent; a cold fence sells a hot pilot;
-// a fence shows its face at the bar.
+// a fence shows its face at the bar. A pod ransomed at a fence who wants them pays the lawful
+// rescue fee times that fence's pay scale and earns trust; any other fence station pays nothing.
 //
 //   node --test test/world-remembers-fences.test.mjs
 import test from 'node:test';
@@ -21,8 +22,9 @@ import {
 } from '../src/data/economyContractTemplates.js';
 import { DENIABLE_BURN_EPOCHS, deniableBoardEpoch } from '../src/data/deniableAftermath.js';
 import {
-  FENCES, FENCE_BY_ID, FENCE_FORGIVE_EPOCHS, FENCE_ROUTE_CAUSE_TAG, FENCE_TRUST_DELTA,
-  fenceAmbushChance, fenceContactId, fenceRowOf, fenceTipRoll, sanitizeFenceLedger,
+  FENCES, FENCE_BY_ID, FENCE_FORGIVE_EPOCHS, FENCE_RANSOM_FALLBACK_LINE, FENCE_RANSOM_FEE_CR,
+  FENCE_ROUTE_CAUSE_TAG, FENCE_TRUST_DELTA,
+  fenceAmbushChance, fenceContactId, fenceRansomLine, fenceRowOf, fenceTipRoll, sanitizeFenceLedger,
 } from '../src/data/fences.js';
 import { economyContracts } from '../src/systems/economyContracts.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
@@ -35,6 +37,7 @@ const STATION_INFO = new Map();
 for (const sec of SECTORS) for (const st of sec.stations) STATION_INFO.set(st.id, { ...st, sectorId: sec.id, sector: sec });
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SMUGGLER = FENCE_BY_ID.get('fence_oriel_pask'); // station_smuggler - the fixer; trust 0 = the C11 job
+const ILSA = FENCE_BY_ID.get('fence_ilsa_greve'); // station_kepler_scar - buys pods
 
 function makeBus() {
   const handlers = new Map();
@@ -209,6 +212,7 @@ for (const seed of SEEDS) {
     for (const r of changed) {
       assert.equal(r.schemaVersion, 1);
       assert.equal(r.fenceId, SMUGGLER.id);
+      assert.equal(r.factionId, SMUGGLER.factionId);
     }
     // A station with no fence is not the fence cast's business.
     h.bus.emit('deniable:fenceThanked', { schemaVersion: 1, stationId: 'station_helios' });
@@ -272,6 +276,7 @@ for (const seed of SEEDS) {
     const opened = receipts(h, 'fence:routeOpened');
     assert.equal(opened.length, 1);
     assert.equal(opened[0].schemaVersion, 1);
+    assert.equal(opened[0].factionId, SMUGGLER.factionId);
     assert.equal(fenceRowOf(h.state, SMUGGLER.id).route.status, 'running');
     // A route in motion posts nothing else at the fence's berth.
     toEpoch(h, deniableBoardEpoch(h.state) + 1);
@@ -295,6 +300,8 @@ for (const seed of SEEDS) {
     const done = receipts(h, 'fence:routeCompleted');
     assert.equal(done.length, 1, 'the route completes once');
     assert.equal(done[0].schemaVersion, 1);
+    assert.equal(done[0].factionId, SMUGGLER.factionId);
+    assert.equal(done[0].fenceName, SMUGGLER.name);
     assert.equal(done[0].reward.kind, SMUGGLER.route.reward.kind);
     const reps = receipts(h, 'faction:repDelta').slice(repsBefore).filter((r) => r.reason === 'fence_route');
     assert.equal(reps.length, 1, 'the one-time reward, by the factions intent');
@@ -428,6 +435,8 @@ for (const seed of SEEDS) {
     const scrubbed = receipts(h, 'fence:scrubbed');
     assert.equal(scrubbed.length, 1);
     assert.equal(scrubbed[0].schemaVersion, 1);
+    assert.equal(scrubbed[0].factionId, SMUGGLER.factionId);
+    assert.equal(scrubbed[0].fenceName, SMUGGLER.name);
     assert.equal(scrubbed[0].costCr, requests[0].costCr);
 
     // Once per fence per cooldown: the second ask cools nothing and costs nothing.
@@ -507,8 +516,8 @@ for (const seed of SEEDS) {
     const hot = tipsAt(0.8, 0); // level 4, trust 0
     assert.ok(hot.hit.length > 0, 'a cold fence sells a hot pilot');
     const tip = receipts(hot.h, 'law:fenceTip')[0];
-    assert.deepEqual([tip.schemaVersion, tip.fenceId, tip.stationId, tip.sectorId],
-      [1, SMUGGLER.id, SMUGGLER.stationId, 'sector_pallas_drift']);
+    assert.deepEqual([tip.schemaVersion, tip.fenceId, tip.stationId, tip.sectorId, tip.factionId],
+      [1, SMUGGLER.id, SMUGGLER.stationId, 'sector_pallas_drift', SMUGGLER.factionId]);
     const said = hot.h.lines.filter((l) => l.text.includes(SMUGGLER.lines.unknown));
     assert.equal(said.length, hot.hit.length, 'and says the I-do-not-know-you line each time');
     // Pure in (seed, fence, epoch, trust): the same epochs fire on a rerun.
@@ -535,6 +544,7 @@ test('the first wanted dock is fence:met, once, with the first-meeting line; a c
   assert.equal(met.length, 1);
   assert.equal(met[0].schemaVersion, 1);
   assert.equal(met[0].fenceId, SMUGGLER.id);
+  assert.equal(met[0].factionId, SMUGGLER.factionId);
   assert.ok(h.lines.some((l) => l.text === `${SMUGGLER.name}: ${SMUGGLER.lines.first}`));
 });
 
@@ -625,4 +635,76 @@ test('the fence is at the bar when WANTED or trusted, with a line by state, a fa
   dock(h, SMUGGLER.stationId);
   const work = buildReply(contact.role, 'fence_work', { state: h.state, bus: h.bus }, SMUGGLER.stationId, contact);
   assert.ok(work.missionOffer && work.missionOffer.cause.tag === DENIABLE_CAUSE_TAG);
+});
+
+// ── 9. the ransom ─────────────────────────────────────────────────────────────────────────────
+function ransomAt(h, stationId, victimId) {
+  const before = h.bus.emitLog.length;
+  const credits = h.state.player.credits;
+  h.bus.emit('survivorPod:ransomed', {
+    id: `survivor:${victimId}`,
+    outcome: 'ransomed',
+    entityId: 900 + victimId,
+    victimId,
+    sectorId: STATION_INFO.get(stationId).sectorId,
+    factionId: 'faction_scn',
+    t: 12,
+    reason: 'fence_delivery',
+    stationId,
+    authorityFactionId: 'faction_reach',
+  });
+  return { fresh: h.bus.emitLog.slice(before), credits };
+}
+
+for (const seed of SEEDS) {
+  test(`a ransomed pod at Ilsa's station pays her scale and earns trust (seed ${seed})`, () => {
+    const h = makeHarness({ seed });
+    const victimId = 77;
+    const { fresh, credits } = ransomAt(h, ILSA.stationId, victimId);
+    const grants = fresh.filter((e) => e.evt === 'economy:grantCredits').map((e) => e.payload);
+    assert.equal(grants.length, 1);
+    assert.equal(FENCE_RANSOM_FEE_CR, 420, 'ransom base equals the lawful rescue fee');
+    const expected = Math.round(FENCE_RANSOM_FEE_CR * ILSA.quirk.payScale);
+    assert.equal(grants[0].amount, expected);
+    assert.equal(grants[0].reason, `fence_ransom:${ILSA.id}`);
+    assert.equal(grants[0].fenceId, ILSA.id);
+    assert.equal(grants[0].victimId, victimId);
+    assert.equal(h.state.player.credits, credits + expected);
+    const row = fenceRowOf(h.state, ILSA.id);
+    assert.equal(row.trust, 1);
+    assert.equal(row.met, true);
+    const changed = fresh.filter((e) => e.evt === 'fence:trustChanged').map((e) => e.payload);
+    assert.equal(changed.length, 1);
+    assert.equal(changed[0].cause, 'ransom');
+    assert.equal(changed[0].delta, 1);
+    assert.equal(changed[0].factionId, ILSA.factionId);
+    const ransomed = fresh.filter((e) => e.evt === 'fence:ransomed').map((e) => e.payload);
+    assert.equal(ransomed.length, 1);
+    assert.equal(ransomed[0].schemaVersion, 1);
+    assert.equal(ransomed[0].fenceId, ILSA.id);
+    assert.equal(ransomed[0].stationId, ILSA.stationId);
+    assert.equal(ransomed[0].factionId, ILSA.factionId);
+    assert.equal(ransomed[0].victimId, victimId);
+    assert.equal(ransomed[0].amountCr, expected);
+    assert.ok(h.lines.some((row) => row.text === `${ILSA.name}: ${ILSA.lines.ransom}`));
+  });
+
+  test(`a ransom at a fence that does not want pods changes nothing (seed ${seed})`, () => {
+    const h = makeHarness({ seed });
+    const { fresh, credits } = ransomAt(h, SMUGGLER.stationId, 88);
+    assert.equal(fresh.filter((e) => e.evt === 'economy:grantCredits').length, 0);
+    assert.equal(fresh.filter((e) => e.evt === 'fence:ransomed').length, 0);
+    assert.equal(fresh.filter((e) => e.evt === 'fence:trustChanged').length, 0);
+    assert.equal(fresh.filter((e) => e.evt === 'fence:met').length, 0);
+    assert.equal(h.state.player.credits, credits);
+    assert.equal(h.lines.length, 0);
+    assert.equal(h.state.encounterDirector.stats.fences, undefined);
+    assert.equal(fenceRowOf(h.state, SMUGGLER.id).trust, 0);
+  });
+}
+
+test('a wantsPods fence with no authored ransom line gets the generic fallback', () => {
+  assert.equal(fenceRansomLine(ILSA), ILSA.lines.ransom);
+  assert.equal(fenceRansomLine({ lines: {} }), FENCE_RANSOM_FALLBACK_LINE);
+  assert.ok(ILSA.lines.ransom.includes('dear') && ILSA.lines.ransom.includes('Scar'));
 });
