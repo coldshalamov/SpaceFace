@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "moral-trap-grounding",
-      "date": "2026-09-28",
-      "wf": "WF-08",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Cargo traps require the hold's actual moral family, reveal timing follows route topology, and every resolved fork leaves a pending moralMemory debt behind",
-      "fingerprint": "verb=ground,subject=moral-traps,sector=lane-wide,domain=wf-08",
-      "references": [],
-      "integration": "live",
-      "commit": "70b5e2196",
-      "verification": "focused_green"
-    },
-    {
       "id": "hud-pill-lane-contract",
       "date": "2026-09-28",
       "wf": "WF-14",
@@ -1656,6 +1643,19 @@
       "references": [],
       "integration": "live",
       "commit": "5f14b64ee",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-landmark-plates",
+      "date": "2026-10-11",
+      "wf": "WF-10",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "the Hush and the Triton Field Lab have authored first-contact prose like every other landmark anomaly",
+      "fingerprint": "verb=discover,subject=landmark,sector=frontier,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "32827c0b5",
       "verification": "focused_green"
     }
   ],
