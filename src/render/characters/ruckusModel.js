@@ -15,14 +15,26 @@ const TYPES = { 5120: Int8Array, 5121: Uint8Array, 5122: Int16Array, 5123: Uint1
 const WIDTH = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 };
 const ATTR = { POSITION: 'position', NORMAL: 'normal', TEXCOORD_0: 'uv', COLOR_0: 'color', TANGENT: 'tangent' };
 const sat = v => Math.max(0, Math.min(1, v));
-function template(key) {
-  if (templates.has(key)) return templates.get(key);
+// Sliced template build (wave-142): templateSteps yields between decode sub-steps — JSON
+// parse, atob, chunked byte copy, materials, per-primitive geometry — so the post-eval warm
+// completes the same memo in ~sub-frame tasks instead of one 15-40ms block. template() keeps
+// the synchronous contract: it pumps the same generator to completion, so a real consumer
+// arriving mid-warm finishes the in-flight build instead of duplicating it.
+const pendingTemplates = new Map();
+const DECODE_CHUNK = 1 << 18;
+function* templateSteps(key) {
   const entry = RUCKUS_MESH_DATA[key]; if (!entry) throw Error(`Unknown RU-7 asset ${key}`);
   let doc = parsedDocs.get(key);
   if (!doc) { doc = JSON.parse(entry.json); parsedDocs.set(key, doc); }
+  yield;
   const { binary } = entry;
   const raw = atob(binary), buffer = new ArrayBuffer(raw.length), u8 = new Uint8Array(buffer);
-  for (let i = 0; i < raw.length; i++) u8[i] = raw.charCodeAt(i);
+  yield;
+  for (let i = 0; i < raw.length; i += DECODE_CHUNK) {
+    const end = Math.min(i + DECODE_CHUNK, raw.length);
+    for (let j = i; j < end; j++) u8[j] = raw.charCodeAt(j);
+    yield;
+  }
   const accessor = index => {
     const a = doc.accessors[index], v = doc.bufferViews[a.bufferView], Type = TYPES[a.componentType], width = WIDTH[a.type];
     if (!Type || !width || a.sparse) throw Error(`Unsupported RU-7 accessor ${index}`);
@@ -41,7 +53,9 @@ function template(key) {
       side: spec.doubleSided ? THREE.DoubleSide : THREE.FrontSide });
     m.name = spec.name; m.userData = { ...spec.extras, spacefaceSharedAsset: true, ruckusEmission: strength }; return m;
   });
-  const meshGroups = doc.meshes.map(mesh => {
+  yield;
+  const meshGroups = [];
+  for (const mesh of doc.meshes) {
     const group = new THREE.Group();
     for (const p of mesh.primitives) {
       const geometry = new THREE.BufferGeometry();
@@ -52,9 +66,10 @@ function template(key) {
       if (p.indices != null) geometry.setIndex(accessor(p.indices));
       geometry.userData.spacefaceSharedAsset = true; geometry.computeBoundingSphere();
       const object = new THREE.Mesh(geometry, materials[p.material]); object.castShadow = object.receiveShadow = true; group.add(object);
+      yield;
     }
-    return group;
-  });
+    meshGroups.push(group);
+  }
   const nodes = doc.nodes.map(spec => {
     const node = spec.mesh == null ? new THREE.Group() : meshGroups[spec.mesh].clone();
     node.name = spec.name || ''; node.userData = { ...spec.extras };
@@ -65,6 +80,18 @@ function template(key) {
   doc.nodes.forEach((s, i) => { for (const child of s.children || []) nodes[i].add(nodes[child]); });
   const root = new THREE.Group(); for (const i of doc.scenes[doc.scene || 0].nodes) root.add(nodes[i]);
   templates.set(key, root); return root;
+}
+function template(key) {
+  if (templates.has(key)) return templates.get(key);
+  let it = pendingTemplates.get(key);
+  if (!it) { it = templateSteps(key); pendingTemplates.set(key, it); }
+  try {
+    let step;
+    while (!(step = it.next()).done) {}
+    return step.value;
+  } finally {
+    pendingTemplates.delete(key);
+  }
 }
 function instance(key) {
   const root = template(key).clone(true), materials = new Map(), joints = {};
@@ -153,13 +180,33 @@ export function disposeRuckusVisual(root) {
   root.traverse(o => { if (o.geometry && !o.geometry.userData.spacefaceSharedAsset) geometries.add(o.geometry); if (o.material) materials.add(o.material); });
   for (const g of geometries) g.dispose(); for (const m of materials) m.dispose(); root.removeFromParent();
 }
-// Post-eval warm: decode one packed asset per task in the post-gate idle window so the first
-// RU-7 spawn clones warm templates instead of parsing GLB JSON mid-frame.
+// Post-eval warm: advance one template sub-step per task in the post-gate idle window so the
+// first RU-7 spawn clones warm templates instead of parsing GLB JSON mid-frame. One
+// setTimeout per yield keeps every task sub-frame; a real consumer arriving mid-warm pumps
+// the same pending iterator to completion through template(), so no work is duplicated.
 if (typeof window !== 'undefined') {
   const warmKeys = Object.keys(RUCKUS_MESH_DATA);
-  let warmIndex = 0;
+  let warmIndex = 0, warmKey = null, warmIt = null;
   const warmStep = () => {
-    if (warmIndex < warmKeys.length) { template(warmKeys[warmIndex]); warmIndex += 1; setTimeout(warmStep, 0); }
+    for (;;) {
+      if (warmIt === null) {
+        if (warmIndex >= warmKeys.length) return;
+        warmKey = warmKeys[warmIndex]; warmIndex += 1;
+        if (templates.has(warmKey)) continue;
+        warmIt = pendingTemplates.get(warmKey) || templateSteps(warmKey);
+        pendingTemplates.set(warmKey, warmIt);
+      }
+      try {
+        if (!warmIt.next().done) break;
+        warmIt = null;
+        pendingTemplates.delete(warmKey);
+      } catch (error) {
+        warmIt = null;
+        pendingTemplates.delete(warmKey);
+        throw error;
+      }
+    }
+    setTimeout(warmStep, 0);
   };
   setTimeout(warmStep, 0);
 }
