@@ -21,6 +21,7 @@
 // Tunables kept conservative so a casual smuggler isn't perma-hunted, but a murderous pirate feels
 // real consequences. All clamp at 1.
 import { isRunSealed } from '../core/runSeal.js';
+import { LAWFUL_STATION_FACTIONS } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
 
 const HEAT_MAX = 1;
@@ -117,6 +118,15 @@ const INCIDENT_HEAT_BY_KIND = Object.freeze({ payload_theft: THEFT_INCIDENT });
 export const BOUNTY_PAID_COOL_PER_CR = 0.0004;
 export const BOUNTY_PAID_COOL_MAX = 0.5;
 
+// THE WORLD ANSWERS (T10 half) — answering a lawful mayday is something the law can see. A pod the
+// player towed to lawful custody (survivorPod's `rescued` receipt, player-answered only) cools the
+// ledger one clear step, bounded per minute so a pod farm never launders a massacre. Never for the
+// player's own wreck pod, never for a pod whose faction is not lawful, never twice for one pod id.
+export const RESCUE_COOL_PER_POD = 0.08;
+export const RESCUE_COOL_WINDOW_S = 60;
+export const RESCUE_COOL_MAX_PER_WINDOW = 0.2;
+const RESCUE_LEDGER_IDS_CAP = 48;
+
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 
 /**
@@ -154,6 +164,18 @@ function rememberAppliedReport(player, reportId) {
 }
 
 const EMPTY_LEDGER = Object.freeze({});
+
+// Rescue-cooling ledger lives on state.player (serialized wholesale) and is created lazily at the
+// first lawful rescue, so the golden scenario never grows the key (same split as heatIncidentsApplied).
+function rescueLedger(player) {
+  let ledger = player.heatRescueCooled;
+  if (!ledger || typeof ledger !== 'object' || Array.isArray(ledger)) {
+    ledger = player.heatRescueCooled = { ids: {}, window: [] };
+  }
+  if (!ledger.ids || typeof ledger.ids !== 'object' || Array.isArray(ledger.ids)) ledger.ids = {};
+  if (!Array.isArray(ledger.window)) ledger.window = [];
+  return ledger;
+}
 
 // Compact label coercion for the convicting-incident record: short trimmed strings only,
 // null when absent. Presentation renders what is here verbatim, so nothing may invent a
@@ -370,6 +392,10 @@ export const heat = {
     // Settling the posted bounty is the honest door out of the hunt: economy owns the ledger
     // and emits bounty:cleared; the heat owner translates the payment into visible cooling.
     bus.on('bounty:cleared', (p) => this._onBountyPaid(p));
+
+    // THE WORLD ANSWERS (T10 half): survivorPod owns the physical rescue and signs the receipt;
+    // heat translates a player-answered lawful rescue into one bounded, once-per-pod cooling step.
+    bus.on('survivorPod:rescued', (p) => this._onPodRescued(p));
 
     // PQ-019B: validated law incidents. Heat listens; it is never told what to write. A mission that
     // wants a thief to become WANTED reports the crime to lawSecurity, lawSecurity validates
@@ -653,6 +679,56 @@ export const heat = {
         amount, credit, cooled, before, after, cap: BOUNTY_PAID_COOL_MAX,
       });
     }
+  },
+
+  // Returns the cooled amount (0 when the receipt earns nothing) so tests/journals can key on it.
+  _onPodRescued(payload) {
+    const state = this.state;
+    const player = state && state.player;
+    if (!player || !payload || typeof payload !== 'object') return 0;
+    if (payload.outcome !== 'rescued' || payload.playerAnswered !== true) return 0;
+    // The player's own wreck pod is a self-rescue, never a good deed the law credits.
+    if (payload.playerWreck === true || (payload.victimId != null && payload.victimId === state.playerId)) return 0;
+    const lawful = typeof payload.factionLawful === 'boolean'
+      ? payload.factionLawful
+      : LAWFUL_STATION_FACTIONS.has(payload.factionId);
+    if (!lawful) return 0;
+    const rawId = payload.id != null ? payload.id : payload.entityId;
+    if (rawId == null) return 0;
+    const podKey = String(rawId);
+    const ledger = rescueLedger(player);
+    if (ledger.ids[podKey]) return 0;
+    ledger.ids[podKey] = true;
+    const idKeys = Object.keys(ledger.ids);
+    for (let i = 0; i < idKeys.length - RESCUE_LEDGER_IDS_CAP; i++) delete ledger.ids[idKeys[i]];
+
+    const now = state.simTime || 0;
+    // simTime may have moved backwards across a boundary: a future-dated entry is stale, not binding.
+    ledger.window = ledger.window.filter((row) => row && row.t <= now && row.t > now - RESCUE_COOL_WINDOW_S);
+    const used = ledger.window.reduce((sum, row) => sum + (Number(row.c) || 0), 0);
+    const before = Number(player.heat) || 0;
+    const credit = Math.min(RESCUE_COOL_PER_POD, Math.max(0, RESCUE_COOL_MAX_PER_WINDOW - used), before);
+    if (!(credit > 0)) return 0;
+    this._setHeat(Math.max(0, before - credit), 'rescued survivors');
+    // Report the measured cool (a sealed run or clamped write must not claim heat never lost).
+    const after = Number(player.heat) || 0;
+    const cooled = Math.max(0, before - after);
+    if (cooled <= 0) return 0;
+    ledger.window.push({ t: now, c: cooled });
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('survivorPod:heatCooled', {
+        id: podKey,
+        entityId: payload.entityId == null ? null : payload.entityId,
+        factionId: payload.factionId || null,
+        credit,
+        cooled,
+        before,
+        after,
+        cap: RESCUE_COOL_MAX_PER_WINDOW,
+        windowS: RESCUE_COOL_WINDOW_S,
+      });
+    }
+    return cooled;
   },
 
   _dropOneLevel(reason = 'escaped heat radius') {

@@ -35,7 +35,14 @@ import {
   resolveHitstunLaw,
   signedHitSide,
 } from '../combat/impulseKernel.js';
-import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeOrEntitiesScan, indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
+import {
+  captureTumbleRakeSeed,
+  clearTumbleRake,
+  readTumbleRake,
+  stepTumbleRake,
+} from '../ai/tumbleRake.js';
 
 const RCS_TRIGGER_MAXAGE_TICKS = 8;
 const RCS_DEFAULT_S = 1.6;
@@ -198,6 +205,8 @@ export const tumbleStates = {
           tumbleActive = false;
         }
       }
+      // C10: the frozen point-defence solution lives exactly as long as the tumble does.
+      if (!tumbleActive && e.data && (e.data.tumbleRake || e.data.tumbleRakeSeed)) clearTumbleRake(e);
       if (!tumbleActive && !drifting && !rcs && !isRecovering(state, e) && !recoveryMarker) continue;
 
       if (tumbleActive) {
@@ -207,6 +216,7 @@ export const tumbleStates = {
           e.data.intent.moveX = 0;
           e.data.intent.moveZ = 0;
         }
+        if (e.data && (e.data.tumbleRake || e.data.tumbleRakeSeed)) this._tickRake(e, state);
         continue;
       }
       if (rcs) {
@@ -441,6 +451,9 @@ export const tumbleStates = {
     const sign = input.hitSide === -1 ? -1 : 1;
     queuePhysicsTorqueImpulse(victim, { x: 0, y: inertia * (sign * law.entrySpin - currentSpin), z: 0 });
     writePhysicsControl(victim, tumbleControl(victim, 1 / 60, input.kind));
+    // C10: a heavy that was mid-salvo keeps that bearing in its own frame — read before the fire
+    // intent is silenced below.
+    captureTumbleRakeSeed(state, victim);
     if (victim.data.intent) {
       victim.data.intent.fire = false;
       victim.data.intent.moveX = 0;
@@ -480,6 +493,51 @@ export const tumbleStates = {
         lights: 1,
       });
     }
+  },
+
+  // C10 — tumble × faction battle line. The sweep geometry is src/ai/tumbleRake.js; this method
+  // is the writer half: damage rides the combat kernel with the tumbling hull as the source, the
+  // receipt fires the first time the beam crosses a friendly; barkDirector voices it (one bark).
+  _tickRake(hull, state) {
+    const hits = stepTumbleRake(state, hull, indexedShipLikeScan(state));
+    if (!hits.length) return;
+    for (const hit of hits) {
+      const victim = hit.victim;
+      const packet = scalarHitToDamagePacket({
+        damage: hit.damage,
+        damageType: 'kinetic',
+        pos: { x: victim.pos.x, z: victim.pos.z },
+        approach: { x: Math.cos(hit.bearing), z: Math.sin(hit.bearing) },
+        source: { kind: 'tumble_rake', hullId: hull.id, dwellScale: hit.dwellScale },
+      });
+      packet.flags = { ignoreFriendlyFire: true };
+      this._routeRakeDamage({
+        attackerId: hull.id,
+        targetId: victim.id,
+        packet,
+        origin: { kind: 'tumble_rake', id: hull.id },
+      });
+    }
+    const rec = readTumbleRake(hull);
+    if (!rec || rec.announced) return;
+    rec.announced = true;
+    const factionId = hull.factionId || (hull.data && hull.data.factionId) || null;
+    const tick = state.tick | 0;
+    if (this.bus) {
+      this.bus.emit('combat:tumbleRake', Object.freeze({
+        hullId: hull.id,
+        factionId,
+        victims: Object.freeze(hits.map((h) => h.victim.id)),
+        tick,
+      }));
+    }
+  },
+
+  _routeRakeDamage(request) {
+    const helpers = this.helpers;
+    if (helpers && typeof helpers.routeCombatDamage === 'function') return helpers.routeCombatDamage(request);
+    if (this.bus) this.bus.emit('combat:routeDamage', request);
+    return null;
   },
 
   _cancelInboundVelocity(victim, input) {

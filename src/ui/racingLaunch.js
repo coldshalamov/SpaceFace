@@ -4,14 +4,18 @@
 
 import { activeRaceMission } from '../systems/racingSteer.js';
 import { raceLevelById, racingOfferFor, racingSeedFor, startLineFor } from '../data/raceLevels.js';
+import { normalizeRaceOptions, stageRacingMeeting } from '../systems/racingCareer.js';
 
 let pending = null;
 
-export function stageRacingLaunch(contractId) {
+export function stageRacingLaunch(contractId, options = {}) {
   if (!racingOfferFor(contractId)) { pending = null; return null; }
   pending = {
     contractId,
     seed: racingSeedFor(contractId),
+    options: { ...normalizeRaceOptions(options),
+      ...(Number.isInteger(options.raceCupId) ? { raceCupId: options.raceCupId,
+        raceCupHeat: options.raceCupHeat, raceCupTicket: options.raceCupTicket } : {}) },
   };
   return pending;
 }
@@ -34,7 +38,7 @@ export function completeRacingLaunch(ctx) {
   const row = takeRacingLaunch();
   if (!row?.contractId) return null;
   let result;
-  try { result = armRacingContract(ctx, row.contractId, { allowEnterSector: true }); }
+  try { result = armRacingContract(ctx, row.contractId, { ...row.options, allowEnterSector: true }); }
   catch (error) { result = { ok: false, reason: 'arm_exception', error: String(error?.message || error) }; }
   if (result?.ok === true && !result.reused) return result;
   // Exit while the save owner still quarantines this temporary state. Exit autosave must
@@ -58,6 +62,10 @@ export function armRacingContract(ctx, contractId, options = {}) {
     toast('That circuit is not on the board.');
     return { ok: false, reason: 'unknown' };
   }
+  Object.assign(offer.params, normalizeRaceOptions(options));
+  if (Number.isInteger(options.raceCupId)) Object.assign(offer.params, {
+    raceCupId: options.raceCupId, raceCupHeat: options.raceCupHeat, raceCupTicket: options.raceCupTicket,
+  });
   const registry = ctx && ctx.registry;
   const missions = registry && registry.get && registry.get('missions');
   const world = registry && registry.get && registry.get('world');
@@ -107,6 +115,11 @@ export function armRacingContract(ctx, contractId, options = {}) {
   const now = state && Number.isFinite(state.simTime) ? state.simTime : 0;
   if (Number(offer.params.gridHoldS) > 0 && !Number.isFinite(offer.params.gridUntilSimS)) {
     offer.params.gridUntilSimS = now + Number(offer.params.gridHoldS);
+  }
+  if (allowEnterSector && ['race','cup'].includes(offer.params.raceMode)) {
+    let storage=null;try{storage=globalThis.localStorage;}catch{}
+    const receipt=stageRacingMeeting(storage);
+    if(receipt)Object.assign(offer.params,receipt);
   }
   const result = missions.postAndAcceptAuthoredOffer(offer);
   if (!result || result.ok !== true || result.reused) {

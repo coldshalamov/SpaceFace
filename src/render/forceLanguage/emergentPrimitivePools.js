@@ -45,8 +45,9 @@ const REACTIVE_FOLDS = /* glsl */`
 vec3 reactiveFolds(vec2 q,float seed,float clock) {
   float feedA=q.y-0.22-0.24*sin(q.x*4.4-clock*1.27+seed);
   float feedB=q.y+0.24+0.29*sin(q.x*3.7+clock*0.93-seed*0.7);
-  float foldA=exp(-feedA*feedA/(0.14*0.14));
-  float foldB=exp(-feedB*feedB/(0.18*0.18));
+  // A 56 WU field carries ~3–4 WU wide wet strands, not 20 WU foam hoses.
+  float foldA=exp(-feedA*feedA/(0.030*0.030));
+  float foldB=exp(-feedB*feedB/(0.038*0.038));
   float encounter=foldA*foldB*smoothstep(0.35,1.15,clock);
   return vec3(foldA,foldB,encounter);
 }
@@ -356,8 +357,8 @@ function material(family, uniforms) {
   });
   const mat=new THREE.MeshPhysicalMaterial({
     name:family===2?'emergent-reactive-deposit':'emergent-optical-splinters',
-    color:family===2?0x326f59:0x9bc9d0,roughness:family===2?0.24:0.12,
-    metalness:family===2?0.18:0.24,clearcoat:0.8,clearcoatRoughness:0.15,
+    color:family===2?0x254c3e:0x9bc9d0,roughness:family===2?0.46:0.12,
+    metalness:family===2?0.12:0.24,clearcoat:family===2?0.42:0.8,clearcoatRoughness:0.15,
     transparent:false,depthWrite:true,toneMapped:false,
   });
   mat.defines={...mat.defines,FAMILY:family};
@@ -396,18 +397,22 @@ function material(family, uniforms) {
       vec2 q=vec2(cos(vSurface.y),sin(vSurface.y))*vSurface.x;
       vec3 folds=reactiveFolds(q,vResponse.x,transport);
       float edgePixel=max(fwidth(vSurface.x)*0.8,0.0015);
-      float boundary=smoothstep(0.65-edgePixel,0.92+edgePixel,vSurface.x)*(1.0-smoothstep(0.94-edgePixel,1.0+edgePixel,vSurface.x));
+      float boundary=smoothstep(0.924-edgePixel,0.934+edgePixel,vSurface.x)*(1.0-smoothstep(0.947-edgePixel,0.957+edgePixel,vSurface.x));
       float interior=1.0-smoothstep(0.75,0.97,vSurface.x);
+      // Two wet deposited ridges and a broken lip leave open space between them. A full
+      // opaque disc made the whole force footprint a screen-filling green occluder.
+      float lip=boundary*(0.45+0.55*sin(vSurface.y*5.0+vResponse.x));
+      if(vSurface.z>0.5 || (max(folds.x,folds.y)<0.40 && lip<0.45)) discard;
       float chargeA=opticalPulseAA(q.x*7.2-transport*3.1+vResponse.x,0.46);
       float chargeB=opticalPulseAA(q.x*6.1+transport*2.0-vResponse.x,0.38);
       float creaseA=pow(folds.x,3.0)*chargeA,creaseB=pow(folds.y,3.0)*chargeB;
       float reaction=folds.z*(0.5+0.5*sin(transport*2.7+q.x*4.0));
       diffuseColor.rgb*=0.52+folds.x*0.26+folds.y*0.20;
-      totalEmissiveRadiance+=vec3(0.025,0.12,0.065)*(folds.x+folds.y)*interior;
-      totalEmissiveRadiance+=(vec3(0.20,2.9,1.35)*creaseA+vec3(0.12,1.35,2.1)*creaseB
-        +vec3(2.4,2.8,0.62)*reaction)*interior*uFlash*vResponse.z;
-      totalEmissiveRadiance+=vec3(0.06,0.58,0.29)*boundary*(0.16+folds.x*0.22+folds.y*0.2)*uFlash*vResponse.z;
-      totalEmissiveRadiance+=vec3(0.04,0.42,0.21)*(formationEdge*0.8+breakingEdge*0.24)*uFlash;
+      totalEmissiveRadiance+=vec3(0.006,0.025,0.013)*(folds.x+folds.y)*interior;
+      totalEmissiveRadiance+=(vec3(0.04,0.64,0.30)*creaseA+vec3(0.025,0.30,0.47)*creaseB
+        +vec3(0.52,0.62,0.14)*reaction)*interior*uFlash*vResponse.z;
+      totalEmissiveRadiance+=vec3(0.015,0.14,0.07)*boundary*(0.16+folds.x*0.22+folds.y*0.2)*uFlash*vResponse.z;
+      totalEmissiveRadiance+=vec3(0.01,0.10,0.05)*(formationEdge*0.8+breakingEdge*0.24)*uFlash;
       `:`
       vec3 spectral=0.5+0.5*cos(vec3(0.0,2.1,4.2)+opticalEdge*8.0+vSurface.z*1.7+vResponse.x);
       float face=floor(min(vSurface.x,0.999)*8.0);
@@ -422,7 +427,7 @@ function material(family, uniforms) {
       `}
     `);
   };
-  mat.customProgramCacheKey=()=>`emergent-structure-${family}-reactive-folds-v4`;
+  mat.customProgramCacheKey=()=>`emergent-structure-${family}-reactive-folds-v6`;
   return mat;
 }
 
@@ -538,7 +543,13 @@ export function createEmergentPrimitivePools() {
           map(x2,z2,toLocal);const dx=local.x-ax,dz=local.z-az,len=Math.hypot(dx,dz),width=Math.min(3,Math.max(0.85,len*0.055));
           position.set((ax+local.x)*0.5,0.5,(az+local.z)*0.5);scaleVec.set(len,width,width);
           quaternion.setFromAxisAngle(up,-Math.atan2(dz,dx));
-        } else {position.set(ax,family===3?0.6:0.2,az);scaleVec.set(extent,extent,extent);quaternion.setFromAxisAngle(up,-yaw);}
+        } else {
+          position.set(ax,family===3?0.6:0.2,az);
+          // The viscosity radius is a horizontal force footprint, not the height of a
+          // mountain. Preserve its reach while keeping the moving wet crests below hulls.
+          scaleVec.set(extent,family===2?Math.min(5,extent*0.10):extent,extent);
+          quaternion.setFromAxisAngle(up,-yaw);
+        }
         // Burst on admission of a new active packet. A thermal ray republishes overlapping
         // receipts every tick; while this family remains powered those are not new ignitions.
         // Saturation favors existing parcels and caps all current/pressure residue at 96.

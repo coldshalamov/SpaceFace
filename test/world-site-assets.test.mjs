@@ -116,8 +116,12 @@ function assetMetadata(json = {}) {
 }
 
 function nodeSemanticRole(node = {}) {
+  // assetLoader reads extras.spaceface.role (the Second Measure sockets). Older
+  // places still stamp semanticRole / spaceface.socketRole.
+  const spaceface = node.extras?.spaceface;
   return node.extras?.['spaceface.socketRole']
-    || node.extras?.spaceface?.semanticRole
+    || spaceface?.role
+    || spaceface?.semanticRole
     || node.extras?.['spaceface.semanticRole']
     || null;
 }

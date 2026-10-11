@@ -1132,7 +1132,10 @@ export const impulseCharges = {
     if (player.flags && player.flags.docked) return;
     if (state.ui && state.ui.screenStack && state.ui.screenStack.length > 0) return;
 
-    const trap = repulsionTrapFitted(state);
+    // A fitted Repulsion Trap adds a verb: a plain throw is still the aimed sticky plate, and
+    // throwing while braking lays the trap on the wake. Capacity, debit and arming are shared.
+    const braking = !!(actions.brake || state.input.brake || Number(state.input.moveZ) < -0.5);
+    const trap = braking && repulsionTrapFitted(state);
     const chargeId = trap ? 'charge_repulsion_trap' : 'charge_standard';
     const def = chargeDef(chargeId);
     const have = Number(state.player && state.player.cargo && state.player.cargo.items
@@ -1150,8 +1153,7 @@ export const impulseCharges = {
     }
     rt.debitedThrowTick = state.tick;
 
-    const aftDrop = bombPropulsionAvailable(state)
-      && !!(actions.brake || state.input.brake || Number(state.input.moveZ) < -0.5);
+    const aftDrop = bombPropulsionAvailable(state) && braking;
     // Escape traps go behind the actual flight path, even while the guns aim into the chase.
     const heading = Math.hypot(player.vel.x, player.vel.z) > 12
       ? Math.atan2(player.vel.z, player.vel.x) : (player.rot || 0);
@@ -1434,7 +1436,11 @@ export const impulseCharges = {
       // Preserve earned anchor/swing amplification on scenery too. A fixed
       // reference impulse erased the combo before the body ever felt it.
       const environmentImpulse = impulse > 0 ? 1280 * magnitude / impulse : 0;
-      const accepted = this._applyBlastImpulse(ent, dirX * magnitude, dirZ * magnitude, state, ownerId, opts.chargeId, propulsionOwner, environmentImpulse);
+      // 1f864d1ea budgets hostile shoves so a swarm cannot take the helm. An owned
+      // charge that shoves its owner is the same deliberate launch as an aft-drop
+      // (Kickstart / Leave With It); it stays outside that budget.
+      const selfLaunch = ent.id === ownerId && ent.id === state.playerId;
+      const accepted = this._applyBlastImpulse(ent, dirX * magnitude, dirZ * magnitude, state, ownerId, opts.chargeId, propulsionOwner || selfLaunch, environmentImpulse);
       if (accepted) {
         hits.push(ent.id);
         considerImpulseShove(shoves, ent.id, dirX, dirZ, magnitude);

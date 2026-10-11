@@ -11,6 +11,7 @@ import { ATTACHMENT_DEFS } from '../src/data/combatDefs.js';
 import {
   ORIGIN_PHYSICAL_IDENTITIES,
   ORIGIN_ROLE_KITS,
+  careerStarterModuleIds,
 } from '../src/careers/origins/careerOriginContracts.js';
 import { MODULES } from '../src/data/modules.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
@@ -103,7 +104,8 @@ for (const careerId of CAREERS) {
   assert.equal(entry.careerId, careerId);
   assert.equal(entry.verb, identity.verb);
   assert.equal(identity.loadout, kit, `${careerId}: physical origin uses canonical role kit`);
-  assert.deepEqual([...entry.fittings], [...NEW_GAME.fittedModules, kit.defId]);
+  // 38e82ae47: the kit replaces the drill amp. The id list is the wearable fit.
+  assert.deepEqual([...entry.fittings], [...careerStarterModuleIds(careerId)]);
   assert.deepEqual(entry.acquisition, {
     source: 'career_origin', careerId, moduleId: kit.defId,
   });
@@ -137,7 +139,8 @@ for (const careerId of CAREERS) {
     moduleId: entry.acquisition.moduleId,
   });
   assert.equal(preview.ok, true, `${entry.id}: engineering preview finds its utility slot`);
-  assert.equal(preview.mode, 'install');
+  // The generalist already wears the drill amp, so the career kit replaces that slot.
+  assert.equal(preview.mode, 'replace');
 }
 pass('module existence, slot-size compatibility, and mutual exclusion');
 
@@ -167,13 +170,19 @@ for (const careerId of CAREERS) {
     afterFittings: placedById.get(entry.id),
   });
   assert.equal(delta.ok, true);
-  assert.ok(delta.rows.some((row) => Math.abs(row.delta) > 1e-6), `${careerId}: truthful visible delta`);
+  // Flight rows move for the uplink and the plate. The winch shares the drill amp's
+  // mass and draw, so its delta is the Massline multipliers the preview metric set
+  // does not list; the attachment assertions below consume those.
+  const rowDelta = delta.rows.some((row) => Math.abs(row.delta) > 1e-6);
+  const lineDelta = Math.abs(derived.tetherReelRateMult - baseDerived.tetherReelRateMult) > 1e-6
+    || Math.abs(derived.tetherSpoolMult - baseDerived.tetherSpoolMult) > 1e-6;
+  assert.ok(rowDelta || lineDelta, `${careerId}: truthful capability delta`);
 }
 const haulerDerived = derivedById.get('starter_hauler');
 const hunterDerived = derivedById.get('starter_hunter');
 const prospectorDerived = derivedById.get('starter_prospector');
-assert.ok(baseDerived.maxSpeed > haulerDerived.maxSpeed && baseDerived.turnRate > haulerDerived.turnRate,
-  'open generalist utility slot preserves the Hitch baseline handling benefit');
+assert.ok(haulerDerived.maxSpeed > baseDerived.maxSpeed && haulerDerived.turnRate > baseDerived.turnRate,
+  'ea6a87ab3: the drill amp is heavier than the market uplink, so the hauler keeps the handling edge');
 assert.ok(haulerDerived.maxSpeed > hunterDerived.maxSpeed && haulerDerived.maxSpeed > prospectorDerived.maxSpeed,
   'light hauler role kit preserves the best speed of the three career fits');
 assert.ok(haulerDerived.turnRate > hunterDerived.turnRate && haulerDerived.turnRate > prospectorDerived.turnRate,

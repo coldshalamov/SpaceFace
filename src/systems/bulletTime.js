@@ -201,7 +201,9 @@ export const bulletTime = {
       // Small zoom kiss when the chase camera owns composition (pushZoom is ignored while a
       // director pair/gate mode owns the frame — exactly the behavior we want).
       const ctrl = state.render && state.render.cameraCtrl;
-      if (ctrl && typeof ctrl.pushZoom === 'function') ctrl.pushZoom(-0.05, 0.3);
+      const reducedMotion = state.settings?.video?.motionReduce
+        || state.settings?.accessibility?.motionPreference === 'reduce';
+      if (!reducedMotion && ctrl && typeof ctrl.pushZoom === 'function') ctrl.pushZoom(-0.05, 0.3);
     }
   },
 

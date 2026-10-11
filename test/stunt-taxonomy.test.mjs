@@ -1,17 +1,19 @@
-// PQ-146 revision 2 taxonomy contract. Sixteen recognitions: thirteen primaries across six
+// PQ-146 revision 2 taxonomy contract. Seventeen recognitions: fourteen primaries across six
 // families, two modifiers and one bridge. Recognition reads physical evidence only.
+// THE WORLD ANSWERS T6 deliberately added Ore Shotgun (debris, uncommon) - the one new id; the
+// other variants (bolas_pair, own_wingman) are readings of existing ids, not taxonomy rows.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { TRICK_DEFINITIONS, KNOWN_TRICK_IDS, STUNT_SCHEMA_VERSION, classifyStuntEvidence, createStuntDetector } from '../src/combat/stuntTaxonomy.js';
 import { EVIDENCE_REVISION } from '../src/combat/stuntEvidence.js';
 import { PRIMARY_SCORING } from '../src/combat/stuntScoring.js';
 
-const PRIMARIES = ['bolas','wrecking_ball','clothesline','tow_kill','rock_discovery','well_golf','dead_mans_mass','bank_job','return_to_sender','kickstart','needle_thread','one_two','slingshot_golf'];
+const PRIMARIES = ['bolas','wrecking_ball','clothesline','tow_kill','rock_discovery','well_golf','dead_mans_mass','bank_job','return_to_sender','kickstart','needle_thread','one_two','slingshot_golf','ore_shotgun'];
 const FAMILIES = ['tether','impact','field','debris','rebound','escape'];
 
-test('sixteen recognitions: thirteen primaries in six families, two modifiers, one bridge, rarity bases 50/90/140/200', () => {
+test('seventeen recognitions: fourteen primaries in six families, two modifiers, one bridge, rarity bases 50/90/140/200', () => {
   assert.equal(STUNT_SCHEMA_VERSION, 2);
-  assert.equal(KNOWN_TRICK_IDS.length, 16);
+  assert.equal(KNOWN_TRICK_IDS.length, 17);
   assert.deepEqual(KNOWN_TRICK_IDS.filter(id => TRICK_DEFINITIONS[id].role === 'primary').sort(), [...PRIMARIES].sort());
   assert.deepEqual(KNOWN_TRICK_IDS.filter(id => TRICK_DEFINITIONS[id].role === 'modifier').sort(), ['collateral','razor_release']);
   assert.deepEqual(KNOWN_TRICK_IDS.filter(id => TRICK_DEFINITIONS[id].role === 'bridge'), ['near_miss']);

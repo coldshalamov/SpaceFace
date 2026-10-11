@@ -3,8 +3,8 @@
 // The staged run is an ordinary opening-sector route measured on this seed (seed 4242):
 // station_helios (trade hub) -> station_coalition (military) in cmdty_provisions on the starter
 // Hitch, sold in 25-u tranches with the market relaxing between them. Measured nets through the
-// real trade owners: full 250-u hold (175 t aboard) nets +2,207 cr at -69% thrust; the 50-u
-// manifest nets +1,354 cr at -28% thrust. Heavy buys money and loses the escape window — the
+// real trade owners: full 250-u hold (175 t aboard) nets +2,207 cr at -67% thrust; the 50-u
+// manifest nets +1,354 cr at -24% thrust. Heavy buys money and loses the escape window — the
 // packet's outcome, pinned. Every clause runs through the live owners:
 //   * money      — economy.execute buy/sell (credits writer + cargo single writer addCargo)
 //   * mass       — cargo.usedMass -> ships.getDerivedStats -> MASS_LOAD_LAW (the one carrier)
@@ -174,12 +174,12 @@ test('the route preflight prints the load mass and the thrust the mass law takes
   const trades = computeBestTrades(state, HERE);
   const heavy = trades.find((t) => t.cmdtyId === RUN_GOOD && t.destStation === THERE);
   assert.ok(heavy, 'the measured heavy run must be among the routes the market preflights');
-  // Measured on this seed: 250 u of provisions = 175 t over the 18 t hull -> -69% thrust.
+  // Measured on this seed: 250 u of provisions = 175 t on the Hitch (designMass 35) -> -67% thrust.
   assert.equal(heavy.loadUnits, HEAVY_UNITS);
   assert.equal(heavy.loadMassT, 175);
-  assert.equal(heavy.loadThrustPct, 69);
+  assert.equal(heavy.loadThrustPct, 67);
   const card = formatRouteCard(heavy);
-  assert.match(card.sub, /\+175 t → -69% thrust/);
+  assert.match(card.sub, /\+175 t → -67% thrust/);
   // The printed number is the flown number: the same load factor the loaded hull flies with.
   const loaded = makeShipEntitySpec(KESTREL.id, { player: {
     ...state.player,
@@ -202,7 +202,7 @@ test('the staged heavy run beats the light manifest on credits through the real 
   assert.ok(lightRun.net > 0, `the light run must be profitable (net ${lightRun.net})`);
   assert.ok(heavyRun.net > lightRun.net,
     `full hold must out-earn the lighter manifest of the same run: ${heavyRun.net} vs ${lightRun.net}`);
-  assert.equal(heavyRun.thrustPct, 69, 'the heavy money rides the heavy load');
+  assert.equal(heavyRun.thrustPct, 67, 'the heavy money rides the heavy load');
   // The heavy hold really rode the honest carrier: cargo's mass cache holds 175 t.
   const reloaded = bootState();
   const inst = bootEconomy(reloaded);

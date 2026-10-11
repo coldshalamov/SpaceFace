@@ -35,6 +35,7 @@ import { wreckMissionById } from '../data/wreckMissions.js';
 import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { hasContractsDesk } from '../data/missions.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
+import { onPodEjected, sweepStalePodHunts, tickPodHunts } from '../ai/podHunt.js';
 import { rememberMoralDebt } from './moralMemory.js';
 import { playerWreckMarker } from './aftermathWrecks.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
@@ -65,6 +66,12 @@ export const CAUSAL_EJECT_CHANCE_PCT = 42;
 export const CAUSAL_HANDOFF_RANGE_WU = 90;
 /** Ambient rescue hull auto-claims an unattended pod inside this radius. */
 export const CAUSAL_RESCUE_HULL_CLAIM_WU = 70;
+/**
+ * The player "noticed" a pod when their hull came this close while it was live: the existing pod
+ * rescue radius, so a pod the player could have answered is a pod they can be said to have left.
+ * The mayday itself is a global bark, so a hail alone proves nothing about where the player was.
+ */
+export const CAUSAL_POD_NOTICE_WU = RESCUE_DISTANCE_WU;
 const CAUSAL_RESCUE_REP_DELTA = 3;
 /** Salvage fee paid to the player who tows a mayday pod to a lawful handoff (grant intent). */
 const CAUSAL_RESCUE_SALVAGE_FEE_CR = 420;
@@ -521,6 +528,14 @@ export const survivorPod = {
       // spent pod re-promote. Causal pods re-adopt from entity stamps inside _tickCausal.
       this._reconcilePromoted(this._state);
       this._rematerializePlayerWreckPod();
+      // The pirate errand book is never serialized: release any pod-hunt stamp that rode an ai-bag.
+      sweepStalePodHunts(this._state, ensureState(this._state));
+    };
+    // C7 (THE WORLD ANSWERS): a wounded pirate near a freshly ejected pod breaks off to take it.
+    this._onPodEjectedForHunt = (p) => {
+      const state = this._state;
+      if (!state || causalSurvivorPodsGatedOut(state)) return;
+      onPodEjected(this._podHuntCtx(state), p);
     };
     if (this._bus && this._bus.on) {
       this._bus.on('salvage:placed', this._onPlaced);
@@ -547,7 +562,23 @@ export const survivorPod = {
       this._bus.on('entity:killed', this._onKilled);
       this._bus.on('player:death', this._onPlayerDeath);
       this._bus.on('tether:latched', this._onLatched);
+      this._bus.on('survivorPod:ejected', this._onPodEjectedForHunt);
     }
+  },
+
+  // The pod owner's side of the pirate pod hunt (src/ai/podHunt.js): predicates it must not
+  // import (circularity) and the one write it cannot make — resolving the pod as captured.
+  _podHuntCtx(state) {
+    const own = ensureState(state);
+    return {
+      state,
+      own,
+      bus: this._bus,
+      helpers: this.helpers,
+      isHuntablePod: (pod) => isCausalSurvivorPod(pod) && !isPlayerWreckPod(pod),
+      playerLatchedTo: (podId) => playerLatchedTo(state, podId),
+      capture: (rec, pod, detail) => this._resolveCausal(state, own, rec, pod, 'captured', detail),
+    };
   },
 
   newGame() {
@@ -627,6 +658,14 @@ export const survivorPod = {
 
     // Causal path: re-adopt + settle + TTL.
     this._tickCausal(state, own);
+    // C7: steer wounded pirates onto adrift pods (zero work while no pod and no errand is live).
+    let livePods = false;
+    for (const _id in own.causal.byEntityId) { livePods = true; break; }
+    if (own.hunt || livePods) {
+      if (!causalSurvivorPodsGatedOut(state) && (!state.mode || state.mode === 'flight')) {
+        tickPodHunts(this._podHuntCtx(state));
+      }
+    }
     this._readoptPlayerWreckPod(state);
   },
 
@@ -942,6 +981,7 @@ export const survivorPod = {
           phase: stamp.phase || 'adrift',
           ejectedAt: stamp.ejectedAt || 0,
           expireAt: stamp.expireAt || ((Number(state.simTime) || 0) + CAUSAL_POD_TTL_S),
+          playerNoticedAt: Number.isFinite(stamp.playerNoticedAt) ? stamp.playerNoticedAt : null,
           resolved: false,
         };
       }
@@ -964,6 +1004,11 @@ export const survivorPod = {
       if (!entity || entity.alive === false || !isCausalSurvivorPod(entity) || isPlayerWreckPod(entity)) {
         delete own.causal.byEntityId[id];
         continue;
+      }
+      // The player came within hail of a live pod: the one fact that lets its expiry be their debt.
+      if (rec.playerNoticedAt == null && player && player.alive !== false && player.pos && entity.pos
+        && distance2(player.pos, entity.pos) <= CAUSAL_POD_NOTICE_WU * CAUSAL_POD_NOTICE_WU) {
+        rec.playerNoticedAt = now;
       }
       // Keep entity annotation in sync for save/Continue.
       entity.data.survivorPodCausal = { ...rec, entityId: entity.id };
@@ -1050,9 +1095,19 @@ export const survivorPod = {
       entityId,
       victimId: rec.victimId,
       sectorId: rec.sectorId,
+      // The pod's own faction — heat reads it to decide whether answering this mayday was lawful.
+      factionId: rec.factionId || null,
       t: rec.resolvedAt,
       ...detail,
     };
+    // Stamped only on a rescue the player towed in (heat's gate for the rescue cooling step).
+    if (outcome === 'rescued' && causalRescuePlayerAttributed(detail)) receipt.playerAnswered = true;
+    // Stamped only on an abandonment the player plausibly witnessed (the Record's gate; a pod that
+    // timed out with the player never within hail is not their deed).
+    if (outcome === 'abandoned' && Number.isFinite(rec.playerNoticedAt)) receipt.playerLeftIt = true;
+    // Stamped only on an abandonment the player was close enough to answer (the Record's gate:
+    // a pod that died with the player never within hail is the world's loss, not their deed).
+    if (outcome === 'abandoned' && Number.isFinite(rec.playerNoticedAt)) receipt.playerLeftIt = true;
     if (receipt.pos == null && posSrc && Number.isFinite(posSrc.x) && Number.isFinite(posSrc.z)) {
       receipt.pos = {
         x: posSrc.x,
@@ -1074,16 +1129,31 @@ export const survivorPod = {
       ? 'rescued_survivors'
       : outcome === 'ransomed'
         ? 'ransomed_survivors'
-        : 'abandoned_survivors';
-    rememberMoralDebt(state, {
-      id: rec.memoryId || `survivor:${entityId}`,
-      name: 'Survivor Pod',
-      cause,
-      factionId: rec.factionId || CONCORD_FACTION_ID,
-      archetype: 'survivor_pod',
-      t: rec.resolvedAt,
-      source: `survivorPod:${outcome}`,
-    });
+        // A pirate took the pod: not the same memory as leaving it to drift and die.
+        : outcome === 'captured'
+          ? 'captured_survivors'
+          : outcome === 'abandoned' ? 'abandoned_survivors' : null;
+    // A pod that ran out its clock with the player never within hail of it is not their debt:
+    // only a pod they plausibly left behind is remembered as abandoned.
+    const playerLeftIt = outcome !== 'abandoned' || Number.isFinite(rec.playerNoticedAt);
+    if (cause && playerLeftIt) {
+      const debt = {
+        id: rec.memoryId || `survivor:${entityId}`,
+        name: 'Survivor Pod',
+        cause,
+        factionId: rec.factionId || CONCORD_FACTION_ID,
+        archetype: 'survivor_pod',
+        t: rec.resolvedAt,
+        source: `survivorPod:${outcome}`,
+      };
+      // WHO took them: carried from the capture receipt (podHunt hands the hunter's id and faction).
+      if (outcome === 'captured') {
+        if (receipt.captorFactionId) debt.captorFactionId = receipt.captorFactionId;
+        if (receipt.captorId != null) debt.captorId = receipt.captorId;
+      }
+      if (outcome === 'rescued' && receipt.playerAnswered === true) debt.playerAnswered = true;
+      rememberMoralDebt(state, debt);
+    }
 
     if (outcome === 'rescued' && entityId != null && this._bus && typeof this._bus.emit === 'function') {
       const factionId = detail.authorityFactionId || CONCORD_FACTION_ID;
@@ -1473,7 +1543,9 @@ export const survivorPod = {
       if (this._onKilled) this._bus.off('entity:killed', this._onKilled);
       if (this._onPlayerDeath) this._bus.off('player:death', this._onPlayerDeath);
       if (this._onLatched) this._bus.off('tether:latched', this._onLatched);
+      if (this._onPodEjectedForHunt) this._bus.off('survivorPod:ejected', this._onPodEjectedForHunt);
     }
+    this._onPodEjectedForHunt = null;
     this._onPlaced = null;
     this._onSectorEnter = null;
     this._onMissionOffered = null;

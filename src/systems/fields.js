@@ -70,7 +70,16 @@ const FIELD_LOOSE_TYPES = new Set(['asteroid', 'pickup', 'wreck', 'payload', 'mi
 // vacuums in ("vacuum the loot"), and debris, payloads and rocks still funnel the way the
 // Intake/Tideline reads and the release predictor were built around. It also matches the enemy
 // anchor snare's own words: "the source hull is excluded; escorts and the player are not."
-export const FIELD_VELOCITY_TERM_TYPES = Object.freeze(new Set(['ship', 'drone', 'asteroid', 'wreck', 'pickup', 'payload', 'mine', 'cargo_pod', 'debris']));
+export const FIELD_VELOCITY_TERM_TYPES = Object.freeze(new Set(['ship', 'drone']));
+// THE WORLD ANSWERS C5 — a PLAYER well that drags a loaded route hauler off the line it was
+// flying is a fact the world reads (traffic bunches the escorts, the destination's trade dips).
+// The measure is how far the hull sits from its own dead-reckoned line since it entered the well
+// (entry position + entry velocity × time): honest for a cruising hauler and a parked one alike.
+// One `well:haulerDragged` receipt per (well, hauler) pair per well lifetime.
+export const WELL_HAULER_DRAG_THRESHOLD = 45;   // WU off the pre-well line before the receipt fires
+export const WELL_HAULER_DRAG_GAP_TICKS = 30;   // a pair unseen this long starts a fresh measure
+export const WELL_HAULER_DRAG_ROLES = Object.freeze(new Set(['hauler', 'tanker', 'arclight', 'ore_carrier']));
+const WELL_HAULER_DRAG_FIRED_CAP = 512;
 const MASS_STATE_TYPES = new Set(['ship', 'drone', 'payload', 'asteroid', 'wreck', 'pickup']);
 const MASS_STATE_DURATION_TICKS = 90;
 const MASS_STATE_REFRESH_LEAD_TICKS = 30;
@@ -144,6 +153,23 @@ function anyNpcFieldRoleInterest(state) {
 }
 
 function finite(value, fallback = 0) { return Number.isFinite(value) ? value : fallback; }
+
+/**
+ * Read-only: the station a traffic hull is bound for. Traffic's freighter record carries the
+ * station ENTITY id; the receipt names the stable `data.stationId`. Receipt-time only (rare).
+ */
+function haulerDestinationStationId(state, hull) {
+  const freighters = state && state.traffic && state.traffic.freighters;
+  if (!Array.isArray(freighters) || !state.entities || typeof state.entities.get !== 'function') return null;
+  for (let i = 0; i < freighters.length; i++) {
+    const row = freighters[i];
+    if (!row || row.id !== hull.id) continue;
+    const station = row.targetId != null ? state.entities.get(row.targetId) : null;
+    const id = station && station.data && station.data.stationId;
+    return typeof id === 'string' && id ? id : null;
+  }
+  return null;
+}
 function positive(value, fallback) { return Number.isFinite(value) && value > 0 ? value : fallback; }
 function nowOf(state) { return Number.isFinite(state.simTime) ? state.simTime : state.tick / 60; }
 
@@ -461,6 +487,8 @@ export const fields = {
     this._wellScratch = { ax: 0, az: 0 };
     this._wellAccum = new WeakMap();
     this._wellBodies = new Set();
+    this._haulerDrag = new WeakMap();
+    this._haulerDragFired = new Set();
     this._shoveAccum = new WeakMap();
     // PQ-137.09 grind ledger: pairKey -> { aId, bId, fieldId, ticks, lastTick, announced }
     this._grindPairs = new Map();
@@ -1583,6 +1611,8 @@ export const fields = {
     if (this._insideRingPrev) this._insideRingPrev.clear();
     this._wellAccum = new WeakMap();
     this._wellBodies = new Set();
+    this._haulerDrag = new WeakMap();
+    if (this._haulerDragFired) this._haulerDragFired.clear();
     if (this._pinWatch) this._pinWatch.length = 0;
     this._shoveAccum = new WeakMap();
     if (this._pinWatchSeen) this._pinWatchSeen.clear();
@@ -2128,6 +2158,58 @@ export const fields = {
     if (this._flingPairs) this._flingPairs.clear();
   },
 
+  /**
+   * THE WORLD ANSWERS C5 — a player-owned well dragging a loaded route hauler off its line.
+   * Hot path (once per well-claimed body per tick): the per-hull measure lives in a WeakMap and is
+   * reused in place; the only allocations are the first-contact record and the single receipt.
+   * Traffic (`well:haulerDragged` listener) owns the escorts, the bark, and the lane impulse.
+   */
+  _noteWellHaulerDrag(entity, well, state) {
+    if (!entity || !well || !entity.pos || entity.type !== 'ship') return;
+    if (well.ownerId == null || well.ownerId !== state.playerId) return;
+    const data = entity.data;
+    if (!data || !WELL_HAULER_DRAG_ROLES.has(data.trafficRole)) return;
+    const manifest = data.cargoManifest;
+    if (!(manifest && manifest.totalQty > 0)) return;
+    const tick = state.tick | 0;
+    const now = Number.isFinite(state.simTime) ? state.simTime : tick / 60;
+    let rec = this._haulerDrag.get(entity);
+    if (!rec || rec.fieldId !== well.id || tick - rec.lastTick > WELL_HAULER_DRAG_GAP_TICKS) {
+      if (rec && rec.fieldId === well.id && rec.fired) { rec.lastTick = tick; return; }
+      rec = {
+        fieldId: well.id, t0: now, x0: entity.pos.x, z0: entity.pos.z,
+        vx: finite(entity.vel && entity.vel.x), vz: finite(entity.vel && entity.vel.z),
+        lastTick: tick, fired: false,
+      };
+      this._haulerDrag.set(entity, rec);
+      return;
+    }
+    rec.lastTick = tick;
+    if (rec.fired) return;
+    const dt = now - rec.t0;
+    const dx = entity.pos.x - (rec.x0 + rec.vx * dt);
+    const dz = entity.pos.z - (rec.z0 + rec.vz * dt);
+    const deflection = Math.hypot(dx, dz);
+    if (!(deflection >= WELL_HAULER_DRAG_THRESHOLD)) return;
+    rec.fired = true;
+    const key = `${well.id}|${entity.id}`;
+    const fired = this._haulerDragFired;
+    if (fired.has(key)) return;
+    if (fired.size >= WELL_HAULER_DRAG_FIRED_CAP) fired.clear();
+    fired.add(key);
+    this.bus.emit('well:haulerDragged', {
+      schemaVersion: 1,
+      wellId: well.id,
+      actorId: well.ownerId,
+      haulerId: entity.id,
+      factionId: data.factionId != null ? data.factionId : (entity.factionId != null ? entity.factionId : null),
+      destStationId: haulerDestinationStationId(state, entity),
+      sectorId: (state.world && state.world.currentSectorId) || null,
+      deflectionWu: Math.round(deflection * 100) / 100,
+      tick,
+    });
+  },
+
   _noteWellClusterBody(entity, fieldsList, profile, accel, state) {
     if (!entity || !entity.pos) return;
     if (entity.type === 'pickup' || entity.type === 'payload' || entity.type === 'wreck') {
@@ -2149,6 +2231,7 @@ export const fields = {
       break;
     }
     if (!well) return;
+    this._noteWellHaulerDrag(entity, well, state);
     const rt = ensureRuntime(state);
     if (!rt.cluster || rt.cluster.actionTick == null) {
       this._beginClusterWatch(state, rt, well.id, well.ownerId);

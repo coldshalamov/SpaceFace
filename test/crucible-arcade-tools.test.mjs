@@ -31,7 +31,7 @@ test('escape traps drop behind motion, consume cargo, arm before triggering, and
   player.vel.z = 100; // Moving sideways to nose and aiming elsewhere.
   const foe = entity(2, 0, -30);
   const state = { simTime: 0, tick: 0, playerId: 1, entities: new Map([[1, player], [2, foe]]),
-    entityList: [player, foe], input: { aimWorld: { x: 100, z: 0 }, actions: { chargeThrow: true } },
+    entityList: [player, foe], input: { aimWorld: { x: 100, z: 0 }, actions: { chargeThrow: true, brake: true } },
     ui: { screenStack: [] }, player: { activeShipIndex: 0,
       ownedShips: [{ fittings: ['mod_repulsion_trap_s'] }],
       cargo: { items: { cmdty_impulse_charge: 2 }, usedVolume: 4, usedMass: 4, capVolume: 40, capMass: 60 } } };

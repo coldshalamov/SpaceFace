@@ -29,6 +29,30 @@ export const ADVENTURE_SPEED_CONTRACTS = Object.freeze([
     initialWindowS: 16, referenceSpeed: 250, gateGraceS: 1.3, boostGateIndex: 2,
     failureReason: 'speed_passage_expired', failureText: 'The safe passage expired. Return to the Veil berth to request another rescue window.',
   }),
+  Object.freeze({
+    id: 'speed_helios_cold_chain', levelId: 'level_textile_outbound', kind: 'thermal',
+    title: 'The Cold Chain', reward_cr: 2400, routeGateCount: 8,
+    brief: 'Carry eight sealed medical packs through the belt. Radiation arrives from the west: shelter on the east side of rocks, wrecks or stations to cool the load. Boost and travel burn heat it faster. Heat above 75 damages quality and spoils real packs; deliver what survives before the corridor closes.',
+    summary: 'Medical delivery. Trade a fast exposed burn for cooling behind solid cover; temperature and pack quality are shown in flight.',
+    initialWindowS: 20, referenceSpeed: 100, gateGraceS: 4,
+    failureReason: 'speed_cold_chain_expired', failureText: 'The medical corridor closed. The sealed load has been recalled; Helios can issue a fresh delivery.',
+  }),
+  Object.freeze({
+    id: 'speed_tethys_lifeline', levelId: 'level_junction_return', kind: 'rescue',
+    title: 'Lifeline Through the Queue', reward_cr: 2800, routeGateCount: 6,
+    brief: 'A marked evacuation pod waits before the first gate. Attach the Massline and physically tow the pod through every marker. Its life-support clock starts at the first crossing. Bring both pod and ship through the final handoff below 65 wu/s; flying the route alone earns nothing.',
+    summary: 'Tow the marked evacuation pod through six gates. Keep the line attached and brake both bodies below 65 wu/s at the final handoff.',
+    initialWindowS: 30, referenceSpeed: 75, gateGraceS: 6, finishSpeedLimit: 65,
+    failureReason: 'speed_lifeline_expired', failureText: 'The pod missed its life-support transfer window. Tethys will dispatch another rescue contract.',
+  }),
+  Object.freeze({
+    id: 'speed_veil_listener', levelId: 'level_veil_ribbon', kind: 'listening',
+    title: 'Run Quiet, Run Deep', reward_cr: 2600, routeGateCount: 8,
+    brief: 'A Corsair listens along the Veil route. Ordinary thrust and coasting stay quiet; boost, travel burn and gunfire build exposure within 1600 wu. At full exposure it hunts with live weapons. Coast beyond 700 wu for eight quiet seconds to lose the search, or fight it. Clear every marker and hand off below 140 wu/s before the window closes.',
+    summary: 'A real listening hunter. Choose quiet thrust and detours or expose yourself with a fast burn; slow below 140 wu/s at handoff.',
+    initialWindowS: 35, referenceSpeed: 95, gateGraceS: 5, finishSpeedLimit: 140,
+    failureReason: 'speed_listener_expired', failureText: 'The quiet transfer window closed. The Veil berth can arrange another run.',
+  }),
 ]);
 
 const BY_ID = new Map(ADVENTURE_SPEED_CONTRACTS.map(row => [row.id, row]));
@@ -42,7 +66,7 @@ export function adventureSpeedOfferFor(id) {
   if (!level || !course) return null;
   // Drop the two closing approach gates. An escape ends across the sector, without demanding a
   // return lap into the place the pilot just escaped. Geometry and terrain remain the real circuit.
-  const gates = course.gates.slice(0, -2).map(gate => ({ x: gate.x, z: gate.z }));
+  const gates = course.gates.slice(0, row.routeGateCount || -2).map(gate => ({ x: gate.x, z: gate.z }));
   const legBudgetsS = [0], gateDeadlinesS = [0];
   let length = 0, time = row.initialWindowS;
   for (let i = 1; i < gates.length; i++) {
@@ -71,13 +95,33 @@ export function adventureSpeedOfferFor(id) {
     nextGate: 0, gridHoldS: 0, raceLease: true,
     gridLine: 'Fly to the start marker. Crossing it begins the timed passage.',
   };
+  if (row.kind === 'thermal') {
+    params.cmdtyId = 'cmdty_medical'; params.qty = 8;
+    params.adventureSpeed.thermal = { units: 8, startTemperature: 20, safeTemperature: 75,
+      exposedHeatPerS: 1.5, burnHeatPerS: 5, coolingPerS: 12, qualityLossPerS: 4,
+      shelterReachWU: 180, radiationDirection: { x: 1, z: 0 } };
+    params.adventureSpeedHint = 'Eight sealed medical packs aboard. Reach the start; east sides of solid cover cool the load.';
+    params.raceLease = false;
+  }
+  if (row.kind === 'rescue') {
+    params.adventureSpeed.rescue = { podMass: 40, podRadius: 9, podHull: 180, minTowedWU: 30 };
+    params.adventureSpeedHint = 'Find the marked evacuation pod before gate 1. Attach the Massline and tow it through the route.';
+    params.raceLease = false;
+  }
+  if (row.kind === 'listening') {
+    params.adventureSpeed.listener = { enemyTypeId: 'corsair_raider', hearingRangeWU: 1600,
+      boostExposurePerS: 40, weaponExposurePerS: 70, quietDecayPerS: 16,
+      loseRangeWU: 700, quietSearchS: 8 };
+    params.adventureSpeedHint = 'Reach the start. Ordinary thrust is quiet; boost and gunfire give the listener your position.';
+    params.raceLease = false;
+  }
   if (Number.isInteger(row.boostGateIndex)) params.boostGateIndex = row.boostGateIndex;
   return {
     id: `offer_${row.id}`, source: ADVENTURE_SPEED_SOURCE, type: 'race',
     stationId: level.stationId, destStationId: level.stationId, destSectorId: level.sectorId,
     title: row.title, brief: row.brief, summary: row.summary,
     reward_cr: row.reward_cr, time_limit_s: 900, duration_s: 900, collateral_cr: 0,
-    riskTier: 0, preloadedCargo: false, distance: Math.round(length), params,
+    riskTier: 0, preloadedCargo: row.kind === 'thermal', distance: Math.round(length), params,
     storyTag: `speed:${row.id}`,
     cause: { tag: 'race', fingerprint: `speed:${row.id}`, levelId: level.id, terrain: level.terrain },
   };

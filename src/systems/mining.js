@@ -947,6 +947,7 @@ export const mining = {
       seamHit: seam.onSeam,
       yieldMult: seam.yieldMult,
       sourceEntityId: minerId,
+      targetId: ast.id,
     });
 
     // Continuous ore delivery (Mining 2.0 feel fix — see design/WORLD_OVERHAUL_2_1.md §Mining).

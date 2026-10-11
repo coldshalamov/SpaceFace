@@ -508,10 +508,14 @@ try {
         const race = st.missions.active.find(m => m.status === 'active' && m.params?.racingContractId);
         return { hull:ship?.defId, sprint:ship?.fittings?.includes('mod_engine_sprint_m'),
           course:race?.params?.courseId, view:st.settings.gameplay.steeringView,
-          saveIsolated:window.SF.registry.get('save')._campaignSaveSuppressed() };
+          saveIsolated:window.SF.registry.get('save')._campaignSaveSuppressed(),
+          onboardingActive:!!st.onboarding?.active, tutorialWaypoint:!!st.nav?.waypoint?.onboarding,
+          tutorialActors:[...st.entities.values()].filter(e => e.alive !== false
+            && (e.data?.onboarding || e.data?.onboardingTraining || e.data?.rescue)).length };
       });
       record('CIRCUIT', circuit.hull === 'ship_wasp' && circuit.sprint
-        && circuit.course === 'circuit_helios_belt' && circuit.view === 'racing' && circuit.saveIsolated,
+        && circuit.course === 'circuit_helios_belt' && circuit.view === 'racing' && circuit.saveIsolated
+        && !circuit.onboardingActive && !circuit.tutorialWaypoint && circuit.tutorialActors === 0,
       JSON.stringify(circuit));
       // The race deliberately suppresses propulsion during its simulation-clock countdown.
       // Wait for the actual release before asking whether flight controls work.
@@ -522,6 +526,27 @@ try {
       }, null, { timeout: 60000 });
     }
     await assertPlayable(page);
+    if (CIRCUIT) {
+      await page.waitForFunction(() => {
+        const st = window.SF.state;
+        const rivals = [...st.entities.values()].filter(e => e.data?.raceOpponent);
+        return rivals.length === 2 && rivals.every(e => e.mesh?.parent && e.mesh.visible);
+      }, null, { timeout: 60000 });
+      const pack = await page.evaluate(() => {
+        const st = window.SF.state;
+        const race = st.missions.active.find(m => m.status === 'active' && m.params?.racingContractId);
+        return { mode: race?.params.raceMode, entrants: race?.params.raceEntrants,
+          anchors: [...st.entities.values()].filter(e => e.data?.raceSetPiece?.kind === 'anchor'
+            && e.alive !== false && e.collides !== false).length,
+          rivals: [...st.entities.values()].filter(e => e.data?.raceOpponent).map(e => ({
+            name: e.data.name, speed: Math.hypot(e.vel?.x || 0, e.vel?.z || 0),
+            assetState: e.mesh?.userData?.authoredAssetState, visible: !!e.mesh?.visible,
+            renderedMeshes: (() => { let n = 0; e.mesh?.traverse(o => { if (o.isMesh && o.visible) n++; }); return n; })(),
+          })) };
+      });
+      record('RIVALS', pack.mode === 'race' && pack.entrants === 3 && pack.rivals.length === 2 && pack.anchors === 2
+        && pack.rivals.every(rival => rival.visible && rival.renderedMeshes > 0 && rival.speed > 1), JSON.stringify(pack));
+    }
 
     // -- 9-12. THE CONTINUE ROUND TRIP -------------------------------------------------------
     // Save, restart the page, load it back, and re-run every playability assertion. This is the

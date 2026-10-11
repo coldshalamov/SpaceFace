@@ -1139,6 +1139,9 @@ function computeDerivedStats(defId, fittings = [], player = null) {
   let magnetRange = 0;
   let lootMagnetRange = 0;
   let masslineHeadId = null;
+  // TOY CHEST T13: a trophy head's higher break ceiling. Only a module that IS a Massline head can
+  // carry it, and heads are mutually exclusive, so this can never raise another head's line.
+  let masslineLoadCapacityMult = 1;
   let swingDrive = false;
   let towFlail = false;
   let phaseBlink = false;
@@ -1251,6 +1254,9 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     // Specialized heads are fitted capabilities, not input modes. Live fitting keeps them mutually
     // exclusive; fixed priority makes malformed/manual data deterministic instead of slot-ordered.
     const candidateHeadId = masslineHeadIdForDef(d);
+    if (candidateHeadId && Number.isFinite(mods.loadCapacityMult) && mods.loadCapacityMult > 1) {
+      masslineLoadCapacityMult = Math.max(masslineLoadCapacityMult, mods.loadCapacityMult);
+    }
     if ((MASSLINE_HEAD_PRIORITY[candidateHeadId] || 0) > (MASSLINE_HEAD_PRIORITY[masslineHeadId] || 0)) {
       masslineHeadId = candidateHeadId;
     }
@@ -1390,7 +1396,7 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     designMass: propulsion.designMass,
     massLoadFactor: propulsion.massLoadFactor,
     mass: totalMass, radius: shipDef.collisionRadius || 14,
-    tetherSpoolMult, tetherReelRateMult, masslineHeadId, magnetRange,
+    tetherSpoolMult, tetherReelRateMult, masslineHeadId, masslineLoadCapacityMult, magnetRange,
     lootMagnetRange, swingDrive, towFlail, phaseBlink, hullBurstKind, hullBurstRank,
     weaponRangePct,
     weaponDmgPct,

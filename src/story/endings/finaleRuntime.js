@@ -27,6 +27,7 @@ export function createWrittenFinale(choiceId, facts, receiptId) {
       lawfulContracts: facts.lawfulContracts, routeContracts: facts.routeContracts,
       factions: { concord: facts.scnRep, meridian: facts.mtsRep, free: facts.freeRep, quiet: facts.quietRep },
       explicitMercyCount: facts.explicitMercyCount, escapedOpponentCount: facts.escapedOpponentCount,
+      survivorPods: facts.survivorPods ? { ...facts.survivorPods, captors: facts.survivorPods.captors.map(r => ({ ...r })) } : null,
       namedEntries: facts.namedDebts.slice(0, 8).map(r => ({ ...r })), namedEntryTotal: facts.namedDebts.length,
       lungOutcome: facts.lungOutcome, archiveSources: facts.archiveSources.map(r => ({ ...r })),
       deepReachComplete: facts.deepReachComplete, independentWitness: facts.independentWitness,

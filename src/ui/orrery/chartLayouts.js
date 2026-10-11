@@ -155,7 +155,7 @@ ${C} .gm-body-container::after { content:""; position:absolute; z-index:-1; poin
   width:calc(var(--k-margin, 96px) + var(--gm-inspector-w, 320px) + 120px);
   background:linear-gradient(270deg, rgb(4 5 7 / .88), rgb(4 5 7 / .78) 56%, rgb(4 5 7 / 0)); }
 /* the tabs: words on ruled scales, the Hand under the open one */
-${C} .gm-tabs.k-words { position:relative !important; display:grid !important; grid-template-columns:repeat(3, minmax(0, 1fr)) !important; gap:4px 14px !important; padding:0 0 4px !important; background:none !important; }
+${C} .gm-tabs.k-words { position:relative !important; display:grid !important; grid-auto-flow:column !important; grid-auto-columns:max-content !important; justify-content:start !important; width:max-content !important; min-width:100% !important; gap:4px 16px !important; padding:0 0 4px !important; background:none !important; }
 ${C} .gm-tab.k-word { ${PLAIN} ${LABEL} position:relative; z-index:1; min-height:0 !important; padding:3px 0 12px !important; justify-content:center !important; text-align:center;
   font-size:12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .66) !important; white-space:nowrap !important; }
 ${C} .gm-tab.k-word::before, ${C} .gm-tab.k-word::after { ${RESET_PSEUDO} }

@@ -53,3 +53,23 @@ test('an empty meter cannot re-engage until the verb is released', () => {
     restoreFeatureMaps(snap);
   }
 });
+
+test('reduced motion keeps the timing tool and skips its decorative camera zoom', () => {
+  for (const preference of ['video', 'accessibility', 'full']) {
+    const { state, bus, system, timeEffects, snap } = boot();
+    try {
+      let zoomCalls = 0;
+      state.render = { cameraCtrl: { pushZoom() { zoomCalls++; } } };
+      state.settings.video.motionReduce = preference === 'video';
+      state.settings.accessibility = { motionPreference: preference === 'accessibility' ? 'reduce' : 'full' };
+      state.input.actions.bulletTime = true;
+      system.update(1 / 60, state);
+      assert.equal(timeEffects.getEffectiveScale(), 0.35);
+      assert.equal(zoomCalls, preference === 'full' ? 1 : 0, preference);
+    } finally {
+      system.destroy?.();
+      bus.clear();
+      restoreFeatureMaps(snap);
+    }
+  }
+});

@@ -396,8 +396,9 @@ export class ManeuverPlanner {
       });
       if (reflex && (reflex.lateral || reflex.dodge)) desired = applyReflexToDesired(desired, selfPose, reflex);
       runtime.lastReflex = reflex ? reflex.kind : null;
+    } else if (!choreo && runtime.reflex && runtime.reflex.burst) {
+      runtime.reflex.burst = null;
     }
-    if (desired.obstacleAvoidance === true) reflex = null; // a rock in the dodge cone owns the hull
 
     if (!(choreo && choreo.coast)) {
       desired = applyFriendlySeparation(desired, selfPose, contactSource.ships, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
@@ -406,6 +407,10 @@ export class ManeuverPlanner {
       }
     }
     desired = applyObstacleAvoidance(desired, selfPose, contactSource.obstacles, intent, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
+    if (desired.obstacleAvoidance === true && reflex) {
+      reflex = null; // a rock in the dodge cone owns the hull
+      runtime.lastReflex = null;
+    }
     const speed = Math.hypot(selfPose.vel.x, selfPose.vel.z);
     const commanded = Math.hypot(desired.x, desired.z);
     const intentionalHold = intent.kind === ManeuverKind.HOLD && formationDistance <= this.config.arrivalRadius;
@@ -1180,6 +1185,7 @@ function applyObstacleAvoidance(desired, self, contacts, intent, config, counter
     // past the target (D38). Dead hulks still count as cover.
     if (contact.kind === ContactKind.SHIP && contact.alive !== false) continue;
     // A thrown body is not cover: a hazard moving at the thrown-body floor is dodged, not steered around.
+    // Deliberate: a pilot who did not notice it (reflex gate) gets hit rather than detouring for it.
     if (contact.kind === ContactKind.HAZARD && contact.vel
       && Math.hypot(contact.vel.x, contact.vel.z) >= MOVING_BODY_MIN_SPEED) continue;
     // The maneuver's own objective is never its obstacle: a contact-seeking intent (transit to a

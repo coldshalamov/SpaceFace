@@ -67,7 +67,7 @@
     "tether:attached": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "0b33dde18752ca52ee6b6be25ded38ab6e86899dc6444a7e47842a2bb785b2d1",
+    "authoritativeHash": "772b633513cac081e75f037a2079662bec42e8643fed6a301e300d3135fac1cd",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -219,6 +219,10 @@
     "2026-10-03 deliberate re-record post-D145: legacy envelope re-pinned at 618d7f16 after ~278 commits of landed drift; uninterrupted-vs-reload hashEqual confirmed.",
     "2026-10-06 re-record: golden-diff vs bf75bd987 (reproduces prior hash) verdict CONTENT_ONLY — 10 $.economy fields moved, zero motion fields changed, zero trace diffs; reload@600 hashEqual.",
     "2026-10-03: authoritativeHash is the CANONICAL reload-run hash (save/restore canonicalizes the Rapier world), not the organic no-reload hash — organic layout is not cross-process reproducible (rapier#910). Re-pin only from a --reload-at run.",
-    "D162 repin (2026-10): the cheap-goods amplitude floor change moves seeded price cycles; the 720-tick trajectory drifts legitimately while baseline-vs-reload equivalence is unchanged."
+    "D162 repin (2026-10): the cheap-goods amplitude floor change moves seeded price cycles; the 720-tick trajectory drifts legitimately while baseline-vs-reload equivalence is unchanged.",
+    "2026-10-11 deliberate CONTENT_ONLY migration: aee3757e9 reproduces the prior 0b33dde1 hash exactly. Historical Git blobs were loaded in memory with the same seed47, 720-tick tape and reload600; no alternate checkout or production-source edit.",
+    "Semantic diff: 15,178 leaves changed: 15,156 economy market/cycle/seed leaves, save version14->15, and 21 derived-stat leaves. ZERO entity or native-physics motion fields changed. All currently pinned observed event counts remain unchanged.",
+    "Origins are shipped market/content changes including Bolus and regional supply, v15 material-reaction persistence (2e2f2d661), plus derived hull/Veil Step/trophy-head capabilities. The legacy controller does not consume the changed V3 propulsion metadata.",
+    "Clean committed source5214f5f38 reproduces the migrated hash independently of foreign dirty work. Reload600 matches the save-canonicalized uninterrupted run. The exact authoritative hash remains enforced; acceptance bounds, required event families, repeat minimum and input tape are unchanged."
   ]
 }

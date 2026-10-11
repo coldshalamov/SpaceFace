@@ -6,6 +6,10 @@ const SURVIVOR_POD_RETIRE = Object.freeze({
   rescued: { verb: 'cool', primitive: 'deposition', color: 0x7dcea0, life: 0.72, continuous: false },
   ransomed: { verb: 'command', primitive: 'induction', color: 0xe2b15a, life: 0.72, continuous: false },
   abandoned: { verb: 'disrupt', primitive: 'induction', color: 0xc45b4a, life: 0.72, continuous: false },
+  // A seizure, not a rescue: the captor's grapple filament latches from its own hull onto the
+  // pod's last point (a connection, not a glow), in pirate ember — warmer and harder than the
+  // amber ransom or the dull red of a pod left to die.
+  captured: { verb: 'latch', primitive: 'connection', color: 0xe0623a, life: 0.9, continuous: false },
 });
 export { SURVIVOR_POD_RETIRE };
 // Extra responses consume confirmed simulation receipts. Resolving a receipt here is
@@ -88,6 +92,7 @@ export const ADDITIONAL_ACTION_VFX_RECIPES = Object.freeze({
       rescued:SURVIVOR_POD_RETIRE.rescued,
       ransomed:SURVIVOR_POD_RETIRE.ransomed,
       abandoned:SURVIVOR_POD_RETIRE.abandoned,
+      captured:SURVIVOR_POD_RETIRE.captured,
     }},
   // Departure is the cradle run backwards: a vent along the nose, not a second inbound chevron.
   'dock:undocked': {verb:'vent',primitive:'compression',color:0xc8dff5,life:.7,continuous:false},
@@ -199,11 +204,14 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
       pos:{x:collector.pos.x+Math.cos(a)*r,z:collector.pos.z+Math.sin(a)*r,y:1.5},attachToTarget:true};
   }
   if (name === 'countermeasure:deployed') {
-    const ship=body(state,p.shipId), effect=ship?.data?.cm?.effect;
+    const ship=body(state,p.shipId), cm=ship?.data?.cm, effect=cm?.effect;
     if (!ship || !effect || !Number.isFinite(effect.originX) || !Number.isFinite(effect.originZ)) return null;
     // Chaff/decoy originate at the actual seeker-diversion point behind the hull.
     // ECM instead follows its real transmitting hull. Receipt x/z is only hull centre.
+    const durationS = Number.isFinite(cm.effectT) ? cm.effectT
+      : Number.isFinite(p.durationS) ? p.durationS : effect.cfg?.durationS;
     return {...p,targetId:ship.id,sourceId:ship.id,
+      countermeasureEffect:effect, durationS,
       pos:{x:effect.originX,z:effect.originZ},attachToTarget:p.kind==='ecm',
       direction:{x:-Math.cos(ship.rot||0),z:-Math.sin(ship.rot||0)}};
   }
@@ -257,6 +265,16 @@ export function resolveAdditionalActionVfxReceipt(name,p,state) {
     // Lost is the sim outcome "abandoned". A missing point must not flash at the origin.
     const variant = SURVIVOR_POD_RETIRE[p && p.outcome];
     if (!variant || !point(p.pos)) return null;
+    if (p.outcome === 'captured') {
+      // The filament runs from the captor's hull to the point the pod was taken at. The pod is
+      // already disposed; a captor that is gone too still marks the point, with no source line.
+      const captor = body(state, p.captorId);
+      const live = captor && captor.alive !== false && point(captor.pos);
+      const out = {...p, kind: 'captured', pos: copyPoint(p.pos), targetId: null,
+        sourceId: live ? captor.id : p.entityId, attachToTarget: false};
+      if (live) out.direction = {x: p.pos.x - captor.pos.x, z: p.pos.z - captor.pos.z};
+      return out;
+    }
     return {...p, kind: p.outcome, pos: copyPoint(p.pos), targetId: null, sourceId: p.entityId, attachToTarget: false};
   }
   if (name === 'mines:triggered' || name === 'mines:detonated') {

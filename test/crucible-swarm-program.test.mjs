@@ -399,14 +399,23 @@ test('one trial at a time — a second demo retires the first, never refits the 
   const demoables = offers.filter((o) =>
     Number.isInteger(o.slotIndex) && typeof o.defId === 'string' && o.kind === 'number');
   assert.ok(demoables.length >= 2, 'the shelf has two fittable cards to demo');
-  h.bus.emit('run:draftPickRequested', { offerId: demoables[0].id, demo: true });
-  h.bus.emit('run:draftPickRequested', { offerId: demoables[1].id, demo: true });
+  const first = demoables[0];
+  const second = demoables[1];
+  h.bus.emit('run:draftPickRequested', { offerId: first.id, demo: true });
+  h.bus.emit('run:draftPickRequested', { offerId: second.id, demo: true });
   const fittings = activeFittings(h);
-  assert.equal(fittings[demoables[1].slotIndex], demoables[1].defId, 'the new trial is fitted');
-  assert.notEqual(fittings[demoables[0].slotIndex], demoables[0].defId,
-    'the first demo came off when the second went on');
+  // 3e8f6f898a re-judges a card against the live hull, and targetSlotFor takes the
+  // first empty hardpoint. Both cards named slot 0 on the bare shelf; once the first
+  // trial occupies it, the second lands on the next empty slot. The first trial still
+  // comes off, and the hull does not keep both for free.
+  assert.equal(fittings.filter((f) => f === second.defId).length, 1, 'the new trial is fitted');
+  if (first.defId !== second.defId) {
+    assert.equal(fittings.includes(first.defId), false,
+      'the first demo came off when the second went on');
+  }
+  assert.equal(fittings.filter(Boolean).length, 1, 'a second demo never leaves two free fittings');
   const inventory = h.state.player.moduleInventory || [];
-  assert.equal(inventory.filter((item) => item && item.defId === demoables[0].defId).length, 0,
+  assert.equal(inventory.filter((item) => item && item.defId === first.defId).length, 0,
     'and the retired copy is destroyed, not shelved as an unpaid spare');
 });
 

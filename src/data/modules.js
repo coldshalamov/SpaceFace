@@ -143,7 +143,7 @@ const SHIPPED_MODULES = [
     id: 'mod_repulsion_trap_s', name: 'Repulsion Trap', slotType: 'utility', size: 'S', tier: 2,
     mass: 3, price: 18000, requiresTech: 'tech_ricochet_ballistics', energyDraw: 2,
     mods: { repulsionTrap: true },
-    description: 'Drop a proximity charge behind your flight path. Pursuers trigger a radial shove; remote detonation still works.',
+    description: 'Brake and throw to drop a proximity charge behind your flight path; a plain throw still sticks a plate. Pursuers trigger a radial shove; remote detonation still works.',
   },
   {
     id: 'mod_cargo_scanner_s', name: 'Cargo Scanner S', slotType: 'utility', size: 'S', tier: 1, mass: 1, price: 4000,
@@ -339,23 +339,26 @@ const SHIPPED_MODULES = [
   },
   {
     // PQ-170.03 — ace trophy heads. Same physics law as the stock head they were taken from;
-    // the unique id and lineage are what NPCs recognize.
+    // the unique id and lineage are what NPCs recognize. TOY CHEST T13: the trophy line also holds
+    // heavier loads — loadCapacityMult raises the break CEILING of the line this head throws
+    // (attachments.effectiveTetherBreak), by ace tier 1.15 / 1.3 / 1.5. It is the same break law,
+    // a higher ceiling: no new physics, and release impulse and stock-head numbers are untouched.
     id: 'unique_no_cut_filament', baseId: 'mod_monofilament_sweep_m', name: 'No-Cut Filament',
     slotType: 'utility', size: 'M', tier: 3, mass: 5, price: 0,
     energyDraw: 6, purchasable: false, unique: true, salvageOnly: true,
-    mods: { masslineHeadId: 'monofilament_sweep' },
+    mods: { masslineHeadId: 'monofilament_sweep', loadCapacityMult: 1.15 },
   },
   {
     id: 'unique_toll_saint_bridle', baseId: 'mod_twin_bridle_m', name: 'Toll-Saint Bridle',
     slotType: 'utility', size: 'M', tier: 3, mass: 7, price: 0,
     energyDraw: 8, purchasable: false, unique: true, salvageOnly: true,
-    mods: { masslineHeadId: 'twin_bridle' },
+    mods: { masslineHeadId: 'twin_bridle', loadCapacityMult: 1.3 },
   },
   {
     id: 'unique_broken_ring_whip', baseId: 'mod_elastic_whip_m', name: 'Broken-Ring Whip',
     slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 0,
     energyDraw: 4, purchasable: false, unique: true, salvageOnly: true,
-    mods: { masslineHeadId: 'elastic_whip' },
+    mods: { masslineHeadId: 'elastic_whip', loadCapacityMult: 1.5 },
   },
   {
     // ELASTIC WHIP — stretch stores ½ k s². A player cut spends that remaining energy as a
@@ -878,7 +881,7 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_mining_beam_m: 'Cuts ore faster and farther than the starter laser.',
   mod_mining_pulverizer_l: 'A heavy cut, and sometimes it cracks a rare seam.',
   mod_mining_industrial_l: 'The deepest cut. Ore goes straight into the hold.',
-  mod_repulsion_trap_s: 'Drop a charge behind you that shoves whoever flies into it.',
+  mod_repulsion_trap_s: 'Brake and throw to drop a charge behind you that shoves whoever flies into it.',
   mod_cargo_scanner_s: 'Reads what another hull is carrying.',
   unique_truesight_scanner: 'Reads a hold, and from farther out than a stock scanner.',
   mod_market_data_s: 'Streams live exchange quotes from every station in this sector while you fly it.',

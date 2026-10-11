@@ -26,6 +26,7 @@ import { zonesForSector } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { CERES_ACTIVITY_SECTOR_ID } from '../data/sectorActivityPockets.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { LAWFUL_STATION_FACTIONS } from '../data/factions.js';
 import { SECTORS } from '../data/sectors.js';
 import { effectiveRegionalSecurity } from '../systems/regionalEcology.js';
 import {
@@ -72,11 +73,6 @@ const LANE_ZONE_TYPES = new Set(['trade_lane', 'patrol_corridor', 'ambush_lane']
 // Victim roles that the traffic violence machinery can actually dump/spill cargo for
 // (CIVILIAN_HAULER_DUMP_ROLES in systems/traffic.js — kept aligned by contract, not import).
 const AMBIENT_VICTIM_ROLES = new Set(['hauler', 'shuttle', 'tanker', 'arclight']);
-// Lawful station factions — mirrors LAWFUL_STATION_FACTIONS in engagementAuthority.js so the
-// evaluator can pre-filter victims sitting under patrol coverage before the relation runs.
-const LAWFUL_STATION_FACTIONS = new Set([
-  'faction_scn', 'faction_mts', 'faction_dmc', 'faction_free',
-]);
 const RESTORE_SNAPSHOT_KEY = 'ambientRestore';
 const BOUND_STATUSES = new Set([
   'standby', 'telegraph', 'active', 'cargo_recovery', 'cargo_escape', 'cargo_respilled',

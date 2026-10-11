@@ -42,6 +42,10 @@ function completedRows(missions) {
   return [...seen.values()].filter(Boolean).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
 
+// Survivor-pod causes are written by survivorPod.js with the nameless name "Survivor Pod". They are
+// counted by survivorPodLedger(), never listed as named people.
+const POD_CAUSES = new Set(['rescued_survivors', 'ransomed_survivors', 'captured_survivors', 'abandoned_survivors']);
+
 function namedDebts(story) {
   const debts = object(object(story.moralMemory).debts);
   return Object.entries(debts).flatMap(([id, raw]) => {
@@ -49,6 +53,7 @@ function namedDebts(story) {
     if (!key(id) || key(r.id) !== key(id) || !timestamp(r.recordedAt)) return [];
     if (!['pending', 'revealed'].includes(r.status)) return [];
     const cause = text(r.cause, 64);
+    if (POD_CAUSES.has(cause)) return [];
     return [{
       id: key(id), name: text(r.name) || key(id), cause, recordedAt: r.recordedAt,
       status: r.status,
@@ -58,6 +63,34 @@ function namedDebts(story) {
       source: 'story.moralMemory.debts', currentSurvival: 'unverified',
     }];
   }).sort((a, b) => a.recordedAt - b.recordedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+}
+
+/**
+ * The survivor pods this life answered, left, or saw taken. Only what survivorPod.js recorded:
+ * a rescue counts as the player's only when the record says their own hull made it
+ * (`playerAnswered`), an abandonment only exists when the player was near the pod, and a capture
+ * names its captor faction when the receipt carried one. No current-survival claim.
+ */
+function survivorPodLedger(story) {
+  const debts = object(object(story.moralMemory).debts);
+  const out = { rescuedByPlayer: 0, abandoned: 0, captured: 0, capturedUnknownCaptor: 0, captors: [], total: 0 };
+  const byFaction = new Map();
+  for (const [id, raw] of Object.entries(debts)) {
+    const r = object(raw), cause = text(r.cause, 64);
+    if (!key(id) || key(r.id) !== key(id) || !timestamp(r.recordedAt) || !POD_CAUSES.has(cause)) continue;
+    if (cause === 'rescued_survivors' && r.playerAnswered === true) out.rescuedByPlayer += 1;
+    else if (cause === 'abandoned_survivors') out.abandoned += 1;
+    else if (cause === 'captured_survivors') {
+      out.captured += 1;
+      const captor = key(r.captorFactionId);
+      if (captor) byFaction.set(captor, (byFaction.get(captor) || 0) + 1);
+      else out.capturedUnknownCaptor += 1;
+    }
+  }
+  out.captors = [...byFaction.entries()].map(([factionId, n]) => ({ factionId, count: n }))
+    .sort((a, b) => b.count - a.count || (a.factionId < b.factionId ? -1 : a.factionId > b.factionId ? 1 : 0));
+  out.total = out.rescuedByPlayer + out.abandoned + out.captured;
+  return out;
 }
 
 function defeatedAces(state) {
@@ -113,6 +146,7 @@ export function readLifeLedger(input) {
   const applied = object(player.heatIncidentsApplied);
   const incidentIds = Object.keys(applied).filter(id => applied[id] === true && key(id)).sort();
   const debts = namedDebts(story);
+  const survivorPods = survivorPodLedger(story);
   const archives = dossArchiveEvidence({ world }).map(r => ({ id: r.id, title: r.title, detail: r.detail }));
   const lungOutcome = (archives.find(r => r.id === 'lung_of_charon_case') || {}).detail || null;
   const rescueContractIds = rows.filter(r => r.type === 'rescue_under_fire').map(r => r.id);
@@ -144,7 +178,7 @@ export function readLifeLedger(input) {
     { id: 'wealth', path: 'player.credits - player.debt + ownedShips proxy', confidence: 'proxy', detail: 'Liquid credits, debt, and conservative hull allowance; no market valuation.' },
     { id: 'crime', path: 'player.heatIncidentsApplied', confidence: incidentIds.length ? 'lower_bound' : 'unknown', detail: 'Accepted incident ids only. Absence is not an acquittal. Kills are not presumed crimes.' },
     { id: 'smuggling', path: 'player.stats.smuggledValue', confidence: typeof stats.smuggledValue === 'number' && Number.isFinite(stats.smuggledValue) ? 'recorded' : 'unknown', detail: 'Recorded value, not an incident count or a proof of victim harm.' },
-    { id: 'lives', path: 'world.discovery + story.moralMemory.debts', confidence: lungOutcome || debts.length ? 'recorded' : 'unknown', detail: 'Distinguishes a rescued cohort, explicit mercy, and an escaped opponent. No current-survival claim.' },
+    { id: 'lives', path: 'world.discovery + story.moralMemory.debts', confidence: lungOutcome || debts.length || survivorPods.total ? 'recorded' : 'unknown', detail: 'Distinguishes a rescued cohort, explicit mercy, and an escaped opponent. No current-survival claim.' },
     { id: 'contracts', path: src.saved ? 'missions.missions.completedLog' : 'missions.completedLog', confidence: rows.length ? 'lower_bound' : 'unknown', detail: 'Distinct retained completions; no number of people inferred from rescue contracts.' },
     { id: 'campaign', path: 'story.flags.deep_reach_operation_complete / completedLog.storyTag / independent career evidence', confidence: deepReachComplete || independentWitness ? 'recorded' : 'missing', detail: 'Place and lived evidence, never beatIndex alone.' },
   ];
@@ -180,7 +214,7 @@ export function readLifeLedger(input) {
     tradeCount, missionsDone, lawfulContracts, routeContracts, completedIds: rows.map(r => r.id),
     lifetimeProfit: number(stats.lifetimeProfit), passiveLifetime,
     namedDebts: debts, explicitMercyCount: debts.filter(r => r.explicitMercy).length,
-    escapedOpponentCount: debts.filter(r => r.escaped).length,
+    escapedOpponentCount: debts.filter(r => r.escaped).length, survivorPods,
     rescueContractIds, lungOutcome, archiveSources: archives, discoveredSectorIds,
     deepReachComplete, deskVisited, ashfallVisited, independentWitness, careerEvidence,
     readyByHistory: deepReachComplete || independentWitness,

@@ -339,7 +339,19 @@ export class WeaponDischargePool {
         this._strip(s,-side*.16,0,-w*.2,reach,w*.15,1,side*gap);
         this._strip(s,side*.73,side*1.32,w*.32,w*.62,w*.12,0);
       }
-    }else if(s.source==='metric-tag'||s.source==='well-inlet'){
+    }else if(s.source==='well-inlet'){
+      // An intake seats three unequal inward-curving vanes around an empty
+      // throat. It opens at the source; the marker's two travelling jaws stamp.
+      this.style=1;this.color=SHIELD_CYAN;
+      const open=Math.min(1,t/.36),drain=Math.max(0,(t-.58)/.42);
+      for(let j=0;j<3;j++){
+        const a=(j-1)*1.78;
+        this._strip(s,a,a+.84,w*(1.02+.16*j+.18*open),w*(.32+.10*j),
+          w*(.20-.06*drain),0,0,w*(.1+j*.08));
+      }
+      this.style=4;this.color=PALE;
+      this._strip(s,Math.PI-.35,Math.PI+.35,w*.25,w*.42,w*.09,0);
+    }else if(s.source==='metric-tag'){
       this.style=1;this.color=SHIELD_CYAN;
       // Two asymmetric moving jaws stamp a travelling collar. Its open centre remains
       // readable and it never borrows the kinetic muzzle's vent fan.

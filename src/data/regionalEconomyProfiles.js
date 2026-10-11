@@ -27,7 +27,7 @@ export const REGIONAL_PRESSURE_BOUNDS = Object.freeze({
 });
 
 /** Max produce / consume lines per region (recipe cap is 2× this). */
-export const MAX_LINES_PER_SIDE = 4;
+export const MAX_LINES_PER_SIDE = 6;
 
 /**
  * @typedef {Readonly<{ commodityId: string, weight: number }>} RegionalCommodityLine
@@ -79,6 +79,10 @@ export const REGIONAL_ECONOMY_PROFILES = Object.freeze([
       // charges, so a new pilot can restock the combat verb at the starter station.
       { commodityId: 'cmdty_impulse_charge', weight: 0.60 },
       { commodityId: 'cmdty_art', weight: 0.55 },
+      // The starter trade hub provisions the first asteroid claim. Authored local supply lets
+      // these shallow construction goods sell at Helios without opening higher-tier ore markets.
+      { commodityId: 'cmdty_regocrete', weight: 0.60 },
+      { commodityId: 'cmdty_control_unit', weight: 0.45 },
     ],
     consumes: [
       { commodityId: 'cmdty_fuel_cells', weight: 0.85 },

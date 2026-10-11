@@ -6,6 +6,7 @@
 
 import { COMMODITIES } from './commodities.js';
 import { MODULES } from './modules.js';
+import { volatileClassOf } from './commodityVolatileClasses.js';
 import { bombInteractionState } from '../combat/bombDynamics.js';
 
 const profile = (value) => Object.freeze({
@@ -152,6 +153,60 @@ export function interactionDisplayName(entity) {
   }
   if (semantic.kind && KIND_FALLBACK_NAMES[semantic.kind]) return KIND_FALLBACK_NAMES[semantic.kind];
   return humanizeTypeSlug(entity.type) || 'Unknown Contact';
+}
+
+const WRECK_POOL_NAMES_SHOWN = 3;
+
+const commodityNameById = new Map(COMMODITIES.map((c) => [c.id, c.name]));
+
+function poolLine(pool) {
+  const rows = [];
+  for (const [id, raw] of Object.entries(pool)) {
+    const qty = Number(raw);
+    const name = commodityNameById.get(id);
+    if (!(qty > 0) || !name) continue;
+    rows.push({ id, qty, name });
+  }
+  rows.sort((a, b) => (b.qty - a.qty) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return rows.slice(0, WRECK_POOL_NAMES_SHOWN).map((r) => r.name).join(' / ');
+}
+
+function cargoLotLine(data) {
+  const name = cargoNameFor(data);
+  const amount = Math.floor(Number(data && data.amount));
+  if (!name || !(amount > 0)) return null;
+  return `${name} ×${amount}`;
+}
+
+/**
+ * The CLASS line a stranger reads on a lock or hover: what the thing is and, for salvage and
+ * loose cargo, what it holds. Asteroids keep their own ore-mix line in the target panel.
+ */
+export function interactionClassLine(entity) {
+  const semantic = interactionProfileForEntity(entity);
+  const data = (entity && entity.data) || {};
+  if (semantic.kind === 'wreck' || semantic.kind === 'unstable_reactor_wreck') {
+    let line = semantic.kind === 'unstable_reactor_wreck' ? 'Hazardous Salvage' : 'Salvage';
+    const label = typeof data.wreckClassLabel === 'string' ? data.wreckClassLabel.trim() : '';
+    if (label && label.toLowerCase() !== interactionDisplayName(entity).trim().toLowerCase()) line += ` · ${label}`;
+    const pool = data.salvagePool;
+    if (pool && typeof pool === 'object') {
+      const held = poolLine(pool);
+      if (held) line += ` · ${held}`;
+      else if (!Object.values(pool).some((qty) => Number(qty) > 0)) line += ' · picked clean';
+    }
+    return line;
+  }
+  if (semantic.kind === 'pickup') {
+    const lot = cargoLotLine(data);
+    return lot ? `${semantic.classLabel} · ${lot}` : semantic.classLabel;
+  }
+  if (semantic.kind === 'payload') {
+    const lot = cargoLotLine(data);
+    if (!lot) return semantic.classLabel;
+    return `${semantic.classLabel} · ${lot}${volatileClassOf(data.commodityId) ? ' · VOLATILE' : ''}`;
+  }
+  return semantic.classLabel || '';
 }
 
 export function presentationStatusWord(entity) {

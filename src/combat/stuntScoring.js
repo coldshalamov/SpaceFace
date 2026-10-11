@@ -27,6 +27,7 @@ export const PRIMARY_SCORING = Object.freeze({
   rock_discovery: ['impact', 50], well_golf: ['field', 140], dead_mans_mass: ['debris', 140],
   bank_job: ['rebound', 90], return_to_sender: ['rebound', 140], kickstart: ['escape', 140],
   needle_thread: ['escape', 140], one_two: ['impact', 140], slingshot_golf: ['field', 200],
+  ore_shotgun: ['debris', 90],
 });
 export const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, Number.isFinite(Number(x)) ? Number(x) : lo));
 export function executionFactor(trick = {}) {

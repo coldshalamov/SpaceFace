@@ -213,9 +213,10 @@ test('a stunt title the player earned carries into New Run+, is named, and is he
   const candidate = buildNewGamePlusCandidate(data, { slot: 'legacy' });
   assert.equal(candidate.titleCount, 1, VISION_SHIP);
   assert.equal(candidate.leadTitleName, 'Knotmaker', VISION_SHIP);
+  // c6bd43336: the confirmation states the physical reset instead of implying it.
   assert.equal(
     leftoverNewRunLine(candidate),
-    `${ENDING_TITLE} · keep one item · Yara No-Cut still hunting · weapon scar on the bow · Knotmaker · CONTRACT 47-B`,
+    `${ENDING_TITLE} · keep one item · Yara No-Cut still hunting · weapon scar on the bow · Knotmaker · CONTRACT 47-B · cargo, credits, contracts and claims reset`,
     VISION_SHIP,
   );
 

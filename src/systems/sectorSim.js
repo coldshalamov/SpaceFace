@@ -39,6 +39,8 @@ import {
   FREIGHT_CAUSE,
 } from '../economy/freightCausality.js';
 import { volatileClassOf } from '../data/commodityVolatileClasses.js';
+import { oreTableForAsteroidType, oreTableByWeight } from '../data/mining.js';
+import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -79,6 +81,18 @@ const FREIGHT_SPILL_DANGER_BASE = 0.007;    // cargo dumped under fire — the l
 const FREIGHT_SPILL_DANGER_PER_UNIT = 0.0002;
 const FREIGHT_SPILL_DANGER_MAX = 0.018;
 const FREIGHT_VOLATILE_DANGER_MULT = 1.6;   // volatile freight burning/loose on a lane is worse
+// §15.6 C6 — a berth with a hull through its ring. Small: the fine and the outage are the
+// player's bill; this is the lane noticing.
+const DOCK_SLAM_DANGER = 0.02;
+const DOCK_SLAM_PRESSURE = 0.02;
+const DOCK_SLAM_INFLUENCE = -0.01;
+// §15.6 C8 — ore flood. One shattered rock's loose fragments depress the local price of that ore:
+// a 10 u rock dips -0.07 (visible on the chart), a 25 u rock crosses route_surplus (-0.12) so the
+// board posts a surplus haul-out, a 60 u rich seam saturates at -0.25. Decays under the kernel.
+export const ORE_FLOOD_PRESSURE_BASE = 0.03;
+export const ORE_FLOOD_PRESSURE_PER_U = 0.004;
+export const ORE_FLOOD_PRESSURE_MAX = 0.25;
+export const ORE_FLOOD_MIN_U = 2;              // dust is not a flood
 const STATION_GOODS = Object.freeze({
   refinery: ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_fuel_cells'],
   mine: ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_scrap_metal'],
@@ -133,6 +147,15 @@ export const sectorSim = {
     // contracts, demand prose, and intel thresholds.
     this.bus.on('freight:loss', (p) => this._guard('freight:loss', () => this._onFreightLoss(p)));
     this.bus.on('freight:cargoSpilled', (p) => this._guard('freight:cargoSpilled', () => this._onFreightSpill(p)));
+    // §15.6 C6 — a hull put through a berth's ring (economy's station:slammed receipt) marks the
+    // sector: a station that cannot weld for ten minutes and had its ring cleared is a place where
+    // traffic hesitates and prices firm up a little.
+    this.bus.on('station:slammed', (p) => this._guard('station:slammed', () => this._onStationSlammed(p)));
+    // §15.6 C8 — a shattered rock floods the lane with loose ore. environmentMaterials emits
+    // environment:fractured when an impact or heat reaction bursts a rock into ore-bearing
+    // fragments; that ore is suddenly on the market's doorstep, so local pressure goes negative
+    // (the kernel's route_surplus band: prices dip, the board posts a haul-out, haulers come).
+    this.bus.on('environment:fractured', (p) => this._guard('environment:fractured', () => this._onEnvironmentFractured(p)));
 
     // Transit consequence path: sectorSim computes exposure; combat applies damage through its
     // existing single-writer pipeline. Speed lowers incident probability; armor/hull absorb impact.
@@ -607,6 +630,72 @@ export const sectorSim = {
       FREIGHT_SPILL_DANGER_MAX,
     );
     return this.injectImpulse({ kind: 'freight_spill', sectorId, danger });
+  },
+
+  /** §15.6 C6 — economy's station:slammed receipt marks the lane (danger/pressure up, influence down). */
+  _onStationSlammed(p) {
+    if (!p || typeof p !== 'object') return false;
+    const sectorId = (typeof p.sectorId === 'string' && p.sectorId)
+      || (this.state.world && this.state.world.currentSectorId)
+      || null;
+    if (!sectorId || !SECTOR_BY_ID.has(sectorId)) return false;
+    return this.injectImpulse({
+      kind: 'dock_slam', sectorId,
+      danger: DOCK_SLAM_DANGER, pricePressure: DOCK_SLAM_PRESSURE,
+      influence: p.factionId ? { [p.factionId]: DOCK_SLAM_INFLUENCE } : undefined,
+    });
+  },
+
+  /**
+   * §15.6 C8 — a shattered rock's loose ore floods the local market. Yield is read from the
+   * fragments environmentMaterials just spawned (their asteroidSlotId is `<parent slot>:shard:<i>`),
+   * falling back to the parent record; the dominant commodity comes from the parent's ore table.
+   * Emits `economy:oreFlood` (schemaVersion 1) for the board/barks and a negative price impulse.
+   */
+  _onEnvironmentFractured(p) {
+    if (!p || typeof p !== 'object' || !p.id) return false;
+    const state = this.state;
+    const sectorId = (state.world && state.world.currentSectorId) || null;
+    if (!sectorId || !SECTOR_BY_ID.has(sectorId)) return false;
+    const parent = (state.entities && state.entities.get(p.id))
+      || (state.entityList || []).find((e) => e && e.id === p.id)
+      || null;
+    const pd = (parent && parent.data) || {};
+    const slot = pd.asteroidSlotId ?? p.id;
+    const prefix = `${slot}:shard:`;
+    let yieldU = 0;
+    let fragments = 0;
+    for (const e of state.entityList || []) {
+      if (!e || e.alive === false || !e.data || !e.data.materialFragment) continue;
+      if (typeof e.data.asteroidSlotId !== 'string' || !e.data.asteroidSlotId.startsWith(prefix)) continue;
+      yieldU += Math.max(0, Number(e.data.yieldU) || 0);
+      fragments++;
+    }
+    if (fragments === 0) {
+      // Fragments may have been budget-deferred; fall back to what the rock had left.
+      yieldU = Math.max(0, Number(pd.yieldMaxU ?? pd.yieldU) || 0) * (1 - Math.min(1, Number(pd.pctEjected) || 0));
+    }
+    if (yieldU < ORE_FLOOD_MIN_U) return false;
+    const mix = oreTableByWeight(oreTableForAsteroidType(pd.typeId));
+    const commodityId = mix.length ? mix[0].commodityId : null;
+    const prov = parent ? readRecentImpulseProvenance(parent, state.tick) : null;
+    const actorId = (prov && prov.actorId) || null;
+    const pricePressure = -clamp(
+      ORE_FLOOD_PRESSURE_BASE + yieldU * ORE_FLOOD_PRESSURE_PER_U,
+      ORE_FLOOD_PRESSURE_BASE,
+      ORE_FLOOD_PRESSURE_MAX,
+    );
+    const receipt = {
+      schemaVersion: 1,
+      sectorId, bodyId: p.id, material: p.material || pd.material || null,
+      commodityId, yieldU: Math.round(yieldU * 10) / 10, fragments,
+      actorId, byPlayer: !!actorId && actorId === state.playerId,
+      pricePressure, x: Number(p.x) || 0, z: Number(p.z) || 0,
+      tick: state.tick | 0,
+    };
+    this.bus.emit('economy:oreFlood', receipt);
+    this.injectImpulse({ kind: 'ore_flood', sectorId, pricePressure });
+    return receipt;
   },
 
   // ------------------------------------------------------------------------------------------

@@ -253,15 +253,15 @@ test('verb 1 setExportFlag: the drawer chip flips the owner export policy', () =
   assert.equal(before.disabled, false);
   const silicate = before.goods.find((g) => g.id === 'cmdty_silicate');
   assert.ok(silicate, 'the good this site actually produces is offered');
-  assert.equal(silicate.shipped, true, 'export is on by default');
+  assert.equal(silicate.shipped, false, 'factory feedstock is held by default');
   assert.equal(silicate.name, 'Silicate rock', 'law §3.3 sentence case');
 
-  assert.equal(before.apply('cmdty_silicate', false).ok, true);
-  assert.equal(site.exportOff.cmdty_silicate, true, 'the owner record changed, not a UI copy');
-  assert.equal(modelFor(h, siteId).verbs.export.goods.find((g) => g.id === 'cmdty_silicate').shipped, false);
+  assert.equal(before.apply('cmdty_silicate', true).ok, true);
+  assert.equal(site.exportOff.cmdty_silicate, undefined, 'the owner record changed, not a UI copy');
+  assert.equal(modelFor(h, siteId).verbs.export.goods.find((g) => g.id === 'cmdty_silicate').shipped, true);
 
-  assert.equal(modelFor(h, siteId).verbs.export.apply('cmdty_silicate', true).ok, true);
-  assert.equal(site.exportOff.cmdty_silicate, undefined);
+  assert.equal(modelFor(h, siteId).verbs.export.apply('cmdty_silicate', false).ok, true);
+  assert.equal(site.exportOff.cmdty_silicate, true);
 });
 
 test('verb 2 setPodTarget: the stepper writes the owner fleet policy and honours its ceiling', () => {

@@ -2210,6 +2210,137 @@ export function escapeTauntBarkFor(factionId, rng) {
   return typeof line === 'string' && line.length ? line : '...';
 }
 
+// ── A wounded pirate breaks off for an ejected pod (THE WORLD ANSWERS, C7) ───────────────────
+//
+// Event lines, not BARK_SITUATIONS, keyed the way every pirate event corpus is: key → faction →
+// lines. `pirate_pod_hunt_break` is the dispatch — the pirate names the pod it is going for, a
+// line the player can act on (leave the pod, cut the tow and the pursuer stops pressing).
+// `pirate_pod_hunt_capture` is the taking — the pod is theirs, the ransom is the point. Spoken by
+// src/ai/podHunt.js through the voice channel with the hunter's own factionId; the caller derives
+// the index from hash32(seed, hunter id) so a line is stable across save/load with no rng spend.
+// Only the pirate-class registers are authored; any other faction speaks the Reach register.
+export const POD_HUNT_BARKS = Object.freeze({
+  pirate_pod_hunt_break: Object.freeze({
+    faction_reach: Object.freeze([
+      'Pod’s adrift. We’re taking it — stay off the tow and I stay off you.',
+      'Breaking off for that pod. Leave it drifting and we’re square, friend.',
+      'Survivors weigh more than your hull today. Don’t reach for the pod.',
+    ]),
+    faction_quiet: Object.freeze([
+      'The pod. Not you.',
+      'Leave the pod.',
+      'We take the pod. Stand clear.',
+    ]),
+    faction_choir: Object.freeze([
+      'The pod is adrift. We gather it. Stand clear of the verse.',
+      'The line breaks for the pod. Leave it and the line stays broken.',
+      'Something breathes in that pod. We will answer it. Stand clear.',
+    ]),
+    faction_pitborn: Object.freeze([
+      'Pod in the drift, kin. We take it, you keep your hull. Don’t get greedy.',
+      'Breaking off. That pod pays better than your scrap — leave it to us.',
+      'Yard wants that pod. Cut your tow and we forget you.',
+    ]),
+    faction_free: Object.freeze([
+      'Pod’s drifting. We’re taking it — leave it be and we’ll leave you be.',
+      'Breaking off for the pod. Keep your hands off the tow.',
+      'Easier ransom than a fight. Let us have the pod.',
+    ]),
+  }),
+  pirate_pod_hunt_capture: Object.freeze({
+    faction_reach: Object.freeze([
+      'Pod’s ours. Ransom goes to whoever pays.',
+      'Pod’s on the hook. The crew rides with us until someone pays.',
+      'Got the pod, friend. Survivors keep breathing — for a price.',
+    ]),
+    faction_quiet: Object.freeze([
+      'Pod taken.',
+      'The crew is ours.',
+      'Ransom. Not rescue.',
+    ]),
+    faction_choir: Object.freeze([
+      'The pod is gathered. The crew joins the verse.',
+      'Taken in. The survivors will be kept.',
+      'The Pattern holds the pod now. Do not ask for it back.',
+    ]),
+    faction_pitborn: Object.freeze([
+      'Got the pod, kin. Crew rides with the yard till someone pays.',
+      'Pod’s hooked. Survivors are scrap that talks — name a price.',
+      'Pod’s ours. The yard keeps what the lane drops.',
+    ]),
+    faction_free: Object.freeze([
+      'Pod’s aboard. The crew lives — ransom is the fare home.',
+      'Pod secured. Someone pays, or they ride a long way.',
+      'Got the pod. The survivors stay with us until it’s settled.',
+    ]),
+  }),
+});
+
+/**
+ * One pod-hunt line for a pirate hull. Deterministic (integer index); an unknown faction speaks the
+ * Reach register; an unknown key is null so a caller can stay silent rather than invent text.
+ */
+export function podHuntBarkFor(key, factionId, index) {
+  const cell = key && POD_HUNT_BARKS[key];
+  if (!cell) return null;
+  const lines = (factionId && cell[factionId]) || cell.faction_reach;
+  const line = lines[pickIndex(index, lines.length)] || lines[0];
+  return typeof line === 'string' && line.length ? line : null;
+}
+
+// ── A shattered rock floods the lane with loose ore (THE WORLD ANSWERS, C8) ──────────────────
+//
+// Event lines, not BARK_SITUATIONS. `economy:oreFlood` is the receipt of a rock the PLAYER broke
+// that dumped real ore on the lane; barkDirector picks ONE speaker per body — a working hull
+// nearby (the neutral working-belt register), else the local station's desk, in Dock-control
+// (lawful) or Yardmaster (everyone else) register, the same split economy.js uses for the
+// dock-slam notice. `{ore}` is the commodity's display name lower-cased ("iron ore"), or "ore"
+// when the receipt names none. The desk lines carry their own sender prefix: they are text on the
+// bark channel, not a popup.
+export const ORE_FLOOD_BARKS = Object.freeze({
+  working: Object.freeze([
+    'Loose {ore} all over the lane — somebody cracked a seam. Scooping.',
+    'Free {ore} on the chart. Haulers, you’re welcome.',
+    'That rock let go of all its {ore} at once — scoop it before it drifts.',
+  ]),
+  dock_control: Object.freeze([
+    'Dock control: loose {ore} in the lane — mind the pattern, scoop clear of traffic.',
+    'Dock control: a rock came apart out there, {ore} adrift — recover it clear of the approach.',
+    'Dock control: free {ore} in the lane, the price will sag — salvage crews, clear it.',
+  ]),
+  yardmaster: Object.freeze([
+    'Yardmaster: loose {ore} in the lane — somebody shot us a surplus. Haul it in.',
+    'Yardmaster: rock split and spilled {ore} — good for the yard, bad for the price.',
+    'Yardmaster: free {ore} on the lane. Come and get it, haulers.',
+  ]),
+});
+
+/**
+ * One ore-flood line. Deterministic (integer index); an unknown register speaks the working-belt
+ * line; an absent ore name reads as plain "ore".
+ */
+export function oreFloodBarkFor(register, index, oreName) {
+  const lines = (register && ORE_FLOOD_BARKS[register]) || ORE_FLOOD_BARKS.working;
+  const line = lines[pickIndex(index, lines.length)] || lines[0];
+  const ore = typeof oreName === 'string' && oreName.trim() ? oreName.trim().toLowerCase() : 'ore';
+  return line.replace(/\{ore\}/g, ore);
+}
+
+// ── A tumbling heavy's point defence rakes its own battle line (THE WORLD ANSWERS, C10) ──────
+//
+// Spoken by a hull on the raked line (barkDirector, once per tumble episode) — the "check fire,
+// that's our own guns" moment, one neutral combat register for every faction.
+export const TUMBLE_RAKE_BARKS = Object.freeze([
+  'Her guns are swinging through us — break off the line!',
+  'That heavy’s tumbling and her battery is raking us — clear her arc!',
+  'Point defence is sweeping our own line — scatter, scatter!',
+]);
+
+export function tumbleRakeBarkFor(index) {
+  const line = TUMBLE_RAKE_BARKS[pickIndex(index, TUMBLE_RAKE_BARKS.length)] || TUMBLE_RAKE_BARKS[0];
+  return typeof line === 'string' && line.length ? line : null;
+}
+
 // ── Law step receipts: CONTROL voices what the law just did ──────────────────────────────────
 //
 // FB-040 — event lines, not a BARK_SITUATION, and deliberately one line each: these are receipts
@@ -2407,6 +2538,9 @@ export default {
   PURSUIT_BARKS,
   SURRENDER_BARKS,
   ESCAPE_TAUNT_BARKS,
+  POD_HUNT_BARKS,
+  ORE_FLOOD_BARKS,
+  TUMBLE_RAKE_BARKS,
   LAW_STEP_BARKS,
   FRONTIER_FIRST_NAMES,
   FRONTIER_LAST_NAMES,
@@ -2419,6 +2553,9 @@ export default {
   pursuitBarkFor,
   surrenderBarkFor,
   escapeTauntBarkFor,
+  podHuntBarkFor,
+  oreFloodBarkFor,
+  tumbleRakeBarkFor,
   lawStepBarkFor,
   passengerBeatLine,
   witnessSeamLineFor,

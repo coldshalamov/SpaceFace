@@ -3,7 +3,8 @@
 
 import { COMMODITIES } from '../../data/commodities.js';
 import { presenceServiceForStation } from '../../data/factionPresence.js';
-import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor, serviceUnitCr, stationOffersService, AMMO_BATCH } from '../../systems/economy.js';
+import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor, serviceUnitCr, stationOffersService, stationServiceOutage, stationConditionsFor, stationRefuelRation, AMMO_BATCH } from '../../systems/economy.js';
+import { stationConditionChips } from '../../economy/stationConditions.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
 import { recoveryCostQuote } from '../../combat/playerDefeat.js';
 import { stationControlAttrs } from './stationBindingMap.js';
@@ -259,7 +260,25 @@ export function serviceReadinessRecommendation(state, entity, stationServices = 
   };
 }
 
+/**
+ * THE WORLD REMEMBERS — the quote plus the berth's live memory of the pilot (strike / boom /
+ * blockade chips and one reason). The price already carries it (serviceUnitCr); this only says why.
+ */
 export function serviceQuote(type, state, entity) {
+  const quote = baseServiceQuote(type, state, entity);
+  if (!quote || (type !== 'repair' && type !== 'refuel')) return quote;
+  const stationId = state && state.ui && state.ui.dockedStationId;
+  if (!stationId) return quote;
+  const { chips, reason } = stationConditionChips(stationConditionsFor(state, stationId), type);
+  if (!chips.length) return quote;
+  return {
+    ...quote,
+    detail: reason && !quote.disabled ? `${quote.detail} · ${reason}` : quote.detail,
+    chips: [...(Array.isArray(quote.chips) ? quote.chips : []), ...chips],
+  };
+}
+
+function baseServiceQuote(type, state, entity) {
   const p = state && state.player || {};
   const credits = playerCredits(state);
   // One job per verb: the yard queues what it already holds, and a second booking of the same
@@ -292,8 +311,21 @@ export function serviceQuote(type, state, entity) {
     const fuel = state && state.fuel || { current: 0, max: 0 };
     const current = Math.round(fuel.current || 0);
     const max = Math.round(fuel.max || 0);
-    const missing = Math.max(0, (fuel.max || 0) - (fuel.current || 0));
-    const fuelUnit = serviceUnitCr(state, SERVICE_PRICES.fuelCrPerUnit);
+    const missingFull = Math.max(0, (fuel.max || 0) - (fuel.current || 0));
+    // A blockaded berth rations the pumps (economy.stationRefuelRation): the quote only offers what
+    // the pump will deliver, and says so when the tank is already at the ration.
+    const missing = Math.min(missingFull, stationRefuelRation(state, state && state.ui && state.ui.dockedStationId, fuel));
+    if (missingFull > 0 && missing <= 0) {
+      return {
+        amount: 0, cost: 0,
+        detail: 'Fuel ' + current + '/' + max + ' · rationed — the pumps are shut to a tank this full while the blockade holds',
+        buttonLabel: 'Rationed',
+        disabled: true,
+        disabledReason: 'fuel rationed behind the blockade',
+        chips: [{ text: 'fuel rationed', kind: 'warn' }],
+      };
+    }
+    const fuelUnit = serviceUnitCr(state, SERVICE_PRICES.fuelCrPerUnit, 'refuel');
     const cost = Math.round(missing * fuelUnit);
     if (missing <= 0) {
       return { amount: 0, cost: 0, detail: 'Fuel ' + current + '/' + max + ' · full', buttonLabel: 'Full', disabled: true, chips: [{ text: 'full', kind: 'ok' }] };
@@ -348,8 +380,21 @@ export function serviceQuote(type, state, entity) {
         chips: [{ text: 'no yard', kind: 'bad' }],
       };
     }
+    // §15.6 C6 — the yard is down while a slammed ring is cleared (economy.stationServiceOutage).
+    const outage = stationServiceOutage(state, state && state.ui && state.ui.dockedStationId, 'repair');
+    if (outage) {
+      const mins = Math.max(1, Math.ceil(outage.remainingS / 60));
+      return {
+        amount: 0, cost: 0,
+        detail: 'Repair bay down — a hull went through the ring · back in ' + mins + ' min',
+        buttonLabel: 'Repair Hull',
+        disabled: true,
+        disabledReason: 'repair bay down — a hull went through the ring',
+        chips: [{ text: 'bay down ' + mins + ' min', kind: 'bad' }],
+      };
+    }
     const missing = repairMissing(entity);
-    const repairUnit = serviceUnitCr(state, SERVICE_PRICES.repairCrPerHp);
+    const repairUnit = serviceUnitCr(state, SERVICE_PRICES.repairCrPerHp, 'repair');
     const cost = Math.round(missing.total * repairUnit);
     const hullText = 'Hull ' + Math.round(entity ? entity.hull : 0) + '/' + Math.round(entity ? entity.hullMax : 0);
     const armorText = 'Armor ' + Math.round(entity ? entity.armorHp || 0 : 0) + '/' + Math.round(entity ? entity.armorMax || 0 : 0);

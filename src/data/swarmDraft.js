@@ -37,7 +37,7 @@ export const SWARM_DRAFT_OFFERS = Object.freeze([
   {
     id: 'repulsion_trap', defId: 'mod_repulsion_trap_s', verb: 'Trap',
     kind: 'verb', shape: null,
-    blurb: 'Drop behind your flight path. Pursuers trigger a blast that throws the pack into the room.',
+    blurb: 'Brake and throw to drop a trap behind your flight path; a plain throw is still your sticky plate. Pursuers trigger a blast that throws the pack into the room.',
   },
   {
     id: 'bank', defId: 'mod_bank_shot', verb: 'Bank',

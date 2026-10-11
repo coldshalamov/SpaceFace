@@ -1,6 +1,6 @@
 // PQ-146 registered observer. Physics owns evidence; this owner routes recognition and accounting.
 import { createStuntDetector } from '../combat/stuntTaxonomy.js';
-import { bindStuntEvidence, unbindStuntEvidence, resetStuntEvidence, bodyLife, noteBodyDeath, journalFor, pruneEvidence, closeFieldIntervals, observeReleaseGrade, serializeStuntEvidence, restoreStuntEvidence } from '../combat/stuntEvidence.js';
+import { bindStuntEvidence, unbindStuntEvidence, resetStuntEvidence, bodyLife, noteBodyDeath, journalFor, pruneEvidence, closeFieldIntervals, observeReleaseGrade, serializeStuntEvidence, restoreStuntEvidence, observeTwinBridle, closeTwinBridle, updateTwinBridles } from '../combat/stuntEvidence.js';
 import { admitStuntThreat } from '../combat/stuntScoring.js';
 import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { StuntFlightObserver } from '../combat/stuntFlightEvidence.js';
@@ -109,7 +109,7 @@ export const stuntGrammar={
     for(const entity of this.state.entities?.values?.()??[]) this._admit(entity);
     for(const event of ['combat:collisionConsequence','combat:projectileConsequence','tether:releaseRated','entity:killed','combat:kill','entity:spawned',
       'run:started','game:started','game:newGame','save:restoring','save:loaded','run:waveCleared','run:wavePlanned','player:death','player:died','combat:damage','physics:impact',
-      'pickup:collected']) {
+      'pickup:collected','massline:bridleLinked','massline:bridleCut','massline:bridleEnded']) {
       const off=this.bus?.on(event,p=>this._event(event,p??{}));if(typeof off==='function')this._unsubs.push(off);
     }
   },
@@ -222,6 +222,9 @@ export const stuntGrammar={
     }
     if(event==='entity:spawned') { this._admit(p.entity??s.entities?.get?.(p.id));return; }
     if(event==='tether:releaseRated') { observeReleaseGrade(p.targetId,p.classification,tick,s);return; }
+    // THE WORLD ANSWERS T1: the Twin Bridle is observed like any other rope; recognition happens at the contact.
+    if(event==='massline:bridleLinked') { observeTwinBridle(s,p,tick);return; }
+    if(event==='massline:bridleCut'||event==='massline:bridleEnded') { closeTwinBridle(s,p.attachmentId,tick);return; }
     const bankBefore=(st.combo.nextBankId??1)-1;
     if(event==='combat:collisionConsequence'&&p.targetId===s.playerId) {
       const player=s.entities.get(s.playerId),life=bodyLife(player,s);
@@ -267,7 +270,7 @@ export const stuntGrammar={
     // The per-tick sweep's `lives` pass is unbounded (PQ-210.01 Crucible CPU profile); sweep it
     // every 30th sim tick. Roots/bodies/contacts/constraints stay per-tick, and the serialize
     // path prunes at cadence 1 before it reads, so nothing observable moves.
-    pruneEvidence(state,state.tick,30);closeFieldIntervals(state,state.tick);
+    pruneEvidence(state,state.tick,30);closeFieldIntervals(state,state.tick);updateTwinBridles(state,state.tick);
     for(const receipt of this.flight.update(state)) {
       if(receipt.escape.closeShave&&!receipt.stuntEvidence.root.needle) {
         recordBridge(st.combo,{kind:'close_shave',tick:receipt.tick,threatEpisodeId:receipt.escape.threatEpisodeId,preventedInterception:true});

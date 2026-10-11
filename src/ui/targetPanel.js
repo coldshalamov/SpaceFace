@@ -25,7 +25,7 @@ import { DAMAGE_MODEL } from '../data/combatDefs.js';
 import { ceresDisabledHaulerTruth, livingWorkStatusText } from '../data/contactHail.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
-import { interactionDisplayName, interactionProfileForEntity, presentationStatusWord } from '../data/entityInteractionProfiles.js';
+import { interactionClassLine, interactionDisplayName, interactionProfileForEntity, presentationStatusWord } from '../data/entityInteractionProfiles.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { isBeamTargetEligible, beamRangeFor } from '../systems/mining.js';
 import { initialMouseToolLane } from '../systems/input.js';
@@ -38,6 +38,7 @@ import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { IDENTITY_WING_ROLE } from '../ai/squad.js';
 import { targetConditionReadout } from './targetCondition.js';
+import { BINDINGS } from './bindings.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -160,11 +161,8 @@ export function targetDisplayName(e) {
 
 export function targetInteractionClass(e) {
   const interaction = interactionProfileForEntity(e);
-  if (interaction.kind === 'unstable_reactor_wreck') return 'Hazardous Salvage';
-  if (interaction.kind === 'wreck') return 'Salvage';
   if (interaction.kind === 'asteroid') return asteroidClassLine(e);
-  if (interaction.classLabel) return interaction.classLabel;
-  return '';
+  return interactionClassLine(e);
 }
 
 /**
@@ -533,6 +531,7 @@ export function objectInfoLine(t, state, p, dist) {
     action = 'Inspect only';
   }
   facts.push(action);
+  if (t.type === 'asteroid') facts.push(`Tether, then ${BINDINGS.drill.label} · enter asteroid`);
   return facts.join(' · ');
 }
 

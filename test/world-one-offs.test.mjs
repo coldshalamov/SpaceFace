@@ -115,6 +115,8 @@ test('CR-TEXTURE-1: every named sector has a reachable one-off', () => {
     bySector.get(oneOff.sectorId).push(oneOff);
   }
   for (const sector of SECTORS) {
+    // Interior hosts (The Bolus) materialize their own volume and skip the one-off dressing pass.
+    if (sector.interiorHost) continue;
     assert.ok(
       (bySector.get(sector.id) || []).length >= 1,
       `${sector.id} has no one-off — every named place gets one reachable surprise`,
@@ -129,7 +131,7 @@ test('CR-TEXTURE-1: every named sector has a reachable one-off', () => {
     'sector_vesta_forge', 'sector_io_reach',
   ]);
   for (const sector of SECTORS) {
-    if (STARTER_POCKET.has(sector.id)) continue;
+    if (STARTER_POCKET.has(sector.id) || sector.interiorHost) continue;
     const stations = sector.stations || [];
     assert.ok(
       stations.some((s) => AUTHORED_DOCK_RUMORS[s.id]),

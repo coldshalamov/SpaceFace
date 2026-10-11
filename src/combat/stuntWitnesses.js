@@ -214,7 +214,22 @@ export const STUNT_SITUATION_LINES = Object.freeze({
   needle_thread:["You fit. That's the important part.","There wasn't a gap a second ago.","Don't follow that line."],
   one_two:["You corrected it in flight.","It was going the other way.","Second impulse. New trajectory."],
   slingshot_golf:["You handed it from rope to gravity.","The well threw it back out.","Track the whole path, not the release."],
+  ore_shotgun:["That pod was a shell.","You shoved cargo into him. Cargo won.","Don't let him spend your hold on us!"],
 });
+// THE WORLD ANSWERS: a recognised trick said more exactly. A variant line (or the cargo-naming line
+// of Ore Shotgun) is what a witness says about THIS episode, ahead of the generic title bark.
+export const STUNT_VARIANT_LINES = Object.freeze({
+  bolas_pair:'Two hulls, one rope, one rock.',
+  own_wingman:'His own wingman finished him.',
+});
+export function stuntSpecificLine(incident) {
+  if(!incident)return null;
+  if(incident.trickId==='ore_shotgun') {
+    const name=cleanName(incident.cargo?.name,'cargo').toLowerCase();
+    return `That was your ${name}. The pod killed him.`;
+  }
+  return STUNT_VARIANT_LINES[incident.variantId]??null;
+}
 export function completeWitness(witness) {
   return witness?.provenance==='live-physical-samples'&&witness.sourceTicks>=6&&witness.transferTicks>=6&&witness.payoffTicks>=6;
 }
@@ -222,6 +237,8 @@ const cleanName=(value,fallback)=>{const out=String(value==null?fallback:value).
 /** §5.2 one-sentence physical account, shared by the ship ledger and the port dossier. */
 export function stuntAccountFor(record) {
   const source=cleanName(record?.sourceName,'the released body'),target=cleanName(record?.targetName,'the target');
+  if(record?.variantId==='bolas_pair')return `bridled ${target} to a wingman and drove the pair into the rock`;
+  if(record?.variantId==='own_wingman')return `put the wreck ${source} back in motion against its own wingman ${target}`;
   return ({
     bolas:`released ${source} under load into ${target}`,
     wrecking_ball:`swung the attached ${source} into ${target}`,
@@ -236,6 +253,7 @@ export function stuntAccountFor(record) {
     needle_thread:'escaped an incoming threat through a moving gap',
     one_two:`corrected ${source}'s path with a second intervention into ${target}`,
     slingshot_golf:`passed ${source} from a loaded tether through gravity into ${target}`,
+    ore_shotgun:`shoved ${source} into ${target} and the cargo killed it`,
     near_miss:'changed course and cleared an incoming threat',
   })[record?.trickId]||`completed ${cleanName(record?.name||record?.trickId,'a stunt')}`;
 }

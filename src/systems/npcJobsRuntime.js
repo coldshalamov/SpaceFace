@@ -87,6 +87,9 @@ import {
   isPriorityCourierItinerary,
 } from '../data/laneContacts.js';
 import { SECTORS } from '../data/sectors.js';
+import { stationBerthAdmits } from '../data/frontierRumors.js';
+import { stationServiceOutage } from './economy.js';
+import { makeShipEntitySpec } from './ships.js';
 import { HEADLINE_TEMPLATES, fillTemplate } from '../data/newsTemplates.js';
 import { BEAMS } from '../data/mining.js';
 import { barkFor } from '../data/barks.js';
@@ -208,6 +211,15 @@ const YARD_DISPATCH_ARRIVE_WU = 130;
 const YARD_DISPATCH_HOT_WU = 800;
 const YARD_DISPATCH_FEE_CR = 150;
 const YARD_DISPATCH_COOLDOWN_S = 120;
+// On-call yard tender: a repair station anywhere in the current sector sends a truck when no
+// working tender is already in reach. Same reach as a working tender's dispatch, so a yard farther
+// than a tender could have driven is simply out of range.
+const ONCALL_TENDER_RANGE_WU = YARD_DISPATCH_RANGE_WU;
+const ONCALL_TENDER_SHIP_ID = 'ship_ironback';
+const ONCALL_TENDER_DEPART_WU = 90;
+const ONCALL_HOME_ARRIVE_WU = 70;
+const ONCALL_RETURN_TIMEOUT_S = 240;
+const ONCALL_JOB_SPAN_S = 1e6;
 const YARD_DISPATCH_REPAIR_TICK_S = 1.0;
 const YARD_DISPATCH_HOT_TOAST_S = 20;
 // INF-WF01 crew response: the same truck, answering its own. When a working crew hull's
@@ -942,6 +954,7 @@ export const npcJobsRuntime = {
     this._heliosStarterMinerRecordId = null;
     this._heliosStarterRockId = null;
     this._yardDispatch = null;
+    this._oncall = null;
     this._yardLastDispatchT = -Infinity;
     this._yardLastRefuseT = -Infinity;
     this._crewResponse = null;
@@ -1007,8 +1020,9 @@ export const npcJobsRuntime = {
       // Ecology has stamped its role and field by this event. Adopt the existing pair before
       // world's first tick shelves jobless distant hulls; the regular update scan is too late.
       this.bus.on('wreckEcology:spawned', (p) => {
-        if (p && p.role === 'scavenger' && p.sectorId === CERES_ACTIVITY_SECTOR_ID) {
-          this._adoptCeresScavengerTractors();
+        if (p && p.role === 'scavenger' && p.sectorId
+          && p.sectorId === (this.state.world && this.state.world.currentSectorId)) {
+          this._adoptScavengerTractors();
         }
       });
       // A job whose hull is destroyed (never demoted) ends with the entity (ruling 5).
@@ -2136,6 +2150,7 @@ export const npcJobsRuntime = {
     this._heliosStarterMinerRecordId = null;
     this._heliosStarterRockId = null;
     this._yardDispatch = null;
+    this._retireOncallHulls();
     this._yardLastDispatchT = -Infinity;
     this._yardLastRefuseT = -Infinity;
     this._crewResponse = null;
@@ -2535,22 +2550,38 @@ export const npcJobsRuntime = {
     return best;
   },
 
-  _countCeresScavengerJobs() {
+  _countScavengerJobs(sectorId = null) {
     const byId = this._byId();
     let count = 0;
     for (const jobId of Object.keys(byId)) {
       const entry = byId[jobId];
       if (!entry || !entry.job || entry.job.kind !== NPC_JOB_KIND.SALVOR) continue;
+      if (sectorId != null && entry.sectorId !== sectorId) continue;
       if (entry.job.payload && entry.job.payload.role === 'scavenger') count += 1;
     }
     return count;
   },
 
+  _countCeresScavengerJobs() {
+    return this._countScavengerJobs(CERES_ACTIVITY_SECTOR_ID);
+  },
+
   _adoptCeresScavengerTractors() {
-    if (!this.state || this.state.world?.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return 0;
-    if (this._countCeresScavengerJobs() >= NPC_CERES_SCAVENGER_ADOPT_LIMIT) return 0;
+    return this._adoptScavengerTractors();
+  },
+
+  // Aftermath-ecology scavengers become working salvors in whatever sector they work: the same
+  // per-sector limit, stable world-record ids keyed by the real sector id (Ceres keeps its
+  // historical key so existing saves re-link), and the same tractor line on the nearest wreck.
+  _adoptScavengerTractors() {
+    const sectorId = this.state && this.state.world && this.state.world.currentSectorId;
+    if (!sectorId) return 0;
+    if (this._countScavengerJobs(sectorId) >= NPC_CERES_SCAVENGER_ADOPT_LIMIT) return 0;
     const seed = (this.state.meta && this.state.meta.seed) || 1;
-    let adopted = this._countCeresScavengerJobs();
+    const recordPrefix = sectorId === CERES_ACTIVITY_SECTOR_ID
+      ? 'ceres:occupation:scavenger'
+      : `${sectorId}:occupation:scavenger`;
+    let adopted = this._countScavengerJobs(sectorId);
     forEachLivingWorldActor(this.state, (entity) => {
       if (adopted >= NPC_CERES_SCAVENGER_ADOPT_LIMIT) return;
       if (entity.type !== 'ship' || !entity.pos) return;
@@ -2558,23 +2589,23 @@ export const npcJobsRuntime = {
       if (data.ceresActivityCast === true || data.activityActorSlotId) return;
       if ((data.trafficRole || data.role) !== 'scavenger') return;
       if (data.jobId) return;
-      const probe = { job: { payload: {} }, sectorId: CERES_ACTIVITY_SECTOR_ID };
+      const probe = { job: { payload: {} }, sectorId };
       const target = this._findNearestOccupationalTarget(probe, entity, isTowableCargoTarget);
       if (!target || !target.pos) return;
       if (!data.worldRecordId) {
         data.worldRecordId = stableRecordId(
           seed,
-          CERES_ACTIVITY_SECTOR_ID,
+          sectorId,
           RECORD_KIND.CONVOY,
-          `ceres:occupation:scavenger:${Math.round(entity.pos.x)}:${Math.round(entity.pos.z)}`,
+          `${recordPrefix}:${Math.round(entity.pos.x)}:${Math.round(entity.pos.z)}`,
         );
         // Post-append stamp on a live indexed entity — register it like every other stamp
         // site so the map/count answer O(1) and the miss-memos see the carrier.
         registerEntityWorldRecordId(this.state && this.state.entityIndex, entity);
       }
-      if (data.sectorId == null) data.sectorId = CERES_ACTIVITY_SECTOR_ID;
-      if (data.homeSectorId == null) data.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
-      if (target.data && target.data.sectorId == null) target.data.sectorId = CERES_ACTIVITY_SECTOR_ID;
+      if (data.sectorId == null) data.sectorId = sectorId;
+      if (data.homeSectorId == null) data.homeSectorId = sectorId;
+      if (target.data && target.data.sectorId == null) target.data.sectorId = sectorId;
       syncEntitySectorMembership(this.state && this.state.entityIndex, entity);
       syncEntitySectorMembership(this.state && this.state.entityIndex, target);
       // This cutter works the existing wreck field. Keep its hold and work marks there; the
@@ -2582,7 +2613,7 @@ export const npcJobsRuntime = {
       pinOccupationalLatch(target);
       const jobId = this.assign(entity, {
         kind: NPC_JOB_KIND.SALVOR,
-        sectorId: CERES_ACTIVITY_SECTOR_ID,
+        sectorId,
         speed: 40,
         commissionS: 0.05,
         transitS: 0.05,
@@ -2999,7 +3030,8 @@ export const npcJobsRuntime = {
       // the restore seam — a flag set mid-restore is culled by _spawnPersistentEntities as a
       // stale body before the live tick ever runs.
       if (d && d.jobId != null && byId[d.jobId]) {
-        stampJobOwnedPersistence(entity);
+        // An on-call tender is transient by design: never marked durable, never saved.
+        if (byId[d.jobId].transient !== true) stampJobOwnedPersistence(entity);
         continue;
       }
       const flags = entity.flags;
@@ -3914,6 +3946,7 @@ export const npcJobsRuntime = {
     }
     stepCeresWorkfleet(this,dt);
     this._stepPlayerTenderDispatch(dt);
+    this._stepOncallTenderReturn();
     this._stepCrewResponse(dt);
     this._stepTowAssists();
     // The Ceres discovery sweeps poll the whole living-actor set. Latency-sensitive arrivals already
@@ -3928,7 +3961,7 @@ export const npcJobsRuntime = {
       || ceresSweepT - lastCeresSweepT >= NPC_TOW_SCAN_INTERVAL_S) {
       this._ceresSweepDirty = false;
       this._ceresSweepLastSimT = ceresSweepT;
-      this._adoptCeresScavengerTractors();
+      this._adoptScavengerTractors();
       this._stampCeresPirateInterceptCues();
     }
     // Job-owned persistence invariant: a durable worker keeps flags.persistent only while it
@@ -5120,7 +5153,16 @@ export const npcJobsRuntime = {
       this._yardRefuse(now, 'Yard tender: we don\'t roll for WANTED hulls.');
       return;
     }
-    const found = this._nearestYardTender();
+    let found = this._nearestYardTender();
+    if (!found) found = this._reuseReturningOncallTender();
+    if (!found) {
+      const oncall = this._spawnOncallTender();
+      if (oncall && oncall.refusal) {
+        this._yardRefuse(now, oncall.refusal);
+        return;
+      }
+      if (oncall) found = oncall;
+    }
     if (!found) {
       this._yardRefuse(now, 'No yard tender in range — you\'re on your own.');
       return;
@@ -5133,6 +5175,7 @@ export const npcJobsRuntime = {
       lastRepairT: -Infinity, hotToastT: -Infinity,
     };
     this._yardLastDispatchT = now;
+    if (this._oncall && this._oncall.jobId === found.jobId) this._oncall.phase = 'serve';
     if (this.bus && typeof this.bus.emit === 'function') {
       try {
         this.bus.emit('toast', { text: 'Yard tender en route — hold still.', kind: 'info', ttl: 4 });
@@ -5149,6 +5192,7 @@ export const npcJobsRuntime = {
     const billed = dispatch.repaired === true;
     this.releaseControl(dispatch.jobId, dispatch.claimId);
     this._yardDispatch = null;
+    this._sendOncallTenderHome(dispatch.jobId);
     if (this.bus && typeof this.bus.emit === 'function') {
       try {
         if (billed) {
@@ -5203,6 +5247,244 @@ export const npcJobsRuntime = {
     return best;
   },
 
+  // -- On-call yard tender ---------------------------------------------------------------------
+  //
+  // A repair yard answers a dead drive in any sector. The truck is a transient TENDER job: its
+  // hull has no world record and no persistence mark, its job entry is skipped by serialize(),
+  // and the existing dispatch flow (claimControl, travel, weld, bill on drive-up, release) runs
+  // on it unchanged. After the weld it flies home under a second lease and is retired at the
+  // station, so no hull is left loitering. One on-call truck at a time.
+
+  _oncallStations() {
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    const live = this.state.world && this.state.world.activeSector
+      && this.state.world.activeSector.stations;
+    if (!sectorId || !Array.isArray(live)) return [];
+    const sector = SECTORS.find((entry) => entry.id === sectorId);
+    const out = [];
+    for (const row of live) {
+      const stationId = row && (row.stationId || (typeof row.id === 'string' ? row.id : null));
+      if (!stationId || !row.pos || !Number.isFinite(row.pos.x) || !Number.isFinite(row.pos.z)) continue;
+      const record = sector && (sector.stations || []).find((st) => st.id === stationId);
+      if (!record || !Array.isArray(record.services) || !record.services.includes('repair')) continue;
+      out.push({ stationId, record, pos: { x: row.pos.x, z: row.pos.z } });
+    }
+    return out;
+  },
+
+  /** Nearest in-range repair station that would serve the player, or the honest refusal. */
+  _pickOncallStation(player) {
+    let best = null;
+    let bestD2 = Infinity;
+    let refusal = null;
+    for (const station of this._oncallStations()) {
+      const dx = station.pos.x - player.pos.x;
+      const dz = station.pos.z - player.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 > ONCALL_TENDER_RANGE_WU * ONCALL_TENDER_RANGE_WU) continue;
+      const name = station.record.name || station.stationId;
+      const outage = stationServiceOutage(this.state, station.stationId, 'repair');
+      if (outage) {
+        refusal = refusal || `${name}'s repair bay is down (~${Math.max(1, Math.ceil(outage.remainingS / 60))} min) \u2014 you're on your own.`;
+        continue;
+      }
+      const standing = this.state.factions && this.state.factions[station.record.factionId];
+      const rep = standing && Number.isFinite(Number(standing.rep)) ? Number(standing.rep) : 0;
+      if (!stationBerthAdmits(station.record, rep, this.state)) {
+        refusal = refusal || `${name} won't send a truck for you.`;
+        continue;
+      }
+      if (d2 < bestD2 || (d2 === bestD2 && station.stationId < best.stationId)) {
+        best = station;
+        bestD2 = d2;
+      }
+    }
+    return best ? { station: best } : { refusal };
+  },
+
+  _oncallHull() {
+    const o = this._oncall;
+    const hull = o && o.entityId != null && this.state.entities ? this.state.entities.get(o.entityId) : null;
+    return hull && hull.alive !== false && hull.data && hull.data.onCallTender === true ? hull : null;
+  },
+
+  /** Returns { jobId, entry, hull } for a fresh on-call truck, { refusal } when a yard is in range
+   *  but will not answer, or null when no repair yard is in range (the plain "on your own" line). */
+  _spawnOncallTender() {
+    const state = this.state;
+    const player = state.playerId != null && state.entities ? state.entities.get(state.playerId) : null;
+    if (!player || !player.pos || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
+    if (this._oncall && this._oncallHull()) return null; // one at a time
+    const picked = this._pickOncallStation(player);
+    if (!picked.station) return picked.refusal ? { refusal: picked.refusal } : null;
+    const { station } = picked;
+    const sectorId = state.world.currentSectorId;
+    const dx = player.pos.x - station.pos.x;
+    const dz = player.pos.z - station.pos.z;
+    const len = Math.hypot(dx, dz) || 1;
+    const home = {
+      x: station.pos.x + (dx / len) * ONCALL_TENDER_DEPART_WU,
+      z: station.pos.z + (dz / len) * ONCALL_TENDER_DEPART_WU,
+    };
+    const spec = makeShipEntitySpec(ONCALL_TENDER_SHIP_ID, {
+      team: 2,
+      factionId: station.record.factionId || null,
+      pos: home,
+      rot: Math.atan2(dz, dx),
+      fittings: [],
+      ai: { archetype: 'passive', passive: true, spawnContext: 'yard_oncall', roe: 'hold_fire' },
+    });
+    spec.data = spec.data || {};
+    const recordId = `oncall:${sectorId}:${station.stationId}`;
+    const jobId = `job:${recordId}`;
+    spec.data.onCallTender = true;
+    spec.data.scanLabel = 'YARD TENDER \u2014 ON CALL';
+    spec.data.sectorId = sectorId;
+    spec.data.jobId = jobId;
+    spec.data.jobKind = 'tender';
+    const hull = this.helpers.spawnEntity(spec);
+    if (!hull) return null;
+    if (hull.data) hull.data.jobId = jobId;
+    let job;
+    try {
+      job = createJob({
+        id: jobId,
+        kind: NPC_JOB_KIND.TENDER,
+        sectorId,
+        speed: 120,
+        commissionS: ONCALL_JOB_SPAN_S,
+        departS: ONCALL_JOB_SPAN_S,
+        approachS: ONCALL_JOB_SPAN_S,
+        workS: ONCALL_JOB_SPAN_S,
+        route: [
+          { id: 'berth', pos: { ...home }, label: 'Berth' },
+          { id: 'client', pos: { x: player.pos.x, z: player.pos.z }, label: 'Client' },
+        ],
+      }, (state.meta && state.meta.seed) || 0);
+    } catch {
+      this._removeOncallHull(hull);
+      return null;
+    }
+    const entry = {
+      job,
+      kind: job.kind,
+      sectorId,
+      worldRecordId: recordId,
+      transient: true,
+      entityId: hull.id,
+      lastAdvanceSimT: finite(state.simTime, 0),
+      threatId: null,
+      towAttachmentId: null,
+      towTargetId: null,
+      towOwnerRef: null,
+      towTargetRef: null,
+      towNextScanSimT: 0,
+    };
+    this._byId()[jobId] = entry;
+    this._invalidateJobIds();
+    this._threatQueryDirty = true;
+    this._oncall = {
+      jobId, entityId: hull.id, stationId: station.stationId, home,
+      phase: 'serve', returnClaimId: null, returnStartT: 0,
+    };
+    return { jobId, entry, hull };
+  },
+
+  _removeOncallHull(hull) {
+    if (!hull) return;
+    const helpers = this.helpers;
+    if (helpers && typeof helpers.removeEntity === 'function') {
+      helpers.removeEntity(hull.id, { immediate: true, reason: 'oncall_tender_retired' });
+    } else {
+      hull.alive = false;
+    }
+  },
+
+  _retireOncall(reason) {
+    const o = this._oncall;
+    this._oncall = null;
+    if (!o) return;
+    const hull = o.entityId != null && this.state.entities ? this.state.entities.get(o.entityId) : null;
+    if (this._yardDispatch && this._yardDispatch.jobId === o.jobId) this._yardDispatch = null;
+    const byId = this._byId();
+    if (byId[o.jobId]) {
+      byId[o.jobId].control = null;
+      delete byId[o.jobId];
+      this._invalidateJobIds();
+    }
+    if (hull && hull.data && hull.data.onCallTender === true) this._removeOncallHull(hull);
+    if (this.bus && typeof this.bus.emit === 'function') {
+      try { this.bus.emit('npcjobs:oncallTenderRetired', { jobId: o.jobId, reason }); } catch { /* advisory */ }
+    }
+  },
+
+  /** Leftover on-call hulls (Continue, New Game) are removed so a re-request never doubles. */
+  _retireOncallHulls() {
+    this._oncall = null;
+    const list = this.state && this.state.entityList;
+    if (!Array.isArray(list)) return;
+    for (const hull of list.slice()) {
+      if (hull && hull.alive !== false && hull.data && hull.data.onCallTender === true) {
+        this._removeOncallHull(hull);
+      }
+    }
+  },
+
+  /** A drive-down that arrives while the truck is flying home takes the same truck back. */
+  _reuseReturningOncallTender() {
+    const o = this._oncall;
+    if (!o || o.phase !== 'return') return null;
+    const entry = this._byId()[o.jobId];
+    const hull = this._oncallHull();
+    if (!entry || !hull) return null;
+    if (entry.control && entry.control.claimId === o.returnClaimId) {
+      this.releaseControl(o.jobId, o.returnClaimId);
+    }
+    return { jobId: o.jobId, entry, hull };
+  },
+
+  _sendOncallTenderHome(jobId) {
+    const o = this._oncall;
+    if (!o || o.jobId !== jobId) return;
+    const entry = this._byId()[jobId];
+    const hull = this._oncallHull();
+    if (!entry || !hull || entry.sectorId !== (this.state.world && this.state.world.currentSectorId)) {
+      this._retireOncall('truck_gone');
+      return;
+    }
+    const claimId = `yard-oncall-return:${Number.isInteger(this.state.tick) ? this.state.tick : 0}`;
+    const out = this.claimControl(jobId, { claimId, holder: 'yardOncallReturn' });
+    if (!out || out.granted !== true) {
+      this._retireOncall('claim_refused');
+      return;
+    }
+    o.phase = 'return';
+    o.returnClaimId = claimId;
+    o.returnStartT = finite(this.state.simTime, 0);
+  },
+
+  _stepOncallTenderReturn() {
+    const o = this._oncall;
+    if (!o) return;
+    const entry = this._byId()[o.jobId];
+    const hull = this._oncallHull();
+    if (!entry || !hull) {
+      this._oncall = null;
+      return;
+    }
+    if (o.phase !== 'return') return;
+    if (!entry.control || entry.control.claimId !== o.returnClaimId) return;
+    const now = finite(this.state.simTime, 0);
+    const dx = o.home.x - hull.pos.x;
+    const dz = o.home.z - hull.pos.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist <= ONCALL_HOME_ARRIVE_WU || now - o.returnStartT >= ONCALL_RETURN_TIMEOUT_S) {
+      this._retireOncall('home');
+      return;
+    }
+    this._writeIntent(hull, dx / dist, dz / dist, dist > 600, Math.atan2(dz, dx));
+  },
+
   _stepPlayerTenderDispatch(dt) {
     const dispatch = this._yardDispatch;
     if (!dispatch) return;
@@ -5222,6 +5504,7 @@ export const npcJobsRuntime = {
       const truckLost = entry && (!hull || hull.alive === false);
       this.releaseControl(dispatch.jobId, dispatch.claimId);
       this._yardDispatch = null;
+      this._sendOncallTenderHome(dispatch.jobId);
       if (truckLost && this.bus && typeof this.bus.emit === 'function') {
         try {
           this.bus.emit('toast', { text: 'We lost the truck.', kind: 'warn', ttl: 4 });
@@ -5760,6 +6043,7 @@ export const npcJobsRuntime = {
   _onSectorExit(p) {
     const sectorId = p && p.sectorId;
     if (!sectorId) return;
+    if (this._oncall) this._retireOncall('sector_exit');
     const byId = this._byId();
     for (const jobId of Object.keys(byId)) {
       const entry = byId[jobId];
@@ -5969,7 +6253,7 @@ export const npcJobsRuntime = {
     if(this.state.npcJobs?.ceresWorkfleet)out.ceresWorkfleet=JSON.parse(JSON.stringify(this.state.npcJobs.ceresWorkfleet));
     for (const jobId of Object.keys(byId)) {
       const entry = byId[jobId];
-      if (!entry || !entry.job) continue;
+      if (!entry || !entry.job || entry.transient === true) continue;
       const job = serializeJob(entry.job);
       if (!job) continue;
       out.byId[jobId] = {
@@ -6027,6 +6311,10 @@ export const npcJobsRuntime = {
   // between those record boundaries — order and RNG consumption stay identical.
   *deserializeChunked(data) {
     clearCeresWorkfleetControls(this.state);
+    // A restore drops every lease and every transient hull: a dispatch in flight starts over from
+    // the save:loaded drive check, and on-call trucks are never carried across a load.
+    this._yardDispatch = null;
+    this._retireOncallHulls();
     // World re-entry happens before this restore step. An outgoing virtual job can therefore
     // briefly re-link to an incoming durable hull during the earlier sector:enter. The saved bag
     // below is authoritative; clear every live marker owned by this runtime before replacing it,

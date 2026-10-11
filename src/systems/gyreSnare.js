@@ -37,6 +37,7 @@ import {
 import { queryAsteroidField, promoteAsteroidFieldRock } from '../world/asteroidField.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { GYRE_SNARE, GYRE_EVENTS, GYRE_ABSORBABLE_TYPES } from '../data/gyreSnare.js';
+import { environmentMaterialOf } from '../data/environmentMaterials.js';
 
 const D = GYRE_SNARE;
 const TICKS_PER_S = 60; // sim tick -> simTime ratio shared by the provenance hold
@@ -1549,14 +1550,12 @@ export const gyreSnare = {
       D.maxClumpRadius,
       Math.cbrt(rt.clumpRadius ** 3 + er ** 3),
     );
-    // Member ledger for the VFX lumps — bounded, keeps the approach direction so lumps
-    // land where the mass actually hit. totalAbsorbed stays unbounded so the HUD's ×N
-    // count doesn't freeze at the ledger cap while mass keeps climbing.
+    // Each member keeps its actual surface and approach so the clump is visibly made
+    // from what the player collected. The member ceiling stops further ingestion.
     rt.totalAbsorbed += 1;
     const nx = dist > 1e-4 ? -dx / dist : 0;
     const nz = dist > 1e-4 ? -dz / dist : 0;
-    // The gulp direction rides its own unbounded channel — the member ledger caps
-    // out and would freeze the dip on the 28th meal while absorbs keep landing.
+    // The gulp direction is a per-tick channel; the full ledger remains the payload.
     rt.absorbDir.x = nx; rt.absorbDir.z = nz;
     // Publish carries the tick's BIGGEST meal (last-write used to under-grade a
     // wreck-then-pebble batch — every per-meal channel grades on its own em/er
@@ -1601,7 +1600,8 @@ export const gyreSnare = {
       }
     }
     if (rt.members.length < D.maxAbsorbRecords) {
-      rt.members.push({ type: e.type, mass: em, radius: er, nx, nz });
+      rt.members.push({ type: e.type, material: environmentMaterialOf(e),
+        typeId: e.data?.typeId || null, mass: em, radius: er, nx, nz });
     }
     if (this.helpers.removeEntity) this.helpers.removeEntity(e.id);
     else e.alive = false;
@@ -2221,7 +2221,7 @@ export const gyreSnare = {
     return state.gyreSnare || (state.gyreSnare = {
       phase: PHASE.OFF, nose: { x: 0, z: 0 }, maw: { x: 0, z: 0 },
       coneLen: 0, halfAngleRad: D.coneHalfAngleRad, endRadius: 0,
-      coreId: null, clumpMass: 0, clumpRadius: 0, absorbs: 0, maxClumpMass: D.maxClumpMass,
+      coreId: null, coreMaterial: null, coreTypeId: null, clumpMass: 0, clumpRadius: 0, absorbs: 0, maxClumpMass: D.maxClumpMass,
       strain01: 0, corePos: { x: 0, z: 0 }, coreAngVel: 0, launchDir: { x: 1, z: 0 },
       members: null, launchedId: null, ballPos: { x: 0, z: 0 }, ballVx: 0, ballVz: 0, ballAngVel: 0, ballMass: 0, ballTtl01: 1,
       ballTtlLeftS: 0,
@@ -2245,6 +2245,9 @@ export const gyreSnare = {
     for (let i = 0; i < rt.basinSpots.length; i++) pub.basinSpots.push(rt.basinSpots[i]);
     pub.phase = rt.phase;
     pub.dropReason = rt.dropReason;
+    const materialCore = state.entities?.get(rt.coreId ?? rt.ballId);
+    pub.coreMaterial = materialCore?.alive !== false ? environmentMaterialOf(materialCore) : null;
+    pub.coreTypeId = materialCore?.alive !== false ? materialCore?.data?.typeId || null : null;
     // Torn-core follow: ~0.5 s of the strain-freed body's live pos so the close
     // ramp can fly the rubble off WITH it. Dead entity / elapsed window -> null.
     if (rt.tornTrack) {
@@ -2317,6 +2320,7 @@ export const gyreSnare = {
         ttlS,
         ttl01: D.ballTtlS > 0 ? Math.max(0, Math.min(1, ttlS / D.ballTtlS)) : 1,
         mass: entityMass(e),
+        coreMaterial: environmentMaterialOf(e), coreTypeId: e.data?.typeId || null,
         r: meta && Number.isFinite(meta.clumpRadius) ? meta.clumpRadius : entityRadius(e),
         angVel: finite(e.angVel), // the overlay's tumble chirality — a ricochet that
                                   // reversed spin must not leave its rubble counter-rotating
@@ -2843,6 +2847,7 @@ export const gyreSnare = {
         queuePhysicsImpulse(core, { x: ax * mass * dt, y: 0, z: az * mass * dt }, this._evidence(state.tick));
       } else if (core && core.alive !== false && rt.launchLeft > 0) {
         const mass = entityMass(core);
+        let lateralImpulse = 0;
         if (rt.launchLeft === D.launchTicks) {
           // The coil's residual AFT-velocity is repaid by the burst — the effective
           // launch speed is a FLOOR on launch-direction flight speed: an aft-moving
@@ -2853,13 +2858,21 @@ export const gyreSnare = {
             + finite(core.vel && core.vel.z) * rt.launchDir.z;
           rt.launchCarry = Math.max(0, -fwd);
           rt.launchFwd = fwd;
+          // Strip the hold orbit's sideways motion in the carrier's moving frame.
+          // Do this once at release into flight: later collisions must still deflect
+          // the ball, and deliberate ship strafing must carry into the throw.
+          const relativeVx = finite(player.vel && player.vel.x) - finite(core.vel && core.vel.x);
+          const relativeVz = finite(player.vel && player.vel.z) - finite(core.vel && core.vel.z);
+          lateralImpulse = mass * (-rt.launchDir.z * relativeVx + rt.launchDir.x * relativeVz);
           // launchSpeedEff was frozen in _launch off ballMass — the burst just
           // repays coil carry on top of it.
         }
         // Per-tick impulse = m·(v/launchTicks): launchTicks of these sum to Δv = vEff.
         const j = ((rt.launchSpeedEff + rt.launchCarry) * mass) / D.launchTicks;
         queuePhysicsImpulse(core, {
-          x: rt.launchDir.x * j, y: 0, z: rt.launchDir.z * j,
+          x: rt.launchDir.x * j - rt.launchDir.z * lateralImpulse,
+          y: 0,
+          z: rt.launchDir.z * j + rt.launchDir.x * lateralImpulse,
         }, this._evidence(state.tick));
         rt.launchLeft -= 1;
         if (rt.launchLeft === D.launchTicks - 1) {

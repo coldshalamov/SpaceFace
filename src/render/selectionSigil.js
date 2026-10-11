@@ -383,7 +383,10 @@ export class SelectionSigil {
         uRetract: { value: 1 },
         uFlash: { value: 1 },
         uHull: { value: 1 / SIGIL_RADIUS_SCALE },
-        uGain: { value: 1 },
+        // The selected body is the combat subject. Keep the instrument below the
+        // radiance of a weapon contact so chips, shield hits and attached tools
+        // remain readable inside it at the gameplay camera.
+        uGain: { value: 0.36 },
       },
       vertexShader: SIGIL_VERT,
       fragmentShader: SIGIL_FRAG,

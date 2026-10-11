@@ -17,6 +17,7 @@ import { zonesForSector } from './sectorZones.js';
 import { SECTORS } from './sectors.js';
 import { BUBBLE_MULTIPLIERS, BUBBLE_SIZE_FACTOR } from './stationBubbles.js';
 import { HELIOS_STARTER_PROTECTION_RADIUS_WU } from './sectorCoordinates.js';
+import { LAWFUL_STATION_FACTIONS } from './factions.js';
 
 /**
  * Wanted-poster person names, in the game's register ('Rook Nine', 'Red Ledger', 'Mira Bluepack').
@@ -115,12 +116,6 @@ function markPoiEligible(poi, sectorDef) {
 }
 
 /**
- * Station factions that project a lawful no-fire bubble — mirror of
- * engagementAuthority.LAWFUL_STATION_FACTIONS (kept local: data modules stay leaf-ward).
- */
-const MARK_LAWFUL_STATION_FACTIONS = new Set(['faction_scn', 'faction_mts', 'faction_dmc', 'faction_free']);
-
-/**
  * A writ does not post a mark inside lawful protection — a hostile holding a station bubble can
  * never return fire, which turns the hunt into an execution. Rebuilds the same volumes
  * engagementAuthority.protectedStationAt computes, in pure data: dockRadius is a function of
@@ -134,7 +129,7 @@ function lawfulProtectionVolumes(sectorId, sectorDef) {
     .map((anchor) => [anchor && anchor.id, anchor]));
   for (const station of (sectorDef && sectorDef.stations) || []) {
     if (!station || !station.id) continue;
-    const lawful = MARK_LAWFUL_STATION_FACTIONS.has(station.factionId);
+    const lawful = LAWFUL_STATION_FACTIONS.has(station.factionId);
     const starterSanctuary = station.id === 'station_helios';
     if (!lawful && !starterSanctuary) continue;
     const pos = anchorById.get(station.id) && anchorById.get(station.id).pos;

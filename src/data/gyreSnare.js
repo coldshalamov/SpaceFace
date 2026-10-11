@@ -143,8 +143,8 @@ export const GYRE_SNARE = Object.freeze({
   absorbCueMinGapS: 0.08,    // s — min gap between absorb glass ticks so a dense belt feed
                            // doesn't stack identical cues into noise (events stay per-body)
   maxClumpRadius: 60,        // wu — volumetric union clamps here; mass keeps growing regardless
-  maxClumpMass: 2400,        // t — mass cap (a hard ceiling so a ball can't out-scale a capital)
-  maxAbsorbRecords: 28,      // member ledger bound for the VFX lumps
+  maxClumpMass: 2400,        // t — feel reference where coil/recoil/speed grading saturates; NOT an ingestion limit
+  maxAbsorbRecords: 28,      // whole-body member capacity; a full ledger stops gathering and merging
   basinSpotMax: 8,           // published pull-glow positions per tick (bodies actually being dragged)
   // ── Launch ────────────────────────────────────────────────────────────────────────
   launchSpeed: 520,          // wu/s — release Δv floor along the nose before the mass penalty; the bowl visibly outruns a boosting player (~1.9x boost)
@@ -163,7 +163,7 @@ export const GYRE_SNARE = Object.freeze({
   launchWindupMaxAccel: 2200, // wu/s² — windup clamp is its own ceiling, not holdMaxAccel:
                               // a capped 2400 t clump must still visibly bow ~13 wu aft in
                               // ~100 ms (the slingshot read dies if the coil can't pull it)
-  ballTtlS: 9,               // s — the bowling ball despawns after this flight window
+  ballTtlS: 9,               // s — impact cohesion and bowling flight lifetime; heat can still rupture the aggregate
   ballWatchMax: 8,           // live balls the tracker mirrors/watches (overflow keeps marks, sheds watch)
   launchImpactScaleBase: 1.6,// damage scale floor on a launched ball
   launchImpactScalePerMass: 90, // +1 impactDamageScale per this many tons of clump mass

@@ -627,7 +627,7 @@ function drawSeam(g, seam, colours, { reduced, animT }) {
  * washes the whole canvas around the gate ring, the ring wears a lit rim in that hue, and a faint
  * tinted half-ring and cross read the dial. Paint with `destination-over` (behind everything).
  */
-export function drawSystemGround(g, w, h, { x, y, r, ownerId = null, fallbackHex = null, dashed = true } = {}) {
+export function drawSystemGround(g, w, h, { x, y, r, ownerId = null, fallbackHex = null, dashed = true, rim = true } = {}) {
   if (!g || !(r > 0)) return;
   const tint = dominionRgb(ownerId, fallbackHex);
   const reach = Math.max(w, h) * 0.62;
@@ -640,23 +640,18 @@ export function drawSystemGround(g, w, h, { x, y, r, ownerId = null, fallbackHex
     g.fillStyle = wash;
     g.fillRect(0, 0, w, h);
   }
-  // the rim: a lit band in the holder's hue, with a wide halo and a crisp core
-  g.lineCap = 'round';
-  g.strokeStyle = rgba(tint, 0.07); g.lineWidth = 44;
-  g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
-  g.strokeStyle = rgba(tint, 0.2); g.lineWidth = 12;
-  g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
-  g.strokeStyle = rgba(mixRgb(tint, [255, 255, 255], 0.35), 0.7); g.lineWidth = 1.6;
-  g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
-  // the three-quarter ring and the cross
-  g.strokeStyle = rgba(tint, 0.2); g.lineWidth = 1.2;
-  if (dashed) {
-    g.setLineDash([2, 6]);
-    g.beginPath(); g.arc(x, y, r * 0.75, 0, Math.PI * 2); g.stroke();
-    g.setLineDash([]);
+  // the rim: a lit band in the holder's hue, with a wide halo and a crisp core. The rectangular
+  // chart passes `rim:false` — a lit circle round the whole field reads as a dial reborn; the wash
+  // alone carries the holding.
+  if (rim) {
+    g.lineCap = 'round';
+    g.strokeStyle = rgba(tint, 0.07); g.lineWidth = 44;
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = rgba(tint, 0.2); g.lineWidth = 12;
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
+    g.strokeStyle = rgba(mixRgb(tint, [255, 255, 255], 0.35), 0.7); g.lineWidth = 1.6;
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.stroke();
   }
-  g.strokeStyle = rgba(tint, 0.1);
-  g.beginPath(); g.moveTo(x - r, y); g.lineTo(x + r, y); g.moveTo(x, y - r); g.lineTo(x, y + r); g.stroke();
   g.restore();
 }
 

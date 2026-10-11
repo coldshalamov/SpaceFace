@@ -306,6 +306,10 @@ export const EAST_SECTORS = Object.freeze([
         name: 'Triton Field Lab',
         pos: { x: 1600, z: -700 },
         factionId: 'faction_archive',
+        discoveryPlate: Object.freeze({
+          title: 'Triton Field Lab',
+          body: 'A research platform in the Archive’s colors, set down in the Wake where the instruments disagree with one another. Its signal slips in and out of lock — a lab logging something it cannot show. Triangulate before you close range.',
+        }),
       }),
     ]),
   }),

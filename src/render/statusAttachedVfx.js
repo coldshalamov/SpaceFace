@@ -2,9 +2,13 @@
 // Presentation only. Duration and stacks come from the combat status bag; this module never
 // guesses a particle lifetime past expiresTick and never writes sim state.
 
+import { PINNED_STATUS_ID, UNMOORED_STATUS_ID } from '../data/combatDefs.js';
+
 export const STATUS_ATTACHED_BURN_ID = 'status_burning';
 export const STATUS_ATTACHED_GOO_ID = 'status_goo';
 export const STATUS_ATTACHED_GRAVITY_ID = 'status_gravity_marked';
+export const STATUS_ATTACHED_PINNED_ID = PINNED_STATUS_ID;
+export const STATUS_ATTACHED_UNMOORED_ID = UNMOORED_STATUS_ID;
 export const STATUS_ATTACHED_CAP = 8;
 export const STATUS_ATTACHED_TICK_HZ = 60;
 
@@ -12,6 +16,8 @@ export const STATUS_ATTACHED_KIND = Object.freeze({
   BURN: 'burn',
   GOO: 'goo',
   GRAVITY: 'gravity',
+  PINNED: 'pinned',
+  UNMOORED: 'unmoored',
 });
 
 const NO_EMIT_SPRITES = Object.freeze([]);
@@ -48,10 +54,29 @@ const STATUS_ROWS = Object.freeze({
     altColor: '#2450aa',
     authoredLife: 0.42,
   }),
+  // A Well's clamp: heavy, compressed, slow, deep cool blue.
+  [STATUS_ATTACHED_PINNED_ID]: Object.freeze({
+    kind: STATUS_ATTACHED_KIND.PINNED,
+    cadenceS: 0.16,
+    color: '#3d63d6',
+    altColor: '#17265e',
+    authoredLife: 0.5,
+  }),
+  // A Repulsor's lift: light, loose, buoyant, warm pale.
+  [STATUS_ATTACHED_UNMOORED_ID]: Object.freeze({
+    kind: STATUS_ATTACHED_KIND.UNMOORED,
+    cadenceS: 0.16,
+    color: '#ffd9a0',
+    altColor: '#fff3d6',
+    authoredLife: 0.5,
+  }),
 });
 // Frozen id list — Object.keys(STATUS_ROWS) inside the entity loop allocated every
 // presented frame. Soft-GPU fps not claimed.
-const STATUS_ROW_IDS = Object.freeze([STATUS_ATTACHED_BURN_ID, STATUS_ATTACHED_GOO_ID, STATUS_ATTACHED_GRAVITY_ID]);
+const STATUS_ROW_IDS = Object.freeze([
+  STATUS_ATTACHED_BURN_ID, STATUS_ATTACHED_GOO_ID, STATUS_ATTACHED_GRAVITY_ID,
+  STATUS_ATTACHED_PINNED_ID, STATUS_ATTACHED_UNMOORED_ID,
+]);
 
 function clamp(v, lo, hi) {
   const n = Number(v);
@@ -90,7 +115,8 @@ function _nextRankedRecord() {
 // common case — no string alloc per frame), string-composite fallback for exotic ids.
 function _victimKey(entityId, statusId) {
   if (typeof entityId === 'number') {
-    return entityId * 3 + (statusId === STATUS_ATTACHED_GOO_ID ? 1 : statusId === STATUS_ATTACHED_GRAVITY_ID ? 2 : 0);
+    return entityId * 5 + (statusId === STATUS_ATTACHED_GOO_ID ? 1 : statusId === STATUS_ATTACHED_GRAVITY_ID ? 2
+      : statusId === STATUS_ATTACHED_PINNED_ID ? 3 : statusId === STATUS_ATTACHED_UNMOORED_ID ? 4 : 0);
   }
   return String(entityId) + ':' + statusId;
 }
@@ -179,9 +205,10 @@ export function planStatusAttachedEmit(victim, cadenceAgeS, accessibility = {}, 
   if (!(life > 0.04)) {
     return { emit: false, nextCadenceAgeS: age, sprites: NO_EMIT_SPRITES };
   }
-  // A gravity mark is retained hull-seated geometry, never an emitted cloud. Preserve
-  // the same cadence admission while StatusMatterVfx owns its distinct moving jaws.
-  if (row.kind === STATUS_ATTACHED_KIND.GRAVITY) {
+  // Gravity, pinned and unmoored marks are retained hull-seated geometry, never an emitted cloud.
+  // Preserve the same cadence admission while StatusMatterVfx owns their distinct moving forms.
+  if (row.kind === STATUS_ATTACHED_KIND.GRAVITY || row.kind === STATUS_ATTACHED_KIND.PINNED
+    || row.kind === STATUS_ATTACHED_KIND.UNMOORED) {
     return { emit: true, nextCadenceAgeS: age, sprites: NO_EMIT_SPRITES, remainingS: victim.remainingS, stacks };
   }
   const flashScale = flashReduce ? 0.32 : 1;

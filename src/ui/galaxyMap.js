@@ -2909,7 +2909,7 @@ const HINT_ROWS = Object.freeze([
 
 export const MAP_INSPECTOR_TABS = Object.freeze([
   { id: 'overview', label: 'Overview' },
-  { id: 'travel', label: 'Travel' },
+  { id: 'travel', label: 'Route' },
   { id: 'missions', label: 'Missions' },
   { id: 'economy', label: 'Economy' },
   { id: 'threat', label: 'Threat' },
@@ -5913,7 +5913,7 @@ _stepAnimation(now) {
   _travelTabHtml(state) {
     const ribbon = this._ribbonModel(state);
     if (!ribbon.visible) {
-      return `<div class="gm-ins-section"><div class="gm-ins-title">Travel</div>
+      return `<div class="gm-ins-section"><div class="gm-ins-title">Route</div>
         <div class="gm-ins-note">${escapeMapHtml(ribbon.reason)}</div></div>`;
     }
     const legs = ribbon.legs.map((leg) => `
@@ -6648,7 +6648,7 @@ _stepAnimation(now) {
     this._weatherEl.innerHTML = `
       <div class="gm-weather-head">
         <span class="gm-weather-word">${snap.level}</span>
-        <span class="gm-weather-data">${snap.pool} / 140</span>
+        <span class="gm-weather-data">pressure ${snap.pool}/140</span>
       </div>
       <div class="gm-weather-bar" role="img" aria-label="Encounter pressure ${snap.pool} of 140">
         <i class="gm-weather-seg gm-weather-seg--combat" style="width:${combatPct}%"></i>
@@ -6707,7 +6707,8 @@ _stepAnimation(now) {
       return;
     }
     if (this._deckSortBtn) {
-      this._deckSortBtn.textContent = `Sort · ${this._deckSortMode}`;
+      const sortLabel = this._deckSortMode === 'safest' ? 'Sort: safest' : 'Sort: best profit';
+      if (this._deckSortBtn.textContent !== sortLabel) this._deckSortBtn.textContent = sortLabel;
     }
     const nowBucket = Math.floor((Number(state.simTime) || 0) / 5);
     const holdItems = state.player && state.player.cargo && state.player.cargo.items || {};
@@ -6755,15 +6756,15 @@ _stepAnimation(now) {
         ? `to ${route.destinationName}`
         : `${route.originName} → ${route.destinationName}`;
       const modelDelta = Number.isFinite(Number(route.modelDeltaPct))
-        ? ` · MODEL ${(route.modelDeltaPct >= 0 ? '+' : '')}${Math.round(route.modelDeltaPct)}%`
+        ? ` · est. ±${Math.abs(Math.round(route.modelDeltaPct))}%`
         : '';
       return `
         <button ${mapControlAttrs('deck-route')} class="gm-deck-row k-row" type="button" data-deck-route="${index}" role="listitem"
                 aria-label="Plot ${escapeMapHtml(route.commodityName)} from ${escapeMapHtml(route.originName)} to ${escapeMapHtml(route.destinationName)}">
           <span class="gm-deck-commodity">${sourceGlyph} ${escapeMapHtml(route.commodityName)}</span>
           <span class="gm-deck-lane">${escapeMapHtml(laneText)}</span>
-          <span class="gm-deck-metric">margin ${marginDisplay}/u · +${spread} cr · ${ppm}/m · ${units}u${modelDelta}</span>
-          <span class="gm-deck-risk" data-risk="${riskBand}">risk ${riskPct}%</span>
+          <span class="gm-deck-metric">+${marginDisplay} credits/unit · +${spread} cr total · ${ppm}/min · ${units} units${modelDelta}</span>
+          <span class="gm-deck-risk" data-risk="${riskBand}">${riskPct}% pirate risk</span>
         </button>`;
     }).join('');
   },
@@ -8238,8 +8239,6 @@ _draw() {
         g.fillText(iris.label, w / 2, h / 2);
         g.font = chartFont(650, 12);
         setTracking(g, 0.24, 12);
-        g.fillStyle = CHART_INK.bone(0.7);
-        g.fillText('SCALE TRANSIT', w / 2, h / 2 + 22);
         setTracking(g, 0, 12);
         g.restore();
       }
@@ -8257,6 +8256,40 @@ _draw() {
   _tokenReadyHandler() {
     if (!this._tokenReady) this._tokenReady = () => { galaxyMapScreen._drawPending = true; galaxyMapScreen._wake(); };
     return this._tokenReady;
+  },
+
+  /**
+   * The edge ruler: one honest bar of light on the field's lower-left, reading the scale of THIS
+   * view — the round distance whose bar lands in a legible 72–200 px window. The dial's ring-crown
+   * reading was retired with the dial; this is where distance lives now, and it is true at every
+   * zoom because it derives from the live pixels-per-WU. Pure canvas; headless-safe.
+   */
+  _drawEdgeScale(g, field, pxPerWU) {
+    if (!g || typeof g.moveTo !== 'function' || !(pxPerWU > 0) || !field) return;
+    // The round distance whose bar lands nearest a 140 px target (1/2/2.5/5 decades), so the
+    // figure stays honest at every zoom instead of inheriting a clamp.
+    const targetPx = 140;
+    const rawWU = targetPx / pxPerWU;
+    const pow = Math.pow(10, Math.floor(Math.log10(Math.max(1e-9, rawWU))));
+    let wu = pow;
+    let bestErr = Infinity;
+    for (const m of [1, 2, 2.5, 5, 10]) {
+      const candidate = m * pow;
+      const err = Math.abs(candidate * pxPerWU - targetPx);
+      if (err < bestErr) { bestErr = err; wu = candidate; }
+    }
+    if (!(wu > 0)) return;
+    const px = Math.max(24, Math.min(field.width * 0.3, wu * pxPerWU));
+    const x = field.x + 10;
+    const y = field.y + field.height - 16;
+    drawBand(g, (c) => { c.moveTo(x, y); c.lineTo(x + px, y); }, { band: 6, bandA: 0.18, edge: 1.6, edgeA: 0.72 });
+    drawBand(g, (c) => { c.moveTo(x, y - 5); c.lineTo(x, y + 5); }, { band: 0, edge: 1.6, edgeA: 0.72 });
+    drawBand(g, (c) => { c.moveTo(x + px, y - 5); c.lineTo(x + px, y + 5); }, { band: 0, edge: 1.6, edgeA: 0.72 });
+    g.font = chartFont(600, 12, { stretch: 'normal' });
+    g.textAlign = 'left';
+    g.textBaseline = 'bottom';
+    g.fillStyle = CHART_INK.bone(0.75);
+    g.fillText(`${formatDistanceWU(wu)} per bar`, x, y - 8);
   },
 
   /**
@@ -9160,6 +9193,10 @@ _drawGalaxy(g, state, w, h) {
         g.restore();
       }
     }
+
+    // The scale reads on the edge ruler here too, measured in real WU (graph units are the
+    // authored lattice, so the figure stays comparable with the SYSTEM level's).
+    this._drawEdgeScale(g, field, graphScale / SECTOR_ORIGIN_LATTICE_WU);
   },
 
   // --- SYSTEM DRAW ---
@@ -9244,82 +9281,13 @@ _drawSystem(g, state, w, h) {
     let ringWU = 0;
     const dialWords = [];
     let quarterFigure = null;
-    {
-      const gateR = [];
-      for (const pnt of model.points) if (pnt.kind === 'gate' && pnt.drawPos) gateR.push(Math.hypot(pnt.drawPos.x, pnt.drawPos.z));
-      ringWU = gateR.length ? gateR.reduce((a, b) => a + b, 0) / gateR.length : 0;
-      if (ringWU > 0) {
-        const ox = sx(0), oy = sz(0), R = ringWU * pxPerWU;
-        dial = { x: ox, y: oy, r: R };
-        this._dialScreen = dial;
-        // Glass under the dial, so the paused world does not print through the sector's orrery.
-        const glass = g.createRadialGradient ? g.createRadialGradient(ox, oy, R * 0.6, ox, oy, R + 46) : null;
-        if (glass) {
-          glass.addColorStop(0, 'rgba(5,7,10,0.62)');
-          glass.addColorStop(0.82, 'rgba(5,7,10,0.62)');
-          glass.addColorStop(1, 'rgba(5,7,10,0)');
-          g.save();
-          g.fillStyle = glass;
-          g.beginPath(); g.arc(ox, oy, R + 46, 0, Math.PI * 2); g.fill();
-          g.restore();
-        }
-        drawBandRing(g, ox, oy, R * 0.5, { band: 6, bandA: 0.2, edge: 1.3, edgeA: 0.36 });
-        drawBandRing(g, ox, oy, R, { band: 9, bandA: 0.34, edge: 1.8, edgeA: 0.66, halo: 22, haloA: 0.04 });
-        g.save();
-        for (let i = 0; i < 120; i += 1) {
-          const a = (i / 120) * Math.PI * 2;
-          const major = i % 10 === 0;
-          const len = major ? 12 : 5;
-          g.strokeStyle = CHART_INK.bone(major ? 0.62 : 0.3);
-          g.lineWidth = major ? 2 : 1.5;
-          g.beginPath();
-          g.moveTo(ox + Math.cos(a) * (R - 4), oy + Math.sin(a) * (R - 4));
-          g.lineTo(ox + Math.cos(a) * (R - 4 - len), oy + Math.sin(a) * (R - 4 - len));
-          g.stroke();
-        }
-        g.font = chartFont(640, 12, { stretch: 'normal' });
-        g.textAlign = 'left'; g.textBaseline = 'middle';
-        g.lineJoin = 'round';
-        const tw = (t, px) => (typeof g.measureText === 'function' ? (g.measureText(t).width || t.length * px * 0.6) : t.length * px * 0.6);
-        const ringText = `GATE RING ${formatDistanceWU(ringWU)}`;
-        const ringW = tw(ringText, 12);
-        // The radius inside the ring is not linear, and the dial says so beside its own figure: on
-        // one line where the field has room, on two where it has not, and never past its edge.
-        g.font = chartFont(600, 12, { stretch: 'normal' });
-        const oneLine = 'RADIAL SCALE \u221A  \u00B7  NOT LINEAR';
-        const fieldRight = field.x + field.width - 6;
-        let lx = ox + R * 0.707 + 10;
-        const ly = oy - R * 0.707 - 8;
-        let scaleLines = [oneLine];
-        if (lx + Math.max(ringW, tw(oneLine, 12)) > fieldRight) scaleLines = ['RADIAL SCALE \u221A', 'NOT LINEAR'];
-        const blockW = Math.max(ringW, ...scaleLines.map((t) => tw(t, 12)));
-        if (lx + blockW > fieldRight) lx = Math.max(field.x + 6, fieldRight - blockW);
-        g.font = chartFont(640, 12, { stretch: 'normal' });
-        g.strokeStyle = 'rgba(5, 7, 10, 0.86)'; g.lineWidth = 4;
-        g.strokeText(ringText, lx, ly);
-        g.fillStyle = CHART_INK.phos(0.92);
-        g.fillText(ringText, lx, ly);
-        g.font = chartFont(600, 12, { stretch: 'normal' });
-        scaleLines.forEach((t, i) => {
-          g.strokeText(t, lx, ly + 16 + i * 15);
-          g.fillStyle = CHART_INK.bone(0.72);
-          g.fillText(t, lx, ly + 16 + i * 15);
-        });
-        dialWords.push({ x: lx - 2, y: ly - 9, width: blockW + 4, height: 34 + (scaleLines.length - 1) * 15 });
-        g.restore();
-        // The half ring stands at a true quarter of the gate ring's reach; its figure is seated on
-        // the ring once the marks are down (where it is clearest of them).
-        g.save();
-        g.font = chartFont(640, 12, { stretch: 'normal' });
-        quarterFigure = { text: formatDistanceWU(ringWU / 4), width: tw(formatDistanceWU(ringWU / 4), 12) };
-        g.restore();
-      }
-    }
+    // RECTANGULAR CHART: the dial is retired. Marks draw at their true projected positions
+    // across the whole viewport — no graduated gate ring, no square-root radial warp, no rim
+    // clip, no ring-crown captions. Every `if (dial)` branch below degrades to identity, and
+    // distance reads on the edge ruler instead of a ring crown.
 
-    // SQUARE-ROOT RADIAL SCALE (the dial's own law): inside the gate ring a mark stands at
-    // R·√(r/R) from the centre, so the furniture packed near the sector's heart opens to fill the dial
-    // while the gates stay on their ring. A presentation map over the linear projection: bearings
-    // hold, a pan slides it rigidly and a zoom scales it whole (the map is scale-free).
+    // The warp is retired with the dial (rectangular chart): with `dial` null these are identity
+    // shims over the linear projection, kept so the draw paths below read unchanged.
     const warp = (X, Y) => {
       if (!dial) return { x: X, y: Y };
       const dx = X - dial.x;
@@ -9859,13 +9827,16 @@ _drawSystem(g, state, w, h) {
         this._clickTargets.push({ ...tick.target, sx: tick.x, sy: tick.y, radiusPx: 14, edgeTick: true });
       }
     }
-    // THE GROUND: the holder's hue washes the canvas around the gate ring and lights its rim, behind
-    // everything drawn (src/ui/orrery/chartWorld.js).
-    if (dial && this._layers.faction) {
+    // The scale lives on an edge ruler now: one honest bar of light, lower-left of the field.
+    this._drawEdgeScale(g, field, pxPerWU);
+
+    // THE GROUND: the holder's hue washes the field behind everything drawn
+    // (src/ui/orrery/chartWorld.js), centred on the sector's seat — no dial rim to light.
+    if (this._layers.faction) {
       const owner = (state.world && state.world.sectors && state.world.sectors[model.sectorId] && state.world.sectors[model.sectorId].owner) || (SECTOR_BY_ID.get(model.sectorId) || {}).factionId || null;
       g.save();
       g.globalCompositeOperation = 'destination-over';
-      try { drawSystemGround(g, w, h, { x: dial.x, y: dial.y, r: dial.r, ownerId: owner, fallbackHex: factionColorOf(owner) }); } catch (_) { /* the chart reads without its ground */ }
+      try { drawSystemGround(g, w, h, { x: fieldCx, y: fieldCy, r: Math.min(field.width, field.height) * 0.5, ownerId: owner, fallbackHex: factionColorOf(owner), rim: false }); } catch (_) { /* the chart reads without its ground */ }
       g.restore();
     }
   },

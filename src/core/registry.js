@@ -57,6 +57,7 @@ import { pirateDisengage } from '../systems/pirateDisengage.js';
 import { surrenderRecovery } from '../systems/surrenderRecovery.js';
 import { custodyConsequences } from '../systems/custodyConsequences.js';
 import { aceMemory } from '../systems/aceMemory.js';
+import { deedRecord } from '../systems/deedRecord.js';
 import { barkDirector } from '../systems/barkDirector.js';
 import { stuntGrammar } from '../systems/stuntGrammar.js';
 import { aiPorts } from '../systems/aiPorts.js';
@@ -589,6 +590,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['ships', ships],
     ['crafting', crafting],
     ['heat', heat],
+    ['deedRecord', deedRecord],   // THE WORLD REMEMBERS: listener-only ledger of player deeds under state.story.record
     ['traffic', traffic],
     ['drill', drill],
     ['claims', claims],

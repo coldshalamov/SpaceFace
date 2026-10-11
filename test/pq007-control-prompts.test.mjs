@@ -10,8 +10,8 @@ import {
 // The keyboard families teach the live bindings (c53820842): since the 1-9 hotbar (c177d4377, 2f0604176)
 // the Massline also answers Digit3 and the shove Digit1, so the prompts read Space/F/3 and Y/1 (Q/1 on helm).
 const CLASSIC_KBM = Object.freeze({
-  flight: 'W/Up thrust  •  0 or S/Down brake  •  A D steer  •  Mouse aim  •  LMB fire  •  Space/F/3 Massline  •  Y/1 shove  •  4 anchor seed  •  RMB select · hold to use  •  B selected Site beam  •  Shift boost  •  X countermeasure  •  Tab target  •  M local map  •  N star map  •  J log  •  K codex  •  I cargo  •  L comms',
-  mining: 'RMB select · hold to mine  •  B beam selected Site  •  Release to cool  •  Fly through cargo drift  •  B drill view  •  Tab next signal',
+  flight: 'W/Up thrust  •  0 or S/Down brake  •  A D steer  •  Mouse aim  •  LMB fire  •  Space/F/3 Massline  •  Y/1 shove  •  4 anchor seed  •  RMB select · hold to use  •  B site beam  •  Shift boost  •  X countermeasure  •  Tab target  •  M local map  •  N star map  •  J log  •  K codex  •  I cargo  •  L comms',
+  mining: 'RMB select · hold to mine  •  B site beam  •  Release to cool  •  Fly through cargo drift  •  Space/F/3 tether, then B enter asteroid  •  Tab next signal',
   combat: 'LMB fire  •  Space/F/3 Massline  •  Y/1 shove  •  Mouse aim at target  •  Tab cycle hostiles  •  X countermeasure  •  9 bomb  •  , cycle bombs  •  G auto-target  •  Shift boost to dodge',
   station: 'E dock  •  Hub: arrow keys change tabs  •  Enter/Space act  •  E/Esc undock',
   gate: 'N open Star Map  •  Select destination  •  Jump to travel between systems',

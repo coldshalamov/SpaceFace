@@ -32,12 +32,14 @@ import { makeEnemySpawnSpec } from './combat.js';
 import { activeFieldSnapshot } from './fields.js';
 import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { MODULES } from '../data/modules.js';
 import { DROP_KICK_CRUISE_SPEED } from './jettisonImpulse.js';
 import { readCadencePair, rateCadenceTechnique } from './masslineControlLaw.js';
 import { resolveActionLabel } from './input.js';
 import { substanceFor } from '../core/physicsAuthority.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
 
 // U5 — the planetary bands' first-contact lines. Instrument register, one line each: what
 // the band is, and the law that governs it. Spoken once per band per body per save.
@@ -523,6 +525,16 @@ export const onboarding = {
         `Snare head fitted — ${key} lays the line across their path.`,
         p);
     });
+    // Fitting the Repulsion Trap adds a verb beside the sticky plate instead of replacing it:
+    // one line, once per profile, naming both verbs on the player's own bound keys.
+    bus.on('module:equipped', (p) => {
+      if (!p || !MODULES.find((m) => m.id === p.defId)?.mods?.repulsionTrap) return;
+      const throwKey = resolveActionLabel(this.state, 'chargeThrow', { empty: 'THROW' });
+      const brakeKey = resolveActionLabel(this.state, 'brake', { empty: 'BRAKE' });
+      this._showHint('repulsionTrapVerbs',
+        `Repulsion Trap fitted — ${throwKey} sticks a plate; ${brakeKey} + ${throwKey} drops the trap.`,
+        p);
+    });
     bus.on('dock:undocked', () => this._maybeShowDemoEndCard());
 
     // ── Range pointer & funnel (PQ-163.01 — "The Range is the door") ─────────────────────
@@ -877,6 +889,7 @@ export const onboarding = {
   // this is a no-op. Respects the tutorialHints setting.
   _showHint(key, text, payload) {
     const st = this.state;
+    if (isRacingCorridorSession(st)) return;
     if (st.run?.kind === 'survival' && st.run.phase !== 'inactive') return;
     if (st.settings && st.settings.gameplay && st.settings.gameplay.tutorialHints === false) return;
     // The staged rail is already the tutorial. Contextual walls wait until it finishes so a
@@ -912,6 +925,7 @@ export const onboarding = {
     if (!IS_DEMO || !fitted) return;
     const st = this.state;
     if (!st || !st.player) return;
+    if (isRacingCorridorSession(st)) return;
     if (st.run?.kind === 'survival' && st.run.phase !== 'inactive') return;
     if (!st.player.hints) st.player.hints = {};
     if (st.player.hints.demoEndShown) return;
@@ -931,7 +945,7 @@ export const onboarding = {
     this._latchDenialStreak = 0;
     this._shelfPending = null;
     this._shelfStraightS = 0;
-    if (st.run?.kind === 'survival' && st.run.phase !== 'inactive') {
+    if (isRacingCorridorSession(st) || (st.run?.kind === 'survival' && st.run.phase !== 'inactive')) {
       // The fresh world may already have reused the old tutorial actor IDs.
       this._teardown({ removeActors: false });
       st.onboarding = { active: false, finished: false };
@@ -1192,7 +1206,7 @@ export const onboarding = {
   // EVERY first-hour tutorial line passes through here so the check can audit text overlap at one
   // place. Emits on the 'tutorial' tier (toast kind 'info'). Updates the silence-gate clock.
   _sayTutorial(text, { visual = true } = {}) {
-    if (!text) return;
+    if (!text || isRacingCorridorSession(this.state)) return;
     this._lastTextAtS = this.state.simTime || 0;
     // Record for the one-voice audit: { atS, text } appended to a session log on state.onboarding.
     const ob = this.state.onboarding;
@@ -1546,6 +1560,7 @@ export const onboarding = {
 
   // per-frame: proximity check for the starter claim + panel fade-out + contextual hints + control bar.
   update(dt, state) {
+    if (isRacingCorridorSession(state)) return;
     // Modal UI hides the objective via CSS; mirror that in assistive state without focus side-effects.
     try { this._syncModalAccessibility(); } catch (_) { /* non-critical a11y mirror */ }
 
@@ -1828,6 +1843,7 @@ export const onboarding = {
   prepareStartingScene(payload = {}) {
     const st = this.state;
     if (!st || st.mode !== 'loading') return false;
+    if (isRacingCorridorSession(st)) return false;
     if (payload && payload.scenario != null) return false;
     const run = st.run;
     if (run && (run.kind === 'survival' || run.kind === 'lab') && run.phase !== 'inactive') return false;
@@ -3532,7 +3548,7 @@ export const onboarding = {
       && this.state.nav.waypoint.onboarding);
 
     if (this._kickerLabelEl) {
-      const kicker = 'Status';
+      const kicker = 'Tutorial';
       if (this._kickerLabelEl.textContent !== kicker) this._kickerLabelEl.textContent = kicker;
     }
 

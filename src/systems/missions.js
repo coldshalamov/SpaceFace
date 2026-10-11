@@ -198,6 +198,12 @@ import { raceGateGlobals, startLineFor } from '../data/raceLevels.js';
 import { advanceCircuit, circuitProgress } from './racingGeometry.js';
 import { ADVENTURE_SPEED_CONTRACTS, adventureSpeedOffersForStation } from '../data/adventureSpeedContracts.js';
 import { stepAdventureSpeed } from '../missions/adventureSpeedRuntime.js';
+import { createAdventureSpeedSetPieces } from '../missions/adventureSpeedSetPieces.js';
+import { createRacingSetPieces } from '../missions/racingSetPieces.js';
+import { createRacingOpponents } from '../missions/racingOpponents.js';
+import { scoreRacingPrecision } from './racingPrecision.js';
+import { observeRacingGhost, getRacingGhostPlayback, raceGhostSplitDelta,
+  resetRacingGhostSession } from './racingGhosts.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import {
   raceObjectiveUnits,
@@ -1351,6 +1357,13 @@ export const missions = {
   name: 'missions',
 
   init(ctx) {
+    this._racingSetPieces?.stop('reinitialize');
+    this._racingSetPieces = null;
+    this._adventureSpeedSetPieces?.dispose();
+    this._adventureSpeedSetPieces = null;
+    this._racingOpponents?.stop('reinitialize');
+    this._racingOpponents = null;
+    if (this.state) resetRacingGhostSession(this.state);
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
@@ -1592,6 +1605,12 @@ export const missions = {
     bus.on('sector:exit', (p) => this._onSectorExit(p));
     bus.on('race:reset', () => this._resetAuthoredRace());
     bus.on('race:abort', () => this._dnfAuthoredRaces('race_aborted'));
+    bus.on('game:exitToMenu', () => { this._dnfAuthoredRaces('race_aborted'); this._racingOpponents?.stop('menu'); this._racingSetPieces?.stop('menu'); resetRacingGhostSession(this.state); });
+    bus.on('save:restoring', () => { this._racingOpponents?.stop('restore'); this._racingSetPieces?.stop('restore'); resetRacingGhostSession(this.state); });
+    bus.on('settings:changed', p => {
+      if (p?.section !== 'gameplay' || p.key !== 'racingGhost') return;
+      for (const m of this.state.missions.active || []) if (m.params?.racingContractId) m.params.raceGhostEnabled = p.value !== false;
+    });
     // Census arm: mission-target spawns land inside the sector cook deterministically. The
     // cook drives the chunked twin across its slice clock; the emit listener drains the same
     // steps synchronously, so both paths mint the identical cohort.
@@ -1632,6 +1651,9 @@ export const missions = {
   // PER-TICK: TTL decrement, expiry, story-gate checks, stale-target GC.
   // =========================================================================================
   update(dt, state) {
+    this._racingOpponents?.reconcile(state.missions?.active || []);
+    this._racingSetPieces?.reconcile(state.missions?.active || []);
+    this._adventureSpeedSetPieces?.reconcile();
     if (state.mode && state.mode !== 'flight') return; // sim frozen while docked/paused
     // Flush settlement-detached capital boss fights AFTER the score's own fixed-tick step has run
     // at least once past the terminal observation, so capitalBoss:ended (final voice/telemetry)
@@ -7594,6 +7616,7 @@ export const missions = {
     params.planeSample = null;
     params.planeSampleSimS = null;
     params.resetCount = (params.resetCount | 0) + 1;
+    params.precisionChain = 0;
     this.bus.emit('toast', {
       text: 'Recovered at the last cleared gate. Clock continues; this run cannot set a clean best.',
       kind: 'info',
@@ -7626,6 +7649,10 @@ export const missions = {
       } else if (params.raceCategory !== category) params.raceFitChanged = true;
     }
     if (!Number.isFinite(params.gridUntilSimS)) params.gridUntilSimS = now + (Number(params.gridHoldS) || 0);
+    if (!this._racingOpponents) this._racingOpponents = createRacingOpponents({ state, bus: this.bus, helpers: this.helpers || {} });
+    this._racingOpponents.update(m);
+    this._racingSetPieces ||= createRacingSetPieces({ state, bus: this.bus, helpers: this.helpers || {} });
+    this._racingSetPieces.update(m);
     const globals = raceGateGlobals(params);
     if (globals.length !== gates.length) { this._failMission(m, index, 'race_bad_course'); return; }
     const prev = params.planeSample;
@@ -7636,12 +7663,23 @@ export const missions = {
     // The green-light instant is authoritative, not whichever later tick observes it.
     if (!Number.isFinite(params.raceStartSimS)) params.raceStartSimS = params.gridUntilSimS;
 
-    const events = advanceCircuit(params, { prev, pos: player.pos, vel: player.vel,
-      gates: globals, previousTime, now });
+    const sample = { prev, pos: player.pos, vel: player.vel, gates: globals, previousTime, now };
+    let section = { sample, context: null };
+    if (params.adventureSpeedId) {
+      this._adventureSpeedSetPieces ||= createAdventureSpeedSetPieces({ state, bus: this.bus,
+        helpers: this.helpers || {}, registry: this.registry });
+      section = this._adventureSpeedSetPieces.prepare(m, sample);
+    }
+    const events = advanceCircuit(params, section.sample);
     const speedRun = params.adventureSpeedId
-      ? stepAdventureSpeed(params, { events, player, simTime: now }) : null;
+      ? stepAdventureSpeed(params, { events, player, simTime: now, state, setPiece: section.context }) : null;
     if (speedRun) {
       Object.assign(params, speedRun.patch);
+      if (speedRun.cargoLoss > 0) {
+        const removed = this._drawSealedUnits(m, speedRun.cargoLoss);
+        // Spoilage releases only this reservation; it is not a successful delivery.
+        params.sealedDelivered = Math.max(0, (params.sealedDelivered || 0) - removed);
+      }
       if (speedRun.outcome === 'failed') {
         this.bus.emit('toast', { text: params.adventureSpeedHint || 'The speed contract window closed.', kind: 'warn', ttl: 4 });
         this._failMission(m, index, speedRun.reason);
@@ -7650,6 +7688,10 @@ export const missions = {
     }
     let finish = null;
     for (const event of events) {
+      const precision = scoreRacingPrecision(m, event, { prev, pos: player.pos, vel: player.vel,
+        gates: globals, previousTime, now });
+      Object.assign(params, precision.patch);
+      if (precision.intent) this.bus.emit('flight:racePrecision', precision.intent);
       const measuredElapsed = params.adventureSpeedId
         ? Math.max(0, event.elapsedS - (params.adventureSpeedState?.startElapsedS || 0)) : event.elapsedS;
       if (event.gateIndex === params.boostGateIndex) params.boostClearedLap = event.lap;
@@ -7657,6 +7699,8 @@ export const missions = {
         nextGate: event.gateIndex }, globals[event.gateIndex], globals).fraction;
       params.lastSplitDeltaS = measuredElapsed - expected;
       params.lastSplitElapsedS = measuredElapsed;
+      const ghostDelta = raceGhostSplitDelta(getRacingGhostPlayback(state, params), event);
+      if (Number.isFinite(ghostDelta)) params.lastGhostDeltaS = ghostDelta;
       if (event.lapCompleted) {
         if (!Array.isArray(params.lapTimesS)) params.lapTimesS = [];
         params.lapTimesS.push(Math.round((params.adventureSpeedId ? measuredElapsed : event.lapTimeS) * 100) / 100);
@@ -7665,7 +7709,7 @@ export const missions = {
       }
       this.bus.emit('mission:gateCleared', { missionId: m.id, gateCount: gates.length,
         gateIndex: event.gateIndex, elapsedS: measuredElapsed, lap: event.lap,
-        splitDeltaS: params.lastSplitDeltaS, lapCompleted: event.lapCompleted });
+        splitDeltaS: params.lastSplitDeltaS, ghostDeltaS: ghostDelta, lapCompleted: event.lapCompleted });
       if (event.lapCompleted && !event.finished) this.bus.emit('toast', {
         text: `Lap ${params.lap + 1}/${params.laps} · ${event.lapTimeS.toFixed(2)}s split`, kind: 'info', ttl: 2,
       });
@@ -7684,14 +7728,23 @@ export const missions = {
     Object.assign(params, assist.patch);
     for (const row of assist.impulses) if (row?.impulse) queuePhysicsImpulse(player, row.impulse);
     if (speedRun) finish = speedRun.outcome === 'complete' ? speedRun.finishedEvent : null;
-    if (!finish) return;
+    if (!finish) { if (!params.adventureSpeedId) observeRacingGhost(params, player, state, { events }); return; }
 
     const elapsedS = finish.elapsedS;
+    if (params.adventureSpeed?.kind === 'thermal' && !this._deliverCargo(m)) {
+      this._failMission(m, index, 'speed_payload_lost');
+      return;
+    }
     const band = raceBandForElapsed(elapsedS, params);
     params.raceBand = band;
     params.raceElapsedS = Math.round(elapsedS * 100) / 100;
     params.raceClean = !(params.resetCount > 0) && !params.raceFitChanged;
-    m.reward_cr = Math.max(0, Math.round((m.reward_cr || 0) * (RACE_BAND_MULT[band] ?? 1)));
+    this._racingOpponents.finish(m, params.raceElapsedS);
+    if (!params.adventureSpeedId) {
+      const ghostResult = observeRacingGhost(params, player, state, { events, finish: true });
+      params.raceGhostSaved = ghostResult.ok === true;
+    }
+    m.reward_cr = Math.max(0, Math.round((m.reward_cr || 0) * (RACE_BAND_MULT[band] ?? 1) * (speedRun?.rewardScale ?? 1)));
     if (params.raceClean && !params.adventureSpeedId) {
       try { rememberRaceRecord(globalThis.localStorage, raceRecordKey(params), params.raceElapsedS); }
       catch { /* private-mode storage is optional; the mission result is not */ }
@@ -8453,6 +8506,13 @@ export const missions = {
       completedPayload.raceClean = m.params.raceClean === true;
       completedPayload.raceResetCount = m.params.resetCount | 0;
       completedPayload.raceLapTimesS = (m.params.lapTimesS || []).slice();
+      for (const key of ['raceMode','raceDifficulty','racePosition','raceEntrants','raceCupId',
+        'raceCupHeat','raceCupTicket','raceGhostSaved','precisionBest','raceMeetingId']) {
+        if (m.params[key] !== undefined) completedPayload[key] = m.params[key];
+      }
+      completedPayload.raceStandings = (m.params.raceStandings || []).map(row => ({ ...row }));
+      this._racingOpponents?.stop('complete');
+      this._racingSetPieces?.stop('complete');
     }
 
     // ── research points for cerebral mission types (recon/salvage) — missions is a legit RP writer.
@@ -8849,8 +8909,22 @@ export const missions = {
     };
   },
 
+  _endAuthoredRace(m, reason) {
+    if (m.params?.racingContractId) {
+      this._racingOpponents?.stop(reason || 'failed');
+      this._racingSetPieces?.stop(reason || 'failed');
+      resetRacingGhostSession(this.state);
+      this.bus.emit('race:ended', { racingContractId: m.params.racingContractId, levelId: m.params.levelId,
+        raceMode: m.params.raceMode, raceCupId: m.params.raceCupId, raceCupTicket: m.params.raceCupTicket,
+        raceElapsedS: Number.isFinite(m.params.raceStartSimS)
+          ? Math.max(0, (this.state.simTime || 0) - m.params.raceStartSimS) : 0,
+        raceClean: false, reason: reason || 'failed', status: 'dnf' });
+    }
+  },
+
   _failMission(m, index, reason) {
     if (m.status !== 'active') return;
+    this._endAuthoredRace(m, reason);
     const setPieceTransition = this._compileSetPieceTransition(m, 'failed', reason || 'failed');
     // PQ-138.04 — failure should usually mutate the situation. Try the mutation at the same seam
     // the set-piece recovery already uses: while the mission is still active, before public
@@ -8939,6 +9013,7 @@ export const missions = {
 
   _expireMission(m, index) {
     if (m.status !== 'active') return;
+    this._endAuthoredRace(m, 'deadline');
     const setPieceTransition = this._compileSetPieceTransition(m, 'expired', 'deadline');
     // PQ-138.04: an expired contract leaves residue — the client refiles the leg as a debt.
     // Set-piece/heist/story contracts keep their authored seams (the mutation seam refuses them
@@ -11738,6 +11813,9 @@ export const missions = {
   },
 
   newGame() {
+    this._racingOpponents?.stop('new_game');
+    this._racingSetPieces?.stop('new_game');
+    resetRacingGhostSession(this.state);
     const state = this.state;
     state.missions.boards = {};
     state.missions.active = [];
@@ -11850,6 +11928,9 @@ export const missions = {
   // sit only at section boundaries; per-row heist restore keeps the sync lane's order, so the
   // run stays bit-identical.
   *deserializeChunked(data) {
+    this._racingOpponents?.stop('load');
+    this._racingSetPieces?.stop('load');
+    resetRacingGhostSession(this.state);
     if (!data) return;
     const state = this.state;
     state.missions.boards = data.boards || {};

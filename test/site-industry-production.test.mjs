@@ -19,6 +19,7 @@ function refinery(overrides = {}) {
 test('unknown machine definition safely has no production or power', () => {
   assert.deepEqual(machineCapability(null, null, null), {
     outputsPerMin: {}, powerGen: 0, powerDraw: 0, usesGeology: false, geologyLive: false,
+    processContacts: 0, processMultiplier: 1,
   });
 });
 
@@ -29,7 +30,7 @@ test('boring a contact removes its capability permanently; no planner compensati
   const before = machineCapability(def, contactProfile(field, 1, 1, 3, 3));
   field[1][0] = { type: 'empty' };
   const after = machineCapability(def, contactProfile(field, 1, 1, 3, 3));
-  close(before.outputsPerMin.cmdty_silicate - after.outputsPerMin.cmdty_silicate, 0.9);
+  close(before.outputsPerMin.cmdty_silicate - after.outputsPerMin.cmdty_silicate, 1.2);
 });
 
 test('paid refinery carry uses the space processing frees without overflowing the lane', () => {
@@ -172,7 +173,7 @@ test('bounded lane budgets and missing inputs never produce free output', () => 
 });
 
 test('real planned controller chain executes through the existing production helpers', () => {
-  const plan = planSiteProduction({ targets: { cmdty_control_unit: 2 } });
+  const plan = planSiteProduction({ targets: { cmdty_control_unit: 3 } });
   let store = { ...plan.procurement };
   for (const step of plan.steps) {
     const recipe = SITE_RECIPE_BY_ID.get(step.recipeId);
@@ -193,8 +194,8 @@ test('real planned controller chain executes through the existing production hel
     }
     store = clone(store);
   }
-  assert.equal(store.cmdty_control_unit, 2);
-  close(sum(store), 2);
+  assert.equal(store.cmdty_control_unit, 3);
+  close(sum(store), 3);
 });
 
 test('a full input store can process itself into a smaller output', () => {
@@ -254,4 +255,40 @@ test('zero lane budget cannot start an assembly batch or spend its inputs', () =
   assert.equal(stepFabricator(args).limit, 'lane');
   assert.equal(sum(args.store), 3);
   assert.equal(args.machine.job, null);
+});
+
+test('fuel synthesis consumes hydrogen and local raw inputs through the live refinery helper', () => {
+  const args = refinery({ recipeId: 'sr_synthesize_fuel', dtMin: 0.75,
+    store: { cmdty_gas_hydrogen: 1, cmdty_ore_iron: 1, cmdty_silicate: 1 } });
+  const result = stepContinuousRecipe(args);
+  assert.equal(result.produced.cmdty_fuel_cells, 1);
+  assert.equal(result.consumed.cmdty_gas_hydrogen, 1);
+  assert.equal(result.consumed.cmdty_ore_iron, 1);
+  assert.equal(result.consumed.cmdty_silicate, 1);
+  close(sum(args.store), 1);
+  const dry = refinery({ recipeId: 'sr_synthesize_fuel', dtMin: 0.75,
+    store: { cmdty_ore_iron: 1, cmdty_silicate: 1 } });
+  assert.equal(stepContinuousRecipe(dry).limit, 'input:cmdty_gas_hydrogen');
+  close(sum(dry.store), 2);
+});
+
+test('already loaded controller jobs finish without charging newly required fuel', () => {
+  const args = fabricator({ recipeId: 'sr_fab_control_unit',
+    machine: { job: { recipeId: 'sr_fab_control_unit', progressS: 179 } }, store: {} });
+  assert.deepEqual(stepFabricator(args).completed, { outputId: 'cmdty_control_unit', qty: 3 });
+  assert.deepEqual(args.store, { cmdty_control_unit: 3 });
+});
+
+test('partly loaded controller jobs retain paid stock while waiting for newly required fuel', () => {
+  const args = fabricator({ recipeId: 'sr_fab_control_unit', machine: { job: {
+    recipeId: 'sr_fab_control_unit', progressS: 0,
+    loading: { cmdty_comp_circuitry: 1, cmdty_alloys: 1, cmdty_silicate: 2 },
+  } }, store: {} });
+  assert.equal(stepFabricator(args).limit, 'input:cmdty_fuel_cells');
+  assert.equal(args.machine.job.loading.cmdty_comp_circuitry, 1);
+  args.store.cmdty_fuel_cells = 1;
+  assert.equal(stepFabricator(args).status, 'building');
+  assert.equal(args.store.cmdty_fuel_cells, 0);
+  args.dtS = 180;
+  assert.deepEqual(stepFabricator(args).completed, { outputId: 'cmdty_control_unit', qty: 3 });
 });

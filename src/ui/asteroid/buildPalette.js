@@ -325,6 +325,10 @@ export function createBuildPalette(host, { onSelect, onUserSelect, onPlan, getPl
       return select(next);
     },
     sync,
+    openPlan(kitId) {
+      planner.setVisible(true);
+      return planner.open(kitId);
+    },
     /** BUILD engaged: the row goes live (armed ring reads, keys accept the pointer). */
     setBuildActive(active) {
       root.classList.toggle('live', !!active);

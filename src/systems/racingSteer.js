@@ -10,7 +10,7 @@
 // counter-clockwise from above. With the eye behind the nose, that swing is already screen-right,
 // so A (yawLeft, negative turnIntent) stays screen-left. This module does not negate yaw.
 
-import { planeCrossFraction, circuitProgress, circuitPacePoint, circuitLaps } from './racingGeometry.js';
+import { planeCrossFraction, circuitProgress, circuitLaps } from './racingGeometry.js';
 import { hash32 } from '../core/rng.js';
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
 
@@ -22,11 +22,6 @@ export const RACING_RIG_DEFAULT = Object.freeze({
   lookAhead: 36,
 });
 
-const DRAFT_SPEED_WU_S = 640;
-const DRAFT_MIN_WU = 18;
-const DRAFT_MAX_WU = 150;
-const DRAFT_PULSE_S = 0.35;
-const DRAFT_IMPULSE_PER_MASS = 14;
 const BOOST_IMPULSE_PER_MASS = 42;
 const LEASH_PULSE_S = 0.4;
 const LEASH_BRAKE = 0.22;
@@ -224,26 +219,7 @@ export function racingAssistIntents({ params, player, simTime, gatesGlobal }) {
   const pz = player.pos.z;
   const radius = Math.max(24, Number(params.gateRadiusWU) || 90);
 
-  if (params.racingKind === 'draft') {
-    const clock = params.adventureSpeedId ? params.adventureSpeedStartSimS : params.raceStartSimS;
-    const started = Number.isFinite(clock) ? clock : now;
-    const elapsed = Math.max(0, now - started);
-    const pace = circuitPacePoint(gatesGlobal, elapsed * DRAFT_SPEED_WU_S + 70);
-    if (pace) {
-      const dx = pace.x - px;
-      const dz = pace.z - pz;
-      const dist = Math.hypot(dx, dz);
-      const along = fx * dx + fz * dz;
-      const nextAt = Number(params.draftNextSimS) || 0;
-      if (dist >= DRAFT_MIN_WU && dist <= DRAFT_MAX_WU && along > dist * 0.45 && now >= nextAt) {
-        impulses.push({
-          kind: 'draft',
-          impulse: { x: fx * mass * DRAFT_IMPULSE_PER_MASS, y: 0, z: fz * mass * DRAFT_IMPULSE_PER_MASS },
-        });
-        patch.draftNextSimS = now + DRAFT_PULSE_S;
-      }
-    }
-  }
+  // Pace lights are visual coaching. Only the physical pack owner can award a draft.
 
   const boostIndex = Number(params.boostGateIndex);
   if (Number.isInteger(boostIndex) && boostIndex >= 0 && boostIndex < gatesGlobal.length) {
@@ -329,7 +305,7 @@ export function readRaceTape(params, player, gatesGlobal, simTime) {
     wrongWay = spd > 30 && toward < -12 && dist > (Number(params.gateRadiusWU) || 90);
     offRibbon = progress.distance > (Number(params.gateRadiusWU) || 90) * 3.2 && nextGate > 0;
   }
-  const drafting = !!(params && Number.isFinite(params.draftNextSimS) && now < params.draftNextSimS);
+  const drafting = (params?.raceDraft?.strength || 0) > 0;
   return {
     lap: Math.min(laps, lap + 1),
     laps,
@@ -347,6 +323,7 @@ export function readRaceTape(params, player, gatesGlobal, simTime) {
     wrongWay,
     offRibbon,
     drafting,
+    pacing: params?.racingKind === 'draft',
     started,
     holding,
     gridLeft: holding ? Math.max(0, gridUntil - now) : 0,
@@ -362,7 +339,9 @@ const RECORD_KEY = 'spaceface.raceRecords.v2';
 export function raceRecordKey(params, category = params?.raceCategory) {
   if (!params || !params.racingContractId || !params.courseId) return null;
   const base = `${params.courseId}@${params.courseRevision || 1}:${params.racingContractId}:${circuitLaps(params)}L`;
-  return category ? `${base}:${category}` : base;
+  const mode = params.raceMode === 'race' || params.raceMode === 'cup'
+    ? `:pack-${params.raceDifficulty || 'club'}` : '';
+  return category ? `${base}:${category}${mode}` : base;
 }
 
 /** Comparable fitted hulls only. Camera preference is presentation, never a speed category. */
@@ -377,7 +356,7 @@ export function racingLoadoutCategory(state, player = state?.entities?.get?.(sta
     ...['maxSpeed','accelMult','turnMult','thrust','turnRate','mass'].map(key => Number(derived[key]) || 0),
     isRacingCorridorSession(state) ? 'circuit-layout-v1' : 'campaign',
     state?.settings?.gameplay?.flightLabDrive || '', state?.input?.flightMode || 'assisted'];
-  return `fit3-${hash32(JSON.stringify(identity)).toString(16)}`;
+  return `fit5-${hash32(JSON.stringify(identity)).toString(16)}`;
 }
 
 

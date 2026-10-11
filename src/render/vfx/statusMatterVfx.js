@@ -5,7 +5,10 @@ import { SHIPS } from '../../data/ships.js';
 import { modelTruthRow } from '../../data/modelTruth.js';
 import { mountDrawScale } from '../../data/modelTruthMounts.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../../data/combatDefs.js';
-import { STATUS_ATTACHED_BURN_ID, STATUS_ATTACHED_GOO_ID, STATUS_ATTACHED_GRAVITY_ID } from '../statusAttachedVfx.js';
+import {
+  STATUS_ATTACHED_BURN_ID, STATUS_ATTACHED_GOO_ID, STATUS_ATTACHED_GRAVITY_ID,
+  STATUS_ATTACHED_PINNED_ID, STATUS_ATTACHED_UNMOORED_ID,
+} from '../statusAttachedVfx.js';
 import { presentedAnchorXZ, presentedAnchorRot } from '../presentedAnchor.js';
 import { SweptSurfaceBatch } from '../forceLanguage/sweptSurfaceBatch.js';
 import { ActionPrimitiveComposer } from './actionPrimitives.js';
@@ -23,6 +26,8 @@ const RECIPES=Object.freeze({
   goo:Object.freeze({color:new THREE.Color(0x83aa3d),life:.48}),
   sink:Object.freeze({color:new THREE.Color(0xfeb669),life:.20}),
   gravity:Object.freeze({color:new THREE.Color(0x7ee7ff),life:.42}),
+  pinned:Object.freeze({color:new THREE.Color(0x3d63d6),life:.5}),
+  unmoored:Object.freeze({color:new THREE.Color(0xffd9a0),life:.5}),
   crystalHeat:Object.freeze({color:new THREE.Color(0xb0e5ee),life:.38}),
   fuelHeat:Object.freeze({color:new THREE.Color(0xf7a14f),life:.46}),
   metalHeat:Object.freeze({color:new THREE.Color(0xdc7d48),life:.38}),
@@ -99,7 +104,8 @@ export class StatusMatterVfx {
     return slot;
   }
   touchStatus(victim,state){
-    const id=victim?.statusId,kind=id===STATUS_ATTACHED_BURN_ID?'burn':id===STATUS_ATTACHED_GOO_ID?'goo':id===STATUS_ATTACHED_GRAVITY_ID?'gravity':null;
+    const id=victim?.statusId,kind=id===STATUS_ATTACHED_BURN_ID?'burn':id===STATUS_ATTACHED_GOO_ID?'goo':id===STATUS_ATTACHED_GRAVITY_ID?'gravity'
+      :id===STATUS_ATTACHED_PINNED_ID?'pinned':id===STATUS_ATTACHED_UNMOORED_ID?'unmoored':null;
     if(!kind)return false;
     const body=getEntity(state,victim.entityId),active=state.combat?.entities?.[victim.entityId]?.statuses?.[id];
     return !!this._touch(body,id,kind,active,state);
@@ -213,6 +219,33 @@ export class StatusMatterVfx {
           p.piece(6,this.pose.x,this.pose.z,s.angle,-s.hx*.20,s.hx*.23,
             scale*.16,scale*.22,side*scale*(.20+.08*stroke),0,0,phase+side,
             alpha*.82,arrival,cold?retired*(1.2+i*.18)-.1:-.1,cold?.09:.68);
+        }
+      }
+    }else if(s.kind==='pinned'){
+      // A Well makes the hull heavy: broad flat platens bear down across the plating from both
+      // flanks and hold there, one slow settling stroke and no release until the field lets go.
+      // Cutoff unloads each platen outward. Cool deep blue, nothing rises.
+      for(let i=0;i<3;i++){
+        const phase=seed+i*1.7,settle=reduced?.5:.5+.5*Math.sin(clock*(.55+i*.09)+phase);
+        const at=s.hx*(-.40+i*.40),arrival=smooth((age-i*.07)/.34),release=cold?retired*scale*.34:0;
+        for(let side=-1;side<=1;side+=2){
+          this._at(s,at,side*(s.hz*(.60+.05*settle)+release));
+          p.piece(6,this.pose.x,this.pose.z,s.angle,-s.hx*.20,s.hx*.20,
+            scale*.26,scale*.12,side*scale*.07*settle,0,0,phase+side,
+            alpha*.88,arrival,cold?retired*(1.2+i*.12)-.1:-.1,cold?.07:.52);
+        }
+      }
+    }else if(s.kind==='unmoored'){
+      // A Repulsor makes the hull light: loose lobes shed off the flanks and drift outward and
+      // away, each on its own slow cycle, so the ship reads buoyant and un-tied. Warm pale.
+      for(let i=0;i<2;i++){
+        const at=s.hx*(i===0?-.30:.32);
+        for(let side=-1;side<=1;side+=2){
+          const lap=reduced?.35:(clock*(.34+i*.07)+seed+i*.43+(side<0?.5:0))%1,drift=lap*lap*(3-2*lap);
+          this._at(s,at+s.hx*.10*drift,side*(s.hz*(.74+.60*drift)));
+          p.piece(2,this.pose.x,this.pose.z,s.angle+side*(1.1+.35*drift),-scale*.10,scale*(.46+.14*drift),
+            scale*.11,scale*.08,side*scale*.20*drift,0,0,seed+i*2.1+side,
+            alpha*(reduced?.52:.68*(1-drift*.78)),smooth((age-i*.06)/.22),cold?retired*1.3-.1:-.1,cold?.05:.34);
         }
       }
     }else if(s.statusId===HEAT_STATUS){

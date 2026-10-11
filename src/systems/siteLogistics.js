@@ -76,6 +76,14 @@ export function laneCapacity(component, storeBonusByMachineId, balance = SITE_BA
   return cap;
 }
 
+/** Ports add handling capacity only to their connected material network. Extra empty track
+ * buys storage, not free throughput. This gives a growing factory a manufactured upgrade. */
+export function laneThroughput(component, machineDefById, balance = SITE_BALANCE, powerRatioById = () => 1) {
+  const ports = component.machineIds.reduce((sum, mid) => sum + (machineDefById(mid) === 'sm_cargo_port'
+    ? Math.max(0, Math.min(1, Number(powerRatioById(mid)) || 0)) : 0), 0);
+  return balance.laneThroughputPerMin + ports * balance.laneThroughputPerPort;
+}
+
 /** Total units currently held in a store object. */
 export function storeTotal(store) {
   let total = 0;

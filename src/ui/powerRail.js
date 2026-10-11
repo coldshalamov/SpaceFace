@@ -451,7 +451,7 @@ export function readRailModel(state, nowS) {
     },
     // The count rides as "x3" so it reads as a quantity; at zero the verb stands alone in the dim
     // empty state ("CHARGE 0" read as a broken label, not as "none left").
-    1: { name: `${repulsionTrapFitted(s) ? 'Trap' : 'Charge'}${charges > 0 ? ` ×${charges}` : ''}`,
+    1: { name: `Charge${charges > 0 ? ` ×${charges}` : ''}${repulsionTrapFitted(s) ? ' · +Trap' : ''}`,
       state: charges <= 0 ? 'empty' : throwCd > 0 ? 'cooling' : 'ready', cooldownMs: throwCd * 1000,
       capacity,
       why: `${chargeWhy} · up to ${capacity}` },

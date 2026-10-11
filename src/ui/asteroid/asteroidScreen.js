@@ -8,6 +8,7 @@
 // and — once a Core is owned — the earned build palette on the bottom edge. The board owns ≥88% of
 // the glass; events happen on the board, never as a permanently visible text log. There are no
 // transitional containers left on this screen: the palette is either a real object or absent.
+// A dismissible next-action guide teaches the first mine and follows actual factory needs.
 // Styling lives in styles/asteroid-ops.css — this module owns structure and wiring only.
 //
 // Split per law: this shell owns lifecycle + DOM + events; asteroidRenderer3d owns pixels;
@@ -31,6 +32,7 @@ import {
 import { createBuildPalette, PALETTE_ITEMS, CORE_ID } from './buildPalette.js';
 import { SITE_BALANCE, SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID } from '../../data/sites.js';
 import { industryReadoutFromState } from '../screens/industryReadout.js';
+import { miningNextStep } from './progressionGuide.js';
 
 // PQ-130.06 — the cursor lens (law §6.4) landed and the context bay is gone (law §10). Timings
 // here are law: the card appears after LENS_DELAY_S of hover while driving, instantly in build
@@ -227,7 +229,10 @@ export function siteDrawerModel({
   const goodIds = new Set(Object.keys((site && site.exportBuffer) || {}));
   for (const m of machines) {
     for (const id of Object.keys((m.capability && m.capability.outputsPerMin) || {})) goodIds.add(id);
+    const recipe = SITE_RECIPE_BY_ID.get(m.mode);
+    for (const id of Object.keys(recipe?.output || {})) if (id !== 'pod') goodIds.add(id);
   }
+  for (const lane of lanes) for (const id of Object.keys(lane.store || {})) goodIds.add(id);
   for (const id of Object.keys(ratePerMin)) goodIds.add(id);
   const exportGoods = [...goodIds].sort().map((id) => ({
     id,
@@ -461,6 +466,12 @@ export const asteroidScreen = {
     drawerLabel.textContent = 'Log';
     drawerBtn.appendChild(drawerLabel);
 
+    const guideToggle = document.createElement('button');
+    guideToggle.type = 'button';
+    guideToggle.className = drawerBtn.className;
+    guideToggle.textContent = 'Guide';
+    guideToggle.setAttribute('aria-label', 'Toggle mining guidance');
+    crestRight.prepend(guideToggle);
     crest.append(nameEl, claimChip, assayChip, industryChip, alertEl, crestRight);
     wrap.appendChild(crest);
 
@@ -747,7 +758,9 @@ export const asteroidScreen = {
       if (hudCache.emptyUnclaimed === unclaimed && hudCache.emptySession === session) return;
       hudCache.emptyUnclaimed = unclaimed;
       hudCache.emptySession = session;
-      emptyLayer.hidden = !unclaimed;
+      // A live mine teaches the first action at the edge of the board. The large central
+      // Stake key belongs only to the empty preview; it used to obscure a new player's rig.
+      emptyLayer.hidden = !unclaimed || session;
       emptyRock.style.display = session ? 'none' : '';
     }
 
@@ -756,6 +769,64 @@ export const asteroidScreen = {
       announce('Build mode. Place the Massline Core to stake this rock.');
       canvas.focus({ preventScroll: true });
     });
+
+    const guide = document.createElement('section');
+    guide.className = 'aw-guide';
+    guide.setAttribute('aria-label', 'Next mining step');
+    const guideTitle = document.createElement('h2');
+    const guideDetail = document.createElement('p');
+    const guideAction = document.createElement('button');
+    guideAction.type = 'button';
+    guideAction.className = 'aw-verb-btn';
+    guide.append(guideTitle, guideDetail, guideAction);
+    stage.appendChild(guide);
+    let guideDismissed = state.settings?.gameplay?.tutorialHints === false;
+    let guideStep = null;
+    let guideSignature = '';
+    guideToggle.addEventListener('click', () => {
+      controller.cancel();
+      guideDismissed = !guideDismissed;
+      updateGuide();
+    });
+    guideAction.addEventListener('click', () => {
+      if (!guideStep || !boardReady()) return;
+      controller.cancel();
+      if (guideStep.action === 'site' || guideStep.action === 'help') {
+        openDrawer(guideStep.action);
+      } else if (guideStep.action === 'plan') {
+        controller.setMode(MODES.BUILD);
+        palette.openPlan(guideStep.selection);
+      } else if (guideStep.action === 'build') {
+        controller.setMode(MODES.BUILD);
+        syncPalette();
+        palette.selectId(guideStep.selection);
+        canvas.focus({ preventScroll: true });
+      } else if (guideStep.action === 'scan') {
+        pulseSurvey();
+        canvas.focus({ preventScroll: true });
+      } else if (guideStep.action === 'leave') exit();
+    });
+    function updateGuide() {
+      guideToggle.setAttribute('aria-expanded', String(!guideDismissed));
+      guide.hidden = guideDismissed || !state.drill || drawerTab !== null;
+      if (guide.hidden) return;
+      const s = site();
+      const missing = shortfallMap(s, [CORE_ID, 'sm_extractor']);
+      guideStep = miningNextStep({ drill: state.drill, site: s, projection,
+        cargo: state.player.cargo, coreMissing: missing[CORE_ID] || {},
+        extractorMissing: missing.sm_extractor || {},
+        build: controller.state.mode === MODES.BUILD,
+        movementLabel: controlMap.movementLabel, scanLabel: controlMap.scanLabel });
+      if (!guideStep) { guide.hidden = true; return; }
+      const signature = JSON.stringify(guideStep);
+      if (guideSignature === signature) return;
+      guideSignature = signature;
+      guide.dataset.step = guideStep.id;
+      guideTitle.textContent = guideStep.title;
+      guideDetail.textContent = guideStep.detail;
+      guideAction.textContent = guideStep.label || '';
+      guideAction.hidden = !guideStep.action;
+    }
 
     // ---------- §6.3 the earned palette: what exists, and what it costs ----------
     //
@@ -1059,6 +1130,13 @@ export const asteroidScreen = {
       if (renderer3d) renderer3d.inputZoom(ev.deltaY);
     };
     const onKeyDown = (event) => {
+      // Native controls must remain operable without firing a placement behind them.
+      if ((guide.contains(event.target) || event.target === guideToggle)
+          && (event.code === 'Enter' || event.code === 'Space')) {
+        event.stopImmediatePropagation();
+        return;
+      }
+      if (event.code === 'Tab' && drawerTab !== null && drawer.contains(event.target)) return;
       // ---- law §6.6: the drawers own Tab, and Escape while one is open ----
       // Tab MUST be swallowed. The sheet is the first thing on this screen with real focusable
       // controls, so a live Tab would walk focus off the canvas and hand the next movement key
@@ -1375,6 +1453,8 @@ export const asteroidScreen = {
       siteUi.xferUp = stepBtn(qtyRow, '+', 'More units');
       siteUi.xferLoad = actionBtn(qtyRow, 'To site');
       siteUi.xferTake = actionBtn(qtyRow, 'To rover');
+      siteUi.xferAll = actionBtn(qtyRow, 'Take all');
+      siteUi.xferAll.title = 'Take this material up to the available space in your hold';
       siteUi.xferReason = siteReason(xfer);
 
       siteUi.podDown.addEventListener('click', () => stepPodTarget(-1));
@@ -1383,6 +1463,11 @@ export const asteroidScreen = {
       siteUi.xferUp.addEventListener('click', () => { transferQty = Math.min(200, transferQty + 5); refreshDrawer(); });
       siteUi.xferLoad.addEventListener('click', () => runTransfer('deposit'));
       siteUi.xferTake.addEventListener('click', () => runTransfer('withdraw'));
+      siteUi.xferAll.addEventListener('click', () => {
+        const machine = siteUi.model?.verbs.transfer.machines.find(m => m.id === siteUi.xferMachine.value);
+        const good = machine?.goods.find(g => g.id === siteUi.xferGood.value);
+        runTransfer('withdraw', good?.onSite || 0);
+      });
       siteUi.modeSelect.addEventListener('change', () => refreshDrawer());
       siteUi.xferMachine.addEventListener('change', () => refreshDrawer());
       siteUi.built = true;
@@ -1479,13 +1564,13 @@ export const asteroidScreen = {
       refreshDrawer();
     }
 
-    function runTransfer(dir) {
+    function runTransfer(dir, quantity = transferQty) {
       const verb = siteUi.model && siteUi.model.verbs.transfer;
       if (!verb || verb.disabled) return;
       const machineId = siteUi.xferMachine.value;
       const goodId = siteUi.xferGood.value;
       if (!machineId || !goodId) return;
-      const res = verb.apply(machineId, goodId, transferQty, dir);
+      const res = verb.apply(machineId, goodId, quantity, dir);
       projDirty = true;
       const name = sentenceCase(commodityName(goodId));
       if (res && res.ok) {
@@ -1647,7 +1732,7 @@ export const asteroidScreen = {
       setNodeText(siteUi.xferQty, unitText(transferQty));
       setDisabledWith(
         siteUi.xferReason,
-        [siteUi.xferMachine, siteUi.xferGood, siteUi.xferDown, siteUi.xferUp, siteUi.xferLoad, siteUi.xferTake],
+        [siteUi.xferMachine, siteUi.xferGood, siteUi.xferDown, siteUi.xferUp, siteUi.xferLoad, siteUi.xferTake, siteUi.xferAll],
         xferVerb.reason || (goodRows.length ? null : 'Nothing to move either way yet.'),
       );
     }
@@ -1685,6 +1770,8 @@ export const asteroidScreen = {
       helpPanel.hidden = tab !== 'help';
       syncDrawerTabs();
       refreshDrawer();
+      updateGuide();
+      drawerTabBtns.get(tab)?.focus({ preventScroll: true });
       // Law §6.6: the lens does not compete with an open sheet for the bottom of the glass.
       hideLens();
       if (wasClosed) {
@@ -1703,6 +1790,7 @@ export const asteroidScreen = {
       delete wrap.dataset.drawer;
       syncDrawerTabs();
       if (drawer.contains(document.activeElement)) canvas.focus({ preventScroll: true });
+      updateGuide();
       if (drawerCloseTimer) clearTimeout(drawerCloseTimer);
       // display:none only AFTER the 200ms ease, so the sheet is seen leaving. Until then it is
       // already opacity:0 and translated out, which keeps it out of the word walker either way.
@@ -2033,6 +2121,7 @@ export const asteroidScreen = {
       // §6.3: the palette earns, loses and re-prices its keys on the HUD's own cadence. Cheap —
       // the owner's runtime reconcile is dirty-flag guarded and the funding stores are read once.
       syncPalette();
+      updateGuide();
     }
 
     // ---------- the lens model (law §6.4) ----------
@@ -2233,8 +2322,7 @@ export const asteroidScreen = {
       projDirty = true;
       refreshProjection();
       seedLedgerFromSite();
-      // Fresh rock: the scene shows the loop (rig on a tether, veins, pockets); the announcer
-      // names it once for screen readers — no visible tutorial text on the glass.
+      // The guide teaches the visible next action; announce the basic verb once as well.
       if ((state.drill.tilesCleared || 0) <= 1) {
         announce('Rig tethered to the surface winch — hold a direction to drive, keep holding to bore through rock.');
       }

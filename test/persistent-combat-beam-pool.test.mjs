@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 
-import { BEAM_COOLING_S, PersistentCombatBeamPool } from '../src/render/combat/persistentBeams.js';
+import { BEAM_COOLING_S, PersistentCombatBeamPool, beamViewDistance } from '../src/render/combat/persistentBeams.js';
 import { createDynamicBufferCoordinator } from '../src/render/dynamicBufferRanges.js';
 
 const identityLocal = (x, z, out) => {
@@ -10,6 +10,15 @@ const identityLocal = (x, z, out) => {
   out.z = z;
   return out;
 };
+
+test('beam pixel sizing is invariant under travel and floating-origin rebases', () => {
+  const distance = beamViewDistance({ position: { x: 0, y: 120, z: -80 } }, { x: 0, z: 0 });
+  for (const offset of [2000, -20000, 1e6]) {
+    assert.equal(beamViewDistance({ position: { x: offset, y: 120, z: offset - 80 } },
+      { x: offset, z: offset }), distance);
+  }
+  assert.equal(beamViewDistance(null, null, 230), 230);
+});
 
 function acknowledgePublished(attributes) {
   for (const attribute of attributes) {

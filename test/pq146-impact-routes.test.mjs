@@ -9,6 +9,7 @@ import {createCombatKernel} from '../src/combat/kernel.js';
 import {stuntGrammar} from '../src/systems/stuntGrammar.js';
 import {collisionConsequences} from '../src/systems/collisionConsequences.js';
 import {COMBAT_FLAGS} from '../src/data/featureFlags.js';
+import { resolveGovernedCombatSpeed } from '../src/core/flight/propulsionCatalog.js';
 
 function body(id,type,x,z,{mass=16,radius=6,hull=100,team=1,vx=0,vz=0}={}){
   const dynamic=type!=='asteroid';
@@ -35,10 +36,15 @@ async function scene(entities){
 // the second turns it 80 degrees into the rock. Rock Discovery is the explanatory subtag.
 async function oneTwo({gapTicks=30,collinear=false}={}){
   const s=await scene([body(0,'ship',-200,-200,{team:0}),body(1,'ship',-100,30),body(2,'asteroid',0,0,{radius:10})]);
+  // Rock Discovery requires closing >= half the struck hull's governed cruise. e8d10fed7
+  // restored drive_reaction_s from 105 to 210, so the old 90 WU/s kill (0.86 of that
+  // pre-restore cruise) no longer clears the gate. Re-derive from the journal's resolver.
+  const cruise=resolveGovernedCombatSpeed(s.state.entities.get(1),s.state);
+  const kill=0.86*cruise;
   const aim=(speed)=>{const v=s.state.entities.get(1),dx=-v.pos.x,dz=-v.pos.z,len=Math.hypot(dx,dz);s.shove(1,speed*dx/len-v.vel.x,speed*dz/len-v.vel.z);};
   s.run(2);
   if(collinear)aim(30);else s.shove(1,0,-30);
-  s.run(gapTicks);aim(90);
+  s.run(gapTicks);aim(kill);
   s.run(150);return s;
 }
 test('One-Two: a mid-flight second impulse that changes the corridor names the deeper trick over Rock Discovery',async()=>{

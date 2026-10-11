@@ -53,6 +53,16 @@ export function addEnvironmentHeat(state, entity, amount, origin = {}) {
 export function queueEnvironmentImpact(state, entity, closingSpeed, origin = {}) {
   if (!['asteroid', 'wreck', 'prop', 'payload', 'cargo_pod', 'pickup'].includes(entity?.type)) return false;
   if (isAnchoredPhysicalBody(entity)) return false;
+  // The Gyre field binds its aggregate through physical strikes: otherwise the first
+  // bowled hull bursts the rock and ends the weapon before it can reach the next one.
+  // This is impact cohesion, not material immunity; heat still cooks/fractures it.
+  const gyre = state.gyreSnare;
+  const held = entity?.data?.gyreCore && gyre?.coreId === entity.id
+    && (gyre.phase === 'holding' || gyre.phase === 'launching');
+  const flight = entity?.data?.gyreLaunched && entity.physicsBody?.impactDamageScale > 1
+    && Number(entity.data.despawnAt) > Number(state.simTime)
+    && Number(entity.data.gyreLaunchMeta?.holdUntilSim) > Number(state.simTime);
+  if (held || flight) return false;
   const material = environmentMaterialOf(entity);
   const impactThreshold = material === 'rock' ? 110 : 60;
   if (!entity || entity.alive === false || !(closingSpeed >= impactThreshold) || !['rock', 'crystal', 'volatile', 'debris'].includes(material)) return false;
@@ -117,6 +127,10 @@ export const environmentMaterials = {
         hull: Math.max(30, num(body.hullMax) / count), hullMax: Math.max(30, num(body.hullMax) / count),
         collides: true, flags: { persistent: true }, homeSectorId: body.homeSectorId || d.homeSectorId,
         data: environmentSurfaceData(material, { ...d, opticMaterial: undefined, opticStructureId: undefined, opticCell: undefined,
+          // Rupture ends the bound aggregate. Fragments are ordinary material, never
+          // new armed balls inheriting a stale core/member ledger or hold lifetime.
+          gyreCore: undefined, gyreLaunched: undefined, gyreLaunchMeta: undefined,
+          gyrePrevImpactScale: undefined, gyrePrevDespawnAt: undefined, gyrePrevTtl: undefined,
           size: childRadius, isChunk: true, materialFragment: true, fractured: true, tetherPayload: true,
           yieldU: remaining / count, yieldRemainingU: remaining / count, yieldMaxU: remaining / count, pctEjected: 0,
           oreHP: Math.max(30, num(body.hullMax) / count), oreHPMax: Math.max(30, num(body.hullMax) / count),

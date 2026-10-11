@@ -383,7 +383,7 @@ function isFieldStatus(payload) {
   if (!payload || typeof payload !== 'object') return false;
   if (payload.field === true) return true;
   const id = String(payload.statusId || payload.id || '');
-  if (/gravity|field|mark|orbit|well/i.test(id)) return true;
+  if (/gravity|field|mark|orbit|well|pinned|unmoored/i.test(id)) return true;
   const channel = String(payload.channel || payload.causalKind || '');
   return channel.toUpperCase() === 'FIELD' || channel.toUpperCase() === 'ORBIT';
 }

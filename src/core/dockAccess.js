@@ -2,6 +2,7 @@
 // harbor service readouts. This extraction keeps the shipped station/faction rules unchanged.
 import { dockDenyReason } from '../data/dockDeny.js';
 import { FACTION_META } from '../data/factions.js';
+import { stationGrudgeRefusal } from '../economy/stationConditions.js';
 
 /** Human label for a station (entity data name, else de-prefixed id). */
 function stationLabel(station, stationId) {
@@ -54,7 +55,9 @@ export function resolveDockDeny(state, stationRef) {
     ? (Number.isFinite(rep) ? { ...meta, rep } : meta)
     : (factionId || undefined);
 
-  const deny = dockDenyReason(station, factionMeta);
+  // THE WORLD REMEMBERS: three slams in a day and the berth refuses the ring until the note is paid.
+  const grudgeText = stationId ? stationGrudgeRefusal(state, stationId) : null;
+  const deny = grudgeText ? { reason: 'grudge', text: grudgeText } : dockDenyReason(station, factionMeta);
   if (!deny) return null;
   return {
     stationId: stationId || null,

@@ -19,7 +19,10 @@ function body(id,type,x,z,{mass=16,radius=8,hull=100,team=1,vx=0,vz=0}={}){
 }
 async function razorBolas({grade='razor',wingman=true,replay=false}={}){
   const player=body(0,'ship',0,0,{team:0,mass:400}),payload=body(1,'ship',35,0,{vz:110,mass:28}),first=body(2,'ship',-90,33,{hull:60,mass:10});
-  const entities=[player,payload,first];if(wingman)entities.push(body(3,'ship',-135,51,{hull:6,mass:10}));
+  // The flung hull leaves the payload contact near velocity (-106, +7.6). Craft capsules are
+  // 0.42×radius wide, so the Sept 15 wingman at z=51 (15 WU off that ray) no longer overlaps.
+  // z=36 is on the live post-solve corridor at the same x.
+  const entities=[player,payload,first];if(wingman)entities.push(body(3,'ship',-135,36,{hull:6,mass:10}));
   const state={playerId:0,entities:new Map(entities.map(e=>[e.id,e])),entityList:entities,mode:'flight',tick:0,simTime:0,combat:{},factions:{},settings:{},player:{},
     run:{kind:'survival',phase:'active',seed:7,wave:1}};
   const bus=createBus(),owner=await createSg02DynamicBodyOwner({publishTelemetry:false});owner.syncFromEntities(entities);owner.step(1/60);

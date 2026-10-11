@@ -49,6 +49,10 @@ export const INDUSTRY_KITS = Object.freeze([
     machines: { sm_massline_core: 1, sm_extractor: 2, sm_gas_tap: 2,
       sm_refinery: 2, sm_fabricator: 2, sm_cargo_port: 1 },
     note: 'Assign one fabricator to electronics and one to courier pods. Hold their feedstocks. This is a commissioning kit, not a guaranteed balanced factory.' },
+  { id: 'construction', name: 'Make your own construction supplies',
+    machines: { sm_massline_core: 1, sm_extractor: 5, sm_gas_tap: 3,
+      sm_refinery: 3, sm_fabricator: 3, sm_cargo_port: 2 },
+    note: 'Grow in stages: cast Regocrete, print electronics, then make circuitry, fuel cells and controllers. Import titanium or other missing ores. Switch recipes between batches, or dedicate more machines for continuous lines. Preserve the deposits that feed or accelerate each process.' },
 ]);
 
 /** Gross installed kit and incremental packing list; caller must provide already-built truth. */
@@ -61,6 +65,7 @@ export function planSiteKit(kitId, { alreadyBuilt = {} } = {}) {
     if (!defs.has(id) || !Number.isInteger(n)) throw new RangeError(`Invalid installed machine count: ${id}`);
   }
   const manifest = dict();
+  const grossManifest = dict();
   const missingMachines = dict();
   let drawMW = 0;
   let baseMW = 0;
@@ -70,7 +75,10 @@ export function planSiteKit(kitId, { alreadyBuilt = {} } = {}) {
     if (!def) throw new Error(`Kit references missing machine: ${id}`);
     const missing = Math.max(0, count - (built[id] || 0));
     if (missing) missingMachines[id] = missing;
-    for (const [good, qty] of entries(def.cost)) add(manifest, good, qty * missing);
+    for (const [good, qty] of entries(def.cost)) {
+      add(manifest, good, qty * missing);
+      add(grossManifest, good, qty * count);
+    }
     drawMW += Math.max(0, -def.power) * count;
     baseMW += Math.max(0, def.power) * count;
     machineCount += count;
@@ -78,10 +86,14 @@ export function planSiteKit(kitId, { alreadyBuilt = {} } = {}) {
   return {
     id: kit.id, name: kit.name, note: kit.note,
     machines: { ...kit.machines }, missingMachines: clean(missingMachines),
-    manifest: clean(manifest), machineCount,
+    manifest: clean(manifest), grossManifest: clean(grossManifest), machineCount,
+    // Kit order is commissioning order: the Core must exist before other machines can be built.
+    buildOrder: Object.keys(kit.machines).filter((id) => missingMachines[id])
+      .map((id) => ({ machineId: id, count: missingMachines[id] })),
     drawMW, baseMW,
     minimumGasContacts: Math.ceil(Math.max(0, drawMW - baseMW) / CONTACT_YIELD.gasPowerPerContact),
-    laneThroughputPerMin: SITE_BALANCE.laneThroughputPerMin,
+    laneThroughputPerMin: SITE_BALANCE.laneThroughputPerMin
+      + (kit.machines.sm_cargo_port || 0) * SITE_BALANCE.laneThroughputPerPort,
     // Placement and geology are intentionally NOT validated by a packing list.
     placementValidated: false,
   };

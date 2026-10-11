@@ -45,3 +45,14 @@ function toLegacyMeta(faction) {
 // Compatibility contract: existing imports receive exactly the pre-migration
 // shape and ordering. Future kit fields stay available through FACTION_KITS.
 export const FACTION_META = FACTION_KITS.map(toLegacyMeta);
+
+// Station factions that project a lawful no-fire bubble. Literal on purpose:
+// FACTION_META.filter(f => f.personality === 'lawful') yields only faction_scn.
+// Meridian is personality 'corporate', Drift is 'blue-collar', and Free Frontier
+// is 'independent', and those three still belong in this set.
+export const LAWFUL_STATION_FACTIONS = Object.freeze(new Set([
+  'faction_scn',
+  'faction_mts',
+  'faction_dmc',
+  'faction_free',
+]));

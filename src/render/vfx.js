@@ -43,6 +43,7 @@ import { createToolConduitGeometry, installToolConduitShader } from './toolCondu
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
 import { GyreSnarePresentation } from './forceLanguage/gyreSnarePresentation.js';
 import { createEmergentPrimitivePools } from './forceLanguage/emergentPrimitivePools.js';
+import { EmergentPayloadPresentation } from './forceLanguage/emergentPayloadPresentation.js';
 import { fieldSignature } from './forceLanguage/catalog.js';
 import { createForceSurfacePrecompileMesh } from './forceLanguage/sweptSurfaceBatch.js';
 import { createEnergyVolume, createMasslineRibbonMaterial, createPlumeMaterial, createPlumeVolume, updateEnergyMaterial } from './energy/energyMaterials.js';
@@ -181,7 +182,7 @@ import {
   collectThrusterTextureIds,
   listThrusterRecipePacks,
 } from './thruster/recipes/registry.js';
-import { PersistentCombatBeamPool } from './combat/persistentBeams.js';
+import { PersistentCombatBeamPool, beamViewDistance } from './combat/persistentBeams.js';
 import { isComposedMiningCue, isComposedTravelCue } from './vfx/worldCueRecipes.js';
 import {
   BOLT_VARIANT,
@@ -1756,6 +1757,8 @@ export const vfx = {
     invokeVfxDisposer(this._stationOperationVfx, 'station operation matter');
     this._stationOperationVfx = null;
     invokeVfxDisposer(this._emergentPools, 'emergent primitive pools');
+    invokeVfxDisposer(this._emergentPayloads, 'emergent payloads');
+    this._emergentPayloads = null;
 
     // Child presenters own their internal pools/materials. They are retired before their parent
     // references are cleared, and every call is isolated so one optional presentation feature
@@ -1979,6 +1982,7 @@ export const vfx = {
     add(this._statusMatterVfx && this._statusMatterVfx.mesh);
     add(this._combatContactVfx && this._combatContactVfx.mesh);
     add(this._emergentPools && this._emergentPools.group);
+    add(this._emergentPayloads && this._emergentPayloads.group);
     const arcadeRoots = this._arcadeStructural && (
       this._arcadeStructural.getOwnerRoots?.() || this._arcadeStructural.getMeshes?.()
     );
@@ -2499,7 +2503,7 @@ export const vfx = {
     // primitive; this subscription is the cradle hologram's half of the same departure.
     add('dock:undocked', () => this._releaseDockingCradle());
     for (const name of ['sector:exit', 'sector:enter', 'game:new', 'game:newGame', 'save:restoring', 'save:loaded']) {
-      add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); this._releaseTransientEventLights(); });
+      add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); this._emergentPayloads?.clear(); this._retireEventLightSlot(this._findSustainedEventLight('gyre-payload')); this._releaseTransientEventLights(); });
       add(name, () => this._resetDamagedPortVfx());
     }
     const clearTumbleCadenceFor = (p) => {
@@ -7153,11 +7157,13 @@ export const vfx = {
     const peakScale = accessibility && Number.isFinite(accessibility.eventLightPeakScale)
       ? accessibility.eventLightPeakScale
       : 1;
-    // Combat event lights go to 0 under reduced-motion. Sustained law status cues are not combat
-    // flashes — keep a calm floor so the same authoritative facts remain readable (GDX-A25).
-    const statusPeak = peakScale > 0
-      ? peakScale
-      : (reducedMotion ? (reducedFlash ? 0.22 : 0.35) : 1);
+    // Combat event lights follow eventLightPeakScale (FB-077: a 0.1 floor, never zero).
+    // Sustained law status cues are not combat flashes — a calm floor keeps the same
+    // authoritative facts readable (GDX-A25). That combat floor sits under the calm floor;
+    // using it raw drops a low suspicion cue through the 0.02 light cull.
+    const statusPeak = reducedMotion
+      ? Math.max(peakScale, reducedFlash ? 0.22 : 0.35)
+      : peakScale;
     const flashDim = reducedFlash ? 0.55 : 1;
 
     // ── Scan sweep: sustained directional pass over the scanned hull ──
@@ -11548,6 +11554,7 @@ export const vfx = {
     // mineral chips and the existing fracture steam/scar. Matter has its own lit owner below.
     const miner = (p && (p.sourceEntityId || p.droneId || p.entityId) && this._ent(p.sourceEntityId || p.droneId || p.entityId))
       || (this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId));
+    const targetId = p.targetId ?? (miner?.id === this.state.playerId ? this._miningBeam?.targetId : null);
     let backA = null;
     if (miner && miner.pos) {
       const dx = miner.pos.x - pos.x, dz = miner.pos.z - pos.z;
@@ -11573,7 +11580,7 @@ export const vfx = {
     // faces. Count and size scale with fracture progress — a fresh rock barely hisses while a
     // nearly-spent one visibly strains toward the shatter. Deterministic vein angles, cosmetic
     // velocity jitter.
-    const steamTargetId = this._miningBeam ? this._miningBeam.targetId : null;
+    const steamTargetId = targetId;
     const steamRock = steamTargetId != null ? this._ent(steamTargetId) : null;
     if (steamRock && steamRock.pos) {
       const rd = steamRock.data || {};
@@ -11615,8 +11622,8 @@ export const vfx = {
     // no radial reward flash of any kind.
     if (backA != null) {
       _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
-      _impactOpts.serial = hashVfxId('mine:' + String(this._miningBeam && this._miningBeam.targetId));
-      _impactOpts.targetId = (this._miningBeam && this._miningBeam.targetId) ?? null;
+      _impactOpts.serial = hashVfxId('mine:' + String(targetId));
+      _impactOpts.targetId = targetId ?? null;
       _impactOpts.eventClass = 'cut';
       _impactOpts.priority = 0.4;
       _impactOpts.hero = false;
@@ -11626,15 +11633,14 @@ export const vfx = {
       );
     }
     // Carve a molten work-face into the rock at a slow cadence. The shared 32-scar ring
-    // absorbs combat and mining together, oldest first; the beam target id comes from the
-    // retained mining beam (drone ticks stamp world-anchored instead — still attached).
+    // absorbs combat and mining together, oldest first. Each miner's receipt names its own
+    // worked body so drone cuts stay attached to that moving rock.
     if (this._weaponPresenter && typeof this._weaponPresenter.stampMiningScar === 'function') {
       const simTime = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : null;
       const now = simTime != null ? simTime : (this._t || 0);
       if (!Number.isFinite(this._miningScarAt)) this._miningScarAt = -10;
       if (now - this._miningScarAt >= 0.6) {
         this._miningScarAt = now;
-        const targetId = this._miningBeam ? this._miningBeam.targetId : null;
         const scarLocal = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
         const nx = backA != null ? Math.cos(backA + Math.PI) : 0;
         const nz = backA != null ? Math.sin(backA + Math.PI) : 1;
@@ -12291,6 +12297,24 @@ export const vfx = {
   _updateGyreSnare(dt) {
     if (!this._gyreSnareFx && this._gyreRelevant()) this._initGyreSnare();
     if (this._gyreSnareFx) this._gyreSnareFx.update(dt, this.state);
+    this._updateGyrePayloadLight();
+  },
+  _updateGyrePayloadLight() {
+    const source = this._gyreSnareFx?.payloadLight;
+    let slot = this._findSustainedEventLight('gyre-payload');
+    if (!source?.active) { this._retireEventLightSlot(slot); return; }
+    // One of the existing six event lights reveals actual gathered surfaces. No new light
+    // or shader variant is created; the presenter owns position, intensity and accessibility.
+    slot = slot || this._claimEventLightSlot(90, 'gyre-payload');
+    if (!slot) return;
+    slot.obj.position.set(source.x, source.y, source.z);
+    slot.obj.color.set(source.color);
+    slot.obj.distance = source.range;
+    slot.obj.intensity = source.intensity;
+    slot.intensity = slot.peak = source.intensity;
+    slot.decay = slot.t = 0;
+    slot.sustained = true;
+    slot.admissionPriority = 90;
   },
 
   _fieldFlowRelevant() {
@@ -12513,6 +12537,11 @@ export const vfx = {
     if (this._statusMatterVfx) this._statusMatterVfx.update(this.state);
     if (this._combatContactVfx) this._combatContactVfx.update(this.state);
     if (this.state && this.state.emergent && this.state.emergent.hot) {
+      if (!this._emergentPayloads && this._scene) {
+        this._emergentPayloads = new EmergentPayloadPresentation(this._scene, {
+          toLocal: this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)),
+        });
+      }
       if (!this._emergentPools && this._scene) {
         this._emergentPools = createEmergentPrimitivePools();
         this._scene.add(this._emergentPools.group);
@@ -12523,6 +12552,9 @@ export const vfx = {
     } else if (this._emergentPools) {
       this._emergentPools.update(this.state, (x, z, out) => this._toLocalXZ(x, z, out));
     }
+    // The sim ledger owns travel, attachments and expiry. Keep the presenter awake through its
+    // short retirement even after the final mechanism has left the ledger.
+    this._emergentPayloads?.update(dt, this.state);
     sub.energy = this._updateEnergy(dt) ? 1 : 0;
     this._presentOverflowJets(dt);
     // PQ-013 planetary skim — band scroll + reentry sheath pool; slept when no site is registered
@@ -12555,9 +12587,10 @@ export const vfx = {
       if (!(this._combatBeams.activeCount > 0)) {
         sub.combatBeams = 0;
       } else {
-        const camDist = cam && cam.position
-          ? Math.hypot(cam.position.x, cam.position.y, cam.position.z)
-          : 144;
+        const player = this.helpers.player && this.helpers.player();
+        const source = player?.pos
+          ? this._toLocalXZ(player.pos.x, player.pos.z, this._spawnLocalXZ) : null;
+        const camDist = beamViewDistance(cam, source, this.state.camera?.liveZoom || 144);
         sub.combatBeams = this._combatBeams.update(
           this._t,
           this._combatBeamLocalizer,
@@ -16849,6 +16882,17 @@ export function createVfxPrecompileSalvo() {
       prisms: [{ x: 12, z: -14, radius: 2, yaw: 0.6, life: 2 }],
     },
   }, null);
+
+  // Retained payloads use a lit instanced alpha shader. Stage the same material and instance
+  // attributes so a player's first sticky dart does not introduce a new combat-frame program.
+  const payloadWarm = new EmergentPayloadPresentation(group, {
+    toLocal: (x, z, out) => { out.x = x; out.z = z; return out; },
+  });
+  for (const mesh of payloadWarm.meshes.values()) {
+    mesh.count = 1;
+    mesh.visible = true;
+    mesh.geometry.getAttribute('iAlpha').setX(0, 1);
+  }
 
   // Arcade structural pools (blades, broken arcs, physical shards, plates) are created lazily on
   // the first structural impact — 2 additive surface programs + 2 lit standard variants used to

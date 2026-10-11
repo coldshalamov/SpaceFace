@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { effectiveTetherBreak, effectiveTetherPolicy } from '../src/combat/attachments.js';
+import { ATTACHMENT_DEFS } from '../src/data/combatDefs.js';
 import { MODULES } from '../src/data/modules.js';
+import { PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
+import { getDerivedStats } from '../src/systems/ships.js';
+import { constraintLoadRatio } from '../src/systems/tetherGameplay.js';
 import { ACE_TROPHY_HEADS, aceTrophyHeadByTier, trophyFromFittings } from '../src/data/sectors.js';
 import { ACE_TROPHY_BARKS, aceTrophyBarkFor, aceTrophyNewsLine } from '../src/data/conflictReactions.js';
 import { aceById } from '../src/data/namedAces.js';
@@ -97,6 +102,66 @@ test('PQ-170.03 one legendary Massline head per ace tier, same law as the stock 
   assert.match(aceTrophyBarkFor('faction_helix', 0, { ace: 'Yara No-Cut', head: 'No-Cut Filament' }), /Yara No-Cut/);
 });
 
+// THE WORLD ANSWERS T13 - DELIBERATE SEMANTIC CHANGE to this pin. The test above still proves the
+// trophy head is the SAME head ("same law as the stock head": the same masslineHeadId, the same
+// attachment, the same break/spring/release numbers). What changed on purpose is that the law is no
+// longer *equal*: an ace's trophy line now holds a heavier load before it breaks (loadCapacityMult
+// 1.15 / 1.3 / 1.5 by ace tier). Same law, higher ceiling - no new physics, no new release impulse,
+// no stock-head number moves. Anyone reading "equal law" in this file should read "equal law, higher
+// capacity" from here on.
+test('PQ-170.03 trophy heads keep the stock law and raise only the load ceiling (deliberate T13 change)', () => {
+  const STANDARD = ATTACHMENT_DEFS.find((def) => def.id === 'tether_standard');
+  const BRIDLE = ATTACHMENT_DEFS.find((def) => def.id === 'attachment_twin_bridle');
+  const expected = { 1: 1.15, 2: 1.3, 3: 1.5 };
+  assert.deepEqual(Object.keys(expected).map(Number), ACE_TROPHY_HEADS.map((row) => row.tier).sort());
+  for (const row of ACE_TROPHY_HEADS) {
+    const mult = expected[row.tier];
+    const trophy = MODULES.find((module) => module.id === row.id);
+    const stock = MODULES.find((module) => module.id === row.baseId);
+    assert.equal(trophy.mods.loadCapacityMult, mult, `${row.id} capacity`);
+    assert.equal(stock.mods.loadCapacityMult, undefined, `${row.baseId} stock head is untouched`);
+    // Nothing but the head id and the capacity differs between trophy and stock mods.
+    const { loadCapacityMult, ...trophyRest } = trophy.mods;
+    assert.deepEqual(trophyRest, stock.mods, 'same head, same remaining mods');
+
+    const trophyDerived = getDerivedStats('ship_drifter', [row.id], null);
+    const stockDerived = getDerivedStats('ship_drifter', [row.baseId], null);
+    assert.equal(trophyDerived.masslineHeadId, row.masslineHeadId);
+    assert.equal(trophyDerived.masslineLoadCapacityMult, mult);
+    assert.equal(stockDerived.masslineLoadCapacityMult, 1, 'a stock head derives exactly 1');
+
+    for (const def of [STANDARD, BRIDLE]) {
+      const base = effectiveTetherBreak(def, { data: { derived: stockDerived } });
+      const high = effectiveTetherBreak(def, { data: { derived: trophyDerived } });
+      assert.deepEqual(Object.keys(high).sort(), Object.keys(base).sort(), 'the same break envelope shape');
+      for (const leg of ['maxTension', 'maxImpulse', 'maxYank']) {
+        if (Number.isFinite(base[leg])) assert.ok(Math.abs(high[leg] - base[leg] * mult) < 1e-9, `${def.id}.${leg} x${mult}`);
+      }
+      assert.deepEqual(base, def.break, `${def.id}: a stock head leaves the catalog break untouched`);
+    }
+    // Release impulse and spring are not capacity: the policy keeps them byte-equal.
+    const highPolicy = effectiveTetherPolicy(STANDARD, { data: { derived: trophyDerived } }, PRODUCTION_FEATURES);
+    const basePolicy = effectiveTetherPolicy(STANDARD, { data: { derived: stockDerived } }, PRODUCTION_FEATURES);
+    assert.equal(highPolicy.headId, basePolicy.headId);
+    assert.deepEqual(highPolicy.spring, basePolicy.spring);
+    assert.equal(highPolicy.reelRate, basePolicy.reelRate);
+    assert.equal(highPolicy.maxLength, basePolicy.maxLength);
+
+    // The load display reads the same snapshotted policy: the same strain is a smaller fraction.
+    const strain = { lastTension: STANDARD.break.maxTension * 0.9, lastImpulse: 0, lastYank: 0 };
+    const lowRatio = constraintLoadRatio(strain, highPolicy.break, STANDARD);
+    const highRatio = constraintLoadRatio(strain, basePolicy.break, STANDARD);
+    assert.ok(Math.abs(lowRatio - highRatio / mult) < 1e-9, 'load ratio is scaled by the same ceiling');
+    assert.ok(highRatio < 1 && lowRatio < highRatio);
+  }
+  // Capacity belongs to the two Massline lines only: any other attachment ignores a stray multiplier.
+  const other = ATTACHMENT_DEFS.find((def) => def.id !== 'tether_standard' && def.id !== 'attachment_twin_bridle' && def.break);
+  if (other) assert.deepEqual(effectiveTetherBreak(other, { data: { derived: { masslineLoadCapacityMult: 1.5 } } }), { ...other.break });
+  // Absent / malformed / hostile values fail closed to exactly 1 (never below, never past the clamp).
+  for (const bad of [undefined, null, NaN, -3, 0, 'x']) {
+    assert.deepEqual(effectiveTetherBreak(STANDARD, { data: { derived: { masslineLoadCapacityMult: bad } } }), { ...STANDARD.break }, String(bad));
+  }
+});
 test('PQ-170.03 defeating aces grants one trophy per tier with lineage; a fourth ace grants nothing', () => {
   const h = bootClaims();
   const first = defeat(h, CORE_ACES[0], 1);

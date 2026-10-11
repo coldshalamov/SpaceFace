@@ -474,6 +474,13 @@ function classifyDrivers(n, trend, rank, oldDominant, impulseKind) {
   // spill without a kill is violence only (the pods may still be recovered — price stays honest).
   else if (impulseKind === 'freight_loss') { danger = 'freight_attrition'; pricePressure = 'freight_attrition'; }
   else if (impulseKind === 'freight_spill') danger = 'freight_attrition';
+  // THE WORLD ANSWERS (build_map §15.6): three player-made causes the chart must be able to name.
+  // C8 — a shattered rock dumped loose ore on the lane (sectorSim ore_flood, price pressure only).
+  else if (impulseKind === 'ore_flood') pricePressure = 'ore_flood';
+  // C6 — a hull went through a berth's ring; the yard is down and the lane hesitates.
+  else if (impulseKind === 'dock_slam') { danger = 'dock_slam'; pricePressure = 'dock_slam'; }
+  // C5 — a player well dragged a route hauler off its lane; the destination's trade dips.
+  else if (impulseKind === 'lane_disruption') pricePressure = 'lane_disruption';
   return { danger, pricePressure, influence };
 }
 

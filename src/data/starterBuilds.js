@@ -1,7 +1,7 @@
 // Milestone-3 starter build identities for the Hitch.
 // Pure immutable data: runtime fitting and preview truth remain owned by ships.getDerivedStats.
 
-import { ORIGIN_ROLE_KITS } from '../careers/origins/careerOriginContracts.js';
+import { ORIGIN_ROLE_KITS, careerStarterModuleIds } from '../careers/origins/careerOriginContracts.js';
 import { NEW_GAME } from './newGameDefaults.js';
 
 export const STARTER_BUILDS_SCHEMA_ID = 'spaceface.starterBuilds.v1';
@@ -49,7 +49,9 @@ function careerBuild(careerId, label, verb) {
     label,
     careerId,
     verb,
-    fittings: [...GENERALIST_FITTINGS, kit.defId],
+    // 38e82ae47: the Hitch has one utility slot. The drill amp and the role kit
+    // cannot both be worn; the kit replaces the amp, matching careerStarterModuleIds.
+    fittings: careerStarterModuleIds(careerId),
     acquisition: acquisition('career_origin', careerId, kit.defId),
     benefit: copy.benefit,
     tradeoff: copy.tradeoff,
@@ -64,8 +66,10 @@ export const STARTER_BUILDS = Object.freeze([
     verb: 'adapt',
     fittings: GENERALIST_FITTINGS,
     acquisition: acquisition('new_game'),
-    benefit: 'Open utility slot and the lightest of the four fits — on the same freight, tow and fight runs it keeps the most speed and turn authority.',
-    tradeoff: 'Keeps the utility slot open; flexible now, but no winch, plate or price feed when a specific job calls for one.',
+    // ea6a87ab3 fitted the Hitch utility slot with the drill amp. Mass 3 loses speed to the
+    // mass-1 market uplink, so this fit is no longer the lightest of the four.
+    benefit: 'A drill amp widens the rich-core window on the same freight, tow and fight runs.',
+    tradeoff: 'The utility slot holds the drill amp; no winch, plate or price feed, and it is heavier than the market-uplink kit.',
   }),
   careerBuild('hauler', 'Hitch Route Runner', 'carry'),
   careerBuild('hunter', 'Hitch Warrant Chaser', 'intercept'),

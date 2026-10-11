@@ -4,7 +4,7 @@ import { resolveWorldPresentationEntity } from '../world/presentationSources.js'
 import { occupantGenerationOf } from '../core/entity.js';
 import { isBeamTargetEligible, beamRangeFor } from '../systems/mining.js';
 import { initialMouseToolLane } from '../systems/input.js';
-import { interactionDisplayName, interactionProfileForEntity, presentationStatusWord } from '../data/entityInteractionProfiles.js';
+import { interactionClassLine, interactionDisplayName, presentationStatusWord } from '../data/entityInteractionProfiles.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { isConfirmOpen } from './confirm.js';
 import { targetDisplayName } from './targetPanel.js';
@@ -24,11 +24,9 @@ function beamVerbWord(entity) {
   return 'beam';
 }
 
-function classWord(entity) {
-  const profile = interactionProfileForEntity(entity);
-  if (profile.kind === 'unstable_reactor_wreck') return 'Hazardous Salvage';
-  if (profile.kind === 'wreck') return 'Salvage';
-  if (profile.classLabel) return profile.classLabel;
+export function classWord(entity) {
+  const line = interactionClassLine(entity);
+  if (line) return line;
   const t = entity && entity.type;
   if (t === 'station') return entity.data && entity.data.isGate ? 'Jump Gate' : 'Station';
   if (t === 'asteroid') return 'Asteroid';
