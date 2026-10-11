@@ -32,6 +32,7 @@ import { makeEnemySpawnSpec } from './combat.js';
 import { activeFieldSnapshot } from './fields.js';
 import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { MODULES } from '../data/modules.js';
 import { DROP_KICK_CRUISE_SPEED } from './jettisonImpulse.js';
 import { readCadencePair, rateCadenceTechnique } from './masslineControlLaw.js';
 import { resolveActionLabel } from './input.js';
@@ -521,6 +522,16 @@ export const onboarding = {
       const key = resolveActionLabel(this.state, 'tether', { empty: 'LATCH' });
       this._showHint('masslineSnareHead',
         `Snare head fitted — ${key} lays the line across their path.`,
+        p);
+    });
+    // Fitting the Repulsion Trap adds a verb beside the sticky plate instead of replacing it:
+    // one line, once per profile, naming both verbs on the player's own bound keys.
+    bus.on('module:equipped', (p) => {
+      if (!p || !MODULES.find((m) => m.id === p.defId)?.mods?.repulsionTrap) return;
+      const throwKey = resolveActionLabel(this.state, 'chargeThrow', { empty: 'THROW' });
+      const brakeKey = resolveActionLabel(this.state, 'brake', { empty: 'BRAKE' });
+      this._showHint('repulsionTrapVerbs',
+        `Repulsion Trap fitted — ${throwKey} sticks a plate; ${brakeKey} + ${throwKey} drops the trap.`,
         p);
     });
     bus.on('dock:undocked', () => this._maybeShowDemoEndCard());
