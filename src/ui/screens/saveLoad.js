@@ -848,12 +848,25 @@ function fillSlotDataLazy(ctx, slot, entry) {
   // would be silently lost (the new entry refills on its own consult either way).
   entry = _slotDataMemo.get(slot) || entry;
   if (!entry || entry.data) return;
+  const sys = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
+  // A validated slot-index scan already parsed this blob into a card projection — consume
+  // it instead of materializing the multi-MB raw and posting it for an identical worker
+  // parse (W139-G2). The projection lives inside the sig-keyed cache, so a same-slot write
+  // re-mints it rather than serving stale data.
+  if (sys && typeof sys.slotCardData === 'function') {
+    let cached = null;
+    try { cached = sys.slotCardData(slot); } catch (e) { cached = null; }
+    if (cached) {
+      entry.data = cached;
+      if (refs && refs.selected === slot) saveLoadScreen._renderStage(ctx);
+      return;
+    }
+  }
   const raw = entry.raw != null ? entry.raw : (entry.raw = readSlotBlob(slot));
   if (!raw) return;
   // The save worker parses + projects the portrait fields off-thread — the same
   // multi-MB JSON.parse class the spec arm already moved. The sync tail is the
   // byte-identical fallback for the no-worker lane or a peek failure.
-  const sys = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
   if (sys && typeof sys.peekSaveCardData === 'function') {
     let peek = null;
     try { peek = sys.peekSaveCardData(raw); } catch (e) { peek = null; }
