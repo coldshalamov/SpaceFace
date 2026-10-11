@@ -5,6 +5,7 @@ import {
   CONTACT_HAIL_RECEIPT_TTL_S,
   CONTACT_HAIL_REQUEST_TTL_S,
 } from '../data/contactHail.js';
+import { markTold } from '../systems/deedRecord.js';
 import { isUiInteractionFenced } from './input.js';
 import { createMorphLabel } from './effects/morphLabel.js';
 import { factionIcon, icon as stationIcon } from './station/icons.js';
@@ -70,6 +71,7 @@ export function createContactHailPrompt(ctx) {
   let destroyed = false;
   let previousFreq = '';
   let nextRibbonUpdateAt = 0;
+  let toldRequestId = null;
 
   function activePayload() {
     if (active) return active;
@@ -138,6 +140,11 @@ export function createContactHailPrompt(ctx) {
       return button;
     }));
     panel.hidden = false;
+    // THE WORLD REMEMBERS (U-E): a patrol that opened with a deed has now actually said it, once.
+    if (payload.deedId && payload.requestId !== toldRequestId) {
+      toldRequestId = payload.requestId;
+      markTold(state, payload.deedId, { by: `hail:${payload.targetId}` });
+    }
     panel.setAttribute('aria-label', lines.slice(0, 2).join(' '));
     nextRibbonUpdateAt = Number(state.simTime) || 0;
     updateDeckVisual(true);

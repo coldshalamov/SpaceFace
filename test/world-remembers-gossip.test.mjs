@@ -12,7 +12,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { barkDirector } from '../src/systems/barkDirector.js';
 import { createMarketNews } from '../src/ui/marketNews.js';
-import { recordDeed, peekDeedRecord, deedsFor, standingWith } from '../src/systems/deedRecord.js';
+import { recordDeed, peekDeedRecord, deedsFor, standingWith, markTold } from '../src/systems/deedRecord.js';
 import { deedLine, deedPlaceName } from '../src/data/deedPhrases.js';
 import { DOCK_DEED_BARKS, dockDeedBarkFor } from '../src/data/barks.js';
 
@@ -158,4 +158,59 @@ test('dockDeedBarkFor: hash-picked frames, tokens substituted, nothing for an em
   }
   assert.equal(dockDeedBarkFor('cold', 0, { deed: '' }), null);
   assert.equal(dockDeedBarkFor('lukewarm', 0, tokens), null);
+});
+
+// ── contact hail: a lawful patrol opens with the loudest local grievance ─────────────────────
+const { createContactHailOffer } = await import('../src/data/contactHail.js');
+const { default: fs } = await import('node:fs');
+
+function patrolAvailability() {
+  const entity = {
+    id: 'patrol-1', type: 'ship', alive: true, team: 2, factionId: 'faction_dmc',
+    pos: { x: 120, z: 0 }, vel: { x: 0, z: 0 },
+    data: { trafficRole: 'patrol', callsign: 'CONCORD SEVEN', ai: { passive: true, lawful: true, spawnContext: 'patrol' } },
+  };
+  return { enabled: true, kind: 'patrol', entity, targetId: entity.id, heaveToAvailable: false };
+}
+
+for (const seed of SEEDS) {
+  test(`hail [${seed}]: a patrol in a sector with notoriety >= 3 opens with the grievance; offers never tell`, () => {
+    const h = boot(seed);
+    try {
+      const avail = patrolAvailability();
+      const before = createContactHailOffer(h.state, avail, 'r0', 400);
+      assert.equal(before.deedId, undefined, 'no record: the faction voice, exactly as before');
+
+      recordDeed(h.state, { kind: 'pod_abandoned', sectorId: 'sector_ceres_belt', factionId: 'faction_dmc', weight: 1 });
+      const quiet = createContactHailOffer(h.state, avail, 'r1', 400);
+      assert.equal(quiet.deedId, undefined, 'notoriety 1 is below the bar');
+      assert.deepEqual(quiet.lines, before.lines);
+
+      const loud = recordDeed(h.state, { kind: 'kill_lawful', sectorId: 'sector_ceres_belt', factionId: 'faction_dmc', subject: 'corvette' });
+      const offer = createContactHailOffer(h.state, avail, 'r2', 400);
+      assert.equal(offer.deedId, loud.id);
+      assert.equal(offer.lines[1], deedLine(loud, { voice: 'grievance' }).toUpperCase());
+      assert.match(offer.lines[1], /CERES BELT/);
+      assert.equal(offer.lines.length, 2);
+      assert.equal(createContactHailOffer(h.state, avail, '__probe__', 400).deedId, loud.id);
+      assert.equal(loud.told, 0, 'building an offer (or a probe) never tells the deed');
+
+      markTold(h.state, loud.id, { by: 'hail:patrol-1' });
+      const after = createContactHailOffer(h.state, avail, 'r3', 400);
+      assert.equal(after.deedId, undefined, 'a told deed is not opened with again');
+
+      const elsewhere = boot(seed);
+      elsewhere.state.world.currentSectorId = 'sector_helios_prime';
+      recordDeed(elsewhere.state, { kind: 'kill_lawful', sectorId: 'sector_ceres_belt', factionId: 'faction_dmc' });
+      recordDeed(elsewhere.state, { kind: 'base_destroyed', sectorId: 'sector_ceres_belt', factionId: 'faction_dmc' });
+      assert.equal(createContactHailOffer(elsewhere.state, avail, 'r4', 400).deedId, undefined, 'notoriety is per sector');
+      dispose(elsewhere);
+    } finally { dispose(h); }
+  });
+}
+
+test('hail prompt marks the deed told when it renders the offer, once per request', () => {
+  const src = fs.readFileSync(new URL('../src/ui/contactHailPrompt.js', import.meta.url), 'utf8');
+  assert.match(src, /payload\.deedId && payload\.requestId !== toldRequestId/);
+  assert.match(src, /markTold\(state, payload\.deedId/);
 });

@@ -19,6 +19,9 @@ import {
   PASSENGER_LINER_SERVICE,
 } from './laneContacts.js';
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
+import { DEED_KINDS, notorietyIn, pickDeedToTell } from '../systems/deedRecord.js';
+import { deedLine } from './deedPhrases.js';
+import { LAWFUL_STATION_FACTIONS } from './factions/index.js';
 import { buildSlotList, fits } from '../systems/ships.js';
 import { entityIndexLaneVersion, entityIndexVersion } from '../world/livingWorldViews.js';
 
@@ -935,6 +938,28 @@ function aceHailIdentifyText(state, entity) {
   return `${callsign(entity)} · ${crew}${tier > 0 ? ` · RETURN TIER ${tier}` : ''}`;
 }
 
+// THE WORLD REMEMBERS (U-E): a lawful patrol hailing a pilot this loud in this sector opens with
+// the loudest local grievance instead of the faction slogan. Pure read — the deed is marked told by
+// the prompt that actually shows the offer (probes build offers too and must not tell anything).
+const HAIL_GRIEVANCE_NOTORIETY = 3;
+const HAIL_GRIEVANCE_MIN_WEIGHT = 2;
+const LAW_GRIEVANCE_KINDS = Object.freeze(Object.keys(DEED_KINDS).filter((k) => DEED_KINDS[k].law < 0));
+
+function patrolGrievanceHail(state, entity) {
+  const sectorId = state && state.world && state.world.currentSectorId;
+  if (!sectorId || notorietyIn(state, sectorId) < HAIL_GRIEVANCE_NOTORIETY) return null;
+  const factionId = hailFactionId(entity);
+  const deed = pickDeedToTell(state, {
+    speakerFactionId: LAWFUL_STATION_FACTIONS.has(factionId) ? factionId : undefined,
+    sectorId,
+    kinds: LAW_GRIEVANCE_KINDS,
+    minWeight: HAIL_GRIEVANCE_MIN_WEIGHT,
+  });
+  if (!deed || deed.told > 0 || deed.sectorId !== sectorId) return null;
+  const text = deedLine(deed, { voice: 'grievance' });
+  return text ? { deedId: deed.id, line: text.toUpperCase() } : null;
+}
+
 export function createContactHailOffer(state, availability, requestId, expiresAt) {
   if (!availability || !availability.enabled || availability.kind === 'toll') return null;
   const name = callsign(availability.entity);
@@ -951,10 +976,12 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
   if (availability.kind === 'patrol') {
     const actions = [{ id: 'status', label: 'STATUS' }, { id: 'identify', label: 'IDENTIFY' }];
     if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
+    const grievance = patrolGrievanceHail(state, availability.entity);
     return {
       requestId, targetId: availability.targetId, kind: 'patrol', expiresAt,
-      lines: [`${name} · LAWFUL PATROL`, voice],
+      lines: [`${name} · LAWFUL PATROL`, grievance ? grievance.line : voice],
       actions,
+      ...(grievance ? { deedId: grievance.deedId } : {}),
     };
   }
   if (availability.kind === 'worker') {
