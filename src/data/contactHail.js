@@ -3,6 +3,10 @@
 // This module is deliberately read-only. Scanner owns request validation and transient lifetime;
 // pirateParley remains the sole authority for toll choices/payment/escalation.
 import { hash32 } from '../core/rng.js';
+// Leaf import on purpose: namedAces.js reaches scanner.js (and so this file) through encounters.
+import {
+  fightStatusText, grievanceLineFor, grievanceLive, grievanceSeedFor, sectorDisplayName,
+} from './pilotCallsigns.js';
 import { tallyThreeHail } from './tallyThree.js';
 import { RED_KITE } from './redKite.js';
 import { PALLET_JACK } from './palletJack.js';
@@ -196,6 +200,12 @@ function contactKind(state, entity) {
   const lawfulPatrol = ai.lawful === true
     && (ai.spawnContext === 'patrol' || role === 'patrol' || role === 'escort');
   if (lawfulPatrol) return { kind: 'patrol', parley: null };
+  // A returned named ace (or the pilot who took its name) answers the channel: hostile, but a
+  // rival with a record, so the deck opens with the grievance rather than a faction slogan.
+  const aceTag = data.aceMemory;
+  if (aceTag && aceTag.role === 'boss' && aceTag.aceId && entity.team === 1) {
+    return { kind: 'ace', parley: null };
+  }
   // Living work channel only when a live causal/job stamp is present — otherwise miners stay on
   // the freighter path so ROUTE/MANIFEST (~CR) still reach ore hulls (U4).
   const hasLivingStamp = !!(data.ceresCausalEventId || data.ceresCausalPhase || data.ceresCausalCue
@@ -427,7 +437,8 @@ export function ceresDisabledHaulerTruth(state, entity) {
 
 function callsign(entity) {
   const data = entity && entity.data || {};
-  return String(data.callsign || data.trafficLabel || data.scanLabel || data.name || 'UNIDENTIFIED VESSEL')
+  const aceBoss = data.aceMemory && data.aceMemory.role === 'boss' ? data.aceMemory.aceName : null;
+  return String(data.callsign || data.trafficLabel || data.scanLabel || data.name || aceBoss || 'UNIDENTIFIED VESSEL')
     .replace(/\s+/g, ' ').trim().toUpperCase();
 }
 
@@ -885,10 +896,58 @@ function hailVoiceLine(state, entity) {
   return contactHailLineFor(factionId, stance, idx);
 }
 
+/** The rival a returned ace's hull flies for: the record's own name and crew, ace or heir. */
+function aceHailRecord(state, entity) {
+  const tag = entity && entity.data && entity.data.aceMemory;
+  const rec = tag && tag.aceId && state && state.aceMemory && state.aceMemory[tag.aceId];
+  if (!tag || !rec || typeof rec !== 'object') return null;
+  // The record already carries the ace's own name and crew (normalizeRecord stamps them from
+  // the roster), so no roster lookup is needed — and promoted pilots and heirs read the same way.
+  return { ace: { id: tag.aceId, name: rec.name || tag.aceName, crew: rec.crew }, rec };
+}
+
+/** While the grudge is live, the first thing the contact says is the grievance — the same line
+ *  and the same variant the ace spoke when it came back. Otherwise the faction's own voice. */
+function aceHailOpener(state, entity, voice) {
+  const found = aceHailRecord(state, entity);
+  if (!found || !grievanceLive(found.rec)) return voice;
+  const saveSeed = state && state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 0;
+  const line = grievanceLineFor(
+    found.ace,
+    found.rec,
+    grievanceSeedFor(saveSeed, found.ace, found.rec),
+    sectorDisplayName(found.rec.lastSectorId, state),
+    { bare: true },
+  );
+  return line ? line.toUpperCase() : voice;
+}
+
+function aceHailStatusText(state, entity) {
+  const found = aceHailRecord(state, entity);
+  const status = found && fightStatusText(found.rec, sectorDisplayName(found.rec.lastSectorId, state));
+  return status ? `STATUS · ${status}` : 'STATUS · WEAPONS HOT. NO PARLEY.';
+}
+
+function aceHailIdentifyText(state, entity) {
+  const found = aceHailRecord(state, entity);
+  const crew = String(found && found.ace.crew || 'KNOWN HUNTER').toUpperCase();
+  const tier = found && found.rec.returnTier | 0;
+  return `${callsign(entity)} · ${crew}${tier > 0 ? ` · RETURN TIER ${tier}` : ''}`;
+}
+
 export function createContactHailOffer(state, availability, requestId, expiresAt) {
   if (!availability || !availability.enabled || availability.kind === 'toll') return null;
   const name = callsign(availability.entity);
   const voice = hailVoiceLine(state, availability.entity);
+  if (availability.kind === 'ace') {
+    const found = aceHailRecord(state, availability.entity);
+    const crew = String(found && found.ace.crew || 'KNOWN HUNTER').toUpperCase();
+    return {
+      requestId, targetId: availability.targetId, kind: 'ace', expiresAt,
+      lines: [`${name} · ${crew}`, aceHailOpener(state, availability.entity, voice)],
+      actions: [{ id: 'status', label: 'STATUS' }, { id: 'identify', label: 'IDENTIFY' }],
+    };
+  }
   if (availability.kind === 'patrol') {
     const actions = [{ id: 'status', label: 'STATUS' }, { id: 'identify', label: 'IDENTIFY' }];
     if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
@@ -1362,14 +1421,19 @@ function priorityCourierStatusText(state, target) {
 }
 
 export function createContactHailResponse(state, offer, choice, authority = {}) {
-  if (!offer || (offer.kind !== 'patrol' && offer.kind !== 'trader' && offer.kind !== 'worker')) {
+  if (!offer || (offer.kind !== 'patrol' && offer.kind !== 'trader' && offer.kind !== 'worker'
+    && offer.kind !== 'ace')) {
     return null;
   }
   const target = entityById(state, offer.targetId);
   if (!target) return null;
   const id = String(choice || '').toLowerCase();
   let line = null;
-  if (offer.kind === 'patrol' && id === 'status') {
+  if (offer.kind === 'ace' && id === 'status') {
+    line = aceHailStatusText(state, target);
+  } else if (offer.kind === 'ace' && id === 'identify') {
+    line = aceHailIdentifyText(state, target);
+  } else if (offer.kind === 'patrol' && id === 'status') {
     line = authority.weaponsAuthorized === true
       ? 'STATUS · WEAPONS AUTHORIZED. HEAVE TO.'
       : 'STATUS · HOLD FIRE. FLY CLEAN.';
