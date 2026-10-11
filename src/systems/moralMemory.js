@@ -44,6 +44,12 @@ export function rememberMoralDebt(state, payload = {}) {
   };
   // An explicit disposition wins (an execution is never a misunderstanding); otherwise the seed rolls.
   if (payload.disposition === 'ally' || payload.disposition === 'vengeful') debt.disposition = payload.disposition;
+  // Optional survivor-pod witness fields. Absent on every older record; readers must tolerate that.
+  // captorFactionId / captorId: who took the survivors left behind. playerAnswered: the player's own
+  // hull made the rescue (an ambient rescue hull's pickup is the world's mercy, not the player's).
+  if (typeof payload.captorFactionId === 'string' && payload.captorFactionId) debt.captorFactionId = payload.captorFactionId;
+  if (payload.captorId != null && payload.captorId !== '') debt.captorId = payload.captorId;
+  if (payload.playerAnswered === true) debt.playerAnswered = true;
   memory.mercyCount += 1;
   memory.debts[id] = debt;
   memory.order.push(id);

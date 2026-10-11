@@ -66,6 +66,12 @@ export const CAUSAL_EJECT_CHANCE_PCT = 42;
 export const CAUSAL_HANDOFF_RANGE_WU = 90;
 /** Ambient rescue hull auto-claims an unattended pod inside this radius. */
 export const CAUSAL_RESCUE_HULL_CLAIM_WU = 70;
+/**
+ * The player "noticed" a pod when their hull came this close while it was live: the existing pod
+ * rescue radius, so a pod the player could have answered is a pod they can be said to have left.
+ * The mayday itself is a global bark, so a hail alone proves nothing about where the player was.
+ */
+export const CAUSAL_POD_NOTICE_WU = RESCUE_DISTANCE_WU;
 const CAUSAL_RESCUE_REP_DELTA = 3;
 /** Salvage fee paid to the player who tows a mayday pod to a lawful handoff (grant intent). */
 const CAUSAL_RESCUE_SALVAGE_FEE_CR = 420;
@@ -975,6 +981,7 @@ export const survivorPod = {
           phase: stamp.phase || 'adrift',
           ejectedAt: stamp.ejectedAt || 0,
           expireAt: stamp.expireAt || ((Number(state.simTime) || 0) + CAUSAL_POD_TTL_S),
+          playerNoticedAt: Number.isFinite(stamp.playerNoticedAt) ? stamp.playerNoticedAt : null,
           resolved: false,
         };
       }
@@ -997,6 +1004,11 @@ export const survivorPod = {
       if (!entity || entity.alive === false || !isCausalSurvivorPod(entity) || isPlayerWreckPod(entity)) {
         delete own.causal.byEntityId[id];
         continue;
+      }
+      // The player came within hail of a live pod: the one fact that lets its expiry be their debt.
+      if (rec.playerNoticedAt == null && player && player.alive !== false && player.pos && entity.pos
+        && distance2(player.pos, entity.pos) <= CAUSAL_POD_NOTICE_WU * CAUSAL_POD_NOTICE_WU) {
+        rec.playerNoticedAt = now;
       }
       // Keep entity annotation in sync for save/Continue.
       entity.data.survivorPodCausal = { ...rec, entityId: entity.id };
@@ -1114,16 +1126,28 @@ export const survivorPod = {
         // A pirate took the pod: not the same memory as leaving it to drift and die.
         : outcome === 'captured'
           ? 'captured_survivors'
-          : 'abandoned_survivors';
-    rememberMoralDebt(state, {
-      id: rec.memoryId || `survivor:${entityId}`,
-      name: 'Survivor Pod',
-      cause,
-      factionId: rec.factionId || CONCORD_FACTION_ID,
-      archetype: 'survivor_pod',
-      t: rec.resolvedAt,
-      source: `survivorPod:${outcome}`,
-    });
+          : outcome === 'abandoned' ? 'abandoned_survivors' : null;
+    // A pod that ran out its clock with the player never within hail of it is not their debt:
+    // only a pod they plausibly left behind is remembered as abandoned.
+    const playerLeftIt = outcome !== 'abandoned' || Number.isFinite(rec.playerNoticedAt);
+    if (cause && playerLeftIt) {
+      const debt = {
+        id: rec.memoryId || `survivor:${entityId}`,
+        name: 'Survivor Pod',
+        cause,
+        factionId: rec.factionId || CONCORD_FACTION_ID,
+        archetype: 'survivor_pod',
+        t: rec.resolvedAt,
+        source: `survivorPod:${outcome}`,
+      };
+      // WHO took them: carried from the capture receipt (podHunt hands the hunter's id and faction).
+      if (outcome === 'captured') {
+        if (receipt.captorFactionId) debt.captorFactionId = receipt.captorFactionId;
+        if (receipt.captorId != null) debt.captorId = receipt.captorId;
+      }
+      if (outcome === 'rescued' && receipt.playerAnswered === true) debt.playerAnswered = true;
+      rememberMoralDebt(state, debt);
+    }
 
     if (outcome === 'rescued' && entityId != null && this._bus && typeof this._bus.emit === 'function') {
       const factionId = detail.authorityFactionId || CONCORD_FACTION_ID;

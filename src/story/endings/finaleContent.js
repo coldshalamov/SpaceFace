@@ -1,5 +1,6 @@
 // Authored transmission scripts, not generated quest summaries. No gameplay or renderer imports.
 // Channels match story.js: comms:popup / graffiti:show / hud:phase.
+import { FACTION_META } from '../../data/factions.js';
 import { freeze, integerText as n, text } from './value.js';
 
 const comms = (sender, line, delayS = 12, note = null) => ({
@@ -194,6 +195,24 @@ function lawLine(id, f) {
   return line;
 }
 
+const FACTION_NAME = new Map(FACTION_META.map(r => [r.id, r.name]));
+const pods = (k) => `${n(k)} survivor pod${k === 1 ? '' : 's'}`;
+
+// The survivor-pod register: only what survivorPod.js wrote down. Absent counts say nothing.
+function podLine(f) {
+  const p = f.survivorPods;
+  if (!p || !p.total) return '';
+  const parts = [];
+  if (p.rescuedByPlayer) parts.push(`${pods(p.rescuedByPlayer)} towed to a lawful hand-off by your hull. The pod is closed. The people are not followed past the door.`);
+  if (p.abandoned) parts.push(`${pods(p.abandoned)} hailed inside your range and left to run out their air. The record keeps the distance, not the reason.`);
+  if (p.captured) {
+    const names = p.captors.map(r => `${FACTION_NAME.get(r.factionId) || text(r.factionId)}${r.count > 1 ? ` (${n(r.count)})` : ''}`);
+    if (p.capturedUnknownCaptor) names.push('a hull the record did not name');
+    parts.push(`${pods(p.captured)} left in the lane ${p.captured === 1 ? 'was' : 'were'} taken by ${names.join(', ')}. Present whereabouts: UNCONFIRMED.`);
+  }
+  return ` POD REGISTER: ${parts.join(' ')}`;
+}
+
 function livesLine(id, f) {
   const rescued = f.lungOutcome === 'rescue';
   const first = f.namedDebts.find(r => r.explicitMercy) || f.namedDebts[0];
@@ -213,6 +232,7 @@ function livesLine(id, f) {
     // No hidden ally/vengeful prediction and no promise the person remains alive now.
     line += ' Present whereabouts: UNCONFIRMED.';
   }
+  line += podLine(f);
   if (rescued && id === 'A') line += ' Personnel has received the attachment. It has not cancelled it against the other columns.';
   return line;
 }
