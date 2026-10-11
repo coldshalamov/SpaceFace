@@ -5340,6 +5340,7 @@ export const npcJobsRuntime = {
     spec.data.sectorId = sectorId;
     spec.data.jobId = jobId;
     spec.data.jobKind = 'tender';
+    spec.data.homeStationId = station.stationId;
     const hull = this.helpers.spawnEntity(spec);
     if (!hull) return null;
     if (hull.data) hull.data.jobId = jobId;

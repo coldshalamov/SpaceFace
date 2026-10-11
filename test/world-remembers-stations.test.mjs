@@ -189,6 +189,27 @@ for (const seed of [4242, 8008]) {
     assert.equal(stationConditionsFor(state, CERES), null);
   });
 
+  test(`intel: a strike's sell price is what the snapshot remembers (seed ${seed})`, () => {
+    const ctx = makeCtx(seed);
+    const { state } = ctx;
+    const good = tradedCommodity(CERES, HELIOS);
+    killCrew(ctx, { role: 'miner' });
+    killCrew(ctx, { role: 'tender' });
+    assert.ok(stationConditionsFor(state, CERES).strike);
+    const live = economy.quote(CERES, good, 'sell', 3);
+    const list = state.economy.markets[CERES][good].lastSell;
+    economy.snapshotIntel(CERES);
+    economy.snapshotIntel(HELIOS);
+    const remembered = state.economy.marketIntel[CERES].snapshot[good].sell;
+    assert.equal(remembered, list * live.standingPriceMultiplier, 'remembered sell equals the live conditioned list price');
+    assert.notEqual(remembered, list, 'the raw list would lie while the strike is on');
+    assert.equal(
+      state.economy.marketIntel[HELIOS].snapshot[good].sell,
+      state.economy.markets[HELIOS][good].lastSell,
+      'a calm berth still remembers its list',
+    );
+  });
+
   test(`strike: the crew's home stamp outranks proximity, and two kills must fall inside the window (seed ${seed})`, () => {
     const ctx = makeCtx(seed);
     const { state, emitted } = ctx;
@@ -197,6 +218,13 @@ for (const seed of [4242, 8008]) {
     killCrew(ctx, { role: 'ore_carrier', data: { homeStationId: BELT } });
     assert.equal(receiptsOf(emitted, 'station:strike')[0].stationId, BELT);
     assert.equal(stationConditionsFor(state, CERES), null);
+    // Dying beside Belt Outpost (~10 WU) while stamped to Ceres (~2810 WU away): the nearer
+    // berth is Belt, and Ceres is outside the old 1200 WU fallback. The stamp still wins.
+    const ctx3 = makeCtx(seed);
+    killCrew(ctx3, { role: 'miner', pos: { x: 3010, z: 0 }, data: { homeStationId: CERES } });
+    killCrew(ctx3, { role: 'tug', pos: { x: 3020, z: 5 }, data: { homeStationId: CERES } });
+    assert.equal(receiptsOf(ctx3.emitted, 'station:strike')[0].stationId, CERES);
+    assert.equal(stationConditionsFor(ctx3.state, BELT), null);
     // Kills a window apart do not add up.
     const ctx2 = makeCtx(seed);
     killCrew(ctx2, { role: 'miner' });
@@ -246,6 +274,11 @@ for (const seed of [4242, 8008]) {
     assert.equal(grudges[0].stationId, CERES);
     assert.equal(grudges[0].slams, 3);
     assert.equal(state.player.debt, 450, 'three floor-priced fines on the note');
+    // g.slams is the window count (the outage slam counts), in the berth's own voice, naming the sum still owed.
+    assert.equal(
+      receiptsOf(emitted, 'toast').find((t) => t.kind === 'error').text,
+      'Yardmaster, Ceres Refinery: 3 hulls through our ring in a day — pay the 450 cr on your note before you come through our ring again',
+    );
 
     assert.equal(stationBerthAdmits(rec, 0, state), false, 'berth refused');
     assert.deepEqual(stationBerthRefusal(rec, 0, state), {
@@ -289,6 +322,11 @@ for (const seed of [4242, 8008]) {
     state.player.debt = 1000; // an honest loan from before
     for (let i = 0; i < 3; i++) { state.simTime += DOCK_SLAM_LAW.relatchS + 1; bus.emit('combat:collisionConsequence', slam()); }
     assert.equal(receiptsOf(emitted, 'station:grudge')[0].untilPaidCr, 1000);
+    assert.equal(state.player.debt, 1450, 'the old note plus three fines');
+    assert.equal(
+      receiptsOf(emitted, 'toast').find((t) => t.kind === 'error').text,
+      'Yardmaster, Ceres Refinery: 3 hulls through our ring in a day — pay the 450 cr on your note before you come through our ring again',
+    );
     assert.equal(stationBerthAdmits(recordOf(CERES), 0, state), false);
     bus.emit('economy:releaseDebt', { amount: 449 });
     assert.equal(stationBerthAdmits(recordOf(CERES), 0, state), false, 'one credit short of the fines');

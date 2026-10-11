@@ -311,7 +311,11 @@ function factionShortLabel(id) {
 // A flood boom needs the same price dip the board's surplus haul-out posts at (-0.12): a 25 u rock.
 const STATION_BOOM_MAX_PRESSURE = ECON_CONTRACT_THRESHOLDS.surplusPressure;
 // A civilian hull killed this close to a berth (WU) with no home stamp is that berth's crew.
-const STATION_STRIKE_REACH_WU = 1200;
+// 1200 missed the shift: a tender's call-out is the nearest other berth (Ceres refinery to
+// Belt Outpost ≈ 2443 WU, Helios to Coalition HQ ≈ 2663 WU), and the yard truck / crew-response
+// envelope in npcJobsRuntime is 3500 WU (YARD_DISPATCH_RANGE_WU). That is how far a station's
+// own crew still count as its crew. A sector is 4200 WU; this does not swallow the map.
+const STATION_STRIKE_REACH_WU = 3500;
 
 const CONDITION_LINES = Object.freeze({
   strike: 'Crews are off the floor over what you did to their shift.',
@@ -2258,11 +2262,20 @@ export const economy = {
     const state = this.state;
     const market = state.economy.markets[stationId];
     if (!market) return;
+    // Same condition multipliers quote() folds into the live price (strike sell, blockade buy).
+    // A remembered list that skips them quotes a calm market while the berth is not calm.
+    const trade = stationTradeMults(state, stationId, stationInfo(state, stationId));
+    const conditioned = (price, mult) => (
+      mult === 1 || !Number.isFinite(price) ? price : price * mult
+    );
     const snapshot = {};
     for (const cid in market) {
       const e = market[cid];
       snapshot[cid] = {
-        mid: e.lastMid, buy: e.lastBuy, sell: e.lastSell, stock: e.stock, role: e.role,
+        mid: e.lastMid,
+        buy: conditioned(e.lastBuy, trade.buy),
+        sell: conditioned(e.lastSell, trade.sell),
+        stock: e.stock, role: e.role,
         demandMult: Number(e.demandMult) || 1,
         demandDrivers: Array.isArray(e.demandDrivers) ? e.demandDrivers.map((driver) => ({ ...driver })) : [],
       };
@@ -3510,8 +3523,11 @@ export const economy = {
     const g = rec.grudge;
     if (!g) return;
     const { voice, name, lawful } = stationVoiceFor(state, stationId);
+    const debt = Math.max(0, Math.round(Number(state.player && state.player.debt) || 0));
+    const floor = Math.max(0, Math.round(Number(g.untilPaidCr) || 0));
+    const owed = Math.max(0, debt - floor);
     this.bus.emit('toast', {
-      text: `${voice}, ${name}: ${g.slams} hulls through our ring in a day — pay your note before you come through our ring again`,
+      text: `${voice}, ${name}: ${g.slams} hulls through our ring in a day — pay the ${owed} cr on your note before you come through our ring again`,
       kind: 'error', ttl: 6,
     });
     this.bus.emit('station:grudge', {

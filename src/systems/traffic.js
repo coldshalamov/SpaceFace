@@ -69,6 +69,7 @@ import {
   FREIGHT_MARKET_KEYS_FALLBACK,
   liveVolumeForSector,
 } from '../economy/freightCausality.js';
+import { STATION_CREW_ROLES } from '../economy/stationConditions.js';
 import { FACTION_KITS } from '../data/factions.js';
 import { OCCUPATIONAL_JOB_KIND_BY_ROLE } from '../data/occupationalTrafficCraft.js';
 import {
@@ -2012,6 +2013,7 @@ export const traffic = {
       const ent = this.helpers.spawnEntity(spec);
       if (!ent) continue;
       this._stampTrafficDurableIdentity(ent, sectorId, role, def, already + i);
+      if (ent.data && STATION_CREW_ROLES.includes(role)) ent.data.homeStationId = stationIdentity(station);
       const target = priorityCourier
         ? (this._stationForPriorityCourier(stations, priorityService.stops[1]) || station)
         : def.express
@@ -4475,6 +4477,7 @@ export const traffic = {
       ent = this.helpers.spawnEntity(spec);
       if (!ent) return;
       this._stampTrafficDurableIdentity(ent, sectorId, role, def, list.length);
+      if (ent.data && STATION_CREW_ROLES.includes(role)) ent.data.homeStationId = stationIdentity(station);
       const target = this._pickStation(stations);
       const manifest = this._assignManifest(ent, role, target, sectorId);
       this._active.push(ent.id);
@@ -7526,6 +7529,7 @@ export const traffic = {
     this._stampTrafficDurableIdentity(ent, sectorId, 'salvor', def, 800 + (seq | 0));
     ent.data.trafficRole = 'salvor';
     ent.data.role = 'salvor';
+    ent.data.homeStationId = stationIdentity(home);
     ent.data.trafficLabel = def.label;
     ent.data.generalSalvor = true;
     // Empty hold on commission — value is claimed from the wreck/payload, never pre-rolled.
@@ -7637,6 +7641,7 @@ export const traffic = {
     this._stampTrafficDurableIdentity(ent, sectorId, 'tug', def, 900 + (seq | 0));
     ent.data.trafficRole = 'tug';
     ent.data.role = 'tug';
+    ent.data.homeStationId = stationIdentity(home);
     ent.data.trafficLabel = def.label;
     ent.data.yardTug = true;
     this._active.push(ent.id);
