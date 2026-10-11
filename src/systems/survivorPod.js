@@ -1102,6 +1102,12 @@ export const survivorPod = {
     };
     // Stamped only on a rescue the player towed in (heat's gate for the rescue cooling step).
     if (outcome === 'rescued' && causalRescuePlayerAttributed(detail)) receipt.playerAnswered = true;
+    // Stamped only on an abandonment the player plausibly witnessed (the Record's gate; a pod that
+    // timed out with the player never within hail is not their deed).
+    if (outcome === 'abandoned' && Number.isFinite(rec.playerNoticedAt)) receipt.playerLeftIt = true;
+    // Stamped only on an abandonment the player was close enough to answer (the Record's gate:
+    // a pod that died with the player never within hail is the world's loss, not their deed).
+    if (outcome === 'abandoned' && Number.isFinite(rec.playerNoticedAt)) receipt.playerLeftIt = true;
     if (receipt.pos == null && posSrc && Number.isFinite(posSrc.x) && Number.isFinite(posSrc.z)) {
       receipt.pos = {
         x: posSrc.x,
