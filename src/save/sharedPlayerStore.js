@@ -17,11 +17,13 @@ const SHARED_STORE_TIMEOUT_MS = 10000;
 
 // Mirror PUTs carry a wider deadline than the boot probe: the request can sit queued in
 // Chromium's per-origin socket pool behind a scene-build asset storm (six-socket limit), and the
-// abort signal keeps running while it waits — a 10 s budget then cancels a PUT that never even
-// reached the wire and is recorded by probes as a page error. A mirror write never pins UI, so
-// the only cost of a genuinely hung store here is the serialized write chain backing up — bounded
-// either way, and far longer than any real queue drain.
-const SHARED_STORE_PUT_TIMEOUT_MS = 60000;
+// abort signal keeps running while it waits — a short budget cancels a PUT that never even
+// reached the wire and is recorded by probes as a page error. The runtime checks budget 90 s for
+// the scene-build transition that produces the storm; a 60 s deadline was still observed firing
+// mid-queue on software-GL CI (check-station-tabs, 2026-10-11). A mirror write never pins UI, so
+// the only cost of a genuinely hung store here is the serialized write chain backing up —
+// bounded either way, and far longer than any real queue drain.
+const SHARED_STORE_PUT_TIMEOUT_MS = 150000;
 
 const KEY_RE = /^(sf\.save\.[A-Za-z0-9._-]+|sf\.recovery\.[A-Za-z0-9._-]+|sf\.settings\.profile\.v1)$/;
 

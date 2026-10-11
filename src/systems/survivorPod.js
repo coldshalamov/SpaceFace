@@ -36,6 +36,7 @@ import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { hasContractsDesk } from '../data/missions.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { onPodEjected, sweepStalePodHunts, tickPodHunts } from '../ai/podHunt.js';
+import { clearIneligibleAIFiringIntents } from './aiPorts.js';
 import { rememberMoralDebt } from './moralMemory.js';
 import { playerWreckMarker } from './aftermathWrecks.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
@@ -567,7 +568,9 @@ export const survivorPod = {
   },
 
   // The pod owner's side of the pirate pod hunt (src/ai/podHunt.js): predicates it must not
-  // import (circularity) and the one write it cannot make — resolving the pod as captured.
+  // import (circularity) and the writes it cannot make — resolving the pod as captured, and
+  // disarming the hunter: src/ai may not write the fire bit (SG-06 intake), so the host routes
+  // it through aiPorts' own fail-closed sweep once the errand sets hold_fire.
   _podHuntCtx(state) {
     const own = ensureState(state);
     return {
@@ -578,6 +581,7 @@ export const survivorPod = {
       isHuntablePod: (pod) => isCausalSurvivorPod(pod) && !isPlayerWreckPod(pod),
       playerLatchedTo: (podId) => playerLatchedTo(state, podId),
       capture: (rec, pod, detail) => this._resolveCausal(state, own, rec, pod, 'captured', detail),
+      disarm: () => clearIneligibleAIFiringIntents(state, this.helpers),
     };
   },
 

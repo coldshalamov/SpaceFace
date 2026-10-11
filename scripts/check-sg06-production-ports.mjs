@@ -444,7 +444,10 @@ function assertFrameWhitelist(frame) {
       'alive', 'attachmentId', 'classification', 'confidence', 'disabled', 'exposed', 'id', 'kind',
       'cargoBand', 'hostile', 'massClass', 'mobilityBand', 'objectiveValue', 'operationalMassBand',
       'ownedBySelf', 'ownerId', 'planarRadius', 'pos', 'radius', 'sourceSocketId', 'tags', 'targetId',
-      'targetSocketId', 'team', 'tetherabilityBand', 'tethered', 'threat', 'valid', 'vel', 'visible',
+      'targetSocketId', 'team', 'tetherabilityBand', 'tethered', 'threat', 'tumbling', 'valid', 'vel', 'visible',
+      // `tumbling` (SFQ-B045, landed in 8d965f4a0) is an intentional addition: aiPorts stamps the
+      // live tumble status on contacts, contracts.js normalizes it, and reflexes.js reads exactly
+      // this field so pilots can dodge a thrown body instead of treating it as cover.
       // `planarRadius` is the MEASURED steering clearance - the radius the collider physics
       // actually builds, which differs from the gameplay `radius` for a fixed solid carrying a
       // measured planar skin (aiPorts.steeringPlanarRadius -> modelTruthPlanarRadius). maneuver.js

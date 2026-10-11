@@ -69,10 +69,10 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "4eb1eb4235b653d28457257ba8527afaa5ac0fe887695341f0870b819a79ef08",
+    "authoritativeHash": "e148b05f70c851a4a35d219d7aa4bfc5f1d10543195c37b8d2655c32c93d3f70",
     "authoritativeHashByReloadAt": {
-      "60": "4eb1eb4235b653d28457257ba8527afaa5ac0fe887695341f0870b819a79ef08",
-      "600": "4eb1eb4235b653d28457257ba8527afaa5ac0fe887695341f0870b819a79ef08"
+      "60": "e148b05f70c851a4a35d219d7aa4bfc5f1d10543195c37b8d2655c32c93d3f70",
+      "600": "e148b05f70c851a4a35d219d7aa4bfc5f1d10543195c37b8d2655c32c93d3f70"
     },
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
@@ -248,6 +248,8 @@
     "With the old native body owner, only 15,169 content leaves remain: 15,156 economy, 12 derived capability leaves, and save version14->15. No unexplained motion remains. Scenario, missions, story and input tape are unchanged.",
     "Seed47 tick720/reload60 player pos (3002.229492,472.542053)->(2915.300537,352.188141), velocity (249.406525,24.368410)->(273.372681,30.110619). Same 17 shots now yield 10 hits/damage and 14 cue/applied events; all other observed counts are unchanged.",
     "Current reload60 and reload600 produce the same canonical hash and each matches save-canonicalized uninterrupted simulation. Clean committed source5214f5f38 reproduces the current result; foreign working-tree edits do not set this expectation.",
-    "Exact hash, required event families, acceptance bounds, five-run minimum and reload equivalence remain enforced. This updates the curated legacy47a V3 fixture to shipped contact behavior; it is not a new production-manifest claim."
+    "Exact hash, required event families, acceptance bounds, five-run minimum and reload equivalence remain enforced. This updates the curated legacy47a V3 fixture to shipped contact behavior; it is not a new production-manifest claim.",
+    "2026-10-11 deliberate re-record over 0830a8aff..9d86b046b (78 commits). The prior authoritativeHash was 4eb1eb4235b653d28457257ba8527afaa5ac0fe887695341f0870b819a79ef08; reload60 and reload600 both reproduce the new uninterrupted hash.",
+    "scripts/sim-golden-diff.mjs --flight-system v3 against 0830a8aff: 15,244 leaves differ, all under $.economy — c1226a5fc authored cmdty_regocrete/cmdty_control_unit starter produce lines and MAX_LINES_PER_SIDE 4->6. ZERO entity motion fields changed."
   ]
 }

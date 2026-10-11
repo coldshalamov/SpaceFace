@@ -67,7 +67,7 @@
     "tether:attached": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "772b633513cac081e75f037a2079662bec42e8643fed6a301e300d3135fac1cd",
+    "authoritativeHash": "d2d15c677eb42c8a29aaadd4b5a522427ef5bbe7781bb1413056052892b0f877",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -223,6 +223,9 @@
     "2026-10-11 deliberate CONTENT_ONLY migration: aee3757e9 reproduces the prior 0b33dde1 hash exactly. Historical Git blobs were loaded in memory with the same seed47, 720-tick tape and reload600; no alternate checkout or production-source edit.",
     "Semantic diff: 15,178 leaves changed: 15,156 economy market/cycle/seed leaves, save version14->15, and 21 derived-stat leaves. ZERO entity or native-physics motion fields changed. All currently pinned observed event counts remain unchanged.",
     "Origins are shipped market/content changes including Bolus and regional supply, v15 material-reaction persistence (2e2f2d661), plus derived hull/Veil Step/trophy-head capabilities. The legacy controller does not consume the changed V3 propulsion metadata.",
-    "Clean committed source5214f5f38 reproduces the migrated hash independently of foreign dirty work. Reload600 matches the save-canonicalized uninterrupted run. The exact authoritative hash remains enforced; acceptance bounds, required event families, repeat minimum and input tape are unchanged."
+    "Clean committed source5214f5f38 reproduces the migrated hash independently of foreign dirty work. Reload600 matches the save-canonicalized uninterrupted run.",
+    "The exact authoritative hash remains enforced; acceptance bounds, required event families, repeat minimum and input tape are unchanged.",
+    "2026-10-11 deliberate re-record over 0830a8aff..9d86b046b (78 commits). The prior authoritativeHash was 772b633513cac081e75f037a2079662bec42e8643fed6a301e300d3135fac1cd.",
+    "scripts/sim-golden-diff.mjs against 0830a8aff: 15,244 snapshot leaves differ, every one under $.economy — c1226a5fc authored cmdty_regocrete/cmdty_control_unit starter produce lines and MAX_LINES_PER_SIDE 4->6. ZERO entity motion fields changed."
   ]
 }

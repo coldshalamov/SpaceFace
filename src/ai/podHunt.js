@@ -156,7 +156,6 @@ function claim(ctx, hunter, pod, now) {
   const data = hunter.data || (hunter.data = {});
   const ai = data.ai || (data.ai = {});
   const combat = data.combat || (data.combat = {});
-  const intent = data.intent || (data.intent = {});
   const tick = state.tick | 0;
   const rec = {
     hunterId: hunter.id,
@@ -181,9 +180,10 @@ function claim(ctx, hunter, pod, now) {
   ai.huntPlayer = false;
   if (combat.targetId === state.playerId) combat.targetId = null;
   if (combat.lockTarget === state.playerId) combat.lockTarget = null;
-  intent.fire = false;
-  intent.fireGroup = null;
   assertSeekDoctrine(state, hunter, pod, rec);
+  // The fire bit belongs to the SG-03 pipeline, not src/ai: with hold_fire now stamped the
+  // host clears this tick's already-written intent through the sanctioned disarm sweep.
+  ctx.disarm(hunter);
   if (ctx.bus && typeof ctx.bus.emit === 'function') {
     ctx.bus.emit('survivorPod:huntDispatched', {
       entityId: pod.id,

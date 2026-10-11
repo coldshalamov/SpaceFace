@@ -328,7 +328,7 @@ test('a hung mirror PUT carries its own deadline and settles false on abort', as
   const put = pushSharedPlayerStore({ 'sf.save.auto': envelope('auto', '2026-08-14T00:00:00.000Z') });
   // fetch is invoked before push's first await suspends, so the deadline request is visible now.
   assert.equal(deadlines.length, 1, 'the mirror PUT must request its own deadline');
-  assert.ok(Number.isFinite(deadlines[0]) && deadlines[0] > 0 && deadlines[0] <= 120000,
+  assert.ok(Number.isFinite(deadlines[0]) && deadlines[0] > 0 && deadlines[0] <= 180000,
     `the mirror PUT deadline must be finite and bounded, got ${deadlines[0]}`);
   controller.abort();
   assert.equal(await put, false, 'an aborted PUT reports failure instead of hanging forever');
