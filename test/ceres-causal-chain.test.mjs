@@ -884,8 +884,9 @@ test('calving coda re-arms the rich-seam window as the fresh-face aftermath', ()
   assert.equal(rearmed.attempt, 1);
   assert.equal(rearmed.bonusU, 12, 'the calved fresh face out-pays the strike window (brighter ore)');
   // The re-armed window names itself on the target readout so the richer pay is legible on sight.
+  // c90af4a92: the chip says OPEN, not HOT CUT.
   const readout = richSeamTargetReadout(asteroid, state);
-  assert.equal(readout.text, 'FRESH SEAM · +12u · HOT CUT');
+  assert.equal(readout.text, 'FRESH SEAM · +12u · OPEN');
   void miner;
 });
 
@@ -945,7 +946,8 @@ test('explicit HELP reserves the seam for the NPC owner and changes the resolved
   assert.equal(reserved.reservedByStableId, miner.data.worldRecordId);
   assert.equal(reserved.reservedByActivityActorSlotId, 'ceres_seam_miner');
   assert.equal(reserved.reservedByJobId, miner.data.jobId);
-  assert.match(richSeamTargetReadout(asteroid, state).text, /NPC HELP LOCK/);
+  // c90af4a92: a reservation reads ALREADY CLAIMED, not NPC HELP LOCK.
+  assert.match(richSeamTargetReadout(asteroid, state).text, /ALREADY CLAIMED/);
   assert.equal(claimRichSeamOpportunity(state, {
     fieldId: asteroid.data.fieldId,
     activityObjectSlotId: asteroid.data.activityObjectSlotId,
