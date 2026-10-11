@@ -90,7 +90,9 @@ test('counting relay: listening twice walks the chain to the mail hulk', () => {
   assert.equal(propsOf(t)[1].data.storyPropKind, 'counting_relay_2');
   assert.ok(propsOf(t)[1].pos.x !== propsOf(t)[0].pos.x || propsOf(t)[1].pos.z !== propsOf(t)[0].pos.z,
     'hop two is elsewhere: a flight, not a stroll');
-  assert.equal(countOf(rows, 'encounter:voice', 'The pulse is a count'), 1);
+  // e7bee1090 shortened both relay lines. Hop two is a second carrier;
+  // the mail hulk says "The count stops" at the start of its clause.
+  assert.equal(countOf(rows, 'encounter:voice', 'Second carrier, same voice'), 1);
   assert.equal(countOf(rows, 'encounter:choiceOffered'), 2, 'the cycle re-offers');
 
   choose(t, id, 'listen');
@@ -99,7 +101,7 @@ test('counting relay: listening twice walks the chain to the mail hulk', () => {
   );
   assert.equal(wrecks.length, 1, 'the mail hulk is a real salvage body');
   assert.equal(wrecks[0].data.salvagePool.cmdty_salvage_electronics, 3, 'the pool is real');
-  assert.equal(countOf(rows, 'encounter:voice', 'the count stops'), 1);
+  assert.equal(countOf(rows, 'encounter:voice', 'The count stops'), 1);
   const offer = rows.filter((r) => r.name === 'encounter:choiceOffered')[2];
   assert.deepEqual(offer.payload.options.map((o) => o.id), ['take_the_mail', 'leave_it', 'ignore']);
 });
