@@ -68,7 +68,7 @@ import {
   hotUntilActive,
   HOT_DURATION_S,
 } from '../economy/customsRisk.js';
-import { allRegionalPressureRecipes } from '../economy/regionalSupply.js';
+import { allRegionalPressureRecipes, pressureRecipesForRegion } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
 import { priceModForState, rankServiceDiscount } from './factions.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
@@ -347,6 +347,20 @@ function commodityDef(state, id) {
 /** A station tolerates contraband/illegal goods iff it is a blackmarket (smuggler/pirate den). */
 function toleratesContraband(info) {
   return !!(info && info.type === 'blackmarket');
+}
+
+// A station with an authored regional produce recipe makes the good locally, so it lists and
+// sells it even when the commodity's marketTier is above the sector tier (VERB-09 Helios).
+// Deep-world goods (marketTier 3+) stay gated regardless — a local produce line never stocks
+// resources that only exist deeper in the world (ECON-01).
+const PRODUCE_OVERRIDES_TIER_UP_TO = 2;
+function producedAtStation(info, stationId, def) {
+  if (!def || !info || !info.sectorId) return false;
+  if ((Number(def.marketTier) || 0) > PRODUCE_OVERRIDES_TIER_UP_TO) return false;
+  for (const recipe of pressureRecipesForRegion(info.sectorId)) {
+    if (recipe.role === 'produce' && recipe.stationId === stationId && recipe.commodityId === def.id) return true;
+  }
+  return false;
 }
 
 const SHIP_PRICE_BY_ID = new Map(SHIPS.map((s) => [s && s.id, Number(s && s.price) || 0]));
@@ -1971,6 +1985,20 @@ export const economy = {
     const allowContraband = toleratesContraband(info);
     const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
 
+    let regionalProduce = null;
+    const producedHere = (def) => {
+      if (!def || (Number(def.marketTier) || 0) > PRODUCE_OVERRIDES_TIER_UP_TO) return false;
+      if (!regionalProduce) {
+        regionalProduce = new Set();
+        if (info && info.sectorId) {
+          for (const recipe of pressureRecipesForRegion(info.sectorId)) {
+            if (recipe.role === 'produce' && recipe.stationId === stationId) regionalProduce.add(recipe.commodityId);
+          }
+        }
+      }
+      return regionalProduce.has(def.id);
+    };
+
     const market = {};
     for (const def of COMMODITIES) {
       const baseEqRef = (BALANCE.commodities[def.id]?.baseEq || BASE_EQ_DEFAULT) * (SIZE_FACTOR[sz] || 1);
@@ -1987,9 +2015,12 @@ export const economy = {
       if (def.noMarketSeed === true) continue;
       // High-tier commodities do not seed naturally at lower-tier stations: starter markets do not
       // stock goods that only exist deeper in the world. If the player brings one, mintUnseededListing
-      // creates a liquidation listing so they can still sell it.
+      // creates a liquidation listing so they can still sell it. An authored regional PRODUCE line
+      // lifts the gate for shallow goods (marketTier ≤ 2) — a station that makes the good locally
+      // (e.g. Helios' military role producing impulse charges) lists what it makes; tier-3+ deep
+      // goods stay gated even when produced.
       const marketTier = Math.max(0, Number(def.marketTier) || 0);
-      if (marketTier > stationTier) continue;
+      if (marketTier > stationTier && !producedHere(def)) continue;
       // 'none'-role goods have no produce/consume pull, so drift them toward a neutral baseEq stock
       // (price settles near basePrice; player can both buy and sell). Produce/consume keep their
       // role-driven surplus/shortage targets so A->B routes stay profitable.
@@ -2206,7 +2237,7 @@ export const economy = {
     const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
     const marketTier = Math.max(0, Number(def.marketTier) || 0);
     if (!entry) {
-      if (def.noMarketSeed !== true && marketTier <= stationTier) {
+      if (def.noMarketSeed !== true && marketTier <= stationTier && !producedAtStation(info, stationId, def)) {
         return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
       }
       // Liquidation minting honors the same legality gate as seeding: a lawful port does not
@@ -2249,7 +2280,7 @@ export const economy = {
     // Low-tier ports buy valuable finds from the player but do not create an infinite local
     // supply of resources that only occur deeper in the world. This preserves discovery value
     // and stops starter markets from becoming risk-free rare-ore vending machines.
-    if (side === 'buy' && marketTier > stationTier) {
+    if (side === 'buy' && marketTier > stationTier && !producedAtStation(info, stationId, def)) {
       return {
         ok: false, reason: 'tier_unavailable', unitAvg: entry.lastBuy * standing.buy, total: 0,
         priceImpactPct: 0, stockAfter: entry.stock, marketTier, stationTier,
