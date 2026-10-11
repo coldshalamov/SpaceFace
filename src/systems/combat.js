@@ -1,3 +1,5 @@
+// LAST_ARGUMENT_INTEGRATION_V1
+import { applyLastArgumentSpawnSpec } from '../data/lastArgumentBody.js';
 // combat system: the damage pipeline (shield→armor→hull), shield/cap regen, death + loot +
 // player respawn, and enemy spawn builders. Consumes projectile:hit from physics (ARCHITECTURE §2.3
 // step 8, §4.4). Single source of health mutation for ships/stations/drones.
@@ -451,7 +453,7 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
     spec.flightModel = palletJackFlightModel(body, spec.flightModel);
     if (spec.data.derived) spec.data.derived.flightModel = palletJackFlightModel(body, spec.data.derived.flightModel);
   }
-  return spec;
+  return applyLastArgumentSpawnSpec(spec, def.id);
 }
 
 function doctrineTelegraphFor(doctrineId) {

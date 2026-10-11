@@ -47,7 +47,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `palletJack` | `systems/palletJack.js` | 484 | 5 | 0 | `palletJack:phase`×1, `palletJack:released`×1, `palletJack:offer`×1 |
 | `secondRinse` | `systems/secondRinse.js` | 274 | 0 | 0 | — |
 | `ai` | `systems/tacticalAI.js` (+ legacy) | 1313 | 3 | 0 | `ai:telegraph`×1, `ai:doctrinePhase`×1, `audio:cue`×1 |
-| `barkDirector` | `systems/barkDirector.js` | 2882 | 3 | 47 | `npc:hailed`×2, `audio:cue`×1 |
+| `barkDirector` | `systems/barkDirector.js` | 2885 | 3 | 47 | `npc:hailed`×2, `audio:cue`×1 |
 | `aiEncounter` | `systems/aiEncounter.js` | 856 | 0 | 6 | — |
 | `actions` | `systems/actions.js` | 14 | 0 | 0 | — |
 | `beacons` | `systems/beacons.js` | 264 | 5 | 2 | `audio:cue`×3, `economy:chargeCredits`×1, `beacon:deployed`×1 |
@@ -59,7 +59,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `aiPorts` | `systems/aiPorts.js` | 2005 | 2 | 0 | `ai:encounterCommand`×1, `cloak:faded`×1 |
 | `tumbleStates` | `systems/tumbleStates.js` | 794 | 11 | 7 | `audio:cue`×2, `presentation:vfxCue`×2, `massline:recovered`×1 |
 | `collisionConsequences` | `systems/collisionConsequences.js` | 856 | 2 | 6 | `combat:collisionConsequence`×1, `combat:collisionDebris`×1 |
-| `stuntGrammar` | `systems/stuntGrammar.js` | 300 | 7 | 0 | `stunt:styleBanked`×1, `faction:repDelta`×1, `stunt:salvageRights`×1 |
+| `stuntGrammar` | `systems/stuntGrammar.js` | 307 | 7 | 0 | `stunt:styleBanked`×1, `faction:repDelta`×1, `stunt:salvageRights`×1 |
 | `weapons` | `systems/weapons.js` | 3099 | 21 | 0 | `combat:fire`×4, `presentation:vfxCue`×3, `weapons:vent`×2 |
 | `countermeasures` | `systems/countermeasures.js` | 827 | 5 | 3 | `audio:cue`×2, `pds:intercept`×1, `countermeasure:deployed`×1 |
 | `bombs` | `systems/bombs.js` | 1751 | 34 | 14 | `bombs:denied`×8, `economy:chargeCredits`×4, `bombs:stockChanged`×3 |
@@ -86,7 +86,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `ruud` | `systems/ruud.js` | 533 | 5 | 0 | `audio:cue`×2, `ruud:voice`×1, `ruud:spared`×1 |
 | `physics` | `core/physics.js` | 2319 | 9 | 3 | `projectile:hit`×2, `dock:range`×2, `gate:range`×2 |
 | `latchNine` | `systems/latchNine.js` | 150 | 0 | 0 | — |
-| `combat` | `systems/combat.js` | 1593 | 19 | 9 | `camera:shake`×3, `economy:grantCredits`×3, `player:death`×2 |
+| `combat` | `systems/combat.js` | 1595 | 19 | 9 | `camera:shake`×3, `economy:grantCredits`×3, `player:death`×2 |
 | `combatOutcome` | `systems/combatOutcome.js` | 351 | 2 | 17 | `combat:outcome`×1, `combat:outcomeConsequence`×1 |
 | `aftermathWrecks` | `systems/aftermathWrecks.js` | 2860 | 20 | 20 | `news:headline`×2, `news:publish`×2, `aftermath:causeRecorded`×1 |
 | `titles` | `systems/titles.js` | 1268 | 0 | 13 | — |
@@ -109,7 +109,7 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `cargo` | `systems/cargo.js` | 1176 | 14 | 0 | `salvage:changed`×2, `audio:cue`×2, `cargo:changed`×1 |
 | `fragileCargo` | `systems/fragileCargo.js` | 297 | 1 | 2 | `cargo:fragileLost`×1 |
 | `automation` | `systems/automation.js` | 3451 | 36 | 9 | `automation:offlineSummary`×5, `economy:chargeCredits`×4, `economy:applyTradePressure`×3 |
-| `asteroidSites` | `systems/asteroidSites.js` | 2840 | 22 | 12 | `site:laneSpilled`×2, `worldSite:operationReceipt`×1, `worldSite:failureReceipt`×1 |
+| `asteroidSites` | `systems/asteroidSites.js` | 2842 | 22 | 12 | `site:laneSpilled`×2, `worldSite:operationReceipt`×1, `worldSite:failureReceipt`×1 |
 | `asteroidFormations` | `systems/asteroidFormations.js` | 317 | 1 | 3 | `formation:discovered`×1 |
 | `wingmen` | `systems/wingmen.js` | 702 | 2 | 6 | `combat:hitAsset`×1, `wingOrder:converted`×1 |
 | `crafting` | `systems/crafting.js` | 457 | 7 | 0 | `craft:queueChanged`×3, `craft:complete`×2, `audio:cue`×2 |
@@ -130,19 +130,19 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `stationServices` | `systems/stationServices.js` | 666 | 13 | 3 | `fuel:changed`×2, `service:completed`×2, `economy:grantCredits`×1 |
 | `difficultyDirector` | `systems/difficultyDirector.js` | 476 | 2 | 5 | `difficulty:pinReleased`×1, `difficulty:stanceChanged`×1 |
 | `gateControlDirector` | `systems/gateControlDirector.js` | 339 | 2 | 7 | `economy:chargeCredits`×1, `gate:verdict`×1 |
-| `salvage` | `systems/salvage.js` | 1434 | 15 | 7 | `comms:log`×4, `audio:cue`×3, `salvage:placed`×1 |
+| `salvage` | `systems/salvage.js` | 1451 | 15 | 7 | `comms:log`×4, `audio:cue`×3, `salvage:placed`×1 |
 | `tallyThree` | `systems/tallyThree.js` | 140 | 1 | 0 | `ui:setCourse`×1 |
-| `lastShift` | `systems/lastShift.js` | 250 | 4 | 0 | `lastShift:offer`×1, `news:headline`×1, `lastShift:archived`×1 |
+| `lastShift` | `systems/lastShift.js` | 255 | 4 | 0 | `lastShift:offer`×1, `news:headline`×1, `lastShift:archived`×1 |
 | `sableVenn` | `systems/sableVenn.js` | 80 | 0 | 0 | — |
 | `lossInvestigation` | `systems/lossInvestigation.js` | 378 | 3 | 7 | `lossInvestigation:promoted`×1, `mission:offered`×1, `lossInvestigation:closed`×1 |
 | `salvageActions` | `systems/salvageActions.js` | 763 | 13 | 8 | `entity:spawnRequest`×2, `presentation:cue`×2, `combat:hit`×2 |
-| `survivorPod` | `systems/survivorPod.js` | 1563 | 13 | 11 | `survivorPod:ejected`×2, `faction:repDelta`×2, `economy:grantCredits`×2 |
+| `survivorPod` | `systems/survivorPod.js` | 1567 | 13 | 11 | `survivorPod:ejected`×2, `faction:repDelta`×2, `economy:grantCredits`×2 |
 | `recoveryEncounter` | `systems/recoveryEncounter.js` | 814 | 0 | 0 | — |
 | `factions` | `systems/factions.js` | 1060 | 13 | 18 | `faction:repChanged`×3, `faction:aggro`×3, `comms:log`×1 |
 | `sectorSim` | `systems/sectorSim.js` | 1225 | 10 | 16 | `sectorsim:tick`×1, `sectorsim:fieldAdvanced`×1, `economy:applyTradePressure`×1 |
 | `towlineTable` | `systems/towlineTable.js` | 306 | 6 | 0 | `ui:setCourse`×1, `towlineTable:cleanupAccepted`×1, `towlineTable:assistAccepted`×1 |
 | `borrowedVoice` | `systems/borrowedVoice.js` | 185 | 3 | 0 | `borrowedVoice:fragmentRecovered`×1, `borrowedVoice:offer`×1, `borrowedVoice:dispositionAccepted`×1 |
-| `npcJobsRuntime` | `systems/npcJobsRuntime.js` | 6434 | 24 | 18 | `npcJobs:towAssistLost`×3, `economy:chargeCredits`×2, `combat:repairSubsystem`×2 |
+| `npcJobsRuntime` | `systems/npcJobsRuntime.js` | 6508 | 24 | 18 | `npcJobs:towAssistLost`×3, `economy:chargeCredits`×2, `combat:repairSubsystem`×2 |
 | `missions` | `systems/missions.js` | 12546 | 140 | 78 | `mission:updated`×65, `comms:popup`×12, `nav:waypoint`×6 |
 | `careerOrigins` | `careers/origins/careerOrigins.js` | 1281 | 0 | 0 | — |
 | `careerLadders` | `careers/ladders/careerLadders.js` | 348 | 0 | 0 | — |
@@ -150,9 +150,9 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `story` | `systems/story.js` | 2686 | 49 | 52 | `graffiti:show`×6, `hud:phase`×4, `comms:popup`×3 |
 | `scenarioRuntime` | `systems/scenarioRuntime.js` | 852 | 9 | 5 | `scenario:loaded`×1, `scenario:factsInitialized`×1, `scenario:actorBindings`×1 |
 | `swarmArena` | `systems/swarmArena.js` | 1564 | 0 | 6 | — |
-| `survivalWave` | `systems/survivalWave.js` | 885 | 0 | 7 | — |
+| `survivalWave` | `systems/survivalWave.js` | 914 | 0 | 7 | — |
 | `survivalRun` | `systems/survivalRun.js` | 556 | 1 | 12 | `run:transitionRequested`×1 |
-| `swarmChain` | `systems/swarmChain.js` | 308 | 0 | 3 | — |
+| `swarmChain` | `systems/swarmChain.js` | 329 | 0 | 3 | — |
 | `killReplay` | `systems/killReplay.js` | 308 | 0 | 3 | — |
 | `killcamRecorder` | `sim/killcamTape.js` | 497 | 0 | 2 | — |
 | `swarmJuice` | `systems/swarmJuice.js` | 501 | 0 | 10 | — |
@@ -160,17 +160,17 @@ input → autoTargetAssist → flybyFocus → bulletTime → cloak → lawSecuri
 | `heat` | `systems/heat.js` | 923 | 3 | 12 | `bounty:cooled`×1, `survivorPod:heatCooled`×1, `heat:changed`×1 |
 | `traffic` | `systems/traffic.js` | 12080 | 38 | 38 | `comms:message`×3, `field:richSeamMissed`×2, `news:publish`×2 |
 | `drill` | `systems/drill.js` | 1737 | 23 | 0 | `drill:warn`×9, `drill:rockDepleted`×3, `drill:yield`×1 |
-| `claims` | `systems/claims.js` | 3287 | 50 | 14 | `audio:cue`×5, `economy:chargeCredits`×4, `news:publish`×4 |
+| `claims` | `systems/claims.js` | 3288 | 50 | 14 | `audio:cue`×5, `economy:chargeCredits`×4, `news:publish`×4 |
 | `chronicler` | `systems/chronicler.js` | 410 | 0 | 0 | — |
 | `bandRadio` | `systems/bandRadio.js` | 723 | 4 | 0 | `band:bearingRequest`×1, `band:bearingReceipt`×1, `band:status`×1 |
-| `onboarding` | `systems/onboarding.js` | 3674 | 21 | 77 | `onboarding:rangePrompt`×2, `rescue:beat`×2, `hud:firstUse`×1 |
+| `onboarding` | `systems/onboarding.js` | 3720 | 21 | 77 | `onboarding:rangePrompt`×2, `rescue:beat`×2, `hud:firstUse`×1 |
 | `masslineHud` | `ui/masslineHud.js` | 2471 | 0 | 5 | — |
 | `massSeedHud` | `ui/massSeedHud.js` | 381 | 0 | 0 | — |
 | `fieldHud` | `ui/fieldHud.js` | 303 | 0 | 0 | — |
 | `gyreHud` | `ui/gyreHud.js` | 472 | 0 | 0 | — |
 | `planetHud` | `ui/planetHud.js` | 193 | 0 | 0 | — |
 | `miningHud` | `ui/miningHud.js` | 600 | 0 | 8 | — |
-| `survivalHud` | `ui/survivalHud.js` | 842 | 0 | 9 | — |
+| `survivalHud` | `ui/survivalHud.js` | 853 | 0 | 9 | — |
 | `swarmJuiceHud` | `ui/swarmJuiceHud.js` | 633 | 0 | 14 | — |
 | `crucibleFocus` | `ui/crucibleFocus.js` | 196 | 2 | 0 | `camera:zoom`×2 |
 | `noFireAdvisory` | `data/stationBubbles.js` | 251 | 0 | 1 | — |

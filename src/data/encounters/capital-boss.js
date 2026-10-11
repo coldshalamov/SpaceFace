@@ -1,3 +1,5 @@
+// LAST_ARGUMENT_INTEGRATION_V1
+import { LAST_ARGUMENT_SCORE } from './capital-boss/last-argument.js';
 // Packet 09: complete authored capitals. Legacy exports and actor recipe fields are preserved.
 // `.score` is executed by capitalBossScore.js; the stock mission spawner alone does NOT execute it.
 import { IRON_MAW } from './capital-boss/iron-maw.js';
@@ -27,6 +29,7 @@ export const CAPITAL_BOSS_REGENT_ENCOUNTER = REGENT;
 export const CAPITAL_BOSS_BROOD_QUEEN_ENCOUNTER = BROOD_QUEEN;
 export const CAPITAL_BOSS_TENDRIL_ENCOUNTER = TENDRIL;
 export const CAPITAL_BOSS_ENCOUNTERS = Object.freeze({
+  [LAST_ARGUMENT_SCORE.id]: LAST_ARGUMENT_SCORE,
   [IRON_MAW.id]: IRON_MAW, [TOLLMAN.id]: TOLLMAN, [ALA.id]: ALA,
   [FOREMAN.id]: FOREMAN, [REGENT.id]: REGENT,
   [BROOD_QUEEN.id]: BROOD_QUEEN, [TENDRIL.id]: TENDRIL,

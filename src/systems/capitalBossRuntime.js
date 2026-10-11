@@ -1,3 +1,5 @@
+// LAST_ARGUMENT_INTEGRATION_V1
+import { withLastArgument, observeLastArgument, isLastArgumentFight } from './lastArgument.js';
 // Production construction of the capital boss encounter system (packet 09: Three Capitals).
 //
 // `createCapitalBossEncounters` requires two explicitly injected ports and refuses to run without
@@ -75,8 +77,9 @@ function sectorLevelForMission(state, mission) {
 
 /** Production port construction, shared by the registry singleton and per-runtime instances. */
 export function createProductionCapitalBossEncounters() {
-  return createCapitalBossEncounters({
+  return withLastArgument(createCapitalBossEncounters({
     observe(record, state, helpers) {
+      if (isLastArgumentFight(record)) return observeLastArgument(record, state, helpers);
       const swarmFight = isSwarmFightId(record.fightId);
       const mission = swarmFight ? null : missionById(state, record.fightId);
       const bossEntity = state.entities.get(record.bossId);
@@ -209,7 +212,7 @@ export function createProductionCapitalBossEncounters() {
         spawnEntity: (spec) => owner.spawnOwnedCapitalBossActor(mission, spec),
       });
     },
-  });
+  }));
 }
 
 /** The production singleton registered by the browser registry and the Node factory table. */

@@ -1160,6 +1160,14 @@
       "part_id": "wholeship_mothlight_lamp",
       "npc_root": "SF_PROP_MOTHLIGHT_LAMP_ROOT",
       "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "last_argument": {
+      "layout": "npc",
+      "file": "last_argument",
+      "asset_id": "SF_SHIP_LAST_ARGUMENT",
+      "part_id": "wholeship_last_argument",
+      "npc_root": "SF_SHIP_LAST_ARGUMENT_ROOT",
+      "note": "Original Last Argument siege ark; three LODs, independent rigid machinery hooks; native capital-score driver."
     }
   }
 }

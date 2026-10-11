@@ -5719,6 +5719,20 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 19,
       "contractNodeCount": 5
+    },
+    {
+      "id": "wholeship_last_argument",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/last_argument.glb",
+      "release": "assets/ships/release/parts/wholeships/last_argument.glb",
+      "sourceSha256": "f4ec6ee342dc89e641d47ba51bc6838163858c8a198fa30794c802cab58362f2",
+      "releaseSha256": "2112e4ca4d0c4157aad015fc0d8773b8638a8a5b17df413a51da0b2a85e2a390",
+      "sourceBytes": 2821336,
+      "releaseBytes": 661248,
+      "textures": 1,
+      "ktx2Textures": 1,
+      "meshoptBufferViews": 115,
+      "contractNodeCount": 256
     }
   ]
 }

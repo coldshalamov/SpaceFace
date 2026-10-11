@@ -1,3 +1,5 @@
+// LAST_ARGUMENT_INTEGRATION_V1
+
 import { requireCapitalBossEncounter } from '../data/encounters/capital-boss.js';
 import { resolveBossShapes, bodyIntersectsBossShapes } from './capitalBossGeometry.js';
 
@@ -79,7 +81,9 @@ export function stepCapitalBossFight(r,o) {
     if(r.cast) {emit('telegraphEnd',{castId:r.cast.id,reason});r.telemetry.cancelled++;r.cast=null;}
   };
   const order=(phase,beat=null,heading=null)=>{
-    const motion=phase==='active'&&beat ? beat.motion : {forward:0,brake:true};
+    const motion=phase==='active'&&beat ? beat.motion
+      : s.transitMotion && ['intro','transition','recovery'].includes(phase)
+        ? s.transitMotion : {forward:0,brake:true};
     const value={entityId:r.bossId,phase,suppressStockFire:true,forward:motion.forward,
       brake:motion.brake,heading:heading??null};
     const signature=JSON.stringify(value);

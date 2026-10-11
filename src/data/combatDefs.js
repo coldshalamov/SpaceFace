@@ -1,3 +1,5 @@
+// LAST_ARGUMENT_INTEGRATION_V1
+import { LAST_ARGUMENT_SUBSYSTEMS, LAST_ARGUMENT_COMBAT_PROFILE } from './lastArgumentCombat.js';
 // SG-03 canonical combat grammar. Pure data: no DOM, renderer, wall clock, or runtime imports.
 // Durations are integer simulation ticks at the SG-01 fixed step (normally 60 Hz).
 
@@ -280,6 +282,7 @@ export const STATUS_DEFS = Object.freeze([
 ]);
 
 export const SUBSYSTEM_DEFS = Object.freeze([
+  ...LAST_ARGUMENT_SUBSYSTEMS,
   {
     id: 'subsystem_drive', version: 1, tags: ['drive'],
     volume: { shape: 'box', space: 'normalized', center: [-0.58, 0], halfExtents: [0.28, 0.42] },
@@ -462,6 +465,7 @@ export const ATTACHMENT_DEFS = Object.freeze([
 ]);
 
 export const COMBAT_PROFILES = Object.freeze([
+  LAST_ARGUMENT_COMBAT_PROFILE,
   {
     id:'combat_profile_ceres_breaker',version:1,entityTypes:['ship'],
     heat:{max:100,dissipationPerTick:.5},immunityTags:[],

@@ -1,3 +1,5 @@
+// LAST_ARGUMENT_INTEGRATION_V1
+
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { WORLD_SITE_MANIFESTS } from '../data/worldSiteManifests.js';
 // Far ships and wrecks beyond the combat table. They stay as compact records and
@@ -267,6 +269,10 @@ function survivalHold(state) {
 }
 
 export function shouldVirtualizeFarActor(entity, state) {
+  // Exactly one encounter-local siege ark is retained until its capital owner retires it.
+  // Never pin its wreck or create a second far-ledger copy while its score is active.
+  if (entity?.type === 'ship' && entity.alive !== false
+      && entity.data?.lootTableId === 'last_argument' && entity.data?.lastArgumentKey) return false;
   if (!entity || entity.alive === false) return false;
   if (entity.isPlayer === true || entity.id === state.playerId) return false;
   if (survivalHold(state)) return false;
@@ -358,8 +364,6 @@ function leanIdentityData(entity) {
       out.authoredSalvagePool = { ...d.authoredSalvagePool };
     }
     if (d.salvagePool && typeof d.salvagePool === 'object') out.salvagePool = { ...d.salvagePool };
-    if (d.salvageSourceKey != null) out.salvageSourceKey = d.salvageSourceKey;
-    if (d.salvageTimeLeft != null) out.salvageTimeLeft = d.salvageTimeLeft;
   }
   // The faction-presence marker is the hull's authored identity: activityRuntime's
   // authoredPresence combat rule, traffic, lossLedger, barkDirector, hails, and the presence

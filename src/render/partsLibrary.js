@@ -1,3 +1,6 @@
+// LAST_ARGUMENT_INTEGRATION_V1
+import { LAST_ARGUMENT as LAST_ARGUMENT_SPEC } from '../data/lastArgument.js';
+import { isLastArgument } from '../data/lastArgumentBody.js';
 import { isLatchActor,LATCH_PLACE_FILE,latchPlaceTransform,latchNineCatalogRow } from './latchNineVisuals.js';
 import { isTallyThreeAssessor, TALLY_THREE_PLACE_FILE } from './tallyThreeVisuals.js';
 import { tallyThreePlaceTransform } from '../data/tallyThreeBody.js';
@@ -2101,6 +2104,7 @@ function placeStampEnvelopeBounds(entity, bounds, boundary) {
 export function wholeShipHullPlacement(record) {
   const towlineId = /^SF_SHIP_TOWLINE_(MARA|ODO|KIT)/.exec(String(record.assetId))?.[1]?.toLowerCase();
   const scale = towlineId ? 1 / towlineCrewRadius(towlineId)
+    : String(record.assetId).startsWith('SF_SHIP_LAST_ARGUMENT') ? 1 / LAST_ARGUMENT_SPEC.radius
     : String(record.assetId).startsWith('SF_SHIP_PALLET_JACK') ? 1 / PALLET_JACK_RADIUS
     : String(record.assetId).startsWith('SF_SHIP_MOTHLIGHT_TENDER') ? 1 / MOTHLIGHT_RADIUS
     : String(record.assetId).startsWith('SF_SHIP_KILNBACK') ? 1 / KILNBACK_RADIUS
@@ -2114,6 +2118,7 @@ export function wholeShipHullPlacement(record) {
 
 /** Pure presentation selection hook used by composition and focused asset checks. */
 export function wholeShipVisualForEntity(entity, options = {}) {
+  if (isLastArgument(entity)) return liveWholeShipSelection(LAST_ARGUMENT_SPEC.file, LAST_ARGUMENT_SPEC.assetId, 'last_argument');
   if (isPalletJackEntity(entity)) return liveWholeShipSelection('wholeships/pallet_jack.glb','SF_SHIP_PALLET_JACK','pallet_jack');
   if (isMothlightTender(entity)) return liveWholeShipSelection('wholeships/mothlight.glb','SF_SHIP_MOTHLIGHT_TENDER','mothlight');
   if (isKilnbackEntity(entity)) return liveWholeShipSelection('wholeships/kilnback.glb','SF_SHIP_KILNBACK','kilnback');
@@ -10752,6 +10757,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   if (hullRecord && isTowlineCrewEntity(entity)) root.userData.towlineAuthoredSource = {assetId:hullRecord.assetId,file:hullRecord.url};
   if (hullRecord && isPalletJackEntity(entity)) root.userData.palletJackAuthoredSource = {assetId:hullRecord.assetId,file:hullRecord.url};
   if (hullRecord && isMothlightTender(entity)) root.userData.mothlightAuthoredSource = {assetId:hullRecord.assetId,file:hullRecord.url};
+  if (hullRecord && isLastArgument(entity)) root.userData.lastArgumentAuthoredSource = {assetId:hullRecord.assetId,file:hullRecord.url};
   yield;
   let hullPartRoot = null;
   if (hullRecord) {

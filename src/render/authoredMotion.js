@@ -1,3 +1,6 @@
+// LAST_ARGUMENT_INTEGRATION_V1
+import { isLastArgument } from '../data/lastArgumentBody.js';
+import { createLastArgumentVisualDriver } from './lastArgumentVisuals.js';
 import { dedupWarn, noteLaneFault } from '../core/warnDedup.js';
 import { isLatchActor, createLatchNineVisualDriver } from './latchNineVisuals.js';
 import { isTallyThreeAssessor, createTallyThreeVisualDriver } from './tallyThreeVisuals.js';
@@ -175,14 +178,15 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
   const borrowedVoice=isBorrowedVoiceRing(entity)||isBorrowedVoiceRecorder(entity);
   const palletJack=isPalletJackEntity(entity),mothlight=isMothlightTender(entity)||isMothlightLamp(entity);
   const hasp=isSecondRinse(entity);
-  if (!root || (!live.length && !workfleet && !latch && !tally && !redKite && !sable && !ilex && !kilnback && !scissorwake && !towline && !borrowedVoice && !palletJack && !mothlight && !hasp)) return null;
+  const lastArgument=isLastArgument(entity);
+  if (!root || (!live.length && !workfleet && !latch && !tally && !redKite && !sable && !ilex && !kilnback && !scissorwake && !towline && !borrowedVoice && !palletJack && !mothlight && !hasp && !lastArgument)) return null;
   // Abandon bank: a suspended attach (generator .return() mid-yield) used to
   // leak every driver already constructed — the detach closure does not exist
   // yet, so nothing owns their disposes. A normal completion transfers the
   // bank to detach below; an abandoned run disposes it in the finally.
   let tallyDriver=null,redKiteDriver=null,sableDriver=null,ilexDriver=null,kilnbackDriver=null,
     scissorwakeDriver=null,towlineDriver=null,borrowedVoiceDriver=null,palletJackDriver=null,
-    mothlightDriver=null,propulsion=null,haspDriver=null;
+    mothlightDriver=null,propulsion=null,haspDriver=null,lastArgumentDriver=null;
   const driverBank=[];
   const bankDriver=(flag,create)=>{
     const driver=flag?create(root,entity):null;
@@ -214,6 +218,8 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
   palletJackDriver=bankDriver(palletJack,createPalletJackVisualDriver);
   yield;
   mothlightDriver=bankDriver(mothlight,createMothlightVisualDriver);
+  yield;
+  lastArgumentDriver=bankDriver(lastArgument,createLastArgumentVisualDriver);
   yield;
   haspDriver=bankDriver(hasp,createSecondRinseVisualDriver);
   yield;
@@ -285,6 +291,7 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
     detachDriver(borrowedVoiceDriver);
     detachDriver(palletJackDriver);
     detachDriver(mothlightDriver);
+    detachDriver(lastArgumentDriver);
     detachDriver(haspDriver);
     detachDriver(sableDriver);
     if(updatePropulsion && root.userData.updateDriveState===updatePropulsion) {
@@ -353,6 +360,7 @@ export function* attachAuthoredMotionDriverSteps(root, entity, controllers) {
     borrowedVoiceDriver?.update(liveEntity, simNow, a11y, state);
     palletJackDriver?.update(liveEntity, simNow, a11y, state);
     mothlightDriver?.update(liveEntity, simNow, a11y, state);
+    lastArgumentDriver?.update(liveEntity, simNow, a11y, state);
     haspDriver?.update(liveEntity, simNow, a11y, state);
     scissorwakeDriver?.update(liveEntity, simNow, a11y, state);
     towlineDriver?.update(liveEntity, simNow, a11y, state);

@@ -6349,6 +6349,27 @@
       "outputDir": "assets/ships/release/render-packages/yard-tug",
       "metadataUrl": "assets/ships/release/render-packages/yard-tug/render-package.json",
       "sceneRoot": true
+    },
+    {
+      "key": "last_argument",
+      "assetId": "sf.render.last_argument",
+      "runtimeAssetId": "SF_SHIP_LAST_ARGUMENT",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_last_argument",
+      "sourceUrl": "assets/ships/release/parts/wholeships/last_argument.glb",
+      "releaseSha256": "2112e4ca4d0c4157aad015fc0d8773b8638a8a5b17df413a51da0b2a85e2a390",
+      "releaseBytes": 661248,
+      "sceneRoot": true,
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE",
+        "HOOK_NAV",
+        "HOOK_SECONDARY",
+        "HOOK_SENSOR",
+        "HOOK_ARMOR"
+      ],
+      "outputDir": "assets/ships/release/render-packages/last_argument",
+      "metadataUrl": "assets/ships/release/render-packages/last_argument/render-package.json"
     }
   ]
 }

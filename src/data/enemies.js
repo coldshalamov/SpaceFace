@@ -1,3 +1,5 @@
+// LAST_ARGUMENT_INTEGRATION_V1
+import { LAST_ARGUMENT_ENEMY } from './lastArgument.js';
 // src/data/enemies.js – canonical enemy role defs (base 8 + variety roles).
 // 3-layer model: shield -> armor -> hull. Stats are BASE (pre-dangerTier scaling).
 // shieldRegenCapable: only advanced hulls mount regenerating deflector modules; early enemies
@@ -674,6 +676,7 @@ export const ENEMY_TYPES = [
     behavior: 'light engineered cutter; locks one crossing, misses when displaced, exposes its side in recovery',
     loot: { creditsRange: [80, 180], drops: [{ id: 'cmdty_electronics', chance: 0.45, qtyRange: [1, 2] }] },
   },
+  LAST_ARGUMENT_ENEMY,
   KILNBACK_ENEMY,
   MOTH_ENEMY,
   PALLET_JACK_ENEMY,
