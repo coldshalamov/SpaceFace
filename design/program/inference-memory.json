@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "countermeasure-readiness",
-      "date": "2026-09-28",
-      "wf": "WF-14",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Denied countermeasure presses say why (event + alert) and missile telegraph slots carry the recharge sweep + JAMMING duration; the defense verb exists at the threat",
-      "fingerprint": "verb=read,subject=countermeasure,sector=combat,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "d4348a22d",
-      "verification": "focused_green"
-    },
-    {
       "id": "salvaged-site-husk",
       "date": "2026-09-28",
       "wf": "WF-16",
@@ -1656,6 +1643,19 @@
       "references": [],
       "integration": "live",
       "commit": "6d7db1d52",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-trap-keeps-plate",
+      "date": "2026-10-11",
+      "wf": "WF-05",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "fitting the Repulsion Trap keeps the sticky plate: plain throw sticks, brake + throw drops the trap, and the fit says so once",
+      "fingerprint": "verb=throw,subject=impulse-charge,sector=any,domain=wf-05",
+      "references": [],
+      "integration": "live",
+      "commit": "36afc1f95",
       "verification": "focused_green"
     }
   ],
