@@ -1,3 +1,6 @@
+import { addEnvironmentHeat } from './environmentMaterials.js';
+import { steerAfterBounce } from '../combat/surfaceReflection.js';
+import { applyReflectedVelocity } from '../core/surfaceContact.js';
 // Weapons system (ARCHITECTURE §2.3 step 4 — runs after ai/flight, before physics.integrate).
 // Per tick: cool down + dissipate heat on every weapon instance, steer in-flight homing
 // projectiles, build/decay missile locks, then fire — for the player (state.input.fire / group 1)
@@ -43,6 +46,8 @@ import {
   mergeWeaponView,
 } from '../combat/attackSpec.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
+import { queryPhysicalBodies, deliverPhysicalImpulseDetailed, deliverPhysicalImpulse, deliverPhysicalAcceleration, schedulePhysicalBlast } from '../combat/physicalEffects.js';
+import { isEnvironmentalBody } from '../core/physicalResponse.js';
 import { clearEmergentRay, launchEmergent, setEmergentRay } from './emergentPrimitives.js';
 import {
   fillInertialShuntImpulses,
@@ -72,6 +77,7 @@ import {
   opticBookFor,
   opticChildSpec,
   opticFamilyIdOf,
+  opticMaterialOf,
   opticRekindleDue,
   opticSpendLedger,
   settleOpticContact,
@@ -356,6 +362,7 @@ export const weapons = {
     // the optic owner settles the contact here and marks req.handled so the beam stops.
     on('optic:beamContact', (req) => handleOpticBeamContact(this, req));
     on('projectile:hit', (payload) => {
+      applyProjectilePhysicalContact(this, payload);
       if (handleOpticProjectileHit(this, payload)) {
         prepareProjectileContact(this.state, payload);
         return;
@@ -1840,30 +1847,20 @@ export const weapons = {
   // the well bends light hulls and heavies alike — a well is terrain you place, not a damage
   // source; the fight is repositioned and finished with whatever else the fit carries.
   _tickGravityWell(mine, d, state, dt) {
-    const physics = this.helpers && this.helpers.combatPhysics;
-    if (!physics || typeof physics.applyImpulse !== 'function') return;
     const pull = Math.max(0, Number(d.pull) || 0);
     const radius = Math.max(1, Number(d.blastRadius) || 1);
     if (!(pull > 0) || !(dt > 0)) return;
     const pos = { x: mine.pos.x, z: mine.pos.z };
-    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList || [];
-    const step = Math.min(dt, 1 / 30); // clamp catch-up so a hitch frame cannot fling hulls
-    for (const s of ships) {
-      if (!s.alive || (s.type !== 'ship' && s.type !== 'drone')) continue;
-      const dx = pos.x - s.pos.x, dz = pos.z - s.pos.z;
+    const bodies = queryPhysicalBodies(state, pos, radius, this.helpers, this._wellBodies || (this._wellBodies = []));
+    const step = Math.min(dt, 1 / 30);
+    for (const body of bodies) {
+      if (body === mine) continue;
+      const dx = pos.x - body.pos.x, dz = pos.z - body.pos.z;
       const dist = Math.hypot(dx, dz);
-      if (dist > radius || dist < 1e-4) continue;
-      const accel = pull * (1 - dist / radius);
-      const mass = Math.max(0.1, Number(s.physicsBody && s.physicsBody.mass) || Number(s.mass) || 1);
-      const mag = accel * mass * step;
-      const provenance = { actorId: d.ownerId == null ? null : d.ownerId, weaponId: d.weaponId, tag: d.provenance, appliedTick: state.tick };
-      const accepted = physics.applyImpulse({
-        entityId: s.id, impulse: { x: (dx / dist) * mag, z: (dz / dist) * mag }, point: null,
-        reason: 'gravity_well', tick: state.tick, provenance,
-      });
-      if (accepted !== false) {
-        recordImpulseProvenance(s, { ...provenance, magnitude: mag });
-      }
+      if (dist < 1e-4) continue;
+      const accel = pull * Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / radius);
+      deliverPhysicalAcceleration(state, body, { x: dx / dist * accel, z: dz / dist * accel }, step,
+        { actorId: d.ownerId ?? null, weaponId: d.weaponId, tag: d.provenance, appliedTick: state.tick });
     }
   },
 
@@ -1872,59 +1869,23 @@ export const weapons = {
   // impulse request. Provenance is recorded so a mine-thrown ship that meets terrain is attributed to
   // the mine owner through the existing collision-consequence path. Rejected requests are skipped.
   _detonateVectorMine(mine, d, state) {
-    const physics = this.helpers && this.helpers.combatPhysics;
     const pos = { x: mine.pos.x, z: mine.pos.z };
     const blastR = d.blastRadius;
     const hits = [];
-    const table = state.combatTable;
-    const ships = (table && table.count > 0 && state.entities && typeof state.entities.get === 'function')
-      ? queryCombatTableEntities(
-        state, pos.x, pos.z, blastR,
-        this._mineBlastQuery || (this._mineBlastQuery = []),
-        COMBAT_TABLE_FLAGS.SHIP,
-      )
-      : ((state.entityIndex && state.entityIndex.ships) || state.entityList || []);
-    for (const s of ships) {
-      if (!s.alive || (s.type !== 'ship' && s.type !== 'drone')) continue;
-      const dx = s.pos.x - pos.x, dz = s.pos.z - pos.z;
-      const dist = Math.hypot(dx, dz);
-      if (dist > blastR) continue;
-      const falloff = Math.max(0, 1 - dist / blastR);
-      if (falloff <= 0) continue;
-      let dirX = 0, dirZ = 1;
-      if (dist > 1e-4) { dirX = dx / dist; dirZ = dz / dist; }
-      const mag = d.impulse * falloff;
-      if (physics && typeof physics.applyImpulse === 'function') {
-        const provenance = { actorId: d.ownerId == null ? null : d.ownerId, weaponId: d.weaponId, tag: d.provenance, appliedTick: state.tick };
-        const accepted = physics.applyImpulse({
-          entityId: s.id, impulse: { x: dirX * mag, z: dirZ * mag }, point: null,
-          reason: 'vector_mine', tick: state.tick, provenance,
-        });
-        if (accepted !== false) {
-          recordImpulseProvenance(s, { ...provenance, magnitude: mag });
-          if (combatFlag('weaponImpulseConsequences')) {
-            const victimMass = Math.max(0.1, Number(s.mass) || 1);
-            const owner = this.helpers && typeof this.helpers.getEntity === 'function'
-              ? this.helpers.getEntity(d.ownerId)
-              : null;
-            publishHitstunImpulse(this.bus, {
-              source: 'weapon',
-              victimId: s.id,
-              attackerId: d.ownerId == null ? null : d.ownerId,
-              attackerMass: owner && Number.isFinite(owner.mass) && owner.mass > 0 ? owner.mass : 1,
-              victimMass,
-              deltaV: mag / victimMass,
-              dirX,
-              dirZ,
-              hitSide: signedHitSide(s, { x: dirX * mag, z: dirZ * mag }, null, s.id),
-              provenance,
-              tick: state.tick,
-            });
-          }
-        }
-      }
-      hits.push(s.id);
-    }
+    schedulePhysicalBlast(state, {
+      center: pos, radius: blastR, helpers: this.helpers, excludeId: mine.id,
+      payload: { kind: 'vector_mine', sourceId: d.ownerId, weaponId: d.weaponId, baseImpulse: d.impulse },
+      onBody: body => {
+        const dx = body.pos.x - pos.x, dz = body.pos.z - pos.z;
+        const dist = Math.hypot(dx, dz);
+        const falloff = Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / blastR);
+        const mag = d.impulse * falloff;
+        const nx = dist > 1e-4 ? dx / dist : 0, nz = dist > 1e-4 ? dz / dist : 1;
+        if (deliverPhysicalImpulse(state, body, { x: nx * mag, z: nz * mag },
+          { actorId: d.ownerId ?? null, weaponId: d.weaponId, tag: d.provenance, appliedTick: state.tick },
+          { referenceImpulse: isEnvironmentalBody(body) ? Math.max(mag, 16 * 75 * falloff) : undefined })) hits.push(body.id);
+      },
+    });
     mine.alive = false;
     if (this.bus) {
       this.bus.emit('weapons:mineDetonated', {
@@ -2240,6 +2201,81 @@ function findLiveAttackProjectile(state, live, payload) {
   return best;
 }
 
+const PHYSICAL_CONTACTS = new WeakMap();
+
+export function applyProjectilePhysicalContact(host, payload) {
+  const state = host && host.state;
+  if (!state || !payload || payload.physicalDelivered) return;
+  const projectile = state.entities?.get(payload.projectileId);
+  const target = state.entities?.get(payload.targetId);
+  if (!projectile || !target || target.alive === false) return;
+  const stamp = `${state.tick}:${target.id}`;
+  if (PHYSICAL_CONTACTS.get(projectile) === stamp) {
+    payload.physicalDelivered = true;
+    payload.impulse = null;
+    for (const key of ['damagePacket', 'packet']) if (payload[key]) payload[key] = { ...payload[key], impulse: null };
+    return;
+  }
+  PHYSICAL_CONTACTS.set(projectile, stamp);
+  const data = projectile.data || {};
+  const packet = payload.damagePacket || payload.packet || data.damagePacket;
+  const impulse = packet?.impulse || payload.impulse;
+  let ix = Number(impulse?.x), iz = Number(impulse?.z);
+  if (!Number.isFinite(ix) && !Number.isFinite(iz)) {
+    const vx = Number(payload.receipt?.velocity?.x ?? projectile.vel?.x) || 0;
+    const vz = Number(payload.receipt?.velocity?.z ?? projectile.vel?.z) || 0;
+    const length = Math.hypot(vx, vz) || 1;
+    ix = vx / length * (Number(impulse?.magnitude) || 0);
+    iz = vz / length * (Number(impulse?.magnitude) || 0);
+  }
+  const source = packet?.source || {};
+  if (Math.hypot(ix || 0, iz || 0) > 0 && (!source.impulseProvenance || combatFlag('weaponImpulseConsequences'))) {
+    const provenance = { actorId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, tag: source.impulseProvenance || 'weapon_hit', appliedTick: state.tick };
+    const delivery = deliverPhysicalImpulseDetailed(state, target, { x: ix || 0, z: iz || 0 },
+      { ...provenance, provenance, point: payload.pos, maxTorque: packet?.tumbleTorque },
+      { port: host.helpers?.combatPhysics, referenceImpulse: isEnvironmentalBody(target) ? source.environmentImpulse : undefined });
+    if (delivery.accepted) {
+      recordImpulseProvenance(target, { ...provenance, magnitude: Math.hypot(delivery.impulse.x, delivery.impulse.z) });
+      if (combatFlag('weaponImpulseConsequences') && target.id !== state.playerId) {
+        const owner = state.entities.get(provenance.actorId);
+        publishHitstunImpulse(host.bus, { source: 'gun', victimId: target.id, attackerId: provenance.actorId,
+          attackerMass: Number(owner?.physicsBody?.mass ?? owner?.mass) || 1,
+          victimMass: Number(target.physicsBody?.mass ?? target.mass) || 1, deltaV: delivery.deltaV,
+          dirX: ix, dirZ: iz, hitSide: signedHitSide(target, { x: ix, z: iz }, packet?.hit, target.id), provenance, tick: state.tick });
+      }
+    }
+  }
+  payload.physicalDelivered = true;
+  payload.impulse = null;
+  for (const key of ['damagePacket', 'packet']) {
+    if (payload[key]) payload[key] = { ...payload[key], impulse: null };
+  }
+  // Reflected and split contacts still transfer heat/status once through their independent owner.
+  if (opticMaterialOf(target) && packet && host.helpers?.routeCombatDamage) {
+    host.helpers.routeCombatDamage({ attackerId: payload.ownerId ?? projectile.ownerId, targetId: target.id,
+      packet: { ...packet, channels: {}, impulse: null }, origin: { kind: 'weapon', id: data.weaponId } });
+  }
+  const radius = Number(data.splashRadius) || 0;
+  if (!(radius > 0)) return;
+  const center = { x: payload.pos?.x ?? target.pos.x, z: payload.pos?.z ?? target.pos.z };
+  const damage = Number(data.splashDmg) || (Number(data.damage) || 0) * 0.5;
+  const baseImpulse = Number(impulse?.magnitude) || Math.hypot(ix || 0, iz || 0);
+  schedulePhysicalBlast(state, { center, radius, helpers: host.helpers, excludeId: target.id,
+    payload: { kind: 'weapon_splash', sourceId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, baseImpulse, damage, damageType: data.damageType || 'explosive' },
+    onBody: body => {
+      const dx = body.pos.x - center.x, dz = body.pos.z - center.z;
+      const dist = Math.hypot(dx, dz);
+      const fall = Math.max(0, 1 - Math.max(0, dist - (body.radius || 0)) / radius);
+      const nx = dist > 1e-4 ? dx / dist : 0, nz = dist > 1e-4 ? dz / dist : 1;
+      deliverPhysicalImpulse(state, body, { x: nx * baseImpulse * fall, z: nz * baseImpulse * fall },
+        { actorId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, tag: 'weapon_splash', appliedTick: state.tick });
+      host.helpers?.routeCombatDamage?.({ attackerId: payload.ownerId ?? projectile.ownerId, targetId: body.id,
+        packet: scalarHitToDamagePacket({ damage: damage * fall, damageType: data.damageType || 'explosive', pos: center, source: { kind: 'weapon_splash', weaponId: data.weaponId } }),
+        origin: { kind: 'weapon', id: data.weaponId } });
+    },
+  });
+}
+
 function handleOpticProjectileHit(host, payload) {
   const state = host && host.state;
   if (!state || !payload || payload.projectileId == null || payload.targetId == null) return false;
@@ -2257,11 +2293,20 @@ function handleOpticProjectileHit(host, payload) {
     emit: bus ? (name, event) => bus.emit(name, event) : null,
   });
   if (!plan) return false;
+  if (plan.reason === 'material_budget' && host._attackLive?.get(projectile.id)?.runtime?.remaining?.bounces > 0) return false;
   // A discharged prism joins the rekindle watch — the quiet clock is what it needs, not ticks.
   if (plan.spentAt != null) {
     if (!host._opticSpent) host._opticSpent = new Set();
     host._opticSpent.add(target.id);
   }
+  if (plan.kind === 'reflect') {
+    const live = host._attackLive?.get(projectile.id);
+    if (live?.spec?.trajectory?.afterBounceSteer) {
+      const nearby = collectAttackCandidates(state, projectile.pos, projectile.data?.maxDistance || 600, host._attackQueryScratch || [], projectile.ownerId, projectile.team);
+      applyReflectedVelocity(projectile, steerAfterBounce(plan.velocity, payload.pos || projectile.pos, live.spec, nearby, live.runtime?.visited));
+    }
+  }
+  addEnvironmentHeat(state, target, Number(payload.damagePacket?.channels?.thermal) || Number(payload.packet?.channels?.thermal) || 0, { actorId: projectile.ownerId });
   // Zero the hit before combat's projectile:hit listener (registered after weapons) routes damage.
   suppressHitPayload(payload);
   // Prism/absorb consume the bolt: drop traited live state so splinters never inherit a parent
@@ -2316,6 +2361,8 @@ function handleOpticBeamContact(host, req) {
   if (!host._opticFamilies) host._opticFamilies = new Map();
   const book = opticBookFor(host._opticFamilies, opticFamilyIdOf(pseudo));
   const bus = host.bus;
+  const impulse = req.beam?.damagePacket?.impulse;
+  if (impulse && host.helpers?.routeCombatDamage) host.helpers.routeCombatDamage({ attackerId: req.beam.ownerId, targetId: target.id, packet: { ...req.beam.damagePacket, channels: {}, hit: { pos: req.pos, approach: { x: req.beam.to.x - req.beam.from.x, z: req.beam.to.z - req.beam.from.z } } }, origin: { kind: 'weapon', id: req.beam.weaponId } });
   const plan = settleOpticContact(pseudo, target, {
     pos: req.pos,
     normal: req.normal,
@@ -2325,6 +2372,7 @@ function handleOpticBeamContact(host, req) {
     emit: bus ? (name, event) => bus.emit(name, event) : null,
   });
   if (!plan) return;
+  addEnvironmentHeat(state, target, Number(beam.damagePacket?.channels?.thermal) || 0, { actorId: beam.ownerId });
   req.handled = true;
   // A discharged prism joins the rekindle watch — same as the bolt path.
   if (plan.spentAt != null) {
@@ -2589,6 +2637,8 @@ export function buildWeaponDamagePacket(w, def, damage, damageType, pos = null) 
       kind: 'weapon',
       weaponId: w.defId || def.id || null,
       impulseProvenance: impulseIdentity && impulseIdentity.provenance || null,
+      ...(applicationEnabled && Number.isFinite(w.environmentImpulsePerHit ?? def.environmentImpulsePerHit)
+        ? { environmentImpulse: (w.environmentImpulsePerHit ?? def.environmentImpulsePerHit) * (effective.dmg > 0 ? damage / effective.dmg : 1) } : null),
     },
   });
   // Keep the flag-OFF projectile/save shape identical to the pre-PQ-009 packet. The impulse data is
@@ -2871,7 +2921,7 @@ function positiveNumber(value, fallback) {
   return Number.isFinite(number) && number > 0 ? number : fallback;
 }
 
-const SHUNT_BODY_TYPES = new Set(['ship', 'drone']);
+const SHUNT_BODY_TYPES = new Set(['ship', 'drone', 'asteroid', 'wreck', 'cargo_pod', 'pickup', 'mine', 'payload', 'station', 'gate', 'structure']);
 const INERTIAL_SHUNT_LIVE_TUNING = Object.freeze({
   minClosingSpeed: INERTIAL_SHUNT_TUNING.minClosingSpeed,
   dumpVsLight: INERTIAL_SHUNT_TUNING.liveDumpVsLight,
@@ -2976,11 +3026,11 @@ export function applyInertialShuntFromImpact(
   }
 
   queuePhysicsImpulse(shunter, shunterOut);
-  queuePhysicsImpulse(target, targetOut);
+  deliverPhysicalImpulse(state, target, targetOut, { actorId: shunter.id, weaponId: 'wpn_inertial_shunt_s', tag: 'inertial_shunt', appliedTick: tick });
   const mT = authoredMass(target);
   const mS = authoredMass(shunter);
   const couple = Math.max(0.08, Math.min(1, INERTIAL_SHUNT_LIVE_TUNING.refMass / Math.max(mT, INERTIAL_SHUNT_LIVE_TUNING.refMass)));
-  if (torqueOut) {
+  if (torqueOut && target.id !== state.playerId) {
     torqueOut.x = 0;
     torqueOut.y = finiteShunt(INERTIAL_SHUNT_TUNING.tumbleTorque) * couple;
     torqueOut.z = 0;
@@ -3000,7 +3050,7 @@ export function applyInertialShuntFromImpact(
   recordImpulseProvenance(shunter, provenance);
   recordImpulseProvenance(target, provenance);
   if (bus && typeof bus.emit === 'function') {
-    publishHitstunImpulse(bus, {
+    if (target.id !== state.playerId) publishHitstunImpulse(bus, {
       source: 'weapon',
       victimId: target.id,
       attackerId: shunter.id,

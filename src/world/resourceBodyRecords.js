@@ -128,7 +128,7 @@ const KNOWN_RESOURCE_BODY_FIELDS = new Set([
   'seamState', 'fractureState', 'fragmentsRemaining', 'bulkCoreState', 'lastMinedT',
   'lastObservedT', 'depletedAtT', 'recoveryPolicy', 'tethered', 'displaced',
   'missionOwned', 'tracked', 'outcome', 'revision', 'identityKey', 'playerModified',
-  'retentionClass', 'extra',
+  'retentionClass', 'materialCondition', 'material', 'extra',
 ]);
 
 export function normalizeResourceBodyRecord(raw, fallbackId) {
@@ -175,6 +175,8 @@ export function normalizeResourceBodyRecord(raw, fallbackId) {
     yieldMaxU: Number.isFinite(raw.yieldMaxU) ? raw.yieldMaxU : null,
     pctEjected: Number.isFinite(raw.pctEjected) ? Math.max(0, Math.min(1, raw.pctEjected)) : null,
     _oreCarry: Number.isFinite(raw._oreCarry) ? Math.max(0, raw._oreCarry) : null,
+    material: typeof raw.material === 'string' ? raw.material : null,
+    materialCondition: raw.materialCondition ? clonePlain(raw.materialCondition) : null,
     seamState: raw.seamState != null ? clonePlain(raw.seamState) : null,
     fractureState: raw.fractureState != null ? clonePlain(raw.fractureState) : null,
     fragmentsRemaining: Number.isFinite(raw.fragmentsRemaining) ? raw.fragmentsRemaining : null,
@@ -360,6 +362,8 @@ export function captureResourceBodyRecord(entity, opts = {}) {
     yieldMaxU,
     pctEjected,
     _oreCarry: oreCarry,
+    material: d.material,
+    materialCondition: d.materialCondition,
     seamState: d.seams || d.seamState,
     fractureState: d.fractureState,
     fragmentsRemaining: d.fragmentsRemaining,
@@ -731,6 +735,8 @@ export function applyResourceBodyToEntity(entity, record) {
   if (Number.isFinite(record.yieldMaxU)) d.yieldMaxU = record.yieldMaxU;
   if (Number.isFinite(record.pctEjected)) d.pctEjected = record.pctEjected;
   if (Number.isFinite(record._oreCarry)) d._oreCarry = record._oreCarry;
+  if (record.material) d.material = record.material;
+  if (record.materialCondition) { d.materialCondition = clonePlain(record.materialCondition); d.heat = Number(d.materialCondition.heat) || 0; entity.heat = d.heat; }
   if (record.seamState != null) d.seams = clonePlain(record.seamState);
   if (record.fractureState != null) d.fractureState = clonePlain(record.fractureState);
   if (Number.isFinite(record.fragmentsRemaining)) d.fragmentsRemaining = record.fragmentsRemaining;

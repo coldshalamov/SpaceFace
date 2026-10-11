@@ -11,6 +11,9 @@
 // candidate and validates (fmt → version ≤ CURRENT → checksum → migrate) BEFORE any destructive
 // restore, so a bad save aborts with save:error and leaves live state untouched.
 import { fnv1a } from './checksum.js';
+// Three already ships fflate (MIT). The existing gzip save wrapper lets the exit lane
+// compress synchronously when localStorage is full; unload cannot await a worker.
+import { gzipSync, strToU8 } from '../../node_modules/three/examples/jsm/libs/fflate.module.js';
 import { MIGRATIONS, CURRENT_VERSION } from './migrations.js';
 import { createScreenMemory } from '../ui/screenMemory.js';
 import { normalizeWatchlist } from '../ui/watchlist.js';
@@ -62,6 +65,7 @@ import {
   encodeSavePayload,
   SAVE_WORKER_SOURCE,
   isGzippedSaveText,
+  saveGzipAvailable,
   SAVE_GZIP_FORMAT,
   SAVE_WRITE_MAX_BYTES,
 } from './saveWorker.js';
@@ -673,6 +677,8 @@ export const save = {
       ['economy', () => this._callSerialize('economy') || {}],
       ['economyContracts', () => this._callSerialize('economyContracts') || {}],
       ['factions', () => this._callSerialize('factions') || {}],
+      // Material heat must persist resource records before the world snapshot is copied.
+      ['environmentMaterials', () => this._callSerialize('environmentMaterials') || { reactions: [], blasts: [] }],
       ['world', () => this._callSerialize('world') || {}],
       ['entities', () => this._serializeEntities()],
       ['combat', () => serializeCombatState(state)],
@@ -793,6 +799,8 @@ export const save = {
     yield 'serialize:economyContracts';
     data.factions = this._callSerialize('factions') || {};
     yield 'serialize:factions';
+    data.environmentMaterials = this._callSerialize('environmentMaterials') || { reactions: [], blasts: [] };
+    yield 'serialize:environmentMaterials';
     data.world = this._callSerialize('world') || {};
     yield 'serialize:world';
     data.entities = this._serializeEntities();
@@ -1483,18 +1491,43 @@ export const save = {
         // pressure is from other slots' backups, so the ladder runs either way:
         //   1. this slot's recovery copy, 2. every sf.recovery.* backup,
         //   3. the autosave primary (rolling insurance; rewrites itself next trigger).
-        try { localStorage.removeItem(recoveryKey); } catch (_) { /* keep retrying anyway */ }
         let fitted = false;
-        try {
-          const t = nowMs();
-          localStorage.setItem(primaryKey, json);
-          storageMs = nowMs() - t;
-          fitted = true;
-        } catch (retryErr) {
-          if (!(retryErr && retryErr.name === 'QuotaExceededError')) {
-            if (previousRaw) { try { localStorage.setItem(recoveryKey, previousRaw); } catch (_) { /* recovery already spent */ } }
-            console.error('[save] write failed', retryErr);
-            return { ok: false, reason: 'write_failed', bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
+        // D181: two plain campaign snapshots can exceed the entire browser allowance.
+        // Shrink the incoming generation before evicting anything. Use the normal gzip
+        // wrapper/Continue decoder, and only compress an envelope we have validated.
+        if (saveGzipAvailable() && !isGzippedSaveText(json) && this._prepareEnvelopeString(json).ok) {
+          try {
+            const t = nowMs();
+            const compressed = gzipSync(strToU8(json), { level: 1, mtime: 0 });
+            let binary = '';
+            for (let i = 0; i < compressed.length; i += 0x8000) {
+              binary += String.fromCharCode(...compressed.subarray(i, i + 0x8000));
+            }
+            const packed = JSON.stringify({ fmt: SAVE_GZIP_FORMAT, gz: 1,
+              version: envelope.version, savedAt: envelope.savedAt || null,
+              checksum: envelope.checksum || null, payload: btoa(binary) });
+            stringifyMs += nowMs() - t;
+            if (packed.length < json.length) json = packed;
+            const writtenAt = nowMs();
+            localStorage.setItem(primaryKey, json);
+            storageMs = nowMs() - writtenAt;
+            fitted = true;
+          } catch (_) { /* the same bounded eviction ladder may still make room */ }
+        }
+        if (!fitted) {
+          try { localStorage.removeItem(recoveryKey); } catch (_) { /* keep retrying anyway */ }
+          backupCreated = false;
+          try {
+            const t = nowMs();
+            localStorage.setItem(primaryKey, json);
+            storageMs = nowMs() - t;
+            fitted = true;
+          } catch (retryErr) {
+            if (!(retryErr && retryErr.name === 'QuotaExceededError')) {
+              if (previousRaw) { try { localStorage.setItem(recoveryKey, previousRaw); } catch (_) { /* recovery already spent */ } }
+              console.error('[save] write failed', retryErr);
+              return { ok: false, reason: 'write_failed', bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
+            }
           }
         }
         if (!fitted) {
@@ -2396,13 +2429,20 @@ export const save = {
    * desktop/Electron path. `visibilitychange` is deliberately NOT used: a backgrounded tab is not a
    * finished session, and the interval autosave already owns that cadence.
    *
-   * requestExitAutosave() is idempotent — a player who already quit to the menu is at mode 'menu'
-   * and is refused — so a player who does both pays for one write, not two.
+   * The two unload events share a snapshot latch. A resumed simulation or pageshow re-arms it;
+   * mode alone cannot deduplicate them because browser unload never enters the game menu.
    */
   _installUnloadExitSave() {
+    this._removeUnloadExitSave();
     const hasWindow = typeof window !== 'undefined';
     if (!hasWindow || typeof window.addEventListener !== 'function') return false;
+    let flushed = null;
+    const rearm = () => { flushed = null; };
     const flush = () => {
+      const state = this.state;
+      const stamp = `${this._runEpoch || 0}:${state?.tick}:${state?.simTime}:${state?.mode}`;
+      if (flushed === stamp) return;
+      flushed = stamp;
       try { this.requestExitAutosave(); } catch (err) {
         // An unload handler that throws can cancel the unload or surface as an unhandled error in
         // the console the player will never read. A failed final save must not block the exit.
@@ -2412,12 +2452,27 @@ export const save = {
     try {
       window.addEventListener('pagehide', flush);
       window.addEventListener('beforeunload', flush);
+      window.addEventListener('pageshow', rearm);
     } catch (err) {
       console.error('[save] could not install unload exit save', err);
       return false;
     }
     this._unloadExitFlush = flush;
+    this._unloadExitRearm = rearm;
+    this._unloadExitWindow = window;
     return true;
+  },
+
+  _removeUnloadExitSave() {
+    const host = this._unloadExitWindow;
+    if (host && typeof host.removeEventListener === 'function') {
+      host.removeEventListener('pagehide', this._unloadExitFlush);
+      host.removeEventListener('beforeunload', this._unloadExitFlush);
+      host.removeEventListener('pageshow', this._unloadExitRearm);
+    }
+    this._unloadExitWindow = null;
+    this._unloadExitFlush = null;
+    this._unloadExitRearm = null;
   },
 
   /**
@@ -5238,6 +5293,12 @@ export const save = {
         }
       }
       yield 'fields-restored';
+      try {
+        this.registry?.get?.('environmentMaterials')?.deserialize?.(data.environmentMaterials, entityIdRemap);
+      } catch (err) {
+        throw this._annotateRegion(err, 'environmentMaterials');
+      }
+      yield 'environment-materials-restored';
       const stuntOwner = this.registry?.get?.('stuntGrammar');
       const restoreStunts = () => {
         try {
@@ -5685,6 +5746,7 @@ export const save = {
   },
 
   destroy() {
+    this._removeUnloadExitSave();
     this._cancelCeresAttachmentRestore();
     this._cancelCeresEntityReferenceRestore();
   },

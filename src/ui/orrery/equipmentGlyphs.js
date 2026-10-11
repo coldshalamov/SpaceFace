@@ -1,6 +1,7 @@
 // Authored equipment silhouettes for the Crucible. These are SVG source assets, not an icon font.
 // Every object shares a 128-unit optical frame; silhouettes describe a FUNCTION, not a fictional
 // model render. Known hulls continue to use their produced hull posters. No fetch or render loop.
+import { arsenalGlyph } from './arsenalGlyphs.js';
 const p = (d, fill = false) => ({ tag: 'path', d, ...(fill ? { fill: 'currentColor', 'fill-opacity': '.12' } : {}) });
 const c = (cx, cy, r) => ({ tag: 'circle', cx, cy, r });
 export const EQUIPMENT_GLYPHS = Object.freeze({
@@ -69,10 +70,12 @@ export function equipmentSvg(spec = {}, doc = globalThis.document) {
   const ns = 'http://www.w3.org/2000/svg';
   const svg = doc.createElementNS(ns, 'svg');
   const kind = equipmentKind(spec);
-  for (const [key, value] of Object.entries({ viewBox: '0 0 128 128', class: 'orr-equipment-glyph',
-    fill: 'none', stroke: 'currentColor', 'stroke-width': '2', 'stroke-linejoin': 'round',
+  const exact = arsenalGlyph(spec);
+  for (const [key, value] of Object.entries({ viewBox: exact ? '0 0 24 24' : '0 0 128 128', class: 'orr-equipment-glyph',
+    fill: 'none', stroke: 'currentColor', 'stroke-width': exact ? '1.25' : '2', 'stroke-linejoin': 'round',
     'stroke-linecap': 'round', 'aria-hidden': 'true', focusable: 'false', 'data-glyph': kind })) svg.setAttribute(key, value);
-  for (const { tag, ...attrs } of EQUIPMENT_GLYPHS[kind]) {
+  if (exact) svg.setAttribute('data-arsenal', typeof spec === 'string' ? spec : spec.defId || spec.id);
+  for (const { tag, ...attrs } of exact || EQUIPMENT_GLYPHS[kind]) {
     const node = doc.createElementNS(ns, tag);
     for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
     svg.appendChild(node);

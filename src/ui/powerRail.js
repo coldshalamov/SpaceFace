@@ -45,6 +45,7 @@ import { BOMB_DEFS, BOMB_DRIFT, bombDef } from '../data/bombs.js';
 import { FIELD_DEFS } from '../data/fields.js';
 import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { fhGlyph } from './views/fhGlyphs.js';
+import { arsenalIcon } from './orrery/arsenalGlyphs.js';
 import { repulsionTrapFitted, resolveImpulseChargeCapacity } from '../systems/impulseCharges.js';
 import { cruiseChargeProgress, isCharging, isCruising } from '../systems/cruise.js';
 import { isSwarmRuleset } from '../systems/survivalSwarm.js';
@@ -508,7 +509,7 @@ export function readBombBayModel(state, nowS) {
     if (dry) {
       return {
         name: dry.shortName,
-        glyph: dry.field?.kind === 'singularity' ? 'well' : 'weapon',
+        glyph: dry.id,
         state: locked ? 'locked' : 'empty',
         cooldownMs: 0, deployed, armedCount, fields,
         badge: 'BAY',
@@ -526,7 +527,7 @@ export function readBombBayModel(state, nowS) {
     };
   }
   return {
-    name: def.shortName, glyph: def.field?.kind === 'singularity' ? 'well' : 'weapon',
+    name: def.shortName, glyph: def.id,
     state: locked || full ? 'locked' : until > nowS ? 'cooling' : 'ready',
     cooldownMs: Math.max(0, until - nowS) * 1000, deployed, armedCount, fields,
     // Bombs OUT of the ship, not bombs in the rack: "BAY 0/6" over a loaded key read as an empty
@@ -586,7 +587,7 @@ function slotMarkup(slot, label) {
   const name = slot.answer != null ? slot.answer : slot.name;
   // A claimed socket is answering a prompt, so it shows the answer word and no verb mark: a glyph
   // under a borrowed key would advertise a power the press will not fire.
-  const art = slot.answer != null ? '' : fhGlyph(slot.glyph, 24);
+  const art = slot.answer != null ? '' : arsenalIcon(slot.glyph, 24) || fhGlyph(slot.glyph, 24);
   const described = name
     ? `${name}${label ? `, key ${label}` : ''}, ${slot.state}`
     : `${label ? `key ${label}` : 'unbound socket'}, ${slot.state}`;

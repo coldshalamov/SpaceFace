@@ -134,7 +134,10 @@ export function queryPhysicalBodies(state, center, radius, helpers, out = [], op
     const candidates = scratch.out;
     for (let i = 0; i < candidates.length; i++) {
       const candidate = candidates[i];
-      const body = state.entities?.get(candidate.id) || promote(state, candidate, helpers, rt);
+      // Visibility/contact queries can choose a recipient before paying the shared promotion
+      // budget. Compact bodies remain real blockers even when no physics slot is available.
+      const body = state.entities?.get(candidate.id)
+        || (options.promote === false ? candidate : promote(state, candidate, helpers, rt));
       if (!eligible(body, options.includeAnchored !== false)) continue;
       out.push(body);
     }

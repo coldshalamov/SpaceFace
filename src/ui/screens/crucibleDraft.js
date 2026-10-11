@@ -28,6 +28,7 @@
 // with its key in fine print; the focused one bright. The refit is a column of hardpoint rows.
 
 import { MODULES } from '../../data/modules.js';
+import { arsenalIdentity } from '../../data/arsenalIdentity.js';
 import { SURVIVAL_DRAFT_CHOICES, swarmSellPrice } from '../../data/survivalDraft.js';
 import { SWARM_CATEGORIES } from '../../data/swarmCatalog.js';
 import { swarmRoundPreview } from '../../data/swarmLadder.js';
@@ -243,7 +244,7 @@ export function offerCardLines(offer, state) {
   return {
     verb: offer.verb || offer.id || '',
     name: offer.name || offer.defId || '',
-    blurb: offer.blurb || '',
+    blurb: arsenalIdentity(offer.defId)?.sentence || offer.blurb || '',
     activation: crucibleFittingDescription(offer.defId, state),
     slot,
   };

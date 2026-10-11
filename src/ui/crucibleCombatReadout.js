@@ -21,8 +21,12 @@ export function crucibleFittingDescription(defId, state) {
   if (defId === 'mod_bank_shot') {
     return `Banking — primary fire (${fire()})`;
   }
+  if (defId === 'wpn_sticky_detonator') return `Primary fire — ${fire()} plant · ${binding(state, 'chargeDetonate')} detonate`;
+  if (defId === 'tool_grav_anchor' || defId === 'tool_quantum_sympathy') return `Primary fire — ${fire()} hit two different bodies`;
+  if (defId === 'tool_polarity_inverter') return `Primary fire — ${fire()} alternate positive / negative tags`;
   const mod = modules.get(defId);
   const mods = mod?.mods || {};
+  if (mod?.slotType === 'mining') return `Mining beam — hold ${binding(state, 'mine')} on a resource body`;
   if (mods.repulsionTrap) return `Trap — ${binding(state, 'chargeThrow')} drop behind you`;
   if (mods.impulseChargeCapacity) {
     return `Charges — ${binding(state, 'chargeThrow')} throw · ${binding(state, 'chargeDetonate')} detonate`;
@@ -32,9 +36,13 @@ export function crucibleFittingDescription(defId, state) {
     return `Massline — ${binding(state, 'tether')} latch / hold to control`;
   }
   if (mods.boostTopSpeedPct) return `Boost — ${binding(state, 'boost')}`;
+  if (mods.phaseBlink) return `Blink — hold ${binding(state, 'boost')} to aim, release to jump`;
+  if (mods.swingDrive) return `Swing — ${binding(state, 'boost')} while a Massline is taut`;
+  if (mods.cloakBaseRadius) return `Cloak — ${binding(state, 'cloak')} toggle`;
+  if (mods.droneBay) return 'Drone bay — deploy and manage drones in Automation';
   if (mods.countermeasure) return `Countermeasure — ${binding(state, 'countermeasure')}`;
   if (mods.ramDamageDealtMult) return 'Ram — fly into a hull';
-  if (mods.hullBurst) return `Burst — ${binding(state, 'hullBurst')} lights the nose for a few seconds`;
+  if (mods.hullBurst) return `Boost — ${binding(state, 'boost')} powers the nose; release to stop`;
   return mod ? 'Always active while fitted' : '';
 }
 
