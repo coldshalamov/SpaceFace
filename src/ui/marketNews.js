@@ -21,6 +21,8 @@
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
 import { hash32 } from '../core/rng.js';
+import { deedsFor } from '../systems/deedRecord.js';
+import { deedLine } from '../data/deedPhrases.js';
 import {
   HEADLINE_TEMPLATES, REGIME_TEMPLATES, CARD_TEMPLATES, COMMODITY_FLAVOR,
   normalizeKind, fillTemplate,
@@ -533,18 +535,42 @@ export function createMarketNews(ctx) {
     const cards = cardsForStation(state, p.stationId, { seed: seedOf() });
     model.lastCard = cards[0] || null;
   });
+  // THE WORLD REMEMBERS (U-E): a loud deed (weight >= 3) nobody has repeated yet makes the wire,
+  // once, in the newsreader's neutral voice. News is not a speaker — the deed stays untold until a
+  // person says it. Polled on dock and arrival; the id `deed:news:<deedId>` is the dedupe key.
+  const deedNewsIds = new Set();
+  function surfaceDeedNews() {
+    for (const deed of deedsFor(state, { untoldOnly: true })) {
+      if (!(deed.weight >= 3)) continue;
+      const eventId = `deed:news:${deed.id}`;
+      if (deedNewsIds.has(eventId) || model.log.some((rec) => rec && rec.eventId === eventId)) continue;
+      const text = deedLine(deed, { voice: 'neutral' });
+      if (!text) continue;
+      const committed = surfacePublished({
+        id: eventId, eventId, sourceRef: eventId, source: 'deedRecord', kind: 'deed', text,
+        sectorId: deed.sectorId || null, stationId: deed.stationId || null,
+      });
+      if (committed) deedNewsIds.add(eventId);
+      return committed;
+    }
+    return null;
+  }
+  on('dock:docked', surfaceDeedNews);
+  on('jump:arrive', surfaceDeedNews);
   // Reset the log on a fresh game / load so stale headlines don't leak across sessions.
   on('save:loaded', () => {
     // A load can rewind to a point before this stable loss happened. The director's restored
     // durable ledger decides whether the consequence may settle again; presentation must not carry
     // a later timeline's transient suppression across that rewind.
     surfacedFreightLossIds.clear();
+    deedNewsIds.clear();
     model.log = [];
     model.lastCard = null;
     renderTicker();
   });
   on('game:newGame', () => {
     surfacedFreightLossIds.clear();
+    deedNewsIds.clear();
     model.log = [];
     model.lastCard = null;
     renderTicker();
