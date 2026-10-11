@@ -489,17 +489,19 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
     let bail = false;
     for (let slot = 0; slot < scan; slot++) {
       if (dirty[slot] === 0) continue;
-      dirty[slot] = 0;
       if (world.alive[slot] !== 1) continue;
       const row = slotRows[slot];
       const entityId = world.entityIds[slot] >>> 0;
       // A miss means the premise was wrong — never write a guess into the
       // snapshot; fall back to the classic walk for this frame instead.
+      // The dirty bit clears only on commit: a bail must leave every bit set
+      // so the classic walk re-packs what this discarded buffer consumed (G1a).
       if (row < 0 || row >= snapshot.count
         || fastPrevious.columns.entityId[row] !== entityId) { bail = true; break; }
       rewritePackedRow(snapshot, world, slot, row, entityId);
     }
     if (!bail) {
+      dirty.fill(0, 0, scan);
       fence.commit();
       fence.notePackMembership(diagnostics);
       return snapshot.count;
@@ -623,7 +625,6 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
     for (let slot = 0; slot < scan; slot++) {
       if ((slot % every) === 0 && slot > 0) yield;
       if (dirty[slot] === 0) continue;
-      dirty[slot] = 0;
       if (world.alive[slot] !== 1) continue;
       const row = slotRows[slot];
       const entityId = world.entityIds[slot] >>> 0;
@@ -632,6 +633,7 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
       rewritePackedRow(fastSnapshot, world, slot, row, entityId);
     }
     if (!bail) {
+      dirty.fill(0, 0, scan);
       const postDiagnostics = typeof world.getDiagnostics === 'function'
         ? world.getDiagnostics() : null;
       if (postDiagnostics

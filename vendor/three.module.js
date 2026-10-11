@@ -17923,11 +17923,20 @@ class WebGLRenderer {
 				// overwrite the outer captured list and replay the wrong scene's items.
 				if ( _sfCaptureRenderList === true && renderListStack.length === 1 ) {
 
-					_sfCapturedList = {
-						opaque: currentRenderList.opaque.slice(),
-						transmissive: currentRenderList.transmissive.slice(),
-						transparent: currentRenderList.transparent.slice(),
-					};
+					// Persistent shell: the captured arrays are consumed before the next
+					// capture on this renderer, so reusing them drops ~6 allocs/frame (W140-F2).
+					const shell = _sfCapturedShell;
+					const dstO = shell.opaque;
+					const dstT = shell.transmissive;
+					const dstTr = shell.transparent;
+					dstO.length = 0; dstT.length = 0; dstTr.length = 0;
+					const srcO = currentRenderList.opaque;
+					const srcT = currentRenderList.transmissive;
+					const srcTr = currentRenderList.transparent;
+					for ( let i = 0; i < srcO.length; i ++ ) dstO.push( srcO[ i ] );
+					for ( let i = 0; i < srcT.length; i ++ ) dstT.push( srcT[ i ] );
+					for ( let i = 0; i < srcTr.length; i ++ ) dstTr.push( srcTr[ i ] );
+					_sfCapturedList = shell;
 
 				}
 
@@ -18074,7 +18083,10 @@ class WebGLRenderer {
 		// arrays of pass 1; renderCapturedList re-runs the identical prelude + draw
 		// path on them without re-walking the scene.
 		let _sfCaptureRenderList = false;
-		let _sfCapturedList = null;
+		// Persistent capture shell (W140-F2): the list's arrays are refilled per capture
+		// instead of re-allocated — consumed before the next capture on this renderer.
+		const _sfCapturedShell = { opaque: [], transmissive: [], transparent: [] };
+		let _sfCapturedList = _sfCapturedShell;
 
 		this.renderAndCaptureList = function ( scene, camera ) {
 
@@ -18153,6 +18165,12 @@ class WebGLRenderer {
 
 				} else if ( object.isMesh || object.isLine || object.isPoints ) {
 
+					// SpaceFace (W140-F-C): a drained instanced pool still pays the frustum
+					// test → objects.update → renderItem → setProgram before renderInstances
+					// returns primcount 0 — the replay already drops these items; drop them
+					// at walk time too (children still project below).
+					if ( object.isInstancedMesh !== true || object.count > 0 ) {
+
 					if ( ! object.frustumCulled || _frustum.intersectsObject( object ) ) {
 
 						const geometry = objects.update( object );
@@ -18200,6 +18218,8 @@ class WebGLRenderer {
 							currentRenderList.push( object, geometry, material, groupOrder, _vector4.z, null );
 
 						}
+
+					}
 
 					}
 

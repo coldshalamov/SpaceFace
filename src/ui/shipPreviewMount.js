@@ -571,6 +571,9 @@ export function createShipPreviewMount(canvas, opts) {
   // uploader on emptied payloads (the D150 secondary-context twin).
   let uploadAuditArmed = false;
   let uploadAuditInFlight = false;
+  // Arm sequence number: an arm recorded while a rehydrate is in flight means new content
+  // arrived after the pending snapshot — the finally re-arms instead of drawing blind (W140-D1).
+  let uploadAuditSeq = 0;
   let dockRoot = null;
   let dockBlueprint = null;
   let dockInstance = null;
@@ -821,6 +824,7 @@ export function createShipPreviewMount(canvas, opts) {
     dockRoot.position.y = 1.5;
     scene.add(dockRoot);
     uploadAuditArmed = true;
+    uploadAuditSeq += 1;
     alignDockToCurrent();
     renderNow();
     if (active && rotating && !rafId) requestLoop();
@@ -1060,6 +1064,7 @@ export function createShipPreviewMount(canvas, opts) {
     tickExploded();
     if (uploadAuditArmed) {
       if (uploadAuditInFlight) return;  // the reattach continuation re-draws
+      const armedSeq = uploadAuditSeq;
       const pending = collectStartupTextures(scene)
         .filter((texture) => detachedTextureUploadPending(texture, renderer.properties));
       const pendingGeometries = collectStartupGeometries(scene)
@@ -1073,7 +1078,9 @@ export function createShipPreviewMount(canvas, opts) {
           .catch((error) => console.warn('[shipPreviewMount] detached payload reattach failed', error))
           .finally(() => {
             uploadAuditInFlight = false;
-            uploadAuditArmed = false;
+            // A mid-flight arm (seq moved since collection) keeps the flag — the next
+            // renderNow re-scans so the new subtree's detached payloads get rehydrated too.
+            uploadAuditArmed = uploadAuditSeq !== armedSeq;
             if (!disposed) renderNow();
           });
         return; // skip this draw — drawing now would upload the emptied payloads and throw
@@ -1324,6 +1331,7 @@ export function createShipPreviewMount(canvas, opts) {
     mesh.rotation.y = yaw;
     scene.add(mesh);
     uploadAuditArmed = true;
+    uploadAuditSeq += 1;
     fitCameraToCurrent();
     renderNow();
     requestCurrentAuthoredUpgrade();
