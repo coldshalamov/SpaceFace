@@ -185,6 +185,7 @@ import { causeLedger } from '../ui/causeLedger.js';                    // E: "wh
 // DOM fully guarded; voice via ctx.helpers.voice; emit-only — single-writer honored).
 import { customsPrompt } from '../ui/customsPrompt.js';                // CUSTOMS_MOMENT: scan decision panel (submit/bribe/run) over the shipped runScan
 import { impoundPayPrompt } from '../ui/impoundPayPrompt.js';          // impound clerk counter: pay verb over the shipped _payWantedImpound (choice, not overlap)
+import { warrantOfferPrompt } from '../ui/warrantOfferPrompt.js';        // world-remembers: the licensed hunter's offer as deck verbs over warrant:acceptPayment
 import { moralTrapPrompt } from '../ui/moralTrapPrompt.js';            // moral-trap fork: deck verbs over the shipped moralTrap:choose intent
 import { stuckTowPrompt } from '../ui/stuckTowPrompt.js';              // FB-111: wedged-hull tow offer as deck verbs over world:stuckTowAccept
 import { wreckChoicePrompt } from '../ui/wreckChoicePrompt.js';        // wreck communicator/survivor-pod choices: deck verbs over wreckMission:choose + survivorPod:choose
@@ -614,6 +615,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['causeLedger', causeLedger],
     ['customsPrompt', customsPrompt],
     ['impoundPayPrompt', impoundPayPrompt],
+    ['warrantOfferPrompt', warrantOfferPrompt],
     ['moralTrapPrompt', moralTrapPrompt],
     ['stuckTowPrompt', stuckTowPrompt],
     ['wreckChoicePrompt', wreckChoicePrompt],

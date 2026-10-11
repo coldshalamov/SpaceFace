@@ -1797,7 +1797,7 @@ function matchingRecentTrick(stunts, victimId) {
   return null;
 }
 
-function applyStyleLoadoutToSpec(spec, loadout) {
+export function applyStyleLoadoutToSpec(spec, loadout) {
   if (!spec || !loadout || !loadout.style) return;
   spec.data = spec.data || {};
   spec.data.ai = spec.data.ai || {};

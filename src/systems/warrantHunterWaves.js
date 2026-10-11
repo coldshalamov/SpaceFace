@@ -49,7 +49,7 @@ import {
 } from '../data/warrantHunters.js';
 import { WANTED_TIER, wantedTierFor } from './heat.js';
 import { makeEnemySpawnSpec } from './combat.js';
-import { WEAPONS } from '../data/weapons.js';
+import { applyStyleLoadoutToSpec } from './aceMemory.js';
 import { isRunSealed } from '../core/runSeal.js';
 
 const TIER_RANK = Object.freeze({
@@ -63,52 +63,6 @@ const WAVE_TIERS = Object.freeze([WANTED_TIER.NETS, WANTED_TIER.IMPOUND]);
 const SURVIVOR_PAYLOAD_TYPE = 'survivor_pod';
 const DEFAULT_ESCORT_TRICK = 'shield-turtle';
 const BOLDER_CAP = WARRANT_MAX_BOLDNESS - 1;
-
-/**
- * Fit a spec with the counter-kit namedAces' `styleLoadoutForAce` names for the way the player
- * kills — the same fit aceMemory gives a returning ace (`applyStyleLoadoutToSpec`, which is
- * module-private there; kept in step by hand rather than editing a file other lanes are in).
- */
-function applyCounterKit(spec, loadout) {
-  if (!spec || !loadout || !loadout.style) return;
-  spec.data = spec.data || {};
-  spec.data.ai = spec.data.ai || {};
-  spec.data.styleKit = {
-    style: loadout.style,
-    gimmickTag: loadout.gimmickTag,
-    doctrineId: loadout.doctrineId,
-    weapons: Array.isArray(loadout.weapons) ? loadout.weapons.slice() : [],
-    bossArchetype: loadout.bossArchetype,
-    escortArchetype: loadout.escortArchetype,
-  };
-  spec.data.gimmickTag = loadout.gimmickTag;
-  if (loadout.doctrineId) spec.data.ai.combatDoctrineId = loadout.doctrineId;
-  if (Array.isArray(loadout.capabilities) && loadout.capabilities.length) {
-    const caps = new Set(Array.isArray(spec.data.ai.capabilities) ? spec.data.ai.capabilities : []);
-    for (const cap of loadout.capabilities) caps.add(cap);
-    spec.data.ai.capabilities = [...caps];
-  }
-  if (Array.isArray(loadout.weapons) && loadout.weapons.length) {
-    spec.data.styleWeapons = loadout.weapons.slice();
-    const weapons = Array.isArray(spec.data.weapons) ? spec.data.weapons : (spec.data.weapons = []);
-    for (const defId of loadout.weapons) {
-      if (!defId || weapons.some((entry) => entry && entry.defId === defId)) continue;
-      const base = WEAPONS.find((entry) => entry.id === defId);
-      if (!base) continue;
-      weapons.push({
-        ...base,
-        slotIndex: weapons.length,
-        defId,
-        facing: 'front',
-        facingAngle: 0,
-        gimbalArc: 22 * Math.PI / 180,
-        muzzleOffset: [0.8, 0],
-        _cooldown: 0,
-        _heat: 0,
-      });
-    }
-  }
-}
 
 export function createWarrantHunterWaves(host) {
   const subs = [];
@@ -406,7 +360,7 @@ export function createWarrantHunterWaves(host) {
 
     if (isBoss && wave.style) {
       // The counter-kit the aces wear: same read of the same player-style ledger.
-      applyCounterKit(hull, styleLoadoutForAce(warrantHunterAce(hunter), wave.style));
+      applyStyleLoadoutToSpec(hull, styleLoadoutForAce(warrantHunterAce(hunter), wave.style));
     }
 
     const ai = hull.data.ai;
@@ -551,7 +505,7 @@ export function createWarrantHunterWaves(host) {
     const m = memory(s, true);
     const rec = recordFor(m, hunter.id);
     const kind = entry.returning && rec.grievance ? 'grievance' : 'first';
-    say(s, hunter, kind, 'contact', { grievance: rec.grievance });
+    const line = say(s, hunter, kind, 'contact', { grievance: rec.grievance });
     if (hunter.quirk.id === 'hails_first') {
       const ai = entity.data && entity.data.ai;
       const amount = Math.max(0, Math.round(Number(s.player.bounty) || 0));
@@ -563,6 +517,7 @@ export function createWarrantHunterWaves(host) {
           name: hunter.name,
           amountCr: amount,
           untilT: ctl.offer.untilT,
+          line, // the hail the offer rode in on, for the prompt that carries the answer
           tick: s.tick | 0,
         });
       } else if (ai) {
@@ -795,6 +750,8 @@ export function createWarrantHunterWaves(host) {
     const result = request.result;
     if (payload && typeof payload === 'object') payload.result = result || { ok: false, reason: 'no_economy' };
     if (!result || result.ok !== true) {
+      const hunter = warrantHunterById(ctl.offer.hunterId);
+      if (hunter) say(s, hunter, 'refused', 'refused');
       emit('warrant:hunterOfferRefused', {
         schemaVersion: WARRANT_HUNTER_SCHEMA,
         hunterId: ctl.offer.hunterId,

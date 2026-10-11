@@ -173,6 +173,7 @@ import { customsPrompt } from '../ui/customsPrompt.js';
 import { impoundPayPrompt } from '../ui/impoundPayPrompt.js';
 import { moralTrapPrompt } from '../ui/moralTrapPrompt.js';
 import { wreckChoicePrompt } from '../ui/wreckChoicePrompt.js';
+import { warrantOfferPrompt } from '../ui/warrantOfferPrompt.js';
 import { stuckTowPrompt } from '../ui/stuckTowPrompt.js';
 import { cargoConscience } from '../ui/cargoConscience.js';
 import { securityReadoutSystem } from '../ui/securityReadout.js';
@@ -403,6 +404,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['causeLedger', causeLedger],
     ['customsPrompt', customsPrompt],
     ['impoundPayPrompt', impoundPayPrompt],
+    ['warrantOfferPrompt', warrantOfferPrompt],
     ['moralTrapPrompt', moralTrapPrompt],
     ['wreckChoicePrompt', wreckChoicePrompt],
     ['stuckTowPrompt', stuckTowPrompt],

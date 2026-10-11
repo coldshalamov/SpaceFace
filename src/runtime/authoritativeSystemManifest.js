@@ -63,7 +63,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   // impoundPayPrompt, moralTrapPrompt and wreckChoicePrompt are event-only like customsPrompt —
   // init order matters (bus subscriptions); all are deliberately absent from
   // PRODUCTION_UPDATE_ORDER.
-  'impoundPayPrompt', 'moralTrapPrompt', 'wreckChoicePrompt', 'stuckTowPrompt',
+  'impoundPayPrompt', 'warrantOfferPrompt', 'moralTrapPrompt', 'wreckChoicePrompt', 'stuckTowPrompt',
   'cargoConscience', 'securityReadoutSystem', 'priceForecastSystem', 'contractClausesSystem',
   'moralTrapSystem', 'render', 'vfx', 'feel', 'audio', 'ui', 'save',
 ]);

@@ -92,6 +92,10 @@ export const WARRANT_HUNTERS = F([
       tierUp: F([
         'The bounty grew while we talked. I am calling in the rest of my paper.',
       ]),
+      // Said when the player takes the offer and cannot cover it (the hails_first quirk's other half).
+      refused: F([
+        'That does not cover the writ. Find the rest of it, or we do this the other way.',
+      ]),
     }),
   }),
   F({
@@ -338,7 +342,7 @@ export function grievanceForKillStyle(style) {
 }
 
 /**
- * One voiced line. kind: 'first' | 'grievance' | 'giveUp' | 'tierUp'. `grievance` takes the
+ * One voiced line. kind: 'first' | 'grievance' | 'giveUp' | 'tierUp' | 'refused' (hails_first only). `grievance` takes the
  * remembered outcome and falls back to 'disabled' when the memory names an unknown one.
  */
 export function warrantHunterLine(hunter, kind, { seed = 0, salt = 0, grievance = null } = {}) {
