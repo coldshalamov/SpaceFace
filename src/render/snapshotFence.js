@@ -628,37 +628,46 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
     // self-heal, bounding staleness to one pack. A trailing fill would clear it
     // without ever having packed it (final-write-in-window ⇒ stale pose forever).
     const consumedDirty = [];
-    for (let slot = 0; slot < scan; slot++) {
-      if ((slot % every) === 0 && slot > 0) yield;
-      if (dirty[slot] === 0) continue;
-      dirty[slot] = 0;
-      consumedDirty.push(slot);
-      if (world.alive[slot] !== 1) continue;
-      const row = slotRows[slot];
-      const entityId = world.entityIds[slot] >>> 0;
-      if (row < 0 || row >= fastSnapshot.count
-        || fastPrevious.columns.entityId[row] !== entityId) { bail = true; break; }
-      rewritePackedRow(fastSnapshot, world, slot, row, entityId);
-    }
-    if (!bail) {
-      const postDiagnostics = typeof world.getDiagnostics === 'function'
-        ? world.getDiagnostics() : null;
-      if (postDiagnostics
-        && (postDiagnostics.allocations | 0) === allocationsAtMint
-        && (postDiagnostics.retirements | 0) === retirementsAtMint) {
-        fence.commit();
-        fence.notePackMembership(postDiagnostics);
-        return fastSnapshot.count;
+    let fastCommitted = false;
+    try {
+      for (let slot = 0; slot < scan; slot++) {
+        if ((slot % every) === 0 && slot > 0) yield;
+        if (dirty[slot] === 0) continue;
+        dirty[slot] = 0;
+        consumedDirty.push(slot);
+        if (world.alive[slot] !== 1) continue;
+        const row = slotRows[slot];
+        const entityId = world.entityIds[slot] >>> 0;
+        if (row < 0 || row >= fastSnapshot.count
+          || fastPrevious.columns.entityId[row] !== entityId) { bail = true; break; }
+        rewritePackedRow(fastSnapshot, world, slot, row, entityId);
+      }
+      if (!bail) {
+        const postDiagnostics = typeof world.getDiagnostics === 'function'
+          ? world.getDiagnostics() : null;
+        if (postDiagnostics
+          && (postDiagnostics.allocations | 0) === allocationsAtMint
+          && (postDiagnostics.retirements | 0) === retirementsAtMint) {
+          fence.commit();
+          fence.notePackMembership(postDiagnostics);
+          fastCommitted = true;
+          return fastSnapshot.count;
+        }
+      }
+    } finally {
+      // ANY non-commit exit — bail, counters mismatch, throw, or a superseding
+      // .return() — discards the consumed marks' rewrites, so restore their
+      // bits (W144-BG-1: the finally is what covers fault/abandon paths the
+      // old commit-gated fill never needed). Write through `world.packDirty`,
+      // not the captured `dirty` alias: a mid-park capacity grow reallocates
+      // the mask and growTyped copies the post-consume zeros, so a restore
+      // into the old array would be a dead write (W144-BG-1b). The classic
+      // walk reads packDirty===0 as "copy last committed row" and would
+      // otherwise ship the stale row.
+      if (!fastCommitted) {
+        for (const slot of consumedDirty) world.packDirty[slot] = 1;
       }
     }
-    // Premise broke mid-pack: the consumed marks' rewrites are discarded, so
-    // restore their bits — the classic walk reads packDirty===0 as "copy last
-    // committed row" and would otherwise ship the stale row (W141-BG-1's
-    // retire-only churn and bail exits share this requirement). Write through
-    // `world.packDirty`, not the captured `dirty` alias: a mid-park capacity
-    // grow reallocates the mask and growTyped copies the post-consume zeros,
-    // so a restore into the old array would be a dead write (W144-BG-1b).
-    for (const slot of consumedDirty) world.packDirty[slot] = 1;
     // beginFrame re-clears the index, refills slotRows, and every live
     // row re-packs — byte-identical to the atomic output, just paced.
   }

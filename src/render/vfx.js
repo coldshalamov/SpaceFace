@@ -1688,10 +1688,17 @@ export const vfx = {
     if (typeof window === 'undefined') {
       this._initPools();
     } else {
+      // W144-F1: the update() reattach lane must not call _initPools while the
+      // payload is still in flight — packed() throws mid-build and each retry
+      // orphans another partial pool set. Pending/failed latches gate it below.
+      this._volumePoolsPending = true;
       VFX_VOLUME_PAYLOAD_READY.then(() => {
+        this._volumePoolsPending = false;
         if (this._destroyed === true || !this.state) return;
         this._initPools();
       }, (error) => {
+        this._volumePoolsPending = false;
+        this._volumePoolsFailed = true;
         console.error('[vfx] volume payload failed to load; transient/gas pools degrade', error);
         this._scene = null;
       });
@@ -12354,8 +12361,12 @@ export const vfx = {
     const tier1Counter = tier1Perf && tier1Perf.tier1;
     this._tier1Spawn = tier1Counter && tier1Counter.isEnabled() ? tier1Counter : null;
     if (!this._scene) {
-      // render may have come up after vfx.init (defensive) — try once to attach pools
-      if (this.state.render && this.state.render.scene) { this._initPools(); this._subscribeOnce(); }
+      // render may have come up after vfx.init (defensive) — try once to attach pools.
+      // While the deferred volume payload is in flight (or failed), init's own
+      // READY continuation owns the attach — a mid-window call here throws on
+      // packed() and would orphan a partial pool set per tick (W144-F1).
+      if (!this._volumePoolsPending && !this._volumePoolsFailed
+          && this.state.render && this.state.render.scene) { this._initPools(); this._subscribeOnce(); }
       if (!this._scene) return;
     }
     if (this._perfVfxIsolationRestore) {
