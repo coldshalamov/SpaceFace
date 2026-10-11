@@ -814,6 +814,14 @@ function renderWithoutAutoClear(renderer, draw) {
   }
 }
 
+// W140 F-A: vendored renderQuadPass draws the fixed quad scene without the
+// scene-graph prelude; mock/alternate renderers without it take the identical
+// upstream pass through render().
+function renderQuadScene(renderer, scene, camera) {
+  if (typeof renderer.renderQuadPass === 'function') renderer.renderQuadPass(scene, camera);
+  else renderer.render(scene, camera);
+}
+
 class FullscreenQuad {
   constructor() {
     this.camera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
@@ -828,7 +836,7 @@ class FullscreenQuad {
     // No clear: the 2x2 quad covers the whole target and the materials used here are
     // all NoBlending/depthTest:false/depthWrite:false with no discard, so every texel
     // is unconditionally overwritten — a prior clear can never be observed.
-    renderWithoutAutoClear(renderer, () => renderer.render(this.scene, this.camera));
+    renderWithoutAutoClear(renderer, () => renderQuadScene(renderer, this.scene, this.camera));
   }
   dispose() { this.mesh.geometry.dispose(); this.mesh.material.dispose(); }
 }

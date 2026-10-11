@@ -137,6 +137,18 @@ test('PERF-138 F1 captured render-list replay pair exists and gates projectObjec
   assert.match(SRC, /if \( capturedList === undefined \) this\.info\.render\.frame \+\+/);
 });
 
+test('W140 F-A renderQuadPass keeps the render-state bookkeeping contract', () => {
+  assert.match(SRC, /this\.renderQuadPass = function \( scene, camera \)/);
+  // Draws each top-level drawable through the same objects.update → renderObject
+  // tail the finished list takes; no projectObject/render-list assembly.
+  assert.match(SRC, /function renderQuadObject\( object, scene, camera, overrideMaterial \)/);
+  assert.match(SRC, /renderQuadObject\( children\[ i \], scene, camera, overrideMaterial \)/);
+  // Bookkeeping kept: stack pushes (a nested render can never satisfy the capture
+  // gate inside this pass), textureUnits save, the frame mint, autoReset-aware
+  // info.reset, and the renderScene depth/color-mask tail.
+  assert.match(SRC, /const renderBackground = xr\.enabled === false/);
+});
+
 test('world matrices stay identical to an unmarked walk after grafts and repose', () => {
   const build = (mark) => {
     const scene = new THREE.Object3D();

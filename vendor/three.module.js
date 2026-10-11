@@ -5082,6 +5082,7 @@ function WebGLOutput( type, width, height, depth, stencil ) {
 	} );
 
 	const mesh = new Mesh( geometry, material );
+	mesh.frustumCulled = false; // W140 F-A: unconditionally-drawn composite quad
 	const camera = new OrthographicCamera( -1, 1, 1, -1, 0, 1 );
 
 	let _outputColorSpace = null;
@@ -5216,7 +5217,7 @@ function WebGLOutput( type, width, height, depth, stencil ) {
 		// final output to canvas (or XR render target)
 		material.uniforms.tDiffuse.value = readBuffer.texture;
 		renderer.setRenderTarget( _savedRenderTarget );
-		renderer.render( mesh, camera );
+		renderer.renderQuadPass( mesh, camera );
 
 		_savedRenderTarget = null;
 		_isCompositing = false;
@@ -18078,6 +18079,198 @@ class WebGLRenderer {
 
 		};
 
+		// SpaceFace (W140 F-A): fullscreen post passes draw a fixed 1-mesh quad
+		// scene — upstream render() re-pays its whole scene-graph prelude for it
+		// (renderLists fill/finish/sort, projectObject's frustum pass, shadowMap
+		// and setupLights on empty arrays, background addToRenderList). This
+		// method runs the same pipeline with those branches elided: the scene's
+		// visible top-level drawables go through the identical
+		// objects.update → renderObject → renderBufferDirect tail a finished
+		// render list would take.
+		//
+		// Mutable bookkeeping kept verbatim, so the next main render observes
+		// exactly what an upstream render() leaves: renderStates/renderLists
+		// stack push + restore (a render() nested inside this pass can never
+		// satisfy the capture gate's renderListStack.length === 1, so
+		// _sfCapturedList is never clobbered — renderQuadPass itself does not
+		// run the capture branch and cannot capture), textureUnits
+		// save/restore, clipping.init + setGlobalState, info.render.frame mint
+		// (upstream mints per render() call; objects.update / VideoTexture /
+		// UBO-upload dedup is frame-keyed), info.reset under autoReset, scene
+		// onBefore/AfterRender hooks, output.begin/end + hasRenderPass skip,
+		// multisample/mipmap resolve, the renderScene depth/color-mask tail,
+		// bindingStates.resetDefaultState and the _currentCamera/_currentMaterialId
+		// clears.
+		//
+		// Skipped, and why each is dead for a flat unlit quad scene:
+		// _projScreenMatrix/_frustum (only consumers are projectObject's culling
+		// tests), renderLists fill/finish/sort + background.addToRenderList (no
+		// list is assembled), projectObject itself (no recursion — children draw
+		// in insertion order, no frustum test — every quad drawable is
+		// frustumCulled=false), shadowMap.render + clipping.beginShadows/
+		// endShadows (shadowsArray is empty — upstream early-outs identically),
+		// setupLights/setupLightsView (empty lightsArray — quad materials are
+		// unlit and never consult the lights state), and the XR depth-mesh
+		// projection (no XR-presenting quad passes). The local renderBackground
+		// mirrors upstream's _renderBackground without clobbering an enclosing
+		// render's module-level flag.
+		// Contract: scene contents are top-level drawable objects (the fixed
+		// FullscreenQuad/bloom quad scenes) — a non-Scene drawable may be passed
+		// directly. No captured-list support; capture/replay stays on render().
+		this.renderQuadPass = function ( scene, camera ) {
+
+			if ( camera !== undefined && camera.isCamera !== true ) {
+
+				error( 'WebGLRenderer.renderQuadPass: camera is not an instance of THREE.Camera.' );
+				return;
+
+			}
+
+			if ( _isContextLost === true ) return;
+
+			if ( _nodesHandler !== null ) {
+
+				_nodesHandler.renderStart( scene, camera );
+
+			}
+
+			const isXRPresenting = xr.enabled === true && xr.isPresenting === true;
+
+			const useOutput = output !== null && ( _currentRenderTarget === null || isXRPresenting ) && output.begin( _this, _currentRenderTarget );
+
+			if ( scene.matrixWorldAutoUpdate === true ) scene.updateMatrixWorld();
+
+			if ( camera.parent === null && camera.matrixWorldAutoUpdate === true ) camera.updateMatrixWorld();
+
+			if ( xr.enabled === true && xr.isPresenting === true && ( output === null || output.isCompositing() === false ) ) {
+
+				if ( xr.cameraAutoUpdate === true ) xr.updateCamera( camera );
+
+				camera = xr.getCamera(); // use XR camera for rendering
+
+			}
+
+			if ( scene.isScene === true ) scene.onBeforeRender( _this, scene, camera, _currentRenderTarget );
+
+			currentRenderState = renderStates.get( scene, renderStateStack.length );
+			currentRenderState.init( camera );
+
+			currentRenderState.state.textureUnits = textures.getTextureUnits();
+			renderStateStack.push( currentRenderState );
+
+			_localClippingEnabled = this.localClippingEnabled;
+			_clippingEnabled = clipping.init( this.clippingPlanes, _localClippingEnabled );
+
+			currentRenderList = renderLists.get( scene, renderListStack.length );
+			currentRenderList.init();
+
+			renderListStack.push( currentRenderList );
+
+			const renderBackground = xr.enabled === false || xr.isPresenting === false || xr.hasDepthSensing() === false;
+
+			// Upstream mints one frame per render() call — keep it so the
+			// frame-keyed dedups (objects.update, VideoTexture, UBO uploads)
+			// observe the exact sequence the equivalent render() calls produce.
+			this.info.render.frame ++;
+
+			if ( this.info.autoReset === true ) this.info.reset();
+
+			const skipSceneRender = useOutput && output.hasRenderPass();
+
+			if ( skipSceneRender === false ) {
+
+				if ( renderBackground ) background.render( scene );
+
+				if ( _clippingEnabled === true ) clipping.setGlobalState( _this.clippingPlanes, camera );
+
+				const overrideMaterial = scene.isScene === true ? scene.overrideMaterial : null;
+
+				if ( scene.isMesh === true || scene.isLine === true || scene.isPoints === true || scene.isSprite === true ) {
+
+					renderQuadObject( scene, scene, camera, overrideMaterial );
+
+				} else {
+
+					const children = scene.children;
+					for ( let i = 0, il = children.length; i < il; i ++ ) {
+
+						renderQuadObject( children[ i ], scene, camera, overrideMaterial );
+
+					}
+
+				}
+
+				// renderScene()'s tail: leave the depth/color flags the way a
+				// full pass does so the next render's clear/draw sees identical
+				// state.
+				state.buffers.depth.setTest( true );
+				state.buffers.depth.setMask( true );
+				state.buffers.color.setMask( true );
+
+				state.setPolygonOffset( false );
+
+			}
+
+			if ( _currentRenderTarget !== null && _currentActiveMipmapLevel === 0 ) {
+
+				// resolve multisample renderbuffers to a single-sample texture if necessary
+
+				textures.updateMultisampleRenderTarget( _currentRenderTarget );
+
+				// Generate mipmap if we're using any kind of mipmap filtering
+
+				textures.updateRenderTargetMipmap( _currentRenderTarget );
+
+			}
+
+			if ( useOutput ) {
+
+				output.end( _this );
+
+			}
+
+			if ( scene.isScene === true ) scene.onAfterRender( _this, scene, camera );
+
+			bindingStates.resetDefaultState();
+			_currentMaterialId = -1;
+			_currentCamera = null;
+
+			renderStateStack.pop();
+
+			if ( renderStateStack.length > 0 ) {
+
+				currentRenderState = renderStateStack[ renderStateStack.length - 1 ];
+
+				textures.setTextureUnits( currentRenderState.state.textureUnits );
+
+				if ( _clippingEnabled === true ) clipping.setGlobalState( _this.clippingPlanes, currentRenderState.state.camera );
+
+			} else {
+
+				currentRenderState = null;
+
+			}
+
+			renderListStack.pop();
+
+			if ( renderListStack.length > 0 ) {
+
+				currentRenderList = renderListStack[ renderListStack.length - 1 ];
+
+			} else {
+
+				currentRenderList = null;
+
+			}
+
+			if ( _nodesHandler !== null ) {
+
+				_nodesHandler.renderEnd();
+
+			}
+
+		};
+
 		// SpaceFace (PERF-138 F1): capture/replay pair for SpaceRenderGraph's color→AO
 		// double submission. renderAndCaptureList returns the finished, sorted render
 		// arrays of pass 1; renderCapturedList re-runs the identical prelude + draw
@@ -18440,6 +18633,51 @@ class WebGLRenderer {
 			}
 
 			object.onAfterRender( _this, scene, camera, geometry, material, group );
+
+		}
+
+		// SpaceFace (W140 F-A): the per-drawable tail of renderQuadPass — the same
+		// gates projectObject applies to a drawable (visible, layers, material
+		// visibility) plus the objects.update upload check and the override/
+		// multi-material resolution renderObjects() performs, minus the frustum
+		// test and render-item assembly. Non-drawable types (Group, Light) are
+		// skipped — quad scenes are flat and drawable-only by contract.
+		function renderQuadObject( object, scene, camera, overrideMaterial ) {
+
+			if ( object.visible === false ) return;
+			if ( object.isMesh !== true && object.isLine !== true && object.isPoints !== true && object.isSprite !== true ) return;
+			if ( object.isInstancedMesh === true && object.count <= 0 ) return;
+			if ( object.layers.test( camera.layers ) === false ) return;
+
+			const geometry = objects.update( object );
+			const material = object.material;
+
+			if ( Array.isArray( material ) ) {
+
+				const groups = geometry.groups;
+
+				for ( let i = 0, l = groups.length; i < l; i ++ ) {
+
+					const group = groups[ i ];
+					const groupMaterial = material[ group.materialIndex ];
+
+					if ( groupMaterial && groupMaterial.visible ) {
+
+						const drawn = ( groupMaterial.allowOverride === true && overrideMaterial !== null ) ? overrideMaterial : groupMaterial;
+
+						renderObject( object, scene, camera, geometry, drawn, group );
+
+					}
+
+				}
+
+			} else if ( material.visible ) {
+
+				const drawn = ( material.allowOverride === true && overrideMaterial !== null ) ? overrideMaterial : material;
+
+				renderObject( object, scene, camera, geometry, drawn, null );
+
+			}
 
 		}
 
