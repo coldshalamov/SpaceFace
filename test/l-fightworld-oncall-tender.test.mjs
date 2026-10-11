@@ -333,3 +333,158 @@ test('scavenger adoption keeps its per-sector limit and keys record ids by the r
   const again = adopt('sector_scav_a');
   assert.deepEqual(again.ids, one.ids, 'deterministic for the same sector and seed');
 });
+
+// ── audit follow-up ──
+
+test('a second breakdown inside the cooldown still gets the returning truck', () => {
+  const ctx = scene();
+  driveDown(ctx);
+  const first = oncallHulls(ctx)[0];
+  driveUp(ctx);
+  first.pos.x = 300;
+  first.pos.z = 0;
+  ctx.sim.step(SIM_DT);
+  driveDown(ctx);
+  assert.equal(oncallHulls(ctx).length, 1, 'no second hull');
+  assert.equal(ctx.runtime.controlClaim(first.data.jobId).holder, 'yardDispatch', 'the same truck turns around');
+});
+
+test('a breakdown that lands inside the cooldown is queued, not swallowed, and a truck leaves when it lifts', () => {
+  const ctx = scene();
+  ctx.state.simTime = 10;
+  driveDown(ctx);
+  driveUp(ctx);
+  ctx.sim.step(SIM_DT);
+  assert.equal(oncallHulls(ctx).length, 0, 'the first truck is home and retired');
+  setDriveDestroyed(ctx);
+  ctx.toasts.length = 0;
+  driveDown(ctx);
+  assert.equal(oncallHulls(ctx).length, 0, 'the cooldown holds the fresh spawn');
+  assert.ok(ctx.toasts.some((t) => /queued/.test(t.text)), 'and the pilot is told the call is queued');
+  ctx.state.simTime += 130;
+  ctx.sim.step(SIM_DT);
+  ctx.state.simTime += 3;
+  ctx.sim.step(SIM_DT);
+  assert.equal(oncallHulls(ctx).length, 1, 'the pending call is retried and a truck leaves');
+});
+
+test('clearing WANTED with the drive still down dispatches the truck without a new breakdown event', () => {
+  const ctx = scene();
+  ctx.state.player.heat = 1;
+  setDriveDestroyed(ctx);
+  driveDown(ctx);
+  assert.equal(oncallHulls(ctx).length, 0);
+  ctx.state.player.heat = 0;
+  ctx.state.simTime += 3;
+  ctx.sim.step(SIM_DT);
+  assert.equal(oncallHulls(ctx).length, 1, 'the standing request is answered once the pilot is clean');
+});
+
+test('a drive that comes back cancels the standing request', () => {
+  const ctx = scene();
+  ctx.state.player.heat = 1;
+  setDriveDestroyed(ctx);
+  driveDown(ctx);
+  driveUp(ctx);
+  ctx.state.player.heat = 0;
+  ctx.state.simTime += 3;
+  ctx.sim.step(SIM_DT);
+  assert.equal(oncallHulls(ctx).length, 0);
+});
+
+test('a restore resets the dispatch and refusal cooldown clocks', () => {
+  const ctx = scene();
+  ctx.runtime._yardLastDispatchT = 500;
+  ctx.runtime._yardLastRefuseT = 500;
+  ctx.runtime.deserialize(ctx.runtime.serialize());
+  assert.equal(ctx.runtime._yardLastDispatchT, -Infinity);
+  assert.equal(ctx.runtime._yardLastRefuseT, -Infinity);
+});
+
+test('the refusal names the nearest refused yard, not the first in the list', () => {
+  const ctx = scene();
+  ctx.state.world.activeSector.stations = [
+    { id: 901, stationId: 'station_coalition', pos: { x: 2400, z: 0 } },
+    { id: 900, stationId: STATION, pos: { x: 900, z: 0 } },
+  ];
+  const until = ctx.state.simTime + 600;
+  ctx.state.economy = { stationOutages: {
+    [STATION]: { repairUntil: until }, station_coalition: { repairUntil: until + 300 },
+  } };
+  driveDown(ctx);
+  const toast = ctx.toasts.find((t) => /repair bay is down/.test(t.text));
+  assert.match(toast.text, /Helios Station/);
+  assert.match(toast.text, /~10 min/);
+});
+
+test('crew response cannot poach the on-call truck', () => {
+  const ctx = scene();
+  driveDown(ctx);
+  const hull = oncallHulls(ctx)[0];
+  const jobId = hull.data.jobId;
+  ctx.runtime.releaseControl(jobId, ctx.runtime.controlClaim(jobId).claimId);
+  const casualty = ctx.sim.spawn({ type: 'ship', team: 2, pos: { x: hull.pos.x + 50, z: 0 }, radius: 8, mass: 10, hull: 100, hullMax: 100 });
+  assert.equal(ctx.runtime._nearestCrewTender(casualty), null, 'a transient truck is never a crew-response tender');
+});
+
+test('retiring the truck cuts any line still attached to it first', () => {
+  const ctx = scene();
+  driveDown(ctx);
+  const cut = [];
+  ctx.runtime._combatAttachments = () => ({
+    listForEntity: () => [{ id: 7, state: 'active' }],
+    breakAttachment: (attachment, reason) => cut.push([attachment.id, reason]),
+  });
+  ctx.bus.emit('sector:exit', { sectorId: SECTOR });
+  assert.deepEqual(cut, [[7, 'oncall_tender_retired']]);
+});
+
+function adoptionRig(sectorId, extraWreckData = {}) {
+  const sim = createSimulation({ seed: 4242, systems: [npcJobsRuntime] });
+  sim.state.mode = 'flight';
+  sim.state.world.currentSectorId = sectorId;
+  const scav = sim.spawn({
+    type: 'ship', team: 2, pos: { x: 0, z: 0 }, radius: 8, mass: 20, hull: 100, hullMax: 100, collides: true,
+    data: { sectorId, trafficRole: 'scavenger', ai: { passive: true } },
+  });
+  const wreck = sim.spawn({
+    type: 'wreck', pos: { x: -60, z: 0 }, radius: 6, mass: 90, hull: 10, hullMax: 10, collides: true,
+    data: { sectorId, salvagePool: { cmdty_scrap_metal: 4 }, ...extraWreckData },
+  });
+  return { sim, scav, wreck, runtime: sim.registry.get('npcJobsRuntime'), sectorId };
+}
+
+test('an adopt-time latch is cleared when the salvor job ends before its first line', () => {
+  const rig = adoptionRig('sector_latch_a');
+  assert.equal(rig.runtime._adoptScavengerTractors(), 1);
+  assert.equal(rig.wreck.data.npcMasslineLatch, true, 'the wreck is latched at adoption');
+  rig.runtime.release(rig.scav.data.jobId);
+  assert.equal(rig.wreck.data.npcMasslineLatch, undefined);
+  assert.equal(rig.wreck.flags && rig.wreck.flags.tethered, undefined, 'and no tethered persistence anchor is left');
+  rig.sim.dispose();
+});
+
+test('an adopt-time latch is cleared when the sector is left before the first line', () => {
+  const rig = adoptionRig('sector_latch_b');
+  assert.equal(rig.runtime._adoptScavengerTractors(), 1);
+  rig.sim.bus.emit('sector:exit', { sectorId: rig.sectorId });
+  assert.equal(rig.wreck.data.npcMasslineLatch, undefined);
+  assert.equal(rig.wreck.flags && rig.wreck.flags.tethered, undefined);
+  rig.sim.dispose();
+});
+
+test('an adopted salvor never takes a mission, contract or custody body', () => {
+  const owned = [
+    { missionId: 'm_1' }, { contractId: 'c_1' }, { contractClaimSiteOf: 'm_2' }, { missionTargetSlot: 'slot' },
+    { lotId: 'lot_1' }, { custody: { by: 'player' } }, { freightCustody: true }, { reservedBy: 'p' },
+  ];
+  for (const extra of owned) {
+    const rig = adoptionRig('sector_owned_cargo', extra);
+    assert.equal(rig.runtime._adoptScavengerTractors(), 0, `refuses ${Object.keys(extra)[0]}`);
+    assert.equal(rig.scav.data.jobId, undefined);
+    rig.sim.dispose();
+  }
+  const free = adoptionRig('sector_owned_cargo');
+  assert.equal(free.runtime._adoptScavengerTractors(), 1, 'an ordinary wreck is still worked');
+  free.sim.dispose();
+});

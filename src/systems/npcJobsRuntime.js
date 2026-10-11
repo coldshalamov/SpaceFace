@@ -220,6 +220,7 @@ const ONCALL_TENDER_DEPART_WU = 90;
 const ONCALL_HOME_ARRIVE_WU = 70;
 const ONCALL_RETURN_TIMEOUT_S = 240;
 const ONCALL_JOB_SPAN_S = 1e6;
+const YARD_PENDING_RETRY_S = 2;
 const YARD_DISPATCH_REPAIR_TICK_S = 1.0;
 const YARD_DISPATCH_HOT_TOAST_S = 20;
 // INF-WF01 crew response: the same truck, answering its own. When a working crew hull's
@@ -851,11 +852,22 @@ function stampNpcMasslineHead(entity, headId) {
 // `ownerRecordId` is the stable world-record id of the tug asking. A body reserved by the cleanup
 // profession belongs to that cutter and is not tug work — but traffic reserves the tug's OWN booked
 // lot through the same field, so a claim held by this tug is a reservation, not a refusal.
+// Mission, contract and custody bodies belong to their owners: an adopted salvor never tows them.
+function isOwnedCargoBody(target) {
+  const d = (target && target.data) || {};
+  const f = (target && target.flags) || {};
+  return !!(f.missionPinned || d.missionPinned || d.missionId || d.missionTag || d.missionTargetSlot
+    || d.contractId || d.contractClaimSiteOf
+    || d.freightCustodyPersistence || d.surrenderRecovery || d.freightCustody || d.freightCustodyPod
+    || d.lotId || d.lotSource || d.custody || d.reservedBy);
+}
+
 function isTowableCargoTarget(target, ownerRecordId = null) {
   if (!target || target.alive === false || (target.type !== 'payload' && target.type !== 'wreck')) return false;
   if (!allowsMasslineBody(target)) return false;
   const data = target.data;
   if (!data || data.npcTowedByJobId != null) return false;
+  if (isOwnedCargoBody(target)) return false;
   if (data.salvorClaimedBy != null && data.salvorClaimedBy !== ownerRecordId) return false;
   // Authored site structure and pinned scenery are never freight. The nearest-body fallback scan
   // below runs inside a 390 WU pocket that on Ceres holds nineteen `world_site_*` proxies at mass
@@ -955,6 +967,8 @@ export const npcJobsRuntime = {
     this._heliosStarterRockId = null;
     this._yardDispatch = null;
     this._oncall = null;
+    this._yardPending = false;
+    this._yardPendingNextT = 0;
     this._yardLastDispatchT = -Infinity;
     this._yardLastRefuseT = -Infinity;
     this._crewResponse = null;
@@ -2150,6 +2164,7 @@ export const npcJobsRuntime = {
     this._heliosStarterMinerRecordId = null;
     this._heliosStarterRockId = null;
     this._yardDispatch = null;
+    this._yardPending = false;
     this._retireOncallHulls();
     this._yardLastDispatchT = -Infinity;
     this._yardLastRefuseT = -Infinity;
@@ -2806,8 +2821,20 @@ export const npcJobsRuntime = {
     return null;
   },
 
+  // An adopt-time latch (scavenger -> salvor) is pinned before the first attach. When the job
+  // ends or leaves the sector with no line ever created, nothing else would clear it.
+  _unlatchUntowedTarget(entry) {
+    const payload = entry && entry.job && entry.job.payload;
+    const targetId = payload && payload.targetId;
+    if (targetId == null || entry.towAttachmentId != null || entry.towTargetId != null) return;
+    const target = this.state && this.state.entities && this.state.entities.get(targetId);
+    if (!target || !target.data || target.data.npcTowedByJobId != null) return;
+    unpinOccupationalLatch(target);
+  },
+
   _clearTugAttachment(entry, reason = 'npc_tow_cleanup') {
     if (!entry) return false;
+    if (entry.towAttachmentId == null) this._unlatchUntowedTarget(entry);
     const attachmentId = entry.towAttachmentId;
     const attachments = this._combatAttachments();
     const attachment = attachmentId != null && attachments && typeof attachments.get === 'function'
@@ -3945,6 +3972,7 @@ export const npcJobsRuntime = {
     stepCeresWorkfleet(this,dt);
     this._stepPlayerTenderDispatch(dt);
     this._stepOncallTenderReturn();
+    this._stepYardPending();
     this._stepCrewResponse(dt);
     this._stepTowAssists();
     // The Ceres discovery sweeps poll the whole living-actor set. Latency-sensitive arrivals already
@@ -5127,6 +5155,21 @@ export const npcJobsRuntime = {
     this._requestYardDispatch();
   },
 
+  _stepYardPending() {
+    if (!this._yardPending) return;
+    if (this._yardDispatch) {
+      this._yardPending = false;
+      return;
+    }
+    const now = finite(this.state.simTime, 0);
+    if (now < finite(this._yardPendingNextT, 0)) return;
+    if (!this._playerDriveDownNow()) {
+      this._yardPending = false;
+      return;
+    }
+    this._requestYardDispatch();
+  },
+
   _onSaveLoadedYardCheck() {
     if (this.state == null || this._yardDispatch) return;
     if (!this._playerDriveDownNow()) return;
@@ -5143,10 +5186,17 @@ export const npcJobsRuntime = {
     return !!(drive && (drive.destroyed === true || drive.effectiveDisabled === true));
   },
 
+  // A dead drive is a standing request: it stays pending (update() retries it every
+  // YARD_PENDING_RETRY_S) until a truck is dispatched or the drive comes back. The cooldown only
+  // throttles toasts and fresh spawns - it never strands a breakdown.
   _requestYardDispatch() {
-    if (this._yardDispatch) return;
+    if (this._yardDispatch) {
+      this._yardPending = false;
+      return;
+    }
+    this._yardPending = true;
     const now = finite(this.state.simTime, 0);
-    if (now - (this._yardLastDispatchT || -Infinity) < YARD_DISPATCH_COOLDOWN_S) return;
+    this._yardPendingNextT = now + YARD_PENDING_RETRY_S;
     if (isPlayerWanted(this.state)) {
       this._yardRefuse(now, 'Yard tender: we don\'t roll for WANTED hulls.');
       return;
@@ -5154,6 +5204,10 @@ export const npcJobsRuntime = {
     let found = this._nearestYardTender();
     if (!found) found = this._reuseReturningOncallTender();
     if (!found) {
+      if (now - (this._yardLastDispatchT || -Infinity) < YARD_DISPATCH_COOLDOWN_S) {
+        this._yardRefuse(now, 'Yard tender: the last truck is still turning around \u2014 your call is queued.');
+        return;
+      }
       const oncall = this._spawnOncallTender();
       if (oncall && oncall.refusal) {
         this._yardRefuse(now, oncall.refusal);
@@ -5168,6 +5222,7 @@ export const npcJobsRuntime = {
     const claimId = `yard-dispatch:${Number.isInteger(this.state.tick) ? this.state.tick : 0}`;
     const out = this.claimControl(found.jobId, { claimId, holder: 'yardDispatch' });
     if (!out || out.granted !== true) return;
+    this._yardPending = false;
     this._yardDispatch = {
       jobId: found.jobId, claimId, arrived: false, repaired: false,
       lastRepairT: -Infinity, hotToastT: -Infinity,
@@ -5185,6 +5240,7 @@ export const npcJobsRuntime = {
   _onPlayerDriveUp(p) {
     if (!p || p.subsystemId !== YARD_DISPATCH_DRIVE_ID) return;
     if (this.state == null || p.targetId !== this.state.playerId) return;
+    this._yardPending = false;
     const dispatch = this._yardDispatch;
     if (!dispatch) return;
     const billed = dispatch.repaired === true;
@@ -5275,6 +5331,10 @@ export const npcJobsRuntime = {
     let best = null;
     let bestD2 = Infinity;
     let refusal = null;
+    let refusalD2 = Infinity;
+    const refuse = (d2, text) => {
+      if (d2 < refusalD2) { refusalD2 = d2; refusal = text; }
+    };
     for (const station of this._oncallStations()) {
       const dx = station.pos.x - player.pos.x;
       const dz = station.pos.z - player.pos.z;
@@ -5283,13 +5343,13 @@ export const npcJobsRuntime = {
       const name = station.record.name || station.stationId;
       const outage = stationServiceOutage(this.state, station.stationId, 'repair');
       if (outage) {
-        refusal = refusal || `${name}'s repair bay is down (~${Math.max(1, Math.ceil(outage.remainingS / 60))} min) \u2014 you're on your own.`;
+        refuse(d2, `${name}'s repair bay is down (~${Math.max(1, Math.ceil(outage.remainingS / 60))} min) \u2014 you're on your own.`);
         continue;
       }
       const standing = this.state.factions && this.state.factions[station.record.factionId];
       const rep = standing && Number.isFinite(Number(standing.rep)) ? Number(standing.rep) : 0;
       if (!stationBerthAdmits(station.record, rep, this.state)) {
-        refusal = refusal || `${name} won't send a truck for you.`;
+        refuse(d2, `${name} won't send a truck for you.`);
         continue;
       }
       if (d2 < bestD2 || (d2 === bestD2 && station.stationId < best.stationId)) {
@@ -5391,6 +5451,15 @@ export const npcJobsRuntime = {
 
   _removeOncallHull(hull) {
     if (!hull) return;
+    const attachments = this._combatAttachments();
+    if (attachments && typeof attachments.listForEntity === 'function'
+      && typeof attachments.breakAttachment === 'function') {
+      for (const attachment of attachments.listForEntity(hull.id, true).slice()) {
+        if (attachment && attachment.state === 'active') {
+          attachments.breakAttachment(attachment, 'oncall_tender_retired', null);
+        }
+      }
+    }
     const helpers = this.helpers;
     if (helpers && typeof helpers.removeEntity === 'function') {
       helpers.removeEntity(hull.id, { immediate: true, reason: 'oncall_tender_retired' });
@@ -5713,6 +5782,7 @@ export const npcJobsRuntime = {
       if (!entry || !entry.job || entry.job.kind !== NPC_JOB_KIND.TENDER) continue;
       if (entry.control || entry.job.corrupt || entry.job.phase === NPC_JOB_PHASE.COMPLETE) continue;
       if (entry.sectorId !== currentSector || entry.entityId == null) continue;
+      if (entry.transient === true) continue;
       if (entry.entityId === casualty.id) continue;
       const hull = this.state.entities.get(entry.entityId);
       if (!hull || hull.alive === false || !hull.pos) continue;
@@ -6313,6 +6383,9 @@ export const npcJobsRuntime = {
     // A restore drops every lease and every transient hull: a dispatch in flight starts over from
     // the save:loaded drive check, and on-call trucks are never carried across a load.
     this._yardDispatch = null;
+    this._yardPending = false;
+    this._yardLastDispatchT = -Infinity;
+    this._yardLastRefuseT = -Infinity;
     this._retireOncallHulls();
     // World re-entry happens before this restore step. An outgoing virtual job can therefore
     // briefly re-link to an incoming durable hull during the earlier sector:enter. The saved bag
