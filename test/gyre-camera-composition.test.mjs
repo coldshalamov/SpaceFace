@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { createChaseCamera, GYRE_COMPOSITION_ZOOM_MAX } from '../src/render/camera.js';
+import { createChaseCamera, GYRE_COMPOSITION_ZOOM_MAX, GYRE_BOWL_COMPOSITION_ZOOM_MAX } from '../src/render/camera.js';
 
 const DT = 1 / 60;
 function fixture(axis, reduced = false, zoom = 144) {
@@ -102,3 +102,30 @@ test('an old launched ball does not start a new Gyre camera composition', () => 
   steps(controller, 240);
   assert.ok(controller.zoomDiagnostics().dynamicZoom < 145);
 });
+
+for (const axis of ['x', 'z']) {
+  test(`the first launched +${axis.toUpperCase()} ball's three-hit payoff stays framed for 1.6 seconds`, () => {
+    const { state, controller, player } = fixture(axis);
+    const g = state.gyreSnare;
+    g.corePos[axis] = 200;
+    steps(controller, 300);
+    g.phase = 'launching';
+    g.launchedId = g.coreId;
+    g.ballPos = { ...g.corePos };
+    for (let tick = 1; tick <= 90; tick++) {
+      g.ballPos[axis] = 200 + 326 * Math.min(tick / 65, 1);
+      g.ballVx = axis === 'x' && tick <= 65 ? 326 / (65 * DT) : 0;
+      g.ballVz = axis === 'z' && tick <= 65 ? 326 / (65 * DT) : 0;
+      controller.follow(DT);
+      if (tick === 65 || tick === 90) {
+        const edge = projectedExtent(controller.obj, g.ballPos, 64);
+        assert.ok(edge < .98, `ball at tick ${tick} must be visible: edge=${edge}, zoom=${controller.zoomDiagnostics().dynamicZoom}`);
+        assert.ok(projectedExtent(controller.obj, player.pos, player.radius) < .95, 'ship remains visible');
+      }
+      assert.ok(controller.zoomDiagnostics().dynamicZoom <= GYRE_BOWL_COMPOSITION_ZOOM_MAX);
+    }
+    assert.equal(state.camera.zoom, 144);
+    steps(controller, 600);
+    assert.ok(controller.zoomDiagnostics().dynamicZoom < 145, 'returns home despite the old ball remaining alive');
+  });
+}
