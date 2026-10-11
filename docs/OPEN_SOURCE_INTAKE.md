@@ -18,6 +18,7 @@ This is the list. A campaign that needs one of these uses that one. It does not 
 | `three.quarks` | The particle runtime. New force shapes go through it | A second particle library |
 | Rapier `@dimforge/rapier3d-compat` | The physics. Stay on it | Jolt, Havok, PhysX, or a second world |
 | Vendored Three r184, including `BatchedMesh` | Same-material hulls that should share a draw, once the probe says draws are the cost | Replacing the renderer, or a React/three stack |
+| Three's existing fflate 0.8.2 (MIT) | Synchronous gzip when an exit-save exceeds browser storage; the existing gzip decoder loads it | Normal saves that fit, or a second save format |
 | `src/render/bloom.js` | The picture's glow. It is a purpose-built pyramid with one color-managed composite | `UnrealBloomPass` or `pmndrs/postprocessing`. The name "Unreal" on Three's example pass is a bloom recipe, and this game already has its own |
 
 ### In the tree (retrieved 2026-09-22)
@@ -106,6 +107,16 @@ provenanceReviewedBy: <owner>
 Also retain dimensions, coordinate/orientation assumptions, material/color-space roles, sockets, collision/interaction proxy, LOD/HLOD strategy, compression, and measured release residency.
 
 ## 5. Promotion pipeline
+
+Runtime activation, 2026-10-10: `saveSystem.js` imports the unmodified fflate supplied by the
+installed Three 0.184.0 dependency at `node_modules/three/examples/jsm/libs/fflate.module.js`.
+Source: https://github.com/101arrowz/fflate/tree/v0.8.2; author Arjun Barrett; MIT notice in `NOTICE`.
+SHA-256: `209a4412eb48ce609edb4391992a792ffcc3983d30ee7e2b0b89a8c470f3cd8a` (89,384 source bytes).
+The production JS bundle includes the imported compressor. No new package or sim clock is added.
+It runs only after a synchronous save hits quota, at compression level 1, with a fixed gzip time;
+the existing checksum and `spaceface-save-gz` envelope remain authoritative. Quota and decode
+fixtures cover unchanged prior saves and full snapshot restoration. Maintenance follows the
+existing Three dependency; recheck this notice and save fixtures when its bundled fflate changes.
 
 1. **Evaluate off-route:** license/provenance, topology, scale, style, and technical fitness.
 2. **Normalize in source:** transforms, units, pivots, UVs, materials, semantic names, sockets, proxies, and LODs.

@@ -308,6 +308,20 @@ export const MIGRATIONS = [
       if (!valid) data.provenance = { v: 1, chains: [], openIncidents: {}, nextSeq: 0 };
     },
   },
+  {
+    from: 14,
+    to: 15,
+    fn(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+      const material = data.environmentMaterials;
+      if (!material || typeof material !== 'object' || Array.isArray(material)) {
+        data.environmentMaterials = { reactions: [], blasts: [] };
+      } else {
+        if (!Array.isArray(material.reactions)) material.reactions = [];
+        if (!Array.isArray(material.blasts)) material.blasts = [];
+      }
+    },
+  },
 ];
 
 /**
