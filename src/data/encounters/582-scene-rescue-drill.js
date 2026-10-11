@@ -14,7 +14,7 @@ export const spec = {
       "factionId": "faction_scn",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "WARD 1"
+      "scanLabel": "SCN PATROL"
     },
     {
       "role": "ship_1",
@@ -22,26 +22,26 @@ export const spec = {
       "factionId": "faction_scn",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "WARD 2"
+      "scanLabel": "DRILL CAPSULE"
     }
   ],
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Run the drill",
       "playerLine": "I will help the patrol keep the capsule on its line."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Free the tow",
       "playerLine": "I will give the capsule a clear path out of the drill."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Keep clear",
       "playerLine": "I will leave the exercise to the crews in uniform."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "phases": [
     {
@@ -213,23 +213,23 @@ export default defineEncounter(trigger, {
   "title": "Rescue Drill",
   "primaryLine": "WARD: Drill capsule under tow. The beacon is not a call for help.",
   "factionId": "faction_scn",
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Run the drill",
       "playerLine": "I will help the patrol keep the capsule on its line."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Free the tow",
       "playerLine": "I will give the capsule a clear path out of the drill."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Keep clear",
       "playerLine": "I will leave the exercise to the crews in uniform."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "receipts": {
     "a": "The capsule stayed on course. The drill ledger is still blank.",

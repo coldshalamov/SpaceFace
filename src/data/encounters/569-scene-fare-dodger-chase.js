@@ -14,7 +14,7 @@ export const spec = {
       "factionId": "faction_free",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "WARD 1"
+      "scanLabel": "UNLICENSED SKIFF"
     },
     {
       "role": "ship_1",
@@ -22,26 +22,26 @@ export const spec = {
       "factionId": "faction_scn",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "WARD 2"
+      "scanLabel": "SCN PATROL"
     }
   ],
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Read the fee",
       "playerLine": "I will back the patrol and settle the harbour fee."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Wave it through",
       "playerLine": "Let the skiff pass; the harbour can wait one run."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Stay clear",
       "playerLine": "I am staying clear; finish the crossing without me."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "phases": [
     {
@@ -203,23 +203,23 @@ export default defineEncounter(trigger, {
   "title": "Fare Dodger Chase",
   "primaryLine": "WARD: The Answering Buoy clocks one skiff skipping the harbour fee.",
   "factionId": "faction_scn",
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Read the fee",
       "playerLine": "I will back the patrol and settle the harbour fee."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Wave it through",
       "playerLine": "Let the skiff pass; the harbour can wait one run."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Stay clear",
       "playerLine": "I am staying clear; finish the crossing without me."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "receipts": {
     "a": "Fee recorded. The skiff keeps its engine and its route.",

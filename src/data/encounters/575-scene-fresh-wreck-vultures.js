@@ -14,7 +14,7 @@ export const spec = {
       "factionId": "faction_reach",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "SLIP 1"
+      "scanLabel": "VULTURE 1"
     },
     {
       "role": "ship_1",
@@ -22,7 +22,7 @@ export const spec = {
       "factionId": "faction_reach",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "SLIP 2"
+      "scanLabel": "VULTURE 2"
     },
     {
       "role": "ship_2",
@@ -30,26 +30,26 @@ export const spec = {
       "factionId": "faction_reach",
       "dx": 160,
       "dz": 70,
-      "scanLabel": "SLIP 3"
+      "scanLabel": "VULTURE 3"
     }
   ],
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Protect the claim",
       "playerLine": "I will hold the wreck clear until its owner answers."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Back the cutters",
       "playerLine": "I will leave the wreck to the Reach salvage crews."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Keep clear",
       "playerLine": "I will not enter a field where the claim is still warm."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "phases": [
     {
@@ -224,23 +224,23 @@ export default defineEncounter(trigger, {
   "title": "Fresh Wreck Vultures",
   "primaryLine": "SLIP: Fresh wreck. Reach cutters are already measuring the gaps.",
   "factionId": "faction_free",
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Protect the claim",
       "playerLine": "I will hold the wreck clear until its owner answers."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Back the cutters",
       "playerLine": "I will leave the wreck to the Reach salvage crews."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Keep clear",
       "playerLine": "I will not enter a field where the claim is still warm."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "receipts": {
     "a": "The owner kept the first claim on the beacon.",

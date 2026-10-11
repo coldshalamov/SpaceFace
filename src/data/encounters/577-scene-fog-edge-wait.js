@@ -14,7 +14,7 @@ export const spec = {
       "factionId": "faction_quiet",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "DESK 1"
+      "scanLabel": "PAPERLESS FREIGHT"
     },
     {
       "role": "ship_1",
@@ -22,26 +22,26 @@ export const spec = {
       "factionId": "faction_mts",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "DESK 2"
+      "scanLabel": "MTS CUSTOMS CUTTER"
     }
   ],
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Back the cutter",
       "playerLine": "I will help customs hold the fog edge for inspection."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Warn the runner",
       "playerLine": "I will give the freight hull time to turn away."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Stay quiet",
       "playerLine": "I will keep this channel empty and my bearing clear."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "phases": [
     {
@@ -204,23 +204,23 @@ export default defineEncounter(trigger, {
   "title": "Fog Edge Wait",
   "primaryLine": "DESK: Cutter holds the fog edge. One unlisted freight hull should arrive.",
   "factionId": "faction_mts",
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Back the cutter",
       "playerLine": "I will help customs hold the fog edge for inspection."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Warn the runner",
       "playerLine": "I will give the freight hull time to turn away."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Stay quiet",
       "playerLine": "I will keep this channel empty and my bearing clear."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "receipts": {
     "a": "The cutter kept the edge and logged the empty approach.",

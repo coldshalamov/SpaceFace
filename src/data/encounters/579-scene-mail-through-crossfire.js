@@ -14,7 +14,7 @@ export const spec = {
       "factionId": "faction_free",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "MOSS 1"
+      "scanLabel": "COURIER 1"
     },
     {
       "role": "ship_1",
@@ -22,26 +22,26 @@ export const spec = {
       "factionId": "faction_free",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "MOSS 2"
+      "scanLabel": "COURIER 2"
     }
   ],
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Escort the mail",
       "playerLine": "I will hold a clear lane for the couriers."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Back the Reach",
       "playerLine": "I will let the Reach keep the next bearing."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Stay out",
       "playerLine": "I will leave the packet to its own route."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "phases": [
     {
@@ -203,23 +203,23 @@ export default defineEncounter(trigger, {
   "title": "Mail Through Crossfire",
   "primaryLine": "MOSS: The Reach mail still runs; keep the packet on the marked bearing.",
   "factionId": "faction_free",
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Escort the mail",
       "playerLine": "I will hold a clear lane for the couriers."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Back the Reach",
       "playerLine": "I will let the Reach keep the next bearing."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Stay out",
       "playerLine": "I will leave the packet to its own route."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "receipts": {
     "a": "Both couriers carried the packet past the held dock.",

@@ -9,7 +9,12 @@ import { planEncounters } from '../src/systems/encounterDirector.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import { applyMotion, compileVignette } from '../src/systems/vignetteInterpreter.js';
 import { pickLaneErrand, armLaneErrands, applyLaneErrandIntent, LANE_ERRANDS, laneContractOwns } from '../src/systems/laneErrands.js';
-import { livedNextAtFor, livedScenePlacement, pickLivedVignette } from '../src/systems/livedWorldDirector.js';
+import {
+  livedNextAtFor,
+  livedScenePlacement,
+  livedSceneRequestData,
+  pickLivedVignette,
+} from '../src/systems/livedWorldDirector.js';
 import { advance, createJob } from '../src/systems/npcJobs.js';
 
 const LIVED_SITUATIONS = [
@@ -22,6 +27,87 @@ const LIVED_PLACES = [
   'outlaw_zone', 'radiation_field', 'nebula_fog', 'ambush_lane',
   'anomaly_deep', 'planetary_mass',
 ];
+
+function runVignetteChoice(runtime, encounter, spec, choiceId) {
+  const choices = (spec && spec.choices) || encounter.choices;
+  const timeoutChoice = (spec && spec.timeoutChoice) || encounter.timeoutChoice;
+  const title = (spec && spec.title) || encounter.title;
+  const id = (spec && spec.id) || encounter.id;
+  let now = 100;
+  let nextId = 1;
+  const calls = { offers: [], grants: [], reps: [], resolved: [], aborts: [] };
+  const state = { encounterDirector: { stats: {} }, entities: new Map() };
+  const live = {
+    id: `test:${id}`,
+    shapeId: id,
+    vars: {},
+    ids: [],
+    roles: {},
+    anchor: { x: 0, z: 0 },
+    phase: 'telegraph',
+    data: { sceneAxis: { ux: 1, uz: 0 } },
+    shape: { choices, timeoutChoice, title },
+  };
+  const d = {
+    now: () => now,
+    player: () => ({ pos: { x: 30, z: 10 } }),
+    say() {},
+    offerChoices(_live, ids, timeout, deadlineAt) {
+      calls.offers.push({ ids: [...ids], timeout, deadlineAt });
+    },
+    spawnShips(row, ships) {
+      const ids = ships.map((ship) => {
+        const entityId = nextId++;
+        state.entities.set(entityId, {
+          id: entityId,
+          type: 'ship',
+          alive: true,
+          pos: { ...ship.pos },
+          rot: 0,
+          data: {},
+        });
+        row.ids.push(entityId);
+        row.roles[entityId] = ship.role;
+        return entityId;
+      });
+      return ids;
+    },
+    spawnProp() {
+      return { id: nextId++, data: {} };
+    },
+    entsOf(row) {
+      return row.ids.map((entityId) => state.entities.get(entityId))
+        .filter((entity) => entity && entity.type === 'ship');
+    },
+    grant(amount, reason) { calls.grants.push({ amount, reason }); },
+    rep(factionId, delta, reason) { calls.reps.push({ factionId, delta, reason }); },
+    resolve(row, outcome) {
+      calls.resolved.push(outcome);
+      row.phase = 'done';
+    },
+    abort(_row, reason) {
+      calls.aborts.push(reason);
+      throw new Error(`abort ${reason}`);
+    },
+  };
+
+  runtime.fire(d, live, state);
+  let steps = 0;
+  while (live.phase !== 'offer' && live.phase !== 'done' && steps++ < 100) {
+    assert.ok(Number.isFinite(live.deadlineAt), `${id} phase ${live.phase} has no deadline`);
+    now = live.deadlineAt + 0.01;
+    runtime.tick(d, live, state, now);
+  }
+  assert.equal(live.phase, 'offer', `${id} did not reach its offer`);
+  if (choiceId === timeoutChoice) {
+    now = live.deadlineAt + 0.01;
+    runtime.tick(d, live, state, now);
+  } else {
+    runtime.choose(d, live, state, choiceId);
+  }
+  assert.equal(live.phase, 'done', `${id} choice ${choiceId} did not finish`);
+  return { calls, spawned: live.plan.ships };
+}
 
 test('lived vignettes stay out of the seeded day planner', () => {
   const lived = Object.values(ENCOUNTERS).filter((enc) => enc.livedVignette === true);
@@ -87,6 +173,9 @@ test('ambient scenes compile, use the lived trigger contract, and cover every no
     assert.equal(enc.ambientScene, true, enc.id);
     assert.deepEqual(enc.zoneTypes, LIVED_PLACES, enc.id);
     assert.ok(Array.isArray(enc.sectorIds) && enc.sectorIds.length > 0, enc.id);
+    assert.ok(Array.isArray(spec.choices), `${enc.id} spec choices are an array`);
+    assert.ok(Array.isArray(enc.choices), `${enc.id} encounter choices are an array`);
+    assert.ok(spec.cast.every((member) => member.scanLabel), `${enc.id} cast has role labels`);
     for (const sectorId of enc.sectorIds) covered.add(sectorId);
 
     const phases = new Map(spec.phases.map((phase) => [phase.id, phase]));
@@ -107,7 +196,7 @@ test('ambient scenes compile, use the lived trigger contract, and cover every no
     assert.equal(spec.timeoutChoice, 'c');
     assert.equal(phases.get('say_c').next, 'resolve_c');
     assert.equal(phases.get('resolve_c').verb, 'resolve');
-    assert.equal(spec.choices.c.id, 'c');
+    assert.equal(spec.choices.find((choice) => choice.id === 'c').id, 'c');
     assert.equal(phases.get('grant_a').amount, 30);
     assert.equal(phases.get('rep_a').factionId, enc.factionId);
     assert.equal(phases.get('rep_a').delta, 2);
@@ -126,6 +215,113 @@ test('ambient scenes compile, use the lived trigger contract, and cover every no
   for (const sector of SECTORS) {
     if (sector.id !== 'sector_the_bolus') assert.ok(covered.has(sector.id), `no ambient scene for ${sector.id}`);
   }
+});
+
+test('every ambient vignette executes a/b choices and times out through c', () => {
+  const modules = ENCOUNTER_MODULES.filter((module) => (
+    module.default && module.default.ambientScene === true
+  ));
+  for (const module of modules) {
+    const encounter = module.default;
+    const spec = module.spec;
+    for (const choiceId of ['a', 'b', 'c']) {
+      let result;
+      assert.doesNotThrow(() => {
+        result = runVignetteChoice(compileVignette(spec), encounter, spec, choiceId);
+      }, `${encounter.id} choice ${choiceId}`);
+      assert.deepEqual(result.calls.aborts, [], encounter.id);
+      assert.deepEqual(result.calls.offers[0].ids, ['a', 'b', 'c'], encounter.id);
+      assert.equal(result.calls.offers[0].timeout, 'c', encounter.id);
+      assert.deepEqual(result.calls.resolved, [choiceId], encounter.id);
+      assert.deepEqual(
+        result.spawned.map((ship) => ship.scanLabel),
+        spec.cast.map((member) => member.scanLabel),
+        encounter.id,
+      );
+
+      if (choiceId === 'a') {
+        assert.deepEqual(result.calls.grants, [{ amount: 30, reason: spec.id }], encounter.id);
+        assert.deepEqual(result.calls.reps, [{
+          factionId: spec.factionId,
+          delta: 2,
+          reason: spec.id,
+        }], encounter.id);
+      } else if (choiceId === 'b') {
+        assert.deepEqual(result.calls.grants, [], encounter.id);
+        const runnerRep = spec.phases.find((phase) => phase.id === 'rep_b_runner');
+        const authorityRep = spec.phases.find((phase) => phase.id === 'rep_b_authority');
+        const expectedReps = [];
+        if (runnerRep) {
+          expectedReps.push({
+            factionId: runnerRep.factionId,
+            delta: 1,
+            reason: spec.id,
+          });
+        }
+        expectedReps.push({
+          factionId: authorityRep.factionId,
+          delta: -1,
+          reason: spec.id,
+        });
+        assert.deepEqual(result.calls.reps, expectedReps, encounter.id);
+      } else {
+        assert.deepEqual(result.calls.grants, [], encounter.id);
+        assert.deepEqual(result.calls.reps, [], encounter.id);
+      }
+    }
+  }
+});
+
+test('a sample of generated lived and HAND scenes still resolves through every choice', () => {
+  const lived = ENCOUNTER_MODULES.filter((module) => (
+    module.default && module.default.livedVignette === true
+      && module.default.id.startsWith('lived_')
+  )).slice(0, 10);
+  const hand = ENCOUNTER_MODULES.filter((module) => (
+    module.default && module.default.livedVignette === true
+      && !module.default.ambientScene
+      && !module.default.id.startsWith('lived_')
+  )).slice(0, 3);
+  assert.equal(lived.length, 10);
+  assert.equal(hand.length, 3);
+
+  for (const module of [...lived, ...hand]) {
+    const encounter = module.default;
+    const choices = encounter.choices.map((choice) => choice.id);
+    for (const choiceId of choices) {
+      let result;
+      assert.doesNotThrow(() => {
+        result = runVignetteChoice(module.runtime, encounter, null, choiceId);
+      }, `${encounter.id} choice ${choiceId}`);
+      assert.deepEqual(result.calls.aborts, [], encounter.id);
+      assert.deepEqual(result.calls.resolved, [choiceId], encounter.id);
+    }
+  }
+});
+
+test('ambient scene data omits overlay crew while non-ambient scenes keep it', () => {
+  const overlay = livedOverlayFor('sector_helios_prime');
+  const axis = { ux: -1, uz: 0 };
+  const ambientData = livedSceneRequestData({
+    ambient: true,
+    overlay,
+    seed: 47,
+    encounterId: 'scene_fare_dodger_chase',
+    day: 2,
+    axis,
+  });
+  assert.deepEqual(ambientData, { sceneAxis: axis });
+  assert.equal(ambientData.crew, undefined);
+  assert.equal(ambientData.livedOverlay, undefined);
+
+  const livedData = livedSceneRequestData({
+    ambient: false,
+    overlay,
+    seed: 47,
+    encounterId: 'lived_scene',
+    day: 2,
+  });
+  assert.equal(livedData.livedOverlay.crew, overlay.crew);
 });
 
 test('every sector has a frozen six-line lived overlay with unique lines', () => {

@@ -14,7 +14,7 @@ export const spec = {
       "factionId": "faction_choir",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "CANTOR 1"
+      "scanLabel": "PILGRIM 1"
     },
     {
       "role": "ship_1",
@@ -22,7 +22,7 @@ export const spec = {
       "factionId": "faction_choir",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "CANTOR 2"
+      "scanLabel": "PILGRIM 2"
     },
     {
       "role": "ship_2",
@@ -30,26 +30,26 @@ export const spec = {
       "factionId": "faction_choir",
       "dx": 160,
       "dz": 70,
-      "scanLabel": "CANTOR 3"
+      "scanLabel": "PILGRIM 3"
     }
   ],
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Keep their passage",
       "playerLine": "I will hold the lane while the lamp procession passes."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Cross the line",
       "playerLine": "I will cross their bearing before the last lamp fades."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Wait beyond",
       "playerLine": "I will wait beyond the procession and its lamps."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "phases": [
     {
@@ -205,23 +205,23 @@ export default defineEncounter(trigger, {
   "title": "Pilgrim Lamp Walk",
   "primaryLine": "CANTOR: We walk the lamp line where the Veil loses its edges.",
   "factionId": "faction_choir",
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Keep their passage",
       "playerLine": "I will hold the lane while the lamp procession passes."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Cross the line",
       "playerLine": "I will cross their bearing before the last lamp fades."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Wait beyond",
       "playerLine": "I will wait beyond the procession and its lamps."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "receipts": {
     "a": "The last lamp crossed without losing the first.",

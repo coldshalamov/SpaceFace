@@ -14,7 +14,7 @@ export const spec = {
       "factionId": "faction_mts",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "DESK 1"
+      "scanLabel": "MTS TENDER"
     },
     {
       "role": "ship_1",
@@ -22,26 +22,26 @@ export const spec = {
       "factionId": "faction_mts",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "DESK 2"
+      "scanLabel": "FREE HAULER"
     }
   ],
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Take the lamp",
       "playerLine": "I will hold the work lamp while they finish refueling."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Back the hauler",
       "playerLine": "I will lend the free crew a clear line out."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Leave them coupled",
       "playerLine": "I will leave the fuel line to its own hands."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "phases": [
     {
@@ -205,23 +205,23 @@ export default defineEncounter(trigger, {
   "title": "Refuel Hookup",
   "primaryLine": "DESK: Two hulls are coupled; the lamp-holder still has no shift.",
   "factionId": "faction_mts",
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Take the lamp",
       "playerLine": "I will hold the work lamp while they finish refueling."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Back the hauler",
       "playerLine": "I will lend the free crew a clear line out."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Leave them coupled",
       "playerLine": "I will leave the fuel line to its own hands."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "receipts": {
     "a": "The lamp stayed steady until the coupler went dry.",

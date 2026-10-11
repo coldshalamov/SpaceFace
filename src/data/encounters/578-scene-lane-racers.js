@@ -14,7 +14,7 @@ export const spec = {
       "factionId": "faction_free",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "DESK 1"
+      "scanLabel": "RACER 1"
     },
     {
       "role": "ship_1",
@@ -22,7 +22,7 @@ export const spec = {
       "factionId": "faction_free",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "DESK 2"
+      "scanLabel": "RACER 2"
     },
     {
       "role": "ship_2",
@@ -30,26 +30,26 @@ export const spec = {
       "factionId": "faction_mts",
       "dx": 160,
       "dz": 70,
-      "scanLabel": "DESK 3"
+      "scanLabel": "MTS PATROL"
     }
   ],
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Clear the lane",
       "playerLine": "I will ask the racers to leave room for freight."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Pick a hull",
       "playerLine": "I will back the lead hauler through the next marker."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Stay off course",
       "playerLine": "I will keep my hull out of their race."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "phases": [
     {
@@ -212,23 +212,23 @@ export default defineEncounter(trigger, {
   "title": "Lane Racers",
   "primaryLine": "DESK: Two haulers have made the weigh a starting line.",
   "factionId": "faction_mts",
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Clear the lane",
       "playerLine": "I will ask the racers to leave room for freight."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Pick a hull",
       "playerLine": "I will back the lead hauler through the next marker."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Stay off course",
       "playerLine": "I will keep my hull out of their race."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "receipts": {
     "a": "The haulers opened one lane for the waiting freight.",

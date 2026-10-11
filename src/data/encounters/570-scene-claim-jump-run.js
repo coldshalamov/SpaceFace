@@ -14,7 +14,7 @@ export const spec = {
       "factionId": "faction_reach",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "FOREMAN 1"
+      "scanLabel": "CLAIM JUMPER"
     },
     {
       "role": "ship_1",
@@ -22,7 +22,7 @@ export const spec = {
       "factionId": "faction_dmc",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "FOREMAN 2"
+      "scanLabel": "DMC SEAM PATROL"
     },
     {
       "role": "ship_2",
@@ -30,26 +30,26 @@ export const spec = {
       "factionId": "faction_dmc",
       "dx": 160,
       "dz": 70,
-      "scanLabel": "FOREMAN 3"
+      "scanLabel": "DMC SEAM PATROL"
     }
   ],
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Hold the claim",
       "playerLine": "I will help the watch recover the stolen ore."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Cover the jumper",
       "playerLine": "I will keep the claim crew looking at the wrong seam."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Leave the seam",
       "playerLine": "I am leaving the belt to the crews already there."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "phases": [
     {
@@ -214,23 +214,23 @@ export default defineEncounter(trigger, {
   "title": "Claim Jump Run",
   "primaryLine": "FOREMAN: That ore left the Quarry Cathedral without a receipt.",
   "factionId": "faction_dmc",
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Hold the claim",
       "playerLine": "I will help the watch recover the stolen ore."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Cover the jumper",
       "playerLine": "I will keep the claim crew looking at the wrong seam."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Leave the seam",
       "playerLine": "I am leaving the belt to the crews already there."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "receipts": {
     "a": "The watch logged the load. The seam remains open.",

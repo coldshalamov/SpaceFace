@@ -14,7 +14,7 @@ export const spec = {
       "factionId": "faction_reach",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "SLIP 1"
+      "scanLabel": "PRESS GANG TUG"
     },
     {
       "role": "ship_1",
@@ -22,26 +22,26 @@ export const spec = {
       "factionId": "faction_free",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "SLIP 2"
+      "scanLabel": "PRESSED HAULER"
     }
   ],
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Cut the tow",
       "playerLine": "I will help the hauler break free of that line."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Look away",
       "playerLine": "I will leave the Reach crew to finish its business."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Keep your distance",
       "playerLine": "I will keep clear of both hulls and their paperwork."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "phases": [
     {
@@ -204,23 +204,23 @@ export default defineEncounter(trigger, {
   "title": "Press Gang Tow",
   "primaryLine": "SLIP: The Concealed Harbour can see this tow. Call it a transfer.",
   "factionId": "faction_free",
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Cut the tow",
       "playerLine": "I will help the hauler break free of that line."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Look away",
       "playerLine": "I will leave the Reach crew to finish its business."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Keep your distance",
       "playerLine": "I will keep clear of both hulls and their paperwork."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "receipts": {
     "a": "The tow line went slack. The hauler kept its people.",

@@ -14,7 +14,7 @@ export const spec = {
       "factionId": "faction_dmc",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "FOREMAN 1"
+      "scanLabel": "TUG"
     },
     {
       "role": "ship_1",
@@ -22,26 +22,26 @@ export const spec = {
       "factionId": "faction_dmc",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "FOREMAN 2"
+      "scanLabel": "DEAD HAULER"
     }
   ],
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Clear the tow",
       "playerLine": "I will get the dead hull into the yard intact."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Claim salvage first",
       "playerLine": "I will mark the salvage before that tow reaches the yard."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Leave the tag",
       "playerLine": "I will leave the claim crews to settle the hull."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "phases": [
     {
@@ -206,23 +206,23 @@ export default defineEncounter(trigger, {
   "title": "Yard Tow",
   "primaryLine": "FOREMAN: Long Berth has a dead hull. One tow line is enough.",
   "factionId": "faction_dmc",
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Clear the tow",
       "playerLine": "I will get the dead hull into the yard intact."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Claim salvage first",
       "playerLine": "I will mark the salvage before that tow reaches the yard."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Leave the tag",
       "playerLine": "I will leave the claim crews to settle the hull."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "receipts": {
     "a": "The tug reached the yard with its claim tag visible.",

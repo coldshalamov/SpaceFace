@@ -14,7 +14,7 @@ export const spec = {
       "factionId": "faction_quiet",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "CLERK 1"
+      "scanLabel": "PAPERLESS FREIGHT"
     },
     {
       "role": "ship_1",
@@ -22,26 +22,26 @@ export const spec = {
       "factionId": "faction_scn",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "CLERK 2"
+      "scanLabel": "CUSTOMS CUTTER"
     }
   ],
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Back the cutter",
       "playerLine": "I will help customs take the unlisted freight."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Clear a path",
       "playerLine": "I will give the paperless hull one clean line into fog."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Stay unlisted",
       "playerLine": "I am not adding my name to somebody else’s manifest."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "phases": [
     {
@@ -206,23 +206,23 @@ export default defineEncounter(trigger, {
   "title": "Paperless Dash",
   "primaryLine": "CLERK: Freight has no papers. The fog is not a stamp.",
   "factionId": "faction_scn",
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Back the cutter",
       "playerLine": "I will help customs take the unlisted freight."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Clear a path",
       "playerLine": "I will give the paperless hull one clean line into fog."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Stay unlisted",
       "playerLine": "I am not adding my name to somebody else’s manifest."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "receipts": {
     "a": "The cutter got a bearing. The cargo stayed covered.",

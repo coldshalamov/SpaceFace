@@ -14,7 +14,7 @@ export const spec = {
       "factionId": "faction_quiet",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "ARCHIVIST 1"
+      "scanLabel": "RECORD RUNNER"
     },
     {
       "role": "ship_1",
@@ -22,26 +22,26 @@ export const spec = {
       "factionId": "faction_archive",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "ARCHIVIST 2"
+      "scanLabel": "ARCHIVE WARDEN"
     }
   ],
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Recover the record",
       "playerLine": "I will help the archive bring the record back."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Cover the runner",
       "playerLine": "I will keep the quiet hull ahead of the archive."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Leave the file",
       "playerLine": "I will not take custody of a moving record."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "phases": [
     {
@@ -203,23 +203,23 @@ export default defineEncounter(trigger, {
   "title": "Archive Record Tail",
   "primaryLine": "ARCHIVIST: A stolen record is running. Its last byte names Orcus.",
   "factionId": "faction_archive",
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Recover the record",
       "playerLine": "I will help the archive bring the record back."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Cover the runner",
       "playerLine": "I will keep the quiet hull ahead of the archive."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Leave the file",
       "playerLine": "I will not take custody of a moving record."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "receipts": {
     "a": "The archive has a bearing. The record is still incomplete.",

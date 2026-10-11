@@ -14,7 +14,7 @@ export const spec = {
       "factionId": "faction_choir",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "CANTOR 1"
+      "scanLabel": "PILGRIM 1"
     },
     {
       "role": "ship_1",
@@ -22,7 +22,7 @@ export const spec = {
       "factionId": "faction_choir",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "CANTOR 2"
+      "scanLabel": "PILGRIM 2"
     },
     {
       "role": "ship_2",
@@ -30,26 +30,26 @@ export const spec = {
       "factionId": "faction_choir",
       "dx": 160,
       "dz": 70,
-      "scanLabel": "CANTOR 3"
+      "scanLabel": "PILGRIM 3"
     }
   ],
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Hold the lane",
       "playerLine": "I will keep the crossing clear until the column passes."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Cross the column",
       "playerLine": "I will cross their line before the dark berth closes."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Wait outside",
       "playerLine": "I will wait beyond the route and let them pass."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "phases": [
     {
@@ -206,23 +206,23 @@ export default defineEncounter(trigger, {
   "title": "Funeral Column",
   "primaryLine": "CANTOR: The Candle Fleet held one dark place for this column.",
   "factionId": "faction_choir",
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Hold the lane",
       "playerLine": "I will keep the crossing clear until the column passes."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Cross the column",
       "playerLine": "I will cross their line before the dark berth closes."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Wait outside",
       "playerLine": "I will wait beyond the route and let them pass."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "receipts": {
     "a": "The column crossed without changing its order.",

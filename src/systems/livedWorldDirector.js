@@ -93,6 +93,19 @@ export function livedScenePlacement(player, seed, sectorId, zoneKey, day, encoun
   };
 }
 
+export function livedSceneRequestData({ ambient, overlay, seed, encounterId, day, axis }) {
+  const data = {};
+  if (overlay && !ambient) {
+    data.livedOverlay = {
+      sectorId: overlay.sectorId,
+      crew: overlay.crew,
+      line: overlay.lines[hash32(seed, encounterId, day, 'lived-line') % overlay.lines.length],
+    };
+  }
+  if (axis) data.sceneAxis = axis;
+  return Object.keys(data).length ? data : undefined;
+}
+
 function survivalLive(state) {
   const run = state.run;
   return !!(run && run.kind === 'survival' && run.phase && run.phase !== 'inactive');
@@ -181,15 +194,14 @@ export function tickLivedVignettes(runtime) {
     ? livedScenePlacement(player, seed, sectorId, zoneKey, day, pick.id)
     : null;
   const ang = ambient ? 0 : (hash32(seed, pick.id, day, 'lived-angle') % 628) / 100;
-  const data = {};
-  if (overlay) {
-    data.livedOverlay = {
-      sectorId,
-      crew: overlay.crew,
-      line: overlay.lines[hash32(seed, pick.id, day, 'lived-line') % overlay.lines.length],
-    };
-  }
-  if (placement) data.sceneAxis = placement.axis;
+  const data = livedSceneRequestData({
+    ambient,
+    overlay,
+    seed,
+    encounterId: pick.id,
+    day,
+    axis: placement && placement.axis,
+  });
   const result = director.requestAuthoredEncounter({
     shapeId: pick.id,
     encounterId: `lived:${pick.id}`,
@@ -200,7 +212,7 @@ export function tickLivedVignettes(runtime) {
     },
     zoneType: zone.type,
     zoneName: zone.name || zone.id,
-    data: Object.keys(data).length ? data : undefined,
+    data,
     force: true,
   });
   if (!dir.stats) dir.stats = {};

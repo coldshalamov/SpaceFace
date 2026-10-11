@@ -14,7 +14,7 @@ export const spec = {
       "factionId": "faction_mts",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "CLERK 1"
+      "scanLabel": "HAULER"
     },
     {
       "role": "ship_1",
@@ -22,26 +22,26 @@ export const spec = {
       "factionId": "faction_scn",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "CLERK 2"
+      "scanLabel": "CUSTOMS CUTTER"
     }
   ],
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Back the search",
       "playerLine": "I will help customs match the pod to its manifest."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Back the hauler",
       "playerLine": "I will keep the cutter from turning a mismatch into seizure."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Stay outside",
       "playerLine": "I am not joining a count that has already started."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "phases": [
     {
@@ -214,23 +214,23 @@ export default defineEncounter(trigger, {
   "title": "Manifest Stop And Search",
   "primaryLine": "CLERK: Opened pod sits at the weigh; read the seal back.",
   "factionId": "faction_scn",
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Back the search",
       "playerLine": "I will help customs match the pod to its manifest."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Back the hauler",
       "playerLine": "I will keep the cutter from turning a mismatch into seizure."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Stay outside",
       "playerLine": "I am not joining a count that has already started."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "receipts": {
     "a": "Customs marked the pod opened. The hauler kept its berth.",

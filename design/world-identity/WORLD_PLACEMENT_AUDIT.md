@@ -13,8 +13,8 @@ Source: `coldshalamov/SpaceFace` @ `master` (2026-10-11). Every count below come
 1. **Ceres and Helios are hand-made. Most other sectors are not.** Ceres alone has 4 camera-scale activity pockets (9 actor slots), 4 one-offs, Kilnback, Pallet Jack, Red Kite, Tally Three, Sable Venn, Towline Table, the Kettle Line, the Wreck Cathedral and the Ilex Ark's destination. Helios has Vesper, Morrow, 5 one-offs and the Candle Fleet. The 14 rim sectors (Nyx → Dione) appear in only **10–16 source files each**, compared with **35–64** for the 10 core sectors. Each rim sector has roughly 1 station, 2 fields, 1 one-off, 1 lane contact, a way-of-life row, a composition and its frontier zones.
 2. **Most encounters are templated.** 176 of the 281 encounters are generated "lived" vignettes: **30 nouns × 6 zone types**, all `situation: toll`, played by the same 3 archetypes (`choir_zealot`, `mule_trader`, `patrol_lawman`) through the same phase verbs. That's a lot of content, but it feels like one scene repeated. `situation: toll` accounts for 179/281 encounters.
 3. **Encounters follow zone *type*, not sector.** `livedWorldDirector` scans `zoneAt(player)` every 6 s and fires by zone type. Only about 15 encounters are gated to a specific sector. So a `trade_lane` in Dione looks the same as one in Tethys. This one structural fact causes most of the "same everywhere" feeling.
-4. **Physics toys are rare.** 10 of 25 sectors have a signature toy (Claim Cracker, Excavator Jaws, Weigh Clamp, Shear Bar, Scrap Baler, Bell Ringer, Tailings Dragline, Cold Draw, Claim Scarecrow, Fissure Cracker). The other 15 say "explicitly none".
-5. **One-offs are good but static.** All 29 one-offs are prop clusters with a "why" line. Only the Ceres tug has a physical body. Every rim sector gets exactly one.
+4. **Physics toys are rare.** 11 sectors have a signature kill machine (Claim Cracker, Excavator Jaws/Furnace Mouth/Mass-Driver Breech, Weigh Clamp, Shear Jaws, Scrap Baler, Bell Ringer, Tailings Sweep, Cold Draw, Claim Scarecrow, Fissure Cracker), Pallas has the debris-reef current with mines, and Eris has the Metronome beam field; the way-of-life row still says "explicitly none" for 15 sectors, and 12 rim sectors have no physical toy at all.
+5. **One-offs are good but mostly static.** 29 one-offs, each a prop cluster with a "why" line; 11 carry a physical body you can rope or shove (Long Berth tug, Runaway Ladle, Tally Keg, Spare Keg, The Settling, The Erased, Impound Shelf, The Pour, Drift Choir, Held Note, The Dispute). Every rim sector gets exactly one.
 6. **The world mostly reacts to the player.** Law has real witness/chase/split behaviour against unlawful actors (`lawSecurity.js`), and NPC jobs have six distinct trade phase graphs (`npcJobs.js`). But there is only one authored "the world does something to itself in front of you" layer, and it is thin: `flavor/050-roaming-events.js` has just 2 roaming events (`insolvent`, `slow_fleet`). I found no authored NPC-vs-NPC police chase scene (inference from grep: chase logic exists in law response, not as an ambient set piece).
 7. **Assets are reused well.** The place-prop kit (ore containers, habitat pods, lane pins, worklight towers, transponder gates, cargo pods, slurry tanks, the 60+ `aftermath_*` wreck pieces) is reused across one-offs, dressing and authored places. The cheapest big win is **recombining this kit per sector** (new scenes from existing props), not making new models.
 
@@ -117,12 +117,13 @@ There are 18 categories. Each one lists the **existing types** with evidence, th
 10. *Field silhouettes visible from the map*: each composition reads as a glyph on the sector map, so players can navigate by shape.
 
 ### C. Hazard geography
-**Existing (5):**
+**Existing (6):**
 1. Four hazard types: dense asteroid, nebula, radiation, debris.
 2. Hazard stacking in deep sectors (Ashfall radiation + debris ×2; Charon radiation + asteroid).
 3. Industrial hazards: Vesta furnace/slag radiation and the Runaway Ladle.
 4. Interior hazard sector: the Bolus throat (cone/iris/latch rules in `theBolus.js`).
 5. Hazards that hide crime: Pallas fog cover, the Smuggler's Archipelago.
+6. *Weather volumes*: storm lanes + radiation belts for Veil, Vesta and Io (`WEATHER_VOLUMES`), plus the Vesta ore winnow and the Ceres Cinder Sluice current.
 
 **New (10):**
 1. ★ *Hazard as timing gate*: radiation pulses on a 40 s cycle (Charon, Rhea). Cross between pulses; NPC haulers visibly wait for the window.
@@ -269,7 +270,7 @@ There are 18 categories. Each one lists the **existing types** with evidence, th
 ### K. Environmental storytelling one-offs and easter eggs
 **Existing (5):**
 1. 29 deterministic station-relative one-offs, each with a "why" line. Examples: The Long Berth tug, the Strut Shrine, The Great Tanker, the Answering Buoy, the Runaway Ladle, the Customs Lamp, The Erased, the False Gate, the Watcher's Tithe, the Held Note.
-2. Physical one-offs: the Ceres tug (`physicalBody`, mass 180) can be roped and shoved.
+2. *Physical one-offs*: 11 of the 29 carry `physicalBody` (tug, ladle, kegs, The Settling, The Erased, Impound Shelf, The Pour, Drift Choir, Held Note, The Dispute) — rope/shove props.
 3. Memorials: `memorial_array` ×7, the Candle Fleet, the Helios Memorial Array zone.
 4. Visual-only jokes: the Spare Keg, the Disputed Keg, The Settling, the Double Take.
 5. Hidden lore buoys: the Love Letter Buoy (depth H4), the Answering Buoy.
@@ -366,13 +367,13 @@ There are 18 categories. Each one lists the **existing types** with evidence, th
 10. *Alien growth on player structures* over long absences.
 ### P. Signature toys and environmental machinery (physics play)
 **Existing (4):**
-1. 9 environmental machines plus Ceres's Excavator Jaws: Claim Cracker (Helios), Weigh Clamp (Tethys), Shear Bar (Vesta), Scrap Baler (Sker), Bell Ringer (Io), Tailings Dragline (Charon), Cold Draw (Veil), Claim Scarecrow (Ashfall), Fissure Cracker (Haumea).
+1. 9 environmental machines plus Ceres's Excavator Jaws: Claim Cracker (Helios), Weigh Clamp (Tethys), Shear Bar (Vesta), Scrap Baler (Sker), Bell Ringer (Io), Tailings Dragline (Charon), Cold Draw (Veil), Claim Scarecrow (Ashfall), Fissure Cracker (Haumea). Plus the Pallas debris-reef current + mines and the Eris Metronome beam.
 2. Rope/tow/shove physics on bodies (the tug, salvage, the Towline Table).
 3. Ruckus RU-7: a demolition tug whose work order is now "play".
 4. Ravel's gravity loom and Morrow's momentum rescue as physics characters.
 
 **New (8):**
-1. ★ *A toy for each of the 15 "explicitly none" sectors*: Pallas *Reef Bumper* (pinball for rock), Nyx *Paper Shredder* (destroys manifests → heat), Hyperion *Cut Saw*, Kepler *Capsize Winch*, Orcus *Dim Lamp Post*, Rhea *Pour Gate*, Eris *Drift Net*, Phoebe *Tuning Fork*, Nereid *Ice Sled*, Proteus *Well Bucket*, Triton *Wake Kite*, Eunomia *License Stamp*, Sedna *Patch Gun*, Dione *Lane Gate*, Bolus *Peristalsis Valve*.
+1. ★ *A toy for each of the 13 remaining "explicitly none" sectors*: Nyx *Paper Shredder* (destroys manifests → heat), Hyperion *Cut Saw*, Kepler *Capsize Winch*, Orcus *Dim Lamp Post*, Rhea *Pour Gate*, Phoebe *Tuning Fork*, Nereid *Ice Sled*, Proteus *Well Bucket*, Triton *Wake Kite*, Eunomia *License Stamp*, Sedna *Patch Gun*, Dione *Lane Gate*, Bolus *Peristalsis Valve*.
 2. ★ *NPCs using the toys in front of you*: every toy gets an NPC operator cycle (via the job kernel), so the player first *watches* the toy being used.
 3. *Toy combos*: a Claim Cracker charge thrown into a Scrap Baler.
 4. *Toy contests*: timed challenges with leaderboards at each toy.
@@ -559,7 +560,7 @@ Each recipe uses **existing** props, actors and systems. *(new)* marks the rare 
 | 17 | **Ice calving** | icy rocks, `drill_platform_cold` | Fissure Cracker, surveyor | Haumea |
 | 18 | **Pour line** | `conveyor_truss`, `radiator_bank`, `power_skid` | Kilnback, Shear Bar | Vesta |
 | 19 | **Lantern walk** | `nav_buoy` lamps, Lantern Cyst | Solstice, pilgrims | Sedna |
-| 20 | **Wreck-reef pinball** | `debris_chunk`, `aftermath_frag_*` | Ravel, Reef Bumper toy *(new toy)* | Pallas |
+| 20 | **Wreck-reef pinball** | `debris_chunk`, `aftermath_frag_*` | Ravel, the existing reef current + mines | Pallas |
 | 21 | **Monitor dodge** | Concord Monitors Ridge/Hollow/Shoal | heist stealth | Tethys |
 | 22 | **Mail sort** | `container_rack`, `transfer_arm`, Bell Ringer | courier lane contacts | Io |
 | 23 | **Front-line wall** | `interdiction_buoy`, `aftermath_deb_corvette_*` | two faction patrols | Io |
@@ -586,7 +587,7 @@ Scored 1–10 from the source audit. **Fresh** is the inverse of repetitiveness 
 | Charon Expanse | 6 | 8 | 6 | 7 | 7 | 7 | 5 | 6 | **6.5** | strong sites, few actors moving between them |
 | Sker Haven | 7 | 7 | 6 | 7 | 7 | 6 | 5 | 6 | **6.4** | outlaw port shown mostly through combat; port life missing |
 | Vesta Forge | 6 | 7 | 6 | 7 | 7 | 6 | 5 | 6 | **6.3** | the Ladle and Shear Bar are good; the pour schedule is invisible |
-| Pallas Drift | 6 | 7 | 6 | 7 | 7 | 6 | 4 | 4 | **5.9** | Ravel + Quiessence are good; "reef pinball" toy missing |
+| Pallas Drift | 6 | 7 | 6 | 7 | 7 | 6 | 4 | 6 | **6.1** | Ravel + Quiessence are good; "reef pinball" toy missing |
 | Io Reach | 6 | 7 | 5 | 6 | 6 | 6 | 4 | 5 | **5.6** | "contested floor" isn't shown; no visible front |
 | The Bolus | 7 | 10 | 9 | 10 | 10 | 5 | 6 | 4 | **7.6** | unique interior; tiny cast |
 | Dione Lane | 4 | 4 | 3 | 3 | 4 | 4 | 3 | 2 | **3.4** | reads as a Tethys copy (trade_hub + military, no hazard) |
@@ -596,7 +597,7 @@ Scored 1–10 from the source audit. **Fresh** is the inverse of repetitiveness 
 | Haumea Rift | 5 | 6 | 4 | 5 | 5 | 4 | 3 | 5 | **4.6** | has the Fissure Cracker + Deepsurvey wreck; best-equipped rim sector |
 | Nyx March | 4 | 5 | 3 | 4 | 4 | 4 | 3 | 2 | **3.6** | 4th fence; False Gate is the one spark |
 | Kepler Scar | 4 | 6 | 4 | 5 | 5 | 4 | 3 | 2 | **4.1** | "capsized bazaar" is unbuilt; should be the graveyard market |
-| Eris Margin | 4 | 5 | 3 | 4 | 4 | 3 | 3 | 3 | **3.6** | Metronome mission is good; otherwise a fence again |
+| Eris Margin | 4 | 5 | 3 | 4 | 4 | 3 | 3 | 5 | **3.9** | Metronome mission is good; otherwise a fence again |
 | Proteus Well | 4 | 5 | 3 | 4 | 4 | 3 | 3 | 2 | **3.5** | well mouth has no well physics |
 | Orcus Shadow | 3 | 5 | 3 | 3 | 5 | 3 | 2 | 2 | **3.3** | 3rd "Vael research courier"; 1 neighbour, dead end |
 | Triton Wake | 4 | 5 | 3 | 4 | 5 | 4 | 3 | 2 | **3.8** | Choir-Bell Aegis wreck + Watcher; wake mechanic missing |
@@ -642,8 +643,8 @@ Each plan gives: **Keep** (what already works), **Fix** (the gap), **Moves** (3�
 
 **Pallas Drift — "The Debris Reef"**
 - Keep: Ravel, Quiessence census, The Erased, the Archipelago.
-- Fix: no toy; "reef pinball" is only words.
-- Moves: (1) Reef Bumper toy; (2) nebula tide revealing and hiding islands; (3) customs cutters at the fog edge vs. smugglers (hide-and-seek); (4) Borrowed Sun escort through the fog.
+- Fix: the reef current exists, but nothing on camera teaches it.
+- Moves: (1) an NPC salvor working the reef current on camera; (2) nebula tide revealing and hiding islands; (3) customs cutters at the fog edge vs. smugglers (hide-and-seek); (4) Borrowed Sun escort through the fog.
 - Signature: *rock bouncing between Ravel's loom threads while a smuggler ducks into fog and a cutter waits at the edge.*
 
 **Io Reach — "The Contested Floor"**

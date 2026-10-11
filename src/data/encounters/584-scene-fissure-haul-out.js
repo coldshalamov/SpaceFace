@@ -14,7 +14,7 @@ export const spec = {
       "factionId": "faction_free",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "MOSS 1"
+      "scanLabel": "FISSURE TUG"
     },
     {
       "role": "ship_1",
@@ -22,26 +22,26 @@ export const spec = {
       "factionId": "faction_free",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "MOSS 2"
+      "scanLabel": "DEAD HAULER"
     }
   ],
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Guard the line",
       "playerLine": "I will keep the haul clear until both hulls are out."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Mark the salvage",
       "playerLine": "I will mark the load before it clears the fissure."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Stay above",
       "playerLine": "I will keep outside the seam and let them work."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "phases": [
     {
@@ -195,23 +195,23 @@ export default defineEncounter(trigger, {
   "title": "Fissure Haul Out",
   "primaryLine": "MOSS: Fissure haul is moving. Keep the second hull clear of the seam.",
   "factionId": "faction_free",
-  "choices": {
-    "a": {
+  "choices": [
+    {
       "id": "a",
       "label": "Guard the line",
       "playerLine": "I will keep the haul clear until both hulls are out."
     },
-    "b": {
+    {
       "id": "b",
       "label": "Mark the salvage",
       "playerLine": "I will mark the load before it clears the fissure."
     },
-    "c": {
+    {
       "id": "c",
       "label": "Stay above",
       "playerLine": "I will keep outside the seam and let them work."
     }
-  },
+  ],
   "timeoutChoice": "c",
   "receipts": {
     "a": "Both hulls cleared the fissure with the line still attached.",
