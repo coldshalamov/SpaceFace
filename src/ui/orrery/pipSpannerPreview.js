@@ -5,6 +5,14 @@ import { createAuthoredAssetLease, disposeAuthoredAssetRuntime } from '../../ren
 import { cloneMaterialPreservingShaderHooks } from '../../render/materialClone.js';
 import { applyAuthoredMaterialProfile } from '../../render/authoredMaterialProfiles.js';
 import { compileScenePipelinesSafely } from '../../render/compilePipelinesSafely.js';
+import { collectStartupGeometries, collectStartupTextures } from '../../render/startupGpuResidency.js';
+import {
+  detachedGeometryUploadPending,
+  detachedTextureUploadPending,
+  noteGeometryGpuResident,
+  rehydrateDetachedGeometries,
+  rehydrateDetachedTextures,
+} from '../../render/packageCpuDetach.js';
 import { isReleaseAssetMode } from '../../render/releaseMode.js';
 import { LOOK_BASE } from '../../data/lookMoods.js';
 import { retireWhenProgramsReady } from '../previewContextRetire.js';
@@ -172,6 +180,21 @@ export function createPipSpannerPreview({ canvas, doc = canvas?.ownerDocument,
     rig = buildPipSpannerRig(blueprint); scene.add(rig.root);
     await compile(renderer, scene, camera);
     if (disposed || renderer.getContext?.().isContextLost?.()) return false;
+    // A cpu-detached package texture this private context has not uploaded re-enters three's
+    // uploader on the first bind and reads emptied payloads — re-attach the pending set before
+    // the first draw (the N2 secondary-context gate).
+    const pendingUploads = collectStartupTextures(scene)
+      .filter((texture) => detachedTextureUploadPending(texture, renderer.properties));
+    const pendingGeometries = collectStartupGeometries(scene)
+      .filter((geometry) => detachedGeometryUploadPending(geometry, renderer));
+    if (pendingGeometries.length) await rehydrateDetachedGeometries(pendingGeometries);
+    if (pendingUploads.length) await rehydrateDetachedTextures(pendingUploads);
+    if (disposed || renderer.getContext?.().isContextLost?.()) return false;
+    // compile() created this context's attribute records — ledger the uploads so a later
+    // detach doesn't re-pend this renderer in the geometry gate.
+    for (const geometry of collectStartupGeometries(scene)) {
+      noteGeometryGpuResident(geometry, renderer);
+    }
     ready = true;
     motion = createPipSpannerMotion(rig, { draw, reduced, width: () => dimensions().width,
       schedule: win.requestAnimationFrame?.bind(win), cancel: win.cancelAnimationFrame?.bind(win) });

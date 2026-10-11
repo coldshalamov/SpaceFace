@@ -3,8 +3,10 @@ import { beginBootWork } from '../core/bootWork.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { postTaskAtBackgroundPriorityBounded } from './compilePresentSlice.js';
 import {
+  detachPackageGeometry,
   detachPackageTexture,
   isPackageTextureDetached,
+  noteGeometryGpuResident,
 } from './packageCpuDetach.js';
 
 const STARTUP_GEOMETRY_BATCH_DRAWABLES = 4;
@@ -267,6 +269,35 @@ export function* collectStartupGeometryDrawablesSteps(subjects, options = {}, sl
 }
 
 /**
+ * Unique drawable geometries under the subjects — the pending-gate census for cpu-detached
+ * package geometry. Quality-tier alternates ride the drawable collector's facade objects, so
+ * their geometries land in the same set.
+ */
+export function collectStartupGeometries(subjects, options = {}) {
+  const geometries = new Set();
+  for (const drawable of collectStartupGeometryDrawables(subjects, options)) {
+    if (drawable && drawable.geometry) geometries.add(drawable.geometry);
+  }
+  return [...geometries];
+}
+
+/** Stepped twin of collectStartupGeometries — same set, paced collect. */
+export function* collectStartupGeometriesSteps(subjects, options = {}, sliceEvery = 256) {
+  const it = collectStartupGeometryDrawablesSteps(subjects, options, sliceEvery);
+  let drawables;
+  for (;;) {
+    const step = it.next();
+    if (step.done) { drawables = step.value; break; }
+    yield;
+  }
+  const geometries = new Set();
+  for (const drawable of drawables) {
+    if (drawable && drawable.geometry) geometries.add(drawable.geometry);
+  }
+  return [...geometries];
+}
+
+/**
  * Instanced drawables whose backing geometry never passed a residency prepare. Scene-level
  * instance pools (authored package pools, asteroid batches) have no per-subject admission
  * owner: the only stamp they ever get comes from a whole-scene seal, so a cook that skips or
@@ -280,7 +311,12 @@ export function collectUnresidentInstancedDrawables(subjects) {
     const visit = (object) => {
       if (!object || object.isInstancedMesh !== true || !object.geometry) return;
       const data = object.geometry.userData;
-      if (data && data.spacefaceGpuResident === true) return;
+      if (data && data.spacefaceGpuResident === true) {
+        // Stamped = proven upload: instanced pools share package leaf geometry and never run a
+        // per-subject residency, so retry the mirror release here (idempotent until it lands).
+        detachPackageGeometry(object.geometry);
+        return;
+      }
       drawables.push(object);
     };
     if (typeof root.traverse === 'function') root.traverse(visit);
@@ -298,7 +334,10 @@ export function* collectUnresidentInstancedDrawablesSteps(subjects, sliceEvery =
   const visit = (object) => {
     if (!object || object.isInstancedMesh !== true || !object.geometry) return;
     const data = object.geometry.userData;
-    if (data && data.spacefaceGpuResident === true) return;
+    if (data && data.spacefaceGpuResident === true) {
+      detachPackageGeometry(object.geometry);
+      return;
+    }
     drawables.push(object);
   };
   for (const root of subjectRoots(subjects)) {
@@ -381,7 +420,12 @@ function createGeometryWorkItems(drawables, options = {}) {
     // F9 recook must not 1x1 ordinary geos the first cook already stamped.
     if (!ignoreStamps
         && geometry.userData && geometry.userData.spacefaceGpuResident === true
-        && !object.isInstancedMesh) continue;
+        && !object.isInstancedMesh) {
+      // Sealed by an earlier pass: retry the CPU-mirror release (deferred releases are the
+      // texture-detach retry semantics applied to geometry).
+      detachPackageGeometry(geometry);
+      continue;
+    }
     let estimatedBytes = firstGeometryUse ? geometryByteLength(geometry) : 0;
     if (object.isInstancedMesh) {
       estimatedBytes += attributeByteLength(object.instanceMatrix);
@@ -408,7 +452,10 @@ function* createGeometryWorkItemsSteps(drawables, options = {}) {
     if (!firstGeometryUse && !object.isInstancedMesh) continue;
     if (!ignoreStamps
         && geometry.userData && geometry.userData.spacefaceGpuResident === true
-        && !object.isInstancedMesh) continue;
+        && !object.isInstancedMesh) {
+      detachPackageGeometry(geometry);
+      continue;
+    }
     let estimatedBytes = firstGeometryUse ? geometryByteLength(geometry) : 0;
     if (object.isInstancedMesh) {
       estimatedBytes += attributeByteLength(object.instanceMatrix);
@@ -743,6 +790,11 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
             if (geometry) {
               const data = geometry.userData || (geometry.userData = {});
               data.spacefaceGpuResident = true;
+              // The proxy render proved this context's attribute records: note the ledger for
+              // the N2 pending gate, then release the marked non-kept CPU arrays (position +
+              // index stay live for raycast/bounds).
+              noteGeometryGpuResident(geometry, renderer);
+              detachPackageGeometry(geometry, renderer);
             }
           }
           results.push(receipt);

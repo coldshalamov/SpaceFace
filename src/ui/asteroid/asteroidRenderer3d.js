@@ -62,6 +62,14 @@ import {
   INCLUSION_KIT_ID,
 } from './worksPartLoader.js';
 import { applyWorksFurnaceHeat } from '../../render/industrialMaterialFamilies.js';
+import { collectStartupGeometries, collectStartupTextures } from '../../render/startupGpuResidency.js';
+import {
+  detachedGeometryUploadPending,
+  detachedTextureUploadPending,
+  noteGeometryGpuResident,
+  rehydrateDetachedGeometries,
+  rehydrateDetachedTextures,
+} from '../../render/packageCpuDetach.js';
 
 const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S } = DRILL_CONST;
 export const VIEW_ROWS = 18;
@@ -1396,6 +1404,16 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (pipelineAdmissions.has(subject)) return pipelineAdmissions.get(subject);
     const admission = pipelineTail.then(async () => {
       if (disposed || worksTearingDown) return false;
+      // A cpu-detached package texture this private context has not uploaded re-enters three's
+      // uploader on the admitted subject's first bind and reads emptied payloads — re-attach
+      // the pending set before its pipelines link and draw (the N2 secondary-context gate).
+      const pendingUploads = collectStartupTextures(subject)
+        .filter((texture) => detachedTextureUploadPending(texture, renderer.properties));
+      const pendingGeometries = collectStartupGeometries(subject)
+        .filter((geometry) => detachedGeometryUploadPending(geometry, renderer));
+      if (pendingGeometries.length) await rehydrateDetachedGeometries(pendingGeometries);
+      if (pendingUploads.length) await rehydrateDetachedTextures(pendingUploads);
+      if (disposed || worksTearingDown) return false;
       const leaves = [];
       const seen = new Map();
       subject.traverse((leaf) => {
@@ -1413,6 +1431,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         if (result?.skipped) throw new Error(result.reason || 'Mining pipeline unavailable');
         // Bound software-driver linking to one material family per task, preserving UI input.
         await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      // compile() created this context's attribute records — ledger the uploads so a later
+      // detach doesn't re-pend this renderer in the geometry gate.
+      for (const leaf of leaves) {
+        if (leaf.geometry) noteGeometryGpuResident(leaf.geometry, renderer);
       }
       return true;
     });
