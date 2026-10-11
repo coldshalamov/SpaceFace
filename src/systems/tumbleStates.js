@@ -35,7 +35,16 @@ import {
   resolveHitstunLaw,
   signedHitSide,
 } from '../combat/impulseKernel.js';
-import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
+import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeOrEntitiesScan, indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
+import {
+  TUMBLE_RAKE_BARK_LINE,
+  TUMBLE_RAKE_BARK_RANGE,
+  captureTumbleRakeSeed,
+  clearTumbleRake,
+  readTumbleRake,
+  stepTumbleRake,
+} from '../ai/tumbleRake.js';
 
 const RCS_TRIGGER_MAXAGE_TICKS = 8;
 const RCS_DEFAULT_S = 1.6;
@@ -198,6 +207,8 @@ export const tumbleStates = {
           tumbleActive = false;
         }
       }
+      // C10: the frozen point-defence solution lives exactly as long as the tumble does.
+      if (!tumbleActive && e.data && (e.data.tumbleRake || e.data.tumbleRakeSeed)) clearTumbleRake(e);
       if (!tumbleActive && !drifting && !rcs && !isRecovering(state, e) && !recoveryMarker) continue;
 
       if (tumbleActive) {
@@ -207,6 +218,7 @@ export const tumbleStates = {
           e.data.intent.moveX = 0;
           e.data.intent.moveZ = 0;
         }
+        if (e.data && (e.data.tumbleRake || e.data.tumbleRakeSeed)) this._tickRake(e, state);
         continue;
       }
       if (rcs) {
@@ -441,6 +453,9 @@ export const tumbleStates = {
     const sign = input.hitSide === -1 ? -1 : 1;
     queuePhysicsTorqueImpulse(victim, { x: 0, y: inertia * (sign * law.entrySpin - currentSpin), z: 0 });
     writePhysicsControl(victim, tumbleControl(victim, 1 / 60, input.kind));
+    // C10: a heavy that was mid-salvo keeps that bearing in its own frame — read before the fire
+    // intent is silenced below.
+    captureTumbleRakeSeed(state, victim);
     if (victim.data.intent) {
       victim.data.intent.fire = false;
       victim.data.intent.moveX = 0;
@@ -480,6 +495,71 @@ export const tumbleStates = {
         lights: 1,
       });
     }
+  },
+
+  // C10 — tumble × faction battle line. The sweep geometry is src/ai/tumbleRake.js; this method
+  // is the writer half: damage rides the combat kernel with the tumbling hull as the source, the
+  // receipt and the one bark fire the first time the beam crosses a friendly.
+  _tickRake(hull, state) {
+    const hits = stepTumbleRake(state, hull, indexedShipLikeScan(state));
+    if (!hits.length) return;
+    for (const hit of hits) {
+      const victim = hit.victim;
+      const packet = scalarHitToDamagePacket({
+        damage: hit.damage,
+        damageType: 'kinetic',
+        pos: { x: victim.pos.x, z: victim.pos.z },
+        approach: { x: Math.cos(hit.bearing), z: Math.sin(hit.bearing) },
+        source: { kind: 'tumble_rake', hullId: hull.id, dwellScale: hit.dwellScale },
+      });
+      packet.flags = { ignoreFriendlyFire: true };
+      this._routeRakeDamage({
+        attackerId: hull.id,
+        targetId: victim.id,
+        packet,
+        origin: { kind: 'tumble_rake', id: hull.id },
+      });
+    }
+    const rec = readTumbleRake(hull);
+    if (!rec || rec.announced) return;
+    rec.announced = true;
+    const factionId = hull.factionId || (hull.data && hull.data.factionId) || null;
+    const tick = state.tick | 0;
+    if (this.bus) {
+      this.bus.emit('combat:tumbleRake', Object.freeze({
+        hullId: hull.id,
+        factionId,
+        victims: Object.freeze(hits.map((h) => h.victim.id)),
+        tick,
+      }));
+    }
+    this._speakRake(hull, hits[0].victim, factionId, state);
+  },
+
+  _routeRakeDamage(request) {
+    const helpers = this.helpers;
+    if (helpers && typeof helpers.routeCombatDamage === 'function') return helpers.routeCombatDamage(request);
+    if (this.bus) this.bus.emit('combat:routeDamage', request);
+    return null;
+  },
+
+  _speakRake(hull, victim, factionId, state) {
+    const player = state.playerId != null && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || !player.pos) return;
+    const near = Math.hypot(finite(hull.pos.x) - finite(player.pos.x), finite(hull.pos.z) - finite(player.pos.z));
+    if (near > TUMBLE_RAKE_BARK_RANGE) return;
+    const say = {
+      channel: 'bark',
+      kind: 'tumbleRake',
+      id: `tumbleRake:${hull.id}:${state.tick | 0}`,
+      text: TUMBLE_RAKE_BARK_LINE,
+      factionId: victim.factionId || factionId,
+      ttl: 3,
+    };
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') voice.say(say);
+    else if (this.bus) this.bus.emit('voice:say', say);
   },
 
   _cancelInboundVelocity(victim, input) {

@@ -314,8 +314,14 @@ export function returnLevelBandsForAce(ace, returnTier = 1) {
   };
 }
 
-export const ACE_KILL_STYLES = Object.freeze(['fling', 'gun', 'rock']);
+export const ACE_KILL_STYLES = Object.freeze(['fling', 'gun', 'rock', 'ram']);
 export const ACE_STYLE_ESCALATE_AT = 3;
+// T8 — the ram-pass answer to a bungee/slingshot/ram player: telegraph one beat, then one
+// authorized head-on pass (aiPorts.acePassAuthorization) for this long.
+export const ACE_RAM_PASS_TELEGRAPH_TICKS = 60;
+export const ACE_RAM_PASS_WINDOW_TICKS = 420;
+export const ACE_RAM_PASS_TRIGGER_RANGE = 700;
+export const ACE_RAM_PASS_TELEGRAPH_BARK = 'Line up. I\'m coming through you.';
 
 // Stunt-grammar trick ids that name a fling-kill or a rock-kill. Gun is the residual.
 export const ACE_FLING_TRICKS = Object.freeze([
@@ -323,8 +329,11 @@ export const ACE_FLING_TRICKS = Object.freeze([
   'bolas', 'dead_mans_mass', 'shove_bowling',
 ]);
 export const ACE_ROCK_TRICKS = Object.freeze(['rock_discovery']);
+// Bungee / slingshot / impact tricks: the player rides mass into the target rather than flinging it.
+export const ACE_RAM_TRICKS = Object.freeze(['slingshot_golf', 'one_two']);
 
 const FLING_TRICK_SET = new Set(ACE_FLING_TRICKS);
+const RAM_TRICK_SET = new Set(ACE_RAM_TRICKS);
 const ROCK_TRICK_SET = new Set(ACE_ROCK_TRICKS);
 const STYLE_SET = new Set(ACE_KILL_STYLES);
 
@@ -363,12 +372,26 @@ export const ACE_STYLE_COUNTERS = Object.freeze({
     weapons: Object.freeze([]),
     barkAct: 'rocked',
   }),
+  // T8: the counter to a player who rides mass into hulls is a hull that does the same back —
+  // a medium brawler with a ram plate and one telegraphed head-on pass (`ram_pass`).
+  ram: Object.freeze({
+    style: 'ram',
+    act: 'ram',
+    bossArchetype: 'bruiser_brawler',
+    escortArchetype: 'reaver_pirate',
+    gimmickTag: 'ram-plate',
+    doctrineId: 'brawler_commit',
+    capabilities: Object.freeze(['ram_pass']),
+    weapons: Object.freeze([]),
+    barkAct: 'rammed',
+  }),
 });
 
 const STYLE_BARK = Object.freeze({
   fling: '{name}: three times you flung our hulls. We brought line-cutters.',
   gun: '{name}: you gunned three of ours. We came in armour.',
   rock: '{name}: three times you threw us into the rocks. We stay off the stones.',
+  ram: '{name}: three times you rode your mass through our hulls. I brought a plate of my own.',
 });
 
 export function isAceKillStyle(value) {
@@ -493,7 +516,7 @@ export function factionHistoryFromMemory(memory, factionId, shipName = '') {
   const playerStyle = memory && memory.playerStyle;
   const factionRow = playerStyle && playerStyle.factions && playerStyle.factions[factionId];
   const kills = factionRow
-    ? (factionRow.fling | 0) + (factionRow.gun | 0) + (factionRow.rock | 0)
+    ? (factionRow.fling | 0) + (factionRow.gun | 0) + (factionRow.rock | 0) + (factionRow.ram | 0)
     : 0;
   const captains = [];
   for (const ace of ALL_KNOWN_ACES) {
@@ -535,10 +558,13 @@ export function aceKillStyleFromHints(hints = {}) {
   const trickId = typeof hints.trickId === 'string' ? hints.trickId : '';
   if (ROCK_TRICK_SET.has(trickId)) return 'rock';
   if (FLING_TRICK_SET.has(trickId)) return 'fling';
+  if (RAM_TRICK_SET.has(trickId)) return 'ram';
   const cause = typeof hints.cause === 'string' ? hints.cause : '';
   const surface = typeof hints.surface === 'string' ? hints.surface : '';
   if (cause === 'terrain_collision' || surface === 'terrain') return 'rock';
   if (hints.flung === true || cause === 'massline' || hints.lastFlung === true) return 'fling';
+  // A hull-on-hull collision the player did not fling is the player's own mass doing the work.
+  if (cause === 'ship_collision' || hints.rammed === true) return 'ram';
   return 'gun';
 }
 

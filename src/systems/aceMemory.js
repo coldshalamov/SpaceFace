@@ -4,6 +4,10 @@
 // spawns only its established promoted-return crews, and emits the station-news seam. It never
 // owns first-contact entities or changes hostility.
 import {
+  ACE_RAM_PASS_TELEGRAPH_BARK,
+  ACE_RAM_PASS_TELEGRAPH_TICKS,
+  ACE_RAM_PASS_TRIGGER_RANGE,
+  ACE_RAM_PASS_WINDOW_TICKS,
   ACE_STYLE_ESCALATE_AT,
   ACE_GRUDGE_HUNT_AT,
   ACE_GRUDGE_MAX,
@@ -192,6 +196,48 @@ export const aceMemory = {
     this._processCultureIntros(state);
     this._processPlanetChallenges(state);
     this._processReturns(state);
+    this._tickRamPasses(state);
+  },
+
+  // T8 — a returning ace whose style memory says "ram player" gets ONE head-on pass: when the
+  // player comes inside range, the ace calls it (bark), and one beat later aiPorts opens the
+  // authorization window. State lives on the ace hull (`data.acePass`), never in the save ledger.
+  _tickRamPasses(state) {
+    const memory = ensureMemory(state);
+    const returns = memory.activeReturns;
+    if (!returns || typeof returns !== 'object') return;
+    const player = state.playerId != null && state.entities ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos) return;
+    for (const key of Object.keys(returns)) {
+      const entry = returns[key];
+      if (!entry || entry.role !== 'boss') continue;
+      const boss = state.entities.get(Number.isNaN(Number(key)) ? key : Number(key));
+      const pass = boss && boss.alive !== false && boss.data && boss.data.acePass;
+      if (!pass || pass.state !== 'armed') continue;
+      if (boss.data.ai && boss.data.ai.passive === true) continue;
+      const range = Math.hypot(boss.pos.x - player.pos.x, boss.pos.z - player.pos.z);
+      if (range > ACE_RAM_PASS_TRIGGER_RANGE) continue;
+      const ace = aceById(entry.aceId);
+      const tick = state.tick | 0;
+      pass.state = 'telegraphed';
+      pass.telegraphTick = tick;
+      pass.authorizedAtTick = tick + ACE_RAM_PASS_TELEGRAPH_TICKS;
+      pass.untilTick = pass.authorizedAtTick + ACE_RAM_PASS_WINDOW_TICKS;
+      this._speakAceLine(
+        ace || { name: (boss.data.ai && boss.data.ai.name) || 'Ace', factionId: boss.factionId },
+        `${ace ? ace.name : (boss.data.ai && boss.data.ai.name) || 'Ace'}: ${ACE_RAM_PASS_TELEGRAPH_BARK}`,
+        'ram-pass-telegraph',
+        `aceMemory:${entry.aceId}:ram-pass:${entry.requestId}`,
+        'ram',
+      );
+      emit(this.bus, 'aceMemory:ramPass', {
+        aceId: entry.aceId,
+        entityId: boss.id,
+        telegraphTick: pass.telegraphTick,
+        authorizedAtTick: pass.authorizedAtTick,
+        untilTick: pass.untilTick,
+      });
+    }
   },
 
   destroy() {
@@ -1183,6 +1229,10 @@ export const aceMemory = {
       };
     }
     applyStyleLoadoutToSpec(spec, loadout);
+    // T8: the returning ace itself — never its escorts — owns the one ram pass.
+    if (ship.role === 'boss' && loadout.style === 'ram') {
+      spec.data.acePass = { kind: 'ram_pass', state: 'armed' };
+    }
     if (ship.role === 'boss') {
       ai.name = ace.name;
       spec.data.encounterBoss = true;
@@ -1368,11 +1418,13 @@ function normalizeStyleCounts(input) {
   out.fling = input.fling | 0;
   out.gun = input.gun | 0;
   out.rock = input.rock | 0;
+  // T8: ram is lazy - a save/ledger that never saw a ram kill keeps its exact old shape.
+  if ((input.ram | 0) > 0) out.ram = input.ram | 0;
   return out;
 }
 
 function isStyleValue(value) {
-  return value === 'fling' || value === 'gun' || value === 'rock';
+  return value === 'fling' || value === 'gun' || value === 'rock' || value === 'ram';
 }
 
 function normalizePlayerStyle(input) {
