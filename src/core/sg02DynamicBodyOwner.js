@@ -1926,16 +1926,25 @@ export class Sg02DynamicBodyOwner {
       _vecWriteScratch.y = 0;
       _vecWriteScratch.z = acceptedVz;
       rec.body.setLinvel(_vecWriteScratch, true);
-      const predictedX = Number.isFinite(e.x)
-        ? e.x : finite(rec._bodyPoseX) + e.vx * this.fixedDt;
-      const predictedZ = Number.isFinite(e.z)
-        ? e.z : finite(rec._bodyPoseZ) + e.vz * this.fixedDt;
-      _vecWriteScratch.x = predictedX + (acceptedVx - e.vx) * this.fixedDt;
-      _vecWriteScratch.y = 0;
-      _vecWriteScratch.z = predictedZ + (acceptedVz - e.vz) * this.fixedDt;
-      rec.body.setTranslation(_vecWriteScratch, true);
-      rec._bodyPoseX = Math.fround(_vecWriteScratch.x);
-      rec._bodyPoseZ = Math.fround(_vecWriteScratch.z);
+      if (preservesSolverResponse) {
+        const predictedX = Number.isFinite(e.x)
+          ? e.x : finite(rec._bodyPoseX) + e.vx * this.fixedDt;
+        const predictedZ = Number.isFinite(e.z)
+          ? e.z : finite(rec._bodyPoseZ) + e.vz * this.fixedDt;
+        _vecWriteScratch.x = predictedX + (acceptedVx - e.vx) * this.fixedDt;
+        _vecWriteScratch.y = 0;
+        _vecWriteScratch.z = predictedZ + (acceptedVz - e.vz) * this.fixedDt;
+        rec.body.setTranslation(_vecWriteScratch, true);
+        rec._bodyPoseX = Math.fround(_vecWriteScratch.x);
+        rec._bodyPoseZ = Math.fround(_vecWriteScratch.z);
+      } else {
+        // The episode ceiling bounds the kick, never the wall: the budgeted branch keeps the
+        // solver's post-solve translation so contact de-penetration still carries the hull out
+        // of solids — rewriting it to predicted + accepted·dt made ordinary contact tunnel.
+        const pose = rec.body.translation();
+        rec._bodyPoseX = Math.fround(finite(pose && pose.x));
+        rec._bodyPoseZ = Math.fround(finite(pose && pose.z));
+      }
       if (post) post.vDirty = true;
     }
 
