@@ -15,7 +15,6 @@ import { createBus } from '../src/core/eventBus.js';
 import { tumbleStates } from '../src/systems/tumbleStates.js';
 import { makeEnemySpawnSpec } from '../src/systems/combat.js';
 import {
-  TUMBLE_RAKE_BARK_LINE,
   TUMBLE_RAKE_MIN_MASS,
   captureTumbleRakeSeed,
   rakeBatteryFor,
@@ -138,7 +137,7 @@ test('C10 a tumbling heavy\'s PD bearing turns with the hull and damages the fri
   });
 });
 
-test('C10 one receipt and one bark when the sweep first crosses a friendly', () => {
+test('C10 one receipt (and no writer-side bark) when the sweep first crosses a friendly', () => {
   withFlags(() => {
     const h = harness({ seed: 8008 });
     gunHit(h);
@@ -153,12 +152,9 @@ test('C10 one receipt and one bark when the sweep first crosses a friendly', () 
     assert.equal(receipt.factionId, 'faction_vael');
     assert.deepEqual([...receipt.victims], [h.wing.id]);
     assert.ok(Number.isInteger(receipt.tick) && receipt.tick > 100);
-    const barks = h.voices.filter((v) => v.kind === 'tumbleRake');
-    assert.equal(barks.length, 1, 'exactly one bark');
-    assert.equal(barks[0].text, TUMBLE_RAKE_BARK_LINE);
-    assert.equal(barks[0].channel, 'bark');
-    assert.equal(barks[0].factionId, 'faction_vael');
-    assert.match(barks[0].text, /break off the line/);
+    // The voice belongs to barkDirector (test/world-answers-barks-ore-flood-rake.test.mjs); the
+    // writer emits the receipt and stays silent, so a bark can never double up.
+    assert.equal(h.voices.filter((v) => v.kind === 'tumbleRake').length, 0, 'tumbleStates itself does not bark');
   });
 });
 

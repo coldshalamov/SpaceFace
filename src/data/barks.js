@@ -2288,6 +2288,59 @@ export function podHuntBarkFor(key, factionId, index) {
   return typeof line === 'string' && line.length ? line : null;
 }
 
+// ── A shattered rock floods the lane with loose ore (THE WORLD ANSWERS, C8) ──────────────────
+//
+// Event lines, not BARK_SITUATIONS. `economy:oreFlood` is the receipt of a rock the PLAYER broke
+// that dumped real ore on the lane; barkDirector picks ONE speaker per body — a working hull
+// nearby (the neutral working-belt register), else the local station's desk, in Dock-control
+// (lawful) or Yardmaster (everyone else) register, the same split economy.js uses for the
+// dock-slam notice. `{ore}` is the commodity's display name lower-cased ("iron ore"), or "ore"
+// when the receipt names none. The desk lines carry their own sender prefix: they are text on the
+// bark channel, not a popup.
+export const ORE_FLOOD_BARKS = Object.freeze({
+  working: Object.freeze([
+    'Loose {ore} all over the lane — somebody cracked a seam. Scooping.',
+    'Free {ore} on the chart. Haulers, you’re welcome.',
+    'That rock let go of all its {ore} at once — scoop it before it drifts.',
+  ]),
+  dock_control: Object.freeze([
+    'Dock control: loose {ore} in the lane — mind the pattern, scoop clear of traffic.',
+    'Dock control: a rock came apart out there, {ore} adrift — recover it clear of the approach.',
+    'Dock control: free {ore} in the lane, the price will sag — salvage crews, clear it.',
+  ]),
+  yardmaster: Object.freeze([
+    'Yardmaster: loose {ore} in the lane — somebody shot us a surplus. Haul it in.',
+    'Yardmaster: rock split and spilled {ore} — good for the yard, bad for the price.',
+    'Yardmaster: free {ore} on the lane. Come and get it, haulers.',
+  ]),
+});
+
+/**
+ * One ore-flood line. Deterministic (integer index); an unknown register speaks the working-belt
+ * line; an absent ore name reads as plain "ore".
+ */
+export function oreFloodBarkFor(register, index, oreName) {
+  const lines = (register && ORE_FLOOD_BARKS[register]) || ORE_FLOOD_BARKS.working;
+  const line = lines[pickIndex(index, lines.length)] || lines[0];
+  const ore = typeof oreName === 'string' && oreName.trim() ? oreName.trim().toLowerCase() : 'ore';
+  return line.replace(/\{ore\}/g, ore);
+}
+
+// ── A tumbling heavy's point defence rakes its own battle line (THE WORLD ANSWERS, C10) ──────
+//
+// Spoken by a hull on the raked line (barkDirector, once per tumble episode) — the "check fire,
+// that's our own guns" moment, one neutral combat register for every faction.
+export const TUMBLE_RAKE_BARKS = Object.freeze([
+  'Her guns are swinging through us — break off the line!',
+  'That heavy’s tumbling and her battery is raking us — clear her arc!',
+  'Point defence is sweeping our own line — scatter, scatter!',
+]);
+
+export function tumbleRakeBarkFor(index) {
+  const line = TUMBLE_RAKE_BARKS[pickIndex(index, TUMBLE_RAKE_BARKS.length)] || TUMBLE_RAKE_BARKS[0];
+  return typeof line === 'string' && line.length ? line : null;
+}
+
 // ── Law step receipts: CONTROL voices what the law just did ──────────────────────────────────
 //
 // FB-040 — event lines, not a BARK_SITUATION, and deliberately one line each: these are receipts
@@ -2486,6 +2539,8 @@ export default {
   SURRENDER_BARKS,
   ESCAPE_TAUNT_BARKS,
   POD_HUNT_BARKS,
+  ORE_FLOOD_BARKS,
+  TUMBLE_RAKE_BARKS,
   LAW_STEP_BARKS,
   FRONTIER_FIRST_NAMES,
   FRONTIER_LAST_NAMES,
@@ -2499,6 +2554,8 @@ export default {
   surrenderBarkFor,
   escapeTauntBarkFor,
   podHuntBarkFor,
+  oreFloodBarkFor,
+  tumbleRakeBarkFor,
   lawStepBarkFor,
   passengerBeatLine,
   witnessSeamLineFor,

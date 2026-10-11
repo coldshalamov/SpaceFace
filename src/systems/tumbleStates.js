@@ -38,8 +38,6 @@ import {
 import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeOrEntitiesScan, indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import {
-  TUMBLE_RAKE_BARK_LINE,
-  TUMBLE_RAKE_BARK_RANGE,
   captureTumbleRakeSeed,
   clearTumbleRake,
   readTumbleRake,
@@ -499,7 +497,7 @@ export const tumbleStates = {
 
   // C10 — tumble × faction battle line. The sweep geometry is src/ai/tumbleRake.js; this method
   // is the writer half: damage rides the combat kernel with the tumbling hull as the source, the
-  // receipt and the one bark fire the first time the beam crosses a friendly.
+  // receipt fires the first time the beam crosses a friendly; barkDirector voices it (one bark).
   _tickRake(hull, state) {
     const hits = stepTumbleRake(state, hull, indexedShipLikeScan(state));
     if (!hits.length) return;
@@ -533,7 +531,6 @@ export const tumbleStates = {
         tick,
       }));
     }
-    this._speakRake(hull, hits[0].victim, factionId, state);
   },
 
   _routeRakeDamage(request) {
@@ -541,25 +538,6 @@ export const tumbleStates = {
     if (helpers && typeof helpers.routeCombatDamage === 'function') return helpers.routeCombatDamage(request);
     if (this.bus) this.bus.emit('combat:routeDamage', request);
     return null;
-  },
-
-  _speakRake(hull, victim, factionId, state) {
-    const player = state.playerId != null && state.entities && typeof state.entities.get === 'function'
-      ? state.entities.get(state.playerId) : null;
-    if (!player || !player.pos) return;
-    const near = Math.hypot(finite(hull.pos.x) - finite(player.pos.x), finite(hull.pos.z) - finite(player.pos.z));
-    if (near > TUMBLE_RAKE_BARK_RANGE) return;
-    const say = {
-      channel: 'bark',
-      kind: 'tumbleRake',
-      id: `tumbleRake:${hull.id}:${state.tick | 0}`,
-      text: TUMBLE_RAKE_BARK_LINE,
-      factionId: victim.factionId || factionId,
-      ttl: 3,
-    };
-    const voice = this.helpers && this.helpers.voice;
-    if (voice && typeof voice.say === 'function') voice.say(say);
-    else if (this.bus) this.bus.emit('voice:say', say);
   },
 
   _cancelInboundVelocity(victim, input) {

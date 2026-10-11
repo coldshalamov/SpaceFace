@@ -11,10 +11,12 @@ import {
   historyBarkFor,
   hullRecognitionBarkFor,
   lawStepBarkFor,
+  oreFloodBarkFor,
   pursuitBarkFor,
   rivalScavengerLineFor,
   surrenderBarkFor,
   trafficRoleHail,
+  tumbleRakeBarkFor,
   witnessCrimeBarkFor,
 } from '../data/barks.js';
 import { aceTrophyBarkFor } from '../data/conflictReactions.js';
@@ -43,6 +45,7 @@ import { livingHullNotoriety } from '../core/livingHull.js';
 import { adventureStunts, completeWitness, incidentIdentity, knownStuntTitles, observerProfile, STUNT_SITUATION_LINES, STUNT_TITLE_RULES, stuntSpecificLine, witnessLineOfSight } from '../combat/stuntWitnesses.js';
 import { hintTextFor } from './survivalAnnounce.js';
 import { HITSTUN_IMPULSE_EVENT } from '../combat/impulseKernel.js';
+import { TUMBLE_RAKE_BARK_RANGE } from '../ai/tumbleRake.js';
 
 const BARK_SET = new Set([...BARK_SITUATIONS, ...BARK_EVENT_SITUATIONS]);
 // Reading duration. The arbiter gives queued barks one additional inter-bark gap of
@@ -644,6 +647,10 @@ export const barkDirector = {
       this.bus.on('traffic:richSeamHelpReserved', this._onRichSeamHelp);
       this._onHaulerRegroup = (payload) => this._speakHaulerRegroup(payload || {});
       this.bus.on('traffic:haulerRegroup', this._onHaulerRegroup);
+      this._onOreFlood = (payload) => this._speakOreFlood(payload || {});
+      this.bus.on('economy:oreFlood', this._onOreFlood);
+      this._onTumbleRake = (payload) => this._speakTumbleRake(payload || {});
+      this.bus.on('combat:tumbleRake', this._onTumbleRake);
       this._onNpcCounterplay = (payload) => {
         const bark = admitNpcCounterplayBark(this, payload, this.state && this.state.simTime);
         const voice = this.helpers && this.helpers.voice;
@@ -682,6 +689,8 @@ export const barkDirector = {
     this._emptyLoadKeys = null;
     this._richSeamHelpKeys = null;
     this._haulerRegroupKeys = null;
+    this._oreFloodKeys = null;
+    this._tumbleRakeKeys = null;
     this.noteBarkWake();
   },
 
@@ -1683,6 +1692,116 @@ export const barkDirector = {
     return receipt;
   },
 
+  /**
+   * THE WORLD ANSWERS C8 — a rock the player broke dumped real ore on the lane (`economy:oreFlood`).
+   * ONE bark per body: the nearest working civilian hull that has not just spoken, else the local
+   * station desk. The chart and the board already carry the rest, so there is no follow-up line.
+   */
+  _speakOreFlood(payload) {
+    const state = this.state;
+    if (!state || !payload) return null;
+    if (state.mode && state.mode !== 'flight') return null;
+    if (payload.byPlayer !== true || !(Number(payload.yieldU) >= ORE_FLOOD_BARK_MIN_U)) return null;
+    if (payload.bodyId == null) return null;
+    const sectorId = payload.sectorId || null;
+    const here = currentSectorId(state);
+    if (sectorId && here !== 'unknown' && sectorId !== here) return null;
+    const key = `${sectorId ?? ''}|${payload.bodyId}`;
+    if (this._oreFloodKeys && this._oreFloodKeys.has(key)) return null;
+    const at = finitePos({ x: Number(payload.x), z: Number(payload.z) });
+    if (!at) return null;
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return null;
+
+    const own = ensureState(state);
+    const now = Number(state.simTime) || 0;
+    const hull = nearestEntityWhere(state, at, ORE_FLOOD_SPEAKER_RADIUS_WU,
+      (entity) => isWorkingOreHull(entity) && !speakerRecentlySpoke(own, entity, now));
+    let speaker = hull;
+    let register = 'working';
+    if (!speaker) {
+      speaker = nearestEntityWhere(state, at, ORE_FLOOD_STATION_RADIUS_WU, (entity) => entity.type === 'station');
+      if (!speaker) return null;
+      const meta = FACTION_META.find((f) => f && f.id === factionFor(speaker)) || null;
+      register = meta && meta.personality === 'lawful' ? 'dock_control' : 'yardmaster';
+    }
+    const seed = state.meta && state.meta.seed;
+    const index = hash32(seed == null ? 0 : seed, 'oreFlood', String(payload.bodyId));
+    const text = oreFloodBarkFor(register, index, CARGO_NAME_BY_ID.get(payload.commodityId));
+    const factionId = factionFor(speaker);
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'oreFlood',
+      ttl: VOICE_TTL_S,
+      id: `barkDirector:${speaker.id}:ore-flood`,
+      factionId,
+      register,
+    });
+    if (!accepted) return null;
+    if (!this._markNoticeKey('_oreFloodKeys', key)) return null;
+    if (hull) noteSpeakerSpoke(own, hull, 'ore-flood', now, text);
+    const receipt = {
+      entityId: speaker.id, situation: 'ore-flood', text, floodKey: key, t: now, register, factionId,
+    };
+    this._emit('barkDirector:voice', receipt);
+    return receipt;
+  },
+
+  /**
+   * THE WORLD ANSWERS C10 — a tumbling heavy's point defence is raking its own battle line
+   * (`combat:tumbleRake`). One hull on the raked line says so, once per (raking hull, receipt tick)
+   * — the receipt itself fires once per tumble. Silent when the raking hull is the player's or a
+   * wingman's (the player's own guns need no radio call) or when the player is out of earshot.
+   */
+  _speakTumbleRake(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.hullId == null) return null;
+    if (state.mode && state.mode !== 'flight') return null;
+    const hull = entityAt(state, payload.hullId);
+    if (!hull || !hull.pos || isPlayerSideHull(state, hull)) return null;
+    const player = entityAt(state, state.playerId);
+    if (!player || !finitePos(player.pos)) return null;
+    if (Math.hypot(hull.pos.x - player.pos.x, hull.pos.z - player.pos.z) > TUMBLE_RAKE_BARK_RANGE) return null;
+    const key = `${payload.hullId}|${Number(payload.tick) || 0}`;
+    if (this._tumbleRakeKeys && this._tumbleRakeKeys.has(key)) return null;
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return null;
+
+    const own = ensureState(state);
+    const now = Number(state.simTime) || 0;
+    const victims = Array.isArray(payload.victims) ? payload.victims : [];
+    let speaker = null;
+    for (const id of victims) {
+      const victim = entityAt(state, id);
+      if (!victim || victim.alive === false || victim.type !== 'ship' || victim.id === hull.id) continue;
+      if (isPlayerSideHull(state, victim) || speakerRecentlySpoke(own, victim, now)) continue;
+      speaker = victim;
+      break;
+    }
+    if (!speaker) return null;
+    const seed = state.meta && state.meta.seed;
+    const text = tumbleRakeBarkFor(hash32(seed == null ? 0 : seed, 'tumbleRake', key));
+    if (!text) return null;
+    const factionId = factionFor(speaker);
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'tumbleRake',
+      ttl: VOICE_TTL_S,
+      id: `barkDirector:${speaker.id}:tumble-rake`,
+      factionId,
+    });
+    if (!accepted) return null;
+    if (!this._markNoticeKey('_tumbleRakeKeys', key)) return null;
+    noteSpeakerSpoke(own, speaker, 'tumble-rake', now, text);
+    const receipt = {
+      entityId: speaker.id, situation: 'tumble-rake', text, rakeKey: key, rakerId: hull.id, t: now, factionId,
+    };
+    this._emit('barkDirector:voice', receipt);
+    return receipt;
+  },
+
   _speakEmptyLoad(payload) {
     const state = this.state;
     if (!state || !payload) return null;
@@ -2001,6 +2120,8 @@ export const barkDirector = {
       if (this._onLoadEmpty) this.bus.off('npcjobs:loadEmpty', this._onLoadEmpty);
       if (this._onRichSeamHelp) this.bus.off('traffic:richSeamHelpReserved', this._onRichSeamHelp);
       if (this._onHaulerRegroup) this.bus.off('traffic:haulerRegroup', this._onHaulerRegroup);
+      if (this._onOreFlood) this.bus.off('economy:oreFlood', this._onOreFlood);
+      if (this._onTumbleRake) this.bus.off('combat:tumbleRake', this._onTumbleRake);
     }
     this._onEntitySpawnedBark = null;
     this._onFlee = null;
@@ -2037,6 +2158,10 @@ export const barkDirector = {
     this._onLoadEmpty = null;
     this._onRichSeamHelp = null;
     this._onHaulerRegroup = null;
+    this._onOreFlood = null;
+    this._onTumbleRake = null;
+    this._oreFloodKeys = null;
+    this._tumbleRakeKeys = null;
     this._haulerRegroupKeys = null;
     this._spillNoticeKeys = null;
     this._emptyLoadKeys = null;
@@ -2640,6 +2765,44 @@ function haulerForEmptyLoad(state, payload) {
   const role = String(entity.data && (entity.data.trafficRole || entity.data.role) || '').toLowerCase();
   if (role && role !== 'hauler' && role !== 'heavy') return null;
   return entity;
+}
+
+// THE WORLD ANSWERS — ore flood / tumble rake speakers. A flood under this much ore is a dusting,
+// not an event; the speaking hull is a working civilian within the radius, else the station desk.
+export const ORE_FLOOD_BARK_MIN_U = 8;
+export const ORE_FLOOD_SPEAKER_RADIUS_WU = 900;
+export const ORE_FLOOD_STATION_RADIUS_WU = 7000;
+/** A hull that spoke inside this window is not asked to speak again for a world-answer receipt. */
+export const WORLD_ANSWER_SPEAKER_GAP_S = 6;
+const ORE_FLOOD_SPEAKER_ROLES = new Set(['miner', 'prospector', 'hauler', 'ore_carrier']);
+
+function isWorkingOreHull(entity) {
+  if (!entity || entity.type !== 'ship' || entity.alive === false) return false;
+  const role = String(entity.data && entity.data.trafficRole || '').toLowerCase();
+  return ORE_FLOOD_SPEAKER_ROLES.has(role) && entity.team !== PLAYER_TEAM;
+}
+
+/** The player's hull or anything flying on the player's side (wingmen). */
+function isPlayerSideHull(state, entity) {
+  if (!entity) return false;
+  if (entity.id === state.playerId || entity.isPlayer === true) return true;
+  if (entity.team === playerTeam(state)) return true;
+  const data = entity.data || {};
+  return data.wingman === true || data.isWingman === true || data.role === 'wingman';
+}
+
+function speakerRecentlySpoke(own, entity, now) {
+  const rec = own.entities && own.entities[String(entity.id)];
+  return !!rec && Number.isFinite(rec.lastSpokenAt) && now - rec.lastSpokenAt < WORLD_ANSWER_SPEAKER_GAP_S;
+}
+
+function noteSpeakerSpoke(own, entity, situation, now, text) {
+  const id = String(entity.id);
+  const rec = own.entities[id] || (own.entities[id] = freshEntityRecord(entity));
+  rec.lastSituation = situation;
+  rec.lastSpokenAt = now;
+  rec.history.push({ situation, reason: 'world-answer', t: now, text });
+  if (rec.history.length > 8) rec.history.shift();
 }
 
 function rememberSuppressed(own, entity, situation, now, until, reason) {

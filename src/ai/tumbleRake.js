@@ -30,9 +30,8 @@ export const TUMBLE_RAKE_HIT_COOLDOWN_TICKS = 18;
 export const TUMBLE_RAKE_MAX_RANGE = 700;
 /** A beam that sweeps past faster than this still lands a sliver of its salvo. */
 export const TUMBLE_RAKE_MIN_DWELL_SCALE = 0.15;
-/** Receipt/bark only while the line is near the player's picture. */
+/** The bark (barkDirector) only speaks while the line is near the player's picture. */
 export const TUMBLE_RAKE_BARK_RANGE = 1600;
-export const TUMBLE_RAKE_BARK_LINE = 'Her guns are swinging through us — break off the line!';
 
 const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 const RAY_PAD_WU = 2;
