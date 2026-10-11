@@ -3,7 +3,7 @@
 
 import { COMMODITIES } from '../../data/commodities.js';
 import { presenceServiceForStation } from '../../data/factionPresence.js';
-import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor, serviceUnitCr, stationOffersService, AMMO_BATCH } from '../../systems/economy.js';
+import { SERVICE_PRICES, INSURANCE_DEFAULTS, loanLimitFor, cargoPolicyQuoteFor, serviceUnitCr, stationOffersService, stationServiceOutage, AMMO_BATCH } from '../../systems/economy.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
 import { recoveryCostQuote } from '../../combat/playerDefeat.js';
 import { stationControlAttrs } from './stationBindingMap.js';
@@ -346,6 +346,19 @@ export function serviceQuote(type, state, entity) {
         disabled: true,
         disabledReason: 'no repair yard here — try a station with repair services',
         chips: [{ text: 'no yard', kind: 'bad' }],
+      };
+    }
+    // §15.6 C6 — the yard is down while a slammed ring is cleared (economy.stationServiceOutage).
+    const outage = stationServiceOutage(state, state && state.ui && state.ui.dockedStationId, 'repair');
+    if (outage) {
+      const mins = Math.max(1, Math.ceil(outage.remainingS / 60));
+      return {
+        amount: 0, cost: 0,
+        detail: 'Repair bay down — a hull went through the ring · back in ' + mins + ' min',
+        buttonLabel: 'Repair Hull',
+        disabled: true,
+        disabledReason: 'repair bay down — a hull went through the ring',
+        chips: [{ text: 'bay down ' + mins + ' min', kind: 'bad' }],
       };
     }
     const missing = repairMissing(entity);

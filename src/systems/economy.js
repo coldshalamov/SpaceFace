@@ -35,6 +35,7 @@ import { KILL_REWARD_RECIPES } from '../data/killRewards.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { RESEARCH_GRANTS } from '../data/researchGrants.js';
 import { SECTORS } from '../data/sectors.js';
+import { FACTION_META } from '../data/factions.js';
 import { BOLUS_SECTOR_ID, BOLUS_STATION_ID } from '../data/theBolus.js';
 import { SHIPS } from '../data/ships.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
@@ -214,6 +215,73 @@ export const INSURANCE_DEFAULTS = Object.freeze({
   deductibleCr: 500,
 });
 
+/**
+ * §15.6 C6 — mass slam × station. A body the PLAYER threw (rope release, concussion shove, a
+ * hull knocked loose) going through a berth's docking ring is the station's problem and then
+ * the player's: dock control files a fine against the note, the repair bay is down while the
+ * ring is cleared, the insurer notices, and the berth's faction remembers. Mass and closing
+ * speed decide every number — a scrape is nothing, a thrown wreck is a bill. The player's own
+ * hull bumping a station is never a slam (collisionConsequences never routes the player hull
+ * as a struck target, and this rule only reads thrown bodies).
+ */
+export const DOCK_SLAM_LAW = Object.freeze({
+  // Pre-solve closing speed below which a station contact is a scrape, not a slam. Shares the
+  // terrain crumple threshold (TERRAIN_CRUMPLE_LAW.threshold) so "would have crumpled a hull on
+  // a rock" and "put a hull through a ring" are the same speed.
+  closingSpeedMin: 30,
+  // A chip or a pickup bouncing off a ring is not a slam; a fighter-class body or heavier is.
+  massMin: 8,
+  // Fine = mass × closing speed × this, bounded. A light (16) at 40 WU/s files 150 (the floor);
+  // a medium (60) at 60 WU/s files 288; a 200-ton wreck at 80 WU/s files 1280.
+  finePerMomentum: 0.08,
+  fineMinCr: 150,
+  fineMaxCr: 2500,
+  // "Repair services down ten minutes" — sim seconds the yard refuses welds after a slam.
+  repairOutageS: 600,
+  // The insurer's answer: the deductible climbs by this factor per slam, capped at twice the
+  // default. It never resets by itself — the premium is the memory.
+  deductibleBump: 1.2,
+  deductibleMaxMult: 2,
+  // The berth's faction takes it personally, a little.
+  repDelta: -2,
+  // One slam per (station, body) inside this many sim seconds: a hull that rebounds and kisses
+  // the ring again a tick later is the same event, not a second bill.
+  relatchS: 6,
+});
+
+/** Copy only outages still live at `now`; null when nothing is. Save and restore share it. */
+function serializeStationOutages(outages, now) {
+  if (!outages || typeof outages !== 'object') return null;
+  const t = Number(now) || 0;
+  const out = {};
+  let any = false;
+  for (const stationId of Object.keys(outages)) {
+    const rec = outages[stationId];
+    if (!rec || typeof rec !== 'object') continue;
+    const repairUntil = Number(rec.repairUntil);
+    if (!Number.isFinite(repairUntil) || repairUntil <= t) continue;
+    out[stationId] = { repairUntil, cause: rec.cause || 'dock_slam', atT: Number(rec.atT) || 0 };
+    any = true;
+  }
+  return any ? out : null;
+}
+
+/**
+ * stationServiceOutage(state, stationId, service) -> { untilSimTime, cause, remainingS } | null.
+ * The one read for "is this berth's yard down right now". Economy writes outages (dock slams);
+ * the service handler and the UI quote read them.
+ */
+export function stationServiceOutage(state, stationId, service) {
+  const outages = state && state.economy && state.economy.stationOutages;
+  const rec = outages && stationId ? outages[stationId] : null;
+  if (!rec || typeof rec !== 'object') return null;
+  const key = `${service}Until`;
+  const until = Number(rec[key]);
+  const now = Number(state.simTime) || 0;
+  if (!Number.isFinite(until) || until <= now) return null;
+  return { untilSimTime: until, cause: rec.cause || null, remainingS: until - now };
+}
+
 // A station that posts 'toll'/'scan' is a working checkpoint (Customs Gate, Dione Customs):
 // docking there reads the hold and collects the plate instead of sitting as a refuel stop in
 // costume. The toll curve mirrors the gate-jump plates (50 + 200·security).
@@ -333,6 +401,21 @@ function stationInfo(state, stationId) {
     }
   }
   return STATION_INFO.get(stationId) || null;
+}
+
+/** A berth's authored display name, falling back to the id when the registry has none. */
+function stationDisplayNameFor(state, stationId) {
+  const reg = state && state.content && state.content.sectors;
+  const lists = [reg ? (Array.isArray(reg) ? reg : Object.values(reg)) : null, SECTORS];
+  for (const list of lists) {
+    if (!list) continue;
+    for (const sec of list) {
+      for (const st of (sec && sec.stations) || []) {
+        if (st && st.id === stationId) return st.name || stationId;
+      }
+    }
+  }
+  return String(stationId);
 }
 
 function commodityDef(state, id) {
@@ -1525,6 +1608,8 @@ export const economy = {
     // ---- event injection from other systems (missions, combat) ----------------------------
     bus.on('mission:forceEvent', (p) => { if (p) this.injectEvent(p); });
     bus.on('combat:baseDestroyed', (p) => this.onBaseDestroyed(p || {}));
+    // §15.6 C6 — a body the player threw through a docking ring is a bill, an outage and a memory.
+    bus.on('combat:collisionConsequence', (p) => this._onCollisionConsequence(p));
     // Save owners restore after economy. Rebuild this derived read model only after factions and
     // sectorSim have restored their authoritative conflict/field state.
     // A mature save's market refresh + synthetic reseed is ~30ms — too big for one emit-slice
@@ -3211,6 +3296,97 @@ export const economy = {
     return this.state.player.credits;
   },
 
+  /**
+   * §15.6 C6 — mass slam × station. Reads the collision receipt collisionConsequences already
+   * emits for every struck body; acts only when the struck surface is a station, the striker was
+   * put in motion by the player, and the contact was a real slam by closing speed and mass.
+   * Everything downstream is an existing writer's verb: debt on the note, a service outage the
+   * yard refuses on, the insurer's deductible, a faction rep intent, and one receipt
+   * (`station:slammed`) for sectorSim, barks and the ledger to read.
+   */
+  _onCollisionConsequence(p) {
+    if (!p || p.surface !== 'structure' || p.otherType !== 'station') return null;
+    const state = this.state;
+    const provenance = p.provenance;
+    if (!provenance || provenance.actorId == null || provenance.actorId !== state.playerId) return null;
+    if (p.targetId === state.playerId) return null;
+    const closing = Number(p.feelDeltaV);
+    const mass = Number(p.targetMass);
+    if (!(closing >= DOCK_SLAM_LAW.closingSpeedMin) || !(mass >= DOCK_SLAM_LAW.massMin)) return null;
+    const stationEntity = state.entities && state.entities.get(p.otherId);
+    const stationId = (stationEntity && stationEntity.data && stationEntity.data.stationId)
+      || (stationEntity && stationEntity.stationId)
+      || p.otherId;
+    const info = stationInfo(state, stationId);
+    if (!info) return null; // a structure that is not a berth has no dock control to bill you
+    const econ = state.economy || (state.economy = {});
+    const now = Number(state.simTime) || 0;
+    const latch = econ.dockSlamLatch || (econ.dockSlamLatch = {});
+    const latchKey = `${stationId}:${p.targetId}`;
+    if (Number.isFinite(latch[latchKey]) && now - latch[latchKey] < DOCK_SLAM_LAW.relatchS) return null;
+    latch[latchKey] = now;
+    // Bound the latch: a long session can only ever hold a handful of live keys.
+    const latchKeys = Object.keys(latch);
+    if (latchKeys.length > 32) {
+      for (const k of latchKeys) if (now - latch[k] >= DOCK_SLAM_LAW.relatchS) delete latch[k];
+    }
+
+    const fineCr = Math.max(DOCK_SLAM_LAW.fineMinCr, Math.min(DOCK_SLAM_LAW.fineMaxCr,
+      Math.round(mass * closing * DOCK_SLAM_LAW.finePerMomentum)));
+    this._fileDebt(fineCr);
+
+    const outages = econ.stationOutages || (econ.stationOutages = {});
+    const rec = outages[stationId] || (outages[stationId] = {});
+    rec.repairUntil = Math.max(Number(rec.repairUntil) || 0, now + DOCK_SLAM_LAW.repairOutageS);
+    rec.cause = 'dock_slam';
+    rec.atT = now;
+
+    const player = state.player;
+    let deductibleCr = null;
+    if (player && player.insurance && typeof player.insurance === 'object') {
+      const ins = player.insurance;
+      const cap = Math.round(INSURANCE_DEFAULTS.deductibleCr * DOCK_SLAM_LAW.deductibleMaxMult);
+      const base = Math.max(0, Math.round(Number(ins.deductibleCr) || INSURANCE_DEFAULTS.deductibleCr));
+      ins.deductibleCr = Math.min(cap, Math.round(base * DOCK_SLAM_LAW.deductibleBump));
+      deductibleCr = ins.deductibleCr;
+    }
+    if (player) player.dockSlams = (Number(player.dockSlams) | 0) + 1;
+
+    if (info.factionId) {
+      this.bus.emit('faction:repDelta', {
+        factionId: info.factionId, delta: DOCK_SLAM_LAW.repDelta, reason: 'dock_slam',
+      });
+    }
+    const meta = FACTION_META.find((f) => f && f.id === info.factionId) || null;
+    const lawful = !!(meta && meta.personality === 'lawful');
+    const stationName = stationDisplayNameFor(state, stationId);
+    const voice = lawful ? 'Dock control' : 'Yardmaster';
+    const outageMin = Math.round(DOCK_SLAM_LAW.repairOutageS / 60);
+    this.bus.emit('toast', {
+      text: `${voice}, ${stationName}: a ${Math.round(mass)}-ton hull just went through our ring — ${fineCr} cr filed on your note, repair bay down ${outageMin} min`,
+      kind: 'warn', ttl: 5,
+    });
+    const receipt = {
+      schemaVersion: 1,
+      stationId,
+      sectorId: info.sectorId || null,
+      factionId: info.factionId || null,
+      lawful,
+      actorId: provenance.actorId,
+      strikerId: p.targetId,
+      strikerType: p.targetType || null,
+      strikerKilled: p.targetKilled === true,
+      closingSpeed: closing,
+      mass,
+      fineCr,
+      repairOutageUntil: rec.repairUntil,
+      deductibleCr,
+      tick: Number.isFinite(p.tick) ? p.tick : (state.tick | 0),
+    };
+    this.bus.emit('station:slammed', receipt);
+    return receipt;
+  },
+
   /** PQ-155.02 — spilled named cargo can levy restitution. No levy, no debit. */
   levyRestitutionSink(p) {
     if (!p || p.playerCaused !== true) return null;
@@ -3456,6 +3632,18 @@ export const economy = {
     } else if (type === 'repair') {
       const e = state.entities && state.entities.get(state.playerId);
       if (!e) return;
+      // §15.6 C6 — the yard is down while a slammed ring is cleared. The outage is real time,
+      // not a refusal with a timer painted on it: wait it out or weld somewhere else.
+      const outage = stationServiceOutage(state,
+        (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null, 'repair');
+      if (outage) {
+        const mins = Math.max(1, Math.ceil(outage.remainingS / 60));
+        this.bus.emit('toast', {
+          text: `Repair bay down — somebody put a hull through the ring (${mins} min)`,
+          kind: 'error', ttl: 3,
+        });
+        return;
+      }
       const beforeHull = Number(e.hull) || 0;
       const beforeArmor = Number(e.armorHp) || 0;
       const hullMax = Number(e.hullMax) || 0;
@@ -4209,6 +4397,8 @@ export const economy = {
     state.player.sessionSinkSeq = 0;
     delete state.economy.committedIntents;
     delete state.economy.cargoKillChains;
+    delete state.economy.stationOutages;
+    delete state.economy.dockSlamLatch;
     this.resetRng();
     this._nextEventId = 1;
     this._eventAccumulator = 0;
@@ -4284,6 +4474,9 @@ export const economy = {
       ? econ.cargoKillChains.map((row) => normalizeCargoKillChain(row)).filter(Boolean)
       : [];
     if (cargoKillChains.length) data.cargoKillChains = cargoKillChains;
+    // §15.6 C6 — only live outages travel; an expired one is nothing to restore.
+    const outages = serializeStationOutages(econ.stationOutages, this.state.simTime);
+    if (outages) data.stationOutages = outages;
     return data;
   },
 
@@ -4304,6 +4497,10 @@ export const economy = {
       : [];
     if (restoredChains.length) econ.cargoKillChains = restoredChains;
     else delete econ.cargoKillChains;
+    const restoredOutages = serializeStationOutages(data.stationOutages, this.state.simTime);
+    if (restoredOutages) econ.stationOutages = restoredOutages;
+    else delete econ.stationOutages;
+    delete econ.dockSlamLatch;
     econ.pulse = restoreEconomyPulse(data.pulse, this.state.simTime);
     econ.balanceVersion = BALANCE.version;
     this._syntheticHistoryKeys = new Set();
