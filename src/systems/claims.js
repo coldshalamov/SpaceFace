@@ -2725,9 +2725,10 @@ export const claims = {
       // stays requested so the next sector entry retries it — including legacy saves that
       // topped the ladder before the route outcome existed.
       const growthRoute = this._normalizeGrowthRoute(rec.growthRoute, out[stationId]);
-      out[stationId].growthRoute = growthRoute;
+      // Same key order as _ensureStationGrowth, so a restore serializes byte-stable.
       out[stationId].routeRequested = growthRoute ? false
         : (rec.routeRequested === true || rung >= ladder.length);
+      out[stationId].growthRoute = growthRoute;
       any = true;
     }
     return any ? out : null;
