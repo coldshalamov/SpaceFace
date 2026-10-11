@@ -1361,12 +1361,15 @@ export const barkDirector = {
     queued.status = 'submitted';
     queued.submittedTick=tick;
     if (incident && !queued.recognition) incident.barkStatus = 'submitted';
-    if (!voice.say({ channel: 'bark', text: queued.text, kind: 'stuntRecognition', ttl: BARK_VOICE_TTL_S, id: queued.id, factionId: queued.factionId })) {
+    if (!voice.say({ channel: 'bark', text: queued.text, kind: 'stuntRecognition', priority: 55, ttl: BARK_VOICE_TTL_S, id: queued.id, factionId: queued.factionId })) {
       queued.status = 'queued'; if (incident && !queued.recognition) incident.barkStatus = 'queued';
     }
   },
 
   _stuntSurface(payload) {
+    // Scan hails share this event. Only the recognition itself may hold the quiet
+    // window; a flavor line was leaving safeSince null for the whole proof.
+    if (payload?.kind !== 'stuntRecognition') return;
     this._voiceBusyUntil = (this.state?.tick || 0) + Math.ceil((payload.ttl || 1.2)*60);
     const record = stuntRecognitionRecord(ensureState(this.state));
     const queued = record.pending.find(p => p.id === payload.id && p.status === 'submitted');
