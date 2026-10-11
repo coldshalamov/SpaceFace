@@ -1,4 +1,4 @@
-# Arsenal experience — 10 October 2026
+# Arsenal experience — 11 October 2026
 
 Owner request: audit and improve every built ship weapon and power. The standard is the
 demolition-derby Swarm game throughout Adventure: mass is useful, a shove changes the situation,
@@ -190,10 +190,63 @@ Direct evidence:
   quick-save, reload, Continue, and thrust after load; no uncaught errors, shader/link errors or
   missing assets. Player saves were isolated with `SPACEFACE_PLAYER_STORE_DIR=''`.
 
+## Live visual follow-through — 11 October
+
+The catalog review used the running browser game, its registered simulation/physics owners,
+actual weapon definitions and normal renderer. Compatible loadouts and nearby targets were set
+up in an isolated fixture after New Game → Launch. Each catalog weapon and all eight bomb
+payloads were viewed; this is distinct from an unrestricted Adventure/Swarm playthrough.
+
+The review found and repaired these additional player-visible failures:
+
+- Gyre's filled intake and closed payload shells concealed its work. Open gathering channels,
+  separated gripping/retention arcs and solid material-specific captured pieces expose the mass.
+  Held-payload rendering exceptions were fixed, and the camera includes ship, mouth and payload
+  without changing the player's selected zoom. A bounded 1.6-second release composition keeps
+  the first bowling impacts visible, then eases home. A restrained light from the existing pool
+  reveals the physical rubble without replacing it with an enclosing glow.
+- Gyre aggregates could fracture before making successive useful contacts. They now retain
+  energized cohesion during the throw, wake colliders along their swept path, retain material
+  identity, and return to ordinary fracture at expiry. Heat can still rupture them.
+- Held orbital motion leaked sideways into the throw, contradicting the indicated direction.
+  The first launch impulse removes that artificial transverse motion relative to the carrier;
+  deliberate carrier momentum and later collision deflections remain physical.
+- Beam pixel sizing used distance from world origin. At distant coordinates a narrow beam
+  became a broad white stripe. It now uses camera-to-source distance in the same render frame.
+- Emergent tools simulated darts and retained mechanisms that had no renderer. They now have
+  distinct travelling geometry, sticky charges, conductive fins, polarity poles, hijacker
+  attachments, gong plates, first-target markers and actual two-body connections. Authoritative
+  ledgers own presence; consumption, expiry, host removal and world changes retire the visuals.
+- Viscosity covered ships with broad opaque green folds. Separated low wet ridges preserve its
+  footprint while leaving actors visible. The target sigil's radiance was reduced to let contact
+  effects read, and the Wellhead's inlet is geometrically distinct from the Gravity Mark source.
+- Countermeasure deployment bursts ended well before their active effects. Chaff strips, a
+  ship-following ECM mechanism and a world-anchored decoy now persist for their real lifetimes.
+- Drone mining could inherit the player's target and emit from the wrong work face. Receipts
+  now name the actual cutter and rock surface; contact matter and scars follow that target.
+  Bullet-time's decorative camera movement now respects both reduced-motion preferences.
+
+Direct mechanics evidence: seed 18122, real Rapier, combines radius-24 and radius-20 rocks into
+an 8516t, radius-32.4 clump. At 405.6 WU/s it damages three 1200-HP hulls to 945/1022/1068,
+imparts 344.4/309.1/40.0 WU/s, tumbles two, and retains player credit. A mixed small-rock feed
+forms a 72t clump in 21 ticks. The five Gyre/material/activity suites pass 232 checks. The
+additional aimed-release regression reduces unwanted transverse drift from 76.57 WU/s to
+under 0.05 while preserving a carrier's deliberate 90 WU/s strafe; eight focused launch/replay
+cases pass. In the running browser fixture, the same 8516t aggregate struck all three real
+enemy hulls: 1200 HP became approximately 171/671/732, with speeds of 417/445/204 WU/s.
+Camera framing passes 20 cases, including both world axes, reduced motion and the actual
+controller's 526-WU bowling trajectory while keeping the ship visible.
+The final running-game frame also kept the ship and moving aggregate visible at 65 ticks
+after release, with collision debris along its path and all three target hulls damaged.
+
+Focused rendering checks cover beam translation/rebase invariance, source identity, field sleep,
+techniques and target selection (54 checks), emergent payload/material behavior (18), and
+countermeasure lifetime/cleanup (27). Drone/cargo and bullet-time support checks pass 23 cases.
+Two ownership regressions verify pooled Gyre light retirement and drone contact/scar targets.
+Screenshots are temporary in-session review material; the resulting changes and findings are
+recorded here rather than retaining a capture archive.
+
 Verification boundaries: the earlier broad baseline retains stored topology/simulation-hash
-differences; expected golden files were not rewritten to pass. Deterministic/reload comparisons
-passed. Current concurrently edited Gyre passes 188/193 fixtures, including real
-gather/merge/launch and kernel-routed impact credit. Three remaining fixtures assert retired
-tonnage limits and two assume earlier capture timing; its live source/tests were preserved.
-No all-effects aesthetic certification, hardware performance certification or new quiet-host
-capture is claimed by this pass.
+differences; this work did not rewrite expected goldens. Deterministic/reload comparisons passed.
+The fixture review does not establish hardware performance, encounter balance across all builds,
+or quiet-host acceptance. No new quiet-host capture was produced.

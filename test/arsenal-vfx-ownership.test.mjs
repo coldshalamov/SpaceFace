@@ -1,0 +1,53 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import * as THREE from 'three';
+import { vfx } from '../src/render/vfx.js';
+
+test('Gyre illuminates its actual payload using one existing light slot, then releases it', () => {
+  const fx = Object.create(vfx);
+  fx._scene = new THREE.Scene();
+  fx._admissionSerial = 0;
+  fx._initEventLights();
+  const lights = [...fx._scene.children];
+  const source = { active: true, x: 100, y: 45, z: 80, color: 0xb9d3ef, intensity: 1400, range: 150 };
+  fx._gyreSnareFx = { payloadLight: source };
+  fx._updateGyrePayloadLight();
+  const slot = fx._findSustainedEventLight('gyre-payload');
+  assert.ok(slot);
+  assert.deepEqual(slot.obj.position.toArray(), [100, 45, 80]);
+  source.x = 125; source.intensity = 700;
+  fx._updateGyrePayloadLight();
+  assert.equal(fx._findSustainedEventLight('gyre-payload'), slot);
+  assert.equal(slot.obj.position.x, 125);
+  assert.equal(slot.obj.intensity, 700);
+  assert.deepEqual(fx._scene.children, lights, 'no added lights or shader-census change');
+  source.active = false;
+  fx._updateGyrePayloadLight();
+  assert.equal(fx._activeLightCount, 0);
+  assert.equal(slot.obj.intensity, 0);
+  assert.ok(slot.obj.visible, 'parked lights preserve the compiled light census');
+});
+
+test('drone mining contact and scars follow its rock instead of the player beam target', () => {
+  const player = { id: 1, pos: { x: -100, z: 0 } };
+  const drone = { id: 4, pos: { x: 30, z: 10 } };
+  const playerRock = { id: 2, pos: { x: -50, z: 0 }, hull: 1, hullMax: 100, radius: 8 };
+  const droneRock = { id: 3, pos: { x: 20, z: 10 }, hull: 100, hullMax: 100, radius: 8 };
+  const fx = Object.create(vfx), contacts = [], scars = [];
+  fx.state = { playerId: 1, simTime: 3, entities: new Map([player, drone, playerRock, droneRock].map(e => [e.id, e])) };
+  fx._scene = {};
+  fx._ent = id => fx.state.entities.get(id);
+  fx._miningBeam = { targetId: playerRock.id };
+  fx._c0 = new THREE.Color(); fx._c1 = new THREE.Color(); fx._spawnLocalXZ = { x: 0, z: 0 };
+  fx._toLocalXZ = (x, z, out) => Object.assign(out, { x, z });
+  fx._spawnParticle = fx._spawnSprite = fx._eventLight = () => {};
+  fx._composeImpact = (...args) => contacts.push({ ...args.at(-1) });
+  fx._weaponPresenter = { stampMiningScar: (...args) => scars.push(args) };
+  fx._onMiningTick({ sourceEntityId: drone.id, targetId: droneRock.id, contactPos: { x: 28, z: 10 }, oreType: 'iron' });
+  assert.equal(contacts[0].targetId, droneRock.id);
+  assert.equal(scars[0][0], droneRock.id);
+  assert.equal(scars[0].at(-1), 0, 'fracture is read from the worked rock, not the player target');
+  fx.state.simTime += 1;
+  fx._onMiningTick({ sourceEntityId: drone.id, contactPos: { x: 28, z: 10 }, oreType: 'iron' });
+  assert.equal(contacts[1].targetId, null, 'legacy unbound drone receipts never inherit a player target');
+});

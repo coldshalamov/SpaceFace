@@ -8,6 +8,15 @@ import {
 
 const DEFAULT_MAX_BEAMS = 16;
 const DEFAULT_TIMEOUT_S = 0.14;
+
+/** Camera and source must be in the same render-local frame. Translation of the
+ * world must never change the pixel footprint of an otherwise identical beam. */
+export function beamViewDistance(camera, source, fallback = 144) {
+  if (!camera?.position || !source || !Number.isFinite(source.x) || !Number.isFinite(source.z)) return fallback;
+  const distance = Math.hypot(camera.position.x - source.x,
+    camera.position.y - (Number.isFinite(source.y) ? source.y : 0), camera.position.z - source.z);
+  return Number.isFinite(distance) && distance > 0 ? distance : fallback;
+}
 // Birth spool: a latched continuous beam grows out of the aperture instead of snapping to full
 // width and brightness on the first presented frame (B10). The presentation keeps a short drain
 // after the authoritative stop so the loaded conduit can cool at the work face instead of popping
