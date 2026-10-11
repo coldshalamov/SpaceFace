@@ -806,7 +806,12 @@ export const automation = {
     if (workTime <= 0) return;
     // The same depletion owner used by manual drones bounds the shipment. Two miners cannot
     // both extract the final unit from a rock, and moving the player does not create a new source.
-    const removedHp = this._chipAsteroid(rock, { mineRate: rate }, workTime);
+    let miner = null;
+    for (const id of g.entityIds || []) {
+      const entity = this.state.entities?.get(id);
+      if (isGroupDrone(entity, g)) { miner = entity; break; }
+    }
+    const removedHp = this._chipAsteroid(rock, { mineRate: rate }, workTime, miner);
     g._programMineCarry = (Number(g._programMineCarry) || 0) + removedHp / 14;
     const want = Math.floor(g._programMineCarry + 1e-9);
     if (want <= 0) return;
@@ -992,7 +997,7 @@ export const automation = {
         anyOnRock = true;
         this._setDroneGrinding(e, !!wantOre);
         this._maybeRefireDroneGrind(e);
-        if (wantOre) this._chipAsteroid(ast, def, dt);
+        if (wantOre) this._chipAsteroid(ast, def, dt, e);
       }
     }
     if (alive.length !== g.entityIds.length) g.entityIds = alive;
@@ -1054,7 +1059,7 @@ export const automation = {
   // Inline mining: shave ore-HP off the rock and emit a mining-style yield pulse (cosmetic/feedback).
   // Sim-affecting yield is the group's authored buffer accrual (kept in _updateDrones), so this only
   // depletes the field + drives VFX — it never double-credits ore. Deterministic (no RNG draw here).
-  _chipAsteroid(ast, def, dt) {
+  _chipAsteroid(ast, def, dt, miner = null) {
     const d = ast.data || (ast.data = {});
     const hpMax = d.oreHPMax || d.oreHP || ast.hullMax || 1;
     if (d.oreHPMax == null) d.oreHPMax = hpMax;
@@ -1063,8 +1068,18 @@ export const automation = {
     const before = d.oreHP;
     d.oreHP = Math.max(0, d.oreHP - dps * dt);
     ast.hull = d.oreHP;
-    if (d.oreHP < before) {
-      this.bus.emit('mining:tick', { contactPos: { x: ast.pos.x, z: ast.pos.z }, oreType: DRONE_ORE_ID });
+    // A remote operation still depletes ore, but only a present cutter owns a visible work face.
+    if (d.oreHP < before && miner?.alive !== false && miner?.pos) {
+      const dx = miner.pos.x - ast.pos.x, dz = miner.pos.z - ast.pos.z;
+      const distance = Math.hypot(dx, dz);
+      const nx = distance > 1e-6 ? dx / distance : -Math.cos(miner.rot || 0);
+      const nz = distance > 1e-6 ? dz / distance : -Math.sin(miner.rot || 0);
+      const radius = Math.max(0, Number(ast.radius) || 0);
+      this.bus.emit('mining:tick', {
+        sourceEntityId: miner.id, targetId: ast.id,
+        contactPos: { x: ast.pos.x + nx * radius, z: ast.pos.z + nz * radius },
+        oreType: DRONE_ORE_ID,
+      });
     }
     if (d.oreHP <= 0 && ast.alive) {
       const respawn = (d.respawnSec != null ? d.respawnSec : 120);
