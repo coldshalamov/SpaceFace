@@ -400,7 +400,9 @@ function resolveAdmitOverlap(state, pos, colliderR, reason) {
 }
 
 function isOpticRockData(data) {
-  return !!(data && typeof data.opticMaterial === 'string' && data.opticMaterial);
+  // Lattice cells carry opticStructureId. Ordinary ore also stamps opticMaterial
+  // ('metal' / 'diamond') as a surface tag — that must not shelve a field rock.
+  return !!(data && typeof data.opticStructureId === 'string' && data.opticStructureId);
 }
 
 export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote') {
