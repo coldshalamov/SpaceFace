@@ -327,17 +327,18 @@ export const BEATS = [
     ],
     done: 'oreCollected',
   },
-  { // B4 DOCK — sell flow + ONE recommended contract
+  { // B4 DOCK — the berth itself: selling, fitting and the next job all happen here
     key: 'dock',
     line: 'Helios. Dock when close.',
+    done: 'docked',
+  },
+  { // B5 CHOICE — at the same berth: the authored Ceres run plus three side-by-side offers.
+    // Accepting any real work ends the tutorial; undocking without one hands the player the ship.
+    key: 'choice',
+    line: 'Pick the work that fits.',
     followups: [
       { on: 'sold', line: "Board's got one job for you." },
     ],
-    done: 'recommendedCompleted',
-  },
-  { // B5 CHOICE — three side-by-side offers; accept any → ends tutorial
-    key: 'choice',
-    line: 'Pick the work that fits.',
     done: 'mission:accepted',
   },
 ];
@@ -546,6 +547,7 @@ export const onboarding = {
     // SFQ-B064: an unspent verb-changing fit is felt at the next undock, once per verb per
     // profile, through the same first-use voice. The demo end card is unchanged.
     bus.on('dock:undocked', () => {
+      this._onUndockedFromChoice();
       this._maybeSpeakFitFelt();
       this._maybeShowDemoEndCard();
     });
@@ -913,6 +915,16 @@ export const onboarding = {
     st.player.hints[key] = true;
     const entityId = resolveFirstUseEntityId(st, payload || {});
     this.bus.emit('hud:firstUse', { verbId: key, text, entityId });
+  },
+
+  // Leaving the B5 berth without taking a job is a choice too: the player flies their own plan.
+  // The rail retires instead of pinning "Pick the work that fits" over open space; the offers
+  // stay on the board as ordinary rows, and any owed fit-felt line speaks at this undock.
+  _onUndockedFromChoice() {
+    const ob = this.state && this.state.onboarding;
+    const beat = ob && ob.active && !ob.finished && BEATS[ob.currentBeat];
+    if (!beat || beat.key !== 'choice') return;
+    this._finish();
   },
 
   _tutorialRailOwnsVoice() {
@@ -1416,24 +1428,18 @@ export const onboarding = {
     const ob = this.state.onboarding;
     const beat = ob && BEATS[ob.currentBeat];
     if (!ob || !beat) return;
-    if (beat.key === 'dock' && payload.source === FIRST_TRADE_CONTRACT_SOURCE) {
-      ob.recommendedMissionId = payload.missionId || null;
-      ob.beatAction = 'Complete the tracked delivery.';
-      this._clearObjectiveWaypoint();
-      const missions = this.registry && this.registry.get && this.registry.get('missions');
-      if (missions && typeof missions.releaseOnboardingNavigation === 'function') {
-        missions.releaseOnboardingNavigation(payload.missionId);
-      }
-      this._refreshBeatPanel();
-      return;
-    }
+    if (payload.source === FIRST_TRADE_CONTRACT_SOURCE) ob.recommendedMissionId = payload.missionId || null;
     this._onBeatEvent('mission:accepted', payload);
-    // The rail yields to real work: an accepted contract that is not the dock beat's own
-    // recommended first-trade offer ends the tutorial through the same _finish() the choice
-    // beat's accept uses, so the objective slot follows the job the player actually took and
-    // the n/12 status retires instead of pinning a stale beat for the rest of the run.
-    if (ob.active && !ob.finished && payload.source !== FIRST_TRADE_CONTRACT_SOURCE) {
-      this._finish();
+    // The rail yields to real work: any accepted contract — a B5 choice, the authored Ceres run,
+    // or an ordinary board row — ends the tutorial through the same _finish(), so the objective
+    // slot follows the job the player actually took instead of pinning a stale beat. The Ceres
+    // delivery is tracked and owns navigation like any other accepted job; nothing local waits
+    // for its completion.
+    const railWasLive = ob.active && !ob.finished;
+    if (railWasLive) this._finish();
+    const missions = this.registry && this.registry.get && this.registry.get('missions');
+    if (railWasLive && payload.missionId != null && missions && typeof missions.releaseOnboardingNavigation === 'function') {
+      missions.releaseOnboardingNavigation(payload.missionId);
     }
   },
 
@@ -1443,6 +1449,8 @@ export const onboarding = {
     if (!ob || !beat || beat.key !== 'dock') return;
     if (payload.source !== FIRST_TRADE_CONTRACT_SOURCE) return;
     if (ob.recommendedMissionId && payload.missionId !== ob.recommendedMissionId) return;
+    // Legacy saves only: a rail saved on B4 with the delivery already accepted. The current rail
+    // resolves B4 at the berth and finishes on the accept, so this path never runs for new runs.
     ob.choiceStationId = this.state.ui && this.state.ui.dockedStationId
       || FIRST_TRADE_CONTRACT_DEST_STATION_ID;
     this._onBeatEvent('recommended:completed', payload);
@@ -1499,10 +1507,12 @@ export const onboarding = {
       const choiceIds = Array.isArray(ob.choiceOfferIds) ? ob.choiceOfferIds : [];
       resolved = payload && payload.source === ONBOARDING_CHOICE_SOURCE
         && choiceIds.includes(payload.sourceOfferId);
-    } else if (done === 'recommendedCompleted' && eventName === 'recommended:completed') {
-      // B4 stays live through the authored Helios delivery. Merely selling the training ore or
-      // accepting an unrelated board row cannot skip the first complete contract loop.
-      resolved = true;
+    } else if (done === 'docked' && (eventName === 'dock:docked' || eventName === 'recommended:completed')) {
+      // B4 resolves at the berth: selling, fitting and choosing the next job are local. The
+      // choice beat opens its offers at this station, beside the authored Ceres run.
+      const stationId = this.state.ui && this.state.ui.dockedStationId;
+      if (stationId) ob.choiceStationId = stationId;
+      resolved = eventName === 'recommended:completed' || !!stationId;
     }
     // Movement, heat recovery, distance, and ore collection resolve from deterministic state reads.
     if (resolved) this._beatDone(beat);
