@@ -81,7 +81,12 @@ function bootCombat(systems = [combat, heat]) {
   const damageEvents = [];
   const killedEvents = [];
   const lootDrops = [];
-  bus.on('combat:damage', (payload) => damageEvents.push(payload));
+  // combat:damage refills one pooled record (src/combat/damage.js). Copy the fields
+  // this file asserts so a later hit cannot rewrite an earlier receipt.
+  bus.on('combat:damage', (payload) => damageEvents.push({
+    attackerId: payload.attackerId,
+    targetHostileToPlayer: payload.targetHostileToPlayer,
+  }));
   bus.on('entity:killed', (payload) => killedEvents.push(payload));
   bus.on('loot:drop', (payload) => lootDrops.push(payload));
   return { sim, state, bus, player, damageEvents, killedEvents, lootDrops, combat: sim.registry.get('combat') };
