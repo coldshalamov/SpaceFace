@@ -1,3 +1,3 @@
 // Compatibility surface for existing consumers. New faction definitions live in
 // one-file-per-faction modules under ./factions; keep FACTION_META byte-equivalent.
-export { FACTION_KITS, FACTION_META } from './factions/index.js';
+export { FACTION_KITS, FACTION_META, LAWFUL_STATION_FACTIONS } from './factions/index.js';

@@ -21,6 +21,7 @@
 // Tunables kept conservative so a casual smuggler isn't perma-hunted, but a murderous pirate feels
 // real consequences. All clamp at 1.
 import { isRunSealed } from '../core/runSeal.js';
+import { LAWFUL_STATION_FACTIONS } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
 
 const HEAT_MAX = 1;
@@ -125,8 +126,6 @@ export const RESCUE_COOL_PER_POD = 0.08;
 export const RESCUE_COOL_WINDOW_S = 60;
 export const RESCUE_COOL_MAX_PER_WINDOW = 0.2;
 const RESCUE_LEDGER_IDS_CAP = 48;
-// Mirrors engagementAuthority.LAWFUL_STATION_FACTIONS (kept local, as ambientPredation does).
-const RESCUE_LAWFUL_FACTIONS = new Set(['faction_scn', 'faction_mts', 'faction_dmc', 'faction_free']);
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 
@@ -692,7 +691,7 @@ export const heat = {
     if (payload.playerWreck === true || (payload.victimId != null && payload.victimId === state.playerId)) return 0;
     const lawful = typeof payload.factionLawful === 'boolean'
       ? payload.factionLawful
-      : RESCUE_LAWFUL_FACTIONS.has(payload.factionId);
+      : LAWFUL_STATION_FACTIONS.has(payload.factionId);
     if (!lawful) return 0;
     const rawId = payload.id != null ? payload.id : payload.entityId;
     if (rawId == null) return 0;

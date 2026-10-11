@@ -6,6 +6,7 @@ import {
   effectiveActivityForAI,
   normalizeRoe,
 } from './doctrine.js';
+import { LAWFUL_STATION_FACTIONS } from '../data/factions.js';
 import { bubblesFor } from '../data/stationBubbles.js';
 import {
   HELIOS_STARTER_PROTECTION_RADIUS_WU,
@@ -24,12 +25,6 @@ const MAX_FIRST_SESSION_ATTACKERS = 2;
 // (hysteresis keeps ownership stable tick to tick when distances are similar).
 const OWNER_DISPLACEMENT_HYSTERESIS = 1.5;
 const LAWFUL_STATION_PROTECTION_MIN = 600;
-const LAWFUL_STATION_FACTIONS = new Set([
-  'faction_scn',
-  'faction_mts',
-  'faction_dmc',
-  'faction_free',
-]);
 const DOCTRINE_FIRE_PHASES = Object.freeze({
   interceptor_flyby: new Set(['strike', 'commit']),
   // Bruiser Brawler ordinary fights use this doctrine id, not interceptor_flyby. `commit` is the
