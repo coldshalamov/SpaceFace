@@ -35,10 +35,17 @@ import {
   PILOT_GRUDGES,
   PROMOTED_PILOT_EXPIRY_S,
   PROMOTED_PILOT_MAX,
+  fightOutcomeForGrudge,
+  fightOutcomeFromSignals,
+  grievanceLineFor,
+  grievanceSeedFor,
   grudgeKeyForReason,
+  heirIdentity,
+  isFightOutcome,
   promotedPilotIdFor,
   promotedPilotIdentity,
   promotedReturnLine,
+  sectorDisplayName,
 } from '../data/pilotCallsigns.js';
 import { ensureMoralMemory, rememberMoralDebt, revealMoralDebt } from './moralMemory.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
@@ -137,6 +144,10 @@ export const aceMemory = {
     // grudge, and a scheduled return through the same promoted-return machinery.
     this._listen('entity:killed', (p) => this._promotedKilled(p));
     this._listen('combat:kill', (p) => this._promotedKilled(p));
+    // A named ace killed in its own return fight settles like the first-contact kill does: the
+    // director's receipt only ever covers the first contact, the return is aceMemory's to close.
+    this._listen('entity:killed', (p) => this._returnBossKilled(p));
+    this._listen('combat:kill', (p) => this._returnBossKilled(p));
     this._listen('pirateDisengage:triggered', (p) => this._pirateDisengageTriggered(p));
     this._listen('massline:tumbled', (p) => this._flung(p));
     // FB-139 — a moral-memory return (the spared pilot coming back angry) is announced
@@ -264,6 +275,7 @@ export const aceMemory = {
     rec.encounterCount = (rec.encounterCount | 0) + 1;
     rec.lastSeenAt = nowOf(this.state, payload);
     rec.lastSectorId = sectorOf(this.state, payload);
+    rec.fightStartedAt = rec.lastSeenAt;
     this._completePlanetChallenge(ace.id, 'appeared', payload);
     if (first) this._emitTransition('encountered', ace, rec);
     // Nemesis owns its refits and authored voice; the shared ledger still records the sighting.
@@ -305,6 +317,8 @@ export const aceMemory = {
       }
       this._suppressCultureIntro(ace.id);
       const first = rec.fled !== true;
+      this._noteFightEnd(ace, rec, false);
+      resetSpentReturn(rec);
       rec.fled = true;
       rec.fledAt = now;
       rec.fleeCount = (rec.fleeCount | 0) + 1;
@@ -323,13 +337,190 @@ export const aceMemory = {
     if (transition === 'defeated') {
       this._suppressCultureIntro(ace.id);
       const first = rec.defeated !== true;
+      if (first && ace.lifecycleOwner !== 'nemesis') this._noteFightEnd(ace, rec, true);
       rec.defeated = true;
       rec.defeatedAt = now;
       rec.returnScheduled = false;
       rec.returnsBigger = false;
       rec.returnAt = null;
       if (first) this._completeTransition('defeated', ace, rec);
+      if (first && ace.lifecycleOwner !== 'nemesis') this._inheritName(ace, rec, now);
     }
+  },
+
+  // ── The last fight, kept (U-D) ───────────────────────────────────────────────────────────
+  // The record carries the three facts a returning rival names: where it ended (`lastSectorId`),
+  // how (`lastOutcome`) and with what (`lastStyle`, `lastWeaponId` when the kill receipt names it).
+  // Kills and flings during the fight stamp `lastStyleAt` / `lastWingmanDownAt` / `lastFlungAt`;
+  // the transition that ends the fight folds them into one outcome.
+
+  _noteFightEnd(ace, rec, killed, bossHull = null) {
+    const start = Number.isFinite(rec.fightStartedAt) ? rec.fightStartedAt : -Infinity;
+    const since = (t) => Number.isFinite(t) && t >= start;
+    const boss = bossHull || this._bossHullOf(ace);
+    const frac = boss && Number(boss.hullMax) > 0 ? Number(boss.hull) / Number(boss.hullMax) : null;
+    rec.lastOutcome = fightOutcomeFromSignals({
+      killed,
+      flung: since(rec.lastFlungAt),
+      rammed: rec.lastStyle === 'ram' && since(rec.lastStyleAt),
+      wingmanDown: since(rec.lastWingmanDownAt),
+      bossHullFrac: frac,
+    });
+    if (!isStyleValue(rec.lastStyle)) {
+      const habit = ensureMemory(this.state).playerStyle;
+      rec.lastStyle = habit && isStyleValue(habit.lastStyle) ? habit.lastStyle : 'gun';
+    }
+  },
+
+  /** The live boss hull of this ace's squad, first fight (director) or return (aceMemory). */
+  _bossHullOf(ace) {
+    const entities = this.state && this.state.entities;
+    if (!entities || typeof entities.values !== 'function') return null;
+    for (const e of entities.values()) {
+      if (!e || e.alive === false || e.type !== 'ship') continue;
+      const d = e.data || {};
+      const tag = d.aceMemory;
+      const ai = d.ai || {};
+      const boss = tag
+        ? tag.aceId === ace.id && tag.role === 'boss'
+        : (d.namedAceId || ai.namedAceId) === ace.id && ai.encounterRole === 'boss';
+      if (boss) return e;
+    }
+    return null;
+  },
+
+  /** Which named ace a hull flies for, and in what seat: the returned crew's tag, the first
+   *  contact's `namedAceId` stamp, or the boss's own name. Never reads a promoted pilot. */
+  _fightActorOf(entity) {
+    const d = entity && entity.data;
+    if (!d) return null;
+    const ai = d.ai || {};
+    const tag = d.aceMemory;
+    if (tag && tag.aceId) {
+      const ace = aceById(tag.aceId);
+      return ace ? { ace, role: tag.role === 'boss' ? 'boss' : 'wing' } : null;
+    }
+    const stamped = aceById(d.namedAceId || ai.namedAceId);
+    if (stamped) return { ace: stamped, role: ai.encounterRole === 'boss' ? 'boss' : 'wing' };
+    const named = resolveAceFromEntity(entity);
+    return named ? { ace: named, role: 'boss' } : null;
+  },
+
+  _noteFightKill(entity, style, payload, now) {
+    const actor = this._fightActorOf(entity);
+    if (!actor || actor.ace.lifecycleOwner === 'nemesis') return;
+    const rec = recordFor(ensureMemory(this.state), actor.ace);
+    if (isStyleValue(style)) {
+      rec.lastStyle = style;
+      rec.lastStyleAt = now;
+    }
+    const weaponId = payload && (payload.weaponId || (payload.presentation && payload.presentation.weaponId));
+    if (typeof weaponId === 'string' && weaponId) rec.lastWeaponId = weaponId;
+    if (actor.role !== 'boss') rec.lastWingmanDownAt = now;
+  },
+
+  /** The name a fallen named ace's surviving wingman takes up (U-D lineage). The code retires a
+   *  named ace the moment it is killed — the kill is permanent — so the wing it leaves behind
+   *  carries the grudge instead: the heir is a promoted pilot ("<Given> <Tail> the Second", the
+   *  fallen's crew) whose return line names the one the player killed. One heir per ace. */
+  _inheritName(ace, rec, now) {
+    const state = this.state;
+    if (!state || rec.heirId || ace.promoted === true) return;
+    const wing = this._survivingWingman(ace);
+    if (!wing) return;
+    const memory = ensureMemory(state);
+    const pilotId = `heir_${ace.id}`;
+    if (memory[pilotId]) return;
+    const seed = seedOf(state);
+    const identity = heirIdentity(ace, seed, wing.id);
+    evictOldestPromoted(memory, now);
+    const factionId = wing.factionId || ace.factionId || 'faction_reach';
+    const archetype = promotedArchetypeFor(wing);
+    const pseudoAce = promotedAceShape(pilotId, identity, {
+      factionId,
+      returnArchetype: ace.returnArchetype || archetype,
+      escortArchetype: ace.escortArchetype || 'wasp_swarmer',
+      baseReturnLevel: ace.baseReturnLevel || promotedBaseLevelFor(wing),
+    });
+    const heir = recordFor(memory, pseudoAce);
+    heir.promoted = true;
+    heir.sourceEntityId = wing.id;
+    heir.promotedAt = now;
+    heir.factionId = factionId;
+    heir.returnArchetype = pseudoAce.returnArchetype;
+    heir.escortArchetype = pseudoAce.escortArchetype;
+    heir.baseReturnLevel = pseudoAce.baseReturnLevel;
+    heir.signatureBark = identity.signatureBark;
+    heir.epithet = identity.epithet;
+    heir.grudgeKey = 'lost_captain';
+    heir.grudgeLabel = 'watched you kill the captain';
+    heir.predecessorId = ace.id;
+    heir.predecessorName = ace.name;
+    heir.encountered = true;
+    heir.encounterCount = (heir.encounterCount | 0) + 1;
+    heir.fled = true;
+    heir.fledAt = now;
+    heir.fleeCount = (heir.fleeCount | 0) + 1;
+    heir.returnsBigger = true;
+    heir.returnScheduled = true;
+    heir.returnTier = Math.min(
+      PIRATE_PROMOTION_MAX_TIER,
+      Math.max(1, (rec.returnTier | 0) + 1),
+    );
+    heir.lastSeenAt = now;
+    heir.lastSectorId = rec.lastSectorId || sectorOf(state);
+    heir.lastOutcome = 'killed';
+    heir.lastStyle = rec.lastStyle || 'gun';
+    if (rec.lastWeaponId) heir.lastWeaponId = rec.lastWeaponId;
+    // The player's guns wrote this grudge: a hunter, never a friendly roll.
+    heir.grudge = Math.max(heir.grudge | 0, ACE_GRUDGE_HUNT_AT);
+    Object.assign(heir, returnPlanForAce(pseudoAce, seed, now));
+    heir.returnAt = now + huntsReturnDelayS(heir.returnAfterS, heir.grudge | 0);
+    rec.heirId = pilotId;
+    // The surviving hull wears the heir's name at once — target panel, hail and kill ledger.
+    const data = wing.data || (wing.data = {});
+    const ai = data.ai || (data.ai = {});
+    ai.name = identity.name;
+    data.callsign = identity.name;
+    data.name = identity.name;
+    data.promotedPilot = { id: pilotId, name: identity.name, grudgeKey: 'lost_captain', promotedAt: now };
+    emit(this.bus, 'aceMemory:heirNamed', {
+      aceId: pilotId,
+      aceName: identity.name,
+      predecessorId: ace.id,
+      predecessorName: ace.name,
+      crew: identity.crew,
+      entityId: wing.id,
+      returnAt: heir.returnAt,
+      sectorId: heir.lastSectorId,
+      t: now,
+    });
+    const headline = `${identity.name} takes the ${identity.crew} on - ${ace.name} is dead, and the lane is not done.`;
+    emit(this.bus, 'news:headline', {
+      headline,
+      text: headline,
+      kind: 'ace-heir',
+      aceId: pilotId,
+      aceName: identity.name,
+      crew: identity.crew,
+      sectorId: heir.lastSectorId || null,
+    });
+    this._emitTransition('fled', pseudoAce, heir);
+  },
+
+  /** The lowest-id live hostile wing hull still flying for this ace — deterministic. */
+  _survivingWingman(ace) {
+    const entities = this.state && this.state.entities;
+    if (!entities || typeof entities.values !== 'function') return null;
+    let best = null;
+    for (const e of entities.values()) {
+      if (!e || e.alive === false || e.type !== 'ship' || e.team !== 1) continue;
+      if (e.data && e.data.promotedPilot) continue;
+      const actor = this._fightActorOf(e);
+      if (!actor || actor.ace.id !== ace.id || actor.role === 'boss') continue;
+      if (!best || e.id < best.id) best = e;
+    }
+    return best;
   },
 
   _receipt(payload) {
@@ -615,12 +806,24 @@ export const aceMemory = {
       ? this.state.entities.get(victimId)
       : null;
     const ace = resolveAceFromEntity(entity);
-    if (!ace) return;
+    if (!ace) {
+      // A flung wingman is part of the fight the captain remembers, not a second grudge.
+      const actor = this._fightActorOf(entity);
+      if (actor && actor.ace.lifecycleOwner !== 'nemesis') {
+        const fight = recordFor(ensureMemory(this.state), actor.ace);
+        fight.lastFlungAt = now;
+        fight.lastStyle = 'fling';
+        fight.lastStyleAt = now;
+      }
+      return;
+    }
     const rec = recordFor(ensureMemory(this.state), ace);
     rec.encountered = true;
     rec.flungCount = (rec.flungCount | 0) + 1;
     rec.grudge = Math.min(ACE_GRUDGE_MAX, (rec.grudge | 0) + 1);
     rec.lastFlungAt = now;
+    rec.lastStyle = 'fling';
+    rec.lastStyleAt = now;
     rec.lastFlungCause = String(payload.cause || 'massline');
     rec.lastFlungSpin = Number.isFinite(payload.spin) ? payload.spin : 0;
     rec.lastSeenAt = rec.lastFlungAt;
@@ -712,6 +915,7 @@ export const aceMemory = {
       aceId: ace && ace.id,
       now,
     });
+    this._noteFightKill(entity, style, payload, now);
     // The killed hull's faction remembers: a small grudge for every captain of the victim faction,
     // a bigger one when the hull was the captain's own.
     if (factionId) {
@@ -789,6 +993,8 @@ export const aceMemory = {
       existing.returnScheduled = true;
       existing.lastSeenAt = now;
       existing.lastSectorId = sectorOf(state, payload);
+      existing.lastOutcome = fightOutcomeForGrudge(existing.grudgeKey);
+      existing.lastStyle = habitStyleOf(memory);
       Object.assign(existing, returnPlanForAce(promotedAceForRecord(existing), seed, now));
       if (stanceForRecord(existing).stance === 'hunts') {
         existing.returnAt = now + huntsReturnDelayS(existing.returnAfterS, existing.grudge | 0);
@@ -832,6 +1038,8 @@ export const aceMemory = {
     rec.returnTier = Math.min(PIRATE_PROMOTION_MAX_TIER, Math.max(1, (rec.returnTier | 0) + 1));
     rec.lastSeenAt = now;
     rec.lastSectorId = sectorOf(state, payload);
+    rec.lastOutcome = fightOutcomeForGrudge(grudgeKey);
+    rec.lastStyle = habitStyleOf(memory);
     // Grudge shaping: the moral-debt ledger rolls the ally/vengeful disposition, but the
     // player's guns at the flee always override a friendly roll — a pilot who watched the
     // wing die does not come back offering work.
@@ -1062,6 +1270,8 @@ export const aceMemory = {
     rec.spawnedCount = spawnedIds.length;
     if (rec.promoted === true) revealMoralDebt(this.state, rec.id);
     this._speakReturnTaunt(ace, rec, requestId, stance);
+    // The fight that follows is the next one the record will name.
+    rec.fightStartedAt = now;
     emit(this.bus, 'aceMemory:returnSpawned', {
       aceId: ace.id,
       aceName: ace.name,
@@ -1266,6 +1476,12 @@ export const aceMemory = {
   _speakReturnTaunt(ace, rec, requestId, stance = null) {
     if (rec.lastTauntRequestId === requestId) return;
     rec.lastTauntRequestId = requestId;
+    // First words of the return: the last fight, named — where, how it ended, with what. The
+    // style / remembered / promoted line below follows it as the second beat.
+    const fight = this._grievanceLine(ace, rec, requestId);
+    if (fight) {
+      this._speakAceLine(ace, fight, 'last-fight', `aceMemory:${ace.id}:last-fight:${requestId}`);
+    }
     // Style counter-kits keep top billing (PQ-150.00): the line names how the player actually
     // kills. Memory lines come next — the grudge count, the flight record, the faction debt.
     const style = rec.escalatedStyle || escalatedStyleFromMemory(ensureMemory(this.state), ace);
@@ -1300,6 +1516,16 @@ export const aceMemory = {
     );
     const text = `${ace.name}: you should have finished me. ${bark}`;
     this._speakAceLine(ace, text, 'taunt', `aceMemory:${ace.id}:return-taunt`);
+  },
+
+  /** The grievance in the ace's own register — the one the hail deck opens with too. */
+  _grievanceLine(ace, rec, requestId = '') {
+    return grievanceLineFor(
+      ace,
+      rec,
+      grievanceSeedFor(seedOf(this.state), ace, rec, requestId),
+      sectorDisplayName(rec.lastSectorId, this.state),
+    );
   },
 
   _speakStyleTaunt(ace, style, requestId = null) {
@@ -1348,6 +1574,57 @@ export const aceMemory = {
     }
     const budget = this.helpers && this.helpers.spawnBudget;
     if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(active.requestId, 1);
+    this._returnBossEscaped(active, payload);
+  },
+
+  /** The returned captain's hull reaped alive (a flee that ran out its lifetime, a fight the
+   *  player left) is an escape, not a death: the return re-arms one tier heavier — a 'fears'
+   *  stance runs on sight and comes back until the crew is heavy enough to stay. Kills, restores
+   *  and run resets are not escapes: they carry a reason or a spent hull. */
+  _returnBossEscaped(active, payload) {
+    if (!active || active.role !== 'boss' || payload.reason) return;
+    const hull = payload.entity;
+    if (!hull || !(Number(hull.hull) > 0)) return;
+    const state = this.state;
+    const memory = ensureMemory(state);
+    const rec = memory[active.aceId];
+    if (!rec || rec.defeated === true || rec.returned !== true || rec.returnRequestId !== active.requestId) return;
+    if (rec.stance === 'offers_work') return;
+    const ace = aceById(rec.id) || promotedAceForRecord(rec);
+    if (!ace || ace.lifecycleOwner === 'nemesis') return;
+    const now = nowOf(state, payload);
+    this._noteFightEnd(ace, rec, false, hull);
+    resetSpentReturn(rec);
+    rec.fled = true;
+    rec.fledAt = now;
+    rec.fleeCount = (rec.fleeCount | 0) + 1;
+    rec.returnsBigger = true;
+    rec.returnScheduled = true;
+    rec.returnTier = Math.min(PIRATE_PROMOTION_MAX_TIER, Math.max(1, (rec.returnTier | 0) + 1));
+    rec.lastSeenAt = now;
+    rec.lastSectorId = sectorOf(state, payload);
+    rec.lastTauntRequestId = null;
+    Object.assign(rec, returnPlanForAce(ace, seedOf(state), now));
+    if (stanceForRecord(rec).stance === 'hunts') {
+      rec.returnAt = now + huntsReturnDelayS(rec.returnAfterS, rec.grudge | 0);
+    }
+    this._emitTransition('fled', ace, rec);
+  },
+
+  _returnBossKilled(payload) {
+    if (!payload || !this.state) return;
+    const victimId = payload.id != null ? payload.id
+      : (payload.victimId != null ? payload.victimId : payload.targetId);
+    const entities = this.state.entities;
+    if (victimId == null || !entities || typeof entities.get !== 'function') return;
+    const entity = entities.get(victimId) || entities.get(Number(victimId)) || null;
+    const tag = entity && entity.data && entity.data.aceMemory;
+    if (!tag || tag.role !== 'boss' || !tag.aceId) return;
+    const ace = aceById(tag.aceId);
+    if (!ace || ace.lifecycleOwner === 'nemesis') return;
+    const rec = ensureMemory(this.state)[ace.id];
+    if (!rec || rec.defeated === true || rec.returnRequestId !== tag.requestId) return;
+    this._transition('defeated', { aceId: ace.id, t: nowOf(this.state, payload) });
   },
 
   _completeTransition(transition, ace, rec) {
@@ -1815,6 +2092,23 @@ function normalizeActiveReturns(input, memory, entities) {
   return out;
 }
 
+/** A return that fired is spent: a re-armed record is a live window again, so it can spawn anew. */
+function resetSpentReturn(rec) {
+  rec.returned = false;
+  rec.returnedAt = null;
+  rec.resolvedVia = null;
+  rec.returnRequestId = null;
+  rec.activeReturnIds = null;
+  rec.spawnedCount = 0;
+  rec.nextReturnAttemptAt = null;
+}
+
+/** The way the player kills, when no kill has named a style yet. */
+function habitStyleOf(memory) {
+  const habit = memory && memory.playerStyle;
+  return habit && isStyleValue(habit.lastStyle) ? habit.lastStyle : 'gun';
+}
+
 function recordFor(memory, ace) {
   const existing = memory[ace.id];
   const rec = normalizeRecord(ace.id, existing, ace);
@@ -1844,6 +2138,19 @@ function normalizeRecord(id, input, ace = null) {
   rec.styleTauntSpoken = rec.styleTauntSpoken === true;
   rec.escalatedStyle = isStyleValue(rec.escalatedStyle) ? rec.escalatedStyle : null;
   rec.styleKills = normalizeStyleCounts(rec.styleKills);
+  // The last fight (U-D): lazy, like `ram` — a record that never fought keeps its old shape.
+  if (typeof rec.lastSectorId !== 'string' || !rec.lastSectorId) delete rec.lastSectorId;
+  if (isFightOutcome(rec.lastOutcome)) {
+    rec.lastStyle = isStyleValue(rec.lastStyle) ? rec.lastStyle : 'gun';
+  } else {
+    delete rec.lastOutcome;
+    if (!isStyleValue(rec.lastStyle)) delete rec.lastStyle;
+  }
+  if (typeof rec.lastWeaponId !== 'string' || !rec.lastWeaponId) delete rec.lastWeaponId;
+  for (const key of ['fightStartedAt', 'lastStyleAt', 'lastWingmanDownAt']) {
+    if (key in rec && !Number.isFinite(rec[key])) delete rec[key];
+  }
+  if (typeof rec.heirId !== 'string' || !rec.heirId) delete rec.heirId;
   return rec;
 }
 
