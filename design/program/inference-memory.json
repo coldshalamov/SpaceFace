@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "passenger-identity",
-      "date": "2026-09-28",
-      "wf": "WF-08",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Passenger offers mint a deterministic name + why-line, speak on boarding/mid-run/arrival, and the fugitive trap names the person hauled; 39 unique names across 264 seed-4242 boards",
-      "fingerprint": "verb=name,subject=passengers,sector=lane-wide,domain=wf-08",
-      "references": [],
-      "integration": "live",
-      "commit": "70b5e2196",
-      "verification": "focused_green"
-    },
-    {
       "id": "countermeasure-readiness",
       "date": "2026-09-28",
       "wf": "WF-14",
@@ -1656,6 +1643,19 @@
       "references": [],
       "integration": "live",
       "commit": "4879484c3",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-field-status-marks",
+      "date": "2026-10-11",
+      "wf": "WF-12",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "a body resident in a Well or Repulsor wears a distinct pinned or unmoored mark and its apply burst files as the field family",
+      "fingerprint": "verb=see,subject=field-status,sector=any,domain=wf-12",
+      "references": [],
+      "integration": "live",
+      "commit": "6d7db1d52",
       "verification": "focused_green"
     }
   ],
