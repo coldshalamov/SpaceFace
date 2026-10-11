@@ -222,6 +222,14 @@ export const swarmSupply = {
     this._emit('swarm:supplyDropped', {
       id, wave: run.wave, pos: { x: pos.x, z: pos.z }, ttl: SWARM_REPAIR_TTL_S,
     });
+    // The drop is the decision point — the 16 s clock starts now, not at the
+    // scoop. One toast (grouped by the toast lane when drops burst) and the
+    // soft vent-chime ping at the drop position, a rate variant of the magnet
+    // catch so the ear hears "grabbable" without confusing the two.
+    this._emit('toast', { text: 'Repair cell on the field', kind: 'good', ttl: 3 });
+    this._emit('audio:cue', {
+      id: 'sfx_vent_chime', position: { x: pos.x, z: pos.z }, gain: 0.35, rate: 1.1,
+    });
   },
 
   _onSpawned(payload) {
