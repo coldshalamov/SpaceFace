@@ -57,19 +57,26 @@ export const DENIABLE_PAY_SCALE = 2.0;
 export const DENIABLE_AMBUSH_CHANCE_MIN = 0.6;  // heat level 1
 export const DENIABLE_AMBUSH_CHANCE_MAX = 1.0;  // top heat level (5) — the drop is always staked out
 export const DENIABLE_HEAT_LEVEL_MAX = 5;
+export const DENIABLE_TRUST_AMBUSH_STEP = 0.08; // odds fall this much per point of fence trust
+export const DENIABLE_TRUST_MAX = 3;
 export const DENIABLE_CAUSE_TAG = 'wanted_deniable';
 export const DENIABLE_AMBUSH_CLAUSE = "No questions, double pay. If someone's waiting at the drop, that's your problem.";
 /** Faction personalities that deal with a wanted pilot (the board only trades in what it can hide). */
 export const OUTLAW_FRIENDLY_PERSONALITIES = Object.freeze(['pirate', 'smuggler', 'pitborn_patchwork']);
 
 /**
- * deniableAmbushChance(level) -> 0.6 at heat level 1 rising linearly to 1.0 at level 5. PURE.
+ * deniableAmbushChance(level, trust = 0) -> 0.6 at heat level 1 rising linearly to 1.0 at level 5,
+ * minus DENIABLE_TRUST_AMBUSH_STEP per point of positive fence trust (floor 0). PURE.
  * Level < 1 (not wanted at accept) clamps to the floor — the clause was priced for a wanted pilot.
  */
-export function deniableAmbushChance(level) {
+export function deniableAmbushChance(level, trust = 0) {
   const lv = Math.min(DENIABLE_HEAT_LEVEL_MAX, Math.max(1, Math.floor(Number(level) || 1)));
   const t = (lv - 1) / (DENIABLE_HEAT_LEVEL_MAX - 1);
-  return DENIABLE_AMBUSH_CHANCE_MIN + (DENIABLE_AMBUSH_CHANCE_MAX - DENIABLE_AMBUSH_CHANCE_MIN) * t;
+  const base = DENIABLE_AMBUSH_CHANCE_MIN + (DENIABLE_AMBUSH_CHANCE_MAX - DENIABLE_AMBUSH_CHANCE_MIN) * t;
+  // THE WORLD REMEMBERS (U-B): a fence that trusts the pilot sets them up less. Additive and
+  // one-sided - trust 0 (the default) and any negative trust return the C11 number untouched.
+  const trusted = Math.min(DENIABLE_TRUST_MAX, Math.max(0, Math.round(Number(trust) || 0)));
+  return trusted > 0 ? Math.max(0, base - DENIABLE_TRUST_AMBUSH_STEP * trusted) : base;
 }
 
 /**

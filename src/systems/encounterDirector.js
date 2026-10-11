@@ -124,14 +124,16 @@ import {
 } from '../ai/ambientPredation.js';
 import { spawnJettisonedCargoPod } from './lootShards.js';
 import { sectorScarcityTerm } from './fieldDepletion.js';
-import { deniableAmbushChance, DENIABLE_CAUSE_TAG } from '../data/economyContractTemplates.js';
+import { DENIABLE_CAUSE_TAG } from '../data/economyContractTemplates.js';
 import { heatLevelFor } from './heat.js'; // READ-ONLY (C11 clause tier)
 import {
   DENIABLE_BURN_EPOCHS, DENIABLE_EMBOLDEN_EPOCHS, DENIABLE_EMBOLDEN_BONUS, DENIABLE_CLEAN_REP,
   DENIABLE_CLEAN_BARK, deniableBurnedRumor, deniableEmboldenedRumor,
-  deniableBoardEpoch, emboldenedBonus, boldAmbushChance,
+  deniableBoardEpoch, emboldenedBonus,
   plantDeniableSeed, pruneDeniableSeeds, sanitizeDeniableSeed,
 } from '../data/deniableAftermath.js'; // C11 follow-ups: burned / emboldened fences, quiet thanks
+import { fenceAmbushChance, sanitizeFenceLedger } from '../data/fences.js'; // U-B: fences with faces
+import { installFenceDesk } from './fenceDesk.js'; // U-B: the one writer of stats.fences
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
 const SELF_REGISTERED_RUNTIME_BY_ID = new Map(
@@ -346,6 +348,8 @@ export const encounterDirector = {
       this.bus.on('mission:failed', (p) => this._onDeniableMissionSettled(p, 'failed'));
       this.bus.on('player:death', () => this._onDeniablePlayerDown());
       this.bus.on('dock:docked', (p) => this._onDeniableDock(p));
+      // U-B: six authored fences remember what the pilot did with their jobs (trust, route, scrub).
+      this._fenceDesk = installFenceDesk(this);
       this.bus.on('resonance:scanCompleted', (p) => this._onResonanceScan(p));
       this.bus.on('law:witnessChoice', (p) => this._onEscalationToken('witness', p));
       this.bus.on('freight:cargoSpilled', (p) => this._onEscalationToken('spill', p));
@@ -868,7 +872,8 @@ export const encounterDirector = {
       || (mission.cause.deniable && mission.cause.deniable.fenceStationId) || null;
     // An emboldened fence rolls bolder (C11 follow-up); 0 - and no key on the row - otherwise.
     const bonus = emboldenedBonus(state, fenceStationId, deniableBoardEpoch(state));
-    const chance = boldAmbushChance(deniableAmbushChance(level), bonus);
+    // U-B: a trusted fence sets the pilot up less; a mercy fence never does (fenceAmbushChance).
+    const chance = fenceAmbushChance(state, fenceStationId, level, bonus);
     const roll = typeof state.rng === 'function'
       ? state.rng()
       : (hash32((state.meta && state.meta.seed) || 0, String(missionId), 'deniable-clause') % 1e6) / 1e6;
@@ -4667,6 +4672,12 @@ function ensureDirectorState(state) {
       if (rows.length) am.seeds = rows;
       else delete d.stats.deniableAftermath;
     }
+  }
+  // U-B: the fence ledger is lazy and durable. Re-sanitized on load; an emptied one removes its key.
+  if (d.stats && d.stats.fences != null) {
+    const fences = sanitizeFenceLedger(d.stats.fences);
+    if (fences) d.stats.fences = fences;
+    else delete d.stats.fences;
   }
   if (d.stats && d.stats.scarcityRumored != null
     && (typeof d.stats.scarcityRumored !== 'object' || Array.isArray(d.stats.scarcityRumored))) {

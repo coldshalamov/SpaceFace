@@ -38,13 +38,17 @@ import { starvedIndustryNeedFor } from './economy.js';
 import { isPlayerWanted, heatLevelFor, wantedTierFor } from './heat.js'; // READ-ONLY heat reads (C11)
 import {
   DENIABLE_PAY_SCALE, DENIABLE_CAUSE_TAG, DENIABLE_AMBUSH_CLAUSE, OUTLAW_FRIENDLY_PERSONALITIES,
-  deniableAmbushChance,
   selectEconContract, fillCause, SCARCITY_PAY_SCALE, BLOCKADE_PAY_SCALE, BLOCKADE_RELIEF_CMDTYS,
   FIRST_TRADE_CONTRACT_STATION_ID,
   buildFirstTradeOffer,
   starvedOfferProse,
 } from '../data/economyContractTemplates.js';
-import { isFenceBurned, emboldenedBonus, boldAmbushChance } from '../data/deniableAftermath.js'; // READ-ONLY (C11 follow-ups)
+import { isFenceBurned, emboldenedBonus } from '../data/deniableAftermath.js'; // READ-ONLY (C11 follow-ups)
+import {
+  FENCES, FENCE_BY_ID, FENCE_ROUTE_CAUSE_TAG, FENCE_ROUTE_LEGS, FENCE_ROUTE_LEG_PAY_SCALE,
+  FENCE_ROUTE_LEG_WINDOW, fenceAmbushChance, fenceDealShape, fenceForStation, fenceRouteReady,
+  fenceRowOf,
+} from '../data/fences.js'; // READ-ONLY (U-B: fences with faces; fenceDesk is the ledger's writer)
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -67,6 +71,7 @@ const SALVAGE_CMDTYS = ['cmdty_scrap_metal', 'cmdty_salvage_electronics']; // mi
 const FUEL_CMDTY = 'cmdty_fuel_cells';
 
 const DENIABLE_MIN_REP = -1000; // below any reachable standing: a deniable job asks for none
+const FENCE_CLEAN_CLAUSE = 'Clean paper, short pay. I do not set up my own carriers.'; // mercy fence's card
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const round = Math.round;
 
@@ -187,6 +192,12 @@ export const economyContracts = {
     // Fresh runs reset dedupe. Loads restore it through deserialize before save:loaded fires.
     this._onStarted = () => this.newGame();
     this.bus.on('game:started', this._onStarted);
+    // U-B: the fence desk says the next route leg is due; post it where the pilot just delivered.
+    this._onRouteLegDue = (p) => {
+      const fence = p && FENCE_BY_ID.get(p.fenceId);
+      if (fence && p.pendingStationId) this._postRouteLeg(fence, p.pendingStationId, true);
+    };
+    this.bus.on('fence:routeLegDue', this._onRouteLegDue);
   },
 
   newGame() {
@@ -318,6 +329,9 @@ export const economyContracts = {
         }
         // else: the board refused it — the latch stays open and the next dock retries.
       }
+
+      // U-B: a fence's route waits at the berth its last leg delivered to (retry if the board was full).
+      this._postRouteLegsAt(stationId);
 
       // C11: a WANTED pilot at an outlaw-friendly berth is offered the deniable job. It rides its
       // own per-station-epoch latch (separate from the field evaluation below) so a crime
@@ -745,31 +759,73 @@ export const economyContracts = {
     const selected = selectEconContract(local, pressure);
     if (!selected || selected.template.key !== 'deniable_job') return null;
 
+    // U-B: the fence at this berth. A route in motion posts nothing else; trust >= 2 posts the
+    // route's first leg; otherwise the quirk and trust (data/fences.js) shape the same job. A
+    // berth with no fence, or a fence at trust 0 with no quirk, is exactly the C11 job.
+    const fence = fenceForStation(info.id);
+    const fenceRow = fence ? fenceRowOf(state, fence.id) : null;
+    if (fenceRow && fenceRow.route) return null;
+    if (fence && fenceRouteReady(fenceRow)) {
+      const legOne = this.planRouteLegOffer(fence, 1, info, epoch);
+      if (legOne) return legOne; // an unberthable first leg falls through to the ordinary job
+    }
+    const shape = fenceDealShape(fence, fenceRow ? fenceRow.trust : 0);
+
     const seed = (state.meta && state.meta.seed) || 1;
     const rng = mulberry32(hash32(seed, info.id, epoch, 'deniableJob') >>> 0);
 
     // Destination: a dockable, non-military berth one hop out (a real drop with a real approach);
-    // a sector with no neighbor berth falls back to another berth in the same sector.
+    // a sector with no neighbor berth falls back to another berth in the same sector. A trusted
+    // fence sends the pilot two hops out (a longer leg); a corridor fence only drops lawful-side.
+    const fromSector = SECTOR_BY_ID.get(info.sectorId);
+    const hopOne = [...(fromSector?.neighbors || [])].sort();
+    let hops = hopOne;
+    if (shape.longLeg) {
+      const far = [];
+      for (const nId of hopOne) {
+        for (const n2 of [...(SECTOR_BY_ID.get(nId)?.neighbors || [])].sort()) {
+          if (n2 !== info.sectorId && !hopOne.includes(n2) && !far.includes(n2)) far.push(n2);
+        }
+      }
+      if (far.length) hops = far;
+    }
+    const berthOk = (st, sec) => {
+      if (st.type === 'military') return false;
+      if (!shape.lawfulDestOnly) return true;
+      const personality = FACTION_BY_ID.get(st.factionId || (sec && sec.factionId))?.personality;
+      return st.type !== 'blackmarket' && !OUTLAW_FRIENDLY_PERSONALITIES.includes(personality);
+    };
     const pool = [];
-    for (const nId of [...(SECTOR_BY_ID.get(info.sectorId)?.neighbors || [])].sort()) {
+    for (const nId of hops) {
       for (const st of this._dockableStations(SECTOR_BY_ID.get(nId))) {
-        if (st.type !== 'military') pool.push({ stationId: st.id, sectorId: nId });
+        if (berthOk(st, SECTOR_BY_ID.get(nId))) pool.push({ stationId: st.id, sectorId: nId });
+      }
+    }
+    if (!pool.length && hops !== hopOne) {
+      for (const nId of hopOne) {
+        for (const st of this._dockableStations(SECTOR_BY_ID.get(nId))) {
+          if (berthOk(st, SECTOR_BY_ID.get(nId))) pool.push({ stationId: st.id, sectorId: nId });
+        }
       }
     }
     if (!pool.length) {
       for (const st of this._dockableStations(SECTOR_BY_ID.get(info.sectorId))) {
-        if (st.id !== info.id && st.type !== 'military') pool.push({ stationId: st.id, sectorId: info.sectorId });
+        if (st.id !== info.id && berthOk(st, SECTOR_BY_ID.get(info.sectorId))) {
+          pool.push({ stationId: st.id, sectorId: info.sectorId });
+        }
       }
     }
     if (!pool.length) return null;
     const dest = pool[Math.floor(rng() * pool.length)];
     const destInfo = STATION_INFO.get(dest.stationId);
 
-    const eligible = LEGAL_TRADE_CMDTYS.filter((id) => (CMDTY_BY_ID.get(id)?.marketTier || 0) <= info.tier);
+    const eligible = shape.cargoPool
+      ? shape.cargoPool.filter((id) => CMDTY_BY_ID.has(id))
+      : LEGAL_TRADE_CMDTYS.filter((id) => (CMDTY_BY_ID.get(id)?.marketTier || 0) <= info.tier);
     const cmdtyId = eligible[Math.floor(rng() * eligible.length)] || FUEL_CMDTY;
     const cargo = state.player?.cargo || {};
     const qty = affordableContractQuantity({
-      desired: 6 + Math.floor(rng() * 16),
+      desired: Math.round((6 + Math.floor(rng() * 16)) * shape.qtyMult),
       freeVolume: (cargo.capVolume || 0) - (cargo.usedVolume || 0),
       volumePerUnit: CMDTY_BY_ID.get(cmdtyId)?.volPerU || 1,
     });
@@ -785,7 +841,10 @@ export const economyContracts = {
       type: 'cargo_delivery', tier: Math.max(info.tier || 0, destInfo?.tier || 0, riskTier),
       riskTier, distance, params, preloadedCargo: true, fieldPressure: 0,
     });
-    const rewardCr = Math.ceil(lawful.rewardCr * DENIABLE_PAY_SCALE);
+    const rewardCr = Math.ceil(lawful.rewardCr * shape.payScale);
+    // A short-timer fence (volatile cargo) cuts the lawful deadline; everyone else keeps it.
+    const deadlineS = shape.deadlineMult === 1
+      ? lawful.deadlineS : Math.max(180, Math.round(lawful.deadlineS * shape.deadlineMult));
     // The terms the card reads stay honest: reward is the deniable pay, the lawful quote rides along.
     const economyTerms = {
       ...lawful,
@@ -793,8 +852,12 @@ export const economyContracts = {
       expectedNetCr: lawful.successProbability * (rewardCr + lawful.otherRevenueCr)
         - lawful.operatingCr - lawful.suppliedInputsCr - lawful.failureLossCr,
       lawfulRewardCr: lawful.rewardCr,
-      deniablePayScale: DENIABLE_PAY_SCALE,
+      deniablePayScale: shape.payScale,
+      ...(deadlineS !== lawful.deadlineS ? { deadlineS } : {}),
     };
+    const payLabel = shape.payScale === DENIABLE_PAY_SCALE
+      ? 'double pay' : `${Math.round(shape.payScale * 10) / 10}x pay`;
+    const clause = shape.noSetup ? FENCE_CLEAN_CLAUSE : DENIABLE_AMBUSH_CLAUSE;
 
     const commodity = cmdtyName(cmdtyId);
     const causeLine = fillCause(selected.template.cause, {
@@ -807,7 +870,7 @@ export const economyContracts = {
       type: 'cargo_delivery',
       stationId: info.id,
       factionId: info.factionId,
-      reward_cr: rewardCr, time_limit_s: lawful.deadlineS, duration_s: lawful.deadlineS,
+      reward_cr: rewardCr, time_limit_s: deadlineS, duration_s: deadlineS,
       collateral_cr: 0, riskTier, preloadedCargo: true,
       // "No questions": the fence asks for no standing (the risk-tier rep gate would otherwise
       // bar the very wanted pilot this row exists for). The berth still gates docking.
@@ -815,28 +878,133 @@ export const economyContracts = {
       economyTerms,
       destStationId: dest.stationId, destSectorId: dest.sectorId, distance,
       params,
-      title: `Off the books: ${qty}u ${commodity} to ${destName} (double pay)`,
-      brief: DENIABLE_AMBUSH_CLAUSE,
+      title: `Off the books: ${qty}u ${commodity} to ${destName} (${payLabel})`,
+      brief: clause,
       summary: causeLine,
       cause: {
         tag: DENIABLE_CAUSE_TAG, axis: selected.template.causeAxis, line: causeLine,
         deniable: {
-          ambushClause: DENIABLE_AMBUSH_CLAUSE,
-          payScale: DENIABLE_PAY_SCALE,
+          ambushClause: clause,
+          payScale: shape.payScale,
           lawfulRewardCr: lawful.rewardCr,
           wantedLevel: pressure.heatLevel,
           wantedTier: pressure.wantedTier,
-          // The card stays honest: an emboldened fence's bonus is already in the printed odds.
-          ambushChance: boldAmbushChance(
-            deniableAmbushChance(pressure.heatLevel), emboldenedBonus(state, info.id, epoch),
-          ),
+          // The card stays honest: trust and an emboldened fence's bonus are already in the odds.
+          ambushChance: fenceAmbushChance(state, info.id, pressure.heatLevel, emboldenedBonus(state, info.id, epoch)),
           fenceStationId: info.id,
           fenceSectorId: info.sectorId,
+          ...(fence ? { fenceId: fence.id, fenceName: fence.name, fenceTrust: fenceRow.trust } : {}),
         },
       },
       expiresAtEpoch: epoch + 1,
       storyTag: null,
     };
+  },
+
+  /**
+   * U-B - one leg of a fence's ROUTE as a board-shaped cargo_delivery. Leg 1 is posted at the
+   * fence's own berth by the deniable path; legs 2 and 3 are posted at the berth the previous leg
+   * delivered to (the desk's `fence:routeLegDue`). The cargo is sealed client freight, the pay is
+   * the lawful quote x FENCE_ROUTE_LEG_PAY_SCALE, and there is no ambush clause: a trusted fence
+   * does not set up its own route. The one-time reward at the end is the desk's, not the card's.
+   */
+  planRouteLegOffer(fence, leg, info, epoch) {
+    const state = this.state;
+    const destId = fence && fence.route.legs[leg - 1];
+    const destInfo = destId ? STATION_INFO.get(destId) : null;
+    if (!info || !destInfo || leg < 1 || leg > FENCE_ROUTE_LEGS) return null;
+    // A leg the world would not berth cannot settle: it waits (a later dock retries) rather than
+    // writing a contract the pilot's standing cannot deliver.
+    const destSector = SECTOR_BY_ID.get(destInfo.sectorId);
+    const destRecord = ((destSector && destSector.stations) || []).find((st) => st.id === destId);
+    if (!stationBerthAdmits(destRecord, this._repOf(destInfo.factionId), state)) return null;
+    const cmdtyId = fence.route.cargo || FUEL_CMDTY;
+    const cargo = state.player?.cargo || {};
+    const qty = affordableContractQuantity({
+      desired: 12,
+      freeVolume: (cargo.capVolume || 0) - (cargo.usedVolume || 0),
+      volumePerUnit: CMDTY_BY_ID.get(cmdtyId)?.volPerU || 1,
+    });
+    if (qty < 1) return null;
+    const unitVal = (CMDTY_BY_ID.get(cmdtyId) && CMDTY_BY_ID.get(cmdtyId).basePrice) || 50;
+    const cargoValue = unitVal * qty;
+    const params = { cmdtyId, qty, cargoValue, fValue: 1 + cargoValue / 8000, taskTime: 20, passengers: 0 };
+    const distance = sectorDistanceWu(info.sectorId, destInfo.sectorId);
+    const def = TYPE_BY_ID.get('cargo_delivery') || {};
+    const [rLo, rHi] = def.riskTierRange || [0, 4];
+    const riskTier = clamp(effectiveDangerTierFor(state, destInfo.sectorId), rLo, rHi);
+    const lawful = quoteMissionEconomics({
+      type: 'cargo_delivery', tier: Math.max(info.tier || 0, destInfo.tier || 0, riskTier),
+      riskTier, distance, params, preloadedCargo: true, fieldPressure: 0,
+    });
+    const rewardCr = Math.ceil(lawful.rewardCr * FENCE_ROUTE_LEG_PAY_SCALE);
+    const economyTerms = {
+      ...lawful,
+      rewardCr,
+      expectedNetCr: lawful.successProbability * (rewardCr + lawful.otherRevenueCr)
+        - lawful.operatingCr - lawful.suppliedInputsCr - lawful.failureLossCr,
+      lawfulRewardCr: lawful.rewardCr,
+      deniablePayScale: FENCE_ROUTE_LEG_PAY_SCALE,
+    };
+    const commodity = cmdtyName(cmdtyId);
+    const line = leg === 1
+      ? `${fence.name} has a run for a pilot they trust: three drops, each one unlocks the next. ${fence.quirk.summary}`
+      : `${fence.name}'s run, leg ${leg} of ${FENCE_ROUTE_LEGS}: the next drop is waiting at ${info.name}.`;
+    return {
+      id: `fenceroute_${fence.id}_${leg}`,
+      // Leg 1 boards as the station's off-the-books row; later legs ride the one-per-source slot
+      // of the aftermath channel so a full field board at the berth cannot swallow them.
+      source: leg === 1 ? 'economyContract' : 'encounterAftermath',
+      type: 'cargo_delivery',
+      stationId: info.id,
+      factionId: info.factionId,
+      reward_cr: rewardCr, time_limit_s: lawful.deadlineS, duration_s: lawful.deadlineS,
+      collateral_cr: 0, riskTier, preloadedCargo: true,
+      minRep: DENIABLE_MIN_REP,
+      economyTerms,
+      destStationId: destInfo.id, destSectorId: destInfo.sectorId, distance,
+      params,
+      title: `${fence.name}'s run, leg ${leg} of ${FENCE_ROUTE_LEGS}: ${qty}u ${commodity} to ${destInfo.name}`,
+      brief: leg === FENCE_ROUTE_LEGS ? `Last drop. ${fence.route.reward.label} when it lands.` : 'Clean paper. Deliver it and the next drop posts.',
+      summary: line,
+      cause: {
+        tag: FENCE_ROUTE_CAUSE_TAG, axis: 'heat', line,
+        fenceRoute: {
+          fenceId: fence.id, leg, of: FENCE_ROUTE_LEGS,
+          fenceStationId: fence.stationId, destStationId: destInfo.id,
+        },
+      },
+      expiresAtEpoch: leg === 1 ? epoch + 1 : epoch + FENCE_ROUTE_LEG_WINDOW,
+      storyTag: null,
+    };
+  },
+
+  /** Post every pending route leg waiting at this berth. True when a new row boarded. */
+  _postRouteLegsAt(stationId) {
+    let posted = false;
+    for (const fence of FENCES) {
+      const row = fenceRowOf(this.state, fence.id);
+      if (row.route && row.route.status === 'pending' && row.route.pendingStationId === stationId) {
+        posted = this._postRouteLeg(fence, stationId, false) || posted;
+      }
+    }
+    return posted;
+  },
+
+  _postRouteLeg(fence, stationId, announce) {
+    const info = STATION_INFO.get(stationId);
+    const row = fenceRowOf(this.state, fence.id);
+    if (!info || !row.route || row.route.status !== 'pending' || row.route.pendingStationId !== stationId) return false;
+    const offer = this.planRouteLegOffer(fence, row.route.leg, info, this._epoch());
+    if (!offer) return false;
+    if (this._offerOnBoard(stationId, offer.id)) return false; // already posted: silent
+    if (!this._emitOfferForBoard(stationId, offer)) return false; // board refused: a later dock retries
+    const text = `${fence.name} posted the next drop at ${info.name}: ${offer.title}`;
+    const said = this.helpers && this.helpers.voice && typeof this.helpers.voice.say === 'function'
+      ? this.helpers.voice.say({ channel: 'news', text, kind: 'contract' })
+      : false;
+    if (!said && announce) this.bus.emit('toast', { text, kind: 'info', ttl: 4 });
+    return true;
   },
 
   _titleFor(typeId, templateKey, params, info, destStationId, commodity) {
@@ -866,6 +1034,8 @@ export const economyContracts = {
   destroy() {
     if (this.bus && this.bus.off && this._onOfferBoarded) this.bus.off('mission:offerBoarded', this._onOfferBoarded);
     if (this.bus && this.bus.off && this._onDocked) this.bus.off('dock:docked', this._onDocked);
+    if (this.bus && this.bus.off && this._onRouteLegDue) this.bus.off('fence:routeLegDue', this._onRouteLegDue);
+    this._onRouteLegDue = null;
     if (this.bus && this._onStarted) this.bus.off('game:started', this._onStarted);
     this._onOfferBoarded = null;
     this._deniableLatch = null;
