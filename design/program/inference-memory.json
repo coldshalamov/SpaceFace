@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "hud-pill-lane-contract",
-      "date": "2026-09-28",
-      "wf": "WF-14",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Bottom-center flight pills (planet/field/mass-seed) negotiate one lane by voice class; 22px text-through-text overlap gone, fourth voice can join collision-free",
-      "fingerprint": "verb=separate,subject=hud-pills,sector=flight-hud,domain=wf-14",
-      "references": [],
-      "integration": "live",
-      "commit": "07c1fec23",
-      "verification": "focused_green"
-    },
-    {
       "id": "claim-site-identity",
       "date": "2026-09-28",
       "wf": "WF-04",
@@ -1656,6 +1643,19 @@
       "references": [],
       "integration": "live",
       "commit": "32827c0b5",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-cause-exhausted",
+      "date": "2026-10-11",
+      "wf": "WF-16",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "when the board gives up on a wound the sector says so once and the chronicle keeps the outcome",
+      "fingerprint": "verb=read,subject=aftermath,sector=any,domain=wf-16",
+      "references": [],
+      "integration": "live",
+      "commit": "4f14f7f50",
       "verification": "focused_green"
     }
   ],
