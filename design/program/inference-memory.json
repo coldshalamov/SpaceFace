@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "salvaged-site-husk",
-      "date": "2026-09-28",
-      "wf": "WF-16",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "A resolved unique wreck keeps an outcome-stamped husk at its site (24 authored siteStamp lines); map bearings point at something real; handovers can never pay twice",
-      "fingerprint": "verb=persist,subject=salvaged-wreck-sites,sector=helios+all,domain=wf-16",
-      "references": [],
-      "integration": "live",
-      "commit": "1a0203d7b",
-      "verification": "focused_green"
-    },
-    {
       "id": "moral-trap-grounding",
       "date": "2026-09-28",
       "wf": "WF-08",
@@ -1656,6 +1643,19 @@
       "references": [],
       "integration": "live",
       "commit": "36afc1f95",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-station-outage-dossier",
+      "date": "2026-10-11",
+      "wf": "WF-04",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "a station dossier shows an out-of-service service with its remaining time before the pilot flies there",
+      "fingerprint": "verb=read,subject=station-services,sector=any,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "5f14b64ee",
       "verification": "focused_green"
     }
   ],
