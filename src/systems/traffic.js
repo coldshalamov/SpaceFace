@@ -86,6 +86,7 @@ import {
 } from '../data/laneContacts.js';
 import { ASTEROIDS } from '../data/mining.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { SECTORS } from '../data/sectors.js';
 import {
   regionalTrafficDensityMultiplier,
   regionalTrafficRoleWeights,
@@ -256,6 +257,21 @@ const CIVILIAN_VIOLENCE_RING_CAP = 8;
 const CIVILIAN_ALARM_FLEE_ROLES = new Set(['hauler', 'courier', 'ore_carrier', 'shuttle', 'tug', 'miner', 'prospector', 'tourist', 'rescue']);
 const CIVILIAN_ALARM_HOLD_ROLES = new Set(['surveyor', 'tender', 'salvor']);
 const CIVILIAN_HAULER_DUMP_ROLES = new Set(['hauler', 'shuttle', 'tanker', 'arclight']);
+// THE WORLD ANSWERS C5 — a player well drags a loaded hauler off its lane (`well:haulerDragged`).
+// Its escorts close up on it and hold for a bounded window (the physical pile-up), the hauler
+// stops to recover and re-plans, and the destination's lane takes a small bounded price-pressure
+// impulse through sectorSim's existing `sectorsim:impulse` intent (trade volume dips for a day).
+export const WELL_DRAG_REGROUP_S = 6;            // escorts boost to the hauler and hold this long
+export const WELL_DRAG_HOLD_RADIUS_WU = 28;      // escorts stop thrusting inside this of the hauler
+export const WELL_DRAG_RECOVER_S = 4;            // the hauler heaves-to this long, then re-plans
+export const WELL_DRAG_ESCORT_CAP = 4;           // pile-up size bound
+export const WELL_DRAG_PRESSURE_MIN = 0.03;      // lane price pressure for a thin manifest
+export const WELL_DRAG_PRESSURE_MAX = 0.06;      // ...and for a full hold
+export const WELL_DRAG_FULL_HOLD_QTY = 28;       // manifest size that earns the max (hauler capacity)
+export const WELL_DRAG_DANGER = 0.01;
+const WELL_DRAG_SEEN_CAP = 256;
+const STATION_TO_SECTOR = new Map();
+for (const sector of SECTORS) for (const station of (sector.stations || [])) STATION_TO_SECTOR.set(station.id, sector.id);
 const CLAIM_CONVOY_MAX_LIVE = 4;              // concurrent manifested claim convoy hulls
 const CLAIM_CONVOY_DEPART_CLEARANCE_WU = 160; // spawn offset from the claim pad along the route
 const CIVILIAN_DISTRESS_RADIUS_WU = 1800;
@@ -1551,6 +1567,8 @@ export const traffic = {
     this._registry = ctx.registry || null;
     // live freighter records: id -> {targetId, waitT, nextTradeT, manifest, dockSeq}
     this._ensureState();
+    this._wellDragRegroup = new Map();
+    this._wellDragSeen = new Set();
     this._active = []; // entity ids we spawned (for cleanup)
     this._stationScratch = [];
     this._activeTrafficScratch = [];
@@ -1637,6 +1655,7 @@ export const traffic = {
     this.bus.on('freight:recoveryAbandoned', (p) => this._onCeresDisabledHaulerAbandoned(p || {}));
     this.bus.on('pickup:collected', (p) => this._onCeresDisabledHaulerPickup(p || {}));
     this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {}));
+    this.bus.on('well:haulerDragged', (p) => this._onWellHaulerDragged(p || {}));
     this.bus.on('uniqueWreck:resolved', (p) => this._onCeresTenderWreckResolved(p || {}));
     this.bus.on('survivorPod:rescued', (p) => this._onSurvivorPodRescued(p || {}));
     // Nearby violence: production hits, aimed ship-to-ship combat:fire (Ambush first shots often
@@ -7057,6 +7076,99 @@ export const traffic = {
     }
   },
 
+  /**
+   * THE WORLD ANSWERS C5 — `well:haulerDragged` (fields.js receipt). Three consequences, all
+   * through owners that already exist: the hull's shadowing escorts converge and hold (read in
+   * _stepEscort), the hauler heaves to and re-plans, and the destination's lane takes a bounded
+   * `sectorsim:impulse` (price pressure → demand prose + board offers). Once per (well, hauler).
+   */
+  _onWellHaulerDragged(payload) {
+    const state = this.state;
+    if (!state || state.mode !== 'flight' || !payload || payload.haulerId == null) return;
+    const hauler = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(payload.haulerId)
+      : null;
+    if (!hauler || hauler.alive === false || !hauler.pos) return;
+    const seen = this._wellDragSeen || (this._wellDragSeen = new Set());
+    const key = `${payload.wellId}|${payload.haulerId}`;
+    if (seen.has(key)) return;
+    if (seen.size >= WELL_DRAG_SEEN_CAP) seen.clear();
+    seen.add(key);
+
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const freighters = (state.traffic && Array.isArray(state.traffic.freighters)) ? state.traffic.freighters : [];
+    let haulerRec = null;
+    for (let i = 0; i < freighters.length; i++) {
+      if (freighters[i] && freighters[i].id === hauler.id) { haulerRec = freighters[i]; break; }
+    }
+
+    // Escorts that were shadowing THIS hull (same nearest-ward rule as _stepEscort) re-form on it.
+    const regroup = this._wellDragRegroup || (this._wellDragRegroup = new Map());
+    const escortIds = [];
+    for (let i = 0; i < freighters.length && escortIds.length < WELL_DRAG_ESCORT_CAP; i++) {
+      const row = freighters[i];
+      if (!row || row.role !== 'escort') continue;
+      const escort = state.entities.get(row.id);
+      if (!escort || escort.alive === false || !escort.pos) continue;
+      if (this._escortWardOf(escort, freighters, state) !== hauler) continue;
+      regroup.set(escort.id, { haulerId: hauler.id, untilSimT: now + WELL_DRAG_REGROUP_S });
+      escortIds.push(escort.id);
+    }
+
+    // The hauler stops to recover and re-plans its leg — only an ambient, unrouted hull; job /
+    // claim / world-site hulls keep the owner that steers them (their escorts and lane still react).
+    const manifest = (hauler.data && hauler.data.cargoManifest) || (haulerRec && haulerRec.manifest) || null;
+    const routed = !!(hauler.data && (hauler.data.jobId || hauler.data.claimConvoy || hauler.data.claimDepotId))
+      || !!(haulerRec && (haulerRec.worldSiteRoute || haulerRec.claimTravelRoute));
+    let replanned = false;
+    if (haulerRec && !routed) {
+      haulerRec.targetId = null;
+      haulerRec.waitT = Math.max(Number(haulerRec.waitT) || 0, WELL_DRAG_RECOVER_S);
+      replanned = true;
+    }
+
+    // Economy half: intent only. The impulse lands on the DESTINATION's sector.
+    const destSectorId = STATION_TO_SECTOR.get(payload.destStationId)
+      || payload.sectorId || (state.world && state.world.currentSectorId) || null;
+    const qty = Math.max(0, Number(manifest && manifest.totalQty) || 0);
+    const pricePressure = WELL_DRAG_PRESSURE_MIN
+      + (WELL_DRAG_PRESSURE_MAX - WELL_DRAG_PRESSURE_MIN) * Math.min(1, qty / WELL_DRAG_FULL_HOLD_QTY);
+    if (destSectorId && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('sectorsim:impulse', {
+        kind: 'lane_disruption',
+        sectorId: destSectorId,
+        pricePressure: Math.round(pricePressure * 10000) / 10000,
+        danger: WELL_DRAG_DANGER,
+      });
+    }
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('traffic:haulerRegroup', {
+        schemaVersion: 1,
+        wellId: payload.wellId,
+        haulerId: hauler.id,
+        escortIds,
+        replanned,
+        destStationId: payload.destStationId || null,
+        sectorId: payload.sectorId || (state.world && state.world.currentSectorId) || null,
+        t: now,
+      });
+    }
+  },
+
+  /** The nearest live non-escort/patrol/pirate freighter — the hull an escort shadows. */
+  _escortWardOf(escort, list, state) {
+    let ward = null, wd = Infinity;
+    for (let i = 0; i < list.length; i++) {
+      const r = list[i];
+      if (!r || r.role === 'escort' || r.role === 'patrol' || r.role === 'pirate') continue;
+      const w = state.entities.get(r.id);
+      if (!w || !w.alive) continue;
+      const d = Math.hypot(w.pos.x - escort.pos.x, w.pos.z - escort.pos.z);
+      if (d < wd) { wd = d; ward = w; }
+    }
+    return ward;
+  },
+
   _isSalvageableBody(entity) {
     if (!entity || entity.alive === false || !entity.pos) return false;
     const data = entity.data || {};
@@ -7892,6 +8004,21 @@ export const traffic = {
 
   // Escorts convoy with the nearest civilian freighter — they shadow it, distinct from patrols.
   _stepEscort(e, rec, list, state) {
+    // C5 pile-up: a well-dragged hauler's escorts boost onto it and hold there for a bounded window.
+    const regroup = this._wellDragRegroup && this._wellDragRegroup.get(e.id);
+    if (regroup) {
+      const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+      const hauler = state.entities.get(regroup.haulerId);
+      if (now < regroup.untilSimT && hauler && hauler.alive !== false && hauler.pos) {
+        const dx = hauler.pos.x - e.pos.x, dz = hauler.pos.z - e.pos.z;
+        const aim = Math.atan2(dz, dx);
+        if (Math.hypot(dx, dz) > WELL_DRAG_HOLD_RADIUS_WU) setIntent(e, 0, 1, true, false, null, aim);
+        else { setIntent(e, 0, 0, false, false, null, aim); e.data.intent.brake = true; }
+        return;
+      }
+      this._wellDragRegroup.delete(e.id);
+      if (e.data && e.data.intent) e.data.intent.brake = false;
+    }
     let ward = null, wd = Infinity;
     for (const r of list) {
       if (r.role === 'escort' || r.role === 'patrol' || r.role === 'pirate') continue;

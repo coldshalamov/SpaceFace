@@ -642,6 +642,8 @@ export const barkDirector = {
       this.bus.on('traffic:spillNoticed', this._onSpillNoticed);
       this.bus.on('npcjobs:loadEmpty', this._onLoadEmpty);
       this.bus.on('traffic:richSeamHelpReserved', this._onRichSeamHelp);
+      this._onHaulerRegroup = (payload) => this._speakHaulerRegroup(payload || {});
+      this.bus.on('traffic:haulerRegroup', this._onHaulerRegroup);
       this._onNpcCounterplay = (payload) => {
         const bark = admitNpcCounterplayBark(this, payload, this.state && this.state.simTime);
         const voice = this.helpers && this.helpers.voice;
@@ -679,6 +681,7 @@ export const barkDirector = {
     this._spillNoticeKeys = null;
     this._emptyLoadKeys = null;
     this._richSeamHelpKeys = null;
+    this._haulerRegroupKeys = null;
     this.noteBarkWake();
   },
 
@@ -1643,6 +1646,41 @@ export const barkDirector = {
     return receipt;
   },
 
+  /** THE WORLD ANSWERS C5 — the dragged hauler's crew says what it feels, once per (well, hull). */
+  _speakHaulerRegroup(payload) {
+    const state = this.state;
+    if (!state || !payload || payload.haulerId == null) return null;
+    if (state.mode && state.mode !== 'flight') return null;
+    const hauler = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(payload.haulerId)
+      : null;
+    if (!hauler || hauler.alive === false || hauler.id === state.playerId) return null;
+    const key = `${payload.wellId ?? ''}|${payload.haulerId}`;
+    if (this._haulerRegroupKeys && this._haulerRegroupKeys.has(key)) return null;
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return null;
+    const escorted = Array.isArray(payload.escortIds) && payload.escortIds.length > 0;
+    const text = escorted
+      ? 'Something\'s pulling us off the lane \u2014 escorts close up!'
+      : 'Something\'s pulling us off the lane \u2014 hold on!';
+    const factionId = factionFor(hauler);
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'haulerRegroup',
+      ttl: VOICE_TTL_S,
+      id: `barkDirector:${hauler.id}:well-drag`,
+      factionId,
+      register: 'hauler',
+    });
+    if (!accepted) return null;
+    if (!this._markNoticeKey('_haulerRegroupKeys', key)) return null;
+    const now = Number(state.simTime) || 0;
+    const receipt = { entityId: hauler.id, text, dragKey: key, t: now, register: 'hauler', factionId };
+    this._emit('barkDirector:voice', receipt);
+    return receipt;
+  },
+
   _speakEmptyLoad(payload) {
     const state = this.state;
     if (!state || !payload) return null;
@@ -1960,6 +1998,7 @@ export const barkDirector = {
       if (this._onSpillNoticed) this.bus.off('traffic:spillNoticed', this._onSpillNoticed);
       if (this._onLoadEmpty) this.bus.off('npcjobs:loadEmpty', this._onLoadEmpty);
       if (this._onRichSeamHelp) this.bus.off('traffic:richSeamHelpReserved', this._onRichSeamHelp);
+      if (this._onHaulerRegroup) this.bus.off('traffic:haulerRegroup', this._onHaulerRegroup);
     }
     this._onEntitySpawnedBark = null;
     this._onFlee = null;
@@ -1995,6 +2034,8 @@ export const barkDirector = {
     this._onSpillNoticed = null;
     this._onLoadEmpty = null;
     this._onRichSeamHelp = null;
+    this._onHaulerRegroup = null;
+    this._haulerRegroupKeys = null;
     this._spillNoticeKeys = null;
     this._emptyLoadKeys = null;
     this._richSeamHelpKeys = null;
