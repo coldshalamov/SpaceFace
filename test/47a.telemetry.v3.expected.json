@@ -46,17 +46,17 @@
   "phase0ObservedTraceCounts": {
     "audio:cue": 5,
     "camera:shake": 3,
-    "combat:damage": 8,
+    "combat:damage": 10,
     "combat:fire": 17,
     "economy:tick": 2,
     "presentation:audioCue": 4,
     "presentation:cameraCue": 3,
     "presentation:caption": 4,
-    "presentation:cue": 12,
-    "presentation:cueApplied": 12,
+    "presentation:cue": 14,
+    "presentation:cueApplied": 14,
     "presentation:uiCue": 4,
     "presentation:vfxCue": 4,
-    "projectile:hit": 8,
+    "projectile:hit": 10,
     "scenario:actorBindings": 1,
     "scenario:beatEntered": 1,
     "scenario:dialogueLine": 1,
@@ -69,10 +69,10 @@
     "tether:broken": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "89a84d7a332c5f7576edba4fc99c0b1ea8aee9985dbd99f0f385543a5ef426ee",
+    "authoritativeHash": "4eb1eb4235b653d28457257ba8527afaa5ac0fe887695341f0870b819a79ef08",
     "authoritativeHashByReloadAt": {
-      "60": "914bca87e33eecb847ad470e611b4f49de407f147f2e80a326abd32a8f96580c",
-      "600": "89a84d7a332c5f7576edba4fc99c0b1ea8aee9985dbd99f0f385543a5ef426ee"
+      "60": "4eb1eb4235b653d28457257ba8527afaa5ac0fe887695341f0870b819a79ef08",
+      "600": "4eb1eb4235b653d28457257ba8527afaa5ac0fe887695341f0870b819a79ef08"
     },
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
@@ -241,6 +241,13 @@
     "Accepted cause: PR236 uses hull-yaw vectoring fractions 0.60/0.57/0.375 at rest/cruise/boost, preserving earned speed. PR221 adds scale-safe planar native contact geometry and authoritative continuation. Motion change is intentional gameplay.",
     "Seed47 tick720/reload600 player pos: (3000.139160,305.283264) -> (3002.222900,472.500519); vel: (253.950912,-4.964766) -> (249.409088,24.369547). Same 17shots yield 8hits/damage, 12cue/applied events (prior9/13); final yaw0.107885.",
     "All other observed event counts are unchanged. The actual Massline attaches at tick4 and breaks at128; boost starts121/stops181. This is the curated legacy47a V3 scenario, not a production-manifest claim.",
-    "Reload600 matches save-canonicalized uninterrupted motion. Reload60 has its separately measured 914bca87 pin: canonical native solver state depends on save point. Acceptance bounds and required event families remain unchanged."
+    "Reload600 matches save-canonicalized uninterrupted motion. Reload60 has its separately measured 914bca87 pin: canonical native solver state depends on save point. Acceptance bounds and required event families remain unchanged.",
+    "2026-10-11 deliberate native-contact migration: 571602bb5 reproduces the prior reload60 hash914bca87 exactly. Historical Git blobs loaded in memory, without another checkout or production-source edit, establish the semantic delta.",
+    "The pin-era sg02DynamicBodyOwner alone restores every motion/aim/native-body field and the 8-hit/12-cue trace on current source. Pin-era flightV3 and orbitAssist alone produce the exact CURRENT hash; this tape is unaffected by the new racing or swing input.",
+    "Accepted owners: 7a2389fe3 lowers bounded player contact response 0.25->0.10; 9ca0d10db retains native post-solve separation instead of erasing it when capping contact velocity, fixing hulls passing through heavy bodies.",
+    "With the old native body owner, only 15,169 content leaves remain: 15,156 economy, 12 derived capability leaves, and save version14->15. No unexplained motion remains. Scenario, missions, story and input tape are unchanged.",
+    "Seed47 tick720/reload60 player pos (3002.229492,472.542053)->(2915.300537,352.188141), velocity (249.406525,24.368410)->(273.372681,30.110619). Same 17 shots now yield 10 hits/damage and 14 cue/applied events; all other observed counts are unchanged.",
+    "Current reload60 and reload600 produce the same canonical hash and each matches save-canonicalized uninterrupted simulation. Clean committed source5214f5f38 reproduces the current result; foreign working-tree edits do not set this expectation.",
+    "Exact hash, required event families, acceptance bounds, five-run minimum and reload equivalence remain enforced. This updates the curated legacy47a V3 fixture to shipped contact behavior; it is not a new production-manifest claim."
   ]
 }
