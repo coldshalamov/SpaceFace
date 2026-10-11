@@ -72,7 +72,7 @@ const BEARING_WORD = Object.freeze(Object.fromEntries(
 /**
  * Player-facing prose for the authored counterHint tokens in src/data/enemies.js.
  *
- * Nine authored hints are snake_case tokens ('cut_tether_or_clear_wake'), not sentences — they
+ * Twelve authored hints are snake_case tokens ('cut_tether_or_clear_wake'), not sentences — they
  * were written for a consumer that never got built. This is that consumer, so the tokens get
  * their words here. dreadnought_boss authored real prose and is used verbatim (see hintTextFor).
  * An unknown token prints NOTHING rather than leaking a raw identifier at the player.
@@ -87,6 +87,9 @@ const HINT_PROSE = Object.freeze({
   cross_the_pass_shoot_the_stern_while_it_turns_back: 'Cross its pass and shoot the stern while it swings back.',
   bank_shots_off_room_plate_or_attack_the_flanks: 'Its face sheds shots. Bank one off the plate or take the flanks.',
   outrange_or_ignore_until_pack_commits: 'Outrange it, or ignore it until the pack commits.',
+  move_line_or_throw_cutter: 'Opens a fixed crossing. Move off the line, or throw the cutter off it.',
+  finite_coolant_directional_heat: 'Charges a narrow heat lane. Cross its nose, break a cask, or tow it into its own heat.',
+  physical_decoys_true_iris: 'Its lamps are decoys. Watch the six-petal iris — that is the real gun.',
 });
 
 const NUMBER_WORD = Object.freeze([
