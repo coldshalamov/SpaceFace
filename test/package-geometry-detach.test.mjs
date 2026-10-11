@@ -264,11 +264,15 @@ test('source pins: every F2 gate/detach/ledger call site exists verbatim', () =>
     'exact-target seam rehydrates pending geometry before the touch');
   const preview = read('src/ui/shipPreviewMount.js');
   assert.match(preview, /detachedGeometryUploadPending\(geometry, renderer\)/);
-  assert.match(preview, /noteGeometryGpuResident\(geometry, renderer\);/);
+  assert.match(preview, /armGeometryGpuResidentLedger\(drawable\);/,
+    'post-draw arm replaces the compile-time ledger (W140-D1)');
+  assert.match(preview, /dropGeometryGpuResidencyLedger\(renderer\);/,
+    'context restore clears the stale uploadedOn stamps (W140-G4)');
   const spanner = read('src/ui/orrery/pipSpannerPreview.js');
   assert.match(spanner, /detachedGeometryUploadPending\(geometry, renderer\)/);
-  assert.match(spanner, /noteGeometryGpuResident\(geometry, renderer\);/);
+  assert.match(spanner, /armGeometryGpuResidentLedger\(drawable\);/);
   const asteroid = read('src/ui/asteroid/asteroidRenderer3d.js');
   assert.match(asteroid, /detachedGeometryUploadPending\(geometry, renderer\)/);
-  assert.match(asteroid, /noteGeometryGpuResident\(leaf\.geometry, renderer\);/);
+  assert.match(asteroid, /armGeometryGpuResidentLedger\(drawable\);/);
+  assert.match(asteroid, /dropGeometryGpuResidencyLedger\(renderer\);/);
 });

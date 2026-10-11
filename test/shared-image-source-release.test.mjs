@@ -155,11 +155,36 @@ test('resident KTX2-clone users release their mip array eagerly, not the canonic
   assert.equal(entry.releasedUsers.has(owner), true);
 });
 
+test('a resident user without detach-manifest coverage keeps its payload (W140-D2)', () => {
+  resetImageSourceDedupeForTests();
+  resetPackageDetachManifestsForTests();
+  const mips = [{ data: new Uint8Array(128), width: 4, height: 4 }];
+  const owner = new THREE.CompressedTexture(mips, 4, 4, THREE.RGBAFormat);
+  claimSharedImageTexture('d2.key', owner);
+  const clone = owner.clone(); // carries a COPIED mark-shape but no manifest entry
+  const entry = sharedImageSourceEntry(owner);
+  entry.users.add(clone);
+
+  // Both users stamped resident, but only `owner` is manifest-covered: its mips release
+  // eagerly while the gate-blind clone keeps the shared records it can never rehydrate.
+  const stamps = new Set([owner, clone]);
+  const resident = (u) => stamps.has(u);
+  const covered = (u) => u === owner;
+  assert.equal(releaseSharedImageSource(owner, resident, covered), false,
+    'canonical release held while an uncovered user shares the source');
+  assert.equal(owner.mipmaps.length, 0, 'covered resident user mips cleared');
+  assert.equal(clone.mipmaps.length, 1, 'uncovered resident user keeps its payload');
+  assert.equal(entry.releasedUsers.has(owner), true);
+  assert.equal(entry.releasedUsers.has(clone), false);
+});
+
 test('source pins: F3 release call sites exist verbatim', () => {
   const residency = readFileSync(new URL('../src/render/startupGpuResidency.js', import.meta.url), 'utf8');
   assert.equal(
-    residency.match(/releaseSharedImageSource\(texture, \(user\) => textureGpuResident\(user, renderer\)\);/g).length,
+    residency.match(/releaseSharedImageSource\(texture, \(user\) => textureGpuResident\(user, renderer\), packageTextureDetachCovers\);/g).length,
     3, 'release attempt beside all three detachPackageTexture sites');
   const detach = readFileSync(new URL('../src/render/packageCpuDetach.js', import.meta.url), 'utf8');
   assert.match(detach, /sharedImageSourceEntry\(texture\)/);
+  assert.match(detach, /export function packageTextureDetachCovers\(texture\)/,
+    'the coverage predicate the residency lane passes exists');
 });

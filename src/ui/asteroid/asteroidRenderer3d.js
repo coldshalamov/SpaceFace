@@ -62,11 +62,12 @@ import {
   INCLUSION_KIT_ID,
 } from './worksPartLoader.js';
 import { applyWorksFurnaceHeat } from '../../render/industrialMaterialFamilies.js';
-import { collectStartupGeometries, collectStartupTextures } from '../../render/startupGpuResidency.js';
+import { collectStartupGeometries, collectStartupGeometryDrawables, collectStartupTextures } from '../../render/startupGpuResidency.js';
 import {
+  armGeometryGpuResidentLedger,
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
-  noteGeometryGpuResident,
+  dropGeometryGpuResidencyLedger,
   rehydrateDetachedGeometries,
   rehydrateDetachedTextures,
 } from '../../render/packageCpuDetach.js';
@@ -1393,6 +1394,33 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   let disposed = false;   // guards async surface arrival against a screen that already left
   let worksTearingDown = false;
+  // This private context can die and restore independently of the main one (W140-G4). On
+  // restore the uploadedOn ledger on the live renderer object still claims records the lost
+  // context took with it — drop this renderer's stamps, then re-run the admission consult's
+  // rehydrate gate over the live scene before the next bloom pass draws emptied arrays.
+  let contextRestoreConsult = null;
+  const onWorksContextLost = (event) => { event.preventDefault(); };
+  const onWorksContextRestored = () => {
+    if (disposed || worksTearingDown || glTeardownDone) return;
+    dropGeometryGpuResidencyLedger(renderer);
+    if (contextRestoreConsult) return;
+    contextRestoreConsult = (async () => {
+      try {
+        const pendingGeometries = collectStartupGeometries(scene)
+          .filter((geometry) => detachedGeometryUploadPending(geometry, renderer));
+        const pendingUploads = collectStartupTextures(scene)
+          .filter((texture) => detachedTextureUploadPending(texture, renderer.properties));
+        if (pendingGeometries.length) await rehydrateDetachedGeometries(pendingGeometries);
+        if (pendingUploads.length) await rehydrateDetachedTextures(pendingUploads);
+      } catch (error) {
+        console.warn('[asteroidRenderer3d] context-restore rehydrate failed', error);
+      } finally {
+        contextRestoreConsult = null;
+      }
+    })();
+  };
+  canvas.addEventListener('webglcontextlost', onWorksContextLost, false);
+  canvas.addEventListener('webglcontextrestored', onWorksContextRestored, false);
   // Bloom refuses cold stamped materials on a presented frame. This private context must own
   // their admission; the flight renderer's queue cannot compile programs for another context.
   const pipelineAdmissions = new WeakMap();
@@ -1432,10 +1460,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         // Bound software-driver linking to one material family per task, preserving UI input.
         await new Promise((resolve) => setTimeout(resolve, 0));
       }
-      // compile() created this context's attribute records — ledger the uploads so a later
-      // detach doesn't re-pend this renderer in the geometry gate.
-      for (const leaf of leaves) {
-        if (leaf.geometry) noteGeometryGpuResident(leaf.geometry, renderer);
+      // compile() creates NO attribute records — ledgering here would mark this renderer
+      // resident before a single buffer exists and blind the per-admission gate to a re-detach
+      // in the pre-draw window (W140-D1). Arm each drawable's onAfterRender: the ledger lands
+      // exactly when its own upload completes on the first real draw.
+      for (const drawable of collectStartupGeometryDrawables(subject)) {
+        armGeometryGpuResidentLedger(drawable);
       }
       return true;
     });
@@ -8788,7 +8818,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     layoutWantChips();
     stepFx(dt);
     stepDom(d, dt);
-    bloom.render(scene, camera);
+    // Hold the draw while a context-restore rehydrate is in flight — a bind on emptied
+    // payloads is exactly what the consult exists to prevent (W140-G4).
+    if (!contextRestoreConsult) bloom.render(scene, camera);
   }
 
   // ---------------------------------------------------------------- teardown
@@ -8807,6 +8839,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function finishDispose() {
     if (glTeardownDone) return;
     glTeardownDone = true;
+    canvas.removeEventListener('webglcontextlost', onWorksContextLost, false);
+    canvas.removeEventListener('webglcontextrestored', onWorksContextRestored, false);
     authoredInclusionsDispose();
     for (const [, b] of oreBuckets) { oreRoot.remove(b.mesh); b.mesh.dispose(); }
     oreBuckets.clear();

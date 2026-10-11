@@ -7,6 +7,7 @@ import {
   detachPackageTexture,
   isPackageTextureDetached,
   noteGeometryGpuResident,
+  packageTextureDetachCovers,
 } from './packageCpuDetach.js';
 import { releaseSharedImageSource } from './imageSourceDedupe.js';
 
@@ -898,7 +899,7 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       // the entry's last live user the bytes can actually leave. F3 also attempts the shared
       // release: canonical source.data leaves once EVERY live user is stamped on this renderer.
       detachPackageTexture(texture);
-      releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer));
+      releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer), packageTextureDetachCovers);
       residentTextures += 1;
       textureProgress.update(index + 1);
       // Resident rows skip the upload path's yield — a mostly-resident
@@ -915,7 +916,7 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       // context-restore rehydrate refills it — uploading now would push empty mips over the live
       // copy, so count it resident and skip. Its dedupe siblings may still share an unreleased
       // canonical source — this stamp may be the one that completes the release.
-      releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer));
+      releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer), packageTextureDetachCovers);
       residentTextures += 1;
       textureProgress.update(index + 1);
       if ((index & 255) === 255 || now() - scanStrideAt >= 2) {
@@ -946,7 +947,7 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
         // marked render-package textures. Context restore rehydrates them on demand. The same
         // stamp may complete a dedupe entry's all-resident set — attempt the shared release.
         detachPackageTexture(texture);
-        releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer));
+        releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer), packageTextureDetachCovers);
       }
       reportBlockingSlice(onBlockingSlice, {
         kind: 'gpuResidencyUpload',

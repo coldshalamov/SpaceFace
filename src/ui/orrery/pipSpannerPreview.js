@@ -5,11 +5,11 @@ import { createAuthoredAssetLease, disposeAuthoredAssetRuntime } from '../../ren
 import { cloneMaterialPreservingShaderHooks } from '../../render/materialClone.js';
 import { applyAuthoredMaterialProfile } from '../../render/authoredMaterialProfiles.js';
 import { compileScenePipelinesSafely } from '../../render/compilePipelinesSafely.js';
-import { collectStartupGeometries, collectStartupTextures } from '../../render/startupGpuResidency.js';
+import { collectStartupGeometries, collectStartupGeometryDrawables, collectStartupTextures } from '../../render/startupGpuResidency.js';
 import {
+  armGeometryGpuResidentLedger,
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
-  noteGeometryGpuResident,
   rehydrateDetachedGeometries,
   rehydrateDetachedTextures,
 } from '../../render/packageCpuDetach.js';
@@ -190,10 +190,12 @@ export function createPipSpannerPreview({ canvas, doc = canvas?.ownerDocument,
     if (pendingGeometries.length) await rehydrateDetachedGeometries(pendingGeometries);
     if (pendingUploads.length) await rehydrateDetachedTextures(pendingUploads);
     if (disposed || renderer.getContext?.().isContextLost?.()) return false;
-    // compile() created this context's attribute records — ledger the uploads so a later
-    // detach doesn't re-pend this renderer in the geometry gate.
-    for (const geometry of collectStartupGeometries(scene)) {
-      noteGeometryGpuResident(geometry, renderer);
+    // compile() creates NO attribute records — a ledger written here would mark this renderer
+    // resident before a single buffer exists and blind the geometry gate (W140-D1). Arm each
+    // drawable's onAfterRender instead: the ledger lands exactly when its own upload completes
+    // on the first real draw.
+    for (const drawable of collectStartupGeometryDrawables(scene)) {
+      armGeometryGpuResidentLedger(drawable);
     }
     ready = true;
     motion = createPipSpannerMotion(rig, { draw, reduced, width: () => dimensions().width,

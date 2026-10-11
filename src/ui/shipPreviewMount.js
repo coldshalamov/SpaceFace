@@ -22,11 +22,12 @@ import { compileScenePipelinesSafely } from '../render/compilePipelinesSafely.js
 import { retireWhenProgramsReady } from './previewContextRetire.js';
 import { preloadAuthoredPartLibrary } from '../render/partsLibrary.js';
 import { isReleaseAssetMode } from '../render/releaseMode.js';
-import { collectStartupGeometries, collectStartupTextures, yieldToBrowser } from '../render/startupGpuResidency.js';
+import { collectStartupGeometries, collectStartupGeometryDrawables, collectStartupTextures, yieldToBrowser } from '../render/startupGpuResidency.js';
 import {
+  armGeometryGpuResidentLedger,
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
-  noteGeometryGpuResident,
+  dropGeometryGpuResidencyLedger,
   rehydrateDetachedGeometries,
   rehydrateDetachedTextures,
 } from '../render/packageCpuDetach.js';
@@ -558,6 +559,9 @@ export function createShipPreviewMount(canvas, opts) {
         // The complete authored payload can have very different bounds from its immediate fallback.
         // Reframe and render atomically when it settles; input must never be required to reveal it.
         hidePreviewOnlySurfaces(current);
+        for (const drawable of collectStartupGeometryDrawables(current)) {
+          armGeometryGpuResidentLedger(drawable);
+        }
         fitCameraToCurrent();
         renderNow();
         if (onAssetSettled) onAssetSettled({ defId: getDefId(), state: 'authored' });
@@ -830,6 +834,23 @@ export function createShipPreviewMount(canvas, opts) {
     if (active && rotating && !rafId) requestLoop();
   }
 
+  // The preview owns its WebGL context — it can die and restore independently of the main one
+  // (W140-G4). preventDefault keeps restoration possible; on restore every attribute record
+  // the uploadedOn ledger described is gone, so drop this renderer's stamps and re-arm the
+  // audit — the next renderNow's gate scan sees detached payloads as pending again (fresh
+  // properties map covers textures; cleared ledger covers geometry) and rehydrates before
+  // drawing instead of binding emptied arrays.
+  const onPreviewContextLost = (event) => { event.preventDefault(); };
+  const onPreviewContextRestored = () => {
+    if (disposed) return;
+    dropGeometryGpuResidencyLedger(renderer);
+    uploadAuditArmed = true;
+    uploadAuditSeq += 1;
+    renderNow();
+  };
+  canvas.addEventListener('webglcontextlost', onPreviewContextLost, false);
+  canvas.addEventListener('webglcontextrestored', onPreviewContextRestored, false);
+
   if (dockId) loadDockBackdrop(dockId).catch(() => {});
 
   // The preview owns its own WebGL context. The boundary's default admission borrows the live
@@ -909,10 +930,12 @@ export function createShipPreviewMount(canvas, opts) {
   async function prepareForFirstDraw(root) {
     const pipelines = await compilePreviewPipelines(root);
     const textures = await uploadPreviewTextures(root);
-    // compile() created this context's attribute records — ledger the upload so a later detach
-    // doesn't re-pend this renderer in the N2 geometry gate.
-    for (const geometry of collectStartupGeometries(root)) {
-      noteGeometryGpuResident(geometry, renderer);
+    // compile() creates NO attribute records — ledgering here would mark this renderer resident
+    // before a single buffer exists and blind the N2 gate to a re-detach in the pre-draw window
+    // (W140-D1). Arm each drawable's onAfterRender: the ledger lands exactly when its own
+    // upload completes on the first real draw.
+    for (const drawable of collectStartupGeometryDrawables(root)) {
+      armGeometryGpuResidentLedger(drawable);
     }
     return { pipelines, textures };
   }
@@ -1330,6 +1353,12 @@ export function createShipPreviewMount(canvas, opts) {
     cam.zoom = zoom;
     mesh.rotation.y = yaw;
     scene.add(mesh);
+    // Same post-draw residency ledger as the dock path: each drawable notes this renderer
+    // only after its own first real upload, so a re-detach never meets a false-resident
+    // stamp in the audit's gate (W140-D1).
+    for (const drawable of collectStartupGeometryDrawables(mesh)) {
+      armGeometryGpuResidentLedger(drawable);
+    }
     uploadAuditArmed = true;
     uploadAuditSeq += 1;
     fitCameraToCurrent();
@@ -1440,6 +1469,8 @@ export function createShipPreviewMount(canvas, opts) {
   function dispose() {
     if (disposed) return;
     disposed = true;
+    canvas.removeEventListener('webglcontextlost', onPreviewContextLost, false);
+    canvas.removeEventListener('webglcontextrestored', onPreviewContextRestored, false);
     if (resizeObserver) resizeObserver.disconnect();
     if (rafId) cancelAnimationFrame(rafId);
     rafId = 0;

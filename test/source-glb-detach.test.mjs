@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 import * as THREE from 'three';
 
+import { sourceDetachRefFor } from '../src/render/assetLoader.js';
 import { imageSourceKeyAsync } from '../src/render/imageSourceDedupe.js';
 import {
   createSourceDetachManifest,
@@ -74,9 +75,7 @@ test('source-GLB manifest marks authored textures and detaches through the seal 
   assert.equal(isPackageTextureDetached(fixture.texture), false);
 });
 
-test('a redecode that yields wrong bytes is rejected by digest verification (caller-side)', async () => {
-  // The digest check lives in assetLoader's sourceDetachRef redecode; the manifest layer pins
-  // ordinal pairing — a wrong-bytes donor never reaches the entries.
+test('manifest ordinal pairing stays positional over the same-order texture list', async () => {
   resetPackageDetachManifestsForTests();
   const fixture = authoredFixture();
   const manifest = createSourceDetachManifest('a.glb', [fixture.texture], {
@@ -87,6 +86,21 @@ test('a redecode that yields wrong bytes is rejected by digest verification (cal
   assert.equal(manifest.entries.length, 1);
   assert.equal(manifest.entries[0].texture, fixture.texture,
     'ordinal pairing is positional over the same-order texture list');
+});
+
+test('a redecode that yields wrong bytes is rejected by digest verification', async () => {
+  // The real sourceDetachRefFor gate: the recorded digest is minted from the original bytes,
+  // then redecode's force-cache refetch must reproduce them byte-exactly or throw before any
+  // parseAsync is paid (W140-R5 — the earlier test pinned pairing, not rejection).
+  const original = new Uint8Array([7, 7, 7, 1, 2, 3]);
+  const tampered = new Uint8Array([7, 7, 7, 9, 9, 9]);
+  let parses = 0;
+  const loader = { parseAsync: async () => { parses += 1; return { scene: new THREE.Group() }; } };
+  const fetchImpl = async () => ({ ok: true, arrayBuffer: async () => tampered.buffer.slice(0) });
+  const ref = await sourceDetachRefFor('assets/authored/hull.glb', loader, fetchImpl, original);
+  assert.ok(ref, 'ref minted against the original bytes');
+  await assert.rejects(() => ref.redecode(), /changed under its recorded digest/);
+  assert.equal(parses, 0, 'digest mismatch rejects before paying a decode');
 });
 
 test('detachOnMark releases fallback-layer textures eagerly at manifest creation', async () => {

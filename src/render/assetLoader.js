@@ -2337,7 +2337,7 @@ export function hasNonEmptyWholeShipHullBody(hullTriangles) {
 // JSON-clones and blueprint freezes never see it. compileBlueprint reads it off the decode.
 const SOURCE_DETACH_REF = '__spacefaceSourceDetachRef';
 
-async function sourceDetachRefFor(url, loader, fetchImpl, bytes = null) {
+export async function sourceDetachRefFor(url, loader, fetchImpl, bytes = null) {
   if (typeof fetchImpl !== 'function' || !loader || typeof loader.parseAsync !== 'function') return null;
   try {
     let body = bytes;
