@@ -28,6 +28,8 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'save-load-live', screen: 'saveLoad', backdrop: 'title', saves: 'filed', live: true },
   { id: 'help', screen: 'help', backdrop: 'title' },
   { id: 'codex', screen: 'codex', backdrop: 'title' },
+  // The Figures tab over a lived-in Record: fourteen deeds, two already told (tools/ui-bench-record.js).
+  { id: 'codex-record', screen: 'codex', backdrop: 'title', record: true },
   { id: 'mission-log', screen: 'missionLog', backdrop: 'title' },
   { id: 'missionLog', screen: 'missionLog', backdrop: 'title' },
   { id: 'credits', screen: 'credits', backdrop: 'title' },

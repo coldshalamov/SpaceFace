@@ -41,6 +41,7 @@ import { knownAces, stanceForRecord, rememberedBarkFor } from '../../data/namedA
 import { FACTION_LABELS } from '../../data/encounters.js';
 import { buildStoryView, rankViews, recallText } from '../../chronicler/narrative.js';
 import { hash32 } from '../../core/rng.js';
+import { recordSectionModel } from './codexRecord.js';
 
 /** Set a CSS custom property where the host supports it (test shims carry a plain style object). */
 function setVar(node, name, value) {
@@ -2034,6 +2035,32 @@ export const codexScreen = {
       }
     }
     this._section('Named Figures', entries);
+    this._renderRecord(ctx);
+  },
+
+  // The Record (THE WORLD REMEMBERS): the newest deeds the world has on file, under one standing
+  // strip. recordSectionModel is the pure read; no deeds is one empty line, never a thrown error.
+  _renderRecord(ctx) {
+    const model = recordSectionModel(ctx && ctx.state);
+    if (model.empty) { this._section('The Record', [], model.emptyLine); return; }
+    const entry = makeEntry({
+      id: 'record:deeds',
+      name: 'The Record',
+      sub: model.total + (model.total === 1 ? ' deed' : ' deeds'),
+      meta: model.standing.map((s) => s.text).join(' \u00b7 '),
+    });
+    const list = el('ul', 'k-rows');
+    list.style.setProperty('--k-row-cols', 'minmax(0, 1fr) minmax(0, 2fr)');
+    for (const row of model.rows) {
+      const li = el('li', 'k-row k-row--static');
+      li.appendChild(el('span', 'k-caps', row.ago + ' \u00b7 ' + row.label));
+      const line = el('span', 'k-row__name', row.line);
+      if (row.told) line.appendChild(el('span', 'k-caps', ' \u00b7 told'));
+      li.appendChild(line);
+      list.appendChild(li);
+    }
+    entry.measure.appendChild(list);
+    this._section('The Record', [entry]);
   },
 
   // The Tessera's sealed history + persistent cargo (the "personal effects" that travel with you).

@@ -27,6 +27,7 @@ import { BACKDROPS, resolveShot, UI_BENCH_SHOTS } from '../scripts/lib/uiBenchCa
 import { createBenchSaveSystem } from './ui-bench-saves.js';
 import { benchWorldFor, loadBenchWorld, seedChartShot, unseedChartShot } from './ui-bench-chart.js';
 import { seedFootprintShot, unseedFootprintShot } from './ui-bench-footprint.js';
+import { seedRecordShot, unseedRecordShot } from './ui-bench-record.js';
 import { MOBILE_CSS } from '../src/systems/mobile/styles.js';
 
 window.__BENCH_READY = false;
@@ -968,10 +969,16 @@ async function goto(rawId) {
       else unseedDrillShot(state);
       if (id === 'base' && shot.base) await seedBaseShot(state, shot.base);
       else unseedBaseShot(state);
+      // A codex shot with `record` opens the Figures tab over a lived-in Record (tools/ui-bench-record.js).
+      if (shot.record) {
+        seedRecordShot(state);
+        (await import('../src/ui/screens/codex.js')).requestCodexTab('Figures');
+      } else unseedRecordShot(state);
       const screen = await loader();
       const ctx = { state, bus, screenManager: manager, registry, writeStorePage() {}, publishStoreStill() {} };
       screen.mount(root, ctx);
       screen.onShow?.(ctx);
+      if (shot.record) screen._focus?.('record:deeds');
       // An ORRERY screen arrives with choreography (rings draw, springs settle); shoot it at rest.
       if (typeof screen.settled === 'function') await screen.settled();
       // A populated drill shot re-asserts its staged gauges (mount re-opened the session) and,
