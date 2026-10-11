@@ -206,6 +206,41 @@ export function createWarrantHunterWaves(host) {
     p.dueT = nowOf(s) + WARRANT_WAVE_UNDOCK_DELAY_S;
   }
 
+  // THE WORLD REMEMBERS (U-B x U-A): a fence who does not trust a hot pilot sells them. The tip
+  // skips the rhythm — gap, cooldown and chance — and holds a dock-triggered wave that lands on
+  // the next undock. A wave already held is simply marked as tipped (one wave at a time stays).
+  function onFenceTip(p) {
+    const s = state();
+    if (sealed(s) || !p || !p.fenceId) return;
+    const tier = wantedTierFor(s.player.heat);
+    if (!WAVE_TIERS.includes(tier)) return;
+    if (ctl.pending) { ctl.pending.tippedBy = p.fenceId; return; }
+    const m0 = memory(s);
+    const idx = (m0 ? m0.arrivalCount | 0 : ctl.arrivals) + 1;
+    const hunter = pickWarrantHunter({
+      seed: seedOf(s), tier, arrivalCount: idx, trigger: 'dock', isRecovering: (id) => isRecovering(s, id),
+    });
+    if (!hunter) return;
+    const now = nowOf(s);
+    const m = memory(s, true);
+    m.arrivalCount = idx;
+    m.lastWaveArrival = idx;
+    m.lastWaveT = now;
+    ctl.arrivals = idx;
+    ctl.pending = {
+      hunterId: hunter.id,
+      trigger: 'dock',
+      tier,
+      arrivalIdx: idx,
+      sectorId: p.sectorId || sectorOf(s),
+      stationId: p.stationId || null,
+      armedT: now,
+      dueT: null, // set on undock, like any dock-triggered wave
+      tries: 0,
+      tippedBy: p.fenceId,
+    };
+  }
+
   // ── landing the wave ───────────────────────────────────────────────────────────────────────
   function update(dt, s) {
     if (!ctl.pending && ctl.live.size === 0 && !ctl.offer) return;
@@ -279,6 +314,7 @@ export function createWarrantHunterWaves(host) {
         hailed: false,
         fled: false,
         offerAmount: row.role === 'boss' ? offerAmount : 0,
+        tippedBy: p.tippedBy || null,
       });
     }
     emit('warrant:waveSpawned', {
@@ -288,6 +324,7 @@ export function createWarrantHunterWaves(host) {
       tier: p.tier,
       sectorId: sectorOf(s),
       trigger: p.trigger,
+      tippedBy: p.tippedBy || null, // the fence who sold the pilot, when one did
       crewCount: Math.max(0, spawned.length - 1),
       tick: s.tick | 0,
       waveId,
@@ -504,8 +541,9 @@ export function createWarrantHunterWaves(host) {
     entry.hailed = true;
     const m = memory(s, true);
     const rec = recordFor(m, hunter.id);
-    const kind = entry.returning && rec.grievance ? 'grievance' : 'first';
-    const line = say(s, hunter, kind, 'contact', { grievance: rec.grievance });
+    // A tipped wave says where it heard: the fence who sold the pilot is named to their face.
+    const kind = entry.tippedBy ? 'tipped' : entry.returning && rec.grievance ? 'grievance' : 'first';
+    const line = say(s, hunter, kind, 'contact', { grievance: rec.grievance, fenceId: entry.tippedBy });
     if (hunter.quirk.id === 'hails_first') {
       const ai = entity.data && entity.data.ai;
       const amount = Math.max(0, Math.round(Number(s.player.bounty) || 0));
@@ -555,6 +593,7 @@ export function createWarrantHunterWaves(host) {
   function say(s, hunter, kind, salt, opts = {}) {
     const text = warrantHunterLine(hunter, kind, {
       seed: seedOf(s), salt: hash32(String(salt), s.tick | 0), grievance: opts.grievance || null,
+      fenceId: opts.fenceId || null,
     });
     if (!text) return '';
     const voice = host.helpers && host.helpers.voice;
@@ -810,6 +849,7 @@ export function createWarrantHunterWaves(host) {
   listen('jump:arrive', () => onArrival('jump', null));
   listen('dock:docked', (p) => onArrival('dock', p));
   listen('dock:undocked', onUndock);
+  listen('law:fenceTip', onFenceTip);
   listen('law:killedAdjudicated', onAdjudicated);
   listen('entity:killed', onKilled);
   listen('entity:destroyed', onGone);

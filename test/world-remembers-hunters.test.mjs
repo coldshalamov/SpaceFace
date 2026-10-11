@@ -10,12 +10,14 @@ import {
   WARRANT_HUNTERS,
   WARRANT_RECOVER_BASE_S,
   WARRANT_WAVE_ARRIVAL_DELAY_S,
+  WARRANT_WAVE_UNDOCK_DELAY_S,
   WARRANT_WAVE_RHYTHM,
   pickWarrantHunter,
   warrantHunterById,
   warrantHunterLine,
 } from '../src/data/warrantHunters.js';
 import { heat, wantedTierFor, WANTED_TIER } from '../src/systems/heat.js';
+import { FENCE_BY_ID } from '../src/data/fences.js';
 import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { normalizeMemory } from '../src/systems/warrantHunterWaves.js';
@@ -280,6 +282,37 @@ for (const seed of SEEDS) {
     assert.equal(paid.amountCr, 500);
     assert.equal(boss.data.ai.forcePlayerTarget, false, 'the hunter stands down');
     assert.equal(ctx.state.lawSecurity.warrantHunters.hunters.wh_ines_garrow.grievance, 'paid');
+  });
+
+  test(`seed ${seed}: a fence tip arms a wave at once, it lands on undock, and the hail names the fence`, () => {
+    const ctx = boot(seed, { withHeat: false });
+    onlyHunter(ctx.state, 'wh_orsolya_pike');
+    // First dock while WANTED: under the rhythm's minGap, so nothing is armed on its own.
+    ctx.bus.emit('dock:docked', { stationId: 'station_sker' });
+    assert.equal(ctx.law._warrantWaves._view().pending, null, 'one arrival is under minGap');
+    ctx.bus.emit('law:fenceTip', { schemaVersion: 1, fenceId: 'fence_cutter_ruan', stationId: 'station_sker', sectorId: SECTOR, heatLevel: 4 });
+    const pending = ctx.law._warrantWaves._view().pending;
+    assert.ok(pending, 'the tip skips the rhythm');
+    assert.equal(pending.trigger, 'dock');
+    assert.equal(pending.tippedBy, 'fence_cutter_ruan');
+    assert.equal(pending.dueT, null, 'held until undock');
+    ctx.bus.emit('dock:undocked', {});
+    ctx.state.simTime += WARRANT_WAVE_UNDOCK_DELAY_S + 1;
+    ctx.sim.step();
+    ctx.sim.step();
+    assert.equal(ctx.log['warrant:waveSpawned'].length, 1);
+    assert.equal(ctx.log['warrant:waveSpawned'][0].tippedBy, 'fence_cutter_ruan');
+    const boss = bossOf(ctx);
+    boss.pos = { x: 400, z: 0 };
+    ctx.sim.step();
+    const hail = ctx.log['warrant:hail'][0];
+    assert.ok(hail, 'first contact fired');
+    const fenceName = FENCE_BY_ID.get('fence_cutter_ruan') ? FENCE_BY_ID.get('fence_cutter_ruan').name : null;
+    assert.ok(fenceName, 'the fence exists in the roster');
+    assert.ok(hail.text.includes(fenceName), `hail names the fence: ${hail.text}`);
+    // A second tip while a wave is held does not stack a second wave.
+    ctx.bus.emit('law:fenceTip', { schemaVersion: 1, fenceId: 'fence_cutter_ruan', stationId: 'station_sker', sectorId: SECTOR, heatLevel: 4 });
+    assert.equal(ctx.log['warrant:waveSpawned'].length, 1);
   });
 
   test(`seed ${seed}: jumping out with a live hunter is remembered as outran`, () => {

@@ -11,6 +11,7 @@
 // and a short voice. Quirks are read by the wave system through `quirk.id`.
 import { hash32 } from '../core/rng.js';
 import { PIRATE_PROMOTION_MAX_TIER } from './namedAces.js';
+import { FENCE_BY_ID } from './fences.js';
 
 export const WARRANT_HUNTER_SCHEMA = 1;
 
@@ -345,7 +346,17 @@ export function grievanceForKillStyle(style) {
  * One voiced line. kind: 'first' | 'grievance' | 'giveUp' | 'tierUp' | 'refused' (hails_first only). `grievance` takes the
  * remembered outcome and falls back to 'disabled' when the memory names an unknown one.
  */
-export function warrantHunterLine(hunter, kind, { seed = 0, salt = 0, grievance = null } = {}) {
+/**
+ * A wave a fence tipped (U-B `law:fenceTip`) opens by naming the fence: the sell-out is heard to
+ * the pilot's face. Shared pool; a hunter's own `voice.tipped` array wins when authored.
+ */
+export const WARRANT_TIPPED_LINES = Object.freeze([
+  '{fence} said you would come out this gate. They were right. Cut your drive.',
+  'Your friend {fence} sold your exit vector for less than you would think. Heave to.',
+  'No luck involved — {fence} told us where to wait. Power down.',
+]);
+
+export function warrantHunterLine(hunter, kind, { seed = 0, salt = 0, grievance = null, fenceId = null } = {}) {
   if (!hunter || !hunter.voice) return '';
   const voice = hunter.voice;
   let pool = null;
@@ -354,9 +365,19 @@ export function warrantHunterLine(hunter, kind, { seed = 0, salt = 0, grievance 
     const line = voice.grievance && voice.grievance[key];
     return typeof line === 'string' ? line : '';
   }
+  if (kind === 'tipped') {
+    const own = Array.isArray(voice.tipped) && voice.tipped.length ? voice.tipped : WARRANT_TIPPED_LINES;
+    const line = own[hash32(seed >>> 0, hunter.id, kind, salt | 0) % own.length];
+    return line.replace('{fence}', fenceDisplayName(fenceId));
+  }
   pool = voice[kind];
   if (!Array.isArray(pool) || !pool.length) return '';
   return pool[hash32(seed >>> 0, hunter.id, kind, salt | 0) % pool.length];
+}
+
+function fenceDisplayName(fenceId) {
+  const fence = fenceId && FENCE_BY_ID.get(fenceId);
+  return fence && fence.name ? fence.name : 'a friend of yours';
 }
 
 /** Boldness (aceMemory return tier) for a wave: global bolder-count plus a returning hunter's edge. */
