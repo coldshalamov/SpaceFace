@@ -16,6 +16,7 @@ import {
   createClipDirector,
 } from '../src/core/simSnapshot.js';
 import { createStuntDetector } from '../src/combat/stuntTaxonomy.js';
+import { EVIDENCE_REVISION } from '../src/combat/stuntEvidence.js';
 import { recordReplayRun, replayClipWindow } from '../src/testing/lab/differentialReplay.js';
 
 const SEED = 16001;
@@ -74,25 +75,50 @@ function replayScenario() {
   };
 }
 
-/** Drive the authoritative StuntDetector to a bolas kill receipt, as the live bus would. */
+/** Drive the authoritative StuntDetector to a bolas kill receipt, as the live bus would.
+ * b64a8e028: recognition reads a physical evidence root. A scalar release plus a
+ * momentum number no longer names a trick. */
 function bolasKillTricks() {
   const detector = createStuntDetector({ playerId: 'player' });
-  detector.processEvent('tether:releaseRated', {
-    tick: BOLAS_TICK - 15,
-    sourceId: 'player',
-    targetId: 'weighted_cable',
-    classification: 'clean',
-    releaseScore: 0.75,
-    tangentialSpeed: 38.0,
-  });
+  const root = {
+    id: 'root:bolas', actorId: 'player', sourceId: 'weighted_cable', sourceLife: 'life:cable',
+    tick: BOLAS_TICK - 40, kind: 'constraint', truncated: false,
+    sourceType: 'ship', sourceHostile: true, sourceDeathTick: null, sourceName: 'Weighted cable',
+    reference: { cruise: 100, mass: 16, hull: 100, radius: 6, length: 12 },
+    playerMass: 18, playerLength: 12, sceneReferenceMass: 18,
+    before: { x: 0, z: 100 }, after: { x: 80, z: 20 }, dv: { x: 80, z: -80 }, nodes: [],
+    constraint: { id: 'rope', loadedTicks: 30, sweep: 90, attached: false, displacement: 40 },
+    release: { id: 'release:1', tick: BOLAS_TICK - 15, reason: 'tether_cut', grade: 'clean' },
+  };
   const tricks = detector.processEvent('combat:collisionConsequence', {
     tick: BOLAS_TICK,
     targetId: 'drone_beta',
     otherId: 'weighted_cable',
+    targetName: 'Drone',
+    targetHostile: true,
+    damageApplied: true,
+    targetKilled: true,
+    hullDamage: 100,
+    targetHullMax: 100,
+    helmLossSeconds: 0,
     surface: 'craft',
-    deltaV: 22.0,
-    exchangedMomentum: 800,
+    victimLife: { lifeId: 'life:drone', threatClass: 'fodder', dead: true },
     provenance: { actorId: 'player' },
+    stuntEvidence: {
+      revision: EVIDENCE_REVISION,
+      root,
+      previousRoot: null,
+      path: {
+        rootId: root.id, sourceId: 'weighted_cable', targetId: 'drone_beta',
+        sourceLife: 'life:cable', targetLife: 'life:drone', tick: BOLAS_TICK,
+        edges: 1, closingSpeed: 80, usefulDeltaV: 140, momentum: 800,
+      },
+      contact: {
+        aId: 'weighted_cable', bId: 'drone_beta',
+        aRef: { cruise: 100, mass: 16, hull: 100 },
+        bRef: { cruise: 100, mass: 16, hull: 100 },
+      },
+    },
   });
   return tricks.filter((t) => t.trickId === 'bolas');
 }
