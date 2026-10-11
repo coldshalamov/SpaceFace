@@ -6387,122 +6387,309 @@ export const audio = {
   // The old approach used always-on drone oscillators through a lowpass — musical but static.
   // This new system creates actual melodies, rhythms, and harmonic movement.
 
-  // Note frequencies (A minor / C major family). Same A4=440 law as the authored stems.
+  // ---- Musical composition engine (Progressive House & Dynamic Electro) ----
+  // Inspired by deadmau5, Daft Punk, and cinematic space electronic music.
+  // Procedural rules govern 8-bar extended chord progressions (Am9, Fmaj9, Cmaj9, Gsus4),
+  // a pumping kick-drum sidechain gain bus, rolling 16th-note basslines, hypnotic
+  // space-delay arpeggios, and multi-bar macro phase morphing (Atmosphere -> Arp Build
+  // -> Drop / 4-on-the-floor Groove -> Climax Melodic Hook).
+
   _noteFreq(note, octave) {
     return noteToHz(note, octave);
   },
 
-  _playThemeMotif(motif, ctx, t, bar, beat, sixteenth, filterNode, delayNode, vel, wave) {
+  _playThemeMotif(motif, ctx, t, bar, beat, sixteenth, busNode, delayNode, vel, wave) {
     if (bar % 4 !== 0 || !motif || !Array.isArray(motif.steps)) return false;
     const stepRow = motif.steps.find((row) => row.beat === beat);
     if (!stepRow) return false;
-    this._playNote(ctx, this._noteFreq(stepRow.note, stepRow.oct), stepRow.dur * sixteenth, vel, wave, filterNode, delayNode, t);
+    this._playNote(ctx, this._noteFreq(stepRow.note, stepRow.oct), stepRow.dur * sixteenth, vel, wave, busNode, delayNode, t, {
+      detune: 7,
+      pluckFilter: true,
+      delayGain: 0.35,
+    });
     return true;
   },
 
-  // Play a single musical note: creates an oscillator, applies a gain envelope, routes
-  // through the provided filter and parent gain, and self-destructs after the note ends.
-  // Returns the oscillator node. maxGain 0-1, durS in seconds.
-  _playNote(ctx, freq, durS, maxGain, wave, filterNode, delayNode, t0) {
-    const o = ctx.createOscillator();
-    o.type = wave || 'triangle';
-    o.frequency.value = freq;
+  // Play a rich multi-oscillator synth voice with unison detune, analog envelope,
+  // and optional dynamic resonant pluck filtering.
+  _playNote(ctx, freq, durS, maxGain, wave, filterNode, delayNode, t0, options = {}) {
+    if (!(freq > 10) || !(durS > 0)) return null;
+    const detuneCents = options.detune != null ? options.detune : (wave === 'sawtooth' ? 8 : wave === 'square' ? 6 : 4);
+    const useUnison = options.unison !== false && detuneCents > 0;
+
+    // Primary oscillator
+    const o1 = ctx.createOscillator();
+    o1.type = wave || 'triangle';
+    o1.frequency.setValueAtTime(freq, t0);
+    if (useUnison) o1.detune.setValueAtTime(-detuneCents, t0);
+
+    // Secondary unison oscillator for stereo/chorus width
+    let o2 = null;
+    if (useUnison) {
+      o2 = ctx.createOscillator();
+      o2.type = wave || 'triangle';
+      o2.frequency.setValueAtTime(freq, t0);
+      o2.detune.setValueAtTime(detuneCents, t0);
+    }
+
     const g = ctx.createGain();
-    const attack = Math.min(durS * 0.15, 0.04);
-    const release = Math.min(durS * 0.4, 0.15);
+    const attack = options.attack != null ? options.attack : Math.min(durS * 0.15, 0.035);
+    const release = options.release != null ? options.release : Math.min(durS * 0.45, 0.18);
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.linearRampToValueAtTime(maxGain, t0 + attack);
-    g.gain.setValueAtTime(maxGain, t0 + durS - release);
+    g.gain.setValueAtTime(maxGain, t0 + Math.max(attack, durS - release));
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + durS);
-    o.connect(g);
-    if (delayNode) { const dg = ctx.createGain(); dg.gain.value = 0.3; g.connect(dg); dg.connect(delayNode); }
-    g.connect(filterNode);
-    try { o.start(t0); o.stop(t0 + durS + 0.05); } catch (_) {}
-    o.onended = () => { try { o.disconnect(); g.disconnect(); } catch (_) {} };
-    return o;
+
+    o1.connect(g);
+    if (o2) o2.connect(g);
+
+    let targetBus = filterNode;
+    let pf = null;
+    if (options.pluckFilter) {
+      pf = ctx.createBiquadFilter();
+      pf.type = 'lowpass';
+      pf.frequency.setValueAtTime(Math.min(10000, freq * 4.5), t0);
+      pf.frequency.exponentialRampToValueAtTime(Math.max(150, freq * 1.1), t0 + durS);
+      pf.Q.setValueAtTime(options.pluckQ || 1.8, t0);
+      g.connect(pf);
+      targetBus = pf;
+    }
+
+    if (delayNode) {
+      const dg = ctx.createGain();
+      dg.gain.value = options.delayGain != null ? options.delayGain : 0.32;
+      (targetBus === filterNode ? g : targetBus).connect(dg);
+      dg.connect(delayNode);
+    }
+    (targetBus === filterNode ? g : targetBus).connect(filterNode);
+
+    try {
+      o1.start(t0);
+      o1.stop(t0 + durS + 0.05);
+      if (o2) { o2.start(t0); o2.stop(t0 + durS + 0.05); }
+    } catch (_) {}
+
+    o1.onended = () => {
+      try {
+        o1.disconnect();
+        if (o2) o2.disconnect();
+        g.disconnect();
+        if (pf) pf.disconnect();
+      } catch (_) {}
+    };
+    return o1;
   },
 
-  // Build the audio graph infrastructure for a stem (filter, delay, reverb) and start
-  // the scheduling loop. Returns { nodes, lp, stop() }.
+  // 909-style electronic kick with 160Hz -> 42Hz pitch drop + click transient
+  _playKick(ctx, t, parentBus, velocity = 0.16) {
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(155, t);
+    o.frequency.exponentialRampToValueAtTime(42, t + 0.075);
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(velocity, t + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.20);
+
+    const click = ctx.createOscillator();
+    click.type = 'triangle';
+    click.frequency.setValueAtTime(320, t);
+    click.frequency.exponentialRampToValueAtTime(80, t + 0.015);
+    const clickG = ctx.createGain();
+    clickG.gain.setValueAtTime(velocity * 0.35, t);
+    clickG.gain.exponentialRampToValueAtTime(0.0001, t + 0.015);
+
+    o.connect(g);
+    click.connect(clickG);
+    g.connect(parentBus);
+    clickG.connect(parentBus);
+
+    try {
+      o.start(t); o.stop(t + 0.24);
+      click.start(t); click.stop(t + 0.03);
+    } catch (_) {}
+    o.onended = () => {
+      try {
+        o.disconnect(); g.disconnect(); click.disconnect(); clickG.disconnect();
+      } catch (_) {}
+    };
+  },
+
+  // French house / progressive hi-hat (closed 16th tick or off-beat open sizzle)
+  _playHiHat(ctx, t, parentBus, velocity = 0.045, open = false) {
+    const rt = this.rt;
+    const caches = (rt && rt._caches) || (this._fallbackCaches || (this._fallbackCaches = {}));
+    const buf = getNoiseBuffer(ctx, caches);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const hf = ctx.createBiquadFilter();
+    hf.type = 'highpass';
+    hf.frequency.value = open ? 6500 : 8500;
+    const hg = ctx.createGain();
+    const dur = open ? 0.14 : 0.04;
+    hg.gain.setValueAtTime(0.0001, t);
+    hg.gain.linearRampToValueAtTime(velocity, t + 0.002);
+    hg.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(hf);
+    hf.connect(hg);
+    hg.connect(parentBus);
+    try { src.start(t); src.stop(t + dur + 0.02); } catch (_) {}
+    src.onended = () => { try { src.disconnect(); hf.disconnect(); hg.disconnect(); } catch (_) {} };
+  },
+
+  // Crisp backbeat clap/snare (beats 4 & 12)
+  _playClap(ctx, t, parentBus, velocity = 0.08) {
+    const rt = this.rt;
+    const caches = (rt && rt._caches) || (this._fallbackCaches || (this._fallbackCaches = {}));
+    const buf = getNoiseBuffer(ctx, caches);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const bpf = ctx.createBiquadFilter();
+    bpf.type = 'bandpass';
+    bpf.frequency.value = 1900;
+    bpf.Q.value = 1.0;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(velocity, t + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+
+    const o = ctx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = 180;
+    const og = ctx.createGain();
+    og.gain.setValueAtTime(velocity * 0.4, t);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+
+    src.connect(bpf); bpf.connect(g); g.connect(parentBus);
+    o.connect(og); og.connect(parentBus);
+    try { src.start(t); src.stop(t + 0.18); o.start(t); o.stop(t + 0.08); } catch (_) {}
+    src.onended = () => {
+      try { src.disconnect(); bpf.disconnect(); g.disconnect(); o.disconnect(); og.disconnect(); } catch (_) {}
+    };
+  },
+
+  // Rolling progressive house bass (punchy saw + sub-sine through resonant lowpass)
+  _playBass(ctx, freq, durS, velocity, t, parentBus, wave = 'sawtooth') {
+    const o1 = ctx.createOscillator();
+    o1.type = wave;
+    o1.frequency.setValueAtTime(freq, t);
+    const o2 = ctx.createOscillator();
+    o2.type = 'sine';
+    o2.frequency.setValueAtTime(freq, t);
+
+    const bpf = ctx.createBiquadFilter();
+    bpf.type = 'lowpass';
+    bpf.frequency.setValueAtTime(Math.min(650, freq * 3.5), t);
+    bpf.Q.value = 2.0;
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(velocity, t + 0.006);
+    g.gain.setValueAtTime(velocity * 0.85, t + durS * 0.6);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + durS);
+
+    o1.connect(bpf);
+    o2.connect(bpf);
+    bpf.connect(g);
+    g.connect(parentBus);
+
+    try {
+      o1.start(t); o1.stop(t + durS + 0.04);
+      o2.start(t); o2.stop(t + durS + 0.04);
+    } catch (_) {}
+    o1.onended = () => {
+      try { o1.disconnect(); o2.disconnect(); bpf.disconnect(); g.disconnect(); } catch (_) {}
+    };
+  },
+
+  // Build the audio graph infrastructure for a stem (filter, delay, sidechain pump) and start
+  // the scheduling loop. Returns { nodes, lp, delay, delayFb, sidechainPump, stop() }.
   _buildStemVoices(ctx, def, parentGain, key) {
     const nodes = [];
 
     // Shared filter for all notes in this stem
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = key === 'C' ? 2200 : key === 'D' ? 1400 : key === 'B' ? 1200 : 800;
-    lp.Q.value = key === 'C' ? 1.5 : 0.7;
+    lp.frequency.value = key === 'C' ? 2400 : key === 'D' ? 1600 : key === 'B' ? 1500 : 1300;
+    lp.Q.value = key === 'C' ? 1.6 : 0.8;
     lp.connect(parentGain);
 
-    // Delay line for spacey echoes (all stems except combat which is dry and punchy)
-    let delay = null, delayFb = null;
-    if (key !== 'C') {
-      delay = ctx.createDelay(1.0);
-      delayFb = ctx.createGain();
-      delay.delayTime.value = key === 'A' ? 0.375 : key === 'D' ? 0.5 : 0.25; // synced to tempo feel
-      delayFb.gain.value = key === 'A' ? 0.35 : key === 'D' ? 0.4 : 0.25;
-      delay.connect(delayFb);
-      delayFb.connect(delay);
-      delay.connect(lp); // delay output mixes into filter
-    }
+    // Progressive house / French house sidechain pump bus:
+    // Chords, arps, and bass connect here; kick ducks it on impact!
+    const sidechainPump = ctx.createGain();
+    sidechainPump.gain.value = 1.0;
+    sidechainPump.connect(lp);
 
-    // Slow filter sweep LFO for movement (calm/docked breathe, tense/combat pulse)
+    // BPM and timing:
+    // A: 122 BPM (exploration progressive house)
+    // B: 124 BPM (tense dark progressive)
+    // C: 128 BPM (combat French electro house)
+    // D: 116 BPM (docked warm deep house)
+    const BPM = key === 'C' ? 128 : key === 'B' ? 124 : key === 'D' ? 116 : 122;
+    const beatS = 60 / BPM;
+    const sixteenthS = beatS / 4;
+
+    // Delay line for spacey echoes with filtered feedback loop
+    let delay = null, delayFb = null;
+    delay = ctx.createDelay(1.2);
+    delayFb = ctx.createGain();
+    delay.delayTime.value = key === 'C' ? beatS * 0.5 : beatS * 0.75; // dotted-eighth
+    delayFb.gain.value = key === 'C' ? 0.20 : key === 'A' ? 0.38 : key === 'D' ? 0.42 : 0.28;
+    const delayLp = ctx.createBiquadFilter();
+    delayLp.type = 'lowpass';
+    delayLp.frequency.value = 2400;
+    delay.connect(delayLp);
+    delayLp.connect(delayFb);
+    delayFb.connect(delay);
+    delay.connect(sidechainPump);
+
+    // Slow filter sweep LFO for breathing movement
     const filterLfo = ctx.createOscillator();
     const filterLfoGain = ctx.createGain();
-    filterLfo.frequency.value = key === 'C' ? 0.5 : key === 'B' ? 0.15 : 0.08;
-    filterLfoGain.gain.value = key === 'C' ? 600 : key === 'D' ? 300 : key === 'B' ? 250 : 200;
+    filterLfo.frequency.value = key === 'C' ? 0.25 : key === 'B' ? 0.12 : 0.05;
+    filterLfoGain.gain.value = key === 'C' ? 600 : key === 'D' ? 300 : key === 'B' ? 300 : 350;
     filterLfo.connect(filterLfoGain);
     filterLfoGain.connect(lp.frequency);
     try { filterLfo.start(ctx.currentTime); } catch (_) {}
     nodes.push(filterLfo, filterLfoGain);
 
-    // ---- Sequencer state ----
+    // Sequencer state
     const seq = {
       active: true,
       destroyed: false,
       timerId: 0,
       step: 0,
-      barBeat: 0,
-      // Scheduling uses setTimeout with a lookahead window for sample-accurate timing
+      macroBar: 0,
       nextNoteTime: ctx.currentTime + 0.1,
     };
-
-    // BPM and timing
-    const BPM = key === 'C' ? 130 : key === 'B' ? 95 : key === 'D' ? 72 : 80;
-    const beatS = 60 / BPM;
-    const sixteenthS = beatS / 4;
-
-    // ---- Note patterns per stem ----
-    // Each pattern is an array of { note, oct, dur (in 16ths), vel (0-1), wave }
-    // null entries are rests. Patterns loop.
 
     const self = this;
 
     function scheduleNotes() {
       seq.timerId = 0;
       if (!seq.active || seq.destroyed) return;
-      // Schedule notes up to 100ms ahead for glitch-free timing
-      while (seq.nextNoteTime < ctx.currentTime + 0.1) {
+      while (seq.nextNoteTime < ctx.currentTime + 0.12) {
         const t = seq.nextNoteTime;
         const step = seq.step;
 
-        if (key === 'A') self._seqCalm(ctx, t, step, sixteenthS, lp, delay);
-        else if (key === 'B') self._seqTense(ctx, t, step, sixteenthS, lp, delay);
-        else if (key === 'C') self._seqCombat(ctx, t, step, sixteenthS, lp, null);
-        else if (key === 'D') self._seqDocked(ctx, t, step, sixteenthS, lp, delay);
+        if (key === 'A') self._seqCalm(ctx, t, step, seq, sixteenthS, beatS, sidechainPump, delay, parentGain);
+        else if (key === 'B') self._seqTense(ctx, t, step, seq, sixteenthS, beatS, sidechainPump, delay, parentGain);
+        else if (key === 'C') self._seqCombat(ctx, t, step, seq, sixteenthS, beatS, sidechainPump, delay, parentGain);
+        else if (key === 'D') self._seqDocked(ctx, t, step, seq, sixteenthS, beatS, sidechainPump, delay, parentGain);
 
-        seq.step = (seq.step + 1) % 64; // 4 bars of 16 sixteenths
+        seq.step = (seq.step + 1) % 64;
+        if (seq.step === 0) seq.macroBar++;
         seq.nextNoteTime += sixteenthS;
       }
-      seq.timerId = setTimeout(scheduleNotes, 50); // re-check every 50ms
+      seq.timerId = setTimeout(scheduleNotes, 40);
     }
 
-    // Slight startup delay so all stems begin roughly together
     seq.nextNoteTime = ctx.currentTime + 0.2;
     scheduleNotes();
 
     const stemObj = {
-      nodes, lp, delay, delayFb,
+      nodes, lp, delay, delayFb, sidechainPump,
       pauseScheduler() {
         if (seq.destroyed || !seq.active) return;
         seq.active = false;
@@ -6524,289 +6711,305 @@ export const audio = {
         for (const n of nodes) { try { n.stop(); } catch (_) {} try { n.disconnect(); } catch (_) {} }
         if (delay) { try { delay.disconnect(); } catch (_) {} }
         if (delayFb) { try { delayFb.disconnect(); } catch (_) {} }
+        if (sidechainPump) { try { sidechainPump.disconnect(); } catch (_) {} }
       },
     };
     return stemObj;
   },
 
-  // ---- Calm (exploration): ambient arpeggios in A minor, gentle and spacious ----
-  // Slow arpeggiated pattern over Am7/Cmaj9 changes, with a soft rhythmic pulse.
-  // Think Vangelis/Blade Runner: wide pads, echoed arpeggios, breathing filter.
-  _seqCalm(ctx, t, step, sixteenth, filterNode, delayNode) {
+  // ---- Calm (Exploration): Progressive House (deadmau5 / Strobe / Faxing Berlin feel) ----
+  // Slowly evolving 8-bar extended chords in Am9/Cmaj9, 4-on-the-floor kick with sidechain pumping,
+  // rolling 16th pluck arpeggio through space delay, and 4-phase macro evolution.
+  _seqCalm(ctx, t, step, seq, sixteenth, beatS, sidechainPump, delayNode, parentBus) {
     const N = (n, o) => this._noteFreq(n, o);
-    const play = (f, dur, vel, wave) => this._playNote(ctx, f, dur * sixteenth, vel, wave, filterNode, delayNode, t);
 
-    // Chord progression: Am -> Em -> F -> G (repeats every 64 steps = 4 bars)
-    const bar = Math.floor(step / 16);
+    // 8-bar extended progression in A minor / C major
     const chords = [
-      [N('A',3), N('C',4), N('E',4), N('G',4)],   // Am7
-      [N('E',3), N('G',3), N('B',3), N('D',4)],   // Em7
-      [N('F',3), N('A',3), N('C',4), N('E',4)],   // Fmaj7
-      [N('G',3), N('B',3), N('D',4), N('F',4)],   // G7
+      // 0: Am9
+      { root: N('A', 1), bass: N('A', 2), tones: [N('A', 2), N('E', 3), N('G', 3), N('B', 3), N('C', 4), N('E', 4)] },
+      // 1: Fmaj9
+      { root: N('F', 1), bass: N('F', 2), tones: [N('F', 2), N('C', 3), N('E', 3), N('G', 3), N('A', 3), N('C', 4)] },
+      // 2: Cmaj9
+      { root: N('C', 1), bass: N('C', 2), tones: [N('C', 2), N('G', 2), N('B', 2), N('D', 3), N('E', 3), N('G', 3)] },
+      // 3: Gsus4 / Em7
+      { root: N('G', 1), bass: N('G', 2), tones: [N('G', 2), N('D', 3), N('F', 3), N('A', 3), N('B', 3), N('D', 4)] },
+      // 4: Dm9
+      { root: N('D', 1), bass: N('D', 2), tones: [N('D', 2), N('A', 2), N('C', 3), N('E', 3), N('F', 3), N('A', 3)] },
+      // 5: G7sus4
+      { root: N('G', 1), bass: N('G', 2), tones: [N('G', 2), N('D', 3), N('F', 3), N('C', 4), N('D', 4), N('G', 4)] },
+      // 6: Cmaj7
+      { root: N('C', 1), bass: N('C', 2), tones: [N('C', 2), N('G', 2), N('B', 2), N('E', 3), N('G', 3), N('C', 4)] },
+      // 7: Em7
+      { root: N('E', 1), bass: N('E', 2), tones: [N('E', 2), N('B', 2), N('D', 3), N('G', 3), N('B', 3), N('E', 4)] },
     ];
-    const chord = chords[bar % 4];
-    const beat = step % 16;
 
-    // PQ-158.03 travel lead — the hummable Outbound motif (A C E A) on bar 0.
-    // Skip the arp on those beats so the phrase sits on top for a stranger to hum.
-    const motifOn = this._playThemeMotif(TRAVEL_MOTIF, ctx, t, bar, beat, sixteenth, filterNode, delayNode, 0.16, 'triangle');
-    if (!motifOn && beat % 4 === 0) {
-      const noteIdx = (beat / 4) % chord.length;
-      play(chord[noteIdx], 3.5, 0.09, 'triangle');
-    }
-
-    // High sparkle: octave-up arpeggio on offbeats (every 4 sixteenths, offset by 2)
-    if (beat % 8 === 2) {
-      const noteIdx = ((beat + 2) / 4) % chord.length;
-      play(chord[noteIdx] * 2, 2, 0.04, 'sine');
-    }
-
-    // Pad chord: sustained chord tones refreshed every bar (beat 0)
-    if (beat === 0) {
-      // Two chord tones as a soft pad
-      play(chord[0], 15, 0.05, 'triangle');
-      play(chord[2], 15, 0.04, 'triangle');
-    }
-
-    // Subtle rhythmic pulse: a low filtered tick on every 4th sixteenth
-    if (beat % 4 === 0) {
-      const kickFreq = N('A', 1);
-      const o = ctx.createOscillator();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(kickFreq * 2, t);
-      o.frequency.exponentialRampToValueAtTime(kickFreq, t + 0.08);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.linearRampToValueAtTime(0.03, t + 0.005);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-      o.connect(g); g.connect(filterNode);
-      try { o.start(t); o.stop(t + 0.15); } catch (_) {}
-      o.onended = () => { try { o.disconnect(); g.disconnect(); } catch (_) {} };
-    }
-  },
-
-  // ---- Tense: minor key urgency, faster arpeggio, bass pulse ----
-  // Builds on calm's harmonic language but adds a driving bass, faster patterns,
-  // and chromatic tension. Should feel like something is approaching.
-  _seqTense(ctx, t, step, sixteenth, filterNode, delayNode) {
-    const N = (n, o) => this._noteFreq(n, o);
-    const play = (f, dur, vel, wave) => this._playNote(ctx, f, dur * sixteenth, vel, wave, filterNode, delayNode, t);
-
-    // Darker progression: Am -> Dm -> Bb -> E (phrygian tension on the E)
     const bar = Math.floor(step / 16);
-    const chords = [
-      [N('A',3), N('C',4), N('E',4)],         // Am
-      [N('D',3), N('F',3), N('A',3)],         // Dm
-      [N('Bb',3), N('D',4), N('F',4)],        // Bb
-      [N('E',3), N('G#',3), N('B',3)],        // E (major, for tension)
-    ];
-    const chord = chords[bar % 4];
     const beat = step % 16;
+    const totalBar = (seq.macroBar || 0) * 4 + bar;
+    const chord = chords[totalBar % chords.length];
 
-    const motifOn = this._playThemeMotif(WANTED_MOTIF, ctx, t, bar, beat, sixteenth, filterNode, delayNode, 0.14, 'triangle');
+    // Macro evolution: 4 distinct evolving phases (each lasting 8 bars)
+    // Phase 0: Ambient intro / floating space (pads + sub pulse + space plucks, no kick)
+    // Phase 1: Arp rise & rhythm building (16th plucks + shakers + rolling sub)
+    // Phase 2: Full Drop & Groove (4-on-the-floor kick + sidechain pump + rolling bass + open hat + clap)
+    // Phase 3: Climax (Filter wide open + uplifting Travel Motif hook + high sparkle)
+    const macroPhase = Math.floor(totalBar / 8) % 4;
 
-    // Fast arpeggio: every 2 sixteenths (eighth notes)
-    if (!motifOn && beat % 2 === 0) {
-      const noteIdx = (beat / 2) % chord.length;
-      play(chord[noteIdx], 1.8, 0.10, 'triangle');
-    }
-
-    // Syncopated high note (adds urgency)
-    if (beat === 3 || beat === 11) {
-      play(chord[0] * 2, 1.5, 0.06, 'sine');
-    }
-
-    // Driving bass pulse: octave-down root on beats 0 and 8 (half notes)
-    if (beat === 0 || beat === 8) {
-      play(chord[0] * 0.5, 7, 0.08, 'triangle');
-    }
-
-    // Pulsing sub-bass (eighth notes, filtered)
-    if (beat % 4 === 0) {
-      const o = ctx.createOscillator();
-      o.type = 'sawtooth';
-      o.frequency.value = chord[0] * 0.25;
-      const g = ctx.createGain();
-      const bpf = ctx.createBiquadFilter();
-      bpf.type = 'lowpass'; bpf.frequency.value = 200; bpf.Q.value = 2;
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.linearRampToValueAtTime(0.06, t + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + sixteenth * 3);
-      o.connect(bpf); bpf.connect(g); g.connect(filterNode);
-      try { o.start(t); o.stop(t + sixteenth * 3 + 0.05); } catch (_) {}
-      o.onended = () => { try { o.disconnect(); g.disconnect(); bpf.disconnect(); } catch (_) {} };
-    }
-
-    // Tension pad: dissonant cluster refreshed each bar
-    if (beat === 0) {
-      play(chord[1], 14, 0.04, 'sawtooth');
-      play(chord[2], 14, 0.03, 'sawtooth');
-    }
-  },
-
-  // ---- Combat: driving rhythm, aggressive synth, urgent ----
-  // Rhythmic bass, staccato hits, sharp synth lead. No delay (dry and punchy).
-  // Feels like a Tron/Mass Effect combat encounter.
-  _seqCombat(ctx, t, step, sixteenth, filterNode) {
-    const N = (n, o) => this._noteFreq(n, o);
-    const play = (f, dur, vel, wave) => this._playNote(ctx, f, dur * sixteenth, vel, wave, filterNode, null, t);
-
-    // Aggressive progression: Am -> F -> Dm -> E
-    const bar = Math.floor(step / 16);
-    const chords = [
-      [N('A',2), N('C',3), N('E',3)],
-      [N('F',2), N('A',2), N('C',3)],
-      [N('D',2), N('F',2), N('A',2)],
-      [N('E',2), N('G#',2), N('B',2)],
-    ];
-    const chord = chords[bar % 4];
-    const beat = step % 16;
-
-    const motifOn = this._playThemeMotif(COMBAT_MOTIF, ctx, t, bar, beat, sixteenth, filterNode, null, 0.15, 'sawtooth');
-
-    // Driving bass: eighth-note pattern with accents
-    if (beat % 2 === 0) {
-      const vel = (beat % 4 === 0) ? 0.12 : 0.07;
-      play(chord[0], 1.5, vel, 'sawtooth');
-    }
-
-    // Staccato synth stabs on the offbeat (sixteenth note feel)
-    if (beat % 4 === 2) {
-      play(chord[1] * 2, 0.8, 0.09, 'square');
-    }
-
-    // Synth lead: short aggressive phrases (yield the bar-0 quarters to the Press motif)
-    const leadPattern = [0,null,2,null, 1,null,0,null, 2,1,null,null, 0,null,2,1];
-    const lp = leadPattern[beat];
-    if (!motifOn && lp != null) {
-      play(chord[lp % chord.length] * 2, 1.2, 0.07, 'sawtooth');
-    }
-
-    // Kick drum: four-on-the-floor
-    if (beat % 4 === 0) {
-      const o = ctx.createOscillator();
-      o.type = 'sine';
-      o.frequency.setValueAtTime(150, t);
-      o.frequency.exponentialRampToValueAtTime(40, t + 0.08);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.linearRampToValueAtTime(0.13, t + 0.003);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
-      o.connect(g); g.connect(filterNode);
-      try { o.start(t); o.stop(t + 0.2); } catch (_) {}
-      o.onended = () => { try { o.disconnect(); g.disconnect(); } catch (_) {} };
-    }
-
-    // Hi-hat (noise burst) on every other sixteenth
-    if (beat % 2 === 1) {
-      const rt = this.rt;
-      const buf = getNoiseBuffer(ctx, rt._caches);
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      const hg = ctx.createGain();
-      const hf = ctx.createBiquadFilter();
-      hf.type = 'highpass'; hf.frequency.value = 8000;
-      hg.gain.setValueAtTime(0.0001, t);
-      hg.gain.linearRampToValueAtTime(0.04, t + 0.002);
-      hg.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
-      src.connect(hf); hf.connect(hg); hg.connect(filterNode);
-      try { src.start(t); src.stop(t + 0.06); } catch (_) {}
-      src.onended = () => { try { src.disconnect(); hf.disconnect(); hg.disconnect(); } catch (_) {} };
-    }
-
-    // Snare hit on beats 4 and 12 (backbeat)
-    if (beat === 4 || beat === 12) {
-      const rt = this.rt;
-      const buf = getNoiseBuffer(ctx, rt._caches);
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      const sg = ctx.createGain();
-      const sf = ctx.createBiquadFilter();
-      sf.type = 'bandpass'; sf.frequency.value = 3000; sf.Q.value = 0.5;
-      sg.gain.setValueAtTime(0.0001, t);
-      sg.gain.linearRampToValueAtTime(0.10, t + 0.002);
-      sg.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-      src.connect(sf); sf.connect(sg); sg.connect(filterNode);
-      try { src.start(t); src.stop(t + 0.15); } catch (_) {}
-      src.onended = () => { try { src.disconnect(); sf.disconnect(); sg.disconnect(); } catch (_) {} };
-      // Snare body (tonal component)
-      const so = ctx.createOscillator();
-      so.type = 'triangle'; so.frequency.value = 180;
-      const sog = ctx.createGain();
-      sog.gain.setValueAtTime(0.0001, t);
-      sog.gain.linearRampToValueAtTime(0.06, t + 0.002);
-      sog.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
-      so.connect(sog); sog.connect(filterNode);
-      try { so.start(t); so.stop(t + 0.1); } catch (_) {}
-      so.onended = () => { try { so.disconnect(); sog.disconnect(); } catch (_) {} };
-    }
-  },
-
-  // ---- Docked: warm, safe, melodic ----
-  // Muted pads, gentle melody fragments, reverbed bell tones. Feels like a
-  // safe harbor after the void of space. Think Mass Effect Citadel or
-  // No Man's Sky space station interiors.
-  _seqDocked(ctx, t, step, sixteenth, filterNode, delayNode) {
-    const N = (n, o) => this._noteFreq(n, o);
-    const play = (f, dur, vel, wave) => this._playNote(ctx, f, dur * sixteenth, vel, wave, filterNode, delayNode, t);
-
-    // Warm, major-leaning progression: C -> Am -> F -> G
-    const bar = Math.floor(step / 16);
-    const chords = [
-      [N('C',4), N('E',4), N('G',4), N('B',4)],  // Cmaj7
-      [N('A',3), N('C',4), N('E',4), N('G',4)],  // Am7
-      [N('F',3), N('A',3), N('C',4), N('E',4)],  // Fmaj7
-      [N('G',3), N('B',3), N('D',4), N('F',4)],  // G7
-    ];
-    const chord = chords[bar % 4];
-    const beat = step % 16;
-
-    const motifOn = this._playThemeMotif(STATION_MOTIF, ctx, t, bar, beat, sixteenth, filterNode, delayNode, 0.12, 'sine');
-
-    // Bell-like melody: sparse, high, with long sustain through delay
-    const melodyPattern = [0,null,null,null, 2,null,null,3, null,null,1,null, null,null,null,null];
-    const mp = melodyPattern[beat];
-    if (!motifOn && mp != null) {
-      // Bell tone: sine oscillator with bright attack
-      const freq = chord[mp] * 2; // octave up for bell clarity
-      const o = ctx.createOscillator();
-      o.type = 'sine';
-      o.frequency.value = freq;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.linearRampToValueAtTime(0.07, t + 0.005);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + sixteenth * 6);
-      o.connect(g);
-      g.connect(filterNode);
-      // Send to delay for spacey reverb-like tail
-      if (delayNode) {
-        const dg = ctx.createGain();
-        dg.gain.value = 0.4;
-        g.connect(dg);
-        dg.connect(delayNode);
+    // ---- 1. DRUMS & SIDECHAIN PUMPING ----
+    const isQuarterBeat = beat % 4 === 0;
+    if (isQuarterBeat) {
+      if (macroPhase >= 2 || (macroPhase === 1 && bar % 2 === 1)) {
+        // 4-on-the-floor punchy kick
+        this._playKick(ctx, t, parentBus, 0.16);
+        // Sidechain ducking on the harmonic/bass bus
+        sidechainPump.gain.cancelScheduledValues(t);
+        sidechainPump.gain.setValueAtTime(0.20, t);
+        sidechainPump.gain.exponentialRampToValueAtTime(1.0, t + beatS * 0.72);
+      } else if (beat === 0) {
+        // Phase 0 / early Phase 1: gentle sub kick on bar downbeat
+        this._playKick(ctx, t, parentBus, 0.08);
       }
-      try { o.start(t); o.stop(t + sixteenth * 6 + 0.1); } catch (_) {}
-      o.onended = () => { try { o.disconnect(); g.disconnect(); } catch (_) {} };
     }
 
-    // Warm pad: two chord tones, very soft, refreshed each bar
+    // Off-beat open hi-hat on the "&" of the beat (steps 2, 6, 10, 14)
+    if (macroPhase >= 2 && beat % 4 === 2) {
+      this._playHiHat(ctx, t, parentBus, 0.045, true);
+    }
+
+    // 16th-note shaker / closed hats (steps 1, 3, 5, 7, 9, 11, 13, 15)
+    if (macroPhase >= 1 && beat % 2 === 1) {
+      this._playHiHat(ctx, t, parentBus, 0.02, false);
+    }
+
+    // Backbeat clap on beats 4 and 12
+    if (macroPhase >= 2 && (beat === 4 || beat === 12)) {
+      this._playClap(ctx, t, parentBus, 0.08);
+    }
+
+    // ---- 2. ROLLING BASSLINE ----
+    if (macroPhase >= 2) {
+      // Rolling progressive bass on off-beat 16ths (steps 2, 5, 8, 10, 14)
+      if (beat === 2 || beat === 5 || beat === 8 || beat === 10 || beat === 14) {
+        this._playBass(ctx, chord.bass, sixteenth * 1.8, 0.11, t, sidechainPump, 'sawtooth');
+      }
+    } else {
+      // Ambient sub pulse on bar downbeat
+      if (beat === 0) {
+        this._playBass(ctx, chord.root, beatS * 3.6, 0.08, t, sidechainPump, 'sine');
+      }
+    }
+
+    // ---- 3. WARM PAD CHORDS ----
     if (beat === 0) {
-      play(chord[0] * 0.5, 15, 0.05, 'triangle');
-      play(chord[2] * 0.5, 15, 0.04, 'sine');
+      // Sustained lush pad chord tones with gentle chorus detune
+      this._playNote(ctx, chord.tones[1], beatS * 3.9, 0.055, 'triangle', sidechainPump, delayNode, t, { detune: 8, attack: 0.16, release: 0.4 });
+      this._playNote(ctx, chord.tones[3], beatS * 3.9, 0.045, 'sine', sidechainPump, delayNode, t, { detune: 6, attack: 0.16, release: 0.4 });
+      this._playNote(ctx, chord.tones[4], beatS * 3.9, 0.038, 'triangle', sidechainPump, delayNode, t, { detune: 9, attack: 0.2, release: 0.4 });
     }
 
-    // Gentle rhythmic pulse: soft tick on every half note
+    // ---- 4. PROGRESSIVE PLUCK ARPEGGIO ----
+    // 16th-note arpeggiator cycling through chord tones (deadmau5 Strobe style)
+    const arpPattern = [0, 2, 4, 3, 1, 3, 4, 2, 1, 4, 3, 2, 0, 3, 4, 1];
+    const arpTone = chord.tones[arpPattern[beat] % chord.tones.length];
+
+    // Priority to Travel Motif hook on designated bars (bar % 4 === 0)
+    let motifPlayed = false;
+    if (totalBar % 4 === 0) {
+      motifPlayed = this._playThemeMotif(TRAVEL_MOTIF, ctx, t, totalBar, beat, sixteenth, sidechainPump, delayNode, 0.15, 'triangle');
+    }
+
+    if (!motifPlayed) {
+      if (macroPhase >= 1) {
+        // Pluck runs continuously on 16ths through space delay
+        this._playNote(ctx, arpTone, sixteenth * 1.5, 0.05, 'triangle', sidechainPump, delayNode, t, {
+          detune: 7,
+          pluckFilter: true,
+          delayGain: 0.38,
+        });
+      } else if (beat % 4 === 2) {
+        // Phase 0: sparse, gentle delay plucks on off-beats
+        this._playNote(ctx, arpTone, sixteenth * 2.0, 0.035, 'sine', sidechainPump, delayNode, t, {
+          detune: 5,
+          delayGain: 0.42,
+        });
+      }
+    }
+
+    // High sparkling octave accent on off-beats
+    if (macroPhase === 3 && (beat === 2 || beat === 10)) {
+      this._playNote(ctx, chord.tones[chord.tones.length - 1] * 2, sixteenth * 1.8, 0.03, 'sine', sidechainPump, delayNode, t, {
+        detune: 4,
+        delayGain: 0.45,
+      });
+    }
+  },
+
+  // ---- Tense (Wanted / Threat approaching): Dark Progressive / Minimal Techno ----
+  // Minor key urgency, dark Phrygian chord substitutions, driving syncopated 16th bass,
+  // ticking percussive clock, and the Wanted motif (A Bb A E).
+  _seqTense(ctx, t, step, seq, sixteenth, beatS, sidechainPump, delayNode, parentBus) {
+    const N = (n, o) => this._noteFreq(n, o);
+
+    // Dark Phrygian progression: Am9 -> Dm9 -> Bbmaj7 -> E7(b9)
+    const chords = [
+      { root: N('A', 1), bass: N('A', 2), tones: [N('A', 2), N('C', 3), N('E', 3), N('G', 3), N('B', 3)] },
+      { root: N('D', 1), bass: N('D', 2), tones: [N('D', 2), N('F', 2), N('A', 2), N('C', 3), N('F', 3)] },
+      { root: N('Bb', 1), bass: N('Bb', 2), tones: [N('Bb', 2), N('D', 3), N('F', 3), N('A', 3), N('D', 4)] },
+      { root: N('E', 1), bass: N('E', 2), tones: [N('E', 2), N('G#', 2), N('B', 2), N('D', 3), N('F', 3)] },
+    ];
+
+    const bar = Math.floor(step / 16);
+    const beat = step % 16;
+    const totalBar = (seq.macroBar || 0) * 4 + bar;
+    const chord = chords[totalBar % chords.length];
+
+    // Driving kick on beats 0, 4, 8, 12
+    if (beat % 4 === 0) {
+      this._playKick(ctx, t, parentBus, 0.17);
+      sidechainPump.gain.cancelScheduledValues(t);
+      sidechainPump.gain.setValueAtTime(0.22, t);
+      sidechainPump.gain.exponentialRampToValueAtTime(1.0, t + beatS * 0.70);
+    }
+
+    // Ticking hi-hat on every 16th (clock ticking tension)
+    if (beat % 2 === 1) {
+      this._playHiHat(ctx, t, parentBus, beat % 4 === 2 ? 0.04 : 0.02, beat % 4 === 2);
+    }
+
+    // Syncopated dark bassline (steps 0, 3, 6, 8, 11, 14)
+    if (beat === 0 || beat === 3 || beat === 6 || beat === 8 || beat === 11 || beat === 14) {
+      this._playBass(ctx, chord.bass, sixteenth * 1.6, 0.12, t, sidechainPump, 'sawtooth');
+    }
+
+    // Wanted motif hook on designated bars
+    const motifPlayed = this._playThemeMotif(WANTED_MOTIF, ctx, t, totalBar, beat, sixteenth, sidechainPump, delayNode, 0.15, 'sawtooth');
+
+    // Dissonant tension pad cluster
+    if (beat === 0) {
+      this._playNote(ctx, chord.tones[1], beatS * 3.8, 0.045, 'sawtooth', sidechainPump, delayNode, t, { detune: 9, attack: 0.1, release: 0.3 });
+      this._playNote(ctx, chord.tones[2], beatS * 3.8, 0.038, 'sawtooth', sidechainPump, delayNode, t, { detune: -9, attack: 0.1, release: 0.3 });
+    }
+
+    // Urgent synth plucks on offbeats
+    if (!motifPlayed && (beat === 2 || beat === 7 || beat === 10 || beat === 15)) {
+      this._playNote(ctx, chord.tones[3] * 2, sixteenth * 1.5, 0.05, 'triangle', sidechainPump, delayNode, t, {
+        detune: 7,
+        pluckFilter: true,
+        delayGain: 0.35,
+      });
+    }
+  },
+
+  // ---- Combat: French House / Electro (Daft Punk / Justice / Alive 2007 feel) ----
+  // Driving 4-on-the-floor kick, heavy sidechain pump, chunky octave electro-saw bass,
+  // off-beat supersaw stabs, crisp backbeat clap, and aggressive Combat motif (A E A C).
+  _seqCombat(ctx, t, step, seq, sixteenth, beatS, sidechainPump, delayNode, parentBus) {
+    const N = (n, o) => this._noteFreq(n, o);
+
+    // High-energy progression: Am -> F -> Dm -> E
+    const chords = [
+      { root: N('A', 1), bass: N('A', 2), oct: N('A', 3), stab: [N('A', 3), N('C', 4), N('E', 4)] },
+      { root: N('F', 1), bass: N('F', 2), oct: N('F', 3), stab: [N('F', 3), N('A', 3), N('C', 4)] },
+      { root: N('D', 1), bass: N('D', 2), oct: N('D', 3), stab: [N('D', 3), N('F', 3), N('A', 3)] },
+      { root: N('E', 1), bass: N('E', 2), oct: N('E', 3), stab: [N('E', 3), N('G#', 3), N('B', 3)] },
+    ];
+
+    const bar = Math.floor(step / 16);
+    const beat = step % 16;
+    const totalBar = (seq.macroBar || 0) * 4 + bar;
+    const chord = chords[totalBar % chords.length];
+
+    // Heavy four-on-the-floor kick
+    if (beat % 4 === 0) {
+      this._playKick(ctx, t, parentBus, 0.20);
+      sidechainPump.gain.cancelScheduledValues(t);
+      sidechainPump.gain.setValueAtTime(0.15, t);
+      sidechainPump.gain.exponentialRampToValueAtTime(1.0, t + beatS * 0.65);
+    }
+
+    // Driving off-beat open hi-hat + 16th ticks
+    if (beat % 4 === 2) {
+      this._playHiHat(ctx, t, parentBus, 0.055, true);
+    } else if (beat % 2 === 1) {
+      this._playHiHat(ctx, t, parentBus, 0.03, false);
+    }
+
+    // Snappy backbeat clap on beats 4 and 12
+    if (beat === 4 || beat === 12) {
+      this._playClap(ctx, t, parentBus, 0.11);
+    }
+
+    // Chunky octave electro bassline running on 16ths
+    const bassTone = (beat % 2 === 0) ? chord.bass : chord.oct;
+    this._playBass(ctx, bassTone, sixteenth * 1.4, (beat % 4 === 0) ? 0.07 : 0.12, t, sidechainPump, 'sawtooth');
+
+    // Combat motif hook on bar 0
+    const motifPlayed = this._playThemeMotif(COMBAT_MOTIF, ctx, t, totalBar, beat, sixteenth, sidechainPump, null, 0.16, 'sawtooth');
+
+    // Off-beat supersaw stabs on steps 2, 6, 10, 14
+    if (!motifPlayed && (beat === 2 || beat === 6 || beat === 10 || beat === 14)) {
+      this._playNote(ctx, chord.stab[0], sixteenth * 1.8, 0.08, 'sawtooth', sidechainPump, delayNode, t, { detune: 10, attack: 0.01, release: 0.08 });
+      this._playNote(ctx, chord.stab[1], sixteenth * 1.8, 0.07, 'square', sidechainPump, delayNode, t, { detune: 8, attack: 0.01, release: 0.08 });
+      this._playNote(ctx, chord.stab[2], sixteenth * 1.8, 0.07, 'sawtooth', sidechainPump, delayNode, t, { detune: -10, attack: 0.01, release: 0.08 });
+    }
+  },
+
+  // ---- Docked: Warm Deep House / Ambient Lounge (Daft Punk / deadmau5 chill feel) ----
+  // Safe harbor after space: warm Rhodes-like electric piano chords, gentle shaker,
+  // soft muted kick, space delay bell chimes, and the Station motif (C E G B).
+  _seqDocked(ctx, t, step, seq, sixteenth, beatS, sidechainPump, delayNode, parentBus) {
+    const N = (n, o) => this._noteFreq(n, o);
+
+    // Warm, lush jazz-house progression: Cmaj9 -> Am9 -> Fmaj7 -> G13
+    const chords = [
+      { root: N('C', 1), bass: N('C', 2), tones: [N('C', 3), N('E', 3), N('G', 3), N('B', 3), N('D', 4)] },
+      { root: N('A', 1), bass: N('A', 2), tones: [N('A', 2), N('C', 3), N('E', 3), N('G', 3), N('B', 3)] },
+      { root: N('F', 1), bass: N('F', 2), tones: [N('F', 2), N('A', 2), N('C', 3), N('E', 3), N('A', 3)] },
+      { root: N('G', 1), bass: N('G', 2), tones: [N('G', 2), N('B', 2), N('F', 3), N('A', 3), N('E', 4)] },
+    ];
+
+    const bar = Math.floor(step / 16);
+    const beat = step % 16;
+    const totalBar = (seq.macroBar || 0) * 4 + bar;
+    const chord = chords[totalBar % chords.length];
+
+    // Soft muted kick on beats 0 & 8 (half-note laid back pulse)
     if (beat === 0 || beat === 8) {
-      const o = ctx.createOscillator();
-      o.type = 'sine';
-      o.frequency.value = chord[0] * 0.25;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.linearRampToValueAtTime(0.025, t + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
-      o.connect(g); g.connect(filterNode);
-      try { o.start(t); o.stop(t + 0.25); } catch (_) {}
-      o.onended = () => { try { o.disconnect(); g.disconnect(); } catch (_) {} };
+      this._playKick(ctx, t, parentBus, 0.11);
+      sidechainPump.gain.cancelScheduledValues(t);
+      sidechainPump.gain.setValueAtTime(0.35, t);
+      sidechainPump.gain.exponentialRampToValueAtTime(1.0, t + beatS * 0.85);
+    }
+
+    // Soft shaker on off-beats
+    if (beat % 2 === 1) {
+      this._playHiHat(ctx, t, parentBus, 0.018, false);
+    }
+
+    // Warm sub bass on beats 0 and 8
+    if (beat === 0 || beat === 8) {
+      this._playBass(ctx, chord.root, beatS * 3.5, 0.08, t, sidechainPump, 'sine');
+    }
+
+    // Warm electric piano chord tones refreshed every bar
+    if (beat === 0) {
+      this._playNote(ctx, chord.tones[1], beatS * 3.8, 0.05, 'sine', sidechainPump, delayNode, t, { detune: 5, attack: 0.1, release: 0.4 });
+      this._playNote(ctx, chord.tones[2], beatS * 3.8, 0.04, 'triangle', sidechainPump, delayNode, t, { detune: 7, attack: 0.1, release: 0.4 });
+      this._playNote(ctx, chord.tones[3], beatS * 3.8, 0.035, 'sine', sidechainPump, delayNode, t, { detune: -5, attack: 0.1, release: 0.4 });
+    }
+
+    // Station motif hook
+    const motifPlayed = this._playThemeMotif(STATION_MOTIF, ctx, t, totalBar, beat, sixteenth, sidechainPump, delayNode, 0.13, 'sine');
+
+    // Delicate bell chime plucks through space delay
+    const bellPattern = [null, null, 2, null, null, null, 3, null, null, 1, null, null, null, null, null, 4];
+    const bellIdx = bellPattern[beat];
+    if (!motifPlayed && bellIdx != null) {
+      this._playNote(ctx, chord.tones[bellIdx % chord.tones.length] * 2, sixteenth * 3.5, 0.045, 'sine', sidechainPump, delayNode, t, {
+        detune: 4,
+        pluckFilter: true,
+        delayGain: 0.45,
+      });
     }
   },
 
