@@ -562,6 +562,11 @@ export function createShipPreviewMount(canvas, opts) {
         for (const drawable of collectStartupGeometryDrawables(current)) {
           armGeometryGpuResidentLedger(drawable);
         }
+        // Re-arm the upload audit too (W141-R6): the swap's renderNow below draws the new
+        // authored subtree before any consult, so without this a disarmed gate binds
+        // detached-marked payloads unguarded.
+        uploadAuditArmed = true;
+        uploadAuditSeq += 1;
         fitCameraToCurrent();
         renderNow();
         if (onAssetSettled) onAssetSettled({ defId: getDefId(), state: 'authored' });

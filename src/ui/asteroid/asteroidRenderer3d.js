@@ -1404,6 +1404,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (disposed || worksTearingDown || glTeardownDone) return;
     dropGeometryGpuResidencyLedger(renderer);
     if (contextRestoreConsult) return;
+    // The latch clears on the assigned promise, not inside the body: with empty pendings the
+    // body's finally runs synchronously, before the assignment stores the promise, and the
+    // latch would stick truthy forever — suppressing bloom.render and every later restore
+    // (W141-D5).
     contextRestoreConsult = (async () => {
       try {
         const pendingGeometries = collectStartupGeometries(scene)
@@ -1414,10 +1418,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         if (pendingUploads.length) await rehydrateDetachedTextures(pendingUploads);
       } catch (error) {
         console.warn('[asteroidRenderer3d] context-restore rehydrate failed', error);
-      } finally {
-        contextRestoreConsult = null;
       }
-    })();
+    })().finally(() => { contextRestoreConsult = null; });
   };
   canvas.addEventListener('webglcontextlost', onWorksContextLost, false);
   canvas.addEventListener('webglcontextrestored', onWorksContextRestored, false);
