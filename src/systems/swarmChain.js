@@ -238,6 +238,26 @@ export const swarmChain = {
     // depletion mark to the same sim clock the lapse check runs on — slow time and pause
     // slow and freeze the mark with the window itself. INF-032.
     this._emit('swarm:chain', { chain: this._chain, best: this._best, cause, step, at: now, wave: run.wave });
+    this._maybeTeachVariety({ cause, step, wave: run.wave });
+  },
+
+  // The variety rule (+2 for a kill that arrives differently) is the chain's
+  // whole game and nothing ever said so. The first varied step speaks it once
+  // per profile through the shared player-hints store (onboarding's own voice
+  // is suppressed in survival, so the chain teaches its own rule) and honors
+  // tutorialHints off by staying silent without spending the flag.
+  _maybeTeachVariety({ cause, step, wave } = {}) {
+    if (step !== SWARM_CHAIN_VARIED_STEP) return;
+    const st = this.state;
+    const settings = st && st.settings;
+    if (settings && settings.gameplay && settings.gameplay.tutorialHints === false) return;
+    const player = st && st.player;
+    if (!player) return;
+    if (!player.hints) player.hints = {};
+    if (player.hints.swarmChainVariety) return;
+    player.hints.swarmChainVariety = true;
+    this._emit('swarm:chainLesson', { cause, step, chain: this._chain, wave });
+    this._emit('toast', { text: 'Different kill — the chain climbs faster.', kind: 'good', ttl: 3.2 });
   },
 
   /**
@@ -276,6 +296,7 @@ export const swarmChain = {
       if (milestone > this._pendingMilestone) this._pendingMilestone = milestone;
     }
     this._emit('swarm:chain', { chain: this._chain, best: this._best, cause, step, at: now, wave: run.wave });
+    this._maybeTeachVariety({ cause, step, wave: run.wave });
   },
 
   _onRunEnded() {
