@@ -134,7 +134,7 @@ test('PERF-138 F1 captured render-list replay pair exists and gates projectObjec
   // path still projects + finishes + sorts + adds background.
   assert.match(SRC, /if \( capturedList \)/);
   assert.match(SRC, /object\.isInstancedMesh === true && object\.count <= 0 \) continue/);
-  assert.match(SRC, /if \( capturedList === undefined \) this\.info\.render\.frame \+\+/);
+  assert.match(SRC, /if \( !capturedList \) this\.info\.render\.frame \+\+/);
 });
 
 test('W140 F-A renderQuadPass keeps the render-state bookkeeping contract', () => {

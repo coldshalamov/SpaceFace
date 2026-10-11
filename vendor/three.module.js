@@ -17829,7 +17829,11 @@ class WebGLRenderer {
 
 			// update scene graph
 
-			if ( scene.matrixWorldAutoUpdate === true ) scene.updateMatrixWorld();
+			// SpaceFace (W142): the capture contract forbids any scene mutation between
+			// capture and replay, so the second walk is bit-identical dead work — skip it
+			// on replay. Camera stays unconditional: it's O(1) and covers the edge where
+			// the replayed camera isn't literally the same object state.
+			if ( !capturedList && scene.matrixWorldAutoUpdate === true ) scene.updateMatrixWorld();
 
 			// update camera matrices and frustum
 
@@ -17853,8 +17857,9 @@ class WebGLRenderer {
 			renderStateStack.push( currentRenderState );
 
 			// SpaceFace (W141): a capturedList replay never runs projectObject — the only
-			// consumer of _projScreenMatrix/_frustum — so skip the recompute.
-			if ( capturedList === undefined ) {
+			// consumer of _projScreenMatrix/_frustum — so skip the recompute. Falsy check
+			// matches the `if ( capturedList )` replay predicate (W142 F-B).
+			if ( !capturedList ) {
 
 				_projScreenMatrix.multiplyMatrices( camera.projectionMatrix, camera.matrixWorldInverse );
 				_frustum.setFromProjectionMatrix( _projScreenMatrix, WebGLCoordinateSystem, camera.reversedDepth );
@@ -17869,7 +17874,7 @@ class WebGLRenderer {
 
 			renderListStack.push( currentRenderList );
 
-			if ( capturedList === undefined && xr.enabled === true && xr.isPresenting === true ) {
+			if ( !capturedList && xr.enabled === true && xr.isPresenting === true ) {
 
 				const depthSensingMesh = _this.xr.getDepthSensingMesh();
 
@@ -17954,7 +17959,7 @@ class WebGLRenderer {
 			// SpaceFace: a captured replay must NOT mint a new frame — objects.update is
 			// keyed on info.render.frame, and a second tick re-pays the WeakMap
 			// bookkeeping for every drawable (no GL re-upload — version-gated anyway).
-			if ( capturedList === undefined ) this.info.render.frame ++;
+			if ( !capturedList ) this.info.render.frame ++;
 
 			if ( _clippingEnabled === true ) clipping.beginShadows();
 
@@ -17982,7 +17987,7 @@ class WebGLRenderer {
 				// only bump the lights version and force lit materials to rewire for a
 				// state identical to init. Replay contract draws unlit overrides only;
 				// a future lit override must reintroduce setupLights here.
-				if ( capturedList === undefined ) currentRenderState.setupLights();
+				if ( !capturedList ) currentRenderState.setupLights();
 
 				if ( camera.isArrayCamera ) {
 
