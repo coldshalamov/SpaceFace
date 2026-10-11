@@ -245,6 +245,10 @@ export const runtime = Object.freeze({
     const range = JUMPER_RANGE_WU[0] + rng() * (JUMPER_RANGE_WU[1] - JUMPER_RANGE_WU[0]);
     const specs = (bloom.jumperSpecs.length ? bloom.jumperSpecs : [{ archetype: 'wasp_swarmer', level: 1 }]).slice(0, 2);
     while (specs.length < 2) specs.push({ ...specs[0] });
+    // Out from the site as it stands NOW (a towed or shoved hulk is where it is), falling back to
+    // the cast layout once the hulk is gone.
+    const hulkNow = entityById(d.state, bloom.hulkId);
+    const origin = alive(hulkNow) && hulkNow.pos ? hulkNow.pos : bloom.hulkPos;
     const placed = specs.map((sh, i) => {
       const a = bearing + (i === 0 ? -0.12 : 0.12);
       const reach = range + (i === 0 ? 0 : JUMPER_STAGGER_WU);
@@ -256,7 +260,7 @@ export const runtime = Object.freeze({
         team: 1,
         context: 'encounter',
         passive: false,
-        pos: { x: bloom.hulkPos.x + Math.cos(a) * reach, z: bloom.hulkPos.z + Math.sin(a) * reach },
+        pos: { x: origin.x + Math.cos(a) * reach, z: origin.z + Math.sin(a) * reach },
         scanLabel: 'CLAIM-JUMPER — PLANTED THE LAMP',
       };
     });
@@ -274,8 +278,11 @@ export const runtime = Object.freeze({
     // player (encounter context), so the hand's survival window is the lead's alone while an absent
     // player can still lose it.
     const player = d.player();
-    d.entsOf(live, 'jumper').forEach((j, i) => {
-      const ai = j.data && j.data.ai;
+    // By the ids spawnShips actually returned (spec order), not roster order: a partial grant can
+    // never leave the lead aimed at the player or the second at the hand.
+    ids.forEach((id, i) => {
+      const j = entityById(d.state, id);
+      const ai = j && j.data && j.data.ai;
       if (!ai) return;
       if (i === 0 && hand) ai.retaliationTargetId = hand.id;
       else if (player) ai.retaliationTargetId = player.id;

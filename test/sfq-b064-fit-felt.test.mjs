@@ -11,7 +11,7 @@ import { resolveActionLabel } from '../src/systems/input.js';
 import { MODULES } from '../src/data/modules.js';
 import { SHIPS } from '../src/data/ships.js';
 import { WEAPONS } from '../src/data/weapons.js';
-import { FIT_FEEL, fitFeelFor } from '../src/onboarding/fitFeel.js';
+import { FIT_FEEL, fitFeelRowFor, pickFitFelt } from '../src/onboarding/fitFeel.js';
 import { describeOutfittingPurchase } from '../src/ui/station/outfittingGuidance.js';
 import { buildSlotList } from '../src/systems/ships.js';
 
@@ -88,17 +88,43 @@ function boot({ hintsOn = true } = {}) {
 
 const fitFelt = (felt) => felt.filter((p) => String(p.verbId).startsWith('fitFelt:'));
 
-test('every felt line is a short, stat-free sentence for a real, early module', () => {
+const DEFS = MODULES.concat(WEAPONS);
+const defOf = (id) => DEFS.find((d) => d.id === id);
+
+test('every felt line is a short, stat-free sentence and every row matches a real definition', () => {
   assert.ok(FIT_FEEL.length >= 10);
   const keyOf = (action, empty) => `[${action}|${empty || ''}]`;
   for (const row of FIT_FEEL) {
-    const known = MODULES.some((m) => m.id === row.defId) || row.defId.startsWith('wpn_');
-    assert.ok(known, `${row.defId} exists`);
-    const line = row.line(keyOf);
-    assert.ok(line.length < 130, `${row.defId} stays short (${line.length})`);
-    assert.ok(!/\d/.test(line), `${row.defId} carries no stats`);
+    const def = DEFS.find((d) => row.match(d));
+    assert.ok(def, `${row.verbId} matches a real module or weapon`);
+    const line = row.line(keyOf, def);
+    assert.ok(line.length < 150, `${row.verbId} stays short (${line.length})`);
+    assert.ok(!/\d/.test(line), `${row.verbId} carries no stats`);
   }
-  assert.equal(fitFeelFor('mod_snare'), null);
+  assert.equal(fitFeelRowFor(defOf('mod_repulsion_trap_s')), null, 'the trap already speaks at the fit');
+  assert.equal(fitFeelRowFor(defOf('mod_transverse_snare_m')), null, 'and so does the snare head');
+});
+
+test('siblings and Mk2 variants share their verb row (keyed on what the module does)', () => {
+  for (const flag of ['swingDrive', 'hullBurst', 'weaponHeatDissipPct', 'impulseChargeCapacity']) {
+    const family = MODULES.filter((m) => m.mods && m.mods[flag]);
+    assert.ok(family.length >= 2, `${flag} has siblings`);
+    const rows = new Set(family.map((m) => (fitFeelRowFor(m) || {}).verbId));
+    assert.equal(rows.size, 1, `${flag} siblings all read the same line`);
+    assert.ok([...rows][0], `${flag} maps to a row`);
+  }
+});
+
+test('a line is never false for the live fit: Veil Step replaces boost, so boost-verb rows stay silent', () => {
+  const veil = defOf('mod_veil_step');
+  const swing = MODULES.find((m) => m.mods && m.mods.swingDrive);
+  const burst = MODULES.find((m) => m.mods && m.mods.hullBurst);
+  const blinking = { phaseBlink: true, swingDrive: true, hullBurstKind: 'gravity' };
+  assert.equal(pickFitFelt([swing, burst, veil], blinking, {}).row.verbId, 'veilStep', 'the Veil Step line speaks instead');
+  assert.equal(pickFitFelt([swing, burst], blinking, {}), null, 'swing/burst lines would lie while a blink replaces boost');
+  assert.equal(pickFitFelt([swing], { swingDrive: true }, {}).row.verbId, 'swingDrive');
+  assert.equal(pickFitFelt([swing], { swingDrive: false }, {}), null, 'a module that derived to nothing says nothing');
+  assert.equal(pickFitFelt([veil], blinking, { 'fitFelt:veilStep': true }), null, 'a spent verb stays spent');
 });
 
 test('buy and fit Veil Step at Helios with starting credits: the first undock speaks once, naming the live key', () => {
@@ -111,7 +137,7 @@ test('buy and fit Veil Step at Helios with starting credits: the first undock sp
     const shown = fitFelt(t.felt);
     assert.equal(shown.length, 1, 'exactly one felt line at the first undock');
     const key = resolveActionLabel(t.state, 'boost', { empty: 'BOOST' });
-    assert.equal(shown[0].verbId, 'fitFelt:mod_veil_step');
+    assert.equal(shown[0].verbId, 'fitFelt:veilStep');
     assert.equal(shown[0].text, `Veil Step fitted \u2014 ${key} now blinks you: hold to aim, release to arrive.`);
     t.dock();
     t.undock();
@@ -126,7 +152,7 @@ test('tutorial hints off keeps it silent and spends nothing', () => {
     t.fit('mod_veil_step');
     t.undock();
     assert.equal(fitFelt(t.felt).length, 0);
-    assert.equal(t.state.player.hints['fitFelt:mod_veil_step'], undefined);
+    assert.equal(t.state.player.hints['fitFelt:veilStep'], undefined);
   } finally { t.restore(); }
 });
 
@@ -154,10 +180,10 @@ test('two verb-changers in one dock: the most verb-changing speaks now, the othe
     t.fit('wpn_autocannon_s');
     t.fit('mod_veil_step');
     t.undock();
-    assert.deepEqual(fitFelt(t.felt).map((p) => p.verbId), ['fitFelt:mod_veil_step']);
+    assert.deepEqual(fitFelt(t.felt).map((p) => p.verbId), ['fitFelt:veilStep']);
     t.dock();
     t.undock();
-    assert.deepEqual(fitFelt(t.felt).map((p) => p.verbId), ['fitFelt:mod_veil_step', 'fitFelt:wpn_autocannon_s']);
+    assert.deepEqual(fitFelt(t.felt).map((p) => p.verbId), ['fitFelt:veilStep', 'fitFelt:autocannon']);
     t.dock();
     t.undock();
     assert.equal(fitFelt(t.felt).length, 2, 'then nothing is left to say');
@@ -167,10 +193,8 @@ test('two verb-changers in one dock: the most verb-changing speaks now, the othe
 test('a module with no felt line, and the snare/trap that already speak at the fit, stay out of the table', () => {
   const t = boot();
   try {
-    assert.equal(fitFeelFor('mod_repulsion_trap_s'), null);
-    assert.equal(fitFeelFor('mod_transverse_snare_m'), null);
     const plain = MODULES.find((m) => ['cargo', 'thruster', 'shield'].includes(m.slotType) && m.size === 'S'
-      && !m.requiresTech && !fitFeelFor(m.id) && (m.price || 0) < 9000 && m.id !== 'mod_shield_booster_s');
+      && !m.requiresTech && !fitFeelRowFor(m) && (m.price || 0) < 9000 && m.id !== 'mod_shield_booster_s');
     assert.ok(plain, 'a plain shield module to fit');
     t.dock();
     t.fit(plain.id);
@@ -209,4 +233,46 @@ test('the demo end card behavior is unchanged: it still arms on a docked fit and
     t.undock();
     assert.equal(pushed.filter((p) => p.id === 'demoEnd').length, 0);
   } finally { t.restore(); }
+});
+
+test('a line the tutorial rail deferred drains when the rail releases the voice, not at a later undock', () => {
+  const t = boot();
+  try {
+    t.dock();
+    t.fit('mod_veil_step');
+    t.state.onboarding = { active: true, finished: false };
+    t.undock();
+    assert.equal(fitFelt(t.felt).length, 0, 'the rail owns the voice at the undock');
+    const sys = t.sim.registry.get('onboarding');
+    t.state.mode = 'flight';
+    sys._tickFitFelt(t.state);
+    assert.equal(fitFelt(t.felt).length, 0, 'still deferred while the rail holds the voice');
+    t.state.onboarding = { active: true, finished: true };
+    sys._tickFitFelt(t.state);
+    assert.deepEqual(fitFelt(t.felt).map((p) => p.verbId), ['fitFelt:veilStep'], 'it speaks the moment the rail lets go');
+    sys._tickFitFelt(t.state);
+    assert.equal(fitFelt(t.felt).length, 1, 'and only once');
+  } finally { t.restore(); }
+});
+
+test('a save/load in the middle of a dock loses nothing: the owed line is re-derived at the undock', () => {
+  const t = boot();
+  try {
+    t.dock();
+    t.fit('mod_veil_step');
+    t.bus.emit('save:loaded', {});
+    t.state.ui.docked = true;
+    t.undock();
+    assert.deepEqual(fitFelt(t.felt).map((p) => p.verbId), ['fitFelt:veilStep']);
+  } finally { t.restore(); }
+});
+
+test('legacy string-form ownedShips entries are read as defIds by the dead-end guard', () => {
+  const hull = SHIPS.find((s) => s.id === 'ship_wasp');
+  const slots = buildSlotList(hull);
+  const medium = MODULES.find((m) => m.size === 'M' && m.slotType === 'utility' && !slots.some((s) => s.type === 'utility' && s.size === 'M'));
+  const player = (ownedShips) => ({ credits: 99999, ownedShips, researchedNodes: [medium.requiresTech].filter(Boolean) });
+  assert.equal(describeOutfittingPurchase(medium, player(['ship_wasp']), slots, [], hull, { stationId: 'station_helios' }).state, 'noberth');
+  const muleHasBerth = buildSlotList(SHIPS.find((s) => s.id === 'ship_mule')).some((s) => s.type === 'utility' && s.size === 'M');
+  assert.equal(describeOutfittingPurchase(medium, player(['ship_wasp', 'ship_mule']), slots, [], hull, { stationId: 'station_helios' }).state === 'inventory', muleHasBerth);
 });

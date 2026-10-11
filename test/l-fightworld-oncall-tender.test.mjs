@@ -488,3 +488,19 @@ test('an adopted salvor never takes a mission, contract or custody body', () => 
   assert.equal(free.runtime._adoptScavengerTractors(), 1, 'an ordinary wreck is still worked');
   free.sim.dispose();
 });
+
+test('a salvor never tractors a mission body even when it only counts as dynamic salvage', () => {
+  const owned = [{ missionId: 'm_1' }, { contractId: 'c_1' }, { lotId: 'lot_9' }, { freightCustody: true }];
+  for (const extra of owned) {
+    const rig = adoptionRig('sector_owned_tractor', extra);
+    rig.wreck.data.towable = false;
+    delete rig.wreck.data.salvagePool;
+    rig.wreck.data.salvageTimeLeft = 8;
+    const entry = { sectorId: 'sector_owned_tractor', job: { payload: {} } };
+    assert.equal(rig.runtime._findSalvorTractorTarget(entry, rig.scav), null, `no tractor on ${Object.keys(extra)[0]}`);
+    rig.sim.dispose();
+  }
+  const free = adoptionRig('sector_owned_tractor');
+  assert.ok(free.runtime._findSalvorTractorTarget({ sectorId: 'sector_owned_tractor', job: { payload: {} } }, free.scav), 'an ordinary wreck is still tractored');
+  free.sim.dispose();
+});

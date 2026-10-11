@@ -194,7 +194,7 @@ export function describeOutfittingPurchase(def, player = {}, slots = [], fitting
   }
   const ownedHulls = Array.isArray(player.ownedShips) ? player.ownedShips : [];
   const berthOnAnyOwnedHull = !ownedHulls.length || ownedHulls.some((owned) => {
-    const hull = owned && SHIP_BY_ID.get(owned.defId);
+    const hull = owned && SHIP_BY_ID.get(typeof owned === 'string' ? owned : owned.defId);
     return hull && buildSlotList(hull).some((slot) => fits(slot, def));
   });
   if (!berthOnAnyOwnedHull) {

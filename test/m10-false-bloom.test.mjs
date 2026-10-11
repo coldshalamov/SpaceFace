@@ -467,3 +467,37 @@ test('the hand can be defended: it is sturdier than its stock hull and the secon
   const ranges = jumpersOf(h, live).map((j) => Math.hypot(j.pos.x - b.hulkPos.x, j.pos.z - b.hulkPos.z)).sort((a, c) => a - c);
   assert.ok(ranges[1] - ranges[0] > 250, `the second hull trails by ${(ranges[1] - ranges[0]).toFixed(0)} WU`);
 });
+
+test('the jumpers come from the live hulk position, so a towed or shoved hulk draws them to where it is', () => {
+  const h = makeHarness();
+  const live = fire(h);
+  const b = bloomOf(live);
+  const hulk = ent(h, b.hulkId);
+  hulk.pos.x += 900;
+  hulk.pos.z -= 400;
+  scanBothThenEmitter(h, live);
+  for (const j of jumpersOf(h, live)) {
+    const fromLive = Math.hypot(j.pos.x - hulk.pos.x, j.pos.z - hulk.pos.z);
+    const fromCast = Math.hypot(j.pos.x - b.hulkPos.x, j.pos.z - b.hulkPos.z);
+    assert.ok(fromLive > 590 && fromLive < 1040, `out from where the hulk is now (${fromLive.toFixed(0)})`);
+    assert.ok(fromCast > fromLive + 200, 'not from the stale cast layout');
+  }
+});
+
+test('lead and second are assigned by the ids spawnShips returned, not roster order', () => {
+  const h = makeHarness();
+  const live = fire(h);
+  const director = h.sim.registry.get('encounterDirector');
+  const realSpawn = director.spawnShips.bind(director);
+  director.spawnShips = (liveRef, specs) => {
+    const ids = realSpawn(liveRef, specs);
+    // Roster order flips (a retry or a reused id could do this); the returned order is truth.
+    liveRef.ids.reverse();
+    return ids;
+  };
+  scanBothThenEmitter(h, live);
+  const hand = live.ids.map((id) => ent(h, id)).find((e) => e?.data?.ai?.encounterRole === 'hand');
+  const [lead, second] = [...jumpersOf(h, live)].sort((a, c) => (a.id < c.id ? -1 : 1));
+  assert.equal(lead.data.ai.retaliationTargetId, hand.id, 'the first spawned jumper is the lead');
+  assert.equal(second.data.ai.retaliationTargetId, h.player.id, 'the second hunts the player');
+});

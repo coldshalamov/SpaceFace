@@ -13,6 +13,11 @@ import { MASS_ANCHOR_RATIO, couplingBodyMass, resolveMassInterpretation } from '
 import { getDerivedStats } from '../src/systems/ships.js';
 import { towClassMassFor, underwayTowSpeed } from '../src/systems/shipCapabilities.js';
 import { isHostileForAI } from '../src/ai/engagementAuthority.js';
+import { physics } from '../src/core/physics.js';
+import { combat } from '../src/systems/combat.js';
+import { queuePhysicsImpulse } from '../src/core/physicsAuthority.js';
+import { PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
+import { SIM_DT } from '../src/core/sim.js';
 
 const SEED = 4242;
 const SECTOR = 'sector_tethys_junction';
@@ -272,4 +277,37 @@ test('same seed twice gives the same layout and the same outcome', () => {
     return JSON.stringify({ sig, grants: grants(h), resolved: resolved(h) });
   };
   assert.equal(run(), run());
+});
+
+test('the native rapier body honors the hulk authored mass (an impulse moves it like 180 t, not 1e6)', async () => {
+  const sim = createSimulation({
+    seed: SEED, systems: [spawnBudget, encounterDirector, physics, combat], updateOrder: [spawnBudget, encounterDirector, physics, combat],
+    runtimeConfig: { profileId: 'production', features: PRODUCTION_FEATURES },
+  });
+  const { state } = sim;
+  state.mode = 'flight';
+  state.world.currentSectorId = SECTOR;
+  state.settings.gameplay.physicsBackend = 'rapier-dynamic';
+  const physicsSystem = sim.registry.get('physics');
+  try {
+    assert.equal(await physicsSystem.prepareBackend(state), true);
+    const player = sim.spawn({ type: 'ship', team: 0, pos: { x: ANCHOR.x + 200, z: ANCHOR.z + 100 }, hull: 400, hullMax: 400, radius: 6, mass: 35 });
+    state.playerId = player.id;
+    const res = sim.registry.get('encounterDirector').requestAuthoredEncounter({
+      shapeId: SHAPE, encounterId: 'test_m16_native', sectorId: SECTOR, anchor: { ...ANCHOR },
+      zoneType: 'outlaw_zone', zoneRadius: 600, force: true,
+    });
+    assert.equal(res.ok, true);
+    const live = Object.values(state.encounterDirector.live).find((l) => l.shapeId === SHAPE);
+    const hulk = state.entities.get(live.data.escape.hulkId);
+    for (let i = 0; i < 4; i++) sim.step(SIM_DT);
+    const before = hulk.vel.x;
+    queuePhysicsImpulse(hulk, { x: 1800, y: 0, z: 0 }, { provenance: 'probe', tick: state.tick, kind: 'probe' });
+    for (let i = 0; i < 4; i++) sim.step(SIM_DT);
+    const dv = hulk.vel.x - before;
+    assert.ok(dv > 8 && dv < 12, `1800 N-s on a 180 t body is ~10 WU/s, not ~0.002 (dv ${dv.toFixed(4)})`);
+  } finally {
+    if (typeof physicsSystem._disableSg02DynamicAuthority === 'function') physicsSystem._disableSg02DynamicAuthority();
+    sim.dispose();
+  }
 });

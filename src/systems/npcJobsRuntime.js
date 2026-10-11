@@ -899,6 +899,7 @@ function isDynamicSalvageBody(target) {
 
 function isSalvorTractorTarget(target, ownerRecordId = null) {
   if (isTowableCargoTarget(target, ownerRecordId)) return true;
+  if (isOwnedCargoBody(target)) return false;
   if (!isDynamicSalvageBody(target)) return false;
   const data = target.data;
   if (!data || data.npcTowedByJobId != null) return false;

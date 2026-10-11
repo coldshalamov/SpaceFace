@@ -36,7 +36,9 @@ import { MODULES } from '../data/modules.js';
 import { DROP_KICK_CRUISE_SPEED } from './jettisonImpulse.js';
 import { readCadencePair, rateCadenceTechnique } from './masslineControlLaw.js';
 import { resolveActionLabel } from './input.js';
-import { fitFeelFor, fitFeelLine, fitFeelRank, fitFeltHintKey } from '../onboarding/fitFeel.js';
+import { fitFeelRowFor, pickFitFelt } from '../onboarding/fitFeel.js';
+import { WEAPONS } from '../data/weapons.js';
+import { getDerivedStats } from './ships.js';
 import { substanceFor } from '../core/physicsAuthority.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
@@ -134,6 +136,10 @@ import {
 import { isHostileToPlayer } from './scanner.js';
 import { fittedCloakModule } from './cloak.js';
 
+const FIT_FEEL_DEFS = new Map();
+for (const def of [...MODULES, ...WEAPONS]) {
+  if (def && def.id && fitFeelRowFor(def)) FIT_FEEL_DEFS.set(def.id, def);
+}
 const PANEL_ID = 'sf-onboarding';
 const STYLE_ID = 'sf-onboarding-style';
 const TAU = Math.PI * 2;
@@ -455,7 +461,7 @@ export const onboarding = {
       this._teardown();
       this._dockControlInRange = false;
       this._demoFittedThisDock = null;
-      this._fitFeltPending = [];
+      this._fitFeltOwed = false;
       this._gateControlInRange = false;
       this._lastControlMode = null;
       // FB-114: a first-hour rail serialized mid-flight resumes at its saved beat —
@@ -537,9 +543,8 @@ export const onboarding = {
         `Repulsion Trap fitted — ${throwKey} sticks a plate; ${brakeKey} + ${throwKey} drops the trap.`,
         p);
     });
-    // SFQ-B064: a verb-changing module fitted while docked is felt at the next undock, once per
-    // module per profile, through the same first-use voice. The demo end card is unchanged.
-    bus.on('module:equipped', (p) => this._onFitFeltEquipped(p || {}));
+    // SFQ-B064: an unspent verb-changing fit is felt at the next undock, once per verb per
+    // profile, through the same first-use voice. The demo end card is unchanged.
     bus.on('dock:undocked', () => {
       this._maybeSpeakFitFelt();
       this._maybeShowDemoEndCard();
@@ -927,33 +932,35 @@ export const onboarding = {
     this._demoFittedThisDock = p.defId || null;
   },
 
-  _onFitFeltEquipped(p) {
-    if (!p || !fitFeelFor(p.defId)) return;
-    const st = this.state;
-    if (!st || !st.ui || !st.ui.docked || p.shipId !== st.playerId) return;
-    if (!this._fitFeltPending) this._fitFeltPending = [];
-    if (!this._fitFeltPending.includes(p.defId)) this._fitFeltPending.push(p.defId);
-  },
-
-  // Speak the most verb-changing pending fit; the rest wait for later undocks. A fit that has
-  // already been felt, or that is no longer on the active hull, is dropped.
+  // SFQ-B064: re-derived at every undock from what is actually fitted and what has not yet been
+  // felt, so a save/load mid-dock loses nothing. The most verb-changing unspent fit speaks; the
+  // rest wait for later undocks. A line the tutorial rail deferred is owed and drains the moment
+  // the rail releases the voice (see _tickFitFelt).
   _maybeSpeakFitFelt() {
-    const pending = this._fitFeltPending;
-    if (!pending || !pending.length) return;
     const st = this.state;
     const player = st && st.player;
-    if (!player) return;
-    const fitted = (player.ownedShips && player.ownedShips[player.activeShipIndex || 0] || {}).fittings || [];
-    const hints = player.hints || {};
-    const live = pending
-      .filter((defId) => fitted.includes(defId) && !hints[fitFeltHintKey(defId)])
-      .sort((a, b) => fitFeelRank(a) - fitFeelRank(b));
-    this._fitFeltPending = live;
-    if (!live.length) return;
-    const defId = live[0];
+    if (!player) return false;
+    const owned = player.ownedShips && player.ownedShips[player.activeShipIndex || 0];
+    const defId = typeof owned === 'string' ? owned : owned && owned.defId;
+    const fittings = (owned && typeof owned === 'object' && owned.fittings) || [];
+    if (!defId || !fittings.length) { this._fitFeltOwed = false; return false; }
+    const defs = fittings
+      .map((id) => (id ? FIT_FEEL_DEFS.get(id) : null))
+      .filter(Boolean);
+    const pick = pickFitFelt(defs, getDerivedStats(defId, fittings, player), player.hints);
+    if (!pick) { this._fitFeltOwed = false; return false; }
+    if (this._tutorialRailOwnsVoice()) { this._fitFeltOwed = true; return false; }
     const key = (action, empty) => resolveActionLabel(st, action, { empty });
-    this._showHint(fitFeltHintKey(defId), fitFeelLine(defId, key), { shipId: st.playerId });
-    if (player.hints && player.hints[fitFeltHintKey(defId)]) this._fitFeltPending = live.slice(1);
+    this._showHint(pick.hintKey, pick.row.line(key, pick.def), { shipId: st.playerId });
+    this._fitFeltOwed = false;
+    return !!(player.hints && player.hints[pick.hintKey]);
+  },
+
+  _tickFitFelt(state) {
+    if (!this._fitFeltOwed || !state || state.mode !== 'flight') return;
+    if (state.ui && state.ui.docked) return;
+    if (this._tutorialRailOwnsVoice()) return;
+    this._maybeSpeakFitFelt();
   },
 
   _maybeShowDemoEndCard() {
@@ -977,7 +984,7 @@ export const onboarding = {
     const st = this.state;
     this._dockControlInRange = false;
     this._demoFittedThisDock = null;
-    this._fitFeltPending = [];
+    this._fitFeltOwed = false;
     this._gateControlInRange = false;
     this._lastControlMode = null;
     this._latchDenialStreak = 0;
@@ -1614,6 +1621,7 @@ export const onboarding = {
       this._teachFieldEscapes();
       this._teachCadencePump();
       this._tickShelfVerbs(intervalS, state);
+      this._tickFitFelt(state);
       if (!ob.active || ob.finished) return;
       this._tryAdvanceBeat();
       this._resolveProximityDone();
