@@ -4,7 +4,7 @@ import { COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
 import { SHIPS } from '../../data/ships.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { MODULES } from '../../data/modules.js';
-import { swarmStakeFor } from '../../data/swarmStakes.js';
+import { swarmStakeFor, swarmStakeYield } from '../../data/swarmStakes.js';
 import { SWARM_BOSS_EVERY, SWARM_REFIT_EVERY } from '../../data/swarmMode.js';
 import { applyWeaponsColdLoadout } from '../../systems/survivalMutators.js';
 import { buildSlotList } from '../../systems/ships.js';
@@ -72,15 +72,25 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     node.style.setProperty('display', visible ? '' : 'none', visible ? '' : 'important');
   };
   const settings = stage.querySelector('.sf-crd-settings');
+  // Each step names its ONE decision up front: the door reads as "the fight, then the ship,
+  // then the armory" instead of a wall of tile rows. Big choice first, small fittings last.
+  const HEADS = [
+    { step: '01 · The fight', line: 'Mode, arena, and where on the ladder this run starts. Nothing here costs anything.' },
+    { step: '02 · The ship', line: 'The hull and the kit it launches with. Kits come fitted; a bare hull buys its kit in the armory.' },
+  ];
   const panels = ['encounter', 'ship'].map((id, i) => {
     const panel = make('section', 'orr-prep-panel');
     panel.id = `sf-prep-${id}`; panel.setAttribute('role', 'tabpanel');
     panel.setAttribute('aria-labelledby', `sf-prep-tab-${i}`);
+    const head = make('div', 'orr-prep-panelhead');
+    head.append(make('h2', 'orr-prep-panelhead-step', HEADS[i].step), make('p', 'orr-prep-panelhead-line', HEADS[i].line));
     const list = make('ul', 'sf-crd-settings orr-prep-settings');
-    panel.appendChild(list); return { panel, list };
+    panel.append(head, list); return { panel, list };
   });
+  const challengesWrap = make('details', 'orr-prep-disclosure');
+  challengesWrap.appendChild(make('summary', '', 'Challenges — daily, weekly, ghosts'));
   const extras = make('details', 'orr-prep-disclosure');
-  extras.appendChild(make('summary', '', 'Challenges, seed & records'));
+  extras.appendChild(make('summary', '', 'Seed, perks, hangar & records'));
   const extraRows = make('ul', 'sf-crd-settings orr-prep-settings');
   extras.appendChild(extraRows);
   const rows = [...settings.children];
@@ -97,10 +107,10 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
   for (const button of panels[0].panel.querySelectorAll('.sf-crd-daily,.sf-crd-weekly,.sf-crd-ghost')) {
     challenges.appendChild(button.parentElement.tagName === 'LI' ? button.parentElement : button);
   }
-  extras.insertBefore(challenges, extraRows);
+  challengesWrap.appendChild(challenges);
   for (const child of [...stage.children]) if (child !== settings) extras.appendChild(child);
   stage.replaceChildren(panels[0].panel, panels[1].panel);
-  panels[0].panel.appendChild(extras);
+  panels[0].panel.append(challengesWrap, extras);
   const bare = root.querySelector('.sf-crd-anyhull');
   if (bare) {
     const disclosure = make('details', 'orr-prep-disclosure orr-prep-bare');
@@ -194,7 +204,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     if (arenaHero) visibility(arenaHero, step === 0);
     visibility(shipHero, step === 1); visibility(enterLi, step === 1); visibility(nextLi, step === 0);
     stage.scrollTop = 0;
-    if (hint) hint.textContent = step === 0 ? 'Choose your rules and arena. Your build comes next.' : 'Select equipment to inspect its hardpoint. Nothing from this run costs campaign credits.';
+    if (hint) hint.textContent = step === 0 ? '01 — Choose the fight: mode, arena, ladder. Your ship comes next.' : '02 — Choose the ship. Kits come fitted; bare hulls buy their kit in the armory. Nothing here costs campaign credits.';
     update();
   }  function update() {
     const state = read();
@@ -203,7 +213,10 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     const loadout = preparationLoadout(state.starterId, state.weeklyMutatorId);
     if (!loadout) return;
     latest = loadout;
-    summary.textContent = `${state.daily ? 'Daily · ' : ''}${modeName(state.ruleset)} / ${loadout.hull.name}`;
+    // The run at a glance, always on screen: where, what, and what it costs. A pick that never
+    // lands (a locked hull, a denied tile) reads here immediately — the summary is the receipt.
+    const purseBits = isSwarm ? ` · ${stake.purse.toLocaleString('en-US')} cr purse` : '';
+    summary.textContent = `${state.daily ? 'Daily · ' : ''}${modeName(state.ruleset)} · ${state.arenaLabel || 'Arena'} · ${loadout.hull.name}${purseBits}`;
     nextStep.textContent = isSwarm ? '03 / Armory' : '03 / Launch';
     nextStep.setAttribute('aria-label', isSwarm ? 'Next, fit equipment in the armory' : 'Next, enter the arena');
     if (isSwarm) enter.textContent = 'Open armory →';
@@ -259,7 +272,8 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     const kit = preparationLoadout(b.dataset.starterId); const art = b.querySelector('.fh-tile-art');
     if (!kit || !art) continue;
     if (b.dataset.locked === '1') b.appendChild(make('span', 'orr-prep-locknote', b.dataset.earn || 'Locked'));
-    b.appendChild(make('span', 'orr-prep-hullsub', kit.hull.name));
+    const fitted = kit.slots.filter(s => s.defId).length;
+    b.appendChild(make('span', 'orr-prep-hullsub', `${kit.hull.name} · ${fitted}/${kit.slots.length} fitted`));
     art.replaceChildren(sigilSvg(BUILD_SIGILS, b.dataset.starterId, doc) || equipmentSvg({ kind: 'hull' }, doc));
   }
   // The stake's mark: a service ladder of chevrons, lit when its run is the chosen contract.
@@ -269,7 +283,8 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     const markSvg = sigilSvg(STAKE_MARKS, b.dataset.stakeId, doc, 'orr-sigil orr-prep-stake-mark');
     if (art && markSvg) art.replaceChildren(markSvg);
     b.append(make('span', 'orr-prep-stake-number', `${stake.purse.toLocaleString('en-US')} cr`),
-      make('span', 'orr-prep-stake-pressure', `${Math.round(stake.pressure * 100)}% pressure`));
+      make('span', 'orr-prep-stake-pressure', `${Math.round(stake.pressure * 100)}% pressure`),
+      make('span', 'orr-prep-stake-yield', swarmStakeYield(b.dataset.stakeId)));
   }
   for (const b of root.querySelectorAll('.sf-crd-mode,.sf-crd-block')) {
     const art = b.querySelector('.fh-tile-art');

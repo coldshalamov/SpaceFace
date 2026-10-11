@@ -42,6 +42,19 @@ const SHIPPED_MODULES = [
     visuals: { glow: '#ffb154' },
   },
   {
+    // Same bay and price band as Fusion: short straights recover quickly, long runs give up speed.
+    // Manoeuvring stays with the RCS bay; an engine does not secretly buy braking or yaw authority.
+    id: 'mod_engine_sprint_m', name: 'Sprint Drive M', slotType: 'engine', size: 'M', tier: 2, mass: 8, price: 23500, requiresTech: 'tech_drive_tuning',
+    energyDraw: 9, mods: { topSpeed: 85, accelMult: 1.65, turnMult: 1.0, travelCeilingMult: 1.05 },
+    visuals: { glow: '#ff8064' },
+  },
+  {
+    // The other side of the trade: long straights reward committing early; getting moving is slower.
+    id: 'mod_engine_endurance_m', name: 'Endurance Drive M', slotType: 'engine', size: 'M', tier: 2, mass: 8, price: 23500, requiresTech: 'tech_drive_tuning',
+    energyDraw: 5, mods: { topSpeed: 115, accelMult: 0.95, turnMult: 1.0, travelCeilingMult: 1.30 },
+    visuals: { glow: '#72e4c5' },
+  },
+  {
     id: 'mod_engine_warp_l', name: 'Warp Coil L', slotType: 'engine', size: 'L', tier: 3, mass: 18, price: 70000, requiresTech: 'tech_graviton_drives',
     energyDraw: 12, mods: { topSpeed: 130, accelMult: 1.6, turnMult: 1.25, travelCeilingMult: 1.30 },
     visuals: { glow: '#b48cff' },
@@ -848,6 +861,8 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   unique_choir_bell_aegis: 'The heavy shield, and once a fight it knocks a missile back.',
   mod_engine_ion_m: 'The yard drive. Push and the run stay where this hull was rated.',
   mod_engine_fusion_m: 'More push than the yard drive, and a faster run above the speed you fight at.',
+  mod_engine_sprint_m: 'Leaves a corner harder than Fusion, but runs slower on long straights and draws more power. Your RCS still owns the turn and stop.',
+  mod_engine_endurance_m: 'Faster long straights than Fusion, with less power draw. Slower to get moving; plan the burn before the corner opens.',
   mod_engine_warp_l: 'The long run. You still fight at the same cap, and you travel much faster.',
   unique_pale_coil_warp_drive: 'The long run, and once a fight it blinks you a short jump.',
   mod_thruster_stock_s: 'The yard set for a small bay. Turn, slide and stop stay as this hull was built.',

@@ -1107,6 +1107,11 @@ export function createUiInput(ctx, screenManager) {
 
     // Global UI actions when no modal is open (mode must be flight).
     if (!modalOpen && state.mode === 'flight') {
+      if (gp.actions.steeringView && gp.actions.steeringView.pressed
+        && !state.ui?.docked && !state.input?.blocked && !state.render?.photoMode?.active
+        && state.entities?.get?.(state.playerId)?.alive !== false) {
+        bus.emit('race:toggleView', { source: 'gamepad' });
+      }
       if (gp.actions.dock && gp.actions.dock.pressed && dockInRange) {
         doDock();
       }

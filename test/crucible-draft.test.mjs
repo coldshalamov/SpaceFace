@@ -273,10 +273,11 @@ test('the card copy states the verb, the hardpoint, and what it replaces', () =>
     verb: 'Throw', blurb: 'A momentum slug.', slotIndex: 1, replaces: 'wpn_pulse_laser_m',
   });
   assert.equal(lines.verb, 'Throw');
-  // The replaced fitting is named as the player knows it, never by its id.
-  assert.equal(lines.slot, 'Hardpoint 2 — replaces Pulse Laser M');
+  // The replaced fitting is named as the player knows it, never by its id — and the line says
+  // where it goes, so a swap never reads as a deletion.
+  assert.equal(lines.slot, 'Swaps with Pulse Laser M on hardpoint 2 — it goes to your spares');
   const emptySlot = offerCardLines({ id: 'x', verb: 'X', slotIndex: 0, replaces: null });
-  assert.equal(emptySlot.slot, 'Hardpoint 1 — empty');
+  assert.equal(emptySlot.slot, 'Bolts onto empty hardpoint 1');
 });
 
 test('survivalDraft is event-driven and never joins the per-frame update order', () => {

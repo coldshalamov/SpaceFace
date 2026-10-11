@@ -27,14 +27,15 @@ import {
   mergeClusterSecondaries,
   rateClusterMoment,
 } from '../core/fields/clusterDetonate.js';
-import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { queryPhysicalBodies, deliverPhysicalImpulse } from '../combat/physicalEffects.js';
+import { isAnchoredPhysicalBody } from '../core/physicalResponse.js';
+import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { indexedTypeScan, entityIndexLaneVersion } from '../world/livingWorldViews.js';
-import { journalFor } from '../combat/stuntEvidence.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { Masks } from '../core/entity.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { ensureCombatant } from '../combat/runtime.js';
-import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
+import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
 import { PINNED_STATUS_ID, STATUS_DEFS, UNMOORED_STATUS_ID } from '../data/combatDefs.js';
 import { bombDef } from '../data/bombs.js';
 import { bombFieldEnvelope, bombSurfaceFalloff, fillBombViscosityImpulse } from '../combat/bombDynamics.js';
@@ -60,7 +61,7 @@ const NPC_FIELD_PLAN_PERIOD_TICKS = 4;
 // mine as the physical body it is (dynamic Rapier hull, displacement only: fields never arm,
 // trigger, or damage it; the mines owner keeps that law). Displaced mines keep their owner,
 // arm clock and trigger eligibility because those ride the entity's own data.
-const FIELD_LOOSE_TYPES = new Set(['pickup', 'wreck', 'payload', 'mine']);
+const FIELD_LOOSE_TYPES = new Set(['asteroid', 'pickup', 'wreck', 'payload', 'mine', 'cargo_pod', 'debris']);
 // PQ-137.09 — the well's convergence term is velocity-dependent (see FIELD_DEFS.well.damping),
 // and the leaf that authored it says what it is for: "wells converge SHIPS to 30-60 WU/s
 // relative". Craft are the subject. The kernel applies the term only when a velocity sample is
@@ -69,7 +70,7 @@ const FIELD_LOOSE_TYPES = new Set(['pickup', 'wreck', 'payload', 'mine']);
 // vacuums in ("vacuum the loot"), and debris, payloads and rocks still funnel the way the
 // Intake/Tideline reads and the release predictor were built around. It also matches the enemy
 // anchor snare's own words: "the source hull is excluded; escorts and the player are not."
-export const FIELD_VELOCITY_TERM_TYPES = Object.freeze(new Set(['ship', 'drone']));
+export const FIELD_VELOCITY_TERM_TYPES = Object.freeze(new Set(['ship', 'drone', 'asteroid', 'wreck', 'pickup', 'payload', 'mine', 'cargo_pod', 'debris']));
 const MASS_STATE_TYPES = new Set(['ship', 'drone', 'payload', 'asteroid', 'wreck', 'pickup']);
 const MASS_STATE_DURATION_TICKS = 90;
 const MASS_STATE_REFRESH_LEAD_TICKS = 30;
@@ -356,6 +357,8 @@ export function fieldBodyProfile(entity, state, out = null) {
     : 0;
   profile.mass = hullMass + hitchMass;
   profile.type = entity && entity.type;
+  profile.radius = entity?.radius;
+  profile.anchored = isAnchoredPhysicalBody(entity);
   profile.team = entity && entity.team;
   profile.id = entity && entity.id;
   const authoredResponse = entity && entity.physicsBody && Number.isFinite(entity.physicsBody.fieldResponseMult)
@@ -458,6 +461,7 @@ export const fields = {
     this._wellScratch = { ax: 0, az: 0 };
     this._wellAccum = new WeakMap();
     this._wellBodies = new Set();
+    this._shoveAccum = new WeakMap();
     // PQ-137.09 grind ledger: pairKey -> { aId, bId, fieldId, ticks, lastTick, announced }
     this._grindPairs = new Map();
     this._grindScratch = [];
@@ -858,7 +862,7 @@ export const fields = {
     const index = state && state.entityIndex;
     const lists = [];
     if (index && index.__spacefaceEntityIndexV1) {
-      lists.push(index.pickups, index.wrecks, index.payloads, index.mines);
+      lists.push(index.asteroids, index.pickups, index.wrecks, index.payloads, index.mines);
     } else {
       lists.push(state && state.entityList);
     }
@@ -1258,7 +1262,7 @@ export const fields = {
         id: fieldId, kind: def.kind, center, dir, radius: def.radius, strength: def.strength,
         falloff: def.falloff, halfAngleRad: def.halfAngleRad, edgeSoftRad: def.edgeSoftRad,
         volume: fieldVolumeOf(def),
-        durationS: Infinity, sourceId: player.id, team: player.team, createdAt: now,
+        durationS: Infinity, sourceId: player.id, ownerId: player.id, team: player.team, createdAt: now,
         // Owner exclusion, same rule as the deployed tools: the rig never pushes its own hull.
         // The wedge apex sits ahead of the nose so geometry already keeps the player out; this
         // keeps that guarantee true regardless of future originGap/geometry tuning.
@@ -1580,6 +1584,7 @@ export const fields = {
     this._wellAccum = new WeakMap();
     this._wellBodies = new Set();
     if (this._pinWatch) this._pinWatch.length = 0;
+    this._shoveAccum = new WeakMap();
     if (this._pinWatchSeen) this._pinWatchSeen.clear();
     if (this._familyPrevPins) this._familyPrevPins.clear();
     if (this._familyPrevMines) this._familyPrevMines.clear();
@@ -1677,66 +1682,14 @@ export const fields = {
     // Only dynamic Rapier bodies can be moved by an impulse; fixed bodies (stations, gates, static
     // asteroids, the emitters/anchors themselves) ignore it. Gating here spares wasted membrane
     // writes and keeps the affected count honest.
-    return isDynamicPhysicsBodyEntity(e);
+    return isDynamicPhysicsBodyEntity(e) || isAnchoredPhysicalBody(e);
   },
 
   _collectFieldCandidates(field, state, out) {
-    const queryRadius = this.helpers && this.helpers.queryRadius;
-    if (typeof queryRadius === 'function') {
-      queryRadius(field.center, field.radius, out);
-    } else {
-      out.length = 0;
-    }
-    const seen = this._candidateSeen || (this._candidateSeen = new Set());
-    seen.clear();
-    for (let i = 0; i < out.length; i++) seen.add(out[i]);
-    const combatScratch = this._combatTableScratch || (this._combatTableScratch = []);
-    queryCombatTableEntities(
-      state,
-      field.center.x,
-      field.center.z,
-      field.radius,
-      combatScratch,
-      COMBAT_TABLE_FLAGS.SHIP | COMBAT_TABLE_FLAGS.PROJECTILE | COMBAT_TABLE_FLAGS.WRECK,
-    );
-    for (let i = 0; i < combatScratch.length; i++) {
-      const e = combatScratch[i];
-      if (!e || seen.has(e)) continue;
-      seen.add(e);
-      out.push(e);
-    }
-    const r2 = field.radius * field.radius;
-    const cx = field.center.x;
-    const cz = field.center.z;
-    const index = state && state.entityIndex;
-    // Retained loose-list scratch: same iteration order (pickups, wrecks, payloads, mines)
-    // without a per-field array literal each tick.
-    const lists = this._looseListsScratch;
-    if (index && index.__spacefaceEntityIndexV1) {
-      lists[0] = index.pickups;
-      lists[1] = index.wrecks;
-      lists[2] = index.payloads;
-      lists[3] = index.mines;
-      lists.length = 4;
-    } else {
-      lists[0] = state && state.entityList;
-      lists.length = 1;
-    }
-    for (let i = 0; i < lists.length; i++) {
-      const list = lists[i];
-      if (!list) continue;
-      for (let j = 0; j < list.length; j++) {
-        const e = list[j];
-        if (!e || seen.has(e) || e.alive === false || !e.pos) continue;
-        if (!FIELD_LOOSE_TYPES.has(e.type) && !(e.data && e.data.majorDebris)) continue;
-        const dx = e.pos.x - cx;
-        const dz = e.pos.z - cz;
-        if (dx * dx + dz * dz > r2) continue;
-        out.push(e);
-        seen.add(e);
-      }
-    }
-    return out;
+    const envelope = field.kind === FIELD_KINDS.SHEET ? Math.hypot(field.radius, field.halfWidth) : field.radius;
+    return queryPhysicalBodies(state, field.center, envelope, this.helpers, out, {
+      contains: e => fieldContainsPoint(field, e.pos.x, e.pos.z),
+    });
   },
 
   _profileFor(e, state) {
@@ -1845,7 +1798,9 @@ export const fields = {
         if (this._forceableBody(e)) {
           const profile = this._profileFor(e, state);
           if (!fieldAffectsBody(field, profile)) continue;
-          affected.set(e, true);
+          const membership = affected.get(e) || [];
+          membership.push(field);
+          affected.set(e, membership);
           this._considerMassState(field, e);
           fieldAffected++;
           if (fieldAffected >= maxAffected) break;
@@ -1864,7 +1819,7 @@ export const fields = {
       if (massStateField) this._refreshMassState(state, e, massStateField);
       const profile = this._profileFor(e, state);
       const velSample = fieldVelocityTermApplies(e, profile) ? e.vel : null;
-      sampleFieldAcceleration(e.pos, velSample, fieldsList, now, profile, accel);
+      sampleFieldAcceleration(e.pos, velSample, affected.get(e), now, profile, accel);
       if (accel.ax === 0 && accel.az === 0) continue;
       // p = a·m·dt, where m must be the mass the SOLVER will use this tick — not the authored one.
       // A Well pins the very bodies it pulls (massScale 6) and a Repulsor unmoors the ones it shoves
@@ -1882,7 +1837,12 @@ export const fields = {
       impulse.x = accel.ax * mass * dt;
       impulse.y = 0;
       impulse.z = accel.az * mass * dt;
-      queuePhysicsImpulse(e, impulse, this._fieldEvidence(e, fieldsList, state, profile));
+      const evidence = this._fieldEvidence(e, affected.get(e), state, profile);
+      if (!deliverPhysicalImpulse(state, e, impulse, evidence, { scaleEnvironment: false, continuous: true, dt })) continue;
+      if (evidence?.provenance?.actorId != null) recordImpulseProvenance(e, {
+        ...evidence.provenance, magnitude: Math.hypot(impulse.x, impulse.z), appliedTick: state.tick,
+      });
+      this._applyFieldTumble(e, affected.get(e), profile, accel, dt, state);
       this._accumulateWellDelta(e, fieldsList, profile, accel, dt, state);
       this._noteWellClusterBody(e, fieldsList, profile, accel, state);
       affectedCount++;
@@ -1969,9 +1929,6 @@ export const fields = {
   // a second match collapses to provenance:null — but returns retained per-field records
   // instead of a fresh evidence object per affected body. See init for the lifetime argument.
   _fieldEvidence(entity, fields, state, profile) {
-    const j = journalFor(state);
-    const life = j && j.lives.get(`${typeof entity.id}:${String(entity.id)}`);
-    if (!life || (!j.bodies.has(life.id) && entity.type !== 'projectile')) return null;
     let match = null;
     for (const f of fields) {
       if (!(f.radius > 0) || !f.center
@@ -1990,7 +1947,7 @@ export const fields = {
       row = {
         kind: 'field',
         tick: 0,
-        provenance: { actorId: null, field: { id: null, ownerId: null, x: 0, z: 0, radius: 0 } },
+        provenance: { actorId: null, tag: `field_${match.kind}`, field: { id: null, ownerId: null, x: 0, z: 0, radius: 0 } },
       };
       this._evidenceRows.set(match, row);
     }
@@ -2000,6 +1957,46 @@ export const fields = {
     pf.id = match.id; pf.ownerId = match.ownerId;
     pf.x = match.center.x; pf.z = match.center.z; pf.radius = match.radius;
     return row;
+  },
+
+  // A sustained clearing force must break a hull's helm and roll loose rubble,
+  // otherwise the pilot sees a sliding target still firing back through the cone.
+  // Accumulate only delivered motion, over a short window; one 60 Hz tick is too
+  // small to satisfy the existing impulse-to-tumble law on its own.
+  _applyFieldTumble(entity, fieldsList, profile, accel, dt, state) {
+    if (entity.id === state.playerId || isAnchoredPhysicalBody(entity)) return;
+    const field = fieldsList.find(f => (f.kind === FIELD_KINDS.CONE || f.kind === FIELD_KINDS.REPULSOR)
+      && fieldAffectsBody(f, profile) && fieldContainsPoint(f, entity.pos.x, entity.pos.z));
+    if (!field) return;
+    const magnitude = Math.hypot(accel.ax, accel.az);
+    if (!(magnitude > 0)) return;
+    const side = signedHitSide(entity, { x: accel.ax, z: accel.az }, { pos: field.center }, entity.id);
+    if (FIELD_LOOSE_TYPES.has(entity.type)) {
+      const spec = resolvePhysicsBodySpec(entity);
+      const targetSpin = side * Math.min(1.8, magnitude / 110);
+      const change = (targetSpin - finite(entity.angVel)) * Math.min(1, dt * 3);
+      queuePhysicsTorqueImpulse(entity, { x: 0, y: spec.inertiaY * change, z: 0 }, { tick: state.tick, kind: 'field_tumble' });
+      return;
+    }
+    if (entity.type !== 'ship' && entity.type !== 'drone') return;
+    let rec = this._shoveAccum.get(entity);
+    if (!rec || rec.fieldId !== field.id || state.tick - rec.tick > 1) {
+      rec = { fieldId: field.id, dx: 0, dz: 0, seconds: 0, tick: state.tick };
+      this._shoveAccum.set(entity, rec);
+    }
+    rec.dx += accel.ax * dt; rec.dz += accel.az * dt;
+    rec.seconds += dt; rec.tick = state.tick;
+    if (rec.seconds + 1e-6 < 0.25) return;
+    const owner = state.entities?.get(field.ownerId);
+    publishHitstunImpulse(this.bus, {
+      source: 'weapon', victimId: entity.id, attackerId: field.ownerId,
+      attackerMass: owner ? resolvePhysicsBodySpec(owner).mass : 16,
+      victimMass: resolvePhysicsBodySpec(entity).mass,
+      deltaV: Math.hypot(rec.dx, rec.dz), dirX: rec.dx, dirZ: rec.dz, hitSide: side,
+      provenance: { actorId: field.ownerId, tag: `field_${field.kind}`, appliedTick: state.tick },
+      tick: state.tick,
+    });
+    rec.dx = rec.dz = rec.seconds = 0;
   },
 
   _accumulateWellDelta(entity, fieldsList, profile, appliedAccel, dt, state) {

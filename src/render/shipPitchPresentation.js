@@ -9,6 +9,7 @@ import {
   resolveTumbleBodyLanguage,
   resolveTumbleRecoverPose,
 } from './masslinePresentation.js';
+import { readExternalPhysicsFeedback } from '../core/physicsAuthority.js';
 
 // Epoch bumped when any craft writes active tumble / thrown-trail / recover
 // body-language. VFX consumers latch quiet walks against this so a tumble that
@@ -134,6 +135,38 @@ function ensurePresentation(entity) {
     entity.presentation = {};
   }
   return entity.presentation;
+}
+
+// A player keeps control of world-plane heading while real external momentum rolls
+// and pitches the displayed hull. A short damped spring takes signed admitted delta-V;
+// it cannot manufacture a shove from a weapon activation or move a physics body.
+function updatePlayerShovePose(state,entity,pres,now,motionReduce,flightPitch){
+  if(entity.id!==state.playerId)return false;
+  const receipt=readExternalPhysicsFeedback(entity),tick=Number(state.tick)||0;
+  let pose=pres.externalShove;
+  const fresh=receipt&&receipt.tick<=tick&&tick-receipt.tick<=2&&receipt.tick!==pose?.receiptTick;
+  if(!pose&&!fresh)return false;
+  if(!pose)pose=pres.externalShove={receiptTick:-1,time:now,bank:0,pitch:0,bv:0,pv:0};
+  if(now<pose.time){delete pres.externalShove;return false;}
+  if(fresh){
+    pose.receiptTick=receipt.tick;
+    const c=Math.cos(entity.rot),sn=Math.sin(entity.rot),scale=motionReduce?.14:1;
+    const lateral=-receipt.deltaX*sn+receipt.deltaZ*c,forward=receipt.deltaX*c+receipt.deltaZ*sn;
+    pose.bv+=lateral*.34*scale;pose.pv-=forward*.27*scale;
+    pose.bv=Math.max(-5,Math.min(5,pose.bv));pose.pv=Math.max(-4,Math.min(4,pose.pv));
+  }
+  const dt=Math.min(.05,Math.max(0,now-pose.time));pose.time=now;
+  // Closed-form critically damped response is stable during bursts and independent
+  // of render cadence. A paused simulation neither integrates nor replays the receipt.
+  const rate=9,decay=Math.exp(-rate*dt);
+  const bankTerm=pose.bv+rate*pose.bank,pitchTerm=pose.pv+rate*pose.pitch;
+  pose.bank=(pose.bank+bankTerm*dt)*decay;pose.bv=(pose.bv-rate*bankTerm*dt)*decay;
+  pose.pitch=(pose.pitch+pitchTerm*dt)*decay;pose.pv=(pose.pv-rate*pitchTerm*dt)*decay;
+  pose.bank=Math.max(-.42,Math.min(.42,pose.bank));pose.pitch=Math.max(-.31,Math.min(.31,pose.pitch));
+  if(!fresh&&Math.abs(pose.bank)+Math.abs(pose.pitch)+Math.abs(pose.bv)+Math.abs(pose.pv)<.001){
+    delete pres.externalShove;return false;
+  }
+  entity.bank=pose.bank;entity.pitch=flightPitch+pose.pitch;return true;
 }
 
 /**
@@ -263,6 +296,10 @@ export function updateShipPitchPresentation(state, frameDt) {
       anyActiveBodyLanguage = true;
       updated++;
       continue;
+    }
+
+    if(updatePlayerShovePose(state,entity,pres,now,motionReduce,flightPitch)){
+      anyActiveBodyLanguage=true;updated++;continue;
     }
 
     // Normal thrust lean (pitch only; bank remains flight-owned).

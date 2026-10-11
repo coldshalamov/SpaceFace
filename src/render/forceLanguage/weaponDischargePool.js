@@ -74,6 +74,7 @@ const IMPACT_BEATS = Object.freeze({
   propulsion: Object.freeze({ style: 1, color: THERMAL, blades: 3, spread: 0.60, reach: 0.80, bladeWidth: 0.30, ring: 1.05, ringWidth: 0.36, ribs: 0 }),
   induction: Object.freeze({ style: 4, color: VIOLET, blades: 4, spread: 0.66, reach: 1.05, bladeWidth: 0.19, ring: 0.72, ringWidth: 0.15, ribs: 2 }),
   metric: Object.freeze({ style: 1, color: SHIELD_CYAN, blades: 3, spread: 0.52, reach: 0.90, bladeWidth: 0.24, ring: 1.00, ringWidth: 0.30, ribs: 2 }),
+  reactive: Object.freeze({ style: 0, color: THERMAL, blades: 2, spread: 0.82, reach: 0.58, bladeWidth: 0.46, ring: 0.48, ringWidth: 0.38, ribs: 0 }),
 });
 const DEFAULT_BEAT = IMPACT_BEATS.kinetic;
 
@@ -329,6 +330,80 @@ export class WeaponDischargePool {
       this._strip(s,.26,0,.1,length*.36,w*.1);
       this.style=3;this.color=BRASS;
       this._strip(s,0,0,.05,length*.2,w*.09);
+    }else if(s.source==='filament-spool'){
+      this.style=4;this.color=SHIELD_CYAN;
+      const draw=Math.min(1,t/.36),carry=length*.18*t;
+      this._strip(s,0,0,w*.15+carry,length*1.3+carry,w*.055);
+      for(let side=-1;side<=1;side+=2){
+        const gap=w*(.54-.27*draw),reach=length*(side>0?.43:.30);
+        this._strip(s,-side*.16,0,-w*.2,reach,w*.15,1,side*gap);
+        this._strip(s,side*.73,side*1.32,w*.32,w*.62,w*.12,0);
+      }
+    }else if(s.source==='metric-tag'||s.source==='well-inlet'){
+      this.style=1;this.color=SHIELD_CYAN;
+      // Two asymmetric moving jaws stamp a travelling collar. Its open centre remains
+      // readable and it never borrows the kinetic muzzle's vent fan.
+      const close=Math.min(1,t/.42),carry=length*.48*t;
+      for(let side=-1;side<=1;side+=2){
+        const radius=w*(.82-.24*close+(side>0?.08:0));
+        this._strip(s,side*.20,side*1.36,radius,radius,w*.28,0,0,w*.14,0,-1,carry);
+        this._strip(s,-side*.12,0,.04,length*(side>0?.64:.46),w*.19,1,side*w*.35);
+      }
+      this.style=4;this.color=PALE;
+      this._strip(s,0,0,w*.4+carry,length*.63+carry,w*.10);
+    }else if(s.source==='frame-latch'){
+      this.style=1;this.color=BRASS;
+      const close=Math.min(1,t/.46),release=Math.max(0,(t-.46)/.54);
+      for(let side=-1;side<=1;side+=2){
+        const gap=w*(.8-.44*close+release*.18),reach=length*(side>0?.69:.51);
+        this._strip(s,0,0,-w*.18,reach,w*.23,1,side*gap,0,0,-1,-w*release*.3);
+        this._strip(s,-side*.9,0,0,w*.52,w*.21,1,side*gap,0,0,-1,reach);
+      }
+      this.color=SHIELD_CYAN;
+      this._strip(s,0,0,w*.14,length*.78,w*.09);
+    }else if(s.source==='ram-wedge'){
+      this.style=3;this.color=PALE;
+      const recoil=-w*.5*Math.pow(1-t,2);
+      this._strip(s,-.29,0,.08,length*.65,w*.42,1,w*.25,0,0,-1,recoil);
+      this._strip(s,.29,0,.08,length*.65,w*.42,1,-w*.25,0,0,-1,recoil);
+      this.style=1;this.color=BRASS;
+      this._strip(s,-.80,.80,w*.42,w*(.80+t*.35),w*.32,0,0,0,0,-1,recoil);
+    }else if(s.source==='adhesive-eject'){
+      this.style=0;this.color=THERMAL;
+      const carry=length*.58*t,neck=1-.68*t;
+      for(let j=0;j<3;j++){
+        const side=j-1;
+        this._strip(s,side*.19,side*.38,w*.03+carry*(.45+j*.18),
+          length*(.44+j*.11)+carry,w*(.37-j*.055)*neck,0,side*w*.13,w*.18);
+      }
+      this.style=1;this.color=BRASS;
+      this._strip(s,-1.15,1.15,w*.36,w*.42,w*.17,0);
+    }else if(s.source==='primer-bridge'){
+      this.style=4;this.color=VIOLET;
+      const reach=length*(.52+.21*Math.min(1,t/.28));
+      for(let side=-1;side<=1;side+=2){
+        this._strip(s,-side*.22,0,.05,reach*.68,w*.17,1,side*w*.4);
+        this._strip(s,side*.42,0,reach*.48,reach,w*.12);
+      }
+      this.color=PALE;
+      this._strip(s,Math.PI*.5,0,-w*.30,w*.30,w*.19,1,0,0,0,-1,reach*.48);
+      this._strip(s,0,0,reach*.48,length,w*.10);
+    }else if(s.source==='thermal-seam'){
+      this.style=0;this.color=THERMAL;
+      const carry=length*.31*t;
+      for(let j=0;j<3;j++)this._strip(s,(j-1)*.035,(j-1)*.12,
+        carry*(.4+j*.16),length*(.48+j*.12)+carry,w*(.32-j*.045),0,(j-1)*w*.40,w*.13);
+      this.style=4;this.color=PALE;
+      this._strip(s,Math.PI*.5,0,-w*.78,w*.78,w*.14,1,0,0,0,-1,w*.16);
+    }else if(s.source==='driver-piston'){
+      this.style=3;this.color=BRASS;
+      const kick=-w*.62*Math.pow(1-t,2);
+      this._strip(s,0,0,-w*.14,length*.67,w*.40,1,0,0,0,-1,kick);
+      this.color=PALE;
+      for(let side=-1;side<=1;side+=2)this._strip(s,0,0,-w*.20,
+        length*(side>0?.52:.43),w*.12,1,side*w*.46,0,0,-1,kick*.4);
+      this.color=BRASS;
+      this._strip(s,Math.PI,0,w*.15,w*(.78+.32*(1-t)),w*.31,1,0,0,0,-1,kick);
     }else{
       // Defensive default: one hard kernel, never a soft card.
       this._strip(s,0,0,.08,length*.7,w*.18);

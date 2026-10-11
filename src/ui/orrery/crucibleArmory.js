@@ -1,9 +1,14 @@
 // The armory's visual inspection and explicit transaction surface. Owns no wallet or fitting:
 // the caller supplies a fresh offer and sends the existing purchase intent when the key is used.
 import { equipmentSvg } from './equipmentGlyphs.js';
+import { weaponClipUrl } from '../weaponClips.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { injectCruciblePreparation } from './cruciblePreparationLayouts.js';
 import { createPipSpannerCrew } from './pipSpannerCrew.js';
+
+// DefIds whose clip 404'd this session — each missing file is requested once, not once
+// per inspection. Entries never expire: clips land with a build, not mid-session.
+const missingClips = new Set();
 
 export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
   const doc = root?.ownerDocument;
@@ -55,7 +60,30 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
       if (lastArt !== artId) {
         lastArt = artId; item.replaceChildren();
         const url = offer.kind === 'hull' ? hullPosterUrl(offer.defId || offer.hullId) : null;
-        if (url) {
+        // A recorded firing pass plays where a clip exists (src/ui/weaponClips.js names the
+        // file); the schematic stands until the first frame is playable, so a missing clip is
+        // never a blank box. Reduced motion keeps the still schematic.
+        const reduceMotion = !!doc.documentElement
+          && doc.documentElement.classList.contains('sf-reduce-motion');
+        const clip = !reduceMotion && offer.kind !== 'hull' && offer.kind !== 'service' && offer.defId
+          && !missingClips.has(offer.defId)
+          ? weaponClipUrl(offer.defId)
+          : null;
+        if (clip) {
+          item.appendChild(equipmentSvg(offer, doc));
+          const video = make('video', '');
+          video.muted = true; video.loop = true;
+          video.playsInline = true; video.autoplay = true;
+          video.setAttribute('aria-label', `${lines.name} firing`);
+          video.addEventListener('error', () => { missingClips.add(offer.defId); }, { once: true });
+          video.addEventListener('canplay', () => {
+            if (lastArt !== artId) return;
+            item.replaceChildren(video);
+            label.textContent = 'In action';
+            if (typeof video.play === 'function') video.play().catch(() => {});
+          }, { once: true });
+          video.src = clip;
+        } else if (url) {
           const image = make('img', ''); image.src = url; image.alt = ''; image.decoding = 'async';
           image.addEventListener('error', () => {
             if (lastArt === artId) item.replaceChildren(equipmentSvg(offer, doc));

@@ -1,3 +1,4 @@
+import { queryPhysicalBodies } from './physicalEffects.js';
 // Snarl projectiles stitch enemy hulls into short physical chains. The attachment service owns
 // sockets, spring forces, breakage and rendering receipts; this owner only chooses endpoints.
 export const WEB_WEAPON_ID = 'wpn_snarl_s';
@@ -99,19 +100,15 @@ export function createTetherWebs({ state, bus, registry }) {
       }
       for (const { target, owner } of pending) {
         if (!owner.alive || !target.alive || state.entities.get(target.id) !== target) continue;
-        if (!['ship', 'drone'].includes(target.type) || target.team === owner.team) continue;
+        if (target.id === state.playerId || (['ship', 'drone'].includes(target.type) && target.team === owner.team)) continue;
         // Score each candidate's distance once: the old filter+sort chain paid a hypot per
         // entity plus two more per sort comparison. Order stays nearest-first, id tiebreak.
         const scored = [];
-        const index = state.entityIndex;
-        const candidates = index && index.__spacefaceEntityIndexV1 && index.ready === true
-          && Array.isArray(index.shipLike)
-          ? index.shipLike
-          : state.entityList;
+        const candidates = queryPhysicalBodies(state, target.pos, WEB_LIMITS.reach, registry?.get('weapons')?.helpers);
         for (const e of candidates) {
           if (!e || !e.alive || e === target || e === owner) continue;
-          if (e.type !== 'ship' && e.type !== 'drone') continue;
-          if (e.team === owner.team) continue;
+          if (e.id === state.playerId) continue;
+          if (['ship', 'drone'].includes(e.type) && e.team === owner.team) continue;
           const dx = e.pos.x - target.pos.x;
           const dz = e.pos.z - target.pos.z;
           const d2 = dx * dx + dz * dz;

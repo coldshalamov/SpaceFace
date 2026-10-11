@@ -1576,11 +1576,17 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   // Gyre Snare (held-verb katamari lash): wake shimmer, snag latch, per-absorb glass tick,
   // strain tension, launch bowl, lash release, beam power-down, ball-death grave shatter.
   gyre_snare_beam: 'sfx_gyre_beam', gyre_snare_snag: 'sfx_gyre_snag',
+  gyre_snare_riser: 'sfx_gyre_riser',
+  gyre_snare_catch: 'sfx_gyre_catch',
   gyre_snare_absorb: 'sfx_gyre_absorb', gyre_snare_launch: 'sfx_gyre_launch',
   gyre_snare_strain: 'sfx_gyre_strain', gyre_snare_ball_death: 'sfx_gyre_ball_death',
   gyre_snare_drop: 'sfx_gyre_drop', gyre_snare_off: 'sfx_gyre_off',
+  gyre_snare_tear: 'sfx_gyre_tear',
   gyre_snare_full: 'sfx_gyre_full',
   gyre_snare_fuse_low: 'sfx_gyre_fuse_low', gyre_snare_windup: 'sfx_gyre_windup',
+  // The flight whoosh emits beside the launch stack (not in it) — the tail's
+  // shape grades by payload alone, and a layer shares the parent's single rate.
+  gyre_snare_whoosh: 'sfx_gyre_ball_whoosh',
   // Rung-10 threat warning (massline.threat / massline.counter_tether.* presentation cues): the
   // low growl authored beside the other massline recipes — a live line under load, not a break.
   'presentation.massline.threat': 'sfx_massline_threat',

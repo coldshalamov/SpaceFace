@@ -19,7 +19,9 @@ function padState(custom) {
 
 test('a stock (or missing) pad map keeps the authored dual-naming table byte for byte', () => {
   const stock = gamepadControlRows(null);
-  assert.equal(stock.length, 36);
+  assert.equal(new Set(stock.map(([label]) => label)).size, stock.length, 'each taught control has one row');
+  assert.deepEqual(stock.find(([label]) => label === 'Chase / overhead camera'),
+    ['Chase / overhead camera', null, 'LB / L1 + View / Select']);
   assert.deepEqual(stock[2], ['Fire', null, 'RT / R2']);
   assert.deepEqual(stock[6], ['Shove (repulsor)', null, 'Y / △']);
   assert.deepEqual(stock[7], ['Accept / confirm', null, 'A / Cross']);
@@ -50,6 +52,8 @@ test('a stock (or missing) pad map keeps the authored dual-naming table byte for
     ['bulletTime', 'Bullet time'], ['cloak', 'Cloak'], ['chargeThrow', 'Throw impulse charge'],
     ['cruise', 'Cruise drive'], ['deployBeacon', 'Deploy nav beacon'],
     ['jettisonLot', 'Jettison cargo lot'],
+    ['gyreSnare', 'Gyre Snare (hold: lash; release: bowl)'],
+    ['steeringView', 'Chase / overhead camera'],
   ];
   assert.deepEqual(taught.map(([action]) => action).sort(), Object.keys(GAMEPAD_DEFAULT_BINDINGS).sort());
   for (const [, label] of taught) assert.equal(stock.some((row) => row[0] === label), true, label);

@@ -18487,6 +18487,7 @@ export const render = {
       // MACH-05 — forward the out scratch exactly like worldToScreen: a bare binding made every
       // helpers.raycastToPlane caller allocate a result object per call.
       raycastToPlane: (ndc, out) => this.raycastToPlane(ndc, out),
+      screenToWorldDirection: (axes, out) => this.screenToWorldDirection(axes, out),
       addTrauma: (a) => cam.addTrauma(a),
       socketWorldPose: (id, name) => this.socketWorldPose(id, name),
       socketWorldPos: (id, name) => this.socketWorldPos(id, name),
@@ -31522,18 +31523,44 @@ export const render = {
   // `out` is an optional caller-owned {x,z} scratch; results are consumed synchronously so a
   // retained object is safe (membrane path already returns the shared _rayGlobalXZ scratch).
   raycastToPlane(ndc, out) {
-    const cam = this.cam && this.cam.obj;
+    const cam = this._syncProjectionCamera();
     if (!cam || !ndc || !Number.isFinite(ndc.x) || !Number.isFinite(ndc.y)) return writePlaneXZ(out, 0, 0);
     _v2.set(ndc.x, ndc.y);
     _ray.setFromCamera(_v2, cam);
-    const hit = _ray.ray.intersectPlane(_plane, _pt);
-    if (!hit) return writePlaneXZ(out, 0, 0);
+    let hit = _ray.ray.intersectPlane(_plane, _pt);
+    // A low chase camera exposes sky. An upward ray has no play-plane intersection; a ray
+    // skimming the horizon may intersect millions of WU away. Both still mean aim FORWARD,
+    // never at galactic (0,0). Extend its horizontal bearing to the camera's finite range.
+    const reach = Number.isFinite(cam.far) && cam.far > 0 ? cam.far : 14000;
+    if (!hit || Math.hypot(hit.x - _ray.ray.origin.x, hit.z - _ray.ray.origin.z) > reach) {
+      const horizontal = Math.hypot(_ray.ray.direction.x, _ray.ray.direction.z);
+      if (horizontal > 1e-8) {
+        _pt.set(_ray.ray.origin.x + _ray.ray.direction.x / horizontal * reach, 0,
+          _ray.ray.origin.z + _ray.ray.direction.z / horizontal * reach);
+      } else {
+        _pt.set(_ray.ray.origin.x, 0, _ray.ray.origin.z);
+      }
+      hit = _pt;
+    }
     const membrane = this._frameMembrane;
     if (!membrane) return writePlaneXZ(out, hit.x, hit.z);
     _rayLocalXZ.x = hit.x;
     _rayLocalXZ.z = hit.z;
     const g = membrane.toGlobal(_rayLocalXZ, _rayGlobalXZ);
     return out ? writePlaneXZ(out, g.x, g.z) : g;
+  },
+
+  // Unit screen axes flattened onto flight's XZ plane. The real camera yaw carries the
+  // transition and turn lag; the ship nose alone would jump controls ahead of the picture.
+  screenToWorldDirection(axes, out) {
+    const cam = this._syncProjectionCamera();
+    if (!cam || !axes || !Number.isFinite(axes.x) || !Number.isFinite(axes.y)) return null;
+    const m = cam.matrixWorld.elements;
+    const length = Math.hypot(m[8], m[10]);
+    if (length < 1e-8) return null;
+    const forwardX = -m[8] / length, forwardZ = -m[10] / length;
+    return writePlaneXZ(out, -forwardZ * axes.x + forwardX * axes.y,
+      forwardX * axes.x + forwardZ * axes.y);
   },
 
   // World XZ of a named attachment socket on an entity's mesh, or null if the entity has no mesh or no

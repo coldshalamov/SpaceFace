@@ -1,3 +1,6 @@
+import { queryPhysicalBodies, deliverPhysicalImpulse } from '../combat/physicalEffects.js';
+import { isEnvironmentalBody } from '../core/physicalResponse.js';
+import { addEnvironmentHeat } from './environmentMaterials.js';
 // Hull burst (hull-burst overhaul, slice C; owner principle 2026-09-30). A front-facing cone the
 // ship's fitted boost UPGRADE fires: the Gravity Bumper hurls what the nose touches, the Fire Lance
 // burns it, the Grip Bumper catches it.
@@ -33,8 +36,9 @@ import {
 } from '../combat/impulseKernel.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isHostileToPlayer } from './scanner.js';
+import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 
-const CANDIDATE_TYPES = new Set(['ship', 'drone']);
+const CANDIDATE_TYPES = new Set(['ship', 'drone', 'asteroid', 'wreck', 'pickup', 'payload', 'mine', 'cargo_pod', 'station', 'gate']);
 
 function finite(value, fallback = 0) {
   const n = Number(value);
@@ -67,7 +71,10 @@ function simNow(state) {
 function massOf(entity, fallback = 1) {
   const body = entity && entity.physicsBody;
   const m = body && Number(body.mass) > 0 ? Number(body.mass) : Number(entity && entity.mass);
-  return Number.isFinite(m) && m > 0 ? m : fallback;
+  if (Number.isFinite(m) && m > 0) return m;
+  const spec = entity && resolvePhysicsBodySpec(entity);
+  const derived = spec && spec.mass;
+  return Number.isFinite(derived) && derived > 0 ? derived : fallback;
 }
 
 function candidatesNear(state, pos, radius, out) {
@@ -261,7 +268,7 @@ export const hullBurst = {
 
   _sweep(state, rt, def, player) {
     const queryRadius = def.reachWu + finite(player.radius, 12) + 80;
-    const near = candidatesNear(state, player.pos, queryRadius, this._scratch);
+    const near = queryPhysicalBodies(state, player.pos, queryRadius, this.helpers, this._scratch);
     const bumperMass = massOf(player, 1) * def.massScale;
     const playerTeam = player.team;
     for (const target of near) {
@@ -271,7 +278,7 @@ export const hullBurst = {
       if (!geo) continue;
       const closing = (finite(player.vel && player.vel.x) - finite(target.vel && target.vel.x)) * geo.radialX
         + (finite(player.vel && player.vel.z) - finite(target.vel && target.vel.z)) * geo.radialZ;
-      const hostile = isHostileToPlayer(target, playerTeam, state);
+      const hostile = isEnvironmentalBody(target) || isHostileToPlayer(target, playerTeam, state);
       // Once per activation, unless a MUCH stronger hit is now possible (a hostile already inside the wedge at
       // ignition, at a crawl, must not stay a dud for the whole window once the player drives into it).
       const strength = this._strength(def, closing, massOf(target, 1), bumperMass, hostile);
@@ -318,6 +325,10 @@ export const hullBurst = {
    * player's enemies only.
    */
   _lance(state, rt, def, player, target, closing, hostile) {
+    if (isEnvironmentalBody(target)) {
+      addEnvironmentHeat(state, target, 60 * Math.max(def.minScale, Math.min(1, finite(closing) / def.fullSpeedWuS)), { actorId: player.id, weaponId: def.moduleId });
+      return true;
+    }
     if (!hostile) return false;
     const mass = massOf(target, 1);
     const scale = Math.max(def.minScale, Math.min(1, finite(closing) / def.fullSpeedWuS));
@@ -364,7 +375,14 @@ export const hullBurst = {
    */
   _grip(state, rt, def, player, target, closing, hostile) {
     if (!hostile || this._held) return false;
-    if (massOf(target, 1) > def.gripMaxMass) return true; // not catchable: refused for good (latched), never touched
+    if (isEnvironmentalBody(target)) {
+      if (finite(target.radius) > 24) {
+        const rot = finite(player.rot);
+        return deliverPhysicalImpulse(state, target, { x: Math.cos(rot) * 960, z: Math.sin(rot) * 960 }, { actorId: player.id, weaponId: def.moduleId, kind: 'grip_bumper' }, { port: this.helpers?.combatPhysics });
+      }
+    } else if (massOf(target, 1) > def.gripMaxMass) {
+      return true; // not catchable: refused for good (latched), never touched
+    }
     this._held = target;
     rt.grip = { targetId: target.id, since: simNow(state), refreshAt: simNow(state) + def.refreshS };
     rt.hits += 1;
@@ -501,6 +519,7 @@ export const hullBurst = {
   _hurl(state, rt, def, player, target, geo, closing, bumperMass, hostile) {
     const targetMass = massOf(target, 1);
     let deltaV = hullBurstDeltaV(def, closing, bumperMass, targetMass);
+    if (isEnvironmentalBody(target)) deltaV = Math.max(55, deltaV);
     if (!hostile) deltaV = Math.min(deltaV, def.nudgeMaxDeltaVWuS);
     if (!(deltaV > 0)) return false;
     // Forward-biased throw: mostly where the nose points, some spread from the centres.
@@ -511,16 +530,12 @@ export const hullBurst = {
     const magnitude = deltaV * targetMass;
     const physics = this.helpers && this.helpers.combatPhysics;
     if (!physics || typeof physics.applyImpulse !== 'function') return false;
-    const accepted = physics.applyImpulse({
-      entityId: target.id,
-      impulse: { x: dirX * magnitude, z: dirZ * magnitude },
-      point: null,
-      reason: 'hull_burst',
-      tick: state.tick,
+    const accepted = deliverPhysicalImpulse(state, target, { x: dirX * magnitude, z: dirZ * magnitude }, {
+      tick: state.tick, reason: 'hull_burst',
       // A nudge (an ally, a civilian, a neutral) carries no provenance: it is not the player's doing and must
       // not open a stunt-journal root for a hull the player is not fighting.
       ...(hostile ? { provenance: { actorId: state.playerId, weaponId: def.moduleId, tag: 'hull_burst' } } : {}),
-    });
+    }, { scaleEnvironment: false, port: physics });
     if (accepted === false) return false;
     rt.hits += 1;
     if (hostile) {

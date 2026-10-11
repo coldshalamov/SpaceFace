@@ -5,6 +5,7 @@
 // same published mirror VFX/HUD consume — never touches the kernel or sim state.
 
 import { FIELD_DEFS } from '../data/fields.js';
+import { GYRE_SNARE } from '../data/gyreSnare.js';
 import { TABLE_HEARING_FAR_WU } from '../render/tabletopPolicy.js';
 
 export const FIELD_LOOP_PREFIX = 'fieldLoop_';
@@ -108,9 +109,33 @@ export function collectFieldLoopSpecs(state, out = []) {
     // Katamari escalation arc: the loop's envelope (which also drives its pitch — a
     // winding field spins up) rides clump mass, so the hum swells and sharpens as
     // the ball grows instead of mass staying ear-invisible until the FULL chime.
-    const massFrac = Number.isFinite(gyre.clumpMass) && Number.isFinite(gyre.maxClumpMass) && gyre.maxClumpMass > 0
+    // Gated to holding/launching: clumpMass deliberately keeps a still-flying
+    // ball's frozen mass during 'beaming' — the presentation HOLD-gates the same
+    // ledger so an empty funnel reads empty; the hum must not swell over a ball
+    // the lash no longer holds.
+    const massLive = gyre.phase === 'holding' || gyre.phase === 'launching';
+    const massFrac = massLive && Number.isFinite(gyre.clumpMass) && Number.isFinite(gyre.maxClumpMass) && gyre.maxClumpMass > 0
       ? Math.min(1, gyre.clumpMass / gyre.maxClumpMass) : 0;
-    const pos = gyre.maw && Number.isFinite(gyre.maw.x) ? gyre.maw : null;
+    // The coil's own term: strain01 publishes 0 through LAUNCH, so without this
+    // the hum sags to its mass floor through the ~183 ms pull-back — exactly the
+    // beat the visuals tense hardest for. It crests into the crack instead.
+    const windup = Number.isFinite(gyre.launchWindup01)
+      ? Math.min(1, Math.max(0, gyre.launchWindup01)) : 0;
+    // The countdown joins the voice too: the hum thins inside the same fuseWarnVisS
+    // window the HUD ·Ns/bar and the glass's fuseDim already telegraph — the file's
+    // own countdown-in-the-voice contract (see the ball rumble's pTtlWarn sag below).
+    // A pad-and-ears player feels the fuse dying instead of only seeing it.
+    const fuseS = Number.isFinite(gyre.fuseS) ? gyre.fuseS : 0;
+    const fuseTerm = fuseS > 0 && fuseS < GYRE_SNARE.fuseWarnVisS
+      ? 0.55 + 0.45 * (fuseS / GYRE_SNARE.fuseWarnVisS) : 1;
+    // The hum's seat rides the load: during HOLD the clump orbits up to ~72 wu
+    // off the maw, and through the coil the payload visibly drags aft — the
+    // voice follows the mass the player is watching in both windows.
+    const pos = gyre.phase === 'holding' && gyre.corePos && Number.isFinite(gyre.corePos.x)
+      ? gyre.corePos
+      : (gyre.phase === 'launching' && gyre.ballPos && Number.isFinite(gyre.ballPos.x)
+        ? gyre.ballPos
+        : (gyre.maw && Number.isFinite(gyre.maw.x) ? gyre.maw : null));
     if (pos) {
       out.push({
         key: FIELD_LOOP_PREFIX + 'gyre',
@@ -123,7 +148,17 @@ export function collectFieldLoopSpecs(state, out = []) {
         // so a 90° turn would leave the hum in the wrong ear. A nose-mounted lash hums
         // centered on the hull — honest, and it dies with the player like any track.
         trackId: state.playerId,
-        envelope: Math.min(1, 0.35 + 0.65 * strain + 0.22 * massFrac),
+        // Rescaled so the payload arc survives the warn band: the old weights
+        // (0.35+0.65·strain+0.22·massFrac+0.25·windup) hit the 1.0 clamp on
+        // strain alone, killing mass/windup grading exactly at the crest. The
+        // basin term lets a loading funnel thicken the voice before the catch —
+        // ears join the uNet shimmer/disc kick eyes already got for the fill.
+        envelope: Math.min(1, 0.3 + 0.45 * strain + 0.15 * massFrac + 0.1 * windup
+          + 0.05 * Math.min(1, (Number.isFinite(gyre.basinCount) ? gyre.basinCount : 0) / 3)) * fuseTerm,
+        // Heavier load = deeper voice: the hum sags ~13% under a capped moon,
+        // the same arc the thrown ball's rumble already grades by mass. The
+        // spec pitch folds into the loop's envelope-driven rate (no new infra).
+        pitch: 1 - 0.13 * massFrac,
         phase: 'active',
         position: pos,
       });
@@ -140,6 +175,14 @@ export function collectFieldLoopSpecs(state, out = []) {
     const dx = gyre.ballPos.x - px, dz = gyre.ballPos.z - pz;
     if (dx * dx + dz * dz <= HEARING_FAR2) {
       const mass = Number.isFinite(gyre.ballMass) ? gyre.ballMass : 0;
+      // The loop telegraphs the grave too — inside ballTtlWarnS the rumble sags
+      // toward silence like the ribbon fade and the ·Ns countdown it sits beside.
+      const pTtlWarn = GYRE_SNARE.ballTtlWarnS > 0 && Number.isFinite(gyre.ballTtlLeftS)
+        ? Math.min(1, gyre.ballTtlLeftS / GYRE_SNARE.ballTtlWarnS) : 1;
+      // It's a FLIGHT voice — a ricochet-stalled ball (the ribbon stall-hides
+      // under ~5 wu/s) sags to a whisper too instead of groaning parked for 9 s.
+      const pVl = Math.hypot(gyre.ballVx || 0, gyre.ballVz || 0);
+      const pSpeed = 0.2 + 0.8 * Math.min(1, Math.max(0, pVl / 40));
       out.push({
         key: FIELD_LOOP_PREFIX + 'gyreBall',
         fieldId: -2,
@@ -147,7 +190,7 @@ export function collectFieldLoopSpecs(state, out = []) {
         recipeId: 'sfx_field_loop_gyre_ball',
         gain: 0.24,
         trackId: gyre.launchedId,
-        envelope: Math.min(1, 0.5 + mass / 2400),
+        envelope: Math.min(1, 0.5 + mass / 2400) * (0.55 + 0.45 * pTtlWarn) * pSpeed,
         phase: 'active',
         position: gyre.ballPos,
       });
@@ -163,6 +206,12 @@ export function collectFieldLoopSpecs(state, out = []) {
       const dx = b.x - px, dz = b.z - pz;
       if (dx * dx + dz * dz > HEARING_FAR2) continue;
       const mass = Number.isFinite(b.mass) ? b.mass : 0;
+      // Same grave sag as the primary, keyed on the secondary's own countdown.
+      const sTtlWarn = GYRE_SNARE.ballTtlWarnS > 0 && Number.isFinite(b.ttlS)
+        ? Math.min(1, b.ttlS / GYRE_SNARE.ballTtlWarnS) : 1;
+      // Same stall sag as the primary — a parked secondary whispers, not groans.
+      const sVl = Math.hypot(b.vx || 0, b.vz || 0);
+      const sSpeed = 0.2 + 0.8 * Math.min(1, Math.max(0, sVl / 40));
       out.push({
         key: FIELD_LOOP_PREFIX + 'gyreBall' + String(b.id),
         fieldId: -2,
@@ -170,7 +219,7 @@ export function collectFieldLoopSpecs(state, out = []) {
         recipeId: 'sfx_field_loop_gyre_ball',
         gain: 0.2,
         trackId: b.id,
-        envelope: Math.min(1, 0.45 + mass / 2400),
+        envelope: Math.min(1, 0.45 + mass / 2400) * (0.55 + 0.45 * sTtlWarn) * sSpeed,
         phase: 'active',
         position: { x: b.x, z: b.z },
       });
@@ -210,7 +259,7 @@ function startFieldLoop(host, spec) {
   voice.role = 'combat';
   voice._fieldKey = spec.key;
   voice._fieldEnvelope = spec.envelope;
-  voice._fieldPitch = fieldLoopPitch(spec.envelope) * (rt._bulletTimePitch || 1);
+  voice._fieldPitch = fieldLoopPitch(spec.envelope) * (spec.pitch || 1) * (rt._bulletTimePitch || 1);
   voice._statusScale = 1;
   rt.loops[spec.key] = voice;
   if (typeof host._setVoiceRate === 'function') host._setVoiceRate(voice, voice._fieldPitch);
@@ -242,9 +291,18 @@ export function syncFieldAudioLoops(host) {
   for (const spec of wanted) {
     const existing = rt.loops[spec.key];
     if (existing) {
+      // The primary gyreBall key is fixed but its subject isn't: when the watch
+      // promotes a different ball into launchedId, the live voice's follow/
+      // trackId still points at the retired corpse — re-bind instead of riding
+      // the wrong ball until the loop self-ends.
+      if (existing.trackId !== spec.trackId) {
+        stopLoop(host, spec.key);
+        startFieldLoop(host, spec);
+        continue;
+      }
       existing._fieldEnvelope = spec.envelope;
       existing._statusScale = 1;
-      const pitch = fieldLoopPitch(spec.envelope) * (rt._bulletTimePitch || 1);
+      const pitch = fieldLoopPitch(spec.envelope) * (spec.pitch || 1) * (rt._bulletTimePitch || 1);
       if (Math.abs((existing._fieldPitch || 1) - pitch) > 0.02 && typeof host._setVoiceRate === 'function') {
         host._setVoiceRate(existing, pitch);
         existing._fieldPitch = pitch;

@@ -144,17 +144,16 @@ function dashImpulseAlongNose(h) {
   return (i.x * Math.cos(h.player.rot) + i.z * Math.sin(h.player.rot)) / h.player.physicsBody.mass;
 }
 
-test('a dash on a live line cannot lift speed past the boosted cap (no chord-break pumping)', () => {
+test('a dash on a live line always fires at full strength, whatever the speed', () => {
   const slow = harness();
   const slowDv = dashImpulseAlongNose(slow);
-  assert.ok(Math.abs(slowDv - 170) < 1e-6, `a dash well under the cap is untouched, got ${slowDv}`);
+  assert.ok(Math.abs(slowDv - 170) < 1e-6, `a slow tethered dash is full strength, got ${slowDv}`);
 
   const fast = harness();
   const cap = resolvePropulsionProfile(fast.player, fast.state);
-  const boostedCap = cap.combatSpeed * cap.boostSpeedMult;
-  fast.player.vel = { x: 0, z: boostedCap - 40 };
+  fast.player.vel = { x: 0, z: cap.combatSpeed * cap.boostSpeedMult + 100 };
   const fastDv = dashImpulseAlongNose(fast);
-  assert.ok(fastDv <= 40 + 1e-6, `a line dash may only top the swing up to the boosted cap, got ${fastDv}`);
+  assert.ok(Math.abs(fastDv - 170) < 1e-6, `a fast tethered dash is still full strength, got ${fastDv}`);
 });
 
 test('without a live line the dash is unchanged', () => {
@@ -164,24 +163,6 @@ test('without a live line the dash is unchanged', () => {
   free.player.vel = { x: 0, z: cap.combatSpeed * cap.boostSpeedMult - 40 };
   const dv = dashImpulseAlongNose(free);
   assert.ok(Math.abs(dv - 170) < 1e-6, `free-flight dash keeps its full impulse, got ${dv}`);
-});
-
-test('a line dash already above its cap spends nothing and emits no success cue', () => {
-  const h = harness();
-  const profile = resolvePropulsionProfile(h.player, h.state);
-  h.player.vel = { x: 0, z: profile.combatSpeed * profile.boostSpeedMult + 100 };
-  const events = [];
-  h.bus.emit = (type) => events.push(type);
-  const system = Object.create(flightV3Module.flightV3);
-  system.init({ state: h.state, bus: h.bus });
-  system.update(DT, h.state);
-  const command = consumePhysicsCommand(h.player);
-  assert.equal(command.impulses.length, 0);
-  assert.equal(h.player.boost.dashCdT, 0);
-  assert.ok(h.player.boost.energy > 219, 'only the sustained boost pays its normal drain');
-  assert.equal(events.includes('ship:dash'), false);
-  assert.equal(events.includes('ship:boostPreKick'), false);
-  assert.ok(!(h.player.boost._overshootUntil > h.state.simTime));
 });
 
 test('input tags helm-cursor and twin-stick turn intent as aim-derived', () => {

@@ -30,8 +30,35 @@ if(!process.argv.includes('--bundle-only')){
     await page.setContent(html);await page.waitForFunction(()=>window.ready===true);
     assert.equal(await page.locator('.race-board-course').count(),3);
     assert.equal(await page.locator('.race-board-launch').count(),8);
+    const selectedOptions={};
+    for(const name of ['Circuit ship','Circuit drive']){
+      const control=page.getByRole('combobox',{name,exact:true});
+      assert.ok(await control.isVisible(),`${name} is visible`);
+      const values=await control.locator('option').evaluateAll(options=>options.map(option=>option.value));
+      assert.equal(values.length,3,`${name} exposes three choices`);
+      for(const value of values){
+        await control.selectOption(value);
+        assert.equal(await control.inputValue(),value,`${name} selects ${value}`);
+        await page.evaluate(()=>probe.board.refresh(probe.ctx));
+        assert.equal(await control.inputValue(),value,`${name} survives board refresh`);
+      }
+      selectedOptions[name]=values;
+    }
+    await page.getByRole('combobox',{name:'Circuit ship',exact:true}).selectOption('starter_wasp');
+    await page.getByRole('combobox',{name:'Circuit drive',exact:true}).selectOption('sprint');
     await page.screenshot({path:path.join(out,'board-desktop.png'),fullPage:true});
     await page.setViewportSize({width:390,height:844});
+    const practiceView=page.getByRole('button',{name:/^Practice: /});
+    for(const mode of ['racing','auto','overhead']){
+      await practiceView.click();
+      assert.equal(await practiceView.innerText(),`Practice: ${mode}`);
+    }
+    assert.ok(await practiceView.evaluate(button=>{
+      const bounds=button.getBoundingClientRect(),container=button.closest('.race-board').getBoundingClientRect();
+      return bounds.left>=container.left&&bounds.right<=container.right;
+    }),'practice view control fits inside the mobile board');
+    await page.getByRole('combobox',{name:'Circuit ship',exact:true}).selectOption('starter_wasp');
+    await page.getByRole('combobox',{name:'Circuit drive',exact:true}).selectOption('sprint');
     await page.screenshot({path:path.join(out,'board-mobile.png'),fullPage:true});
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'no mobile horizontal overflow');
     await page.evaluate(()=>probe.free());await page.keyboard.press('Backslash');await page.evaluate(()=>probe.tick(.2));
@@ -45,6 +72,19 @@ if(!process.argv.includes('--bundle-only')){
     assert.equal(await page.evaluate(()=>probe.state.settings.gameplay.steeringView),'racing');
     assert.ok(await page.locator('#race-tape').isVisible());
     assert.ok(await page.getByRole('button',{name:'Mission view',exact:true}).isDisabled());
+    await page.evaluate(()=>probe.tick(4));
+    assert.match(await page.locator('.race-tape-stats').innerText(),/wu\/s · GATE/);
+    await page.evaluate(()=>{
+      const params=probe.state.missions.active[0].params,[start,gate]=params.gates;
+      const offset={x:probe.player.pos.x-start.x,z:probe.player.pos.z-start.z};
+      const length=Math.hypot(gate.x-start.x,gate.z-start.z);
+      const approach={x:(gate.x-start.x)/length,z:(gate.z-start.z)/length};
+      params.nextGate=1;
+      Object.assign(probe.player.pos,{x:gate.x+offset.x-approach.x*30,z:gate.z+offset.z-approach.z*30});
+      Object.assign(probe.player.vel,{x:approach.x*1200,z:approach.z*1200});
+      probe.tick(2);
+    });
+    assert.match(await page.locator('.race-tape-hint').innerText(),/BRAKE FOR TURN/,'shared race advice reaches the flight instrument');
     await page.screenshot({path:path.join(out,'hud-mobile.png')});
     await page.getByRole('button',{name:'Recover',exact:true}).click();
     assert.ok(await page.evaluate(()=>probe.events.some(e=>e[0]==='race:reset')));
@@ -89,10 +129,14 @@ if(!process.argv.includes('--bundle-only')){
     assert.ok(await page.getByRole('dialog').isVisible());
     await page.getByRole('button',{name:'Launch circuit',exact:true}).click();
     await page.waitForFunction(()=>probe.events.some(e=>e[0]==='game:new'&&e[1]?.racingSession===true));
-    assert.ok(await page.evaluate(()=>probe.events.some(e=>e[0]==='game:new'&&e[1]?.racingSession===true)));
+    const launches=await page.evaluate(()=>probe.events.filter(e=>e[0]==='game:new').map(e=>e[1]));
+    assert.equal(launches.length,1,'confirmation emits one fresh launch');
+    assert.equal(launches[0].racingSession,true);
+    assert.equal(launches[0].starter,'starter_wasp');
+    assert.equal(launches[0].racingDrive,'sprint');
     await page.evaluate(()=>probe.dispose());assert.equal(await page.locator('#race-tape').count(),0);
     assert.deepEqual(errors,[]);
-    const result={scope:'Actual UI modules in an asset-free component fixture, not full-game playability.',checks:12,pageErrors:errors,viewports:['1440x1050','390x844']};
+    const result={scope:'Actual UI modules in an asset-free component fixture, not full-game playability.',browserPlugin:'Browser plugin not available',pageErrors:errors,viewports:['1440x1050','390x844'],selectedOptions,launch:launches[0]};
     await fs.writeFile(path.join(out,'ui-result.json'),JSON.stringify(result,null,2));
     console.log(JSON.stringify(result));
   }finally{await browser.close();}

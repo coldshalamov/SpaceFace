@@ -117,9 +117,11 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
   const priorLatch = fromAim ? Math.sign(finite(options.latchedDirection)) : 0;
   let selectedDirection = Math.sign(finite(options.flightIntent && options.flightIntent.lateral));
   if (priorLatch !== 0) selectedDirection = priorLatch;
-  if (!(forward > ORBIT_ASSIST_TUNING_V1.minIntent)) return inactive('no-forward-intent');
-  if (selectedDirection === 0) return inactive('no-lateral-intent');
   if (input.brake || options.controlsBlocked) return inactive('manual-override');
+  // No chord (forward + a turn direction): the pilot still gets the swing carried for them.
+  if (!(forward > ORBIT_ASSIST_TUNING_V1.minIntent) || selectedDirection === 0) {
+    return carrySwing(options, input, strength, inactive);
+  }
 
   const host = options.host;
   const anchor = options.anchor;
@@ -214,6 +216,67 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
       armShare,
       latchedDirection: fromAim ? selectedDirection : 0,
       reason: lineLoaded ? 'engaged' : 'line-slack',
+    },
+  };
+}
+
+/**
+ * Swing carry. On a loaded line the hull turns with the swing: the orbital yaw rate
+ * (cross(radius, relative velocity) / radius^2) is added to whatever the pilot steers, so the nose
+ * keeps its bearing to the anchor and forward thrust stays tangent instead of rotating onto the
+ * radius and diving the ship in. The pilot's own turn input rides on top, relative to the line.
+ * It needs no key, speed or heading condition: only a taut line, which is what makes a swing real.
+ */
+function carrySwing(options, input, strength, inactive) {
+  const phase = String((options.tether && options.tether.phase) || 'slack');
+  if (!(phase === 'capture' || phase === 'loaded' || phase === 'overload')) return inactive('line-slack');
+  const host = options.host;
+  const anchor = options.anchor;
+  const rx = finite(host.pos.x) - finite(anchor.pos.x);
+  const rz = finite(host.pos.z) - finite(anchor.pos.z);
+  const radius = Math.hypot(rx, rz);
+  if (!(radius > 1e-6)) return inactive('degenerate-radius');
+  const relVx = finite(host.vel.x) - finite(anchor.vel.x);
+  const relVz = finite(host.vel.z) - finite(anchor.vel.z);
+  const orbitalYawRate = (rx * relVz - rz * relVx) / (radius * radius);
+  const direction = Math.sign(orbitalYawRate) || 1;
+  const tangentialSpeed = (relVx * -rz + relVz * rx) / radius * direction;
+  const hullMaxYawRate = positive(options.profile && options.profile.maxYawRate, 1);
+  let maxYawRate = hullMaxYawRate;
+  let lentYawRate = null;
+  if (Math.abs(orbitalYawRate) * ORBIT_LINE_YAW_LOCK.rateMargin > hullMaxYawRate) {
+    lentYawRate = Math.min(Math.abs(orbitalYawRate) * ORBIT_LINE_YAW_LOCK.rateMargin,
+      ORBIT_LINE_YAW_LOCK.absoluteYawCap);
+    maxYawRate = Math.max(hullMaxYawRate, lentYawRate);
+  }
+  const pilotRate = clamp(finite(input.turn), -1, 1) * hullMaxYawRate;
+  const desiredYawRate = clamp(orbitalYawRate + pilotRate, -maxYawRate, maxYawRate);
+  const anchorMass = positive(anchor.mass, positive(anchor.physicsBody && anchor.physicsBody.mass, 0));
+  const hostMass = positive(host.mass, 1);
+  return {
+    active: true,
+    input: { ...input, turn: desiredYawRate / maxYawRate },
+    telemetry: {
+      tuning: ORBIT_ASSIST_TUNING_V1.id,
+      strength,
+      direction,
+      selectedDirection: direction,
+      intentSource: 'swing-carry',
+      carry: true,
+      radius,
+      radialSpeed: (relVx * rx + relVz * rz) / radius,
+      tangentialSpeed,
+      orbitalYawRate,
+      maxYawRate,
+      hullMaxYawRate,
+      lentYawRate,
+      desiredYawRate,
+      turnIntent: desiredYawRate / maxYawRate,
+      saturated: false,
+      yawCeiling: ORBIT_LINE_YAW_LOCK.absoluteYawCap,
+      armShare: anchorMass > 0 ? anchorMass / (anchorMass + hostMass) : 1,
+      latchedDirection: 0,
+      reason: 'swing-carry',
     },
   };
 }

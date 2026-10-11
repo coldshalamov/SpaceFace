@@ -224,6 +224,7 @@ ${D} .sf-crd-stake .fh-tile-art svg.orr-prep-stake-mark { width:28px !important;
 ${D} .orr-tile[aria-pressed=true] .orr-prep-stake-mark { color:var(--dp-hand) !important; opacity:1; }
 ${D} .orr-prep-stake-number { font-size:29px !important; font-weight:250 !important; letter-spacing:-.01em; }
 ${D} .orr-prep-stake-pressure { margin-top:3px; font:400 12px/1.3 var(--dp-face-label); letter-spacing:.1em; text-transform:uppercase; }
+${D} .orr-prep-stake-yield { margin-top:2px; font:400 12px/1.3 var(--dp-face-body,'Instrument Sans'),sans-serif; color:var(--dp-ink-dim); }
 /* arena: one strip of five; the words carry the choice, the hero carries the rooms */
 ${D} .sf-crd-arenas .orr-tile { min-height:66px !important; padding:6px 4px 8px !important; }
 ${D} .sf-crd-arenas .fh-tile-art { height:34px !important; }
@@ -330,7 +331,21 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
 @media (forced-colors:active) {
  ${D} .orr-prep-tab[aria-selected=true], ${D} .orr-tile[aria-pressed=true], ${A} .sf-cru-card.is-lit { outline:2px solid Highlight !important; }
  ${D} .k-foot .orr-prep-continue, ${D} .k-foot .orr-key--hazard, ${A} .orr-armory-purchase { background:ButtonFace !important; color:ButtonText !important; border:1px solid ButtonText !important; clip-path:none; }
+ ${A} .sf-cru-card.is-unavail { opacity:1 !important; }
+ ${A} .sf-cru-card.is-unavail .sf-cru-name { color:GrayText !important; }
 }
+/* each preparation step names its one decision: the fight, then the ship, then the armory */
+${D} .orr-prep-panelhead { margin:2px 0 18px !important; }
+${D} .orr-prep-panelhead-step { font:700 15px/1.3 var(--dp-face-label) !important; letter-spacing:.06em !important; color:var(--dp-ink) !important; margin:0 !important; }
+${D} .orr-prep-panelhead-line { font:400 13px/1.5 var(--dp-face-body,'Instrument Sans'),sans-serif !important; color:var(--dp-ink-dim) !important; margin:4px 0 0 !important; max-width:60ch !important; }
+/* the shelf tells buyable from not at a glance: unavailable rows dim (still inspectable, still
+   readable — the reason line names the unlock), fitted rows mark their price in the Hand */
+${A} .sf-cru-card.is-unavail { opacity:.55 !important; }
+${A} .sf-cru-card.is-unavail > .orr-equipment-glyph { opacity:.4 !important; }
+${A} .sf-cru-card.is-unavail .sf-cru-afford { color:var(--dp-ink-dim) !important; }
+${A} .sf-cru-card.is-lit.is-unavail { opacity:.75 !important; }
+${A} .sf-cru-card.is-fitted .sf-cru-price { color:var(--dp-hand) !important; }
+${A} .orr-armory-item > video { width:100%; height:100%; object-fit:contain; }
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {
   if (!doc?.head || doc.getElementById('orr-crucible-preparation-style')) return;

@@ -1,13 +1,15 @@
 // PQ-026.02 — Inertial shunt: on a ram, dump the fitted hull's closing speed into the other body.
 // Pure planner. Weapons.js is the only caller that queues the impulses.
 
+import { deliverPhysicalImpulse } from './physicalEffects.js';
+import { isEnvironmentalBody } from '../core/physicalResponse.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import {
   INERTIAL_SHUNT_TUNING,
   INERTIAL_SHUNT_WEAPON_ID,
 } from '../data/combatDefs.js';
 
-const SHUNT_TYPES = new Set(['ship', 'drone']);
+const SHUNT_TYPES = new Set(['ship', 'drone', 'asteroid', 'wreck', 'cargo_pod', 'pickup', 'mine', 'payload', 'station', 'gate', 'structure']);
 
 function finite(value, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
@@ -102,7 +104,7 @@ export function fillInertialShuntImpulses(
 
   const refMass = positive(tuning && tuning.refMass, 24);
   const dump = clamp(finite(tuning && tuning.dumpVsLight, 0.95), 0, 1);
-  const couple = clamp(refMass / Math.max(mT, refMass), 0.08, 1);
+  const couple = isEnvironmentalBody(target) ? 1 : clamp(refMass / Math.max(mT, refMass), 0.08, 1);
   const lostSpeed = closing * couple * dump;
   if (!(lostSpeed > 0)) return false;
 
@@ -156,7 +158,7 @@ export function tryApplyInertialShuntFromImpact(state, payload, getEntity, shunt
     : null;
   if (!fillInertialShuntImpulses(shunterOut, targetOut, shunter, target, INERTIAL_SHUNT_TUNING, contact)) return null;
   queuePhysicsImpulse(shunter, shunterOut);
-  queuePhysicsImpulse(target, targetOut);
+  deliverPhysicalImpulse(state, target, targetOut, { actorId: shunter.id, weaponId: INERTIAL_SHUNT_WEAPON_ID, tag: 'inertial_shunt', appliedTick: tick });
   if (cooldown && typeof cooldown.set === 'function') {
     const hold = Number.isInteger(INERTIAL_SHUNT_TUNING.cooldownTicks)
       ? INERTIAL_SHUNT_TUNING.cooldownTicks

@@ -1,0 +1,21 @@
+// Authored power responsiveness is separate from collision mass.
+export const PHYSICAL_REFERENCE_MASS = 16;
+// A single blast visibly displaces the pilot. Repeated overlapping sources share
+// a rolling budget so a swarm cannot chain the controls into permanent knockback.
+export const PLAYER_EXTERNAL_RESPONSE = Object.freeze({ scale: 0.35, impulseBudget: 24, windowTicks: 30, maxAcceleration: 48 });
+
+export function isEnvironmentalBody(body) {
+  return !!body && !['ship', 'drone', 'projectile', 'station', 'gate', 'planet', 'structure', 'fx'].includes(body.type);
+}
+
+export function environmentResponse(body) {
+  const radius = Number(body && body.radius);
+  return Math.max(0.55, Math.min(1.25, 16 / (Number.isFinite(radius) && radius > 0 ? radius : 16)));
+}
+
+export function isAnchoredPhysicalBody(body) {
+  if (!body || body.type === 'planet' || body.physicsBody === false) return false;
+  const data = body.data || {};
+  return body.type === 'station' || body.type === 'gate' || data.isGate || data.isLandmark
+    || data.isLandmarkRock || data.landmark || data.archetype === 'landmark';
+}

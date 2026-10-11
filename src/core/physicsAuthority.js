@@ -5,6 +5,56 @@
 // commands and measured telemetry out of saves, replays, and renderer-facing entity graphs.
 
 import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
+import { PLAYER_EXTERNAL_RESPONSE, isAnchoredPhysicalBody } from './physicalResponse.js';
+
+const EXTERNAL_BUDGETS = new WeakMap();
+const EXTERNAL_FEEDBACK = new WeakMap();
+// Presentation reads the admitted world-plane delta-V, after protection, without
+// inventing motion from a key press or serializing transient hit feedback.
+export function readExternalPhysicsFeedback(entity) { return EXTERNAL_FEEDBACK.get(entity) || null; }
+const ANCHORED_IMPULSES = new WeakMap();
+export function consumeAnchoredPhysicsImpulse(entity) {
+  const impulse = ANCHORED_IMPULSES.get(entity);
+  ANCHORED_IMPULSES.delete(entity);
+  return impulse || null;
+}
+export function hasPendingAnchoredPhysicsImpulse(entity) {
+  return ANCHORED_IMPULSES.has(entity);
+}
+
+export function prepareExternalPhysicsImpulse(entity, impulse, evidence = null, tickOverride = null) {
+  const out = { x: finite(impulse && impulse.x), y: finite(impulse && impulse.y), z: finite(impulse && impulse.z) };
+  if (!evidence?.externalEffect || evidence.externalProtected || evidence.motionIntent === 'player_maneuver'
+    || !(entity?.isPlayer === true || evidence.isPlayerTarget)) return out;
+  const body = resolvePhysicsBodySpec(entity);
+  if (!body) return null;
+  const tick = Number.isFinite(tickOverride) ? tickOverride : finite(evidence.tick);
+  let budget = EXTERNAL_BUDGETS.get(entity);
+  if (!budget || tick < budget.lastTick) { budget = { samples: [], lastTick: tick }; EXTERNAL_BUDGETS.set(entity, budget); }
+  budget.lastTick = tick;
+  budget.samples = budget.samples.filter(sample => sample.tick > tick - PLAYER_EXTERNAL_RESPONSE.windowTicks);
+  const used = budget.samples.reduce((sum, sample) => sum + sample.dv, 0);
+  const rawDv = Math.hypot(out.x, out.z) / body.mass;
+  const dt = positive(evidence.dt, 1 / 60);
+  const tickContinuous = budget.samples.filter(sample => sample.tick === tick && sample.continuous).reduce((sum, sample) => sum + sample.dv, 0);
+  const continuousCap = evidence.continuous ? Math.max(0, PLAYER_EXTERNAL_RESPONSE.maxAcceleration * dt - tickContinuous) : Infinity;
+  const accepted = Math.min(rawDv * PLAYER_EXTERNAL_RESPONSE.scale, continuousCap,
+    Math.max(0, PLAYER_EXTERNAL_RESPONSE.impulseBudget - used));
+  const scale = rawDv > 0 ? accepted / rawDv : 0;
+  out.x *= scale; out.z *= scale;
+  if (accepted > 0) {
+    budget.samples.push({ tick, dv: accepted, continuous: evidence.continuous === true });
+    let feedback = EXTERNAL_FEEDBACK.get(entity);
+    if (!feedback || feedback.tick !== tick) {
+      feedback = { tick, deltaV: 0, deltaX: 0, deltaZ: 0 };
+      EXTERNAL_FEEDBACK.set(entity, feedback);
+    }
+    feedback.deltaV += accepted;
+    feedback.deltaX += out.x / body.mass;
+    feedback.deltaZ += out.z / body.mass;
+  }
+  return out;
+}
 
 export const PHYSICS_COMMAND_SCHEMA_VERSION = 1;
 export const PHYSICS_BODY_SCHEMA_VERSION = 1;
@@ -132,14 +182,25 @@ export function takeConsumedPhysicsControlReceipt(entity, command) {
 /** Queue a world-space linear impulse. The physics owner applies it on its next tick. */
 export function queuePhysicsImpulse(entity, impulse, evidence = null) {
   if (!entity || typeof entity !== 'object') return false;
+  const prepared = prepareExternalPhysicsImpulse(entity, impulse, evidence);
+  if (!prepared || (evidence?.externalEffect && Math.hypot(prepared.x, prepared.z) === 0)) return false;
+  if (isAnchoredPhysicalBody(entity)) {
+    const body = ensurePhysicsBodySpec(entity);
+    if (!body.anchorRecoil) body.anchorRecoil = { rest: { x: finite(entity.pos?.x), z: finite(entity.pos?.z) }, x: 0, z: 0, vx: 0, vz: 0 };
+    const previous = ANCHORED_IMPULSES.get(entity) || { x: 0, z: 0 };
+    previous.x += prepared.x / body.mass; previous.z += prepared.z / body.mass;
+    ANCHORED_IMPULSES.set(entity, previous);
+    return true;
+  }
   const command = commandFor(entity);
-  command.impulses.push(pooledVector3(impulse, evidence));
+  command.impulses.push(pooledVector3(prepared, evidence && { ...evidence, externalProtected: true }));
   return true;
 }
 
 /** Queue a world-space angular impulse. SpaceFace only uses the Y component physically. */
 export function queuePhysicsTorqueImpulse(entity, impulse, evidence = null) {
   if (!entity || typeof entity !== 'object') return false;
+  if (evidence?.externalEffect && (entity.isPlayer === true || evidence.isPlayerTarget)) return false;
   const command = commandFor(entity);
   command.torqueImpulses.push(pooledVector3(impulse, evidence));
   return true;
@@ -533,12 +594,18 @@ function pooledVector3(source, evidence) {
     value.provenance = evidence.provenance;
     value.tick = evidence.tick;
     value.kind = evidence.kind;
+    if (evidence.externalEffect) {
+      value.externalEffect = true;
+      value.externalProtected = evidence.externalProtected === true;
+    } else { delete value.externalEffect; delete value.externalProtected; }
   } else if ('provenance' in value || 'tick' in value || 'kind' in value) {
     // A pooled object keeps the exact fresh-object shape: evidence fields exist only when
     // evidence was supplied, never as stale leftovers from a previous queueing.
     delete value.provenance;
     delete value.tick;
     delete value.kind;
+    delete value.externalEffect;
+    delete value.externalProtected;
   }
   return value;
 }

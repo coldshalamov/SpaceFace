@@ -94,7 +94,7 @@ function wakePlayer(time, offset = 80) {
 
 test('section contracts require a stationary aligned approach before the timed grid', () => {
   const h = harness();
-  assert.equal(h.p.courseRevision, 3);
+  assert.equal(h.p.courseRevision, 4);
   assert.equal(h.p.phase, 'approach');
   assert.equal(h.m.objectiveTarget, raceObjectiveUnits(h.p) + 1);
   h.state.settings.gameplay.steeringView = 'auto';
@@ -285,6 +285,14 @@ test('wake eligibility is geometric and the assist accrues only simulation dt', 
   assert.equal(noTime.patch.drafting, true);
   assert.equal(noTime.patch.draftTimeS, a.p.draftTimeS);
   assert.equal(noTime.impulses.length, 0);
+});
+
+test('adventure wake follows its start-gate clock instead of the circuit acceptance clock', () => {
+  const params = wakeParams({ adventureSpeedId: 'wake', raceStartSimS: 0,
+    adventureSpeedStartSimS: 100 });
+  assert.equal(sampleRacingWake(params, wakePlayer(1), simpleCourse, 101).active, true);
+  assert.equal(sampleRacingWake({ ...params, adventureSpeedStartSimS: null },
+    wakePlayer(1), simpleCourse, 101).active, false);
 });
 
 test('phase and accumulated wake fields survive mission save/load without replacing camera preference', () => {

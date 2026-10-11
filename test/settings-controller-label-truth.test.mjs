@@ -6,7 +6,7 @@
 //   1. Pause and Mission Log are separate rows / verbs (not conflated).
 //   2. Keyboard interface shortcut labels derive from live BINDINGS where applicable.
 //   3. Gamepad documents Start → Pause → Mission Log (no direct Mission Log button).
-//   4. Touch documents a dedicated Log (Mission Log) button, separate from Pause.
+//   4. Touch teaches the phone deck; its Navigation bank keeps Missions separate from Pause.
 //
 // Does not edit production. Run:
 //   node test/settings-controller-label-truth.test.mjs
@@ -20,13 +20,15 @@ import { fileURLToPath } from 'node:url';
 
 import { BINDINGS } from '../src/ui/bindings.js';
 import { CONTROL_SHORTCUTS } from '../src/ui/screens/settings.js';
+import { createTouch } from '../src/systems/touch.js';
+import { POWER_PAGES } from '../src/systems/mobile/catalog.js';
 
 const SETTINGS_SRC = readFileSync(
   fileURLToPath(new URL('../src/ui/screens/settings.js', import.meta.url)),
   'utf8',
 );
-const TOUCH_SRC = readFileSync(
-  fileURLToPath(new URL('../src/systems/touch.js', import.meta.url)),
+const MOBILE_VIEW_SRC = readFileSync(
+  fileURLToPath(new URL('../src/systems/mobile/view.js', import.meta.url)),
   'utf8',
 );
 const GAMEPAD_SRC = readFileSync(
@@ -212,53 +214,60 @@ check('runtime gamepad map supports Pause-only Start, not missionLog', () => {
 
 // ── 4. Touch-label truth ────────────────────────────────────────────────────
 
-check('Settings touch copy lists dedicated Log (Mission Log) and separate Pause', () => {
-  assert.match(
-    SETTINGS_SRC,
-    /Log \(Mission Log\)/,
-    'touch blurb must name Log as Mission Log (player-facing touch label truth)',
-  );
-  assert.match(
-    SETTINGS_SRC,
-    /buttons = fire, mine, boost, dock, Map, Log \(Mission Log\), Star, Pause/,
-    'touch blurb must list Dock/Map/Log/Star/Pause as dedicated buttons',
-  );
-  // Touch has a direct Log button — unlike gamepad — and Pause stays separate.
+check('Settings touch copy teaches the live phone deck and powers handle', () => {
   const touchBlurbMatch = SETTINGS_SRC.match(
-    /Virtual sticks:[\s\S]*?Auto-enabled on touch devices\./,
+    /Touch empty space[\s\S]*?Auto-enabled on touch devices\./,
   );
-  assert.ok(touchBlurbMatch, 'touch virtual-sticks paragraph must exist');
+  assert.ok(touchBlurbMatch, 'touch phone-deck paragraph must exist');
   const touchBlurb = touchBlurbMatch[0];
-  assert.match(touchBlurb, /Log \(Mission Log\)/, 'touch paragraph must include Log (Mission Log)');
-  assert.match(touchBlurb, /\bPause\b/, 'touch paragraph must include Pause as its own button');
+  assert.match(touchBlurb, /drag to fly/i, 'teach the floating flight stick');
+  assert.match(touchBlurb, /gun and tether/i, 'name the dedicated thumb controls');
+  assert.match(touchBlurb, /swipe the powers handle/i, 'teach access to the other actions');
   assert.doesNotMatch(
     touchBlurb,
     /Start → Pause → Mission Log/,
-    'touch must not reuse the gamepad Start→Pause→Log route (touch has a direct Log button)',
+    'touch must not reuse the gamepad Start→Pause→Log route',
   );
 });
 
-check('touch runtime exposes missionLog + pause as separate actions/labels', () => {
+check('touch Navigation exposes Mission Log and Pause as distinct live UI actions', () => {
+  const navigation = POWER_PAGES.find((page) => page.name === 'Navigation');
+  assert.ok(navigation, 'the powers wheel must offer a Navigation bank');
+  const missionLog = navigation.powers.find((power) => power.id === 'missionLog');
+  const pause = navigation.powers.find((power) => power.id === 'pause');
+  assert.equal(missionLog?.label, 'MISSIONS');
+  assert.match(missionLog?.description || '', /mission log/i);
+  assert.equal(pause?.label, 'PAUSE');
+  assert.match(pause?.description || '', /pause menu/i);
+  assert.equal(missionLog?.kind, 'ui');
+  assert.equal(pause?.kind, 'ui');
   assert.match(
-    TOUCH_SRC,
-    /data-act="missionLog"[^>]*>Log</,
-    'touch overlay Mission Log control must be labeled Log',
+    MOBILE_VIEW_SRC,
+    /data-ui="pause" aria-label="Pause game"/,
+    'the phone deck must also retain its dedicated accessible Pause control',
   );
-  assert.match(
-    TOUCH_SRC,
-    /aria-label="Open Mission Log"/,
-    'touch Log button accessible name must be Open Mission Log',
-  );
-  assert.match(
-    TOUCH_SRC,
-    /data-act="pause"[^>]*>Pause</,
-    'touch overlay must expose a separate Pause button',
-  );
-  assert.match(
-    TOUCH_SRC,
-    /action === 'missionLog'/,
-    'touch system must treat missionLog as a first-class action',
-  );
+  const events = [];
+  const state = {
+    mode: 'flight', player: { alive: true }, input: {}, ui: { screenStack: [] },
+    settings: { controls: { touch: { enabled: true } } },
+  };
+  const touch = createTouch({
+    state, bus: { emit: (name, payload) => events.push({ name, payload }) },
+    mobileSeams: {
+      doc: { body: { classList: { contains: () => false } }, documentElement: { dataset: {} } },
+      win: {}, mountView: () => ({ root: {}, destroy() {} }),
+    },
+  });
+  try {
+    touch.setEnabled(true);
+    touch.mobile.activate(missionLog);
+    touch.mobile.activate(pause);
+    assert.deepEqual(
+      events.filter((event) => event.name === 'touch:uiAction').map((event) => event.payload.action),
+      ['missionLog', 'pause'],
+      'the default touch facade must dispatch each choice directly as its own UI action',
+    );
+  } finally { touch.destroy(); }
 });
 
 // ── 5. Cross-modality consistency inside Settings source comments ───────────

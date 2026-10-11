@@ -196,12 +196,15 @@ import {
 } from '../data/raceCourses.js';
 import { raceGateGlobals, startLineFor } from '../data/raceLevels.js';
 import { advanceCircuit, circuitProgress } from './racingGeometry.js';
+import { ADVENTURE_SPEED_CONTRACTS, adventureSpeedOffersForStation } from '../data/adventureSpeedContracts.js';
+import { stepAdventureSpeed } from '../missions/adventureSpeedRuntime.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import {
   raceObjectiveUnits,
   racingAssistIntents,
   rememberRaceRecord,
   raceRecordKey,
+  racingLoadoutCategory,
   resetPoseLocal,
 } from './racingSteer.js';
 // FB-068 — external target loss names its cause from the shared kill-causality vocabulary,
@@ -1911,10 +1914,11 @@ export const missions = {
       const authoredChanged = this._syncAuthoredSetPieceOffers(info, board, epoch);
       const megaHeistChanged = this._syncMegaHeistOffers(info, board, epoch);
       const capitalChanged = this._syncCapitalBossOffer(info, board, epoch);
+      const speedChanged = this._syncAdventureSpeedOffers(info, board);
       const shortageChanged = this._syncShortageOffers(board);
       const starterChanged = this._syncStarterJobOffer(info, board);
       if (storyChanged || setPieceChanged || heistChanged || breakawayChanged
-        || counterweightChanged || yardChanged || authoredChanged || megaHeistChanged || capitalChanged || shortageChanged || starterChanged) {
+        || counterweightChanged || yardChanged || authoredChanged || megaHeistChanged || capitalChanged || speedChanged || shortageChanged || starterChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
@@ -2055,6 +2059,7 @@ export const missions = {
     this._syncAuthoredSetPieceOffers(info, board, epoch);
     this._syncMegaHeistOffers(info, board, epoch);
     this._syncCapitalBossOffer(info, board, epoch);
+    this._syncAdventureSpeedOffers(info, board);
     this.bus.emit('mission:updated', { missionId: null });
     return board;
   },
@@ -2485,6 +2490,22 @@ export const missions = {
       if (already) continue;
       const offer = stampAuthoredTwist(buildAuthoredSetPieceOffer(definition, epoch));
       if (!offer) continue;
+      board.slots.push(offer);
+      changed = true;
+    }
+    return changed;
+  },
+
+  /** Standing speed jobs use the ordinary board and one durable first-clear payment. */
+  _syncAdventureSpeedOffers(info, board) {
+    if (!info || !Array.isArray(board?.slots)) return false;
+    const completed = this.state.missions.adventureSpeedCompleted || {};
+    const active = this.state.missions.active || [];
+    let changed = false;
+    for (const offer of adventureSpeedOffersForStation(info.id)) {
+      const id = offer.params.adventureSpeedId;
+      if (completed[id] || active.some(m => m?.status === 'active' && m.params?.adventureSpeedId === id)) continue;
+      if (board.slots.some(row => row?.params?.adventureSpeedId === id)) continue;
       board.slots.push(offer);
       changed = true;
     }
@@ -3960,6 +3981,12 @@ export const missions = {
   },
 
   _acceptPreflight(offer) {
+    if (offer?.type === 'race' && (this.state.missions.active || []).some(m => m?.status === 'active' && m.type === 'race')) {
+      return { ok: false, reason: 'Finish or leave the current run before accepting another.' };
+    }
+    if (offer?.params?.adventureSpeedId && this.state.missions.adventureSpeedCompleted?.[offer.params.adventureSpeedId]) {
+      return { ok: false, reason: 'This speed contract has already been completed.' };
+    }
     const requiredModule = offer && offer.params && offer.params.requiredModule;
     if (requiredModule && !shipCarriesModule(activeOwnedShip(this.state), requiredModule)) {
       return { ok: false, reason: 'This job needs the fit you woke up in' };
@@ -7663,6 +7690,13 @@ export const missions = {
       this._failMission(m, index, 'race_bad_phase');
       return;
     }
+    if (!params.adventureSpeedId) {
+      const category = racingLoadoutCategory(state, player);
+      if (!params.raceCategory) {
+        if (Number.isFinite(params.raceStartSimS)) params.raceFitChanged = true;
+        params.raceCategory = category;
+      } else if (params.raceCategory !== category) params.raceFitChanged = true;
+    }
     const globals = raceGateGlobals(params);
     if (globals.length !== gates.length) { this._failMission(m, index, 'race_bad_course'); return; }
     if (sectionMission && phase === 'approach') {
@@ -7725,21 +7759,33 @@ export const missions = {
 
     const events = advanceCircuit(params, { prev, pos: player.pos, vel: player.vel,
       gates: globals, previousTime, now });
+    const speedRun = params.adventureSpeedId
+      ? stepAdventureSpeed(params, { events, player, simTime: now }) : null;
+    if (speedRun) {
+      Object.assign(params, speedRun.patch);
+      if (speedRun.outcome === 'failed') {
+        this.bus.emit('toast', { text: params.adventureSpeedHint || 'The speed contract window closed.', kind: 'warn', ttl: 4 });
+        this._failMission(m, index, speedRun.reason);
+        return;
+      }
+    }
     let finish = null;
     for (const event of events) {
+      const measuredElapsed = params.adventureSpeedId
+        ? Math.max(0, event.elapsedS - (params.adventureSpeedState?.startElapsedS || 0)) : event.elapsedS;
       if (event.gateIndex === params.boostGateIndex) params.boostClearedLap = event.lap;
       const expected = Number(params.recordS) * circuitProgress({ ...params, lap: event.lap,
         nextGate: event.gateIndex }, globals[event.gateIndex], globals).fraction;
-      params.lastSplitDeltaS = event.elapsedS - expected;
-      params.lastSplitElapsedS = event.elapsedS;
+      params.lastSplitDeltaS = measuredElapsed - expected;
+      params.lastSplitElapsedS = measuredElapsed;
       if (event.lapCompleted) {
         if (!Array.isArray(params.lapTimesS)) params.lapTimesS = [];
-        params.lapTimesS.push(Math.round(event.lapTimeS * 100) / 100);
+        params.lapTimesS.push(Math.round((params.adventureSpeedId ? measuredElapsed : event.lapTimeS) * 100) / 100);
         // Bounded even on loaded malformed data.
         if (params.lapTimesS.length > 100) params.lapTimesS.shift();
       }
       this.bus.emit('mission:gateCleared', { missionId: m.id, gateCount: gates.length,
-        gateIndex: event.gateIndex, elapsedS: event.elapsedS, lap: event.lap,
+        gateIndex: event.gateIndex, elapsedS: measuredElapsed, lap: event.lap,
         splitDeltaS: params.lastSplitDeltaS, lapCompleted: event.lapCompleted });
       if (event.lapCompleted && !event.finished) this.bus.emit('toast', {
         text: `Lap ${params.lap + 1}/${params.laps} · ${event.lapTimeS.toFixed(2)}s split`, kind: 'info', ttl: 2,
@@ -7753,9 +7799,12 @@ export const missions = {
       this.bus.emit('mission:updated', { missionId: m.id });
     }
     // Burn rings run after ordered crossings. Proximity alone cannot farm a boost.
-    const assist = racingAssistIntents({ params, player, simTime: now, gatesGlobal: globals, dt });
+    const assist = params.adventureSpeedId && !(params.nextGate > 0)
+      ? { patch: {}, impulses: [] }
+      : racingAssistIntents({ params, player, simTime: now, gatesGlobal: globals, dt });
     Object.assign(params, assist.patch);
     for (const row of assist.impulses) if (row?.impulse) queuePhysicsImpulse(player, row.impulse);
+    if (speedRun) finish = speedRun.outcome === 'complete' ? speedRun.finishedEvent : null;
     if (!finish) return;
 
     const elapsedS = finish.elapsedS;
@@ -7768,9 +7817,9 @@ export const missions = {
     const band = raceBandForElapsed(elapsedS, params);
     params.raceBand = band;
     params.raceElapsedS = Math.round(elapsedS * 100) / 100;
-    params.raceClean = !(params.resetCount > 0);
+    params.raceClean = !(params.resetCount > 0) && !params.raceFitChanged;
     m.reward_cr = Math.max(0, Math.round((m.reward_cr || 0) * (RACE_BAND_MULT[band] ?? 1)));
-    if (params.raceClean) {
+    if (params.raceClean && !params.adventureSpeedId) {
       try { rememberRaceRecord(globalThis.localStorage, raceRecordKey(params), params.raceElapsedS); }
       catch { /* private-mode storage is optional; the mission result is not */ }
     }
@@ -7790,8 +7839,8 @@ export const missions = {
       });
       return;
     }
-    this.bus.emit('toast', { text: `Circuit complete · ${params.raceElapsedS.toFixed(2)}s · ${band.toUpperCase()}`
-      + (params.raceClean ? ' · clean run' : ' · recovery run, no best time'), kind: 'success', ttl: 5 });
+    this.bus.emit('toast', { text: `${params.adventureSpeedId ? 'Speed contract' : 'Circuit'} complete · ${params.raceElapsedS.toFixed(2)}s · ${band.toUpperCase()}`
+      + (params.raceClean ? ' · clean run' : ' · unranked run, no best time'), kind: 'success', ttl: 5 });
     this._completeMission(m, index);
   },
 
@@ -8459,6 +8508,10 @@ export const missions = {
     const clauseSettlement = settleContractClauses(m);
     const settledRewardCr = clauseSettlement.rewardCr;
     m.status = 'completed';
+    if (m.params?.adventureSpeedId) {
+      const completed = state.missions.adventureSpeedCompleted || (state.missions.adventureSpeedCompleted = {});
+      completed[m.params.adventureSpeedId] = true;
+    }
     this._clearMissionNav(m.id);
     const displayRewardCr = m.storyTag === CONTRACT_47A_B0_TAG
       ? CONTRACT_47A_REWARD_CR : settledRewardCr;
@@ -11835,6 +11888,7 @@ export const missions = {
     delete state.missions.redKiteFirstReward;
     delete state.missions.ilexArkReward;
     delete state.missions.setPieceSettlements;
+    delete state.missions.adventureSpeedCompleted;
     state.missions.nextId = 1;
     state.missions.config = MISSION_TUNING;
     // Clear story spine + any prior campaign47a sidecar (nested under state.story).
@@ -11908,6 +11962,9 @@ export const missions = {
     if (m.starterJobStep && Object.keys(m.starterJobStep).length) {
       serialized.starterJobStep = { ...m.starterJobStep };
     }
+    if (m.adventureSpeedCompleted && Object.keys(m.adventureSpeedCompleted).length) {
+      serialized.adventureSpeedCompleted = { ...m.adventureSpeedCompleted };
+    }
     const setPieceSettlements = normalizeSetPieceSettlements(m.setPieceSettlements, m.receipts);
     if (Object.keys(setPieceSettlements).length) serialized.setPieceSettlements = setPieceSettlements;
     // PB-MIS-E: the retired yard-contract ledger. Preserves absence like setPieceSettlements —
@@ -11940,6 +11997,12 @@ export const missions = {
     state.missions.boards = data.boards || {};
     state.missions.completedLog = data.completedLog || [];
     state.missions.receipts = normalizeMissionReceipts(data.receipts);
+    const speedCompleted = {};
+    for (const definition of ADVENTURE_SPEED_CONTRACTS) {
+      if (data.adventureSpeedCompleted?.[definition.id] === true) speedCompleted[definition.id] = true;
+    }
+    if (Object.keys(speedCompleted).length) state.missions.adventureSpeedCompleted = speedCompleted;
+    else delete state.missions.adventureSpeedCompleted;
     const relay = data.redKiteFirstReward;
     if (relay && relay.courseVersion === RED_KITE.courseVersion
       && typeof relay.receiptId === 'string' && relay.receiptId.startsWith(`${RED_KITE.courseId}:run:`)

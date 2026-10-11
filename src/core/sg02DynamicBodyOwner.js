@@ -10,6 +10,8 @@ import { stepLatchNative } from './latchNineNative.js';
 import { stepCeresWorkfleetSlides, syncCeresWorkfleetColliders } from './ceresWorkfleetArticulation.js';
 import { ceresWorkfleetSlideRole } from '../data/ceresWorkfleetArticulation.js';
 import {
+  consumeAnchoredPhysicsImpulse, hasPendingAnchoredPhysicsImpulse,
+  queuePhysicsImpulse, prepareExternalPhysicsImpulse,
   consumePhysicsCommand,
   takeConsumedPhysicsControlReceipt,
   consumeProjectileContinuation,
@@ -27,6 +29,7 @@ import {
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
 import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
+import { isAnchoredPhysicalBody } from './physicalResponse.js';
 import { SHIPS } from '../data/ships.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { frameToGlobal, globalToFrame } from './coordinates.js';
@@ -198,7 +201,7 @@ const COINCIDENT_SPAWN_NUDGE = 2.5;          // WU per ladder step
 const COINCIDENT_SPAWN_MAX_NUDGES = 64;      // 160 WU of pile; a fuller pile keeps the walked slot
 const HELM_LOCKED_TYPES = new Set(['ship', 'drone']);
 
-export const PLAYER_CONTACT_RESPONSE_FRACTION = 0.25;
+export const PLAYER_CONTACT_RESPONSE_FRACTION = 0.1;
 export const PLAYER_CONTACT_MAX_CRUISE_FRACTION = 0.10;
 // PQ-137.11 A. ONE contact episode gets ONE budget. The 10 % ceiling bounds how much a contact
 // EVENT may take; this number is what makes an event an event. At 6 ticks a hull ground along a
@@ -833,7 +836,7 @@ export class Sg02DynamicBodyOwner {
     const posX = translation.x;
     const posZ = translation.z;
     const global = frameToGlobal({ x: posX, z: posZ }, this._frameOrigin, this._globalScratch);
-    const wy = -finite(angvel.y);
+    const wy = -finite(angvel.y) || 0;
     const ghostPoolKey = spec.dynamic && material.ghost && spec.material === 'projectile'
       ? ghostProjectilePoolKey(spec)
       : null;
@@ -1066,8 +1069,16 @@ export class Sg02DynamicBodyOwner {
 
   applyImpulse(input = {}) {
     const rec = this.records.get(input.entityId);
-    if (!rec || !rec.spec.dynamic) return false;
-    const impulse = planeForceInto(input.impulse, _planeForceScratch);
+    if (!rec) return false;
+    if (!rec.spec.dynamic) {
+      // Only anchored moored bodies answer a push through the recoil channel; an
+      // ordinary fixed body (a static rock with no anchor) simply refuses.
+      if (!isAnchoredPhysicalBody(rec.entity)) return false;
+      return queuePhysicsImpulse(rec.entity, input.impulse, input);
+    }
+    const protectedImpulse = prepareExternalPhysicsImpulse(rec.entity, input.impulse, { ...input, isPlayerTarget: rec.entity.isPlayer === true }, this._simTick);
+    if (!protectedImpulse || Math.hypot(protectedImpulse.x, protectedImpulse.z) === 0) return false;
+    const impulse = planeForceInto(protectedImpulse, _planeForceScratch);
     const evidenceBefore = journalFor() ? rec.body.linvel() : null;
     // PQ-137.11 C. A hit may not spin the player's hull (owner ruling; the player is already
     // excluded from tumble and hitstun in tumbleStates.js / collisionConsequences.js). An impulse
@@ -1388,6 +1399,7 @@ export class Sg02DynamicBodyOwner {
       }
     }
 
+    const recoilRecords = this._stepAnchoredRecoil();
     this._applyAttachmentSprings();
 
     // Structural-give baseline: at this point every impulse (dash, spring, combat) has already
@@ -1476,7 +1488,51 @@ export class Sg02DynamicBodyOwner {
       this._syncEntityFromKinematics(rec, kinematics);
       this._publishTelemetry(rec);
     }
+    for (const rec of recoilRecords) this._syncEntityFromKinematics(rec, this._enforcePlane(rec));
     this._persistIslandSleep();
+  }
+
+  _stepAnchoredRecoil() {
+    const moved = [];
+    // Restored recoil lives on the durable body profile, so admission resumes it.
+    // Only anchored fixed bodies with live recoil work past the cheap skip; once a
+    // recoil settles it snaps to the rest pose exactly once and the kinematic body
+    // then holds that pose undriven (no more setNextKinematicTranslation).
+    for (const rec of this.records.values()) {
+      if (rec.spec.dynamic !== false) continue;
+      const recoil = rec.entity.physicsBody?.anchorRecoil;
+      if (!recoil) continue;
+      if (recoil.settled === true && !hasPendingAnchoredPhysicsImpulse(rec.entity)) continue;
+      const impulse = consumeAnchoredPhysicsImpulse(rec.entity);
+      if (impulse) { recoil.vx += impulse.x; recoil.vz += impulse.z; }
+      const dt = this.fixedDt;
+      recoil.vx = finite(recoil.vx) + (-64 * finite(recoil.x) - 16 * finite(recoil.vx)) * dt;
+      recoil.vz = finite(recoil.vz) + (-64 * finite(recoil.z) - 16 * finite(recoil.vz)) * dt;
+      const speed = Math.hypot(recoil.vx, recoil.vz);
+      if (speed > 8) { recoil.vx *= 8 / speed; recoil.vz *= 8 / speed; }
+      recoil.x = finite(recoil.x) + recoil.vx * dt;
+      recoil.z = finite(recoil.z) + recoil.vz * dt;
+      const offset = Math.hypot(recoil.x, recoil.z);
+      if (offset > 3) { recoil.x *= 3 / offset; recoil.z *= 3 / offset; }
+      if (offset < 0.002 && Math.hypot(recoil.vx, recoil.vz) < 0.02 && !impulse) {
+        recoil.x = recoil.z = recoil.vx = recoil.vz = 0;
+        recoil.settled = true;
+        if (rec.body.isKinematic()) {
+          const rest = globalToFrame({ x: recoil.rest.x, z: recoil.rest.z }, this._frameOrigin);
+          rec.body.setTranslation({ x: rest.x, y: 0, z: rest.z }, true);
+          rec.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+        }
+        if (rec.entity.pos) { rec.entity.pos.x = recoil.rest.x; rec.entity.pos.z = recoil.rest.z; }
+        if (rec.entity.vel) { rec.entity.vel.x = 0; rec.entity.vel.z = 0; }
+        continue;
+      }
+      recoil.settled = false;
+      if (!rec.body.isKinematic()) rec.body.setBodyType(this.RAPIER.RigidBodyType.KinematicPositionBased, true);
+      const p = globalToFrame({ x: recoil.rest.x + recoil.x, z: recoil.rest.z + recoil.z }, this._frameOrigin);
+      rec.body.setNextKinematicTranslation({ x: p.x, y: 0, z: p.z });
+      moved.push(rec);
+    }
+    return moved;
   }
 
   _hasManualSpringAttachment(rec) {
@@ -1848,8 +1904,8 @@ export class Sg02DynamicBodyOwner {
       const fallback = (rec.entity && (rec.entity.combatSpeed || rec.entity.maxSpeed)) || 0;
       const cruise = resolveGovernedCombatSpeed(rec.entity, null, fallback);
       const eventBudget = (Number.isFinite(cruise) && cruise > 0)
-        ? PLAYER_CONTACT_MAX_CRUISE_FRACTION * cruise
-        : MAX_CONTACT_DV;
+        ? Math.min(5, PLAYER_CONTACT_MAX_CRUISE_FRACTION * cruise)
+        : 5;
       const remainingBudget = Math.max(0, eventBudget - cumulative);
       contactDvBudget = (!Number.isFinite(rawDv) || rawDv > remainingBudget)
         ? remainingBudget
@@ -2022,7 +2078,7 @@ export class Sg02DynamicBodyOwner {
     const w = post && post.wDirty !== true ? post.w : rec.body.angvel();
     let vx = finite(v.x);
     let vz = finite(v.z);
-    let wy = -finite(w.y);
+    let wy = -finite(w.y) || 0;
     let touched = false;
     const rawDvx = Number(v.x) - e.vx;
     const rawDvz = Number(v.z) - e.vz;
@@ -2176,7 +2232,7 @@ export class Sg02DynamicBodyOwner {
     }
     const globalX = finite(entity.pos && entity.pos.x);
     const globalZ = finite(entity.pos && entity.pos.z);
-    const desc = (spec.dynamic ? R.RigidBodyDesc.dynamic() : R.RigidBodyDesc.fixed())
+    const desc = (spec.dynamic ? R.RigidBodyDesc.dynamic() : entity.physicsBody?.anchorRecoil ? R.RigidBodyDesc.kinematicPositionBased() : R.RigidBodyDesc.fixed())
       .setTranslation(posX, 0, posZ)
       .setRotation(quatFromYaw(finite(entity.rot)))
       .setLinvel(vel.x, 0, vel.z)
@@ -3043,7 +3099,7 @@ export class Sg02DynamicBodyOwner {
     const z = finite(p.z);
     const vx = finite(v.x);
     const vz = finite(v.z);
-    const wy = -finite(w.y);
+    const wy = -finite(w.y) || 0;
     // _bodyPoseX/Z mirror the body's stored f32 pose (write sites mirror the f32-rounded value)
     // so _maybeResyncBodyPose can compare without a WASM translation() read.
     if (Math.abs(finite(p.y)) > 1e-9 || x !== p.x || z !== p.z) {
@@ -4739,7 +4795,7 @@ function smoothstep(value) {
 }
 
 function finite(value, fallback = 0) {
-  return Number.isFinite(value) ? value : fallback;
+  return Number.isFinite(value) ? value + 0 : fallback;
 }
 
 function normalizeFrameOriginSeq(seq) {

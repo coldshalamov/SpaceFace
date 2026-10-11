@@ -75,9 +75,10 @@ export function createRacingCourseView(scene, state) {
         target.scale.setScalar((Number(p.gateRadiusWU)||90)*1.005);
       }
       // This is the very same sampler and speed the slipstream impulse uses, not an AI rival.
-      const racing=Number.isFinite(p.raceStartSimS)&&(!p.sectionMission||p.phase==='chase');
+      const paceStart=p.adventureSpeedId?p.adventureSpeedStartSimS:p.raceStartSimS;
+      const racing=Number.isFinite(paceStart)&&(!p.sectionMission||p.phase==='chase');
       pace.visible=racing&&p.racingKind==='draft';
-      if(pace.visible&&circuitPacePoint(globals,Math.max(0,(state.simTime||0)-p.raceStartSimS)*racingPaceSpeed(p)+70,pacePoint)){
+      if(pace.visible&&circuitPacePoint(globals,Math.max(0,(state.simTime||0)-paceStart)*racingPaceSpeed(p)+70,pacePoint)){
         pace.position.set(pacePoint.x-sectorX,0,pacePoint.z-sectorZ);
         forward.set(Math.cos(pacePoint.heading),0,Math.sin(pacePoint.heading));
         pace.quaternion.setFromUnitVectors(up,forward);

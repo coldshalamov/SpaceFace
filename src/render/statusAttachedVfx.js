@@ -4,12 +4,14 @@
 
 export const STATUS_ATTACHED_BURN_ID = 'status_burning';
 export const STATUS_ATTACHED_GOO_ID = 'status_goo';
+export const STATUS_ATTACHED_GRAVITY_ID = 'status_gravity_marked';
 export const STATUS_ATTACHED_CAP = 8;
 export const STATUS_ATTACHED_TICK_HZ = 60;
 
 export const STATUS_ATTACHED_KIND = Object.freeze({
   BURN: 'burn',
   GOO: 'goo',
+  GRAVITY: 'gravity',
 });
 
 const NO_EMIT_SPRITES = Object.freeze([]);
@@ -39,10 +41,17 @@ const STATUS_ROWS = Object.freeze({
     altColor: '#6f8f3a',
     authoredLife: 0.7,
   }),
+  [STATUS_ATTACHED_GRAVITY_ID]: Object.freeze({
+    kind: STATUS_ATTACHED_KIND.GRAVITY,
+    cadenceS: 0.12,
+    color: '#7ee7ff',
+    altColor: '#2450aa',
+    authoredLife: 0.42,
+  }),
 });
 // Frozen id list — Object.keys(STATUS_ROWS) inside the entity loop allocated every
 // presented frame. Soft-GPU fps not claimed.
-const STATUS_ROW_IDS = Object.freeze([STATUS_ATTACHED_BURN_ID, STATUS_ATTACHED_GOO_ID]);
+const STATUS_ROW_IDS = Object.freeze([STATUS_ATTACHED_BURN_ID, STATUS_ATTACHED_GOO_ID, STATUS_ATTACHED_GRAVITY_ID]);
 
 function clamp(v, lo, hi) {
   const n = Number(v);
@@ -81,7 +90,7 @@ function _nextRankedRecord() {
 // common case — no string alloc per frame), string-composite fallback for exotic ids.
 function _victimKey(entityId, statusId) {
   if (typeof entityId === 'number') {
-    return entityId * 2 + (statusId === STATUS_ATTACHED_GOO_ID ? 1 : 0);
+    return entityId * 3 + (statusId === STATUS_ATTACHED_GOO_ID ? 1 : statusId === STATUS_ATTACHED_GRAVITY_ID ? 2 : 0);
   }
   return String(entityId) + ':' + statusId;
 }
@@ -169,6 +178,11 @@ export function planStatusAttachedEmit(victim, cadenceAgeS, accessibility = {}, 
   const life = Math.min(row.authoredLife, victim.remainingS);
   if (!(life > 0.04)) {
     return { emit: false, nextCadenceAgeS: age, sprites: NO_EMIT_SPRITES };
+  }
+  // A gravity mark is retained hull-seated geometry, never an emitted cloud. Preserve
+  // the same cadence admission while StatusMatterVfx owns its distinct moving jaws.
+  if (row.kind === STATUS_ATTACHED_KIND.GRAVITY) {
+    return { emit: true, nextCadenceAgeS: age, sprites: NO_EMIT_SPRITES, remainingS: victim.remainingS, stacks };
   }
   const flashScale = flashReduce ? 0.32 : 1;
   const sizeScale = flashReduce ? 0.72 : 1;

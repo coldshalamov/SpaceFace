@@ -20,6 +20,7 @@ import {
   FIELD_MAX_ACCEL,
   fieldVolumeOf,
 } from '../../data/fields.js';
+import { environmentResponse, isEnvironmentalBody } from '../physicalResponse.js';
 import { normalizeKilnbackThermalRecipe } from '../../data/kilnback.js';
 
 function finite(value, fallback = 0) {
@@ -133,7 +134,7 @@ export function couplingScale(bodyProfile) {
   if (type === 'pickup') return FIELD_COUPLING.pickupCouple;
   const mass = positive(bodyProfile && bodyProfile.mass, 1);
   // Base mass-couple: 1 at/under refMass, falling off with mass, floored so a heavy still drifts.
-  const base = clamp(FIELD_COUPLING.refMass / Math.max(mass, FIELD_COUPLING.refMass), FIELD_COUPLING.minShipCouple, 1);
+  const base = bodyProfile?.anchored ? 0.08 : isEnvironmentalBody(bodyProfile) ? environmentResponse(bodyProfile) : clamp(FIELD_COUPLING.refMass / Math.max(mass, FIELD_COUPLING.refMass), FIELD_COUPLING.minShipCouple, 1);
   const response = Number.isFinite(bodyProfile && bodyProfile.fieldResponseMult)
     ? Math.max(0, bodyProfile.fieldResponseMult)
     : 1;
@@ -155,17 +156,16 @@ export function couplingScale(bodyProfile) {
 }
 
 // Whether a field couples to a body at all (cheap pre-filter used before the radial math). Reads
-// only type/team/filters — never redefines targeting vocabulary. `filters.excludeSourceTeam`
-// spares friendly craft; `filters.types` (if present) whitelists entity types.
+// only type/filters — never redefines targeting vocabulary. `filters.types` (if present)
+// whitelists entity types. Faction is deliberately absent: physical delivery is faction-blind.
 export function fieldAffectsBody(field, bodyProfile) {
   if (!field || !bodyProfile) return false;
   // Kinematic / non-dynamic bodies keep their scripted motion. Omitted dynamic
   // stays coupled so existing predictor profiles and heavy dynamic hulls still feel the field.
-  if (bodyProfile.dynamic === false || bodyProfile.kinematic === true) return false;
+  if (!bodyProfile.anchored && (bodyProfile.dynamic === false || bodyProfile.kinematic === true)) return false;
   const filters = field.filters;
   if (filters) {
     if (Array.isArray(filters.types) && !filters.types.includes(bodyProfile.type)) return false;
-    if (filters.excludeSourceTeam && field.team != null && bodyProfile.team === field.team) return false;
     if (filters.excludeId != null && bodyProfile.id === filters.excludeId) return false;
   }
   return true;
