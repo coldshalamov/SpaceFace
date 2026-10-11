@@ -20,3 +20,16 @@ export function isAnchoredPhysicalBody(body) {
     || data.isLandmarkRock || data.landmark || data.archetype === 'landmark';
 }
 
+// Stable save identity for the anchored recoil ledger — entity ids are per-session, so
+// stations key on the catalog id, gates on the link they serve, landmarks on their record.
+export function anchoredRecoilKey(body) {
+  if (!isAnchoredPhysicalBody(body)) return null;
+  const data = body.data || {};
+  const home = body.homeSectorId ?? data.homeSectorId ?? data.sectorId ?? null;
+  if (data.isGate || body.type === 'gate') {
+    return data.gateTo != null && home != null ? `gate:${home}:${data.gateTo}` : null;
+  }
+  if (data.stationId != null) return `station:${data.stationId}`;
+  const mark = data.landmarkId ?? data.poiId ?? data.stationId ?? body.id;
+  return home != null && mark != null ? `landmark:${home}:${mark}` : null;
+}
