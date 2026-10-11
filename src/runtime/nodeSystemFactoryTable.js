@@ -79,6 +79,7 @@ import { massSeed } from '../systems/massSeed.js';
 import { fields } from '../systems/fields.js';
 import { gyreSnare } from '../systems/gyreSnare.js';
 import { emergentPrimitives } from '../systems/emergentPrimitives.js';
+import { environmentMaterials } from '../systems/environmentMaterials.js';
 import { environmentalMachinery } from '../systems/environmentalMachinery.js';
 import { planetRuntime } from '../systems/planetRuntime.js';
 import { massSeedHud } from '../ui/massSeedHud.js';
@@ -287,6 +288,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['towlineTable', towlineTable],
     ['borrowedVoice', borrowedVoice],
     ['emergentPrimitives', emergentPrimitives],
+    ['environmentMaterials', environmentMaterials],
     ['environmentalMachinery', environmentalMachinery],
     ['planetRuntime', planetRuntime],
     ['combat', combat],

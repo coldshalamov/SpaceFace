@@ -18,8 +18,8 @@
 // FIVE RULES
 // ----------
 //   * It only spawns ASTEROIDS, through helpers.spawnEntity, with the exact entity shape
-//     terrainAnchors already uses (terrainAnchors.js:83-108). Asteroids are immovable anchors in
-//     both physics backends and already carry the tether-socket combat profile, so the massline
+//     terrainAnchors already uses (terrainAnchors.js:83-108). Ordinary asteroids are dynamic bowling bodies in
+//     the live physics backend and already carry the tether-socket combat profile, so the massline
 //     can latch them the moment they exist and collision asymmetry (§3.5) means they can bounce
 //     the player but never hurt him.
 //   * It never touches spawnBudget. That ledger counts SHIP slots; a rock is not a ship, and
@@ -36,6 +36,7 @@
 // The pressure-reservoir telegraph is also event-driven: census on destroy / wave start, and
 // callbacks from swarmReinforceCount (which survivalWave already calls on the sim tick).
 
+import { ENVIRONMENT_FAMILIES, environmentSurfaceData, environmentMaterialOf } from '../data/environmentMaterials.js';
 import { mulberry32 } from '../core/rng.js';
 import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
@@ -690,6 +691,7 @@ export const swarmArena = {
     const standing = [];
     for (const entity of indexedTypeScan(state, 'wrecks')) {
       if (!entity || entity.alive === false || entity.type !== 'wreck' || !entity.pos) continue;
+      if (entity.data?.[SWARM_DEBRIS_TAG]) continue; // Authored conductive cover uses the terrain lifetime.
       const already = entity.data && Number.isFinite(entity.data.despawnAt)
         && entity.data.despawnAt <= deadline;
       if (already) continue;
@@ -827,9 +829,22 @@ export const swarmArena = {
         layout: { ...layout, axis: { x: 1, z: 0 } },
       });
     const spawnedIds = [];
+    const presentMaterials = new Set((state.entityList || []).filter(e => e.alive !== false && e.data?.[SWARM_DEBRIS_TAG]
+      && Math.hypot(e.pos.x - anchor.x, e.pos.z - anchor.z) <= SWARM_DEBRIS_FIGHT_RADIUS).map(environmentMaterialOf));
+    const missingMaterials = ENVIRONMENT_FAMILIES.filter(m => !presentMaterials.has(m));
+    if (spots.length < missingMaterials.length) {
+      // Tight arena lanes can exhaust their placement search. Their missing toys sit on
+      // a safe outer shoulder rather than silently disappearing from this arena's grammar.
+      spots.push(...planSwarmDebris({ anchor, existing: nearbySolids.concat(spots),
+        want: missingMaterials.length - spots.length, rng,
+        layout: { inner: 265, outer: 390, safeRadius: 120, separation: 32 } }));
+    }
+    let materialIndex = 0;
     for (const spot of spots) {
+      const material = missingMaterials[materialIndex] || ENVIRONMENT_FAMILIES[materialIndex % ENVIRONMENT_FAMILIES.length];
+      materialIndex++;
       const id = this._spawnDebrisRock(spot.x, spot.z, spot.radius, rng, now,
-        reef ? { reefLayoutId: REEF_LAYOUT_ID } : undefined);
+        { ...(reef ? { reefLayoutId: REEF_LAYOUT_ID } : {}), material });
       if (id != null) spawnedIds.push(id);
     }
     if (spawnedIds.length === 0) return;
@@ -867,6 +882,7 @@ export const swarmArena = {
       if (!rock || rock.type !== 'asteroid' || rock.alive === false) continue;
       const d = rock.data;
       if (!d || d[SWARM_DEBRIS_TAG] !== true) continue;
+      if (['crystal', 'volatile', 'debris'].includes(environmentMaterialOf(rock))) continue;
       // A rock in its tick-gap skips, but the impact's OTHER rock still earns its check.
       if (Number.isFinite(d._debrisWornTick) && tick - d._debrisWornTick < SWARM_DEBRIS_WEAR_TICK_GAP) {
         continue;
@@ -1050,20 +1066,22 @@ export const swarmArena = {
     const helpers = this.helpers;
     if (!helpers || typeof helpers.spawnEntity !== 'function') return null;
     const oreHP = Math.round(360 + size * 14);
+    const material = extraData?.material || 'rock';
+    const typeId = material === 'metal' ? 'ast_metallic' : material === 'crystal' ? 'ast_crystalline' : TYPE_ID;
     const spawned = helpers.spawnEntity({
-      type: 'asteroid',
+      type: material === 'debris' ? 'wreck' : 'asteroid',
       pos: { x, z },
       vel: { x: 0, z: 0 },
       radius: size,
-      physicsBody: { radius: asteroidColliderRadius(TYPE_ID, size) },
+      physicsBody: { radius: asteroidColliderRadius(typeId, size) },
       // Same 2D-area density scaling terrainAnchors uses, so these read (and sling) as monoliths.
       mass: Math.round(size * size * 40),
       angVel: (rng() - 0.5) * 0.12,
       hull: oreHP,
       hullMax: oreHP,
       collides: true,
-      data: withBankStone({
-        typeId: TYPE_ID,
+      data: withBankStone(environmentSurfaceData(material, {
+        typeId,
         tier: 0,
         tierCap: 0,
         oreHP,
@@ -1077,7 +1095,7 @@ export const swarmArena = {
         terrainAnchorEncounterIds: [],
         despawnAt: now + SWARM_DEBRIS_TTL_S,
         ...(extraData || {}),
-      }),
+      })),
     });
     return spawned && typeof spawned === 'object' ? spawned.id : spawned;
   },

@@ -47,6 +47,7 @@ export const OPTIC_MATERIALS = Object.freeze({
   }),
 });
 
+export const OPTIC_MATERIAL_BOUNCES = 4;
 export const OPTIC_RAY_COUNT = 8;
 export const OPTIC_MAX_GENERATION = 14;
 export const OPTIC_MAX_FAMILY = 160;
@@ -342,7 +343,8 @@ export function planOpticContact({
   book,
 } = {}) {
   if (!material || !target) return null;
-  const bolt = isOpticEnergyBolt(projectile);
+  const bolt = isOpticEnergyBolt(projectile) || (material.id === 'metal'
+    && projectile?.data?.kind !== 'missile' && (projectile?.data?.damageType || 'kinetic') === 'kinetic');
   const ordnance = isOpticOrdnance(projectile);
   if (!bolt && !ordnance) return null;
   const response = material.response;
@@ -358,7 +360,12 @@ export function planOpticContact({
     const normal = payload && payload.normal
       ? { x: Number(payload.normal.x) || 0, z: Number(payload.normal.z) || 0 }
       : outwardNormal(target, payload && payload.pos);
-    const velocity = reflectVelocity(projectile.vel || { x: 0, z: 0 }, normal);
+    const remaining = Number.isInteger(projectile.data?.materialBouncesRemaining) ? projectile.data.materialBouncesRemaining : OPTIC_MATERIAL_BOUNCES;
+    if (!(remaining > 0)) return { kind: 'absorb', reason: 'material_budget', materialId: material.id };
+    const sv = payload?.receipt?.surfaceVelocity || target.vel || { x: 0, z: 0 };
+    const incoming = payload?.receipt?.velocity || projectile.vel || { x: 0, z: 0 };
+    const relative = reflectVelocity({ x: incoming.x - (Number(sv.x) || 0), z: incoming.z - (Number(sv.z) || 0) }, normal);
+    const velocity = { x: relative.x + (Number(sv.x) || 0), z: relative.z + (Number(sv.z) || 0) };
     return { kind: 'reflect', reason: 'metal', materialId: material.id, velocity, normal };
   }
   if (response !== 'prism') return null;
@@ -511,6 +518,8 @@ export function settleOpticContact(projectile, target, payload, book, ctx) {
   const plan = planOpticContact({ material, projectile, target, payload, book });
   if (!plan) return null;
   if (plan.kind === 'reflect') {
+    const data = projectile.data || (projectile.data = {});
+    data.materialBouncesRemaining = (Number.isInteger(data.materialBouncesRemaining) ? data.materialBouncesRemaining : OPTIC_MATERIAL_BOUNCES) - 1;
     applyReflectedVelocity(projectile, plan.velocity);
     placeOutside(projectile, target, plan.normal);
     if (bindOpticReflectTravel(projectile)) {

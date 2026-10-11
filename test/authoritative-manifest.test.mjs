@@ -99,8 +99,10 @@ test('production init + update order lengths match the live browser baseline', (
   // Two bounded Ceres concepts and the event-only evidence prompt.
   // 200 init / 151 update with secondRinse (Hasp) and ruud (HOOK-LEFT).
   // Hasp follows palletJack; HOOK-LEFT follows ruckus before physics.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 200);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 151);
+  // Material reactions join both browser and Node fixed-step runtimes.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 201);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 152);
+  assert.equal(getSystemClock('environmentMaterials'), 'table');
   assert.equal(PRODUCTION_INIT_ORDER.includes('stuckTowPrompt'), true);
   assert.equal(PRODUCTION_UPDATE_ORDER.includes('stuckTowPrompt'), false);
   assert.equal(getSystemClock('moralTrap'), 'calendar');
@@ -276,7 +278,7 @@ test('browser production system set is unchanged vs production manifest constant
   // fields and physics) and gyreHud (DOM-guarded lane pill beside fieldHud), one
   // system in both orders each.
   // 200 with secondRinse and ruud, each registered once in both orders.
-  assert.equal(registry.systems.length, 200);
+  assert.equal(registry.systems.length, 201);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

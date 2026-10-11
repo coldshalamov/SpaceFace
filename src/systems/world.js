@@ -73,6 +73,7 @@ import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
 import { isPlayerWanted } from './heat.js';            // WANTED threshold is heat-owned — never restate it
+import { adventureMaterialFor, environmentSurfaceData } from '../data/environmentMaterials.js';
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import {
@@ -1597,6 +1598,7 @@ export const world = {
             size: body.radius,
             // Not ore: skip massline latch so the mining beam cannot acquire via tether.
             masslineTetherable: false,
+            material: body.material === 'metal' ? 'metal' : body.material === 'diamond' || body.material === 'spent' ? 'crystal' : 'rock',
             homeSectorId: sector.id,
             sectorId: sector.id,
           },
@@ -2613,7 +2615,7 @@ export const world = {
       ? arrangement.place(originalPos, size, slotIndex, !!(positionBinding || authoredGeologyPlaceId))
       : originalPos;
 
-    const data = {
+    const data = environmentSurfaceData(adventureMaterialFor(def.id, this.state.meta.seed, fdef.id, slotIndex), {
       typeId: def.id, tier: def.tierCap, tierCap,
       oreHP, oreHPMax: oreHP, yieldU,
       ecologyFingerprint: params && params._ecologyFingerprint
@@ -2633,7 +2635,7 @@ export const world = {
       ...(collisionAnchorBinding && collisionAnchorBinding.id
         ? { activityCollisionAnchorSlotId: collisionAnchorBinding.id }
         : {}),
-    };
+    });
     const keepLive = shouldKeepLiveAsteroid({
       activityBinding,
       collisionAnchorBinding,

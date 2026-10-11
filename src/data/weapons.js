@@ -84,7 +84,7 @@ const SHIPPED_WEAPONS = [
     dmg: 6, rof: 1.2, dps: 7.2, damageType: 'kinetic', energyCost: 3,
     projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 1.0,
     heatPerShot: 10, heatMax: 100, heatDissip: 24,
-    impulsePerHit: 520, tumbleTorque: 35, impulseProvenance: 'concussion_slug_s',
+    impulsePerHit: 520, environmentImpulsePerHit: 1024, tumbleTorque: 35, impulseProvenance: 'concussion_slug_s',
   },
 
   // --- MEDIUM (M slot) ---
@@ -276,7 +276,7 @@ const SHIPPED_WEAPONS = [
     dmg: 12, rof: 1.0, dps: 12, damageType: 'kinetic', energyCost: 6,
     projSpeed: 340, range: 260, tracking: 'fixed', spreadDeg: 1.2,
     heatPerShot: 16, heatMax: 100, heatDissip: 26,
-    impulsePerHit: 920, tumbleTorque: 60, impulseProvenance: 'concussion_slug',
+    impulsePerHit: 920, environmentImpulsePerHit: 1024, tumbleTorque: 60, impulseProvenance: 'concussion_slug',
   },
   {
     // VECTOR MINE — deployable ordnance whose payload is a RADIAL IMPULSE, not a burn: zero hull
@@ -356,7 +356,7 @@ const USER_WEAPON_KEYS = new Set([
   'dmg', 'dps', 'rof', 'damageType', 'energyCost', 'projSpeed', 'projSpeedMin', 'range',
   'tracking', 'spreadDeg', 'mount', 'turretArcDeg', 'lockTimeS', 'turnRate',
   'heatPerShot', 'heatPerSec', 'heatMax', 'heatDissip', 'continuous',
-  'impulsePerHit', 'tumbleTorque', 'impulseProvenance',
+  'impulsePerHit', 'environmentImpulsePerHit', 'tumbleTorque', 'impulseProvenance',
   'armorPierce', 'shieldBypass', 'subsystemShare', 'rcsDisruptS',
   'splashDmg', 'splashRadius', 'splitCount', 'submunitions',
   'ammo', 'intercepts', 'statuses', 'attackTraits',
