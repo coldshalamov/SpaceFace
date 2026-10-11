@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "camera": "top-down-xz",
+  "minLegibleRadiusWu": 2.5,
+  "note": "Marker silhouettes for the reactive-matter alphabet. Not a shipped GLB and not a Three.js material.",
+  "markers": [
+    { "id": "ferro", "family": "ferromagnetic", "tint": 9417944, "minWorldRadius": 2.6, "signature": "ring+bar" },
+    { "id": "volatile", "family": "volatile", "tint": 14254646, "minWorldRadius": 2.5, "signature": "hex+lamp" },
+    { "id": "volatile-ferro", "family": "volatile", "tint": 14254646, "minWorldRadius": 2.6, "signature": "hex+bar" },
+    { "id": "brittle", "family": "brittle", "tint": 10414066, "minWorldRadius": 2.8, "signature": "capsule+bands" },
+    { "id": "elastic", "family": "elastic", "tint": 8244896, "minWorldRadius": 2.5, "signature": "ribs" },
+    { "id": "debris", "family": null, "tint": 12892325, "minWorldRadius": 1.2, "signature": "wedge" },
+    { "id": "machine", "family": null, "tint": 15914122, "minWorldRadius": 4, "signature": "chevron+ring" }
+  ]
+}
