@@ -120,6 +120,9 @@ const DRIVER_LABEL = Object.freeze({
   infrastructure_disruption: 'infrastructure loss',
   interdiction_wave: 'interdiction activity',
   transit_incident: 'transit incident',
+  ore_flood: 'ore flood from a shattered seam',
+  dock_slam: 'a wrecked docking ring',
+  lane_disruption: 'a hauler dragged off its lane',
   territory_flip: 'resolved territory flip',
 });
 

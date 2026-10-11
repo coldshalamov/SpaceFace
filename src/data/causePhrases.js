@@ -42,6 +42,7 @@ export const CAUSE_PHRASES = Object.freeze({
     interdiction_wave: 'An interdiction wave swept this sector’s trade lanes.',
     transit_incident: 'A transit ambush was reported on the approach lanes.',
     freight_attrition: 'Freighters are being hit on these lanes — cargo spilled and hulls lost; danger {dir}.',
+    dock_slam: 'A hull went through a berth’s docking ring — the yard is down and lane traffic is hesitating.',
   }),
 
   // ── pricePressure axis: why prices moved (the "why prices changed" tooltip) ──────────────────
@@ -53,6 +54,9 @@ export const CAUSE_PHRASES = Object.freeze({
     trade_shock: 'A heavy trade just moved this market — prices {dir} on the volume.',
     infrastructure_disruption: 'Lost infrastructure choked local supply — prices {dir}.',
     freight_attrition: 'Supply freighters are dying on this lane — shipments are not arriving, and prices are {dir}.',
+    ore_flood: 'A shattered seam dumped loose ore on the lane — haulers are scooping it, and prices are {dir}.',
+    dock_slam: 'A berth’s docking ring was wrecked — the yard is down, and prices are {dir} while it is cleared.',
+    lane_disruption: 'A route hauler was dragged off its lane — a shipment arrived late, and prices are {dir}.',
   }),
 
   // ── influence axis: why control looks the way it does ────────────────────────────────────────

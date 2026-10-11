@@ -15,8 +15,9 @@ import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { recordImpulseProvenance } from '../src/combat/impulseKernel.js';
 import { oreTableForAsteroidType, oreTableByWeight } from '../src/data/mining.js';
+import { CAUSE_PHRASES } from '../src/data/causePhrases.js';
 import {
-  sectorSim, ORE_FLOOD_PRESSURE_BASE, ORE_FLOOD_PRESSURE_PER_U, ORE_FLOOD_PRESSURE_MAX, ORE_FLOOD_MIN_U,
+  sectorSim, sectorSignalFor, ORE_FLOOD_PRESSURE_BASE, ORE_FLOOD_PRESSURE_PER_U, ORE_FLOOD_PRESSURE_MAX, ORE_FLOOD_MIN_U,
 } from '../src/systems/sectorSim.js';
 
 const SECTOR = 'sector_ceres_belt';
@@ -125,6 +126,20 @@ test('C8: when fragments are budget-deferred the parent record\'s remaining yiel
   assert.equal(floods[0].fragments, 0);
   assert.ok(near(floods[0].yieldU, 18));
   assert.equal(floods[0].actorId, null, 'no provenance, no credit');
+});
+
+test('C8: the chart names the flood — the field dips and the pricePressure driver reads ore_flood', () => {
+  const { state, bus, rock } = makeCtx(4242, { yieldU: 30 });
+  const before = sectorSignalFor(state, SECTOR);
+  bus.emit('environment:fractured', cue(rock));
+  sectorSim._advanceModel(0.25, 'test');
+  const node = state.sectorSim.field.nodes[SECTOR];
+  assert.ok(node.pricePressure < before.pricePressure - 0.05, `loose ore pushes the lane toward surplus (${before.pricePressure} -> ${node.pricePressure})`);
+  const signal = sectorSignalFor(state, SECTOR);
+  assert.equal(signal.driver.pricePressure, 'ore_flood');
+  assert.notEqual(signal.driver.danger, 'ore_flood', 'loose ore does not re-explain danger');
+  assert.equal(typeof CAUSE_PHRASES.pricePressure.ore_flood, 'string');
+  assert.ok(CAUSE_PHRASES.pricePressure.ore_flood.length > 12);
 });
 
 test('C8: a cue for an unknown body in no known sector is ignored', () => {

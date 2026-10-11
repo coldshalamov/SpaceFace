@@ -15,7 +15,8 @@ import { SECTORS } from '../src/data/sectors.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { economy, DOCK_SLAM_LAW, stationServiceOutage, INSURANCE_DEFAULTS } from '../src/systems/economy.js';
-import { sectorSim } from '../src/systems/sectorSim.js';
+import { sectorSim, sectorSignalFor } from '../src/systems/sectorSim.js';
+import { CAUSE_PHRASES } from '../src/data/causePhrases.js';
 import { serviceQuote } from '../src/ui/station/serviceQuotes.js';
 
 const STATION_ENTITY_ID = 900;
@@ -161,6 +162,17 @@ for (const seed of [4242, 8008]) {
     assert.equal(state.sectorSim.impulses.filter((i) => i.kind === 'dock_slam').length, 0);
   });
 }
+
+test('C6: the chart names the slam — both drivers read dock_slam while the annotation is fresh', () => {
+  const { state, bus } = makeCtx(8008);
+  bus.emit('combat:collisionConsequence', slam());
+  sectorSim._advanceModel(0.25, 'test');
+  const signal = sectorSignalFor(state, 'sector_ceres_belt');
+  assert.equal(signal.driver.danger, 'dock_slam');
+  assert.equal(signal.driver.pricePressure, 'dock_slam');
+  assert.equal(typeof CAUSE_PHRASES.danger.dock_slam, 'string');
+  assert.equal(typeof CAUSE_PHRASES.pricePressure.dock_slam, 'string');
+});
 
 test('C6: an insured pilot who slams a ring sees the deductible climb, capped', () => {
   const { state, bus } = makeCtx(4242);
