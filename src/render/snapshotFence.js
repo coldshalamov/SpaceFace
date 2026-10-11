@@ -30,14 +30,6 @@ function readonlyColumns(columns) {
   return Object.freeze(facade);
 }
 
-function readonlyIndex(index) {
-  return Object.freeze({
-    get(entityId) { return index.get(entityId); },
-    has(entityId) { return index.has(entityId); },
-    get size() { return index.size; },
-  });
-}
-
 export function createSnapshotFence(options = {}) {
   const buffers = Array.from({ length: SNAPSHOT_FENCE_BUFFERS }, () => {
     const snapshot = createPresentationSnapshot({
@@ -45,12 +37,10 @@ export function createSnapshotFence(options = {}) {
       journalCapacity: options.journalCapacity,
     });
     const indexByEntityId = new Map();
-    const publishedIndexByEntityId = readonlyIndex(indexByEntityId);
     const publishedColumns = readonlyColumns(snapshot.columns);
     const state = {
       snapshot,
       indexByEntityId,
-      publishedIndexByEntityId,
       sealed: true,
       simTime: 0,
       sequence: 0,
@@ -58,7 +48,38 @@ export function createSnapshotFence(options = {}) {
       // stream between them is continuous; a sector jump or a mirror rebuild reassigns slots and
       // teleports every body, so packs on either side of one are not comparable.
       poseEpoch: 0,
+      // Slot→packed-row hint table for the pack that committed this buffer. The mesh
+      // apply resolves a row by one typed-array read instead of an identity-map probe;
+      // every read is verified against the entityId column and misses fall back to the
+      // map, so the table is a pure accelerator — semantics stay fail-closed.
+      slotRows: new Int32Array(0),
+      // When true the identity map does not describe this buffer's latest pack (the
+      // membership-stable fast path left it stale on purpose). The first identity
+      // lookup rebuilds it from the entityId column — a pure derivation, so callers
+      // that never probe pay nothing.
+      indexStale: false,
     };
+    function ensureSlotRows(slots) {
+      const needed = Math.max(0, Math.floor(Number(slots) || 0));
+      if (state.slotRows.length >= needed) return;
+      let next = state.slotRows.length || 64;
+      while (next < needed) next *= 2;
+      state.slotRows = new Int32Array(next);
+    }
+    function rebuildIndex() {
+      indexByEntityId.clear();
+      const ids = snapshot.columns.entityId;
+      const n = snapshot.count | 0;
+      for (let i = 0; i < n; i++) indexByEntityId.set(ids[i] >>> 0, i);
+      state.indexStale = false;
+    }
+    const publishedIndexByEntityId = Object.freeze({
+      get(entityId) { if (state.indexStale) rebuildIndex(); return indexByEntityId.get(entityId); },
+      has(entityId) { if (state.indexStale) rebuildIndex(); return indexByEntityId.has(entityId); },
+      get size() { if (state.indexStale) rebuildIndex(); return indexByEntityId.size; },
+    });
+    state.publishedIndexByEntityId = publishedIndexByEntityId;
+    state.publishedColumns = publishedColumns;
     const writable = {
       get schema() { return snapshot.schema; },
       get columns() { return snapshot.columns; },
@@ -66,10 +87,32 @@ export function createSnapshotFence(options = {}) {
       get capacity() { return snapshot.capacity; },
       get generation() { return snapshot.generation; },
       get journalDropped() { return snapshot.journalDropped; },
-      beginFrame(expectedCount) {
+      get slotRows() { return state.slotRows; },
+      beginFrame(expectedCount, slotCapacity = 0) {
         if (state.sealed) state.sealed = false;
         indexByEntityId.clear();
+        state.indexStale = false;
+        ensureSlotRows(slotCapacity);
+        if (slotCapacity > 0) state.slotRows.fill(-1, 0, slotCapacity);
         return snapshot.beginFrame(expectedCount);
+      },
+      // Membership-stable fast pack: the identity map is left stale rather than
+      // cleared+re-minted — the bulk column blit already produced identical rows,
+      // and any later identity probe rebuilds the map on first access. slotRows is
+      // left for the caller to adopt from the previous pack's table.
+      beginFrameReuse(expectedCount, slotCapacity = 0) {
+        if (state.sealed) state.sealed = false;
+        state.indexStale = true;
+        ensureSlotRows(slotCapacity);
+        return snapshot.beginFrame(expectedCount);
+      },
+      blitColumnsFrom(...args) {
+        if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
+        return snapshot.blitColumnsFrom(...args);
+      },
+      rewriteAt(...args) {
+        if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
+        return snapshot.rewriteAt(...args);
       },
       write(...args) {
         if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
@@ -112,6 +155,7 @@ export function createSnapshotFence(options = {}) {
       get sequence() { return state.sequence; },
       get poseEpoch() { return state.poseEpoch; },
       get indexByEntityId() { return state.publishedIndexByEntityId; },
+      get slotRows() { return state.slotRows; },
     });
     state.writable = Object.freeze(writable);
     state.published = published;
@@ -126,16 +170,44 @@ export function createSnapshotFence(options = {}) {
   let packBytesIndex = 0;
   let packBytesCount = 0;
   let lastBytesPacked = 0;
+  let lastPackMembership = null;
 
   return {
-    beginPack(expectedCount, simTime = 0, poseEpoch = 0) {
+    beginPack(expectedCount, simTime = 0, poseEpoch = 0, slotCapacity = 0) {
       const buffer = buffers[write];
-      buffer.writable.beginFrame(expectedCount);
+      buffer.writable.beginFrame(expectedCount, slotCapacity);
       buffer.simTime = Number.isFinite(simTime) ? simTime : 0;
       buffer.sequence = sequence + 1;
       buffer.poseEpoch = Number.isFinite(poseEpoch) ? poseEpoch : 0;
       return buffer.writable;
     },
+    // Same begin, for the membership-stable fast pack: the identity map is left
+    // stale (first probe rebuilds it from the entityId column) and slotRows is
+    // adopted from the previous pack's table instead of re-minted.
+    beginPackReuse(expectedCount, simTime = 0, poseEpoch = 0, slotCapacity = 0) {
+      const buffer = buffers[write];
+      buffer.writable.beginFrameReuse(expectedCount, slotCapacity);
+      buffer.simTime = Number.isFinite(simTime) ? simTime : 0;
+      buffer.sequence = sequence + 1;
+      buffer.poseEpoch = Number.isFinite(poseEpoch) ? poseEpoch : 0;
+      return buffer.writable;
+    },
+    // Membership stamp the fast pack's eligibility compares against. The pack
+    // records the world's allocations/retirements counters at every commit; a
+    // stamp that still matches the world's counters proves the live set (and
+    // therefore the packed row order) is unchanged.
+    notePackMembership(diagnostics) {
+      if (!diagnostics || !Number.isInteger(diagnostics.allocations)
+        || !Number.isInteger(diagnostics.retirements)) {
+        lastPackMembership = null;
+        return;
+      }
+      lastPackMembership = {
+        allocations: diagnostics.allocations | 0,
+        retirements: diagnostics.retirements | 0,
+      };
+    },
+    get packMembership() { return lastPackMembership; },
     commit() {
       const buffer = buffers[write];
       if (buffer.sealed) throw new Error('Presentation snapshot fence commit without beginPack');
@@ -211,11 +283,30 @@ export function snapshotIndexOf(snapshot, entityId) {
   return -1;
 }
 
+/**
+ * Resolve an entity's packed row via its world slot. The slot table is a hint
+ * only: a hit is verified against the entityId column, and a miss (or a
+ * snapshot without the table — test doubles, raw writes) falls back to the
+ * identity map, so callers keep fail-closed semantics for stale/recycled slots.
+ */
+export function snapshotRowForSlot(snapshot, slot, entityId) {
+  if (!snapshot || !Number.isInteger(slot)) return -1;
+  const slotRows = snapshot.slotRows;
+  if (slotRows && slot >= 0 && slot < slotRows.length) {
+    const row = slotRows[slot];
+    const ids = snapshot.columns && snapshot.columns.entityId;
+    if (row >= 0 && ids && ids[row] === (entityId >>> 0)) return row;
+  }
+  return snapshotIndexOf(snapshot, entityId);
+}
+
 // A completed pack can outlive the body that owned an id while the next stepped
 // pack is still in flight. Only that body's current generation can authorize a
 // pose; pre-column snapshots and callers without a generation retain id lookup.
-export function snapshotHasEntityGeneration(snapshot, entityId, expectedGeneration) {
-  const index = snapshotIndexOf(snapshot, entityId);
+export function snapshotHasEntityGeneration(snapshot, entityId, expectedGeneration, slotHint = -1) {
+  const index = slotHint >= 0
+    ? snapshotRowForSlot(snapshot, slotHint, entityId)
+    : snapshotIndexOf(snapshot, entityId);
   if (index < 0) return false;
   const generations = snapshot.columns && snapshot.columns.generation;
   return !generations || !Number.isInteger(expectedGeneration)
@@ -226,8 +317,10 @@ export function snapshotHasEntityGeneration(snapshot, entityId, expectedGenerati
 // previous pack's row may only feed a blend (or the fence pack's copy path)
 // when its generation matches the current row's. Snapshots lacking the
 // generation column (test doubles, pre-column packs) keep index-only lookup.
-function snapshotSameGenerationRow(previous, snapshot, entityId, index) {
-  const prev = snapshotIndexOf(previous, entityId);
+function snapshotSameGenerationRow(previous, snapshot, entityId, index, slotHint = -1) {
+  const prev = slotHint >= 0
+    ? snapshotRowForSlot(previous, slotHint, entityId)
+    : snapshotIndexOf(previous, entityId);
   if (prev < 0) return -1;
   const prevGens = previous.columns && previous.columns.generation;
   const curGens = snapshot.columns && snapshot.columns.generation;
@@ -264,9 +357,11 @@ export function poseSpanAlpha(latest, previous, accumulatorS, fixedDt, fallbackA
   return t < 0 ? 0 : (t > 1 ? 1 : t);
 }
 
-export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previous = null, alpha = 1) {
+export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previous = null, alpha = 1, slotHint = -1) {
   if (!mesh || !mesh.position || !snapshot) return false;
-  const index = snapshotIndexOf(snapshot, entityId);
+  const index = slotHint >= 0
+    ? snapshotRowForSlot(snapshot, slotHint, entityId)
+    : snapshotIndexOf(snapshot, entityId);
   if (index < 0) return false;
   const p = index * 3;
   const q = index * 4;
@@ -275,16 +370,15 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
   let qy = snapshot.columns.quaternion[q + 1];
   let qw = snapshot.columns.quaternion[q + 3];
   const t = Number.isFinite(alpha) ? alpha : 1;
-  if (previous && t < 1) {
-    const prev = snapshotSameGenerationRow(previous, snapshot, entityId, index);
-    if (prev >= 0) {
-      const pp = prev * 3;
-      const pq = prev * 4;
-      x = previous.columns.position[pp] + (x - previous.columns.position[pp]) * t;
-      z = previous.columns.position[pp + 2] + (z - previous.columns.position[pp + 2]) * t;
-      qy = previous.columns.quaternion[pq + 1] + (qy - previous.columns.quaternion[pq + 1]) * t;
-      qw = previous.columns.quaternion[pq + 3] + (qw - previous.columns.quaternion[pq + 3]) * t;
-    }
+  const prev = previous && t < 1
+    ? snapshotSameGenerationRow(previous, snapshot, entityId, index, slotHint) : -1;
+  if (prev >= 0) {
+    const pp = prev * 3;
+    const pq = prev * 4;
+    x = previous.columns.position[pp] + (x - previous.columns.position[pp]) * t;
+    z = previous.columns.position[pp + 2] + (z - previous.columns.position[pp + 2]) * t;
+    qy = previous.columns.quaternion[pq + 1] + (qy - previous.columns.quaternion[pq + 1]) * t;
+    qw = previous.columns.quaternion[pq + 3] + (qw - previous.columns.quaternion[pq + 3]) * t;
   }
   const ox = origin && Number.isFinite(origin.x) ? origin.x : 0;
   const oy = origin && Number.isFinite(origin.y) ? origin.y : 0;
@@ -300,12 +394,9 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
   if (hull && snapshot.columns.bank && snapshot.columns.pitch) {
     let bank = snapshot.columns.bank[index] || 0;
     let pitch = snapshot.columns.pitch[index] || 0;
-    if (previous && t < 1 && previous.columns.bank && previous.columns.pitch) {
-      const prev = snapshotSameGenerationRow(previous, snapshot, entityId, index);
-      if (prev >= 0) {
-        bank = previous.columns.bank[prev] + (bank - previous.columns.bank[prev]) * t;
-        pitch = previous.columns.pitch[prev] + (pitch - previous.columns.pitch[prev]) * t;
-      }
+    if (prev >= 0 && previous.columns.bank && previous.columns.pitch) {
+      bank = previous.columns.bank[prev] + (bank - previous.columns.bank[prev]) * t;
+      pitch = previous.columns.pitch[prev] + (pitch - previous.columns.pitch[prev]) * t;
     }
     hull.rotation.x = bank;
     hull.rotation.z = pitch;
@@ -313,11 +404,108 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
   return true;
 }
 
+/**
+ * Membership-stable fast-pack eligibility. The previous committed pack may serve
+ * as a byte-exact base only when EVERY packed row still names the same entity at
+ * the same position: the world's allocations/retirements counters — which cover
+ * every allocateRecord/retireSlot path — must not have moved since that commit,
+ * and the pose epoch must match (a remap or sector jump makes rows incomparable).
+ * Worlds lacking the counters, slotGenerations, entityIds, or the packDirty mask
+ * (test doubles) get null and run the classic walk.
+ */
+function fastPackPrevious(world, fence, poseEpoch) {
+  const previous = typeof fence.latestSnapshot === 'function' ? fence.latestSnapshot() : null;
+  if (!previous || previous.poseEpoch !== poseEpoch || !previous.slotRows) return null;
+  const stamp = fence.packMembership;
+  if (!stamp || typeof world.getDiagnostics !== 'function') return null;
+  const diagnostics = world.getDiagnostics();
+  if (!diagnostics
+    || (diagnostics.allocations | 0) !== stamp.allocations
+    || (diagnostics.retirements | 0) !== stamp.retirements) return null;
+  if (!world.packDirty || !world.entityIds || !world.slotGenerations || !world.alive) return null;
+  return previous;
+}
+
+// Shared row rewrite for the fast pack: same bytes the classic walk's write +
+// setLean + setGeneration sequence produces, at the row the slot already owns.
+function rewritePackedRow(snapshot, world, slot, row, entityId) {
+  let qy;
+  let qw;
+  if (world.yawSin && world.yawCos) {
+    qy = world.yawSin[slot];
+    qw = world.yawCos[slot];
+  } else {
+    const rot = world.rot ? Number(world.rot[slot]) || 0 : 0;
+    const half = rot * 0.5;
+    qy = Math.sin(half);
+    qw = Math.cos(half);
+  }
+  snapshot.rewriteAt(
+    row,
+    entityId,
+    world.typeCodes ? world.typeCodes[slot] : 0,
+    world.x[slot],
+    world.y[slot],
+    world.z[slot],
+    0, qy, 0, qw,
+    1, 1, 1,
+    world.flags[slot] >>> 0,
+  );
+  if (typeof snapshot.setLean === 'function') {
+    snapshot.setLean(
+      row,
+      world.bank ? Number(world.bank[slot]) || 0 : 0,
+      world.pitch ? Number(world.pitch[slot]) || 0 : 0,
+    );
+  }
+  if (typeof snapshot.setGeneration === 'function') {
+    snapshot.setGeneration(
+      row,
+      world.slotGenerations ? world.slotGenerations[slot] : 0,
+    );
+  }
+}
+
 export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoch = 0) {
   if (!world || !fence) return 0;
   const diagnostics = typeof world.getDiagnostics === 'function' ? world.getDiagnostics() : null;
   const active = diagnostics && Number.isInteger(diagnostics.active) ? diagnostics.active : 0;
-  const snapshot = fence.beginPack(Math.max(1, active), simTime, poseEpoch);
+  const slotCap = Number.isInteger(world.capacity)
+    ? world.capacity
+    : (world.packDirty ? world.packDirty.length : active);
+  // Membership-stable fast pack: the previous commit is already a byte-exact
+  // base, so one contiguous column blit plus rewrites of only the pack-dirty
+  // rows replaces the O(active) row walk and the identity-map rebuild. The
+  // atomic twin cannot observe mid-pack world churn, so no re-check is needed.
+  const fastPrevious = fastPackPrevious(world, fence, poseEpoch);
+  if (fastPrevious) {
+    const snapshot = fence.beginPackReuse(Math.max(1, active), simTime, poseEpoch, slotCap);
+    const slotRows = snapshot.slotRows;
+    const previousRows = fastPrevious.slotRows;
+    slotRows.set(previousRows.subarray(0, Math.min(previousRows.length, slotRows.length)));
+    snapshot.blitColumnsFrom(fastPrevious.columns, fastPrevious.count);
+    const dirty = world.packDirty;
+    const scan = Math.min(dirty.length, slotRows.length);
+    let bail = false;
+    for (let slot = 0; slot < scan; slot++) {
+      if (dirty[slot] === 0) continue;
+      dirty[slot] = 0;
+      if (world.alive[slot] !== 1) continue;
+      const row = slotRows[slot];
+      const entityId = world.entityIds[slot] >>> 0;
+      // A miss means the premise was wrong — never write a guess into the
+      // snapshot; fall back to the classic walk for this frame instead.
+      if (row < 0 || row >= snapshot.count
+        || fastPrevious.columns.entityId[row] !== entityId) { bail = true; break; }
+      rewritePackedRow(snapshot, world, slot, row, entityId);
+    }
+    if (!bail) {
+      fence.commit();
+      fence.notePackMembership(diagnostics);
+      return snapshot.count;
+    }
+  }
+  const snapshot = fence.beginPack(Math.max(1, active), simTime, poseEpoch, slotCap);
   // Dirty-column pack: the mask still holds every pose/visual write since the
   // last frame's consume when this runs (the pack precedes the sync pass), so a
   // clean slot's packed bytes are identical to the LATEST committed pack's row —
@@ -346,7 +534,7 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
       if (previousRow !== undefined && previousRow >= 0
           && (!previousGenerations || !world.slotGenerations
             || previousGenerations[previousRow] === (world.slotGenerations[slot] >>> 0))) {
-        snapshot.copyRow(previous, previousRow);
+        snapshot.slotRows[slot] = snapshot.copyRow(previous, previousRow);
         world.packDirty[slot] = 0;
         packed++;
         continue;
@@ -388,10 +576,12 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
         world.slotGenerations ? world.slotGenerations[slot] : 0,
       );
     }
+    snapshot.slotRows[slot] = packedIndex;
     if (world.packDirty) world.packDirty[slot] = 0;
     packed++;
   }
   fence.commit();
+  fence.notePackMembership(diagnostics);
   return packed;
 }
 
@@ -411,11 +601,55 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
   // re-verification — a quiet pack skips the O(active) membership walk.
   const allocationsAtMint = diagnostics ? (diagnostics.allocations | 0) : 0;
   const retirementsAtMint = diagnostics ? (diagnostics.retirements | 0) : 0;
-  const snapshot = fence.beginPack(Math.max(1, active), simTime, poseEpoch);
+  const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
+  const slotCap = Number.isInteger(world.capacity)
+    ? world.capacity
+    : (world.packDirty ? world.packDirty.length : active);
+  // Membership-stable fast pack: identical bytes and commit to the atomic
+  // output — one column blit plus rewrites of only the pack-dirty rows. A
+  // mid-park membership churn (allocations/retirements moved, or a slot-table
+  // miss proving the premise wrong) discards the in-flight buffer and falls
+  // through to the classic walk, still paced across the same yields.
+  const fastPrevious = fastPackPrevious(world, fence, poseEpoch);
+  if (fastPrevious) {
+    const fastSnapshot = fence.beginPackReuse(Math.max(1, active), simTime, poseEpoch, slotCap);
+    const slotRows = fastSnapshot.slotRows;
+    const previousRows = fastPrevious.slotRows;
+    slotRows.set(previousRows.subarray(0, Math.min(previousRows.length, slotRows.length)));
+    fastSnapshot.blitColumnsFrom(fastPrevious.columns, fastPrevious.count);
+    const dirty = world.packDirty;
+    const scan = Math.min(dirty.length, slotRows.length);
+    let bail = false;
+    for (let slot = 0; slot < scan; slot++) {
+      if ((slot % every) === 0 && slot > 0) yield;
+      if (dirty[slot] === 0) continue;
+      dirty[slot] = 0;
+      if (world.alive[slot] !== 1) continue;
+      const row = slotRows[slot];
+      const entityId = world.entityIds[slot] >>> 0;
+      if (row < 0 || row >= fastSnapshot.count
+        || fastPrevious.columns.entityId[row] !== entityId) { bail = true; break; }
+      rewritePackedRow(fastSnapshot, world, slot, row, entityId);
+    }
+    if (!bail) {
+      const postDiagnostics = typeof world.getDiagnostics === 'function'
+        ? world.getDiagnostics() : null;
+      if (postDiagnostics
+        && (postDiagnostics.allocations | 0) === allocationsAtMint
+        && (postDiagnostics.retirements | 0) === retirementsAtMint) {
+        fence.commit();
+        fence.notePackMembership(postDiagnostics);
+        return fastSnapshot.count;
+      }
+    }
+    // Premise broke mid-pack: reset the in-flight buffer into the classic
+    // walk. beginFrame re-clears the index, refills slotRows, and every live
+    // row re-packs — byte-identical to the atomic output, just paced.
+  }
+  const snapshot = fence.beginPack(Math.max(1, active), simTime, poseEpoch, slotCap);
   const previous = typeof fence.latestSnapshot === 'function' ? fence.latestSnapshot() : null;
   const previousIndex = previous && previous.poseEpoch === poseEpoch
     ? (previous.indexByEntityId || null) : null;
-  const every = Math.max(1, Math.floor(Number(sliceEvery) || 1));
   let packed = 0;
   // Identity coverage of the sweeps: a mid-park allocation swap-moved into
   // the frozen prefix escapes the minted list, and only this set can prove the
@@ -436,7 +670,7 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
       if (previousRow !== undefined && previousRow >= 0
           && (!previousGenerations || !world.slotGenerations
             || previousGenerations[previousRow] === (world.slotGenerations[slot] >>> 0))) {
-        snapshot.copyRow(previous, previousRow);
+        snapshot.slotRows[slot] = snapshot.copyRow(previous, previousRow);
         world.packDirty[slot] = 0;
         packedSlotGens.set(slot, slotIdentity);
         packed++;
@@ -477,6 +711,7 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
         world.slotGenerations ? world.slotGenerations[slot] : 0,
       );
     }
+    snapshot.slotRows[slot] = packedIndex;
     if (world.packDirty) world.packDirty[slot] = 0;
     packedSlotGens.set(slot, slotIdentity);
     packed++;
@@ -515,6 +750,7 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
     }
   }
   fence.commit();
+  fence.notePackMembership(postDiagnostics);
   return packed;
 }
 

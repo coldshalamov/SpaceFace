@@ -26325,7 +26325,7 @@ export const render = {
     const fence = this._snapshotFence;
     const snapshot = fence && fence.latestSnapshot();
     const previous = !currentOnly && fence ? fence.previousSnapshot() : null;
-    if (!snapshotHasEntityGeneration(snapshot, world.entityIds[slot], world.slotGenerations?.[slot])) return false;
+    if (!snapshotHasEntityGeneration(snapshot, world.entityIds[slot], world.slotGenerations?.[slot], slot)) return false;
     const poseBeforeX = mesh.position.x;
     const poseBeforeZ = mesh.position.z;
     const applied = applySnapshotPoseToMesh(
@@ -26343,6 +26343,7 @@ export const render = {
           LOOP_FIXED_DT,
           alpha,
         ),
+      slot,
     );
     if (!applied) return false;
     const poseDx = mesh.position.x - poseBeforeX;
@@ -26362,7 +26363,22 @@ export const render = {
     const world = this._presentationWorld;
     const snapshot = this._snapshotFence && this._snapshotFence.latestSnapshot();
     if (!world || !snapshot || world.entityIds[slot] !== entityId) return false;
-    return snapshotHasEntityGeneration(snapshot, entityId, world.slotGenerations?.[slot]);
+    const expectedGeneration = world.slotGenerations?.[slot];
+    // Slot-table hint: one typed-array read verified against the entityId
+    // column; a miss (or a snapshot without the table) keeps the map lookup.
+    const slotRows = snapshot.slotRows;
+    const hinted = slotRows && slot >= 0 && slot < slotRows.length ? slotRows[slot] : -1;
+    const ids = snapshot.columns && snapshot.columns.entityId;
+    if (hinted >= 0 && ids && ids[hinted] === (entityId >>> 0)) {
+      const hintedGenerations = snapshot.columns.generation;
+      return !hintedGenerations || !Number.isInteger(expectedGeneration)
+        || hintedGenerations[hinted] === (expectedGeneration >>> 0);
+    }
+    const index = snapshotIndexOf(snapshot, entityId);
+    if (index < 0) return false;
+    const generations = snapshot.columns && snapshot.columns.generation;
+    return !generations || !Number.isInteger(expectedGeneration)
+      || generations[index] === (expectedGeneration >>> 0);
   },
 
   syncEntityViews(alpha) {
