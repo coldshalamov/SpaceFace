@@ -272,6 +272,39 @@ export function createPackageDetachManifest(loaded, options = {}) {
   return manifest;
 }
 
+/**
+ * F4: manifest for a source-GLB's authored textures — same store/schema as package manifests,
+ * keyed by the source BYTES digest (`sha256:…` via imageSourceKeyAsync) instead of a render
+ * package's content-hash URL. `textures` is the authored blueprint's texture set in
+ * deterministic traversal order; `options.redecode` must re-fetch + re-parse the same source
+ * (with digest verification inside) and `options.collectResources` re-collects the texture
+ * list in that same order so ordinal pairing stays honest.
+ */
+export function createSourceDetachManifest(url, textures, options = {}) {
+  if (typeof options.redecode !== 'function' || typeof options.collectResources !== 'function') {
+    return null;
+  }
+  const contentHash = String(options.contentHash || '');
+  if (!contentHash) return null;
+  const existing = manifests.get(contentHash);
+  if (existing) return existing;
+  const manifest = createPackageDetachManifest({
+    contentHash,
+    assetId: options.assetId || url,
+    renderUrl: url,
+    resources: (textures || []).filter(isTextureLike),
+  }, { redecode: options.redecode, collectResources: options.collectResources });
+  if (manifest) {
+    manifest.sourceBytesSha256 = contentHash;
+    // N3: a manifest whose subtree is already an authoredReadableFallbackLayer detaches at mark
+    // — the layer is the live stand-in and never passes through a residency seal.
+    if (options.detachOnMark === true) {
+      for (const entry of manifest.entries) detachPackageTexture(entry.texture);
+    }
+  }
+  return manifest;
+}
+
 /** True when this texture's CPU payload was released after a proven GPU upload. */
 export function isPackageTextureDetached(texture) {
   const mark = texture && texture.userData && texture.userData.spacefaceCpuDetach;

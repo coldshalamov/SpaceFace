@@ -24,6 +24,7 @@ import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection, ceresShipbreakTransform
 // damage lights, and LOD hooks stay as normal objects.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { detachPackageTexture } from './packageCpuDetach.js';
 import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES } from '../data/palettes.js';
 import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
@@ -10179,6 +10180,17 @@ function markReadableFallbackLayer(fallbackRoot) {
     if (heroBody && object.isMesh) {
       object.userData.spacefaceAuthoredHeroBody = true;
       if (!object.userData.spacefacePartUrl) object.userData.spacefacePartUrl = 'hero/kestrel_borrowed_time';
+    }
+    // N3 (heap-floor F4): a fallback layer never seals — it IS the live stand-in, already drawn
+    // — so its marked authored textures release their CPU mirrors at mark rather than waiting
+    // for a residency pass that will never cover this subtree. Unmarked textures no-op.
+    const materials = object.material
+      ? (Array.isArray(object.material) ? object.material : [object.material])
+      : [];
+    for (const material of materials) {
+      for (const value of Object.values(material || {})) {
+        if (value && value.isTexture === true) detachPackageTexture(value);
+      }
     }
   });
 }
