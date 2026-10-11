@@ -3,6 +3,10 @@
 
 This is the repository's implementation front door. It routes an agent to the smallest authoritative packet and the live owners it must respect. It deliberately contains no current queue snapshot, branch name, lease, test transcript, or completion history.
 
+The owner-directed weapons and powers audit is [Arsenal experience](design/program/ARSENAL_EXPERIENCE.md):
+the complete built-kit lifecycle matrix and implementation plan for physical world effects,
+distinct attack/target presentation, custom SVG identities and usable controls.
+
 Completed work moves to [build_map_done.md](./build_map_done.md): strike the entry from the live board, land the record there with its commit and receipt, and reviews read it there.
 
 For the owner-directed production-quality and physics-playground planning pass, use
