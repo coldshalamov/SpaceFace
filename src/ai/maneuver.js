@@ -32,6 +32,20 @@ function bodyRadius(body) {
 }
 
 const GAP_QUEUE_PAD = 4;
+
+// SFQ-B043: a shove opens a real gap in a formation. A member displaced faster than its own
+// thrust could have moved it (an external kick) or released from a tumble shakes it off first,
+// then regroups at patrol pace so the gap stays open for a few seconds, and breaks formation if
+// it still has not closed by the hard limit. Ticks only; nothing here writes a pose or velocity.
+const DISRUPT_KICK_FLOOR_WU_S = 30;     // below this a velocity jump is never an external kick
+const DISRUPT_KICK_MARGIN = 2.5;        // x the hull's own accel authority over the elapsed plan gap
+const DISRUPT_RECOVER_TICKS = 40;       // ~0.67 s: kill the drift, turn toward the slot, no boost
+const DISRUPT_HARD_LIMIT_TICKS = 480;   // 8 s from the shove: still out of the bound -> break formation
+const DISRUPT_BROKEN_REJOIN_FRACTION = 0.8;
+const DISRUPT_NONE = Object.freeze({ phase: 'none', active: false, broken: false });
+const DISRUPT_RECOVER = Object.freeze({ phase: 'recover', active: true, broken: false });
+const DISRUPT_REGROUP = Object.freeze({ phase: 'regroup', active: true, broken: false });
+const DISRUPT_BROKEN = Object.freeze({ phase: 'broken', active: true, broken: true });
 // Braking deceleration assumed by the choreography slot chase's arrival damping. Deliberately
 // conservative (real hulls brake harder), so the cap opens early and never strafes a chase.
 const COMMIT_ARRIVAL_BRAKE = 60;
@@ -286,6 +300,10 @@ export class ManeuverPlanner {
     // when the status clears, ordinary planning resumes off current truth and the ship
     // re-engages cleanly. Deterministic: status plus tick only, never wall time.
     if (self.tumbling === true) {
+      runtime.wasTumbling = true;
+      runtime.lastVelX = self.vel ? self.vel.x : 0;
+      runtime.lastVelZ = self.vel ? self.vel.z : 0;
+      runtime.lastVelTick = tick;
       runtime.stationaryTicks = 0;
       runtime.lastRot = self.rot;
       runtime.lastRotTick = tick;
@@ -308,8 +326,8 @@ export class ManeuverPlanner {
     // Tactical Enemy Mind waypoints take locomotion ownership explicitly. Authored formations
     // remain in charge for unmodified pilots and ordinary hull-doctrine PRESS behavior.
     const mindOwned = behavior && behavior.maneuver && behavior.maneuver.enemyMindOwned === true;
-    const choreo = !mindOwned && this.squadFrames ? this.squadFrames.planFor(entityId) : null;
-    const selfPose = choreo && choreo.live ? overlaySelf(self, choreo.live) : self;
+    let choreo = !mindOwned && this.squadFrames ? this.squadFrames.planFor(entityId) : null;
+    let selfPose = choreo && choreo.live ? overlaySelf(self, choreo.live) : self;
     const baseIntent = behavior && behavior.maneuver ? behavior.maneuver : {
       kind: ManeuverKind.HOLD,
       targetId: null,
@@ -352,8 +370,27 @@ export class ManeuverPlanner {
     const formationDistance = distance2(selfPose.pos, intent.formationSlot || selfPose.pos);
     const formationBound = Math.max(1, intent.formationBound || 0);
     const rejoinDistance = formationBound * this.config.formationRejoinFraction;
-    const mustRejoin = !intent.breakFormation && !choreo && formationDistance > rejoinDistance;
     const hullScale = hullScaleFor(selfPose, entityId, this.resolveHull);
+    const disruption = this._stepDisruption(runtime, {
+      tick,
+      directive,
+      selfPose,
+      hullScale,
+      formationMember: !!choreo || (intent.breakFormation !== true && !!intent.formationSlot),
+      formationDistance,
+      rejoinDistance,
+    });
+    if (disruption.broken) {
+      // The member that could not close the gap flies its own intent until its squad re-forms.
+      if (choreo) {
+        choreo = null;
+        selfPose = self;
+        intent = { ...baseIntent, breakFormation: true };
+      } else {
+        intent = { ...intent, breakFormation: true };
+      }
+    }
+    const mustRejoin = !intent.breakFormation && !choreo && formationDistance > rejoinDistance;
     // Per-pilot flight character (§21A variety): verve/poise/weave/dash/aim, deterministic
     // per entity + doctrine. Every hull feels like its own pilot instead of the same
     // steering gain cloned N times.
@@ -366,13 +403,24 @@ export class ManeuverPlanner {
     if (choreo && choreo.coast) {
       desired = coastHold(selfPose);
     } else if (choreo) {
-      const cap = this.config.interceptSpeed * (Number.isFinite(choreo.speedFraction) ? choreo.speedFraction : 0.8);
+      let cap = this.config.interceptSpeed * (Number.isFinite(choreo.speedFraction) ? choreo.speedFraction : 0.8);
+      if (disruption.phase === 'regroup') cap = Math.min(cap, this.config.patrolSpeed * (hullScale && hullScale.speed > 0 ? hullScale.speed : 1));
       desired = commitPoint(selfPose, intent.formationSlot, cap, intent.formationVelocity);
       desired = separateDesiredFromFriends(desired, selfPose, contactSource.ships, 72);
     } else if (mustRejoin) {
       desired = trackPoint(selfPose, predictFormationSlot(intent, this.config.formationPredictionTicks), intent.formationVelocity, 1);
     } else {
       desired = desiredForIntent(intent, selfPose, target, contactSource, this.seed, entityId, this.config, this.workCounters, hullScale);
+    }
+
+    if (disruption.phase === 'recover') {
+      // Shaking it off: kill the drift where the shove left the hull and swing the nose toward
+      // the slot. No boost, no slot chase until the beat is over.
+      const slot = intent.formationSlot || selfPose.pos;
+      desired = {
+        x: 0, z: 0, arrivalDistance: 0, desiredPos: selfPose.pos, desiredVel: ZERO_VEL, control: 'track',
+      };
+      intent = { ...intent, faceAngle: Math.atan2(slot.z - selfPose.pos.z, slot.x - selfPose.pos.x) };
     }
 
     // Pilot reflexes (bounded trigger→impulse reactions: volley jink, hit weave, marked
@@ -455,6 +503,14 @@ export class ManeuverPlanner {
 
     let kind = mustRejoin ? ManeuverKind.FORMATION : intent.kind;
     let reason = mustRejoin ? 'formation_bound_exceeded' : intent.reason || 'action_intent';
+    if (disruption.phase === 'recover') {
+      kind = ManeuverKind.HOLD;
+      reason = 'formation_recover';
+    } else if (disruption.phase === 'regroup') {
+      reason = 'formation_regroup';
+    } else if (disruption.phase === 'broken') {
+      reason = 'formation_broken';
+    }
     if (!choreo && (retreatHorizon || runtime.stationaryTicks >= this.config.stationaryLimitTicks || runtime.clearUntilTick >= tick)) {
       if (!retreatHorizon && runtime.clearUntilTick < tick) runtime.clearUntilTick = tick + this.config.deadlockClearTicks;
       if (!retreatHorizon) {
@@ -520,6 +576,11 @@ export class ManeuverPlanner {
           envelope.maxClosingSpeed *= Math.min(1, reflex.speedScale);
         }
       }
+    }
+    if (disruption.phase === 'recover' || disruption.phase === 'regroup') {
+      const scale = hullScale && hullScale.speed > 0 ? hullScale.speed : 1;
+      envelope.maxSpeed = Math.min(envelope.maxSpeed,
+        (disruption.phase === 'recover' ? this.config.holdSpeed : this.config.patrolSpeed) * scale);
     }
     if (kind === ManeuverKind.ORBIT && target) {
       const ringRadius = Number.isFinite(intent.preferredRange) ? intent.preferredRange : this.config.orbitRadius;
@@ -593,7 +654,7 @@ export class ManeuverPlanner {
     const boostWanted = ((kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
       speed < envelope.maxSpeed * 0.85 && Math.abs(angleError) < 0.78)
       || (reflex != null && reflex.boost === true && Math.abs(angleError) < 0.9);
-    const boost = boostWanted && !desired.obstacleAvoidance && !(reflex && reflex.simmer)
+    const boost = boostWanted && !desired.obstacleAvoidance && !(reflex && reflex.simmer) && !disruption.active
       && selfPose.energyFraction >= this.config.minBoostEnergyFraction && selfPose.heatFraction <= this.config.maxBoostHeatFraction;
     const slotSpeed = choreo && choreo.slotVel
       ? Math.hypot(choreo.slotVel.x || 0, choreo.slotVel.z || 0)
@@ -659,6 +720,72 @@ export class ManeuverPlanner {
       });
     }
     return request;
+  }
+
+  /**
+   * SFQ-B043 displacement state for one formation member. Detects a tumble that just ended or an
+   * external velocity kick (a jump larger than the hull's own accel authority over the plan gap,
+   * x DISRUPT_KICK_MARGIN, never below DISRUPT_KICK_FLOOR_WU_S), then walks RECOVER -> REGROUP ->
+   * (rejoined | broken). Returns one of the frozen DISRUPT_* views.
+   */
+  _stepDisruption(runtime, ctx) {
+    const { tick, directive, selfPose, hullScale, formationMember, formationDistance, rejoinDistance } = ctx;
+    const vel = selfPose.vel || ZERO_VEL;
+    let triggered = runtime.wasTumbling === true;
+    if (!triggered && formationMember && Number.isFinite(runtime.lastVelX)) {
+      const gap = Number.isInteger(runtime.lastVelTick) ? clamp(tick - runtime.lastVelTick, 1, 30) : 1;
+      const authority = this.config.desiredMaxForwardAccel * (hullScale && hullScale.accel > 0 ? hullScale.accel : 1);
+      const threshold = Math.max(DISRUPT_KICK_FLOOR_WU_S, DISRUPT_KICK_MARGIN * authority * gap / 60);
+      triggered = Math.hypot(vel.x - runtime.lastVelX, vel.z - runtime.lastVelZ) > threshold;
+    }
+    runtime.wasTumbling = false;
+    runtime.lastVelX = vel.x;
+    runtime.lastVelZ = vel.z;
+    runtime.lastVelTick = tick;
+
+    let d = runtime.disrupt || null;
+    const key = `${directive && directive.squadId}|${directive && directive.tactic}|${directive && directive.formation && directive.formation.kind}`;
+    if (d && (!formationMember || d.key !== key)) {
+      runtime.disrupt = d = null;
+    }
+    if (!formationMember) return DISRUPT_NONE;
+    if (!d) {
+      if (!triggered) return DISRUPT_NONE;
+      runtime.disrupt = d = {
+        phase: 'recover',
+        recoverUntil: tick + DISRUPT_RECOVER_TICKS,
+        limitTick: tick + DISRUPT_HARD_LIMIT_TICKS,
+        key,
+      };
+    }
+    if (d.phase === 'broken') {
+      if (formationDistance <= rejoinDistance * DISRUPT_BROKEN_REJOIN_FRACTION) {
+        runtime.disrupt = null;
+        return DISRUPT_NONE;
+      }
+      return DISRUPT_BROKEN;
+    }
+    if (tick >= d.limitTick) {
+      if (formationDistance > rejoinDistance) {
+        d.phase = 'broken';
+        return DISRUPT_BROKEN;
+      }
+      runtime.disrupt = null;
+      return DISRUPT_NONE;
+    }
+    if (d.phase === 'recover') {
+      if (tick < d.recoverUntil) return DISRUPT_RECOVER;
+      if (formationDistance <= rejoinDistance) {
+        runtime.disrupt = null;
+        return DISRUPT_NONE;
+      }
+      d.phase = 'regroup';
+    }
+    if (formationDistance <= rejoinDistance) {
+      runtime.disrupt = null;
+      return DISRUPT_NONE;
+    }
+    return DISRUPT_REGROUP;
   }
 
   forget(entityId) {
