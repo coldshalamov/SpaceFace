@@ -36,6 +36,9 @@ const LAYOUT_TRIES = 36;
 const LAYOUT_STEP_WU = 140;
 const JUMPER_RANGE_WU = [600, 700];
 const JUMPER_ARRIVE_WU = 380;
+const JUMPER_STAGGER_WU = 320;     // the second hull trails the first by a few seconds of flight
+const HAND_HULL_MULT = 2.2;        // a working hand, not a paper one: protecting it must be possible
+const HAND_SHIELD_MULT = 2;
 const FILING_HOLD_S = 45;
 const JUMPER_STUCK_S = 150;        // jumpers exist but none ever came near anyone
 const JUMPER_RETRY_EVERY_S = 2;
@@ -109,6 +112,11 @@ function entityById(state, id) {
 
 function alive(e) { return !!e && e.alive !== false; }
 
+function isDisengaged(jumper) {
+  const ai = jumper && jumper.data && jumper.data.ai;
+  return !!ai && (ai.passive === true || ai.roe === 'hold_fire' || ai.pirateDisengaged === true);
+}
+
 export const runtime = Object.freeze({
   fire(d, live, state) {
     const ships = (live.plan && live.plan.ships) || [];
@@ -126,6 +134,10 @@ export const runtime = Object.freeze({
     if (!ids.length || d.aliveCount(live, 'hand') < 1) return d.abort(live, 'no_budget');
     const hand = d.entsOf(live, 'hand')[0];
     if (hand && hand.data) hand.data.scanLabel = 'SALVAGE HAND — SUSPECTS A LAMP';
+    if (hand) {
+      if (Number.isFinite(hand.hullMax)) { hand.hullMax = Math.round(hand.hullMax * HAND_HULL_MULT); hand.hull = hand.hullMax; }
+      if (Number.isFinite(hand.shieldMax)) { hand.shieldMax = Math.round(hand.shieldMax * HAND_SHIELD_MULT); hand.shield = hand.shieldMax; }
+    }
 
     const hulk = d.spawnWreck(live, {
       pos: layout.hulk, pool: { ...QUARANTINED_POOL },
@@ -235,13 +247,16 @@ export const runtime = Object.freeze({
     while (specs.length < 2) specs.push({ ...specs[0] });
     const placed = specs.map((sh, i) => {
       const a = bearing + (i === 0 ? -0.12 : 0.12);
+      const reach = range + (i === 0 ? 0 : JUMPER_STAGGER_WU);
       return {
         ...sh,
         archetype: sh.archetype || 'wasp_swarmer',
         role: 'jumper',
         factionId: 'faction_reach',
+        team: 1,
+        context: 'encounter',
         passive: false,
-        pos: { x: bloom.hulkPos.x + Math.cos(a) * range, z: bloom.hulkPos.z + Math.sin(a) * range },
+        pos: { x: bloom.hulkPos.x + Math.cos(a) * reach, z: bloom.hulkPos.z + Math.sin(a) * reach },
         scanLabel: 'CLAIM-JUMPER — PLANTED THE LAMP',
       };
     });
@@ -255,13 +270,9 @@ export const runtime = Object.freeze({
     bloom.jumperRetryAt = null;
     // The sanctioned explicit-target relation (engagementAuthority: retaliationTargetId outranks
     // the team-2 neutrality) is what lets a raider fire on the passive hand, not only the player.
-    // hostileTeams keeps the player a declared target too (retaliationTargetId holds one id).
-    const player = d.player();
     for (const j of d.entsOf(live, 'jumper')) {
       const ai = j.data && j.data.ai;
-      if (!ai) continue;
-      if (hand) ai.retaliationTargetId = hand.id;
-      if (player) ai.hostileTeams = [player.team];
+      if (ai && hand) ai.retaliationTargetId = hand.id;
     }
     d.say(live, 'alert', "CLAIM-JUMPER: That lamp's ours, scrapper. Put it down.", null, { literal: true });
   },
@@ -291,13 +302,22 @@ export const runtime = Object.freeze({
         if (now >= bloom.jumperRetryAt) this._spawnJumpers(d, live, bloom);
         return;
       }
-      if (bloom.jumpersSpawned === 0 && now - bloom.jumperGiveUpAt >= UNDISTURBED_HOLD_S) {
+      if (now - bloom.jumperGiveUpAt >= UNDISTURBED_HOLD_S) {
         return this._settle(d, live, bloom, 'filed');
       }
       return;
     }
 
-    const jumpers = d.entsOf(live, 'jumper');
+    // A jumper that broke off (passive, hold-fire or flagged disengaged) is no longer a threat:
+    // it loses its explicit fire authority on the hand, and once every live jumper has run or
+    // died the hand files.
+    const jumpers = d.entsOf(live, 'jumper').filter((j) => {
+      if (!isDisengaged(j)) return true;
+      const ai = j.data.ai;
+      if (ai.retaliationTargetId === hand.id) delete ai.retaliationTargetId;
+      if (ai.activity && ai.activity.targetId === hand.id) ai.activity.targetId = null;
+      return false;
+    });
     if (jumpers.length === 0) return this._settle(d, live, bloom, 'filed');
     if (bloom.jumpersArrivedAt == null) {
       const p = d.player();
@@ -357,6 +377,7 @@ export default defineEncounter(trigger, {
     size: [2, 2],
     factionId: 'faction_reach',
     context: 'encounter',
+    team: 1,
     clusterRadius: 60,
     minSeparation: 40,
     doctrine: 'scavenger',

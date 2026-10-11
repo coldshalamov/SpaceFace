@@ -147,7 +147,7 @@ test('comparison proof: scan the hulk, the reference, then the emitter up close 
     assert.equal(j.factionId, 'faction_reach');
     assert.equal(j.data.ai.passive, false, 'they come hostile');
     const range = Math.hypot(j.pos.x - b.hulkPos.x, j.pos.z - b.hulkPos.z);
-    assert.ok(range > 590 && range < 710, `they come from ~600-700 WU out of the SITE (${range.toFixed(0)})`);
+    assert.ok(range > 590 && range < 1040, `they come from the SITE, 600-700 WU out and the second hull a beat behind (${range.toFixed(0)})`);
   }
   assert.ok(said(h).includes("CLAIM-JUMPER: That lamp's ours, scrapper. Put it down."));
   assert.ok(said(h).includes('SALVAGE HAND: Filing it now — keep them off me!'));
@@ -313,7 +313,7 @@ test('the claim-jumpers spawn near the site, not on the player', () => {
   for (const j of jumpersOf(h, live)) {
     const fromSite = Math.hypot(j.pos.x - b.hulkPos.x, j.pos.z - b.hulkPos.z);
     const fromPlayer = Math.hypot(j.pos.x - h.player.pos.x, j.pos.z - h.player.pos.z);
-    assert.ok(fromSite > 590 && fromSite < 710, `out from the site (${fromSite.toFixed(0)})`);
+    assert.ok(fromSite > 590 && fromSite < 1040, `out from the site (${fromSite.toFixed(0)})`);
     assert.ok(fromPlayer !== fromSite, 'not tied to the player position');
   }
 });
@@ -434,4 +434,34 @@ test('after settling, a leftover emitter stops claiming to be live evidence', ()
   const live2 = fire(h2);
   h2.sim.runTicks(60 * 245);
   assert.equal(ent(h2, bloomOf(live2).emitterId).data.scanLabel, 'SPOOF EMITTER');
+});
+
+test('a jumper that breaks off stops threatening the hand; once every jumper has run or died the hand files', () => {
+  const h = makeHarness();
+  const live = fire(h);
+  scanBothThenEmitter(h, live);
+  const hand = live.ids.map((id) => ent(h, id)).find((e) => e?.data?.ai?.encounterRole === 'hand');
+  const [first, second] = jumpersOf(h, live);
+  assert.equal(first.data.ai.retaliationTargetId, hand.id);
+  first.data.ai.passive = true;
+  first.data.ai.roe = 'hold_fire';
+  h.sim.runTicks(12);
+  assert.equal(first.data.ai.retaliationTargetId, undefined, 'a fleeing jumper loses its fire authority on the hand');
+  assert.equal(second.data.ai.retaliationTargetId, hand.id, 'the one still fighting keeps it');
+  assert.deepEqual(resolved(h), [], 'one jumper still threatens, so the hand has not filed');
+  second.alive = false;
+  h.sim.runTicks(120);
+  assert.deepEqual(resolved(h), ['filed'], 'the last threat is gone (one ran, one died)');
+});
+
+test('the hand can be defended: it is sturdier than its stock hull and the second jumper trails the first', () => {
+  const h = makeHarness();
+  const live = fire(h);
+  const hand = live.ids.map((id) => ent(h, id)).find((e) => e?.data?.ai?.encounterRole === 'hand');
+  assert.ok(hand.hullMax >= 190 * 2 && hand.shieldMax >= 82 * 2, `hand hull ${hand.hullMax} / shield ${hand.shieldMax}`);
+  assert.equal(hand.hull, hand.hullMax);
+  scanBothThenEmitter(h, live);
+  const b = bloomOf(live);
+  const ranges = jumpersOf(h, live).map((j) => Math.hypot(j.pos.x - b.hulkPos.x, j.pos.z - b.hulkPos.z)).sort((a, c) => a - c);
+  assert.ok(ranges[1] - ranges[0] > 250, `the second hull trails by ${(ranges[1] - ranges[0]).toFixed(0)} WU`);
 });
