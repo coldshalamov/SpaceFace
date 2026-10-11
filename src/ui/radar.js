@@ -68,6 +68,30 @@ const MAX_SEMANTIC_INFRASTRUCTURE = 20;
    the rim, hostiles always, and salient ships (selected target, mission targets, named lane
    contacts, POI anchors, capitals) ignore the band. */
 export const RADAR_TRAFFIC_RANGE_FRACTION = 0.5;
+/* Inside a nebula the scanner really does wash out (hazardLanguage: "sensors wash out"). Presentation
+   only - detection, AI sensors and targeting are untouched. Contacts inside 45 % of the radar range
+   read normally; between 45 % and 75 % they fade to unknown ghost marks (no identity, no colour);
+   beyond 75 % they vanish. Stations and gates are charted, not sensed, and keep their marks. */
+export const NEBULA_VEIL_GHOST_FRACTION = 0.45;
+export const NEBULA_VEIL_HIDE_FRACTION = 0.75;
+export const VEIL_CLEAR = 0;
+export const VEIL_GHOST = 1;
+export const VEIL_HIDDEN = 2;
+
+/** True while the player's current hazard read is a nebula (sector hazard or nebula_fog zone). */
+export function nebulaVeilActive(state) {
+  const read = state && state.ui && state.ui.hazardRead;
+  return !!read && (read.type === 'nebula' || read.type === 'nebula_fog');
+}
+
+/** Veil band for a contact at `distanceSq` on a radar of `rangeSq` (squared WU). */
+export function nebulaVeilBand(distanceSq, rangeSq) {
+  if (!(rangeSq > 0)) return VEIL_CLEAR;
+  const ghostSq = rangeSq * NEBULA_VEIL_GHOST_FRACTION * NEBULA_VEIL_GHOST_FRACTION;
+  if (distanceSq <= ghostSq) return VEIL_CLEAR;
+  const hideSq = rangeSq * NEBULA_VEIL_HIDE_FRACTION * NEBULA_VEIL_HIDE_FRACTION;
+  return distanceSq <= hideSq ? VEIL_GHOST : VEIL_HIDDEN;
+}
 // Asteroids are cartography, not contacts: the belt renders as a faint density field on a coarse
 // grid, and only the nearest few rocks earn individual dots. Hundreds of blips at 4 km scale read
 // as grey fog that drowns every real signal on the dial.
@@ -97,6 +121,8 @@ export function createRadarContactsStillCache() {
     hostileCount: 0,
     infraCount: 0,
     neutralCount: 0,
+    ghostCount: 0,
+    veil: false,
     nearestOffRangeHostile: null,
     salients: 0,
     rescanDraws: 0,
@@ -130,6 +156,9 @@ export function censusRadarContactsStillLayer({
   updateTrailFn = null,
   maxTrailUpdates = MAX_TRAIL_UPDATES,
   hostileOf = null,
+  veil = false,
+  ghostMarks = null,
+  pushGhostMark = null,
 }) {
   const playerX = player.pos.x;
   const playerZ = player.pos.z;
@@ -146,6 +175,7 @@ export function censusRadarContactsStillLayer({
     && stillQz === cache.qz
     && range === cache.range
     && targetId === cache.targetId
+    && (veil === true) === cache.veil
     && cache.rescanDraws > 0;
 
   // FB-035 — live POI plans ride the mark: the readout's radarKind is the blip class and its
@@ -173,6 +203,7 @@ export function censusRadarContactsStillLayer({
     hostileMarks.length = cache.hostileCount;
     infrastructureMarks.length = cache.infraCount;
     neutralMarks.length = cache.neutralCount;
+    if (ghostMarks) ghostMarks.length = cache.ghostCount;
     return {
       skipped: true,
       hostileCount: cache.hostileCount,
@@ -185,6 +216,7 @@ export function censusRadarContactsStillLayer({
   hostileMarks.length = 0;
   infrastructureMarks.length = 0;
   neutralMarks.length = 0;
+  if (ghostMarks) ghostMarks.length = 0;
   let hostileCount = 0;
   let salientContactCount = 0;
   let nearestOffRangeHostile = null;
@@ -203,6 +235,21 @@ export function censusRadarContactsStillLayer({
     const poiStamped = entity.data && entity.data.poiBehavior;
     const poi = poiStamped && poiReadouts ? poiReadouts[poiStamped.zoneId] || null : null;
     if (hostile || station || entity.id === targetId) salientContactCount += 1;
+
+    if (veil && !station) {
+      const band = nebulaVeilBand(distanceSq, rangeSq);
+      if (band !== VEIL_CLEAR) {
+        // Only a contact the radar would normally draw may leave a ghost: the veil never reveals
+        // ordinary traffic the close-band dial already hides.
+        const hiddenTraffic = !hostile && (entity.type === 'ship' || entity.type === 'drone')
+          && !isSalientShip(entity, targetId) && distanceSq > trafficRangeSq;
+        if (band === VEIL_GHOST && pushGhostMark && !hiddenTraffic) {
+          const ghost = projectRadarPoint(player.pos, entity.pos, range, metrics, projectScratch);
+          if (ghost) pushGhostMark(entity, ghost, distanceSq);
+        }
+        continue;
+      }
+    }
 
     if (distanceSq > rangeSq) {
       if (hostile && distanceSq < nearestOffRangeHostileDistanceSq) {
@@ -281,6 +328,8 @@ export function censusRadarContactsStillLayer({
   cache.hostileCount = hostileMarks.length;
   cache.infraCount = infrastructureMarks.length;
   cache.neutralCount = neutralMarks.length;
+  cache.ghostCount = ghostMarks ? ghostMarks.length : 0;
+  cache.veil = veil === true;
   cache.salients = salientContactCount;
   cache.nearestOffRangeHostile = nearestOffRangeHostile;
   cache.rescanDraws = RADAR_CONTACTS_STILL_RESCAN_DRAWS;
@@ -1637,6 +1686,20 @@ export function createRadar(ctx) {
     mark.poiProgress = poiProgressRatio(poi);
     infrastructureMarks.push(mark);
   }
+  const ghostMarks = [];
+  const ghostMarkPool = [];
+  function pushGhostMark(entity, projected, distanceSq) {
+    let mark = ghostMarkPool[ghostMarks.length];
+    if (!mark) {
+      mark = { entity: null, x: 0, y: 0, distanceSq: 0 };
+      ghostMarkPool[ghostMarks.length] = mark;
+    }
+    mark.entity = entity;
+    mark.x = projected.x;
+    mark.y = projected.y;
+    mark.distanceSq = distanceSq;
+    ghostMarks.push(mark);
+  }
   function pushNeutralMark(entity, projected, distanceSq, meta) {
     let mark = neutralMarkPool[neutralMarks.length];
     if (!mark) {
@@ -2000,7 +2063,25 @@ export function createRadar(ctx) {
       updateTrailFn: updateTrail,
       maxTrailUpdates: MAX_TRAIL_UPDATES,
       hostileOf,
+      veil: nebulaVeilActive(state),
+      ghostMarks,
+      pushGhostMark,
     });
+    // Nebula ghosts: an unknown, colourless smudge. Static (no flicker), so reduced motion needs
+    // no separate path.
+    if (ghostMarks.length) {
+      g.save();
+      g.globalAlpha = 0.32;
+      g.fillStyle = '#9aa7b8';
+      g.beginPath();
+      for (let i = 0; i < ghostMarks.length; i += 1) {
+        const ghost = ghostMarks[i];
+        g.moveTo(ghost.x + 2.6, ghost.y);
+        g.arc(ghost.x, ghost.y, 2.6, 0, Math.PI * 2);
+      }
+      g.fill();
+      g.restore();
+    }
     const hostileCount = contactCensus.hostileCount;
     const salientContactCount = contactCensus.salients;
     const nearestOffRangeHostile = contactCensus.nearestOffRangeHostile;
