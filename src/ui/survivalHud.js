@@ -144,7 +144,18 @@ export function earnLine(award) {
   if (!award) return null;
   const parts = [];
   if (award.credits > 0) parts.push(`+${award.credits.toLocaleString('en-US')} CR`);
-  if (award.score > 0) parts.push(`+${award.score} SCORE`);
+  if (award.score > 0) {
+    let line = `+${award.score} SCORE`;
+    // A style settlement names its acts so the player learns what paid.
+    if (award.reason === 'stunt_bank' && Array.isArray(award.bankActs)) {
+      const names = award.bankActs.filter((n) => typeof n === 'string' && n.length > 0);
+      if (names.length > 0) {
+        const shown = names.slice(0, 3).join(', ');
+        line += names.length > 3 ? ` · ${shown} +${names.length - 3}` : ` · ${shown}`;
+      }
+    }
+    parts.push(line);
+  }
   if (award.xp > 0) parts.push(`+${award.xp} XP`);
   if (parts.length === 0) return null;
   return parts.join('   ');

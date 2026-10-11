@@ -233,7 +233,14 @@ export const survivalRewards = {
     for (const bank of this.state.stunts?.combo?.banks || []) if (bank.bankId > r.lastBankId) {
       r.lastBankId = bank.bankId;
       r.roundStyle += bank.points;
-      this._emit('run:awardRequested', { score: bank.points, reason: 'stunt_bank', wave: run.wave });
+      // The settlement names what it paid for: the bank's acts in order,
+      // deduplicated — the receipt teaches which moves the purse likes.
+      const names = [];
+      for (const act of bank.acts || []) {
+        const name = typeof act?.name === 'string' ? act.name.trim() : '';
+        if (name && !names.includes(name)) names.push(name);
+      }
+      this._emit('run:awardRequested', { score: bank.points, reason: 'stunt_bank', wave: run.wave, bankActs: names });
     }
     this._payStipend();
   },

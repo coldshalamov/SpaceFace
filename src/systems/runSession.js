@@ -41,6 +41,12 @@ function toReason(value) {
   return typeof value === 'string' ? value : null;
 }
 
+// Style settlements name their acts; anything else (or nothing) rides bare.
+function toBankActs(value) {
+  if (!Array.isArray(value)) return undefined;
+  const names = value.filter((n) => typeof n === 'string' && n.trim().length > 0).slice(0, 8);
+  return names.length > 0 ? names : undefined;
+}
 function toNonNegativeInt(value) {
   if (!Number.isFinite(value)) return 0;
   const n = Math.trunc(value);
@@ -225,6 +231,7 @@ export const runSession = {
       previousLevel,
       reason: toReason(request && request.reason),
       wave: Number.isInteger(request && request.wave) ? request.wave : null,
+      bankActs: toBankActs(request && request.bankActs),
     });
     if (committed && next.level > previousLevel) {
       this._emit('run:levelUp', { level: next.level, previousLevel, xp: next.xp });
