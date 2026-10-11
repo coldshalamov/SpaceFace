@@ -20,6 +20,7 @@ import { arcGauge } from '../orrery/instruments.js';
 import { injectOrrery } from '../orrery/tokens.js';
 import { MATERIALS, ORE_TINTS } from './asteroidRenderer2d.js';
 import { drillTierReqForOre } from '../../systems/drill.js';
+import { machineCapability } from '../../systems/siteProduction.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
@@ -98,7 +99,9 @@ export function placementReason(check) {
     'not-hollow': 'The cell must be hollow. Bore it out first.',
     occupied: 'A machine already occupies this cell.',
     'rover-here': 'The rover is parked there — move it first.',
-    'rover-not-adjacent': 'Manual install: drive the rover next to the cell (a staked claim unlocks remote construction).',
+    'rover-not-adjacent': 'Drive the rover beside the first installation. A staked claim can build along connected tunnels.',
+    'no-access-route': 'Bore a connected tunnel to this cell. Machines cannot be built through solid rock or blocked passages.',
+    'entry-reserved': 'Keep the rover entrance clear. Build beside it instead.',
     'needs-gas-contact': 'A Gas Tap must sit beside at least one sealed gas pocket.',
     unique: 'Only one Massline Core per asteroid.',
     materials: 'Missing materials.',
@@ -124,6 +127,8 @@ const GHOST_BLOCK = {
   occupied: 'A machine sits here',
   'rover-here': 'The rover is parked here',
   'rover-not-adjacent': 'Drive the rover alongside',
+  'no-access-route': 'Bore a connected access tunnel',
+  'entry-reserved': 'Keep the rover entrance clear',
   'needs-gas-contact': 'Needs a sealed pocket',
   unique: 'One Core per asteroid',
   materials: 'Missing materials',
@@ -162,7 +167,9 @@ export function lensChip(id, suffix = '') {
 const STATUS_ROW = {
   running: { tone: 'mint', body: '' },
   building: { tone: 'mint', body: 'Assembling' },
-  throttled: { tone: 'gold', body: 'Throttled — paint more cable' },
+  loading: { tone: 'gold', body: 'Loading materials from lane' },
+  unloading: { tone: 'gold', body: 'Moving output to lane' },
+  throttled: { tone: 'gold', body: 'Power shortfall — tap sealed gas' },
   starved: { tone: 'gold', body: 'Starved — feed the mill' },
   limited: { tone: 'gold', body: 'Lane throughput capped' },
   backlogged: { tone: 'gold', body: 'Lane full — clear the port' },
@@ -340,7 +347,8 @@ export function tileLensModel({
   }
 
   const progress = telemetry ? Math.max(0, Math.min(1, Number(telemetry.progress) || 0)) : 0;
-  let body = '';
+  let body = type === 'gas' ? 'Preserve for power or fuel'
+    : (type === 'vein' ? 'Preserve for continuous extraction' : 'Preserve for silicate production');
   if (cutPreview && (cutPreview.contactsLost > 0 || cutPreview.rateLost > 0)) {
     const bits = [];
     if (cutPreview.contactsLost > 0) bits.push(`Cuts ${cutPreview.contactsLost} contact${cutPreview.contactsLost === 1 ? '' : 's'}`);
@@ -375,11 +383,10 @@ export function machineLensModel(pm) {
   // have to ellipsize either of them inside the 260px cap.
   const numerals = [];
   const cap = pm.capability;
-  if (cap && cap.outputsPerMin) {
-    const scale = cap.powerDraw > 0 ? Math.max(0, Math.min(1, pm.powerRatio == null ? 1 : pm.powerRatio)) : 1;
-    const goods = Object.keys(cap.outputsPerMin).sort();
-    if (goods.length) numerals.push(`${(cap.outputsPerMin[goods[0]] * scale).toFixed(1)}/min`);
-  }
+  const actual = pm.status?.ratePerMin || {};
+  const goods = Object.keys(actual).sort();
+  if (goods.length) numerals.push(`${Object.values(actual).reduce((sum, n) => sum + (Number(n) || 0), 0).toFixed(1)}u/min`);
+  else if (cap && Object.keys(cap.outputsPerMin || {}).length) numerals.push('0u/min');
   if (!numerals.length && cap && cap.powerGen > 0) numerals.push(`${cap.powerGen.toFixed(0)} MW`);
   // A cause line forces the head onto one row, and the NAME is the identity — it never shrinks.
   // So a machine that has something to say gives up its second numeral rather than its name.
@@ -410,15 +417,22 @@ export function ghostLensModel(defId, check) {
   const def = SITE_MACHINE_BY_ID.get(defId);
   const ok = !!(check && check.ok);
   const profile = check && check.profile;
+  const capability = profile && def ? machineCapability(def, profile, def.modes?.[0]) : null;
+  const rates = Object.entries(capability?.outputsPerMin || {}).sort(([a], [b]) => a.localeCompare(b));
+  const output = rates.map(([id, n]) => `${n.toFixed(1)} ${sentenceCase(commodityName(id))}/min`).join(' · ');
+  const power = capability && (capability.powerGen || capability.powerDraw);
+  const missing = Object.entries(check?.missing || {}).map(([id, n]) => `${n} ${sentenceCase(commodityName(id))}`).join(' + ');
+  const body = ok ? (output || (def?.usesGeology && !capability?.geologyLive ? 'No productive material contacts' : ''))
+    : (check?.reason === 'materials' && missing ? `Need ${missing}` : (GHOST_BLOCK[check && check.reason] || 'Placement blocked'));
   return {
     kind: 'ghost',
     swatch: null,
     lamp: ok ? 'mint' : 'coral',
     name: sentenceCase(def ? def.name : defId),
-    numerals: profile ? `${contactCount(profile)} contacts` : '',
+    numerals: profile ? `${contactCount(profile)} contacts${power ? ` · ${capability.powerGen > 0 ? '+' : '−'}${power} MW` : ''}` : '',
     hp: null,
     chips: [lensChip(ok ? 'seat' : 'blocked')].filter(Boolean),
-    body: ok ? '' : (GHOST_BLOCK[check && check.reason] || 'Placement blocked'),
+    body,
     ring: (check && check.profile) ? check.profile.cells : null,
   };
 }
@@ -623,9 +637,10 @@ export function createCursorLens(host) {
     // source, so this is a belt-and-braces trim rather than a formatter.
     bodyEl.textContent = model.body || '';
     bodyEl.hidden = !model.body;
-    // The head may wrap so a two-word material name is never ellipsized inside the 260px cap —
-    // but only when it is the card's ONLY text. A body line below it would make three.
-    head.classList.toggle('nowrap', !!model.body);
+    // A placement's contacts, power and yield are decision data. Give the numeric readout
+    // its own line rather than ellipsizing it beside a machine name when a cause is present.
+    head.classList.remove('nowrap');
+    numEl.style.flexBasis = model.numerals ? '100%' : '';
 
     paintRing(model.ring);
     return true;

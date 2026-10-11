@@ -89,6 +89,29 @@ function makeLedgerEntry(t, kind, text) {
   return { t: Math.round((Number(t) || 0) * 10) / 10, kind, text };
 }
 
+// Construction shares the rover's cardinal traversal law. Machines are obstacles, even
+// when a cold site's reconstructed field has not been stamped with their housings yet.
+function constructionAccess(field, machines, start) {
+  const occupied = new Set((machines || []).map((m) => tileIndex(m.col, m.row)));
+  const open = (c, r) => c >= 0 && c < COLS && r >= 0 && r < ROWS
+    && !occupied.has(tileIndex(c, r))
+    && field[c]?.[r]?.type === 'empty' && !field[c][r].structure;
+  const reachable = new Uint8Array(COLS * ROWS);
+  if (!start || !open(start.col, start.row)) return reachable;
+  const queue = [start];
+  reachable[tileIndex(start.col, start.row)] = 1;
+  for (let i = 0; i < queue.length; i++) {
+    const cell = queue[i];
+    for (const [dc, dr] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+      const c = cell.col + dc; const r = cell.row + dr;
+      const idx = tileIndex(c, r);
+      if (!open(c, r) || reachable[idx]) continue;
+      reachable[idx] = 1; queue.push({ col: c, row: r });
+    }
+  }
+  return reachable;
+}
+
 function worldSiteFailureActorMatches(actorPolicy, entity, state) {
   if (!entity || entity.alive === false) return false;
   if (actorPolicy === 'player-contact') return entity.id === state.playerId;
@@ -111,6 +134,8 @@ export function makeSiteRecord({ id, asteroidId, sectorId, fieldId, createdT }) 
     anchor: null,             // { x, z, radius, typeId, yieldU } — physical re-spawn recipe
     cleared: [],
     machines: [],
+    productionStep: 0,
+    workbenchRemainderS: 0,
     nextMachineNum: 1,
     overlays: { power: [], lane: [] },
     laneStores: [],           // [{ cells:[idx], store:{goodId:qty} }] — persisted per lane network
@@ -264,6 +289,19 @@ function normalizeSiteMachines(site) {
     if (job && typeof job.recipeId === 'string' && job.recipeId
       && Number.isFinite(Number(job.progressS)) && Number(job.progressS) >= 0) {
       m.job = { recipeId: job.recipeId, progressS: Number(job.progressS) };
+      const recipe = SITE_RECIPE_BY_ID.get(job.recipeId);
+      if (recipe && isPlainObject(job.loading)) {
+        m.job.loading = {};
+        for (const [goodId, required] of Object.entries(recipe.inputs)) {
+          const paid = Number(job.loading[goodId]);
+          if (Number.isFinite(paid) && paid > 0) m.job.loading[goodId] = Math.min(required, paid);
+        }
+        m.job.progressS = 0;
+      }
+      if (recipe && !m.job.loading && Number.isFinite(Number(job.outputDelivered))) {
+        const [goodId, qty] = Object.entries(recipe.output)[0];
+        if (goodId !== 'pod') m.job.outputDelivered = Math.max(0, Math.min(qty, Number(job.outputDelivered)));
+      }
     }
     kept.push(m);
   }
@@ -461,6 +499,7 @@ export const asteroidSites = {
     // Mirror excavation into the durable record: every broken tile is a permanently hollow cell
     // (and a permanently destroyed contact for any machine beside it — the whole game).
     this.bus.on('drill:break', ({ col, row }) => {
+      this._accessCache = null;
       const d = state.drill;
       if (!d) return;
       const site = this.siteForAsteroid(d.asteroidId);
@@ -691,6 +730,8 @@ export const asteroidSites = {
       site.overlays.power = normalizeClearedTiles(site.overlays.power);
       site.overlays.lane = normalizeClearedTiles(site.overlays.lane);
       if (!Array.isArray(site.machines)) site.machines = [];
+      site.productionStep = Math.max(0, Math.trunc(finiteNumber(site.productionStep))) % 1_000_000_000;
+      site.workbenchRemainderS = Math.max(0, Math.min(SITE_BALANCE.tickS, finiteNumber(site.workbenchRemainderS)));
       if (!Array.isArray(site.laneStores)) site.laneStores = [];
       if (!site.exportOff) site.exportOff = {};
       if (!site.exportBuffer) site.exportBuffer = {};
@@ -1148,6 +1189,7 @@ export const asteroidSites = {
   },
 
   _markDirty(siteId, { field = false, net = false } = {}) {
+    this._accessCache = null;
     const rt = this._rt.get(siteId);
     if (!rt) return;
     if (field) { rt.fieldDirty = true; rt.geoDirty = true; }
@@ -1173,7 +1215,7 @@ export const asteroidSites = {
   canInstall({ asteroidId, defId, col, row }) {
     const def = SITE_MACHINE_BY_ID.get(defId);
     if (!def) return { ok: false, reason: 'unknown-machine', missing: {}, profile: null };
-    if (col == null || row == null || col < 0 || col >= COLS || row < 0 || row >= ROWS) {
+    if (!Number.isInteger(col) || !Number.isInteger(row) || col < 0 || col >= COLS || row < 0 || row >= ROWS) {
       return { ok: false, reason: 'out-of-bounds', missing: {}, profile: null };
     }
     const ent = this.state.entities && this.state.entities.get ? this.state.entities.get(asteroidId) : null;
@@ -1190,6 +1232,11 @@ export const asteroidSites = {
 
     const tile = field[col] && field[col][row];
     if (!tile || tile.type !== 'empty') return { ok: false, reason: 'not-hollow', missing: {}, profile: null };
+    // This is the permanent arrival and return socket, even after the rover moves away.
+    // In particular a non-removable Core must never turn the next visit into a blocked spawn.
+    if (col === Math.floor(COLS / 2) && row === 0) {
+      return { ok: false, reason: 'entry-reserved', missing: {}, profile: null };
+    }
     if (site && this.machineAt(site, col, row)) return { ok: false, reason: 'occupied', missing: {}, profile: null };
     if (sessionHere && d.avatar && d.avatar.col === col && d.avatar.row === row) {
       return { ok: false, reason: 'rover-here', missing: {}, profile: null };
@@ -1208,14 +1255,25 @@ export const asteroidSites = {
     }
 
     // Brief §5 learning curve: before the claim is staked, installation is physical — the rover
-    // must be beside the cell. Once the first machine has anchored the site, construction is
-    // remotely queueable anywhere hollow, tethered or not.
+    // must be beside the cell. Once the first machine has anchored the site, construction can
+    // reach farther along excavated tunnels; sealed cavities still need a physical access path.
     const anchored = !!(site && site.anchored);
     if (!anchored) {
       if (!sessionHere) return { ok: false, reason: 'no-session', missing: {}, profile: null };
       const dc = Math.abs((d.avatar ? d.avatar.col : -99) - col);
       const dr = Math.abs((d.avatar ? d.avatar.row : -99) - row);
       if (dc + dr !== 1) return { ok: false, reason: 'rover-not-adjacent', missing: {}, profile: null };
+    }
+
+    const accessFrom = sessionHere ? d.avatar : { col: Math.floor(COLS / 2), row: 0 };
+    const access = this._accessCache;
+    if (!access || access.field !== field || access.col !== accessFrom?.col || access.row !== accessFrom?.row
+      || access.machineCount !== (site?.machines.length || 0)) {
+      this._accessCache = { field, col: accessFrom?.col, row: accessFrom?.row,
+        machineCount: site?.machines.length || 0, cells: constructionAccess(field, site?.machines, accessFrom) };
+    }
+    if (!this._accessCache.cells[tileIndex(col, row)]) {
+      return { ok: false, reason: 'no-access-route', missing: {}, profile: null };
     }
 
     const profile = contactProfile(field, col, row, COLS, ROWS);
@@ -1658,7 +1716,8 @@ export const asteroidSites = {
     survey.lifecycle = 'producing';
     this._ledger(site, 'good', `First real output — ${receipt.positiveQuantity} ${receipt.outputId} landed. The site is producing.`);
     this.bus.emit('site:producing', { siteId: site.id, receipt: { ...survey.receipt } });
-    this._ensureBeacon(site);
+    if (this._workbenchRunning) this._repairSweepWanted = true;
+    else this._ensureBeacon(site);
     return { ok: true, duplicate: false, reason: null };
   },
 
@@ -1943,7 +2002,26 @@ export const asteroidSites = {
 
   // ------------------------------------------------------------------ sim tick
 
+  /** The paused bore has an explicit local workbench clock, like drill.tickInput.
+   * Only this active site's machinery runs; travel, sales and world actors keep sim time.
+   * Fractional cadence is saved with the site, so closing or Continue never mints a tick.
+   */
+  tickWorkbench(dt, siteId) {
+    const d = this.state.drill;
+    const site = this.getSite(siteId);
+    if (!site || this.state.timeScale !== 0 || !d?.active || d.asteroidId !== site.asteroidId
+      || !Number.isFinite(dt) || dt <= 0) return false;
+    site.workbenchRemainderS = (site.workbenchRemainderS || 0) + Math.min(dt, 0.25);
+    if (site.workbenchRemainderS + 1e-9 < SITE_BALANCE.tickS) return false;
+    site.workbenchRemainderS = Math.max(0, site.workbenchRemainderS - SITE_BALANCE.tickS);
+    this._workbenchRunning = true;
+    try { this._tickSite(site, SITE_BALANCE.tickS, this.state, { workbench: true }); }
+    finally { this._workbenchRunning = false; }
+    return true;
+  },
+
   update(dt, state) {
+    if (!Number.isFinite(dt) || dt <= 0 || state.timeScale === 0) return;
     this._pollWorldSiteAdmission();
     this._captureWorldSitePayloads();
     if (this._worldSyncWanted) this._syncWorldSites();
@@ -2103,7 +2181,7 @@ export const asteroidSites = {
     }
   },
 
-  _tickSite(site, dtS, state) {
+  _tickSite(site, dtS, state, { workbench = false } = {}) {
     if (!site.machines.length) return;
     const rt = this._runtime(site);
     const dtMin = dtS / 60;
@@ -2132,7 +2210,11 @@ export const asteroidSites = {
     const laneBudget = {};
     for (const comp of rt.laneComps) laneBudget[comp.key] = SITE_BALANCE.laneThroughputPerMin * dtMin;
 
-    // --- Machines, in stable install order. ---
+    // Rotate deterministic priority so a saturated lane cannot permanently starve machines
+    // installed later. The cursor is site-owned and saved across both factory clocks.
+    const first = (site.productionStep || 0) % site.machines.length;
+    site.productionStep = ((site.productionStep || 0) + 1) % 1_000_000_000;
+    const machineOrder = [...site.machines.slice(first), ...site.machines.slice(0, first)];
     // PQ-130.10a: a per-machine status TRANSITION is the mine's machine-state event (law §5
     // "Machine starved/unpowered" — one soft chime, once). The status map is rebuilt from scratch
     // every tick, so last tick's map is kept as the only reference for "what changed". Nothing
@@ -2141,7 +2223,7 @@ export const asteroidSites = {
     const prevStatus = rt.status || EMPTY_MACHINE_STATUS;
     const statusTransitions = [];
     rt.status = {};
-    for (const m of site.machines) {
+    for (const m of machineOrder) {
       const def = SITE_MACHINE_BY_ID.get(m.defId);
       if (!def) continue;
       const powerKey = rt.powerCompByMachine[m.id];
@@ -2165,12 +2247,13 @@ export const asteroidSites = {
           for (const goodId of Object.keys(cap.outputsPerMin).sort()) {
             if (!store) { blocked = true; continue; }
             const want = cap.outputsPerMin[goodId] * dtMin * clamp01(powerRatio || (cap.powerDraw > 0 ? 0 : 1));
-            const room = roomFor();
+            const carryKey = `out:${goodId}`;
+            const carried = Number(m.carry[carryKey]) || 0;
+            const room = Math.max(0, roomFor() - carried);
             const budget = laneBudget[laneKey];
             const grant = Math.max(0, Math.min(want, room, budget));
             if (grant > 0) {
-              const carryKey = `out:${goodId}`;
-              const raw = grant + (Number(m.carry[carryKey]) || 0);
+              const raw = grant + carried;
               const whole = Math.floor(raw + 1e-9);
               m.carry[carryKey] = Math.max(0, raw - whole);
               if (whole > 0) {
@@ -2181,7 +2264,7 @@ export const asteroidSites = {
               }
               laneBudget[laneKey] = Math.max(0, budget - grant);
               produced = true;
-              status.ratePerMin[goodId] = round3(cap.outputsPerMin[goodId] * clamp01(powerRatio || 1));
+              status.ratePerMin[goodId] = round3(grant / dtMin);
             } else if (want > 0) blocked = true;
           }
           if (produced) status.state = powerRatio < 1 && cap.powerDraw > 0 ? 'throttled' : 'running';
@@ -2210,10 +2293,11 @@ export const asteroidSites = {
           status.state = res.status;
           status.limit = res.limit;
           const recipe = SITE_RECIPE_BY_ID.get(m.mode);
-          if (recipe && res.status === 'running') {
+          if (recipe && res.moved > 0) {
             const [outId] = Object.keys(recipe.output);
             const inputPerBatch = Object.values(recipe.inputs).reduce((s, q) => s + q, 0);
-            status.ratePerMin[outId] = round3((recipe.inputRatePerMin / inputPerBatch) * recipe.output[outId] * clamp01(powerRatio));
+            const consumed = Object.values(res.consumed).reduce((s, q) => s + q, 0);
+            status.ratePerMin[outId] = round3(consumed / inputPerBatch * recipe.output[outId] / dtMin);
           }
         }
       } else if (def.id === 'sm_fabricator') {
@@ -2221,9 +2305,9 @@ export const asteroidSites = {
         else {
           const recipe = SITE_RECIPE_BY_ID.get(m.mode);
           const buildingPods = recipe && recipe.output && recipe.output.pod;
+          const reservedPods = site.machines.filter((other) => other.job?.recipeId === 'sr_fab_courier').length;
           const wantsBuild = buildingPods
-            ? (site.fleet.podsReady + (m.job && m.job.recipeId === m.mode ? 1 : 0)) <= site.fleet.podTarget
-              && site.fleet.podsReady < SITE_BALANCE.maxPodTarget
+            ? site.fleet.podsReady + reservedPods < Math.min(site.fleet.podTarget, SITE_BALANCE.maxPodTarget)
             : true;
           const res = stepFabricator({
             machine: m,
@@ -2233,6 +2317,7 @@ export const asteroidSites = {
             store,
             roomFor,
             wantsBuild,
+            throughputBudget: laneBudget[laneKey],
           });
           laneBudget[laneKey] = Math.max(0, laneBudget[laneKey] - res.moved);
           status.state = res.status === 'completed' ? 'building' : res.status;
@@ -2246,7 +2331,10 @@ export const asteroidSites = {
             this._ledger(site, 'good', `Courier pod assembled — ${site.fleet.podsReady} ready.`);
             this.bus.emit('site:podBuilt', { siteId: site.id, podsReady: site.fleet.podsReady });
           }
-          if (res.completed) {
+          for (const [outputId, qty] of Object.entries(res.produced || {})) {
+            this._emitProductionReceipt(site, m, { outputId, qty, recipeId: m.mode });
+          }
+          if (res.completed && res.completed.outputId === 'pod') {
             // A committed fabricator batch finishing IS real positive output (goods into the lane
             // store, or a pod into the fleet) — the production owner reports the landed mutation.
             this._emitProductionReceipt(site, m, {
@@ -2277,7 +2365,7 @@ export const asteroidSites = {
             staged += grant;
           }
           status.state = staged > 0 ? 'running' : (storeTotal(site.exportBuffer) > 0 ? 'staged' : 'idle');
-          this._tryLaunch(site, state, status);
+          if (!workbench) this._tryLaunch(site, state, status);
         }
       } else if (def.id === 'sm_massline_core') {
         status.state = 'running';

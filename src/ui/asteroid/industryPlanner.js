@@ -1,7 +1,7 @@
 // On-demand, read-only provisioning. Uses the existing ORRERY token root; no simulation owner.
 import { COMMODITIES } from '../../data/commodities.js';
 import { SITE_MACHINES, SITE_RECIPES } from '../../data/sites.js';
-import { INDUSTRY_KITS, planSiteKit, planSiteProduction, summarizeIndustryCargo } from '../../systems/siteIndustryPlanner.js';
+import { INDUSTRY_KITS, planSiteVisit, planSiteProduction, summarizeIndustryCargo } from '../../systems/siteIndustryPlanner.js';
 import { injectOrrery } from '../orrery/tokens.js';
 
 const goods = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -10,7 +10,7 @@ const recipes = new Map(SITE_RECIPES.map((r) => [r.id, r]));
 const name = (id) => id === 'pod' ? 'Courier pod' : (goods.get(id)?.name || id);
 const fmt = (n) => Number(n.toFixed(2)).toLocaleString('en-US');
 
-export function createIndustryPlanner(host) {
+export function createIndustryPlanner(host, { getContext = () => ({}), onOpen } = {}) {
   const doc = host.ownerDocument;
   const win = doc.defaultView;
   injectOrrery(doc);
@@ -45,7 +45,7 @@ export function createIndustryPlanner(host) {
   Object.assign(dismiss.style, { minWidth: '44px', minHeight: '44px', flexShrink: '0', cursor: 'pointer',
     background: 'var(--dp-glass-deep)', color: 'inherit', border: 'var(--dp-stroke) solid var(--dp-line)' });
   header.append(heading, dismiss);
-  const intro = element('p', 'Read-only cargo planning. No spending, placement, or stock reservations.');
+  const intro = element('p', 'Bore a route. Keep valuable faces intact. Build beside them for a lasting supply.');
   intro.style.lineHeight = '1.45';
   const controls = element('div');
   Object.assign(controls.style, { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 88px', gap: '12px' });
@@ -107,15 +107,19 @@ export function createIndustryPlanner(host) {
     amount.value = String(n);
     try {
       if (kind === 'kit') {
-        const plan = planSiteKit(id);
+        const plan = planSiteVisit(id, getContext() || {});
         paragraph(plan.note);
-        list('Gross packing list', plan.manifest);
-        cargoSummary(plan.manifest);
-        list('Machines in this kit', plan.machines, (mid) => machines.get(mid)?.name || mid);
+        if (Object.keys(plan.missingMachines).length) {
+          list('Machines still to build', plan.missingMachines, (mid) => machines.get(mid)?.name || mid);
+          if (plan.ready) paragraph('Construction materials are aboard. Choose a reachable hollow cell to begin.');
+          else { list('Still to bring', plan.missing); cargoSummary(plan.missing); }
+          if (Object.keys(plan.packed).length) list('Already in your hold', plan.packed);
+        } else paragraph('Every machine in this kit is installed. Connect the networks and choose their recipes.');
         paragraph(`${plan.drawMW} MW demand · ${plan.baseMW} MW from the Core. ${plan.minimumGasContacts
           ? `At least ${plan.minimumGasContacts} active gas-contact faces in generate mode are needed to cover the deficit.`
           : 'The Core covers this kit’s rated demand.'}`);
-        paragraph(`Actual operation still needs reachable hollow cells, preserved geology, connected power and material lanes. Each material network is limited to ${plan.laneThroughputPerMin} moved units/minute. Existing cargo and installed machines are not subtracted here.`);
+        paragraph(`Connect power cables to the Core and material lanes to every producer and consumer. Each material network carries ${plan.laneThroughputPerMin} moved units/minute, counting inputs and outputs.`);
+        paragraph('Installed machines and your hold are counted above. Site stock stays in its own network; the placement preview checks what the selected cell can actually spend.');
       } else {
         const plan = planSiteProduction({ targets: { [id]: n } });
         list('Raw feedstocks to source', plan.procurement);
@@ -128,7 +132,7 @@ export function createIndustryPlanner(host) {
         result.appendChild(order);
         if (Object.keys(plan.remainingStock).length) list('Extra output from whole batches', plan.remainingStock);
         paragraph(`${fmt(plan.machineSeconds / 60)} powered machine-minutes before power, lane, input or export delays. This is work required, not an arrival time.`);
-        paragraph('Machines must already exist. Import the first construction kit; do not count on a factory to build itself. Hold intermediate materials at the port, then choose each machine’s recipe in the Site drawer. This planner does not automate mode changes.');
+        paragraph('Import your first controllers and construction materials. Later, preserve iron, copper, titanium and silicate to manufacture more controllers locally. Hold intermediate materials at the port and choose each machine’s recipe in Log → Site.');
       }
     } catch (_error) {
       paragraph('This plan cannot be drawn from the recipes on file.');
@@ -149,6 +153,7 @@ export function createIndustryPlanner(host) {
   }
   function open() {
     if (!visible || destroyed || dialog.open || !button.isConnected) return false;
+    onOpen?.();
     if (!dialog.isConnected) doc.body.appendChild(dialog);
     render();
     dialog.showModal();

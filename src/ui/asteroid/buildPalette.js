@@ -142,8 +142,8 @@ const SETTLE_MS = 300;
  *   onUserSelect(item, index)    a human pressed a key — the shell arms BUILD from DRIVE.
  *   motionReduce                 skip the §9 settle.
  */
-export function createBuildPalette(host, { onSelect, onUserSelect, motionReduce = false } = {}) {
-  const planner = createIndustryPlanner(host);
+export function createBuildPalette(host, { onSelect, onUserSelect, onPlan, getPlanContext, motionReduce = false } = {}) {
+  const planner = createIndustryPlanner(host, { onOpen: onPlan, getContext: getPlanContext });
   const root = document.createElement('div');
   root.className = 'aw-palette';
   root.setAttribute('role', 'group');

@@ -115,10 +115,11 @@ function buildSite(h, asteroidId = 42) {
     data: { typeId: 'ast_common_rock', yieldU: 18, drillCleared: [], fieldId: 'field_1' },
   });
   const field = generateDrillField(asteroidId);
-  for (const [c, r] of POCKET) field[c][r] = EMPTY();
+  const accessiblePocket = [...POCKET, [15, 0]];
+  for (const [c, r] of accessiblePocket) field[c][r] = EMPTY();
   field[16][2] = GAS();
   field[16][1] = GAS();
-  h.entities.get(asteroidId).data.drillCleared = POCKET.map(([c, r]) => tileIndex(c, r));
+  h.entities.get(asteroidId).data.drillCleared = accessiblePocket.map(([c, r]) => tileIndex(c, r));
   h.state.drill = { active: true, asteroidId, field, avatar: { col: 14, row: 2 } };
 
   const ids = {};
@@ -127,7 +128,7 @@ function buildSite(h, asteroidId = 42) {
   ids.extractor = res.machineId;
   const siteId = res.siteId;
   h.state.drill.avatar = { col: 14, row: 1 };
-  res = h.sys.installMachine({ asteroidId, defId: 'sm_massline_core', col: 14, row: 0 });
+  res = h.sys.installMachine({ asteroidId, defId: 'sm_massline_core', col: 15, row: 0 });
   assert.equal(res.ok, true, 'core installs');
   ids.core = res.machineId;
   res = h.sys.installMachine({ asteroidId, defId: 'sm_gas_tap', col: 15, row: 2 });
@@ -211,7 +212,7 @@ test('site:machineStatus fires exactly once per transition and carries the previ
 test('the emit is additive: it reads the status map the tick already built, and adds no state', () => {
   // Guards the exact shape the leaf promised — emitted BELOW the machine loop so no listener can
   // read a half-built rt.status through projection(), and gated on a previous entry existing.
-  const body = slice(SITES_SRC, '  _tickSite(site, dtS, state) {', '\n  _tryLaunch(');
+  const body = slice(SITES_SRC, '  _tickSite(site, dtS, state,', '\n  _tryLaunch(');
   assert.match(body, /const prevStatus = rt\.status \|\| EMPTY_MACHINE_STATUS;/);
   assert.match(body, /const before = prevStatus\[m\.id\];\s*\n\s*if \(before && before\.state !== status\.state\)/,
     'a first observation (no previous entry) must not count as a transition');
@@ -521,7 +522,7 @@ test('site zoom is armed only where there is status to read, and released by the
   assert.match(release, /if \(toWork && renderer3d\) renderer3d\.setZoomRegister\('work'\)/);
 
   // Armed immediately after begin(), which resets the register to work.
-  const start = slice(SCREEN_SRC, '      renderer3d.begin({ motionReduce });', '\n      last = performance.now();');
+  const start = slice(SCREEN_SRC, '      renderer3d.begin({ motionReduce,', '\n      last = performance.now();');
   assert.match(start, /armSiteZoom\(\);/);
 
   // Released to WORK by a drive/build key or a board pointer-down; Z and the wheel hand the

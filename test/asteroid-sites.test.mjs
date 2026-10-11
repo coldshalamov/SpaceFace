@@ -291,7 +291,7 @@ test('install law: hollow + rover adjacency + materials; core anchors and freeze
   let res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_extractor', col: 2, row: 20 });
   assert.equal(res.reason, 'not-hollow');
   // Distant hollow cell rejected pre-core (manual install is physical).
-  res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_extractor', col: 14, row: 0 });
+  res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_extractor', col: 15, row: 1 });
   assert.equal(res.reason, 'rover-not-adjacent');
   // Adjacent hollow works and opens the claim.
   res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_extractor', col: 13, row: 2 });
@@ -316,8 +316,15 @@ test('install law: hollow + rover adjacency + materials; core anchors and freeze
   // Second core refused.
   res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_massline_core', col: 15, row: 1 });
   assert.equal(res.reason, 'unique');
-  // Anchored → remote placement no longer needs the rover.
-  res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_cargo_port', col: 14, row: 0 });
+  // Anchoring removes the adjacency chore, not physical access. The core closes the only
+  // entrance here; excavate a bypass before remotely placing a port beyond it.
+  h.state.drill.field[13][0] = EMPTY();
+  h.sys._markDirty(site.id, { field: true });
+  res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_cargo_port', col: 13, row: 0 });
+  assert.equal(res.reason, 'no-access-route');
+  h.state.drill.field[15][0] = EMPTY();
+  h.sys._markDirty(site.id, { field: true });
+  res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_cargo_port', col: 13, row: 0 });
   assert.equal(res.ok, true);
 });
 
@@ -378,8 +385,7 @@ function buildMilestoneSite(h) {
   let r = h.sys.installMachine({ asteroidId: 42, defId: 'sm_extractor', col: 13, row: 2 });
   ids.extractor = r.machineId;
   const siteId = r.siteId;
-  h.state.drill.avatar = { col: 14, row: 1 };
-  r = h.sys.installMachine({ asteroidId: 42, defId: 'sm_massline_core', col: 14, row: 0 });
+  r = h.sys.installMachine({ asteroidId: 42, defId: 'sm_massline_core', col: 15, row: 1 });
   ids.core = r.machineId;
   r = h.sys.installMachine({ asteroidId: 42, defId: 'sm_gas_tap', col: 15, row: 2 });
   ids.tap = r.machineId;
@@ -496,4 +502,113 @@ test('serialize keeps every staked claim and survives a roundtrip', () => {
   assert.equal(restored.anchored, true);
   assert.deepEqual(restored.overlays, site.overlays);
   assert.equal(h.sys.getSite(r.siteId).anchored, true);
+});
+
+test('anchored construction still needs a hollow path, and machine housings block that path', () => {
+  const h = makeHarness(); addAsteroid(h);
+  const field = openSession(h, 42, POCKET);
+  const installed = h.sys.installMachine({ asteroidId: 42, defId: 'sm_massline_core', col: 14, row: 1 });
+  const site = h.sys.getSite(installed.siteId);
+  for (let c = 0; c < DRILL_CONST.COLS; c++) {
+    for (let r = 0; r < DRILL_CONST.ROWS; r++) field[c][r] = { type: 'rock' };
+  }
+  for (const [c, r] of [[14, 2], [14, 3], [14, 5]]) field[c][r] = EMPTY();
+  h.sys._markDirty(site.id, { field: true });
+  const request = { asteroidId: 42, defId: 'sm_extractor', col: 14, row: 5 };
+  assert.equal(h.sys.canInstall(request).reason, 'no-access-route');
+  field[14][4] = EMPTY(); h.sys._markDirty(site.id, { field: true });
+  assert.equal(h.sys.canInstall(request).ok, true);
+  site.machines.push({ id: 'blocking', defId: 'sm_refinery', col: 14, row: 4 });
+  h.sys._markDirty(site.id, { net: true });
+  assert.equal(h.sys.canInstall(request).reason, 'no-access-route');
+});
+
+test('the rover arrival and exit cell stays reserved before and after anchoring', () => {
+  const h = makeHarness(); addAsteroid(h);
+  openSession(h, 42, POCKET);
+  h.state.drill.avatar = { col: 14, row: 1 };
+  const beforeCargo = JSON.stringify(h.state.player.cargo.items);
+  assert.equal(h.sys.installMachine({ asteroidId: 42, defId: 'sm_massline_core', col: 14, row: 0 }).reason,
+    'entry-reserved');
+  assert.equal(JSON.stringify(h.state.player.cargo.items), beforeCargo);
+  assert.equal(h.state.sites.order.length, 0);
+  const core = h.sys.installMachine({ asteroidId: 42, defId: 'sm_massline_core', col: 14, row: 2 });
+  assert.equal(core.ok, true);
+  const afterCoreCargo = JSON.stringify(h.state.player.cargo.items);
+  assert.equal(h.sys.installMachine({ asteroidId: 42, defId: 'sm_cargo_port', col: 14, row: 0 }).reason,
+    'entry-reserved');
+  assert.equal(JSON.stringify(h.state.player.cargo.items), afterCoreCargo);
+  assert.equal(h.sys.getSite(core.siteId).machines.length, 1);
+  assert.equal(h.state.drill.field[14][0].structure, undefined);
+});
+
+test('extractor carry cannot overfill the fractional room left in a shared store', () => {
+  const h = makeHarness();
+  const { siteId, site, ids } = buildMilestoneSite(h);
+  const rt = h.sys._runtime(site);
+  const machine = site.machines.find((m) => m.id === ids.extractor);
+  const key = rt.laneCompByMachine[machine.id];
+  const store = rt.stores[key];
+  for (const id of Object.keys(store)) delete store[id];
+  store.cmdty_silicate = rt.capacity[key] - 0.1;
+  machine.carry['out:cmdty_silicate'] = 0.95;
+  h.sys.setExportFlag(siteId, 'cmdty_silicate', false);
+  h.sys._tickSite(site, 1, h.state);
+  assert.ok(Object.values(store).reduce((s, n) => s + n, 0) <= rt.capacity[key]);
+  assert.equal(store.cmdty_silicate, rt.capacity[key] - 0.1);
+});
+
+test('courier fabrication respects zero target and reservations across multiple fabricators', () => {
+  const h = makeHarness();
+  const { siteId, site, ids } = buildMilestoneSite(h);
+  const first = site.machines.find((m) => m.id === ids.fab);
+  site.machines.push({ ...first, id: 'second-fab', col: 15, row: 3, job: null, carry: {} });
+  h.sys._markDirty(site.id, { net: true });
+  const rt = h.sys._runtime(site);
+  const store = rt.stores[rt.laneCompByMachine[first.id]];
+  Object.assign(store, { cmdty_refined_metals: 20, cmdty_purified_silica: 20, cmdty_electronics: 20 });
+  site.fleet.podsReady = 0;
+  h.sys.setPodTarget(siteId, 0);
+  h.sys._tickSite(site, 1, h.state, { workbench: true });
+  assert.equal(site.machines.filter((m) => m.job?.recipeId === 'sr_fab_courier').length, 0);
+  h.sys.setPodTarget(siteId, 1);
+  for (let n = 0; n < 30; n++) h.sys._tickSite(site, 1, h.state, { workbench: true });
+  assert.equal(site.machines.filter((m) => m.job?.recipeId === 'sr_fab_courier').length, 1);
+});
+
+test('paused workbench runs only the active factory and preserves cadence/jobs through Continue', () => {
+  const h = makeHarness();
+  const { siteId, site, ids } = buildMilestoneSite(h);
+  const rt = h.sys._runtime(site);
+  const fab = site.machines.find((m) => m.id === ids.fab);
+  Object.assign(rt.stores[rt.laneCompByMachine[fab.id]], {
+    cmdty_refined_metals: 20, cmdty_purified_silica: 20, cmdty_electronics: 20,
+  });
+  site.exportBuffer.cmdty_silicate = 12;
+  h.state.timeScale = 1;
+  assert.equal(h.sys.tickWorkbench(0.25, siteId), false, 'global sim owns unpaused time');
+  h.state.timeScale = 0;
+  for (let i = 0; i < 6; i++) h.sys.tickWorkbench(0.25, siteId);
+  assert.equal(site.productionStep, 1);
+  assert.equal(site.workbenchRemainderS, 0.5);
+  assert.equal(site.fleet.launches, 0, 'workbench never launches a world courier');
+  assert.equal(h.state.simTime, 0);
+  const saved = h.sys.serialize();
+  h.sys.deserialize(JSON.parse(JSON.stringify(saved)));
+  const restored = h.sys.getSite(siteId);
+  assert.deepEqual(restored.machines.find((m) => m.id === ids.fab).job,
+    saved.byId[siteId].machines.find((m) => m.id === ids.fab).job);
+  assert.equal(h.sys.tickWorkbench(0.25, siteId), false);
+  assert.equal(h.sys.tickWorkbench(0.25, siteId), true);
+  assert.equal(restored.productionStep, 2);
+  assert.equal(restored.fleet.launches, 0);
+  h.sys.update(1, h.state);
+  assert.equal(restored.productionStep, 2, 'paused normal update cannot double-step the site');
+  h.state.drill.active = false;
+  assert.equal(h.sys.tickWorkbench(0.25, siteId), false, 'closed workbench owns no clock');
+  h.state.timeScale = 1;
+  h.state.simTime = 1;
+  h.sys.update(1, h.state);
+  assert.equal(restored.productionStep, 3);
+  assert.ok(restored.fleet.launches > 0, 'normal simulation resumes courier routes');
 });

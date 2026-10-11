@@ -87,6 +87,27 @@ export function planSiteKit(kitId, { alreadyBuilt = {} } = {}) {
   };
 }
 
+/** A visit's packing list: installed machines count once; only the ship's cargo offsets imports.
+ * Disconnected site stores are deliberately not pooled into imaginary spendable stock. */
+export function planSiteVisit(kitId, { machines = [], cargo = {} } = {}) {
+  const alreadyBuilt = {};
+  for (const machine of machines) {
+    if (SITE_MACHINES.some((def) => def.id === machine.defId)) {
+      alreadyBuilt[machine.defId] = (alreadyBuilt[machine.defId] || 0) + 1;
+    }
+  }
+  const plan = planSiteKit(kitId, { alreadyBuilt });
+  const packed = {};
+  const missing = {};
+  for (const [id, required] of Object.entries(plan.manifest)) {
+    const available = Number(cargo[id]);
+    const held = Number.isFinite(available) ? Math.max(0, available) : 0;
+    if (held > 0) packed[id] = Math.min(required, held);
+    if (held < required) missing[id] = required - held;
+  }
+  return { ...plan, packed, missing, ready: Object.keys(missing).length === 0 };
+}
+
 /**
  * Expand requested goods through the real recipe DAG (dependency graph).
  * A shared stock ledger prevents two branches spending the same ingot. Discrete builds round
