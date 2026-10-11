@@ -37,11 +37,11 @@ const EXPECTED_PLACEMENTS = Object.freeze([
 const SCANNER_KINDS = new Set(['distress', 'anomaly', 'salvage', 'ambush', 'ship', 'ore']);
 const ASSIGNED_SECTOR_SEMANTIC_HASHES = Object.freeze({
   // Re-pinned with the Bolus: Charon and Ashfall each gain one neighbor
-  // (sector_the_bolus). Vesta and Sker match the live master cards — the
-  // 2026-09-27 pins had already drifted before this sector existed.
+  // (sector_the_bolus). Vesta gained HOOK-LEFT (36de45131, poi_ruud_fin3).
+  // Sker's stash cache now opens into cargo (df8ced8c4).
   sector_charon_expanse: 1612218097,
-  sector_vesta_forge: 945901903,
-  sector_sker_haven: 475978936,
+  sector_vesta_forge: 3376671821,
+  sector_sker_haven: 2871891612,
   sector_ashfall_reach: 2336580282,
 });
 
