@@ -58,13 +58,24 @@ test('absorbed materials retain distinct opaque silhouettes through the bowling 
     step(30);
     assert.deepEqual(mirror, savedMirror, 'drawing never rewrites the authoritative payload ledger');
     const lumps = view._lumps.filter(l => l.used);
+    assert.equal(view.payloadLight.active, true, 'the shared light pool receives the real payload anchor');
+    assert.ok(view.payloadLight.y > mirror.clumpRadius, 'local light sits outside the solid payload');
+    const lightPeak = view.payloadLight.intensity;
+    state.settings = { video: { flashReduce: true } };
+    step();
+    assert.ok(view.payloadLight.intensity < lightPeak, 'payload lighting respects flash reduction');
+    state.settings = {};
     assert.equal(lumps.length, 4);
     assert.equal(new Set(lumps.map(l => l.mesh.material.color.getHex())).size, 4);
     assert.equal(new Set(lumps.map(l => l.mesh.geometry.type)).size, 4);
     for (const lump of lumps) {
       assert.equal(lump.mesh.material.transparent, false);
       assert.equal(lump.mesh.material.opacity, 1);
+      assert.ok(lump.mesh.position.y > 0, 'even the first meal seats on the camera-visible shoulder');
     }
+    const payloadCenter = new THREE.Raycaster(new THREE.Vector3(0, 3, 0), new THREE.Vector3(0, -1, 0));
+    const straps = new THREE.Mesh(view._veil.geometry, view._veilMat);
+    assert.equal(payloadCenter.intersectObject(straps).length, 0, 'retention cues leave the payload center uncovered');
     const geometries = lumps.map(l => l.mesh.geometry);
     Object.assign(mirror, { phase: 'launching', launchedId: 1, launchDir: { x: 1, z: 0 },
       launchWindup01: 1, launchBurst01: 0.2, thrownTick: 40, ballClumpRadius: 22,
@@ -73,6 +84,9 @@ test('absorbed materials retain distinct opaque silhouettes through the bowling 
     assert.deepEqual(view._lumps.filter(l => l.used).map(l => l.mesh.geometry), geometries);
     assert.equal(view._trail.visible, true, 'the actual throw gets its directional flight read');
     assert.ok(view._bursts.some(b => b.t < 1), 'launch creates a bounded release beat');
+    Object.assign(mirror, { phase: 'off', coreId: null, launchedId: null, corePos: null, ballPos: null });
+    step();
+    assert.equal(view.payloadLight.active, false, 'released/dead payload gives its pooled light back immediately');
   } finally { view.dispose(); }
 });
 

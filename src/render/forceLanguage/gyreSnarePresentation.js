@@ -275,30 +275,6 @@ void main() {
 }
 `;
 
-const VEIL_RIM_VERT = /* glsl */`
-varying vec3 vN;
-varying vec3 vV;
-void main() {
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  vN = normalize(normalMatrix * normal);
-  vV = normalize(-mv.xyz);
-  gl_Position = projectionMatrix * mv;
-}
-`;
-
-const VEIL_RIM_FRAG = /* glsl */`
-uniform vec3 uCol;
-uniform float uOp;
-varying vec3 vN;
-varying vec3 vV;
-void main() {
-  // Edge-bright / center-clear fresnel lobe — the same pow(1-ndv,k) language
-  // the cone's rim uses, so the ball's glass and the funnel read as one kit.
-  float rim = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 3.0);
-  gl_FragColor = vec4(uCol, rim * uOp);
-}
-`;
-
 function jitterGeometry(geo, amt, seed) {
   const pos = geo.attributes.position;
   let s = seed | 0;
@@ -368,6 +344,19 @@ function mawArcGeometry() {
   });
 }
 
+// Unequal, tilted retention straps leave the collected material exposed. They
+// carry strain/armed/expiry cues without wrapping the payload in a grey globe.
+function retentionGeometry() {
+  return stripGeometry(5, 12, (t, side, i) => {
+    const a = i * 2.39996 + t * (0.55 + (i % 3) * 0.19);
+    const lat = (i - 2) * 0.19 + Math.sin(t * Math.PI) * 0.11;
+    const r = 1 + (side === 0.5 ? 0.008 : 0);
+    const y = lat + (side - 0.5) * 0.026;
+    const planar = Math.sqrt(1 - y * y) * r;
+    return [Math.cos(a) * planar, y * r, Math.sin(a) * planar];
+  });
+}
+
 export class GyreSnarePresentation {
   constructor(scene, { toLocal = null } = {}) {
     this.scene = scene;
@@ -377,6 +366,9 @@ export class GyreSnarePresentation {
     if (typeof toLocal !== 'function') throw new Error('GyreSnarePresentation requires a toLocal projector');
     this.toLocal = toLocal;
     this.disposed = false;
+    // Consumed by the existing bounded event-light pool; this owner never adds a
+    // light to the scene. Local coordinates are reprojected with the payload.
+    this.payloadLight = { active: false, x: 0, y: 0, z: 0, intensity: 0, range: 0, color: 0xd5e5ef };
     this.time = 0;
     this._phase = 'off';
     this._quiet = true;
@@ -555,34 +547,14 @@ export class GyreSnarePresentation {
     this._lumps = [];   // {mesh, used}
     this._lumpMats = {};
     this._clumpSpin = 0;
-    // Glass veil over the held core: a whisper additive shell around the ball's
-    // heart — the sim's data.gyreCore flag is pull-immunity, but the eye needs the
-    // same answer: THIS rock belongs to the lash, not a vanilla asteroid among
-    // glass lumps. Rides the clump group so it orbits/shrinks with the rubble.
+    // Open retention straps follow the actual core and merged rubble. Keep the
+    // existing envelope handle for release/strain lanes, but never fill its body.
     this._veilMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color(glass), transparent: true, opacity: 0,
-      blending: THREE.AdditiveBlending, depthWrite: false,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
     });
-    this._veil = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), this._veilMat);
+    this._veil = new THREE.Mesh(retentionGeometry(), this._veilMat);
     this._veil.visible = false;
-    // Fresnel rim shell just outside the flat tint pass: the ball is the star
-    // prop, and a uniform additive sheen sold neither "glassy" nor "bigger" as
-    // the clump grows — the cone it hangs from already carries the fresnel
-    // lobe. A child of _veil, so every visibility lane gates it for free;
-    // uOp syncs from _veilMat.opacity at draw time, so every decay/dim lane
-    // (deathT, adoptT, tearFade, fuseDim, warn shimmer) feeds it too.
-    this._veilRimMat = new THREE.ShaderMaterial({
-      vertexShader: VEIL_RIM_VERT, fragmentShader: VEIL_RIM_FRAG,
-      uniforms: { uCol: { value: new THREE.Color(glass) }, uOp: { value: 0 } },
-      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
-    });
-    this._veilRim = new THREE.Mesh(this._veil.geometry, this._veilRimMat);
-    this._veilRim.scale.setScalar(1.06);
-    this._veilRim.onBeforeRender = () => {
-      this._veilRimMat.uniforms.uOp.value = this._veilMat.opacity;
-      this._veilRimMat.uniforms.uCol.value.copy(this._veilMat.color); // strain's warn-lerp rides the rim too
-    };
-    this._veil.add(this._veilRim);
     this._clump.add(this._veil);
     scene.add(this._clump);
 
@@ -652,25 +624,9 @@ export class GyreSnarePresentation {
     this._secGroup.frustumCulled = false;
     this._secVeilMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color(glass), transparent: true, opacity: 0.07,
-      blending: THREE.AdditiveBlending, depthWrite: false,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
     });
-    this._secVeil = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), this._secVeilMat);
-    // The thrown ball is the payoff object — a capped secondary moon shouldn't
-    // fly its whole ~9 s as a visibly lesser katamari. Same fresnel rim the
-    // primary veil carries: a child of _secVeil (visibility lanes gate it free),
-    // uOp/uCol synced at draw time like the primary's.
-    this._secVeilRimMat = new THREE.ShaderMaterial({
-      vertexShader: VEIL_RIM_VERT, fragmentShader: VEIL_RIM_FRAG,
-      uniforms: { uCol: { value: new THREE.Color(glass) }, uOp: { value: 0 } },
-      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
-    });
-    this._secVeilRim = new THREE.Mesh(this._secVeil.geometry, this._secVeilRimMat);
-    this._secVeilRim.scale.setScalar(1.06);
-    this._secVeilRim.onBeforeRender = () => {
-      this._secVeilRimMat.uniforms.uOp.value = this._secVeilMat.opacity;
-      this._secVeilRimMat.uniforms.uCol.value.copy(this._secVeilMat.color);
-    };
-    this._secVeil.add(this._secVeilRim);
+    this._secVeil = new THREE.Mesh(retentionGeometry(), this._secVeilMat);
     this._secGroup.add(this._secVeil);
     this._secLumps = [];
     this._secId = null;   // which balls[] id the overlay currently tracks
@@ -878,7 +834,9 @@ export class GyreSnarePresentation {
     const lnz = -finite(member.nx, 0) * ssn + finite(member.nz, 0) * scs;
     m.position.set(
       lnx * spread,
-      ((i * 0.61803398875) % 1 - 0.5) * r * 1.1,
+      // Seat on the visible shoulder of the real core. Negative heights buried
+      // the first (and often only) meal behind its host in the flight camera.
+      finite(this._clumpRadius) * 0.24 + ((i * 0.61803398875) % 1) * r * 0.4,
       lnz * spread,
     );
     // Loose-rubble drift: each lump bobs in place around its spawn seat so the clump
@@ -1041,6 +999,7 @@ export class GyreSnarePresentation {
   }
 
   update(dt, state = {}) {
+    this.payloadLight.active = false;
     if (this.disposed) return;
     this._spawnStagger = 0; // same-tick absorbs stagger their grow-in per lump
     const mirror = state.gyreSnare;
@@ -1246,13 +1205,13 @@ export class GyreSnarePresentation {
       // tension language), and the spent dim lands only as the sling releases.
       const spent = phase === 'launching' && finite(mirror.launchBurst01) > 0 ? 0.72 : 1;
       this._lastSpent = spent; // the close-ramp's mote pace reads the last live spend
-      this._coneMat.uniforms.uAlpha.value = (tense ? 0.62 : 0.42) * spent * flashCalm * wakeEase * fuseDim;
+      this._coneMat.uniforms.uAlpha.value = (tense ? 0.46 : 0.36) * spent * flashCalm * wakeEase * fuseDim;
       // The normal-blend skin sits under the additive glass at a whisper — just enough
       // for the cone to occlude background glow and read as a surface, not a hologram.
       // A whisper floor keeps the silhouette readable when additive blowout washes
       // the glass out against a bright nebula/planet backdrop (fades with the wake ramp).
       this._bodyMat.opacity = Math.max(
-        0.1 * flashCalm * wakeEase * fuseDim * spent * (tense ? 1.2 : 0.8),
+        0.075 * flashCalm * wakeEase * fuseDim * spent * (tense ? 1.2 : 0.8),
         0.035 * flashCalm * wakeEase,
       );
       // Per-second decay like _discKick — a per-frame *0.9 halves the flash on 144 Hz
@@ -1939,9 +1898,10 @@ export class GyreSnarePresentation {
       // touch distance the SIM measured at removal, not the grown radius.
       this._preMergeR = this._clumpRadius;
       this._clumpRadius = finite(mirror.clumpRadius, this._clumpRadius);
-      // Core veil: the held/grown ball's glass skin — swells with clump radius and
-      // breathes faintly with strain, so the ball's heart reads as lash material.
-      const veilR = Math.max(2.5, this._clumpRadius * 1.22);
+      this._writePayloadLight(p.x, p.z, this._clumpRadius, flashCalm, mirror.nose, cx, cz);
+      // Retention straps sit close to the bound, leaving the actual rubble's
+      // contour and shading visible instead of claiming a second, larger body.
+      const veilR = Math.max(2.5, this._clumpRadius * 1.04);
       this._veil.scale.setScalar(veilR);
       // Saturated payload: at cap the suck halo deliberately fades out, so the ball
       // itself carries the FULL read — the veil hot-pulses and the rubble's emissive
@@ -2210,8 +2170,9 @@ export class GyreSnarePresentation {
         // HOLD-gated bob above). A secondary rides its ballistic path flat.
         this._secGroup.position.set(lp.x, 0.6, lp.z);
         const ballR = Math.max(2.5, finite(sb.r, 8));
+        if (!this.payloadLight.active) this._writePayloadLight(lp.x, lp.z, ballR, flashCalm);
         this._secR = ballR; // grave scatter flings off this radius
-        this._secVeil.scale.setScalar(ballR * 1.22);
+        this._secVeil.scale.setScalar(ballR * 1.04);
         // Mass-graded like its siblings — a capped secondary katamari flies with
         // more than a pebble's whisper veil. And it telegraphs its quiet grave:
         // the same 0.55→1 sag the rumble envelope + HUD ·Ns keep inside
@@ -2276,7 +2237,7 @@ export class GyreSnarePresentation {
             const mnz = finite(member.nx, 0) * sS + finite(member.nz, 0) * sC;
             lm.position.set(
               mnx * spread,
-              ((i * 0.61803398875) % 1 - 0.5) * r * 1.1,
+              ballR * 0.24 + ((i * 0.61803398875) % 1) * r * 0.4,
               mnz * spread);
             // Levitating bob like the primary's lumps — seat + amplitude pinned at
             // build time so the sway never drifts the rubble apart over a flight.
@@ -2432,15 +2393,32 @@ export class GyreSnarePresentation {
     }
   }
 
+  _writePayloadLight(x, z, radius, flashCalm, nose = null, worldX = 0, worldZ = 0) {
+    const light = this.payloadLight;
+    const r = Math.max(5, radius);
+    const dx = nose ? finite(nose.x) - worldX : 0;
+    const dz = nose ? finite(nose.z) - worldZ : -1;
+    const len = Math.hypot(dx, dz) || 1;
+    light.active = true;
+    light.x = x + dx / len * r * 0.65;
+    light.y = r * 1.65 + 8;
+    light.z = z + dz / len * r * 0.65;
+    // Inverse-square compensation keeps a large load as legible as a pebble;
+    // no periodic flash, and reduced-flash keeps its gentler material read.
+    light.intensity = Math.min(6400, (r + 8) * (r + 8) * 1.1) * flashCalm;
+    light.range = r * 4.5 + 30;
+  }
+
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this.payloadLight.active = false;
     this.scene.remove(this._beam, this._clump, this._trail, this._trail2, this._grip, this._halo, this._basinHalo, this._secGroup);
-    this._secVeil.geometry.dispose(); this._secVeilMat.dispose(); this._secVeilRimMat.dispose();
+    this._secVeil.geometry.dispose(); this._secVeilMat.dispose();
     for (const m of this._secLumps) m.geometry.dispose(); // lump MATERIALS stay shared via _lumpMats
     this._halo.geometry.dispose(); this._haloMat.dispose();
     this._basinHaloMat.dispose(); // shares haloGeo (disposed on the line above)
-    this._veil.geometry.dispose(); this._veilMat.dispose(); this._veilRimMat.dispose();
+    this._veil.geometry.dispose(); this._veilMat.dispose();
     this._trail.geometry.dispose(); this._trailMat.dispose();
     // _trail2 shares _trail's geometry (already disposed) — only its cloned material is its own.
     this._trail2Mat.dispose();
