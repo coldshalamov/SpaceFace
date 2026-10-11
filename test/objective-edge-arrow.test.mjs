@@ -155,6 +155,7 @@ class HudDocument {
   }
   createElement(tagName) { return new HudElement(this, tagName); }
   createElementNS(_ns, tagName) { return this.createElement(tagName); }
+  createTextNode(text) { return new HudText(String(text)); }
   getElementById(id) { return findElement([this.head, this.body], (node) => node.id === id); }
   querySelector(selector) { return this.head.querySelector(selector) || this.body.querySelector(selector); }
   querySelectorAll(selector) { return [...this.head.querySelectorAll(selector), ...this.body.querySelectorAll(selector)]; }

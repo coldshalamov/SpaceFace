@@ -40,7 +40,7 @@ import { travelFlag } from '../data/featureFlags.js';
 import { BINDINGS } from './bindings.js';
 import { coreText } from './localizedCoreCopy.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
-import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
+import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { fuelReserveWarning } from './fuelReserveWarning.js';
 import { holdLeanChips } from './cargoConscience.js';
@@ -680,13 +680,24 @@ export function flightDestinationSurface(state, command) {
       deadline = mtFmtTime(remaining);
       urgent = remaining < 120;
     }
-    const readings = mtReadingsLine(
+    // A cross-sector objective has no local fix — the honest answer is the gate that starts the
+    // trip, with the plot step named, never a bare "ROUTE PENDING" the pilot cannot act on.
+    let readings = mtReadingsLine(
       objectiveBearingGlyph(state, waypoint),
       travel.distanceText,
       // An unknown ETA is left out, not printed as a placeholder dash.
       travel.etaS == null ? '' : travel.etaText,
       deadline,
     );
+    if (travel.distanceText === 'ROUTE PENDING') {
+      const gateFix = resolveObjectiveGatePresentation(state);
+      if (gateFix && gateFix.pos) {
+        const gateTravel = objectiveTravelReadout(state, { pos: gateFix.pos });
+        readings = mtReadingsLine('', `Next: ${gateFix.label}`, gateTravel.distanceText, `${BINDINGS.localmap.label} to plot`);
+      } else if (gateFix) {
+        readings = mtReadingsLine('', `Next: ${gateFix.label}`, `open the ${BINDINGS.localmap.label} map to plot`, '');
+      }
+    }
     // FB-065: one state word on the same line, never a second line — the objective slot stays
     // a single line. A broken term also takes the urgent tone for its four-second hold.
     const term = missionTermWord(state, tracked && tracked.id);
@@ -5926,6 +5937,16 @@ export function createHud(ctx, alerts) {
     if (!wp && m) {
       wp = m.waypoint || m.targetPos || (m.objectives && m.objectives[0] && m.objectives[0].pos) || null;
       wpLabel = wpLabel || m.title || m.name || 'Mission';
+    }
+    if (!wp) {
+      // Cross-sector objective with no local fix: point the arrow at the physical gate that
+      // starts the trip, so it answers "which way NOW?" instead of vanishing. The tracker text
+      // carries the plot step; the gate fix itself is presentation-only.
+      const gateFix = resolveObjectiveGatePresentation(state);
+      if (gateFix && gateFix.pos) {
+        wp = gateFix.pos;
+        wpLabel = wpLabel || gateFix.label;
+      }
     }
     if (!wp && navMeta) {
       setDisplay(arrow, false);
