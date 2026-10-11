@@ -32,15 +32,22 @@ import { latchNine } from '../systems/latchNine.js';
 import { scissorwake } from '../systems/scissorwake.js';
 import { tallyThree } from '../systems/tallyThree.js';
 import { lastShift } from '../systems/lastShift.js';
+import { lastShiftPrompt } from '../ui/lastShiftPrompt.js';
 import { redKite } from '../systems/redKite.js';
+import { redKitePrompt } from '../ui/redKitePrompt.js';
 import { sableVenn } from '../systems/sableVenn.js';
 import { ilexArk } from '../systems/ilexArk.js';
+import { ilexArkPrompt } from '../ui/ilexArkPrompt.js';
 import { kilnback } from '../systems/kilnback.js';
 import { mothlight } from '../systems/mothlight.js';
+import { mothlightPrompt } from '../ui/mothlightPrompt.js';
 import { palletJack } from '../systems/palletJack.js';
+import { palletJackPrompt } from '../ui/palletJackPrompt.js';
 import { secondRinse } from '../systems/secondRinse.js';
 import { towlineTable } from '../systems/towlineTable.js';
+import { towlineTablePrompt } from '../ui/towlineTablePrompt.js';
 import { borrowedVoice } from '../systems/borrowedVoice.js';
+import { borrowedVoicePrompt } from '../ui/borrowedVoicePrompt.js';
 import { scanReveal } from '../systems/scanReveal.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
 import { lawSecurity } from '../systems/lawSecurity.js';
@@ -279,15 +286,22 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['scissorwake', scissorwake],
     ['tallyThree', tallyThree],
     ['lastShift', lastShift],
+    ['lastShiftPrompt', lastShiftPrompt],
     ['redKite', redKite],
+    ['redKitePrompt', redKitePrompt],
     ['sableVenn', sableVenn],
     ['ilexArk', ilexArk],
+    ['ilexArkPrompt', ilexArkPrompt],
     ['kilnback', kilnback],
     ['mothlight', mothlight],
+    ['mothlightPrompt', mothlightPrompt],
     ['palletJack', palletJack],
+    ['palletJackPrompt', palletJackPrompt],
     ['secondRinse', secondRinse],
     ['towlineTable', towlineTable],
+    ['towlineTablePrompt', towlineTablePrompt],
     ['borrowedVoice', borrowedVoice],
+    ['borrowedVoicePrompt', borrowedVoicePrompt],
     ['emergentPrimitives', emergentPrimitives],
     ['environmentMaterials', environmentMaterials],
     ['environmentalMachinery', environmentalMachinery],
