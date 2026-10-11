@@ -18,5 +18,7 @@ export function exportSelectedMomentRequest(moment, format = 'webm') {
     overlay: false,
     replacesReplay: false,
     replacesLiveCamera: false,
+    targetFile: 'src/ui/screens/clips.js',
+    applied: false,
   };
 }

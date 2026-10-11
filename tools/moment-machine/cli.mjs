@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-// Moment Machine CLI. Reads a moment stream or an Adventure tape and can encode the ranked batch.
+// Moment Machine CLI. Selection reads a real Adventure tape or an authoritative session.
+// Encoding runs only when playback frames exist. Missing positions are reported.
 
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { analyzeMomentStream, ingestStream } from '../../src/presentation/momentMachine/index.js';
-import { situation, SITUATION_COUNT } from './situations.mjs';
-import { rankSituations, writeBatch, chooseEncodeSet } from './batch.mjs';
-import { encodeMoment, videoTooling } from './encode.mjs';
+import { writeBatch } from './batch.mjs';
+import { runSession } from './sessions.mjs';
+import { encodeMoment } from './encode.mjs';
 
 function arg(name, fallback) {
   const prefix = `--${name}=`;
@@ -38,13 +39,22 @@ function printSelection(analysis) {
 }
 
 async function selectOne() {
-  const seed = Number(arg('seed', '1'));
   const tape = arg('tape', '');
-  let input = situation(seed);
-  if (tape) input = JSON.parse(await readFile(tape, 'utf8'));
-  const analysis = analyzeMomentStream(input);
-  printSelection(analysis);
-  if (!analysis.ok || !analysis.selection || !analysis.selection.ranked.length) process.exitCode = 1;
+  if (tape) {
+    const input = JSON.parse(await readFile(tape, 'utf8'));
+    const analysis = analyzeMomentStream(input);
+    printSelection(analysis);
+    return;
+  }
+  const seed = Number(arg('seed', ''));
+  if (!Number.isInteger(seed) || seed <= 0) {
+    process.stderr.write('select needs --tape or --seed\n');
+    process.exitCode = 1;
+    return;
+  }
+  const session = runSession(seed);
+  process.stdout.write(`${JSON.stringify(session, null, 2)}\n`);
+  if (!session.ok) process.exitCode = 1;
 }
 
 async function ingestTape() {
@@ -57,80 +67,80 @@ async function ingestTape() {
   const raw = JSON.parse(await readFile(tape, 'utf8'));
   const stream = ingestStream(raw);
   const analysis = analyzeMomentStream(stream);
+  const selection = analysis.selection || { ranked: [] };
+  const top = selection.ranked && selection.ranked[0];
+  const encodable = !!(analysis.plans && analysis.plans[0] && analysis.plans[0].exportSpan
+    && analysis.plans[0].exportSpan.exportable === true && stream.positionSource !== 'none');
   process.stdout.write(`${JSON.stringify({
     positionSource: stream.positionSource,
     events: stream.events.map((event) => ({ id: event.id, kind: event.kind, tick: event.tick })),
     dropped: stream.dropped,
-    ranked: analysis.selection ? analysis.selection.ranked.map((moment) => moment.shape) : [],
-    footage: analysis.selection && analysis.selection.ranked[0] ? analysis.selection.ranked[0].footage : null,
+    ranked: selection.ranked.map((moment) => moment.shape),
+    footage: top ? top.footage : null,
+    encodable,
+    videoVerified: false,
   }, null, 2)}\n`);
 }
 
 async function batch() {
-  const outDir = path.resolve(arg('out', path.join('tools', 'moment-machine', 'out')));
-  const encode = arg('encode', 'true') !== 'false';
-  const index = await writeBatch(outDir, { encode });
+  const outDir = path.resolve(arg('out', path.join('artifacts', 'moment-machine')));
+  const index = await writeBatch(outDir, { cwd: process.cwd() });
   process.stdout.write(`${JSON.stringify({
     outDir,
     situations: index.situations,
     selectMs: index.selectMs,
-    boringRejected: index.boringRejected,
-    featsSelected: index.featsSelected,
-    sideEffectsSelected: index.sideEffectsSelected,
-    categoryCount: index.categoryCount,
-    categories: index.categories,
-    clipCount: index.clipCount,
+    evidenceClass: index.evidenceClass,
     videoVerified: index.videoVerified,
+    categoryCount: index.categoryCount,
+    unselectedShapes: index.unselectedShapes,
+    clipCount: index.clipCount,
+    headedError: index.headedCapture && index.headedCapture.error,
   }, null, 2)}\n`);
-  if (encode && index.clipCount < 10) process.exitCode = 1;
 }
 
 async function exportOne() {
-  const seed = Number(arg('seed', '1'));
-  const outDir = path.resolve(arg('out', path.join('tools', 'moment-machine', 'out')));
-  const format = arg('format', 'webm');
-  const stream = situation(seed);
-  const analysis = analyzeMomentStream(stream);
-  const plan = analysis.plans && analysis.plans[0];
-  if (!plan) {
-    process.stderr.write('nothing to export\n');
+  const tape = arg('tape', '');
+  const seedArg = arg('seed', '');
+  let analysis = null;
+  if (tape) {
+    analysis = analyzeMomentStream(JSON.parse(await readFile(tape, 'utf8')));
+  } else if (seedArg) {
+    const session = runSession(Number(seedArg));
+    process.stdout.write(`${JSON.stringify({
+      ok: false,
+      videoVerified: false,
+      reason: session.positionSource === 'none' ? 'tape-positions-unrecorded' : 'playback-frames-required',
+      ranked: session.ranked,
+    }, null, 2)}\n`);
+    process.exitCode = 2;
+    return;
+  } else {
+    process.stderr.write('export needs --tape or --seed\n');
     process.exitCode = 1;
     return;
   }
-  await mkdir(outDir, { recursive: true });
-  const extension = format === 'mp4' ? 'mp4' : 'webm';
-  const outPath = path.join(outDir, `seed-${seed}-${plan.moment.shape}.${extension}`);
-  const tooling = await videoTooling();
-  const encoded = await encodeMoment(plan, analysis.selection.stream.samples, {
-    outPath,
-    format,
-    tooling,
-  });
-  process.stdout.write(`${JSON.stringify({
-    ok: encoded.ok,
-    reason: encoded.reason || null,
-    format: encoded.format || null,
-    fallback: encoded.fallback || null,
-    outPath: encoded.outPath || null,
-    verified: encoded.verified || null,
-    unverified: encoded.unverified === true,
-  }, null, 2)}\n`);
-  if (!encoded.ok) process.exitCode = encoded.unverified ? 3 : 1;
-}
-
-function summarize() {
-  const ranked = rankSituations();
-  const chosen = chooseEncodeSet(ranked.rows, 10);
-  const shapes = [];
-  for (let i = 0; i < chosen.length; i += 1) {
-    if (!shapes.includes(chosen[i].moment.shape)) shapes.push(chosen[i].moment.shape);
+  const plan = analysis.plans && analysis.plans[0];
+  const stream = analysis.selection && analysis.selection.stream;
+  const span = plan && plan.exportSpan;
+  if (!plan || !span || span.exportable !== true || !stream || stream.positionSource === 'none') {
+    process.stdout.write(`${JSON.stringify({
+      ok: false,
+      wroteFile: false,
+      videoVerified: false,
+      reason: stream && stream.positionSource === 'none' ? 'tape-positions-unrecorded' : (span && span.reason) || 'unrecorded',
+      footage: analysis.selection && analysis.selection.ranked[0] ? analysis.selection.ranked[0].footage : null,
+      ranked: analysis.selection ? analysis.selection.ranked.map((moment) => moment.shape) : [],
+    }, null, 2)}\n`);
+    process.exitCode = 2;
+    return;
   }
-  process.stdout.write(`${JSON.stringify({
-    situations: SITUATION_COUNT,
-    selectMs: ranked.elapsedMs,
-    encodeSet: chosen.map((item) => ({ seed: item.seed, shape: item.moment.shape, tone: item.tone })),
-    categories: shapes,
-  }, null, 2)}\n`);
+  const outDir = path.resolve(arg('out', path.join('artifacts', 'moment-machine')));
+  await mkdir(outDir, { recursive: true });
+  const outPath = path.join(outDir, 'export-refused.json');
+  const encoded = await encodeMoment(plan, stream.samples, { outPath, framesArePlayback: false });
+  await writeFile(outPath, JSON.stringify(encoded, null, 2));
+  process.stdout.write(`${JSON.stringify(encoded, null, 2)}\n`);
+  process.exitCode = 2;
 }
 
 const action = command();
@@ -142,15 +152,12 @@ if (action === 'select') {
   batch();
 } else if (action === 'export') {
   exportOne();
-} else if (action === 'summary') {
-  summarize();
 } else {
   process.stdout.write(`moment-machine commands:
-  select --seed N
-  select --tape file.json
-  ingest --tape file.json
-  summary
-  export --seed N --out dir [--format webm|mp4]
-  batch --out dir [--encode true|false]
+  select --seed N          one authoritative session
+  select --tape file.json  rank a recorded Adventure tape
+  ingest --tape file.json  report footage gaps; do not invent positions
+  export --tape file.json  encode only real playback frames
+  batch --out artifacts/moment-machine
 `);
 }

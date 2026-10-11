@@ -72,7 +72,8 @@ function factCausality(fact) {
 
 /**
  * Map one Chronicle fact. Headlines and story prose are not causality.
- * `distress:rescued` becomes a rescue log and nothing else — no threat is synthesized.
+ * `distress:rescued` is dropped: the fact does not carry the threat it answered,
+ * so it is not logged as kind `rescue`.
  */
 export function fromChronicleFact(fact) {
   if (!fact || typeof fact !== 'object' || fact.invalid === true) return null;
@@ -104,7 +105,13 @@ export function fromChronicleFact(fact) {
   };
 
   if (eventName === 'distress:rescued' || fact.stage === 'rescue') {
-    return { ...base, kind: 'rescue', payload: { logged: true } };
+    // The rescue fact does not carry the threat it answered. Emitting kind `rescue`
+    // here would let a caption claim a save the log never paired with a threat.
+    return {
+      dropped: true,
+      reason: 'chronicle:rescue-without-logged-threat',
+      id: base.id,
+    };
   }
   if (fact.stage === 'law' || (eventName === 'chronicler:provenance' && details.kind === 'law')) {
     const authority = typeof details.kind === 'string' && details.kind ? details.kind : 'law';

@@ -3,7 +3,6 @@
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { readFile, stat } from 'node:fs/promises';
-import { renderMoment } from './raster.mjs';
 
 export const EXPORT_LIMITS = Object.freeze({
   maxWidth: 1280,
@@ -216,11 +215,21 @@ export async function verifyMedia(filePath, expected) {
  * When MP4 is unavailable the same frames are written as WebM and marked fallback.
  */
 export async function encodeMoment(plan, samples, options = {}) {
+  if (options.framesArePlayback !== true) {
+    return {
+      ok: false,
+      wroteFile: false,
+      videoVerified: false,
+      reason: 'playback-frames-required',
+      unverified: true,
+    };
+  }
   const span = plan && plan.exportSpan;
   if (!span || span.exportable !== true) {
     return {
       ok: false,
       wroteFile: false,
+      videoVerified: false,
       reason: span && span.reason ? span.reason : 'unrecorded',
       missingPreTicks: span ? span.missingPreTicks : null,
       missingPostTicks: span ? span.missingPostTicks : null,
@@ -247,9 +256,13 @@ export async function encodeMoment(plan, samples, options = {}) {
   const width = even(Math.min(EXPORT_LIMITS.maxWidth, Math.max(EXPORT_LIMITS.minWidth, options.width || 320)));
   const height = even(Math.min(EXPORT_LIMITS.maxHeight, Math.max(EXPORT_LIMITS.minHeight, options.height || 180)));
   const fps = Math.min(EXPORT_LIMITS.maxFps, Math.max(EXPORT_LIMITS.minFps, options.fps || 10));
-  const rendered = renderMoment(plan, samples, { width, height, fps });
-  if (!rendered.ok || rendered.frames.length < 2) {
-    return { ok: false, wroteFile: false, reason: 'no-frames' };
+  const rendered = {
+    ok: Array.isArray(options.frames) && options.frames.length >= 2,
+    frames: options.frames,
+    seconds: span.seconds,
+  };
+  if (!rendered.ok) {
+    return { ok: false, wroteFile: false, videoVerified: false, reason: 'no-playback-frames' };
   }
   const outPath = options.outPath;
   const codecArgs = format === 'mp4'
@@ -282,5 +295,6 @@ export async function encodeMoment(plan, samples, options = {}) {
     missingPreTicks: span.missingPreTicks,
     missingPostTicks: span.missingPostTicks,
     verified,
+    videoVerified: options.framesArePlayback === true && verified.ok === true,
   };
 }

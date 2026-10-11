@@ -46,7 +46,8 @@ export function assessFootage(inTick, outTick, samples, window) {
   const missingPost = Math.max(0, outTick - max);
   let status = 'covered';
   if (min > outTick || max < inTick) status = 'unrecorded';
-  else if (missingPre > 0 && missingPost > 0) status = 'partial';
+  // A lead-in short of the requested pre-roll is pre-roll-missing even when the
+  // tail also runs past the last sample. The requested in-tick stays put.
   else if (missingPre > 0) status = 'pre-roll-missing';
   else if (missingPost > 0) status = 'post-roll-missing';
   return {
@@ -60,12 +61,10 @@ export function assessFootage(inTick, outTick, samples, window) {
 
 export function clipWindow(payoffTick) {
   const payoff = Math.max(0, payoffTick | 0);
-  let inTick = payoff - PRE_ROLL_TICKS;
-  let outTick = inTick + CLIP_TARGET_TICKS - 1;
-  if (inTick < 0) {
-    outTick -= inTick;
-    inTick = 0;
-  }
+  // Keep the requested in-tick. A payoff early in the ring does not slide forward
+  // to tick 0; the missing lead-in stays missing.
+  const inTick = payoff - PRE_ROLL_TICKS;
+  const outTick = inTick + CLIP_TARGET_TICKS - 1;
   return { inTick, outTick, payoffTick: payoff, seconds: (outTick - inTick + 1) / TICK_RATE };
 }
 
@@ -208,6 +207,12 @@ export function planShot(stream, moment) {
     if (beats.length && beats[beats.length - 1].tick === tick) continue;
     beats.push(beatAt(name, tick, cut, samples, moment));
   }
+  let firstSampleTick = null;
+  for (let i = 0; i < samples.length; i += 1) {
+    const tick = samples[i] && samples[i].tick;
+    if (!Number.isInteger(tick)) continue;
+    if (firstSampleTick == null || tick < firstSampleTick) firstSampleTick = tick;
+  }
   const span = recordedSpan(moment);
   return {
     schema: MOMENT_PLAN_SCHEMA,
@@ -218,6 +223,7 @@ export function planShot(stream, moment) {
     framing: 'top-down-xz',
     beats,
     footage: moment.footage,
+    firstSampleTick,
     exportSpan: span,
     subject: moment.subject,
     secondary: moment.secondary,
@@ -245,6 +251,20 @@ export function createOfflineCameraLease(plan) {
   let released = false;
   function frameAt(tick) {
     if (released || !plan || !Array.isArray(plan.beats) || !plan.beats.length) return null;
+    const first = plan.firstSampleTick;
+    if (!Number.isInteger(first) || tick < first) {
+      return {
+        tick,
+        recorded: false,
+        framing: 'top-down-xz',
+        cut: false,
+        focus: null,
+        zoom: null,
+        subject: plan.subject,
+        secondary: plan.secondary,
+        writesSimulation: false,
+      };
+    }
     const { prev, next } = beatPair(plan.beats, tick);
     if (!prev.recorded && !next.recorded) {
       return { tick, recorded: false, framing: 'top-down-xz', focus: null, zoom: null, cut: prev.cut === true };
