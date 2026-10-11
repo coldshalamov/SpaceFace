@@ -77,7 +77,7 @@ function staticImports(absPath, importmap) {
 
 function preloadedHrefs(html) {
   const set = new Set();
-  for (const m of html.matchAll(/<link\s+rel="modulepreload"\s+href="([^"]+)"\s*\/>/g)) {
+  for (const m of html.matchAll(/<link\s+rel="modulepreload"(?:\s+fetchpriority="[^"]+")?\s+href="([^"]+)"\s*\/>/g)) {
     set.add(m[1]);
   }
   return set;
@@ -179,7 +179,7 @@ const wantedSetForMain = new Set(wanted);
 const mainMissing = [...new Set(mainImports)].filter((href) => !existing.has(href) && !wantedSetForMain.has(href));
 const block = [
   `  ${BEGIN}`,
-  ...wanted.map((href) => `  <link rel="modulepreload" href="${href}" />`),
+  ...wanted.map((href) => `  <link rel="modulepreload" fetchpriority="low" href="${href}" />`),
   `  ${END}`,
 ].join('\n');
 
