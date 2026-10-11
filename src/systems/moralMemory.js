@@ -69,11 +69,34 @@ export function rememberAceMemoryTransition(state, payload = {}) {
   });
 }
 
+// Causes the h7 moral-return encounter may pick. Named opponents the runtime already
+// brings back (a spared pilot, a yielded crew, an escapee, a slain prisoner's crew),
+// plus a rescued pod. Other survivor-pod causes stay on the ledger and never spawn a return.
+// moralTrap writes `moral_trap:<trapId>:<optionId>` — a named counterparty, matched by prefix.
+export const MORAL_RETURN_CAUSES = Object.freeze(new Set([
+  'accepted_surrender',
+  'escaped_custody',
+  'executed_prisoner',
+  'rescued_survivors',
+  'spared',
+  'spared_escape',
+]));
+export const MORAL_RETURN_CAUSE_PREFIXES = Object.freeze(['moral_trap:']);
+
+export function moralCauseMayReturn(cause) {
+  if (typeof cause !== 'string' || cause.length === 0) return false;
+  if (MORAL_RETURN_CAUSES.has(cause)) return true;
+  for (const prefix of MORAL_RETURN_CAUSE_PREFIXES) {
+    if (cause.startsWith(prefix) && cause.length > prefix.length) return true;
+  }
+  return false;
+}
+
 export function nextMoralDebt(state) {
   const memory = ensureMoralMemory(state);
   for (const id of memory.order) {
     const debt = memory.debts[id];
-    if (debt && debt.status === 'pending') return debt;
+    if (debt && debt.status === 'pending' && moralCauseMayReturn(debt.cause)) return debt;
   }
   return null;
 }
@@ -94,7 +117,7 @@ export function pendingMoralDebt(state, id) {
 }
 
 // A terminal close that is not a comeback: custody, death-in-custody, pardon. The h7
-// moral-return picker only reads pending debts, so settling blocks every return path.
+// moral-return picker only reads pending returnable debts, so settling blocks every return path.
 export function settleMoralDebt(state, id, how = 'custody') {
   const memory = ensureMoralMemory(state);
   const debt = memory.debts[String(id || '')];
