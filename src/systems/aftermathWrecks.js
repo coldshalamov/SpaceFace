@@ -769,6 +769,39 @@ export function causalAftermathForSector(state, sectorId) {
     .sort((a, b) => (b.createdTick - a.createdTick) || String(a.fingerprint).localeCompare(String(b.fingerprint)));
 }
 
+const REMEDY_JOB_WORDS = Object.freeze({
+  patrol_clear: 'patrol',
+  recon_scan: 'survey',
+  bounty_hunt: 'bounty',
+  cargo_delivery: 'replacement freight',
+  salvage_retrieval: 'recovery',
+});
+
+// The sector gives up on a wound: say so once, in plain words. `source` keeps the chronicler from
+// also filing this record-channel line as a second story fact (the exhausted fact owns it).
+function announceExhaustedCause(bus, cause) {
+  if (!bus || typeof bus.emit !== 'function' || !cause) return null;
+  const sector = SECTORS.find((entry) => entry.id === cause.sectorId);
+  const place = sector && sector.name || cause.zoneName || 'The sector';
+  const job = REMEDY_JOB_WORDS[cause.remedyType] || String(cause.consequenceKind || 'repair');
+  const headline = `${place}: the board stopped posting the ${job} job. Whatever broke here stays broken.`;
+  bus.emit('news:headline', {
+    headline,
+    text: headline,
+    kind: 'aftermath-exhausted',
+    sectorId: cause.sectorId,
+    fingerprint: cause.fingerprint,
+    source: 'aftermath:causeExhausted',
+  });
+  bus.emit('news:publish', {
+    id: `aft:exhausted:${cause.fingerprint}`,
+    text: headline,
+    kind: 'aftermath-exhausted',
+    sectorId: cause.sectorId,
+  });
+  return headline;
+}
+
 function rememberCause(state, bus, payload) {
   const own = ensureAftermathState(state);
   const cause = causalAftermath(payload && payload.causality, payload && payload.outcome, {
@@ -1975,6 +2008,9 @@ export const aftermathWrecks = {
         });
       }
     } else {
+      // A cause the board already gave up on stays given up on: a replayed failure neither
+      // counts again nor repeats the announcement.
+      if (cause.status === 'exhausted') return false;
       cause.attempts = (cause.attempts | 0) + 1;
       const exhausted = cause.attempts >= 3;
       cause.status = exhausted ? 'exhausted' : 'open';
@@ -1987,7 +2023,10 @@ export const aftermathWrecks = {
           fingerprint: cause.fingerprint,
           causeId: cause.causeId,
           sectorId: cause.sectorId,
+          consequenceKind: cause.consequenceKind,
+          remedyType: cause.remedyType || null,
         });
+        announceExhaustedCause(this.bus, cause);
       }
     }
     const own = ensureAftermathState(this.state);

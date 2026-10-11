@@ -5,12 +5,12 @@ const PARENT_STAGES = Object.freeze({
   aftermath: ['kill'], binding: ['aftermath'], salvage: ['binding', 'aftermath'],
   recovered: ['salvage', 'aftermath'], sold: ['recovered'],
   law: ['sold', 'kill', 'scan', 'recovered', 'trade'],
-  reactor: ['binding', 'aftermath'], remedy: ['cause'],
+  reactor: ['binding', 'aftermath'], remedy: ['cause'], exhausted: ['cause'],
 });
 const RELATION = Object.freeze({
   aftermath: 'left_aftermath', binding: 'materialized_as', salvage: 'processed',
   recovered: 'recovered_from', sold: 'sold_from', law: 'legal_consequence_of',
-  reactor: 'reactor_action_on', remedy: 'remedied',
+  reactor: 'reactor_action_on', remedy: 'remedied', exhausted: 'given_up_on',
 });
 
 function freshStory(memory, fact) {

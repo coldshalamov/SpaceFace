@@ -48,7 +48,7 @@ export const FACT_EVENTS = Object.freeze([
   // environment hazard (world.js), ironman — and nothing else consumed it as evidence.
   'player:death',
   'aftermathWreck:recorded', 'aftermathWreck:spawned',
-  'aftermath:causeRecorded', 'aftermath:remedied',
+  'aftermath:causeRecorded', 'aftermath:remedied', 'aftermath:causeExhausted',
   'loot:manifestPayload', 'salvage:completed',
   'salvage:reactorVented', 'salvage:reactorTowedClear', 'salvage:reactorBurst',
   'aceMemory:transition', 'aceMemory:returnSpawned', 'aceMemory:pilotPromoted',
@@ -80,7 +80,7 @@ export const FACT_EVENTS = Object.freeze([
 ]);
 export const STAGES = Object.freeze([
   'kill', 'aftermath', 'binding', 'salvage', 'recovered', 'sold', 'law',
-  'ace', 'rescue', 'wanted', 'scan', 'reactor', 'trade', 'cause', 'remedy',
+  'ace', 'rescue', 'wanted', 'scan', 'reactor', 'trade', 'cause', 'remedy', 'exhausted',
   'spill', 'predation', 'survey', 'gate', 'delivery', 'story',
 ]);
 export const REF_KINDS = Object.freeze(['death', 'marker', 'wreck', 'receipt', 'cause']);

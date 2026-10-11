@@ -37,7 +37,7 @@ const EVENT_STAGES = Object.freeze({
   'heat:changed': ['wanted'], 'contraband:scanned': ['scan'],
   'salvage:reactorVented': ['reactor'], 'salvage:reactorTowedClear': ['reactor'],
   'salvage:reactorBurst': ['reactor'], 'aftermath:causeRecorded': ['cause'],
-  'aftermath:remedied': ['remedy'],
+  'aftermath:remedied': ['remedy'], 'aftermath:causeExhausted': ['exhausted'],
   'freight:cargoSpilled': ['spill'], 'encounter:ambientPredationTelegraph': ['predation'],
   'formation:discovered': ['survey'], 'gate:verdict': ['gate'],
   'claim:freightDelivered': ['delivery'],
@@ -112,7 +112,7 @@ function fact(f, path) {
     check(f.details.level <= 5 && f.details.previousLevel <= 5 && typeof f.details.cleared === 'boolean', `${path}.wanted`);
   }
   if (f.stage === 'reactor') check(['reactorVented', 'reactorTowedClear', 'reactorBurst'].includes(f.details.outcome), `${path}.outcome`);
-  if (['law', 'cause', 'remedy'].includes(f.stage)) string(f.details.kind, `${path}.kind`, 64);
+  if (['law', 'cause', 'remedy', 'exhausted'].includes(f.stage)) string(f.details.kind, `${path}.kind`, 64);
   if (f.event === 'chronicler:provenance') {
     check(typeof f.externalId === 'string' && f.externalId.length > 0 && f.actor.id !== null, `${path}.receipt identity`);
     check(f.parent && (f.stage === 'recovered' ? ['marker', 'wreck'] : ['receipt']).includes(f.parent.kind), `${path}.source kind`);

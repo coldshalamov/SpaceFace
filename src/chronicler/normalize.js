@@ -259,6 +259,15 @@ export function normalizeFact(event, p, state) {
       f.dedupe = `remedy:${JSON.stringify([key, f.details.missionId])}`;
       break;
     }
+    case 'aftermath:causeExhausted': {
+      const key = id(p.fingerprint || p.causeId);
+      if (!key) return { invalid: true };
+      f.stage = 'exhausted';
+      f.parent = ref('cause', key);
+      f.details = { kind: text(p.consequenceKind, 'aftermath', 64) };
+      f.dedupe = `exhausted:${key}`;
+      break;
+    }
     case 'freight:cargoSpilled': {
       // Emitted by traffic panic-jettison AND encounter freight-custody spills; the payload
       // union is carrier/manifest identity + cause + quantity. A spill with no anchor at all
