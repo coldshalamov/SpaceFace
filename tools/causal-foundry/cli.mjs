@@ -8,7 +8,8 @@ import { fileURLToPath } from 'node:url';
 
 import { ACCEPTED_SCENES } from '../../src/data/causalFoundry/accepted.js';
 import { PRESENTATION_IDS } from '../../src/data/causalFoundry/presentation.js';
-import { criticSample, HARD_GATES } from './evaluate.js';
+import { HARD_GATES } from './evaluate.js';
+import { executeCritic } from './critic.js';
 import { testCandidates } from './generate.js';
 import { proveScene } from './proofs.js';
 
@@ -22,6 +23,7 @@ for (const scene of ACCEPTED_SCENES) {
   const proof = await proveScene(scene);
   proofs.push(slimProof(scene, proof));
 }
+const critic = await executeCritic({ catalog: ACCEPTED_SCENES, rows: generated.rows });
 
 const ranked = {
   schema: 'spaceface.causalFoundry.ranked.v1',
@@ -32,7 +34,13 @@ const ranked = {
   acceptedCount: generated.rows.filter((row) => row.accepted).length,
   rejectedCount: generated.rows.filter((row) => !row.accepted).length,
   candidates: generated.rows.map(slimCandidate),
-  critic: criticSample(generated.rows, PRESENTATION_IDS),
+  critic: {
+    ok: critic.ok,
+    problems: critic.problems,
+    acceptedIds: critic.acceptedIds,
+    rejectedIds: critic.rejectedIds,
+    presentationIds: PRESENTATION_IDS,
+  },
 };
 const accepted = {
   schema: 'spaceface.causalFoundry.acceptedProof.v1',
@@ -56,10 +64,12 @@ console.log(JSON.stringify({
   catalogScenes: proofs.length,
   catalogOk: failedAccepted.length === 0,
   catalogFailed: failedAccepted.map((row) => row.id),
+  criticOk: critic.ok,
+  criticProblems: critic.problems,
   ms: Date.now() - started,
   out: OUT_DIR,
 }, null, 2));
-process.exit(failedAccepted.length === 0 && ranked.simulated >= 100 ? 0 : 1);
+process.exit(failedAccepted.length === 0 && critic.ok && ranked.simulated >= 100 ? 0 : 1);
 
 function slimCandidate(row) {
   return {

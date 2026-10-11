@@ -20,7 +20,13 @@ test('factory simulates at least 100 candidates and rejects fakes', { timeout: 1
     assert.equal(row.metrics.physicalCauseFraction, 1, row.id);
     assert.ok(row.traceHash, row.id);
     assert.equal(row.reasons.length, 0, row.id);
+    assert.equal(row.signature.includes('|'), true, row.signature);
+    assert.equal(row.signature.startsWith('gen-'), false, row.signature);
   }
+  assert.equal(new Set(accepted.map((row) => row.signature)).size, accepted.length);
+  const pinFamilies = ['gen-reel', 'gen-static', 'gen-diagonal'];
+  const pinAccepted = accepted.filter((row) => pinFamilies.includes(row.family));
+  assert.ok(pinAccepted.length <= 1, pinAccepted.map((row) => `${row.id}:${row.signature}`).join(','));
   const hashes = new Map();
   for (const row of rows) {
     if (!row.traceHash) continue;

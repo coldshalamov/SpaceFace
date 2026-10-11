@@ -4,7 +4,9 @@ import assert from 'node:assert/strict';
 import { REJECTED_FIXTURES } from '../../src/data/causalFoundry/rejected.js';
 import { blockedAtoms, runnableAtoms } from '../../tools/causal-foundry/vocabulary.js';
 import { liveFactorySanity, screenScene } from '../../tools/causal-foundry/factoryBridge.js';
-import { criticSample, evaluateCandidate } from '../../tools/causal-foundry/evaluate.js';
+import { bodyClassOf, criticSample, evaluateCandidate, signatureOf } from '../../tools/causal-foundry/evaluate.js';
+import { contrastFails, deriveHappened } from '../../tools/causal-foundry/observe.js';
+import { gameableHoles } from '../../tools/causal-foundry/critic.js';
 import { buildCandidates } from '../../tools/causal-foundry/generate.js';
 
 const ACCEPT = {
@@ -93,6 +95,25 @@ test('critic sample spreads rejection reasons', () => {
   const sample = criticSample(rows, ['cf.reel-berth']);
   assert.deepEqual(sample.rejectedIds.slice(0, 4), ['r1', 'z', 's', 'o']);
   assert.deepEqual(sample.catalogIds, ['cf.reel-berth']);
+});
+
+test('player-caused gates are not satisfied by preseed, glide, or gun drift', () => {
+  assert.deepEqual(gameableHoles(), []);
+  const glide = deriveHappened({
+    attStart: false, attEnd: false, playerDisp: 100, launchSpeed: 40, endSpeed: 39.5,
+    maxSpeed: 40, speedAt10: 40, rotDelta: 0, reelDrop: 0, restDelta: 0,
+    maxTension: 0, maxAngular: 0, cut: false, others: [],
+  }, {});
+  assert.equal(glide.includes('ship.coast'), false);
+  assert.equal(signatureOf(['massline.reel', 'massline.tension'], 'heavy'), signatureOf(['massline.tension', 'massline.reel'], 'heavy'));
+  assert.equal(bodyClassOf([{ profile: 'asteroid.heavy', mass: 800 }]), 'heavy');
+  assert.equal(bodyClassOf([{ profile: 'asteroid.light', mass: 40 }]), 'light');
+  const gone = contrastFails(
+    { others: [{ alias: 'rock', speed: 20 }] },
+    { others: [] },
+    { path: 'others.rock.speed', primaryGtBy: 5 },
+  );
+  assert.ok(gone.length > 0);
 });
 
 test('generator candidates are deterministic and stay on runnable atoms', () => {

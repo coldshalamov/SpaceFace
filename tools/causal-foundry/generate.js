@@ -4,8 +4,8 @@
 import { compileScene, geometryOf } from './compileScene.js';
 import { executeScenario } from './execute.js';
 import { hostileCount } from './factoryBridge.js';
-import { evaluateCandidate, rankCandidates, signatureOf } from './evaluate.js';
-import { deriveFired } from './observe.js';
+import { bodyClassOf, evaluateCandidate, rankCandidates } from './evaluate.js';
+import { deriveFired, deriveHappened } from './observe.js';
 import { runnableAtoms } from './vocabulary.js';
 
 const RUNNABLE = new Set(runnableAtoms().map((row) => row.id));
@@ -25,7 +25,7 @@ export function buildCandidates() {
         id: `gen.reel.d${dist}.s${seed}`,
         seed: 8000 + dist + seed,
         ticks: 150,
-        mechanics: ['massline.latch', 'massline.reel'],
+        mechanics: ['massline.reel', 'massline.tension'],
         player: { x: 0, z: 0, heading: 0 },
         bodies: [anchor(dist, 0, 800)],
         attachment: { target: 'anchor' },
@@ -38,7 +38,7 @@ export function buildCandidates() {
       id: `gen.payout.s${n}`,
       seed: 8100 + n,
       ticks: 100,
-      mechanics: ['massline.latch', 'massline.payout', 'ship.thrust'],
+      mechanics: ['massline.payout', 'ship.thrust', 'massline.tension'],
       player: { x: 0, z: 0, heading: Math.PI },
       bodies: [anchor(80, 0, 800)],
       attachment: { target: 'anchor' },
@@ -52,11 +52,11 @@ export function buildCandidates() {
         seed: 8200 + speed + seed,
         ticks: 160,
         orbit: true,
-        mechanics: ['massline.latch', 'massline.orbit', 'massline.tension'],
+        mechanics: ['massline.orbit', 'ship.thrust', 'massline.tension'],
         player: { x: 0, z: 0, vz: speed, heading: Math.PI / 2 },
         bodies: [anchor(90, 0, 800)],
         attachment: { target: 'anchor' },
-        primary: { hold: true, moveZ: 0.15 },
+        primary: { hold: true, moveZ: 0.6 },
       });
     }
   }
@@ -65,7 +65,7 @@ export function buildCandidates() {
       id: `gen.cut.s${n}`,
       seed: 8300 + n,
       ticks: 110,
-      mechanics: ['massline.latch', 'massline.orbit', 'massline.cut'],
+        mechanics: ['massline.orbit', 'massline.cut'],
       player: { x: 0, z: 0, vz: 55, heading: Math.PI / 2 },
       bodies: [anchor(80, 0, 800)],
       attachment: { target: 'anchor' },
@@ -96,16 +96,16 @@ export function buildCandidates() {
       primary: {},
     });
   }
-  for (const x of [70, 60, 100]) {
+  for (const x of [300, 280, 320]) {
     for (const seed of [1, 2, 3]) {
       add('gen-fire', {
         id: `gen.fire.x${x}.s${seed}`,
         seed: 8600 + x + seed,
-        ticks: 140,
-        mechanics: ['weapons.fire', 'physics.collision'],
+        ticks: 80,
+        mechanics: ['ship.thrust', 'weapons.fire'],
         player: { x: 0, z: 0, heading: 0 },
         bodies: [wasp(x, 0)],
-        primary: { fire: true, aimAngle: 0 },
+        primary: { moveZ: 1, fire: true, aimAngle: 0 },
       });
     }
   }
@@ -127,7 +127,7 @@ export function buildCandidates() {
       id: `gen.boost.s${n}`,
       seed: 8800 + n,
       ticks: 120,
-      mechanics: ['massline.latch', 'ship.boost', 'massline.tension'],
+      mechanics: ['ship.boost', 'massline.tension', 'ship.thrust'],
       player: { x: 0, z: 0, heading: Math.PI },
       bodies: [anchor(110, 0, 2000, false)],
       attachment: { target: 'anchor' },
@@ -140,7 +140,7 @@ export function buildCandidates() {
         id: `gen.tow.d${dist}.s${seed}`,
         seed: 8900 + dist + seed,
         ticks: 140,
-        mechanics: ['massline.latch', 'massline.reel'],
+        mechanics: ['massline.reel', 'massline.tension'],
         player: { x: 0, z: 0, heading: 0 },
         bodies: [pod('pod', dist, 0)],
         attachment: { target: 'pod' },
@@ -166,7 +166,7 @@ export function buildCandidates() {
       id: `gen.static.s${n}`,
       seed: 9100 + n,
       ticks: 150,
-      mechanics: ['massline.latch', 'massline.reel'],
+      mechanics: ['massline.reel', 'massline.tension'],
       player: { x: 0, z: 0, heading: 0 },
       bodies: [anchor(80, 0, 2000, false)],
       attachment: { target: 'anchor' },
@@ -178,7 +178,7 @@ export function buildCandidates() {
       id: `gen.diagonal.s${n}`,
       seed: 9200 + n,
       ticks: 160,
-      mechanics: ['massline.latch', 'massline.reel'],
+      mechanics: ['massline.reel', 'massline.tension'],
       player: { x: 0, z: 0, heading: 0 },
       bodies: [anchor(55, 55, 800)],
       attachment: { target: 'anchor' },
@@ -190,7 +190,7 @@ export function buildCandidates() {
       id: `gen.zeroreel.s${n}`,
       seed: 9300 + n,
       ticks: 80,
-      mechanics: ['massline.latch', 'massline.reel'],
+      mechanics: ['massline.reel', 'massline.tension'],
       player: { x: 0, z: 0, heading: 0 },
       bodies: [anchor(80, 0, 800)],
       attachment: { target: 'anchor' },
@@ -281,12 +281,16 @@ export async function testCandidates() {
     const run = await executeScenario(doc);
     simulated += 1;
     const geo = geometryOf(candidate.scene);
-    const fired = deriveFired(run.summary, candidate.scene.primary, candidate.scene.mechanics);
+    const tape = candidate.scene.primary;
+    const happened = deriveHappened(run.summary, tape);
+    const fired = deriveFired(run.summary, tape, candidate.scene.mechanics);
     const report = {
       id: candidate.scene.id,
       family: candidate.family,
       mechanics: candidate.scene.mechanics,
+      happened,
       fired,
+      bodyClass: bodyClassOf(candidate.scene.bodies, run.summary, candidate.scene.attachment),
       ticks: candidate.scene.ticks,
       entityCount: geo.entityCount,
       hostileCount: hostileCount(candidate.scene),
@@ -299,7 +303,6 @@ export async function testCandidates() {
       restDelta: run.summary.restDelta,
       maxTension: run.summary.maxTension,
       interventionAffordances: 1,
-      signature: signatureOf(candidate.family, fired),
     };
     const verdict = evaluateCandidate(report, { seenSignatures: seen });
     if (verdict.accepted) seen.add(verdict.signature);
@@ -307,6 +310,7 @@ export async function testCandidates() {
       ...verdict,
       traceHash: run.traceHash,
       simulated: true,
+      scene: candidate.scene,
       labOk: run.labOk,
       error: run.labOk ? null : run.error,
     });

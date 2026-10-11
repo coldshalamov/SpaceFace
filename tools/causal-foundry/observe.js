@@ -1,34 +1,47 @@
-// Map a lab summary back onto vocabulary ids. A declared mechanic that did
-// not move its observable is a zero-force claim, not a success.
+// Map a lab summary onto vocabulary ids.
+// An atom fires only for a player-caused change. A pre-seeded line is not a latch.
+// Hands-off motion without speed decay is not a coast. Shot drift is not a ram.
 
-export function deriveFired(summary, tape, mechanics) {
-  const want = new Set(mechanics || []);
-  const fired = [];
-  const has = (id) => want.has(id);
+export function deriveHappened(summary, tape) {
   const s = summary || {};
   const input = tape || {};
-  if (has('ship.thrust') && Math.abs(input.moveZ || 0) >= 0.5 && s.playerDisp >= 12) fired.push('ship.thrust');
-  if (has('ship.coast')) {
-    const released = input.then && Math.abs(input.then.moveZ ?? 0) < 0.25 && Math.abs(input.moveZ || 0) >= 0.5;
-    const handsOff = Math.abs(input.moveZ || 0) < 0.25 && !input.boost && s.launchSpeed >= 15 && s.playerDisp >= 8;
-    if ((released && s.maxSpeed - s.endSpeed >= 8 && s.playerDisp >= 12) || handsOff) fired.push('ship.coast');
+  const happened = [];
+  const loaded = Math.abs(input.moveZ || 0) >= 0.5 || !!input.boost || input.reelFrom != null;
+  const holding = !!input.hold && input.tap == null;
+  if (Math.abs(input.moveZ || 0) >= 0.5 && s.playerDisp >= 12) happened.push('ship.thrust');
+  const released = !!(input.then && Math.abs(input.then.moveZ ?? 0) < 0.25 && Math.abs(input.moveZ || 0) >= 0.5);
+  const handsOff = Math.abs(input.moveZ || 0) < 0.25 && !input.boost && input.reelFrom == null && input.payoutFrom == null;
+  const decay = (s.launchSpeed || 0) - (s.endSpeed || 0);
+  const releasedDecay = (s.maxSpeed || 0) - (s.endSpeed || 0);
+  if ((handsOff && decay >= 8) || (released && releasedDecay >= 8)) {
+    happened.push('ship.coast');
   }
-  if (has('ship.turn') && Math.abs(input.turnIntent || 0) >= 0.4 && s.rotDelta >= 0.35) fired.push('ship.turn');
-  if (has('ship.boost') && input.boost && s.speedAt10 >= 120) fired.push('ship.boost');
-  if (has('massline.latch') && s.attStart === true) fired.push('massline.latch');
-  if (has('massline.reel') && s.reelDrop >= 12) fired.push('massline.reel');
-  if (has('massline.payout') && s.restDelta >= 12) fired.push('massline.payout');
-  if (has('massline.cut') && s.cut === true) fired.push('massline.cut');
-  if (has('massline.tension') && s.maxTension >= 40 && s.attStart === true) fired.push('massline.tension');
-  if (has('massline.orbit') && s.maxAngular >= 0.25) fired.push('massline.orbit');
-  if (has('physics.collision') && (s.others || []).some((body) => Math.abs(body.speed - body.launchSpeed) >= 8 && body.disp >= 3)) {
-    fired.push('physics.collision');
-  }
-  if (has('weapons.fire') && input.fire && (s.others || []).some((body) => body.hullDrop >= 8)) {
-    fired.push('weapons.fire');
-  }
-  if (has('save.restore') && s.savePerformed === true) fired.push('save.restore');
-  return fired;
+  if (Math.abs(input.turnIntent || 0) >= 0.4 && s.rotDelta >= 0.35) happened.push('ship.turn');
+  if (input.boost && s.speedAt10 >= 120) happened.push('ship.boost');
+  if (s.attStart !== true && s.attEnd === true) happened.push('massline.latch');
+  if (input.reelFrom != null && s.reelDrop >= 12) happened.push('massline.reel');
+  if (input.payoutFrom != null && s.restDelta >= 12) happened.push('massline.payout');
+  if (input.tap != null && s.cut === true) happened.push('massline.cut');
+  if (s.maxTension >= 40 && s.attStart === true && (loaded || holding)) happened.push('massline.tension');
+  if (s.maxAngular >= 0.25 && (s.attStart === true || s.cut === true)) happened.push('massline.orbit');
+  if ((s.others || []).some((body) => rammed(body))) happened.push('physics.collision');
+  if (input.fire && (s.others || []).some((body) => body.hullDrop >= 8)) happened.push('weapons.fire');
+  if (s.savePerformed === true) happened.push('save.restore');
+  return happened;
+}
+
+function rammed(body) {
+  if (!body) return false;
+  if (body.hullDrop >= 5) return false;
+  if (body.disp < 3) return false;
+  return Math.abs(body.speed - body.launchSpeed) >= 8;
+}
+
+export function deriveFired(summary, tape, mechanics) {
+  const happened = deriveHappened(summary, tape);
+  if (!Array.isArray(mechanics)) return happened;
+  const want = new Set(mechanics);
+  return happened.filter((id) => want.has(id));
 }
 
 export function readPath(summary, path) {
@@ -93,7 +106,9 @@ export function contrastFails(primary, ablate, contrast) {
   if (!contrast) return [];
   const left = readPath(primary, contrast.path);
   const right = readPath(ablate, contrast.path);
-  if (String(contrast.path).startsWith('others.') && left != null && right == null) return [];
+  if (String(contrast.path).startsWith('others.') && left != null && right == null) {
+    return [`contrast ${contrast.path} witness body is gone after ablation (${left})`];
+  }
   if (left == null || right == null) return [`contrast ${contrast.path} missing (${left} vs ${right})`];
   if (typeof left === 'boolean' || typeof right === 'boolean') {
     if (left === right) return [`contrast ${contrast.path} did not change (${left})`];
@@ -107,4 +122,32 @@ export function contrastFails(primary, ablate, contrast) {
     return [`contrast ${contrast.path} primary ${left} not higher than ablate ${right} by ${contrast.primaryGtBy}`];
   }
   return [];
+}
+
+export function failureGap(primary, alt, failure) {
+  if (!failure) return [];
+  if (!alt) return ['failure has no alternate intervention'];
+  const left = readPath(primary, failure.path);
+  const right = readPath(alt, failure.path);
+  const problems = [];
+  if (failure.primaryGt != null && !(Number(left) > failure.primaryGt)) {
+    problems.push(`failure ${failure.path} primary ${left} not > ${failure.primaryGt}`);
+  }
+  if (failure.primaryLt != null && !(Number(left) < failure.primaryLt)) {
+    problems.push(`failure ${failure.path} primary ${left} not < ${failure.primaryLt}`);
+  }
+  if (failure.primaryEquals != null && left !== failure.primaryEquals) {
+    problems.push(`failure ${failure.path} primary ${left} !== ${failure.primaryEquals}`);
+  }
+  if (failure.altLt != null && !(Number(right) < failure.altLt)) {
+    problems.push(`failure ${failure.path} alt ${right} not < ${failure.altLt}`);
+  }
+  if (failure.altGt != null && !(Number(right) > failure.altGt)) {
+    problems.push(`failure ${failure.path} alt ${right} not > ${failure.altGt}`);
+  }
+  if (failure.altEquals != null && right !== failure.altEquals) {
+    problems.push(`failure ${failure.path} alt ${right} !== ${failure.altEquals}`);
+  }
+  if (left === right) problems.push(`failure ${failure.path} is the same on both tapes (${left})`);
+  return problems;
 }

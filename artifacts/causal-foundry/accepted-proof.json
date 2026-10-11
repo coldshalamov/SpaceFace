@@ -3,31 +3,31 @@
   "sceneCount": 30,
   "presentationIds": [
     "cf.reel-berth",
+    "cf.tow-light",
     "cf.swing-cut",
     "cf.payout-strand",
-    "cf.glancing-pod",
-    "cf.heavy-shove",
-    "cf.orbit-hold",
+    "cf.cut-into-pod",
     "cf.boost-arrest",
-    "cf.wasp-wound",
-    "cf.tow-light",
-    "cf.cut-into-pod"
+    "cf.taut-catch",
+    "cf.orbit-hold",
+    "cf.boost-cut",
+    "cf.moving-fire"
   ],
   "failureIds": [
     "cf.swing-cut",
     "cf.payout-strand",
-    "cf.glancing-pod",
-    "cf.wasp-wound",
-    "cf.cut-into-pod"
+    "cf.cut-into-pod",
+    "cf.boost-cut",
+    "cf.boost-payout"
   ],
   "scenes": [
     {
       "id": "cf.reel-berth",
       "ok": true,
-      "layout": "heavy-reel",
+      "layout": "reel-pin",
       "mechanics": [
-        "massline.latch",
-        "massline.reel"
+        "massline.reel",
+        "massline.tension"
       ],
       "failure": null,
       "presentation": true,
@@ -40,11 +40,37 @@
       "contrastFailures": [],
       "varietyFailures": [],
       "fired": [
-        "massline.latch",
-        "massline.reel"
+        "massline.reel",
+        "massline.tension"
       ],
       "playerDisp": 59.533012,
       "endSpeed": 0.243285,
+      "error": null
+    },
+    {
+      "id": "cf.tow-light",
+      "ok": true,
+      "layout": "light-tow",
+      "mechanics": [
+        "massline.reel",
+        "massline.tension"
+      ],
+      "failure": null,
+      "presentation": true,
+      "traceHash": "e49c7fcafc6c864f825bd998a7f613c33c53c3f146b7168b0d45ea4a69aae99b",
+      "repeatHash": "e49c7fcafc6c864f825bd998a7f613c33c53c3f146b7168b0d45ea4a69aae99b",
+      "repeatOk": true,
+      "altHash": "844ba010315724fc6ff0388fa46597f14339b684be56d11ead2ab236bbd7846b",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "massline.reel",
+        "massline.tension"
+      ],
+      "playerDisp": 27.084772,
+      "endSpeed": 1.050944,
       "error": null
     },
     {
@@ -52,11 +78,14 @@
       "ok": true,
       "layout": "swing-cut",
       "mechanics": [
-        "massline.latch",
-        "massline.orbit",
-        "massline.cut"
+        "massline.cut",
+        "massline.orbit"
       ],
-      "failure": "The ship is free and still fast. Nothing returns it to the start.",
+      "failure": {
+        "path": "cut",
+        "primaryEquals": true,
+        "altEquals": false
+      },
       "presentation": true,
       "traceHash": "3f02bedb236c9579f259e8c828754a17222e8cf97f8782a030e3ebb06e6c83c0",
       "repeatHash": "3f02bedb236c9579f259e8c828754a17222e8cf97f8782a030e3ebb06e6c83c0",
@@ -67,7 +96,7 @@
       "contrastFailures": [],
       "varietyFailures": [],
       "fired": [
-        "massline.latch",
+        "ship.coast",
         "massline.cut",
         "massline.orbit"
       ],
@@ -80,11 +109,15 @@
       "ok": true,
       "layout": "payout-strand",
       "mechanics": [
-        "massline.latch",
         "massline.payout",
-        "ship.thrust"
+        "ship.thrust",
+        "massline.tension"
       ],
-      "failure": "You are stranded down-range. Releasing thrust does not reel you home.",
+      "failure": {
+        "path": "playerX",
+        "primaryLt": -40,
+        "altGt": -15
+      },
       "presentation": true,
       "traceHash": "2fa79fcdb7f12795d035bd22e944a400b664a7b5a2cea9499e182fd39c351bf7",
       "repeatHash": "2fa79fcdb7f12795d035bd22e944a400b664a7b5a2cea9499e182fd39c351bf7",
@@ -96,91 +129,73 @@
       "varietyFailures": [],
       "fired": [
         "ship.thrust",
-        "massline.latch",
-        "massline.payout"
+        "massline.payout",
+        "massline.tension",
+        "physics.collision"
       ],
       "playerDisp": 102.634771,
       "endSpeed": 71.286995,
       "error": null
     },
     {
-      "id": "cf.glancing-pod",
+      "id": "cf.cut-into-pod",
       "ok": true,
-      "layout": "glancing-pod",
+      "layout": "cut-into-pod",
       "mechanics": [
-        "ship.coast",
-        "physics.collision"
+        "massline.cut",
+        "physics.collision",
+        "massline.orbit"
       ],
-      "failure": "The pod is drifting. The contact did not reset the field.",
+      "failure": {
+        "path": "others.pod.speed",
+        "primaryGt": 5,
+        "altLt": 3
+      },
       "presentation": true,
-      "traceHash": "ccef77694326008f8d08664d49dffcf3e8e939fa71024f697e30a43e7e4ffbad",
-      "repeatHash": "ccef77694326008f8d08664d49dffcf3e8e939fa71024f697e30a43e7e4ffbad",
+      "traceHash": "27a2310ae857e4bbe47aea64230af95de898725137fa801604a63e63de5d1046",
+      "repeatHash": "27a2310ae857e4bbe47aea64230af95de898725137fa801604a63e63de5d1046",
       "repeatOk": true,
-      "altHash": "d9eae6ead7656e6a2cec3c40d9c5060c8d3c937ffc87454f4387118fcd6d005e",
+      "altHash": "49cc720ebf7d22041f8df27f1be00f6d2a4bdc486d7188ce384e81f56733fa49",
       "reasons": [],
       "expectFailures": [],
       "contrastFailures": [],
       "varietyFailures": [],
       "fired": [
         "ship.coast",
-        "physics.collision"
-      ],
-      "playerDisp": 95.5297629668455,
-      "endSpeed": 59.308548413132264,
-      "error": null
-    },
-    {
-      "id": "cf.heavy-shove",
-      "ok": true,
-      "layout": "heavy-shove",
-      "mechanics": [
-        "ship.coast",
-        "physics.collision"
-      ],
-      "failure": null,
-      "presentation": true,
-      "traceHash": "3a24c5055691ff7dc3eae14f2e619b8f6673dfaa830a3e577fc4fba7d1cf851e",
-      "repeatHash": "3a24c5055691ff7dc3eae14f2e619b8f6673dfaa830a3e577fc4fba7d1cf851e",
-      "repeatOk": true,
-      "altHash": "5fd9810541b55e8cade494150144404baf4866f9fd7a760f64f2c9b3f5edaf0c",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "ship.coast",
-        "physics.collision"
-      ],
-      "playerDisp": 141.297742,
-      "endSpeed": 70.377411,
-      "error": null
-    },
-    {
-      "id": "cf.orbit-hold",
-      "ok": true,
-      "layout": "orbit-hold",
-      "mechanics": [
-        "massline.latch",
+        "massline.cut",
         "massline.orbit",
+        "physics.collision"
+      ],
+      "playerDisp": 94.87211225152228,
+      "endSpeed": 41.24308563852512,
+      "error": null
+    },
+    {
+      "id": "cf.reel-then-cut",
+      "ok": true,
+      "layout": "reel-then-cut",
+      "mechanics": [
+        "massline.reel",
+        "massline.cut",
         "massline.tension"
       ],
       "failure": null,
-      "presentation": true,
-      "traceHash": "f2f5bc66f02497142ba4f6cbbdad5619825c784463a413ef8180440149b421b2",
-      "repeatHash": "f2f5bc66f02497142ba4f6cbbdad5619825c784463a413ef8180440149b421b2",
+      "presentation": false,
+      "traceHash": "98e5eeb4b0e79dfb3f37c1ce41859fc2a3b3a52295da68c27771a238a729d032",
+      "repeatHash": "98e5eeb4b0e79dfb3f37c1ce41859fc2a3b3a52295da68c27771a238a729d032",
       "repeatOk": true,
-      "altHash": "5324805f10f8d97bddfe42a352ebb230f5d0cbb38b34b8d4ced7feb31f2f6d8d",
+      "altHash": "62a367901c130624242fc7fb590bad63c66f518d89f84dd8c17e5bb206d79469",
       "reasons": [],
       "expectFailures": [],
       "contrastFailures": [],
       "varietyFailures": [],
       "fired": [
-        "massline.latch",
-        "massline.tension",
-        "massline.orbit"
+        "massline.reel",
+        "massline.cut",
+        "massline.tension"
       ],
-      "playerDisp": 159.55348798649442,
-      "endSpeed": 62.512935317534364,
+      "playerDisp": 53.914745,
+      "endSpeed": 36.101097,
       "error": null
     },
     {
@@ -188,8 +203,8 @@
       "ok": true,
       "layout": "boost-arrest",
       "mechanics": [
-        "massline.latch",
         "ship.boost",
+        "ship.thrust",
         "massline.tension"
       ],
       "failure": null,
@@ -203,8 +218,8 @@
       "contrastFailures": [],
       "varietyFailures": [],
       "fired": [
+        "ship.thrust",
         "ship.boost",
-        "massline.latch",
         "massline.tension"
       ],
       "playerDisp": 89.05877100000001,
@@ -212,122 +227,15 @@
       "error": null
     },
     {
-      "id": "cf.wasp-wound",
-      "ok": true,
-      "layout": "wasp-wound",
-      "mechanics": [
-        "weapons.fire",
-        "physics.collision"
-      ],
-      "failure": "The wasp is alive, lighter, and no longer where it started.",
-      "presentation": true,
-      "traceHash": "28496ad272062b7ca048663464668f1d7499c859f34c97224be5249bc46f46dd",
-      "repeatHash": "28496ad272062b7ca048663464668f1d7499c859f34c97224be5249bc46f46dd",
-      "repeatOk": true,
-      "altHash": "a6319a5d57686c2b38f8c47b1d886876fbaf6174d7076063cbce0ca0d2020d0c",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "physics.collision",
-        "weapons.fire"
-      ],
-      "playerDisp": 0,
-      "endSpeed": 0,
-      "error": null
-    },
-    {
-      "id": "cf.tow-light",
-      "ok": true,
-      "layout": "tow-light",
-      "mechanics": [
-        "massline.latch",
-        "massline.reel"
-      ],
-      "failure": null,
-      "presentation": true,
-      "traceHash": "e49c7fcafc6c864f825bd998a7f613c33c53c3f146b7168b0d45ea4a69aae99b",
-      "repeatHash": "e49c7fcafc6c864f825bd998a7f613c33c53c3f146b7168b0d45ea4a69aae99b",
-      "repeatOk": true,
-      "altHash": "844ba010315724fc6ff0388fa46597f14339b684be56d11ead2ab236bbd7846b",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "massline.latch",
-        "massline.reel"
-      ],
-      "playerDisp": 27.084772,
-      "endSpeed": 1.050944,
-      "error": null
-    },
-    {
-      "id": "cf.cut-into-pod",
-      "ok": true,
-      "layout": "cut-into-pod",
-      "mechanics": [
-        "massline.latch",
-        "massline.cut",
-        "physics.collision"
-      ],
-      "failure": "After the cut the pod is moving. The field is not the field you started with.",
-      "presentation": true,
-      "traceHash": "5d702857fa935a701450a327893fbf72e81bb3a678a8e9a476eecf108f185a24",
-      "repeatHash": "5d702857fa935a701450a327893fbf72e81bb3a678a8e9a476eecf108f185a24",
-      "repeatOk": true,
-      "altHash": "efa0896582cae62fa5d2c653fe6b4660517645cfea55156fa5b187fddd29c1e6",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "massline.latch",
-        "massline.cut",
-        "physics.collision"
-      ],
-      "playerDisp": 93.47100522487791,
-      "endSpeed": 41.39487700425976,
-      "error": null
-    },
-    {
-      "id": "cf.choose-ram",
-      "ok": true,
-      "layout": "choose-ram",
-      "mechanics": [
-        "ship.thrust",
-        "physics.collision"
-      ],
-      "failure": null,
-      "presentation": false,
-      "traceHash": "f221587f400145531e0a19494c57811e5562331c754e3ea0c4bdaa36af131590",
-      "repeatHash": "f221587f400145531e0a19494c57811e5562331c754e3ea0c4bdaa36af131590",
-      "repeatOk": true,
-      "altHash": "615eee1569e1f3b6a863b9d6b7d4ea64687cd434cebd9741987f2ed9bce6586c",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "ship.thrust",
-        "physics.collision"
-      ],
-      "playerDisp": 178.9764,
-      "endSpeed": 194.615143,
-      "error": null
-    },
-    {
       "id": "cf.taut-catch",
       "ok": true,
       "layout": "taut-catch",
       "mechanics": [
-        "massline.latch",
         "ship.thrust",
         "massline.tension"
       ],
       "failure": null,
-      "presentation": false,
+      "presentation": true,
       "traceHash": "d7faf0ef677fdabd5f0567d754241c155415809f12ad8763c3950c8c1d61ae33",
       "repeatHash": "d7faf0ef677fdabd5f0567d754241c155415809f12ad8763c3950c8c1d61ae33",
       "repeatOk": true,
@@ -338,383 +246,11 @@
       "varietyFailures": [],
       "fired": [
         "ship.thrust",
-        "massline.latch",
-        "massline.tension"
+        "massline.tension",
+        "physics.collision"
       ],
       "playerDisp": 48.97107,
       "endSpeed": 21.148806,
-      "error": null
-    },
-    {
-      "id": "cf.moving-fire",
-      "ok": true,
-      "layout": "moving-fire",
-      "mechanics": [
-        "ship.thrust",
-        "weapons.fire"
-      ],
-      "failure": null,
-      "presentation": false,
-      "traceHash": "36a43f87b4a8a97ffee0409256d4a8baa5fa373385856fbd09e9cc7fff391419",
-      "repeatHash": "36a43f87b4a8a97ffee0409256d4a8baa5fa373385856fbd09e9cc7fff391419",
-      "repeatOk": true,
-      "altHash": "5e8f5ecffaa9a8cbfa984002e67a136e4df4e5b3bab7f05ae9b444863634d2dd",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "ship.thrust",
-        "weapons.fire"
-      ],
-      "playerDisp": 311.4762930000002,
-      "endSpeed": 194.980209,
-      "error": null
-    },
-    {
-      "id": "cf.tow-swing",
-      "ok": true,
-      "layout": "tow-swing",
-      "mechanics": [
-        "massline.latch",
-        "massline.orbit"
-      ],
-      "failure": null,
-      "presentation": false,
-      "traceHash": "194a78e75317b8a5905733f4e3d7e1e5a9fcbfdb61d003c38979f2d8e4193f3f",
-      "repeatHash": "194a78e75317b8a5905733f4e3d7e1e5a9fcbfdb61d003c38979f2d8e4193f3f",
-      "repeatOk": true,
-      "altHash": "55c62342ba27b2e5078927efc248e2e005a97c8a59ae89b5f8bfae9c66fcbe70",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "massline.latch",
-        "massline.orbit"
-      ],
-      "playerDisp": 93.36009529357885,
-      "endSpeed": 25.302176191985463,
-      "error": null
-    },
-    {
-      "id": "cf.incoming-pod",
-      "ok": true,
-      "layout": "incoming-pod",
-      "mechanics": [
-        "ship.coast",
-        "physics.collision"
-      ],
-      "failure": null,
-      "presentation": false,
-      "traceHash": "09de12ee645b19efa18a0c8914916fe40c32c6e7a404061934cfe79b4b91150a",
-      "repeatHash": "09de12ee645b19efa18a0c8914916fe40c32c6e7a404061934cfe79b4b91150a",
-      "repeatOk": true,
-      "altHash": "ac76d7601b27b2053281a6213b0c15b81498154179854475d35bb8650f4a9d40",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "ship.coast",
-        "physics.collision"
-      ],
-      "playerDisp": 45.08328079094013,
-      "endSpeed": 18.68420600241118,
-      "error": null
-    },
-    {
-      "id": "cf.static-reel",
-      "ok": true,
-      "layout": "static-reel",
-      "mechanics": [
-        "massline.latch",
-        "massline.reel"
-      ],
-      "failure": null,
-      "presentation": false,
-      "traceHash": "76e67684243fcc6df390de8e8138e744cfac242e66b7a8d70fee533e560b8521",
-      "repeatHash": "76e67684243fcc6df390de8e8138e744cfac242e66b7a8d70fee533e560b8521",
-      "repeatOk": true,
-      "altHash": "751a30740f5bf080bc3d69f2b13ec4b68489b3186fa69a74503ba9295abd2045",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "massline.latch",
-        "massline.reel"
-      ],
-      "playerDisp": 62.369343,
-      "endSpeed": 0.014423,
-      "error": null
-    },
-    {
-      "id": "cf.diagonal-reel",
-      "ok": true,
-      "layout": "diagonal-reel",
-      "mechanics": [
-        "massline.latch",
-        "massline.reel"
-      ],
-      "failure": null,
-      "presentation": false,
-      "traceHash": "5460602256469a92646cbf34b5e31dfa1e5318e4357785bf628633cac476cc0f",
-      "repeatHash": "5460602256469a92646cbf34b5e31dfa1e5318e4357785bf628633cac476cc0f",
-      "repeatOk": true,
-      "altHash": "43b35b085308b5e08c856839443810fce8ee16c4cda937314ce0249c7837dedd",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "massline.latch",
-        "massline.reel"
-      ],
-      "playerDisp": 61.50768204510004,
-      "endSpeed": 8.385886737142174,
-      "error": null
-    },
-    {
-      "id": "cf.twin-kick",
-      "ok": true,
-      "layout": "twin-kick",
-      "mechanics": [
-        "ship.coast",
-        "physics.collision"
-      ],
-      "failure": null,
-      "presentation": false,
-      "traceHash": "bb76adedd673ebf600595ded9197104d8bb96cbccd2c91468ec4aae8abf85aea",
-      "repeatHash": "bb76adedd673ebf600595ded9197104d8bb96cbccd2c91468ec4aae8abf85aea",
-      "repeatOk": true,
-      "altHash": "673d8fb24ffec4ab8eb696ef9f75da4210fe135903acebd12bf7dc7071610ff8",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "ship.coast",
-        "physics.collision"
-      ],
-      "playerDisp": 111.77861281426046,
-      "endSpeed": 62.380144905927224,
-      "error": null
-    },
-    {
-      "id": "cf.offset-orbit",
-      "ok": true,
-      "layout": "offset-orbit",
-      "mechanics": [
-        "massline.latch",
-        "massline.orbit",
-        "massline.tension"
-      ],
-      "failure": null,
-      "presentation": false,
-      "traceHash": "b18a474ef60bdf67fa553ea6b1dc8bee3354581316863a60ab60ddafe5c93e26",
-      "repeatHash": "b18a474ef60bdf67fa553ea6b1dc8bee3354581316863a60ab60ddafe5c93e26",
-      "repeatOk": true,
-      "altHash": "8365bc396a0ee34577b1fab51f2df7bea9d26cd16c7552d112e44700c51662e6",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "massline.latch",
-        "massline.tension",
-        "massline.orbit"
-      ],
-      "playerDisp": 149.87742608462523,
-      "endSpeed": 50.60013470034847,
-      "error": null
-    },
-    {
-      "id": "cf.cross-reel",
-      "ok": true,
-      "layout": "cross-reel",
-      "mechanics": [
-        "massline.latch",
-        "massline.reel",
-        "ship.thrust"
-      ],
-      "failure": null,
-      "presentation": false,
-      "traceHash": "f21e709037bf23680e6aa2e1c30ad775021b1f63ca065ad6bffb6a0c8b4f08f3",
-      "repeatHash": "f21e709037bf23680e6aa2e1c30ad775021b1f63ca065ad6bffb6a0c8b4f08f3",
-      "repeatOk": true,
-      "altHash": "73f782f83d72e4053a6f9b4f930f3864c5cafcd987dde1850ea4147b651ea9ae",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "ship.thrust",
-        "massline.latch",
-        "massline.reel"
-      ],
-      "playerDisp": 93.73974326854668,
-      "endSpeed": 440.30074770821005,
-      "error": null
-    },
-    {
-      "id": "cf.reel-then-cut",
-      "ok": true,
-      "layout": "reel-then-cut",
-      "mechanics": [
-        "massline.latch",
-        "massline.reel",
-        "massline.cut"
-      ],
-      "failure": null,
-      "presentation": false,
-      "traceHash": "98e5eeb4b0e79dfb3f37c1ce41859fc2a3b3a52295da68c27771a238a729d032",
-      "repeatHash": "98e5eeb4b0e79dfb3f37c1ce41859fc2a3b3a52295da68c27771a238a729d032",
-      "repeatOk": true,
-      "altHash": "62a367901c130624242fc7fb590bad63c66f518d89f84dd8c17e5bb206d79469",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "massline.latch",
-        "massline.reel",
-        "massline.cut"
-      ],
-      "playerDisp": 53.914745,
-      "endSpeed": 36.101097,
-      "error": null
-    },
-    {
-      "id": "cf.fast-coast-tether",
-      "ok": true,
-      "layout": "coast-tether",
-      "mechanics": [
-        "massline.latch",
-        "massline.orbit",
-        "ship.coast"
-      ],
-      "failure": null,
-      "presentation": false,
-      "traceHash": "5706d957339d9098e8ad621c0f6162d1750a8aea16f8eeba1bed743795b404ea",
-      "repeatHash": "5706d957339d9098e8ad621c0f6162d1750a8aea16f8eeba1bed743795b404ea",
-      "repeatOk": true,
-      "altHash": "9e85cd1984fea7047fd8bd237838093fca8fb940a5072b181d5e3a62630021f6",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "ship.coast",
-        "massline.latch",
-        "massline.orbit"
-      ],
-      "playerDisp": 99.85270727134534,
-      "endSpeed": 36.3760760007524,
-      "error": null
-    },
-    {
-      "id": "cf.ram-or-brake",
-      "ok": true,
-      "layout": "ram-or-brake",
-      "mechanics": [
-        "ship.thrust",
-        "physics.collision"
-      ],
-      "failure": null,
-      "presentation": false,
-      "traceHash": "eb0209bfb0b37648e489d89e1848dcaf9e8745fbc6b54b4f2b31109c386536c3",
-      "repeatHash": "eb0209bfb0b37648e489d89e1848dcaf9e8745fbc6b54b4f2b31109c386536c3",
-      "repeatOk": true,
-      "altHash": "95adb12a3c5b12c68226bb84f0e377d0988954751823eaa43f66ce9869d281a3",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "ship.thrust",
-        "physics.collision"
-      ],
-      "playerDisp": 210.94305925337386,
-      "endSpeed": 194.860962,
-      "error": null
-    },
-    {
-      "id": "cf.save-continuation",
-      "ok": true,
-      "layout": "save-continuation",
-      "mechanics": [
-        "ship.thrust",
-        "save.restore"
-      ],
-      "failure": null,
-      "presentation": false,
-      "traceHash": "631f7df8d29f5ae3b42890ef1dc92ad606f58936b9876140ba632d2176bb5f45",
-      "repeatHash": "631f7df8d29f5ae3b42890ef1dc92ad606f58936b9876140ba632d2176bb5f45",
-      "repeatOk": true,
-      "altHash": "0b3b9a0d34b4e9a5cc76f976bea2337326607909312c82060a2cde68400584eb",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "ship.thrust",
-        "save.restore"
-      ],
-      "playerDisp": 151.46068300000132,
-      "endSpeed": 192.51298500000175,
-      "error": null
-    },
-    {
-      "id": "cf.head-on-pod",
-      "ok": true,
-      "layout": "head-on-pod",
-      "mechanics": [
-        "ship.coast",
-        "physics.collision"
-      ],
-      "failure": null,
-      "presentation": false,
-      "traceHash": "14b67fa48c69302e30b42aa04d35fba24a9b32483a89c889c5aadc97ab3f4e4b",
-      "repeatHash": "14b67fa48c69302e30b42aa04d35fba24a9b32483a89c889c5aadc97ab3f4e4b",
-      "repeatOk": true,
-      "altHash": "81a77396e10fe0f994096de2d51da91bb05cc34c6a44d5fd76cc15fabaf957d7",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "ship.coast",
-        "physics.collision"
-      ],
-      "playerDisp": 97.401329,
-      "endSpeed": 60.704071,
-      "error": null
-    },
-    {
-      "id": "cf.settle-pair",
-      "ok": true,
-      "layout": "settle-pair",
-      "mechanics": [
-        "ship.thrust",
-        "ship.coast"
-      ],
-      "failure": null,
-      "presentation": false,
-      "traceHash": "d9c30c2afe793e43f60fafa11eb35387ad46a931b32766fc4bf50cf6b44de3a3",
-      "repeatHash": "d9c30c2afe793e43f60fafa11eb35387ad46a931b32766fc4bf50cf6b44de3a3",
-      "repeatOk": true,
-      "altHash": "65dfce69e37e3c61082b2cd537bb38b356bb97043f9f0cf90d3de9677853e5f2",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "ship.thrust",
-        "ship.coast"
-      ],
-      "playerDisp": 172.47595700000002,
-      "endSpeed": 93.839928,
       "error": null
     },
     {
@@ -722,9 +258,9 @@
       "ok": true,
       "layout": "light-payout",
       "mechanics": [
-        "massline.latch",
         "massline.payout",
-        "ship.thrust"
+        "ship.thrust",
+        "massline.tension"
       ],
       "failure": null,
       "presentation": false,
@@ -738,91 +274,622 @@
       "varietyFailures": [],
       "fired": [
         "ship.thrust",
-        "massline.latch",
-        "massline.payout"
+        "massline.payout",
+        "massline.tension",
+        "physics.collision"
       ],
       "playerDisp": 188.494573,
       "endSpeed": 173.574905,
       "error": null
     },
     {
-      "id": "cf.fire-and-coast",
+      "id": "cf.orbit-hold",
       "ok": true,
-      "layout": "fire-coast",
+      "layout": "orbit",
       "mechanics": [
-        "ship.coast",
-        "weapons.fire"
-      ],
-      "failure": null,
-      "presentation": false,
-      "traceHash": "d74bcdc87dff68961e18eb22e1765b158426c6f65cbd7bee88b39a1eac383a1d",
-      "repeatHash": "d74bcdc87dff68961e18eb22e1765b158426c6f65cbd7bee88b39a1eac383a1d",
-      "repeatOk": true,
-      "altHash": "f8edf705ee3b5523c02d626c1109b193b718bb92c7d4e1e4fa0d9132477d0674",
-      "reasons": [],
-      "expectFailures": [],
-      "contrastFailures": [],
-      "varietyFailures": [],
-      "fired": [
-        "ship.coast",
-        "weapons.fire"
-      ],
-      "playerDisp": 72.792311,
-      "endSpeed": 28.145847,
-      "error": null
-    },
-    {
-      "id": "cf.turn-burn",
-      "ok": true,
-      "layout": "turn-burn",
-      "mechanics": [
+        "massline.orbit",
         "ship.thrust",
-        "ship.turn"
+        "massline.tension"
       ],
       "failure": null,
-      "presentation": false,
-      "traceHash": "cd5612a54e309c975af7cf0ada367a19cd180a453577d55a39faf796244ef121",
-      "repeatHash": "cd5612a54e309c975af7cf0ada367a19cd180a453577d55a39faf796244ef121",
+      "presentation": true,
+      "traceHash": "8fc361e5c32281a5db81a3195762126387a41a915d7d726a37fb27eea4d2e49b",
+      "repeatHash": "8fc361e5c32281a5db81a3195762126387a41a915d7d726a37fb27eea4d2e49b",
       "repeatOk": true,
-      "altHash": "4c86bfe8bc398c3d5317ea6e69f74abc788eeaa27cf25bf775b68ab7a71694e6",
+      "altHash": "48b5403117bfbd4a27c68e8da5fe0e9ce15da914fa01ee30e49f4dc40d37f958",
       "reasons": [],
       "expectFailures": [],
       "contrastFailures": [],
       "varietyFailures": [],
       "fired": [
         "ship.thrust",
-        "ship.turn"
+        "massline.tension",
+        "massline.orbit",
+        "physics.collision"
       ],
-      "playerDisp": 155.388071820953,
-      "endSpeed": 194.03286660686524,
+      "playerDisp": 176.62384158068116,
+      "endSpeed": 116.73093379523547,
       "error": null
     },
     {
-      "id": "cf.reciprocal-close",
+      "id": "cf.heavy-shove",
       "ok": true,
-      "layout": "reciprocal-close",
+      "layout": "bump",
       "mechanics": [
-        "massline.latch",
+        "ship.coast",
+        "physics.collision"
+      ],
+      "failure": null,
+      "presentation": false,
+      "traceHash": "3a24c5055691ff7dc3eae14f2e619b8f6673dfaa830a3e577fc4fba7d1cf851e",
+      "repeatHash": "3a24c5055691ff7dc3eae14f2e619b8f6673dfaa830a3e577fc4fba7d1cf851e",
+      "repeatOk": true,
+      "altHash": "300e6a6e75b595f549ce7860d4c350d556b099fba76743b72e8f291e9086637a",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "ship.coast",
+        "physics.collision"
+      ],
+      "playerDisp": 141.297742,
+      "endSpeed": 70.377411,
+      "error": null
+    },
+    {
+      "id": "cf.moving-fire",
+      "ok": true,
+      "layout": "guns",
+      "mechanics": [
+        "ship.thrust",
+        "weapons.fire"
+      ],
+      "failure": null,
+      "presentation": true,
+      "traceHash": "83b291c2a7fe684d1a9161a2237d3310d3f037c094093e7bcc765d3f5483fce3",
+      "repeatHash": "83b291c2a7fe684d1a9161a2237d3310d3f037c094093e7bcc765d3f5483fce3",
+      "repeatOk": true,
+      "altHash": "5e3cc40e34ebaafaaca065dd5f6de77a7c3fda2c68082897532d9d008d64dd41",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "ship.thrust",
+        "weapons.fire"
+      ],
+      "playerDisp": 346.055272,
+      "endSpeed": 194.994247,
+      "error": null
+    },
+    {
+      "id": "cf.line-bleed",
+      "ok": true,
+      "layout": "line-bleed",
+      "mechanics": [
+        "ship.coast",
+        "massline.tension"
+      ],
+      "failure": null,
+      "presentation": false,
+      "traceHash": "5f8e3c5e193beeb8db1268bbe8ba6cf43c33ccb730801350eb21c142de19fc37",
+      "repeatHash": "5f8e3c5e193beeb8db1268bbe8ba6cf43c33ccb730801350eb21c142de19fc37",
+      "repeatOk": true,
+      "altHash": "7fb6c43fce22be33f6de69adedd02e4ea391e5ca31d04ce869d8f03306df95b6",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "ship.coast",
+        "massline.tension"
+      ],
+      "playerDisp": 2.139094,
+      "endSpeed": 4.932724,
+      "error": null
+    },
+    {
+      "id": "cf.boost-cut",
+      "ok": true,
+      "layout": "boost-cut",
+      "mechanics": [
+        "ship.boost",
+        "massline.cut",
+        "ship.thrust",
+        "massline.tension"
+      ],
+      "failure": {
+        "path": "endSpeed",
+        "primaryGt": 80,
+        "altLt": 20
+      },
+      "presentation": true,
+      "traceHash": "a5cccbf997960bb60208416e549e148c93488e800fbe8a0962a3445f0edcbfdb",
+      "repeatHash": "a5cccbf997960bb60208416e549e148c93488e800fbe8a0962a3445f0edcbfdb",
+      "repeatOk": true,
+      "altHash": "47635c37248a9d30c5d4fe17d06d73cc62911c482dbd1e6efcbd70c9e710b5e3",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "ship.thrust",
+        "ship.boost",
+        "massline.cut",
+        "massline.tension"
+      ],
+      "playerDisp": 315.327386,
+      "endSpeed": 299.770477,
+      "error": null
+    },
+    {
+      "id": "cf.boost-payout",
+      "ok": true,
+      "layout": "boost-payout",
+      "mechanics": [
+        "ship.boost",
+        "massline.payout",
+        "ship.thrust",
+        "massline.tension"
+      ],
+      "failure": {
+        "path": "endSpeed",
+        "primaryGt": 25,
+        "altLt": 15
+      },
+      "presentation": false,
+      "traceHash": "3025ccd688e04810d85947a1302449f50d06b4024ffc5acee75903742f076db2",
+      "repeatHash": "3025ccd688e04810d85947a1302449f50d06b4024ffc5acee75903742f076db2",
+      "repeatOk": true,
+      "altHash": "7e69acb29d4601caca9a0c31305fab1b2742cfca3fa033063e98c672b3ce6f4f",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "ship.thrust",
+        "ship.boost",
+        "massline.payout",
+        "massline.tension"
+      ],
+      "playerDisp": 141.879144,
+      "endSpeed": 58.190525,
+      "error": null
+    },
+    {
+      "id": "cf.payout-orbit",
+      "ok": true,
+      "layout": "payout-orbit",
+      "mechanics": [
+        "massline.orbit",
+        "massline.payout",
+        "massline.tension"
+      ],
+      "failure": null,
+      "presentation": false,
+      "traceHash": "55ff8e2b33d33194c8fba36dea8e7c787a9ffcaca2dd6781dc0520328901dd95",
+      "repeatHash": "55ff8e2b33d33194c8fba36dea8e7c787a9ffcaca2dd6781dc0520328901dd95",
+      "repeatOk": true,
+      "altHash": "0ef6d34d0d7d7308b0d8b6b90585043df84ddfe3ff42c7dfdf34cd0ed81a4bcf",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "massline.payout",
+        "massline.tension",
+        "massline.orbit"
+      ],
+      "playerDisp": 131.976375135513,
+      "endSpeed": 47.07833223701546,
+      "error": null
+    },
+    {
+      "id": "cf.reel-orbit",
+      "ok": true,
+      "layout": "reel-orbit",
+      "mechanics": [
+        "massline.orbit",
         "massline.reel",
-        "ship.thrust"
+        "massline.tension"
       ],
       "failure": null,
       "presentation": false,
-      "traceHash": "97ed2333572a0023a2467fb32299dff56910fa7436dc976335b952ac05fd64a7",
-      "repeatHash": "97ed2333572a0023a2467fb32299dff56910fa7436dc976335b952ac05fd64a7",
+      "traceHash": "2f21bbc3a970c90a7e3ad65c454cd40210e09252b70405c046a7fe4e7a90aeb7",
+      "repeatHash": "2f21bbc3a970c90a7e3ad65c454cd40210e09252b70405c046a7fe4e7a90aeb7",
       "repeatOk": true,
-      "altHash": "de1a971432fb60c2062b0aabc31a11f0312ddfdd84906608247f447b1eca9bc6",
+      "altHash": "70eda58f97035dfd75fb4a4f350e0341dcd069ef9b7b1a6a169193139e813764",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "massline.reel",
+        "massline.tension",
+        "massline.orbit",
+        "physics.collision"
+      ],
+      "playerDisp": 91.6421044886706,
+      "endSpeed": 288.5874309529345,
+      "error": null
+    },
+    {
+      "id": "cf.boost-orbit",
+      "ok": true,
+      "layout": "boost-orbit",
+      "mechanics": [
+        "ship.boost",
+        "massline.orbit",
+        "massline.tension"
+      ],
+      "failure": null,
+      "presentation": false,
+      "traceHash": "67103a6bf37d11cb6b8ddea2b1d3bca1ded2c514461fa94cb48e6f953b6504d0",
+      "repeatHash": "67103a6bf37d11cb6b8ddea2b1d3bca1ded2c514461fa94cb48e6f953b6504d0",
+      "repeatOk": true,
+      "altHash": "5958a6a265f554cb45ee0dc073866128c5be1a0ec38f5007d85270bec939428f",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "ship.boost",
+        "massline.tension",
+        "massline.orbit",
+        "physics.collision"
+      ],
+      "playerDisp": 76.69850944863826,
+      "endSpeed": 176.05401406084113,
+      "error": null
+    },
+    {
+      "id": "cf.yaw-tow",
+      "ok": true,
+      "layout": "yaw-tow",
+      "mechanics": [
+        "massline.reel",
+        "ship.turn",
+        "massline.tension"
+      ],
+      "failure": null,
+      "presentation": false,
+      "traceHash": "78f23c8086272cbb28d089b9a2340db19cfc6ad2f43d7453e42a52edd53faf6d",
+      "repeatHash": "78f23c8086272cbb28d089b9a2340db19cfc6ad2f43d7453e42a52edd53faf6d",
+      "repeatOk": true,
+      "altHash": "f0deada90b431d51e4e45f517932fcd0045fbfa4996ff586656e5e96163db47c",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "ship.turn",
+        "massline.reel",
+        "massline.tension"
+      ],
+      "playerDisp": 4.807535432820543,
+      "endSpeed": 2.986693785113566,
+      "error": null
+    },
+    {
+      "id": "cf.turn-on-line",
+      "ok": true,
+      "layout": "turn-on-line",
+      "mechanics": [
+        "ship.turn",
+        "ship.thrust",
+        "massline.tension"
+      ],
+      "failure": null,
+      "presentation": false,
+      "traceHash": "ff8c7e0756b9355e08ea198b02473ac004e53a0ce9fd0e8bc492f3b2157035b0",
+      "repeatHash": "ff8c7e0756b9355e08ea198b02473ac004e53a0ce9fd0e8bc492f3b2157035b0",
+      "repeatOk": true,
+      "altHash": "d8f0dea2649ecaf5886c4fa47c686ebc3fd8062e533703a83ccf09a5e6953450",
       "reasons": [],
       "expectFailures": [],
       "contrastFailures": [],
       "varietyFailures": [],
       "fired": [
         "ship.thrust",
-        "massline.latch",
-        "massline.reel"
+        "ship.turn",
+        "massline.tension",
+        "massline.orbit",
+        "physics.collision"
       ],
-      "playerDisp": 89.660337,
-      "endSpeed": 17.433531,
+      "playerDisp": 131.8257674184499,
+      "endSpeed": 190.42575183950208,
+      "error": null
+    },
+    {
+      "id": "cf.boost-reel",
+      "ok": true,
+      "layout": "boost-reel",
+      "mechanics": [
+        "ship.boost",
+        "massline.reel",
+        "ship.thrust",
+        "physics.collision"
+      ],
+      "failure": null,
+      "presentation": false,
+      "traceHash": "3529adbd79c9d2adec704e7705bb5910a264cc83f2d2324e59dc971bca0e3e4f",
+      "repeatHash": "3529adbd79c9d2adec704e7705bb5910a264cc83f2d2324e59dc971bca0e3e4f",
+      "repeatOk": true,
+      "altHash": "03529171521891c1e3cd7f683710f95eb40ac5b7dd9802b7b8b4242a52d47673",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "ship.thrust",
+        "ship.boost",
+        "massline.reel",
+        "physics.collision"
+      ],
+      "playerDisp": 128.60294499999998,
+      "endSpeed": 36.463589,
+      "error": null
+    },
+    {
+      "id": "cf.coast-light-pin",
+      "ok": true,
+      "layout": "coast-light-pin",
+      "mechanics": [
+        "ship.coast",
+        "massline.tension"
+      ],
+      "failure": null,
+      "presentation": false,
+      "traceHash": "73b91aa8301b104f748af1c2f83ea4e0c3a21d0dc431c5a05a5ff78ab115402f",
+      "repeatHash": "73b91aa8301b104f748af1c2f83ea4e0c3a21d0dc431c5a05a5ff78ab115402f",
+      "repeatOk": true,
+      "altHash": "451495ebc5fac9a6019870305c8df82c8709badd7cbf35783e52e86357bfac8d",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "ship.coast",
+        "massline.tension",
+        "physics.collision"
+      ],
+      "playerDisp": 44.379806,
+      "endSpeed": 13.840412,
+      "error": null
+    },
+    {
+      "id": "cf.payout-yaw",
+      "ok": true,
+      "layout": "payout-yaw",
+      "mechanics": [
+        "massline.payout",
+        "ship.thrust",
+        "ship.turn",
+        "massline.tension"
+      ],
+      "failure": null,
+      "presentation": false,
+      "traceHash": "d87bfedd0db12614c040790c4eda02c473ae2d6c9347dcac7a8b6725c1cba5e1",
+      "repeatHash": "d87bfedd0db12614c040790c4eda02c473ae2d6c9347dcac7a8b6725c1cba5e1",
+      "repeatOk": true,
+      "altHash": "6f3893954c735d908068aff0cf48f8b0bfe40a7fcea70e82e3f3377b18a8291a",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "ship.thrust",
+        "ship.turn",
+        "massline.payout",
+        "massline.tension",
+        "massline.orbit"
+      ],
+      "playerDisp": 159.5794500338066,
+      "endSpeed": 157.93049520067277,
+      "error": null
+    },
+    {
+      "id": "cf.payout-hits-pod",
+      "ok": true,
+      "layout": "payout-hits",
+      "mechanics": [
+        "massline.payout",
+        "ship.thrust",
+        "massline.tension",
+        "physics.collision"
+      ],
+      "failure": null,
+      "presentation": false,
+      "traceHash": "df8ec8fe3e6aa0e7cea5876ab64a10a564abc6c937663ed7ee741a56282b01a4",
+      "repeatHash": "df8ec8fe3e6aa0e7cea5876ab64a10a564abc6c937663ed7ee741a56282b01a4",
+      "repeatOk": true,
+      "altHash": "d7faf0ef677fdabd5f0567d754241c155415809f12ad8763c3950c8c1d61ae33",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "ship.thrust",
+        "massline.payout",
+        "massline.tension",
+        "physics.collision"
+      ],
+      "playerDisp": 115.720258,
+      "endSpeed": 99.403183,
+      "error": null
+    },
+    {
+      "id": "cf.boost-yaw",
+      "ok": true,
+      "layout": "boost-yaw",
+      "mechanics": [
+        "ship.turn",
+        "ship.thrust",
+        "massline.tension",
+        "massline.orbit"
+      ],
+      "failure": null,
+      "presentation": false,
+      "traceHash": "945a3faa638da89f36ef630e91c9e8b8d4c9ddd03676e2755d615b7590e8858e",
+      "repeatHash": "945a3faa638da89f36ef630e91c9e8b8d4c9ddd03676e2755d615b7590e8858e",
+      "repeatOk": true,
+      "altHash": "4d18d14a9b2d188da854836b1eda39631fbd50571196e67b20d76befc6beeea3",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "ship.thrust",
+        "ship.turn",
+        "massline.tension",
+        "massline.orbit"
+      ],
+      "playerDisp": 209.32964297513948,
+      "endSpeed": 306.7082273684555,
+      "error": null
+    },
+    {
+      "id": "cf.reel-and-fire",
+      "ok": true,
+      "layout": "reel-and-fire",
+      "mechanics": [
+        "massline.reel",
+        "massline.tension",
+        "weapons.fire"
+      ],
+      "failure": null,
+      "presentation": false,
+      "traceHash": "86a948fb124773dd432ab6acf84706a1f58b41b816e46d7c290737e6b4ac46bd",
+      "repeatHash": "86a948fb124773dd432ab6acf84706a1f58b41b816e46d7c290737e6b4ac46bd",
+      "repeatOk": true,
+      "altHash": "20391fea85b374aa323a622eb90cdf177cc008a63e0f71929b3082a9ac7ca7a4",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "massline.reel",
+        "massline.tension",
+        "weapons.fire"
+      ],
+      "playerDisp": 58.784081,
+      "endSpeed": 36.31258,
+      "error": null
+    },
+    {
+      "id": "cf.arc-clips",
+      "ok": true,
+      "layout": "arc-clips",
+      "mechanics": [
+        "massline.orbit",
+        "massline.tension",
+        "physics.collision"
+      ],
+      "failure": null,
+      "presentation": false,
+      "traceHash": "efa0896582cae62fa5d2c653fe6b4660517645cfea55156fa5b187fddd29c1e6",
+      "repeatHash": "efa0896582cae62fa5d2c653fe6b4660517645cfea55156fa5b187fddd29c1e6",
+      "repeatOk": true,
+      "altHash": "5d702857fa935a701450a327893fbf72e81bb3a678a8e9a476eecf108f185a24",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "ship.coast",
+        "massline.tension",
+        "massline.orbit",
+        "physics.collision"
+      ],
+      "playerDisp": 73.19770107538419,
+      "endSpeed": 27.030090164360253,
+      "error": null
+    },
+    {
+      "id": "cf.boost-drag-light",
+      "ok": true,
+      "layout": "boost-drag-light",
+      "mechanics": [
+        "ship.boost",
+        "ship.thrust",
+        "massline.tension"
+      ],
+      "failure": null,
+      "presentation": false,
+      "traceHash": "757e07b390507fcc9ed797c4325c03d4090d3287df0e4b0d7721b43f8bc9ef2b",
+      "repeatHash": "757e07b390507fcc9ed797c4325c03d4090d3287df0e4b0d7721b43f8bc9ef2b",
+      "repeatOk": true,
+      "altHash": "cb46bd8211ca1acbda4756fe1d9207c326ddab9bcd24699786ebd9e5c2cbfe75",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "ship.thrust",
+        "ship.boost",
+        "massline.tension",
+        "physics.collision"
+      ],
+      "playerDisp": 393.225016,
+      "endSpeed": 283.404175,
+      "error": null
+    },
+    {
+      "id": "cf.cut-light-pin",
+      "ok": true,
+      "layout": "cut-light-pin",
+      "mechanics": [
+        "massline.cut",
+        "massline.orbit"
+      ],
+      "failure": null,
+      "presentation": false,
+      "traceHash": "383a4a6db82954320168da87a70b46d6f22a94927d70bb6104641f39117f7561",
+      "repeatHash": "383a4a6db82954320168da87a70b46d6f22a94927d70bb6104641f39117f7561",
+      "repeatOk": true,
+      "altHash": "11640c2329c96e600cfefff3b9a5f32ffaeb9a4cf0f10b544023617d0042e588",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "ship.coast",
+        "massline.cut",
+        "massline.orbit",
+        "physics.collision"
+      ],
+      "playerDisp": 90.34044490727165,
+      "endSpeed": 45.41729871757994,
+      "error": null
+    },
+    {
+      "id": "cf.loose-tow",
+      "ok": true,
+      "layout": "loose-tow",
+      "mechanics": [
+        "massline.reel",
+        "massline.cut",
+        "massline.tension"
+      ],
+      "failure": null,
+      "presentation": false,
+      "traceHash": "0fd2001a4b62477cdd4cd2eef6ba93efe9e7c84e5c55cebc3a9cd21897bd5680",
+      "repeatHash": "0fd2001a4b62477cdd4cd2eef6ba93efe9e7c84e5c55cebc3a9cd21897bd5680",
+      "repeatOk": true,
+      "altHash": "b2ac848f181f0f749da072cbe402a4b3ff82f6221d4820d02c4d83b212cbebed",
+      "reasons": [],
+      "expectFailures": [],
+      "contrastFailures": [],
+      "varietyFailures": [],
+      "fired": [
+        "massline.reel",
+        "massline.cut",
+        "massline.tension",
+        "physics.collision"
+      ],
+      "playerDisp": 33.950108,
+      "endSpeed": 18.123575,
       "error": null
     }
   ]

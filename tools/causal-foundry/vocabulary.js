@@ -59,7 +59,7 @@ export const CAUSAL_ATOMS = Object.freeze([
     observable: 'attachmentActive',
     evidence: 'pre-seeded tether_standard is active at tick 0 and is adopted for reel and tap-cut',
     source: 'src/systems/tetherGameplay.js _adoptExisting',
-    caveat: 'Cold KeyF acquisition at 36 WU did not latch. Do not author cold latch.',
+    caveat: 'Cold KeyF acquisition at 36 WU did not latch. A pre-seeded attachmentActive is not a player-caused latch and does not fire this atom.',
   }),
   atom({
     id: 'massline.reel',

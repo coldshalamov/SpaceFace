@@ -17,14 +17,14 @@
   ],
   "simulated": 115,
   "candidateCount": 116,
-  "acceptedCount": 14,
-  "rejectedCount": 102,
+  "acceptedCount": 12,
+  "rejectedCount": 104,
   "candidates": [
     {
       "id": "gen.payout.s1",
       "accepted": true,
       "reasons": [],
-      "signature": "gen-payout|massline.latch+massline.payout+ship.thrust",
+      "signature": "massline.payout+massline.tension+physics.collision+ship.thrust|heavy",
       "family": "gen-payout",
       "traceHash": "2fa79fcdb7f12795d035bd22e944a400b664a7b5a2cea9499e182fd39c351bf7",
       "auditOrder": 0,
@@ -33,8 +33,9 @@
         "mechanicCount": 3,
         "firedObservables": [
           "ship.thrust",
-          "massline.latch",
-          "massline.payout"
+          "massline.payout",
+          "massline.tension",
+          "physics.collision"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -53,18 +54,51 @@
       "error": null
     },
     {
-      "id": "gen.cut.s1",
+      "id": "gen.orbit.v70.s1",
       "accepted": true,
       "reasons": [],
-      "signature": "gen-cut|massline.cut+massline.latch+massline.orbit",
-      "family": "gen-cut",
-      "traceHash": "552547859e287967be426c1d149305521f961f063a94ef6bad9d02dbf75d5bbf",
+      "signature": "massline.orbit+massline.tension+physics.collision+ship.thrust|heavy",
+      "family": "gen-orbit",
+      "traceHash": "8fc361e5c32281a5db81a3195762126387a41a915d7d726a37fb27eea4d2e49b",
       "auditOrder": 1,
       "simulated": true,
       "metrics": {
         "mechanicCount": 3,
         "firedObservables": [
-          "massline.latch",
+          "ship.thrust",
+          "massline.tension",
+          "massline.orbit",
+          "physics.collision"
+        ],
+        "physicalCauseFraction": 1,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 90,
+        "consequence": {
+          "playerDisp": 176.624,
+          "restDelta": 0,
+          "maxTension": 368.403
+        },
+        "novelty": true,
+        "retryBounded": true,
+        "costTicks": 160,
+        "costEntities": 2,
+        "scriptedFraction": 0
+      },
+      "error": null
+    },
+    {
+      "id": "gen.cut.s1",
+      "accepted": true,
+      "reasons": [],
+      "signature": "massline.cut+massline.orbit+ship.coast|heavy",
+      "family": "gen-cut",
+      "traceHash": "552547859e287967be426c1d149305521f961f063a94ef6bad9d02dbf75d5bbf",
+      "auditOrder": 2,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 2,
+        "firedObservables": [
+          "ship.coast",
           "massline.cut",
           "massline.orbit"
         ],
@@ -88,16 +122,16 @@
       "id": "gen.boost.s1",
       "accepted": true,
       "reasons": [],
-      "signature": "gen-boost|massline.latch+massline.tension+ship.boost",
+      "signature": "massline.tension+ship.boost+ship.thrust|heavy",
       "family": "gen-boost",
       "traceHash": "47635c37248a9d30c5d4fe17d06d73cc62911c482dbd1e6efcbd70c9e710b5e3",
-      "auditOrder": 2,
+      "auditOrder": 3,
       "simulated": true,
       "metrics": {
         "mechanicCount": 3,
         "firedObservables": [
+          "ship.thrust",
           "ship.boost",
-          "massline.latch",
           "massline.tension"
         ],
         "physicalCauseFraction": 1,
@@ -117,32 +151,31 @@
       "error": null
     },
     {
-      "id": "gen.orbit.v70.s1",
+      "id": "gen.fire.x280.s1",
       "accepted": true,
       "reasons": [],
-      "signature": "gen-orbit|massline.latch+massline.orbit+massline.tension",
-      "family": "gen-orbit",
-      "traceHash": "70eda58f97035dfd75fb4a4f350e0341dcd069ef9b7b1a6a169193139e813764",
-      "auditOrder": 3,
+      "signature": "ship.thrust+weapons.fire|hostile",
+      "family": "gen-fire",
+      "traceHash": "53c4a26a4d11b7d08ae06711aaf23fd6faf01ab23c34652e24620e6bdcfb5efb",
+      "auditOrder": 4,
       "simulated": true,
       "metrics": {
-        "mechanicCount": 3,
+        "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.tension",
-          "massline.orbit"
+          "ship.thrust",
+          "weapons.fire"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
-        "claritySeparationWu": 90,
+        "claritySeparationWu": 280,
         "consequence": {
-          "playerDisp": 148.82,
+          "playerDisp": 151.461,
           "restDelta": 0,
-          "maxTension": 383.212
+          "maxTension": 0
         },
         "novelty": true,
         "retryBounded": true,
-        "costTicks": 160,
+        "costTicks": 80,
         "costEntities": 2,
         "scriptedFraction": 0
       },
@@ -152,10 +185,10 @@
       "id": "gen.glance.s1",
       "accepted": true,
       "reasons": [],
-      "signature": "gen-glance|physics.collision+ship.coast",
+      "signature": "physics.collision+ship.coast|light",
       "family": "gen-glance",
       "traceHash": "fb20a362929a31cc56fb276781077ccb4f17af9f1ec0e09216ddd5f9d2b86785",
-      "auditOrder": 4,
+      "auditOrder": 5,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
@@ -183,10 +216,10 @@
       "id": "gen.turn.t1.s1",
       "accepted": true,
       "reasons": [],
-      "signature": "gen-turn|ship.thrust+ship.turn",
+      "signature": "ship.thrust+ship.turn|nobody",
       "family": "gen-turn",
       "traceHash": "cd5612a54e309c975af7cf0ada367a19cd180a453577d55a39faf796244ef121",
-      "auditOrder": 5,
+      "auditOrder": 6,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
@@ -214,10 +247,10 @@
       "id": "gen.ram.x48.s1",
       "accepted": true,
       "reasons": [],
-      "signature": "gen-ram|physics.collision+ship.thrust",
+      "signature": "physics.collision+ship.thrust|heavy",
       "family": "gen-ram",
       "traceHash": "f221587f400145531e0a19494c57811e5562331c754e3ea0c4bdaa36af131590",
-      "auditOrder": 6,
+      "auditOrder": 7,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
@@ -245,10 +278,10 @@
       "id": "gen.settle.s1",
       "accepted": true,
       "reasons": [],
-      "signature": "gen-settle|ship.coast+ship.thrust",
+      "signature": "ship.coast+ship.thrust|nobody",
       "family": "gen-settle",
       "traceHash": "06c34f1458ecd5807209ee1651051e9cca950f81b59b9c2168e448c5bb1e82c1",
-      "auditOrder": 7,
+      "auditOrder": 8,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
@@ -276,10 +309,10 @@
       "id": "gen.shove.v90.z0",
       "accepted": true,
       "reasons": [],
-      "signature": "gen-shove|physics.collision+ship.coast",
+      "signature": "physics.collision+ship.coast|heavy",
       "family": "gen-shove",
       "traceHash": "3a24c5055691ff7dc3eae14f2e619b8f6673dfaa830a3e577fc4fba7d1cf851e",
-      "auditOrder": 8,
+      "auditOrder": 9,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
@@ -304,41 +337,10 @@
       "error": null
     },
     {
-      "id": "gen.fire.x70.s1",
-      "accepted": true,
-      "reasons": [],
-      "signature": "gen-fire|physics.collision+weapons.fire",
-      "family": "gen-fire",
-      "traceHash": "4197fff613d84c6773ac21cb7d9de7173b3527afdb3a8b08a639420ae2df4cb6",
-      "auditOrder": 9,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 2,
-        "firedObservables": [
-          "physics.collision",
-          "weapons.fire"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 70,
-        "consequence": {
-          "playerDisp": 0,
-          "restDelta": 0,
-          "maxTension": 0
-        },
-        "novelty": true,
-        "retryBounded": true,
-        "costTicks": 140,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
       "id": "gen.tow.d70.s1",
       "accepted": true,
       "reasons": [],
-      "signature": "gen-tow|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|light",
       "family": "gen-tow",
       "traceHash": "e49c7fcafc6c864f825bd998a7f613c33c53c3f146b7168b0d45ea4a69aae99b",
       "auditOrder": 10,
@@ -346,8 +348,8 @@
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -369,7 +371,7 @@
       "id": "gen.reel.d80.s1",
       "accepted": true,
       "reasons": [],
-      "signature": "gen-reel|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-reel",
       "traceHash": "6b7b11d49c6813d2f8745fdd36771b37d6179d47bc0eefe38b5a78fba5cb8a22",
       "auditOrder": 11,
@@ -377,8 +379,8 @@
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -397,84 +399,23 @@
       "error": null
     },
     {
-      "id": "gen.static.s1",
-      "accepted": true,
-      "reasons": [],
-      "signature": "gen-static|massline.latch+massline.reel",
-      "family": "gen-static",
-      "traceHash": "76e67684243fcc6df390de8e8138e744cfac242e66b7a8d70fee533e560b8521",
-      "auditOrder": 12,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 2,
-        "firedObservables": [
-          "massline.latch",
-          "massline.reel"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 80,
-        "consequence": {
-          "playerDisp": 62.369,
-          "restDelta": -62,
-          "maxTension": 3722.5
-        },
-        "novelty": true,
-        "retryBounded": true,
-        "costTicks": 150,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.diagonal.s1",
-      "accepted": true,
-      "reasons": [],
-      "signature": "gen-diagonal|massline.latch+massline.reel",
-      "family": "gen-diagonal",
-      "traceHash": "5460602256469a92646cbf34b5e31dfa1e5318e4357785bf628633cac476cc0f",
-      "auditOrder": 13,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 2,
-        "firedObservables": [
-          "massline.latch",
-          "massline.reel"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 77.782,
-        "consequence": {
-          "playerDisp": 61.508,
-          "restDelta": -59.782,
-          "maxTension": 3629.01
-        },
-        "novelty": true,
-        "retryBounded": true,
-        "costTicks": 160,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
       "id": "gen.payout.s2",
       "accepted": false,
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-payout|massline.latch+massline.payout+ship.thrust",
+      "signature": "massline.payout+massline.tension+physics.collision+ship.thrust|heavy",
       "family": "gen-payout",
       "traceHash": "2fa79fcdb7f12795d035bd22e944a400b664a7b5a2cea9499e182fd39c351bf7",
-      "auditOrder": 14,
+      "auditOrder": 12,
       "simulated": true,
       "metrics": {
         "mechanicCount": 3,
         "firedObservables": [
           "ship.thrust",
-          "massline.latch",
-          "massline.payout"
+          "massline.payout",
+          "massline.tension",
+          "physics.collision"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -498,17 +439,18 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-payout|massline.latch+massline.payout+ship.thrust",
+      "signature": "massline.payout+massline.tension+physics.collision+ship.thrust|heavy",
       "family": "gen-payout",
       "traceHash": "2fa79fcdb7f12795d035bd22e944a400b664a7b5a2cea9499e182fd39c351bf7",
-      "auditOrder": 15,
+      "auditOrder": 13,
       "simulated": true,
       "metrics": {
         "mechanicCount": 3,
         "firedObservables": [
           "ship.thrust",
-          "massline.latch",
-          "massline.payout"
+          "massline.payout",
+          "massline.tension",
+          "physics.collision"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -532,17 +474,18 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-payout|massline.latch+massline.payout+ship.thrust",
+      "signature": "massline.payout+massline.tension+physics.collision+ship.thrust|heavy",
       "family": "gen-payout",
       "traceHash": "2fa79fcdb7f12795d035bd22e944a400b664a7b5a2cea9499e182fd39c351bf7",
-      "auditOrder": 16,
+      "auditOrder": 14,
       "simulated": true,
       "metrics": {
         "mechanicCount": 3,
         "firedObservables": [
           "ship.thrust",
-          "massline.latch",
-          "massline.payout"
+          "massline.payout",
+          "massline.tension",
+          "physics.collision"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -566,17 +509,18 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-payout|massline.latch+massline.payout+ship.thrust",
+      "signature": "massline.payout+massline.tension+physics.collision+ship.thrust|heavy",
       "family": "gen-payout",
       "traceHash": "2fa79fcdb7f12795d035bd22e944a400b664a7b5a2cea9499e182fd39c351bf7",
-      "auditOrder": 17,
+      "auditOrder": 15,
       "simulated": true,
       "metrics": {
         "mechanicCount": 3,
         "firedObservables": [
           "ship.thrust",
-          "massline.latch",
-          "massline.payout"
+          "massline.payout",
+          "massline.tension",
+          "physics.collision"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -600,17 +544,18 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-payout|massline.latch+massline.payout+ship.thrust",
+      "signature": "massline.payout+massline.tension+physics.collision+ship.thrust|heavy",
       "family": "gen-payout",
       "traceHash": "2fa79fcdb7f12795d035bd22e944a400b664a7b5a2cea9499e182fd39c351bf7",
-      "auditOrder": 18,
+      "auditOrder": 16,
       "simulated": true,
       "metrics": {
         "mechanicCount": 3,
         "firedObservables": [
           "ship.thrust",
-          "massline.latch",
-          "massline.payout"
+          "massline.payout",
+          "massline.tension",
+          "physics.collision"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -634,17 +579,18 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-payout|massline.latch+massline.payout+ship.thrust",
+      "signature": "massline.payout+massline.tension+physics.collision+ship.thrust|heavy",
       "family": "gen-payout",
       "traceHash": "2fa79fcdb7f12795d035bd22e944a400b664a7b5a2cea9499e182fd39c351bf7",
-      "auditOrder": 19,
+      "auditOrder": 17,
       "simulated": true,
       "metrics": {
         "mechanicCount": 3,
         "firedObservables": [
           "ship.thrust",
-          "massline.latch",
-          "massline.payout"
+          "massline.payout",
+          "massline.tension",
+          "physics.collision"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -668,17 +614,18 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-payout|massline.latch+massline.payout+ship.thrust",
+      "signature": "massline.payout+massline.tension+physics.collision+ship.thrust|heavy",
       "family": "gen-payout",
       "traceHash": "2fa79fcdb7f12795d035bd22e944a400b664a7b5a2cea9499e182fd39c351bf7",
-      "auditOrder": 20,
+      "auditOrder": 18,
       "simulated": true,
       "metrics": {
         "mechanicCount": 3,
         "firedObservables": [
           "ship.thrust",
-          "massline.latch",
-          "massline.payout"
+          "massline.payout",
+          "massline.tension",
+          "physics.collision"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -697,20 +644,300 @@
       "error": null
     },
     {
-      "id": "gen.cut.s2",
+      "id": "gen.orbit.v50.s1",
       "accepted": false,
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-cut|massline.cut+massline.latch+massline.orbit",
-      "family": "gen-cut",
-      "traceHash": "3f02bedb236c9579f259e8c828754a17222e8cf97f8782a030e3ebb06e6c83c0",
+      "signature": "massline.orbit+massline.tension+physics.collision+ship.thrust|heavy",
+      "family": "gen-orbit",
+      "traceHash": "b3f71f79bb0595432cd0a2f78f9dd4332fba452927a5075576f0e477fc3f6306",
+      "auditOrder": 19,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 3,
+        "firedObservables": [
+          "ship.thrust",
+          "massline.tension",
+          "massline.orbit",
+          "physics.collision"
+        ],
+        "physicalCauseFraction": 1,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 90,
+        "consequence": {
+          "playerDisp": 178.422,
+          "restDelta": 0,
+          "maxTension": 367.558
+        },
+        "novelty": false,
+        "retryBounded": true,
+        "costTicks": 160,
+        "costEntities": 2,
+        "scriptedFraction": 0
+      },
+      "error": null
+    },
+    {
+      "id": "gen.orbit.v50.s2",
+      "accepted": false,
+      "reasons": [
+        "trivial-variant"
+      ],
+      "signature": "massline.orbit+massline.tension+physics.collision+ship.thrust|heavy",
+      "family": "gen-orbit",
+      "traceHash": "b3f71f79bb0595432cd0a2f78f9dd4332fba452927a5075576f0e477fc3f6306",
+      "auditOrder": 20,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 3,
+        "firedObservables": [
+          "ship.thrust",
+          "massline.tension",
+          "massline.orbit",
+          "physics.collision"
+        ],
+        "physicalCauseFraction": 1,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 90,
+        "consequence": {
+          "playerDisp": 178.422,
+          "restDelta": 0,
+          "maxTension": 367.558
+        },
+        "novelty": false,
+        "retryBounded": true,
+        "costTicks": 160,
+        "costEntities": 2,
+        "scriptedFraction": 0
+      },
+      "error": null
+    },
+    {
+      "id": "gen.orbit.v50.s3",
+      "accepted": false,
+      "reasons": [
+        "trivial-variant"
+      ],
+      "signature": "massline.orbit+massline.tension+physics.collision+ship.thrust|heavy",
+      "family": "gen-orbit",
+      "traceHash": "b3f71f79bb0595432cd0a2f78f9dd4332fba452927a5075576f0e477fc3f6306",
       "auditOrder": 21,
       "simulated": true,
       "metrics": {
         "mechanicCount": 3,
         "firedObservables": [
-          "massline.latch",
+          "ship.thrust",
+          "massline.tension",
+          "massline.orbit",
+          "physics.collision"
+        ],
+        "physicalCauseFraction": 1,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 90,
+        "consequence": {
+          "playerDisp": 178.422,
+          "restDelta": 0,
+          "maxTension": 367.558
+        },
+        "novelty": false,
+        "retryBounded": true,
+        "costTicks": 160,
+        "costEntities": 2,
+        "scriptedFraction": 0
+      },
+      "error": null
+    },
+    {
+      "id": "gen.orbit.v70.s2",
+      "accepted": false,
+      "reasons": [
+        "trivial-variant"
+      ],
+      "signature": "massline.orbit+massline.tension+physics.collision+ship.thrust|heavy",
+      "family": "gen-orbit",
+      "traceHash": "8fc361e5c32281a5db81a3195762126387a41a915d7d726a37fb27eea4d2e49b",
+      "auditOrder": 22,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 3,
+        "firedObservables": [
+          "ship.thrust",
+          "massline.tension",
+          "massline.orbit",
+          "physics.collision"
+        ],
+        "physicalCauseFraction": 1,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 90,
+        "consequence": {
+          "playerDisp": 176.624,
+          "restDelta": 0,
+          "maxTension": 368.403
+        },
+        "novelty": false,
+        "retryBounded": true,
+        "costTicks": 160,
+        "costEntities": 2,
+        "scriptedFraction": 0
+      },
+      "error": null
+    },
+    {
+      "id": "gen.orbit.v70.s3",
+      "accepted": false,
+      "reasons": [
+        "trivial-variant"
+      ],
+      "signature": "massline.orbit+massline.tension+physics.collision+ship.thrust|heavy",
+      "family": "gen-orbit",
+      "traceHash": "8fc361e5c32281a5db81a3195762126387a41a915d7d726a37fb27eea4d2e49b",
+      "auditOrder": 23,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 3,
+        "firedObservables": [
+          "ship.thrust",
+          "massline.tension",
+          "massline.orbit",
+          "physics.collision"
+        ],
+        "physicalCauseFraction": 1,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 90,
+        "consequence": {
+          "playerDisp": 176.624,
+          "restDelta": 0,
+          "maxTension": 368.403
+        },
+        "novelty": false,
+        "retryBounded": true,
+        "costTicks": 160,
+        "costEntities": 2,
+        "scriptedFraction": 0
+      },
+      "error": null
+    },
+    {
+      "id": "gen.orbit.v90.s1",
+      "accepted": false,
+      "reasons": [
+        "trivial-variant"
+      ],
+      "signature": "massline.orbit+massline.tension+physics.collision+ship.thrust|heavy",
+      "family": "gen-orbit",
+      "traceHash": "c64c6c0e552e29be23212238462655b34e44d478db47e1035f45d47dde2a7249",
+      "auditOrder": 24,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 3,
+        "firedObservables": [
+          "ship.thrust",
+          "massline.tension",
+          "massline.orbit",
+          "physics.collision"
+        ],
+        "physicalCauseFraction": 1,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 90,
+        "consequence": {
+          "playerDisp": 174.96,
+          "restDelta": 0,
+          "maxTension": 372.346
+        },
+        "novelty": false,
+        "retryBounded": true,
+        "costTicks": 160,
+        "costEntities": 2,
+        "scriptedFraction": 0
+      },
+      "error": null
+    },
+    {
+      "id": "gen.orbit.v90.s2",
+      "accepted": false,
+      "reasons": [
+        "trivial-variant"
+      ],
+      "signature": "massline.orbit+massline.tension+physics.collision+ship.thrust|heavy",
+      "family": "gen-orbit",
+      "traceHash": "c64c6c0e552e29be23212238462655b34e44d478db47e1035f45d47dde2a7249",
+      "auditOrder": 25,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 3,
+        "firedObservables": [
+          "ship.thrust",
+          "massline.tension",
+          "massline.orbit",
+          "physics.collision"
+        ],
+        "physicalCauseFraction": 1,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 90,
+        "consequence": {
+          "playerDisp": 174.96,
+          "restDelta": 0,
+          "maxTension": 372.346
+        },
+        "novelty": false,
+        "retryBounded": true,
+        "costTicks": 160,
+        "costEntities": 2,
+        "scriptedFraction": 0
+      },
+      "error": null
+    },
+    {
+      "id": "gen.orbit.v90.s3",
+      "accepted": false,
+      "reasons": [
+        "trivial-variant"
+      ],
+      "signature": "massline.orbit+massline.tension+physics.collision+ship.thrust|heavy",
+      "family": "gen-orbit",
+      "traceHash": "c64c6c0e552e29be23212238462655b34e44d478db47e1035f45d47dde2a7249",
+      "auditOrder": 26,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 3,
+        "firedObservables": [
+          "ship.thrust",
+          "massline.tension",
+          "massline.orbit",
+          "physics.collision"
+        ],
+        "physicalCauseFraction": 1,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 90,
+        "consequence": {
+          "playerDisp": 174.96,
+          "restDelta": 0,
+          "maxTension": 372.346
+        },
+        "novelty": false,
+        "retryBounded": true,
+        "costTicks": 160,
+        "costEntities": 2,
+        "scriptedFraction": 0
+      },
+      "error": null
+    },
+    {
+      "id": "gen.cut.s2",
+      "accepted": false,
+      "reasons": [
+        "trivial-variant"
+      ],
+      "signature": "massline.cut+massline.orbit+ship.coast|heavy",
+      "family": "gen-cut",
+      "traceHash": "3f02bedb236c9579f259e8c828754a17222e8cf97f8782a030e3ebb06e6c83c0",
+      "auditOrder": 27,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 2,
+        "firedObservables": [
+          "ship.coast",
           "massline.cut",
           "massline.orbit"
         ],
@@ -736,15 +963,15 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-cut|massline.cut+massline.latch+massline.orbit",
+      "signature": "massline.cut+massline.orbit+ship.coast|heavy",
       "family": "gen-cut",
       "traceHash": "ebab162f31cbe9eb84686ca002d9c64a1b45b4756eb4d6b9b1c941d23eb11f1a",
-      "auditOrder": 22,
+      "auditOrder": 28,
       "simulated": true,
       "metrics": {
-        "mechanicCount": 3,
+        "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
+          "ship.coast",
           "massline.cut",
           "massline.orbit"
         ],
@@ -770,15 +997,15 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-cut|massline.cut+massline.latch+massline.orbit",
+      "signature": "massline.cut+massline.orbit+ship.coast|heavy",
       "family": "gen-cut",
       "traceHash": "c8e871b1fdb6467727bcb2725b58a1e4dfd670072c86f38e68f2753056ea5e13",
-      "auditOrder": 23,
+      "auditOrder": 29,
       "simulated": true,
       "metrics": {
-        "mechanicCount": 3,
+        "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
+          "ship.coast",
           "massline.cut",
           "massline.orbit"
         ],
@@ -804,15 +1031,15 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-cut|massline.cut+massline.latch+massline.orbit",
+      "signature": "massline.cut+massline.orbit+ship.coast|heavy",
       "family": "gen-cut",
       "traceHash": "2c3a5b9d6dadb40af199613b08546fa0fe959f25eabfc293eaf988502194f5d2",
-      "auditOrder": 24,
+      "auditOrder": 30,
       "simulated": true,
       "metrics": {
-        "mechanicCount": 3,
+        "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
+          "ship.coast",
           "massline.cut",
           "massline.orbit"
         ],
@@ -838,15 +1065,15 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-cut|massline.cut+massline.latch+massline.orbit",
+      "signature": "massline.cut+massline.orbit+ship.coast|heavy",
       "family": "gen-cut",
       "traceHash": "c8fbba1bfe709047bce60feab87cf28cbc6c3e070f79b6e21527f848ff94da47",
-      "auditOrder": 25,
+      "auditOrder": 31,
       "simulated": true,
       "metrics": {
-        "mechanicCount": 3,
+        "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
+          "ship.coast",
           "massline.cut",
           "massline.orbit"
         ],
@@ -872,16 +1099,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-boost|massline.latch+massline.tension+ship.boost",
+      "signature": "massline.tension+ship.boost+ship.thrust|heavy",
       "family": "gen-boost",
       "traceHash": "47635c37248a9d30c5d4fe17d06d73cc62911c482dbd1e6efcbd70c9e710b5e3",
-      "auditOrder": 26,
+      "auditOrder": 32,
       "simulated": true,
       "metrics": {
         "mechanicCount": 3,
         "firedObservables": [
+          "ship.thrust",
           "ship.boost",
-          "massline.latch",
           "massline.tension"
         ],
         "physicalCauseFraction": 1,
@@ -906,16 +1133,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-boost|massline.latch+massline.tension+ship.boost",
+      "signature": "massline.tension+ship.boost+ship.thrust|heavy",
       "family": "gen-boost",
       "traceHash": "47635c37248a9d30c5d4fe17d06d73cc62911c482dbd1e6efcbd70c9e710b5e3",
-      "auditOrder": 27,
+      "auditOrder": 33,
       "simulated": true,
       "metrics": {
         "mechanicCount": 3,
         "firedObservables": [
+          "ship.thrust",
           "ship.boost",
-          "massline.latch",
           "massline.tension"
         ],
         "physicalCauseFraction": 1,
@@ -940,16 +1167,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-boost|massline.latch+massline.tension+ship.boost",
+      "signature": "massline.tension+ship.boost+ship.thrust|heavy",
       "family": "gen-boost",
       "traceHash": "47635c37248a9d30c5d4fe17d06d73cc62911c482dbd1e6efcbd70c9e710b5e3",
-      "auditOrder": 28,
+      "auditOrder": 34,
       "simulated": true,
       "metrics": {
         "mechanicCount": 3,
         "firedObservables": [
+          "ship.thrust",
           "ship.boost",
-          "massline.latch",
           "massline.tension"
         ],
         "physicalCauseFraction": 1,
@@ -974,16 +1201,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-boost|massline.latch+massline.tension+ship.boost",
+      "signature": "massline.tension+ship.boost+ship.thrust|heavy",
       "family": "gen-boost",
       "traceHash": "47635c37248a9d30c5d4fe17d06d73cc62911c482dbd1e6efcbd70c9e710b5e3",
-      "auditOrder": 29,
+      "auditOrder": 35,
       "simulated": true,
       "metrics": {
         "mechanicCount": 3,
         "firedObservables": [
+          "ship.thrust",
           "ship.boost",
-          "massline.latch",
           "massline.tension"
         ],
         "physicalCauseFraction": 1,
@@ -1008,16 +1235,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-boost|massline.latch+massline.tension+ship.boost",
+      "signature": "massline.tension+ship.boost+ship.thrust|heavy",
       "family": "gen-boost",
       "traceHash": "47635c37248a9d30c5d4fe17d06d73cc62911c482dbd1e6efcbd70c9e710b5e3",
-      "auditOrder": 30,
+      "auditOrder": 36,
       "simulated": true,
       "metrics": {
         "mechanicCount": 3,
         "firedObservables": [
+          "ship.thrust",
           "ship.boost",
-          "massline.latch",
           "massline.tension"
         ],
         "physicalCauseFraction": 1,
@@ -1037,287 +1264,15 @@
       "error": null
     },
     {
-      "id": "gen.orbit.v50.s1",
-      "accepted": false,
-      "reasons": [
-        "trivial-variant"
-      ],
-      "signature": "gen-orbit|massline.latch+massline.orbit+massline.tension",
-      "family": "gen-orbit",
-      "traceHash": "79ee14f784982ba73af9d877bf098e7737c5636baa81ab3bb83e14a1d01e0802",
-      "auditOrder": 31,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 3,
-        "firedObservables": [
-          "massline.latch",
-          "massline.tension",
-          "massline.orbit"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 90,
-        "consequence": {
-          "playerDisp": 116.542,
-          "restDelta": 0,
-          "maxTension": 385.059
-        },
-        "novelty": false,
-        "retryBounded": true,
-        "costTicks": 160,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.orbit.v50.s2",
-      "accepted": false,
-      "reasons": [
-        "trivial-variant"
-      ],
-      "signature": "gen-orbit|massline.latch+massline.orbit+massline.tension",
-      "family": "gen-orbit",
-      "traceHash": "79ee14f784982ba73af9d877bf098e7737c5636baa81ab3bb83e14a1d01e0802",
-      "auditOrder": 32,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 3,
-        "firedObservables": [
-          "massline.latch",
-          "massline.tension",
-          "massline.orbit"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 90,
-        "consequence": {
-          "playerDisp": 116.542,
-          "restDelta": 0,
-          "maxTension": 385.059
-        },
-        "novelty": false,
-        "retryBounded": true,
-        "costTicks": 160,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.orbit.v50.s3",
-      "accepted": false,
-      "reasons": [
-        "trivial-variant"
-      ],
-      "signature": "gen-orbit|massline.latch+massline.orbit+massline.tension",
-      "family": "gen-orbit",
-      "traceHash": "79ee14f784982ba73af9d877bf098e7737c5636baa81ab3bb83e14a1d01e0802",
-      "auditOrder": 33,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 3,
-        "firedObservables": [
-          "massline.latch",
-          "massline.tension",
-          "massline.orbit"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 90,
-        "consequence": {
-          "playerDisp": 116.542,
-          "restDelta": 0,
-          "maxTension": 385.059
-        },
-        "novelty": false,
-        "retryBounded": true,
-        "costTicks": 160,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.orbit.v70.s2",
-      "accepted": false,
-      "reasons": [
-        "trivial-variant"
-      ],
-      "signature": "gen-orbit|massline.latch+massline.orbit+massline.tension",
-      "family": "gen-orbit",
-      "traceHash": "70eda58f97035dfd75fb4a4f350e0341dcd069ef9b7b1a6a169193139e813764",
-      "auditOrder": 34,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 3,
-        "firedObservables": [
-          "massline.latch",
-          "massline.tension",
-          "massline.orbit"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 90,
-        "consequence": {
-          "playerDisp": 148.82,
-          "restDelta": 0,
-          "maxTension": 383.212
-        },
-        "novelty": false,
-        "retryBounded": true,
-        "costTicks": 160,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.orbit.v70.s3",
-      "accepted": false,
-      "reasons": [
-        "trivial-variant"
-      ],
-      "signature": "gen-orbit|massline.latch+massline.orbit+massline.tension",
-      "family": "gen-orbit",
-      "traceHash": "70eda58f97035dfd75fb4a4f350e0341dcd069ef9b7b1a6a169193139e813764",
-      "auditOrder": 35,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 3,
-        "firedObservables": [
-          "massline.latch",
-          "massline.tension",
-          "massline.orbit"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 90,
-        "consequence": {
-          "playerDisp": 148.82,
-          "restDelta": 0,
-          "maxTension": 383.212
-        },
-        "novelty": false,
-        "retryBounded": true,
-        "costTicks": 160,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.orbit.v90.s1",
-      "accepted": false,
-      "reasons": [
-        "trivial-variant"
-      ],
-      "signature": "gen-orbit|massline.latch+massline.orbit+massline.tension",
-      "family": "gen-orbit",
-      "traceHash": "8e3e58749891523be3c736ddd03ab8514b0582c38fbb22080e9a69bdd943f346",
-      "auditOrder": 36,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 3,
-        "firedObservables": [
-          "massline.latch",
-          "massline.tension",
-          "massline.orbit"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 90,
-        "consequence": {
-          "playerDisp": 169.541,
-          "restDelta": 0,
-          "maxTension": 378.671
-        },
-        "novelty": false,
-        "retryBounded": true,
-        "costTicks": 160,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.orbit.v90.s2",
-      "accepted": false,
-      "reasons": [
-        "trivial-variant"
-      ],
-      "signature": "gen-orbit|massline.latch+massline.orbit+massline.tension",
-      "family": "gen-orbit",
-      "traceHash": "8e3e58749891523be3c736ddd03ab8514b0582c38fbb22080e9a69bdd943f346",
-      "auditOrder": 37,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 3,
-        "firedObservables": [
-          "massline.latch",
-          "massline.tension",
-          "massline.orbit"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 90,
-        "consequence": {
-          "playerDisp": 169.541,
-          "restDelta": 0,
-          "maxTension": 378.671
-        },
-        "novelty": false,
-        "retryBounded": true,
-        "costTicks": 160,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.orbit.v90.s3",
-      "accepted": false,
-      "reasons": [
-        "trivial-variant"
-      ],
-      "signature": "gen-orbit|massline.latch+massline.orbit+massline.tension",
-      "family": "gen-orbit",
-      "traceHash": "8e3e58749891523be3c736ddd03ab8514b0582c38fbb22080e9a69bdd943f346",
-      "auditOrder": 38,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 3,
-        "firedObservables": [
-          "massline.latch",
-          "massline.tension",
-          "massline.orbit"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 90,
-        "consequence": {
-          "playerDisp": 169.541,
-          "restDelta": 0,
-          "maxTension": 378.671
-        },
-        "novelty": false,
-        "retryBounded": true,
-        "costTicks": 160,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
       "id": "gen.overlap.s1",
       "accepted": false,
       "reasons": [
         "spawn-overlap"
       ],
-      "signature": "gen-overlap|physics.collision+ship.thrust",
+      "signature": "physics.collision+ship.thrust|heavy",
       "family": "gen-overlap",
       "traceHash": "bf0b9f238b8ec7647ea4b7ec09138ae88f117b99b4b3e6ad5a7f181a9e693c84",
-      "auditOrder": 39,
+      "auditOrder": 37,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
@@ -1333,7 +1288,7 @@
           "restDelta": 0,
           "maxTension": 0
         },
-        "novelty": true,
+        "novelty": false,
         "retryBounded": true,
         "costTicks": 40,
         "costEntities": 2,
@@ -1347,10 +1302,10 @@
       "reasons": [
         "spawn-overlap"
       ],
-      "signature": "gen-overlap|physics.collision+ship.thrust",
+      "signature": "physics.collision+ship.thrust|heavy",
       "family": "gen-overlap",
       "traceHash": "bf0b9f238b8ec7647ea4b7ec09138ae88f117b99b4b3e6ad5a7f181a9e693c84",
-      "auditOrder": 40,
+      "auditOrder": 38,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
@@ -1366,9 +1321,75 @@
           "restDelta": 0,
           "maxTension": 0
         },
-        "novelty": true,
+        "novelty": false,
         "retryBounded": true,
         "costTicks": 40,
+        "costEntities": 2,
+        "scriptedFraction": 0
+      },
+      "error": null
+    },
+    {
+      "id": "gen.fire.x280.s2",
+      "accepted": false,
+      "reasons": [
+        "trivial-variant"
+      ],
+      "signature": "ship.thrust+weapons.fire|hostile",
+      "family": "gen-fire",
+      "traceHash": "53c4a26a4d11b7d08ae06711aaf23fd6faf01ab23c34652e24620e6bdcfb5efb",
+      "auditOrder": 39,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 2,
+        "firedObservables": [
+          "ship.thrust",
+          "weapons.fire"
+        ],
+        "physicalCauseFraction": 1,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 280,
+        "consequence": {
+          "playerDisp": 151.461,
+          "restDelta": 0,
+          "maxTension": 0
+        },
+        "novelty": false,
+        "retryBounded": true,
+        "costTicks": 80,
+        "costEntities": 2,
+        "scriptedFraction": 0
+      },
+      "error": null
+    },
+    {
+      "id": "gen.fire.x280.s3",
+      "accepted": false,
+      "reasons": [
+        "trivial-variant"
+      ],
+      "signature": "ship.thrust+weapons.fire|hostile",
+      "family": "gen-fire",
+      "traceHash": "53c4a26a4d11b7d08ae06711aaf23fd6faf01ab23c34652e24620e6bdcfb5efb",
+      "auditOrder": 40,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 2,
+        "firedObservables": [
+          "ship.thrust",
+          "weapons.fire"
+        ],
+        "physicalCauseFraction": 1,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 280,
+        "consequence": {
+          "playerDisp": 151.461,
+          "restDelta": 0,
+          "maxTension": 0
+        },
+        "novelty": false,
+        "retryBounded": true,
+        "costTicks": 80,
         "costEntities": 2,
         "scriptedFraction": 0
       },
@@ -1380,7 +1401,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-glance|physics.collision+ship.coast",
+      "signature": "physics.collision+ship.coast|light",
       "family": "gen-glance",
       "traceHash": "8056cfb66cab3508180dd5033809c05d565318e3394f2878f5bd721d1dbe4ce0",
       "auditOrder": 41,
@@ -1413,7 +1434,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-glance|physics.collision+ship.coast",
+      "signature": "physics.collision+ship.coast|light",
       "family": "gen-glance",
       "traceHash": "1344e0770b8908f29083883044058d8ddbdc8e93b2089b27519a6db1ccf9e000",
       "auditOrder": 42,
@@ -1446,7 +1467,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-glance|physics.collision+ship.coast",
+      "signature": "physics.collision+ship.coast|light",
       "family": "gen-glance",
       "traceHash": "6c507b7bcd49d29b634d6e59bb18082e49fb0e734237b94b728773a2cd86beef",
       "auditOrder": 43,
@@ -1479,7 +1500,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-glance|physics.collision+ship.coast",
+      "signature": "physics.collision+ship.coast|light",
       "family": "gen-glance",
       "traceHash": "18398cd94067f6dc7b41b56bda05619aba448edb843ee280e4bdd60944a22bf9",
       "auditOrder": 44,
@@ -1512,7 +1533,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-glance|physics.collision+ship.coast",
+      "signature": "physics.collision+ship.coast|light",
       "family": "gen-glance",
       "traceHash": "1e4212030b9f16413b33ff1b457c08511877548a9c00d1e1e14609025696046e",
       "auditOrder": 45,
@@ -1545,7 +1566,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-glance|physics.collision+ship.coast",
+      "signature": "physics.collision+ship.coast|light",
       "family": "gen-glance",
       "traceHash": "31ee96cbcd2a58a18f786000903c85c6de43757c72c7ee52df5ed6913cfbb1b4",
       "auditOrder": 46,
@@ -1578,7 +1599,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-glance|physics.collision+ship.coast",
+      "signature": "physics.collision+ship.coast|light",
       "family": "gen-glance",
       "traceHash": "697c926292ba086a935d952cc6f8620c8316a560c6cb5b1df33d9aaf8e768496",
       "auditOrder": 47,
@@ -1611,7 +1632,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-turn|ship.thrust+ship.turn",
+      "signature": "ship.thrust+ship.turn|nobody",
       "family": "gen-turn",
       "traceHash": "7ece15d9e9b1a570bd66364e6ae1b23ab2e3ec515e22426395204f690ff21347",
       "auditOrder": 48,
@@ -1644,7 +1665,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-turn|ship.thrust+ship.turn",
+      "signature": "ship.thrust+ship.turn|nobody",
       "family": "gen-turn",
       "traceHash": "7ece15d9e9b1a570bd66364e6ae1b23ab2e3ec515e22426395204f690ff21347",
       "auditOrder": 49,
@@ -1677,7 +1698,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-turn|ship.thrust+ship.turn",
+      "signature": "ship.thrust+ship.turn|nobody",
       "family": "gen-turn",
       "traceHash": "7ece15d9e9b1a570bd66364e6ae1b23ab2e3ec515e22426395204f690ff21347",
       "auditOrder": 50,
@@ -1710,7 +1731,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-turn|ship.thrust+ship.turn",
+      "signature": "ship.thrust+ship.turn|nobody",
       "family": "gen-turn",
       "traceHash": "ec558b3705485441024d355fe1160c0d5063e915e37e2249d0606fea2f7da748",
       "auditOrder": 51,
@@ -1743,7 +1764,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-turn|ship.thrust+ship.turn",
+      "signature": "ship.thrust+ship.turn|nobody",
       "family": "gen-turn",
       "traceHash": "ec558b3705485441024d355fe1160c0d5063e915e37e2249d0606fea2f7da748",
       "auditOrder": 52,
@@ -1776,7 +1797,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-turn|ship.thrust+ship.turn",
+      "signature": "ship.thrust+ship.turn|nobody",
       "family": "gen-turn",
       "traceHash": "ec558b3705485441024d355fe1160c0d5063e915e37e2249d0606fea2f7da748",
       "auditOrder": 53,
@@ -1809,7 +1830,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-turn|ship.thrust+ship.turn",
+      "signature": "ship.thrust+ship.turn|nobody",
       "family": "gen-turn",
       "traceHash": "cd5612a54e309c975af7cf0ada367a19cd180a453577d55a39faf796244ef121",
       "auditOrder": 54,
@@ -1842,7 +1863,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-turn|ship.thrust+ship.turn",
+      "signature": "ship.thrust+ship.turn|nobody",
       "family": "gen-turn",
       "traceHash": "cd5612a54e309c975af7cf0ada367a19cd180a453577d55a39faf796244ef121",
       "auditOrder": 55,
@@ -1875,7 +1896,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-ram|physics.collision+ship.thrust",
+      "signature": "physics.collision+ship.thrust|heavy",
       "family": "gen-ram",
       "traceHash": "c80d6a7fcf50a43730203576cadd04f251f0ed4bc2b69feee760535aa95468c2",
       "auditOrder": 56,
@@ -1908,7 +1929,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-ram|physics.collision+ship.thrust",
+      "signature": "physics.collision+ship.thrust|heavy",
       "family": "gen-ram",
       "traceHash": "c80d6a7fcf50a43730203576cadd04f251f0ed4bc2b69feee760535aa95468c2",
       "auditOrder": 57,
@@ -1941,7 +1962,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-ram|physics.collision+ship.thrust",
+      "signature": "physics.collision+ship.thrust|heavy",
       "family": "gen-ram",
       "traceHash": "f221587f400145531e0a19494c57811e5562331c754e3ea0c4bdaa36af131590",
       "auditOrder": 58,
@@ -1974,7 +1995,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-ram|physics.collision+ship.thrust",
+      "signature": "physics.collision+ship.thrust|heavy",
       "family": "gen-ram",
       "traceHash": "4e014886737126e5f73e4abeb50e9a915ab00e6cc35dde31b1beb8ad627433ac",
       "auditOrder": 59,
@@ -2007,7 +2028,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-ram|physics.collision+ship.thrust",
+      "signature": "physics.collision+ship.thrust|heavy",
       "family": "gen-ram",
       "traceHash": "4e014886737126e5f73e4abeb50e9a915ab00e6cc35dde31b1beb8ad627433ac",
       "auditOrder": 60,
@@ -2040,7 +2061,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-settle|ship.coast+ship.thrust",
+      "signature": "ship.coast+ship.thrust|nobody",
       "family": "gen-settle",
       "traceHash": "06c34f1458ecd5807209ee1651051e9cca950f81b59b9c2168e448c5bb1e82c1",
       "auditOrder": 61,
@@ -2073,7 +2094,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-settle|ship.coast+ship.thrust",
+      "signature": "ship.coast+ship.thrust|nobody",
       "family": "gen-settle",
       "traceHash": "06c34f1458ecd5807209ee1651051e9cca950f81b59b9c2168e448c5bb1e82c1",
       "auditOrder": 62,
@@ -2106,7 +2127,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-settle|ship.coast+ship.thrust",
+      "signature": "ship.coast+ship.thrust|nobody",
       "family": "gen-settle",
       "traceHash": "06c34f1458ecd5807209ee1651051e9cca950f81b59b9c2168e448c5bb1e82c1",
       "auditOrder": 63,
@@ -2139,7 +2160,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-shove|physics.collision+ship.coast",
+      "signature": "physics.collision+ship.coast|heavy",
       "family": "gen-shove",
       "traceHash": "2f3cf1bf5d75169fa34c03d0e0f6bd4a2b8dd7c21d2465eeab97298a8bc48d4e",
       "auditOrder": 64,
@@ -2172,7 +2193,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-shove|physics.collision+ship.coast",
+      "signature": "physics.collision+ship.coast|heavy",
       "family": "gen-shove",
       "traceHash": "6107890c51b95fe30cab694f16ad7ea3edee09fcf19ac776ff4a737a84582e76",
       "auditOrder": 65,
@@ -2205,7 +2226,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-shove|physics.collision+ship.coast",
+      "signature": "physics.collision+ship.coast|heavy",
       "family": "gen-shove",
       "traceHash": "062377af9205ee96eea5cbae86772552c33fd717308e6e81c8f1b9ded5d26ba1",
       "auditOrder": 66,
@@ -2238,7 +2259,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-shove|physics.collision+ship.coast",
+      "signature": "physics.collision+ship.coast|heavy",
       "family": "gen-shove",
       "traceHash": "93ffb041180b2dca8bf6908a48f45f3ce67e3c476ffe85b95e7f8732dd8ea6c1",
       "auditOrder": 67,
@@ -2271,7 +2292,7 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-shove|physics.collision+ship.coast",
+      "signature": "physics.collision+ship.coast|heavy",
       "family": "gen-shove",
       "traceHash": "82b9aa06f1e4e84487837e811bdc5fd481aa2692de901a399ec1b3e57f70c298",
       "auditOrder": 68,
@@ -2299,285 +2320,21 @@
       "error": null
     },
     {
-      "id": "gen.fire.x100.s1",
-      "accepted": false,
-      "reasons": [
-        "trivial-variant"
-      ],
-      "signature": "gen-fire|physics.collision+weapons.fire",
-      "family": "gen-fire",
-      "traceHash": "4197fff613d84c6773ac21cb7d9de7173b3527afdb3a8b08a639420ae2df4cb6",
-      "auditOrder": 69,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 2,
-        "firedObservables": [
-          "physics.collision",
-          "weapons.fire"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 100,
-        "consequence": {
-          "playerDisp": 0,
-          "restDelta": 0,
-          "maxTension": 0
-        },
-        "novelty": false,
-        "retryBounded": true,
-        "costTicks": 140,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.fire.x100.s2",
-      "accepted": false,
-      "reasons": [
-        "trivial-variant"
-      ],
-      "signature": "gen-fire|physics.collision+weapons.fire",
-      "family": "gen-fire",
-      "traceHash": "4197fff613d84c6773ac21cb7d9de7173b3527afdb3a8b08a639420ae2df4cb6",
-      "auditOrder": 70,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 2,
-        "firedObservables": [
-          "physics.collision",
-          "weapons.fire"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 100,
-        "consequence": {
-          "playerDisp": 0,
-          "restDelta": 0,
-          "maxTension": 0
-        },
-        "novelty": false,
-        "retryBounded": true,
-        "costTicks": 140,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.fire.x100.s3",
-      "accepted": false,
-      "reasons": [
-        "trivial-variant"
-      ],
-      "signature": "gen-fire|physics.collision+weapons.fire",
-      "family": "gen-fire",
-      "traceHash": "4197fff613d84c6773ac21cb7d9de7173b3527afdb3a8b08a639420ae2df4cb6",
-      "auditOrder": 71,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 2,
-        "firedObservables": [
-          "physics.collision",
-          "weapons.fire"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 100,
-        "consequence": {
-          "playerDisp": 0,
-          "restDelta": 0,
-          "maxTension": 0
-        },
-        "novelty": false,
-        "retryBounded": true,
-        "costTicks": 140,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.fire.x60.s1",
-      "accepted": false,
-      "reasons": [
-        "trivial-variant"
-      ],
-      "signature": "gen-fire|physics.collision+weapons.fire",
-      "family": "gen-fire",
-      "traceHash": "4197fff613d84c6773ac21cb7d9de7173b3527afdb3a8b08a639420ae2df4cb6",
-      "auditOrder": 72,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 2,
-        "firedObservables": [
-          "physics.collision",
-          "weapons.fire"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 60,
-        "consequence": {
-          "playerDisp": 0,
-          "restDelta": 0,
-          "maxTension": 0
-        },
-        "novelty": false,
-        "retryBounded": true,
-        "costTicks": 140,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.fire.x60.s2",
-      "accepted": false,
-      "reasons": [
-        "trivial-variant"
-      ],
-      "signature": "gen-fire|physics.collision+weapons.fire",
-      "family": "gen-fire",
-      "traceHash": "4197fff613d84c6773ac21cb7d9de7173b3527afdb3a8b08a639420ae2df4cb6",
-      "auditOrder": 73,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 2,
-        "firedObservables": [
-          "physics.collision",
-          "weapons.fire"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 60,
-        "consequence": {
-          "playerDisp": 0,
-          "restDelta": 0,
-          "maxTension": 0
-        },
-        "novelty": false,
-        "retryBounded": true,
-        "costTicks": 140,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.fire.x60.s3",
-      "accepted": false,
-      "reasons": [
-        "trivial-variant"
-      ],
-      "signature": "gen-fire|physics.collision+weapons.fire",
-      "family": "gen-fire",
-      "traceHash": "4197fff613d84c6773ac21cb7d9de7173b3527afdb3a8b08a639420ae2df4cb6",
-      "auditOrder": 74,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 2,
-        "firedObservables": [
-          "physics.collision",
-          "weapons.fire"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 60,
-        "consequence": {
-          "playerDisp": 0,
-          "restDelta": 0,
-          "maxTension": 0
-        },
-        "novelty": false,
-        "retryBounded": true,
-        "costTicks": 140,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.fire.x70.s2",
-      "accepted": false,
-      "reasons": [
-        "trivial-variant"
-      ],
-      "signature": "gen-fire|physics.collision+weapons.fire",
-      "family": "gen-fire",
-      "traceHash": "4197fff613d84c6773ac21cb7d9de7173b3527afdb3a8b08a639420ae2df4cb6",
-      "auditOrder": 75,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 2,
-        "firedObservables": [
-          "physics.collision",
-          "weapons.fire"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 70,
-        "consequence": {
-          "playerDisp": 0,
-          "restDelta": 0,
-          "maxTension": 0
-        },
-        "novelty": false,
-        "retryBounded": true,
-        "costTicks": 140,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.fire.x70.s3",
-      "accepted": false,
-      "reasons": [
-        "trivial-variant"
-      ],
-      "signature": "gen-fire|physics.collision+weapons.fire",
-      "family": "gen-fire",
-      "traceHash": "4197fff613d84c6773ac21cb7d9de7173b3527afdb3a8b08a639420ae2df4cb6",
-      "auditOrder": 76,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 2,
-        "firedObservables": [
-          "physics.collision",
-          "weapons.fire"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": 70,
-        "consequence": {
-          "playerDisp": 0,
-          "restDelta": 0,
-          "maxTension": 0
-        },
-        "novelty": false,
-        "retryBounded": true,
-        "costTicks": 140,
-        "costEntities": 2,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
       "id": "gen.tow.d60.s1",
       "accepted": false,
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-tow|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|light",
       "family": "gen-tow",
       "traceHash": "3f531e580eaa7ed43ea92973cb5bf2c5763c0c5ba9a17b731a4058edba45ea5a",
-      "auditOrder": 77,
+      "auditOrder": 69,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -2601,16 +2358,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-tow|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|light",
       "family": "gen-tow",
       "traceHash": "3f531e580eaa7ed43ea92973cb5bf2c5763c0c5ba9a17b731a4058edba45ea5a",
-      "auditOrder": 78,
+      "auditOrder": 70,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -2634,16 +2391,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-tow|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|light",
       "family": "gen-tow",
       "traceHash": "e49c7fcafc6c864f825bd998a7f613c33c53c3f146b7168b0d45ea4a69aae99b",
-      "auditOrder": 79,
+      "auditOrder": 71,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -2667,16 +2424,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-tow|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|light",
       "family": "gen-tow",
       "traceHash": "a1215bd2a417bcd2903936c701cc2a2f45ec1fe8da55f433ece7bf75fc8581ce",
-      "auditOrder": 80,
+      "auditOrder": 72,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -2700,16 +2457,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-tow|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|light",
       "family": "gen-tow",
       "traceHash": "a1215bd2a417bcd2903936c701cc2a2f45ec1fe8da55f433ece7bf75fc8581ce",
-      "auditOrder": 81,
+      "auditOrder": 73,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -2733,16 +2490,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-reel|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-reel",
       "traceHash": "bff3ae6aeea0cc49471ff6aaeb334d4da9ef3e5026e5067122dc4152ad7435d1",
-      "auditOrder": 82,
+      "auditOrder": 74,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -2766,16 +2523,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-reel|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-reel",
       "traceHash": "bff3ae6aeea0cc49471ff6aaeb334d4da9ef3e5026e5067122dc4152ad7435d1",
-      "auditOrder": 83,
+      "auditOrder": 75,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -2799,16 +2556,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-reel|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-reel",
       "traceHash": "bff3ae6aeea0cc49471ff6aaeb334d4da9ef3e5026e5067122dc4152ad7435d1",
-      "auditOrder": 84,
+      "auditOrder": 76,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -2832,16 +2589,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-reel|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-reel",
       "traceHash": "6ce3cb4556cdb9d1c42a3789c55669f4331302f454d547866416d18cf3f97dd1",
-      "auditOrder": 85,
+      "auditOrder": 77,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -2865,16 +2622,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-reel|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-reel",
       "traceHash": "6ce3cb4556cdb9d1c42a3789c55669f4331302f454d547866416d18cf3f97dd1",
-      "auditOrder": 86,
+      "auditOrder": 78,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -2898,16 +2655,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-reel|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-reel",
       "traceHash": "6ce3cb4556cdb9d1c42a3789c55669f4331302f454d547866416d18cf3f97dd1",
-      "auditOrder": 87,
+      "auditOrder": 79,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -2931,16 +2688,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-reel|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-reel",
       "traceHash": "3db8e839fec489cb229e420a6397c6e27531927ceb8692d52a2b19c04fa82446",
-      "auditOrder": 88,
+      "auditOrder": 80,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -2964,16 +2721,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-reel|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-reel",
       "traceHash": "3db8e839fec489cb229e420a6397c6e27531927ceb8692d52a2b19c04fa82446",
-      "auditOrder": 89,
+      "auditOrder": 81,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -2997,16 +2754,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-reel|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-reel",
       "traceHash": "3db8e839fec489cb229e420a6397c6e27531927ceb8692d52a2b19c04fa82446",
-      "auditOrder": 90,
+      "auditOrder": 82,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -3030,16 +2787,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-reel|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-reel",
       "traceHash": "6b7b11d49c6813d2f8745fdd36771b37d6179d47bc0eefe38b5a78fba5cb8a22",
-      "auditOrder": 91,
+      "auditOrder": 83,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -3063,16 +2820,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-reel|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-reel",
       "traceHash": "6b7b11d49c6813d2f8745fdd36771b37d6179d47bc0eefe38b5a78fba5cb8a22",
-      "auditOrder": 92,
+      "auditOrder": 84,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -3091,21 +2848,54 @@
       "error": null
     },
     {
+      "id": "gen.static.s1",
+      "accepted": false,
+      "reasons": [
+        "trivial-variant"
+      ],
+      "signature": "massline.reel+massline.tension|heavy",
+      "family": "gen-static",
+      "traceHash": "76e67684243fcc6df390de8e8138e744cfac242e66b7a8d70fee533e560b8521",
+      "auditOrder": 85,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 2,
+        "firedObservables": [
+          "massline.reel",
+          "massline.tension"
+        ],
+        "physicalCauseFraction": 1,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 80,
+        "consequence": {
+          "playerDisp": 62.369,
+          "restDelta": -62,
+          "maxTension": 3722.5
+        },
+        "novelty": false,
+        "retryBounded": true,
+        "costTicks": 150,
+        "costEntities": 2,
+        "scriptedFraction": 0
+      },
+      "error": null
+    },
+    {
       "id": "gen.static.s2",
       "accepted": false,
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-static|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-static",
       "traceHash": "76e67684243fcc6df390de8e8138e744cfac242e66b7a8d70fee533e560b8521",
-      "auditOrder": 93,
+      "auditOrder": 86,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -3129,16 +2919,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-static|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-static",
       "traceHash": "76e67684243fcc6df390de8e8138e744cfac242e66b7a8d70fee533e560b8521",
-      "auditOrder": 94,
+      "auditOrder": 87,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -3162,16 +2952,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-static|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-static",
       "traceHash": "76e67684243fcc6df390de8e8138e744cfac242e66b7a8d70fee533e560b8521",
-      "auditOrder": 95,
+      "auditOrder": 88,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -3190,21 +2980,54 @@
       "error": null
     },
     {
+      "id": "gen.diagonal.s1",
+      "accepted": false,
+      "reasons": [
+        "trivial-variant"
+      ],
+      "signature": "massline.reel+massline.tension|heavy",
+      "family": "gen-diagonal",
+      "traceHash": "5460602256469a92646cbf34b5e31dfa1e5318e4357785bf628633cac476cc0f",
+      "auditOrder": 89,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 2,
+        "firedObservables": [
+          "massline.reel",
+          "massline.tension"
+        ],
+        "physicalCauseFraction": 1,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 77.782,
+        "consequence": {
+          "playerDisp": 61.508,
+          "restDelta": -59.782,
+          "maxTension": 3629.01
+        },
+        "novelty": false,
+        "retryBounded": true,
+        "costTicks": 160,
+        "costEntities": 2,
+        "scriptedFraction": 0
+      },
+      "error": null
+    },
+    {
       "id": "gen.diagonal.s2",
       "accepted": false,
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-diagonal|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-diagonal",
       "traceHash": "5460602256469a92646cbf34b5e31dfa1e5318e4357785bf628633cac476cc0f",
-      "auditOrder": 96,
+      "auditOrder": 90,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -3228,16 +3051,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-diagonal|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-diagonal",
       "traceHash": "5460602256469a92646cbf34b5e31dfa1e5318e4357785bf628633cac476cc0f",
-      "auditOrder": 97,
+      "auditOrder": 91,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -3261,16 +3084,16 @@
       "reasons": [
         "trivial-variant"
       ],
-      "signature": "gen-diagonal|massline.latch+massline.reel",
+      "signature": "massline.reel+massline.tension|heavy",
       "family": "gen-diagonal",
       "traceHash": "5460602256469a92646cbf34b5e31dfa1e5318e4357785bf628633cac476cc0f",
-      "auditOrder": 98,
+      "auditOrder": 92,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch",
-          "massline.reel"
+          "massline.reel",
+          "massline.tension"
         ],
         "physicalCauseFraction": 1,
         "interventionAffordances": 1,
@@ -3289,225 +3112,28 @@
       "error": null
     },
     {
-      "id": "gen.coast.s1",
+      "id": "gen.fire.x300.s1",
       "accepted": false,
       "reasons": [
         "single-mechanic",
+        "zero-force:weapons.fire",
         "no-physical-consequence"
       ],
-      "signature": "gen-coast-only|ship.coast",
-      "family": "gen-coast-only",
-      "traceHash": "4d34e14eeef9a7c58c90275a8ef9e012a5e96928f72c3a21ba28b4f201c0a205",
-      "auditOrder": 99,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 1,
-        "firedObservables": [
-          "ship.coast"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": null,
-        "consequence": {
-          "playerDisp": 38.458,
-          "restDelta": 0,
-          "maxTension": 0
-        },
-        "novelty": true,
-        "retryBounded": true,
-        "costTicks": 60,
-        "costEntities": 1,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.coast.s2",
-      "accepted": false,
-      "reasons": [
-        "single-mechanic",
-        "no-physical-consequence"
-      ],
-      "signature": "gen-coast-only|ship.coast",
-      "family": "gen-coast-only",
-      "traceHash": "c744fa2bbbf9fbf717ffef8800d365074acafe9dd8bc3e3db54df0e8d470b6e6",
-      "auditOrder": 100,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 1,
-        "firedObservables": [
-          "ship.coast"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": null,
-        "consequence": {
-          "playerDisp": 39.396,
-          "restDelta": 0,
-          "maxTension": 0
-        },
-        "novelty": true,
-        "retryBounded": true,
-        "costTicks": 60,
-        "costEntities": 1,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.coast.s3",
-      "accepted": false,
-      "reasons": [
-        "single-mechanic",
-        "no-physical-consequence"
-      ],
-      "signature": "gen-coast-only|ship.coast",
-      "family": "gen-coast-only",
-      "traceHash": "bee55f11f39a1ac0c30558ac67645f80a085ff4bfa74013796f08b14379587cd",
-      "auditOrder": 101,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 1,
-        "firedObservables": [
-          "ship.coast"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": null,
-        "consequence": {
-          "playerDisp": 40.334,
-          "restDelta": 0,
-          "maxTension": 0
-        },
-        "novelty": true,
-        "retryBounded": true,
-        "costTicks": 60,
-        "costEntities": 1,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.coast.s4",
-      "accepted": false,
-      "reasons": [
-        "single-mechanic",
-        "no-physical-consequence"
-      ],
-      "signature": "gen-coast-only|ship.coast",
-      "family": "gen-coast-only",
-      "traceHash": "0bafe41f7d61657c900b122300e8ba85a590815bf010724919a01daf6a91e0b3",
-      "auditOrder": 102,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 1,
-        "firedObservables": [
-          "ship.coast"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": null,
-        "consequence": {
-          "playerDisp": 41.272,
-          "restDelta": 0,
-          "maxTension": 0
-        },
-        "novelty": true,
-        "retryBounded": true,
-        "costTicks": 60,
-        "costEntities": 1,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.coast.s5",
-      "accepted": false,
-      "reasons": [
-        "single-mechanic",
-        "no-physical-consequence"
-      ],
-      "signature": "gen-coast-only|ship.coast",
-      "family": "gen-coast-only",
-      "traceHash": "c7dc352bc97597b9274136f924a436179c5b61632c0874f441c81ed658c69a49",
-      "auditOrder": 103,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 1,
-        "firedObservables": [
-          "ship.coast"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": null,
-        "consequence": {
-          "playerDisp": 42.21,
-          "restDelta": 0,
-          "maxTension": 0
-        },
-        "novelty": true,
-        "retryBounded": true,
-        "costTicks": 60,
-        "costEntities": 1,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.coast.s6",
-      "accepted": false,
-      "reasons": [
-        "single-mechanic",
-        "no-physical-consequence"
-      ],
-      "signature": "gen-coast-only|ship.coast",
-      "family": "gen-coast-only",
-      "traceHash": "d97af495290fe8d58ad8547840d8c87c1ca79400ea0aabd355fd5a5c118ae2dd",
-      "auditOrder": 104,
-      "simulated": true,
-      "metrics": {
-        "mechanicCount": 1,
-        "firedObservables": [
-          "ship.coast"
-        ],
-        "physicalCauseFraction": 1,
-        "interventionAffordances": 1,
-        "claritySeparationWu": null,
-        "consequence": {
-          "playerDisp": 43.148,
-          "restDelta": 0,
-          "maxTension": 0
-        },
-        "novelty": true,
-        "retryBounded": true,
-        "costTicks": 60,
-        "costEntities": 1,
-        "scriptedFraction": 0
-      },
-      "error": null
-    },
-    {
-      "id": "gen.zeroreel.s1",
-      "accepted": false,
-      "reasons": [
-        "zero-force:massline.reel",
-        "no-physical-consequence"
-      ],
-      "signature": "gen-zero-reel|massline.latch",
-      "family": "gen-zero-reel",
-      "traceHash": "58879f39bdbb58b89ada3a96ab5de2662bca9071e8e24f41b773a23808c2de3b",
-      "auditOrder": 105,
+      "signature": "ship.thrust|hostile",
+      "family": "gen-fire",
+      "traceHash": "53c4a26a4d11b7d08ae06711aaf23fd6faf01ab23c34652e24620e6bdcfb5efb",
+      "auditOrder": 93,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch"
+          "ship.thrust"
         ],
         "physicalCauseFraction": 0.5,
         "interventionAffordances": 1,
-        "claritySeparationWu": 80,
+        "claritySeparationWu": 300,
         "consequence": {
-          "playerDisp": 0,
+          "playerDisp": 151.461,
           "restDelta": 0,
           "maxTension": 0
         },
@@ -3520,27 +3146,28 @@
       "error": null
     },
     {
-      "id": "gen.zeroreel.s2",
+      "id": "gen.fire.x300.s2",
       "accepted": false,
       "reasons": [
-        "zero-force:massline.reel",
+        "single-mechanic",
+        "zero-force:weapons.fire",
         "no-physical-consequence"
       ],
-      "signature": "gen-zero-reel|massline.latch",
-      "family": "gen-zero-reel",
-      "traceHash": "58879f39bdbb58b89ada3a96ab5de2662bca9071e8e24f41b773a23808c2de3b",
-      "auditOrder": 106,
+      "signature": "ship.thrust|hostile",
+      "family": "gen-fire",
+      "traceHash": "53c4a26a4d11b7d08ae06711aaf23fd6faf01ab23c34652e24620e6bdcfb5efb",
+      "auditOrder": 94,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch"
+          "ship.thrust"
         ],
         "physicalCauseFraction": 0.5,
         "interventionAffordances": 1,
-        "claritySeparationWu": 80,
+        "claritySeparationWu": 300,
         "consequence": {
-          "playerDisp": 0,
+          "playerDisp": 151.461,
           "restDelta": 0,
           "maxTension": 0
         },
@@ -3553,27 +3180,28 @@
       "error": null
     },
     {
-      "id": "gen.zeroreel.s3",
+      "id": "gen.fire.x300.s3",
       "accepted": false,
       "reasons": [
-        "zero-force:massline.reel",
+        "single-mechanic",
+        "zero-force:weapons.fire",
         "no-physical-consequence"
       ],
-      "signature": "gen-zero-reel|massline.latch",
-      "family": "gen-zero-reel",
-      "traceHash": "58879f39bdbb58b89ada3a96ab5de2662bca9071e8e24f41b773a23808c2de3b",
-      "auditOrder": 107,
+      "signature": "ship.thrust|hostile",
+      "family": "gen-fire",
+      "traceHash": "53c4a26a4d11b7d08ae06711aaf23fd6faf01ab23c34652e24620e6bdcfb5efb",
+      "auditOrder": 95,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch"
+          "ship.thrust"
         ],
         "physicalCauseFraction": 0.5,
         "interventionAffordances": 1,
-        "claritySeparationWu": 80,
+        "claritySeparationWu": 300,
         "consequence": {
-          "playerDisp": 0,
+          "playerDisp": 151.461,
           "restDelta": 0,
           "maxTension": 0
         },
@@ -3586,27 +3214,28 @@
       "error": null
     },
     {
-      "id": "gen.zeroreel.s4",
+      "id": "gen.fire.x320.s1",
       "accepted": false,
       "reasons": [
-        "zero-force:massline.reel",
+        "single-mechanic",
+        "zero-force:weapons.fire",
         "no-physical-consequence"
       ],
-      "signature": "gen-zero-reel|massline.latch",
-      "family": "gen-zero-reel",
-      "traceHash": "58879f39bdbb58b89ada3a96ab5de2662bca9071e8e24f41b773a23808c2de3b",
-      "auditOrder": 108,
+      "signature": "ship.thrust|hostile",
+      "family": "gen-fire",
+      "traceHash": "53c4a26a4d11b7d08ae06711aaf23fd6faf01ab23c34652e24620e6bdcfb5efb",
+      "auditOrder": 96,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch"
+          "ship.thrust"
         ],
         "physicalCauseFraction": 0.5,
         "interventionAffordances": 1,
-        "claritySeparationWu": 80,
+        "claritySeparationWu": 320,
         "consequence": {
-          "playerDisp": 0,
+          "playerDisp": 151.461,
           "restDelta": 0,
           "maxTension": 0
         },
@@ -3619,27 +3248,28 @@
       "error": null
     },
     {
-      "id": "gen.zeroreel.s5",
+      "id": "gen.fire.x320.s2",
       "accepted": false,
       "reasons": [
-        "zero-force:massline.reel",
+        "single-mechanic",
+        "zero-force:weapons.fire",
         "no-physical-consequence"
       ],
-      "signature": "gen-zero-reel|massline.latch",
-      "family": "gen-zero-reel",
-      "traceHash": "58879f39bdbb58b89ada3a96ab5de2662bca9071e8e24f41b773a23808c2de3b",
-      "auditOrder": 109,
+      "signature": "ship.thrust|hostile",
+      "family": "gen-fire",
+      "traceHash": "53c4a26a4d11b7d08ae06711aaf23fd6faf01ab23c34652e24620e6bdcfb5efb",
+      "auditOrder": 97,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch"
+          "ship.thrust"
         ],
         "physicalCauseFraction": 0.5,
         "interventionAffordances": 1,
-        "claritySeparationWu": 80,
+        "claritySeparationWu": 320,
         "consequence": {
-          "playerDisp": 0,
+          "playerDisp": 151.461,
           "restDelta": 0,
           "maxTension": 0
         },
@@ -3652,27 +3282,28 @@
       "error": null
     },
     {
-      "id": "gen.zeroreel.s6",
+      "id": "gen.fire.x320.s3",
       "accepted": false,
       "reasons": [
-        "zero-force:massline.reel",
+        "single-mechanic",
+        "zero-force:weapons.fire",
         "no-physical-consequence"
       ],
-      "signature": "gen-zero-reel|massline.latch",
-      "family": "gen-zero-reel",
-      "traceHash": "58879f39bdbb58b89ada3a96ab5de2662bca9071e8e24f41b773a23808c2de3b",
-      "auditOrder": 110,
+      "signature": "ship.thrust|hostile",
+      "family": "gen-fire",
+      "traceHash": "53c4a26a4d11b7d08ae06711aaf23fd6faf01ab23c34652e24620e6bdcfb5efb",
+      "auditOrder": 98,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
         "firedObservables": [
-          "massline.latch"
+          "ship.thrust"
         ],
         "physicalCauseFraction": 0.5,
         "interventionAffordances": 1,
-        "claritySeparationWu": 80,
+        "claritySeparationWu": 320,
         "consequence": {
-          "playerDisp": 0,
+          "playerDisp": 151.461,
           "restDelta": 0,
           "maxTension": 0
         },
@@ -3692,14 +3323,15 @@
         "lab-failed",
         "not-finite",
         "player-dead",
+        "single-mechanic",
         "zero-force:ship.thrust",
         "zero-force:physics.collision",
         "no-physical-consequence"
       ],
-      "signature": "impossible|",
+      "signature": "|nobody",
       "family": "impossible",
       "traceHash": null,
-      "auditOrder": 111,
+      "auditOrder": 99,
       "simulated": false,
       "metrics": {
         "mechanicCount": 2,
@@ -3724,14 +3356,15 @@
       "id": "gen.inert.s1",
       "accepted": false,
       "reasons": [
+        "single-mechanic",
         "zero-force:ship.thrust",
         "zero-force:physics.collision",
         "no-physical-consequence"
       ],
-      "signature": "gen-inert|",
+      "signature": "|nobody",
       "family": "gen-inert",
       "traceHash": "64bcf2356a2247a018a1ce02a9d6425adcd46396ca6f1b329fd3d56965f89aab",
-      "auditOrder": 112,
+      "auditOrder": 100,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
@@ -3756,14 +3389,15 @@
       "id": "gen.inert.s2",
       "accepted": false,
       "reasons": [
+        "single-mechanic",
         "zero-force:ship.thrust",
         "zero-force:physics.collision",
         "no-physical-consequence"
       ],
-      "signature": "gen-inert|",
+      "signature": "|nobody",
       "family": "gen-inert",
       "traceHash": "64bcf2356a2247a018a1ce02a9d6425adcd46396ca6f1b329fd3d56965f89aab",
-      "auditOrder": 113,
+      "auditOrder": 101,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
@@ -3788,14 +3422,15 @@
       "id": "gen.inert.s3",
       "accepted": false,
       "reasons": [
+        "single-mechanic",
         "zero-force:ship.thrust",
         "zero-force:physics.collision",
         "no-physical-consequence"
       ],
-      "signature": "gen-inert|",
+      "signature": "|nobody",
       "family": "gen-inert",
       "traceHash": "64bcf2356a2247a018a1ce02a9d6425adcd46396ca6f1b329fd3d56965f89aab",
-      "auditOrder": 114,
+      "auditOrder": 102,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
@@ -3820,14 +3455,15 @@
       "id": "gen.inert.s4",
       "accepted": false,
       "reasons": [
+        "single-mechanic",
         "zero-force:ship.thrust",
         "zero-force:physics.collision",
         "no-physical-consequence"
       ],
-      "signature": "gen-inert|",
+      "signature": "|nobody",
       "family": "gen-inert",
       "traceHash": "64bcf2356a2247a018a1ce02a9d6425adcd46396ca6f1b329fd3d56965f89aab",
-      "auditOrder": 115,
+      "auditOrder": 103,
       "simulated": true,
       "metrics": {
         "mechanicCount": 2,
@@ -3847,697 +3483,436 @@
         "scriptedFraction": 1
       },
       "error": null
+    },
+    {
+      "id": "gen.coast.s1",
+      "accepted": false,
+      "reasons": [
+        "single-mechanic",
+        "zero-force:ship.coast",
+        "no-physical-consequence"
+      ],
+      "signature": "|nobody",
+      "family": "gen-coast-only",
+      "traceHash": "4d34e14eeef9a7c58c90275a8ef9e012a5e96928f72c3a21ba28b4f201c0a205",
+      "auditOrder": 104,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 1,
+        "firedObservables": [],
+        "physicalCauseFraction": 0,
+        "interventionAffordances": 1,
+        "claritySeparationWu": null,
+        "consequence": {
+          "playerDisp": 38.458,
+          "restDelta": 0,
+          "maxTension": 0
+        },
+        "novelty": true,
+        "retryBounded": true,
+        "costTicks": 60,
+        "costEntities": 1,
+        "scriptedFraction": 1
+      },
+      "error": null
+    },
+    {
+      "id": "gen.coast.s2",
+      "accepted": false,
+      "reasons": [
+        "single-mechanic",
+        "zero-force:ship.coast",
+        "no-physical-consequence"
+      ],
+      "signature": "|nobody",
+      "family": "gen-coast-only",
+      "traceHash": "c744fa2bbbf9fbf717ffef8800d365074acafe9dd8bc3e3db54df0e8d470b6e6",
+      "auditOrder": 105,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 1,
+        "firedObservables": [],
+        "physicalCauseFraction": 0,
+        "interventionAffordances": 1,
+        "claritySeparationWu": null,
+        "consequence": {
+          "playerDisp": 39.396,
+          "restDelta": 0,
+          "maxTension": 0
+        },
+        "novelty": true,
+        "retryBounded": true,
+        "costTicks": 60,
+        "costEntities": 1,
+        "scriptedFraction": 1
+      },
+      "error": null
+    },
+    {
+      "id": "gen.coast.s3",
+      "accepted": false,
+      "reasons": [
+        "single-mechanic",
+        "zero-force:ship.coast",
+        "no-physical-consequence"
+      ],
+      "signature": "|nobody",
+      "family": "gen-coast-only",
+      "traceHash": "bee55f11f39a1ac0c30558ac67645f80a085ff4bfa74013796f08b14379587cd",
+      "auditOrder": 106,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 1,
+        "firedObservables": [],
+        "physicalCauseFraction": 0,
+        "interventionAffordances": 1,
+        "claritySeparationWu": null,
+        "consequence": {
+          "playerDisp": 40.334,
+          "restDelta": 0,
+          "maxTension": 0
+        },
+        "novelty": true,
+        "retryBounded": true,
+        "costTicks": 60,
+        "costEntities": 1,
+        "scriptedFraction": 1
+      },
+      "error": null
+    },
+    {
+      "id": "gen.coast.s4",
+      "accepted": false,
+      "reasons": [
+        "single-mechanic",
+        "zero-force:ship.coast",
+        "no-physical-consequence"
+      ],
+      "signature": "|nobody",
+      "family": "gen-coast-only",
+      "traceHash": "0bafe41f7d61657c900b122300e8ba85a590815bf010724919a01daf6a91e0b3",
+      "auditOrder": 107,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 1,
+        "firedObservables": [],
+        "physicalCauseFraction": 0,
+        "interventionAffordances": 1,
+        "claritySeparationWu": null,
+        "consequence": {
+          "playerDisp": 41.272,
+          "restDelta": 0,
+          "maxTension": 0
+        },
+        "novelty": true,
+        "retryBounded": true,
+        "costTicks": 60,
+        "costEntities": 1,
+        "scriptedFraction": 1
+      },
+      "error": null
+    },
+    {
+      "id": "gen.coast.s5",
+      "accepted": false,
+      "reasons": [
+        "single-mechanic",
+        "zero-force:ship.coast",
+        "no-physical-consequence"
+      ],
+      "signature": "|nobody",
+      "family": "gen-coast-only",
+      "traceHash": "c7dc352bc97597b9274136f924a436179c5b61632c0874f441c81ed658c69a49",
+      "auditOrder": 108,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 1,
+        "firedObservables": [],
+        "physicalCauseFraction": 0,
+        "interventionAffordances": 1,
+        "claritySeparationWu": null,
+        "consequence": {
+          "playerDisp": 42.21,
+          "restDelta": 0,
+          "maxTension": 0
+        },
+        "novelty": true,
+        "retryBounded": true,
+        "costTicks": 60,
+        "costEntities": 1,
+        "scriptedFraction": 1
+      },
+      "error": null
+    },
+    {
+      "id": "gen.coast.s6",
+      "accepted": false,
+      "reasons": [
+        "single-mechanic",
+        "zero-force:ship.coast",
+        "no-physical-consequence"
+      ],
+      "signature": "|nobody",
+      "family": "gen-coast-only",
+      "traceHash": "d97af495290fe8d58ad8547840d8c87c1ca79400ea0aabd355fd5a5c118ae2dd",
+      "auditOrder": 109,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 1,
+        "firedObservables": [],
+        "physicalCauseFraction": 0,
+        "interventionAffordances": 1,
+        "claritySeparationWu": null,
+        "consequence": {
+          "playerDisp": 43.148,
+          "restDelta": 0,
+          "maxTension": 0
+        },
+        "novelty": true,
+        "retryBounded": true,
+        "costTicks": 60,
+        "costEntities": 1,
+        "scriptedFraction": 1
+      },
+      "error": null
+    },
+    {
+      "id": "gen.zeroreel.s1",
+      "accepted": false,
+      "reasons": [
+        "single-mechanic",
+        "zero-force:massline.reel",
+        "zero-force:massline.tension",
+        "no-physical-consequence"
+      ],
+      "signature": "|heavy",
+      "family": "gen-zero-reel",
+      "traceHash": "58879f39bdbb58b89ada3a96ab5de2662bca9071e8e24f41b773a23808c2de3b",
+      "auditOrder": 110,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 2,
+        "firedObservables": [],
+        "physicalCauseFraction": 0,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 80,
+        "consequence": {
+          "playerDisp": 0,
+          "restDelta": 0,
+          "maxTension": 0
+        },
+        "novelty": true,
+        "retryBounded": true,
+        "costTicks": 80,
+        "costEntities": 2,
+        "scriptedFraction": 1
+      },
+      "error": null
+    },
+    {
+      "id": "gen.zeroreel.s2",
+      "accepted": false,
+      "reasons": [
+        "single-mechanic",
+        "zero-force:massline.reel",
+        "zero-force:massline.tension",
+        "no-physical-consequence"
+      ],
+      "signature": "|heavy",
+      "family": "gen-zero-reel",
+      "traceHash": "58879f39bdbb58b89ada3a96ab5de2662bca9071e8e24f41b773a23808c2de3b",
+      "auditOrder": 111,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 2,
+        "firedObservables": [],
+        "physicalCauseFraction": 0,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 80,
+        "consequence": {
+          "playerDisp": 0,
+          "restDelta": 0,
+          "maxTension": 0
+        },
+        "novelty": true,
+        "retryBounded": true,
+        "costTicks": 80,
+        "costEntities": 2,
+        "scriptedFraction": 1
+      },
+      "error": null
+    },
+    {
+      "id": "gen.zeroreel.s3",
+      "accepted": false,
+      "reasons": [
+        "single-mechanic",
+        "zero-force:massline.reel",
+        "zero-force:massline.tension",
+        "no-physical-consequence"
+      ],
+      "signature": "|heavy",
+      "family": "gen-zero-reel",
+      "traceHash": "58879f39bdbb58b89ada3a96ab5de2662bca9071e8e24f41b773a23808c2de3b",
+      "auditOrder": 112,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 2,
+        "firedObservables": [],
+        "physicalCauseFraction": 0,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 80,
+        "consequence": {
+          "playerDisp": 0,
+          "restDelta": 0,
+          "maxTension": 0
+        },
+        "novelty": true,
+        "retryBounded": true,
+        "costTicks": 80,
+        "costEntities": 2,
+        "scriptedFraction": 1
+      },
+      "error": null
+    },
+    {
+      "id": "gen.zeroreel.s4",
+      "accepted": false,
+      "reasons": [
+        "single-mechanic",
+        "zero-force:massline.reel",
+        "zero-force:massline.tension",
+        "no-physical-consequence"
+      ],
+      "signature": "|heavy",
+      "family": "gen-zero-reel",
+      "traceHash": "58879f39bdbb58b89ada3a96ab5de2662bca9071e8e24f41b773a23808c2de3b",
+      "auditOrder": 113,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 2,
+        "firedObservables": [],
+        "physicalCauseFraction": 0,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 80,
+        "consequence": {
+          "playerDisp": 0,
+          "restDelta": 0,
+          "maxTension": 0
+        },
+        "novelty": true,
+        "retryBounded": true,
+        "costTicks": 80,
+        "costEntities": 2,
+        "scriptedFraction": 1
+      },
+      "error": null
+    },
+    {
+      "id": "gen.zeroreel.s5",
+      "accepted": false,
+      "reasons": [
+        "single-mechanic",
+        "zero-force:massline.reel",
+        "zero-force:massline.tension",
+        "no-physical-consequence"
+      ],
+      "signature": "|heavy",
+      "family": "gen-zero-reel",
+      "traceHash": "58879f39bdbb58b89ada3a96ab5de2662bca9071e8e24f41b773a23808c2de3b",
+      "auditOrder": 114,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 2,
+        "firedObservables": [],
+        "physicalCauseFraction": 0,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 80,
+        "consequence": {
+          "playerDisp": 0,
+          "restDelta": 0,
+          "maxTension": 0
+        },
+        "novelty": true,
+        "retryBounded": true,
+        "costTicks": 80,
+        "costEntities": 2,
+        "scriptedFraction": 1
+      },
+      "error": null
+    },
+    {
+      "id": "gen.zeroreel.s6",
+      "accepted": false,
+      "reasons": [
+        "single-mechanic",
+        "zero-force:massline.reel",
+        "zero-force:massline.tension",
+        "no-physical-consequence"
+      ],
+      "signature": "|heavy",
+      "family": "gen-zero-reel",
+      "traceHash": "58879f39bdbb58b89ada3a96ab5de2662bca9071e8e24f41b773a23808c2de3b",
+      "auditOrder": 115,
+      "simulated": true,
+      "metrics": {
+        "mechanicCount": 2,
+        "firedObservables": [],
+        "physicalCauseFraction": 0,
+        "interventionAffordances": 1,
+        "claritySeparationWu": 80,
+        "consequence": {
+          "playerDisp": 0,
+          "restDelta": 0,
+          "maxTension": 0
+        },
+        "novelty": true,
+        "retryBounded": true,
+        "costTicks": 80,
+        "costEntities": 2,
+        "scriptedFraction": 1
+      },
+      "error": null
     }
   ],
   "critic": {
-    "note": "Ten accepted and ten rejected, with rejection reasons spread across gates. Entity count and intervention count are reported and are not gates.",
+    "ok": true,
+    "problems": [],
     "acceptedIds": [
-      "gen.payout.s1",
-      "gen.cut.s1",
-      "gen.boost.s1",
-      "gen.orbit.v70.s1",
-      "gen.glance.s1",
-      "gen.turn.t1.s1",
-      "gen.ram.x48.s1",
-      "gen.settle.s1",
-      "gen.shove.v90.z0",
-      "gen.fire.x70.s1"
+      "cf.reel-berth",
+      "cf.tow-light",
+      "cf.swing-cut",
+      "cf.payout-strand",
+      "cf.cut-into-pod",
+      "cf.boost-arrest",
+      "cf.taut-catch",
+      "cf.orbit-hold",
+      "cf.moving-fire",
+      "cf.boost-cut"
     ],
     "rejectedIds": [
       "gen.payout.s2",
       "gen.overlap.s1",
-      "gen.coast.s1",
-      "gen.zeroreel.s1",
-      "gen.impossible-profile",
+      "gen.fire.x300.s1",
+      "gen.static.s1",
       "gen.inert.s1",
-      "gen.payout.s3",
       "gen.overlap.s2",
-      "gen.coast.s2",
-      "gen.coast.s3"
+      "gen.fire.x300.s2",
+      "gen.fire.x300.s3",
+      "gen.fire.x320.s1",
+      "gen.fire.x320.s2"
     ],
-    "catalogIds": [
+    "presentationIds": [
       "cf.reel-berth",
+      "cf.tow-light",
       "cf.swing-cut",
       "cf.payout-strand",
-      "cf.glancing-pod",
-      "cf.heavy-shove",
-      "cf.orbit-hold",
+      "cf.cut-into-pod",
       "cf.boost-arrest",
-      "cf.wasp-wound",
-      "cf.tow-light",
-      "cf.cut-into-pod"
-    ],
-    "rejected": [
-      {
-        "id": "gen.payout.s2",
-        "accepted": false,
-        "reasons": [
-          "trivial-variant"
-        ],
-        "signature": "gen-payout|massline.latch+massline.payout+ship.thrust",
-        "family": "gen-payout",
-        "traceHash": "2fa79fcdb7f12795d035bd22e944a400b664a7b5a2cea9499e182fd39c351bf7",
-        "auditOrder": 14,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 3,
-          "firedObservables": [
-            "ship.thrust",
-            "massline.latch",
-            "massline.payout"
-          ],
-          "physicalCauseFraction": 1,
-          "interventionAffordances": 1,
-          "claritySeparationWu": 80,
-          "consequence": {
-            "playerDisp": 102.635,
-            "restDelta": 97.622,
-            "maxTension": 698.936
-          },
-          "novelty": false,
-          "retryBounded": true,
-          "costTicks": 100,
-          "costEntities": 2,
-          "scriptedFraction": 0
-        },
-        "error": null
-      },
-      {
-        "id": "gen.overlap.s1",
-        "accepted": false,
-        "reasons": [
-          "spawn-overlap"
-        ],
-        "signature": "gen-overlap|physics.collision+ship.thrust",
-        "family": "gen-overlap",
-        "traceHash": "bf0b9f238b8ec7647ea4b7ec09138ae88f117b99b4b3e6ad5a7f181a9e693c84",
-        "auditOrder": 39,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 2,
-          "firedObservables": [
-            "ship.thrust",
-            "physics.collision"
-          ],
-          "physicalCauseFraction": 1,
-          "interventionAffordances": 1,
-          "claritySeparationWu": 8,
-          "consequence": {
-            "playerDisp": 20.022,
-            "restDelta": 0,
-            "maxTension": 0
-          },
-          "novelty": true,
-          "retryBounded": true,
-          "costTicks": 40,
-          "costEntities": 2,
-          "scriptedFraction": 0
-        },
-        "error": null
-      },
-      {
-        "id": "gen.coast.s1",
-        "accepted": false,
-        "reasons": [
-          "single-mechanic",
-          "no-physical-consequence"
-        ],
-        "signature": "gen-coast-only|ship.coast",
-        "family": "gen-coast-only",
-        "traceHash": "4d34e14eeef9a7c58c90275a8ef9e012a5e96928f72c3a21ba28b4f201c0a205",
-        "auditOrder": 99,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 1,
-          "firedObservables": [
-            "ship.coast"
-          ],
-          "physicalCauseFraction": 1,
-          "interventionAffordances": 1,
-          "claritySeparationWu": null,
-          "consequence": {
-            "playerDisp": 38.458,
-            "restDelta": 0,
-            "maxTension": 0
-          },
-          "novelty": true,
-          "retryBounded": true,
-          "costTicks": 60,
-          "costEntities": 1,
-          "scriptedFraction": 0
-        },
-        "error": null
-      },
-      {
-        "id": "gen.zeroreel.s1",
-        "accepted": false,
-        "reasons": [
-          "zero-force:massline.reel",
-          "no-physical-consequence"
-        ],
-        "signature": "gen-zero-reel|massline.latch",
-        "family": "gen-zero-reel",
-        "traceHash": "58879f39bdbb58b89ada3a96ab5de2662bca9071e8e24f41b773a23808c2de3b",
-        "auditOrder": 105,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 2,
-          "firedObservables": [
-            "massline.latch"
-          ],
-          "physicalCauseFraction": 0.5,
-          "interventionAffordances": 1,
-          "claritySeparationWu": 80,
-          "consequence": {
-            "playerDisp": 0,
-            "restDelta": 0,
-            "maxTension": 0
-          },
-          "novelty": true,
-          "retryBounded": true,
-          "costTicks": 80,
-          "costEntities": 2,
-          "scriptedFraction": 0.5
-        },
-        "error": null
-      },
-      {
-        "id": "gen.impossible-profile",
-        "accepted": false,
-        "reasons": [
-          "impossible-profile:asteroid.nope",
-          "lab-failed",
-          "not-finite",
-          "player-dead",
-          "zero-force:ship.thrust",
-          "zero-force:physics.collision",
-          "no-physical-consequence"
-        ],
-        "signature": "impossible|",
-        "family": "impossible",
-        "traceHash": null,
-        "auditOrder": 111,
-        "simulated": false,
-        "metrics": {
-          "mechanicCount": 2,
-          "firedObservables": [],
-          "physicalCauseFraction": 0,
-          "interventionAffordances": 0,
-          "claritySeparationWu": 40,
-          "consequence": {
-            "playerDisp": null,
-            "restDelta": null,
-            "maxTension": null
-          },
-          "novelty": true,
-          "retryBounded": false,
-          "costTicks": 30,
-          "costEntities": 2,
-          "scriptedFraction": 1
-        },
-        "error": null
-      },
-      {
-        "id": "gen.inert.s1",
-        "accepted": false,
-        "reasons": [
-          "zero-force:ship.thrust",
-          "zero-force:physics.collision",
-          "no-physical-consequence"
-        ],
-        "signature": "gen-inert|",
-        "family": "gen-inert",
-        "traceHash": "64bcf2356a2247a018a1ce02a9d6425adcd46396ca6f1b329fd3d56965f89aab",
-        "auditOrder": 112,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 2,
-          "firedObservables": [],
-          "physicalCauseFraction": 0,
-          "interventionAffordances": 1,
-          "claritySeparationWu": 40,
-          "consequence": {
-            "playerDisp": 0,
-            "restDelta": 0,
-            "maxTension": 0
-          },
-          "novelty": true,
-          "retryBounded": true,
-          "costTicks": 40,
-          "costEntities": 3,
-          "scriptedFraction": 1
-        },
-        "error": null
-      },
-      {
-        "id": "gen.payout.s3",
-        "accepted": false,
-        "reasons": [
-          "trivial-variant"
-        ],
-        "signature": "gen-payout|massline.latch+massline.payout+ship.thrust",
-        "family": "gen-payout",
-        "traceHash": "2fa79fcdb7f12795d035bd22e944a400b664a7b5a2cea9499e182fd39c351bf7",
-        "auditOrder": 15,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 3,
-          "firedObservables": [
-            "ship.thrust",
-            "massline.latch",
-            "massline.payout"
-          ],
-          "physicalCauseFraction": 1,
-          "interventionAffordances": 1,
-          "claritySeparationWu": 80,
-          "consequence": {
-            "playerDisp": 102.635,
-            "restDelta": 97.622,
-            "maxTension": 698.936
-          },
-          "novelty": false,
-          "retryBounded": true,
-          "costTicks": 100,
-          "costEntities": 2,
-          "scriptedFraction": 0
-        },
-        "error": null
-      },
-      {
-        "id": "gen.overlap.s2",
-        "accepted": false,
-        "reasons": [
-          "spawn-overlap"
-        ],
-        "signature": "gen-overlap|physics.collision+ship.thrust",
-        "family": "gen-overlap",
-        "traceHash": "bf0b9f238b8ec7647ea4b7ec09138ae88f117b99b4b3e6ad5a7f181a9e693c84",
-        "auditOrder": 40,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 2,
-          "firedObservables": [
-            "ship.thrust",
-            "physics.collision"
-          ],
-          "physicalCauseFraction": 1,
-          "interventionAffordances": 1,
-          "claritySeparationWu": 8,
-          "consequence": {
-            "playerDisp": 20.022,
-            "restDelta": 0,
-            "maxTension": 0
-          },
-          "novelty": true,
-          "retryBounded": true,
-          "costTicks": 40,
-          "costEntities": 2,
-          "scriptedFraction": 0
-        },
-        "error": null
-      },
-      {
-        "id": "gen.coast.s2",
-        "accepted": false,
-        "reasons": [
-          "single-mechanic",
-          "no-physical-consequence"
-        ],
-        "signature": "gen-coast-only|ship.coast",
-        "family": "gen-coast-only",
-        "traceHash": "c744fa2bbbf9fbf717ffef8800d365074acafe9dd8bc3e3db54df0e8d470b6e6",
-        "auditOrder": 100,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 1,
-          "firedObservables": [
-            "ship.coast"
-          ],
-          "physicalCauseFraction": 1,
-          "interventionAffordances": 1,
-          "claritySeparationWu": null,
-          "consequence": {
-            "playerDisp": 39.396,
-            "restDelta": 0,
-            "maxTension": 0
-          },
-          "novelty": true,
-          "retryBounded": true,
-          "costTicks": 60,
-          "costEntities": 1,
-          "scriptedFraction": 0
-        },
-        "error": null
-      },
-      {
-        "id": "gen.coast.s3",
-        "accepted": false,
-        "reasons": [
-          "single-mechanic",
-          "no-physical-consequence"
-        ],
-        "signature": "gen-coast-only|ship.coast",
-        "family": "gen-coast-only",
-        "traceHash": "bee55f11f39a1ac0c30558ac67645f80a085ff4bfa74013796f08b14379587cd",
-        "auditOrder": 101,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 1,
-          "firedObservables": [
-            "ship.coast"
-          ],
-          "physicalCauseFraction": 1,
-          "interventionAffordances": 1,
-          "claritySeparationWu": null,
-          "consequence": {
-            "playerDisp": 40.334,
-            "restDelta": 0,
-            "maxTension": 0
-          },
-          "novelty": true,
-          "retryBounded": true,
-          "costTicks": 60,
-          "costEntities": 1,
-          "scriptedFraction": 0
-        },
-        "error": null
-      }
-    ],
-    "accepted": [
-      {
-        "id": "gen.payout.s1",
-        "accepted": true,
-        "reasons": [],
-        "signature": "gen-payout|massline.latch+massline.payout+ship.thrust",
-        "family": "gen-payout",
-        "traceHash": "2fa79fcdb7f12795d035bd22e944a400b664a7b5a2cea9499e182fd39c351bf7",
-        "auditOrder": 0,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 3,
-          "firedObservables": [
-            "ship.thrust",
-            "massline.latch",
-            "massline.payout"
-          ],
-          "physicalCauseFraction": 1,
-          "interventionAffordances": 1,
-          "claritySeparationWu": 80,
-          "consequence": {
-            "playerDisp": 102.635,
-            "restDelta": 97.622,
-            "maxTension": 698.936
-          },
-          "novelty": true,
-          "retryBounded": true,
-          "costTicks": 100,
-          "costEntities": 2,
-          "scriptedFraction": 0
-        },
-        "error": null
-      },
-      {
-        "id": "gen.cut.s1",
-        "accepted": true,
-        "reasons": [],
-        "signature": "gen-cut|massline.cut+massline.latch+massline.orbit",
-        "family": "gen-cut",
-        "traceHash": "552547859e287967be426c1d149305521f961f063a94ef6bad9d02dbf75d5bbf",
-        "auditOrder": 1,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 3,
-          "firedObservables": [
-            "massline.latch",
-            "massline.cut",
-            "massline.orbit"
-          ],
-          "physicalCauseFraction": 1,
-          "interventionAffordances": 1,
-          "claritySeparationWu": 80,
-          "consequence": {
-            "playerDisp": 90.214,
-            "restDelta": 0,
-            "maxTension": 2288.925
-          },
-          "novelty": true,
-          "retryBounded": true,
-          "costTicks": 110,
-          "costEntities": 2,
-          "scriptedFraction": 0
-        },
-        "error": null
-      },
-      {
-        "id": "gen.boost.s1",
-        "accepted": true,
-        "reasons": [],
-        "signature": "gen-boost|massline.latch+massline.tension+ship.boost",
-        "family": "gen-boost",
-        "traceHash": "47635c37248a9d30c5d4fe17d06d73cc62911c482dbd1e6efcbd70c9e710b5e3",
-        "auditOrder": 2,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 3,
-          "firedObservables": [
-            "ship.boost",
-            "massline.latch",
-            "massline.tension"
-          ],
-          "physicalCauseFraction": 1,
-          "interventionAffordances": 1,
-          "claritySeparationWu": 110,
-          "consequence": {
-            "playerDisp": 89.059,
-            "restDelta": 0,
-            "maxTension": 8427.599
-          },
-          "novelty": true,
-          "retryBounded": true,
-          "costTicks": 120,
-          "costEntities": 2,
-          "scriptedFraction": 0
-        },
-        "error": null
-      },
-      {
-        "id": "gen.orbit.v70.s1",
-        "accepted": true,
-        "reasons": [],
-        "signature": "gen-orbit|massline.latch+massline.orbit+massline.tension",
-        "family": "gen-orbit",
-        "traceHash": "70eda58f97035dfd75fb4a4f350e0341dcd069ef9b7b1a6a169193139e813764",
-        "auditOrder": 3,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 3,
-          "firedObservables": [
-            "massline.latch",
-            "massline.tension",
-            "massline.orbit"
-          ],
-          "physicalCauseFraction": 1,
-          "interventionAffordances": 1,
-          "claritySeparationWu": 90,
-          "consequence": {
-            "playerDisp": 148.82,
-            "restDelta": 0,
-            "maxTension": 383.212
-          },
-          "novelty": true,
-          "retryBounded": true,
-          "costTicks": 160,
-          "costEntities": 2,
-          "scriptedFraction": 0
-        },
-        "error": null
-      },
-      {
-        "id": "gen.glance.s1",
-        "accepted": true,
-        "reasons": [],
-        "signature": "gen-glance|physics.collision+ship.coast",
-        "family": "gen-glance",
-        "traceHash": "fb20a362929a31cc56fb276781077ccb4f17af9f1ec0e09216ddd5f9d2b86785",
-        "auditOrder": 4,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 2,
-          "firedObservables": [
-            "ship.coast",
-            "physics.collision"
-          ],
-          "physicalCauseFraction": 1,
-          "interventionAffordances": 1,
-          "claritySeparationWu": 40.2,
-          "consequence": {
-            "playerDisp": 94.153,
-            "restDelta": 0,
-            "maxTension": 0
-          },
-          "novelty": true,
-          "retryBounded": true,
-          "costTicks": 90,
-          "costEntities": 2,
-          "scriptedFraction": 0
-        },
-        "error": null
-      },
-      {
-        "id": "gen.turn.t1.s1",
-        "accepted": true,
-        "reasons": [],
-        "signature": "gen-turn|ship.thrust+ship.turn",
-        "family": "gen-turn",
-        "traceHash": "cd5612a54e309c975af7cf0ada367a19cd180a453577d55a39faf796244ef121",
-        "auditOrder": 5,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 2,
-          "firedObservables": [
-            "ship.thrust",
-            "ship.turn"
-          ],
-          "physicalCauseFraction": 1,
-          "interventionAffordances": 1,
-          "claritySeparationWu": null,
-          "consequence": {
-            "playerDisp": 155.388,
-            "restDelta": 0,
-            "maxTension": 0
-          },
-          "novelty": true,
-          "retryBounded": true,
-          "costTicks": 90,
-          "costEntities": 1,
-          "scriptedFraction": 0
-        },
-        "error": null
-      },
-      {
-        "id": "gen.ram.x48.s1",
-        "accepted": true,
-        "reasons": [],
-        "signature": "gen-ram|physics.collision+ship.thrust",
-        "family": "gen-ram",
-        "traceHash": "f221587f400145531e0a19494c57811e5562331c754e3ea0c4bdaa36af131590",
-        "auditOrder": 6,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 2,
-          "firedObservables": [
-            "ship.thrust",
-            "physics.collision"
-          ],
-          "physicalCauseFraction": 1,
-          "interventionAffordances": 1,
-          "claritySeparationWu": 48,
-          "consequence": {
-            "playerDisp": 178.976,
-            "restDelta": 0,
-            "maxTension": 0
-          },
-          "novelty": true,
-          "retryBounded": true,
-          "costTicks": 100,
-          "costEntities": 2,
-          "scriptedFraction": 0
-        },
-        "error": null
-      },
-      {
-        "id": "gen.settle.s1",
-        "accepted": true,
-        "reasons": [],
-        "signature": "gen-settle|ship.coast+ship.thrust",
-        "family": "gen-settle",
-        "traceHash": "06c34f1458ecd5807209ee1651051e9cca950f81b59b9c2168e448c5bb1e82c1",
-        "auditOrder": 7,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 2,
-          "firedObservables": [
-            "ship.thrust",
-            "ship.coast"
-          ],
-          "physicalCauseFraction": 1,
-          "interventionAffordances": 1,
-          "claritySeparationWu": null,
-          "consequence": {
-            "playerDisp": 120.824,
-            "restDelta": 0,
-            "maxTension": 0
-          },
-          "novelty": true,
-          "retryBounded": true,
-          "costTicks": 100,
-          "costEntities": 1,
-          "scriptedFraction": 0
-        },
-        "error": null
-      },
-      {
-        "id": "gen.shove.v90.z0",
-        "accepted": true,
-        "reasons": [],
-        "signature": "gen-shove|physics.collision+ship.coast",
-        "family": "gen-shove",
-        "traceHash": "3a24c5055691ff7dc3eae14f2e619b8f6673dfaa830a3e577fc4fba7d1cf851e",
-        "auditOrder": 8,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 2,
-          "firedObservables": [
-            "ship.coast",
-            "physics.collision"
-          ],
-          "physicalCauseFraction": 1,
-          "interventionAffordances": 1,
-          "claritySeparationWu": 50,
-          "consequence": {
-            "playerDisp": 141.298,
-            "restDelta": 0,
-            "maxTension": 0
-          },
-          "novelty": true,
-          "retryBounded": true,
-          "costTicks": 120,
-          "costEntities": 2,
-          "scriptedFraction": 0
-        },
-        "error": null
-      },
-      {
-        "id": "gen.fire.x70.s1",
-        "accepted": true,
-        "reasons": [],
-        "signature": "gen-fire|physics.collision+weapons.fire",
-        "family": "gen-fire",
-        "traceHash": "4197fff613d84c6773ac21cb7d9de7173b3527afdb3a8b08a639420ae2df4cb6",
-        "auditOrder": 9,
-        "simulated": true,
-        "metrics": {
-          "mechanicCount": 2,
-          "firedObservables": [
-            "physics.collision",
-            "weapons.fire"
-          ],
-          "physicalCauseFraction": 1,
-          "interventionAffordances": 1,
-          "claritySeparationWu": 70,
-          "consequence": {
-            "playerDisp": 0,
-            "restDelta": 0,
-            "maxTension": 0
-          },
-          "novelty": true,
-          "retryBounded": true,
-          "costTicks": 140,
-          "costEntities": 2,
-          "scriptedFraction": 0
-        },
-        "error": null
-      }
+      "cf.taut-catch",
+      "cf.orbit-hold",
+      "cf.boost-cut",
+      "cf.moving-fire"
     ]
   }
 }

@@ -29,7 +29,6 @@ export function evaluateCandidate(report, options = {}) {
   const ticks = report.ticks | 0;
   const minSeparation = Number.isFinite(report.minSeparation) ? report.minSeparation : Infinity;
   const overlap = report.overlap === true;
-  const physicalCauseFraction = declared.length ? fired.length / declared.length : 0;
 
   if (report.impossibleProfile) reasons.push(`impossible-profile:${report.impossibleProfile}`);
   if (report.labOk === false) reasons.push('lab-failed');
@@ -43,21 +42,26 @@ export function evaluateCandidate(report, options = {}) {
   else if (Number.isFinite(minSeparation) && minSeparation < limits.minSeparationWu && entityCount > 1) {
     reasons.push('unreadable');
   }
-  if (declared.length < 2) reasons.push('single-mechanic');
-  const missing = declared.filter((id) => !fired.includes(id));
+  const happened = Array.isArray(report.happened) ? report.happened : fired;
+  if (declared.length < 2 || happened.length < 2) reasons.push('single-mechanic');
+  const missing = declared.filter((id) => !happened.includes(id));
   for (const id of missing) reasons.push(`zero-force:${id}`);
-  if (fired.length < 2) reasons.push('no-physical-consequence');
+  if (happened.length < 2) reasons.push('no-physical-consequence');
 
-  const signature = report.signature || signatureOf(report.family || report.layout || report.id, fired);
+  const bodyClass = report.bodyClass || 'nobody';
+  const signature = signatureOf(happened, bodyClass);
   let trivial = false;
   if (seen && typeof seen.has === 'function' && seen.has(signature) && reasons.length === 0) {
     reasons.push('trivial-variant');
     trivial = true;
   }
 
+  const physicalCauseFraction = declared.length
+    ? declared.filter((id) => happened.includes(id)).length / declared.length
+    : 0;
   const metrics = {
     mechanicCount: declared.length,
-    firedObservables: fired,
+    firedObservables: happened,
     physicalCauseFraction: round3(physicalCauseFraction),
     interventionAffordances: report.interventionAffordances | 0,
     claritySeparationWu: Number.isFinite(minSeparation) ? round3(minSeparation) : null,
@@ -84,9 +88,28 @@ export function evaluateCandidate(report, options = {}) {
   };
 }
 
-export function signatureOf(family, fired) {
+export function bodyClassOf(bodies, summary, attachment) {
+  const live = summary && Array.isArray(summary.others) ? summary.others : null;
+  const target = attachment && attachment.target;
+  const kinds = new Set();
+  for (const body of bodies || []) {
+    if (!body) continue;
+    if (live && body.alias !== target) {
+      const row = live.find((item) => item.alias === body.alias);
+      if (!row) continue;
+      const moved = row.disp > 1 || Math.abs((row.speed || 0) - (row.launchSpeed || 0)) > 1 || row.hullDrop > 1;
+      if (!moved) continue;
+    }
+    if (body.role === 'hostile' || body.team === 1 || body.profile === 'wasp_swarmer') kinds.add('hostile');
+    else if (body.profile === 'asteroid.light' || (Number.isFinite(body.mass) && body.mass <= 80)) kinds.add('light');
+    else kinds.add('heavy');
+  }
+  return kinds.size ? [...kinds].sort().join('+') : 'nobody';
+}
+
+export function signatureOf(fired, bodyClass) {
   const observables = Array.isArray(fired) ? fired.slice().sort() : [];
-  return `${family}|${observables.join('+')}`;
+  return `${observables.join('+')}|${bodyClass || 'nobody'}`;
 }
 
 export function rankCandidates(verdicts) {

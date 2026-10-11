@@ -3,8 +3,8 @@
 import { compileScene, geometryOf } from './compileScene.js';
 import { executeScenario } from './execute.js';
 import { hostileCount } from './factoryBridge.js';
-import { evaluateCandidate, signatureOf } from './evaluate.js';
-import { checkExpect, contrastFails, deriveFired, readPath } from './observe.js';
+import { bodyClassOf, evaluateCandidate } from './evaluate.js';
+import { checkExpect, contrastFails, deriveFired, deriveHappened, failureGap, readPath } from './observe.js';
 
 export async function proveScene(scene) {
   const primaryDoc = compileScene(scene);
@@ -35,6 +35,7 @@ export async function proveScene(scene) {
     expectFailures: checkExpect(primary.summary, scene.expect),
     contrastFailures: ablate ? contrastFails(primary.summary, ablate.summary, scene.contrast) : [],
     varietyFailures: scene.variety ? varietyFails(primary, alt, scene.varietyOn) : [],
+    failureGaps: failureGap(primary.summary, alt && alt.summary, scene.failure),
     repeatOk: primary.traceHash != null && primary.traceHash === repeat.traceHash,
   };
 }
@@ -42,13 +43,17 @@ export async function proveScene(scene) {
 export function reportFrom(scene, run, tape) {
   const geo = geometryOf(scene);
   const summary = run.summary || {};
-  const fired = deriveFired(summary, tape || scene.primary || {}, scene.mechanics);
+  const tapeUsed = tape || scene.primary || {};
+  const happened = deriveHappened(summary, tapeUsed);
+  const fired = deriveFired(summary, tapeUsed, scene.mechanics);
   return {
     id: scene.id,
     family: scene.layout,
     layout: scene.layout,
     mechanics: scene.mechanics,
+    happened,
     fired,
+    bodyClass: bodyClassOf(scene.bodies, summary, scene.attachment),
     ticks: scene.ticks,
     entityCount: geo.entityCount,
     hostileCount: hostileCount(scene),
@@ -61,7 +66,6 @@ export function reportFrom(scene, run, tape) {
     restDelta: summary.restDelta,
     maxTension: summary.maxTension,
     interventionAffordances: scene.alt ? 2 : 1,
-    signature: signatureOf(scene.layout, fired),
   };
 }
 
