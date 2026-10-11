@@ -27,7 +27,7 @@ export function crucibleFittingDescription(defId, state) {
   const mod = modules.get(defId);
   const mods = mod?.mods || {};
   if (mod?.slotType === 'mining') return `Mining beam — hold ${binding(state, 'mine')} on a resource body`;
-  if (mods.repulsionTrap) return `Trap — ${binding(state, 'chargeThrow')} drop behind you`;
+  if (mods.repulsionTrap) return `Plate — ${binding(state, 'chargeThrow')} · Trap — ${binding(state, 'brake')}+${binding(state, 'chargeThrow')}`;
   if (mods.impulseChargeCapacity) {
     return `Charges — ${binding(state, 'chargeThrow')} throw · ${binding(state, 'chargeDetonate')} detonate`;
   }
@@ -109,7 +109,7 @@ export function crucibleCombatLines(state) {
   if (fittings.some(id => modules.get(id)?.mods?.repulsionTrap)) {
     const readiness = trapReadiness(state, ship);
     rows.push({ id: 'trap', status: readiness.status,
-      text: `Trap — ${binding(state, 'chargeThrow')} · ${readiness.text}` });
+      text: `Plate — ${binding(state, 'chargeThrow')} · Trap — ${binding(state, 'brake')}+${binding(state, 'chargeThrow')} · ${readiness.text}` });
   }
   return rows;
 }

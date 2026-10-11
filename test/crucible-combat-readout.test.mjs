@@ -27,13 +27,14 @@ test('Pilot, Classic and Helm use the live charge action, including remaps and u
   for (const [scheme, expected] of [['pilot', 'Y/1'], ['classic', 'Y/1'], ['helm-assist', 'Q/1']]) {
     state.settings.gameplay.controlScheme = scheme;
     assert.equal(resolveActionLabel(state, 'chargeThrow'), expected);
-    assert.equal(line(state, 'trap').text, `Trap — ${expected} · 3 remaining · armed`);
-    assert.equal(crucibleFittingDescription('mod_repulsion_trap_s', state), `Trap — ${expected} drop behind you`);
+    const brake = resolveActionLabel(state, 'brake');
+    assert.equal(line(state, 'trap').text, `Plate — ${expected} · Trap — ${brake}+${expected} · 3 remaining · armed`);
+    assert.equal(crucibleFittingDescription('mod_repulsion_trap_s', state), `Plate — ${expected} · Trap — ${brake}+${expected}`);
   }
   state.settings.controls.bindings.chargeThrow = ['KeyK', 'ArrowUp'];
-  assert.match(line(state, 'trap').text, /^Trap — K\/Up ·/);
+  assert.match(line(state, 'trap').text, /^Plate — K\/Up · Trap — \S+\+K\/Up ·/);
   state.settings.controls.bindings.chargeThrow = [];
-  assert.match(line(state, 'trap').text, /^Trap — unbound ·/);
+  assert.match(line(state, 'trap').text, /^Plate — unbound · Trap — \S+\+unbound ·/);
 });
 
 test('fitting guidance explains primary fire and never invents a separate web key', () => {
@@ -99,14 +100,15 @@ test('Trap keeps empty/cooldown and deployed/arming facts distinct, ignoring for
     { ...trap, data: { ...trap.data, chargeId: 'charge_standard' } });
   state.player.cargo.items.cmdty_impulse_charge = 2;
   ship.data.impulseCharges.throwCdT = 0.5;
-  assert.equal(line(state, 'trap').text, 'Trap — Y/1 · 2 remaining · cooldown · 1 arming');
+  const head = `Plate — Y/1 · Trap — ${resolveActionLabel(state, 'brake')}+Y/1`;
+  assert.equal(line(state, 'trap').text, `${head} · 2 remaining · cooldown · 1 arming`);
   trap.data.armed = true;
   ship.data.impulseCharges.throwCdT = 0;
-  assert.equal(line(state, 'trap').text, 'Trap — Y/1 · 2 remaining · armed · 1 deployed');
+  assert.equal(line(state, 'trap').text, `${head} · 2 remaining · armed · 1 deployed`);
   state.player.cargo.items.cmdty_impulse_charge = 0;
-  assert.equal(line(state, 'trap').text, 'Trap — Y/1 · 0 remaining · empty · 1 deployed');
+  assert.equal(line(state, 'trap').text, `${head} · 0 remaining · empty · 1 deployed`);
   trap.alive = false;
-  assert.equal(line(state, 'trap').text, 'Trap — Y/1 · 0 remaining · empty');
+  assert.equal(line(state, 'trap').text, `${head} · 0 remaining · empty`);
 });
 
 // Minimal DOM with mutation accounting: these tests prove lifecycle and writes, not browser layout.
@@ -226,8 +228,8 @@ test('armory guidance is visible and in the accessible name without adding contr
     verb: 'Trap', blurb: 'Drop behind you.', price: 28, available: true, slotIndex: 3 };
   const card = screen._buildCard(ctx, offer, 1);
   assert.equal(card.tagName, 'BUTTON'); assert.equal(card.type, 'button');
-  assert.match(card.textContent, /Trap — K drop behind you/);
-  assert.match(card.getAttribute('aria-label'), /Trap — K drop behind you/);
+  assert.match(card.textContent, /Plate — K · Trap — \S+\+K/);
+  assert.match(card.getAttribute('aria-label'), /Plate — K · Trap — \S+\+K/);
   assert.equal(card.children.some(child => child.tagName === 'BUTTON'), false);
   card.focus(); assert.equal(doc.activeElement, card);
   card.click();

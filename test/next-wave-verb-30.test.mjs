@@ -60,7 +60,7 @@ test('the shelf count stays the hold, and a trap does not change the ceiling', (
   state.player.ownedShips[0].fittings = [VECTOR_RACK, TRAP];
   const trapped = resolveImpulseChargeCapacity(state);
   model = readRailModel(state, state.simTime);
-  assert.equal(model[1].name, 'Trap ×3');
+  assert.equal(model[1].name, 'Charge ×3 · +Trap');
   assert.equal(trapped, ceiling);
   assert.equal(model[1].capacity, trapped);
 
@@ -74,5 +74,5 @@ test('the shelf count stays the hold, and a trap does not change the ceiling', (
   assert.match(model[1].why, /^Arming — /);
   assert.equal(model[1].why.endsWith(` · up to ${coolingCeiling}`), true);
   assert.equal(model[1].capacity, coolingCeiling);
-  assert.equal(model[1].name, 'Trap ×3');
+  assert.equal(model[1].name, 'Charge ×3 · +Trap');
 });

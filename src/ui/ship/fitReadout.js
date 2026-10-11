@@ -197,7 +197,7 @@ function composeModuleLine(def) {
   if (mods.countermeasure && mods.countermeasure.kind === 'chaff') return 'Breaks a missile lock and pulls the shot off you.';
   if (mods.countermeasure && mods.countermeasure.kind === 'ecm') return 'Jams a missile so it stops turning toward you.';
   if (mods.countermeasure && mods.countermeasure.kind === 'decoy') return 'Puts a false contact in the water and missiles go for it.';
-  if (mods.repulsionTrap) return 'Drops a charge behind you that shoves whoever flies into it.';
+  if (mods.repulsionTrap) return 'Brake and throw to drop a charge behind you that shoves whoever flies into it.';
   if (def.slotType === 'mining') return 'Cuts ore while you hold it on the rock.';
   if (def.slotType === 'engine') return 'Changes how hard you push and how fast you can run.';
   if (def.slotType === 'thruster') return 'Changes how the hull turns, slides and stops.';

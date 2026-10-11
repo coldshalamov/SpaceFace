@@ -143,7 +143,7 @@ const SHIPPED_MODULES = [
     id: 'mod_repulsion_trap_s', name: 'Repulsion Trap', slotType: 'utility', size: 'S', tier: 2,
     mass: 3, price: 18000, requiresTech: 'tech_ricochet_ballistics', energyDraw: 2,
     mods: { repulsionTrap: true },
-    description: 'Drop a proximity charge behind your flight path. Pursuers trigger a radial shove; remote detonation still works.',
+    description: 'Brake and throw to drop a proximity charge behind your flight path; a plain throw still sticks a plate. Pursuers trigger a radial shove; remote detonation still works.',
   },
   {
     id: 'mod_cargo_scanner_s', name: 'Cargo Scanner S', slotType: 'utility', size: 'S', tier: 1, mass: 1, price: 4000,
@@ -881,7 +881,7 @@ const MODULE_AIR_SENTENCE = Object.freeze({
   mod_mining_beam_m: 'Cuts ore faster and farther than the starter laser.',
   mod_mining_pulverizer_l: 'A heavy cut, and sometimes it cracks a rare seam.',
   mod_mining_industrial_l: 'The deepest cut. Ore goes straight into the hold.',
-  mod_repulsion_trap_s: 'Drop a charge behind you that shoves whoever flies into it.',
+  mod_repulsion_trap_s: 'Brake and throw to drop a charge behind you that shoves whoever flies into it.',
   mod_cargo_scanner_s: 'Reads what another hull is carrying.',
   unique_truesight_scanner: 'Reads a hold, and from farther out than a stock scanner.',
   mod_market_data_s: 'Streams live exchange quotes from every station in this sector while you fly it.',

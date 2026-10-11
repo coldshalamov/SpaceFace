@@ -132,6 +132,14 @@ test('capacity and arming gap apply identically to both verbs', () => {
   assert.deepEqual(blocked, ['toast'], 'the arming toast speaks instead of throwing');
 });
 
+test('the arming gap applied is the one of the charge actually thrown, never the other verb\'s', () => {
+  const plate = throwWith({ fittings: [TRAP] });
+  const trap = throwWith({ fittings: [TRAP], brake: true });
+  assert.equal(plate.rt.throwCdT, IMPULSE_CHARGES.charge_standard.armTimeS, 'a plate arms for its own 6 s');
+  assert.equal(trap.rt.throwCdT, IMPULSE_CHARGES.charge_repulsion_trap.armTimeS, 'a trap arms for its own 1.1 s');
+  assert.ok(plate.rt.throwCdT > trap.rt.throwCdT);
+});
+
 // ── onboarding hint ──────────────────────────────────────────────────────────
 
 class FakeClassList {
