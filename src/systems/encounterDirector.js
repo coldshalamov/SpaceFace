@@ -126,6 +126,12 @@ import { spawnJettisonedCargoPod } from './lootShards.js';
 import { sectorScarcityTerm } from './fieldDepletion.js';
 import { deniableAmbushChance, DENIABLE_CAUSE_TAG } from '../data/economyContractTemplates.js';
 import { heatLevelFor } from './heat.js'; // READ-ONLY (C11 clause tier)
+import {
+  DENIABLE_BURN_EPOCHS, DENIABLE_EMBOLDEN_EPOCHS, DENIABLE_EMBOLDEN_BONUS, DENIABLE_CLEAN_REP,
+  DENIABLE_CLEAN_BARK, deniableBurnedRumor, deniableEmboldenedRumor,
+  deniableBoardEpoch, emboldenedBonus, boldAmbushChance,
+  plantDeniableSeed, pruneDeniableSeeds, sanitizeDeniableSeed,
+} from '../data/deniableAftermath.js'; // C11 follow-ups: burned / emboldened fences, quiet thanks
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
 const SELF_REGISTERED_RUNTIME_BY_ID = new Map(
@@ -333,6 +339,13 @@ export const encounterDirector = {
       this.bus.on('mining:yield', (p) => this._onMiningYield(p));
       // C11: a deniable job's ambush clause is rolled once, here, the moment the job is taken.
       this.bus.on('mission:accepted', (p) => this._onDeniableAccepted(p));
+      // C11 follow-ups: how the drop ended decides the fence's next beat. Outcomes are the
+      // director's own encounter:resolved, the mission settling, and the pilot going down.
+      this.bus.on('encounter:resolved', (p) => this._onDeniableEncounterResolved(p));
+      this.bus.on('mission:completed', (p) => this._onDeniableMissionSettled(p, 'completed'));
+      this.bus.on('mission:failed', (p) => this._onDeniableMissionSettled(p, 'failed'));
+      this.bus.on('player:death', () => this._onDeniablePlayerDown());
+      this.bus.on('dock:docked', (p) => this._onDeniableDock(p));
       this.bus.on('resonance:scanCompleted', (p) => this._onResonanceScan(p));
       this.bus.on('law:witnessChoice', (p) => this._onEscalationToken('witness', p));
       this.bus.on('freight:cargoSpilled', (p) => this._onEscalationToken('spill', p));
@@ -851,7 +864,11 @@ export const encounterDirector = {
     const ledger = dir.stats.deniableClauses;
     if (ledger[missionId]) return ledger[missionId];
     const level = Math.max(1, heatLevelFor(state.player && state.player.heat));
-    const chance = deniableAmbushChance(level);
+    const fenceStationId = mission.stationId
+      || (mission.cause.deniable && mission.cause.deniable.fenceStationId) || null;
+    // An emboldened fence rolls bolder (C11 follow-up); 0 - and no key on the row - otherwise.
+    const bonus = emboldenedBonus(state, fenceStationId, deniableBoardEpoch(state));
+    const chance = boldAmbushChance(deniableAmbushChance(level), bonus);
     const roll = typeof state.rng === 'function'
       ? state.rng()
       : (hash32((state.meta && state.meta.seed) || 0, String(missionId), 'deniable-clause') % 1e6) / 1e6;
@@ -866,6 +883,10 @@ export const encounterDirector = {
       decidedAt: this.now(),
       armedAt: null,
       fired: false,
+      fenceStationId,
+      fenceSectorId: this._sectorIdOfStation(fenceStationId),
+      fenceFactionId: mission.factionId || null,
+      ...(bonus > 0 ? { bonus: Math.round(bonus * 1e4) / 1e4 } : {}),
     };
     ledger[missionId] = row;
     const ids = Object.keys(ledger);
@@ -890,6 +911,133 @@ export const encounterDirector = {
       x: base.x + Math.cos(angle) * DENIABLE_DROP_OFFSET_WU,
       z: base.z + Math.sin(angle) * DENIABLE_DROP_OFFSET_WU,
     };
+  },
+
+  // ── C11 follow-ups: the fence's next beat ─────────────────────────────────────────────────────
+  _sectorIdOfStation(stationId) {
+    if (!stationId) return null;
+    const sector = SECTORS.find((s) => (s.stations || []).some((st) => st.id === stationId));
+    return sector ? sector.id : null;
+  },
+
+  _stationNameOf(stationId) {
+    for (const sector of SECTORS) {
+      const st = (sector.stations || []).find((entry) => entry.id === stationId);
+      if (st) return st.name || stationId;
+    }
+    return stationId || 'the dock';
+  },
+
+  /** The live clause row for a mission that still owes an outcome (null once settled). */
+  _openDeniableRow(missionId) {
+    if (this._saveRestoring || !missionId) return null;
+    const ledger = this.state.encounterDirector && this.state.encounterDirector.stats
+      && this.state.encounterDirector.stats.deniableClauses;
+    const row = ledger && typeof ledger === 'object' ? ledger[missionId] : null;
+    return row && !row.outcome ? row : null;
+  },
+
+  /** The drop's ambush_snare ended with the pilot still flying: they beat the trap. */
+  _onDeniableEncounterResolved(p) {
+    const id = p && typeof p.encounterId === 'string' ? p.encounterId : '';
+    if (!id.startsWith('deniable:')) return;
+    if (p.outcome !== 'cleared' && p.outcome !== 'escaped') return;
+    const row = this._openDeniableRow(id.slice('deniable:'.length));
+    if (row && row.hit && row.fired) this._settleDeniable(row, 'survived');
+  },
+
+  /** The job settled. Delivered through a fired snare = survived; delivered with no clause at all
+   * = the quiet-thanks carrot; failed (not abandoned) after the snare fired = it landed. */
+  _onDeniableMissionSettled(p, kind) {
+    const row = this._openDeniableRow(p && p.missionId);
+    if (!row) return;
+    if (kind === 'completed') {
+      if (row.hit && row.fired) this._settleDeniable(row, 'survived');
+      else if (!row.hit) this._settleDeniable(row, 'clean');
+      return;
+    }
+    if (row.hit && row.fired && !/abandon/i.test(String((p && p.reason) || ''))) {
+      this._settleDeniable(row, 'succeeded');
+    }
+  },
+
+  /** Going down with a fired snare still open is the ambush succeeding. */
+  _onDeniablePlayerDown() {
+    const ledger = this.state.encounterDirector && this.state.encounterDirector.stats
+      && this.state.encounterDirector.stats.deniableClauses;
+    if (!ledger || typeof ledger !== 'object') return;
+    for (const id of Object.keys(ledger).sort()) {
+      const row = this._openDeniableRow(id);
+      if (row && row.hit && row.fired) this._settleDeniable(row, 'succeeded');
+    }
+  },
+
+  _settleDeniable(row, kind) {
+    row.outcome = kind;
+    const dir = ensureDirectorState(this.state);
+    const now = this.now();
+    const epoch = deniableBoardEpoch(this.state);
+    const stationId = row.fenceStationId || null;
+    const sectorId = row.fenceSectorId || null;
+    if (kind === 'clean') {
+      // The carrot: a quiet word with the fence's faction (factions own the write) and one bark.
+      if (row.fenceFactionId) this.rep(row.fenceFactionId, DENIABLE_CLEAN_REP, 'deniable_delivered');
+      this._fenceSays(DENIABLE_CLEAN_BARK, 'bark');
+      this.emit('deniable:fenceThanked', {
+        schemaVersion: 1, stationId, sectorId, factionId: row.fenceFactionId || null, tick: this.state.tick | 0,
+      });
+      return;
+    }
+    if (!stationId) return; // an old row with no fence: nothing to burn or embolden
+    const burned = kind === 'survived';
+    const planted = plantDeniableSeed(dir, {
+      id: `deniable:${burned ? 'burned' : 'emboldened'}:${row.missionId}`,
+      beat: burned ? 'burned' : 'emboldened',
+      causeId: row.missionId,
+      stationId,
+      sectorId,
+      factionId: row.fenceFactionId || null,
+      seededAt: now,
+      untilEpoch: epoch + (burned ? DENIABLE_BURN_EPOCHS : DENIABLE_EMBOLDEN_EPOCHS),
+      rumorPending: true,
+      ...(burned ? {} : { bonus: DENIABLE_EMBOLDEN_BONUS }),
+    }, epoch);
+    if (!planted) return;
+    this.emit(burned ? 'deniable:fenceBurned' : 'deniable:fenceEmboldened', {
+      schemaVersion: 1, stationId, sectorId, tick: this.state.tick | 0,
+    });
+  },
+
+  /** The next dock at a fence with a pending seed hears the rumor, once. */
+  _onDeniableDock(p) {
+    if (this._saveRestoring) return;
+    const stationId = p && p.stationId;
+    if (!stationId) return;
+    const dir = this.state.encounterDirector;
+    if (!dir || !dir.stats || !dir.stats.deniableAftermath) return; // lazy: nothing planted, nothing to do
+    const ledger = dir.stats.deniableAftermath;
+    const epoch = deniableBoardEpoch(this.state);
+    let spoke = false;
+    for (let i = 0; i < ledger.seeds.length; i++) {
+      const seed = sanitizeDeniableSeed(ledger.seeds[i]);
+      if (!seed || !seed.rumorPending || seed.stationId !== stationId) continue;
+      ledger.seeds[i] = { ...seed, rumorPending: false };
+      const name = this._stationNameOf(stationId);
+      this._fenceSays(seed.beat === 'burned' ? deniableBurnedRumor(name) : deniableEmboldenedRumor(name), 'news');
+      spoke = true;
+    }
+    if (spoke) pruneDeniableSeeds(dir, epoch);
+  },
+
+  _fenceSays(line, channel) {
+    const voice = this.helpers && this.helpers.voice;
+    const said = voice && typeof voice.say === 'function'
+      ? voice.say(channel === 'news'
+        ? { channel: 'news', text: line, kind: 'rumor' }
+        : { channel: 'bark', text: line, kind: 'fence' })
+      : false;
+    if (!said) this.emit('toast', { text: line, kind: 'info', ttl: 4 });
+    return !!said;
   },
 
   _tickDeniableClauses(dir, state, now) {
@@ -4507,6 +4655,18 @@ function ensureDirectorState(state) {
   if (d.stats && d.stats.deniableClauses != null
     && (typeof d.stats.deniableClauses !== 'object' || Array.isArray(d.stats.deniableClauses))) {
     delete d.stats.deniableClauses;
+  }
+  // C11 follow-ups: the fence-aftermath ring is lazy too. A malformed ledger is dropped; a sound
+  // one is re-sanitized (bad rows vanish, an emptied ledger removes its key entirely).
+  if (d.stats && d.stats.deniableAftermath != null) {
+    const am = d.stats.deniableAftermath;
+    if (typeof am !== 'object' || Array.isArray(am) || !Array.isArray(am.seeds)) {
+      delete d.stats.deniableAftermath;
+    } else {
+      const rows = am.seeds.map(sanitizeDeniableSeed).filter(Boolean);
+      if (rows.length) am.seeds = rows;
+      else delete d.stats.deniableAftermath;
+    }
   }
   if (d.stats && d.stats.scarcityRumored != null
     && (typeof d.stats.scarcityRumored !== 'object' || Array.isArray(d.stats.scarcityRumored))) {

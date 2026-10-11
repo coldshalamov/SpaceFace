@@ -44,6 +44,7 @@ import {
   buildFirstTradeOffer,
   starvedOfferProse,
 } from '../data/economyContractTemplates.js';
+import { isFenceBurned, emboldenedBonus, boldAmbushChance } from '../data/deniableAftermath.js'; // READ-ONLY (C11 follow-ups)
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -711,6 +712,9 @@ export const economyContracts = {
   _offerDeniable(info, epoch) {
     const ctx = this._pressureContext(info);
     if (!ctx.wanted || !ctx.outlawFriendly || isOnboardingActive(this.state)) return false;
+    // A fence the pilot survived (encounterDirector's burned seed) posts no deniable job for the
+    // window; returning false lets the ordinary field evaluation post its normal offer instead.
+    if (isFenceBurned(this.state, info.id, epoch)) return false;
     const latchKey = `${info.id}:${epoch}`;
     if (!this._deniableLatch) this._deniableLatch = new Set();
     if (this._deniableLatch.has(latchKey)) return false;
@@ -822,7 +826,12 @@ export const economyContracts = {
           lawfulRewardCr: lawful.rewardCr,
           wantedLevel: pressure.heatLevel,
           wantedTier: pressure.wantedTier,
-          ambushChance: deniableAmbushChance(pressure.heatLevel),
+          // The card stays honest: an emboldened fence's bonus is already in the printed odds.
+          ambushChance: boldAmbushChance(
+            deniableAmbushChance(pressure.heatLevel), emboldenedBonus(state, info.id, epoch),
+          ),
+          fenceStationId: info.id,
+          fenceSectorId: info.sectorId,
         },
       },
       expiresAtEpoch: epoch + 1,
