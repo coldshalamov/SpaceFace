@@ -292,6 +292,9 @@ export function createSourceDetachManifest(url, textures, options = {}) {
     // the FIRST tree's texture objects only (the fresh tree's textures stay unmarked either
     // way — their eager detach is the partsLibrary sweep's business). Honor detachOnMark
     // against the manifest's own entries so the flag means the same thing on both paths.
+    // R7 pin (W142): detachOnMark detaches eagerly with NO textureGpuResident proof —
+    // the flag is dormant today; if a caller ever marks an un-uploaded tree, add the
+    // same residency gate the partsLibrary sweep uses before enabling it there.
     if (options.detachOnMark === true) {
       for (const entry of existing.entries) detachPackageTexture(entry.texture);
     }

@@ -14364,6 +14364,10 @@ function createRenderPackageShipNodeFactory({
 
 function canPoolRenderPackageShipMesh(source, tags = {}) {
   if (!isRigidOpaqueBatchableSurface(source, tags, { requiresPerShipMesh })) return false;
+  // R8 pin (W142): an armed source (armGeometryGpuResidentLedger set a custom onAfterRender)
+  // is rejected here — correct: instanced pools never fire per-object hooks, so an armed
+  // source would silently lose its ledger stamp. Unreachable today (preview/subject
+  // instances are clones; Object3D.copy doesn't carry hooks) — keep the guard.
   if (source.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender
     || source.onAfterRender !== THREE.Object3D.prototype.onAfterRender) return false;
   return true;
