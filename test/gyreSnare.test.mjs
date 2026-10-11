@@ -4407,6 +4407,41 @@ test('a displaced primary joins balls[] under a fresh core — and never double-
   t.cleanup();
 });
 
+test('bowling removes held orbit drift but preserves the carrier lateral momentum', async (ctx) => {
+  const { queueProjectileContinuation } = await import('../src/core/physicsAuthority.js');
+  for (const carrierVz of [0, 90]) {
+    await ctx.test(`carrier lateral speed ${carrierVz} WU/s`, async () => {
+      const t = await bootPhysics(18122);
+      try {
+        const core = rock(t.sim, T.mawDist, 0, 8516, 32.4);
+        hold(t);
+        for (let i = 0; i < 30; i++) t.sim.step();
+        assert.equal(t.sys._rt.phase, 'holding');
+        queueProjectileContinuation(core, { velocity: { x: 0, z: -180 }, yaw: 0 });
+        t.sim.step();
+        assert.ok(core.vel.z < -170, 'the held clump enters release with transverse motion');
+        release(t);
+        // Fly the carrier through the coil using the authority port. The hold's
+        // rotating slot leaves the core moving across this flight frame.
+        while (t.sys._rt.launchWindup > 0) {
+          queueProjectileContinuation(t.player, { velocity: { x: 0, z: carrierVz }, yaw: 0 });
+          t.sim.step();
+        }
+        const orbitalDrift = core.vel.z - t.player.vel.z;
+        assert.ok(Math.abs(orbitalDrift) > 10,
+          `fixture reaches the burst with transverse orbit drift (${orbitalDrift})`);
+        for (let i = 0; i < T.launchTicks; i++) t.sim.step();
+        assert.equal(t.sys._rt.phase, 'off');
+        assert.ok(Math.abs(core.vel.z - carrierVz) < 0.05,
+          `throw retains carrier drift only (core=${core.vel.z}, carrier=${carrierVz})`);
+        assert.ok(core.vel.x > 350, `the aimed bowling burst still launches at pace (${core.vel.x})`);
+      } finally {
+        t.cleanup();
+      }
+    });
+  }
+});
+
 test('a forward-moving ship bowls hotter — launchSpeed is a floor, not a cap', async () => {
   const t = await bootPhysics();
   const core = rock(t.sim, T.mawDist, 0, 40, 6);

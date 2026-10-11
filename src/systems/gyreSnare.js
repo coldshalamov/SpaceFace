@@ -2847,6 +2847,7 @@ export const gyreSnare = {
         queuePhysicsImpulse(core, { x: ax * mass * dt, y: 0, z: az * mass * dt }, this._evidence(state.tick));
       } else if (core && core.alive !== false && rt.launchLeft > 0) {
         const mass = entityMass(core);
+        let lateralImpulse = 0;
         if (rt.launchLeft === D.launchTicks) {
           // The coil's residual AFT-velocity is repaid by the burst — the effective
           // launch speed is a FLOOR on launch-direction flight speed: an aft-moving
@@ -2857,13 +2858,21 @@ export const gyreSnare = {
             + finite(core.vel && core.vel.z) * rt.launchDir.z;
           rt.launchCarry = Math.max(0, -fwd);
           rt.launchFwd = fwd;
+          // Strip the hold orbit's sideways motion in the carrier's moving frame.
+          // Do this once at release into flight: later collisions must still deflect
+          // the ball, and deliberate ship strafing must carry into the throw.
+          const relativeVx = finite(player.vel && player.vel.x) - finite(core.vel && core.vel.x);
+          const relativeVz = finite(player.vel && player.vel.z) - finite(core.vel && core.vel.z);
+          lateralImpulse = mass * (-rt.launchDir.z * relativeVx + rt.launchDir.x * relativeVz);
           // launchSpeedEff was frozen in _launch off ballMass — the burst just
           // repays coil carry on top of it.
         }
         // Per-tick impulse = m·(v/launchTicks): launchTicks of these sum to Δv = vEff.
         const j = ((rt.launchSpeedEff + rt.launchCarry) * mass) / D.launchTicks;
         queuePhysicsImpulse(core, {
-          x: rt.launchDir.x * j, y: 0, z: rt.launchDir.z * j,
+          x: rt.launchDir.x * j - rt.launchDir.z * lateralImpulse,
+          y: 0,
+          z: rt.launchDir.z * j + rt.launchDir.x * lateralImpulse,
         }, this._evidence(state.tick));
         rt.launchLeft -= 1;
         if (rt.launchLeft === D.launchTicks - 1) {
