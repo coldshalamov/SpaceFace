@@ -503,9 +503,11 @@ const SHIPPED_MODULES = [
     // first-haul rack sells a module the ship in front of it can never fit. Helios stocks it at
     // the same first-haul terms; elsewhere it sits on the Drive Tuning stop like its sibling.
     id: 'mod_swing_drive_s', name: 'Swing Drive S', slotType: 'utility', size: 'S', tier: 1, mass: 3, price: 14000, requiresTech: 'tech_drive_tuning',
-    // first-haul terms measured against the honest opening: starter stake plus a defended-raid
-    // salvage sweep lands ~7.4k at the Helios counter (seed 4242), so the rack meets it there.
-    shopOffers: { station_helios: { price: 7400 } },
+    // First-haul terms against the derived economy: a complete defended-raid sweep (raider
+    // bounty + loot, the wreck scrap and electronics) is worth a few hundred CR at Helios, never
+    // the ~2.4k the old 7,400 rack assumed. The stake alone cannot buy it; the raider bounty, the
+    // Hitch starter cut or one small Helios sale closes the gap (seed 4242 docks with 5,172).
+    shopOffers: { station_helios: { price: 5100 } },
     energyDraw: 2, mods: { swingDrive: true },
   },
   {
