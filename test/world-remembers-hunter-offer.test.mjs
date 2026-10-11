@@ -156,7 +156,14 @@ for (const seed of SEEDS) {
     const hunter = warrantHunterById(WRIT);
     assert.ok(popups.some((p) => p.sender === hunter.name && p.text === hunter.voice.refused[0]), 'Writ says no');
     assert.ok(ctx.log.toasts.some((t) => /SHORT/.test(t.text) && /1200/.test(t.text) && /300/.test(t.text)));
-    assert.ok(ctx.deck.resolved.includes('warrant-offer'));
+    assert.equal(ctx.deck.resolved.includes('warrant-offer'), false, 'a short purse leaves the channel open');
+    assert.equal(ctx.state.ui.warrantOfferPrompt.hunterId, WRIT);
+    // The same card can pay once the credits are there; the first refusal did not burn the offer.
+    ctx.state.player.credits = 1200;
+    spec.onChoose('accept');
+    assert.equal(ctx.log.paid.length, 1, 'a second press settles it');
+    assert.equal(ctx.state.player.credits, 0);
+    assert.ok(ctx.deck.resolved.includes('warrant-offer'), 'paying closes the card');
     finish(ctx);
   });
 
@@ -200,7 +207,6 @@ test('the card closes on every end of the offer: closed, paid, refused, death; a
   for (const [event, payload] of [
     ['warrant:hunterOfferClosed', { reason: 'expired' }],
     ['warrant:hunterPaid', {}],
-    ['warrant:hunterOfferRefused', { reason: 'short' }],
     ['player:death', {}],
     ['dock:docked', {}],
   ]) {
@@ -212,6 +218,15 @@ test('the card closes on every end of the offer: closed, paid, refused, death; a
     bus.emit(event, payload);
     assert.ok(resolved.length > r, `${event} unmounts the card`);
   }
+  // A short purse is a refusal, not an ending: the card stays so the pilot can pay inside the window.
+  const beforeShort = resolved.length;
+  bus.emit('warrant:hunterOffer', offer);
+  bus.emit('warrant:hunterOfferRefused', { reason: 'short' });
+  assert.equal(resolved.length, beforeShort, 'short leaves the card mounted');
+  assert.equal(state.ui.warrantOfferPrompt.hunterId, WRIT);
+  bus.emit('warrant:hunterOfferClosed', { reason: 'expired' });
+  assert.ok(resolved.length > beforeShort, 'the window ending still closes it');
+
   assert.equal(accepts.length, 0, 'nothing ever accepts by itself');
 
   // A stale offer (deadline already past) and an unknown hunter never mount.

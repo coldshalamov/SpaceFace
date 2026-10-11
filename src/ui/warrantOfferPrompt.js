@@ -10,8 +10,9 @@
 // own. The deck owns the Digit1-9 / gamepad answers (ACCEPT is the first choice, so Digit1) and
 // the countdown, fed the deadline the waves module stored (`untilT`, sim seconds). This panel
 // never charges: ACCEPT emits intent only, economy stays the one credits writer, and a short purse
-// comes back as `warrant:hunterOfferRefused`, reported verbatim. DECLINE / closing the card emits
-// nothing — the waves module's own offer window ends in the refusal.
+// comes back as `warrant:hunterOfferRefused` while the card stays up — the channel is still open
+// for the rest of the waves module's window, so a second press can pay. DECLINE / closing the card
+// emits nothing — the waves module's own offer window ends in the refusal.
 
 import { getPromptDeck } from './promptDeck.js';
 import { warrantHunterById } from '../data/warrantHunters.js';
@@ -82,33 +83,41 @@ export const warrantOfferPrompt = {
 
   choose(actionId) {
     const bus = this._bus;
-    const hunterId = this._hunterId;
-    this._dismiss();
+    if (actionId !== 'accept') {
+      // 'decline' emits nothing — the prompt closing IS the choice. The waves window still runs.
+      this._dismiss();
+      return;
+    }
     if (!bus || !bus.emit) return;
-    if (actionId !== 'accept') return; // 'decline' emits nothing — the prompt closing IS the choice
-    const request = { hunterId, source: 'warrantOfferPrompt' };
+    const request = { hunterId: this._hunterId, source: 'warrantOfferPrompt' };
     bus.emit('warrant:acceptPayment', request);
+    if (request.result && request.result.ok === true) return; // bounty:cleared dismisses via hunterPaid
+    if (request.result && request.result.reason === 'short') return; // card stays; the refusal handler toasted
+    this._dismiss();
     if (!request.result) {
-      // The offer lapsed between the card and the key: nothing was asked of the economy.
       bus.emit('toast', { text: 'The offer has lapsed — nothing was charged.', kind: 'info', ttl: 3 });
     }
   },
 
   _handleRefused(p) {
-    this._dismiss();
     const bus = this._bus;
     const state = this._state;
-    if (!bus || !bus.emit || !p) return;
-    if (p.reason === 'short') {
-      const owed = crOf(state && state.player && state.player.bounty);
-      const credits = crOf(state && state.player && state.player.credits);
-      bus.emit('toast', {
-        text: `SHORT — the bounty is ${owed} cr and you hold ${credits} cr. Nothing was charged.`,
-        kind: 'warn', ttl: 4,
-      });
-    } else {
-      bus.emit('toast', { text: 'There is nothing to settle — nothing was charged.', kind: 'info', ttl: 3 });
+    // A short purse is not the end of the offer. Writ is still holding fire and the channel stays
+    // open until her window runs out, so the pilot can pay the moment the credits are there.
+    if (p && p.reason === 'short') {
+      if (bus && bus.emit) {
+        const owed = crOf(state && state.player && state.player.bounty);
+        const credits = crOf(state && state.player && state.player.credits);
+        bus.emit('toast', {
+          text: `SHORT — the bounty is ${owed} cr and you hold ${credits} cr. Nothing was charged.`,
+          kind: 'warn', ttl: 4,
+        });
+      }
+      return;
     }
+    this._dismiss();
+    if (!bus || !bus.emit || !p) return;
+    bus.emit('toast', { text: 'There is nothing to settle — nothing was charged.', kind: 'info', ttl: 3 });
   },
 
   _dismiss() {
