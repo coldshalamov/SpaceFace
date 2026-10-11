@@ -699,6 +699,7 @@ ship stills (all REVISE — awaiting new remote candidates).
 | 53 | OPTIC-OFFENSE | Offensive half of optic fields: enemies kite pursuers across fuses / bank shots off mirrors (defensive half landed) | BUILD | DONE 2026-09-29 — bank planner + gimbal-cone slew gate, 9/9 focused incl. swept-bolt proof, 42/42 AI-fire, 97/97 optic adjacent (`receipts/OPTIC-OFFENSE-BANK-SHOT.md`) |
 | 55 | SEAM-BASE | `combat:baseDestroyed` — dockless station-typed bases (`data.baseKind`, team-1 hostile) are real destructible bodies; combat emits the event on kill, economy + sectorSim consequences land, 358 THE PRESS CAMP fields the first one | BUILD | DONE 2026-09-28 — seam closed end-to-end, no UI needed (`receipts/SEAM-BASE-DESTRUCTIBLE-BASES.md`, 9/9 focused + 76/76 encounter batch) |
 | 56 | SEAM-UI | §1B UI-producer seams (setShipAppearance, kurtzInteract, heliosBay7Scan, endingArchiveOpen, factionPresenceService, claim:defenseIgnore) — UI halves are ORRERY's; sim-side gaps may be taken | BUILD | VERIFIED 2026-10-04 sim-side closed — all six listeners are live; five have real UI emitters (shipworks→ships, barContacts→story, pause→story, serviceQuotes→factionPresence, encounterChoicePrompt/galaxyMap→claims). `ui:heliosBay7Scan` is a dead alias (zero emitters; listener story.js:262) but the Bay 7 beat is reachable without it — `scan:completed`/`signal:scanResults` pulse + the 320 WU proximity tick + the Kessler bar rumor (helios-bay7-scan 4/4). A real UI emitter for the alias is ORRERY's call, not a sim gap |
+| 58 | WORLD-ANSWERS | §15.6 collisions C5–C12 + §15.5 toy consequence halves T1/T6/T8/T9/T10/T11/T13 — the audit found C5–C12 had no listener and every toy but T12 stopped at its physics; each unit is a listener and a rule on an existing single writer | BUILD | DONE 2026-10-11 — 15 units landed by pathspec across 8 commits (`a036e3af4` C6/C8, `5206d88e3` C5, `5a3ec5db0` C7/T10, `77b9c504e` C10/T8, `0554d6b4c` C11/C12/T11, `20177a037` T1/T6/T9/T13, `f6f9a2a7d` chart causes, `4a82af80d` capture presentation); 11 new `test/world-answers-*.test.mjs` files green on seeds 4242/8008; C9 left to `PQ-137.08`; `receipts/WORLD-ANSWERS-2026-10-10.md` |
 | 57 | PQ-129.11–.17 | Hitch deferred leaves (7): submit tighten, rigid opaque batching, canopy/plume lanes, tiny-fighter LOD, off-table AI sleep, cheaper bloom, autosave off display callback — take lowest first | BUILD | DONE 2026-10-03 — .15/.16/.17 already shipped w/ receipts (activity-scheduler 8/8 + tactical-ai cadence 5/5 green; autosave off rAF); .14 LOD mechanism live (138/286 pkgs), wasp hull LOD asset is Forge work; .11–.13 legally deferred on headed-census gate |
 
 ### E. Acceptance — implemented things awaiting their bar (queue + §25)
@@ -3883,6 +3884,9 @@ The community can add a ship, a weapon, an encounter or a sector by dropping JSO
 Each toy is a combination of verbs that already exist or are in `PQ-137`; none needs a new system.
 The physics that makes it work and the story it produces are the acceptance test: if a toy cannot be
 described as "I did X and Y happened, so then Z", it is content, not a toy. Owner of each is named.
+**Status 2026-10-11 (WORLD-ANSWERS, `receipts/WORLD-ANSWERS-2026-10-10.md`):** the "so then Z"
+half is REAL for T1, T6, T8, T9, T10, T11, T12, T13 (test files `test/world-answers-t*.test.mjs`).
+T2/T3/T4/T5/T7/T14/T15 still stop at their physics — the next toy-chest sitting starts there.
 
 | # | Toy | The physics | The story it produces | Owner |
 |---|---|---|---|---|
@@ -3906,6 +3910,10 @@ described as "I did X and Y happened, so then Z", it is content, not a toy. Owne
 
 `PQ-138` owns the first three (audited zero-listener events). The rest are assigned below; each is a
 listener and a rule, never a new system. The trigger and the consequence are the acceptance test.
+**Status 2026-10-11 (WORLD-ANSWERS):** C3, C5, C6, C7, C8, C10, C11, C12 are REAL with tests
+(`test/world-answers-c*.test.mjs`); C1/C2/C4 are partial (listener live, consequence thin); C9 is
+the one unbuilt collision (`PQ-137.08`). The chart names the player-made causes (`ore_flood`,
+`dock_slam`, `lane_disruption`) through `dangerModel.classifyDrivers` → `causePhrases`.
 
 | # | Collision | Trigger → consequence | Owner |
 |---|---|---|---|
