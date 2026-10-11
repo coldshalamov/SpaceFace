@@ -654,8 +654,11 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
     // Premise broke mid-pack: the consumed marks' rewrites are discarded, so
     // restore their bits — the classic walk reads packDirty===0 as "copy last
     // committed row" and would otherwise ship the stale row (W141-BG-1's
-    // retire-only churn and bail exits share this requirement).
-    for (const slot of consumedDirty) dirty[slot] = 1;
+    // retire-only churn and bail exits share this requirement). Write through
+    // `world.packDirty`, not the captured `dirty` alias: a mid-park capacity
+    // grow reallocates the mask and growTyped copies the post-consume zeros,
+    // so a restore into the old array would be a dead write (W144-BG-1b).
+    for (const slot of consumedDirty) world.packDirty[slot] = 1;
     // beginFrame re-clears the index, refills slotRows, and every live
     // row re-packs — byte-identical to the atomic output, just paced.
   }
