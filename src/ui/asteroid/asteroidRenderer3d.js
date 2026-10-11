@@ -76,6 +76,46 @@ export const CONTACT_RING = Object.freeze([
   [-1, 1], [0, 1], [1, 1],
 ]);
 
+// The Faces lens is a view of the installation rule, not a second placement rule.
+// A selected processor may legally sit in a hall, and geology includes diagonal contacts.
+export function classifyWorksBuildSeats({ field, avatar, machines = [], defId = null,
+  canInstall, cols = COLS, rows = ROWS } = {}) {
+  const seats = [];
+  const blocked = [];
+  const taken = new Set(machines.map((m) => `${m.col},${m.row}`));
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      if (field?.[c]?.[r]?.type !== 'empty') continue;
+      if (!defId && !CONTACT_RING.some(([dc, dr]) => (
+        contactKind(field?.[c + dc]?.[r + dr]) !== 'empty'
+      ))) continue;
+      if (taken.has(`${c},${r}`)) {
+        if (defId) blocked.push({ c, r, reason: 'occupied' });
+        continue;
+      }
+      if (avatar?.col === c && avatar?.row === r) {
+        if (defId) blocked.push({ c, r, reason: 'rover-here' });
+        continue;
+      }
+      if (!defId) { seats.push({ c, r }); continue; }
+      const check = canInstall?.({ defId, col: c, row: r });
+      if (check?.ok) seats.push({ c, r });
+      else blocked.push({ c, r, reason: check?.reason || 'blocked' });
+    }
+  }
+  return { seats, blocked };
+}
+
+// Reduced flashes is independent of reduced motion: keep the moving machinery, but remove
+// large-area breach/cargo flashes and hold emissive lamps steady.
+export function worksFlashPresentation({ motionReduce = false, flashReduce = false } = {}) {
+  return {
+    flashPeak: flashReduce ? 0 : (motionReduce ? 9 : 17),
+    vignetteScale: flashReduce ? 0 : (motionReduce ? 0.6 : 1),
+    steadyLamps: !!(motionReduce || flashReduce),
+  };
+}
+
 // Annotation plates are pooled and re-emitted every frame. Reassigning `map` to the texture the
 // material is already sampling still costs a material invalidation, and the Works board re-emits
 // every why-plate, seam chip and want chip on every frame — so the steady state was paying for a
@@ -1310,7 +1350,8 @@ function makeCrackDecalTexture(stage) {
   return tex;
 }
 
-export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, getSite, getProjection }) {
+export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, getSite, getProjection,
+  canInstall = (request) => asteroidSites.canInstall(request) }) {
   injectOverlayStyle();
 
   // ---------------------------------------------------------------- renderer + shared bloom pipeline
@@ -1344,6 +1385,55 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   let disposed = false;   // guards async surface arrival against a screen that already left
   let worksTearingDown = false;
+  // Bloom refuses cold stamped materials on a presented frame. This private context must own
+  // their admission; the flight renderer's queue cannot compile programs for another context.
+  const pipelineAdmissions = new WeakMap();
+  let pipelineTail = Promise.resolve();
+  let terrainReady = false;
+  let terrainFailed = false;
+  let terrainGeneration = 0;
+  function queueWorksPipelines(subject) {
+    if (pipelineAdmissions.has(subject)) return pipelineAdmissions.get(subject);
+    const admission = pipelineTail.then(async () => {
+      if (disposed || worksTearingDown) return false;
+      const leaves = [];
+      const seen = new Map();
+      subject.traverse((leaf) => {
+        if (!leaf.material || !(leaf.isMesh || leaf.isPoints || leaf.isLine || leaf.isSprite)) return;
+        if (leaf.isInstancedMesh && !leaf.count) return;
+        const variant = leaf.isInstancedMesh ? (leaf.instanceColor ? 3 : 1) : 0;
+        const materials = Array.isArray(leaf.material) ? leaf.material : [leaf.material];
+        if (materials.every((mat) => (seen.get(mat) || 0) & (1 << variant))) return;
+        for (const mat of materials) seen.set(mat, (seen.get(mat) || 0) | (1 << variant));
+        leaves.push(leaf);
+      });
+      for (const leaf of leaves) {
+        if (disposed || worksTearingDown) return false;
+        const result = await bloom.compileScenePipelines(leaf, camera, scene, { skipSharedBatch: true });
+        if (result?.skipped) throw new Error(result.reason || 'Mining pipeline unavailable');
+        // Bound software-driver linking to one material family per task, preserving UI input.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      return true;
+    });
+    pipelineAdmissions.set(subject, admission);
+    pipelineTail = admission.catch(() => false);
+    admission.finally(() => pipelineAdmissions.delete(subject)).catch(() => {});
+    return admission;
+  }
+  renderer.userData ||= {};
+  renderer.userData.spacefaceQueuePipelineAdmission = queueWorksPipelines;
+  function admitTerrain() {
+    const generation = ++terrainGeneration;
+    terrainReady = false;
+    terrainFailed = false;
+    queueWorksPipelines(rockGroup).then((ready) => {
+      if (generation === terrainGeneration) terrainReady = ready;
+    }).catch((error) => {
+      if (generation === terrainGeneration) terrainFailed = true;
+      console.error('[asteroidRenderer3d] terrain pipeline admission failed', error);
+    });
+  }
 
   // PQ-131.00 — authored-part lease bound to THIS renderer. Created on demand by a proof route
   // or a permanent authored Works surface; both consume the exact same release/package path.
@@ -1491,7 +1581,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let conduitPrewarm = null;
   function prewarmWorksConduitTemplates() {
     if (conduitPrewarm) return;
-    conduitPrewarm = worksLoader.acquireWorksConduitTemplates(WORKS_CONDUIT_TEMPLATE_IDS)
+    conduitPrewarm = worksLoader.acquireWorksConduitTemplates(WORKS_CONDUIT_TEMPLATE_IDS, { admissionVisible: false })
       .then((handle) => {
         if (!handle) conduitPrewarm = null;
         return handle;
@@ -2623,14 +2713,17 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
 
   let rockMats = makeRockMaterials(envMap, getReadyRockSurfaceTextures());
-  const rockSurfaceReady = !!getReadyRockSurfaceTextures();
+  let rockSurfaceReady = !!getReadyRockSurfaceTextures();
   if (rockSurfaceReady) { for (const b of ROCK_BUCKETS) patchRockUvWindow(rockMats[b]); }
   else {
     // Cold host (a direct deep-link into the works screen, or a test harness that never booted the
     // flight renderer): decode now and swap the maps in on arrival. The board is never blank —
     // it renders on the procedural fallback for a frame or two and then becomes real stone.
-    preloadRockSurfaceLibrary(renderer).then((surface) => {
-      if (!surface || disposed) return;
+    preloadRockSurfaceLibrary(renderer).then(async (surface) => {
+      // A cold fallback may still be compiling. Retire its materials only after that wait ends.
+      await pipelineTail;
+      if (disposed) return;
+      if (!surface) { terrainFailed = true; return; }
       const next = makeRockMaterials(envMap, surface);
       for (const b of ROCK_BUCKETS) patchRockUvWindow(next[b]);
       const old = rockMats;
@@ -2640,8 +2733,19 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
       if (plateauInst) plateauInst.material = next.matrix;
       if (skirtInst) skirtInst.material = next.matrix;
+      for (const inst of bandInsts) inst.material = next.basalt;
+      if (backWall) {
+        const previous = backWall.material;
+        backWall.material = makeCavityFloorMaterial(surface);
+        previous.dispose();
+      }
+      rockSurfaceReady = true;
       for (const b of ROCK_BUCKETS) old[b].dispose();
-    }).catch(() => { /* procedural fallback already on screen */ });
+      admitTerrain();
+    }).catch((error) => {
+      terrainFailed = true;
+      console.error('[asteroidRenderer3d] rock surface load failed', error);
+    });
   }
 
   // Shared cell-kit geometry (never disposed per cell — see sharedGeos)
@@ -2890,7 +2994,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     overlayWidth.regPxPerCell = metrics.pixelsPerCell;
     return metrics;
   }
-  const RUNNING_STATES = new Set(['running', 'limited', 'throttled', 'building', 'staged']);
+  const RUNNING_STATES = new Set(['running', 'limited', 'throttled', 'building', 'loading', 'unloading', 'staged']);
   // A LAMP THAT MEANS "BROKEN", NOT "HUNGRY". Law §5 gave starved/unpowered a DARK housing plus a
   // gold want chip (PQ-130.07) and that stays. These two are different in kind: a machine seated
   // against the wrong rock, or bolted to no lane at all, will never resolve on its own — nobody is
@@ -3333,6 +3437,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const authoredRoverState = {
     group: null,
     loadPromise: null,
+    ready: false,
+    failed: false,
     materialSets: { lamp: [], glass: [], beacon: [], bit: [] },
     trackNodes: [],
     stageNodes: [],
@@ -3379,6 +3485,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return found;
   }
   function clearAuthoredRoverState() {
+    authoredRoverState.ready = false;
     authoredRoverState.group = null;
     authoredRoverState.materialSets = { lamp: [], glass: [], beacon: [], bit: [] };
     authoredRoverState.trackNodes = [];
@@ -3519,8 +3626,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const loader = ensureWorksLoader();
     if (!loader) return null;
     const gen = ++authoredRoverGen;
-    authoredRoverState.loadPromise = loader.loadWorksPart('place_works_rover').then((group) => {
+    authoredRoverState.failed = false;
+    authoredRoverState.loadPromise = loader.loadWorksPart('place_works_rover').then(async (group) => {
       if (!group) {
+        authoredRoverState.failed = true;
         console.error('[asteroidRenderer3d] authored Rover load returned null; keeping Rover hidden');
         return null;
       }
@@ -3529,12 +3638,15 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         return null;
       }
       if (!installAuthoredRover(group)) {
+        authoredRoverState.failed = true;
         console.error('[asteroidRenderer3d] authored Rover hook surface rejected; keeping Rover hidden');
         loader.releaseWorksPart(group);
         return null;
       }
+      authoredRoverState.ready = await queueWorksPipelines(rover);
       return group;
     }).catch((error) => {
+      authoredRoverState.failed = true;
       console.error('[asteroidRenderer3d] authored Rover load failed; keeping Rover hidden', error);
       return null;
     }).finally(() => { authoredRoverState.loadPromise = null; });
@@ -3613,6 +3725,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   // ---------------------------------------------------------------- per-session state
   let motionReduce = false;
+  let flashPresentation = worksFlashPresentation();
   let field = null;
   let timeSNow = 0;
   const cellRock = new Map();   // idx -> { mesh, i, carved, c, r }
@@ -4009,6 +4122,50 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     dummy.updateMatrix();
   }
 
+  function makeCavityFloorMaterial(surface) {
+    let mat;
+    if (surface && surface.baseColor) {
+      mat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color().setRGB(1.02, 0.94, 0.80),
+        map: surface.baseColor,
+        normalMap: surface.normal,
+        normalScale: new THREE.Vector2(1.6, 1.6),
+        aoMap: surface.orm,
+        aoMapIntensity: 1,
+        roughnessMap: surface.orm,
+        metalnessMap: surface.orm,
+        roughness: 1,
+        metalness: 1,
+      });
+      // Same texel density as the cut face, so the floor and the walls above it are one body.
+      const tile = (COLS / ROCK_UV_CELLS) / ROCK_SURFACE_TEXTURE_REPEAT;
+      mat.onBeforeCompile = (shader) => {
+        shader.vertexShader = shader.vertexShader.replace('#include <uv_vertex>', [
+          '#include <uv_vertex>',
+          `#ifdef USE_MAP`,
+          `  vMapUv *= ${tile.toFixed(4)};`,
+          '  #ifdef USE_NORMALMAP',
+          '    vNormalMapUv = vMapUv;',
+          '  #endif',
+          '  #ifdef USE_AOMAP',
+          '    vAoMapUv = vMapUv;',
+          '  #endif',
+          '  #ifdef USE_ROUGHNESSMAP',
+          '    vRoughnessMapUv = vMapUv;',
+          '  #endif',
+          '  #ifdef USE_METALNESSMAP',
+          '    vMetalnessMapUv = vMapUv;',
+          '  #endif',
+          '#endif',
+        ].join('\n'));
+      };
+      mat.customProgramCacheKey = () => 'sf-ast-cavity-floor';
+    } else {
+      mat = new THREE.MeshStandardMaterial({ color: 0x231d16, roughness: 1, metalness: 0 });
+    }
+    return mat;
+  }
+
   function buildRock() {
     for (const bucket of ROCK_BUCKETS) {
       for (const inst of rockInst[bucket]) {
@@ -4081,47 +4238,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       // carved cell read as a hole punched in a picture instead of a room with a floor. It is the
       // same authored rock, warm and deep in shadow (law §3.5 bored tunnel #1f1a15), tiled at the
       // cell's texel density so the floor and the walls are visibly one continuous body.
-      const surface = getReadyRockSurfaceTextures();
-      let mat;
-      if (surface && surface.baseColor) {
-        mat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color().setRGB(1.02, 0.94, 0.80),
-          map: surface.baseColor,
-          normalMap: surface.normal,
-          normalScale: new THREE.Vector2(1.6, 1.6),
-          aoMap: surface.orm,
-          aoMapIntensity: 1,
-          roughnessMap: surface.orm,
-          metalnessMap: surface.orm,
-          roughness: 1,
-          metalness: 1,
-        });
-        // Same texel density as the cut face, so the floor and the walls above it are one body.
-        const tile = (COLS / ROCK_UV_CELLS) / ROCK_SURFACE_TEXTURE_REPEAT;
-        mat.onBeforeCompile = (shader) => {
-          shader.vertexShader = shader.vertexShader.replace('#include <uv_vertex>', [
-            '#include <uv_vertex>',
-            `#ifdef USE_MAP`,
-            `  vMapUv *= ${tile.toFixed(4)};`,
-            '  #ifdef USE_NORMALMAP',
-            '    vNormalMapUv = vMapUv;',
-            '  #endif',
-            '  #ifdef USE_AOMAP',
-            '    vAoMapUv = vMapUv;',
-            '  #endif',
-            '  #ifdef USE_ROUGHNESSMAP',
-            '    vRoughnessMapUv = vMapUv;',
-            '  #endif',
-            '  #ifdef USE_METALNESSMAP',
-            '    vMetalnessMapUv = vMapUv;',
-            '  #endif',
-            '#endif',
-          ].join('\n'));
-        };
-        mat.customProgramCacheKey = () => 'sf-ast-cavity-floor';
-      } else {
-        mat = new THREE.MeshStandardMaterial({ color: 0x231d16, roughness: 1, metalness: 0 });
-      }
+      const mat = makeCavityFloorMaterial(getReadyRockSurfaceTextures());
       backWall = new THREE.Mesh(new THREE.PlaneGeometry(COLS * S, ROWS * S), mat);
       backWall.position.z = Z.back;
       backWall.receiveShadow = true;
@@ -5089,7 +5206,17 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return new THREE.Color(STATUS_COLORS[(status && status.state) || 'idle'] || STATUS_COLORS.idle).getHex();
   }
 
+  let indexedProjectionMachines = null;
+  const projectionMachinesById = new Map();
   function syncMachines(site, projection, timeS, dt = 0) {
+    // The screen replaces this array when the projection changes. Index once per update,
+    // rather than scanning the complete factory again for every machine on every frame.
+    const projectedMachines = projection?.machines || null;
+    if (projectedMachines !== indexedProjectionMachines) {
+      indexedProjectionMachines = projectedMachines;
+      projectionMachinesById.clear();
+      for (const machine of projectedMachines || []) projectionMachinesById.set(machine.id, machine);
+    }
     const seen = new Set();
     wantChipsUsed = 0;
     if (site) {
@@ -5100,13 +5227,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           if (rec) removeMachine(m.id);
           rec = buildMachineAt(m);
         }
-        const pm = projection && projection.machines ? projection.machines.find((x) => x.id === m.id) : null;
-        // KNOWN LIMIT: pm.status aliases rt.status, which asteroidSites replaces every tick
-        // (asteroidSites.js:1468-1470). Under this screen that replacement is unreachable except
-        // one open-during-tick window: tetherGameplay emits drill:approachCompleted
-        // (tetherGameplay.js:1139), uiRoot.js:948 pushes this screen synchronously, then
-        // asteroidSites still runs later in the same update (authoritativeSystemManifest.js:66-69).
-        // Closing it needs a generation counter on asteroidSites — out of this lane.
+        const pm = projectionMachinesById.get(m.id) || null;
+        // Workbench production refreshes this projection after each local factory tick while
+        // travel remains paused. Keep the projected status object live between those refreshes.
         const status = pm ? pm.status : null;
         const state = (status && status.state) || 'idle';
         syncMachineArms(rec);
@@ -5149,7 +5272,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           const lampPx = S * 0.11 * pxPerWorldUnit();
           rec.dyn.lampAnchor.scale.setScalar(Math.max(1, 5 / Math.max(0.001, lampPx)));
         }
-        const running = state === 'running' || state === 'throttled' || state === 'limited';
+        const running = RUNNING_STATES.has(state);
         rec.lightRunning = running;
         rec.lightState = state;
         const spinAngle = motionReduce ? 0.8 : timeS * 1.1;
@@ -5181,7 +5304,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         if (rec.dyn.furnace) {
           const hot = running;
           const intensity = hot
-            ? (motionReduce ? 1.5 : 1.25 + 0.55 * Math.sin(timeS * 5)) : 0.08;
+            ? (flashPresentation.steadyLamps ? 1.5 : 1.25 + 0.55 * Math.sin(timeS * 5)) : 0.08;
           if (rec.dyn.setFurnaceIntensity) rec.dyn.setFurnaceIntensity(intensity);
           else rec.dyn.furnace.emissiveIntensity = intensity;
         }
@@ -5241,7 +5364,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       l.position.z += S * 0.16;
       if (pick.rank === 3) {
         l.color.setHex(0xff8a30);
-        l.intensity = motionReduce ? 5.2 : 4.4 + 1.4 * Math.sin(timeS * 5);
+        l.intensity = flashPresentation.steadyLamps ? 5.2 : 4.4 + 1.4 * Math.sin(timeS * 5);
       } else {
         l.color.setHex(pick.rank === 2 ? 0xffc07a : statusColorHex({ state: pick.st }));
         // Law §5 "Machine starved/unpowered": the machine GOES DARK. Its hue still says which
@@ -5803,7 +5926,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         let base = 0.04;
         if (live) {
           base = st.active
-            ? (motionReduce ? 0.22 : 0.17 + 0.08 * Math.sin(timeS * 4.2))
+            ? (flashPresentation.steadyLamps ? 0.22 : 0.17 + 0.08 * Math.sin(timeS * 4.2))
             : 0.1;    // stock parked on a stalled lane: lit, but not breathing
         }
         part.mat.emissiveIntensity = Math.min(0.9, base * lensK);
@@ -5999,38 +6122,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (sig === facesCache.sig && timeS - facesCache.t < 0.4) return facesCache;
     facesCache.sig = sig;
     facesCache.t = timeS;
-    const seats = [];
-    const blocked = [];
     const site = getSite ? getSite() : null;
-    const taken = new Set(site ? site.machines.map((m) => tileIndex(m.col, m.row)) : []);
-    const astId = d.asteroidId;
-    for (let c = 0; c < COLS; c++) {
-      for (let r = 0; r < ROWS; r++) {
-        const tile = field[c] && field[c][r];
-        if (!tile || tile.type !== 'empty') continue;   // solid rock is not a seat, and needs no plate
-        let contact = 0;
-        for (const [dc, dr] of NBR4) {
-          const nc = c + dc, nr = r + dr;
-          if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue;
-          const nt = field[nc][nr];
-          if (nt && nt.type !== 'empty') contact++;
-        }
-        if (!contact) continue;
-        const idx = tileIndex(c, r);
-        if (taken.has(idx)) { if (defId) blocked.push({ c, r, reason: 'occupied' }); continue; }
-        if (d.avatar.col === c && d.avatar.row === r) {
-          if (defId) blocked.push({ c, r, reason: 'rover-here' });
-          continue;
-        }
-        if (!defId) { seats.push({ c, r }); continue; }
-        let check = null;
-        try {
-          check = asteroidSites.canInstall({ asteroidId: astId, defId, col: c, row: r });
-        } catch (_) { check = null; }
-        if (check && check.ok) seats.push({ c, r });
-        else blocked.push({ c, r, reason: (check && check.reason) || 'blocked' });
-      }
-    }
+    const { seats, blocked } = classifyWorksBuildSeats({
+      field, avatar: d.avatar, machines: site?.machines || [], defId,
+      canInstall: (request) => canInstall({ asteroidId: d.asteroidId, ...request }),
+    });
     facesCache.seats = seats;
     facesCache.blocked = blocked;
     return facesCache;
@@ -7352,6 +7448,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // re-implementation of it in the check — a check that recomputes the projection itself would pass
   // happily while the board on screen lied. scripts/check-asteroid-theater.mjs reads this.
   canvas.__ast3d = {
+    readiness,
     // What this cell DRAWS AS. `revealed` is a live read of the presentation visibility gate, so a
     // regression that puts fog back fails the check instead of quietly re-hiding the board.
     cellAppearance(col, row) {
@@ -7938,7 +8035,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (cellFlash.t > 0) {
       cellFlash.t = Math.max(0, cellFlash.t - dt);
       const u = cellFlash.t / cellFlash.dur;
-      flashLight.intensity = (motionReduce ? 9 : 17) * u * u;
+      flashLight.intensity = flashPresentation.flashPeak * u * u;
       if (cellFlash.t <= 0) { flashLight.intensity = 0; flashLight.position.set(0, 0, -900); }
     }
 
@@ -8057,8 +8154,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (timers.cargoFlash > 0) timers.cargoFlash = Math.max(0, timers.cargoFlash - dt);
     const gasU = timers.gasFlash > 0 ? timers.gasFlash / VIGNETTE_GAS_S : 0;
     const cargoU = timers.cargoFlash > 0 ? timers.cargoFlash / VIGNETTE_CARGO_S : 0;
-    dom.flashGas.style.opacity = gasU > 0 ? ((motionReduce ? 0.6 : 1) * gasU).toFixed(3) : '0';
-    dom.flashCargo.style.opacity = cargoU > 0 ? ((motionReduce ? 0.6 : 1) * cargoU).toFixed(3) : '0';
+    dom.flashGas.style.opacity = gasU > 0 ? (flashPresentation.vignetteScale * gasU).toFixed(3) : '0';
+    dom.flashCargo.style.opacity = cargoU > 0 ? (flashPresentation.vignetteScale * cargoU).toFixed(3) : '0';
     // floaters ride the projection so they stay glued to their cell while the camera settles
     for (let i = dom.floaters.length - 1; i >= 0; i--) {
       const f = dom.floaters[i];
@@ -8221,7 +8318,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     cellFlash.col = col;
     cellFlash.row = row;
     flashLight.position.set(worldX(col), worldY(row), Z.rover + 0.5);
-    flashLight.intensity = motionReduce ? 9 : 17;
+    flashLight.intensity = flashPresentation.flashPeak;
     spawnVapor(col, row);
     kick.t = KICK_DUR_S;
     kick.elapsed = 0;
@@ -8268,6 +8365,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // ---------------------------------------------------------------- session lifecycle
   function begin(opts = {}) {
     motionReduce = !!opts.motionReduce;
+    flashPresentation = worksFlashPresentation(opts);
     const d = getDrill();
     field = d ? d.field : null;
     buildDomOverlay();
@@ -8391,6 +8489,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     buildRock();
     buildSurface();
     buildSkirt();
+    admitTerrain();
     // seed ore / gas / half-bored damage for the already-known parts of the field. Damage is
     // seeded from hp on entry so a reloaded site shows every abandoned bore exactly as it was.
     damagedCells.clear();
@@ -8558,7 +8657,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
     // beacon: idle pulse, brisk blink rolling, strobe under the bit — peak stays under the bit's
     const beaconBusy = drilling ? 9 : (moving ? 5 : 0);
-    const beaconIntensity = motionReduce
+    const beaconIntensity = flashPresentation.steadyLamps
       ? (drilling || moving ? 0.9 : 0.35)
       : (beaconBusy ? (Math.sin(timeS * beaconBusy) > 0 ? 1.0 : 0.12) : 0.35);
     if (authoredRoverState.materialSets.beacon.length) {
@@ -8648,7 +8747,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
 
     for (const e of pulseEntries) {
-      e.mat.emissiveIntensity = e.base + Math.sin(timeS * 1.6) * e.amp;
+      e.mat.emissiveIntensity = e.base + (flashPresentation.steadyLamps ? 0 : Math.sin(timeS * 1.6) * e.amp);
     }
 
     // One bracket pool serves the cursor's contact ring AND the Faces seats, so the frame's marks
@@ -8815,8 +8914,17 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (dom.root) dom.root.remove();
   }
 
+  function readiness() {
+    return {
+      ready: terrainReady && rockSurfaceReady && authoredRoverState.ready && rover.visible,
+      failed: terrainFailed || authoredRoverState.failed,
+      terrain: terrainReady && rockSurfaceReady,
+      rover: authoredRoverState.ready && rover.visible,
+    };
+  }
   return {
     begin, render, notify, refreshCells, pickCell, inputZoom, setZoomRegister, toggleZoomRegister,
+    readiness,
     // PQ-130.10b — the lens cycle is owned here (the canvas listener below `V` is the shipped path)
     // and exported so the screen can mount §6.5's chip row against the same state later.
     setLens, cycleLens, getLens: () => lensName,

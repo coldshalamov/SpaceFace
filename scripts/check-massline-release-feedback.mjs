@@ -568,7 +568,7 @@ function emitRelease(harness, classification) {
   // habit defensive).
   harness.state.tick += 10;
 
-  const payload = rateRelease(harness.state, TARGET_ID);
+  const payload = rateRelease(harness.state, TARGET_ID, { deliberate: true });
   assert.equal(payload.classification, classification,
     `fixture telemetry for "${classification}" produced "${payload.classification}" `
     + `(releaseScore ${payload.releaseScore}) — update TELEMETRY_BY_CLASSIFICATION, not the assertion`);

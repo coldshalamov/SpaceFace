@@ -180,6 +180,10 @@ export function createInputTapeDriver(tape, options = {}) {
         };
         state.input.actions = state.input.actions || {};
         state.input.actions.reelDelta = reelDelta;
+        // Held lash like masslineHeld: frame input wins; else a real Quote hold.
+        state.input.actions.gyreSnare = frameInput.gyreSnare != null
+          ? !!frameInput.gyreSnare
+          : !!keys.Quote;
         if (masslineGrammar) {
           // Grammar already stepped through end; publish current packet without stepping again.
           const packet = typeof masslineGrammar.snapshot === 'function'
@@ -250,6 +254,10 @@ export function createInputTapeDriver(tape, options = {}) {
 
       state.input.actions = state.input.actions || {};
       state.input.actions.reelDelta = reelDelta;
+      // Held lash: authored frame field wins over a raw Quote key hold.
+      state.input.actions.gyreSnare = frameInput.gyreSnare != null
+        ? !!frameInput.gyreSnare
+        : !!keys.Quote;
 
       // Massline grammar from real key holds (Space / KeyF).
       // public-input evidence class forbids hardcoded action packets (allowMasslinePacketOverride=false).

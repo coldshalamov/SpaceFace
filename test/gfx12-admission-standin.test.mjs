@@ -7,7 +7,8 @@ import {
   resolvingMarkerFallbackCount,
   upgradeAdmissionStandIn,
 } from '../src/render/visualOverrides.js';
-import { disposeDetachedObject } from '../src/render/partsLibrary.js';
+import { AUTHORED_ADMISSION_RETRY_MAX, disposeDetachedObject } from '../src/render/partsLibrary.js';
+import { syncResolvingMarker } from '../src/render/renderer.js';
 
 const ENTITY = {
   id: 501,
@@ -17,6 +18,20 @@ const ENTITY = {
   radius: 10,
   data: { defId: 'ship_kestrel' },
 };
+
+const REQUIRED_ENTITY = {
+  id: 601,
+  type: 'ship',
+  isPlayer: false,
+  alive: true,
+  radius: 10,
+  data: { defId: 'ship_wasp' },
+};
+
+function terminalAdmission(boundary) {
+  boundary.userData.authoredAssetState = 'unavailable';
+  boundary.userData.authoredAdmissionRetryCount = AUTHORED_ADMISSION_RETRY_MAX;
+}
 
 function stubRecord() {
   const hullGeo = new THREE.BoxGeometry(2, 1, 1);
@@ -179,4 +194,94 @@ test('release through the copied boundary userData counts the octahedron exactly
   boundary.userData.admissionStandInRelease && boundary.userData.admissionStandInRelease();
   assert.equal(resolvingMarkerFallbackCount(), before - 1,
     'every settle path combined decrements the gauge once per octahedron');
+});
+
+test('a mission-critical required hull consumes its mission-only procedural body at terminal', () => {
+  const factory = buildFactory(() => null); // no resident record — the abstract octahedron
+  const entity = { ...REQUIRED_ENTITY, data: { defId: 'ship_wasp', missionTag: 'wanted_warrant' } };
+  const boundary = factory.build(entity);
+  const substrate = substrateOf(boundary);
+  assert.equal(typeof substrate.userData.admissionProceduralFallback, 'function',
+    'a required hull arms a procedural thunk');
+  assert.equal(substrate.userData.admissionProceduralFallbackMissionOnly, true,
+    'the thunk is flagged mission-only');
+  assert.equal(substrate.userData.resolvingMarker.geometry.type, 'OctahedronGeometry');
+
+  terminalAdmission(boundary);
+  const proceduralBefore = factory.procedural;
+  syncResolvingMarker(boundary, { missions: { active: [] }, render: { scene: {} } });
+
+  assert.equal(substrate.userData.admissionProceduralFallback, undefined, 'the thunk is consumed');
+  assert.equal(factory.procedural, proceduralBefore + 1, 'the procedural body was built once');
+  assert.equal(substrate.userData.authoredReadableFallbackRetained, true);
+  assert.equal(entity.presentationFallbackVisible, true,
+    'the terminal sync republished the flag from the drawn procedural body');
+  assert.equal(substrate.userData.resolvingMarker.visible, false,
+    'the octahedron yields to the procedural hull');
+});
+
+test('an untagged required hull keeps the mission-only thunk armed at terminal', () => {
+  const factory = buildFactory(() => null);
+  const entity = { ...REQUIRED_ENTITY, data: { defId: 'ship_wasp' } };
+  const boundary = factory.build(entity);
+  const substrate = substrateOf(boundary);
+
+  terminalAdmission(boundary);
+  const proceduralBefore = factory.procedural;
+  const state = { missions: { active: [] }, render: { scene: {} } };
+  syncResolvingMarker(boundary, state);
+
+  assert.equal(factory.procedural, proceduralBefore,
+    'a plain hostile on a required hull gets no procedural body');
+  assert.equal(typeof substrate.userData.admissionProceduralFallback, 'function',
+    'the thunk stays armed — mission identity may be stamped later');
+  assert.equal(entity.presentationFallbackVisible, false,
+    'only the octahedron drew — still empty air for the lock gate');
+
+  // The mission stamp can arrive after the terminal verdict; the retained thunk still answers it.
+  entity.data.missionTag = 'wanted_warrant';
+  syncResolvingMarker(boundary, state);
+  assert.equal(factory.procedural, proceduralBefore + 1,
+    'a later mission stamp still unlocks the procedural body');
+  assert.equal(entity.presentationFallbackVisible, true);
+});
+
+test('mission membership in an active target list consumes the mission-only thunk', () => {
+  const factory = buildFactory(() => null);
+  const entity = { ...REQUIRED_ENTITY, id: 603, data: { defId: 'ship_wasp' } };
+  const boundary = factory.build(entity);
+  const substrate = substrateOf(boundary);
+
+  terminalAdmission(boundary);
+  const proceduralBefore = factory.procedural;
+  syncResolvingMarker(boundary, {
+    missions: { active: [{ id: 'm-hunt', targetEntityIds: [603] }] },
+    render: { scene: {} },
+  });
+
+  assert.equal(factory.procedural, proceduralBefore + 1);
+  assert.equal(entity.presentationFallbackVisible, true);
+});
+
+test('a drawn stand-in hull keeps the mission-only thunk unused and stays lockable', () => {
+  const record = stubRecord();
+  const factory = buildFactory(() => record);
+  const entity = { ...REQUIRED_ENTITY, id: 604, data: { defId: 'ship_wasp', missionTag: 'wanted_warrant' } };
+  const boundary = factory.build(entity);
+  const substrate = substrateOf(boundary);
+  const standIn = substrate.userData.resolvingMarker;
+  assert.equal(standIn.userData.admissionStandInHull, true,
+    'the stand-in is tagged as a real hull, distinct from the octahedron');
+
+  terminalAdmission(boundary);
+  const proceduralBefore = factory.procedural;
+  syncResolvingMarker(boundary, { missions: { active: [] }, render: { scene: {} } });
+
+  assert.equal(factory.procedural, proceduralBefore,
+    'no procedural body is built over the ship\'s own stand-in');
+  assert.equal(typeof substrate.userData.admissionProceduralFallback, 'function',
+    'the mission-only thunk stays armed behind the authored stand-in');
+  assert.equal(standIn.visible, true, 'the stand-in hull keeps drawing at terminal');
+  assert.equal(entity.presentationFallbackVisible, true,
+    'the stand-in is a real hull to aim at');
 });

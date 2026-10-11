@@ -1169,9 +1169,10 @@ const ROUTES = {
         return await snap(ctx);
       };
       for (const re of [/share codes/i, /practice room/i]) {
-        // The preparation wizard files secondary rows under the "Challenges, seed & records"
-        // disclosure — display:none until a player opens the summary. Open it like a player
-        // (and scroll the row into the rail's clipped window) before judging the control dead.
+        // The preparation wizard files secondary rows under the "Challenges" and
+        // "Seed, perks, hangar & records" disclosures — display:none until a player opens
+        // the summary. Open it like a player (and scroll the row into the rail's clipped
+        // window) before judging the control dead.
         const opened = await ctx.page.evaluate((src) => {
           const rx = new RegExp(src, 'i');
           const find = () => [...document.querySelectorAll('.k-word, button, [role="button"], [data-action]')]

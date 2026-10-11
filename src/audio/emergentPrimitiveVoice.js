@@ -102,9 +102,11 @@ export function createEmergentVoice() {
       const audio = registry && registry.get && registry.get('audio');
       const rt = audio && audio.rt;
       const ctx = rt && rt.ctx;
-      const dest = rt && (rt.sfxBus || rt.masterGain || ctx.destination);
-      // No graph: the record above is the play. Do not pretend a weapon recipe ran.
-      if (!ctx || !dest || ctx.state === 'closed') return true;
+      // audio.init creates the runtime before the gesture gate creates its context or buses.
+      // Resolve the graph afresh for every cue so the next event can sound after that gesture.
+      if (!ctx || ctx.state === 'closed') return true;
+      const dest = rt.sfxBus || rt.masterGain || ctx.destination;
+      if (!dest) return true;
       const now = ctx.currentTime;
       for (let i = live.length - 1; i >= 0; i--) {
         const row = live[i];

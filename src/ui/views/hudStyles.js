@@ -22,13 +22,16 @@ export function injectHudCss() {
   body.ui-modal-open #alerts,
   body.ui-modal-open #toasts { opacity:0 !important; pointer-events:none !important; }
 
-  /* Reticle reflects aim mode: amber tint + slight pulse when auto-target is tracking hostiles,
-     cyan when the pilot aims/fires manually (Phase 2). */
+  /* Aim feedback follows the mouse; the labeled combat-stick sight stays at center. */
   #aim-reticle { transition:none; }
   #aim-reticle svg * { filter:none !important; }
   #aim-reticle .sf-reticle-shape--bracket { display:none; }
   #aim-reticle[data-mode="auto"] .sf-reticle-shape--open { display:none; }
   #aim-reticle[data-mode="auto"] .sf-reticle-shape--bracket { display:block; }
+  .sf-reticle-mode-label { display:none; position:absolute; top:100%; left:50%;
+    transform:translateX(-50%); white-space:nowrap; font-family:var(--dp-face-etch);
+    font-size:var(--dp-fs-etch); color:var(--dp-ink); background:var(--dp-void); padding:2px 6px; }
+  #aim-reticle[data-mode="auto"] .sf-reticle-mode-label { display:block; }
   #aim-reticle.autofire > svg { animation:sf-reticlepulse 1.4s ease-in-out infinite alternate; }
   @keyframes sf-reticlepulse { from { opacity:.88; } to { opacity:1; } }
 
@@ -2811,8 +2814,12 @@ export function injectHudCss() {
      the viewport height, so the ring is sized in vmin to clear the silhouette at every resolution.
      Strokes are in the 120-unit viewBox (x ~2.5 on screen). */
   #hud .sf-threat-ring {
+    display:none;
     width:clamp(220px, 30vmin, 420px); height:clamp(220px, 30vmin, 420px); margin:0; transform:translate(-50%, -50%);
   }
+  /* The large center instrument reads as a gunsight. Reserve it for the explicitly
+     toggled combat stick; ordinary mouse flight has only its real target cursor. */
+  body.sf-flight-cursor #hud .sf-threat-ring { display:block; }
   #hud .sf-threat-ring__arc { stroke-width:1.6; }
   #hud:is([data-tether="ready"], [data-tether="latched"], [data-tether="strain"]) .sf-threat-ring { opacity:1; }
   /* the halo: a hairline ring with four bearing ticks, so the arcs read as marks on one instrument */

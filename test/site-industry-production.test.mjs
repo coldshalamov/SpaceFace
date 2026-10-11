@@ -32,12 +32,14 @@ test('boring a contact removes its capability permanently; no planner compensati
   close(before.outputsPerMin.cmdty_silicate - after.outputsPerMin.cmdty_silicate, 0.9);
 });
 
-test('paid refinery carry cannot overflow the room another machine left', () => {
+test('paid refinery carry uses the space processing frees without overflowing the lane', () => {
   const args = refinery({ dtMin: 1, carry: { cmdty_refined_metals: 0.9 }, roomFor: () => 0.2 });
-  const before = clone({ store: args.store, carry: args.carry });
   const result = stepContinuousRecipe(args);
-  assert.equal(result.status, 'backlogged');
-  assert.deepEqual({ store: args.store, carry: args.carry }, before);
+  assert.equal(result.status, 'running');
+  assert.equal(args.store.cmdty_ore_iron, 7);
+  assert.equal(args.store.cmdty_refined_metals, 2);
+  close(args.carry.cmdty_refined_metals, 0.4);
+  assert.ok(sum(args.store) <= 10.2);
 });
 
 test('continuous production conserves paid carry across different time partitions', () => {
@@ -193,4 +195,63 @@ test('real planned controller chain executes through the existing production hel
   }
   assert.equal(store.cmdty_control_unit, 2);
   close(sum(store), 2);
+});
+
+test('a full input store can process itself into a smaller output', () => {
+  const store = { cmdty_ore_iron: 80 };
+  const refined = stepContinuousRecipe(refinery({ store, roomFor: () => 80 - sum(store) }));
+  assert.ok(refined.moved > 0, 'full ore stock can feed the refinery');
+  assert.ok(sum(store) < 80);
+  const assembly = fabricator({ roomFor: () => 0 });
+  assert.equal(stepFabricator(assembly).started, true, 'committing inputs makes room for the output');
+  assert.equal(sum(assembly.store), 0);
+});
+
+test('full input stores with paid refinery carry keep processing and cold-resume without loss', () => {
+  for (const initialCarry of [0.4, 0.9]) {
+    let args = refinery({ store: { cmdty_ore_iron: 4 },
+      carry: { cmdty_refined_metals: initialCarry }, throughputBudget: 0.2 });
+    args.roomFor = () => Math.max(0, 4 - sum(args.store));
+    let stepped = 0;
+    for (let i = 0; i < 80; i++) {
+      const result = stepContinuousRecipe(args);
+      if (result.moved > 0) stepped++;
+      assert.ok(sum(args.store) <= 4 + 1e-9, `carry=${initialCarry}, tick=${i}: capacity`);
+      assert.ok(args.carry.cmdty_refined_metals >= 0 && args.carry.cmdty_refined_metals < 1,
+        `carry=${initialCarry}, tick=${i}: persisted carry remains valid`);
+      close((args.store.cmdty_refined_metals || 0) + args.carry.cmdty_refined_metals,
+        initialCarry + (4 - args.store.cmdty_ore_iron) / 2);
+      if (i === 9) Object.assign(args, clone({ store: args.store, carry: args.carry }));
+    }
+    assert.equal(stepped, 80, 'a full store never stalls on its own paid carry');
+    close(args.store.cmdty_ore_iron, 0);
+    close((args.store.cmdty_refined_metals || 0) + args.carry.cmdty_refined_metals, 2 + initialCarry);
+  }
+});
+
+test('fabricators stage real material within the lane budget, with exact cold-resume accounting', () => {
+  let args = fabricator({ throughputBudget: 0.2 });
+  let completed = 0;
+  let moved = 0;
+  for (let i = 0; i < 90; i++) {
+    const result = stepFabricator(args);
+    assert.ok(result.moved <= 0.2 + 1e-9, `tick ${i} moved ${result.moved}`);
+    moved += result.moved;
+    if (result.completed) { completed++; args.wantsBuild = false; }
+    if ([4, 25, 65].includes(i)) {
+      args = fabricator({ ...args, ...clone({ machine: args.machine, store: args.store }) });
+    }
+  }
+  assert.equal(completed, 1);
+  close(moved, 5); // 3 input + 2 output units, charged exactly once.
+  close(args.store.cmdty_regocrete, 2);
+  close(sum(args.store), 2);
+  assert.equal(args.machine.job, null);
+});
+
+test('zero lane budget cannot start an assembly batch or spend its inputs', () => {
+  const args = fabricator({ throughputBudget: 0 });
+  assert.equal(stepFabricator(args).limit, 'lane');
+  assert.equal(sum(args.store), 3);
+  assert.equal(args.machine.job, null);
 });

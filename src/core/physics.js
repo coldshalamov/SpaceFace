@@ -1,3 +1,4 @@
+import { tickPhysicalEffects, clearPhysicalEffects } from '../combat/physicalEffects.js';
 import { sweepCollisionProxyInto } from './collisionProxySweep.js';
 import { dedupWarn } from './warnDedup.js';
 import { reconcileMachineryBeforePhysics } from './machineryPresentation.js';
@@ -34,6 +35,7 @@ import {
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
 import { queuePhysicsImpulse, resolvePhysicsBodySpec, physicsBodyNativeReady } from './physicsAuthority.js';
+import { isAnchoredPhysicalBody, anchoredRecoilKey } from './physicalResponse.js';
 import { rapierRuntimeBlocked, rapierRuntimeBlockedRemainingMs } from './rapierCompatRuntime.js';
 // FB-095: tickMs is diagnostics-only, so it reads the classified instrumentation clock in
 // perfRuntime (perfNow) rather than touching wall time from a simulation owner.
@@ -166,7 +168,9 @@ export const physics = {
     this._spatialHashNeedsRebuild = false;
     if (ctx.helpers && !ctx.helpers.combatPhysics) ctx.helpers.combatPhysics = this._sg02CombatPhysics;
     if (this.bus && typeof this.bus.on === 'function') {
-      this.bus.on('save:loaded', () => this._resetSg02AfterLoad());
+      this.bus.on('save:loaded', () => { clearPhysicalEffects(this.state); this._resetSg02AfterLoad(); });
+      this.bus.on('game:newGame', () => clearPhysicalEffects(this.state));
+      this.bus.on('sector:exit', () => clearPhysicalEffects(this.state));
     }
     this._diag = {
       backend: 'custom',
@@ -202,6 +206,7 @@ export const physics = {
   },
 
   update(dt, state) {
+    tickPhysicalEffects(state, dt, this.helpers);
     reconcileMachineryBeforePhysics(state);
     reconcileLatchBeforePhysics(state);
     const t0 = perfNow();
@@ -359,7 +364,14 @@ export const physics = {
         try { owner.canonicalizeWorldSnapshot(payload); }
         catch (err) { console.error('[physics] SG-02 post-save canonicalization failed', err); }
       }
-      return payload;
+      const anchoredRecoil = collectAnchoredRecoil(this.state);
+      if (payload) {
+        // Recoil rides beside the solver snapshot in the same physics row: it is entity-side
+        // state (entity.physicsBody.anchorRecoil), not native state the snapshot can carry.
+        if (anchoredRecoil.length) payload.anchoredRecoil = anchoredRecoil;
+        return payload;
+      }
+      return anchoredRecoil.length ? { anchoredRecoil } : null;
     } catch (err) {
       console.error('[physics] SG-02 world snapshot export failed', err);
       return null;
@@ -368,6 +380,7 @@ export const physics = {
 
   deserialize(payload, options = {}) {
     this._pendingSg02Snapshot = payload && typeof payload === 'object' ? payload : null;
+    this._pendingAnchoredRecoil = sanitizeAnchoredRecoil(payload?.anchoredRecoil);
     this._nativeRestorePending = true;
     this._nativeRestoreDeferred = options.deferNative === true;
     this._nativeRestoreContext = null;
@@ -384,6 +397,7 @@ export const physics = {
 
   cancelRestore() {
     this._pendingSg02Snapshot = null;
+    this._pendingAnchoredRecoil = null;
     this._nativeRestoreContext = null;
     this._nativeRestoreDeferred = false;
     this._nativeRestorePending = true;
@@ -455,6 +469,10 @@ export const physics = {
     reconcileLatchBeforePhysics(state);
     const activity = ensureActivityClassified(state);
     const entities = activity ? [...activity.physicsStatics, ...activity.physicsDynamics] : state.entityList;
+    // Recoil must be on the body spec before adoption claims handles or a rebuild picks
+    // the kinematic body type; its rest pose is the regenerated spawn, not the saved pose.
+    applyAnchoredRecoil(this._pendingAnchoredRecoil, entities);
+    this._pendingAnchoredRecoil = null;
     let adopted = false;
     let reason = !payload ? 'legacy_missing' : payload.schema !== SG02_WORLD_SNAPSHOT_SCHEMA_VERSION ? 'legacy_native_schema' : 'identity_or_contract_changed';
     if (context.pendingBodyRefs?.length) reason = 'unresolved_semantic_bodies';
@@ -1486,6 +1504,77 @@ function impactBodyForReceipt(state, id) {
 function worldFrameOrigin(state) {
   const origin = state && state.world && state.world.frameOrigin;
   return origin && typeof origin === 'object' ? origin : ZERO_FRAME_ORIGIN;
+}
+
+// Anchored recoil persists as [{ key, rest, x, z, vx, vz, pose }] beside the world snapshot;
+// only live (unsettled, nonzero) offsets are worth a row. `pose` is the entity's recoiled
+// kinematics verbatim so a native restore can adopt the snapshot bit-for-bit.
+function collectAnchoredRecoil(state) {
+  const list = state && state.entityList;
+  const out = [];
+  if (!Array.isArray(list)) return out;
+  for (const entity of list) {
+    const recoil = entity && entity.physicsBody && entity.physicsBody.anchorRecoil;
+    if (!recoil || recoil.settled === true || !isAnchoredPhysicalBody(entity)) continue;
+    const x = Number.isFinite(recoil.x) ? recoil.x : 0;
+    const z = Number.isFinite(recoil.z) ? recoil.z : 0;
+    const vx = Number.isFinite(recoil.vx) ? recoil.vx : 0;
+    const vz = Number.isFinite(recoil.vz) ? recoil.vz : 0;
+    if (!x && !z && !vx && !vz) continue;
+    const key = anchoredRecoilKey(entity);
+    if (!key) continue;
+    const rest = recoil.rest && typeof recoil.rest === 'object' ? recoil.rest : {};
+    out.push({
+      key,
+      rest: { x: Number.isFinite(rest.x) ? rest.x : 0, z: Number.isFinite(rest.z) ? rest.z : 0 },
+      x, z, vx, vz,
+      pose: {
+        x: Number.isFinite(entity.pos?.x) ? entity.pos.x : 0,
+        z: Number.isFinite(entity.pos?.z) ? entity.pos.z : 0,
+        vx: Number.isFinite(entity.vel?.x) ? entity.vel.x : 0,
+        vz: Number.isFinite(entity.vel?.z) ? entity.vel.z : 0,
+      },
+    });
+  }
+  return out;
+}
+
+function sanitizeAnchoredRecoil(rows) {
+  if (!Array.isArray(rows)) return null;
+  const out = new Map();
+  for (const row of rows) {
+    if (!row || typeof row.key !== 'string' || !row.key) continue;
+    const x = row.x, z = row.z, vx = row.vx, vz = row.vz;
+    if (![x, z, vx, vz].every(value => typeof value === 'number' && Number.isFinite(value))) continue;
+    const pose = row.pose && typeof row.pose === 'object'
+      ? { x: row.pose.x, z: row.pose.z, vx: row.pose.vx, vz: row.pose.vz }
+      : null;
+    if (pose && ![pose.x, pose.z, pose.vx, pose.vz].every(Number.isFinite)) continue;
+    out.set(row.key, { key: row.key, x, z, vx, vz, pose });
+  }
+  return out.size ? out : null;
+}
+
+function applyAnchoredRecoil(rows, entities) {
+  if (!rows || !entities) return;
+  for (const entity of entities) {
+    if (!entity || entity.alive === false || !entity.physicsBody || typeof entity.physicsBody !== 'object') continue;
+    const key = anchoredRecoilKey(entity);
+    const row = key && rows.get(key);
+    if (!row) continue;
+    entity.physicsBody.anchorRecoil = {
+      // Rest is the regenerated spawn pose — authored data may have moved since the save.
+      rest: { x: Number.isFinite(entity.pos?.x) ? entity.pos.x : 0, z: Number.isFinite(entity.pos?.z) ? entity.pos.z : 0 },
+      x: row.x, z: row.z, vx: row.vx, vz: row.vz,
+      settled: false,
+    };
+    // The entity resumes at its saved recoiled pose — snapshot kinematics then match exactly
+    // for native adoption, and a scalar rebuild starts from the same offset.
+    if (row.pose) {
+      if (entity.pos) { entity.pos.x = row.pose.x; entity.pos.z = row.pose.z; }
+      if (entity.vel) { entity.vel.x = row.pose.vx; entity.vel.z = row.pose.vz; }
+    }
+  }
 }
 
 function worldFrameOriginSeq(state) {

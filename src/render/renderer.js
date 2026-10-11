@@ -81,6 +81,7 @@ import {
   dumpAuthoredInstancePoolState,
   asteroidFirstFlightCookKey,
   authoredReadmissionStatus,
+  boundaryLiveEntity,
   collectFirstFlightCookEntities,
   collectFirstFlightCookEntitiesSteps,
   describeAuthoredUpgradeQueue,
@@ -129,7 +130,7 @@ import {
   REGULAR_HULL_FILES,
   queuePacedDetachedTeardown,
 } from './partsLibrary.js';
-import { hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
+import { entityIsMissionCritical, hasExplicitAuthoredPayloadPresentation } from '../core/presentationAdmission.js';
 import { ACE_MEMORY_META_KEYS, capitalBossWingRosterRows, liveSectorFullExtrasStubs, promotedAceShapeForRecord, queuedSpawnRequestRoster, saveEnvelopeFullExtrasStubs, saveEnvelopeSectorStubs, scriptedOnboardingRosterRows } from './saveEnvelopeSectorWarm.js';
 import { aceById, escalatedStyleFromMemory, returnCrewForAce, stanceForRecord, styleLoadoutForAce } from '../data/namedAces.js';
 import { clearCanonicalProgramSpecimens } from './programCanon.js';
@@ -5120,14 +5121,44 @@ function cameraClearanceFloorWalk(structural, camX, camZ, camY, pad = 0) {
 
 
 
+const MISSION_CRITICAL_MEMO_MS = 1000;
+
+/**
+ * Mission identity for a mission-only admission fallback. The stamped record fields are read
+ * fresh every call — a tag stamped mid-verdict takes effect now — while the mission-list walk is
+ * memoized per boundary for about a second so an unconsumed required-hull thunk does not scan
+ * state.missions.active on every frame of every mesh.
+ */
+function resolvingMarkerMissionCritical(mesh, entity, state) {
+  const data = entity && entity.data;
+  if (data && (data.missionTag != null || data.storyTarget)) return true;
+  if (!entity) return false;
+  const ud = mesh.userData;
+  const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now();
+  if (ud.missionCriticalMemoEntity === entity
+      && Number.isFinite(ud.missionCriticalMemoAt)
+      && now - ud.missionCriticalMemoAt < MISSION_CRITICAL_MEMO_MS) {
+    return ud.missionCriticalMemo === true;
+  }
+  const critical = entityIsMissionCritical(entity, state);
+  ud.missionCriticalMemoEntity = entity;
+  ud.missionCriticalMemoAt = now;
+  ud.missionCriticalMemo = critical;
+  return critical;
+}
+
 /**
  * The resolving marker inside a pending admission substrate draws only while the boundary is
  * still awaiting its authored body. Driving it off the authored state each frame is what keeps
  * every transition safe with no transition-specific bookkeeping: pending → marker on,
  * commit/terminal/readmission flows → the marker is either removed with the substrate or shut
- * off the same frame the state stops being pending.
+ * off the same frame the state stops being pending. On the terminal frame it also publishes the
+ * truth the lock gate reads: `presentationFallbackVisible` reports whether the boundary still
+ * draws a real hull (the ship's own stand-in or a published procedural body) rather than only
+ * the abstract octahedron.
  */
-function syncResolvingMarker(mesh) {
+export function syncResolvingMarker(mesh, state) {
   if (!mesh || !mesh.userData) return;
   if (!mesh.userData.resolvingMarker) {
     // Boundary-seat markers (stations/payloads) arm at wrap and materialize on the first
@@ -5160,25 +5191,43 @@ function syncResolvingMarker(mesh) {
   // Terminal admission failure with no other drawable: a non-required ship builds its
   // sanctioned procedural body instead of drawing the marker forever — the same class the
   // mid-admission fallback path publishes. Retry-armed statuses keep the marker until the
-  // cap or a non-retriable state settles the verdict.
+  // cap or a non-retriable state settles the verdict. A required hull's thunk is mission-only:
+  // it fires for a mission target still on the abstract marker, never over the ship's own
+  // stand-in hull, and stays armed (not deleted) while no mission identity exists yet — a later
+  // stamp can still make it consumable on a subsequent terminal frame.
   const parent = marker.parent;
-  const fallbackThunk = parent && parent.userData && parent.userData.admissionProceduralFallback;
+  const parentData = parent && parent.userData;
+  const fallbackThunk = parentData && parentData.admissionProceduralFallback;
+  const liveEntity = boundaryLiveEntity(mesh, mesh.userData.admissionEntity || null);
   if (fallbackThunk) {
     const status = mesh.userData.authoredAssetState;
     const attempts = mesh.userData.authoredAdmissionRetryCount || 0;
     const retriable = authoredAdmissionRetriableStatus(status)
       && attempts < AUTHORED_ADMISSION_RETRY_MAX;
     if (!retriable) {
-      delete parent.userData.admissionProceduralFallback;
-      try {
-        const fallback = fallbackThunk();
-        if (fallback && fallback.isObject3D) {
-          parent.userData.authoredReadableFallbackRetained = true;
-          mesh.userData.authoredReadableFallbackRetained = true;
-          parent.add(fallback);
-        }
-      } catch (_) { /* the marker remains the terminal visual */ }
+      const missionOnly = parentData.admissionProceduralFallbackMissionOnly === true;
+      const markerIsHull = marker.userData && marker.userData.admissionStandInHull === true;
+      if (!missionOnly || (!markerIsHull && resolvingMarkerMissionCritical(mesh, liveEntity, state))) {
+        delete parentData.admissionProceduralFallback;
+        delete parentData.admissionProceduralFallbackMissionOnly;
+        try {
+          const fallback = fallbackThunk();
+          if (fallback && fallback.isObject3D) {
+            parentData.authoredReadableFallbackRetained = true;
+            mesh.userData.authoredReadableFallbackRetained = true;
+            parent.add(fallback);
+          }
+        } catch (_) { /* the marker remains the terminal visual */ }
+      }
     }
+  }
+  // The wrap-time stamp described the pending window; the terminal verdict needs the drawn truth
+  // — the ship's own stand-in hull or a published procedural body is a real hull to aim at, the
+  // abstract octahedron is not. boundaryLiveEntity resolves the record after a save restore.
+  if (liveEntity && liveEntity.type === 'ship') {
+    liveEntity.presentationFallbackVisible =
+      (marker.userData && marker.userData.admissionStandInHull === true)
+      || mesh.userData.authoredReadableFallbackRetained === true;
   }
   marker.visible = !parent || !parent.children.some((child) => child !== marker && child.visible !== false);
 }
@@ -18522,6 +18571,7 @@ export const render = {
       // MACH-05 — forward the out scratch exactly like worldToScreen: a bare binding made every
       // helpers.raycastToPlane caller allocate a result object per call.
       raycastToPlane: (ndc, out) => this.raycastToPlane(ndc, out),
+      screenToWorldDirection: (axes, out) => this.screenToWorldDirection(axes, out),
       addTrauma: (a) => cam.addTrauma(a),
       socketWorldPose: (id, name) => this.socketWorldPose(id, name),
       socketWorldPos: (id, name) => this.socketWorldPos(id, name),
@@ -18660,9 +18710,9 @@ export const render = {
     onBus('tether:broken', () => cam.easeRecenter && cam.easeRecenter(0.4));
     onBus('massline:selfSling', (payload) => applyMasslineReleaseCameraCue(cam, state, payload));
     onBus('camera:zoom', ({ delta, level }) => { if (level != null) cam.setZoom(level); else cam.setZoom(state.camera.zoom + (delta || 0)); });
-    onBus('game:started', () => cam.snapToPlayer && cam.snapToPlayer());
-    onBus('save:loaded', () => cam.snapToPlayer && cam.snapToPlayer());
-    onBus('player:respawn', () => cam.snapToPlayer && cam.snapToPlayer());
+    onBus('game:started', () => { if (cam.endDeathCam) cam.endDeathCam(); if (cam.snapToPlayer) cam.snapToPlayer(); });
+    onBus('save:loaded', () => { if (cam.endDeathCam) cam.endDeathCam(); if (cam.snapToPlayer) cam.snapToPlayer(); });
+    onBus('player:respawn', () => { if (cam.endDeathCam) cam.endDeathCam(); if (cam.snapToPlayer) cam.snapToPlayer(); });
     globalShipMicroMotion.bindEvents(bus);
     globalAsteroidMotion.bindEvents(bus);
     globalPickupMotion.bindEvents(bus);
@@ -26458,7 +26508,7 @@ export const render = {
           // a player/forceRender/neverCull doom drawing. The pose write, cull refresh,
           // and options fill are dead work here: the mesh is hidden this same iteration
           // and a revived row re-poses through the visible loop on re-entry.
-          syncResolvingMarker(mesh);
+          syncResolvingMarker(mesh, this.state);
           const doomedChanged = applyEntityMeshVisibility(mesh, false);
           if (doomedChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
           if (mesh.userData && mesh.userData.asteroidInstanceBody) {
@@ -26484,7 +26534,7 @@ export const render = {
         const protectedRoot = isProtectedEntityMesh(_protectedRootOptions);
         // A protected root keeps its prior visibility when the latest fence has no pose for it.
         // Ordinary stale identities still fail closed and leave the submit list immediately.
-        syncResolvingMarker(mesh);
+        syncResolvingMarker(mesh, this.state);
         _submitVisibilityOptions.isPlayer = isPlayer;
         _submitVisibilityOptions.forceRender = forceRender;
         _submitVisibilityOptions.neverCull = neverCull;
@@ -26746,7 +26796,7 @@ export const render = {
         } else if (userData.onGlassPendingSince != null) {
           userData.onGlassPendingSince = null;
         }
-        syncResolvingMarker(mesh);
+        syncResolvingMarker(mesh, this.state);
         _submitVisibilityOptions.isPlayer = isPlayer;
         _submitVisibilityOptions.forceRender = forceRender;
         _submitVisibilityOptions.neverCull = neverCull;
@@ -31720,18 +31770,44 @@ export const render = {
   // `out` is an optional caller-owned {x,z} scratch; results are consumed synchronously so a
   // retained object is safe (membrane path already returns the shared _rayGlobalXZ scratch).
   raycastToPlane(ndc, out) {
-    const cam = this.cam && this.cam.obj;
+    const cam = this._syncProjectionCamera();
     if (!cam || !ndc || !Number.isFinite(ndc.x) || !Number.isFinite(ndc.y)) return writePlaneXZ(out, 0, 0);
     _v2.set(ndc.x, ndc.y);
     _ray.setFromCamera(_v2, cam);
-    const hit = _ray.ray.intersectPlane(_plane, _pt);
-    if (!hit) return writePlaneXZ(out, 0, 0);
+    let hit = _ray.ray.intersectPlane(_plane, _pt);
+    // A low chase camera exposes sky. An upward ray has no play-plane intersection; a ray
+    // skimming the horizon may intersect millions of WU away. Both still mean aim FORWARD,
+    // never at galactic (0,0). Extend its horizontal bearing to the camera's finite range.
+    const reach = Number.isFinite(cam.far) && cam.far > 0 ? cam.far : 14000;
+    if (!hit || Math.hypot(hit.x - _ray.ray.origin.x, hit.z - _ray.ray.origin.z) > reach) {
+      const horizontal = Math.hypot(_ray.ray.direction.x, _ray.ray.direction.z);
+      if (horizontal > 1e-8) {
+        _pt.set(_ray.ray.origin.x + _ray.ray.direction.x / horizontal * reach, 0,
+          _ray.ray.origin.z + _ray.ray.direction.z / horizontal * reach);
+      } else {
+        _pt.set(_ray.ray.origin.x, 0, _ray.ray.origin.z);
+      }
+      hit = _pt;
+    }
     const membrane = this._frameMembrane;
     if (!membrane) return writePlaneXZ(out, hit.x, hit.z);
     _rayLocalXZ.x = hit.x;
     _rayLocalXZ.z = hit.z;
     const g = membrane.toGlobal(_rayLocalXZ, _rayGlobalXZ);
     return out ? writePlaneXZ(out, g.x, g.z) : g;
+  },
+
+  // Unit screen axes flattened onto flight's XZ plane. The real camera yaw carries the
+  // transition and turn lag; the ship nose alone would jump controls ahead of the picture.
+  screenToWorldDirection(axes, out) {
+    const cam = this._syncProjectionCamera();
+    if (!cam || !axes || !Number.isFinite(axes.x) || !Number.isFinite(axes.y)) return null;
+    const m = cam.matrixWorld.elements;
+    const length = Math.hypot(m[8], m[10]);
+    if (length < 1e-8) return null;
+    const forwardX = -m[8] / length, forwardZ = -m[10] / length;
+    return writePlaneXZ(out, -forwardZ * axes.x + forwardX * axes.y,
+      forwardX * axes.x + forwardZ * axes.y);
   },
 
   // World XZ of a named attachment socket on an entity's mesh, or null if the entity has no mesh or no

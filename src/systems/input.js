@@ -58,6 +58,7 @@ import { isHostileToPlayer } from './scanner.js';
 import { isBeamTargetEligible } from './mining.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { resolveSteeringView } from './racingSteer.js';
 
 // Helm-assist steering: turnIntent saturates at ±1 beyond this much nose-to-cursor error (rad),
 // so the ship's own yaw controller (rate caps, banking, class tuning) shapes the actual turn.
@@ -890,6 +891,20 @@ function simClockMs(state) {
   return t * 1000;
 }
 
+// Presentation-relative intent only: raw device axes and the propulsion owner stay untouched.
+function stickWorldDirection(host, state, player, axes) {
+  const out = host._stickWorld || (host._stickWorld = { x: 0, z: 0 });
+  out.x = axes.x; out.z = axes.y;
+  if (resolveSteeringView(state) !== 'racing') return out;
+  const projected = host.helpers?.screenToWorldDirection?.(axes, out);
+  if (projected && Number.isFinite(projected.x) && Number.isFinite(projected.z)) return projected;
+  // Input-only hosts have no rendered camera; the stern convention follows the hull.
+  const yaw = Number.isFinite(player.rot) ? player.rot : 0;
+  out.x = Math.cos(yaw) * axes.y - Math.sin(yaw) * axes.x;
+  out.z = Math.sin(yaw) * axes.y + Math.cos(yaw) * axes.x;
+  return out;
+}
+
 export const input = {
   name: 'input',
   init(ctx) {
@@ -982,13 +997,15 @@ export const input = {
           || isUiCommandTarget(e.target),
       });
     });
+    // Physical releases must reach the owner even when a modal consumes the event below
+    // window. Otherwise frozen menu ticks preserve a held thrust/fire command on resume.
     listen(windowTarget, 'keyup', (e) => {
       applyFlightKeyEvent(this, {
         code: eventCode(e),
         pressed: false,
         blocked: false,
       });
-    });
+    }, { capture: true });
     listen(windowTarget, 'blur', () => this.releaseHeldControls('window-blur'));
     const pointerSurface = this._canvas || windowTarget;
     const handlePointerMove = (e) => {
@@ -1054,7 +1071,7 @@ export const input = {
       }
       this._kbmActivityPending = true;
     });
-    listen(windowTarget, 'mouseup', (e) => { if (e.button === 0) this._m0 = false; if (e.button === 1) this._m1 = false; if (e.button === 2) { this._m2 = false; this._clearM2HoldClock(); } });
+    listen(windowTarget, 'mouseup', (e) => { if (e.button === 0) this._m0 = false; if (e.button === 1) this._m1 = false; if (e.button === 2) { this._m2 = false; this._clearM2HoldClock(); } }, { capture: true });
     listen(windowTarget, 'pointercancel', () => this.releaseHeldControls('pointercancel'));
     const pointerLockTarget = typeof document !== 'undefined' ? document : null;
     listen(pointerLockTarget, 'pointerlockchange', () => {
@@ -1499,8 +1516,9 @@ export const input = {
         // forward/strafe axes the same way helm-assist decomposes a brake vector. The curve
         // reshapes the magnitude so the pushed direction survives untouched.
         const fly = shapePadVector(gp.axes.leftX, -gp.axes.leftY, padCurve, padSensFly);
-        const wx = fly.x;
-        const wz = fly.y;
+        const world = stickWorldDirection(this, state, p, fly);
+        const wx = world.x;
+        const wz = world.z;
         const cf = Math.cos(p.rot || 0);
         const sf = Math.sin(p.rot || 0);
         gpMoveZ = wx * cf + wz * sf;
@@ -1660,8 +1678,10 @@ export const input = {
         ? shapePadVector(aimAxes.rightX, -aimAxes.rightY, padCurve, padSensAim)
         : { x: aimAxes.rightX, y: -aimAxes.rightY };
       const ax = shapedAim.x;
-      const ay = shapedAim.y; // world +Z is "up" on the stick
-      const angle = Math.atan2(ay, ax);
+      const ay = shapedAim.y; // positive is screen-up; overhead keeps its legacy +Z mapping
+      const world = stickWorldDirection(this, state, p, shapedAim);
+      const worldX = world.x, worldZ = world.z;
+      const angle = Math.atan2(worldZ, worldX);
       const dist = 300;
       inp.aimAngle = angle;
       aimWorld.x = p.pos.x + Math.cos(angle) * dist;
@@ -1669,7 +1689,7 @@ export const input = {
       inp.mouseNdc.x = ax;
       inp.mouseNdc.y = ay;
       const controllerDrawToFly = inp.autoFire && gpAimActive && !tpAimActive && !kbmRecent;
-      writeAutoTargetVector(inp, ax, ay, controllerDrawToFly);
+      writeAutoTargetVector(inp, worldX, worldZ, controllerDrawToFly, ax, ay);
     } else {
       if (inp.aimFromStick) delete inp.aimFromStick;
       // Mouse aim is INDEPENDENT of the nose: weapons gimbal toward the cursor (Phase 2).

@@ -3,7 +3,7 @@ export const BORROWED_SUN = Object.freeze({
   assetId: 'SF_STATION_BORROWED_SUN', deployTicks: 720, openTicks: 36000,
   foldTicks: 600, transitTicks: 7200, hailRange: 600, radius: 110,
   services: Object.freeze(['trade', 'refuel', 'repair']),
-  showcase: Object.freeze(['cmdty_food', 'cmdty_electronics', 'cmdty_hull_parts']),
+  showcase: Object.freeze(['cmdty_food', 'cmdty_electronics', 'cmdty_comp_hullplate']),
 });
 // These are safe fixed berths, not a path or permission to move an occupied station.
 export const BORROWED_SUN_BERTHS = Object.freeze([

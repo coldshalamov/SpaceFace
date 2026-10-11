@@ -11,7 +11,7 @@ import { onboarding } from '../src/systems/onboarding.js';
 import { titlePrimaryAction, titleVerbOrder } from '../src/ui/screens/mainMenu.js';
 import { crucibleResultsScreen } from '../src/ui/screens/crucible.js';
 import { demoEndFacts, demoEndScreen } from '../src/ui/screens/demoEnd.js';
-import { mountScreen, textLines } from './helpers/fake-dom.mjs';
+import { fakeDom, findAll, mountScreen, textLines } from './helpers/fake-dom.mjs';
 
 const BENCH_RESULT = Object.freeze({
   outcome: 'defeat', seed: 4242, arenaId: 'helios_core', wave: 3, deepestWave: 3,
@@ -117,6 +117,47 @@ test('the end card reads its three facts and fires once', () => {
   assert.match(byKey.bestLine, /Ricochet — 960 points/);
   assert.equal(byKey.credits, '1,840 CR');
   assert.equal(byKey.module, 'Fusion Drive M');
+});
+
+test('a boot-prewarmed card rebuilds its register against the live state on show', () => {
+  const state = createGameState(7);
+  const doc = fakeDom();
+  const previousDocument = globalThis.document;
+  globalThis.document = doc;
+  const root = doc._make('div');
+  const ctx = {
+    state,
+    bus: { emit() {}, on() { return () => {}; }, off() {}, once() {} },
+    registry: { get: () => null },
+  };
+  try {
+    // The screen prewarm mounts the card at boot: no credits earned, nothing fitted.
+    demoEndScreen.mount(root, ctx);
+    state.player.stats.creditsEarned = 3086;
+    state.ui.demoEnd = { moduleDefId: 'mod_swing_drive_s' };
+    demoEndScreen.onShow(ctx); // what screenManager runs on the push
+    const values = findAll(root, (n) => n.tagName === 'dd')
+      .map((dd) => dd.attributes['aria-label'] || dd.textContent);
+    assert.ok(values.includes('3,086 CR'), `credits read live: ${JSON.stringify(values)}`);
+    assert.ok(values.includes('Swing Drive S'), `fitted module named: ${JSON.stringify(values)}`);
+    const creditRows = findAll(root, (n) => n.tagName === 'dt' && n.textContent === 'Credits earned');
+    assert.equal(creditRows.length, 1, 'the rebuild replaces the stale rows instead of appending');
+  } finally {
+    demoEndScreen.dispose();
+    globalThis.document = previousDocument;
+  }
+});
+
+test('the end card falls back to the lifetime Crucible line when no trick chain is banked', () => {
+  const state = createGameState(7);
+  const facts = demoEndFacts(state, { records: { lifetime: { runs: 4, deepestWave: 6, bestScore: 12400 } } });
+  const crucible = facts.find((f) => f.key === 'crucible');
+  assert.ok(crucible, 'a pilot with runs but no banked line still sees a Crucible fact');
+  assert.equal(crucible.label, 'Crucible best');
+  assert.equal(crucible.text, 'Wave 6 · 12,400 points');
+  assert.equal(facts[0].key, 'crucible', 'the crucible fact sits where the best line would');
+  const none = demoEndFacts(state, { records: { lifetime: { runs: 0 } } });
+  assert.equal(none.some((f) => f.key === 'crucible'), false, 'no runs, no line');
 });
 
 test('the end card mounts the headline and its way-out words', () => {

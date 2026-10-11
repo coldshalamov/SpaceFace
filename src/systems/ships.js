@@ -2803,8 +2803,25 @@ export const ships = {
   },
 
   nextInstanceId() {
-    this._instSeq = (this._instSeq || 0) + 1;
-    return 'mi_' + this.state.tick + '_' + this._instSeq;
+    // Continue restores ownership and the tick, but this owner's sequence is transient.
+    // A paused berth can therefore reuse a saved id on its first purchase/reward. Reserve
+    // both loose and fitted identities (including parked hulls) before minting another.
+    const player = this.state.player || {};
+    const used = new Set();
+    for (const item of player.moduleInventory || []) {
+      if (item && item.instanceId != null) used.add(item.instanceId);
+    }
+    for (const owned of player.ownedShips || []) {
+      for (const item of Object.values((owned && owned.fittedInstances) || {})) {
+        if (item && item.instanceId != null) used.add(item.instanceId);
+      }
+    }
+    let id;
+    do {
+      this._instSeq = (this._instSeq || 0) + 1;
+      id = 'mi_' + this.state.tick + '_' + this._instSeq;
+    } while (used.has(id));
+    return id;
   },
 
   // ---- new game ---------------------------------------------------------------------------

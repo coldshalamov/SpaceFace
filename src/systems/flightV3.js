@@ -326,22 +326,6 @@ export const flightV3 = {
         veilBusy = !!(phase && phase.busy);
         input.boost = false;
       }
-      // A held tether-orbit chord and a dash impulse are incompatible control contracts. The
-      // orbit helper can continuously trim yaw and the swing coordinator can lower sustained
-      // boost to the speed the hull can actually track, but a boost press also carries a discrete
-      // dash impulse (170 wu/s on the Wasp). That impulse lands outside the throttle governor and
-      // can jump angular speed past the line's yaw ceiling in one tick. While the explicit
-      // forward+turn orbit chord owns the
-      // helm, Shift therefore means continuous boost only; release either chord key (or turn the
-      // assist Off) and the ordinary dash press is immediately available again.
-      //
-      // The predicate IS the assist: the same pure step the steering call below runs, probed with
-      // the same body/anchor/intent it will see, so suppression can never drift from the yaw it
-      // protects. Only `.active` is read here; the steering call still runs after boost so its
-      // input spread carries the resource-gated boost flag.
-      const orbitOwnsBoostPress = craftOrbitAssistStep(
-        state, entity, body, orbitAnchor, rawInput, input, tether, profile, dt,
-      ).active === true;
       // Input owns the latch. Read its published state before stepping boost so an engaged burn
       // does not also regenerate the same capacitor in this tick; the burn debit below is the
       // only new consumer and remains player-only.
@@ -349,7 +333,7 @@ export const flightV3 = {
         && state && state.input && state.input.travelDrive
         && state.input.travelDrive.state === 'engaged';
       boosting = this._stepPlayerBoost(entity, input.boost, dt, state, {
-        suppressDash: autoBoost || orbitOwnsBoostPress || veil,
+        suppressDash: autoBoost || veil,
         suppressRegen: requestedTravelBurn || veilBusy,
       });
       input.boost = boosting;
@@ -715,15 +699,6 @@ export const flightV3 = {
         imp *= SWING_DRIVE_GAIN;
         swung = true;
       }
-    }
-    if (!swung && tether && tether.active && tether.targetId != null) {
-      // On a live line a dash may only lift the speed along its direction to the boosted speed
-      // cap. Chord-break dashes (release the turn key, tap boost, re-press) otherwise pumped a
-      // tethered spin to 2x+ what the drive can sustain. The swing-drive verb is exempt.
-      const dashProfile = resolvePropulsionProfile(e, state);
-      const vAlong = finite(e.vel && e.vel.x) * dirX + finite(e.vel && e.vel.z) * dirZ;
-      const dashCap = positive(dashProfile.combatSpeed, 150) * positive(dashProfile.boostSpeedMult, 1.55);
-      imp = Math.min(imp, Math.max(0, dashCap - vAlong));
     }
     const mass = positive(e.physicsBody && e.physicsBody.mass, positive(e.mass, 1));
     // Rapier authority path: queue the impulse (mass-scaled so delta-v is `imp` units/s),

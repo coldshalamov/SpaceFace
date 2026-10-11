@@ -860,6 +860,17 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
     return group;
   }
 
+  function requestConduitTemplate(record, loadOptions) {
+    record.admissionVisible = loadOptions.admissionVisible === true;
+    return Promise.resolve(lease.load(record.url, loadOptions)).then((blueprint) => {
+      if (!blueprint || !Array.isArray(blueprint.primitives)) {
+        throw new Error(`[worksPartLoader] conduit template ${record.id} resolved no mesh primitives`);
+      }
+      record.blueprint = blueprint;
+      return blueprint;
+    });
+  }
+
   /**
    * Acquire one resident immutable blueprint per conduit asset URL for a topology generation.
    * A returned handle creates isolated cell clones; callers must release its clones before calling
@@ -890,6 +901,12 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
           throw new Error(`[worksPartLoader] ${id} is not an authored conduit part`);
         }
         const url = selectUrl(entry, register);
+        const loadOptions = {
+          slot: entry.slot || 'place',
+          optional: true,
+          admissionVisible: true,
+          ...(options || {}),
+        };
         let record = conduitTemplates.get(url);
         if (!record) {
           record = {
@@ -900,18 +917,13 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
             blueprint: null,
             promise: null,
           };
-          record.promise = Promise.resolve(lease.load(url, {
-            slot: entry.slot || 'place',
-            optional: true,
-            ...(options || {}),
-          })).then((blueprint) => {
-            if (!blueprint || !Array.isArray(blueprint.primitives)) {
-              throw new Error(`[worksPartLoader] conduit template ${id} resolved no mesh primitives`);
-            }
-            record.blueprint = blueprint;
-            return blueprint;
-          });
+          record.promise = requestConduitTemplate(record, loadOptions);
           conduitTemplates.set(url, record);
+        } else if (!record.blueprint && loadOptions.admissionVisible === true && !record.admissionVisible) {
+          // The shared loader deduplicates the bytes AND promotes a visible joiner's queued
+          // decode/compile work. Merely awaiting our cached promise hides that live demand and
+          // can strand the network behind an earlier ambient conduit prewarm.
+          record.promise = requestConduitTemplate(record, loadOptions);
         }
         record.refs += 1;
         retained.push(record);
@@ -963,6 +975,7 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
       record.blueprint = await lease.load(url, {
         slot: entry.slot || 'place',
         optional: true,
+        admissionVisible: true,
         ...(options || {}),
       });
     } catch {
@@ -1010,6 +1023,9 @@ export function createWorksPartLoader({ renderer, registry, lease: injectedLease
       blueprint = await lease.load(url, {
         slot: entry.slot || 'place',
         optional: true,
+        // The rover and installed machines are already on the player's board. Use the shared
+        // loader's visible lane instead of letting preview residency imply ambient decoding.
+        admissionVisible: true,
         ...(options || {}),
       });
     } catch {

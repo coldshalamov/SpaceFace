@@ -279,24 +279,25 @@ export const countermeasures = {
     // 1. Tick cooldowns + active-effect timers on every ship, and expire finished effects. When an
     //    ECM effect expires, restore the turnRate on missiles it jammed (stored in _jammedTurnRate).
     for (const e of countermeasureShipCandidates(state)) {
-      if (e.type !== 'ship' || !e.alive) continue;
+      if (e.type !== 'ship') continue;
       const cm = e.data && e.data.cm;
       if (!cm) continue;
+      // A ship destroyed mid-effect never reaches its expiry tick — release its ECM victims now.
+      if (!e.alive) {
+        if (cm.effect) {
+          releaseEcmJams(state, e);
+          cm.effect = null;
+          cm.effectT = 0;
+        }
+        continue;
+      }
       if (cm.cooldownT > 0) cm.cooldownT = Math.max(0, cm.cooldownT - dt);
       if (cm.effectT > 0) {
         cm.effectT = Math.max(0, cm.effectT - dt);
         if (cm.effectT <= 0) {
           // ECM effect ending: un-jam any missile this ship jammed (restore its real turnRate).
           if (cm.effect && cm.effect.cfg && cm.effect.cfg.kind === 'ecm') {
-            const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
-            for (const p of projectiles) {
-              if (p.type !== 'projectile' || !p.alive) continue;
-              const d = p.data;
-              if (d && d._jammedTurnRate != null && d._jammedBy === e.id) {
-                d.turnRate = d._jammedTurnRate;
-                delete d._jammedTurnRate; delete d._jammedBy;
-              }
-            }
+            releaseEcmJams(state, e);
           }
           cm.effect = null;
         }
@@ -754,6 +755,19 @@ function countermeasureShipCandidates(state) {
   const index = state && state.entityIndex;
   if (index && index.__spacefaceEntityIndexV1 && index.ships) return index.ships;
   return (state && state.entityList) || [];
+}
+
+// Restore the real turnRate on every live missile this ship's ECM is or was jamming.
+function releaseEcmJams(state, ship) {
+  const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
+  for (const p of projectiles) {
+    if (p.type !== 'projectile' || !p.alive) continue;
+    const d = p.data;
+    if (d && d._jammedTurnRate != null && d._jammedBy === ship.id) {
+      d.turnRate = d._jammedTurnRate;
+      delete d._jammedTurnRate; delete d._jammedBy;
+    }
+  }
 }
 
 function resetCountermeasureDiagnostics(diag) {

@@ -227,9 +227,13 @@ function recordLaunderLedger(state, spec) {
   if (!Array.isArray(player.launderLedger)) player.launderLedger = [];
   const ledger = player.launderLedger;
   const seed = (Number(state.meta && state.meta.seed) >>> 0) || 1;
-  const seq = ledger.length + 1;
+  // The ledger truncates to a fixed cap, so its length is not a sequence — carry the max seq forward.
+  let seq = 0;
+  for (let i = 0; i < ledger.length; i++) seq = Math.max(seq, Number(ledger[i] && ledger[i].seq) || 0);
+  seq += 1;
   const entry = {
     receiptId: `launder:${seed.toString(36)}:${seq.toString(36)}`,
+    seq,
     stationId: spec.stationId || null,
     factionId: spec.factionId || null,
     side: 'launder',

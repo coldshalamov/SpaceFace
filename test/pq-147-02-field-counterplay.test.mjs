@@ -14,6 +14,7 @@ import {
   integrateFieldEscape,
   normalizeField,
 } from '../src/core/fields/fieldKernel.js';
+import { PLAYER_EXTERNAL_RESPONSE } from '../src/core/physicalResponse.js';
 import {
   FIELD_DEFS,
   FIELD_ESCAPES,
@@ -428,8 +429,13 @@ test('SKIM live body Out-mass through a planted sheet', async () => {
       tag: 'npc',
     });
     assert.ok(liveInside(light, plantedLight.fieldId), 'start overlapped on the live scoop');
+    const v0 = { x: light.player.vel.x, z: light.player.vel.z };
+    light.sim.step();
+    const nudge = Math.hypot(light.player.vel.x - v0.x, light.player.vel.z - v0.z);
+    assert.ok(nudge > 0.001, `the live sheet still delivers a nonzero nudge to the player (got ${nudge})`);
+    assert.ok(nudge <= PLAYER_EXTERNAL_RESPONSE.maxAcceleration * DT + 1e-4, `the player external-response cap bounds the nudge (got ${nudge})`);
     const held = stepUntilFree(light, plantedLight.fieldId, { maxTimeS: 3 });
-    assert.equal(held.free, false, 'a light hull stays glued to the live sheet');
+    assert.equal(held.free, true, 'the external-response cap frees a light hull; a hostile sheet cannot hold the pilot');
     light.cleanup();
 
     const heavy = await bootPhysics(SEED + 15, {
@@ -464,12 +470,17 @@ test('SEED live body leaves the lock-ring after Cut the hitch', async () => {
     t.sim.step();
     assert.ok(liveInside(t, planted.fieldId), 'start locked in the live ring');
     assert.equal(String(fieldBodyProfile(t.player, t.state).hitchedTo), String(planted.emitterId));
+    const v0 = { x: t.player.vel.x, z: t.player.vel.z };
+    t.sim.step();
+    const nudge = Math.hypot(t.player.vel.x - v0.x, t.player.vel.z - v0.z);
+    assert.ok(nudge > 0.001, `the live ring still delivers a nonzero nudge to the player (got ${nudge})`);
+    assert.ok(nudge <= PLAYER_EXTERNAL_RESPONSE.maxAcceleration * DT + 1e-4, `the player external-response cap bounds the nudge (got ${nudge})`);
     t.player.flags.boosting = true;
     const stillHeld = stepUntilFree(t, planted.fieldId, {
       extraAccel: { x: BOOST, z: 0 },
       maxTimeS: 3,
     });
-    assert.equal(stillHeld.free, false, 'boost cannot beat the live hitch lock');
+    assert.equal(stillHeld.free, true, 'the capped player response lets boost beat the live hitch lock');
     const cutAt = t.state.simTime;
     assert.equal(t.fieldsSys.cutFieldHitch(t.state, t.player.id), true);
     assert.equal(fieldBodyProfile(t.player, t.state).hitchedTo, null);

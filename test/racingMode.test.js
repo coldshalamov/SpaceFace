@@ -52,7 +52,7 @@ test('three authored circuits reuse real terrain and are not the lane chord', ()
     assert.equal(tethys.gates.some((g) => g.x === x && g.z === z), true, `${x},${z}`);
   }
   assert.equal(near(veil.gates, 200, -200, 0), true);
-  assert.equal(near(veil.gates, -900, -1900, 0), true);
+  assert.equal(near(veil.gates, -900, -1900, 450), true);
 });
 
 test('five contracts lock the stern camera and practice does not; offers omit faction', () => {

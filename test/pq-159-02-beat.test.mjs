@@ -144,6 +144,19 @@ test('player death arms the death cam', () => {
   assert.ok(camera.holdRemaining() > 0.5, 'death cam holds longer than the 150 ms beat');
 });
 
+test('a new life ends the death cam; ending with no death is a no-op', () => {
+  const { bus, camera, frame } = feelFixture();
+  camera.endDeathCam();
+  assert.equal(camera.isDeathCam(), false, 'no death cam armed — nothing to end');
+  assert.equal(camera.holdRemaining(), 0);
+  bus.emit('player:death', { pos: { x: 0, z: 0 } });
+  frame(DT);
+  assert.equal(camera.isDeathCam(), true);
+  camera.endDeathCam();
+  assert.equal(camera.isDeathCam(), false, 'the next flight frames normally');
+  assert.equal(camera.holdRemaining(), 0, 'the death hold leaves with the cam');
+});
+
 test('headless sim hash is unchanged by the presentation beat', () => {
   const a = createGameState(SEED);
   const b = createGameState(SEED);

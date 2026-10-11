@@ -1183,7 +1183,8 @@ export const crucibleScreen = {
       const on = !daily && ruleset === SWARM_RULESET;
       if (stakeLi && stakeLi.style) { stakeLi.hidden = !on; stakeLi.style.display = on ? '' : 'none'; }
       const def = swarmStakeFor(stake);
-      stakeSentence.textContent = `${def.blurb} ${swarmStakePitch(stake)}.`;
+      // The blurb only: purse, pressure, pay and score all read on the tiles themselves.
+      stakeSentence.textContent = def.blurb;
       for (const other of stakeButtons) syncChoice(other, other.dataset.stakeId === stake);
     }
     for (const entry of SWARM_STAKES) {
@@ -1580,6 +1581,19 @@ export const crucibleScreen = {
         const locked = arenaLockedFor(button.dataset.arenaId);
         button.classList.toggle('is-unavail', locked);
         button.setAttribute('aria-disabled', String(locked));
+        // A locked room names its unlock WITHOUT being clicked: hover, touch-hold and screen
+        // readers get the star gate up front instead of discovering it through a denial.
+        const roomName = (arenaDescriptions[button.dataset.arenaId] || [])[0] || button.dataset.arenaId;
+        if (locked) {
+          const need = SWARM_ARENA_STAR_GATES[button.dataset.arenaId] || 0;
+          const have = swarmLadderStarTotal(doorProfile && doorProfile.ladder);
+          const earn = `${roomName} — locked. Opens at ${need} ladder star${need === 1 ? '' : 's'} — you have ${have}. The Foundry's climb pays them.`;
+          button.title = earn;
+          button.setAttribute('aria-label', earn);
+        } else {
+          button.title = roomName;
+          button.removeAttribute('aria-label');
+        }
         let badge = button.querySelector && button.querySelector('.sf-crd-lock');
         if (locked && !badge) {
           badge = el('span', 'sf-crd-lock');
@@ -1821,9 +1835,8 @@ export const crucibleScreen = {
       const hangar = (doorProfile && doorProfile.hangar) || emptyHangar();
       const bounty = Math.max(0, Math.round(Number(hangar.bounty) || 0));
       const hulls = Array.isArray(hangar.ownedHulls) ? hangar.ownedHulls : [];
-      els.hangarNote.textContent = `Bounty ${bounty} cr`
-        + (hulls.length ? ` · ${hulls.length} hull${hulls.length === 1 ? '' : 's'} in the bay` : '')
-        + '.';
+      els.hangarNote.textContent = `Bounty ${bounty} cr — banked across runs, not the run purse.`
+        + (hulls.length ? ` ${hulls.length} hull${hulls.length === 1 ? '' : 's'} in the bay.` : '');
       els.hangarTracks.innerHTML = '';
       for (const track of HANGAR_TRACKS) {
         const rank = hangarRank(hangar, track.id);
@@ -2221,7 +2234,7 @@ export const crucibleScreen = {
     syncMode();
     syncHull();
     preparation = createCruciblePreparation({ root: rootEl, stage, title, foot, enter,
-      read: () => ({ starterId, arenaId, ruleset, daily, weekly, stake, weeklyMutatorId: doorChallengeTerms().weeklyMutatorId, seed: seedInput.value }) });
+      read: () => ({ starterId, arenaId, arenaLabel: (arenaDescriptions[arenaId] || [])[0] || arenaId, ruleset, daily, weekly, stake, weeklyMutatorId: doorChallengeTerms().weeklyMutatorId, seed: seedInput.value }) });
     this._preparation = preparation;
     // ORRERY: each tile row loses its cards and runs on a ruled line with the amber index under the
     // chosen tile (the tiles keep their art, their words, aria-pressed and their handlers).

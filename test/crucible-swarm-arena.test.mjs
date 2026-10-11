@@ -103,7 +103,7 @@ test('a swarm wave installs a real debris field, not three landmarks', () => {
   // whole reason this system exists, so assert the difference outright.
   assert.ok(field.length > 3, 'more than terrainAnchors would ever give the fight');
   for (const rock of field) {
-    assert.equal(rock.type, 'asteroid');
+    assert.ok(['asteroid', 'wreck'].includes(rock.type), 'physical terrain includes conductive wreckage');
     assert.equal(rock.collides, true);
     assert.ok(rock.mass > 0, 'a monolith has mass — it is a wall, not a decal');
     assert.ok(rock.hull > 0);
@@ -271,7 +271,7 @@ test('a second cull releases the NEW excess, not a re-count of what is already g
     }
   };
   const standing = () => h.state.entityList.filter(
-    (e) => e.alive !== false && e.type === 'wreck'
+    (e) => e.alive !== false && e.type === 'wreck' && !e.data?.[SWARM_DEBRIS_TAG]
       && !(e.data && Number.isFinite(e.data.despawnAt) && e.data.despawnAt <= h.state.simTime + 6),
   ).length;
 

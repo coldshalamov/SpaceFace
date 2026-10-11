@@ -21,6 +21,8 @@ import { SIM_DT } from '../src/core/sim.js';
 import { impulseCharges } from '../src/systems/impulseCharges.js';
 import { IMPULSE_CHARGES, MASSLINE_COMBOS } from '../src/data/impulseCharges.js';
 import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
+import { resolvePhysicsBodySpec } from '../src/core/physicsAuthority.js';
+import { environmentResponse } from '../src/core/physicalResponse.js';
 
 const DEF = IMPULSE_CHARGES.charge_standard;
 const PLAYER_ID = 1;
@@ -72,7 +74,11 @@ function assertAnchorKickChannelsAlongTheLine() {
   const anchorCall = h.applied.find((c) => c.entityId === ANCHOR_ID);
   assert.ok(anchorCall, 'the anchor must receive an impulse');
   const falloff = 1 - 12.2 / DEF.radius;
-  const expected = DEF.impulse * falloff * MASSLINE_COMBOS.anchorKick.impulseMult;
+  // Environmental plates author 80 WU/s on a reference-size rock. Collider mass
+  // stays real; the combo amplifies that response instead of vanishing into it.
+  const anchor = h.state.entities.get(ANCHOR_ID);
+  const expected = 80 * environmentResponse(anchor) * resolvePhysicsBodySpec(anchor).mass
+    * falloff * MASSLINE_COMBOS.anchorKick.impulseMult;
   assert.ok(Math.abs(anchorCall.impulse.x - expected) < 1e-9,
     `anchorKick must kick along the line (+x) at ×${MASSLINE_COMBOS.anchorKick.impulseMult}; got x=${anchorCall.impulse.x} (expected ${expected})`);
   assert.ok(Math.abs(anchorCall.impulse.z) < 1e-9,
@@ -212,7 +218,9 @@ function assertNoTetherMeansNoCombos() {
 
   const anchorCall = h.applied.find((c) => c.entityId === ANCHOR_ID);
   const falloff = 1 - 12.2 / DEF.radius;
-  assert.ok(Math.abs(anchorCall.impulse.z - DEF.impulse * falloff) < 1e-9,
+  const anchor = h.state.entities.get(ANCHOR_ID);
+  const environmentalImpulse = 80 * environmentResponse(anchor) * resolvePhysicsBodySpec(anchor).mass * falloff;
+  assert.ok(Math.abs(anchorCall.impulse.z - environmentalImpulse) < 1e-9,
     'without a tether the host gets the plain RADIAL blast (+z here)');
   assert.ok(Math.abs(anchorCall.impulse.x) < 1e-9, 'no line-channeling without a tether');
   const total = h.damage[0].packet.channels.kinetic + h.damage[0].packet.channels.thermal;

@@ -220,6 +220,47 @@ test('non-colliding payloads use the bounded payload index and can be physically
   assert.equal(h.attachments.rebindCalls[0].spec.targetId, payload.id);
 });
 
+test('snare endpoints accept loose environmental bodies and anchored moorings', () => {
+  const bus = immediateBus();
+  const player = makeBody({ id: 1, type: 'ship', team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 6 });
+  const anchor = makeBody({
+    id: 2, type: 'masslineSnareAnchor', team: 0, pos: { x: 100, z: 80 }, vel: { x: 0, z: 0 }, radius: 2,
+    data: { combatProfileId: 'combat_profile_tether_anchor' },
+  });
+  const endpoints = [
+    makeBody({ id: 3, type: 'asteroid', pos: { x: 100, z: -40 }, vel: { x: 0, z: 0 }, radius: 30 }),
+    makeBody({ id: 4, type: 'wreck', pos: { x: 100, z: -50 }, vel: { x: 0, z: 0 }, radius: 10 }),
+    makeBody({ id: 5, type: 'payload', pos: { x: 100, z: -60 }, vel: { x: 0, z: 0 }, radius: 4 }),
+    makeBody({ id: 6, type: 'station', pos: { x: 100, z: -70 }, vel: { x: 0, z: 0 }, radius: 40 }),
+    makeBody({ id: 7, type: 'gate', pos: { x: 100, z: -80 }, vel: { x: 0, z: 0 }, radius: 50 }),
+    makeBody({ id: 8, type: 'mine', pos: { x: 100, z: -90 }, vel: { x: 0, z: 0 }, radius: 6 }),
+  ];
+  const all = [player, anchor, ...endpoints];
+  const state = {
+    mode: 'flight', tick: 10, simTime: 2, playerId: player.id, player: {},
+    runtime: { features: PRODUCTION_FEATURES },
+    entities: new Map(all.map((e) => [e.id, e])),
+    entityList: all,
+  };
+  const physics = {
+    createAttachment: (input) => ({ id: `ph_${input.attachmentId}` }),
+    cutAttachment: () => true,
+    getAttachmentTelemetry: () => null,
+  };
+  const kernel = createCombatKernel({ state, bus, helpers: { combatPhysics: physics }, registry: null });
+  for (const endpoint of endpoints) {
+    const created = kernel.attachments.create({
+      defId: TRANSVERSE_SNARE_DEF_ID,
+      ownerId: anchor.id,
+      targetId: endpoint.id,
+      controllerId: player.id,
+      controlMode: 'transverse_snare',
+    });
+    assert.equal(created.ok, true, `${endpoint.type} is an acceptable snare endpoint (${created.reason || 'ok'})`);
+    assert.equal(kernel.attachments.cut(created.attachment.id, player.id, 'tether_cut').ok, true);
+  }
+});
+
 test('second press cuts immediately, cleans endpoints, and never kills a caught body', () => {
   const h = createHarness();
   publishThenDeploy(h);

@@ -286,10 +286,14 @@ export function projectInputCommandRecord(data, keys = null, authored = null) {
     boost: data.boost === true,
     fire: data.fire === true,
     reelDelta: finite(massline.reelDelta, finite(actions.reelDelta, 0)),
+    // The held lash round-trips like masslineHeld — a captured gyreSnare:true
+    // must not replay beam-silent.
+    gyreSnare: actions.gyreSnare === true,
   };
   if (authored && typeof authored === 'object') {
     if (Number.isFinite(authored.aimAngle)) out.aimAngle = Number(authored.aimAngle);
     if (typeof authored.masslineHeld === 'boolean') out.masslineHeld = authored.masslineHeld;
+    if (typeof authored.gyreSnare === 'boolean') out.gyreSnare = authored.gyreSnare;
     if (Number.isFinite(authored.lineLength)) out.lineLength = Number(authored.lineLength);
     if (Number.isFinite(authored.orbitDirection)) out.orbitDirection = Number(authored.orbitDirection);
   }

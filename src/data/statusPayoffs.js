@@ -2,9 +2,9 @@
 // Unknown ids stay quiet so a gravity mark or a cryo lock does not grow a new sentence here.
 
 const LINES = Object.freeze({
-  status_pinned: Object.freeze({ key: 'status:pinned', name: 'PINNED', detail: 'HEAVIER' }),
-  status_unmoored: Object.freeze({ key: 'status:unmoored', name: 'UNMOORED', detail: 'LIGHTER' }),
-  status_tumbling: Object.freeze({ key: 'status:tumbling', name: 'TUMBLING', detail: 'NO HELM' }),
+  status_pinned: Object.freeze({ key: 'status:pinned', name: 'PINNED', detail: 'HEAVIER', clears: Object.freeze(['status:unmoored']) }),
+  status_unmoored: Object.freeze({ key: 'status:unmoored', name: 'UNMOORED', detail: 'LIGHTER', clears: Object.freeze(['status:pinned']) }),
+  // The player hull never keeps status_tumbling — tumbleStates strips it as player_immune.
   status_burning: Object.freeze({ key: 'status:burning', name: 'BURNING', detail: 'HULL TAKING HEAT' }),
   status_goo: Object.freeze({ key: 'status:goo', name: 'GOOED', detail: 'HEAVY THRUST · HULL CORRODING' }),
   status_scrambled: Object.freeze({ key: 'status:scrambled', name: 'SCRAMBLED', detail: 'SENSORS + LOCK OFFLINE' }),

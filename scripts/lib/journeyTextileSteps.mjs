@@ -1042,7 +1042,7 @@ async function readNavContext(page) {
   return page.evaluate(() => {
     const PLACEHOLDERS = {
       objective: ['None tracked'],
-      destination: ['No route plotted'],
+      destination: ['No destination set'],
       leg: ['None'],
     };
     const rowEls = [...document.querySelectorAll('.gm-nav-row')];

@@ -93,7 +93,7 @@ const LEDGER_TONE = Object.freeze({ good: 'mint', warn: 'gold', bad: 'coral', in
 const NO_SITE_REASON = 'No claim on this rock yet.';
 // What the site reads as "dark" — the same set the renderer raises a want-chip for.
 const DRAWER_FAULT_STATES = new Set(['no-power', 'starved', 'backlogged', 'no-network', 'no-geology', 'no-pods']);
-const DRAWER_BUSY_STATES = new Set(['running', 'throttled', 'building', 'staged']);
+const DRAWER_BUSY_STATES = new Set(['running', 'throttled', 'building', 'loading', 'unloading', 'staged']);
 
 /** Ledger clock — mono mm:ss off sim time. A timestamp, never a sentence. */
 export function drawerClock(t) {
@@ -167,8 +167,8 @@ export function transferRefusalText(res) {
  * economy or logistics rule is restated in the UI. Each verb carries its own `disabled` + `reason`
  * so a control that cannot act says why instead of failing silently.
  *
- * The totals read `projection()`, which reports the LAST COMPUTED tick. The sim is paused under
- * this screen, so these are the same honest snapshot values the §6.4 lens shows, not live rates.
+ * The totals read the last completed production tick. Local machinery continues in the
+ * workbench; external courier travel stays on the paused galaxy clock.
  */
 export function siteDrawerModel({
   siteSys = null, siteId = null, drillActive = false, now = 0, cargoItems = null,
@@ -561,6 +561,7 @@ export const asteroidScreen = {
 
     // ---------- session + render state ----------
     let renderer3d = null;         // created lazily on first session (owns the WebGL context)
+    const boardReady = () => !renderer3d?.readiness || renderer3d.readiness().ready;
     let rafId = 0;
     let last = 0;
     let hudElapsed = 0;
@@ -682,6 +683,8 @@ export const asteroidScreen = {
     });
 
     const palette = createBuildPalette(stage, {
+      onPlan: () => controller.cancel(),
+      getPlanContext: () => ({ machines: site()?.machines || [], cargo: state.player?.cargo?.items || {} }),
       onSelect() { inspElapsed = 10; lensDirty = true; },
       // A pressed key is an intent to build — arm BUILD from DRIVE (law §6.7).
       onUserSelect() {
@@ -805,7 +808,11 @@ export const asteroidScreen = {
       // reordering away from showing a stale row.
       if (projDirty) refreshProjection();
       const s = site();
-      if (!coreOwned(s)) { palette.unmount(); return; }
+      if (!coreOwned(s)) {
+        palette.unmount({ keepPlanner: true });
+        palette.setBuildActive(controller.state.mode === MODES.BUILD);
+        return;
+      }
       const present = [];
       for (const item of PALETTE_ITEMS) {
         if (item.kind === 'machine') {
@@ -894,6 +901,7 @@ export const asteroidScreen = {
     }
 
     function commitPlacement(cursor) {
+      if (!boardReady()) return;
       const item = palette.selected;
       const astId = asteroidId();
       if (!item || astId == null) return;
@@ -938,6 +946,7 @@ export const asteroidScreen = {
     }
 
     function commitRemoval(cursor) {
+      if (!boardReady()) return;
       if (!siteSys || !currentSiteId) return;
       const s = site();
       const m = s && siteSys.machineAt(s, cursor.col, cursor.row);
@@ -1014,6 +1023,7 @@ export const asteroidScreen = {
     // the canvas — closes the card (law §6.4: "hides when the pointer is over chrome").
     const onMouseLeave = () => { hover = null; lensPointer = null; hideLens(); };
     const onMouseDown = (ev) => {
+      if (!boardReady()) return;
       if (ev.button !== 0) return; // a right-click is onContextMenu's business, not this one's
       // The board click that dismissed a drawer is spent on the dismissal: it must not also
       // place a machine under the sheet the player was still reading.
@@ -1069,6 +1079,11 @@ export const asteroidScreen = {
       // Typing into a drawer control is not driving: while focus lives inside the sheet, the
       // rig keys belong to the sheet.
       if (drawerTab !== null && drawer.contains(event.target)) return;
+      if (!boardReady() && event.code !== 'Escape') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
       // Law §9: the session opened at site zoom to be read. The first real work input drops it
       // to work zoom; Z hands the register to the player instead, and Escape is an exit.
       if (event.code === 'KeyZ' || event.code === 'Escape') releaseSiteZoom(false);
@@ -1301,6 +1316,10 @@ export const asteroidScreen = {
       sitePanel.appendChild(grid);
 
       const prod = siteBlock(grid, 'Production');
+      const clockNote = document.createElement('p');
+      clockNote.className = 'aw-site-reason';
+      clockNote.textContent = 'Factory live · courier routes resume in flight';
+      prod.appendChild(clockNote);
       siteUi.machines = siteStat(prod, 'Machines');
       siteUi.running = siteStat(prod, 'Running');
       siteUi.dark = siteStat(prod, 'Dark');
@@ -1653,6 +1672,7 @@ export const asteroidScreen = {
 
     function openDrawer(tab) {
       if (!DRAWER_TABS.includes(tab)) return;
+      controller.cancel();
       if (drawerCloseTimer) { clearTimeout(drawerCloseTimer); drawerCloseTimer = 0; }
       const wasClosed = drawerTab === null;
       drawerTab = tab;
@@ -2123,7 +2143,15 @@ export const asteroidScreen = {
       const d = state.drill;
       if (!d) return;
 
+      const readiness = renderer3d?.readiness?.();
+      if (readiness && !readiness.ready) {
+        controller.cancel();
+        showBanner('equipment', readiness.failed
+          ? 'Mining equipment unavailable — leave and reopen'
+          : 'Loading mining equipment…', readiness.failed ? 'bad' : 'warn');
+      } else clearBanner('equipment');
       controller.tick(dt);
+      if (siteSys?.tickWorkbench?.(dt, currentSiteId)) projDirty = true;
       refreshProjectionIfIdentityShifted();
       if (renderer3d) renderer3d.render(dt, now / 1000, buildUiFrame());
       hudElapsed += dt;
@@ -2162,6 +2190,7 @@ export const asteroidScreen = {
         getDrill: () => state.drill,
         getSite: site,
         getProjection: () => projection,
+        canInstall: (request) => siteSys?.canInstall(request),
       });
     };
     const startSession = () => {
@@ -2227,7 +2256,7 @@ export const asteroidScreen = {
       // One renderer (one WebGL context) per mounted screen; each session rebuilds its scene
       // from the live field.
       ensureRenderer3d();
-      renderer3d.begin({ motionReduce });
+      renderer3d.begin({ motionReduce, flashReduce: !!state.settings?.accessibility?.flashReduce });
       // Law §9, immediately after begin() (which resets the register to work): a site with
       // machines opens pulled back so the first second reads lit / flowing / dark.
       armSiteZoom();

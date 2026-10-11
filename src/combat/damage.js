@@ -18,6 +18,11 @@ import {
   writePlayerFirstHitTruth,
 } from './rewardEligibility.js';
 import { wardScreenTarget } from '../ai/specialistCounterplay.js';
+import { deliverPhysicalImpulseDetailed } from './physicalEffects.js';
+import { isEnvironmentalBody } from '../core/physicalResponse.js';
+import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { addEnvironmentHeat } from '../systems/environmentMaterials.js';
+import { GRAVITY_MARK_STATUS_ID } from '../data/combatDefs.js';
 
 /** Player id 0 is a real entity id. A truthy check treated that hull as nobody. */
 export function playerIsDamageTarget(state, target) {
@@ -77,6 +82,20 @@ export function createDamageRouter(context, statusService, options = {}) {
     const rawTotal = sumChannels(packet.channels);
 
     if (!target || !target.alive) return rejected('target_missing', input, packet);
+    if (!packet.flags.ignoreInvulnerability && playerDockProtected(state, target)) return rejected('target_docked', input, packet);
+    // Physical contact is independent of hull damage, IFF and invulnerable hit points.
+    const impulseResult = applyImpulse(target, attacker, packet, input, origin);
+    if (isEnvironmentalBody(target)) addEnvironmentHeat(state, target, packet.heat + (packet.channels.thermal || 0) + (packet.channels.plasma || 0), { actorId: input && input.attackerId, ...origin });
+    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target)) {
+      const marks = packet.statuses.filter(status => status.id === GRAVITY_MARK_STATUS_ID);
+      if (marks.length) {
+        const runtime = ensureCombatant(state, target, catalog);
+        for (const status of marks) statusService.schedule(target, runtime, status, { attackerId: input && input.attackerId });
+        const marked = state.combat.markedEnvironment || (state.combat.markedEnvironment = []);
+        if (!marked.includes(target.id)) marked.push(target.id);
+      }
+      return { ...rejected('target_not_damageable', input, packet), impulseApplied: impulseResult.applied };
+    }
     // PQ-011: 'massSeed' joins the damageable deployed-device family (mine parity) — the anchor
     // is shootable in every phase by ordinary hostile fire; own-team fire stays gated by the
     // friendly-fire rule below, exactly like own mines.
@@ -194,7 +213,6 @@ export function createDamageRouter(context, statusService, options = {}) {
       });
     }
 
-    const impulseResult = applyImpulse(target, attacker, packet, input, origin);
     syncCombatantBounds(target, runtime);
     const after = snapshotVitals(target, runtime);
     // One scratch record per hit — the bus hands this object to every listener synchronously
@@ -393,15 +411,6 @@ export function createDamageRouter(context, statusService, options = {}) {
     }
     const vector = resolveImpulseVector(target, attacker, packet.impulse, packet.hit);
     if (!vector) return { applied: false, reason: 'none' };
-    const physics = combatPhysics();
-    if (!physics || typeof physics.applyImpulse !== 'function') {
-      appendCombatTrace(state.combat, state.tick, 'physics.portMissing', {
-        actorId: input && input.attackerId,
-        targetId: target.id,
-        operation: 'applyImpulse',
-      });
-      return { applied: false, reason: 'physics_port_unavailable' };
-    }
     try {
       const weaponId = packet.source && packet.source.weaponId
         || (origin && origin.kind === 'weapon' && (origin.weaponId || origin.id)) || null;
@@ -415,18 +424,14 @@ export function createDamageRouter(context, statusService, options = {}) {
       const maxTorque = packet && Number.isFinite(packet.tumbleTorque)
         ? packet.tumbleTorque
         : (input && input.packet && Number.isFinite(input.packet.tumbleTorque) ? input.packet.tumbleTorque : undefined);
-      const accepted = physics.applyImpulse({
-        entityId: target.id,
-        impulse: vector,
+      const environmentImpulse = packet.source && packet.source.environmentImpulse;
+      const delivery = deliverPhysicalImpulseDetailed(state, target, vector, {
+        ...provenance, provenance: provenance || { tag: reason }, reason, maxTorque,
         point: input && input.packet && input.packet.hit && input.packet.hit.pos || null,
-        reason,
-        tick: state.tick,
-        provenance,
-        maxTorque,
-      });
-      if (accepted === false) return { applied: false, reason: 'physics_rejected' };
-      const magnitude = Math.hypot(vector.x, vector.z);
-      const victimMass = Math.max(0.1, Number(target.mass) || 1);
+      }, { port: combatPhysics(), referenceImpulse: isEnvironmentalBody(target) && Number.isFinite(environmentImpulse) ? environmentImpulse : undefined });
+      if (!delivery.accepted) return { applied: false, reason: 'physics_rejected' };
+      const magnitude = Math.hypot(delivery.impulse.x, delivery.impulse.z);
+      const victimMass = Math.max(0.1, Number(resolvePhysicsBodySpec(target)?.mass) || Number(target.mass) || 1);
       const attackerMass = attacker && Number.isFinite(attacker.mass) && attacker.mass > 0
         ? attacker.mass
         : 1;
@@ -434,14 +439,14 @@ export function createDamageRouter(context, statusService, options = {}) {
       if (provenance) {
         recordImpulseProvenance(target, { ...provenance, magnitude });
       }
-      if (combatFlag('weaponImpulseConsequences')) {
+      if (target.id !== state.playerId && combatFlag('weaponImpulseConsequences')) {
         publishHitstunImpulse(bus, {
           source: 'gun',
           victimId: target.id,
           attackerId: input && input.attackerId == null ? null : input.attackerId,
           attackerMass,
           victimMass,
-          deltaV: magnitude / victimMass,
+          deltaV: delivery.deltaV,
           dirX: vector.x,
           dirZ: vector.z,
           hitSide,
@@ -464,7 +469,7 @@ export function createDamageRouter(context, statusService, options = {}) {
         impulse: vector,
         torqueApplied: false,
         hitSide,
-        deltaV: magnitude / victimMass,
+        deltaV: delivery.deltaV,
         angularProduction: true,
       };
     } catch (error) {

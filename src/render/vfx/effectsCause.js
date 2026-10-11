@@ -3,10 +3,6 @@
 
 const num = (v) => (Number.isFinite(v) ? v : 0);
 
-/** Transverse-work floors for the arc rescue below, matching the `main` deadband's scale. */
-const LATERAL_WORK_FLOOR = 0.02;
-const YAW_TARGET_FLOOR = 0.02;
-
 /**
  * Plume the plasma stream should draw. Leaves the published drive record alone.
  *
@@ -21,9 +17,7 @@ const YAW_TARGET_FLOOR = 0.02;
  */
 function heldThrottleArc(actuators) {
   const governor = actuators && actuators.governor;
-  if (!governor || governor.engaged !== true) return false;
-  if (Math.abs(num(actuators.lateral)) > LATERAL_WORK_FLOOR) return true;
-  return Math.abs(num(actuators.yawRateTarget)) > YAW_TARGET_FLOOR;
+  return !!governor && governor.engaged === true;
 }
 
 export function plumeAchievedPicture(driveInfo, actuators) {

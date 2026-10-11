@@ -69,6 +69,15 @@ export const WEAPON_SIGNATURES = freeze({
   torpedo: { family: 'propulsion', source: 'heavy-launch', beat: 'heavy eject → delayed ignition' },
   'continuous-beam': { family: 'coherent', source: 'latched-aperture', beat: 'latched aperture and continuous contact' },
   'vector-mine': { family: 'metric', source: 'shaped-deploy', beat: 'deploy → arm → shaped impulse' },
+  filament: { family: 'coherent', source: 'filament-spool', beat: 'two unequal guide jaws draw a thread through the spool' },
+  'field-ring': { family: 'metric', source: 'metric-tag', beat: 'offset pressure jaws converge, stamp a travelling gravity collar and unload' },
+  'filament-latch': { family: 'metric', source: 'frame-latch', beat: 'opposed hooks reach, close on the frame and recoil independently' },
+  'well-collar': { family: 'metric', source: 'well-inlet', beat: 'deployed collar opens inward; retained well owns sustained intake' },
+  wedge: { family: 'kinetic', source: 'ram-wedge', beat: 'two short broad compression cheeks kick back behind a hard wedge' },
+  'sticky-charge': { family: 'reactive', source: 'adhesive-eject', beat: 'split wet tongues stretch from the seat, neck and separate behind the canister' },
+  'primer-arc': { family: 'induction', source: 'primer-bridge', beat: 'opposed electrodes bridge a single junction then send a fork forward' },
+  'cooker-seam': { family: 'propulsion', source: 'thermal-seam', beat: 'a broad hot slit extrudes unequal shearing folds along the cutting seam' },
+  'driver-slug': { family: 'kinetic', source: 'driver-piston', beat: 'a recoiling carrier drives one solid axial punch between opposed guide rails' },
 });
 
 export function weaponSignature(variant) {

@@ -62,6 +62,8 @@ import { ensureStuntCallout, releaseStuntCallout } from './stuntCallout.js';
 import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
 import { createThreatHalo } from './threatHalo.js';
 import { targetBracketShape } from './targetBracket.js';
+import { flightBearingAngle, resolveFlightEdgePlacement, resolveSelectedTargetMarker } from './flightViewProjection.js';
+import { resolveSteeringView } from '../systems/racingSteer.js';
 import {
   createObjectiveRecall,
   rememberObjective,
@@ -427,9 +429,8 @@ function mtWaypointDistance(state, wp) {
 }
 
 /**
- * Eight-way world bearing for the active goal. This is deliberately a stable direction glyph,
- * not a continuously announced live-region value. The camera keeps a fixed world orientation,
- * so the arrow matches the radar/map direction without requiring compass prose.
+ * Eight-way bearing for the active goal. Overhead keeps the radar's fixed world orientation;
+ * stern view follows the presented camera so the arrow continues to name a useful turn.
  */
 export function objectiveBearingGlyph(state, wp) {
   const pos = wp && wp.pos;
@@ -438,12 +439,9 @@ export function objectiveBearingGlyph(state, wp) {
   const dx = Number(pos.x) - Number(player.pos.x);
   const dz = Number(pos.z) - Number(player.pos.z);
   if (!Number.isFinite(dx) || !Number.isFinite(dz) || Math.hypot(dx, dz) < 1) return '•';
-  // The chase camera shows world +Z as screen UP and world +X as screen LEFT (projected through the
-  // live camera 2026-09-19: +200 WU east landed at x=-577 on a 1280 frame, +200 WU north at
-  // y=-229) — the same orientation projectRadarPoint draws the radar in. The glyph used to read -Z
-  // as up, which pointed every objective arrow 180 degrees away from the radar and the edge arrow.
-  // Screen bearing, clockwise from up: atan2(screenRight = -dx, screenUp = dz).
-  const octant = Math.round((Math.atan2(-dx, dz) / (Math.PI * 2)) * 8);
+  // The live camera basis includes stern turn lag; the fixed overhead convention remains
+  // screen-right = -X, screen-up = +Z, matching the radar.
+  const octant = Math.round((flightBearingAngle(state, player, pos) / (Math.PI * 2)) * 8);
   return ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][(octant + 8) % 8];
 }
 
@@ -458,7 +456,7 @@ export function objectiveBearingDeg(state, wp) {
   const dx = Number(pos.x) - Number(player.pos.x);
   const dz = Number(pos.z) - Number(player.pos.z);
   if (!Number.isFinite(dx) || !Number.isFinite(dz) || Math.hypot(dx, dz) < 1) return null;
-  return ((Math.atan2(-dx, dz) * 180) / Math.PI + 360) % 360;
+  return ((flightBearingAngle(state, player, pos) * 180) / Math.PI + 360) % 360;
 }
 
 /**
@@ -2378,6 +2376,16 @@ export function createHud(ctx, alerts) {
     '<span class="sf-objarrow__label mono"></span>';
   root.appendChild(arrow);
   const arrowLabel = arrow.querySelector('.sf-objarrow__label');
+  // Selected contacts keep their own named bearing when they leave the picture, including
+  // unarmed targets behind the ship. Reuse the shared navigation chevron's material/shape.
+  const targetEdge = document.createElement('div');
+  targetEdge.className = 'sf-objarrow sf-objarrow--edge sf-target-edge';
+  targetEdge.style.display = 'none';
+  targetEdge.setAttribute('role', 'img');
+  targetEdge.innerHTML = arrow.innerHTML;
+  root.appendChild(targetEdge);
+  const targetEdgeLabel = targetEdge.querySelector('.sf-objarrow__label');
+  const targetMarkerRecord = {};
   const firstUse = document.createElement('div');
   firstUse.className = 'sf-firstuse';
   firstUse.hidden = true;
@@ -4398,6 +4406,7 @@ export function createHud(ctx, alerts) {
       setClass(lockRing, 'locked', false);
       setClass(lockRing, 'sf-lockring--latch', false);
       setClass(lockDiamond, 'visible', false);
+      setDisplay(targetEdge, false);
       setClass(leadPip, 'visible', false);
       setStyle(wpnHeatsWrap, 'display', 'none');
       updateGravityMarkOverlays(null);
@@ -4516,7 +4525,9 @@ export function createHud(ctx, alerts) {
     const tgtAnchor = tgt && tgt.alive ? presentedEntityAnchor(tgt) : null;
     if (tgt && tgt.alive && tgtAnchor && helpers.worldToScreen) {
       const proj = projectTargetCenter(tgtAnchor);
+      const marker = resolveSelectedTargetMarker(p, tgt, proj, window.innerWidth, window.innerHeight, targetMarkerRecord);
       if (proj.onScreen) {
+        setDisplay(targetEdge, false);
         stampMarkLive(lockDiamond);
         setClass(lockDiamond, 'visible', true);
         setHudScreenTransform(lockDiamond, proj.x, proj.y);
@@ -4534,9 +4545,20 @@ export function createHud(ctx, alerts) {
           });
         }
       } else {
-        setClass(lockDiamond, 'visible', markStillLive(lockDiamond));
+        setClass(lockDiamond, 'visible', false);
+        if (marker) {
+          const name = String(tgt.data?.callsign || hudEntityName(tgt)).replace(/\s+/g, ' ').trim().slice(0, 26);
+          const text = `TARGET${marker.aft ? ' AFT' : ''} · ${name} · ${Math.round(marker.distance)} WU`;
+          setText(targetEdgeLabel, text);
+          setAttr(targetEdge, 'aria-label', text);
+          setDataEdge(targetEdge, marker.edge);
+          setCssVar(targetEdge, '--sf-arrow-angle', `${marker.angleRad}rad`);
+          setStyle(targetEdge, 'transform', `translate3d(${marker.x}px,${marker.y}px,0)`);
+          setDisplay(targetEdge, true);
+        } else setDisplay(targetEdge, false);
       }
     } else {
+      setDisplay(targetEdge, false);
       setClass(lockDiamond, 'visible', markStillLive(lockDiamond));
     }
 
@@ -5998,7 +6020,9 @@ export function createHud(ctx, alerts) {
       setDisplay(arrow, true);
       return;
     }
-    const edgePlacement = resolveObjectiveEdgePlacement(w, h, p, wp, 34, objectiveEdgeRecord);
+    const edgePlacement = resolveSteeringView(state) === 'racing'
+      ? resolveFlightEdgePlacement(w, h, proj, 34, objectiveEdgeRecord)
+      : resolveObjectiveEdgePlacement(w, h, p, wp, 34, objectiveEdgeRecord);
     if (!edgePlacement) {
       setDisplay(arrow, false);
       return;
@@ -6265,6 +6289,7 @@ export function createHud(ctx, alerts) {
       if (clusterSizeObserver) clusterSizeObserver.disconnect();
       if (typeof window !== 'undefined' && window.removeEventListener) {
         window.removeEventListener('resize', publishClusterReserve);
+        window.removeEventListener('resize', invalidateObjectiveEdgeBoxes);
       }
     },
   };

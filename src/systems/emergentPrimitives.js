@@ -21,7 +21,10 @@ import {
   syncProcWorldTick,
   trySpawnDescendant,
 } from '../combat/attackLineage.js';
-import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
+import { queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
+import { queryPhysicalBodies, deliverPhysicalImpulseDetailed, schedulePhysicalBlast } from '../combat/physicalEffects.js';
+import { isEnvironmentalBody } from '../core/physicalResponse.js';
+import { addEnvironmentHeat } from './environmentMaterials.js';
 import {
   EMERGENT_LIMITS,
   EMERGENT_POOL,
@@ -38,6 +41,7 @@ const DT_MIN = 1 / 240;
 // Weapons fires this frame before tickEmergent runs, so the muzzle cue cannot
 // wait for that tick to learn the bus. A null bus dropped the event entirely.
 let boundBus = null;
+let boundHelpers = null;
 
 function adoptBus(bus) {
   boundBus = bus && typeof bus.emit === 'function' ? bus : null;
@@ -62,7 +66,7 @@ const _nearbyPos = { x: 0, z: 0 };
 function nearbyEntities(state, x, z, radius) {
   _nearbyPos.x = x;
   _nearbyPos.z = z;
-  return queryNearbyEntities(state, _nearbyPos, radius, _nearbyScratch, state.entityList);
+  return queryPhysicalBodies(state, _nearbyPos, radius, boundHelpers, _nearbyScratch);
 }
 
 function num(value, fallback = 0) {
@@ -205,18 +209,20 @@ function flash(world, kind, x, z, x2 = x, z2 = z, scale = 1, yaw = 0) {
   world.flashes.push({ kind, x, z, x2, z2, scale, yaw, ttl: 0.22 });
 }
 
-function give(entity, jx, jz, provenance, tick) {
+function give(state, entity, jx, jz, provenance, tick) {
   if (!entity || (!(jx * jx + jz * jz > 0))) return 0;
-  // Rapier only integrates bodies that stay alive. A wreck is a live rigid body
-  // (aftermath wrecks spawn alive); alive === false is removed from the solver and
-  // this impulse would sit unused. Callers that mean "dead hulk" use type 'wreck'.
-  queuePhysicsImpulse(entity, { x: jx, y: 0, z: jz }, { provenance, tick, kind: provenance });
-  return Math.hypot(jx, jz);
+  const continuous = provenance === 'grav_anchor' || provenance === 'polarity_dipole' || provenance === 'viscosity_drag' || provenance === 'thermal_cooker';
+  const scaledByMass = ['thermal_fracture', 'viscosity_drag', 'seismic_deflect', 'seismic_gong', 'thermal_cooker', 'mass_driver_recoil'].includes(provenance);
+  const result = deliverPhysicalImpulseDetailed(state, entity, { x: jx, z: jz },
+    { tag: provenance, provenance: { tag: provenance, appliedTick: tick }, tick,
+      ...(provenance === 'mass_driver_recoil' ? { motionIntent: 'player_maneuver' } : null) },
+    { scaleEnvironment: !scaledByMass, continuous, dt: 1 / 60 });
+  return result.accepted ? Math.hypot(result.impulse.x, result.impulse.z) : 0;
 }
 
 function giveTorque(entity, torque, provenance, tick) {
-  if (!entity || !torque) return;
-  queuePhysicsTorqueImpulse(entity, { x: 0, y: torque, z: 0 }, { provenance, tick, kind: provenance });
+  if (!entity || !torque || entity.isPlayer) return;
+  queuePhysicsTorqueImpulse(entity, { x: 0, y: torque, z: 0 }, { provenance, tick, kind: provenance, externalEffect: true });
 }
 
 function hurt(sys, state, target, amount, damageType, attackerId) {
@@ -244,6 +250,16 @@ function dataOf(entity) {
 
 function addHeat(state, entity, amount, sys) {
   if (!entity || !(amount > 0)) return;
+  if (addEnvironmentHeat(state, entity, amount)) {
+    // Volatile cookoffs still scatter their shrapnel; the material system owns the kill and blast.
+    const profile = physicalProfile(entity);
+    const data = dataOf(entity);
+    if (profile.fuelVolatile >= T.stickyFuelMin && entity.heat >= T.cookHeat && data.cooked !== true) {
+      data.cooked = true;
+      spawnShrapnel(state, entity.pos.x, entity.pos.z, entity.id, null);
+    }
+    return;
+  }
   entity.heat = num(entity.heat) + amount;
   const profile = physicalProfile(entity);
   const data = dataOf(entity);
@@ -254,7 +270,7 @@ function addHeat(state, entity, amount, sys) {
     cue(state, 'sfx_emergent_crumple', entity.pos.x, entity.pos.z, profile.mass * 4);
     flash(state.emergent, 'ring', entity.pos.x, entity.pos.z, entity.pos.x, entity.pos.z, profile.radius * 1.4);
     const dir = shrapnelDirections(state.rng || (() => 0.37), 1)[0];
-    give(entity, dir.x * profile.mass * 6, dir.z * profile.mass * 6, 'thermal_fracture', state.tick);
+    give(state, entity, dir.x * profile.mass * 6, dir.z * profile.mass * 6, 'thermal_fracture', state.tick);
   }
   if (profile.reactor && entity.alive !== false && entity.type !== 'asteroid' && entity.type !== 'wreck'
     && entity.heat >= T.reactorHeat && !(num(data.reactorLockoutUntil) > num(state.simTime))) {
@@ -273,7 +289,7 @@ function addHeat(state, entity, amount, sys) {
     }
     const blast = profile.magazine * 1.5;
     const yaw = num(entity.rot);
-    give(entity, Math.cos(yaw) * blast, Math.sin(yaw) * blast, 'magazine_cookoff', state.tick);
+    give(state, entity, Math.cos(yaw) * blast, Math.sin(yaw) * blast, 'magazine_cookoff', state.tick);
     hurt(sys, state, entity, profile.magazine * 0.15, 'explosive', null);
     cue(state, 'sfx_emergent_cook', entity.pos.x, entity.pos.z, blast);
   }
@@ -282,7 +298,7 @@ function addHeat(state, entity, amount, sys) {
     entity.fuelVolatile = 0;
     data.fuelVolatile = 0;
     const blast = 900 + profile.fuelVolatile * 1400 + profile.mass * 4;
-    give(entity, blast, blast * 0.15, 'reactor_cookoff', state.tick);
+    give(state, entity, blast, blast * 0.15, 'reactor_cookoff', state.tick);
     hurt(sys, state, entity, 18 + profile.mass * 0.05, 'explosive', null);
     spawnShrapnel(state, entity.pos.x, entity.pos.z, entity.id, null);
     cue(state, 'sfx_emergent_cook', entity.pos.x, entity.pos.z, blast);
@@ -363,7 +379,7 @@ export function launchEmergent(state, owner, def, angle) {
   if (kind === 'mass') {
     const slot = launchBolt(state, owner, aim, 'mass', T.slugSpeed, 2.2, T.slugMass, def.id);
     const recoil = slugMomentum(slot.mass, slot.vx, slot.vz);
-    const j = give(owner, -recoil.jx, -recoil.jz, 'mass_driver_recoil', state.tick);
+    const j = give(state, owner, -recoil.jx, -recoil.jz, 'mass_driver_recoil', state.tick);
     cue(state, 'sfx_emergent_slug', owner.pos.x, owner.pos.z, j);
     return true;
   }
@@ -671,7 +687,7 @@ function deliverShock(state, entity, jx, jz, torque, generation, sys, provenance
   const seen = visited || new Set();
   if (seen.has(entity.id)) return 0;
   seen.add(entity.id);
-  const j = give(entity, jx, jz, provenance, state.tick);
+  const j = give(state, entity, jx, jz, provenance, state.tick);
   if (torque) giveTorque(entity, torque, provenance, state.tick);
   const otherId = partnerId(state.emergent, entity.id);
   if (!otherId || generation >= EMERGENT_LIMITS.generationMax) return j;
@@ -690,20 +706,19 @@ function detonateStickies(state, sys) {
     armed.splice(i, 1);
     const x = host && host.pos ? host.pos.x + charge.ox : 0;
     const z = host && host.pos ? host.pos.z + charge.oz : 0;
-    const list = state.entityList || [];
-    for (let n = 0; n < list.length; n++) {
-      const body = list[n];
-      if (!body || !body.pos || body.type === 'fx') continue;
-      const dx = body.pos.x - x;
-      const dz = body.pos.z - z;
-      const dist = Math.hypot(dx, dz) || 1;
-      const fall = 1 / (1 + (dist / T.stickyFalloff) * (dist / T.stickyFalloff));
-      const j = T.stickyYield * fall;
-      const nx = dx / dist;
-      const nz = dz / dist;
-      if (body === host) deliverShock(state, body, nx * j, nz * j, 0, 0, sys, 'sticky_detonator');
-      else give(body, nx * j * 0.65, nz * j * 0.65, 'sticky_detonator', state.tick);
-    }
+    const radius = T.stickyBlastRadius;
+    schedulePhysicalBlast(state, { center: { x, z }, radius, helpers: sys?.helpers,
+      payload: { kind: 'sticky_detonator', sourceId: charge.ownerId, weaponId: 'wpn_sticky_detonator', baseImpulse: T.stickyYield },
+      onBody: body => {
+        const dx = body.pos.x - x, dz = body.pos.z - z;
+        const dist = Math.hypot(dx, dz);
+        const fall = 1 / (1 + (dist / T.stickyBlastRadius) ** 2);
+        const j = T.stickyYield * fall;
+        const nx = dist > 1e-4 ? dx / dist : 1, nz = dist > 1e-4 ? dz / dist : 0;
+        if (body === host) deliverShock(state, body, nx * j, nz * j, 0, 0, sys, 'sticky_detonator');
+        else give(state, body, nx * j * 0.65, nz * j * 0.65, 'sticky_detonator', state.tick);
+      },
+    });
     if (host) addHeat(state, host, T.stickyCookHeat, sys);
     spawnShrapnel(state, x, z, host ? host.id : 0, charge.ownerId);
     cue(state, 'sfx_emergent_cook', x, z, T.stickyYield);
@@ -756,7 +771,7 @@ function arcFrom(state, source, sys, parent, visited) {
     const dx = best.pos.x - cursor.pos.x;
     const dz = best.pos.z - cursor.pos.z;
     const len = Math.hypot(dx, dz) || 1;
-    give(best, (dx / len) * T.arcImpulse, (dz / len) * T.arcImpulse, 'conductive_arc', state.tick);
+    give(state, best, (dx / len) * T.arcImpulse, (dz / len) * T.arcImpulse, 'conductive_arc', state.tick);
     hurt(sys, state, best, 4, 'emp', null);
     addHeat(state, best, T.arcHeat, sys);
     flash(world, 'arc', cursor.pos.x, cursor.pos.z, best.pos.x, best.pos.z, 1);
@@ -835,13 +850,21 @@ function reflectProjectile(state, slot) {
   for (let i = 0; i < list.length; i++) {
     const body = list[i];
     if (!body || !body.pos || body.id === slot.ownerId || body.id === slot.ignoreId) continue;
-    if (num(body.reflectivity, num(body.data && body.data.reflectivity, 0)) < 0.5) continue;
+    // Craft hulls are not mirrors: authored reflectivity only on craft; environmental
+    // bodies also count their material (a bare metal rock still bounces the ray).
+    const reflectivity = num(body.reflectivity, num(body.data && body.data.reflectivity,
+      isEnvironmentalBody(body) ? (physicalProfile(body) || {}).reflectivity : 0));
+    if (reflectivity < 0.5) continue;
     const reach = (body.radius || 1) + 1.2;
     if (Math.hypot(slot.x - body.pos.x, slot.z - body.pos.z) > reach) continue;
     const normal = body.data && body.data.reflectNormal;
     const nx = normal && Number.isFinite(normal.x) ? normal.x : slot.x - body.pos.x;
     const nz = normal && Number.isFinite(normal.z) ? normal.z : slot.z - body.pos.z;
-    const reflected = reflectVelocity(slot.vx, slot.vz, nx, nz, T.prismGain);
+    const svx = num(body.vel?.x), svz = num(body.vel?.z);
+    const incomingX = slot.vx, incomingZ = slot.vz;
+    const reflected = reflectVelocity(slot.vx - svx, slot.vz - svz, nx, nz, T.prismGain);
+    reflected.x += svx; reflected.z += svz;
+    give(state, body, slot.mass * (incomingX - reflected.x), slot.mass * (incomingZ - reflected.z), 'material_reflection', state.tick);
     slot.vx = reflected.x;
     slot.vz = reflected.z;
     slot.bounces = (slot.bounces | 0) + 1;
@@ -874,8 +897,8 @@ function tickSprings(state, dt, sys) {
     }
     const impulse = springImpulse(a.pos.x, a.pos.z, b.pos.x, b.pos.z, spring.rest, spring.k, dt);
     if (!impulse) continue;
-    const ja = give(a, impulse.jax, impulse.jaz, 'grav_anchor', state.tick);
-    give(b, impulse.jbx, impulse.jbz, 'grav_anchor', state.tick);
+    const ja = give(state, a, impulse.jax, impulse.jaz, 'grav_anchor', state.tick);
+    give(state, b, impulse.jbx, impulse.jbz, 'grav_anchor', state.tick);
     flash(state.emergent, 'arc', a.pos.x, a.pos.z, b.pos.x, b.pos.z, 1);
     if (impulse.dist <= (a.radius || 1) + (b.radius || 1)) {
       const rvx = num(b.vel && b.vel.x) - num(a.vel && a.vel.x);
@@ -908,8 +931,11 @@ function tickDipoles(state, dt, sys) {
       const qb = num(b.magneticCharge, tags[j].charge);
       const impulse = dipoleImpulse(a.pos.x, a.pos.z, b.pos.x, b.pos.z, qa, qb, T.dipoleK, dt, T.dipoleEps);
       if (!impulse) continue;
-      give(a, impulse.jax, impulse.jaz, 'polarity_dipole', state.tick);
-      give(b, impulse.jbx, impulse.jbz, 'polarity_dipole', state.tick);
+      const scale = Math.min(1, T.dipoleMaxForce * dt / Math.max(1e-9, impulse.magnitude));
+      impulse.jax *= scale; impulse.jaz *= scale;
+      impulse.jbx *= scale; impulse.jbz *= scale; impulse.magnitude *= scale;
+      give(state, a, impulse.jax, impulse.jaz, 'polarity_dipole', state.tick);
+      give(state, b, impulse.jbx, impulse.jbz, 'polarity_dipole', state.tick);
       if (impulse.attract && impulse.dist <= (a.radius || 1) + (b.radius || 1)) {
         const damage = reducedMass(physicalProfile(a).mass, physicalProfile(b).mass) * impulse.magnitude * T.dipoleContact;
         hurt(sys, state, a, damage, 'kinetic', null);
@@ -936,7 +962,7 @@ function tickFields(state, dt, sys) {
       if (dist2(body.pos.x, body.pos.z, field.x, field.z) > field.radius * field.radius) continue;
       const profile = physicalProfile(body);
       const drag = viscousImpulse(num(body.vel.x), num(body.vel.z), field.axisX, field.axisZ, profile.mass, T.viscosityParallel, T.viscosityPerp, dt);
-      give(body, drag.jx, drag.jz, 'viscosity_drag', state.tick);
+      give(state, body, drag.jx, drag.jz, 'viscosity_drag', state.tick);
       if (drag.power > T.viscosityIgnitePower) {
         addHeat(state, body, dt * 18 * Math.min(4, drag.power / T.viscosityIgnitePower), sys);
       }
@@ -990,9 +1016,9 @@ function tickGongs(state, sys) {
       const wave = shockImpulse(host.pos.x, host.pos.z, body.pos.x, body.pos.z, amplitude, T.gongRadius);
       if (wave.dist > T.gongRadius) continue;
       if (body.type === 'projectile' || (body.data && body.data.tracking === 'homing')) {
-        give(body, -wave.jz, wave.jx, 'seismic_deflect', state.tick);
+        give(state, body, -wave.jz, wave.jx, 'seismic_deflect', state.tick);
       } else if (body.type !== 'fx') {
-        give(body, wave.jx, wave.jz, 'seismic_gong', state.tick);
+        give(state, body, wave.jx, wave.jz, 'seismic_gong', state.tick);
         if (num(body.shield) > 0) body.shield = Math.max(0, body.shield * (1 - T.gongShieldFraction));
       }
     }
@@ -1023,7 +1049,7 @@ function tickRay(state, dt, sys) {
   if (!hit) return;
   addHeat(state, hit.entity, T.thermalHeatPerSec * dt, sys);
   const j = 6 * dt * 60;
-  give(hit.entity, Math.cos(ray.angle) * j, Math.sin(ray.angle) * j, 'thermal_cooker', state.tick);
+  give(state, hit.entity, Math.cos(ray.angle) * j, Math.sin(ray.angle) * j, 'thermal_cooker', state.tick);
   if ((hit.entity.conductivity || 0) > 0 && coated(state.emergent, hit.entity.id, num(state.simTime))) {
     noteEmergentEnergyHit(state, hit.entity, T.thermalHeatPerSec * dt, owner.id, sys);
   }
@@ -1129,6 +1155,7 @@ export const emergentPrimitives = {
     this.bus = ctx && ctx.bus;
     adoptBus(this.bus);
     this.helpers = (ctx && ctx.helpers) || {};
+    boundHelpers = this.helpers;
     this.registry = ctx && ctx.registry;
     this.state = ctx && ctx.state;
     this.voice = createEmergentVoice();
@@ -1166,5 +1193,6 @@ export const emergentPrimitives = {
     if (this.voice) this.voice.dispose();
     this.voice = null;
     adoptBus(null);
+    boundHelpers = null;
   },
 };

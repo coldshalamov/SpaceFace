@@ -9,7 +9,7 @@ export const MAP_CONTROLS = Object.freeze({
   plot: { label: 'Plot Course', role: 'primary' },
   'set-course': { label: 'Set Waypoint' },
   'return-ship': { label: 'Return to ship' },
-  'frame-both': { label: 'Frame ship + destination' },
+  'frame-both': { label: 'Zoom: ship and destination' },
   'sort-deck': { label: 'Sort' },
   layer: { label: 'Layer' },
   lane: { label: 'Lane' },

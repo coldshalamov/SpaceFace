@@ -38,6 +38,8 @@ import { MIN_AI_RESPONSE_WINDOW_S } from '../ai/engagementAuthority.js';
 import { contactGrammarFor } from '../data/factionContactGrammar.js';
 import { sampleFactionBehavior } from '../data/factionDoctrines.js';
 import { isHostileToPlayer } from './scanner.js';
+import { queryPhysicalBodies } from '../combat/physicalEffects.js';
+import { isEnvironmentalBody } from '../core/physicalResponse.js';
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 const ENEMY = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
@@ -731,7 +733,7 @@ export const combat = {
     };
     ctx.bus.on('game:started', clearPendingDefeat);
     ctx.bus.on('save:loaded', clearPendingDefeat);
-    ctx.bus.on('debug:refillPlayer', () => { wakeQuiet(); refillLabPlayer(this.state); });
+    ctx.bus.on('debug:refillPlayer', () => { wakeQuiet(); refillLabPlayer(this.state, this.bus); });
     ctx.bus.on('debug:invulnerable', (p) => { wakeQuiet(); setLabInvulnerable(this.state, p || {}); });
   },
 
@@ -1305,11 +1307,17 @@ export const combat = {
         if (e.id === beam.ownerId) continue;
         if (e.id === state.playerId && this.playerIsDockProtected()) continue;
         if (ownerTeam != null && e.team === ownerTeam) continue; // no friendly fire
-        let t = ((e.pos.x - ax) * dx + (e.pos.z - az) * dz) / len2;
-        if (t < 0) t = 0; else if (t > 1) t = 1;
-        const px = e.pos.x - (ax + dx * t), pz = e.pos.z - (az + dz * t);
-        const rr = (e.radius || 6) + 2;
-        if (px * px + pz * pz <= rr * rr && t < bestT) { bestT = t; bestE = e; }
+        const hit = opticBeamHit(beam, e);
+        if (hit && hit.t < bestT) { bestT = hit.t; bestE = e; }
+      }
+      // Compact field rocks participate in the same first-skin race before promotion. Choosing
+      // from a budget-limited set of live bodies lets crowded rays shoot through foreground cover.
+      const envBlockers = beamEnvironmentCandidates(this, state, beam, dx, dz, len2);
+      for (const e of envBlockers) {
+        if (!e.alive) continue;
+        if (e.id === beam.ownerId) continue;
+        const hit = opticBeamHit(beam, e);
+        if (hit && hit.t < bestT) { bestT = hit.t; bestE = e; }
       }
       // §24 "Beams and missiles": an energy beam also answers to the optic lattice — stone,
       // metal, and diamond surfaces were never hulls, but the first optic body on the ray owns
@@ -1319,6 +1327,12 @@ export const combat = {
       // legacy pass-through.
       let opticT = Infinity, opticE = null, opticHit = null;
       if ((beam.dmgType || 'energy') === 'energy') {
+        // A compact winner is absent from the live collider query below, but retains its optic
+        // material grammar when admitted. Consider its skin without promoting any deeper rocks.
+        if (bestE && opticMaterialOf(bestE)) {
+          opticHit = opticBeamHit(beam, bestE);
+          if (opticHit) { opticT = opticHit.t; opticE = bestE; }
+        }
         const optics = beamOpticCandidates(this, state, beam, dx, dz);
         for (const e of optics) {
           if (!e || e.alive === false || e.id === beam.ownerId) continue;
@@ -1332,6 +1346,19 @@ export const combat = {
         // owns the contact — a hull in front of the lattice takes the hit, not the rock.
         const hullHit = opticBeamHit(beam, bestE);
         if (hullHit && hullHit.t < opticT) { opticE = null; opticHit = null; }
+      }
+      const target = opticE || bestE;
+      if (target && !state.entities.get(target.id)) {
+        const admitted = admitBeamTarget(this, state, target);
+        if (!admitted) {
+          // Budget exhaustion delays the physical response, never makes solid cover transparent.
+          const contactT = opticE ? opticT : bestT;
+          beam.to.x = ax + dx * contactT;
+          beam.to.z = az + dz * contactT;
+          continue;
+        }
+        if (opticE) opticE = admitted;
+        if (bestE?.id === target.id) bestE = admitted;
       }
       if (opticE) {
         const req = {
@@ -1350,6 +1377,10 @@ export const combat = {
         }
       }
       if (bestE) {
+        // Presentation and damage end at the same skin. The previous center projection drew
+        // the ray through cover (and could hit a small hull behind a larger, nearer surface).
+        beam.to.x = ax + dx * bestT;
+        beam.to.z = az + dz * bestT;
         this.onHit({
           targetId: bestE.id,
           ownerId: beam.ownerId,
@@ -1357,7 +1388,7 @@ export const combat = {
           damageType: beam.dmgType || 'energy',
           damagePacket: beam.damagePacket || null,
           weaponId: beam.weaponId || null,
-          pos: { x: ax + dx * bestT, z: az + dz * bestT },
+          pos: { x: beam.to.x, z: beam.to.z },
         });
       }
     }
@@ -1410,6 +1441,35 @@ function beamDamageCandidates(host, state, beam, dx, dz) {
   return tableHits;
 }
 
+function beamEnvironmentCandidates(host, state, beam, dx, dz, len2) {
+  ensureCombatRuntime(host);
+  const center = host._beamQueryCenter;
+  center.x = (beam.from.x + beam.to.x) * 0.5;
+  center.z = (beam.from.z + beam.to.z) * 0.5;
+  const ax = beam.from.x, az = beam.from.z;
+  return queryPhysicalBodies(state, center, Math.hypot(dx, dz) * 0.5 + BEAM_QUERY_RADIUS_PAD,
+    host.helpers, host._beamEnvScratch, {
+      includeAnchored: false,
+      promote: false,
+      contains(e) {
+        if (!isEnvironmentalBody(e)) return false;
+        let t = ((e.pos.x - ax) * dx + (e.pos.z - az) * dz) / len2;
+        if (t < 0) t = 0; else if (t > 1) t = 1;
+        const px = e.pos.x - (ax + dx * t), pz = e.pos.z - (az + dz * t);
+        const rr = (e.radius || 6) + 2;
+        return px * px + pz * pz <= rr * rr;
+      },
+    });
+}
+
+function admitBeamTarget(host, state, target) {
+  const scratch = host._beamAdmissionScratch || (host._beamAdmissionScratch = []);
+  return queryPhysicalBodies(state, target.pos, 0.01, host.helpers, scratch, {
+    includeAnchored: false,
+    contains: candidate => candidate.id === target.id,
+  })[0] || null;
+}
+
 // The active-hash path of queryNearbyEntities walks the shared collider buckets — the
 // fallback lane is only consulted when no hash is live, so the hull sweep and the optic
 // sweep were paying the identical disc scan twice per energy beam. Keyed on the beam
@@ -1444,6 +1504,7 @@ function beamOpticCandidates(host, state, beam, dx, dz) {
 function ensureCombatRuntime(host) {
   if (!host._beamCandidateScratch) host._beamCandidateScratch = [];
   if (!host._opticBeamScratch) host._opticBeamScratch = [];
+  if (!host._beamEnvScratch) host._beamEnvScratch = [];
   if (!host._beamDiscScratch) host._beamDiscScratch = [];
   if (!host._beamQueryCenter) host._beamQueryCenter = { x: 0, z: 0 };
   if (!host._diag) {
@@ -1477,7 +1538,7 @@ function labPlayerEntity(state) {
   return state.entities.get(state.playerId) || null;
 }
 
-function refillLabPlayer(state) {
+function refillLabPlayer(state, bus) {
   const player = labPlayerEntity(state);
   if (!player) return;
   // Same pool restore as the live recovery path (restorePlayerAtRecoveryDock) — pools to full,
@@ -1486,7 +1547,8 @@ function refillLabPlayer(state) {
   if (Number.isFinite(player.armorMax)) player.armorHp = player.armorMax;
   if (Number.isFinite(player.shieldMax)) player.shield = player.shieldMax;
   if (Number.isFinite(player.capMax)) player.cap = player.capMax;
-  if (Number.isFinite(player.heat)) player.heat = 0;
+  // heat.js is the sole writer of player.heat — clear through its bus path, never directly.
+  if (Number.isFinite(player.heat) && bus) bus.emit('heat:clear', { reason: 'lab refill' });
 }
 
 function setLabInvulnerable(state, payload) {

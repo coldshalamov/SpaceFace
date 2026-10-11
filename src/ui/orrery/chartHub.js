@@ -426,7 +426,7 @@ export function mountChartHub(root, adapter, { searchInput = null, searchResults
   const TOOLS = [
     { id: 'zoomIn', glyph: 'plus', tip: 'Zoom in  +', label: 'Zoom in' },
     { id: 'zoomOut', glyph: 'minus', tip: 'Zoom out  −', label: 'Zoom out' },
-    { id: 'fit', glyph: 'fit', tip: 'Frame ship + destination  0', label: 'Frame ship and destination' },
+    { id: 'fit', glyph: 'fit', tip: 'Zoom: ship and destination  0', label: 'Zoom: ship and destination' },
     { id: 'ship', glyph: 'ship', tip: 'Back to your ship', label: 'Return to ship' },
   ];
   tools.innerHTML = TOOLS.map((t) => `<button type="button" class="gmh-tool" data-tool="${t.id}" data-tip="${esc(t.tip)}" aria-label="${esc(t.label)}">${svgOf(t.glyph, 22)}</button>`).join('');

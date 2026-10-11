@@ -2,6 +2,7 @@
 // The two already-consumed scatter coordinates carry all seed variation. The caller MUST
 // still consume the legacy draws; this module never asks for an additional draw.
 import { ARRANGEMENT_LIMITS, sectorCompositionFor } from '../data/sectorCompositions.js';
+import { createRacingCorridorArranger } from './racingCorridor.js';
 
 const TAU = Math.PI * 2;
 const RAD = Math.PI / 180;
@@ -171,6 +172,8 @@ function relevantKeepouts(keepouts, center, radius) {
  */
 export function createSectorArranger(sector, options = {}) {
   if (!sector || typeof sector.id !== 'string') throw new TypeError('sector.id is required');
+  const racing = createRacingCorridorArranger(sector, options);
+  if (racing) return racing;
   const profile = sectorCompositionFor(sector.id);
   if (!profile) return null;
   const origin = options.origin || { x: 0, z: 0 };

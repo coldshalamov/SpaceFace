@@ -3,6 +3,7 @@ import { ensureCombatState, entityKey, createCombatCatalog, resolveCombatProfile
 import { CERES_WORKFLEET_CONTRACT as CERES } from '../data/ceresWorkfleet.js';
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { ceresWorkfleetHardwareRoleForRecord } from '../data/ceresWorkfleetHardware.js';
+import { pendingStuntBodyIds } from './stuntEvidence.js';
 
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 
@@ -94,14 +95,16 @@ export function* restoreCombatStateSteps(state, payload, resolveEntityRef, { def
 }
 
 function buildEntityRefs(state) {
-  const refs = new Map(), incomingOwners=ceresWorkfleetHostileAttachmentOwners(state);
+  const refs = new Map(), incomingOwners=ceresWorkfleetHostileAttachmentOwners(state), stuntBodies=pendingStuntBodyIds(state);
   const list = state && (state.entityList || (state.entities && [...state.entities.values()])) || [];
   for (const entity of list) {
     if (!entity || !entity.alive || entity.id == null) continue;
     let ref = null;
     if (entity.id === state.playerId) ref = { kind: 'player' };
     else if (ceresAttachmentRef(entity)) continue;
-    else if (entity.flags && entity.flags.persistent || incomingOwners.has(entity.id)) ref = { kind: 'persistent', saveId: String(entity.id) };
+    // The save owner captures these transient bodies for a pending physical stunt. Their
+    // combat statuses must travel with them: a saved tumbling hull is still a projectile.
+    else if (entity.flags && entity.flags.persistent || incomingOwners.has(entity.id) || stuntBodies.has(entity.id)) ref = { kind: 'persistent', saveId: String(entity.id) };
     if (ref) refs.set(entityKey(entity.id), ref);
   }
   return refs;

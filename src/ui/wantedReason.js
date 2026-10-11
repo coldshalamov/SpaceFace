@@ -6,6 +6,7 @@
 // suspicion without a receipt yields no reason, and a record carrying neither
 // witnesses nor a jurisdiction renders the kind alone — never an invented witness.
 import { heatClearSecondsForLevel, heatLevelFor } from '../systems/heat.js';
+import { SECTORS } from '../data/sectors.js';
 
 export const WANTED_KIND_LABELS = Object.freeze({
   payload_theft: 'CARGO THEFT',
@@ -13,6 +14,20 @@ export const WANTED_KIND_LABELS = Object.freeze({
   lawful_kill: 'LAW KILL',
   reckless_kill: 'RECKLESS KILL',
 });
+
+// Station ids the record carries are handles, not copy — the alert prints the place's name.
+const STATION_NAME_BY_ID = new Map();
+for (const sector of SECTORS) {
+  for (const station of (sector && sector.stations) || []) {
+    if (station && station.id && station.name) STATION_NAME_BY_ID.set(station.id, station.name);
+  }
+}
+
+function jurisdictionName(id) {
+  const known = STATION_NAME_BY_ID.get(id);
+  if (known) return known;
+  return String(id).replace(/^station_/, '').replace(/_/g, ' ');
+}
 
 export function wantedReasonText(packet, player) {
   // An explicit null incident on a heat packet is the answer: the explanation has
@@ -26,11 +41,18 @@ export function wantedReasonText(packet, player) {
   if (!inc || typeof inc !== 'object' || !inc.incidentReceiptId) return '';
   const parts = [WANTED_KIND_LABELS[inc.kind]
     || (typeof inc.kind === 'string' && inc.kind ? inc.kind.toUpperCase().slice(0, 32) : 'INCIDENT')];
-  if (typeof inc.affected === 'string' && inc.affected) parts.push(inc.affected);
+  // The raw `affected` handle is never printed — a recorded label, or a station name when the
+  // handle itself is a known station.
+  const party = typeof inc.affectedLabel === 'string' && inc.affectedLabel.trim()
+    ? inc.affectedLabel.trim()
+    : STATION_NAME_BY_ID.get(inc.affected);
+  if (party) parts.push(String(party).toUpperCase());
   if (Number(inc.witnessCount) > 0) {
     parts.push(inc.witnessCount + (inc.witnessCount === 1 ? ' WITNESS' : ' WITNESSES'));
   }
-  if (typeof inc.jurisdiction === 'string' && inc.jurisdiction) parts.push(inc.jurisdiction);
+  if (typeof inc.jurisdiction === 'string' && inc.jurisdiction) {
+    parts.push(jurisdictionName(inc.jurisdiction).toUpperCase());
+  }
   return ' · ' + parts.join(' · ');
 }
 

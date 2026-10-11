@@ -8,6 +8,9 @@ import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 import { hullPosterUrl } from '../../hullPosters.js';
 import { icon as stationIcon, hasIcon as hasStationIcon } from '../icons.js';
+import { arsenalIcon } from '../../orrery/arsenalGlyphs.js';
+import { arsenalSentence } from '../../../data/arsenalIdentity.js';
+import { crucibleFittingDescription } from '../../crucibleCombatReadout.js';
 // src/ui/station/screens/shipworks.js — "Shipworks" and THE SHIP: the shared stage (Frontend
 // Task C §1.9). The hull fills the panel behind everything, orbitable; the hulls (fleet / for sale)
 // as a column of rows down the hang; the hull's name at title size with its blurb; six compact
@@ -4014,12 +4017,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         : `<button type="button" ${stationControlAttrs('fit-from-hold')} class="k-word k-word--fine k-word--primary sx-modrow__buy" data-fit-inv="${escapeHtml(instanceId)}" data-fit-inv-slot="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>Fit${countTag}</button>`;
       return (
         `<li class="k-row sx-modrow sx-modrow--hold${blocked ? ' is-locked' : ''}"${headConflict ? '' : ` data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
-          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
-            `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${arsenalIcon(d.id, 24)} ${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
+            `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback} · ${escapeHtml(crucibleFittingDescription(d.id, ctx.state))}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}</span>` +
             (d.variantBonuses ? `<span class="k-row__sub k-38 sx-modrow__variant">Different: ${escapeHtml(variantBonusWords(d.variantBonuses))}</span>` : '') +
+            (arsenalSentence(d) ? `<span class="k-row__sub sx-modrow__meta">${escapeHtml(arsenalSentence(d))}</span>` : '') +
             (instText ? `<span class="k-row__sub k-38 sx-modrow__instance">This unit: ${escapeHtml(instText)}</span>` : '') +
-            `<span class="k-row__sub k-38 sx-modrow__role"${blocked ? ' data-refusal' : ''}>${blocked ? escapeHtml(blockedText) : 'Already paid for — fits this slot.'}</span>` +
+            `<span class="k-row__sub k-38 sx-modrow__role"${blocked ? ' data-refusal' : ''}>${blocked ? escapeHtml(blockedText) : 'Already paid for — fits this slot.'}</span></span>` +
           `<span class="k-row__num sx-modrow__act">${sableTrialButton(d)}${btn}</span>` +
         `</li>`
       );
@@ -4072,10 +4076,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             : `<button type="button" ${stationControlAttrs('buy-fit', selectedFit ? { primary: true } : undefined)} class="k-word k-word--fine${selectedFit ? ' k-word--primary' : ''} sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}"${selectedFit ? ` data-fit-slot="${slotIndex}"` : ''} ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${buyWord} <small class="k-38">${fmt(purchase.price)} cr</small></button>`;
       return (
         `<li class="k-row sx-modrow${equipped ? ' is-eq' : ''}${purchase.disabled || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
-          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
-            `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${arsenalIcon(d.id, 24)} ${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
+            `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback} · ${escapeHtml(crucibleFittingDescription(d.id, ctx.state))}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}</span>` +
-            `<span class="k-row__sub sx-modrow__meta">${equippedInstText ? `<span class="sx-modrow__instance">This unit: ${escapeHtml(equippedInstText)}</span> ` : (d.sentence ? `<span class="sx-modrow__sentence">${escapeHtml(d.sentence)}</span> ` : '')}<span class="sx-modrow__chips">${chips}${riskChips}</span></span>` +
+            `<span class="k-row__sub sx-modrow__meta">${equippedInstText ? `<span class="sx-modrow__instance">This unit: ${escapeHtml(equippedInstText)}</span> ` : (arsenalSentence(d) ? `<span class="sx-modrow__sentence">${escapeHtml(arsenalSentence(d))}</span> ` : '')}<span class="sx-modrow__chips">${chips}${riskChips}</span></span>` +
             (d.variantBonuses ? `<span class="k-row__sub k-38 sx-modrow__variant">Different: ${escapeHtml(variantBonusWords(d.variantBonuses))}</span>` : '') +
             `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(actionDetail)}</span></span>` +
           `<span class="k-row__num sx-modrow__act">${sableTrialButton(d)}${btn}</span>` +
@@ -4087,10 +4091,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const metaFallback = escapeHtml(d.size || '') + ' · T' + d.tier;
       return (
         `<li class="k-row sx-modrow is-locked" data-refused-module="${escapeHtml(d.id)}" tabindex="0">` +
-          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
-            `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${arsenalIcon(d.id, 24)} ${entitySpanHtml('module:' + d.id, escapeHtml(d.name))}</span>` +
+            `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback} · ${escapeHtml(crucibleFittingDescription(d.id, ctx.state))}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d)}</span>` +
-            `${d.sentence ? `<span class="k-row__sub sx-modrow__meta">${escapeHtml(d.sentence)}</span>` : ''}` +
+            `${arsenalSentence(d) ? `<span class="k-row__sub sx-modrow__meta">${escapeHtml(arsenalSentence(d))}</span>` : ''}` +
             `<span class="k-row__sub k-38 sx-modrow__role" data-refusal>${escapeHtml(sentence)}</span></span>` +
           `<span class="k-row__num sx-modrow__act"><span class="k-t-fine k-38 sx-modrow__lock">Won’t mount</span></span>` +
         `</li>`
@@ -4238,9 +4242,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         : stock > 0 ? `${stock} in the hangar` : 'None in the hangar';
       return (
         `<li class="k-row sx-modrow${inSocket ? ' is-eq' : ''}" data-payload-row="${escapeHtml(d.id)}" tabindex="0">` +
-          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${escapeHtml(d.name)}</span>` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${arsenalIcon(d.id, 24)} ${escapeHtml(d.name)}</span>` +
             `<span class="k-row__sub sx-modrow__role">Ordnance · T${d.unlockTier || 0} · magazine ${d.magazine}</span>` +
-            `<span class="k-row__sub sx-modrow__meta">${escapeHtml(d.sentence)} Fuze ${d.fuzeS}s · cooldown ${d.cooldownS}s.</span>` +
+            `<span class="k-row__sub sx-modrow__meta">${escapeHtml(arsenalSentence(d))} Fuze ${d.fuzeS}s · cooldown ${d.cooldownS}s.</span>` +
             `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(seat)}</span></span>` +
           `<span class="k-row__num sx-modrow__act">${verbs.join('')}</span>` +
         `</li>`

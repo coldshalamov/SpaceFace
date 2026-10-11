@@ -484,6 +484,7 @@ export function createCombatKernel(ctx, options = {}) {
     }
     sourceScratch.length = 0;
     forEachLivingWorldActor(state, pushSourceEntity);
+    appendMarkedEnvironment(state, sourceScratch);
     const source = sourceScratch;
     const length = source.length;
     if (
@@ -535,7 +536,29 @@ export function combatTickEntitySource(state) {
   forEachLivingWorldActor(state, (entity) => {
     out.push(entity);
   });
+  appendMarkedEnvironment(state, out);
   return out;
+}
+
+function appendMarkedEnvironment(state, out) {
+  // Only bodies that have earned a combat status participate; no whole-belt scan. The
+  // damage router registers non-damageable Gravity Mark targets, so this walks a handful
+  // of ids — nothing at all when no environment has been marked.
+  const marked = state.combat && state.combat.markedEnvironment;
+  if (!marked || !marked.length || !state.entities) return;
+  const table = state.combat.entities;
+  let have = null;
+  for (let i = marked.length - 1; i >= 0; i--) {
+    const runtime = table && table[marked[i]];
+    let live = !!(runtime && runtime.pendingStatuses && runtime.pendingStatuses.length);
+    if (!live && runtime && runtime.statuses) {
+      for (const key in runtime.statuses) { live = true; break; }
+    }
+    const entity = live ? state.entities.get(marked[i]) : null;
+    if (!entity || entity.alive === false) { marked.splice(i, 1); continue; }
+    if (!have) have = new Set(out.map(entity => entity.id));
+    if (!have.has(entity.id)) out.push(entity);
+  }
 }
 
 export function combatTickEntitySourceKind(state) {

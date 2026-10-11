@@ -73,7 +73,7 @@ assert.match(lines.objective, /Helios Priority Run/);
 assert.match(lines.objective, /50% complete/);
 assert.match(lines.objective, /6m left/);
 assert.match(lines.next, /Helios Gate/);
-assert.match(lines.save, /Quick/);
+assert.match(lines.save, /^Saved .+ to the quick slot\.$/);
 assert.doesNotMatch(lines.save, /F5/, 'the pause footer already lists F5/F9; the save line does not repeat them');
 
 let body = pauseExitConfirmBody(trackedState, 'load');
@@ -81,13 +81,13 @@ assert.match(body, /Opening Load lets you review slots/);
 // The brief joins its fields with a middle dot (888dbcfa polish pass); either separator is accepted.
 assert.match(body, /TRACKED [-·] Helios Priority Run/);
 assert.match(body, /Helios Gate/);
-assert.match(body, /Save status: Saved .* to Quick/);
+assert.match(body, /Save status: Saved .+ to the quick slot\./);
 assert.match(body, /If you complete a load, unsaved progress is lost/);
 
 body = pauseExitConfirmBody(trackedState, 'menu');
 assert.match(body, /Returning to main menu closes the current session/);
 assert.match(body, /TRACKED [-·] Helios Priority Run/);
-assert.match(body, /Save status: Saved .* to Quick/);
+assert.match(body, /Save status: Saved .+ to the quick slot\./);
 assert.match(body, /Unsaved progress will be lost/);
 
 lines = pauseStatusLines({
@@ -190,6 +190,6 @@ lines = pauseStatusLines({
 });
 assert.equal(lines.objective, 'NO ACTIVE CONTRACT');
 assert.match(lines.next, /dock at a station/);
-assert.match(lines.save, /Loaded Auto/);
+assert.match(lines.save, /^Loaded autosave\. Nothing saved this session\./);
 
 console.log('ok pause brief');

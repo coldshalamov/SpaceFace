@@ -70,7 +70,7 @@ test('an absent answer is stated in words and toned MUTED, never left blank', ()
   assert.equal(byKey.get('destination').tone, NAV_ROW_TONE.MUTED);
   assert.equal(byKey.get('leg').tone, NAV_ROW_TONE.MUTED);
   assert.match(byKey.get('objective').value, /None tracked/);
-  assert.match(byKey.get('destination').value, /No route plotted/);
+  assert.match(byKey.get('destination').value, /No destination set/);
   // The reason a row is empty is itself information — an empty detail would be a dead row.
   assert.ok(byKey.get('objective').detail.length > 0);
   assert.ok(byKey.get('destination').detail.length > 0);

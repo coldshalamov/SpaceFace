@@ -58,6 +58,7 @@ import {
 import { WEAPONS } from '../data/weapons.js';
 import { buildSlotList, fits, getDerivedStats } from './ships.js';
 import { swarmHullPrice } from '../data/swarmCatalog.js';
+import { SWARM_CROSSOVER_CATALOG, swarmCrossoverEarned } from '../data/swarmCrossover.js';
 import {
   brokerMultiplier,
   consumeHangarReroll,
@@ -258,7 +259,9 @@ export const survivalDraft = {
     for (const entry of this._armoryExtras(loadout, run)) {
       if (shown.has(entry.id)) continue;
       const purchased = this._purchased?.has(entry.id) === true;
-      const blocked = entry.kind === SWARM_HULL_OFFER_KIND && entry._flying
+      const blocked = entry.kind === SWARM_HULL_OFFER_KIND && entry._locked
+        ? (entry._earnText || 'Earned, not bought.')
+        : entry.kind === SWARM_HULL_OFFER_KIND && entry._flying
         ? 'In the cradle'
         : entry.kind === SWARM_HULL_OFFER_KIND && entry._cargoBlocked
           ? 'Cargo would overflow its hold'
@@ -340,8 +343,8 @@ export const survivalDraft = {
     const offer = this.currentOffers().find((entry) => entry.id === offerId);
     // A bought card is no longer on the shelf to carry; the service counter is a live check
     // (a held weld that stopped mattering would pay for nothing); the flown hull is already
-    // in the cradle — none of those can ride a hold.
-    if (!offer || offer.purchased || offer.kind === SWARM_SERVICE_OFFER_KIND || offer._flying) {
+    // in the cradle; a locked earn is a goal, not stock — none of those can ride a hold.
+    if (!offer || offer.purchased || offer.kind === SWARM_SERVICE_OFFER_KIND || offer._flying || offer._locked) {
       return false;
     }
     this._locked = { ...offer };
@@ -1027,10 +1030,21 @@ export const survivalDraft = {
     const cargoUsed = player && player.cargo && Number.isFinite(player.cargo.usedVolume)
       ? player.cargo.usedVolume : 0;
     const ownedList = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
+    // The door gives the hull away free; the opening armory fits it, not re-sells it. At
+    // wave 0 only the flown hull rides the shelf (as the cradle row) — foreign hulls go on sale
+    // once the run has begun, and the campaign-starter artifact is not a day-one switch.
+    const opening = (this._wave || 0) <= 0;
+    const flyingId = loadout && loadout.hullId;
     for (const ship of SHIPS) {
       if (!ship || typeof ship.id !== 'string') continue;
+      if (opening && ship.id !== flyingId) continue;
       const ownedIndex = ownedList.findIndex((entry) => entry && entry.defId === ship.id);
       const owned = ownedIndex >= 0 ? ownedList[ownedIndex] : null;
+      // The door refuses an unearned crossover hull (the Saucer) as a pick; the shelf refuses
+      // it as a sale the same way — visible as the goal, never buyable. Same ledger, same law.
+      const earnId = typeof ship.swarmEarned === 'string' && ship.swarmEarned ? ship.swarmEarned : null;
+      const locked = !!earnId && !owned && !swarmCrossoverEarned(earnId);
+      const earnRow = earnId ? SWARM_CROSSOVER_CATALOG.find((row) => row.id === earnId) : null;
       // setActiveShip refuses the swap when the run's hold is heavier than the new hull takes —
       // the row must say so up front, because the charge is real by the time the cradle would.
       // An owned hull is judged against ITS OWN capacity (the fittings it actually carries).
@@ -1042,10 +1056,19 @@ export const survivalDraft = {
         blurb: owned
           ? `On your manifest · ${ship.role} · ${buildSlotList(ship).length} hardpoints`
           : `${ship.role} hull · tier ${ship.tier} · ${buildSlotList(ship).length} hardpoints`,
-        price: owned ? 0 : ask(swarmHullPrice(ship)), category: 'Hulls', slotLabel: 'Ship cradle',
+        price: owned ? 0 : ask(swarmHullPrice(ship)), category: 'Hulls',
+        // A bought hull arrives BARE — the kit stays bolted to the hull being left, and comes
+        // back with it on a switch. The row says so; a silent bare hull reads as stolen guns.
+        slotLabel: owned
+          ? 'Ship cradle — free switch, each hull keeps its own kit'
+          : 'Ship cradle — arrives bare, this hull keeps its kit',
         _flying: ship.id === (loadout && loadout.hullId),
         _cargoBlocked: cargoUsed > cargoCap,
         _ownedIndex: ownedIndex >= 0 ? ownedIndex : null,
+        _locked: locked,
+        _earnText: locked
+          ? (earnRow && earnRow.blurb ? `${ship.name} is earned — ${earnRow.blurb}` : `${ship.name} is earned, not bought.`)
+          : null,
       });
     }
     return extras;

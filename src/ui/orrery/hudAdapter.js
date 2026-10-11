@@ -33,6 +33,9 @@ const GROUP_NAME = Object.freeze({ ORDNANCE: 'Ordnance', FIELDWORK: 'Fields', RI
 const GROUP_ICON = Object.freeze({ Ordnance: 'weapon', Fieldwork: 'well', Rig: 'cone', Bay: 'munitions' });
 // The rail's 24-px glyph names → the 48-px kit icon file names the Cluster masks.
 const SLOT_ICON = Object.freeze({ munitions: 'munitions', blast: 'fire', tether: 'line', seed: 'seed', well: 'well', repel: 'repel', cone: 'cone', skim: 'skim', weapon: 'munitions' });
+const SLOT_ARSENAL = Object.freeze({ 1: 'power_charge', 2: 'power_detonate', 3: 'power_massline',
+  4: 'field_seed_standard', 5: 'field_well_standard', 6: 'field_repulsor_standard',
+  7: 'field_cone_standard', 8: 'field_skim_standard' });
 
 /** The rail's slots grouped by band, each with a stable id (its rail index) and its live key label. */
 export function buildOrdnanceGroups(bindings) {
@@ -84,7 +87,7 @@ export function readOrdnanceModel(state, tracker, bindings) {
   for (const slot of RAIL_SLOTS) {
     const r = rail[slot.index] || {};
     const st = RAIL_STATE[r.state] || 'ready';
-    const entry = { state: st };
+    const entry = { state: st, arsenalId: slot.index === 9 && r.glyph?.startsWith('bomb_') ? r.glyph : SLOT_ARSENAL[slot.index] || '' };
     if (slot.index === 1 || slot.index === 9) entry.consumable = true;
     // SWARM-03: the rail's tactical-live flag rides beside the state so the Cluster can
     // breathe a key whose verb is real right now (latch in reach, ordnance armed, pack
@@ -220,6 +223,20 @@ export function mountOrreryCluster(root, state, { bindings = null, bus = null } 
   const syncLegend = (liveState = state, livePlayer = liveState?.entities?.get?.(liveState.playerId)) => {
     cluster.setRingLegend(readActiveHullLegend(liveState, livePlayer));
   };
+  // The cluster bakes the hull poster at create; a hull swap after mount (shipworks "Make active",
+  // a save whose active hull differs) must restamp it or the HUD names the wrong ship all session.
+  let syncedHullId = defId;
+  const syncHull = (liveState = state, livePlayer = liveState?.entities?.get?.(liveState.playerId)) => {
+    const liveDefId = (livePlayer && livePlayer.data && (livePlayer.data.defId || livePlayer.data.shipId)) || 'ship_kestrel';
+    if (liveDefId === syncedHullId) return;
+    syncedHullId = liveDefId;
+    const liveDef = SHIP_BY_ID.get(liveDefId);
+    cluster.setHull({
+      shipId: liveDefId,
+      name: customNameForActiveHull(liveState) || (liveDef && liveDef.name) || 'Hull',
+      classLine: `${liveDef && liveDef.role ? liveDef.role : 'hull'} · tier ${liveDef && Number.isFinite(liveDef.tier) ? liveDef.tier : 0}`,
+    });
+  };
   let offName = null;
   if (bus && typeof bus.on === 'function' && typeof cluster.setRingLegend === 'function') {
     offName = bus.on('ship:nameChanged', (payload = {}) => {
@@ -232,6 +249,7 @@ export function mountOrreryCluster(root, state, { bindings = null, bus = null } 
     host,
     update(liveState, p, slow) {
       if (slow && typeof cluster.setRingLegend === 'function') syncLegend(liveState, p);
+      if (slow && typeof cluster.setHull === 'function') syncHull(liveState, p);
       if (!p) return;
       if (slow || !ordnance) ordnance = readOrdnanceModel(liveState, tracker, bindings);
       if (slow || ceiling == null) ceiling = readSpeedCeiling(liveState, p);

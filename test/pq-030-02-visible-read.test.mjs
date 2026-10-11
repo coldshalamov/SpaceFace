@@ -211,8 +211,12 @@ test(`seed ${SEED}: leftover taut sweep cuts the player line and the observer na
   });
   assert.equal(blade.ok, true);
 
-  cutter.update(DT, state);
+  // Read the threat while the player's line still exists. Once severed, the
+  // observer retires that latch rather than warning about an inactive swing.
   observer.update(DT, state);
+  assert.equal(state.player.masslineThreats.latest.kind, HOSTILE_SWEEP_THREAT_KIND);
+  observer.update(DT, state);
+  cutter.update(DT, state);
 
   assert.equal(state.combat.attachments.byId[playerLine.attachment.id].state, 'broken');
   assert.equal(cuts.length, 1);
@@ -231,9 +235,8 @@ test(`seed ${SEED}: leftover taut sweep cuts the player line and the observer na
   const sweepThreats = threats.filter((row) => row.kind === HOSTILE_SWEEP_THREAT_KIND);
   assert.equal(sweepThreats.length, 1, 'observer emits one hostile-sweep per cutter per latch');
   assert.equal(sweepThreats[0].targetId, raider.id);
-  assert.equal(state.player.masslineThreats.latest.kind, HOSTILE_SWEEP_THREAT_KIND);
-
   observer.update(DT, state);
+  assert.equal(state.player.masslineThreats.latest, null, 'severed line retires its warning');
   assert.equal(threats.filter((row) => row.kind === HOSTILE_SWEEP_THREAT_KIND).length, 1,
     'hostile-sweep throttles per cutter, not per tick');
   console.log(`SEED=${SEED} SWEEP_CUT=1 THREAT=${HOSTILE_SWEEP_THREAT_KIND} named="${named}"`);

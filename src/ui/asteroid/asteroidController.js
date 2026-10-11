@@ -42,9 +42,10 @@ export function routeAsteroidScreenKeyDown({ controller, event, exit }) {
 
 export function createAsteroidController({ drillSys, getDrillState, controlMap, hooks }) {
   const drive = createDrillInputController({ drillSys, getState: getDrillState });
-  // Physically-down direction keys, in press order. Not a movement clock — bookkeeping so a
-  // release can hand off to a key that is still down.
-  const pressedDirections = new Set();
+  // Physical keys, in press order. Direction aliases remain separate: releasing ArrowDown must
+  // not retire a still-held S, or manufacture another tap when both mean the same direction.
+  const pressedDirections = new Map();
+  const heldDirection = () => [...pressedDirections.values()].pop() || null;
   // The build cursor's own clock. `cursorHold` is the direction currently earning repeats;
   // `cursorTimer` is the seconds still owed before the next cell may land.
   let cursorHold = null;
@@ -65,9 +66,9 @@ export function createAsteroidController({ drillSys, getDrillState, controlMap, 
     if (state.mode === mode) return false;
     state.mode = mode;
     stopCursorHold();
+    pressedDirections.clear();
+    drive.cancel();
     if (mode === MODES.BUILD) {
-      pressedDirections.clear();
-      drive.cancel();
       const d = getDrillState();
       if (d && d.avatar) {
         state.cursor.col = Math.max(0, Math.min(COLS - 1, d.avatar.col));
@@ -135,10 +136,10 @@ export function createAsteroidController({ drillSys, getDrillState, controlMap, 
       if (direction) {
         // ev.repeat is the OS key-repeat stream. It is deliberately discarded: one physical press
         // is one tap, and every beat after it belongs to the drill clock in drive.tick().
-        if (!ev.repeat) {
-          pressedDirections.delete(direction);
-          pressedDirections.add(direction);
-          if (drive.press(direction) && hooks.onDriveStep) hooks.onDriveStep();
+        if (!ev.repeat && !pressedDirections.has(code)) {
+          const previous = heldDirection();
+          pressedDirections.set(code, direction);
+          if (previous !== direction && drive.press(direction) && hooks.onDriveStep) hooks.onDriveStep();
         }
         ev.preventDefault();
         return true;
@@ -156,12 +157,14 @@ export function createAsteroidController({ drillSys, getDrillState, controlMap, 
       // Same discipline as DRIVE: ev.repeat is the OS key-repeat stream and is dropped on the
       // floor. One physical press seats exactly one cell and stamps MOVE_HOLD_DELAY_S; every cell
       // after that is paid out by tick(dt) on the cruise beat.
-      if (!ev.repeat) {
-        pressedDirections.delete(direction);
-        pressedDirections.add(direction);
-        cursorHold = direction;
-        cursorTimer = MOVE_HOLD_DELAY_S;
-        stepCursor(direction);
+      if (!ev.repeat && !pressedDirections.has(code)) {
+        const previous = heldDirection();
+        pressedDirections.set(code, direction);
+        if (previous !== direction) {
+          cursorHold = direction;
+          cursorTimer = MOVE_HOLD_DELAY_S;
+          stepCursor(direction);
+        }
       }
       ev.preventDefault();
       return true;
@@ -189,12 +192,14 @@ export function createAsteroidController({ drillSys, getDrillState, controlMap, 
     if (!direction) return false;
     // Track physical state even outside DRIVE, so a key released while the build palette is up
     // cannot come back as a phantom hold.
-    pressedDirections.delete(direction);
+    const previous = heldDirection();
+    pressedDirections.delete(ev.code);
+    const next = heldDirection();
+    if (previous === next) { ev.preventDefault(); return true; }
     if (state.mode === MODES.BUILD) {
       if (cursorHold === direction) {
         // Two keys down, one released: hand the cursor to the key still held, and make it earn its
         // cruise from scratch — a new direction is a new tap, exactly as the rig treats it.
-        const next = pressedDirections.size ? [...pressedDirections].pop() : null;
         if (next) { cursorHold = next; cursorTimer = MOVE_HOLD_DELAY_S; }
         else stopCursorHold();
       }
@@ -206,8 +211,7 @@ export function createAsteroidController({ drillSys, getDrillState, controlMap, 
     // Two keys down, one released: hand the rig to the key still held instead of stalling until
     // the player re-presses. A fresh press restarts the tap-then-hold cycle, which is correct —
     // a new direction is a new tap, and it has to earn its cruise the same way.
-    if (wasSteering && pressedDirections.size) {
-      const next = [...pressedDirections].pop();
+    if (wasSteering && next) {
       if (drive.press(next) && hooks.onDriveStep) hooks.onDriveStep();
     }
     ev.preventDefault();
@@ -223,6 +227,9 @@ export function createAsteroidController({ drillSys, getDrillState, controlMap, 
     onKeyUp,
     tick(dt) {
       if (state.mode === MODES.DRIVE) return drive.tick(dt);
+      // Planning parks the controls, not the rig clock: cooling, capacitor recovery, bite
+      // retirement and survey cooldown keep advancing through the same fixed-step owner.
+      drive.tick(dt);
       if (!cursorHold) return false;
       cursorTimer -= dt;
       if (cursorTimer > 0) return false;

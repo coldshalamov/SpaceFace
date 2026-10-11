@@ -36,7 +36,7 @@ import { isCeresWorkfleetPropulsion, ceresWorkfleetPropulsionAwake, createCeresW
 import { ActionVfx, ACTION_VFX_EVENTS } from './actionVfx.js';
 import { StationOperationVfx } from './vfx/stationOperationVfx.js';
 import { BombDetonationVfx } from './vfx/bombDetonationVfx.js';
-import { StatusMatterVfx } from './vfx/statusMatterVfx.js';
+import { StatusMatterVfx, collectHeatedMaterialBodies } from './vfx/statusMatterVfx.js';
 import { CombatContactVfx } from './vfx/combatContactVfx.js';
 import { DamagedPortVfxPlanner } from './vfx/damagedPortVfx.js';
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
@@ -2595,6 +2595,7 @@ export const vfx = {
     add('salvage:completed', (p) => this._onSalvageCompleted(p));
     add('mining:yield', (p) => this._onMiningYield(p));
     add('asteroid:destroyed', (p) => this._onAsteroidShatter(p, false));
+    add('environment:detonated', (p) => this._onEnvironmentDetonated(p));
     add('asteroid:chunked', (p) => this._onAsteroidShatter(p, true));
     add('weapons:vent', (p) => this._onWeaponVent(p));
     add('station:sideEvent', (p) => this._onStationSideEvent(p));
@@ -11706,7 +11707,10 @@ export const vfx = {
       if (chunk && chunk.pos) pos = chunk.pos;
     }
     if (!pos) return;
-    const col = oreColor(p.commodityId || p.typeId);
+    const source = this._ent(p.chunkId ?? p.id);
+    const crystal = (p.material || source?.data?.material) === 'crystal';
+    const materialId = crystal ? 'ice' : 'rock';
+    const col = crystal ? '#d8f6ff' : oreColor(p.commodityId || p.typeId);
     // IMPACTS: brittle failure. A rock does not explode -- it opens conchoidal cleavage planes in
     // sequence, cold, with the dust lagging behind them. No ignition, no reward firework.
     _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
@@ -11717,21 +11721,21 @@ export const vfx = {
     _impactOpts.hero = false;
     const fractured = this._composeImpact(
       pos.x, 0.3, pos.z, 0, 0, 1, false,
-      chunked ? 0.34 : 0.62, 'rock', chunked ? 4 : 9, _impactOpts,
+      chunked ? 0.34 : 0.62, materialId, Math.max(3, Number(p.radius) || source?.radius || (chunked ? 4 : 9)), _impactOpts,
     );
     if (!fractured && this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
       this._weaponPresenter.quarks.spawnCollisionSpall(
-        local.x, 0.3, local.z, 0, 1, 0, chunked ? 6 : 10, p.commodityId || p.typeId,
+        local.x, 0.3, local.z, 0, 1, 0, chunked ? 6 : 10, crystal ? 'ice' : p.commodityId || p.typeId,
       );
     }
     this._spawnSprite(SPR_FLASH, pos.x, 0.4, pos.z, 0.3, 3.0, 8.0, 0.8, 0.0, col, 0, 0);
-    this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, 0.9, 3.2, 9.0, 0.4, 0.0, '#cbb9a0',
+    this._spawnSprite(SPR_PUFF, pos.x, 0.3, pos.z, 0.9, 3.2, 9.0, 0.4, 0.0, crystal ? '#c2dce8' : '#cbb9a0',
       (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
     if (this._gas) {
       // Granular fracture dust: lumpy, unlit, heavy, and it disperses instead of rising.
       const rock = p.chunkId != null ? this._ent(p.chunkId) : null;
-      const rockR = Math.max(3, (rock && rock.radius) || 9);
+      const rockR = Math.max(3, Number(p.radius) || (rock && rock.radius) || 9);
       const h = ((p.chunkId != null ? (p.chunkId | 0) : 0) * 2246822519) >>> 0;
       const angle = ((h & 0xffff) / 0xffff) * Math.PI * 2;
       this._gas.emitFractureDust({
@@ -11754,6 +11758,15 @@ export const vfx = {
       { pos },
       chunked ? 0.8 : 1.2,
     );
+  },
+
+  _onEnvironmentDetonated(p) {
+    if (!p?.pos || !Number.isFinite(p.pos.x) || !Number.isFinite(p.pos.z)) return false;
+    // This receipt means volatile material actually reacted. Its legacy bomb:exploded
+    // alias has no render subscriber; route once into the existing staged fuel rupture.
+    // Fuel scrolls and cooling gas replace reactor tongues/hull plates for these bodies.
+    return this._queueExplosion({ ...p, materialId: 'fuel', type: 'volatile', cause: 'explosive' },
+      'ordinary', Math.max(5, Math.min(48, Number(p.radius) || 9)), 'explosive');
   },
 
   // Salvage plate release is owned by the normalized ActionVfx receipt. Keep this legacy adapter
@@ -12395,6 +12408,7 @@ export const vfx = {
     sub.apexFlare = this._updateApexFlare(dt) ? 1 : 0;
     // Massline UVP: continuous tumble thrash puffs + spin ribbons while status_tumbling / drifting.
     this._updateTumbleBodyLanguageVfx(dt);
+    this._updateEnvironmentMaterialVfx(dt);
     this._updateStatusAttachedVfx(dt);
     // INF-045: the lock contour tracks the target every frame it exists.
     sub.selectionSigil = this._updateSelectionSigil(dt) ? 1 : 0;
@@ -14884,6 +14898,20 @@ export const vfx = {
       flashReduce: !!(settings.accessibility && settings.accessibility.flashReduce),
       ...extra,
     };
+  },
+
+  _updateEnvironmentMaterialVfx(dt) {
+    if (!this._scene || this.state?.mode !== 'flight') return;
+    const now = Number(this.state.simTime) || 0;
+    if (Number.isFinite(this._environmentMaterialSampleAt)
+      && now >= this._environmentMaterialSampleAt && now - this._environmentMaterialSampleAt < .12) return;
+    this._environmentMaterialSampleAt = now;
+    const bodies = this._environmentMaterialBodies || (this._environmentMaterialBodies = []);
+    const rocks = this._environmentMaterialRocks || (this._environmentMaterialRocks = []);
+    collectHeatedMaterialBodies(this.state, bodies, rocks);
+    if (!bodies.length) return;
+    const owner = this._ensureStatusMatterVfx();
+    for (const body of bodies) owner?.touchMaterial(body, this.state);
   },
 
   _updateStatusAttachedVfx(dt) {

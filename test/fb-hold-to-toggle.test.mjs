@@ -126,25 +126,31 @@ test('FB-113: the Gyre Snare latch is tap-to-open, tap-to-bowl', () => {
 });
 
 test('FB-113: dock/screen drops every latch — the context, not the pilot, released it', () => {
-  const state = flightState({ boost: true, bulletTime: true });
+  const state = flightState({ boost: true, bulletTime: true, gyreSnare: true });
   const host = makeHost();
   host._keys.ShiftLeft = true; step(host, state); host._keys.ShiftLeft = false;
   host._keys.CapsLock = true; step(host, state); host._keys.CapsLock = false;
+  host._keys.Quote = true; step(host, state); host._keys.Quote = false;
   step(host, state);
   assert.equal(state.input.boost, true);
   assert.equal(state.input.actions.bulletTime, true);
+  assert.equal(state.input.actions.gyreSnare, true, 'the lash latch is live before the screen');
 
   // A screen mounts — flight input is neutralized and the latches go with it.
   state.ui.screenStack.push('pause');
   step(host, state);
   assert.equal(state.input.boost, false, 'boost latch dropped on the screen mount');
   assert.equal(state.input.actions.bulletTime, false);
+  assert.equal(state.input.actions.gyreSnare, false,
+    'the lash latch drops on the screen mount — the context released, no phantom bowl later');
 
   // Back in flight with no new press: nothing was silently re-armed.
   state.ui.screenStack.pop();
   step(host, state, 2);
   assert.equal(state.input.boost, false, 'the latch does not resurrect after the screen');
   assert.equal(state.input.actions.bulletTime, false);
+  assert.equal(state.input.actions.gyreSnare, false,
+    'the lash stays released — a resurrected latch would read as a phantom bowl');
 });
 
 test('FB-113: death clears the latches before the death screen even mounts', () => {

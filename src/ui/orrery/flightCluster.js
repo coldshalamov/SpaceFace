@@ -24,6 +24,7 @@ import { createSpeedDial, SPEED_DIAL } from './speedDial.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { nextFlightDecision, NEXT_DECISION_CLASS } from './nextDecision.js';
 import { ringLegendText } from './ringLegend.js';
+import { arsenalIcon } from './arsenalGlyphs.js';
 
 // The colour phase is decided by the displayed reading (speedDial.js owns it; the contract is pinned here).
 export { speedPhase } from './speedDial.js';
@@ -87,6 +88,8 @@ const CSS = `
 .orr-cluster__icon { position:absolute; left:50%; top:50%; width:22px; height:22px; margin:-11px 0 0 -11px; background:currentColor;
   -webkit-mask:var(--orr-icon) center / contain no-repeat; mask:var(--orr-icon) center / contain no-repeat; color:var(--dp-ink, #e8e2d4); opacity:1.0; }
 .orr-cluster__key.is-node .orr-cluster__icon { width:14px; height:14px; margin:-7px 0 0 -7px; opacity:.66; }
+.orr-cluster__icon.has-arsenal { background:none; -webkit-mask:none; mask:none; }
+.orr-cluster__icon.has-arsenal svg { display:block; width:100%; height:100%; }
 .orr-cluster__key.is-armed .orr-cluster__icon { color:var(--dp-hand-hot, #ffd98c); opacity:1; }
 /* Verbs that feel loaded: armed key exhales a slow transform-only breath */
 .orr-cluster__key.is-armed { animation: orr-key-armed-breath 2.4s ease-in-out infinite; }
@@ -220,7 +223,11 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
 
   // ---- the hull at the pivot ----------------------------------------------------------------------
   const glyphUrl = hullPosterUrl(shipId, 'holo');
-  if (glyphUrl) s.appendChild(svg('image', { class: 'orr-cluster__glyph', href: glyphUrl, x: P.x - 82, y: P.y - 96, width: 164, height: 164, preserveAspectRatio: 'xMidYMid meet' }));
+  let glyphImage = null;
+  if (glyphUrl) {
+    glyphImage = svg('image', { class: 'orr-cluster__glyph', href: glyphUrl, x: P.x - 82, y: P.y - 96, width: 164, height: 164, preserveAspectRatio: 'xMidYMid meet' });
+    s.appendChild(glyphImage);
+  }
 
   // ---- lower-left flank: heat (lower) and energy (upper) --------------------------------------------
   const heat = arcGauge({ cx: P.x, cy: P.y, r: R.flank, from: 198, to: 232, width: 3, tone: 'hi', ghost: false });
@@ -335,7 +342,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     k.appendChild(count);
     keyLayer.appendChild(k);
     const spring = createSpring({ value: 0, preset: 'settle', onUpdate: (v) => cd.setAttribute('stroke-dasharray', `${Math.max(0, Math.min(1, v))} 1`) });
-    return { el: k, armed, armedB, spring, count, label, tip };
+    return { el: k, armed, armedB, spring, count, label, tip, iconEl: ic, arsenalId: '' };
   };
 
   let openGroup = -1;
@@ -433,6 +440,12 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
         const st = slotStates[sid(sk.slot)] || {};
         const state = st.state || 'ready';
         const live = st.live === true;
+        const arsenalId = st.arsenalId || '';
+        if (sk.arsenalId !== arsenalId) {
+          sk.arsenalId = arsenalId;
+          sk.iconEl.innerHTML = arsenalIcon(arsenalId, 24);
+          sk.iconEl.classList.toggle('has-arsenal', !!sk.iconEl.firstElementChild);
+        }
         // write only what changed: a settled HUD frame must not dirty the SVG
         if (sk.state !== state || sk.live !== live) {
           sk.state = state;
@@ -514,11 +527,27 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     return text;
   }
 
+  // The cluster outlives hull swaps ("Make active" in shipworks, a save whose active hull
+  // differs): restamp the poster glyph and the legend defaults, then let the legend short-
+  // circuit skip the write when nothing actually changed.
+  function setHull(next = {}) {
+    const nextShipId = next.shipId != null ? next.shipId : shipId;
+    if (nextShipId !== shipId) {
+      shipId = nextShipId;
+      const url = hullPosterUrl(shipId, 'holo');
+      if (glyphImage && url) glyphImage.setAttribute('href', url);
+    }
+    if (next.name != null) name = next.name;
+    if (next.classLine != null) classLine = next.classLine;
+    return setRingLegend({ defName: name, classLine });
+  }
+
   return {
     el: root,
     update,
     arrive,
     setRingLegend,
+    setHull,
     dispose() {
       for (const g of [shield, armor, hull, energy, heat, strain, dial]) g.dispose();
       handSpring.stop();

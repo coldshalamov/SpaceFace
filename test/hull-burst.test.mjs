@@ -25,6 +25,7 @@ import { TECH_NODES } from '../src/data/tech.js';
 import { fittingsFromDefaultModules, getDerivedStats, stationShopOffer } from '../src/systems/ships.js';
 import { HITSTUN_IMPULSE_EVENT, readRecentImpulseProvenance } from '../src/combat/impulseKernel.js';
 import { hullBurst, hullBurstDeltaV, hullBurstWedgeHit } from '../src/systems/hullBurst.js';
+import { resolvePhysicsBodySpec } from '../src/core/physicsAuthority.js';
 import { flightV3 } from '../src/systems/flightV3.js';
 
 const GRAVITY = resolveHullBurst('gravity', 1);
@@ -238,13 +239,21 @@ test('a non-hostile hull is nudged, never flung, stunned or credited', () => {
   assert.equal(readRecentImpulseProvenance(trader, h.state.tick), null, 'no credit or heat trail');
 });
 
-test('rocks are never touched and the player is never pushed', () => {
-  const h = harness({ playerVel: { x: 300, z: 0 } });
-  const rock = h.add({ type: 'asteroid', team: 0, data: {}, pos: { x: 50, z: 0 }, radius: 30, mass: 900 });
-  h.boost(true);
-  h.tick(10);
-  assert.equal(h.impulses.filter((i) => i.entityId === rock.id).length, 0);
-  assert.equal(h.impulses.filter((i) => i.entityId === h.player.id).length, 0);
+test('the Gravity Bumper hurls a real rock at >= 55 WU/s and the player is still never pushed', () => {
+  for (const radius of [16, 30]) {
+    const h = harness({ playerVel: { x: 300, z: 0 } });
+    // No authored mass: the solver derives the rock's mass from its radius, and the hurl must clear
+    // the environmental floor of 55 WU/s against it.
+    const rock = h.add({ type: 'asteroid', team: 0, data: {}, pos: { x: 50, z: 0 }, radius, mass: undefined });
+    h.boost(true);
+    h.tick(10);
+    const hits = h.impulses.filter((i) => i.entityId === rock.id);
+    assert.equal(hits.length, 1, `radius ${radius}: the rock is hurled once`);
+    const mass = resolvePhysicsBodySpec(rock).mass;
+    const dv = Math.hypot(hits[0].impulse.x, hits[0].impulse.z) / mass;
+    assert.ok(dv >= 55, `radius ${radius}: hurled at ${dv.toFixed(1)} WU/s`);
+    assert.equal(h.impulses.filter((i) => i.entityId === h.player.id).length, 0, 'the player is never pushed');
+  }
 });
 
 test('hulls behind, beside or past the reach are left alone', () => {

@@ -11,6 +11,8 @@
 // so A (yawLeft, negative turnIntent) stays screen-left. This module does not negate yaw.
 
 import { planeCrossFraction, circuitProgress, circuitPacePoint, circuitLaps } from './racingGeometry.js';
+import { hash32 } from '../core/rng.js';
+import { isRacingCorridorSession } from '../world/racingCorridor.js';
 
 export const STEERING_VIEWS = Object.freeze(['overhead', 'racing', 'auto']);
 
@@ -223,7 +225,8 @@ export function racingAssistIntents({ params, player, simTime, gatesGlobal }) {
   const radius = Math.max(24, Number(params.gateRadiusWU) || 90);
 
   if (params.racingKind === 'draft') {
-    const started = Number.isFinite(params.raceStartSimS) ? params.raceStartSimS : now;
+    const clock = params.adventureSpeedId ? params.adventureSpeedStartSimS : params.raceStartSimS;
+    const started = Number.isFinite(clock) ? clock : now;
     const elapsed = Math.max(0, now - started);
     const pace = circuitPacePoint(gatesGlobal, elapsed * DRAFT_SPEED_WU_S + 70);
     if (pace) {
@@ -303,11 +306,12 @@ export function readRaceTape(params, player, gatesGlobal, simTime) {
   const laps = Math.max(1, Math.round(Number(params && params.laps) || 1));
   const lap = Math.max(0, params && params.lap | 0);
   const nextGate = Math.max(0, params && params.nextGate | 0);
-  const started = params && Number.isFinite(params.raceStartSimS);
+  const startTime = params?.adventureSpeedId ? params.adventureSpeedStartSimS : params?.raceStartSimS;
+  const started = Number.isFinite(startTime);
   const now = Number.isFinite(simTime) ? simTime : 0;
   const gridUntil = params && params.gridUntilSimS;
   const holding = Number.isFinite(gridUntil) && now < gridUntil;
-  const elapsed = started ? Math.max(0, now - params.raceStartSimS) : 0;
+  const elapsed = started ? Math.max(0, now - startTime) : 0;
   const recordS = Number(params && params.recordS) || 0;
   const gate = gates[Math.min(nextGate, Math.max(0, gates.length - 1))] || null;
   const bearing = gateBearingDeg(player, gate);
@@ -355,9 +359,25 @@ export function readRaceTape(params, player, gatesGlobal, simTime) {
 }
 
 const RECORD_KEY = 'spaceface.raceRecords.v2';
-export function raceRecordKey(params) {
+export function raceRecordKey(params, category = params?.raceCategory) {
   if (!params || !params.racingContractId || !params.courseId) return null;
-  return `${params.courseId}@${params.courseRevision || 1}:${params.racingContractId}:${circuitLaps(params)}L`;
+  const base = `${params.courseId}@${params.courseRevision || 1}:${params.racingContractId}:${circuitLaps(params)}L`;
+  return category ? `${base}:${category}` : base;
+}
+
+/** Comparable fitted hulls only. Camera preference is presentation, never a speed category. */
+export function racingLoadoutCategory(state, player = state?.entities?.get?.(state.playerId)) {
+  const owned = state?.player?.ownedShips?.[state.player.activeShipIndex || 0];
+  const derived = player?.data?.derived || {};
+  const fittings = (owned?.fittings || []).map(row => typeof row === 'string' ? row
+    : row ? [row.slotId || row.slotIndex || '', row.moduleId || row.defId || '', row.tier || 0] : null);
+  const identity = [owned?.defId || player?.data?.shipDefId || 'unknown', fittings,
+    Math.round((Number(player?.mass) || 0) * 1000) / 1000,
+    derived.propulsion || null,
+    ...['maxSpeed','accelMult','turnMult','thrust','turnRate','mass'].map(key => Number(derived[key]) || 0),
+    isRacingCorridorSession(state) ? 'circuit-layout-v1' : 'campaign',
+    state?.settings?.gameplay?.flightLabDrive || '', state?.input?.flightMode || 'assisted'];
+  return `fit3-${hash32(JSON.stringify(identity)).toString(16)}`;
 }
 
 

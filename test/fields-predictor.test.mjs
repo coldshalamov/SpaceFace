@@ -193,9 +193,9 @@ test('C4: empty / zero-force / excluded / disjoint fields stay out of the corrid
   assert.equal(fieldCanApplyTo(excluded[0], profile), false, 'excludeId opts the payload out');
   assert.equal(fieldsRelevantAlongCorridor(excluded, C4_PAYLOAD.pos, C4_CORRIDOR_END, profile).length, 0,
     'a payload-excluded field on the corridor is irrelevant');
-  const teamExcluded = c4KernelField({ id: 'tex', kind: 'well', center: { x: 60, z: 0 }, radius: 200, strength: 500, team: 9, filters: { excludeSourceTeam: true } });
-  assert.equal(fieldsRelevantAlongCorridor(teamExcluded, C4_PAYLOAD.pos, C4_CORRIDOR_END, profile).length, 0,
-    'excludeSourceTeam spares the friendly payload');
+  const teamCoupled = c4KernelField({ id: 'tex', kind: 'well', center: { x: 60, z: 0 }, radius: 200, strength: 500, team: 9, filters: { excludeSourceTeam: true } });
+  assert.equal(fieldsRelevantAlongCorridor(teamCoupled, C4_PAYLOAD.pos, C4_CORRIDOR_END, profile).length, 1,
+    'physical delivery is faction-blind: the friendly payload still counts the corridor field');
   // Provably disjoint: the volume never touches the corridor and touches no relevant field.
   const disjoint = c4KernelField({ id: 'far', kind: 'well', center: { x: 60, z: 900 }, radius: 200, strength: 500 });
   assert.equal(fieldsRelevantAlongCorridor(disjoint, C4_PAYLOAD.pos, C4_CORRIDOR_END, profile).length, 0,

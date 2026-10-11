@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { compileEmergentAttack, dipoleImpulse, reflectVelocity, slugMomentum, springImpulse, viscousImpulse } from '../src/combat/emergentPrimitives.js';
 import { createBus } from '../src/core/eventBus.js';
 import { allocateEntityId, makeEntity } from '../src/core/entity.js';
+import { environmentMaterials } from '../src/systems/environmentMaterials.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 import { EMERGENT_LIMITS, EMERGENT_POOL, EMERGENT_WEAPON_DEFS, emergentWeaponByKind } from '../src/data/emergentPrimitives.js';
@@ -54,7 +55,9 @@ function world(seed) {
   const state = createGameState(seed);
   state.mode = 'flight';
   state.input.actions = {};
-  emergentPrimitives.init({ state, bus: createBus(), helpers: {}, registry: null });
+  const bus = createBus();
+  emergentPrimitives.init({ state, bus, helpers: {}, registry: null });
+  environmentMaterials.init({ state, bus, helpers: { spawnEntity: spec => spawn(state, spec) }, registry: null });
   return state;
 }
 
@@ -90,6 +93,7 @@ function clear(state) {
   state.entityList.length = 0;
   state.entities.clear();
   state.emergent = null;
+  state.materialReactions = []; state.materialBlasts = [];
   state.tick = 0;
   state.simTime = 0;
   state.input.actions = {};
@@ -101,6 +105,7 @@ async function step(state, owner, n, before) {
     state.tick += 1;
     state.simTime = state.tick / 60;
     emergentPrimitives.update(DT, state);
+    environmentMaterials.update(DT, state);
     owner.syncFromEntities(state.entityList);
     owner.step(DT);
   }
@@ -336,7 +341,7 @@ async function exercise(state, owner, seed) {
 
   clear(state);
   const cooker = spawn(state, { type: 'ship', pos: { x: -30, z: 0 }, radius: 3, mass: 40, rot: 0 });
-  const rock = spawn(state, { type: 'asteroid', pos: { x: 16, z: 0 }, radius: 5, mass: 50, material: 'rock', fuelVolatile: 0, heat: 0 });
+  const rock = spawn(state, { type: 'asteroid', pos: { x: 16, z: 0 }, radius: 5, mass: 50, material: 'crystal', fuelVolatile: 0, heat: 0 });
   state.playerId = cooker.id;
   const thermal = emergentWeaponByKind('thermal');
   await step(state, owner, 50, () => setEmergentRay(state, cooker, thermal, 0));
@@ -350,7 +355,7 @@ async function exercise(state, owner, seed) {
   await step(state, owner, 40, () => setEmergentRay(state, cooker2, thermal, 0));
   assert.equal(hulk.data.cooked, true, `${seed} wreck fuel cooks`);
   assert.equal(hulk.fuelVolatile, 0);
-  assert.ok(state.emergent.audio.some((row) => row && row.id === 'sfx_emergent_cook'));
+  assert.equal(hulk.alive, false, 'fuel-bearing wreck becomes a physical area cookoff');
 
   clear(state);
   const cooker3 = spawn(state, { type: 'ship', pos: { x: -30, z: 0 }, radius: 3, mass: 40, rot: 0 });
@@ -378,18 +383,20 @@ async function exercise(state, owner, seed) {
   state.playerId = tagger.id;
   launchEmergent(state, tagger, emergentWeaponByKind('polarity'), Math.atan2(-tagger.pos.z, plus.pos.x - tagger.pos.x));
   await step(state, owner, 20);
+  const open = Math.hypot(minus.pos.x - plus.pos.x, minus.pos.z - plus.pos.z);
   launchEmergent(state, tagger, emergentWeaponByKind('polarity'), Math.atan2(-tagger.pos.z, minus.pos.x - tagger.pos.x));
   await step(state, owner, 24);
   assert.equal(plus.magneticCharge, 1, `${seed} first tag is positive`);
   assert.equal(minus.magneticCharge, -1, `${seed} second tag is negative`);
-  const open = Math.hypot(minus.pos.x - plus.pos.x, minus.pos.z - plus.pos.z);
+  const attracted = Math.hypot(minus.pos.x - plus.pos.x, minus.pos.z - plus.pos.z);
+  assert.ok(attracted < open - 1, `${seed} opposite charges close ${open} -> ${attracted}`);
+  // Measure drag after attraction has brought them together, without its continuing force.
+  state.emergent.polarities.length = 0;
   tagger.pos.x = 18;
   tagger.pos.z = 0;
   launchEmergent(state, tagger, emergentWeaponByKind('viscosity'), 0);
   assert.equal(state.emergent.fields.length, 1, `${seed} viscosity field is armed with the charges`);
   await step(state, owner, 40);
-  const closed = Math.hypot(minus.pos.x - plus.pos.x, minus.pos.z - plus.pos.z);
-  assert.ok(closed < open - 1, `${seed} opposite charges close ${open} -> ${closed}`);
   assert.ok(spd(plus) < 40 && spd(minus) < 40, `${seed} viscosity bounds the approach`);
   assert.ok((plus.heat || 0) + (minus.heat || 0) > 1, `${seed} friction ignition heats fuel`);
 

@@ -231,7 +231,6 @@ export function createWorldObjectPicker(env) {
 
   function rebuildRoot(entry, root) {
     entry.nodes.length = 0;
-    entry.recs.length = 0;
     entry.maxReachLocal = 0;
     // Per-root leaf reach: the drawn cull sphere is XZ-only, so a leaf high on
     // +Y or far past the pad overhangs the envelope — maxReachLocal covers the
@@ -284,10 +283,13 @@ export function createWorldObjectPicker(env) {
       if (!rec) return true;
       if ((node.parent || null) !== rec.parent) return true;
       if ((node.geometry || null) !== rec.geometry) return true;
-      if (node.position.x !== rec.px || node.position.y !== rec.py || node.position.z !== rec.pz
+      // Reach is measured in root-local space. Flying/turning/scaling the root does not change
+      // that envelope, and the pick reads current world matrices below. Child-local motion does
+      // change it: retain those checks without rebuilding the whole hull on every flight frame.
+      if (i !== 0 && (node.position.x !== rec.px || node.position.y !== rec.py || node.position.z !== rec.pz
           || node.quaternion.x !== rec.qx || node.quaternion.y !== rec.qy
           || node.quaternion.z !== rec.qz || node.quaternion.w !== rec.qw
-          || node.scale.x !== rec.sx || node.scale.y !== rec.sy || node.scale.z !== rec.sz) {
+          || node.scale.x !== rec.sx || node.scale.y !== rec.sy || node.scale.z !== rec.sz)) {
         return true;
       }
       const kids = node.children;

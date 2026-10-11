@@ -609,6 +609,7 @@ export function createCommsRadial(ctx) {
 
   function closeFan() {
     if (!open) return;
+    const heldFocus = fan.contains(document.activeElement);
     open = false;
     activeOffer = null;
     lastWedgeSig = '';
@@ -617,6 +618,15 @@ export function createCommsRadial(ctx) {
     wedgeHost.replaceChildren();
     wedgeButtons = [];
     if (state.ui) state.ui.commsRadialOpen = false;
+    if (heldFocus && !deckOpen) restoreFlightFocus();
+  }
+
+  function restoreFlightFocus() {
+    if (isFlightBlocked(state)) return;
+    const canvas = document.getElementById('gl-canvas');
+    if (!canvas) return;
+    if (!canvas.hasAttribute('tabindex')) canvas.tabIndex = -1;
+    focusSafely(canvas);
   }
 
   function refText(ref) {
@@ -753,10 +763,12 @@ export function createCommsRadial(ctx) {
 
   function closeDeck() {
     if (!deckOpen) return;
+    const heldFocus = deck.contains(document.activeElement);
     deckOpen = false;
     deck.classList.remove('is-open');
     deck.hidden = true;
-    focusSafely(hubBtn);
+    if (open) focusSafely(hubBtn);
+    else if (heldFocus) restoreFlightFocus();
   }
 
   function onKeyDown(event) {
@@ -802,6 +814,18 @@ export function createCommsRadial(ctx) {
     altHeld = false;
     escLatchedOnHold = false;
     closeFan();
+  }
+
+  // Alt-Tab can deliver Alt's release to another app. Like the flight input owner,
+  // the hold-to-open fan must release its latch on blur instead of swallowing keys
+  // when the player returns to the game.
+  function onWindowBlur() {
+    altHeld = false;
+    escLatchedOnHold = false;
+    closeFan();
+  }
+  function onVisibilityChange() {
+    if (document.hidden) onWindowBlur();
   }
 
   function handleGamepadNav() {
@@ -858,6 +882,15 @@ export function createCommsRadial(ctx) {
   });
   document.addEventListener('keydown', onKeyDown, true);
   document.addEventListener('keyup', onKeyUp, true);
+  const windowTarget = document.defaultView;
+  windowTarget?.addEventListener('blur', onWindowBlur);
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  // The shared game accepts shell presence as well as DOM focus: Electron can minimize
+  // a fullscreen window without delivering the DOM blur that browsers normally send.
+  const offShellPresence = windowTarget?.spacefaceLifecycle?.subscribe(command => {
+    if (command.state !== 'foreground-visible') onWindowBlur();
+  });
+  if (typeof offShellPresence === 'function') unsubs.push(offShellPresence);
 
   attachBus('contactHail:offer', (payload) => {
     if (!payload || payload.targetId == null) return;
@@ -923,6 +956,8 @@ export function createCommsRadial(ctx) {
     destroyed = true;
     document.removeEventListener('keydown', onKeyDown, true);
     document.removeEventListener('keyup', onKeyUp, true);
+    windowTarget?.removeEventListener('blur', onWindowBlur);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
     for (const off of unsubs.splice(0)) {
       try { off(); } catch (_) {}
     }

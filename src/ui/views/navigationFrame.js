@@ -108,7 +108,7 @@ export function navigationFrameHtml({ hintRowsHtml = '', layerButtonsHtml = '', 
                  silent no-op. -->
             <div class="gm-frame-group" role="group" aria-label="Chart framing">
               <button class="gm-ins-btn gm-frame-btn k-word k-word--body" id="gm-return-ship-btn" type="button" data-framing="return-to-ship" disabled aria-disabled="true">Return to ship</button>
-              <button class="gm-ins-btn gm-frame-btn k-word k-word--body" id="gm-frame-both-btn" type="button" data-framing="frame-both" disabled aria-disabled="true">Frame ship + destination</button>
+              <button class="gm-ins-btn gm-frame-btn k-word k-word--body" id="gm-frame-both-btn" type="button" data-framing="frame-both" disabled aria-disabled="true">Zoom: ship and destination</button>
               <div class="gm-frame-reason k-t-fine k-38" id="gm-frame-reason" aria-live="polite"></div>
             </div>
             <div class="gm-inspector-details" id="gm-tabpanel" role="tabpanel" tabindex="0">

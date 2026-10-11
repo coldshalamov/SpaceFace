@@ -108,7 +108,7 @@ function buildLaunchSite(h) {
   let r = h.sys.installMachine({ asteroidId: 42, defId: 'sm_extractor', col: 13, row: 2 });
   const siteId = r.siteId;
   h.state.drill.avatar = { col: 14, row: 1 };
-  r = h.sys.installMachine({ asteroidId: 42, defId: 'sm_massline_core', col: 14, row: 0 });
+  r = h.sys.installMachine({ asteroidId: 42, defId: 'sm_massline_core', col: 15, row: 1 });
   assert.equal(r.ok, true);
   r = h.sys.installMachine({ asteroidId: 42, defId: 'sm_cargo_port', col: 14, row: 3 });
   assert.equal(r.ok, true);

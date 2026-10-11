@@ -127,6 +127,7 @@ const FRAME_INPUT_KEYS = new Set([
   'masslineHeld',
   'lineLength',
   'orbitDirection',
+  'gyreSnare',
 ]);
 /** L6: numeric frame.input fields must be finite numbers (not strings). */
 const FRAME_INPUT_NUMBER_KEYS = new Set([
@@ -143,6 +144,7 @@ const FRAME_INPUT_BOOLEAN_KEYS = new Set([
   'boost',
   'fire',
   'masslineHeld',
+  'gyreSnare',
 ]);
 /** Explicitly rejected unimplemented frame.input fields (F9) — clearer than unknown-key. */
 const FRAME_INPUT_REJECTED = new Set(['fireGroup', 'brake', 'massline']);

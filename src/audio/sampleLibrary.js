@@ -18,6 +18,9 @@ import { SAMPLE_BINDINGS, COLLISION_LADDER } from '../data/audioRecipes.js';
 import { THEME_ASSETS } from './themeCompose.js';
 
 export const SAMPLE_TIER = Object.freeze({ CORE: 0, ACTION: 1, CONTEXT: 2 });
+// A failed fetch+decode retries after this long — one flaky fetch must not blacklist a sample
+// for the whole session (acquire ages the failure out and re-enqueues).
+const FAILED_RETRY_MS = 30000;
 
 // Mirrors assets/audio/generate-samples.mjs SAMPLES[] (the generator's --check mode and
 // test/pq-158-00-sample-library.test.mjs keep the three from drifting).
@@ -364,9 +367,15 @@ export function createSampleRuntime(options = {}) {
         return buf;
       }
       stats.misses++;
-      if (SAMPLE_MANIFEST.has(id) && !failed.has(id)) {
-        enqueue(id);
-        pump();
+      if (SAMPLE_MANIFEST.has(id)) {
+        // One flaky fetch must not blacklist a sample for the whole session: age the failure
+        // out after a cooldown so the next acquire retries the real fetch.
+        const failure = failed.get(id);
+        if (failure && Date.now() - failure.time > FAILED_RETRY_MS) failed.delete(id);
+        if (!failed.has(id)) {
+          enqueue(id);
+          pump();
+        }
       }
       return null;
     },

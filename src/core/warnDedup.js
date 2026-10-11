@@ -5,6 +5,8 @@
 // tryPresentedCall's retryAt already uses) instead of ~60 Hz Error+stack
 // serialization on the presented-frame thread.
 
+import { perfNow } from './perfRuntime.js';
+
 const WARN_DEDUP_VERBATIM = 8;
 const WARN_DEDUP_CAP = 256;
 const WARN_DEDUP_HEARTBEAT_MS = 1000;
@@ -13,8 +15,7 @@ const WARN_DEDUP_HEARTBEAT_MAX_MS = 30000;
 const _warnDedupLog = new Map();
 
 function dedup(site, level, args) {
-  const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
-    ? performance.now() : Date.now();
+  const now = perfNow();
   let row = _warnDedupLog.get(site);
   if (!row) {
     if (_warnDedupLog.size >= WARN_DEDUP_CAP) {
@@ -83,6 +84,5 @@ export function noteLaneFault(state, lane, parked = false) {
   const row = rollup[lane] || (rollup[lane] = { faults: 0, parkedEpoch: null, lastAt: 0 });
   row.faults += 1;
   if (parked === true) row.parkedEpoch = serviceFaultEpoch(state);
-  row.lastAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now() : Date.now();
+  row.lastAt = perfNow();
 }

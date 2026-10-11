@@ -61,7 +61,7 @@ export function enhanceMobileTouch(touch, ctx = {}, {
       frame = NEUTRAL();
       legacyClear();
       if (host?._holdToggleLatches) {
-        for (const verb of ['boost','brake','bulletTime','massline','reelIn','reelOut']) host._holdToggleLatches[verb] = false;
+        for (const verb of ['boost','brake','bulletTime','massline','reelIn','reelOut','gyreSnare']) host._holdToggleLatches[verb] = false;
       }
     } else if (role === 'fire') {
       frame.actions.fire = false; touch._btnHeld.fire = false;
@@ -188,7 +188,8 @@ export function enhanceMobileTouch(touch, ctx = {}, {
     frame.shipScreen = ship; frame.heading = ship ? ship.headingDeg : null;
     // Gesture holds never inherit desktop accessibility latches after the thumb lifts.
     const holds = { boost:frame.flight.boost, brake:frame.actions.brake, massline:frame.actions.tether,
-      bulletTime:frame.actions.bulletTime, reelIn:frame.actions.reelIn, reelOut:frame.actions.reelOut };
+      bulletTime:frame.actions.bulletTime, reelIn:frame.actions.reelIn, reelOut:frame.actions.reelOut,
+      gyreSnare:frame.actions.gyreSnare };
     for (const key of Object.keys(holds)) {
       if (previousHolds[key] && !holds[key] && host?._holdToggleLatches) host._holdToggleLatches[key] = false;
     }

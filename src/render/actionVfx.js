@@ -37,13 +37,8 @@ export const ACTION_VFX_RECIPES=Object.freeze({
   'cargo:caughtByNet':recipe('catch',0x85e7cf,.65,{surfaceCapture:true}),
   'mining:richCoreCompleted':recipe('harvest',0xffdf96,.85),
   'mining:richCoreFizzle':recipe('cool',0x8cacca,.6),
-  // EAR+FIGHT shared packet C: bombs:detonated already has pooled bomb-material VFX wired in
-  // vfx.js via _onBombDetonated. This actionVfx row is the second, lightweight surface answer on
-  // the shared batch: a 'shove' pressure cross-section in concussion orange, mirroring
-  // weapons:mineDetonated below. vfx.js auto-subscribes every ACTION_VFX_EVENTS key — and
-  // ACTION_VFX_EVENTS is Object.keys(THIS table) — so a row here is live the moment it lands.
-  // Never add a manual add('<event>', ...) for a name in this table: it would double-subscribe.
-  'bombs:detonated':recipe('shove',0xffb271,.7),
+  // BombDetonationVfx owns all eight payloads, including their actual received contacts.
+  // A second shared shove would falsely make EMP, goo and anchor look like concussion.
   // hull:fractured is a brittle split, not a boom: a 'cool' deposition patch in pale fracture
   // blue on the victim hull, mirroring mining:richCoreFizzle. Emitted by
   // src/systems/hullFracture.js as { victimId, seamId, hullClass, closingSpeed, pieceIds,

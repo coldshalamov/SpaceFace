@@ -5,11 +5,12 @@ import { SHIPS } from '../../data/ships.js';
 import { modelTruthRow } from '../../data/modelTruth.js';
 import { mountDrawScale } from '../../data/modelTruthMounts.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../../data/combatDefs.js';
-import { STATUS_ATTACHED_BURN_ID, STATUS_ATTACHED_GOO_ID } from '../statusAttachedVfx.js';
+import { STATUS_ATTACHED_BURN_ID, STATUS_ATTACHED_GOO_ID, STATUS_ATTACHED_GRAVITY_ID } from '../statusAttachedVfx.js';
 import { presentedAnchorXZ, presentedAnchorRot } from '../presentedAnchor.js';
 import { SweptSurfaceBatch } from '../forceLanguage/sweptSurfaceBatch.js';
 import { ActionPrimitiveComposer } from './actionPrimitives.js';
 import { ForceParticleFlow } from './forceParticleFlow.js';
+import { queryAsteroidField } from '../../world/asteroidField.js';
 
 const TAU=Math.PI*2, STATUS_CAP=8, SINK_CAP=6;
 const finite=(v,f=0)=>Number.isFinite(v)?v:f;
@@ -21,13 +22,39 @@ const RECIPES=Object.freeze({
   burn:Object.freeze({color:new THREE.Color(0xff823b),life:.32}),
   goo:Object.freeze({color:new THREE.Color(0x83aa3d),life:.48}),
   sink:Object.freeze({color:new THREE.Color(0xfeb669),life:.20}),
+  gravity:Object.freeze({color:new THREE.Color(0x7ee7ff),life:.42}),
+  crystalHeat:Object.freeze({color:new THREE.Color(0xb0e5ee),life:.38}),
+  fuelHeat:Object.freeze({color:new THREE.Color(0xf7a14f),life:.46}),
+  metalHeat:Object.freeze({color:new THREE.Color(0xdc7d48),life:.38}),
 });
 function seedOf(id,status){
   const value=String(id)+status;let h=2166136261;
   for(let i=0;i<value.length;i++)h=Math.imul(h^value.charCodeAt(i),16777619);
   return (h>>>0)/4294967296;
 }
-function getEntity(state,id){return state.entities?.get?.(id)||state.entities?.get?.(Number(id));}
+function getEntity(state,id){return state.entities?.get?.(id)||state.entities?.get?.(Number(id))||state.world?.asteroidField?.byId?.get?.(id);}
+const HEAT_STATUS='environment_heat';
+const HEAT_ACTIVE=Object.freeze({expiresTick:Infinity,stacks:1});
+const materialHeat=body=>Math.max(0,finite(body?.data?.materialCondition?.heat,finite(body?.data?.heat)));
+
+// Read only the nearby compact grid plus already materialized bodies, once per admission
+// cadence. No new environment scan runs in the per-frame geometry loop.
+export function collectHeatedMaterialBodies(state,out,rocks){
+  out.length=0;
+  const player=getEntity(state,state.playerId),pos=player?.pos;
+  if(!valid(pos))return out;
+  const admit=body=>{
+    if(!valid(body?.pos)||body.alive===false||body.data?.materialCondition?.reacted||materialHeat(body)<.5)return;
+    if(!['asteroid','wreck','prop','payload','cargo_pod','pickup'].includes(body.type))return;
+    if(Math.hypot(body.pos.x-pos.x,body.pos.z-pos.z)>650+finite(body.radius))return;
+    if(out.includes(body))return;
+    out.push(body);
+  };
+  for(const body of state.entityList||[])admit(body);
+  queryAsteroidField(state,pos,650,rocks);for(const body of rocks)admit(body);
+  out.sort((a,b)=>Math.hypot(a.pos.x-pos.x,a.pos.z-pos.z)-Math.hypot(b.pos.x-pos.x,b.pos.z-pos.z));
+  out.length=Math.min(STATUS_CAP,out.length);return out;
+}
 
 export class StatusMatterVfx {
   constructor(scene,{toLocal=null}={}){
@@ -72,7 +99,7 @@ export class StatusMatterVfx {
     return slot;
   }
   touchStatus(victim,state){
-    const id=victim?.statusId,kind=id===STATUS_ATTACHED_BURN_ID?'burn':id===STATUS_ATTACHED_GOO_ID?'goo':null;
+    const id=victim?.statusId,kind=id===STATUS_ATTACHED_BURN_ID?'burn':id===STATUS_ATTACHED_GOO_ID?'goo':id===STATUS_ATTACHED_GRAVITY_ID?'gravity':null;
     if(!kind)return false;
     const body=getEntity(state,victim.entityId),active=state.combat?.entities?.[victim.entityId]?.statuses?.[id];
     return !!this._touch(body,id,kind,active,state);
@@ -82,6 +109,12 @@ export class StatusMatterVfx {
     const s=this._touch(body,MOMENTUM_SINK_STATUS_ID,'sink',active,state);if(!s)return false;
     s.axis=Math.atan2(plan.axisZ,plan.axisX);s.speed=finite(plan.relativeSpeed);
     s.opacity=clamp(finite(plan.opacity,.7),.15,1);return true;
+  }
+  touchMaterial(body,state){
+    const load=materialHeat(body);if(load<.5||body.data?.materialCondition?.reacted)return false;
+    const material=body.data?.material,kind=material==='crystal'?'crystalHeat':material==='volatile'||material==='debris'?'fuelHeat':'metalHeat';
+    const s=this._touch(body,HEAT_STATUS,kind,HEAT_ACTIVE,state);if(!s)return false;
+    s.opacity=clamp(load/(material==='crystal'?48:36),.10,1);return true;
   }
   _pose(s,state){
     const body=s.entity,alpha=finite(state.render?.interpolationAlpha,1);
@@ -108,6 +141,10 @@ export class StatusMatterVfx {
   _source(s,state,now){
     const body=getEntity(state,s.id);
     if(body!==s.entity||body?.alive===false||!valid(body?.pos))return false;
+    if(s.statusId===HEAT_STATUS){
+      if(body.data?.materialCondition?.reacted||materialHeat(body)<.5||now-s.last>.27)return false;
+      s.opacity=clamp(materialHeat(body)/(body.data?.material==='crystal'?48:36),.10,1);return true;
+    }
     const active=state.combat?.entities?.[s.id]?.statuses?.[s.statusId];
     if(!(active?.expiresTick>state.tick)||now-s.last>(s.kind==='sink'?.19:.27))return false;
     if(s.kind==='sink'){
@@ -162,6 +199,33 @@ export class StatusMatterVfx {
         if(i<2)p.piece(2,this.pose.x,this.pose.z,s.angle+side*.75,-scale*.15,scale*.58,
           scale*.105,scale*.07,scale*.19,side*width*.71,0,i*2.6,
           alpha*.50,arrival,drain*1.4-.1,cold?.03:.18);
+      }
+    }else if(s.kind==='gravity'){
+      // Two staggered paired jaws contract across the visible hull, communicating
+      // increased coupling before another field arrives. They are body-seated loads,
+      // not a target UI ring or a false area of effect. Cutoff unloads each jaw outward.
+      for(let i=0;i<2;i++){
+        const phase=seed+i*2.4,stroke=reduced?.5:.5+.5*Math.sin(clock*(1.8+i*.31)+phase);
+        const close=.70+.17*stroke,release=cold?retired*scale*.30:0;
+        const at=s.hx*(i===0?-.34:.36),arrival=clamp((age-i*.055)/.24);
+        for(let side=-1;side<=1;side+=2){
+          this._at(s,at,side*(s.hz*close+release));
+          p.piece(6,this.pose.x,this.pose.z,s.angle,-s.hx*.20,s.hx*.23,
+            scale*.16,scale*.22,side*scale*(.20+.08*stroke),0,0,phase+side,
+            alpha*.82,arrival,cold?retired*(1.2+i*.18)-.1:-.1,cold?.09:.68);
+        }
+      }
+    }else if(s.statusId===HEAT_STATUS){
+      // Loaded seams remain seated on the heated body: crystal separates pale fracture
+      // planes; fuel develops hot rolling lips. This advertises a real approaching reaction.
+      const crystal=s.kind==='crystalHeat',load=s.opacity,cut=cold?retired*1.25-.1:-.1;
+      for(let i=0;i<3;i++){
+        this._at(s,s.hx*(-.45+i*.40),s.hz*(i===1?-.42:.37));
+        const ripple=reduced?0:Math.sin(clock*(1.4+i*.27)+seed+i*2.1);
+        p.piece(crystal?6:3,this.pose.x,this.pose.z,s.angle+(i===1?.62:-.42),
+          -scale*.5,scale*.65,scale*(crystal?.11:.30)*(0.75+load*.45),
+          scale*(crystal?.16:.13),scale*.13*ripple,0,0,seed+i*2.1,
+          alpha*(.27+load*.67),clamp((age-i*.04)/.22),cut,cold?.07:.30+load*.9);
       }
     }else{
       // Loaded transverse ribs grip the resisting face of the actual hull ellipse.

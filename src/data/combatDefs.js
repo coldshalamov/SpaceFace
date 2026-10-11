@@ -515,7 +515,7 @@ export const COMBAT_PROFILES = Object.freeze([
     capabilities: { drive: false, weapon: false, sensor: false, tether: false, power: false },
   },
   {
-    id: 'combat_profile_tether_anchor', version: 1, entityTypes: ['asteroid', 'wreck', 'pickup', 'fieldEmitter', 'masslineSnareAnchor'],
+    id: 'combat_profile_tether_anchor', version: 1, entityTypes: ['asteroid', 'wreck', 'pickup', 'fieldEmitter', 'masslineSnareAnchor', 'mine', 'gate'],
     heat: { max: 0, dissipationPerTick: 0 },
     immunityTags: [],
     subsystemIds: [],
@@ -568,6 +568,8 @@ export const DEFAULT_COMBAT_PROFILE_BY_TYPE = Object.freeze({
   pickup: 'combat_profile_tether_anchor',
   fieldEmitter: 'combat_profile_tether_anchor',
   masslineSnareAnchor: 'combat_profile_tether_anchor',
+  mine: 'combat_profile_tether_anchor',
+  gate: 'combat_profile_tether_anchor',
   station: 'combat_profile_standard_station',
 });
 

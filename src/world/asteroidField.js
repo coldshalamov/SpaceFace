@@ -10,6 +10,7 @@ import { authoredPrefetchRadius, tableTravelSpeed } from '../render/tabletopPoli
 import { NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js';
 import { indexedTypeScan, entityIndexLaneVersion } from './livingWorldViews.js';
 import { advanceResourceBody } from './worldCatchup.js';
+import { racingAsteroidSpec } from './racingCorridor.js';
 
 export const ASTEROID_FIELD_SCHEMA = 'spaceface.asteroidField.v1';
 export const ASTEROID_FIELD_CELL = 220;
@@ -140,6 +141,7 @@ function allocatePresentationId(state, occupied, reserved = 0) {
 }
 
 export function insertAsteroidFieldRock(state, spec = {}) {
+  spec = racingAsteroidSpec(state, spec);
   const field = ensureAsteroidField(state);
   const id = allocatePresentationId(state, field.byId, spec.id);
   const simTime = Number.isFinite(state && state.simTime) ? state.simTime : 0;

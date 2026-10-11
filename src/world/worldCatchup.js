@@ -25,6 +25,10 @@ function clamp(n, lo, hi) {
 
 function wrapAngle(a) {
   let r = finite(a);
+  // Catch-up may span a long absence or restore an unwrapped finite rotation. Reduce
+  // first: subtraction is proportional to elapsed turns and stops making progress at
+  // large magnitudes, which would freeze Continue/the far-record sweep forever.
+  if (Math.abs(r) > Math.PI * 3) r %= Math.PI * 2;
   while (r > Math.PI) r -= Math.PI * 2;
   while (r < -Math.PI) r += Math.PI * 2;
   return r;

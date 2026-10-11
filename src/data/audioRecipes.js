@@ -3090,7 +3090,24 @@ export const RECIPES = [
     baseFreq: 480, freqSweep: [480, 900], sweepTimeS: 0.05,
     gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.07 },
     filterType: 'bandpass', filterFreq: 1700, filterQ: 2.2,
-    pitchRange: [0.9, 1.25],
+    // Random band must stay narrower than the graded-rate arc (~-0.5 to +0.3):
+    // a ±20% scatter let two similar meals audibly read out of growth order.
+    pitchRange: [0.97, 1.05],
+  },
+  // First catch: the net's empty -> occupied edge — a soft low tick sibling of the
+  // absorb gulp, quiet enough to sit under the beam shimmer without promising a meal.
+  {
+    id: 'sfx_gyre_catch',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 320, freqSweep: [320, 480], sweepTimeS: 0.04,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.06 },
+    filterType: 'bandpass', filterFreq: 1100, filterQ: 2.4,
+    // Narrow scatter: the +N appetite ratchet reuses this voice at
+    // rate 1.3+0.05·n — a ±10% per-voice pitch scatter can invert the graded
+    // ordering between consecutive ticks (same fix absorb/windup already carry).
+    pitchRange: [0.98, 1.02],
   },
   // Launch: the bowling-ball release — a whip-crack transient over a big falling
   // sub whoosh. The single loudest voice in the weapon's vocabulary.
@@ -3098,7 +3115,9 @@ export const RECIPES = [
     id: 'sfx_gyre_launch',
     category: 'weapon',
     type: 'layered',
-    layers: ['sfx_gyre_launch_crack', 'sfx_gyre_launch_body', 'sfx_gyre_ball_whoosh'],
+    // The flight whoosh is its own emit (gyre_snare_whoosh) — a layer shares one
+    // rate across the stack, but the tail's shape must grade by payload alone.
+    layers: ['sfx_gyre_launch_crack', 'sfx_gyre_launch_body'],
     gainMult: 1.0,
     pitchRange: [0.92, 1.05],
   },
@@ -3122,18 +3141,21 @@ export const RECIPES = [
     subBass: { startFreq: 170, endFreq: 34, dur: 0.32, gain: 0.7 },
   },
   // Ball flight: a soft airy whoosh tailing the launch transient — the katamari mass reads
-  // at distance instead of going silent the moment it leaves the maw. Rides inside the
-  // launch layer so it needs no per-tick loop plumbing.
+  // at distance instead of going silent the moment it leaves the maw. Emits as its own
+  // gyre_snare_whoosh cue beside the launch stack so its playback rate (and therefore the
+  // tail's length + darkness) can grade by payload alone.
   {
     id: 'sfx_gyre_ball_whoosh',
     category: 'weapon',
     type: 'noise_burst',
     noiseColor: 'pink',
-    gainEnvelope: { attack: 0.18, sustain: 0.35, release: 1.4 },
+    // Attack sits past the launch crack's ~0.3 s transient — the flight voice
+    // swells after the launch body's sub clears instead of both peaking together.
+    gainEnvelope: { attack: 0.28, sustain: 0.35, release: 1.4 },
     filterType: 'bandpass', filterFreq: 720, filterQ: 0.9,
   },
-  // Windup: the ~120 ms coil's voice — a thin rising glass draw for the slingshot's
-  // pull-back, shorter and reedier than the strain rise so the two never collide.
+  // Windup: the ~100 ms coil's voice (launchWindupTicks=6 @60Hz) — a thin rising glass
+  // draw for the slingshot's pull-back, shorter and reedier than the strain rise.
   {
     id: 'sfx_gyre_windup',
     category: 'weapon',
@@ -3142,7 +3164,9 @@ export const RECIPES = [
     baseFreq: 430, freqSweep: [430, 960], sweepTimeS: 0.11,
     gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.15 },
     filterType: 'bandpass', filterFreq: 1250, filterQ: 1.7,
-    pitchRange: [0.96, 1.05],
+    // Tight band: the per-tick coil emits ramp ~4%/tick — a ±4.5% jitter would let
+    // adjacent voices invert the crescendo the ramp is for (absorb pins tight too).
+    pitchRange: [0.98, 1.02],
   },
   // Ball death: the clump's quiet grave — a muffled glass shatter for a ball expiring in
   // open space (impacts already sing through collision audio; this covers the silent TTL).
@@ -3172,6 +3196,26 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.01, sustain: 0.05, release: 0.7 },
     filterType: 'bandpass', filterFreq: 950, filterQ: 1.2,
   },
+  // Strain break: the lash's biggest loss beat — ball-death's bright clink over a harsher
+  // white dust burst, so the TEAR reads chromatic vs a polite release's descending fizzle
+  // (sfx_gyre_drop) and the thrown ball's muffled grave (sfx_gyre_ball_death). The clink
+  // layer is shared: the clump's glass shatter is the same object either way.
+  {
+    id: 'sfx_gyre_tear',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_gyre_ball_death_clink', 'sfx_gyre_tear_dust'],
+    gainMult: 0.9,
+    pitchRange: [0.9, 1.0],
+  },
+  {
+    id: 'sfx_gyre_tear_dust',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.004, sustain: 0.06, release: 0.45 },
+    filterType: 'bandpass', filterFreq: 2400, filterQ: 0.8,
+  },
   // Strain: rising glass tension when the tethered clump nears the slip point — the beam's
   // shimmer sibling stretched slower and higher so "about to lose it" has its own voice.
   {
@@ -3182,7 +3226,9 @@ export const RECIPES = [
     baseFreq: 520, freqSweep: [520, 1420], sweepTimeS: 0.42,
     gainEnvelope: { attack: 0.05, sustain: 0.0, release: 0.55 },
     filterType: 'bandpass', filterFreq: 1600, filterQ: 1.8,
-    pitchRange: [0.94, 1.04],
+    // Re-ticks land 0.85–1.2 rate already; ±6% recipe wobble on top doubled the
+    // effective spread and swam the climb — ±2% keeps the arc's headroom.
+    pitchRange: [0.98, 1.02],
   },
   // Lash loop: the beam's sustained glassy hum while it's live — a quiet presence voice
   // beside the field loops; envelope rides strain01 so a straining clump tightens it.
@@ -3240,6 +3286,20 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.02, sustain: 0.0, release: 0.24 },
     filterType: 'bandpass', filterFreq: 1100, filterQ: 1.4,
     pitchRange: [0.96, 1.08],
+  },
+  // Pre-snag escalation riser: a thinner, higher shimmer than the beam-on wake
+  // voice (340->980) so the per-tick climb can't read as the lash re-igniting —
+  // the ignition stays singular. Emitted ~5-tick gated with an explicit rate
+  // ramp; pitchRange stays narrow so the ramp can't invert itself.
+  {
+    id: 'sfx_gyre_riser',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 1200, freqSweep: [1200, 2200], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.12 },
+    filterType: 'bandpass', filterFreq: 2400, filterQ: 2.0,
+    pitchRange: [0.98, 1.02],
   },
   // Lash release: the beam letting go without a launch — a short descending glass fizzle
   // over a quick sub exhale. Fired at low gain for an empty-beam close and fuller when a

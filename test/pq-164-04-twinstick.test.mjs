@@ -138,14 +138,25 @@ test('PQ-164.04 pad connect suggests the twin-stick scheme exactly once', () => 
     assert.match(toasts[0].payload.text, /twin-stick/i);
     assert.equal(live.settings.controls.gamepad.schemeSuggested, true);
 
-    // Reconnect must not re-suggest.
+    // Disconnect announces the loss; reconnect must not repeat the scheme offer.
     events.length = 0;
     pad.connected = false;
     live.tick = 2;
     gp.tick(1 / 60, live, null);
+    assert.equal(gp.isConnected(), false);
+    const disconnectToasts = events.filter((e) => e.name === 'toast');
+    assert.equal(disconnectToasts.length, 1, 'one controller-loss notice');
+    assert.match(disconnectToasts[0].payload.text, /disconnected/i);
+    events.length = 0;
     pad.connected = true;
     live.tick = 3;
     gp.tick(1 / 60, live, null);
+    // A reused device slot needs a fresh gesture before it owns the helm again.
+    pad.axes[0] = 1;
+    live.tick = 4;
+    gp.tick(1 / 60, live, null);
+    assert.equal(gp.isConnected(), true, 'the test must actually reacquire the controller');
+    assert.ok(events.some((e) => e.name === 'gamepad:connected'));
     assert.equal(events.filter((e) => e.name === 'toast').length, 0, 'no second suggestion');
 
     // A profile that already picked twin-stick is never suggested.

@@ -786,6 +786,11 @@ function isEmptyCell(field, col, row, cols, rows) {
   return !!tile && tile.type === 'empty';
 }
 
+function isTraversableCell(field, col, row, cols, rows) {
+  const tile = cellAt(field, col, row, cols, rows);
+  return !!tile && tile.type === 'empty' && !tile.structure;
+}
+
 function clearedNear(field, col, row, cols, rows) {
   for (let dc = -GAS_TELL_RADIUS; dc <= GAS_TELL_RADIUS; dc++) {
     for (let dr = -GAS_TELL_RADIUS; dr <= GAS_TELL_RADIUS; dr++) {
@@ -855,7 +860,7 @@ export function visibleCablePoints(trail, field) {
     if (!pt) continue;
     const col = Math.trunc(pt.col);
     const row = Math.trunc(pt.row);
-    if (!isEmptyCell(field, col, row, cols, rows)) continue;
+    if (!isTraversableCell(field, col, row, cols, rows)) continue;
     out.push({ col, row });
   }
   return out;
@@ -866,11 +871,11 @@ export function knownReturnPath(field, col, row) {
   const { cols, rows } = fieldSize(field);
   const startCol = Math.trunc(col);
   const startRow = Math.trunc(row);
-  if (!isEmptyCell(field, startCol, startRow, cols, rows) || cols <= 0 || rows <= 0) return [];
+  if (!isTraversableCell(field, startCol, startRow, cols, rows) || cols <= 0 || rows <= 0) return [];
   const entryCol = Math.floor(cols / 2);
   const entryRow = 0;
   const here = { col: startCol, row: startRow };
-  if (!isEmptyCell(field, entryCol, entryRow, cols, rows)) return [here];
+  if (!isTraversableCell(field, entryCol, entryRow, cols, rows)) return [here];
   const start = startRow * cols + startCol;
   const target = entryRow * cols + entryCol;
   if (start === target) return [here];
@@ -890,7 +895,7 @@ export function knownReturnPath(field, col, row) {
     for (let i = 0; i < COMMITMENT_DIRS.length; i++) {
       const nc = c + COMMITMENT_DIRS[i][0];
       const nr = r + COMMITMENT_DIRS[i][1];
-      if (!isEmptyCell(field, nc, nr, cols, rows)) continue;
+      if (!isTraversableCell(field, nc, nr, cols, rows)) continue;
       const next = nr * cols + nc;
       if (prev[next] !== -2) continue;
       prev[next] = idx;
@@ -1461,19 +1466,15 @@ export const drill = {
         commitAvatarMove(d, nc, nr, cooldownVal);
       }
     } else {
-      // Solid tile! Cannot drill UP or if overheated
-      if (dy === -1) {
-        d.boreHold = 0;
-        d.avatar.isDrilling = false;
-        d.avatar.drillTarget = null;
-        recoverRig(d, dt);
-        return;
-      }
-
+      // Every cardinal face uses the same bore contract. The rover must be able to route
+      // around deposits and cut back upward when making space for contact-fed machinery.
       if (d.overheated || d.energyDepleted) {
         d.boreHold = 0;
         d.avatar.isDrilling = false;
-        d.avatar.drillTarget = null;
+        // A temporary interlock keeps its target. The input controller can then wait on the
+        // same held intent and resume after recovery, while release still cancels immediately.
+        d.avatar.drillTarget = { col: nc, row: nr };
+        d.avatar.drillBlocked = false;
         const heatBlocked = d.overheated;
         const energyBlocked = d.energyDepleted;
         recoverRig(d, dt);

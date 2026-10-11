@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { MobileGestures } from '../src/systems/mobile/model.js';
 import { mountMobileView } from '../src/systems/mobile/view.js';
 import { POWER_PAGES } from '../src/systems/mobile/catalog.js';
+import { enhanceMobileTouch } from '../src/systems/mobile/bridge.js';
 
 const camel = k => k.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 const VOID = new Set(['input', 'br', 'img', 'meta', 'link', 'hr']);
@@ -338,4 +339,36 @@ test('Fullscreen that is refused or throws says so; fullscreen that works stays 
       assert.equal(w.q('.mf-toast').hidden, quiet, label);
     } finally { w.dispose(); }
   }
+});
+
+test('the gyre verb latches on the touch deck and reaches acts.gyreSnare', () => {
+  // The catalog row is the verb's ONLY door onto the deck — kind 'toggle' so a
+  // tap holds the latch until a second tap bowls (the desktop contract).
+  const power = POWER_PAGES.flatMap(p => p.powers).find(p => p.id === 'gyreSnare');
+  assert.ok(power, 'gyreSnare is in POWER_PAGES — a missing row is a dead verb');
+  assert.equal(power.kind, 'toggle', 'tap lashes, tap again bowls');
+
+  // model.toggle → frame.actions → VIRTUAL_ACTIONS → host._held → acts.gyreSnare.
+  const state = { mode: 'flight', playerId: 'p1', tick: 1, player: { alive: true },
+    entities: new Map(), input: {}, ui: {}, settings: {} };
+  const touch = {
+    active: true,
+    axes: { leftX: 0, leftY: 0, rightX: 0, rightY: 0 },
+    actions: { fire: { held: false }, tether: { held: false } },
+    _btnHeld: {}, _activityPending: false,
+    tick() {}, _clearTouchState() {},
+  };
+  const host = {
+    _held() { return false; },
+    _heldExcept() { return false; },
+    _holdToggleLatches: {},
+  };
+  enhanceMobileTouch(touch, { state, bus: null, helpers: null });
+  touch.mobile.activate(power);            // tap → the latch engages
+  touch.tick(1 / 60, state, host);
+  assert.equal(touch.mobile.frame.actions.gyreSnare, true, 'the toggle reaches frame.actions');
+  assert.equal(host._held(state, 'gyreSnare'), true, 'the virtual hold reaches acts.gyreSnare');
+  touch.mobile.activate(power);            // second tap → the bowl edge
+  touch.tick(1 / 60, { ...state, tick: 2 }, host);
+  assert.equal(host._held(state, 'gyreSnare'), false, 'the second tap releases the latch');
 });

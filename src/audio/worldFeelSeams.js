@@ -129,7 +129,12 @@ export function admitWorldFeelSeam(book, eventName, payload, tick) {
   const last = book && book[key];
   const gap = ADMIT_TICKS[eventName];
   if (Number.isFinite(last) && tick - last < gap) return false;
-  if (book) book[key] = tick;
+  if (book) {
+    // Re-insert rather than overwrite so key order tracks most-recent admission; otherwise the
+    // overflow eviction below can drop a currently-live key while a dead one survives.
+    delete book[key];
+    book[key] = tick;
+  }
   if (book && Object.keys(book).length > 256) {
     const oldest = Object.keys(book).find((entry) => entry !== '_tick');
     if (oldest) delete book[oldest];

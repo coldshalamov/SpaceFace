@@ -122,8 +122,8 @@ export function stepContinuousRecipe({
     const byInput = avail / perBatch;
     if (byInput < batches) { batches = byInput; limit = `input:${goodId}`; }
   }
-  // A fractional carry is PAID output, not free capacity. Reconcile against the space
-  // available now: another machine may have filled the lane since this carry accrued.
+  // Carry is paid output held inside the machine. It does not occupy lane storage yet.
+  // Another machine may have filled that lane; release only what fits AFTER consumption.
   // Keep carries sub-unit so existing saves and normalizeSiteMachines stay compatible.
   const previousCarry = carry[outputId] == null ? 0 : Number(carry[outputId]);
   if (!Number.isFinite(previousCarry) || previousCarry < 0 || previousCarry >= 1) {
@@ -131,8 +131,16 @@ export function stepContinuousRecipe({
     result.limit = 'invalid-carry';
     return result;
   }
-  const room = positiveRoom(roomFor(outputId));
-  const byRoom = Math.max(0, room - previousCarry) / outputPerBatch;
+  const reportedRoom = Number(roomFor(outputId));
+  if (!(reportedRoom >= 0)) {
+    result.status = 'backlogged'; result.limit = 'export'; return result;
+  }
+  const room = positiveRoom(reportedRoom);
+  // Processing consumes its input from this same store. A full ore buffer must be able to
+  // refine itself down; requiring free output space before removing inputs deadlocks it.
+  // Expanding recipes need room in advance; shrinking recipes create their own room.
+  const netPerBatch = outputPerBatch - inputPerBatch;
+  const byRoom = netPerBatch > 0 ? Math.max(0, room - previousCarry) / netPerBatch : Infinity;
   if (byRoom < batches) { batches = byRoom; limit = 'export'; }
   // Lane throughput (units moved = inputs consumed + outputs produced).
   const unitsPerBatch = inputPerBatch + outputPerBatch;
@@ -153,12 +161,16 @@ export function stepContinuousRecipe({
     result.consumed[goodId] = take;
     result.moved += take;
   }
-  // Whole units land in the store; the fractional remainder carries on the machine.
+  // Prefer whole output, but a full store with a pre-existing carry may have less than a
+  // whole unit free after consuming inputs. Release the fitting fraction instead of either
+  // overfilling or deadlocking the refinery. For a shrinking recipe the remainder stays <1:
+  // previousCarry + output - (room + consumed) <= previousCarry.
   const producedRaw = batches * outputPerBatch + previousCarry;
   const whole = Math.floor(producedRaw + 1e-9);
-  carry[outputId] = Math.max(0, producedRaw - whole);
-  if (whole > 0) store[outputId] = (Number(store[outputId]) || 0) + whole;
-  result.produced[outputId] = whole;
+  const released = Math.min(whole, room + batches * inputPerBatch);
+  carry[outputId] = Math.max(0, producedRaw - released);
+  if (released > 0) store[outputId] = (Number(store[outputId]) || 0) + released;
+  result.produced[outputId] = released;
   result.moved += batches * outputPerBatch;
   result.status = limit ? (limit.startsWith('input') ? 'starved' : (limit === 'power' ? 'throttled' : 'limited')) : 'running';
   result.limit = limit;
@@ -166,17 +178,44 @@ export function stepContinuousRecipe({
 }
 
 /**
- * Advance one discrete fabricator build. Inputs are consumed up front (a real committed batch),
- * progress accrues scaled by power ratio, output lands on completion. `job` is persisted on the
- * machine: { recipeId, progressS } or null.
+ * Advance one discrete fabricator build. A bounded lane loads paid inputs before assembly,
+ * then unloads the completed batch within its throughput. Progress is power-scaled. The job
+ * persists { recipeId, progressS, loading?, outputDelivered? }; omitted staging means a legacy
+ * fully loaded job. Unbounded callers retain immediate batch intake/output.
  */
 export function stepFabricator({
-  machine, recipeId, dtS, powerRatio, store, roomFor, wantsBuild,
+  machine, recipeId, dtS, powerRatio, store, roomFor, wantsBuild, throughputBudget = Infinity,
 }) {
   const recipe = SITE_RECIPE_BY_ID.get(recipeId);
-  const result = { completed: null, started: false, moved: 0, status: 'idle', limit: null, progress: 0 };
+  const result = { completed: null, started: false, moved: 0, produced: {}, status: 'idle', limit: null, progress: 0 };
   if (!recipe || !(recipe.buildS > 0) || !Number.isFinite(dtS) || !(dtS > 0)) return result;
   powerRatio = clamp01(powerRatio);
+  let budget = positiveRoom(throughputBudget);
+  const inputs = Object.entries(recipe.inputs).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+
+  // A lane moves fractions each second. Keep partially loaded inputs ON the committed job,
+  // not in an invisible throughput debt; saved jobs resume without paying these inputs twice.
+  function loadInputs() {
+    const loading = machine.job.loading;
+    for (const [goodId, qty] of inputs) {
+      const paid = Number(loading[goodId]) || 0;
+      const need = Math.max(0, qty - paid);
+      const take = Math.min(need, Math.max(0, Number(store[goodId]) || 0), budget);
+      if (take > 0) {
+        store[goodId] = Math.max(0, (Number(store[goodId]) || 0) - take);
+        loading[goodId] = Math.min(qty, paid + take);
+        result.moved += take;
+        budget -= take;
+      }
+      if (qty - (loading[goodId] || 0) > 1e-9) {
+        result.status = 'loading';
+        result.limit = budget <= 1e-9 ? 'lane' : `input:${goodId}`;
+        return;
+      }
+    }
+    delete machine.job.loading;
+    result.status = 'building';
+  }
 
   // Finish/advance the running job first.
   if (machine.job && machine.job.recipeId === recipeId) {
@@ -191,21 +230,36 @@ export function stepFabricator({
       result.progress = machine.job.progressS / recipe.buildS;
       return result;
     }
+    if (machine.job.loading) {
+      loadInputs();
+      return result;
+    }
     machine.job.progressS = Math.min(recipe.buildS, machine.job.progressS + dtS * powerRatio);
     result.progress = Math.min(1, machine.job.progressS / recipe.buildS);
     if (machine.job.progressS + 1e-9 >= recipe.buildS) {
       const [outputId, qty] = Object.entries(recipe.output)[0];
       // A batch owns its committed inputs, NOT a permanent reservation in a shared lane.
-      // Hold the completed job until its whole output fits, including after save/Continue.
+      // Hold undelivered output on the completed job, including after save/Continue.
       // No extra inputs, lost output, duplicate completion, or growing progress counter.
-      if (outputId !== 'pod' && positiveRoom(roomFor(outputId)) < qty) {
-        result.status = 'backlogged';
-        result.limit = 'export';
-        return result;
-      }
       if (outputId !== 'pod') {
-        store[outputId] = (Number(store[outputId]) || 0) + qty;
-        result.moved += qty;
+        const delivered = Number(machine.job.outputDelivered) || 0;
+        const remaining = Math.max(0, qty - delivered);
+        const room = positiveRoom(roomFor(outputId));
+        // An unbounded caller retains the atomic batch contract. The live bounded lane
+        // unloads the output progressively and persists precisely how much already landed.
+        const give = throughputBudget === Infinity && room < remaining ? 0
+          : Math.min(remaining, room, budget);
+        if (give > 0) {
+          store[outputId] = (Number(store[outputId]) || 0) + give;
+          machine.job.outputDelivered = delivered + give;
+          result.moved += give;
+          result.produced[outputId] = give;
+        }
+        if (remaining - give > 1e-9) {
+          result.status = room <= 1e-9 || (throughputBudget === Infinity && room < remaining) ? 'backlogged' : 'unloading';
+          result.limit = result.status === 'backlogged' ? 'export' : 'lane';
+          return result;
+        }
       }
       result.completed = { outputId, qty };
       machine.job = null;
@@ -228,6 +282,11 @@ export function stepFabricator({
     result.limit = 'power';
     return result;
   }
+  if (budget <= 0) {
+    result.status = 'stalled';
+    result.limit = 'lane';
+    return result;
+  }
   // Start a new batch if every input is on hand.
   for (const [goodId, qty] of Object.entries(recipe.inputs)) {
     if ((Number(store[goodId]) || 0) < qty) {
@@ -237,18 +296,16 @@ export function stepFabricator({
     }
   }
   const [outputId] = Object.entries(recipe.output)[0];
-  if (outputId !== 'pod' && positiveRoom(roomFor(outputId)) < recipe.output[outputId]) {
+  const inputTotal = inputs.reduce((sum, [, qty]) => sum + qty, 0);
+  const availableRoom = outputId === 'pod' ? Infinity : Number(roomFor(outputId));
+  if (!(availableRoom >= 0) || availableRoom + inputTotal < recipe.output[outputId]) {
     result.status = 'backlogged';
     result.limit = 'export';
     return result;
   }
-  for (const [goodId, qty] of Object.entries(recipe.inputs)) {
-    store[goodId] = Math.max(0, (Number(store[goodId]) || 0) - qty);
-    result.moved += qty;
-  }
-  machine.job = { recipeId, progressS: 0 };
+  machine.job = { recipeId, progressS: 0, loading: {} };
   result.started = true;
-  result.status = 'building';
+  loadInputs();
   return result;
 }
 

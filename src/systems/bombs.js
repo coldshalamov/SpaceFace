@@ -1,3 +1,6 @@
+import { queryPhysicalBodies, deliverPhysicalImpulse, deliverPhysicalAcceleration, schedulePhysicalBlast } from '../combat/physicalEffects.js';
+import { environmentResponse, isEnvironmentalBody, isAnchoredPhysicalBody } from '../core/physicalResponse.js';
+import { addEnvironmentHeat } from './environmentMaterials.js';
 // Drift-bomb bay: lay a moving trap, commit its fuze, exploit the physical consequence.
 // Design and propagation acceptance: design/ORDNANCE_BOMBS_REFINEMENT.md.
 // Keep the original payload IDs, damage router, hitstun law and one-shot VFX receipts.
@@ -107,7 +110,7 @@ function flashReduced(state) {
 // (substanceFor falls through falsy authored values to the dynamic default), so the authored
 // no-body contract is the first gate and the substance's dynamic flag the second.
 const faunaShoveEligible = (e) => faunaBlastEligible(e) && e?.physicsBody !== false && isDynamicPhysicsBodyEntity(e);
-const blastShoveEligible = (e) => movable(e) || faunaShoveEligible(e);
+const blastShoveEligible = (e) => e?.physicsBody !== false && (isDynamicPhysicsBodyEntity(e) || isAnchoredPhysicalBody(e));
 const EMPTY = Object.freeze([]);
 const simNow = state => Number.isFinite(state?.simTime) ? state.simTime : (state?.tick || 0) / 60;
 
@@ -1027,6 +1030,11 @@ export const bombs = {
     } else {
       for (const e of state.entityList || EMPTY) pushBombTarget(this._targets, e);
     }
+    for (const bomb of this._active) {
+      const def = bombDef(bomb.data?.bombId);
+      if (!def) continue;
+      for (const body of queryPhysicalBodies(state, bomb.pos, def.radius, this.helpers, [])) if (!this._targets.includes(body)) this._targets.push(body);
+    }
     this._targets.sort(compareBombEntityIds);
   },
 
@@ -1363,13 +1371,13 @@ export const bombs = {
   _blastVictims(state, { pos, def, ownerId, originId, trigger, impulseOverride = null, damageOverride = null }) {
     const impulse = impulseOverride ?? def.impulse, damage = damageOverride ?? def.damage;
     const hits = [], shoves = [], attackerMass = massOf(state.entities.get(ownerId));
-    for (const ent of this._targets) {
-      if (!ent.alive || ent.id === originId) continue;
+    const applyBody = ent => {
+      if (!ent.alive || ent.id === originId) return;
       const dx = ent.pos.x - pos.x, dz = ent.pos.z - pos.z;
       const radial = bombRadialDirection(dx, dz, this._radial || (this._radial = { x: 0, z: 0, dist: 0 }));
       const dist = radial.dist > 0 ? radial.dist : Math.hypot(dx, dz);
       const falloff = bombSurfaceFalloff(dist, ent.radius, def.radius);
-      if (!(falloff > 0)) continue;
+      if (!(falloff > 0)) return;
       let dirX = radial.x, dirZ = radial.z;
       // Havoc is a cross-current, not a recoloured radial concussion. Preserve total impulse.
       // A zero radial (centers coincide) stays zero — there is no seeded axis to bend.
@@ -1394,6 +1402,7 @@ export const bombs = {
         considerShove(shoves, ent.id, dirX, dirZ, magnitude);
         this._publishHitstun(state, ent, { dirX, dirZ, magnitude, ownerId, attackerMass, payloadId: def.id, trigger, hitPos });
       }
+      if (isEnvironmentalBody(ent) && def.heat) addEnvironmentHeat(state, ent, def.heat * falloff, { actorId: ownerId });
       if ((DAMAGE_TYPES.has(ent.type) || faunaBlastEligible(ent)) && (damage > 0 || def.statuses?.length)) {
         const packet = scalarHitToDamagePacket({
           damage: damage * falloff, damageType: def.damageType, pos,
@@ -1409,7 +1418,9 @@ export const bombs = {
         // hits are routing receipts, not a claim of hull loss (shields/armour may absorb it).
         if (result !== false && result?.ok !== false) hits.push(ent.id);
       }
-    }
+    };
+    schedulePhysicalBlast(state, { center: pos, radius: def.radius, helpers: this.helpers, excludeId: originId,
+      payload: { kind: 'bomb_blast', sourceId: ownerId, weaponId: def.id, baseImpulse: impulse, damage, damageType: def.damageType, heat: def.heat || 0, tangentRatio: def.tangentRatio || 0 }, onBody: applyBody });
     shoves.sort((a, b) => b.mag - a.mag || compareBombEntityIds(a, b));
     // SF-042: a blast reaches armed, still-drifting ordnance as a sympathetic primer — the
     // dramatic delayed second consequence, deterministic and bounded. Primes resolve through
@@ -1490,13 +1501,13 @@ export const bombs = {
       // fauna is pulled into the well and slowed by tar exactly like the craft next to it;
       // kinematic fauna stay motion-owned by the ecology drive.
       if (f.kind === 'singularity' && blastShoveEligible(ent) && radial.dist > 0) {
-        const mass = massOf(ent), couple = Math.max(FIELD_COUPLING.minShipCouple, FIELD_COUPLING.refMass / Math.max(mass, FIELD_COUPLING.refMass));
+        const mass = massOf(ent), couple = isEnvironmentalBody(ent) ? environmentResponse(ent) : Math.max(FIELD_COUPLING.minShipCouple, FIELD_COUPLING.refMass / Math.max(mass, FIELD_COUPLING.refMass));
         const j = f.strength * envelope * falloff * couple * mass * dt;
-        queuePhysicsImpulse(ent, { x: radial.x * j, z: radial.z * j });
+        deliverPhysicalImpulse(state, ent, { x: radial.x * j, z: radial.z * j }, { tick: state.tick, kind: 'bomb_field' }, { scaleEnvironment: false, continuous: true, dt });
       } else if (f.kind === 'goo' && blastShoveEligible(ent)) {
         const coverage = this._gooCoverage[targetIndex] || 1;
         if (fillBombViscosityImpulse(this._viscosity, ent.vel, bomb.vel, effectiveMass(state, ent), dt, f.dragPerS * falloff, 1 / Math.max(1, coverage))) {
-          queuePhysicsImpulse(ent, this._viscosity);
+          deliverPhysicalImpulse(state, ent, this._viscosity, { tick: state.tick, kind: 'bomb_viscosity' }, { scaleEnvironment: false, continuous: true, dt });
         }
       }
       if (!applyStatusTick) continue;
@@ -1562,7 +1573,12 @@ export const bombs = {
       }
       if (covered) continue;
       const runtime = combatEntities[String(ent.id)];
-      if (runtime) kernel.statuses.clear(ent, runtime, 'status_goo');
+      if (runtime && kernel.statuses.clear(ent, runtime, 'status_goo')) {
+        // clear() does not emit. The callout and the tar loop both listen for expiry.
+        this.bus?.emit('combat:statusExpired', {
+          targetId: ent.id, statusId: 'status_goo', data: null, reason: 'field_shed',
+        });
+      }
     }
   },
   // SFQ-B035: the blast hands the physics authority its surface contact point and the def's
@@ -1573,17 +1589,11 @@ export const bombs = {
   _applyImpulse(ent, x, z, state, reason, opts = {}) {
     const physics = this.helpers?.combatPhysics;
     if (!physics?.applyImpulse) return false;
-    return physics.applyImpulse({
-      entityId: ent.id,
-      impulse: { x, z },
-      point: opts.point || null,
-      // A finite cap passes through verbatim (0 = the def explicitly refuses torque — the
-      // singularity's clean collapse snap); only an absent cap leaves the authority uncapped.
-      maxTorque: Number.isFinite(opts.maxTorque) ? Math.max(0, opts.maxTorque) : undefined,
-      reason,
-      tick: state.tick,
-    }) !== false;
+    return deliverPhysicalImpulse(state, ent, { x, z }, {
+      point: opts.point || null, maxTorque: opts.maxTorque, reason, tick: state.tick,
+    }, { port: physics });
   },
+
   _routeDamage(request) {
     if (typeof this.helpers?.routeCombatDamage === 'function') return this.helpers.routeCombatDamage(request);
     const combat = this.registry?.get?.('combat');

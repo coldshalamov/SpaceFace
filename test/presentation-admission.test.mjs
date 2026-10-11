@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   PRESENTATION_ADMISSION,
+  entityIsMissionCritical,
   hasExplicitAuthoredGeologyPresentation,
   initializePresentationAdmission,
   presentationAllowsPlayerFacingAction,
@@ -47,6 +48,67 @@ test('an authored-only hull that fails admission stays off the lock', () => {
   setPresentationAdmission(unstamped, PRESENTATION_ADMISSION.unavailable);
   assert.equal(presentationAllowsTargetLock(unstamped, browserState), false,
     'a ship that never published a fallback stamp fails closed');
+});
+
+test('entityIsMissionCritical reads stamped identity and live mission target lists', () => {
+  const state = { missions: { active: [{ id: 'm1', targetEntityIds: [42] }] } };
+  assert.equal(entityIsMissionCritical({ id: 1, data: { missionTag: 'wanted_warrant' } }, {}), true,
+    'a stamped missionTag is mission identity');
+  assert.equal(entityIsMissionCritical({ id: 2, data: { storyTarget: true } }, {}), true,
+    'a truthy storyTarget is mission identity');
+  assert.equal(entityIsMissionCritical({ id: 42, data: {} }, state), true,
+    'membership in an active mission target list is mission identity');
+  assert.equal(entityIsMissionCritical({ id: 7, data: {} }, state), false,
+    'an untargeted plain hostile is not mission-critical');
+  assert.equal(entityIsMissionCritical({ id: 42, data: { missionTag: 'wanted_warrant' } }, null), true,
+    'missing missions state is safe');
+  assert.equal(entityIsMissionCritical(null, state), false);
+  assert.equal(entityIsMissionCritical({ id: 42 }, { missions: null }), false);
+  assert.equal(entityIsMissionCritical({ data: { missionTag: 'x' } }, state), true,
+    'missionTag alone decides before any id is needed');
+  assert.equal(entityIsMissionCritical({ id: 42 }, { missions: { active: 'not-an-array' } }), false,
+    'a malformed mission list fails closed');
+  assert.equal(entityIsMissionCritical({ id: 42 }, { missions: { active: [{ id: 'm2' }] } }), false,
+    'a mission without a target list contributes nothing');
+});
+
+test('a required hull on a terminal verdict is lockable when its stand-in hull drew', () => {
+  const browserState = { render: { scene: {} } };
+  const ship = initializePresentationAdmission({
+    type: 'ship', alive: true, data: { defId: 'ship_wasp' },
+  });
+  // syncResolvingMarker republishes the flag from the drawn body: the ship's own resident
+  // stand-in is a real hull, so a terminal 'unavailable' with it drawn is not empty air.
+  ship.presentationFallbackVisible = true;
+  setPresentationAdmission(ship, PRESENTATION_ADMISSION.unavailable);
+  assert.equal(presentationAllowsTargetLock(ship, browserState), true);
+});
+
+test('a required hull on a bare octahedron stays off the lock without mission identity', () => {
+  const browserState = { render: { scene: {} } };
+  const ship = initializePresentationAdmission({
+    type: 'ship', alive: true, data: { defId: 'ship_wasp' },
+  });
+  // Terminal 'unavailable' with only the abstract resolving marker drawn: nothing real to aim
+  // at, and no mission identity to warrant a procedural stand-in — authored-or-nothing holds.
+  ship.presentationFallbackVisible = false;
+  setPresentationAdmission(ship, PRESENTATION_ADMISSION.unavailable);
+  assert.equal(entityIsMissionCritical(ship, browserState), false);
+  assert.equal(presentationAllowsTargetLock(ship, browserState), false);
+});
+
+test('a mission-critical required hull is lockable once its procedural fallback publishes', () => {
+  const browserState = { render: { scene: {} } };
+  const ship = initializePresentationAdmission({
+    id: 9001, type: 'ship', alive: true,
+    data: { defId: 'ship_wasp', missionTag: 'wanted_warrant' },
+  });
+  assert.equal(entityIsMissionCritical(ship, browserState), true);
+  // The terminal sync consumed the mission-only thunk: the procedural body drew and the flag
+  // was republished true — the warrant target is lockable again.
+  ship.presentationFallbackVisible = true;
+  setPresentationAdmission(ship, PRESENTATION_ADMISSION.unavailable);
+  assert.equal(presentationAllowsTargetLock(ship, browserState), true);
 });
 
 test('headless simulation remains independent of render admission', () => {

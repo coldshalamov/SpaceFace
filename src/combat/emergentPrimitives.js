@@ -3,6 +3,7 @@
 
 import { compileAttackSpec } from './attackSpec.js';
 import { EMERGENT_LIMITS } from '../data/emergentPrimitives.js';
+import { environmentMaterialOf, ENVIRONMENT_MATERIALS } from '../data/environmentMaterials.js';
 
 const CONDUCTIVE = Object.freeze({
   metal: 1,
@@ -16,7 +17,7 @@ const CONDUCTIVE = Object.freeze({
   debris: 0.7,
 });
 
-const FRACTURE_MATERIALS = new Set(['rock', 'ice', 'ore']);
+const FRACTURE_MATERIALS = new Set(['rock', 'ice', 'ore', 'crystal']);
 
 function num(value, fallback = 0) {
   const n = Number(value);
@@ -40,6 +41,8 @@ function residualFuel(entity) {
 }
 
 function materialOf(entity) {
+  const environment = environmentMaterialOf(entity);
+  if (environment) return environment;
   const explicit = entity.material || (entity.data && entity.data.material);
   if (typeof explicit === 'string' && explicit) return explicit;
   const type = entity.type;
@@ -61,15 +64,15 @@ export function physicalProfile(entity) {
   const explicitFuel = entity.fuelVolatile != null
     ? entity.fuelVolatile
     : (entity.data && entity.data.fuelVolatile != null ? entity.data.fuelVolatile : null);
-  const fuelVolatile = explicitFuel == null ? residualFuel(entity) : num(explicitFuel, 0);
+  const fuelVolatile = explicitFuel == null ? (material === 'volatile' ? 1 : residualFuel(entity)) : num(explicitFuel, 0);
   const conductivity = entity.conductivity != null
     ? num(entity.conductivity, 0)
     : (entity.data && entity.data.conductivity != null
       ? num(entity.data.conductivity, 0)
-      : num(CONDUCTIVE[material], 0.15));
+      : num(ENVIRONMENT_MATERIALS[material]?.conductivity, num(CONDUCTIVE[material], 0.15)));
   const reflectivity = entity.reflectivity != null
     ? num(entity.reflectivity, 0)
-    : num(entity.data && entity.data.reflectivity, 0);
+    : num(entity.data && entity.data.reflectivity, ENVIRONMENT_MATERIALS[material]?.reflectivity || 0);
   let magazine = 0;
   const weapons = entity.data && entity.data.weapons;
   if (Array.isArray(weapons)) {

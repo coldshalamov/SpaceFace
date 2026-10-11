@@ -13,6 +13,15 @@ import {
 } from './hudLayout.js';
 import { GYRE_SNARE } from '../data/gyreSnare.js';
 
+// DMG× telegraph: the stamped scale clamps at launchImpactScaleMax, which a
+// ~576 t clump already pegs — the yield arc would flat-line for the last ~75%
+// of the mass range and a capped moon would read the same "8.0" as a pebble.
+// Say the ceiling honestly once a katamari hits it.
+function dmgText(mass) {
+  const s = GYRE_SNARE.launchImpactScaleBase + mass / GYRE_SNARE.launchImpactScalePerMass;
+  return s >= GYRE_SNARE.launchImpactScaleMax ? 'MAX' : s.toFixed(1);
+}
+
 export const GYRE_HUD_CSS = `
 .sf-gyre-pill {
   position: absolute; left: 50%; bottom: ${FIELD_LANE_BASE}px; transform: translateX(-50%);
@@ -28,12 +37,25 @@ export const GYRE_HUD_CSS = `
   box-shadow: none;
   text-shadow: var(--dp-emit, none);
   pointer-events: none; white-space: nowrap;
+  transition: transform .12s ease-out; /* snappier than the 150 ms class window — the pop completes instead of clipping mid-swing */
 }
+.sf-gyre-pill.gyre-eat { transform: translateX(-50%) scale(var(--gyre-eat-scale, 1.1)); } /* a meal just landed — the counter gulps (keep the seat's translate) */
 .sf-gyre-pill.gyre-holding { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
+.sf-gyre-pill.gyre-search { color: var(--dp-lamp-dim, #8a6b3a); } /* beam live, nothing gripped yet */
+.sf-gyre-pill.gyre-heavy { color: var(--dp-lamp, #f2b950); text-shadow: var(--dp-emit-lamp, none); } /* a body it can never eat — warm like held, not hot */
 .sf-gyre-pill.gyre-strain { color: var(--dp-danger-hot, #ff8a70); border-left-color: var(--dp-danger, #ff5038); text-shadow: 0 0 10px var(--dp-danger-bloom, rgb(255 80 56 / .38)); }
 .sf-gyre-pill.gyre-launched { color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
 .sf-gyre-pill.gyre-ball { border-left-color: var(--dp-lamp-dim, #8a6b3a); }
 .sf-gyre-pill.gyre-full { color: var(--dp-lamp-hot, #ffd98c); border-left-color: var(--dp-lamp-hot, #ffd98c); text-shadow: var(--dp-emit-lamp, none); }
+.sf-gyre-sr {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+.sf-gyre-mass {
+  position: absolute; left: 2px; bottom: 2px; height: 1px; width: 0;
+  background: linear-gradient(90deg, var(--dp-lamp-dim, #8a6b3a), var(--dp-lamp, #f2b950));
+  border-radius: 1px; opacity: .8; pointer-events: none;
+}
 .sf-gyre-fill {
   position: absolute; left: 2px; bottom: 0; height: 2px; width: 0;
   background: linear-gradient(90deg, var(--dp-lamp, #f2b950), var(--dp-danger, #ff5038));
@@ -60,11 +82,16 @@ export const gyreHud = {
     this._dom = null;
     this._lastText = '';
     this._lastClass = '';
+    this._lastRow = '';
     this._visible = false;
     this._laneSeat = '';
     this._strainOn = false; // hysteresis: enter at 0.40, exit at 0.25 — no boundary flapping
     this._bowlUntil = -1;   // simTime deadline — the BOWL read holds ~0.8 s past the 5-tick burst
-    this._bowlMass = 0;
+    this._bowlMass = null;  // null until a launch edge arms it — the mid-coil-attach
+    this._bowlN = null;     //   fallback must be able to tell armed from absent
+    this._lastAbsorbs = 0;  // absorb ledger delta → the counter's ~150 ms gulp
+    this._eatUntil = -1;
+    this._lastHudPhase = null; // edge-true BOWL arming needs last frame's phase
   },
 
   destroy() {
@@ -81,55 +108,119 @@ export const gyreHud = {
     if (!dom) return;
     if (state.mode !== 'flight' || (state.ui && state.ui.docked)) { this._hide(dom); return; }
     const g = state.gyreSnare || null;
-    const { text, cls, strain, fuse } = this._resolve(g, Number.isFinite(state.simTime) ? state.simTime : 0);
+    const { text, cls, strain, fuse, mass, row } = this._resolve(g, Number.isFinite(state.simTime) ? state.simTime : 0);
     if (!text) { this._hide(dom); return; }
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
     const seat = claimBottomLaneSeat('gyre', LANE_PRIORITY.active, FIELD_LANE_BASE, now);
     if (!seat.visible) { this._hide(dom); return; }
-    this._apply(dom, text, cls, strain, fuse);
+    // The counter gulps too: maw/lumps/glints/audio/pad all celebrate a meal but
+    // the ×N·Mt read used to swap silently — a ~150 ms scale-pop on each absorb.
+    const ab = g && Number.isFinite(g.absorbs) ? g.absorbs : 0;
+    if (g && g.phase === 'holding' && ab > this._lastAbsorbs) {
+      this._eatUntil = now + 0.15;
+      // The pop grades by the meal it just swallowed — every other gulp channel
+      // scales (absorbR kicks, cue rate); the pill's bump was the one ungraded
+      // edge: a wreck lands ~×1.2, a pebble a hair over ×1.05.
+      this._eatScale = 1.05 + Math.min(0.15, (g.absorbR || 0) * 0.006);
+      // Re-trigger the transition per meal — a longer ease-out otherwise holds
+      // the enlarged state across back-to-back absorbs (<150 ms apart) and a
+      // dense feed reads as one long swell instead of discrete gulps.
+      dom.pill.classList.remove('gyre-eat');
+      void dom.pill.offsetWidth;
+    }
+    this._lastAbsorbs = ab;
+    this._apply(dom, text, cls, strain, fuse, mass, row);
+    const eating = now < this._eatUntil;
+    dom.pill.classList.toggle('gyre-eat', eating);
+    if (eating) dom.pill.style.setProperty('--gyre-eat-scale', (this._eatScale || 1.1).toFixed(3));
     this._applyLaneSeat(dom.pill, seat.bottom);
   },
 
   _resolve(g, now) {
-    if (!g) return { text: '', cls: '' };
+    // The phase latch resets on a null mirror too — a mirror vanishing
+    // mid-launch would otherwise strand 'launching' and the next launch's
+    // launchEdge could never re-arm the BOWL window.
+    if (!g) { this._lastHudPhase = null; return { text: '', cls: '' }; }
+    // BOWL arming is edge-true: the ~0.8 s grave window starts on the OFF->LAUNCH
+    // flip, not re-armed every launching tick (which would stretch it to ~1.0 s).
+    const launchEdge = g.phase === 'launching' && this._lastHudPhase !== 'launching';
+    this._lastHudPhase = g.phase;
+    // The armed ledger dies with its grave window: a later mid-coil attach (or a
+    // second throw after the first expired) falls back to the live clump read
+    // instead of replaying the previous bowl's mass.
+    if (g.phase !== 'launching' && now >= this._bowlUntil) {
+      this._bowlMass = null; this._bowlN = null;
+    }
     // A live ball's quiet grave telegraphs on EVERY phase, not just OFF — a re-beamed
     // lash would otherwise swallow the countdown exactly while a second lash winds.
     // "+N" names the OTHER live balls still flying — the pill only mirrors the freshest,
     // but a second bowl mid-flight shouldn't make the first one's grave invisible.
-    const bttl = g.ballTtlS || 0;
+    const bttl = g.ballTtlLeftS || 0;
     const extraBalls = Math.max(0, (g.liveBalls || 0) - 1);
-    // ceil would flash the gate value itself (3.05 → "4s") — clamp to warnS-1 so the
-    // countdown never claims more than the window it warns inside.
+    // floor keeps the countdown honest: ceil overstates the remaining flight by up
+    // to ~0.9 s (3.05 → "4s" flashes the gate value itself), and the max() floor of
+    // 1 keeps the last tick reading "ball 1s" not "ball 0s".
     let ballTxt = bttl > 0 && bttl < GYRE_SNARE.ballTtlWarnS
-      ? ` · ball ${Math.max(1, Math.min(GYRE_SNARE.ballTtlWarnS - 1, Math.ceil(bttl)))}s` : '';
+      ? ` · ball ${Math.max(1, Math.min(GYRE_SNARE.ballTtlWarnS - 1, Math.floor(bttl)))}s` : '';
     // Other live balls still flying read even when the primary's countdown isn't
     // running — a second bowl mid-flight shouldn't make the first one's grave silent.
     // When the soonest secondary is inside its warn window its countdown rides too:
     // ". +2 balls 4s" — the pile's own quiet grave telegraphed like the primary's.
     if (extraBalls > 0) {
-      const soonest = Array.isArray(g.balls) && g.balls.length
-        && Number.isFinite(g.balls[0].ttlS) ? g.balls[0].ttlS : 0;
+      // The soonest SECONDARY — while a new core is held the displaced primary
+      // rejoins balls[]; picking [0] there would print its countdown twice
+      // ('ball Ns' on the primary lane AND '+N balls Ns' here on the same pill).
+      let soonest = 0;
+      if (Array.isArray(g.balls)) {
+        for (const b of g.balls) {
+          if (!b || b.id === g.launchedId) continue;
+          if (Number.isFinite(b.ttlS)) { soonest = b.ttlS; break; }
+        }
+      }
       ballTxt += ` · +${extraBalls} ball${extraBalls > 1 ? 's' : ''}`;
       if (soonest > 0 && soonest < GYRE_SNARE.ballTtlWarnS) {
-        ballTxt += ` ${Math.max(1, Math.min(GYRE_SNARE.ballTtlWarnS - 1, Math.ceil(soonest)))}s`;
+        ballTxt += ` ${Math.max(1, Math.min(GYRE_SNARE.ballTtlWarnS - 1, Math.floor(soonest)))}s`;
       }
     }
     // Fuse speaks during BEAM too — a lashing <8 s from dry shouldn't announce itself
     // only through the after-the-fact dry toast.
     const fuseS = g.fuseS || 0;
     const fuseTxt = fuseS > 0 && fuseS < GYRE_SNARE.fuseWarnVisS
-      ? ` · ${Math.max(1, Math.min(GYRE_SNARE.fuseWarnVisS - 1, Math.ceil(fuseS)))}s` : '';
+      ? ` · fuse ${Math.max(1, Math.min(GYRE_SNARE.fuseWarnVisS - 1, Math.floor(fuseS)))}s` : '';
+    // Labeled 'fuse' like the ball countdown's 'ball' — a HOLD row carrying both
+    // (the previous ball still flying) used to read '· 3s · ball 4s' ambiguously.
     const tow = g.towCount || 0;
     const heavy = g.tooHeavyCount || 0;
+    const deflect = g.deflectCount || 0;
+    // Point-defense names its own payoff: projectiles bent into the maw count on
+    // their own ledger — a volley under tow never reads as retrievable loot, and
+    // a beam whose ONLY job is bending fire still isn't bare SEARCHING.
     const handlingTxt = (tow > 0 ? ` · TOWING ×${tow}` : '')
+      + (deflect > 0 ? ` · DEFLECT ×${deflect}` : '')
       + (heavy > 0 ? ` · TOO HEAVY ×${heavy}` : '');
+    // The watch ledger caps at ballWatchMax — live marks past it fly silent to
+    // TTL. Name the pile's tail instead of letting it die invisible.
+    const over = Math.max(0, g.ballOverflow || 0);
+    const overTxt = over > 0 ? ` · +${over}` : '';
     if (!g.phase || g.phase === 'off') {
       // A thrown clump still on the map deserves a quiet "it's yours" dot for its short flight.
       if (g && g.launchedId != null) {
         // The launch beat lands first: BOWL survives ~0.8 s past the burst ticks before
         // the pill flips to BALL AWAY — the verb's biggest beat stays readable.
         if (now < this._bowlUntil) {
-          return { text: `GYRE — BOWL ${this._bowlMass}t`, cls: 'gyre-launched' };
+          // ballTxt rides the BOWL-hold window too — the countdown belongs on EVERY
+          // phase while a ball flies; a phase flip inside the 0.8s window shouldn't
+          // swallow the freshly-thrown ball's own ·Ns.
+          // The payoff beat keeps the destructive-yield telegraph too — HOLD and
+          // BALL AWAY both carry DMG×; BOWL shouldn't drop the arc's climax.
+          // DMG× reads ballMass — the mass the stamped impact scale was frozen on
+          // at launch. An adopted-ball edge can leave _bowlMass (clumpMass ledger)
+          // divergent from the payload; the yield tier must track the ball.
+          const bowlDmg = dmgText(g.ballMass != null ? g.ballMass : (this._bowlMass || 0));
+          // The mass text names the same payload the DMG× does — _bowlMass is the
+          // clumpMass ledger and can diverge from the frozen ball on an adopter edge.
+          const bowlT = Math.round(g.ballMass != null ? g.ballMass : (this._bowlMass || 0));
+          return { text: `GYRE — BOWL ×${this._bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-launched', fuse: fuseS, row: 'bowl' };
         }
         const mass = Math.round(g.ballMass || 0);
         // A sweep-adopted ball has no member ledger (ballMembers never serialized) —
@@ -139,26 +230,57 @@ export const gyreHud = {
         // primary's ·Ns countdown plus any secondaries still flying (· +N balls Ns).
         // DMG× names the destructive yield while it flies — the "growth → weapon"
         // arc stays legible instead of revealing itself only on impact.
-        const dmg = Math.min(GYRE_SNARE.launchImpactScaleMax,
-          GYRE_SNARE.launchImpactScaleBase + (g.ballMass || 0) / GYRE_SNARE.launchImpactScalePerMass);
-        const label = mass > 0 ? (count != null ? `GYRE — BALL AWAY ×${count} · ${mass}t · DMG×${dmg.toFixed(1)}` : `GYRE — BALL AWAY · ${mass}t · DMG×${dmg.toFixed(1)}`) : 'GYRE — BALL AWAY';
-        return { text: label + ballTxt, cls: 'gyre-ball' };
+        const dmg = dmgText(g.ballMass || 0);
+        const label = mass > 0 ? (count != null ? `GYRE — BALL AWAY ×${count} · ${mass}t · DMG×${dmg}` : `GYRE — BALL AWAY · ${mass}t · DMG×${dmg}`) : 'GYRE — BALL AWAY';
+        return { text: label + ballTxt + overTxt, cls: 'gyre-ball', fuse: fuseS, row: 'ball' };
       }
       // No primary, but secondaries are still streaking (one retires before the rest) —
       // the pill shouldn't go dark while balls fly. balls[] is ttlS-sorted: [0] dies first.
       const bs = g && g.balls;
       if (bs && bs.length) {
         const warnS = GYRE_SNARE.ballTtlWarnS;
-        const n = Math.ceil((bs[0].ttlS || 0));
-        const sTxt = bs[0].ttlS > 0 && bs[0].ttlS < warnS ? ` · ${Math.min(warnS - 1, Math.max(1, n))}s` : '';
-        return { text: `GYRE — ${bs.length > 1 ? `${bs.length} BALLS` : 'BALL'} AWAY${sTxt}`, cls: 'gyre-ball' };
+        const sTxt = bs[0].ttlS > 0 && bs[0].ttlS < warnS
+          // floors like the primary countdown — never overstates the flight left
+          ? ` · ${Math.min(warnS - 1, Math.max(1, Math.floor(bs[0].ttlS || 0)))}s`
+          : '';
+        // A flying pile is still a live kill instrument — total payload mass plus
+        // the STRONGEST striker's yield keeps the "growth → weapon" arc legible
+        // for secondaries too (primary and BOWL rows already carry DMG×).
+        let sMass = 0, sMassMax = 0;
+        for (const b of bs) {
+          const bm = Number.isFinite(b.mass) ? b.mass : 0;
+          sMass += bm; if (bm > sMassMax) sMassMax = bm;
+        }
+        const sDmg = dmgText(sMassMax);
+        const sMassTxt = sMass > 0 ? ` · ${Math.round(sMass)}t · DMG×${sDmg}` : '';
+        return { text: `GYRE — ${bs.length > 1 ? `${bs.length} BALLS` : 'BALL'} AWAY${sMassTxt}${sTxt}${overTxt}`, cls: 'gyre-ball', fuse: fuseS, row: 'ball' };
       }
       return { text: '', cls: '' };
     }
     if (g.phase === 'launching') {
-      this._bowlUntil = now + 0.8;
-      this._bowlMass = Math.round(g.clumpMass || 0);
-      return { text: `GYRE — BOWL ${this._bowlMass}t${ballTxt}`, cls: 'gyre-launched' };
+      // The whole ~11-tick coil+burst rides the BOWL read — arming edge-true
+      // covered only tick 1 and falling through to the beaming tail flashed
+      // SEARCHING ×~10 ticks mid-throw (basin/tow zeroed by _launch) before
+      // BALL AWAY took over. The flight's own ~0.8 s window still applies.
+      if (launchEdge) {
+        this._bowlUntil = now + 0.8;
+        this._bowlMass = Math.round(g.clumpMass || 0);
+        // HOLD showed ×N a tick earlier and BALL AWAY will show it again — the
+        // biggest beat keeps the member count too (same +1 core convention).
+        this._bowlN = (g.absorbs || 0) + 1;
+      }
+      // Fallbacks cover a HUD attaching mid-coil (reload/host swap) — the
+      // frozen ledger still publishes during launching.
+      const bowlMass = this._bowlMass != null ? this._bowlMass : Math.round(g.clumpMass || 0);
+      const bowlN = this._bowlN != null ? this._bowlN : (g.absorbs || 0) + 1;
+      // Same DMG× the HOLD/AWAY reads carry — the throw's yield telegraph
+      // doesn't drop for the payoff's own beat. ballMass is the payload the
+      // stamped scale froze on; bowlMass (clumpMass ledger) can diverge on an
+      // adopted-ball edge, so the tier reads the ball.
+      const bowlDmg = dmgText(g.ballMass != null ? g.ballMass : bowlMass);
+      // Mass text reads the frozen payload too — one row, one ball.
+      const bowlT = Math.round(g.ballMass != null ? g.ballMass : bowlMass);
+      return { text: `GYRE — BOWL ×${bowlN} · ${bowlT}t · DMG×${bowlDmg}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-launched', fuse: fuseS, row: 'bowl' };
     }
     if (g.phase === 'holding') {
       const count = (g.absorbs || 0) + 1;
@@ -173,20 +295,26 @@ export const gyreHud = {
       // The katamari's destructive yield is telegraphed while it grows — DMG× tracks
       // the same launch-impact formula the throw will stamp, so "bigger = hits harder"
       // is a visible arc, not a surprise on impact.
-      const dmg = ` · DMG×${Math.min(GYRE_SNARE.launchImpactScaleMax,
-        GYRE_SNARE.launchImpactScaleBase + (g.clumpMass || 0) / GYRE_SNARE.launchImpactScalePerMass).toFixed(1)}`;
+      const dmg = ` · DMG×${dmgText(g.clumpMass || 0)}`;
       // Mass-scaled cap drain makes the fuse legible BEFORE the dry auto-bowl: under ~8 s
       // of burn the readout appends the countdown and the top fuse bar drains with it.
       const fuse = fuseS;
+      // Growth-to-cap rides a second fill while held — the ×t text was the only
+      // channel a swelling-but-not-full clump named its size through.
+      const mfrac = (g.maxClumpMass || 0) > 0 ? Math.min(1, (g.clumpMass || 0) / g.maxClumpMass) : 0;
       if (this._strainOn) {
-        return { text: `GYRE — STRAIN ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}`, cls: 'gyre-strain', strain: s, fuse };
+        return { text: `GYRE — STRAIN ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-strain', strain: s, fuse, mass: mfrac, row: 'strain' };
       }
       // Saturation reads: the cap is a hard ceiling, so "why isn't it eating?" gets a flag.
-      const full = g.maxClumpMass != null && (g.clumpMass || 0) >= g.maxClumpMass;
+      // The system's `full` is the member-ledger truth; the mass read stays as the
+      // fallback for publications that predate the field.
+      const full = g.full !== undefined
+        ? g.full
+        : (g.maxClumpMass != null && (g.clumpMass || 0) >= g.maxClumpMass);
       if (full) {
-        return { text: `GYRE — ×${count} · ${mass}t${dmg} FULL${tail}${fuseTxt}${ballTxt}`, cls: 'gyre-full', strain: s, fuse };
+        return { text: `GYRE — ×${count} · ${mass}t${dmg} FULL${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-full', strain: s, fuse, mass: mfrac, row: 'full' };
       }
-      return { text: `GYRE — ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}`, cls: 'gyre-holding', strain: s, fuse };
+      return { text: `GYRE — ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-holding', strain: s, fuse, mass: mfrac, row: 'holding' };
     }
     // Net anticipation: material already inside the cone names the catch before it
     // lands — "×N IN NET" instead of a bare SEARCHING sweep. A beam towing only
@@ -194,32 +322,63 @@ export const gyreHud = {
     // the "why won't it snag?" read instead of silence.
     const net = g.basinCount || 0;
     if (net > 0) {
-      return { text: `GYRE — ×${net} IN NET${handlingTxt}${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
+      // A mixed net carries the warm face + the refusal count too — an uneatable
+      // body inside is the actionable read, same as the tow branch's own rule.
+      // handlingTxt already ends in `· TOO HEAVY ×N` — the suffix comes once.
+      return { text: `GYRE — ×${net} IN NET${handlingTxt}${fuseTxt}${ballTxt}${overTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-holding', fuse: fuseS, row: 'net' };
     }
     if (tow > 0) {
-      return { text: `GYRE — TOWING ×${tow}${heavy > 0 ? ` · TOO HEAVY ×${heavy}` : ''}${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
+      // The too-heavy read is the actionable half of the line — carry the warm
+      // face whenever a body it can never eat is inside, not only when tow==0.
+      // Same for the defensive payoff: a beam towing loot while it bends a
+      // volley names both — the deflect ledger isn't silently discarded.
+      return { text: `GYRE — TOWING ×${tow}${heavy > 0 ? ` · TOO HEAVY ×${heavy}` : ''}${deflect > 0 ? ` · DEFLECT ×${deflect}` : ''}${fuseTxt}${ballTxt}${overTxt}`, cls: heavy > 0 ? 'gyre-heavy' : 'gyre-search', fuse: fuseS, row: 'tow' };
     }
     if (heavy > 0) {
-      return { text: `GYRE — TOO HEAVY ×${heavy}${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
+      return { text: `GYRE — TOO HEAVY ×${heavy}${deflect > 0 ? ` · DEFLECT ×${deflect}` : ''}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-heavy', fuse: fuseS, row: 'heavy' };
     }
-    return { text: `GYRE — SEARCHING${fuseTxt}${ballTxt}`, cls: '', fuse: fuseS };
+    if (deflect > 0) {
+      // The defensive-only read: nothing to tow or eat — the cone is purely
+      // bending their fire. Its own word so the pill isn't silent SEARCHING
+      // while the weapon's one defensive payoff does real work — the warm face
+      // like IN NET: the beam is working, not sweeping an empty sky.
+      return { text: `GYRE — DEFLECTING ×${deflect}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-holding', fuse: fuseS, row: 'deflect' };
+    }
+    return { text: `GYRE — SEARCHING${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-search', fuse: fuseS, row: 'search' };
   },
 
-  _apply(dom, text, cls, strain, fuse) {
+  _apply(dom, text, cls, strain, fuse, mass, row) {
     if (!text) { this._hide(dom); return; }
     if (text !== this._lastText) {
       this._lastText = text;
+      // Volatile telemetry stays out of the live region: aria-atomic would
+      // re-announce the whole pill on every mass/fuse digit tick. pillText is
+      // aria-hidden; the sr-only twin rewrites only on a semantic row change.
       dom.pillText.textContent = text;
-      dom.pill.setAttribute('aria-label', text);
+    }
+    // The one announcement the live region makes: a row flip reads the current
+    // line once (state, not per-tick telemetry). Keyed on _resolve's semantic
+    // row — not the cls face: IN NET→HOLDING (the snag, the verb's central
+    // beat) shares the warm 'holding' face now and must still announce.
+    if (row !== this._lastRow) {
+      this._lastRow = row;
+      dom.pillSr.textContent = text;
     }
     // The continuous strain01 rides a thin fill bar under the pill — the eye gets
     // the slip building long before the binary STRAIN flag flips at 0.40.
     const s = Math.max(0, Math.min(1, Number.isFinite(strain) ? strain : 0));
     dom.fill.style.width = `${Math.round(s * 100)}%`;
     dom.fill.style.display = s > 0.02 ? 'block' : 'none';
+    // Held mass-to-cap rides the lane above the strain bar (hold rows only —
+    // _resolve returns no mass elsewhere, and a stale bar must not survive a
+    // phase flip into beaming/launching).
+    const m = Number.isFinite(mass) ? Math.max(0, Math.min(1, mass)) : 0;
+    dom.massFill.style.width = `${Math.round(m * 100)}%`;
+    dom.massFill.style.display = m > 0.02 ? 'block' : 'none';
     // Fuse bar (top edge): cap ÷ current drain, clamped to an 8 s window — a shrinking
-    // countdown. Only the hold family carries it; a beaming-empty fuse is long and the
-    // constant bar would be noise.
+    // countdown. Every row carries it once fuse < fuseWarnVisS (all _resolve branches
+    // return fuseS); a healthy burn pins the draw gate below instead, so the bar
+    // appearing at all already means "low".
     const f = Number.isFinite(fuse) ? Math.max(0, Math.min(1, fuse / GYRE_SNARE.fuseWarnVisS)) : 0;
     dom.fuse.style.width = `${Math.round(f * 100)}%`;
     // Only the last fuseWarnVisS s draw: a healthy burn pinning the bar at 100% is
@@ -232,6 +391,8 @@ export const gyreHud = {
       dom.pill.classList.toggle('gyre-launched', cls === 'gyre-launched');
       dom.pill.classList.toggle('gyre-ball', cls === 'gyre-ball');
       dom.pill.classList.toggle('gyre-full', cls === 'gyre-full');
+      dom.pill.classList.toggle('gyre-search', cls === 'gyre-search');
+      dom.pill.classList.toggle('gyre-heavy', cls === 'gyre-heavy');
     }
     if (!this._visible) {
       dom.pill.style.display = 'flex';
@@ -247,6 +408,10 @@ export const gyreHud = {
   },
 
   _hide(dom) {
+    // The strain latch is per-hold hysteresis — a hidden pill (or a new hold
+    // starting inside the 0.25-0.4 dead band) must not inherit the previous
+    // excursion's STRAIN face for its first few ticks.
+    this._strainOn = false;
     releaseBottomLaneClaim('gyre');
     if (dom && this._visible) {
       dom.pill.style.display = 'none';
@@ -254,6 +419,8 @@ export const gyreHud = {
     }
     this._visible = false;
     this._lastText = '';
+    this._lastClass = ''; // re-show re-announces the row (and re-toggles faces)
+    this._lastRow = '';
   },
 
   _ensureDom() {
@@ -274,7 +441,15 @@ export const gyreHud = {
     pill.setAttribute('aria-live', 'polite');
     pill.setAttribute('aria-atomic', 'true');
     const pillText = document.createElement('span');
+    pillText.setAttribute('aria-hidden', 'true');
     pill.appendChild(pillText);
+    const pillSr = document.createElement('span');
+    pillSr.className = 'sf-gyre-sr';
+    pill.appendChild(pillSr);
+    const massFill = document.createElement('span');
+    massFill.className = 'sf-gyre-mass';
+    massFill.style.display = 'none';
+    pill.appendChild(massFill);
     const fill = document.createElement('span');
     fill.className = 'sf-gyre-fill';
     fill.style.display = 'none';
@@ -285,9 +460,10 @@ export const gyreHud = {
     pill.appendChild(fuse);
     root.appendChild(pill);
     host.appendChild(root);
-    this._dom = { root, pill, pillText, fill, fuse };
+    this._dom = { root, pill, pillText, pillSr, massFill, fill, fuse };
     this._lastText = '';
     this._lastClass = '';
+    this._lastRow = '';
     this._visible = false;
     this._laneSeat = '';
     return this._dom;

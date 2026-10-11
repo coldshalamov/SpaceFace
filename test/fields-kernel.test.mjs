@@ -146,7 +146,7 @@ test('summed acceleration is clamped to FIELD_MAX_ACCEL', () => {
 // ── filters ──────────────────────────────────────────────────────────────────────────────────
 test('filters gate coupling by type / team / id', () => {
   const teamField = normalizeField({ ...wellAt(0, 0), team: 1, filters: { excludeSourceTeam: true } });
-  assert.equal(fieldAffectsBody(teamField, { type: 'ship', team: 1 }), false, 'friendly craft spared');
+  assert.equal(fieldAffectsBody(teamField, { type: 'ship', team: 1 }), true, 'physical delivery is faction-blind: friendly craft couple');
   assert.equal(fieldAffectsBody(teamField, { type: 'ship', team: 2 }), true, 'hostile craft affected');
   const typeField = normalizeField({ ...wellAt(0, 0), filters: { types: ['projectile'] } });
   assert.equal(fieldAffectsBody(typeField, { type: 'ship' }), false);

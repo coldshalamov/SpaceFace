@@ -11,6 +11,7 @@ import {
   GAMEPAD_DEFAULT_BINDINGS,
   GAMEPAD_VERB_ALIASES,
   gamepadFaceButtonLabel,
+  gamepadButtonLabels,
   normalizeGamepadGlyphSet,
 } from '../systems/gamepad.js';
 
@@ -92,6 +93,7 @@ const PAD_ACTION_FOR = Object.freeze({
   localmap: 'map',
   starmap: 'map',
   codex: 'codex',
+  steeringView: 'steeringView',
 });
 
 // The touch overlay's own button captions for the UI actions it covers.
@@ -100,6 +102,7 @@ const TOUCH_LABEL_FOR = Object.freeze({
   localmap: 'Map',
   starmap: 'Star',
   missionLog: 'Log',
+  steeringView: 'View',
 });
 
 let _promptDevice = 'kbm';
@@ -145,7 +148,9 @@ export function promptLabel(action, device) {
   const b = BINDINGS[action];
   if (dev === 'gamepad') {
     const padAction = PAD_ACTION_FOR[action];
-    const glyph = padAction ? gamepadGlyphForAction(padAction) : '';
+    const glyph = padAction === 'steeringView'
+      ? gamepadButtonLabels(padAction, _padMap || GAMEPAD_DEFAULT_BINDINGS, { glyphSet: _padGlyphSet })[0] || ''
+      : padAction ? gamepadGlyphForAction(padAction) : '';
     if (glyph) return `[ ${glyph} ]`;
   } else if (dev === 'touch') {
     const label = TOUCH_LABEL_FOR[action];

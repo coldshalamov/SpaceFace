@@ -122,6 +122,31 @@ export function presentationOwnerIsAdmitted(admission) {
     || admission === PRESENTATION_OWNER_ADMISSION.ready;
 }
 
+/**
+ * Whether an entity is a mission target whose lock the renderer must keep serviceable even when
+ * its authored hull never publishes: a terminal 'unavailable' on a required-whole-ship mission
+ * hostile may still mount a drawn body (its resident stand-in or the procedural fallback) so the
+ * warrant can be closed — authored-or-nothing never wins over a completable mission.
+ * Identity arrives two ways: stamped on the record (missionTag / storyTarget) or by membership in
+ * a live mission's target list. Guard every access — a save restore can leave either side
+ * partially populated, and the renderer polls this on a real frame path.
+ */
+export function entityIsMissionCritical(entity, state) {
+  const data = entity && entity.data;
+  if (data) {
+    if (data.missionTag != null) return true;
+    if (data.storyTarget) return true;
+  }
+  if (!entity || entity.id == null) return false;
+  const active = state && state.missions && state.missions.active;
+  if (!Array.isArray(active)) return false;
+  for (const mission of active) {
+    const ids = mission && mission.targetEntityIds;
+    if (Array.isArray(ids) && ids.includes(entity.id)) return true;
+  }
+  return false;
+}
+
 export function presentationAllowsPlayerFacingAction(entity, state) {
   if (isPhysicalMachinery(entity)) return machineryHasEffectivePresentation(entity, state);
   const indirect = entity && entity.data && entity.data.presentationOwnerWorldRecordId;
@@ -138,9 +163,11 @@ export function presentationAllowsPlayerFacingAction(entity, state) {
  * Targeting must not sit on empty air. A required hull whose authored identity is still pending
  * stays off the lock until that same complete body publishes. Headless sim and contacts that never
  * entered the authored path remain lockable. A terminal 'unavailable' verdict is not empty air by
- * itself: when the renderer reports the ship's procedural fallback stayed drawn
- * (`presentationFallbackVisible`), that fallback is the ship on the glass and lockable. An
- * authored-only hull publishes nothing on failure, so it keeps the lock refused.
+ * itself: `presentationFallbackVisible` describes what the boundary actually draws at terminal —
+ * the procedural fallback for non-required hulls, the ship's own resident stand-in hull, or the
+ * procedural body the renderer publishes for a mission-critical required hull (see
+ * entityIsMissionCritical). Only a verdict still drawing the abstract resolving marker — or
+ * nothing — keeps the lock refused.
  */
 export function presentationAllowsTargetLock(entity, state) {
   if (!entity || entity.alive === false) return false;
