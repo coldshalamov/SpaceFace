@@ -48,6 +48,30 @@ export const BLOCKADE_PAY_SCALE = 2.0;
 /** BP-12 BLOCKADE_RELIEF: the commodities a besieged station is starving for (relief cargo pool). */
 export const BLOCKADE_RELIEF_CMDTYS = Object.freeze(['cmdty_medical', 'cmdty_food', 'cmdty_fuel_cells']);
 
+// ── C11 — heat × contracts (THE WORLD ANSWERS): the deniable job ─────────────────────────────
+// WANTED at an outlaw-friendly berth → the board offers a double-pay run with an ambush clause.
+// The pay is the lawful quote × DENIABLE_PAY_SCALE (the same shape as the scarcity/blockade
+// scales); the clause is REAL — the encounter director rolls it once at accept (see
+// encounterDirector._onDeniableAccepted) at deniableAmbushChance(level).
+export const DENIABLE_PAY_SCALE = 2.0;
+export const DENIABLE_AMBUSH_CHANCE_MIN = 0.6;  // heat level 1
+export const DENIABLE_AMBUSH_CHANCE_MAX = 1.0;  // top heat level (5) — the drop is always staked out
+export const DENIABLE_HEAT_LEVEL_MAX = 5;
+export const DENIABLE_CAUSE_TAG = 'wanted_deniable';
+export const DENIABLE_AMBUSH_CLAUSE = "No questions, double pay. If someone's waiting at the drop, that's your problem.";
+/** Faction personalities that deal with a wanted pilot (the board only trades in what it can hide). */
+export const OUTLAW_FRIENDLY_PERSONALITIES = Object.freeze(['pirate', 'smuggler', 'pitborn_patchwork']);
+
+/**
+ * deniableAmbushChance(level) -> 0.6 at heat level 1 rising linearly to 1.0 at level 5. PURE.
+ * Level < 1 (not wanted at accept) clamps to the floor — the clause was priced for a wanted pilot.
+ */
+export function deniableAmbushChance(level) {
+  const lv = Math.min(DENIABLE_HEAT_LEVEL_MAX, Math.max(1, Math.floor(Number(level) || 1)));
+  const t = (lv - 1) / (DENIABLE_HEAT_LEVEL_MAX - 1);
+  return DENIABLE_AMBUSH_CHANCE_MIN + (DENIABLE_AMBUSH_CHANCE_MAX - DENIABLE_AMBUSH_CHANCE_MIN) * t;
+}
+
 /**
  * The template bank, in authored priority order (used as the deterministic tie-break).
  * Each entry:
@@ -58,6 +82,22 @@ export const BLOCKADE_RELIEF_CMDTYS = Object.freeze(['cmdty_medical', 'cmdty_foo
  *   cause     — prose template naming the commodity + the cause ({commodity}/{sector}/{station})
  */
 export const ECON_CONTRACT_TEMPLATES = Object.freeze([
+  // ── C11 DENIABLE_JOB — keyed to the PLAYER's heat (ctx), not the field. Zero without ctx, so
+  // selectEconContract(signal) stays byte-compatible for every existing caller. ──
+  Object.freeze({
+    key: 'deniable_job',
+    offerType: 'cargo_delivery',
+    causeAxis: 'heat',
+    appliesTag: DENIABLE_CAUSE_TAG,
+    contextual: true, // strength reads ctx (and tolerates a null field signal)
+    strength(signal, ctx) {
+      if (!ctx || ctx.wanted !== true || ctx.outlawFriendly !== true) return 0;
+      const level = Math.min(DENIABLE_HEAT_LEVEL_MAX, Math.max(1, Math.floor(Number(ctx.heatLevel) || 1)));
+      // Outranks every field template (max ~5.x): a wanted pilot at a fence is offered THIS.
+      return 8 + level * 0.1 + (ctx.blackmarket === true ? 0.5 : 0);
+    },
+    cause: `{station} has a crate that never touched a manifest — {commodity}, off the books, wanted pilots welcome. ${DENIABLE_AMBUSH_CLAUSE}`,
+  }),
   // ── BP-12 BLOCKADE_RELIEF_CONTRACTS — first so it wins the authored-order tie-break when a
   // sector is BOTH infrastructure-disrupted AND deeply scarce (the besieged-station condition).
   // The relief run is a cargo_delivery whose pay scales with the LIVE scarcity and whose card names
@@ -146,11 +186,16 @@ export const ECON_CONTRACT_TEMPLATES = Object.freeze([
  * scores every template against the local signal; the dominant driver wins; ties break by authored
  * order. A calm field selects nothing.
  */
-export function selectEconContract(signal) {
-  if (!signal || !signal.driver || !signal.trend) return null;
+export function selectEconContract(signal, ctx = null) {
+  const fieldOk = !!(signal && signal.driver && signal.trend);
+  // Contextual (player-situation) templates may still fire over a missing field signal.
+  if (!fieldOk && !(ctx && typeof ctx === 'object')) return null;
   let best = null;
   for (const template of ECON_CONTRACT_TEMPLATES) {
-    const strength = template.strength(signal);
+    if (!fieldOk && template.contextual !== true) continue;
+    const strength = template.contextual === true
+      ? template.strength(fieldOk ? signal : null, ctx)
+      : template.strength(signal);
     if (!(strength > 0)) continue;
     if (!best || strength > best.strength) {
       const causeTag = template.appliesTag === 'rising_danger' ? signal.driver.danger : template.appliesTag;

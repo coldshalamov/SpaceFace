@@ -724,6 +724,18 @@ export function sectorDepletionPressure(state, sectorId) {
   };
 }
 
+/**
+ * C12 — "the lanes are hungry": a sector's scarcity term in 0..1, the weighted mean depletion of
+ * its worked fields (the same read demandModel's regional scarcity uses). PURE function of state:
+ * no rng, no wall time, and it never creates the depletion container — a sector nobody has mined
+ * reads exactly 0, which keeps every no-mining run byte-identical.
+ */
+export function sectorScarcityTerm(state, sectorId) {
+  if (!state || !state.fieldDepletion || typeof state.fieldDepletion !== 'object' || !sectorId) return 0;
+  const pressure = sectorDepletionPressure(state, sectorId);
+  return pressure && pressure.fields > 0 ? clamp01(pressure.depletion) : 0;
+}
+
 function clonePlain(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
 }

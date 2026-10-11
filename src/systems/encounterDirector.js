@@ -123,6 +123,9 @@ import {
   updateAmbientPredation,
 } from '../ai/ambientPredation.js';
 import { spawnJettisonedCargoPod } from './lootShards.js';
+import { sectorScarcityTerm } from './fieldDepletion.js';
+import { deniableAmbushChance, DENIABLE_CAUSE_TAG } from '../data/economyContractTemplates.js';
+import { heatLevelFor } from './heat.js'; // READ-ONLY (C11 clause tier)
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
 const SELF_REGISTERED_RUNTIME_BY_ID = new Map(
@@ -166,6 +169,25 @@ const ESCALATION_MIN_PLACE_DIST = 400;
 const BARK_MIN_GAP_S = 4;          // per-encounter bark spacing (danger 'alert' exempt)
 const NOISE_DECAY_PER_S = 0.02;    // mining-noise half-life ~35s
 const PROX_SLACK = 600;            // "on the zone" slack for proximity-gated shapes
+
+// ── THE WORLD ANSWERS — pressure terms (C11 / C12 / T11-half) ────────────────────────────────
+// C12 worked-out belts: combatRate += scarcityTerm(0..1) * 0.35. The rumor fires once per
+// sector the first time the term crosses 0.5 (stats.scarcityRumored[sectorId]).
+const SCARCITY_COMBAT_WEIGHT = 0.35;
+const SCARCITY_RUMOR_THRESHOLD = 0.5;
+const SCARCITY_RUMOR_TEXT = 'Belts are worked out around here \u2014 the lanes are hungry.';
+// T11 the long tow: noise.tow accrues TOW_NOISE_PER_S * min(1, mass / TOW_MASS_FULL) per sim
+// second while a tether holds a body, capped at TOW_NOISE_CAP, decaying at NOISE_DECAY_PER_S
+// like mining noise. combatRate += min(1, noise.tow) * 0.4.
+const TOW_NOISE_PER_S = 0.05;
+const TOW_NOISE_CAP = 3;
+const TOW_MASS_FULL = 200;         // towed mass at which the hulk draws full pirate attention
+const TOW_COMBAT_WEIGHT = 0.4;
+// C11 deniable job: the ambush clause is decided ONCE at accept, then staked out at the drop.
+const DENIABLE_CLAUSE_CAP = 8;          // bounded durable ledger (oldest evicted)
+const DENIABLE_DROP_OFFSET_WU = 650;    // the snare waits on the approach, not on the dock
+const DENIABLE_TRIGGER_WU = 2200;       // player this close to the drop (in sector) arms the snare
+const DENIABLE_ARM_DELAY_S = 6;         // breath between arming and the telegraph
 
 // Proximity-starved combat beats come to the player. Measured failure: every combat shape in the
 // frontier decks is proximity-gated to its authored zone; a player parked far from every zone
@@ -309,6 +331,8 @@ export const encounterDirector = {
       this.bus.on('claim:defenseWarning', (p) => this._publishClaimDefenseRoster(p));
       // Mining noise attracts predators (decaying accumulator; player yields only).
       this.bus.on('mining:yield', (p) => this._onMiningYield(p));
+      // C11: a deniable job's ambush clause is rolled once, here, the moment the job is taken.
+      this.bus.on('mission:accepted', (p) => this._onDeniableAccepted(p));
       this.bus.on('resonance:scanCompleted', (p) => this._onResonanceScan(p));
       this.bus.on('law:witnessChoice', (p) => this._onEscalationToken('witness', p));
       this.bus.on('freight:cargoSpilled', (p) => this._onEscalationToken('spill', p));
@@ -357,6 +381,7 @@ export const encounterDirector = {
     this._accrue(dir, state, step);
     this._tickSessionRhythm(dir, state, now);
     this._tickEscalationSeeds(dir, state, now);
+    this._tickDeniableClauses(dir, state, now);
     // The onboarding rail suppresses ordinary pacing, not the authored opening beats:
     // earlyWindowGuaranteeDay items are themselves the first-minute content the rail teaches.
     if (!isDocked(state) && !raceLeaseActive(state)) this._pump(dir, state, now);
@@ -714,6 +739,8 @@ export const encounterDirector = {
     dir.noise.mining = Math.max(0, dir.noise.mining * (1 - NOISE_DECAY_PER_S * step));
     const p = this.player();
     const sectorId = this._currentSectorId();
+    // T11: the long tow. Decays like mining noise; accrues only while a line holds a body.
+    this._accrueTowNoise(dir, state, step, p);
     if (!p || !sectorId) return;
     const local = globalToSectorLocalForSector(p.pos, sectorId);
     const zone = zoneAt(sectorId, local.x, local.z);
@@ -726,7 +753,10 @@ export const encounterDirector = {
     const combatRate =
       0.25 + 0.22 * zt + (1 - sec) * 0.5 + cargoBand * 0.35 +
       (wanted ? 0.6 : 0) + Math.min(1, dir.noise.mining) * 0.5 +
-      (((state.player && state.player.bounty) | 0) > 0 ? 0.25 : 0) + ecologyDanger * 0.45;
+      (((state.player && state.player.bounty) | 0) > 0 ? 0.25 : 0) + ecologyDanger * 0.45 +
+      // C12 worked-out belts + T11 a heavy tow: both exactly 0 when nothing is depleted/towed.
+      this._scarcityTerm(dir, state, sectorId) * SCARCITY_COMBAT_WEIGHT +
+      Math.min(1, dir.noise.tow || 0) * TOW_COMBAT_WEIGHT;
     const civilRate =
       0.35 + sec * 0.45 + (zone && CIVIL_ZONE_TYPES.has(zone.type) ? 0.35 : 0);
     // Mystery accrues slow and strange — frontier drift plus a real pull where its wrecks lie.
@@ -744,6 +774,175 @@ export const encounterDirector = {
     dir.pressure.civilian = Math.min(POOL_MAX, dir.pressure.civilian + civilRate * step * tensionAccrualScale(state, 'civilian'));
     dir.pressure.mystery = Math.min(POOL_MAX, dir.pressure.mystery + mysteryRate * step * tensionAccrualScale(state, 'mystery'));
     dir.pressure.patrol = Math.min(POOL_MAX, dir.pressure.patrol + patrolRate * step * tensionAccrualScale(state, 'patrol'));
+  },
+
+  // ── T11: the long tow ────────────────────────────────────────────────────────────────────────
+  /** Mass of the non-ship body the player's line currently holds (0 when none). Reads the
+   * tether mirror tetherGameplay publishes (state.player.tether); never writes it. Live ships
+   * are a grapple fight — already priced by the combat deck — so only hulks/rocks/crates count. */
+  _towedMass(state, player) {
+    const t = state && state.player && state.player.tether;
+    if (!t || t.active !== true || t.targetId == null) return 0;
+    const target = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(t.targetId) : null;
+    if (!target || target.alive === false) return 0;
+    if (target.type === 'ship' && target.hull > 0) return 0;
+    if (player && target.id === player.id) return 0;
+    const body = target.physicsBody && Number(target.physicsBody.mass);
+    const mass = Number.isFinite(body) && body > 0 ? body : Number(target.mass);
+    return Number.isFinite(mass) && mass > 0 ? mass : 0;
+  },
+
+  _accrueTowNoise(dir, state, step, player) {
+    const prev = Number.isFinite(dir.noise.tow) ? dir.noise.tow : 0;
+    let next = Math.max(0, prev * (1 - NOISE_DECAY_PER_S * step));
+    const mass = this._towedMass(state, player);
+    if (mass > 0) {
+      next = Math.min(TOW_NOISE_CAP, next + TOW_NOISE_PER_S * Math.min(1, mass / TOW_MASS_FULL) * step);
+    }
+    // Lazy key: written only once a tow has ever happened (see ensureDirectorState).
+    if (next > 0 || prev > 0 || dir.noise.tow !== undefined) dir.noise.tow = next;
+    return next;
+  },
+
+  // ── C12: worked-out belts make the lanes hungry ──────────────────────────────────────────────
+  /** The 0..1 scarcity term for the sector (pure function of state), plus the one-time rumor the
+   * first time it crosses SCARCITY_RUMOR_THRESHOLD in that sector. */
+  _scarcityTerm(dir, state, sectorId) {
+    const term = sectorScarcityTerm(state, sectorId);
+    if (term >= SCARCITY_RUMOR_THRESHOLD && sectorId) this._scarcityRumorOnce(dir, state, sectorId, term);
+    return term;
+  },
+
+  _scarcityRumorOnce(dir, state, sectorId, term) {
+    const seen = dir.stats.scarcityRumored;
+    if (seen && seen[sectorId] === true) return false;
+    if (isTutorialActive(state)) return false;
+    if (!seen || typeof seen !== 'object') dir.stats.scarcityRumored = {};
+    dir.stats.scarcityRumored[sectorId] = true;
+    const voice = this.helpers && this.helpers.voice;
+    const said = voice && typeof voice.say === 'function'
+      ? voice.say({ channel: 'news', text: SCARCITY_RUMOR_TEXT, kind: 'rumor' })
+      : false;
+    if (!said) this.emit('toast', { text: SCARCITY_RUMOR_TEXT, kind: 'info', ttl: 4 });
+    this.emit('encounter:scarcityRumor', {
+      sectorId, scarcity: Math.round(term * 1e4) / 1e4, text: SCARCITY_RUMOR_TEXT, t: this.now(),
+    });
+    return true;
+  },
+
+  // ── C11: the deniable job's ambush clause ────────────────────────────────────────────────────
+  /** Decide the clause ONCE when the deniable job is accepted: the chance rises with the heat
+   * level the pilot is carrying (0.6 at level 1 → 1.0 at level 5), the roll is one state.rng
+   * draw. The verdict is a durable ledger row; the snare itself is staked out at the drop by
+   * _tickDeniableClauses and fired through the director's authored-encounter seam. */
+  _onDeniableAccepted(p) {
+    if (this._saveRestoring) return null;
+    const missionId = p && p.missionId;
+    if (!missionId) return null;
+    const state = this.state;
+    const active = state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
+    const mission = active.find((m) => m && m.id === missionId);
+    if (!mission || !mission.cause || mission.cause.tag !== DENIABLE_CAUSE_TAG) return null;
+    const dir = ensureDirectorState(state);
+    if (!dir.stats.deniableClauses || typeof dir.stats.deniableClauses !== 'object') {
+      dir.stats.deniableClauses = {};
+    }
+    const ledger = dir.stats.deniableClauses;
+    if (ledger[missionId]) return ledger[missionId];
+    const level = Math.max(1, heatLevelFor(state.player && state.player.heat));
+    const chance = deniableAmbushChance(level);
+    const roll = typeof state.rng === 'function'
+      ? state.rng()
+      : (hash32((state.meta && state.meta.seed) || 0, String(missionId), 'deniable-clause') % 1e6) / 1e6;
+    const row = {
+      missionId,
+      stationId: mission.destStationId || null,
+      sectorId: mission.destSectorId || null,
+      level,
+      chance,
+      roll: Math.round(roll * 1e6) / 1e6,
+      hit: roll < chance,
+      decidedAt: this.now(),
+      armedAt: null,
+      fired: false,
+    };
+    ledger[missionId] = row;
+    const ids = Object.keys(ledger);
+    if (ids.length > DENIABLE_CLAUSE_CAP) {
+      ids.sort((a, b) => (ledger[a].decidedAt - ledger[b].decidedAt) || (a < b ? -1 : 1));
+      for (const id of ids.slice(0, ids.length - DENIABLE_CLAUSE_CAP)) delete ledger[id];
+    }
+    this.emit('ambush:clauseDecided', { ...row });
+    return row;
+  },
+
+  /** The drop: the destination berth's global position pushed DENIABLE_DROP_OFFSET_WU out along a
+   * seeded bearing, so the snare waits on the approach. Pure in (seed, missionId, station). */
+  _deniableDropPoint(row) {
+    const sector = SECTORS.find((s) => s.id === row.sectorId);
+    const station = sector && (sector.stations || []).find((s) => s.id === row.stationId);
+    if (!station || !station.pos) return null;
+    const base = sectorLocalToGlobalForSector(station.pos, row.sectorId);
+    const seed = (this.state.meta && this.state.meta.seed) || 0;
+    const angle = (hash32(seed, String(row.missionId), 'deniable-drop') % 360) * (Math.PI / 180);
+    return {
+      x: base.x + Math.cos(angle) * DENIABLE_DROP_OFFSET_WU,
+      z: base.z + Math.sin(angle) * DENIABLE_DROP_OFFSET_WU,
+    };
+  },
+
+  _tickDeniableClauses(dir, state, now) {
+    const ledger = dir.stats && dir.stats.deniableClauses;
+    if (!ledger || typeof ledger !== 'object') return;
+    const ids = Object.keys(ledger).sort();
+    if (!ids.length) return;
+    const active = state.missions && Array.isArray(state.missions.active) ? state.missions.active : null;
+    const sectorId = this._currentSectorId();
+    for (const id of ids) {
+      const row = ledger[id];
+      if (!row) { delete ledger[id]; continue; }
+      // The job is over (delivered, failed, abandoned): the clause retires with it.
+      if (active) {
+        const mission = active.find((m) => m && m.id === id);
+        if (!mission || (mission.status && mission.status !== 'active')) { delete ledger[id]; continue; }
+      }
+      if (!row.hit || row.fired) continue;
+      if (isDocked(state) || !sectorId || row.sectorId !== sectorId) { row.armedAt = null; continue; }
+      const player = this.player();
+      const drop = this._deniableDropPoint(row);
+      if (!player || !player.pos || !drop) continue;
+      if (Math.hypot(player.pos.x - drop.x, player.pos.z - drop.z) > DENIABLE_TRIGGER_WU) {
+        row.armedAt = null;
+        continue;
+      }
+      if (row.armedAt == null) row.armedAt = now + DENIABLE_ARM_DELAY_S;
+      if (now < row.armedAt) continue;
+      const shape = ENCOUNTERS.ambush_snare;
+      if (!shape) { row.fired = true; row.failed = 'missing_shape'; continue; }
+      // Never two fights at once: a live engagement holds the snare until the lane clears.
+      const hold = encounterPacingBlockReason(dir, state, shape, now);
+      if (hold === 'combat_busy' || hold === 'meaningful_cap') continue;
+      const res = this.requestAuthoredEncounter({
+        shapeId: shape.id,
+        encounterId: `deniable:${id}`,
+        sectorId,
+        anchor: drop,
+        zoneType: 'ambush_lane',
+        zoneName: 'the drop',
+        zoneRadius: 420,
+        force: true,
+        data: { deniableClause: true, missionId: id },
+      });
+      if (res && res.ok) {
+        row.fired = true;
+        row.firedAt = now;
+        this.emit('ambush:clauseFired', { missionId: id, sectorId, encounterId: `deniable:${id}`, t: now });
+      } else if (!res || res.reason !== 'spawn_cap') {
+        row.fired = true;
+        row.failed = (res && res.reason) || 'unknown';
+      }
+    }
   },
 
   // ═══ THE PACING GATE (fires at most one due item per 1 Hz beat) ═══════════════════════════════
@@ -4300,6 +4499,19 @@ function ensureDirectorState(state) {
   if (!Number.isFinite(d.pressure.patrol)) d.pressure.patrol = 0;
   if (!d.noise || typeof d.noise !== 'object') d.noise = { mining: 0 };
   if (!Number.isFinite(d.noise.mining)) d.noise.mining = 0;
+  // T11: noise.tow is lazy — pre-tow saves (and every run that never tows) carry no key, so the
+  // serialized director shape (and the sim goldens) stay byte-identical; readers use `|| 0`.
+  // A key that IS present but corrupt is repaired to a quiet tow.
+  if (d.noise.tow !== undefined && !Number.isFinite(d.noise.tow)) d.noise.tow = 0;
+  // C11/C12 durable ledgers are created lazily; a malformed one is dropped, never trusted.
+  if (d.stats && d.stats.deniableClauses != null
+    && (typeof d.stats.deniableClauses !== 'object' || Array.isArray(d.stats.deniableClauses))) {
+    delete d.stats.deniableClauses;
+  }
+  if (d.stats && d.stats.scarcityRumored != null
+    && (typeof d.stats.scarcityRumored !== 'object' || Array.isArray(d.stats.scarcityRumored))) {
+    delete d.stats.scarcityRumored;
+  }
   if (!Array.isArray(d.window)) d.window = [];
   if (!d.cooldowns || typeof d.cooldowns !== 'object') d.cooldowns = {};
   if (!d.named || typeof d.named !== 'object' || Array.isArray(d.named)) d.named = {};

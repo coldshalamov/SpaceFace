@@ -35,7 +35,10 @@ import { MISSION_TYPES, MISSION_TUNING } from '../data/missions.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { sectorSignalFor, effectiveDangerTierFor } from './sectorSim.js';
 import { starvedIndustryNeedFor } from './economy.js';
+import { isPlayerWanted, heatLevelFor, wantedTierFor } from './heat.js'; // READ-ONLY heat reads (C11)
 import {
+  DENIABLE_PAY_SCALE, DENIABLE_CAUSE_TAG, DENIABLE_AMBUSH_CLAUSE, OUTLAW_FRIENDLY_PERSONALITIES,
+  deniableAmbushChance,
   selectEconContract, fillCause, SCARCITY_PAY_SCALE, BLOCKADE_PAY_SCALE, BLOCKADE_RELIEF_CMDTYS,
   FIRST_TRADE_CONTRACT_STATION_ID,
   buildFirstTradeOffer,
@@ -62,6 +65,7 @@ const LEGAL_TRADE_CMDTYS = COMMODITIES.filter((c) => c.legality === 'legal').map
 const SALVAGE_CMDTYS = ['cmdty_scrap_metal', 'cmdty_salvage_electronics']; // mirrors missions.js salvage_retrieval pool
 const FUEL_CMDTY = 'cmdty_fuel_cells';
 
+const DENIABLE_MIN_REP = -1000; // below any reachable standing: a deniable job asks for none
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const round = Math.round;
 
@@ -169,6 +173,7 @@ export const economyContracts = {
     // mission:offerBoarded event (bus.emit returns nothing). We hear it inside the same emit
     // that offered it, so a latch only commits after the board actually took the row.
     this._boardedOfferIds = new Set();
+    this._deniableLatch = new Set(); // transient `${stationId}:${epoch}` — committed only once boarded
     this._onOfferBoarded = (p) => {
       if (p && p.offerId) {
         if (this._boardedOfferIds.size > 256) this._boardedOfferIds.clear();
@@ -186,6 +191,7 @@ export const economyContracts = {
   newGame() {
     this.state.economyContracts = { evaluatedEpochByStation: {}, firstTradeOffered: false };
     if (this._boardedOfferIds) this._boardedOfferIds.clear();
+    if (this._deniableLatch) this._deniableLatch.clear();
   },
 
   _ensureState() {
@@ -311,6 +317,11 @@ export const economyContracts = {
         }
         // else: the board refused it — the latch stays open and the next dock retries.
       }
+
+      // C11: a WANTED pilot at an outlaw-friendly berth is offered the deniable job. It rides its
+      // own per-station-epoch latch (separate from the field evaluation below) so a crime
+      // committed AFTER an earlier calm dock in the same epoch still reaches the fence.
+      if (this._offerDeniable(info, epoch)) return;
 
       // Dedupe per station-epoch: one field evaluation lands on the board per epoch.
       // "Evaluated" is committed ONLY when the epoch's offer actually boarded; a refused
@@ -677,6 +688,148 @@ export const economyContracts = {
       summary:'Standing port-maintenance work; a physical recovery, not a claim about a new local disaster.'};
   },
 
+  /**
+   * C11 — the PLAYER-situation context the template bank may read (`strength(signal, ctx)`).
+   * Pure read of heat (never a writer): wanted flag, 0..5 heat level, named tier, and whether
+   * this berth deals with outlaws (a blackmarket station, or a pirate/smuggler/scrapper flag).
+   */
+  _pressureContext(info) {
+    const heat = this.state && this.state.player ? this.state.player.heat : 0;
+    const faction = FACTION_BY_ID.get(info && info.factionId);
+    const blackmarket = !!(info && info.type === 'blackmarket');
+    return {
+      wanted: isPlayerWanted(this.state),
+      heatLevel: heatLevelFor(heat),
+      wantedTier: wantedTierFor(heat),
+      blackmarket,
+      outlawFriendly: blackmarket
+        || !!(faction && OUTLAW_FRIENDLY_PERSONALITIES.includes(faction.personality)),
+    };
+  },
+
+  /** Emit the deniable job when WANTED at an outlaw-friendly berth. True only when it boarded. */
+  _offerDeniable(info, epoch) {
+    const ctx = this._pressureContext(info);
+    if (!ctx.wanted || !ctx.outlawFriendly || isOnboardingActive(this.state)) return false;
+    const latchKey = `${info.id}:${epoch}`;
+    if (!this._deniableLatch) this._deniableLatch = new Set();
+    if (this._deniableLatch.has(latchKey)) return false;
+    const offer = this.planDeniableOffer(info, epoch, ctx);
+    if (!offer) return false;
+    if (this._offerOnBoard(info.id, offer.id)) { this._deniableLatch.add(latchKey); return false; }
+    if (!this._emitOfferForBoard(info.id, offer)) return false; // refused: retry on a later dock
+    this._deniableLatch.add(latchKey);
+    const line = `Off-the-books job posted at ${info.name}: ${offer.title}`;
+    const said = this.helpers && this.helpers.voice && typeof this.helpers.voice.say === 'function'
+      ? this.helpers.voice.say({ channel: 'news', text: line, kind: 'contract' })
+      : false;
+    if (!said) this.bus.emit('toast', { text: line, kind: 'info', ttl: 4 });
+    return true;
+  },
+
+  /**
+   * planDeniableOffer(info, epoch, ctx?) -> board-shaped cargo_delivery | null. Deterministic in
+   * (seed, stationId, epoch, heat level). Priced as the LAWFUL quote for the same run ×
+   * DENIABLE_PAY_SCALE, with the ambush clause printed on the card AND carried on `cause.deniable`
+   * so the encounter director can make it real at accept. Sealed client cargo (preloadedCargo) —
+   * the pilot never fronts a principal for a crate they are not allowed to ask about.
+   */
+  planDeniableOffer(info, epoch, ctx = null) {
+    const state = this.state;
+    const pressure = ctx || this._pressureContext(info);
+    const local = sectorSignalFor(state, info.sectorId) || null;
+    const selected = selectEconContract(local, pressure);
+    if (!selected || selected.template.key !== 'deniable_job') return null;
+
+    const seed = (state.meta && state.meta.seed) || 1;
+    const rng = mulberry32(hash32(seed, info.id, epoch, 'deniableJob') >>> 0);
+
+    // Destination: a dockable, non-military berth one hop out (a real drop with a real approach);
+    // a sector with no neighbor berth falls back to another berth in the same sector.
+    const pool = [];
+    for (const nId of [...(SECTOR_BY_ID.get(info.sectorId)?.neighbors || [])].sort()) {
+      for (const st of this._dockableStations(SECTOR_BY_ID.get(nId))) {
+        if (st.type !== 'military') pool.push({ stationId: st.id, sectorId: nId });
+      }
+    }
+    if (!pool.length) {
+      for (const st of this._dockableStations(SECTOR_BY_ID.get(info.sectorId))) {
+        if (st.id !== info.id && st.type !== 'military') pool.push({ stationId: st.id, sectorId: info.sectorId });
+      }
+    }
+    if (!pool.length) return null;
+    const dest = pool[Math.floor(rng() * pool.length)];
+    const destInfo = STATION_INFO.get(dest.stationId);
+
+    const eligible = LEGAL_TRADE_CMDTYS.filter((id) => (CMDTY_BY_ID.get(id)?.marketTier || 0) <= info.tier);
+    const cmdtyId = eligible[Math.floor(rng() * eligible.length)] || FUEL_CMDTY;
+    const cargo = state.player?.cargo || {};
+    const qty = affordableContractQuantity({
+      desired: 6 + Math.floor(rng() * 16),
+      freeVolume: (cargo.capVolume || 0) - (cargo.usedVolume || 0),
+      volumePerUnit: CMDTY_BY_ID.get(cmdtyId)?.volPerU || 1,
+    });
+    if (qty < 1) return null;
+    const unitVal = (CMDTY_BY_ID.get(cmdtyId) && CMDTY_BY_ID.get(cmdtyId).basePrice) || 50;
+    const cargoValue = unitVal * qty;
+    const params = { cmdtyId, qty, cargoValue, fValue: 1 + cargoValue / 8000, taskTime: 20, passengers: 0 };
+    const distance = sectorDistanceWu(info.sectorId, dest.sectorId);
+    const def = TYPE_BY_ID.get('cargo_delivery') || {};
+    const [rLo, rHi] = def.riskTierRange || [0, 4];
+    const riskTier = clamp(effectiveDangerTierFor(state, dest.sectorId), rLo, rHi);
+    const lawful = quoteMissionEconomics({
+      type: 'cargo_delivery', tier: Math.max(info.tier || 0, destInfo?.tier || 0, riskTier),
+      riskTier, distance, params, preloadedCargo: true, fieldPressure: 0,
+    });
+    const rewardCr = Math.ceil(lawful.rewardCr * DENIABLE_PAY_SCALE);
+    // The terms the card reads stay honest: reward is the deniable pay, the lawful quote rides along.
+    const economyTerms = {
+      ...lawful,
+      rewardCr,
+      expectedNetCr: lawful.successProbability * (rewardCr + lawful.otherRevenueCr)
+        - lawful.operatingCr - lawful.suppliedInputsCr - lawful.failureLossCr,
+      lawfulRewardCr: lawful.rewardCr,
+      deniablePayScale: DENIABLE_PAY_SCALE,
+    };
+
+    const commodity = cmdtyName(cmdtyId);
+    const causeLine = fillCause(selected.template.cause, {
+      commodity, sector: SECTOR_BY_ID.get(info.sectorId)?.name || info.sectorId, station: info.name,
+    });
+    const destName = destInfo?.name || dest.stationId;
+    return {
+      id: stableFieldOfferId(info.id, epoch, 'deniable'),
+      source: 'economyContract',
+      type: 'cargo_delivery',
+      stationId: info.id,
+      factionId: info.factionId,
+      reward_cr: rewardCr, time_limit_s: lawful.deadlineS, duration_s: lawful.deadlineS,
+      collateral_cr: 0, riskTier, preloadedCargo: true,
+      // "No questions": the fence asks for no standing (the risk-tier rep gate would otherwise
+      // bar the very wanted pilot this row exists for). The berth still gates docking.
+      minRep: DENIABLE_MIN_REP,
+      economyTerms,
+      destStationId: dest.stationId, destSectorId: dest.sectorId, distance,
+      params,
+      title: `Off the books: ${qty}u ${commodity} to ${destName} (double pay)`,
+      brief: DENIABLE_AMBUSH_CLAUSE,
+      summary: causeLine,
+      cause: {
+        tag: DENIABLE_CAUSE_TAG, axis: selected.template.causeAxis, line: causeLine,
+        deniable: {
+          ambushClause: DENIABLE_AMBUSH_CLAUSE,
+          payScale: DENIABLE_PAY_SCALE,
+          lawfulRewardCr: lawful.rewardCr,
+          wantedLevel: pressure.heatLevel,
+          wantedTier: pressure.wantedTier,
+          ambushChance: deniableAmbushChance(pressure.heatLevel),
+        },
+      },
+      expiresAtEpoch: epoch + 1,
+      storyTag: null,
+    };
+  },
+
   _titleFor(typeId, templateKey, params, info, destStationId, commodity) {
     const destName = (STATION_INFO.get(destStationId) || info).name;
     switch (templateKey) {
@@ -706,6 +859,7 @@ export const economyContracts = {
     if (this.bus && this.bus.off && this._onDocked) this.bus.off('dock:docked', this._onDocked);
     if (this.bus && this._onStarted) this.bus.off('game:started', this._onStarted);
     this._onOfferBoarded = null;
+    this._deniableLatch = null;
     this._onStarted = null;
     this._onDocked = null;
   },
