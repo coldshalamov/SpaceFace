@@ -193,6 +193,10 @@ export const GROUP_FIT_RANGE_WU = CAMERA_DIRECTOR_COMBAT_MAX_ZOOM;
 // Group members are fitted inside the visible frame (the metric's own measure), not the 0.55
 // safe rect the single-attacker path guarantees — a furball spread only needs to stay on screen.
 const GROUP_FIT_NDC = 0.95;
+// The Gyre mouth is 200 WU ahead before it holds anything. Fit its actual work area rather
+// than asking the pilot to zoom out by hand; keep the extra reach bounded after a throw.
+export const GYRE_COMPOSITION_ZOOM_MAX = 640;
+export const GYRE_COMPOSITION_RELEASE_S = 0.4;
 const GROUP_MEMBER_STICK_S = COMPOSITION_THREAT_STICK_S;
 const _groupFitScratchByOwner = new WeakMap();
 const _groupFitDefaultOwner = {};
@@ -900,6 +904,79 @@ export function resolveCombatCompositionZoomCap(player, view = {}) {
   );
 }
 
+function createGyreCompositionMemory() {
+  return {
+    playerId: null, remaining: 0, payload: false,
+    mouth: { pos: { x: 0, z: 0 }, radius: 0 },
+    core: { pos: { x: 0, z: 0 }, radius: 0 },
+    mouthX: 0, mouthZ: 0, coreX: 0, coreZ: 0,
+    members: [], focus: { x: 0, z: 0 },
+  };
+}
+
+// Extends the ordinary combat-composition result, using the same projection fit and safe
+// player rectangle. The remembered offsets are presentation-only and never enter the save.
+function composeGyre(state, player, view, result, memory) {
+  const g = state.gyreSnare;
+  const live = g && (g.phase === 'beaming' || g.phase === 'holding')
+    && Number.isFinite(g.maw?.x) && Number.isFinite(g.maw?.z);
+  if (memory.playerId !== player.id) {
+    memory.playerId = player.id;
+    memory.remaining = 0;
+  }
+  if (live) {
+    memory.remaining = GYRE_COMPOSITION_RELEASE_S;
+    memory.mouthX = g.maw.x - player.pos.x;
+    memory.mouthZ = g.maw.z - player.pos.z;
+    memory.mouth.radius = Math.max(0, finiteOr(g.endRadius, 86)) + 10;
+    memory.payload = g.coreId != null && Number.isFinite(g.corePos?.x) && Number.isFinite(g.corePos?.z);
+    if (memory.payload) {
+      memory.coreX = g.corePos.x - player.pos.x;
+      memory.coreZ = g.corePos.z - player.pos.z;
+      memory.core.radius = Math.max(0, finiteOr(g.clumpRadius, 0)) + 10;
+    }
+  } else {
+    memory.remaining = Math.max(0, memory.remaining - Math.max(0, finiteOr(view.dt, 0)));
+    // Watch only the first beat of this throw, never an older bowling ball elsewhere in space.
+    if (memory.remaining > 0 && memory.payload && g?.launchedId != null
+        && Number.isFinite(g.ballPos?.x) && Number.isFinite(g.ballPos?.z)) {
+      const dx = g.ballPos.x - player.pos.x, dz = g.ballPos.z - player.pos.z;
+      if (Math.hypot(dx, dz) <= 440) {
+        memory.coreX = dx;
+        memory.coreZ = dz;
+      }
+    }
+  }
+  result.hasGyreFocus = live || memory.remaining > 0;
+  result.maxZoom = 0;
+  if (!result.hasGyreFocus) return;
+  const px = player.pos.x, pz = player.pos.z;
+  memory.mouth.pos.x = px + memory.mouthX;
+  memory.mouth.pos.z = pz + memory.mouthZ;
+  memory.core.pos.x = px + memory.coreX;
+  memory.core.pos.z = pz + memory.coreZ;
+  memory.members.length = 0;
+  memory.members.push(memory.mouth);
+  if (memory.payload) memory.members.push(memory.core);
+  const fov = Math.max(10, Math.min(140, finiteOr(view.baseFov, finiteOr(view.fov, 50))));
+  const tanHalf = Math.tan(fov * Math.PI / 360);
+  const aspect = Math.max(0.45, finiteOr(view.aspect, 16 / 9));
+  const tilt = Math.max(1, Math.min(89, finiteOr(view.tiltDeg, 60))) * Math.PI / 180;
+  const gx = px + memory.mouthX * 0.5, gz = pz + memory.mouthZ * 0.5;
+  let lo = CAMERA_ZOOM_MIN, hi = GYRE_COMPOSITION_ZOOM_MAX;
+  for (let i = 0; i < 12; i++) {
+    const mid = (lo + hi) * 0.5;
+    if (fitGroupFocus(memory.members, player, gx, gz, mid, tanHalf, aspect, tilt, memory.focus)) hi = mid;
+    else lo = mid;
+  }
+  if (fitGroupFocus(memory.members, player, gx, gz, hi, tanHalf, aspect, tilt, memory.focus)) {
+    result.x = memory.focus.x;
+    result.z = memory.focus.z;
+  }
+  result.minZoom = Math.max(result.minZoom, hi);
+  result.maxZoom = GYRE_COMPOSITION_ZOOM_MAX;
+}
+
 function cameraThreatCandidates(state) {
   const index = state && state.entityIndex;
   if (index && index.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.shipLike)) {
@@ -937,6 +1014,8 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
     result.hasThreatFocus = false;
     delete result.hasActiveAttacker;
     result.hasTetherFocus = false;
+    result.hasGyreFocus = false;
+    result.maxZoom = 0;
     result.zoomBias = zoomBias;
     result.minZoom = 0;
     result.composedThreatId = null;
@@ -1225,6 +1304,14 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
   result.zoomBias = Math.min(CONTEXT_ZOOM_MAX, zoomBias);
   result.minZoom = minZoom;
   result.composedThreatId = composedThreat ? composedThreat.id : null;
+  const gyreOwner = sticky || result;
+  if (state.gyreSnare || gyreOwner.gyreComposition) {
+    const gyreMemory = gyreOwner.gyreComposition || (gyreOwner.gyreComposition = createGyreCompositionMemory());
+    composeGyre(state, player, view, result, gyreMemory);
+  } else {
+    result.hasGyreFocus = false;
+    result.maxZoom = 0;
+  }
   attackersInRange.length = 0;
   groupScratch.members.length = 0;
   groupScratch.byId.clear();
@@ -1840,7 +1927,8 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
           // Keeping an active attacker visible is functional combat framing, not decorative motion.
           // Reduced motion may soften ambient/tether bias but must not move the actual threat out of
           // the zoom geometry that was computed to contain it.
-          const compositionScale = composition.hasActiveAttacker ? 1 : motionScale;
+          const compositionScale = composition.hasActiveAttacker || composition.hasGyreFocus ? 1 : motionScale;
+          _contextZoomCap = Math.max(_contextZoomCap, composition.maxZoom || 0, _contextMinZoom);
           const desiredBiasX = (composition.x - _compositionFocusScratch.x) * compositionScale;
           const desiredBiasZ = (composition.z - _compositionFocusScratch.z) * compositionScale;
           _compositionBiasX = dampSlewed(_compositionBiasX, desiredBiasX, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
@@ -1869,7 +1957,8 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
           // Keeping an active attacker visible is functional combat framing, not decorative motion.
           // Reduced-motion may soften ambient/tether bias but must not move the actual threat out of
           // the zoom geometry that was computed to contain it.
-          const compositionScale = composition.hasActiveAttacker ? 1 : motionScale;
+          const compositionScale = composition.hasActiveAttacker || composition.hasGyreFocus ? 1 : motionScale;
+          _contextZoomCap = Math.max(_contextZoomCap, composition.maxZoom || 0, _contextMinZoom);
           const desiredBiasX = (composition.x - _compositionFocusScratch.x) * compositionScale;
           const desiredBiasZ = (composition.z - _compositionFocusScratch.z) * compositionScale;
           _compositionBiasX = dampSlewed(_compositionBiasX, desiredBiasX, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
