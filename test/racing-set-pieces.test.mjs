@@ -34,7 +34,7 @@ function fixture(level, mode = 'race') {
     racingContractId: contract.id, raceMode: mode, raceDifficulty: 'club', raceOpponents: 3,
     courseId: level.course.courseId, courseSectorId: level.sectorId, gates: level.course.gates,
     gateRadiusWU: level.course.gateRadiusWU, courseLengthWU: level.course.courseLengthWU,
-    closedCircuit: true, laps: 1, nextGate: 0, gridUntilSimS: 0.5,
+    closedCircuit: true, laps: 1, nextGate: 0, gridUntilSimS: 0.5, raceStartSimS: 0.5,
   } };
   state.missions.active = [mission];
   const pack = createRacingOpponents(ctx), pieces = createRacingSetPieces(ctx);

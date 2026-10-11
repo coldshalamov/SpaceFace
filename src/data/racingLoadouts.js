@@ -1,4 +1,6 @@
 import { DEFAULT_STARTER_ID, starterById } from './newGameDefaults.js';
+import { readRacingCareer } from '../systems/racingCareer.js';
+import { racingCosmeticFor } from './racingCosmetics.js';
 
 export const RACING_DRIVES = Object.freeze([
   Object.freeze({ id: 'standard', name: 'Standard ion', moduleId: 'mod_engine_ion_m', description: 'The normal starter drive.' }),
@@ -19,5 +21,7 @@ export function applyRacingLoadout(state, ships, opts) {
   const owned = state.player?.ownedShips?.[state.player.activeShipIndex || 0];
   if (!owned || owned.defId !== fit.starter.shipId) return false;
   owned.fittings = ships.fittingsFromDefaults(owned.defId, fit.modules);
+  const cosmetic = racingCosmeticFor(opts.racingLivery, readRacingCareer());
+  if (cosmetic.appearance) ships.setShipAppearance?.({ appearance: cosmetic.appearance });
   return true;
 }

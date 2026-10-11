@@ -12,7 +12,8 @@ import { DEFAULT_STARTER_ID, NEW_GAME_STARTERS } from '../../data/newGameDefault
 import { RACING_DRIVES } from '../../data/racingLoadouts.js';
 import { isRacingCorridorSession } from '../../world/racingCorridor.js';
 import { RACING_MODES, RACING_DIFFICULTIES, CUP_HEATS, currentRacingCup, restoreRacingCup,
-  abandonRacingCup, stageRacingCupHeat, releaseRacingCupHeat, readRacingCareer } from '../../systems/racingCareer.js';
+  abandonRacingCup, stageRacingCupHeat, releaseRacingCupHeat, readRacingCareer, selectRacingLivery } from '../../systems/racingCareer.js';
+import { RACING_COSMETICS, racingCosmeticFor, racingCosmeticUnlocked } from '../../data/racingCosmetics.js';
 import { listRacingGhosts, exportRacingGhostByKey, clearRacingGhostByKey } from '../../systems/racingGhosts.js';
 import { renderRacingRecognition } from '../racingRecognition.js';
 import { racingSetPieceDefinitions } from '../../data/racingSetPieces.js';
@@ -42,7 +43,8 @@ async function runContract(ctx, contractId, level, fit) {
   const cupFields=fit.raceMode==='cup'?stageRacingCupHeat(contractId,fit):{};
   if(!cupFields){ctx.bus.emit('toast',{text:'Continue the current cup heat or end the cup first.',kind:'info',ttl:3});return false;}
   if(!stageRacingLaunch(contractId,{...fit,...cupFields})){releaseRacingCupHeat(cupFields);return false;}
-  ctx.bus.emit('game:new',{seed:racingSeedFor(contractId),racingSession:true,starter:fit.starter,racingDrive:fit.drive});
+  ctx.bus.emit('game:new',{seed:racingSeedFor(contractId),racingSession:true,starter:fit.starter,racingDrive:fit.drive,
+    racingLivery:readRacingCareer(storageOf()).liveryId||'factory'});
   return true;
 }
 
@@ -136,7 +138,7 @@ export const raceBoardScreen={
       const contracts=[practiceContractForLevel(level.id),...(fit.raceMode==='cup'?[]:stories.filter(row=>row.levelId===level.id))].filter(Boolean);
       for(const row of contracts){
         const offer=racingOfferFor(row.id),recordPrefix=raceRecordKey(offer.params);
-        const fitTimes=Object.entries(records).filter(([key])=>key.startsWith(`${recordPrefix}:fit4-`)
+        const fitTimes=Object.entries(records).filter(([key])=>key.startsWith(`${recordPrefix}:fit5-`)
           &&(fit.raceMode==='time-trial'?!key.includes(':pack-'):key.endsWith(`:pack-${fit.raceDifficulty}`))).map(([,time])=>time);
         const best=fitTimes.length?Math.min(...fitTimes):null;
         const block=el('div','race-board-contract');
@@ -168,8 +170,34 @@ export const raceBoardScreen={
       grid.appendChild(card);
     }
     rootEl.appendChild(grid);
+    const career=readRacingCareer(storageOf()),paint=el('section','race-board-result dp-glass');
+    paint.setAttribute('aria-label','Earned circuit paint');
+    paint.append(el('h2','k-t-sub','Wear your finish'),el('p','k-sentence','Finish a cup to earn paint. Bronze 3 · Silver 9 · Gold 15 points, at any opponent level. Paint changes no handling stats.'));
+    const paintLabel=el('label','k-sentence','Circuit paint '),paintSelect=el('select','k-word');
+    paintSelect.setAttribute('aria-label','Circuit paint');
+    for(const cosmetic of RACING_COSMETICS){
+      const unlocked=racingCosmeticUnlocked(cosmetic,career),option=el('option','',cosmetic.name+(unlocked?'':` · ${cosmetic.points} points to unlock`));
+      option.value=cosmetic.id;option.disabled=!unlocked;paintSelect.appendChild(option);
+    }
+    paintSelect.value=career.liveryId||'factory';
+    const paintNote=el('p','k-sentence','Your selection is fitted before the next temporary circuit launches.');
+    paintSelect.addEventListener('change',()=>{
+      if(selectRacingLivery(paintSelect.value,storageOf())){
+        paintNote.textContent=`${racingCosmeticFor(paintSelect.value,readRacingCareer(storageOf())).name} selected for your next circuit.`;
+      }else{paintSelect.value=readRacingCareer(storageOf()).liveryId||'factory';paintNote.textContent='This browser could not store your paint selection.';}
+    });
+    paintLabel.appendChild(paintSelect);paint.append(paintLabel,paintNote);
+    if(inFlight(ctx)&&!isRacingCorridorSession(ctx.state)){
+      const apply=el('button','k-word','Apply to adventure ship');apply.type='button';
+      apply.addEventListener('click',()=>{
+        const cosmetic=racingCosmeticFor(paintSelect.value,readRacingCareer(storageOf()));
+        ctx.bus.emit('ui:setShipAppearance',{appearance:cosmetic.appearance});
+        paintNote.textContent=`${cosmetic.name} applied to your current ship. Save your adventure to keep it.`;
+      });paint.appendChild(apply);
+    }
+    rootEl.appendChild(paint);
     rootEl.appendChild(renderRacingRecognition(storageOf()));
-    rootEl.appendChild(el('p','k-sentence','Fly through gates in order. Recovery keeps the clock running and excludes the attempt from clean best times. Records separate fitted ships, contract, lap count and course revision. Changing your fit during a run excludes it from clean records.'));
+    rootEl.appendChild(el('p','k-sentence','Fly through gates in order. In pack races, hold a matching line behind a rival to build draft; braking breaks it. Recovery keeps the clock running and excludes the attempt from clean best times. Records separate fitted ships, contract, lap count and course revision. Changing your fit during a run excludes it from clean records.'));
   },
   // Screens are cached after mount; refresh on every reopen so records and results never stale.
   refresh(ctx){if(this._root)this.mount(this._root,ctx);},

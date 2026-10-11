@@ -5,6 +5,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { makeEntity } from '../src/core/entity.js';
 import { mulberry32 } from '../src/core/rng.js';
 import { onboarding } from '../src/systems/onboarding.js';
+import { configureRacingCorridorSession } from '../src/world/racingCorridor.js';
 
 function stubElement() {
   return {
@@ -203,6 +204,43 @@ test('carve-outs: flight mode, scenario payload, hints off, and active runs skip
   idleRun.state.run = { kind: 'survival', phase: 'inactive' };
   await scenePrepared(idleRun);
   assert.equal(rescueCast(idleRun).length, 6, 'an inactive run envelope is an ordinary adventure boot');
+});
+
+test('temporary circuits never stage onboarding actors, objectives or first-use speech; Adventure still can', async () => {
+  const h = boot('loading');
+  h.state.world.sectors = { sector_helios_prime: { id: 'sector_helios_prime' } };
+  configureRacingCorridorSession(h.state, true);
+  let firstUses = 0;
+  h.bus.on('hud:firstUse', () => { firstUses++; });
+  await scenePrepared(h);
+  assert.equal(h.spawned.length, 0, 'circuit admission does not warm or create the tutorial cast');
+  assert.equal(h.rngStats.draws, 0);
+  h.state.mode = 'flight';
+  h.bus.emit('game:started', {});
+  h.bus.emit('combat:damage', { isPlayer: true, brokeShield: true, attackerId: 99 });
+  h.bus.emit('dock:range', { inRange: true });
+  h.sys._sayTutorial('An opening line must not interrupt the grid.');
+  h.sys.update(1, h.state);
+  assert.equal(h.state.onboarding.active, false);
+  assert.equal(h.spawned.length, 0);
+  assert.equal(h.state.nav.waypoint?.onboarding, undefined);
+  assert.deepEqual(h.state.player.hints, {}, 'circuit play does not spend Adventure hint receipts');
+  assert.equal(firstUses, 0);
+  assert.equal(h.seen.tutorialSay, 0);
+  assert.equal(h.seen.toast, 0);
+  assert.equal(h.helpers.voice.said, 0);
+  assert.equal(h.seen.rescueStarted, 0);
+  assert.equal(h.rngStats.draws, 0);
+  assert.equal(h.state.settings.gameplay.tutorialHints, true, 'global tutorial preference stays enabled');
+
+  configureRacingCorridorSession(h.state, false);
+  h.state.mode = 'loading';
+  await scenePrepared(h);
+  assert.equal(rescueCast(h).length, 6, 'a subsequent ordinary Adventure still prepares its cast');
+  h.state.mode = 'flight';
+  h.bus.emit('game:started', {});
+  assert.equal(h.state.onboarding.active, true);
+  assert.equal(h.seen.rescueStarted, 1);
 });
 
 test('a cancelled prepare never removes a reissued foreign same-id entity', async () => {

@@ -5,6 +5,7 @@ import { advanceCircuit, circuitProgress } from '../systems/racingGeometry.js';
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { RACING_PERSONALITIES, createRacingDriver, racingDriverIntent } from '../ai/racingDriver.js';
+import { stepRacingDraft } from './racingDraft.js';
 
 const compareId = (a, b) => String(a).localeCompare(String(b), 'en');
 export function racingOpponentGrid(params, index) {
@@ -66,7 +67,8 @@ export function createRacingOpponents({ state, bus, helpers }) {
     const p = mission.params, gates = raceGateGlobals(p);
     if (gates.length < 2 || !helpers.spawnEntity) return false;
     stop('race_replaced');
-    heat = { missionId: mission.id, sectorId: p.courseSectorId, gates, rivals: [], lastTime: Number(state.simTime) || 0 };
+    heat = { missionId: mission.id, sectorId: p.courseSectorId, gates, rivals: [], draftEntrants: [],
+      nextStandingS: -Infinity, lastTime: Number(state.simTime) || 0 };
     const count = Math.max(1, Math.min(3, Math.round(Number(p.raceOpponents) || 2)));
     const rosterOffset = p.courseId === 'circuit_tethys_tally' ? 1 : p.courseId === 'circuit_veil_wash' ? 2 : 0;
     for (let i = 0; i < count; i++) {
@@ -96,24 +98,41 @@ export function createRacingOpponents({ state, bus, helpers }) {
     heat.lastTime = now;
     const startS = Number.isFinite(p.raceStartSimS) ? p.raceStartSimS : p.gridUntilSimS;
     const held = !Number.isFinite(startS) || now < startS;
+    let terminalChanged = false;
     for (const row of heat.rivals) {
       const entity = entityFor(row);
-      if (!entity || entity.alive === false) { if (row.status === 'racing') row.status = 'dnf'; continue; }
+      if (!entity || entity.alive === false) { if (row.status === 'racing') { row.status = 'dnf'; terminalChanged = true; } continue; }
       if (row.status === 'racing' && !held) {
         row.params.raceStartSimS = startS;
         const events = advanceCircuit(row.params, { prev: row.previous, pos: entity.pos, vel: entity.vel,
           gates: heat.gates, previousTime: row.previousTime, now });
         const finish = events.find(event => event.finished);
-        if (finish) { row.status = 'finished'; row.elapsedS = finish.elapsedS;
+        if (finish) { row.status = 'finished'; row.elapsedS = finish.elapsedS; terminalChanged = true;
           bus?.emit?.('race:rivalFinished', { missionId: mission.id, rivalId: row.id, name: row.name, elapsedS: row.elapsedS }); }
-        else if (now - startS > Math.max(240, (Number(p.courseLengthWU) || 5000) * Math.max(1, p.laps || 1) / 24)) row.status = 'dnf';
+        else if (now - startS > Math.max(240, (Number(p.courseLengthWU) || 5000) * Math.max(1, p.laps || 1) / 24)) {
+          row.status = 'dnf'; terminalChanged = true;
+        }
       }
-      row.previous = { x: entity.pos.x, z: entity.pos.z }; row.previousTime = now;
+      row.previous.x = entity.pos.x; row.previous.z = entity.pos.z; row.previousTime = now;
       entity.data.intent = racingDriverIntent(row.driver, { entity, params: row.params, gates: heat.gates,
         nearby: queryNearbyEntities(state, entity.pos, 350, nearby), dt,
         held: held || row.status !== 'racing' });
     }
-    return snapshot(mission);
+    // Reuse the bounded entrant records; both player and opponents obey the same wake rule.
+    const count = heat.rivals.length + 1;
+    for (let i = 0; i < count; i++) {
+      const entry = heat.draftEntrants[i] ||= {};
+      entry.entity = i ? entityFor(heat.rivals[i - 1]) : state.entities.get(state.playerId);
+      entry.status = i ? heat.rivals[i - 1].status : 'racing';
+    }
+    heat.draftEntrants.length = count;
+    stepRacingDraft(state, mission, heat.draftEntrants, dt);
+    // HUD standings need 10 Hz; gates, steering and physics still run at 60 Hz.
+    if (terminalChanged || now >= heat.nextStandingS) {
+      heat.nextStandingS = now + 0.1;
+      return snapshot(mission);
+    }
+    return p.raceStandings || [];
   }
   return {
     update,

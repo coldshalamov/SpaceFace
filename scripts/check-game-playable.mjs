@@ -508,10 +508,14 @@ try {
         const race = st.missions.active.find(m => m.status === 'active' && m.params?.racingContractId);
         return { hull:ship?.defId, sprint:ship?.fittings?.includes('mod_engine_sprint_m'),
           course:race?.params?.courseId, view:st.settings.gameplay.steeringView,
-          saveIsolated:window.SF.registry.get('save')._campaignSaveSuppressed() };
+          saveIsolated:window.SF.registry.get('save')._campaignSaveSuppressed(),
+          onboardingActive:!!st.onboarding?.active, tutorialWaypoint:!!st.nav?.waypoint?.onboarding,
+          tutorialActors:[...st.entities.values()].filter(e => e.alive !== false
+            && (e.data?.onboarding || e.data?.onboardingTraining || e.data?.rescue)).length };
       });
       record('CIRCUIT', circuit.hull === 'ship_wasp' && circuit.sprint
-        && circuit.course === 'circuit_helios_belt' && circuit.view === 'racing' && circuit.saveIsolated,
+        && circuit.course === 'circuit_helios_belt' && circuit.view === 'racing' && circuit.saveIsolated
+        && !circuit.onboardingActive && !circuit.tutorialWaypoint && circuit.tutorialActors === 0,
       JSON.stringify(circuit));
       // The race deliberately suppresses propulsion during its simulation-clock countdown.
       // Wait for the actual release before asking whether flight controls work.

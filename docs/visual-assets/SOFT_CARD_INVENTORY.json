@@ -116,17 +116,5 @@
       "whyListed": "UI chrome, not the rock. Keep off the world-object list.",
       "files": ["src/ui/asteroid/asteroidRenderer3d.js"]
     }
-,
-    {
-      "id": "gyre-snare-maw-motes",
-      "effectClasses": [
-        "gas-smoke-dust"
-      ],
-      "status": "pending-visual-acceptance",
-      "playerSees": "Small bright motes spiralling down the Gyre Snare maw while the held-verb lash pulls loose mass into the basin",
-      "technique": "Point sprites; all positions computed in the vertex shader off uTime (aSeed attribute), zero per-frame CPU buffer writes",
-      "whyListed": "The spiral is streaming dust pulled into the beam mouth, a flow cue, not a stand-in for a designed object. New construction: listed pending the visual acceptance pass the standard requires.",
-      "files": ["src/render/forceLanguage/gyreSnarePresentation.js"]
-    }
   ]
 }

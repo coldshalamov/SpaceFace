@@ -29,7 +29,7 @@ function fixture(level = RACE_LEVELS[0], options = {}) {
     racingContractId: 'test', raceMode: 'race', raceDifficulty: 'club', raceOpponents: 3,
     courseSectorId: level.sectorId, gates: level.course.gates, gateRadiusWU: level.course.gateRadiusWU,
     courseLengthWU: level.course.courseLengthWU, closedCircuit: true, laps: 1, nextGate: 0,
-    gridUntilSimS: 0.5, ...options } };
+    gridUntilSimS: 0.5, raceStartSimS: 0.5, ...options } };
   state.missions.active = [mission];
   const pack = createRacingOpponents(ctx);
   const flight = Object.create(flightV3); flight.init(ctx);

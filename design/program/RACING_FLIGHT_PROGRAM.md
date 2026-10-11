@@ -37,7 +37,7 @@ reads the actual fitted propulsion profile and leaves steering to the player.
   body. Real split deltas replace estimated pace when a compatible replay exists. Course, route,
   laps, hull, fit, physics/tuning and pack difficulty separate comparisons. Recovery, discontinuity
   or refitting excludes a run. Storage is bounded to eight tapes / 1 MiB; show, export and delete
-  controls are on the board. Older fit categories remain stored but do not compete with fit4.
+  controls are on the board. Older fit categories remain stored but do not compete with fit5 (draft tuning v3-3).
 - **A replayable cup:** three ordered heats, fixed hull and difficulty, drive changes between
   heats, 6/3/1 points and local medals. Completed heats survive reload; an interrupted heat restarts
   with a fresh receipt identity. Rival meeting history survives alongside honors. Repeated or stale
@@ -70,7 +70,7 @@ future depth explicitly; this table does not claim all their aspirational varian
 | Workfleet crossing | A scheduled physical Mule crosses Textile's straight after a warning. A marked refuge lets the pilot wait; actors use normal flight and collision. Ambient-world scheduling remains future depth. | `missions/racingSetPieces.js` |
 | Breakout debris wave | Three real Veil fragments receive a single bounded impulse after a warning; gaps and refuge stay usable. Bodies persist until heat cleanup, including when tethered. | `missions/racingSetPieces.js` |
 | Pit-fit decisions | Drive selection between cup heats, with fixed hull/difficulty and separate fitted record categories. RCS pit tuning is not yet offered. | `raceBoard.js`, `racingCareer.js`, `racingSteer.js` |
-| Local cups and recognition | Ordered cup progression, reload continuation, medals and head-to-head history, visible on the circuit board from the menu or adventure. Cosmetic ship liveries and station-dialogue reactions remain future content. | `racingCareer.js`, `racingRecognition.js` |
+| Local cups and recognition | Ordered cup progression, reload continuation, medals and head-to-head history, visible on the circuit board from the menu or adventure. Completed cups unlock Copper Current, Glacier Line and Solar Crown paint through the normal ship appearance owner. Station-dialogue reactions remain future content. | `racingCareer.js`, `racingRecognition.js` |
 
 ### Direct verification and remaining limits
 
@@ -87,12 +87,53 @@ future depth explicitly; this table does not claim all their aspirational varian
   native Massline save/load. The component control walk covers format/hull/drive/difficulty,
   keyboard fencing, recovery/results, ghost export/delete and mobile overflow. These checks are
   distinct from a full human-played campaign or sustained device-performance acceptance.
-- Broad baseline: **13/16 pass**. Ceres topology and the two canonical simulation goldens differ;
-  their semantic cause remains unresolved in demo-ledger **D182**. Same-run deterministic
-  comparisons, save schema and targeted flight checks pass. No golden was rewritten.
-- Remaining RF depth includes coherent craft-to-craft drafting, wider heavy-hull camera/handling
-  coverage, route unlocks, cosmetic rewards, richer adventure handoffs and measured mobile/GPU
-  budgets. No claim of finished RF-01–RF-08 or whole-game certification follows from this delivery.
+- **D182 resolved:** Ceres passes its unchanged topology expectation. Both simulation expectations
+  were deliberately migrated after historical source reproduced the old pins and isolated shipped
+  content/save changes and the intentional native contact/separation fix. Committed source
+  `5214f5f38` reproduces both new hashes independently of concurrent dirty work. Five-run/reload
+  gates pass without loosening any invariant or input tape. The full run passed **15/16**; its
+  remaining VFX inventory mismatch was then repaired after the concurrent Gyre rewrite landed,
+  and the focused VFX check passes (**D183 resolved**).
+  Its 163-second wall time also exceeds the existing 90-second runner budget on this shared host;
+  the budget is unchanged, and this is not a device-performance measurement.
+- Remaining RF depth includes wider heavy-hull camera/handling coverage, route unlocks, richer
+  adventure handoffs, cosmetic preview/station reactions and measured mobile/GPU budgets. No claim
+  of finished RF-01–RF-08 or whole-game certification follows from this delivery.
+
+### Drafting, earned paint and bounded work — continuation
+
+- **Physical drafting:** only live racing entrants can lead a wake. Matched forward velocity,
+  heading, a safe longitudinal gap, tapered lateral envelope and clear physical sightline qualify.
+  The gain builds over 0.65 seconds, cannot stack, and stops for braking, reverse, obstructions,
+  finish or departure. NPC counterthrust cancels the gain as well as player braking. Ghosts never
+  participate. The normal physics port applies the same bounded propulsion rule to player and NPC.
+  Thin, static-color wake rails show the same envelope; the flight instrument names the leader and
+  strength. The old scripted beacon is explicitly a pace light and no longer applies artificial speed
+  pulses. Time trials remain draft-free.
+- **Earned paint:** completed cups unlock three finishes at 3/9/15 points at any opponent level.
+  Selection survives reload, fails safely on unavailable storage, and is validated again before
+  fitting. Temporary craft receive paint before visual admission. The board can apply earned paint
+  to an adventure ship through the ordinary appearance event; saving remains the save owner's job.
+  Paint changes no handling stats. New fit5/tuning-v3-3 records cannot compete with old draft-free
+  records or ghosts.
+- **Performance:** physics and gate arbitration retain 60 Hz. Standings publish at 10 Hz and on
+  terminal changes, rival previous poses and set-piece cue arrays are reused, and course markers
+  upload only when their local geometry changes. Moving Massline anchors keep their marker attached.
+  The wake renderer has one fixed line/color buffer, updates at simulation cadence, and disposes
+  all owned resources. A 144-render-frame fixture produces zero extra stationary-marker uploads;
+  same-tick wake renders produce zero extra uploads. These are structural reductions, not an FPS claim.
+- **Direct checks:** native drafting gives 181.50 WU/s against an otherwise identical 160 WU/s
+  control after two seconds, earning 22.07 WU without contact; the leader keeps its momentum.
+  Geometry, brake/reverse, occlusion, duplicate-tick, storage/unlock, renderer reuse/disposal and
+  UI-control checks pass. All three native course packs with active drafting finish with zero contacts or recoveries,
+  including the closed Tethys shutter and returning Veil fragments. The Veil times are
+  76.72/90.36/109.11 seconds. The real browser circuit route passes
+  13/13 including selected earned paint, rendered moving rivals and save isolation; local cup
+  receipts were seeded for this paint check, so it is not a claim of a human-completed cup. A final
+  ordinary public circuit launch passes 12/12 and confirms zero tutorial actors, no tutorial
+  waypoint and inactive Adventure onboarding. Temporary circuits now suppress that rail without
+  changing tutorial preferences; the focused return-to-Adventure scene tests pass 11/11.
+
 
 ## Order and dependencies
 

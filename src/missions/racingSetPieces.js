@@ -152,6 +152,7 @@ export function createRacingSetPieces({ state, bus, helpers }) {
     for (const cue of run.cues) if (cue.kind === 'anchor' && cue.phase === 'ready') {
       const entity = state.entities?.get(cue.entityIds[0]);
       if (!entity || entity.alive === false) { cue.phase = 'clear'; cue.entityIds = []; }
+      else { cue.pos.x = entity.pos.x; cue.pos.z = entity.pos.z; }
     }
     for (const event of run.dynamics) {
       const { def, frame, cue } = event;
@@ -217,7 +218,9 @@ export function createRacingSetPieces({ state, bus, helpers }) {
         cue.phase = 'clear';
       }
     }
-    p.raceSetPieces = run.cues.map(cue => ({ ...cue, entityIds: [...cue.entityIds] }));
+    // This owner alone updates the small serializable cue records. Share their stable array
+    // instead of allocating every cue and ID list on every simulation tick.
+    p.raceSetPieces = run.cues;
     return p.raceSetPieces;
   }
   return { update, stop,

@@ -125,7 +125,10 @@ export function mountRacingHud({ root, bus, state, screens }) {
       sub.textContent=(race.params.raceEntrants>1?`P${race.params.racePosition}/${race.params.raceEntrants} · `:'')+`${formatRaceTime(tape.elapsed)} · ${Math.round(tape.speed)} wu/s · GATE ${tape.nextGate}/${tape.gateCount}`;
       pack.textContent=(race.params.raceStandings||[]).map(row=>`${row.position} ${row.name}${row.status==='finished'?' ✓':row.status==='dnf'?' DNF':''}`).join(' · ');
       const coach=readRacingCoach(race.params,player,raceGateGlobals(race.params),st);
-      const warnings=[tape.wrongWay?'WRONG WAY':'',tape.offRibbon?'OFF COURSE':'',coach?.hint||'',tape.drafting?'IN SLIPSTREAM':'',tape.resets?'RECOVERY RUN':''].filter(Boolean);
+      const draft=race.params.raceDraft;
+      const warnings=[tape.wrongWay?'WRONG WAY':'',tape.offRibbon?'OFF COURSE':'',coach?.hint||'',
+        draft?.strength>0?`DRAFT ${draft.leaderName} · ${Math.round(draft.strength*100)}%`:tape.pacing?'PACE LIGHT':'',
+        tape.resets?'RECOVERY RUN':''].filter(Boolean);
       if(race.params.adventureSpeedId){
         hints.textContent=[race.params.adventureSpeedHint,...warnings].filter(Boolean).join(' · ');
         return;

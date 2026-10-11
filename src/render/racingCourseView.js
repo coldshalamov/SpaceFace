@@ -6,9 +6,11 @@ import { circuitPacePoint, gateApproach } from '../systems/racingGeometry.js';
 import { raceGateGlobals } from '../data/raceLevels.js';
 import { readFrameOrigin } from './frameCoordinates.js';
 import { createRacingGhostView } from './racingGhostView.js';
+import { createRacingDraftView } from './racingDraftView.js';
 
 export function createRacingCourseView(scene, state) {
   const ghost = createRacingGhostView(scene, state);
+  const draft = createRacingDraftView(scene, state);
   const root = new THREE.Group(); root.name = 'Racing course'; root.visible = false;
   scene.add(root);
   const ringGeometry = new THREE.TorusGeometry(1, 0.024, 6, 48);
@@ -26,7 +28,19 @@ export function createRacingCourseView(scene, state) {
   const up = new THREE.Vector3(0,1,0), forward = new THREE.Vector3();
   const base = new THREE.Color(0x90b2c8), cleared = new THREE.Color(0x3c515c), burn = new THREE.Color(0xffe956);
   const anchorColor=new THREE.Color(0x8adccf),refugeColor=new THREE.Color(0xffc577);
+  const markerState=new Float64Array(8*4);markerState.fill(NaN);
   let owner = null, rings = null, line = null, globals = null, sectorX = 0, sectorZ = 0, lastGate = -1, lastLap = -1, disposed=false;
+  let markerCount=0,markersChanged=false;
+  function putMarker(point,radius,anchor){
+    const offset=markerCount*4,x=point.x-sectorX,z=point.z-sectorZ,y=anchor?4:-2;
+    if(markerState[offset]!==x||markerState[offset+1]!==z||markerState[offset+2]!==radius||markerState[offset+3]!==y){
+      markerState[offset]=x;markerState[offset+1]=z;markerState[offset+2]=radius;markerState[offset+3]=y;
+      dummy.position.set(x,y,z);dummy.rotation.set(-Math.PI/2,0,0);dummy.scale.setScalar(radius);
+      dummy.updateMatrix();markers.setMatrixAt(markerCount,dummy.matrix);
+      markers.setColorAt(markerCount,anchor?anchorColor:refugeColor);markersChanged=true;
+    }
+    markerCount++;
+  }
   function releaseCourse() {
     if(rings){root.remove(rings);rings.dispose();rings=null;}
     if(line){root.remove(line);line.geometry.dispose();line=null;}
@@ -62,6 +76,7 @@ export function createRacingCourseView(scene, state) {
       if(disposed)return;
       const race=activeAuthoredRace(state);
       ghost.frame(race);
+      draft.frame(race);
       root.visible=!!race&&state.mode==='flight'&&!state.ui?.docked
         &&state.world?.currentSectorId===race.params.courseSectorId;
       if(!root.visible)return;
@@ -69,22 +84,17 @@ export function createRacingCourseView(scene, state) {
       if(owner!==p)rebuild(p);
       if(!rings||!globals){root.visible=false;return;}
       readFrameOrigin(state,origin);root.position.set(sectorX-origin.x,0,sectorZ-origin.z);
-      let markerCount=0;
+      markerCount=0;markersChanged=false;
       for(const cue of p.raceSetPieces||[]){
-        const anchor=cue.kind==='anchor',point=anchor?cue.pos:cue.phase!=='clear'?cue.waitPos:null;
+        const anchor=cue.kind==='anchor',point=cue.phase==='clear'?null:anchor?cue.pos:cue.waitPos;
         if(!point||markerCount===8)continue;
-        dummy.position.set(point.x-sectorX,anchor?4:-2,point.z-sectorZ);
-        dummy.rotation.set(-Math.PI/2,0,0);dummy.scale.setScalar(anchor?38:cue.waitRadiusWU||42);
-        dummy.updateMatrix();markers.setMatrixAt(markerCount,dummy.matrix);
-        markers.setColorAt(markerCount,anchor?anchorColor:refugeColor);markerCount++;
+        putMarker(point,anchor?38:cue.waitRadiusWU||42,anchor);
         if(cue.servicePos&&markerCount<8&&cue.phase!=='clear'){
-          dummy.position.set(cue.servicePos.x-sectorX,-2,cue.servicePos.z-sectorZ);
-          dummy.scale.setScalar(Math.min(40,(cue.serviceWidthWU||80)/2));dummy.updateMatrix();
-          markers.setMatrixAt(markerCount,dummy.matrix);markers.setColorAt(markerCount,anchorColor);markerCount++;
+          putMarker(cue.servicePos,Math.min(40,(cue.serviceWidthWU||80)/2),true);
         }
       }
-      markers.count=markerCount;markers.instanceMatrix.needsUpdate=true;
-      if(markers.instanceColor)markers.instanceColor.needsUpdate=true;
+      markers.count=markerCount;
+      if(markersChanged){markers.instanceMatrix.needsUpdate=true;if(markers.instanceColor)markers.instanceColor.needsUpdate=true;}
       const next=Math.max(0,Math.min(p.gates.length-1,p.nextGate|0));
       if(next!==lastGate||(p.lap|0)!==lastLap){
         lastGate=next;lastLap=p.lap|0;
@@ -95,7 +105,7 @@ export function createRacingCourseView(scene, state) {
         if(approach)target.rotation.set(0,Math.atan2(approach.nx,approach.nz),0);
         target.scale.setScalar((Number(p.gateRadiusWU)||90)*1.005);
       }
-      // This is the very same sampler and speed the slipstream impulse uses, not an AI rival.
+      // The scripted pace light coaches the line; physical opponents alone provide drafting.
       const paceStart=p.adventureSpeedId?p.adventureSpeedStartSimS:p.raceStartSimS;
       const racing=Number.isFinite(paceStart);
       pace.visible=racing&&p.racingKind==='draft';
@@ -106,7 +116,7 @@ export function createRacingCourseView(scene, state) {
       }
     },
     dispose(){
-      if(disposed)return;disposed=true;ghost.dispose();releaseCourse();root.removeFromParent();
+      if(disposed)return;disposed=true;ghost.dispose();draft.dispose();releaseCourse();root.removeFromParent();
       markers.dispose();
       ringGeometry.dispose();paceGeometry.dispose();ringMaterial.dispose();nextMaterial.dispose();lineMaterial.dispose();paceMaterial.dispose();
     },

@@ -6,7 +6,7 @@ import { hash32 } from '../core/rng.js';
 
 export const RACING_GHOST_STORAGE_KEY = 'spaceface.racingGhosts.v1';
 // Bump for changes to racing physics/assist tuning, independently of the file schema.
-export const RACING_GHOST_TUNING = 'circuit-flight-v3-2';
+export const RACING_GHOST_TUNING = 'circuit-flight-v3-3';
 export const RACING_GHOST_LIMITS = Object.freeze({ seconds:600, samples:6002, gates:2048,
   tapes:8, bytes:1024*1024, interval:0.1, maxGap:0.25 });
 const VERSION = 1, EPS = 1e-7, sessions = new WeakMap();

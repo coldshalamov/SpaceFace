@@ -5,6 +5,7 @@ import { createChaseCamera } from '../src/render/camera.js';
 import { createRacingCourseView } from '../src/render/racingCourseView.js';
 import { racingOfferFor, raceGateGlobals } from '../src/data/raceLevels.js';
 import { circuitPacePoint, gateApproach } from '../src/systems/racingGeometry.js';
+import { createRacingDraftView } from '../src/render/racingDraftView.js';
 
 function chaseHarness(view = 'racing') {
   const player = { id:1,type:'ship',alive:true,pos:{x:0,z:0},prevPos:{x:0,z:0},vel:{x:0,z:0},
@@ -70,4 +71,40 @@ test('course view uses vertical apertures and the same pace sampler, survives re
   let geometries=0;view.root.traverse(o=>{if(o.geometry)o.geometry.addEventListener('dispose',()=>geometries++);});
   view.dispose();const count=geometries;view.dispose();assert.equal(geometries,count);assert.ok(count>=3);
   assert.equal(scene.children.length,0);
+});
+
+test('stationary course markers avoid repeated GPU uploads but moved or removed anchors update immediately',()=>{
+  const race=racingOfferFor('contract_textile_qual');race.status='active';
+  const gate=raceGateGlobals(race.params)[1];
+  const cue={kind:'anchor',phase:'ready',pos:{...gate}};race.params.raceSetPieces=[cue];
+  const state={mode:'flight',simTime:1,ui:{},world:{currentSectorId:race.params.courseSectorId},missions:{active:[race]}};
+  const scene=new THREE.Scene(),view=createRacingCourseView(scene,state);view.frame();
+  const markers=view.root.getObjectByName('Massline anchors and crossing refuges');
+  const initial=markers.instanceMatrix.version,color=markers.instanceColor.version;
+  for(let i=0;i<144;i++){state.simTime+=1/144;view.frame();}
+  assert.equal(markers.instanceMatrix.version,initial);assert.equal(markers.instanceColor.version,color);
+  cue.pos.x+=23;view.frame();assert.equal(markers.instanceMatrix.version,initial+1);
+  const matrix=new THREE.Matrix4();markers.getMatrixAt(0,matrix);
+  assert.ok(Math.abs(matrix.elements[12]+view.root.position.x-cue.pos.x)<0.01);
+  cue.phase='clear';view.frame();assert.equal(markers.count,0);
+  console.log('Stationary marker uploads across144frames:0; moved anchor uploads:1');
+  view.dispose();
+});
+
+test('draft envelope uses fixed buffers at simulation cadence and survives rebasing and cleanup',()=>{
+  const scene=new THREE.Scene(),race={params:{courseSectorId:'test',raceDraft:{leaderId:2},raceDraftWakes:[
+    {leaderId:2,x:1000,z:2000,nx:1,nz:0,near:52,far:352,widthNear:34,widthFar:54} ]}};
+  const state={mode:'flight',simTime:1,world:{currentSectorId:'test',frameOrigin:{x:0,z:0}}};
+  const view=createRacingDraftView(scene,state);view.frame(race);
+  const position=view.root.geometry.getAttribute('position'),array=position.array;
+  const version=position.version;assert.equal(view.root.geometry.drawRange.count,8);
+  for(let i=0;i<144;i++)view.frame(race);
+  assert.equal(position.version,version);assert.equal(position.array,array);
+  state.world.frameOrigin={x:1000,z:2000};view.frame(race);
+  assert.equal(view.root.position.x,-1000);assert.equal(position.version,version);
+  state.simTime+=1/60;race.params.raceDraftWakes[0].x+=5;view.frame(race);
+  assert.equal(position.version,version+1);assert.equal(position.array,array);
+  state.mode='menu';view.frame(race);assert.equal(view.root.visible,false);
+  let disposed=0;view.root.geometry.addEventListener('dispose',()=>disposed++);
+  view.dispose();view.dispose();assert.equal(disposed,1);assert.equal(scene.children.length,0);
 });

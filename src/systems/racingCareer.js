@@ -2,6 +2,7 @@
 import { RACE_LEVELS, practiceContractForLevel, raceContractById } from '../data/raceLevels.js';
 import { RACING_PERSONALITIES } from '../ai/racingDriver.js';
 import { NEW_GAME_STARTERS } from '../data/newGameDefaults.js';
+import { RACING_COSMETICS, racingCosmeticFor, racingCosmeticUnlocked } from '../data/racingCosmetics.js';
 
 export const RACING_RIVALS = RACING_PERSONALITIES;
 
@@ -105,6 +106,7 @@ function readCareer(storage) {
         cups[difficulty.id] = { points: row.points, finishes: row.finishes, medal: cupMedal(row.points) };
       }
     }
+    if (data.liveryId) career.liveryId = racingCosmeticFor(data.liveryId, career).id;
     if (serial(data.meetingSerial) && serial(data.lastMeeting) && data.lastMeeting <= data.meetingSerial) {
       career.meetingSerial = data.meetingSerial; career.lastMeeting = data.lastMeeting;
     }
@@ -128,6 +130,12 @@ function readCareer(storage) {
   } catch { return { career: { cups: {} }, available: false }; }
 }
 export function readRacingCareer(storage = defaultStorage()) { return readCareer(storage).career; }
+export function selectRacingLivery(id, storage = defaultStorage()) {
+  const career = readRacingCareer(storage), cosmetic = RACING_COSMETICS.find(row => row.id === id);
+  if (!racingCosmeticUnlocked(cosmetic, career)) return false;
+  career.liveryId = id;
+  return writeCareer(storage, career);
+}
 function writeCareer(storage, career) {
   let saved = false;
   try {

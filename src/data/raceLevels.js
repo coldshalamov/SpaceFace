@@ -289,9 +289,9 @@ const CONTRACTS = Object.freeze([
     reward_cr: 1200,
     duration_s: 900,
     title: 'Pace light',
-    brief: 'A pace light runs the tally ahead of you. Sit in its wake and take the push. The stern camera stays on — that is how dispatch watches the draft.',
-    summary: 'The tally circuit again. Draft the pace light. Stern camera required.',
-    gridLine: 'Hold. The pace light leaves with you. Sit in the wake.',
+    brief: 'A pace light traces the tally ahead of you. Read its line through the turns; real rivals provide the draft in pack races. The stern camera stays on — that is how dispatch watches the run.',
+    summary: 'The tally circuit again. Follow the pace light through the turns. Stern camera required.',
+    gridLine: 'Hold. The pace light leaves with you. Read the line ahead.',
   }),
 ]);
 
