@@ -67,11 +67,11 @@
   <!-- Station sheet set (~230KB) injected by ensureStationStylesheet() inside the title
        window — warm the bytes now so the later injection is a CSSOM parse, not fetches
        (W140-B4 safe half; cascade order untouched). -->
-  <link rel="preload" as="style" href="/assets/ui/kit/tokens/tokens.css" />
+  <link rel="preload" as="style" fetchpriority="low" href="/assets/ui/kit/tokens/tokens.css" />
   <link rel="preload" as="style" href="/assets/ui/kit/kit/fh.css" />
-  <link rel="preload" as="style" href="./styles/station-orbital.css" />
-  <link rel="preload" as="style" href="./styles/station.css" />
-  <link rel="preload" as="style" href="./styles/station-workbench.css" />
+  <link rel="preload" as="style" fetchpriority="low" href="./styles/station-orbital.css" />
+  <link rel="preload" as="style" fetchpriority="low" href="./styles/station.css" />
+  <link rel="preload" as="style" fetchpriority="low" href="./styles/station-workbench.css" />
   <link rel="modulepreload" fetchpriority="low" href="./vendor/three.module.js" />
   <link rel="modulepreload" fetchpriority="low" href="./vendor/rapier3d-compat/rapier.mjs" />
   <!-- The decode-path loader trio is discovered by dynamic import inside the first GLB/KTX2
@@ -87,9 +87,9 @@
   <link rel="modulepreload" fetchpriority="low" href="./vendor/addons/loaders/DRACOLoader.js" />
   <!-- The draco decoder trio is fetched by DRACOLoader at the first draco-primitive decode
        (decoderPath, no static import edge): keep it off a conditional decode critical path. -->
-  <link rel="preload" as="fetch" crossorigin href="./vendor/addons/libs/draco/gltf/draco_wasm_wrapper.js" />
-  <link rel="preload" as="fetch" crossorigin href="./vendor/addons/libs/draco/gltf/draco_decoder.js" />
-  <link rel="preload" as="fetch" crossorigin href="./vendor/addons/libs/draco/gltf/draco_decoder.wasm" />
+  <link rel="preload" as="fetch" fetchpriority="low" crossorigin href="./vendor/addons/libs/draco/gltf/draco_wasm_wrapper.js" />
+  <link rel="preload" as="fetch" fetchpriority="low" crossorigin href="./vendor/addons/libs/draco/gltf/draco_decoder.js" />
+  <link rel="preload" as="fetch" fetchpriority="low" crossorigin href="./vendor/addons/libs/draco/gltf/draco_decoder.wasm" />
   <link rel="modulepreload" fetchpriority="low" href="./src/characters/rubricRules.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/rubric.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/characters/rubricModel.js" />

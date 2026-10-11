@@ -177,15 +177,31 @@ if (typeof document !== 'undefined' && document.documentElement) {
 if (typeof window !== 'undefined') {
   // The boot locale leads: a `?locale=` pick warms ahead of the rest. en-US is always second —
   // every fallback chain ends there, so it is the catalog `t()` touches first.
-  const WARM_LOCALES = [...new Set([startupLocale, DEFAULT_LOCALE, 'es-ES', 'fr-FR', 'de-DE', 'pt-BR'])];
+  // W141-N8: only catalogs a consumer can actually read are warmed — a `?locale=` token
+  // naming a non-shipped locale used to spend warm slices on dead data. The shipped set
+  // is read inside the first timer — touching the deferred proxy at eval would defeat
+  // the deferral this whole block exists to serve.
+  const WARM_LOCALES_BASE = [...new Set([startupLocale, DEFAULT_LOCALE, 'es-ES', 'fr-FR', 'de-DE', 'pt-BR'])];
+  let warmQueue = null;
   let warmIndex = 0;
   const warmStep = () => {
-    if (warmIndex < WARM_LOCALES.length) {
-      if (warmTranslatedCatalog(WARM_LOCALES[warmIndex], 1600)) warmIndex += 1;
+    if (warmQueue === null) {
+      const shipped = new Set(SHIPPED_LANGUAGE_ROWS.map((row) => row && row.id));
+      warmQueue = WARM_LOCALES_BASE.filter((locale) => shipped.has(locale));
+    }
+    if (warmIndex < warmQueue.length) {
+      // W141-N3: ~400 rows/slice keeps every warm task sub-frame during the menu-mount
+      // window (1600-row slices ran 8-60ms mid-window).
+      if (warmTranslatedCatalog(warmQueue[warmIndex], 400)) warmIndex += 1;
       setTimeout(warmStep, 0);
       return;
     }
-    keyByEnglishMessage();
+    // The keyByEnglishMessage tail (~86-90ms unsliced) rides an idle callback instead of
+    // a zero-delay task so it can't stack into the menu-mount window.
+    const idle = typeof requestIdleCallback === 'function'
+      ? requestIdleCallback
+      : (fn) => setTimeout(fn, 0);
+    idle(() => keyByEnglishMessage());
   };
   // The picker rows materialize first: their labels measure readiness from the same warm data.
   setTimeout(() => {

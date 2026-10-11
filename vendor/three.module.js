@@ -17852,8 +17852,14 @@ class WebGLRenderer {
 			currentRenderState.state.textureUnits = textures.getTextureUnits();
 			renderStateStack.push( currentRenderState );
 
-			_projScreenMatrix.multiplyMatrices( camera.projectionMatrix, camera.matrixWorldInverse );
-			_frustum.setFromProjectionMatrix( _projScreenMatrix, WebGLCoordinateSystem, camera.reversedDepth );
+			// SpaceFace (W141): a capturedList replay never runs projectObject — the only
+			// consumer of _projScreenMatrix/_frustum — so skip the recompute.
+			if ( capturedList === undefined ) {
+
+				_projScreenMatrix.multiplyMatrices( camera.projectionMatrix, camera.matrixWorldInverse );
+				_frustum.setFromProjectionMatrix( _projScreenMatrix, WebGLCoordinateSystem, camera.reversedDepth );
+
+			}
 
 			_localClippingEnabled = this.localClippingEnabled;
 			_clippingEnabled = clipping.init( this.clippingPlanes, _localClippingEnabled );
@@ -17971,7 +17977,12 @@ class WebGLRenderer {
 				const opaqueObjects = currentRenderList.opaque;
 				const transmissiveObjects = currentRenderList.transmissive;
 
-				currentRenderState.setupLights();
+				// SpaceFace (W141): on a capturedList replay the lightsArray is empty
+				// (projectObject, which collects lights, is skipped) — setupLights would
+				// only bump the lights version and force lit materials to rewire for a
+				// state identical to init. Replay contract draws unlit overrides only;
+				// a future lit override must reintroduce setupLights here.
+				if ( capturedList === undefined ) currentRenderState.setupLights();
 
 				if ( camera.isArrayCamera ) {
 
