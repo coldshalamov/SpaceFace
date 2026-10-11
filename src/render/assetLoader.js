@@ -418,7 +418,10 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
       };
       pendingPoolTasks.add(task);
       const work = decodeBudget.acquire({
-        decodeClass: msg && msg.spacefaceDecodeClass || activeDecodeClass(),
+        // No spacefaceDecodeClass read: the field is written nowhere — a pooled post
+        // outlives the caller's class scope, so the only legal authority is the live
+        // activeDecodeClass() at post time (W138 popin F-1).
+        decodeClass: activeDecodeClass(),
         signal: admission.signal,
       }).then((release) => {
         if (admission.signal.aborted) {

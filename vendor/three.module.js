@@ -100,9 +100,51 @@ function spacefaceShadowCastersIn( scene ) {
 // updateMatrix() on a frozen node sets matrixWorldNeedsUpdate, which defeats the skip for
 // exactly one pass — that is the dirty path. add()/attach() clear the mark up the ancestor
 // chain so children grafted under a frozen subtree are walked normally.
+
+// SpaceFace (PERF-138): even on unfrozen nodes upstream calls updateMatrix() every frame —
+// matrix.compose(position, quaternion, scale) + matrixWorldNeedsUpdate = true, which then
+// mints force = true and drives a mandatory descent through every descendant. When the
+// 13-float transform signature (position + quaternion + scale + pivot — updateMatrix
+// reads all four) is unchanged this.matrix already === compose(fields), so the compose
+// is dead work AND the flag it mints is what force-descends static subtrees. Skip the
+// compose on an unchanged signature: the node pays ~13 compares instead of
+// compose+multiply, and its subtree evaluates its own flags instead of being forced.
+// The signature lives in userData so Object3D.copy() deep-copies it into clones — a clone
+// inherits a sig matching its own copied transform and skips correctly; a writer that
+// mutates this.matrix.elements directly was already stomped by the unconditional compose
+// upstream, and setting matrixWorldNeedsUpdate still re-runs compose on the next pass.
+function sfTransformSignatureClean( object ) {
+
+	const sig = object.userData.sfTransformSig;
+	if ( !sig ) return false;
+	const p = object.position, q = object.quaternion, s = object.scale, v = object.pivot;
+	return sig[ 0 ] === p.x && sig[ 1 ] === p.y && sig[ 2 ] === p.z
+		&& sig[ 3 ] === q.x && sig[ 4 ] === q.y && sig[ 5 ] === q.z && sig[ 6 ] === q.w
+		&& sig[ 7 ] === s.x && sig[ 8 ] === s.y && sig[ 9 ] === s.z
+		&& sig[ 10 ] === ( v ? v.x : 0 ) && sig[ 11 ] === ( v ? v.y : 0 ) && sig[ 12 ] === ( v ? v.z : 0 );
+
+}
+
+function sfTransformSignatureStore( object ) {
+
+	const p = object.position, q = object.quaternion, s = object.scale, v = object.pivot;
+	let sig = object.userData.sfTransformSig;
+	if ( !sig ) sig = object.userData.sfTransformSig = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+	sig[ 0 ] = p.x; sig[ 1 ] = p.y; sig[ 2 ] = p.z;
+	sig[ 3 ] = q.x; sig[ 4 ] = q.y; sig[ 5 ] = q.z; sig[ 6 ] = q.w;
+	sig[ 7 ] = s.x; sig[ 8 ] = s.y; sig[ 9 ] = s.z;
+	sig[ 10 ] = v ? v.x : 0; sig[ 11 ] = v ? v.y : 0; sig[ 12 ] = v ? v.z : 0;
+
+}
+
 Object3D.prototype.updateMatrixWorld = function ( force ) {
 
-	if ( this.matrixAutoUpdate ) this.updateMatrix();
+	if ( this.matrixAutoUpdate && ( this.matrixWorldNeedsUpdate || !sfTransformSignatureClean( this ) ) ) {
+
+		this.updateMatrix();
+		sfTransformSignatureStore( this );
+
+	}
 
 	if ( this.matrixWorldNeedsUpdate || force ) {
 
@@ -17760,7 +17802,7 @@ class WebGLRenderer {
 		 * @param {Object3D} scene - The scene to render.
 		 * @param {Camera} camera - The camera.
 		 */
-		this.render = function ( scene, camera ) {
+		this.render = function ( scene, camera, capturedList ) {
 
 			if ( camera !== undefined && camera.isCamera !== true ) {
 
@@ -17820,7 +17862,7 @@ class WebGLRenderer {
 
 			renderListStack.push( currentRenderList );
 
-			if ( xr.enabled === true && xr.isPresenting === true ) {
+			if ( capturedList === undefined && xr.enabled === true && xr.isPresenting === true ) {
 
 				const depthSensingMesh = _this.xr.getDepthSensingMesh();
 
@@ -17832,26 +17874,68 @@ class WebGLRenderer {
 
 			}
 
-			projectObject( scene, camera, 0, _this.sortObjects );
-
-			currentRenderList.finish();
-
-			if ( _this.sortObjects === true ) {
-
-				currentRenderList.sort( _opaqueSort, _transparentSort );
-
-			}
-
 			_renderBackground = xr.enabled === false || xr.isPresenting === false || xr.hasDepthSensing() === false;
-			if ( _renderBackground ) {
 
-				background.addToRenderList( currentRenderList, scene );
+			if ( capturedList ) {
+
+				// SpaceFace (PERF-138 F1): replay the first pass's finished, sorted arrays
+				// instead of re-walking the scene — the AO/normal pass re-derives exactly
+				// the drawable set pass 1 enumerated (same scene, same camera, same
+				// epoch). Zero-count instanced items are dropped here, replacing the
+				// per-pass traverseVisible mask. Contract: no scene mutation between
+				// capture and replay — only the override material changes.
+				const capturedLists = [ capturedList.opaque, capturedList.transmissive, capturedList.transparent ];
+				const replayLists = [ currentRenderList.opaque, currentRenderList.transmissive, currentRenderList.transparent ];
+				for ( let l = 0; l < 3; l ++ ) {
+
+					const src = capturedLists[ l ], dst = replayLists[ l ];
+					for ( let i = 0, il = src.length; i < il; i ++ ) {
+
+						const item = src[ i ];
+						const object = item.object;
+						if ( object.isInstancedMesh === true && object.count <= 0 ) continue;
+						dst.push( item );
+
+					}
+
+				}
+
+			} else {
+
+				projectObject( scene, camera, 0, _this.sortObjects );
+
+				currentRenderList.finish();
+
+				if ( _this.sortObjects === true ) {
+
+					currentRenderList.sort( _opaqueSort, _transparentSort );
+
+				}
+
+				if ( _renderBackground ) {
+
+					background.addToRenderList( currentRenderList, scene );
+
+				}
+
+				if ( _sfCaptureRenderList === true ) {
+
+					_sfCapturedList = {
+						opaque: currentRenderList.opaque.slice(),
+						transmissive: currentRenderList.transmissive.slice(),
+						transparent: currentRenderList.transparent.slice(),
+					};
+
+				}
 
 			}
 
 			//
 
-			this.info.render.frame ++;
+			// SpaceFace: a captured replay must NOT mint a new frame — objects.update is
+			// keyed on info.render.frame, and a second tick re-pays the WeakMap
+			// bookkeeping for every drawable (no GL re-upload — version-gated anyway).
+			if ( capturedList === undefined ) this.info.render.frame ++;
 
 			if ( _clippingEnabled === true ) clipping.beginShadows();
 
@@ -17979,6 +18063,36 @@ class WebGLRenderer {
 				_nodesHandler.renderEnd();
 
 			}
+
+		};
+
+		// SpaceFace (PERF-138 F1): capture/replay pair for SpaceRenderGraph's color→AO
+		// double submission. renderAndCaptureList returns the finished, sorted render
+		// arrays of pass 1; renderCapturedList re-runs the identical prelude + draw
+		// path on them without re-walking the scene.
+		let _sfCaptureRenderList = false;
+		let _sfCapturedList = null;
+
+		this.renderAndCaptureList = function ( scene, camera ) {
+
+			_sfCapturedList = null;
+			_sfCaptureRenderList = true;
+			try {
+
+				this.render( scene, camera );
+
+			} finally {
+
+				_sfCaptureRenderList = false;
+
+			}
+			return _sfCapturedList;
+
+		};
+
+		this.renderCapturedList = function ( scene, camera, capturedList ) {
+
+			this.render( scene, camera, capturedList );
 
 		};
 

@@ -85,6 +85,58 @@ test('marked subtrees are skipped on clean frames but still reached under force 
   assert.equal(counts.get(frozenChild), 3);
 });
 
+test('PERF-138 transform-signature memo: unchanged nodes skip compose, world output identical', () => {
+  assert.match(SRC, /sfTransformSignatureClean/);
+  assert.match(SRC, /sfTransformSignatureStore/);
+  assert.match(SRC, /matrixWorldNeedsUpdate \|\| !sfTransformSignatureClean/);
+
+  const scene = new THREE.Object3D();
+  scene.matrixAutoUpdate = false;
+  const parent = new THREE.Object3D();
+  const child = new THREE.Object3D();
+  parent.add(child);
+  scene.add(parent);
+
+  // Pass one composes + stores the signature (first-seen fields are never "clean").
+  scene.updateMatrixWorld();
+  assert.ok(parent.userData.sfTransformSig, 'signature stored at first compose');
+  let composed = 0;
+  const base = parent.updateMatrix.bind(parent);
+  parent.updateMatrix = () => { composed++; return base(); };
+
+  // Pass two on an unmoved subtree: no compose, and no minted force either — the child
+  // evaluates its own signature and skips too.
+  scene.updateMatrixWorld();
+  assert.equal(composed, 0, 'unchanged transform skips the compose');
+  assert.equal(parent.matrixWorldNeedsUpdate, false, 'no flag minted on a clean frame');
+  const before = child.matrixWorld.elements.slice();
+
+  // A moved parent still recomposes and its child follows through the minted force.
+  parent.position.x += 5;
+  scene.updateMatrixWorld();
+  assert.equal(composed, 1, 'moved node recomposes');
+  const moved = child.matrixWorld.elements.slice();
+  assert.notDeepEqual(moved, before, 'child world follows the moved parent');
+  assert.ok(Math.abs(moved[12] - before[12] - 5) < 1e-10);
+
+  // A manual needsUpdate re-runs compose even when the signature is unchanged —
+  // the stomp semantics upstream gave direct .matrix writers are preserved.
+  parent.matrixWorldNeedsUpdate = true;
+  scene.updateMatrixWorld();
+  assert.equal(composed, 2, 'manual needsUpdate re-runs compose');
+});
+
+test('PERF-138 F1 captured render-list replay pair exists and gates projectObject', () => {
+  assert.match(SRC, /this\.render = function \( scene, camera, capturedList \)/);
+  assert.match(SRC, /this\.renderAndCaptureList = function \( scene, camera \)/);
+  assert.match(SRC, /this\.renderCapturedList = function \( scene, camera, capturedList \)/);
+  // Replay injects finished sorted arrays (zero-count instanced dropped); the live
+  // path still projects + finishes + sorts + adds background.
+  assert.match(SRC, /if \( capturedList \)/);
+  assert.match(SRC, /object\.isInstancedMesh === true && object\.count <= 0 \) continue/);
+  assert.match(SRC, /if \( capturedList === undefined \) this\.info\.render\.frame \+\+/);
+});
+
 test('world matrices stay identical to an unmarked walk after grafts and repose', () => {
   const build = (mark) => {
     const scene = new THREE.Object3D();
