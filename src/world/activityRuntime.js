@@ -682,6 +682,38 @@ function rebuildPinFacts(state, player, facts, simTime) {
     }
   }
 
+  // A Gyre ball is an asteroid, so projectile target-id pins never saw its victims.
+  // Admit only hulls along the live ball's swept contact corridor before Rapier steps;
+  // otherwise a throw outside the pilot's bubble passes through abstract ships.
+  const gyreThreats = facts._gyreThreatScratch || (facts._gyreThreatScratch = []);
+  gyreThreats.length = 0;
+  const gyreBalls = facts._gyreBallScratch || (facts._gyreBallScratch = []);
+  gyreBalls.length = 0;
+  const gyre = state.gyreSnare;
+  if (gyre?.launchedId != null) gyreBalls.push(gyre.launchedId);
+  if (gyre?.coreId != null && gyre.coreId !== gyre.launchedId) gyreBalls.push(gyre.coreId);
+  for (const ball of gyre?.balls || []) if (!gyreBalls.includes(ball.id)) gyreBalls.push(ball.id);
+  const hulls = index?.shipLike || state.entityList || [];
+  for (const id of gyreBalls) {
+    const ball = state.entities?.get(id);
+    if (!ball?.pos || ball.alive === false || !ball.data?.gyreLaunched
+      || !(ball.data.despawnAt > simTime)) continue;
+    for (let i = 0; i < hulls.length; i++) {
+      const target = hulls[i];
+      if (!target?.pos || target.alive === false || target.id === playerId
+        || (target.type !== 'ship' && target.type !== 'drone')) continue;
+      const dx = target.pos.x - ball.pos.x, dz = target.pos.z - ball.pos.z;
+      const vx = finite(ball.vel?.x) - finite(target.vel?.x);
+      const vz = finite(ball.vel?.z) - finite(target.vel?.z);
+      const speed2 = vx * vx + vz * vz;
+      const ahead = speed2 > 0 ? Math.max(0, Math.min(COLLISION_LOOKAHEAD_S, (dx * vx + dz * vz) / speed2)) : 0;
+      const reach = entityPresenceRadius(ball) + entityPresenceRadius(target) + PHYSICS_SAFETY_PAD_WU;
+      if ((dx - vx * ahead) ** 2 + (dz - vz * ahead) ** 2 > reach * reach) continue;
+      threatScratch.push(target.id);
+      gyreThreats.push(target.id);
+    }
+  }
+
   const damageStillValid = !(Number.isFinite(cache.damageExpiry) && simTime >= cache.damageExpiry);
   const damageChanged = !damageStillValid || cache.events !== events || cache.eventsLen !== eventsLen;
 
@@ -916,6 +948,7 @@ function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu)
   for (let i = 0; i < runtime.nearIds.length; i++) {
     add(state.entities && state.entities.get(runtime.nearIds[i]));
   }
+  for (const id of runtime.pinFacts._gyreThreatScratch || []) add(state.entities?.get(id));
   const projectileIndex = state.entityIndex;
   const projectiles = projectileIndex && projectileIndex.__spacefaceEntityIndexV1
     && projectileIndex.ready === true && Array.isArray(projectileIndex.projectiles)

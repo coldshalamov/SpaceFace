@@ -294,6 +294,29 @@ test('a second absorbable inside the suck band merges: mass union, member ledger
   t.cleanup();
 });
 
+test('captured surface identities survive growth, launch and secondary-ball presentation', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  core.data = { material: 'metal', typeId: 'ast_metallic' };
+  const meal = rock(t.sim, T.mawDist + 30, 10, 6, 4);
+  meal.data = { material: 'crystal', typeId: 'ast_crystalline' };
+  hold(t);
+  for (let i = 0; i < 120 && t.sys._rt.members.length === 0; i++) t.sim.step();
+  assert.equal(t.state.gyreSnare.coreMaterial, 'metal');
+  assert.equal(t.state.gyreSnare.coreTypeId, 'ast_metallic');
+  assert.equal(t.state.gyreSnare.members[0].material, 'crystal');
+  assert.equal(t.state.gyreSnare.members[0].typeId, 'ast_crystalline');
+  release(t);
+  for (let i = 0; i < T.launchTicks + T.launchWindupTicks + 3; i++) t.sim.step();
+  assert.equal(core.data.gyreLaunchMeta.members[0].material, 'crystal');
+  assert.equal(t.state.gyreSnare.coreMaterial, 'metal', 'thrown primary keeps its core surface');
+  rock(t.sim, t.player.pos.x + T.mawDist, t.player.pos.z, 6, 4);
+  hold(t);
+  assert.ok(t.state.gyreSnare.balls.some(b => b.id === core.id
+    && b.coreMaterial === 'metal' && b.members[0].material === 'crystal'), 'secondary ball keeps both surfaces');
+  t.cleanup();
+});
+
 // ── launch ────────────────────────────────────────────────────────────────────────
 test('release bowls the clump along the nose at launch speed with kill-credit provenance', async () => {
   const t = await bootPhysics();
