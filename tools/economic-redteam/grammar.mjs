@@ -2,11 +2,11 @@
 // station UI already emits. Missing verbs are labeled unavailable. Nothing here
 // assigns state.player.credits.
 
-import { addCargo } from '../../src/systems/cargo.js';
 import {
-  HOME_FACTION,
   HOME_STATION,
   bayQty,
+  bootRedTeam,
+  captureLedger,
   custodyUnits,
   dockAt,
   econOf,
@@ -31,14 +31,19 @@ export const ACTION_IDS = Object.freeze([
   'craft',
   'set_active_ship',
   'buy_ship',
+  'buy_module',
+  'fit_module',
   'sell_ship',
   'loot_drop',
   'step',
   'offline_catchup',
-  'save_roundtrip',
+  'save_continue',
   'freight_delivery',
   'bad_qty',
   'raise_standing',
+  'tow',
+  'source_fit',
+  'ship_loss',
 ]);
 
 function result(action, extra = {}) {
@@ -314,18 +319,39 @@ export function offlineCatchup(sim, elapsedSec) {
   });
 }
 
-export function saveRoundtrip(sim) {
-  const econ = econOf(sim);
-  const before = sim.state.player.credits;
-  const snap = econ.serialize();
-  econ.deserialize(snap);
-  sim.bus.emit('save:loaded');
-  return result('save_roundtrip', {
-    ok: sim.state.player.credits === before,
-    reason: sim.state.player.credits === before ? null : 'credits_changed',
-    creditsDelta: sim.state.player.credits - before,
-    detail: { before, after: sim.state.player.credits },
-  });
+/** Save through the save writer, then Continue into a rebooted sim. */
+export function saveContinue(sim, slot = 'ert-redteam') {
+  const save = sim.registry.get('save');
+  if (!save || typeof save.save !== 'function' || typeof save.load !== 'function') {
+    return {
+      sim,
+      result: result('save_continue', { unavailable: true, reason: 'save_system_missing' }),
+    };
+  }
+  const before = captureLedger(sim);
+  const saved = save.save(slot, { reason: 'manual' });
+  if (saved !== true) {
+    return {
+      sim,
+      result: result('save_continue', {
+        ok: false,
+        reason: 'save_refused',
+        detail: { before },
+      }),
+    };
+  }
+  const next = bootRedTeam(sim.state.meta.seed);
+  const loaded = next.registry.get('save').load(slot);
+  const after = captureLedger(loaded === true ? next : sim);
+  return {
+    sim: loaded === true ? next : sim,
+    result: result('save_continue', {
+      ok: loaded === true,
+      reason: loaded === true ? null : 'continue_refused',
+      creditsDelta: after.credits - before.credits,
+      detail: { before, after, slot, loaded: loaded === true },
+    }),
+  };
 }
 
 export function freightDelivery(sim, payload) {
@@ -367,31 +393,71 @@ export function raiseStanding(sim, factionId, delta) {
   });
 }
 
-export function plantSealedDelivery(sim, { missionId, commodityId, qty, rewardCr, destStationId }) {
-  const mission = {
-    id: missionId,
-    status: 'active',
-    type: 'cargo_delivery',
-    title: 'Red-team sealed haul',
-    destStationId,
-    stationId: destStationId,
-    factionId: HOME_FACTION,
-    reward_cr: rewardCr,
-    collateral_cr: 0,
-    preloadedCargo: true,
-    params: {
-      cmdtyId: commodityId,
-      qty,
-      sealedRemaining: qty,
-      sealedDelivered: 0,
-      sealAccounted: true,
+/** A sealed lot exists only when a live board offer preloads it. */
+export function acceptSealedOffer(sim) {
+  const boards = sim.state.missions && sim.state.missions.boards;
+  if (!boards) return result('accept_mission', { unavailable: true, reason: 'no_sealed_offer' });
+  for (const board of Object.values(boards)) {
+    const slots = board && Array.isArray(board.slots) ? board.slots : [];
+    for (const offer of slots) {
+      if (offer && offer.preloadedCargo === true && offer.id) {
+        return acceptMission(sim, offer.id);
+      }
+    }
+  }
+  return result('accept_mission', { unavailable: true, reason: 'no_sealed_offer' });
+}
+
+export function buyModule(sim, defId) {
+  const before = Array.isArray(sim.state.player.moduleInventory) ? sim.state.player.moduleInventory.length : 0;
+  const capBefore = sim.state.player.cargo.capVolume;
+  const watched = withCredits(sim, () => {
+    sim.bus.emit('ui:buyModule', { defId });
+  });
+  const after = Array.isArray(sim.state.player.moduleInventory) ? sim.state.player.moduleInventory.length : 0;
+  return result('buy_module', {
+    ok: after > before,
+    reason: after > before ? null : 'refused',
+    creditsDelta: watched.creditsDelta,
+    detail: { defId, before, after, capBefore, capAfter: sim.state.player.cargo.capVolume, reasons: watched.reasons },
+  });
+}
+
+export function fitModule(sim, defId) {
+  const capBefore = sim.state.player.cargo.capVolume;
+  const unitsBefore = custodyUnits(sim.state);
+  const inventory = sim.state.player.moduleInventory || [];
+  const item = [...inventory].reverse().find((row) => row && row.defId === defId);
+  const watched = withCredits(sim, () => {
+    sim.bus.emit('ui:fitModule', item
+      ? { instanceId: item.instanceId, defId }
+      : { defId });
+  });
+  return result('fit_module', {
+    ok: sim.state.player.cargo.capVolume !== capBefore,
+    reason: sim.state.player.cargo.capVolume !== capBefore ? null : 'cap_unchanged',
+    creditsDelta: watched.creditsDelta,
+    detail: {
+      defId,
+      capBefore,
+      capAfter: sim.state.player.cargo.capVolume,
+      unitsBefore,
+      unitsAfter: custodyUnits(sim.state),
+      reasons: watched.reasons,
     },
-    objectiveProgress: 0,
-    objectiveTarget: 1,
-  };
-  sim.state.missions.active.push(mission);
-  const loaded = addCargo(sim.state, commodityId, qty);
-  return { mission, loaded };
+  });
+}
+
+export function tow() {
+  return result('tow', { unavailable: true, reason: 'no_player_tow_verb' });
+}
+
+export function sourceFit() {
+  return result('source_fit', { unavailable: true, reason: 'no_player_source_fit_verb' });
+}
+
+export function shipLoss() {
+  return result('ship_loss', { unavailable: true, reason: 'no_player_ship_loss_verb' });
 }
 
 export function firstBoardOffer(sim, stationId = HOME_STATION) {

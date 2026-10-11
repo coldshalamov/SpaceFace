@@ -1,8 +1,6 @@
-diff --git a/src/systems/economy.js b/src/systems/economy.js
 --- a/src/systems/economy.js
 +++ b/src/systems/economy.js
-@@ -2454,7 +2454,16 @@ export const economy = {
-     if (side === 'buy') qty = Math.min(qty, Math.max(0, Math.floor(entry.stock - 1)));
+@@ -2468,6 +2468,15 @@
      if (qty <= 0) return { ok: false, reason: 'no_stock' };
      const frontier = info ? this.frontierPenalty(info) : 0;
      const spread = spreadOf(entry, frontier);
@@ -18,7 +16,7 @@ diff --git a/src/systems/economy.js b/src/systems/economy.js
      const el = def.elasticity;
      const cycle = getCycleCore(
        state,
-@@ -2471,7 +2480,7 @@ export const economy = {
+@@ -2484,7 +2493,7 @@
        demand: applyPersistentDemand(1, entry.demandMult), cycle: cycleFactorAt(cycle, tNow),
        priceLo: PRICE_MULT_LO, priceHi: PRICE_MULT_HI,
      });
@@ -27,10 +25,9 @@ diff --git a/src/systems/economy.js b/src/systems/economy.js
      const marketUnitAvg = side === 'buy' ? avgMidPrice * (1 + spread / 2) : avgMidPrice * (1 - spread / 2);
      const unitAvg = marketUnitAvg * standingPriceMultiplier;
      const total = settleCredits(unitAvg * qty, side);
-diff --git a/src/systems/cargo.js b/src/systems/cargo.js
 --- a/src/systems/cargo.js
 +++ b/src/systems/cargo.js
-@@ -13,6 +13,7 @@ import {
+@@ -12,6 +12,7 @@
  } from '../core/pickupAcceptance.js';
  import { spawnJettisonedCargoPod, volatileThrowSpeedScale } from './lootShards.js';
  import { getDerivedStats, shipworksStationAccess } from './ships.js';
@@ -38,17 +35,23 @@ diff --git a/src/systems/cargo.js b/src/systems/cargo.js
  import { TALLY_THREE, tallyThreeBody, tallyThreeSource, tallyThreeFingerprint } from '../data/tallyThree.js';
  
  /** Explicit SF20-03 receiver intent. Source and payment owners commit before Massline retires. */
-@@ -1044,16 +1045,86 @@ export const cargo = {
-     });
+@@ -1038,6 +1039,34 @@
+     return receipt;
    },
  
-+  // Same legality table economy.runScan uses (FINE_MULT). Kept here so a bay
-+  // cash-in can charge through economy:chargeCredits without a second writer.
-+  _bayFineMult(def) {
++
++  _commodityRow(id) {
++    for (const row of COMMODITIES) if (row && row.id === id) return row;
++    return null;
++  },
++
++  // Same legality table economy.runScan uses (FINE_MULT). A bay cash-in charges
++  // through economy:chargeCredits; this does not add a credit writer.
++  _bayFineMult(row) {
 +    const table = { legal: 0, restricted: 0.8, illegal: 1.2, contraband: 1.5 };
-+    const legality = def && def.legality;
++    const legality = row && row.legality;
 +    if (legality && table[legality] != null) return table[legality];
-+    return def && Number(def.fineMult) > 0 ? Number(def.fineMult) : 1;
++    return row && Number(row.fineMult) > 0 ? Number(row.fineMult) : 1;
 +  },
 +
 +  _dockStationInfo() {
@@ -64,8 +67,16 @@ diff --git a/src/systems/cargo.js b/src/systems/cargo.js
 +    return null;
 +  },
 +
+   /**
+    * One-shot undock receipt for a hot-dock spill: the cause ("came in hot"), the loss (named
+    * pods), and the remedy in place (they are floating right beside the ship, scoopable). The
+@@ -1046,23 +1075,95 @@
+    */
    _cashInSalvage() {
      if (!combatFlag('salvageBay')) return;
+-    const sale = cashInSalvage(this.state);
+-    if (!sale || !this.bus || typeof this.bus.emit !== 'function') return;
+-    if (sale.credits > 0) {
 +    const state = this.state;
 +    const bay = state && state.player && state.player.salvageBay;
 +    if (!bay || !bay.items) return;
@@ -74,29 +85,44 @@ diff --git a/src/systems/cargo.js b/src/systems/cargo.js
 +    const seized = [];
 +    const parked = [];
 +    for (const id of Object.keys(bay.items)) {
-+      const def = defOf(state, id);
++      const row = this._commodityRow(id);
 +      const qty = Math.floor(Number(bay.items[id]) || 0);
-+      if (qty <= 0 || !def || !def.legality || def.legality === 'legal') continue;
++      if (qty <= 0 || !row || !row.legality || row.legality === 'legal') continue;
 +      delete bay.items[id];
 +      if (fence) {
 +        const accepted = addCargo(state, id, qty);
 +        const left = qty - accepted;
-+        if (left > 0) parked.push({ id, left });
++        if (left > 0) parked.push({ id, qty: left });
 +      } else {
-+        seized.push({ commodityId: id, qty, def });
++        seized.push({ commodityId: id, qty, row });
 +      }
 +    }
-     const sale = cashInSalvage(this.state);
-+    for (const row of parked) bay.items[row.id] = (Number(bay.items[row.id]) || 0) + row.left;
--    if (!sale || !this.bus || typeof this.bus.emit !== 'function') return;
--    if (sale.credits > 0) {
++    const sale = cashInSalvage(state);
++    if (!bay.items || typeof bay.items !== 'object') bay.items = {};
++    for (const held of parked) bay.items[held.id] = (Math.floor(Number(bay.items[held.id]) || 0) + held.qty);
++    if (!sale && parked.length === 0) {
++      bay.items = {};
++      bay.usedVolume = 0;
++    } else if (parked.length) {
++      let vol = 0;
++      for (const id of Object.keys(bay.items)) {
++        const row = this._commodityRow(id);
++        const qty = Math.floor(Number(bay.items[id]) || 0);
++        const each = row && row.volPerU > 0 ? row.volPerU : 1;
++        vol += qty * each;
++      }
++      bay.usedVolume = vol;
++    }
 +    if (!this.bus || typeof this.bus.emit !== 'function') return;
 +    if (sale && sale.credits > 0) {
        this.bus.emit('economy:grantCredits', {
          amount: sale.credits,
          reason: 'salvage:bay_sale',
-         receiptId: `salvage_bay:${this.state.tick | 0}`,
-       });
+-        receiptId: `salvage_bay:${this.state.tick | 0}`,
++        receiptId: `salvage_bay:${state.tick | 0}`,
++      });
++    }
++    if (sale) {
 +      this.bus.emit('salvage:bayCashedIn', { units: sale.units, credits: sale.credits, lots: sale.lots });
 +      this.bus.emit('toast', {
 +        text: `Salvage bay cashed in: ${sale.units} units for ${sale.credits} cr.`,
@@ -107,7 +133,7 @@ diff --git a/src/systems/cargo.js b/src/systems/cargo.js
 +    }
 +    if (seized.length) {
 +      let fine = 0;
-+      for (const stack of seized) fine += stack.def.basePrice * stack.qty * this._bayFineMult(stack.def);
++      for (const stack of seized) fine += (Number(stack.row.basePrice) || 0) * stack.qty * this._bayFineMult(stack.row);
 +      fine = Math.round(fine);
 +      if (fine > 0) this.bus.emit('economy:chargeCredits', { amount: fine, reason: 'fine:contraband' });
 +      const factionId = info && info.factionId;
@@ -122,7 +148,7 @@ diff --git a/src/systems/cargo.js b/src/systems/cargo.js
 +        });
 +      }
 +      this.bus.emit('contraband:scanned', {
-+        stationId: info && info.id || null,
++        stationId: (info && info.id) || null,
 +        found: true,
 +        fine,
 +        confiscated: seized.map((stack) => ({ commodityId: stack.commodityId, qty: stack.qty })),
@@ -130,17 +156,24 @@ diff --git a/src/systems/cargo.js b/src/systems/cargo.js
 +        source: 'salvage_bay',
 +      });
 +      this.bus.emit('toast', {
-+        text: `CUSTOMS — salvage bay contraband seized${fine > 0 ? ` (${fine} cr)` : ''}.`,
++        text: fine > 0
++          ? `CUSTOMS — salvage bay contraband seized (${fine} cr).`
++          : 'CUSTOMS — salvage bay contraband seized.',
 +        kind: 'warn',
 +        ttl: 4,
-+      });
+       });
      }
 -    this.bus.emit('salvage:bayCashedIn', { units: sale.units, credits: sale.credits, lots: sale.lots });
-     this.bus.emit('salvage:changed', { used: 0, cap: Math.round(salvageBayCap(this.state)) });
+-    this.bus.emit('salvage:changed', { used: 0, cap: Math.round(salvageBayCap(this.state)) });
 -    this.bus.emit('toast', {
 -      text: `Salvage bay cashed in: ${sale.units} units for ${sale.credits} cr.`,
 -      kind: 'good',
 -      ttl: 6,
--    });
++    this.bus.emit('salvage:changed', {
++      used: Math.round(Number(bay.usedVolume) || 0),
++      cap: Math.round(salvageBayCap(state)),
+     });
 -    this.bus.emit('audio:cue', { id: 'sfx_loot_collect' });
    },
+ 
+   _announceHotDockSpill() {

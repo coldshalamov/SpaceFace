@@ -1,7 +1,6 @@
 // Focused deterministic sim for economic red-team searches.
-// Drives the live economy, cargo, faction, ship, mission, crafting, mining, and
-// automation writers. It does not mint credits except by assigning the opening
-// stake before the first measured action.
+// The opening wallet is createGameState's live default (0). New-game stake is
+// not assigned here. Credits move only through the economy writer.
 
 import { createSimulation } from '../../src/core/sim.js';
 import { SECTORS } from '../../src/data/sectors.js';
@@ -15,14 +14,16 @@ import { missions } from '../../src/systems/missions.js';
 import { crafting } from '../../src/systems/crafting.js';
 import { mining } from '../../src/systems/mining.js';
 import { automation } from '../../src/systems/automation.js';
+import { save as saveSystem } from '../../src/save/saveSystem.js';
 
 export const HOME_STATION = 'station_helios';
 export const HOME_SECTOR = 'sector_helios_prime';
 export const HOME_FACTION = 'faction_scn';
-export const OPENING_STAKE_CR = 200_000;
 export const IRON = 'cmdty_ore_iron';
+export const BASE_COMMIT = 'bc40effa746f91af080144ebceed7ba9a9db3b8f';
+export const REVIEWED_HEAD = '762303e38628abab85b628b4ff1fb19857fbdbc5';
 
-const SYSTEMS = [economy, cargo, factions, ships, missions, crafting, mining, automation];
+const SYSTEMS = [economy, cargo, factions, ships, missions, crafting, mining, automation, saveSystem];
 
 const STATION_INDEX = new Map();
 for (const sector of SECTORS) {
@@ -35,7 +36,6 @@ for (const sector of SECTORS) {
         sectorId: sector.id,
         factionId: station.factionId || sector.factionId || null,
         services: Array.isArray(station.services) ? station.services : [],
-        security: sector.security,
       });
     }
   }
@@ -47,7 +47,6 @@ export function stationRecord(stationId) {
 
 let featureSnapshot = null;
 
-/** Production combat flags: the salvage bay and kill-loot homing are on for players. */
 export function useProductionFeatures() {
   if (!featureSnapshot) featureSnapshot = featureConfigFromMaps();
   applyFeatureConfigToMaps(PRODUCTION_FEATURES);
@@ -57,8 +56,22 @@ export function restoreFeatureMaps() {
   if (featureSnapshot) applyFeatureConfigToMaps(featureSnapshot);
 }
 
+export function ensureMemoryStorage() {
+  if (globalThis.localStorage && typeof globalThis.localStorage.getItem === 'function') return;
+  const values = new Map();
+  globalThis.localStorage = {
+    get length() { return values.size; },
+    key(index) { return [...values.keys()][index] ?? null; },
+    getItem(key) { return values.has(key) ? values.get(key) : null; },
+    setItem(key, value) { values.set(key, String(value)); },
+    removeItem(key) { values.delete(key); },
+    clear() { values.clear(); },
+  };
+}
+
 export function bootRedTeam(seed = 1845) {
   useProductionFeatures();
+  ensureMemoryStorage();
   const sim = createSimulation({
     seed: (Number(seed) >>> 0) || 1,
     systems: SYSTEMS,
@@ -81,10 +94,6 @@ export function bootRedTeam(seed = 1845) {
   state.playerId = entity.id;
   shipSys.recomputeEntity(entity.id);
   dockAt(sim, HOME_STATION);
-  // Opening stake is scenario setup, not an economy grant. Ledgers start after this write.
-  state.player.credits = OPENING_STAKE_CR;
-  state.player.debt = 0;
-  state.player.bounty = 0;
   return sim;
 }
 
@@ -130,7 +139,6 @@ export function bayQty(state, commodityId) {
   return Math.floor(Number(items && items[commodityId]) || 0);
 }
 
-/** Units sitting in the live hold, every parked hull, and the salvage bay. */
 export function custodyUnits(state) {
   const totals = {};
   const add = (bag) => {
@@ -168,6 +176,34 @@ export function listenCredits(bus) {
     rows,
     stop() { bus.off('credits:changed', onChange); },
   };
+}
+
+export function captureLedger(sim, commodityId = IRON) {
+  const stationId = (sim.state.ui && sim.state.ui.dockedStationId) || HOME_STATION;
+  const cargo = sim.state.player && sim.state.player.cargo && sim.state.player.cargo.items;
+  const bay = sim.state.player && sim.state.player.salvageBay && sim.state.player.salvageBay.items;
+  return {
+    credits: sim.state.player.credits,
+    debt: Number(sim.state.player.debt) || 0,
+    stock: stockQty(sim.state, stationId, commodityId),
+    stationId,
+    commodityId,
+    cargo: cargo ? { ...cargo } : {},
+    bay: bay ? { ...bay } : {},
+    capVolume: sim.state.player && sim.state.player.cargo ? sim.state.player.cargo.capVolume : null,
+  };
+}
+
+export function measure(sim, fn) {
+  const before = captureLedger(sim);
+  const ear = listenCredits(sim.bus);
+  let value;
+  try {
+    value = fn();
+  } finally {
+    ear.stop();
+  }
+  return { before, after: captureLedger(sim), credits: ear.rows.slice(), value };
 }
 
 export function playerPos(state) {

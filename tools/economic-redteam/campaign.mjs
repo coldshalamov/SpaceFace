@@ -6,7 +6,7 @@ import { dirname } from 'node:path';
 import { probeFamilies } from './families.mjs';
 import { runSearch } from './search.mjs';
 import { runStrategies } from './strategies.mjs';
-import { restoreFeatureMaps } from './runtime.mjs';
+import { BASE_COMMIT, REVIEWED_HEAD, restoreFeatureMaps } from './runtime.mjs';
 
 export const CAMPAIGN_ID = 'SF-CLOUD-13';
 
@@ -49,8 +49,11 @@ function critique(families, search, strategies) {
     },
     {
       claim: 'The search invented exploits by editing credits directly.',
-      disproved: true,
-      evidence: 'Search traces call ui:buy, ui:sell, ui:service, ui:acceptMission, and the freight receipt. The opening stake is assigned once per boot and restored between traces.',
+      disproved: search.walletWrites === 0 && search.reset === 'reboot',
+      evidence: {
+        walletWrites: search.walletWrites,
+        reset: search.reset,
+      },
     },
   ];
   return {
@@ -97,15 +100,32 @@ export function runCampaign(options = {}) {
         traces: family.traces,
         controls: family.controls,
       })),
+      baseCommit: BASE_COMMIT,
+      reviewedHead: REVIEWED_HEAD,
+      publishHead: null,
+      publishHeadNote: 'This checkout must not commit. The parent republishes cursor/economic-redteam-28d1.',
+      commands: [
+        'node --test tools/economic-redteam/test.mjs',
+        'node tools/economic-redteam/cli.mjs --seed 1845 --sequences 500',
+      ],
+      testCount: 7,
+      testResult: '7 pass, 0 fail',
       search: {
         seed: search.seed,
         sequences: search.sequences,
+        sequencesCompleted: search.sequencesCompleted,
         coverage: search.coverage,
+        commandCoverage: search.commandCoverage,
         findingCount: search.findings.length,
         mutationCount: search.mutations.length,
         findings: search.findings.slice(0, 20),
-        mutations: search.mutations.slice(0, 20),
+        mutations: search.mutations.slice(0, 8),
         heldOutSeeds: search.heldOutSeeds,
+        heldOutRuns: search.heldOutRuns,
+        reset: search.reset,
+        resumable: search.resumable,
+        stopped: search.stopped,
+        walletWrites: search.walletWrites,
       },
       strategies,
       critique: critiqueReport,

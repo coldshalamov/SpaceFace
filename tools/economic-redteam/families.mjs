@@ -1,8 +1,8 @@
-// Twelve exploit-family probes against the live writers.
-// A family is `exploit` only when a player-reachable command trace prints value
-// the invariants forbid. Otherwise it is `clean` (tested, not broken) or
-// `unavailable` when the current game has no such verb.
+// Twelve exploit-family probes. Lots and credits move only through public writers.
+// A missing verb is unavailable. Confirmed loops keep a minimized command list.
 
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { sellableCargoQuantity } from '../../src/systems/cargo.js';
 import {
   HOME_FACTION,
@@ -10,33 +10,39 @@ import {
   IRON,
   bayQty,
   bootRedTeam,
+  captureLedger,
   custodyUnits,
-  econOf,
   holdQty,
+  listenCredits,
   repOf,
   stockQty,
 } from './runtime.mjs';
 import {
   abandonMission,
   acceptMission,
+  acceptSealedOffer,
   badQty,
   buy,
+  buyModule,
   buyShip,
   craft,
   dock,
   firstBoardOffer,
+  fitModule,
   freightDelivery,
   leaveDock,
   lootDrop,
   offlineCatchup,
-  plantSealedDelivery,
   raiseStanding,
-  saveRoundtrip,
+  saveContinue,
   sell,
   sellShipEvent,
   service,
   setActiveShip,
+  shipLoss,
+  sourceFit,
   stepTicks,
+  tow,
 } from './grammar.mjs';
 import {
   bayCashVerdict,
@@ -61,6 +67,8 @@ export const FAMILY_IDS = Object.freeze([
   'ship_fit_capacity',
 ]);
 
+export const CONTRABAND_ARTIFACT = new URL('./artifacts/contraband-minimized.json', import.meta.url);
+
 function family(id, status, summary, extra = {}) {
   return {
     id,
@@ -72,27 +80,33 @@ function family(id, status, summary, extra = {}) {
   };
 }
 
+function fund(sim) {
+  return service(sim, 'loan');
+}
+
 function roundTrip(sim, qty) {
-  const stationId = HOME_STATION;
-  const stock0 = stockQty(sim.state, stationId, IRON);
-  const cargo0 = holdQty(sim.state, IRON);
-  const credits0 = sim.state.player.credits;
+  const before = captureLedger(sim);
+  const ear = listenCredits(sim.bus);
   const bought = buy(sim, IRON, qty);
-  const gained = holdQty(sim.state, IRON) - cargo0;
+  const gained = holdQty(sim.state, IRON) - (Number(before.cargo[IRON]) || 0);
   const sold = gained > 0 ? sell(sim, IRON, gained) : null;
-  const verdict = closedWashVerdict({
-    creditsDelta: sim.state.player.credits - credits0,
-    stockDelta: stockQty(sim.state, stationId, IRON) - stock0,
-    cargoDelta: holdQty(sim.state, IRON) - cargo0,
-  });
+  ear.stop();
+  const after = captureLedger(sim);
+  const creditsDelta = after.credits - before.credits;
+  const stockDelta = (after.stock ?? 0) - (before.stock ?? 0);
+  const cargoDelta = (Number(after.cargo[IRON]) || 0) - (Number(before.cargo[IRON]) || 0);
+  const verdict = closedWashVerdict({ creditsDelta, stockDelta, cargoDelta });
   return {
     qty,
     rep: repOf(sim.state),
+    before,
+    after,
+    credits: ear.rows.slice(),
     bought,
     sold,
-    creditsDelta: sim.state.player.credits - credits0,
-    stockDelta: stockQty(sim.state, stationId, IRON) - stock0,
-    cargoDelta: holdQty(sim.state, IRON) - cargo0,
+    creditsDelta,
+    stockDelta,
+    cargoDelta,
     verdict,
   };
 }
@@ -103,8 +117,9 @@ function minimizeQty(sim, maxQty) {
   let best = null;
   while (lo <= hi) {
     const mid = Math.floor((lo + hi) / 2);
+    if (sim.state.player.credits < 3000) fund(sim);
     const cycle = roundTrip(sim, mid);
-    if (cycle.verdict.exploit) {
+    if (cycle.bought.ok && cycle.verdict.exploit) {
       best = cycle;
       hi = mid - 1;
     } else {
@@ -114,101 +129,115 @@ function minimizeQty(sim, maxQty) {
   return best;
 }
 
+function ledgerTrace(name, seed, commands, cycle) {
+  return {
+    name,
+    seed,
+    commands,
+    creditsDelta: cycle ? cycle.creditsDelta : null,
+    stockDelta: cycle ? cycle.stockDelta : null,
+    cargoDelta: cycle ? cycle.cargoDelta : null,
+    before: cycle ? cycle.before : null,
+    after: cycle ? cycle.after : null,
+    credits: cycle ? cycle.credits : null,
+    rep: cycle ? cycle.rep : null,
+    qty: cycle ? cycle.qty : null,
+  };
+}
+
 function probeWash(seed) {
   const sim = bootRedTeam(seed);
-  const neutral = roundTrip(sim, 25);
-  const climb = [];
+  fund(sim);
+  const neutral = roundTrip(sim, 5);
+  let steps = 0;
   let first = null;
-  for (let step = 1; step <= 350 && !first; step += 1) {
-    const cycle = roundTrip(sim, 40);
-    if (step === 1 || step % 25 === 0 || cycle.verdict.exploit) {
-      climb.push({ step, rep: cycle.rep, creditsDelta: cycle.creditsDelta, kind: cycle.verdict.kind });
+  let stop = null;
+  while (steps < 80 && !first) {
+    steps += 1;
+    if (sim.state.player.credits < 1500) fund(sim);
+    const cycle = roundTrip(sim, 8);
+    if (!cycle.bought.ok) {
+      stop = cycle.bought.reason;
+      break;
     }
-    if (cycle.verdict.exploit) first = { step, ...cycle };
+    if (cycle.verdict.exploit) first = { step: steps, cycle };
   }
-  // Mission completion emits faction:repDelta of +15. Repeat that writer event
-  // until a closed round trip prints, which is the player path into allied prices.
-  const alliedSim = bootRedTeam(seed + 1);
+
+  const allied = bootRedTeam(seed + 1);
   let grants = 0;
   let opened = null;
   while (grants < 40 && !opened) {
     grants += 1;
-    raiseStanding(alliedSim, HOME_FACTION, 15);
-    const cycle = roundTrip(alliedSim, 10);
-    if (cycle.verdict.exploit) opened = { grants, cycle };
+    raiseStanding(allied, HOME_FACTION, 15);
+    if (allied.state.player.credits < 2500) fund(allied);
+    const cycle = roundTrip(allied, 10);
+    if (cycle.bought.ok && cycle.verdict.exploit) opened = { grants, cycle };
   }
-  const minimal = opened ? minimizeQty(alliedSim, 10) : null;
+  const minimal = opened ? minimizeQty(allied, 10) : null;
   let scale = null;
   if (minimal && minimal.verdict.exploit) {
-    while (repOf(alliedSim.state) < 400) raiseStanding(alliedSim, HOME_FACTION, 15);
-    scale = roundTrip(alliedSim, 25);
+    while (repOf(allied.state) < 400) {
+      raiseStanding(allied, HOME_FACTION, 15);
+      if (allied.state.player.credits < 4000) fund(allied);
+    }
+    scale = roundTrip(allied, 25);
   }
   const exploit = !!(minimal && minimal.verdict.exploit);
   return family(
     'zero_spread_trade_cycles',
     exploit ? 'exploit' : 'clean',
     exploit
-      ? 'Faction standing from mission-sized rep grants inverts the Helios bid-ask. The smallest closed iron round trip prints credits, and the margin is larger at allied rep. Iron trading alone does not climb that far.'
-      : 'Same-station iron round trips did not print credits.',
+      ? 'Mission-sized faction:repDelta grants invert the Helios bid-ask. A closed iron round trip prints credits. The ledger is the buy and the sell.'
+      : 'Same-station iron round trips did not print credits from the live wallet.',
     {
       traces: [
         {
-          name: 'neutral_rep',
-          seed,
-          commands: ['ui:buy iron 25', 'ui:sell iron 25'],
-          creditsDelta: neutral.creditsDelta,
+          ...ledgerTrace('neutral_rep', seed, ['ui:service loan', 'ui:buy iron 5', 'ui:sell iron 5'], neutral),
           verdict: neutral.verdict.kind,
         },
         {
           name: 'natural_climb',
           seed,
-          commands: [`repeat ui:buy/ui:sell max iron until profit (${first ? first.step : 'none'} cycles)`],
-          creditsDelta: first ? first.creditsDelta : null,
-          rep: first ? first.rep : repOf(sim.state),
+          commands: ['ui:service loan as the wallet allows', 'repeat ui:buy/ui:sell iron'],
+          creditsDelta: first ? first.cycle.creditsDelta : null,
+          rep: first ? first.cycle.rep : repOf(sim.state),
           steps: first ? first.step : null,
+          stop,
         },
-        {
+        minimal ? {
+          ...ledgerTrace('allied_minimized', seed + 1, [
+            `faction:repDelta ${HOME_FACTION} +15 x ${grants}`,
+            'ui:service loan',
+            `ui:buy ${IRON} ${minimal.qty}`,
+            `ui:sell ${IRON} ${minimal.qty}`,
+          ], minimal),
+          missionGrants: grants,
+        } : {
           name: 'allied_minimized',
           seed: seed + 1,
-          commands: [
-            `faction:repDelta ${HOME_FACTION} +15 x ${grants}`,
-            `ui:buy ${IRON} ${minimal ? minimal.qty : 10}`,
-            `ui:sell ${IRON} ${minimal ? minimal.qty : 10}`,
-          ],
-          creditsDelta: minimal ? minimal.creditsDelta : 0,
-          qty: minimal ? minimal.qty : null,
-          stockDelta: minimal ? minimal.stockDelta : null,
-          rep: opened ? opened.cycle.rep : repOf(alliedSim.state),
+          commands: [`faction:repDelta ${HOME_FACTION} +15 x ${grants}`],
+          creditsDelta: 0,
           missionGrants: grants,
         },
-        scale ? {
-          name: 'allied_scale',
-          seed: seed + 1,
-          commands: [
-            'continue faction:repDelta +15 until rep >= 400',
-            'ui:buy cmdty_ore_iron 25',
-            'ui:sell cmdty_ore_iron 25',
-          ],
-          creditsDelta: scale.creditsDelta,
-          qty: 25,
-          stockDelta: scale.stockDelta,
-          rep: scale.rep,
-        } : null,
+        scale && scale.bought.ok ? ledgerTrace('allied_scale', seed + 1, [
+          'continue faction:repDelta +15 until rep >= 400',
+          'ui:service loan',
+          'ui:buy cmdty_ore_iron 25',
+          'ui:sell cmdty_ore_iron 25',
+        ], scale) : null,
       ].filter(Boolean),
-      controls: [
-        {
-          name: 'neutral_standing_is_not_a_wash',
-          pass: neutral.verdict.exploit !== true && neutral.creditsDelta <= 0,
-          creditsDelta: neutral.creditsDelta,
-        },
-      ],
-      detail: { climb, neutral, opened, minimal, tradeRepAfterClimb: repOf(sim.state) },
+      controls: [{
+        name: 'neutral_standing_is_not_a_wash',
+        pass: neutral.verdict.exploit !== true && neutral.creditsDelta <= 0,
+        creditsDelta: neutral.creditsDelta,
+      }],
     },
   );
 }
 
 function probeUnderflow(seed) {
   const sim = bootRedTeam(seed);
+  fund(sim);
   const before = stockQty(sim.state, HOME_STATION, IRON);
   const bought = buy(sim, IRON, 1_000_000);
   const after = stockQty(sim.state, HOME_STATION, IRON);
@@ -218,143 +247,136 @@ function probeUnderflow(seed) {
     verdict.exploit ? 'exploit' : 'clean',
     verdict.exploit
       ? `Helios iron stock left the legal floor (${after}).`
-      : 'A max buy leaves at least 1 unit on the book.',
+      : 'A max buy, funded by the loan writer, leaves at least 1 unit on the book.',
     {
       traces: [{
         name: 'max_buy',
         seed,
-        commands: [`ui:buy ${IRON} 1000000`],
+        commands: ['ui:service loan', `ui:buy ${IRON} 1000000`],
         stockBefore: before,
         stockAfter: after,
-        qty: bought.detail && bought.detail.receipt && bought.detail.receipt.qty,
+        bought: bought.ok,
+        reason: bought.reason,
       }],
-      detail: { verdict: verdict.kind },
     },
   );
 }
 
 function probeCustody(seed) {
   const sim = bootRedTeam(seed);
-  const purchased = buyShip(sim, 'ship_pelican');
-  buy(sim, IRON, 10);
+  const purchased = buyShip(sim, 'ship_kestrel');
+  leaveDock(sim);
+  lootDrop(sim, { commodityId: IRON, qty: 4, source: 'mining' });
+  stepTicks(sim, 20);
+  dock(sim, HOME_STATION);
   const before = custodyUnits(sim.state);
   const index = Math.max(0, (sim.state.player.ownedShips || []).length - 1);
   const swapped = purchased.ok ? setActiveShip(sim, index) : null;
-  const back = purchased.ok ? setActiveShip(sim, 0) : null;
+  if (purchased.ok) setActiveShip(sim, 0);
   const after = custodyUnits(sim.state);
   const verdict = custodyVerdict(before, after);
   return family(
     'custody_duplication',
-    verdict.exploit ? 'exploit' : 'clean',
+    verdict.exploit ? 'exploit' : (purchased.ok ? 'clean' : 'unavailable'),
     verdict.exploit
       ? 'Switching hulls duplicated cargo units.'
-      : 'Parked-hold swaps conserve units. No second holder was created.',
+      : (purchased.ok
+        ? 'A free second Hitch from ui:buyShip, then a parked-hold swap, conserves units.'
+        : 'ui:buyShip did not add a second hull, so the swap was not available.'),
     {
       traces: [{
         name: 'hull_swap',
         seed,
-        commands: ['ui:buyShip ship_pelican', 'ui:buy iron 10', 'ui:setActiveShip last', 'ui:setActiveShip 0'],
+        commands: ['ui:buyShip ship_kestrel', 'loot:drop mining iron 4', 'step 20', 'ui:setActiveShip'],
         purchased: purchased.ok,
         before,
         after,
+        swapped: swapped && swapped.ok,
       }],
-      detail: { swapped, back, verdict },
+      detail: { verdict },
     },
   );
 }
 
 function probeDelivery(seed) {
   const sim = bootRedTeam(seed);
-  const iron0 = holdQty(sim.state, IRON);
-  buy(sim, IRON, 4);
-  const free = holdQty(sim.state, IRON) - iron0;
-  const planted = plantSealedDelivery(sim, {
-    missionId: `ert-seal-${seed}`,
-    commodityId: IRON,
-    qty: 4,
-    rewardCr: 500,
-    destStationId: HOME_STATION,
-  });
-  const sellable = sellableCargoQuantity(sim.state, IRON);
-  const blocked = sell(sim, IRON, 4 + free);
+  const accepted = acceptSealedOffer(sim);
+  if (accepted.unavailable) {
+    return family('delivery_and_resale', 'unavailable', 'No live board offer preloads sealed cargo.', {
+      traces: [{ name: 'no_sealed_offer', seed, commands: ['ui:acceptMission sealed'], reason: accepted.reason }],
+    });
+  }
+  const commodityId = IRON;
+  const active = (sim.state.missions.active || []).slice(-1)[0];
+  const cmdty = active && active.params && active.params.cmdtyId;
+  const blocked = sell(sim, cmdty || commodityId, 100);
   const credits0 = sim.state.player.credits;
-  const turnedIn = dock(sim, HOME_STATION);
+  dock(sim, (active && active.destStationId) || HOME_STATION);
   const paid = sim.state.player.credits - credits0;
-  const holdAfter = holdQty(sim.state, IRON);
   const again0 = sim.state.player.credits;
-  dock(sim, HOME_STATION);
+  dock(sim, (active && active.destStationId) || HOME_STATION);
   const secondPay = sim.state.player.credits - again0;
-  const soldAfter = sell(sim, IRON, 4);
-  const doubleDip = blocked.ok === true && paid > 0;
-  const replay = secondPay > 0;
-  const exploit = doubleDip || replay;
+  const exploit = blocked.ok === true && paid > 0 || secondPay > 0;
   return family(
     'delivery_and_resale',
     exploit ? 'exploit' : 'clean',
     exploit
-      ? 'Sealed iron paid a delivery reward and was also sold, or the same dock paid twice.'
-      : 'Sealed iron cannot be sold. The destination dock pays the reward once and consumes the seal.',
+      ? 'A sealed offer paid a reward and was also sold, or the same dock paid twice.'
+      : 'The sealed offer, if it loaded, cannot be sold through and paid twice.',
     {
       traces: [{
         name: 'seal_then_dock',
         seed,
-        commands: [
-          'ui:buy iron 4',
-          'plant sealed cargo_delivery 4 iron reward 500',
-          'ui:sell iron (must refuse the seal)',
-          'dock:docked station_helios',
-          'dock:docked station_helios again',
-        ],
+        commands: ['ui:acceptMission sealed offer', 'ui:sell', 'dock destination', 'dock again'],
+        accepted: accepted.ok,
         sellBlocked: blocked.ok !== true,
         sellReason: blocked.reason,
         paid,
         secondPay,
-        holdAfter,
-        loaded: planted.loaded,
-        sellable,
+        sellable: cmdty ? sellableCargoQuantity(sim.state, cmdty) : null,
       }],
       controls: [
         { name: 'second_dock_does_not_pay', pass: secondPay <= 0, secondPay },
         { name: 'sale_of_seal_refused', pass: blocked.ok !== true, reason: blocked.reason },
       ],
-      detail: { turnedIn: turnedIn.creditsDelta, soldAfter: soldAfter.ok },
     },
   );
 }
 
 function probeAbandon(seed) {
   const sim = bootRedTeam(seed);
+  fund(sim);
   const offer = firstBoardOffer(sim);
   if (!offer) {
-    return family('abandoned_contract_payout', 'unavailable', 'Helios boarded no payable offer to accept.', {
+    return family('abandoned_contract_payout', 'unavailable', 'Helios boarded no payable offer.', {
       traces: [{ name: 'no_offer', seed, commands: ['read station_helios board'] }],
     });
   }
-  const credits0 = sim.state.player.credits;
   const accepted = acceptMission(sim, offer.id);
-  const afterAccept = sim.state.player.credits;
   const activeId = accepted.detail && accepted.detail.activeId;
+  const afterAccept = sim.state.player.credits;
   const abandoned = activeId ? abandonMission(sim, activeId) : null;
-  const afterAbandon = sim.state.player.credits;
-  const reward = Number(offer.reward_cr) || 0;
-  const paidReward = afterAbandon > afterAccept && (afterAbandon - afterAccept) >= Math.min(reward, 1);
+  const paidReward = abandoned && abandoned.creditsDelta > 0;
   return family(
     'abandoned_contract_payout',
-    paidReward ? 'exploit' : 'clean',
-    paidReward
-      ? `Abandoning ${offer.id} paid credits.`
-      : 'Abandoning a live Helios offer does not pay its reward.',
+    !accepted.ok ? 'unavailable' : (paidReward ? 'exploit' : 'clean'),
+    !accepted.ok
+      ? 'The live wallet could not accept a Helios offer.'
+      : (paidReward
+        ? `Abandoning ${offer.id} paid credits.`
+        : 'Abandoning a live Helios offer does not pay its reward.'),
     {
       traces: [{
         name: 'accept_abandon',
         seed,
-        commands: [`ui:acceptMission ${offer.id}`, `ui:abandonMission ${activeId}`],
-        offer: { id: offer.id, type: offer.type, reward },
-        acceptDelta: afterAccept - credits0,
+        commands: [`ui:acceptMission ${offer.id}`, activeId ? `ui:abandonMission ${activeId}` : 'abandon skipped'],
+        offer: { id: offer.id, type: offer.type, reward: Number(offer.reward_cr) || 0 },
+        acceptDelta: accepted.creditsDelta,
         abandonDelta: abandoned ? abandoned.creditsDelta : null,
         accepted: accepted.ok,
+        creditsAfterAccept: afterAccept,
       }],
-      controls: [{ name: 'reward_not_paid_on_abandon', pass: !paidReward, reward }],
+      controls: [{ name: 'reward_not_paid_on_abandon', pass: !paidReward }],
     },
   );
 }
@@ -382,48 +404,55 @@ function probeTimeSkip(seed) {
         second: second.detail,
         gained,
       }],
-      controls: [
-        { name: 'second_window_idempotent', pass: (second.detail && second.detail.credited) === 0 },
-      ],
+      controls: [{ name: 'second_window_idempotent', pass: (second.detail && second.detail.credited) === 0 }],
     },
   );
 }
 
 function probeRefinery(seed) {
   const sim = bootRedTeam(seed);
-  sim.state.player.cargo.items = {};
-  sim.state.player.cargo.usedVolume = 0;
-  sim.state.player.cargo.usedMass = 0;
-  plantSealedDelivery(sim, {
-    missionId: `ert-refine-${seed}`,
-    commodityId: IRON,
-    qty: 3,
-    rewardCr: 100,
-    destStationId: 'station_nowhere',
-  });
-  // Titanium is not sealed. The recipe still needs 3 free iron, which the seal withholds.
-  sim.state.player.cargo.items.cmdty_ore_titanium = 1;
-  sim.state.player.cargo.usedVolume += 1;
-  const sellable = sellableCargoQuantity(sim.state, IRON);
+  const accepted = acceptSealedOffer(sim);
+  if (accepted.unavailable || !accepted.ok) {
+    return family(
+      'sealed_refinery_inputs',
+      'unavailable',
+      'No preloaded board offer supplied sealed iron, so the refinery was not fed a forged seal.',
+      {
+        traces: [{
+          name: 'no_sealed_offer',
+          seed,
+          commands: ['ui:acceptMission sealed offer'],
+          reason: accepted.reason,
+          accepted: accepted.ok,
+        }],
+      },
+    );
+  }
+  const active = (sim.state.missions.active || []).slice(-1)[0];
+  const cmdty = active && active.params && active.params.cmdtyId;
+  leaveDock(sim);
+  if (cmdty !== 'cmdty_ore_titanium') {
+    lootDrop(sim, { commodityId: 'cmdty_ore_titanium', qty: 1, source: 'mining' });
+    stepTicks(sim, 20);
+  }
+  dock(sim, HOME_STATION);
+  const sellable = cmdty ? sellableCargoQuantity(sim.state, cmdty) : null;
   const built = craft(sim, 'bp_refine_metals', HOME_STATION);
-  const ironLeft = holdQty(sim.state, IRON);
-  const metals = holdQty(sim.state, 'cmdty_refined_metals');
-  const exploit = built.ok === true || ironLeft < 3 || metals > 0;
+  const exploit = built.ok === true && cmdty === IRON && (sellable || 0) <= 0;
   return family(
     'sealed_refinery_inputs',
     exploit ? 'exploit' : 'clean',
     exploit
-      ? 'Refine Metals consumed sealed iron or minted metals from it.'
-      : 'Refine Metals refuses when the only iron in the hold is sealed mission cargo.',
+      ? 'Refine Metals consumed a sealed preload.'
+      : 'Refine Metals did not mint metals out of a sealed preload alone.',
     {
       traces: [{
-        name: 'refine_sealed_iron',
+        name: 'refine_sealed',
         seed,
-        commands: ['plant 3 sealed iron', 'add 1 titanium', 'crafting.build bp_refine_metals'],
+        commands: ['ui:acceptMission sealed offer', 'crafting.build bp_refine_metals'],
+        cmdty,
         sellable,
         built: built.ok,
-        ironLeft,
-        metals,
       }],
     },
   );
@@ -431,7 +460,6 @@ function probeRefinery(seed) {
 
 function probeShipping(seed) {
   const sim = bootRedTeam(seed);
-  econOf(sim).ensureMarket(HOME_STATION);
   const payload = {
     stationId: HOME_STATION,
     commodityId: IRON,
@@ -443,13 +471,12 @@ function probeShipping(seed) {
   const firstDelta = (moved.detail.mid ?? 0) - (moved.detail.before ?? 0);
   const secondDelta = (moved.detail.after ?? 0) - (moved.detail.mid ?? 0);
   const verdict = replayVerdict({ firstDelta, secondDelta });
-  const playerCancel = { unavailable: true, reason: 'no_player_shipping_cancel_verb' };
   return family(
     'shipping_cancellation',
     verdict.exploit ? 'exploit' : 'clean',
     verdict.exploit
       ? 'Replaying one freight receipt moved station stock twice.'
-      : 'There is no player shipping-cancel verb. Replaying one cargo:delivered receipt does not move stock twice.',
+      : 'There is no player shipping-cancel verb. Replaying one freight receipt does not move stock twice.',
     {
       traces: [{
         name: 'freight_replay',
@@ -458,40 +485,66 @@ function probeShipping(seed) {
         firstDelta,
         secondDelta,
         duplicate: moved.detail.second && moved.detail.second.duplicate === true,
-        playerCancel,
+        playerCancel: { unavailable: true, reason: 'no_player_shipping_cancel_verb' },
       }],
-      detail: { verdict: verdict.kind },
     },
   );
 }
 
 function probeSave(seed) {
   const sim = bootRedTeam(seed);
-  const cycle = roundTrip(sim, 5);
-  const saved = saveRoundtrip(sim);
-  const econ = econOf(sim);
-  const intent = econ.execute(HOME_STATION, IRON, 'buy', 2, { intentId: `ert-intent-${seed}` });
-  const replay = econ.execute(HOME_STATION, IRON, 'buy', 2, { intentId: `ert-intent-${seed}` });
-  const exploit = saved.creditsDelta !== 0 || (replay && replay.duplicate !== true && replay.ok === true && intent.ok === true);
+  fund(sim);
+  const funded = captureLedger(sim);
+  leaveDock(sim);
+  const drop = lootDrop(sim, { commodityId: IRON, qty: 2, source: 'kill_burst' });
+  stepTicks(sim, 48);
+  const continued = saveContinue(sim, `ert-save-${seed}`);
+  const host = continued.sim;
+  const docked = dock(host, HOME_STATION);
+  const paidOnce = (docked.detail.reasons || []).includes('salvage:bay_sale');
+  const again = saveContinue(host, `ert-save-${seed}-after`);
+  const second = dock(again.sim, HOME_STATION);
+  const paidTwice = (second.detail.reasons || []).includes('salvage:bay_sale');
+  const creditsHeld = continued.result.ok && continued.result.detail.after.credits === funded.credits;
+  const exploit = paidTwice;
+  const unavailable = !continued.result.ok;
   return family(
     'save_load_first_grant',
-    exploit ? 'exploit' : 'clean',
-    exploit
-      ? 'Serialize/load or an intent replay created credits or a second fill.'
-      : 'Economy serialize/load keeps the wallet. A repeated trade intent returns the first receipt.',
+    unavailable ? 'unavailable' : (exploit ? 'exploit' : 'clean'),
+    unavailable
+      ? `Save/Continue did not complete (${continued.result.reason}).`
+      : (exploit
+        ? 'Continue paid the salvage-bay grant a second time.'
+        : 'Continue restored the wallet and cargo. The bay grant paid on the first dock after restore and not on the next Continue.'),
     {
       traces: [{
-        name: 'save_and_intent',
+        name: 'continue_bay_grant',
         seed,
-        commands: ['ui buy/sell 5', 'economy.serialize/deserialize', 'save:loaded', 'execute intent twice'],
-        saveDelta: saved.creditsDelta,
-        intentOk: intent && intent.ok,
-        replayDuplicate: replay && replay.duplicate === true,
-        roundTripDelta: cycle.creditsDelta,
+        commands: [
+          'ui:service loan',
+          'loot:drop kill_burst iron 2',
+          'step 48',
+          'save.save',
+          'save.load Continue',
+          'dock:docked station_helios',
+          'save.save',
+          'save.load Continue',
+          'dock:docked station_helios',
+        ],
+        drop: drop.ok,
+        saveOk: continued.result.ok,
+        saveReason: continued.result.reason,
+        before: continued.result.detail && continued.result.detail.before,
+        after: continued.result.detail && continued.result.detail.after,
+        paidOnce,
+        paidTwice,
+        creditsHeld,
+        firstDockDelta: docked.creditsDelta,
+        secondDockDelta: second.creditsDelta,
       }],
-      controls: [
-        { name: 'save_preserves_credits', pass: saved.creditsDelta === 0 },
-        { name: 'intent_replay_is_duplicate', pass: replay && replay.duplicate === true },
+      controls: unavailable ? [] : [
+        { name: 'continue_restores_wallet', pass: creditsHeld },
+        { name: 'second_continue_does_not_pay_the_grant', pass: !paidTwice },
       ],
     },
   );
@@ -502,6 +555,7 @@ function probeOverflow(seed) {
   const negative = badQty(sim, IRON, -5);
   const nan = badQty(sim, IRON, Number.NaN);
   const zero = badQty(sim, IRON, 0);
+  fund(sim);
   const huge = buy(sim, IRON, 1_000_000_000);
   const stock = stockQty(sim.state, HOME_STATION, IRON);
   const floor = stockFloorVerdict(stock);
@@ -512,12 +566,12 @@ function probeOverflow(seed) {
     exploit ? 'exploit' : 'clean',
     exploit
       ? 'A malformed quantity or a huge buy broke the book or the wallet.'
-      : 'Negative, NaN, and zero quantities are refused. A huge buy clamps to the book and stays finite.',
+      : 'Negative, NaN, and zero quantities are refused. A huge buy stays finite.',
     {
       traces: [{
         name: 'malformed_qty',
         seed,
-        commands: ['execute buy -5', 'execute buy NaN', 'execute buy 0', 'ui:buy 1e9'],
+        commands: ['execute buy -5', 'execute buy NaN', 'execute buy 0', 'ui:service loan', 'ui:buy 1e9'],
         negative: negative.reason,
         nan: nan.reason,
         zero: zero.reason,
@@ -529,76 +583,129 @@ function probeOverflow(seed) {
   );
 }
 
-function collectBurst(sim) {
+function bayPays(seed, qty, ticks) {
+  const sim = bootRedTeam(seed);
   leaveDock(sim);
-  const stepped = stepTicks(sim, 48);
-  return { stepped, bay: bayQty(sim.state) };
+  const drop = lootDrop(sim, { commodityId: 'cmdty_stolen_goods', qty, source: 'kill_burst' });
+  if (!drop.ok) return null;
+  stepTicks(sim, ticks);
+  if (bayQty(sim.state, 'cmdty_stolen_goods') <= 0) return null;
+  const cashed = dock(sim, HOME_STATION);
+  const reasons = (cashed.detail && cashed.detail.reasons) || [];
+  if (!reasons.includes('salvage:bay_sale') || !(cashed.creditsDelta > 0)) return null;
+  return {
+    qty,
+    ticks,
+    creditsDelta: cashed.creditsDelta,
+    reasons,
+    inBayBeforeDock: qty,
+  };
+}
+
+export function minimizeContraband(seed) {
+  for (let qty = 1; qty <= 6; qty += 1) {
+    let lo = 1;
+    let hi = 64;
+    let best = null;
+    while (lo <= hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      const hit = bayPays(seed, qty, mid);
+      if (hit) {
+        best = hit;
+        hi = mid - 1;
+      } else {
+        lo = mid + 1;
+      }
+    }
+    if (best) return best;
+  }
+  return null;
+}
+
+export function writeContrabandArtifact(minimized, fileUrl = CONTRABAND_ARTIFACT) {
+  const commands = minimized ? [
+    'undock',
+    `loot:drop kill_burst cmdty_stolen_goods ${minimized.qty}`,
+    `step ${minimized.ticks}`,
+    'dock:docked station_helios',
+  ] : [];
+  const body = {
+    family: 'contraband_relabel',
+    name: 'bay_stolen_goods',
+    minimized: !!minimized,
+    commands,
+    qty: minimized && minimized.qty,
+    ticks: minimized && minimized.ticks,
+    creditsDelta: minimized && minimized.creditsDelta,
+    reasons: minimized && minimized.reasons,
+  };
+  const path = fileUrl.pathname;
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `${JSON.stringify(body, null, 2)}\n`);
+  return body;
 }
 
 function probeContraband(seed) {
-  const sim = bootRedTeam(seed);
-  const legalDrop = lootDrop(sim, { commodityId: IRON, qty: 4, source: 'kill_burst' });
-  collectBurst(sim);
-  const legalBay = bayQty(sim.state, IRON);
-  const legalDock = dock(sim, HOME_STATION);
+  const minimized = minimizeContraband(seed + 3);
+  const artifact = writeContrabandArtifact(minimized);
+  const shown = minimized ? bayPays(seed + 3, minimized.qty, minimized.ticks) : null;
+  const illicitVerdict = shown
+    ? bayCashVerdict({ creditsDelta: shown.creditsDelta, legality: 'contraband', fineDelta: 0 })
+    : { exploit: false, kind: 'not_collected' };
+
+  const legalSim = bootRedTeam(seed);
+  leaveDock(legalSim);
+  const legalDrop = lootDrop(legalSim, { commodityId: IRON, qty: 1, source: 'kill_burst' });
+  stepTicks(legalSim, minimized ? minimized.ticks : 48);
+  const legalBay = bayQty(legalSim.state, IRON);
+  const legalDock = dock(legalSim, HOME_STATION);
   const legalVerdict = bayCashVerdict({
     creditsDelta: legalDock.creditsDelta,
     legality: 'legal',
     fineDelta: 0,
   });
 
-  const illicitSim = bootRedTeam(seed + 3);
-  const drop = lootDrop(illicitSim, { commodityId: 'cmdty_stolen_goods', qty: 4, source: 'kill_burst' });
-  const collected = collectBurst(illicitSim);
-  const inBay = bayQty(illicitSim.state, 'cmdty_stolen_goods');
-  const cashed = dock(illicitSim, HOME_STATION);
-  const fine = (cashed.detail.reasons || []).some((reason) => String(reason).startsWith('fine:'));
-  const illicitVerdict = bayCashVerdict({
-    creditsDelta: cashed.creditsDelta,
-    legality: 'contraband',
-    fineDelta: fine ? -1 : 0,
-  });
-  const again = dock(illicitSim, HOME_STATION);
-  const bayLeft = bayQty(illicitSim.state, 'cmdty_stolen_goods');
-
   const holdSim = bootRedTeam(seed + 4);
-  holdSim.state.player.cargo.items.cmdty_stolen_goods = 2;
-  holdSim.state.player.cargo.usedVolume = 2;
-  const customs = dock(holdSim, 'station_customs');
+  leaveDock(holdSim);
+  lootDrop(holdSim, { commodityId: 'cmdty_stolen_goods', qty: 2, source: 'mining' });
+  stepTicks(holdSim, 24);
+  const held = holdQty(holdSim.state, 'cmdty_stolen_goods');
+  const customs = held > 0 ? dock(holdSim, 'station_customs') : null;
   const holdLeft = holdQty(holdSim.state, 'cmdty_stolen_goods');
-  const holdFined = customs.creditsDelta < 0 && holdLeft === 0;
+  const debt = Number(holdSim.state.player.debt) || 0;
+  // A broke wallet cannot pay the fine in credits. The scanner still confiscates
+  // and files the unpaid amount on the note.
+  const holdFined = !!(customs && held > 0 && holdLeft === 0 && (customs.creditsDelta < 0 || debt > 0));
 
-  const collectedIllicit = drop.ok === true && inBay > 0;
-  const exploit = collectedIllicit && illicitVerdict.exploit === true;
-  const status = !drop.ok || !collectedIllicit
-    ? 'unavailable'
-    : (exploit ? 'exploit' : 'clean');
+  const againSim = shown ? bootRedTeam(seed + 5) : null;
+  let secondDockDelta = null;
+  if (againSim && minimized) {
+    leaveDock(againSim);
+    lootDrop(againSim, { commodityId: 'cmdty_stolen_goods', qty: minimized.qty, source: 'kill_burst' });
+    stepTicks(againSim, minimized.ticks);
+    dock(againSim, HOME_STATION);
+    const again = dock(againSim, HOME_STATION);
+    secondDockDelta = again.creditsDelta;
+  }
+
+  const exploit = illicitVerdict.exploit === true;
   return family(
     'contraband_relabel',
-    status,
+    !shown ? 'unavailable' : (exploit ? 'exploit' : 'clean'),
     exploit
-      ? 'Kill-burst stolen goods land in the salvage bay and dock at Helios as clean scrap credits. The same goods in the hold are fined at Customs Gate.'
-      : (status === 'unavailable'
-        ? 'Kill-burst stolen goods never reached the salvage bay, so the cash-in path was not exercised.'
-        : 'Illicit kill loot was not converted into unpaid credits.'),
+      ? 'The shortest kill-burst of stolen goods that still reaches the bay cashes at Helios as salvage:bay_sale.'
+      : 'Illicit kill loot was not converted into unpaid credits.',
     {
       traces: [{
         name: 'bay_stolen_goods',
         seed: seed + 3,
-        commands: [
-          'undock',
-          'loot:drop kill_burst cmdty_stolen_goods 4',
-          'step 48',
-          'dock:docked station_helios',
-          'dock:docked station_helios again',
-        ],
-        spawned: drop.ok,
-        inBay,
-        creditsDelta: cashed.creditsDelta,
-        reasons: cashed.detail && cashed.detail.reasons,
-        secondDockDelta: again.creditsDelta,
-        bayLeft,
-        collectedTicks: collected.stepped.detail && collected.stepped.detail.ticks,
+        commands: artifact.commands,
+        qty: minimized && minimized.qty,
+        ticks: minimized && minimized.ticks,
+        creditsDelta: shown && shown.creditsDelta,
+        reasons: shown && shown.reasons,
+        secondDockDelta,
+        artifact: 'tools/economic-redteam/artifacts/contraband-minimized.json',
       }],
       controls: [
         {
@@ -610,59 +717,54 @@ function probeContraband(seed) {
         {
           name: 'hold_contraband_is_fined',
           pass: holdFined,
-          creditsDelta: customs.creditsDelta,
+          creditsDelta: customs && customs.creditsDelta,
+          debt,
           holdLeft,
+          held,
         },
         {
           name: 'second_dock_does_not_pay',
-          pass: again.creditsDelta <= 0,
-          creditsDelta: again.creditsDelta,
+          pass: secondDockDelta != null && secondDockDelta <= 0,
+          creditsDelta: secondDockDelta,
         },
       ],
-      detail: { illicitVerdict: illicitVerdict.kind, legalVerdict: legalVerdict.kind },
     },
   );
 }
 
 function probeShipFit(seed) {
   const sim = bootRedTeam(seed);
-  const eventSell = sellShipEvent(sim, 1);
-  const purchased = buyShip(sim, 'ship_kestrel');
-  const owned = (sim.state.player.ownedShips || []).length;
-  let latent = null;
-  if (purchased.ok && owned > 1) {
-    const before = sim.state.player.credits;
-    const method = sim.registry.get('ships').sellShip(owned - 1, { confirmedCargoUnits: 0 });
-    latent = {
-      methodOk: method === true,
-      creditsDelta: sim.state.player.credits - before,
-      note: 'ships.sellShip is not bound to ui:sellShip. This call is a writer diagnostic, not a player event.',
-    };
-  }
-  const fit = probeCustody(seed + 9);
-  const exploit = fit.status === 'exploit';
+  const unitsBefore = custodyUnits(sim.state);
+  const capBefore = sim.state.player.cargo.capVolume;
+  const bought = buyModule(sim, 'mod_smuggler_hold');
+  const fitted = fitModule(sim, 'mod_smuggler_hold');
+  const capAfter = sim.state.player.cargo.capVolume;
+  const changed = capAfter !== capBefore && fitted.ok === true;
+  const verbs = { tow: tow(), sourceFit: sourceFit(), shipLoss: shipLoss(), sellShip: sellShipEvent(sim, 1) };
   return family(
     'ship_fit_capacity',
-    exploit ? 'exploit' : 'clean',
-    exploit
-      ? 'A hull or fit change duplicated cargo.'
-      : 'Hull swaps conserve cargo. ui:sellShip has no listener, so a zero-price Hitch cannot be sold for buyback from the station screen.',
+    changed ? 'clean' : 'unavailable',
+    changed
+      ? 'A cargo-cap module changed the live hold cap. Unit totals were ledgered across the fit.'
+      : 'The live wallet cannot buy a cargo-cap module that fits the Hitch. ui:buyModule and ui:fitModule were attempted. Tow, source-fit, and ship-loss have no player verb.',
     {
-      traces: [
-        {
-          name: 'ui_sell_ship',
-          seed,
-          commands: ['ui:sellShip index 1', 'ui:buyShip ship_kestrel'],
-          sell: eventSell,
-          buy: { ok: purchased.ok, creditsDelta: purchased.creditsDelta },
-          latent,
+      traces: [{
+        name: 'fit_cap',
+        seed,
+        commands: ['ui:buyModule mod_smuggler_hold', 'ui:fitModule mod_smuggler_hold'],
+        capBefore,
+        capAfter,
+        unitsBefore,
+        unitsAfter: custodyUnits(sim.state),
+        buy: { ok: bought.ok, reason: bought.reason, creditsDelta: bought.creditsDelta },
+        fit: fitted.detail,
+        unavailableVerbs: {
+          tow: verbs.tow.reason,
+          source_fit: verbs.sourceFit.reason,
+          ship_loss: verbs.shipLoss.reason,
+          sell_ship: verbs.sellShip.reason,
         },
-        ...fit.traces,
-      ],
-      controls: [
-        { name: 'ui_sell_ship_unwired', pass: eventSell.unavailable === true, reason: eventSell.reason },
-      ],
-      detail: { latent, fit: fit.detail },
+      }],
     },
   );
 }

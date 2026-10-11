@@ -8,6 +8,7 @@ import {
   leaveDock,
   lootDrop,
   sell,
+  service,
   stepTicks,
 } from './grammar.mjs';
 import { closedWashVerdict } from './invariants.mjs';
@@ -62,6 +63,7 @@ function bestLegalRoute(sim) {
 
 export function runLegalTrader(seed) {
   const sim = bootRedTeam(seed);
+  service(sim, 'loan');
   const start = sim.state.player.credits;
   const route = bestLegalRoute(sim);
   const notes = [];
@@ -160,8 +162,9 @@ export function runCarefulSmuggler(seed) {
   const sim = bootRedTeam(seed);
   const start = sim.state.player.credits;
   const notes = [];
-  sim.state.player.cargo.items.cmdty_stolen_goods = 2;
-  sim.state.player.cargo.usedVolume = (Number(sim.state.player.cargo.usedVolume) || 0) + 2;
+  leaveDock(sim);
+  lootDrop(sim, { commodityId: 'cmdty_stolen_goods', qty: 2, source: 'mining' });
+  stepTicks(sim, 24);
   const lawfulQuote = econOf(sim).quote(HOME_STATION, 'cmdty_stolen_goods', 'sell', 2);
   const helios = dock(sim, HOME_STATION);
   const tried = sell(sim, 'cmdty_stolen_goods', 2);

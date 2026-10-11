@@ -1,10 +1,20 @@
 # SF-CLOUD-13 adapter — withheld production fixes
 
 The red team runs entirely under `tools/economic-redteam/`. It does not edit
-`src/systems/economy.js` or `src/systems/cargo.js`. Those files are shared
-single-writers (credits, cargo). The reproductions below are player-reachable
-command traces against the current runtime. `FIX.patch` is the exact change to
-land later; it is not applied.
+`src/systems/economy.js` or `src/systems/cargo.js`.
+
+`src/systems/economy.js` is in open PR 260 (`devin/s1-sim-worker-spike`,
+"perf(s1): merge master into sim-worker spike"). The wash clamp stays in
+`FIX.patch` until that path is free. Do not land it on top of PR 260.
+
+`src/systems/cargo.js` was re-checked against open PRs 257–269 on 2026-10-11.
+None of those pulls change it. The cargo hunk in `FIX.patch` is the exact
+landing diff against `origin/master`, checked with `git apply --check` on a
+temporary copy of that file. It is not applied to the working tree.
+
+`git apply --check` of the whole patch against a temp repo holding
+`origin/master` copies of both files succeeds. The economy hunk waits on PR 260.
+The cargo hunk can land on its own.
 
 ## Exploit 1 — allied standing washes the same berth
 
@@ -18,15 +28,15 @@ margin. Buy uses `ceil` and sell uses `floor`, which is not enough to close it.
 
 Reproduced by `ui:buy` / `ui:sell` at Helios (`station_helios`, iron):
 
-- Rep 0: a 25-unit round trip loses credits. Stock and cargo return to start.
-- Iron trading alone, 350 round trips, raises rep through
-  `economy:tradeCompleted` and then stalls short of the inversion. That climb
-  is not the exploit.
-- The player path into the prices is `faction:repDelta` of `+15`, the same
-  delta `mission:completed` applies. Twelve of those grants reach rep 180.
-  The smallest closed iron round trip there is 5 units for +1 cr. Stock delta
-  is 0. Continuing the same grants to rep 410, 25 units print +113 cr with
-  stock still unchanged.
+- Rep 0, funded only by `ui:service loan`: a 5-unit round trip loses 13 cr.
+  Stock returns to 32.76.
+- The player path into the prices is `faction:repDelta` of +15, the same delta
+  `mission:completed` applies. Twelve of those grants reach rep 180. The
+  smallest closed iron round trip there is 5 units for +1 cr. Before: 8154 cr,
+  stock 32.76. The credit rows are `trade:buy:cmdty_ore_iron` −165 and
+  `trade:sell:cmdty_ore_iron` +166. After: 8155 cr, stock 32.76, cargo unchanged.
+- Continuing the same grants to rep 410, 25 units print +113 cr with stock
+  still unchanged.
 
 This is a closed feedback loop, not a two-stop haul. No travel, no fine, no
 mission reward on the wash itself. The standing that opens it is earned.
@@ -53,9 +63,12 @@ Enemy loot tables drop `cmdty_stolen_goods` (`reaver_pirate` and others in
 `dock:docked` runs `_cashInSalvage`, which grants `floor(qty * basePrice * 0.6)`
 through `economy:grantCredits` and never asks `runScan`.
 
-The same two units in the trade hold, docked at Customs Gate, are confiscated
-and fined (negative control). A second dock of an empty bay pays nothing.
-Legal kill-loot ore still cashes at the scrap rate (allowed source).
+The shortest trace that still pays is one stolen-goods unit, one sim tick,
+then a Helios dock: **+193 cr**, reason `salvage:bay_sale`. Command list:
+`tools/economic-redteam/artifacts/contraband-minimized.json`. The same goods
+collected into the trade hold and docked at Customs Gate are confiscated and
+fined (negative control). A second dock of an empty bay pays nothing. Legal
+kill-loot ore still cashes at the scrap rate (allowed source).
 
 **Fix (not applied):** `FIX.patch` hunk for `src/systems/cargo.js`
 `_cashInSalvage`.
