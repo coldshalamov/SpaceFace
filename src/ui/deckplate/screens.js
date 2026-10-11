@@ -1371,4 +1371,14 @@ const RACING = `
 }
 `;
 
-export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + SETTINGS + SHELL + CHART + SELECTION + SHIP + RANGE + CRUCIBLE + CRUCIBLE_RESULTS + LEGACY + ARCHIVE_SCREENS + FINISH + RACING;
+// The held-mass verb keeps its live state owner; this decorative mark follows its lamp colour.
+const GYRE_IDENTITY = `
+.sf-gyre-pill::before {
+  content:""; display:block; flex:0 0 24px; width:24px; height:24px;
+  background:currentColor;
+  -webkit-mask:url("/assets/ui/arsenal/power_gyre.svg") center / contain no-repeat;
+  mask:url("/assets/ui/arsenal/power_gyre.svg") center / contain no-repeat;
+}
+`;
+
+export const DECKPLATE_SCREENS_CSS = WORDS + PAUSE + FH_BRIDGE + MISSIONLOG + GAMEOVER + HELP + SETTINGS + SHELL + CHART + SELECTION + SHIP + RANGE + CRUCIBLE + CRUCIBLE_RESULTS + LEGACY + ARCHIVE_SCREENS + FINISH + RACING + GYRE_IDENTITY;
