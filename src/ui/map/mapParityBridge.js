@@ -10,7 +10,7 @@
 // the screen is hidden. Roots are remount-safe: replacing a cached root's innerHTML reinstalls both
 // the key and overlay instead of trusting a process-global "installed" bit.
 
-import { MAP_LEGEND_ORDER, symbolDescriptor } from './tacticalMapGrammar.js';
+import { CHART_KEY_MARKS, MAP_LEGEND_ORDER, symbolDescriptor } from './tacticalMapGrammar.js';
 
 const STYLE_ID = 'sf-map-parity-bridge-style';
 const rootStates = new WeakMap();
@@ -31,6 +31,19 @@ export function mapParityLegendModel() {
     ...symbolDescriptor(kind),
     svg: GLYPH_SVG[kind],
   }));
+}
+
+/** The key's two groups: the five flight identities, then the chart-only marks. */
+export function mapKeyGroups() {
+  return Object.freeze([
+    Object.freeze({ id: 'flight', items: mapParityLegendModel() }),
+    Object.freeze({
+      id: 'chart',
+      items: CHART_KEY_MARKS.map((mark) => Object.freeze({
+        id: mark.id, label: mark.label, meaning: mark.meaning, colour: mark.colour, svg: mark.svg,
+      })),
+    }),
+  ]);
 }
 
 function liveStateFor(root) {
@@ -82,18 +95,37 @@ function createLegendKey(documentRef) {
   const section = documentRef.createElement('section');
   section.className = 'gm-parity-key';
   section.dataset.mapParityKey = 'v2';
-  section.setAttribute('aria-label', 'Navigation symbol key shared with the flight radar');
+  section.setAttribute('aria-label', 'Map symbols — hover a mark on the chart and the chart names it');
+  const groups = mapKeyGroups();
   section.innerHTML = [
-    '<div class="gm-parity-key__title">SYMBOL KEY / FLIGHT PARITY</div>',
-    '<div class="gm-parity-key__grid">',
-    ...mapParityLegendModel().map((item) => (
-      `<span class="gm-parity-key__item" data-kind="${item.id}" style="--gm-key:${item.colour}" title="${item.label}: ${item.channel}">`
-        + `<span class="gm-parity-key__glyph">${item.svg}</span>`
-        + `<span class="gm-parity-key__label">${item.label}</span>`
-        + '</span>'
-    )),
-    '</div>',
+    '<div class="gm-parity-key__title">MAP SYMBOLS</div>',
+    ...groups.map((group) => `
+      <div class="gm-parity-key__group" data-key-group="${group.id}">
+        <div class="gm-parity-key__grid">
+          ${group.items.map((item) => (
+            `<span class="gm-parity-key__item" data-kind="${item.id}" style="--gm-key:${item.colour}" tabindex="0">`
+              + `<span class="gm-parity-key__glyph">${item.svg}</span>`
+              + `<span class="gm-parity-key__label">${item.label}</span>`
+              + '</span>'
+          )).join('')}
+        </div>
+      </div>`).join(''),
+    '<div class="gm-parity-key__detail" role="status"></div>',
+    '<div class="gm-parity-key__note">Hover or click anything on the chart and it names itself here and on the mark.</div>',
   ].join('');
+  // Hover/focus a row -> its meaning speaks in the detail line (plain words, not shape talk).
+  const meaningById = new Map();
+  for (const group of groups) for (const item of group.items) meaningById.set(item.id, item.meaning || '');
+  const detail = section.querySelector('.gm-parity-key__detail');
+  const show = (ev) => {
+    const item = ev.target && ev.target.closest && ev.target.closest('.gm-parity-key__item');
+    if (!item || !detail) return;
+    const meaning = meaningById.get(item.dataset.kind) || '';
+    if (detail.textContent !== meaning) detail.textContent = meaning;
+  };
+  section.addEventListener('mouseover', show);
+  section.addEventListener('focusin', show);
+  section.addEventListener('click', show);
   return section;
 }
 
@@ -299,10 +331,26 @@ function injectStyle(documentRef) {
   letter-spacing:.14em;
   text-transform:uppercase;
 }
+#sf-galaxymap .gm-parity-key__group + .gm-parity-key__group { margin-top:8px; }
 #sf-galaxymap .gm-parity-key__grid {
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
   gap:8px 10px;
+}
+#sf-galaxymap .gm-parity-key__item { cursor:default; }
+#sf-galaxymap .gm-parity-key__item:focus-visible { outline:1px solid rgb(255 236 204 / .5); outline-offset:2px; }
+#sf-galaxymap .gm-parity-key__detail {
+  min-height:16px;
+  margin-top:8px;
+  color:var(--dp-ink,#e8e2d4);
+  font-size:12px;
+  line-height:1.35;
+}
+#sf-galaxymap .gm-parity-key__note {
+  margin-top:4px;
+  color:var(--dp-ink-mute,#96948e);
+  font-size:12px;
+  line-height:1.3;
 }
 #sf-galaxymap .gm-parity-key__item {
   display:flex;

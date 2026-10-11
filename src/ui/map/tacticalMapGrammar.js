@@ -43,35 +43,75 @@ export const TACTICAL_MAP_PALETTE = Object.freeze({
 export const TACTICAL_SYMBOLS = Object.freeze({
   player: Object.freeze({
     id: 'player', label: 'YOU', shape: 'asymmetric-hull', colour: TACTICAL_MAP_PALETTE.player,
+    meaning: 'Your ship — the lit hull everything else is measured from.',
     channel: 'filled hull + white nose notch + centre brackets', priority: 100,
   }),
   objective: Object.freeze({
     id: 'objective', label: 'OBJECTIVE', shape: 'open-corner-bracket', colour: TACTICAL_MAP_PALETTE.objective,
+    meaning: 'Your current goal — the amber bracket the game wants you at.',
     channel: 'four open corners + centre diamond + route corridor', priority: 95,
   }),
   hostile: Object.freeze({
     id: 'hostile', label: 'HOSTILE', shape: 'heading-chevron', colour: TACTICAL_MAP_PALETTE.hostile,
+    meaning: 'Will attack you on sight — fight or keep your distance.',
     channel: 'filled directional chevron + selection ring + threat weight', priority: 80,
   }),
   station: Object.freeze({
     id: 'station', label: 'STATION', shape: 'berth-hex', colour: TACTICAL_MAP_PALETTE.station,
+    meaning: 'Dock here to trade, refit, refuel and take contracts.',
     channel: 'flat-top hex + inset berth square', priority: 65,
   }),
   gate: Object.freeze({
     id: 'gate', label: 'GATE', shape: 'portal-double-ring', colour: TACTICAL_MAP_PALETTE.gate,
+    meaning: 'Fly in to jump to the neighbouring sector it names.',
     channel: 'double ring + portal ticks', priority: 70,
   }),
   neutral: Object.freeze({
     id: 'neutral', label: 'CONTACT', shape: 'outline-hull', colour: TACTICAL_MAP_PALETTE.neutral,
+    meaning: 'A nearby ship that is neither friend nor foe.',
     channel: 'outline heading hull', priority: 45,
   }),
   asteroid: Object.freeze({
     id: 'asteroid', label: 'ASTEROID', shape: 'micro-diamond', colour: TACTICAL_MAP_PALETTE.asteroid,
+    meaning: 'Mineable rock — drill it for ore.',
     channel: 'small dim diamond', priority: 15,
   }),
 });
 
 export const MAP_LEGEND_ORDER = Object.freeze(['player', 'objective', 'hostile', 'station', 'gate']);
+
+/**
+ * Chart-only marks, for the map's key. The flight symbols above are shared with the radar; these
+ * exist only on the chart, so they carry their own key glyph and a plain-language meaning each.
+ * `meaning` is written as words a new pilot can act on, never as shape description.
+ */
+export const CHART_KEY_MARKS = Object.freeze([
+  Object.freeze({
+    id: 'mission-point', label: 'MISSION POINT', colour: TACTICAL_MAP_PALETTE.objective,
+    meaning: 'A place or target your contract needs — visit it to advance the mission.',
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.9" fill="currentColor" stroke="none"/></svg>',
+  }),
+  Object.freeze({
+    id: 'survey-site', label: 'SURVEY SITE', colour: TACTICAL_MAP_PALETTE.objective,
+    meaning: 'Scan or sample here for a survey contract.',
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="6"/><path d="M8 12h8M12 8v8"/></svg>',
+  }),
+  Object.freeze({
+    id: 'holding', label: 'HOLDING', colour: '#c9b06a',
+    meaning: 'A claimed patch of the belt — mineable, and its owner may defend it.',
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M12 3l7 4v6.5L12 21l-7-7.5V7z"/></svg>',
+  }),
+  Object.freeze({
+    id: 'zone', label: 'ZONE', colour: '#7fa8c4',
+    meaning: 'A named region — an asteroid field, a patrol corridor, a hazard. Hover it for what it is.',
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke-dasharray="3 3"/></svg>',
+  }),
+  Object.freeze({
+    id: 'wreck', label: 'WRECK', colour: TACTICAL_MAP_PALETTE.wreck,
+    meaning: 'A dead hull — salvage for cargo and parts.',
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 15l7-8 9 3-4 8-7 1z"/><path d="M9 11l3 3"/></svg>',
+  }),
+]);
 
 const COMPACT_METRICS = Object.freeze({ size: 208, center: 104, radius: 100 });
 const EXPANDED_METRICS = Object.freeze({ size: 290, center: 145, radius: 141 });
