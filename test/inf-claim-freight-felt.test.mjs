@@ -81,3 +81,23 @@ test('an unknown body still names itself by id rather than inventing a place', (
   assert.equal(r.toasts.length, 0, 'not a known claim in this sector: no flight receipt');
   assert.deepEqual(r.state.worldNews.dockLines, ['Depot run landed at body_unknown: 5 units of supplies.']);
 });
+
+test('the note keys on the delivered leg: traffic has already advanced legSeq when it emits', () => {
+  const r = rig({ legSeq: 3 });
+  r.bus.emit('claim:freightDelivered', { bodyId: 'body_slag', inbound: true, quantity: 12 });
+  assert.equal(claimDeliveryNote(r.state, { bodyId: 'body_slag', inbound: true, quantity: 12 }).legKey, 'body_slag:2');
+  assert.equal(r.toasts.length, 1);
+});
+
+test('two genuine deliveries within one second with no service row stay two; a same-moment repeat stays one', () => {
+  const r = rig();
+  r.state.traffic.depotServices = [];
+  const payload = { bodyId: 'body_slag', inbound: true, quantity: 12 };
+  r.state.simTime = 100;
+  r.bus.emit('claim:freightDelivered', payload);
+  r.bus.emit('claim:freightDelivered', payload);
+  assert.equal(r.toasts.length, 1, 'a repeat of the same moment is one');
+  r.state.simTime = 100.5;
+  r.bus.emit('claim:freightDelivered', payload);
+  assert.equal(r.toasts.length, 2, 'half a second later is a new delivery');
+});

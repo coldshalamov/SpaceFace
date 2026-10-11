@@ -81,7 +81,10 @@ export const VEIL_HIDDEN = 2;
 /** True while the player's current hazard read is a nebula (sector hazard or nebula_fog zone). */
 export function nebulaVeilActive(state) {
   const read = state && state.ui && state.ui.hazardRead;
-  return !!read && (read.type === 'nebula' || read.type === 'nebula_fog');
+  if (!read || (read.type !== 'nebula' && read.type !== 'nebula_fog')) return false;
+  // A read stamped in another sector is stale: the veil applies only inside a nebula of THIS sector.
+  const here = state.world && state.world.currentSectorId;
+  return !(read.sectorId && here && read.sectorId !== here);
 }
 
 /** Veil band for a contact at `distanceSq` on a radar of `rangeSq` (squared WU). */
@@ -243,7 +246,9 @@ export function censusRadarContactsStillLayer({
         // ordinary traffic the close-band dial already hides.
         const hiddenTraffic = !hostile && (entity.type === 'ship' || entity.type === 'drone')
           && !isSalientShip(entity, targetId) && distanceSq > trafficRangeSq;
-        if (band === VEIL_GHOST && pushGhostMark && !hiddenTraffic) {
+        // The locked target is never erased: beyond the hide band it stays a ghost while on the dial.
+        const lockedGhost = entity.id === targetId && distanceSq <= rangeSq;
+        if ((band === VEIL_GHOST || lockedGhost) && pushGhostMark && !hiddenTraffic) {
           const ghost = projectRadarPoint(player.pos, entity.pos, range, metrics, projectScratch);
           if (ghost) pushGhostMark(entity, ghost, distanceSq);
         }

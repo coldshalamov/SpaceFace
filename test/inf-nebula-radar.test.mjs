@@ -15,6 +15,8 @@ import {
   nebulaVeilBand,
 } from '../src/ui/radar.js';
 import { tacticalRadarMetrics } from '../src/ui/map/tacticalMapGrammar.js';
+import { createSimulation } from '../src/core/sim.js';
+import { hazardHints } from '../src/data/hazardLanguage.js';
 
 const RANGE = 4000;
 const rangeSq = RANGE * RANGE;
@@ -133,4 +135,40 @@ test('the census is deterministic for the same contacts and veil', () => {
   const a = census({ veil: true });
   const b = census({ veil: true });
   assert.deepEqual({ ...a, result: undefined }, { ...b, result: undefined });
+});
+
+test('the locked target is never erased: beyond the hide band it stays a ghost while it is on the dial', () => {
+  const far = census({ veil: true, targetId: 14 });
+  assert.ok(far.ghosts.includes(14), 'a target at 82.5 % is a ghost, not gone');
+  assert.ok(!far.neutral.includes(14));
+  const other = census({ veil: true, targetId: null });
+  assert.ok(!other.ghosts.includes(14), 'an unlocked contact at the same range is gone');
+  const offDial = census({ veil: true, targetId: 16 });
+  assert.ok(!offDial.ghosts.includes(16), 'a target beyond the dial itself has no mark to ghost');
+});
+
+test('a nebula read stamped in another sector never veils the radar', () => {
+  const inHere = { world: { currentSectorId: 'sector_pallas_drift' }, ui: { hazardRead: { type: 'nebula', sectorId: 'sector_pallas_drift' } } };
+  const stale = { world: { currentSectorId: 'sector_helios_prime' }, ui: { hazardRead: { type: 'nebula', sectorId: 'sector_pallas_drift' } } };
+  assert.equal(nebulaVeilActive(inHere), true);
+  assert.equal(nebulaVeilActive(stale), false, 'the jump left the nebula behind');
+});
+
+test('enter a nebula, jump sector: the hazard read clears and the radar is not veiled', () => {
+  const sim = createSimulation({ seed: 4242, systems: [hazardHints] });
+  const { state, bus } = sim;
+  state.world.currentSectorId = 'sector_pallas_drift';
+  const player = sim.spawn({ type: 'ship', team: 0, pos: { x: 0, z: 0 }, hull: 100, hullMax: 100, radius: 6 });
+  state.playerId = player.id;
+  bus.emit('hazard:enter', { entityId: player.id, zoneType: 'nebula', intensity: 0.9 });
+  assert.equal(state.ui.hazardRead.type, 'nebula');
+  assert.equal(state.ui.hazardRead.sectorId, 'sector_pallas_drift');
+  assert.equal(nebulaVeilActive(state), true, 'inside the nebula the radar is veiled');
+  state.world.currentSectorId = 'sector_helios_prime';
+  bus.emit('sector:enter', { sectorId: 'sector_helios_prime' });
+  assert.equal(state.ui.hazardRead, null, 'sector entry clears the read (world emits no hazard:exit)');
+  assert.equal(nebulaVeilActive(state), false);
+  assert.deepEqual(census({ veil: nebulaVeilActive(state) }).ghosts, [], 'clear space shows every contact');
+  bus.emit('hazard:enter', { entityId: player.id, zoneType: 'nebula', intensity: 0.9 });
+  assert.equal(nebulaVeilActive(state), true, 'a nebula in the new sector veils again');
 });

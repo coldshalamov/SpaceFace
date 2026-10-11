@@ -311,3 +311,79 @@ test('the native rapier body honors the hulk authored mass (an impulse moves it 
     sim.dispose();
   }
 });
+
+test('the slag hulk is the anchor, not salvage: no pool for salvors or the beam to strip', () => {
+  const h = makeHarness();
+  const live = fire(h);
+  const hulk = ent(h, escOf(live).hulkId);
+  assert.deepEqual(hulk.data.salvagePool, {});
+  assert.equal(hulk.data.salvageTimeLeft, 0);
+});
+
+test('delivered needs the whole lot: a short hold at the broker pays nothing and the run stays open', () => {
+  const h = makeHarness();
+  const live = fire(h);
+  takeCache(h, live);
+  h.state.player.cargo.items[COMMODITY] = 4;
+  const broker = brokerOf(h, live);
+  h.player.pos.x = broker.pos.x + 50;
+  h.player.pos.z = broker.pos.z;
+  h.sim.runTicks(120);
+  assert.deepEqual(resolved(h), [], 'four of six is not the cache');
+  assert.deepEqual(grants(h), []);
+  h.state.player.cargo.items[COMMODITY] = 6;
+  h.sim.runTicks(120);
+  assert.deepEqual(grants(h), [450], 'the whole lot pays');
+});
+
+test('the lot is measured against the stock before the pickup, not a stale baseline', () => {
+  const h = makeHarness();
+  h.state.player.cargo.items[COMMODITY] = 10;
+  const live = fire(h);
+  delete h.state.player.cargo.items[COMMODITY];
+  h.sim.runTicks(120);
+  takeCache(h, live);
+  assert.equal(escOf(live).takenAt != null, true, 'the pickup is still seen as the pickup');
+  const broker = brokerOf(h, live);
+  h.player.pos.x = broker.pos.x + 50;
+  h.player.pos.z = broker.pos.z;
+  h.sim.runTicks(120);
+  assert.deepEqual(grants(h), [450]);
+
+  const dump = makeHarness();
+  dump.state.player.cargo.items[COMMODITY] = 4;
+  const liveB = fire(dump);
+  takeCache(dump, liveB);
+  assert.equal(dump.state.player.cargo.items[COMMODITY], 10);
+  dump.state.player.cargo.items[COMMODITY] = 4;
+  dump.sim.runTicks(120);
+  assert.deepEqual(resolved(dump), ['bait'], 'dumping the lot is bait however much stock was already aboard');
+});
+
+test('the escape is bounded: no delivery inside the window lapses with no pay, raiders stay ordinary hostiles', () => {
+  const h = makeHarness();
+  const live = fire(h);
+  takeCache(h, live);
+  h.state.simTime += 241;
+  h.sim.runTicks(60);
+  assert.deepEqual(resolved(h), ['lapsed']);
+  assert.deepEqual(grants(h), []);
+  assert.equal(raidersOf(h, live).length, 3);
+  for (const r of raidersOf(h, live)) assert.equal(r.data.despawnAt, undefined);
+});
+
+test('a half-denied raider spawn tops up to three through the retry', () => {
+  const h = makeHarness();
+  const live = fire(h);
+  const director = h.sim.registry.get('encounterDirector');
+  const real = director.spawnShips.bind(director);
+  let first = true;
+  director.spawnShips = (liveRef, specs) => {
+    if (first) { first = false; return real(liveRef, specs.slice(0, 1)); }
+    return real(liveRef, specs);
+  };
+  takeCache(h, live);
+  assert.equal(raidersOf(h, live).length, 1, 'only one was granted');
+  h.sim.runTicks(180);
+  assert.equal(raidersOf(h, live).length, 3, 'the retry topped up the missing two, no more');
+});

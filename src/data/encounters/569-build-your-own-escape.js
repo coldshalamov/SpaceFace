@@ -46,6 +46,8 @@ const RAIDER_RETRY_EVERY_S = 2;
 const RAIDER_RETRY_FOR_S = 20;
 const BAIT_BREAKOFF_S = 18;
 const CACHE_GONE_GRACE_S = 2;
+const RAIDER_COUNT = 3;
+const ESCAPE_WINDOW_S = 240;           // after the pickup the run is bounded too: nobody pays for a stale escape
 const BASE_PAY = 450;
 const PREP_BONUS = 150;
 const CLEAR_WU = 60;
@@ -153,6 +155,9 @@ export const runtime = Object.freeze({
     hulk.physicsBody = { shape: 'capsule', mass: HULK_MASS, dynamic: true };
     hulk.data = hulk.data || {};
     hulk.data.masslineTetherable = true;
+    // It is the anchor, not salvage: no pool for salvors, the mining beam or a tow job to strip.
+    hulk.data.salvagePool = {};
+    hulk.data.salvageTimeLeft = 0;
     if (cache.data) cache.data.scanLabel = 'DEAD-DROP CACHE — WATCHED';
     if (cache.data) cache.data.encounterId = live.id;
 
@@ -163,9 +168,11 @@ export const runtime = Object.freeze({
       hulkSpawn: { ...layout.hulk },
       cachePos: { ...layout.cache },
       brokerPos: { ...layout.broker },
-      holdBaseline: holdOf(state, CACHE_COMMODITY),
+      lastStock: holdOf(state, CACHE_COMMODITY),
       raiderSpecs: raiderSpecs.map((sh) => ({ ...sh })),
       takenAt: null,
+      escapeEndsAt: null,
+      preStock: 0,
       prepMoved: false,
       cacheGoneAt: null,
       raidersSpawned: 0,
@@ -206,8 +213,11 @@ export const runtime = Object.freeze({
     const range = RAIDER_RANGE_WU[0] + rng() * (RAIDER_RANGE_WU[1] - RAIDER_RANGE_WU[0]);
     const base = { x: player.pos.x + Math.cos(bearing) * range, z: player.pos.z + Math.sin(bearing) * range };
     const fallback = esc.raiderSpecs.length ? esc.raiderSpecs : [{ archetype: 'wasp_swarmer', level: 1 }];
+    // A half-denied grant tops up: only the missing hulls are requested on a retry.
+    const have = esc.raidersSpawned;
     const specs = [];
-    for (let i = 0; i < 3; i++) specs.push({ ...fallback[Math.min(i, fallback.length - 1)] });
+    for (let i = have; i < RAIDER_COUNT; i++) specs.push({ ...fallback[Math.min(i, fallback.length - 1)] });
+    if (!specs.length) return;
     const perp = { x: -Math.sin(bearing), z: Math.cos(bearing) };
     const placed = specs.map((sh, i) => ({
       ...sh,
@@ -217,18 +227,16 @@ export const runtime = Object.freeze({
       team: 1,
       context: 'encounter',
       passive: false,
-      pos: { x: base.x + perp.x * (i - 1) * RAIDER_SPREAD_WU, z: base.z + perp.z * (i - 1) * RAIDER_SPREAD_WU },
+      pos: { x: base.x + perp.x * (have + i - 1) * RAIDER_SPREAD_WU, z: base.z + perp.z * (have + i - 1) * RAIDER_SPREAD_WU },
       scanLabel: 'REACH RAIDER — WATCHING THE CACHE',
     }));
     const ids = d.spawnShips(live, placed);
-    if (!ids.length) {
-      if (esc.raiderGiveUpAt == null) esc.raiderGiveUpAt = d.now() + RAIDER_RETRY_FOR_S;
-      esc.raiderRetryAt = d.now() + RAIDER_RETRY_EVERY_S;
-      return;
+    if (esc.raiderGiveUpAt == null) esc.raiderGiveUpAt = d.now() + RAIDER_RETRY_FOR_S;
+    if (ids.length) {
+      if (have === 0) d.say(live, 'alert', 'REACH: That cache is ours. Burn him.', null, { literal: true });
+      esc.raidersSpawned += ids.length;
     }
-    esc.raidersSpawned += ids.length;
-    esc.raiderRetryAt = null;
-    d.say(live, 'alert', 'REACH: That cache is ours. Burn him.', null, { literal: true });
+    esc.raiderRetryAt = esc.raidersSpawned >= RAIDER_COUNT ? null : d.now() + RAIDER_RETRY_EVERY_S;
   },
 
   tick(d, live, state, now) {
@@ -241,12 +249,17 @@ export const runtime = Object.freeze({
     if (esc.takenAt == null) {
       const cache = entityById(state, esc.cacheId);
       if (alive(cache)) {
+        // The hold's stock of this commodity, tracked while the cache is still on the field: the
+        // pickup is the jump from this number, wherever the pilot's own trading left it.
+        esc.lastStock = commodityHeld;
         if (now >= live.deadlineAt) return this._settle(d, live, esc, 'lapsed');
         return;
       }
       // The cache left the field: scooped into the hold, or destroyed. The hold decides which.
-      if (commodityHeld >= esc.holdBaseline + CACHE_QTY) {
+      if (commodityHeld >= esc.lastStock + CACHE_QTY) {
         esc.takenAt = now;
+        esc.escapeEndsAt = now + ESCAPE_WINDOW_S;
+        esc.preStock = Math.max(0, esc.lastStock);
         live.phase = 'escape';
         const hulk = entityById(state, esc.hulkId);
         esc.prepMoved = alive(hulk) && dist(hulk.pos, esc.hulkSpawn) >= PREP_MOVED_WU;
@@ -258,12 +271,16 @@ export const runtime = Object.freeze({
       return;
     }
 
-    if (esc.raidersSpawned === 0 && esc.raiderRetryAt != null && now < esc.raiderGiveUpAt && now >= esc.raiderRetryAt) {
+    if (esc.raidersSpawned < RAIDER_COUNT && esc.raiderRetryAt != null && now < esc.raiderGiveUpAt && now >= esc.raiderRetryAt) {
       this._spawnRaiders(d, live, esc);
     }
-    if (commodityHeld <= esc.holdBaseline + CACHE_QTY * 0.5) return this._settle(d, live, esc, 'bait');
+    // The lot is what the hold holds above the stock it had before the pickup (selling or buying
+    // the same commodity on the way cannot fake a delivery or a dump).
+    const lot = Math.max(0, commodityHeld - esc.preStock);
+    if (lot <= CACHE_QTY * 0.5) return this._settle(d, live, esc, 'bait');
     const broker = d.entsOf(live, 'broker')[0];
-    if (broker && dist(player.pos, broker.pos) <= DELIVER_WU) return this._settle(d, live, esc, 'delivered');
+    if (broker && lot >= CACHE_QTY && dist(player.pos, broker.pos) <= DELIVER_WU) return this._settle(d, live, esc, 'delivered');
+    if (now >= esc.escapeEndsAt) return this._settle(d, live, esc, 'lapsed');
     if (!broker && now >= live.deadlineAt) return this._settle(d, live, esc, 'lost');
   },
 
@@ -271,10 +288,16 @@ export const runtime = Object.freeze({
     if (esc.settled) return;
     esc.settled = true;
     if (outcome === 'delivered') {
-      removeCargo(d.state, CACHE_COMMODITY, CACHE_QTY);
-      d.grant(BASE_PAY + (esc.prepMoved ? PREP_BONUS : 0), 'build_your_own_escape:delivered');
-      d.rep('faction_quiet', 4, 'build_your_own_escape_delivered');
-    } else if (outcome === 'bait') {
+      // The broker pays for the cargo that actually changes hands, never for an assumed lot.
+      const removed = removeCargo(d.state, CACHE_COMMODITY, CACHE_QTY) | 0;
+      if (removed >= CACHE_QTY) {
+        d.grant(BASE_PAY + (esc.prepMoved ? PREP_BONUS : 0), 'build_your_own_escape:delivered');
+        d.rep('faction_quiet', 4, 'build_your_own_escape_delivered');
+      } else {
+        outcome = 'bait';
+      }
+    }
+    if (outcome === 'bait') {
       d.rep('faction_quiet', -2, 'build_your_own_escape_bait');
       d.despawnAll(live, BAIT_BREAKOFF_S, 'raider');
     }
@@ -329,6 +352,6 @@ export default defineEncounter(trigger, {
     delivered: 'DELIVERED — the broker takes the cache and pays out.',
     bait: 'You dumped the cache — I don\'t pay for weather. The Reach crew breaks off for the pods.',
     lost: 'The cache is gone with you or without you. The broker pays nothing.',
-    lapsed: 'Nobody touched the cache. The broker leaves and so does the hulk\'s promise.',
+    lapsed: 'The window closed with the cache undelivered. The broker leaves and pays nothing.',
   },
 });

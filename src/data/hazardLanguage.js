@@ -131,10 +131,16 @@ export const hazardHints = {
       if (p && p.entityId != null && p.entityId !== (this._state && this._state.playerId)) return;
       this._exit(p && p.zoneType, 'hazard');
     };
+    // World clears its hazard sets on sector entry without a hazard:exit; a read that outlives the
+    // jump would keep every nebula consumer (the radar veil) blind in clear space.
+    this._onSectorEnter = () => {
+      if (this._state && this._state.ui) this._state.ui.hazardRead = null;
+    };
     this._onZoneEnter = (p) => this._enter(p, 'zone');
     this._onZoneExit = () => this._exit(null, 'zone');
     this._onPhaseChanged = (p) => this._refreshClock(p);
     if (this._bus && this._bus.on) {
+      this._bus.on('sector:enter', this._onSectorEnter);
       this._bus.on('hazard:enter', this._onHazardEnter);
       this._bus.on('hazard:exit', this._onHazardExit);
       this._bus.on('world:zoneEntered', this._onZoneEnter);
@@ -162,6 +168,7 @@ export const hazardHints = {
       if (!state.ui || typeof state.ui !== 'object') state.ui = {};
       state.ui.hazardRead = {
         type, source, glyph: entry.glyph, color: entry.color,
+        sectorId: (state.world && state.world.currentSectorId) || null,
         damages: entry.damages.slice(), counterplay: entry.counterplay.slice(),
         t: state.simTime || 0,
         remainingS: Number.isFinite(payload && payload.remainingS) ? payload.remainingS : null,

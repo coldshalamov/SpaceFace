@@ -166,9 +166,12 @@ export function claimDeliveryNote(state, payload) {
   const service = ((state && state.traffic && state.traffic.depotServices) || [])
     .find((row) => row && row.bodyId === payload.bodyId);
   const name = (body && body.name) || String(payload.bodyId);
+  // Traffic commits the leg (legSeq += 1) BEFORE it emits, so the leg that just landed is legSeq - 1.
+  // With no service row the key falls back to the exact sim time, so two genuine deliveries within
+  // one second stay two while a re-entrant emit of the same moment stays one.
   const legKey = service && Number.isFinite(service.legSeq)
-    ? `${payload.bodyId}:${service.legSeq}`
-    : `${payload.bodyId}:${qty}:${Math.floor(Number(state && state.simTime) || 0)}`;
+    ? `${payload.bodyId}:${service.legSeq - 1}`
+    : `${payload.bodyId}:${qty}:${Number(state && state.simTime) || 0}`;
   const currentSector = state && state.world && state.world.currentSectorId;
   return {
     text: `Depot run landed at ${name}: ${qty} units of supplies.`,
