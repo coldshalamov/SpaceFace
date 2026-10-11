@@ -131,6 +131,7 @@ function installDocument(t) {
     appendChild(child) { doc.writes++; child.parentNode = this; this.children.push(child); return child; }
     remove() { if (this.parentNode) { doc.writes++; this.parentNode.children.splice(this.parentNode.children.indexOf(this), 1); this.parentNode = null; } }
     setAttribute(name, value) { doc.writes++; this.attributes[name] = value; }
+    removeAttribute(name) { doc.writes++; delete this.attributes[name]; }
     getAttribute(name) { return this.attributes[name] ?? null; }
     addEventListener(name, fn) { this.listeners[name] = fn; }
     focus() { doc.activeElement = this; }

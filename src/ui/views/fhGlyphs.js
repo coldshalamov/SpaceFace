@@ -23,6 +23,7 @@
 // awaiting translation. Verified against that list — the other eight names are clear.
 
 import { DP_ICON_24 } from '../deckplate/iconPaths.js';
+import { arsenalIcon } from '../orrery/arsenalGlyphs.js';
 
 const RAW = Object.freeze({
   // The throwable charge answers under the kit's munitions name, but the kit's munitions mark is
@@ -55,6 +56,10 @@ export function hasFhGlyph(name) {
  * verb is a worse lie than a socket showing none.
  */
 export function fhGlyph(name, size = 24) {
+  const identity = { munitions: 'power_charge', blast: 'power_detonate', tether: 'power_massline',
+    seed: 'field_seed_standard', well: 'field_well_standard', repel: 'field_repulsor_standard',
+    cone: 'field_cone_standard', skim: 'field_skim_standard' }[name];
+  if (identity) return arsenalIcon(identity, size);
   const inner = RAW[String(name || '')];
   if (!inner) return '';
   return `<svg class="fh-glyph" viewBox="0 0 24 24" width="${size}" height="${size}" `

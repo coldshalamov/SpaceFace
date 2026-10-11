@@ -7,6 +7,7 @@
 // runtime. No weapon or hull number is retuned here.
 
 import { MODULES } from '../../data/modules.js';
+import { arsenalSentence } from '../../data/arsenalIdentity.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { SHIPS } from '../../data/ships.js';
 import { buildWeaponList, getDerivedStats } from '../../systems/ships.js';
@@ -209,9 +210,9 @@ function composeModuleLine(def) {
 /** The one line the fit row shows for a module or a gun the player can put on the ship. */
 export function airSentenceForId(id) {
   const moduleDef = MODULE_BY_ID.get(id);
-  if (moduleDef) return oneLineSentence(moduleDef.sentence) || composeModuleLine(moduleDef);
+  if (moduleDef) return oneLineSentence(arsenalSentence(moduleDef)) || composeModuleLine(moduleDef);
   const weaponDef = WEAPON_BY_ID.get(id);
-  if (weaponDef) return oneLineSentence(weaponDef.sentence) || composeWeaponLine(weaponDef);
+  if (weaponDef) return oneLineSentence(arsenalSentence(weaponDef)) || composeWeaponLine(weaponDef);
   return '';
 }
 

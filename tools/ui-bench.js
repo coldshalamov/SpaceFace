@@ -831,7 +831,11 @@ function applyBackdrop(shot) {
 
 function clearOverlayHost() {
   const host = document.getElementById('ui-root');
-  if (host) host.replaceChildren();
+  // Screens and HUD now live inside this host, as they do in the game. Preserve
+  // their connected nodes; only transient overlay children belong to this cleanup.
+  if (host) for (const child of [...host.children]) {
+    if (child !== screensEl && child !== hudEl) child.remove();
+  }
 }
 
 async function finishShot(shot) {
