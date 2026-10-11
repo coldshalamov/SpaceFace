@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "wreck-bound-story-chains",
-      "date": "2026-09-28",
-      "wf": "WF-08",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Four SP1 story chains run through authored placed wrecks (Quadrille/Double Entry/First Notch/Regular) instead of scanner pulses at empty space; recovery requires the bound hull",
-      "fingerprint": "verb=ground,subject=story-chains,sector=io/tethys/vesta/pallas,domain=wf-08",
-      "references": [],
-      "integration": "live",
-      "commit": "7ed28ca36",
-      "verification": "focused_green"
-    },
-    {
       "id": "witness-run-memory",
       "date": "2026-09-28",
       "wf": "WF-09",
@@ -1656,6 +1643,19 @@
       "references": [],
       "integration": "live",
       "commit": "c74096387",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-nebula-radar",
+      "date": "2026-10-11",
+      "wf": "WF-12",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "inside a nebula the radar ghosts contacts past 45 percent of range and hides them past 75 percent",
+      "fingerprint": "verb=sense,subject=nebula,sector=pallas,domain=wf-12",
+      "references": [],
+      "integration": "live",
+      "commit": "c2f16738a",
       "verification": "focused_green"
     }
   ],
