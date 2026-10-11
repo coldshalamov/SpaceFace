@@ -1,16 +1,13 @@
-import { messages as englishExtracted } from './catalogs/en-US.generated.js';
 import { messages as spanishMessages } from './catalogs/es-ES.js';
 import { messages as frenchMessages } from './catalogs/fr-FR.js';
 import { messages as germanMessages } from './catalogs/de-DE.js';
 import { messages as portugueseMessages } from './catalogs/pt-BR.js';
 import { createLocalizationRuntime, DEFAULT_LOCALE, PSEUDO_LOCALE } from './runtime.js';
 import { installLocalizedDocumentBridge, localizationBridgeStats } from './domBridge.js';
-import { STORE_COPY } from './storeCopy.js';
-import { barkMessagesFor } from './barks.js';
 import { IS_DEV } from '../core/devMode.js';
 import {
   deferredArray,
-  deferredObject,
+  deferredCatalog,
   localeReadiness,
   SHIPPED_LOCALES,
   translateMessage,
@@ -22,11 +19,9 @@ import {
 // the post-gate eval task. They now materialize on first real access through the deferred
 // proxies — identical values — and the post-eval warm at the bottom of this module makes that
 // access land inside the media-gate window, long before the Settings menu or first localized paint.
-const englishMessages = deferredObject(() => Object.freeze({
-  ...englishExtracted,
-  ...barkMessagesFor(DEFAULT_LOCALE),
-  ...STORE_COPY[DEFAULT_LOCALE],
-}));
+// W142-5: the en-US proxy resolves through deferredCatalog → buildTranslatedCatalog, so the
+// object served here IS catalogCache['en-US'] — one merge, not two.
+const englishMessages = deferredCatalog(DEFAULT_LOCALE);
 
 const LOCALE_TOKEN_RE = /^[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*$/;
 let keyByEnglishMessageMap = null;
