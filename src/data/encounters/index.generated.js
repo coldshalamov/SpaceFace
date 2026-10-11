@@ -282,6 +282,7 @@ import * as encounter278 from './564-lived-mining-belt-toll-helix-admirers.js';
 import * as encounter279 from './565-lived-colony-toll-helix-logic.js';
 import * as encounter280 from './566-lived-derelict-field-toll-helix-literalized.js';
 import * as encounter281 from './567-second-rinse.js';
+import * as encounter282 from './568-false-bloom.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -565,5 +566,6 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter279,
   encounter280,
   encounter281,
+  encounter282,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);
