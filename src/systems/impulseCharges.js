@@ -1436,7 +1436,11 @@ export const impulseCharges = {
       // Preserve earned anchor/swing amplification on scenery too. A fixed
       // reference impulse erased the combo before the body ever felt it.
       const environmentImpulse = impulse > 0 ? 1280 * magnitude / impulse : 0;
-      const accepted = this._applyBlastImpulse(ent, dirX * magnitude, dirZ * magnitude, state, ownerId, opts.chargeId, propulsionOwner, environmentImpulse);
+      // 1f864d1ea budgets hostile shoves so a swarm cannot take the helm. An owned
+      // charge that shoves its owner is the same deliberate launch as an aft-drop
+      // (Kickstart / Leave With It); it stays outside that budget.
+      const selfLaunch = ent.id === ownerId && ent.id === state.playerId;
+      const accepted = this._applyBlastImpulse(ent, dirX * magnitude, dirZ * magnitude, state, ownerId, opts.chargeId, propulsionOwner || selfLaunch, environmentImpulse);
       if (accepted) {
         hits.push(ent.id);
         considerImpulseShove(shoves, ent.id, dirX, dirZ, magnitude);
