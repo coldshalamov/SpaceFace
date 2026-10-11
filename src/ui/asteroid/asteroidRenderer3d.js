@@ -62,6 +62,8 @@ import {
   INCLUSION_KIT_ID,
 } from './worksPartLoader.js';
 import { applyWorksFurnaceHeat } from '../../render/industrialMaterialFamilies.js';
+import { collectStartupTextures } from '../../render/startupGpuResidency.js';
+import { detachedTextureUploadPending, rehydrateDetachedTextures } from '../../render/packageCpuDetach.js';
 
 const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S } = DRILL_CONST;
 export const VIEW_ROWS = 18;
@@ -1395,6 +1397,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function queueWorksPipelines(subject) {
     if (pipelineAdmissions.has(subject)) return pipelineAdmissions.get(subject);
     const admission = pipelineTail.then(async () => {
+      if (disposed || worksTearingDown) return false;
+      // A cpu-detached package texture this private context has not uploaded re-enters three's
+      // uploader on the admitted subject's first bind and reads emptied payloads — re-attach
+      // the pending set before its pipelines link and draw (the N2 secondary-context gate).
+      const pendingUploads = collectStartupTextures(subject)
+        .filter((texture) => detachedTextureUploadPending(texture, renderer.properties));
+      if (pendingUploads.length) await rehydrateDetachedTextures(pendingUploads);
       if (disposed || worksTearingDown) return false;
       const leaves = [];
       const seen = new Map();

@@ -22,7 +22,8 @@ import { compileScenePipelinesSafely } from '../render/compilePipelinesSafely.js
 import { retireWhenProgramsReady } from './previewContextRetire.js';
 import { preloadAuthoredPartLibrary } from '../render/partsLibrary.js';
 import { isReleaseAssetMode } from '../render/releaseMode.js';
-import { yieldToBrowser } from '../render/startupGpuResidency.js';
+import { collectStartupTextures, yieldToBrowser } from '../render/startupGpuResidency.js';
+import { detachedTextureUploadPending, rehydrateDetachedTextures } from '../render/packageCpuDetach.js';
 import { setEnvMapForShips, createVisualFactory } from '../render/visualFactory.js';
 import { installVisualOverrides } from '../render/visualOverrides.js';
 import { buildKestrelHero } from '../render/ships/kestrelHero.js';
@@ -559,6 +560,11 @@ export function createShipPreviewMount(canvas, opts) {
   }
 
   let current = null;     // the displayed THREE.Object3D
+  // N2 upload audit: content arrivals arm a one-shot scan so a cpu-detached package texture this
+  // context has not uploaded is re-attached before the next draw instead of re-entering three's
+  // uploader on emptied payloads (the D150 secondary-context twin).
+  let uploadAuditArmed = false;
+  let uploadAuditInFlight = false;
   let dockRoot = null;
   let dockBlueprint = null;
   let dockInstance = null;
@@ -739,8 +745,7 @@ export function createShipPreviewMount(canvas, opts) {
   const resizeObserver = typeof ResizeObserver !== 'undefined'
     ? new ResizeObserver(() => {
       if (disposed || !active) return;
-      resize();
-      renderer.render(scene, cam);
+      renderNow();
     })
     : null;
   if (resizeObserver) resizeObserver.observe(canvas);
@@ -809,6 +814,7 @@ export function createShipPreviewMount(canvas, opts) {
     }
     dockRoot.position.y = 1.5;
     scene.add(dockRoot);
+    uploadAuditArmed = true;
     alignDockToCurrent();
     renderNow();
     if (active && rotating && !rafId) requestLoop();
@@ -872,6 +878,15 @@ export function createShipPreviewMount(canvas, opts) {
         }
       }
     });
+    // A cpu-detached package texture this private context has not uploaded reads emptied
+    // mipmaps/source.data inside the forced upload (the N2 secondary-context hole) — re-attach
+    // exactly the pending set before initTexture touches it.
+    const pendingUploads = [...textures]
+      .filter((texture) => detachedTextureUploadPending(texture, renderer.properties));
+    if (pendingUploads.length > 0) {
+      await rehydrateDetachedTextures(pendingUploads, { yieldToMain: yieldToBrowser });
+      if (disposed) throw previewDisposedError('texture upload');
+    }
     let uploaded = 0;
     for (const texture of textures) {
       if (disposed) throw previewDisposedError('texture upload');
@@ -1032,6 +1047,24 @@ export function createShipPreviewMount(canvas, opts) {
       current.rotation.y = yaw;
     }
     tickExploded();
+    if (uploadAuditArmed) {
+      if (uploadAuditInFlight) return;  // the reattach continuation re-draws
+      const pending = collectStartupTextures(scene)
+        .filter((texture) => detachedTextureUploadPending(texture, renderer.properties));
+      if (pending.length === 0) {
+        uploadAuditArmed = false;
+      } else {
+        uploadAuditInFlight = true;
+        rehydrateDetachedTextures(pending, { yieldToMain: yieldToBrowser })
+          .catch((error) => console.warn('[shipPreviewMount] detached texture reattach failed', error))
+          .finally(() => {
+            uploadAuditInFlight = false;
+            uploadAuditArmed = false;
+            if (!disposed) renderNow();
+          });
+        return; // skip this draw — drawing now would upload the emptied payloads and throw
+      }
+    }
     renderer.render(scene, cam);
     const defId = current && current.userData && current.userData.previewDefId;
     if (defId && defId !== renderedDefId) {
@@ -1276,6 +1309,7 @@ export function createShipPreviewMount(canvas, opts) {
     cam.zoom = zoom;
     mesh.rotation.y = yaw;
     scene.add(mesh);
+    uploadAuditArmed = true;
     fitCameraToCurrent();
     renderNow();
     requestCurrentAuthoredUpgrade();

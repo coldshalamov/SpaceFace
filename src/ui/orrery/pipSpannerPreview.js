@@ -5,6 +5,8 @@ import { createAuthoredAssetLease, disposeAuthoredAssetRuntime } from '../../ren
 import { cloneMaterialPreservingShaderHooks } from '../../render/materialClone.js';
 import { applyAuthoredMaterialProfile } from '../../render/authoredMaterialProfiles.js';
 import { compileScenePipelinesSafely } from '../../render/compilePipelinesSafely.js';
+import { collectStartupTextures } from '../../render/startupGpuResidency.js';
+import { detachedTextureUploadPending, rehydrateDetachedTextures } from '../../render/packageCpuDetach.js';
 import { isReleaseAssetMode } from '../../render/releaseMode.js';
 import { LOOK_BASE } from '../../data/lookMoods.js';
 import { retireWhenProgramsReady } from '../previewContextRetire.js';
@@ -171,6 +173,13 @@ export function createPipSpannerPreview({ canvas, doc = canvas?.ownerDocument,
     if (disposed || !blueprint) return false;
     rig = buildPipSpannerRig(blueprint); scene.add(rig.root);
     await compile(renderer, scene, camera);
+    if (disposed || renderer.getContext?.().isContextLost?.()) return false;
+    // A cpu-detached package texture this private context has not uploaded re-enters three's
+    // uploader on the first bind and reads emptied payloads — re-attach the pending set before
+    // the first draw (the N2 secondary-context gate).
+    const pendingUploads = collectStartupTextures(scene)
+      .filter((texture) => detachedTextureUploadPending(texture, renderer.properties));
+    if (pendingUploads.length) await rehydrateDetachedTextures(pendingUploads);
     if (disposed || renderer.getContext?.().isContextLost?.()) return false;
     ready = true;
     motion = createPipSpannerMotion(rig, { draw, reduced, width: () => dimensions().width,
