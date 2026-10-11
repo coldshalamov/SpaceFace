@@ -74,7 +74,11 @@ export function createPackageDetachManifest(loaded, options = {}) {
     detachedSources: new Set(),
     // Parser clones share one Source AND the same mipmap Uint8Arrays (copy() slices the array,
     // not the buffers) — dedupe payloads by identity so freed-byte diagnostics stay honest.
-    freedPayloads: new Set(),
+    // WeakSet, not Set: it exists only to dedupe the freed-byte diagnostic — a strong
+    // Set retains every "freed" payload object (mip Uint8Arrays, ImageBitmap wrappers)
+    // against the manifests Map for the whole detached lifetime, making the reclaim
+    // phantom until rehydrate (W139-N1).
+    freedPayloads: new WeakSet(),
     entries: textures.map((texture, ordinal) => {
       const image = texture.image;
       return {
@@ -268,7 +272,7 @@ async function rehydrateManifest(manifest) {
     entry.freedBytes = 0;
   }
   manifest.detachedSources.clear();
-  manifest.freedPayloads.clear();
+  manifest.freedPayloads = new WeakSet(); // WeakSet has no clear() — re-mint
   manifest.totals.restores += 1;
   manifest.totals.restoredTextures += restored;
   manifest.totals.restoredBytes += restoredBytes;

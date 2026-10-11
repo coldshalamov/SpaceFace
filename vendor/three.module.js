@@ -17918,7 +17918,10 @@ class WebGLRenderer {
 
 				}
 
-				if ( _sfCaptureRenderList === true ) {
+				// Depth-gated: only the outermost render may capture. A render nested
+				// inside pass 1 (e.g. a first-time CubeUV conversion) would otherwise
+				// overwrite the outer captured list and replay the wrong scene's items.
+				if ( _sfCaptureRenderList === true && renderListStack.length === 1 ) {
 
 					_sfCapturedList = {
 						opaque: currentRenderList.opaque.slice(),

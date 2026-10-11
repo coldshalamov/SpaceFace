@@ -421,10 +421,10 @@ export class SpaceRenderGraph {
       // instead of paying a second whole-scene projectObject plus a traverseVisible
       // instanced mask (PERF-138 F1). The replay drops count<=0 instanced items itself.
       // Contract: nothing mutates the scene between capture and replay — only the
-      // override material changes in this window.
-      const captured = renderWithoutAutoClear(renderer, () => renderer.renderAndCaptureList(scene, camera));
-
+      // override material changes in this window. With AO off there is no second pass —
+      // render plainly and skip the capture allocations entirely.
       if (this.options.ao) {
+        const captured = renderWithoutAutoClear(renderer, () => renderer.renderAndCaptureList(scene, camera));
         scene.overrideMaterial = this.normalMaterial;
         renderer.setRenderTarget(this.normalTarget);
         renderer.clear(true, true, true);
@@ -434,6 +434,8 @@ export class SpaceRenderGraph {
           scene.overrideMaterial = previousOverride;
         }
         this._renderAo(camera);
+      } else {
+        renderWithoutAutoClear(renderer, () => renderer.render(scene, camera));
       }
       if (this._bloomActive()) this._renderBloom();
       this._renderDistortion(camera);
