@@ -51,6 +51,8 @@ export const ORE_TINTS = {
 export const STATUS_COLORS = {
   running: '#62e08a',
   building: '#62e08a',
+  loading: '#62e08a',
+  unloading: '#62e08a',
   throttled: '#ffb35c',
   starved: '#ffb35c',
   limited: '#ffb35c',

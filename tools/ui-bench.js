@@ -383,6 +383,9 @@ let drillBaseline = null;
 const BENCH_DRILL_ASTEROID_ID = 5001;
 /** The build row, just under the rover spawn (col 14, row 0): Core, lane, extractor, lane, refinery. */
 const BENCH_DRILL_ROW = Object.freeze([[14, 1], [15, 1], [16, 1], [17, 1], [18, 1]]);
+// A service tunnel keeps every installation physically reachable after the Core occupies the
+// entrance to the machine row. Machines are solid, so a one-cell factory cannot be its own aisle.
+const BENCH_DRILL_BYPASS = Object.freeze([[15, 0], [16, 0], [17, 0], [18, 0]]);
 
 async function ensureDrillOwners() {
   if (benchDrillOwner && benchSitesOwner) return;
@@ -447,7 +450,7 @@ async function seedDrillShot(gameState, kind = 'claimed') {
   // drill.js does, so the durable runtime field agrees with the live one.
   const d = gameState.drill;
   const cleared = new Set(ent.data.drillCleared || []);
-  for (const [col, row] of BENCH_DRILL_ROW) {
+  for (const [col, row] of [...BENCH_DRILL_ROW, ...BENCH_DRILL_BYPASS]) {
     if (d.field[col] && d.field[col][row]) {
       d.field[col][row] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 };
     }
@@ -862,12 +865,6 @@ async function finishShot(shot) {
   } catch (error) {
     showBroken(shot.screen || shot.id, `mount threw: ${error && error.message ? error.message : String(error)}`);
   }
-  if (shot.screen === 'drill') {
-    // Bench-only: the authored conduit templates never settle on the bench, so on slow runs the
-    // renderer's watchdog raises its fault strip before capture. The strip reports a bench
-    // condition, not the claim's state — keep it out of the frame. Game behavior untouched.
-    for (const el of document.querySelectorAll('.ast3d-conduit-fault')) el.style.display = 'none';
-  }
   try { await document.fonts.ready; } catch { /* fonts are best-effort */ }
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   window.__BENCH_READY = true;
@@ -875,6 +872,14 @@ async function finishShot(shot) {
 
 async function goto(rawId) {
   window.__BENCH_READY = false;
+  // The drill module owns a live session and its own frame loop. Retire that instance before
+  // replacing its DOM or reseeding the next shot; otherwise its singleton still says _active
+  // and onShow skips the new board, leaving the walk on the empty claim screen.
+  if (current === 'drill' && currentScreen) {
+    currentScreen.onHide?.();
+    currentScreen._cleanup?.();
+    currentScreen = null;
+  }
   window.__BENCH_OVERLAY = '';
   window.__BENCH_OVERLAY_EL = null;
   if (window.__benchMobile) { try { window.__benchMobile.destroy(); } catch { /* already gone */ } window.__benchMobile = null; }

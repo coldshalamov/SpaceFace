@@ -26,8 +26,49 @@ import {
   CONTACT_RING,
   contactRingDivergence,
   setWorksAnnotationTexture,
+  classifyWorksBuildSeats,
+  worksFlashPresentation,
 } from '../src/ui/asteroid/asteroidRenderer3d.js';
 import { contactKind, contactProfile } from '../src/systems/siteProduction.js';
+
+test('Faces shows diagonal geology and delegates selected-machine seats to installation rules', () => {
+  const field = Array.from({ length: 5 }, () => Array.from({ length: 5 }, () => ({ type: 'empty' })));
+  field[0][0] = { type: 'gas' };
+  const avatar = { col: 4, row: 4 };
+  const generic = classifyWorksBuildSeats({ field, avatar, cols: 5, rows: 5 });
+  assert.ok(generic.seats.some((cell) => cell.c === 1 && cell.r === 1),
+    'the diagonal gas contact that feeds a tap is visible before selecting a machine');
+  assert.ok(!generic.seats.some((cell) => cell.c === 3 && cell.r === 3),
+    'generic geology highlights still distinguish an empty hall from a material contact');
+
+  const requested = [];
+  const selected = classifyWorksBuildSeats({
+    field, avatar, cols: 5, rows: 5, defId: 'sm_refinery',
+    machines: [{ col: 2, row: 2 }],
+    canInstall(request) {
+      requested.push(request);
+      return request.col === 3 && request.row === 3
+        ? { ok: true } : { ok: false, reason: 'materials' };
+    },
+  });
+  assert.deepEqual(selected.seats, [{ c: 3, r: 3 }],
+    'a valid refinery seat in an excavated hall must not be hidden by a geology prefilter');
+  assert.ok(selected.blocked.some((cell) => cell.c === 2 && cell.r === 2 && cell.reason === 'occupied'));
+  assert.ok(selected.blocked.some((cell) => cell.c === 4 && cell.r === 4 && cell.reason === 'rover-here'));
+  assert.ok(selected.blocked.some((cell) => cell.c === 1 && cell.r === 1 && cell.reason === 'materials'));
+  assert.ok(requested.every((request) => request.defId === 'sm_refinery'));
+  assert.equal(requested.length, 22, 'solid, occupied and rover cells cannot ask to install');
+});
+
+test('Works reduced flashes removes breach and cargo flashes independently of reduced motion', () => {
+  assert.deepEqual(worksFlashPresentation(), { flashPeak: 17, vignetteScale: 1, steadyLamps: false });
+  assert.deepEqual(worksFlashPresentation({ motionReduce: true }),
+    { flashPeak: 9, vignetteScale: 0.6, steadyLamps: true });
+  for (const motionReduce of [false, true]) {
+    assert.deepEqual(worksFlashPresentation({ motionReduce, flashReduce: true }),
+      { flashPeak: 0, vignetteScale: 0, steadyLamps: true });
+  }
+});
 
 /** The renderer's own signature rule, reproduced here so a reorder cannot pass silently. */
 function ringSignature(field, cols, rows, col, row) {
