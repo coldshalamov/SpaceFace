@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const DIR = join(ROOT, 'src/data/encounters');
 const INDEX = join(DIR, 'index.generated.js');
-const MODULE_RE = /^\d{3}-[a-z0-9-]+\.js$/;
+const MODULE_RE = /^\d{3,4}-[a-z0-9-]+\.js$/;
 const args = new Set(process.argv.slice(2));
 
 const files = authoredFiles();
