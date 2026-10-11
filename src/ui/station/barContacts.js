@@ -43,6 +43,7 @@ import {
   ORRIN_WITNESS_SUBMISSION_EVENT,
 } from '../../data/orrinWitnessCase.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
+import { fenceBarContact, fenceBarReply } from './fenceContact.js'; // U-B: fences with faces
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
 
@@ -522,7 +523,11 @@ export function generateContacts(stationId, state = {}) {
       ],
     }]
     : [];
-  const listed = [...endingCourier, ...authoredBarContactsForStation(stationId, state), ...contacts];
+  // U-B: this berth's fence shows their face when the pilot is WANTED or trusted by them.
+  const fence = fenceBarContact(stationId, state);
+  const listed = [
+    ...endingCourier, ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
+  ];
   stampUnheardBarRumor(listed, stationId, state);
   stampHeliosBay7Rumor(listed, stationId, state);
   stampChoirReliefMemory(listed, stationId, state);
@@ -979,6 +984,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     const reply = buildVonnFreightLossReply(state);
     if (reply) return reply;
   }
+  if (contact && contact.fenceId) return fenceBarReply(contact, choiceId, state, stationId);
   if (contact && contact.depthProgram) return buildDepthContactReply(contact, choiceId, ctx);
   // At Sker the canonical barkeep is also the authored Nestbreaker source. Let an unseen physical
   // wreck lead answer the explicit Rumors choice first; once its bearing exists this fails closed

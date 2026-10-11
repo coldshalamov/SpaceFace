@@ -127,6 +127,15 @@ export const RESCUE_COOL_WINDOW_S = 60;
 export const RESCUE_COOL_MAX_PER_WINDOW = 0.2;
 const RESCUE_LEDGER_IDS_CAP = 48;
 
+// THE WORLD REMEMBERS (U-B) - a fixer fence's scrub (`heat:scrubRequested`): ONE heat level's worth
+// of cooling, once per fence per SCRUB_COOLDOWN_S of sim time. Impound is only ever
+// escaped by stealing the hull back, and a live nets band keeps its floor - the checkpoint has to
+// be physically broken - so a scrub never drops the pilot below level SCRUB_NETS_FLOOR_LEVEL there.
+export const SCRUB_COOL_LEVELS = 1;
+export const SCRUB_COOLDOWN_S = 3600;
+export const SCRUB_NETS_FLOOR_LEVEL = 3;
+const SCRUB_LEDGER_CAP = 12;
+
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 
 /**
@@ -403,6 +412,9 @@ export const heat = {
     // therefore no mission-side heat write anywhere in the chain — the mission cannot reach
     // player.heat even if it wants to, because the only door is a receipt it cannot sign.
     bus.on('law:reportIncidentReceipt', (p) => this.applyIncidentReceipt(p));
+
+    // U-B: a fixer fence's scrub intent; the verdict is written onto `payload.result`.
+    bus.on('heat:scrubRequested', (p) => this._onScrubRequested(p));
   },
 
   /**
@@ -729,6 +741,38 @@ export const heat = {
       });
     }
     return cooled;
+  },
+
+  // The requester (fenceDesk) charges the wallet by intent only when `payload.result.ok` is true.
+  _onScrubRequested(payload) {
+    if (!payload || typeof payload !== 'object' || typeof payload.fenceId !== 'string' || !payload.fenceId) return null;
+    const refuse = (reason) => { payload.result = { ok: false, reason, cooled: 0 }; return payload.result; };
+    const state = this.state;
+    const player = state && state.player;
+    if (!player) return refuse('no_player');
+    const before = Number(player.heat) || 0;
+    const level = heatLevelFor(before);
+    if (level < 1) return refuse('clean');
+    const tier = wantedTierFor(before);
+    if (tier === WANTED_TIER.IMPOUND) return refuse('impound');
+    const target = level - SCRUB_COOL_LEVELS;
+    if (tier === WANTED_TIER.NETS && target < SCRUB_NETS_FLOOR_LEVEL) return refuse('nets_floor');
+    const now = Number(state.simTime) || 0;
+    const ledger = player.heatScrubbed && typeof player.heatScrubbed === 'object' && !Array.isArray(player.heatScrubbed)
+      ? player.heatScrubbed : null;
+    const last = ledger ? ledger[payload.fenceId] : null;
+    // A future-dated stamp (clock moved back across a boundary) is stale, not binding.
+    if (Number.isFinite(last) && last <= now && now - last < SCRUB_COOLDOWN_S) return refuse('cooldown');
+    this._setHeat(target <= 0 ? 0 : heatValueForLevel(target), 'fence scrub');
+    const after = Number(player.heat) || 0;
+    const cooled = Math.max(0, before - after);
+    if (cooled <= 0) return refuse('sealed');
+    const stamps = ledger || (player.heatScrubbed = {});
+    stamps[payload.fenceId] = now;
+    const ids = Object.keys(stamps);
+    for (let i = 0; i < ids.length - SCRUB_LEDGER_CAP; i++) delete stamps[ids[i]];
+    payload.result = { ok: true, cooled, before, after };
+    return payload.result;
   },
 
   _dropOneLevel(reason = 'escaped heat radius') {
