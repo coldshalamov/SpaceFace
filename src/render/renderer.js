@@ -437,6 +437,8 @@ import {
 } from './resourceGovernor.js';
 import { shouldAwaitOpeningGpuCook } from './renderCapabilityProfile.js';
 import {
+  collectStartupGeometries,
+  collectStartupGeometriesSteps,
   collectStartupTextures,
   collectStartupTexturesSteps,
   collectUnresidentInstancedDrawables,
@@ -449,7 +451,9 @@ import {
 } from './startupGpuResidency.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import {
+  detachedGeometryUploadPending,
   detachedTextureUploadPending,
+  rehydrateDetachedGeometries,
   rehydrateDetachedPackages,
   rehydrateDetachedTextures,
 } from './packageCpuDetach.js';
@@ -12058,6 +12062,38 @@ export const render = {
       if (pending.length === 0) return null;
       return rehydrateDetachedTextures(pending, { yieldToMain: admissionPaceYield });
     };
+    // Geometry twin: a cpu-detached package geometry whose next bind on THIS renderer would
+    // re-upload emptied attribute arrays (died records, moved version, or a context that never
+    // uploaded post-detach state) throws inside the touch's draw — refill those manifests first.
+    const detachedSubjectGeometriesPending = (subjects) => collectStartupGeometries(subjects)
+      .filter((geometry) => detachedGeometryUploadPending(geometry, renderer));
+    const detachedSubjectGeometriesPendingAsync = async (subjects) => {
+      if (typeof collectStartupGeometriesSteps !== 'function') {
+        return detachedSubjectGeometriesPending(subjects);
+      }
+      const it = collectStartupGeometriesSteps(subjects);
+      for (;;) {
+        let step;
+        try {
+          step = it.next();
+        } catch (driveError) {
+          closeCookStepsIter(it);
+          noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'startupGeometryCollect');
+          laneWarn(typeof state !== 'undefined' ? state : this?.state, 'startupGeometryCollect', '[render] startup-geometry collect drive failed; running the sync twin', driveError);
+          return runCookSyncTwin('startup-geometry collect',
+            () => detachedSubjectGeometriesPending(subjects), []);
+        }
+        if (step.done) {
+          return step.value.filter((geometry) => detachedGeometryUploadPending(geometry, renderer));
+        }
+        await admissionPaceYield();
+      }
+    };
+    const reattachDetachedSubjectGeometries = async (subjects) => {
+      const pending = await detachedSubjectGeometriesPendingAsync(subjects);
+      if (pending.length === 0) return null;
+      return rehydrateDetachedGeometries(pending, { yieldToMain: admissionPaceYield });
+    };
     const compileForCurrentTarget = (subjects, compileOptions) => {
       const optionActive = compileOptions && compileOptions.isActive;
       const isRootActive = typeof optionActive === 'function'
@@ -12487,8 +12523,9 @@ export const render = {
           // out of the presented pass, so re-attach those payloads first (D150).
           try {
             await reattachDetachedSubjectTextures(subject);
+            await reattachDetachedSubjectGeometries(subject);
           } catch (error) {
-            laneWarn(this, 'admissionTouch', '[render] admission touch texture reattach failed', error);
+            laneWarn(this, 'admissionTouch', '[render] admission touch detach reattach failed', error);
           }
           // compile() resolves under the armed admission state; the presented pass can still
           // ask the driver for a different program key (shadow-gate drift, env binding, target
@@ -12652,8 +12689,21 @@ export const render = {
           laneWarn(this, 'admissionTouch', '[render] exact-target pending-texture scan failed', error);
           return null;
         })
-        .then((detachedPendingUpload) => {
+        .then(async (detachedPendingUpload) => {
           if (detachedPendingUpload === null) return { skipped: true, reason: 'scan-failed' };
+          let detachedPendingGeometry = [];
+          try {
+            detachedPendingGeometry = await detachedSubjectGeometriesPendingAsync(subject);
+          } catch (error) {
+            laneWarn(this, 'admissionTouch', '[render] exact-target pending-geometry scan failed', error);
+          }
+          if (detachedPendingGeometry.length > 0) {
+            try {
+              await rehydrateDetachedGeometries(detachedPendingGeometry, { yieldToMain: admissionPaceYield });
+            } catch (error) {
+              laneWarn(this, 'admissionTouch', '[render] exact-target touch geometry reattach failed', error);
+            }
+          }
           if (detachedPendingUpload.length > 0) {
             return rehydrateDetachedTextures(detachedPendingUpload, { yieldToMain: admissionPaceYield })
               .catch((error) => {
@@ -13418,8 +13468,9 @@ export const render = {
         // payloads first so the warm draws real bytes instead of throwing mid-render.
         try {
           await reattachDetachedSubjectTextures(this.scene);
+          await reattachDetachedSubjectGeometries(this.scene);
         } catch (error) {
-          console.warn('[render] rehearsal texture reattach failed', error);
+          console.warn('[render] rehearsal detach reattach failed', error);
         }
         try {
           if (recookStale()) {
@@ -16201,8 +16252,9 @@ export const render = {
           // reads emptied mipmaps inside the draw (D150) — re-attach those payloads first.
           try {
             await reattachDetachedSubjectTextures(units.programSubjects);
+            await reattachDetachedSubjectGeometries(units.programSubjects);
           } catch (error) {
-            console.warn('[render] cook touch texture reattach failed', error);
+            console.warn('[render] cook touch detach reattach failed', error);
           }
           // Loading shell: several touches share a frame until ~8 ms of touch work, then yield
           // (laneB-fixA: 89 touches drew for 1261 ms and spent ~1.3 s more yielding a whole frame after

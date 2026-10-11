@@ -22,8 +22,14 @@ import { compileScenePipelinesSafely } from '../render/compilePipelinesSafely.js
 import { retireWhenProgramsReady } from './previewContextRetire.js';
 import { preloadAuthoredPartLibrary } from '../render/partsLibrary.js';
 import { isReleaseAssetMode } from '../render/releaseMode.js';
-import { collectStartupTextures, yieldToBrowser } from '../render/startupGpuResidency.js';
-import { detachedTextureUploadPending, rehydrateDetachedTextures } from '../render/packageCpuDetach.js';
+import { collectStartupGeometries, collectStartupTextures, yieldToBrowser } from '../render/startupGpuResidency.js';
+import {
+  detachedGeometryUploadPending,
+  detachedTextureUploadPending,
+  noteGeometryGpuResident,
+  rehydrateDetachedGeometries,
+  rehydrateDetachedTextures,
+} from '../render/packageCpuDetach.js';
 import { setEnvMapForShips, createVisualFactory } from '../render/visualFactory.js';
 import { installVisualOverrides } from '../render/visualOverrides.js';
 import { buildKestrelHero } from '../render/ships/kestrelHero.js';
@@ -899,6 +905,11 @@ export function createShipPreviewMount(canvas, opts) {
   async function prepareForFirstDraw(root) {
     const pipelines = await compilePreviewPipelines(root);
     const textures = await uploadPreviewTextures(root);
+    // compile() created this context's attribute records — ledger the upload so a later detach
+    // doesn't re-pend this renderer in the N2 geometry gate.
+    for (const geometry of collectStartupGeometries(root)) {
+      noteGeometryGpuResident(geometry, renderer);
+    }
     return { pipelines, textures };
   }
   const previewAdmissionOptions = Object.freeze({
@@ -1051,12 +1062,15 @@ export function createShipPreviewMount(canvas, opts) {
       if (uploadAuditInFlight) return;  // the reattach continuation re-draws
       const pending = collectStartupTextures(scene)
         .filter((texture) => detachedTextureUploadPending(texture, renderer.properties));
-      if (pending.length === 0) {
+      const pendingGeometries = collectStartupGeometries(scene)
+        .filter((geometry) => detachedGeometryUploadPending(geometry, renderer));
+      if (pending.length === 0 && pendingGeometries.length === 0) {
         uploadAuditArmed = false;
       } else {
         uploadAuditInFlight = true;
-        rehydrateDetachedTextures(pending, { yieldToMain: yieldToBrowser })
-          .catch((error) => console.warn('[shipPreviewMount] detached texture reattach failed', error))
+        rehydrateDetachedGeometries(pendingGeometries, { yieldToMain: yieldToBrowser })
+          .then(() => rehydrateDetachedTextures(pending, { yieldToMain: yieldToBrowser }))
+          .catch((error) => console.warn('[shipPreviewMount] detached payload reattach failed', error))
           .finally(() => {
             uploadAuditInFlight = false;
             uploadAuditArmed = false;
