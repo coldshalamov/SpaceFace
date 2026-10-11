@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "claim-site-identity",
-      "date": "2026-09-28",
-      "wf": "WF-04",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "All 15 claimable bodies carry authored discovery plates and why-lines; arrival plate and claimed Base screen tell you what the place was",
-      "fingerprint": "verb=author,subject=claim-sites,sector=15-sectors,domain=wf-04",
-      "references": [],
-      "integration": "live",
-      "commit": "9c77c7a15",
-      "verification": "focused_green"
-    },
-    {
       "id": "mining-beam-instrument",
       "date": "2026-09-28",
       "wf": "WF-14",
@@ -1656,6 +1643,19 @@
       "references": [],
       "integration": "live",
       "commit": "4f14f7f50",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-hazard-zone-placement",
+      "date": "2026-10-11",
+      "wf": "WF-03",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "the Slag Radiation Field label now sits on Vesta's real radiation instead of its ore field",
+      "fingerprint": "verb=fly,subject=hazard-zone,sector=vesta,domain=wf-03",
+      "references": [],
+      "integration": "live",
+      "commit": "1fbd88bfc",
       "verification": "focused_green"
     }
   ],
