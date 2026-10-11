@@ -192,6 +192,25 @@ export function describeOutfittingPurchase(def, player = {}, slots = [], fitting
       price,
     };
   }
+  const ownedHulls = Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  const berthOnAnyOwnedHull = !ownedHulls.length || ownedHulls.some((owned) => {
+    const hull = owned && SHIP_BY_ID.get(owned.defId);
+    return hull && buildSlotList(hull).some((slot) => fits(slot, def));
+  });
+  if (!berthOnAnyOwnedHull) {
+    // A dead-end purchase: no hull the pilot owns could ever carry it, so it is not offered.
+    return {
+      state: 'noberth',
+      unlocked,
+      afford,
+      hasSlot,
+      fitSlotIndex,
+      disabled: true,
+      label: 'No berth on your hull can take this',
+      title: def.name + ' needs a ' + def.slotType + ' ' + def.size + ' slot that none of your hulls has. Buy a hull with one first.',
+      price,
+    };
+  }
   return {
     state: 'inventory',
     unlocked,

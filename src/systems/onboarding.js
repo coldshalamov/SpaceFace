@@ -36,6 +36,7 @@ import { MODULES } from '../data/modules.js';
 import { DROP_KICK_CRUISE_SPEED } from './jettisonImpulse.js';
 import { readCadencePair, rateCadenceTechnique } from './masslineControlLaw.js';
 import { resolveActionLabel } from './input.js';
+import { fitFeelFor, fitFeelLine, fitFeelRank, fitFeltHintKey } from '../onboarding/fitFeel.js';
 import { substanceFor } from '../core/physicsAuthority.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
@@ -454,6 +455,7 @@ export const onboarding = {
       this._teardown();
       this._dockControlInRange = false;
       this._demoFittedThisDock = null;
+      this._fitFeltPending = [];
       this._gateControlInRange = false;
       this._lastControlMode = null;
       // FB-114: a first-hour rail serialized mid-flight resumes at its saved beat —
@@ -535,7 +537,13 @@ export const onboarding = {
         `Repulsion Trap fitted — ${throwKey} sticks a plate; ${brakeKey} + ${throwKey} drops the trap.`,
         p);
     });
-    bus.on('dock:undocked', () => this._maybeShowDemoEndCard());
+    // SFQ-B064: a verb-changing module fitted while docked is felt at the next undock, once per
+    // module per profile, through the same first-use voice. The demo end card is unchanged.
+    bus.on('module:equipped', (p) => this._onFitFeltEquipped(p || {}));
+    bus.on('dock:undocked', () => {
+      this._maybeSpeakFitFelt();
+      this._maybeShowDemoEndCard();
+    });
 
     // ── Range pointer & funnel (PQ-163.01 — "The Range is the door") ─────────────────────
     bus.on('tether:latched', (p) => this._onLatchPointer(p || {}));
@@ -919,6 +927,35 @@ export const onboarding = {
     this._demoFittedThisDock = p.defId || null;
   },
 
+  _onFitFeltEquipped(p) {
+    if (!p || !fitFeelFor(p.defId)) return;
+    const st = this.state;
+    if (!st || !st.ui || !st.ui.docked || p.shipId !== st.playerId) return;
+    if (!this._fitFeltPending) this._fitFeltPending = [];
+    if (!this._fitFeltPending.includes(p.defId)) this._fitFeltPending.push(p.defId);
+  },
+
+  // Speak the most verb-changing pending fit; the rest wait for later undocks. A fit that has
+  // already been felt, or that is no longer on the active hull, is dropped.
+  _maybeSpeakFitFelt() {
+    const pending = this._fitFeltPending;
+    if (!pending || !pending.length) return;
+    const st = this.state;
+    const player = st && st.player;
+    if (!player) return;
+    const fitted = (player.ownedShips && player.ownedShips[player.activeShipIndex || 0] || {}).fittings || [];
+    const hints = player.hints || {};
+    const live = pending
+      .filter((defId) => fitted.includes(defId) && !hints[fitFeltHintKey(defId)])
+      .sort((a, b) => fitFeelRank(a) - fitFeelRank(b));
+    this._fitFeltPending = live;
+    if (!live.length) return;
+    const defId = live[0];
+    const key = (action, empty) => resolveActionLabel(st, action, { empty });
+    this._showHint(fitFeltHintKey(defId), fitFeelLine(defId, key), { shipId: st.playerId });
+    if (player.hints && player.hints[fitFeltHintKey(defId)]) this._fitFeltPending = live.slice(1);
+  },
+
   _maybeShowDemoEndCard() {
     const fitted = this._demoFittedThisDock;
     this._demoFittedThisDock = null;
@@ -940,6 +977,7 @@ export const onboarding = {
     const st = this.state;
     this._dockControlInRange = false;
     this._demoFittedThisDock = null;
+    this._fitFeltPending = [];
     this._gateControlInRange = false;
     this._lastControlMode = null;
     this._latchDenialStreak = 0;

@@ -4069,7 +4069,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const buyWord = availability.outfitEnabled ? (selectedFit ? (fittedId ? 'Buy & Replace' : 'Buy & Fit') : 'Buy to Inventory') : 'Dock to fit';
       const btn = equipped
         ? `<span class="k-t-fine k-38 sx-modrow__eq">Equipped</span>`
-        : purchase.state === 'locked' || purchase.state === 'standing'
+        : purchase.state === 'locked' || purchase.state === 'standing' || purchase.state === 'noberth'
           ? `<span class="k-t-fine k-38 sx-modrow__lock">${escapeHtml(purchase.label)}</span>`
           : purchase.state === 'funding'
             ? `<span class="k-t-fine k-38 sx-modrow__buy is-funding">${fmt(purchase.price)} cr · ${escapeHtml(purchase.label)}</span>`
