@@ -166,7 +166,11 @@ test('Ceres salvage and its scavenger spawn at the authored field in global spac
     const zones = zonesForSector(PROOF_SECTOR_ID).filter((zone) => zone.type === 'derelict_field');
     const points = state.salvage.points;
     assert.ok(points.length, `seed ${SEED} needs existing salvage work`);
-    for (const point of points) {
+    // 05de5d43d places the Tally Three crate on this salvage list. It is a named
+    // work source, not a derelict-field scatter; every field point is still proved.
+    const fieldPoints = points.filter((point) => zones.some((zone) => zone.id === point.zoneId));
+    assert.ok(fieldPoints.length, `seed ${SEED} needs a derelict-field salvage point`);
+    for (const point of fieldPoints) {
       const zone = zones.find((candidate) => candidate.id === point.zoneId);
       assert.ok(zone, 'salvage belongs to an authored derelict field');
       const center = sectorLocalToGlobalForSector(zone.center, PROOF_SECTOR_ID);
