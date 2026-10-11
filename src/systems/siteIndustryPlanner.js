@@ -49,6 +49,10 @@ export const INDUSTRY_KITS = Object.freeze([
     machines: { sm_massline_core: 1, sm_extractor: 2, sm_gas_tap: 2,
       sm_refinery: 2, sm_fabricator: 2, sm_cargo_port: 1 },
     note: 'Assign one fabricator to electronics and one to courier pods. Hold their feedstocks. This is a commissioning kit, not a guaranteed balanced factory.' },
+  { id: 'construction', name: 'Make your own construction supplies',
+    machines: { sm_massline_core: 1, sm_extractor: 5, sm_gas_tap: 3,
+      sm_refinery: 3, sm_fabricator: 3, sm_cargo_port: 2 },
+    note: 'Grow in stages: cast Regocrete, print electronics, then make circuitry, fuel cells and controllers. Import titanium or other missing ores. Switch recipes between batches, or dedicate more machines for continuous lines. Preserve the deposits that feed or accelerate each process.' },
 ]);
 
 /** Gross installed kit and incremental packing list; caller must provide already-built truth. */
@@ -81,7 +85,8 @@ export function planSiteKit(kitId, { alreadyBuilt = {} } = {}) {
     manifest: clean(manifest), machineCount,
     drawMW, baseMW,
     minimumGasContacts: Math.ceil(Math.max(0, drawMW - baseMW) / CONTACT_YIELD.gasPowerPerContact),
-    laneThroughputPerMin: SITE_BALANCE.laneThroughputPerMin,
+    laneThroughputPerMin: SITE_BALANCE.laneThroughputPerMin
+      + (kit.machines.sm_cargo_port || 0) * SITE_BALANCE.laneThroughputPerPort,
     // Placement and geology are intentionally NOT validated by a packing list.
     placementValidated: false,
   };

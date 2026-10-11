@@ -20,7 +20,7 @@ import { arcGauge } from '../orrery/instruments.js';
 import { injectOrrery } from '../orrery/tokens.js';
 import { MATERIALS, ORE_TINTS } from './asteroidRenderer2d.js';
 import { drillTierReqForOre } from '../../systems/drill.js';
-import { machineCapability } from '../../systems/siteProduction.js';
+import { machineCapability, oreContactRate } from '../../systems/siteProduction.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
@@ -349,10 +349,17 @@ export function tileLensModel({
   const progress = telemetry ? Math.max(0, Math.min(1, Number(telemetry.progress) || 0)) : 0;
   let body = type === 'gas' ? 'Preserve for power or fuel'
     : (type === 'vein' ? 'Preserve for continuous extraction' : 'Preserve for silicate production');
-  if (cutPreview && (cutPreview.contactsLost > 0 || cutPreview.rateLost > 0)) {
+  if (type === 'vein' && ore) {
+    const rate = oreContactRate(ore);
+    body = rate >= 0.1 ? `Preserve: up to ${Number(rate.toFixed(2))}u/min per extractor`
+      : 'Rare harvest now · preserve for steady supply';
+  }
+  if (cutPreview && (cutPreview.contactsLost > 0 || cutPreview.rateLost > 0 || cutPreview.powerLost > 0 || cutPreview.processBonusLost > 0)) {
     const bits = [];
     if (cutPreview.contactsLost > 0) bits.push(`Cuts ${cutPreview.contactsLost} contact${cutPreview.contactsLost === 1 ? '' : 's'}`);
     if (cutPreview.rateLost > 0) bits.push(`−${cutPreview.rateLost}/min`);
+    if (cutPreview.powerLost > 0) bits.push(`−${cutPreview.powerLost} MW`);
+    if (cutPreview.processBonusLost > 0) bits.push(`−${Math.round(cutPreview.processBonusLost * 100)}% process speed`);
     body = bits.join(' · ');
   }
   return {
@@ -388,6 +395,7 @@ export function machineLensModel(pm) {
   if (goods.length) numerals.push(`${Object.values(actual).reduce((sum, n) => sum + (Number(n) || 0), 0).toFixed(1)}u/min`);
   else if (cap && Object.keys(cap.outputsPerMin || {}).length) numerals.push('0u/min');
   if (!numerals.length && cap && cap.powerGen > 0) numerals.push(`${cap.powerGen.toFixed(0)} MW`);
+  if (cap?.processMultiplier > 1) numerals.push(`+${Math.round((cap.processMultiplier - 1) * 100)}% speed`);
   // A cause line forces the head onto one row, and the NAME is the identity — it never shrinks.
   // So a machine that has something to say gives up its second numeral rather than its name.
   const numeralBudget = status.body ? 1 : 2;
@@ -403,7 +411,7 @@ export function machineLensModel(pm) {
     hp: null,
     chips: [],
     body: status.body,
-    ring: (def && def.usesGeology && pm.geo) ? pm.geo.cells : null,
+    ring: (pm.geo && (def?.usesGeology || cap?.processContacts > 0)) ? pm.geo.cells : null,
   };
 }
 
@@ -422,7 +430,9 @@ export function ghostLensModel(defId, check) {
   const output = rates.map(([id, n]) => `${n.toFixed(1)} ${sentenceCase(commodityName(id))}/min`).join(' · ');
   const power = capability && (capability.powerGen || capability.powerDraw);
   const missing = Object.entries(check?.missing || {}).map(([id, n]) => `${n} ${sentenceCase(commodityName(id))}`).join(' + ');
-  const body = ok ? (output || (def?.usesGeology && !capability?.geologyLive ? 'No productive material contacts' : ''))
+  const body = ok ? (output || (capability?.processMultiplier > 1
+    ? `Preserved faces: +${Math.round((capability.processMultiplier - 1) * 100)}% process speed`
+    : (def?.usesGeology && !capability?.geologyLive ? 'No productive material contacts' : '')))
     : (check?.reason === 'materials' && missing ? `Need ${missing}` : (GHOST_BLOCK[check && check.reason] || 'Placement blocked'));
   return {
     kind: 'ghost',

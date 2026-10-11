@@ -1,6 +1,6 @@
 // On-demand, read-only provisioning. Uses the existing ORRERY token root; no simulation owner.
 import { COMMODITIES } from '../../data/commodities.js';
-import { SITE_MACHINES, SITE_RECIPES } from '../../data/sites.js';
+import { SITE_MACHINES, SITE_RECIPES, SITE_BALANCE } from '../../data/sites.js';
 import { INDUSTRY_KITS, planSiteVisit, planSiteProduction, summarizeIndustryCargo } from '../../systems/siteIndustryPlanner.js';
 import { injectOrrery } from '../orrery/tokens.js';
 
@@ -118,7 +118,8 @@ export function createIndustryPlanner(host, { getContext = () => ({}), onOpen } 
         paragraph(`${plan.drawMW} MW demand · ${plan.baseMW} MW from the Core. ${plan.minimumGasContacts
           ? `At least ${plan.minimumGasContacts} active gas-contact faces in generate mode are needed to cover the deficit.`
           : 'The Core covers this kit’s rated demand.'}`);
-        paragraph(`Connect power cables to the Core and material lanes to every producer and consumer. Each material network carries ${plan.laneThroughputPerMin} moved units/minute, counting inputs and outputs.`);
+        paragraph(`Connect power cables to the Core and material lanes to every producer and consumer. A material network starts at ${SITE_BALANCE.laneThroughputPerMin} moved units/minute. Each powered Cargo Port adds ${SITE_BALANCE.laneThroughputPerPort}; this kit can carry ${plan.laneThroughputPerMin} on one connected network. Inputs and outputs both use capacity.`);
+        paragraph(`Useful deposits have two jobs: extract a lasting supply, or place a matching process beside them for faster production. Each matching face adds ${Math.round(SITE_BALANCE.processBonusPerContact * 100)}% speed, up to ${Math.round(SITE_BALANCE.maxProcessBonus * 100)}%; material demand rises with the extra output. A wide empty hall is easy to route but gives up those bonuses.`);
         paragraph('Installed machines and your hold are counted above. Site stock stays in its own network; the placement preview checks what the selected cell can actually spend.');
       } else {
         const plan = planSiteProduction({ targets: { [id]: n } });
@@ -128,11 +129,15 @@ export function createIndustryPlanner(host, { getContext = () => ({}), onOpen } 
         cargoSummary(plan.targets);
         result.appendChild(element('h3', 'Manufacturing order', 'orr-label'));
         const order = element('ol'); Object.assign(order.style, { paddingLeft: '20px', lineHeight: '1.6' });
-        for (const step of plan.steps) order.appendChild(element('li', `${recipes.get(step.recipeId)?.name || step.recipeId} × ${fmt(step.batches)}`));
+        for (const step of plan.steps) {
+          const recipe = recipes.get(step.recipeId);
+          const contacts = [...(recipe?.contactOres || []).map(name), ...(recipe?.contactKinds || []).map((kind) => ({ matrix: 'silicate matrix', basalt: 'basalt', gas: 'sealed gas' }[kind] || kind))];
+          order.appendChild(element('li', `${recipe?.name || step.recipeId} × ${fmt(step.batches)}${contacts.length ? ` · faster beside ${contacts.join(' / ')}` : ''}`));
+        }
         result.appendChild(order);
         if (Object.keys(plan.remainingStock).length) list('Extra output from whole batches', plan.remainingStock);
         paragraph(`${fmt(plan.machineSeconds / 60)} powered machine-minutes before power, lane, input or export delays. This is work required, not an arrival time.`);
-        paragraph('Import your first controllers and construction materials. Later, preserve iron, copper, titanium and silicate to manufacture more controllers locally. Hold intermediate materials at the port and choose each machine’s recipe in Log → Site.');
+        paragraph('Import your first controllers and construction materials. Later, combine iron, copper, titanium, silicate and gas to make more locally; bring any ore this asteroid lacks. Keep a gas tap generating power and another supplying feedstock, or use Split. Hold intermediates at the port and choose recipes in Log → Site.');
       }
     } catch (_error) {
       paragraph('This plan cannot be drawn from the recipes on file.');

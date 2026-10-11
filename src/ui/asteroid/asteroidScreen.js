@@ -227,7 +227,10 @@ export function siteDrawerModel({
   const goodIds = new Set(Object.keys((site && site.exportBuffer) || {}));
   for (const m of machines) {
     for (const id of Object.keys((m.capability && m.capability.outputsPerMin) || {})) goodIds.add(id);
+    const recipe = SITE_RECIPE_BY_ID.get(m.mode);
+    for (const id of Object.keys(recipe?.output || {})) if (id !== 'pod') goodIds.add(id);
   }
+  for (const lane of lanes) for (const id of Object.keys(lane.store || {})) goodIds.add(id);
   for (const id of Object.keys(ratePerMin)) goodIds.add(id);
   const exportGoods = [...goodIds].sort().map((id) => ({
     id,

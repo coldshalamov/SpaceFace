@@ -38,7 +38,7 @@ import {
   contactProfile, machineCapability, stepContinuousRecipe, stepFabricator, clamp01, round3,
 } from './siteProduction.js';
 import {
-  buildComponents, laneCapacity, storeTotal, reconcileStores, podLossChance, podTravelS,
+  buildComponents, laneCapacity, laneThroughput, storeTotal, reconcileStores, podLossChance, podTravelS,
   previewStoreReconciliation, wouldOwnComponent, storePressure,
 } from './siteLogistics.js';
 import { SECTORS, dangerIndex } from '../data/sectors.js';
@@ -1159,8 +1159,12 @@ export const asteroidSites = {
       site.laneStores = rt.laneComps.map((comp) => ({ cells: comp.cells.slice(), store: merged[comp.key] || {} }));
       rt.stores = {};
       rt.capacity = {};
+      rt.throughput = {};
+      const machineDefs = new Map(site.machines.map((m) => [m.id, m.defId]));
+      rt.machineDefs = machineDefs;
       for (let i = 0; i < rt.laneComps.length; i++) {
         const comp = rt.laneComps[i];
+        rt.throughput[comp.key] = laneThroughput(comp, (mid) => machineDefs.get(mid));
         rt.stores[comp.key] = site.laneStores[i].store;
         rt.capacity[comp.key] = laneCapacity(comp, (mid) => {
           const m = site.machines.find((x) => x.id === mid);
@@ -1302,7 +1306,8 @@ export const asteroidSites = {
     const neighbors = [];
     for (const machine of site.machines) {
       const def = SITE_MACHINE_BY_ID.get(machine.defId);
-      if (!def || !def.usesGeology) continue;
+      const recipe = SITE_RECIPE_BY_ID.get(machine.mode);
+      if (!def || (!def.usesGeology && !recipe?.contactKinds?.length && !recipe?.contactOres?.length)) continue;
       if (Math.abs(machine.col - c) > 1 || Math.abs(machine.row - r) > 1) continue;
       if (machine.col === c && machine.row === r) continue;
       neighbors.push({ machine, def });
@@ -1313,6 +1318,8 @@ export const asteroidSites = {
       type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0,
     };
     let contactsLost = 0;
+    let powerLost = 0;
+    let processBonusLost = 0;
     const rateDelta = {};
     for (const { machine, def } of neighbors) {
       const geoBefore = contactProfile(field, machine.col, machine.row, COLS, ROWS);
@@ -1320,6 +1327,8 @@ export const asteroidSites = {
       contactsLost += Math.max(0, (geoBefore.solid | 0) - (geoAfter.solid | 0));
       const capBefore = machineCapability(def, geoBefore, machine.mode);
       const capAfter = machineCapability(def, geoAfter, machine.mode);
+      powerLost += Math.max(0, capBefore.powerGen - capAfter.powerGen);
+      processBonusLost += Math.max(0, capBefore.processMultiplier - capAfter.processMultiplier);
       const goods = new Set([
         ...Object.keys(capBefore.outputsPerMin || {}),
         ...Object.keys(capAfter.outputsPerMin || {}),
@@ -1336,6 +1345,8 @@ export const asteroidSites = {
     }
     return {
       contactsLost,
+      powerLost: round3(powerLost),
+      processBonusLost: round3(processBonusLost),
       rateLost: Math.round(rateLost * 1000) / 1000,
       rateDelta,
       machineCount: neighbors.length,
@@ -2208,7 +2219,10 @@ export const asteroidSites = {
 
     // --- Lane throughput budgets: shared per network, spent as machines move goods. ---
     const laneBudget = {};
-    for (const comp of rt.laneComps) laneBudget[comp.key] = SITE_BALANCE.laneThroughputPerMin * dtMin;
+    for (const comp of rt.laneComps) {
+      laneBudget[comp.key] = laneThroughput(comp, (mid) => rt.machineDefs.get(mid), SITE_BALANCE,
+        (mid) => rt.compRatio[rt.powerCompByMachine[mid]] || 0) * dtMin;
+    }
 
     // Rotate deterministic priority so a saturated lane cannot permanently starve machines
     // installed later. The cursor is site-owned and saved across both factory clocks.
@@ -2277,6 +2291,7 @@ export const asteroidSites = {
         else {
           const res = stepContinuousRecipe({
             recipeId: m.mode,
+            processMultiplier: machineCapability(def, rt.geo[m.id], m.mode).processMultiplier,
             dtMin,
             powerRatio,
             store,
@@ -2311,6 +2326,7 @@ export const asteroidSites = {
             : true;
           const res = stepFabricator({
             machine: m,
+            processMultiplier: machineCapability(def, rt.geo[m.id], m.mode).processMultiplier,
             recipeId: m.mode,
             dtS,
             powerRatio,
@@ -2752,7 +2768,9 @@ export const asteroidSites = {
         capacity,
         stored: round3(stored),
         store: rt.stores[comp.key],
-        throughputPerMin: SITE_BALANCE.laneThroughputPerMin,
+        throughputPerMin: laneThroughput(comp, (mid) => rt.machineDefs.get(mid), SITE_BALANCE,
+          (mid) => power.find((p) => p.key === rt.powerCompByMachine[mid])?.ratio || 0),
+        ratedThroughputPerMin: rt.throughput[comp.key],
         // A10 over-capacity diagnostics: a merge may legally exceed capacity (stock is NEVER
         // clamped or deleted); these report the exact pressure so the operator — and A11's
         // bottleneck presenter — see precisely how much must drain before intake resumes.

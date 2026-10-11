@@ -5,13 +5,13 @@ import { ghostLensModel, machineLensModel, tileLensModel, placementReason } from
 import { contactProfile } from '../src/systems/siteProduction.js';
 
 test('a returning builder imports only missing machines and goods absent from the hold', () => {
-  const cargo = { cmdty_regocrete: 2, cmdty_control_unit: 1 };
+  const cargo = { cmdty_regocrete: 1, cmdty_control_unit: 1 };
   const machines = [{ defId: 'sm_massline_core' }];
   const before = JSON.stringify({ machines, cargo });
   const plan = planSiteVisit('first_claim', { machines, cargo });
   assert.deepEqual(plan.missingMachines, { sm_extractor: 1 });
   assert.deepEqual(plan.missing, { cmdty_regocrete: 1 });
-  assert.deepEqual(plan.packed, { cmdty_control_unit: 1, cmdty_regocrete: 2 });
+  assert.deepEqual(plan.packed, { cmdty_control_unit: 1, cmdty_regocrete: 1 });
   assert.equal(plan.ready, false);
   assert.equal(JSON.stringify({ machines, cargo }), before);
   assert.equal(planSiteVisit('first_claim', { machines: [...machines, { defId: 'sm_extractor' }] }).ready, true);
@@ -49,5 +49,5 @@ test('blocked production never displays the theoretical extractor yield as live 
 
 test('gas and veins explain preservation before the player destroys a face', () => {
   assert.match(tileLensModel({ tile: { type: 'gas' } }).body, /power or fuel/);
-  assert.match(tileLensModel({ tile: { type: 'vein', ore: 'cmdty_ore_iron' } }).body, /continuous extraction/);
+  assert.match(tileLensModel({ tile: { type: 'vein', ore: 'cmdty_ore_iron' } }).body, /Preserve:.*per extractor/);
 });

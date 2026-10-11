@@ -6,9 +6,19 @@
 // access and pay nothing. Everything here recomputes from the ring — nothing may compensate a
 // machine for a contact the player drilled away. Q = base * geology * min(power, input, export).
 import { ORES } from '../data/mining.js';
-import { CONTACT_YIELD, SITE_RECIPE_BY_ID } from '../data/sites.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { CONTACT_YIELD, SITE_RECIPE_BY_ID, SITE_BALANCE } from '../data/sites.js';
 
 const ORE_TIER_BY_ID = new Map(ORES.map((o) => [o.id, o.tier]));
+const ORE_VALUE_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c.basePrice]));
+
+// A rare stone remains a valuable immediate mining find. Its unattended extraction cannot
+// pay hundreds of times more than an industrial feedstock and erase every downstream choice.
+export function oreContactRate(oreId) {
+  const tier = Math.max(0, Math.min(4, ORE_TIER_BY_ID.get(oreId) ?? 0));
+  const value = ORE_VALUE_BY_ID.get(oreId) || 1;
+  return Math.min(CONTACT_YIELD.orePerMinByTier[tier], CONTACT_YIELD.oreValuePerMinCap / value);
+}
 
 const RING_OFFSETS = Object.freeze([
   [-1, -1], [0, -1], [1, -1],
@@ -64,6 +74,8 @@ export function machineCapability(def, profile, mode) {
     powerDraw: Math.max(0, -(def?.power || 0)),
     usesGeology: !!def?.usesGeology,
     geologyLive: false,
+    processContacts: 0,
+    processMultiplier: 1,
   };
   if (!def) return cap;
 
@@ -72,9 +84,8 @@ export function machineCapability(def, profile, mode) {
       + profile.basalt * CONTACT_YIELD.basaltPerMin;
     if (silicate > 0) cap.outputsPerMin.cmdty_silicate = round3(silicate);
     for (const oreId of Object.keys(profile.ores).sort()) {
-      const tier = Math.max(0, Math.min(4, ORE_TIER_BY_ID.get(oreId) ?? 0));
-      const rate = profile.ores[oreId] * CONTACT_YIELD.orePerMinByTier[tier];
-      if (rate > 0) cap.outputsPerMin[oreId] = round3((cap.outputsPerMin[oreId] || 0) + rate);
+      const rate = profile.ores[oreId] * oreContactRate(oreId);
+      if (rate > 0) cap.outputsPerMin[oreId] = (cap.outputsPerMin[oreId] || 0) + rate;
     }
     cap.geologyLive = Object.keys(cap.outputsPerMin).length > 0;
   } else if (def.id === 'sm_gas_tap' && profile) {
@@ -86,6 +97,13 @@ export function machineCapability(def, profile, mode) {
     const feed = gas * CONTACT_YIELD.gasFeedPerMinPerContact * feedShare;
     if (feed > 0) cap.outputsPerMin.cmdty_gas_hydrogen = round3(feed);
   }
+  const recipe = SITE_RECIPE_BY_ID.get(mode);
+  if (profile && recipe?.machine === def.id) {
+    cap.processContacts = (recipe.contactKinds || []).reduce((n, kind) => n + (profile[kind] || 0), 0)
+      + (recipe.contactOres || []).reduce((n, ore) => n + (profile.ores[ore] || 0), 0);
+    cap.processMultiplier = 1 + Math.min(SITE_BALANCE.maxProcessBonus,
+      cap.processContacts * SITE_BALANCE.processBonusPerContact);
+  }
   return cap;
 }
 
@@ -96,7 +114,7 @@ export function machineCapability(def, profile, mode) {
  * lane throughput budget. Returns actual units moved (for throughput accounting) and a status.
  */
 export function stepContinuousRecipe({
-  recipeId, dtMin, powerRatio, store, roomFor, carry, throughputBudget,
+  recipeId, dtMin, powerRatio, store, roomFor, carry, throughputBudget, processMultiplier = 1,
 }) {
   const recipe = SITE_RECIPE_BY_ID.get(recipeId);
   const result = { moved: 0, produced: {}, consumed: {}, status: 'idle', limit: null };
@@ -108,7 +126,7 @@ export function stepContinuousRecipe({
   const inputPerBatch = inputs.reduce((s, [, qty]) => s + qty, 0);
 
   // Requested batches this step from the machine's rated input throughput.
-  let batches = (recipe.inputRatePerMin * dtMin * clamp01(powerRatio)) / inputPerBatch;
+  let batches = (recipe.inputRatePerMin * dtMin * clamp01(powerRatio) * processSpeed(processMultiplier)) / inputPerBatch;
   if (!(batches > 0)) {
     result.status = powerRatio <= 0 ? 'no-power' : 'idle';
     result.limit = powerRatio <= 0 ? 'power' : null;
@@ -184,7 +202,7 @@ export function stepContinuousRecipe({
  * fully loaded job. Unbounded callers retain immediate batch intake/output.
  */
 export function stepFabricator({
-  machine, recipeId, dtS, powerRatio, store, roomFor, wantsBuild, throughputBudget = Infinity,
+  machine, recipeId, dtS, powerRatio, store, roomFor, wantsBuild, throughputBudget = Infinity, processMultiplier = 1,
 }) {
   const recipe = SITE_RECIPE_BY_ID.get(recipeId);
   const result = { completed: null, started: false, moved: 0, produced: {}, status: 'idle', limit: null, progress: 0 };
@@ -234,7 +252,7 @@ export function stepFabricator({
       loadInputs();
       return result;
     }
-    machine.job.progressS = Math.min(recipe.buildS, machine.job.progressS + dtS * powerRatio);
+    machine.job.progressS = Math.min(recipe.buildS, machine.job.progressS + dtS * powerRatio * processSpeed(processMultiplier));
     result.progress = Math.min(1, machine.job.progressS / recipe.buildS);
     if (machine.job.progressS + 1e-9 >= recipe.buildS) {
       const [outputId, qty] = Object.entries(recipe.output)[0];
@@ -307,6 +325,10 @@ export function stepFabricator({
   result.started = true;
   loadInputs();
   return result;
+}
+
+function processSpeed(value) {
+  return Number.isFinite(value) ? Math.max(1, Math.min(1 + SITE_BALANCE.maxProcessBonus, value)) : 1;
 }
 
 // Infinity explicitly means unbounded; NaN/negative space must fail closed.

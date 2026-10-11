@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { planSiteKit, planSiteProduction, summarizeIndustryCargo, INDUSTRY_KITS } from '../src/systems/siteIndustryPlanner.js';
-import { SITE_MACHINES, SITE_RECIPES, SITE_RECIPE_BY_ID } from '../src/data/sites.js';
+import { SITE_MACHINES, SITE_RECIPES, SITE_RECIPE_BY_ID, SITE_BALANCE } from '../src/data/sites.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 
 const plan = (targets, opts = {}) => planSiteProduction({ targets, ...opts });
@@ -10,14 +10,15 @@ const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-8
 
 test('first claim imports the actual construction bill; no circular self-funding', () => {
   const result = planSiteKit('first_claim');
-  assert.deepEqual(result.manifest, { cmdty_control_unit: 2, cmdty_refined_metals: 2, cmdty_regocrete: 7 });
+  assert.deepEqual(result.manifest, { cmdty_control_unit: 2, cmdty_refined_metals: 1, cmdty_regocrete: 4 });
+  assert.equal(summarizeIndustryCargo(result.manifest, COMMODITIES).nominalValue, 885);
   assert.equal(result.minimumGasContacts, 0);
   assert.equal(result.placementValidated, false);
 });
 
 test('existing core is subtracted once from incremental kit, not from power requirements', () => {
   const result = planSiteKit('first_claim', { alreadyBuilt: { sm_massline_core: 1 } });
-  assert.deepEqual(result.manifest, { cmdty_control_unit: 1, cmdty_regocrete: 3 });
+  assert.deepEqual(result.manifest, { cmdty_control_unit: 1, cmdty_regocrete: 2 });
   assert.equal(result.baseMW, 12);
   assert.deepEqual(result.missingMachines, { sm_extractor: 1 });
 });
@@ -27,7 +28,7 @@ test('courier kit admits its power debt instead of promising a free infinite fac
   assert.equal(result.drawMW, 52);
   assert.equal(result.baseMW, 12);
   assert.equal(result.minimumGasContacts, 5);
-  assert.equal(result.laneThroughputPerMin, 12);
+  assert.equal(result.laneThroughputPerMin, 24);
   assert.equal(result.machineCount, 10);
 });
 
@@ -41,11 +42,12 @@ test('all kit manifests resolve to live machines and commodity metadata', () => 
 
 test('controller chain reaches real rare raw feedstocks and respects discrete batches', () => {
   const result = plan({ cmdty_control_unit: 1 });
-  assert.deepEqual(result.procurement, { cmdty_ore_copper: 2, cmdty_ore_iron: 2, cmdty_ore_titanium: 1, cmdty_silicate: 5 });
-  assert.deepEqual(result.remainingStock, { cmdty_control_unit: 1 });
+  assert.deepEqual(result.procurement, { cmdty_gas_hydrogen: 1, cmdty_ore_copper: 2,
+    cmdty_ore_iron: 3, cmdty_ore_titanium: 1, cmdty_silicate: 6 });
+  assert.deepEqual(result.remainingStock, { cmdty_control_unit: 2 });
   assert.deepEqual(result.machineTypes, ['sm_fabricator', 'sm_refinery']);
   assert.equal(result.steps.at(-1).recipeId, 'sr_fab_control_unit');
-  close(result.machineSeconds, 60 + 40 + 75 + 180);
+  close(result.machineSeconds, 60 + 40 + 75 + 45 + 180);
   assert.equal(result.executionValidated, false);
 });
 
@@ -136,7 +138,7 @@ test('unknown metadata never yields a deceptively complete cargo or price estima
 });
 
 test('new recipes use lighter, smaller outputs worth more at catalog baseline than their inputs', () => {
-  for (const id of ['sr_blend_alloys', 'sr_fab_hullplate', 'sr_fab_circuitry', 'sr_fab_control_unit']) {
+  for (const id of ['sr_blend_alloys', 'sr_synthesize_fuel', 'sr_fab_hullplate', 'sr_fab_circuitry', 'sr_fab_control_unit']) {
     const recipe = SITE_RECIPE_BY_ID.get(id);
     const input = summarizeIndustryCargo(recipe.inputs, COMMODITIES);
     const output = summarizeIndustryCargo(recipe.output, COMMODITIES);
@@ -147,4 +149,38 @@ test('new recipes use lighter, smaller outputs worth more at catalog baseline th
     const machine = SITE_MACHINES.find((m) => m.id === recipe.machine);
     assert.ok(machine.modes.includes(id), `${id}: selectable through existing mode owner`);
   }
+});
+
+test('every commodity manufacturing stage adds at least twenty percent gross value', () => {
+  for (const recipe of SITE_RECIPES) {
+    if (recipe.output.pod) continue; // fleet equipment has no ordinary market resale price
+    const input = summarizeIndustryCargo(recipe.inputs, COMMODITIES);
+    const output = summarizeIndustryCargo(recipe.output, COMMODITIES);
+    assert.ok(input.complete && output.complete, recipe.id);
+    const grossMargin = (output.nominalValue - input.nominalValue) / output.nominalValue;
+    assert.ok(grossMargin >= 0.2, `${recipe.id}: ${input.nominalValue} -> ${output.nominalValue}`);
+  }
+});
+
+test('hydrogen has one selectable fuel route and becomes a held controller-chain feedstock', () => {
+  const fuel = plan({ cmdty_fuel_cells: 1 });
+  assert.deepEqual(fuel.procurement, { cmdty_gas_hydrogen: 1, cmdty_ore_iron: 1, cmdty_silicate: 1 });
+  assert.equal(fuel.steps.length, 1);
+  assert.equal(fuel.steps[0].recipeId, 'sr_synthesize_fuel');
+  assert.equal(fuel.machineSeconds, 45);
+  assert.ok(SITE_MACHINES.find((m) => m.id === 'sm_refinery').modes.includes('sr_synthesize_fuel'));
+  assert.ok(SITE_BALANCE.exportDefaultOff.includes('cmdty_fuel_cells'));
+  const controller = plan({ cmdty_control_unit: 3 });
+  assert.ok(controller.steps.some((s) => s.recipeId === 'sr_synthesize_fuel'));
+  assert.deepEqual(controller.remainingStock, {});
+});
+
+test('new claim export defaults preserve every recipe input and allow terminal cargo sales', () => {
+  for (const recipe of SITE_RECIPES) {
+    for (const goodId of Object.keys(recipe.inputs)) {
+      assert.ok(SITE_BALANCE.exportDefaultOff.includes(goodId), `${recipe.id}: hold ${goodId}`);
+    }
+  }
+  assert.ok(!SITE_BALANCE.exportDefaultOff.includes('cmdty_comp_hullplate'));
+  assert.ok(!SITE_BALANCE.exportDefaultOff.includes('cmdty_ore_platinoid'));
 });
