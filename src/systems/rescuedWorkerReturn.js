@@ -333,9 +333,10 @@ export function createRescuedWorkerReturn(owner) {
       if (record.workplace && record.workplace.sectorId && record.returnDueAtS == null) {
         record.returnDueAtS = now + RETURN_MIN_S + state.rng() * RETURN_SPREAD_S;
       }
-    } else if (payload.outcome === 'ransomed' || payload.outcome === 'abandoned') {
+    } else if (payload.outcome === 'ransomed' || payload.outcome === 'abandoned' || payload.outcome === 'captured') {
       // Sold or lost to the void: the story ends here, distinctly. No return ever fires.
-      record.outcome = payload.outcome;
+      // A pirate-captured pod is held for ransom: the same closed door as a fence sale.
+      record.outcome = payload.outcome === 'captured' ? 'ransomed' : payload.outcome;
       record.closedAtS = t;
     }
   }

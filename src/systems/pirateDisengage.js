@@ -428,7 +428,8 @@ function combatantSquads(state) {
   return out;
 }
 
-function isActiveCombatant(entity, state) {
+/** The shared "hostile pirate-class hull" predicate (also read by ai/podHunt.js). */
+export function isActiveCombatant(entity, state) {
   if (!entity || entity.alive === false || (entity.type !== 'ship' && entity.type !== 'drone')) return false;
   if (entity.id === state.playerId || entity.team === PLAYER_TEAM || entity.team === 2) return false;
   const data = entity.data || {};
