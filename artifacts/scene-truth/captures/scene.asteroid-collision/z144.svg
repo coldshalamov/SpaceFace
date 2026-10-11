@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-93.94982755112935 -56.34677799751026 187.8996551022587 112.69355599502052">
+  <desc>Semantic projection. Not a GPU frame. Seed 47008 tick 4 zoom 144 tier medium.</desc>
+  <rect x="-93.94982755112935" y="-56.34677799751026" width="187.8996551022587" height="112.69355599502052" fill="#10141c"/>
+  <rect x="-85.94982755112935" y="-48.34677799751026" width="171.8996551022587" height="96.69355599502052" fill="none" stroke="#6d8299"/>
+  <text x="-91.94982755112935" y="-50.34677799751026" font-size="4" fill="#f2d48a">SEMANTIC PROJECTION — not a GPU frame</text>
+  <g><circle cx="0" cy="0" r="12.517587" fill="#d7ecff" fill-opacity="0.35" stroke="#d7ecff"/><text x="0" y="-13.517587" font-size="3" fill="#d5dbe6">entity:1</text></g><g><circle cx="80" cy="0" r="3.736839" fill="#b9a48a" fill-opacity="0.35" stroke="#b9a48a"/><text x="80" y="-4.736839" font-size="3" fill="#d5dbe6">rock_0</text></g><g><circle cx="0" cy="80" r="6.228065" fill="#b9a48a" fill-opacity="0.35" stroke="#b9a48a" stroke-dasharray="2 2"/><text x="0" y="72.771935" font-size="3" fill="#d5dbe6">rock_1</text></g><g><circle cx="-80" cy="0" r="8.719291" fill="#b9a48a" fill-opacity="0.35" stroke="#b9a48a"/><text x="-80" y="-9.719291" font-size="3" fill="#d5dbe6">rock_2</text></g><g><circle cx="0" cy="-80" r="8.719291" fill="#b9a48a" fill-opacity="0.35" stroke="#b9a48a" stroke-dasharray="2 2"/><text x="0" y="-89.719291" font-size="3" fill="#d5dbe6">rock_3</text></g>
+</svg>
