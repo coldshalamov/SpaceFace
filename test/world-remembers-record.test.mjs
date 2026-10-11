@@ -69,14 +69,18 @@ test('every subscribed receipt writes one deed with the right kind and place', (
     bus.emit('aceMemory:transition', { aceId: 'ace_vane', aceName: 'Vane Okoro', crew: 'reach', transition: 'defeated', record: { lastSectorId: 'sector_ceres_belt', factionId: 'faction_reach' } });
     bus.emit('aceMemory:transition', { aceId: 'ace_sable', aceName: 'Sable', crew: 'reach', transition: 'fled', record: { lastSectorId: 'sector_helios_prime', fleeCount: 1, returnTier: 2 } });
     bus.emit('aceMemory:transition', { aceId: 'ace_sable', aceName: 'Sable', crew: 'reach', transition: 'returned', record: {} });
+    bus.emit('survivorPod:ransomed', { id: 'survivor:12', factionId: 'faction_mts', sectorId: 'sector_kepler_scar', victimId: 12, stationId: 'station_kepler', authorityFactionId: 'faction_reach', t: 340 });
+    bus.emit('fence:routeCompleted', { fenceId: 'fence_ruan', stationId: 'station_sker', reward: { kind: 'credits', amount: 5200 }, tick: 500 });
+    bus.emit('fence:scrubbed', { fenceId: 'fence_pask', stationId: 'station_smuggler_den', costCr: 900, cooled: 1, tick: 510 });
 
     const kinds = deedsFor(state, {}).map((d) => d.kind).sort();
     assert.deepEqual(kinds, [
       'ace_defeated', 'ace_routed', 'base_destroyed', 'bounty_paid', 'dock_slam', 'fence_burned', 'fence_emboldened',
-      'fence_thanked', 'hauler_dragged', 'hunter_disabled', 'hunter_outran', 'kill_lawful', 'kill_outlaw', 'ore_flood',
-      'pod_abandoned', 'pod_captured', 'pod_rescued', 'station_grudge', 'station_strike', 'stunt', 'tumble_rake',
-      'wanted_tier',
+      'fence_route', 'fence_thanked', 'hauler_dragged', 'heat_scrubbed', 'hunter_disabled', 'hunter_outran',
+      'kill_lawful', 'kill_outlaw', 'ore_flood', 'pod_abandoned', 'pod_captured', 'pod_ransomed', 'pod_rescued',
+      'station_grudge', 'station_strike', 'stunt', 'tumble_rake', 'wanted_tier',
     ]);
+    assert.equal(deedsFor(state, { kinds: ['pod_ransomed'] })[0].stationId, 'station_kepler');
     const routed = deedsFor(state, { kinds: ['ace_routed'] })[0];
     assert.equal(routed.sectorId, 'sector_helios_prime');
     assert.equal(routed.subject, 'Sable');

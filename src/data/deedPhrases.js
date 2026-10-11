@@ -229,6 +229,31 @@ const LINES = {
       (c) => `Patrol pilots at ${c.place} toast the hull that finished ${c.subject || 'the ace'}. That's yours.`,
     ],
   },
+  pod_ransomed: {
+    neutral: [(c) => `Sold a survivor pod to a fence at ${c.place}.`],
+    grievance: [
+      (c) => `A ${c.faction} crew went to a fence at ${c.place} on your cable. Their families got a price list.`,
+      (c) => `You towed survivors to ${c.place} and took money for them. That is on a wall here.`,
+    ],
+    praise: [
+      (c) => `Heard you brought a pod to ${c.place} and got paid for the cargo. Practical.`,
+    ],
+  },
+  fence_route: {
+    neutral: [(c) => `Ran a fence's full route out of ${c.place}.`],
+    grievance: [],
+    praise: [
+      (c) => `${c.subject || 'The fence'} at ${c.place} says you ran the whole route clean. That name opens doors.`,
+      (c) => `Three legs for ${c.subject || 'a fence'} out of ${c.place} and nothing lost. People here heard.`,
+    ],
+  },
+  heat_scrubbed: {
+    neutral: [(c) => `Had your paper scrubbed at ${c.place}.`],
+    grievance: [],
+    praise: [
+      (c) => `${c.subject || 'Someone'} at ${c.place} took a level off your paper. Quietly, of course.`,
+    ],
+  },
   ace_routed: {
     neutral: [(c) => `Ran ${c.subject || 'a named ace'} off at ${c.place}.`],
     grievance: [

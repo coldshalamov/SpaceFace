@@ -50,6 +50,9 @@ export const DEED_KINDS = Object.freeze({
   station_grudge:  Object.freeze({ law: -1, street: 0,  weight: 2, label: 'Berth refused' }),
   ace_defeated:    Object.freeze({ law: 1,  street: -1, weight: 4, label: 'Named ace defeated' }),
   ace_routed:      Object.freeze({ law: 0,  street: -1, weight: 2, label: 'Named ace routed' }),
+  pod_ransomed:    Object.freeze({ law: -1, street: 1,  weight: 3, label: 'Survivors ransomed' }),
+  fence_route:     Object.freeze({ law: 0,  street: 1,  weight: 3, label: 'Fence route run' }),
+  heat_scrubbed:   Object.freeze({ law: 0,  street: 1,  weight: 1, label: 'Paper scrubbed' }),
 });
 
 const WANTED_TIER_WEIGHT = Object.freeze({
@@ -315,6 +318,9 @@ export const deedRecord = {
     this._listen('station:strike', (p) => this._onStationCondition('station_strike', p));
     this._listen('station:grudge', (p) => this._onStationCondition('station_grudge', p));
     this._listen('aceMemory:transition', (p) => this._onAceTransition(p));
+    this._listen('survivorPod:ransomed', (p) => this._onPod('ransomed', p));
+    this._listen('fence:routeCompleted', (p) => this._onFenceReceipt('fence_route', p));
+    this._listen('fence:scrubbed', (p) => this._onFenceReceipt('heat_scrubbed', p));
   },
 
   destroy() {
@@ -383,14 +389,36 @@ export const deedRecord = {
     if (!p) return;
     if (outcome === 'rescued' && p.playerAnswered !== true) return;
     if (outcome === 'abandoned' && p.playerLeftIt !== true) return;
+    const kind = outcome === 'rescued' ? 'pod_rescued'
+      : outcome === 'captured' ? 'pod_captured'
+        : outcome === 'ransomed' ? 'pod_ransomed'
+          : 'pod_abandoned';
     recordDeed(this.state, {
-      kind: outcome === 'rescued' ? 'pod_rescued' : outcome === 'captured' ? 'pod_captured' : 'pod_abandoned',
+      kind,
       id: p.id ? `pod:${outcome}:${p.id}` : undefined,
       sectorId: p.sectorId || this._here(),
       factionId: p.factionId || null,
+      stationId: outcome === 'ransomed' ? (p.stationId || null) : null,
       subject: p.victimId != null ? String(p.victimId) : null,
-      detail: outcome === 'captured' ? { captorFactionId: p.captorFactionId || null } : null,
+      detail: outcome === 'captured' ? { captorFactionId: p.captorFactionId || null }
+        : outcome === 'ransomed' ? { fenceFactionId: p.authorityFactionId || null } : null,
       t: p.t,
+    });
+  },
+
+  _onFenceReceipt(kind, p) {
+    if (!p || !p.fenceId) return;
+    recordDeed(this.state, {
+      kind,
+      id: kind === 'fence_route' ? `fence_route:${p.fenceId}:${Number.isFinite(p.tick) ? p.tick : (this.state.tick | 0)}` : undefined,
+      sectorId: p.sectorId || this._here(),
+      factionId: p.factionId || null,
+      stationId: p.stationId || null,
+      subject: p.fenceName || p.fenceId,
+      detail: kind === 'fence_route'
+        ? { fenceId: p.fenceId, reward: p.reward ? { ...p.reward } : null }
+        : { fenceId: p.fenceId, costCr: finite(p.costCr, 0), cooled: finite(p.cooled, 0) },
+      tick: p.tick,
     });
   },
 
