@@ -315,7 +315,7 @@ function detonateVolatile(world, body, depth, out) {
         vx: parentVx + dx * BUDGET.volatileDebrisSpeed,
         vz: parentVz + dz * BUDGET.volatileDebrisSpeed,
         mass: piece,
-        radius: 1.05,
+        radius: 2.5,
         runtime: true,
         parentId: body.id,
         generation: depth,

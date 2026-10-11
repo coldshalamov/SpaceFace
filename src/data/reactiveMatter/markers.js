@@ -68,7 +68,7 @@ export const REACTIVE_MARKERS = Object.freeze({
     id: 'debris',
     family: null,
     tint: 0xc4b8a5,
-    minWorldRadius: 1.2,
+    minWorldRadius: 2.5,
     signature: 'wedge',
     layers: Object.freeze([
       Object.freeze({ shape: 'wedge', r: 1, yaw: 0 }),
@@ -95,6 +95,17 @@ export const REACTIVE_MARKERS = Object.freeze({
       Object.freeze({ shape: 'hull', r: 1, yaw: 0 }),
     ]),
   }),
+});
+
+export const REACTIVE_SILHOUETTES = Object.freeze({
+  ferro: Object.freeze([[-1, 0], [-0.2, 0.15], [1, 0], [-0.2, -0.15]]),
+  volatile: Object.freeze([[1, 0], [0.5, 0.86], [-0.5, 0.86], [-1, 0], [-0.5, -0.86], [0.5, -0.86]]),
+  'volatile-ferro': Object.freeze([[1, 0], [0.5, 0.86], [-0.5, 0.86], [-1, 0], [-0.5, -0.86], [0.5, -0.86]]),
+  brittle: Object.freeze([[-0.35, -1], [0.35, -1], [0.35, 1], [-0.35, 1]]),
+  elastic: Object.freeze([[-1, 0.4], [1, 0.4], [1, 0.15], [-1, 0.15], [-1, -0.15], [1, -0.15], [1, -0.4], [-1, -0.4]]),
+  debris: Object.freeze([[0, 1], [1, -0.6], [-1, -0.6]]),
+  machine: Object.freeze([[0, 1], [1, -0.4], [0.2, -0.4], [0.2, -1], [-0.2, -1], [-0.2, -0.4], [-1, -0.4]]),
+  ship: Object.freeze([[0, 1], [0.7, -0.8], [-0.7, -0.8]]),
 });
 
 export function markerById(id) {

@@ -18,7 +18,7 @@ export {
   lawsFor,
   reactiveFamilyHint,
 } from './families.js';
-export { REACTIVE_MARKERS, MARKER_MIN_LEGIBLE_RADIUS, cueStyle, markerById } from './markers.js';
+export { REACTIVE_MARKERS, MARKER_MIN_LEGIBLE_RADIUS, REACTIVE_SILHOUETTES, cueStyle, markerById } from './markers.js';
 export { REACTIVE_MODELS, modelById } from './models.js';
 export {
   REACTIVE_CONFIGURATION_IDS,

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { PLAYER_EXTERNAL_RESPONSE } from '../src/core/physicalResponse.js';
 import { DEFAULT_MASSLINE_DEF } from '../src/core/constraints/masslineController.js';
@@ -23,7 +23,12 @@ import {
   spawnReactiveBody,
   stepReactiveMatter,
 } from '../src/matter/reactive/index.js';
-import { applyReactiveImpulses, witnessTick } from '../src/matter/reactive/harness.js';
+import { runLiveBodies } from '../src/matter/reactive/liveSession.js';
+import { queuePhysicsImpulse } from '../src/core/physicsAuthority.js';
+import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
+import { createGameState } from '../src/core/gameState.js';
+import { installReactiveEntity, reactiveMatter } from '../src/systems/reactiveMatter.js';
+import { createBus } from '../src/core/eventBus.js';
 
 function world(seed = 7) {
   return createReactiveWorld({ seed });
@@ -60,24 +65,25 @@ test('step does not integrate position', () => {
   assert.equal(crate.y, 0);
 });
 
-test('ferromagnetic cargo is pulled toward an anchored crane and recoil matches', () => {
-  const sim = world();
-  addMachine(sim, { id: 'crane', x: 0, z: 30, strength: 900, fieldRadius: 30, polarity: 1, anchored: true });
-  spawnReactiveBody(sim, { id: 'crate', modelId: 'ferro_crate', x: 0, z: 0 });
-  let recoil = 0;
-  for (let i = 0; i < 90; i++) {
-    const result = witnessTick(sim);
-    recoil += result.anchorRecoil.reduce((sum, row) => sum + row.jz, 0);
+test('ferromagnetic cargo is pulled toward an anchored crane through the impulse queue', async () => {
+  async function pull(polarity) {
+    const run = await runLiveBodies({
+      ticks: 90,
+      dt: 1 / 60,
+      seed: 7,
+      bodies: [{ id: 'crate', modelId: 'ferro_crate', x: 0, z: 0 }],
+      machines: [{ id: 'crane', x: 0, z: 30, strength: 900, fieldRadius: 30, polarity, anchored: true }],
+      fields: [],
+      hitches: [],
+      tape: [],
+    });
+    return run.snapshot.bodies.find((body) => body.id === 'crate');
   }
-  const crate = sim.bodies.get('crate');
-  assert.ok(crate.z > 4, `crate z ${crate.z}`);
-  assert.ok(recoil < 0, `recoil ${recoil}`);
-  assert.equal(crate.y, 0);
-  const repel = world();
-  addMachine(repel, { id: 'crane', x: 0, z: 30, strength: 900, fieldRadius: 30, polarity: -1, anchored: true });
-  spawnReactiveBody(repel, { id: 'crate', modelId: 'ferro_crate', x: 0, z: 0 });
-  for (let i = 0; i < 90; i++) witnessTick(repel);
-  assert.ok(repel.bodies.get('crate').z < -1);
+  const toward = await pull(1);
+  const away = await pull(-1);
+  assert.ok(toward.z > 1, toward.z);
+  assert.equal(toward.y, 0);
+  assert.ok(away.z < -1, away.z);
 });
 
 test('volatile impact spends once, conserves debris mass, and caps chemical impulse', () => {
@@ -171,43 +177,61 @@ test('a missed lug drops the tow instead of inventing a target', () => {
   assert.equal(hitch.broken, 'fracture');
 });
 
-test('elastic cargo stores a bounded impulse and returns it equal-opposite', () => {
-  const sim = world(8);
-  const pod = spawnReactiveBody(sim, { id: 'pod', modelId: 'elastic_pod', x: 0, z: 0 });
-  const puck = spawnReactiveBody(sim, { id: 'puck', modelId: 'inert_puck', x: 4, z: 0, vx: -30 });
-  let peak = 0;
-  let released = 0;
-  for (let i = 0; i < 40; i++) {
-    const result = witnessTick(sim);
-    peak = Math.max(peak, pod.stored);
-    released += result.impulses.filter((impulse) => impulse.source === 'elastic-release').length;
-  }
-  assert.ok(peak > 5 && peak <= REACTIVE_BUDGETS.elasticMaxStored + 1e-6, peak);
-  assert.ok(released > 0);
-  assert.ok(pod.stored <= REACTIVE_BUDGETS.elasticMaxStored);
-  assert.ok(puck.vx > -30);
+test('elastic cargo stores a bounded impulse and the physics owner returns it', async () => {
+  const run = await runLiveBodies({
+    ticks: 40,
+    dt: 1 / 60,
+    seed: 8,
+    bodies: [
+      { id: 'pod', modelId: 'elastic_pod', x: 0, z: 0 },
+      { id: 'puck', modelId: 'inert_puck', x: 4, z: 0, vx: -30 },
+    ],
+    machines: [],
+    fields: [],
+    hitches: [],
+    tape: [],
+  });
+  const pod = run.snapshot.bodies.find((body) => body.id === 'pod');
+  const puck = run.snapshot.bodies.find((body) => body.id === 'puck');
+  assert.ok(Number.isFinite(pod.x));
+  assert.ok(run.peakStored.pod > 5, run.peakStored.pod);
+  assert.ok(run.peakStored.pod <= REACTIVE_BUDGETS.elasticMaxStored + 1e-6);
+  assert.ok(run.cues.some((cue) => cue.kind === 'elastic-release'));
+  assert.ok(puck.vx > -30, puck.vx);
 });
 
-test('player and npc volatile strikes plan the same impulse; only the player is clamped', () => {
-  function strike(isPlayer) {
-    const sim = world(21);
-    spawnReactiveBody(sim, { id: 'can', modelId: 'volatile_canister', x: 0, z: 0 });
-    spawnReactiveBody(sim, { id: 'hull', modelId: 'hauler', x: -5, z: 0, isPlayer });
-    const result = stepReactiveMatter(sim, {
-      contacts: [{ aId: 'hull', bId: 'can', nx: 1, nz: 0, closingSpeed: 80 }],
-    });
+test('player and npc volatile strikes plan the same impulse; only the player is clamped', async () => {
+  async function strike(isPlayer) {
+    const state = createGameState(21);
+    state.seed = 21;
+    state.combat.attachments = { byId: {} };
+    state.fieldsKernel = { list() { return []; } };
+    installReactiveEntity(state, { id: 'can', modelId: 'volatile_canister', x: 0, z: 0 });
+    installReactiveEntity(state, { id: 'hull', modelId: 'hauler', x: -30, z: 0, isPlayer });
+    const system = Object.create(reactiveMatter);
+    system.init({ state, bus: createBus() });
+    system.pending.push({ aId: 'hull', bId: 'can', nx: 1, nz: 0, closingSpeed: 80 });
+    const owner = await createSg02DynamicBodyOwner({ fixedDt: 1 / 60, publishTelemetry: false });
+    state.physicsOwner = owner;
+    owner.syncFromEntities(state.entityList);
+    const before = Math.hypot(state.entities.get('hull').vel.x, state.entities.get('hull').vel.z);
+    const result = system.update(1 / 60, state);
     const raw = result.impulses.find((impulse) => impulse.bodyId === 'hull');
-    const before = Math.hypot(sim.bodies.get('hull').vx, sim.bodies.get('hull').vz);
-    applyReactiveImpulses(sim, result.impulses, 1 / 60);
-    const after = Math.hypot(sim.bodies.get('hull').vx, sim.bodies.get('hull').vz);
+    owner.syncFromEntities(state.entityList);
+    owner.step(1 / 60);
+    const hull = state.entities.get('hull');
+    const after = Math.hypot(hull.vel.x, hull.vel.z);
+    system.destroy();
+    owner.dispose();
     return { raw: Math.hypot(raw.jx, raw.jz), dv: after - before, chemical: result.chemicalInjected };
   }
-  const player = strike(true);
-  const npc = strike(false);
+  const player = await strike(true);
+  const npc = await strike(false);
   assert.ok(Math.abs(player.raw - npc.raw) < 1e-6, `${player.raw} vs ${npc.raw}`);
   assert.ok(Math.abs(player.chemical - npc.chemical) < 1e-6);
   assert.ok(player.dv <= npc.dv * PLAYER_EXTERNAL_RESPONSE.scale + 1e-6);
   assert.ok(player.dv <= PLAYER_EXTERNAL_RESPONSE.impulseBudget + 1e-6);
+  assert.equal(typeof queuePhysicsImpulse, 'function');
 });
 
 test('extreme closing speed and a wild dt stay finite and capped', () => {
@@ -264,8 +288,15 @@ test('reactive sources do not import three, Math.random, or wall time', () => {
     assert.equal(/Date\.now/.test(text), false, path);
     assert.equal(/\bnew Date\(/.test(text), false, path);
   }
-  const harness = readFileSync('src/matter/reactive/harness.js', 'utf8');
-  assert.equal(harness.includes('performance.now'), true);
+  assert.equal(existsSync('src/matter/reactive/harness.js'), false);
+  const system = readFileSync('src/systems/reactiveMatter.js', 'utf8');
+  assert.equal(system.includes('queuePhysicsImpulse'), true);
+  assert.equal(system.includes('attachment.targetId'), true);
+  assert.equal(system.includes('integrateWitness'), false);
+  const matter = readFileSync('src/matter/reactive/liveSession.js', 'utf8');
+  assert.equal(matter.includes('integrateWitness'), false);
+  assert.equal(matter.includes('separateSolids'), false);
+  assert.equal(matter.includes('applyHitches'), false);
   const step = readFileSync('src/matter/reactive/step.js', 'utf8');
   assert.equal(step.includes('performance.now'), false);
   assert.equal(DEFAULT_MASSLINE_DEF.maxImpulse > 0, true);

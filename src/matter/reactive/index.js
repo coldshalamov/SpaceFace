@@ -27,14 +27,3 @@ export {
   saveReactiveWorld,
   spawnReactiveBody,
 } from './world.js';
-export {
-  admitExternalImpulse,
-  applyReactiveImpulses,
-  benchCrowded,
-  instantiateConfiguration,
-  listConfigurationIds,
-  measureContacts,
-  probeSolid,
-  runConfiguration,
-  witnessTick,
-} from './harness.js';

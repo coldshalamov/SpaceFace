@@ -5,7 +5,6 @@ import { DEFAULT_MASSLINE_DEF } from '../src/core/constraints/masslineController
 import { REACTIVE_BUDGETS, REACTIVE_MODELS } from '../src/data/reactiveMatter/index.js';
 import {
   addMachine,
-  benchCrowded,
   claimReactiveSalvage,
   createReactiveWorld,
   destroyReactiveWorld,
@@ -14,9 +13,9 @@ import {
   saveReactiveWorld,
   spawnReactiveBody,
   stepReactiveMatter,
-  witnessTick,
 } from '../src/matter/reactive/index.js';
-import { HITCH_MAX, REEL_SPEED } from '../src/matter/reactive/harness.js';
+import { runLiveBodies } from '../src/matter/reactive/liveSession.js';
+import { REEL_SPEED } from '../src/systems/reactiveMatter.js';
 
 function heatWorld(seed = 9) {
   const sim = createReactiveWorld({ seed });
@@ -25,32 +24,38 @@ function heatWorld(seed = 9) {
   return sim;
 }
 
-test('half-step and full-step ferromagnetic motion stay in the same place', () => {
-  function run(dt, ticks) {
-    const sim = createReactiveWorld({ seed: 3 });
-    addMachine(sim, { id: 'crane', x: 24, z: 0, strength: 700, fieldRadius: 28, polarity: 1, anchored: true });
-    spawnReactiveBody(sim, { id: 'crate', modelId: 'ferro_crate', x: 0, z: 0 });
-    for (let i = 0; i < ticks; i++) witnessTick(sim, { dt, hitch: false });
-    return sim.bodies.get('crate').x;
+test('half-step and full-step ferromagnetic motion stay in the same place', async () => {
+  async function run(dt, ticks) {
+    const result = await runLiveBodies({
+      ticks,
+      dt,
+      seed: 3,
+      bodies: [{ id: 'crate', modelId: 'ferro_crate', x: 0, z: 0 }],
+      machines: [{ id: 'crane', x: 24, z: 0, strength: 700, fieldRadius: 28, polarity: 1, anchored: true }],
+      fields: [],
+      hitches: [],
+      tape: [],
+    });
+    return result.snapshot.bodies.find((body) => body.id === 'crate').x;
   }
-  const full = run(1 / 60, 60);
-  const half = run(1 / 120, 120);
+  const full = await run(1 / 60, 60);
+  const half = await run(1 / 120, 120);
   assert.ok(full > 2 && half > 2, `full ${full} half ${half}`);
   assert.ok(Math.abs(full - half) / full < 0.15, `full ${full} half ${half}`);
 });
 
 test('save reload continues a cook and a tampered intact phase stays spent', () => {
   const sim = heatWorld(12);
-  for (let i = 0; i < 20; i++) witnessTick(sim);
+  for (let i = 0; i < 20; i++) stepReactiveMatter(sim, { contacts: [] });
   const saved = saveReactiveWorld(sim);
   assert.ok(JSON.stringify(saved).length < 48000, JSON.stringify(saved).length);
   const loaded = loadReactiveWorld(saved);
   const fresh = heatWorld(12);
-  for (let i = 0; i < 20; i++) witnessTick(fresh);
+  for (let i = 0; i < 20; i++) stepReactiveMatter(fresh, { contacts: [] });
   assert.deepEqual(saveReactiveWorld(loaded), saved);
   for (let i = 0; i < 80; i++) {
-    witnessTick(loaded);
-    witnessTick(fresh);
+    stepReactiveMatter(loaded, { contacts: [] });
+    stepReactiveMatter(fresh, { contacts: [] });
   }
   assert.equal(loaded.bodies.get('can').phase, 'spent');
   assert.deepEqual(saveReactiveWorld(loaded).bodies, saveReactiveWorld(fresh).bodies);
@@ -144,12 +149,11 @@ test('reaction budget defers a crowd and reap clears old debris', () => {
   assert.equal([...sim.bodies.values()].some((body) => body.role === 'debris'), false);
 });
 
-test('destroy rejects further spawns and the witness hitch uses massline caps', () => {
+test('destroy rejects further spawns and the live reel uses the massline cap', () => {
   const sim = createReactiveWorld({ seed: 1 });
   destroyReactiveWorld(sim);
   assert.throws(() => spawnReactiveBody(sim, { id: 'a', modelId: 'ferro_crate', x: 0, z: 0 }));
   assert.throws(() => stepReactiveMatter(sim, {}));
-  assert.equal(HITCH_MAX, DEFAULT_MASSLINE_DEF.maxImpulse);
   assert.equal(REEL_SPEED, DEFAULT_MASSLINE_DEF.reelInSpeed);
   assert.equal(PLAYER_EXTERNAL_RESPONSE.scale, 0.1);
   assert.equal(PLAYER_EXTERNAL_RESPONSE.impulseBudget, 5);
@@ -158,11 +162,36 @@ test('destroy rejects further spawns and the witness hitch uses massline caps', 
 });
 
 test('crowded ferromagnetic picture evaluates every pair; the inert picture evaluates none', () => {
-  const bench = benchCrowded(60);
-  assert.equal(bench.liveEvals, bench.expectedLiveEvals);
-  assert.equal(bench.inertEvals, 0);
-  assert.ok(bench.liveMs < 500, bench.liveMs);
-  assert.ok(bench.inertMs < 500, bench.inertMs);
-  assert.equal(bench.bodies, 48);
-  assert.equal(bench.machines, 8);
+  function picture(live) {
+    const sim = createReactiveWorld({ seed: 11 });
+    for (let m = 0; m < 8; m++) {
+      addMachine(sim, {
+        id: `m${m}`, x: (m - 3.5) * 12, z: 0, strength: 400, fieldRadius: 18, polarity: 1, anchored: true,
+      });
+    }
+    for (let i = 0; i < 48; i++) {
+      spawnReactiveBody(sim, {
+        id: `b${i}`,
+        modelId: live ? 'ferro_crate' : 'inert_puck',
+        x: (i % 8 - 3.5) * 12,
+        z: 8 + Math.floor(i / 8) * 6,
+      });
+    }
+    return sim;
+  }
+  const ticks = 60;
+  const live = picture(true);
+  const inert = picture(false);
+  const t0 = performance.now();
+  let liveEvals = 0;
+  for (let i = 0; i < ticks; i++) liveEvals += stepReactiveMatter(live, { contacts: [] }).lawEvals;
+  const liveMs = performance.now() - t0;
+  const t1 = performance.now();
+  let inertEvals = 0;
+  for (let i = 0; i < ticks; i++) inertEvals += stepReactiveMatter(inert, { contacts: [] }).lawEvals;
+  const inertMs = performance.now() - t1;
+  assert.equal(liveEvals, 48 * 8 * ticks);
+  assert.equal(inertEvals, 0);
+  assert.ok(liveMs < 500, liveMs);
+  assert.ok(inertMs < 500, inertMs);
 });
