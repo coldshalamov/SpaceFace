@@ -160,6 +160,24 @@ export function markTold(state, deedId, opts = {}) {
   return deed;
 }
 
+/**
+ * A non-speaking surface (the news wire, the Codex) showed this deed. Saved with the record so a
+ * load does not re-run the headline; does not count as told (gossip still owes the player a mouth).
+ */
+export function markNoted(state, deedId, channel = 'news') {
+  const record = peekDeedRecord(state);
+  if (!record) return null;
+  const deed = record.deeds.find((d) => d.id === deedId);
+  if (!deed) return null;
+  if (!deed.noted || typeof deed.noted !== 'object') deed.noted = {};
+  deed.noted[String(channel)] = finite(state.simTime, 0);
+  return deed;
+}
+
+export function wasNoted(deed, channel = 'news') {
+  return !!(deed && deed.noted && typeof deed.noted === 'object' && deed.noted[String(channel)] != null);
+}
+
 // ── readers ──────────────────────────────────────────────────────────────────────────────────
 
 function decay(deed, now) {

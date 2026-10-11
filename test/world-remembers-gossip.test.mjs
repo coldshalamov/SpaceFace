@@ -132,6 +132,14 @@ for (const seed of SEEDS) {
     h.bus.emit('jump:arrive', { sectorId: 'sector_ceres_belt' });
     assert.equal(newsLog(h).length, 2, 'a new loud deed makes its own line');
     assert.equal(newsLog(h)[0].eventId, `deed:news:${second.id}`);
+
+    // The aired stamp lives on the saved deed: a load clears the ticker's log but does not re-run
+    // headlines the player already saw.
+    assert.equal(typeof loud.noted.news, 'number');
+    h.bus.emit('save:loaded', {});
+    assert.equal(newsLog(h).length, 0, 'load clears the presentation log');
+    h.bus.emit('dock:docked', { stationId: 'station_ceres' });
+    assert.equal(newsLog(h).length, 0, 'no headline re-airs after a load');
   });
 
   test(`no record key [${seed}]: dock, arrival and bar-adjacent readers say nothing and do not throw`, (t) => {

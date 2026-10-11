@@ -21,7 +21,7 @@
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
 import { hash32 } from '../core/rng.js';
-import { deedsFor } from '../systems/deedRecord.js';
+import { deedsFor, markNoted, wasNoted } from '../systems/deedRecord.js';
 import { deedLine } from '../data/deedPhrases.js';
 import {
   HEADLINE_TEMPLATES, REGIME_TEMPLATES, CARD_TEMPLATES, COMMODITY_FLAVOR,
@@ -542,6 +542,8 @@ export function createMarketNews(ctx) {
   function surfaceDeedNews() {
     for (const deed of deedsFor(state, { untoldOnly: true })) {
       if (!(deed.weight >= 3)) continue;
+      // The saved stamp is the durable dedupe: a load must not re-run a headline already aired.
+      if (wasNoted(deed, 'news')) continue;
       const eventId = `deed:news:${deed.id}`;
       if (deedNewsIds.has(eventId) || model.log.some((rec) => rec && rec.eventId === eventId)) continue;
       const text = deedLine(deed, { voice: 'neutral' });
@@ -550,7 +552,10 @@ export function createMarketNews(ctx) {
         id: eventId, eventId, sourceRef: eventId, source: 'deedRecord', kind: 'deed', text,
         sectorId: deed.sectorId || null, stationId: deed.stationId || null,
       });
-      if (committed) deedNewsIds.add(eventId);
+      if (committed) {
+        deedNewsIds.add(eventId);
+        markNoted(state, deed.id, 'news');
+      }
       return committed;
     }
     return null;
