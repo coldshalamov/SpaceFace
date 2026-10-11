@@ -25,6 +25,7 @@ import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection, ceresShipbreakTransform
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { detachPackageTexture } from './packageCpuDetach.js';
+import { textureGpuResident } from './startupGpuResidency.js';
 import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES } from '../data/palettes.js';
 import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
@@ -4474,7 +4475,7 @@ function failAuthoredPlaceAdmission(
   }
   if (boundary.parent && hasExplicitAuthoredGeologyPresentation(admissionEntity)) {
     fallbackRoot.visible = true;
-    markReadableFallbackLayer(fallbackRoot);
+    markReadableFallbackLayer(fallbackRoot, renderer);
     fallbackRoot.userData.authoredAssetState = 'same-semantic-fallback';
     fallbackRoot.userData.authoredVisualRoot = 'procedural-geology-fallback';
     if (error?.message) fallbackRoot.userData.authoredFallbackReason = error.message;
@@ -10169,7 +10170,7 @@ function shouldRetainReadableFallback(fallbackRoot, entity, authored) {
   return assetId === KESTREL_HERO_ASSET_ID;
 }
 
-function markReadableFallbackLayer(fallbackRoot) {
+function markReadableFallbackLayer(fallbackRoot, renderer) {
   fallbackRoot.userData = fallbackRoot.userData || {};
   fallbackRoot.userData.authoredReadableFallbackLayer = true;
   const heroBody = fallbackRoot.userData.assetId === KESTREL_HERO_ASSET_ID;
@@ -10184,12 +10185,17 @@ function markReadableFallbackLayer(fallbackRoot) {
     // N3 (heap-floor F4): a fallback layer never seals — it IS the live stand-in, already drawn
     // — so its marked authored textures release their CPU mirrors at mark rather than waiting
     // for a residency pass that will never cover this subtree. Unmarked textures no-op.
+    // W140-G3: only a texture already uploaded on this renderer may release — the subtree is
+    // invisible until this same block shows it, so a never-uploaded payload would leave the
+    // first bind uploading an emptied array (silent corruption, nothing gates it).
     const materials = object.material
       ? (Array.isArray(object.material) ? object.material : [object.material])
       : [];
     for (const material of materials) {
       for (const value of Object.values(material || {})) {
-        if (value && value.isTexture === true) detachPackageTexture(value);
+        if (value && value.isTexture === true && textureGpuResident(value, renderer)) {
+          detachPackageTexture(value);
+        }
       }
     }
   });
