@@ -27,7 +27,8 @@ test('each home station gets a real open sprint, and offers never share mutable 
   for (const row of ADVENTURE_SPEED_CONTRACTS) {
     const offer = adventureSpeedOfferFor(row.id), p = offer.params;
     ids.add(offer.id);
-    assert.equal(adventureSpeedOffersForStation(offer.stationId).length, 1);
+    assert.equal(adventureSpeedOffersForStation(offer.stationId).length,
+      ADVENTURE_SPEED_CONTRACTS.filter(other => adventureSpeedOfferFor(other.id).stationId === offer.stationId).length);
     assert.equal(offer.type, 'race'); assert.equal(p.laps, 1); assert.equal(p.closedCircuit, false);
     assert.notDeepEqual(p.gates.at(-1), p.gates[0]);
     assert.equal(p.steerLock, undefined, 'campaign job must leave the view toggle available');
@@ -36,7 +37,7 @@ test('each home station gets a real open sprint, and offers never share mutable 
     const fresh = adventureSpeedOfferFor(row.id).params;
     assert.ok(Number.isFinite(fresh.gates[0].x)); assert.ok(fresh.adventureSpeed.gateDeadlinesS[1] > 0);
   }
-  assert.equal(ids.size, 3);
+  assert.equal(ids.size, 6);
   assert.deepEqual(adventureSpeedOffersForStation('station_other'), []);
   assert.equal(adventureSpeedOfferFor('missing'), null);
 });
@@ -106,7 +107,7 @@ test('the customs final crossing requires a controlled speed, including on loade
 });
 
 test('all three authored routes complete through the real swept gate geometry', () => {
-  for (const row of ADVENTURE_SPEED_CONTRACTS) {
+  for (const row of ADVENTURE_SPEED_CONTRACTS.filter(row => ['escape', 'windows', 'wake'].includes(row.kind))) {
     const p = adventureSpeedOfferFor(row.id).params; p.raceStartSimS = 100;
     const gates = raceGateGlobals(p); let result, time = 105;
     for (let index = 0; index < gates.length; index++) {
@@ -134,6 +135,7 @@ function missionHarness(id = 'speed_helios_cut') {
   state.mode = 'flight'; state.simTime = 100; state.playerId = 1;
   state.world.currentSectorId = offer.params.courseSectorId;
   state.settings.gameplay.tutorialHints = false;
+  state.player.cargo = { items: {}, capVolume: 40, usedVolume: 0, usedMass: 0 };
   state.onboarding = { active: false, finished: true };
   const pilot = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 },
     vel: { x: 0, z: 0 }, rot: 0, mass: 26 };

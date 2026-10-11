@@ -34,6 +34,7 @@ export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 import { createPursuitSlot, stepPursuitSlotAssist } from '../core/flight/pursuitSlotAssist.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
 import { raceGridHolding } from './racingSteer.js';
+import { consumePrecisionBoostIntent } from './racingPrecision.js';
 import {
   corridorStateFor,
   proxyScaleFor,
@@ -177,6 +178,13 @@ export const flightV3 = {
     };
 
     if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('flight:racePrecision', (intent) => {
+        const credit = consumePrecisionBoostIntent(this.state, intent);
+        if (!(credit > 0)) return;
+        const player = this.state.entities.get(this.state.playerId);
+        const boost = normalizeBoostResource(player);
+        boost.energy = Math.min(boost.max, boost.energy + credit);
+      });
       this.bus.on('save:loaded', () => {
         this._masslineSlingUntil = 0;
         this._dashEarnedUntil = 0;

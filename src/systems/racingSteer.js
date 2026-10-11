@@ -362,7 +362,9 @@ const RECORD_KEY = 'spaceface.raceRecords.v2';
 export function raceRecordKey(params, category = params?.raceCategory) {
   if (!params || !params.racingContractId || !params.courseId) return null;
   const base = `${params.courseId}@${params.courseRevision || 1}:${params.racingContractId}:${circuitLaps(params)}L`;
-  return category ? `${base}:${category}` : base;
+  const mode = params.raceMode === 'race' || params.raceMode === 'cup'
+    ? `:pack-${params.raceDifficulty || 'club'}` : '';
+  return category ? `${base}:${category}${mode}` : base;
 }
 
 /** Comparable fitted hulls only. Camera preference is presentation, never a speed category. */
@@ -377,7 +379,7 @@ export function racingLoadoutCategory(state, player = state?.entities?.get?.(sta
     ...['maxSpeed','accelMult','turnMult','thrust','turnRate','mass'].map(key => Number(derived[key]) || 0),
     isRacingCorridorSession(state) ? 'circuit-layout-v1' : 'campaign',
     state?.settings?.gameplay?.flightLabDrive || '', state?.input?.flightMode || 'assisted'];
-  return `fit3-${hash32(JSON.stringify(identity)).toString(16)}`;
+  return `fit4-${hash32(JSON.stringify(identity)).toString(16)}`;
 }
 
 

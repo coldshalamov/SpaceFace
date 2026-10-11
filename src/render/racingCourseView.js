@@ -1,12 +1,14 @@
 // Authored circuit presentation: real vertical apertures, route line and a visible pace beacon.
-// Four draw calls at most. Every object is non-colliding and consumes the mission owner's truth.
+// Presentation consumes the mission owner's truth; all course markers are non-colliding.
 import * as THREE from 'three';
 import { activeAuthoredRace } from '../systems/racingSteer.js';
 import { circuitPacePoint, gateApproach } from '../systems/racingGeometry.js';
 import { raceGateGlobals } from '../data/raceLevels.js';
 import { readFrameOrigin } from './frameCoordinates.js';
+import { createRacingGhostView } from './racingGhostView.js';
 
 export function createRacingCourseView(scene, state) {
+  const ghost = createRacingGhostView(scene, state);
   const root = new THREE.Group(); root.name = 'Racing course'; root.visible = false;
   scene.add(root);
   const ringGeometry = new THREE.TorusGeometry(1, 0.024, 6, 48);
@@ -17,10 +19,13 @@ export function createRacingCourseView(scene, state) {
   const paceGeometry = new THREE.ConeGeometry(7, 22, 4);
   const target = new THREE.Mesh(ringGeometry, nextMaterial); target.name='Next checkpoint';
   const pace = new THREE.Mesh(paceGeometry, paceMaterial); pace.name='Draft pace beacon';
-  root.add(target, pace);
+  const markers=new THREE.InstancedMesh(ringGeometry,ringMaterial,8);
+  markers.name='Massline anchors and crossing refuges';markers.count=0;markers.frustumCulled=false;
+  root.add(target, pace, markers);
   const dummy = new THREE.Object3D(), origin = {}, from = {}, pacePoint = {};
   const up = new THREE.Vector3(0,1,0), forward = new THREE.Vector3();
   const base = new THREE.Color(0x90b2c8), cleared = new THREE.Color(0x3c515c), burn = new THREE.Color(0xffe956);
+  const anchorColor=new THREE.Color(0x8adccf),refugeColor=new THREE.Color(0xffc577);
   let owner = null, rings = null, line = null, globals = null, sectorX = 0, sectorZ = 0, lastGate = -1, lastLap = -1, disposed=false;
   function releaseCourse() {
     if(rings){root.remove(rings);rings.dispose();rings=null;}
@@ -56,6 +61,7 @@ export function createRacingCourseView(scene, state) {
     frame(){
       if(disposed)return;
       const race=activeAuthoredRace(state);
+      ghost.frame(race);
       root.visible=!!race&&state.mode==='flight'&&!state.ui?.docked
         &&state.world?.currentSectorId===race.params.courseSectorId;
       if(!root.visible)return;
@@ -63,6 +69,22 @@ export function createRacingCourseView(scene, state) {
       if(owner!==p)rebuild(p);
       if(!rings||!globals){root.visible=false;return;}
       readFrameOrigin(state,origin);root.position.set(sectorX-origin.x,0,sectorZ-origin.z);
+      let markerCount=0;
+      for(const cue of p.raceSetPieces||[]){
+        const anchor=cue.kind==='anchor',point=anchor?cue.pos:cue.phase!=='clear'?cue.waitPos:null;
+        if(!point||markerCount===8)continue;
+        dummy.position.set(point.x-sectorX,anchor?4:-2,point.z-sectorZ);
+        dummy.rotation.set(-Math.PI/2,0,0);dummy.scale.setScalar(anchor?38:cue.waitRadiusWU||42);
+        dummy.updateMatrix();markers.setMatrixAt(markerCount,dummy.matrix);
+        markers.setColorAt(markerCount,anchor?anchorColor:refugeColor);markerCount++;
+        if(cue.servicePos&&markerCount<8&&cue.phase!=='clear'){
+          dummy.position.set(cue.servicePos.x-sectorX,-2,cue.servicePos.z-sectorZ);
+          dummy.scale.setScalar(Math.min(40,(cue.serviceWidthWU||80)/2));dummy.updateMatrix();
+          markers.setMatrixAt(markerCount,dummy.matrix);markers.setColorAt(markerCount,anchorColor);markerCount++;
+        }
+      }
+      markers.count=markerCount;markers.instanceMatrix.needsUpdate=true;
+      if(markers.instanceColor)markers.instanceColor.needsUpdate=true;
       const next=Math.max(0,Math.min(p.gates.length-1,p.nextGate|0));
       if(next!==lastGate||(p.lap|0)!==lastLap){
         lastGate=next;lastLap=p.lap|0;
@@ -84,7 +106,8 @@ export function createRacingCourseView(scene, state) {
       }
     },
     dispose(){
-      if(disposed)return;disposed=true;releaseCourse();root.removeFromParent();
+      if(disposed)return;disposed=true;ghost.dispose();releaseCourse();root.removeFromParent();
+      markers.dispose();
       ringGeometry.dispose();paceGeometry.dispose();ringMaterial.dispose();nextMaterial.dispose();lineMaterial.dispose();paceMaterial.dispose();
     },
   };
