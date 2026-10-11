@@ -1,0 +1,13 @@
+{
+  "schema": "spaceface.momentCaptions.v1",
+  "momentId": "10:reversal:c-10-flip:840",
+  "language": "en",
+  "soundtrack": null,
+  "cues": [
+    {
+      "startS": 0,
+      "endS": 22,
+      "text": "Reversal. Logged reversal s10-flip (hunter to hunted) lands on kill s10-pay."
+    }
+  ]
+}

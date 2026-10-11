@@ -1,0 +1,13 @@
+{
+  "schema": "spaceface.momentCaptions.v1",
+  "momentId": "2:impossible_tether_cut:c-2-tether:840",
+  "language": "en",
+  "soundtrack": null,
+  "cues": [
+    {
+      "startS": 0,
+      "endS": 22,
+      "text": "Impossible tether cut. Logged tether cut s2-cut on causality c-2-tether exceeds the logged rating."
+    }
+  ]
+}

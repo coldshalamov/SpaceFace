@@ -1,0 +1,13 @@
+{
+  "schema": "spaceface.momentCaptions.v1",
+  "momentId": "3:accidental_collateral:c-3-collateral:840",
+  "language": "en",
+  "soundtrack": null,
+  "cues": [
+    {
+      "startS": 0,
+      "endS": 22,
+      "text": "Accidental collateral. Logged collateral s3-splash follows s3-shot on causality c-3-collateral; the victim was not the logged target."
+    }
+  ]
+}

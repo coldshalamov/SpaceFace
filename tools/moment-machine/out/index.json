@@ -1,0 +1,1067 @@
+{
+  "schema": "spaceface.momentIndex.v1",
+  "situations": 40,
+  "selectMs": 20.391355,
+  "boringRejected": 9,
+  "featsSelected": 18,
+  "sideEffectsSelected": 13,
+  "categories": [
+    "reversal",
+    "last_second_rescue",
+    "impossible_tether_cut",
+    "dramatic_lawful_intervention",
+    "accidental_collateral",
+    "volatile_cargo_catastrophe",
+    "giant_sling",
+    "freak_ricochet",
+    "chain_collision",
+    "near_miss"
+  ],
+  "categoryCount": 10,
+  "clipCount": 10,
+  "tooling": {
+    "ffmpeg": true,
+    "ffprobe": true,
+    "vpx": true,
+    "x264": true,
+    "unverified": false
+  },
+  "videoVerified": true,
+  "traces": [
+    {
+      "seed": 1,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "1:chain_collision:c-1-chain:840",
+          "shape": "chain_collision",
+          "rank": 0,
+          "score": 0.888,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 2,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "2:impossible_tether_cut:c-2-tether:840",
+          "shape": "impossible_tether_cut",
+          "rank": 0,
+          "score": 0.9600000000000001,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 3,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "3:accidental_collateral:c-3-collateral:840",
+          "shape": "accidental_collateral",
+          "rank": 0,
+          "score": 0.9520000000000001,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 4,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "4:dramatic_lawful_intervention:c-4-law:840",
+          "shape": "dramatic_lawful_intervention",
+          "rank": 0,
+          "score": 0.9599999999999999,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 5,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "5:giant_sling:c-5-sling:840",
+          "shape": "giant_sling",
+          "rank": 0,
+          "score": 0.92,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 6,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "6:last_second_rescue:c-6-rescue:840",
+          "shape": "last_second_rescue",
+          "rank": 0,
+          "score": 0.9680000000000001,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 7,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "7:near_miss:c-7-miss:840",
+          "shape": "near_miss",
+          "rank": 0,
+          "score": 0.92,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 8,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "8:volatile_cargo_catastrophe:c-8-cargo:840",
+          "shape": "volatile_cargo_catastrophe",
+          "rank": 0,
+          "score": 0.9400000000000001,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 9,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "9:moving_blockade:c-9-block:840",
+          "shape": "moving_blockade",
+          "rank": 0,
+          "score": 0.864,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 10,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "10:reversal:c-10-flip:840",
+          "shape": "reversal",
+          "rank": 0,
+          "score": 0.9799999999999999,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 11,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "11:freak_ricochet:c-11-rico:840",
+          "shape": "freak_ricochet",
+          "rank": 0,
+          "score": 0.936,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 12,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "12:unplanned_recovery:c-12-recover:840",
+          "shape": "unplanned_recovery",
+          "rank": 0,
+          "score": 0.92,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 13,
+      "tone": "side-effect",
+      "ranked": [
+        {
+          "id": "13:chain_collision:c-13-chain:840",
+          "shape": "chain_collision",
+          "rank": 0,
+          "score": 0.92,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "side-effect"
+        }
+      ]
+    },
+    {
+      "seed": 14,
+      "tone": "side-effect",
+      "ranked": [
+        {
+          "id": "14:accidental_collateral:c-14-collateral:840",
+          "shape": "accidental_collateral",
+          "rank": 0,
+          "score": 0.9520000000000001,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "side-effect"
+        }
+      ]
+    },
+    {
+      "seed": 15,
+      "tone": "side-effect",
+      "ranked": [
+        {
+          "id": "15:giant_sling:c-15-mess:700",
+          "shape": "giant_sling",
+          "rank": 0,
+          "score": 0.9600000000000001,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 700,
+          "footage": "covered",
+          "tone": "side-effect"
+        },
+        {
+          "id": "15:volatile_cargo_catastrophe:c-15-mess:840",
+          "shape": "volatile_cargo_catastrophe",
+          "rank": 1,
+          "score": 0.9400000000000001,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "side-effect"
+        }
+      ]
+    },
+    {
+      "seed": 16,
+      "tone": "side-effect",
+      "ranked": [
+        {
+          "id": "16:reversal:c-16-flip:840",
+          "shape": "reversal",
+          "rank": 0,
+          "score": 0.9799999999999999,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "side-effect"
+        }
+      ]
+    },
+    {
+      "seed": 17,
+      "tone": "side-effect",
+      "ranked": [
+        {
+          "id": "17:last_second_rescue:c-17-rescue:840",
+          "shape": "last_second_rescue",
+          "rank": 0,
+          "score": 0.9680000000000001,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "side-effect"
+        }
+      ]
+    },
+    {
+      "seed": 18,
+      "tone": "side-effect",
+      "ranked": [
+        {
+          "id": "18:freak_ricochet:c-18-rico:840",
+          "shape": "freak_ricochet",
+          "rank": 0,
+          "score": 0.936,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "side-effect"
+        }
+      ]
+    },
+    {
+      "seed": 19,
+      "tone": "side-effect",
+      "ranked": [
+        {
+          "id": "19:moving_blockade:c-19-block:840",
+          "shape": "moving_blockade",
+          "rank": 0,
+          "score": 0.864,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "side-effect"
+        }
+      ]
+    },
+    {
+      "seed": 20,
+      "tone": "side-effect",
+      "ranked": [
+        {
+          "id": "20:impossible_tether_cut:c-20-tether:840",
+          "shape": "impossible_tether_cut",
+          "rank": 0,
+          "score": 0.9600000000000001,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "side-effect"
+        }
+      ]
+    },
+    {
+      "seed": 21,
+      "tone": "side-effect",
+      "ranked": [
+        {
+          "id": "21:near_miss:c-21-miss:840",
+          "shape": "near_miss",
+          "rank": 0,
+          "score": 0.92,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "side-effect"
+        }
+      ]
+    },
+    {
+      "seed": 22,
+      "tone": "side-effect",
+      "ranked": [
+        {
+          "id": "22:unplanned_recovery:c-22-recover:840",
+          "shape": "unplanned_recovery",
+          "rank": 0,
+          "score": 0.92,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "side-effect"
+        }
+      ]
+    },
+    {
+      "seed": 23,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "23:freak_ricochet:c-23-rico:840",
+          "shape": "freak_ricochet",
+          "rank": 0,
+          "score": 0.936,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 24,
+      "tone": "side-effect",
+      "ranked": [
+        {
+          "id": "24:giant_sling:c-24-sling:840",
+          "shape": "giant_sling",
+          "rank": 0,
+          "score": 0.9999999999999999,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "side-effect"
+        }
+      ]
+    },
+    {
+      "seed": 25,
+      "tone": "reject-case",
+      "ranked": []
+    },
+    {
+      "seed": 26,
+      "tone": "reject-case",
+      "ranked": []
+    },
+    {
+      "seed": 27,
+      "tone": "reject-case",
+      "ranked": []
+    },
+    {
+      "seed": 28,
+      "tone": "reject-case",
+      "ranked": []
+    },
+    {
+      "seed": 29,
+      "tone": "reject-case",
+      "ranked": []
+    },
+    {
+      "seed": 30,
+      "tone": "reject-case",
+      "ranked": []
+    },
+    {
+      "seed": 31,
+      "tone": "reject-case",
+      "ranked": []
+    },
+    {
+      "seed": 32,
+      "tone": "reject-case",
+      "ranked": []
+    },
+    {
+      "seed": 33,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "33:chain_collision:c-33-chain:840",
+          "shape": "chain_collision",
+          "rank": 0,
+          "score": 0.888,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 34,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "34:chain_collision:c-34-gen:840",
+          "shape": "chain_collision",
+          "rank": 0,
+          "score": 0.8334545454545454,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 35,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "35:chain_collision:c-35-gap:4840",
+          "shape": "chain_collision",
+          "rank": 0,
+          "score": 0.8425454545454545,
+          "inTick": 4000,
+          "outTick": 5319,
+          "payoffTick": 4840,
+          "footage": "pre-roll-missing",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 36,
+      "tone": "reject-case",
+      "ranked": []
+    },
+    {
+      "seed": 37,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "37:chain_collision:c-37-chain:840",
+          "shape": "chain_collision",
+          "rank": 0,
+          "score": 0.888,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 38,
+      "tone": "feat",
+      "ranked": [
+        {
+          "id": "38:moving_blockade:c-38-block:840",
+          "shape": "moving_blockade",
+          "rank": 0,
+          "score": 0.864,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "feat"
+        }
+      ]
+    },
+    {
+      "seed": 39,
+      "tone": "side-effect",
+      "ranked": [
+        {
+          "id": "39:unplanned_recovery:c-39-recover:840",
+          "shape": "unplanned_recovery",
+          "rank": 0,
+          "score": 0.92,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "side-effect"
+        }
+      ]
+    },
+    {
+      "seed": 40,
+      "tone": "side-effect",
+      "ranked": [
+        {
+          "id": "40:reversal:c-40-both:840",
+          "shape": "reversal",
+          "rank": 0,
+          "score": 0.9799999999999999,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 840,
+          "footage": "covered",
+          "tone": "side-effect"
+        },
+        {
+          "id": "40:moving_blockade:c-40-both:700",
+          "shape": "moving_blockade",
+          "rank": 1,
+          "score": 0.864,
+          "inTick": 0,
+          "outTick": 1319,
+          "payoffTick": 700,
+          "footage": "covered",
+          "tone": "side-effect"
+        }
+      ]
+    }
+  ],
+  "clips": [
+    {
+      "seed": 10,
+      "momentId": "10:reversal:c-10-flip:840",
+      "shape": "reversal",
+      "tone": "feat",
+      "webm": "/workspace/tools/moment-machine/out/seed-10-reversal.webm",
+      "mp4": "/workspace/tools/moment-machine/out/seed-10-reversal.mp4",
+      "captions": "/workspace/tools/moment-machine/out/seed-10-reversal.captions.json",
+      "vtt": "/workspace/tools/moment-machine/out/seed-10-reversal.vtt",
+      "encode": {
+        "ok": true,
+        "wroteFile": true,
+        "format": "webm",
+        "fallback": null,
+        "outPath": "/workspace/tools/moment-machine/out/seed-10-reversal.webm",
+        "width": 320,
+        "height": 180,
+        "fps": 10,
+        "frames": 220,
+        "seconds": 22,
+        "editorialSeconds": 22,
+        "claimsUnrecorded": false,
+        "missingPreTicks": 0,
+        "missingPostTicks": 0,
+        "verified": {
+          "ok": true,
+          "problems": [],
+          "duration": 22,
+          "width": 320,
+          "height": 180,
+          "fps": 10,
+          "codec": "vp8",
+          "bitrate": 10753.09090909091,
+          "bytes": 29571,
+          "packetCount": 220,
+          "monotonic": true,
+          "audio": false
+        }
+      },
+      "mp4Encode": {
+        "ok": true,
+        "wroteFile": true,
+        "format": "mp4",
+        "fallback": null,
+        "outPath": "/workspace/tools/moment-machine/out/seed-10-reversal.mp4",
+        "width": 320,
+        "height": 180,
+        "fps": 10,
+        "frames": 220,
+        "seconds": 22,
+        "editorialSeconds": 22,
+        "claimsUnrecorded": false,
+        "missingPreTicks": 0,
+        "missingPostTicks": 0,
+        "verified": {
+          "ok": true,
+          "problems": [],
+          "duration": 22,
+          "width": 320,
+          "height": 180,
+          "fps": 10,
+          "codec": "h264",
+          "bitrate": 15636.363636363636,
+          "bytes": 43000,
+          "packetCount": 220,
+          "monotonic": true,
+          "audio": false
+        }
+      }
+    },
+    {
+      "seed": 6,
+      "momentId": "6:last_second_rescue:c-6-rescue:840",
+      "shape": "last_second_rescue",
+      "tone": "feat",
+      "webm": "/workspace/tools/moment-machine/out/seed-6-last_second_rescue.webm",
+      "mp4": null,
+      "captions": "/workspace/tools/moment-machine/out/seed-6-last_second_rescue.captions.json",
+      "vtt": "/workspace/tools/moment-machine/out/seed-6-last_second_rescue.vtt",
+      "encode": {
+        "ok": true,
+        "wroteFile": true,
+        "format": "webm",
+        "fallback": null,
+        "outPath": "/workspace/tools/moment-machine/out/seed-6-last_second_rescue.webm",
+        "width": 320,
+        "height": 180,
+        "fps": 10,
+        "frames": 220,
+        "seconds": 22,
+        "editorialSeconds": 22,
+        "claimsUnrecorded": false,
+        "missingPreTicks": 0,
+        "missingPostTicks": 0,
+        "verified": {
+          "ok": true,
+          "problems": [],
+          "duration": 22,
+          "width": 320,
+          "height": 180,
+          "fps": 10,
+          "codec": "vp8",
+          "bitrate": 10202.90909090909,
+          "bytes": 28058,
+          "packetCount": 220,
+          "monotonic": true,
+          "audio": false
+        }
+      },
+      "mp4Encode": null
+    },
+    {
+      "seed": 2,
+      "momentId": "2:impossible_tether_cut:c-2-tether:840",
+      "shape": "impossible_tether_cut",
+      "tone": "feat",
+      "webm": "/workspace/tools/moment-machine/out/seed-2-impossible_tether_cut.webm",
+      "mp4": null,
+      "captions": "/workspace/tools/moment-machine/out/seed-2-impossible_tether_cut.captions.json",
+      "vtt": "/workspace/tools/moment-machine/out/seed-2-impossible_tether_cut.vtt",
+      "encode": {
+        "ok": true,
+        "wroteFile": true,
+        "format": "webm",
+        "fallback": null,
+        "outPath": "/workspace/tools/moment-machine/out/seed-2-impossible_tether_cut.webm",
+        "width": 320,
+        "height": 180,
+        "fps": 10,
+        "frames": 220,
+        "seconds": 22,
+        "editorialSeconds": 22,
+        "claimsUnrecorded": false,
+        "missingPreTicks": 0,
+        "missingPostTicks": 0,
+        "verified": {
+          "ok": true,
+          "problems": [],
+          "duration": 22,
+          "width": 320,
+          "height": 180,
+          "fps": 10,
+          "codec": "vp8",
+          "bitrate": 11991.272727272728,
+          "bytes": 32976,
+          "packetCount": 220,
+          "monotonic": true,
+          "audio": false
+        }
+      },
+      "mp4Encode": null
+    },
+    {
+      "seed": 4,
+      "momentId": "4:dramatic_lawful_intervention:c-4-law:840",
+      "shape": "dramatic_lawful_intervention",
+      "tone": "feat",
+      "webm": "/workspace/tools/moment-machine/out/seed-4-dramatic_lawful_intervention.webm",
+      "mp4": null,
+      "captions": "/workspace/tools/moment-machine/out/seed-4-dramatic_lawful_intervention.captions.json",
+      "vtt": "/workspace/tools/moment-machine/out/seed-4-dramatic_lawful_intervention.vtt",
+      "encode": {
+        "ok": true,
+        "wroteFile": true,
+        "format": "webm",
+        "fallback": null,
+        "outPath": "/workspace/tools/moment-machine/out/seed-4-dramatic_lawful_intervention.webm",
+        "width": 320,
+        "height": 180,
+        "fps": 10,
+        "frames": 220,
+        "seconds": 22,
+        "editorialSeconds": 22,
+        "claimsUnrecorded": false,
+        "missingPreTicks": 0,
+        "missingPostTicks": 0,
+        "verified": {
+          "ok": true,
+          "problems": [],
+          "duration": 22,
+          "width": 320,
+          "height": 180,
+          "fps": 10,
+          "codec": "vp8",
+          "bitrate": 8579.636363636364,
+          "bytes": 23594,
+          "packetCount": 220,
+          "monotonic": true,
+          "audio": false
+        }
+      },
+      "mp4Encode": null
+    },
+    {
+      "seed": 3,
+      "momentId": "3:accidental_collateral:c-3-collateral:840",
+      "shape": "accidental_collateral",
+      "tone": "feat",
+      "webm": "/workspace/tools/moment-machine/out/seed-3-accidental_collateral.webm",
+      "mp4": null,
+      "captions": "/workspace/tools/moment-machine/out/seed-3-accidental_collateral.captions.json",
+      "vtt": "/workspace/tools/moment-machine/out/seed-3-accidental_collateral.vtt",
+      "encode": {
+        "ok": true,
+        "wroteFile": true,
+        "format": "webm",
+        "fallback": null,
+        "outPath": "/workspace/tools/moment-machine/out/seed-3-accidental_collateral.webm",
+        "width": 320,
+        "height": 180,
+        "fps": 10,
+        "frames": 220,
+        "seconds": 22,
+        "editorialSeconds": 22,
+        "claimsUnrecorded": false,
+        "missingPreTicks": 0,
+        "missingPostTicks": 0,
+        "verified": {
+          "ok": true,
+          "problems": [],
+          "duration": 22,
+          "width": 320,
+          "height": 180,
+          "fps": 10,
+          "codec": "vp8",
+          "bitrate": 10202.90909090909,
+          "bytes": 28058,
+          "packetCount": 220,
+          "monotonic": true,
+          "audio": false
+        }
+      },
+      "mp4Encode": null
+    },
+    {
+      "seed": 8,
+      "momentId": "8:volatile_cargo_catastrophe:c-8-cargo:840",
+      "shape": "volatile_cargo_catastrophe",
+      "tone": "feat",
+      "webm": "/workspace/tools/moment-machine/out/seed-8-volatile_cargo_catastrophe.webm",
+      "mp4": null,
+      "captions": "/workspace/tools/moment-machine/out/seed-8-volatile_cargo_catastrophe.captions.json",
+      "vtt": "/workspace/tools/moment-machine/out/seed-8-volatile_cargo_catastrophe.vtt",
+      "encode": {
+        "ok": true,
+        "wroteFile": true,
+        "format": "webm",
+        "fallback": null,
+        "outPath": "/workspace/tools/moment-machine/out/seed-8-volatile_cargo_catastrophe.webm",
+        "width": 320,
+        "height": 180,
+        "fps": 10,
+        "frames": 220,
+        "seconds": 22,
+        "editorialSeconds": 22,
+        "claimsUnrecorded": false,
+        "missingPreTicks": 0,
+        "missingPostTicks": 0,
+        "verified": {
+          "ok": true,
+          "problems": [],
+          "duration": 22,
+          "width": 320,
+          "height": 180,
+          "fps": 10,
+          "codec": "vp8",
+          "bitrate": 8513.09090909091,
+          "bytes": 23411,
+          "packetCount": 220,
+          "monotonic": true,
+          "audio": false
+        }
+      },
+      "mp4Encode": null
+    },
+    {
+      "seed": 24,
+      "momentId": "24:giant_sling:c-24-sling:840",
+      "shape": "giant_sling",
+      "tone": "side-effect",
+      "webm": "/workspace/tools/moment-machine/out/seed-24-giant_sling.webm",
+      "mp4": null,
+      "captions": "/workspace/tools/moment-machine/out/seed-24-giant_sling.captions.json",
+      "vtt": "/workspace/tools/moment-machine/out/seed-24-giant_sling.vtt",
+      "encode": {
+        "ok": true,
+        "wroteFile": true,
+        "format": "webm",
+        "fallback": null,
+        "outPath": "/workspace/tools/moment-machine/out/seed-24-giant_sling.webm",
+        "width": 320,
+        "height": 180,
+        "fps": 10,
+        "frames": 220,
+        "seconds": 22,
+        "editorialSeconds": 22,
+        "claimsUnrecorded": false,
+        "missingPreTicks": 0,
+        "missingPostTicks": 0,
+        "verified": {
+          "ok": true,
+          "problems": [],
+          "duration": 22,
+          "width": 320,
+          "height": 180,
+          "fps": 10,
+          "codec": "vp8",
+          "bitrate": 11991.272727272728,
+          "bytes": 32976,
+          "packetCount": 220,
+          "monotonic": true,
+          "audio": false
+        }
+      },
+      "mp4Encode": null
+    },
+    {
+      "seed": 18,
+      "momentId": "18:freak_ricochet:c-18-rico:840",
+      "shape": "freak_ricochet",
+      "tone": "side-effect",
+      "webm": "/workspace/tools/moment-machine/out/seed-18-freak_ricochet.webm",
+      "mp4": null,
+      "captions": "/workspace/tools/moment-machine/out/seed-18-freak_ricochet.captions.json",
+      "vtt": "/workspace/tools/moment-machine/out/seed-18-freak_ricochet.vtt",
+      "encode": {
+        "ok": true,
+        "wroteFile": true,
+        "format": "webm",
+        "fallback": null,
+        "outPath": "/workspace/tools/moment-machine/out/seed-18-freak_ricochet.webm",
+        "width": 320,
+        "height": 180,
+        "fps": 10,
+        "frames": 220,
+        "seconds": 22,
+        "editorialSeconds": 22,
+        "claimsUnrecorded": false,
+        "missingPreTicks": 0,
+        "missingPostTicks": 0,
+        "verified": {
+          "ok": true,
+          "problems": [],
+          "duration": 22,
+          "width": 320,
+          "height": 180,
+          "fps": 10,
+          "codec": "vp8",
+          "bitrate": 11991.272727272728,
+          "bytes": 32976,
+          "packetCount": 220,
+          "monotonic": true,
+          "audio": false
+        }
+      },
+      "mp4Encode": null
+    },
+    {
+      "seed": 13,
+      "momentId": "13:chain_collision:c-13-chain:840",
+      "shape": "chain_collision",
+      "tone": "side-effect",
+      "webm": "/workspace/tools/moment-machine/out/seed-13-chain_collision.webm",
+      "mp4": null,
+      "captions": "/workspace/tools/moment-machine/out/seed-13-chain_collision.captions.json",
+      "vtt": "/workspace/tools/moment-machine/out/seed-13-chain_collision.vtt",
+      "encode": {
+        "ok": true,
+        "wroteFile": true,
+        "format": "webm",
+        "fallback": null,
+        "outPath": "/workspace/tools/moment-machine/out/seed-13-chain_collision.webm",
+        "width": 320,
+        "height": 180,
+        "fps": 10,
+        "frames": 220,
+        "seconds": 22,
+        "editorialSeconds": 22,
+        "claimsUnrecorded": false,
+        "missingPreTicks": 0,
+        "missingPostTicks": 0,
+        "verified": {
+          "ok": true,
+          "problems": [],
+          "duration": 22,
+          "width": 320,
+          "height": 180,
+          "fps": 10,
+          "codec": "vp8",
+          "bitrate": 10881.818181818182,
+          "bytes": 29925,
+          "packetCount": 220,
+          "monotonic": true,
+          "audio": false
+        }
+      },
+      "mp4Encode": null
+    },
+    {
+      "seed": 21,
+      "momentId": "21:near_miss:c-21-miss:840",
+      "shape": "near_miss",
+      "tone": "side-effect",
+      "webm": "/workspace/tools/moment-machine/out/seed-21-near_miss.webm",
+      "mp4": null,
+      "captions": "/workspace/tools/moment-machine/out/seed-21-near_miss.captions.json",
+      "vtt": "/workspace/tools/moment-machine/out/seed-21-near_miss.vtt",
+      "encode": {
+        "ok": true,
+        "wroteFile": true,
+        "format": "webm",
+        "fallback": null,
+        "outPath": "/workspace/tools/moment-machine/out/seed-21-near_miss.webm",
+        "width": 320,
+        "height": 180,
+        "fps": 10,
+        "frames": 220,
+        "seconds": 22,
+        "editorialSeconds": 22,
+        "claimsUnrecorded": false,
+        "missingPreTicks": 0,
+        "missingPostTicks": 0,
+        "verified": {
+          "ok": true,
+          "problems": [],
+          "duration": 22,
+          "width": 320,
+          "height": 180,
+          "fps": 10,
+          "codec": "vp8",
+          "bitrate": 11991.272727272728,
+          "bytes": 32976,
+          "packetCount": 220,
+          "monotonic": true,
+          "audio": false
+        }
+      },
+      "mp4Encode": null
+    }
+  ]
+}

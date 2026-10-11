@@ -1,0 +1,13 @@
+{
+  "schema": "spaceface.momentCaptions.v1",
+  "momentId": "13:chain_collision:c-13-chain:840",
+  "language": "en",
+  "soundtrack": null,
+  "cues": [
+    {
+      "startS": 0,
+      "endS": 22,
+      "text": "Chain collision. Logged collisions s13-hit-a, s13-hit-mid, s13-hit-b share causality c-13-chain."
+    }
+  ]
+}

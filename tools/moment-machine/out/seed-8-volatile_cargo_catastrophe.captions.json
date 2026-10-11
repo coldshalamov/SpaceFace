@@ -1,0 +1,13 @@
+{
+  "schema": "spaceface.momentCaptions.v1",
+  "momentId": "8:volatile_cargo_catastrophe:c-8-cargo:840",
+  "language": "en",
+  "soundtrack": null,
+  "cues": [
+    {
+      "startS": 0,
+      "endS": 22,
+      "text": "Volatile cargo catastrophe. Logged volatile cargo s8-burst follows collision s8-jar on causality c-8-cargo."
+    }
+  ]
+}

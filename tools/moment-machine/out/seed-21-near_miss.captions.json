@@ -1,0 +1,13 @@
+{
+  "schema": "spaceface.momentCaptions.v1",
+  "momentId": "21:near_miss:c-21-miss:840",
+  "language": "en",
+  "soundtrack": null,
+  "cues": [
+    {
+      "startS": 0,
+      "endS": 22,
+      "text": "Near miss. Logged near miss s21-miss cleared by 0.8 WU on causality c-21-miss."
+    }
+  ]
+}
