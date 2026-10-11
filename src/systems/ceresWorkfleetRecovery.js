@@ -117,7 +117,9 @@ function unregisteredReach(e,proxy){
     +Math.hypot(Number.isFinite(com?.x)?com.x:0,Number.isFinite(com?.z)?com.z:0);
  }
  if(!proxy)return fallback;
- let bound=Math.max(fallback,proxyOuterRadiusWu(proxy,e));
+ // An underivable primitive bound (compound/hull shapes) is a sentinel, not a
+ // radius: a resolvable proxy manifest is the canonical bound for the whole body.
+ let bound=Math.max(Number.isFinite(fallback)?fallback:0,proxyOuterRadiusWu(proxy,e));
  for(const key of ['compactHull','planarPolygon'])if(proxy[key]!=null){
   const points=proxy[key],scale=proxyScaleFor(e,proxy);
   if(!Array.isArray(points)||points.length<3||!Number.isFinite(scale)||scale<=0||points.some(p=>!p||!Number.isFinite(p.x)||!Number.isFinite(p.z)))return Infinity;

@@ -13,6 +13,7 @@ import {
   waitForOpeningGraphPublicationRelease,
 } from '../src/render/partsLibrary.js';
 import { POST_PROCESS_ROUTE, render as renderSystem } from '../src/render/renderer.js';
+import { PRESENTATION_TIER } from '../src/world/activityClassification.js';
 import {
   createPipelineAdmissionTracker,
   observePipelineAdmission,
@@ -802,6 +803,40 @@ test('observePipelineAdmission returns the same promise unchanged', async () => 
   assert.equal(observedOk, fulfilled.promise);
   fulfilled.resolve('compiled');
   assert.equal(await observedOk, 'compiled', 'fulfillment value passes through unchanged');
+});
+
+test('a software renderer widens the on-glass stall bound and admission deadline', async () => {
+  const pump = fakeDisplayPump();
+  const fixture = liveRenderFixture();
+  fixture.liveState.render.gpu = { tier: 'software' };
+  try {
+    const scene = new THREE.Group();
+    const ship = stationJob(scene, 'ship_glass_software', () => never());
+    ship.entity.type = 'ship';
+    ship.entity.activity = { presentationTier: PRESENTATION_TIER.R0_GLASS };
+    const completion = enqueueBoundaryUpgrade(scene, ship);
+    pump.flushFrame();
+    await flushMicrotasks();
+    assert.equal(describeAuthoredUpgradeQueue(scene).inFlight, 1);
+    assert.ok(
+      pump.clock.timers.some((timer) => !timer.cleared && timer.ms === 240000),
+      'the admission deadline rides the software bound, not the hardware one',
+    );
+    // Past the hardware admission deadline and ambient stall bound: still in flight — a
+    // software host's legitimate decode is not abandoned mid-run.
+    pump.clock.now += AUTHORED_ASYNC_DEADLINE_MS + 1000;
+    pump.fireTimer(5000);
+    await flushMicrotasks();
+    assert.equal(describeAuthoredUpgradeQueue(scene).inFlight, 1);
+    // At the software bound the same watchdog still settles the wedged lane.
+    pump.clock.now += 240000 - AUTHORED_ASYNC_DEADLINE_MS - 1000;
+    pump.fireTimer(5000);
+    const result = await completion;
+    assert.equal(result.status, 'aborted-stalled');
+  } finally {
+    pump.restore();
+    fixture.restore();
+  }
 });
 
 test('an ignored cleanup finally runs once and a throwing observer stays inert', async () => {

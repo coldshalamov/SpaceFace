@@ -307,7 +307,10 @@ test('complete production factory commissions the public site worker and yields 
     const brace=withProductionFeatures(runtime,()=>sites.applyWorldSiteBeamOperation({siteId:C.siteId,componentId:'long_plate_clamp',verb:'repair',amount:24,
       requestStreamId:'player-industrial-beam',requestSequence:state.tick}));assert.equal(brace.ok,true);
     let sawThrust=false,maxTravel=0;
-    for(let i=0;i<7600;i++) {
+    // 7600 -> 12000: since the pressed-contact fix stopped tunneling through the breaker's
+    // hull, the head's real collided transit through the well takes ~10000 ticks to reach
+    // extract under the full production registry (deterministic seed 47).
+    for(let i=0;i<12000;i++) {
       runtime.step(DT);
       const worker=state.entityList.find(e=>e.alive&&e.data?.worldRecordId===C.identities.worker);
       if(worker){maxTravel=Math.max(maxTravel,Math.hypot(worker.pos.x-(C.sitePlacement.pos.x-80),worker.pos.z-(C.sitePlacement.pos.z-220)));

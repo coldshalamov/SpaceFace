@@ -6563,6 +6563,13 @@ const AUTHORED_UPGRADE_NONSHIP_STALL_MS = AUTHORED_ASYNC_DEADLINE_MS;
 // ambient stall bound behind a wedged job. The serial-slot invariant still only yields to
 // dead lanes — this tightens how long 'plausibly alive' lasts when the picture is missing.
 const AUTHORED_UPGRADE_GLASS_STALL_BYPASS_MS = 30000;
+// These bounds are plausibility windows tuned for hardware. On a software rasterizer a legitimate
+// meshopt/KTX2 decode + pipeline compile runs on the same CPU the frame loop needs, so a whole-ship
+// admission can exceed the hardware deadline while still progressing — it then settles
+// 'unavailable' mid-run (observed ship_mule on CI software GL), and every stall abort restarts the
+// decode from zero. Software hosts get a wider window (still inside the visual-stability probe's
+// 360s resolve budget); a genuinely wedged lane is still aborted, capped, and settled.
+const AUTHORED_UPGRADE_SOFTWARE_BOUND_MS = 240000;
 // Stall aborts re-admit for a fresh decode; a genuinely wedged decoder produces the same hang
 // every cycle, so the abort+re-admit loop is capped and the boundary settles on its fallback.
 const AUTHORED_UPGRADE_STALL_ABORT_LIMIT = 3;
@@ -6572,6 +6579,22 @@ function jobIsStalledInFlight(job, nowMs, boundMs = AUTHORED_UPGRADE_NONSHIP_STA
   if (!job || job.lifecycle !== 'in-flight') return false;
   const startedAt = Number(job.inFlightAtMs);
   return Number.isFinite(startedAt) && nowMs - startedAt >= boundMs;
+}
+
+function authoredUpgradeSoftwareRenderer() {
+  return authoredRuntimeState()?.render?.gpu?.tier === 'software';
+}
+
+function upgradeGlassStallBoundMs() {
+  return authoredUpgradeSoftwareRenderer()
+    ? AUTHORED_UPGRADE_SOFTWARE_BOUND_MS
+    : AUTHORED_UPGRADE_GLASS_STALL_BYPASS_MS;
+}
+
+function authoredUpgradeAdmissionDeadlineMs() {
+  return authoredUpgradeSoftwareRenderer()
+    ? AUTHORED_UPGRADE_SOFTWARE_BOUND_MS
+    : AUTHORED_ASYNC_DEADLINE_MS;
 }
 
 function queuedShipJobStillNeeded(state, job) {
@@ -6594,7 +6617,7 @@ function stalledHogsCanPassShip(state) {
     job.lifecycle === 'in-flight' && job.serialSlotReleased !== true);
   if (!active.length) return false;
   const now = monotonicNow();
-  return active.every((job) => jobIsStalledInFlight(job, now, AUTHORED_UPGRADE_GLASS_STALL_BYPASS_MS));
+  return active.every((job) => jobIsStalledInFlight(job, now, upgradeGlassStallBoundMs()));
 }
 
 /**
@@ -6655,7 +6678,7 @@ function abortStalledOrInactiveUpgradeJobs(state) {
       }
       finishUpgradeDiagnostic(state, job, job.upgradeDiagnostic);
       const bound = entityIsOnReadableGlass(job.entity)
-        ? AUTHORED_UPGRADE_GLASS_STALL_BYPASS_MS
+        ? upgradeGlassStallBoundMs()
         : AUTHORED_UPGRADE_NONSHIP_STALL_MS;
       // A job whose serial slot already released is parked in detached GPU prep — aborting it
       // rescues nothing (the slot is free) and would re-mark its 'authored-prepared' boundary
@@ -7774,6 +7797,7 @@ function admitNextUpgradeJob(state) {
   job.admission = createAsyncAdmission({
     label: `authored-upgrade:${String(job.key)}`,
     signal: requestedOptions.signal,
+    timeoutMs: authoredUpgradeAdmissionDeadlineMs(),
   });
   const admission = job.admission;
   const owner = { boundary: job.boundary, entity: job.entity };

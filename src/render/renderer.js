@@ -25158,8 +25158,8 @@ export const render = {
       // The starvation floor still consults the forced wallet — a spent frame
       // defers the forced start (keeping the late streak armed) instead of
       // running the one build un-metered like every other forced lane.
-      const lateStartAllowed = !gate.start || forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
-      if (lateStartAllowed) this._meshBuildLateSkips = gate.skippedCount;
+      const lateStartAllowed = gate.start && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
+      if (!gate.start || lateStartAllowed) this._meshBuildLateSkips = gate.skippedCount;
       if (!lateStartAllowed) {
         if (!(yield* driveHoist(this))) return 0;
         deadlineGlassOnly = true;
@@ -25265,9 +25265,11 @@ export const render = {
             this.state && this.state.render && this.state.render.lastPresentDtMs,
             this._meshBuildLateSkips,
           );
-          const resumedStartAllowed = !resumedGate.start
-            || forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
-          if (resumedStartAllowed) this._meshBuildLateSkips = resumedGate.skippedCount;
+          const resumedStartAllowed = resumedGate.start
+            && forcedFrameSpend() < FORCED_FRAME_BUDGET_MS;
+          if (!resumedGate.start || resumedStartAllowed) {
+            this._meshBuildLateSkips = resumedGate.skippedCount;
+          }
           deadlineGlassOnly = !resumedStartAllowed;
         }
       }
@@ -25805,6 +25807,25 @@ export const render = {
       this._meshesVersion += 1;
       if (old) {
         old.removeFromParent();
+        // Authored-motion bindings are entity-keyed registrations, not GPU
+        // resources: a retired root must stop answering updates at the swap —
+        // the paced drain below reaches it turns later, and until then the
+        // dead root would still hold its controllers. The detach itself is
+        // cheap bookkeeping; the paced lane keeps the traverse+dispose legs
+        // (and re-calls these hooks idempotently).
+        const detachStack = [old];
+        while (detachStack.length) {
+          const node = detachStack.pop();
+          const detachMotion = node.userData && node.userData.detachAuthoredMotion;
+          if (typeof detachMotion === 'function') {
+            try { detachMotion(this.state); }
+            catch (error) {
+              noteLaneFault(this.state, 'teardown.authoredMotion');
+              stormWarn('teardown:authoredMotion', '[render] authored-motion detach failed', error);
+            }
+          }
+          for (const child of node.children || []) detachStack.push(child);
+        }
         // The retiring hull's whole-subtree teardown rides the paced queue —
         // a fat replacement's commit leg no longer pays traverse+dispose
         // atomically inside the presented beat that swapped it.

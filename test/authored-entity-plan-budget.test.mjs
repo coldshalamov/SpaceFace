@@ -585,6 +585,7 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
 
   const priorWindow = globalThis.window;
   const priorRaf = globalThis.requestAnimationFrame;
+  const priorScheduler = globalThis.scheduler;
   const scheduledFrames = [];
   let compiledRoot = null;
   let residentRoot = null;
@@ -595,6 +596,11 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
   globalThis.requestAnimationFrame = (callback) => {
     scheduledFrames.push(callback);
     return scheduledFrames.length;
+  };
+  // The pumped frame channel never yields the real event loop, so production's
+  // background-priority compose resume must join the same queue or it never runs.
+  globalThis.scheduler = {
+    postTask: (callback) => { scheduledFrames.push(callback); return scheduledFrames.length; },
   };
   globalThis.window = {
     SF: {
@@ -633,7 +639,12 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
     assert.equal(scheduledFrames.length, 1, 'resolved plans still use the frame-bounded admission queue');
 
     scheduledFrames.shift()();
-    for (let turn = 0; turn < 50 && !compiledRoot; turn++) await Promise.resolve();
+    // The resume rides the pumped frame queue (rAF and background-priority postTask land in
+    // scheduledFrames), so each wait turn drains it before settling microtasks.
+    for (let turn = 0; turn < 50 && !compiledRoot; turn++) {
+      while (scheduledFrames.length) scheduledFrames.shift()();
+      await Promise.resolve();
+    }
 
     assert.ok(compiledRoot, 'the resolved composition must enter the exact GPU pipeline compiler');
     assert.equal(boundary.userData.authoredAssetState, 'compiling-pipelines');
@@ -643,6 +654,7 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
 
     releasePipeline({ skipped: false, programCount: 1 });
     for (let turn = 0; turn < 50 && !residentRoot; turn++) {
+      while (scheduledFrames.length) scheduledFrames.shift()();
       await Promise.resolve();
     }
 
@@ -654,6 +666,7 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
 
     releaseResidency({ skipped: false, textures: 3 });
     for (let turn = 0; turn < 50 && boundary.userData.authoredAssetState !== 'authored'; turn++) {
+      while (scheduledFrames.length) scheduledFrames.shift()();
       await Promise.resolve();
     }
 
@@ -664,6 +677,8 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
   } finally {
     if (priorRaf === undefined) delete globalThis.requestAnimationFrame;
     else globalThis.requestAnimationFrame = priorRaf;
+    if (priorScheduler === undefined) delete globalThis.scheduler;
+    else globalThis.scheduler = priorScheduler;
     if (priorWindow === undefined) delete globalThis.window;
     else globalThis.window = priorWindow;
     partsLibrary.invalidatePartsLibraryCaches(renderer);

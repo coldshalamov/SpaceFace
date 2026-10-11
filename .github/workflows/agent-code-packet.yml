@@ -95,7 +95,18 @@ jobs:
               '.zip', '.7z', '.rar', '.tar', '.gz', '.bz2', '.xz', '.zst',
               '.bin', '.exe', '.dll', '.so', '.dylib', '.node', '.wasm',
               '.ttf', '.otf', '.woff', '.woff2', '.pdf',
+              # generated run artifacts (CPU profiles, build/run logs) — heavyweight
+              # proof material, not engineering surface an agent reasons over
+              '.cpuprofile', '.log',
           }
+
+          # Generated artifact/evidence lanes inside otherwise-eligible trees: the same
+          # heavyweight proof material, denied by path segment rather than extension.
+          # Coordination files beside them (IMPORT.md, DONE.md, patches/, reports) stay.
+          denied_segments = (
+              ('design/program/vm-drop/', '/artifacts/'),
+              ('design/genie-returns/', '/evidence/'),
+          )
 
           tree = json.loads(pathlib.Path('tree.json').read_text(encoding='utf-8'))
           if tree.get('truncated'):
@@ -121,6 +132,9 @@ jobs:
                   reason = 'heavy-or-binary-extension'
               elif size > max_file:
                   reason = 'file-over-8MiB'
+              elif any(path.startswith(prefix) and segment in path
+                       for prefix, segment in denied_segments):
+                  reason = 'generated-run-artifact'
 
               if reason:
                   omitted.append((path, size, reason))
@@ -177,7 +191,7 @@ jobs:
               'omittedFileCount': len(omitted),
               'omittedTrackedBytes': omitted_bytes,
               'maxIndividualTrackedFileBytes': max_file,
-              'selectionPolicy': 'all tracked blobs <= 8 MiB except heavyweight/binary media extensions',
+              'selectionPolicy': 'all tracked blobs <= 8 MiB except heavyweight/binary media extensions and generated run-artifact/evidence lanes',
               'note': 'Missing paths may still exist in the full repository; consult .agent-omitted-files.tsv.',
           }
           (repo / '.agent-packet.json').write_text(

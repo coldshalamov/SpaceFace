@@ -15,6 +15,14 @@ const KEEPALIVE_BODY_BUDGET_BYTES = 60000;
 // header already promises an absent store never breaks anything — a stalled one must not either.
 const SHARED_STORE_TIMEOUT_MS = 10000;
 
+// Mirror PUTs carry a wider deadline than the boot probe: the request can sit queued in
+// Chromium's per-origin socket pool behind a scene-build asset storm (six-socket limit), and the
+// abort signal keeps running while it waits — a 10 s budget then cancels a PUT that never even
+// reached the wire and is recorded by probes as a page error. A mirror write never pins UI, so
+// the only cost of a genuinely hung store here is the serialized write chain backing up — bounded
+// either way, and far longer than any real queue drain.
+const SHARED_STORE_PUT_TIMEOUT_MS = 60000;
+
 const KEY_RE = /^(sf\.save\.[A-Za-z0-9._-]+|sf\.recovery\.[A-Za-z0-9._-]+|sf\.settings\.profile\.v1)$/;
 
 // Deletion tombstones. Slot deletes and quota evictions remove keys locally and mirror a null
@@ -373,7 +381,7 @@ export function pushSharedPlayerStore(keys, { keepalive = false } = {}) {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body,
-        signal: AbortSignal.timeout(SHARED_STORE_TIMEOUT_MS),
+        signal: AbortSignal.timeout(SHARED_STORE_PUT_TIMEOUT_MS),
         keepalive: carriesKeepalive,
       });
       if (response.status === 404) storeRouteAbsent = true;

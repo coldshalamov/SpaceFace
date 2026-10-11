@@ -128,9 +128,15 @@ function installFlightQueueHarness(scene) {
   const scheduledFrames = [];
   const priorWindow = globalThis.window;
   const priorRaf = globalThis.requestAnimationFrame;
+  const priorScheduler = globalThis.scheduler;
   globalThis.requestAnimationFrame = (callback) => {
     scheduledFrames.push(callback);
     return scheduledFrames.length;
+  };
+  // The pump never yields to the real event loop, so production's background-priority resume
+  // must queue through the same pumped channel as the rAF stub or a composeYield hangs forever.
+  globalThis.scheduler = {
+    postTask: (callback) => { scheduledFrames.push(callback); return scheduledFrames.length; },
   };
   globalThis.window = {
     SF: {
@@ -151,6 +157,8 @@ function installFlightQueueHarness(scene) {
     restore() {
       if (priorRaf === undefined) delete globalThis.requestAnimationFrame;
       else globalThis.requestAnimationFrame = priorRaf;
+      if (priorScheduler === undefined) delete globalThis.scheduler;
+      else globalThis.scheduler = priorScheduler;
       if (priorWindow === undefined) delete globalThis.window;
       else globalThis.window = priorWindow;
     },

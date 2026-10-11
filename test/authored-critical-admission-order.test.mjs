@@ -108,9 +108,15 @@ test('authored boundary admission exposes the runtime queue seam', () => {
 test('player and Helios hub outrank NPCs without waiting for queue idle', async () => {
   const scheduledFrames = [];
   const previousRaf = globalThis.requestAnimationFrame;
+  const previousScheduler = globalThis.scheduler;
   globalThis.requestAnimationFrame = (callback) => {
     scheduledFrames.push(callback);
     return scheduledFrames.length;
+  };
+  // The pumped frame channel never yields the real event loop, so production's
+  // background-priority compose resume must join the same queue or it never runs.
+  globalThis.scheduler = {
+    postTask: (callback) => { scheduledFrames.push(callback); return scheduledFrames.length; },
   };
 
   try {
@@ -196,6 +202,8 @@ test('player and Helios hub outrank NPCs without waiting for queue idle', async 
   } finally {
     if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
     else globalThis.requestAnimationFrame = previousRaf;
+    if (previousScheduler === undefined) delete globalThis.scheduler;
+    else globalThis.scheduler = previousScheduler;
   }
 });
 
@@ -204,9 +212,15 @@ test('loading admission releases the CPU slot after staging while exact GPU comm
   const previousRaf = globalThis.requestAnimationFrame;
   const previousWindow = globalThis.window;
   const previousDocument = globalThis.document;
+  const previousScheduler = globalThis.scheduler;
   globalThis.requestAnimationFrame = (callback) => {
     scheduledFrames.push(callback);
     return scheduledFrames.length;
+  };
+  // The pumped frame channel never yields the real event loop, so production's
+  // background-priority compose resume must join the same queue or it never runs.
+  globalThis.scheduler = {
+    postTask: (callback) => { scheduledFrames.push(callback); return scheduledFrames.length; },
   };
   globalThis.document = {
     createElement: (tag) => tag === 'canvas'
@@ -305,12 +319,14 @@ test('loading admission releases the CPU slot after staging while exact GPU comm
     // The serialized CPU slot releasing for the critical hub is proven by the hub reaching
     // pipeline staging below — under loading's two-job concurrency it may already be admitted,
     // in which case the queue's cadence frame is legitimately unarmed.
+    // The 'compiling-pipelines' flag is set before the staged compile's background-priority
+    // resume lands the actual compileObjectPipelines call — wait on the call itself.
     await flushFramesUntil(
-      () => hubBoundary.userData.authoredAssetState === 'compiling-pipelines',
+      () => compiledRoots.length === 2,
       scheduledFrames,
       'the hub must reach pipeline staging before the player pipeline resolves',
     );
-    assert.equal(compiledRoots.length, 2);
+    assert.equal(hubBoundary.userData.authoredAssetState, 'compiling-pipelines');
     assert.equal(playerBoundary.userData.authoredAssetState, 'compiling-pipelines');
     const stagedReadiness = partsLibrary.authoredCriticalVisualReadiness(runtimeState);
     assert.equal(stagedReadiness.pipelineReady, true);
@@ -348,6 +364,8 @@ test('loading admission releases the CPU slot after staging while exact GPU comm
   } finally {
     if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
     else globalThis.requestAnimationFrame = previousRaf;
+    if (previousScheduler === undefined) delete globalThis.scheduler;
+    else globalThis.scheduler = previousScheduler;
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
     if (previousDocument === undefined) delete globalThis.document;
@@ -360,9 +378,15 @@ test('post-flight admission is priority-aware, frame-staggered, and serial at co
   const scheduledFrames = [];
   const previousRaf = globalThis.requestAnimationFrame;
   const previousWindow = globalThis.window;
+  const previousScheduler = globalThis.scheduler;
   globalThis.requestAnimationFrame = (callback) => {
     scheduledFrames.push(callback);
     return scheduledFrames.length;
+  };
+  // The pumped frame channel never yields the real event loop, so production's
+  // background-priority compose resume must join the same queue or it never runs.
+  globalThis.scheduler = {
+    postTask: (callback) => { scheduledFrames.push(callback); return scheduledFrames.length; },
   };
 
   try {
@@ -474,6 +498,8 @@ test('post-flight admission is priority-aware, frame-staggered, and serial at co
   } finally {
     if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
     else globalThis.requestAnimationFrame = previousRaf;
+    if (previousScheduler === undefined) delete globalThis.scheduler;
+    else globalThis.scheduler = previousScheduler;
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
   }
@@ -483,9 +509,15 @@ test('a hostile inside the fight-fit envelope dequeues before dressing and a que
   const scheduledFrames = [];
   const previousRaf = globalThis.requestAnimationFrame;
   const previousWindow = globalThis.window;
+  const previousScheduler = globalThis.scheduler;
   globalThis.requestAnimationFrame = (callback) => {
     scheduledFrames.push(callback);
     return scheduledFrames.length;
+  };
+  // The pumped frame channel never yields the real event loop, so production's
+  // background-priority compose resume must join the same queue or it never runs.
+  globalThis.scheduler = {
+    postTask: (callback) => { scheduledFrames.push(callback); return scheduledFrames.length; },
   };
 
   try {
@@ -632,6 +664,8 @@ test('a hostile inside the fight-fit envelope dequeues before dressing and a que
   } finally {
     if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
     else globalThis.requestAnimationFrame = previousRaf;
+    if (previousScheduler === undefined) delete globalThis.scheduler;
+    else globalThis.scheduler = previousScheduler;
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
   }

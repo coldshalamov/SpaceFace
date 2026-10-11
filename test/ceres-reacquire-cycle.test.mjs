@@ -5,7 +5,17 @@ import {PRODUCTION_FEATURES} from '../src/runtime/runtimeProfiles.js';
 import {CERES_WORKFLEET_CONTRACT as C} from '../src/data/ceresWorkfleet.js';
 const input=file=>JSON.parse(readFileSync(new URL('./fixtures/ceres-handoff/'+file,import.meta.url)));
 for(const file of ['seed47-head-return-entry.json','seed47-mid-head-return.json'])test(`${file}: reacquires the actually released displaced plate and resumes physical extraction with Continue`,async()=>{
- const prior=snapshotFeatureMaps();applyFeatureConfigToMaps(PRODUCTION_FEATURES);const h=await restore(input(file));let resumed=null;
+ const prior=snapshotFeatureMaps();applyFeatureConfigToMaps(PRODUCTION_FEATURES);const wire=input(file);
+ if(file==='seed47-head-return-entry.json'){
+  // This entry fixture records the plate at perfect rest; the displacement this
+  // scenario reacquires was previously produced by a carrier/head contact during
+  // the return sweep that is now prevented. Apply a measured off-pose state
+  // directly so the reacquire path is exercised on purpose: a static shove clear
+  // of the carrier lane (a drifting plate is correctly refused as cargo-moving).
+  const motion=wire.sites.worldById[C.siteId].payloads.long_plate.motion;
+  motion.pos={x:-12868,z:9800};motion.vel={x:0,z:0};motion.rot=0;motion.angVel=0;
+ }
+ const h=await restore(wire);let resumed=null;
  const original=h.b.section,life=original.occupantGeneration;let sawReacquire=false,sawPlateLease=false,plateBeforeTow=null,entered=null;
  try{
   for(let i=0;i<26000;i++){

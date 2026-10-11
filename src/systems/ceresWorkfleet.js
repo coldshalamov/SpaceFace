@@ -11,6 +11,9 @@ import { writePhysicsControl, physicsBodyNativeReady, ensurePhysicsBodySpec } fr
 export const CERES_WORKFLEET_JOB_ID = 'job:ceres:second_measure:long_plate';
 export const CERES_WORKFLEET_REQUEST_STREAM = 'ceres-second-measure-cutter';
 export const CERES_WORKFLEET_PACE=Object.freeze({extractSpeed:1,reelSpeed:1});
+// The transport clamp proves its seat under load for 1.5 seconds before the
+// section tow binds; docked-but-unsettled is never a tow anchor.
+export const CERES_WORKFLEET_MOUNT_SETTLE_TICKS=90;
 const wrap = v => Math.atan2(Math.sin(v), Math.cos(v));
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const bounded = (v,max,fallback) => Number.isFinite(v)?clamp(v,0,max):fallback;
@@ -758,8 +761,11 @@ export function stepCeresWorkfleet(owner,dt) {
     // The cut pose is outside the bow and belongs to the stationary source. Do not
     // drag the detached head across the released plate while its carrier recovers
     // from an external impact. Existing thrusters return the carrier physically.
+    // The hold point sits eighty world units abeam of the approach lane: the bow
+    // waypoint lies inside the returning carrier's swept collision envelope and
+    // inside the plate's lane, so parking there feeds the head a solver impulse.
     const returning=job.phase==='head_retract'?(carrierReturning&&!inRig
-      ?{pose:ceresWorkfleetPose(work,C.route.headPosesInBreaker.at(-1)),advance:false}
+      ?{pose:ceresWorkfleetPose(work,{x:C.route.headPosesInBreaker.at(-1).x,z:-80,rot:0}),advance:false}
       :ceresWorkfleetHeadReturnTarget(breaker,head,job.index)):null;
     let point=returning?.pose||ceresWorkfleetPose(work,C.route.headPosesInBreaker[index]);
     const waypoint={...point};let headBlocked=false,headDriveOptions=headOptions;
@@ -808,10 +814,13 @@ export function stepCeresWorkfleet(owner,dt) {
       else if(pendingDockBlocked&&headInsideCarrierBounds(breaker,head)){job.index=1;change(job,'head_retract',state);job.blockedReason='head-dock-reapproach';}
       else job.blockedReason='head-docking-settling';
     }
-    if(mount&&record.completedOperations.release_long_plate_clamp&&section.physicsBody?.dynamic&&ceresWorkfleetAtPose(breaker,work)
+    // A transport clamp seats under load before the section tow hangs on it: the
+    // dock is only observable once the joint has carried the head across a dwell.
+    const mountSettled=mount&&(mount.createdTick==null||state.tick-mount.createdTick>=CERES_WORKFLEET_MOUNT_SETTLE_TICKS);
+    if(mountSettled&&record.completedOperations.release_long_plate_clamp&&section.physicsBody?.dynamic&&ceresWorkfleetAtPose(breaker,work)
       &&ceresWorkfleetAtPose(section,ceresWorkfleetWorldPose(C.existing.section.mountedPose),{position:1,angle:.006,speed:.2,spin:.01})) {
       if(bindLine(owner,job,'towId','tether_standard',breaker,'breaker','SOCKET_Tether_Massline',section,'section','SOCKET_Cut_A'))change(job,'extract',state);
-    }else if(mount&&record.completedOperations.release_long_plate_clamp&&section.physicsBody?.dynamic){
+    }else if(mountSettled&&record.completedOperations.release_long_plate_clamp&&section.physicsBody?.dynamic){
       job.reacquire=null;job.reacquireReturnBudget=ceresWorkfleetReacquireReturnBudget(b,state.tick);job.reacquireRetryTick=state.tick;REACQUIRE_LIVES.set(job,[breaker,head,cradle,section].map(e=>({e,life:e.occupantGeneration})));change(job,'reacquire',state);
     }
   } else if(job.phase==='reacquire') {

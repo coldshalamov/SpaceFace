@@ -1,4 +1,5 @@
 import { environmentMaterialOf, stampEnvironmentMaterial, environmentSurfaceData } from '../data/environmentMaterials.js';
+import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { queryPhysicalBodies, deliverPhysicalImpulse } from '../combat/physicalEffects.js';
 import { queryAsteroidField } from '../world/asteroidField.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
@@ -38,6 +39,9 @@ function queueReaction(state, entity, material, origin) {
 export function addEnvironmentHeat(state, entity, amount, origin = {}) {
   if (!['asteroid', 'wreck', 'prop', 'payload', 'cargo_pod', 'pickup'].includes(entity?.type)) return false;
   if (isAnchoredPhysicalBody(entity)) return false;
+  // Site structural anatomy and Ceres workfleet machinery answer to their site owner;
+  // they are never cook-off/fracture bodies (mirrors farActorTable's residency exemption).
+  if (entity?.data?.worldSiteStructural === true || ceresWorkfleetRoleForEntity(entity)) return false;
   const material = environmentMaterialOf(entity);
   if (!material || !entity || entity.alive === false) return false;
   stampEnvironmentMaterial(entity, material);
@@ -53,6 +57,7 @@ export function addEnvironmentHeat(state, entity, amount, origin = {}) {
 export function queueEnvironmentImpact(state, entity, closingSpeed, origin = {}) {
   if (!['asteroid', 'wreck', 'prop', 'payload', 'cargo_pod', 'pickup'].includes(entity?.type)) return false;
   if (isAnchoredPhysicalBody(entity)) return false;
+  if (entity?.data?.worldSiteStructural === true || ceresWorkfleetRoleForEntity(entity)) return false;
   // The Gyre field binds its aggregate through physical strikes: otherwise the first
   // bowled hull bursts the rock and ends the weapon before it can reach the next one.
   // This is impact cohesion, not material immunity; heat still cooks/fractures it.
@@ -197,6 +202,7 @@ export const environmentMaterials = {
       const body = this._resolve(job, true);
       if (!body) { if (this._resolve(job)) waiting.push(job); continue; }
       if (body.alive === false) continue;
+      if (body.data?.worldSiteStructural === true || ceresWorkfleetRoleForEntity(body)) continue;
       stampEnvironmentMaterial(body, job.material);
       const condition = body.data.materialCondition;
       if (condition.reacted) continue;

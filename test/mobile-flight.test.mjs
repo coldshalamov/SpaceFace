@@ -155,7 +155,8 @@ test('disabling mobile restores original host methods and releases keys',()=>{
  assert.equal(f.host._held,f.original);assert.equal(f.touch.active,false);assert.deepEqual(f.host._keys,{});
 });
 test('all four power banks have distinct, described choices',()=>{
- assert.equal(POWER_PAGES.length,4);assert.equal(new Set(POWER_PAGES.flatMap(p=>p.powers.map(x=>x.id))).size,24);
+ // 24 -> 25: gyreSnare joins the Ordnance page (gyre wave-63 touch-deck reachability).
+ assert.equal(POWER_PAGES.length,4);assert.equal(new Set(POWER_PAGES.flatMap(p=>p.powers.map(x=>x.id))).size,25);
  for(const p of POWER_PAGES)for(const a of p.powers)assert.ok(a.description&&a.id&&a.label);
 });
 

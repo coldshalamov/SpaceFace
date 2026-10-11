@@ -9,7 +9,9 @@ import { ciMatrixSourceCommand } from './lib/ciGateGraph.mjs';
 const DEFAULT_TIMEOUT_MS = 180000;
 const LONG_TIMEOUT_MS = 420000;
 const COMMAND_TIMEOUT_OVERRIDES_MS = {
-  'probe-flight-visual': 720000,
+  // 2026-10-11: five clean rounds measure ~160s each on current software-GL runners (the ~110s
+  // figure below is Sep-30 vintage) — observed SIGKILL at 814s against the 720s cap, mid-proof.
+  'probe-flight-visual': 1050000,
   'probe-ship-visual-stability': 660000,
   // 2026-10-02 (run 37023815314): the dock tour finished and printed its OK lines at ~195s on the
   // runner but was orphaned at the 180s DEFAULT cap — its resolved filename
