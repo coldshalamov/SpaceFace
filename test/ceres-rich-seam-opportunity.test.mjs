@@ -198,7 +198,8 @@ test('target readout exposes the live seam and the exact rich lot carried away',
   const state = opportunityState();
   const asteroid = richAsteroid();
   const opened = openOpportunity(state);
-  assert.equal(richSeamTargetReadout(asteroid, state).text, 'RICH SEAM · +8u · HOT CUT');
+  // c90af4a92: an unclaimed window reads OPEN, not HOT CUT.
+  assert.equal(richSeamTargetReadout(asteroid, state).text, 'RICH SEAM · +8u · OPEN');
 
   const carrier = {
     id: 202,
