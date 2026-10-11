@@ -1,6 +1,6 @@
-// Shipped German catalog. Built from the English inventory through the translation pipeline.
-import { buildTranslatedCatalog } from '../pipeline.js';
+// Shipped German catalog. Lazy translation-pipeline catalog; materializes on first use.
+import { deferredCatalog } from '../pipeline.js';
 
 export const locale = 'de-DE';
-export const messages = buildTranslatedCatalog('de-DE');
+export const messages = deferredCatalog('de-DE');
 export default messages;
