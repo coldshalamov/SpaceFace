@@ -633,12 +633,16 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
       rewritePackedRow(fastSnapshot, world, slot, row, entityId);
     }
     if (!bail) {
-      dirty.fill(0, 0, scan);
       const postDiagnostics = typeof world.getDiagnostics === 'function'
         ? world.getDiagnostics() : null;
       if (postDiagnostics
         && (postDiagnostics.allocations | 0) === allocationsAtMint
         && (postDiagnostics.retirements | 0) === retirementsAtMint) {
+        // Clear only on commit (W141-BG-1): a counters mismatch falls through to the
+        // classic walk, which reads packDirty===0 as "copy last committed row" — a
+        // retire-only churn in the window would otherwise leave in-window writes
+        // masked forever and present stale poses indefinitely.
+        dirty.fill(0, 0, scan);
         fence.commit();
         fence.notePackMembership(postDiagnostics);
         return fastSnapshot.count;

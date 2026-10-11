@@ -178,34 +178,54 @@ if (typeof window !== 'undefined') {
   // The boot locale leads: a `?locale=` pick warms ahead of the rest. en-US is always second —
   // every fallback chain ends there, so it is the catalog `t()` touches first.
   // W141-N8: only catalogs a consumer can actually read are warmed — a `?locale=` token
-  // naming a non-shipped locale used to spend warm slices on dead data. The shipped set
-  // is read inside the first timer — touching the deferred proxy at eval would defeat
-  // the deferral this whole block exists to serve.
-  const WARM_LOCALES_BASE = [...new Set([startupLocale, DEFAULT_LOCALE, 'es-ES', 'fr-FR', 'de-DE', 'pt-BR'])];
-  let warmQueue = null;
+  // naming a non-shipped locale used to spend warm slices on dead data. SHIPPED_LOCALES is a
+  // plain const, so the filter never materializes the deferredRows proxy.
+  const warmQueue = [...new Set([startupLocale, DEFAULT_LOCALE, 'es-ES', 'fr-FR', 'de-DE', 'pt-BR'])]
+    .filter((locale) => SHIPPED_LOCALES.includes(locale));
+  // Phased warm chain (W141-BG-2/BG-3): every step is its own sub-frame task.
+  //  0 — englishMessages materialize alone (generated JSON parse ~30-40ms) — otherwise it
+  //      piggybacks on whichever consumer touches the catalog first.
+  //  1 — keyByEnglishMessage (~86-90ms loop, inputs cached): it backs every localizeText,
+  //      so leaving it for idle or the first consumer moves the cost into title paint.
+  //  2 — localeReadiness per shipped locale (memoized, ~15-25ms each): pre-pays the
+  //      per-entry scans so the rows materialize below is a freeze, not a parse.
+  //  3 — SHIPPED_LANGUAGE_ROWS materializes with all inputs cached — trivial.
+  //  4 — translated catalogs at ~400 rows/slice (W141-N3) — every task stays sub-frame.
+  let warmPhase = 0;
   let warmIndex = 0;
   const warmStep = () => {
-    if (warmQueue === null) {
-      const shipped = new Set(SHIPPED_LANGUAGE_ROWS.map((row) => row && row.id));
-      warmQueue = WARM_LOCALES_BASE.filter((locale) => shipped.has(locale));
-    }
-    if (warmIndex < warmQueue.length) {
-      // W141-N3: ~400 rows/slice keeps every warm task sub-frame during the menu-mount
-      // window (1600-row slices ran 8-60ms mid-window).
-      if (warmTranslatedCatalog(warmQueue[warmIndex], 400)) warmIndex += 1;
+    if (warmPhase === 0) {
+      void Object.keys(englishMessages).length;
+      warmPhase = 1;
       setTimeout(warmStep, 0);
       return;
     }
-    // The keyByEnglishMessage tail (~86-90ms unsliced) rides an idle callback instead of
-    // a zero-delay task so it can't stack into the menu-mount window.
-    const idle = typeof requestIdleCallback === 'function'
-      ? requestIdleCallback
-      : (fn) => setTimeout(fn, 0);
-    idle(() => keyByEnglishMessage());
+    if (warmPhase === 1) {
+      keyByEnglishMessage();
+      warmPhase = 2;
+      setTimeout(warmStep, 0);
+      return;
+    }
+    if (warmPhase === 2) {
+      if (warmIndex < SHIPPED_LOCALES.length) {
+        localeReadiness(SHIPPED_LOCALES[warmIndex]);
+        warmIndex += 1;
+        setTimeout(warmStep, 0);
+        return;
+      }
+      warmPhase = 3;
+      warmIndex = 0;
+    }
+    if (warmPhase === 3) {
+      void SHIPPED_LANGUAGE_ROWS.length;
+      warmPhase = 4;
+      setTimeout(warmStep, 0);
+      return;
+    }
+    if (warmIndex < warmQueue.length) {
+      if (warmTranslatedCatalog(warmQueue[warmIndex], 400)) warmIndex += 1;
+      setTimeout(warmStep, 0);
+    }
   };
-  // The picker rows materialize first: their labels measure readiness from the same warm data.
-  setTimeout(() => {
-    void SHIPPED_LANGUAGE_ROWS.length;
-    warmStep();
-  }, 0);
+  setTimeout(warmStep, 0);
 }
