@@ -38,6 +38,7 @@ import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { IDENTITY_WING_ROLE } from '../ai/squad.js';
 import { targetConditionReadout } from './targetCondition.js';
+import { BINDINGS } from './bindings.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -530,6 +531,7 @@ export function objectInfoLine(t, state, p, dist) {
     action = 'Inspect only';
   }
   facts.push(action);
+  if (t.type === 'asteroid') facts.push(`Tether, then ${BINDINGS.drill.label} · enter asteroid`);
   return facts.join(' · ');
 }
 

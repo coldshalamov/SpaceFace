@@ -211,7 +211,7 @@ export const FIRST_USE_LINE = Object.freeze({
   firstCargoFull: 'Sell cargo.',
   firstFrontier: 'The rim keeps no records. Chart it yourself.',
   firstHub: "Pick a service above. Undock when you're ready.",
-  firstDrill: 'Mine the veins.',
+  firstDrill: 'Bore beside useful seams. Keep the faces.',
   firstOutfit: 'Fit the module.',
   firstTech: 'Research unlocked gear.',
   firstAutomation: 'Drones work the field.',

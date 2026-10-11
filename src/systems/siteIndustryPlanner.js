@@ -65,6 +65,7 @@ export function planSiteKit(kitId, { alreadyBuilt = {} } = {}) {
     if (!defs.has(id) || !Number.isInteger(n)) throw new RangeError(`Invalid installed machine count: ${id}`);
   }
   const manifest = dict();
+  const grossManifest = dict();
   const missingMachines = dict();
   let drawMW = 0;
   let baseMW = 0;
@@ -74,7 +75,10 @@ export function planSiteKit(kitId, { alreadyBuilt = {} } = {}) {
     if (!def) throw new Error(`Kit references missing machine: ${id}`);
     const missing = Math.max(0, count - (built[id] || 0));
     if (missing) missingMachines[id] = missing;
-    for (const [good, qty] of entries(def.cost)) add(manifest, good, qty * missing);
+    for (const [good, qty] of entries(def.cost)) {
+      add(manifest, good, qty * missing);
+      add(grossManifest, good, qty * count);
+    }
     drawMW += Math.max(0, -def.power) * count;
     baseMW += Math.max(0, def.power) * count;
     machineCount += count;
@@ -82,7 +86,10 @@ export function planSiteKit(kitId, { alreadyBuilt = {} } = {}) {
   return {
     id: kit.id, name: kit.name, note: kit.note,
     machines: { ...kit.machines }, missingMachines: clean(missingMachines),
-    manifest: clean(manifest), machineCount,
+    manifest: clean(manifest), grossManifest: clean(grossManifest), machineCount,
+    // Kit order is commissioning order: the Core must exist before other machines can be built.
+    buildOrder: Object.keys(kit.machines).filter((id) => missingMachines[id])
+      .map((id) => ({ machineId: id, count: missingMachines[id] })),
     drawMW, baseMW,
     minimumGasContacts: Math.ceil(Math.max(0, drawMW - baseMW) / CONTACT_YIELD.gasPowerPerContact),
     laneThroughputPerMin: SITE_BALANCE.laneThroughputPerMin
