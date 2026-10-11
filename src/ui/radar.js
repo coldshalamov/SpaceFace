@@ -21,7 +21,7 @@ import { canvasFont } from './canvasFonts.js';
 import { solveIntercept } from '../core/flight/flightTelemetry.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { heatZoneInCurrentSector } from '../systems/heat.js';
-import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
+import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
 import { SHIPS } from '../data/ships.js';
 import { prefersReducedMotion } from './effects/effectRuntime.js';
 import {
@@ -2241,9 +2241,20 @@ export function createRadar(ctx) {
     }
 
     const waypoint = state.nav && state.nav.waypoint;
-    const waypointPos = resolveWaypointPresentationPosition(state, waypoint);
-    const label = waypointLabel(waypoint);
-    const cue = waypoint
+    let waypointPos = resolveWaypointPresentationPosition(state, waypoint);
+    let label = waypointLabel(waypoint);
+    let cueOwner = waypoint;
+    if (!waypointPos) {
+      // Cross-sector objective: point the scope at the gate that starts the trip instead of
+      // parking the unresolved mark. Presentation-only — the plot step stays a map verb.
+      const gateFix = resolveObjectiveGatePresentation(state);
+      if (gateFix) {
+        cueOwner = { label: gateFix.label, kind: 'gate-fallback' };
+        label = waypointLabel(cueOwner);
+        waypointPos = gateFix.pos;
+      }
+    }
+    const cue = cueOwner
       ? (
         waypointPos
           ? planObjectiveCue({
@@ -2266,7 +2277,7 @@ export function createRadar(ctx) {
       else drawWaypointDiamond(g, cue, now, reducedMotion);
       if (expanded || cue.resolved === false) drawObjectiveLabel(g, cue);
     }
-    updateObjectiveKey(waypoint, cue);
+    updateObjectiveKey(cueOwner, cue);
     if (frame) {
       // same frame as projectRadarPoint: screen = centre - (dx, dz) * scale, so 0 deg (up) is +z
       frame.setObjective(waypointPos
