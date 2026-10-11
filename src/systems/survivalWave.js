@@ -341,6 +341,33 @@ export const survivalWave = {
     this._resolveCohort(id);
   },
 
+  /**
+   * A cohort clear counts disabled bodies resolved — so the clear also ends
+   * them. Without this they drift on as unowned bodies holding budget slots
+   * (slots release only on entity:destroyed) into every later round. The
+   * retirement is unattributed: no killer, so no score, no chain, no popup —
+   * but the purse still pays the resolved body and the wreck path still runs.
+   * Boss-flagged bodies are left to their own machinery, and timed rounds
+   * never call this (their survivors carry as pressure by design).
+   */
+  _retireDisabledLeftovers() {
+    if (!this._cohort || this._cohort.size === 0) return;
+    const tick = this._cursor;
+    for (const [id, member] of this._cohort.entries()) {
+      if (this._bossIds && this._bossIds.has(id)) continue;
+      const entity = this._resolveCohortEntity(id, member);
+      if (!entity || entity.alive === false) continue;
+      if (!this._isCohortMemberDisabled(id, member)) continue;
+      const data = entity.data || {};
+      if (data.isBoss === true || data.bossId != null
+        || data.missionTag === 'capital_boss' || data.bossDressing != null) continue;
+      // The defeat the round already recorded, pronounced honestly: dead
+      // before the emit, exactly like every real emitter (SF-069).
+      entity.alive = false;
+      this._emit('entity:killed', { id, tick });
+    }
+  },
+
   _resolveCohort(id) {
     if (!this._cohort || !this._cohort.delete(id)) return;
     this._bossIds.delete(id);
@@ -713,6 +740,7 @@ export const survivalWave = {
       const durationSeconds = this._durationSeconds();
       if (this._swarm.killTarget) {
         if (this._admittedTotal < this._plannedBodies || this._pending.length || this._actionableCohortCount() > 0) return;
+        this._retireDisabledLeftovers();
       } else if (this._elapsedSeconds() < durationSeconds) return;
       this._cleared = true;
       this._active = false;
@@ -738,6 +766,7 @@ export const survivalWave = {
         if (this._blockingRoles.size === 0 || this._blockingRoles.has(member && member.role)) return;
       }
     }
+    this._retireDisabledLeftovers();
     this._cleared = true;
     this._active = false;
     this._emit(WAVE_CLEARED_SEAM, {
