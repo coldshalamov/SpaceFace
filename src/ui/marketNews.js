@@ -28,7 +28,7 @@ import {
   normalizeKind, fillTemplate,
 } from '../data/newsTemplates.js';
 import { isSurvivalRunLive } from '../systems/adventureMigration.js';
-import { ensureWorldNews, registerWorldBeats } from './worldNewsBeats.js';
+import { claimDeliveryNote, claimLegFirstSeen, ensureWorldNews, registerWorldBeats } from './worldNewsBeats.js';
 
 // A headline names the place, not its id. An id that does not resolve is printed as given.
 function sectorDisplayName(id) {
@@ -423,6 +423,14 @@ export function createMarketNews(ctx) {
       });
     });
   }, state);
+  // A claim depot's supply run landing in the pilot's own sector is a flight receipt; the dock-card
+  // twin for runs that land while the pilot is away lives in worldNewsBeats.
+  on('claim:freightDelivered', (p) => {
+    const note = claimDeliveryNote(state, p);
+    if (!note || !note.inSector || !claimLegFirstSeen(state, 'receipt', note.legKey)) return null;
+    if (bus && typeof bus.emit === 'function') bus.emit('toast', { text: note.text, kind: 'good', ttl: 4 });
+    return null;
+  });
   // FB-049 — a stale note escalating to bounty is a cited headline, not a silent ledger move.
   on('economy:debtEscalated', (p) => {
     if (!p || !(Number(p.levyCr) > 0)) return null;

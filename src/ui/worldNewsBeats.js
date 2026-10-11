@@ -150,6 +150,49 @@ export function starvedNeedLine(state, stationId, commodityId) {
   return bag.starved[`${stationId}:${commodityId}`] || null;
 }
 
+const CLAIM_LEG_KEYS_MAX = 24;
+
+/**
+ * A claim depot's supply leg landing (traffic's `claim:freightDelivered`: { bodyId, inbound,
+ * quantity }). Only the inbound leg carries supplies. `inSector` says whether the pilot is in the
+ * claim's sector (flight receipt) or away (dock-card line); `legKey` names the leg so a duplicate
+ * or re-entrant emit never speaks twice.
+ */
+export function claimDeliveryNote(state, payload) {
+  if (!payload || payload.inbound === false || !payload.bodyId) return null;
+  const qty = Math.round(Number(payload.quantity));
+  if (!(qty > 0)) return null;
+  const body = ((state && state.claims && state.claims.bodies) || []).find((row) => row && row.id === payload.bodyId);
+  const service = ((state && state.traffic && state.traffic.depotServices) || [])
+    .find((row) => row && row.bodyId === payload.bodyId);
+  const name = (body && body.name) || String(payload.bodyId);
+  const legKey = service && Number.isFinite(service.legSeq)
+    ? `${payload.bodyId}:${service.legSeq}`
+    : `${payload.bodyId}:${qty}:${Math.floor(Number(state && state.simTime) || 0)}`;
+  const currentSector = state && state.world && state.world.currentSectorId;
+  return {
+    text: `Depot run landed at ${name}: ${qty} units of supplies.`,
+    legKey,
+    qty,
+    bodyId: payload.bodyId,
+    inSector: !!(body && body.sectorId && body.sectorId === currentSector),
+  };
+}
+
+/** True the first time a (surface, leg) pair is seen; bounded so the bag never grows. */
+export function claimLegFirstSeen(state, surface, legKey) {
+  const bag = ensureWorldNews(state);
+  if (!bag.claimLegs) bag.claimLegs = {};
+  const key = `${surface}:${legKey}`;
+  if (bag.claimLegs[key]) return false;
+  bag.claimLegs[key] = true;
+  const keys = Object.keys(bag.claimLegs);
+  if (keys.length > CLAIM_LEG_KEYS_MAX) {
+    for (const old of keys.slice(0, keys.length - CLAIM_LEG_KEYS_MAX)) delete bag.claimLegs[old];
+  }
+  return true;
+}
+
 function cite(text, kind, sourceRef, extra) {
   if (!text || !sourceRef) return null;
   return { text, kind, sourceRef, ...(extra || {}) };
@@ -194,6 +237,17 @@ export function registerWorldBeats(on, state) {
       'claim_receipt',
       `claim:receipt:${id}`,
     ));
+  });
+
+  // A supply run that landed while the pilot was elsewhere waits on the dock card; one that
+  // landed in the pilot's own sector is a flight receipt (marketNews owns the toast bus).
+  on('claim:freightDelivered', (payload) => {
+    const note = claimDeliveryNote(state, payload);
+    if (!note || note.inSector || !claimLegFirstSeen(state, 'dock', note.legKey)) return null;
+    // Dock-card only: returning the headline would also surface it as a flight ticker line for a
+    // run the pilot is not there to see.
+    publish(cite(note.text, 'claim_depot_run', `claim:freightDelivered:${note.legKey}`));
+    return null;
   });
 
   on('automation:incomeCredited', (payload) => {
