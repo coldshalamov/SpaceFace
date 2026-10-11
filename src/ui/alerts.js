@@ -16,6 +16,7 @@
 //
 import { BINDINGS, promptLabel } from './bindings.js';
 import { stationName } from './sectorLawPresenter.js';
+import { SECTORS } from '../data/sectors.js';
 import { hazardLanguageFor } from '../data/hazardLanguage.js';
 import {
   WORLD_FEEL_SEAM_IDS,
@@ -146,6 +147,20 @@ export function isVoiceOwnedAlertToast(text) {
     if (normalizeAlertToastText(VOICE_OWNED_ALERT_TEXTS[i]) === n) return true;
   }
   return false;
+}
+
+const DOCK_PROMPT_NAME_MAX = 28;
+
+/** "<key> DOCK AT HELIOS STATION": the prompt names the station in range; an unknown id keeps the old text. */
+export function dockPromptText(state, stationId, keyLabel) {
+  const known = stationId != null && (
+    SECTORS.some((sector) => (sector.stations || []).some((row) => row.id === stationId))
+    || !!(state && state.entityIndex && state.entityIndex.byStationId
+      && typeof state.entityIndex.byStationId.get === 'function'
+      && state.entityIndex.byStationId.get(stationId)));
+  const raw = known ? String(stationName(state, stationId) || '').trim().toUpperCase() : '';
+  const name = raw.length > DOCK_PROMPT_NAME_MAX ? `${raw.slice(0, DOCK_PROMPT_NAME_MAX - 1)}…` : raw;
+  return `${keyLabel} DOCK AT ${name || 'STATION'}`;
 }
 
 export function createAlerts(ctx) {
@@ -437,8 +452,8 @@ export function createAlerts(ctx) {
 
   // dock prompt (persistent while in range) — large and unmissable, a status affordance not a voice.
   // The key label is sourced from the live binding registry (spec §15.4) so it can never drift.
-  bus.on('dock:range', ({ inRange }) => {
-    if (inRange) raise({ key: 'dock', sev: 'dock', text: `${promptLabel('dock')} DOCK AT STATION`, ttl: Infinity });
+  bus.on('dock:range', ({ inRange, stationId }) => {
+    if (inRange) raise({ key: 'dock', sev: 'dock', text: dockPromptText(ctx.state, stationId, promptLabel('dock')), ttl: Infinity });
     else clear('dock');
   });
   bus.on('dock:docked', () => clear('dock'));
