@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createCareerOriginsSystem } from '../src/careers/origins/careerOrigins.js';
-import { ORIGIN_ROLE_KITS } from '../src/careers/origins/careerOriginContracts.js';
+import { CAREER_STARTER_DISPLACED_UTILITY, ORIGIN_ROLE_KITS } from '../src/careers/origins/careerOriginContracts.js';
 import { createBus } from '../src/core/eventBus.js';
 import { makeEntity } from '../src/core/entity.js';
 import { createGameState } from '../src/core/gameState.js';
@@ -128,13 +128,22 @@ for (const [index, careerId] of CAREERS.entries()) {
     const accepted = source.origins.accept(careerId);
     assert.equal(accepted.ok, true, `${careerId} origin accepts`);
     const kit = ORIGIN_ROLE_KITS[careerId];
-    const inventoryItem = source.state.player.moduleInventory.find((item) => item.defId === kit.defId);
-    assert.ok(inventoryItem, `${careerId} real ships authority grants ${kit.defId}`);
+    // 38e82ae47: the grant still comes from ships, then the kit replaces the drill
+    // amp on the one utility slot and the amp returns to the hold.
+    const owned = source.state.player.ownedShips[source.state.player.activeShipIndex];
+    const slotIndex = owned.fittings.indexOf(kit.defId);
+    assert.ok(slotIndex >= 0, `${careerId} starter kit is fitted`);
+    assert.equal(owned.fittings.includes(CAREER_STARTER_DISPLACED_UTILITY), false,
+      `${careerId} kit replaced the drill amp`);
+    const fitted = owned.fittedInstances && owned.fittedInstances[slotIndex];
+    assert.ok(fitted && fitted.defId === kit.defId, `${careerId} fitted record is the granted kit`);
     assert.deepEqual(grantedEvents, [{
       defId: kit.defId,
-      instanceId: inventoryItem.instanceId,
+      instanceId: fitted.instanceId,
       reason: `career_origin:${careerId}:starter`,
     }]);
+    const displaced = source.state.player.moduleInventory.find((item) => item.defId === CAREER_STARTER_DISPLACED_UTILITY);
+    assert.ok(displaced, `${careerId} returns the drill amp to the hold`);
 
     const receipt = source.state.careers.origins.__meta.upgradeReceipts[careerId];
     assert.deepEqual(receipt, {
@@ -145,8 +154,12 @@ for (const [index, careerId] of CAREERS.entries()) {
     });
 
     const envelope = withSaveRuntime(source, () => save.serialize(`m3_${careerId}`));
-    assert.equal(envelope.data.player.moduleInventory.some((item) => item.instanceId === inventoryItem.instanceId), true,
-      `${careerId} inventory item is in the real save envelope`);
+    const savedShip = envelope.data.player.ownedShips[envelope.data.player.activeShipIndex];
+    assert.equal(savedShip.fittings[slotIndex], kit.defId, `${careerId} fitted kit is in the real save envelope`);
+    assert.equal(savedShip.fittedInstances[slotIndex].instanceId, fitted.instanceId,
+      `${careerId} granted instance is in the real save envelope`);
+    assert.equal(envelope.data.player.moduleInventory.some((item) => item.instanceId === displaced.instanceId), true,
+      `${careerId} displaced drill amp is in the real save envelope`);
     assert.deepEqual(envelope.data.careerOrigins.origins.__meta.upgradeReceipts[careerId], receipt,
       `${careerId} receipt is in the real save envelope`);
 
@@ -158,10 +171,14 @@ for (const [index, careerId] of CAREERS.entries()) {
       `m3_${careerId}`,
     ));
     assert.equal(loaded, true, `${careerId} real save envelope loads: ${JSON.stringify(loadErrors)}`);
+    const restoredShip = restored.state.player.ownedShips[restored.state.player.activeShipIndex];
+    assert.equal(restoredShip.fittings[slotIndex], kit.defId, `${careerId} fitted kit survives Continue`);
+    assert.deepEqual(restoredShip.fittedInstances[slotIndex], fitted,
+      `${careerId} granted fitted instance survives Continue`);
     assert.deepEqual(
-      restored.state.player.moduleInventory.find((item) => item.instanceId === inventoryItem.instanceId),
-      inventoryItem,
-      `${careerId} granted inventory instance survives Continue`,
+      restored.state.player.moduleInventory.find((item) => item.instanceId === displaced.instanceId),
+      displaced,
+      `${careerId} displaced drill amp survives Continue`,
     );
     assert.deepEqual(
       restored.state.careers.origins.__meta.upgradeReceipts[careerId],
