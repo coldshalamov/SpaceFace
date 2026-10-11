@@ -179,6 +179,32 @@ test('a chord fires only its own verb; the key solo is suppressed for the hold',
   press(BTN.dUp, false);
 });
 
+test('the RB+Y chord holds the lash: gyreSnare.held rides r1+alt, alt solo suppressed', () => {
+  const gp = createGamepad({ bus: createBus() });
+  const state = makeState();
+  gp.tick(1 / 60, state);
+  // RB down, Y down — the chorded verb reports held, the key's solo stays silent.
+  press(BTN.r1, true);
+  state.tick += 1; gp.tick(1 / 60, state);
+  press(BTN.alt, true);
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.equal(gp.actions.gyreSnare.held, true, 'RB+Y reports the lash held');
+  assert.equal(gp.actions.gyreSnare.pressed, true);
+  assert.equal(gp.actions.deployRepulsor.pressed, false, 'the chorded Y solo is suppressed');
+  assert.equal(gp.actions.boost.held, true, 'the modifier keeps its own verb (boost)');
+  // The hold persists across ticks — input.js reads gp.actions.gyreSnare.held
+  // every frame for its held-through-modal preserve.
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.equal(gp.actions.gyreSnare.held, true, 'the chorded hold rides on');
+  // Key up ends the hold without leaking a repulsor press; modifier solo re-arms.
+  press(BTN.alt, false);
+  state.tick += 1; gp.tick(1 / 60, state);
+  assert.equal(gp.actions.gyreSnare.held, false, 'Y up drops the lash');
+  assert.equal(gp.actions.deployRepulsor.pressed, false, 'no leaked solo on release');
+  press(BTN.r1, false);
+  state.tick += 1; gp.tick(1 / 60, state);
+});
+
 test('the RB combat-state layer chords independently of the LB layer', () => {
   const gp = createGamepad({ bus: createBus() });
   const state = makeState();
@@ -348,15 +374,17 @@ test('the Gyre Snare lash rides the RB+Y chord and gyre events pulse the pad', (
   const drain = (n = 15) => { for (let i = 0; i < n; i++) { state.tick += 1; gp.tick(1 / 60, state); } };
   drain();
   assert.ok(gp.haptics.strong < 0.4, `idle baseline is quiet (strong=${gp.haptics.strong})`);
-  const pulseAt = (ev, want) => {
-    bus.emit(ev, { coreId: 9 });
+  const pulseAt = (ev, want, payload) => {
+    bus.emit(ev, payload || { coreId: 9 });
     state.tick += 1; gp.tick(1 / 60, state);
     assert.ok(gp.haptics.strong >= want, `${ev} pulses strong>=${want} (got ${gp.haptics.strong})`);
     drain();
   };
   pulseAt('gyre:snagged', 0.70);
   pulseAt('gyre:full', 0.65);
-  pulseAt('gyre:thrown', 0.90);
+  // The throw crack mass-lerps: a capped moon lands the authored 0.90, a bare
+  // payload reads as a pebble (0.55) — grading pinned in fb-haptic-verbs.
+  pulseAt('gyre:thrown', 0.90, { coreId: 9, mass: 2400 });
   pulseAt('gyre:absorbTick', 0.30);
 
   // Meal size lerps the absorb thump: mass 160 → t=1 → strong 0.30 + 0.25·1 = 0.55 —
@@ -403,4 +431,14 @@ test('the Gyre Snare lash rides the RB+Y chord and gyre events pulse the pad', (
     `strain break lands the tear pulse (strong=${gp.haptics.strong})`);
   drain();
   pulseAt('gyre:dropped', 0.45);
+});
+
+test('the Gyre Snare pad tables are pinned — the lash never silently unbinds', () => {
+  // The three load-bearing pad entries for the verb: the RB+Y chord (below), the
+  // lifecycle quarantine (deep-pinned in input-lifecycle.test.mjs ~:233 — a dropped
+  // entry fails that literal), and the hold-to-toggle whitelist (deep-pinned in
+  // fb-hold-to-toggle.test.mjs :88). This asserts the public binding surface so a
+  // table edit can't silently regress pad play.
+  assert.deepEqual([...GAMEPAD_DEFAULT_BINDINGS.gyreSnare], ['r1+alt'],
+    'the lash holds RB+Y under the boost hand');
 });

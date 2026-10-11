@@ -445,10 +445,11 @@ export const HAPTIC_VERB_PULSES = Object.freeze({
   // the bowl the hard crack, an absorb a small tap, a dropped clump a mid thud.
   'gyre:beamOn':            { strong: 0.25, weak: 0.35, ms: 60 },
   'gyre:snagged':           { strong: 0.70, weak: 0.50, ms: 110 },
-  // No `gyre:launched` pulse: it fires at the release edge one tick before `gyre:windup`,
-  // so its 5-tick min-gap silently ate the 140 ms draw rumble — the sling's richest beat.
+  // No `gyre:launched` pulse: it fires at the release edge in the SAME tick `gyre:windup`
+  // emits (`_launch` then the LAUNCH block decrements the coil), so its 5-tick min-gap
+  // silently ate the 140 ms draw rumble — the sling's richest beat — on every launch.
   // `gyre:windup` marks coil-engage and `gyre:thrown` marks the throw; nothing is lost.
-  'gyre:windup':            { strong: 0.15, weak: 0.50, ms: 140 }, // the draw — a low rumble under the coil
+  'gyre:windup':            { strong: 0.15, weak: 0.50, ms: 105 }, // the draw — a low rumble under the ~100 ms coil (up to ~155 after the +50·t mass grading, bleeding into thrown's beat)
   'gyre:thrown':            { strong: 0.90, weak: 0.70, ms: 160 }, // the throw — biggest beat in the pad vocabulary
   'gyre:absorbTick':        { strong: 0.30, weak: 0.20, ms: 50 },
   'gyre:dropped':           { strong: 0.45, weak: 0.30, ms: 80 },
@@ -464,6 +465,9 @@ export const HAPTIC_VERB_PULSES = Object.freeze({
   // The thrown ball's quiet-TTL grave — a light dying tap that closes the arc:
   // the katamari lived, flew, and is gone. Impact deaths rumble through collision.
   'gyre:ballGrave':         { strong: 0.25, weak: 0.20, ms: 60 },
+  // First fill of the net — a whisper on the basinCatchLatched edge only.
+  // The +N ratchet stays audio-only or a dense belt feed would buzz the pad.
+  'gyre:caught':            { strong: 0.15, weak: 0.20, ms: 40 },
 });
 // Release grading band → pulse. A razor release is a whipcrack; a messy one a low thud.
 export const HAPTIC_RELEASE_PULSES = Object.freeze({
@@ -500,7 +504,7 @@ export function computeHapticFrame(input = {}) {
   if (level === 'off') {
     return {
       enabled: false, haptics: 'off',
-      momentum: 0, line: 0, slam: 0, boost: 0, weak: 0, strong: 0, pulse: null,
+      momentum: 0, line: 0, slam: 0, boost: 0, gyre: 0, weak: 0, strong: 0, pulse: null,
     };
   }
   const motor = level === 'low' ? 0.5 : 1;
@@ -508,11 +512,14 @@ export function computeHapticFrame(input = {}) {
   const line = input.lineActive && input.lineLoad > 0 ? clamp01(input.lineLoad) : 0;
   const boost = input.boost ? clamp01(HAPTIC_BOOST_FLOOR + (1 - HAPTIC_BOOST_FLOOR) * momentum) : 0;
   const slam = clamp01(input.slam);
+  // Gyre strain: a CONTINUOUS channel under the held clump — "about to tear" is
+  // felt for the whole excursion, not only the 120 ms pulse at the boundary.
+  const gyre = input.gyreStrain > 0 ? clamp01(input.gyreStrain) : 0;
   const pulse = input.pulse && (clamp01(input.pulse.strong) > 0 || clamp01(input.pulse.weak) > 0)
     ? { strong: clamp01(input.pulse.strong), weak: clamp01(input.pulse.weak) }
     : null;
-  const strong = Math.max(line, slam, boost * 0.5, pulse ? pulse.strong : 0);
-  const weak = Math.max(boost, slam * 0.8, line * 0.5, pulse ? pulse.weak : 0);
+  const strong = Math.max(line, slam, boost * 0.5, gyre * 0.4, pulse ? pulse.strong : 0);
+  const weak = Math.max(boost, slam * 0.8, line * 0.5, gyre * 0.55, pulse ? pulse.weak : 0);
   return {
     enabled: true,
     haptics: level,
@@ -520,6 +527,7 @@ export function computeHapticFrame(input = {}) {
     line: round4(line),
     slam: round4(slam),
     boost: round4(boost),
+    gyre: round4(gyre),
     pulse,
     weak: round4(clamp01(weak * motor)),
     strong: round4(clamp01(strong * motor)),
@@ -827,8 +835,8 @@ export function createGamepad(ctx) {
   let pulseGapTicks = 0;
   let pulseSpec = null;
   // `gp` is declared below; listeners can only fire after createGamepad returns it.
-  const startPulse = (spec, event) => {
-    if (!spec || pulseGapTicks > 0) return false; // ≤ one pulse per ~80 ms, by sim ticks
+  const startPulse = (spec, event, force) => {
+    if (!spec || (!force && pulseGapTicks > 0)) return false; // ≤ one pulse per ~80 ms, by sim ticks
     pulseSpec = { strong: spec.strong, weak: spec.weak };
     pulseTicks = Math.max(1, Math.round((Number(spec.ms) || 60) * 60 / 1000));
     pulseGapTicks = HAPTIC_PULSE_MIN_GAP_TICKS;
@@ -857,12 +865,55 @@ export function createGamepad(ctx) {
     bus.on('massline:playerLineCut', () => startPulse(HAPTIC_VERB_PULSES['massline:playerLineCut'], 'massline:playerLineCut'));
     bus.on('tether:whipSnap', () => startPulse(HAPTIC_VERB_PULSES['tether:whipSnap'], 'tether:whipSnap'));
     bus.on('gyre:beamOn', () => startPulse(HAPTIC_VERB_PULSES['gyre:beamOn'], 'gyre:beamOn'));
-    bus.on('gyre:snagged', () => startPulse(HAPTIC_VERB_PULSES['gyre:snagged'], 'gyre:snagged'));
-    bus.on('gyre:windup', () => startPulse(HAPTIC_VERB_PULSES['gyre:windup'], 'gyre:windup'));
-    bus.on('gyre:thrown', () => startPulse(HAPTIC_VERB_PULSES['gyre:thrown'], 'gyre:thrown'));
+    bus.on('gyre:snagged', (payload) => {
+      // The grip beat grades by cored mass like the shake and voice do — a 6 t
+      // pebble snaps light, a 200 t wreck lands heavy. /200 matches the snag
+      // shake's realistic-mass band (2400 is for katamaris, not cores).
+      // Pinned constant: /200 mirrors the gyreSnare.js snag-shake denominator —
+      // retune both together (this layer intentionally carries no data imports).
+      const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 200);
+      const base = HAPTIC_VERB_PULSES['gyre:snagged'];
+      startPulse({ strong: base.strong + 0.2 * t, weak: base.weak + 0.15 * t, ms: base.ms + 60 * t }, 'gyre:snagged');
+    });
+    bus.on('gyre:windup', (payload) => {
+      // The coil draw grades by payload like the launch it precedes (ballMass /
+      // maxClumpMass is the launch cue's own frac) — a capped moon's draw rumbles
+      // heavier, matching the bigger pull-back the sim applies.
+      // Pinned constant: /2400 IS GYRE_SNARE.maxClumpMass — retune with the data
+      // file (this layer intentionally carries no data imports).
+      const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 2400);
+      // Emitted per coil tick: windW01 (0→1 over the draw) mirrors the audio
+      // twin's per-tick crescendo — a flat pulse left the arc ear-only.
+      const w = payload && Number.isFinite(payload.windW01) ? 0.4 + 0.6 * payload.windW01 : 1;
+      const base = HAPTIC_VERB_PULSES['gyre:windup'];
+      startPulse({ strong: (base.strong + 0.3 * t) * w, weak: (base.weak + 0.15 * t) * w, ms: base.ms + 50 * t }, 'gyre:windup');
+    });
+    bus.on('gyre:thrown', (payload) => {
+      // The throw crack grades by payload like snagged/windup — but on MASS, not
+      // speed (a capped moon throws slower; speed-lerping would invert intent).
+      // Pebble -> 0.55 crack, capped moon -> the full 0.90 + a longer tail.
+      // Pinned constant: /2400 IS GYRE_SNARE.maxClumpMass — retune with the data
+      // file (this layer intentionally carries no data imports).
+      const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 2400);
+      const base = HAPTIC_VERB_PULSES['gyre:thrown'];
+      // Priority beat: the per-tick windup emits re-arm the 5-tick min-gap on
+      // every coil, so a launch landing inside the window swallowed the throw —
+      // the biggest beat in the pad vocabulary eaten on every real launch.
+      // Forced admission replaces the in-flight windup pulse like the audio
+      // twin's own layer cut (same class as gyre:launched's gap fix).
+      startPulse({ strong: base.strong - 0.35 + 0.35 * t, weak: base.weak - 0.2 + 0.2 * t, ms: base.ms + 60 * t }, 'gyre:thrown', true);
+    });
     bus.on('gyre:full', () => startPulse(HAPTIC_VERB_PULSES['gyre:full'], 'gyre:full'));
     bus.on('gyre:fuseLow', () => startPulse(HAPTIC_VERB_PULSES['gyre:fuseLow'], 'gyre:fuseLow'));
     bus.on('gyre:ballGrave', () => startPulse(HAPTIC_VERB_PULSES['gyre:ballGrave'], 'gyre:ballGrave'));
+    bus.on('gyre:caught', (payload) => {
+      // The first fill grades by the meal's heft like snagged/absorbTick — a
+      // pebble's net-fill whispers, a 200 t wreck entering lands on the hands.
+      // /200 matches the snag band (basin meals are pre-katamari mass).
+      const t = Math.min(1, (payload && Number.isFinite(payload.mass) ? payload.mass : 0) / 200);
+      const base = HAPTIC_VERB_PULSES['gyre:caught'];
+      startPulse({ strong: base.strong + 0.15 * t, weak: base.weak + 0.1 * t, ms: base.ms + 20 * t }, 'gyre:caught');
+    });
     // Worldfeel seams: a developed rock, a grazing face, a volatile stage. Own admit book so a
     // held beam cannot turn the pad into a buzz. The pulse still shares the one-live-pulse gate.
     const worldFeelBook = createWorldFeelBook(bus);
@@ -894,7 +945,9 @@ export function createGamepad(ctx) {
       // short of the throw crack: the tear lands in the hands like it does on screen.
       // The reason wins over the id key — a launch-phase 'strained' emit carries
       // coreId: null (the ball already flew), but a tear is never an empty drop.
-      if (payload && payload.reason === 'strained') spec = 'gyre:torn';
+      // core_lost inherits the tear: a clump destroyed in the grip is a shatter —
+      // same glassier voice + snap close it already wears, same pulse in the hands.
+      if (payload && (payload.reason === 'strained' || payload.reason === 'core_lost')) spec = 'gyre:torn';
       startPulse(HAPTIC_VERB_PULSES[spec], spec);
     });
     bus.on('gyre:strained', () => startPulse(HAPTIC_VERB_PULSES['gyre:strained'], 'gyre:strained'));
@@ -1279,12 +1332,23 @@ export function createGamepad(ctx) {
         ? Math.hypot(Number(player.vel.x) || 0, Number(player.vel.z) || 0)
         : 0;
       const tether = live && live.player && live.player.tether;
+      // The gyre mirror's HOLD channels: strain dominates, with a mass floor so a
+      // capped clump drags audibly even before the lash nears slipping.
+      const gyre = live && live.gyreSnare;
       const frame = computeHapticFrame({
         momentum: speed,
         lineActive: !!(tether && tether.active),
         lineLoad: tether ? tether.load : 0,
         boost: !!(this.actions.boost && this.actions.boost.held),
         slam,
+        gyreStrain: gyre && gyre.phase === 'holding'
+          ? Math.max(clamp01(Number(gyre.strain01) || 0),
+            // Mass floor scaled by strain: an uncapped calm capped-moon hold used to
+            // buzz 0.35 for minutes — now rests ~0.17 and swells back to 0.35 as the
+            // lash actually nears tearing.
+            clamp01((Number(gyre.clumpMass) || 0) / Math.max(1, Number(gyre.maxClumpMass) || 1))
+              * 0.35 * (0.5 + 0.5 * clamp01(Number(gyre.strain01) || 0)))
+          : 0,
         pulse,
         haptics: level,
       });

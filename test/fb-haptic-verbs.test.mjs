@@ -227,6 +227,23 @@ test('FB-005: off yields an inert frame and resets the motors; low halves them',
   assert.equal(gp.haptics.enabled, false, 'the legacy kill-switch still wins');
 });
 
+test('the gyre strain channel hums continuously under a held clump', () => {
+  // A near-tear excursion is felt the WHOLE time, not only at the 120 ms
+  // boundary pulse — the 'line'-load precedent for ongoing tension.
+  const straining = computeHapticFrame({ gyreStrain: 0.6, haptics: 'full' });
+  assert.equal(straining.gyre, 0.6);
+  assert.ok(straining.weak >= 0.3, 'strain rides the weak motor');
+  assert.ok(straining.strong >= 0.2, 'strain reaches the strong motor');
+
+  const idle = computeHapticFrame({ gyreStrain: 0, haptics: 'full' });
+  assert.equal(idle.gyre, 0);
+  assert.equal(idle.weak, 0, 'no held clump → no hum');
+
+  const off = computeHapticFrame({ gyreStrain: 1, haptics: 'off' });
+  assert.equal(off.gyre, 0, 'off swallows the channel like every other');
+  assert.equal(off.weak, 0);
+});
+
 test('FB-005: the haptics level survives profile normalization; corrupt values repair', () => {
   const state = createGameState(5005);
   save.init({ state, bus: createBus(), helpers: {}, registry: { get: () => null } });
@@ -237,4 +254,100 @@ test('FB-005: the haptics level survives profile normalization; corrupt values r
   save.init({ state: bogus, bus: createBus(), helpers: {}, registry: { get: () => null } });
   save._restoreSettings({ accessibility: { haptics: 'loud' } });
   assert.equal(bogus.settings.accessibility.haptics, 'full', 'an unknown level repairs to full');
+});
+
+test('gyre vocabulary routes through the pulse table — torn/dropped/droppedEmpty pseudo-keys', () => {
+  installedPad = makePad();
+  const bus = createBus();
+  const state = padState();
+  const gp = createGamepad({ bus, state });
+  gp.tick(1 / 60, state);
+  assert.equal(gp.connected, true);
+
+  // [event, payload, spec the emit should own] — the dropped pseudo-key switch:
+  // a torn clump is the big loss beat, an empty beam's close the soft flick, a
+  // held clump's release the full thud. `reason` wins over the id key.
+  const cases = [
+    ['gyre:beamOn', {}, 'gyre:beamOn'],
+    ['gyre:snagged', {}, 'gyre:snagged'],
+    ['gyre:windup', {}, 'gyre:windup'],
+    // thrown mass-lerps like the rest — at capped mass it lands the authored
+    // full crack (the table value); the pebble end is asserted below.
+    ['gyre:thrown', { mass: 2400 }, 'gyre:thrown'],
+    ['gyre:full', {}, 'gyre:full'],
+    ['gyre:fuseLow', {}, 'gyre:fuseLow'],
+    ['gyre:ballGrave', {}, 'gyre:ballGrave'],
+    ['gyre:caught', {}, 'gyre:caught'],
+    ['gyre:strained', {}, 'gyre:strained'],
+    ['gyre:dropped', { reason: 'strained', coreId: null }, 'gyre:torn'],
+    // A clump destroyed in the grip is a shatter — the same 'gyre:torn' pulse a
+    // strain break lands, not the polite-release thud.
+    ['gyre:dropped', { reason: 'core_lost', coreId: 9 }, 'gyre:torn'],
+    ['gyre:dropped', { reason: 'launched', coreId: null }, 'gyre:droppedEmpty'],
+    ['gyre:dropped', { coreId: 7 }, 'gyre:dropped'],
+  ];
+  for (const [event, payload, specName] of cases) {
+    step(gp, state, HAPTIC_PULSE_MIN_GAP_TICKS + 2); // let any prior pulse/gap fully expire
+    bus.emit(event, payload);
+    step(gp, state);
+    const spec = HAPTIC_VERB_PULSES[specName];
+    assert.equal(gp._lastVerbPulse, specName, `${event} ${JSON.stringify(payload)} → ${specName}`);
+    assert.equal(gp.haptics.pulse && gp.haptics.pulse.strong, spec.strong, `${specName} strong channel`);
+    assert.equal(gp.haptics.pulse && gp.haptics.pulse.weak, spec.weak, `${specName} weak channel`);
+  }
+
+  // The absorb tick lerps by meal mass: mass 0 is the authored flick, 80+ t lands
+  // the drop-thud end of the lerp.
+  const base = HAPTIC_VERB_PULSES['gyre:absorbTick'];
+  step(gp, state, HAPTIC_PULSE_MIN_GAP_TICKS + 2);
+  bus.emit('gyre:absorbTick', { mass: 0 });
+  step(gp, state);
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.strong, base.strong, 'pebble stays the authored flick');
+  step(gp, state, HAPTIC_PULSE_MIN_GAP_TICKS + 2);
+  bus.emit('gyre:absorbTick', { mass: 80 });
+  step(gp, state);
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.strong, base.strong + 0.25, 'wreck lerp tops out');
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.weak, base.weak + 0.1, 'wreck lerp weak channel');
+
+  // snagged/windup top ends too: at their lerp ceilings the payloads push past
+  // the authored base — the graded paths aren't dead-tested at t=0.
+  const sg = HAPTIC_VERB_PULSES['gyre:snagged'];
+  step(gp, state, HAPTIC_PULSE_MIN_GAP_TICKS + 2);
+  bus.emit('gyre:snagged', { mass: 200 });
+  step(gp, state);
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.strong, sg.strong + 0.2, 'a wreck snag lands heavier');
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.weak, sg.weak + 0.15, 'wreck snag weak channel');
+  const wu = HAPTIC_VERB_PULSES['gyre:windup'];
+  step(gp, state, HAPTIC_PULSE_MIN_GAP_TICKS + 2);
+  bus.emit('gyre:windup', { mass: 2400 });
+  step(gp, state);
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.strong, wu.strong + 0.3, 'a capped coil rumbles heavier');
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.weak, wu.weak + 0.15, 'capped coil weak channel');
+
+  // gyre:thrown pebble end: mass 0 throws lighter than the authored crack —
+  // a capped moon (asserted in the loop above) lands the full table value.
+  const tb = HAPTIC_VERB_PULSES['gyre:thrown'];
+  step(gp, state, HAPTIC_PULSE_MIN_GAP_TICKS + 2);
+  bus.emit('gyre:thrown', { mass: 0 });
+  step(gp, state);
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.strong, tb.strong - 0.35, 'pebble throw cracks lighter');
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.weak, tb.weak - 0.2, 'pebble throw weak channel');
+
+  // The throw is a priority beat: the per-tick windup emits re-arm the 5-tick
+  // gap on every coil, so a launch inside the window must still land — it
+  // replaces the in-flight windup pulse, not queue behind it.
+  step(gp, state, HAPTIC_PULSE_MIN_GAP_TICKS + 2);
+  bus.emit('gyre:windup', { mass: 2400 });
+  step(gp, state); // windup lands, gap now armed
+  bus.emit('gyre:thrown', { mass: 2400 });
+  step(gp, state);
+  assert.equal(gp._lastVerbPulse, 'gyre:thrown', 'the throw owns a pulse inside the windup gap');
+  assert.equal(gp.haptics.pulse && gp.haptics.pulse.strong, tb.strong, 'capped throw at full crack');
+
+  // Boundary/quiet drops are context resets — silence, and the live pulse is untouched.
+  const last = gp._lastVerbPulse;
+  bus.emit('gyre:dropped', { quiet: true, coreId: 7 });
+  bus.emit('gyre:dropped', { boundary: true, coreId: 7 });
+  step(gp, state);
+  assert.equal(gp._lastVerbPulse, last, 'quiet/boundary drops never own a pulse');
 });

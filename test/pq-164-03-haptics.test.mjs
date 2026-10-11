@@ -94,7 +94,7 @@ test('PQ-164.03 + FB-005: haptics off is silent on every channel; reduce-motion 
     momentum: 999, lineActive: true, lineLoad: 1, boost: true, slam: 1, haptics: 'off',
   });
   assert.deepEqual(quiet, {
-    enabled: false, haptics: 'off', momentum: 0, line: 0, slam: 0, boost: 0, weak: 0, strong: 0,
+    enabled: false, haptics: 'off', momentum: 0, line: 0, slam: 0, boost: 0, gyre: 0, weak: 0, strong: 0,
     pulse: null,
   });
   // FB-005: reduce-motion is vestibular — it no longer silences the motors.

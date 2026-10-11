@@ -31,6 +31,9 @@ function stateWithBalls(ballPos, balls = []) {
       launchedId: 7,
       ballPos: { ...ballPos },
       ballMass: 300,
+      // A ball in flight publishes its velocity — the loop attenuates by speed
+      // (stalled = 0.2 whisper), so the fixture must carry it like the mirror does.
+      ballVx: 60, ballVz: 0,
       balls,
     },
   };
