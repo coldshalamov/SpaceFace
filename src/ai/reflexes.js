@@ -41,7 +41,8 @@ const TAU = Math.PI * 2;
 // A hazard/objective/tumbling hull moving at least this fast (WU/s) is a thrown body, not cover.
 export const MOVING_BODY_MIN_SPEED = 120;
 const BODY_MIN_CLOSING_SPEED = 100;
-const BODY_MAX_ETA = 1.4;
+const BODY_MAX_ETA = 1.1;
+const BODY_WATCH_CAP = 4;
 const BODY_MISS_PAD = 14;
 const BODY_REAR_ARC = (100 * Math.PI) / 180;
 const BODY_MASS_AMP = Object.freeze({ light: 1, medium: 0.7, heavy: 0.35, capital: 0 });
@@ -65,7 +66,7 @@ export function emptyReflexState() {
     cooldowns: null,        // Map kind -> cooldown-until tick (lazily allocated)
     lastHull: 1,
     seenAllies: null,       // Map friendly contact id -> alive flag (lazily allocated)
-    bodyWatch: null,        // {bodyId, sinceTick} thrown body this pilot has been tracking
+    bodyWatch: null,        // Map bodyId -> sinceTick for thrown bodies that qualified last look (≤4)
   };
 }
 
@@ -80,9 +81,14 @@ export function evaluateReflexes(seed, ctx) {
   const { entityId, tick, self, contacts, target, intent, temperament, reflexState } = ctx;
   const rs = reflexState;
   const bodyOnly = ctx.bodyDodgeOnly === true;
+  // A burst begun before the hull became mind-owned must not keep displacing a waypoint.
+  if (bodyOnly && rs.burst && rs.burst.kind !== REFLEX_KIND.BODY_DODGE) rs.burst = null;
   // The gate lives inside the engine too: callers who skip reflexAllowedForIntent still
   // never get a jink out of a hull that is already doing an emergency maneuver.
-  if (!self || !intent || !reflexAllowedForIntent(intent.kind)) return null;
+  if (!self || !intent || !reflexAllowedForIntent(intent.kind)) {
+    if (intent && rs.burst) rs.burst = null;
+    return null;
+  }
 
   // Update the observation registers every call, burst or not.
   let hullHit = 0;
@@ -339,7 +345,10 @@ function segmentClearance(ax, az, bx, bz, px, pz) {
 
 function bodyOccluded(self, body, contacts) {
   for (const c of contacts) {
-    if (c.kind !== ContactKind.HAZARD || c.id === body.id || c.id === self.id || !c.pos) continue;
+    if (c.id === body.id || c.id === self.id || !c.pos) continue;
+    const blocks = c.kind === ContactKind.HAZARD
+      || (c.kind === ContactKind.SHIP && (c.operationalMassBand === 'heavy' || c.operationalMassBand === 'capital'));
+    if (!blocks) continue;
     if (segmentClearance(self.pos.x, self.pos.z, body.pos.x, body.pos.z, c.pos.x, c.pos.z) < 0.85 * planarBodyRadius(c)) {
       return true;
     }
@@ -349,20 +358,23 @@ function bodyOccluded(self, body, contacts) {
 
 /**
  * Thrown-body perception: the most imminent fast body on a near-miss course that this pilot
- * can see (no rock between), notices (per-pilot gate), and has had long enough to react to.
- * Returns null or {bodyId, eta, ready, dodge:{x,z}, amp, boost}. Updates rs.bodyWatch only.
+ * can see (no rock or big hull between), notices (per-pilot gate), and has had long enough to
+ * react to. Returns null or {bodyId, eta, ready, dodge:{x,z}, amp, boost}. Updates rs.bodyWatch
+ * only: each qualifying body keeps its own reaction clock, bodies that stop qualifying lose it.
  */
 function nearestIncomingBody(seed, entityId, tick, self, contacts, temperament, rs) {
   const band = self.operationalMassBand;
   const bandAmp = Object.prototype.hasOwnProperty.call(BODY_MASS_AMP, band) ? BODY_MASS_AMP[band] : 1;
+  const stoic = self.combatDoctrineId === 'detonator_run';
   let best = null;
-  if (bandAmp > 0 && self.pos) {
+  let qualifying = null;
+  if (bandAmp > 0 && !stoic && self.pos) {
     const selfR = planarBodyRadius(self, 16);
     const svx = self.vel ? self.vel.x : 0, svz = self.vel ? self.vel.z : 0;
-    const noticeBase = clamp(0.25 + 0.45 * temperament.dash + 0.25 * (1 - temperament.aim), 0.15, 0.9);
+    const noticeBase = clamp(0.18 + 0.32 * temperament.dash + 0.18 * (1 - temperament.aim), 0.08, 0.7);
     for (const c of contacts) {
       const kind = c.kind;
-      if (c.id === self.id || !c.pos || !c.vel) continue;
+      if (c.id === self.id || !c.pos || !c.vel || c.visible === false) continue;
       if (kind === ContactKind.SHIP) {
         if (c.tumbling !== true && c.disabled !== true) continue;
       } else if (kind !== ContactKind.HAZARD && kind !== ContactKind.OBJECTIVE) continue;
@@ -378,20 +390,30 @@ function nearestIncomingBody(seed, entityId, tick, self, contacts, temperament, 
       if (eta <= 0 || eta > BODY_MAX_ETA) continue;
       const miss = Math.hypot(dx + vx * eta, dz + vz * eta);
       if (miss >= selfR + planarBodyRadius(c) + BODY_MISS_PAD) continue;
-      if (best && eta >= best.eta) continue;
       if (bodyOccluded(self, c, contacts)) continue;
       const rear = Math.abs(wrapPi(Math.atan2(dz, dx) - (Number.isFinite(self.rot) ? self.rot : 0))) > BODY_REAR_ARC;
       const notice = noticeBase * (rear ? 0.5 : 1);
       if (!(hashUnit(seed, entityId, c.id, 'body_dodge_notice') < notice)) continue;
-      best = { c, eta, rear, dx, dz, vx, vz };
+      const entry = { c, eta, rear, dx, dz, vx, vz };
+      if (!qualifying) qualifying = [];
+      qualifying.push(entry);
+      if (!best || eta < best.eta) best = entry;
     }
   }
   if (!best) {
     if (rs.bodyWatch) rs.bodyWatch = null;
     return null;
   }
+  const previous = rs.bodyWatch instanceof Map ? rs.bodyWatch : null;
+  const watch = new Map();
+  for (const entry of qualifying) {
+    if (watch.size >= BODY_WATCH_CAP) break;
+    const id = entry.c.id;
+    watch.set(id, previous && previous.has(id) ? previous.get(id) : tick);
+  }
+  rs.bodyWatch = watch;
   const bodyId = best.c.id;
-  if (!rs.bodyWatch || rs.bodyWatch.bodyId !== bodyId) rs.bodyWatch = { bodyId, sinceTick: tick };
+  const since = watch.has(bodyId) ? watch.get(bodyId) : tick;
   const reactionTicks = 8 + Math.round((1 - temperament.dash) * 18) + (best.rear ? 12 : 0);
   const speed = Math.sqrt(best.vx * best.vx + best.vz * best.vz);
   const px = -best.vz / speed, pz = best.vx / speed;
@@ -402,10 +424,10 @@ function nearestIncomingBody(seed, entityId, tick, self, contacts, temperament, 
   return {
     bodyId,
     eta: best.eta,
-    ready: tick - rs.bodyWatch.sinceTick >= reactionTicks,
+    ready: watch.has(bodyId) && tick - since >= reactionTicks,
     dodge: { x: px * sign, z: pz * sign },
-    amp: (60 + 60 * temperament.dash) * bandAmp,
-    boost: band == null || band === 'light',
+    amp: (45 + 45 * temperament.dash) * bandAmp,
+    boost: band === 'light',
   };
 }
 

@@ -5,7 +5,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { ContactKind, ManeuverKind, hashUnit } from '../src/ai/contracts.js';
+import { createBus } from '../src/core/eventBus.js';
+import { hash32, mulberry32 } from '../src/core/rng.js';
+import { aiPorts } from '../src/systems/aiPorts.js';
 import { ManeuverPlanner } from '../src/ai/maneuver.js';
+import { temperamentFor } from '../src/ai/temperament.js';
 import {
   MOVING_BODY_MIN_SPEED,
   REFLEX_KIND,
@@ -19,7 +23,7 @@ const SLOW_SIGHTED = Object.freeze({ verve: 0.5, poise: 0.5, weave: 0.3, dash: 0
 const INTENT = Object.freeze({ kind: ManeuverKind.INTERCEPT });
 const TICK_STEP = 2;
 
-const noticeThreshold = (t, rear) => Math.min(0.9, Math.max(0.15, 0.25 + 0.45 * t.dash + 0.25 * (1 - t.aim))) * (rear ? 0.5 : 1);
+const noticeThreshold = (t, rear) => Math.min(0.7, Math.max(0.08, 0.18 + 0.32 * t.dash + 0.18 * (1 - t.aim))) * (rear ? 0.5 : 1);
 const notices = (id, bodyId, t, rear = false) => hashUnit(SEED, id, bodyId, 'body_dodge_notice') < noticeThreshold(t, rear);
 const pilotWhere = (pred) => {
   for (let id = 1; id < 400; id++) if (pred(id)) return id;
@@ -60,6 +64,7 @@ function run(pilotId, makeContacts, { ticks = 60, temperament = ALERT, self = se
   return out;
 }
 
+const bodyOnlyBurst = (kind) => ({ kind, startTick: 0, untilTick: 500, side: 1, amp: 60 });
 const firstDodge = (frames) => frames.find((f) => f.reflex && f.reflex.kind === REFLEX_KIND.BODY_DODGE) || null;
 const reactionTicksFor = (t, rear) => 8 + Math.round((1 - t.dash) * 18) + (rear ? 12 : 0);
 
@@ -83,6 +88,7 @@ test('an alert pilot sees a wreck thrown at it, reacts after a human beat, and s
   assert.equal(dodge.reflex.boost, true, 'a light hull burns to clear the lane');
   assert.equal(dodge.reflex.dropAim, true, 'the pilot gives up aim to save the hull');
   assert.ok(dodge.reflex.dodgeAmp >= 60, 'the sidestep is decisive');
+  assert.ok(dodge.reflex.dodgeAmp <= 90, 'but a human-sized step, not a teleport');
 });
 
 test('the away side flips with the pass side', () => {
@@ -178,7 +184,7 @@ test('the dodge is one burst: it ends, cools down, and a lost threat resets the 
   const evalAt = (tick, contacts) => engine.evaluate({ entityId: pilot, tick, self: selfFrame(), contacts,
     target: null, intent: INTENT, temperament: ALERT, reflexState: rs });
   evalAt(0, [thrownAt(0)]);
-  assert.ok(rs.bodyWatch && rs.bodyWatch.bodyId === 'wreck-1', 'the pilot is tracking the body');
+  assert.ok(rs.bodyWatch && rs.bodyWatch.has('wreck-1'), 'the pilot is tracking the body');
   evalAt(2, []);
   assert.equal(rs.bodyWatch, null, 'a body that stops qualifying resets the reaction clock');
   const frames = run(pilot, (tick) => [thrownAt(tick, { etaStart: 1.3 })], { ticks: 100 });
@@ -211,13 +217,126 @@ test('the number: across twenty pilots some sidestep the thrown wreck and some s
   assert.ok(hit > 0, `some surprised pilots still get hit (hit ${hit}/20)`);
 });
 
+test('a jink begun before the hull became mind-owned is dropped in bodyDodgeOnly mode', () => {
+  const engine = createReflexEngine({ seed: SEED });
+  const rs = emptyReflexState();
+  rs.burst = bodyOnlyBurst(REFLEX_KIND.VOLLEY_JINK);
+  const out = engine.evaluate({ entityId: 'p', tick: 10, self: selfFrame(), contacts: [], target: null, intent: INTENT,
+    temperament: ALERT, reflexState: rs, bodyDodgeOnly: true });
+  assert.equal(out, null, 'a stale jink must not keep displacing a mind-owned waypoint');
+  assert.equal(rs.burst, null, 'the stale burst is cleared');
+});
+
+test('a reflex-forbidden intent clears a suspended burst so it cannot resume later', () => {
+  const engine = createReflexEngine({ seed: SEED });
+  const rs = emptyReflexState();
+  rs.burst = bodyOnlyBurst(REFLEX_KIND.VOLLEY_JINK);
+  const out = engine.evaluate({ entityId: 'p', tick: 10, self: selfFrame(), contacts: [], target: null,
+    intent: { kind: ManeuverKind.RETREAT }, temperament: ALERT, reflexState: rs });
+  assert.equal(out, null);
+  assert.equal(rs.burst, null, 'a hull fleeing does not resume an old jink afterwards');
+});
+
+test('two near-equal bodies alternating as the nearest do not keep resetting the reaction clock', () => {
+  const pilot = pilotWhere((id) => notices(id, 'wreck-A', ALERT) && notices(id, 'wreck-B', ALERT));
+  const frames = run(pilot, (tick) => {
+    const flip = (tick / TICK_STEP) % 2 === 0;
+    return [
+      thrownAt(tick, { id: 'wreck-A', etaStart: flip ? 0.7 : 0.8, offsetZ: 25 }),
+      thrownAt(tick, { id: 'wreck-B', etaStart: flip ? 0.8 : 0.7, offsetZ: -25 }),
+    ];
+  }, { ticks: 40 });
+  const dodge = firstDodge(frames);
+  assert.ok(dodge, 'a pilot watching two bodies still reacts');
+  assert.ok(dodge.tick < reactionTicksFor(ALERT, false) + 2 * TICK_STEP,
+    `each body keeps its own clock (fired at ${dodge.tick})`);
+});
+
+test('a second body inside the dodge cooldown is not dodged', () => {
+  const pilot = pilotWhere((id) => notices(id, 'wreck-1', ALERT) && notices(id, 'wreck-2', ALERT));
+  const first = firstDodge(run(pilot, (tick) => [thrownAt(tick)], { ticks: 40 }));
+  assert.ok(first);
+  const cooldownEnd = first.tick + 90;
+  const frames = run(pilot, (tick) => [
+    thrownAt(tick),
+    thrownAt(tick - 40, { id: 'wreck-2' }),
+    thrownAt(tick - 80, { id: 'wreck-3' }),
+  ].filter((c, i) => i === 0 ? tick <= 40 : true), { ticks: cooldownEnd + 10 });
+  const starts = frames.filter((f) => f.reflex && f.reflex.kind === REFLEX_KIND.BODY_DODGE && f.reflex.dodgeAmp > 0);
+  const lastStartWindow = starts.filter((f) => f.tick > first.tick + 30 && f.tick < cooldownEnd);
+  assert.equal(lastStartWindow.length, 0, 'no new burst inside the 90-tick cooldown');
+});
+
+test('an invisible (cloak ghost or reported) track is never dodged', () => {
+  const pilot = pilotWhere((id) => notices(id, 'wreck-1', ALERT));
+  const frames = run(pilot, (tick) => [thrownAt(tick, { visible: false })], { ticks: 48 });
+  assert.equal(firstDodge(frames), null, 'dead-reckoned ghost tracks carry no reliable course');
+});
+
+test('a fuse-lit detonator_run hull never body-dodges', () => {
+  const pilot = pilotWhere((id) => notices(id, 'wreck-1', ALERT));
+  const frames = run(pilot, (tick) => [thrownAt(tick)], { self: selfFrame({ combatDoctrineId: 'detonator_run' }), ticks: 48 });
+  assert.equal(firstDodge(frames), null, 'a dart on its run does not flinch');
+});
+
+test('a heavy ship between pilot and body blocks sight just like a rock', () => {
+  const pilot = pilotWhere((id) => notices(id, 'wreck-1', ALERT));
+  const lane = (tick) => thrownAt(tick, { etaStart: 1.0 });
+  const bigShip = (band) => ({ id: 'ship-big', kind: ContactKind.SHIP, hostile: true, alive: true, radius: 50,
+    operationalMassBand: band, tags: [], pos: { x: 70, z: 0 }, vel: { x: 0, z: 0 } });
+  for (const band of ['heavy', 'capital']) {
+    assert.equal(firstDodge(run(pilot, (tick) => [lane(tick), bigShip(band)], { ticks: 50 })), null, `a ${band} hull blocks the view`);
+  }
+  assert.ok(firstDodge(run(pilot, (tick) => [lane(tick), bigShip('light')], { ticks: 50 })), 'a light ship does not');
+});
+
+test('boost is for light hulls only, never a hull of unknown band', () => {
+  const pilot = pilotWhere((id) => notices(id, 'wreck-1', ALERT));
+  const noBand = firstDodge(run(pilot, (tick) => [thrownAt(tick)], { self: selfFrame({ operationalMassBand: undefined }), ticks: 40 }));
+  assert.ok(noBand && noBand.reflex.boost === false, 'an unknown band dodges without boosting');
+});
+
+test('tumbling flows from a real status_tumbling entry through the production sensor frame (and its contract normalizer) into the contact', () => {
+  const bus = createBus();
+  const mkShip = (id, over = {}) => ({
+    id, type: 'ship', alive: true, team: 1, mass: 20, pos: { x: 100 * id, z: 0 }, vel: { x: 0, z: 0 }, rot: 0,
+    radius: 8, flags: {}, data: { ai: {}, weapons: [], combat: {} }, ...over,
+  });
+  const player = mkShip(1, { team: 0, pos: { x: 0, z: 0 } });
+  const watcher = mkShip(2, { pos: { x: 100, z: 0 } });
+  const whipped = mkShip(3, { pos: { x: 200, z: 0 } });
+  const steady = mkShip(4, { pos: { x: 300, z: 0 } });
+  const entityList = [player, watcher, whipped, steady];
+  const state = {
+    mode: 'flight', playerId: 1, tick: 0, simTime: 0, meta: { seed: SEED }, rng: mulberry32(SEED),
+    player: { ownedShips: [], activeShipIndex: 0, tether: null },
+    input: { fire: false, actions: {} },
+    combat: { beams: [], entities: { 3: { statuses: { status_tumbling: { id: 'status_tumbling', kind: 'massline_tumble' } } } } },
+    entities: new Map(entityList.map((e) => [e.id, e])),
+    entityList,
+    entityIndex: { __spacefaceEntityIndexV1: true, ready: true, version: 0, ships: entityList, weaponShips: [], projectiles: [], vectorMines: [], collidables: entityList },
+    tacticalAiRuntime: { quietLatched: false },
+    massline2: {},
+  };
+  const helpers = { getEntity: (id) => state.entities.get(id) || null, spawnEntity() { return null; }, hash32, mulberry32 };
+  const ports = Object.create(aiPorts);
+  ports.init({ state, bus, helpers });
+  const frame = helpers.aiSensors.frameFor(2, state.tick);
+  const contact = (id) => frame.contacts.find((c) => c.id === id);
+  assert.ok(contact(3) && contact(4), 'both ships are in the watcher\'s sensor frame');
+  assert.strictEqual(contact(3).tumbling, true, 'a ship with a real status_tumbling entry reads tumbling');
+  assert.strictEqual(contact(4).tumbling, false, 'a steady ship does not');
+  assert.deepEqual(Object.keys(contact(3)).sort(), Object.keys(contact(4)).sort(), 'record shapes match');
+});
+
 // ── planner level ─────────────────────────────────────────────────────────────
 
 const SLEW = { inputSlewPerTick: 1, emergencyInputSlewPerTick: 1, torqueSlewPerTick: 1, emergencyTorqueSlewPerTick: 1,
   shipCollisionLookahead: 0 };
 
-function planRun(entityId, { mindOwned = false, withBody = true, ticks = 40 } = {}) {
-  const planner = new ManeuverPlanner({ seed: SEED, config: SLEW });
+function planRun(entityId, { mindOwned = false, withBody = true, ticks = 40, extra = [], contexts = null } = {}) {
+  const trace = contexts ? { emit: (row) => contexts.push({ tick: row.tick, ...row.context }) } : null;
+  const planner = new ManeuverPlanner({ seed: SEED, config: SLEW, trace });
   const target = { id: 1, kind: 'ship', pos: { x: 500, z: 0 }, vel: { x: 0, z: 0 }, radius: 10, tags: [], confidence: 1, hostile: true };
   const maneuver = { kind: ManeuverKind.INTERCEPT, targetId: 1, flightPoint: { x: 500, z: 0 },
     formationSlot: { x: 500, z: 0 }, formationBound: 170, breakFormation: true, ...(mindOwned ? { enemyMindOwned: true } : {}) };
@@ -229,7 +348,7 @@ function planRun(entityId, { mindOwned = false, withBody = true, ticks = 40 } = 
       tick,
       self: { id: entityId, team: 2, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 12,
         energyFraction: 1, heatFraction: 0, combatDoctrineId: 'interceptor_flyby', operationalMassBand: 'light' },
-      contacts: withBody ? [target, wreck] : [target],
+      contacts: withBody ? [target, wreck, ...extra] : [target, ...extra],
     };
     const request = planner.plan({ entityId, tick, perception, behavior: { maneuver }, directive });
     log.push({ tick, request, reflex: planner.byEntity.get(entityId).lastReflex });
@@ -256,7 +375,27 @@ test('through the real planner a dodging pilot is commanded off the body line, m
   }
 });
 
-import { temperamentFor } from '../src/ai/temperament.js';
 function temperamentOf(id) {
   return temperamentFor(id, { seed: SEED, doctrineId: 'interceptor_flyby', massBand: 'light' });
 }
+
+test('through the real planner a static rock in the dodge path owns the hull and silences the reflex', () => {
+  const pilot = pilotWhere((id) => notices(id, 'wreck-1', temperamentOf(id)));
+  const rock = { id: 'rock-1', kind: ContactKind.HAZARD, alive: true, hostile: false, radius: 40, tags: [], confidence: 1,
+    pos: { x: 90, z: -60 }, vel: { x: 0, z: 0 } };
+  const free = [];
+  const blocked = [];
+  const freeLog = planRun(pilot, { contexts: free });
+  const rockLog = planRun(pilot, { extra: [rock], contexts: blocked });
+  const dodgeTicks = freeLog.filter((f) => f.reflex === REFLEX_KIND.BODY_DODGE).map((f) => f.tick);
+  assert.ok(dodgeTicks.length > 0, 'without the rock the pilot dodges');
+  const avoided = blocked.filter((c) => dodgeTicks.includes(c.tick) && c.obstacleAvoidance === true);
+  assert.ok(avoided.length > 0, 'the rock puts obstacle avoidance in charge on dodge ticks');
+  for (const c of avoided) {
+    assert.equal(c.reflex, null, `the planner trace does not report a reflex while a rock owns the hull (tick ${c.tick})`);
+  }
+  for (const f of rockLog) {
+    const row = blocked.find((c) => c.tick === f.tick);
+    if (row && row.obstacleAvoidance === true) assert.equal(f.reflex, null, 'lastReflex agrees with the veto');
+  }
+});
