@@ -112,7 +112,10 @@ const SCALAR_MOD_KEYS = Object.freeze([
   'travelCeilingMult', 'strafeMult', 'brakeMult', 'cargoFlat', 'cargoCapPct',
   'damageReductionPct', 'boostTopSpeedPct', 'boostDurS', 'boostCdS', 'hullRepairOOC',
   'magnetRange', 'weaponRangePct', 'weaponDmgPct', 'weaponHeatDissipPct',
-  'ramDamageDealtMult', 'hullBurstRank', 'tetherReelRateMult', 'tetherSpoolMult', 'richCoreRingPctBonus',
+  'ramDamageDealtMult', 'hullBurstRank', 'tetherReelRateMult', 'tetherSpoolMult',
+  // 20177a037: trophy heads raise the Massline break ceiling. ships.js folds this into
+  // derived.masslineLoadCapacityMult; attachments.js headLoadCapacityMultiplier reads it.
+  'loadCapacityMult', 'richCoreRingPctBonus',
   'scanRangeMult', 'bioFilterMult', 'stealthBioMult',
   'quarantineLocker', 'hullPurgeRing',
 ]);
