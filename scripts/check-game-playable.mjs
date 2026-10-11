@@ -23,6 +23,7 @@
 // Run it before you stop working. If it is red, you broke the game, whatever else is green.
 //
 //   node scripts/check-game-playable.mjs            # New Game route
+//   node scripts/check-game-playable.mjs --circuit  # Temporary circuit, selected ship/drive
 //   node scripts/check-game-playable.mjs --verbose  # also dump diagnostics on failure
 //
 // Deliberate non-goals: no screenshots, no pixel comparison, no golden files, no performance
@@ -52,7 +53,8 @@ const ELECTRON = process.argv.includes('--electron');
 // says nothing about a save written by an OLDER build, which is the case that broke. Saves are
 // READ ONLY here: they are copied into a throwaway profile, never opened for writing.
 const REAL_SAVES = process.argv.includes('--real-saves');
-const NO_ROUNDTRIP = process.argv.includes('--no-roundtrip');
+const CIRCUIT = process.argv.includes('--circuit');
+const NO_ROUNDTRIP = CIRCUIT || process.argv.includes('--no-roundtrip');
 // --player-profile launches Electron EXACTLY as SpaceFace-Desktop.bat does: the canonical port
 // 41788, the player's own user-data directory, their real settings profile and their real GPU
 // state. The isolated evidence profile differs in every one of those, so a green isolated run is
@@ -349,6 +351,13 @@ try {
       if (REAL_SAVES) {
         // Straight onto the load path — this is what the player was doing when it broke.
         if (!(await clickButton(page, 'Continue'))) throw new Error('Continue button absent or disabled with real saves present');
+      } else if (CIRCUIT) {
+        await page.locator('[data-screen="mainMenu"] [data-action="circuits"]').click({ timeout: 60000 });
+        await page.getByRole('combobox', { name: 'Circuit ship', exact: true }).selectOption('starter_wasp');
+        await page.getByRole('combobox', { name: 'Circuit drive', exact: true }).selectOption('sprint');
+        await page.getByRole('button', { name: 'Practice: overhead', exact: true }).click();
+        await page.locator('.race-board-launch').first().click();
+        await page.getByRole('button', { name: 'Launch circuit', exact: true }).click();
       } else {
         if (!(await clickButton(page, 'New Game'))) throw new Error('no New Game button');
         await page.waitForTimeout(400);
@@ -493,6 +502,25 @@ try {
   }
 
   if (inFlight) {
+    if (CIRCUIT) {
+      const circuit = await page.evaluate(() => {
+        const st = window.SF.state, ship = st.player.ownedShips[st.player.activeShipIndex || 0];
+        const race = st.missions.active.find(m => m.status === 'active' && m.params?.racingContractId);
+        return { hull:ship?.defId, sprint:ship?.fittings?.includes('mod_engine_sprint_m'),
+          course:race?.params?.courseId, view:st.settings.gameplay.steeringView,
+          saveIsolated:window.SF.registry.get('save')._campaignSaveSuppressed() };
+      });
+      record('CIRCUIT', circuit.hull === 'ship_wasp' && circuit.sprint
+        && circuit.course === 'circuit_helios_belt' && circuit.view === 'racing' && circuit.saveIsolated,
+      JSON.stringify(circuit));
+      // The race deliberately suppresses propulsion during its simulation-clock countdown.
+      // Wait for the actual release before asking whether flight controls work.
+      await page.waitForFunction(() => {
+        const st = window.SF.state;
+        return st.missions.active.every(m => m.status !== 'active' || !m.params?.racingContractId
+          || !Number.isFinite(m.params.gridUntilSimS) || st.simTime >= m.params.gridUntilSimS);
+      }, null, { timeout: 60000 });
+    }
     await assertPlayable(page);
 
     // -- 9-12. THE CONTINUE ROUND TRIP -------------------------------------------------------
@@ -508,8 +536,7 @@ try {
       saved = await page.evaluate(async () => {
         const save = window.SF.registry && window.SF.registry.get('save');
         if (!save || typeof save.save !== 'function') return false;
-        await save.save('quick', { reason: 'playable-check' });
-        return true;
+        return (await save.save('quick', { reason: 'playable-check' })) === true;
       });
       if (saved) await page.waitForTimeout(1200);
       record('SAVE', saved, saved ? 'wrote the quick slot' : 'the save system did not accept a save');

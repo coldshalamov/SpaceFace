@@ -2,7 +2,8 @@
 import { raceGateGlobals } from '../data/raceLevels.js';
 import { activeAuthoredRace, activeRaceMission, activeSteerLock, readRaceTape, resolveSteeringView } from '../systems/racingSteer.js';
 import { injectDeckplate } from './deckplate/index.js';
-import { BINDINGS } from './bindings.js';
+import { BINDINGS, promptLabel } from './bindings.js';
+import { readRacingCoach } from './racingCoach.js';
 import { toggleSteeringView, rememberRacingResult } from './racingControls.js';
 import { createRacingMap, formatRaceTime } from './racingMap.js';
 
@@ -55,7 +56,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
       const authored=activeAuthoredRace(st), race=authored||activeRaceMission(st), lock=activeSteerLock(st);
       const viewMode=resolveSteeringView(st);
       panel.dataset.compact=authored?'false':'true';
-      view.textContent=lock?'Mission view':`${viewMode==='racing'?'Chase':'Overhead'} ${BINDINGS.steeringView.label}`;
+      view.textContent=lock?'Mission view':`${viewMode==='racing'?'Chase':'Overhead'} ${promptLabel('steeringView')}`;
       view.disabled=!!lock; view.setAttribute('aria-pressed',String(viewMode==='racing'));
       view.title=lock?'This section temporarily requires the chase camera.':'Toggle chase / overhead camera';
       reset.hidden=leave.hidden=!authored;
@@ -71,7 +72,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
       const tape=readRaceTape(race.params,player,raceGateGlobals(race.params),now);
       map?.update(player,race.params.nextGate);
       const name=tape.courseName||race.title||'Circuit';
-      line.textContent=`${name} · LAP ${tape.lap}/${tape.laps}`;
+      line.textContent=race.params.adventureSpeedId?`${name} · SPEED CONTRACT`:`${name} · LAP ${tape.lap}/${tape.laps}`;
       if(tape.holding){
         const count=Math.ceil(tape.gridLeft);
         sub.textContent=`${count} · HOLD THE GRID`;
@@ -81,7 +82,12 @@ export function mountRacingHud({ root, bus, state, screens }) {
       }
       if(lastHolding){pulse='GO';pulseUntil=now+1;live.textContent='Go';lastHolding=false;}
       sub.textContent=`${formatRaceTime(tape.elapsed)} · ${Math.round(tape.speed)} wu/s · GATE ${tape.nextGate}/${tape.gateCount}`;
-      const warnings=[tape.wrongWay?'WRONG WAY':'',tape.offRibbon?'OFF COURSE':'',tape.drafting?'IN SLIPSTREAM':'',tape.resets?'RECOVERY RUN':''].filter(Boolean);
+      const coach=readRacingCoach(race.params,player,raceGateGlobals(race.params),st);
+      const warnings=[tape.wrongWay?'WRONG WAY':'',tape.offRibbon?'OFF COURSE':'',coach?.hint||'',tape.drafting?'IN SLIPSTREAM':'',tape.resets?'RECOVERY RUN':''].filter(Boolean);
+      if(race.params.adventureSpeedId){
+        hints.textContent=[race.params.adventureSpeedHint,...warnings].filter(Boolean).join(' · ');
+        return;
+      }
       hints.textContent=warnings.length?warnings.join(' · '):now<pulseUntil?pulse:
         `${tape.steerHint.toUpperCase()} ${Math.round(tape.distanceToGate)} wu`+
         (tape.delta===null?'':` · ${tape.delta>=0?'+':''}${tape.delta.toFixed(1)}s reference pace`);

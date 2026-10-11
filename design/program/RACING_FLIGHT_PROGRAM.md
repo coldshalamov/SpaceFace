@@ -14,6 +14,67 @@ update the existing owners, do not create parallel save, input, physics, mission
 Instructions and current code take precedence over illustrative names below. Player feedback is
 welcome, but no delivery waits for the owner to do an agent's verification work.
 
+## Current tranche — 2026-10-10
+
+The foundation from [PR #239](https://github.com/coldshalamov/SpaceFace/pull/239) is merged.
+[PR #263](https://github.com/coldshalamov/SpaceFace/pull/263), which adds camera-leased mission
+sections and station handoffs, remains a separate cloud lane in flight. Do not describe its work
+as shipped or absorb its branch. The following additions are implemented in this tranche.
+Browser and Electron public-menu circuit launches pass: Wasp + Sprint, chase camera, grid release,
+live thrust, authored hulls/assets, no uncaught errors, and campaign-save isolation. Desktop/mobile
+component checks cover every ship/drive selector, view cycling and braking advice. Targeted flight,
+UI imports/labels, save-schema and deterministic V3 checks pass. Normal Adventure launches and
+Continue restores a flyable ship, but its reload exposes the exit-save quota defect D181 in the
+demo ledger; that path is not certified clean. Real device performance and complete race heats
+are not established by these launch and focused checks.
+
+- **Three constructed quick-play courses:** Textile Belt's quarry banks, Tally's technical lanes
+  and express return, and Veil's shelter banks use deterministic placement of the existing terrain
+  budget. Helios's start/return avoids the station; Veil gates pass beside landmarks. Actual world
+  materialization checks cover all eight circuit contract seeds: asteroid bodies clear the gate
+  corridor and static solids clear a 32-WU-radius hull path and grid. This is spawn-clearance
+  evidence, not a claim of measured handling feasibility at every speed. Registration belongs to
+  temporary-flight sector objects; campaign terrain keeps its existing generation.
+- **Useful ship and drive choices:** the circuit board lends the existing starter hulls with
+  Standard, Sprint or Endurance drives. Adventure still obtains those upgrades through its normal
+  ship/equipment owners. Records distinguish fitted hulls and temporary/campaign layout; recovery
+  or a changed fit leaves an unranked result. Old uncategorized times are not comparable records.
+- **Reusable personal flight:** chase-camera horizon and input improvements and an AFT cue for a
+  selected target behind the ship support ordinary flight as well as racing. Circuit braking and
+  projected-drift advice reads the fitted propulsion profile; it never takes over the controls.
+- **Three station-board speed jobs:** **Outrun the Cut** extends an escape margin at each gate;
+  **Last Open Window** combines closing deadlines with a slow final handoff; **Follow the Cold
+  Wake** uses a projected pace light and a burn ring under a passage deadline. Their pressure
+  clocks begin at the start gate, excluding the station approach. First-clear rewards and their
+  completion state use the existing mission/economy/save owners. The light remains a coaching
+  projection, not an AI craft, and these jobs leave the player's camera toggle available.
+
+This advances parts of RF-01/02/03/04/08; it does **not** close RF-01–RF-08. Real rivals, replay
+ghosts, authored moving course machinery, broader hull/handling acceptance, and device performance
+remain builds in this same program. The next implementation order is compatible ghosts, one
+precision-speed mechanic, then real rivals after their physical line planning exists.
+
+## Twelve complementary pieces to build
+
+These are concrete expansions of the packets below, not twelve new queues. “Next” follows the
+current tranche; “After” names work that uses those foundations. Keep each addition useful in
+quick play and, where indicated, the adventure world.
+
+| Priority / packet | Component and player decision | Existing implementation owners |
+|---|---|---|
+| Next / RF-04 | **Personal ghost and courier memory:** race a compatible clean run, compare actual gate splits, then reuse the same replay presentation for a memorable delivery route. Ghosts cannot collide or grant draft. | `racingSteer.js`, `racingGeometry.js`, course presentation and local records |
+| Next / RF-06 | **Massline apex anchors:** marked anchor rocks offer a short tether swing around a corner; the outer lane stays safe. Releasing at the right heading earns momentum through the normal rope and flight physics. | `tetherGameplay.js`, attachments/physics authority, `raceLevels.js` |
+| Next / RF-06 | **Precision charge chain:** central, well-aligned gate crossings build one small boost reserve; a messy corner breaks the chain while the race continues. This rewards a clean line instead of merely holding boost. | Ordered gate events, flight boost resource owner, racing HUD |
+| Next / RF-02/03 | **Customs shutter windows:** visibly cycling scanner arms create a short timed service cut beside a reliable longer route. The same machinery gives evacuation and smuggling jobs a legible risk choice. | World machinery, authored course geometry, missions and course presentation |
+| Next / RF-03 | **Thermal shelter delivery:** exposed burn legs warm a sensitive payload; larger structures provide cooling pockets. Choose between a fast hot line and a slower sheltered line, with the cost visible before entry. | Cargo/mission owners, environmental machinery, existing structure assets |
+| After / RF-05 | **Rivals with habits:** a cautious hauler defends the safe line while an aggressive light hull attacks apexes. Both use actual thrust, collision avoidance and recoveries; repeated meetings develop readable rival identities. | Tactical AI/AI ports, propulsion kernel, mission progression |
+| After / RF-03/05 | **Rescue relay and tow extraction:** reach a stranded pilot, carry or tow the casualty through a fast corridor, then make a controlled handoff. The added load changes braking and the winning route. | Physical cargo, Massline, ships' derived mass, mission handoff |
+| After / RF-03/06 | **Listening pursuers:** hard burns and weapons attract a hunter's search, while a quiet detour buys distance. Race-line knowledge becomes an escape skill; pursuit pressure comes from actual AI and lawful heat owners. | AI perception, WANTED heat, encounters, missions |
+| After / RF-02/03 | **Workfleet crossing schedules:** announced freight convoys intermittently occupy a straight. Commit before the crossing or take the service loop; adventure pilots can learn the same schedule outside a race. | Traffic/workfleet, world lane geometry, mission timing |
+| After / RF-02/06 | **Breakout debris waves:** a telegraphed salvage breakup opens successive gaps rather than spawning surprise walls. Skilled pilots read the moving debris, preserve speed and choose which gap to take. | Existing physical effects, asteroid/resource bodies, course event presentation |
+| After / RF-01/07 | **Pit-fit decisions:** a finite cup permits a drive/RCS change between heats, with visible acceleration, braking and energy tradeoffs. Equipment choices change lines and timing categories rather than providing a universal best upgrade. | Ships/loadouts, propulsion telemetry, circuit board and equipment UI |
+| After / RF-07 | **Local cups with world recognition:** first-clear medals, rival notes and cosmetic recognition acknowledge clean runs at the host station. Repeat practice improves records; it does not become an unlimited credit faucet. | Mission/economy owners, local records, unlocks and station presentation |
+
 ## Order and dependencies
 
 | Packet | Delivery | Depends on | Primary owners |

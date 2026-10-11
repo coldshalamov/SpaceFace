@@ -11,12 +11,14 @@ import { createRegistry } from './core/registry.js';
 import { startLoop } from './core/loop.js';
 import { createPresentationJournal } from './core/presentationJournal.js';
 import { entityIsJournaled } from './world/presentationSources.js';
+import { configureRacingCorridorSession } from './world/racingCorridor.js';
 import { createPresentationRuntimeCloser } from './core/presentationRunner.js';
 import { canonicalStringify } from './core/simSnapshot.js';
 import { installLiveClipDirector } from './ui/screens/clips.js';
 import { makeShipEntitySpec } from './systems/ships.js';
 import { makeEnemySpawnSpec } from './systems/combat.js';
 import { NEW_GAME, resolveNewGameStarter } from './data/newGameDefaults.js';
+import { applyRacingLoadout } from './data/racingLoadouts.js';
 import { listUserMods, hasUserContent, userContentDirLabel } from './data/userContent.js';
 import { createTelemetry } from './systems/telemetry.js';
 import { installAchievements } from './systems/achievements.js';
@@ -313,6 +315,7 @@ async function boot() {
     applyAccessibility(state.settings);
     bus.on('settings:changed', () => applyAccessibility(state.settings));
     bus.on('save:loaded', () => applyAccessibility(state.settings));
+    bus.on('save:restoring', () => configureRacingCorridorSession(state, false));
     // Ledger D15: the station sheet set used to arrive at first dock, so every screen rendered
     // differently before vs after docking once. Loading it at boot keeps the cascade identical
     // regardless of dock history; stationStyles positions it after the Deckplate sheet, matching
@@ -648,6 +651,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       // before bootstrapScene spawns the player entity. Absent/unknown ids keep the legacy
       // defaults byte-for-byte; nothing about the pick is saved as a class or lock.
       applyStarterPick(state, ships, opts);
+      applyRacingLoadout(state, ships, opts);
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
       // Single-frame breath: a committed paint is reserved for the boundary just
       // before bootstrapScene — this one only needs to yield.
@@ -689,6 +693,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
 
       // Create the canonical player and starting sector before readiness waits. This gives the
       // renderer real entity boundaries to upgrade while the route remains frozen in loading.
+      configureRacingCorridorSession(state, opts?.racingSession === true);
       await bootstrapScene(state, helpers, bus, registry, { yield: () => nextFrame() });
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
       // Run-specific loadouts and arena placement must exist before visual/GPU admission.

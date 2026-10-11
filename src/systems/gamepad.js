@@ -97,6 +97,7 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   cycleTarget: Object.freeze(['action']),
   autoTarget: Object.freeze(['dUp']),
   map: Object.freeze(['view']),
+  steeringView: Object.freeze(['l1+view']), // LB+View: chase / overhead without opening the map
   codex: Object.freeze(['home']),
   pause: Object.freeze(['menu']),
   countermeasure: Object.freeze(['r3']),
@@ -296,6 +297,7 @@ export const GAMEPAD_VERB_ALIASES = Object.freeze({
 const PAD_ACTION_CONTEXT = Object.freeze({
   accept: 'both',
   map: 'both',
+  steeringView: 'flight',
   pause: 'both',
   codex: 'flight',
   fire: 'flight',

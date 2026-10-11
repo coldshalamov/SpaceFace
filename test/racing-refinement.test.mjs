@@ -202,7 +202,7 @@ test('relative camera state survives a floating-origin shift, and reduced motion
 });
 
 function missionHarness(id='contract_textile_qual'){
-  const offer=racingOfferFor(id),p=offer.params;p.gridUntilSimS=0;p.raceStartSimS=0;
+  const offer=racingOfferFor(id),p=offer.params;p.gridUntilSimS=0;
   const player={id:1,alive:true,pos:{x:0,z:0},vel:{x:0,z:0},rot:0,mass:10};
   const m={...offer,id:'live',status:'active',params:p};
   const state={mode:'flight',simTime:0,playerId:1,entities:new Map([[1,player]]),world:{currentSectorId:p.courseSectorId},missions:{active:[m]}};
@@ -224,6 +224,33 @@ test('real mission driver completes all three laps once, publishes splits and st
     assert.equal(h.m.objectiveProgress,raceObjectiveUnits(h.p));assert.equal(readRaceRecords(s)[raceRecordKey(h.p)],h.p.raceElapsedS);
   }finally{if(old===undefined)delete globalThis.localStorage;else globalThis.localStorage=old;}
 });
+test('a mid-circuit mass change invalidates the clean best even when the starting fit is restored',()=>{
+  const h=missionHarness(),s=store(),old=globalThis.localStorage;globalThis.localStorage=s;
+  try{
+    const gates=raceGateGlobals(h.p);let startingCategory,recordKey;
+    for(let i=0;i<100&&!h.completed;i++){
+      if(i===1)h.player.mass+=5;
+      if(i===2)h.player.mass-=5;
+      const next=h.p.nextGate,g=gates[next],a=gateApproach(gates,next);h.state.simTime++;
+      h.p.planeSample={x:g.x-a.nx*10,z:g.z-a.nz*10};h.p.planeSampleSimS=h.state.simTime-1;
+      h.player.pos={x:g.x+a.nx*10,z:g.z+a.nz*10};h.player.vel={x:a.nx*20,z:a.nz*20};
+      missions._driveAuthoredRace.call(h.host,h.m,0,h.state);
+      if(i===0){
+        assert.ok(h.p.raceCategory);assert.ok(!h.p.raceFitChanged);
+        startingCategory=h.p.raceCategory;recordKey=raceRecordKey(h.p);
+        rememberRaceRecord(s,recordKey,9999);
+      }else{
+        assert.equal(h.p.raceFitChanged,true,'fit changes remain invalidating after the starting mass is restored');
+        assert.equal(h.p.raceCategory,startingCategory,'the run retains its original timing category');
+      }
+    }
+    assert.equal(h.completed,1);assert.equal(h.failed,0);assert.equal(h.player.mass,10);
+    assert.equal(h.p.raceClean,false);assert.ok(h.p.raceElapsedS<9999);
+    assert.equal(h.m.objectiveProgress,raceObjectiveUnits(h.p));
+    assert.deepEqual({...readRaceRecords(s)},{[recordKey]:9999},'an unranked finish cannot replace or add a clean best');
+  }finally{if(old===undefined)delete globalThis.localStorage;else globalThis.localStorage=old;}
+});
+
 test('recovery finish does not write a clean best; lost player and wrong sector fail instead of hanging',()=>{
   const h=missionHarness();h.p.resetCount=1;const gates=raceGateGlobals(h.p);h.p.nextGate=gates.length-1;
   const g=gates.at(-1),a=gateApproach(gates,gates.length-1);h.state.simTime=30;

@@ -2,6 +2,7 @@
 
 import { allocateEntityId, clearEntityRuntime, Masks } from '../core/entity.js';
 import { initializePresentationAdmission } from '../core/presentationAdmission.js';
+import { racingDressingSpec } from './racingCorridor.js';
 
 export const DRESSING_TABLE_SCHEMA = 'spaceface.dressingTable.v1';
 
@@ -56,6 +57,7 @@ function allocateDressingId(state, table, reserved = 0) {
 }
 
 export function insertDressingRow(state, spec = {}) {
+  spec = racingDressingSpec(state, spec);
   const table = ensureDressingTable(state);
   const id = allocateDressingId(state, table, spec.id);
   const row = {

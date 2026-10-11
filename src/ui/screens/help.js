@@ -136,6 +136,7 @@ export const GAMEPAD_ROW_ACTIONS = Object.freeze([
   ['Deploy nav beacon', 'deployBeacon', (g) => g],
   ['Jettison cargo lot', 'jettisonLot', (g) => g],
   ['Gyre Snare (hold: lash; release: bowl)', 'gyreSnare', (g) => g],
+  ['Chase / overhead camera', 'steeringView', (g) => g],
 ]);
 
 // Rows with no pad action: the analogue sticks and the one verb a pad does not own. Keyed by
@@ -157,6 +158,7 @@ const GAMEPAD_ROW_ORDER = Object.freeze([
   'Scanner pulse', 'Anchor Mass Seed', 'Deploy attractive Well', 'Clearing Cone',
   'Skim collector', 'World Site beam', 'Deploy nav beacon', 'Jettison cargo lot',
   'Gyre Snare (hold: lash; release: bowl)',
+  'Chase / overhead camera',
 ]);
 
 // The static rows carry no action, so their text is authored here. Everything else is derived.
