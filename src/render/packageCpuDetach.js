@@ -287,7 +287,16 @@ export function createSourceDetachManifest(url, textures, options = {}) {
   const contentHash = String(options.contentHash || '');
   if (!contentHash) return null;
   const existing = manifests.get(contentHash);
-  if (existing) return existing;
+  if (existing) {
+    // A second compile of the same source bytes shares the first manifest: its entries cover
+    // the FIRST tree's texture objects only (the fresh tree's textures stay unmarked either
+    // way — their eager detach is the partsLibrary sweep's business). Honor detachOnMark
+    // against the manifest's own entries so the flag means the same thing on both paths.
+    if (options.detachOnMark === true) {
+      for (const entry of existing.entries) detachPackageTexture(entry.texture);
+    }
+    return existing;
+  }
   const manifest = createPackageDetachManifest({
     contentHash,
     assetId: options.assetId || url,
@@ -312,6 +321,20 @@ export function isPackageTextureDetached(texture) {
   const manifest = manifests.get(mark.contentHash);
   const entry = manifest && manifest.entries[mark.ordinal];
   return !!entry && entry.texture === texture && textureEntryReleased(entry);
+}
+
+/**
+ * Whether a live manifest entry covers THIS texture object — i.e. the detach/pending gates
+ * can see its releases. A clone carrying a COPIED mark (Texture.copy JSON-clones userData)
+ * fails the manifest identity check and stays gate-blind, exactly like a texture that was
+ * never marked: its payload must never be released by the shared-source path (W140-D2).
+ */
+export function packageTextureDetachCovers(texture) {
+  const mark = texture && texture.userData && texture.userData.spacefaceCpuDetach;
+  if (!mark) return false;
+  const manifest = manifests.get(mark.contentHash);
+  const entry = manifest && manifest.entries[mark.ordinal];
+  return !!entry && entry.texture === texture;
 }
 
 /**
@@ -410,6 +433,52 @@ export function noteGeometryGpuResident(geometry, renderer) {
   if (!found || !renderer) return false;
   found.entry.uploadedOn.set(renderer, true);
   return true;
+}
+
+// Drawables armed to ledger their own draws — a WeakSet so re-arming the same object is
+// idempotent (admission passes re-collect the same subjects many times).
+const residentLedgerArmedObjects = new WeakSet();
+
+/**
+ * Arm a drawable to ledger its geometry's GPU residency when a REAL draw creates the
+ * renderer's attribute records. WebGLRenderer.compile() links programs only — it creates no
+ * attribute records — so a compile-time ledger marks this renderer resident before a single
+ * buffer exists (W140-D1). The chained onAfterRender hook fires inside three's renderObject
+ * after renderBufferDirect: this object's own upload literally just completed, and the
+ * geometry argument is exactly what was drawn (tier-swapped alternates covered for free).
+ * A draw landing on an already-detached (emptied) geometry uploaded empty VBOs — that is not
+ * a residency proof, so the note is skipped and the pending gate stays armed for the next
+ * consult instead of pinning a blind resident stamp.
+ */
+export function armGeometryGpuResidentLedger(object) {
+  if (!object || residentLedgerArmedObjects.has(object)) return false;
+  residentLedgerArmedObjects.add(object);
+  const previous = object.onAfterRender;
+  object.onAfterRender = function (drawingRenderer, drawingScene, camera, geometry, material, group) {
+    if (geometry && !isPackageGeometryDetached(geometry)) {
+      noteGeometryGpuResident(geometry, drawingRenderer);
+    }
+    if (typeof previous === 'function') {
+      previous.call(this, drawingRenderer, drawingScene, camera, geometry, material, group);
+    }
+  };
+  return true;
+}
+
+/**
+ * Drop every `uploadedOn` stamp `renderer` holds — the attribute records they described died
+ * with its GL context, so post-restore the stamps would falsely satisfy the pending gate
+ * (W140-G4). The consult re-stamps truthfully on the next real draw (or the armed ledger).
+ */
+export function dropGeometryGpuResidencyLedger(renderer) {
+  if (!renderer) return 0;
+  let dropped = 0;
+  for (const manifest of manifests.values()) {
+    for (const entry of manifest.geometryEntries) {
+      if (entry.uploadedOn.delete(renderer)) dropped += 1;
+    }
+  }
+  return dropped;
 }
 
 /**
@@ -555,6 +624,9 @@ async function rehydrateManifest(manifest) {
       entry.detachedVersions.set(record, record.version);
     }
     entry.recordsDied = false;
+    // The refill consumed the released-name/record pairs: a later re-detach re-collects them
+    // fresh — clearing here keeps the list from accreting duplicates across cycles (W140-D3).
+    entry.released.length = 0;
     entry.detached = false;
     restoredGeometries += 1;
     restoredBytes += entry.freedBytes;
