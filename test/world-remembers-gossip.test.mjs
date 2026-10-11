@@ -222,3 +222,79 @@ test('hail prompt marks the deed told when it renders the offer, once per reques
   assert.match(src, /payload\.deedId && payload\.requestId !== toldRequestId/);
   assert.match(src, /markTold\(state, payload\.deedId/);
 });
+
+// ── the bar: one contact opens with a deed, told once per dock ───────────────────────────────
+const { generateContacts, tellBarDeedOnce } = await import('../src/ui/station/barContacts.js');
+const { SECTORS } = await import('../src/data/sectors.js');
+const { fenceBarContact } = await import('../src/ui/station/fenceContact.js');
+
+for (const seed of SEEDS) {
+  test(`bar [${seed}]: a dock slam at Ceres makes a Drift contact open with it; told 1 after a show, still 1 after a re-render`, () => {
+    const h = boot(seed);
+    try {
+      const deed = slam(h.state);
+      const session = { stationId: 'station_ceres', opener: undefined, told: false };
+      const contacts = generateContacts('station_ceres', h.state, { deedSession: session });
+      const speakers = contacts.filter((c) => c.deedId);
+      assert.equal(speakers.length, 1, 'exactly one contact speaks');
+      const speaker = speakers[0];
+      assert.equal(speaker.deedId, deed.id);
+      assert.equal(speaker.factionId, 'faction_dmc');
+      assert.match(speaker.line, new RegExp(deedPlaceName(deed)));
+      assert.equal(speaker.line, deedLine(deed, { voice: 'grievance' }));
+
+      // Generating contacts is a pure read: no render, no told.
+      assert.equal(deed.told, 0);
+      // First render of the stage tells it; a re-render (same dock, same session) does not.
+      assert.equal(tellBarDeedOnce(h.state, speaker, session, 'station_ceres'), true);
+      assert.equal(deed.told, 1);
+      assert.equal(deed.toldBy, 'bar:station_ceres');
+      const again = generateContacts('station_ceres', h.state, { deedSession: session });
+      assert.equal(again.find((c) => c.deedId).line, speaker.line, 'the line holds for the whole dock');
+      assert.equal(tellBarDeedOnce(h.state, again.find((c) => c.deedId), session, 'station_ceres'), false);
+      assert.equal(deed.told, 1);
+
+      // Next dock: a told deed is not the opener again.
+      const nextDock = generateContacts('station_ceres', h.state, { deedSession: { opener: undefined, told: false } });
+      assert.equal(nextDock.filter((c) => c.deedId).length, 0);
+    } finally { dispose(h); }
+  });
+
+  test(`bar [${seed}]: the fence and the deed opener coexist; authored contacts are never overwritten`, () => {
+    const h = boot(seed);
+    try {
+      const sker = SECTORS.find((s) => (s.stations || []).some((st) => st.id === 'station_sker'));
+      h.state.world.currentSectorId = sker.id;
+      h.state.player.heat = 1;
+      recordDeed(h.state, { kind: 'kill_lawful', sectorId: sker.id, factionId: 'faction_scn', subject: 'corvette' });
+      const fence = fenceBarContact('station_sker', h.state);
+      assert.ok(fence, 'a WANTED pilot meets the Sker fence');
+      const session = { opener: undefined, told: false };
+      const contacts = generateContacts('station_sker', h.state, { deedSession: session });
+      const bare = generateContacts('station_sker', h.state);
+      assert.ok(contacts.some((c) => c.fenceId === fence.fenceId && c.choices.length === fence.choices.length));
+      const speakers = contacts.filter((c) => c.deedId);
+      assert.equal(speakers.length, 1, 'one contact says it, fence or not');
+      for (const c of contacts) {
+        if (c.canonicalKey || c.depthProgram) {
+          const before = generateContacts('station_sker', createGameState(seed)).find((o) => o.id === c.id);
+          assert.equal(c.line, before && before.line, 'an authored contact keeps its own line');
+        }
+      }
+      assert.equal(bare.length, contacts.length);
+    } finally { dispose(h); }
+  });
+
+  test(`bar [${seed}]: no record key, no deed line, no throw`, () => {
+    const h = boot(seed);
+    try {
+      const session = { opener: undefined, told: false };
+      const contacts = generateContacts('station_ceres', h.state, { deedSession: session });
+      assert.ok(contacts.length >= 2);
+      assert.equal(contacts.filter((c) => c.deedId).length, 0);
+      assert.equal(session.opener, null);
+      assert.equal(tellBarDeedOnce(h.state, contacts[0], session, 'station_ceres'), false);
+      assert.equal('record' in h.state.story, false);
+    } finally { dispose(h); }
+  });
+}

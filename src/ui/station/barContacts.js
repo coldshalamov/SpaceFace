@@ -44,6 +44,9 @@ import {
 } from '../../data/orrinWitnessCase.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { fenceBarContact, fenceBarReply } from './fenceContact.js'; // U-B: fences with faces
+import { hash32 } from '../../core/rng.js';
+import { deedLine } from '../../data/deedPhrases.js';
+import { deedToneFor, markTold, peekDeedRecord, pickDeedToTell } from '../../systems/deedRecord.js'; // U-E: the bar gossips
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
 
@@ -448,7 +451,72 @@ export function authoredBarContactsForStation(stationId, state = {}) {
   });
 }
 
-export function generateContacts(stationId, state = {}) {
+// THE WORLD REMEMBERS (U-E): one contact at the bar opens with a deed from the Record. Pure read:
+// generateContacts runs on every render, so the pick is memoised in `deedSession` (a plain object
+// the screen owns for one dock) and the deed is marked told by the screen once the line has been
+// rendered (bar.js), never here. Only generated contacts and the fence may speak - an authored
+// contact's own line is never replaced.
+function deedOpenerSpeaker(contact) {
+  if (!contact) return false;
+  if (contact.fenceId) return true;
+  return !(contact.canonicalKey || contact.depthProgram || contact.endgameChoice
+    || contact.rumorSourceRef || contact.choirReliefMemory || contact.bay7Rumor);
+}
+
+function pickDeedOpener(stationId, state, listed, info) {
+  if (!peekDeedRecord(state)) return null;
+  const speakers = listed.filter(deedOpenerSpeaker);
+  if (speakers.length === 0) return null;
+  const seed = state && state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 0;
+  const stationFactionId = info ? info.station.factionId : 'faction_scn';
+  const sectorId = info ? info.sector.id : null;
+  let best = null;
+  // A contact whose faction has an opinion speaks first; ties break by hash32, not order.
+  for (const contact of speakers) {
+    const factionId = contact.factionId || stationFactionId;
+    const deed = pickDeedToTell(state, { speakerFactionId: factionId, sectorId, seed });
+    if (!deed || deed.told > 0) continue;
+    const tone = deedToneFor(deed, factionId);
+    if (tone === 'neutral') continue;
+    const h = hash32(seed, 'bar-deed', stationId, deed.id, contact.id);
+    if (!best || h < best.h) best = { contact, deed, tone, h };
+  }
+  if (!best) {
+    // Nobody here has an opinion: the house (station faction) says it in its own voice.
+    const host = speakers.find((c) => c.factionId === stationFactionId) || speakers[0];
+    const deed = pickDeedToTell(state, { speakerFactionId: stationFactionId, sectorId, seed });
+    if (host && deed && !(deed.told > 0)) best = { contact: host, deed, tone: deedToneFor(deed, stationFactionId) };
+  }
+  if (!best) return null;
+  const line = deedLine(best.deed, { voice: best.tone });
+  return line ? { contactId: best.contact.id, deedId: best.deed.id, line } : null;
+}
+
+function stampDeedOpener(listed, stationId, state, info, session) {
+  let opener;
+  if (session && session.opener !== undefined) opener = session.opener;
+  else {
+    opener = pickDeedOpener(stationId, state, listed, info);
+    if (session) session.opener = opener;
+  }
+  if (!opener) return;
+  const host = listed.find((c) => c && c.id === opener.contactId);
+  if (!host) return;
+  host.line = opener.line;
+  host.deedId = opener.deedId;
+}
+
+/**
+ * The screen calls this when a contact's opener line has actually been drawn on a live screen.
+ * Marks the deed told once per `deedSession` (one dock); a re-render returns false.
+ */
+export function tellBarDeedOnce(state, contact, deedSession, stationId) {
+  if (!contact || !contact.deedId || !deedSession || deedSession.told) return false;
+  deedSession.told = true;
+  return !!markTold(state, contact.deedId, { by: `bar:${stationId}` });
+}
+
+export function generateContacts(stationId, state = {}, opts = {}) {
   const seed = fnvHash('bar_contacts_' + stationId);
   const rng  = mulberry32(seed);
   const count = 2 + Math.floor(rng() * 3); // 2-4 contacts
@@ -531,6 +599,7 @@ export function generateContacts(stationId, state = {}) {
   stampUnheardBarRumor(listed, stationId, state);
   stampHeliosBay7Rumor(listed, stationId, state);
   stampChoirReliefMemory(listed, stationId, state);
+  stampDeedOpener(listed, stationId, state, info, opts && opts.deedSession);
   return listed;
 }
 

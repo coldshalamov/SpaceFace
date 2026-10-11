@@ -12,6 +12,7 @@ import { barFrameHtml } from '../../views/stationFrames.js';
 // `.sx-choice[data-choice]`, `.sx-bar-offer*`, `[data-inspect]`, `[data-bigpic]` are hooks.
 import {
   generateContacts,
+  tellBarDeedOnce,
   installGhostConvoyBarListener,
   installOreLotBarListener,
   getChoices,
@@ -149,6 +150,12 @@ export function createBarScreen(ctx) {
   let pendingFrontierRumorOffer = null;
   let acceptedMissionId = null;
   let pinnedContact = null;
+  // THE WORLD REMEMBERS (U-E): the one deed a contact opens with this dock. `opener` is memoised by
+  // generateContacts so re-renders keep the same line; `told` flips once the line has been drawn.
+  let deedSession = { stationId: null, opener: undefined, told: false };
+  const offDockDeed = ctx && ctx.bus && typeof ctx.bus.on === 'function'
+    ? ctx.bus.on('dock:docked', () => { deedSession = { stationId: null, opener: undefined, told: false }; })
+    : null;
 
   function dressShell() {
     const shell = (el.closest && el.closest('.sx-berth, .sx-app, .k-screen'))
@@ -214,7 +221,8 @@ export function createBarScreen(ctx) {
   const sid = () => (ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId) || null;
   function contacts(state) {
     try {
-      const generated = generateContacts(sid(), state) || [];
+      if (deedSession.stationId !== sid()) deedSession = { stationId: sid(), opener: undefined, told: false };
+      const generated = generateContacts(sid(), state, { deedSession }) || [];
       if (pinnedContact && !generated.some((contact) => contact.id === pinnedContact.id)) {
         return [pinnedContact, ...generated];
       }
@@ -223,7 +231,7 @@ export function createBarScreen(ctx) {
   }
   function selected(state) {
     const list = contacts(state);
-    return list.find((c) => c.id === selectedId) || list[0] || null;
+    return list.find((c) => c.id === selectedId) || list.find((c) => c.deedId) || list[0] || null;
   }
 
   function missionOfferAvailable(state, missionId) {
@@ -349,7 +357,7 @@ export function createBarScreen(ctx) {
       dressRail();
       return;
     }
-    if (!selectedId) selectedId = list[0].id;
+    if (!selectedId) selectedId = (list.find((c) => c.deedId) || list[0]).id;
     railEl.innerHTML =
       `<p class="k-caps">Here tonight</p>` +
       `<ul class="k-words sx-bar__rows">` +
@@ -378,6 +386,8 @@ export function createBarScreen(ctx) {
     const memory = stationContactMemoryFor(state, c.id);
     let memLine = '';
     try { memLine = stationContactMemoryLine(memory, c.line) || c.line || ''; } catch (_) { memLine = c.line || ''; }
+    // A contact with something to say about the pilot says it first, even if you have met before.
+    if (c.deedId) memLine = c.line;
     const choices = (() => { try { return getChoices(c.role, c) || []; } catch (_) { return []; } })();
 
     stageEl.innerHTML =
@@ -401,6 +411,13 @@ export function createBarScreen(ctx) {
       `</div>`;
 
     appendVonnFreightLossMapOffer(state, c);
+
+    // Told exactly once per dock, and only when the line is on a live screen (not a hidden cache).
+    if (c.deedId && el.isConnected !== false
+      && !(el.closest && el.closest('[hidden]'))
+      && stageEl.querySelector('.sx-talk__memory')) {
+      tellBarDeedOnce(state, c, deedSession, sid());
+    }
 
     const big = stageEl.querySelector('[data-bigpic]');
     if (big) { try { mountContactPortrait(big, c, { className: 'sx-portrait sx-portrait--lg', size: 1024, eager: true }); } catch (_) {} }
@@ -783,6 +800,7 @@ export function createBarScreen(ctx) {
     refresh(c) { renderAll((c || ctx).state || {}); },
     dispose() {
       pinnedContact = null;
+      if (typeof offDockDeed === 'function') offDockDeed();
       if (dial) { try { dial.dispose(); } catch (_) {} dial = null; }
       if (wave) { wave.dispose(); wave = null; }
       if (stopType) { stopType(); stopType = null; }
