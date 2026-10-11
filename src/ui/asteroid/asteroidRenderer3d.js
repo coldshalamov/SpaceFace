@@ -68,6 +68,7 @@ import {
   detachedGeometryUploadPending,
   detachedTextureUploadPending,
   dropGeometryGpuResidencyLedger,
+  packageDetachSerialNow,
   rehydrateDetachedGeometries,
   rehydrateDetachedTextures,
 } from '../../render/packageCpuDetach.js';
@@ -1399,6 +1400,14 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // context took with it — drop this renderer's stamps, then re-run the admission consult's
   // rehydrate gate over the live scene before the next bloom pass draws emptied arrays.
   let contextRestoreConsult = null;
+  // Re-collect budget for the detach-race re-fire inside the consult's settle. A covered payload
+  // release landing mid-consult bumps packageDetachSerial, so the settle re-invokes the handler
+  // (ledger drop + re-collect, both idempotent) instead of clearing blind and letting the next
+  // works bind read emptied payloads inside bloom.render (W143-H1). The bound keeps sustained
+  // detach churn from suppressing the draw forever — past it the consult degrades to the old
+  // behavior and the next admission consult/restore heals instead.
+  let contextRestoreRecollects = 0;
+  const CONTEXT_RESTORE_RECOLLECT_MAX = 4;
   const onWorksContextLost = (event) => { event.preventDefault(); };
   const onWorksContextRestored = () => {
     if (disposed || worksTearingDown || glTeardownDone) return;
@@ -1408,7 +1417,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // body's finally runs synchronously, before the assignment stores the promise, and the
     // latch would stick truthy forever — suppressing bloom.render and every later restore
     // (W141-D5).
+    let consultArmedSerial = 0;
     contextRestoreConsult = (async () => {
+      // Serial captured at collect time: any covered release after this point — inside the
+      // collected manifests or not — moves the serial, and the settle re-consults (W143-H1).
+      consultArmedSerial = packageDetachSerialNow();
       try {
         const pendingGeometries = collectStartupGeometries(scene)
           .filter((geometry) => detachedGeometryUploadPending(geometry, renderer));
@@ -1419,7 +1432,16 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       } catch (error) {
         console.warn('[asteroidRenderer3d] context-restore rehydrate failed', error);
       }
-    })().finally(() => { contextRestoreConsult = null; });
+    })().finally(() => {
+      contextRestoreConsult = null;
+      if (packageDetachSerialNow() !== consultArmedSerial
+          && contextRestoreRecollects < CONTEXT_RESTORE_RECOLLECT_MAX) {
+        contextRestoreRecollects += 1;
+        onWorksContextRestored();
+      } else {
+        contextRestoreRecollects = 0;
+      }
+    });
   };
   canvas.addEventListener('webglcontextlost', onWorksContextLost, false);
   canvas.addEventListener('webglcontextrestored', onWorksContextRestored, false);
