@@ -2,10 +2,11 @@
 // A blockade runner is pinned in a rock pocket and the only clean lane out is the gap
 // between two belt stones already on the field. The raiders pressing it are angled to
 // funnel every juke through the same slot — so the pursuit keeps crossing one corridor.
-// Nothing is strung yet: the braid is that the corridor is real. A line latched rock-to-
-// rock across the gap clotheslines whatever crosses it — stuntRecognition already pays
-// the 'clothesline' grade for exactly that. The player supplies the rope; the world
-// supplies the gate, the chase, and the pressure.
+// Nothing is strung yet: the braid is that the corridor is real. The clothesline is the
+// player's own line across that existing rock chokepoint; a pursuer running the slot
+// meets the line. A rock-to-rock latch is not the mechanism — Twin Bridle rejects two
+// asteroid endpoints. stuntRecognition pays the 'clothesline' grade for the intercept.
+// The player supplies the rope; the world supplies the gate, the chase, and the pressure.
 import { deepFreeze, defineEncounter } from './catalog.js';
 
 export const encounterOrder = 352;
