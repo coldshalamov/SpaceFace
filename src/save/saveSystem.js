@@ -68,6 +68,7 @@ import {
   saveGzipAvailable,
   SAVE_GZIP_FORMAT,
   SAVE_WRITE_MAX_BYTES,
+  cardDataFromEnvelope,
 } from './saveWorker.js';
 import {
   ACHIEVEMENTS_STORAGE_KEY,
@@ -2507,6 +2508,7 @@ export const save = {
         const indexed = normalizeSlotIndex(this._readIndex());
         const verdicts = {};
         const cardEnvs = {};
+        const cardDatas = {};
         const primaryRaws = new Map();
         const collected = this._sharedStoreCollectCache;
         const collectedRaws = collected && collected.gen === _saveStoreGeneration
@@ -2540,7 +2542,14 @@ export const save = {
           }
           jobs.push(Promise.resolve(this._prepareEnvelopeMetaAsync(raw)).then((v) => {
             verdicts[slot] = Object.assign(verdicts[slot] || {}, { [kind]: !!(v && v.ok) });
-            if (v && v.cardEnv) cardEnvs[slot] = v.cardEnv;
+            if (v && v.cardEnv) {
+              cardEnvs[slot] = v.cardEnv;
+              // Retain the small card projection alongside the verdicts — the slot fill's
+              // lazy tail consults it instead of re-posting the same multi-MB blob to the
+              // worker for an identical parse (W139-G2).
+              const cardData = cardDataFromEnvelope(v.cardEnv);
+              if (cardData) cardDatas[slot] = cardData;
+            }
           }).catch(() => {
             verdicts[slot] = Object.assign(verdicts[slot] || {}, { [kind]: false });
           }));
@@ -2588,7 +2597,7 @@ export const save = {
         }
         const cache = this._slotIndexCache;
         if (cache && cache.sig === sig && cache.authoritative) return;
-        this._slotIndexCache = { sig, merged, authoritative: false };
+        this._slotIndexCache = { sig, merged, authoritative: false, cardDatas };
         this._maybeSpeculateContinuePrepare(sig, merged, primaryRaws);
         if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('save:slotsValidated', {});
       } catch (err) { /* validation is best-effort */ } finally {
@@ -5150,6 +5159,16 @@ export const save = {
       if (!prepared.ok) return { ok: false, reason: prepared.reason || 'load_failed' };
       return { ok: true, cardEnv: prepared.cardEnv || null };
     });
+  },
+
+  // The card projection a validated scan already produced for this slot — lives and dies
+  // with the sig-keyed _slotIndexCache, so a same-generation write re-mints it instead of
+  // serving stale data. Null when no scan produced one; the caller falls back to the
+  // worker peek (W139-G2).
+  slotCardData(slot) {
+    const cache = this._slotIndexCache;
+    const data = cache && cache.cardDatas ? cache.cardDatas[slot] : null;
+    return data || null;
   },
 
   // The slot fill's card payload — a JSON.parse + small projection only (no migration/
