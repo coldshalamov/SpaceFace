@@ -93,13 +93,16 @@ function release(t) { t.state.input.actions.gyreSnare = false; t.sim.step(); }
 
 test('oversized cores stay whole and report TOO HEAVY instead of IN NET', () => {
   const t = boot();
-  const massive = rock(t.sim, T.mawDist, 0, T.maxClumpMass + 1, 4);
-  const wide = rock(t.sim, T.mawDist + 8, 0, 10, T.maxClumpRadius + 1);
+  // Fit is a size question, never a tonnage one: both bodies are over maxClumpRadius,
+  // so neither can go in whole no matter what the scale says.
+  const massive = rock(t.sim, T.mawDist, 0, T.maxClumpMass + 1, T.maxClumpRadius + 1);
+  const wide = rock(t.sim, T.mawDist + 8, 0, 10, T.maxClumpRadius + 2);
   hold(t);
   assert.equal(t.sys._rt.phase, 'beaming');
   assert.equal(t.sys._rt.coreId, null);
   assert.equal(massive.physicsBody.mass, T.maxClumpMass + 1);
-  assert.equal(wide.physicsBody.radius, T.maxClumpRadius + 1);
+  assert.equal(massive.physicsBody.radius, T.maxClumpRadius + 1);
+  assert.equal(wide.physicsBody.radius, T.maxClumpRadius + 2);
   assert.equal(t.state.gyreSnare.basinCount, 0);
   assert.equal(t.state.gyreSnare.tooHeavyCount, 2);
   const hud = Object.create(gyreHud);
@@ -176,7 +179,7 @@ test('net feedback distinguishes legal meals, towed cargo and bodies that cannot
   rock(t.sim, T.mawDist + 45, 0, 12, 4);
   const freight = rock(t.sim, T.mawDist + 55, 0, 12, 4, 'wreck');
   freight.data.salvagePool = { cmdty_ore_iron: 2 };
-  rock(t.sim, T.mawDist + 60, 0, T.maxClumpMass + 1, 4);
+  rock(t.sim, T.mawDist + 60, 0, T.maxClumpMass + 1, T.maxClumpRadius + 1);
   hold(t);
   assert.equal(t.state.gyreSnare.basinCount, 1);
   assert.equal(t.state.gyreSnare.towCount, 1);
@@ -210,7 +213,7 @@ test('verb untouched → strict no-op (mirror off, no pull, no events)', async (
 // ── basin pull ────────────────────────────────────────────────────────────────────
 test('held verb pulls an absorbable in the basin toward the maw', async () => {
   const t = await bootPhysics();
-  const body = rock(t.sim, T.mawDist + 40, 20); // inside basinRadius of the maw (maw at +x*200)
+  const body = rock(t.sim, T.mawDist + 60, 20); // inside basinRadius of the maw (maw at +x*200); far enough out that even a fully-coupled pebble can't reach snagRadius inside the hold window
   hold(t);
   assert.equal(t.sys._rt.phase, 'beaming');
   for (let i = 0; i < 25; i++) t.sim.step();
@@ -1202,19 +1205,22 @@ test('pullMaxAccel clamps any single body impulse (fast inbound body in the basi
 });
 
 // ── katamari caps ───────────────────────────────────────────────────────────────
-test('a whole meal can fill maxClumpMass and a capped clump stops eating AND pulling', async () => {
+test('a whole meal can fill the member ledger and a capped clump stops eating AND pulling', async () => {
   const t = await bootPhysics();
   const core = rock(t.sim, T.mawDist, 0, 6, 4);
   hold(t);
   assert.equal(t.sys._rt.phase, 'holding');
   const rt = t.sys._rt;
-  rt.clumpMass = T.maxClumpMass - 3;
-  const meal = rock(t.sim, T.mawDist + 14, 4, 3, 4); // fits the remaining mass exactly
+  while (rt.members.length < T.maxAbsorbRecords - 1) {
+    rt.members.push({ type: 'asteroid', mass: 1, radius: 1, nx: 0, nz: 0 });
+  }
+  const meal = rock(t.sim, T.mawDist + 14, 4, 3, 4); // the last seat on the ledger
   for (let i = 0; i < 30 && meal.alive !== false; i++) {
     t.state.input.actions.gyreSnare = true; t.sim.step();
   }
   assert.equal(meal.alive, false, 'the whole meal merged');
-  assert.equal(rt.clumpMass, T.maxClumpMass, 'the full meal reaches the authored ceiling');
+  assert.equal(rt.members.length, T.maxAbsorbRecords, 'the absorb ledger reaches the authored ceiling');
+  assert.equal(t.state.gyreSnare.full, true, 'the published cap flag agrees with the ledger');
   // At cap a follower touching the clump skin is refused the merge (the _absorb
   // early-return + continue) — collision nudges make contact velocity unreadable,
   // so pin survival + the mass ceiling instead.
@@ -1235,21 +1241,87 @@ test('a whole meal can fill maxClumpMass and a capped clump stops eating AND pul
   t.cleanup();
 });
 
-test('member ledger is bounded while totalAbsorbed keeps counting', async () => {
+test('member ledger is the cap: bounded, and the count tracks real absorbs', async () => {
   const t = await bootPhysics();
   rock(t.sim, T.mawDist, 0, 6, 4);
   hold(t);
   const rt = t.sys._rt;
   rt.members.length = 0;
-  for (let i = 0; i < T.maxAbsorbRecords; i++) rt.members.push({ type: 'asteroid', mass: 1, radius: 1, nx: 0, nz: 0 });
-  rt.totalAbsorbed = T.maxAbsorbRecords;
+  while (rt.members.length < T.maxAbsorbRecords - 1) {
+    rt.members.push({ type: 'asteroid', mass: 1, radius: 1, nx: 0, nz: 0 });
+  }
+  rt.totalAbsorbed = T.maxAbsorbRecords - 1;
   const meal = rock(t.sim, T.mawDist + 14, 4, 4, 2);
   for (let i = 0; i < 40 && meal.alive !== false; i++) {
     t.state.input.actions.gyreSnare = true; t.sim.step();
   }
-  assert.equal(meal.alive, false, 'meal absorbed');
+  assert.equal(meal.alive, false, 'the last ledger seat still takes a whole meal');
   assert.equal(rt.members.length, T.maxAbsorbRecords, 'VFX ledger stays bounded');
-  assert.equal(rt.totalAbsorbed, T.maxAbsorbRecords + 1, 'the ×N count never freezes at the ledger cap');
+  assert.equal(rt.totalAbsorbed, T.maxAbsorbRecords, 'the ×N count tracks the real absorb');
+  // The ledger IS the cap — a saturated clump refuses the next meal outright and
+  // the count never inflates on a refusal.
+  const overflow = rock(t.sim, T.mawDist + 14, -4, 4, 2);
+  for (let i = 0; i < 40; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(overflow.alive, true, 'a capped clump cannot absorb another meal');
+  assert.equal(rt.totalAbsorbed, T.maxAbsorbRecords, 'a refused meal never inflates the count');
+  t.cleanup();
+});
+
+test('two real radius-30 field rocks bowl at a finite, mass-floored launch speed', async () => {
+  const { insertAsteroidFieldRock } = await import('../src/world/asteroidField.js');
+  const t = await bootPhysics();
+  insertAsteroidFieldRock(t.state, { pos: { x: T.mawDist, z: 0 }, radius: 30 });
+  insertAsteroidFieldRock(t.state, { pos: { x: T.mawDist + 24, z: 8 }, radius: 30 });
+  hold(t);
+  for (let i = 0; i < 240 && !(t.sys._rt.phase === 'holding' && t.sys._rt.totalAbsorbed >= 1); i++) {
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+  assert.equal(t.sys._rt.phase, 'holding', 'a real r30 field rock snagged as the core');
+  assert.ok(t.sys._rt.totalAbsorbed >= 1, 'the second rock merged into the clump');
+  const clumpMass = t.sys._rt.clumpMass;
+  assert.ok(Number.isFinite(clumpMass) && clumpMass > 0, `clump carries real derived mass (${clumpMass})`);
+  release(t);
+  for (let i = 0; i < T.launchWindupTicks + T.launchTicks + 2; i++) t.sim.step();
+  const launched = t.events.find((e) => e.name === 'gyre:launched');
+  assert.ok(launched, 'the clump bowled');
+  assert.ok(Number.isFinite(launched.p.speed), `finite launch speed (got ${launched.p.speed})`);
+  assert.ok(launched.p.speed >= (1 - T.launchMassPenalty) * T.launchSpeed,
+    `the mass floor holds even for a saturated throw (${launched.p.speed.toFixed(1)} >= ${((1 - T.launchMassPenalty) * T.launchSpeed).toFixed(1)})`);
+  assert.ok(launched.p.speed <= T.launchSpeed, 'the penalty never adds speed');
+  t.cleanup();
+});
+
+test('the clump cap is the collider radius, not tonnage: a rock that fits goes in whole, one wu wider is pulled but TOO HEAVY', async () => {
+  const { insertAsteroidFieldRock } = await import('../src/world/asteroidField.js');
+  const { asteroidColliderRadius } = await import('../src/data/asteroidColliders.js');
+  const t = await bootPhysics();
+  // Production rocks carry visual radius ×1.16 collider padding: record r51 → collider
+  // 59.16 (fits), r52 → 60.32 (one step over the cap).
+  const fat = insertAsteroidFieldRock(t.state, { pos: { x: T.mawDist, z: 0 }, radius: 51 });
+  assert.ok(asteroidColliderRadius(undefined, 51) <= T.maxClumpRadius, 'fixture really fits');
+  assert.ok(asteroidColliderRadius(undefined, 52) > T.maxClumpRadius, 'fixture really over the cap');
+  // The over-cap rock goes in with the first beam tick — the basin lane's courtesy
+  // tug is the "still pulled" half (in HOLD the suck lane owns the annulus and a
+  // too-heavy body correctly gets no leech).
+  const huge = insertAsteroidFieldRock(t.state, { pos: { x: T.mawDist + 30, z: 0 }, radius: 52 });
+  hold(t);
+  const hugeEnt = t.state.entities.get(huge.id);
+  assert.ok(hugeEnt, 'the over-cap rock promoted into a live body');
+  assert.ok(Math.hypot(hugeEnt.vel.x, hugeEnt.vel.z) > 0, 'the beam still grips it');
+  for (let i = 0; i < 90 && t.sys._rt.phase !== 'holding'; i++) {
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+  }
+  assert.equal(t.sys._rt.phase, 'holding', 'a rock whose collider fits the cap goes in whole');
+  assert.equal(t.sys._rt.coreId, fat.id);
+  // One record-radius step fatter and the same rock can never go in — the HUD still
+  // answers TOO HEAVY and it keeps every gram it brought.
+  let tooHeavy = 0;
+  for (let i = 0; i < 30; i++) {
+    t.state.input.actions.gyreSnare = true; t.sim.step();
+    tooHeavy = Math.max(tooHeavy, t.sys._rt.tooHeavyCount);
+  }
+  assert.ok(hugeEnt.alive !== false, 'the over-cap rock stays whole');
+  assert.ok(tooHeavy >= 1, 'reported TOO HEAVY');
   t.cleanup();
 });
 
@@ -1620,6 +1692,28 @@ test('the basin catch voice ticks once, count-grades new peaks, and never re-tic
   t.cleanup();
 });
 
+// -- saturation beat: gyre_snare_full latches once at the cap crossing --
+test('the absorb that fills the member ledger fires exactly one FULL cue', async () => {
+  const t = await bootPhysics();
+  const core = rock(t.sim, T.mawDist, 0, 6, 4);
+  hold(t);
+  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  assert.equal(t.sys._rt.coreId, core.id, 'core held before feeding the cap');
+  // One seat left on the ledger: the absorb that fills it latches the cue; the extra
+  // meal is refused outright and can never re-fire it.
+  const rt = t.sys._rt;
+  while (rt.members.length < T.maxAbsorbRecords - 1) {
+    rt.members.push({ type: 'asteroid', mass: 1, radius: 1, nx: 0, nz: 0 });
+  }
+  rock(t.sim, core.pos.x + 8, core.pos.z, 6, 4);
+  rock(t.sim, core.pos.x - 8, core.pos.z, 6, 4);
+  for (let i = 0; i < 12; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
+  const fulls = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_full');
+  assert.equal(fulls.length, 1, `FULL cue latched once (got ${fulls.length})`);
+  assert.equal(rt.members.length, T.maxAbsorbRecords, 'ledger actually saturated');
+  t.cleanup();
+});
+
 // -- the first net fill lands in the hands: one whisper edge, no ratchet buzz --
 test('the first net fill emits gyre:caught once on the edge — the pad whisper pulse', async () => {
   const t = await bootPhysics();
@@ -1666,13 +1760,14 @@ test('a too-heavy body entering the net ticks once — hushed descending variant
   const t = await bootPhysics();
   const heavies = () => t.events.filter((e) =>
     e.name === 'audio:cue' && e.p.id === 'gyre_snare_drop' && e.p.gain === 0.14);
-  rock(t.sim, T.mawDist + 45, 10, T.maxClumpMass + 1, 4);
+  // Too-heavy is a size question now: a body fatter than maxClumpRadius can never fit whole.
+  rock(t.sim, T.mawDist + 45, 10, 6, T.maxClumpRadius + 1);
   t.state.input.actions.gyreSnare = true; t.sim.step();
   t.state.input.actions.gyreSnare = true; t.sim.step();
   assert.equal(t.state.gyreSnare.tooHeavyCount, 1);
   assert.equal(heavies().length, 1, 'the 0→1 too-heavy edge speaks once');
   // A second uneatable arrival keeps the latch shut — same rhythm as the catch.
-  rock(t.sim, T.mawDist + 50, -20, T.maxClumpMass + 1, 4);
+  rock(t.sim, T.mawDist + 50, -20, 6, T.maxClumpRadius + 1);
   t.state.input.actions.gyreSnare = true; t.sim.step();
   t.state.input.actions.gyreSnare = true; t.sim.step();
   assert.equal(t.state.gyreSnare.tooHeavyCount, 2);
@@ -1743,22 +1838,8 @@ test('the appetite re-tick speaks at the maw in BEAM and at the clump seat in HO
 });
 
 // -- saturation beat: gyre_snare_full latches once at the cap crossing --
-test('the absorb that fills the mass cap fires exactly one FULL cue', async () => {
-  const t = await bootPhysics();
-  const core = rock(t.sim, T.mawDist, 0, 6, 4);
-  hold(t);
-  for (let i = 0; i < 20; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
-  assert.equal(t.sys._rt.coreId, core.id, 'core held before feeding the cap');
-  // The meals fit the ceiling exactly; a further meal must not re-fire FULL.
-  rock(t.sim, core.pos.x + 8, core.pos.z, 1500, 6);
-  rock(t.sim, core.pos.x - 8, core.pos.z, T.maxClumpMass - 1506, 6);
-  rock(t.sim, core.pos.x, core.pos.z + 8, 10, 2);
-  for (let i = 0; i < 12; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
-  const fulls = t.events.filter((e) => e.name === 'audio:cue' && e.p.id === 'gyre_snare_full');
-  assert.equal(fulls.length, 1, `FULL cue latched once (got ${fulls.length})`);
-  assert.ok(t.sys._rt.clumpMass >= T.maxClumpMass, 'clump actually saturated');
-  t.cleanup();
-});
+// (capacity is the member ledger now; 'the absorb that fills the member ledger fires
+//  exactly one FULL cue' above covers the once-only latch under the new law.)
 
 // -- Newton: the bowl pushes the ship back a touch --
 test('launching the clump kicks the ship a small counter-Δv', async () => {
@@ -2595,15 +2676,17 @@ test('a meal that cannot wholly fit keeps all of its mass and volume', async () 
   hold(t);
   for (let i = 0; i < 15; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   const rt = t.sys._rt;
-  rt.clumpMass = T.maxClumpMass - 5;
-  const meal = rock(t.sim, T.mawDist + 2, 0, 50, 30);
+  const massBefore = rt.clumpMass;
+  // One wu over the radius cap: the clump cannot take it whole, and a partial-body
+  // disappearance is not a thing — it keeps everything it brought.
+  const meal = rock(t.sim, T.mawDist + 2, 0, 50, T.maxClumpRadius + 1);
   const rBefore = rt.clumpRadius;
   t.state.input.actions.gyreSnare = true; t.sim.step(); t.sim.step(); t.sim.step();
   assert.equal(rt.clumpRadius, rBefore);
-  assert.equal(rt.clumpMass, T.maxClumpMass - 5);
+  assert.equal(rt.clumpMass, massBefore);
   assert.equal(meal.alive, true);
   assert.equal(meal.physicsBody.mass, 50);
-  assert.equal(meal.physicsBody.radius, 30);
+  assert.equal(meal.physicsBody.radius, T.maxClumpRadius + 1);
   assert.equal(t.state.gyreSnare.basinCount, 0, 'no impossible meal is promised');
   assert.equal(t.state.gyreSnare.tooHeavyCount, 1);
   t.cleanup();
@@ -3088,9 +3171,13 @@ test('a capped clump stops promising a next meal (basinCount gates on full)', as
   rock(t.sim, T.mawDist, 0, 6, 4);
   for (let i = 0; i < 8; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.phase, 'holding');
-  t.sys._rt.clumpMass = T.maxClumpMass; // simulate a saturated ball
+  const rt = t.sys._rt;
+  while (rt.members.length < T.maxAbsorbRecords) {
+    rt.members.push({ type: 'asteroid', mass: 1, radius: 1, nx: 0, nz: 0 }); // a saturated ball
+  }
   const inNet = rock(t.sim, T.mawDist + 10, 8, 6, 4); // absorbable parked in the basin
   t.state.input.actions.gyreSnare = true; t.sim.step();
+  assert.equal(t.state.gyreSnare.full, true, 'the published cap flag agrees with the ledger');
   assert.equal(t.state.gyreSnare.basinCount, 0,
     'a capped ball has no next meal — the +N tail stays silent');
   assert.ok(inNet.alive !== false);
@@ -3561,9 +3648,9 @@ test('a dying capacitor warns once per hold — fuseLow latches under 3 s of bur
 
 test('a fuse-low warn spent in BEAM re-arms for the hold it was meant for', async () => {
   const t = await bootPhysics();
-  // 60 wu shy of the maw: inside the basin pull but outside snagRadius — the beam
+  // 70 wu shy of the maw: inside the basin pull but past snag reach — the beam
   // spends real search ticks dragging it in instead of snagging on the same tick.
-  rock(t.sim, T.mawDist - 45, 0, 30, 6);
+  rock(t.sim, T.mawDist - 70, 0, 30, 6);
   // Opens the beam (>= capActivateMin 10) with ~2.7 s of burn — already under the
   // warn floor, so the warn fires during the SEARCH, not the hold it's for.
   t.player.cap = 18;
@@ -3960,12 +4047,13 @@ test('a too-heavy rock parked inside the suck annulus still eats the courtesy tu
   for (let i = 0; i < 10; i++) { t.state.input.actions.gyreSnare = true; t.sim.step(); }
   assert.equal(t.sys._rt.phase, 'holding');
   const core = t.state.entities.get(t.sys._rt.coreId);
-  // Oversized for the clump's REMAINING mass (grown to cap-5, so a modest rock is
-  // too-heavy while still light enough for tugK > 0.05) — the wave-39 dead spot:
-  // 'too-heavy' used to `continue` before the courtesy tug, so the strongest gravity
-  // zone (inside owned.r, basin lane suppressed) felt nothing.
-  t.sys._rt.clumpMass = T.maxClumpMass - 5;
-  const heavy = rock(t.sim, core.pos.x + 40, core.pos.z, 50, 6);
+  // Too-heavy is a size question now: only a body fatter than maxClumpRadius can't fit
+  // whole. A >60 wu rock can hover the annulus without skinning the clump only when the
+  // ball is near the radius cap itself, so the clump is dressed to 60 — the wave-39
+  // dead spot: 'too-heavy' used to `continue` before the courtesy tug, so the
+  // strongest gravity zone (inside owned.r, basin lane suppressed) felt nothing.
+  t.sys._rt.clumpRadius = T.maxClumpRadius;
+  const heavy = rock(t.sim, core.pos.x + 126, core.pos.z, 50, T.maxClumpRadius + 1);
   t.state.input.actions.gyreSnare = true; t.sim.step(); // spatial index registers the spawn
   t.state.input.actions.gyreSnare = true; t.sim.step();
   assert.ok(heavy.alive !== false, 'a too-heavy body is never absorbed');

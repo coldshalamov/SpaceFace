@@ -306,7 +306,11 @@ export const gyreHud = {
         return { text: `GYRE — STRAIN ×${count} · ${mass}t${dmg}${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-strain', strain: s, fuse, mass: mfrac, row: 'strain' };
       }
       // Saturation reads: the cap is a hard ceiling, so "why isn't it eating?" gets a flag.
-      const full = g.maxClumpMass != null && (g.clumpMass || 0) >= g.maxClumpMass;
+      // The system's `full` is the member-ledger truth; the mass read stays as the
+      // fallback for publications that predate the field.
+      const full = g.full !== undefined
+        ? g.full
+        : (g.maxClumpMass != null && (g.clumpMass || 0) >= g.maxClumpMass);
       if (full) {
         return { text: `GYRE — ×${count} · ${mass}t${dmg} FULL${tail}${fuseTxt}${ballTxt}${overTxt}`, cls: 'gyre-full', strain: s, fuse, mass: mfrac, row: 'full' };
       }

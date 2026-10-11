@@ -21,6 +21,7 @@
 // Determinism: no rng, no wall clock — all wobble is a pure function of state.simTime and
 // the (deterministic-order) spatial query results.
 
+import { queryPhysicalBodies, deliverPhysicalImpulse } from '../combat/physicalEffects.js';
 import { couplingScale } from '../core/fields/fieldKernel.js';
 import {
   queuePhysicsImpulse,
@@ -50,11 +51,7 @@ const ABSORBABLE = new Set(GYRE_ABSORBABLE_TYPES);
 // the maw (wedge ≈ wedgeAccel·couple·wedgeFalloff·(1−lipT) ≈ ≤100 wu/s²; basin ≈ 380).
 // Emergent point-defense is part of the weapon's identity: you can sweep a volley aside
 // while winding up the ball, at cap cost.
-// 'ship'/'station' get ZERO cone response by scope: the verb's vocabulary is
-// cargo-only — a courtesy tug on a hull is a different weapon (combat grapple),
-// and even a refuse-tint glow could misread a warship as catchable. Hulls keep
-// their own combat/collision lanes; the cone stays honest about its net.
-const PULL_SKIP_TYPES = new Set(['ship', 'station', 'fx', 'fieldEmitter', 'massSeed', 'masslineSnareAnchor', 'masslineSnare']);
+const PULL_SKIP_TYPES = new Set(['station', 'fx', 'fieldEmitter', 'massSeed', 'masslineSnareAnchor', 'masslineSnare']);
 // …except drones, which DO get tugged lightly (coupling-shrugged) — they're listed in neither set.
 const WEAPON_ID = 'wpn_gyre_snare';
 const PROV_TAG = 'gyre_snare';
@@ -101,13 +98,20 @@ function hasProtectedContent(e) {
   return !!(freight && Number(freight.qty) > 0 && (!freight.status || freight.status === 'live'));
 }
 
-function ingestionReason(e, remainingMass = D.maxClumpMass) {
+function ingestionReason(e) {
   if (!e || e.alive === false || !ABSORBABLE.has(e.type) || !isDynamic(e)
     || e.physicsBody === false || e.physicsBody?.material === 'sensor'
     || e.data?.gyreCore || e.data?.gyreLaunched) return 'unavailable';
   if (hasProtectedContent(e)) return 'protected';
-  if (entityMass(e) > remainingMass || entityRadius(e) > D.maxClumpRadius) return 'too-heavy';
+  // Fit is a size question, never a tonnage one: a body fatter than the clump's own
+  // radius cap cannot go in whole, and partial-body disappearance is not a thing.
+  if (entityRadius(e) > D.maxClumpRadius) return 'too-heavy';
   return null;
+}
+
+/** Capacity is the member ledger, not tonnage: a full ball stops eating AND pulling. */
+function clumpFull(rt) {
+  return rt.members.length >= D.maxAbsorbRecords;
 }
 
 function freshRuntime() {
@@ -216,6 +220,10 @@ export const gyreSnare = {
     this._sweepBoundaryResidue();
     this._scratch = [];
     this._fieldRocks = [];
+    // Shared discovery supplies every live physical recipient (including hulls). Compact belt
+    // records enter through the bounded maw/annulus promotion passes below; allowing discovery
+    // to promote them first would bypass their nearest-first 4/2 body budgets on dense fields.
+    this._livePhysicalQuery = { contains: (body) => this.state.entities?.get(body.id) === body };
     this._spotScratch = []; // basinSpot candidates — collected in the pull pass, sorted by pullK,
                             // then the top basinSpotMax publish (strongest grips glow first)
     this._subs = [];
@@ -908,6 +916,7 @@ export const gyreSnare = {
   _profile(e) {
     return {
       type: e.type,
+      radius: e.radius,
       mass: entityMass(e),
       fieldResponseMult: e.physicsBody && e.physicsBody.fieldResponseMult,
       boosting: !!(e.flags && e.flags.boosting),
@@ -923,7 +932,7 @@ export const gyreSnare = {
       ax *= s; az *= s;
     }
     // Impulse = a·m·dt → Δv = a·dt (the membrane contract).
-    queuePhysicsImpulse(e, { x: ax * mass * dt, y: 0, z: az * mass * dt }, this._evidence(state.tick));
+    deliverPhysicalImpulse(state, e, { x: ax * mass * dt, y: 0, z: az * mass * dt }, this._evidence(state.tick), { scaleEnvironment: false, continuous: true, dt });
   },
 
   // ── phases ─────────────────────────────────────────────────────────────────────
@@ -950,7 +959,7 @@ export const gyreSnare = {
     const ownedCore = owned && owned.core && owned.core.pos ? owned.core : null;
     const ownedR2 = ownedCore && owned.r > 0 ? owned.r * owned.r : 0;
     const reach = D.mawDist + D.basinRadius + D.queryReachWu;
-    const cands = queryRadius(player.pos, reach, this._scratch);
+    const cands = queryPhysicalBodies(state, player.pos, reach, this.helpers, this._scratch, this._livePhysicalQuery);
     const tan = Math.tan(D.coneHalfAngleRad);
     const shipVx = finite(player.vel && player.vel.x);
     const shipVz = finite(player.vel && player.vel.z);
@@ -1004,9 +1013,7 @@ export const gyreSnare = {
         const sdz = e.pos.z - ownedCore.pos.z;
         if (sdx * sdx + sdz * sdz <= ownedR2) continue;
       }
-      const remainingMass = this._rt.phase === PHASE.HOLD
-        ? D.maxClumpMass - this._rt.clumpMass : D.maxClumpMass;
-      const admission = ingestionReason(e, remainingMass);
+      const admission = ingestionReason(e);
       const absorbable = admission === null;
       // Mass in the funnel: absorbable bodies already inside the cone get counted so
       // the HUD/maw can telegraph the catch before it lands ("×N IN NET").
@@ -1016,7 +1023,7 @@ export const gyreSnare = {
         && (inBasin || lipT === 0)
         // A capped clump has no next meal — counting these would make the HUD's +N
         // promise a feed the ball can never eat (suckCount is already gated at :785).
-        && !(this._rt.phase === PHASE.HOLD && this._rt.clumpMass >= D.maxClumpMass)
+        && !(this._rt.phase === PHASE.HOLD && clumpFull(this._rt))
         && !(e.data && (e.data.gyreCore || e.data.gyreLaunched))
         && !(e.flags && e.flags.persistent) && !(e.data && e.data.worldRecordId)) {
         this._rt.basinCount += 1;
@@ -1028,7 +1035,7 @@ export const gyreSnare = {
       // makes the ball chatter instead of floating loose. Same skip rides _trySnag and the
       // suck lane — residue in any lane must not re-flag a body as immune.
       if (e.data && e.data.gyreCore) continue;
-      if (remainingMass > 0 && admission === 'too-heavy' && (inBasin || lipT === 0)) {
+      if (!clumpFull(this._rt) && admission === 'too-heavy' && (inBasin || lipT === 0)) {
         this._rt.tooHeavyCount += 1;
         this._rt.tooHeavyLane = 'basin'; // the voice speaks where the refusal happened
       }
@@ -1130,11 +1137,9 @@ export const gyreSnare = {
       for (let i = 0; i < n; i++) this._rt.basinSpots.push(this._spotScratch[i]);
       this._spotScratch.length = 0;
     }
-    // Belt gravel: any field rock inside the basin promotes into a real body so the beam
-    // can catch it (same promotion path the tether uses). Top-4 nearest to the maw per
-    // tick bounds the first-tick spawn burst on a dense belt — resolveAdmitOverlap only
-    // de-collides vs ships, so an unbounded promote is a one-shot physics-record churn.
-    // The basin is the primary catch zone so it reifies hungrier than the suck lane's 2.
+    // Belt gravel promotes through the original nearest-to-maw budget, independent of the
+    // shared recipient query's wider hull/projectile coverage. Only successful admissions spend
+    // a seat, so an already-live record never starves the next compact rock.
     const rocks = queryAsteroidField(state, maw, D.basinRadius, this._fieldRocks);
     if (rocks.length > 4) rocks.sort((a, b) =>
       ((a.pos.x - maw.x) * (a.pos.x - maw.x) + (a.pos.z - maw.z) * (a.pos.z - maw.z))
@@ -1143,8 +1148,7 @@ export const gyreSnare = {
     for (let i = 0; i < rocks.length && promoted < 4; i++) {
       const rec = rocks[i];
       if (!rec || rec.alive === false || rec.liveEntityId != null) continue;
-      promoteAsteroidFieldRock(state, rec.id, this.helpers, 'gyre_snare');
-      promoted++;
+      if (promoteAsteroidFieldRock(state, rec.id, this.helpers, 'gyre_snare')) promoted++;
     }
     this._fieldRocks.length = 0;
   },
@@ -1159,7 +1163,7 @@ export const gyreSnare = {
     // core on frame 1, before the funnel exists. The catch is the verb's
     // biggest early beat; it fires once the drawn edge is ~70% there.
     if (Math.min(1, this._rt.beamWake / 0.15) < 0.7) return false;
-    const cands = queryRadius(maw, D.snagRadius, this._scratch);
+    const cands = queryPhysicalBodies(state, maw, D.snagRadius, this.helpers, this._scratch, this._livePhysicalQuery);
     let best = null, bestD = Infinity;
     for (let i = 0; i < cands.length; i++) {
       const e = cands[i];
@@ -1343,8 +1347,7 @@ export const gyreSnare = {
       core,
       // r:0 when the clump is capped — the suck lane is disabled then, so the basin
       // lane owns the annulus again rather than leaving a dead zone around the ball.
-      r: rt.clumpMass < D.maxClumpMass
-        ? this._suckRadius(rt) : 0,
+      r: clumpFull(rt) ? 0 : this._suckRadius(rt),
     });
   },
 
@@ -1391,7 +1394,7 @@ export const gyreSnare = {
     // snag (katamari escalation legibility; the presentation halo draws the same
     // reach), but stays bounded: ~1.5× the beam's own basin, never ~2× past it.
     const suckR = this._suckRadius(rt);
-    const cands = queryRadius(core.pos, suckR, this._scratch);
+    const cands = queryPhysicalBodies(state, core.pos, suckR, this.helpers, this._scratch, this._livePhysicalQuery);
     const shipVx = finite(player && player.vel && player.vel.x);
     const shipVz = finite(player && player.vel && player.vel.z);
     for (let i = 0; i < cands.length; i++) {
@@ -1403,14 +1406,13 @@ export const gyreSnare = {
       if (e.id === state.playerId) continue;
       if (!isDynamic(e) || PULL_SKIP_TYPES.has(e.type) || e.physicsBody === false) continue;
       if (e.data && e.data.gyreLaunched) continue; // a thrown ball is never re-absorbed
-      const remainingMass = D.maxClumpMass - rt.clumpMass;
-      const admission = ingestionReason(e, remainingMass);
+      const admission = ingestionReason(e);
       const absorbable = admission === null;
       if (admission === 'too-heavy') {
         // Too heavy to EAT — not too heavy to feel: falls through to the courtesy tug
         // below so the strongest gravity zone (inside owned.r, where the basin lane is
         // suppressed) has no dead spot for a heavy rock hovering at the skin.
-        if (remainingMass > 0) { rt.tooHeavyCount += 1; rt.tooHeavyLane = 'suck'; }
+        if (!clumpFull(rt)) { rt.tooHeavyCount += 1; rt.tooHeavyLane = 'suck'; }
       }
       const dx = core.pos.x - e.pos.x;
       const dz = core.pos.z - e.pos.z;
@@ -1426,7 +1428,7 @@ export const gyreSnare = {
         // CAP-GAITED: at full mass owned.r=0 hands the annulus back to the basin lane —
         // an ungated tug would stack basin-courtesy + suck-tug on the same body, pulled
         // toward two different anchors at ~2x the intended ceiling.
-        if (dist > 1e-4 && rt.clumpMass < D.maxClumpMass) {
+        if (dist > 1e-4 && !clumpFull(rt)) {
           const tugK = D.nonAbsorbablePull * couplingScale(this._profile(e));
           const tug = D.suckAccel * tugK * wake;
           // The courtesy tow keeps the funnel's chirality too — the absorbable
@@ -1479,12 +1481,12 @@ export const gyreSnare = {
       }
       // Below the merge check: a body absorbed THIS tick is the clump's mass, not
       // incoming mass — counting it would publish it in the +N read for one frame.
-      if (rt.clumpMass < D.maxClumpMass) rt.suckCount += 1;
+      if (!clumpFull(rt)) rt.suckCount += 1;
       if (dist > 1e-4) {
         // A FULL clump can't keep another gram — stop vacuuming meals it will never
         // merge. Same gate _absorb enforces at contact, extended to the pull lane so a
         // capped ball doesn't drag leeches against its skin forever.
-        if (rt.clumpMass >= D.maxClumpMass) continue;
+        if (clumpFull(rt)) continue;
         const couple = couplingScale(this._profile(e));
         const pull = D.suckAccel * couple * wake;
         const mass = entityMass(e);
@@ -1519,7 +1521,7 @@ export const gyreSnare = {
     // the 86 wu basin the pull lane promotes against) covered field rocks it
     // could never pull or eat. Top-2 nearest per tick bounds body churn on a
     // dense belt; a FULL clump stops reifying meals it can't merge.
-    if (rt.clumpMass < D.maxClumpMass) {
+    if (!clumpFull(rt)) {
       const rocks = queryAsteroidField(state, core.pos, suckR, this._fieldRocks);
       if (rocks.length > 2) rocks.sort((a, b) =>
         ((a.pos.x - core.pos.x) * (a.pos.x - core.pos.x) + (a.pos.z - core.pos.z) * (a.pos.z - core.pos.z))
@@ -1536,7 +1538,8 @@ export const gyreSnare = {
   },
 
   _absorb(state, rt, core, e, dx, dz, dist) {
-    if (ingestionReason(e, D.maxClumpMass - rt.clumpMass) !== null) return false;
+    if (clumpFull(rt)) return false;
+    if (ingestionReason(e) !== null) return false;
     const em = entityMass(e);
     const er = entityRadius(e);
     const massBefore = rt.clumpMass;
@@ -1671,7 +1674,7 @@ export const gyreSnare = {
       }
       // Saturation beat: the absorb that first crosses the cap gets its own voice so
       // the FULL moment lands through the ear, not just the HUD flag.
-      if (rt.clumpMass >= D.maxClumpMass && !rt.fullCueLatched) {
+      if (clumpFull(rt) && !rt.fullCueLatched) {
         rt.fullCueLatched = true;
         this.bus.emit('audio:cue', { id: 'gyre_snare_full', gain: 0.8 });
         // The escalation arc's ceiling beat reaches the hands too — every other
@@ -2230,6 +2233,7 @@ export const gyreSnare = {
       // Published unconditionally at rt's rest values — a reader between
       // init and the first publish tick sees these too, not undefined.
       suckRadius: 0, swirlBlend: 1, orbitSeed: 0,
+      ballTtlS: 0, full: false,
     });
   },
 
@@ -2260,6 +2264,9 @@ export const gyreSnare = {
     // Safe unconditionally: _drop/_finishLaunch already reset both to 1/0.
     pub.swirlBlend = rt.swirlBlend;
     pub.orbitSeed = rt.orbitSeed;
+    // The member ledger is the cap — publish the same predicate every "full" site
+    // reads so the HUD's FULL word and the physics gate can never disagree.
+    pub.full = clumpFull(rt);
     // Burn-only fuse read: seconds of cap left at the CURRENT drain rate — hold drain
     // scales with clump mass, so the bigger the katamari the shorter the fuse. Regen
     // isn't counted, making it the honest worst case; the HUD draws it as a countdown.
