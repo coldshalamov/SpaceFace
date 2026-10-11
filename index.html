@@ -104,6 +104,17 @@
        pays each worker script's fetch + eval inside the budget window. -->
   <link rel="modulepreload" fetchpriority="low" href="./src/render/glbPrepassWorker.js" />
   <link rel="preload" as="worker" href="./src/render/renderPackageDigestWorker.js" />
+  <!-- Wave-143 payload modules: loaded only via dynamic import() in the post-eval warm lane
+       (ruckusMeshData/*.js feeds the RU-7 template decode; the volume films feed the vfx
+       pool/salvo decoders). Low-priority fetch keeps the bytes off the eval critical path
+       while still landing long before the title→flight gates await them. -->
+  <link rel="modulepreload" fetchpriority="low" href="./src/render/characters/ruckusMeshData/body0.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/render/characters/ruckusMeshData/body1.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/render/characters/ruckusMeshData/body2.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/render/characters/ruckusMeshData/core.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/render/combat/gas/gasVolumeData/density.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/render/combat/gas/gasVolumeData/motion.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/render/combat/densityVolumeData/rle.js" />
   <!-- Lazy dynamic-import chains discovered on the first flight/physics frames: the
        elementary voice chain mounts ~50-150ms into flight on a cold cache, the rapier
        wrapper sits inside the physics-authority gate (serial for New Game), and
@@ -212,7 +223,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/render/pipelineReadiness.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/renderCapabilityProfile.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/uiStage.js" />
-                <!-- modulepreload:registry:begin -->
+                  <!-- modulepreload:registry:begin -->
   <link rel="modulepreload" fetchpriority="low" href="./node_modules/@floating-ui/core/dist/floating-ui.core.browser.mjs" />
   <link rel="modulepreload" fetchpriority="low" href="./node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs" />
   <link rel="modulepreload" fetchpriority="low" href="./node_modules/quarks.core/dist/quarks.core.esm.js" />
@@ -247,6 +258,8 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/ai/palletJack.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ai/pdScreen.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ai/perception.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/ai/podHunt.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/ai/racingDriver.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ai/reflexes.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ai/sg03ActionPort.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ai/shipDecision.js" />
@@ -260,6 +273,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/ai/tensionPolicy.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ai/tensionWindow.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ai/trace.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/ai/tumbleRake.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/audio/audioActiveSet.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/audio/audioSystem.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/audio/bandBeds.js" />
@@ -512,6 +526,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/data/contractClauses.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/credits.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/demoConfig.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/data/deniableAftermath.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/difficulty.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/dockDeny.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/dossArchive.js" />
@@ -801,6 +816,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/data/encounters/565-lived-colony-toll-helix-logic.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/encounters/566-lived-derelict-field-toll-helix-literalized.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/encounters/567-second-rinse.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/data/encounters/568-false-bloom.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/encounters/capital-boss.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/encounters/capital-boss/ala.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/encounters/capital-boss/brood-queen.js" />
@@ -934,7 +950,9 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/data/raceCourses.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/raceLevels.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/racingCircuitLayouts.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/data/racingCosmetics.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/racingLoadouts.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/data/racingSetPieces.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/rangeRails.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/ravel.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/data/redKite.js" />
@@ -1037,6 +1055,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/economy/economyResources.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/economy/freightCausality.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/economy/regionalSupply.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/economy/stationConditions.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/law/authorityResponse.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/localization/barks.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/localization/catalogs/de-DE.js" />
@@ -1052,10 +1071,14 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/localization/runtime.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/localization/storeCopy.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/missions/adventureSpeedRuntime.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/missions/adventureSpeedSetPieces.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/missions/capitalBossSpawn.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/missions/heistArbiter.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/missions/heistMissionRuntime.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/missions/poiCausalOffers.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/missions/racingDraft.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/missions/racingOpponents.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/missions/racingSetPieces.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/nemesis/encounterHost.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/nemesis/learning.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/nemesis/model.js" />
@@ -1176,6 +1199,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/render/forceLanguage/bombFlowSurface.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/forceLanguage/catalog.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/forceLanguage/effectLifecycle.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/render/forceLanguage/emergentPayloadPresentation.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/forceLanguage/emergentPrimitivePools.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/forceLanguage/fieldForcePresentation.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/forceLanguage/flowEnvironment.js" />
@@ -1268,6 +1292,8 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/render/projectileMotionPresentation.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/racingCameraBlend.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/racingCourseView.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/render/racingDraftView.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/render/racingGhostView.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/rcsJets.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/redKiteVisuals.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/render/releaseMode.js" />
@@ -1489,6 +1515,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/systems/cryoDriftArena.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/systems/custodyConsequences.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/systems/dangerModel.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/systems/deedRecord.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/systems/difficultyDirector.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/systems/dockingCorridor.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/systems/drawFlightInput.js" />
@@ -1586,7 +1613,10 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/systems/presentationAdapters.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/systems/presentationOrchestrator.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/systems/provenanceLedger.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/systems/racingCareer.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/systems/racingGeometry.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/systems/racingGhosts.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/systems/racingPrecision.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/systems/racingSteer.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/systems/ravel.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/systems/recoveryEncounter.js" />
@@ -1687,6 +1717,7 @@
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/asteroid/buildPalette.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/asteroid/industryPlanner.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/asteroid/inspector.js" />
+  <link rel="modulepreload" fetchpriority="low" href="./src/ui/asteroid/progressionGuide.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/asteroid/worksPartLoader.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/automationPayoff.js" />
   <link rel="modulepreload" fetchpriority="low" href="./src/ui/bandHud.js" />

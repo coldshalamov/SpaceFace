@@ -4,13 +4,39 @@
  * tools/ruckus/pack-model.mjs. Unsupported assets fail loudly at build/test time.
  */
 import * as THREE from 'three';
-import { RUCKUS_MESH_DATA } from './ruckusMeshData.js';
+import { RUCKUS_MESH_KEYS } from './ruckusMeshData.js';
 import { RUCKUS as C } from '../../data/ruckus.js';
 const templates = new Map();
 // Boot-eval deferral (wave-140 B5): each entry's `json` is stored as text so the module-eval task
 // only interns the string; the document is parsed here on first use or by the post-eval warm
 // below, before the first RU-7 spawn can reach a real frame.
 const parsedDocs = new Map();
+// Wave-143 (boot F1): the packed {json, binary} entries moved off the static import graph into
+// ruckusMeshData/<key>.js modules. The post-eval warm at the bottom of this file dynamic-imports
+// each payload and feeds the same sliced decode; consumers only ever read this map — populated
+// by warm, or synchronously by coldEntry() where a Node/Electron require() exists.
+const meshData = new Map();
+// Cold payload path: require(esm) returns the identical bytes synchronously without a static
+// import — the route Node tests and the Electron renderer take. A browser caller can never
+// reach this: every real template() consumer is post-title, and both title→flight transitions
+// await ruckusWarmReady before any entity can materialize (main.js prepareRun before
+// bootstrapScene; helpers.deferLoadedGameRestore before the chunked save restore). The
+// renderer's mesh-build lane also retries a failed build three times before latching _noMesh,
+// so even a hypothetical cold read degrades instead of faulting the frame.
+function coldEntry(key) {
+  const nodeModule = globalThis.process?.getBuiltinModule?.('module');
+  const req = nodeModule?.createRequire?.(import.meta.url);
+  if (req) {
+    const entry = req(`./ruckusMeshData/${key}.js`).default;
+    meshData.set(key, entry);
+    return entry;
+  }
+  throw new Error(
+    `RU-7 asset "${key}" template was read before its data module decoded. This is unreachable `
+    + 'in production (ruckusWarmReady is awaited ahead of every spawn path) — in a workshop, '
+    + 'await ruckusWarmReady first; in Node the require() path resolves the payload synchronously.',
+  );
+}
 const TYPES = { 5120: Int8Array, 5121: Uint8Array, 5122: Int16Array, 5123: Uint16Array, 5125: Uint32Array, 5126: Float32Array };
 const WIDTH = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 };
 const ATTR = { POSITION: 'position', NORMAL: 'normal', TEXCOORD_0: 'uv', COLOR_0: 'color', TANGENT: 'tangent' };
@@ -23,7 +49,8 @@ const sat = v => Math.max(0, Math.min(1, v));
 const pendingTemplates = new Map();
 const DECODE_CHUNK = 1 << 18;
 function* templateSteps(key) {
-  const entry = RUCKUS_MESH_DATA[key]; if (!entry) throw Error(`Unknown RU-7 asset ${key}`);
+  if (!RUCKUS_MESH_KEYS.includes(key)) throw Error(`Unknown RU-7 asset ${key}`);
+  const entry = meshData.get(key) || coldEntry(key);
   let doc = parsedDocs.get(key);
   if (!doc) { doc = JSON.parse(entry.json); parsedDocs.set(key, doc); }
   yield;
@@ -180,36 +207,34 @@ export function disposeRuckusVisual(root) {
   root.traverse(o => { if (o.geometry && !o.geometry.userData.spacefaceSharedAsset) geometries.add(o.geometry); if (o.material) materials.add(o.material); });
   for (const g of geometries) g.dispose(); for (const m of materials) m.dispose(); root.removeFromParent();
 }
-// Post-eval warm: advance one template sub-step per task in the post-gate idle window so the
-// first RU-7 spawn clones warm templates instead of parsing GLB JSON mid-frame. One
-// setTimeout per yield keeps every task sub-frame; a real consumer arriving mid-warm pumps
-// the same pending iterator to completion through template(), so no work is duplicated.
-if (typeof window !== 'undefined') {
-  const warmKeys = Object.keys(RUCKUS_MESH_DATA);
-  let warmIndex = 0, warmKey = null, warmIt = null;
-  const warmStep = () => {
-    for (;;) {
-      if (warmIt === null) {
-        if (warmIndex >= warmKeys.length) return;
-        warmKey = warmKeys[warmIndex]; warmIndex += 1;
-        if (templates.has(warmKey)) continue;
-        warmIt = pendingTemplates.get(warmKey) || templateSteps(warmKey);
-        pendingTemplates.set(warmKey, warmIt);
+// Post-eval warm (wave-143): fetch + intern each payload module via dynamic import — off the
+// static graph — then advance one template sub-step per task, the same pacing contract the
+// W142 driver had. ruckusWarmReady resolves once every key has a finished template(); the
+// title→flight transitions await it before any entity can materialize, and RU-7 entities only
+// ever spawn inside a run, so no real template() consumer can precede warm completion. A
+// mid-warm template() still pumps the shared pending iterator to completion synchronously.
+export const ruckusWarmReady = typeof window === 'undefined'
+  ? Promise.resolve()
+  : (async () => {
+      const arrivals = new Map(RUCKUS_MESH_KEYS.map((key) => [
+        key,
+        import(`./ruckusMeshData/${key}.js`).then((mod) => meshData.set(key, mod.default)),
+      ]));
+      for (const key of RUCKUS_MESH_KEYS) {
+        await arrivals.get(key);
+        if (templates.has(key)) continue;
+        let it = pendingTemplates.get(key);
+        if (!it) { it = templateSteps(key); pendingTemplates.set(key, it); }
+        try {
+          let step;
+          while (!(step = it.next()).done) {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+          }
+        } finally {
+          pendingTemplates.delete(key);
+        }
       }
-      try {
-        if (!warmIt.next().done) break;
-        warmIt = null;
-        pendingTemplates.delete(warmKey);
-      } catch (error) {
-        warmIt = null;
-        pendingTemplates.delete(warmKey);
-        throw error;
-      }
-    }
-    setTimeout(warmStep, 0);
-  };
-  setTimeout(warmStep, 0);
-}
+    })();
 /** For isolated workshops/tests after every instance has been destroyed, never during flight. */
 export function clearRuckusModelCache() {
   const geometries = new Set(), materials = new Set();

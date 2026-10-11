@@ -37,6 +37,7 @@ import { ensureStylesheet as ensureStationStylesheet } from './ui/station/statio
 import { createLoadingPresenter } from './ui/loadingPresenter.js';
 import { createRuntimeFailurePresenter, describeBootFailure } from './ui/runtimeFailurePresenter.js';
 import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
+import { ruckusWarmReady } from './render/characters/ruckusModel.js';
 import { settleOpeningCompositionTail } from './render/precompile.js';
 import {
   settleRequiredPackageAdmission,
@@ -231,8 +232,11 @@ async function boot() {
       });
       // One rAF boundary: the 0.05 emit rides the presenter's own paint loop, so the
       // restore only needs to leave this task — the double-rAF paint commit added ~16-33 ms
-      // of dead time before the slot scans and worker dispatch could even start.
-      nextFrame().then(restore).catch((error) => {
+      // of dead time before the slot scans and worker dispatch could even start. The
+      // ruckus warm rides alongside it (wave-143): restored entities can materialize RU-7
+      // visuals from the first restore frame, so the synchronous template() contract must
+      // already hold — it resolves in the boot window long before a click can reach here.
+      Promise.all([nextFrame(), ruckusWarmReady]).then(restore).catch((error) => {
         console.error('[SpaceFace] deferred save restore failed', error);
         // SFQ-B228: name the cause so the recovery toast can state it — the saveSystem's own
         // failure receipts already carry `error`; this outer catch was the bare one.
@@ -697,6 +701,11 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       await nextPaintSliced();
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
 
+      // Wave-143: RU-7 template payloads arrive via dynamic import in the post-eval warm
+      // lane. bootstrapScene is the earliest point a real entity (and therefore a template()
+      // call through the mesh-build lane) can appear — settle the warm first so the
+      // synchronous template contract can never observe a cold key.
+      await ruckusWarmReady;
       // Create the canonical player and starting sector before readiness waits. This gives the
       // renderer real entity boundaries to upgrade while the route remains frozen in loading.
       configureRacingCorridorSession(state, opts?.racingSession === true);
