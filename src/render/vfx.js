@@ -7152,11 +7152,13 @@ export const vfx = {
     const peakScale = accessibility && Number.isFinite(accessibility.eventLightPeakScale)
       ? accessibility.eventLightPeakScale
       : 1;
-    // Combat event lights go to 0 under reduced-motion. Sustained law status cues are not combat
-    // flashes — keep a calm floor so the same authoritative facts remain readable (GDX-A25).
-    const statusPeak = peakScale > 0
-      ? peakScale
-      : (reducedMotion ? (reducedFlash ? 0.22 : 0.35) : 1);
+    // Combat event lights follow eventLightPeakScale (FB-077: a 0.1 floor, never zero).
+    // Sustained law status cues are not combat flashes — a calm floor keeps the same
+    // authoritative facts readable (GDX-A25). That combat floor sits under the calm floor;
+    // using it raw drops a low suspicion cue through the 0.02 light cull.
+    const statusPeak = reducedMotion
+      ? Math.max(peakScale, reducedFlash ? 0.22 : 0.35)
+      : peakScale;
     const flashDim = reducedFlash ? 0.55 : 1;
 
     // ── Scan sweep: sustained directional pass over the scanned hull ──
