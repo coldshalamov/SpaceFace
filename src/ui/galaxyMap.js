@@ -2909,7 +2909,7 @@ const HINT_ROWS = Object.freeze([
 
 export const MAP_INSPECTOR_TABS = Object.freeze([
   { id: 'overview', label: 'Overview' },
-  { id: 'travel', label: 'Travel' },
+  { id: 'travel', label: 'Route' },
   { id: 'missions', label: 'Missions' },
   { id: 'economy', label: 'Economy' },
   { id: 'threat', label: 'Threat' },
@@ -5913,7 +5913,7 @@ _stepAnimation(now) {
   _travelTabHtml(state) {
     const ribbon = this._ribbonModel(state);
     if (!ribbon.visible) {
-      return `<div class="gm-ins-section"><div class="gm-ins-title">Travel</div>
+      return `<div class="gm-ins-section"><div class="gm-ins-title">Route</div>
         <div class="gm-ins-note">${escapeMapHtml(ribbon.reason)}</div></div>`;
     }
     const legs = ribbon.legs.map((leg) => `
