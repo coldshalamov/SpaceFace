@@ -45,7 +45,7 @@ export const runtime = Object.freeze({
     });
     live.phase = 'offer';
     d.say(live, 'alert',
-      'COMMS INTERCEPT: triple-pulse, unregistered. Not a beacon. This one counts.',
+      'COMMS INTERCEPT: …a triple-pulse on no registered band. Beacons ask. This one counts.',
       null, { literal: true, primary: true });
     d.offerChoices(live, ['listen', 'ignore'], 'ignore', live.deadlineAt);
   },
@@ -145,7 +145,7 @@ export default defineEncounter(trigger, {
   factionId: null,
   context: 'ambient',
   title: 'THE COUNTING RELAY',
-  primaryLine: 'COMMS INTERCEPT: triple-pulse, unregistered. Not a beacon. This one counts.',
+  primaryLine: 'COMMS INTERCEPT: a triple-pulse on no registered band. Beacons ask. This one counts.',
   choices: [
     { id: 'listen', label: 'Listen to the cycle', playerLine: 'Say the number again.' },
     { id: 'take_the_mail', label: 'Take the convoy mail', playerLine: 'Forty-three came back.' },
