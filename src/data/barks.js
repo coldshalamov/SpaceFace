@@ -2341,6 +2341,39 @@ export function tumbleRakeBarkFor(index) {
   return typeof line === 'string' && line.length ? line : null;
 }
 
+// ── Dock control remembers the pilot (THE WORLD REMEMBERS, U-E) ──────────────────────────────
+//
+// Spoken once on `dock:docked` when the station's faction weighs the Record at or past ±4. The
+// frame is dock control's greeting; `{deed}` is one line from deedPhrases (voice 'grievance' for
+// the cold bank, 'praise' for the warm one), `{place}` the station's name, `{faction}` its house.
+// barkDirector owns the listener and marks the deed told only when the bark is accepted.
+export const DOCK_DEED_BARKS = Object.freeze({
+  cold: Object.freeze([
+    'Dock control: your hull is on file here, pilot. {deed}',
+    'Dock control: {faction} has a folder on you. Keep your hands off the ring. {deed}',
+    'Dock control: clearance granted, under protest. {deed}',
+    'Dock control: {place} remembers you. {deed}',
+  ]),
+  warm: Object.freeze([
+    'Dock control: welcome back, pilot. {deed}',
+    'Dock control: {faction} keeps a berth warm for you. {deed}',
+    'Dock control: good to see your transponder again. {deed}',
+    'Dock control: priority approach for you at {place}. {deed}',
+  ]),
+});
+
+/** One dock-control greeting; null for an unknown tone or an empty deed line. */
+export function dockDeedBarkFor(tone, index, tokens = {}) {
+  const lines = DOCK_DEED_BARKS[tone];
+  const deed = typeof tokens.deed === 'string' ? tokens.deed.trim() : '';
+  if (!lines || !deed) return null;
+  const line = lines[pickIndex(index, lines.length)] || lines[0];
+  return line
+    .replace(/\{deed\}/g, deed)
+    .replace(/\{place\}/g, tokens.place || 'this station')
+    .replace(/\{faction\}/g, tokens.faction || 'This house');
+}
+
 // ── Law step receipts: CONTROL voices what the law just did ──────────────────────────────────
 //
 // FB-040 — event lines, not a BARK_SITUATION, and deliberately one line each: these are receipts
@@ -2540,6 +2573,7 @@ export default {
   ESCAPE_TAUNT_BARKS,
   POD_HUNT_BARKS,
   ORE_FLOOD_BARKS,
+  DOCK_DEED_BARKS,
   TUMBLE_RAKE_BARKS,
   LAW_STEP_BARKS,
   FRONTIER_FIRST_NAMES,

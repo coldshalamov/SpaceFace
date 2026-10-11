@@ -7,6 +7,7 @@ import {
   BARK_EVENT_SITUATIONS,
   BARK_SITUATIONS,
   barkFor,
+  dockDeedBarkFor,
   freightRaiderEscapeBarkFor,
   historyBarkFor,
   hullRecognitionBarkFor,
@@ -29,7 +30,9 @@ import {
   reactionForSpill,
 } from '../data/cargoIdentity.js';
 import { contactGrammarFor } from '../data/factionContactGrammar.js';
-import { FACTION_META } from '../data/factions.js';
+import { FACTION_META, LAWFUL_STATION_FACTIONS } from '../data/factions.js';
+import { deedLine } from '../data/deedPhrases.js';
+import { DEED_KINDS, markTold, peekDeedRecord, pickDeedToTell, standingWith } from './deedRecord.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { ORES } from '../data/mining.js';
 import { playerBearingName } from '../core/playerCompass.js';
@@ -651,6 +654,9 @@ export const barkDirector = {
       this.bus.on('economy:oreFlood', this._onOreFlood);
       this._onTumbleRake = (payload) => this._speakTumbleRake(payload || {});
       this.bus.on('combat:tumbleRake', this._onTumbleRake);
+      // THE WORLD REMEMBERS (U-E): dock control greets a pilot the Record has made known.
+      this._onDockDeed = (payload) => this._speakDockDeed(payload || {});
+      this.bus.on('dock:docked', this._onDockDeed);
       this._onNpcCounterplay = (payload) => {
         const bark = admitNpcCounterplayBark(this, payload, this.state && this.state.simTime);
         const voice = this.helpers && this.helpers.voice;
@@ -1693,6 +1699,60 @@ export const barkDirector = {
   },
 
   /**
+   * THE WORLD REMEMBERS (U-E) — on `dock:docked`, when the station's faction weighs the Record at
+   * -4 or worse, dock control's greeting is a cold one naming the loudest untold grievance; at +4
+   * or better, a warm one naming the loudest untold praise. Silent on a game with no Record, a
+   * neutral standing, or nothing untold. The deed is marked told only once the line was accepted.
+   */
+  _speakDockDeed(payload) {
+    const state = this.state;
+    if (!state || !payload || !payload.stationId || !peekDeedRecord(state)) return null;
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return null;
+    let station = null;
+    let sectorId = null;
+    for (const sector of SECTORS) {
+      const found = (sector.stations || []).find((st) => st && st.id === payload.stationId);
+      if (found) { station = found; sectorId = sector.id; break; }
+    }
+    const factionId = station && station.factionId;
+    if (!factionId) return null;
+    const standing = standingWith(state, factionId);
+    const tone = standing <= -4 ? 'cold' : standing >= 4 ? 'warm' : null;
+    if (!tone) return null;
+    const axis = LAWFUL_STATION_FACTIONS.has(factionId) ? 'law' : 'street';
+    const kinds = Object.keys(DEED_KINDS).filter((k) => (tone === 'cold' ? DEED_KINDS[k][axis] < 0 : DEED_KINDS[k][axis] > 0));
+    const seed = state.meta && state.meta.seed;
+    const deed = pickDeedToTell(state, { speakerFactionId: factionId, sectorId, seed, kinds });
+    if (!deed || deed.told > 0) return null;
+    const deedText = deedLine(deed, { voice: tone === 'cold' ? 'grievance' : 'praise' });
+    const index = hash32(seed == null ? 0 : seed, 'dockDeed', payload.stationId, deed.id);
+    const text = dockDeedBarkFor(tone, index, {
+      deed: deedText,
+      place: station.name,
+      faction: FACTION_SHORT_BY_ID.get(factionId),
+    });
+    if (!text) return null;
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'dockDeed',
+      ttl: VOICE_TTL_S,
+      id: `barkDirector:dock:${payload.stationId}:deed`,
+      factionId,
+      register: 'dock_control',
+    });
+    if (!accepted) return null;
+    markTold(state, deed.id, { by: `dock:${payload.stationId}` });
+    const receipt = {
+      situation: 'dock-deed', text, deedId: deed.id, tone, stationId: payload.stationId,
+      t: Number(state.simTime) || 0, register: 'dock_control', factionId,
+    };
+    this._emit('barkDirector:voice', receipt);
+    return receipt;
+  },
+
+  /**
    * THE WORLD ANSWERS C8 — a rock the player broke dumped real ore on the lane (`economy:oreFlood`).
    * ONE bark per body: the nearest working civilian hull that has not just spoken, else the local
    * station desk. The chart and the board already carry the rest, so there is no follow-up line.
@@ -2122,6 +2182,7 @@ export const barkDirector = {
       if (this._onHaulerRegroup) this.bus.off('traffic:haulerRegroup', this._onHaulerRegroup);
       if (this._onOreFlood) this.bus.off('economy:oreFlood', this._onOreFlood);
       if (this._onTumbleRake) this.bus.off('combat:tumbleRake', this._onTumbleRake);
+      if (this._onDockDeed) this.bus.off('dock:docked', this._onDockDeed);
     }
     this._onEntitySpawnedBark = null;
     this._onFlee = null;
@@ -2160,6 +2221,7 @@ export const barkDirector = {
     this._onHaulerRegroup = null;
     this._onOreFlood = null;
     this._onTumbleRake = null;
+    this._onDockDeed = null;
     this._oreFloodKeys = null;
     this._tumbleRakeKeys = null;
     this._haulerRegroupKeys = null;
