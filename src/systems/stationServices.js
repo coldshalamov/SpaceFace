@@ -22,6 +22,7 @@
 
 import { hash32, mulberry32 } from '../core/rng.js';
 import { SECTORS } from '../data/sectors.js';
+import { stationYardRateMult } from '../economy/stationConditions.js';
 
 const DAY_SECONDS = 600;                 // sector-day contract (mirrors encounterDirector)
 const REFUEL_U_PER_S = 4;                // pump rate for a mid tank at a neutral yard
@@ -439,7 +440,8 @@ export const stationServices = {
       const job = player.jobs[0];
       job.status = 'active';
       job.startedAt = now;
-      job.ratePerS = serviceRatePerS(job.type, this._jobPoolMax(state, job), rep);
+      // THE WORLD REMEMBERS: a strike at this berth slows the crews (1 when nothing is live).
+      job.ratePerS = serviceRatePerS(job.type, this._jobPoolMax(state, job), rep) * stationYardRateMult(state, stationId);
       if (this.bus) this.bus.emit('service:started', { jobId: job.id, type: job.type, stationId });
       active = job;
     }

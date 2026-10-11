@@ -39,6 +39,11 @@ import { FACTION_META } from '../data/factions.js';
 import { BOLUS_SECTOR_ID, BOLUS_STATION_ID } from '../data/theBolus.js';
 import { SHIPS } from '../data/ships.js';
 import { conflictPressureForSector } from '../data/conflictZones.js';
+import {
+  STATION_CONDITION_LAW, STATION_CREW_ROLES, liveStationConditions, stationServiceMult, stationTradeMults,
+  stationRefuelRationU, grudgeLive, splitStationConditionsForSave,
+} from '../economy/stationConditions.js';
+import { ECON_CONTRACT_THRESHOLDS } from '../data/economyContractTemplates.js';
 import { effectiveDangerTierFor } from './sectorSim.js';
 import {
   FIRST_UPGRADE,
@@ -190,10 +195,13 @@ export const SERVICE_PRICES = Object.freeze({
  * that matters is the player's standing with the docked station's own faction; only a docked
  * service honors it, so the off-station emergency reserve and depot running costs stay at list.
  */
-export function serviceUnitCr(state, baseCr) {
+export function serviceUnitCr(state, baseCr, service = null) {
   const stationId = state && state.ui && state.ui.dockedStationId;
   const info = stationId ? stationInfo(state, stationId) : null;
-  return baseCr * (1 - rankServiceDiscount(state, info && info.factionId));
+  // THE WORLD REMEMBERS — a strike makes the yard costlier, a boom makes it cheaper. Only a named
+  // yard service ('repair' | 'refuel') reads the berth's condition.
+  const condition = stationId && service ? stationServiceMult(state, stationId, service) : 1;
+  return baseCr * (1 - rankServiceDiscount(state, info && info.factionId)) * condition;
 }
 
 /**
@@ -249,37 +257,87 @@ export const DOCK_SLAM_LAW = Object.freeze({
   relatchS: 6,
 });
 
-/** Copy only outages still live at `now`; null when nothing is. Save and restore share it. */
-function serializeStationOutages(outages, now) {
-  if (!outages || typeof outages !== 'object') return null;
-  const t = Number(now) || 0;
-  const out = {};
-  let any = false;
-  for (const stationId of Object.keys(outages)) {
-    const rec = outages[stationId];
-    if (!rec || typeof rec !== 'object') continue;
-    const repairUntil = Number(rec.repairUntil);
-    if (!Number.isFinite(repairUntil) || repairUntil <= t) continue;
-    out[stationId] = { repairUntil, cause: rec.cause || 'dock_slam', atT: Number(rec.atT) || 0 };
-    any = true;
-  }
-  return any ? out : null;
+/**
+ * THE WORLD REMEMBERS — stationConditionsFor(state, stationId) -> the live conditions at a berth
+ * ({ outage, strike, boom, grudge, blockade }, each null when not live) or null when nothing is.
+ * Stored conditions live in `state.economy.stationConditions[stationId]` (see
+ * src/economy/stationConditions.js for the record shape); the blockade is derived on read from
+ * the factions-owned `state.conflicts`, so it is never stored or saved.
+ */
+export function stationConditionsFor(state, stationId) {
+  return liveStationConditions(state, stationId, stationId ? stationInfo(state, stationId) : null);
+}
+
+/** Units of fuel the docked pumps will still deliver right now (Infinity unless blockaded). */
+export function stationRefuelRation(state, stationId, fuel) {
+  return stationId ? stationRefuelRationU(state, stationId, stationInfo(state, stationId), fuel) : Infinity;
 }
 
 /**
  * stationServiceOutage(state, stationId, service) -> { untilSimTime, cause, remainingS } | null.
- * The one read for "is this berth's yard down right now". Economy writes outages (dock slams);
- * the service handler and the UI quote read them.
+ * The one read for "is this berth's yard down right now" — now an alias over the station-condition
+ * record (`outageRepairUntil`), with the legacy `stationOutages[id].<service>Until` shape still
+ * honored on read. Economy writes outages (dock slams); the service handler and the UI quote read them.
  */
 export function stationServiceOutage(state, stationId, service) {
-  const outages = state && state.economy && state.economy.stationOutages;
-  const rec = outages && stationId ? outages[stationId] : null;
-  if (!rec || typeof rec !== 'object') return null;
-  const key = `${service}Until`;
-  const until = Number(rec[key]);
+  if (!state || !stationId) return null;
+  if (service === 'repair') {
+    const live = liveStationConditions(state, stationId, null);
+    return live && live.outage
+      ? { untilSimTime: live.outage.untilSimTime, cause: live.outage.cause, remainingS: live.outage.remainingS }
+      : null;
+  }
+  const legacy = state.economy && state.economy.stationOutages && state.economy.stationOutages[stationId];
+  if (!legacy || typeof legacy !== 'object') return null;
+  const until = Number(legacy[`${service}Until`]);
   const now = Number(state.simTime) || 0;
   if (!Number.isFinite(until) || until <= now) return null;
-  return { untilSimTime: until, cause: rec.cause || null, remainingS: until - now };
+  return { untilSimTime: until, cause: legacy.cause || null, remainingS: until - now };
+}
+
+/** Dock-control voice for a berth: lawful factions speak as Dock control, the rest as the Yardmaster. */
+function stationVoiceFor(state, stationId) {
+  const info = stationInfo(state, stationId);
+  const meta = (info && FACTION_META.find((f) => f && f.id === info.factionId)) || null;
+  const lawful = !!(meta && meta.personality === 'lawful');
+  return { voice: lawful ? 'Dock control' : 'Yardmaster', lawful, info, name: stationDisplayNameFor(state, stationId) };
+}
+
+function factionShortLabel(id) {
+  const meta = FACTION_META.find((f) => f && f.id === id);
+  return (meta && (meta.short || meta.name)) || String(id || '').replace(/^faction_/, '');
+}
+
+// A flood boom needs the same price dip the board's surplus haul-out posts at (-0.12): a 25 u rock.
+const STATION_BOOM_MAX_PRESSURE = ECON_CONTRACT_THRESHOLDS.surplusPressure;
+// A civilian hull killed this close to a berth (WU) with no home stamp is that berth's crew.
+const STATION_STRIKE_REACH_WU = 1200;
+
+const CONDITION_LINES = Object.freeze({
+  strike: 'Crews are off the floor over what you did to their shift.',
+  boom: 'The yard is flush — repair and fuel are running cheap today.',
+  grudge: 'Pay your note before you come through our ring again.',
+});
+
+/**
+ * stationConditionLine(state, stationId) -> one short dock-control sentence naming every live
+ * condition at the berth, in the berth's own voice, or null when nothing is live.
+ */
+export function stationConditionLine(state, stationId) {
+  const live = stationConditionsFor(state, stationId);
+  if (!live) return null;
+  const parts = [];
+  if (live.outage) parts.push(`repair bay down ${Math.max(1, Math.ceil(live.outage.remainingS / 60))} min`);
+  if (live.strike) parts.push(CONDITION_LINES.strike);
+  if (live.boom) parts.push(CONDITION_LINES.boom);
+  if (live.grudge) parts.push(CONDITION_LINES.grudge);
+  if (live.blockade) {
+    const [a, b] = live.blockade.factions;
+    parts.push(`Blockade — the ${factionShortLabel(a)}–${factionShortLabel(b)} front is on this lane, goods run dear and the pumps are rationed.`);
+  }
+  if (!parts.length) return null;
+  const { voice, name } = stationVoiceFor(state, stationId);
+  return `${voice}, ${name}: ${parts.join(' ')}`;
 }
 
 // A station that posts 'toll'/'scan' is a working checkpoint (Customs Gate, Dione Customs):
@@ -1561,6 +1619,10 @@ export const economy = {
     // Player cargo-ship kill → salvage → sale. Economy remembers the hull and, once those goods
     // are sold, moves the destination price. Missions owns the board opportunity that follows.
     bus.on('entity:killed', (p) => this._openCargoKillChain(p));
+    // THE WORLD REMEMBERS — a berth's own crew killed by the player is a strike; a surplus-band
+    // ore flood is a boom. (`station:strike` / `station:boom` receipts.)
+    bus.on('entity:killed', (p) => this._onStationCrewKilled(p));
+    bus.on('economy:oreFlood', (p) => this._onOreFloodCondition(p));
     bus.on('pickup:collected', (p) => this._noteCargoKillSalvage(p));
     // Traffic only delivers a stable manifest receipt. Economy validates the source station and
     // writes the one eligible salvage listing, returning a synchronous acknowledgement so traffic
@@ -1581,6 +1643,8 @@ export const economy = {
         // FB-124: a cargo policy covers one trip. Docking under your own power ends it — a
         // defeat claim was already priced into the recovery plan before the rescue berth.
         this._expireTripServices();
+        // The berth's memory of you, in its own voice (strike, boom, grudge, blockade, outage).
+        this._announceStationConditions(p.stationId);
       }
     });
     bus.on('dock:undocked', () => {
@@ -1665,6 +1729,7 @@ export const economy = {
     const clock = econ.econClock;
     clock.ticksElapsed++;
     clock.lastTickT = state.simTime;
+    this._sweepStationConditions();
 
     // 1) age / expire eventMods + active events
     this.ageEvents(state);
@@ -2361,7 +2426,13 @@ export const economy = {
         };
       }
     }
-    const standing = priceModForState(state, info && info.factionId);
+    const standingBase = priceModForState(state, info && info.factionId);
+    // THE WORLD REMEMBERS — a strike worsens what this berth pays the player; a blockade makes
+    // its goods dear. One lookup, applied here so quote/execute/automation all see the same price.
+    const conditionMult = stationTradeMults(state, stationId, info);
+    const standing = conditionMult.buy === 1 && conditionMult.sell === 1
+      ? standingBase
+      : { ...standingBase, buy: standingBase.buy * conditionMult.buy, sell: standingBase.sell * conditionMult.sell };
     // Low-tier ports buy valuable finds from the player but do not create an infinite local
     // supply of resources that only occur deeper in the world. This preserves discovery value
     // and stops starter markets from becoming risk-free rare-ore vending machines.
@@ -3333,13 +3404,18 @@ export const economy = {
 
     const fineCr = Math.max(DOCK_SLAM_LAW.fineMinCr, Math.min(DOCK_SLAM_LAW.fineMaxCr,
       Math.round(mass * closing * DOCK_SLAM_LAW.finePerMomentum)));
+    const debtBefore = Math.max(0, Math.round(Number(state.player && state.player.debt) || 0));
     this._fileDebt(fineCr);
 
-    const outages = econ.stationOutages || (econ.stationOutages = {});
-    const rec = outages[stationId] || (outages[stationId] = {});
-    rec.repairUntil = Math.max(Number(rec.repairUntil) || 0, now + DOCK_SLAM_LAW.repairOutageS);
+    // The outage lives under the berth's condition record (src/economy/stationConditions.js);
+    // stationServiceOutage() is the alias read over it.
+    const rec = this._conditionRec(stationId);
+    rec.outageRepairUntil = Math.max(Number(rec.outageRepairUntil) || 0, now + DOCK_SLAM_LAW.repairOutageS);
+    rec.outageCause = 'dock_slam';
+    rec.outageAtT = now;
     rec.cause = 'dock_slam';
     rec.atT = now;
+    const grudgeArmed = this._noteSlamForGrudge(stationId, rec, { now, fineCr, debtBefore, info });
 
     const player = state.player;
     let deductibleCr = null;
@@ -3379,12 +3455,260 @@ export const economy = {
       closingSpeed: closing,
       mass,
       fineCr,
-      repairOutageUntil: rec.repairUntil,
+      repairOutageUntil: rec.outageRepairUntil,
+      grudge: !!rec.grudge && grudgeLive(state, rec.grudge),
       deductibleCr,
       tick: Number.isFinite(p.tick) ? p.tick : (state.tick | 0),
     };
     this.bus.emit('station:slammed', receipt);
+    if (grudgeArmed) this._announceGrudge(grudgeArmed);
     return receipt;
+  },
+
+  // -------------------------------------------------------------------------------------------
+  // THE WORLD REMEMBERS (U-C) — stations with memory. One record per berth under
+  // `state.economy.stationConditions[stationId]` (shape: src/economy/stationConditions.js), written
+  // only here, created lazily (a station nothing happened to has no key), serialized only while
+  // live. Triggers: dock slams (outage + grudge), the player's kills of a berth's own crew
+  // (strike), a surplus-band ore flood (boom). The blockade is derived on read from state.conflicts.
+  // -------------------------------------------------------------------------------------------
+  _conditionRec(stationId) {
+    const econ = this.state.economy || (this.state.economy = {});
+    const all = econ.stationConditions || (econ.stationConditions = {});
+    return all[stationId] || (all[stationId] = {});
+  },
+
+  /** Count a slam toward the berth's grudge; returns a grudge receipt when this slam arms/extends it. */
+  _noteSlamForGrudge(stationId, rec, { now, fineCr, debtBefore, info }) {
+    const law = STATION_CONDITION_LAW.grudge;
+    const log = (Array.isArray(rec.slamLog) ? rec.slamLog : []).filter((e) => e && now - Number(e.t) < law.windowS);
+    log.push({ t: now, fineCr, debtBefore });
+    rec.slamLog = log;
+    if (rec.grudge && grudgeLive(this.state, rec.grudge)) {
+      rec.grudge.slams += 1;
+      rec.grudge.fineCr += fineCr;
+      return null; // already refused; the standing grudge just grows
+    }
+    if (log.length < law.slamsToGrudge) return null;
+    // The note is paid back DOWN to the lowest level it stood at when this run of slams began —
+    // i.e. the slam fines (and anything borrowed since) are what dock control wants settled.
+    const untilPaidCr = Math.max(0, Math.min(...log.map((e) => Number(e.debtBefore) || 0)));
+    rec.grudge = {
+      slams: log.length,
+      untilPaidCr,
+      fineCr: log.reduce((sum, e) => sum + (Number(e.fineCr) || 0), 0),
+      since: now,
+    };
+    delete rec.slamLog;
+    rec.cause = 'grudge';
+    return { stationId, info };
+  },
+
+  _announceGrudge({ stationId, info }) {
+    const state = this.state;
+    const rec = this._conditionRec(stationId);
+    const g = rec.grudge;
+    if (!g) return;
+    const { voice, name, lawful } = stationVoiceFor(state, stationId);
+    this.bus.emit('toast', {
+      text: `${voice}, ${name}: ${g.slams} hulls through our ring in a day — pay your note before you come through our ring again`,
+      kind: 'error', ttl: 6,
+    });
+    this.bus.emit('station:grudge', {
+      schemaVersion: 1,
+      stationId,
+      sectorId: (info && info.sectorId) || null,
+      factionId: (info && info.factionId) || null,
+      lawful,
+      slams: g.slams,
+      fineCr: g.fineCr,
+      untilPaidCr: g.untilPaidCr,
+      tick: state.tick | 0,
+    });
+  },
+
+  /**
+   * Housekeeping + the one place a grudge is declared cleared: drop expired fields and empty
+   * records (so a quiet station keeps no key), and emit `station:grudgeCleared` the moment the note
+   * is back under the level the grudge named. Called from the 5 s economy tick and straight after
+   * every debt-paying verb, so the berth reopens the instant the note is paid.
+   */
+  _sweepStationConditions() {
+    const state = this.state;
+    const econ = state && state.economy;
+    const all = econ && econ.stationConditions;
+    if (!all) return;
+    const now = Number(state.simTime) || 0;
+    const law = STATION_CONDITION_LAW;
+    for (const stationId of Object.keys(all)) {
+      const rec = all[stationId];
+      if (!rec || typeof rec !== 'object') { delete all[stationId]; continue; }
+      if (rec.grudge && !grudgeLive(state, rec.grudge)) {
+        const { voice, name, info } = stationVoiceFor(state, stationId);
+        const cleared = rec.grudge;
+        delete rec.grudge;
+        delete rec.slamLog;
+        this.bus.emit('toast', {
+          text: `${voice}, ${name}: note squared — the ring is open to you again`,
+          kind: 'success', ttl: 4,
+        });
+        this.bus.emit('station:grudgeCleared', {
+          schemaVersion: 1, stationId,
+          sectorId: (info && info.sectorId) || null, factionId: (info && info.factionId) || null,
+          slams: cleared.slams, fineCr: cleared.fineCr, tick: state.tick | 0,
+        });
+      }
+      if (!(Number(rec.outageRepairUntil) > now)) { delete rec.outageRepairUntil; delete rec.outageCause; delete rec.outageAtT; }
+      if (!(Number(rec.strikeUntil) > now)) { delete rec.strikeUntil; delete rec.strikeKills; }
+      if (!(Number(rec.boomUntil) > now)) { delete rec.boomUntil; delete rec.boomYieldU; }
+      if (Array.isArray(rec.slamLog)) {
+        rec.slamLog = rec.slamLog.filter((e) => e && now - Number(e.t) < law.grudge.windowS);
+        if (!rec.slamLog.length) delete rec.slamLog;
+      }
+      if (Array.isArray(rec.killLog)) {
+        rec.killLog = rec.killLog.filter((t) => now - Number(t) < law.strike.windowS);
+        if (!rec.killLog.length) delete rec.killLog;
+      }
+      const keys = Object.keys(rec).filter((k) => k !== 'cause' && k !== 'atT');
+      if (!keys.length) delete all[stationId];
+    }
+    if (!Object.keys(all).length) delete econ.stationConditions;
+  },
+
+  /** The berth a victim hull belonged to: an explicit stamp first, else the nearest berth in reach. */
+  _homeStationOfCrew(victim) {
+    const state = this.state;
+    const d = (victim && victim.data) || {};
+    const stamped = d.homeStationId || d.stationHomeId || d.jobStationId || d.originStationId
+      || (d.source && d.source.homeStationId) || null;
+    if (stamped && stationInfo(state, stamped)) return stamped;
+    const vp = victim && victim.pos;
+    if (!vp) return null;
+    let best = null;
+    let bestD2 = STATION_STRIKE_REACH_WU * STATION_STRIKE_REACH_WU;
+    const list = (state.entities && typeof state.entities.values === 'function')
+      ? state.entities.values() : (state.entityList || []);
+    for (const e of list) {
+      if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+      const id = (e.data && e.data.stationId) || e.stationId;
+      if (!id || !stationInfo(state, id)) continue;
+      const dx = e.pos.x - vp.x;
+      const dz = e.pos.z - vp.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < bestD2 || (d2 === bestD2 && best && id < best)) { best = id; bestD2 = d2; }
+    }
+    return best;
+  },
+
+  /**
+   * Strike: the player kills `killsToStrike` of one berth's own crew (miners, haulers-of-ore,
+   * tenders, tugs, salvors, surveyors) inside the window. Reads the `entity:killed` receipt plus
+   * the victim hull (still in `state.entities` at emit time) — the receipt itself carries no role.
+   */
+  _onStationCrewKilled(p) {
+    const state = this.state;
+    if (!p || state.playerId == null || p.killerId !== state.playerId) return null;
+    if (p.type !== 'ship' || p.targetHostileToPlayer === true) return null;
+    const victim = state.entities && typeof state.entities.get === 'function' ? state.entities.get(p.id) : null;
+    const d = victim && victim.data;
+    if (!d) return null;
+    const role = String(d.trafficRole || d.role || d.jobKind || '').toLowerCase();
+    if (!STATION_CREW_ROLES.includes(role)) return null;
+    const stationId = this._homeStationOfCrew(victim);
+    const info = stationId ? stationInfo(state, stationId) : null;
+    if (!info) return null;
+    const now = Number(state.simTime) || 0;
+    const law = STATION_CONDITION_LAW.strike;
+    const rec = this._conditionRec(stationId);
+    const log = (Array.isArray(rec.killLog) ? rec.killLog : []).filter((t) => now - Number(t) < law.windowS);
+    log.push(now);
+    rec.killLog = log;
+    if (log.length < law.killsToStrike) return null;
+    const wasOn = Number(rec.strikeUntil) > now;
+    rec.strikeUntil = now + law.strikeS;
+    rec.strikeKills = (wasOn ? Number(rec.strikeKills) || 0 : 0) + 1;
+    rec.cause = 'crew_killed';
+    rec.atT = now;
+    if (wasOn) return null; // an extension, not a new strike
+    delete rec.killLog;
+    const { voice, name, lawful } = stationVoiceFor(state, stationId);
+    this.bus.emit('toast', {
+      text: `${voice}, ${name}: ${CONDITION_LINES.strike}`,
+      kind: 'warn', ttl: 5,
+    });
+    const receipt = {
+      schemaVersion: 1, stationId, sectorId: info.sectorId || null, factionId: info.factionId || null, lawful,
+      actorId: p.killerId, victimRole: role, kills: log.length, strikeUntil: rec.strikeUntil,
+      sellMult: STATION_CONDITION_LAW.strike.sellMult, tick: state.tick | 0,
+    };
+    this.bus.emit('station:strike', receipt);
+    return receipt;
+  },
+
+  /**
+   * Boom: an ore flood past the surplus band (the same pricePressure the board's surplus haul-out
+   * posts at) puts every yard in that sector with a pump or a bay in flush times for a day.
+   */
+  _onOreFloodCondition(p) {
+    const state = this.state;
+    if (!p || typeof p.sectorId !== 'string') return [];
+    if (!(Number(p.pricePressure) <= STATION_BOOM_MAX_PRESSURE)) return [];
+    const now = Number(state.simTime) || 0;
+    const law = STATION_CONDITION_LAW.boom;
+    const reg = state.content && state.content.sectors;
+    const list = reg ? (Array.isArray(reg) ? reg : Object.values(reg)) : SECTORS;
+    const sec = list.find((s) => s && s.id === p.sectorId);
+    const receipts = [];
+    for (const st of (sec && sec.stations) || []) {
+      if (!st || !st.id) continue;
+      const info = stationInfo(state, st.id);
+      if (!info || !Array.isArray(info.services)
+        || !(info.services.includes('repair') || info.services.includes('refuel'))) continue;
+      const rec = this._conditionRec(st.id);
+      const wasOn = Number(rec.boomUntil) > now;
+      rec.boomUntil = now + law.boomS;
+      rec.boomYieldU = Number(p.yieldU) || 0;
+      rec.cause = 'ore_flood';
+      rec.atT = now;
+      if (wasOn) continue;
+      const { lawful } = stationVoiceFor(state, st.id);
+      const receipt = {
+        schemaVersion: 1, stationId: st.id, sectorId: p.sectorId, factionId: info.factionId || null, lawful,
+        commodityId: p.commodityId || null, yieldU: Number(p.yieldU) || 0, boomUntil: rec.boomUntil,
+        serviceMult: law.serviceCostMult, tick: state.tick | 0,
+      };
+      receipts.push(receipt);
+      this.bus.emit('station:boom', receipt);
+    }
+    return receipts;
+  },
+
+  /**
+   * One dock-control line on dock (same toast path as the slam), plus the derived blockade's
+   * receipt the first time a berth is docked while a war front holds its sector.
+   */
+  _announceStationConditions(stationId) {
+    const state = this.state;
+    if (!stationId) return;
+    const live = stationConditionsFor(state, stationId);
+    if (!live) { if (this._blockadeAnnounced) delete this._blockadeAnnounced[stationId]; return; }
+    if (live.blockade) {
+      const ann = this._blockadeAnnounced || (this._blockadeAnnounced = {});
+      if (ann[stationId] !== live.blockade.pairKey) {
+        ann[stationId] = live.blockade.pairKey;
+        const info = stationInfo(state, stationId);
+        this.bus.emit('station:blockade', {
+          schemaVersion: 1, stationId, sectorId: live.blockade.sectorId, factionId: (info && info.factionId) || null,
+          pairKey: live.blockade.pairKey, factions: live.blockade.factions.slice(),
+          buyMult: STATION_CONDITION_LAW.blockade.buyMult, refuelFillFrac: STATION_CONDITION_LAW.blockade.refuelFillFrac,
+          tick: state.tick | 0,
+        });
+      }
+    } else if (this._blockadeAnnounced) {
+      delete this._blockadeAnnounced[stationId];
+    }
+    const line = stationConditionLine(state, stationId);
+    if (line) this.bus.emit('toast', { text: line, kind: 'warn', ttl: 6 });
   },
 
   /** PQ-155.02 — spilled named cargo can levy restitution. No levy, no debit. */
@@ -3486,6 +3810,7 @@ export const economy = {
       player.debtSinceDay = null;
       delete player.debtStaleDay;
     }
+    this._sweepStationConditions();
     return amount;
   },
 
@@ -3584,8 +3909,16 @@ export const economy = {
     if (type === 'refuel') {
       const fuel = state.fuel || (state.fuel = { current: 0, max: 100 });
       const want = p.amount != null ? p.amount : (fuel.max - fuel.current);
-      const units = Math.max(0, Math.min(want, fuel.max - fuel.current));
-      const fuelUnit = serviceUnitCr(state, FUEL_UNIT_CR);
+      // A blockaded berth rations the pumps: the tank fills only so far (derived from the live front).
+      const berthId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null;
+      const ration = stationRefuelRation(state, berthId, fuel);
+      const units = Math.max(0, Math.min(want, fuel.max - fuel.current, ration));
+      const fuelUnit = serviceUnitCr(state, FUEL_UNIT_CR, 'refuel');
+      if (units <= 0 && ration <= 0 && want > 0 && fuel.max - fuel.current > 0) {
+        const { voice, name } = stationVoiceFor(state, berthId);
+        this.bus.emit('toast', { text: `${voice}, ${name}: fuel is rationed behind the blockade — the pumps are shut to a tank this full`, kind: 'warn', ttl: 3 });
+        return;
+      }
       const cost = round(units * fuelUnit);
       if (units <= 0) {
         // The tank is already full — the same word the repair bench gives an intact hull.
@@ -3654,7 +3987,7 @@ export const economy = {
       const missArmor = Math.max(0, (e.armorMax || 0) - (e.armorHp || 0));
       const totalMiss = missHull + missArmor;
       if (totalMiss <= 0.5) { this.bus.emit('toast', { text: 'Hull already intact', kind: 'info', ttl: 2 }); return; }
-      const repairUnit = serviceUnitCr(state, REPAIR_HP_CR);
+      const repairUnit = serviceUnitCr(state, REPAIR_HP_CR, 'repair');
       const cost = round(totalMiss * repairUnit);
       const credits = normalizeCredits(state.player.credits);
       const repairYard = this._serviceYard();
@@ -3854,6 +4187,8 @@ export const economy = {
         player.debtSinceDay = null;
         delete player.debtStaleDay;
       }
+      // A berth that holds a grudge over the note reopens the moment it is paid back down.
+      this._sweepStationConditions();
       const stationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null;
       this.bus.emit('service:completed', {
         type: 'settle', amount: pay, debtCr: player.debt,
@@ -4398,6 +4733,8 @@ export const economy = {
     delete state.economy.committedIntents;
     delete state.economy.cargoKillChains;
     delete state.economy.stationOutages;
+    delete state.economy.stationConditions;
+    this._blockadeAnnounced = null;
     delete state.economy.dockSlamLatch;
     this.resetRng();
     this._nextEventId = 1;
@@ -4475,8 +4812,11 @@ export const economy = {
       : [];
     if (cargoKillChains.length) data.cargoKillChains = cargoKillChains;
     // §15.6 C6 — only live outages travel; an expired one is nothing to restore.
-    const outages = serializeStationOutages(econ.stationOutages, this.state.simTime);
-    if (outages) data.stationOutages = outages;
+    // THE WORLD REMEMBERS — the slam outage keeps its C6 chunk shape (`stationOutages`); every
+    // other live condition (strike, boom, grudge, tallies) rides `stationConditions`. Lazy keys.
+    const split = splitStationConditionsForSave(this.state, this.state.simTime);
+    if (split.outages) data.stationOutages = split.outages;
+    if (split.conditions) data.stationConditions = split.conditions;
     return data;
   },
 
@@ -4497,9 +4837,21 @@ export const economy = {
       : [];
     if (restoredChains.length) econ.cargoKillChains = restoredChains;
     else delete econ.cargoKillChains;
-    const restoredOutages = serializeStationOutages(data.stationOutages, this.state.simTime);
-    if (restoredOutages) econ.stationOutages = restoredOutages;
-    else delete econ.stationOutages;
+    delete econ.stationOutages;
+    delete econ.stationConditions;
+    this._blockadeAnnounced = null;
+    {
+      const restored = splitStationConditionsForSave(
+        { economy: { stationOutages: data.stationOutages, stationConditions: data.stationConditions } },
+        this.state.simTime, { checkDebt: false },
+      );
+      const rows = {};
+      for (const [id, o] of Object.entries(restored.outages || {})) {
+        rows[id] = { outageRepairUntil: o.repairUntil, outageCause: o.cause, outageAtT: o.atT };
+      }
+      for (const [id, c] of Object.entries(restored.conditions || {})) rows[id] = { ...(rows[id] || {}), ...c };
+      if (Object.keys(rows).length) econ.stationConditions = rows;
+    }
     delete econ.dockSlamLatch;
     econ.pulse = restoreEconomyPulse(data.pulse, this.state.simTime);
     econ.balanceVersion = BALANCE.version;

@@ -9,6 +9,7 @@ import { hash32 } from '../core/rng.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 import { DOCK_DENY_REASONS, dockDenyReason, stationMinRepFor } from './dockDeny.js';
 import { SECTORS } from './sectors.js';
+import { STATION_CONDITION_LAW, stationGrudge } from '../economy/stationConditions.js';
 
 export const FRONTIER_RUMOR_DAY_SECONDS = 600;
 export const FRONTIER_RUMOR_SCHEMA_VERSION = 1;
@@ -115,6 +116,8 @@ export function stationBerthAdmits(st, rep, state) {
     && st.militaryOnly !== true
     && st.private !== true && st.public !== false
     && !(st.id === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state))
+    // THE WORLD REMEMBERS: a berth holding a grudge over unpaid slam fines refuses the hull.
+    && !(state && st.id && stationGrudge(state, st.id))
     && !(Number.isFinite(rep) && rep < stationMinRepFor(st));
 }
 
@@ -134,6 +137,9 @@ export function stationBerthAdmits(st, rep, state) {
  */
 export function stationBerthRefusal(st, rep, state) {
   if (stationBerthAdmits(st, rep, state)) return null;
+  if (state && st && st.id && stationGrudge(state, st.id)) {
+    return { kind: 'structural', reason: 'grudge', text: STATION_CONDITION_LAW.grudge.refusal };
+  }
   const deny = dockDenyReason(st, { rep });
   const floor = stationMinRepFor(st);
   if (deny && deny.reason === 'hostile_rep' && Number.isFinite(rep) && rep < floor) return { kind: 'standing', floor };
