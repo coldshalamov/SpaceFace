@@ -379,11 +379,19 @@ function isTerrainSurface(payload) {
   return surface === 'terrain' || surface === 'world' || surface === 'asteroid';
 }
 
+// Field statuses are enumerated, not pattern-matched: a future status whose id merely contains
+// "mark" or "well" must not re-bucket into the field family. The first three are the live combat
+// statuses a field schedules; the rest are the legacy aliases the field receipts still emit.
+const FIELD_STATUS_IDS = new Set([
+  'status_gravity_marked', 'status_pinned', 'status_unmoored',
+  'grav_well', 'gravity-well', 'ion_field',
+]);
+
 function isFieldStatus(payload) {
   if (!payload || typeof payload !== 'object') return false;
   if (payload.field === true) return true;
   const id = String(payload.statusId || payload.id || '');
-  if (/gravity|field|mark|orbit|well|pinned|unmoored/i.test(id)) return true;
+  if (FIELD_STATUS_IDS.has(id)) return true;
   const channel = String(payload.channel || payload.causalKind || '');
   return channel.toUpperCase() === 'FIELD' || channel.toUpperCase() === 'ORBIT';
 }

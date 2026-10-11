@@ -21,6 +21,17 @@ export const STATUS_ATTACHED_KIND = Object.freeze({
 });
 
 const NO_EMIT_SPRITES = Object.freeze([]);
+// The no-emit answer runs every presented frame for every victim: never allocate for it. An
+// unusable victim gets one frozen shared result; a victim that is merely between cadence pulses
+// gets the retained scratch below, valid only until the next plan call (the caller reads
+// nextCadenceAgeS synchronously, exactly like collectStatusAttachedVictims' pooled records).
+const NO_EMIT_INVALID = Object.freeze({ emit: false, nextCadenceAgeS: 0, sprites: NO_EMIT_SPRITES });
+const _noEmitScratch = { emit: false, nextCadenceAgeS: 0, sprites: NO_EMIT_SPRITES };
+
+function noEmitAt(age) {
+  _noEmitScratch.nextCadenceAgeS = age;
+  return _noEmitScratch;
+}
 
 function statusSeed(entityId, statusId, stacks) {
   let seed = typeof entityId === 'number' ? entityId | 0 : 2166136261;
@@ -186,7 +197,7 @@ export function collectStatusAttachedVictims(state, out = []) {
 export function planStatusAttachedEmit(victim, cadenceAgeS, accessibility = {}, dt = 0) {
   const row = victim && STATUS_ROWS[victim.statusId];
   if (!row || !victim || !(victim.remainingS > 0)) {
-    return Object.freeze({ emit: false, nextCadenceAgeS: 0, sprites: Object.freeze([]) });
+    return NO_EMIT_INVALID;
   }
   const motionReduce = !!accessibility.motionReduce;
   const flashReduce = !!accessibility.flashReduce;
@@ -198,12 +209,12 @@ export function planStatusAttachedEmit(victim, cadenceAgeS, accessibility = {}, 
     age %= period;
   }
   if (!emit) {
-    return { emit: false, nextCadenceAgeS: age, sprites: NO_EMIT_SPRITES };
+    return noEmitAt(age);
   }
   const stacks = clamp(victim.stacks, 1, 3);
   const life = Math.min(row.authoredLife, victim.remainingS);
   if (!(life > 0.04)) {
-    return { emit: false, nextCadenceAgeS: age, sprites: NO_EMIT_SPRITES };
+    return noEmitAt(age);
   }
   // Gravity, pinned and unmoored marks are retained hull-seated geometry, never an emitted cloud.
   // Preserve the same cadence admission while StatusMatterVfx owns their distinct moving forms.

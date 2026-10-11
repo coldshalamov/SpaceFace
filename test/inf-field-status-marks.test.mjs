@@ -194,3 +194,26 @@ test('field status marks are deterministic for the same seeded field run', () =>
   const pick = (world) => collectStatusAttachedVictims(world.state, []).map((r) => [r.entityId, r.statusId, r.remainingS]);
   assert.deepEqual(pick(deployField('deployRepulsor')), pick(deployField('deployRepulsor')));
 });
+
+test('the no-emit path allocates nothing: invalid victims share one frozen result, idle ones one scratch', () => {
+  const dead = planStatusAttachedEmit(null, 0, {}, 0);
+  assert.equal(Object.isFrozen(dead), true);
+  assert.equal(planStatusAttachedEmit({ statusId: 'status_nope', remainingS: 1 }, 0, {}, 0), dead, 'one shared result');
+  const victim = { entityId: 2, statusId: PINNED_STATUS_ID, kind: 'pinned', stacks: 1, remainingS: 2, tick: 0, radius: 8 };
+  const first = planStatusAttachedEmit(victim, 0, {}, 0.01);
+  const second = planStatusAttachedEmit(victim, 0.03, {}, 0.01);
+  assert.equal(first.emit, false);
+  assert.equal(first, second, 'between pulses the same retained result is reused');
+  assert.equal(second.nextCadenceAgeS, 0.04, 'and it carries the live cadence age');
+});
+
+test('field-status grammar is an enumerated list: lookalike ids do not re-bucket', () => {
+  for (const id of ['status_gravity_marked', 'status_pinned', 'status_unmoored']) {
+    assert.equal(classifyCausalVfxFamily('combat:statusApplied', { statusId: id }), CAUSAL_VFX_FAMILIES.field, id);
+  }
+  for (const id of ['status_watermark', 'status_wellness', 'status_marked_for_death', 'status_fieldwork']) {
+    assert.equal(classifyCausalVfxFamily('combat:statusApplied', { statusId: id }), CAUSAL_VFX_FAMILIES.reaction, id);
+  }
+  assert.equal(classifyCausalVfxFamily('combat:statusApplied', { statusId: 'status_x', field: true }), CAUSAL_VFX_FAMILIES.field,
+    'an explicit field flag still wins');
+});
