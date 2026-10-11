@@ -7,7 +7,7 @@ import { StuntFlightObserver } from '../combat/stuntFlightEvidence.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { remapStuntReferences } from '../combat/stuntSaveReferences.js';
 import { serializeProjectileEvidence, restoreProjectileEvidence, pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
-import { bankIfQuiet, createComboState, recordKill, recordTrick, recordBridge, resetRound, settleCrash, trickPay } from './stuntCombo.js';
+import { attributeTrickKill, bankIfQuiet, createComboState, recordKill, recordTrick, recordBridge, resetRound, settleCrash, trickPay } from './stuntCombo.js';
 import { awardContractCompletion, contractCompletionsFor, heldCargoPodLot, isCivilianEntity } from '../combat/stuntContracts.js';
 import { isSalvageRightsItem, makeSalvageRightsItem } from '../data/killRewards.js';
 export const STUNT_SYSTEM_SCHEMA_VERSION=2;
@@ -255,7 +255,14 @@ export const stuntGrammar={
       else {st.recentTricks.push(trick);st.totalTricksDetected++;st.tricksByRarity[trick.rarity]++;}
       if(st.recentTricks.length>64)st.recentTricks.shift();
       this._payTrick(st,trick,prevTrick,tick);
-      if(survival)recordTrick(st.combo,trick);
+      if(survival) {
+        recordTrick(st.combo,trick);
+        // The kill was already counted by weapon; the trick reclaims its dead.
+        // Living victims are witnesses, not kills — only the dead move counters.
+        for(const victim of trick.victimLives||[]) {
+          if(victim&&victim.dead===true)attributeTrickKill(st.combo,victim.lifeId);
+        }
+      }
       this.bus?.emit(trick.amendment?'stunt:trickAmended':'stunt:trickDetected',trick);
       for(const contractId of contractCompletionsFor(trick,{cargoPodHeld:heldCargoPodLot(s)!=null,civilianHarm:st.contracts.harm})) {
         const card=awardContractCompletion(s,contractId,trick,tick);

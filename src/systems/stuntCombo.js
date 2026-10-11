@@ -194,17 +194,52 @@ export function recordTrick(comboState, trick) {
 export function recordKill(comboState, kill = {}) {
   const combo = ensureCombo(comboState);
   const deathId = keyOf(kill.lifeId ?? kill.deathId);
-  if (deathId != null && combo.settledDeaths[deathId]) return 0;
+  const prior = deathId != null ? combo.settledDeaths[deathId] : null;
+  // 'pending' is a trick waiting for its body: the kill lands as a trick kill.
+  // Any other settled mark (a counter name, or legacy `true`) is a duplicate.
+  if (deathId != null && prior && prior !== 'pending') return 0;
   if (kill.playerOwned === false) return 0;
   const points = killPoints(kill.weaponId, kill.threatClass || 'fodder');
-  if (deathId != null) combo.settledDeaths[deathId] = true;
+  const counter = kill.trickKill === true || prior === 'pending' ? 'trick'
+    : isPulseWeapon(kill.weaponId) ? 'pulse' : 'gun';
+  if (deathId != null) combo.settledDeaths[deathId] = counter;
   combo.baseScore += points; combo.banked += points;
-  if (kill.trickKill) combo.trickKills += 1;
-  else if (isPulseWeapon(kill.weaponId)) combo.pulseKills += 1;
+  if (counter === 'trick') combo.trickKills += 1;
+  else if (counter === 'pulse') combo.pulseKills += 1;
   else combo.gunKills += 1;
   return points;
 }
 export function recordTrickKill(combo, kill = {}) { return recordKill(combo, { ...kill, trickKill: true }); }
+
+/**
+ * A detected trick claims its dead victims' kills — in either event order. A
+ * settled gun/pulse kill moves to the trick counter; an unseen life parks as
+ * 'pending' so a later recordKill lands there directly. Legacy `true` marks
+ * carry no counter to move and are left alone. Returns whether anything changed.
+ */
+export function attributeTrickKill(comboState, lifeId) {
+  const combo = ensureCombo(comboState);
+  const key = keyOf(lifeId);
+  if (key == null) return false;
+  const prior = combo.settledDeaths[key];
+  if (prior === 'gun') {
+    combo.gunKills = Math.max(0, num(combo.gunKills) - 1);
+    combo.trickKills = num(combo.trickKills) + 1;
+    combo.settledDeaths[key] = 'trick';
+    return true;
+  }
+  if (prior === 'pulse') {
+    combo.pulseKills = Math.max(0, num(combo.pulseKills) - 1);
+    combo.trickKills = num(combo.trickKills) + 1;
+    combo.settledDeaths[key] = 'trick';
+    return true;
+  }
+  if (prior == null) {
+    combo.settledDeaths[key] = 'pending';
+    return true;
+  }
+  return false;
+}
 
 export function recordBridge(comboState, bridge = {}) {
   const combo = ensureCombo(comboState);
