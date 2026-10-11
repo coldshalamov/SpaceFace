@@ -9,6 +9,7 @@ import { createSimulation } from '../src/core/sim.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
+import { isHostileForAI } from '../src/ai/engagementAuthority.js';
 import { isAttachable } from '../src/systems/tetherGameplay.js';
 import { ensurePhysicsBodySpec, isDynamicPhysicsBodyEntity } from '../src/core/physicsAuthority.js';
 
@@ -52,7 +53,10 @@ const ent = (h, id) => h.state.entities.get(id);
 const grants = (h) => h.events.filter((e) => e.name === 'grant').map((e) => e.payload.amount);
 const resolved = (h) => h.events.filter((e) => e.name === 'resolved').map((e) => e.payload.outcome);
 const said = (h) => h.events.filter((e) => e.name === 'voice').map((e) => e.payload.text);
-const scanAt = (h, pos) => h.bus.emit('scan:pulse', { pos: { ...pos }, radius: 1200, source: 'player-scanner', scannerId: h.player.id });
+let pulseSeq = 0;
+const scanAt = (h, pos, over = {}) => h.bus.emit('scan:pulse', {
+  pos: { ...pos }, radius: 1200, source: 'player-scanner', scannerId: h.player.id, seq: ++pulseSeq, ...over,
+});
 const jumpersOf = (h, live) => live.ids.map((id) => ent(h, id)).filter((e) => e && e.data?.ai?.encounterRole === 'jumper');
 
 function dragEmitterTo(h, b, wu) {
@@ -102,7 +106,7 @@ test('fire casts the quarantined hulk, the clean reference, a light towable emit
   const sep = Math.hypot(hulk.pos.x - reference.pos.x, hulk.pos.z - reference.pos.z);
   assert.ok(Math.abs(sep - 260) < 1, `the reference hulk is ~260 WU away (${sep.toFixed(1)})`);
   const touch = Math.hypot(hulk.pos.x - emitter.pos.x, hulk.pos.z - emitter.pos.z);
-  assert.ok(touch < 20, `the emitter is clamped to the hulk (${touch.toFixed(1)})`);
+  assert.ok(touch >= 18 && touch < 30, `the emitter is clamped beside the hulk, clear of its capsule (${touch.toFixed(1)})`);
   assert.ok(said(h)[0].startsWith('SALVAGE HAND: Traffic shut this drift on a bloom report.'), 'the primary line fires');
   assert.equal(live.deadlineAt - h.state.simTime, 240, 'deadline is 240 s');
 });
@@ -142,8 +146,8 @@ test('comparison proof: scan the hulk, the reference, then the emitter up close 
   for (const j of jumpers) {
     assert.equal(j.factionId, 'faction_reach');
     assert.equal(j.data.ai.passive, false, 'they come hostile');
-    const range = Math.hypot(j.pos.x - h.player.pos.x, j.pos.z - h.player.pos.z);
-    assert.ok(range > 560 && range < 740, `they arrive ~600-700 WU out (${range.toFixed(0)})`);
+    const range = Math.hypot(j.pos.x - b.hulkPos.x, j.pos.z - b.hulkPos.z);
+    assert.ok(range > 590 && range < 710, `they come from ~600-700 WU out of the SITE (${range.toFixed(0)})`);
   }
   assert.ok(said(h).includes("CLAIM-JUMPER: That lamp's ours, scrapper. Put it down."));
   assert.ok(said(h).includes('SALVAGE HAND: Filing it now — keep them off me!'));
@@ -284,4 +288,150 @@ test('same seed twice gives the same cast positions and the same outcome', () =>
   const a = run();
   assert.equal(a, run(), 'the scene is deterministic');
   assert.ok(JSON.parse(a).resolved.includes('filed'));
+});
+
+test('the claim-jumpers are hostile to the hand and to the player under the real hostility function', () => {
+  const h = makeHarness();
+  const live = fire(h);
+  scanBothThenEmitter(h, live);
+  const hand = live.ids.map((id) => ent(h, id)).find((e) => e?.data?.ai?.encounterRole === 'hand');
+  const jumpers = jumpersOf(h, live);
+  assert.equal(jumpers.length, 2);
+  for (const j of jumpers) {
+    assert.equal(isHostileForAI(h.state, j, hand), true, 'a jumper may fire on the hand');
+    assert.equal(isHostileForAI(h.state, j, h.player), true, 'and on the player');
+  }
+  assert.equal(isHostileForAI(h.state, hand, h.player), false, 'the hand stays a bystander to the player');
+});
+
+test('the claim-jumpers spawn near the site, not on the player', () => {
+  const h = makeHarness();
+  h.player.pos.x = ANCHOR.x + 2500;
+  const live = fire(h);
+  const b = bloomOf(live);
+  scanBothThenEmitter(h, live);
+  for (const j of jumpersOf(h, live)) {
+    const fromSite = Math.hypot(j.pos.x - b.hulkPos.x, j.pos.z - b.hulkPos.z);
+    const fromPlayer = Math.hypot(j.pos.x - h.player.pos.x, j.pos.z - h.player.pos.z);
+    assert.ok(fromSite > 590 && fromSite < 710, `out from the site (${fromSite.toFixed(0)})`);
+    assert.ok(fromPlayer !== fromSite, 'not tied to the player position');
+  }
+});
+
+test('abandoning the hand lets the jumpers kill it: client_lost is a real way to fail', () => {
+  const h = makeHarness();
+  const live = fire(h);
+  scanBothThenEmitter(h, live);
+  const hand = live.ids.map((id) => ent(h, id)).find((e) => e?.data?.ai?.encounterRole === 'hand');
+  const jumper = jumpersOf(h, live)[0];
+  assert.equal(isHostileForAI(h.state, jumper, hand), true, 'the jumpers can attack the hand');
+  hand.alive = false;
+  h.sim.runTicks(40);
+  assert.deepEqual(resolved(h), ['client_lost']);
+  assert.deepEqual(grants(h), []);
+});
+
+test('budget-denied jumpers never pay for free: the hand files only after retries and a 30 s hold', () => {
+  const h = makeHarness();
+  const live = fire(h);
+  const budget = h.sim.registry.get('encounterDirector').helpers.spawnBudget;
+  assert.ok(budget && typeof budget.request === 'function', 'the spawn budget is the director\'s helper');
+  budget.request = () => 0;
+  scanBothThenEmitter(h, live);
+  const b = bloomOf(live);
+  assert.equal(b.proof, 'comparison');
+  assert.equal(jumpersOf(h, live).length, 0, 'the budget granted nothing');
+  assert.equal(b.jumpersSpawned, 0);
+  h.sim.runTicks(60 * 10);
+  assert.deepEqual(resolved(h), [], 'no free payout while retrying');
+  assert.ok(b.jumperAttempts > 3, `it keeps retrying (${b.jumperAttempts} attempts)`);
+  h.sim.runTicks(60 * 25);
+  assert.deepEqual(resolved(h), [], 'the 30 s undisturbed hold has not elapsed');
+  h.sim.runTicks(60 * 20);
+  assert.deepEqual(resolved(h), ['filed'], 'filed only after retries gave up and the hold ran');
+  assert.deepEqual(grants(h), [520]);
+});
+
+test('a budget that frees up mid-retry still brings the jumpers', () => {
+  const h = makeHarness();
+  const live = fire(h);
+  const budget = h.sim.registry.get('encounterDirector').helpers.spawnBudget;
+  const real = budget.request;
+  budget.request = () => 0;
+  scanBothThenEmitter(h, live);
+  h.sim.runTicks(60 * 5);
+  assert.equal(jumpersOf(h, live).length, 0);
+  budget.request = real;
+  h.sim.runTicks(60 * 4);
+  assert.equal(jumpersOf(h, live).length, 2, 'the retry spawns them once the budget frees');
+  assert.deepEqual(resolved(h), [], 'and nothing pays until they are dealt with');
+});
+
+test('jumpers that never come within 380 WU of anyone settle filed after the stuck-safety, not before', () => {
+  const h = makeHarness();
+  const live = fire(h);
+  scanBothThenEmitter(h, live);
+  for (const j of jumpersOf(h, live)) { j.vel = { x: 0, z: 0 }; }
+  h.sim.runTicks(60 * 100);
+  assert.deepEqual(resolved(h), [], 'no 120 s fallback pays early');
+  h.sim.runTicks(60 * 60);
+  assert.deepEqual(resolved(h), ['filed']);
+});
+
+test('a scan pulse that is not the player\'s is ignored', () => {
+  const h = makeHarness();
+  const live = fire(h);
+  const b = bloomOf(live);
+  scanAt(h, { x: b.hulkPos.x + 40, z: b.hulkPos.z }, { source: 'npc-scanner' });
+  scanAt(h, { x: b.hulkPos.x + 40, z: b.hulkPos.z }, { scannerId: 9999 });
+  assert.equal(b.evidence.hulk, false, 'foreign pulses credit nothing');
+  scanAt(h, { x: b.hulkPos.x + 40, z: b.hulkPos.z });
+  assert.equal(b.evidence.hulk, true, 'the player\'s own pulse does');
+});
+
+test('a pulse delivered twice with the same seq counts once', () => {
+  const h = makeHarness();
+  const live = fire(h);
+  const b = bloomOf(live);
+  const pos = { x: b.hulkPos.x + 40, z: b.hulkPos.z };
+  h.bus.emit('scan:pulse', { pos, radius: 1200, source: 'player-scanner', scannerId: h.player.id, seq: 500 });
+  assert.equal(b.evidence.hulk, true);
+  assert.equal(b.lastPulseSeq, 500);
+  const refPos = { x: b.referencePos.x + 40, z: b.referencePos.z };
+  h.bus.emit('scan:pulse', { pos: refPos, radius: 1200, source: 'player-scanner', scannerId: h.player.id, seq: 500 });
+  assert.equal(b.evidence.reference, false, 'a replayed seq is dropped');
+  h.bus.emit('scan:pulse', { pos: refPos, radius: 1200, source: 'player-scanner', scannerId: h.player.id, seq: 501 });
+  assert.equal(b.evidence.reference, true);
+});
+
+test('placement avoids a wreck or a station standing where the site would go', () => {
+  const blocked = (kind) => {
+    const h = makeHarness();
+    const blocker = h.sim.spawn(kind === 'station'
+      ? { type: 'station', team: 0, pos: { ...ANCHOR }, radius: 120, hull: 1000, hullMax: 1000 }
+      : { type: 'wreck', team: 0, pos: { ...ANCHOR }, radius: 60, hull: 1, hullMax: 1 });
+    const live = fire(h);
+    const b = bloomOf(live);
+    const pts = [b.hulkPos, b.referencePos, ent(h, b.emitterId).pos];
+    for (const p of pts) {
+      const gap = Math.hypot(p.x - blocker.pos.x, p.z - blocker.pos.z) - blocker.radius;
+      assert.ok(gap >= 40, `the ${kind} blocker stays clear of the cast (gap ${gap.toFixed(0)})`);
+    }
+  };
+  blocked('station');
+  blocked('wreck');
+});
+
+test('after settling, a leftover emitter stops claiming to be live evidence', () => {
+  const h = makeHarness();
+  const live = fire(h);
+  const b = bloomOf(live);
+  scanBothThenEmitter(h, live);
+  for (const j of jumpersOf(h, live)) j.alive = false;
+  h.sim.runTicks(40);
+  assert.equal(ent(h, b.emitterId).data.scanLabel, 'SPOOF EMITTER — FILED');
+  const h2 = makeHarness();
+  const live2 = fire(h2);
+  h2.sim.runTicks(60 * 245);
+  assert.equal(ent(h2, bloomOf(live2).emitterId).data.scanLabel, 'SPOOF EMITTER');
 });

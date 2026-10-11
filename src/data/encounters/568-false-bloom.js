@@ -29,7 +29,7 @@ const FOCUS_WU = 170;              // a scan pulse credits the hulk it is closes
 const EMITTER_SCAN_WU = 90;        // "up close" on the emitter
 const TOW_CLEAR_WU = 180;          // the emitter this far from the hulk has really moved
 const REFERENCE_SEP_WU = 260;
-const EMITTER_GAP_WU = 14;         // emitter touches the quarantined hulk (radii 9 + 4)
+const EMITTER_GAP_WU = 20;         // clamped beside the hulk, clear of its ~13 WU capsule so spawn resolution cannot shove it
 const HAND_OFFSET_WU = 130;
 const CLEAR_WU = 60;               // nothing spawns closer than this to a rock's surface
 const LAYOUT_TRIES = 36;
@@ -37,7 +37,10 @@ const LAYOUT_STEP_WU = 140;
 const JUMPER_RANGE_WU = [600, 700];
 const JUMPER_ARRIVE_WU = 380;
 const FILING_HOLD_S = 45;
-const FILING_FALLBACK_S = 120;
+const JUMPER_STUCK_S = 150;        // jumpers exist but none ever came near anyone
+const JUMPER_RETRY_EVERY_S = 2;
+const JUMPER_RETRY_FOR_S = 20;
+const UNDISTURBED_HOLD_S = 30;     // budget denied every jumper: the hand files only after this
 const BASE_PAY = 380;
 const COMPARISON_BONUS = 140;
 const EMITTER_RADIUS = 4;
@@ -48,31 +51,34 @@ const REFERENCE_POOL = Object.freeze({ cmdty_scrap_metal: 2 });
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
-function rocksNear(state, center, radius) {
+function blockersNear(state, center, radius, ignoreId) {
   const out = [];
   for (const e of state.entityList || []) {
-    if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
+    if (!e || e.alive === false || !e.pos || e.id === ignoreId) continue;
+    if (!(Number(e.radius) > 0) || e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;
     if (dist(e.pos, center) <= radius) out.push(e);
   }
   return out;
 }
 
-function siteIsClear(rocks, points) {
+function blockedCount(blockers, points) {
+  let n = 0;
   for (const p of points) {
-    for (const r of rocks) {
-      if (dist(r.pos, p) < (r.radius || 0) + CLEAR_WU) return false;
+    for (const r of blockers) {
+      if (dist(r.pos, p) < (r.radius || 0) + CLEAR_WU) n++;
     }
   }
-  return true;
+  return n;
 }
 
 /** Cast layout in clear space: quarantined hulk H, reference hulk 260 WU along `dir`, emitter
- * touching H on the far side, the hand off to one side. The hulk site is offset-and-checked
- * against real rocks around the zone anchor on a deterministic ring walk. */
-function findLayout(state, center, rng) {
-  const rocks = rocksNear(state, center, 2600);
+ * beside H, the hand off to one side. The hulk site is offset-and-checked against every body
+ * with a radius (rocks, stations, wrecks, live ships, machines) on a deterministic ring walk; if
+ * nothing is fully clear the least-blocked candidate wins. */
+function findLayout(state, center, rng, ignoreId) {
+  const blockers = blockersNear(state, center, 2600, ignoreId);
   const dir0 = rng() * Math.PI * 2;
-  let fallback = null;
+  let best = null;
   for (let i = 0; i < LAYOUT_TRIES; i++) {
     const ring = Math.floor(i / 6);
     const base = i === 0
@@ -90,10 +96,11 @@ function findLayout(state, center, rng) {
       hand: { x: base.x - dz * HAND_OFFSET_WU - dx * 40, z: base.z + dx * HAND_OFFSET_WU - dz * 40 },
       dir: { x: dx, z: dz },
     };
-    if (siteIsClear(rocks, [layout.hulk, layout.reference, layout.emitter, layout.hand])) return layout;
-    if (!fallback) fallback = layout;
+    const blocked = blockedCount(blockers, [layout.hulk, layout.reference, layout.emitter, layout.hand]);
+    if (blocked === 0) return layout;
+    if (!best || blocked < best.blocked) best = { layout, blocked };
   }
-  return fallback;
+  return best.layout;
 }
 
 function entityById(state, id) {
@@ -111,7 +118,7 @@ export const runtime = Object.freeze({
     const center = (live.plan && live.plan.zoneCenter) || live.anchor;
     if (!center || !Number.isFinite(center.x)) return d.abort(live, 'no_zone_anchor');
 
-    const layout = findLayout(state, center, d.stream(live, 'false_bloom_layout'));
+    const layout = findLayout(state, center, d.stream(live, 'false_bloom_layout'), state.playerId);
     handSpec.pos = { ...layout.hand };
     handSpec.factionId = 'faction_free';
     handSpec.passive = true;
@@ -147,7 +154,12 @@ export const runtime = Object.freeze({
       towHinted: false,
       jumperSpecs: jumperSpecs.map((sh) => ({ ...sh })),
       jumpersAt: null,
+      jumpersSpawned: 0,
+      jumperAttempts: 0,
+      jumperRetryAt: null,
+      jumperGiveUpAt: null,
       jumpersArrivedAt: null,
+      lastPulseSeq: -1,
       settled: false,
     };
     live.deadlineAt = now + WINDOW_S;
@@ -173,6 +185,12 @@ export const runtime = Object.freeze({
 
   _scanPulse(d, live, payload, bloom) {
     if (!payload || !payload.pos || bloom.proof) return;
+    const player = d.player();
+    if (payload.source !== 'player-scanner' || !player || payload.scannerId !== player.id) return;
+    if (Number.isFinite(payload.seq)) {
+      if (payload.seq <= bloom.lastPulseSeq) return;
+      bloom.lastPulseSeq = payload.seq;
+    }
     const origin = payload.pos;
     const hulk = entityById(d.state, bloom.hulkId);
     const reference = entityById(d.state, bloom.referenceId);
@@ -200,16 +218,21 @@ export const runtime = Object.freeze({
     if (bloom.proof) return;
     bloom.proof = kind;
     live.phase = 'proven';
-    const now = d.now();
-    bloom.jumpersAt = now;
-    const p = d.player();
+    bloom.jumpersAt = d.now();
+    this._spawnJumpers(d, live, bloom);
+    d.say(live, 'alert', 'SALVAGE HAND: Filing it now — keep them off me!', null, { literal: true });
+  },
+
+  /** The claim-jumpers come for their lamp: out from the SITE, aimed at the hand as well as the
+   * player. Budget-denied spawns return nothing and are retried by tick(). */
+  _spawnJumpers(d, live, bloom) {
+    const attempt = bloom.jumperAttempts++;
     const hand = d.entsOf(live, 'hand')[0] || null;
-    const anchor = (p && p.pos) || (hand && hand.pos) || bloom.hulkPos;
-    const rng = d.stream(live, 'false_bloom_jumpers');
+    const rng = d.stream(live, `false_bloom_jumpers_${attempt}`);
     const bearing = rng() * Math.PI * 2;
+    const range = JUMPER_RANGE_WU[0] + rng() * (JUMPER_RANGE_WU[1] - JUMPER_RANGE_WU[0]);
     const specs = (bloom.jumperSpecs.length ? bloom.jumperSpecs : [{ archetype: 'wasp_swarmer', level: 1 }]).slice(0, 2);
     while (specs.length < 2) specs.push({ ...specs[0] });
-    const range = JUMPER_RANGE_WU[0] + rng() * (JUMPER_RANGE_WU[1] - JUMPER_RANGE_WU[0]);
     const placed = specs.map((sh, i) => {
       const a = bearing + (i === 0 ? -0.12 : 0.12);
       return {
@@ -218,15 +241,29 @@ export const runtime = Object.freeze({
         role: 'jumper',
         factionId: 'faction_reach',
         passive: false,
-        targetId: p ? p.id : null,
-        leashRadius: 4000,
-        pos: { x: anchor.x + Math.cos(a) * range, z: anchor.z + Math.sin(a) * range },
+        pos: { x: bloom.hulkPos.x + Math.cos(a) * range, z: bloom.hulkPos.z + Math.sin(a) * range },
         scanLabel: 'CLAIM-JUMPER — PLANTED THE LAMP',
       };
     });
-    d.spawnShips(live, placed);
-    d.say(live, 'alert', 'CLAIM-JUMPER: That lamp\'s ours, scrapper. Put it down.', null, { literal: true });
-    d.say(live, 'alert', 'SALVAGE HAND: Filing it now — keep them off me!', null, { literal: true });
+    const ids = d.spawnShips(live, placed);
+    if (!ids.length) {
+      if (bloom.jumperGiveUpAt == null) bloom.jumperGiveUpAt = d.now() + JUMPER_RETRY_FOR_S;
+      bloom.jumperRetryAt = d.now() + JUMPER_RETRY_EVERY_S;
+      return;
+    }
+    bloom.jumpersSpawned += ids.length;
+    bloom.jumperRetryAt = null;
+    // The sanctioned explicit-target relation (engagementAuthority: retaliationTargetId outranks
+    // the team-2 neutrality) is what lets a raider fire on the passive hand, not only the player.
+    // hostileTeams keeps the player a declared target too (retaliationTargetId holds one id).
+    const player = d.player();
+    for (const j of d.entsOf(live, 'jumper')) {
+      const ai = j.data && j.data.ai;
+      if (!ai) continue;
+      if (hand) ai.retaliationTargetId = hand.id;
+      if (player) ai.hostileTeams = [player.team];
+    }
+    d.say(live, 'alert', "CLAIM-JUMPER: That lamp's ours, scrapper. Put it down.", null, { literal: true });
   },
 
   tick(d, live, state, now) {
@@ -249,15 +286,28 @@ export const runtime = Object.freeze({
       return;
     }
 
-    const jumpers = d.entsOf(live, 'jumper');
-    if (bloom.jumpersArrivedAt == null) {
-      const arrived = jumpers.some((j) => j.pos && (dist(j.pos, hand.pos) <= JUMPER_ARRIVE_WU
-        || (d.player() && d.player().pos && dist(j.pos, d.player().pos) <= JUMPER_ARRIVE_WU)));
-      if (arrived || now - bloom.jumpersAt >= FILING_FALLBACK_S) bloom.jumpersArrivedAt = now;
+    if (bloom.jumpersSpawned === 0) {
+      if (bloom.jumperRetryAt != null && now < bloom.jumperGiveUpAt) {
+        if (now >= bloom.jumperRetryAt) this._spawnJumpers(d, live, bloom);
+        return;
+      }
+      if (bloom.jumpersSpawned === 0 && now - bloom.jumperGiveUpAt >= UNDISTURBED_HOLD_S) {
+        return this._settle(d, live, bloom, 'filed');
+      }
+      return;
     }
-    const gone = jumpers.length === 0;
+
+    const jumpers = d.entsOf(live, 'jumper');
+    if (jumpers.length === 0) return this._settle(d, live, bloom, 'filed');
+    if (bloom.jumpersArrivedAt == null) {
+      const p = d.player();
+      const arrived = jumpers.some((j) => j.pos && (dist(j.pos, hand.pos) <= JUMPER_ARRIVE_WU
+        || (p && p.pos && dist(j.pos, p.pos) <= JUMPER_ARRIVE_WU)));
+      if (arrived) bloom.jumpersArrivedAt = now;
+      else if (now - bloom.jumpersAt >= JUMPER_STUCK_S) return this._settle(d, live, bloom, 'filed');
+    }
     const held = bloom.jumpersArrivedAt != null && now - bloom.jumpersArrivedAt >= FILING_HOLD_S;
-    if (gone || held) return this._settle(d, live, bloom, 'filed');
+    if (held) return this._settle(d, live, bloom, 'filed');
   },
 
   _settle(d, live, bloom, outcome) {
@@ -269,6 +319,10 @@ export const runtime = Object.freeze({
       d.rep('faction_free', 5, 'false_bloom_filed');
     }
     d.despawnAll(live, 12, 'hand');
+    const leftover = entityById(d.state, bloom.emitterId);
+    if (alive(leftover) && leftover.data) {
+      leftover.data.scanLabel = outcome === 'filed' ? 'SPOOF EMITTER — FILED' : 'SPOOF EMITTER';
+    }
     const survivors = d.entsOf(live, 'jumper');
     const result = d.resolve(live, outcome, { speak: true });
     // Claim-jumpers still flying are ordinary hostiles now, not encounter stragglers.
