@@ -8,7 +8,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { allocateEntityId, makeEntity } from '../src/core/entity.js';
 import { createGameState } from '../src/core/gameState.js';
 import { emergentWeaponByKind } from '../src/data/emergentPrimitives.js';
-import { emergentRecipe } from '../src/audio/emergentPrimitiveVoice.js';
+import { createEmergentVoice, emergentRecipe } from '../src/audio/emergentPrimitiveVoice.js';
 import { emergentPrimitives, launchEmergent } from '../src/systems/emergentPrimitives.js';
 
 function ship(state, x) {
@@ -91,4 +91,36 @@ test('a rejected cue stays silent and a re-init does not play the next event twi
   assert.equal(again.played[0].id, 'sfx_emergent_slug');
 
   emergentPrimitives.destroy();
+});
+
+test('the lazy audio runtime tolerates pre-gesture cues and plays the next cue through its initialized bus', () => {
+  const bus = createBus();
+  // This is audio.init's live pre-gesture state, unlike a Node lab's absent audio owner.
+  const audio = { rt: { ctx: null, sfxBus: null, masterGain: null } };
+  const registry = { get: name => name === 'audio' ? audio : null };
+  const voice = createEmergentVoice();
+  const cue = { id: 'sfx_emergent_slug', gain: 0.8, pan: 0 };
+  voice.attach(bus, () => registry);
+  const started = [], connected = [];
+  try {
+    assert.doesNotThrow(() => voice.play(cue, registry));
+    assert.equal(voice.played.length, 1);
+    const param = () => ({ value: 0, cancelScheduledValues() {}, setValueAtTime() {},
+      linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {} });
+    const node = () => ({ gain: param(), frequency: param(),
+      connect(dest) { connected.push(dest); }, disconnect() {},
+      start(time) { started.push(time); }, stop() {} });
+    // The gesture owner supplies the graph later; the emergent voice must neither create it
+    // prematurely nor latch itself silent because its first cue arrived before it existed.
+    audio.rt.ctx = { state: 'running', currentTime: 2, destination: {},
+      createGain: node, createOscillator: node };
+    audio.rt.sfxBus = {};
+    bus.emit('emergent:audio', cue);
+    assert.deepEqual(started, [2], 'the next event starts one real synth oscillator');
+    assert.ok(connected.includes(audio.rt.sfxBus), 'the voice reaches the existing SFX mix bus');
+    assert.equal(voice.played.length, 2, 'pre-gesture cues are not replayed in a burst');
+    audio.rt.ctx.state = 'closed';
+    assert.doesNotThrow(() => voice.play(cue, registry));
+    assert.equal(started.length, 1, 'a retired context receives no new sources');
+  } finally { voice.dispose(); }
 });
