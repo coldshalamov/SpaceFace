@@ -622,9 +622,17 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
     const dirty = world.packDirty;
     const scan = Math.min(dirty.length, slotRows.length);
     let bail = false;
+    // Each mark is consumed as it is processed (W143-BG-1): the driver parks
+    // mid-walk, so a mark landing on an already-scanned slot must survive to
+    // the next pack — the classic walk's mark-after-process ⇒ next-pack-rewrite
+    // self-heal, bounding staleness to one pack. A trailing fill would clear it
+    // without ever having packed it (final-write-in-window ⇒ stale pose forever).
+    const consumedDirty = [];
     for (let slot = 0; slot < scan; slot++) {
       if ((slot % every) === 0 && slot > 0) yield;
       if (dirty[slot] === 0) continue;
+      dirty[slot] = 0;
+      consumedDirty.push(slot);
       if (world.alive[slot] !== 1) continue;
       const row = slotRows[slot];
       const entityId = world.entityIds[slot] >>> 0;
@@ -638,18 +646,17 @@ export function* packPresentationWorldToFenceSteps(world, fence, simTime = 0, po
       if (postDiagnostics
         && (postDiagnostics.allocations | 0) === allocationsAtMint
         && (postDiagnostics.retirements | 0) === retirementsAtMint) {
-        // Clear only on commit (W141-BG-1): a counters mismatch falls through to the
-        // classic walk, which reads packDirty===0 as "copy last committed row" — a
-        // retire-only churn in the window would otherwise leave in-window writes
-        // masked forever and present stale poses indefinitely.
-        dirty.fill(0, 0, scan);
         fence.commit();
         fence.notePackMembership(postDiagnostics);
         return fastSnapshot.count;
       }
     }
-    // Premise broke mid-pack: reset the in-flight buffer into the classic
-    // walk. beginFrame re-clears the index, refills slotRows, and every live
+    // Premise broke mid-pack: the consumed marks' rewrites are discarded, so
+    // restore their bits — the classic walk reads packDirty===0 as "copy last
+    // committed row" and would otherwise ship the stale row (W141-BG-1's
+    // retire-only churn and bail exits share this requirement).
+    for (const slot of consumedDirty) dirty[slot] = 1;
+    // beginFrame re-clears the index, refills slotRows, and every live
     // row re-packs — byte-identical to the atomic output, just paced.
   }
   const snapshot = fence.beginPack(Math.max(1, active), simTime, poseEpoch, slotCap);
