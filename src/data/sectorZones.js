@@ -160,7 +160,7 @@ const CORE_SECTOR_ZONES = {
       center: { x: 80, z: 260 }, radius: 1000 },
     { id: 'zone_vesta_slag', name: 'Slag Radiation Field', type: 'radiation_field', factionId: 'faction_dmc',
       reason: 'Spent reactor mass dumped from the Forge — shields degrade fast in the glow.',
-      center: { x: 680, z: 320 }, radius: 520 },
+      center: { x: -540, z: -480 }, radius: 520 },
     { id: 'zone_vesta_derelict', name: 'Dead Freighter Drift', type: 'derelict_field', factionId: 'faction_reach',
       reason: 'A freighter died at the sector edge; its manifest was never recovered.',
       center: { x: 860, z: -1240 }, radius: 420, presence: P.scavengers([1, 2]),

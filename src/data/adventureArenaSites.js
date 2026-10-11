@@ -56,7 +56,7 @@ export const ADVENTURE_ARENA_SITES = freezeDeep([
     siteId: 'zone_vesta_slag',
     name: 'Slag Radiation Field',
     sectorId: 'sector_vesta_forge',
-    center: { x: 680, z: 320 },
+    center: { x: -540, z: -480 },
     standingPhase: 'idle',
     machinery: 'thermal quadrants — cold Cryo Lock, heat Burning, both Thermal Shock',
     fiction: 'Cryo Drift as a coolant extraction failure in the Forge slag glow.',
