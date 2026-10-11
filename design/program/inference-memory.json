@@ -74,19 +74,6 @@
   ],
   "units": [
     {
-      "id": "witness-run-memory",
-      "date": "2026-09-28",
-      "wf": "WF-09",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Witness-run settlement moves Dorin/Kell's contact counters through the seam that had zero emitters; bar greetings and voice bands change with what you did, clamped at authored maxes",
-      "fingerprint": "verb=remember,subject=witness-contacts,sector=station_customs,domain=wf-09",
-      "references": [],
-      "integration": "live",
-      "commit": "7ed28ca36",
-      "verification": "focused_green"
-    },
-    {
       "id": "wf14-lock-class-yield-mix",
       "date": "2026-09-29",
       "wf": "WF-14",
@@ -1656,6 +1643,19 @@
       "references": [],
       "integration": "live",
       "commit": "c2f16738a",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-claim-freight-felt",
+      "date": "2026-10-11",
+      "wf": "WF-07",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "a claim depot supply run landing speaks a flight receipt in its sector and a dock-card line when the pilot was away",
+      "fingerprint": "verb=own,subject=claim-depot,sector=any,domain=wf-07",
+      "references": [],
+      "integration": "live",
+      "commit": "a7ac3e5fd",
       "verification": "focused_green"
     }
   ],
