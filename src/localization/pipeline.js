@@ -534,17 +534,32 @@ export function translateMessage(locale, english, key) {
 
 const catalogCache = new Map();
 
+// The source locale merges once and the merge is shared: CATALOGS['en-US'] (through
+// deferredCatalog in gameLocalization.js) and this builder hand out the same frozen object —
+// the post-eval warm used to Object.assign a second full copy of every English row into
+// catalogCache (wave-142 finding 5). Non-English catalogs still build per-locale below.
+let englishMerged = null;
+function englishMergedCatalog() {
+  if (englishMerged === null) {
+    const out = {};
+    Object.assign(out, englishMessages, barkMessagesFor('en-US'), STORE_COPY['en-US']);
+    englishMerged = Object.freeze(out);
+  }
+  return englishMerged;
+}
+
 export function buildTranslatedCatalog(locale) {
   if (catalogCache.has(locale)) return catalogCache.get(locale);
-  const out = {};
   if (locale === 'en-US') {
-    Object.assign(out, englishMessages, barkMessagesFor('en-US'), STORE_COPY['en-US']);
-  } else {
-    for (const [key, english] of Object.entries(englishMessages)) {
-      out[key] = translateMessage(locale, english, key);
-    }
-    Object.assign(out, barkMessagesFor(locale), STORE_COPY[locale] || {});
+    const merged = englishMergedCatalog();
+    catalogCache.set(locale, merged);
+    return merged;
   }
+  const out = {};
+  for (const [key, english] of Object.entries(englishMessages)) {
+    out[key] = translateMessage(locale, english, key);
+  }
+  Object.assign(out, barkMessagesFor(locale), STORE_COPY[locale] || {});
   const frozen = Object.freeze(out);
   catalogCache.set(locale, frozen);
   return frozen;
