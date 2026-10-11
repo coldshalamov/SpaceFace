@@ -23,9 +23,11 @@ test('distant returning ace crews remain in the SG-06 roster while ordinary dist
   state.playerId = sim.spawn({
     type: 'ship', team: 0, pos: { x: 0, z: 0 }, hull: 200, hullMax: 200, radius: 10,
   }).id;
-  sim.spawn({
+  // fa62e44b4: a squadId is combat-postured, so it stays on the SG-06 roster.
+  // Ambient traffic past the submit runway has no squad and must keep sleeping.
+  const ordinary = sim.spawn({
     type: 'ship', team: 1, pos: { x: 900, z: 0 }, hull: 50, hullMax: 50, radius: 8,
-    data: { ai: { squadId: 'ordinary-distant-traffic', doctrine: 'patrol', passive: false } },
+    data: { ai: { doctrine: 'patrol', passive: false } },
   });
 
   let returned = null;
@@ -46,7 +48,7 @@ test('distant returning ace crews remain in the SG-06 roster while ordinary dist
     'every returning crew member must remain available to SG-06 before closing range',
   );
   assert.equal(
-    squads.some((candidate) => candidate.id === 'ordinary-distant-traffic'),
+    squads.some((candidate) => candidate.members.some((member) => member.id === ordinary.id)),
     false,
     'the named-ace exception must not wake generic distant traffic',
   );
