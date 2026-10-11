@@ -1,0 +1,8 @@
+campaign SF-CLOUD-13 integration-ready
+exploits zero_spread_trade_cycles, contraband_relabel
+clean station_stock_underflow, custody_duplication, delivery_and_resale, abandoned_contract_payout, time_skip_passive, sealed_refinery_inputs, shipping_cancellation, save_load_first_grant, negative_price_overflow, ship_fit_capacity
+unavailable none
+search 500 traces, findings 0, mutations 0
+strategies legal_trader:377 miner_refiner:176 pirate_salvager:6176! careful_smuggler:0
+critique holds
+wrote /workspace/tools/economic-redteam/artifacts/report.json

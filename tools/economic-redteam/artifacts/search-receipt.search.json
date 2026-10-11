@@ -1,0 +1,23 @@
+{
+  "campaign": "SF-CLOUD-13",
+  "seed": 1856,
+  "sequencesRequested": 500,
+  "sequencesCompleted": 500,
+  "resumable": false,
+  "coverage": {
+    "zero_spread_trade_cycles": 42,
+    "station_stock_underflow": 42,
+    "custody_duplication": 42,
+    "delivery_and_resale": 42,
+    "abandoned_contract_payout": 42,
+    "time_skip_passive": 42,
+    "sealed_refinery_inputs": 42,
+    "shipping_cancellation": 42,
+    "save_load_first_grant": 41,
+    "negative_price_overflow": 41,
+    "contraband_relabel": 41,
+    "ship_fit_capacity": 41
+  },
+  "findingCount": 0,
+  "mutationCount": 0
+}

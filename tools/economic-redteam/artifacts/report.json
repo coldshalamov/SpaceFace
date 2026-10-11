@@ -1,0 +1,640 @@
+{
+  "campaign": "SF-CLOUD-13",
+  "seed": 1845,
+  "sequences": 500,
+  "status": "integration-ready",
+  "playerVisible": "A docked pilot with allied standing can wash the same cargo for credits, and kill-loot contraband cashes in at a lawful berth without a fine.",
+  "exploits": [
+    "zero_spread_trade_cycles",
+    "contraband_relabel"
+  ],
+  "clean": [
+    "station_stock_underflow",
+    "custody_duplication",
+    "delivery_and_resale",
+    "abandoned_contract_payout",
+    "time_skip_passive",
+    "sealed_refinery_inputs",
+    "shipping_cancellation",
+    "save_load_first_grant",
+    "negative_price_overflow",
+    "ship_fit_capacity"
+  ],
+  "unavailable": [],
+  "families": [
+    {
+      "id": "zero_spread_trade_cycles",
+      "status": "exploit",
+      "summary": "Faction standing from mission-sized rep grants inverts the Helios bid-ask. The smallest closed iron round trip prints credits, and the margin is larger at allied rep. Iron trading alone does not climb that far.",
+      "traces": [
+        {
+          "name": "neutral_rep",
+          "seed": 1845,
+          "commands": [
+            "ui:buy iron 25",
+            "ui:sell iron 25"
+          ],
+          "creditsDelta": -66,
+          "verdict": "closed_loss_or_flat"
+        },
+        {
+          "name": "natural_climb",
+          "seed": 1845,
+          "commands": [
+            "repeat ui:buy/ui:sell max iron until profit (none cycles)"
+          ],
+          "creditsDelta": null,
+          "rep": 156,
+          "steps": null
+        },
+        {
+          "name": "allied_minimized",
+          "seed": 1846,
+          "commands": [
+            "faction:repDelta faction_scn +15 x 12",
+            "ui:buy cmdty_ore_iron 5",
+            "ui:sell cmdty_ore_iron 5"
+          ],
+          "creditsDelta": 1,
+          "qty": 5,
+          "stockDelta": 0,
+          "rep": 180,
+          "missionGrants": 12
+        },
+        {
+          "name": "allied_scale",
+          "seed": 1846,
+          "commands": [
+            "continue faction:repDelta +15 until rep >= 400",
+            "ui:buy cmdty_ore_iron 25",
+            "ui:sell cmdty_ore_iron 25"
+          ],
+          "creditsDelta": 113,
+          "qty": 25,
+          "stockDelta": 0,
+          "rep": 410
+        }
+      ],
+      "controls": [
+        {
+          "name": "neutral_standing_is_not_a_wash",
+          "pass": true,
+          "creditsDelta": -66
+        }
+      ]
+    },
+    {
+      "id": "station_stock_underflow",
+      "status": "clean",
+      "summary": "A max buy leaves at least 1 unit on the book.",
+      "traces": [
+        {
+          "name": "max_buy",
+          "seed": 1845,
+          "commands": [
+            "ui:buy cmdty_ore_iron 1000000"
+          ],
+          "stockBefore": 32.76,
+          "stockAfter": 1.759999999999998,
+          "qty": 31
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "custody_duplication",
+      "status": "clean",
+      "summary": "Parked-hold swaps conserve units. No second holder was created.",
+      "traces": [
+        {
+          "name": "hull_swap",
+          "seed": 1845,
+          "commands": [
+            "ui:buyShip ship_pelican",
+            "ui:buy iron 10",
+            "ui:setActiveShip last",
+            "ui:setActiveShip 0"
+          ],
+          "purchased": true,
+          "before": {
+            "cmdty_unclassified_composite": 1,
+            "cmdty_ore_iron": 10
+          },
+          "after": {
+            "cmdty_unclassified_composite": 1,
+            "cmdty_ore_iron": 10
+          }
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "delivery_and_resale",
+      "status": "clean",
+      "summary": "Sealed iron cannot be sold. The destination dock pays the reward once and consumes the seal.",
+      "traces": [
+        {
+          "name": "seal_then_dock",
+          "seed": 1845,
+          "commands": [
+            "ui:buy iron 4",
+            "plant sealed cargo_delivery 4 iron reward 500",
+            "ui:sell iron (must refuse the seal)",
+            "dock:docked station_helios",
+            "dock:docked station_helios again"
+          ],
+          "sellBlocked": true,
+          "sellReason": "mission_cargo_locked",
+          "paid": 500,
+          "secondPay": 0,
+          "holdAfter": 4,
+          "loaded": 4,
+          "sellable": 4
+        }
+      ],
+      "controls": [
+        {
+          "name": "second_dock_does_not_pay",
+          "pass": true,
+          "secondPay": 0
+        },
+        {
+          "name": "sale_of_seal_refused",
+          "pass": true,
+          "reason": "mission_cargo_locked"
+        }
+      ]
+    },
+    {
+      "id": "abandoned_contract_payout",
+      "status": "clean",
+      "summary": "Abandoning a live Helios offer does not pay its reward.",
+      "traces": [
+        {
+          "name": "accept_abandon",
+          "seed": 1845,
+          "commands": [
+            "ui:acceptMission offer_sp1_choir_vigil_0_kwh220_0_common_attempt_0",
+            "ui:abandonMission m_2"
+          ],
+          "offer": {
+            "id": "offer_sp1_choir_vigil_0_kwh220_0_common_attempt_0",
+            "type": "recon_scan",
+            "reward": 720
+          },
+          "acceptDelta": 0,
+          "abandonDelta": 0,
+          "accepted": true
+        }
+      ],
+      "controls": [
+        {
+          "name": "reward_not_paid_on_abandon",
+          "pass": true,
+          "reward": 720
+        }
+      ]
+    },
+    {
+      "id": "time_skip_passive",
+      "status": "clean",
+      "summary": "A 100000s offline catch-up with no assets pays nothing, and the same window does not pay again.",
+      "traces": [
+        {
+          "name": "empty_offline",
+          "seed": 1845,
+          "commands": [
+            "automation.runOfflineCatchup 100000s",
+            "automation.runOfflineCatchup same window"
+          ],
+          "first": {
+            "elapsedSec": 100000,
+            "skipReason": "no_baseline",
+            "credited": 0,
+            "reasons": []
+          },
+          "second": {
+            "elapsedSec": 100000,
+            "skipReason": null,
+            "credited": 0,
+            "reasons": []
+          },
+          "gained": 0
+        }
+      ],
+      "controls": [
+        {
+          "name": "second_window_idempotent",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "sealed_refinery_inputs",
+      "status": "clean",
+      "summary": "Refine Metals refuses when the only iron in the hold is sealed mission cargo.",
+      "traces": [
+        {
+          "name": "refine_sealed_iron",
+          "seed": 1845,
+          "commands": [
+            "plant 3 sealed iron",
+            "add 1 titanium",
+            "crafting.build bp_refine_metals"
+          ],
+          "sellable": 0,
+          "built": false,
+          "ironLeft": 3,
+          "metals": 0
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "shipping_cancellation",
+      "status": "clean",
+      "summary": "There is no player shipping-cancel verb. Replaying one cargo:delivered receipt does not move stock twice.",
+      "traces": [
+        {
+          "name": "freight_replay",
+          "seed": 1845,
+          "commands": [
+            "economy freight receipt",
+            "same receipt again"
+          ],
+          "firstDelta": 5,
+          "secondDelta": 0,
+          "duplicate": true,
+          "playerCancel": {
+            "unavailable": true,
+            "reason": "no_player_shipping_cancel_verb"
+          }
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "save_load_first_grant",
+      "status": "clean",
+      "summary": "Economy serialize/load keeps the wallet. A repeated trade intent returns the first receipt.",
+      "traces": [
+        {
+          "name": "save_and_intent",
+          "seed": 1845,
+          "commands": [
+            "ui buy/sell 5",
+            "economy.serialize/deserialize",
+            "save:loaded",
+            "execute intent twice"
+          ],
+          "saveDelta": 0,
+          "intentOk": true,
+          "replayDuplicate": true,
+          "roundTripDelta": -13
+        }
+      ],
+      "controls": [
+        {
+          "name": "save_preserves_credits",
+          "pass": true
+        },
+        {
+          "name": "intent_replay_is_duplicate",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "negative_price_overflow",
+      "status": "clean",
+      "summary": "Negative, NaN, and zero quantities are refused. A huge buy clamps to the book and stays finite.",
+      "traces": [
+        {
+          "name": "malformed_qty",
+          "seed": 1845,
+          "commands": [
+            "execute buy -5",
+            "execute buy NaN",
+            "execute buy 0",
+            "ui:buy 1e9"
+          ],
+          "negative": "qty",
+          "nan": "qty",
+          "zero": "qty",
+          "hugeOk": false,
+          "stock": 32.76,
+          "credits": 200000
+        }
+      ],
+      "controls": []
+    },
+    {
+      "id": "contraband_relabel",
+      "status": "exploit",
+      "summary": "Kill-burst stolen goods land in the salvage bay and dock at Helios as clean scrap credits. The same goods in the hold are fined at Customs Gate.",
+      "traces": [
+        {
+          "name": "bay_stolen_goods",
+          "seed": 1848,
+          "commands": [
+            "undock",
+            "loot:drop kill_burst cmdty_stolen_goods 4",
+            "step 48",
+            "dock:docked station_helios",
+            "dock:docked station_helios again"
+          ],
+          "spawned": true,
+          "inBay": 4,
+          "creditsDelta": 772,
+          "reasons": [
+            "salvage:bay_sale"
+          ],
+          "secondDockDelta": 0,
+          "bayLeft": 0,
+          "collectedTicks": 48
+        }
+      ],
+      "controls": [
+        {
+          "name": "legal_scrap_is_allowed",
+          "pass": true,
+          "creditsDelta": 33,
+          "legalBay": 4
+        },
+        {
+          "name": "hold_contraband_is_fined",
+          "pass": true,
+          "creditsDelta": -1146,
+          "holdLeft": 0
+        },
+        {
+          "name": "second_dock_does_not_pay",
+          "pass": true,
+          "creditsDelta": 0
+        }
+      ]
+    },
+    {
+      "id": "ship_fit_capacity",
+      "status": "clean",
+      "summary": "Hull swaps conserve cargo. ui:sellShip has no listener, so a zero-price Hitch cannot be sold for buyback from the station screen.",
+      "traces": [
+        {
+          "name": "ui_sell_ship",
+          "seed": 1845,
+          "commands": [
+            "ui:sellShip index 1",
+            "ui:buyShip ship_kestrel"
+          ],
+          "sell": {
+            "action": "sell_ship",
+            "ok": false,
+            "unavailable": true,
+            "reason": "unwired_ui_sellShip",
+            "creditsDelta": 0,
+            "detail": {
+              "index": 1,
+              "before": 1,
+              "after": 1,
+              "reasons": []
+            }
+          },
+          "buy": {
+            "ok": true,
+            "creditsDelta": 0
+          },
+          "latent": {
+            "methodOk": true,
+            "creditsDelta": 4000,
+            "note": "ships.sellShip is not bound to ui:sellShip. This call is a writer diagnostic, not a player event."
+          }
+        },
+        {
+          "name": "hull_swap",
+          "seed": 1854,
+          "commands": [
+            "ui:buyShip ship_pelican",
+            "ui:buy iron 10",
+            "ui:setActiveShip last",
+            "ui:setActiveShip 0"
+          ],
+          "purchased": true,
+          "before": {
+            "cmdty_unclassified_composite": 1,
+            "cmdty_ore_iron": 10
+          },
+          "after": {
+            "cmdty_unclassified_composite": 1,
+            "cmdty_ore_iron": 10
+          }
+        }
+      ],
+      "controls": [
+        {
+          "name": "ui_sell_ship_unwired",
+          "pass": true,
+          "reason": "unwired_ui_sellShip"
+        }
+      ]
+    }
+  ],
+  "search": {
+    "seed": 1856,
+    "sequences": 500,
+    "coverage": {
+      "zero_spread_trade_cycles": 42,
+      "station_stock_underflow": 42,
+      "custody_duplication": 42,
+      "delivery_and_resale": 42,
+      "abandoned_contract_payout": 42,
+      "time_skip_passive": 42,
+      "sealed_refinery_inputs": 42,
+      "shipping_cancellation": 42,
+      "save_load_first_grant": 41,
+      "negative_price_overflow": 41,
+      "contraband_relabel": 41,
+      "ship_fit_capacity": 41
+    },
+    "findingCount": 0,
+    "mutationCount": 0,
+    "findings": [],
+    "mutations": [],
+    "heldOutSeeds": [
+      1873,
+      1955
+    ]
+  },
+  "strategies": {
+    "seed": 1868,
+    "rows": [
+      {
+        "id": "legal_trader",
+        "credits": 200377,
+        "earned": 377,
+        "debt": 0,
+        "heat": 0,
+        "risk": {
+          "fines": 0,
+          "travel": true
+        },
+        "notes": [
+          "Hauled cmdty_ore_bronzium station_depot3 -> station_helios. Quoted margin 377 cr before tolls."
+        ],
+        "degenerate": false,
+        "route": {
+          "from": "station_depot3",
+          "to": "station_helios",
+          "commodityId": "cmdty_ore_bronzium",
+          "margin": 377,
+          "buy": 209,
+          "sell": 586
+        }
+      },
+      {
+        "id": "miner_refiner",
+        "credits": 200176,
+        "earned": 176,
+        "debt": 0,
+        "heat": 0,
+        "risk": {
+          "fines": 0,
+          "travel": false
+        },
+        "notes": [
+          "Collected iron 12, titanium 4 from mining loot drops.",
+          "Refined metals."
+        ],
+        "degenerate": false,
+        "collected": {
+          "iron": 12,
+          "titanium": 4,
+          "metals": 2
+        }
+      },
+      {
+        "id": "pirate_salvager",
+        "credits": 206176,
+        "earned": 6176,
+        "debt": 0,
+        "heat": 0,
+        "risk": {
+          "fines": 0,
+          "contrabandBay": true
+        },
+        "notes": [
+          "Kill-burst stolen goods cashed at Helios 8 times for 6176 cr with no fine."
+        ],
+        "degenerate": true,
+        "loops": 8,
+        "paid": 6176
+      },
+      {
+        "id": "careful_smuggler",
+        "credits": 200000,
+        "earned": 0,
+        "debt": 0,
+        "heat": 0,
+        "risk": {
+          "dockedCustoms": false,
+          "holdRemaining": 2
+        },
+        "notes": [
+          "Helios sell of stolen goods: untraded. Quote untraded.",
+          "Staying off the customs berth kept the hold and avoided a fine. The goods still did not sell."
+        ],
+        "degenerate": false,
+        "avoidedFine": true
+      }
+    ],
+    "ranked": [
+      {
+        "id": "pirate_salvager",
+        "earned": 6176,
+        "degenerate": true
+      },
+      {
+        "id": "legal_trader",
+        "earned": 377,
+        "degenerate": false
+      },
+      {
+        "id": "miner_refiner",
+        "earned": 176,
+        "degenerate": false
+      },
+      {
+        "id": "careful_smuggler",
+        "earned": 0,
+        "degenerate": false
+      }
+    ],
+    "degenerate": [
+      "pirate_salvager"
+    ]
+  },
+  "critique": {
+    "failedControls": [],
+    "confirmed": [
+      {
+        "family": "zero_spread_trade_cycles",
+        "summary": "Faction standing from mission-sized rep grants inverts the Helios bid-ask. The smallest closed iron round trip prints credits, and the margin is larger at allied rep. Iron trading alone does not climb that far.",
+        "reproduced": true
+      },
+      {
+        "family": "contraband_relabel",
+        "summary": "Kill-burst stolen goods land in the salvage bay and dock at Helios as clean scrap credits. The same goods in the hold are fined at Customs Gate.",
+        "reproduced": true
+      }
+    ],
+    "searchFindings": 0,
+    "strategyDegenerate": [
+      "pirate_salvager"
+    ],
+    "attempts": [
+      {
+        "claim": "Opening standing already washes iron at Helios.",
+        "disproved": true,
+        "evidence": {
+          "name": "neutral_standing_is_not_a_wash",
+          "pass": true,
+          "creditsDelta": -66
+        }
+      },
+      {
+        "claim": "Every salvage-bay cash-in is an exploit, including legal ore.",
+        "disproved": true,
+        "evidence": {
+          "name": "legal_scrap_is_allowed",
+          "pass": true,
+          "creditsDelta": 33,
+          "legalBay": 4
+        }
+      },
+      {
+        "claim": "Customs does not fine contraband in the trade hold, so the bay result is just a broken scanner.",
+        "disproved": true,
+        "evidence": {
+          "name": "hold_contraband_is_fined",
+          "pass": true,
+          "creditsDelta": -1146,
+          "holdLeft": 0
+        }
+      },
+      {
+        "claim": "The search invented exploits by editing credits directly.",
+        "disproved": true,
+        "evidence": "Search traces call ui:buy, ui:sell, ui:service, ui:acceptMission, and the freight receipt. The opening stake is assigned once per boot and restored between traces."
+      }
+    ],
+    "holds": true
+  },
+  "integration": {
+    "productionEdits": false,
+    "withheld": [
+      "src/systems/economy.js",
+      "src/systems/cargo.js"
+    ],
+    "patch": "tools/economic-redteam/FIX.patch",
+    "adapter": "tools/economic-redteam/ADAPTER.md"
+  }
+}
