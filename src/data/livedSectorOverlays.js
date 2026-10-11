@@ -28,7 +28,7 @@ export const LIVED_SECTOR_OVERLAYS = deepFreeze({
       'We weigh iron at Throughline before the Cinder Sluice surges.',
       'Our collective watch keeps the refinery face outside patrol range.',
       'We leave the Wreck Cathedral name plates on their old hulls.',
-      'Our Reach skiffs wait where loaded haulers cross the belt-shadow.',
+      'Reach skiffs wait where our loaded haulers cross the belt-shadow.',
     ],
   },
   sector_tethys_junction: {

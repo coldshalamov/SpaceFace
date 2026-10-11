@@ -3,26 +3,26 @@ import { deepFreeze, defineEncounter } from './catalog.js';
 import { compileVignette } from '../../systems/vignetteInterpreter.js';
 
 const spec = {
-  "id": "lived_mining_belt_claim_reach_follow_on",
+  "id": "lived_mining_belt_claim_verge_layers_follow_on",
   "title": "GASKET ON THE MINING BELT",
-  "factionId": "faction_reach",
+  "factionId": "faction_verge_layers",
   "start": "spawn",
   "cast": [
     {
       "role": "hull_0",
-      "archetype": "reaver_pirate",
-      "factionId": "faction_reach",
+      "archetype": "quiet_ghost",
+      "factionId": "faction_verge_layers",
       "dx": 0,
       "dz": 0,
-      "scanLabel": "SLIP 1"
+      "scanLabel": "VERGE 1"
     },
     {
       "role": "hull_1",
-      "archetype": "reaver_pirate",
-      "factionId": "faction_reach",
+      "archetype": "quiet_ghost",
+      "factionId": "faction_verge_layers",
       "dx": -150,
       "dz": 90,
-      "scanLabel": "SLIP 2"
+      "scanLabel": "VERGE 2"
     }
   ],
   "choices": [
@@ -62,7 +62,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "SLIP: The gasket sits inside our claim at mining belt. Keep your cutter out.",
+      "line": "VERGE: The gasket sits inside our claim at mining belt. Keep your cutter out.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -91,7 +91,7 @@ const spec = {
     {
       "id": "a1",
       "verb": "say",
-      "line": "SLIP counts a boundary by the gaps between markers.",
+      "line": "VERGE counts a boundary by the gaps between markers.",
       "channel": "info",
       "next": "p1"
     },
@@ -140,7 +140,7 @@ const spec = {
     {
       "id": "work_line",
       "verb": "say",
-      "line": "SLIP: Holding. This does not hurry.",
+      "line": "VERGE: Holding. This does not hurry.",
       "channel": "info",
       "next": "offer"
     },
@@ -166,15 +166,15 @@ const spec = {
       "id": "grant_a",
       "verb": "grant",
       "amount": 36,
-      "reason": "lived_mining_belt_claim_reach_follow_on",
+      "reason": "lived_mining_belt_claim_verge_layers_follow_on",
       "next": "rep_a"
     },
     {
       "id": "rep_a",
       "verb": "rep",
-      "factionId": "faction_reach",
+      "factionId": "faction_verge_layers",
       "delta": 2,
-      "reason": "lived_mining_belt_claim_reach_follow_on",
+      "reason": "lived_mining_belt_claim_verge_layers_follow_on",
       "next": "done_a"
     },
     {
@@ -185,16 +185,16 @@ const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "Survey checked. SLIP added one pin where the line bends.",
+      "line": "Survey checked. VERGE added one pin where the line bends.",
       "channel": "info",
       "next": "rep_b"
     },
     {
       "id": "rep_b",
       "verb": "rep",
-      "factionId": "faction_reach",
+      "factionId": "faction_verge_layers",
       "delta": 2,
-      "reason": "lived_mining_belt_claim_reach_follow_on",
+      "reason": "lived_mining_belt_claim_verge_layers_follow_on",
       "next": "done_b"
     },
     {
@@ -212,9 +212,9 @@ const spec = {
     {
       "id": "rep_c",
       "verb": "rep",
-      "factionId": "faction_reach",
+      "factionId": "faction_verge_layers",
       "delta": -1,
-      "reason": "lived_mining_belt_claim_reach_follow_on",
+      "reason": "lived_mining_belt_claim_verge_layers_follow_on",
       "next": "done_c"
     },
     {
@@ -227,7 +227,7 @@ const spec = {
 
 export const encounterOrder = 424;
 export const trigger = deepFreeze({
-  "id": "lived_mining_belt_claim_reach_follow_on",
+  "id": "lived_mining_belt_claim_verge_layers_follow_on",
   "tier": "ambient",
   "deck": "civilian",
   "weight": 1,
@@ -250,14 +250,14 @@ export default defineEncounter(trigger, {
     "situation": "claim",
     "place": "mining_belt",
     "twist": "follow_on",
-    "actor": "faction_reach"
+    "actor": "faction_verge_layers"
   },
   "livedVignette": true,
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "GASKET ON THE MINING BELT",
-  "primaryLine": "SLIP: The gasket sits inside our claim at mining belt. Keep your cutter out.",
-  "factionId": "faction_reach",
+  "primaryLine": "VERGE: The gasket sits inside our claim at mining belt. Keep your cutter out.",
+  "factionId": "faction_verge_layers",
   "choices": [
     {
       "id": "a",
@@ -278,7 +278,7 @@ export default defineEncounter(trigger, {
   "timeoutChoice": "c",
   "receipts": {
     "a": "Boundary marked. Both cutter tracks stayed on their own side.",
-    "b": "Survey checked. SLIP added one pin where the line bends.",
+    "b": "Survey checked. VERGE added one pin where the line bends.",
     "c": "You left. The gasket face remains under their claim."
   }
 });

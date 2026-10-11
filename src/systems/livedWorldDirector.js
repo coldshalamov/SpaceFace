@@ -21,6 +21,14 @@ function seenMap(dir) {
   return dir.stats.livedSeen;
 }
 
+function ambientLastAtMap(dir) {
+  if (!dir.stats || typeof dir.stats !== 'object') dir.stats = {};
+  if (!dir.stats.ambientLastAt || typeof dir.stats.ambientLastAt !== 'object' || Array.isArray(dir.stats.ambientLastAt)) {
+    dir.stats.ambientLastAt = {};
+  }
+  return dir.stats.ambientLastAt;
+}
+
 /** When a forced ambient fire aborts in the same call, _fire has already stamped
  * lastAmbientAt. Retrying inside that gap refreshes the stamp forever. A refusal
  * that never reached _fire only needs one gap so a full spawn budget is not a hammer. */
@@ -30,9 +38,24 @@ export function livedNextAtFor(now, lastAmbientAt, ok) {
   return stamped ? lastAmbientAt + AMBIENT_GAP_S * 2 : now + AMBIENT_GAP_S;
 }
 
-export function pickLivedVignette({ candidates, overlay, seed, sectorId, zoneKey, day }) {
+export function pickLivedVignette({
+  candidates, overlay, seed, sectorId, zoneKey, day, now = 0, ambientLastAt = {},
+}) {
   if (!Array.isArray(candidates) || !candidates.length) return null;
-  const ordered = [...candidates].sort((a, b) => a.id.localeCompare(b.id));
+  const ambient = candidates
+    .filter((enc) => enc && enc.ambientScene === true
+      && Array.isArray(enc.sectorIds)
+      && enc.sectorIds.includes(sectorId)
+      && now - (ambientLastAt[enc.id] ?? -Infinity) >= 1200)
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const ambientBucket = hash32(seed, sectorId, zoneKey, day, Math.floor(now / SCAN_S), 'lived-ambient');
+  if (ambient.length && ambientBucket % 3 === 0) {
+    return ambient[ambientBucket % ambient.length];
+  }
+  const ordered = candidates
+    .filter((enc) => enc && enc.ambientScene !== true)
+    .sort((a, b) => a.id.localeCompare(b.id));
+  if (!ordered.length) return null;
   const authored = ordered.filter((enc) => !String(enc.id).startsWith('lived_'));
   const bucket = hash32(seed, sectorId, zoneKey, day, 'lived-vignette');
   const pool = authored.length && (bucket % 5) !== 0 ? authored : ordered;
@@ -45,6 +68,29 @@ export function pickLivedVignette({ candidates, overlay, seed, sectorId, zoneKey
     return choicePool[bucket % choicePool.length];
   }
   return pool[bucket % pool.length] || null;
+}
+
+export function livedScenePlacement(player, seed, sectorId, zoneKey, day, encounterId) {
+  const vx = Number(player.vel && player.vel.x) || 0;
+  const vz = Number(player.vel && player.vel.z) || 0;
+  const speed = Math.hypot(vx, vz);
+  const heading = speed > 5
+    ? { x: vx / speed, z: vz / speed }
+    : { x: Math.cos(player.rot || 0), z: Math.sin(player.rot || 0) };
+  const sign = (hash32(seed, sectorId, zoneKey, day, encounterId, 'lived-ambient-axis') & 1) ? -1 : 1;
+  const axis = { ux: -heading.z * sign, uz: heading.x * sign };
+  const centre = {
+    x: player.pos.x + heading.x * 200,
+    z: player.pos.z + heading.z * 200,
+  };
+  return {
+    centre,
+    axis,
+    anchor: {
+      x: centre.x - axis.ux * 320,
+      z: centre.z - axis.uz * 320,
+    },
+  };
 }
 
 function survivalLive(state) {
@@ -111,9 +157,14 @@ export function tickLivedVignettes(runtime) {
   const zone = zoneAt(sectorId, local.x, local.z);
   if (!zone || !zone.type) return;
   const seen = seenMap(dir);
+  const ambientLastAt = ambientLastAtMap(dir);
   const candidates = [];
   for (const enc of Object.values(ENCOUNTERS)) {
     if (!enc || enc.livedVignette !== true) continue;
+    if (enc.ambientScene === true) {
+      candidates.push(enc);
+      continue;
+    }
     if (seen[enc.id]) continue;
     const zones = enc.zoneTypes || [];
     if (!zones.includes(zone.type)) continue;
@@ -123,29 +174,37 @@ export function tickLivedVignettes(runtime) {
   const seed = (state.meta && state.meta.seed) || 1;
   const day = Math.floor(now / 600);
   const zoneKey = zone.id || zone.type;
-  const pick = pickLivedVignette({ candidates, overlay, seed, sectorId, zoneKey, day });
-  const bucket = hash32(seed, sectorId, zoneKey, day, 'lived-vignette');
-  const ang = (hash32(seed, pick.id, day, 'lived-angle') % 628) / 100;
+  const pick = pickLivedVignette({ candidates, overlay, seed, sectorId, zoneKey, day, now, ambientLastAt });
+  if (!pick) return;
+  const ambient = pick.ambientScene === true;
+  const placement = ambient
+    ? livedScenePlacement(player, seed, sectorId, zoneKey, day, pick.id)
+    : null;
+  const ang = ambient ? 0 : (hash32(seed, pick.id, day, 'lived-angle') % 628) / 100;
+  const data = {};
+  if (overlay) {
+    data.livedOverlay = {
+      sectorId,
+      crew: overlay.crew,
+      line: overlay.lines[hash32(seed, pick.id, day, 'lived-line') % overlay.lines.length],
+    };
+  }
+  if (placement) data.sceneAxis = placement.axis;
   const result = director.requestAuthoredEncounter({
     shapeId: pick.id,
     encounterId: `lived:${pick.id}`,
     sectorId,
-    anchor: {
+    anchor: placement ? placement.anchor : {
       x: player.pos.x + Math.cos(ang) * 720,
       z: player.pos.z + Math.sin(ang) * 720,
     },
     zoneType: zone.type,
     zoneName: zone.name || zone.id,
-    data: overlay ? {
-      livedOverlay: {
-        sectorId,
-        crew: overlay.crew,
-        line: overlay.lines[hash32(seed, pick.id, day, 'lived-line') % overlay.lines.length],
-      },
-    } : undefined,
+    data: Object.keys(data).length ? data : undefined,
     force: true,
   });
   if (!dir.stats) dir.stats = {};
   const stampedAt = Number(dir.lastAmbientAt);
   dir.stats.livedNextAt = livedNextAtFor(now, stampedAt, !!(result && result.ok));
+  if (ambient && result && result.ok) ambientLastAt[pick.id] = now;
 }

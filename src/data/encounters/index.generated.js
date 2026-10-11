@@ -138,7 +138,7 @@ import * as encounter134 from './420-lived-trade-lane-distress-choir-depth.js';
 import * as encounter135 from './421-lived-patrol-corridor-salvage-fulfillment-none.js';
 import * as encounter136 from './422-lived-border-checkpoint-trade-patrol-lawman-lite.js';
 import * as encounter137 from './423-lived-refinery-approach-convoy-helix-k1.js';
-import * as encounter138 from './424-lived-mining-belt-claim-reach-follow-on.js';
+import * as encounter138 from './424-lived-mining-belt-claim-verge-layers-follow-on.js';
 import * as encounter139 from './425-lived-colony-anomaly-free-logic.js';
 import * as encounter140 from './426-lived-derelict-field-wreck-vael-named.js';
 import * as encounter141 from './427-lived-outlaw-zone-yard-choir-zealot-admirers.js';
@@ -283,6 +283,22 @@ import * as encounter279 from './565-lived-colony-distress-choir-k1.js';
 import * as encounter280 from './566-lived-derelict-field-salvage-fulfillment-follow-.js';
 import * as encounter281 from './567-second-rinse.js';
 import * as encounter282 from './568-false-bloom.js';
+import * as encounter283 from './569-scene-fare-dodger-chase.js';
+import * as encounter284 from './570-scene-claim-jump-run.js';
+import * as encounter285 from './571-scene-manifest-stop-and-search.js';
+import * as encounter286 from './572-scene-press-gang-tow.js';
+import * as encounter287 from './573-scene-paperless-dash.js';
+import * as encounter288 from './574-scene-yard-tow.js';
+import * as encounter289 from './575-scene-fresh-wreck-vultures.js';
+import * as encounter290 from './576-scene-funeral-column.js';
+import * as encounter291 from './577-scene-fog-edge-wait.js';
+import * as encounter292 from './578-scene-lane-racers.js';
+import * as encounter293 from './579-scene-mail-through-crossfire.js';
+import * as encounter294 from './580-scene-pilgrim-lamp-walk.js';
+import * as encounter295 from './581-scene-refuel-hookup.js';
+import * as encounter296 from './582-scene-rescue-drill.js';
+import * as encounter297 from './583-scene-archive-record-tail.js';
+import * as encounter298 from './584-scene-fissure-haul-out.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -567,5 +583,21 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter280,
   encounter281,
   encounter282,
+  encounter283,
+  encounter284,
+  encounter285,
+  encounter286,
+  encounter287,
+  encounter288,
+  encounter289,
+  encounter290,
+  encounter291,
+  encounter292,
+  encounter293,
+  encounter294,
+  encounter295,
+  encounter296,
+  encounter297,
+  encounter298,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);

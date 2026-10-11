@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ENCOUNTERS } from '../src/data/encounters.js';
+import { ENCOUNTER_MODULES } from '../src/data/encounters/index.generated.js';
 import { SECTORS } from '../src/data/sectors.js';
+import { hash32 } from '../src/core/rng.js';
 import { LIVED_SECTOR_OVERLAYS, livedOverlayFor } from '../src/data/livedSectorOverlays.js';
 import { planEncounters } from '../src/systems/encounterDirector.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
-import { compileVignette } from '../src/systems/vignetteInterpreter.js';
+import { applyMotion, compileVignette } from '../src/systems/vignetteInterpreter.js';
 import { pickLaneErrand, armLaneErrands, applyLaneErrandIntent, LANE_ERRANDS, laneContractOwns } from '../src/systems/laneErrands.js';
-import { livedNextAtFor, pickLivedVignette } from '../src/systems/livedWorldDirector.js';
+import { livedNextAtFor, livedScenePlacement, pickLivedVignette } from '../src/systems/livedWorldDirector.js';
 import { advance, createJob } from '../src/systems/npcJobs.js';
 
 const LIVED_SITUATIONS = [
@@ -64,6 +66,68 @@ test('generated lived vignettes cover situations and configured places evenly', 
   for (const place of LIVED_PLACES) assert.ok(places.has(place), `missing generated place ${place}`);
 });
 
+test('ambient scenes compile, use the lived trigger contract, and cover every non-Bolus sector', () => {
+  const modules = ENCOUNTER_MODULES.filter((module) => module.default && module.default.ambientScene === true);
+  assert.equal(modules.length, 16);
+  const validMotions = new Set(['hold', 'orbit', 'creep', 'ring', 'weave', 'depart', 'face', 'chase', 'tow', 'column', 'vulture']);
+  const covered = new Set();
+  const noRunnerScenes = new Set(['scene_funeral_column', 'scene_pilgrim_lamp_walk', 'scene_fissure_haul_out']);
+  for (const module of modules) {
+    const enc = module.default;
+    const spec = module.spec;
+    assert.ok(spec, `${enc.id} exports its compiled source spec`);
+    assert.doesNotThrow(() => compileVignette(spec), enc.id);
+    assert.equal(enc.livedVignette, true, enc.id);
+    assert.equal(enc.tier, 'ambient', enc.id);
+    assert.equal(enc.deck, 'civilian', enc.id);
+    assert.equal(enc.pressureCost, 6, enc.id);
+    assert.equal(enc.script, 'selfRegistered', enc.id);
+    assert.equal(enc.fallbackScript, 'whisper', enc.id);
+    assert.equal(enc.gates.externalOnly, true, enc.id);
+    assert.equal(enc.ambientScene, true, enc.id);
+    assert.deepEqual(enc.zoneTypes, LIVED_PLACES, enc.id);
+    assert.ok(Array.isArray(enc.sectorIds) && enc.sectorIds.length > 0, enc.id);
+    for (const sectorId of enc.sectorIds) covered.add(sectorId);
+
+    const phases = new Map(spec.phases.map((phase) => [phase.id, phase]));
+    const run = phases.get('run');
+    const offer = phases.get('offer');
+    const prop = phases.get('prop');
+    assert.equal(phases.get('spawn').next, prop ? 'prop' : 'hail');
+    if (prop) assert.equal(prop.next, 'hail');
+    assert.ok(run && validMotions.has(run.motion), `${enc.id} uses a valid run motion`);
+    assert.equal(run.verb, 'motion');
+    assert.equal(run.seconds, 6);
+    assert.equal(phases.get('hail').primary, true);
+    assert.equal(phases.get('hail').next, 'run');
+    assert.equal(phases.get('a0').next, 'offer');
+    assert.equal(offer.windowS, 22);
+    assert.equal(offer.motion, run.motion);
+    assert.deepEqual(offer.onChoice, { a: 'say_a', b: 'say_b', c: 'say_c' });
+    assert.equal(spec.timeoutChoice, 'c');
+    assert.equal(phases.get('say_c').next, 'resolve_c');
+    assert.equal(phases.get('resolve_c').verb, 'resolve');
+    assert.equal(spec.choices.c.id, 'c');
+    assert.equal(phases.get('grant_a').amount, 30);
+    assert.equal(phases.get('rep_a').factionId, enc.factionId);
+    assert.equal(phases.get('rep_a').delta, 2);
+    assert.equal(phases.has('rep_c'), false);
+    if (noRunnerScenes.has(enc.id)) {
+      assert.equal(phases.get('rep_b_authority').factionId, enc.factionId);
+      assert.equal(phases.get('rep_b_authority').delta, -1);
+      assert.equal(phases.has('rep_b_runner'), false);
+    } else {
+      assert.equal(phases.get('rep_b_runner').delta, 1);
+      assert.equal(phases.get('rep_b_authority').factionId, enc.factionId);
+      assert.equal(phases.get('rep_b_authority').delta, -1);
+    }
+  }
+  assert.equal(covered.has('sector_the_bolus'), false);
+  for (const sector of SECTORS) {
+    if (sector.id !== 'sector_the_bolus') assert.ok(covered.has(sector.id), `no ambient scene for ${sector.id}`);
+  }
+});
+
 test('every sector has a frozen six-line lived overlay with unique lines', () => {
   assert.ok(Object.isFrozen(LIVED_SECTOR_OVERLAYS));
   assert.equal(Object.keys(LIVED_SECTOR_OVERLAYS).length, SECTORS.length);
@@ -108,6 +172,57 @@ test('lived overlay selection is deterministic and prefers matching authored can
     ],
   });
   assert.equal(fallback.shape.situation, 'trade');
+});
+
+test('ambient selection respects sector and cooldown, and varies within a day', () => {
+  const now = 1217;
+  const sectorId = 'sector_sker_haven';
+  const zoneKey = 'outlaw-zone';
+  const day = Math.floor(now / 600);
+  const ambient = {
+    id: 'scene_test_ambient',
+    ambientScene: true,
+    sectorIds: [sectorId],
+    shape: { situation: 'hunt' },
+  };
+  const ordinary = { id: 'authored_fallback', shape: { situation: 'trade' } };
+  const seed = Array.from({ length: 10000 }, (_, value) => value).find((candidate) => (
+    hash32(candidate, sectorId, zoneKey, day, Math.floor(now / 6), 'lived-ambient') % 3 === 0
+      && hash32(candidate, sectorId, zoneKey, day, Math.floor((now + 6) / 6), 'lived-ambient') % 3 !== 0
+  ));
+  assert.notEqual(seed, undefined);
+  const args = { candidates: [ordinary, ambient], seed, sectorId, zoneKey, day, now };
+  assert.equal(pickLivedVignette(args).id, ambient.id);
+  assert.equal(pickLivedVignette({ ...args, now: now + 6 }).id, ordinary.id);
+  assert.equal(pickLivedVignette({
+    ...args,
+    ambientLastAt: { [ambient.id]: now - 1199 },
+  }).id, ordinary.id);
+  assert.equal(pickLivedVignette({
+    ...args,
+    sectorId: 'sector_elsewhere',
+  }).id, ordinary.id);
+});
+
+test('ambient placement is deterministic, forward, and perpendicular to the player heading', () => {
+  const player = {
+    pos: { x: 10, z: 20 },
+    vel: { x: 0, z: 8 },
+    rot: 0,
+  };
+  const args = [player, 47, 'sector_helios_prime', 'trade_lane', 4, 'scene_fare_dodger_chase'];
+  const placement = livedScenePlacement(...args);
+  assert.deepEqual(livedScenePlacement(...args), placement);
+  assert.deepEqual(placement.centre, { x: 10, z: 220 });
+  assert.ok(Math.abs((placement.centre.x - player.pos.x) * 0 + (placement.centre.z - player.pos.z) * 1 - 200) < 1e-12);
+  assert.ok(Math.abs(placement.axis.ux * 0 + placement.axis.uz * 1) < 1e-12);
+  assert.ok(Math.abs(placement.anchor.x + placement.axis.ux * 320 - placement.centre.x) < 1e-12);
+  assert.ok(Math.abs(placement.anchor.z + placement.axis.uz * 320 - placement.centre.z) < 1e-12);
+
+  const fallback = livedScenePlacement({
+    pos: { x: -5, z: 3 }, vel: { x: 3, z: 4 }, rot: 0,
+  }, 47, 'sector_helios_prime', 'trade_lane', 4, 'scene_fare_dodger_chase');
+  assert.deepEqual(fallback.centre, { x: 195, z: 3 });
 });
 
 test('a vignette hails, offers, and resolves without writing credits itself', () => {
@@ -225,6 +340,88 @@ test('lived overlays replace only the work line and label spawned crew', () => {
   const overlaid = run({ livedOverlay: { sectorId: 'sector_ceres_belt', crew: 'DMC SEAM CREW', line: overlayLine } });
   assert.equal(overlaid.said[0], overlayLine);
   assert.deepEqual(overlaid.spawned.map((ship) => ship.scanLabel), ['DMC SEAM CREW 1', 'DMC SEAM CREW 2']);
+});
+
+test('ambient motions steer along their scene axis and preserve existing motion intents', () => {
+  const close = (actual, expected) => assert.ok(Math.abs(actual - expected) < 1e-12, `${actual} != ${expected}`);
+  const d = { entsOf: (live) => live.ships, player: () => ({ pos: { x: 30, z: 10 } }) };
+  const holdShips = [
+    { pos: { x: 0, z: 0 }, rot: 0.3, data: {} },
+    { pos: { x: 0, z: 0 }, rot: -0.2, data: {} },
+  ];
+  const holdLive = { vars: { motionOrigin: { x: 5, z: -7 }, motionT0: 0 }, data: {}, ships: holdShips };
+  applyMotion(d, holdLive, 'hold', 0);
+  assert.deepEqual(holdShips.map((ship) => ship.data.intent), [
+    { tx: 30, tz: 10, fire: false, moveZ: 0, moveX: 0, aimAngle: 0.3 },
+    { tx: 30, tz: 10, fire: false, moveZ: 0, moveX: 0, aimAngle: -0.2 },
+  ]);
+
+  const angle = -2.4939306811526896;
+  const moveAngle = Math.atan2(-0.7497352943715063, -0.6617378547232061);
+  const orbitShips = [
+    { pos: { x: 45, z: -31 }, rot: 0.3, data: {} },
+    {
+      pos: { x: -155 - Math.cos(angle) * 100, z: -7 - Math.sin(angle) * 100 },
+      rot: angle - moveAngle,
+      data: {},
+    },
+  ];
+  const orbitLive = { vars: { motionOrigin: { x: 5, z: -7 }, motionT0: 0 }, data: {}, ships: orbitShips };
+  applyMotion(d, orbitLive, 'orbit', 0);
+  const orbitLead = orbitShips[0].data.intent;
+  assert.deepEqual(
+    { tx: orbitLead.tx, tz: orbitLead.tz, fire: orbitLead.fire, aimAngle: orbitLead.aimAngle },
+    { tx: 165, tz: -7, fire: false, aimAngle: 0.19739555984988078 },
+  );
+  close(orbitLead.moveZ, 0.9947407808046376);
+  close(orbitLead.moveX, -0.10242450392450109);
+  const orbitFollower = orbitShips[1].data.intent;
+  assert.equal(orbitFollower.tx, -155);
+  close(orbitFollower.tz, -6.9999999999999805);
+  close(orbitFollower.moveZ, -0.6617378547232061);
+  close(orbitFollower.moveX, -0.7497352943715063);
+  close(orbitFollower.aimAngle, angle);
+
+  const runner = { pos: { x: 0, z: 0 }, rot: 0, data: {} };
+  const chaser = { pos: { x: -20, z: 10 }, rot: 0, data: {} };
+  const chaseLive = {
+    vars: { motionOrigin: { x: 10, z: 20 }, motionT0: 0 },
+    data: { sceneAxis: { ux: 0, uz: 1 } },
+    ships: [runner, chaser],
+  };
+  applyMotion(d, chaseLive, 'chase', 0);
+  assert.deepEqual([runner.data.intent.tx, runner.data.intent.tz], [10, 720]);
+  assert.deepEqual([chaser.data.intent.tx, chaser.data.intent.tz], [-60, 0]);
+
+  const tug = { pos: { x: 2, z: 3 }, rot: Math.PI / 2, data: {} };
+  const towed = { pos: { x: 10, z: 12 }, rot: 0, data: {} };
+  const towLive = {
+    vars: { motionOrigin: { x: 0, z: 0 }, motionT0: 0 },
+    data: { sceneAxis: { ux: 1, uz: 0 } },
+    ships: [tug, towed],
+  };
+  applyMotion(d, towLive, 'tow', 0);
+  close(tug.data.intent.tx, 500);
+  close(tug.data.intent.tz, 0);
+  close(Math.hypot(tug.data.intent.moveZ, tug.data.intent.moveX), 0.22);
+  close(towed.data.intent.tx, 2);
+  close(towed.data.intent.tz, -52);
+
+  const columnShips = [{ pos: { x: 0, z: 0 }, data: {} }, { pos: { x: 0, z: 0 }, data: {} }];
+  applyMotion(d, {
+    vars: { motionOrigin: { x: 0, z: 0 }, motionT0: 0 },
+    data: { sceneAxis: { ux: 1, uz: 0 } },
+    ships: columnShips,
+  }, 'column', 0);
+  assert.deepEqual(columnShips.map((ship) => ship.data.intent.tx), [700, 610]);
+
+  const vulture = { pos: { x: 0, z: 0 }, data: {} };
+  applyMotion(d, {
+    vars: { motionOrigin: { x: 12, z: -4 }, motionT0: 0 },
+    data: {},
+    ships: [vulture],
+  }, 'vulture', 0);
+  assert.deepEqual([vulture.data.intent.tx, vulture.data.intent.tz], [107, -4]);
 });
 
 test('lane errands are deterministic and do not freeze the job clock', () => {
