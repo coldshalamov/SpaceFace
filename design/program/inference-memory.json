@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-10-08",
+  "updated": "2026-10-11",
   "runs": [
     {
       "date": "2026-08-12",
@@ -73,19 +73,6 @@
     }
   ],
   "units": [
-    {
-      "id": "wreck-rumor-delivery",
-      "date": "2026-09-28",
-      "wf": "WF-10",
-      "mode": "opportunity",
-      "verdict": "implemented",
-      "reason": "Four sealed unique wrecks (Vigilant, Lighthouse, Choir-Bell, Cassandra) deliver authored rumors on sector entry; registry census 12/12 delivery paths was 8/12; Lighthouse beam 18000cr and choirVaelTreaty unlock reachable",
-      "fingerprint": "verb=deliver,subject=unique-wreck-rumors,sector=veil/triton/ashfall/haumea,domain=wf-10",
-      "references": [],
-      "integration": "live",
-      "commit": "1a0203d7b",
-      "verification": "focused_green"
-    },
     {
       "id": "passenger-identity",
       "date": "2026-09-28",
@@ -1656,6 +1643,19 @@
       "references": [],
       "integration": "live",
       "commit": "ccc3fe86d",
+      "verification": "focused_green"
+    },
+    {
+      "id": "inf-wreck-cargo-class-line",
+      "date": "2026-10-11",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "a locked wreck or loose cargo says what it is and what it holds",
+      "fingerprint": "verb=read,subject=wreck,sector=any,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "4879484c3",
       "verification": "focused_green"
     }
   ],
