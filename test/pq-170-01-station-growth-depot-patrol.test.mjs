@@ -127,6 +127,10 @@ test('a station gains its first module after enough player sells; buys and seale
 test('the player relay convoys count as station throughput and a grown station cuts the relay fee', () => {
   const price = 80;
   const h = bootClaims({ economy: makeEconomyStub({ cmdty_refined_metals: price }) });
+  // bc705bb67: a convoy sells only against a listed lastSell. priceOf alone is not a market.
+  h.state.economy = {
+    markets: { [STATION_ID]: { cmdty_refined_metals: { lastSell: price } } },
+  };
   const relayDef = BODY_SPECIALIZATION_BY_ID.get('spec_relay');
   const body = commissionRelay(h);
   addCargo(h.state, 'cmdty_refined_metals', 300);
