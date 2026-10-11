@@ -29,6 +29,7 @@ export const EMERGENT_TUNING = Object.freeze({
   stickyLife: 4,
   stickyYield: 2800,
   stickyFalloff: 16,
+  stickyBlastRadius: 96,
   stickyCookHeat: 36,
   stickyFuelMin: 0.12,
   shrapnelCount: 7,
@@ -45,7 +46,10 @@ export const EMERGENT_TUNING = Object.freeze({
   springK: 48,
   springRestFraction: 0.42,
   springCollide: 0.035,
-  dipoleK: 2.4e6,
+  // At a 100 WU gap a tagged pair must visibly close during one combat beat.
+  // Near-contact force is capped separately so inverse-square pull cannot explode.
+  dipoleK: 12e6,
+  dipoleMaxForce: 3840,
   dipoleEps: 36,
   dipoleContact: 0.02,
   slugMass: 9,

@@ -320,7 +320,7 @@ test('ordinary knock budget does not rewrite a live rope contact response', asyn
     owner.cutAttachment({ attachmentId: 'live-rope' });
     owner._refreshSleepPolicy();
     rec._playerContactCumulativeDeltaV = 0;
-    assert.equal(response(), 10, 'uncoupled ordinary flight still receives the 10% cruise budget');
+    assert.equal(response(), 5, 'uncoupled ordinary flight still receives the min(5, 10% cruise) budget');
   } finally {
     owner.dispose();
   }
@@ -349,8 +349,8 @@ test('a receiptless grind on a touching hull is contact work; uncoupled delta-V 
     try {
       owner.world.contactPairsWith = (collider, cb) => cb({ handle: -1 });
       rec._playerContactCumulativeDeltaV = 0;
-      assert.equal(response(), 10,
-        'a touching hull with no receipts is ordinary contact and draws the 10% cruise budget');
+      assert.equal(response(), 5,
+        'a touching hull with no receipts is ordinary contact and draws the min(5, 10% cruise) budget');
       owner.world.contactPairsWith = () => {};
       rec._playerContactCumulativeDeltaV = 0;
       assert.equal(response(), 20,

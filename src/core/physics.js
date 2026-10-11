@@ -1,3 +1,4 @@
+import { tickPhysicalEffects, clearPhysicalEffects } from '../combat/physicalEffects.js';
 import { sweepCollisionProxyInto } from './collisionProxySweep.js';
 import { dedupWarn } from './warnDedup.js';
 import { reconcileMachineryBeforePhysics } from './machineryPresentation.js';
@@ -166,7 +167,9 @@ export const physics = {
     this._spatialHashNeedsRebuild = false;
     if (ctx.helpers && !ctx.helpers.combatPhysics) ctx.helpers.combatPhysics = this._sg02CombatPhysics;
     if (this.bus && typeof this.bus.on === 'function') {
-      this.bus.on('save:loaded', () => this._resetSg02AfterLoad());
+      this.bus.on('save:loaded', () => { clearPhysicalEffects(this.state); this._resetSg02AfterLoad(); });
+      this.bus.on('game:newGame', () => clearPhysicalEffects(this.state));
+      this.bus.on('sector:exit', () => clearPhysicalEffects(this.state));
     }
     this._diag = {
       backend: 'custom',
@@ -202,6 +205,7 @@ export const physics = {
   },
 
   update(dt, state) {
+    tickPhysicalEffects(state, dt, this.helpers);
     reconcileMachineryBeforePhysics(state);
     reconcileLatchBeforePhysics(state);
     const t0 = perfNow();

@@ -1,3 +1,4 @@
+import { queryPhysicalBodies, deliverPhysicalImpulse, schedulePhysicalBlast } from '../combat/physicalEffects.js';
 // Impulse charges system (GDD §4.4 "blast plates", BUILD_PLAN WS-D2 / GROK-1).
 //
 // Sticky radial impulse bombs: lob from the player nose, adhere to hulls/asteroids, detonate on R.
@@ -1264,7 +1265,7 @@ export const impulseCharges = {
           dirZ = -Math.sin(player.rot || 0);
         }
         const magnitude = MASSLINE_COMBOS.tailPop.impulse;
-        this._applyBlastImpulse(player, dirX * magnitude, dirZ * magnitude, state, state.playerId);
+        this._applyBlastImpulse(player, dirX * magnitude, dirZ * magnitude, state, state.playerId, undefined, true);
         this.bus.emit('charge:combo', {
           combo: 'tailPop',
           ownerId: player.id,
@@ -1378,18 +1379,18 @@ export const impulseCharges = {
     // query by the owner radius and use surface distance for the owner below. Other blast victims
     // retain the established center-distance falloff and therefore cannot gain accidental range.
     const blastQueryRadius = radius + (opts.aftDrop && player ? (player.radius || 0) : 0);
-    const candidates = stickCandidatesNear(state, pos, blastQueryRadius, this._blastScratch);
-    for (const ent of candidates) {
-      if (!ent.alive) continue;
-      if (opts.excludeId != null && ent.id === opts.excludeId) continue;
+    const candidates = queryPhysicalBodies(state, pos, blastQueryRadius, this.helpers, this._blastScratch);
+    const applyBody = ent => {
+      if (!ent.alive) return;
+      if (opts.excludeId != null && ent.id === opts.excludeId) return;
       const dx = ent.pos.x - pos.x, dz = ent.pos.z - pos.z;
       const dist = Math.hypot(dx, dz);
       const propulsionOwner = !!(opts.aftDrop && ent.id === ownerId);
       const falloffDist = propulsionOwner ? Math.max(0, dist - (ent.radius || 0)) : dist;
-      if (falloffDist > radius) continue;
+      if (falloffDist > radius) return;
 
       const falloff = linearFalloff(falloffDist, radius);
-      if (falloff <= 0) continue;
+      if (falloff <= 0) return;
 
       let dirX = 0, dirZ = 1;
       if (dist > 1e-4) {
@@ -1424,19 +1425,24 @@ export const impulseCharges = {
           hits.push(ent.id);
           considerImpulseShove(shoves, ent.id, dirX, dirZ, magnitude);
         }
-        continue;
+        return;
       }
       // Rung 15: the blast is an impulse REQUEST to the physics authority, applied at the center
       // of mass. Magnitude impulse × falloff is the old per-entity Δv × mass — same physics,
       // different owner of the mutation. A rejected request (no rigid body / no port) is skipped,
       // never forced with a direct vel write.
-      this._applyBlastImpulse(ent, dirX * magnitude, dirZ * magnitude, state, ownerId, opts.chargeId);
-      hits.push(ent.id);
-      considerImpulseShove(shoves, ent.id, dirX, dirZ, magnitude);
-      this._publishBlastHitstun(state, ent, {
-        dirX, dirZ, magnitude, ownerId, attackerMass, chargeId: opts.chargeId,
-        sourceId: opts.sourceId, trigger: opts.trigger, link,
-      });
+      // Preserve earned anchor/swing amplification on scenery too. A fixed
+      // reference impulse erased the combo before the body ever felt it.
+      const environmentImpulse = impulse > 0 ? 1280 * magnitude / impulse : 0;
+      const accepted = this._applyBlastImpulse(ent, dirX * magnitude, dirZ * magnitude, state, ownerId, opts.chargeId, propulsionOwner, environmentImpulse);
+      if (accepted) {
+        hits.push(ent.id);
+        considerImpulseShove(shoves, ent.id, dirX, dirZ, magnitude);
+        this._publishBlastHitstun(state, ent, {
+          dirX, dirZ, magnitude, ownerId, attackerMass, chargeId: opts.chargeId,
+          sourceId: opts.sourceId, trigger: opts.trigger, link,
+        });
+      }
 
       if (BLAST_DAMAGE_TYPES.has(ent.type) && damage > 0) {
         const packet = scalarHitToDamagePacket({
@@ -1453,7 +1459,9 @@ export const impulseCharges = {
           origin: { kind: 'impulse_charge', id: opts.originId != null ? opts.originId : opts.sourceId },
         });
       }
-    }
+    };
+    schedulePhysicalBlast(state, { center: pos, radius: blastQueryRadius, helpers: this.helpers, excludeId: opts.excludeId,
+      payload: { kind: 'impulse_charge', sourceId: ownerId, weaponId: opts.chargeId, baseImpulse: impulse * impulseMult, referenceVelocity: 80, damage: damage * damageMult, damageType: 'explosive' }, onBody: applyBody });
 
     return { hits, shoves: freezeImpulseShoves(shoves) };
   },
@@ -1533,18 +1541,11 @@ export const impulseCharges = {
   // Physics-authority impulse (rung 15). Same port + call shape as combat/actions.js:185 and
   // combat/damage.js:201: helpers.combatPhysics.applyImpulse({entityId, impulse, point, reason,
   // tick}). Returns true only if the backend accepted the impulse.
-  _applyBlastImpulse(ent, impulseX, impulseZ, state, ownerId, chargeId) {
-    const physics = this.helpers && this.helpers.combatPhysics;
-    if (!physics || typeof physics.applyImpulse !== 'function') return false;
-    const accepted = physics.applyImpulse({
-      entityId: ent.id,
-      impulse: { x: impulseX, z: impulseZ },
-      point: null,
-      reason: 'impulse_charge',
-      tick: state.tick,
-      provenance: { actorId: ownerId, weaponId: chargeId ?? 'impulse_charge', tag: 'impulse_charge_blast' },
-    });
-    return accepted !== false;
+  _applyBlastImpulse(ent, impulseX, impulseZ, state, ownerId, chargeId, deliberate = false, referenceImpulse = undefined) {
+    const evidence = { tick: state.tick, reason: 'impulse_charge', motionIntent: deliberate ? 'player_maneuver' : undefined,
+      provenance: { actorId: ownerId, weaponId: chargeId ?? 'impulse_charge', tag: 'impulse_charge_blast' } };
+    return deliverPhysicalImpulse(state, ent, { x: impulseX, z: impulseZ }, evidence,
+      { port: this.helpers?.combatPhysics, referenceImpulse });
   },
 
   _routeDamage(request) {
