@@ -375,7 +375,7 @@ const textOf = (rec) => rec.texts.map((t) => t.text).join(' | ');
   const { root } = mountWith(state);
   drawAt('galaxy', state);
   const bothBtn = root.querySelector('#gm-frame-both-btn');
-  assert.equal(bothBtn.disabled, false, 'a plotted route must enable Frame ship + destination');
+  assert.equal(bothBtn.disabled, false, 'a plotted route must enable Zoom: ship and destination');
   const text = textOf(galaxyMapScreen._g._rec);
   assert.ok(/Tethys/i.test(text), `the destination must be named on the chart; got ${text.slice(0, 400)}`);
   ok('a plotted route enables Frame both and names the destination on the chart');

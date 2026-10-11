@@ -146,10 +146,10 @@ function resolveRibbonActions(hasRoute, status, engaged) {
   const live = !!status && status !== 'idle' && status !== 'arrived';
 
   const engage = !hasRoute
-    ? makeAction('engage', 'Engage', false, 'No route plotted — set a course to a sector first', 'nav:engageRoute')
+    ? makeAction('engage', 'Engage', false, 'Click a destination on the chart, then Plot Course', 'nav:engageRoute')
     : live
-      ? makeAction('engage', 'Engage', false, 'Already engaged — use Disengage to hand control back', 'nav:engageRoute')
-      : makeAction('engage', 'Engage', true, 'Hand the plotted route to the route follower', 'nav:engageRoute');
+      ? makeAction('engage', 'Engage', false, 'Already flying this route — Disengage to take back control', 'nav:engageRoute')
+      : makeAction('engage', 'Engage', true, 'Fly the plotted route automatically', 'nav:engageRoute');
 
   // PAUSE HAS NO RUNTIME CONSUMER AND IS REPORTED AS SUCH. The route follower exposes engage and
   // abort; there is no hold-position verb. Shipping this as an enabled button that emits an event
@@ -164,12 +164,12 @@ function resolveRibbonActions(hasRoute, status, engaged) {
   );
 
   const resume = status === 'interrupted'
-    ? makeAction('resume', 'Resume', true, 'Pick the itinerary up on the same leg', 'nav:engageRoute')
+    ? makeAction('resume', 'Resume', true, 'Continue the route on the same leg', 'nav:engageRoute')
     : makeAction('resume', 'Resume', false,
       live ? 'Route is already running' : 'Nothing to resume — the route is not interrupted', 'nav:engageRoute');
 
   const disengage = live
-    ? makeAction('disengage', 'Disengage', true, 'Hand control back to you — the itinerary is kept', 'nav:abortRoute')
+    ? makeAction('disengage', 'Disengage', true, 'Stop flying — the route is kept for later', 'nav:abortRoute')
     : makeAction('disengage', 'Disengage', false, 'No route is being flown', 'nav:abortRoute');
 
   return Object.freeze({ order: RIBBON_ACTION_IDS, engage, pause, resume, disengage });
@@ -215,7 +215,7 @@ export function resolveRouteRibbon(input = {}) {
     return Object.freeze({
       schema: MAP_ROUTE_RIBBON_SCHEMA,
       visible: false,
-      reason: 'No route plotted. Set a course to a sector to plan one.',
+      reason: 'No route yet — click a destination on the chart, then Plot Course.',
       status,
       engaged: false,
       live: false,
@@ -225,7 +225,7 @@ export function resolveRouteRibbon(input = {}) {
       arrival: null,
       totals: Object.freeze({ legs: 0, legsRemaining: 0, fuel: 0, fuelRemaining: 0, chargeS: 0 }),
       nextWaypoint: null,
-      eta: Object.freeze({ available: false, seconds: null, label: '—', reason: 'No route plotted' }),
+      eta: Object.freeze({ available: false, seconds: null, label: '—', reason: 'No route is plotted yet' }),
       interruption: null,
       actions,
     });

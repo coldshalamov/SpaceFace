@@ -80,12 +80,48 @@ function makeRealExecutor(status, { legIndex = 0, hops = 2, interruptReason = nu
 
 // --- availability matrix ---------------------------------------------------------------------
 
-test('no route plotted: engage is visible, disabled, and SAYS WHY', () => {
+test('no destination: engage is visible, disabled, and SAYS WHAT TO DO NEXT', () => {
   const a = resolveRouteEngageAction({ nav: { route: null } });
   assert.equal(a.visible, true, 'the control must not vanish — a hidden action teaches nothing');
   assert.equal(a.enabled, false);
   assert.equal(a.event, null, 'a disabled action must carry no event, so it cannot fire');
-  assert.match(a.reason, /no route plotted/i);
+  assert.match(a.reason, /click a destination/i);
+});
+
+test('a known contract destination turns the dead control into the PLOT itself', () => {
+  // The reported dead end: the pilot accepted a delivery contract, the readout knew the
+  // destination, and ENGAGE still answered "no route plotted". With a destination known and no
+  // selection, the primary key now offers the plot to it — enabled, with a real consumer
+  // (world:requestRoute) — instead of a disabled button contradicting the readout.
+  const state = {
+    world: { currentSectorId: 'sector_helios_prime' },
+    missions: { active: [{ id: 'm1', status: 'active', title: 'Deliver alloys', destSectorId: 'sector_tethys_junction' }] },
+    ui: { trackedMissionId: 'm1' },
+    nav: { route: null },
+  };
+  const a = resolveRouteEngageAction(state);
+  assert.equal(a.visible, true);
+  assert.equal(a.enabled, true, 'a known destination must make the control act, not explain');
+  assert.equal(a.label, 'Plot Course', 'plot and engage stay separate (ADR D6) — the control offers the plot');
+  assert.equal(a.event, 'world:requestRoute');
+  assert.deepEqual(a.payload, { targetSectorId: 'sector_tethys_junction', mode: 'fuel' });
+  assert.match(a.reason, /Tethys Junction/i, 'the reason names where it plots to');
+
+  // And the emitter forwards the payload, so the plot actually happens.
+  const bus = busSpy();
+  assert.equal(emitRouteEngageAction(bus, a), true);
+  assert.deepEqual(bus.events, [{ type: 'world:requestRoute', payload: { targetSectorId: 'sector_tethys_junction', mode: 'fuel' } }]);
+});
+
+test('the contract-destination plot is not offered when the destination is the current sector', () => {
+  const state = {
+    world: { currentSectorId: 'sector_tethys_junction' },
+    missions: { active: [{ id: 'm1', status: 'active', destSectorId: 'sector_tethys_junction' }] },
+    nav: { route: null },
+  };
+  const a = resolveRouteEngageAction(state);
+  assert.equal(a.enabled, false, 'a destination in this sector is nothing to plot');
+  assert.equal(a.event, null);
 });
 
 test('a plotted route offers engage, and reports how many legs', () => {
@@ -110,7 +146,7 @@ test('while transiting, the control becomes the way OUT so a pilot is never trap
   assert.match(a.reason, /leg 1\/2/, 'progress must be legible from the control itself');
 });
 
-test('an interrupted route offers RESUME, and says the itinerary was kept', () => {
+test('an interrupted route offers RESUME, and says the route was kept', () => {
   const a = resolveRouteEngageAction({
     nav: {
       route: makeRealRoute(2),
@@ -119,7 +155,7 @@ test('an interrupted route offers RESUME, and says the itinerary was kept', () =
   });
   assert.equal(a.label, 'Resume Route');
   assert.equal(a.event, 'nav:engageRoute', 'resuming re-engages rather than re-plotting');
-  assert.match(a.reason, /itinerary kept/i, 'interruption must never read as a lost route');
+  assert.match(a.reason, /route kept/i, 'interruption must never read as a lost route');
   assert.match(a.reason, /combat/i, 'why it stopped is the pilot\'s next decision — say it');
 });
 

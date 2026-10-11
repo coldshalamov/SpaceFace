@@ -2680,13 +2680,29 @@ export function resolveRouteEngageAction(state) {
       const why = executor && executor.interruptReason
         ? ` — ${String(executor.interruptReason).replace(/[-_]+/g, ' ')}`
         : '';
-      return { visible: true, enabled: true, label: mapControlLabel('resume'), reason: `Interrupted${where}${why} — itinerary kept`, event: 'nav:engageRoute' };
+      return { visible: true, enabled: true, label: mapControlLabel('resume'), reason: `Interrupted${where}${why} — route kept`, event: 'nav:engageRoute' };
     }
     return { visible: true, enabled: true, label: mapControlLabel('disengage'), reason: `${titleCasePhase(status)}${where}`, event: 'nav:abortRoute' };
   }
 
   if (!nav.route) {
-    return { visible: true, enabled: false, label: mapControlLabel('engage'), reason: 'No route plotted — set a course to a sector first', event: null };
+    // A known contract destination with nothing plotted is the ONE case where this control can act
+    // without a selection: the destination already exists (ADR D4), so the primary key becomes the
+    // plot itself instead of a disabled dead end. Plot stays separate from engage (ADR D6) — this
+    // lays the route only; engaging it is still its own press.
+    const here = state && state.world && state.world.currentSectorId;
+    const dest = resolveMissionDestination(state);
+    if (dest && dest.sectorId && here && dest.sectorId !== here) {
+      return {
+        visible: true,
+        enabled: true,
+        label: mapControlLabel('plot'),
+        reason: `Plot a course to ${sectorNameOf(state, dest.sectorId)} — your contract destination`,
+        event: 'world:requestRoute',
+        payload: { targetSectorId: dest.sectorId, mode: 'fuel' },
+      };
+    }
+    return { visible: true, enabled: false, label: mapControlLabel('engage'), reason: 'Click a destination on the chart, then Plot Course', event: null };
   }
   const legs = routeLegCount(nav.route);
   return {
@@ -2728,7 +2744,10 @@ export function applyMapEngage({ key, pad, state, bus } = {}) {
 /** Emit the resolved engage/disengage intent. Returns false when the action is unavailable. */
 export function emitRouteEngageAction(bus, action) {
   if (!bus || !action || !action.enabled || !action.event) return false;
-  bus.emit(action.event, action.event === 'nav:abortRoute' ? { reason: 'manual' } : {});
+  const payload = action.event === 'nav:abortRoute'
+    ? { reason: 'manual' }
+    : (action.payload || {});
+  bus.emit(action.event, payload);
   return true;
 }
 
@@ -2924,7 +2943,7 @@ export function resolveInspectorTabAvailability(state, target) {
 
   set('overview', true, 'Where you are, what you are tracking, and what is selected');
   set('travel', hasRoute || !!executor,
-    hasRoute || executor ? 'Route legs, cost, hazards and arrival' : 'No route plotted — set a course to a sector first');
+    hasRoute || executor ? 'Route legs, cost, hazards and arrival' : 'No route yet — click a destination on the chart, then Plot Course');
   set('missions', liveMissions.length > 0,
     liveMissions.length ? `${liveMissions.length} active` : 'No active missions');
   set('economy', true, 'Trade lanes from memory and model beacons');
@@ -7239,7 +7258,7 @@ _stepAnimation(now) {
       return { title: t.name || 'Mark', items };
     }
     const level = this._activeLevel();
-    items.push({ glyph: 'fit', label: 'Frame ship + destination', key: '0', disabled: !(frames.frameShipAndDestination && frames.frameShipAndDestination.available), reason: frames.frameShipAndDestination && frames.frameShipAndDestination.reason, run: () => this._activateFraming('frame-both') });
+    items.push({ glyph: 'fit', label: 'Zoom: ship and destination', key: '0', disabled: !(frames.frameShipAndDestination && frames.frameShipAndDestination.available), reason: frames.frameShipAndDestination && frames.frameShipAndDestination.reason, run: () => this._activateFraming('frame-both') });
     items.push({ glyph: 'ship', label: 'Return to ship', disabled: !(frames.returnToShip && frames.returnToShip.available), reason: frames.returnToShip && frames.returnToShip.reason, run: () => this._activateFraming('return-to-ship') });
     for (const [focus, label] of [['galaxy', 'Galaxy'], ['system', 'System'], ['local', 'Local']]) {
       if (level !== focus) items.push({ glyph: 'scale', label: `View · ${label}`, sepBefore: items.length === 2, run: () => this._setScaleFocus(focus) });
@@ -7328,7 +7347,7 @@ _stepAnimation(now) {
     if (goal && goal.sectorId) items.push({ group: 'Go to', label: `Goal · ${goal.label || 'Objective'}`, sub: sectorNameOf(state, goal.sectorId), run: () => this._focusSectorById(goal.sectorId) });
     const here = currentSectorId(state);
     if (here) items.push({ group: 'Go to', label: 'Your sector', sub: sectorNameOf(state, here), run: () => this._focusSectorById(here) });
-    if (frames.frameShipAndDestination && frames.frameShipAndDestination.available) items.push({ group: 'Go to', label: 'Frame ship + destination', key: '0', run: () => this._activateFraming('frame-both') });
+    if (frames.frameShipAndDestination && frames.frameShipAndDestination.available) items.push({ group: 'Go to', label: 'Zoom: ship and destination', key: '0', run: () => this._activateFraming('frame-both') });
     if (frames.returnToShip && frames.returnToShip.available) items.push({ group: 'Go to', label: 'Return to ship', run: () => this._activateFraming('return-to-ship') });
     const level = this._activeLevel();
     for (const [focus, label] of [['galaxy', 'Galaxy'], ['system', 'System'], ['local', 'Local']]) {

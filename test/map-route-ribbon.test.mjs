@@ -253,7 +253,7 @@ test('engage / disengage / resume track real executor status', () => {
 test('with no route at all, nothing is available and engage says why', () => {
   const r = resolveRouteRibbon();
   for (const id of RIBBON_ACTION_IDS) assert.equal(r.actions[id].available, false);
-  assert.match(r.actions.engage.reason, /no route plotted/i);
+  assert.match(r.actions.engage.reason, /click a destination/i);
 });
 
 // --- hazard grammar (non-colour semantics) ------------------------------------------------------

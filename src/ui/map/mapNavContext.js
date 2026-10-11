@@ -116,17 +116,16 @@ function sectorDisplayName(sectorId, sectorNames) {
  * empty.
  */
 function destinationDetail(destination) {
-  if (!destination) return 'Accept a contract, drag from your ship or double-click a sector';
+  if (!destination) return 'Accept a contract, click a station or gate on the chart, or double-click a sector';
   if (destination.planned) {
     const n = destination.legCount;
     return `${destination.legsRemaining} of ${n} leg${n === 1 ? '' : 's'} remaining`;
   }
   if (destination.unreachable) {
     // Never a silent absence: the row states the blocker rather than leaving a dash.
-    return 'Contract destination · no charted route from here yet';
+    return 'Contract destination — no known route from here yet';
   }
-  const n = destination.legCount;
-  return `Contract destination · ${n} leg${n === 1 ? '' : 's'} when plotted`;
+  return 'Contract destination — press Plot Course to plan the route';
 }
 
 /**
@@ -142,15 +141,15 @@ function nextLegAbsentValue() {
 
 function nextLegDetail(nextLeg, destination) {
   if (!nextLeg) {
-    if (destination && destination.unreachable) return 'No charted path — survey the space between first';
-    if (destination && !destination.planned) return 'Plot the course to resolve its legs';
+    if (destination && destination.unreachable) return 'No known path — explore the space between first';
+    if (destination && !destination.planned) return 'Press Plot Course to plan the route';
     return '';
   }
   const where = Number.isFinite(nextLeg.distanceWU)
     ? `${formatDistanceWU(nextLeg.distanceWU)} · leg ${nextLeg.index + 1}/${nextLeg.count}`
     : `leg ${nextLeg.index + 1}/${nextLeg.count}`;
-  // The preview is an estimate until it is plotted, and says so.
-  return nextLeg.planned ? where : `${where} · previewed, not plotted`;
+  // A suggested route is an estimate until it is plotted, and says so.
+  return nextLeg.planned ? where : `${where} · suggested — press Plot Course to commit`;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -337,17 +336,14 @@ export function resolveMapNavContext(input = {}) {
       detail: objective
         ? (Number.isFinite(objective.distanceWU)
           ? formatDistanceWU(objective.distanceWU)
-          : (objective.sectorName
-            && (!destination || objective.sectorName !== destination.sectorName)
-            ? `in ${objective.sectorName}`
-            : (objective.sectorName ? 'course laid' : '')))
+          : (objective.sectorName ? `in ${objective.sectorName}` : ''))
         : 'Select a mission or mark to track it',
       tone: objective ? NAV_ROW_TONE.TRACKED : NAV_ROW_TONE.MUTED,
     }),
     Object.freeze({
       key: 'destination',
       label: 'DESTINATION',
-      value: destination ? destination.sectorName : 'No route plotted',
+      value: destination ? destination.sectorName : 'No destination set',
       detail: destinationDetail(destination),
       // Gold is reserved for the tracked objective and the ACTIVE route. A contract destination
       // that nobody has plotted a course to yet is a plain fact, not a live course, so it reads in
@@ -441,7 +437,7 @@ export function resolveMapFramingActions(context, opts = {}) {
   if (!player) {
     frameShipAndDestination = {
       id: 'frame-both',
-      label: 'Frame ship + destination',
+      label: 'Zoom: ship and destination',
       available: false,
       reason: 'No ship position available yet',
       framing: null,
@@ -449,15 +445,15 @@ export function resolveMapFramingActions(context, opts = {}) {
   } else if (!far) {
     frameShipAndDestination = {
       id: 'frame-both',
-      label: 'Frame ship + destination',
+      label: 'Zoom: ship and destination',
       available: false,
-      reason: 'Nothing tracked — plot a route or track a mission first',
+      reason: 'Nothing tracked — set a destination or track a mission first',
       framing: null,
     };
   } else {
     frameShipAndDestination = {
       id: 'frame-both',
-      label: 'Frame ship + destination',
+      label: 'Zoom: ship and destination',
       available: true,
       reason: `Fit your ship and ${farLabel} in one view`,
       framing: frameBoth(player, far, {
