@@ -302,12 +302,17 @@ test('vector mine: arms after its delay, then a proximity trigger shoves every h
     enemy.pos = { x: minePos.x + (VECTOR_MINE.mineTriggerRadius - 5), z: minePos.z };
     host._tickVectorMines(1 / 60, state);
     assert.equal(mine.alive, false, 'a hull inside the trigger radius detonates the mine');
-    const shovedIds = new Set(applied.map((a) => a.entityId));
-    assert.ok(shovedIds.has(enemy.id), 'the triggering enemy is shoved');
-    assert.ok(shovedIds.has(player.id), 'the owner is shoved too — blast-yourself mobility');
-    for (const a of applied) {
-      assert.equal(a.reason, 'vector_mine', 'the shove is a vector-mine physics-authority request');
-      assert.ok(Number.isFinite(a.impulse.x) && Number.isFinite(a.impulse.z), 'finite impulse vector');
+    // 07d681215 routes the blast through the physics command queue. The host spy
+    // no longer sees it; the shove is the queued impulse with the authored tag.
+    const shoveOf = (entity) => (consumePhysicsCommand(entity)?.impulses || [])
+      .find((row) => row.provenance?.tag === VECTOR_MINE.impulseProvenance) || null;
+    const enemyShove = shoveOf(enemy);
+    const ownerShove = shoveOf(player);
+    assert.ok(enemyShove, 'the triggering enemy is shoved');
+    assert.ok(ownerShove, 'the owner is shoved too — blast-yourself mobility');
+    for (const row of [enemyShove, ownerShove]) {
+      assert.equal(row.provenance.tag, VECTOR_MINE.impulseProvenance, 'the shove is a vector-mine physics-authority request');
+      assert.ok(Number.isFinite(row.x) && Number.isFinite(row.z) && Math.hypot(row.x, row.z) > 0, 'finite impulse vector');
     }
     assert.equal(routed.length, 0, 'the mine deals ZERO hull damage — it never routes a damage packet');
     assert.ok(emitted.some((ev) => ev.name === 'weapons:mineDetonated'), 'detonation is receipted');
