@@ -6648,7 +6648,7 @@ _stepAnimation(now) {
     this._weatherEl.innerHTML = `
       <div class="gm-weather-head">
         <span class="gm-weather-word">${snap.level}</span>
-        <span class="gm-weather-data">${snap.pool} / 140</span>
+        <span class="gm-weather-data">pressure ${snap.pool}/140</span>
       </div>
       <div class="gm-weather-bar" role="img" aria-label="Encounter pressure ${snap.pool} of 140">
         <i class="gm-weather-seg gm-weather-seg--combat" style="width:${combatPct}%"></i>
@@ -6707,7 +6707,8 @@ _stepAnimation(now) {
       return;
     }
     if (this._deckSortBtn) {
-      this._deckSortBtn.textContent = `Sort · ${this._deckSortMode}`;
+      const sortLabel = this._deckSortMode === 'safest' ? 'Sort: safest' : 'Sort: best profit';
+      if (this._deckSortBtn.textContent !== sortLabel) this._deckSortBtn.textContent = sortLabel;
     }
     const nowBucket = Math.floor((Number(state.simTime) || 0) / 5);
     const holdItems = state.player && state.player.cargo && state.player.cargo.items || {};
@@ -6755,15 +6756,15 @@ _stepAnimation(now) {
         ? `to ${route.destinationName}`
         : `${route.originName} → ${route.destinationName}`;
       const modelDelta = Number.isFinite(Number(route.modelDeltaPct))
-        ? ` · MODEL ${(route.modelDeltaPct >= 0 ? '+' : '')}${Math.round(route.modelDeltaPct)}%`
+        ? ` · est. ±${Math.abs(Math.round(route.modelDeltaPct))}%`
         : '';
       return `
         <button ${mapControlAttrs('deck-route')} class="gm-deck-row k-row" type="button" data-deck-route="${index}" role="listitem"
                 aria-label="Plot ${escapeMapHtml(route.commodityName)} from ${escapeMapHtml(route.originName)} to ${escapeMapHtml(route.destinationName)}">
           <span class="gm-deck-commodity">${sourceGlyph} ${escapeMapHtml(route.commodityName)}</span>
           <span class="gm-deck-lane">${escapeMapHtml(laneText)}</span>
-          <span class="gm-deck-metric">margin ${marginDisplay}/u · +${spread} cr · ${ppm}/m · ${units}u${modelDelta}</span>
-          <span class="gm-deck-risk" data-risk="${riskBand}">risk ${riskPct}%</span>
+          <span class="gm-deck-metric">+${marginDisplay} credits/unit · +${spread} cr total · ${ppm}/min · ${units} units${modelDelta}</span>
+          <span class="gm-deck-risk" data-risk="${riskBand}">${riskPct}% pirate risk</span>
         </button>`;
     }).join('');
   },

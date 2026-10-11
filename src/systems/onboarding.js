@@ -3543,7 +3543,7 @@ export const onboarding = {
       && this.state.nav.waypoint.onboarding);
 
     if (this._kickerLabelEl) {
-      const kicker = 'Status';
+      const kicker = 'Tutorial';
       if (this._kickerLabelEl.textContent !== kicker) this._kickerLabelEl.textContent = kicker;
     }
 
