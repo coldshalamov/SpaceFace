@@ -28,12 +28,13 @@ import { raceLeaseActive } from './racingSteer.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { shouldRunOnTick, takeNearWorkSlice, ownerAiRecord, ownerTeamId, isActiveOwner, hashOwnerKey } from '../core/activityScheduler.js';
-import { SIM_TIER } from '../world/activityClassification.js';
+import { NEAR_EXIT_PAD_WU, SIM_TIER } from '../world/activityClassification.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import {
   ensureActivityClassified,
   entityNeedsAiThink,
   getActivityOwnerEntities,
+  physicsReachWuFromState,
   requestActivityReclassify,
 } from '../world/activityRuntime.js';
 import {
@@ -4537,7 +4538,26 @@ export const traffic = {
       const station = this._pocketStation(stations, sectorId) || stations[0];
       const ang = this._rng() * Math.PI * 2;
       const r = 110 + this._rng() * 80;
-      const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
+      let pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
+      // The Helios pocket sits just outside the entry bubble. An inward roll on this ring
+      // lands inside it, so the boot far-actor sweep never shelves the authored courier.
+      // Keep the RNG draws (the ambient stream stays put) and, only when that roll is
+      // inside the bubble, put her on the far side of the station.
+      const player = this.state.entities && this.state.entities.get(this.state.playerId);
+      if (player && player.pos && station.pos) {
+        const exit = physicsReachWuFromState(this.state, player) + NEAR_EXIT_PAD_WU;
+        const dx = pos.x - player.pos.x;
+        const dz = pos.z - player.pos.z;
+        if (dx * dx + dz * dz <= exit * exit) {
+          const ox = station.pos.x - player.pos.x;
+          const oz = station.pos.z - player.pos.z;
+          const olen = Math.hypot(ox, oz) || 1;
+          pos = {
+            x: station.pos.x + (ox / olen) * r,
+            z: station.pos.z + (oz / olen) * r,
+          };
+        }
+      }
       const aiSpec = {
         archetype: def.archetype,
         passive: true,
