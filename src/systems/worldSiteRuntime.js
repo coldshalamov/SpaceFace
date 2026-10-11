@@ -1,6 +1,12 @@
 import { refreshEntityPhysicsIndex } from '../core/coreSystem.js';
 import { refreshPhysicsPartition, requestActivityReclassify } from '../world/activityRuntime.js';
-import { discardWorldSiteStaticFarRows } from '../world/farActorTable.js';
+import {
+  discardWorldSiteStaticFarRows,
+  farActorTableRadius,
+  insertFarActor,
+  isWorldSiteStaticAnatomy,
+} from '../world/farActorTable.js';
+import { WORLD_SITE_MANIFESTS } from '../data/worldSiteManifests.js';
 // PQ-017 — imported materialization helper. asteroidSites remains the sole registered owner.
 
 import { planWorldSiteMaterialization } from './worldSiteKernel.js';
@@ -12,9 +18,101 @@ import {
 
 export const WORLD_SITE_PAYLOAD_CAPTURE_EPSILON = 0.25;
 
+const SITE_APPROACH_FLOOR_WU = 480;
+const SITE_RETIRE_PAD_WU = 120;
+
+export function siteApproachRadius(manifest) {
+  const envelope = Number(manifest && manifest.debug && manifest.debug.reservationEnvelope);
+  const visual = Number(manifest && manifest.visualRoot && manifest.visualRoot.visualRadius);
+  return Math.max(
+    Number.isFinite(envelope) && envelope > 0 ? envelope : 0,
+    Number.isFinite(visual) && visual > 0 ? visual : 0,
+    SITE_APPROACH_FLOOR_WU,
+  );
+}
+
+function playerSiteDistance(state, manifest) {
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const origin = manifest && manifest.placement && manifest.placement.pos;
+  if (!player || !player.pos || !origin) return null;
+  return Math.hypot((player.pos.x || 0) - origin.x, (player.pos.z || 0) - origin.z);
+}
+
+function siteFarRowCount(state, siteId) {
+  const rows = state && state.world && state.world.farActors && state.world.farActors.rows;
+  if (!rows) return 0;
+  let count = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (row && row.data && row.data.worldSiteId === siteId) count += 1;
+  }
+  return count;
+}
+
+function retireSiteWreck(state, helpers, entity) {
+  const data = entity.data || {};
+  if (entity.flags && entity.flags.tethered || data.tethered) return false;
+  const structural = data.worldSiteStructural === true;
+  if (!structural && !isWorldSiteStaticAnatomy(entity)) return false;
+  // Structural sections are reauthored from the manifest on approach. A lean far row
+  // cannot rebuild their compound body, so they leave the list without a shelf record.
+  // Hidden component and collision proxies can shelf: promote refuses static anatomy
+  // and the next near sync discards the row and spawns the real body.
+  if (!structural) {
+    insertFarActor(state, entity, Number.isFinite(state.simTime) ? state.simTime : 0, helpers);
+  }
+  const remove = helpers && helpers.removeEntity;
+  if (typeof remove === 'function') remove(entity.id, { immediate: true, reason: 'virtualize' });
+  else entity.alive = false;
+  return true;
+}
+
+// Quiet sectors keep world-site wrecks off the combat list until the player is inside
+// the site's reservation. Approaching reauthors them through the normal sync.
+export function reconcileWorldSiteResidency(state, helpers) {
+  const sites = state && state.sites;
+  const sectorId = state && state.world && state.world.currentSectorId;
+  if (!sites || !sites.worldById || !sectorId || state.mode !== 'flight') return 0;
+  let retired = 0;
+  for (const manifest of WORLD_SITE_MANIFESTS) {
+    if (!manifest || manifest.sectorId !== sectorId) continue;
+    const record = sites.worldById[manifest.id];
+    if (!record) continue;
+    const distance = playerSiteDistance(state, manifest);
+    if (distance == null) continue;
+    const approach = siteApproachRadius(manifest);
+    if (distance <= approach) {
+      if (siteFarRowCount(state, manifest.id) > 0) {
+        syncWorldSiteMaterialization({ state, helpers, manifest, record });
+      }
+      continue;
+    }
+    if (distance <= approach + SITE_RETIRE_PAD_WU) continue;
+    // A released section parked beside the player must not vanish just because the
+    // site it came from is out of range — the far table's own exit radius is the
+    // same law tickFarActors uses for ordinary bodies.
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    const exitWu = farActorTableRadius(state).exit;
+    for (const entity of liveWorldSiteEntities(state, manifest.id)) {
+      if (!entity || entity.type !== 'wreck') continue;
+      if (player && player.pos && entity.pos
+        && Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z) <= exitWu) continue;
+      if (retireSiteWreck(state, helpers, entity)) retired += 1;
+    }
+  }
+  return retired;
+}
+
 export function syncWorldSiteMaterialization({ state, helpers, manifest, record }) {
   if (!state || !state.entities || !manifest || !record) return { entities: [], spawned: 0, removed: 0 };
-  discardWorldSiteStaticFarRows(state, manifest.id);
+  const distance = playerSiteDistance(state, manifest);
+  const outside = distance != null && distance > siteApproachRadius(manifest);
+  // A pilot inside the reservation gets live bodies. Farther out, shelved static
+  // anatomy stays shelved — discarding it here minted a live twin every sync.
+  if (!outside) discardWorldSiteStaticFarRows(state, manifest.id);
   const plan = planWorldSiteMaterialization(manifest, record);
   const desired = new Map(plan.entities.map((entry) => [entry.worldRecordId, entry]));
   const existing = existingByWorldRecord(state, manifest.id);
@@ -43,6 +141,7 @@ export function syncWorldSiteMaterialization({ state, helpers, manifest, record 
     const wanted = desired.get(worldRecordId);
     entities.sort((a, b) => stableEntityId(a) - stableEntityId(b));
     let keeper = entities[0] || null;
+    if (keeper && keeper.farResident === true) continue;
     if (keeper && wanted && wanted.type === 'fx' && rootNeedsReplacement(keeper, wanted)) {
       removeEntity(helpers, keeper);
       removed += 1;

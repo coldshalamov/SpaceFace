@@ -28,6 +28,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { WRECK_ECOLOGY_DAY_S, isPlayerWreckMarker, playerWreckMarker } from './aftermathWrecks.js';
 import { addSalvage } from './cargo.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
+import { getFarActor } from '../world/farActorTable.js';
 import { combatVerbRecipe } from '../audio/combatVerbCues.js';
 import { TALLY_THREE, tallyThreeBody, tallyThreeFingerprint } from '../data/tallyThree.js';
 
@@ -649,6 +650,10 @@ export const salvage = {
           proportions: WRECK_COLLIDER_PROPORTIONS,
           loot: [],
           salvagePool: pool,
+          // Preserve the authored pool across far-actor shelve→promote: without it
+          // salvageActions._annotate re-rolls the catalog pool on respawn and drain
+          // progress silently refills.
+          authoredSalvagePool: { ...pool },
           salvageTimeLeft: WRECK_SALVAGE_TIME,
           salvagePointId: id,
           isCommunicator: !!isCommunicator,
@@ -843,11 +848,17 @@ export const salvage = {
     const bus = this.bus;
     for (const pocket of pockets) {
       if (!pocket || pocket.phase === 'delivered' || pocket.phase === 'lost') continue;
+      // A dormant pocket's pieces sit on the far-actor table. Missing live bodies are not a
+      // shear — the pocket resumes when the player approaches and the rows promote.
+      const coreHeld = this._sortBodyHeld(pocket.coreId);
+      const cradleHeld = this._sortBodyHeld(pocket.cradleId);
+      const wreckHeld = this._sortBodyHeld(pocket.wreckId);
+      if (coreHeld === 'far' || cradleHeld === 'far' || wreckHeld === 'far') continue;
       const core = entities.get(pocket.coreId);
-      if (!core || core.alive === false) { this._loseSortPocket(pocket, 'core_lost'); continue; }
+      if (coreHeld !== 'live' || !core || core.alive === false) { this._loseSortPocket(pocket, 'core_lost'); continue; }
       const wreck = entities.get(pocket.wreckId);
       const cradle = entities.get(pocket.cradleId);
-      if (!cradle || cradle.alive === false) { this._loseSortPocket(pocket, 'cradle_lost'); continue; }
+      if (cradleHeld !== 'live' || !cradle || cradle.alive === false) { this._loseSortPocket(pocket, 'cradle_lost'); continue; }
 
       // Clamp truth: adopted once both bodies are live, then read from the attachment authority.
       // ONLY an ADOPTED clamp observed no-longer-active shears the core — the kernel keeps broken
@@ -857,8 +868,9 @@ export const salvage = {
       // 'held' silently and retries next tick — a boot race never reads as a shear, and a core
       // under an unadopted pocket stays uncollectible.
       if (pocket.clampId == null) {
-        if (!wreck || wreck.alive === false) {
+        if (wreckHeld !== 'live' || !wreck || wreck.alive === false) {
           // The wreck died holding the core: the clamp authority breaks with it.
+          // A shelved wreck already continued above; this is a real loss.
           this._separateSortCore(pocket, 'wreck_lost');
         } else if (attachments) {
           const created = attachments.create({
@@ -991,6 +1003,15 @@ export const salvage = {
     this.bus.emit('audio:cue', { id: 'scan_resolve', gain: 0.6 });
   },
 
+  _sortBodyHeld(id) {
+    if (id == null) return 'gone';
+    const entities = this.state && this.state.entities;
+    const live = entities && typeof entities.get === 'function' ? entities.get(id) : null;
+    if (live && live.alive !== false) return 'live';
+    if (getFarActor(this.state, id)) return 'far';
+    return 'gone';
+  },
+
   _loseSortPocket(pocket, reason) {
     pocket.phase = 'lost';
     if (this.bus) {
@@ -1023,6 +1044,7 @@ export const salvage = {
           proportions: WRECK_COLLIDER_PROPORTIONS,
           loot: [],
           salvagePool: clonePool(record.remainingPool),
+          authoredSalvagePool: clonePool(record.remainingPool),
           salvageTimeLeft: WRECK_SALVAGE_TIME,
           salvagePointId: record.salvagePointId,
           salvageSourceKey: sourceKey,

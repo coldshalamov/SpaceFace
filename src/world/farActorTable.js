@@ -299,14 +299,11 @@ export function shouldVirtualizeFarActor(entity, state) {
   // berthConsign/berthId/name/masslineTetherable — shelving degrades the promoted shell and
   // mints a twin parked on the strip-line.
   if (data.berthConsign) return false;
-  // An authored salvage wreck is bound to `state.salvage.points` by entity id — the lean far row
-  // drops salvagePointId/loot/salvagePool/salvageAction, so shelving strips the point's binding
-  // permanently and `_entityForPoint` can never re-resolve the promoted shell (D143).
-  if (data.salvagePointId != null) return false;
-  // The same for the authored-field ecology (scavenger/squatter slots): the roster references the
+  // The authored-field ecology (scavenger/squatter slots) stays live: the roster references the
   // hull by id and the lean row drops wreckFieldId, so a shelved resident comes back unbound and
   // the jobs runtime's scavenger adoption can never claim it (D143). Only `salvage:`-keyed
-  // authored fields pin — aftermath-marker ecology stays virtualizable by design.
+  // authored fields pin — aftermath-marker ecology stays virtualizable by design. Salvage wrecks
+  // themselves shelf: salvagePointId travels on the lean row and promotes back onto the point.
   if (typeof data.wreckFieldId === 'string' && data.wreckFieldId.startsWith('salvage:')) return false;
   // P03's three finite matched masses retain site-owned coupling, source-origin geometry and
   // yaw/integrity. The lean far-actor row cannot reconstruct that contract; normal activity
@@ -349,6 +346,21 @@ function leanIdentityData(entity) {
   if (d.kind != null) out.kind = d.kind;
   if (d.role != null) out.role = d.role;
   if (d.persistenceOwner != null) out.persistenceOwner = d.persistenceOwner;
+  // Dormant salvage wrecks shelf with the point binding the live body was resolved
+  // by. Dropping it made promotion an unbound shell, so quiet-sector wrecks had to
+  // stay on the combat list. Ships do not carry salvagePointId; their pools stay lean.
+  if (d.salvagePointId != null) {
+    out.salvagePointId = d.salvagePointId;
+    if (d.parentType != null) out.parentType = d.parentType;
+    if (d.sortPocketId != null) out.sortPocketId = d.sortPocketId;
+    if (d.authoredScanLabel != null) out.authoredScanLabel = d.authoredScanLabel;
+    if (d.authoredSalvagePool && typeof d.authoredSalvagePool === 'object') {
+      out.authoredSalvagePool = { ...d.authoredSalvagePool };
+    }
+    if (d.salvagePool && typeof d.salvagePool === 'object') out.salvagePool = { ...d.salvagePool };
+    if (d.salvageSourceKey != null) out.salvageSourceKey = d.salvageSourceKey;
+    if (d.salvageTimeLeft != null) out.salvageTimeLeft = d.salvageTimeLeft;
+  }
   // The faction-presence marker is the hull's authored identity: activityRuntime's
   // authoredPresence combat rule, traffic, lossLedger, barkDirector, hails, and the presence
   // owner's own re-adoption all key on it. A shelved hull that drops it promotes stripped

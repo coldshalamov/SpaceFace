@@ -95,6 +95,11 @@ export const lastShift = {
   },
   _materialize() {
     if (this.state.world?.currentSectorId !== C.sectorId) return;
+    // The three clues are a site you find by flying there. A quiet sector does not
+    // carry them on the combat list until the player is inside the discovery range.
+    const player = this.state.entities.get(this.state.playerId);
+    if (!player || player.alive === false || !player.pos
+      || distance(player.pos, LAST_SHIFT_POS) > C.discoveryRangeWu) return;
     for (const clue of LAST_SHIFT_CLUES) {
       const record = this._row.bodies[clue.id];
       if (terminal.has(record?.status) || this._find(clue.id)) continue;

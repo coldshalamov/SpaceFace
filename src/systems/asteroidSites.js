@@ -55,6 +55,7 @@ import {
 } from './worldSiteKernel.js';
 import {
   syncWorldSiteMaterialization, removeWorldSiteMaterialization, captureWorldSitePayloadState,
+  reconcileWorldSiteResidency,
 } from './worldSiteRuntime.js';
 import {
   SURVEY_LIMITS, selectSurveyTarget, surveyRevealFrontier, validateSurveyTarget,
@@ -2036,6 +2037,7 @@ export const asteroidSites = {
     this._pollWorldSiteAdmission();
     this._captureWorldSitePayloads();
     if (this._worldSyncWanted) this._syncWorldSites();
+    reconcileWorldSiteResidency(state, this.ctx && this.ctx.helpers);
     this._accum += dt;
     if (this._accum < SITE_BALANCE.tickS) return;
     const step = SITE_BALANCE.tickS;
