@@ -90,6 +90,15 @@ function standardTetherSpoolMultiplier(owner) {
   return clampTetherRatingMult(raw);
 }
 
+// Trophy-head break ceiling (ships.js derives it from a fitted module's loadCapacityMult). Only the
+// two lines a Massline head throws read it; a malformed or absent value is exactly 1, and the
+// multiplier is clamped to the same fail-closed band as every other tether rating lane.
+const HEAD_LOAD_CAPACITY_DEF_IDS = Object.freeze(['tether_standard', 'attachment_twin_bridle']);
+export function headLoadCapacityMultiplier(def, owner) {
+  if (!def || !HEAD_LOAD_CAPACITY_DEF_IDS.includes(def.id)) return 1;
+  const raw = owner && owner.data && owner.data.derived && owner.data.derived.masslineLoadCapacityMult;
+  return clampTetherRatingMult(raw);
+}
 function baseTetherMaxLength(def) {
   return Number.isFinite(def && def.maxLength) && def.maxLength > 0 ? def.maxLength : null;
 }
@@ -106,8 +115,17 @@ function effectiveTetherMaxLength(def, owner) {
 export function effectiveTetherBreak(def, owner) {
   const base = def && def.break ? def.break : null;
   if (!base) return null;
-  if (!def || def.id !== 'tether_standard') return { ...base };
-  const mult = standardTetherSpoolMultiplier(owner);
+  // TOY CHEST T13 - an ace's trophy head holds heavier loads: the SAME break law (tension, impulse
+  // and yank legs against one envelope), a higher ceiling. It touches only the two lines a Massline
+  // head throws, never release impulse, spring or any stock-head number.
+  const capacity = headLoadCapacityMultiplier(def, owner);
+  if (!def || def.id !== 'tether_standard') {
+    return capacity === 1 ? { ...base } : scaleBreakEnvelope(base, capacity);
+  }
+  return scaleBreakEnvelope(base, standardTetherSpoolMultiplier(owner) * capacity);
+}
+
+function scaleBreakEnvelope(base, mult) {
   return {
     ...base,
     maxTension: Number.isFinite(base.maxTension) ? base.maxTension * mult : base.maxTension,

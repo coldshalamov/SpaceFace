@@ -1212,6 +1212,10 @@ export function createTitlesSystem() {
         settlement.tick = Math.max(settlement.tick, tick); settlement.watermark = Math.max(settlement.watermark ?? -1, tick - 480);
       }
       Object.assign(incident, { trickId: trick.trickId, name: cleanText(trick.name, humanizeId(trick.trickId)),
+        // THE WORLD ANSWERS: the exact reading of the trick (bolas_pair / own_wingman) and the cargo a
+        // thrown pod carried - what a witness says about this episode, not new trick identity.
+        variantId: typeof trick.variantId === 'string' ? trick.variantId : null,
+        cargo: trick.cargo && typeof trick.cargo === 'object' ? { ...trick.cargo } : null,
         consequence: { ...consequence }, modifiers: { ...trick.modifiers }, victimLives: (trick.victimLives || []).map(v => ({ ...v })).slice(0, 8),
         escaped: trick.pureEscape === true || consequence.escaped === true, materialCombat: !trick.pureEscape,
         threatEpisodeId: trick.threatEpisodeId ?? null, bankCorridorId: trick.bankCorridorId ?? trick.metrics?.bankCorridorId ?? null,

@@ -295,7 +295,8 @@ export const collisionConsequences = {
       // never the retained record.
       _provenanceScratch.actorId = observed.root.actorId;
       _provenanceScratch.weaponId = observed.root.weaponId;
-      _provenanceScratch.tag = observed.root.kind === 'constraint' ? 'massline' : 'weapon_hit';
+      // A rope root (the player's line, or a Twin Bridle pair) is Massline work, never a gun hit.
+      _provenanceScratch.tag = observed.root.kind === 'constraint' || observed.root.kind === 'bridle' ? 'massline' : 'weapon_hit';
       _provenanceScratch.tick = observed.root.tick;
       _provenanceScratch.rootId = observed.root.id;
       provenance = _provenanceScratch;

@@ -77,7 +77,9 @@ export function contractCompletionsFor(trick, ctx = {}) {
   // Second-Hand Violence: an already dead substantial hull defeats a live target. Dead Man's Mass
   // is that by definition; an attached Wrecking Ball qualifies when its hull died before the chain
   // opened and it still carried substantial mass.
-  if (killed && (trick.trickId === 'dead_mans_mass'
+  // THE WORLD ANSWERS T9: "his own wingman finished him" is Dead Man's Mass by definition - the
+  // variant is named here so the card never depends on the generic id alone.
+  if (killed && (trick.trickId === 'dead_mans_mass' || trick.variantId === 'own_wingman'
     || (trick.trickId === 'wrecking_ball' && metrics.sourceDeadBeforeRoot === true
       && (metrics.payloadMass ?? 0) >= 0.2 * (metrics.sceneReferenceMass ?? Infinity)))) out.push('second_hand_violence');
   // Leave With It: a real escape trick while still holding a specific acquired pod, and no new

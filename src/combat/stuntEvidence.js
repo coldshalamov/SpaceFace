@@ -19,6 +19,21 @@ const finite = (n) => Number.isFinite(n) ? n : 0;
 const point = (v) => ({ x: finite(v?.x), z: finite(v?.z) });
 const idKey = (id) => `${typeof id}:${String(id)}`;
 const REFERENCE_HULL = SHIPS.find(s=>s.id==='ship_kestrel');
+// THE WORLD ANSWERS (toy chest): who a body was, as the journal saw it at first observation. A live
+// hull carries its faction; a wreck remembers the hull it was (aftermathWrecks hulkFactionId); a
+// jettisoned cargo pod remembers what is inside. Unknown stays null - never guessed.
+const JETTISONED_CARGO_PAYLOAD='jettisoned_cargo';
+function lifeFactionId(entity) {
+  const d=entity.data||{};
+  const f=entity.type==='wreck'?(d.hulkFactionId??d.provenance?.victimFactionId??entity.factionId):(entity.factionId??d.factionId);
+  return typeof f==='string'&&f?f:null;
+}
+function lifeCargo(entity) {
+  const d=entity.data;
+  if(entity.type!=='payload'||!d||d.payloadType!==JETTISONED_CARGO_PAYLOAD)return null;
+  const amount=Number(d.amount);
+  return typeof d.commodityId==='string'&&d.commodityId&&amount>0?{commodityId:d.commodityId,amount}:null;
+}
 export const angleBetween = (a, b) => {
   const m = Math.hypot(a.x, a.z) * Math.hypot(b.x, b.z);
   return m > 1e-9 ? Math.acos(Math.max(-1, Math.min(1, (a.x * b.x + a.z * b.z) / m))) * 180 / Math.PI : 0;
@@ -28,7 +43,7 @@ export function bindStuntEvidence(state) {
   activeState = state;
   let journal = JOURNALS.get(state);
   if (!journal) {
-    journal = { revision: EVIDENCE_REVISION, sequence: 0, lives: new Map(), roots: new Map(), bodies: new Map(), contacts: new Map(), constraints: new Map(), withheld: 0,
+    journal = { revision: EVIDENCE_REVISION, sequence: 0, lives: new Map(), roots: new Map(), bodies: new Map(), contacts: new Map(), constraints: new Map(), bridles: new Map(), withheld: 0,
       referenceMass: REFERENCE_HULL.mass, referenceCruise: getPropulsionProfile(REFERENCE_HULL.driveId).combatSpeed };
     JOURNALS.set(state, journal);
   }
@@ -52,6 +67,7 @@ export function bodyLife(entity, state = activeState) {
     encounterId: entity.data?.encounter?.id ?? entity.data?.encounterId ?? (entity.data?.runCohort==='survival'?`${state.run?.seed}:${entity.data.runWave}`:null),
     cruise, radius: Math.max(0.01, finite(entity.radius ?? entity.r ?? entity.size)),
     length: Math.max(0.02, finite(entity.hullLength ?? entity.length ?? (entity.radius ?? entity.r ?? entity.size) * 2)),
+    factionId: lifeFactionId(entity), cargo: lifeCargo(entity),
     deathTick: entity.alive === false || entity.type === 'wreck' ? finite(state.tick) : null };
   j.lives.set(key, life);
   return life;
@@ -130,6 +146,7 @@ export function observeAppliedImpulse(entity, before, after, provenance, tick, k
     playerLength: bodyLife(playerBody, state)?.length ?? 0, encounterId:life.encounterId,
     sourceName: life.name, sceneReferenceMass:j.referenceMass, referenceMomentum:0.2*j.referenceMass*j.referenceCruise,
     sourceType: entity.type, sourceDeathTick: life.deathTick,sourceHostile:isHostileForAI(state,entity,playerBody),
+    sourceFactionId: life.factionId??null, sourceCargo: life.cargo?{...life.cargo}:null,
     // PQ-146 §6.2: the player's position and whether the direct player→source line was blocked at
     // the opening of the proved chain. Line Contracts read these; scoring does not.
     playerPos: playerBody?.pos ? point(playerBody.pos) : null,
@@ -331,12 +348,13 @@ function segmentSeparation(a,b,c,d) {
 export function evidenceForConsequenceLive(receipt, state = activeState) {
   const j = journalFor(state);
   const contact = j?.contacts.get(contactKey(receipt.tick,receipt.targetId,receipt.otherId));
-  if (!contact) return null;
-  const path = contact.paths.find(p => (p.targetId === receipt.targetId&&(p.changedCorridor||p.submaterialTarget))
+  const path = contact?.paths.find(p => (p.targetId === receipt.targetId&&(p.changedCorridor||p.submaterialTarget))
     || (p.sourceId === receipt.targetId&&(p.changedCorridor||p.submaterialSource)&&(['terrain','structure'].includes(receipt.surface)||receipt.otherMass>=150)));
   const root = path && liveRoot(j,path.rootId,receipt.tick);
-  if (!root) return null;
-  return { revision:EVIDENCE_REVISION, root, path, contact, previousRoot: root.previousRoot ? liveRoot(j,root.previousRoot,receipt.tick) : null };
+  if (root) return { revision:EVIDENCE_REVISION, root, path, contact, previousRoot: root.previousRoot ? liveRoot(j,root.previousRoot,receipt.tick) : null };
+  // A rope the player tied between two hulls is evidence too, even though no impulse the journal
+  // measured reached the struck body: the pair is the root (THE WORLD ANSWERS T1).
+  return j?.bridles?.size ? bridleEvidence(j, receipt, state, contact) : null;
 }
 export function evidenceForConsequence(receipt, state = activeState) {
   const e = evidenceForConsequenceLive(receipt, state);
@@ -349,6 +367,7 @@ export function pruneEvidence(state, tick, livesSweepEvery = 1) {
   for (const [id,b] of j.bodies) if (!j.roots.has(b.rootId)) j.bodies.delete(id);
   for (const [id,c] of j.contacts) if (tick-c.tick > 180) j.contacts.delete(id);
   for (const [id,c] of j.constraints) if (!c.attached && tick-c.lastTick > 480) j.constraints.delete(id);
+  if (j.bridles) for (const [id,b] of j.bridles) if (tick-b.startTick > EVIDENCE_LIMITS.horizon || tick < b.startTick) j.bridles.delete(id);
   // `lives` is the one unbounded scan here — a long fight accrues a record per body that ever
   // entered an observation, and the sweep re-reads every one of those entity ids per tick
   // (PQ-210.01 Crucible CPU profile). The per-tick caller may sweep it on a cadence instead:
@@ -438,4 +457,108 @@ export function pendingStuntBodyIds(state) {
   for(const life of j?.lives.values()??[]) if(j.bodies.has(life.id))out.add(life.entity.id);
   for(const c of j?.constraints.values()??[])if(j.roots.has(c.rootId)){out.add(c.actorId);out.add(c.targetId);}
   return out;
+}
+
+// ---------------------------------------------------------------------------------------------
+// THE WORLD ANSWERS T1 - Bolas. "Twin Bridle ties two light hostiles; their coupled inertia makes
+// them orbit each other; the pair lawn-darts into the nearest rock."
+//
+// tetherGameplay owns the rope (massline:bridleLinked / bridleCut / bridleEnded) and the catch
+// tumble; the journal only OBSERVES. The link opens one root per bridled hull (the relative
+// velocity the rope redistributed is the pair's "throw", split by the partner's mass exactly as
+// tetherGameplay._tumbleBridledPair splits it), and every tick the pair's own geometry accrues the
+// orbit sweep: how far the line between the hulls has turned. A later hard contact by either hull
+// within the root horizon is then evidence like any other: classifyStuntEvidence reads the orbit and
+// the closing speed, and the same receipt that carries the evidence carries the player's
+// provenance, so a kill the pair causes is the player's.
+export const BRIDLE_EVIDENCE = Object.freeze({
+  // Half a turn of the pair line is an orbit; a rope that never swung is a leash, not bolas.
+  orbitDegrees: 90,
+  // How hard the pair must have been going, as a fraction of the struck hull's reference cruise.
+  closingFraction: 0.25,
+  // A cut or ended rope keeps its momentum: contacts still count this long afterwards.
+  endedGapTicks: EVIDENCE_LIMITS.gap,
+});
+const BRIDLE_HULLS = new Set(['ship', 'drone']);
+const isBridleHull = (state, e) => !!e && e.id !== state.playerId && e.alive !== false && BRIDLE_HULLS.has(e.type);
+export function observeTwinBridle(state, link, tick = state?.tick) {
+  const j = journalFor(state);
+  if (!j || !link || link.attachmentId == null || state.playerId == null || !Number.isFinite(tick)) return null;
+  const key = idKey(link.attachmentId);
+  const known = j.bridles.get(key);
+  // A duplicate or replayed link receipt is the same rope, never a second episode.
+  if (known) return known;
+  const a = state.entities?.get?.(link.sourceId), b = state.entities?.get?.(link.targetId);
+  if (a === b || !isBridleHull(state, a) || !isBridleHull(state, b)) return null;
+  const mass = e => Math.max(0.1, finite(e.physicsBody?.mass ?? e.mass) || 1);
+  const ma = mass(a), mb = mass(b), sum = ma + mb;
+  const rx = finite(a.vel?.x) - finite(b.vel?.x), rz = finite(a.vel?.z) - finite(b.vel?.z);
+  const provenance = { actorId: state.playerId, weaponId: 'attachment_twin_bridle', attachmentId: link.attachmentId };
+  const open = (e, dv) => observeAppliedImpulse(e, point(e.vel), { x: finite(e.vel?.x) + dv.x, z: finite(e.vel?.z) + dv.z }, provenance, tick, 'bridle', state);
+  const rootA = open(a, { x: -rx * mb / sum, z: -rz * mb / sum });
+  const rootB = rootA && open(b, { x: rx * ma / sum, z: rz * ma / sum });
+  if (!rootA || !rootB) return null;
+  const la = bodyLife(a, state), lb = bodyLife(b, state);
+  rootA.bridle = { id: link.attachmentId, partnerId: b.id, partnerLife: lb.id };
+  rootB.bridle = { id: link.attachmentId, partnerId: a.id, partnerLife: la.id };
+  const entry = { id: link.attachmentId, aId: a.id, bId: b.id, aLife: la.id, bLife: lb.id, aRoot: rootA.id, bRoot: rootB.id,
+    startTick: tick, endTick: null, lastTick: tick, angle: Math.atan2(finite(b.pos?.z) - finite(a.pos?.z), finite(b.pos?.x) - finite(a.pos?.x)), sweep: 0 };
+  j.bridles.set(key, entry);
+  if (j.bridles.size > 8) j.bridles.delete(j.bridles.keys().next().value);
+  return entry;
+}
+export function closeTwinBridle(state, attachmentId, tick = state?.tick) {
+  const entry = journalFor(state)?.bridles.get(idKey(attachmentId));
+  if (entry && entry.endTick == null && Number.isFinite(tick)) entry.endTick = tick;
+  return entry ?? null;
+}
+/** Per-tick orbit sweep. A dead or missing partner ends the rope; the sweep it earned stays. */
+export function updateTwinBridles(state, tick = state?.tick) {
+  const j = journalFor(state);
+  if (!j?.bridles?.size || !Number.isFinite(tick)) return;
+  for (const [key, b] of j.bridles) {
+    if (tick - b.startTick > EVIDENCE_LIMITS.horizon || tick < b.startTick) { j.bridles.delete(key); continue; }
+    if (b.endTick != null || b.lastTick === tick) continue;
+    const a = state.entities?.get?.(b.aId), c = state.entities?.get?.(b.bId);
+    if (!a || !c || a.alive === false || c.alive === false) { b.endTick = tick; continue; }
+    const angle = Math.atan2(finite(c.pos?.z) - finite(a.pos?.z), finite(c.pos?.x) - finite(a.pos?.x));
+    b.sweep += Math.abs(Math.atan2(Math.sin(angle - b.angle), Math.cos(angle - b.angle))) * 180 / Math.PI;
+    b.angle = angle;
+    b.lastTick = tick;
+  }
+}
+/** The receipt's own contact, resolved against a live bridle: a pure read of the journal. */
+function bridleEvidence(j, receipt, state, contact) {
+  const { tick, targetId, otherId } = receipt;
+  if (targetId == null || otherId == null || targetId === state.playerId || otherId === state.playerId) return null;
+  for (const entry of j.bridles.values()) {
+    if (!Number.isFinite(tick) || tick < entry.startTick || tick - entry.startTick > EVIDENCE_LIMITS.horizon) continue;
+    if (entry.endTick != null && tick - entry.endTick > BRIDLE_EVIDENCE.endedGapTicks) continue;
+    // The struck body may be a bridled hull (it hit rock or a hull) or the body a bridled hull hit.
+    const struck = targetId === entry.aId || targetId === entry.bId;
+    const memberId = struck ? targetId : otherId;
+    if (memberId !== entry.aId && memberId !== entry.bId) continue;
+    const partnerId = memberId === entry.aId ? entry.bId : entry.aId;
+    // The pair bumping each other while they orbit is the rope working, not its consequence.
+    if (targetId === partnerId || otherId === partnerId) continue;
+    const root = liveRoot(j, memberId === entry.aId ? entry.aRoot : entry.bRoot, tick);
+    if (!root) continue;
+    const member = state.entities?.get?.(memberId), victim = state.entities?.get?.(targetId), other = state.entities?.get?.(otherId);
+    if (!member || !victim || !other) continue;
+    const lm = bodyLife(member, state), lv = bodyLife(victim, state), lo = bodyLife(other, state);
+    if (!lm || !lv || !lo) continue;
+    const contactRecord = contact ?? { tick, aId: targetId, bId: otherId, aLife: lv.id, bLife: lo.id,
+      aPos: point(victim.pos), bPos: point(other.pos), aRef: { ...lv, entity: undefined }, bRef: { ...lo, entity: undefined }, paths: [] };
+    const sourceId = memberId, sinkId = memberId === targetId ? otherId : targetId;
+    const dx = point(other.pos).x - point(victim.pos).x, dz = point(other.pos).z - point(victim.pos).z, mag = Math.hypot(dx, dz);
+    const closing = Math.max(0, finite(contact?.preSolveClosingSpeed), finite(receipt.feelDeltaV));
+    const path = { rootId: root.id, sourceId, targetId: sinkId, sourceLife: lm.id, targetLife: sinkId === targetId ? lv.id : lo.id,
+      playerOccludedAtRoot: null, sourceOccludedAtRoot: root.sourceOccludedAtRoot ?? null, tick, edges: 1, usefulDeltaV: Math.hypot(root.dv.x, root.dv.z),
+      closingSpeed: closing, missDistance: 0, changedCorridor: true, submaterialSource: false, submaterialTarget: false, priorSpeed: closing,
+      normal: mag > 0 ? { x: dx / mag, z: dz / mag } : { x: 0, z: 0 }, sourceVelocity: point(member.vel), targetVelocity: point(sinkId === targetId ? victim.vel : other.vel),
+      momentum: lm.mass * closing };
+    return { revision: EVIDENCE_REVISION, root, path, contact: contactRecord, previousRoot: null,
+      bridle: { id: entry.id, partnerId, orbitDegrees: entry.sweep, ticksLinked: (entry.endTick ?? tick) - entry.startTick, ended: entry.endTick != null } };
+  }
+  return null;
 }

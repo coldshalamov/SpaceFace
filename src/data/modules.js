@@ -339,23 +339,26 @@ const SHIPPED_MODULES = [
   },
   {
     // PQ-170.03 — ace trophy heads. Same physics law as the stock head they were taken from;
-    // the unique id and lineage are what NPCs recognize.
+    // the unique id and lineage are what NPCs recognize. TOY CHEST T13: the trophy line also holds
+    // heavier loads — loadCapacityMult raises the break CEILING of the line this head throws
+    // (attachments.effectiveTetherBreak), by ace tier 1.15 / 1.3 / 1.5. It is the same break law,
+    // a higher ceiling: no new physics, and release impulse and stock-head numbers are untouched.
     id: 'unique_no_cut_filament', baseId: 'mod_monofilament_sweep_m', name: 'No-Cut Filament',
     slotType: 'utility', size: 'M', tier: 3, mass: 5, price: 0,
     energyDraw: 6, purchasable: false, unique: true, salvageOnly: true,
-    mods: { masslineHeadId: 'monofilament_sweep' },
+    mods: { masslineHeadId: 'monofilament_sweep', loadCapacityMult: 1.15 },
   },
   {
     id: 'unique_toll_saint_bridle', baseId: 'mod_twin_bridle_m', name: 'Toll-Saint Bridle',
     slotType: 'utility', size: 'M', tier: 3, mass: 7, price: 0,
     energyDraw: 8, purchasable: false, unique: true, salvageOnly: true,
-    mods: { masslineHeadId: 'twin_bridle' },
+    mods: { masslineHeadId: 'twin_bridle', loadCapacityMult: 1.3 },
   },
   {
     id: 'unique_broken_ring_whip', baseId: 'mod_elastic_whip_m', name: 'Broken-Ring Whip',
     slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 0,
     energyDraw: 4, purchasable: false, unique: true, salvageOnly: true,
-    mods: { masslineHeadId: 'elastic_whip' },
+    mods: { masslineHeadId: 'elastic_whip', loadCapacityMult: 1.5 },
   },
   {
     // ELASTIC WHIP — stretch stores ½ k s². A player cut spends that remaining energy as a

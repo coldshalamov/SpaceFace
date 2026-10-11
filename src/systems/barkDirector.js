@@ -40,7 +40,7 @@ import { ensureActivityClassified } from '../world/activityRuntime.js';
 import { entityIndexVersion, entityIndexLaneVersion, forEachLivingWorldActor, indexedShipLikeOrEntitiesScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { activeHullIdentity } from '../data/hullIdentity.js';
 import { livingHullNotoriety } from '../core/livingHull.js';
-import { adventureStunts, completeWitness, incidentIdentity, knownStuntTitles, observerProfile, STUNT_SITUATION_LINES, STUNT_TITLE_RULES, witnessLineOfSight } from '../combat/stuntWitnesses.js';
+import { adventureStunts, completeWitness, incidentIdentity, knownStuntTitles, observerProfile, STUNT_SITUATION_LINES, STUNT_TITLE_RULES, stuntSpecificLine, witnessLineOfSight } from '../combat/stuntWitnesses.js';
 import { hintTextFor } from './survivalAnnounce.js';
 import { HITSTUN_IMPULSE_EVENT } from '../combat/impulseKernel.js';
 
@@ -1251,7 +1251,9 @@ export const barkDirector = {
     const title = (incident.titleIds || []).map(id => state.story.titles.byId[id]).find(t => t?.knownWitnesses?.includes(witness.identity));
     const rule = title && STUNT_TITLE_RULES.find(r => r.id === title.titleId);
     const lines = STUNT_SITUATION_LINES[incident.trickId] || ['That changed the fight.', 'I saw that impact.', 'Keep clear.'];
-    const text = rule?.bark || lines[witness.role === 'hostile' ? 2 : witness.role === 'patrol' ? 0 : 1];
+    // THE WORLD ANSWERS: a variant (own wingman, bolas pair) or the cargo of an Ore Shotgun speaks
+    // ahead of the generic title bark.
+    const text = stuntSpecificLine(incident) || rule?.bark || lines[witness.role === 'hostile' ? 2 : witness.role === 'patrol' ? 0 : 1];
     const first = !!title || !(state.story.titles.stuntIncidents || []).some(i => i.id !== incident.id && i.trickId === incident.trickId && i.barkDelivered);
     const queued = { id: `stunt:${incident.id}:${witness.identity}`, incidentId: incident.id, speakerId: witness.id,
       speakerIdentity: witness.identity, speakerLife: witness.lifeId, speakerName: witness.name, factionId: witness.factionId, trickId: incident.trickId,

@@ -1,5 +1,6 @@
 // PQ-146 revision 2. Physical witnesses, never action requests or scalar hitstun notifications.
-import { angleBetween, EVIDENCE_REVISION } from './stuntEvidence.js';
+import { angleBetween, BRIDLE_EVIDENCE, EVIDENCE_REVISION } from './stuntEvidence.js';
+import { COMMODITIES } from '../data/commodities.js';
 export const STUNT_SCHEMA_VERSION = 2;
 export const TrickRarity = Object.freeze({ COMMON:'common', UNCOMMON:'uncommon', RARE:'rare', LEGENDARY:'legendary' });
 const rows = [
@@ -9,13 +10,15 @@ const rows = [
   ['razor_release','Razor Release',null,0],['bank_job','Bank Job','rebound',90],['return_to_sender','Return to Sender','rebound',140],
   ['kickstart','Kickstart','escape',140],['needle_thread','Needle Thread','escape',140],['one_two','One-Two','impact',140],
   ['slingshot_golf','Slingshot Golf','field',200],
+  // THE WORLD ANSWERS T6: a cargo pod the player shoved or threw, spent as a shell. Debris family, like Dead Man's Mass.
+  ['ore_shotgun','Ore Shotgun','debris',90],
 ];
 export const TRICK_DEFINITIONS = Object.freeze(Object.fromEntries(rows.map(([id,name,family,baseScore]) => [id,Object.freeze({id,name,family,baseScore,
   role: family ? 'primary' : id === 'near_miss' ? 'bridge' : 'modifier',
   rarity: baseScore===200?'legendary':baseScore===140?'rare':baseScore===90?'uncommon':'common' })])));
 export const KNOWN_TRICK_IDS = Object.freeze(Object.keys(TRICK_DEFINITIONS));
 export const STUNT_CONSTANTS = Object.freeze({ IMPULSE_WINDOW_TICKS:480, SLING_WINDOW_TICKS:480, CHAIN_WINDOW_TICKS:180 });
-const PRECEDENCE = ['slingshot_golf','one_two','return_to_sender','clothesline','dead_mans_mass','well_golf','bolas','tow_kill','wrecking_ball','bank_job','rock_discovery','needle_thread','kickstart','near_miss'];
+const PRECEDENCE = ['slingshot_golf','one_two','return_to_sender','clothesline','dead_mans_mass','ore_shotgun','well_golf','bolas','tow_kill','wrecking_ball','bank_job','rock_discovery','needle_thread','kickstart','near_miss'];
 export function createStuntDetector(options={}) { return new StuntDetector(options); }
 const within = (end,start,limit) => Number.isFinite(end)&&Number.isFinite(start)&&end>=start&&end-start<=limit;
 const material = r => r.damageApplied===true && (r.targetKilled===true || (r.hullDamage>=r.targetHullMax*0.25 && r.targetHullMax>0 && r.helmLossSeconds>=1));
@@ -35,6 +38,7 @@ export function classifyStuntEvidence(receipt) {
   if (receipt.targetHostile!==true || !material(receipt)) return [];
   const u=r.reference.cruise, constraint=r.constraint, release=r.release;
   if (!(u>0)) return [];
+  if (r.kind==='bridle') return classifyBridle(receipt,e);
   const targetRef=c.aId===receipt.targetId?c.aRef:c.bRef;
   const out=[];
   const add=(id,yes)=>{if(yes) out.push(id);};
@@ -47,6 +51,10 @@ export function classifyStuntEvidence(receipt) {
   add('bolas',swing&&release&&within(tick,release.tick,180)&&!victimIsPayload&&r.sourceType==='ship'&&r.sourceDeathTick==null&&p.closingSpeed>=0.5*u);
   add('wrecking_ball',constraint&&attached&&constraint.loadedTicks>=15&&constraint.loadedTicks<=120&&constraint.sweep>=45
     &&!victimIsPayload&&r.reference.mass>=0.5*targetRef.mass&&p.closingSpeed>=0.5*targetRef.cruise);
+  // T6: the shell is a jettisoned cargo pod the PLAYER set moving (the journal only roots the player's
+  // own impulses, so an NPC-shoved pod never reaches here). It must be what killed the hull.
+  add('ore_shotgun',!victimIsPayload&&r.sourceType==='payload'&&r.sourceCargo!=null&&receipt.targetKilled===true
+    &&r.reference.mass>=0.2*(r.sceneReferenceMass??16)&&p.closingSpeed>=ORE_SHOTGUN_CLOSING_FRACTION*u);
   // Quarter-second load, same floor as the other tether primaries. Two hull lengths of
   // displacement is what makes a tow; a faster haul is still one.
   add('tow_kill',constraint&&attached&&victimIsPayload&&r.sourceType==='ship'&&r.sourceDeathTick==null&&receipt.targetKilled&&constraint.loadedTicks>=15&&constraint.loadedTicks<=180
@@ -72,6 +80,35 @@ export function classifyStuntEvidence(receipt) {
   return out.sort((a,b)=>PRECEDENCE.indexOf(a)-PRECEDENCE.indexOf(b));
 }
 
+// Fraction of the struck hull's reference cruise a pod must close at to be a shell, not a nudge.
+export const ORE_SHOTGUN_CLOSING_FRACTION = 0.25;
+// T1: a Twin Bridle pair that swung (orbit sweep) and then struck hard is a bolas. Whether the
+// receipt names a rock (bolas_pair) or a hull (plain bolas) is stuntVariantFor's call.
+function classifyBridle(receipt,e) {
+  const {root:r,path:p,bridle:b}=e;
+  if(!b||!(b.orbitDegrees>=BRIDLE_EVIDENCE.orbitDegrees))return [];
+  return p.closingSpeed>=BRIDLE_EVIDENCE.closingFraction*r.reference.cruise?['bolas']:[];
+}
+/**
+ * THE WORLD ANSWERS: a recognised primary can carry a named variant - the same trick, said more
+ * exactly. `bolas_pair`: a Twin Bridle pair lawn-darted into terrain. `own_wingman`: a player-shoved
+ * wreck killed a hull of the SAME faction as the wreck's own origin. Unknown faction is never equal.
+ */
+export function stuntVariantFor(primary,receipt) {
+  const e=receipt?.stuntEvidence,r=e?.root;
+  if(!r)return null;
+  if(primary==='bolas'&&r.kind==='bridle'&&(receipt.surface==='terrain'||receipt.surface==='structure'))return 'bolas_pair';
+  if(primary==='dead_mans_mass'&&receipt.targetKilled===true&&r.sourceFactionId&&e.contact) {
+    const ref=e.contact.aId===receipt.targetId?e.contact.aRef:e.contact.bRef;
+    if(ref?.factionId&&ref.factionId===r.sourceFactionId)return 'own_wingman';
+  }
+  return null;
+}
+const COMMODITY_NAME=new Map(COMMODITIES.map(c=>[c.id,c.name]));
+export function stuntCargoOf(root) {
+  const c=root?.sourceCargo;
+  return c?{commodityId:c.commodityId,amount:c.amount,name:COMMODITY_NAME.get(c.commodityId)??'cargo'}:null;
+}
 export class StuntDetector {
   constructor({playerId=null}={}) { this.playerId=playerId;this.tick=0;this.incidents=new Map();this.detectedTricks=[]; }
   setPlayerId(id) { this.playerId=id??null; }
@@ -103,6 +140,9 @@ export class StuntDetector {
     else { if(lives.length>=8)return [];lives.push({...terminal}); }
     const primary=old&&PRECEDENCE.indexOf(old.trickId)<PRECEDENCE.indexOf(candidates[0])?old.trickId:candidates[0];
     const def=TRICK_DEFINITIONS[primary];
+    // An amendment keeps the episode's variant while the primary stands; a better reading replaces it.
+    const variantId=stuntVariantFor(primary,receipt)??(old&&old.trickId===primary?old.variantId??null:null);
+    const cargo=primary==='ore_shotgun'?stuntCargoOf(r)??old?.cargo??null:null;
     const collateralCount=e.path.edges>1 ? lives.length : old?.modifiers.collateralCount??1;
     const razor=r.release&&within(receipt.tick,r.release.tick,180)?r.release.grade:null;
     const modifiers={razorRelease:razor,collateralCount,closeShave:receipt.escape?.closeShave===true&&primary!=='needle_thread'};
@@ -112,7 +152,7 @@ export class StuntDetector {
       actorId:r.actorId,targetId:receipt.targetId,secondaryIds:[r.sourceId],episodeId,rootId:episodeId,rootTick:e.previousRoot?.tick??r.tick,
       tick:receipt.tick,firstPayoffTick:old?.firstPayoffTick??receipt.tick,amendment:!!old,
       amendmentDeadline:old?.amendmentDeadline??Math.min(receipt.tick+180,r.tick+480),victimLives:lives,modifiers,
-      causeChain:chain, factualTags:candidates.slice(1), evidenceRevision:EVIDENCE_REVISION,encounterId:r.encounterId,
+      variantId,cargo,causeChain:chain, factualTags:candidates.slice(1), evidenceRevision:EVIDENCE_REVISION,encounterId:r.encounterId,
       pureEscape:!!receipt.escape,threatEpisodeId:receipt.escape?.threatEpisodeId,
       consequence:{killed:receipt.targetKilled,escaped:!!receipt.escape,hullDamage:receipt.hullDamage,hullMax:receipt.targetHullMax,helmLossSeconds:receipt.helmLossSeconds},
       metrics:{payloadMass:r.reference.mass,playerDryHullMass:r.playerMass,usefulDeltaV:e.path.usefulDeltaV,referenceCruise:r.reference.cruise,

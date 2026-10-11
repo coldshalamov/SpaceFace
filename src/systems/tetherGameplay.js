@@ -3346,7 +3346,9 @@ export function stepTensionEstimate(prev, raw, dt) {
 // authority's near-break check this omits the break-grace and automaticMasslineBreakAllowed gates
 // (src/combat/attachments.js), so the display may warn a few ticks before the authority may break
 // — deliberate: the display leads, it never lags a real approach.
-function constraintLoadRatio(attachment, policy, def) {
+// TOY CHEST T13: `policy` is the attachment's snapshotted break policy, so a trophy head's higher
+// ceiling (attachments.effectiveTetherBreak) reaches this mirror with no second formula here.
+export function constraintLoadRatio(attachment, policy, def) {
   const tensionLimit = positive(
     (policy && policy.maxTension) || (def && (def.breakTension || (def.break && def.break.maxTension))),
     0,
