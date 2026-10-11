@@ -24,7 +24,9 @@ for (const [key, name] of rows) {
   if (json.skins?.length || json.textures?.length || json.animations?.length) throw Error(`${name}: unsupported runtime payload`);
   for (const a of json.accessors || []) if (a.sparse) throw Error(`${name}: sparse accessor`);
   // NodeIO defaults to an interleaved layout. Runtime unpack explicitly respects byteStride.
-  packed[key] = { json, binary: bytes.subarray(offset+8, offset+8+binLen).toString('base64') };
+  // The GLB JSON chunk is stored as text so module eval only interns the string; ruckusModel
+  // JSON.parses it inside template() on first use / the post-eval warm (wave-140 B5 deferral).
+  packed[key] = { json: JSON.stringify(json), binary: bytes.subarray(offset+8, offset+8+binLen).toString('base64') };
   let triangles = 0, drawCalls = 0;
   for (const mesh of json.meshes || []) for (const p of mesh.primitives) {
     if ((p.mode ?? 4) !== 4) throw Error(`${name}: non-triangle primitive`);
