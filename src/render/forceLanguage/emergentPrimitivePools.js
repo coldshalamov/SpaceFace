@@ -398,6 +398,10 @@ function material(family, uniforms) {
       float edgePixel=max(fwidth(vSurface.x)*0.8,0.0015);
       float boundary=smoothstep(0.65-edgePixel,0.92+edgePixel,vSurface.x)*(1.0-smoothstep(0.94-edgePixel,1.0+edgePixel,vSurface.x));
       float interior=1.0-smoothstep(0.75,0.97,vSurface.x);
+      // Two wet deposited ridges and a broken lip leave open space between them. A full
+      // opaque disc made the whole force footprint a screen-filling green occluder.
+      float lip=boundary*(0.45+0.55*sin(vSurface.y*5.0+vResponse.x));
+      if(max(folds.x,folds.y)<0.22 && lip<0.25) discard;
       float chargeA=opticalPulseAA(q.x*7.2-transport*3.1+vResponse.x,0.46);
       float chargeB=opticalPulseAA(q.x*6.1+transport*2.0-vResponse.x,0.38);
       float creaseA=pow(folds.x,3.0)*chargeA,creaseB=pow(folds.y,3.0)*chargeB;
@@ -422,7 +426,7 @@ function material(family, uniforms) {
       `}
     `);
   };
-  mat.customProgramCacheKey=()=>`emergent-structure-${family}-reactive-folds-v4`;
+  mat.customProgramCacheKey=()=>`emergent-structure-${family}-reactive-folds-v5`;
   return mat;
 }
 
@@ -538,7 +542,13 @@ export function createEmergentPrimitivePools() {
           map(x2,z2,toLocal);const dx=local.x-ax,dz=local.z-az,len=Math.hypot(dx,dz),width=Math.min(3,Math.max(0.85,len*0.055));
           position.set((ax+local.x)*0.5,0.5,(az+local.z)*0.5);scaleVec.set(len,width,width);
           quaternion.setFromAxisAngle(up,-Math.atan2(dz,dx));
-        } else {position.set(ax,family===3?0.6:0.2,az);scaleVec.set(extent,extent,extent);quaternion.setFromAxisAngle(up,-yaw);}
+        } else {
+          position.set(ax,family===3?0.6:0.2,az);
+          // The viscosity radius is a horizontal force footprint, not the height of a
+          // mountain. Preserve its reach while keeping the moving wet crests below hulls.
+          scaleVec.set(extent,family===2?Math.min(5,extent*0.10):extent,extent);
+          quaternion.setFromAxisAngle(up,-yaw);
+        }
         // Burst on admission of a new active packet. A thermal ray republishes overlapping
         // receipts every tick; while this family remains powered those are not new ignitions.
         // Saturation favors existing parcels and caps all current/pressure residue at 96.
