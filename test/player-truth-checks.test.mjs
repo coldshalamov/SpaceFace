@@ -8,7 +8,7 @@ import {
   isLoadingAssetState,
 } from '../scripts/player-truth/checks.mjs';
 import { classifyEntity } from '../src/testing/playerTruth/reader.js';
-import { auditItems } from '../scripts/player-truth/routes.mjs';
+import { auditItems, classifyArmoryArrival, formatArmoryMiss, ARMORY_WORLD_GRACE_MS } from '../scripts/player-truth/routes.mjs';
 import { separation } from '../scripts/player-truth/readability.mjs';
 import { renderVerdict } from '../scripts/player-truth/verdict.mjs';
 
@@ -179,4 +179,20 @@ test('score credited before the first flight input fails', async () => {
   assert.match(r.value, /\+120/);
   trace.samples[2].run.sc = 0;
   assert.equal(checkRewardBeforeInput(trace).status, 'PASS');
+});
+
+test('Open armory is ready on the draft screen and lost in a non-draft world', () => {
+  const draft = { top: 'crucibleDraft', mode: 'flight', kind: 'adventure', phase: 'draft' };
+  assert.equal(classifyArmoryArrival(draft, ARMORY_WORLD_GRACE_MS), 'ready');
+  const door = { top: 'crucible', mode: 'menu', kind: 'adventure', phase: 'inactive' };
+  assert.equal(classifyArmoryArrival(door, 0), 'wait');
+  const booting = { top: null, mode: 'flight', kind: 'adventure', phase: 'inactive' };
+  assert.equal(classifyArmoryArrival(booting, ARMORY_WORLD_GRACE_MS - 1), 'wait');
+  assert.equal(classifyArmoryArrival(booting, ARMORY_WORLD_GRACE_MS), 'lost');
+  const pending = { top: null, mode: 'loading', kind: 'adventure', phase: 'draft' };
+  assert.equal(classifyArmoryArrival(pending, ARMORY_WORLD_GRACE_MS * 2), 'wait');
+  const line = formatArmoryMiss({ mode: 'flight', kind: 'adventure', phase: 'inactive', top: null, hud: 'Ceres Refinery intake short' });
+  assert.match(line, /mode=flight kind=adventure phase=inactive top=none/);
+  assert.match(line, /Ceres Refinery/);
+  assert.ok(line.length < 180);
 });

@@ -8,7 +8,9 @@ its check reads PASS. Renderer for every run below:
 
 ## Scoreboard (seed 4242) — measured on `9e647c306`, branch now on `debe715c8a`
 
-Rebased onto `origin/master` `debe715c8a` (2026-10-12, clean, no content conflicts, `mergeable` MERGEABLE). The rows below were measured on `9e647c306`, which already contains Lane 6's room-solid clearance `6b67d1fb1`. They are not a fresh measurement of `debe715c8a`: master moved 328 commits after that run, including the popin/residency waves and UI polish #301. The harness commits do not change combat. Renderer: SwiftShader, 960x540. Command that produced the rows: `npm run player-truth -- --mode=swarm --arena="Ricochet Foundry" --gate --evidence --tag=seed4242`. Evidence: `swarm-ricochet-foundry-idle-seed4242/`, `swarm-ricochet-foundry-active-seed4242/`. A fresh `--gate` (idle + active) is queued, not started: `--mode=swarm --arena="Ricochet Foundry" --seed=4242 --gate --evidence --wall=50 --tag=seed4242-debe715`. `--prune-frames` is not set.
+Rebased onto `origin/master` `debe715c8a` (2026-10-12, clean, no content conflicts, `mergeable` MERGEABLE). The rows below were measured on `9e647c306`, which already contains Lane 6's room-solid clearance `6b67d1fb1`. They are not a fresh measurement of `debe715c8a`: master moved after that run, including the popin/residency waves and UI polish #301. The harness commits do not change combat. Renderer: SwiftShader, 960x540. Command that produced the rows: `npm run player-truth -- --mode=swarm --arena="Ricochet Foundry" --gate --evidence --tag=seed4242`. Evidence: `swarm-ricochet-foundry-idle-seed4242/`, `swarm-ricochet-foundry-active-seed4242/`.
+
+On `debe715c8a` at tip `256a39e208` the same command (`--tag=seed4242-debe715`, `--wall=50`, no `--prune-frames`) did **not** reach play. Both passes clicked through the door (Crucible, Ricochet Foundry, seed 4242) and then `Open armory` never opened `crucibleDraft`. The idle trace left the door into `mode=flight` `run.kind=adventure` `phase=inactive` `top=none` (HUD: Ceres Refinery intake) and sat there until the 300 s wait. That is a route FAIL on this master, owned by local integration (`requestCrucibleRun` / `survivalDraft` — the draft re-opens only once phase is `draft`, and phase stayed `inactive`). Scratch frames: `scratch/player-truth/swarm-ricochet-foundry-{idle,active}-seed4242-debe715/`. A re-run is queued behind `player-truth.lock`. It names that landing after 60 s instead of waiting out the full armory timeout. `--prune-frames` stays off.
 
 A status of UNKNOWN is not a pass. Round 2 after the clearance is UNKNOWN: the active pass died in round 1 when the browser closed. The exit code of a FAIL is 1 (`gateExitCode`); INCOMPLETE is 2; only an all-PASS run exits 0.
 
@@ -38,11 +40,11 @@ These are not measured. Do not read an older first-generation verdict below as t
 
 | run | status | reason |
 |---|---|---|
-| Swarm round 2 after `6b67d1fb1` | UNKNOWN | Active seed 4242 closed in round 1 on `9e647c306`. The 07:24 queue died before Chromium (`uv_cwd`). The worktree was removed after a clean push and restored at `6ce0380015`. The Swarm `--gate` waiter is pid 208317 (not started): full `--gate`, `--wall=50 --evidence --tag=seed4242-debe715`. |
-| Hull × viewport matrix (960 / 1280 / 1920 × unlocked hulls) | UNKNOWN | Not run. Follow-on waiter pid 208327, behind the Swarm gate, one Chromium. `player_ship` names a rectangle or an invisible ship. |
-| Gauntlet `--gate` | UNKNOWN | Not run. Same follow-on queue, after the matrix. The first-generation arena rows below are not a `--gate` pass. |
-| Adventure `--gate` | UNKNOWN | Not run. Same follow-on queue. The 150 s cruise below is not a `--gate` pass. |
-| Racing `--gate` | UNKNOWN | Not run. Same follow-on queue. The 75 s Textile Belt row below is not a `--gate` pass. |
+| Swarm round 2 after `6b67d1fb1` | UNKNOWN | The `9e647c306` active pass closed in round 1. The `debe715c8a` re-run never left the door: Open armory landed in flight with phase `inactive`, so round 2 was not played. |
+| Hull × viewport matrix (960 / 1280 / 1920 × unlocked hulls) | UNKNOWN | The 960 row (four unlocked hulls) died at the same Open armory miss. 1280 and 1920 were not finished. No combo reached a ship on screen, so none can be named as the rectangle. |
+| Gauntlet `--gate` | UNKNOWN | Not run. The matrix waiter was holding the lock on the armory miss. The first-generation arena rows below are not a `--gate` pass. |
+| Adventure `--gate` | UNKNOWN | Not run. The 150 s cruise below is not a `--gate` pass. |
+| Racing `--gate` | UNKNOWN | Not run. The 75 s Textile Belt row below is not a `--gate` pass. |
 
 ## Owning lanes (rebased onto `debe715c8a`, 2026-10-12)
 
