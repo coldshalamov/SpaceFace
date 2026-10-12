@@ -154,6 +154,29 @@ export const SOUTH_SECTORS = Object.freeze([
         type: 'wreck',
         name: 'Paint-Scar Debris',
       }),
+      // The wreck writ: a license plate on a dead hull still broadcasting the board's
+      // fee ledger — the last line reads off-ledger to a fee stash south of the fence.
+      Object.freeze({
+        id: 'poi_eunomia_wreck_writ',
+        type: 'anomaly',
+        name: 'Wreck Writ Signal',
+        requiresActiveScan: true,
+        manualInvestigation: true,
+        scannerSignalKind: 'salvage',
+        scannerSignalPriority: 96,
+        discoveryPlate: Object.freeze({
+          title: 'The Wreck Writ',
+          body: 'A board seal on a hulk that outlived its license. The writ\'s fee ledger is still broadcasting, and the last line names a fee stash south of the fence the board never collected.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_eunomia_board_fee',
+        type: 'cache',
+        name: 'Board Fee Stash',
+        hidden: true,
+        factionId: 'faction_vael',
+        contents: Object.freeze({ commodityId: 'cmdty_ore_goldium', amount: 2 }),
+      }),
       Object.freeze({
         id: 'poi_hush',
         type: 'anomaly',
@@ -357,6 +380,16 @@ export const SOUTH_ANCHORS = Object.freeze({
         id: 'poi_eunomia_debris',
         pos: Object.freeze({ x: 640, z: -880 }),
         landmarkGlb: 'place_debris_chunk',
+      }),
+      Object.freeze({
+        id: 'poi_eunomia_wreck_writ',
+        pos: Object.freeze({ x: 880, z: 80 }),
+        landmarkGlb: 'place_customs_pylon',
+      }),
+      Object.freeze({
+        id: 'poi_eunomia_board_fee',
+        pos: Object.freeze({ x: -280, z: -820 }),
+        landmarkGlb: 'place_dead_hulk',
       }),
       Object.freeze({
         id: 'poi_hush',

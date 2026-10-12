@@ -207,6 +207,28 @@ export const NORTH_SECTORS = Object.freeze([
       }),
       Object.freeze({ id: 'poi_haumea_buoy', type: 'beacon', name: 'Rift Range Buoy' }),
       Object.freeze({ id: 'poi_haumea_probe', type: 'derelict', name: 'Rift Probe Shell' }),
+      // The echo rake: a survey rake still reading ghost returns off the rift — its last
+      // logged echo maps a cold cache south of the ice line nobody flew out to check.
+      Object.freeze({
+        id: 'poi_haumea_echo_rake',
+        type: 'anomaly',
+        name: 'Echo Rake Signal',
+        requiresActiveScan: true,
+        manualInvestigation: true,
+        scannerSignalKind: 'archive',
+        scannerSignalPriority: 96,
+        discoveryPlate: Object.freeze({
+          title: 'The Echo Rake',
+          body: 'An Observatory rake still combing the fissure for ghost returns. Its deepest logged echo comes back warmer than ice — a sealed cache south of the ice line the shift never opened.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_haumea_cold_cache',
+        type: 'cache',
+        name: 'Cold Cache',
+        hidden: true,
+        contents: Object.freeze({ commodityId: 'cmdty_exotic_xenium', amount: 1 }),
+      }),
     ]),
   }),
 
@@ -283,6 +305,29 @@ export const NORTH_SECTORS = Object.freeze([
           title: 'The Metronome',
           body: 'Ancient navigational beacon maintaining an unyielding 8.00-second sweep across the galactic rim. Navigators calibrate deep-space chronometers to its pulse, though high-energy telemetry suggests it was engineered as an area-denial emitter rather than an aid to navigation.',
         }),
+      }),
+      // The tally mast: a crossing ledger the runners keep — every name that beat the
+      // sweep, and under the last line a bolt the margin never read back.
+      Object.freeze({
+        id: 'poi_eris_tally_mast',
+        type: 'anomaly',
+        name: 'Tally Mast Signal',
+        requiresActiveScan: true,
+        manualInvestigation: true,
+        scannerSignalKind: 'salvage',
+        scannerSignalPriority: 96,
+        discoveryPlate: Object.freeze({
+          title: 'The Tally Mast',
+          body: 'The margin keeps a ledger after all: a mast counting every hull that crossed on the down-sweep. The last line tags a bolt south-west of the fence — cargo that paid for silence twice.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_eris_bolt',
+        type: 'cache',
+        name: 'Bolt Cache',
+        hidden: true,
+        factionId: 'faction_quiet',
+        contents: Object.freeze({ commodityId: 'cmdty_salvage_electronics', amount: 2 }),
       }),
     ]),
   }),
@@ -440,6 +485,16 @@ export const NORTH_ANCHORS = Object.freeze({
         pos: Object.freeze({ x: 960, z: -640 }),
         landmarkGlb: 'place_debris_chunk',
       }),
+      Object.freeze({
+        id: 'poi_haumea_echo_rake',
+        pos: Object.freeze({ x: 680, z: 60 }),
+        landmarkGlb: 'place_sensor_mast',
+      }),
+      Object.freeze({
+        id: 'poi_haumea_cold_cache',
+        pos: Object.freeze({ x: -320, z: -920 }),
+        landmarkGlb: 'place_debris_chunk',
+      }),
     ]),
   }),
 
@@ -487,6 +542,16 @@ export const NORTH_ANCHORS = Object.freeze({
         pos: Object.freeze({ x: -60, z: 1700 }),
         landmarkGlb: 'place_asteroid_seamed',
         landmark: true,
+      }),
+      Object.freeze({
+        id: 'poi_eris_tally_mast',
+        pos: Object.freeze({ x: 880, z: -620 }),
+        landmarkGlb: 'place_interdiction_buoy',
+      }),
+      Object.freeze({
+        id: 'poi_eris_bolt',
+        pos: Object.freeze({ x: -620, z: -1080 }),
+        landmarkGlb: 'place_cargo_pod_standard',
       }),
     ]),
   }),

@@ -755,6 +755,200 @@ export const ALIEN_SITES = Object.freeze({
     morphologyMix: Object.freeze(['dead_crown', 'silt_root', 'mineral_root']),
     surveyOfferId: 'em_sterile_zone_survey',
   }),
+
+  // ── AEP PR-2 — rim resident fauna, wave 2 ──────────────────────────────────────────────
+  // One resident cast per wave-2 rim sector, each bound to authored zone/POI geography so the
+  // ecology reads where the sector already reads. No two neighbouring rim sectors share a cast.
+
+  // Nyx March — a black sail drifts the cut-lane over the Cut-Runner Wreck: the same hush
+  // the fence keeps, worn as a body.
+  nyx_cutlane_drift: Object.freeze({
+    siteId: 'nyx_cutlane_drift',
+    sectorId: 'sector_nyx_march',
+    zoneId: 'zone_nyx_cutlane',
+    poiId: 'poi_nyx_wreck',
+    name: 'Cut-Lane Drift',
+    strainId: 'charon_grave',
+    baseContamination: 0.3,
+    center: Object.freeze({ x: 1120, z: 760 }),
+    arrivalBands: Object.freeze({ long: 1600, mid: 900, close: 320 }),
+    arrivalLines: Object.freeze({
+      long: 'A dark return riding the cut-lane — slow enough to be wreckage, wrong enough not to be.',
+      mid: 'One sail-shaped contact grazing the wreck, same bearing every pass.',
+      close: 'The sail feeds where the manifest ended. The wreck keeps it; the march keeps the wreck.',
+    }),
+    faunaCast: Object.freeze({ black_sail: 2 }),
+    growthRing: Object.freeze({ inner: 16, outer: 55, count: 7 }),
+    morphologyMix: Object.freeze(['membrane_patch', 'silt_root', 'dead_crown']),
+  }),
+  // Hyperion Cut — bristle rams batter the old driller in the belt: the cut's own work
+  // carried on by something that never learned the shift ended.
+  hyperion_belt_ram: Object.freeze({
+    siteId: 'hyperion_belt_ram',
+    sectorId: 'sector_hyperion_cut',
+    zoneId: 'zone_hyperion_belt',
+    poiId: 'poi_hyperion_driller',
+    name: 'Caved-Shaft Rams',
+    strainId: 'charon_grave',
+    baseContamination: 0.36,
+    center: Object.freeze({ x: 240, z: -1180 }),
+    arrivalBands: Object.freeze({ long: 1700, mid: 1000, close: 340 }),
+    arrivalLines: Object.freeze({
+      long: 'Impact telemetry on the dead driller — something is still working the shaft.',
+      mid: 'Two heavy contacts charging the driller head-on. Not piracy: feeding.',
+      close: 'Bristle rams wear the auger down to bright metal. The cut never stopped being a meal.',
+    }),
+    faunaCast: Object.freeze({ bristle_ram: 2, needle_swarm: 3 }),
+    growthRing: Object.freeze({ inner: 22, outer: 70, count: 10 }),
+    morphologyMix: Object.freeze(['calcified_collar', 'nerve_bundle', 'silt_root', 'cyst_cluster']),
+  }),
+  // Orcus Shadow — archive crabs carry records between the lamps around the anomaly: the
+  // dim library's own shelving crew.
+  orcus_shelf_crabs: Object.freeze({
+    siteId: 'orcus_shelf_crabs',
+    sectorId: 'sector_orcus_shadow',
+    zoneId: 'zone_orcus_shadow',
+    poiId: 'poi_orcus_anomaly',
+    name: 'The Shelf Crabs',
+    strainId: 'veil_glass',
+    baseContamination: 0.42,
+    center: Object.freeze({ x: 0, z: 0 }),
+    arrivalBands: Object.freeze({ long: 1400, mid: 800, close: 280 }),
+    arrivalLines: Object.freeze({
+      long: 'Small mass returns moving lamp to lamp around the anomaly — a slow tide with a route.',
+      mid: 'Count the pauses: the contacts stop where the lamp light stops.',
+      close: 'Archive crabs carrying record cases between posts. The shadow shelves its own books.',
+    }),
+    faunaCast: Object.freeze({ archive_crab: 3 }),
+    growthRing: Object.freeze({ inner: 14, outer: 50, count: 9 }),
+    morphologyMix: Object.freeze(['filament_sheet', 'mineral_root', 'membrane_patch']),
+  }),
+  // Haumea Rift — glassbacks graze the fissure lip where the Observatory keeps trying to
+  // chart: sensor-ghosting ice hosting a body that ghosts the same way.
+  haumea_fissure_graze: Object.freeze({
+    siteId: 'haumea_fissure_graze',
+    sectorId: 'sector_haumea_rift',
+    zoneId: 'zone_haumea_fissure',
+    poiId: 'poi_haumea_fissure',
+    name: 'Fissure Graze',
+    strainId: 'veil_glass',
+    baseContamination: 0.38,
+    center: Object.freeze({ x: 0, z: 180 }),
+    arrivalBands: Object.freeze({ long: 1500, mid: 900, close: 300 }),
+    arrivalLines: Object.freeze({
+      long: 'A return on the fissure lip that the ice keeps copying — one of these echoes is alive.',
+      mid: 'Transparent mass over the lip, drifting with the thermal plume.',
+      close: 'Glassbacks on the ice shelf, grazing the thermal rift. The rift feeds its own reading.',
+    }),
+    faunaCast: Object.freeze({ glassback: 2 }),
+    growthRing: Object.freeze({ inner: 20, outer: 65, count: 11 }),
+    morphologyMix: Object.freeze(['membrane_patch', 'silt_root', 'filament_sheet', 'mineral_root']),
+  }),
+  // Eris Margin — mourning kites ride the Metronome's sweep off the fog rim: the beat made
+  // into a body, crossing on the down-stroke like every hull in the margin.
+  eris_sweep_kites: Object.freeze({
+    siteId: 'eris_sweep_kites',
+    sectorId: 'sector_eris_margin',
+    zoneId: 'zone_eris_fog',
+    poiId: 'poi_eris_metronome',
+    name: 'Sweep Kites',
+    strainId: 'charon_grave',
+    baseContamination: 0.34,
+    center: Object.freeze({ x: -60, z: 1700 }),
+    arrivalBands: Object.freeze({ long: 1700, mid: 1000, close: 360 }),
+    arrivalLines: Object.freeze({
+      long: 'Contacts timing the sweep — every pass lands on the down-stroke, none on the beat.',
+      mid: 'Kite wings riding the denial cone\'s edge like a current.',
+      close: 'Mourning kites feeding on what the Metronome scares out of the fog.',
+    }),
+    faunaCast: Object.freeze({ mourning_kite: 2 }),
+    growthRing: Object.freeze({ inner: 18, outer: 60, count: 8 }),
+    morphologyMix: Object.freeze(['nerve_lace', 'membrane_patch', 'cyst_cluster']),
+  }),
+  // Nereid Shoal — hull leeches boring the Ice-Hull Wreck on the shoal: the lane's fast
+  // ore slowed into a meal nobody is paying for.
+  nereid_shoal_leeches: Object.freeze({
+    siteId: 'nereid_shoal_leeches',
+    sectorId: 'sector_nereid_shoal',
+    zoneId: 'zone_nereid_shoal',
+    poiId: 'poi_nereid_wreck',
+    name: 'Shoal Leeches',
+    strainId: 'charon_grave',
+    baseContamination: 0.33,
+    center: Object.freeze({ x: 1280, z: 720 }),
+    arrivalBands: Object.freeze({ long: 1500, mid: 850, close: 300 }),
+    arrivalLines: Object.freeze({
+      long: 'Boring returns inside the Ice-Hull Wreck — the hull is riddled, not empty.',
+      mid: 'Small leech contacts under the plate skin, chewing the ice seams.',
+      close: 'Hull leeches. The wreck is a reef now; the shoal keeps it.',
+    }),
+    faunaCast: Object.freeze({ hull_leech: 3, casket_worm: 2 }),
+    growthRing: Object.freeze({ inner: 12, outer: 44, count: 12 }),
+    morphologyMix: Object.freeze(['silt_root', 'mineral_root', 'cyst_cluster', 'false_cable']),
+  }),
+  // Proteus Well — a blind shepherd tending the Funnel's debris floor: the well sounds
+  // and something old answers by moving its flock.
+  proteus_well_shepherd: Object.freeze({
+    siteId: 'proteus_well_shepherd',
+    sectorId: 'sector_proteus_well',
+    zoneId: 'zone_proteus_seams',
+    poiId: 'poi_proteus_hulk',
+    name: 'Well Shepherd',
+    strainId: 'veil_glass',
+    baseContamination: 0.48,
+    center: Object.freeze({ x: 1120, z: 860 }),
+    arrivalBands: Object.freeze({ long: 1900, mid: 1150, close: 400 }),
+    arrivalLines: Object.freeze({
+      long: 'One enormous slow return under the Funnel debris — the floor returns too much mass, and part of it moves.',
+      mid: 'The return is herding smaller contacts. A shepherd, not a sleeper.',
+      close: 'A blind shepherd on the debris floor. The den\'s echo is its bell.',
+    }),
+    faunaCast: Object.freeze({ blind_shepherd: 1, veil_ray: 2 }),
+    growthRing: Object.freeze({ inner: 30, outer: 95, count: 14 }),
+    morphologyMix: Object.freeze(['lung_bladder', 'nerve_bundle', 'silt_root', 'false_cable', 'membrane_patch']),
+  }),
+  // Triton Wake — wake eels running the glow band beside the kite line: the wake's own
+  // hulls, the only traffic the lane never logs.
+  triton_wake_eels: Object.freeze({
+    siteId: 'triton_wake_eels',
+    sectorId: 'sector_triton_wake',
+    zoneId: 'zone_triton_anomaly',
+    poiId: 'poi_triton_anomaly',
+    name: 'Wake Eels',
+    strainId: 'veil_glass',
+    baseContamination: 0.44,
+    center: Object.freeze({ x: 40, z: 120 }),
+    arrivalBands: Object.freeze({ long: 2000, mid: 1200, close: 420 }),
+    arrivalLines: Object.freeze({
+      long: 'Long thin returns riding the glow band — faster than debris, slower than hulls.',
+      mid: 'Three eel-shaped contacts slipping the wake edge. The band is feeding them.',
+      close: 'Wake eels. The anomaly\'s tide rows them; they row the tithe line.',
+    }),
+    faunaCast: Object.freeze({ wake_eel: 3 }),
+    growthRing: Object.freeze({ inner: 24, outer: 80, count: 13 }),
+    morphologyMix: Object.freeze(['filament_sheet', 'nerve_lace', 'membrane_patch', 'lung_bladder']),
+  }),
+  // Eunomia Gulf — suture mites stitching the Gulf Hulk: the board licensed the wreck,
+  // and the plate still knits itself where the cutter walked away.
+  eunomia_hulk_mites: Object.freeze({
+    siteId: 'eunomia_hulk_mites',
+    sectorId: 'sector_eunomia_gulf',
+    zoneId: 'zone_eunomia_hulk',
+    poiId: 'poi_eunomia_hulk',
+    name: 'Gulf Mites',
+    strainId: 'charon_grave',
+    baseContamination: 0.37,
+    center: Object.freeze({ x: 1180, z: 720 }),
+    arrivalBands: Object.freeze({ long: 1600, mid: 950, close: 330 }),
+    arrivalLines: Object.freeze({
+      long: 'Patch returns crawling the Gulf Hulk — the wreck is being stitched, not stripped.',
+      mid: 'Dozens of small contacts knitting plate seams shut.',
+      close: 'Suture mites. The wreck the board owns repairs itself under license nobody issued.',
+    }),
+    faunaCast: Object.freeze({ suture_mite: 4, stone_lung: 1 }),
+    growthRing: Object.freeze({ inner: 16, outer: 55, count: 16 }),
+    morphologyMix: Object.freeze(['calcified_collar', 'silt_root', 'false_cable', 'mineral_root']),
+  }),
 });
 
 export function alienSitesForSector(sectorId) {

@@ -171,6 +171,21 @@ const REGION_NYX = freezeRegion({
     pois: [
       { id: 'poi_nyx_cache', type: 'cache', name: 'March Drop Cache', hidden: true },
       { id: 'poi_nyx_wreck', type: 'wreck', name: 'Cut-Runner Wreck' },
+      // The burn-box tell: the fence's dead-drop scanner answers an active pulse, and its
+      // plate points the pilot at the ash tithe the march keeps off the books.
+      {
+        id: 'poi_nyx_burn_box', type: 'anomaly', name: 'Burn Box Signal',
+        requiresActiveScan: true, manualInvestigation: true,
+        scannerSignalKind: 'salvage', scannerSignalPriority: 96,
+        discoveryPlate: {
+          title: 'The Burn Box',
+          body: 'A Quiet dead-drop relay pinging from the march floor. Its last packet is a tithe receipt stamped for a cache south-west of the fence — the paper burned, the goods did not.',
+        },
+      },
+      {
+        id: 'poi_nyx_ash_tithe', type: 'cache', name: 'Ash Tithe', hidden: true,
+        contents: { commodityId: 'cmdty_stolen_goods', amount: 2 },
+      },
     ],
   },
   anchors: {
@@ -194,6 +209,8 @@ const REGION_NYX = freezeRegion({
     pois: [
       { id: 'poi_nyx_cache', pos: { x: -1480, z: -280 }, landmarkGlb: 'place_debris_chunk' },
       { id: 'poi_nyx_wreck', pos: { x: 1120, z: 760 }, landmarkGlb: 'place_dead_hulk', landmark: true },
+      { id: 'poi_nyx_burn_box', pos: { x: -400, z: 100 }, landmarkGlb: 'place_sensor_mast' },
+      { id: 'poi_nyx_ash_tithe', pos: { x: -1150, z: -550 }, landmarkGlb: 'place_debris_chunk' },
     ],
   },
   zones: [
@@ -308,6 +325,21 @@ const REGION_HYPERION = freezeRegion({
         },
       },
       { id: 'poi_hyperion_beacon', type: 'beacon', name: 'Cut Lane Beacon' },
+      // The kerf log: a saw recorder still ticking the cut's tally, and under it the
+      // claim the shift never weighed in — logged but never hauled.
+      {
+        id: 'poi_hyperion_kerf_log', type: 'anomaly', name: 'Kerf Log Signal',
+        requiresActiveScan: true, manualInvestigation: true,
+        scannerSignalKind: 'salvage', scannerSignalPriority: 96,
+        discoveryPlate: {
+          title: 'The Kerf Log',
+          body: 'The saw track\'s own recorder, still ticking. Its last entry weighs a core claim north-west of the refinery — cut, logged, and never hauled.',
+        },
+      },
+      {
+        id: 'poi_hyperion_core_claim', type: 'cache', name: 'Core Claim Hold', hidden: true,
+        contents: { commodityId: 'cmdty_ore_silverium', amount: 3 },
+      },
     ],
   },
   anchors: {
@@ -345,6 +377,8 @@ const REGION_HYPERION = freezeRegion({
         pos: { x: -320, z: 1280 },
         landmarkGlb: 'place_lane_beacon',
       },
+      { id: 'poi_hyperion_kerf_log', pos: { x: 520, z: -160 }, landmarkGlb: 'place_comms_array' },
+      { id: 'poi_hyperion_core_claim', pos: { x: -950, z: 880 }, landmarkGlb: 'place_ore_bulk_container' },
     ],
   },
   zones: [
@@ -562,6 +596,21 @@ const REGION_ORCUS = freezeRegion({
         } },
       { id: 'poi_orcus_vault', type: 'cache', name: 'Shadow Vault', hidden: true },
       { id: 'poi_orcus_plinth', type: 'beacon', name: 'Shadow Plinth', factionId: 'faction_vael' },
+      // The shelf ping: one lamp-post archive mast in the shadow still answers a scan,
+      // and its index card reads off-shelf to an annex stash east of the research zone.
+      {
+        id: 'poi_orcus_shelf_ping', type: 'anomaly', name: 'Shelf Ping',
+        requiresActiveScan: true, manualInvestigation: true,
+        scannerSignalKind: 'archive', scannerSignalPriority: 96,
+        discoveryPlate: {
+          title: 'The Shelf Ping',
+          body: 'One lamp post in the dim library still checks out books. Its card reads off-shelf — an annex the Shadow filed east of the research dock and never collected.',
+        },
+      },
+      {
+        id: 'poi_orcus_annex', type: 'cache', name: 'Annex Stash', hidden: true,
+        contents: { commodityId: 'cmdty_art', amount: 1 },
+      },
     ],
   },
   anchors: {
@@ -597,6 +646,8 @@ const REGION_ORCUS = freezeRegion({
         pos: { x: 980, z: -540 },
         landmarkGlb: 'place_nav_buoy',
       },
+      { id: 'poi_orcus_shelf_ping', pos: { x: -850, z: -350 }, landmarkGlb: 'place_worklight_tower' },
+      { id: 'poi_orcus_annex', pos: { x: 1350, z: 180 }, landmarkGlb: 'place_cargo_pod_standard' },
     ],
   },
   zones: [

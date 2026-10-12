@@ -138,6 +138,28 @@ export const EAST_SECTORS = Object.freeze([
         name: 'Shoal Cache',
         hidden: true,
       }),
+      // The ice line: a course beacon on the sled channel still logging runs — its last
+      // logged line names a drift hold east of the shoal the cutter never went back for.
+      Object.freeze({
+        id: 'poi_nereid_ice_line',
+        type: 'anomaly',
+        name: 'Ice Line Signal',
+        requiresActiveScan: true,
+        manualInvestigation: true,
+        scannerSignalKind: 'salvage',
+        scannerSignalPriority: 96,
+        discoveryPlate: Object.freeze({
+          title: 'The Ice Line',
+          body: 'A course beacon still logging sled runs on the channel. Its last line reads off the manifest — a drift hold east of the shoal the sled crews marked and never went back for.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_nereid_drift_hold',
+        type: 'cache',
+        name: 'Drift Hold',
+        hidden: true,
+        contents: Object.freeze({ commodityId: 'cmdty_ore_copper', amount: 4 }),
+      }),
     ]),
   }),
 
@@ -214,6 +236,29 @@ export const EAST_SECTORS = Object.freeze([
         id: 'poi_proteus_buoy',
         type: 'beacon',
         name: 'Well Range Buoy',
+      }),
+      // The well ping: a sounding mast on the well mouth still returning the den's
+      // private echo — its latest return maps a stash the den filed south-west.
+      Object.freeze({
+        id: 'poi_proteus_well_ping',
+        type: 'anomaly',
+        name: 'Well Ping',
+        requiresActiveScan: true,
+        manualInvestigation: true,
+        scannerSignalKind: 'archive',
+        scannerSignalPriority: 96,
+        discoveryPlate: Object.freeze({
+          title: 'The Well Ping',
+          body: 'A sounding mast on the well mouth, still returning the den\'s private echo. The latest return is heavier than the floor explains — a stash south-west of the den the Quiet filed and never lifted.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_proteus_den_stash',
+        type: 'cache',
+        name: 'Den Stash',
+        hidden: true,
+        factionId: 'faction_quiet',
+        contents: Object.freeze({ commodityId: 'cmdty_stolen_goods', amount: 2 }),
       }),
     ]),
   }),
@@ -311,6 +356,28 @@ export const EAST_SECTORS = Object.freeze([
           body: 'A research platform in the Archive’s colors, set down in the Wake where the instruments disagree with one another. Its signal slips in and out of lock — a lab logging something it cannot show. Triangulate before you close range.',
         }),
       }),
+      // The wake log: a kite-line recorder still tallying what the glow band carried off
+      // the lane — the last entry names an offering cache east of the anomaly rim.
+      Object.freeze({
+        id: 'poi_triton_wake_log',
+        type: 'anomaly',
+        name: 'Wake Log Signal',
+        requiresActiveScan: true,
+        manualInvestigation: true,
+        scannerSignalKind: 'salvage',
+        scannerSignalPriority: 96,
+        discoveryPlate: Object.freeze({
+          title: 'The Wake Log',
+          body: 'A kite-line recorder still tallying what the glow band carried off the lane. Its last entry is heavier than tithe plates — an offering cache east of the anomaly rim that nobody came back to collect.',
+        }),
+      }),
+      Object.freeze({
+        id: 'poi_triton_offering',
+        type: 'cache',
+        name: 'Offering Cache',
+        hidden: true,
+        contents: Object.freeze({ commodityId: 'cmdty_art', amount: 1 }),
+      }),
     ]),
   }),
 ]);
@@ -377,6 +444,16 @@ export const EAST_ANCHORS = Object.freeze({
         pos: Object.freeze({ x: -1420, z: -280 }),
         landmarkGlb: 'place_debris_chunk',
       }),
+      Object.freeze({
+        id: 'poi_nereid_ice_line',
+        pos: Object.freeze({ x: 280, z: 120 }),
+        landmarkGlb: 'place_transponder_gate',
+      }),
+      Object.freeze({
+        id: 'poi_nereid_drift_hold',
+        pos: Object.freeze({ x: 1480, z: -520 }),
+        landmarkGlb: 'place_ore_bulk_container',
+      }),
     ]),
   }),
 
@@ -435,6 +512,16 @@ export const EAST_ANCHORS = Object.freeze({
         id: 'poi_proteus_buoy',
         pos: Object.freeze({ x: 320, z: -980 }),
         landmarkGlb: 'place_lane_beacon',
+      }),
+      Object.freeze({
+        id: 'poi_proteus_well_ping',
+        pos: Object.freeze({ x: 320, z: -180 }),
+        landmarkGlb: 'place_comms_array',
+      }),
+      Object.freeze({
+        id: 'poi_proteus_den_stash',
+        pos: Object.freeze({ x: -1020, z: -780 }),
+        landmarkGlb: 'place_dead_hulk',
       }),
     ]),
   }),
@@ -495,6 +582,21 @@ export const EAST_ANCHORS = Object.freeze({
         pos: Object.freeze({ x: -1700, z: 1500 }),
         landmarkGlb: 'place_asteroid_seamed',
         landmark: true,
+      }),
+      Object.freeze({
+        id: 'poi_triton_field_lab',
+        pos: Object.freeze({ x: 1600, z: -700 }),
+        landmarkGlb: 'place_observation_blister',
+      }),
+      Object.freeze({
+        id: 'poi_triton_wake_log',
+        pos: Object.freeze({ x: -220, z: -420 }),
+        landmarkGlb: 'place_sensor_mast',
+      }),
+      Object.freeze({
+        id: 'poi_triton_offering',
+        pos: Object.freeze({ x: 1520, z: 300 }),
+        landmarkGlb: 'place_cargo_pod_standard',
       }),
     ]),
   }),
