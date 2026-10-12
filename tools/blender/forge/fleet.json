@@ -448,6 +448,83 @@
       "part_id": "place_landmark_skerris_throne",
       "new_place": true
     },
+    "place_landmark_beacon_spire": {
+      "layout": "place",
+      "file": "place_landmark_beacon_spire",
+      "asset_id": "SF_PLACE_LANDMARK_BEACON_SPIRE",
+      "part_id": "place_landmark_beacon_spire",
+      "new_place": true
+    },
+    "place_landmark_veil_obelisk": {
+      "layout": "place",
+      "file": "place_landmark_veil_obelisk",
+      "asset_id": "SF_PLACE_LANDMARK_VEIL_OBELISK",
+      "part_id": "place_landmark_veil_obelisk",
+      "new_place": true
+    },
+    "place_landmark_pit_anchor": {
+      "layout": "place",
+      "file": "place_landmark_pit_anchor",
+      "asset_id": "SF_PLACE_LANDMARK_PIT_ANCHOR",
+      "part_id": "place_landmark_pit_anchor",
+      "new_place": true
+    },
+    "place_landmark_vault_maw": {
+      "layout": "place",
+      "file": "place_landmark_vault_maw",
+      "asset_id": "SF_PLACE_LANDMARK_VAULT_MAW",
+      "part_id": "place_landmark_vault_maw",
+      "new_place": true
+    },
+    "place_landmark_tower_crown": {
+      "layout": "place",
+      "file": "place_landmark_tower_crown",
+      "asset_id": "SF_PLACE_LANDMARK_TOWER_CROWN",
+      "part_id": "place_landmark_tower_crown",
+      "new_place": true
+    },
+    "place_landmark_crystal_spire": {
+      "layout": "place",
+      "file": "place_landmark_crystal_spire",
+      "asset_id": "SF_PLACE_LANDMARK_CRYSTAL_SPIRE",
+      "part_id": "place_landmark_crystal_spire",
+      "new_place": true
+    },
+    "place_landmark_cathedral_wreck_ii": {
+      "layout": "place",
+      "file": "place_landmark_cathedral_wreck_ii",
+      "asset_id": "SF_PLACE_LANDMARK_CATHEDRAL_WRECK_II",
+      "part_id": "place_landmark_cathedral_wreck_ii",
+      "new_place": true
+    },
+    "place_landmark_billboard_array": {
+      "layout": "place",
+      "file": "place_landmark_billboard_array",
+      "asset_id": "SF_PLACE_LANDMARK_BILLBOARD_ARRAY",
+      "part_id": "place_landmark_billboard_array",
+      "new_place": true
+    },
+    "place_gate_concord": {
+      "layout": "place",
+      "file": "place_gate_concord",
+      "asset_id": "SF_PLACE_GATE_CONCORD",
+      "part_id": "place_gate_concord",
+      "new_place": true
+    },
+    "place_gate_merchant": {
+      "layout": "place",
+      "file": "place_gate_merchant",
+      "asset_id": "SF_PLACE_GATE_MERCHANT",
+      "part_id": "place_gate_merchant",
+      "new_place": true
+    },
+    "place_gate_reach": {
+      "layout": "place",
+      "file": "place_gate_reach",
+      "asset_id": "SF_PLACE_GATE_REACH",
+      "part_id": "place_gate_reach",
+      "new_place": true
+    },
     "place_station_trade_hub": {
       "layout": "place",
       "file": "place_station_trade_hub",
