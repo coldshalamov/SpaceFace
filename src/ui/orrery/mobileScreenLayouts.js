@@ -101,26 +101,75 @@ export const MOBILE_SCREEN_CSS = `
     min-height:360px !important; height:360px !important; grid-template-rows:auto minmax(220px,1fr) !important; order:4; }
   ${S} > .k-foot { order:5; position:relative !important; bottom:auto; z-index:5; padding:8px 0 !important; background:rgb(5 7 10 / .96); }
 
-  /* Berth: no desktop minimum widths; the vitals wrap and the tab starts after the header. */
-  ${B} { display:flex !important; flex-direction:column; gap:18px !important; overflow-y:auto !important; }
+  /* Berth phone: sticky identity + vitals + destination foot; the tab body is the one scroll. */
+  ${B} { display:flex !important; flex-direction:column; gap:10px !important; overflow:hidden !important;
+    height:100% !important; max-height:100dvh !important; }
   ${B} header.sxb-berth { display:flex !important; flex-direction:column; align-items:stretch !important;
-    gap:14px !important; padding:0 !important; min-width:0 !important; flex:none; }
-  ${B} .sxb-crown { width:100% !important; min-width:0 !important; max-width:100% !important; }
+    gap:8px !important; padding:0 !important; min-width:0 !important; flex:0 0 auto !important; max-height:none; }
+  ${B} .so-station-title { width:100% !important; max-width:100% !important; }
+  ${B} .sxb-berth__name, ${B} .sxb-berth__name.k-t-hero, ${B} .sxb-berth__name.k-t-title,
+  ${B} .sxb-berth__name.fh-hero, ${B} .sxb-berth__name.fh-title {
+    font-size:clamp(22px, 7vw, 30px) !important; line-height:1.05 !important; }
+  ${B} .so-command-trigger { display:none !important; }
+  /* Mechanic note is flavor on a short glass — one truncated line under the title, never a block. */
+  ${B} .sxb-tape { order:2; max-width:100% !important; min-width:0 !important; margin:0 !important;
+    display:flex !important; flex-wrap:nowrap !important; gap:8px !important; align-items:baseline !important; }
+  ${B} .sxb-tape .sxb-event:not(.sxb-berth__mechanic), ${B} .sxb-tape .sxb-berth__ledger { display:none !important; }
+  ${B} .sxb-tape .sxb-berth__mechanic { display:flex !important; flex-wrap:nowrap !important; align-items:baseline !important;
+    gap:6px !important; min-width:0 !important; max-width:100% !important; overflow:hidden !important;
+    margin:0 !important; padding:0 !important; background:none !important; border:0 !important; }
+  ${B} .sxb-berth__mechanic .sxb-event__badge, ${B} .sxb-berth__mechanic .sxb-event__title {
+    font-size:10px !important; letter-spacing:.14em !important; white-space:nowrap !important; flex:none !important; }
+  ${B} .sxb-berth__mechanic .sxb-event__body { font-size:11px !important; line-height:1.2 !important; margin:0 !important;
+    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; min-width:0 !important;
+    opacity:.72; }
+  /* Next-step handoff sits after the vitals so the readings stay under the title. */
+  ${B} .sxb-handoff { order:4; max-width:100% !important; min-width:0 !important; margin:0 !important;
+    padding:2px 0 0 !important; gap:4px 12px !important; flex-wrap:nowrap !important; align-items:baseline !important;
+    overflow:hidden !important; }
+  ${B} .sxb-next { flex:1 1 auto !important; min-width:0 !important; flex-wrap:nowrap !important; gap:6px 8px !important;
+    align-items:baseline !important; overflow:hidden !important; }
+  ${B} .sxb-next__t { font-size:11px !important; letter-spacing:.12em !important; white-space:nowrap !important; flex:none !important; }
+  ${B} .sxb-next__w { font-size:11px !important; line-height:1.25 !important; padding-left:0 !important;
+    white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; min-width:0 !important; }
+  ${B} .sxb-next__n { display:none !important; }
+  ${B} .sxb-next__x { min-height:0 !important; height:auto !important; padding:2px 0 !important; font-size:10px !important;
+    letter-spacing:.12em !important; flex:none !important; }
+  /* Crown: purse on one line with the title band; vitals a tight 3+2 grid of small dials. */
+  ${B} .sxb-crown { order:3; width:100% !important; min-width:0 !important; max-width:100% !important;
+    display:flex !important; flex-direction:column; gap:4px !important; margin:0 !important; }
+  ${B} .sxb-purse__value { font-size:26px !important; }
   ${B} .sxb-vitals { display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important;
-    gap:12px 8px !important; justify-content:start; }
-  ${B} .sxb-vital { min-width:0 !important; width:100% !important; max-width:100%; }
-  ${B} .sxb-vital [data-vital-act] { flex-wrap:wrap; justify-content:center; white-space:normal; letter-spacing:.05em !important; }
+    gap:4px 4px !important; justify-content:start; margin:0 !important; max-width:none !important; }
+  ${B} .sxb-vital { min-width:0 !important; width:auto !important; max-width:100%; align-items:center !important;
+    grid-column:auto !important; grid-row:auto !important; }
+  ${B} :is(.sxb-vital__track, .sxb-vital > .orr-vdial-bare, .orr-vdial) { width:64px !important; height:42px !important; }
+  ${B} .sxb-vital__value { top:10px !important; }
+  ${B} .sxb-vital__value .orr-vnum { font-size:13px !important; }
+  ${B} .sxb-vital__value .orr-vden { font-size:10px !important; letter-spacing:.02em !important; }
+  ${B} .sxb-vital__value .orr-vnum.is-word { font-size:10px !important; letter-spacing:.08em !important; margin-top:0 !important; }
+  ${B} .sxb-vital__label { font-size:10px !important; letter-spacing:.14em !important; }
+  ${B} .sxb-vital__acts { margin-top:2px !important; gap:0 !important; }
+  /* Phone a11y floor is 44px for chrome verbs; instrument acts stay dense so the crown fits. */
+  ${B} .sxb-vital [data-vital-act] { min-height:0 !important; min-width:0 !important; height:auto !important;
+    padding:1px 0 !important; font-size:10px !important; letter-spacing:.04em !important;
+    flex-wrap:wrap; justify-content:center; white-space:normal; }
+  ${B} .sxb-vital:has(.sxb-vital__value .orr-vnum.is-word) > .orr-vdial-bare { display:none !important; }
+  ${B} .sxb-vital:has(.sxb-vital__value .orr-vnum.is-word) .sxb-vital__value { position:static !important; margin-top:2px !important; }
   ${B} :is(.sxb-berth, .sxb-handoff, .sxb-mechanic, .sxb-next) { max-width:100% !important; min-width:0 !important; }
-  ${B} .sxb-next { flex-wrap:wrap !important; }
-  ${B} .dp-frame__body--station { flex:none !important; height:auto !important; min-height:0 !important; overflow:visible !important; }
-  ${B} .sx-screen__body { height:auto !important; max-height:none !important; overflow:visible !important; }
+  /* Tab body owns the remaining glass and is the only scroll. */
+  ${B} .dp-frame__body--station, ${B} .sx-screen__body, ${B} .dp-frame__body {
+    flex:1 1 0 !important; min-height:0 !important; height:auto !important; max-height:none !important;
+    overflow-x:hidden !important; overflow-y:auto !important; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+  /* systems/mobile sets min-height:60vh on the body — that shoves the foot off a short glass */
+  ${B} .dp-frame__body--station { min-height:0 !important; flex:1 1 0 !important; }
   ${B} :is(.sx-ind, .sx-ct, .sx-fac, .sx-bar, .sx-ledger, .sx-dossier) { display:flex !important;
-    flex-direction:column; gap:18px !important; min-width:0 !important; height:auto !important; overflow:visible !important; }
+    flex-direction:column; gap:14px !important; min-width:0 !important; height:auto !important; overflow:visible !important; }
   ${B} :is(.sx-ind, .sx-ct, .sx-fac, .sx-bar, .sx-ledger, .sx-dossier) > * { min-width:0 !important;
     max-width:100% !important; height:auto !important; max-height:none !important; flex:none; }
   ${B} .sx-fab-head { display:flex !important; flex-direction:column; gap:8px !important; }
   ${B} .sx-fab-head > * { position:relative !important; inset:auto !important; grid-area:auto !important; text-align:left !important; }
-  ${B} .sx-fab-head__name { font-size:26px !important; }
+  ${B} .sx-fab-head__name { font-size:22px !important; }
   ${B} .sx-fab { display:flex !important; flex-direction:column; gap:12px !important; height:auto !important; }
   ${B} .sx-fab > * { position:relative !important; inset:auto !important; transform:none !important;
     grid-area:auto !important; width:100% !important; max-width:100% !important; min-width:0 !important; }
@@ -128,17 +177,44 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .orr-chain__verb > * { max-width:100%; white-space:normal !important; overflow-wrap:anywhere;
     font-size:12px !important; letter-spacing:.08em !important; }
   ${B} :is(.sx-fac__stage, .sx-bar__stage, .sx-ct__stage) { grid-template-columns:minmax(0,1fr) !important; }
-  ${B} footer.sxb-ops { position:relative !important; bottom:auto !important; flex:none !important; }
-  ${M}, ${M} .sx-mkt__stage { display:flex !important; flex-direction:column; gap:20px !important; height:auto !important; overflow:visible !important; }
+  /* Destination foot stays on glass: wrap the seven tabs, keep Undock reachable. */
+  ${B} footer.sxb-ops { position:relative !important; bottom:auto !important; flex:0 0 auto !important;
+    flex-wrap:wrap !important; gap:8px 10px !important; margin:0 !important; padding:8px 0 4px !important;
+    background:linear-gradient(180deg, rgb(5 7 10 / 0), rgb(5 7 10 / .92) 28%, rgb(5 7 10 / .98)) !important;
+    z-index:5; }
+  ${B} .sxb-ops .of-facility-rail { max-width:100% !important; flex:1 1 100% !important; min-width:0 !important;
+    width:100% !important; overflow:visible !important; overflow-x:visible !important; height:auto !important; }
+  ${B} .sxb-ops .of-facility-rail .sxb-ops__dock { display:block !important; width:100% !important; min-width:0 !important;
+    max-width:100% !important; }
+  ${B} .sxb-ops .of-facility-rail .sx-dock { width:100% !important; max-width:100% !important; flex-wrap:wrap !important; }
+  ${B} .sxb-ops .sx-dock__group--nav { display:flex !important; flex-wrap:wrap !important; gap:0 8px !important;
+    padding-left:0 !important; max-width:100% !important; width:100% !important; }
+  ${B} .sxb-ops .sx-tile { min-height:32px !important; padding:2px 0 !important; }
+  ${B} .sxb-ops .sx-tile__label { letter-spacing:.08em !important; font-size:10px !important; }
+  ${B} .sxb-ops .orr-stationrow__rule { display:none !important; }
+  ${B} .sxb-ops .sx-comms { margin-left:0 !important; margin-top:0 !important; }
+  ${B} .sxb-ops .sxb-launch-seat { margin-left:auto !important; margin-top:0 !important; }
+  ${B} .sxb-launch { gap:8px !important; padding:4px 2px 6px !important; min-height:40px !important; }
+  ${B} .sxb-launch__label { font-size:15px !important; letter-spacing:.08em !important; }
+  ${M}, ${M} .sx-mkt__stage { display:flex !important; flex-direction:column; gap:12px !important; height:auto !important; overflow:visible !important; }
   ${M} :is(.sx-mkt__hang, .sx-mkt__analysis, .sx-mkt__console, .sx-mkt__decision, .sx-mkt-browser, .sx-mkt-browser__rail) {
     position:relative !important; inset:auto !important; width:100% !important; max-width:100% !important;
     min-width:0 !important; height:auto !important; max-height:none !important; overflow:visible !important; mask-image:none !important; }
-  ${M} .orr-mkt-find { position:relative !important; inset:auto !important; width:100% !important; margin:8px 0 !important; }
+  ${M} .orr-mkt-find { position:relative !important; inset:auto !important; width:100% !important; margin:6px 0 !important; }
   ${M} .sx-mkt-browser__mode { padding-right:0 !important; flex-wrap:wrap; gap:8px; }
-  ${M} .sx-mkt-browser__filters { gap:6px 14px !important; }
+  ${M} .sx-mkt-browser__filters { gap:8px 12px !important; display:flex !important; flex-wrap:wrap !important; }
   ${M} .sx-mkt-table { width:100% !important; font-size:12px; }
   ${M} .sx-mkt-table :is(td,th) { padding-left:4px !important; padding-right:4px !important; }
   ${M} .sx-mkt-table .k-row__name { white-space:normal !important; overflow-wrap:anywhere; }
+  /* Desktop market dial/chart geometry is absolute; on phone keep a short stack so Quantity does not cover the name. */
+  ${M} .sx-mkt__console { display:flex !important; flex-direction:column; gap:8px !important; min-height:0 !important; }
+  ${M} .sx-mkt__console > * { position:relative !important; inset:auto !important; left:auto !important; right:auto !important;
+    top:auto !important; bottom:auto !important; transform:none !important; width:100% !important; max-width:100% !important; }
+  ${M} .sx-mkt__console svg { max-width:100% !important; height:auto !important; }
+  ${M} .orr-mkt-spread { position:relative !important; right:auto !important; width:auto !important; margin:4px 0 !important; }
+  ${M} .orr-mkt-holdarc { display:none !important; }
+  ${M} .sx-mkt__decision { display:none !important; }
+  ${M} .sx-mkt-browser { max-height:none !important; overflow:visible !important; }
 
   /* Shared ship instrument: keep the ship, stats, systems and choices in a reachable stack. */
   ${W} { display:flex !important; flex-direction:column; gap:16px !important; width:100% !important; min-width:0 !important;
