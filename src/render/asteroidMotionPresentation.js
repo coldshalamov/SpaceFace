@@ -118,8 +118,9 @@ export function resolveYieldSplitPattern(parentId, chunkId) {
 // One lazily-built THREE.Group per worked rock, childed to the entity root (NOT to the body:
 // the pooled instance leaf renders via InstancedMesh and its visible flag is off, which would
 // hide children). The rig copies the body's transform each frame so cracks tumble with the rock.
-// Each vein is a jagged ribbon sphere-projected at ~0.92R — embedded, so the skin occludes edges
-// and the glow reads as light escaping through the fissure, never a sticker on top.
+// Each vein is a short ribbon on the unit sphere. The rig copies the body's scale (entity.radius),
+// so positions stay in that unit space. Authoring them at world radius used to multiply by R
+// twice: the bounding sphere then covered the frame and hid the pilot.
 
 const VEIN_STATIONS = 7;
 const VEIN_EMBER = 0xff9a3c;
@@ -158,30 +159,31 @@ function pristineScaleFor(body, entity) {
   return p;
 }
 
-function buildVeinStrip(seed, radius) {
-  const R = Math.max(2, Number.isFinite(radius) ? radius : 6);
+function buildVeinStrip(seed) {
+  // Unit-sphere space. A chord through the origin, then normalize(), lands on opposite
+  // sides of the rock; copying body.scale on top of world-unit positions made that sphere
+  // R×R and the harness counted it as most of the screen.
   const dirAngle = ((seed & 0xffff) / 0xffff) * Math.PI * 2;
   const tilt = (((seed >>> 16) & 0xff) / 255 - 0.5) * 1.7;
   const axis = new THREE.Vector3(-Math.sin(dirAngle), 0, Math.cos(dirAngle));
   const dir = new THREE.Vector3(Math.cos(dirAngle), 0, Math.sin(dirAngle)).applyAxisAngle(axis, tilt);
   const nrm = new THREE.Vector3(0, 1, 0).applyAxisAngle(axis, tilt);
   const pdir = new THREE.Vector3().crossVectors(nrm, dir).normalize();
-  // Short local crack. A fissure wrapped across the whole rock has a bounding sphere the
-  // size of the rock, and the harness counts that sphere as additive coverage — one worked
-  // chunk then hides the pilot. The crack still reads; it does not sheet the frame.
-  const span = R * 0.28;
-  const lift = ((((seed >>> 8) & 0xff) / 255) - 0.5) * R * 0.22;
-  const halfW = Math.max(0.1, R * 0.022);
+  const anchor = dir.clone().normalize();
+  const tangent = pdir.clone();
+  const bitangent = new THREE.Vector3().crossVectors(anchor, tangent).normalize();
+  const span = 0.16;
+  const lift = ((((seed >>> 8) & 0xff) / 255) - 0.5) * 0.03;
+  const halfW = 0.012;
 
   const centers = [];
   for (let i = 0; i < VEIN_STATIONS; i++) {
     const s = -1 + (2 * i) / (VEIN_STATIONS - 1);
     const jitter = (((Math.imul(seed >>> 8, i + 11) >>> 0) & 0xff) / 255 - 0.5) * span * 0.3;
-    const c = new THREE.Vector3()
-      .addScaledVector(dir, s * span)
-      .addScaledVector(pdir, jitter)
-      .addScaledVector(nrm, lift);
-    c.normalize().multiplyScalar(R * 0.92); // sphere-project: the crack lives IN the surface
+    const c = anchor.clone()
+      .addScaledVector(tangent, s * span)
+      .addScaledVector(bitangent, jitter + lift);
+    c.normalize().multiplyScalar(0.94); // on the skin, in the body's unit space
     centers.push(c);
   }
   const positions = new Float32Array(VEIN_STATIONS * 2 * 3);
@@ -216,12 +218,11 @@ function buildVeinStrip(seed, radius) {
 
 function ensureVeinRig(rec, mesh, entity) {
   if (rec.veinRig && rec.veinRig.parent === mesh) return rec.veinRig;
-  const radius = Math.max(2, Number.isFinite(entity && entity.radius) ? entity.radius : 6);
   const rig = new THREE.Group();
   rig.name = 'sf-fracture-veins';
   const base = hashId(entity && entity.id);
   for (let i = 0; i < FRACTURE_VEIN_COUNT; i++) {
-    const geo = buildVeinStrip((base ^ Math.imul(i + 1, 0x85ebca6b)) >>> 0, radius);
+    const geo = buildVeinStrip((base ^ Math.imul(i + 1, 0x85ebca6b)) >>> 0);
     const mat = new THREE.MeshBasicMaterial({
       color: VEIN_EMBER,
       transparent: true,

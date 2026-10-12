@@ -221,7 +221,7 @@ import {
 } from './persistentSubmitLanes.js';
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
 import { setShieldShellClock, shieldShellUniforms } from './weapons/shieldShell.js';
-import { holdPresentedHarnessKey, machineAuthoredAssetState, projectedWidthPx } from './lod.js';
+import { projectedWidthPx } from './lod.js';
 import { resolveWebGlContextAttributes, resolveWebGlRendererFlags } from './presentPath.js';
 import {
   createOpeningAdmissionCohort,
@@ -5275,7 +5275,7 @@ function kickAuthoredBoundaryUpgrade(owner, entity, residencyRole, runwayEnv = n
   const boundary = owner && owner._meshes && owner._meshes.get(entity.id);
   const boundaryData = boundary && boundary.userData;
   if (boundaryData && typeof boundaryData.requestAuthoredUpgrade === 'function'
-      && machineAuthoredAssetState(boundaryData) === 'awaiting-authored-admission') {
+      && boundaryData.authoredAssetState === 'awaiting-authored-admission') {
     // Same 'visible' class the spawn decode kick posts: a boundary job at the glass must not
     // decode at deadline FIFO behind wave-hull warms — its stand-in is the hole in the frame.
     const onGlass = entityIsOnReadableGlass(entity, state);
@@ -15264,7 +15264,7 @@ export const render = {
               if ((++sweepVisited % 512) === 0) yield;
               const data = mesh && mesh.userData;
               if (!data) continue;
-              if (machineAuthoredAssetState(data) === 'awaiting-authored-admission'
+              if (data.authoredAssetState === 'awaiting-authored-admission'
                   && typeof data.requestAuthoredUpgrade === 'function') {
                 try {
                   requestAuthoredUpgrade(mesh, renderer, scene, {
@@ -15273,7 +15273,7 @@ export const render = {
                   });
                 } catch (_) { /* a refused request leaves the live trigger armed */ }
               }
-              if (loadsNow && machineAuthoredAssetState(data) === 'loading') {
+              if (loadsNow && data.authoredAssetState === 'loading') {
                 // Staging-sector dressing the arena frame provably cannot show (the same glass
                 // test the survival admission defer uses) buys the first frame nothing — the
                 // settle once held 6 s on Helios trade-hub/military station fallbacks.
@@ -26910,14 +26910,6 @@ export const render = {
         // real screen. The presented pose inside the live glass extents wins over the runway deny.
         const glassRadius = Math.max(lodRadius, world.radii[slot] || 0);
         const onLiveGlass = rootOnLiveGlass(bounds, liveViewFrustum, mesh.position, glassRadius);
-        if (!isPlayer && userData.lod) {
-          const lodBeforeHold = userData._appliedLodLevel;
-          holdPresentedHarnessKey(userData, this.state && this.state.simTime, onLiveGlass === true);
-          if (userData.updateLod && lodBeforeHold && userData._appliedLodLevel && userData._appliedLodLevel !== lodBeforeHold) {
-            userData.updateLod(userData._appliedLodLevel);
-            lodLevel = userData._appliedLodLevel;
-          }
-        }
         if (entity && entity.type === 'ship' && !isPlayer
             && this.state.run && this.state.run.kind === 'survival') {
           syncSwarmThreatPlate(mesh, entity, this.cam && this.cam.obj);

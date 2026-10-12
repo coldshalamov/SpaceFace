@@ -79,7 +79,7 @@ import { attachRetroMounts } from './thruster/retroMounts.js';
 import { attachPlaceHlod, attachStationHlod } from './hlod.js';
 import { freezeStaticChildMatrices, freezeStaticChildMatricesSteps, freezeStaticTransformRootMarked } from './staticChildMatrices.js';
 import { optimizeStaticBatchesForRoot } from './visualFactory.js';
-import { attachLodState, notePresentedAdmissionRefused } from './lod.js';
+import { attachLodState } from './lod.js';
 import {
   canInstallWholeShipLodFamily,
   lodFileFromFamily,
@@ -2800,10 +2800,9 @@ function scheduleRefusalTriggerRearm(status, arm) {
 
 function restoreBoundaryAfterPreJobRefusal(boundary, status) {
   delete boundary.userData.authoredUpgradePromise;
-  // The on-screen harness hold freezes the public label and parks `loading` on
-  // `_admissionAssetState`. A refusal has to move that parked label too, or the
-  // next frame writes `loading` back and the kick never sees the stand-in.
-  notePresentedAdmissionRefused(boundary.userData);
+  if (boundary.userData.authoredAssetState === 'loading') {
+    boundary.userData.authoredAssetState = 'awaiting-authored-admission';
+  }
   if (status === 'regrade-evict-cooloff') {
     boundary.userData.regradeRestoreCount = (boundary.userData.regradeRestoreCount | 0) + 1;
     boundary.userData.regradeRestoreLastAt = monotonicNow();
