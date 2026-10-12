@@ -2559,29 +2559,36 @@ const _swarmThreatMarks = new WeakMap();
  * Hostile swarm hulls are dark metal on a dark field. A filled disk the size of the
  * hull painted the ship out — enemies read as red circles. This is a camera-facing
  * crimson rim on the silhouette: the center stays open so the hull shows through.
- * Outer radius is entity.radius (floor 2). MeshBasic with normal blending, so
- * the rim is a mark on the silhouette rather than a glow that washes the hull
- * out. depthWrite is off so the rim does not occlude the ship. Created once
- * per boundary; the per-frame work is a quaternion write.
+ * Default outer radius is entity.radius (floor 2). A cohort member may set
+ * entity.data.swarmMarkRadius to wear a wider bracket; hulls without that field
+ * stay on the silhouette. A heading wedge points along the hull nose (+X: the
+ * renderer yaws with mesh.rotation.y = -entity.rot). MeshBasic with normal
+ * blending, so the mark is paint rather than a glow. depthWrite is off.
+ * depthTest is off: a tested disc at the hull origin is hidden by the hull, which
+ * is why the foundry wasp read as another rock. Created once per boundary.
  */
 export function syncSwarmThreatPlate(mesh, entity, camera) {
   if (!mesh || typeof mesh.getObjectByName !== 'function') return;
   if (!entity || entity.type !== 'ship' || entity.team == null || entity.team === 0 || entity.team === 2) {
     const marks = _swarmThreatMarks.get(mesh);
-    if (marks) { marks.plate.visible = false; marks.core.visible = false; }
+    if (marks) {
+      marks.plate.visible = false;
+      marks.core.visible = false;
+      if (marks.chevron) marks.chevron.visible = false;
+    }
     return;
   }
   let plate = mesh.getObjectByName('sf-swarm-threat-plate');
   if (!plate) {
-    // Unit ring. 0.84–1.0 leaves the middle of the hull open and keeps the
-    // stroke on the silhouette. Scaled by entity.radius below.
+    // Unit ring. 0.70–1.0 is a stroke wide enough to read and still leaves the
+    // middle of the hull open. The inner hoop below stays inside 0.62.
     plate = new THREE.Mesh(
-      getGeometry('swarm:threat-ring', () => new THREE.RingGeometry(0.84, 1, 40)),
-      getMaterial('swarm:threat-ring', () => new THREE.MeshBasicMaterial({
+      getGeometry('swarm:threat-ring-070', () => new THREE.RingGeometry(0.70, 1, 40)),
+      getMaterial('swarm:threat-ring-070', () => new THREE.MeshBasicMaterial({
         color: 0xff1a3a,
         side: THREE.DoubleSide,
         depthWrite: false,
-        depthTest: true,
+        depthTest: false,
         fog: false,
         toneMapped: false,
       })),
@@ -2605,22 +2612,40 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     core.frustumCulled = true;
     mesh.add(core);
   }
+  // Heading wedge. ConeGeometry's tip is +Y. Hull noses are +X (visualFactory
+  // contract). rotateZ(-PI/2) sends that tip to local +X. Not camera-facing.
+  let chevron = mesh.getObjectByName('sf-swarm-threat-chevron');
+  if (!chevron) {
+    chevron = new THREE.Mesh(
+      getGeometry('swarm:threat-chevron', () => new THREE.ConeGeometry(0.22, 0.46, 3)),
+      plate.material,
+    );
+    chevron.name = 'sf-swarm-threat-chevron';
+    chevron.renderOrder = 12;
+    chevron.frustumCulled = true;
+    chevron.rotation.z = -Math.PI / 2;
+    mesh.add(chevron);
+  }
   // Local scale is divided by the parent so a scaled hull cannot inflate the rim
-  // past the ship. A rim larger than the hull crowds the picture.
-  const worldR = Math.max(2, Number(entity.radius) || 2);
+  // past the ship. A rim larger than the hull crowds the picture, unless the
+  // cohort opted into swarmMarkRadius.
+  const bodyR = Math.max(2, Number(entity.radius) || 2);
+  const markAuth = Number(entity.data && entity.data.swarmMarkRadius);
+  const markR = Number.isFinite(markAuth) && markAuth > bodyR ? markAuth : bodyR;
   mesh.updateWorldMatrix(true, false);
   mesh.getWorldScale(_threatPlateScale);
-  plate.scale.set(
-    worldR / Math.max(1e-4, Math.abs(_threatPlateScale.x)),
-    worldR / Math.max(1e-4, Math.abs(_threatPlateScale.y)),
-    worldR / Math.max(1e-4, Math.abs(_threatPlateScale.z)),
-  );
-  core.scale.copy(plate.scale);
+  const inv = (n) => 1 / Math.max(1e-4, Math.abs(n));
+  plate.scale.set(markR * inv(_threatPlateScale.x), markR * inv(_threatPlateScale.y), markR * inv(_threatPlateScale.z));
+  core.scale.set(bodyR * inv(_threatPlateScale.x), bodyR * inv(_threatPlateScale.y), bodyR * inv(_threatPlateScale.z));
+  chevron.scale.copy(plate.scale);
+  // Base of the wedge sits on the ring's outer edge; the tip points along +X.
+  chevron.position.set(plate.scale.x * (1 + 0.46 / 2), 0, 0);
   const marks = _swarmThreatMarks.get(mesh);
-  if (marks) { marks.plate = plate; marks.core = core; }
-  else _swarmThreatMarks.set(mesh, { plate, core });
+  if (marks) { marks.plate = plate; marks.core = core; marks.chevron = chevron; }
+  else _swarmThreatMarks.set(mesh, { plate, core, chevron });
   plate.visible = true;
   core.visible = true;
+  chevron.visible = true;
   if (camera && camera.quaternion && mesh.quaternion) {
     mesh.getWorldQuaternion(_threatPlateQuat);
     camera.getWorldQuaternion(_threatCameraQuat);

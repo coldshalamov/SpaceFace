@@ -9,11 +9,14 @@ test('Swarm threat marks respect foreground depth, allegiance changes and nested
   const enemy = { type: 'ship', team: 1, radius: 12 };
   syncSwarmThreatPlate(hull, enemy, camera);
   const plate = hull.getObjectByName('sf-swarm-threat-plate'), core = hull.getObjectByName('sf-swarm-threat-core');
-  assert.equal(plate.material.depthTest, true, 'solid foreground hulls occlude the mark');
+  assert.equal(plate.material.depthTest, false, 'a depth-tested disc at the hull origin is hidden by the hull');
+  const chevron = hull.getObjectByName('sf-swarm-threat-chevron');
+  assert.ok(chevron, 'a hostile hull wears a heading wedge');
   assert.equal(plate.material.depthWrite, false, 'the mark cannot occlude authored hull geometry');
   const orientation = new THREE.Quaternion(); plate.getWorldQuaternion(orientation);
   assert.ok(orientation.angleTo(camera.quaternion) < 1e-6, 'parent rotation does not tip the camera-facing rim');
   syncSwarmThreatPlate(hull, { ...enemy, team: 0 }, camera);
   assert.equal(plate.visible, false); assert.equal(core.visible, false);
+  assert.equal(chevron.visible, false);
   syncSwarmThreatPlate(hull, enemy, camera); assert.equal(plate.visible, true);
 });

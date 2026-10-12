@@ -26,7 +26,7 @@ import { mulberry32 } from '../core/rng.js';
 import { MODULES } from './modules.js';
 import { SHIPS } from './ships.js';
 import { SWARM_DRAFT_OFFERS } from './swarmDraft.js';
-import { isSwarmRelevantDef, swarmCatalogOffers, swarmCategoryFor } from './swarmCatalog.js';
+import { isSwarmRelevantDef, swarmCatalogOffers, swarmCategoryFor, swarmFightReason } from './swarmCatalog.js';
 import { SWARM_RULESET } from './swarmMode.js';
 import { WEAPONS } from './weapons.js';
 import { buildSlotList, fits, outfitBudgetForFittings } from '../systems/ships.js';
@@ -360,6 +360,12 @@ function drawRound(eligible, seen, seed, wave, pickCount, round, count, addition
  * is derived by replaying rounds 0..N, so the same seed, pick history and re-roll count always
  * land on the same three cards.
  */
+function swarmOfferBlurb(def, authored) {
+  const card = typeof authored === 'string' ? authored.trim() : '';
+  if (card.length >= 12) return card;
+  return swarmFightReason(def) || card;
+}
+
 export function offerDraft(input) {
   try {
     return offerDraftInner(input);
@@ -421,7 +427,7 @@ function offerDraftInner(input) {
       defId: offer.defId,
       name: def.name,
       verb: offer.verb,
-      blurb: offer.blurb,
+      blurb: src.ruleset === SWARM_RULESET ? swarmOfferBlurb(def, offer.blurb) : offer.blurb,
       kind: offer.kind,
       shape: offer.shape || null,
       // The shelf the card browses under; the screen filters on this instead of re-deriving

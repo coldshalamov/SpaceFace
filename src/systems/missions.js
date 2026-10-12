@@ -1676,6 +1676,7 @@ export const missions = {
   // PER-TICK: TTL decrement, expiry, story-gate checks, stale-target GC.
   // =========================================================================================
   update(dt, state) {
+    this._releaseCampaignNavForSwarm(state);
     this._racingOpponents?.reconcile(state.missions?.active || []);
     this._racingSetPieces?.reconcile(state.missions?.active || []);
     this._adventureSpeedSetPieces?.reconcile();
@@ -4395,6 +4396,11 @@ export const missions = {
   },
 
   _refreshNavigation(options = {}) {
+    // A Crucible swarm boot is a full Helios new game, so the starter contract
+    // ("Recover the 47-A sample") auto-tracks and paints the round HUD. Drop the
+    // tracking while the swarm run is live. The mission stays active for the
+    // campaign; this only clears the marker the HUD reads.
+    if (this._releaseCampaignNavForSwarm(this.state)) return false;
     // Staged first-session rail owns the opening marker while it is actively teaching.
     // Mission/story nav resumes on tutorial:finished (active clears; release refreshes).
     if (this._onboardingOwnsOpeningNav()) {
@@ -12076,6 +12082,22 @@ export const missions = {
     if (gameplay && gameplay.tutorialHints === false) return false;
     const ob = this.state && this.state.onboarding;
     return !ob || (ob.active && !ob.finished) || ob.finished === false;
+  },
+
+  // A swarm run boots a full Helios game, so the starter contract would stay tracked.
+  // Clear the marker the HUD reads. The mission itself stays active.
+  _releaseCampaignNavForSwarm(state = this.state) {
+    const run = state && state.run;
+    if (!run || run.kind !== 'survival' || run.ruleset !== 'swarm') return false;
+    if (!run.phase || run.phase === 'inactive') return false;
+    if (state.ui && state.ui.trackedMissionId) state.ui.trackedMissionId = null;
+    const nav = state.nav;
+    const wp = nav && nav.waypoint;
+    if (wp && wp.kind === 'mission') {
+      nav.waypoint = null;
+      if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('nav:waypoint', null);
+    }
+    return true;
   },
 
   /** True only while the staged tutorial is actively teaching — not the pre-init / unfinished-flag

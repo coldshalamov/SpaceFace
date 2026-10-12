@@ -38,7 +38,7 @@
 
 import { ENVIRONMENT_FAMILIES, environmentSurfaceData, environmentMaterialOf } from '../data/environmentMaterials.js';
 import { mulberry32 } from '../core/rng.js';
-import { swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
+import { swarmPilotHasActed, swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
@@ -621,6 +621,18 @@ export const swarmArena = {
     // B4 — the Hive breathes on the same fixed tick: walls grow, sacs pulse, acid drips.
     if (run.arenaId === HIVE_ARENA_ID) this._hiveTick(state, run);
     this._holdInViewReleases(state);
+    // Wave 1 used to skip the settle. Foundry rocks were already moving inside the
+    // fight radius on the idle seed, and a later round's leftover 12–16 u/s rocks
+    // killed hulls in the first second. Until this wave's pilot acts, keep damping
+    // anything that picks speed back up. Throttled so a live field is not fought
+    // every tick.
+    if (!swarmPilotHasActed(state)) {
+      const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+      if (now >= (this._nextQuietSettle || 0)) {
+        this._nextQuietSettle = now + 0.4;
+        this._settleRoom();
+      }
+    }
     if ((state.simTime || 0) < (this._nextTerrainCheck || 0)) return;
     this._nextTerrainCheck = (state.simTime || 0) + 2;
     const anchor = playerAnchor(state);
@@ -681,7 +693,9 @@ export const swarmArena = {
     this._pressureAlive = liveCohortCount(this.state);
     this._raiseCapacity();
     this._cullWrecks();
-    if (wave > 1) this._settleRoom();
+    // The opener settles too. Leaving wave 1 moving was the round that shot and
+    // shoved the pilot before they touched the stick.
+    this._settleRoom();
     this._topUp(run, wave);
     this._installSlalomWells(run);
     const lesson = payload && payload.plan && payload.plan.openingLesson;
@@ -705,8 +719,9 @@ export const swarmArena = {
     } else if (this._brood) this._brood.spawnWave(this.state);
     // The planning settle runs before the draft; the last round's fields and ricochets keep working
     // through it, so rocks were still sliding 12–16 u/s when the next pack arrived and killed four
-    // hulls in its first second (player-truth m4-active, round 2). Settle again as the round opens.
-    if (Number.isInteger(run.wave) && run.wave > 1) this._settleRoom();
+    // hulls in its first second (player-truth m4-active, round 2). The opener has the same
+    // problem on the first second of a foundry seed. Settle again as every round opens.
+    if (Number.isInteger(run.wave) && run.wave >= 1) this._settleRoom();
     // B4 — the Hive's room lands with the wave: first wall ring standing, sacs pulsing.
     if (run.arenaId === HIVE_ARENA_ID) this._hiveInstall(run);
     this._pressureAlive = liveCohortCount(this.state);

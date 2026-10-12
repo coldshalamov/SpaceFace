@@ -49,6 +49,21 @@ test('a hull the pilot just hit may answer even when it is not the nearest', () 
   assert.equal(held(sys, 11), true, 'the cap still holds: the answering hull takes a slot');
 });
 
+test('an idle swarm round holds every gun until the pilot acts', () => {
+  const sys = world(6);
+  sys.state.run = { kind: 'survival', ruleset: 'swarm', phase: 'active', wave: 1 };
+  sys.state.input = { fire: false, moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false, autoFire: true };
+  sys._shapeSwarmFire();
+  sys.state.simTime += 3;
+  sys._cursor = 30;
+  sys._shapeSwarmFire();
+  assert.deepEqual([10, 11, 12, 13, 14, 15].map((id) => held(sys, id)), [true, true, true, true, true, true]);
+  assert.ok(sys.state.entities.get(10).data.swarmMarkRadius >= 16);
+  sys.state.input.fire = true;
+  sys._shapeSwarmFire();
+  assert.deepEqual([10, 11, 12, 13, 14, 15].map((id) => held(sys, id)), [false, false, true, true, true, true]);
+});
+
 test('later waves clear more guns at once', () => {
   const sys = world(8, { wave: 4 });
   sys._shapeSwarmFire();

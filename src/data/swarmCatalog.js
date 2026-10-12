@@ -98,12 +98,10 @@ function catalogVerbFor(def) {
  */
 export function catalogBlurbFor(def) {
   if (!def || typeof def !== 'object') return '';
-  const sentence = typeof def.sentence === 'string' && def.sentence.trim()
-    ? def.sentence.trim()
-    : null;
   const size = typeof def.size === 'string' ? ` ${def.size}` : '';
-  const base = sentence || `${catalogVerbFor(def)}${size} for the bay that takes it.`;
-  if (!def || def.slotType !== 'weapon') return base;
+  const base = swarmFightReason(def) || `${catalogVerbFor(def)}${size} for the bay that takes it.`;
+  if (def.slotType !== 'weapon') return base;
+  if (/dps|impulse/i.test(base)) return base;
   const dps = Number.isFinite(def.dps) ? def.dps : null;
   const impulse = Number.isFinite(def.impulsePerHit) ? def.impulsePerHit : null;
   if (dps == null && impulse == null) return base;
@@ -160,6 +158,38 @@ export function isSwarmRelevantDef(def) {
   if (SWARM_IRRELEVANT_SLOTS.has(def.slotType)) return false;
   return !SWARM_ADVENTURE_ONLY_IDS.has(def.id);
 }
+
+/**
+ * One line for why this fitting is on a Swarm shelf. Prefers an authored
+ * swarmReason, then the air sentence, then the first sentence of the description.
+ * Adventure-only ids are not stamped: their sentences explain a loop this mode
+ * does not run.
+ */
+export function swarmFightReason(def) {
+  if (!def || typeof def !== 'object') return '';
+  const own = typeof def.swarmReason === 'string' ? def.swarmReason.trim() : '';
+  if (own.length >= 12) return own;
+  const sentence = typeof def.sentence === 'string' ? def.sentence.trim() : '';
+  if (sentence.length >= 12) return sentence;
+  const desc = typeof def.description === 'string' ? def.description.trim() : '';
+  if (desc.length >= 12) {
+    const cut = desc.split(/(?<=[.!?])\s/)[0].trim();
+    if (cut.length >= 12) return cut.length > 160 ? `${cut.slice(0, 157)}…` : cut;
+  }
+  if (def.slotType === 'weapon') return 'A gun for the fight in this room.';
+  const size = typeof def.size === 'string' ? ` ${def.size}` : '';
+  return `${catalogVerbFor(def)}${size} for the bay that takes it.`;
+}
+
+function stampSwarmFightReasons() {
+  for (const def of WEAPONS.concat(MODULES)) {
+    if (!isArmoryStock(def) || !isSwarmRelevantDef(def)) continue;
+    const reason = swarmFightReason(def);
+    if (reason.length < 12) continue;
+    try { def.swarmReason = reason; } catch { /* frozen rows stay readable through swarmFightReason */ }
+  }
+}
+stampSwarmFightReasons();
 
 let allStock = null;
 function everyStockDef() {

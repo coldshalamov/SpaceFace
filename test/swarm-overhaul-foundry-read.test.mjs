@@ -30,7 +30,7 @@ test('a hostile ship wears one opaque threat rim that faces the camera', () => {
   assert.ok(plate && plate.isMesh, 'hostile team 1 mounts a mesh rim');
   assert.equal(plate.isSprite, undefined);
   assert.equal(plate.geometry.type, 'RingGeometry');
-  assert.equal(plate.geometry.parameters.innerRadius, 0.84);
+  assert.equal(plate.geometry.parameters.innerRadius, 0.70);
   assert.equal(plate.geometry.parameters.outerRadius, 1);
   const pos = plate.geometry.attributes.position;
   let minR = Infinity;
@@ -40,7 +40,7 @@ test('a hostile ship wears one opaque threat rim that faces the camera', () => {
     if (r < minR) minR = r;
     if (r > maxR) maxR = r;
   }
-  assert.ok(minR >= 0.84 - 1e-3, `ring reaches into the hull (min ${minR})`);
+  assert.ok(minR >= 0.70 - 1e-3, `ring reaches into the hull (min ${minR})`);
   assert.ok(maxR <= 1 + 1e-3, `ring extends past the silhouette (max ${maxR})`);
   assert.equal(plate.renderOrder, 12);
   assert.equal(plate.frustumCulled, true);
@@ -110,6 +110,38 @@ test('a scaled hull does not inflate the threat plate past the ship', () => {
   // readability background ring (d > 1.2r).
   assert.ok(world.x <= 8 * 1.05);
   assert.ok(world.x >= 8 * 0.99);
+});
+
+test('a cohort mark widens the bracket and a heading wedge points along the hull nose', () => {
+  const mesh = new THREE.Group();
+  // entity.rot = PI/2 is world heading +Z. The renderer applies mesh.rotation.y = -entity.rot.
+  mesh.rotation.y = -Math.PI / 2;
+  const camera = new THREE.Object3D();
+  camera.quaternion.setFromEuler(new THREE.Euler(0.4, 1.2, 0.2));
+  const entity = { type: 'ship', team: 1, radius: 12, alive: true, data: { swarmMarkRadius: 20 } };
+  syncSwarmThreatPlate(mesh, entity, camera);
+  mesh.updateMatrixWorld(true);
+  const plate = mesh.getObjectByName('sf-swarm-threat-plate');
+  const core = mesh.getObjectByName('sf-swarm-threat-core');
+  const chevron = mesh.getObjectByName('sf-swarm-threat-chevron');
+  const plateWorld = plate.getWorldScale(new THREE.Vector3());
+  const coreWorld = core.getWorldScale(new THREE.Vector3());
+  assert.ok(Math.abs(plateWorld.x - 20) < 1e-3, `bracket world radius ${plateWorld.x}`);
+  assert.ok(Math.abs(coreWorld.x - 12) < 1e-3, 'the inner hoop stays on the hull, not the bracket');
+  assert.ok(chevron && chevron.isMesh);
+  assert.equal(chevron.geometry.type, 'ConeGeometry');
+  assert.equal(chevron.material, plate.material);
+  assert.equal(chevron.material.depthTest, false);
+  // Cone tip is geometric +Y. After the mount it must agree with the mesh nose (+X),
+  // which this yaw sends to world +Z. The camera quat above is a different direction.
+  const tip = new THREE.Vector3(0, 1, 0).applyQuaternion(chevron.getWorldQuaternion(new THREE.Quaternion()));
+  const nose = new THREE.Vector3(1, 0, 0).applyQuaternion(mesh.getWorldQuaternion(new THREE.Quaternion()));
+  assert.ok(tip.dot(nose) > 0.99, `chevron tip ${tip.x.toFixed(2)},${tip.y.toFixed(2)},${tip.z.toFixed(2)} leaves the nose`);
+  assert.ok(tip.z > 0.99 && Math.abs(tip.x) < 0.05, 'yawed hull points the wedge at world +Z');
+  const camFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
+  assert.ok(Math.abs(tip.dot(camFwd)) < 0.95, 'the wedge is not a camera billboard');
+  syncSwarmThreatPlate(mesh, { type: 'ship', team: 0, radius: 12 }, camera);
+  assert.equal(chevron.visible, false);
 });
 
 test('the threat crimson clears the low-contrast bar against a dark field', () => {
