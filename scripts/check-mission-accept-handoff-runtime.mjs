@@ -27,7 +27,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1460, height: 900 }, deviceScaleFactor: 1 });
   // The probe server runs with the player store unmounted (see spawnProbeServer) — isolated
   // harnesses never touch the machine save drawer, and store calls take the localStorage path.
-  const issues = collectPageIssues(page, { playerStoreMounted: false });
+  const issues = collectPageIssues(page, { playerStoreMounted: false, includeWarnings: true });
   await page.addInitScript(() => { try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {} });
 
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
@@ -58,7 +58,8 @@ try {
     sf.bus.emit('dock:docked', { stationId: station.data.stationId });
     return { stationId: station.data.stationId };
   });
-  await waitForVisible(page, '[data-screen="station"] .sx-dock', DOCK_TIMEOUT_MS, 'command dock after dock');
+  await waitForVisible(page, '[data-screen="station"] .sx-dock', DOCK_TIMEOUT_MS, 'command dock after dock')
+    .catch((error) => reportDockHandoffFailure(page, dockTarget, issues, error));
 
   // Seed a live commodity contract on this station's board (a bulk_trade the market here can buy).
   const seeded = await page.evaluate(() => {
@@ -127,8 +128,9 @@ try {
     const settled = await page.evaluate(() => {
       const state = window.SF.state;
       const trackedId = state.ui && state.ui.trackedMissionId;
-      return !!(state.missions.active || []).some((m) => m && m.status === 'active' && m.id === 'handoff_probe_bulk_trade')
-        && trackedId === 'handoff_probe_bulk_trade';
+      // The board offer becomes a newly numbered m_N instance; its sourceOfferId is the receipt.
+      return !!(state.missions.active || []).some((m) => m && m.status === 'active'
+        && m.sourceOfferId === 'handoff_probe_bulk_trade' && trackedId === m.id);
     });
     if (settled) break;
   }
@@ -142,7 +144,8 @@ try {
     const state = window.SF.state;
     const active = (state.missions.active || []).filter((m) => m && m.status === 'active');
     const trackedId = state.ui && state.ui.trackedMissionId;
-    return { grew: active.length > prev, tracked: !!(trackedId && active.some((m) => m.id === trackedId)) };
+    const accepted = active.find((m) => m.sourceOfferId === 'handoff_probe_bulk_trade' && m.id === trackedId);
+    return { grew: active.length > prev, tracked: !!(trackedId && accepted) };
   }, before) : { grew: false, tracked: false };
   assert.equal(
     (commit && commit.found) || (consumed.grew && consumed.tracked), true,
@@ -157,15 +160,11 @@ try {
     const state = window.SF.state;
     const active = (state.missions.active || []).filter((m) => m && m.status === 'active');
     const trackedId = state.ui && state.ui.trackedMissionId;
-    const tracked = trackedId && active.find((m) => m && m.id === trackedId);
+    const tracked = trackedId && active.find((m) => m.id === trackedId
+      && m.sourceOfferId === 'handoff_probe_bulk_trade');
     return !!(active.length > prev && tracked);
-  }, before, { timeout: 10000 }).catch(async (err) => {
-    const report = await page.evaluate(() => ({
-      active: window.SF.state.missions.active.map((m) => ({ id: m.id, status: m.status })),
-      trackedMissionId: window.SF.state.ui.trackedMissionId,
-    }));
-    throw new Error('Accept & Track did not seed active+tracked continuity: ' + JSON.stringify(report) + ' :: ' + err.message);
-  });
+  }, before, { timeout: 10000 }).catch((error) =>
+    reportAcceptHandoffFailure(page, { before, seeded, commit, consumed }, issues, error));
 
   // Plot a trade course for the tracked commodity (what tracking a cargo job does in flight); the
   // Market must then flag it. Uses the canonical market nav helper via the bus contract.
@@ -194,10 +193,12 @@ try {
 
   // Market flags the tracked contract commodity (buy it here to load the job).
   await domClick(page, '[data-screen="station"] .sx-dock [data-nav="market"]');
-  await waitForVisible(page, '[data-screen="station"] .sx-mkt', 8000, 'Market instrument');
+  await waitForVisible(page, '[data-screen="station"] .sx-mkt', 8000, 'Market instrument')
+    .catch((error) => reportMarketHandoffFailure(page, { seeded, acceptedTrackedId: active.trackedId }, issues, error));
   await page.waitForFunction(() => !!document.querySelector('[data-screen="station"] .sx-mkt-tracked')
     || !!document.querySelector('[data-screen="station"] .sx-mkt-row.is-tracked'), null, { timeout: 6000 })
-    .catch(() => { throw new Error('Market should flag the tracked-contract commodity after Accept & Track'); });
+    .catch((cause) => reportMarketHandoffFailure(page, { seeded, acceptedTrackedId: active.trackedId }, issues,
+      new Error('Market should flag the tracked-contract commodity after Accept & Track', { cause })));
   const market = await page.evaluate(() => ({
     callout: (document.querySelector('[data-screen="station"] .sx-mkt-tracked') || {}).textContent || '',
     trackedRow: !!document.querySelector('[data-screen="station"] .sx-mkt-row.is-tracked'),
@@ -217,6 +218,138 @@ try {
 } finally {
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
+}
+
+// Observe a failed handoff without retrying the actor, changing the deadline, or masking its error.
+async function reportDockHandoffFailure(page, dockTarget, issues, originalError) {
+  return reportHandoffFailure(page, collectDockHandoffSnapshot, 'dock visibility',
+    { dockTarget }, issues, originalError);
+}
+
+async function reportAcceptHandoffFailure(page, attempt, issues, originalError) {
+  return reportHandoffFailure(page, collectAcceptHandoffSnapshot, 'Accept & Track continuity',
+    { attempt }, issues, originalError);
+}
+
+async function reportMarketHandoffFailure(page, attempt, issues, originalError) {
+  return reportHandoffFailure(page, collectMarketHandoffSnapshot, 'Market tracking',
+    { attempt }, issues, originalError);
+}
+
+async function reportHandoffFailure(page, collector, label, context, issues, originalError) {
+  let timer;
+  try {
+    const snapshot = await Promise.race([
+      page.evaluate(collector),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(label + ' snapshot exceeded 2000ms')), 2000);
+      }),
+    ]);
+    const recent = (rows) => rows.slice(-8).map((row) => ({
+      ...row, text: String(row.text || '').slice(0, 1200),
+    }));
+    console.error('[mission-handoff] ' + label + ' snapshot:', JSON.stringify({
+      ...context, ...snapshot,
+      pageErrors: recent(issues.errorIssues()), pageWarnings: recent(issues.warningIssues()),
+    }));
+  } catch (diagnosticError) {
+    try { console.error('[mission-handoff] ' + label + ' snapshot unavailable:', diagnosticError?.message); }
+    catch (_) { /* Even a diagnostic logging failure cannot replace the original assertion. */ }
+  } finally {
+    clearTimeout(timer);
+  }
+  throw originalError;
+}
+
+function collectDockHandoffSnapshot() {
+  const sf = window.SF;
+  const state = sf?.state;
+  const player = state?.entities?.get?.(state.playerId);
+  const ui = sf?.registry?.get?.('ui');
+  const inspect = (selector) => {
+    const el = document.querySelector(selector);
+    if (!el) return { present: false };
+    const style = getComputedStyle(el), rect = el.getBoundingClientRect();
+    return { present: true, connected: el.isConnected, hidden: el.hidden,
+      ariaHidden: el.getAttribute('aria-hidden'), display: style.display,
+      visibility: style.visibility, opacity: style.opacity,
+      rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height } };
+  };
+  return {
+    mode: state?.mode ?? null, tick: state?.tick ?? null, simTime: state?.simTime ?? null,
+    player: player ? { id: player.id, alive: player.alive, hull: player.hull } : null,
+    docked: state?.ui?.docked ?? null, dockedStationId: state?.ui?.dockedStationId ?? null,
+    screenStack: Array.isArray(state?.ui?.screenStack) ? state.ui.screenStack.slice() : null,
+    topScreen: ui?.screenManager?.top?.() ?? null,
+    stationRegistered: ui?._registeredScreens?.has?.('station') ?? null,
+    station: inspect('[data-screen="station"]'), dock: inspect('[data-screen="station"] .sx-dock'),
+  };
+}
+
+function collectAcceptHandoffSnapshot() {
+  const state = window.SF?.state;
+  const stationId = state?.ui?.dockedStationId;
+  const slots = state?.missions?.boards?.[stationId]?.slots;
+  const posted = Array.isArray(slots) ? slots : [];
+  const active = Array.isArray(state?.missions?.active) ? state.missions.active : [];
+  const offer = posted.find((row) => row?.id === 'handoff_probe_bulk_trade');
+  const selected = document.querySelector('[data-screen="station"] .sx-ct-row[aria-selected="true"]');
+  const key = document.querySelector('[data-screen="station"] .sx-dossier [data-accept]');
+  const ring = key?.querySelector('.dp-holdring');
+  return {
+    mode: state?.mode ?? null, tick: state?.tick ?? null, simTime: state?.simTime ?? null,
+    docked: state?.ui?.docked ?? null, dockedStationId: stationId ?? null,
+    trackedMissionId: state?.ui?.trackedMissionId ?? null,
+    activeCount: active.filter((row) => row?.status === 'active').length,
+    active: active.slice(0, 32).map((row) => ({ id: row?.id ?? null,
+      status: row?.status ?? null, sourceOfferId: row?.sourceOfferId ?? null })),
+    boardPresent: Array.isArray(slots), boardCount: posted.length,
+    postedIds: posted.slice(0, 32).map((row) => row?.id ?? null),
+    offer: offer ? { id: offer.id, type: offer.type, reward: offer.reward,
+      collateral: offer.collateral ?? null, destStationId: offer.destStationId ?? null,
+      requirementUnmet: offer.requirementUnmet ?? null, lockedReason: offer.lockedReason ?? null } : null,
+    selectedOfferId: selected?.getAttribute('data-mid') ?? null,
+    acceptKey: key ? { missionId: key.getAttribute('data-accept'), connected: key.isConnected,
+      disabled: key.disabled, holding: key.classList.contains('is-holding'),
+      label: String(key.textContent || '').trim().slice(0, 300),
+      holdProgress: ring?.style?.getPropertyValue('--sf-hold-p') ?? null } : null,
+  };
+}
+
+// Only the handoff's mission identities and Market surface are observed; never dump game state.
+function collectMarketHandoffSnapshot() {
+  const state = window.SF?.state;
+  const active = Array.isArray(state?.missions?.active) ? state.missions.active : [];
+  const trackedId = state?.ui?.trackedMissionId;
+  const mission = (row) => row ? { id: row.id ?? null, sourceOfferId: row.sourceOfferId ?? null,
+    status: row.status ?? null, cmdtyId: row.params?.cmdtyId ?? null,
+    cargoCommodityId: row.cargo?.commodityId ?? null } : null;
+  const waypoint = state?.nav?.waypoint;
+  const root = document.querySelector('[data-screen="station"]');
+  const query = (selector) => root?.querySelector(selector);
+  const rows = [...(root?.querySelectorAll('.sx-mkt-row') || [])];
+  const filters = [...(root?.querySelectorAll('[data-market-filter][aria-pressed="true"]') || [])];
+  const selected = query('.sx-mkt-row[aria-selected="true"]');
+  const callout = query('.sx-mkt-tracked');
+  return {
+    trackedMissionId: trackedId ?? null,
+    trackedInstance: mission(active.find((row) => row?.id === trackedId)),
+    acceptedInstances: active.filter((row) => row?.sourceOfferId === 'handoff_probe_bulk_trade').slice(0, 32).map(mission),
+    waypoint: waypoint ? { kind: waypoint.kind ?? null, commodityId: waypoint.commodityId ?? null,
+      stationId: waypoint.stationId ?? null } : null,
+    docked: state?.ui?.docked ?? null, dockedStationId: state?.ui?.dockedStationId ?? null,
+    operation: root?.getAttribute('data-operation') ?? null, view: root?.getAttribute('data-view') ?? null,
+    marketPresent: !!query('.sx-mkt'), rowCount: rows.length,
+    rows: rows.slice(0, 64).map((row) => ({ commodityId: row.getAttribute('data-cmdty'),
+      tracked: row.classList.contains('is-tracked'), selected: row.getAttribute('aria-selected') === 'true' })),
+    flaggedCommodityIds: rows.filter((row) => row.classList.contains('is-tracked')).slice(0, 64)
+      .map((row) => row.getAttribute('data-cmdty')),
+    selectedCommodityId: selected?.getAttribute('data-cmdty') ?? null,
+    filters: filters.slice(0, 16).map((el) => el.getAttribute('data-market-filter')),
+    search: String(query('[data-market-search]')?.value || '').slice(0, 300),
+    callout: callout ? { state: callout.getAttribute('data-tracked-state'),
+      text: String(callout.textContent || '').trim().slice(0, 600) } : null,
+  };
 }
 
 async function domClick(page, selector) {
