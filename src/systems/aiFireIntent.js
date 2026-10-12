@@ -555,6 +555,7 @@ export function clearAIFiringIntent(intent, reason = null, blockerId = null) {
 
 function clearFire(intent, reason = null, blockerId = null) {
   intent.fire = false;
+  intent.fireGroup = null;
   intent.fireBlockReason = reason;
   intent.fireBlockerId = blockerId;
 }
