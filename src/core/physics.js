@@ -1162,7 +1162,8 @@ export const physics = {
       // receipt binds proj.id/target.id/tick and publishes exactly the payload's own values.
       const receipt = surfaceContactFromBodies(proj, bestTarget, {
         point: hitPos,
-        normal: projectileContactFrame(proj, bestTarget, hitPos).normal,
+        normal: foundryBankPlateProxy(bestTarget) && !(bestTarget.shield > 0)
+          ? { x: bestHit.nx, z: bestHit.nz } : projectileContactFrame(proj, bestTarget, hitPos).normal,
         velocity: proj.vel,
       }, state && Number.isInteger(state.tick) ? state.tick : 0);
       this.bus.emit('projectile:hit', projectileHitPayload(proj, bestTarget, hitPos, receipt));
@@ -1913,6 +1914,11 @@ function projectileContactFrame(proj, target, pos) {
   return { approach, normal: { x: nx, z: nz } };
 }
 
+function foundryBankPlateProxy(target) {
+  return target?.physicsBody?.collisionProxyManifest?.id === 'foundry:bank-plate'
+    && target?.data?.roomOwner === 'survival-arena' && target?.data?.roomKind === 'plate';
+}
+
 export function projectileHitPayload(proj, targetOrId, pos, receipt) {
   const pd = proj.data || {};
   const target = targetOrId && typeof targetOrId === 'object' ? targetOrId : null;
@@ -1923,6 +1929,9 @@ export function projectileHitPayload(proj, targetOrId, pos, receipt) {
   const vx = Number.isFinite(velocityX) ? velocityX : Math.cos(rotation);
   const vz = Number.isFinite(velocityZ) ? velocityZ : Math.sin(rotation);
   const frame = projectileContactFrame(proj, target, pos);
+  if (foundryBankPlateProxy(target) && !(target.shield > 0) && receipt?.normal) {
+    frame.normal = { x: receipt.normal.x, z: receipt.normal.z };
+  }
   const payload = {
     targetId,
     projectileId: proj.id,

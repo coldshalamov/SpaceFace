@@ -86,6 +86,37 @@ function capturePose(entity, window) {
   return { pose };
 }
 
+/** Native rendered geometry owns cover; screenshot radius boxes are only diagnostics. */
+export function summarizeBodyOcclusion(samples) {
+  const types = new Map();
+  for (const sample of samples) {
+    if (sample.mode !== 'flight' || (sample.run && sample.run.ph !== 'active')) continue;
+    const receipt = sample.px?.bodyOcclusion;
+    if (receipt?.version !== 1 || receipt.method !== 'native-opaque-id-depth') continue;
+    for (const row of receipt.rows || []) {
+      if (!BODY_CLASSES.includes(row.cls)) continue;
+      const entity = sample.e?.find(e => e[E.id] === row.id && e[E.type] === row.ty && e[E.cls] === CLS[row.cls]);
+      const key = `${row.cls}|${row.ty}`;
+      const group = types.get(key) || { cls: row.cls, ty: row.ty, n: 0, covered: 0, unknown: 0,
+        reasons: {}, radiusSum: 0, exampleT: null, exampleBox: null };
+      const measured = entity && row.status === 'measured' && Number.isFinite(row.pixels) && row.pixels >= 0;
+      if (measured) {
+        group.n++; group.radiusSum += entity[E.pr];
+        if (row.pixels > 0) {
+          group.covered++;
+          if (group.exampleT == null) { group.exampleT = sample.t; group.exampleBox = row.box; }
+        }
+      } else {
+        group.unknown++;
+        const reason = entity ? row.reason || 'unmeasured' : 'stale-body-identity';
+        group.reasons[reason] = (group.reasons[reason] || 0) + 1;
+      }
+      types.set(key, group);
+    }
+  }
+  return types;
+}
+
 export async function analyzeReadability(shots, nearestSample, samples = []) {
   const per = Object.fromEntries([...CLASSES, ...BODY_CLASSES].map((c) => [c, []]));
   const rejected = Object.fromEntries([...CLASSES, ...BODY_CLASSES].map((c) => [c, {}]));
@@ -137,13 +168,19 @@ export async function analyzeReadability(shots, nearestSample, samples = []) {
     if (x.overPlayer) { r.over++; if (!r.overT) { r.overT = x.t; r.overBox = x.box; } }
     r.n++; r.L += x.lit[0]; r.a += x.lit[1]; r.b += x.lit[2]; r.r += x.r; types.set(k, r);
   }
+  const occlusion = summarizeBodyOcclusion(samples);
   const census = [...types.values()].sort((p, q) => q.n - p.n).slice(0, 16).map((r) => {
     const L = r.L / r.n; const a = r.a / r.n; const b = r.b / r.n; const chroma = Math.hypot(a, b);
     const hue = (Math.atan2(b, a) * 180 / Math.PI + 360) % 360;
     const look = chroma < 12 ? (L > 70 ? 'white' : L > 40 ? 'grey' : 'dark') : hue < 35 || hue > 340 ? 'red' : hue < 85 ? 'orange' : hue < 110 ? 'yellow' : hue < 200 ? 'green' : hue < 260 ? 'cyan/blue' : 'violet';
-    return { cls: r.cls, ty: r.ty, n: r.n, litLab: [+L.toFixed(1), +a.toFixed(1), +b.toFixed(1)], look, meanRadiusPx: +(r.r / r.n).toFixed(1), overPlayerFrac: +(r.over / r.n).toFixed(3), exampleT: r.overT || r.t, exampleBox: r.overBox || r.box };
+    return { cls: r.cls, ty: r.ty, n: r.n, litLab: [+L.toFixed(1), +a.toFixed(1), +b.toFixed(1)], look, meanRadiusPx: +(r.r / r.n).toFixed(1), overPlayerFrac: +(r.over / r.n).toFixed(3), exampleT: r.overT || r.t, exampleBox: r.overBox || r.box,
+      ...(occlusion.has(`${r.cls}|${r.ty}`) ? { occlusion: occlusion.get(`${r.cls}|${r.ty}`) } : {}) };
   });
+  for (const [key, group] of occlusion) if (!census.some(c => `${c.cls}|${c.ty}` === key)) {
+    census.push({ cls: group.cls, ty: group.ty, n: 0, look: 'unmeasured',
+      meanRadiusPx: group.n ? group.radiusSum / group.n : 0, occlusion: group });
+  }
   const rejectedCount = Object.values(rejected).reduce((n, reasons) => n + Object.values(reasons).reduce((a, b) => a + b, 0), 0);
-  const measurementNote = `capture coherence: ${rejectedCount} body samples rejected for capture-motion or identity/visibility changes; ${unboundedShots} screenshots lack a recorded capture interval`;
+  const measurementNote = `capture coherence: ${rejectedCount} body samples rejected for capture-motion or identity/visibility changes; ${unboundedShots} screenshots lack a recorded capture interval; body/player coverage uses native opaque ID/depth pixels, radius-box overlap remains diagnostic`;
   return { classes, pairs, census, captureCoherence: { rejected, unboundedShots }, measurementNote };
 }

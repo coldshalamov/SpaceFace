@@ -55,6 +55,180 @@ export function isPlayerTruthInstrumentation(object) {
   return false;
 }
 
+function unsupportedBodyMaskPose(THREE, root) {
+  if (!root) return true;
+  let unsupported = false;
+  root.traverseVisible(object => {
+    if (!object.isMesh || isPlayerTruthInstrumentation(object)) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    if (!materials.some(m => m && !m.transparent && m.opacity !== 0)) return;
+    // Raw geometry bounds cannot constrain a shader displacement or a callback-driven pose.
+    // Basic ID materials also cannot reproduce arbitrary source vertex hooks.
+    if (object.isSkinnedMesh || Object.keys(object.geometry?.morphAttributes || {}).length
+      || object.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender
+      || materials.some(m => m && !m.transparent && (m.isShaderMaterial || m.isRawShaderMaterial
+        || m.displacementMap || m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile))) unsupported = true;
+  });
+  return unsupported;
+}
+
+/** Exact opaque geometry bounds, used only to reject nonoverlapping mask candidates. */
+export function playerTruthOpaqueBounds(THREE, root, camera, vw, vh) {
+  if (!root || unsupportedBodyMaskPose(THREE, root)) return null;
+  const point = new THREE.Vector3();
+  const bounds = [Infinity, Infinity, -Infinity, -Infinity]; let count = 0;
+  root.traverseVisible(object => {
+    if (!object.isMesh || object.isInstancedMesh || isPlayerTruthInstrumentation(object)) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    if (!materials.some(m => m && !m.transparent && m.opacity !== 0)) return;
+    const geometry = object.geometry;
+    if (!geometry) return;
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    const box = geometry.boundingBox;
+    if (!box || box.isEmpty()) return;
+    for (let i = 0; i < 8; i++) {
+      point.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y,
+        i & 4 ? box.max.z : box.min.z).applyMatrix4(object.matrixWorld).project(camera);
+      // Crossing the camera/clip plane cannot supply a conservative rejection.
+      if (point.z < -1 || point.z > 1) { bounds[0] = -Infinity; bounds[2] = Infinity; }
+      const x = (point.x * 0.5 + 0.5) * vw; const y = (-point.y * 0.5 + 0.5) * vh;
+      bounds[0] = Math.min(bounds[0], x); bounds[1] = Math.min(bounds[1], y);
+      bounds[2] = Math.max(bounds[2], x); bounds[3] = Math.max(bounds[3], y);
+    }
+    count++;
+  });
+  return count ? bounds : null;
+}
+
+/** Two native ID/depth draws at the existing split cadence; never a screenshot proxy.
+ * Only player-silhouette pixels occupied by a body's opaque geometry count as cover.
+ * Caps/missing/unsupported evidence stay explicit UNKNOWN. All scene edits are temporary. */
+export function measurePlayerTruthBodyOcclusion({ THREE, renderer, scene, camera,
+  playerMesh, bodies, playerBox, vw, vh, width, height, draw, maxCandidates = 12,
+  maskCache = null, silhouette = null, ownership = null }) {
+  const rows = bodies.map(body => ({ id: body.id, cls: body.cls, ty: body.ty,
+    status: 'unknown', reason: 'missing-opaque-geometry', box: null }));
+  const receipt = { version: 1, method: 'native-opaque-id-depth', maxExtraDraws: 2,
+    extraDraws: 0, candidateCap: maxCandidates, rows };
+  if (!playerMesh || scene.overrideMaterial) return receipt;
+  if (unsupportedBodyMaskPose(THREE, playerMesh)) {
+    for (const row of rows) row.reason = 'unsupported-player-silhouette';
+    return receipt;
+  }
+  if (!playerBox) return receipt;
+  const overlaps = (a, b) => a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
+  const candidates = [];
+  bodies.forEach((body, i) => {
+    if (body.mesh && unsupportedBodyMaskPose(THREE, body.mesh)) {
+      rows[i].reason = 'unsupported-vertex-pose'; return;
+    }
+    const bounds = playerTruthOpaqueBounds(THREE, body.mesh, camera, vw, vh);
+    rows[i].box = bounds?.every(Number.isFinite) ? bounds : null;
+    if (!bounds) return;
+    if (!overlaps(bounds, playerBox)) {
+      Object.assign(rows[i], { status: 'measured', reason: 'disjoint-opaque-bounds', pixels: 0 });
+    } else if (candidates.length >= maxCandidates) {
+      rows[i].reason = 'candidate-cap';
+    } else candidates.push({ ...body, row: rows[i], code: (candidates.length + 1) * 16 });
+  });
+  if (!candidates.length) return receipt;
+  const within = (object, root) => {
+    for (let node = object; node; node = node.parent) if (node === root) return true;
+    return false;
+  };
+  const leaves = []; const materials = maskCache || new Map();
+  let playerOpaque = 0; let playerUnsupported = false;
+  scene.traverseVisible(object => {
+    if (!(object.isMesh || object.isPoints || object.isLine || object.isSprite)) return;
+    const owner = candidates.find(body => within(object, body.mesh));
+    const player = within(object, playerMesh);
+    const original = object.material;
+    const source = Array.isArray(original) ? original : [original];
+    const instrument = isPlayerTruthInstrumentation(object);
+    const opaque = object.isMesh && !instrument && source.some(m => m && !m.transparent && m.opacity !== 0);
+    const supported = opaque && (!(owner || player) || !object.isInstancedMesh)
+      && source.every(m => !m || m.transparent || (!m.isShaderMaterial && !m.isRawShaderMaterial
+        && !m.alphaTest && !m.clippingPlanes?.length && m.depthTest && m.depthWrite));
+    if ((owner || player) && opaque && !supported) {
+      if (owner) owner.row.reason = 'unsupported-opaque-material';
+      if (player) playerUnsupported = true;
+    }
+    if (player && supported) playerOpaque++;
+    const replacements = source.map(m => {
+      const visible = !!(supported && m && !m.transparent && m.opacity !== 0);
+      const code = player ? 255 : (owner ? owner.code : 0);
+      const side = m?.side ?? THREE.FrontSide;
+      const key = `${code}|${side}|${visible ? 1 : 0}`;
+      let material = materials.get(key);
+      if (!material) {
+        material = new THREE.MeshBasicMaterial({
+        color: player ? 0xffffff : new THREE.Color(code / 255, 0, 0),
+        visible, side, depthTest: true, depthWrite: true,
+        toneMapped: false, blending: THREE.NoBlending,
+        });
+        materials.set(key, material);
+      }
+      return material;
+    });
+    leaves.push({ object, visible: object.visible, material: original,
+      replacement: Array.isArray(original) ? replacements : replacements[0],
+      supported, player });
+  });
+  if (!playerOpaque || playerUnsupported) {
+    if (!maskCache) for (const material of materials.values()) material.dispose();
+    for (const candidate of candidates) candidate.row.reason = 'unsupported-player-silhouette';
+    return receipt;
+  }
+  const prevTarget = renderer.getRenderTarget(); const prevAuto = renderer.info.autoReset;
+  const prevShadow = renderer.shadowMap?.autoUpdate;
+  const savedInfo = { calls: renderer.info.render.calls, triangles: renderer.info.render.triangles };
+  const background = scene.background;
+  const clearColor = renderer.getClearColor ? renderer.getClearColor(new THREE.Color()).clone() : null;
+  const clearAlpha = renderer.getClearAlpha?.();
+  silhouette ||= new Uint8Array(width * height * 4);
+  ownership ||= new Uint8Array(silhouette.length);
+  try {
+    renderer.info.autoReset = false;
+    if (renderer.shadowMap) renderer.shadowMap.autoUpdate = false;
+    scene.background = null; renderer.setClearColor?.(0x000000, 0);
+    for (const leaf of leaves) {
+      leaf.object.material = leaf.replacement;
+      leaf.object.visible = leaf.supported && leaf.player;
+    }
+    receipt.extraDraws++; draw(silhouette);
+    for (const leaf of leaves) leaf.object.visible = leaf.supported;
+    receipt.extraDraws++; draw(ownership);
+    let playerPixels = 0; const counts = new Map(candidates.map(body => [body.code, 0]));
+    for (let k = 0; k < silhouette.length; k += 4) {
+      if (silhouette[k] < 250 || silhouette[k + 1] < 250 || silhouette[k + 2] < 250) continue;
+      playerPixels++;
+      if (ownership[k + 1] > 1 || ownership[k + 2] > 1) continue;
+      const code = Math.round(ownership[k] / 16) * 16;
+      if (Math.abs(ownership[k] - code) <= 1 && counts.has(code)) counts.set(code, counts.get(code) + 1);
+    }
+    receipt.playerPixels = playerPixels;
+    for (const body of candidates) {
+      if (body.row.reason === 'unsupported-opaque-material') continue;
+      if (!playerPixels) { body.row.reason = 'empty-player-silhouette'; continue; }
+      const pixels = counts.get(body.code);
+      Object.assign(body.row, { status: 'measured', reason: 'opaque-id-depth', pixels,
+        playerPixels, fraction: pixels / playerPixels });
+    }
+  } catch (error) {
+    receipt.error = String(error?.message || error).slice(0, 200);
+    for (const body of candidates) body.row.reason = 'mask-draw-error';
+  } finally {
+    for (const leaf of leaves) { leaf.object.material = leaf.material; leaf.object.visible = leaf.visible; }
+    scene.background = background;
+    if (clearColor) renderer.setClearColor(clearColor, clearAlpha);
+    renderer.setRenderTarget(prevTarget); renderer.info.autoReset = prevAuto;
+    if (renderer.shadowMap) renderer.shadowMap.autoUpdate = prevShadow;
+    Object.assign(renderer.info.render, savedInfo);
+    if (!maskCache) for (const material of materials.values()) material.dispose();
+  }
+  return receipt;
+}
+
 /** Capture-local identity history also resolves deaths delivered after a slot is reused. */
 export function createPlayerTruthLifeTracker() {
   const lives = new Map(); let serial = 0;
@@ -139,6 +313,7 @@ export function installPlayerTruthReader(win, opts = {}) {
   const GW = 48; const GH = 27;
   const keys = []; const keyIdx = new Map();
   const drawIdentity = createPlayerTruthDrawIdentity();
+  const bodyMaskMaterials = new Map();
   const intern = (s) => { let i = keyIdx.get(s); if (i === undefined) { i = keys.length; keys.push(s); keyIdx.set(s, i); } return i; };
   const samples = []; const events = []; const longTasks = [];
   const v = new THREE.Vector3(); const box = new THREE.Box3();
@@ -174,13 +349,17 @@ export function installPlayerTruthReader(win, opts = {}) {
         phase: st.run && st.run.phase, wave: st.run && st.run.wave });
     });
     if (typeof u1 === 'function') unsubs.push(u1);
-    for (const type of ['asteroid:destroyed', 'entity:destroyed']) {
+    const terminalEvents = { 'asteroid:destroyed': 'asteroid-destroyed', 'entity:destroyed': 'destroyed',
+      'environment:detonated': 'environment-detonated', 'entity:retired': 'retired' };
+    for (const type of Object.keys(terminalEvents)) {
       const unsub = SF.bus.on(type, (p) => {
         const victim = p?.id != null ? SF.state.entities?.get?.(p.id) : null;
-        events.push({ ev: type === 'asteroid:destroyed' ? 'asteroid-destroyed' : 'destroyed',
+        events.push({ ev: terminalEvents[type],
           t: now(), sim: Number.isFinite(p?.simTime) ? p.simTime : simNow(), observedSim: simNow(),
           id: lifeTracker.receiptId(p, victim), rawId: p?.id, occupantGeneration: p?.occupantGeneration ?? null,
-          type: p?.type ?? (type === 'asteroid:destroyed' ? 'asteroid' : null), reason: p?.reason ?? null });
+          type: p?.type ?? (type === 'asteroid:destroyed' ? 'asteroid' : null), reason: p?.reason ?? null,
+          pos: p?.pos ? { x: p.pos.x, z: p.pos.z } : null, owner: p?.owner ?? null,
+          roomSolidId: p?.roomSolidId ?? null, wave: p?.wave ?? null });
       });
       if (typeof unsub === 'function') unsubs.push(unsub);
     }
@@ -354,7 +533,7 @@ export function installPlayerTruthReader(win, opts = {}) {
       const nextC = new Uint8Array(pixels * 4);
       const nextCombatMask = new Uint8Array(pixels); const nextBackdropMask = new Uint8Array(pixels);
       if (pxTarget) pxTarget.setSize(width, height);
-      else pxTarget = new THREE.WebGLRenderTarget(width, height);
+      else pxTarget = new THREE.WebGLRenderTarget(width, height, { colorSpace: THREE.NoColorSpace });
       PW = width; PH = height;
       bufA = nextA; bufB = nextB; bufC = nextC;
       cMask = nextCombatMask; bMask = nextBackdropMask;
@@ -469,7 +648,7 @@ export function installPlayerTruthReader(win, opts = {}) {
     }
     return receipt;
   }
-  function pixelSplit(renderer, scene, cam, vw, vh, playerBox, threatBoxes) {
+  function pixelSplit(renderer, scene, cam, vw, vh, playerBox, threatBoxes, playerMesh, bodies) {
     if (!renderer || !renderer.isWebGLRenderer || !renderer.readRenderTargetPixels) return { err: 'renderer is not WebGL' };
     const rasterError = preparePixelRaster(renderer, vw, vh);
     if (rasterError) return { err: rasterError };
@@ -524,9 +703,14 @@ export function installPlayerTruthReader(win, opts = {}) {
       attribution = attributeCombatSplit({ renderer, draw, combat, baseline: bufA, mask: cMask,
         boxes: threatBoxes, vw, vh, lum, boxFrac });
     }
+    const bodyOcclusion = bodies.length ? measurePlayerTruthBodyOcclusion({
+      THREE, renderer, scene, camera: cam, playerMesh, bodies, playerBox, vw, vh,
+      width: PW, height: PH, draw, maskCache: bodyMaskMaterials,
+      silhouette: bufB, ownership: bufC,
+    }) : null;
     return { c: +(cN / (PW * PH)).toFixed(3), b: +(bN / (PW * PH)).toFixed(3), cp: pc == null ? null : +pc.toFixed(3), bp: pb == null ? null : +pb.toFixed(3),
       ct, bt: occ(bMask), nC: combat.length, nB: back.length, nI: instruments, rw: PW, rh: PH,
-      ...(attribution ? { attribution } : {}) };
+      ...(attribution ? { attribution } : {}), ...(bodyOcclusion ? { bodyOcclusion } : {}) };
   }
 
   function sample() {
@@ -546,7 +730,7 @@ export function installPlayerTruthReader(win, opts = {}) {
     for (const e of list) if (e.id === st.playerId) { player = e; break; }
     const playerTeam = player ? player.team : 1;
     if (player && player.pos) s.p = playerRecord(st, player, meshes && meshes.get(player.id), cam, vw, vh);
-    const threatBoxes = [];
+    const threatBoxes = []; const bodies = [];
     for (const e of list) {
       if (!e || e.alive === false || !e.pos || e.id === st.playerId) continue;
       const cls = classifyEntity(e, st.playerId, playerTeam);
@@ -568,13 +752,18 @@ export function installPlayerTruthReader(win, opts = {}) {
         } else if (sc.inView) visCode = 4; // no per-entity mesh (instanced/pooled) but inside the view
         if ((cls === 'enemy' || cls === 'projectile') && sc.inView) threatBoxes.push([sx - pr, sy - pr, sx + pr, sy + pr]);
       }
-      s.e.push([lifeId(e), CLS[cls], +e.pos.x.toFixed(1), +e.pos.z.toFixed(1), +(e.vel ? e.vel.x : 0).toFixed(2), +(e.vel ? e.vel.z : 0).toFixed(2), sx, sy, pr, visCode, key, intern(`${e.type}:${e.typeId || (e.data && (e.data.asteroidKind || e.data.kind || e.data.archetype || e.data.roomKind || e.data.propRole)) || ''}`)]);
+      const ty = intern(`${e.type}:${e.typeId || (e.data && (e.data.asteroidKind || e.data.kind || e.data.archetype || e.data.roomKind || e.data.propRole)) || ''}`);
+      s.e.push([lifeId(e), CLS[cls], +e.pos.x.toFixed(1), +e.pos.z.toFixed(1), +(e.vel ? e.vel.x : 0).toFixed(2), +(e.vel ? e.vel.z : 0).toFixed(2), sx, sy, pr, visCode, key, ty]);
+      if (['station', 'neutral', 'other'].includes(cls) && [3, 4].includes(visCode)) {
+        bodies.push({ id: lifeId(e), cls, ty, mesh: m });
+      }
     }
     if (cam && scene && frame % vfxEvery === 0) {
       try { s.vfx = vfxScan(st, cam, scene, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes); } catch (err) { s.vfx = { err: String(err && err.message || err) }; }
     }
     if (cam && scene && pxEvery && frame % pxEvery === 0) {
-      try { s.px = pixelSplit(r.renderer, scene, cam, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes); } catch (err) { s.px = { err: String(err && err.message || err) }; }
+      try { s.px = pixelSplit(r.renderer, scene, cam, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes,
+        meshes?.get(st.playerId), bodies); } catch (err) { s.px = { err: String(err && err.message || err) }; }
     }
     samples.push(s);
   }
@@ -596,6 +785,8 @@ export function installPlayerTruthReader(win, opts = {}) {
     dispose() {
       api.stop();
       if (pxTarget) pxTarget.dispose();
+      for (const material of bodyMaskMaterials.values()) material.dispose();
+      bodyMaskMaterials.clear();
       pxTarget = null; bufA = null; bufB = null; bufC = null; cMask = null; bMask = null;
       PW = 0; PH = 0;
       for (const name of INPUT_EVENTS) win.removeEventListener(name, onInput, { capture: true });

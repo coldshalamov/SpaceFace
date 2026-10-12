@@ -97,6 +97,7 @@ import {
 } from './partsLibrary.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveCollisionProxyManifest, effectiveCorridorBearingDeg } from '../data/collisionProxyManifests.js';
+import { foundryPlateShape } from '../data/foundryPlate.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
 
 // ---------------------------------------------------------------------------------------------
@@ -2647,7 +2648,9 @@ function buildFoundryToy(e) {
   }), SHARED_MATERIAL_ROLE.STATION));
   let body;
   if (kind === 'plate') {
-    body = new THREE.Mesh(getGeometry('foundry:slab', () => new THREE.BoxGeometry(2.6, 0.16, 1.3)), mat);
+    const shape = foundryPlateShape(e);
+    body = new THREE.Mesh(getGeometry('foundry:bank-slab', () => new THREE.BoxGeometry(2, 2, 2)), mat);
+    body.scale.set(shape.halfWidth, shape.halfHeight, shape.halfDepth);
   } else if (kind === 'gate') {
     body = new THREE.Mesh(getGeometry('foundry:post', () => new THREE.CylinderGeometry(0.16, 0.2, 1.5, 6)), mat);
   } else if (kind === 'furnace') {
@@ -2655,7 +2658,7 @@ function buildFoundryToy(e) {
   } else {
     body = new THREE.Mesh(getGeometry('foundry:block', () => new THREE.BoxGeometry(1.5, 0.32, 0.42)), mat);
   }
-  body.scale.setScalar(R);
+  if (kind !== 'plate') body.scale.setScalar(R);
   body.castShadow = true;
   body.receiveShadow = true;
   g.add(body);

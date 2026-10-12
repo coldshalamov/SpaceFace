@@ -189,22 +189,36 @@ export function checkPopping(trace) {
   // serves shelving/cleanup, so it never excuses an unexplained on-screen removal.
   const deathReceipts = new Map();
   for (const ev of trace.events) {
-    if ((ev.ev !== 'killed' && ev.ev !== 'asteroid-destroyed') || !Number.isFinite(ev.id)) continue;
+    const detonation = ev.ev === 'environment-detonated' && ev.type === 'asteroid';
+    const retirement = ev.ev === 'retired' && ev.reason === 'survival-room-wave-cleared'
+      && ev.owner === 'survival-arena' && ev.type === 'station'
+      && Number.isFinite(ev.pos?.x) && Number.isFinite(ev.pos?.z)
+      && Number.isSafeInteger(ev.wave) && ev.wave > 0
+      && typeof ev.roomSolidId === 'string' && ev.roomSolidId.startsWith(`survival-room-w${ev.wave}-`);
+    if ((ev.ev !== 'killed' && ev.ev !== 'asteroid-destroyed' && !detonation && !retirement)
+      || !Number.isFinite(ev.id)) continue;
     const list = deathReceipts.get(ev.id) || []; list.push(ev); deathReceipts.set(ev.id, list);
   }
   const inner = (e, s) => e[E.sx] > s.vw * 0.1 && e[E.sx] < s.vw * 0.9 && e[E.sy] > s.vh * 0.1 && e[E.sy] < s.vh * 0.9 && e[E.pr] >= 2;
+  const previousRecorded = new Map(); let recorded = null;
+  for (const sample of trace.samples) { previousRecorded.set(sample, recorded); recorded = sample; }
   let prev = null; const pops = []; const flaps = new Map(); let births = 0; let measured = 0;
   for (const s of samples) {
     const cur = new Map(s.e.map((e) => [e[E.id], e]));
     if (prev) {
+      const renderPrevious = previousRecorded.get(s);
+      const togglePreviousMap = renderPrevious === prev.s ? prev.map
+        : new Map((renderPrevious?.e || []).map(e => [e[E.id], e]));
       for (const [id, e] of cur) {
         const p = prev.map.get(id);
         if (e[E.vis] === VIS.unknown || e[E.vis] === VIS.pooled) continue;
         measured++;
         if (!p) { if (e[E.vis] === VIS.onscreen && inner(e, s) && e[E.cls] !== CLS.projectile && e[E.cls] !== CLS.fx) births++; continue; }
-        const toggled = (p[E.vis] === VIS.onscreen && e[E.vis] === VIS.hidden) || (p[E.vis] === VIS.hidden && e[E.vis] === VIS.onscreen);
+        const renderedBefore = togglePreviousMap.get(id);
+        const toggled = renderedBefore && ((renderedBefore[E.vis] === VIS.onscreen && e[E.vis] === VIS.hidden)
+          || (renderedBefore[E.vis] === VIS.hidden && e[E.vis] === VIS.onscreen));
         if (toggled && inner(e, s)) {
-          const loading = entityLoading(trace, e) || entityLoading(trace, p);
+          const loading = entityLoading(trace, e) || entityLoading(trace, renderedBefore);
           pops.push({ id, kind: e[E.vis] === VIS.onscreen ? 'appeared' : 'vanished', s, e, loading });
           flaps.set(id, (flaps.get(id) || 0) + 1);
         }
@@ -510,16 +524,23 @@ export function checkReadability(trace) {
   if (!pairs.length) return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, `separation ≥${T.readabilityMinSeparation}`, `not enough on-screen samples per class (${counts}; need ${T.readabilityMinSamples})${measurementNote}`);
   const bad = pairs.filter((p) => p.sep < T.readabilityMinSeparation).sort((a, b) => a.sep - b.sep);
   const lowContrast = Object.entries(r.classes).filter(([k, v]) => (k === 'enemy' || k === 'projectile') && v.n >= T.readabilityMinSamples && v.lowContrastFrac > 0.5);
+  const bodies = (r.census || []).filter(c => ['station', 'neutral', 'other'].includes(c.cls));
+  const bodyUnknown = bodies.filter(c => c.occlusion
+    ? c.occlusion.unknown > 0 || c.occlusion.n < T.readabilityMinSamples
+    : c.n >= T.readabilityMinSamples && c.overPlayerFrac > 0);
   const offenders = [
     ...bad.map((p) => ({ line: `${p.a} vs ${p.b}: separation ${fmt(p.sep)} (colour Δ ${fmt(p.dColor, 1)}, size ratio ${fmt(p.sizeRatio, 2)}) over ${p.nA}/${p.nB} samples`, t: p.exampleT, sim: null, box: p.exampleBox })),
     ...lowContrast.map(([k, v]) => ({ line: `${k}: ${fmt(v.lowContrastFrac * 100, 0)}% of samples barely differ from the background (ΔL < 8)`, t: v.exampleT, sim: null, box: v.exampleBox })),
-    // Big play-space bodies that are neither enemy nor asteroid (e.g. a white station sphere) sitting on the player.
-    ...(r.census || []).filter((c) => ['station', 'neutral', 'other'].includes(c.cls) && c.n >= T.readabilityMinSamples && c.overPlayerFrac >= 0.2)
-      .map((c) => ({ line: `${c.name || c.cls} (${c.cls}, ${c.look}, r ${fmt(c.meanRadiusPx, 0)} px) sits over the player ship in ${fmt(c.overPlayerFrac * 100, 0)}% of ${c.n} samples — a play-space body that reads as neither enemy nor asteroid`, t: c.exampleT, sim: null, box: c.exampleBox })),
+    // The same 20%-of-five-samples rule now names actual opaque cover, not empty radius-box corners.
+    ...bodies.filter(c => c.occlusion && c.occlusion.n >= T.readabilityMinSamples
+      && c.occlusion.covered / (c.occlusion.n + c.occlusion.unknown) >= 0.2)
+      .map(c => ({ line: `${c.name || c.cls} (${c.cls}, ${c.look}, r ${fmt(c.meanRadiusPx, 0)} px) sits over the player ship in ${fmt(c.occlusion.covered / (c.occlusion.n + c.occlusion.unknown) * 100, 0)}% of ${c.occlusion.n + c.occlusion.unknown} native opaque-mask samples — actual body pixels cover the ship`,
+        t: c.occlusion.exampleT, sim: null, box: c.occlusion.exampleBox })),
   ];
   const minSep = Math.min(...pairs.map((p) => p.sep));
-  return result('readability', 'Enemy / asteroid / projectile readable', offenders.length ? 'FAIL' : 'PASS', `min separation ${fmt(minSep)}`, `≥${T.readabilityMinSeparation} per class pair; ≤50% low-contrast`,
-    `samples: ${counts}${measurementNote}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
+  const unknownNote = bodyUnknown.length ? `; opaque body/player coverage UNKNOWN for ${bodyUnknown.map(c => `${c.name || c.cls}: ${c.occlusion ? `${c.occlusion.n} measured/${c.occlusion.unknown} unknown (${Object.keys(c.occlusion.reasons || {}).join(', ') || 'insufficient samples'})` : 'radius overlap has no native mask'}`).join('; ')}` : '';
+  return result('readability', 'Enemy / asteroid / projectile readable', offenders.length ? 'FAIL' : bodyUnknown.length ? 'UNKNOWN' : 'PASS', `min separation ${fmt(minSep)}`, `≥${T.readabilityMinSeparation} per class pair; ≤50% low-contrast`,
+    `samples: ${counts}${measurementNote}${unknownNote}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
 }
 
 /** Combat VFX graded per pixel when the reader's offscreen split ran (backdrop layers excluded). */
