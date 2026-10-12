@@ -460,6 +460,8 @@
     "check:playable": "node scripts/check-game-playable.mjs",
     "check:live-whole-ship-admission": "node scripts/check-live-whole-ship-admission.mjs",
     "check:crucible:route": "node scripts/check-crucible-route.mjs",
+    "player-truth": "node scripts/player-truth/run.mjs",
+    "check:player-truth": "node --test test/player-truth-*.test.mjs",
     "check:crucible:run": "node scripts/check-crucible-run.mjs",
     "check:playable:desktop": "node scripts/check-game-playable.mjs --electron",
     "check:playable:saves": "node scripts/check-game-playable.mjs --electron --real-saves",
