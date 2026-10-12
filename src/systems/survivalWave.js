@@ -207,6 +207,9 @@ export const survivalWave = {
     this._plan = plan;
     this._swarm = swarm;
     this._pending = plan.schedule.map((entry, index) => ({ entry, index }));
+    // A later Swarm wave opens the same way the first one does after its lesson: batch by batch,
+    // a breath apart, so the escalation reads as packs arriving instead of one dump in 3 s.
+    if (swarm && wave > 1 && !plan.openingLesson) this._spaceOpeningArrivals();
     const rules = plan.completionRules || {};
     const roles = Array.isArray(rules.blockingRoles) ? rules.blockingRoles : [];
     this._blockingRoles = new Set(roles);
@@ -577,9 +580,10 @@ export const survivalWave = {
    */
   _spaceOpeningArrivals() {
     const ticks = [];
+    const cursor = Number.isInteger(this._cursor) ? this._cursor : 0;
     for (const item of this._pending) {
       const entry = item && item.entry;
-      if (entry && Number.isInteger(entry.atTick) && entry.atTick > this._cursor) ticks.push(entry.atTick);
+      if (entry && Number.isInteger(entry.atTick) && entry.atTick > cursor) ticks.push(entry.atTick);
     }
     if (ticks.length < 2) return;
     ticks.sort((x, y) => x - y);
