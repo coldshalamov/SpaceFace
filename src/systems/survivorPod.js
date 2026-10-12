@@ -1480,6 +1480,10 @@ export const survivorPod = {
       && m.params && m.params.survivorPodId === point.id);
     if (committed) {
       rec.rescueSelected = true;
+      // The latch is a fact about the pod the moment the contract lands — re-stamp the
+      // point/entity mirror now. update() re-mirrors every tick, but a save or a reader
+      // between this choice and that tick would otherwise keep the pre-choice record.
+      mirrorMeta(state, rec, point, ent);
       return true;
     }
     rec.rescueSelected = false;
