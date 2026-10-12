@@ -85,10 +85,15 @@ ${R} .sf-crres__share-link:is(:hover, :focus-visible) { color:var(--dp-hand-hot,
   ${R} .sf-crres__build { flex-wrap:wrap; }
   ${R} .sf-crres__share-row { grid-template-columns:minmax(0, 1fr) auto; row-gap:6px; }
   ${R} .sf-crres__share-cap { grid-column:1 / -1; }
-  ${R} > .k-foot { order:5; position:sticky; bottom:0; z-index:4; flex:none; margin:0 -20px !important; padding:26px 20px 14px !important;
-    background:linear-gradient(180deg, rgb(${VOID} / 0), rgb(${VOID}) 28px) !important; }
+  /* Dock the ways-out in normal flow (not sticky). Sticky + a 590px dial left "The take"
+     under RUN IT AGAIN at 390×844 (ui-bench ON TOP OF / BURIED). */
+  ${R} > .k-foot { order:5; position:relative; bottom:auto; z-index:4; flex:none; margin:0 -20px !important; padding:18px 20px 14px !important;
+    background:linear-gradient(180deg, rgb(${VOID} / 0), rgb(${VOID}) 22px) !important; }
   ${R} > .k-foot > .k-words { width:100% !important; max-width:100% !important; flex-wrap:wrap !important; column-gap:26px !important; row-gap:2px !important; }
+  /* Shorter dial so title + dial + take + foot can share one 844-tall plate without pile-up. */
+  ${R} > .sf-crres__dial { height:min(420px, 52vh); }
 }
+
 `;
 
 export function injectCrucibleResultsLayouts(doc = globalThis.document) {
