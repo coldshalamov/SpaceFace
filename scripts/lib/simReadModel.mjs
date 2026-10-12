@@ -466,6 +466,9 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   // leaf-path mirrors (root stays on the facade; only the subtree ships)
   'sectorSim.field', 'npcJobs.byId', 'factionPresence.boarding',
   'automation.meta', 'automation.traders', 'automation.fleet',
+  // The site map, machinery HUD and cargo transfer UI read these authoritative
+  // records; presentation-owned siblings remain local to the main realm.
+  'sites.byId', 'sites.worldById', 'sites.worldOrder', 'automation.drones',
   'drill.scan', 'drill.active', 'drill.tilesCleared', 'drill.field',
   'drill.asteroidId',
   'save.slots', 'save.currentSlot',
@@ -557,6 +560,7 @@ export const DOMAIN_COLD_OFFSET = DOMAIN_COLD_TICKS >> 1;
 export const DOMAIN_CADENCE = Object.freeze({
   economy: 10, missions: 10, story: 10, factions: 30,
   sectorSim: 10, npcJobs: 30, factionPresence: 10, automation: 30,
+  sites: 10,
   onboarding: 10, meta: 30, run: 30, save: 10, aceMemory: 60,
   // The accept beat must reach the facade inside its own publish window, not the
   // missions root cadence — Mission Log / HUD / contracts render off the mirror.

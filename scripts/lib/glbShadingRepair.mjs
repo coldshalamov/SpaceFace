@@ -9,8 +9,9 @@
 //      Rebuilt normals are area-weighted face normals averaged around each welded position across
 //      faces within creaseDeg of each other, i.e. the Forge smooth-by-angle rule.
 // Faceting is kept on materials that are meant to be faceted (crystal / rock / ice / geology).
-// Primitive count, materials, UVs and textures are untouched; changed primitives drop TANGENT so the
-// renderer derives tangents from the new normals instead of pairing old tangents with new normals.
+// Primitive count, materials and textures are preserved. UV repair may duplicate corners;
+// typed skin/color attributes and morph deltas follow that mapping. Static surfaces drop stale
+// tangents; authored tangent animation and deforming geometry retain their original basis.
 
 const FACETED_ON_PURPOSE = /crystal|rock|asteroid|regolith|(^|[^a-z])ice|geology|stone|(^|[^a-z])ore|gem|shard|ingot/i;
 // Names that only borrow a geology word ("Material_Ceramic_ore" hull paint, "wreck_ore_freighter_*").
@@ -20,6 +21,32 @@ const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const len = (a) => Math.hypot(a[0], a[1], a[2]);
+
+function remapAccessor(document, accessor, sourceVertices) {
+  const source = accessor.getArray();
+  const size = accessor.getElementSize();
+  const array = new source.constructor(sourceVertices.length * size);
+  for (let i = 0; i < sourceVertices.length; i++) {
+    const offset = sourceVertices[i] * size;
+    array.set(source.subarray(offset, offset + size), i * size);
+  }
+  return document.createAccessor(accessor.getName()).setType(accessor.getType())
+    .setNormalized(accessor.getNormalized()).setArray(array).setBuffer(accessor.getBuffer());
+}
+
+function remapTargets(document, prim, sourceVertices) {
+  for (const target of prim.listTargets()) {
+    const remapped = target.clone();
+    for (const semantic of target.listSemantics()) {
+      remapped.setAttribute(semantic, remapAccessor(document, target.getAttribute(semantic), sourceVertices));
+    }
+    prim.removeTarget(target).addTarget(remapped);
+  }
+}
+
+function deforms(prim) {
+  return prim.listTargets().length > 0 || !!prim.getAttribute('JOINTS_0');
+}
 
 export function analysePrimitive(prim, { creaseDeg = 35, minShallow = 12 } = {}) {
   const pos = prim.getAttribute('POSITION');
@@ -95,8 +122,11 @@ function smoothNormals(a, creaseDeg) {
 export function repairPrimitive(document, prim, meshName, materialName, opts = {}) {
   const creaseDeg = opts.creaseDeg ?? 35;
   if (/^COLLISION/i.test(meshName || '')) return null;
+  // A bind-pose degenerate face can open during animation; authored morph normals
+  // are deltas from the original base normals. Neither is a static shading defect.
+  if (deforms(prim)) return null;
   const a = analysePrimitive(prim, opts);
-  if (!a) return null;
+  if (!a || !a.tris.length) return null;
   const mat = materialName || '', mesh = meshName || '';
   const keepFacets = (FACETED_ON_PURPOSE.test(mat) && !NOT_GEOLOGY.test(mat))
     || (FACETED_ON_PURPOSE.test(mesh) && !NOT_GEOLOGY.test(mesh) && !NOT_GEOLOGY.test(mat));
@@ -109,8 +139,10 @@ export function repairPrimitive(document, prim, meshName, materialName, opts = {
     // Only drop degenerate triangles: same vertex buffers, shorter index buffer.
     const out = new (a.n > 65535 ? Uint32Array : (idxAcc ? idxAcc.getArray().constructor : Uint32Array))(a.tris.length * 3);
     a.tris.forEach((t, i) => out.set(t.v, i * 3));
-    if (idxAcc) idxAcc.setArray(out);
-    else prim.setIndices(document.createAccessor().setType('SCALAR').setArray(out).setBuffer(document.getRoot().listBuffers()[0]));
+    // Release deduplication can share this index accessor with another shape.
+    // Removing a degenerate face here must not remove its valid sibling there.
+    prim.setIndices(document.createAccessor().setType('SCALAR').setArray(out)
+      .setBuffer((idxAcc || prim.getAttribute('POSITION')).getBuffer()));
     row.vertsAfter = a.n; return row;
   }
   // Orientation: trust the winding (it decides culling); normals follow it.
@@ -128,15 +160,8 @@ export function repairPrimitive(document, prim, meshName, materialName, opts = {
   }));
   const count = srcOf.length;
   for (const s of semantics) {
-    const acc = attrs[s];
-    const Arr = acc.getArray().constructor; const size = acc.getElementSize();
-    const out = new Arr(count * size);
-    const fresh = document.createAccessor().setType(acc.getType()).setNormalized(acc.getNormalized()).setArray(out).setBuffer(acc.getBuffer());
-    const el = [];
-    for (let i = 0; i < count; i++) {
-      if (s === 'NORMAL') fresh.setElement(i, newN[i]);
-      else fresh.setElement(i, acc.getElement(srcOf[i], el));
-    }
+    const fresh = remapAccessor(document, attrs[s], srcOf);
+    if (s === 'NORMAL') for (let i = 0; i < count; i++) fresh.setElement(i, newN[i]);
     prim.setAttribute(s, fresh);
   }
   if (prim.getAttribute('TANGENT')) prim.setAttribute('TANGENT', null);
@@ -157,6 +182,8 @@ export function repairCollapsedUVs(document, prim) {
   const uvAcc = prim.getAttribute('TEXCOORD_0');
   const pos = prim.getAttribute('POSITION');
   if (!mat || !uvAcc || !pos || prim.getMode() !== 4) return null;
+  // Changed UVs require derived tangents. Keep authored tangent animation intact.
+  if (prim.listTargets().some((target) => target.getAttribute('TANGENT'))) return null;
   if (!mat.getBaseColorTexture() && !mat.getNormalTexture()) return null;
   const idxAcc = prim.getIndices();
   const n = pos.getCount();
@@ -181,16 +208,13 @@ export function repairCollapsedUVs(document, prim) {
     for (let i = 0; i < n; i++) { const p = P(i); for (let k = 0; k < 3; k++) { mn[k] = Math.min(mn[k], p[k]); mx[k] = Math.max(mx[k], p[k]); } }
     scale = 1 / Math.max(1e-6, mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]);
   }
-  // Rebuild every attribute as float with room for the new corners.
+  // Duplicate raw typed elements: skin joint indices and normalized colors/weights
+  // must retain their component format. Morph deltas follow the same vertex mapping.
   const semantics = prim.listSemantics().filter((s) => s !== 'TANGENT');
   const extra = collapsed.length * 3; const count = n + extra;
-  const fresh = {};
-  for (const s of semantics) {
-    const acc = prim.getAttribute(s); const size = acc.getElementSize();
-    const out = new Float32Array(count * size); const el = [];
-    for (let i = 0; i < n; i++) { acc.getElement(i, el); for (let k = 0; k < size; k++) out[i * size + k] = el[k]; }
-    fresh[s] = { out, size, type: acc.getType(), buffer: acc.getBuffer() };
-  }
+  const sourceVertices = Array.from({ length: n }, (_, i) => i);
+  const uvOut = new Float32Array(count * 2);
+  for (let i = 0; i < n; i++) uvOut.set(U(i), i * 2);
   let next = n; const newI = I.slice();
   for (const t of collapsed) {
     const vs = [I[t], I[t + 1], I[t + 2]]; const ps = vs.map(P);
@@ -199,17 +223,19 @@ export function repairCollapsedUVs(document, prim) {
     const [u, v] = ax[0] >= ax[1] && ax[0] >= ax[2] ? [2, 1] : (ax[1] >= ax[2] ? [0, 2] : [0, 1]);
     const anchor = U(vs[0]);
     vs.forEach((src, c) => {
-      for (const s of semantics) { const f = fresh[s]; for (let k = 0; k < f.size; k++) f.out[next * f.size + k] = f.out[src * f.size + k]; }
-      const uvOut = fresh.TEXCOORD_0.out;
+      sourceVertices.push(src);
       uvOut[next * 2] = anchor[0] + (ps[c][u] - ps[0][u]) * scale;
       uvOut[next * 2 + 1] = anchor[1] + (ps[c][v] - ps[0][v]) * scale;
       newI[t + c] = next++;
     });
   }
   for (const s of semantics) {
-    const f = fresh[s];
-    prim.setAttribute(s, document.createAccessor().setType(f.type).setArray(f.out).setBuffer(f.buffer));
+    const accessor = prim.getAttribute(s);
+    prim.setAttribute(s, s === 'TEXCOORD_0'
+      ? document.createAccessor(accessor.getName()).setType('VEC2').setArray(uvOut).setBuffer(accessor.getBuffer())
+      : remapAccessor(document, accessor, sourceVertices));
   }
+  remapTargets(document, prim, sourceVertices);
   if (prim.getAttribute('TANGENT')) prim.setAttribute('TANGENT', null);
   const IA = count > 65535 ? Uint32Array : Uint16Array;
   prim.setIndices(document.createAccessor().setType('SCALAR').setArray(new IA(newI)).setBuffer((idxAcc || pos).getBuffer()));
@@ -267,15 +293,26 @@ const overlayRank = (name) => { for (const [re, r] of OVERLAY_RANK) if (re.test(
 export function repairCoincidentFaces(document) {
   const users = new Map();
   for (const node of document.getRoot().listNodes()) { const m = node.getMesh(); if (m) users.set(m, (users.get(m) || 0) + 1); }
+  const animated = new Set();
+  for (const animation of document.getRoot().listAnimations()) {
+    for (const channel of animation.listChannels()) animated.add(channel.getTargetNode());
+  }
+  const moving = (node) => {
+    for (let parent = node; parent; parent = parent.getParentNode()) {
+      if (animated.has(parent) || parent.getSkin() || /^(ANIM|HOOK)_/i.test(parent.getName())) return true;
+    }
+    return false;
+  };
   const faces = new Map();
   for (const node of document.getRoot().listNodes()) {
     const mesh = node.getMesh();
-    if (!mesh || users.get(mesh) > 1 || /COLLISION/i.test((mesh.getName() || '') + (node.getName() || ''))) continue;
+    if (!mesh || users.get(mesh) > 1 || moving(node) || /COLLISION/i.test((mesh.getName() || '') + (node.getName() || ''))) continue;
     const lod = (/^LOD([012])_/i.exec(node.getName() || '') || [, '0'])[1];
     const M = node.getWorldMatrix();
     for (const prim of mesh.listPrimitives()) {
       const mat = prim.getMaterial(); const pos = prim.getAttribute('POSITION'); const idx = prim.getIndices();
       if (!mat || !pos || !idx || prim.getMode() !== 4) continue;
+      if (deforms(prim)) continue;
       const I = idx.getArray(); const rank = overlayRank(mat.getName());
       for (let t = 0; t + 2 < I.length; t += 3) {
         const w = [I[t], I[t + 1], I[t + 2]].map((i) => { const p = pos.getElement(i, []);
