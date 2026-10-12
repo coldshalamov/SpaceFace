@@ -115,7 +115,7 @@ test('a scaled hull does not inflate the threat plate past the ship', () => {
   assert.ok(world.x >= 8 * 0.99);
 });
 
-test('a cohort mark widens the bracket and a heading wedge points along the hull nose', () => {
+test('a cohort mark clamps the faction card to the hull, and a heading wedge points along the nose', () => {
   const mesh = new THREE.Group();
   // entity.rot = PI/2 is world heading +Z. The renderer applies mesh.rotation.y = -entity.rot.
   mesh.rotation.y = -Math.PI / 2;

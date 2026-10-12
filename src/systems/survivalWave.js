@@ -43,6 +43,7 @@ import {
   levelForWave,
   materializeWaveBatch,
 } from './waveMaterialization.js';
+import { SWARM_THREAT_MARK_SCALE } from '../data/swarmThreatMark.js';
 
 export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
 
@@ -54,13 +55,9 @@ export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
  */
 export const OPENING_LESSON_RELEASE_TICKS = 3 * 60;
 
-// sampleBox (scripts/player-truth/readability.mjs) reads the hull at Chebyshev
-// d ≤ 0.7r and the background at d > 1.2r. The plate is RingGeometry(0.70, 1)
-// scaled by swarmMarkRadius, so this factor puts that stroke in (0.784r, 1.12r):
-// outside the hull sample, short of the sky sample. 1.65× with a floor of 16
-// put a radius-12 wasp at 19.8 and the idle gate scored the bright sky as the
-// threat (separation 1.94, threats-on-bright p95 100%).
-export const SWARM_THREAT_MARK_SCALE = 1.12;
+// Re-exported so callers that already import the scale from the wave owner
+// stay on the leaf in src/data/swarmThreatMark.js. Do not redeclare 1.12 here.
+export { SWARM_THREAT_MARK_SCALE };
 // After the lesson the pack arrives in readable groups, a breath apart, instead of the whole
 // room landing on a new pilot inside one second.
 const OPENING_ARRIVAL_WINDOW_TICKS = 8 * 60;

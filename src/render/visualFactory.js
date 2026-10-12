@@ -1,6 +1,7 @@
 import { isLatchActor } from './latchNineVisuals.js';
 import { isTallyThreeAssessor } from './tallyThreeVisuals.js';
 import { isBorrowedVoiceRing } from '../data/borrowedVoiceBody.js';
+import { SWARM_THREAT_MARK_SCALE } from '../data/swarmThreatMark.js';
 import { isCeresWorkfleetPlace, ceresWorkfleetPlaceFile } from './ceresWorkfleetVisuals.js';
 import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection } from './ceresShipbreakVisuals.js';
 // Builds Three.js meshes for entities from primitives, deterministic procedural maps, and visual
@@ -2603,11 +2604,10 @@ function tintSwarmHostileHull(mesh) {
  *     depthWrite off, in the gap before the background sample (d > 1.2r)
  *   - a heading wedge on the nose, inside the hull sample, along +X
  *     (the renderer yaws with mesh.rotation.y = -entity.rot)
- * The rim is capped at SWARM_THREAT_MARK_CAP × body radius. Created once per boundary.
+ * The rim is capped at SWARM_THREAT_MARK_SCALE × body radius. Created once per boundary.
+ * The scale lives in src/data/swarmThreatMark.js, the same leaf the wave owner
+ * uses when it stamps swarmMarkRadius. This file does not import survivalWave.
  */
-// Lockstep with SWARM_THREAT_MARK_SCALE in survivalWave.js. Do not import that
-// module from here: the wave owner pulls the sim, and this file is the mesh builder.
-const SWARM_THREAT_MARK_CAP = 1.12;
 export function syncSwarmThreatPlate(mesh, entity, camera) {
   if (!mesh || typeof mesh.getObjectByName !== 'function') return;
   if (!entity || entity.type !== 'ship' || entity.team == null || entity.team === 0 || entity.team === 2) {
@@ -2681,7 +2681,7 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
   const bodyR = Math.max(2, Number(entity.radius) || 2);
   const markAuth = Number(entity.data && entity.data.swarmMarkRadius);
   const requested = Number.isFinite(markAuth) && markAuth > bodyR ? markAuth : bodyR;
-  const markR = Math.min(requested, bodyR * SWARM_THREAT_MARK_CAP);
+  const markR = Math.min(requested, bodyR * SWARM_THREAT_MARK_SCALE);
   mesh.updateWorldMatrix(true, false);
   mesh.getWorldScale(_threatPlateScale);
   const inv = (n) => 1 / Math.max(1e-4, Math.abs(n));
