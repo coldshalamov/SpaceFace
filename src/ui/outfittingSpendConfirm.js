@@ -82,9 +82,14 @@ export function describeOutfittingSpendConfirm(def, credits, opts = {}) {
   const fitSlotIndex = opts.fitSlotIndex;
   const willFit = Number.isInteger(fitSlotIndex) && fitSlotIndex >= 0;
   const danger = isOutfittingSpendDanger(price, avail);
-  const fitLine = willFit
-    ? ' Will fit into an open hardpoint on confirmation.'
-    : ' Goes to module inventory.';
+  // opts.replacesName: the module this fit displaces (it goes to inventory, not the bin).
+  // opts.jobImpact: what the swap does to a held or offered job that gates on a fitted tool.
+  const fitLine = (willFit
+    ? (opts.replacesName
+      ? ' Replaces ' + opts.replacesName + ' on confirmation; ' + opts.replacesName + ' goes to module inventory.'
+      : ' Will fit into an open hardpoint on confirmation.')
+    : ' Goes to module inventory.')
+    + (opts.jobImpact ? ' ' + opts.jobImpact : '');
   const riskLine = danger
     ? (avail > 0 && price >= avail * 0.5
       ? ' This spends at least half your credits.'
@@ -93,7 +98,7 @@ export function describeOutfittingSpendConfirm(def, credits, opts = {}) {
   return {
     title: 'Buy ' + def.name + '?',
     body: 'Cost: ' + fmtCr(price) + ' CR.' + fitLine + riskLine,
-    confirmLabel: willFit ? 'Buy & Fit' : 'Buy',
+    confirmLabel: willFit ? (opts.replacesName ? 'Buy & Replace' : 'Buy & Fit') : 'Buy',
     cancelLabel: 'Cancel',
     danger,
   };

@@ -31,6 +31,7 @@ import {
 import { moduleRiskStrip } from '../panels/moduleRisk.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
 
 const DRIVE_FAMILY_LABEL = {
@@ -150,6 +151,7 @@ export function describeOutfittingPurchase(def, player = {}, slots = [], fitting
   }
   if (!afford) {
     const missing = Math.max(0, price - credits);
+    const earnHint = opts.state ? outfittingWorkDirection(opts.state, missing, opts) : '';
     return {
       state: 'funding',
       unlocked,
@@ -158,7 +160,9 @@ export function describeOutfittingPurchase(def, player = {}, slots = [], fitting
       fitSlotIndex,
       disabled: true,
       label: 'Need ' + fmtCr(missing) + ' cr',
-      title: def.name + ' costs ' + fmtCr(price) + ' cr. You need ' + fmtCr(missing) + ' more credits.',
+      title: def.name + ' costs ' + fmtCr(price) + ' cr. You need ' + fmtCr(missing) + ' more credits.'
+        + (earnHint ? ' ' + earnHint : ''),
+      earnHint,
       price,
     };
   }
@@ -305,7 +309,7 @@ export function recommendOutfittingPurchase(player = {}, slots = [], fittings = 
   const blockerTail = pick.purchase.state === 'locked'
     ? ' Track the prerequisite in the Tech Tree before buying.'
     : (pick.purchase.state === 'funding'
-      ? ' Run a contract or trade loop to fund the upgrade.'
+      ? (pick.purchase.earnHint ? '' : ' Run a contract or trade loop to fund the upgrade.')
       : (pick.purchase.state === 'standing'
         ? ' Earn the faction\'s trust to Allied before its yard will fit it.'
         : ' Clear the blocker, then return to Outfitting.'));
@@ -317,6 +321,92 @@ export function recommendOutfittingPurchase(player = {}, slots = [], fittings = 
     label: pick.purchase.label,
     detail: pick.purchase.title + blockerTail,
   };
+}
+
+function activeFittings(state) {
+  const player = state && state.player;
+  const owned = player && Array.isArray(player.ownedShips)
+    ? player.ownedShips[player.activeShipIndex || 0] : null;
+  return (owned && typeof owned === 'object' && Array.isArray(owned.fittings)) ? owned.fittings : [];
+}
+
+function jobRequiredModule(job) {
+  return (job && job.params && job.params.requiredModule) || null;
+}
+
+function jobReward(job) {
+  return Math.max(0, Math.round(Number(job && job.reward_cr) || 0));
+}
+
+function boardJobs(state, stationId) {
+  const board = stationId && state && state.missions && state.missions.boards
+    ? state.missions.boards[stationId] : null;
+  return board && Array.isArray(board.slots) ? board.slots.filter(Boolean) : [];
+}
+
+/**
+ * Starter-progression: a concrete earning direction for an unaffordable buy, drawn from work that
+ * actually exists — the tracked or active job first, then a row on this station's board the
+ * active ship can take today (the hull's starter job leads). Never a generic "get more money".
+ */
+export function outfittingWorkDirection(state, shortfall, opts = {}) {
+  if (!state) return '';
+  const need = Math.max(0, Math.round(Number(shortfall) || 0));
+  const carried = new Set(activeFittings(state).filter(Boolean));
+  const canRun = (job) => !jobRequiredModule(job) || carried.has(jobRequiredModule(job));
+  const active = (state.missions && Array.isArray(state.missions.active) ? state.missions.active : [])
+    .filter((m) => m && jobReward(m) > 0 && m.status !== 'failed' && m.status !== 'completed');
+  const trackedId = state.ui && state.ui.trackedMissionId;
+  const running = active.find((m) => m.id === trackedId) || active.find(canRun);
+  if (running) {
+    return 'Finish ' + (running.title || 'your active job') + ' (+' + fmtCr(jobReward(running)) + ' cr)'
+      + (jobReward(running) >= need ? ' to cover it.' : ' toward it.');
+  }
+  const stationId = opts.stationId || (state.ui && state.ui.dockedStationId) || null;
+  const offers = boardJobs(state, stationId).filter((o) => jobReward(o) > 0 && canRun(o)
+    && !(Number(o.riskTier) > 1));
+  if (offers.length) {
+    const starter = offers.find((o) => o.source === 'starterJob');
+    const covering = offers.filter((o) => jobReward(o) >= need)
+      .sort((a, b) => jobReward(a) - jobReward(b))[0];
+    const pick = starter || covering || offers.slice().sort((a, b) => jobReward(b) - jobReward(a))[0];
+    return 'Earn it here: ' + (pick.title || 'a board job') + ' pays ' + fmtCr(jobReward(pick)) + ' cr on this board'
+      + (jobReward(pick) >= need ? '.' : ', or sell salvage and ore at the Market.');
+  }
+  return 'Sell salvage and ore at the Market, or take a haul, bounty or survey from the board.';
+}
+
+/**
+ * Starter-progression: what fitting `def` (replacing `replacedDefId`, if any) does to the jobs the
+ * player holds or is offered here. Jobs gate on params.requiredModule; this names the job that
+ * pauses when its tool leaves the hull, and the job this fit qualifies for.
+ */
+export function outfittingJobImpact(state, def, replacedDefId = null, opts = {}) {
+  if (!state || !def) return '';
+  const stationId = opts.stationId || (state.ui && state.ui.dockedStationId) || null;
+  const active = state.missions && Array.isArray(state.missions.active) ? state.missions.active : [];
+  const jobs = [
+    ...active.filter((m) => m && m.status !== 'failed' && m.status !== 'completed'),
+    ...boardJobs(state, stationId).filter((o) => o.source === 'starterJob'),
+  ];
+  const seen = new Set();
+  const lines = [];
+  for (const job of jobs) {
+    const need = jobRequiredModule(job);
+    if (!need || seen.has(need + ':' + (job.title || job.id))) continue;
+    seen.add(need + ':' + (job.title || job.id));
+    const isActive = active.includes(job);
+    if (replacedDefId && need === replacedDefId && def.id !== need) {
+      const toolName = (MODULE_BY_ID.get(need) || {}).name || 'its tool';
+      lines.push((job.title || 'That job') + ' needs ' + toolName + (isActive
+        ? '; it stops progressing until you refit it from inventory.'
+        : '; the board will refuse it until you refit it from inventory.'));
+    } else if (need === def.id) {
+      lines.push((job.title || 'That job') + ' needs this fit.');
+    }
+    if (lines.length >= 2) break;
+  }
+  return lines.join(' ');
 }
 
 function stationTier(stationId) {

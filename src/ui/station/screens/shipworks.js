@@ -82,7 +82,7 @@ import { entitySpanHtml } from '../../entityResolver.js';
 import { confirm, isConfirmOpen } from '../../confirm.js';
 import { describeOutfittingSpendConfirm, focusNamedStationControl, isOutfittingSpendDanger, statedHullStillViewed, statedModulePurchaseStillMatches } from '../../outfittingSpendConfirm.js';
 import { moduleRiskStrip } from '../../panels/moduleRisk.js';
-import { describeOutfittingPurchase, masslineHeadOutcome } from '../outfittingGuidance.js';
+import { describeOutfittingPurchase, masslineHeadOutcome, outfittingJobImpact } from '../outfittingGuidance.js';
 import {
   createShipPreviewMount,
   dockInteriorIdForArchetype,
@@ -4049,7 +4049,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       });
       const fittedDef = fittedId ? FITTABLE_BY_ID.get(fittedId) : null;
       const chips = shopDeltaChipsHtml(shopDelta, d, fittedDef, slot);
-      const purchase = describeOutfittingPurchase(d, ctx.state.player || {}, slots, fittings, def, { stationId: shopStationId, factions: ctx.state.factions });
+      const purchase = describeOutfittingPurchase(d, ctx.state.player || {}, slots, fittings, def, { stationId: shopStationId, factions: ctx.state.factions, state: ctx.state });
       const selectedFittings = fittings.slice();
       selectedFittings[slotIndex] = d.id;
       const selectedBudgetBlocker = outfitBudgetBlocker(def, selectedFittings);
@@ -4066,6 +4066,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         : selectedFit
           ? `Buy ${d.name} and fit it to this ${slot.type} ${slot.size} slot.${ringNote}`
         : purchase.title;
+      const viewingActiveHull = viewIdx === ((ctx.state.player && ctx.state.player.activeShipIndex) || 0);
+      const jobImpact = selectedFit && viewingActiveHull
+        ? outfittingJobImpact(ctx.state, d, fittedId || null, { stationId: shopStationId }) : '';
+      const actionDetailFull = jobImpact ? `${actionDetail} ${jobImpact}` : actionDetail;
       const buyWord = availability.outfitEnabled ? (selectedFit ? (fittedId ? 'Buy & Replace' : 'Buy & Fit') : 'Buy to Inventory') : 'Dock to fit';
       const btn = equipped
         ? `<span class="k-t-fine k-38 sx-modrow__eq">Equipped</span>`
@@ -4081,7 +4085,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}</span>` +
             `<span class="k-row__sub sx-modrow__meta">${equippedInstText ? `<span class="sx-modrow__instance">This unit: ${escapeHtml(equippedInstText)}</span> ` : (arsenalSentence(d) ? `<span class="sx-modrow__sentence">${escapeHtml(arsenalSentence(d))}</span> ` : '')}<span class="sx-modrow__chips">${chips}${riskChips}</span></span>` +
             (d.variantBonuses ? `<span class="k-row__sub k-38 sx-modrow__variant">Different: ${escapeHtml(variantBonusWords(d.variantBonuses))}</span>` : '') +
-            `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(actionDetail)}</span></span>` +
+            `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(actionDetailFull)}</span></span>` +
           `<span class="k-row__num sx-modrow__act">${sableTrialButton(d)}${btn}</span>` +
         `</li>`
       );
@@ -5114,9 +5118,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const statedShipIndex = viewIdx;
       const statedHullDefId = viewedAtConfirm && viewedAtConfirm.defId;
       const statedPrice = offer ? offer.price : moduleSimPrice(def);
+      const replacedId = Number.isInteger(fitSlotIndex) && viewedAtConfirm && Array.isArray(viewedAtConfirm.fittings)
+        ? viewedAtConfirm.fittings[fitSlotIndex] : null;
+      const replacedDef = replacedId ? FITTABLE_BY_ID.get(replacedId) : null;
+      const confirmingActiveHull = statedShipIndex === ((ctx.state.player && ctx.state.player.activeShipIndex) || 0);
       const confirmOpts = describeOutfittingSpendConfirm(def, credits, {
         fitSlotIndex,
         price: statedPrice,
+        replacesName: replacedDef ? replacedDef.name : null,
+        jobImpact: Number.isInteger(fitSlotIndex) && confirmingActiveHull
+          ? outfittingJobImpact(ctx.state, def, replacedId || null, { stationId: shopStationId }) : '',
       });
       if (confirmOpts) {
         focusNamedStationControl(bf, chooserEl);
