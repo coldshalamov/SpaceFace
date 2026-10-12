@@ -18,7 +18,7 @@
 
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
@@ -127,7 +127,32 @@ export function runOutputDirectory(args, label, multiple = false) {
   return path.resolve(ROOT, args.out && multiple ? path.join(requested, label) : requested);
 }
 
+export function readSourceState(cwd = ROOT) {
+  let commit = 'unknown';
+  try { commit = execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch {}
+  let dirtySourcePaths = null;
+  try {
+    const entries = execFileSync('git', ['status', '--porcelain=v1', '-z', '--', 'src', 'scripts', 'styles', 'index.html'],
+      { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).split('\0');
+    dirtySourcePaths = [];
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      if (!entry) continue;
+      dirtySourcePaths.push(entry.slice(3));
+      if (/[RC]/.test(entry.slice(0, 2))) i++; // -z supplies the original rename/copy path next.
+    }
+  } catch {}
+  return { commit, dirty: dirtySourcePaths === null ? null : dirtySourcePaths.length > 0, dirtySourcePaths };
+}
+
+export function sourceRunMetadata(start, end) {
+  return { commit: start.commit, dirty: start.dirty, startCommit: start.commit,
+    startDirtySourcePaths: start.dirtySourcePaths, endCommit: end.commit,
+    endDirty: end.dirty, endDirtySourcePaths: end.dirtySourcePaths };
+}
+
 async function runOne(args, arena, extra = {}) {
+  const sourceAtStart = readSourceState();
   const label = [args.mode, arena ? slug(arena) : null, extra.hull ? slug(extra.hull) : null, extra.vpTag ? args.viewport : null, args.tag ? slug(args.tag) : null].filter(Boolean).join('-');
   const outDir = runOutputDirectory(args, label, extra.multiple);
   rmSync(outDir, { recursive: true, force: true }); mkdirSync(path.join(outDir, 'frames'), { recursive: true });
@@ -326,12 +351,11 @@ async function runOne(args, arena, extra = {}) {
     }).catch((e) => ({ error: String(e) }));
   }
   const t1 = trace.samples.length ? trace.samples[trace.samples.length - 1] : null;
-  const commit = (() => { try { return execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim(); } catch { return 'unknown'; } })();
-  const dirty = (() => { try { return execSync('git status --porcelain -- src scripts', { cwd: ROOT }).toString().trim().length > 0; } catch { return false; } })();
+  Object.assign(trace.meta, sourceRunMetadata(sourceAtStart, readSourceState()));
   const softwareGl = /swiftshader|llvmpipe|software|softpipe/i.test(renderer);
   const playStart = trace.meta.playStartSim;
   Object.assign(trace.meta, {
-    label, browserExecutable: executable, hullPicked: extra.hull || null, hullsOffered: doorInfo && doorInfo.hulls ? doorInfo.hulls : null, idleSeconds: args.idle, seedSet: !!(doorInfo && doorInfo.seedSet), arena: arena || (doorInfo && doorInfo.arenas ? (doorInfo.arenas.find((x) => x.pressed) || {}).name : null) || null, seed: args.seed, commit, dirty, renderer, softwareGl, headed: args.headed, browserVersion,
+    label, browserExecutable: executable, hullPicked: extra.hull || null, hullsOffered: doorInfo && doorInfo.hulls ? doorInfo.hulls : null, idleSeconds: args.idle, seedSet: !!(doorInfo && doorInfo.seedSet), arena: arena || (doorInfo && doorInfo.arenas ? (doorInfo.arenas.find((x) => x.pressed) || {}).name : null) || null, seed: args.seed, renderer, softwareGl, headed: args.headed, browserVersion,
     resolution: `${vw}x${vh}`, when: new Date().toISOString(), wallSeconds: Math.round((Date.now() - T0) / 1000),
     simSeconds: t1 && playStart != null ? +(t1.sim - playStart).toFixed(1) : 0, frames: trace.samples.length, shots: shots.length,
     script: `idle ${args.idle} s → thrust/yaw probes → ${args.mode === 'swarm' || args.mode === 'gauntlet' ? 'kiting fighter: aim+fire at nearest hostile, hold 230–400 u range, burn away from packs of 3+ inside 450 u, strafe, break off under fire, latch every 7th beat; probes + shots at every round start' : args.fight ? 'adventure fight: aim+fire at nearest hostile when one is in reach, else cruise' : 'cruise: thrust bursts and turns'}${args.gatePass ? ` · gate ${args.gatePass} pass` : ''} · no invulnerability (the only toggle is the physics-lab practice rack, not offered in Swarm/Gauntlet)`,

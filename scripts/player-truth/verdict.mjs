@@ -7,6 +7,11 @@ export function renderVerdict({ meta, results, overall, paths }) {
   L.push(`# Player-truth verdict: ${overall} — ${meta.label}`);
   L.push('');
   L.push(`- Mode: ${meta.mode}${meta.arena ? ` · arena ${meta.arena}` : ''} · seed ${meta.seedSet === false && meta.runSeed != null ? `${meta.runSeed} (requested ${meta.seed}; field not settable on this route)` : meta.runSeed != null ? meta.runSeed : meta.seed} · build ${meta.commit}${meta.dirty ? ' (dirty)' : ''}`);
+  if (meta.startCommit) {
+    const paths = (list) => list == null ? 'status unavailable' : list.length ? list.join(', ') : 'no dirty source paths';
+    L.push(`- Source at start: ${meta.startCommit} · ${paths(meta.startDirtySourcePaths)}`);
+    L.push(`- Source at end: ${meta.endCommit} · ${paths(meta.endDirtySourcePaths)}`);
+  }
   L.push(`- Renderer: ${meta.renderer}${meta.softwareGl ? ' — SOFTWARE GL (SwiftShader): slow, frame times not representative' : ''}`);
   L.push(`- Browser: ${meta.headed ? 'headed' : 'headless'} Chromium ${meta.browserVersion} · ${meta.resolution} · ${meta.when}`);
   L.push(`- Run: ${meta.wallSeconds} s wall, ${meta.simSeconds} s of play sim time, ${meta.frames} frames sampled, ${meta.shots} screenshots · player script: ${meta.script}`);

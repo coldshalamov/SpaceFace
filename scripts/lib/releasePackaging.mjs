@@ -44,6 +44,8 @@ export const RELEASE_COPY_MAPPINGS = Object.freeze([
   // Runtime plume/RCS masks are loaded through template paths in vfx.js. Copy only this manifest-
   // governed subtree; the labelled FX reference sheets in assets/fx/ remain authoring-only.
   Object.freeze({ source: 'assets/fx/thruster', destination: 'assets/fx/thruster' }),
+  // The live wreck investigation catalog imports this small authored variant table.
+  Object.freeze({ source: 'assets/wreck-court', destination: 'assets/wreck-court' }),
   Object.freeze({ source: 'src/data/scenarios', destination: 'data/scenarios' }),
   Object.freeze({ source: 'vendor/addons/libs', destination: 'vendor/addons/libs' }),
 ]);
