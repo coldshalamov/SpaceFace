@@ -48,7 +48,8 @@ export function sportManifest() {
     sports: ['keeper', 'bank', 'curl', 'relay', 'magnet', 'contain'],
     arenas: ['yard', 'house', 'slip', 'dock'],
     events: 12,
-    physics: 'xz-semi-implicit-euler',
+    physics: 'rapier-dynamic',
+    exhibitPhysics: 'xz-semi-implicit-euler',
     rng: 'injected-mulberry32',
   };
 }

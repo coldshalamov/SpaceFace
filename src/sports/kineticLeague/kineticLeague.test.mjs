@@ -369,7 +369,7 @@ test('BRACKET discovery is the gate, and a forged scan is not', () => {
   assert.equal(dead.ok, false);
 });
 
-test('the league system discovers from the bracket bus and does not spawn world entities', () => {
+test('the league discovers from the bracket bus but cannot substitute a private solver for missing live owners', () => {
   const state = {
     simTime: 4,
     mode: 'flight',
@@ -387,9 +387,9 @@ test('the league system discovers from the bracket bus and does not spawn world 
   assert.equal(state.kineticLeague.discovered, true);
   assert.equal(state.entities.size, 0);
   const session = system.beginMatch('kl-01', { practice: true, enforceTier: false });
-  assert.equal(session.phase, 'play');
+  assert.equal(session.ok, false);
+  assert.match(session.reason, /live-player-and-entity-owner/);
   for (let i = 0; i < 50; i++) system.update(DT);
-  assert.equal(session.playerTouched, true);
   assert.equal(state.entities.size, 0);
   assert.equal(state.player.credits, 10);
   system.leave();
@@ -398,7 +398,7 @@ test('the league system discovers from the bracket bus and does not spawn world 
   assert.equal(nextUnlockedEvent(state.kineticLeague).id, 'kl-01');
 });
 
-test('input-driven open-side match finishes under ship axes', () => {
+test('live entry requires flight instead of granting an exhibit win from unowned input', () => {
   const state = {
     simTime: 0,
     playerId: 'hull-7',
@@ -410,16 +410,9 @@ test('input-driven open-side match finishes under ship axes', () => {
   const system = createKineticLeague();
   system.init({ state, bus: createBus(), helpers: {} });
   const session = system.beginMatch('kl-01');
-  let guard = 0;
-  while (session.phase !== 'finished' && session.phase !== 'failed' && guard < 2500) {
-    const thrusting = session.shotTime < 0.75 && session.phase === 'play';
-    state.input.moveZ = thrusting ? -1 : 0;
-    state.input.moveX = 0;
-    system.update(DT);
-    guard += 1;
-  }
-  assert.equal(session.won, true);
-  assert.ok(session.goals >= 2);
+  assert.equal(session.ok, false);
+  assert.equal(session.reason, 'launch-flight-first');
+  assert.equal(system.session, null);
   assert.equal(state.player.credits, 3);
   assert.equal(state.entities.size, 0);
   system.destroy();

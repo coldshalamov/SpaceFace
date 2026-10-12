@@ -1,84 +1,38 @@
-# Kinetic League adapter (not applied)
+# Kinetic League live integration
 
-The playable circuit lives in this folder and does not edit BRACKET, the registry, or the save system. Those files are shared with other campaigns. Apply the hunks below only when those paths are free.
+Import `createKineticLeague` from `system.js` and register `['kineticLeague', createKineticLeague()]`
+in both factory tables. Add `kineticLeague` before `flightSlot` to production init/update/table
+clock membership. The system reads completed authoritative poses and queues rival/friction impulses;
+Flight V3, Rapier, the field owner and actions/Massline remain the single gameplay owners.
 
-Conflicting paths:
+Methods: `beginMatch(eventId, {seed, practice})`, `enterMatch` (alias), `retry()`, `next()`, `leave()`,
+`status()`, `serialize()`, `deserialize(raw)`. Requests: `kinetic-league:enter` with `{eventId}`,
+`:retry`, `:leave`. `:started` and `:finished` emit status. Entry and retry create an unsolved live
+match; they never call `runMatch`, `stepSession` or the private exhibit integrator.
 
-- `src/systems/bracket.js`
-- `src/save/saveSystem.js`
-- `src/core/registry.js`
-- `src/runtime/nodeSystemFactoryTable.js`
-- `src/runtime/authoritativeSystemManifest.js`
+`status()` exposes title, instruction, phase, remainingSeconds, progress, shots, target, arena,
+world-space court center and durable league memory. Qualification opens by explicit venue-board
+entry or BRACKET discovery. Higher career tiers require the prior tier; `practice:true` permits
+learning any event without a purse. Winning events pay local scrip once and never change credits.
 
-Do not call `runMatch` from the live scan. `runMatch` replays an exhibit thrust trace for tests. The live tick is `createKineticLeague().beginMatch` plus `update(dt)`, which reads `state.input.moveX` / `moveZ`, `state.input.brake`, and `state.input.actions.massline`.
+Persist `_callSerialize('kineticLeague')` as `data.kineticLeague`, and restore via
+`_callDeserialize('kineticLeague', data.kineticLeague)`. Career memory is normalized. Genuine active
+sessions carry an authoritative marker and resume by reconstructing owned physical entities on the
+existing sim; old private exhibit sessions do not resume into live play.
 
-## 1. `src/systems/bracket.js`
+Court bodies use ordinary authored payload visuals; rail proxies are real OBBs, goal beacons use the
+non-contact material, and magnet courts register with the existing field owner. Actual physical
+impacts and actual Massline attachment/cut events feed sport rules. Braking never secretly cuts a
+rope. In containment, no-input passive placement cannot earn a live victory.
 
-Discover the league when a scrapball match finishes. A scan taken on the league gate (closer to the gate than to the keeper) emits `kinetic-league:enter` and does not start another five-shot match.
+The shared venue membrane owns clear placement and safe return via `world.relocatePlayerInSector`.
+`state.physicsVenue = {id,active,returnPosition,sectorId}` is ephemeral. Suspend campaign autosaves
+and encounters while active, or project the campaign save to returnPosition and omit entities with
+`data.physicsVenueId`. Normal explicit league serialization preserves career and match progress.
 
-```diff
---- a/src/systems/bracket.js
-+++ b/src/systems/bracket.js
-@@ -3,6 +3,7 @@
- import { BRACKET as C, BRACKET_LINES, freshBracketMemory, normalizeBracketMemory } from '../data/bracket.js';
- import { clamp, finiteXZ, goalCrossing, predictKeeperTarget, legalShot, keeperControl } from '../characters/bracketRules.js';
- import { writePhysicsControl, queuePhysicsImpulse } from '../core/physicsAuthority.js';
-+import { maybeEnterLeague, noteBracketDiscovery } from '../sports/kineticLeague/discover.js';
- 
- const distance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
- const ACTIVE = new Set(['serve', 'play', 'result']);
-@@ -133,6 +134,10 @@ export function createBracket() {
-       if (this._scanSource === player && p.seq <= this._seq) return;
-       this._scanSource = player; this._seq = p.seq;
-       if (distance(player.pos, this._center) > Math.min(p.radius, C.hailRadius)) return;
-+      if (maybeEnterLeague(this.state, player.pos)) {
-+        this.bus?.emit('kinetic-league:enter', { pos: { x: player.pos.x, z: player.pos.z } });
-+        return;
-+      }
-       if (this.state.simTime < this._closedUntil) { this._say('hurt'); return; }
-       if (ACTIVE.has(this._phase)) { this._cancel(true); return; }
-       const first = !this.state.bracket.met;
-@@ -237,6 +242,7 @@ export function createBracket() {
-       this._gestureAt = this.state.simTime;
-       this._say(this._score === C.rounds ? 'perfect' : won ? 'win' : 'lose', true);
-       this.bus?.emit('bracket:matchFinished', { score: this._score, rounds: C.rounds, won, best: m.best, title: won ? 'Keeper of the Unreasonable Goal' : null });
-+      noteBracketDiscovery(this.state, { via: 'match-finished' });
-     },
-     update(dt, state = this.state) {
-```
+Existing BRACKET wiring may keep using `noteBracketDiscovery` / `maybeEnterLeague` from discover.js;
+the live system also listens to BRACKET result/start events. The public venue board is an additional
+reachable door, not a replacement for BRACKET.
 
-`noteBracketDiscovery` writes `state.kineticLeague` only. It does not write bracket memory, credits, cargo, or hull.
-
-## 2. `src/save/saveSystem.js`
-
-League memory is not the credit wallet. Persist it beside bracket.
-
-```diff
---- a/src/save/saveSystem.js
-+++ b/src/save/saveSystem.js
-@@ -784,6 +784,7 @@
-     data.morrow = this._callSerialize('morrow') || {};
-     data.vesper = this._callSerialize('vesper') || {};
-     data.bracket = this._callSerialize('bracket') || {};
-+    data.kineticLeague = this._callSerialize('kineticLeague') || {};
-     data.ravel = this._callSerialize('ravel') || {};
-@@ -4978,6 +4979,8 @@
-       yield 'vesper-restored';
-       this._callDeserialize('bracket', data.bracket);
-       yield 'bracket-restored';
-+      this._callDeserialize('kineticLeague', data.kineticLeague);
-+      yield 'kinetic-league-restored';
-       this._callDeserialize('ravel', data.ravel);
-```
-
-`createKineticLeague().serialize()` / `deserialize()` already speak this shape (`{ memory, session }`).
-
-## 3. Registration
-
-Add `kineticLeague` to the factory table and both production orders, immediately after `bracket` and before `physics`, matching the bracket clock. The system update spawns nothing until `beginMatch`. `worldFootprint` is 0 while idle.
-
-- `src/runtime/nodeSystemFactoryTable.js`: import `{ createKineticLeague }` from `../sports/kineticLeague/system.js` and register `['kineticLeague', createKineticLeague()]`.
-- `src/core/registry.js`: the same pair next to `['bracket', bracket]`.
-- `src/runtime/authoritativeSystemManifest.js`: insert `'kineticLeague'` after `'bracket'` in the init list, the update list, and the phase list that already names `bracket`.
-
-On `kinetic-league:enter`, call `beginMatch(nextUnlockedEvent(state.kineticLeague).id)`. Do not call `runMatch`.
+Verification: `node --test test/physical-venues-live.test.mjs`. The twelve fixed-seed Euler exhibits
+remain isolated regression tooling and cannot establish live gameplay acceptance.

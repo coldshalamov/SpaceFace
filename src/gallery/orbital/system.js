@@ -1,9 +1,10 @@
 // Orbital Gallery machinery. Runs inside the authoritative sim, ahead of flight,
-// fields, and physics. It writes the input packet and queues motor impulses.
+// fields, and physics. Live play preserves raw input; exhibits alone write a tape packet.
 // It does not integrate positions, does not import Three.js, and does not
 // touch credits.
 
 import { queuePhysicsImpulse } from '../../core/physicsAuthority.js';
+import { createLiveGallery } from './live.js';
 
 const NEUTRAL = Object.freeze({
   moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false, cut: false,
@@ -13,13 +14,39 @@ export const orbitalGallery = {
   name: 'orbitalGallery',
 
   init(ctx) {
+    this.destroy();
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers || {};
+    this.live = createLiveGallery(ctx);
+    this._unsubs = [];
+    const on = (name, fn) => { const off = this.bus?.on(name, fn); if (typeof off === 'function') this._unsubs.push(off); };
+    on('orbital-gallery:enter', payload => this.start(payload?.scenarioId));
+    on('orbital-gallery:retry', () => this.retry());
+    on('orbital-gallery:next', () => this.next());
+    on('orbital-gallery:leave', () => this.leave());
+    on('physics-venues:records', payload => {
+      this.live.deserialize(payload?.gallery);
+    });
+    on('physics:impact', payload => this.live.impact(payload));
+    on('tether:broken', payload => this.live.cut(payload));
+    for (const name of ['game:exitToMenu', 'sector:exit', 'save:restoring']) on(name, () => this.leave());
+    on('game:newGame', () => this.live.newGame());
   },
+
+  start(id) { return this.live.start(id); },
+  retry() { return this.live.retry(); },
+  next() { return this.live.next(); },
+  leave() { this.live?.leave(); },
+  status() { return this.live.status(); },
+  serialize() { return this.live.serialize(); },
+  deserialize(raw) { this.live.deserialize(raw); },
+  destroy() { for (const off of this._unsubs || []) off(); this._unsubs = []; this.live?.leave(); },
 
   update(dt, state) {
     const gallery = state && state.orbitalGallery;
+    if (gallery?.source === 'live') { this.live.update(dt); return; }
+    if (gallery?.source !== 'exhibit') return;
     if (!gallery || gallery.phase !== 'live') return;
     if (gallery.playStartTick == null) gallery.playStartTick = state.tick;
     const rel = state.tick - gallery.playStartTick;

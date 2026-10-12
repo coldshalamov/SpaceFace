@@ -74,6 +74,7 @@ export async function openSession(scenarioId, options = {}) {
   }
 
   const gallery = {
+    source: 'exhibit',
     phase: 'setup',
     scenarioId: scenario.id,
     family: scenario.family,

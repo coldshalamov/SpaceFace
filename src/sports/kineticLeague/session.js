@@ -638,7 +638,7 @@ function evaluateContain(session, dt) {
   }
   const center = regionCenter(session);
   const inside = pucks.every((puck) => wholeDiskInside(puck, center, center.radius));
-  if (inside) {
+  if (inside && (!session.authoritative || session.playerTouched)) {
     session.streak += dt;
     if (session.streak > (session.maxStreak || 0)) session.maxStreak = session.streak;
   }
@@ -727,6 +727,40 @@ export function stepSession(session, command, dt = DT) {
 
 function round3(n) {
   return Math.round(n * 1000) / 1000;
+}
+
+// Live observations from the one production solve feed sport rules; no fixture integration.
+export function judgeAuthoritativeSession(session, poses, dt = DT, contacts = []) {
+  if (!session?.ok || !Number.isFinite(dt) || dt <= 0 || dt > 0.25) return session;
+  session.authoritative = true;
+  const previous = new Map(session.bodies.filter(body => body.alive)
+    .map(body => [body.id, { x: body.x, z: body.z }]));
+  for (const pose of poses || []) {
+    const body = session.bodies.find(row => row.id === pose.id);
+    if (!body) continue;
+    if (pose.alive === false) { body.alive = false; continue; }
+    if (![pose.x, pose.z, pose.vx, pose.vz].every(Number.isFinite)) {
+      finish(session, false, 'non-finite'); return session;
+    }
+    Object.assign(body, pose);
+    // Rapier CCD owns tunnelling. Never reject genuine collision-earned speed using a prototype cap.
+    body.maxSpeed = Math.max(body.maxSpeed, Math.hypot(body.vx, body.vz) * 1.2 + 10);
+  }
+  if (session.phase === 'result') {
+    session.simTime += dt; session.tick += 1;
+    session.resultLeft = (session.resultLeft ?? 0.6) - dt;
+    if (session.resultLeft <= 0) serveNext(session);
+    return session;
+  }
+  if (session.phase !== 'play') return session;
+  const ship = bodyByRole(session, 'ship');
+  if (!ship || Math.hypot(ship.x, ship.z) > session.arena.leaveRadius) {
+    session.phase = 'cancelled'; session.reason = 'left'; return session;
+  }
+  session.simTime += dt; session.shotTime += dt; session.tick += 1;
+  evaluate(session, previous, dt, contacts);
+  if (session.phase === 'play' && session.tick >= session.event.maxTicks) finish(session, false, 'clock');
+  return session;
 }
 
 export function commandFromSolution(solution, session) {
@@ -921,6 +955,8 @@ export function serializeSession(session) {
     respawns: session.respawns,
     rival: session.rival ? { ...session.rival } : null,
     tether: session.tether ? { ...session.tether } : null,
+    resultLeft: session.resultLeft,
+    lastAttachAt: session.lastAttachAt,
     bodies: session.bodies.map(snapshotBody),
     memory: normalizeLeagueMemory(session.memory),
     shipId: session.shipId,
@@ -969,8 +1005,14 @@ export function deserializeSession(raw, opts = {}) {
   session.respawns = raw.respawns || 0;
   session.rival = raw.rival ? { ...raw.rival } : null;
   session.tether = raw.tether ? { ...raw.tether } : null;
+  session.resultLeft = Number.isFinite(raw.resultLeft) ? Math.max(0, raw.resultLeft) : undefined;
+  session.lastAttachAt = Number.isFinite(raw.lastAttachAt) ? raw.lastAttachAt : undefined;
   for (const snap of raw.bodies || []) {
-    const body = session.bodies.find((b) => b.id === snap.id);
+    let body = session.bodies.find((b) => b.id === snap.id);
+    if (!body && snap.role === 'ball' && /^ball-\d+$/.test(snap.id) && session.event.sport === 'keeper') {
+      body = makeBody({ ...session.arena.ball, id: snap.id, role: 'ball' });
+      session.bodies.push(body);
+    }
     if (!body) continue;
     body.x = snap.x;
     body.z = snap.z;

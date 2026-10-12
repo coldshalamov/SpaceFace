@@ -60,7 +60,7 @@ export function judgeGallery(state) {
       tick: state.tick,
     });
   }
-  if (state.tick > gallery.limitTicks) {
+  if (state.tick - (gallery.playStartTick || 0) > gallery.limitTicks) {
     return finish(gallery, { won: false, reason: 'clock', tick: state.tick });
   }
   return null;
@@ -69,6 +69,8 @@ export function judgeGallery(state) {
 export function noteImpact(state, payload) {
   const gallery = state && state.orbitalGallery;
   if (!gallery || gallery.phase === 'settled' || !payload) return;
+  if (gallery.source === 'live' && !Object.values(gallery.roles || {}).some(
+    id => id === payload.aId || id === payload.bId)) return;
   gallery.contacts = (gallery.contacts || 0) + 1;
   const playerId = state.playerId;
   const otherId = payload.aId === playerId ? payload.bId : payload.bId === playerId ? payload.aId : null;

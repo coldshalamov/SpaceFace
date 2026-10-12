@@ -10,6 +10,18 @@ export function createLedger() {
   };
 }
 
+export function normalizeLedger(raw) {
+  const ledger = createLedger();
+  if (raw?.schema !== GALLERY_LEDGER_SCHEMA) return ledger;
+  for (const [id, count] of Object.entries(raw.attempts || {})) {
+    if (Number.isFinite(count)) ledger.attempts[id] = Math.max(0, Math.min(1e6, Math.floor(count)));
+  }
+  for (const [id, score] of Object.entries(raw.best || {})) {
+    if (score?.won === true && Number.isFinite(score.total) && score.total >= 0) ledger.best[id] = { ...score };
+  }
+  return ledger;
+}
+
 /**
  * Time left pays the clock. Style pays a clean contact count and a seeded
  * constellation chip (0–6) drawn once from state.rng. The chip cannot decide
