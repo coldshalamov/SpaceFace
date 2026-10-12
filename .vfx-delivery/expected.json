@@ -1,0 +1,23 @@
+{
+  "docs/visual-assets/LIVING_VFX_UPGRADE.md": "bc7f483715ff18de7ce3a17e89e9be1915012fefd1fb617cfe37500573e21961",
+  "scripts/living-vfx-capture.py": "b1ba1ffadd3d2055dfa9763d890a8606487c706718af706ee4b5d99ce3282f08",
+  "scripts/living-vfx-verify.mjs": "63092e5ad6ce319a3005db7708dad9190c10795ec469d3194fc755a9e2922ba2",
+  "src/render/combat/explosionRupture.js": "0842bd1274113b0574d975ad7547c676a80f896be2409374acfabfd256068eb3",
+  "src/render/energy/energyMaterials.js": "2554072f43dbdff7aecb4ac88cf53ab63ed7fb39ff7fc23d889e7ce97252de1f",
+  "src/render/forceLanguage/fieldForcePresentation.js": "a08f2a2706ad779c50a88b26d489c59b5b5a25a29af0170a2ed5734c328db386",
+  "src/render/forceLanguage/sweptSurfaceBatch.js": "a15daca72590c77fff95464569975f2a1c1019c933f86975a5191eb580bcf872",
+  "src/render/thruster/materials/volumetricPlumeMaterial.js": "5b80da1c33ec7c1125b80e438f3cbcf60adee1791c073021dc498939b1a56dfb",
+  "src/render/thruster/systems/plasmaStream.js": "3b41bd32dcde5fd8dc781307026726c48c9352f8f8e7a536469eb7975013b8da",
+  "src/render/vfx.js": "b82bd28942050e1253c6ec09f8604ffc3d60cfa93a818747c1a6b68a9da4bbb4",
+  "src/render/vfx/forceParticleFlow.js": "b6fafd31d0346232c8b7d6ea17107ffa33e971fc884ee29e40e846130cdff012",
+  "src/render/vfx/livingMaterial.glsl.js": "7804f09e4c2e5c1ce28b65ee1845d983c4978e2e05160f378d8f596d22f8ba2c",
+  "src/render/vfx/livingVfxCatalog.js": "7971945e4199f4d2e4f0d99e9afe0ef5b83cd11cde3ed22fb1c0e80cd638b93c",
+  "src/render/vfx/materialDirector.js": "b5662912b15a30b329c8386c3bee662d4719bf6211b1b23f6b965c593135ff06",
+  "src/render/vfx/materialEnvironment.js": "a9d657d6c096c3093f77f16addf59705916f641306125cb6719d7f72e3e997a2",
+  "src/render/vfx/materialFlow.js": "ed2157d6b6218e7fb9286ec889929f014ad56b621e9ae8058658bde3812c8bbf",
+  "src/render/vfx/quarksSystem.js": "a5118fb783c1205651419259f96f56a6a7a5704de518b576bfd82e5346a45145",
+  "src/render/weapons/energyBoltPool.js": "87ffd19c4d8e26d6aa213859696c3233a8598817ec66f61ab990c3a122f79b4e",
+  "src/render/weapons/shieldShell.js": "21be598e0b10b550cd7b8667773d70b799f1f79f32ad2c64a1c97d7be8f6c8a6",
+  "test/living-vfx.test.mjs": "817153810448718084e4a55026fa7309a4379253662235b12e2018dfccd15859",
+  "test/vfx-radiance-materials.test.mjs": "4c1d944453d19643f74e9360d994b3133a4edc9f0e8855a2a6fa13997ab7d97a"
+}

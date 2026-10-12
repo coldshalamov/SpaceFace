@@ -1,0 +1,252 @@
+diff --git a/src/render/vfx/forceParticleFlow.js b/src/render/vfx/forceParticleFlow.js
+index 1b57444..230c5c9 100644
+--- a/src/render/vfx/forceParticleFlow.js
++++ b/src/render/vfx/forceParticleFlow.js
+@@ -1,0 +2,4 @@ import * as THREE from 'three';
++import { materialFieldsForScene } from './materialEnvironment.js';
++import { registerMaterialOwner, unregisterMaterialOwner, createMaterialContactRead } from './materialDirector.js';
++import { MATERIAL_FLOW_KINDS as KINDS, MATERIAL_FLOW_RECIPES } from './livingVfxCatalog.js';
++import { MATERIAL_STATE_SIZE, seedMaterialParcel, settleMaterialParcel, advanceMaterialParcel, writeMaterialPosition } from './materialFlow.js';
+@@ -5,6 +8,0 @@ const TAU = Math.PI * 2;
+-const KINDS = ['well', 'repulsor', 'cone', 'skim', 'seed', 'heat', 'current', 'repair', 'transfer', 'goo'];
+-const COLORS = [
+-  [0.38, 0.52, 1.4], [1.4, 0.38, 0.10], [0.30, 0.90, 1.35],
+-  [0.18, 1.20, 0.88], [0.65, 0.40, 1.25], [1.55, 0.52, 0.08],
+-  [0.42, 0.80, 1.50], [0.28, 1.35, 0.72], [0.72, 0.48, 1.40], [0.38, 0.74, 0.12],
+-];
+@@ -57,46 +54,0 @@ const WHITE = {
+-// m: kind, origin XYZ, heading XZ, reach, phase, variation, strength, transport age, length, width.
+-function trajectory(m, t, out) {
+-  const kind = m[0], reach = m[6], phase = m[7], variety = m[8];
+-  const ease = 1 - Math.pow(1 - t, 2.1), envelope = Math.sin(Math.PI * t);
+-  let along = 0, across = 0, height = 0;
+-  // Liquid energy parcels shear gently across their own transport — a slow curl seeded by the
+-  // parcel's stable phase/variety. Cone and skim keep their strict truthful footprint; goo keeps
+-  // its viscous creep.
+-  const liquidCurl = kind !== 2 && kind !== 3 && kind !== 9 ? 1 : 0;
+-  if (kind === 0 || kind === 4 || kind === 7) {
+-    // Captured matter accelerates inward; repair converges without a gravity orbit.
+-    let r = reach * (0.82 + variety * 0.16) * Math.pow(1 - t, kind === 0 ? 1.35 : 1.8);
+-    let a = phase + (kind === 0 ? -3.8 * ease : kind === 4 ? 0.45 * envelope : 0.12 * envelope);
+-    if (kind === 4 && t > 0.66) r += reach * (t - 0.66) * 0.25;
+-    along = Math.cos(a) * r; across = Math.sin(a) * r;
+-    height = reach * (kind === 0 ? 0.075 : 0.025) * envelope * Math.sin(a);
+-  } else if (kind === 1 || kind === 5) {
+-    // Fast separation, decelerating wake, then cooling. Heat curls in the expelled material.
+-    const r = reach * (0.07 + ease * (0.72 + variety * 0.22));
+-    const a = phase + (kind === 5 ? 0.26 * Math.sin(t * 6 + variety * 8) * envelope : 0.045 * envelope);
+-    along = Math.cos(a) * r; across = Math.sin(a) * r;
+-    height = reach * (kind === 5 ? 0.12 : 0.03) * envelope * Math.sin(phase * 1.7);
+-  } else if (kind === 9) {
+-    // A parcel creeps through the tar, pulls into a short viscous neck, then settles back
+-    // into the same lobe. It neither converges like repair nor launches like hot ejecta.
+-    const r = reach * (0.20 + variety * 0.48 + ease * 0.10 + envelope * 0.025);
+-    const a = phase + ease * 0.12 + envelope * Math.sin(phase * 2) * 0.045;
+-    along = Math.cos(a) * r; across = Math.sin(a) * r;
+-    height = reach * 0.055 * envelope * envelope * (0.65 + variety * 0.35);
+-  } else {
+-    const spread = kind === 2 ? 0.36 : kind === 3 ? 0.09 : kind === 6 ? 0.065 : 0.045;
+-    along = reach * (0.02 + ease * 0.94);
+-    across = reach * ((variety - 0.5) * spread * ease
+-      + Math.sin(t * (kind === 6 ? 27 : 8) + phase) * spread * envelope * 0.38);
+-    if (kind === 2) across = clamp(across, -along * Math.tan(m[13]) * 0.95, along * Math.tan(m[13]) * 0.95);
+-    if (kind === 3) across = clamp(across, -m[14] * 0.95, m[14] * 0.95);
+-    height = reach * (kind === 3 ? 0.06 : 0.02) * envelope * Math.cos(t * 9 + phase);
+-  }
+-  if (liquidCurl) {
+-    across += reach * 0.045 * Math.sin(t * 2.3 + phase * 1.3 + variety * 5.0) * envelope;
+-    height += reach * 0.050 * Math.sin(t * 1.7 + phase * 0.9 + variety * 2.0) * envelope;
+-  }
+-  out.set(m[1] + m[4] * along - m[5] * across, m[2] + height,
+-    m[3] + m[5] * along + m[4] * across);
+-}
+-
+@@ -110 +62,2 @@ class TransportBehavior {
+-    this.next = new THREE.Vector3(); this.axis = new THREE.Vector3();
++    this.axis = new THREE.Vector3();
++    this.velocity = new Float64Array(3); this.curlScratch = new Float64Array(6);
+@@ -144,2 +97,2 @@ class TransportBehavior {
+-    m[11] = clamp(event.radius * (0.065 + variety * 0.055), 0.65, 4.5);
+-    m[12] = clamp(m[11] * (0.042 + unit(event.seed, ordinal * 3 + 2) * 0.025), 0.045, 0.22);
++    m[11] = clamp(event.radius * (0.065 + variety * 0.055), 0.65, 24.0);
++    m[12] = clamp(m[11] * (0.085 + unit(event.seed, ordinal * 3 + 2) * 0.015), 0.055, 2.30);
+@@ -150,0 +104,5 @@ class TransportBehavior {
++    const k = p.forceKinematics || (p.forceKinematics = new Float64Array(MATERIAL_STATE_SIZE));
++    seedMaterialParcel(m, k, p.life, Math.trunc(event.seed * 65536), this.velocity, this.curlScratch);
++    settleMaterialParcel(m, k, p.life, contacts, contactCount);
++    // Absolute-age admissions (culled/reconstructed fields) replay the identical bounded solver.
++    advanceMaterialParcel(m, k, p.life, p.age, contacts, contactCount, this.velocity, this.curlScratch);
+@@ -157 +115,4 @@ class TransportBehavior {
+-    if (!owner.reducedMotion) m[10] = Math.min(p.life, m[10] + dt);
++    const k = p.forceKinematics;
++    if (!owner.reducedMotion) advanceMaterialParcel(m, k, p.life, dt,
++      p.forceContacts, p.forceContactCount, this.velocity, this.curlScratch, owner.ambientFields);
++    m[10] = k[6];
+@@ -163,5 +124,3 @@ class TransportBehavior {
+-      trajectory(m, travel, p.position);
+-      p.forceContactHeat = this.deflect(p, m, p.position);
+-      trajectory(m, Math.min(1, travel + 0.005), this.next);
+-      this.deflect(p, m, this.next);
+-      this.axis.copy(this.next).sub(p.position);
++      writeMaterialPosition(m, k, p.position);
++      p.forceContactHeat = k[8];
++      this.axis.set(m[4] * k[3] - m[5] * k[5], k[4], m[5] * k[3] + m[4] * k[5]);
+@@ -183 +142 @@ class TransportBehavior {
+-    const cooling = Math.pow(1 - t, 1.6), launch = Math.min(1, 0.22 + t * 12);
++    const cooling = Math.pow(1 - t, MATERIAL_FLOW_RECIPES[m[0]].cooling), launch = Math.min(1, 0.22 + t * 12);
+@@ -187 +146 @@ class TransportBehavior {
+-    const rgb = COLORS[m[0]], hot = (viscous
++    const rgb = MATERIAL_FLOW_RECIPES[m[0]].rgb, hot = (viscous
+@@ -193,26 +152 @@ class TransportBehavior {
+-      rgb[2] * hot * (1 - ember * 0.85), launch * cooling * (0.52 + m[8] * 0.22));
+-  }
+-  // One bounded surface contact per parcel: push pos onto the deepest snapshot surface and slide
+-  // along its tangent. Pure function of (trajectory, snapshot, pose) — the m trajectory is
+-  // untouched and nothing accumulates. Returns the contact heat at pos; lift bounded at 4 like
+-  // the FlowEnvironment displacement it mirrors.
+-  deflect(p, m, pos) {
+-    const n = p.forceContactCount | 0, c = p.forceContacts;
+-    let best = -1, pen = 0;
+-    for (let i = 0; i < n; i++) {
+-      const o = i * CONTACT_STRIDE, r = c[o + 2];
+-      if (!(r > 0) || !(c[o + 6] > 0)) continue;
+-      const overlap = r - Math.hypot(pos.x - c[o], pos.z - c[o + 1]);
+-      if (overlap > pen) { pen = overlap; best = i; }
+-    }
+-    if (best < 0) return 0;
+-    const o = best * CONTACT_STRIDE;
+-    const dx = pos.x - c[o], dz = pos.z - c[o + 1], d = Math.hypot(dx, dz);
+-    let nx, nz;
+-    if (d > 1e-6) { nx = dx / d; nz = dz / d; } else { nx = m[4]; nz = m[5]; }
+-    const rel = (m[4] - c[o + 3]) * -nz + (m[5] - c[o + 4]) * nx;
+-    const side = rel >= 0 ? 1 : -1;
+-    pos.x += nx * pen - nz * side * pen * 0.45;
+-    pos.y += Math.min(pen * 0.10, 4);
+-    pos.z += nz * pen + nx * side * pen * 0.45;
+-    return Math.min(1, pen / c[o + 2]) * c[o + 6] * (0.55 + 0.45 * Math.min(1, c[o + 5]));
++      rgb[2] * hot * (1 - ember * 0.85), launch * cooling * (0.52 + m[8] * 0.22) * k[14]);
+@@ -229,0 +164,2 @@ export class ForceParticleFlow {
++    this.stats = { emitted: 0, dropped: 0, updates: 0 };
++    this.contactLight = createMaterialContactRead(); this._materialScene = null;
+@@ -246,0 +183,8 @@ export class ForceParticleFlow {
++    this.flowShape = new Float32Array(this.capacity * 4);
++    this.flowShapeAttribute = new THREE.InstancedBufferAttribute(this.flowShape, 4).setUsage(THREE.DynamicDrawUsage);
++    this.batch.geometry.setAttribute('aFlowShape', this.flowShapeAttribute);
++    this.flowTail = new Float32Array(this.capacity * 3); this.flowMid = new Float32Array(this.capacity * 3);
++    this.flowTailAttribute = new THREE.InstancedBufferAttribute(this.flowTail, 3).setUsage(THREE.DynamicDrawUsage);
++    this.flowMidAttribute = new THREE.InstancedBufferAttribute(this.flowMid, 3).setUsage(THREE.DynamicDrawUsage);
++    this.batch.geometry.setAttribute('aFlowTail', this.flowTailAttribute);
++    this.batch.geometry.setAttribute('aFlowMid', this.flowMidAttribute);
+@@ -250,3 +194,18 @@ export class ForceParticleFlow {
+-    mat.vertexShader = `varying vec2 vForceUv;\n${mat.vertexShader}`
+-      .replace('void main() {', 'void main() { vForceUv = uv;');
+-    mat.fragmentShader = `varying vec2 vForceUv;\n${mat.fragmentShader}`.replace(
++    mat.uniforms.uFlowViewportHeight = { value: 800 };
++    mat.vertexShader = `uniform float uFlowViewportHeight; attribute vec3 aFlowTail; attribute vec3 aFlowMid; attribute vec4 aFlowShape; varying vec4 vFlowShape; varying vec2 vForceUv;\n${mat.vertexShader}`
++      .replace('void main() {', 'void main() { vForceUv = uv; vFlowShape = aFlowShape;')
++      .replace('float sx = size.x, sy = size.y, sz = size.z;', `
++        float distanceToCamera=abs((modelViewMatrix*vec4(offset,1.0)).z);
++        float pixelWidth=distanceToCamera*2.0/max(.001,projectionMatrix[1][1])/max(1.0,uFlowViewportHeight)*1.65;
++        float sx=size.x,sy=max(size.y,pixelWidth),sz=max(size.z,pixelWidth);
++      `)
++      .replace('vec4 mvPosition = modelViewMatrix * (matrix * vec4( position, 1.0 ));', `
++        float u=uv.x, history=smoothstep(0.0,.055,aFlowShape.z);
++        vec3 control=2.0*aFlowMid-.5*aFlowTail;
++        vec3 path=(1.0-u)*(1.0-u)*aFlowTail+2.0*u*(1.0-u)*control;
++        vec4 authored=matrix*vec4(position,1.0);
++        vec4 crossSection=matrix*vec4(0.0,position.y,position.z,0.0);
++        vec4 recorded=vec4(offset+path+crossSection.xyz,1.0);
++        vec4 mvPosition=modelViewMatrix*mix(authored,recorded,history);
++      `);
++    mat.fragmentShader = `varying vec4 vFlowShape; varying vec2 vForceUv;\n${mat.fragmentShader}`.replace(
+@@ -264 +223,18 @@ export class ForceParticleFlow {
+-      diffuseColor.b *= 1.0 + 0.30 * (1.0 - parcelHead);`);
++      diffuseColor.b *= 1.0 + 0.30 * (1.0 - parcelHead);
++      // A compact bright head followed by a torn, cooler folded body. Colour does not erase
++      // the silhouette: kinetic darts, current junctions and cohesive matter have different reads.
++      float crease = exp(-pow((vForceUv.y - .38) / .19, 2.0));
++      float tail = smoothstep(0.0, .48, vForceUv.x);
++      float heat = vFlowShape.y;
++      float material = vFlowShape.w;
++      if (material > 9.5 && material < 10.5) diffuseColor.a *= tail; // ballistic cut
++      if (material > 5.5 && material < 6.5) {
++        float bridge = 1.0 - smoothstep(.72, .88, abs(vForceUv.x - .65) * 2.0);
++        diffuseColor.rgb += vec3(.5, .7, 1.0) * bridge * crease * .7;
++      }
++      float energy=max(diffuseColor.r,max(diffuseColor.g,diffuseColor.b));
++      vec3 chroma=diffuseColor.rgb/max(1.0,energy);
++      diffuseColor.rgb=chroma*(.58+min(1.15,energy*.26))*(.55+crease*.75);
++      diffuseColor.rgb+=vec3(1.0,.95,.86)*pow(parcelHead,9.0)*pow(crease,3.0)*min(1.6,energy*.35);
++      diffuseColor.rgb += vec3(1.0, .86, .67) * heat * crease * parcelHead;
++      diffuseColor.a *= .56 + .44 * tail;`);
+@@ -265,0 +242,5 @@ export class ForceParticleFlow {
++    this.viewport = new THREE.Vector4();
++    this.batch.onBeforeRender = renderer => {
++      renderer.getCurrentViewport(this.viewport);
++      mat.uniforms.uFlowViewportHeight.value = Math.max(1, this.viewport.w);
++    };
+@@ -271,0 +253 @@ export class ForceParticleFlow {
++    registerMaterialOwner(this);
+@@ -278,0 +261 @@ export class ForceParticleFlow {
++    this.stats.dropped += Math.max(0, Math.floor(finite(count))) - n;
+@@ -303,0 +287 @@ export class ForceParticleFlow {
++    this.stats.emitted += Math.max(0, this.live - first);
+@@ -308,0 +293 @@ export class ForceParticleFlow {
++    this._publishShape();
+@@ -310,0 +296,41 @@ export class ForceParticleFlow {
++  _publishShape() {
++    registerMaterialOwner(this);
++    const light = this.contactLight; light.active = false; light.intensity = 0;
++    const data = this.flowShape;
++    for (let i = 0; i < this.live; i++) {
++      const p = this.system.particles[i], k = p.forceKinematics, j = i * 4;
++      data[j] = k[12];
++      data[j + 1] = this.reducedFlash ? 0 : k[8];
++      data[j + 2] = k[6]; data[j + 3] = p.forceFlow[0];
++      const m = p.forceFlow, tail = Math.max(18, 18 + (k[50] - 1) * 3), mid = Math.min(30, tail);
++      const q = i * 3, R = m[6], c = m[4], sn = m[5];
++      let dx = (k[tail] - k[0]) * R, dz = (k[tail + 2] - k[2]) * R;
++      this.flowTail[q] = c * dx - sn * dz; this.flowTail[q + 1] = (k[tail + 1] - k[1]) * R;
++      this.flowTail[q + 2] = sn * dx + c * dz;
++      dx = (k[mid] - k[0]) * R; dz = (k[mid + 2] - k[2]) * R;
++      this.flowMid[q] = c * dx - sn * dz; this.flowMid[q + 1] = (k[mid + 1] - k[1]) * R;
++      this.flowMid[q + 2] = sn * dx + c * dz;
++      // Only material that really touched a retained body may request local reflected light.
++      const power = this.reducedFlash ? 0 : k[8] * p.color.w * 7;
++      if (k[13] > 0 && power > .025 && power > light.intensity) {
++        const rgb = MATERIAL_FLOW_RECIPES[p.forceFlow[0]].rgb;
++        light.active = true; light.x = p.position.x; light.y = p.position.y + 5; light.z = p.position.z;
++        light.r = Math.min(1, rgb[0]); light.g = Math.min(1, rgb[1]); light.b = Math.min(1, rgb[2]);
++        light.intensity = Math.min(3.5, power); light.range = Math.min(75, Math.max(16, p.forceFlow[6] * .45));
++      }
++    }
++    if (this.live) {
++      this.flowShapeAttribute.clearUpdateRanges();
++      this.flowShapeAttribute.addUpdateRange(0, this.live * 4);
++      this.flowShapeAttribute.needsUpdate = true;
++      this.flowTailAttribute.clearUpdateRanges(); this.flowTailAttribute.addUpdateRange(0, this.live * 3);
++      this.flowMidAttribute.clearUpdateRanges(); this.flowMidAttribute.addUpdateRange(0, this.live * 3);
++      this.flowTailAttribute.needsUpdate = this.flowMidAttribute.needsUpdate = true;
++    }
++  }
++  inspect() {
++    let contacts = 0;
++    for (let i = 0; i < this.live; i++) contacts += this.system.particles[i].forceKinematics[13];
++    return { schema: 'spaceface.material-transport.v1', live: this.live, capacity: this.capacity,
++      contacts, ...this.stats, batches: this.renderer.batches.length };
++  }
+@@ -314,0 +341,4 @@ export class ForceParticleFlow {
++    registerMaterialOwner(this);
++    this.ambientFields=materialFieldsForScene(this._materialScene);
++    this.stats.updates++;
++    if (dt >= 3) { this.clear(); return; }
+@@ -320,0 +351 @@ export class ForceParticleFlow {
++    this._publishShape();
+@@ -333 +364 @@ export class ForceParticleFlow {
+-    this.batch.update();
++    this.batch.update(); this._publishShape();
+@@ -337,0 +369 @@ export class ForceParticleFlow {
++    this.contactLight.active = false; this.contactLight.intensity = 0;
+@@ -341 +373 @@ export class ForceParticleFlow {
+-    this.clear(); this.disposed = true;
++    this.clear(); this.disposed = true; unregisterMaterialOwner(this);
