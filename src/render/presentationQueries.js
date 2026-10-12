@@ -157,7 +157,8 @@ export function createPresentationQueries(world) {
         && entry.boundsX === bounds.x && entry.boundsZ === bounds.z
         && entry.halfX === bounds.halfX && entry.halfZ === bounds.halfZ
         && entry.originX === origin.x && entry.originZ === origin.z
-        && entry.playerId === playerId) {
+        && entry.playerId === playerId
+        && entry.held === (world.visible && world.visible[slot] === 1 ? 1 : 0)) {
       return entry.result;
     }
     const result = exactVisibleCompute(slot, bounds, origin, playerId,
@@ -168,7 +169,9 @@ export function createPresentationQueries(world) {
       flags: flagsNow, entity: entityNow, posBad: posBadNow,
       x: xNow, z: zNow, radius: radiusNow,
       boundsX: bounds.x, boundsZ: bounds.z, halfX: bounds.halfX, halfZ: bounds.halfZ,
-      originX: origin.x, originZ: origin.z, playerId, result,
+      originX: origin.x, originZ: origin.z, playerId,
+      held: world.visible && world.visible[slot] === 1 ? 1 : 0,
+      result,
     };
     return result;
   }
@@ -189,8 +192,18 @@ export function createPresentationQueries(world) {
     if (posBadNow) return true;
     const localX = xNow - origin.x;
     const localZ = zNow - origin.z;
-    return Math.abs(localX - bounds.x) <= bounds.halfX + radiusNow
-      && Math.abs(localZ - bounds.z) <= bounds.halfZ + radiusNow;
+    // A body already on the glass keeps a pad past the hard rectangle. Ricochet rocks
+    // sit on that edge and the unpadded test flipped them hidden/visible every bounce
+    // (player-truth popping). Newcomers still use the exact rectangle, so a far body
+    // cannot pop into the set by borrowing someone else's pad.
+    let halfX = bounds.halfX;
+    let halfZ = bounds.halfZ;
+    if (world.visible && world.visible[slot] === 1) {
+      halfX += Math.max(48, bounds.halfX * 0.18);
+      halfZ += Math.max(48, bounds.halfZ * 0.18);
+    }
+    return Math.abs(localX - bounds.x) <= halfX + radiusNow
+      && Math.abs(localZ - bounds.z) <= halfZ + radiusNow;
   }
 
   const retainCache = {

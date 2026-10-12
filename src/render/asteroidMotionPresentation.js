@@ -45,6 +45,30 @@ function clamp01(v) {
 // Max axis swell of a fully fractured rock (2.5% — a worked rock reads strained, never ballooned).
 const FRACTURE_SWELL_MAX = 0.025;
 const FRACTURE_VEIN_COUNT = 3;
+
+// Survival grades fissures as a mark on the rock, not a screen-filling layer.
+// The rock under the beam keeps one strip. Every other open crack shares two
+// slots for the frame, so a field of nicked rocks cannot sheet the picture.
+// Outside a survival frame the budget is open and every staggered vein draws.
+const veinFrame = { slots: Infinity, minedId: null, minedShown: false };
+
+export function beginFractureVeinFrame(kind, minedId = null) {
+  veinFrame.slots = kind === 'survival' ? 2 : Infinity;
+  veinFrame.minedId = minedId == null ? null : minedId;
+  veinFrame.minedShown = false;
+}
+
+function claimVeinSlot(entityId, open) {
+  if (veinFrame.slots === Infinity) return true;
+  if (!(open > 0.45)) return false;
+  if (entityId != null && entityId === veinFrame.minedId && veinFrame.minedShown !== true) {
+    veinFrame.minedShown = true;
+    return true;
+  }
+  if (veinFrame.slots <= 0) return false;
+  veinFrame.slots -= 1;
+  return true;
+}
 const EMPTY_DATA = {};
 
 /**
@@ -118,8 +142,9 @@ export function resolveYieldSplitPattern(parentId, chunkId) {
 // One lazily-built THREE.Group per worked rock, childed to the entity root (NOT to the body:
 // the pooled instance leaf renders via InstancedMesh and its visible flag is off, which would
 // hide children). The rig copies the body's transform each frame so cracks tumble with the rock.
-// Each vein is a jagged ribbon sphere-projected at ~0.92R — embedded, so the skin occludes edges
-// and the glow reads as light escaping through the fissure, never a sticker on top.
+// Each vein is a short ribbon on the unit sphere. The rig copies the body's scale (entity.radius),
+// so positions stay in that unit space. Authoring them at world radius used to multiply by R
+// twice: the bounding sphere then covered the frame and hid the pilot.
 
 const VEIN_STATIONS = 7;
 const VEIN_EMBER = 0xff9a3c;
@@ -158,27 +183,34 @@ function pristineScaleFor(body, entity) {
   return p;
 }
 
-function buildVeinStrip(seed, radius) {
-  const R = Math.max(2, Number.isFinite(radius) ? radius : 6);
+function buildVeinStrip(seed) {
+  // Unit-sphere space. A chord through the origin, then normalize(), lands on opposite
+  // sides of the rock; copying body.scale on top of world-unit positions made that sphere
+  // R×R and the ribbon covered the frame.
   const dirAngle = ((seed & 0xffff) / 0xffff) * Math.PI * 2;
   const tilt = (((seed >>> 16) & 0xff) / 255 - 0.5) * 1.7;
   const axis = new THREE.Vector3(-Math.sin(dirAngle), 0, Math.cos(dirAngle));
   const dir = new THREE.Vector3(Math.cos(dirAngle), 0, Math.sin(dirAngle)).applyAxisAngle(axis, tilt);
   const nrm = new THREE.Vector3(0, 1, 0).applyAxisAngle(axis, tilt);
   const pdir = new THREE.Vector3().crossVectors(nrm, dir).normalize();
-  const span = R * (0.62 + (((seed >>> 24) & 0xff) / 255) * 0.45);
-  const lift = ((((seed >>> 8) & 0xff) / 255) - 0.5) * R * 0.55;
-  const halfW = Math.max(0.22, R * 0.055);
+  const anchor = dir.clone().normalize();
+  const tangent = pdir.clone();
+  const bitangent = new THREE.Vector3().crossVectors(anchor, tangent).normalize();
+  // A fissure across about half the radius. Span 0.08 was a speck once the
+  // rock was worked. Unit space only: the rig copies body.scale once. World-unit
+  // positions here made the ribbon cover the frame and hide the pilot.
+  const span = 0.28;
+  const lift = ((((seed >>> 8) & 0xff) / 255) - 0.5) * 0.04;
+  const halfW = 0.03;
 
   const centers = [];
   for (let i = 0; i < VEIN_STATIONS; i++) {
     const s = -1 + (2 * i) / (VEIN_STATIONS - 1);
     const jitter = (((Math.imul(seed >>> 8, i + 11) >>> 0) & 0xff) / 255 - 0.5) * span * 0.3;
-    const c = new THREE.Vector3()
-      .addScaledVector(dir, s * span)
-      .addScaledVector(pdir, jitter)
-      .addScaledVector(nrm, lift);
-    c.normalize().multiplyScalar(R * 0.92); // sphere-project: the crack lives IN the surface
+    const c = anchor.clone()
+      .addScaledVector(tangent, s * span)
+      .addScaledVector(bitangent, jitter + lift);
+    c.normalize().multiplyScalar(0.94); // on the skin, in the body's unit space
     centers.push(c);
   }
   const positions = new Float32Array(VEIN_STATIONS * 2 * 3);
@@ -207,17 +239,17 @@ function buildVeinStrip(seed, radius) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geo.setIndex(new THREE.BufferAttribute(indices, 1));
+  geo.computeBoundingSphere();
   return geo;
 }
 
 function ensureVeinRig(rec, mesh, entity) {
   if (rec.veinRig && rec.veinRig.parent === mesh) return rec.veinRig;
-  const radius = Math.max(2, Number.isFinite(entity && entity.radius) ? entity.radius : 6);
   const rig = new THREE.Group();
   rig.name = 'sf-fracture-veins';
   const base = hashId(entity && entity.id);
   for (let i = 0; i < FRACTURE_VEIN_COUNT; i++) {
-    const geo = buildVeinStrip((base ^ Math.imul(i + 1, 0x85ebca6b)) >>> 0, radius);
+    const geo = buildVeinStrip((base ^ Math.imul(i + 1, 0x85ebca6b)) >>> 0);
     const mat = new THREE.MeshBasicMaterial({
       color: VEIN_EMBER,
       transparent: true,
@@ -231,7 +263,7 @@ function ensureVeinRig(rec, mesh, entity) {
     });
     const strip = new THREE.Mesh(geo, mat);
     strip.visible = false;
-    strip.frustumCulled = false;
+    strip.frustumCulled = true;
     rig.add(strip);
   }
   mesh.add(rig);
@@ -258,11 +290,12 @@ function syncVeinRig(rec, mesh, body, entity, simTime) {
   for (let i = 0; i < veins.length; i++) {
     const strip = veins[i];
     const o = pattern.veins[i] ? pattern.veins[i].open : 0;
-    if (o <= 0.01) { strip.visible = false; continue; }
+    if (o <= 0.01 || !claimVeinSlot(entity && entity.id, o)) { strip.visible = false; continue; }
     strip.visible = true;
     // Heat shimmer: a worked crack pulses faintly while the beam is on it, steady otherwise.
     const shimmer = 0.82 + 0.18 * Math.sin(simTime * 11 + i * 2.1) * rec.miningAgitation;
-    strip.material.opacity = Math.min(0.92, o * 0.85) * shimmer;
+    // Hot enough to read on a dark rock, capped so a fissure stays a line.
+    strip.material.opacity = Math.min(0.5, 0.16 + o * 0.42) * shimmer;
   }
 }
 
@@ -710,9 +743,13 @@ export function createAsteroidMotionTracker() {
     // 6. Fracture veins — glowing fissures that open with ore depletion. Lazily attached once the
     //    rock is actually worked; plain-object test doubles (no .add) and pristine rocks skip it.
     if (typeof mesh.add === 'function' && entity && entity.id != null) {
-      if (rec.fracture > 0.02 || rec.veinRig) {
+      // Intact chunks stay dark. The first fissure opens once about a fifth of the
+      // ore is gone — waiting until 40% left the beam with nothing to look at.
+      if (rec.fracture > 0.18) {
         ensureVeinRig(rec, mesh, entity);
         syncVeinRig(rec, mesh, body, entity, simTime);
+      } else if (rec.veinRig && rec.veinRig.visible) {
+        rec.veinRig.visible = false;
       }
     }
   }
@@ -768,9 +805,14 @@ export function createAsteroidMotionTracker() {
     return rec ? rec.fracture : 0;
   }
 
+  function beginVeinFrame(kind) {
+    beginFractureVeinFrame(kind, currentMinedTargetId);
+  }
+
   return {
     bindEvents,
     unbindEvents,
+    beginVeinFrame,
     updateAsteroidMotion,
     onDamage,
     onImpact,

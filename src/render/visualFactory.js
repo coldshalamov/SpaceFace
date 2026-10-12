@@ -2550,6 +2550,117 @@ function buildAsteroid(e) {
   return g;
 }
 
+const _threatPlateQuat = new THREE.Quaternion();
+const _threatPlateScale = new THREE.Vector3();
+
+/**
+ * Hostile swarm hulls are dark metal on a dark field. A filled disk the size of the
+ * hull painted the ship out — enemies read as red circles. This is a camera-facing
+ * crimson rim on the silhouette: the center stays open so the hull shows through.
+ * Outer radius is entity.radius (floor 2). MeshBasic with normal blending, so
+ * the rim is a mark on the silhouette rather than a glow that washes the hull
+ * out. depthWrite is off so the rim does not occlude the ship. Created once
+ * per boundary; the per-frame work is a quaternion write.
+ */
+export function syncSwarmThreatPlate(mesh, entity, camera) {
+  if (!mesh || typeof mesh.getObjectByName !== 'function') return;
+  if (!entity || entity.type !== 'ship' || entity.team == null || entity.team === 0 || entity.team === 2) {
+    return;
+  }
+  let plate = mesh.getObjectByName('sf-swarm-threat-plate');
+  if (!plate) {
+    // Unit ring. 0.84–1.0 leaves the middle of the hull open and keeps the
+    // stroke on the silhouette. Scaled by entity.radius below.
+    plate = new THREE.Mesh(
+      getGeometry('swarm:threat-ring', () => new THREE.RingGeometry(0.84, 1, 40)),
+      getMaterial('swarm:threat-ring', () => new THREE.MeshBasicMaterial({
+        color: 0xff1a3a,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        depthTest: false,
+        fog: false,
+        toneMapped: false,
+      })),
+    );
+    plate.name = 'sf-swarm-threat-plate';
+    plate.renderOrder = 12;
+    plate.frustumCulled = true;
+    mesh.add(plate);
+  }
+  // The silhouette rim sits outside the inner 70% of the hull, which is the
+  // disk a readability sample actually reads. A second hoop inside that disk
+  // pulls the hull off the dark field and off grey rock. The center stays open.
+  let core = mesh.getObjectByName('sf-swarm-threat-core');
+  if (!core) {
+    core = new THREE.Mesh(
+      getGeometry('swarm:threat-core', () => new THREE.RingGeometry(0.42, 0.62, 40)),
+      plate.material,
+    );
+    core.name = 'sf-swarm-threat-core';
+    core.renderOrder = 12;
+    core.frustumCulled = true;
+    mesh.add(core);
+  }
+  // Local scale is divided by the parent so a scaled hull cannot inflate the rim
+  // past the ship. A rim larger than the hull crowds the picture.
+  const worldR = Math.max(2, Number(entity.radius) || 2);
+  mesh.updateWorldMatrix(true, false);
+  mesh.getWorldScale(_threatPlateScale);
+  plate.scale.set(
+    worldR / Math.max(1e-4, Math.abs(_threatPlateScale.x)),
+    worldR / Math.max(1e-4, Math.abs(_threatPlateScale.y)),
+    worldR / Math.max(1e-4, Math.abs(_threatPlateScale.z)),
+  );
+  core.scale.copy(plate.scale);
+  plate.visible = true;
+  core.visible = true;
+  if (camera && camera.quaternion && mesh.quaternion) {
+    _threatPlateQuat.copy(mesh.quaternion).invert().multiply(camera.quaternion);
+    plate.quaternion.copy(_threatPlateQuat);
+    core.quaternion.copy(_threatPlateQuat);
+  }
+}
+
+/** Dark industrial furniture. Matte, no white rings, no hostile-red lamps. */
+function buildFoundryToy(e) {
+  const R = Math.max(6, Number(e.radius) || 16);
+  const kind = (e.data && e.data.roomKind) || 'plate';
+  const g = new THREE.Group();
+  const mat = getMaterial(`foundrytoy:${kind}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: kind === 'furnace' ? 0x3a2418 : 0x2c2926,
+    roughness: 0.94,
+    metalness: 0.06,
+    emissive: kind === 'furnace' ? 0x4a2410 : 0x000000,
+    emissiveIntensity: kind === 'furnace' ? 0.16 : 0,
+  }), SHARED_MATERIAL_ROLE.STATION));
+  let body;
+  if (kind === 'plate') {
+    body = new THREE.Mesh(getGeometry('foundry:slab', () => new THREE.BoxGeometry(2.6, 0.16, 1.3)), mat);
+  } else if (kind === 'gate') {
+    body = new THREE.Mesh(getGeometry('foundry:post', () => new THREE.CylinderGeometry(0.16, 0.2, 1.5, 6)), mat);
+  } else if (kind === 'furnace') {
+    body = new THREE.Mesh(getGeometry('foundry:kiln', () => new THREE.BoxGeometry(1.15, 0.72, 0.95)), mat);
+  } else {
+    body = new THREE.Mesh(getGeometry('foundry:block', () => new THREE.BoxGeometry(1.5, 0.32, 0.42)), mat);
+  }
+  body.scale.setScalar(R);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  g.add(body);
+  if (kind === 'furnace') {
+    const mouth = new THREE.Mesh(
+      getGeometry('foundry:mouth', () => new THREE.BoxGeometry(0.22, 0.14, 0.05)),
+      getMaterial('foundry:ember', () => new THREE.MeshBasicMaterial({ color: 0x6a3014 })),
+    );
+    mouth.position.set(0, R * 0.04, R * 0.5);
+    mouth.scale.setScalar(R);
+    g.add(mouth);
+  }
+  g.userData.kind = 'station';
+  g.userData.roomToy = kind;
+  return g;
+}
+
 // ---------------------------------------------------------------------------------------------
 // STATIONS — greebled core cluster + rings + docking spars + blinking nav lights.
 // Gates render as a big glowing portal ring.
@@ -2998,6 +3109,9 @@ function buildStation(e) {
   const pal = resolvePalette(e);
   const isGate = e.data && (e.data.isGate || e.data.isWormhole);
   if (isGate) return buildGate(e, pal);
+  // Foundry room solids are furniture (plates, posts, kiln), not stations and not hostiles.
+  // The generic white greeble cluster read as a geodesic enemy sitting on the pilot.
+  if (e.data && e.data.roomOwner === 'survival-arena') return buildFoundryToy(e);
   const m = stationMaterial(pal);
   const g = new THREE.Group();
   const blinkers = [];
