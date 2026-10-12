@@ -6,6 +6,7 @@ import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { encounterDirector, planEncounters } from '../src/systems/encounterDirector.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import { isHostileForAI } from '../src/ai/engagementAuthority.js';
+import { openingRaidCarrierReady } from '../src/data/encounters/344-opening-hauler-raid.js';
 
 const FRAME_WU = 2 * 115 + 30;
 
@@ -171,5 +172,20 @@ test('starter-world: a barge lost to the raid leaves one marker wreck with its r
   assert.equal(back.length, 1, 'the barge wreck survives save/load');
   assert.deepEqual(back[0].freightIdentity, marker.freightIdentity);
   assert.deepEqual(back[0].manifestResidue, marker.manifestResidue);
+  sim.dispose();
+});
+
+test('starter-world: the scheduling seam reports a raid-ready barge only when real ore is in frame', () => {
+  const sim = createSimulation({ seed: 4242, systems: [] });
+  const { state } = sim;
+  const player = sim.spawn({ type: 'ship', team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, hull: 200, hullMax: 200, radius: 6 });
+  state.playerId = player.id;
+  assert.equal(openingRaidCarrierReady(state), false, 'no barge');
+  const empty = sim.spawn(loadedCarrierSpec({ x: 40, z: 30 }, 0));
+  assert.equal(openingRaidCarrierReady(state), false, 'empty barge is not freight');
+  empty.data.cargoManifest = loadedCarrierSpec({ x: 0, z: 0 }, 3).data.cargoManifest;
+  assert.equal(openingRaidCarrierReady(state), true, 'loaded barge in frame');
+  empty.pos = { x: FRAME_WU + 200, z: 0 };
+  assert.equal(openingRaidCarrierReady(state), false, 'loaded but out of frame');
   sim.dispose();
 });

@@ -86,8 +86,9 @@ const STARTER_CARRIER_ADOPT_RANGE = 2 * 115 + 30;
 function loadedStarterCarrier(state, live) {
   // The frame law is measured from the player the raid is delivered to, not from the plan's hauler.
   const player = state.entities && state.playerId != null ? state.entities.get(state.playerId) : null;
-  const plannedHauler = (live.plan.ships || []).find((ship) => ship && ship.role === 'hauler');
-  const anchor = (player && player.pos) || (plannedHauler && plannedHauler.pos) || live.pos;
+  const ships = live && live.plan && Array.isArray(live.plan.ships) ? live.plan.ships : [];
+  const plannedHauler = ships.find((ship) => ship && ship.role === 'hauler');
+  const anchor = (player && player.pos) || (plannedHauler && plannedHauler.pos) || (live && live.pos) || null;
   let best = null;
   let bestD2 = STARTER_CARRIER_ADOPT_RANGE * STARTER_CARRIER_ADOPT_RANGE;
   for (const entity of state.entityList || []) {
@@ -104,6 +105,12 @@ function loadedStarterCarrier(state, live) {
     if (d2 <= bestD2 && (!best || d2 < bestD2 || entity.id < best.id)) { best = entity; bestD2 = d2; }
   }
   return best;
+}
+
+// Read-only scheduling seam for the director owner: true while the starter barge is in the
+// player's frame carrying real cut ore, i.e. when firing now would hit the corridor's real freight.
+export function openingRaidCarrierReady(state) {
+  return !!(state && loadedStarterCarrier(state, null));
 }
 
 // Raiders keep the authored curtain geometry, re-centred on the real barge.
