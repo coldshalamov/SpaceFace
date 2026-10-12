@@ -195,6 +195,94 @@
       "releasePath": "assets/ships/release/parts/places/place_station_trade_hub.glb",
       "runtimeMap": "partsLibrary PLACE_FILES",
       "notes": "Populated STRICT overnight G4 from release tree 2026-07-09"
+    },
+    "place_landmark_beacon_spire": {
+      "id": "place_landmark_beacon_spire",
+      "kind": "landmark",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_landmark_beacon_spire.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "C6 QUEUE+BP-08 commission, forged + wired 2026-10-12"
+    },
+    "place_landmark_veil_obelisk": {
+      "id": "place_landmark_veil_obelisk",
+      "kind": "landmark",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_landmark_veil_obelisk.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "C6 QUEUE+BP-08 commission, forged + wired 2026-10-12"
+    },
+    "place_landmark_pit_anchor": {
+      "id": "place_landmark_pit_anchor",
+      "kind": "landmark",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_landmark_pit_anchor.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "C6 QUEUE+BP-08 commission, forged + wired 2026-10-12"
+    },
+    "place_landmark_vault_maw": {
+      "id": "place_landmark_vault_maw",
+      "kind": "landmark",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_landmark_vault_maw.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "C6 QUEUE+BP-08 commission, forged + wired 2026-10-12"
+    },
+    "place_landmark_tower_crown": {
+      "id": "place_landmark_tower_crown",
+      "kind": "landmark",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_landmark_tower_crown.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "C6 QUEUE+BP-08 commission, forged + wired 2026-10-12"
+    },
+    "place_landmark_crystal_spire": {
+      "id": "place_landmark_crystal_spire",
+      "kind": "landmark",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_landmark_crystal_spire.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "C6 QUEUE+BP-08 commission, forged + wired 2026-10-12"
+    },
+    "place_landmark_cathedral_wreck_ii": {
+      "id": "place_landmark_cathedral_wreck_ii",
+      "kind": "landmark",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_landmark_cathedral_wreck_ii.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "C6 QUEUE+BP-08 commission, forged + wired 2026-10-12"
+    },
+    "place_landmark_billboard_array": {
+      "id": "place_landmark_billboard_array",
+      "kind": "landmark",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_landmark_billboard_array.glb",
+      "runtimeMap": "partsLibrary PLACE_FILES",
+      "notes": "C6 QUEUE+BP-08 commission, forged + wired 2026-10-12"
+    },
+    "place_gate_concord": {
+      "id": "place_gate_concord",
+      "kind": "gate",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_gate_concord.glb",
+      "runtimeMap": "partsLibrary STATION_ARCHETYPE_FILES",
+      "notes": "C6 QUEUE+BP-08 commission, forged + wired 2026-10-12"
+    },
+    "place_gate_merchant": {
+      "id": "place_gate_merchant",
+      "kind": "gate",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_gate_merchant.glb",
+      "runtimeMap": "partsLibrary STATION_ARCHETYPE_FILES",
+      "notes": "C6 QUEUE+BP-08 commission, forged + wired 2026-10-12"
+    },
+    "place_gate_reach": {
+      "id": "place_gate_reach",
+      "kind": "gate",
+      "lifecycle": "VISIBLE_IN_PLAY",
+      "releasePath": "assets/ships/release/parts/places/place_gate_reach.glb",
+      "runtimeMap": "partsLibrary STATION_ARCHETYPE_FILES",
+      "notes": "C6 QUEUE+BP-08 commission, forged + wired 2026-10-12"
     }
   }
 }

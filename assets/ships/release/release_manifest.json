@@ -5719,6 +5719,215 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 19,
       "contractNodeCount": 5
+    },
+    {
+      "id": "place_landmark_beacon_spire",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_landmark_beacon_spire.glb",
+      "release": "assets/ships/release/parts/places/place_landmark_beacon_spire.glb",
+      "sourceSha256": "640156aac3eb32243f77b639a2720ba26aaa6572dcbc6d4eaa9ffd7e3e9b1666",
+      "releaseSha256": "03e9be12559c1db6a9d6488fd1286fc84fc7f8e74a1da71213fb610c7e42c66c",
+      "sourceBytes": 934996,
+      "releaseBytes": 369308,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 107,
+      "contractNodeCount": 30,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_landmark_veil_obelisk",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_landmark_veil_obelisk.glb",
+      "release": "assets/ships/release/parts/places/place_landmark_veil_obelisk.glb",
+      "sourceSha256": "862d607b2416f962ead1bddcb6704ad1e7e2e1befbd46a49848d0ed6298d640d",
+      "releaseSha256": "b1a9fab875bf68f8935d165b2f13252a1bf7a5d2c4dad36ae44946e6f92ae6d4",
+      "sourceBytes": 640008,
+      "releaseBytes": 261460,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 51,
+      "contractNodeCount": 14,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_landmark_pit_anchor",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_landmark_pit_anchor.glb",
+      "release": "assets/ships/release/parts/places/place_landmark_pit_anchor.glb",
+      "sourceSha256": "fe76d06d36562a1e28a620774cdbc7772b8b7966b8846accd283acb51017ecba",
+      "releaseSha256": "97fd50dc8111801aea88d79d17c7ea9b887ea88765857e590db11addaee0b7a7",
+      "sourceBytes": 843920,
+      "releaseBytes": 351232,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 96,
+      "contractNodeCount": 27,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_landmark_vault_maw",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_landmark_vault_maw.glb",
+      "release": "assets/ships/release/parts/places/place_landmark_vault_maw.glb",
+      "sourceSha256": "b243254b371afb9b820def4686566376b53c8a058d39b1ec2a9aee1fa15b9772",
+      "releaseSha256": "92b5a7f279fe357e8149a743f767790ad93649fbd195e78c6943851982554666",
+      "sourceBytes": 1134552,
+      "releaseBytes": 416956,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 71,
+      "contractNodeCount": 21,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_landmark_tower_crown",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_landmark_tower_crown.glb",
+      "release": "assets/ships/release/parts/places/place_landmark_tower_crown.glb",
+      "sourceSha256": "c9fa9d1d551259e540d2c08bf0e92739a87ee74eba8ec05be643dfb44e2f0aba",
+      "releaseSha256": "787dacd351dd9a754aaebda62ad725756a333f881a41e06ab19a91d38957614e",
+      "sourceBytes": 962340,
+      "releaseBytes": 376808,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 86,
+      "contractNodeCount": 23,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_landmark_crystal_spire",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_landmark_crystal_spire.glb",
+      "release": "assets/ships/release/parts/places/place_landmark_crystal_spire.glb",
+      "sourceSha256": "8c93b1f83885f383fd3908112bff2bfb0ea783dbe7ac37de925a3c1774079660",
+      "releaseSha256": "1a150631bade8fdc162c7941a9ad620122fd7603b69b75c20e3894f32b8a8c89",
+      "sourceBytes": 513244,
+      "releaseBytes": 184304,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 51,
+      "contractNodeCount": 14,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_landmark_cathedral_wreck_ii",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_landmark_cathedral_wreck_ii.glb",
+      "release": "assets/ships/release/parts/places/place_landmark_cathedral_wreck_ii.glb",
+      "sourceSha256": "95ce6d81355ab5c8cf8f729b1f71773294ae8fc0313f59991def61913b7b9bfc",
+      "releaseSha256": "8939fa98ff6112625dd27199813d9dc0697f389a69dc934def49a787335e9587",
+      "sourceBytes": 1599448,
+      "releaseBytes": 538640,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 71,
+      "contractNodeCount": 21,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_landmark_billboard_array",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_landmark_billboard_array.glb",
+      "release": "assets/ships/release/parts/places/place_landmark_billboard_array.glb",
+      "sourceSha256": "603cfc580c54f7a55634dde8841f8f44491100af82eded0ce116429877e39856",
+      "releaseSha256": "77018c57da456647fd01f2907af5a2e8f8c4add355abd7c6522c7bbe43eb2a2e",
+      "sourceBytes": 1018824,
+      "releaseBytes": 391372,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 99,
+      "contractNodeCount": 26,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_gate_concord",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_gate_concord.glb",
+      "release": "assets/ships/release/parts/places/place_gate_concord.glb",
+      "sourceSha256": "da4cfe0639a4f08e8741ca9f1d61a2b5ae8b2d6ced32dee2169a2108dfe4b080",
+      "releaseSha256": "a985c4e8bb5dfe77acd6006c03f447012f7f2fffe2d2ceae032900a90b44764e",
+      "sourceBytes": 1222616,
+      "releaseBytes": 417072,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 67,
+      "contractNodeCount": 21,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_gate_merchant",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_gate_merchant.glb",
+      "release": "assets/ships/release/parts/places/place_gate_merchant.glb",
+      "sourceSha256": "c0b2793049be11b8a3c06757a5def3fa264eab2e91a60cdb0bf3c0f6a38d4304",
+      "releaseSha256": "7f75a36803947548afdc649031d2f6ecdb935d4dc26950046d293b8ab6d1ba21",
+      "sourceBytes": 2090600,
+      "releaseBytes": 672932,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 82,
+      "contractNodeCount": 25,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_gate_reach",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_gate_reach.glb",
+      "release": "assets/ships/release/parts/places/place_gate_reach.glb",
+      "sourceSha256": "8014b3cbee1e4072cd437ce00d19eeabadc7bda216a9644106483547aa535c92",
+      "releaseSha256": "e30a73b59245a34788255f2613d94f36befb9b5b9e550123763ba5acfca7dde3",
+      "sourceBytes": 1350800,
+      "releaseBytes": 472688,
+      "textures": 6,
+      "ktx2Textures": 6,
+      "meshoptBufferViews": 88,
+      "contractNodeCount": 27,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     }
   ]
 }

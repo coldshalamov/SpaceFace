@@ -27,12 +27,12 @@ Tri budgets follow the live manifest/exporter contract: part ≤15k · whole-shi
 | hunter_sig_rail_10 | part | F4-22 | 1200 | hostile rim red | queued |
 | hunter_sig_rail_11 | part | F4-22 | 1200 | hostile rim red | queued |
 | hunter_sig_rail_12 | part | F4-22 | 1200 | hostile rim red | queued |
-| landmark_beacon_spire | landmark | F7-30 | 10000 | sector identity | queued |
-| landmark_wreck_cathedral | landmark | F7-30 | 10000 | ashfall rust | queued |
-| landmark_veil_obelisk | landmark | F7-31 | 10000 | veil cyan | queued |
-| landmark_pit_anchor | landmark | F7-31 | 10000 | pit ember | queued |
-| landmark_vault_maw | landmark | F7-31 | 10000 | anomaly violet | queued |
-| landmark_tower_crown | landmark | F6-27 | 10000 | siege brass | queued |
+| landmark_beacon_spire | landmark | F7-30 | 10000 | sector identity | shipped (`place_landmark_beacon_spire`, C6) |
+| landmark_wreck_cathedral | landmark | F7-30 | 10000 | ashfall rust | retired — already shipped as `place_landmark_wreck_cathedral`; second spelling `place_landmark_cathedral_wreck` stays an alias (C6 ruling) |
+| landmark_veil_obelisk | landmark | F7-31 | 10000 | veil cyan | shipped (`place_landmark_veil_obelisk`, C6) |
+| landmark_pit_anchor | landmark | F7-31 | 10000 | pit ember | shipped (`place_landmark_pit_anchor`, C6) |
+| landmark_vault_maw | landmark | F7-31 | 10000 | anomaly violet | shipped (`place_landmark_vault_maw`, C6) |
+| landmark_tower_crown | landmark | F6-27 | 10000 | siege brass | shipped (`place_landmark_tower_crown`, C6) |
 | module_vis_battery_S | part | F5-23 | 1200 | faction trim | queued (`wantsVisual`) |
 | module_vis_battery_M | part | F5-23 | 1200 | faction trim | queued (`wantsVisual`) |
 | module_vis_battery_L | part | F5-23 | 1200 | faction trim | queued (`wantsVisual`) |
