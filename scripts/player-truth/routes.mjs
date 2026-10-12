@@ -108,7 +108,19 @@ export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantH
   const hull = await page.evaluate(() => { const b = [...document.querySelectorAll('#screens .sf-crd-hull')].find((x) => x.getAttribute('aria-pressed') === 'true' || x.getAttribute('aria-checked') === 'true' || x.classList.contains('is-selected')); return b ? b.textContent.replace(/\s+/g, ' ').trim().slice(0, 60) : null; });
   if (ruleset === 'swarm') {
     await clickText(page, 'Open armory');
-    await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucibleDraft', null, { timeout: 300000 });
+    // Assert OPEN ARMORY reaches the armory, and fail fast (not a 300 s timeout) when the launch
+    // falls through into the Adventure opening — the worker-lane regression where the boot staged
+    // the Training Derelict rescue tutorial because the Crucible launch never reached the sim.
+    const landed = await page.waitForFunction(() => {
+      const st = window.SF.state;
+      if (window.SF.ctx.screenManager.top() === 'crucibleDraft') return 'armory';
+      const tutorial = st && st.onboarding && st.onboarding.active === true;
+      const rescue = st && st.entityList && st.entityList.some((e) => e && e.alive !== false && e.data && e.data.rescue === true);
+      const run = st && st.run;
+      if (st && st.mode === 'flight' && (tutorial || rescue) && !(run && run.kind === 'survival' && run.phase !== 'inactive')) return 'adventure';
+      return false;
+    }, null, { timeout: 300000, polling: 250 }).then((h) => h.jsonValue());
+    if (landed !== 'armory') throw new Error('Swarm OPEN ARMORY did not open the armory: launch fell into the Adventure tutorial (Training Derelict)');
   } else {
     await clickText(page, 'Enter the Gauntlet');
   }
