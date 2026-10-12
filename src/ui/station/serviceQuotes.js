@@ -14,14 +14,16 @@ export function factionPresenceServiceRows(state, stationId) {
   const stored = own && own.servicesByStation && own.servicesByStation[stationId];
   if (!stored) return [];
   const rep = Number(state && state.factions && state.factions[stored.factionId] && state.factions[stored.factionId].rep) || 0;
-  const available = stored.requiredRep == null || rep >= stored.requiredRep;
+  // A grudge-closed desk (factionPresence conduct) is closed whatever the standing says.
+  const closedReason = typeof stored.closedReason === 'string' ? stored.closedReason : '';
+  const available = !closedReason && (stored.requiredRep == null || rep >= stored.requiredRep);
   if (stored.factionId === 'faction_archive' && stored.services.includes('reading_room')) {
     return [{
       id: 'archive_reading_room',
       label: 'Archive Reading Room',
       desc: 'Open a seeded, persistent redacted record.',
       available,
-      disabledReason: available ? '' : `Requires Archive reputation ${stored.requiredRep}`,
+      disabledReason: available ? '' : closedReason || `Requires Archive reputation ${stored.requiredRep}`,
       targetTab: null,
     }];
   }
@@ -30,13 +32,13 @@ export function factionPresenceServiceRows(state, stationId) {
     if (stored.services.includes('yard')) rows.push({
         id: 'pitborn_yard', label: 'Pitborn Yard',
         desc: 'Open the Shipyard for hulls and repairs.',
-        available, disabledReason: available ? '' : `Requires Pitborn reputation ${stored.requiredRep}`,
+        available, disabledReason: available ? '' : closedReason || `Requires Pitborn reputation ${stored.requiredRep}`,
         targetTab: 'shipyard',
       });
     if (stored.services.includes('fence')) rows.push({
         id: 'pitborn_fence', label: 'Pitborn Fence',
         desc: 'Open the Market, black market included.',
-        available, disabledReason: available ? '' : `Requires Pitborn reputation ${stored.requiredRep}`,
+        available, disabledReason: available ? '' : closedReason || `Requires Pitborn reputation ${stored.requiredRep}`,
         targetTab: 'market',
       });
     return rows;
@@ -47,7 +49,7 @@ export function factionPresenceServiceRows(state, stationId) {
       label: 'Understory Wreck Buyer',
       desc: 'Review the newest loss-ledger hull this berth can appraise.',
       available,
-      disabledReason: available ? '' : 'Understory appraisal unavailable',
+      disabledReason: available ? '' : closedReason || 'Understory appraisal unavailable',
       targetTab: null,
     }];
   }
@@ -57,7 +59,7 @@ export function factionPresenceServiceRows(state, stationId) {
       label: 'Helix Directorate Audit',
       desc: 'Submit your paperwork for a stamped rim-audit receipt.',
       available,
-      disabledReason: available ? '' : `Requires Helix reputation ${stored.requiredRep}`,
+      disabledReason: available ? '' : closedReason || `Requires Helix reputation ${stored.requiredRep}`,
       targetTab: null,
     }];
   }

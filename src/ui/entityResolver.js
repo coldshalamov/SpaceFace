@@ -19,6 +19,7 @@
 
 import { FACTION_META } from '../data/factions.js';
 import { FACTION_DOCTRINES } from '../data/factionDoctrines.js';
+import { conductFor, conductLine, deriveConductStance } from '../data/factionConduct.js';
 import { COMMODITIES, COMMODITY_FLAVOR } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
 import { stationServiceOutage } from '../systems/economy.js';
@@ -161,6 +162,14 @@ function factionDossier(state, id) {
     facts.push({ k: 'Bribe to clear', v: creditText(cost), tone: 'goal', num: true });
   }
   facts.push({ k: 'Temperament', v: String(f.personality || 'unstated'), tone: 'calm' });
+  // Conduct (factionPresence): how this faction's own people currently treat you, from what you did.
+  const memory = conductFor(id) && state && state.factionPresence && state.factionPresence.conduct
+    ? state.factionPresence.conduct[id] || null : null;
+  if (memory) {
+    const stance = deriveConductStance(id, rec && rec.rep, memory, state.simTime);
+    const tone = stance === 'grudge' ? 'foe' : stance === 'kin' ? 'you' : 'calm';
+    facts.push({ k: 'Toward you', v: stance === 'grudge' ? 'Grudge' : stance[0].toUpperCase() + stance.slice(1), tone });
+  }
 
   const lines = [];
   // PQ-146 §6 rap sheet: only reports actually DELIVERED to this network appear. A black-box
@@ -174,6 +183,10 @@ function factionDossier(state, id) {
       lines.push({ label: 'Incident', text: `${inc.shipName} ${inc.account} — ${inc.harm}` });
       lines.push({ label: 'On file', text: `${inc.evidence} · ${inc.disposition} · no case recorded` });
     }
+  }
+  if (memory) {
+    const said = conductLine(id, memory.grudge ? 'grudge' : memory.forgiven > 0 ? 'forgive' : '', {});
+    if (said) lines.push({ label: 'They remember', text: said, tone: memory.grudge ? 'foe' : undefined });
   }
   if (Array.isArray(f.controls) && f.controls.length) lines.push({ label: 'Controls', text: f.controls.join(' · ') });
   const doctrine = FACTION_DOCTRINES && FACTION_DOCTRINES[id];
