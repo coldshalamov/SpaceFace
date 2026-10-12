@@ -783,6 +783,9 @@ function liveSurvivalRun(state) {
   return run;
 }
 
+// Seconds a later round's field law waits after the round is planned: the intro plus the arrivals.
+const ROUND_FIELD_BREATH_S = 4;
+
 function simTimeOf(state) {
   return Number.isFinite(state && state.simTime)
     ? state.simTime
@@ -1087,6 +1090,7 @@ export const survivalArena = {
     } else if (this._lawId === STORM_ARENA_ID) {
       this._tickStorm(st);
     }
+    this._releaseRoundFields(st);
     if (this._swarmEvents) this._swarmEvents.update(_dt, st);
     this._tickToys(_dt, st);
   },
@@ -1160,8 +1164,14 @@ export const survivalArena = {
     // The opening lesson is a still room: one hostile, one rock, nothing drifting. The room's
     // law (a sag, a shove) arrives with the pack — otherwise it drags the furniture into the
     // lone hostile before the pilot has touched a key and the round plays itself.
+    // Every later Swarm round opens the same way: the room's law waits out the arrival breath, so a rock
+    // the field would sling is not already flying into the next pack before the pilot can see it.
+    this._deferredUntil = null;
     if (plan.openingLesson && wave <= 1) this._deferredFields = install.fields;
-    else this._installFields(install.fields);
+    else if (wave > 1 && run.ruleset === 'swarm' && Array.isArray(install.fields) && install.fields.length > 0) {
+      this._deferredFields = install.fields;
+      this._deferredUntil = simTimeOf(state) + ROUND_FIELD_BREATH_S;
+    } else this._installFields(install.fields);
     this._installMines(install.mines);
     this._installCover(install.cover || run.ruleset === 'swarm', wave);
     this._installToys(install);
@@ -1470,6 +1480,15 @@ export const survivalArena = {
     }
   },
 
+  _releaseRoundFields(state) {
+    if (!this._deferredFields || !Number.isFinite(this._deferredUntil)) return;
+    if (simTimeOf(state) < this._deferredUntil) return;
+    const deferred = this._deferredFields;
+    this._deferredFields = null;
+    this._deferredUntil = null;
+    this._installFields(deferred);
+  },
+
   _tickToys(dt, state) {
     const toys = this._toys;
     if (!toys || toys.length === 0) return;
@@ -1737,6 +1756,7 @@ export const survivalArena = {
   _reset() {
     this._fieldIds = [];
     this._deferredFields = null;
+    this._deferredUntil = null;
     this._mineIds = [];
     this._encounterId = null;
     this._phase = null;

@@ -42,3 +42,20 @@ test('the lesson well is planted asleep and wakes when the lesson releases the p
   sys._onOpeningLessonReleased();
   assert.equal(updates.length, 1, 'wakes once');
 });
+
+test('a later round holds its field law through the arrival breath, then installs it once', () => {
+  const { sys, ship } = room([{ kind: 'cone' }]);
+  const installed = [];
+  sys._installFields = (specs) => installed.push(specs);
+  sys._deferredUntil = 5;
+  sys.state.simTime = 4.9;
+  sys._releaseRoundFields(sys.state);
+  sys._tickToys(1 / 60, sys.state);
+  assert.equal(installed.length, 0, 'no law during the breath');
+  assert.equal(Math.hypot(ship.vel.x, ship.vel.z), 0, 'no shove during the breath');
+  sys.state.simTime = 5;
+  sys._releaseRoundFields(sys.state);
+  sys._releaseRoundFields(sys.state);
+  assert.deepEqual(installed, [[{ kind: 'cone' }]]);
+  assert.equal(sys._deferredFields, null);
+});
