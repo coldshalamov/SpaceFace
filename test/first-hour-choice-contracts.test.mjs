@@ -74,7 +74,8 @@ function makeHarness(seed = 47) {
 test('B4 resolves at the Helios berth; accepting the Ceres run tracks it and retires the rail', () => {
   const h = makeHarness();
   h.state.world.currentSectorId = 'sector_helios_prime';
-  h.state.ui.dockedStationId = 'station_helios';
+  // Live order: input emits the dock intent before uiRoot commits ui.dockedStationId.
+  h.state.ui.dockedStationId = null;
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.ok(h.state.onboarding.beatDoneAt.dock != null,
     'docking is the lesson: selling, fitting and the next job are local and never wait on Ceres');
@@ -130,7 +131,8 @@ test('starter-progression: undocking from B5 without a job retires the rail and 
 test('starter-progression: undocking before B5 enters (silence gap) also retires the rail', () => {
   const h = makeHarness();
   h.state.world.currentSectorId = 'sector_helios_prime';
-  h.state.ui.dockedStationId = 'station_helios';
+  // Live order: input emits the dock intent before uiRoot commits ui.dockedStationId.
+  h.state.ui.dockedStationId = null;
   h.state.onboarding.currentBeat = CHOICE_BEAT - 1;
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.ok(h.state.onboarding.beatDoneAt.dock != null);

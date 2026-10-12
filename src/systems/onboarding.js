@@ -473,10 +473,10 @@ export const onboarding = {
     });
 
     // Objective completion hooks (real events verified against the systems).
-    bus.on('dock:docked', () => {
+    bus.on('dock:docked', (p) => {
       this._dockControlInRange = false;
       this._demoFittedThisDock = null;
-      this._onBeatEvent('dock:docked');
+      this._onBeatEvent('dock:docked', p);
     });
     bus.on('economy:tradeCompleted', (p) => {
       if (p && p.side === 'sell') this._onBeatEvent('sold', p);
@@ -1514,7 +1514,8 @@ export const onboarding = {
     } else if (done === 'docked' && (eventName === 'dock:docked' || eventName === 'recommended:completed')) {
       // B4 resolves at the berth: selling, fitting and choosing the next job are local. The
       // choice beat opens its offers at this station, beside the authored Ceres run.
-      const stationId = this.state.ui && this.state.ui.dockedStationId;
+      // The dock intent names the berth; uiRoot commits ui.dockedStationId after this listener.
+      const stationId = (payload && payload.stationId) || (this.state.ui && this.state.ui.dockedStationId);
       if (stationId) ob.choiceStationId = stationId;
       resolved = eventName === 'recommended:completed' || !!stationId;
     }
