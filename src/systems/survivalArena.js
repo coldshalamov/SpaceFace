@@ -90,6 +90,7 @@ import {
 import { SURVIVAL_ARENA_PHASES as CANONICAL_ARENA_PHASES } from '../data/survivalWaves.js';
 import { gateBearing } from './waveMaterialization.js';
 import { FOUNDRY_ARENA_ID } from './swarmArena.js';
+import { foundryPlateShape, foundryPlateProxy } from '../data/foundryPlate.js';
 import { CINDER_ARENA_ID, planCinderInstall, stepCinderMachinery } from './cinderSluiceArena.js';
 import {
   CRYO_ARENA_ID,
@@ -280,7 +281,8 @@ function planFoundryToys({ phase, at, lane, across, spin, wave, seed }) {
       pos,
       normal: { x: (at.x - pos.x) / length, z: (at.z - pos.z) / length },
       halfWidth: 48,
-      radius: 26,
+      referenceRadius: 26,
+      radius: foundryPlateShape({ halfWidth: 48, referenceRadius: 26 }).radius,
     });
   }
   const mouth = alongBearing(at, lane, 320);
@@ -1364,7 +1366,7 @@ export const survivalArena = {
       fields: this._releaseFields(),
       mines: this._releaseMines(),
       cover: this._releaseCover(retainAnchors),
-      solids: this._releaseRoom(),
+      solids: this._releaseRoom(reason),
     };
     const had = released.fields > 0 || released.mines > 0 || released.cover || released.solids > 0;
     const phase = this._phase;
@@ -1621,17 +1623,20 @@ export const survivalArena = {
       const solidId = `survival-room-w${w}-${toy.id}`;
       if (this._findRoomSolid(solidId)) continue;
       const dynamic = toy.dynamic === true;
-      const radius = Math.max(4, Number.isFinite(toy.radius) ? toy.radius : 16);
+      const plate = toy.kind === 'plate' ? foundryPlateShape(toy) : null;
+      const radius = plate ? plate.radius : Math.max(4, Number.isFinite(toy.radius) ? toy.radius : 16);
+      const lawRadius = plate ? plate.referenceRadius : radius;
       // FB-022: a toy may author its own mass (prop class); shutters keep SHUTTER_MASS.
       const mass = dynamic
         ? Math.max(1, Number.isFinite(toy.mass) ? toy.mass : SHUTTER_MASS)
-        : Math.max(400, Math.round(radius * radius * 2.5));
-      const hull = 100000 + Math.round(radius * 40);
+        : Math.max(400, Math.round(lawRadius * lawRadius * 2.5));
+      const hull = 100000 + Math.round(lawRadius * 40);
       const pos = clearOfPilot(state, toy.pos, radius);
       const entity = helpers.spawnEntity({
         type: 'station',
         id: solidId,
         pos,
+        ...(plate ? { rot: plate.rot } : {}),
         vel: { x: 0, z: 0 },
         angVel: 0,
         radius,
@@ -1645,11 +1650,12 @@ export const survivalArena = {
           schemaVersion: 1,
           radius,
           mass,
-          inertiaY: Math.max(8, Math.round(mass * radius * radius * 0.4)),
+          inertiaY: Math.max(8, Math.round(mass * lawRadius * lawRadius * 0.4)),
           dynamic,
           ccd: false,
           material: 'station',
           revision: 0,
+          ...(plate ? { collisionProxyManifest: foundryPlateProxy(plate) } : {}),
         },
         data: {
           roomOwner: ARENA_ROOM_OWNER,
@@ -1657,6 +1663,8 @@ export const survivalArena = {
           roomToyId: toy.id,
           roomKind: toy.kind,
           roomDynamic: dynamic,
+          ...(plate ? { foundryPlate: { referenceRadius: plate.referenceRadius,
+            halfWidth: plate.halfWidth, halfDepth: plate.halfDepth, halfHeight: plate.halfHeight } } : {}),
           propRole: typeof toy.propRole === 'string' ? toy.propRole : null,
           surfaceMaterial: typeof toy.material === 'string' && toy.material
             ? toy.material
@@ -1687,7 +1695,7 @@ export const survivalArena = {
   },
 
   /** Tag-checked release: only entities carrying our roomOwner tag ever die here. */
-  _releaseRoom() {
+  _releaseRoom(reason) {
     const ids = this._roomIds || [];
     this._roomIds = [];
     this._roomSolids = new Map();
@@ -1701,6 +1709,13 @@ export const survivalArena = {
       if (!solid || solid.alive === false) continue;
       if (!solid.data || solid.data.roomOwner !== ARENA_ROOM_OWNER) continue;
       solid.alive = false;
+      if (reason === 'wave_cleared' && Number.isInteger(this._wave) && this._wave > 0
+        && typeof solid.data.roomSolidId === 'string'
+        && solid.data.roomSolidId.startsWith(`survival-room-w${this._wave}-`)) {
+        this._emit('entity:retired', { id: solid.id, occupantGeneration: solid.occupantGeneration,
+          type: solid.type, pos: { x: solid.pos.x, z: solid.pos.z }, reason: 'survival-room-wave-cleared',
+          owner: ARENA_ROOM_OWNER, roomSolidId: solid.data.roomSolidId, wave: this._wave, simTime: state.simTime });
+      }
       n++;
     }
     return n;
