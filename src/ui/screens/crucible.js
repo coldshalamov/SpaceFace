@@ -2501,7 +2501,9 @@ export function killChainRows(defeat) {
     : 'Unidentified attacker';
   const rows = [
     ['Killed by', killer],
-    ['Its weapon', defeat.weapon || 'Unidentified weapon'],
+    // A rock or a hazard has no gun; "Unidentified weapon" under an environmental kill reads as a bug.
+    ['Its weapon', defeat.weapon
+      || (defeat.source && defeat.source.kind === 'environment' ? 'Impact' : 'Unidentified weapon')],
     ['It came from', bearingWord(defeat.direction)],
     ['It got in', breachPhrase(defeat.dominantLayer)],
   ];

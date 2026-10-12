@@ -140,7 +140,7 @@ test('shooting the core apart is final and pays nothing', () => {
 test('the ordinary sector-day roll (seed 4242) draws it off the starter corridor and it fires there without force', () => {
   const zones = zonesForSector(SECTOR);
   let planned = null;
-  for (let day = 0; day < 365 && !planned; day++) {
+  for (let day = 0; day < 60 && !planned; day++) {
     planned = planEncountersDay(SEED, SECTOR, day, zones).find((item) => item.shapeId === SHAPE) || null;
   }
   assert.ok(planned, `${SHAPE} is drawn by the ordinary roll in ${SECTOR}`);
