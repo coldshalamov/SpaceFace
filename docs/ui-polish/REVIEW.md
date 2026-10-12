@@ -1,6 +1,6 @@
 # UI polish review — living doc for the `ui-polish` PR
 
-Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish` · base `master` @ `d748312d1`.
+Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-2` (PR #306; #301 merged) · stacked on `master`.
 
 This file tracks the stacked visual polish of every shootable 2D screen (`node scripts/ui-bench.mjs --list`). Seeded from `design/frontend/UNIFICATION_LEDGER.md` where useful; **this REVIEW is the authority for this PR**, not the ledger.
 
@@ -38,7 +38,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`save-load`** / `saveLoad` / `save-load-empty` / `save-load-live` | **DONE** | See § Save/Load below — this session |
 | **`help`** | **DONE** | See § Help below — this session |
 | **`codex`** / **`codex-record`** | **DONE** | See § Codex below — this session |
-| `mission-log` / `missionLog` | SURVEYED | |
+| **`mission-log`** / `missionLog` | **DONE** | See § Mission Log below — this session |
 | **`credits`** | **DONE** | See § Credits below — this session |
 | `achievements` | SURVEYED | |
 | `statistics` | SURVEYED | |
@@ -202,7 +202,34 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Code touched:** `src/ui/orrery/archiveLayouts.js` (CODEX_CSS only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes. Mission-log CSS in the same file left alone this session.
 
-**Next:** `mission-log` / `missionLog`, or `achievements` / `new-game`.
+**Next after codex was:** `mission-log` — now DONE (see below).
+
+---
+
+
+## Mission Log — session notes (2026-10-12)
+
+**Before:** ORRERY Mission Log already strong (tracing beam + dial + route lane). Gaps vs the polished settings/save-load/help/credits/codex stack: BACK foot was plain `‹ BACK ESC` text (no keycap box / underline); story line, section caps, kickers, row-subs, empty notes, dial/clock secondary, and terms labels sat soft on void; no 1.12 composition zoom in the 1080p band; beam / lane / dial ticks read thin.
+
+**After (2 visual iterations, CSS only in `archiveLayouts.js` MLOG_CSS):**
+
+1. **Pass 1** — foot rail matched settings/save-load/help/credits/codex (`‹ BACK` + ESC keycap box + underline); secondary copy contrast raised (≥ ~0.78–0.94); beam + dial ticks brighter; 1.12 zoom @1080p band (1800–2199 × ≥1000).
+2. **Pass 2** — SHOW/verb chevrons and word-subs nudged; lane band / hop ticks / route face ring / clock ticks / career diamond / completed hollow nodes brighter.
+
+**Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=mission-log --walk` — exit 0; measured clean at 1920×1080 and 1280×720; 6 controls exercised (SHOW×2, track, local map, abandon, close); selectors/IDs unchanged.
+
+**Artifacts**
+
+| | Path |
+|---|---|
+| Before (@1080) | `docs/ui-polish/mission-log-before.png` |
+| Before (@720) | `docs/ui-polish/mission-log-before-720.png` |
+| After (@1080) | `docs/ui-polish/mission-log-after.png` |
+| After (@720) | `docs/ui-polish/mission-log-after-720.png` |
+
+**Code touched:** `src/ui/orrery/archiveLayouts.js` (MLOG_CSS only). Codex CSS in the same file left alone this session. No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
+
+**Next:** `achievements`, `new-game`, or `statistics`.
 
 ---
 ## Live-boot survey (2026-10-12, real game booted in headless Chromium, 1280×720 + 1920×1080)
@@ -250,4 +277,5 @@ The game already ships a mature system: Deckplate tokens (`--dp-*`) + ORRERY ins
 - `src/ui/orrery/saveLayouts.js`: save-load empty-state contrast (emph/detail/vacant/filmstrip), open-berth glow, settings-matched `‹ BACK` + ESC keycap foot rail, 1.12 zoom @1080p band. Game-over styles unchanged.
 - `src/ui/orrery/helpLayouts.js`: Help foot rail `‹ CLOSE` + ESC keycap; ladder/reading/search contrast; fixed broken search-rule CSS; reading shade deepened. Selectors/IDs unchanged.
 - `src/ui/orrery/archiveLayouts.js`: Codex foot keycap rail, secondary contrast, rail/tick brighten, 1080p zoom. Selectors/IDs unchanged.
+- `src/ui/orrery/archiveLayouts.js`: Mission Log foot keycap rail, secondary contrast, beam/lane/dial brighten, 1080p zoom. Selectors/IDs unchanged.
 - No selectors/IDs changed; no engine/render, audio, loadout data or HUD threat-marker code touched.

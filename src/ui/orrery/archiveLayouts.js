@@ -426,16 +426,16 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
 const MLOG_CSS = `
 /* ================================ MISSION LOG =============================================== */
 ${ML} { --ml-dial:clamp(190px, min(16vw, 30vh), 300px); row-gap:clamp(24px, 4.4vh, 52px) !important; grid-template-areas:"title title" "hang stage" "foot stage" !important; }
-${ML} > .k-title .sf-mlog-story-line { margin:10px 0 0 !important; ${BODY} font-size:15px !important; color:rgb(${BONE} / .74) !important; }
+${ML} > .k-title .sf-mlog-story-line { margin:10px 0 0 !important; ${BODY} font-size:15px !important; color:rgb(${BONE} / .88) !important; }
 /* the hang is the beam: one ruled line down its left edge, carried with the scroll */
 ${ML} > .k-hang.sf-mlog-body { ${PLAIN} position:relative; padding:4px 8px 30px 0 !important; overflow:hidden auto; scrollbar-width:none; background:none !important; -webkit-mask-image:none !important; mask-image:none !important; animation:none !important; }
 ${ML} > .k-hang.sf-mlog-body::-webkit-scrollbar { display:none; }
 ${ML} > .k-hang.sf-mlog-body[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - var(--ml-cut, 0px) - 18px), transparent calc(100% - var(--ml-cut, 0px))) !important;
   mask-image:linear-gradient(180deg, #000 calc(100% - var(--ml-cut, 0px) - 18px), transparent calc(100% - var(--ml-cut, 0px))) !important; }
 ${ML} .ml-beam { position:absolute; left:9px; top:0; width:10px; height:0; z-index:0; pointer-events:none; will-change:transform;
-  background:linear-gradient(90deg, transparent 4px, rgb(${BONE} / .66) 4px, rgb(${BONE} / .66) 6px, transparent 6px),
-    linear-gradient(90deg, transparent 2px, rgb(${BONE} / .32) 2px, rgb(${BONE} / .32) 8px, transparent 8px),
-    repeating-linear-gradient(180deg, rgb(${BONE} / .4) 0 2px, transparent 2px 8px) 0 0 / 2px 100% no-repeat; border-radius:5px; }
+  background:linear-gradient(90deg, transparent 4px, rgb(${BONE} / .82) 4px, rgb(${BONE} / .82) 6px, transparent 6px),
+    linear-gradient(90deg, transparent 2px, rgb(${BONE} / .42) 2px, rgb(${BONE} / .42) 8px, transparent 8px),
+    repeating-linear-gradient(180deg, rgb(${BONE} / .55) 0 2px, transparent 2px 8px) 0 0 / 2px 100% no-repeat; border-radius:5px; }
 ${ML} .ml-beam[hidden] { display:none !important; }
 ${ML} .ml-beam::after { content:""; position:absolute; left:3px; right:3px; bottom:-10px; height:10px; border-radius:0 0 3px 3px;
   background:linear-gradient(180deg, rgb(${BONE} / .45), rgb(${BONE} / 0)); }
@@ -447,12 +447,12 @@ ${ML} .sf-mlog-body > .k-row.k-row--static, ${ML} .sf-mlog-story > .k-row.k-row-
 ${ML} .sf-mlog-body > .k-row.k-row--static:first-of-type, ${ML} .sf-mlog-story > .k-row.k-row--static { padding-top:6px !important; }
 ${ML} .sf-mlog-body > .k-row.k-row--static[hidden] { display:none !important; }
 ${ML} .sf-mlog-body > .k-row.k-row--static::before, ${ML} .sf-mlog-story > .k-row.k-row--static::before, ${ML} .sf-mlog-comp-subhead::before { content:"" !important; position:absolute !important; left:6px !important; bottom:calc(8px + .45em) !important; top:auto !important;
-  width:18px !important; height:2px !important; margin:0 !important; background:rgb(${BONE} / .78) !important; translate:none !important; scale:none !important; transform:none !important; border:0 !important; box-shadow:none !important; border-radius:0 !important; clip-path:none !important; display:block !important; }
+  width:18px !important; height:2px !important; margin:0 !important; background:rgb(${BONE} / .9) !important; translate:none !important; scale:none !important; transform:none !important; border:0 !important; box-shadow:none !important; border-radius:0 !important; clip-path:none !important; display:block !important; }
 ${ML} .sf-mlog-body .k-row.k-row--static::after { display:none !important; content:none !important; }
-${ML} .sf-mlog-body .k-caps { ${LABEL} font-size: 12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .68) !important; text-shadow:none !important; margin:0 !important; }
+${ML} .sf-mlog-body .k-caps { ${LABEL} font-size: 12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .86) !important; text-shadow:none !important; margin:0 !important; }
 ${verb(`${ML} .sf-mlog-toggle`)}
 ${ML} .sf-mlog-toggle { font-size: 12px !important; }
-${ML} .sf-mlog-toggle::before { content:"›  "; color:rgb(${BONE} / .6); }
+${ML} .sf-mlog-toggle::before { content:"›  "; color:rgb(${BONE} / .78); }
 /* the current action: the beam's head, a ring round a point of phosphor */
 ${ML} .sf-mlog-recommend > .k-rows { margin:0 !important; padding:0 !important; }
 ${ML} .sf-mlog-rec-item.k-row { ${PLAIN} position:relative !important; display:grid !important; grid-template-columns:minmax(0, 1fr) auto; align-items:start; column-gap:12px;
@@ -465,16 +465,16 @@ ${ML} .sf-mlog-rec-item.is-now { padding-bottom:2px !important; }
 ${ML} .sf-mlog-rec-now { ${LABEL} display:inline-block; margin-right:12px; font-size: 12px !important; letter-spacing:.24em !important; color:rgb(223 238 255) !important; }
 ${ML} .sf-mlog-rec-item.is-now .sf-mlog-rec-body { display:inline !important; margin:0 !important; font-size:13.5px !important; color:${INK} !important; }
 ${ML} .sf-mlog-rec-item .sf-mlog-rec-title { ${BODY} display:block; font-size:15px !important; line-height:1.3 !important; font-weight:560; color:${INK} !important; white-space:normal !important; }
-${ML} .sf-mlog-rec-item .k-row__sub { ${BODY} display:block; margin-top:4px; font-size:12.5px !important; line-height:1.45 !important; color:rgb(${BONE} / .74) !important; white-space:normal; }
-${ML} .sf-mlog-rec-item .sf-mlog-rec-meta { font-size:12px !important; color:rgb(${BONE} / .68) !important; }
-${ML} .sf-mlog-rec-item .sf-mlog-rec-marker { ${LABEL} margin-top:8px !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .62) !important; }
+${ML} .sf-mlog-rec-item .k-row__sub { ${BODY} display:block; margin-top:4px; font-size:12.5px !important; line-height:1.45 !important; color:rgb(${BONE} / .86) !important; white-space:normal; }
+${ML} .sf-mlog-rec-item .sf-mlog-rec-meta { font-size:12px !important; color:rgb(${BONE} / .82) !important; }
+${ML} .sf-mlog-rec-item .sf-mlog-rec-marker { ${LABEL} margin-top:8px !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .78) !important; }
 ${ML} .sf-mlog-rec-item .sf-mlog-rec-label { display:block !important; ${PLAIN} ${LABEL} min-height:0 !important; padding:2px 0 0 !important; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .84) !important; }
 ${ML} .sf-mlog-rec-item .sf-mlog-rec-label::before { content:"●  "; font-size: 12px; vertical-align:2px; color:rgb(${BONE} / .84); }
 ${ML} .sf-mlog-rec-actions, ${ML} .sf-mlog-story .sf-mlog-rec-actions { display:flex !important; flex-wrap:wrap; gap:6px 26px; margin:4px 0 0 !important; padding:0 0 0 40px !important; list-style:none; }
 ${ML} .sf-mlog-rec-actions > li { display:flex !important; flex-direction:column; align-items:flex-start; }
 ${verb(`${ML} .sf-mlog-rec-action`)}
-${ML} .sf-mlog-rec-action::before { content:"›  "; color:rgb(${BONE} / .6); }
-${ML} :is(.sf-mlog-rec-actions, .sf-mlog-btns) .k-word-sub { ${LABEL} margin:1px 0 0 14px !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .6) !important; }
+${ML} .sf-mlog-rec-action::before { content:"›  "; color:rgb(${BONE} / .78); }
+${ML} :is(.sf-mlog-rec-actions, .sf-mlog-btns) .k-word-sub { ${LABEL} margin:1px 0 0 14px !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .78) !important; }
 /* the active contracts: nodes on the beam; below each node the beam is lit as far as the contract has come */
 ${ML} .sf-mlog-list > .k-rows { margin:0 !important; padding:0 !important; ${PLAIN} }
 /* the trace: the beam lit from the current action down to a bead (the chosen node at rest, the pointer's
@@ -519,30 +519,30 @@ ${ML} .sf-mlog-list .k-row.sf-mlog-row:focus-visible:not([aria-selected="true"])
 ${ML} .sf-mlog-list .k-row.sf-mlog-row .k-row__name { ${BODY} display:inline; font-size:14.5px !important; line-height:1.3 !important; font-weight:500; color:rgb(${BONE} / .9) !important; white-space:normal !important; text-shadow:none !important; }
 ${ML} .sf-mlog-list .k-row.sf-mlog-row[aria-selected="true"] .k-row__name { color:rgb(252 250 244) !important; font-weight:600 !important; }
 ${ML} .sf-mlog-list .k-row.sf-mlog-row:is(:hover, :focus-visible) .k-row__name { color:rgb(255 255 255) !important; }
-${ML} .sf-mlog-list .k-row.sf-mlog-row .k-row__sub { ${BODY} display:block; margin-top:4px; font-size:12.5px !important; line-height:1.4 !important; color:rgb(${BONE} / .72) !important; }
+${ML} .sf-mlog-list .k-row.sf-mlog-row .k-row__sub { ${BODY} display:block; margin-top:4px; font-size:12.5px !important; line-height:1.4 !important; color:rgb(${BONE} / .86) !important; }
 ${ML} .sf-mlog-list .k-row.sf-mlog-row .k-row__sub.k-bad { color:rgb(255 112 92) !important; }
 ${ML} .sf-mlog-list .k-row.sf-mlog-row .k-row__num { ${PLAIN} min-height:0 !important; padding:1px 0 0 !important; display:block !important;
   font-family:var(--dp-face-numeral, "Archivo") !important; font-variation-settings:"wdth" 100, "wght" 480 !important; font-weight:480 !important; font-size:14px !important; letter-spacing:0 !important;
   text-transform:none !important; color:rgb(223 238 255) !important; font-variant-numeric:tabular-nums; }
 ${ML} .sf-mlog-tag { ${LABEL} display:inline-block; margin-left:10px; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .8); vertical-align:1px; white-space:nowrap; }
 ${ML} .sf-mlog-tag::before { content:"●  "; font-size: 12px; vertical-align:1.5px; }
-${ML} .sf-mlog-pct { ${LABEL} display:block; margin-top:6px; font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .64); }
-${ML} .sf-mlog-list .sf-mlog-empty .k-sentence, ${ML} .sf-mlog-comp-list .sf-mlog-empty .k-sentence { ${BODY} margin:0 !important; padding:2px 0 6px 40px; font-size:13px !important; color:rgb(${BONE} / .66) !important; }
+${ML} .sf-mlog-pct { ${LABEL} display:block; margin-top:6px; font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .8); }
+${ML} .sf-mlog-list .sf-mlog-empty .k-sentence, ${ML} .sf-mlog-comp-list .sf-mlog-empty .k-sentence { ${BODY} margin:0 !important; padding:2px 0 6px 40px; font-size:13px !important; color:rgb(${BONE} / .84) !important; }
 /* the career paths: a diamond on the beam, their verbs as words */
 ${ML} .sf-mlog-career.k-row { ${PLAIN} position:relative !important; display:grid !important; grid-template-columns:minmax(0, 1fr) auto; column-gap:12px; align-items:start;
   min-height:0 !important; height:auto !important; padding:8px 0 12px 40px !important; margin:0 !important; cursor:default; }
 ${ML} .sf-mlog-career.k-row::before { content:"" !important; position:absolute !important; left:9.5px !important; top:12px !important; width:9px !important; height:9px !important; margin:0 !important; display:block !important;
   transform:rotate(45deg) !important; translate:none !important; scale:none !important; border:0 !important; border-radius:0 !important; clip-path:none !important;
-  background:rgb(8 10 13) !important; box-shadow:inset 0 0 0 1.5px rgb(${BONE} / .66) !important; }
+  background:rgb(8 10 13) !important; box-shadow:inset 0 0 0 1.5px rgb(${BONE} / .82) !important; }
 ${ML} .sf-mlog-career.k-row::after { display:none !important; }
 ${ML} .sf-mlog-career .sf-mlog-career-title { ${BODY} font-size:14.5px !important; font-weight:560; color:${INK} !important; white-space:normal !important; }
-${ML} .sf-mlog-career .k-row__sub { ${BODY} margin-top:3px; font-size:12.5px !important; line-height:1.4; color:rgb(${BONE} / .72) !important; white-space:normal; }
+${ML} .sf-mlog-career .k-row__sub { ${BODY} margin-top:3px; font-size:12.5px !important; line-height:1.4; color:rgb(${BONE} / .86) !important; white-space:normal; }
 ${ML} .sf-mlog-career .sf-mlog-career-status { ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .76) !important; }
 ${ML} .sf-mlog-career .sf-mlog-career-progress { ${PLAIN} ${LABEL} min-height:0 !important; padding:2px 0 0 !important; font-size: 12px !important; letter-spacing:.16em !important; color:rgb(223 238 255) !important; }
 ${ML} .sf-mlog-career :is(.sf-mlog-career-actions, .sf-mlog-career-choices) { display:flex !important; flex-wrap:wrap; gap:4px 22px; margin:8px 0 0 !important; padding:0 !important; list-style:none; }
 ${verb(`${ML} .sf-mlog-career .sf-mlog-career-btn`)}
 ${ML} .sf-mlog-career .sf-mlog-career-btn { font-size: 12px !important; }
-${ML} .sf-mlog-career .sf-mlog-career-btn::before { content:"›  "; color:rgb(${BONE} / .6); }
+${ML} .sf-mlog-career .sf-mlog-career-btn::before { content:"›  "; color:rgb(${BONE} / .78); }
 ${ML} .sf-mlog-career .sf-mlog-career-btn[aria-pressed="true"] { color:rgb(255 255 255) !important; background:linear-gradient(90deg, ${INK}, rgb(${BONE} / 0)) 0 100% / 100% 1.5px no-repeat !important; }
 ${ML} .sf-mlog-career .sf-mlog-career-btn-abandon:is(:hover, :focus-visible) { color:var(--dp-danger, #ff5038) !important; background:linear-gradient(90deg, var(--dp-danger, #ff5038), rgb(255 80 56 / 0)) 0 100% / 100% 1.5px no-repeat !important; }
 ${ML} .sf-mlog-body :is(a, .sf-entity-link, [data-entity]) { color:${INK} !important; text-decoration:none !important; box-shadow:none !important; background-image:none !important; border-bottom:0 !important; }
@@ -552,14 +552,14 @@ ${ML} .sf-mlog-comp-list :is(.sf-mlog-receipts, .sf-mlog-comp-rows) { margin:0 !
 ${ML} .sf-mlog-comp-list .k-row { ${PLAIN} position:relative !important; display:grid !important; grid-template-columns:minmax(0, 1fr) auto; column-gap:12px; align-items:start;
   min-height:0 !important; height:auto !important; padding:6px 0 8px 40px !important; margin:0 !important; cursor:default; }
 ${ML} .sf-mlog-comp-list .k-row::before { content:"" !important; position:absolute !important; left:10.5px !important; top:10px !important; width:7px !important; height:7px !important; margin:0 !important; display:block !important;
-  border-radius:50% !important; translate:none !important; scale:none !important; transform:none !important; border:0 !important; clip-path:none !important; background:rgb(${BONE} / .44) !important; box-shadow:none !important; }
+  border-radius:50% !important; translate:none !important; scale:none !important; transform:none !important; border:0 !important; clip-path:none !important; background:rgb(${BONE} / .58) !important; box-shadow:none !important; }
 ${ML} .sf-mlog-comp-list .k-row::after { display:none !important; }
 ${ML} .sf-mlog-comp-list .k-row.sf-mlog-receipt-row::before { border-radius:1px !important; width:8px !important; height:8px !important; left:10px !important; background:rgb(${BONE} / .6) !important; }
 ${ML} .sf-mlog-comp-list .k-row.sf-mlog-receipt-row--bad::before { background:var(--dp-danger, #ff5038) !important; width:9px !important; height:2.5px !important; top:13px !important;
   transform:rotate(-45deg) !important; border-radius:1px !important; }
-${ML} .sf-mlog-comp-list .k-row .k-38 { ${BODY} font-size:13px !important; color:rgb(${BONE} / .8) !important; }
-${ML} .sf-mlog-comp-list .k-row .k-row__sub { ${BODY} margin-top:2px; font-size:12px !important; color:rgb(${BONE} / .64) !important; }
-${ML} .sf-mlog-comp-list .k-row :is(.sf-mlog-receipt-outcome, .sf-mlog-comp-cr) { ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .7) !important; }
+${ML} .sf-mlog-comp-list .k-row .k-38 { ${BODY} font-size:13px !important; color:rgb(${BONE} / .9) !important; }
+${ML} .sf-mlog-comp-list .k-row .k-row__sub { ${BODY} margin-top:2px; font-size:12px !important; color:rgb(${BONE} / .8) !important; }
+${ML} .sf-mlog-comp-list .k-row :is(.sf-mlog-receipt-outcome, .sf-mlog-comp-cr) { ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .84) !important; }
 ${ML} .sf-mlog-comp-list .sf-mlog-receipt-row--bad .sf-mlog-receipt-outcome { color:rgb(${BONE} / .7) !important; }
 /* the campaign thread (post-ending only) keeps the same voice */
 ${ML} .sf-mlog-story-tile { padding:0 0 10px 40px !important; ${PLAIN} }
@@ -578,7 +578,7 @@ ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row { flex-direction:column; align
 ${ML} .sf-mlog-side .sf-mlog-btns > .k-words--row > li { align-items:center; }
 ${ML} .sf-mlog-card > .ml-route-host { grid-column:1 !important; align-self:start; margin-top:clamp(30px, 4.8vh, 58px); }
 ${ML} .sf-mlog-card.is-empty > .sf-mlog-empty { grid-row:2; }
-${ML} .sf-mlog-kicker { ${LABEL} margin:2px 0 0 !important; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .68) !important; }
+${ML} .sf-mlog-kicker { ${LABEL} margin:2px 0 0 !important; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .86) !important; }
 ${ML} .sf-mlog-kicker .sf-mlog-tag { margin-left:14px; }
 /* ---- the route band: the chosen contract's lane from here to the berth, its clock ruled under it; while
    the beam is traced, the traced contract's ghost lane under it (the two weigh side by side) ---- */
@@ -589,7 +589,7 @@ ${ML} .ml-route::before { content:""; position:absolute; inset:-18px -40px -8px;
 ${ML} .ml-route__ends { display:grid; grid-template-columns:minmax(0, 1fr) auto minmax(0, 1fr); align-items:end; gap:18px; margin:0 0 12px !important; }
 ${ML} .ml-route__from, ${ML} .ml-route__to { ${BODY} font-size:14px !important; color:${INK} !important; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
 ${ML} .ml-route__to { text-align:right; }
-${ML} :is(.ml-route__from, .ml-route__to) small { ${LABEL} display:block; margin-bottom:3px; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .66) !important; }
+${ML} :is(.ml-route__from, .ml-route__to) small { ${LABEL} display:block; margin-bottom:3px; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .82) !important; }
 ${ML} .ml-route__to :is(a, .sf-entity-link, [data-entity]) { color:${INK} !important; text-decoration:none !important; box-shadow:none !important; background-image:none !important; border-bottom:0 !important; }
 ${ML} .ml-route__to :is(a, .sf-entity-link, [data-entity]):is(:hover, :focus-visible) { text-decoration:underline 1px rgb(${BONE} / .6) !important; text-underline-offset:4px; outline:none !important; }
 ${ML} .ml-route__jumps { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(223 238 255) !important; white-space:nowrap; }
@@ -598,8 +598,8 @@ ${ML} .ml-route.has-slot .ml-route__track { height:calc(var(--ml-ghost-y) + 32px
 ${ML} .ml-route__run { position:absolute; left:var(--ml-disc); right:var(--ml-disc); top:0; bottom:0; }
 /* the lane: a filled band with a lit core (never a bare line), the stretch you have come in phosphor */
 ${ML} .ml-lane { position:absolute; left:0; right:0; top:var(--ml-lane-y); height:0; }
-${ML} .ml-lane__band { position:absolute; left:0; right:0; top:-5px; height:10px; border-radius:5px; background:rgb(${BONE} / .3); }
-${ML} .ml-lane__band::after { content:""; position:absolute; left:0; right:0; top:3.5px; height:3px; border-radius:2px; background:rgb(${BONE} / .8); }
+${ML} .ml-lane__band { position:absolute; left:0; right:0; top:-5px; height:10px; border-radius:5px; background:rgb(${BONE} / .42); }
+${ML} .ml-lane__band::after { content:""; position:absolute; left:0; right:0; top:3.5px; height:3px; border-radius:2px; background:rgb(${BONE} / .92); }
 ${ML} .ml-lane__lit { position:absolute; left:0; top:-3px; height:6px; border-radius:3px; background:rgb(223 238 255); box-shadow:0 0 12px 2px rgb(223 238 255 / .35); }
 ${ML} .ml-lane__run { position:absolute; top:-6px; height:12px; overflow:hidden; pointer-events:none; }
 ${ML} .ml-route__pulse { position:absolute; left:0; top:0; width:100%; height:100%; transform:translateX(-100%); animation:ml-route-pulse 3.2s cubic-bezier(.4, 0, .6, 1) infinite;
@@ -607,8 +607,8 @@ ${ML} .ml-route__pulse { position:absolute; left:0; top:0; width:100%; height:10
 @keyframes ml-route-pulse { from { transform:translateX(-100%); } to { transform:translateX(0); } }
 /* a tick where each jump lands, named for the sector it lands in */
 ${ML} .ml-lane__hop { position:absolute; top:0; width:0; pointer-events:none; }
-${ML} .ml-lane__hop > i { position:absolute; left:-1.5px; top:-7px; width:3px; height:14px; border-radius:1px; background:rgb(${BONE} / .72); box-shadow:0 0 0 3px rgb(5 7 10 / .92); }
-${ML} .ml-lane__hop > b { position:absolute; left:0; bottom:14px; transform:translateX(-50%); ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; font-weight:650; color:rgb(${BONE} / .78); white-space:nowrap; }
+${ML} .ml-lane__hop > i { position:absolute; left:-1.5px; top:-7px; width:3px; height:14px; border-radius:1px; background:rgb(${BONE} / .88); box-shadow:0 0 0 3px rgb(5 7 10 / .92); }
+${ML} .ml-lane__hop > b { position:absolute; left:0; bottom:14px; transform:translateX(-50%); ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; font-weight:650; color:rgb(${BONE} / .9); white-space:nowrap; }
 ${ML} .ml-lane__hop.is-near > b { visibility:hidden; }
 ${ML} .ml-lane__threat { position:absolute; top:-4px; height:8px; border-radius:2px; background:var(--dp-danger, #ff5038); box-shadow:0 0 12px 1px rgb(255 80 56 / .4); pointer-events:none; }
 ${ML} .ml-lane__threat > b { position:absolute; right:0; bottom:10px; ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:var(--dp-danger, #ff5038); white-space:nowrap; }
@@ -619,19 +619,19 @@ ${ML} .ml-lane__pct { position:absolute; bottom:14px; transform:translateX(-50%)
   font-size: 13px; letter-spacing:.04em; color:rgb(223 238 255); white-space:nowrap; pointer-events:none; }
 /* the clock, folded onto the lane: a ruled scale just under it, the ticks still ahead lit, a mark at now */
 ${ML} .ml-clock { position:absolute; left:0; right:0; top:calc(var(--ml-lane-y) + 11px); height:10px; pointer-events:none; }
-${ML} .ml-clock > i { position:absolute; top:0; width:2px; height:5px; margin-left:-1px; background:rgb(${BONE} / .34); }
+${ML} .ml-clock > i { position:absolute; top:0; width:2px; height:5px; margin-left:-1px; background:rgb(${BONE} / .48); }
 ${ML} .ml-clock > i.is-major { height:10px; }
-${ML} .ml-clock > i.is-left { background:rgb(${BONE} / .86); }
+${ML} .ml-clock > i.is-left { background:rgb(${BONE} / .94); }
 ${ML} .ml-clock__now { position:absolute; top:-4px; width:3px; height:18px; margin-left:-1.5px; border-radius:1px; background:${INK}; box-shadow:0 0 0 2px rgb(5 7 10 / .9); }
 ${ML} .ml-clock.is-threat > i.is-left, ${ML} .ml-clock.is-threat .ml-clock__now { background:var(--dp-danger, #ff5038); }
 ${ML} .ml-clock.is-none > i { background:rgb(${BONE} / .3); }
 ${ML} .ml-route__mid { display:flex; flex-direction:column; align-items:center; gap:5px; min-width:0; }
-${ML} .ml-clock__read { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .72) !important; white-space:nowrap; }
+${ML} .ml-clock__read { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .86) !important; white-space:nowrap; }
 ${ML} .ml-clock__read b { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 480; font-size:14px; letter-spacing:.02em; color:rgb(223 238 255); margin-right:8px; }
 ${ML} .ml-clock__read.is-threat b { color:var(--dp-danger, #ff5038); }
 /* the two ends: produced art in a disc, always (station, sector, your hull from above, the relay still) */
 ${ML} .ml-route__face { position:absolute; top:0; width:var(--ml-disc); height:var(--ml-disc); border-radius:50%; overflow:hidden; background:rgb(12 14 18);
-  box-shadow:0 0 0 2px rgb(${BONE} / .78), 0 0 0 6px rgb(5 7 10), 0 0 16px 4px rgb(${BONE} / .14); }
+  box-shadow:0 0 0 2px rgb(${BONE} / .9), 0 0 0 6px rgb(5 7 10), 0 0 16px 4px rgb(${BONE} / .2); }
 ${ML} .ml-route__face > img { display:block; width:100%; height:100%; object-fit:cover; transform:scale(1.35); filter:saturate(.9); }
 ${ML} .ml-route__face--from { left:0; }
 ${ML} .ml-route__face--to { right:0; box-shadow:0 0 0 2px rgb(223 238 255), 0 0 0 6px rgb(5 7 10), 0 0 18px 5px rgb(223 238 255 / .28); }
@@ -695,20 +695,20 @@ ${ML} .orr-mdial__face::after { content:""; position:absolute; inset:0; border-r
 ${RML} .ml-route__pulse { animation:none !important; opacity:0; }
 ${ML} .sf-mlog-card > h2.k-t-title { ${DISPLAY} margin:12px 0 0 !important; font-size:clamp(24px, min(2vw, 4vh), 38px) !important; line-height:1.05 !important; letter-spacing:.01em !important;
   color:rgb(242 237 226) !important; text-shadow:0 2px 18px rgb(0 0 0 / .5) !important; text-wrap:balance; }
-${ML} .sf-mlog-card > :is(.sf-mlog-next, .sf-mlog-obj) { ${BODY} margin:12px 0 0 !important; max-width:60ch; font-size:16px !important; line-height:1.5 !important; font-style:normal !important; color:rgb(${BONE} / .84) !important; }
+${ML} .sf-mlog-card > :is(.sf-mlog-next, .sf-mlog-obj) { ${BODY} margin:12px 0 0 !important; max-width:60ch; font-size:16px !important; line-height:1.5 !important; font-style:normal !important; color:rgb(${BONE} / .92) !important; }
 ${ML} .sf-mlog-card > .k-hero { margin:22px 0 0 !important; }
 ${ML} .sf-mlog-card > .k-hero .k-hero__n { font-family:var(--dp-face-numeral, "Archivo") !important; font-variation-settings:"wdth" 100, "wght" 250 !important; font-weight:250 !important; font-stretch:100% !important;
   font-size:clamp(56px, 8vh, 92px) !important; line-height:.9 !important; letter-spacing:-.02em !important; color:${INK} !important; text-shadow:0 0 24px rgb(0 0 0 / .5) !important; }
-${ML} .sf-mlog-card > .k-hero .k-hero__w { ${LABEL} margin-top:8px !important; font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .68) !important; }
+${ML} .sf-mlog-card > .k-hero .k-hero__w { ${LABEL} margin-top:8px !important; font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .84) !important; }
 /* the terms: a ledger of caps and values, each on a tick of one short scale */
 ${ML} .sf-mlog-card .sf-mlog-terms { margin:24px 0 0 !important; padding:0 !important; max-width:640px; list-style:none; ${PLAIN}
-  background:linear-gradient(90deg, rgb(${BONE} / .44) 2px, transparent 2px) 0 0 / 2px 100% no-repeat !important; --k-row-cols:none !important; }
+  background:linear-gradient(90deg, rgb(${BONE} / .62) 2px, transparent 2px) 0 0 / 2px 100% no-repeat !important; --k-row-cols:none !important; }
 ${ML} .sf-mlog-card .sf-mlog-terms > .k-row { ${PLAIN} position:relative !important; display:grid !important; grid-template-columns:minmax(118px, 10.5em) minmax(0, 1fr) !important; align-items:baseline; column-gap:18px;
   min-height:0 !important; height:auto !important; padding:7px 0 7px 16px !important; margin:0 !important; cursor:default; }
 ${ML} .sf-mlog-card .sf-mlog-terms > .k-row::before { content:"" !important; display:block !important; position:absolute !important; left:0 !important; top:calc(7px + .55em) !important; width:8px !important; height:1px !important; margin:0 !important;
-  background:rgb(${BONE} / .5) !important; translate:none !important; scale:none !important; transform:none !important; border:0 !important; box-shadow:none !important; clip-path:none !important; border-radius:0 !important; }
+  background:rgb(${BONE} / .72) !important; translate:none !important; scale:none !important; transform:none !important; border:0 !important; box-shadow:none !important; clip-path:none !important; border-radius:0 !important; }
 ${ML} .sf-mlog-card .sf-mlog-terms > .k-row::after { display:none !important; }
-${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-62 { ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .66) !important; }
+${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-62 { ${LABEL} font-size: 12px !important; letter-spacing:.18em !important; color:rgb(${BONE} / .84) !important; }
 ${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-row__name { ${BODY} font-size:14.5px !important; line-height:1.4 !important; color:${INK} !important; white-space:normal !important; overflow:visible !important; }
 ${ML} .sf-mlog-card .sf-mlog-terms > .k-row > .k-row__name .k-bad { color:var(--dp-danger, #ff5038) !important; }
 ${ML} .sf-mlog-card .sf-mlog-terms :is(a, .sf-entity-link, [data-entity]) { color:${INK} !important; text-decoration:none !important; box-shadow:none !important; background-image:none !important; border-bottom:0 !important; }
@@ -719,10 +719,10 @@ ${ML} .sf-mlog-btns > .k-words--row { display:flex !important; flex-wrap:wrap; a
 ${ML} .sf-mlog-btns > .k-words--row > li { display:flex !important; flex-direction:column; align-items:flex-start; }
 ${verb(`${ML} .sf-mlog-btns .k-word:not(.orr-lampkey)`)}
 ${ML} .sf-mlog-btns .k-word:not(.orr-lampkey) { font-size:12px !important; }
-${ML} .sf-mlog-btns .sf-mlog-btn-map::before { content:"›  "; color:rgb(${BONE} / .6); }
+${ML} .sf-mlog-btns .sf-mlog-btn-map::before { content:"›  "; color:rgb(${BONE} / .78); }
 ${ML} .sf-mlog-btns .sf-mlog-btn-track[aria-pressed="true"]::before { content:"●  "; font-size: 12px; vertical-align:2px; color:${INK}; }
 ${ML} .sf-mlog-btns .sf-mlog-btn-track[aria-pressed="true"] { color:${INK} !important; }
-${ML} .sf-mlog-btns .sf-mlog-btn-abandon { color:rgb(${BONE} / .76) !important; }
+${ML} .sf-mlog-btns .sf-mlog-btn-abandon { color:rgb(${BONE} / .88) !important; }
 ${ML} .sf-mlog-btns .sf-mlog-btn-abandon:is(:hover, :focus-visible) { color:var(--dp-danger, #ff5038) !important;
   background:linear-gradient(90deg, var(--dp-danger, #ff5038), rgb(255 80 56 / 0)) 0 100% / 100% 1.5px no-repeat !important; }
 /* the dial: the clock outside, the progress inside, the two readings at its heart */
@@ -732,13 +732,13 @@ ${ML} .orr-mdial__read { position:absolute; inset:0; display:flex; flex-directio
 ${ML} .orr-mdial__pct { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 260; font-weight:260; font-size:clamp(40px, calc(var(--ml-dial) * .22), 66px);
   line-height:.9; letter-spacing:-.02em; color:rgb(223 238 255); font-variant-numeric:tabular-nums; }
 ${ML} .orr-mdial__pct small { font-size:.42em; margin-left:2px; font-weight:400; color:rgb(${BONE} / .7); }
-${ML} .orr-mdial__w { ${LABEL} font-size: 12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .66); }
-${ML} .orr-mdial__clock-read { ${LABEL} white-space:nowrap; position:absolute; left:-40px; right:-40px; bottom:calc(var(--ml-dial) * -.02 - 22px); text-align:center; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .7); }
+${ML} .orr-mdial__w { ${LABEL} font-size: 12px !important; letter-spacing:.22em !important; color:rgb(${BONE} / .82); }
+${ML} .orr-mdial__clock-read { ${LABEL} white-space:nowrap; position:absolute; left:-40px; right:-40px; bottom:calc(var(--ml-dial) * -.02 - 22px); text-align:center; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .86); }
 ${ML} .orr-mdial__clock-read b { font-family:var(--dp-face-numeral, "Archivo"); font-weight:480; font-variation-settings:"wdth" 100, "wght" 480; font-size:13px; letter-spacing:.04em; color:rgb(223 238 255); margin-right:8px; }
 ${ML} .orr-mdial__clock-read.is-threat b { color:var(--dp-danger, #ff5038); }
-${ML} .orr-mdial .orr-arc-tick { fill:none; stroke:rgb(${BONE} / .4); stroke-width:1.25; vector-effect:non-scaling-stroke; }
-${ML} .orr-mdial .orr-arc-tick--hi { stroke:rgb(${BONE} / .72); stroke-width:2; }
-${ML} .orr-mdial .orr-arc-ring { fill:none; stroke:rgb(${BONE} / .26); stroke-width:4; vector-effect:non-scaling-stroke; }
+${ML} .orr-mdial .orr-arc-tick { fill:none; stroke:rgb(${BONE} / .55); stroke-width:1.25; vector-effect:non-scaling-stroke; }
+${ML} .orr-mdial .orr-arc-tick--hi { stroke:rgb(${BONE} / .88); stroke-width:2; }
+${ML} .orr-mdial .orr-arc-ring { fill:none; stroke:rgb(${BONE} / .38); stroke-width:4; vector-effect:non-scaling-stroke; }
 ${ML} .orr-mdial .orr-arc-ring--rim { stroke:rgb(${BONE} / .16); stroke-width:6; }
 ${ML} .orr-mdial__clock { fill:none; stroke:rgb(${BONE} / .86); stroke-width:4; stroke-linecap:round; vector-effect:non-scaling-stroke; }
 ${ML} .orr-mdial__clock-bloom { fill:none; stroke:rgb(${BONE} / .14); stroke-width:12; vector-effect:non-scaling-stroke; }
@@ -748,7 +748,7 @@ ${ML} .orr-mdial__prog { fill:none; stroke:rgb(223 238 255); stroke-width:6; str
 ${ML} .orr-mdial__prog-bloom { fill:none; stroke:rgb(223 238 255 / .24); stroke-width:18; vector-effect:non-scaling-stroke; }
 ${ML} .orr-mdial__bead { fill:rgb(240 248 255); }
 ${ML} .orr-arc-drift { transform-box:view-box; transform-origin:50% 50%; animation:orr-drift 900s linear infinite; }
-${ML} .sf-mlog-empty.k-empty { ${BODY} max-width:46ch; margin:14px 0 0 !important; font-size:16px !important; line-height:1.55; color:rgb(${BONE} / .82) !important; padding-left:0; }
+${ML} .sf-mlog-empty.k-empty { ${BODY} max-width:46ch; margin:14px 0 0 !important; font-size:16px !important; line-height:1.55; color:rgb(${BONE} / .9) !important; padding-left:0; }
 ${ML} .orr-mdial.is-empty .orr-mdial__w { letter-spacing:.12em !important; }
 ${ML} .orr-mdial.is-empty .orr-mdial__pct { color:rgb(${BONE} / .5); font-size:clamp(34px, calc(var(--ml-dial) * .16), 50px); }
 /* arrival: the nodes come down the beam in turn, the dial draws its clock and its progress */
@@ -757,13 +757,22 @@ ${ML}.ml-arrive :is(.orr-mdial__clock, .orr-mdial__clock-bloom, .orr-mdial__prog
 ${ML}.ml-arrive .orr-mdial__bead { animation:orr-arc-fade 1100ms ease-out both; }
 ${ML}.ml-arrive .orr-mdial__pct { animation:orr-rise 520ms var(--dp-ease-out, ease-out) 260ms both; }
 ${RML} :is(.orr-arc-drift, .sf-mlog-rec-item, .sf-mlog-list .k-row, .sf-mlog-career, .orr-mdial__clock, .orr-mdial__clock-bloom, .orr-mdial__prog, .orr-mdial__prog-bloom, .orr-mdial__bead, .orr-mdial__pct) { animation:none !important; }
-/* the foot: one way back */
-${ML} > .k-foot { align-items:center !important; }
-${verb(`${ML} > .k-foot .sf-back.k-word`)}
-${ML} > .k-foot .sf-back.k-word { font-size:12px !important; }
-${ML} > .k-foot .sf-back.k-word::before { content:"‹  "; color:rgb(${BONE} / .6); }
-${ML} > .k-foot .sf-back.k-word::after { content:"ESC" / "" !important; display:inline !important; position:static !important; margin-left:14px !important; width:auto !important; height:auto !important;
-  background:none !important; border:0 !important; box-shadow:none !important; ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .6) !important; transform:none !important; opacity:1 !important; }
+/* the foot: ‹ BACK + ESC keycap (matches settings/save-load/help/credits/codex) */
+${ML} > .k-foot { align-items:center !important; min-height:0 !important; }
+${ML} > .k-foot .sf-back.k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
+  padding:10px 0 12px !important; min-height:44px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
+  background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
+${ML} > .k-foot .sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
+${ML} > .k-foot .sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
+  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important;
+  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
+${ML} > .k-foot .sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
+${ML} > .k-foot .sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
+/* 1080p band: match settings/save-load/credits/codex composition zoom */
+@media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
+  ${ML} { zoom:1.12; }
+}
 @media (max-width:1400px) {
   ${ML} { --ml-dial:clamp(180px, min(20vw, 36vh), 240px); }
 }
