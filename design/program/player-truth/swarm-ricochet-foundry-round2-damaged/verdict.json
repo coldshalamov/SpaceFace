@@ -266,7 +266,7 @@
      "bad": true
     },
     {
-     "line": "pinned 62.5–64.5 s: velocity says 175 u of travel, ship moved 21 u",
+     "line": "pinned 62.5–64.5 s: velocity says 175 u of travel, ship moved 21 u — ship sits 0 u from asteroid #644000446",
      "t": 472922.1,
      "sim": 62.5,
      "box": [
@@ -279,7 +279,7 @@
      "pinned": true
     },
     {
-     "line": "pinned 67.9–68.8 s: velocity says 51 u of travel, ship moved 10 u",
+     "line": "pinned 67.9–68.8 s: velocity says 51 u of travel, ship moved 10 u — ship sits 0 u from station #683000381",
      "t": 509042.9,
      "sim": 67.883,
      "box": [
@@ -306,7 +306,7 @@
      "bad": true
     },
     {
-     "line": "pinned 62.5–64.5 s: velocity says 175 u of travel, ship moved 21 u",
+     "line": "pinned 62.5–64.5 s: velocity says 175 u of travel, ship moved 21 u — ship sits 0 u from asteroid #644000446",
      "t": 472922.1,
      "sim": 62.5,
      "box": [
@@ -810,7 +810,7 @@
    "detail": "round 2: 680 frames, hull 66%, 0 bad ship, 0 out of plane, 1/2 dead probes, 2 pinned",
    "offenders": [
     {
-     "line": "round 2 start (hull 66%): 1/2 control probes dead (held W 1.7 s → velocity reads 47 u/s but the ship moved 1.5 u of 93 u (pinned)); pinned 62.5–64.5 s (velocity 175 u, moved 21 u)",
+     "line": "round 2 start (hull 66%): 1/2 control probes dead (held W 1.7 s → velocity reads 47 u/s but the ship moved 1.5 u of 93 u (pinned)); pinned 62.5–64.5 s (velocity 175 u, moved 21 u — ship sits 0 u from asteroid #644000446)",
      "t": 468649.4,
      "sim": 61.55,
      "box": [
@@ -823,7 +823,7 @@
    ],
    "moments": [
     {
-     "line": "round 2 start (hull 66%): 1/2 control probes dead (held W 1.7 s → velocity reads 47 u/s but the ship moved 1.5 u of 93 u (pinned)); pinned 62.5–64.5 s (velocity 175 u, moved 21 u)",
+     "line": "round 2 start (hull 66%): 1/2 control probes dead (held W 1.7 s → velocity reads 47 u/s but the ship moved 1.5 u of 93 u (pinned)); pinned 62.5–64.5 s (velocity 175 u, moved 21 u — ship sits 0 u from asteroid #644000446)",
      "t": 468649.4,
      "sim": 61.55,
      "box": [

@@ -74,3 +74,13 @@ test('player_control: velocity without displacement is a pinned ship, not a work
   const flying = trace({ probes, player: (i) => { const sim = 10 + i * 0.1; return P({ vx: sim > 15 ? 100 : 0, x: sim > 15 ? (sim - 15) * 100 : 0 }); } });
   assert.equal(checkPlayerControl(flying).status, 'PASS');
 });
+
+test('pinned spans name the solid body the ship sits on', async () => {
+  const { checkPlayerControl } = await import('../scripts/player-truth/checks.mjs');
+  const t = trace({ probes: [{ label: 'round 2 thrust', kind: 'thrust', key: 'KeyW', startSim: 15, endSim: 16.4 }], player: () => P({ vx: 140, vz: 0, x: 0, z: 0 }) });
+  t.keys = ['station:furnace', 'projectile:bullet'];
+  for (const s of t.samples) s.e = [[901, 4, 1, 1, 0, 0, 0, 0, 30, 3, 0, 0], [902, 3, 0, 0, 0, 0, 0, 0, 2, 3, 0, 1]];
+  const r = checkPlayerControl(t);
+  assert.equal(r.status, 'FAIL');
+  assert.ok(r.offenders.some((o) => /pinned .* sits 1 u from station:furnace #901/.test(o.line)), r.offenders.map((o) => o.line).join('\n'));
+});

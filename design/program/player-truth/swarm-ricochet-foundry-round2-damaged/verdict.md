@@ -35,8 +35,8 @@
   - round 2: asteroid 612000488 moving 88.5 u/s 161 u from the player before any input
 - **player_control** (FAIL) — round 1 thrust 95.95 · round 1 yaw -2.07 · round 2 thrust 45.35 · round 2 yaw -1.57
   - round 2 thrust: held W 1.7 s → velocity reads 47 u/s but the ship moved 1.5 u of 93 u (pinned)
-  - pinned 62.5–64.5 s: velocity says 175 u of travel, ship moved 21 u
-  - pinned 67.9–68.8 s: velocity says 51 u of travel, ship moved 10 u
+  - pinned 62.5–64.5 s: velocity says 175 u of travel, ship moved 21 u — ship sits 0 u from asteroid #644000446
+  - pinned 67.9–68.8 s: velocity says 51 u of travel, ship moved 10 u — ship sits 0 u from station #683000381
 - **lod_churn** (FAIL) — 103 on-screen swaps over 67.3 sim s across 74 entities (175 more off screen, not graded)
   - player ship swapped model/LOD 1× (first sim 1.8 s: 29e2c9a6|DIRECT_AUTHORED_ADMISSION|null|compiling-pipelines → 29e2c9a6|GLTFKIT_ship_hornet_fd39bb46|lod0|authored)
   - entity 415 (enemy) 3 swaps in 10 s (3 total) — last DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines → ship_wasp_3b79ff5d@lod1 at sim 18.9 s
@@ -61,7 +61,7 @@
   - long task 6311 ms at sim 63.4 s (frame 1897)
   - long task 5964 ms at sim 23.1 s (frame 1033)
 - **round_transitions** (FAIL) — round 2: 680 frames, hull 66%, 0 bad ship, 0 out of plane, 1/2 dead probes, 2 pinned
-  - round 2 start (hull 66%): 1/2 control probes dead (held W 1.7 s → velocity reads 47 u/s but the ship moved 1.5 u of 93 u (pinned)); pinned 62.5–64.5 s (velocity 175 u, moved 21 u)
+  - round 2 start (hull 66%): 1/2 control probes dead (held W 1.7 s → velocity reads 47 u/s but the ship moved 1.5 u of 93 u (pinned)); pinned 62.5–64.5 s (velocity 175 u, moved 21 u — ship sits 0 u from asteroid #644000446)
 
 ## Files
 - verdict: `design/program/player-truth/swarm-ricochet-foundry-round2-damaged/verdict.md`

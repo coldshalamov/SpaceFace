@@ -294,7 +294,7 @@ export function checkPlayerControl(trace) {
     worst = worst || pr;
   }
   for (const sp of pinnedSpans(trace, playSamples(trace).filter((x) => x.p && x.p.alive))) {
-    offenders.push({ line: `pinned ${fmt(sp.start, 1)}–${fmt(sp.end, 1)} s: velocity says ${fmt(sp.expect, 0)} u of travel, ship moved ${fmt(sp.path, 0)} u`, t: sp.s.t, sim: sp.s.sim, box: sp.s.p.box, bad: true, pinned: true });
+    offenders.push({ line: `pinned ${fmt(sp.start, 1)}–${fmt(sp.end, 1)} s: velocity says ${fmt(sp.expect, 0)} u of travel, ship moved ${fmt(sp.path, 0)} u${heldBy(trace, sp.s)}`, t: sp.s.t, sim: sp.s.sim, box: sp.s.p.box, bad: true, pinned: true });
   }
   const bad = offenders.filter((o) => o.bad).length; const pins = offenders.filter((o) => o.pinned).length;
   return result('player_control', 'Ship answers input', bad ? 'FAIL' : 'PASS', `${bad - pins}/${probes.length} probes dead · ${pins} pinned spans`, `thrust Δv≥${T.thrustDeltaSpeed} u/s and moves ≥${Math.round(T.pinnedMoveFrac * 100)}% of its velocity · yaw Δ≥${T.yawDeltaRad} rad`,
@@ -322,6 +322,25 @@ export function probeDead(trace, pr) {
   let d = b.p.rot - a.p.rot; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
   pr.value = d;
   return Math.abs(d) < T.yawDeltaRad ? { dead: true, a, b, why: `held ${pr.key} ${fmt(pr.endSim - pr.startSim, 1)} s → turned ${fmt(d, 2)} rad` } : { dead: false, a, b };
+}
+
+/** The nearest solid body (not a projectile, pickup or VFX) to the player in one sample: a pinned ship
+ * sitting on top of one names what is holding it. */
+export function nearestBody(trace, s) {
+  if (!s || !s.p || !Array.isArray(s.e)) return null;
+  let best = null;
+  for (const e of s.e) {
+    const key = (trace.keys && trace.keys[e[E.type]]) || '';
+    if (!key || /^(projectile|pickup|vfx|player)/.test(key) || e[E.id] === s.p.id) continue;
+    const d = Math.hypot(e[E.x] - s.p.x, e[E.z] - s.p.z);
+    if (!best || d < best.d) best = { d, key, id: e[E.id] };
+  }
+  return best;
+}
+
+function heldBy(trace, s) {
+  const b = nearestBody(trace, s);
+  return b && b.d < 60 ? ` — ship sits ${fmt(b.d, 0)} u from ${b.key.replace(/:$/, '')} #${b.id}` : '';
 }
 
 /** Stretches of ≥1 s where the reported speed says the ship is flying but its position does not change. */
@@ -536,7 +555,7 @@ export function checkRoundTransitions(trace) {
     if (tumble.length >= 3) why.push(`out of plane in ${tumble.length} frames`);
     if (!probes.length) why.push('no control probe ran');
     else if (dead.length) why.push(`${dead.length}/${probes.length} control probes dead (${dead.map((pr) => probeDead(trace, pr).why).join('; ')})`);
-    if (pins.length) why.push(`pinned ${fmt(pins[0].start, 1)}–${fmt(pins[0].end, 1)} s (velocity ${fmt(pins[0].expect, 0)} u, moved ${fmt(pins[0].path, 0)} u)`);
+    if (pins.length) why.push(`pinned ${fmt(pins[0].start, 1)}–${fmt(pins[0].end, 1)} s (velocity ${fmt(pins[0].expect, 0)} u, moved ${fmt(pins[0].path, 0)} u${heldBy(trace, pins[0].s)})`);
     if (why.length) { const s0 = bad[0] || tumble[0] || win[0]; offenders.push({ line: `round ${r.wave} start (hull ${hull == null ? '?' : hull + '%'}): ${why.join('; ')}`, t: s0 ? s0.t : r.startT, sim: s0 ? s0.sim : r.startSim, box: s0 && s0.p ? s0.p.box : null }); }
   }
   return result('round_transitions', 'Every round starts playable', offenders.length ? 'FAIL' : 'PASS', `${offenders.length}/${later.length} round starts broken`, 'ship whole · probes answer · in plane, first 8 s of each round',
