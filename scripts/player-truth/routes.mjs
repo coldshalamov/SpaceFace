@@ -48,9 +48,9 @@ export async function crucibleToArmory(page, { ruleset, arena, seed }, step) {
   const trySeed = async () => {
     if (seed == null || seedSet) return;
     // The seed sits inside the door's collapsed prep disclosure: open it the way a player does.
-    const closed = page.locator('#screens details.orr-prep-disclosure:not([open]) > summary').first();
-    if (await closed.count().catch(() => 0)) await closed.click({ timeout: 3000 }).catch(() => {});
-    try { await seedInput.scrollIntoViewIfNeeded({ timeout: 3000 }); await seedInput.fill(String(seed), { timeout: 3000 }); await seedInput.press('Tab'); seedSet = true; } catch { /* not on this step */ }
+    const closed = page.locator('#screens details:not([open]):has(.sf-crd-seed) > summary').first();
+    if (await closed.count().catch(() => 0)) await closed.click({ timeout: 15000 }).catch(() => {});
+    try { await seedInput.scrollIntoViewIfNeeded({ timeout: 10000 }); await seedInput.fill(String(seed), { timeout: 3000 }); await seedInput.press('Tab'); seedSet = true; } catch { /* not on this step */ }
   };
   await trySeed();
   const chosen = await listDoorArenas(page);
