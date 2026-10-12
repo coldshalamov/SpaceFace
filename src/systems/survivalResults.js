@@ -250,7 +250,10 @@ export function resolveDeathTelegraph({
   };
   // Known killer: their tell only. Any other ship's tell is not the miss that killed you.
   // Unknown killer: the most recent tell still names a warning rather than "you died".
-  const witnessed = matchTell(true) || (killerId == null ? matchTell(false) : null);
+  // An environmental death (a rock, a collision, a hazard) has no ship behind it: borrowing the
+  // latest ship's engine flare would print "Environmental hazard's tell was engine flare".
+  const environmental = !!(receipt && receipt.source && receipt.source.kind === 'environment');
+  const witnessed = matchTell(true) || (killerId == null && !environmental ? matchTell(false) : null);
   if (witnessed && Number.isFinite(witnessed.simTime)) {
     return {
       name: telegraphWord(witnessed.kind),
@@ -260,7 +263,7 @@ export function resolveDeathTelegraph({
   }
   const hits = Array.isArray(damageTrail) ? damageTrail.filter((e) => e && typeof e === 'object') : [];
   const timed = hits.filter((e) => Number.isFinite(e.simTime) && e.simTime < death
-    && death - e.simTime <= 4 && (killerId == null || e.attackerId === killerId));
+    && death - e.simTime <= 4 && !environmental && (killerId == null || e.attackerId === killerId));
   const first = timed.length ? timed.reduce((a, b) => (a.simTime <= b.simTime ? a : b)) : null;
   if (first) {
     const counts = new Map();
