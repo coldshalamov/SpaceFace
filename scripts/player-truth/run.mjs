@@ -45,6 +45,65 @@ export function performanceRunContext(env = process.env, { screenshotEveryMs = 1
   };
 }
 
+/** Observe the preparation the public door actually produced, including its enabled Rearm choice. */
+export function preparationSnapshot({ ruleset, includeButton = true }) {
+  const state = window.SF?.state; const run = state?.run;
+  if (!run || !['draft', 'refit', 'active', 'ended', 'victory'].includes(run.phase)) return null;
+  if (run.kind !== 'survival' || run.ruleset !== ruleset) {
+    return { kind: 'mode-mismatch', actualKind: run.kind, ruleset: run.ruleset, phase: run.phase };
+  }
+  if (run.phase === 'ended' || run.phase === 'victory') return { kind: 'terminal', phase: run.phase };
+  if (state.mode === 'flight' && run.phase === 'active') {
+    return { kind: 'active', ruleset: run.ruleset, wave: run.wave, sim: state.simTime, t: performance.now() };
+  }
+  if (!includeButton || !['draft', 'refit'].includes(run.phase)) return null;
+  const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+  const button = [...document.querySelectorAll('#screens button')].find((b) => b.offsetParent && !b.disabled
+    && /^(Launch round \d+|Keep current loadout|Continue)/.test(norm(b.textContent)));
+  return button ? { kind: 'launch', word: norm(button.textContent).replace(/Esc$/, '').trim(),
+    ruleset: run.ruleset, phase: run.phase } : null;
+}
+
+export async function awaitPreparationChoice(page, { ruleset, includeButton = true, timeoutMs = 600000 }) {
+  const handle = await page.waitForFunction(preparationSnapshot, { ruleset, includeButton }, { timeout: timeoutMs });
+  let next;
+  try { next = await handle.jsonValue(); } finally { await handle.dispose?.(); }
+  if (next.kind === 'mode-mismatch') {
+    throw new Error(`preparation expected survival/${ruleset}, saw ${next.actualKind || 'none'}/${next.ruleset || 'none'} in ${next.phase}`);
+  }
+  if (next.kind === 'terminal') throw new Error(`preparation ended in ${next.phase} before active play`);
+  return next;
+}
+
+export async function launchPreparationChoice(page, { ruleset, word }) {
+  await clickText(page, word);
+  return awaitPreparationChoice(page, { ruleset, includeButton: false });
+}
+
+/** Keep all play/opening data; a paused preparation needs only its latest diagnostic frames. */
+export function appendReaderDrain(trace, data) {
+  trace.samples.push(...data.samples);
+  if (trace.meta.playStartSim == null) {
+    let preparationLeft = 120;
+    let omitted = 0;
+    // Keep recent nonplaying frames without dropping an actual opening, even if native
+    // active preceded the actor's spawn acknowledgement.
+    const kept = [];
+    for (let i = trace.samples.length - 1; i >= 0; i--) {
+      const sample = trace.samples[i];
+      const actualPlay = sample.run?.ph === 'active'
+        || (sample.mode === 'flight' && (!sample.run || !trace.meta.rounds));
+      if (actualPlay || preparationLeft-- > 0) kept.push(sample); else omitted++;
+    }
+    trace.samples = kept.reverse();
+    if (omitted) trace.meta.preparationSamplesOmitted = (trace.meta.preparationSamplesOmitted || 0) + omitted;
+  }
+  trace.events.push(...data.events);
+  trace.longTasks.push(...data.longTasks);
+  trace.keys = data.keys;
+  if (data.firstInput != null) trace.firstInput = data.firstInput;
+}
+
 /** Observer predicate executed in the page; native automatic launches need no button click. */
 export function roundHandoffSnapshot({ previousWave, simLimit = null, includeButton = true }) {
   const state = window.SF?.state; const run = state?.run;
@@ -242,13 +301,16 @@ async function runOne(args, arena, extra = {}) {
     for (const line of String(buf).split('\n')) if (/FATAL|oom|killed|crash|SwiftShader|GL out|aw, snap/i.test(line)) note(line);
   });
   let lastProgress = 0; let progressMark = null;
-  let readerOn = false; let stopReason = null; let shotTimer = null; let drainTimer = null; let busy = false;
+  let readerOn = false; let stopReason = null; let shotTimer = null; let drainTimer = null; let busy = false; let draining = false;
 
   const drain = async () => {
-    if (!readerOn) return;
-    const d = await page.evaluate(() => window.__playerTruth && window.__playerTruth.drain()).catch(() => null);
+    if (!readerOn || draining) return;
+    draining = true;
+    let d;
+    try { d = await page.evaluate(() => window.__playerTruth && window.__playerTruth.drain()).catch(() => null); }
+    finally { draining = false; }
     if (!d) return;
-    trace.samples.push(...d.samples); trace.events.push(...d.events); trace.longTasks.push(...d.longTasks); trace.keys = d.keys;
+    appendReaderDrain(trace, d);
     const last = trace.samples[trace.samples.length - 1];
     if (last && Date.now() - lastProgress > 30000) {
       const prev = progressMark; progressMark = { wall: Date.now(), sim: last.sim, f: trace.samples.length };
@@ -275,6 +337,9 @@ async function runOne(args, arena, extra = {}) {
     await page.addScriptTag({ type: 'module', content: "import { installPlayerTruthReader } from '/src/testing/playerTruth/reader.js'; installPlayerTruthReader(window, { vfxEvery: 4, pxEvery: 24 }).start(); window.__playerTruthReady = true;" });
     await page.waitForFunction(() => window.__playerTruthReady === true, null, { timeout: 60000 });
     readerOn = true;
+    // Preparation can legitimately pause the simulation. Drain from installation, before
+    // the actor enters flight, so a route timeout remains reportable without one huge RPC.
+    if (!drainTimer) drainTimer = setInterval(() => { drain().catch(() => {}); }, 1500);
   };
   const phaseNow = () => page.evaluate(() => ({ sim: window.SF.state.simTime, t: performance.now(), mode: window.SF.state.mode, ph: window.SF.state.run ? window.SF.state.run.phase : null, w: window.SF.state.run ? window.SF.state.run.wave : null, top: window.SF.ctx.screenManager.top(), playerAlive: !!window.SF.state.entityList.find((e) => e.id === window.SF.state.playerId && e.alive !== false) }));
   const overBudget = (playStart, sim) => (Date.now() - T0 > wallCapMs ? 'wall-clock cap' : (sim - playStart > args.duration ? `duration ${args.duration} sim s reached` : null));
@@ -292,19 +357,22 @@ async function runOne(args, arena, extra = {}) {
     if (args.mode === 'swarm' || args.mode === 'gauntlet') {
       doorInfo = await crucibleToArmory(page, { ruleset: RULESET[args.mode] || args.mode, arena, seed: args.seed, hull: extra.hull || null }, step);
       if (args.mode === 'swarm') {
-        await page.waitForFunction(() => { const n = (s) => String(s || '').replace(/\s+/g, ' '); return [...document.querySelectorAll('#screens button')].some((x) => x.offsetParent && !x.disabled && /Launch round 1/.test(n(x.textContent))); }, null, { timeout: 600000 });
+        const preparation = await awaitPreparationChoice(page, { ruleset: RULESET[args.mode] });
         await waitBootOverlayGone(page);
-        await shoot('armory', false);
-        const items = await readArmory(page);
-        const audit = auditItems(args.mode, items);
-        const probe = await swapProbe(page, 3);
-        trace.loadout = { items, ...audit, ...probe, shotT: shots[shots.length - 1].t };
-        await shoot('armory after installs', false);
-        step('preparation', true, `hull ${doorInfo.hull || 'default'} · ${items.length} armory offers read · ${probe.swapProbe}`);
-        const word = await armoryLaunchWord(page);
-        await clickText(page, word || 'Launch round 1');
+        if (preparation.kind === 'launch') {
+          await shoot('armory', false);
+          const items = await readArmory(page);
+          const audit = auditItems(args.mode, items);
+          const probe = await swapProbe(page, 3);
+          trace.loadout = { items, ...audit, ...probe, shotT: shots[shots.length - 1].t };
+          await shoot('armory after installs', false);
+          step('preparation', true, `hull ${doorInfo.hull || 'default'} · ${items.length} armory offers read · ${probe.swapProbe}`);
+          const word = await armoryLaunchWord(page);
+          await launchPreparationChoice(page, { ruleset: RULESET[args.mode], word: word || preparation.word });
+        } else step('preparation', true, `public door entered ${preparation.ruleset} round ${preparation.wave} active`);
       }
-      await page.waitForFunction(() => window.SF.state.mode === 'flight' && window.SF.state.run && window.SF.state.run.phase === 'active', null, { timeout: 600000 });
+      const nativeActive = await awaitPreparationChoice(page, { ruleset: RULESET[args.mode], includeButton: false });
+      trace.meta.nativeRuleset = nativeActive.ruleset;
       await waitBootOverlayGone(page);
       const st0 = await phaseNow();
       step('spawn', true, `flight · round ${st0.w} active at sim ${st0.sim.toFixed(1)} s`);
@@ -403,7 +471,7 @@ async function runOne(args, arena, extra = {}) {
     await shoot('route failure', false);
   } finally {
     clearInterval(shotTimer); clearInterval(drainTimer);
-    while (busy) await new Promise((r) => setTimeout(r, 100));
+    while (busy || draining) await new Promise((r) => setTimeout(r, 100));
     await drain().catch(() => {});
   }
   if (args.fight) {

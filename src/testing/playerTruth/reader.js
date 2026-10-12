@@ -326,11 +326,37 @@ export function installPlayerTruthReader(win, opts = {}) {
       tOcc: tn ? +(tc / tn).toFixed(3) : null, tN: tn, unb: unbounded, bg: backdrop, nI: instruments, top };
   }
 
-  // Per-pixel split of what additive layers contribute: render the same camera into a small
+  // Per-pixel split of what additive layers contribute: render the same camera into a native-size
   // offscreen target three times (all, combat VFX hidden, backdrop hidden) inside one synchronous
   // call, restore visibility before returning — the displayed frame is never altered. Measured
-  // before post-processing (bloom), at PW×PH.
-  const PW = 160; const PH = 90; let pxTarget = null; let bufA = null; let bufB = null; let bufC = null;
+  // before post-processing (bloom). Point shaders use the live drawing-buffer height and clamp
+  // their pixel sizes: a 160×90 target enlarged those stars relative to every projected hull.
+  // Keep the native raster, including DPR, rather than changing the authored shaders for a probe.
+  let PW = 0; let PH = 0; let pxTarget = null; let bufA = null; let bufB = null; let bufC = null;
+  let cMask = null; let bMask = null;
+  const pxSize = new THREE.Vector2();
+  function preparePixelRaster(renderer, vw, vh) {
+    if (renderer.getDrawingBufferSize) renderer.getDrawingBufferSize(pxSize);
+    else pxSize.set(renderer.domElement?.width || vw, renderer.domElement?.height || vh);
+    const width = Math.floor(pxSize.x); const height = Math.floor(pxSize.y);
+    if (!(Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0)) {
+      return 'renderer has no drawable pixel raster';
+    }
+    if (width !== PW || height !== PH) {
+      const pixels = width * height;
+      const nextA = new Uint8Array(pixels * 4); const nextB = new Uint8Array(pixels * 4);
+      const nextC = new Uint8Array(pixels * 4);
+      const nextCombatMask = new Uint8Array(pixels); const nextBackdropMask = new Uint8Array(pixels);
+      if (pxTarget) pxTarget.setSize(width, height);
+      else pxTarget = new THREE.WebGLRenderTarget(width, height);
+      PW = width; PH = height;
+      bufA = nextA; bufB = nextB; bufC = nextC;
+      cMask = nextCombatMask; bMask = nextBackdropMask;
+    } else {
+      cMask.fill(0); bMask.fill(0);
+    }
+    return null;
+  }
   let pxAttributionAttempted = false;
   function isBackdropLayer(o) {
     if (isBackdrop(o)) return true;
@@ -439,7 +465,8 @@ export function installPlayerTruthReader(win, opts = {}) {
   }
   function pixelSplit(renderer, scene, cam, vw, vh, playerBox, threatBoxes) {
     if (!renderer || !renderer.isWebGLRenderer || !renderer.readRenderTargetPixels) return { err: 'renderer is not WebGL' };
-    if (!pxTarget) { pxTarget = new THREE.WebGLRenderTarget(PW, PH); bufA = new Uint8Array(PW * PH * 4); bufB = new Uint8Array(PW * PH * 4); bufC = new Uint8Array(PW * PH * 4); }
+    const rasterError = preparePixelRaster(renderer, vw, vh);
+    if (rasterError) return { err: rasterError };
     const combat = []; const back = []; let instruments = 0;
     scene.traverseVisible((o) => {
       if (!(o.isMesh || o.isPoints || o.isSprite || o.isLine)) return;
@@ -465,7 +492,7 @@ export function installPlayerTruthReader(win, opts = {}) {
     }
     const LUM = 10; // ≥10/255 luminance added by the layer counts as covered
     const lum = (b, i) => 0.2126 * b[i] + 0.7152 * b[i + 1] + 0.0722 * b[i + 2];
-    const cMask = new Uint8Array(PW * PH); const bMask = new Uint8Array(PW * PH); let cN = 0; let bN = 0;
+    let cN = 0; let bN = 0;
     for (let k = 0; k < PW * PH; k++) {
       const i = k * 4; const a = lum(bufA, i);
       if (a - lum(bufB, i) >= LUM) { cMask[k] = 1; cN++; }
@@ -492,7 +519,7 @@ export function installPlayerTruthReader(win, opts = {}) {
         boxes: threatBoxes, vw, vh, lum, boxFrac });
     }
     return { c: +(cN / (PW * PH)).toFixed(3), b: +(bN / (PW * PH)).toFixed(3), cp: pc == null ? null : +pc.toFixed(3), bp: pb == null ? null : +pb.toFixed(3),
-      ct, bt: occ(bMask), nC: combat.length, nB: back.length, nI: instruments,
+      ct, bt: occ(bMask), nC: combat.length, nB: back.length, nI: instruments, rw: PW, rh: PH,
       ...(attribution ? { attribution } : {}) };
   }
 
@@ -562,6 +589,9 @@ export function installPlayerTruthReader(win, opts = {}) {
     },
     dispose() {
       api.stop();
+      if (pxTarget) pxTarget.dispose();
+      pxTarget = null; bufA = null; bufB = null; bufC = null; cMask = null; bMask = null;
+      PW = 0; PH = 0;
       for (const name of INPUT_EVENTS) win.removeEventListener(name, onInput, { capture: true });
       for (const u of unsubs) try { u(); } catch { /* observer teardown */ }
       if (po) po.disconnect();
