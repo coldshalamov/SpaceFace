@@ -326,19 +326,31 @@ test('loadout names a game-empty shelf, a harness miss, and a fit count with no 
   } });
   assert.equal(empty.status, 'FAIL');
   assert.match(empty.detail, /game offered nothing: "Wave 0 cleared\. Nothing new fits this hull\."/);
+  assert.match(empty.value, /game offered nothing \("Wave 0 cleared\. Nothing new fits this hull\."\)/);
   assert.match(empty.offenders[0].line, /no description: Bank Stream/);
   const shelf = checkLoadout({ meta: { mode: 'swarm', hasLoadout: true }, loadout: {
     items: [], fitted: [], irrelevant: [], undescribed: [], silentSwaps: [], swapProbe: 'no install possible',
     offerSource: 'game-empty', offerQuote: 'Wave 0 cleared. Nothing new fits this hull. · No equipment matches this search.',
   } });
   assert.equal(shelf.status, 'PASS');
+  assert.match(shelf.value, /game offered nothing \("Wave 0 cleared\. Nothing new fits this hull\. · No equipment matches this search\."\)/);
   assert.match(shelf.detail, /game offered nothing/);
   const miss = checkLoadout({ meta: { mode: 'swarm', hasLoadout: true }, loadout: {
     items: [], fitted: [], irrelevant: [], undescribed: [], silentSwaps: [], swapProbe: 'not-run',
     offerSource: 'harness-miss', offerQuote: 'All, 4 offers',
   } });
   assert.equal(miss.status, 'FAIL');
+  assert.match(miss.value, /harness failed to read the screen \("All, 4 offers"\)/);
   assert.match(miss.detail, /harness failed to read the screen/);
+  const clipped = checkLoadout({ meta: { mode: 'swarm', hasLoadout: true }, loadout: {
+    items: [{ name: 'Pulse Laser S', category: 'Weapons', desc: 'A pulse laser for the hardpoint.', explanationSurface: 'reading' }],
+    fitted: [{ name: 'Bank Stream', category: 'fitted', desc: '', explanationSurface: 'clipped' }],
+    irrelevant: [], undescribed: [{ name: 'Bank Stream', explanationSurface: 'clipped' }], silentSwaps: [],
+    swapProbe: '1 installs', offerSource: 'cards',
+  } });
+  assert.equal(clipped.status, 'FAIL');
+  assert.match(clipped.offenders[0].line, /no description: Bank Stream \(clipped\)/);
+  assert.match(clipped.detail, /explanation surface: reading, clipped/);
   const door = checkLoadout({ meta: { mode: 'gauntlet', hasLoadout: true }, loadout: {
     items: [], fitted: [], irrelevant: [], undescribed: [], silentSwaps: [],
     swapProbe: 'gauntlet preparation has no armory shelf', offerSource: 'door-only',

@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import {
   assessTree, parseLsTree, quoteLoadError, needsHash, gitBlobOid, renderEnvironmentAbort, STALE_BANNER, verifyHarnessEnvironment, isHarnessOutput, isRouteServed,
 } from '../scripts/player-truth/environment.mjs';
-import { classifyOfferRead, fittedClaimFromText } from '../scripts/player-truth/routes.mjs';
+import { classifyOfferRead, fittedClaimFromText, explanationThePlayerSees, fittedSentenceThePlayerSees } from '../scripts/player-truth/routes.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -83,6 +83,32 @@ test('classifyOfferRead separates an empty shelf from a missed selector', () => 
   assert.equal(fittedClaimFromText('Ricochet Runner Hornet · 4/8 fitted'), 4);
   assert.equal(fittedClaimFromText('hornet · 4 hardpoints fitted'), 4);
   assert.equal(fittedClaimFromText('A starter blurb with no count.'), 0);
+});
+
+test('an explanation is the sentence the player can see', () => {
+  const lit = explanationThePlayerSees({
+    blurb: 'A pulse laser for the hardpoint.', blurbVisible: false, lit: true,
+    reading: 'A pulse laser for the hardpoint.', readingVisible: true, litBlurb: 'A pulse laser for the hardpoint.',
+  });
+  assert.equal(lit.surface, 'reading');
+  assert.equal(lit.desc, 'A pulse laser for the hardpoint.');
+  const other = explanationThePlayerSees({
+    blurb: 'Reads what a hull carries in the hold.', blurbVisible: false, lit: false,
+    reading: 'A pulse laser for the hardpoint.', readingVisible: true, litBlurb: 'A pulse laser for the hardpoint.',
+  });
+  assert.equal(other.surface, 'reading');
+  assert.match(other.desc, /hull carries/);
+  const hidden = explanationThePlayerSees({
+    blurb: 'Reads what a hull carries in the hold.', blurbVisible: false, lit: false,
+    reading: '', readingVisible: false, litBlurb: '',
+  });
+  assert.equal(hidden.desc, '');
+  assert.equal(hidden.surface, 'none');
+  const onCard = explanationThePlayerSees({ blurb: 'Printed on the card itself.', blurbVisible: true, lit: false, reading: '', readingVisible: false });
+  assert.equal(onCard.surface, 'card');
+  assert.equal(fittedSentenceThePlayerSees({ contrast: 'Hits harder than the fitted gun.', clipped: false, visible: false }).surface, 'row-on-select');
+  assert.equal(fittedSentenceThePlayerSees({ contrast: 'Hits harder than the fitted gun.', clipped: true, visible: false }).desc, '');
+  assert.equal(fittedSentenceThePlayerSees({ contrast: 'Hits harder than the fitted gun.', clipped: true, visible: false }).surface, 'clipped');
 });
 
 test('the harness scoreboard is not a route file', () => {

@@ -97,8 +97,13 @@ worst frames for that check.
 `loadout` (Swarm and Gauntlet preparation) says whether every fitted or offered item has an
 explanation and is relevant to the mode. Zero armory cards are either "the game offered nothing"
 (empty-shelf sentence and a zero category count) or "the harness failed to read the screen" (a
-count or a name the card selector missed). A preparation line that claims a fit count but names
-no item is a FAIL. A vacuous "0 offers read" is not a PASS.
+count or a name the card selector missed). That sentence leads the measured column, with the
+shelf's own words quoted, so a PASS is not a bare "0 irrelevant". An offer's explanation is the
+sentence the player can read: the card blurb when it is on screen, otherwise the armory reading
+panel. A blurb the rail hides does not count unless that panel is showing the selected row's
+sentence. A refit contrast clipped for the screen reader (`.orr-hp__contrast--drawn`) is not an
+explanation. A preparation line that claims a fit count but names no item is a FAIL. A vacuous
+"0 offers read" is not a PASS.
 
 `sim_stalled` fails when sim time advances less than 0.5 s across 60 s of wall time while the run
 phase stays active and the boot overlay is gone (mode is not `loading`). The run stops then. It

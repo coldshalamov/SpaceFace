@@ -369,10 +369,21 @@ export async function readFittedRows(page) {
       const r = row.getBoundingClientRect();
       const name = norm((row.querySelector('.orr-hp__value') || {}).textContent);
       const label = norm((row.querySelector('.orr-hp__label') || {}).textContent);
-      const contrast = norm((row.querySelector('.orr-hp__contrast') || {}).textContent);
+      const contrastEl = row.querySelector('.orr-hp__contrast');
+      const contrast = norm(contrastEl ? contrastEl.textContent : '');
+      const clipped = !!(contrastEl && contrastEl.classList.contains('orr-hp__contrast--drawn'));
+      let contrastVisible = false;
+      if (contrastEl && !clipped) {
+        const cs = getComputedStyle(contrastEl);
+        const cr = contrastEl.getBoundingClientRect();
+        contrastVisible = cs.display !== 'none' && cs.visibility !== 'hidden' && cr.width > 2 && cr.height > 2;
+      }
       const slot = norm((row.querySelector('.sf-cru-slottag') || {}).textContent);
-      const desc = contrast && contrast !== name ? contrast : '';
-      return { name: name || label, desc, category: slot || 'fitted', role: 'fitted', text: norm(row.textContent).slice(0, 200), box: [r.left, r.top, r.right, r.bottom], visible: r.width > 0 && r.height > 0 };
+      return {
+        name: name || label, contrast: contrast !== (name || label) ? contrast : '', clipped, contrastVisible,
+        category: slot || 'fitted', role: 'fitted', text: norm(row.textContent).slice(0, 200),
+        box: [r.left, r.top, r.right, r.bottom], visible: r.width > 0 && r.height > 0,
+      };
     });
   });
   try {
@@ -384,19 +395,85 @@ export async function readFittedRows(page) {
     const back = await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucibleDraft', null, { timeout: 8000 }).then(() => true, () => false);
     if (!back) throw err;
   }
-  return { rows };
+  return {
+    rows: rows.map((row) => {
+      const seen = fittedSentenceThePlayerSees({ contrast: row.contrast, clipped: row.clipped, visible: row.contrastVisible });
+      return { ...row, desc: seen.desc, explanationSurface: seen.surface };
+    }),
+  };
 }
 
-/** Read every armory offer and its words. Pure DOM. */
+/**
+ * The sentence a player can read for one armory offer.
+ * The Swarm rail hides `.sf-cru-blurb`. The explanation is the reading panel
+ * (`.orr-armory-reading__blurb`) for the row under the pointer. A hidden blurb
+ * counts only when that panel is on screen and is showing the lit row's own
+ * sentence — selecting this row paints the same string. A hidden blurb with no
+ * reading panel is not an explanation.
+ */
+export function explanationThePlayerSees({ blurb = '', blurbVisible = false, lit = false, reading = '', readingVisible = false, litBlurb = '' } = {}) {
+  const text = norm(blurb);
+  const shown = norm(reading);
+  const litText = norm(litBlurb);
+  if (blurbVisible) return { desc: text, surface: 'card' };
+  if (lit && readingVisible) return { desc: shown, surface: 'reading' };
+  const panelWired = readingVisible && shown.length > 0 && litText === shown;
+  if (panelWired && text.length > 0) return { desc: text, surface: 'reading' };
+  return { desc: '', surface: 'none' };
+}
+
+/**
+ * The sentence a player can read on a refit row.
+ * A contrast marked `--drawn` is clipped for the screen reader; the row draws scales, not that sentence.
+ * Otherwise the sheet shows the sentence on the selected row and hides it on the others, so the words count.
+ */
+export function fittedSentenceThePlayerSees({ contrast = '', clipped = false, visible = false } = {}) {
+  const text = norm(contrast);
+  if (clipped) return { desc: '', surface: 'clipped' };
+  if (visible && text) return { desc: text, surface: 'row' };
+  if (text) return { desc: text, surface: 'row-on-select' };
+  return { desc: '', surface: 'none' };
+}
+
+/** Read every armory offer. `desc` is only the sentence the player can read. */
 export async function readArmory(page) {
-  return page.evaluate(() => [...document.querySelectorAll('#screens .sf-cru-card')].map((c, i) => {
-    const r = c.getBoundingClientRect();
-    const q = (sel) => { const n = c.querySelector(sel); return n ? n.textContent.replace(/\s+/g, ' ').trim() : ''; };
-    const text = c.textContent.replace(/\s+/g, ' ').trim();
-    const name = q('.sf-cru-name') || (c.getAttribute('aria-label') || '').split('. ')[1] || text.slice(0, 40);
-    const cat = q('.sf-cru-verb') || null;
-    return { i, role: cat || '', name, desc: q('.sf-cru-blurb'), category: cat, unavailable: c.classList.contains('is-unavail'), text: text.slice(0, 200), box: [r.left, r.top, r.right, r.bottom], visible: r.width > 0 && r.height > 0 };
-  }));
+  const raw = await page.evaluate(() => {
+    const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+    const shown = (el) => {
+      if (!el) return false;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return false;
+      const r = el.getBoundingClientRect();
+      return r.width > 1 && r.height > 1;
+    };
+    const wrap = document.querySelector('#screens .orr-armory-reading');
+    const readingEl = document.querySelector('#screens .orr-armory-reading__blurb');
+    const readingVisible = shown(wrap) && shown(readingEl);
+    const reading = readingEl ? norm(readingEl.textContent) : '';
+    const cards = [...document.querySelectorAll('#screens .sf-cru-card')].map((c, i) => {
+      const r = c.getBoundingClientRect();
+      const q = (sel) => { const n = c.querySelector(sel); return n ? norm(n.textContent) : ''; };
+      const blurbEl = c.querySelector('.sf-cru-blurb');
+      const text = norm(c.textContent);
+      const name = q('.sf-cru-name') || (c.getAttribute('aria-label') || '').split('. ')[1] || text.slice(0, 40);
+      const cat = q('.sf-cru-verb') || null;
+      return {
+        i, role: cat || '', name, blurb: q('.sf-cru-blurb'), blurbVisible: shown(blurbEl),
+        lit: c.classList.contains('is-lit') || c.getAttribute('aria-pressed') === 'true',
+        category: cat, unavailable: c.classList.contains('is-unavail'), text: text.slice(0, 200),
+        box: [r.left, r.top, r.right, r.bottom], visible: r.width > 0 && r.height > 0,
+      };
+    });
+    return { reading, readingVisible, cards };
+  });
+  const lit = raw.cards.find((c) => c.lit);
+  return raw.cards.map((c) => {
+    const seen = explanationThePlayerSees({
+      blurb: c.blurb, blurbVisible: c.blurbVisible, lit: c.lit,
+      reading: raw.reading, readingVisible: raw.readingVisible, litBlurb: lit ? lit.blurb : '',
+    });
+    return { ...c, desc: seen.desc, explanationSurface: seen.surface };
+  });
 }
 
 export function auditItems(mode, items) {
