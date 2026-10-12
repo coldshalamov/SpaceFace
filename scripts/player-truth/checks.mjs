@@ -503,7 +503,7 @@ function checkVfxPixels(trace, px) {
   return result('vfx_coverage', 'Combat VFX coverage / occlusion', fail ? 'FAIL' : 'PASS',
     `p95 ${fmt(p95 * 100, 0)}% screen · player hidden ${pOccFrac == null ? 'n/a' : fmt(pOccFrac * 100, 0) + '%'} · threats hidden p95 ${tP95 == null ? 'n/a' : fmt(tP95 * 100, 0) + '%'} · ${fmt(persist, 1)} s persist`,
     `≤${T.vfxCoverP95 * 100}% · ≤${T.vfxPlayerOccludedFrac * 100}% · ≤${T.vfxThreatOccludedP95 * 100}% · ≤${T.vfxPersistSeconds} s`,
-    `${px.length} per-pixel splits (offscreen render with combat VFX hidden vs shown, pre-bloom 160×90; backdrop layers graded separately)`,
+    `${px.length} per-pixel splits (offscreen render with combat VFX hidden vs shown, pre-bloom reader target; backdrop layers graded separately)`,
     offenders, offenders.filter((o) => o.box).slice(0, 2));
 }
 
