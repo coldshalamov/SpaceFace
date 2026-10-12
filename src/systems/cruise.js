@@ -48,28 +48,60 @@ export const cruise = {
   name: 'cruise',
 
   init(ctx) {
+    this.destroy();
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this._wasCruiseAction = false;
+    this._unsubs = [];
+    const on = (event, fn) => this._unsubs.push(this.bus.on(event, fn));
 
-    this.bus.on('combat:damage', (p) => {
+    on('combat:damage', (p) => {
       if (!p || p.targetId !== this.state.playerId) return;
       if (!this._isMeaningfulHit(p)) return;
       this._drop(DROP_REASONS.DAMAGE);
     });
-    this.bus.on('ship:boostStart', (p) => {
+    on('ship:boostStart', (p) => {
       if (p && p.shipId === this.state.playerId) this._cancelIfCharging(DROP_REASONS.BOOST);
     });
-    this.bus.on('combat:fire', (p) => {
+    on('combat:fire', (p) => {
       if (p && p.ownerId === this.state.playerId) this._cancelIfCharging(DROP_REASONS.FIRED);
     });
+    // A berth/respawn ends the travel commitment, including its weapon lockout.
+    // Pausing and loading a saved flight are not cancellations.
+    on('dock:docked', () => this._resetTravel('docked'));
+    on('player:death', () => this._resetTravel('death'));
+    on('save:loaded', () => { this._wasCruiseAction = false; this._pressureT = 0; });
     // Interdiction hook (encounter director ambush shape): an external snare drops cruise with
     // the full SNARED stumble. Only meaningful while cruising — otherwise a strict no-op.
-    this.bus.on('cruise:snareRequest', (p) => {
+    on('cruise:snareRequest', (p) => {
       const c = this._ensureCruise(this.state);
       if (c.phase === 'cruising') this._drop(DROP_REASONS.SNARED, p && p.sourceId);
     });
+  },
+
+  destroy() {
+    for (const off of this._unsubs || []) if (typeof off === 'function') off();
+    this._unsubs = [];
+  },
+
+  newGame() { this._resetTravel('new_game'); },
+
+  _resetTravel(reason) {
+    if (!this.state) return;
+    const c = this._ensureCruise(this.state);
+    const was = c.phase;
+    c.phase = 'off';
+    c.t = 0;
+    c.stumbleT = 0;
+    c.stumbleCdT = 0;
+    c.hitLog = [];
+    this._wasCruiseAction = false;
+    this._pressureT = 0;
+    // Stop travel audio/VFX, but do not treat a safe landing as a combat stumble.
+    if (was !== 'off' && this.bus) {
+      this.bus.emit('cruise:dropped', { reason, was, playerId: this.state.playerId, snare: false });
+    }
   },
 
   update(dt, state) {
