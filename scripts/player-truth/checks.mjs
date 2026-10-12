@@ -431,6 +431,21 @@ function nearestSample(trace, sim) {
   return bd < 1 ? best : null;
 }
 
+function commandedOrbitYaw(sample) {
+  const p = sample.p; const intent = p.angularIntent;
+  if (!intent || intent.version !== 1 || intent.source !== 'player-flight-v3' || intent.active !== true
+    || intent.playerId !== p.id || !Number.isSafeInteger(p.occupantGeneration)
+    || intent.occupantGeneration !== p.occupantGeneration
+    || !Number.isSafeInteger(sample.tick) || intent.tick !== sample.tick
+    || !Number.isFinite(intent.sim) || Math.abs(intent.sim - sample.sim) > 1e-6
+    || !(Number.isFinite(intent.dt) && intent.dt > 0) || !Number.isFinite(intent.angularAcceleration)) return false;
+  const ownsYaw = intent.kind === 'swing-carry' && intent.reason === 'swing-carry'
+    || intent.kind === 'orbit-assist' && (intent.reason === 'engaged' || intent.reason === 'line-slack');
+  const rate = intent.targetYawRate;
+  return ownsYaw && Number.isFinite(rate) && Math.abs(rate) > THRESHOLDS.tumbleAngVel
+    && rate * p.angVel > 0 && Math.abs(p.angVel - rate) <= THRESHOLDS.tumbleAngVel;
+}
+
 export function checkTumble(trace) {
   const T = THRESHOLDS; const samples = playSamples(trace).filter((s) => s.p && s.p.alive);
   if (samples.length < 10) return result('tumble', 'Ship stays in the play plane', 'UNKNOWN', null, null, 'too few play frames');
@@ -442,7 +457,8 @@ export function checkTumble(trace) {
     if (Math.abs(p.pitch) > T.tumblePitch) why.push(`pitch ${fmt(p.pitch, 2)}`);
     if (Math.abs(p.bank) > T.tumbleBank) why.push(`bank ${fmt(p.bank, 2)}`);
     if (Math.abs(p.y) > T.tumbleY) why.push(`y ${fmt(p.y, 1)}`);
-    if (Math.abs(p.angVel) > T.tumbleAngVel && !inIntervals(yawHeld, s.sim)) why.push(`spin ${fmt(p.angVel, 1)} rad/s uncommanded`);
+    if (Math.abs(p.angVel) > T.tumbleAngVel && !inIntervals(yawHeld, s.sim)
+      && !commandedOrbitYaw(s)) why.push(`spin ${fmt(p.angVel, 1)} rad/s uncommanded`);
     if (why.length) { if (!run) run = { start: s, why }; run.end = s; } else if (run) { close(); }
   }
   if (run) close();

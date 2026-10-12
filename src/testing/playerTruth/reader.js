@@ -223,8 +223,14 @@ export function installPlayerTruthReader(win, opts = {}) {
   }
 
   function playerRecord(st, p, mesh, cam, vw, vh) {
+    const intent = st.flightRuntime?.angularIntent;
     const rec = { id: p.id, alive: p.alive !== false, x: p.pos.x, y: p.pos.y || 0, z: p.pos.z, vx: p.vel.x, vz: p.vel.z,
       rot: p.rot, angVel: p.angVel || 0, pitch: p.pitch || 0, bank: p.bank || 0, hull: p.hull, hullMax: p.hullMax,
+      occupantGeneration: Number.isSafeInteger(p.occupantGeneration) ? p.occupantGeneration : null,
+      angularIntent: intent ? { version: intent.version, source: intent.source, active: intent.active,
+        kind: intent.kind, reason: intent.reason, playerId: intent.playerId, occupantGeneration: intent.occupantGeneration,
+        tick: intent.tick, sim: intent.sim, dt: intent.dt, targetYawRate: intent.targetYawRate,
+        angularAcceleration: intent.angularAcceleration } : null,
       mesh: !!mesh, vis: false, onScreen: false, box: null, lod: null, model: null, state: null, tris: 0, marker: false, meshId: null, drawn: null };
     if (!mesh) return rec;
     const ud = mesh.userData || {};
@@ -530,7 +536,7 @@ export function installPlayerTruthReader(win, opts = {}) {
     const canvas = r.renderer && r.renderer.domElement;
     const vw = canvas ? canvas.clientWidth : win.innerWidth; const vh = canvas ? canvas.clientHeight : win.innerHeight;
     const run = st.run || null;
-    const s = { f: frame, t: +t.toFixed(1), dt: +dt.toFixed(1), sim: simNow(), mode: st.mode,
+    const s = { f: frame, t: +t.toFixed(1), dt: +dt.toFixed(1), sim: simNow(), tick: st.tick, mode: st.mode,
       top: SF.ctx && SF.ctx.screenManager && SF.ctx.screenManager.top ? SF.ctx.screenManager.top() : null,
       run: run ? { kind: run.kind, rs: run.ruleset, ph: run.phase, w: run.wave, a: run.arenaId, res: run.resolvedThreat, sp: run.spawnedThreat, bud: run.threatBudget, sc: Number.isFinite(run.score) ? run.score : null } : null,
       vw, vh, p: null, e: [], info: null, vfx: null };

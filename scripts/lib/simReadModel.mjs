@@ -489,6 +489,7 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'physicsVenueSession', 'world.wreckCourtRulings',
   'replay.latestPoseSample', 'mercyServicePublic', 'wreckCourtPublic',
   // leaf-path mirrors (root stays on the facade; only the subtree ships)
+  'flightRuntime.angularIntent',
   'sectorSim.field', 'npcJobs.byId', 'factionPresence.boarding',
   'automation.meta', 'automation.traders', 'automation.fleet',
   // The site map, machinery HUD and cargo transfer UI read these authoritative
