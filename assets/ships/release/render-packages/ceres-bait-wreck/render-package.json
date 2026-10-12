@@ -151,7 +151,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "210f7fb1fdcf7c497cf3eba5b10ed1053ffd71b7c6d488ef07ac8e0682aac7d2",
+  "contentHash": "6d76089f227043d816958d9b499dcf7c0f820c96f99efdf54690702c85f39c93",
   "dynamicGroups": [
     {
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-hook-nav-port.dynamic",
@@ -209,7 +209,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e4503ce5940644f86a8bfbfc93ff3c4da1683e5d481f36177b2c441a1abd6be5",
+      "geometryHash": "d2253294cc7129c3a00adac71677469302841dd9985535178d6856c5c9a2278c",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -259,7 +259,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "99355d6963986be0665891a2ca83a4f422a6cf6db094ad5c90dd8b554f8a5f97",
+      "geometryHash": "6afba8e4e4602040841a730b99fb1adde20e338b0d13706787637a7c85f0bc92",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-brushedmetal.primitive.0",
       "indexCount": 4644,
       "indexed": true,
@@ -284,7 +284,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "179b4abf845464a417b3b57b34a9fefa3457ac8bc2755fe3ac70d14708d30e84",
+      "geometryHash": "da531ede697e0bc780201899436a2e3cfd500d51b9f991d5e43203f9299d143e",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-deadmetal-deep.primitive.0",
       "indexCount": 2184,
       "indexed": true,
@@ -309,7 +309,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "56f6854d53b38331eaa0511408889a6479b9b9623f9d2d6cace849583ab6325e",
+      "geometryHash": "6d1a14431c2b5c7ac29bf523652ff6d3b2d0edc7b2bf8041ca03c47697dec0ff",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-deadmetal-faded.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -334,7 +334,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2fe70f5ac84ecbf3051170973af676a89940221e88b93e435575b90e3b0ab41f",
+      "geometryHash": "611c645b9a07fb3b416dd798cf5b0238b8f9703d8e8703b1b1877fc793495827",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-deadmetal-rust.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -359,7 +359,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "529f4347980cc540b591e8a8d293e9e2699b25f95d2adfb8ebcd88edf0dc0527",
+      "geometryHash": "4c9a8183bc4d660dc285983707af630c1933eab64814fcd64b0926e9df0a2dd5",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-deadmetal.primitive.0",
       "indexCount": 2088,
       "indexed": true,
@@ -384,9 +384,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e87bcda6a2dc5feeddbf2087c3da9167906b7ee2bd336cc98aa18aad96b4670",
+      "geometryHash": "ff7f10d84b97ebfcc8631a200ec9021c5d455adb59e07ebcef8a7db11d3c17c7",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-hook-nav-port.primitive.0",
-      "indexCount": 540,
+      "indexCount": 537,
       "indexed": true,
       "materialHash": "e50885d48893fb4dc64a02a0141146e28e6b95304d3e0682eb494efaa62453c9",
       "materialPipelineKey": "opaque",
@@ -409,7 +409,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9dc606384c1296ebbb91c8d29252773d3c9a46bab86b5fd09619c7ae377346b9",
+      "geometryHash": "6561ee3986c86ae17c7cf96059530559f06d49f569f00d107c3d22b3c0c35c65",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-livery.primitive.0",
       "indexCount": 648,
       "indexed": true,
@@ -434,7 +434,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fd3a4436eb366280d5e404ed4401d03ed3cda2366050ed1231be9fd6da2aaf09",
+      "geometryHash": "73d1bff0dbe6213611adda6434f9a261fbad483cf88f4d2b3a6c7f6f168e15b3",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-mechanical.primitive.0",
       "indexCount": 2436,
       "indexed": true,
@@ -459,7 +459,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ce7f032a4f176cf059200c0e1eb4909420894c6be47c2721ec3395e5d41e4958",
+      "geometryHash": "8f35398b555a60662665ee85566eedfc12a8645716b2ee9bd053b474bb6aa760",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 1572,
       "indexed": true,
@@ -484,7 +484,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3969eeeda39ccd7b02e2b3603f8fee95371110ede29d09f2a604594bdad37a80",
+      "geometryHash": "b89c8b5dc4a68b64bd2c61cab39dbcef44f37bc74a3f5e67f35de267dec746ff",
       "id": "sf.render.ceres-bait-wreck.mesh.lod0-warning.primitive.0",
       "indexCount": 432,
       "indexed": true,
@@ -559,7 +559,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f47114012a20eae3a1131076d41ded1f5672d524d601899efb8ed7482281ac07",
+      "geometryHash": "443603e6cc0ded9fd6a5561a87491a3dbea249eb5a0e05d42d26711326ebbe6b",
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-brushedmetal.primitive.0",
       "indexCount": 3204,
       "indexed": true,
@@ -584,7 +584,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c65247f4dbfc1cdd95d5ee61aad786e587f1eaf988ed34ca7ef1f8ab23361080",
+      "geometryHash": "4fa3e3c12ae7517e11361b83fcb84a876b3df68b07bbb3e0811299e5e0552f71",
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-deadmetal-deep.primitive.0",
       "indexCount": 1656,
       "indexed": true,
@@ -709,7 +709,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7abb132f59253ed9b925f2fed68feea51a6de523db7acb9d543c391c91b22406",
+      "geometryHash": "e9955e09861e0cb827aaa024ed05e1331849abb7e5c83f116a4a28838d424582",
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-livery.primitive.0",
       "indexCount": 648,
       "indexed": true,
@@ -784,7 +784,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3aacb48e1598f469334b1ce6234b5a59104c63f6f7084cdc19d9bb47ef189898",
+      "geometryHash": "e72326a4005d3ccd8c4773437e8ee2e6b2fa8cfab788aab1393f3a31354f748c",
       "id": "sf.render.ceres-bait-wreck.mesh.lod1-warning.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -859,7 +859,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7149ced4710e254a0a2e98331a5d83c36814eaeaa10e59577c3759ec45d0b86d",
+      "geometryHash": "b81b72804bf2fc2d6281d645f4f2dfe9af73e428597a0ab09f3d4a0a7951f617",
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-brushedmetal.primitive.0",
       "indexCount": 1242,
       "indexed": true,
@@ -868,7 +868,7 @@
       "meshName": "LOD2_BrushedMetal",
       "nodeId": "sf.render.ceres-bait-wreck.mesh.lod2-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 667
+      "vertexCount": 937
     },
     {
       "bounds": {
@@ -884,7 +884,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dec8ffc52ecf9d1decca003a569d6264d9e0b91725d61c843457948b2e068ecc",
+      "geometryHash": "46ebed057d27ab91750288fc7f76b6f2de8dc0ab896be47eb7579e5b66ed36a8",
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-deadmetal-deep.primitive.0",
       "indexCount": 612,
       "indexed": true,
@@ -893,7 +893,7 @@
       "meshName": "LOD2_deadmetal_deep",
       "nodeId": "sf.render.ceres-bait-wreck.mesh.lod2-deadmetal-deep",
       "primitiveIndex": 0,
-      "vertexCount": 372
+      "vertexCount": 500
     },
     {
       "bounds": {
@@ -984,7 +984,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b8643ef5e1f8ef5b8886bab423591e06e174718e8ee424b42b87be6afe0d62fd",
+      "geometryHash": "ab60c1161d8a1996826f9b7bf243af167881cf7f0a0a5eb37af2eebc612a2619",
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-hook-nav-port.primitive.0",
       "indexCount": 9,
       "indexed": true,
@@ -1009,7 +1009,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a06b19a3fca0a879245ebc7e72e4c0d8083f4102194693aa95e2508a0c95057f",
+      "geometryHash": "6812aece14e334fc1ddddc7adc2bbb30748ffbe57e458c2e319d4048c3b14c1b",
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-livery.primitive.0",
       "indexCount": 342,
       "indexed": true,
@@ -1084,7 +1084,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6e56c82bead5c00c35519ea702b98b731eb529b8915558b297fdac48a271ac5e",
+      "geometryHash": "5272dd1ff902692c53946df2afe808aa5a6d989e69d941eab370da11317217f2",
       "id": "sf.render.ceres-bait-wreck.mesh.lod2-warning.primitive.0",
       "indexCount": 96,
       "indexed": true,
@@ -1093,7 +1093,7 @@
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.ceres-bait-wreck.mesh.lod2-warning",
       "primitiveIndex": 0,
-      "vertexCount": 62
+      "vertexCount": 81
     }
   ],
   "hlods": [],
@@ -3303,19 +3303,19 @@
       "sha256": "15f53ec5adab7985fa345f27edfd76797925a140af2507098c1447fc4b5a1094"
     },
     "sourceGlb": {
-      "bytes": 379632,
-      "sha256": "e8ffdaa61f8a58fa380f149ba0595148941a2124f179f2697a507247bd3e1dec",
+      "bytes": 381984,
+      "sha256": "5c1b5eed96b90ffae8bd3af98e04429391c4c883af3dbbc3401e7eec53ff1feb",
       "uri": "place_ceres_bait_wreck.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 598584,
-    "sha256": "f96373d90b17defc6a22ddaa06b779b5befb9028825abc60b06c8298c4ce9762",
+    "bytes": 594608,
+    "sha256": "9b314fab3496e3c4b5769de3289345ec3fff5403dc02cc616a2c782153e6e024",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4631,7 +4631,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ceres_bait_wreck.glb"
   },
-  "runtimeHash": "9c2669564a1d0915ebd5963f9e516989348bb543b9299b69424fe3667201dc00",
+  "runtimeHash": "88b5b0327d61982597c57a04d42661c5fee655a9da817ac12d4d71e547fda4b7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

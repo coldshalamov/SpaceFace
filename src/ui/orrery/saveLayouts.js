@@ -11,6 +11,7 @@
 // their classes) and pins nothing. Scoped by the root classes the screens add (`orr-saveload`,
 // `orr-gameover`), doubled where an older deckplate/kit rule needs out-ranking.
 import { injectOrrery } from './tokens.js';
+import { injectOrreryMobileScreens } from './mobileScreenLayouts.js';
 import { berthImage } from './saveBerth.js';
 
 const STYLE_ID = 'sf-orrery-save-layouts';
@@ -40,7 +41,7 @@ ${SL} { --sv:var(--k-s, 1);
 ${SL} > .k-title { grid-area:title; align-self:end; margin:0; padding:0 !important; border:0 !important; position:relative; z-index:2; }
 ${SL} > .k-title .k-t-title { ${DISPLAY} margin:0; font-size:calc(72px * var(--sv)) !important; line-height:.9 !important; letter-spacing:.005em !important;
   color:rgb(${BONE}) !important; -webkit-text-fill-color:currentColor; background:none !important; text-shadow:0 2px 18px rgb(0 0 0 / .5); }
-${SL} > .k-title .k-t-emph { ${BODY} margin:calc(12px * var(--sv)) 0 0; font-size:max(12.5px, calc(16px * var(--sv))); line-height:1.35; color:rgb(${BONE} / .74); }
+${SL} > .k-title .k-t-emph { ${BODY} margin:calc(12px * var(--sv)) 0 0; font-size:max(13px, calc(16.5px * var(--sv))); line-height:1.35; font-weight:500; color:rgb(${BONE} / .94); }
 
 /* ---- the reading: free type on a pool of shade, no panel ---- */
 ${SL} > .k-stage__foot.sf-save-ledger { grid-area:page; position:relative !important; inset:auto !important; left:auto !important; bottom:auto !important; top:auto !important;
@@ -48,13 +49,13 @@ ${SL} > .k-stage__foot.sf-save-ledger { grid-area:page; position:relative !impor
   gap:calc(12px * var(--sv)); margin:0; padding:calc(10px * var(--sv)) 0 0 !important; overflow:visible !important; ${PLAIN} z-index:2; }
 ${SL} > .sf-save-ledger::before { content:""; position:absolute; inset:-40px -64px -30px -56px; z-index:-1; pointer-events:none;
   background:radial-gradient(closest-side, rgb(4 6 9 / .72), rgb(4 6 9 / .5) 58%, transparent); }
-${SL} .sf-save-ledger .sf-slot-context { ${LABEL} margin:0; font-size:max(10px, calc(11px * var(--sv))); letter-spacing:.18em; line-height:1.35; color:rgb(${BONE} / .7); }
+${SL} .sf-save-ledger .sf-slot-context { ${LABEL} margin:0; font-size:max(10.5px, calc(11.5px * var(--sv))); letter-spacing:.2em; line-height:1.35; color:rgb(${BONE} / .86); }
 ${SL} .sf-save-ledger .sf-slot-card-title { all:unset; display:block; ${DISPLAY} margin:0; font-size:calc(44px * var(--sv)); line-height:.95; letter-spacing:.01em;
   color:rgb(246 241 230); text-shadow:0 2px 16px rgb(0 0 0 / .5); overflow-wrap:anywhere; cursor:default; }
 ${SL} .sf-save-ledger .sf-slot-card-title.sf-entity-link { cursor:pointer; border:0 !important; text-decoration:none !important; }
 ${SL} .sf-save-ledger .sf-slot-card-title.sf-entity-link:is(:hover, :focus-visible) { color:#fff; outline:none; text-shadow:0 0 18px rgb(255 236 200 / .28); }
 ${SL} .sf-save-ledger .sf-slot-detail { ${BODY} margin:0; max-width:44ch; font-weight:500; font-size:max(12.5px, calc(15.5px * var(--sv))); line-height:1.42; color:rgb(${BONE} / .9); }
-${SL}[data-slot-state="empty"] .sf-save-ledger .sf-slot-detail, ${SL}[data-slot-state="open"] .sf-save-ledger .sf-slot-detail { color:rgb(${BONE} / .74); font-weight:400; }
+${SL}[data-slot-state="empty"] .sf-save-ledger .sf-slot-detail, ${SL}[data-slot-state="open"] .sf-save-ledger .sf-slot-detail { color:rgb(${BONE} / .92); font-weight:500; }
 
 /* the facts: credits as the one thin hero numeral; sector, played, saved as readings on a row */
 ${SL} .sf-ledger-facts { display:grid !important; grid-template-columns:repeat(3, minmax(0, auto)); justify-content:start; column-gap:calc(34px * var(--sv)); row-gap:calc(12px * var(--sv));
@@ -102,7 +103,11 @@ ${SL} > .sf-save-stage::before { content:""; position:absolute; left:4%; right:4
 /* the berth under the hull: a lit floor, a near rim with body, the hull's contact shadow */
 ${SL} > .sf-save-stage::after { content:""; position:absolute; left:12%; right:12%; top:66%; height:22%; z-index:-2; pointer-events:none;
   background:${BERTH_HULL} center / 100% 100% no-repeat; }
-${SL} > .sf-save-stage.is-vacant::after { background:${BERTH_OPEN} center / 100% 100% no-repeat; }
+${SL} > .sf-save-stage.is-vacant::after { background:${BERTH_OPEN} center / 100% 100% no-repeat;
+  filter:brightness(1.18) saturate(1.08); }
+${SL} > .sf-save-stage.is-vacant::before { background:
+  radial-gradient(closest-side, rgb(4 6 9 / .7), rgb(4 6 9 / .42) 58%, transparent),
+  radial-gradient(ellipse 52% 28% at 50% 78%, rgb(255 244 222 / .14), rgb(255 244 222 / .04) 55%, transparent); }
 ${SL} > .sf-save-stage > :is(.k-stage__poster, .k-world--stage) { position:absolute !important; left:0 !important; right:auto !important; top:4% !important; bottom:auto !important;
   width:100% !important; height:90% !important; inset:auto; z-index:-1; }
 ${SL} > .sf-save-stage > .k-stage__poster { object-fit:contain; object-position:50% 50%; animation:sf-save-hull-ride 9s ease-in-out infinite alternate; }
@@ -117,7 +122,7 @@ ${SL} > .sf-save-stage > .sf-save-vacant .dp-mark { display:none; }
 ${SL} > .sf-save-stage > .sf-save-vacant::before { display:none; }
 /* no hull on file: the word stands on the open berth's floor */
 ${SL} > .sf-save-stage > .sf-save-vacant > .sf-save-vacant__word { position:absolute; left:50%; top:76%; transform:translate(-50%, -50%); white-space:nowrap;
-  ${LABEL} font-size:max(10.5px, calc(12px * var(--sv))); letter-spacing:.32em; color:rgb(${BONE} / .76); text-shadow:0 1px 0 rgb(0 0 0 / .6); }
+  ${LABEL} font-size:max(11px, calc(12.5px * var(--sv))); letter-spacing:.3em; color:rgb(${BONE} / .9); text-shadow:0 1px 0 rgb(0 0 0 / .55), 0 0 18px rgb(255 244 222 / .18); }
 
 /* ---- the filmstrip: frames on their stations along the rail ---- */
 ${SL} > .k-hang { grid-area:hang; position:relative; min-height:0; height:calc(214px * var(--sv)); margin:0; padding:0 !important; overflow:visible !important;
@@ -130,7 +135,7 @@ ${SL} .orr-film__list > .k-row.sf-slot > div { grid-area:label; min-width:0; }
 ${SL} .orr-film__list > .k-row.sf-slot > .k-row__num { grid-area:num; justify-self:center; margin-top:calc(4px * var(--sv)); }
 ${SL} .sf-slot-frame { grid-area:frame; position:relative; display:block; height:calc(92px * var(--sv)); margin:0 0 calc(22px * var(--sv));
   transform-origin:50% 100%; opacity:.88; transition:transform .32s cubic-bezier(.2, 1.3, .4, 1), opacity .2s linear; }
-${SL} .sf-slot-frame.is-empty { height:max(30px, calc(38px * var(--sv))); }
+${SL} .sf-slot-frame.is-empty { height:max(30px, calc(38px * var(--sv))); opacity:.94; filter:brightness(1.08); }
 ${SL} .sf-slot-berth { position:absolute; left:50%; bottom:0; width:min(176px, 78%); height:max(26px, calc(32px * var(--sv))); transform:translateX(-50%);
   background:${BERTH_STATION} center / 100% 100% no-repeat; pointer-events:none; }
 ${SL} .sf-slot-frame > img { position:absolute; left:4%; top:0; width:92%; height:calc(100% - max(10px, calc(13px * var(--sv)))); object-fit:contain; object-position:50% 100%;
@@ -147,7 +152,7 @@ ${SL} .orr-film__list > .k-row.sf-slot[aria-selected="true"] .sf-slot-frame::bef
 html.sf-reduce-motion ${SL} .sf-slot-frame { transition:none; }
 ${SL} .orr-film__list .k-row__name.sf-slot-name { ${LABEL} display:inline; font-size:max(11.5px, calc(12px * var(--sv))) !important; letter-spacing:.14em !important; line-height:1.3;
   color:rgb(${BONE} / .86) !important; white-space:normal; overflow:visible; text-overflow:clip; text-shadow:0 1px 0 rgb(0 0 0 / .5); }
-${SL} .orr-film__list .k-row.empty .k-row__name.sf-slot-name { color:rgb(${BONE} / .6) !important; }
+${SL} .orr-film__list .k-row.empty .k-row__name.sf-slot-name { color:rgb(${BONE} / .82) !important; }
 ${SL} .orr-film__list > .k-row[aria-selected="true"] .k-row__name.sf-slot-name { color:rgb(250 247 240) !important; }
 ${SL} .orr-film__list .sf-slot-badges { display:inline !important; margin:0 !important; padding:0 !important; vertical-align:baseline !important; }
 ${SL} .orr-film__list .sf-slot-badge { display:inline !important; vertical-align:baseline !important; margin:0 0 0 .5em !important; padding:0 !important; }
@@ -158,21 +163,26 @@ ${SL} .orr-film__list .sf-slot-badge--you { color:rgb(${BONE} / .86) !important;
 ${SL} .orr-film__list .sf-slot-badge--foe { color:var(--dp-danger-hot, #ff7a5c) !important; }
 ${SL} .orr-film__list .k-row__sub.sf-slot-sub { ${BODY} margin-top:calc(3px * var(--sv)); font-size:max(11.5px, calc(12.5px * var(--sv))) !important; line-height:1.32; color:rgb(${BONE} / .7) !important;
   white-space:normal !important; overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere; }
-${SL} .orr-film__list .k-row.empty .k-row__sub.sf-slot-sub { color:rgb(${BONE} / .66) !important; }
+${SL} .orr-film__list .k-row.empty .k-row__sub.sf-slot-sub { color:rgb(${BONE} / .8) !important; }
 ${SL} .orr-film__list .k-row__num { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-variation-settings:"wght" 520, "wdth" 100; font-weight:520;
   font-size:max(11.5px, calc(13px * var(--sv))) !important; line-height:1.3; color:var(--dp-phos, rgb(223 238 255)) !important; text-shadow:none !important; white-space:nowrap; }
 
-/* ---- the way back: words along the foot, no keys ---- */
+/* ---- the way back: ‹ BACK + ESC keycap (settings foot rail), Export/Import stay › verbs ---- */
 ${SL} > .k-foot { grid-area:foot; display:flex !important; flex-direction:row; align-items:center; gap:calc(34px * var(--sv)); margin:0; padding:0 !important; ${PLAIN} }
 ${SL} > .k-foot .k-word { ${PLAIN} ${LABEL} display:inline-flex !important; align-items:center; min-height:0 !important; min-width:0 !important; height:auto !important; width:auto !important;
   padding:6px 0 !important; margin:0 !important; font-size:max(10px, calc(11px * var(--sv))) !important; letter-spacing:.18em !important; color:rgb(246 241 230) !important; text-shadow:0 1px 0 rgb(0 0 0 / .5); }
 ${SL} > .k-foot .k-word:not(.sf-back)::before { all:unset !important; content:"›" !important; margin-right:.7em !important; color:rgb(${BONE} / .6) !important; }
 ${SL} > .k-foot .k-word:not(.sf-back)::after { display:none !important; content:none !important; }
-${SL} > .k-foot .k-word.sf-back::before { display:none !important; content:none !important; }
-${SL} > .k-foot .k-word.sf-back::after { content:"ESC" / "" !important; display:inline !important; min-width:0 !important; height:auto !important; padding:0 !important; margin-left:12px !important;
-  ${LABEL} font-size:max(10px, calc(10px * var(--sv))) !important; letter-spacing:.16em !important; line-height:1 !important;
-  color:rgb(${BONE} / .62) !important; background:none !important; border:0 !important; box-shadow:none !important; position:static !important; transform:none !important; opacity:1 !important; }
+${SL} > .k-foot .k-word.sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
+  padding:10px 0 12px !important; ${LABEL} font-size:max(12px, calc(13.5px * var(--sv))) !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
+  background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
+${SL} > .k-foot .k-word.sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
+${SL} > .k-foot .k-word.sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
+  ${LABEL} font-size:max(10px, calc(11px * var(--sv))) !important; letter-spacing:.2em !important; line-height:1 !important;
+  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${SL} > .k-foot .k-word:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
+${SL} > .k-foot .k-word.sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; }
 
 /* ---- a short screen: the reading tightens so the whole page stands above the foot ---- */
 @media (max-height:820px) {
@@ -188,6 +198,8 @@ ${SL} > .k-foot .k-word:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b95
   ${SL} .sf-save-ledger .sf-save-actions { margin-top:4px; }
   ${SL} { row-gap:clamp(8px, 1.4vh, 30px) !important; padding-bottom:clamp(16px, 2.6vh, 84px) !important; }
 }
+/* UI polish: at ~1080p the empty-state type reads larger without per-rule bumps; 720p unchanged */
+@media (min-width:1800px) and (min-height:1000px) and (max-width:2199px) { ${SL} { zoom:1.12; } }
 @media (forced-colors: active) {
   ${SL} .sf-slot-frame { background:none; border:1px solid CanvasText; }
   ${SL} .orr-film__list > .k-row[aria-selected="true"] { outline:2px solid Highlight !important; }
@@ -344,6 +356,7 @@ ${GO} > .sf-go-tape .orr-tape__stop { border-radius:50% !important; outline:none
 export const SAVE_LAYOUT_CSS = SAVE_LOAD + GAME_OVER;
 
 export function injectSaveLayouts(doc = globalThis.document) {
+  injectOrreryMobileScreens(doc);
   if (!doc || !doc.head || typeof doc.getElementById !== 'function' || typeof doc.createElement !== 'function') return;
   injectOrrery(doc);
   if (doc.getElementById(STYLE_ID)) return;

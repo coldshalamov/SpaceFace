@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a5c60d4180df4782a521517d325ef680f280c73faff95e0837167ac93a815518",
+  "contentHash": "bf029940b527091b705430f4434c15f802b4e6e991b2c62109d454f34ee7cf5d",
   "dynamicGroups": [
     {
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-winglet-armor.dynamic",
@@ -658,7 +658,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ca6122bf759e030dd4306deefc96a41b3c1afeb5af79d2471d3082318aeb525",
+      "geometryHash": "23090961db235e83e588282ebf57f2fd368240e1f2c8963e55a1b03376a6536e",
       "id": "sf.render.drifter-production-v1-lod1.mesh.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -683,7 +683,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ae6bc46d54041c305bf0e7360d5444f46785b4f64332744680746c439a015f15",
+      "geometryHash": "a071c6a79ab09613632cf00bc87220e9a93198c8faf068c5537a98c85b95e3ed",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-armor.primitive.0",
       "indexCount": 4125,
       "indexed": true,
@@ -733,7 +733,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "28430a990cca60a161bef6f2b307abd45b38307bb44ee8e79ccc28ef625652f1",
+      "geometryHash": "20accb271437153722f004b549cdaa45d506437923b0bd420dc1af07e8df4dcc",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 738,
       "indexed": true,
@@ -758,7 +758,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb84e798cd9af29c0612ca4221240086006dd8e10103e95a48c96e98d54da7d9",
+      "geometryHash": "fff359dcd42e68bb80e3658ea57f7b60af7a3d65c8c29b014d0d2d7d28499537",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-canopy.primitive.0",
       "indexCount": 600,
       "indexed": true,
@@ -783,7 +783,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f7ca0a9a52b7d52e3b2470ac561b0b8e68d6eda036410eccf23509dca0b4e77b",
+      "geometryHash": "79b9d929582745529e0ae3d04369ec3fc2998be921635c72431530b4acebc886",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hook-armor-winglet-armor.primitive.0",
       "indexCount": 207,
       "indexed": true,
@@ -833,7 +833,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1e6212aa68cbafee27759e476a85035a2d26fa2f1e70a4b34297a5a40009c891",
+      "geometryHash": "900a73b39499c72842c3c5cd6564d2f150502e486199214e0e74137463c48057",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 270,
       "indexed": true,
@@ -933,7 +933,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "73199780f7a158313276fdf209420acbd8a96fe1792aac86f5695b8f18b3b4fa",
+      "geometryHash": "789b67de6053b8538c8c7c5632323864959fb820efadfbafd1398b8c460fb517",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hook-secondary-crane-mechanical.primitive.0",
       "indexCount": 966,
       "indexed": true,
@@ -983,7 +983,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ece9c1de5c37d8403763fd4f35fb46658fdeb662c4007f78dbfa92660843b914",
+      "geometryHash": "9feda7423b679ebb398f7017a3cbd9c70066f5165024f6527fe3e6b386208eef",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hook-secondary-crane-warning.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -1008,7 +1008,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3f9e4b4bba7244f0d93280a9af453f45d4a68f25854e0e7590aab14455ebedc0",
+      "geometryHash": "05dd8c2ae09b667fd3cbe2f5556d81dabcc40ca932f133850254c15361ddb2e5",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hook-secondary-turret-hull.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1033,7 +1033,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a9eb755d6991770d0f292e56313765b4fab98363b21a8ad7643525a84f88c826",
+      "geometryHash": "b72dfed96fd49b2db8a15143fcfcc36d03bc8dacf7a242d3b2d0f1715d89471f",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hook-secondary-turret-mechanical.primitive.0",
       "indexCount": 1242,
       "indexed": true,
@@ -1058,7 +1058,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "46c79baa5ce5beb88b8f697a3dd2fa21dfd0da69545246075e23794a82a83b36",
+      "geometryHash": "e3a823f844a210d95cdc927f70aaea3809070926e3682bc4a1090064816cc3c2",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hook-secondary-turret-mechanicaldark.primitive.0",
       "indexCount": 1386,
       "indexed": true,
@@ -1108,7 +1108,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "86507b2b389217f7229fbd538fe9f16c85e3368d28f39f68a894781da481861f",
+      "geometryHash": "5c1e24f90f91d4cb1729bbfd93e9c90a22318fb755bafc03e79cf92505b3b37d",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hook-sensor-dish-mechanical.primitive.0",
       "indexCount": 1080,
       "indexed": true,
@@ -1133,7 +1133,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0424e966655e05aafa1ec532573612abd6d8dbc0b0c01eb89ef088f200f2cdfc",
+      "geometryHash": "df90adf83f6de2fbecec82d51c36c8b067fdba7ac85271b89baa17dc3860912a",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hook-sensor-dish-mechanicaldark.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1158,7 +1158,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6ee16cf0a1c6718fc158e106506c392bd3a1463477b6ed0486e5808b8705a5cc",
+      "geometryHash": "89b9464b8fdb1b03bc005c2831025fd6ca8375f966f06d8c15eb9dd4c9663e7b",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hull-patch.primitive.0",
       "indexCount": 414,
       "indexed": true,
@@ -1167,7 +1167,7 @@
       "meshName": "LOD0_MOTION_HULL_CORE_Hull_patch.001",
       "nodeId": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hull-patch",
       "primitiveIndex": 0,
-      "vertexCount": 127
+      "vertexCount": 122
     },
     {
       "bounds": {
@@ -1183,7 +1183,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f2c51cc59d3475579f35d64be2025647d25591649ffbd31d6af6fd2778a9382",
+      "geometryHash": "fa22964023c5cbb418eb532f4d756ea08ccb251bd510d87e0d76931df595d3ff",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hull-primer.primitive.0",
       "indexCount": 183,
       "indexed": true,
@@ -1192,7 +1192,7 @@
       "meshName": "LOD0_MOTION_HULL_CORE_Hull_primer.001",
       "nodeId": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hull-primer",
       "primitiveIndex": 0,
-      "vertexCount": 87
+      "vertexCount": 97
     },
     {
       "bounds": {
@@ -1208,7 +1208,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5a0f5af83778e0159c5deae408c6976dda1148e4864bf686acd3064fae9d1f69",
+      "geometryHash": "9b96d47c58fa1042f0bd11f7c264484caa268a0d8401d644ddf36a8400a93dca",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-hull.primitive.0",
       "indexCount": 7923,
       "indexed": true,
@@ -1233,7 +1233,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "817a2d957bcba87ee7ffeef5410ef046ca91e5d79086ca9a8595633669439c33",
+      "geometryHash": "988ac4c352afd4f344096284ecb2510d39dea1bd9d88ca2210c4285057afdfbf",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-lights-cyan-copper.primitive.0",
       "indexCount": 2304,
       "indexed": true,
@@ -1308,7 +1308,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3b07b3c51bdb91319229c218f67209cdec1c0eb51ff4ecb0a2911e1440e269e9",
+      "geometryHash": "d6f549d079cc4b183518818dcc40d180650cf9f390ff2b3cc31cd7911ab5750d",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 6312,
       "indexed": true,
@@ -1333,7 +1333,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f36498109a9e3a1274477e47bd67c35b465b6cec80e09abd1fadacffb700de26",
+      "geometryHash": "08486662e10977d57e09b60b411d2769fb5d9af35d115c916d2db86929a296f1",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-mechanical.primitive.0",
       "indexCount": 9666,
       "indexed": true,
@@ -1358,16 +1358,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6d88e2f38ec8a1b079412db0c60e0a37ead4542bb2f2d42464019e07f49e0e0f",
+      "geometryHash": "39b52d1c1b860c2a5c0a3ffbf6c1ee10429085446ce945d7c8e634fa5c17e3f3",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-mechanicaldark.primitive.0",
-      "indexCount": 5244,
+      "indexCount": 5214,
       "indexed": true,
       "materialHash": "a02a9eed7019ab56a030e0563d21ed979e6b4c00e78b4dc14fa17a382a9c4057",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_MechanicalDark.001",
       "nodeId": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1653
+      "vertexCount": 1642
     },
     {
       "bounds": {
@@ -1383,7 +1383,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "380cb835a727ce48d340ef1fd85195928dfb1e32b33a6a11fae9d3ec5718566a",
+      "geometryHash": "f4eb54f2f46876e045c7ce50fa21db9642fbdefd4f47b6ef51732208d71e6fdc",
       "id": "sf.render.drifter-production-v1-lod1.mesh.lod0-motion-hull-core-warning.primitive.0",
       "indexCount": 189,
       "indexed": true,
@@ -3347,19 +3347,19 @@
       "sha256": "6946ccecf473707582bcdb31aa591d9b79a28b1617596e5c98af4610fc4a2ed0"
     },
     "sourceGlb": {
-      "bytes": 570996,
-      "sha256": "a6d17d63bee76e0432b604c2849b4716fc53484c96eedf414da71a42476a6602",
+      "bytes": 569820,
+      "sha256": "57519c7f1d508788b9fe2f5eac7c8267c008804141bb8feba947977ae4948e1d",
       "uri": "drifter_production_v1_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 823936,
-    "sha256": "364b4934cc770580483c96de0b69f269937d65ccff9530492072e52aeae7784c",
+    "bytes": 820292,
+    "sha256": "272d996fdbd706431007e8a4711ccf8079f5fa395f7cf1cca919e2310ac6a6c3",
     "uri": "render.glb"
   },
   "runtime": {
@@ -5082,7 +5082,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/drifter_production_v1_lod1.glb"
   },
-  "runtimeHash": "a0eba708ef502bc34dda78fc53009e9b0301edaeab97189da48d568eb52ed8ab",
+  "runtimeHash": "887ec172cfa1633dd2d9c5c7a3e32ae94413074a1a3f30dc59476d18056ef9fa",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

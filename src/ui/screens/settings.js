@@ -9,6 +9,7 @@ export { bindCommittedRange } from '../views/settingsControls.js';
 // UI reads state.settings for display; the write to state.settings is the UI/settings
 // module's own owned subtree (§3.3 owner: ui/settings), so writing it here is in-scope.
 
+import { laneWriteSetting } from '../../core/simLaneCommands.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import {
   DEFAULTS as INPUT_DEFAULTS,
@@ -516,6 +517,25 @@ export const settingsScreen = {
     hang.appendChild(bar);
     rootEl.appendChild(hang);
     rootEl.appendChild(pane);
+    // Scroll cue (UI polish #301): the pane hides its scrollbar, so a tab longer than the stage
+    // (Video, Controls at 720p) gave no hint that rows continue below. A quiet "More" chip sits on
+    // the stage's bottom edge while there is more to read; clicking it pages the pane down.
+    const more = el('button', 'orr-set-more', 'More');
+    more.type = 'button';
+    more.tabIndex = -1;
+    more.setAttribute('aria-hidden', 'true');
+    rootEl.appendChild(more);
+    const syncMore = () => {
+      const left = (Number(pane.scrollHeight) || 0) - (Number(pane.scrollTop) || 0) - (Number(pane.clientHeight) || 0);
+      more.classList.toggle('is-on', left > 8);
+      pane.classList.toggle('has-more', left > 8);
+    };
+    if (typeof pane.addEventListener === 'function') {
+      pane.addEventListener('scroll', syncMore, { passive: true });
+      more.addEventListener('click', () => { pane.scrollBy({ top: Math.max(120, pane.clientHeight * 0.8), behavior: 'smooth' }); });
+      if (typeof ResizeObserver === 'function') { const ro = new ResizeObserver(syncMore); ro.observe(pane); }
+      if (typeof MutationObserver === 'function') { new MutationObserver(() => requestAnimationFrame(syncMore)).observe(pane, { childList: true }); }
+    }
 
     const foot = el('footer', 'k-foot');
     const back = el('button', 'k-word k-word--emph sf-back', 'Back');
@@ -569,6 +589,9 @@ export const settingsScreen = {
     else s[key] = value;
     const payload = { section, key, value };
     if (persist === false) payload.persist = false;
+    // Worker-lane parity: the same write must land on the sim-owned settings
+    // subtree (sink-only on the main lane — falls through to applyLaneSetting).
+    laneWriteSetting(ctx.state, 'settings.' + (section ? section + '.' : '') + key, value);
     ctx.bus.emit('settings:changed', payload);
     try { if (refs && refs.preview) refs.preview.changed(section, key, s); } catch (e) { /* the preview is cosmetic */ }
   },
@@ -1132,6 +1155,8 @@ export const settingsScreen = {
     build.word('Reset to defaults', () => {
       s.controls.bindings = null;
       s.controls.masslineBindingProfile = MASSLINE_BINDING_PROFILE_SPACE;
+      laneWriteSetting(ctx.state, 'settings.controls.bindings', null);
+      laneWriteSetting(ctx.state, 'settings.controls.masslineBindingProfile', MASSLINE_BINDING_PROFILE_SPACE);
       ctx.bus.emit('settings:changed', { section: 'controls', key: 'bindings', value: null });
       this._render(ctx);
     }, 'Arrow keys always also work for movement.');
@@ -1227,6 +1252,10 @@ export const settingsScreen = {
       s.controls.bindings[action] = arr;
       live[action] = arr;
     }
+    // Ship the whole binding map: the delete-to-default path removes the key
+    // entirely, which a leaf write cannot express. Spread — the envelope must
+    // not carry a live reference (the map keeps mutating per bind).
+    laneWriteSetting(ctx.state, 'settings.controls.bindings', { ...s.controls.bindings });
     ctx.bus.emit('settings:changed', { section: 'controls', key: action, value: s.controls.bindings[action] });
     this._render(ctx); // refresh the rows to show the new label
   },

@@ -131,6 +131,11 @@ export function hullBurstWedgeHit(def, player, target) {
   if (!(dist > 1e-6)) return null;
   const nose = finite(player.radius, 12);
   const targetRadius = finite(target.radius, 8);
+  if (def.shape === 'radial') {
+    if (dist - targetRadius > def.reachWu) return null;
+    return { dist, along: dist, lateral: 0, radialX: rx / dist, radialZ: rz / dist,
+      fx: rx / dist, fz: rz / dist };
+  }
   const along = rx * fx + rz * fz;
   const lateral = Math.abs(rx * -fz + rz * fx);
   if (along < -targetRadius * 0.25) return null;
@@ -189,6 +194,7 @@ export const hullBurst = {
     const rt = this._ensureRuntime();
     if (!rt) return;
     rt.phase = 'ready'; rt.kind = null; rt.hits = 0; rt.grip = null;
+    delete rt.readyAt;
     this._held = null;
     this._boostHeld = false;
     this._latched = new WeakMap();
@@ -206,10 +212,17 @@ export const hullBurst = {
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
     if (!player || player.alive === false || (player.flags && player.flags.docked)) return false;
     if (state.mode && state.mode !== 'flight') return false;
+    if (state.ui?.screenStack?.length || state.input?.blocked || player.flags?.defeated) return false;
     const def = fittedHullBurst(state);
     if (!def) return false;
     if (rt.phase === 'active') return false;
     if (!boostBurstEnabled(state)) return false;
+    if (def.effect === 'horizon') {
+      const now = simNow(state);
+      if (now < finite(rt.readyAt) || finite(player.boost?.energy) < def.activationCost) return false;
+      player.boost.energy -= def.activationCost;
+      rt.readyAt = now + def.activationGapS;
+    }
     rt.phase = 'active';
     rt.kind = def.id;
     rt.hits = 0;
@@ -220,7 +233,8 @@ export const hullBurst = {
         reachWu: def.reachWu, halfAngleRad: def.halfAngleRad,
       });
       // Presentation only (bus events; the sim never reads them back): a gravitic thrum and a flare at the nose.
-      const nose = { x: player.pos.x + Math.cos(finite(player.rot)) * finite(player.radius, 12), z: player.pos.z + Math.sin(finite(player.rot)) * finite(player.radius, 12) };
+      const r = def.shape === 'radial' ? 0 : finite(player.radius, 12);
+      const nose = { x: player.pos.x + Math.cos(finite(player.rot)) * r, z: player.pos.z + Math.sin(finite(player.rot)) * r };
       this.bus.emit('audio:cue', { id: 'sfx_wpn_gravitic', position: nose, gain: 0.8 });
       this.bus.emit('presentation:vfxCue', {
         id: 'hullburst.ignite', lane: 'hullburst', pos: nose, sourceId: state.playerId, direction: { x: Math.cos(finite(player.rot)), z: Math.sin(finite(player.rot)) },
@@ -259,9 +273,13 @@ export const hullBurst = {
       this._boostHeld = false;
       this._end('boostEnded');
     }
+    if (rt.phase !== 'active' && boosting && fittedHullBurst(state)?.effect === 'horizon') this.activate();
     if (rt.phase !== 'active') return;
     const def = fittedHullBurst(state);
-    if (!player || player.alive === false || !def) { this._end('interrupted'); return; }
+    if (!player || player.alive === false || !def || def.id !== rt.kind
+      || state.ui?.screenStack?.length || player.flags?.docked || (state.mode && state.mode !== 'flight')) {
+      this._end('interrupted'); return;
+    }
     if (this._held) this._carry(state, rt, def, player);
     else this._sweep(state, rt, def, player);
   },
@@ -311,10 +329,31 @@ export const hullBurst = {
   /** One hostile (or not) inside the wedge: what happens is the fitted type's `effect`. Returns false if nothing was delivered. */
   _deliver(state, rt, def, player, target, geo, closing, bumperMass, hostile) {
     switch (def.effect) {
+      case 'horizon': return this._horizon(state, rt, def, player, target, geo, closing, bumperMass, hostile);
       case 'lance': return this._lance(state, rt, def, player, target, closing, hostile);
       case 'grip': return this._grip(state, rt, def, player, target, closing, hostile);
       default: return this._hurl(state, rt, def, player, target, geo, closing, bumperMass, hostile);
     }
+  },
+
+  // Hostile-only: never use a radial proximity test as permission to hit neutral traffic.
+  _horizon(state, rt, def, player, target, geo, closing, bumperMass, hostile) {
+    if (!hostile) return false;
+    const at = { x: finite(target.pos.x), z: finite(target.pos.z) };
+    const packet = scalarHitToDamagePacket({
+      damage: def.damage, damageType: 'energy', pos: at,
+      approach: { x: geo.radialX, z: geo.radialZ },
+      source: { kind: 'hull_burst', burst: def.id },
+    });
+    this._routeDamage({ attackerId: state.playerId, targetId: target.id, packet,
+      origin: { kind: 'hull_burst', id: def.moduleId } });
+    this._hurl(state, rt, def, player, target, geo, closing, bumperMass, true);
+    this.bus?.emit('presentation:vfxCue', {
+      id: 'hullburst.lance', lane: 'hullburst', pos: at, targetId: target.id,
+      direction: { x: geo.radialX, z: geo.radialZ }, magnitude: 3, particles: 16,
+      lights: 1, flashReduced: flashReduced(state),
+    });
+    return true;
   },
 
   /**

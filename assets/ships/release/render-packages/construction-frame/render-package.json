@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "baed1c8024eec708dfe8c534bc599c9cc387a69e3f3372735f254807882cc637",
+  "contentHash": "6a7004e744c6b2f7dddb40d86bca6b32cea586662da49ba2057278844cd2ecde",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -116,7 +116,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f530f039b50303688744d9ad6414ea02f0b0ea680adfd0ef5bd65d1f791f405",
+      "geometryHash": "60a8ad14dabbc317ce400db308439c29cea561a048e454cc0f1fa08bdefc801e",
       "id": "sf.render.construction-frame.mesh.end-a.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -125,7 +125,7 @@
       "meshName": "Sphere.002",
       "nodeId": "sf.render.construction-frame.mesh.end-a",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 142
     },
     {
       "bounds": {
@@ -141,7 +141,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66e1ba4e061314b852e4677897465228c63ac0a6c27e2ccc00a7f6ed4620c5aa",
+      "geometryHash": "b909f78add3e69b3e12c87646d100c8fd2d28b976e8569b7371716c24563b3d0",
       "id": "sf.render.construction-frame.mesh.end-f.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -150,7 +150,7 @@
       "meshName": "Sphere.001",
       "nodeId": "sf.render.construction-frame.mesh.end-f",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 142
     },
     {
       "bounds": {
@@ -2707,19 +2707,19 @@
       "sha256": "83242c800fbec38004c65f1249bfddf1bc3580b9708fb19ea136f4be707a75b3"
     },
     "sourceGlb": {
-      "bytes": 38184,
-      "sha256": "32250e0507dfeb1e047422733d08c20f21812cb3dd28351c32dd8f8635e2ee92",
+      "bytes": 38340,
+      "sha256": "067296cf4f21847b27c6c9a0cc92432b3190893737aaaf003ccc4fcb44a3f551",
       "uri": "place_construction_frame.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 97576,
-    "sha256": "a44651583258b632e925a40f370ca8ea65a37a480ee53c0400e2fb54447e9701",
+    "bytes": 96956,
+    "sha256": "e0adfc7e891dd7157e17d552124d90772868fd9a13aafe8db28b881aecb6a9de",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3925,7 +3925,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_construction_frame.glb"
   },
-  "runtimeHash": "ccf1d2d4ad364f2ddfa2a665fc538f123d50dae1da37998e27ac3e486d798228",
+  "runtimeHash": "9b0cfade09b5181fe7605f454a613e2aa15b7f7d0432fba9727b099a3deebc1a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

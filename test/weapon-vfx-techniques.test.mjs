@@ -109,6 +109,8 @@ test('distortion is a graph pass and stays off when nothing is live', () => {
     },
     clear() { clearHistory.push({ clear: true, color: clearColor.getHex(), alpha: clearAlpha }); },
     render() {},
+    renderAndCaptureList(scene, camera) { this.render(scene, camera); return { opaque: [], transmissive: [], transparent: [] }; },
+    renderCapturedList(scene, camera) { this.render(scene, camera); },
   };
   const graph = new SpaceRenderGraph(renderer, { ao: false, bloom: false });
   graph.setSize(64, 64);

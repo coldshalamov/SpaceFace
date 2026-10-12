@@ -16,6 +16,8 @@ import { svg } from '../orrery/svg.js';
 import { createSpring, reducedMotion } from '../orrery/motion.js';
 import { createCounter, decrypt } from '../orrery/text.js';
 import { dressLampKey } from '../orrery/lampKey.js';
+import { laneSetMode } from '../../core/simLaneCommands.js';
+import { getFlightFootage, createFootageViewer } from './flightFootage.js';
 
 export const REPLAY_LABEL = 'Replay';
 export const REPLAY_SCREEN_ID = 'replay';
@@ -49,6 +51,8 @@ export function requestReplaySeek(tick) {
 /** Resolve the recording from the in-memory store or a transient presentation field on state. */
 export function resolveReplayRecording(ctx) {
   if (activeRecording) return activeRecording;
+  const captured = getFlightFootage()?.recording();
+  if (captured) return captured;
   const state = ctx && ctx.state;
   const fromState = state && state.replay && state.replay.recording;
   return fromState || null;
@@ -91,8 +95,12 @@ export function replayFrameIndex(recording, elapsedSeconds) {
 /** The recorded snapshot slot for a given elapsed time (null when the ring no longer holds it). */
 export function replayFrameAt(recording, elapsedSeconds) {
   const index = replayFrameIndex(recording, elapsedSeconds);
-  if (index < 0 || !recording.snapshotRing) return null;
-  return recording.snapshotRing.get(index) || null;
+  if (index < 0) return null;
+  if (recording.snapshotRing) return recording.snapshotRing.get(index) || null;
+  const tick = (recording.absoluteBaseTick ?? recording.base ?? 0) + index;
+  let frame = null;
+  for (const row of recording.poseFrames || []) { if (row.tick > tick) break; frame = row; }
+  return frame;
 }
 
 function fmtTapeTime(seconds) {
@@ -124,7 +132,8 @@ export function replayTapeEvents(recording, director) {
     try { clips = director.list() || []; } catch (_) { clips = []; }
     for (const clip of clips) {
       if (!clip || typeof clip !== 'object') continue;
-      const tick = Number.isFinite(Number(clip.momentTick)) ? Number(clip.momentTick) : Number(clip.startTick);
+      const tick = (Number.isFinite(Number(clip.momentTick)) ? Number(clip.momentTick) : Number(clip.startTick))
+        - (recording?.absoluteBaseTick ?? 0);
       if (clip.kind === 'kill') push(tick, 'kill', clip.label || 'Kill');
       else if (clip.kind === 'death') push(tick, 'damage', clip.label || 'Death');
       else push(tick, 'stunt', clip.label || clip.trickId || 'Stunt');
@@ -207,6 +216,7 @@ function stopPlayback() {
 function disposeTapeView(view) {
   if (!view || view.disposed) return;
   view.disposed = true;
+  view.footageViewer?.dispose();
   if (view.raf != null && typeof cancelAnimationFrame === 'function') {
     cancelAnimationFrame(view.raf);
   }
@@ -279,7 +289,7 @@ function exitTape(view) {
 /** FLY TO RECORD: close the instrument and unpause into flight (pause's own resume path). */
 function flyToRecord(ctx) {
   closeReplay();
-  if (ctx && ctx.state && ctx.state.mode === 'paused') ctx.state.mode = 'flight';
+  if (ctx && ctx.state && ctx.state.mode === 'paused') laneSetMode(ctx.state, ctx.bus, 'flight');
   const mgr = ctx && (ctx.screenManager
     || (ctx.screens && ctx.screens.pushScreen ? ctx.screens : null)
     || (ctx.registry && ctx.registry.get && ctx.registry.get('ui') && ctx.registry.get('ui').screenManager));
@@ -469,6 +479,7 @@ function paintTapeFrame(view) {
   const ticks = summary.available ? summary.ticks : REPLAY_TAPE_SECONDS * 60;
   const tickRate = summary.available ? summary.tickRate : 60;
   const tick = Math.max(0, Math.min(ticks - 1, Math.floor(view.elapsed * tickRate)));
+  view.footageViewer?.show((view.recording.absoluteBaseTick ?? view.recording.base ?? 0) + tick).catch(() => {});
   const p = summary.seconds > 0 ? Math.max(0, Math.min(1, view.elapsed / summary.seconds)) : 0;
   if (view.fill && view.fillBloom) {
     const dash = p.toFixed(4) + ' 1';
@@ -596,6 +607,11 @@ function buildContent(container, recording, ctx) {
   };
 
   const veilTop = el('div', 'orr-replay__veil-top');
+  if (getFlightFootage()?.ring.frames.length) {
+    const footage = document.createElement('canvas'); footage.setAttribute('aria-label', 'Recorded flight');
+    Object.assign(footage.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', objectFit: 'contain', pointerEvents: 'none' });
+    container.append(footage); view.footageViewer = createFootageViewer(footage);
+  }
   veilTop.setAttribute('aria-hidden', 'true');
   const veilFoot = el('div', 'orr-replay__veil-foot');
   veilFoot.setAttribute('aria-hidden', 'true');
@@ -723,7 +739,8 @@ function buildContent(container, recording, ctx) {
     }
   };
   if (pendingSeekTick != null && summary.available) {
-    view._seekAfterMeasure = Math.max(0, Math.min(summary.ticks - 1, pendingSeekTick));
+    const relative = pendingSeekTick - (recording.absoluteBaseTick ?? 0);
+    view._seekAfterMeasure = Math.max(0, Math.min(summary.ticks - 1, relative));
     pendingSeekTick = null;
   } else {
     pendingSeekTick = null;
@@ -914,7 +931,7 @@ export const replayScreen = {
   },
 
   onShow(ctx) {
-    if (ctx && ctx.state && ctx.state.mode === 'flight') ctx.state.mode = 'paused';
+    if (ctx && ctx.state && ctx.state.mode === 'flight') laneSetMode(ctx.state, ctx.bus, 'paused');
     cue('open');
   },
 

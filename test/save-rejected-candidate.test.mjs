@@ -163,7 +163,7 @@ function assertRunUntouched(harness, blobBefore, context) {
     `${context}: a rejected save must not publish a loaded receipt`);
 }
 
-test('every rejected import class fails before the restore boundary with live state byte-identical', () => {
+test('every rejected import class fails before the restore boundary with live state byte-identical', async () => {
   const harness = makeHarness();
   const { save, events } = harness;
   const blobBefore = liveBlob(save);
@@ -212,7 +212,9 @@ test('every rejected import class fails before the restore boundary with live st
 
   for (const [label, raw, reason] of cases) {
     events.length = 0;
-    const accepted = save.importString(raw, 'import-slot');
+    // Deep rejects resolve on the sliced async lane (Promise<false>); O(1) rejects still
+    // answer sync false — awaiting covers both.
+    const accepted = await save.importString(raw, 'import-slot');
     assert.equal(accepted, false, `${label}: must be rejected`);
     const errors = events.filter((e) => e.name === 'save:error');
     assert.equal(errors.length, 1, `${label}: exactly one error receipt`);
@@ -339,7 +341,10 @@ test('a compressed import resolving inside an active restore defers and wins as 
   save._restoring = false;
   const deferred = save._pendingRunTransition;
   save._pendingRunTransition = null;
-  deferred();
+  // The deferred continuation re-enters the async restore lane — the queued
+  // drive completes across its frame yields, so await the drain before the
+  // same 'import won' assertions.
+  await deferred();
   assert.equal(state.economy.marker, 'imported-world');
   assert.equal(state.save.currentSlot, 'import-slot');
 });
@@ -361,13 +366,13 @@ test('a current-generation compressed import restores the imported campaign', as
   assert.equal(events.filter((e) => e.name === 'save:loaded' && e.payload.slot === 'import-slot').length, 1);
 });
 
-test('after rejected imports the campaign continues and a valid older save still loads', () => {
+test('after rejected imports the campaign continues and a valid older save still loads', async () => {
   const harness = makeHarness();
   const { save, state, events } = harness;
 
   // The player is mid-campaign; a bad file lands.
   const blobBefore = liveBlob(save);
-  assert.equal(save.importString('{trash', 'import-slot'), false);
+  assert.equal(await save.importString('{trash', 'import-slot'), false);
   assertRunUntouched(harness, blobBefore, 'mid-campaign rejection');
 
   // And then chooses a valid save from an older schema generation instead — it migrates on the

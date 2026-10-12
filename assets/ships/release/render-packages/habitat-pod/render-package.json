@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4e83c469a2c0f42234bceb43d0953af2bfaccf3f903a32a5ade0f9273abeb459",
+  "contentHash": "3832bab3286e590d4da75ffa6f85a75e9fc782fb2f890fe0af7e97d7b724df1a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -70,7 +70,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "978f3d396f32a23f967bb2b22369df9ed6cea42a8bc8472321848ec54e200400",
+      "geometryHash": "f6d199cd2a64125df4313d6984db5983a2eeb4d38ca906f401e513dbf3cd3085",
       "id": "sf.render.habitat-pod.mesh.collar.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -79,7 +79,7 @@
       "meshName": "Cylinder.005",
       "nodeId": "sf.render.habitat-pod.mesh.collar",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 64
     },
     {
       "bounds": {
@@ -95,7 +95,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ba681db63d4997ac6da4fc57976403002e2cf7fa32da5b6a113a98fa91e5bd3e",
+      "geometryHash": "bc0b4200e1c7aa4aed652542cc7ced5a10a756e9e55f132b236c8e9eaac3a26c",
       "id": "sf.render.habitat-pod.mesh.hatch.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -104,7 +104,7 @@
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.habitat-pod.mesh.hatch",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 64
     },
     {
       "bounds": {
@@ -120,7 +120,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f30c74a0c2d700c0f38e1ca6a2902beac408f3b828b1071a894711b3c3039f9",
+      "geometryHash": "e3973ce726b8dc6c3e8f2d3e9c5061a6d5e6b33deef829eaa490a739819f0489",
       "id": "sf.render.habitat-pod.mesh.hull-domea.primitive.0",
       "indexCount": 588,
       "indexed": true,
@@ -129,7 +129,7 @@
       "meshName": "Sphere.003",
       "nodeId": "sf.render.habitat-pod.mesh.hull-domea",
       "primitiveIndex": 0,
-      "vertexCount": 420
+      "vertexCount": 100
     },
     {
       "bounds": {
@@ -145,7 +145,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "acb1fcaf7e877213d2531ca603c09ee9130b970645939defbaeae7d139bc50fb",
+      "geometryHash": "946b4010802453217803f3effbe9c57adacdc868f430596489ce73b9495716ad",
       "id": "sf.render.habitat-pod.mesh.hull-domef.primitive.0",
       "indexCount": 588,
       "indexed": true,
@@ -154,7 +154,7 @@
       "meshName": "Sphere.001",
       "nodeId": "sf.render.habitat-pod.mesh.hull-domef",
       "primitiveIndex": 0,
-      "vertexCount": 420
+      "vertexCount": 100
     },
     {
       "bounds": {
@@ -170,7 +170,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc7cf00d7765ac39ac8ad5b224c08d37a2b46bfb8adb1fee921b37f84ec5faf9",
+      "geometryHash": "70337aee1b4e8c2cf8b12e06877567a0b1ff63cc3c69e53e3aaa4a4a6bd37747",
       "id": "sf.render.habitat-pod.mesh.hull-shell.primitive.0",
       "indexCount": 204,
       "indexed": true,
@@ -179,7 +179,7 @@
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.habitat-pod.mesh.hull-shell",
       "primitiveIndex": 0,
-      "vertexCount": 108
+      "vertexCount": 72
     },
     {
       "bounds": {
@@ -220,7 +220,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2399124838facf7e9016e502a90bbd97e77ff6175159af0e86807522b2a7d32b",
+      "geometryHash": "23f4bd35a38f919dd8b5b123d0a1d10938887fe7be1331c7403119cc5c7a3270",
       "id": "sf.render.habitat-pod.mesh.nav.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -229,7 +229,7 @@
       "meshName": "Sphere.004",
       "nodeId": "sf.render.habitat-pod.mesh.nav",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 142
     },
     {
       "bounds": {
@@ -445,7 +445,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7455129b7f419d9d9870ad6a7974e892692e621e039065971045fc44654ca1e6",
+      "geometryHash": "22b0f5209a7888dcb564a2ad31ae0494bd664e53cac15c703ffd32e60fd3a056",
       "id": "sf.render.habitat-pod.mesh.wing-boom.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -1505,19 +1505,19 @@
       "sha256": "db794d3351633bf089b0131c62bba7d50cef1bdc76dfa71309598bc6f96081fe"
     },
     "sourceGlb": {
-      "bytes": 26408,
-      "sha256": "e899fb7af48b3023334b4370dbe560a50ff7b95b730eb93798c27de91c948097",
+      "bytes": 27040,
+      "sha256": "31e453c8f953ffd39b53ebaaace94c05fa54891c8f6409ed3df445e0f226706d",
       "uri": "place_habitat_pod.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 52332,
-    "sha256": "c08ed35d090368b4a72263411872504d5f15615e40bdc650feba03aeeb3d3583",
+    "bytes": 42928,
+    "sha256": "c5acc34521b3d70f7bfdd8e8dd8dc19831b8798f03f5af9ab7fcae7c7123ac8b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2174,7 +2174,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_habitat_pod.glb"
   },
-  "runtimeHash": "d09250bc66a739a7e12608418b5b57fd1e78d1318797a91cc749cb8a73080f18",
+  "runtimeHash": "f60b31bb9e8c6d0368d2363fcbc87d25b77531a01475ce304dd7d5ea9b1f0e30",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

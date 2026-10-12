@@ -1,76 +1,433 @@
 {
- "schema": "spaceface.generatedArt.v1",
- "set": "codex plates",
- "use": "ORRERY section 5 \"Codex plates\": the art in the codex reader's circular aperture (src/ui/screens/codex.js)",
- "generator": "OpenAI image generation via codex exec -m gpt-5.5 (ChatGPT account), transparent PNG",
- "date": "2026-09-25",
- "license": "Generated for SpaceFace by the project; no third-party source image supplied.",
- "style": "Style: a codex plate for a hard sci-fi space-trucking game archive. A cinematic concept-art vignette composed to sit inside a circular porthole: the subject centred and filling the circle, painterly but precise, high detail, deep blue-black space and dark industrial shadow, warm sodium-amber work lights as the only strong colour, a touch of cold rim light, subtle film grain, square 1:1. Transparent background (alpha) outside a soft circular vignette that fades to fully transparent at the edge. Centred, no text, no letters, no numbers, no signage, no logos, no UI, no frame, no border.",
- "files": {
-  "beat0": {
-   "file": "beat0.webp",
-   "size": 640,
-   "use": "Story · B0 Cold Start",
-   "subject": "an impounded, battered mid-size cargo hauler sitting alone in a dark docking berth under a single hanging work lamp, one sealed cargo container strapped to its deck with a clipped paper manifest tag",
-   "alphaFromSource": true,
-   "sourceSha256": "ce10969edea68f2578ab9185e24910b61f658225272b92265b2986ba34f4d2e3"
+  "schema": "spaceface.generatedArt.v1",
+  "set": "codex plates",
+  "use": "ORRERY section 5 \"Codex plates\": the art in the codex reader's circular aperture (src/ui/screens/codex.js)",
+  "generator": "OpenAI built-in imagegen for entries; historical beat plates generated through Codex image generation.",
+  "date": "2026-10-12",
+  "license": "Generated for SpaceFace by the project; no third-party source image supplied.",
+  "style": "Contemporary dramatic space-opera art with several related treatments: atmospheric digital paintings, expressive concept-art scenes, graphic illustrations, and symbolic object studies. Deep indigo and charcoal anchor the set; cyan, amber, coral, violet, and pearl accents vary with faction and story. Each plate uses a readable square composition and a soft circular vignette with transparency outside. Avoid retro paperback/pulp-cover tropes, generic centered poster poses, and all-over text or interface.",
+  "files": {
+    "beat0": {
+      "file": "beat0.webp",
+      "size": 640,
+      "use": "Story · B0 Cold Start",
+      "subject": "an impounded, battered mid-size cargo hauler sitting alone in a dark docking berth under a single hanging work lamp, one sealed cargo container strapped to its deck with a clipped paper manifest tag",
+      "alphaFromSource": true,
+      "sourceSha256": "ce10969edea68f2578ab9185e24910b61f658225272b92265b2986ba34f4d2e3"
+    },
+    "beat1": {
+      "file": "beat1.webp",
+      "size": 640,
+      "use": "Story · B1 Honest Work",
+      "subject": "a cargo hauler towing a short train of shipping containers along a lit freight lane through a dim asteroid belt, one container freshly half-repainted",
+      "alphaFromSource": true,
+      "sourceSha256": "7b9917a73585aac8a1ba698032cdd641f0e24415ca84c9492e9314e555b531f3"
+    },
+    "beat2": {
+      "file": "beat2.webp",
+      "size": 640,
+      "use": "Story · B2 First Blood",
+      "subject": "a small armed hauler firing one tracer burst at a hostile fighter silhouetted against a burning asteroid, sparks and debris in the dark",
+      "alphaFromSource": true,
+      "sourceSha256": "0b50c74bc6f8ef444ce8b6443eb31054faca4fc7a0bf0a9e3c76dc73a4c5e65b"
+    },
+    "beat3": {
+      "file": "beat3.webp",
+      "size": 640,
+      "use": "Story · B3 Bigger Boat",
+      "subject": "a larger freighter hull held in a shipyard cradle under scaffolds and bright welding sparks, a single sale lamp glowing over the berth",
+      "alphaFromSource": true,
+      "sourceSha256": "9f81f57b4ebaef1cffd607c82aeb6305e98236b6fa39e52202d98dc5cb1f9eb3"
+    },
+    "beat4": {
+      "file": "beat4.webp",
+      "size": 640,
+      "use": "Story · B4 Pick a Side",
+      "subject": "three different warships holding station around one small clearing station, each ship lit by running lights of a different colour, one lit administrator window in the station",
+      "alphaFromSource": true,
+      "sourceSha256": "15eb0f046c7ce2f832dc2a8b2ad20e13416fac26049437ed5a44aa8a0810553e"
+    },
+    "beat7": {
+      "file": "beat7.webp",
+      "size": 640,
+      "use": "Story · B7 The Deep Reach, and the endgame choices offered there",
+      "subject": "a lone ship approaching a violet swirling anomaly at the edge of charted space, a dark derelict station silhouetted against its glow",
+      "alphaFromSource": true,
+      "sourceSha256": "22344c51af41fe7d28c04afb56e01607abd719ee03ef96512501ca699c17f69b"
+    },
+    "beat5": {
+      "file": "beat5.webp",
+      "size": 640,
+      "use": "Story · B5 Proving Ground",
+      "subject": "a salvage crew in suits cutting into a derelict ship inside a debris ring, sealed data cores carried out under floodlights",
+      "alphaFromSource": true,
+      "sourceSha256": "72f8c4134f8ec0a41d78e14dc27b17b85dd03787b08682c4b060c4e03a465da0"
+    },
+    "beat6": {
+      "file": "beat6.webp",
+      "size": 640,
+      "use": "Story · B6 Empire Seed",
+      "subject": "a first small automated mining outpost anchored to an asteroid, drones and a cargo tether, its first beacon light just switching on",
+      "alphaFromSource": true,
+      "sourceSha256": "44dc8b84610044d64a0b79fabceb813255cce5dff201c2466119c1527b94efc0"
+    }
   },
-  "beat1": {
-   "file": "beat1.webp",
-   "size": 640,
-   "use": "Story · B1 Honest Work",
-   "subject": "a cargo hauler towing a short train of shipping containers along a lit freight lane through a dim asteroid belt, one container freshly half-repainted",
-   "alphaFromSource": true,
-   "sourceSha256": "7b9917a73585aac8a1ba698032cdd641f0e24415ca84c9492e9314e555b531f3"
+  "note": "Story beats retain their original plates. The entries map adds dedicated art for all 17 unique wrecks, six persistent cargo effects, the four previously unillustrated figures, dynamic Codex/World record surfaces, and five distinct endings. Wreck art is shared between World and Discoveries; named captains and provenance records use faction crests; remaining discovery plates keep their authored stills.",
+  "artDirection": {
+    "visualUnity": "Dramatic light, authored silhouettes, layered atmosphere, and circular reader framing connect the set.",
+    "styleVariation": "Vary rendering and palette by subject: wreck scenes, archival still lifes, anonymous character scenes, and symbolic endings.",
+    "processing": "640x640 WebP; preserve source transparency or apply a soft circular alpha edge when the source is opaque."
   },
-  "beat2": {
-   "file": "beat2.webp",
-   "size": 640,
-   "use": "Story · B2 First Blood",
-   "subject": "a small armed hauler firing one tracer burst at a hostile fighter silhouetted against a burning asteroid, sparks and debris in the dark",
-   "alphaFromSource": true,
-   "sourceSha256": "0b50c74bc6f8ef444ce8b6443eb31054faca4fc7a0bf0a9e3c76dc73a4c5e65b"
-  },
-  "beat3": {
-   "file": "beat3.webp",
-   "size": 640,
-   "use": "Story · B3 Bigger Boat",
-   "subject": "a larger freighter hull held in a shipyard cradle under scaffolds and bright welding sparks, a single sale lamp glowing over the berth",
-   "alphaFromSource": true,
-   "sourceSha256": "9f81f57b4ebaef1cffd607c82aeb6305e98236b6fa39e52202d98dc5cb1f9eb3"
-  },
-  "beat4": {
-   "file": "beat4.webp",
-   "size": 640,
-   "use": "Story · B4 Pick a Side",
-   "subject": "three different warships holding station around one small clearing station, each ship lit by running lights of a different colour, one lit administrator window in the station",
-   "alphaFromSource": true,
-   "sourceSha256": "15eb0f046c7ce2f832dc2a8b2ad20e13416fac26049437ed5a44aa8a0810553e"
-  },
-  "beat7": {
-   "file": "beat7.webp",
-   "size": 640,
-   "use": "Story · B7 The Deep Reach, and the endgame choices offered there",
-   "subject": "a lone ship approaching a violet swirling anomaly at the edge of charted space, a dark derelict station silhouetted against its glow",
-   "alphaFromSource": true,
-   "sourceSha256": "22344c51af41fe7d28c04afb56e01607abd719ee03ef96512501ca699c17f69b"
-  },
-  "beat5": {
-   "file": "beat5.webp",
-   "size": 640,
-   "use": "Story · B5 Proving Ground",
-   "subject": "a salvage crew in suits cutting into a derelict ship inside a debris ring, sealed data cores carried out under floodlights",
-   "alphaFromSource": true,
-   "sourceSha256": "72f8c4134f8ec0a41d78e14dc27b17b85dd03787b08682c4b060c4e03a465da0"
-  },
-  "beat6": {
-   "file": "beat6.webp",
-   "size": 640,
-   "use": "Story · B6 Empire Seed",
-   "subject": "a first small automated mining outpost anchored to an asteroid, drones and a cargo tether, its first beacon light just switching on",
-   "alphaFromSource": true,
-   "sourceSha256": "44dc8b84610044d64a0b79fabceb813255cce5dff201c2466119c1527b94efc0"
+  "entries": {
+    "wreck-isc-vigilant": {
+      "file": "wreck-isc-vigilant.webp",
+      "size": 640,
+      "use": "Unique wreck · ISC Vigilant",
+      "subject": "A shattered patrol ship above the Veil nebula, with survey lights fading through a blue-green aurora.",
+      "artFamily": "wreck",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "2e346530817ec65f7788aedd1ff08d91922adaec0bfc0bb8322a1a5e539860ec",
+      "outputAlpha": true
+    },
+    "wreck-dmc-ironsong": {
+      "file": "wreck-dmc-ironsong.webp",
+      "size": 640,
+      "use": "Unique wreck · DMC Ironsong",
+      "subject": "A military hull split by a hard blue and amber nebula, its broken frame suspended above a planet.",
+      "artFamily": "wreck",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "2d15a8ed69216cbb11ee94e185353c28e5baa12cf490770d88ab8cac276ddc83",
+      "outputAlpha": true
+    },
+    "wreck-isc-lighthouse": {
+      "file": "wreck-isc-lighthouse.webp",
+      "size": 640,
+      "use": "Unique wreck · ISC Lighthouse",
+      "subject": "A damaged siege-ship prototype hangs above a glowing ashfall world.",
+      "artFamily": "wreck",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "bf8d3fb2c53426b4bab3e836134e02f7aecf96a24ca879c0b7dcc918626b0879",
+      "outputAlpha": true
+    },
+    "wreck-lanebreaker-pale-coil": {
+      "file": "wreck-lanebreaker-pale-coil.webp",
+      "size": 640,
+      "use": "Unique wreck · Lanebreaker Pale-Coil",
+      "subject": "An ancient pale hull and sealed prototype rest in a luminous vault-like debris field.",
+      "artFamily": "wreck",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "7eb9a63f2833507892d4a760512bae52f694b030aa591c8c9df953a231989b16",
+      "outputAlpha": true
+    },
+    "wreck-choir-bell-aegis": {
+      "file": "wreck-choir-bell-aegis.webp",
+      "size": 640,
+      "use": "Unique wreck · Choir-Bell Aegis",
+      "subject": "A monumental resonant fortress ship amid a field of quiet, bell-like debris.",
+      "artFamily": "wreck",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "1fd37f554f99d735faeeec53e9de7d59458f8995abda48164e4cada1178c3148",
+      "outputAlpha": true
+    },
+    "wreck-gravhand-tideline": {
+      "file": "wreck-gravhand-tideline.webp",
+      "size": 640,
+      "use": "Unique wreck · Gravhand Tideline",
+      "subject": "A fractured salvage vessel remains bound by live teal tractor filaments.",
+      "artFamily": "wreck",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "6fa5e0dacf9d093e50bde1b25674efe0e80f58d27c88a5b7010ad8d469cad978",
+      "outputAlpha": true
+    },
+    "wreck-nestbreaker": {
+      "file": "wreck-nestbreaker.webp",
+      "size": 640,
+      "use": "Unique wreck · Nestbreaker",
+      "subject": "A corsair flagship becomes a solemn battlefield shrine beneath a red torn sail.",
+      "artFamily": "wreck",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "19b2450988b6f19e49d9a680032ac245b49dbf96265769c4ab104875ca738f75",
+      "outputAlpha": true
+    },
+    "wreck-deepsurvey": {
+      "file": "wreck-deepsurvey.webp",
+      "size": 640,
+      "use": "Unique wreck · Deepsurvey",
+      "subject": "A survey craft listens at a towering ice fissure marked by a thin cyan pulse.",
+      "artFamily": "wreck",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "83d53b9288eba716d078fd9cfc014e45ed047f529d8d81fcaee41a8379054cad",
+      "outputAlpha": true
+    },
+    "wreck-smokesong": {
+      "file": "wreck-smokesong.webp",
+      "size": 640,
+      "use": "Unique wreck · Smokesong",
+      "subject": "A broken mercenary vessel lies in a rust-red nebula among frozen tracer flechettes.",
+      "artFamily": "wreck",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "6ce0cf8347e58656aa72d7bd1a4cefe3c6c6b868842dfbad55fd9912cd7fd709",
+      "outputAlpha": true
+    },
+    "wreck-choir-tender": {
+      "file": "wreck-choir-tender.webp",
+      "size": 640,
+      "use": "Unique wreck · Choir-Tender",
+      "subject": "A ruined relief freighter still shelters a small cluster of rescued habitat lights.",
+      "artFamily": "wreck",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "76a1be979c25a0f827f8bb877fdce7ed7eb2e322fc1e00e2b55d014a7693bac2",
+      "outputAlpha": true
+    },
+    "wreck-mts-silver-draft": {
+      "file": "wreck-mts-silver-draft.webp",
+      "size": 640,
+      "use": "Unique wreck · MTS Silver-Draft",
+      "subject": "A bright courier hull cuts a route through an outer debris field.",
+      "artFamily": "wreck",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "69e4a8cf05de31f5287afaa8a5d476809614e971bd1f60d5f7c364e6b222234a",
+      "outputAlpha": true
+    },
+    "wreck-choir-cassandra": {
+      "file": "wreck-choir-cassandra.webp",
+      "size": 640,
+      "use": "Unique wreck · Choir-Cassandra",
+      "subject": "A diplomatic yacht and treaty capsule drift through a violet-blue ice field.",
+      "artFamily": "wreck",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "0af2530e99258951c7acfd6ea85878970ed61a5416ddb8a1779c6b4d4b1afc5b",
+      "outputAlpha": true
+    },
+    "wreck-mts-quadrille": {
+      "file": "wreck-mts-quadrille.webp",
+      "size": 640,
+      "use": "Unique wreck · MTS Quadrille",
+      "subject": "A silent courier holds station over a derelict shelf, its signal pulsing once.",
+      "artFamily": "wreck",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "fa97fe386807e9fcf72b426315eafbda6bcf4e86c7cf4873ea0cb721225d7867",
+      "outputAlpha": true
+    },
+    "wreck-isc-double-entry": {
+      "file": "wreck-isc-double-entry.webp",
+      "size": 640,
+      "use": "Unique wreck · ISC Double-Entry",
+      "subject": "A customs cutter is divided between two registry lights and competing skies.",
+      "artFamily": "wreck",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "ddfd9a3bd8d0876269ecc6e246b93009fdc26b1b157d210194c2b98c64917041",
+      "outputAlpha": true
+    },
+    "wreck-dmc-first-notch": {
+      "file": "wreck-dmc-first-notch.webp",
+      "size": 640,
+      "use": "Unique wreck · DMC First-Notch",
+      "subject": "Siege evidence beacon burns above the dark edge of Vesta.",
+      "artFamily": "wreck",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "96f26138fe3a69a7f38941b29d2845d7d7333157606142e8a7cbd10e47a173e1",
+      "outputAlpha": true
+    },
+    "wreck-mts-regular": {
+      "file": "wreck-mts-regular.webp",
+      "size": 640,
+      "use": "Unique wreck · MTS Regular",
+      "subject": "A liner rests in a blockade graveyard as lifeboat lights thread into the dark.",
+      "artFamily": "wreck",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "3166e10c30685cea4f3035d4674a9874029bf7635814b0f26bd66fdb1467ca58",
+      "outputAlpha": true
+    },
+    "wreck-ceres-refinery-tender": {
+      "file": "wreck-ceres-refinery-tender.webp",
+      "size": 640,
+      "use": "Unique wreck · Ceres Refinery Tender",
+      "subject": "A refinery support vessel fractures above Ceres, trailing molten amber droplets.",
+      "artFamily": "wreck",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "721884f602803760fecb35729cb03dbed8dae000c9e347e20157102cff08529b",
+      "outputAlpha": true
+    },
+    "cargo-47a-assay-sample": {
+      "file": "cargo-47a-assay-sample.webp",
+      "size": 640,
+      "use": "Personal effect · 47-A Assay Sample",
+      "subject": "A sealed evidence vial with a luminous mineral fragment over an unmarked envelope.",
+      "artFamily": "artifact",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "1c24b14633e8d70bda83e1231d57397fe171bec4cf7aabb62d2cf93a5d70ceb9",
+      "outputAlpha": true
+    },
+    "cargo-unclassified-composite": {
+      "file": "cargo-unclassified-composite.webp",
+      "size": 640,
+      "use": "Personal effect · Unclassified Composite",
+      "subject": "A translucent layered fragment rests above a gloved hand, holding two starfields.",
+      "artFamily": "artifact",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "1bdeac08e9ea688a38946eb6623fcc43caa2b3df578d62462ebddd19a56ea8a4",
+      "outputAlpha": true
+    },
+    "cargo-vols-black-box": {
+      "file": "cargo-vols-black-box.webp",
+      "size": 640,
+      "use": "Personal effect · Captain Vols Black Box",
+      "subject": "A battered black box opens and releases a thin thread of recorded light.",
+      "artFamily": "artifact",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "bec229f573bd5e31605828c64fd4f6641c47b5d6daf1ab4a5fccda4b9e36bd54",
+      "outputAlpha": true
+    },
+    "cargo-vols-letter": {
+      "file": "cargo-vols-letter.webp",
+      "size": 640,
+      "use": "Personal effect · Letter to the Tessera",
+      "subject": "A blank sealed letter floats in a pool of cabin light before an empty pilot chair.",
+      "artFamily": "artifact",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "e632d87bb36143afb887364145924c97fe8efe1a9dc829296c49a04c08d72cca",
+      "outputAlpha": true
+    },
+    "cargo-personal-ledger": {
+      "file": "cargo-personal-ledger.webp",
+      "size": 640,
+      "use": "Personal effect · Personal Ledger",
+      "subject": "An open blank ledger sits in an abandoned station office with a route of amber light.",
+      "artFamily": "artifact",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "44c5af6d73d1e1a1cae34cd70feab17db355ff7059dc3b7f172a6242c777866e",
+      "outputAlpha": true
+    },
+    "cargo-navigational-data": {
+      "file": "cargo-navigational-data.webp",
+      "size": 640,
+      "use": "Personal effect · Navigational Data",
+      "subject": "Luminous route crystals connect across a dark map-table and a star-shaped absence.",
+      "artFamily": "artifact",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "b42fba59199aac887f6c7a10add5198aa527d4a472c70aa408e7ac36e8aacfc0",
+      "outputAlpha": true
+    },
+    "character-wren": {
+      "file": "character-wren.webp",
+      "size": 640,
+      "use": "Figure · Wren",
+      "subject": "The pilot is seen from behind in the Tessera cockpit, hand on a folded contract.",
+      "artFamily": "character",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "b8f4eb7491b7b29f885f5da3cbbee5a0570db047d5a1956e02cbc4ef60219422",
+      "outputAlpha": true
+    },
+    "character-vale": {
+      "file": "character-vale.webp",
+      "size": 640,
+      "use": "Figure · Director Vale",
+      "subject": "An anonymous silhouette overlooks the Concord fleet from an administrative tower.",
+      "artFamily": "character",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "884e2d24053207e0185da9957da7e3767bbe4a68d13027a911780cfc4bd3d96b",
+      "outputAlpha": true
+    },
+    "character-elroy": {
+      "file": "character-elroy.webp",
+      "size": 640,
+      "use": "Figure · Elroy",
+      "subject": "A maintenance worker faces a monumental engine bay with one diagnostic lamp.",
+      "artFamily": "character",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "8d73632ee64c8f12c32a47112611bc352ad825abb9860005c2bcc211a3204b4b",
+      "outputAlpha": true
+    },
+    "character-kurtz": {
+      "file": "character-kurtz.webp",
+      "size": 640,
+      "use": "Figure · Kurtz",
+      "subject": "A distant administrator sits alone before a dead station ring and one lit data lamp.",
+      "artFamily": "character",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "11bb3e610cd1034ff63972cff7340314aa65f61d7f4797ea7b1a9c480bc63110",
+      "outputAlpha": true
+    },
+    "codex-record": {
+      "file": "codex-record.webp",
+      "size": 640,
+      "use": "Figures · The Record",
+      "subject": "A cargo ship leaves a luminous trail through layered fragments of a world’s memory.",
+      "artFamily": "record",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "42010f008b9508818ee063cae5ff3b29cd29f5e83323cbb65db653de571ac005",
+      "outputAlpha": true
+    },
+    "reference-codes": {
+      "file": "reference-codes.webp",
+      "size": 640,
+      "use": "Ship · Reference Codes",
+      "subject": "Two persistent route-lines cross around a cargo ship without becoming readable interface.",
+      "artFamily": "record",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "451f43f7888ddcf6c60744b72401586eefb6ff88e206772181fba953ffa8795c",
+      "outputAlpha": true
+    },
+    "chronicler-story": {
+      "file": "chronicler-story.webp",
+      "size": 640,
+      "use": "World · Chronicler Stories",
+      "subject": "An observatory archives translucent memories of ships, signals, people, and routes.",
+      "artFamily": "record",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "15623ac27b1637678ab59ab34c77fdcf0c0fa43b517583e00fb5d09986dc9692",
+      "outputAlpha": true
+    },
+    "ending-a": {
+      "file": "ending-a.webp",
+      "size": 640,
+      "use": "Story · Ending A — The Clean Uniform",
+      "subject": "A pristine uniform hangs in a bright office as a small freighter passes outside.",
+      "artFamily": "ending",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "a7de1d844a343c1da4ae27f88eb62fca331d96712e8dbe0ac6f6051101f778bc",
+      "outputAlpha": true
+    },
+    "ending-b": {
+      "file": "ending-b.webp",
+      "size": 640,
+      "use": "Story · Ending B — The Same Silence",
+      "subject": "A working ship’s light disappears among dark route-lines while traffic continues.",
+      "artFamily": "ending",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "a9ba453fe50650710d815fef05fc216cc545e008996e2e0821b4ab2b5d5a22a1",
+      "outputAlpha": true
+    },
+    "ending-c": {
+      "file": "ending-c.webp",
+      "size": 640,
+      "use": "Story · Ending C — The Only Honest Option",
+      "subject": "A ship exits a violet aperture toward the same shipyard nested inside it.",
+      "artFamily": "ending",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "46f894d6a4192fbdb1a16e29410eb96577eabd21291e6c09b996259a95bd8406",
+      "outputAlpha": true
+    },
+    "ending-d": {
+      "file": "ending-d.webp",
+      "size": 640,
+      "use": "Story · Ending D — The Ledger Continues",
+      "subject": "An empty office and open ledger catch one thread of light beneath a station window.",
+      "artFamily": "ending",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "fb39335607c101d99f1d52146bf7befa5f785e4fe7098e04d8283cdb64853568",
+      "outputAlpha": true
+    },
+    "ending-e": {
+      "file": "ending-e.webp",
+      "size": 640,
+      "use": "Story · Ending E — The Next Run",
+      "subject": "A courier follows an amber route toward a waiting freighter at dusk.",
+      "artFamily": "ending",
+      "generator": "OpenAI built-in imagegen",
+      "sourceSha256": "cb66f662d5c60f258b33e4ccbd656d9a87982a61df900eebaf419f2573db7f3d",
+      "outputAlpha": true
+    }
   }
- },
- "note": "Section entries without a plate (comms, graffiti, discoveries without a still) stand their section glyph; figures use their portrait or faction crest; the Ship pages use the flown hull render."
 }

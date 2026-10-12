@@ -7,6 +7,7 @@ import { setEntityDoctrine } from '../ai/doctrine.js';
 import { witnessLineOfSight } from '../combat/lineOfSight.js';
 import { physicsBodyNativeReady, queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { drawSeeded, wrapAngle } from '../core/rng.js';
+import { syncEntitySectorMembership } from '../core/coreSystem.js';
 
 const owners = new WeakMap();
 const token = (key, id = 'tender') => `${key}:${id}`;
@@ -59,6 +60,7 @@ export const mothlight = { name: 'mothlight', init(ctx) {
   e.data.identityKey = token(key); e.data.worldRecordId = token(key); e.data.authoredAssetId = 'SF_SHIP_MOTHLIGHT_TENDER';
   e.data.visualRadius = MOTHLIGHT_VISUAL_RADIUS; e.data.name = 'Mothlight tender';
   e.flags = { ...e.flags, persistent: true };
+  syncEntitySectorMembership(this.state && this.state.entityIndex, e);
   this._bindings.set(token(key), { entity: e, life: e.occupantGeneration }); this._syncBody(e, row);
   return row;
 }, _find(key, id = 'tender', terminal = false) {

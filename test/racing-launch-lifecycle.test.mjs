@@ -3,15 +3,21 @@ import assert from 'node:assert/strict';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { save } from '../src/save/saveSystem.js';
-import { completeRacingLaunch, stageRacingLaunch, noteRacingNewGame } from '../src/ui/racingLaunch.js';
+import { raceLevelById, racingOfferFor, startLineFor } from '../src/data/raceLevels.js';
+import { armRacingContract, completeRacingLaunch, stageRacingLaunch, noteRacingNewGame } from '../src/ui/racingLaunch.js';
 
-function harness({ jumpState = 'IDLE', throwing = false, relocate = true } = {}) {
+function harness({ jumpState = 'IDLE', throwing = false, relocate = true, currentSectorId = 'sector_helios_prime' } = {}) {
   const state = createGameState(239), bus = createBus(), saveHost = { ...save }, events = [];
-  const player = { id: 1, alive: true, pos: { x: 0, z: 0 } };
+  const player = { id: 1, alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } };
   state.playerId = 1; state.entities.set(1, player); state.mode = 'flight';
-  state.world.currentSectorId = 'sector_helios_prime'; state.jump.state = jumpState;
-  const world = { relocatePlayerInSector: () => relocate };
-  const missions = { postAndAcceptAuthoredOffer: () => {
+  state.world.currentSectorId = currentSectorId; state.jump.state = jumpState;
+  const relocations = [], enteredSectors = [], acceptedOffers = [];
+  const world = {
+    relocatePlayerInSector: (position, options) => { relocations.push({ position, options }); return relocate; },
+    enterSector: (sectorId) => { enteredSectors.push(sectorId); state.world.currentSectorId = sectorId; },
+  };
+  const missions = { postAndAcceptAuthoredOffer: (offer) => {
+    acceptedOffers.push(offer);
     if (throwing) throw new Error('accept failed');
     return { ok: true, missionId: 'circuit' };
   } };
@@ -26,7 +32,8 @@ function harness({ jumpState = 'IDLE', throwing = false, relocate = true } = {})
   for (const event of ['race:armed', 'race:launchFailed', 'mission:abandon', 'save:started']) {
     bus.on(event, payload => events.push({ event, payload }));
   }
-  return { state, bus, saveHost, ctx, events, get result() { return result; }, get exitSuppressed() { return exitSuppressed; } };
+  return { state, bus, saveHost, ctx, events, player, world, relocations, enteredSectors, acceptedOffers,
+    get result() { return result; }, get exitSuppressed() { return exitSuppressed; } };
 }
 
 function start(h) {
@@ -43,6 +50,42 @@ test('the game:started route accepts canonical IDLE and retains temporary save p
   assert.ok(h.events.some(e => e.event === 'race:armed'));
   assert.equal(h.events.some(e => e.event === 'race:launchFailed'), false);
   assert.equal(completeRacingLaunch(h.ctx), null, 'a staged request is consumed once');
+});
+
+test('section missions arm in-sector without relocation or ship motion changes', () => {
+  const level = raceLevelById('level_junction_return');
+  const h = harness({ currentSectorId: level.sectorId });
+  h.player.pos = { x: 311, z: -220 };
+  h.player.vel = { x: 21, z: -9 };
+  const pos = { ...h.player.pos }, vel = { ...h.player.vel };
+  h.world.relocatePlayerInSector = undefined;
+
+  const result = armRacingContract(h.ctx, 'contract_junction_jam');
+
+  assert.equal(result.ok, true);
+  assert.equal(h.relocations.length, 0);
+  assert.deepEqual(h.player.pos, pos);
+  assert.deepEqual(h.player.vel, vel);
+  assert.equal(h.acceptedOffers[0].params.phase, 'approach');
+});
+
+test('a temporary section launch stages behind the start line and retains save protection', () => {
+  const h = harness();
+  const staged = stageRacingLaunch('contract_junction_jam');
+  h.bus.emit('game:new', { seed: staged.seed, racingSession: true });
+  h.bus.emit('game:started', {});
+
+  assert.equal(h.result.ok, true);
+  assert.deepEqual(h.enteredSectors, [raceLevelById('level_junction_return').sectorId]);
+  assert.equal(h.relocations.length, 1);
+  const line = startLineFor(racingOfferFor('contract_junction_jam').params);
+  assert.deepEqual(h.relocations[0].position, {
+    ...line,
+    x: line.x - Math.cos(line.heading) * 220,
+    z: line.z - Math.sin(line.heading) * 220,
+  });
+  assert.deepEqual(h.relocations[0].options, { reason: 'race_grid' });
+  assert.equal(h.saveHost._campaignSaveSuppressed(), true);
 });
 
 test('rejected or thrown temporary arming exits under quarantine and invalidates pending saves', () => {

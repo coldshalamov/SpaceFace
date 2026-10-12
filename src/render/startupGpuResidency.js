@@ -3,9 +3,13 @@ import { beginBootWork } from '../core/bootWork.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import { postTaskAtBackgroundPriorityBounded } from './compilePresentSlice.js';
 import {
+  detachPackageGeometry,
   detachPackageTexture,
   isPackageTextureDetached,
+  noteGeometryGpuResident,
+  packageTextureDetachCovers,
 } from './packageCpuDetach.js';
+import { releaseSharedImageSource } from './imageSourceDedupe.js';
 
 const STARTUP_GEOMETRY_BATCH_DRAWABLES = 4;
 const STARTUP_GEOMETRY_BATCH_BYTES = 8 * 1024 * 1024;
@@ -79,6 +83,16 @@ function textureUploadVersionMap(renderer) {
     textureUploadVersions.set(renderer, map);
   }
   return map;
+}
+
+/**
+ * F3 residency predicate: whether this renderer holds a live upload stamp for `texture` — the
+ * same `uploadVersions.get(texture) === texture.version` contract the loop enforces at :836.
+ * releaseSharedImageSource consults it per dedupe user before freeing the canonical payload.
+ */
+export function textureGpuResident(texture, renderer) {
+  const map = textureUploadVersions.get(renderer);
+  return !!map && map.get(texture) === texture.version;
 }
 
 function enqueueGeometryResidencyBatches(renderer, work, options = {}) {
@@ -267,6 +281,35 @@ export function* collectStartupGeometryDrawablesSteps(subjects, options = {}, sl
 }
 
 /**
+ * Unique drawable geometries under the subjects — the pending-gate census for cpu-detached
+ * package geometry. Quality-tier alternates ride the drawable collector's facade objects, so
+ * their geometries land in the same set.
+ */
+export function collectStartupGeometries(subjects, options = {}) {
+  const geometries = new Set();
+  for (const drawable of collectStartupGeometryDrawables(subjects, options)) {
+    if (drawable && drawable.geometry) geometries.add(drawable.geometry);
+  }
+  return [...geometries];
+}
+
+/** Stepped twin of collectStartupGeometries — same set, paced collect. */
+export function* collectStartupGeometriesSteps(subjects, options = {}, sliceEvery = 256) {
+  const it = collectStartupGeometryDrawablesSteps(subjects, options, sliceEvery);
+  let drawables;
+  for (;;) {
+    const step = it.next();
+    if (step.done) { drawables = step.value; break; }
+    yield;
+  }
+  const geometries = new Set();
+  for (const drawable of drawables) {
+    if (drawable && drawable.geometry) geometries.add(drawable.geometry);
+  }
+  return [...geometries];
+}
+
+/**
  * Instanced drawables whose backing geometry never passed a residency prepare. Scene-level
  * instance pools (authored package pools, asteroid batches) have no per-subject admission
  * owner: the only stamp they ever get comes from a whole-scene seal, so a cook that skips or
@@ -280,7 +323,12 @@ export function collectUnresidentInstancedDrawables(subjects) {
     const visit = (object) => {
       if (!object || object.isInstancedMesh !== true || !object.geometry) return;
       const data = object.geometry.userData;
-      if (data && data.spacefaceGpuResident === true) return;
+      if (data && data.spacefaceGpuResident === true) {
+        // Stamped = proven upload: instanced pools share package leaf geometry and never run a
+        // per-subject residency, so retry the mirror release here (idempotent until it lands).
+        detachPackageGeometry(object.geometry);
+        return;
+      }
       drawables.push(object);
     };
     if (typeof root.traverse === 'function') root.traverse(visit);
@@ -298,7 +346,10 @@ export function* collectUnresidentInstancedDrawablesSteps(subjects, sliceEvery =
   const visit = (object) => {
     if (!object || object.isInstancedMesh !== true || !object.geometry) return;
     const data = object.geometry.userData;
-    if (data && data.spacefaceGpuResident === true) return;
+    if (data && data.spacefaceGpuResident === true) {
+      detachPackageGeometry(object.geometry);
+      return;
+    }
     drawables.push(object);
   };
   for (const root of subjectRoots(subjects)) {
@@ -381,7 +432,12 @@ function createGeometryWorkItems(drawables, options = {}) {
     // F9 recook must not 1x1 ordinary geos the first cook already stamped.
     if (!ignoreStamps
         && geometry.userData && geometry.userData.spacefaceGpuResident === true
-        && !object.isInstancedMesh) continue;
+        && !object.isInstancedMesh) {
+      // Sealed by an earlier pass: retry the CPU-mirror release (deferred releases are the
+      // texture-detach retry semantics applied to geometry).
+      detachPackageGeometry(geometry);
+      continue;
+    }
     let estimatedBytes = firstGeometryUse ? geometryByteLength(geometry) : 0;
     if (object.isInstancedMesh) {
       estimatedBytes += attributeByteLength(object.instanceMatrix);
@@ -408,7 +464,10 @@ function* createGeometryWorkItemsSteps(drawables, options = {}) {
     if (!firstGeometryUse && !object.isInstancedMesh) continue;
     if (!ignoreStamps
         && geometry.userData && geometry.userData.spacefaceGpuResident === true
-        && !object.isInstancedMesh) continue;
+        && !object.isInstancedMesh) {
+      detachPackageGeometry(geometry);
+      continue;
+    }
     let estimatedBytes = firstGeometryUse ? geometryByteLength(geometry) : 0;
     if (object.isInstancedMesh) {
       estimatedBytes += attributeByteLength(object.instanceMatrix);
@@ -743,6 +802,11 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
             if (geometry) {
               const data = geometry.userData || (geometry.userData = {});
               data.spacefaceGpuResident = true;
+              // The proxy render proved this context's attribute records: note the ledger for
+              // the N2 pending gate, then release the marked non-kept CPU arrays (position +
+              // index stay live for raycast/bounds).
+              noteGeometryGpuResident(geometry, renderer);
+              detachPackageGeometry(geometry, renderer);
             }
           }
           results.push(receipt);
@@ -832,8 +896,10 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
       && uploadVersions.get(texture) === texture.version) {
       // A stamped package texture may still carry its CPU mirror: detach is deferred while
       // dedupe siblings share its payload records, so retry the release — once this texture is
-      // the entry's last live user the bytes can actually leave.
+      // the entry's last live user the bytes can actually leave. F3 also attempts the shared
+      // release: canonical source.data leaves once EVERY live user is stamped on this renderer.
       detachPackageTexture(texture);
+      releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer), packageTextureDetachCovers);
       residentTextures += 1;
       textureProgress.update(index + 1);
       // Resident rows skip the upload path's yield — a mostly-resident
@@ -848,7 +914,9 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
     if (isPackageTextureDetached(texture)) {
       // The CPU mirror was released after its proven upload. There is nothing to upload until a
       // context-restore rehydrate refills it — uploading now would push empty mips over the live
-      // copy, so count it resident and skip.
+      // copy, so count it resident and skip. Its dedupe siblings may still share an unreleased
+      // canonical source — this stamp may be the one that completes the release.
+      releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer), packageTextureDetachCovers);
       residentTextures += 1;
       textureProgress.update(index + 1);
       if ((index & 255) === 255 || now() - scanStrideAt >= 2) {
@@ -876,8 +944,10 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
         uploads.push({ name, width, height, durationMs });
         uploadVersions.set(texture, texture.version);
         // The GPU copy is proven: release the decoded CPU mirror (mipmaps/source.data) for
-        // marked render-package textures. Context restore rehydrates them on demand.
+        // marked render-package textures. Context restore rehydrates them on demand. The same
+        // stamp may complete a dedupe entry's all-resident set — attempt the shared release.
         detachPackageTexture(texture);
+        releaseSharedImageSource(texture, (user) => textureGpuResident(user, renderer), packageTextureDetachCovers);
       }
       reportBlockingSlice(onBlockingSlice, {
         kind: 'gpuResidencyUpload',

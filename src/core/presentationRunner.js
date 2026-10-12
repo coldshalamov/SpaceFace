@@ -964,7 +964,14 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     const rebuiltJournal = rebuildJournalIfNeeded();
     if (!rebuiltJournal && presentationJournal?.needsRebuild?.() !== true
       && completedTickCount > 0) {
-      mergeJournalRange(latestCompletedTick.journalStart, latestCompletedTick.journalEnd);
+      if (mergeJournalRange(latestCompletedTick.journalStart, latestCompletedTick.journalEnd)
+        && latestCompletedTick.fullRebuild === true) {
+        // Lane-supplied rebuild: the consumed range already IS the worker's
+        // rebuild set — flag the pending range as a full rebuild so the
+        // publisher re-seats instead of applying deltas.
+        pendingJournalFullRebuild = true;
+        pendingJournalRebuildGeneration = latestCompletedTick.rebuildGeneration || 0;
+      }
     }
 
     const alpha = simulationRunner.interpolationAlpha();
@@ -1294,37 +1301,54 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         notifyPresentationFailure('PRESENTATION_FAILED', diagnostics.lastFrameError);
       }
     } finally {
-      if (perf && typeof perf.recordFrameCallback === 'function') {
-        perf.recordFrameCallback(measureNow() - callbackStart);
-      }
-      // In the same `finally` as recordFrameCallback so a frame that threw still closes its counter
-      // frame. Without this an error would fold two frames' counts into one and silently understate
-      // the per-frame peak, which is the number the zero-budgets are actually about.
-      if (perf) {
-        // Renderer diagnostics publish the completed multipass frame after renderUpdate. Sampling
-        // here binds draw/triangle and residency facts to this presentation frame; sampling at the
-        // opening boundary would silently report the preceding frame instead.
-        perf.tier1?.sampleRendererFrame(renderedSnapshot ? state.render?.diagnostics?.info : null);
-        perf.tier1?.endFrame();
+      // The tail must never abort the frame function: a throw past this finally's catch path
+      // skips schedule() and dies silently — frameHandle is already null and nothing else
+      // reschedules. Keep every tail consumer inside its own guard so schedule() stays
+      // unconditional.
+      try {
+        if (perf && typeof perf.recordFrameCallback === 'function') {
+          perf.recordFrameCallback(measureNow() - callbackStart);
+        }
+        // In the same `finally` as recordFrameCallback so a frame that threw still closes its
+        // counter frame. Without this an error would fold two frames' counts into one and
+        // silently understate the per-frame peak, which is the number the zero-budgets are
+        // actually about.
+        if (perf) {
+          // Renderer diagnostics publish the completed multipass frame after renderUpdate.
+          // Sampling here binds draw/triangle and residency facts to this presentation frame;
+          // sampling at the opening boundary would silently report the preceding frame instead.
+          perf.tier1?.sampleRendererFrame(renderedSnapshot ? state.render?.diagnostics?.info : null);
+          perf.tier1?.endFrame();
+        }
+      } catch (tailErr) {
+        frame._tailErrs = (frame._tailErrs || 0) + 1;
+        if (frame._tailErrs <= 20) console.error('[loop] frame tail error:', tailErr);
+        else if (frame._tailErrs === 21) console.error('[loop] further frame tail errors suppressed');
       }
       captureWitness();
     }
 
-    if (!destroyed && !suspended) checkGraphicsRecovery(now);
-    // renderUpdate may synchronously trigger the full terminal closer. Never complete a restore
-    // transition after its audio/listener/transport owners have already been destroyed.
-    if (!mustRescheduleAfterFrame({ destroyed })) return;
-    if (destroyed) return;
-    if (restoring && renderedSnapshot && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING) {
-      diagnostics.restoreFrameCount++;
-      diagnostics.restoreTarget = null;
-      setAudioLifecycle('resumeFromLifecycle', 'restore-frame-complete');
-      recordState(restoreTarget, 'restore-frame-complete');
-      // Restore rendering and synchronous owner wake-up are presentation work, not elapsed
-      // foreground simulation time. Start the ordinary fixed-step clock after that work commits.
-      last = nowMs();
-      diagnostics.timestampResetCount++;
-      postRestoreFramePending = true;
+    try {
+      if (!destroyed && !suspended) checkGraphicsRecovery(now);
+      // renderUpdate may synchronously trigger the full terminal closer. Never complete a restore
+      // transition after its audio/listener/transport owners have already been destroyed.
+      if (!mustRescheduleAfterFrame({ destroyed })) return;
+      if (destroyed) return;
+      if (restoring && renderedSnapshot && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING) {
+        diagnostics.restoreFrameCount++;
+        diagnostics.restoreTarget = null;
+        setAudioLifecycle('resumeFromLifecycle', 'restore-frame-complete');
+        recordState(restoreTarget, 'restore-frame-complete');
+        // Restore rendering and synchronous owner wake-up are presentation work, not elapsed
+        // foreground simulation time. Start the ordinary fixed-step clock after that work commits.
+        last = nowMs();
+        diagnostics.timestampResetCount++;
+        postRestoreFramePending = true;
+      }
+    } catch (tailErr) {
+      frame._tailErrs = (frame._tailErrs || 0) + 1;
+      if (frame._tailErrs <= 20) console.error('[loop] frame tail error:', tailErr);
+      else if (frame._tailErrs === 21) console.error('[loop] further frame tail errors suppressed');
     }
     schedule();
   }

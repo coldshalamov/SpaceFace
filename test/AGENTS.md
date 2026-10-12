@@ -16,5 +16,5 @@ regression fixtures.
 - UI/render claims still need a representative runtime probe or screenshot when feasible; DOM/source
   assertions alone are not visual acceptance.
 - Gameplay changes also attach the player-truth verdict and contact sheet
-  (`npm run player-truth -- --mode=<mode>`); a FAIL blocks landing. Its checks are covered by
-  `test/player-truth-*.test.mjs` fixtures.
+  (`npm run player-truth -- --mode=<mode> --gate`); a FAIL blocks landing. UNKNOWN on a core
+  check is a FAIL. Its checks are covered by `test/player-truth-*.test.mjs` fixtures.

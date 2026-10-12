@@ -1765,6 +1765,184 @@ if (new Set(SEDNA_POCKET_ACTOR_SLOT_ORDER).size !== SEDNA_POCKET_ACTOR_SLOT_ORDE
 assertDistinctRouteTopology(SEDNA_ACTIVITY_POCKETS, SEDNA_ROUTE_TOPOLOGY, 'Sedna');
 
 // ───────────────────────────────────────────────────────────────────────────────────────────────
+// CR-HOLLOW-3 — Sker Haven: the Bazaar's shift. Sker is not a hollow rim — trafficPerMin 9 keeps
+// an apron of ambient haulers on the lanes — but the ambient scatter is anonymous, while the
+// sector's own authored material already promised a working place nobody could see. The zone
+// ledger says it outright: Skerris Deep is "an open pirate haven — the Reach fence stolen cargo
+// and refit raiders here"; the belt zone is "Seams mined by press-ganged crews under Reach guns";
+// and station_sker's berth is repGated — "you're vouched for or you're cargo" — which means the
+// DOOR is a character in this sector, not a radius. These pockets are those three sentences made
+// visible — not density: two pockets, four bodies. At the bazaar apron the fence's runner makes
+// the off-manifest leg between the hold pod and the last straight into the berth while a Reach
+// gun holds the vetting chord across the arrival face; out in the Press-Gang Seams a worked crew
+// hull shuttles between the face and the tally crate while the gun that owns them flies the watch
+// line back toward the camp that posted it. The Reach is not law — security 0.08, no lawful hulls,
+// nobody arrives shooting (the gate-camp zone owns the hostile presence; these are working hulls).
+// Same band and topology laws as Ceres; no earlier pocket id is copied. Bearings are taken from
+// the geography that exists: the hold pod sits on the true bearing to poi_stash, the picket's
+// pallas-face mark on the true bearing to the Pallas gate, the seam's face and the gun's camp line
+// on the true bearing to zone_sker_gatecamp, and the tally crate under its own mark's bearing.
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+
+export const SKER_ACTIVITY_SECTOR_ID = 'sector_sker_haven';
+/** Two pockets × two actors: the fence's apron, the press-gang seam. */
+export const SKER_AUTHORED_ACTIVITY_CAPACITY = 4;
+
+const skerZones = requireArray(SECTOR_ZONES[SKER_ACTIVITY_SECTOR_ID], 'Sker sector zones');
+const skerAnchors = requireRecord(SECTOR_ANCHORS[SKER_ACTIVITY_SECTOR_ID], 'Sker sector anchors');
+const skerHavenZone = findById(skerZones, 'zone_sker_haven', 'Skerris Deep zone');
+const skerBeltZone = findById(skerZones, 'zone_sker_belt', 'Press-Gang Seams zone');
+// Gate-camp, stash, and Pallas-gate rows are loaded as existence proofs, not consumed directly —
+// the comments below cite their true bearings, so a missing or renamed row must fail at load.
+const skerGatecampZone = findById(skerZones, 'zone_sker_gatecamp', 'Reach Gate-Camp zone');
+const stationSker = findById(skerAnchors.stations, 'station_sker', 'Sker Bazaar station anchor');
+const stashPoi = findById(skerAnchors.pois, 'poi_stash', 'Sker stash POI');
+const skerField = findById(skerAnchors.fields, 'f_sker_1', 'Sker seam field');
+// Gate rows key on `to`, not `id` — the picket's pallas-face mark cites this bearing.
+const pallasGate = requireRecord(
+  requireArray(skerAnchors.gates, 'Sker gates').find((gate) => gate && gate.to === 'sector_pallas_drift'),
+  'Sker Pallas gate',
+);
+
+// The Bazaar is the Deep's heart; the seam's zone heart IS the field it works.
+assertSamePoint(stationSker.pos, skerHavenZone.center, 'station_sker / zone_sker_haven');
+assertSamePoint(skerBeltZone.center, skerField.center, 'zone_sker_belt / f_sker_1');
+
+const skerApronId = 'sker_bazaar_apron';
+const skerSeamId = 'sker_press_gang_seam';
+
+function skerActor(id, pocketId, role, jobKind, spawn, routeId, durationS, marks, { lawful = false, receiptType = null } = {}) {
+  return actor({
+    id,
+    pocketId,
+    namespace: 'sker',
+    presentationRole: role,
+    jobKind,
+    lawful,
+    passive: true,
+    spawnOffset: spawn,
+    route: route({ id: routeId, jobKind, durationS, receiptType, marks }),
+  });
+}
+
+const skerApronObjects = Object.freeze([
+  // The fence's hold pod: off-manifest freight sits just off the berth line on the true bearing
+  // to the real stash at poi_stash — the pod is where the apron's goods actually live, and the
+  // runner's far leg points through it stash-ward. Descriptor-only, like every non-Ceres object
+  // slot: the targetRef gives the route marks a name to point at, not a materialized body.
+  // Band-edge watch: the pod resolves at ~94.6 WU — a hair under the immediate band ceiling —
+  // so any offset nudge positive pushes it out of the band the pocket asserts.
+  objectSlot({
+    id: 'sker_fence_hold_pod',
+    pocketId: skerApronId,
+    kind: 'cargo_staging_pod',
+    offset: point(-55, -77),
+    runtimeOwner: 'world',
+    targetRef: 'object:sker_fence_hold_pod',
+  }),
+]);
+
+const skerSeamObjects = Object.freeze([
+  // The crate that tallies the take: a press-ganged crew's cut is not theirs to keep, so the seam
+  // owns a count point — parked on the hulk side of the anchor under the toiler's tally mark.
+  objectSlot({
+    id: 'sker_seam_tally_crate',
+    pocketId: skerSeamId,
+    kind: 'cargo_staging_pod',
+    offset: point(20, 82),
+    runtimeOwner: 'world',
+    targetRef: 'object:sker_seam_tally_crate',
+  }),
+]);
+
+const skerApronActors = Object.freeze([
+  // The fence's fetch: the off-manifest leg out toward the hold pod (on the stash's true bearing,
+  // -125.5 deg) and back onto the apron's arrival leg. Transit-lane family, 165.7 deg / 223.7 WU
+  // over 22 s — the fastest route in the sector, because a fence's run is a run, not a beat.
+  skerActor('sker_apron_runner', skerApronId, 'smuggler', 'hauler', point(-50, -40),
+    'sker_apron_fetch_run', 22, [
+      mark('sker_runner_hold_leg', -67, -94, 'object:sker_fence_hold_pod'),
+      mark('sker_runner_apron_leg', 84, 71, 'dest:station_sker'),
+    ], { receiptType: 'freight:arrival' }),
+  // The door vets standing: a Reach gun on the vetting chord across the arrival face — one end
+  // on the Pallas approach bearing (-55.7 deg vs the gate's own -55.5), the other across the
+  // north face the deep opens into. Wide chord, 90.7 deg / 156.5 WU over 44 s — the slowest
+  // route in the sector, because a picket on the door is a held line, not a patrol.
+  skerActor('sker_door_picket', skerApronId, 'pirate', 'patrol', point(50, 25),
+    'sker_door_vetting_chord', 44, [
+      mark('sker_picket_pallas_face', 62, -91, 'activity:sker-door-pallas-face'),
+      mark('sker_picket_north_face', 90, 63, 'activity:sker-door-north-face'),
+    ]),
+]);
+
+const skerSeamActors = Object.freeze([
+  // The crew that is worked: a mining barge shuttling between the seam's face — on the true
+  // bearing to the gate-camp whose guns cover it (-41.7 deg vs the camp's own -41.55) — and the
+  // crate that tallies the take, parked under the tally mark's own bearing (+76.5 deg). Wedge
+  // opened wide, 118.2 deg / 197.5 WU over 40 s — a worked pace between two fixed points of work.
+  skerActor('sker_seam_toiler', skerSeamId, 'miner', 'miner', point(-42, -28),
+    'sker_seam_tally_loop', 40, [
+      mark('sker_toiler_face', 82, -73, 'field:f_sker_1'),
+      mark('sker_toiler_tally', 28, 117, 'object:sker_seam_tally_crate'),
+    ], { receiptType: 'mining:npcExtraction' }),
+  // The gun the crew is worked under: a Reach raider flying the watch line — one end aimed back
+  // at the camp that posted it (-41.6 deg, the same bearing as the face it covers), the other
+  // swung across the seam's working side (+110.3 deg). Wide oblique, 151.9 deg / 223.3 WU over
+  // 38 s — a covering arc over somebody else's work, distinct from the door's held chord.
+  skerActor('sker_seam_gun', skerSeamId, 'pirate', 'patrol', point(46, 34),
+    'sker_seam_watch_line', 38, [
+      mark('sker_gun_camp_line', 90, -80, 'activity:sker-gun-camp-line'),
+      mark('sker_gun_seam_side', -38, 103, 'activity:sker-gun-seam-side'),
+    ]),
+]);
+
+export const SKER_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: skerApronId,
+    label: 'Bazaar Apron',
+    identity: Object.freeze({ zoneId: skerHavenZone.id, stationId: stationSker.id }),
+    anchor: canonicalAnchor({
+      kind: 'station', id: stationSker.id, zoneId: skerHavenZone.id,
+      placeId: stationSker.id, localPos: stationSker.pos,
+    }),
+    actorSlots: skerApronActors,
+    objectSlots: skerApronObjects,
+    sectorId: SKER_ACTIVITY_SECTOR_ID,
+  }),
+  pocket({
+    id: skerSeamId,
+    label: 'Press-Gang Seam',
+    identity: Object.freeze({ zoneId: skerBeltZone.id, fieldId: 'f_sker_1' }),
+    anchor: canonicalAnchor({
+      kind: 'zone', id: skerBeltZone.id, zoneId: skerBeltZone.id,
+      placeId: null, localPos: skerBeltZone.center,
+    }),
+    actorSlots: skerSeamActors,
+    objectSlots: skerSeamObjects,
+    sectorId: SKER_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const SKER_ACTIVITY_POCKET_ORDER = Object.freeze(SKER_ACTIVITY_POCKETS.map((entry) => entry.id));
+export const SKER_ACTIVITY_POCKETS_BY_ID = Object.freeze(Object.fromEntries(
+  SKER_ACTIVITY_POCKETS.map((entry) => [entry.id, entry]),
+));
+export const SKER_POCKET_ACTOR_SLOT_ORDER = Object.freeze(SKER_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const SKER_ROUTE_TOPOLOGY = Object.freeze(SKER_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+
+if (SKER_POCKET_ACTOR_SLOT_ORDER.length !== SKER_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Sker authored capacity mismatch: ${SKER_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(SKER_POCKET_ACTOR_SLOT_ORDER).size !== SKER_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Sker authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(SKER_ACTIVITY_POCKETS, SKER_ROUTE_TOPOLOGY, 'Sker');
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
 // The registry. Everything downstream reads this instead of a Ceres constant, which is the whole
 // reason a second sector can exist here at all.
 // ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -1778,6 +1956,7 @@ export const ACTIVITY_POCKETS_BY_SECTOR = Object.freeze({
   [VESTA_ACTIVITY_SECTOR_ID]: VESTA_ACTIVITY_POCKETS,
   [TETHYS_ACTIVITY_SECTOR_ID]: TETHYS_ACTIVITY_POCKETS,
   [SEDNA_ACTIVITY_SECTOR_ID]: SEDNA_ACTIVITY_POCKETS,
+  [SKER_ACTIVITY_SECTOR_ID]: SKER_ACTIVITY_POCKETS,
 });
 
 export const ACTIVITY_POCKET_SECTOR_IDS = Object.freeze(Object.keys(ACTIVITY_POCKETS_BY_SECTOR));

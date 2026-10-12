@@ -60,7 +60,7 @@ export const RUUD_LINES = Object.freeze({
   hatch: 'HOOK-LEFT: The sign is bolted through the fin. A cab cannot read it.',
   cut: 'HOOK-LEFT: Serial 14-K. Suit is on the backup bladder.',
   memorial: 'HOOK-LEFT: Serial 14-K is on the hook. The left gantry stays shut.',
-  weapon: 'HOOK-LEFT: Fin-3. Cold face on the suit. The root is still cherry.',
+  weapon: 'HOOK-LEFT: The filing is closed. The root is still cherry.',
 });
 
 const PARTS = Object.freeze(['fin', 'suit', 'buoy']);

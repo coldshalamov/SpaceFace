@@ -12,6 +12,8 @@ import {
   governorEntryBlockReasons,
   isGovernorEntryEvictable,
   isGovernorOwnerEvictable,
+  memoryUnitList,
+  numericBytes,
 } from './resourceGovernor.js';
 export { residencyEvictionCeiling };
 import * as THREE from 'three';
@@ -62,11 +64,76 @@ export function createAssetResidencyRegistry(options = {}) {
   const assets = new Map();
   const resources = new Map();
   const memoryUnits = new Map();
+  // Running byte ledgers — every mutation site funnels through
+  // registerAsset/evictIfUnowned/finalizeResource, so the scalars the governor
+  // consults (gpuResidentBytes, cpuPackageBytes, unaccountedResources) stay
+  // O(1) instead of re-walking their backing maps inside every budget census.
+  let gpuResidentBytesTotal = 0;
+  let cpuPackageBytesTotal = 0;
+  let unaccountedResourceCount = 0;
   const owners = new Map();
   const releasedObjectOwners = new WeakSet();
   const releasedPrimitiveOwners = new Set();
   const pendingRequests = new Set();
   const events = [];
+  // Live-maintained active-request key set — every `active` transition funnels
+  // through beginRequest/cancel/finishRequest, so the set is maintained
+  // incrementally with a per-key refcount (concurrent dup-key requests stay
+  // correct) instead of a version-memoized re-mint: a K-pending owner teardown
+  // used to re-mint O(P) per cancel, O(K × P) per drain.
+  const activePendingRefcounts = new Map();
+  const activePendingKeys = new Set();
+  // Enforce-plan memo (W125 F2): every input to the budget census is funnelled —
+  // asset register/evict, owner-membership index/unindex, and the pending-request
+  // set (which also re-keys governorBlockedMembers). When none moved since the
+  // last plan and the byte ledgers are identical, the receipt is re-servable
+  // verbatim; an evicting call always mutates through a funnel, so a memoized
+  // plan can never skip live evictions.
+  let residencyMutationSeq = 0;
+  let pendingRequestSeq = 0;
+  let enforcePlanMemo = null;
+  function notePendingRequestActivated(key) {
+    const count = (activePendingRefcounts.get(key) || 0) + 1;
+    activePendingRefcounts.set(key, count);
+    if (count === 1) {
+      activePendingKeys.add(key);
+      pendingRequestSeq += 1;
+      // Going active disqualifies the entry from the soft-budget candidate
+      // classes — re-key once per 0->1 transition, same for 1->0 below.
+      const entry = assets.get(String(key));
+      if (entry) { rekeySoftBudgetClass(entry); rekeyGovernorBlocked(entry); }
+    }
+  }
+  function notePendingRequestDeactivated(key) {
+    const count = activePendingRefcounts.get(key);
+    if (!count) return;
+    if (count <= 1) {
+      activePendingRefcounts.delete(key);
+      activePendingKeys.delete(key);
+      pendingRequestSeq += 1;
+      const entry = assets.get(String(key));
+      if (entry) { rekeySoftBudgetClass(entry); rekeyGovernorBlocked(entry); }
+    } else {
+      activePendingRefcounts.set(key, count - 1);
+    }
+  }
+  function deactivateRequest(request) {
+    if (request && request.active) {
+      request.active = false;
+      notePendingRequestDeactivated(request.key);
+    }
+  }
+  function activePendingKeySet() {
+    return activePendingKeys;
+  }
+  // Evictions run inside an active enforce have their demand already served —
+  // arming softBudgetPending there just books a redundant next-drain census.
+  // Scope: only the release() call itself is wrapped, never held across yields.
+  let softBudgetArmSuppressed = 0;
+  // Warm-handoff coverage ledger: the live warm owner's asset keys still lacking
+  // a non-warm owner, maintained per-mutation so each decode-commit retain
+  // consults O(1) instead of re-walking O(warmAssets x owners).
+  let warmCoverage = null;
   let eventSequence = 0;
   let assetGeneration = 0;
   let contextGeneration = 0;
@@ -74,6 +141,20 @@ export function createAssetResidencyRegistry(options = {}) {
   let currentSectorId = null;
   let warmSectorId = null;
   let warmOwner = null;
+  // Rotation sequencing: deferred mints queue behind earlier residency drains, so the
+  // live pointer can lag the newest requested target. Call-time decisions consult the
+  // newest REQUESTED target; each rotate mints a seq stamp and a queued iterator only
+  // repoints the live pointer while it is still the newest APPLIED rotation.
+  let hasPendingRotate = false;
+  let pendingSectorTarget = null;
+  let latestRotateSeq = 0;
+  let appliedRotateSeq = 0;
+  const effectiveCurrentSectorId = () => (hasPendingRotate ? pendingSectorTarget : currentSectorId);
+  // Iterate two member sets as one sequence without minting a concat array per pass.
+  function* iterTwoSets(a, b) {
+    for (const entry of a) yield entry;
+    for (const entry of b) yield entry;
+  }
   // Eviction corridor: current sector then predicted legs in approach order, fed by
   // updatePredictedSectorPrewarm. Soft candidates whose owners carry no corridor sector
   // are the least valuable residency — under byte pressure they should die before a
@@ -84,6 +165,12 @@ export function createAssetResidencyRegistry(options = {}) {
   let abandonedResources = 0;
   let evictedAssets = 0;
   let cacheSweepCount = 0;
+  // Warm-mint coverage-gap ledger (W125): retains minted without metadata.sectorId
+  // never reach sectorOwnerIndex, so an asset pinned only by scopeless owners is
+  // invisible to the sector-exit warm mint and can evict+re-cross under pressure.
+  // Counted at retain() by role, split by whether the entry still carries
+  // sector-scoped owners (covered anyway) or is the entry's only owner (the gap).
+  const sectorlessOwnerRetains = { total: 0, onSectorIndexedEntries: 0, soleOwnerUnindexed: 0, byRole: new Map() };
   let diagnosticsEpoch = 0;
   let canonicalDiagnosticsCache = null;
   let canonicalDiagnosticsEpoch = -1;
@@ -101,6 +188,18 @@ export function createAssetResidencyRegistry(options = {}) {
       : DEFAULT_PACKAGE_CACHE_ONLY_MAX_BYTES);
   const visibilityHolds = new Map();
   let visibilityPresent = 0;
+  // Write counter bumped on every SEMANTIC visibilityHolds mutation (row
+  // create, offGlass change, held flip) — never on idempotent present
+  // restamps. The noteOwnerVisibility memo keys on it, so a write landing
+  // between two same-present consults invalidates the stale verdict.
+  let visibilityWriteSeq = 0;
+  const ownerVisibilityMemo = new Map();
+  // Whether this present's advance pass already ran. Staleness is virtual
+  // (row.offGlass + elapsed un-noted presents); the current present counts
+  // toward it only once its advance has run — consults before the advance
+  // see the same count the old eager tail-walk had materialized, consults
+  // after see one more.
+  let visibilityAdvancedThisPresent = false;
   // >0 while a sweep/budget pass is already walking the registry; release paths inside it must not
   // re-enter the inline cap or every per-owner release would rescan the whole asset table.
   let packageCacheBudgetDepth = 0;
@@ -125,7 +224,7 @@ export function createAssetResidencyRegistry(options = {}) {
     if (isOwnerReleased(owner)) return null;
     let state = owners.get(owner);
     if (!state && create) {
-      state = { owner, assets: new Set(), requests: new Set(), released: false, removalOff: null };
+      state = { owner, assets: new Set(), requests: new Set(), released: false, removalOff: null, assetsVersion: 0 };
       owners.set(owner, state);
       if (owner && typeof owner.addEventListener === 'function') {
         const onRemoved = () => releaseOwner(owner, 'boundary-removed');
@@ -194,6 +293,27 @@ export function createAssetResidencyRegistry(options = {}) {
       cpuPackageBytes: normalizeNonNegativeBytes(registration.cpuPackageBytes),
       metadata: { ...(registration.metadata || {}) },
       handle: null,
+      // Maintained per owner-set mutation by noteOwnerMembership* — the soft
+      // budget's per-entry class checks consult O(1) counters instead of
+      // re-scanning the owner set inside every census row.
+      softOwnerCount: 0,
+      rpcOwnerCount: 0,
+      // Soft-budget class ledger: 0 = not a candidate, 1 = package-cache-only,
+      // 2 = soft-only non-strict. Re-keyed per owner/state/pending mutation so
+      // the enforce caps consult O(1) totals instead of an O(assets) walk.
+      softBudgetClass: 0,
+      softBudgetBytes: 0,
+      // Governor row memo: bumped on every owner-membership mutation so a
+      // cached governorEntry row stays exact between enforce calls.
+      ownersVersion: 0,
+      governorRowMemo: null,
+      // Diagnostics row memo on the same version — the sync seam publishes
+      // re-mint the row set only for entries whose owner set actually moved.
+      diagRowMemo: null,
+      // Live count of sector-scoped owners (sum of row.total across every
+      // sectorOwnerIndex map this entry sits in). 0 = invisible to the
+      // sector-exit warm mint regardless of how many live owners pin it.
+      sectorOwnerRefs: 0,
     };
     const accountingOptions = {
       renderer: registration.renderer || accountingRenderer,
@@ -225,18 +345,23 @@ export function createAssetResidencyRegistry(options = {}) {
           if (!memory) {
             memory = { identity: unit.identity, bytes: unit.bytes, resources: new Set() };
             memoryUnits.set(unit.identity, memory);
+            gpuResidentBytesTotal += memory.bytes;
           }
           memory.resources.add(resourceEntry);
           resourceEntry.memoryUnits.add(memory);
           resourceEntry.bytes += memory.bytes;
         }
         resources.set(resource, resourceEntry);
+        if (resourceEntry.unaccounted) unaccountedResourceCount += 1;
       }
       resourceEntry.assets.add(entry);
       entry.resources.add(resourceEntry);
     }
     entry.handle = Object.freeze({ key: exactKey, generation: entry.generation });
     assets.set(exactKey, entry);
+    residencyMutationSeq += 1;
+    rekeyGovernorBlocked(entry);
+    cpuPackageBytesTotal += entry.cpuPackageBytes;
     emit('asset-registered', {
       key: exactKey,
       generation: entry.generation,
@@ -262,12 +387,72 @@ export function createAssetResidencyRegistry(options = {}) {
       if (existingMetadata.decodeWarm === true && metadata.decodeServed === true) {
         existingMetadata.decodeWarm = false;
         existingMetadata.decodeServed = true;
+        // In-place owner-metadata mutation — bump the row version like the
+        // funnel does so a memoized governorEntry can't serve the stale clone.
+        entry.ownersVersion += 1;
         // A boundary-scoped serve claiming a warm lease is a fresh demand signal.
         entry.lastWarmClaimAtMs = now();
+      } else if (metadata.decodeWarm === true || metadata.softLease === true) {
+        // A warm re-post on an already-held entry is still a fresh demand signal:
+        // the soft-eviction sort reads lastWarmClaimAtMs, so an un-refreshed armed
+        // cohort keeps its first-post stamp and deterministically evicts first on
+        // every pressure wave. Re-pin it — the W130 "re-post re-pins" intent.
+        entry.lastWarmClaimAtMs = now();
+      }
+      // A second warm arm claiming the same row under a different sector unions
+      // its sector into the claim — corridor rank + the sector index must see the
+      // newest consumer's sector, or the entry evicts first under pressure while
+      // its real consumer sector sits in-corridor (late re-decode pop).
+      // The union members classify by THIS retain's demand class — a warm arm
+      // re-posting onto a shared non-arm row must mint a lapse-able claim over
+      // the same post, not an immortal one keyed to the row's mint-time role.
+      const postArmClass = claimArmClass(metadata);
+      // Provenance contract: every live caller posts fresh literals, so no stamped
+      // sectorClaimAts/sectorLiveClaims ever arrive through metadata and the merge
+      // applies THIS posting's class to every unioned sid. If a caller ever forwards
+      // pre-stamped member maps, mirror the seed path's per-sid provenance here.
+      if (metadata.sectorId != null) unionOwnerSector(entry, existingMetadata, metadata.sectorId, postArmClass);
+      if (metadata.sectorIds instanceof Set) {
+        for (const sid of metadata.sectorIds) unionOwnerSector(entry, existingMetadata, sid, postArmClass);
       }
       return false;
     }
     const ownerMetadata = { ...metadata };
+    {
+      // Seed the sector union from both inputs — a request-metadata carrying a
+      // pre-unioned sectorIds set must not drop its scalar's sector either.
+      const seed = new Set(ownerSectorIds(ownerMetadata));
+      if (ownerMetadata.sectorId != null) seed.add(String(ownerMetadata.sectorId));
+      if (seed.size) {
+        ownerMetadata.sectorIds = seed;
+        // Carry the request's own claims: warm stamps propagate clamped to the
+        // horizon (a request pending past the window must not mint members born
+        // lapsed), live claims carry as live, and unstamped members classify by
+        // this row's role through sectorClaimStamp.
+        const priorAts = ownerMetadata.sectorClaimAts instanceof Map ? ownerMetadata.sectorClaimAts : null;
+        const priorLive = ownerMetadata.sectorLiveClaims instanceof Set ? ownerMetadata.sectorLiveClaims : null;
+        ownerMetadata.sectorClaimAts = new Map(priorAts || []);
+        ownerMetadata.sectorLiveClaims = new Set(priorLive || []);
+        const nowMs = now();
+        const horizon = nowMs - SECTOR_CLAIM_STALE_MS;
+        for (const sid of seed) {
+          if (ownerMetadata.sectorLiveClaims.has(sid)) {
+            ownerMetadata.sectorClaimAts.delete(sid);
+            continue;
+          }
+          const priorAt = priorAts && priorAts.has(sid) ? priorAts.get(sid) : null;
+          if (priorAt != null) {
+            if (priorAt < horizon) ownerMetadata.sectorClaimAts.set(sid, horizon);
+          } else {
+            sectorClaimStamp(ownerMetadata, sid, nowMs);
+          }
+        }
+      }
+      else delete ownerMetadata.sectorIds;
+      if (ownerMetadata.sectorId == null && seed.size) {
+        ownerMetadata.sectorId = seed.values().next().value;
+      }
+    }
     if (ownerMetadata.presentationTier) {
       ownerMetadata.presentationTier = String(ownerMetadata.presentationTier);
     }
@@ -278,8 +463,18 @@ export function createAssetResidencyRegistry(options = {}) {
       else if (tier === 'R2_METADATA' || tier === 'R3_UNLOADED') ownerMetadata.role = 'evictable';
     }
     entry.owners.set(owner, ownerMetadata);
+    noteOwnerMembershipIndexed(entry, ownerMetadata);
+    if (ownerMetadata.sectorId == null) {
+      sectorlessOwnerRetains.total += 1;
+      if (entry.sectorOwnerRefs > 0) sectorlessOwnerRetains.onSectorIndexedEntries += 1;
+      else if (entry.owners.size === 1) sectorlessOwnerRetains.soleOwnerUnindexed += 1;
+      const roleKey = String(ownerMetadata.role || '(none)');
+      sectorlessOwnerRetains.byRole.set(roleKey, (sectorlessOwnerRetains.byRole.get(roleKey) || 0) + 1);
+    }
     entry.lastWarmClaimAtMs = now();
     state.assets.add(entry);
+    state.assetsVersion += 1;
+    noteWarmCoverageEntryMutation(entry);
     emit('asset-retained', {
       key: entry.key,
       generation: entry.generation,
@@ -306,18 +501,98 @@ export function createAssetResidencyRegistry(options = {}) {
     return true;
   }
 
+  // Warm re-post consult for the latch-free arms: an entry this owner already holds
+  // needs no request mint — refresh the soft-claim stamp in place so the idle sort
+  // keeps the armed cohort young, then let the shared task cache serve the blueprint.
+  // An in-flight request under the same owner carries the decode demand already —
+  // a sibling mint per poll is pure ledger churn (the task cache dedupes the decode
+  // itself), so the consult covers it too. The consult is sector-aware: the shared
+  // session owner can carry demand for several sectors on one row, so a re-post
+  // under a different sectorId unions it into the claim (resident) or into the
+  // pending request's metadata (in-flight → commit→retain unions on settle) —
+  // otherwise the first poster's stale sector ranks the entry outside the
+  // corridor and pressure evicts the file its real consumer sector still needs.
+  function reclaimWarm(key, owner, sectorId = null) {
+    if (owner == null) return false;
+    const exactKey = String(key || '');
+    const entry = assets.get(exactKey);
+    if (entry && entry.state === 'resident') {
+      const existingMetadata = entry.owners.get(owner);
+      if (existingMetadata) {
+        // The reclaim consult is definitionally arm-side regardless of the row's
+        // mint-time role — a shared runtime-cache row must not mint an immortal
+        // claim for a retracted arm.
+        unionOwnerSector(entry, existingMetadata, sectorId, true);
+        entry.lastWarmClaimAtMs = now();
+        return true;
+      }
+      // Resident under a different owner — this owner's row can still be pending:
+      // fall through to the in-flight scan so a matching request unions the
+      // sector instead of the caller minting a sibling request.
+    }
+    const state = owners.get(owner);
+    if (!state || state.released) return false;
+    for (const request of state.requests) {
+      if (request.key === exactKey && request.active) {
+        if (sectorId != null) {
+          const meta = request.metadata || (request.metadata = {});
+          if (!(meta.sectorIds instanceof Set)) {
+            meta.sectorIds = new Set(meta.sectorId != null ? [String(meta.sectorId)] : []);
+          }
+          meta.sectorIds.add(String(sectorId));
+          // The consult posts arm demand into whatever request is racing it — the
+          // claim must lapse with the arm even when the request itself is not
+          // warm-role (it propagates through priorAts at commit).
+          sectorClaimStamp(meta, String(sectorId), now(), true);
+        }
+        // Re-stamp the entry's warm-claim where one exists — its post-settle idle sort
+        // keeps the armed cohort young even while the decode is still landing.
+        if (entry) entry.lastWarmClaimAtMs = now();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // One O(entry.owners) probe — used by the incremental coverage ledger.
+  function warmEntryCovered(entry, owner) {
+    for (const candidate of entry.owners.keys()) {
+      if (candidate !== owner) return true;
+    }
+    return false;
+  }
+
+  // Full warm-coverage census: mints the uncovered-key set once per warm owner,
+  // then noteWarmCoverageEntryMutation keeps it exact per owners-set mutation.
+  // O(1) afterwards — the per-retain consult no longer re-walks the warm set.
+  function warmCoverageComplete(owner, state) {
+    if (!warmCoverage || warmCoverage.owner !== owner) {
+      const uncovered = new Set();
+      for (const entry of state.assets) {
+        if (!warmEntryCovered(entry, owner)) uncovered.add(entry.key);
+      }
+      warmCoverage = { owner, uncovered };
+    }
+    return warmCoverage.uncovered.size === 0;
+  }
+
+  function noteWarmCoverageEntryMutation(entry) {
+    const coverage = warmCoverage;
+    if (!coverage || !entry) return;
+    const owner = coverage.owner;
+    if (owner !== warmOwner) { warmCoverage = null; return; }
+    const state = owners.get(owner);
+    if (!state || !state.assets.has(entry)) { coverage.uncovered.delete(entry.key); return; }
+    if (warmEntryCovered(entry, owner)) coverage.uncovered.delete(entry.key);
+    else coverage.uncovered.add(entry.key);
+  }
+
   function handoffWarmOwnerWhenCovered(candidateOwner) {
     const owner = warmOwner;
     if (!owner || candidateOwner === owner) return false;
     const state = owners.get(owner);
     if (!state || state.released || state.assets.size === 0) return false;
-    for (const entry of state.assets) {
-      let covered = false;
-      for (const candidate of entry.owners.keys()) {
-        if (candidate !== owner) { covered = true; break; }
-      }
-      if (!covered) return false;
-    }
+    if (!warmCoverageComplete(owner, state)) return false;
     releaseOwner(owner, 'warm-sector-handed-off');
     warmOwner = null;
     warmSectorId = null;
@@ -339,19 +614,39 @@ export function createAssetResidencyRegistry(options = {}) {
         const active = request.shouldDecode();
         finishRequest(request, active ? 'completed' : 'cancelled-after-decode');
         const entry = assets.get(exactKey);
-        const retained = active && entry && entry.owners.has(owner)
-          ? true
-          : (active ? retain(exactKey, owner, request.metadata) : false);
+        const heldMetadata = entry ? entry.owners.get(owner) : null;
+        let retained;
+        if (active && entry && heldMetadata) {
+          // Owner already holds the entry: retain() early-returns, but this request's
+          // sector claims must still union in — a second concurrent same-owner request
+          // carrying different sectorIds loses its only live-claim delivery otherwise.
+          // Mirror of retain's merge-path union, classified by this request's posting.
+          const postArmClass = claimArmClass(request.metadata);
+          if (request.metadata.sectorId != null) {
+            unionOwnerSector(entry, heldMetadata, request.metadata.sectorId, postArmClass);
+          }
+          if (request.metadata.sectorIds instanceof Set) {
+            for (const sid of request.metadata.sectorIds) {
+              unionOwnerSector(entry, heldMetadata, sid, postArmClass);
+            }
+          }
+          retained = true;
+        } else {
+          retained = active && entry && entry.owners.has(owner)
+            ? true
+            : (active ? retain(exactKey, owner, request.metadata) : false);
+        }
         if (!retained) evictIfUnowned(assets.get(exactKey), active ? 'unclaimed-decode' : 'cancelled-decode');
         return retained;
       },
       cancel(reason = 'cancelled-before-decode') {
-        request.active = false;
+        deactivateRequest(request);
         finishRequest(request, reason);
         evictIfUnowned(assets.get(exactKey), reason);
       },
     };
     pendingRequests.add(request);
+    if (request.active) notePendingRequestActivated(exactKey);
     if (state) state.requests.add(request);
     emit('request-begun', { key: exactKey, role: metadata.role || null });
     return request;
@@ -359,7 +654,7 @@ export function createAssetResidencyRegistry(options = {}) {
 
   function finishRequest(request, status) {
     if (!pendingRequests.has(request)) return;
-    request.active = false;
+    deactivateRequest(request);
     pendingRequests.delete(request);
     const state = owners.get(request.owner);
     if (state) {
@@ -381,8 +676,12 @@ export function createAssetResidencyRegistry(options = {}) {
     for (const request of [...state.requests]) request.cancel(reason);
     let released = 0;
     for (const entry of [...state.assets]) {
+      const releasedMetadata = entry.owners.get(owner);
       if (!entry.owners.delete(owner)) continue;
+      noteOwnerMembershipUnindexed(entry, releasedMetadata);
       state.assets.delete(entry);
+      state.assetsVersion += 1;
+      noteWarmCoverageEntryMutation(entry);
       entry.lastReleaseAtMs = now();
       released++;
       emit('asset-released', {
@@ -400,7 +699,8 @@ export function createAssetResidencyRegistry(options = {}) {
     // instead (the sweep's release-detached drains clear and enforce it).
     if (released > 0 && !deferBudgets) {
       if (assets.size < SOFT_BUDGET_INLINE_MAX) enforceSoftResidencyBudgets();
-      else softBudgetPending = true;
+      // Suppressed inside an active evict loop: the demand is already being served.
+      else if (softBudgetArmSuppressed === 0) softBudgetPending = true;
     }
     return released;
   }
@@ -485,8 +785,12 @@ export function createAssetResidencyRegistry(options = {}) {
   function release(key, owner, reason = 'released') {
     const entry = assets.get(String(key || ''));
     const state = owners.get(owner);
+    const releasedMetadata = entry && entry.owners.get(owner);
     if (!entry || !state || !entry.owners.delete(owner)) return false;
+    noteOwnerMembershipUnindexed(entry, releasedMetadata);
     state.assets.delete(entry);
+    state.assetsVersion += 1;
+    noteWarmCoverageEntryMutation(entry);
     entry.lastReleaseAtMs = now();
     emit('asset-released', {
       key: entry.key,
@@ -500,22 +804,234 @@ export function createAssetResidencyRegistry(options = {}) {
     // mark demand and let the paced residency service run the stepped
     // enforcement. Small worlds keep the inline path (the census is free).
     if (assets.size < SOFT_BUDGET_INLINE_MAX) enforceSoftResidencyBudgets();
-    else softBudgetPending = true;
+    else if (softBudgetArmSuppressed === 0) softBudgetPending = true;
     return true;
   }
 
   function cleanupOwnerState(state) {
     if (!state || state.assets.size || state.requests.size) return;
     if (state.removalOff) state.removalOff();
+    ownerVisibilityMemo.delete(state.owner);
     owners.delete(state.owner);
   }
 
   function hasActiveRequestForEntry(entry) {
-    if (!entry) return false;
-    for (const request of pendingRequests) {
-      if (request.active && request.key === entry.key) return true;
+    return !!entry && activePendingKeySet().has(entry.key);
+  }
+
+  // Owner-membership index. Every owner-set mutation funnels through
+  // retain/release/releaseOwner, so two indexes stay exact per-mutation:
+  // (a) sectorId -> Map<entry, {total, nonPlayer}> — the boundary seams
+  //     (prepareSectorExit, rotateSector) iterate O(assets in that sector)
+  //     instead of a full O(assets x owners) census inline inside the emit;
+  //     `nonPlayer` counts owners whose metadata.role is not 'player',
+  //     preserving the player-role filter the seam scans apply.
+  // (b) per-entry soft-class counters — isSoftOnlyEntry/isPackageCacheOnlyEntry
+  //     turn O(1) consults instead of an O(owners) scan inside every census row.
+  const sectorOwnerIndex = new Map();
+
+  // One owner row can carry warm demand for several sectors — the shared session
+  // owner serves every ownerless warm, so arm A (sector X) and arm B (sector Y)
+  // both claim the same row. `metadata.sectorIds` is the union; `sectorId` stays
+  // the first-claimed scalar for back-compat emit/diagnostic reads. Sector-scoped
+  // consumers (index, corridor rank, ledger re-derive) read the union.
+  function ownerSectorIds(metadata) {
+    if (!metadata) return [];
+    if (metadata.sectorIds instanceof Set) return [...metadata.sectorIds];
+    return metadata.sectorId != null ? [String(metadata.sectorId)] : [];
+  }
+
+  // Members not re-claimed within this lapse their claim — a member still armed
+  // by a live consumer refreshes its stamp every re-post, so only claims that
+  // outlived their arming context age out.
+  const SECTOR_CLAIM_STALE_MS = 120000;
+  // Same-sid re-posts sweep their lapsed members at most this often — the
+  // re-post cadence (~0.25s for armed rows) is far hotter than member churn.
+  const SECTOR_CLAIM_PRUNE_INTERVAL_MS = 30000;
+
+  // Warm-purpose claim roles (mirror of assetLoader's WARM_PURPOSE_RESIDENCY_ROLE,
+  // duplicated to keep this module a leaf): an arm-side POST mints a lapse-able
+  // claim — the re-post cadence is the proof of life. Any other post is live
+  // demand (a mounted boundary, a session/decode-cache pin, the player): it
+  // stamps once at admission and never re-posts, so its claims cannot lapse
+  // while the row lives. The class is a property of the posting, not the stored
+  // row — an arm post landing on a shared non-arm row (the session/decode-cache
+  // owners) still mints a lapse-able claim, and a live post on an arm-minted row
+  // still mints an immortal one.
+  const SECTOR_ARM_CLAIM_ROLE = /warm|runway|prewarm|armory|predicted/i;
+
+  // decodeWarm marks a warm-purpose retain on a non-arm-role row (the decode-cache
+  // owner's boundary-scoped serves carry it): those posts are arm demand too.
+  function claimArmClass(postMeta) {
+    return SECTOR_ARM_CLAIM_ROLE.test(String(postMeta && postMeta.role || ''))
+      || (postMeta && postMeta.decodeWarm === true);
+  }
+
+  function sectorClaimStamp(metadata, sid, nowMs, armClass) {
+    if (armClass == null) armClass = claimArmClass(metadata);
+    if (armClass) {
+      // Liveness dominance: a live claim already implies every arm's demand on this
+      // member — an arm post must never revoke it. A re-approach prewarm (or any
+      // arm-class post landing on a live-served sector) would otherwise demote the
+      // immortal claim to a lapse-able ats stamp, and the entry loses its corridor
+      // rank and exit-warm carry 120s after the arm ends.
+      if (metadata.sectorLiveClaims instanceof Set && metadata.sectorLiveClaims.has(sid)) return;
+      let ats = metadata.sectorClaimAts;
+      if (!(ats instanceof Map)) ats = metadata.sectorClaimAts = new Map();
+      ats.set(sid, nowMs);
+      if (metadata.sectorLiveClaims instanceof Set) metadata.sectorLiveClaims.delete(sid);
+    } else {
+      let live = metadata.sectorLiveClaims;
+      if (!(live instanceof Set)) live = metadata.sectorLiveClaims = new Set();
+      live.add(sid);
+      if (metadata.sectorClaimAts instanceof Map) metadata.sectorClaimAts.delete(sid);
     }
-    return false;
+  }
+  function sectorClaimStampIfMissing(metadata, sid) {
+    if (metadata.sectorLiveClaims instanceof Set && metadata.sectorLiveClaims.has(sid)) return;
+    const ats = metadata.sectorClaimAts;
+    if (ats instanceof Map && ats.has(sid)) return;
+    sectorClaimStamp(metadata, sid, now());
+  }
+  // A live claim (posted by a non-arm row) stays fresh while its owner row lives;
+  // a missing stamp stays live (pre-stamp rows and any path that mints membership
+  // without one keep the pre-P2 behavior of counting as claimed); a warm stamp
+  // lapses past the horizon.
+  function sectorClaimFresh(metadata, sid, nowMs) {
+    if (metadata.sectorLiveClaims instanceof Set && metadata.sectorLiveClaims.has(sid)) return true;
+    const ats = metadata.sectorClaimAts;
+    if (!(ats instanceof Map)) return true;
+    const at = ats.get(sid);
+    return at == null || nowMs - at <= SECTOR_CLAIM_STALE_MS;
+  }
+
+  function pruneLapsedSectorClaims(entry, metadata, keepSid, nowMs) {
+    if (!(metadata.sectorIds instanceof Set)) return;
+    for (const old of [...metadata.sectorIds]) {
+      if (old === keepSid) continue;
+      if (sectorClaimFresh(metadata, old, nowMs)) continue;
+      metadata.sectorIds.delete(old);
+      if (metadata.sectorClaimAts instanceof Map) metadata.sectorClaimAts.delete(old);
+      if (metadata.sectorLiveClaims instanceof Set) metadata.sectorLiveClaims.delete(old);
+      // The first-claimed scalar is a back-compat read; a dead member it names
+      // would seed born-live at the next mint — re-point it to a survivor.
+      if (String(metadata.sectorId) === old) {
+        metadata.sectorId = metadata.sectorIds.size ? metadata.sectorIds.values().next().value : null;
+      }
+      unindexOwnerSectorRow(entry, metadata, old);
+      // Membership changed outside the normal index path — bump both versions or
+      // the diagnostics row and governor-blocked memo keep serving the dead union.
+      entry.ownersVersion += 1;
+      residencyMutationSeq += 1;
+    }
+  }
+
+  function unindexOwnerSectorRow(entry, metadata, sid) {
+    const sectorMap = sectorOwnerIndex.get(sid);
+    if (!sectorMap) return;
+    const row = sectorMap.get(entry);
+    if (!row) return;
+    row.total -= 1;
+    entry.sectorOwnerRefs -= 1;
+    if (metadata.role !== 'player') row.nonPlayer -= 1;
+    if (row.total <= 0) {
+      sectorMap.delete(entry);
+      if (sectorMap.size === 0) sectorOwnerIndex.delete(sid);
+    }
+  }
+
+  // Union a sector into an owner row's claim and index just that delta — the
+  // soft/role counters are per-owner and must not double-count, so the sector
+  // block alone runs here. New-member adds opportunistically prune lapsed
+  // members (with their index rows) so the union tracks live demand instead of
+  // accumulating every sector the owner was ever armed from.
+  function unionOwnerSector(entry, metadata, sectorId, armClass) {
+    if (sectorId == null) return;
+    const sid = String(sectorId);
+    const nowMs = now();
+    if (!(metadata.sectorIds instanceof Set)) {
+      metadata.sectorIds = new Set(metadata.sectorId != null ? [String(metadata.sectorId)] : []);
+    }
+    if (metadata.sectorIds.has(sid)) {
+      sectorClaimStamp(metadata, sid, nowMs, armClass);
+      // Same-sid re-posts dominate the poll loop — sweep lapsed members here too
+      // (amortized) or a live re-post keeps a dead remainder indexed forever.
+      const lastPruneAt = typeof metadata.lastSectorClaimPruneAt === 'number'
+        ? metadata.lastSectorClaimPruneAt : 0;
+      if (nowMs - lastPruneAt >= SECTOR_CLAIM_PRUNE_INTERVAL_MS) {
+        metadata.lastSectorClaimPruneAt = nowMs;
+        pruneLapsedSectorClaims(entry, metadata, sid, nowMs);
+      }
+      return;
+    }
+    metadata.lastSectorClaimPruneAt = nowMs;
+    pruneLapsedSectorClaims(entry, metadata, sid, nowMs);
+    metadata.sectorIds.add(sid);
+    sectorClaimStamp(metadata, sid, nowMs, armClass);
+    if (metadata.sectorId == null) metadata.sectorId = sid;
+    entry.ownersVersion += 1;
+    residencyMutationSeq += 1;
+    let sectorMap = sectorOwnerIndex.get(sid);
+    if (!sectorMap) {
+      sectorMap = new Map();
+      sectorOwnerIndex.set(sid, sectorMap);
+    }
+    let row = sectorMap.get(entry);
+    if (!row) {
+      row = { total: 0, nonPlayer: 0 };
+      sectorMap.set(entry, row);
+    }
+    row.total += 1;
+    entry.sectorOwnerRefs += 1;
+    if (metadata.role !== 'player') row.nonPlayer += 1;
+  }
+
+  function noteOwnerMembershipIndexed(entry, metadata) {
+    if (!metadata) return;
+    const role = String(metadata.role || '').trim().toLowerCase();
+    // One increment per owner — a softLease flag stacked on a soft role still
+    // counts once, or the all-soft equality check below would never hold.
+    if (metadata.softLease === true
+        || role === 'render-package-cache' || role === 'decode-cache' || role === 'runtime-cache') {
+      entry.softOwnerCount += 1;
+    }
+    if (role === 'render-package-cache') entry.rpcOwnerCount += 1;
+    entry.ownersVersion += 1;
+    residencyMutationSeq += 1;
+    for (const sid of ownerSectorIds(metadata)) {
+      sectorClaimStampIfMissing(metadata, sid);
+      let sectorMap = sectorOwnerIndex.get(sid);
+      if (!sectorMap) {
+        sectorMap = new Map();
+        sectorOwnerIndex.set(sid, sectorMap);
+      }
+      let row = sectorMap.get(entry);
+      if (!row) {
+        row = { total: 0, nonPlayer: 0 };
+        sectorMap.set(entry, row);
+      }
+      row.total += 1;
+      entry.sectorOwnerRefs += 1;
+      if (metadata.role !== 'player') row.nonPlayer += 1;
+    }
+    rekeySoftBudgetClass(entry);
+    rekeyGovernorBlocked(entry);
+  }
+  function noteOwnerMembershipUnindexed(entry, metadata) {
+    if (!metadata) return;
+    const role = String(metadata.role || '').trim().toLowerCase();
+    if (metadata.softLease === true
+        || role === 'render-package-cache' || role === 'decode-cache' || role === 'runtime-cache') {
+      entry.softOwnerCount -= 1;
+    }
+    if (role === 'render-package-cache') entry.rpcOwnerCount -= 1;
+    entry.ownersVersion += 1;
+    residencyMutationSeq += 1;
+    for (const sid of ownerSectorIds(metadata)) {
+      unindexOwnerSectorRow(entry, metadata, sid);
+    }
+    rekeySoftBudgetClass(entry);
+    rekeyGovernorBlocked(entry);
   }
 
   // Cache-lease roles: owners that exist only to keep a decoded blueprint/package reusable while
@@ -541,12 +1057,7 @@ export function createAssetResidencyRegistry(options = {}) {
   // second soft tier below.
   function isPackageCacheOnlyEntry(entry) {
     if (!entry || entry.state !== 'resident' || entry.owners.size === 0) return false;
-    for (const metadata of entry.owners.values()) {
-      if (String(metadata && metadata.role || '').trim().toLowerCase() !== 'render-package-cache') {
-        return false;
-      }
-    }
-    return true;
+    return entry.rpcOwnerCount === entry.owners.size;
   }
 
   // Warm-purpose decode leases speculate on a spawn that has not arrived yet — they read as
@@ -599,11 +1110,13 @@ export function createAssetResidencyRegistry(options = {}) {
   function entryCorridorRank(entry) {
     if (!evictionCorridorRanks) return 0;
     let best = -1;
+    const nowMs = now();
     for (const metadata of entry.owners.values()) {
-      const sectorId = metadata && metadata.sectorId;
-      if (sectorId == null) continue;
-      const rank = evictionCorridorRanks.get(String(sectorId));
-      if (rank != null && rank > best) best = rank;
+      for (const sectorId of ownerSectorIds(metadata)) {
+        if (!sectorClaimFresh(metadata, sectorId, nowMs)) continue;
+        const rank = evictionCorridorRanks.get(String(sectorId));
+        if (rank != null && rank > best) best = rank;
+      }
     }
     return best;
   }
@@ -628,16 +1141,74 @@ export function createAssetResidencyRegistry(options = {}) {
   // runtime-cache session pin). A live presentation owner of any kind disqualifies the entry.
   function isSoftOnlyEntry(entry) {
     if (!entry || entry.state !== 'resident' || entry.owners.size === 0) return false;
-    for (const metadata of entry.owners.values()) {
-      if (!isSoftResidencyOwner(metadata)) return false;
+    return entry.softOwnerCount === entry.owners.size;
+  }
+
+  // The enforce loop's row predicate as a class id. The byte contribution is
+  // stamped once per classing and stays exact: an entry's memory units attach
+  // at register (before it can hold owners) and never change while it lives.
+  function classifySoftBudgetEntry(entry) {
+    if (!entry || entry.state !== 'resident' || entry.owners.size === 0
+        || hasActiveRequestForEntry(entry)) return 0;
+    if (isPackageCacheOnlyEntry(entry)) return 1;
+    if (isSoftOnlyEntry(entry)) return 2;
+    return 0;
+  }
+  function rekeySoftBudgetClass(entry) {
+    const prev = entry.softBudgetClass || 0;
+    const next = classifySoftBudgetEntry(entry);
+    if (next === prev) return;
+    if (prev === 1) {
+      packageCacheOnlyMembers.delete(entry);
+      packageCacheOnlyBytesTotal -= entry.softBudgetBytes;
+    } else if (prev === 2) {
+      softResidentMembers.delete(entry);
+      softResidentBytesTotal -= entry.softBudgetBytes;
     }
-    return true;
+    entry.softBudgetClass = next;
+    if (next === 0) {
+      entry.softBudgetBytes = 0;
+      return;
+    }
+    entry.softBudgetBytes = assetResidentBytes(entry);
+    if (next === 1) {
+      packageCacheOnlyMembers.add(entry);
+      packageCacheOnlyBytesTotal += entry.softBudgetBytes;
+    } else {
+      softResidentMembers.add(entry);
+      softResidentBytesTotal += entry.softBudgetBytes;
+    }
   }
 
   // Demand flag for the amortized release() path — set when the byte census is
   // deferred to the paced service's stepped enforcement; cleared when it runs.
   let softBudgetPending = false;
+  // Running byte totals and member sets for the two soft-budget tiers —
+  // maintained per-mutation by rekeySoftBudgetClass; the periodic
+  // ledger-verify walk re-derives them as drift insurance.
+  let packageCacheOnlyBytesTotal = 0;
+  let softResidentBytesTotal = 0;
+  const packageCacheOnlyMembers = new Set();
+  const softResidentMembers = new Set();
   const SOFT_BUDGET_INLINE_MAX = 128;
+
+  // Governor blocked-membership set — entries the enforce census would classify
+  // non-evictable (any owner-policy block reason, or an active pending request).
+  // The same funnel points that re-key the soft classes re-key membership here,
+  // so enforceBudget projects the blocked rows in O(blocked) instead of walking
+  // O(assets) — the common under-budget call short-circuits to O(1) when the set
+  // is empty. Members are re-qualified at consult (a stale member filters out,
+  // never trusted) and the ledger-verify cadence rebuilds the set wholesale as
+  // drift insurance, same contract as the soft-class ledgers.
+  const governorBlockedMembers = new Set();
+  function rekeyGovernorBlocked(entry) {
+    if (entry && assets.get(entry.key) === entry
+        && (hasActiveRequestForEntry(entry) || !isGovernorEntryEvictable(entry))) {
+      governorBlockedMembers.add(entry);
+    } else {
+      governorBlockedMembers.delete(entry);
+    }
+  }
 
   // Inline byte caps on soft residency, enforced at release and soft-retain time: the idle sweep
   // only reclaims entries older than its minAge gate, so a burst of departures or scopeless
@@ -647,34 +1218,184 @@ export function createAssetResidencyRegistry(options = {}) {
   // stay warm under the cap; live presentation owners are never candidates.
   function enforceSoftResidencyBudgets() {
     if (packageCacheBudgetDepth > 0) return 0;
-    let strictBytes = 0;
-    let softBytes = 0;
-    const strictCandidates = [];
-    const softCandidates = [];
-    for (const entry of assets.values()) {
-      if (entry.state !== 'resident' || entry.owners.size === 0 || hasActiveRequestForEntry(entry)) {
-        continue;
-      }
-      if (isPackageCacheOnlyEntry(entry)) {
-        strictBytes += assetResidentBytes(entry);
-        strictCandidates.push(entry);
-      } else if (isSoftOnlyEntry(entry)) {
-        softBytes += assetResidentBytes(entry);
-        softCandidates.push(entry);
-      }
-    }
-    const strictOver = packageCacheOnlyMaxBytes != null && strictBytes > packageCacheOnlyMaxBytes;
-    const softOver = softResidentMaxBytes != null && softBytes > softResidentMaxBytes;
+    // The class ledgers answer the overage consult in O(1); the candidate
+    // arrays mint from the member sets only on a real overage, and the evict
+    // loops re-qualify each row so a stale member is filtered, never trusted.
+    const strictOver = packageCacheOnlyMaxBytes != null
+      && packageCacheOnlyBytesTotal > packageCacheOnlyMaxBytes;
+    const softOver = softResidentMaxBytes != null
+      && softResidentBytesTotal > softResidentMaxBytes;
     if (!strictOver && !softOver) return 0;
     packageCacheBudgetDepth++;
     try {
-      return evictOldestSoftEntries(strictCandidates, packageCacheOnlyMaxBytes, strictBytes,
-        isPackageCacheOnlyEntry)
-        + evictOldestSoftEntries(softCandidates, softResidentMaxBytes, softBytes,
-          (entry) => isSoftOnlyEntry(entry) && !isPackageCacheOnlyEntry(entry));
+      return (strictOver ? evictOldestSoftEntries([...packageCacheOnlyMembers],
+          packageCacheOnlyMaxBytes, packageCacheOnlyBytesTotal, isPackageCacheOnlyEntry) : 0)
+        + (softOver ? evictOldestSoftEntries([...softResidentMembers],
+          softResidentMaxBytes, softResidentBytesTotal,
+          (entry) => isSoftOnlyEntry(entry) && !isPackageCacheOnlyEntry(entry)) : 0);
     } finally {
       packageCacheBudgetDepth--;
     }
+  }
+
+  // Recompute-and-compare guard for the running ledgers: drift used to stay
+  // silent because nothing ever re-derived the scalars from their backing
+  // maps. The cheap totals recompute rides inside the enforce sweep's asset
+  // walk (O(1) per row); the owner-graph ledgers (soft/rpc counts, sector
+  // index) verify every LEDGER_VERIFY_EVERY_ENFORCES sweeps. Drift emits a
+  // 'ledger-drift' event and counts into diagnostics().
+  const LEDGER_VERIFY_EVERY_ENFORCES = 4;
+  let ledgerVerifyCountdown = LEDGER_VERIFY_EVERY_ENFORCES;
+  let ledgerDriftEvents = 0;
+  function noteLedgerDrift(mismatches) {
+    if (!mismatches || mismatches.length === 0) return;
+    ledgerDriftEvents += 1;
+    emit('ledger-drift', { count: mismatches.length, sample: mismatches.slice(0, 4) });
+  }
+  function ledgerDriftMismatches(re, includeOwnerGraph) {
+    const mismatches = [];
+    if (re.gpuResidentBytes !== gpuResidentBytesTotal) {
+      mismatches.push({ ledger: 'gpuResidentBytes', expected: re.gpuResidentBytes, actual: gpuResidentBytesTotal });
+    }
+    if (re.cpuPackageBytes !== cpuPackageBytesTotal) {
+      mismatches.push({ ledger: 'cpuPackageBytes', expected: re.cpuPackageBytes, actual: cpuPackageBytesTotal });
+    }
+    if (re.unaccountedResources !== unaccountedResourceCount) {
+      mismatches.push({ ledger: 'unaccountedResources', expected: re.unaccountedResources, actual: unaccountedResourceCount });
+    }
+    for (const key of re.activePendingKeys) {
+      if (!activePendingKeys.has(key)) mismatches.push({ ledger: 'activePendingKeys', expected: key, actual: 'absent' });
+    }
+    for (const key of activePendingKeys) {
+      if (!re.activePendingKeys.has(key)) mismatches.push({ ledger: 'activePendingKeys', expected: 'absent', actual: key });
+    }
+    if (includeOwnerGraph) {
+      for (const [entry, soft] of re.softOwnerCounts) {
+        if (soft !== entry.softOwnerCount) {
+          mismatches.push({ ledger: 'softOwnerCount', key: entry.key, expected: soft, actual: entry.softOwnerCount });
+        }
+        const rpc = re.rpcOwnerCounts.get(entry) || 0;
+        if (rpc !== entry.rpcOwnerCount) {
+          mismatches.push({ ledger: 'rpcOwnerCount', key: entry.key, expected: rpc, actual: entry.rpcOwnerCount });
+        }
+      }
+      for (const [sid, sectorMap] of re.sectorIndex) {
+        const liveMap = sectorOwnerIndex.get(sid);
+        for (const [entry, row] of sectorMap) {
+          const liveRow = liveMap && liveMap.get(entry);
+          if (!liveRow || liveRow.total !== row.total || liveRow.nonPlayer !== row.nonPlayer) {
+            mismatches.push({ ledger: 'sectorOwnerIndex', sectorId: sid, key: entry.key,
+              expected: `${row.total}/${row.nonPlayer}`,
+              actual: liveRow ? `${liveRow.total}/${liveRow.nonPlayer}` : 'absent' });
+          }
+        }
+      }
+      for (const [sid, liveMap] of sectorOwnerIndex) {
+        const reMap = re.sectorIndex.get(sid);
+        for (const entry of liveMap.keys()) {
+          if (!reMap || !reMap.has(entry)) {
+            mismatches.push({ ledger: 'sectorOwnerIndex', sectorId: sid, key: entry.key,
+              expected: 'absent', actual: 'stale-row' });
+          }
+        }
+      }
+      // The soft-budget class ledgers are per-mutation state like the owner
+      // counters — the verify walk re-derives them so a missed re-key (set or
+      // byte total) surfaces as drift instead of silently under-evicting.
+      if (re.packageCacheOnlyBytes != null && re.packageCacheOnlyBytes !== packageCacheOnlyBytesTotal) {
+        mismatches.push({ ledger: 'packageCacheOnlyBytes', expected: re.packageCacheOnlyBytes,
+          actual: packageCacheOnlyBytesTotal });
+      }
+      if (re.softResidentBytes != null && re.softResidentBytes !== softResidentBytesTotal) {
+        mismatches.push({ ledger: 'softResidentBytes', expected: re.softResidentBytes,
+          actual: softResidentBytesTotal });
+      }
+      if (re.strictMembers != null && re.strictMembers !== packageCacheOnlyMembers.size) {
+        mismatches.push({ ledger: 'packageCacheOnlyMembers', expected: re.strictMembers,
+          actual: packageCacheOnlyMembers.size });
+      }
+      if (re.softMembers != null && re.softMembers !== softResidentMembers.size) {
+        mismatches.push({ ledger: 'softResidentMembers', expected: re.softMembers,
+          actual: softResidentMembers.size });
+      }
+    }
+    return mismatches;
+  }
+  // Probe-facing twin: a full recompute-and-compare on demand. Tests and
+  // diagnostics assert ledger health without paying the owner-graph walk
+  // inside hot paths.
+  function verifyLedgerConsistency() {
+    let gpuResidentBytes = 0;
+    for (const memory of memoryUnits.values()) gpuResidentBytes += memory.bytes;
+    let cpuPackageBytes = 0;
+    const softOwnerCounts = new Map();
+    const rpcOwnerCounts = new Map();
+    const sectorIndex = new Map();
+    let packageCacheOnlyRe = 0;
+    let softResidentRe = 0;
+    let strictReCount = 0;
+    let softReCount = 0;
+    for (const entry of assets.values()) {
+      cpuPackageBytes += entry.cpuPackageBytes;
+      let soft = 0;
+      let rpc = 0;
+      for (const metadata of entry.owners.values()) {
+        const role = String(metadata.role || '').trim().toLowerCase();
+        if (metadata.softLease === true
+            || role === 'render-package-cache' || role === 'decode-cache' || role === 'runtime-cache') {
+          soft += 1;
+        }
+        if (role === 'render-package-cache') rpc += 1;
+        for (const sid of ownerSectorIds(metadata)) {
+          let sectorMap = sectorIndex.get(sid);
+          if (!sectorMap) {
+            sectorMap = new Map();
+            sectorIndex.set(sid, sectorMap);
+          }
+          let row = sectorMap.get(entry);
+          if (!row) {
+            row = { total: 0, nonPlayer: 0 };
+            sectorMap.set(entry, row);
+          }
+          row.total += 1;
+          if (metadata.role !== 'player') row.nonPlayer += 1;
+        }
+      }
+      softOwnerCounts.set(entry, soft);
+      rpcOwnerCounts.set(entry, rpc);
+      if (entry.state === 'resident' && entry.owners.size > 0 && !hasActiveRequestForEntry(entry)) {
+        if (isPackageCacheOnlyEntry(entry)) {
+          packageCacheOnlyRe += assetResidentBytes(entry);
+          strictReCount += 1;
+        } else if (isSoftOnlyEntry(entry)) {
+          softResidentRe += assetResidentBytes(entry);
+          softReCount += 1;
+        }
+      }
+    }
+    let unaccountedResources = 0;
+    for (const resourceEntry of resources.values()) {
+      if (resourceEntry.unaccounted) unaccountedResources += 1;
+    }
+    const activeKeys = new Set();
+    for (const request of pendingRequests) {
+      if (request && request.active && request.key != null) activeKeys.add(request.key);
+    }
+    const mismatches = ledgerDriftMismatches({
+      gpuResidentBytes, cpuPackageBytes, unaccountedResources,
+      softOwnerCounts, rpcOwnerCounts, sectorIndex, activePendingKeys: activeKeys,
+      packageCacheOnlyBytes: packageCacheOnlyRe, softResidentBytes: softResidentRe,
+      strictMembers: strictReCount, softMembers: softReCount,
+    }, true);
+    let blockedReCount = 0;
+    for (const entry of assets.values()) {
+      if (hasActiveRequestForEntry(entry) || !isGovernorEntryEvictable(entry)) blockedReCount += 1;
+    }
+    if (blockedReCount !== governorBlockedMembers.size) {
+      mismatches.push({ ledger: 'governorBlockedMembers',
+        expected: blockedReCount, actual: governorBlockedMembers.size });
+    }
+    return Object.freeze({ ok: mismatches.length === 0, mismatches: Object.freeze(mismatches) });
   }
 
   // Stepped twin: the O(assets) tally yields per entry batch so the release
@@ -683,43 +1404,136 @@ export function createAssetResidencyRegistry(options = {}) {
   // only runs on a real overage.
   function* enforceSoftResidencyBudgetsSteps(batchEntries = 256) {
     if (packageCacheBudgetDepth > 0) return 0;
-    let strictBytes = 0;
-    let softBytes = 0;
-    const strictCandidates = [];
-    const softCandidates = [];
-    let visited = 0;
-    for (const entry of assets.values()) {
-      if (++visited % batchEntries === 0) yield;
-      if (entry.state !== 'resident' || entry.owners.size === 0 || hasActiveRequestForEntry(entry)) {
-        continue;
+    const verifyOwnerGraph = --ledgerVerifyCountdown <= 0;
+    if (verifyOwnerGraph) ledgerVerifyCountdown = LEDGER_VERIFY_EVERY_ENFORCES;
+    // O(1) consult: when neither ledger is over budget and the verify cadence
+    // isn't due, the enforce is a no-op without touching the asset table.
+    const strictOverLedger = packageCacheOnlyMaxBytes != null
+      && packageCacheOnlyBytesTotal > packageCacheOnlyMaxBytes;
+    const softOverLedger = softResidentMaxBytes != null
+      && softResidentBytesTotal > softResidentMaxBytes;
+    if (!strictOverLedger && !softOverLedger && !verifyOwnerGraph) return 0;
+    let strictBytes = packageCacheOnlyBytesTotal;
+    let softBytes = softResidentBytesTotal;
+    const strictCandidates = [...packageCacheOnlyMembers];
+    const softCandidates = [...softResidentMembers];
+    if (verifyOwnerGraph) {
+      // Verify cadence: the O(assets) walk survives here, re-deriving every
+      // ledger — including the new class bytes and member counts — and the
+      // freshly recomputed candidate lists supplant the member sets this call.
+      strictCandidates.length = 0;
+      softCandidates.length = 0;
+      strictBytes = 0;
+      softBytes = 0;
+      let visited = 0;
+      let cpuPackageRe = 0;
+      const softOwnerRe = new Map();
+      const rpcOwnerRe = new Map();
+      const sectorIndexRe = new Map();
+      const blockedRe = new Set();
+      for (const entry of assets.values()) {
+        if (++visited % batchEntries === 0) yield;
+        cpuPackageRe += entry.cpuPackageBytes;
+        let soft = 0;
+        let rpc = 0;
+        for (const metadata of entry.owners.values()) {
+          const role = String(metadata.role || '').trim().toLowerCase();
+          if (metadata.softLease === true
+              || role === 'render-package-cache' || role === 'decode-cache' || role === 'runtime-cache') {
+            soft += 1;
+          }
+          if (role === 'render-package-cache') rpc += 1;
+          for (const sid of ownerSectorIds(metadata)) {
+            let sectorMap = sectorIndexRe.get(sid);
+            if (!sectorMap) {
+              sectorMap = new Map();
+              sectorIndexRe.set(sid, sectorMap);
+            }
+            let row = sectorMap.get(entry);
+            if (!row) {
+              row = { total: 0, nonPlayer: 0 };
+              sectorMap.set(entry, row);
+            }
+            row.total += 1;
+            if (metadata.role !== 'player') row.nonPlayer += 1;
+          }
+        }
+        softOwnerRe.set(entry, soft);
+        rpcOwnerRe.set(entry, rpc);
+        if (hasActiveRequestForEntry(entry) || !isGovernorEntryEvictable(entry)) blockedRe.add(entry);
+        if (entry.state !== 'resident' || entry.owners.size === 0 || hasActiveRequestForEntry(entry)) {
+          continue;
+        }
+        if (isPackageCacheOnlyEntry(entry)) {
+          strictBytes += assetResidentBytes(entry);
+          strictCandidates.push(entry);
+        } else if (isSoftOnlyEntry(entry)) {
+          softBytes += assetResidentBytes(entry);
+          softCandidates.push(entry);
+        }
       }
-      if (isPackageCacheOnlyEntry(entry)) {
-        strictBytes += assetResidentBytes(entry);
-        strictCandidates.push(entry);
-      } else if (isSoftOnlyEntry(entry)) {
-        softBytes += assetResidentBytes(entry);
-        softCandidates.push(entry);
+      let gpuResidentRe = 0;
+      for (const memory of memoryUnits.values()) gpuResidentRe += memory.bytes;
+      let unaccountedRe = 0;
+      for (const resourceEntry of resources.values()) {
+        if (resourceEntry.unaccounted) unaccountedRe += 1;
       }
+      const activeKeysRe = new Set();
+      for (const request of pendingRequests) {
+        if (request && request.active && request.key != null) activeKeysRe.add(request.key);
+      }
+      noteLedgerDrift(ledgerDriftMismatches({
+        gpuResidentBytes: gpuResidentRe, cpuPackageBytes: cpuPackageRe,
+        unaccountedResources: unaccountedRe, softOwnerCounts: softOwnerRe,
+        rpcOwnerCounts: rpcOwnerRe, sectorIndex: sectorIndexRe, activePendingKeys: activeKeysRe,
+        packageCacheOnlyBytes: strictBytes, softResidentBytes: softBytes,
+        strictMembers: strictCandidates.length, softMembers: softCandidates.length,
+      }, true));
+      // The governor blocked set rebuilds wholesale on the same cadence: a missed
+      // re-key surfaces as drift and the recomputed membership supplants the
+      // maintained one — same contract the soft candidate lists get above.
+      if (blockedRe.size !== governorBlockedMembers.size
+          || [...blockedRe].some((member) => !governorBlockedMembers.has(member))
+          || [...governorBlockedMembers].some((member) => !blockedRe.has(member))) {
+        noteLedgerDrift([{ ledger: 'governorBlockedMembers',
+          expected: blockedRe.size, actual: governorBlockedMembers.size }]);
+      }
+      governorBlockedMembers.clear();
+      for (const member of blockedRe) governorBlockedMembers.add(member);
     }
-    const strictOver = packageCacheOnlyMaxBytes != null && strictBytes > packageCacheOnlyMaxBytes;
-    const softOver = softResidentMaxBytes != null && softBytes > softResidentMaxBytes;
+    const strictOver = strictOverLedger || (verifyOwnerGraph
+      && packageCacheOnlyMaxBytes != null && strictBytes > packageCacheOnlyMaxBytes);
+    const softOver = softOverLedger || (verifyOwnerGraph
+      && softResidentMaxBytes != null && softBytes > softResidentMaxBytes);
     if (!strictOver && !softOver) return 0;
     packageCacheBudgetDepth++;
     try {
-      const strictEvicted = yield* evictOldestSoftEntriesSteps(strictCandidates,
-        packageCacheOnlyMaxBytes, strictBytes, isPackageCacheOnlyEntry);
-      const softEvicted = yield* evictOldestSoftEntriesSteps(softCandidates,
+      const strictEvicted = strictOver ? yield* evictOldestSoftEntriesSteps(strictCandidates,
+        packageCacheOnlyMaxBytes, strictBytes, isPackageCacheOnlyEntry) : 0;
+      const softEvicted = softOver ? yield* evictOldestSoftEntriesSteps(softCandidates,
         softResidentMaxBytes, softBytes,
-        (entry) => isSoftOnlyEntry(entry) && !isPackageCacheOnlyEntry(entry));
+        (entry) => isSoftOnlyEntry(entry) && !isPackageCacheOnlyEntry(entry)) : 0;
       return strictEvicted + softEvicted;
     } finally {
       packageCacheBudgetDepth--;
     }
   }
 
+  // Staleness is virtual: a row's off-glass count is row.offGlass plus the
+  // presents elapsed since its last note, materialized on consult instead of
+  // by a per-present full-table advance. Boundary matches the old eager
+  // sweep: a row noted at present P stays held through P+8's tail and drops
+  // at P+9's advance, so consult answers are unchanged; only row lifetime in
+  // the table defers to the amortized GC below.
+  function visibilityRowOffGlass(row) {
+    const elapsed = visibilityPresent - row.present - 1
+      + (visibilityAdvancedThisPresent ? 1 : 0);
+    return row.offGlass + Math.max(0, elapsed);
+  }
+
   function visibilityHeld(entry) {
     const row = entry && visibilityHolds.get(entry.key);
-    return !!(row && row.held);
+    return !!(row && row.held && visibilityRowOffGlass(row) < VISIBILITY_OFF_GLASS_PRESENTS);
   }
 
   function visibilityKeysForOwners(ownerList) {
@@ -749,6 +1563,7 @@ export function createAssetResidencyRegistry(options = {}) {
 
   function beginVisibilityPresent() {
     visibilityPresent += 1;
+    visibilityAdvancedThisPresent = false;
     return visibilityPresent;
   }
 
@@ -762,14 +1577,22 @@ export function createAssetResidencyRegistry(options = {}) {
     if (!row) {
       row = { held: false, offGlass: 0, present: -1 };
       visibilityHolds.set(id, row);
+      visibilityWriteSeq += 1;
     }
     const seenThisPresent = row.present === visibilityPresent;
-    row.present = visibilityPresent;
     if (visible) {
+      if (!seenThisPresent || !row.held || row.offGlass !== 0) visibilityWriteSeq += 1;
+      row.present = visibilityPresent;
       row.held = true;
       row.offGlass = 0;
     } else if (!seenThisPresent && row.held) {
-      row.offGlass += 1;
+      // Count every un-noted present elapsed since the last note, including
+      // this one — the old eager sweep added one per present; folding the
+      // whole gap here keeps the count identical without the sweep.
+      row.offGlass += Math.max(1,
+        visibilityPresent - row.present + (visibilityAdvancedThisPresent ? 1 : 0));
+      row.present = visibilityPresent;
+      visibilityWriteSeq += 1;
       if (row.offGlass >= VISIBILITY_OFF_GLASS_PRESENTS) row.held = false;
     }
     return row.held;
@@ -777,27 +1600,61 @@ export function createAssetResidencyRegistry(options = {}) {
 
   // Pin every asset key this glass owner already retains. Eviction looks up
   // entry.key, so the pin has to be that same key.
+  // The visible-row consult runs twice per presented frame per entity with
+  // frame-stable inputs — memo the verdict on (present, visible, assets
+  // version, holds write seq) so the second consult skips the O(owner's
+  // whole retained set) walk. Any semantic mutation to the owner's set or
+  // the shared holds table bumps its version and re-proves the next consult.
   function noteOwnerVisibility(owner, visible) {
     if (owner == null) return false;
     const state = owners.get(owner);
     if (!state || state.released || state.assets.size === 0) return false;
+    const memo = ownerVisibilityMemo.get(owner);
+    if (memo
+      && memo.present === visibilityPresent
+      && memo.visible === visible
+      && memo.assetsVersion === state.assetsVersion
+      && memo.writeSeq === visibilityWriteSeq) {
+      return memo.held;
+    }
     let held = false;
     for (const entry of state.assets) {
       if (noteVisibility(entry.key, visible)) held = true;
     }
+    ownerVisibilityMemo.set(owner, {
+      present: visibilityPresent,
+      visible,
+      assetsVersion: state.assetsVersion,
+      writeSeq: visibilityWriteSeq,
+      held,
+    });
     return held;
   }
 
+  // Pure GC now: consults expire rows lazily via visibilityRowOffGlass, so
+  // this pass only frees dead rows. It sweeps a bounded share per present —
+  // enough to complete a full pass of the table within the 8-present expiry
+  // horizon — instead of iterating every row every presented frame.
+  let visibilityGcIter = null;
   function advanceVisibilityHysteresis() {
-    for (const [key, row] of visibilityHolds) {
-      if (row.present === visibilityPresent) continue;
-      if (!row.held) {
-        visibilityHolds.delete(key);
-        continue;
+    visibilityAdvancedThisPresent = true;
+    // Rows cross the expiry boundary when this present's virtual increment
+    // lands — re-prove any memoized owner verdicts against it.
+    visibilityWriteSeq += 1;
+    if (visibilityHolds.size === 0) {
+      visibilityGcIter = null;
+      return;
+    }
+    const target = Math.max(256, Math.ceil(visibilityHolds.size / VISIBILITY_OFF_GLASS_PRESENTS));
+    if (!visibilityGcIter) visibilityGcIter = visibilityHolds.entries();
+    for (let swept = 0; swept < target; swept++) {
+      const next = visibilityGcIter.next();
+      if (next.done) {
+        visibilityGcIter = null;
+        break;
       }
-      row.offGlass += 1;
-      if (row.offGlass >= VISIBILITY_OFF_GLASS_PRESENTS) {
-        row.held = false;
+      const [key, row] = next.value;
+      if (!row.held || visibilityRowOffGlass(row) >= VISIBILITY_OFF_GLASS_PRESENTS) {
         visibilityHolds.delete(key);
       }
     }
@@ -813,7 +1670,14 @@ export function createAssetResidencyRegistry(options = {}) {
       if (visibilityHeld(entry) || entryHasPinnedRole(entry)) continue;
       const entryBytes = assetResidentBytes(entry);
       for (const owner of [...entry.owners.keys()]) {
-        release(entry.key, owner, 'soft-residency-budget');
+        // This release's byte demand is already inside the enforce that owns this
+        // loop — suppressing only the arm (never the inline path, already
+        // depth-guarded) stops every evicted row booking a redundant next-drain
+        // census. The suppress lives only inside the release() call: a foreign
+        // retain/release landing mid-park of the Steps twin still arms normally.
+        softBudgetArmSuppressed++;
+        try { release(entry.key, owner, 'soft-residency-budget'); }
+        finally { softBudgetArmSuppressed--; }
       }
       if (!assets.has(entry.key)) {
         evicted++;
@@ -838,7 +1702,9 @@ export function createAssetResidencyRegistry(options = {}) {
       if (visibilityHeld(entry) || entryHasPinnedRole(entry)) continue;
       const entryBytes = assetResidentBytes(entry);
       for (const owner of [...entry.owners.keys()]) {
-        release(entry.key, owner, 'soft-residency-budget');
+        softBudgetArmSuppressed++;
+        try { release(entry.key, owner, 'soft-residency-budget'); }
+        finally { softBudgetArmSuppressed--; }
       }
       if (!assets.has(entry.key)) {
         evicted++;
@@ -937,14 +1803,18 @@ export function createAssetResidencyRegistry(options = {}) {
     const budgetCandidates = [];
 
     let visited = 0;
-    for (const entry of [...assets.values()]) {
+    // The qualifying population is exactly the two class member sets (an entry reaches this
+    // pass only as a strict package-cache or soft-only resident) — iterate them directly
+    // instead of spreading the whole asset table; per-member re-qualify below handles drift.
+    for (const entry of iterTwoSets(packageCacheOnlyMembers, softResidentMembers)) {
       if (++visited % 256 === 0) yield;
-      if (entry.state !== 'resident' || hasActiveRequestForEntry(entry)) continue;
-      const ownerRecords = [...entry.owners.entries()];
-      const cacheOwners = ownerRecords.filter(([, metadata]) => isRenderPackageCacheOwner(metadata));
-      if (cacheOwners.length === 0 || cacheOwners.length !== ownerRecords.length) {
-        if (maxCacheOnlyBytes != null && ownerRecords.length > 0
-            && ownerRecords.every(([, metadata]) => isSoftResidencyOwner(metadata))) {
+      if (assets.get(entry.key) !== entry
+          || entry.state !== 'resident' || hasActiveRequestForEntry(entry)) continue;
+      // The owner-class counters answer both classifications in O(1) — every owner a
+      // package-cache owner ⇔ rpcOwnerCount === owners.size; the soft-only budget
+      // candidate check is the same fold — so the two per-asset array mints are gone.
+      if (!isPackageCacheOnlyEntry(entry)) {
+        if (maxCacheOnlyBytes != null && isSoftOnlyEntry(entry)) {
           budgetCandidates.push(entry);
         }
         continue;
@@ -963,7 +1833,7 @@ export function createAssetResidencyRegistry(options = {}) {
         continue;
       }
 
-      for (const [owner] of cacheOwners) {
+      for (const owner of [...entry.owners.keys()]) {
         if (release(entry.key, owner, reason)) releasedOwners++;
       }
       if (!assets.has(entry.key)) evicted.push(entry.key);
@@ -979,12 +1849,10 @@ export function createAssetResidencyRegistry(options = {}) {
           if (++evictVisited % 64 === 0) yield;
           if (softBytes <= maxCacheOnlyBytes) break;
           if (entry.state !== 'resident' || !assets.has(entry.key)) continue;
-          const ownerRecords = [...entry.owners.entries()];
-          if (ownerRecords.length === 0
-              || !ownerRecords.every(([, metadata]) => isSoftResidencyOwner(metadata))) continue;
+          if (!isSoftOnlyEntry(entry)) continue;
           if (visibilityHeld(entry) || entryHasPinnedRole(entry)) continue;
           const entryBytes = assetResidentBytes(entry);
-          for (const [owner] of ownerRecords) {
+          for (const owner of [...entry.owners.keys()]) {
             if (release(entry.key, owner, reason)) releasedOwners++;
           }
           if (!assets.has(entry.key)) {
@@ -1007,29 +1875,30 @@ export function createAssetResidencyRegistry(options = {}) {
 
   /** The gpuResidentBytes total diagnostics() reports, without building its per-asset rows. */
   function totalGpuResidentBytes() {
-    let bytes = 0;
-    for (const unit of memoryUnits.values()) bytes += unit.bytes;
-    return bytes;
+    return gpuResidentBytesTotal;
   }
 
   // The budget governor only consumes three scalar totals — building two full
   // diagnostics() tables inside enforceBudget minted ~2xN frozen rows plus
   // their owner-metadata sets and sort exactly at the boundary crossing.
   function budgetTotals() {
-    let cpuPackageBytes = 0;
-    for (const entry of assets.values()) cpuPackageBytes += entry.cpuPackageBytes;
-    let unaccountedResources = 0;
-    for (const resourceEntry of resources.values()) if (resourceEntry.unaccounted) unaccountedResources++;
-    return { cpuPackageBytes, gpuResidentBytes: totalGpuResidentBytes(), unaccountedResources };
+    return {
+      cpuPackageBytes: cpuPackageBytesTotal,
+      gpuResidentBytes: totalGpuResidentBytes(),
+      unaccountedResources: unaccountedResourceCount,
+    };
   }
 
   function evictIfUnowned(entry, reason) {
     if (!entry || entry.state !== 'resident' || entry.owners.size > 0) return false;
-    for (const request of pendingRequests) {
-      if (request.active && request.key === entry.key) return false;
-    }
+    if (activePendingKeySet().has(entry.key)) return false;
     entry.state = 'evicted';
+    rekeySoftBudgetClass(entry);
     assets.delete(entry.key);
+    residencyMutationSeq += 1;
+    governorBlockedMembers.delete(entry);
+    cpuPackageBytesTotal -= entry.cpuPackageBytes;
+    noteWarmCoverageEntryMutation(entry);
     evictedAssets++;
     const evictionAt = now();
     const ageMs = Math.max(0, evictionAt - entry.lastReleaseAtMs);
@@ -1054,9 +1923,13 @@ export function createAssetResidencyRegistry(options = {}) {
     if (!entry || entry.state !== 'resident') return;
     entry.state = contextLost ? 'abandoned' : 'disposed';
     resources.delete(entry.resource);
+    if (entry.unaccounted) unaccountedResourceCount -= 1;
     for (const memory of entry.memoryUnits || []) {
       memory.resources.delete(entry);
-      if (memory.resources.size === 0) memoryUnits.delete(memory.identity);
+      if (memory.resources.size === 0) {
+        memoryUnits.delete(memory.identity);
+        gpuResidentBytesTotal -= memory.bytes;
+      }
     }
     const protectedState = entry.resource && entry.resource[PROTECTED_RESOURCE];
     if (contextLost) {
@@ -1087,31 +1960,38 @@ export function createAssetResidencyRegistry(options = {}) {
 
   function rotateSector(nextSectorId) {
     const exactNext = nextSectorId == null ? null : String(nextSectorId);
-    if (exactNext === currentSectorId) return false;
-    if (warmOwner && warmSectorId === currentSectorId) {
+    const effectiveCurrent = effectiveCurrentSectorId();
+    if (exactNext === effectiveCurrent) return false;
+    // A synchronous rotate applies immediately: consume the pending target and out-seq
+    // any queued deferred mints so their end-of-drain repoint cannot regress the pointer.
+    const seq = ++latestRotateSeq;
+    if (warmOwner && warmSectorId === effectiveCurrent) {
       currentSectorId = exactNext;
+      appliedRotateSeq = seq;
+      pendingSectorTarget = exactNext;
+      hasPendingRotate = true;
       emit('sector-rotated', { currentSectorId, warmSectorId });
       return true;
     }
     if (warmOwner) releaseOwner(warmOwner, 'warm-sector-expired');
     warmOwner = null;
     warmSectorId = null;
-    const previousSectorId = currentSectorId;
+    const previousSectorId = effectiveCurrent;
     if (previousSectorId != null) {
       const owner = Object.freeze({ type: 'asset-warm-sector', sectorId: previousSectorId, generation: assetGeneration });
       let retained = 0;
-      for (const entry of assets.values()) {
-        let belongsToPrevious = false;
-        for (const metadata of entry.owners.values()) {
-          if (String(metadata && metadata.sectorId || '') !== previousSectorId) continue;
-          if (metadata && metadata.role === 'player') continue;
-          belongsToPrevious = true;
-          break;
+      const previousSectorMap = sectorOwnerIndex.get(previousSectorId);
+      if (previousSectorMap) {
+        const nowMs = now();
+        // Snapshot: the warm retain below indexes its own owner into this same
+        // sector map, and Map iterators visit entries added mid-walk.
+        for (const [entry, row] of [...previousSectorMap]) {
+          if (!exitWarmQualifies(entry, row, previousSectorId, false, nowMs)) continue;
+          if (retain(entry.key, owner, {
+            role: 'warm-previous-sector',
+            sectorId: previousSectorId,
+          })) retained++;
         }
-        if (belongsToPrevious && retain(entry.key, owner, {
-          role: 'warm-previous-sector',
-          sectorId: previousSectorId,
-        })) retained++;
       }
       if (retained > 0) {
         warmOwner = owner;
@@ -1119,8 +1999,32 @@ export function createAssetResidencyRegistry(options = {}) {
       }
     }
     currentSectorId = exactNext;
+    appliedRotateSeq = seq;
+    pendingSectorTarget = exactNext;
+    hasPendingRotate = true;
     emit('sector-rotated', { currentSectorId, warmSectorId });
     return true;
+  }
+
+  // An exit sweep row qualifies only while at least one owner's claim to the
+  // departing sector is still live — a lapsed membership (the arm that posted it
+  // moved on) must not carry the entry into the exit-warm cohort.
+  function hasLiveSectorClaim(entry, sid, includePlayer, nowMs) {
+    for (const metadata of entry.owners.values()) {
+      if (!includePlayer && metadata.role === 'player') continue;
+      for (const memberSid of ownerSectorIds(metadata)) {
+        if (String(memberSid) === sid && sectorClaimFresh(metadata, memberSid, nowMs)) return true;
+      }
+    }
+    return false;
+  }
+
+  // Shared qualifying predicate for every exit-warm mint site — the prepares and
+  // the rotates must filter identically or the ungated seam re-covers the exact
+  // cohort the gated one just excluded.
+  function exitWarmQualifies(entry, row, sid, includePlayer, nowMs) {
+    if (!includePlayer && (!row || row.nonPlayer <= 0)) return false;
+    return hasLiveSectorClaim(entry, sid, includePlayer, nowMs);
   }
 
   function prepareSectorExit(sectorId = currentSectorId, options = {}) {
@@ -1131,20 +2035,177 @@ export function createAssetResidencyRegistry(options = {}) {
     if (warmOwner) releaseOwner(warmOwner, 'warm-sector-expired');
     const owner = Object.freeze({ type: 'asset-warm-sector', sectorId: exactSectorId, generation: assetGeneration });
     let retained = 0;
-    for (const entry of assets.values()) {
-      let belongs = false;
-      for (const metadata of entry.owners.values()) {
-        if (String(metadata && metadata.sectorId || '') !== exactSectorId) continue;
-        if (!includePlayer && metadata && metadata.role === 'player') continue;
-        belongs = true;
-        break;
+    const exitSectorMap = sectorOwnerIndex.get(exactSectorId);
+    if (exitSectorMap) {
+      const nowMs = now();
+      // Snapshot as above — the warm retain indexes its own owner into this map.
+      for (const [entry, row] of [...exitSectorMap]) {
+        if (!exitWarmQualifies(entry, row, exactSectorId, includePlayer, nowMs)) continue;
+        if (retain(entry.key, owner, { role: warmRole, sectorId: exactSectorId })) retained++;
       }
-      if (belongs && retain(entry.key, owner, { role: warmRole, sectorId: exactSectorId })) retained++;
     }
     warmOwner = retained > 0 ? owner : null;
     warmSectorId = retained > 0 ? exactSectorId : null;
+    // Mint the coverage ledger here while the caller still bounds the seam —
+    // otherwise the first live retain after the hold pays the O(warmAssets x
+    // owners-per-entry) census inside whatever presented frame it lands in.
+    if (warmOwner) warmCoverageComplete(warmOwner, owners.get(warmOwner));
     emit('sector-exit-warmed', { sectorId: exactSectorId, retained });
     return retained;
+  }
+
+  // Steps twin of the warm-coverage census: same set, minted under a paced
+  // iterator. Aborts early if the hold moved on or a lazy mint beat it.
+  function* mintWarmCoverageSteps(owner) {
+    const warmState = owners.get(owner);
+    if (!warmState || (warmCoverage && warmCoverage.owner === owner)) return;
+    const assetList = [...warmState.assets];
+    const uncovered = new Set();
+    for (let i = 0; i < assetList.length; i++) {
+      if (warmOwner !== owner || (warmCoverage && warmCoverage.owner === owner)) return;
+      if (!warmEntryCovered(assetList[i], owner)) uncovered.add(assetList[i].key);
+      if ((i & 255) === 255) yield;
+    }
+    if (warmOwner === owner && (!warmCoverage || warmCoverage.owner !== owner)) {
+      warmCoverage = { owner, uncovered };
+    }
+  }
+
+  // Deferred twin: snapshots the qualifying rows eagerly (inside the emit,
+  // while owner qualification still reflects the departing sector), then hands
+  // back an iterator that paces the previous-warm release, the retain loop and
+  // the coverage pre-mint across presented frames. Abandon-safe — a mid-mint
+  // return() releases the partially retained warm owner via the finally.
+  function prepareSectorExitDeferred(sectorId = currentSectorId, options = {}) {
+    const exactSectorId = sectorId == null ? null : String(sectorId);
+    if (exactSectorId == null) return null;
+    const includePlayer = options.includePlayer === true;
+    const warmRole = includePlayer ? 'save-restore-hold' : 'warm-previous-sector';
+    const exitSectorMap = sectorOwnerIndex.get(exactSectorId);
+    const nowMs = now();
+    const rows = exitSectorMap
+      ? [...exitSectorMap]
+        .filter(([entry, row]) => exitWarmQualifies(entry, row, exactSectorId, includePlayer, nowMs))
+        .map(([entry]) => entry.key)
+      : [];
+    const owner = Object.freeze({ type: 'asset-warm-sector', sectorId: exactSectorId, generation: assetGeneration });
+    return (function* () {
+      if (warmOwner) releaseOwner(warmOwner, 'warm-sector-expired');
+      yield;
+      let retained = 0;
+      let committed = false;
+      try {
+        for (let i = 0; i < rows.length; i++) {
+          if (retain(rows[i], owner, { role: warmRole, sectorId: exactSectorId })) retained++;
+          if ((i & 255) === 255) yield;
+        }
+        committed = true;
+      } finally {
+        if (!committed && retained > 0) releaseOwner(owner, 'warm-sector-mint-abandoned');
+      }
+      if (retained > 0) {
+        warmOwner = owner;
+        warmSectorId = exactSectorId;
+        yield* mintWarmCoverageSteps(owner);
+      } else {
+        warmOwner = null;
+        warmSectorId = null;
+      }
+      emit('sector-exit-warmed', { sectorId: exactSectorId, retained });
+      return retained;
+    })();
+  }
+
+  // Deferred twin of rotateSector: the cheap paths still apply synchronously
+  // (returns null when the rotation applied inline — callers should still report
+  // rotated=true, and `false` when the sector was already current, mirroring the
+  // sync rotate's boolean); a real warm mint snapshots its rows eagerly and
+  // returns an iterator that paces the release/retain/coverage work.
+  function rotateSectorDeferred(nextSectorId) {
+    const exactNext = nextSectorId == null ? null : String(nextSectorId);
+    // The pointer lags one rotation while an earlier mint is still queued; the sector
+    // this call departs is the newest REQUESTED target, not the stale live one — this
+    // also keeps reversal requests (B→A while A→B is queued) from being dropped.
+    const effectiveCurrent = effectiveCurrentSectorId();
+    if (exactNext === effectiveCurrent) return false;
+    const rotateSeq = ++latestRotateSeq;
+    if (warmOwner && warmSectorId === effectiveCurrent) {
+      currentSectorId = exactNext;
+      appliedRotateSeq = rotateSeq;
+      pendingSectorTarget = exactNext;
+      hasPendingRotate = true;
+      emit('sector-rotated', { currentSectorId, warmSectorId });
+      return null;
+    }
+    pendingSectorTarget = exactNext;
+    hasPendingRotate = true;
+    const previousSectorId = effectiveCurrent;
+    const previousSectorMap = previousSectorId != null ? sectorOwnerIndex.get(previousSectorId) : null;
+    const rotateNowMs = now();
+    const rows = previousSectorMap
+      ? [...previousSectorMap]
+        .filter(([entry, row]) => exitWarmQualifies(entry, row, previousSectorId, false, rotateNowMs))
+        .map(([entry]) => entry.key)
+      : [];
+    const owner = previousSectorId != null
+      ? Object.freeze({ type: 'asset-warm-sector', sectorId: previousSectorId, generation: assetGeneration })
+      : null;
+    const mintIterator = (function* () {
+      try {
+        if (warmOwner) releaseOwner(warmOwner, 'warm-sector-expired');
+        yield;
+        let retained = 0;
+        let committed = false;
+        // appliedRotateSeq only advances past this seq via a newer applied rotate
+        // or the context repin — either way the queued mint is dead and its retain
+        // pass is wasted work. Bail to the marker-clearing finally; the inner
+        // committed guard releases any partial mint.
+        const superseded = () => appliedRotateSeq >= rotateSeq;
+        try {
+          for (let i = 0; i < rows.length && !superseded(); i++) {
+            if (retain(rows[i], owner, { role: 'warm-previous-sector', sectorId: previousSectorId })) retained++;
+            if ((i & 255) === 255) yield;
+          }
+          committed = !superseded();
+        } finally {
+          if (!committed && retained > 0) releaseOwner(owner, 'warm-sector-mint-abandoned');
+        }
+        if (!superseded()) {
+          if (retained > 0) {
+            warmOwner = owner;
+            warmSectorId = previousSectorId;
+            yield* mintWarmCoverageSteps(owner);
+          } else {
+            warmOwner = null;
+            warmSectorId = null;
+          }
+          // A cheap-path or sync rotate that superseded this one already moved the
+          // pointer; repoint only while this is still the newest applied rotation.
+          if (rotateSeq > appliedRotateSeq) {
+            currentSectorId = exactNext;
+            appliedRotateSeq = rotateSeq;
+          }
+          emit('sector-rotated', { currentSectorId, warmSectorId });
+        }
+        return true;
+      } finally {
+        // Drain-abandon (.return()) or supersede: drop the stale pending marker so
+        // later calls re-derive from the live pointer instead of a dead request.
+        if (hasPendingRotate && pendingSectorTarget === exactNext) hasPendingRotate = false;
+      }
+    })();
+    // A queued mint killed before its first .next() never enters the generator,
+    // so its finally (and the pending-marker cleanup) never runs. Chain abandon
+    // sites call this hook instead: finalize the rotation the requester already
+    // observed via effectiveCurrentSectorId() and drop the dead marker.
+    mintIterator.onAbandoned = () => {
+      if (hasPendingRotate && pendingSectorTarget === exactNext) hasPendingRotate = false;
+      if (rotateSeq > appliedRotateSeq) {
+        currentSectorId = exactNext;
+        appliedRotateSeq = rotateSeq;
+      }
+    };
+    return mintIterator;
   }
 
   function handleContextLost() {
@@ -1158,7 +2219,14 @@ export function createAssetResidencyRegistry(options = {}) {
     const roster = options && Array.isArray(options.roster) ? options.roster : null;
     const sectorId = options && options.sectorId != null ? String(options.sectorId) : null;
     const repin = () => {
-      if (sectorId) currentSectorId = sectorId;
+      if (sectorId) {
+        currentSectorId = sectorId;
+        // The repin is authoritative: consume every queued rotate's seq so a still-
+        // draining deferred mint cannot repoint the pointer back across the restore.
+        hasPendingRotate = false;
+        pendingSectorTarget = null;
+        appliedRotateSeq = latestRotateSeq;
+      }
       if (!roster) return;
       beginVisibilityPresent();
       for (let i = 0; i < roster.length; i++) noteVisibility(roster[i], true);
@@ -1186,6 +2254,40 @@ export function createAssetResidencyRegistry(options = {}) {
       packageCacheBudgetDepth--;
     }
     contextLost = wasContextLost;
+  }
+
+  // Per-entry diagnostics row memo on ownersVersion + the canonical flag —
+  // every field keys off the owner set, refCount/resource/byte totals that are
+  // stable while resident, so an unchanged entry serves its frozen row without
+  // the O(owners) set/dedup/sort mints inside every seam publish.
+  function diagnosticsRow(entry, canonical) {
+    const memo = entry.diagRowMemo;
+    if (memo && memo.ownersVersion === entry.ownersVersion && memo.canonical === canonical) {
+      return memo.row;
+    }
+    const gpuResidentBytes = assetResidentBytes(entry);
+    const unaccountedResources = assetUnaccountedResources(entry);
+    const row = {
+      key: entry.key,
+      refCount: entry.owners.size,
+      resourceCount: entry.resources.size,
+      // `bytes` remains as the compatibility field consumed by existing diagnostics readers.
+      // It is never populated from encoded package size; it aliases authoritative GPU bytes.
+      bytes: gpuResidentBytes,
+      gpuResidentBytes,
+      cpuPackageBytes: entry.cpuPackageBytes,
+      unaccountedResources,
+      unaccountedBytes: unaccountedResources > 0 ? null : 0,
+      gpuAccountingAuthoritative: unaccountedResources === 0,
+      roles: Object.freeze([...new Set([...entry.owners.values()].map((metadata) => metadata && metadata.role).filter(Boolean))].sort()),
+      presentationTiers: Object.freeze([...new Set([...entry.owners.values()]
+        .map((metadata) => metadata && metadata.presentationTier).filter(Boolean))].sort()),
+      sectors: Object.freeze([...new Set([...entry.owners.values()].flatMap((metadata) => ownerSectorIds(metadata)))].sort()),
+    };
+    if (!canonical) row.generation = entry.generation;
+    const frozen = Object.freeze(row);
+    entry.diagRowMemo = { ownersVersion: entry.ownersVersion, canonical, row: frozen };
+    return frozen;
   }
 
   function diagnostics(diagnosticOptions = {}) {
@@ -1224,41 +2326,18 @@ export function createAssetResidencyRegistry(options = {}) {
         });
       }).sort((a, b) => b.bytes - a.bytes || a.owner.localeCompare(b.owner))
       : null;
-    const assetRows = [...assets.values()].map((entry) => {
-      const gpuResidentBytes = assetResidentBytes(entry);
-      const unaccountedResources = assetUnaccountedResources(entry);
-      const row = {
-        key: entry.key,
-        refCount: entry.owners.size,
-        resourceCount: entry.resources.size,
-        // `bytes` remains as the compatibility field consumed by existing diagnostics readers.
-        // It is never populated from encoded package size; it aliases authoritative GPU bytes.
-        bytes: gpuResidentBytes,
-        gpuResidentBytes,
-        cpuPackageBytes: entry.cpuPackageBytes,
-        unaccountedResources,
-        unaccountedBytes: unaccountedResources > 0 ? null : 0,
-        gpuAccountingAuthoritative: unaccountedResources === 0,
-        roles: Object.freeze([...new Set([...entry.owners.values()].map((metadata) => metadata && metadata.role).filter(Boolean))].sort()),
-        presentationTiers: Object.freeze([...new Set([...entry.owners.values()]
-          .map((metadata) => metadata && metadata.presentationTier).filter(Boolean))].sort()),
-        sectors: Object.freeze([...new Set([...entry.owners.values()].map((metadata) => metadata && metadata.sectorId).filter(Boolean).map(String))].sort()),
-      };
-      if (!canonical) row.generation = entry.generation;
-      return Object.freeze(row);
-    }).sort((a, b) => a.key.localeCompare(b.key));
+    const assetRows = [...assets.values()].map((entry) => diagnosticsRow(entry, canonical))
+      .sort((a, b) => a.key.localeCompare(b.key));
     let gpuResidentBytes = 0;
     for (const unit of memoryUnits.values()) gpuResidentBytes += unit.bytes;
     let cpuPackageBytes = 0;
     for (const entry of assets.values()) cpuPackageBytes += entry.cpuPackageBytes;
     let unaccountedResources = 0;
     for (const entry of resources.values()) if (entry.unaccounted) unaccountedResources++;
-    let packageCacheOnlyBytes = 0;
-    let softResidentBytes = 0;
-    for (const entry of assets.values()) {
-      if (isPackageCacheOnlyEntry(entry)) packageCacheOnlyBytes += assetResidentBytes(entry);
-      else if (isSoftOnlyEntry(entry)) softResidentBytes += assetResidentBytes(entry);
-    }
+    // The class ledgers carry these totals per-mutation — read them instead of
+    // re-walking the table (the verify cadence re-derives them as drift checks).
+    const packageCacheOnlyBytes = packageCacheOnlyBytesTotal;
+    const softResidentBytes = softResidentBytesTotal;
     return Object.freeze({
       schema: 'spaceface.assetResidency.v2',
       residentAssets: assets.size,
@@ -1278,6 +2357,7 @@ export function createAssetResidencyRegistry(options = {}) {
       disposedResources,
       abandonedResources,
       evictedAssets,
+      ledgerDriftEvents,
       cacheSweepCount,
       packageCacheOnlyBytes,
       packageCacheOnlyMaxBytes,
@@ -1287,6 +2367,18 @@ export function createAssetResidencyRegistry(options = {}) {
       warmSectorId,
       contextLost,
       contextGeneration,
+      // W125 coverage-gap incidence: retains without metadata.sectorId, split by
+      // whether the entry is warm-mint-visible anyway (sectorOwnerRefs > 0) or
+      // invisible (sole owner, unindexed). byRole names the roles minting them.
+      sectorlessOwnerRetains: Object.freeze({
+        total: sectorlessOwnerRetains.total,
+        onSectorIndexedEntries: sectorlessOwnerRetains.onSectorIndexedEntries,
+        soleOwnerUnindexed: sectorlessOwnerRetains.soleOwnerUnindexed,
+        byRole: Object.freeze([...sectorlessOwnerRetains.byRole.entries()]
+          .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+          .slice(0, 8)
+          .map(([role, count]) => Object.freeze({ role, count }))),
+      }),
       assets: Object.freeze(assetRows),
       eventHistorySize: events.length,
       events: Object.freeze(includeEvents ? events.slice() : []),
@@ -1320,9 +2412,17 @@ export function createAssetResidencyRegistry(options = {}) {
   function governorEntry(entry, kind = 'gpu', activePendingKeys = null) {
     const activeRequest = activePendingKeys
       ? activePendingKeys.has(entry.key)
-      : [...pendingRequests].some((request) => (
-        request.active && request.key === entry.key
-      ));
+      : activePendingKeySet().has(entry.key);
+    // Row memo: owner clones, role/tier dedups and the memoryUnits walk all key
+    // off the owner set, which mutates only through the membership funnel
+    // (ownersVersion). activeRequest is the one volatile field — it is a Set
+    // probe per consult, restamped onto the shared row each call. Consumers
+    // only read rows or shallow-copy them (selectEvictions), so sharing is safe.
+    const memo = entry.governorRowMemo;
+    if (memo && memo.ownersVersion === entry.ownersVersion && memo.kind === kind) {
+      memo.row.activeRequest = activeRequest;
+      return memo.row;
+    }
     const ownerRecords = [...entry.owners.values()].map((metadata) => ({ ...(metadata || {}) }));
     const roles = [...new Set(ownerRecords.map((metadata) => metadata.role).filter(Boolean))];
     const presentationTiers = [...new Set(ownerRecords
@@ -1339,7 +2439,7 @@ export function createAssetResidencyRegistry(options = {}) {
       }
     }
     const gpuResidentBytes = assetResidentBytes(entry);
-    return {
+    const row = {
       key: entry.key,
       // `bytes` is retained as the GPU compatibility alias. CPU planning uses the separate
       // package-byte field and never falls through to this value.
@@ -1352,15 +2452,23 @@ export function createAssetResidencyRegistry(options = {}) {
       ownerRecords,
       activeRequest,
       memoryUnits: kind === 'gpu' ? memoryUnits : null,
+      // memoryUnitList()'s output for this row, minted once per memo — the enforce census
+      // consults it per pass instead of re-deduping/re-validating the same unit walk.
+      validatedUnits: kind === 'gpu'
+        ? memoryUnits.filter((unit) => unit && unit.identity != null
+            && Number.isFinite(Number(unit.bytes)) && Number(unit.bytes) > 0)
+        : null,
     };
+    entry.governorRowMemo = { ownersVersion: entry.ownersVersion, kind, row };
+    return row;
   }
 
-  function blockedBreakdown(entries) {
+  function blockedBreakdown(entries, reasonsByRow = null) {
     const kind = entries[0]?.kind === 'cpu' ? 'cpu' : 'gpu';
     const unitsByReason = new Map();
     for (const entry of entries) {
       if (isGovernorEntryEvictable(entry)) continue;
-      const reasons = governorEntryBlockReasons(entry);
+      const reasons = (reasonsByRow && reasonsByRow.get(entry)) || governorEntryBlockReasons(entry);
       const fallback = reasons.length > 0 ? reasons : ['protected'];
       for (const reason of fallback) {
         let units = unitsByReason.get(reason);
@@ -1401,12 +2509,77 @@ export function createAssetResidencyRegistry(options = {}) {
     // the inline per-entry scan was O(assets x requests) and ran twice (before + after
     // entries). The per-candidate re-check below still consults live requests through the
     // default governorEntry path, so a plan can never outrace a decode completing mid-call.
-    const activePendingKeys = new Set();
-    for (const request of pendingRequests) {
-      if (request && request.active) activePendingKeys.add(request.key);
-    }
-    const entries = [...assets.values()].map((entry) => governorEntry(entry, kind, activePendingKeys));
     const governorCapBytes = kind === 'cpu' ? governor.maxCpuBytes : governor.maxGpuBytes;
+    // Every census input is funnelled behind the two mutation seqs; identical
+    // seqs + byte ledgers + cap reproduce the last receipt verbatim, so a
+    // residency poll that changed nothing serves the frozen plan in O(1)
+    // instead of re-walking O(blocked). An evicting call mutates through a
+    // funnel, so a memoized plan can never skip live evictions.
+    const memo = enforcePlanMemo;
+    if (memo
+      && memo.kind === kind
+      && memo.residencyMutationSeq === residencyMutationSeq
+      && memo.pendingRequestSeq === pendingRequestSeq
+      && memo.cpuPackageBytes === before.cpuPackageBytes
+      && memo.gpuResidentBytes === before.gpuResidentBytes
+      && memo.unaccountedResources === before.unaccountedResources
+      && memo.governorCapBytes === governorCapBytes) {
+      return memo.receipt;
+    }
+    const overBudgetKnown = initialResidentBytes > governorCapBytes;
+    const activePendingKeys = activePendingKeySet();
+    const entries = [];
+    // Blocked rows are collected inside the same census walk — a planned evict
+    // can only remove evictable rows, so the blocked set survives to the
+    // after-table unchanged; the membership filter below stays for mutations
+    // that raced the census itself. Each blocked row's reasons mint on this pass
+    // too: the planner consumes them (plus the unit-owner index) as option
+    // projections, and the after-table breakdown reuses them — the blocked set
+    // is walked once, not three times. Under the cap the plan can only be
+    // evict:[], so the entries list and unit-owner index are skipped outright.
+    const blockedRows = [];
+    const blockedReasons = new Map();
+    const unitOwners = overBudgetKnown ? new Map() : null;
+    const entryUnitIds = overBudgetKnown ? [] : null;
+    let hasMemoryModel = false;
+    if (overBudgetKnown) {
+      for (const entry of assets.values()) {
+        const row = governorEntry(entry, kind, activePendingKeys);
+        const index = entries.length;
+        entries.push(row);
+        if (Array.isArray(row.memoryUnits)) hasMemoryModel = true;
+        const units = row.validatedUnits !== undefined ? row.validatedUnits : memoryUnitList(row);
+        const effective = units && units.length > 0
+          ? units
+          : [{ identity: row, bytes: numericBytes(row, kind) }];
+        const ids = [];
+        for (const unit of effective) {
+          if (!unit || unit.bytes <= 0) continue;
+          ids.push(unit.identity);
+          let record = unitOwners.get(unit.identity);
+          if (!record) {
+            record = { bytes: unit.bytes, entryIndexes: new Set() };
+            unitOwners.set(unit.identity, record);
+          } else {
+            record.bytes = Math.max(record.bytes, unit.bytes);
+          }
+          record.entryIndexes.add(index);
+        }
+        entryUnitIds[index] = ids;
+      }
+    }
+    // Blocked rows mint off the live member set for both paths — per-member re-qualify
+    // on this call's pending snapshot keeps the set exact while the per-row policy
+    // check drops out of the census entirely (O(blocked), O(1) when the set is empty).
+    for (const entry of governorBlockedMembers) {
+      if (assets.get(entry.key) !== entry) continue;
+      const row = governorEntry(entry, kind, activePendingKeys);
+      if (!isGovernorEntryEvictable(row)) {
+        blockedRows.push(row);
+        blockedReasons.set(row, governorEntryBlockReasons(row));
+      }
+    }
+    const memoryUnitOwners = hasMemoryModel ? unitOwners : null;
     // Under the named ceiling the planner can only return evict:[] — selectEvictions
     // takes its early-out before touching evictions — so the spread/sort/index build
     // is skipped outright; the receipt still carries the same fields, and the blocked
@@ -1427,7 +2600,7 @@ export function createAssetResidencyRegistry(options = {}) {
         blockedBytesByReason: Object.freeze({}),
         evict: Object.freeze([]),
       }
-      : governor.plan(entries, kind, { initialResidentBytes });
+      : governor.plan(entries, kind, { initialResidentBytes, blockedRows, blockedReasons, memoryUnitOwners, entryUnitIds });
     const evicted = [];
     for (const key of plan.evict) {
       const entry = assets.get(String(key || ''));
@@ -1450,24 +2623,26 @@ export function createAssetResidencyRegistry(options = {}) {
       evictIfUnowned(entry, 'governor-budget');
       if (!assets.has(String(key))) evicted.push(key);
     }
-    // An empty plan.evict means no release() ran — the asset map is byte-identical to
-    // the `entries` census minted above, so it doubles as the after-table for the
-    // blocked breakdown instead of paying a second full governorEntry walk.
-    const afterEntries = plan.evict.length === 0
-      ? entries
-      : [...assets.values()].map((entry) => governorEntry(entry, kind, activePendingKeys));
+    // An empty plan.evict means no release() ran — the blocked rows collected in
+    // the census are byte-identical to the after-table's. A non-empty evict plan
+    // can only remove evictable rows, so the blocked set needs no filter there;
+    // the same filter covers mutations that raced the census itself (mid-flight
+    // releases in the stepped twin).
+    const afterBlockedRows = plan.evict.length === 0
+      ? blockedRows
+      : blockedRows.filter((row) => assets.has(row.key));
     const after = budgetTotals();
     const beforeBytes = Number(kind === 'cpu' ? before.cpuPackageBytes : before.gpuResidentBytes) || 0;
     const remainingBytes = Number(kind === 'cpu' ? after.cpuPackageBytes : after.gpuResidentBytes) || 0;
     const evictedBytes = Math.max(0, beforeBytes - remainingBytes);
-    const blocked = blockedBreakdown(afterEntries);
+    const blocked = blockedBreakdown(afterBlockedRows, blockedReasons);
     const budgetBytes = Number(plan.budgetBytes);
     const gpuAccountingAuthoritative = kind !== 'gpu' || after.unaccountedResources === 0;
     const indeterminate = !gpuAccountingAuthoritative;
     const budgetSatisfied = indeterminate
       ? false
       : Number.isFinite(budgetBytes) ? remainingBytes <= budgetBytes : true;
-    return Object.freeze({
+    const receipt = Object.freeze({
       ...plan,
       evicted: Object.freeze(evicted),
       evictedBytes,
@@ -1485,11 +2660,178 @@ export function createAssetResidencyRegistry(options = {}) {
       blockedBytesByRole: blocked.byRole,
       blockedBytesByReason: blocked.byReason,
     });
+    enforcePlanMemo = {
+      kind,
+      residencyMutationSeq,
+      pendingRequestSeq,
+      cpuPackageBytes: after.cpuPackageBytes,
+      gpuResidentBytes: after.gpuResidentBytes,
+      unaccountedResources: after.unaccountedResources,
+      governorCapBytes,
+      receipt,
+    };
+    return receipt;
+  }
+
+  // Stepped twin of enforceBudget: identical plan/evict/receipt semantics with the
+  // O(assets) census and the evict loop batched under the caller's slice clock —
+  // the sector:exit seam was the last site paying the whole mint inside one emit.
+  function* enforceBudgetSteps(kind = 'gpu', batchEntries = 256) {
+    const before = budgetTotals();
+    const initialResidentBytes = kind === 'cpu' ? before.cpuPackageBytes : before.gpuResidentBytes;
+    const governorCapBytes = kind === 'cpu' ? governor.maxCpuBytes : governor.maxGpuBytes;
+    // Same memo as the sync twin — the consult runs at first .next(), so a mint
+    // held across frames still re-validates the seqs at drive time.
+    const memo = enforcePlanMemo;
+    if (memo
+      && memo.kind === kind
+      && memo.residencyMutationSeq === residencyMutationSeq
+      && memo.pendingRequestSeq === pendingRequestSeq
+      && memo.cpuPackageBytes === before.cpuPackageBytes
+      && memo.gpuResidentBytes === before.gpuResidentBytes
+      && memo.unaccountedResources === before.unaccountedResources
+      && memo.governorCapBytes === governorCapBytes) {
+      return memo.receipt;
+    }
+    const overBudgetKnown = initialResidentBytes > governorCapBytes;
+    const activePendingKeys = activePendingKeySet();
+    const entries = [];
+    const blockedRows = [];
+    // Same single-fold census as the sync twin: blocked reasons mint once off the member
+    // set and serve both the planner's blocked loop and the after-table breakdown; the
+    // entries list and unit-owner index mint only when the ledger is already over the cap
+    // (the plan can only be evict:[] otherwise). Yield cadence keeps its
+    // O(assets)/batchEntries contract.
+    const blockedReasons = new Map();
+    const unitOwners = overBudgetKnown ? new Map() : null;
+    const entryUnitIds = overBudgetKnown ? [] : null;
+    let hasMemoryModel = false;
+    let visited = 0;
+    if (overBudgetKnown) {
+      for (const entry of assets.values()) {
+        const row = governorEntry(entry, kind, activePendingKeys);
+        const index = entries.length;
+        entries.push(row);
+        if (Array.isArray(row.memoryUnits)) hasMemoryModel = true;
+        const units = row.validatedUnits !== undefined ? row.validatedUnits : memoryUnitList(row);
+        const effective = units && units.length > 0
+          ? units
+          : [{ identity: row, bytes: numericBytes(row, kind) }];
+        const ids = [];
+        for (const unit of effective) {
+          if (!unit || unit.bytes <= 0) continue;
+          ids.push(unit.identity);
+          let record = unitOwners.get(unit.identity);
+          if (!record) {
+            record = { bytes: unit.bytes, entryIndexes: new Set() };
+            unitOwners.set(unit.identity, record);
+          } else {
+            record.bytes = Math.max(record.bytes, unit.bytes);
+          }
+          record.entryIndexes.add(index);
+        }
+        entryUnitIds[index] = ids;
+        if (++visited % batchEntries === 0) yield;
+      }
+    }
+    for (const entry of governorBlockedMembers) {
+      if (assets.get(entry.key) !== entry) continue;
+      const row = governorEntry(entry, kind, activePendingKeys);
+      if (!isGovernorEntryEvictable(row)) {
+        blockedRows.push(row);
+        blockedReasons.set(row, governorEntryBlockReasons(row));
+      }
+      if (++visited % batchEntries === 0) yield;
+    }
+    const memoryUnitOwners = hasMemoryModel ? unitOwners : null;
+    const plan = initialResidentBytes <= governorCapBytes
+      ? {
+        overBudget: false,
+        residentBytes: initialResidentBytes,
+        initialResidentBytes,
+        remainingBytes: initialResidentBytes,
+        evictedBytes: 0,
+        plannedEvictedBytes: 0,
+        budgetBytes: governorCapBytes,
+        budgetSatisfied: true,
+        protectedShortfallBytes: 0,
+        kind,
+        blockedBytesByRole: Object.freeze({}),
+        blockedBytesByReason: Object.freeze({}),
+        evict: Object.freeze([]),
+      }
+      : governor.plan(entries, kind, { initialResidentBytes, blockedRows, blockedReasons, memoryUnitOwners, entryUnitIds });
+    const evicted = [];
+    for (const key of plan.evict) {
+      if (++visited % batchEntries === 0) yield;
+      const entry = assets.get(String(key || ''));
+      if (!entry) continue;
+      const candidate = governorEntry(entry, kind);
+      // Same live re-check as the sync twin — a plan can race a decode completion
+      // or a new presentation retain between steps; only fully evictable
+      // candidates release.
+      if (!isGovernorEntryEvictable(candidate)) continue;
+      let everyOwnerEvictable = true;
+      for (const metadata of entry.owners.values()) {
+        if (!isGovernorOwnerEvictable(metadata)) {
+          everyOwnerEvictable = false;
+          break;
+        }
+      }
+      if (!everyOwnerEvictable) continue;
+      if (visibilityHeld(entry)) continue;
+      for (const owner of [...entry.owners.keys()]) release(entry.key, owner, 'governor-budget');
+      evictIfUnowned(entry, 'governor-budget');
+      if (!assets.has(String(key))) evicted.push(key);
+    }
+    const afterBlockedRows = plan.evict.length === 0
+      ? blockedRows
+      : blockedRows.filter((row) => assets.has(row.key));
+    const after = budgetTotals();
+    const beforeBytes = Number(kind === 'cpu' ? before.cpuPackageBytes : before.gpuResidentBytes) || 0;
+    const remainingBytes = Number(kind === 'cpu' ? after.cpuPackageBytes : after.gpuResidentBytes) || 0;
+    const evictedBytes = Math.max(0, beforeBytes - remainingBytes);
+    const blocked = blockedBreakdown(afterBlockedRows, blockedReasons);
+    const budgetBytes = Number(plan.budgetBytes);
+    const gpuAccountingAuthoritative = kind !== 'gpu' || after.unaccountedResources === 0;
+    const indeterminate = !gpuAccountingAuthoritative;
+    const budgetSatisfied = indeterminate
+      ? false
+      : Number.isFinite(budgetBytes) ? remainingBytes <= budgetBytes : true;
+    const receipt = Object.freeze({
+      ...plan,
+      evicted: Object.freeze(evicted),
+      evictedBytes,
+      remainingBytes,
+      residentBytes: after.gpuResidentBytes,
+      gpuResidentBytes: after.gpuResidentBytes,
+      cpuPackageBytes: after.cpuPackageBytes,
+      budgetSatisfied,
+      overBudget: indeterminate ? null : !budgetSatisfied,
+      indeterminate,
+      gpuAccountingAuthoritative,
+      unaccountedResources: after.unaccountedResources,
+      protectedShortfallBytes: indeterminate ? null : budgetSatisfied ? 0 : remainingBytes - budgetBytes,
+      blockedBytesByRole: blocked.byRole,
+      blockedBytesByReason: blocked.byReason,
+    });
+    enforcePlanMemo = {
+      kind,
+      residencyMutationSeq,
+      pendingRequestSeq,
+      cpuPackageBytes: after.cpuPackageBytes,
+      gpuResidentBytes: after.gpuResidentBytes,
+      unaccountedResources: after.unaccountedResources,
+      governorCapBytes,
+      receipt,
+    };
+    return receipt;
   }
 
   return Object.freeze({
     registerAsset,
     retain,
+    reclaimWarm,
     beginRequest,
     release,
     releaseOwner,
@@ -1498,10 +2840,13 @@ export function createAssetResidencyRegistry(options = {}) {
     releaseDetachedBoundaryOwnersSteps,
     releaseUnreferencedCacheOwners,
     releaseUnreferencedCacheOwnersSteps,
+    verifyLedgerConsistency,
     handoffOwnerWhenCovered,
     isOwnerReleased,
     rotateSector,
+    rotateSectorDeferred,
     prepareSectorExit,
+    prepareSectorExitDeferred,
     setEvictionCorridor,
     handleContextLost,
     handleContextRestored,
@@ -1519,6 +2864,7 @@ export function createAssetResidencyRegistry(options = {}) {
     has,
     knownNonResident,
     enforceBudget,
+    enforceBudgetSteps,
     diagnostics,
     canonicalDiagnostics,
   });
@@ -1526,7 +2872,15 @@ export function createAssetResidencyRegistry(options = {}) {
 
 export function applySectorExitResidency(residency, sectorId, options = {}) {
   if (!residency) return null;
-  if (typeof residency.prepareSectorExit === 'function') {
+  // A caller that drives the cleanup iterator itself can also take over the
+  // warm mint — it rides as leg 0 of the same paced drive instead of paying
+  // its O(sector) release+retain loop inside the exit emit.
+  let warmMintIter = null;
+  if (options.deferWarmMint === true
+    && typeof options.driveCacheCleanup === 'function'
+    && typeof residency.prepareSectorExitDeferred === 'function') {
+    warmMintIter = residency.prepareSectorExitDeferred(sectorId, options);
+  } else if (typeof residency.prepareSectorExit === 'function') {
     residency.prepareSectorExit(sectorId, options);
   }
   const primaryReason = options.cacheCleanupReason || 'sector-exit-cache-only';
@@ -1537,7 +2891,7 @@ export function applySectorExitResidency(residency, sectorId, options = {}) {
   // A caller can take over cleanup driving (e.g. the renderer's paced residency
   // poll) — the sync twin + microtask then never run inside the exit frame.
   if (typeof options.driveCacheCleanup === 'function') {
-    options.driveCacheCleanup(primaryReason, postDispatchReason);
+    options.driveCacheCleanup(primaryReason, postDispatchReason, warmMintIter);
   } else {
     cacheCleanup = typeof residency.releaseUnreferencedCacheOwners === 'function'
       ? residency.releaseUnreferencedCacheOwners(primaryReason)
@@ -1552,7 +2906,12 @@ export function applySectorExitResidency(residency, sectorId, options = {}) {
       });
     }
   }
-  if (typeof residency.enforceBudget === 'function') {
+  // deferBudgetEnforce hands the enforce to the caller's paced drive (the
+  // renderer chains it as a leg of the sector-exit cleanup iterator): the census
+  // then paces across presented beats instead of minting inside the exit emit.
+  // The deferred receipt is inherently async — callers that consume the return
+  // receipt synchronously must not pass this flag.
+  if (typeof residency.enforceBudget === 'function' && options.deferBudgetEnforce !== true) {
     const receipt = residency.enforceBudget(options.kind || 'gpu');
     if (!cacheCleanup) return receipt;
     return Object.freeze({

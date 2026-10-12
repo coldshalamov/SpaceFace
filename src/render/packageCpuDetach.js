@@ -19,13 +19,128 @@
 // userData, so a structured manifest reference on userData would throw on its own cycle, and a
 // clone carrying a copied mark is rejected by the entry.texture identity check.
 
-import { sharedImageSourceUserCount } from './imageSourceDedupe.js';
+import { BufferAttribute } from 'three';
+import {
+  bumpPackageDetachSerial,
+  noteSharedImageSourceRefilled,
+  sharedImageSourceEntry,
+  sharedImageSourceUserCount,
+} from './imageSourceDedupe.js';
+
+// The detach serial lives in the leaf module so imageSourceDedupe's own shared-source releases
+// bump the same counter a restore consult watches — one serial covers the whole covered-release
+// class (manifest detaches here, shared-source/per-user releases there). Re-exported so consult
+// sites keep a single import site on this module (W143-H1).
+export { packageDetachSerialNow } from './imageSourceDedupe.js';
 
 const manifests = new Map();
-const detachedManifests = new Set();
+
+// Whether a manifest still has any released payload — DERIVED, not ledgered: the F3 shared
+// release lands in imageSourceDedupe without a back-edge into this module, so membership must
+// be read off the entries' own released state each time (a Set of "detached manifests" would
+// silently miss every shared-source release).
+function sharedTextureReleased(entry) {
+  const shared = entry.sharedEntry;
+  if (!shared) return false;
+  if (shared.sourceReleased === true) return true;
+  return !!(shared.releasedUsers && shared.releasedUsers.has(entry.texture));
+}
+
+function textureEntryReleased(entry) {
+  return entry.detached === true || sharedTextureReleased(entry);
+}
+
+function manifestHasDetachedEntries(manifest) {
+  return manifest.entries.some(textureEntryReleased)
+    || manifest.geometryEntries.some((entry) => entry.detached);
+}
+
+function detachedManifestList() {
+  const out = [];
+  for (const manifest of manifests.values()) {
+    if (manifestHasDetachedEntries(manifest)) out.push(manifest);
+  }
+  return out;
+}
 
 function isTextureLike(value) {
   return !!value && typeof value === 'object' && value.isTexture === true;
+}
+
+function isGeometryLike(value) {
+  return !!value && typeof value === 'object' && value.isBufferGeometry === true;
+}
+
+// Geometry detach eligibility (SPEC F2 §3.2): package meshes are rigid by construction
+// (assertRigidPlanNode rejects Bone/SkinnedMesh/InstancedMesh/LOD), so morph-bearing and
+// pre-uploaded GLBufferAttribute geometry are the only releases to refuse defensively.
+// Procedural alternate-tier geometries (spacefaceQualityTierGeometries) and dynamicBufferRanges
+// pools never reach a package manifest — collectImmutableResources only walks package loads.
+function geometryDetachEligible(geometry) {
+  if (!isGeometryLike(geometry)) return false;
+  const morph = geometry.morphAttributes;
+  if (morph && Object.keys(morph).length > 0) return false;
+  const attrs = geometry.attributes || {};
+  for (const name of Object.keys(attrs)) {
+    const attribute = attrs[name];
+    if (attribute && attribute.isGLBufferAttribute === true) return false;
+  }
+  return true;
+}
+
+// Stride-copy an interleaved position attribute into a standalone BufferAttribute — position is
+// the one attribute CPU consumers still need (raycast keeps position+index), so it leaves the
+// shared interleaved buffer before that buffer's array can be released (SPEC F2 §3.3.1).
+function deinterleavePositionAttribute(geometry) {
+  const position = geometry.getAttribute && geometry.getAttribute('position');
+  if (!position || position.isInterleavedBufferAttribute !== true) return;
+  const interleaved = position.data;
+  const source = interleaved.array;
+  const itemSize = position.itemSize;
+  const standalone = new source.constructor(position.count * itemSize);
+  const stride = interleaved.stride;
+  const offset = position.offset;
+  for (let i = 0, n = position.count; i < n; i++) {
+    const base = i * stride + offset;
+    for (let j = 0; j < itemSize; j++) standalone[i * itemSize + j] = source[base + j];
+  }
+  geometry.setAttribute('position', new BufferAttribute(standalone, itemSize, position.normalized));
+}
+
+// Rehydrate pairing fingerprint (SPEC F2 §3.5): attr name set + position/index counts +
+// per-attr itemSize/normalized — identical bytes re-decode deterministically, so any drift
+// means the package changed under its content hash and the entry stays detached.
+function geometryFingerprint(geometry) {
+  const attrs = geometry.attributes || {};
+  const names = Object.keys(attrs).sort();
+  const itemSizes = {};
+  const normalized = {};
+  for (const name of names) {
+    const attribute = attrs[name];
+    itemSizes[name] = attribute ? attribute.itemSize : 0;
+    normalized[name] = !!(attribute && attribute.normalized);
+  }
+  const position = attrs.position;
+  return {
+    attrNames: names,
+    positionCount: Number(position && position.count) || 0,
+    indexCount: Number(geometry.index && geometry.index.count) || 0,
+    itemSizes,
+    normalized,
+  };
+}
+
+function sameGeometryFingerprint(a, b) {
+  if (!a || !b) return false;
+  if (a.positionCount !== b.positionCount || a.indexCount !== b.indexCount) return false;
+  if (a.attrNames.length !== b.attrNames.length) return false;
+  for (let i = 0; i < a.attrNames.length; i++) {
+    const name = a.attrNames[i];
+    if (b.attrNames[i] !== name) return false;
+    if (a.itemSizes[name] !== b.itemSizes[name]) return false;
+    if (a.normalized[name] !== b.normalized[name]) return false;
+  }
+  return true;
 }
 
 function payloadBytes(value) {
@@ -65,6 +180,7 @@ export function createPackageDetachManifest(loaded, options = {}) {
   if (existing) return existing;
 
   const textures = loaded.resources.filter(isTextureLike);
+  const geometries = loaded.resources.filter(isGeometryLike);
   const manifest = {
     assetId: String(loaded.assetId || ''),
     contentHash,
@@ -74,7 +190,30 @@ export function createPackageDetachManifest(loaded, options = {}) {
     detachedSources: new Set(),
     // Parser clones share one Source AND the same mipmap Uint8Arrays (copy() slices the array,
     // not the buffers) — dedupe payloads by identity so freed-byte diagnostics stay honest.
-    freedPayloads: new Set(),
+    // WeakSet, not Set: it exists only to dedupe the freed-byte diagnostic — a strong
+    // Set retains every "freed" payload object (mip Uint8Arrays, ImageBitmap wrappers)
+    // against the manifests Map for the whole detached lifetime, making the reclaim
+    // phantom until rehydrate (W139-N1).
+    freedPayloads: new WeakSet(),
+    geometryEntries: geometries.filter(geometryDetachEligible).map((geometry, ordinal) => {
+      const entry = {
+        geometry,
+        ordinal,
+        detached: false,
+        freedBytes: 0,
+        // {name, record} — record is the version-bearing object three's WebGLAttributes keys on:
+        // the shared InterleavedBuffer for interleaved attrs, the BufferAttribute otherwise.
+        released: [],
+        detachedVersions: new Map(),
+        uploadedOn: new WeakMap(), // renderer -> true: this context holds live post-detach buffers
+        recordsDied: false,
+        fingerprint: null,
+      };
+      // vendored onGeometryDispose drops the renderer's attribute records; the next draw then
+      // re-uploads, which the gate must see even if no version moved.
+      geometry.addEventListener('dispose', () => { entry.recordsDied = true; });
+      return entry;
+    }),
     entries: textures.map((texture, ordinal) => {
       const image = texture.image;
       return {
@@ -91,14 +230,23 @@ export function createPackageDetachManifest(loaded, options = {}) {
         // CompressedTexture stashes {width,height} in source.data via the image setter — that
         // dims object IS the image and must survive; only uncompressed payloads are released.
         hadSourceData: texture.isCompressedTexture !== true && !!(texture.source && texture.source.data),
+        // F3: the dedupe entry this texture adopted through (canonical Source + releasedUsers),
+        // when it has one — the shared release flips THERE, not on this entry.
+        sharedEntry: sharedImageSourceEntry(texture),
       };
     }),
+    // WeakSet for the same reason as freedPayloads (W139-N1): a strong Set would retain every
+    // "released" interleaved buffer against the manifests Map — phantom reclaim until rehydrate.
+    freedBuffers: new WeakSet(),
     totals: {
       detachedTextures: 0,
       detachedBytes: 0,
+      detachedGeometries: 0,
+      detachedGeometryBytes: 0,
       restores: 0,
       restoredTextures: 0,
       restoredBytes: 0,
+      restoredGeometries: 0,
       mismatches: 0,
     },
     redecode: options.redecode,
@@ -113,6 +261,66 @@ export function createPackageDetachManifest(loaded, options = {}) {
       spacefaceCpuDetach: { ...mark, ordinal },
     };
   });
+  manifest.geometryEntries.forEach((entry, ordinal) => {
+    const geometry = entry.geometry;
+    // Pull position out of the shared interleaved buffer and cache bounds BEFORE any upload:
+    // the first upload then builds the position VBO from the standalone array, and every later
+    // bounds query (asteroidInstancePool culls, raycast early-outs) hits the cached fields once
+    // the sibling buffers' arrays are released.
+    deinterleavePositionAttribute(geometry);
+    try { geometry.computeBoundingSphere(); } catch (_) {}
+    try { geometry.computeBoundingBox(); } catch (_) {}
+    entry.fingerprint = geometryFingerprint(geometry);
+    geometry.userData = {
+      ...(geometry.userData || {}),
+      spacefaceCpuDetach: { ...mark, kind: 'geometry', ordinal },
+    };
+  });
+  return manifest;
+}
+
+/**
+ * F4: manifest for a source-GLB's authored textures — same store/schema as package manifests,
+ * keyed by the source BYTES digest (`sha256:…` via imageSourceKeyAsync) instead of a render
+ * package's content-hash URL. `textures` is the authored blueprint's texture set in
+ * deterministic traversal order; `options.redecode` must re-fetch + re-parse the same source
+ * (with digest verification inside) and `options.collectResources` re-collects the texture
+ * list in that same order so ordinal pairing stays honest.
+ */
+export function createSourceDetachManifest(url, textures, options = {}) {
+  if (typeof options.redecode !== 'function' || typeof options.collectResources !== 'function') {
+    return null;
+  }
+  const contentHash = String(options.contentHash || '');
+  if (!contentHash) return null;
+  const existing = manifests.get(contentHash);
+  if (existing) {
+    // A second compile of the same source bytes shares the first manifest: its entries cover
+    // the FIRST tree's texture objects only (the fresh tree's textures stay unmarked either
+    // way — their eager detach is the partsLibrary sweep's business). Honor detachOnMark
+    // against the manifest's own entries so the flag means the same thing on both paths.
+    // R7 pin (W142): detachOnMark detaches eagerly with NO textureGpuResident proof —
+    // the flag is dormant today; if a caller ever marks an un-uploaded tree, add the
+    // same residency gate the partsLibrary sweep uses before enabling it there.
+    if (options.detachOnMark === true) {
+      for (const entry of existing.entries) detachPackageTexture(entry.texture);
+    }
+    return existing;
+  }
+  const manifest = createPackageDetachManifest({
+    contentHash,
+    assetId: options.assetId || url,
+    renderUrl: url,
+    resources: (textures || []).filter(isTextureLike),
+  }, { redecode: options.redecode, collectResources: options.collectResources });
+  if (manifest) {
+    manifest.sourceBytesSha256 = contentHash;
+    // N3: a manifest whose subtree is already an authoredReadableFallbackLayer detaches at mark
+    // — the layer is the live stand-in and never passes through a residency seal.
+    if (options.detachOnMark === true) {
+      for (const entry of manifest.entries) detachPackageTexture(entry.texture);
+    }
+  }
   return manifest;
 }
 
@@ -122,7 +330,21 @@ export function isPackageTextureDetached(texture) {
   if (!mark) return false;
   const manifest = manifests.get(mark.contentHash);
   const entry = manifest && manifest.entries[mark.ordinal];
-  return !!entry && entry.texture === texture && entry.detached === true;
+  return !!entry && entry.texture === texture && textureEntryReleased(entry);
+}
+
+/**
+ * Whether a live manifest entry covers THIS texture object — i.e. the detach/pending gates
+ * can see its releases. A clone carrying a COPIED mark (Texture.copy JSON-clones userData)
+ * fails the manifest identity check and stays gate-blind, exactly like a texture that was
+ * never marked: its payload must never be released by the shared-source path (W140-D2).
+ */
+export function packageTextureDetachCovers(texture) {
+  const mark = texture && texture.userData && texture.userData.spacefaceCpuDetach;
+  if (!mark) return false;
+  const manifest = manifests.get(mark.contentHash);
+  const entry = manifest && manifest.entries[mark.ordinal];
+  return !!entry && entry.texture === texture;
 }
 
 /**
@@ -146,7 +368,11 @@ export function detachPackageTexture(texture) {
   // entry was freed) reads mipmaps[0] on the empty array and throws inside three's uploader.
   // Defer the release until this texture is the entry's last live user — which is also the
   // earliest point the bytes could actually leave.
-  if (sharedImageSourceUserCount(texture) > 1) return false;
+  if (sharedImageSourceUserCount(texture) > 1) {
+    // F3: keep the dedupe-entry link fresh — adoption can land after mark time.
+    if (!entry.sharedEntry) entry.sharedEntry = sharedImageSourceEntry(texture);
+    return false;
+  }
 
   let freed = 0;
   let released = false;
@@ -182,11 +408,155 @@ export function detachPackageTexture(texture) {
     return false;
   }
   entry.detached = true;
+  bumpPackageDetachSerial();
   entry.freedBytes = freed;
   manifest.totals.detachedTextures += 1;
   manifest.totals.detachedBytes += freed;
-  detachedManifests.add(manifest);
   return true;
+}
+
+/** True when this geometry's CPU mirror was released after a proven GPU upload. */
+export function isPackageGeometryDetached(geometry) {
+  const mark = geometry && geometry.userData && geometry.userData.spacefaceCpuDetach;
+  if (!mark || mark.kind !== 'geometry') return false;
+  const manifest = manifests.get(mark.contentHash);
+  const entry = manifest && manifest.geometryEntries[mark.ordinal];
+  return !!entry && entry.geometry === geometry && entry.detached === true;
+}
+
+function geometryManifestEntry(geometry) {
+  const mark = geometry && geometry.userData && geometry.userData.spacefaceCpuDetach;
+  if (!mark || mark.kind !== 'geometry') return null;
+  const manifest = manifests.get(mark.contentHash);
+  if (!manifest || manifest.evicted) return null;
+  const entry = manifest.geometryEntries[mark.ordinal];
+  return (entry && entry.geometry === geometry) ? { manifest, entry } : null;
+}
+
+/**
+ * Ledger API: record that `renderer` holds live attribute records for this marked geometry
+ * (its uploads landed before detach, or it compiled/drew post-rehydrate). Secondary contexts
+ * never run the residency pass, so their upload proof is noted at their own compile/upload
+ * sweep (SPEC F2 §3.3.2).
+ */
+export function noteGeometryGpuResident(geometry, renderer) {
+  const found = geometryManifestEntry(geometry);
+  if (!found || !renderer) return false;
+  found.entry.uploadedOn.set(renderer, true);
+  return true;
+}
+
+// Drawables armed to ledger their own draws — a WeakSet so re-arming the same object is
+// idempotent (admission passes re-collect the same subjects many times).
+const residentLedgerArmedObjects = new WeakSet();
+
+/**
+ * Arm a drawable to ledger its geometry's GPU residency when a REAL draw creates the
+ * renderer's attribute records. WebGLRenderer.compile() links programs only — it creates no
+ * attribute records — so a compile-time ledger marks this renderer resident before a single
+ * buffer exists (W140-D1). The chained onAfterRender hook fires inside three's renderObject
+ * after renderBufferDirect: this object's own upload literally just completed, and the
+ * geometry argument is exactly what was drawn (tier-swapped alternates covered for free).
+ * A draw landing on an already-detached (emptied) geometry uploaded empty VBOs — that is not
+ * a residency proof, so the note is skipped and the pending gate stays armed for the next
+ * consult instead of pinning a blind resident stamp.
+ */
+export function armGeometryGpuResidentLedger(object) {
+  if (!object || residentLedgerArmedObjects.has(object)) return false;
+  residentLedgerArmedObjects.add(object);
+  const previous = object.onAfterRender;
+  object.onAfterRender = function (drawingRenderer, drawingScene, camera, geometry, material, group) {
+    if (geometry && !isPackageGeometryDetached(geometry)) {
+      noteGeometryGpuResident(geometry, drawingRenderer);
+    }
+    if (typeof previous === 'function') {
+      previous.call(this, drawingRenderer, drawingScene, camera, geometry, material, group);
+    }
+  };
+  return true;
+}
+
+/**
+ * Drop every `uploadedOn` stamp `renderer` holds — the attribute records they described died
+ * with its GL context, so post-restore the stamps would falsely satisfy the pending gate
+ * (W140-G4). The consult re-stamps truthfully on the next real draw (or the armed ledger).
+ */
+export function dropGeometryGpuResidencyLedger(renderer) {
+  if (!renderer) return 0;
+  let dropped = 0;
+  for (const manifest of manifests.values()) {
+    for (const entry of manifest.geometryEntries) {
+      if (entry.uploadedOn.delete(renderer)) dropped += 1;
+    }
+  }
+  return dropped;
+}
+
+/**
+ * Release a marked geometry's non-kept CPU arrays (every attribute except the deinterleaved
+ * `position` and `geometry.index`). Call only after the geometry is provably GPU-resident —
+ * the residency pass invokes it right after stamping `spacefaceGpuResident`, and stamped-skip
+ * paths retry it for geometries sealed by earlier passes.
+ *
+ * Released records get `new (ctor)(0)` — an empty same-constructor array, never null
+ * (openingSubmissionPlan's `array || data.array` fingerprint reads truthiness; an un-gated
+ * upload then hits three's resize-throw, which is the detector, matching the texture doctrine).
+ */
+export function detachPackageGeometry(geometry, renderer) {
+  const found = geometryManifestEntry(geometry);
+  if (!found) return false;
+  const { manifest, entry } = found;
+  if (entry.detached) return false;
+  if (renderer) entry.uploadedOn.set(renderer, true);
+
+  let freed = 0;
+  const attrs = geometry.attributes || {};
+  for (const name of Object.keys(attrs)) {
+    if (name === 'position') continue; // keep-set: standalone CPU copy stays live
+    const attribute = attrs[name];
+    if (!attribute || attribute.isGLBufferAttribute === true) continue;
+    const record = attribute.isInterleavedBufferAttribute === true ? attribute.data : attribute;
+    if (!record) continue;
+    entry.detachedVersions.set(record, record.version);
+    entry.released.push({ name, record });
+    const array = record.array;
+    if (array && array.byteLength > 0 && !manifest.freedBuffers.has(record)) {
+      // Sibling interleaved attrs share one InterleavedBuffer — release its array once.
+      manifest.freedBuffers.add(record);
+      freed += array.byteLength;
+      record.array = new array.constructor(0);
+    }
+  }
+  if (entry.released.length === 0) {
+    // Nothing releasable (e.g. position-only geometry) — leave the entry attached so it
+    // stays out of gate/rehydrate handling entirely.
+    return false;
+  }
+  entry.detached = true;
+  bumpPackageDetachSerial();
+  entry.freedBytes = freed;
+  manifest.totals.detachedGeometries += 1;
+  manifest.totals.detachedGeometryBytes += freed;
+  return true;
+}
+
+/**
+ * Whether a draw/upload of this detached geometry on `renderer` would re-upload the emptied
+ * arrays — the geometry twin of detachedTextureUploadPending (SPEC F2 §3.4). Geometry attribute
+ * records live in a renderer-private WeakMap unreachable from `renderer`, so a ledger answers
+ * "would this context re-upload": recordsDied (dispose dropped them), a version moved on a
+ * released record (needsUpdate re-entered the uploader), or this renderer never uploaded
+ * post-detach state at all.
+ */
+export function detachedGeometryUploadPending(geometry, renderer) {
+  const found = geometryManifestEntry(geometry);
+  if (!found || !found.entry.detached) return false;
+  const entry = found.entry;
+  if (entry.recordsDied) return true;
+  for (const [record, version] of entry.detachedVersions) {
+    if (record.version !== version) return true;
+  }
+  return entry.uploadedOn.get(renderer) !== true;
 }
 
 /** Drop the manifest for an evicted/disposed package; its resources are gone with the entry. */
@@ -195,7 +565,6 @@ export function dropPackageDetachManifest(contentHash) {
   if (!manifest) return false;
   manifest.evicted = true;
   manifests.delete(manifest.contentHash);
-  detachedManifests.delete(manifest);
   return true;
 }
 
@@ -238,11 +607,45 @@ async function rehydrateManifest(manifest) {
   const decoded = await manifest.redecode();
   const template = decodedTemplate(decoded);
   if (!template) throw new Error(`Render package ${manifest.assetId} rehydrate returned no scene.`);
-  const freshTextures = [...manifest.collectResources(template)].filter(isTextureLike);
+  const freshResources = [...manifest.collectResources(template)];
+  const freshTextures = freshResources.filter(isTextureLike);
+  const freshGeometries = freshResources.filter(isGeometryLike).filter(geometryDetachEligible);
   let restored = 0;
   let restoredBytes = 0;
-  for (const entry of manifest.entries) {
+  let restoredGeometries = 0;
+  for (const entry of manifest.geometryEntries) {
     if (!entry.detached) continue;
+    const donor = freshGeometries[entry.ordinal];
+    // Ordinal-paired donor must carry the identical attribute shape — a drift means the package
+    // changed under its content hash; keep the entry detached and count it (texture doctrine).
+    if (!donor || !sameGeometryFingerprint(entry.fingerprint, geometryFingerprint(donor))) {
+      manifest.totals.mismatches += 1;
+      continue;
+    }
+    for (const { name, record } of entry.released) {
+      const donorAttr = donor.getAttribute(name);
+      const donorRecord = donorAttr
+        && (donorAttr.isInterleavedBufferAttribute === true ? donorAttr.data : donorAttr);
+      if (!donorRecord || !donorRecord.array) continue;
+      record.array = donorRecord.array;
+    }
+    // Version bumps force WebGLAttributes.update on the next bind so live records re-upload the
+    // refilled bytes; records that died re-create on the same real arrays either way.
+    for (const record of entry.detachedVersions.keys()) {
+      record.version += 1;
+      entry.detachedVersions.set(record, record.version);
+    }
+    entry.recordsDied = false;
+    // The refill consumed the released-name/record pairs: a later re-detach re-collects them
+    // fresh — clearing here keeps the list from accreting duplicates across cycles (W140-D3).
+    entry.released.length = 0;
+    entry.detached = false;
+    restoredGeometries += 1;
+    restoredBytes += entry.freedBytes;
+    entry.freedBytes = 0;
+  }
+  for (const entry of manifest.entries) {
+    if (!textureEntryReleased(entry)) continue;
     const fresh = freshTextures[entry.ordinal];
     const fp = textureFingerprint(fresh);
     if (!fp || fp.compressed !== entry.compressed || fp.format !== entry.format
@@ -256,9 +659,15 @@ async function rehydrateManifest(manifest) {
     }
     const texture = entry.texture;
     if (entry.hadMipmaps || entry.compressed) texture.mipmaps = fresh.mipmaps;
+    if (entry.sharedEntry && entry.sharedEntry.releasedUsers) {
+      entry.sharedEntry.releasedUsers.delete(texture);
+    }
     if (entry.hadSourceData && texture.source) {
       texture.source.data = fresh.source ? fresh.source.data : null;
     }
+    // Refilling the canonical shared Source serves every adopted user across manifests — clear
+    // the entry's released flag so siblings' released-state re-derives without a second decode.
+    if (entry.sharedEntry) noteSharedImageSourceRefilled(entry.sharedEntry);
     // A version bump invalidates the residency stamp, so the restore re-upload pass — or any
     // later admission — re-uploads the real bytes instead of relying on the stamp alone.
     texture.needsUpdate = true;
@@ -268,14 +677,22 @@ async function rehydrateManifest(manifest) {
     entry.freedBytes = 0;
   }
   manifest.detachedSources.clear();
-  manifest.freedPayloads.clear();
+  manifest.freedPayloads = new WeakSet(); // WeakSet has no clear() — re-mint
+  manifest.freedBuffers = new WeakSet();
   manifest.totals.restores += 1;
   manifest.totals.restoredTextures += restored;
   manifest.totals.restoredBytes += restoredBytes;
-  if (!manifest.entries.some((entry) => entry.detached)) {
-    detachedManifests.delete(manifest);
+  manifest.totals.restoredGeometries += restoredGeometries;
+  if (!manifest.entries.some((entry) => entry.detached)
+      && !manifest.geometryEntries.some((entry) => entry.detached)) {
+    // (detached membership is derived now — nothing to delete.)
   }
-  return { textures: restored, bytes: restoredBytes };
+  // Donor textures may have been adopted as dedupe users during this decode — release the
+  // registration so a never-uploaded donor can't wedge the entry's all-resident check.
+  for (const fresh of freshTextures) {
+    try { if (typeof fresh.dispose === 'function') fresh.dispose(); } catch (_) {}
+  }
+  return { textures: restored, geometries: restoredGeometries, bytes: restoredBytes };
 }
 
 function rehydrateManifestOnce(manifest) {
@@ -312,6 +729,7 @@ export async function rehydrateDetachedTextures(textures, options = {}) {
     skipped: wanted.size === 0,
     packages: 0,
     textures: 0,
+    geometries: 0,
     bytes: 0,
     errors: [],
   };
@@ -320,6 +738,44 @@ export async function rehydrateDetachedTextures(textures, options = {}) {
       const receipt = await rehydrateManifestOnce(manifest);
       result.packages += 1;
       result.textures += receipt.textures;
+      result.geometries += receipt.geometries;
+      result.bytes += receipt.bytes;
+    } catch (error) {
+      result.errors.push({ assetId: manifest.assetId, error: String(error && error.message || error) });
+    }
+    if (yieldToMain) await yieldToMain();
+  }
+  return result;
+}
+
+/**
+ * Geometry twin of rehydrateDetachedTextures: refill the released attribute arrays of exactly
+ * the manifests covering `geometries`. One manifest decode restores both its textures and its
+ * geometries, so a caller holding both pending lists pays a single re-decode per package.
+ */
+export async function rehydrateDetachedGeometries(geometries, options = {}) {
+  const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
+  const wanted = new Set();
+  for (const geometry of geometries || []) {
+    if (!isPackageGeometryDetached(geometry)) continue;
+    const mark = geometry.userData && geometry.userData.spacefaceCpuDetach;
+    const manifest = mark && manifests.get(mark.contentHash);
+    if (manifest && !manifest.evicted) wanted.add(manifest);
+  }
+  const result = {
+    skipped: wanted.size === 0,
+    packages: 0,
+    textures: 0,
+    geometries: 0,
+    bytes: 0,
+    errors: [],
+  };
+  for (const manifest of wanted) {
+    try {
+      const receipt = await rehydrateManifestOnce(manifest);
+      result.packages += 1;
+      result.textures += receipt.textures;
+      result.geometries += receipt.geometries;
       result.bytes += receipt.bytes;
     } catch (error) {
       result.errors.push({ assetId: manifest.assetId, error: String(error && error.message || error) });
@@ -337,23 +793,23 @@ export async function rehydrateDetachedTextures(textures, options = {}) {
  */
 export async function rehydrateDetachedPackages(options = {}) {
   const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
+  const detached = detachedManifestList();
   const result = {
-    skipped: detachedManifests.size === 0,
+    skipped: detached.length === 0,
     packages: 0,
     textures: 0,
+    geometries: 0,
     bytes: 0,
     errors: [],
   };
-  if (detachedManifests.size === 0) return result;
-  for (const manifest of [...detachedManifests]) {
-    if (manifest.evicted) {
-      detachedManifests.delete(manifest);
-      continue;
-    }
+  if (detached.length === 0) return result;
+  for (const manifest of detached) {
+    if (manifest.evicted) continue;
     try {
       const receipt = await rehydrateManifestOnce(manifest);
       result.packages += 1;
       result.textures += receipt.textures;
+      result.geometries += receipt.geometries;
       result.bytes += receipt.bytes;
     } catch (error) {
       result.errors.push({ assetId: manifest.assetId, error: String(error && error.message || error) });
@@ -367,20 +823,26 @@ export async function rehydrateDetachedPackages(options = {}) {
 export function packageDetachDiagnostics() {
   const totals = {
     manifests: manifests.size,
-    packagesWithDetachedTextures: detachedManifests.size,
+    packagesWithDetachedTextures: detachedManifestList().length,
     detachedTextures: 0,
     detachedBytes: 0,
+    detachedGeometries: 0,
+    detachedGeometryBytes: 0,
     restores: 0,
     restoredTextures: 0,
     restoredBytes: 0,
+    restoredGeometries: 0,
     mismatches: 0,
   };
   for (const manifest of manifests.values()) {
     totals.detachedTextures += manifest.totals.detachedTextures;
     totals.detachedBytes += manifest.totals.detachedBytes;
+    totals.detachedGeometries += manifest.totals.detachedGeometries;
+    totals.detachedGeometryBytes += manifest.totals.detachedGeometryBytes;
     totals.restores += manifest.totals.restores;
     totals.restoredTextures += manifest.totals.restoredTextures;
     totals.restoredBytes += manifest.totals.restoredBytes;
+    totals.restoredGeometries += manifest.totals.restoredGeometries;
     totals.mismatches += manifest.totals.mismatches;
   }
   return totals;
@@ -389,5 +851,4 @@ export function packageDetachDiagnostics() {
 /** Test/reset seam: drops every manifest (used by node --test isolation). */
 export function resetPackageDetachManifestsForTests() {
   manifests.clear();
-  detachedManifests.clear();
 }

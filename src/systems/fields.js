@@ -1,3 +1,4 @@
+import { isPlayerSaucer } from '../data/saucer.js';
 // PQ-012 / SF-12 — Continuous field system (lifecycle / input / force application / presentation).
 //
 // Drives the ONE field kernel (src/core/fields/fieldKernel.js) and its three player-facing
@@ -390,7 +391,9 @@ export function fieldBodyProfile(entity, state, out = null) {
   const authoredResponse = entity && entity.physicsBody && Number.isFinite(entity.physicsBody.fieldResponseMult)
     ? Math.max(0, entity.physicsBody.fieldResponseMult)
     : 1;
-  profile.fieldResponseMult = (Number.isFinite(fieldResponse) ? Math.max(0, fieldResponse) : 1) * authoredResponse;
+  // A player Saucer cancels field coupling; damage, contact and tether solvers stay live.
+  profile.fieldResponseMult = isPlayerSaucer(entity) ? 0
+    : (Number.isFinite(fieldResponse) ? Math.max(0, fieldResponse) : 1) * authoredResponse;
   profile.boosting = !!(entity && entity.flags && entity.flags.boosting);
   // Same dynamic-body predicate the impulse loop already uses. Kinematic proxies drop
   // out in the kernel; a heavy dynamic hull stays coupled and only shrugs by mass.
@@ -485,6 +488,7 @@ export const fields = {
     this._accel = { ax: 0, az: 0 };
     this._massStateAccel = { ax: 0, az: 0 };
     this._wellScratch = { ax: 0, az: 0 };
+    this._wellContributions = { entries: [], count: 0 };
     this._wellAccum = new WeakMap();
     this._wellBodies = new Set();
     this._haulerDrag = new WeakMap();
@@ -568,6 +572,9 @@ export const fields = {
     if(raw?.revision!==1||!Array.isArray(raw.fields))return;
     const mapped=id=>id==null?id:remap.get(String(id))??id,rt=defaultRuntime();
     this._kernel.clear();
+    // Consequence contact/debt is transient; Continue cannot release a prior world's debt.
+    this._wellAccum = new WeakMap(); this._wellBodies.clear(); this._grindPairs.clear();
+    this._wellContributions.entries.length = 0; this._wellContributions.count = 0;
     // Kernel fields are rebuilt from the save; the orbit world must not keep stale
     // node ids (they'd block respawn via hostHasNodes) — and _orbitScanned resets so
     // the first post-load idle tick rescans immediately rather than waiting a cadence.
@@ -1619,6 +1626,7 @@ export const fields = {
     if (this._familyPrevPins) this._familyPrevPins.clear();
     if (this._familyPrevMines) this._familyPrevMines.clear();
     if (this._grindPairs) this._grindPairs.clear();
+    if (this._wellContributions) { this._wellContributions.entries.length = 0; this._wellContributions.count = 0; }
     if (this._flingPairs) this._flingPairs.clear();
     if (this._clusterCargo) this._clusterCargo.clear();
     if (this._clusterTerrain) this._clusterTerrain.clear();
@@ -1849,7 +1857,7 @@ export const fields = {
       if (massStateField) this._refreshMassState(state, e, massStateField);
       const profile = this._profileFor(e, state);
       const velSample = fieldVelocityTermApplies(e, profile) ? e.vel : null;
-      sampleFieldAcceleration(e.pos, velSample, affected.get(e), now, profile, accel);
+      sampleFieldAcceleration(e.pos, velSample, affected.get(e), now, profile, accel, this._wellContributions);
       if (accel.ax === 0 && accel.az === 0) continue;
       // p = a·m·dt, where m must be the mass the SOLVER will use this tick — not the authored one.
       // A Well pins the very bodies it pulls (massScale 6) and a Repulsor unmoors the ones it shoves
@@ -1872,7 +1880,7 @@ export const fields = {
       if (evidence?.provenance?.actorId != null) recordImpulseProvenance(e, {
         ...evidence.provenance, magnitude: Math.hypot(impulse.x, impulse.z), appliedTick: state.tick,
       });
-      this._applyFieldTumble(e, affected.get(e), profile, accel, dt, state);
+      this._applyFieldTumble(e, affected.get(e), profile, accel, dt, state, this._wellContributions);
       this._accumulateWellDelta(e, fieldsList, profile, accel, dt, state);
       this._noteWellClusterBody(e, fieldsList, profile, accel, state);
       affectedCount++;
@@ -1924,11 +1932,14 @@ export const fields = {
           const gap = Math.hypot(dx, dz) - finite(a.radius, 0) - finite(b.radius, 0);
           if (gap > WELL_GRIND.contactSlackWu) continue;
           const key = `${a.id}|${b.id}`;
+          const grind = this._wellAccum.get(a) || this._wellAccum.get(b);
           let pair = ledger.get(key);
-          if (!pair) {
-            pair = { aId: a.id, bId: b.id, ticks: 0, lastTick: tick, announced: false, fieldId: null };
+          // A same-id replacement is a new contact history, not the old 24-tick grind.
+          if (!pair || (pair.field !== grind.field && this._kernel?.retirementReason(pair.field) === 'retired')) {
+            pair = { aId: a.id, bId: b.id, ticks: 0, lastTick: tick, announced: false, fieldId: null, field: grind.field };
             ledger.set(key, pair);
           }
+          pair.field = grind.field;
           pair.ticks += 1;
           pair.lastTick = tick;
           const rec = this._wellAccum.get(a) || this._wellAccum.get(b);
@@ -2029,60 +2040,77 @@ export const fields = {
     rec.dx = rec.dz = rec.seconds = 0;
   },
 
-  _accumulateWellDelta(entity, fieldsList, profile, appliedAccel, dt, state) {
+  _accumulateWellDelta(entity, fieldsList, profile, appliedAccel, dt, state, contributions) {
     if (!entity || entity.id === state.playerId) return;
     if (entity.type !== 'ship' && entity.type !== 'drone') return;
-    let wellOwnerId = null;
-    let wellFieldId = null;
-    let wellAffects = false;
-    for (let i = 0; i < fieldsList.length; i++) {
-      const field = fieldsList[i];
-      if (!field || field.kind !== FIELD_KINDS.WELL) continue;
-      if (!fieldAffectsBody(field, profile)) continue;
+    let exitWell = null, grindWell = null;
+    for (const field of fieldsList) {
+      if (!field || field.kind !== FIELD_KINDS.WELL || !fieldAffectsBody(field, profile)) continue;
       fieldRawAcceleration(field, entity.pos.x, entity.pos.z, this._wellScratch, entity.vel);
       if (this._wellScratch.ax === 0 && this._wellScratch.az === 0) continue;
-      wellAffects = true;
-      wellOwnerId = field.ownerId;
-      wellFieldId = field.id;
-      break;
+      if (!exitWell && field.wellConsequences?.exitHitstun !== false) exitWell = field;
+      if (!grindWell && field.wellConsequences?.grindPriming !== false) grindWell = field;
     }
-    if (!wellAffects) return;
+    if (!exitWell && !grindWell) return;
     let rec = this._wellAccum.get(entity);
     if (!rec) {
-      rec = { dx: 0, dz: 0, attackerId: null, attackerMass: 1, touched: false, fieldId: null };
-      this._wellAccum.set(entity, rec);
-      this._wellBodies.add(entity);
+      rec = { dx: 0, dz: 0, attackerId: null, attackerMass: 1, touched: false,
+        exitTouched: false, settledDebt: false, fieldId: null, field: null, sources: new Map() };
+      this._wellAccum.set(entity, rec); this._wellBodies.add(entity);
     }
-    rec.dx += finite(appliedAccel && appliedAccel.ax) * dt;
-    rec.dz += finite(appliedAccel && appliedAccel.az) * dt;
-    rec.touched = true;
-    rec.attackerId = wellOwnerId;
-    rec.fieldId = wellFieldId;
-    const owner = wellOwnerId != null && state.entities && typeof state.entities.get === 'function'
-      ? state.entities.get(wellOwnerId)
-      : null;
-    rec.attackerMass = positive(owner && (owner.physicsBody && owner.physicsBody.mass || owner.mass), 1);
+    this._pruneWellContributions(rec);
+    if (grindWell) { rec.touched = true; rec.fieldId = grindWell.id; rec.field = grindWell; }
+    if (!exitWell) return;
+    // Retain the existing ONE aggregate release and last-effective-well attribution. The
+    // source ledger exists only to subtract explicit opt-outs/administrative retirements.
+    // An ordinary repulsor/cone overlapping a Well keeps its legacy contribution.
+    const receipt = contributions || this._wellContributions;
+    if (!contributions) {
+      const vel = fieldVelocityTermApplies(entity, profile) ? entity.vel : null;
+      sampleFieldAcceleration(entity.pos, vel, fieldsList, nowOf(state), profile, this._wellScratch, receipt);
+    }
+    let ax = finite(appliedAccel?.ax), az = finite(appliedAccel?.az);
+    for (let n = 0; n < receipt.count; n++) {
+      const row = receipt.entries[n], field = row.field;
+      if (field.wellConsequences?.exitHitstun === false) { ax -= row.ax; az -= row.az; continue; }
+      if (row.ax === 0 && row.az === 0) continue;
+      let source = rec.sources.get(field);
+      if (!source) { source = { dx: 0, dz: 0 }; rec.sources.set(field, source); }
+      source.dx += row.ax * dt; source.dz += row.az * dt;
+    }
+    rec.dx += ax * dt; rec.dz += az * dt;
+    rec.exitTouched = true;
+    rec.attackerId = exitWell.ownerId;
+    const owner = exitWell.ownerId != null && state.entities?.get ? state.entities.get(exitWell.ownerId) : null;
+    rec.attackerMass = positive(owner && (owner.physicsBody?.mass || owner.mass), 1);
+  },
+
+  _pruneWellContributions(rec) {
+    if (!rec.sources) return;
+    for (const [field, source] of rec.sources) {
+      const reason = this._kernel.retirementReason(field);
+      if (reason === 'retired') { rec.dx -= source.dx; rec.dz -= source.dz; }
+      // Expiry/gameplay termination retains earned aggregate debt, without retaining old objects
+      // while another Well holds the body. Administrative retirement cancels only that source.
+      if (reason && reason !== 'retired') rec.settledDebt = true;
+      if (reason) rec.sources.delete(field);
+    }
+    if (rec.sources.size === 0 && !rec.settledDebt) { rec.dx = 0; rec.dz = 0; }
   },
 
   _flushEndedWells(state) {
     if (!this._wellBodies || this._wellBodies.size === 0) return;
-    const ended = [];
     for (const entity of this._wellBodies) {
       const rec = this._wellAccum.get(entity);
-      if (!rec) {
-        ended.push(entity);
-        continue;
+      if (rec) {
+        this._pruneWellContributions(rec);
+        if (!rec.exitTouched) {
+          this._publishWellHitstun(entity, rec, state);
+          rec.dx = 0; rec.dz = 0; rec.settledDebt = false; rec.sources?.clear();
+        }
+        if (rec.touched || rec.exitTouched) { rec.touched = false; rec.exitTouched = false; continue; }
       }
-      if (rec.touched) {
-        rec.touched = false;
-        continue;
-      }
-      this._publishWellHitstun(entity, rec, state);
-      ended.push(entity);
-    }
-    for (const entity of ended) {
-      this._wellBodies.delete(entity);
-      this._wellAccum.delete(entity);
+      this._wellBodies.delete(entity); this._wellAccum.delete(entity);
     }
   },
 

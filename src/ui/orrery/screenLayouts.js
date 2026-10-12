@@ -1,6 +1,7 @@
 // ORRERY screen compositions (design/frontend/ORRERY.md §6). Layout only: where a screen's library
 // pieces sit relative to each other once the arc rail owns the leading edge. No chrome is drawn here;
 // every surface keeps the ORRERY rule of free type on an edge-less pool of shadow.
+import { injectOrreryMobileScreens } from './mobileScreenLayouts.js';
 const STYLE_ID = 'sf-orrery-screen-layouts';
 
 const POOL = `content:""; position:absolute; inset:-26px -40px; z-index:-1; pointer-events:none;
@@ -701,6 +702,9 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-re
 #screens .orr-newgame .orr-ng-label { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:600; font-size: 12px;
   letter-spacing:.26em; text-transform:uppercase; color:rgb(232 226 212 / .55); margin:0 0 8px; }
 #screens .orr-newgame .orr-ng-gap { height:14px; }
+#screens .orr-newgame .sf-ng-launch-error { grid-area:foot; align-self:end; margin:0 0 76px;
+  color:var(--dp-danger); font-size:14px; line-height:1.45; max-width:40ch; }
+#screens .orr-newgame .sf-ng-launch-error[hidden] { display:none !important; }
 /* the retired kit drew a hairline under every word row */
 #screens .orr-newgame .k-words { background:none !important; background-image:none !important; }
 /* the hull's side: name, blurb, what it carries, the run it opens */
@@ -1042,6 +1046,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results .orr-crres-hitle
 `;
 
 export function injectOrreryScreens(doc = globalThis.document) {
+  injectOrreryMobileScreens(doc);
   if (!doc?.head || doc.getElementById(STYLE_ID)) return;
   const style = doc.createElement('style');
   style.id = STYLE_ID;

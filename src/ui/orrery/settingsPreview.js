@@ -129,23 +129,31 @@ export function settingEffect(label, value = '', settings = {}) {
 }
 
 const CSS = `
-.orr-set-preview { position:relative; min-width:0; min-height:0; display:grid; grid-template-rows:auto minmax(0, 1fr) auto; row-gap:14px;
+.orr-set-preview { position:relative; min-width:0; min-height:0; display:grid; grid-template-rows:auto minmax(0, 1fr) auto; row-gap:16px;
   color:rgb(${BONE}); pointer-events:none; }
-.orr-set-preview::before { content:""; position:absolute; inset:-6% -8% -4% -10%; z-index:-1; pointer-events:none;
-  background:radial-gradient(closest-side, rgb(4 6 9 / .74), rgb(4 6 9 / .5) 58%, rgb(4 6 9 / 0)); }
+.orr-set-preview::before { content:""; position:absolute; inset:-8% -10% -6% -12%; z-index:-1; pointer-events:none;
+  background:
+    radial-gradient(closest-side, rgb(8 12 18 / .78), rgb(5 7 10 / .55) 54%, rgb(4 6 9 / 0) 78%),
+    radial-gradient(120% 90% at 50% 40%, rgb(12 18 26 / .35), transparent 70%);
+  -webkit-mask-image:radial-gradient(closest-side, #000 42%, transparent 78%);
+  mask-image:radial-gradient(closest-side, #000 42%, transparent 78%); }
 /* the legend: the row being worked, and what it does */
-.orr-set-read { display:flex; flex-direction:column; gap:10px; min-height:96px; }
-.orr-set-read__kicker { ${LABEL} font-size: 12px; letter-spacing:.24em; color:rgb(${BONE} / .64); display:flex; align-items:center; gap:12px; }
-.orr-set-read__kicker::after { content:""; flex:0 0 56px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .4), rgb(${BONE} / 0)); }
-.orr-set-read__name { ${LABEL} font-size:15px; letter-spacing:.2em; color:rgb(248 244 234); display:inline-flex; align-self:flex-start; align-items:center; gap:14px;
+.orr-set-read { display:flex; flex-direction:column; gap:11px; min-height:104px; }
+.orr-set-read__kicker { ${LABEL} font-size: 12px; letter-spacing:.24em; color:rgb(${BONE} / .72); display:flex; align-items:center; gap:12px; }
+.orr-set-read__kicker::after { content:""; flex:0 0 64px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .48), rgb(${BONE} / 0)); }
+.orr-set-read__name { ${LABEL} font-size:16px; letter-spacing:.18em; color:rgb(255 253 248); display:inline-flex; align-self:flex-start; align-items:center; gap:14px;
+  text-shadow:0 0 18px rgb(255 250 236 / .12);
   transition:color .5s var(--dp-ease-out, ease-out), text-shadow .5s var(--dp-ease-out, ease-out); }
 /* a row that drives nothing on the instrument: the legend itself takes the bead (no beam) */
 .orr-set-preview.is-unwired .orr-set-read__name::before { content:""; flex:none; width:7px; height:7px; border-radius:50%; background:rgb(248 244 234);
   box-shadow:0 0 8px rgb(255 250 236 / .6); }
 .orr-set-read__name.is-flash { color:var(--dp-ice, #8fcbff); text-shadow:0 0 14px rgb(143 203 255 / .4); transition:none; }
-.orr-set-read__line { font-family:var(--dp-face-read, "Instrument Sans"); font-size:15.5px; line-height:1.45; color:rgb(${BONE} / .82); max-width:46ch; min-height:1.45em; }
+.orr-set-read__line { font-family:var(--dp-face-read, "Instrument Sans"); font-size:16px; line-height:1.5; color:rgb(${BONE} / .88); max-width:46ch; min-height:1.5em; }
 /* the stage holds one instrument at a time */
 .orr-set-stage { position:relative; min-height:0; }
+.orr-set-stage::before, .orr-set-stage::after { content:""; position:absolute; width:18px; height:18px; pointer-events:none; z-index:3; border-color:rgb(${BONE} / .55); border-style:solid; opacity:.9; }
+.orr-set-stage::before { left:2%; top:4%; border-width:1.5px 0 0 1.5px; }
+.orr-set-stage::after { right:2%; top:4%; border-width:1.5px 1.5px 0 0; }
 .orr-set-stage > * { position:absolute; inset:0; }
 .orr-set-preview:not([data-mode="mixer"]) .orr-set-mixer,
 .orr-set-preview:not([data-mode="hud"]) .orr-set-hud,
@@ -171,8 +179,9 @@ const CSS = `
 .orr-set-mixer .orr-set-ch.is-live .orr-set-mixer__fill.orr-core { stroke:rgb(236 246 255); }
 .orr-set-mixer.is-muted .orr-set-mixer__fill { opacity:0 !important; }
 .orr-set-mixer__hub { position:absolute; left:50%; top:50%; transform:translate(-50%, -50%); display:flex; flex-direction:column; align-items:center; gap:7px; }
-.orr-set-mixer__out { display:inline-flex; align-items:baseline; font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 260; font-weight:260;
-  font-size:46px; line-height:1; font-variant-numeric:tabular-nums; color:var(--dp-phos, #dfeeff); letter-spacing:-.02em; }
+.orr-set-mixer__out { display:inline-flex; align-items:baseline; font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 280; font-weight:280;
+  font-size:48px; line-height:1; font-variant-numeric:tabular-nums; color:var(--dp-phos, #dfeeff); letter-spacing:-.02em;
+  text-shadow:0 0 24px rgb(143 203 255 / .22); }
 .orr-set-mixer__out .orr-counter { height:1em; }
 .orr-set-mixer__out .orr-counter__digit { width:.56em; }
 .orr-set-mixer__out small { font-size:.42em; margin-left:3px; color:rgb(${BONE} / .7); }
@@ -255,16 +264,17 @@ const CSS = `
 .orr-set-dial.is-dz .orr-set-dial__verb { margin-top:calc(var(--orr-set-side, 420px) * .24); }
 .orr-set-dial .orr-set-dial__rim text { font-size:calc(9.5px * var(--orr-set-kd, 1)); letter-spacing:.3em; fill:rgb(${BONE} / .7); font-weight:650; }
 /* the foot line: what the preview is */
-.orr-set-foot { ${LABEL} font-size: 12px; letter-spacing:.22em; color:rgb(${BONE} / .66); display:flex; gap:10px; align-items:center; }
-.orr-set-foot::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--dp-phos, #dfeeff); box-shadow:0 0 6px rgb(223 238 255 / .6); animation:orr-set-live 2.4s ease-in-out infinite; }
+.orr-set-foot { ${LABEL} font-size: 12px; letter-spacing:.22em; color:rgb(${BONE} / .78); display:flex; gap:12px; align-items:center; position:relative; padding-top:6px; }
+.orr-set-foot::before { content:""; width:7px; height:7px; border-radius:50%; background:var(--dp-phos, #dfeeff); box-shadow:0 0 9px rgb(223 238 255 / .75); animation:orr-set-live 2.4s ease-in-out infinite; }
+.orr-set-foot::after { content:""; position:absolute; left:0; right:0; top:0; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .35), rgb(${BONE} / 0) 70%); }
 @keyframes orr-set-live { 50% { opacity:.35; } }
 html.sf-reduce-motion .orr-set-preview *, html.sf-reduce-motion .orr-set-preview *::before { animation:none !important; transition:none !important; }
 /* the beam: a band of light from the row being worked to the part of the instrument it drives */
 .orr-set-beam { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; z-index:2; overflow:visible; opacity:0; transition:opacity .22s linear; }
 .orr-set-beam.is-on { opacity:1; }
 .orr-set-beam path, .orr-set-beam circle { vector-effect:none !important; }
-.orr-set-beam .orr-set-beam__core { stroke:rgb(${BONE} / .85); transition:stroke .2s linear; }
-.orr-set-beam .orr-set-beam__glow { stroke:rgb(${BONE} / .36); transition:stroke .2s linear; }
+.orr-set-beam .orr-set-beam__core { stroke:rgb(255 253 248 / .92); transition:stroke .2s linear; }
+.orr-set-beam .orr-set-beam__glow { stroke:rgb(${BONE} / .48); transition:stroke .2s linear; }
 .orr-set-beam .orr-set-beam__pulse { stroke:rgb(255 253 248); stroke-dasharray:.06 1; stroke-dashoffset:.06; opacity:0; }
 .orr-set-beam.is-on .orr-set-beam__pulse { opacity:.9; animation:orr-set-beam-run 3.2s linear infinite; }
 .orr-set-beam.is-live .orr-set-beam__core { stroke:rgb(214 236 255 / .98); }

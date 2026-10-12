@@ -202,6 +202,7 @@ import { NEMESIS_KITS } from '../data/nemesisRival.js';
 import { BREAKAWAY_THIRD_SHIFT_VARIANT_ID, heistLaunchVariant } from '../data/heistFacilities.js';
 import { BREAKAWAY_PRESSURE } from '../data/heistMission.js';
 import { promoteAsteroidFieldRock, queryAsteroidField, queryAsteroidFieldNearestSteps, queryAsteroidFieldSteps } from '../world/asteroidField.js';
+import { laneCommandSink, lanePromote } from '../core/simLaneCommands.js';
 import { entityIndexVersion, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { itineraryPositionInto, itineraryVelocityInto } from '../world/worldCatchup.js';
 import {
@@ -394,6 +395,7 @@ import {
   beginOpeningCookLedger,
   createGpuResidencyAdmissionTracker,
   createPipelineAdmissionTracker,
+  prepareMobileOpeningFirstPicture,
   createSlicedYield,
   formatOpeningCookLedger,
   observePipelineAdmission,
@@ -435,8 +437,10 @@ import {
   GOVERNOR_CPU_RESIDENCY_BYTE_CEILING,
   GOVERNOR_RESIDENCY_BYTE_CEILING,
 } from './resourceGovernor.js';
-import { shouldAwaitOpeningGpuCook } from './renderCapabilityProfile.js';
+import { isMobileRenderContext, shouldAwaitOpeningGpuCook } from './renderCapabilityProfile.js';
 import {
+  collectStartupGeometries,
+  collectStartupGeometriesSteps,
   collectStartupTextures,
   collectStartupTexturesSteps,
   collectUnresidentInstancedDrawables,
@@ -449,7 +453,9 @@ import {
 } from './startupGpuResidency.js';
 import { makeGpuQueuePacer } from './gpuQueuePace.js';
 import {
+  detachedGeometryUploadPending,
   detachedTextureUploadPending,
+  rehydrateDetachedGeometries,
   rehydrateDetachedPackages,
   rehydrateDetachedTextures,
 } from './packageCpuDetach.js';
@@ -2190,17 +2196,28 @@ function stormWarn(site, ...args) {
       const oldest = _stormWarnLog.keys().next();
       if (!oldest.done) _stormWarnLog.delete(oldest.value);
     }
-    row = { logged: 0, suppressed: 0, lastWarnAt: -Infinity };
+    row = { logged: 0, suppressed: 0, lastWarnAt: -Infinity, heartbeatMs: 1000 };
     _stormWarnLog.set(site, row);
+  }
+  // Quiet-gap heal, same contract laneWarn/warnDedup/busError carry: a site
+  // silent for >60 s has recovered — its next faults earn a fresh verbatim
+  // budget instead of inheriting a stale storm's suppression.
+  if (row.lastWarnAt !== -Infinity && now - row.lastWarnAt > 60000) {
+    row.logged = 0; row.suppressed = 0; row.heartbeatMs = 1000;
   }
   if (row.logged < LANE_WARN_BUDGET_PER_EPOCH) {
     row.logged += 1;
+    row.lastWarnAt = now;
     console.warn(...args);
     return;
   }
   row.suppressed += 1;
-  if (now - row.lastWarnAt >= 1000) {
+  // Backing-off heartbeat (1 s doubling to a 30 s cap — the laneWarn shape)
+  // so a sustained fault's true volume stays observable without a flat ~N
+  // warns/s for the whole storm.
+  if (now - row.lastWarnAt >= row.heartbeatMs) {
     row.lastWarnAt = now;
+    row.heartbeatMs = Math.min(row.heartbeatMs * 2, 30000);
     console.warn(`[render] '${site}' faulted ${row.suppressed} more times; latest:`, ...args);
     row.suppressed = 0;
   }
@@ -2214,13 +2231,19 @@ function laneWarn(owner, lane, ...args) {
   const epoch = serviceFaultEpoch(state);
   const rollup = render.laneWarns || (render.laneWarns = {});
   const row = rollup[lane]
-    || (rollup[lane] = { epoch: -1, warns: 0, suppressed: 0, summarized: false, lastWarnAt: -Infinity });
+    || (rollup[lane] = { epoch: -1, warns: 0, suppressed: 0, summarized: false, lastWarnAt: -Infinity, heartbeatMs: 1000 });
   if (row.epoch !== epoch) {
-    row.epoch = epoch; row.warns = 0; row.suppressed = 0; row.summarized = false;
+    row.epoch = epoch; row.warns = 0; row.suppressed = 0; row.summarized = false; row.heartbeatMs = 1000;
   }
-  row.warns += 1;
   const warnNow = (typeof performance !== 'undefined' && typeof performance.now === 'function')
     ? performance.now() : Date.now();
+  // Quiet-gap heal, same contract warnDedup/busError carry: a lane silent for
+  // >60 s has recovered — its next faults earn a fresh verbatim budget instead
+  // of inheriting a stale epoch's suppression.
+  if (row.lastWarnAt !== -Infinity && warnNow - row.lastWarnAt > 60000) {
+    row.warns = 0; row.suppressed = 0; row.summarized = false; row.heartbeatMs = 1000;
+  }
+  row.warns += 1;
   if (row.warns <= LANE_WARN_BUDGET_PER_EPOCH) { row.lastWarnAt = warnNow; console.warn(...args); return; }
   row.suppressed += 1;
   if (!row.summarized) {
@@ -2230,12 +2253,13 @@ function laneWarn(owner, lane, ...args) {
       + ' suppressing further lane warns until the epoch flips');
     return;
   }
-  // stormWarn's heartbeat shape: suppressed counts re-surface every ~1 s so a
-  // sustained fault's true volume stays observable past the ninth warn — the
-  // lanes riding this (depthStageArm/shadowCensus/entityViewSync) are exactly
-  // the ones an audit reads for hitch evidence.
-  if (warnNow - row.lastWarnAt >= 1000) {
+  // stormWarn's heartbeat shape: suppressed counts re-surface at a backing-off
+  // cadence (1 s doubling to a 30 s cap, reset on epoch flip — the shape
+  // tryPresentedCall's retryAt already uses) so a sustained fault's true volume
+  // stays observable without paying a flat ~N warns/s for the whole storm.
+  if (warnNow - row.lastWarnAt >= row.heartbeatMs) {
     row.lastWarnAt = warnNow;
+    row.heartbeatMs = Math.min(row.heartbeatMs * 2, 30000);
     console.warn(`[render] '${lane}' faulted ${row.suppressed} more times; latest:`, ...args);
     row.suppressed = 0;
   }
@@ -3207,6 +3231,7 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         noteLaneFault(owner.state, 'sectorExitCleanup');
         laneWarn(owner.state, 'sectorExitCleanup', '[render] sector-exit cleanup iterator faulted; dropped', err);
         try { iterator.return?.(); } catch (_) { /* best effort */ }
+        try { iterator.onAbandoned?.(); } catch (_) { /* best effort */ }
         // A fault in the primary leg used to forfeit the never-started post-dispatch
         // leg with it — its cache-only rows then sat resident until the decay sweep's
         // age/byte gates. Re-mint just that leg once; a post-dispatch fault drops the
@@ -3214,10 +3239,33 @@ export function serviceRenderMeshResidency(owner, frameDt) {
         if (owner._sectorExitCleanupPendingPost) {
           owner._sectorExitCleanupPendingPost = false;
           const residency = owner._assetResidency;
-          owner._sectorExitCleanupIter = residency
+          const postLeg = residency
             && typeof residency.releaseUnreferencedCacheOwnersSteps === 'function'
             ? residency.releaseUnreferencedCacheOwnersSteps(
               owner._sectorExitCleanupPostReason || 'sector-exit-cache-only:post-dispatch')
+            : null;
+          // A faulted primary leg forfeits leg 3 with it — the over-ceiling state
+          // then sits unenforced until the next seam. Chain the enforce behind the
+          // re-minted post-dispatch leg exactly as the clean fused iterator does,
+          // with the same per-leg guards: a post-dispatch fault drops only itself.
+          const enforceLeg = residency
+            && typeof residency.enforceBudgetSteps === 'function'
+            ? () => residency.enforceBudgetSteps('gpu')
+            : null;
+          const dropLeg = (err, leg) => {
+            noteLaneFault(owner.state, 'sectorExitCleanup');
+            laneWarn(owner, 'sectorExitCleanup',
+              `[render] sector-exit cleanup re-minted ${leg} leg faulted; dropped`, err);
+          };
+          owner._sectorExitCleanupIter = postLeg || enforceLeg
+            ? (function* () {
+              if (postLeg) {
+                try { yield* postLeg; } catch (err) { dropLeg(err, 'post-dispatch'); }
+              }
+              if (enforceLeg) {
+                try { yield* enforceLeg(); } catch (err) { dropLeg(err, 'enforce'); }
+              }
+            })()
             : null;
         } else {
           owner._sectorExitCleanupIter = null;
@@ -5698,6 +5746,66 @@ function warmNemesisSquadDecode(owner, payload) {
   warmEnemyRosterDecode(owner, archetypes, 'nemesis-announce-decode-runway', payload.sectorId);
 }
 
+// state.nemesis.pending is a live record from announce through the dispatched→spawned gap —
+// poll it like every other runway arm so a soft-budget eviction inside the tell window
+// re-decodes instead of stranding the once-fired announce post.
+function warmNemesisPendingDecode(owner) {
+  const state = owner && owner.state;
+  const pending = state && state.nemesis && state.nemesis.pending;
+  if (!pending || !pending.plan) return;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  if (pending.sectorId !== (state.world && state.world.currentSectorId)) return;
+  if (Number.isFinite(pending.notBefore) && pending.notBefore - now > TABLE_DECODE_RUNWAY_SECONDS) return;
+  warmNemesisSquadDecode(owner, {
+    kit: pending.plan.primary,
+    secondary: pending.plan.secondary,
+    sectorId: pending.sectorId,
+  });
+}
+
+// Collect every warm channel a resolved encounter item publishes: the squad roster, the
+// warm-only hulls the fire mounts outside plan.ships (claim victims, named-hunter captains),
+// and the packaged-body files (pods/props) no hull archetype covers.
+function collectEncounterWarmChannels(item, ships, files) {
+  // Keep the whole ship record, not just its archetype: kit squads stamp factionId (and
+  // trafficRole where traffic-sourced) and the faction kit swaps both the hull file and
+  // the 'place'-slot hulk the roster's warm must resolve. Escape-hatch records carry a
+  // complete entitySpec instead of an archetype — warmEnemyRosterDecode resolves the spec's
+  // own hull key, so accept them or their hull escapes the warm entirely.
+  for (const list of [item && item.ships, item && item.warmShips]) {
+    for (const ship of list || []) {
+      if ((ship && typeof ship.archetype === 'string' && ship.archetype)
+        || (ship && ship.entitySpec && ship.entitySpec.type === 'ship')) ships.push(ship);
+    }
+  }
+  for (const file of (item && item.warmAssets) || []) {
+    if (typeof file === 'string' && file) files.push(file);
+  }
+}
+
+// warmAssets: packaged bodies the script's fire body will mount (cargo-pod spills, authored
+// props) that no hull archetype covers — missing the arm decodes them at the glass on the
+// entity:spawned kick. Same post shape as the encounter-pending file lane.
+function warmAuthoredEncounterFiles(owner, files, residencyRole, sectorId) {
+  const renderer = owner && owner.renderer;
+  const state = owner && owner.state;
+  if (!Array.isArray(files) || !files.length || !renderer || !renderer.domElement) return;
+  const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
+    || 'assets/ships/release/parts/';
+  const sector = sectorId || (state && state.world && state.world.currentSectorId) || null;
+  for (const file of files) {
+    if (typeof file !== 'string' || !file) continue;
+    const relativeFile = file.replace(/^[\\/]+/, '');
+    Promise.resolve(loadAuthoredPart(`${releaseRoot}${relativeFile}`, {
+      renderer,
+      slot: String(relativeFile).startsWith('pods/') ? 'pod' : 'place',
+      optional: true,
+      residencyRole,
+      sectorId: sector,
+    })).catch(() => {});
+  }
+}
+
 /**
  * Generic paced encounters sit in encounterDirector.pending with their full squad roster
  * (item.ships[].archetype) from plan time — but telegraph→spawn resolves in the same tick,
@@ -5705,68 +5813,28 @@ function warmNemesisSquadDecode(owner, payload) {
  * inside the marker window at the glass. Poll the pending list once per residency pass:
  * an item whose dueAt sits inside the decode runway warms every planned archetype at
  * deadline class. Gate-deferred items mutate dueAt to the new window and re-warm (the
- * lease refresh keeps them alive); the WeakMap dedupes repeats at the same dueAt, and
- * file-level dedupe caps redundant decodes the rest of the way. Items that fizzle or get
+ * lease refresh keeps them alive); registry dedupe caps redundant decodes — a resident
+ * file re-pins for a Map lookup while an evicted one re-decodes. Items that fizzle or get
  * cancelled simply let their lease expire — nothing mounts on the roster's behalf.
  */
 function warmEncounterPendingDecode(owner) {
   const state = owner && owner.state;
-  const renderer = owner && owner.renderer;
   const pending = state && state.encounterDirector && state.encounterDirector.pending;
   if (!Array.isArray(pending) || !pending.length) return;
   const now = state.simTime || 0;
-  const warmedAt = owner._encounterPendingWarmDueAt
-    || (owner._encounterPendingWarmDueAt = new WeakMap());
+  // No once-fired latch: each residency poll re-posts the arm — a soft-budget eviction
+  // re-decodes through the registry while a resident file re-pins for a Map lookup.
   for (const item of pending) {
     if (!item || !Number.isFinite(item.dueAt) || item.dueAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
-    if ((!Array.isArray(item.ships) || !item.ships.length)
-      && (!Array.isArray(item.warmShips) || !item.warmShips.length)
-      && (!Array.isArray(item.warmAssets) || !item.warmAssets.length)) continue;
-    if (warmedAt.get(item) === item.dueAt) continue;
-    // Keep the whole ship record, not just its archetype: kit squads stamp factionId (and
-    // trafficRole where traffic-sourced) and the faction kit swaps both the hull file and
-    // the 'place'-slot hulk the roster's warm must resolve.
     const archetypes = [];
-    for (const ship of item.ships || []) {
-      // Escape-hatch records carry a complete entitySpec instead of an archetype —
-      // warmEnemyRosterDecode resolves the spec's own hull key, so accept them here
-      // or their hull escapes the pending warm entirely.
-      if ((ship && typeof ship.archetype === 'string' && ship.archetype)
-        || (ship && ship.entitySpec && ship.entitySpec.type === 'ship')) archetypes.push(ship);
-    }
-    // Warm-only hulls mounted outside plan.ships at fire (the ambush claim victim) — same
-    // record shape as roster ships, never part of the spawn list.
-    for (const ship of item.warmShips || []) {
-      if ((ship && typeof ship.archetype === 'string' && ship.archetype)
-        || (ship && ship.entitySpec && ship.entitySpec.type === 'ship')) archetypes.push(ship);
-    }
-    // warmAssets: packaged bodies the script's fire body will mount (cargo-pod spills,
-    // authored props) that no hull archetype covers — a session that missed the opening
-    // crucible cohort would otherwise decode them at the glass on the entity:spawned kick.
     const files = [];
-    for (const file of item.warmAssets || []) {
-      if (typeof file === 'string' && file) files.push(file);
-    }
+    collectEncounterWarmChannels(item, archetypes, files);
     if (!archetypes.length && !files.length) continue;
-    warmedAt.set(item, item.dueAt);
     if (archetypes.length) {
       warmEnemyRosterDecode(owner, archetypes, 'encounter-pending-decode-runway', item.sectorId);
     }
-    if (files.length && renderer && renderer.domElement) {
-      const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
-        || 'assets/ships/release/parts/';
-      const sectorId = item.sectorId
-        || (state.world && state.world.currentSectorId) || null;
-      for (const file of files) {
-        const relativeFile = file.replace(/^[\\/]+/, '');
-        Promise.resolve(loadAuthoredPart(`${releaseRoot}${relativeFile}`, {
-          renderer,
-          slot: String(relativeFile).startsWith('pods/') ? 'pod' : 'place',
-          optional: true,
-          residencyRole: 'encounter-pending-decode-runway',
-          sectorId,
-        })).catch(() => {});
-      }
+    if (files.length) {
+      warmAuthoredEncounterFiles(owner, files, 'encounter-pending-decode-runway', item.sectorId);
     }
   }
 }
@@ -5778,7 +5846,7 @@ function warmEncounterPendingDecode(owner) {
  * residency pass and warm each due member's hull (typeId + the faction the spawn will
  * resolve drive the same faction-kit key) at deadline class while its due tick sits
  * inside the runway. Abandoned/cancelled records drop off the queue and let the lease
- * expire; the WeakMap dedupes repeat polls per record.
+ * expire; every poll re-posts — the registry re-pins residents and re-decodes evictions.
  */
 function warmPendingReinforcementsDecode(owner) {
   const state = owner && owner.state;
@@ -5786,15 +5854,11 @@ function warmPendingReinforcementsDecode(owner) {
     && state.aiEncounter.owner.pendingReinforcements;
   if (!Array.isArray(pending) || !pending.length) return;
   const tick = Number.isFinite(state.tick) ? state.tick : 0;
-  const warmedAt = owner._reinforcementWarmDueTick
-    || (owner._reinforcementWarmDueTick = new WeakMap());
   const bySector = new Map();
   for (const item of pending) {
     if (!item || typeof item.typeId !== 'string' || !item.typeId) continue;
     if (!Number.isFinite(item.dueTick)
         || item.dueTick - tick > TABLE_DECODE_RUNWAY_SECONDS * 60) continue;
-    if (warmedAt.get(item) === item.dueTick) continue;
-    warmedAt.set(item, item.dueTick);
     const key = item.sectorId || '';
     let bucket = bySector.get(key);
     if (!bucket) {
@@ -5825,16 +5889,12 @@ function warmCombatReinforcementsDecode(owner) {
   const pending = state && state.combat && state.combat.pendingReinforcements;
   if (!Array.isArray(pending) || !pending.length) return;
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-  const warmedAt = owner._combatReinforcementWarmAt
-    || (owner._combatReinforcementWarmAt = new WeakMap());
   const sectorId = (state.world && state.world.currentSectorId) || null;
   const records = [];
   for (const item of pending) {
     if (!item || typeof item.typeId !== 'string' || !item.typeId) continue;
     if (!Number.isFinite(item.spawnAt)
         || item.spawnAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
-    if (warmedAt.get(item) === item.spawnAt) continue;
-    warmedAt.set(item, item.spawnAt);
     records.push({
       archetype: item.typeId,
       factionId: enemySpawnFactionId(item.typeId, item.factionId),
@@ -5853,7 +5913,7 @@ function warmCombatReinforcementsDecode(owner) {
  * watch rows once per residency pass and warm the roster while the row sits inside the
  * decode runway, mirroring _resolveHostilePursuit's gates (security >= 0.25, not resolved,
  * not already intervened). A row that settles through grabbing_range or dies to pruning
- * just lets the lease expire; the WeakMap dedupes per firstAt.
+ * just lets the lease expire; every poll re-posts so an eviction re-decodes.
  */
 function warmPursuitInterventionDecode(owner) {
   const state = owner && owner.state;
@@ -5867,7 +5927,6 @@ function warmPursuitInterventionDecode(owner) {
   const sec = sectorSecurityOf(state);
   if (!(sec >= 0.25)) return;
   const intervened = dir.patrolIntervened || null;
-  const warmedAt = owner._pursuitWarmAt || (owner._pursuitWarmAt = new WeakMap());
   let due = false;
   for (const hostileId in watch) {
     const row = watch[hostileId];
@@ -5875,8 +5934,6 @@ function warmPursuitInterventionDecode(owner) {
     if (intervened && intervened[hostileId] != null) continue;
     const remaining = PURSUIT_RESOLVE_S - (now - row.firstAt);
     if (remaining > TABLE_DECODE_RUNWAY_SECONDS) continue;
-    if (warmedAt.get(row) === row.firstAt) continue;
-    warmedAt.set(row, row.firstAt);
     due = true;
   }
   if (due) {
@@ -5893,7 +5950,8 @@ function warmPursuitInterventionDecode(owner) {
  * incident ring the player just heard the countdown for. Poll state.lawSecurity.incidents
  * once per residency pass; while a distress/responding incident's dispatchAt sits inside the
  * decode runway, warm the responder hull (same archetype + factionId the dispatch mints).
- * Resolved/cleared incidents just let the lease expire; the WeakMap dedupes per record.
+ * Resolved/cleared incidents just let the lease expire; every poll re-posts so an
+ * eviction re-decodes.
  */
 function warmLawIncidentDispatchDecode(owner) {
   const state = owner && owner.state;
@@ -5901,7 +5959,6 @@ function warmLawIncidentDispatchDecode(owner) {
   const incidents = law && law.incidents;
   if (!incidents || typeof incidents !== 'object') return;
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-  const warmedAt = owner._lawIncidentWarmAt || (owner._lawIncidentWarmAt = new WeakMap());
   const roster = [];
   for (const key in incidents) {
     const incident = incidents[key];
@@ -5909,8 +5966,6 @@ function warmLawIncidentDispatchDecode(owner) {
     if (incident.status !== 'distress' && incident.status !== 'responding') continue;
     if (!Number.isFinite(incident.dispatchAt)) continue;
     if (incident.dispatchAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
-    if (warmedAt.get(incident) === incident.dispatchAt) continue;
-    warmedAt.set(incident, incident.dispatchAt);
     roster.push({
       archetype: 'patrol_lawman',
       factionId: incident.factionId || 'faction_scn',
@@ -5928,20 +5983,17 @@ function warmLawIncidentDispatchDecode(owner) {
  * transition gives the screen zero decode lead. Poll the live fight ledger once per
  * residency pass and warm every unrequested wing's archetypes up front: the roster is
  * score-static, so no later signal arrives ahead of the spawn. Bound wings skip (their
- * members are entities already) and terminal fights and repeats dedupe on the record —
- * file-level dedupe caps decodes the rest of the way.
+ * members are entities already) and terminal fights skip outright — the registry
+ * re-pins residents and re-decodes evictions each poll.
  */
 function warmCapitalBossWingDecode(owner) {
   const state = owner && owner.state;
   const fights = state && state.capitalBossEncounters && state.capitalBossEncounters.fights;
   if (!fights || typeof fights !== 'object') return;
-  const warmed = owner._capitalWingWarmFights || (owner._capitalWingWarmFights = new WeakMap());
   const roster = [];
   for (const id in fights) {
     const record = fights[id];
     if (!record || record.terminal === true || !record.encounterId) continue;
-    if (warmed.has(record)) continue;
-    warmed.set(record, true);
     roster.push(...capitalBossWingRosterRows(record.encounterId, record));
   }
   if (roster.length) {
@@ -5958,8 +6010,8 @@ function warmCapitalBossWingDecode(owner) {
  * (10 class hulls), so when the player's heat reaches the bounty band — one tier below
  * NETS, two below IMPOUND — decode the whole pool plus the patrol_lawman (warrant hunter)
  * and customs_cutter (checkpoint cutter / impound clerk) escorts those posts mint. A heat
- * dip below the band or a paid-off bounty just lets the lease expire; deduped per sector,
- * file-level dedupe caps repeated decodes the rest of the way.
+ * dip below the band or a paid-off bounty just lets the lease expire; the registry
+ * re-pins residents and re-decodes evictions each poll.
  */
 function warmWantedTierDecode(owner) {
   const state = owner && owner.state;
@@ -5968,10 +6020,6 @@ function warmWantedTierDecode(owner) {
   const heat = state.player && Number.isFinite(state.player.heat) ? state.player.heat : 0;
   if (heatLevelFor(heat) < 2) return;
   const sectorId = (state.world && state.world.currentSectorId) || null;
-  const warmed = owner._wantedTierWarmSectors || (owner._wantedTierWarmSectors = new Set());
-  const sectorKey = sectorId || '';
-  if (warmed.has(sectorKey)) return;
-  warmed.add(sectorKey);
   // Speculative by contract (heat can dip / the bounty can be paid): post at ambient-warm
   // class — a genuine deadline join on the cached task re-grades the queued tail via
   // deadlineJoin + promote, so speculation never sits ahead of real deadline demand.
@@ -5991,18 +6039,17 @@ function warmWantedTierDecode(owner) {
  * post, a staged bounty pair) can decode the whole bounded set so whichever parts the seed
  * selects arrive resident. The slot argument rides with each file: the authored cache keys
  * url::slot, so a mismatched slot decodes a second blueprint the production attach never
- * reuses. Deduped per (sector, arm-role): each family gets its own once-per-sector warm — an
- * earlier arm's latch must not starve a later one, and callers can pass armKey for a
- * per-countdown dedupe so a re-armed countdown in the same sector re-warms.
+ * reuses. No once-fired latch: every residency poll re-posts the closed set — a
+ * resident file re-pins for a Map lookup, an evicted one re-decodes.
  * 'place' is not a ship-kit slot — the prop set stays out of this pool.
  */
-function warmSeededModularPool(owner, sectorId, residencyRole, armKey = null) {
+function warmSeededModularPool(owner, sectorId, residencyRole) {
   const renderer = owner && owner.renderer;
   if (!renderer || !renderer.domElement) return;
-  const warmed = owner._modularPoolWarmSectors || (owner._modularPoolWarmSectors = new Set());
-  const key = `${sectorId || ''}\0${residencyRole || ''}\0${armKey == null ? '' : armKey}`;
-  if (warmed.has(key)) return;
-  warmed.add(key);
+  // No 'already posted' latch: the pool is closed (~43 files) and each loadAuthoredPart
+  // call dedupes on the shared task registry — a resident file costs a Map lookup and
+  // re-pins its soft lease, an evicted one re-decodes. A seen-once latch stranded the
+  // kit cold on demote/retract/pressure evictions between visits.
   const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
     || 'assets/ships/release/parts/';
   const slots = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.slots) || {};
@@ -6035,8 +6082,9 @@ const GATE_SCENE_DAY_SECONDS = 600;
  * stares at through the whole charge. The scene is a pure function of (seed, sector, gate,
  * day, faction/security/wanted), so while the player sits on approach inside
  * GATE_WING_WARM_DIST, replay planGateScene per in-range gate and warm the wasp hull the
- * wing will draw — faction-kit included — before chargeStart ever fires. Deduped per
- * (sector, gate, day): a hostile verdict or a superseded scene just lets the lease expire.
+ * wing will draw — faction-kit included — before chargeStart ever fires. The scene
+ * verdict is memoized per input tuple so a ctx flip re-plans, while the hull warm
+ * re-posts every poll: an evicted file re-decodes instead of stranding cold.
  */
 function warmGateWingDecode(owner) {
   const state = owner && owner.state;
@@ -6057,7 +6105,10 @@ function warmGateWingDecode(owner) {
   const factionId = sector.factionId || null;
   const security = Number.isFinite(sector.security) ? sector.security : 0.5;
   const wanted = isPlayerWanted(state);
-  const warmed = owner._gateWingWarmKeys || (owner._gateWingWarmKeys = new Set());
+  // Verdict memo, not a post latch: planGateScene re-runs only when the input tuple
+  // moves (sector/gate/day/faction/security/wanted), while the warm re-posts every
+  // poll so a soft-budget eviction re-decodes instead of stranding the wasp cold.
+  const verdicts = owner._gateWingWarmKeys || (owner._gateWingWarmKeys = new Map());
   const roster = [];
   for (const gt of gates) {
     const to = gt && (gt.to != null ? gt.to : gt.gateTo);
@@ -6066,14 +6117,14 @@ function warmGateWingDecode(owner) {
     const dx = gpos.x - ppos.x;
     const dz = gpos.z - ppos.z;
     if (dx * dx + dz * dz > GATE_WING_WARM_DIST_SQ) continue;
-    // The ctx triple feeds planGateScene's verdict, so it belongs in the dedupe key — a
-    // wanted flip or a sector ctx recompute under the same (sector, gate, day) must
-    // re-evaluate the scene rather than replay a verdict keyed on stale inputs.
     const dedupe = `${sectorId}|${to}|${day}|${factionId}|${security}|${wanted ? 1 : 0}`;
-    if (warmed.has(dedupe)) continue;
-    const scene = planGateScene(seed, sectorId, to, day, { factionId, security, wanted });
-    if ((scene.scanWing | 0) <= 0) continue;
-    warmed.add(dedupe);
+    let wing = verdicts.get(dedupe);
+    if (wing === undefined) {
+      const scene = planGateScene(seed, sectorId, to, day, { factionId, security, wanted });
+      wing = (scene.scanWing | 0) > 0;
+      verdicts.set(dedupe, wing);
+    }
+    if (!wing) continue;
     roster.push({
       factionId: factionId || 'faction_scn',
       entitySpec: { type: 'ship', shipId: 'ship_wasp', factionId: factionId || 'faction_scn' },
@@ -6086,12 +6137,29 @@ function warmGateWingDecode(owner) {
 }
 
 /**
+ * The gate-wing verdict memo keys carry the sector prefix and the cohort they
+ * planned for dies with the sector's FULL residency (extras strip on any
+ * demotion). Drop the demoted sector's keys so a return visit re-plans under
+ * the fresh context instead of reusing a verdict minted against the old one.
+ */
+function clearSectorWarmLatchKeys(owner, sectorId) {
+  const gateWing = owner._gateWingWarmKeys;
+  if (gateWing) {
+    const prefix = `${sectorId}|`;
+    for (const key of gateWing.keys()) {
+      if (typeof key === 'string' && key.startsWith(prefix)) gateWing.delete(key);
+    }
+  }
+}
+
+/**
  * Station side events carry their own countdown: _planStation leaves each budgeted patrol
  * (ship_wasp at the station's faction) in stationSideEvents.pending with a fixed dueAt, and
  * _fire mints it the moment the beat lands — inside the marker window at the station seam.
  * Poll the pending list once per residency pass; while a budgeted item's dueAt sits inside
  * the decode runway, warm the patrol hull for the station it will launch from. Deferrals
- * mutate dueAt and re-warm (the WeakMap keys the row), cancelled items let the lease expire.
+ * mutate dueAt into a fresh window, cancelled items let the lease expire, and each
+ * poll re-posts so an evicted hull re-decodes.
  */
 function warmStationPatrolDecode(owner) {
   const state = owner && owner.state;
@@ -6099,14 +6167,11 @@ function warmStationPatrolDecode(owner) {
   const pending = state && state.stationSideEvents && state.stationSideEvents.pending;
   if (!state || !renderer || !renderer.domElement || !Array.isArray(pending) || !pending.length) return;
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-  const warmedAt = owner._stationPatrolWarmAt || (owner._stationPatrolWarmAt = new WeakMap());
   const roster = [];
   let entities = null;
   for (const item of pending) {
     if (!item || (item.budget | 0) <= 0 || !Number.isFinite(item.dueAt)) continue;
     if (item.dueAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
-    if (warmedAt.get(item) === item.dueAt) continue;
-    warmedAt.set(item, item.dueAt);
     if (!entities) {
       entities = state.entityList || (state.entities && typeof state.entities.values === 'function'
         ? [...state.entities.values()] : []);
@@ -6134,14 +6199,13 @@ function warmStationPatrolDecode(owner) {
  * watching. Poll aceMemory once per residency pass and warm the exact crew returnCrewForAce
  * will roll, mirroring _processReturns' gates (undefeated, returnScheduled, returnAt inside
  * the runway, promoted-unexpired, non-nemesis owner). Records that settle through the
- * moral-return ledger or defer simply let the lease expire; the WeakMap dedupes per record.
+ * moral-return ledger or defer simply let the lease expire; every poll re-posts.
  */
 function warmAceReturnDecode(owner) {
   const state = owner && owner.state;
   const memory = state && state.aceMemory;
   if (!memory || typeof memory !== 'object') return;
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-  const warmedAt = owner._aceReturnWarmAt || (owner._aceReturnWarmAt = new WeakMap());
   const records = [];
   for (const [id, rec] of Object.entries(memory)) {
     if (ACE_MEMORY_META_KEYS.has(id) || !rec || typeof rec !== 'object') continue;
@@ -6152,8 +6216,6 @@ function warmAceReturnDecode(owner) {
     if (rec.promoted === true && rec.expired === true) continue;
     const ace = aceById(id) || (rec.promoted === true ? promotedAceShapeForRecord(id, rec) : null);
     if (!ace || ace.lifecycleOwner === 'nemesis') continue;
-    if (warmedAt.get(rec) === rec.returnAt) continue;
-    warmedAt.set(rec, rec.returnAt);
     // offers_work fields an unstyled crew — warming the escalated style decodes the wrong files.
     const style = stanceForRecord(rec).stance === 'offers_work'
       ? null : escalatedStyleFromMemory(memory, ace);
@@ -6181,7 +6243,6 @@ function warmCultureIntroDecode(owner) {
   if (!intros || typeof intros !== 'object') return;
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
   const currentSectorId = state.world && state.world.currentSectorId;
-  const warmedAt = owner._cultureIntroWarmAt || (owner._cultureIntroWarmAt = new WeakMap());
   const records = [];
   for (const [aceId, intro] of Object.entries(intros)) {
     if (!intro || typeof intro !== 'object') continue;
@@ -6191,8 +6252,6 @@ function warmCultureIntroDecode(owner) {
         || intro.dueAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
     const ace = aceById(aceId);
     if (!ace) continue;
-    if (warmedAt.get(intro) === intro.dueAt) continue;
-    warmedAt.set(intro, intro.dueAt);
     const style = escalatedStyleFromMemory(memory, ace);
     const loadout = styleLoadoutForAce(ace, style);
     for (const archetype of [loadout.bossArchetype, loadout.escortArchetype]) {
@@ -6230,7 +6289,7 @@ function warmBountyStagedDecode(owner) {
   const currentSectorId = state.world && state.world.currentSectorId;
   if (!currentSectorId || !Number.isFinite(own.nextStageAt)) return;
   if (own.nextStageAt - now > TABLE_DECODE_RUNWAY_SECONDS) return;
-  warmSeededModularPool(owner, currentSectorId, 'bounty-staged-decode-runway', own.nextStageAt);
+  warmSeededModularPool(owner, currentSectorId, 'bounty-staged-decode-runway');
 }
 
 function warmPlanetChallengeDecode(owner) {
@@ -6240,7 +6299,6 @@ function warmPlanetChallengeDecode(owner) {
   if (!challenges || typeof challenges !== 'object') return;
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
   const currentSectorId = state.world && state.world.currentSectorId;
-  const warmedAt = owner._planetChallengeWarmAt || (owner._planetChallengeWarmAt = new WeakMap());
   const records = [];
   for (const [aceId, challenge] of Object.entries(challenges)) {
     if (!challenge || typeof challenge !== 'object') continue;
@@ -6250,8 +6308,6 @@ function warmPlanetChallengeDecode(owner) {
         || challenge.dueAt - now > TABLE_DECODE_RUNWAY_SECONDS) continue;
     const ace = aceById(aceId);
     if (!ace) continue;
-    if (warmedAt.get(challenge) === challenge.dueAt) continue;
-    warmedAt.set(challenge, challenge.dueAt);
     const style = escalatedStyleFromMemory(memory, ace);
     const loadout = styleLoadoutForAce(ace, style);
     for (const archetype of [loadout.bossArchetype, loadout.escortArchetype]) {
@@ -6280,9 +6336,13 @@ function warmUniqueWreckComplicationDecode(owner) {
   if (!complications || typeof complications !== 'object') return;
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
   const currentSectorId = state.world && state.world.currentSectorId;
-  const warmedAt = owner._uniqueWreckComplicationWarmAt
-    || (owner._uniqueWreckComplicationWarmAt = new WeakMap());
+  // Roster memo keyed on the record's own deadline stamp: planUniqueWreckEncounter
+  // re-runs only when dueAt moves (a re-schedule), while the warm re-posts every
+  // residency poll so a soft-budget eviction re-decodes instead of stranding cold.
+  const plans = owner._uniqueWreckComplicationWarmPlans
+    || (owner._uniqueWreckComplicationWarmPlans = new WeakMap());
   const records = [];
+  const assetFiles = [];
   for (const record of Object.values(complications)) {
     if (!record || typeof record !== 'object') continue;
     if (record.status !== 'scheduled') continue;
@@ -6297,24 +6357,34 @@ function warmUniqueWreckComplicationDecode(owner) {
     if (sectorId !== currentSectorId) continue;
     const shape = ENCOUNTERS[record.encounterId];
     if (!shape) continue;
-    if (warmedAt.get(record) === record.dueAt) continue;
-    warmedAt.set(record, record.dueAt);
-    const item = planUniqueWreckEncounter({
-      programSeed: own.programSeed,
-      def,
-      bearing,
-      // _requestEncounter mints the fire record as {anchor: bearing.exactPos, encounterId}.
-      complication: { anchor: bearing.exactPos, encounterId: record.encounterId },
-      sectorId,
-      simTime: state.simTime,
-      shape,
-    });
-    for (const ship of (item && item.ships) || []) {
-      if (ship && typeof ship.archetype === 'string' && ship.archetype) records.push(ship);
+    const memo = plans.get(record);
+    let ships = null;
+    let files = null;
+    if (memo && memo.dueAt === record.dueAt) { ships = memo.ships; files = memo.files; }
+    if (!ships) {
+      const item = planUniqueWreckEncounter({
+        programSeed: own.programSeed,
+        def,
+        bearing,
+        // _requestEncounter mints the fire record as {anchor: bearing.exactPos, encounterId}.
+        complication: { anchor: bearing.exactPos, encounterId: record.encounterId },
+        sectorId,
+        simTime: state.simTime,
+        shape,
+      });
+      ships = [];
+      files = [];
+      collectEncounterWarmChannels(item, ships, files);
+      plans.set(record, { dueAt: record.dueAt, ships, files });
     }
+    for (const ship of ships) records.push(ship);
+    for (const file of files) assetFiles.push(file);
   }
   if (records.length) {
     warmEnemyRosterDecode(owner, records, 'unique-wreck-complication-decode-runway', currentSectorId);
+  }
+  if (assetFiles.length) {
+    warmAuthoredEncounterFiles(owner, assetFiles, 'unique-wreck-complication-decode-runway', currentSectorId);
   }
 }
 
@@ -6336,12 +6406,14 @@ function _stationEntityForId(state, stationId) {
 
 /**
  * Replay an announced requestAuthoredEncounter payload through the shared plan helper and
- * warm the planned roster — the same rng stream and zone assembly the fire consumes, so the
- * decoded hull set is exactly what the fire will spawn. Returns the warmed roster size.
+ * return every warm channel the item publishes — the squad roster plus the warm-only hulls
+ * and packaged-body files the fire mounts outside plan.ships. The same rng stream and zone
+ * assembly the fire consumes, so the decoded set is exactly what the fire will spawn.
+ * Polled arms memo this result on the record's own deadline stamp and re-post every pass.
  */
-function warmAuthoredEncounterArm(owner, payload, residencyRole, sectorId) {
+function plannedAuthoredEncounterWarm(owner, payload) {
   const state = owner && owner.state;
-  if (!state || !payload || typeof payload !== 'object') return 0;
+  if (!state || !payload || typeof payload !== 'object') return null;
   const player = state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId) : null;
   const planned = planAuthoredEncounterItem({
@@ -6349,14 +6421,20 @@ function warmAuthoredEncounterArm(owner, payload, residencyRole, sectorId) {
     payload,
     playerPos: player && player.pos,
   });
-  const ships = planned && planned.item && planned.item.ships;
-  if (!Array.isArray(ships) || !ships.length) return 0;
-  const records = [];
-  for (const ship of ships) {
-    if (ship && typeof ship.archetype === 'string' && ship.archetype) records.push(ship);
-  }
-  if (records.length) warmEnemyRosterDecode(owner, records, residencyRole, sectorId);
-  return records.length;
+  const item = planned && planned.item;
+  if (!item) return null;
+  const ships = [];
+  const files = [];
+  collectEncounterWarmChannels(item, ships, files);
+  return (ships.length || files.length) ? { ships, files } : null;
+}
+
+function warmAuthoredEncounterArm(owner, payload, residencyRole, sectorId) {
+  const plan = plannedAuthoredEncounterWarm(owner, payload);
+  if (!plan) return 0;
+  if (plan.ships.length) warmEnemyRosterDecode(owner, plan.ships, residencyRole, sectorId);
+  warmAuthoredEncounterFiles(owner, plan.files, residencyRole, sectorId);
+  return plan.ships.length;
 }
 
 /**
@@ -6374,7 +6452,9 @@ function warmDepotWatchDecode(owner) {
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
   const currentSectorId = state.world && state.world.currentSectorId;
   const bodies = (state.claims && state.claims.bodies) || [];
-  const warmedAt = owner._depotWatchWarmAt || (owner._depotWatchWarmAt = new WeakMap());
+  // Roster memo keyed on watchAt: the encounter plan re-runs only on re-schedule,
+  // while the warm re-posts every poll so an evicted hull re-decodes.
+  const plans = owner._depotWatchWarmPlans || (owner._depotWatchWarmPlans = new WeakMap());
   for (const service of services) {
     if (!service || service.watchResolved) continue;
     if (!Number.isFinite(service.watchAt)
@@ -6382,8 +6462,6 @@ function warmDepotWatchDecode(owner) {
     const body = bodies.find((entry) => entry && entry.id === service.bodyId);
     // The maintenance pass only arms watches while the body is in-sector — same gate.
     if (!body || body.sectorId !== currentSectorId) continue;
-    if (warmedAt.get(service) === service.watchAt) continue;
-    warmedAt.set(service, service.watchAt);
     const station = _stationEntityForId(state, service.stationId);
     const anchor = station && station.pos
       ? {
@@ -6391,18 +6469,27 @@ function warmDepotWatchDecode(owner) {
         z: station.pos.z + (body.z - station.pos.z) * 0.75,
       }
       : { x: body.x, z: body.z };
-    warmAuthoredEncounterArm(owner, {
-      shapeId: 'ambush_snare',
-      encounterId: `depot-watch:${body.id}`,
-      sectorId: currentSectorId,
-      anchor,
-      zoneId: `depot-route:${body.id}`,
-      zoneName: `${body.name} supply route`,
-      zoneType: 'ambush_lane',
-      zoneRadius: 240,
-      force: true,
-      data: { claimDepotId: body.id },
-    }, 'depot-watch-decode-runway', currentSectorId);
+    const memo = plans.get(service);
+    let plan = memo && memo.watchAt === service.watchAt ? memo.plan : null;
+    if (!plan) {
+      plan = plannedAuthoredEncounterWarm(owner, {
+        shapeId: 'ambush_snare',
+        encounterId: `depot-watch:${body.id}`,
+        sectorId: currentSectorId,
+        anchor,
+        zoneId: `depot-route:${body.id}`,
+        zoneName: `${body.name} supply route`,
+        zoneType: 'ambush_lane',
+        zoneRadius: 240,
+        force: true,
+        data: { claimDepotId: body.id },
+      }) || { ships: [], files: [] };
+      plans.set(service, { watchAt: service.watchAt, plan });
+    }
+    if (plan.ships.length) {
+      warmEnemyRosterDecode(owner, plan.ships, 'depot-watch-decode-runway', currentSectorId);
+    }
+    warmAuthoredEncounterFiles(owner, plan.files, 'depot-watch-decode-runway', currentSectorId);
   }
 }
 
@@ -6418,7 +6505,9 @@ function warmDepotPatrolDecode(owner) {
   if (!bodies.length) return;
   const now = Number.isFinite(state.simTime) ? state.simTime : 0;
   const currentSectorId = state.world && state.world.currentSectorId;
-  const warmedAt = owner._depotPatrolWarmAt || (owner._depotPatrolWarmAt = new WeakMap());
+  // Roster memo keyed on the arm tuple: the patrol plan re-runs only when the
+  // rotation/encounter id or the countdown moves, while the warm re-posts every poll.
+  const plans = owner._depotPatrolWarmPlans || (owner._depotPatrolWarmPlans = new WeakMap());
   for (const body of bodies) {
     const ds = body && body.depotSupport;
     const patrol = ds && ds.supported === true ? ds.patrol : null;
@@ -6438,20 +6527,27 @@ function warmDepotPatrolDecode(owner) {
       }
       : { x: body.x + 200, z: body.z };
     const armKey = `${encounterId}:${nextAt}`;
-    if (warmedAt.get(patrol) === armKey) continue;
-    warmedAt.set(patrol, armKey);
-    warmAuthoredEncounterArm(owner, {
-      shapeId: DEPOT_PATROL_SHAPE_ID,
-      encounterId,
-      sectorId: body.sectorId,
-      anchor,
-      zoneId: `depot-lane:${body.id}`,
-      zoneName: `${body.name} depot lane`,
-      zoneType: 'patrol_corridor',
-      zoneRadius: DEPOT_PATROL_ZONE_RADIUS_WU,
-      force: true,
-      data: { claimDepotId: body.id, depotPatrol: true, rotation, stationId },
-    }, 'depot-patrol-decode-runway', currentSectorId);
+    const memo = plans.get(patrol);
+    let plan = memo && memo.armKey === armKey ? memo.plan : null;
+    if (!plan) {
+      plan = plannedAuthoredEncounterWarm(owner, {
+        shapeId: DEPOT_PATROL_SHAPE_ID,
+        encounterId,
+        sectorId: body.sectorId,
+        anchor,
+        zoneId: `depot-lane:${body.id}`,
+        zoneName: `${body.name} depot lane`,
+        zoneType: 'patrol_corridor',
+        zoneRadius: DEPOT_PATROL_ZONE_RADIUS_WU,
+        force: true,
+        data: { claimDepotId: body.id, depotPatrol: true, rotation, stationId },
+      }) || { ships: [], files: [] };
+      plans.set(patrol, { armKey, plan });
+    }
+    if (plan.ships.length) {
+      warmEnemyRosterDecode(owner, plan.ships, 'depot-patrol-decode-runway', currentSectorId);
+    }
+    warmAuthoredEncounterFiles(owner, plan.files, 'depot-patrol-decode-runway', currentSectorId);
   }
 }
 
@@ -6521,14 +6617,11 @@ function warmClaimDefenseDecode(owner) {
   const rosters = owner && owner._claimDefenseRosters;
   const bodies = state && state.claims && state.claims.bodies;
   if (!rosters || !rosters.size || !Array.isArray(bodies)) return;
-  const warmedAt = owner._claimDefenseWarmed
-    || (owner._claimDefenseWarmed = new WeakMap());
   for (const body of bodies) {
     const defense = body && body.spec && body.spec.defense;
     if (!defense || defense.phase !== 'warning' || !defense.encounterId) continue;
     const roster = rosters.get(defense.encounterId);
-    if (!roster || warmedAt.get(defense) === defense.deadlineAt) continue;
-    warmedAt.set(defense, defense.deadlineAt);
+    if (!roster) continue;
     warmEnemyRosterDecode(owner, roster.archetypes, 'claim-defense-decode-runway',
       roster.sectorId || body.sectorId);
   }
@@ -6791,17 +6884,14 @@ function updateRouteDeepSectorWarm(owner, state, census, releaseOwner) {
 
 // Queued world:spawnRequest rows flush inside a sector's enter sequence — their forced
 // enemyTypeId cohorts get no roster arm anywhere else, so the approach/deep warm polls the
-// corridor legs' queues and warms the hulls through the decode runway. Set-keyed dedupe:
-// a new row added to an already-seen queue re-warms the widened roster; file dedupe caps
-// the repeats the rest of the way.
+// corridor legs' queues and warms the hulls through the decode runway. The queue outlives
+// its ownerless warms — the rows stay resident through demote and save/load while the
+// soft-lease decodes evict under byte pressure — so the arm re-posts whenever the poll
+// finds a roster: file dedupe no-ops what still lives and re-pins the lease mid-approach.
 function warmQueuedSpawnRequestDecodes(owner, state, sectorId) {
   if (!sectorId) return;
   const roster = queuedSpawnRequestRoster(state.world, sectorId);
   if (!roster.length) return;
-  const seen = owner._spawnRequestWarmSeen || (owner._spawnRequestWarmSeen = new Set());
-  const key = `${sectorId}:${roster.map((row) => row.archetype).join(',')}`;
-  if (seen.has(key)) return;
-  seen.add(key);
   warmEnemyRosterDecode(owner, roster, 'spawn-request-decode-runway', sectorId);
 }
 
@@ -6820,9 +6910,9 @@ function warmPendingInterventionDecodes(owner, state, sectorId) {
     if (rec && rec.sectorId === sectorId) { pending = true; break; }
   }
   if (!pending) return;
-  const seen = owner._interventionWarmSeen || (owner._interventionWarmSeen = new Set());
-  if (seen.has(sectorId)) return;
-  seen.add(sectorId);
+  // The rows persist until intervention:resolved while the ownerless warms evict under
+  // pressure or on demote — no seen-latch here: re-post each poll and let file dedupe
+  // no-op what still lives (a once-fired latch stranded the cohort cold on re-entry).
   for (const stub of wreckVisualExemplarSpecs(`intervention-warm:${sectorId}:`)) {
     Promise.resolve(warmPackagedEntityDecode(owner, stub, null, false, sectorId)).catch(() => {});
   }
@@ -11974,6 +12064,38 @@ export const render = {
       if (pending.length === 0) return null;
       return rehydrateDetachedTextures(pending, { yieldToMain: admissionPaceYield });
     };
+    // Geometry twin: a cpu-detached package geometry whose next bind on THIS renderer would
+    // re-upload emptied attribute arrays (died records, moved version, or a context that never
+    // uploaded post-detach state) throws inside the touch's draw — refill those manifests first.
+    const detachedSubjectGeometriesPending = (subjects) => collectStartupGeometries(subjects)
+      .filter((geometry) => detachedGeometryUploadPending(geometry, renderer));
+    const detachedSubjectGeometriesPendingAsync = async (subjects) => {
+      if (typeof collectStartupGeometriesSteps !== 'function') {
+        return detachedSubjectGeometriesPending(subjects);
+      }
+      const it = collectStartupGeometriesSteps(subjects);
+      for (;;) {
+        let step;
+        try {
+          step = it.next();
+        } catch (driveError) {
+          closeCookStepsIter(it);
+          noteLaneFault(typeof state !== 'undefined' ? state : this?.state, 'startupGeometryCollect');
+          laneWarn(typeof state !== 'undefined' ? state : this?.state, 'startupGeometryCollect', '[render] startup-geometry collect drive failed; running the sync twin', driveError);
+          return runCookSyncTwin('startup-geometry collect',
+            () => detachedSubjectGeometriesPending(subjects), []);
+        }
+        if (step.done) {
+          return step.value.filter((geometry) => detachedGeometryUploadPending(geometry, renderer));
+        }
+        await admissionPaceYield();
+      }
+    };
+    const reattachDetachedSubjectGeometries = async (subjects) => {
+      const pending = await detachedSubjectGeometriesPendingAsync(subjects);
+      if (pending.length === 0) return null;
+      return rehydrateDetachedGeometries(pending, { yieldToMain: admissionPaceYield });
+    };
     const compileForCurrentTarget = (subjects, compileOptions) => {
       const optionActive = compileOptions && compileOptions.isActive;
       const isRootActive = typeof optionActive === 'function'
@@ -12403,8 +12525,9 @@ export const render = {
           // out of the presented pass, so re-attach those payloads first (D150).
           try {
             await reattachDetachedSubjectTextures(subject);
+            await reattachDetachedSubjectGeometries(subject);
           } catch (error) {
-            laneWarn(this, 'admissionTouch', '[render] admission touch texture reattach failed', error);
+            laneWarn(this, 'admissionTouch', '[render] admission touch detach reattach failed', error);
           }
           // compile() resolves under the armed admission state; the presented pass can still
           // ask the driver for a different program key (shadow-gate drift, env binding, target
@@ -12568,8 +12691,21 @@ export const render = {
           laneWarn(this, 'admissionTouch', '[render] exact-target pending-texture scan failed', error);
           return null;
         })
-        .then((detachedPendingUpload) => {
+        .then(async (detachedPendingUpload) => {
           if (detachedPendingUpload === null) return { skipped: true, reason: 'scan-failed' };
+          let detachedPendingGeometry = [];
+          try {
+            detachedPendingGeometry = await detachedSubjectGeometriesPendingAsync(subject);
+          } catch (error) {
+            laneWarn(this, 'admissionTouch', '[render] exact-target pending-geometry scan failed', error);
+          }
+          if (detachedPendingGeometry.length > 0) {
+            try {
+              await rehydrateDetachedGeometries(detachedPendingGeometry, { yieldToMain: admissionPaceYield });
+            } catch (error) {
+              laneWarn(this, 'admissionTouch', '[render] exact-target touch geometry reattach failed', error);
+            }
+          }
           if (detachedPendingUpload.length > 0) {
             return rehydrateDetachedTextures(detachedPendingUpload, { yieldToMain: admissionPaceYield })
               .catch((error) => {
@@ -13113,7 +13249,11 @@ export const render = {
       const pooledSubjects = Array.isArray(plan.pooledResourceSubjects)
         ? plan.pooledResourceSubjects.filter((subject) => subject && !leafSubjectSet.has(subject))
         : [];
-      const allSubjects = subjects.concat(pooledSubjects);
+      // The phone's required gate is the real first picture. Empty pools retain their resource
+      // identities in the plan and admit through their normal effect/streaming owner on use.
+      const allSubjects = isMobileRenderContext() && !survivalRunHoldsArena(state)
+        ? subjects
+        : subjects.concat(pooledSubjects);
       // Chunked like the seal/rockPool legs — the full opening draw set is the largest
       // subject list in the run; a monolithic dedupe lands inside the veil-lift frame.
       const unitSeenMaterials = new Set();
@@ -13184,7 +13324,7 @@ export const render = {
       openingCohort.capture(identities);
       state.render.openingAdmissionCohort = openingCohort.snapshot();
       return plan;
-    })();
+    }).call(this);
     state.render.captureOpeningSubmissionPlan = () => {
       const iterator = state.render.captureOpeningSubmissionPlanSteps();
       let step = iterator.next();
@@ -13334,8 +13474,9 @@ export const render = {
         // payloads first so the warm draws real bytes instead of throwing mid-render.
         try {
           await reattachDetachedSubjectTextures(this.scene);
+          await reattachDetachedSubjectGeometries(this.scene);
         } catch (error) {
-          console.warn('[render] rehearsal texture reattach failed', error);
+          console.warn('[render] rehearsal detach reattach failed', error);
         }
         try {
           if (recookStale()) {
@@ -13378,6 +13519,50 @@ export const render = {
           skipped: true,
           reason: 'session-recook-keep-gpu',
         };
+      }
+      if (isMobileRenderContext() && !survivalRunHoldsArena(state)) {
+        // WebKit exposes parallel compile on phones too. That does not make desktop-scale hidden
+        // catalog/effect rehearsals affordable: they consumed the cook budget before touching any
+        // of the opening picture and held New Game until required-package admission failed.
+        const mobileStarted = performance.now();
+        let mobileActive = true;
+        releaseOpeningGraphPublication(this);
+        state.render.liveSectorGpuAdmission = true;
+        resumeAuthoredUpgradeQueueAfterOpening(scene);
+        this._discardEarlyCrucibleWarm();
+        try {
+          const admitted = await prepareMobileOpeningFirstPicture(state.render, {
+            timeoutMs: 20000,
+            yieldToMain: yieldToBrowser,
+            isActive: () => mobileActive && !recookStale(),
+          });
+          if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
+          // Register the promise observers while loading owns the canvas. Registering already
+          // awaited handles on the first flight draw temporarily counts them as pending until
+          // their microtasks run, refusing that picture for a whole frame on slow WebKit.
+          this._openingAdmissionPendingCount();
+          this._postOpeningPipelineAdmissionReleased = true;
+          this._sessionLiveSectorCookedId = recookSectorId;
+          state.render.sessionLiveSectorCookedId = recookSectorId;
+          recordOpeningCookStep(state.render, 'live.mobileFirstPicture', mobileStarted, 'resolved', {
+            drawLeaves: admitted.plan.drawLeaves.length,
+            materials: admitted.submission.materials,
+          });
+          return { skipped: false, mobileFirstPicture: true, ...admitted };
+        } catch (error) {
+          if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
+          recordOpeningCookStep(state.render, 'live.mobileFirstPicture', mobileStarted, 'error', {
+            error: String(error && error.message || error),
+          });
+          throw error;
+        } finally {
+          mobileActive = false;
+          if (!recookStale()) {
+            state.render.liveSectorGpuAdmission = false;
+            holdAuthoredUpgradeQueueForFirstFlight(scene);
+            freezeOpeningGraphPublication(this);
+          }
+        }
       }
       // Publish the held next-sector upgrades behind the loading shell, drain
       // their compiles, then touch the live materials. First-playable readiness
@@ -13767,7 +13952,10 @@ export const render = {
             if (dx * dx + dz * dz > reach * reach) continue;
             const key = asteroidFirstFlightCookKey(rec);
             if (seenRockKeys.has(key)) continue;
-            if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
+            const promoted = laneCommandSink()
+              ? lanePromote({ id: rec.id, source: 'rock', reason: 'first-flight-cook' })
+              : promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook');
+            if (!promoted) continue;
             seenRockKeys.add(key);
             // A promote fans a synchronous entity:spawned emit to ~24 listeners —
             // pace the burst or the cook's slice clock parks for the whole tail.
@@ -13990,6 +14178,12 @@ export const render = {
             }
             const key = asteroidFirstFlightCookKey(rec);
             if (coveredKeys.has(key)) continue;
+            if (laneCommandSink()) {
+              if (lanePromote({ id: rec.id, source: 'rock', reason: 'survival-roster-prewarm' })) {
+                coveredKeys.add(key);
+              }
+              continue;
+            }
             const promoted = promoteAsteroidFieldRock(state, rec.id, this._simHelpers,
               'survival-roster-prewarm');
             if (!promoted) continue;
@@ -16117,8 +16311,9 @@ export const render = {
           // reads emptied mipmaps inside the draw (D150) — re-attach those payloads first.
           try {
             await reattachDetachedSubjectTextures(units.programSubjects);
+            await reattachDetachedSubjectGeometries(units.programSubjects);
           } catch (error) {
-            console.warn('[render] cook touch texture reattach failed', error);
+            console.warn('[render] cook touch detach reattach failed', error);
           }
           // Loading shell: several touches share a frame until ~8 ms of touch work, then yield
           // (laneB-fixA: 89 touches drew for 1261 ms and spent ~1.3 s more yielding a whole frame after
@@ -17014,7 +17209,10 @@ export const render = {
               if (dx * dx + dz * dz > reach * reach) continue;
               const key = asteroidFirstFlightCookKey(rec);
               if (seenRockKeys.has(key)) continue;
-              if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
+              const promoted = laneCommandSink()
+                ? lanePromote({ id: rec.id, source: 'rock', reason: 'first-flight-cook' })
+                : promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook');
+              if (!promoted) continue;
               seenRockKeys.add(key);
               // A promote fans a synchronous entity:spawned emit to ~24 listeners —
               // pace the burst or the cook's slice clock parks for the whole tail.
@@ -18503,7 +18701,26 @@ export const render = {
     this._helperBindings = { target: ctx.helpers, values: helperBindings };
 
     onBus('entity:spawned', () => { this._meshReconcileDirty = true; });
-    onBus('world:residency', () => { this._meshReconcileDirty = true; });
+    onBus('world:residency', ({ sectors } = {}) => {
+      this._meshReconcileDirty = true;
+      // A sector leaving FULL loses the cohort its warm latches and session cook
+      // armed for. The latches and the cooked stamp key on bare sector identity —
+      // a return visit would suppress every re-warm and the keep-GPU recook would
+      // skip its coverage censuses while the re-materialized cohort drains at
+      // paced-service rate past the veil. Re-arm both on demote.
+      if (Array.isArray(sectors)) {
+        for (const row of sectors) {
+          const demotedId = row && row.sectorId;
+          if (demotedId == null || row.tier === 'FULL') continue;
+          clearSectorWarmLatchKeys(this, demotedId);
+          if (this._sessionLiveSectorCookedId === demotedId) {
+            this._sessionLiveSectorCookedId = null;
+            this._sessionRecookKeepGpu = false;
+            if (state.render) state.render.sessionLiveSectorCookedId = null;
+          }
+        }
+      }
+    });
     onBus('entity:destroyed', ({ id }) => {
       this._appearanceReplacements?.get(id)?.cancel('appearance-entity-destroyed');
       const still = resolveWorldPresentationEntity(this.state, id);
@@ -18762,9 +18979,24 @@ export const render = {
       }
       this._publishAssetResidencyDiagnostics();
     });
+    // Sector-scoped prewarm collects ride the bySectorId bucket under the standard index
+    // guard — the request/coverage/stage predicates all filter on the canonical claim
+    // chain, so a bucket member set is verdict-identical (the coverage census keeps its
+    // per-member entities.get authority check; a Set cannot duplicate members, so the
+    // duplicate check is vacuous, never weaker). entityList remains the source while the
+    // index is unready. Same string-key assumption as the other bucket conversions.
+    const sectorPrewarmEligiblePool = (sectorId) => {
+      const index = state.entityIndex;
+      if (index && index.__spacefaceEntityIndexV1 === true
+          && index.ready === true && index.bySectorId instanceof Map
+          && sectorId != null) {
+        return index.bySectorId.get(sectorId) || [];
+      }
+      return state.entityList || [];
+    };
     const sectorPrewarmRequests = (sectorId) => {
       const player = state.entities && state.entities.get(state.playerId);
-      return authoredPrewarmRequestsForEntities(state.entityList, {
+      return authoredPrewarmRequestsForEntities(sectorPrewarmEligiblePool(sectorId), {
         sectorId,
         playerId: state.playerId,
         playerPos: player && player.pos,
@@ -18784,7 +19016,7 @@ export const render = {
       && entityHasOwnSectorPrewarmPlan(entity, record.sectorId, state.playerId);
     const sectorPrewarmCoverageOptions = (record) => ({
       entities: state.entities,
-      entityList: state.entityList,
+      entityList: sectorPrewarmEligiblePool(record && record.sectorId),
       meshes: this._meshes,
       sectorId: record.sectorId,
       playerId: state.playerId,
@@ -18880,7 +19112,7 @@ export const render = {
         })
         .catch(() => {});
     };
-    const stageSectorPrewarmBoundaries = (record, entities = state.entityList) => {
+    const stageSectorPrewarmBoundaries = (record, entities = sectorPrewarmEligiblePool(record && record.sectorId)) => {
       if (!record || record.active !== true || record.stageBoundaries === false) return record;
       if (!record.boundaryRecords) record.boundaryRecords = new Set();
       if (!record.liveBoundaryPromises) record.liveBoundaryPromises = new Map();
@@ -19368,24 +19600,79 @@ export const render = {
           // presented frames; the post-dispatch leg rides the same iterator,
           // so by the time it runs the caller's preview/instance owner
           // release has landed.
-          driveCacheCleanup(primaryReason, postDispatchReason) {
+          driveCacheCleanup(primaryReason, postDispatchReason, warmMintIter) {
             try { self._sectorExitCleanupIter?.return?.(); } catch (_) { /* best effort */ }
+            // Queued-but-never-started warm mints skip the generator finally —
+            // the abandonment hook finalizes their rotate markers instead.
+            try { self._sectorExitCleanupIter?.onAbandoned?.(); } catch (_) { /* best effort */ }
             const residency = self._assetResidency;
             if (!residency || typeof residency.releaseUnreferencedCacheOwnersSteps !== 'function') {
-              // Registries without a Steps twin keep the sync contract.
+              // Registries without a Steps twin keep the sync contract — drain
+              // the deferred mint inline, matching the old sync ordering.
+              if (warmMintIter) {
+                try { while (!warmMintIter.next().done) { /* drain */ } } catch (_) { /* best effort */ }
+              }
               try { residency?.releaseUnreferencedCacheOwners?.(primaryReason); } catch (_) { /* best effort */ }
               try { residency?.releaseUnreferencedCacheOwners?.(postDispatchReason); } catch (_) { /* best effort */ }
-              self._sectorExitCleanupIter = null;
+              if (typeof residency?.enforceBudgetSteps === 'function') {
+                self._sectorExitCleanupIter = residency.enforceBudgetSteps('gpu');
+              } else {
+                try { residency?.enforceBudget?.('gpu'); } catch (_) { /* best effort */ }
+                self._sectorExitCleanupIter = null;
+              }
               return;
             }
             self._sectorExitCleanupPendingPost = true;
             self._sectorExitCleanupPostReason = postDispatchReason;
             self._sectorExitCleanupIter = (function* () {
-              yield* residency.releaseUnreferencedCacheOwnersSteps(primaryReason);
+              // Each leg is independent bookkeeping; wrap them independently so a
+              // fault drops only its own leg — the enforce can no longer be
+              // stranded behind a post-dispatch fault (the outer catch's re-mint
+              // stays the backstop for a primary-leg fault on older drives).
+              const dropLeg = (err, leg) => {
+                noteLaneFault(self.state, 'sectorExitCleanup');
+                laneWarn(self, 'sectorExitCleanup',
+                  `[render] sector-exit cleanup ${leg} leg faulted; dropped`, err);
+              };
+              // Leg 0: the warm mint itself. Its O(sector) prev-warm release +
+              // K-retain loop + coverage pre-mint used to run synchronously
+              // inside this emit — the only sector-scale work left unpaced at
+              // the crossing. It must land before the sweeps so the holds it
+              // mints exist before any cache-only verdict runs.
+              if (warmMintIter) {
+                try {
+                  yield* warmMintIter;
+                } catch (err) { dropLeg(err, 'warm-mint'); }
+              }
+              try {
+                yield* residency.releaseUnreferencedCacheOwnersSteps(primaryReason);
+              } catch (err) { dropLeg(err, 'primary'); }
               self._sectorExitCleanupPendingPost = false;
-              yield* residency.releaseUnreferencedCacheOwnersSteps(postDispatchReason);
+              try {
+                yield* residency.releaseUnreferencedCacheOwnersSteps(postDispatchReason);
+              } catch (err) { dropLeg(err, 'post-dispatch'); }
+              // The governor enforce rides the same slice clock as leg 3 — its
+              // O(assets x owners x resources + requests) census was the last
+              // atomic lump landing inside the boundary-crossing emit. The seam
+              // discards the receipt anyway, so deferring it past painted beats
+              // loses nothing.
+              try {
+                if (typeof residency.enforceBudgetSteps === 'function') {
+                  yield* residency.enforceBudgetSteps('gpu');
+                }
+              } catch (err) { dropLeg(err, 'enforce'); }
             })();
+            // If this fused drive is abandoned before leg 0 delegates to the
+            // warm mint, the mint's own .return() never fires — forward the
+            // abandonment hook so its rotate markers still finalize.
+            if (warmMintIter && typeof warmMintIter.onAbandoned === 'function') {
+              self._sectorExitCleanupIter.onAbandoned = () => {
+                try { warmMintIter.onAbandoned(); } catch (_) { /* best effort */ }
+              };
+            }
           },
+          deferBudgetEnforce: true,
+          deferWarmMint: true,
         });
       }
       const exactSectorId = sectorId == null ? null : String(sectorId);
@@ -19401,7 +19688,7 @@ export const render = {
         this._authoredSectorPrewarmPendingId = null;
         this._authoredSectorPrewarmPending = null;
       }
-      this._publishAssetResidencyDiagnostics();
+      this._publishAssetResidencyDiagnosticsDeferred();
     });
     // PQ-210.00: the arena publishes real spawn-spec exemplars on every run:wavePlanned —
     // wave 1's receipt lands while mode is still 'loading', so these jobs drain behind the
@@ -19509,6 +19796,36 @@ export const render = {
           && this._sessionLiveSectorCookedId === (state.world && state.world.currentSectorId)
           && this._contextLost !== true;
       }
+      // The rotate's warm mint (prev-warm release + K retains + coverage pre-mint)
+      // is O(sector) — it used to run synchronously inside this emit. The deferred
+      // twin snapshots the qualifying rows now and hands back an iterator; queue
+      // it onto the sector-exit cleanup drive's paced slice clock. FIFO among
+      // mints: append behind any in-flight drive so the newest rotate's sector
+      // assignment lands last.
+      const queueResidencyWarmMint = (residency, targetSectorId) => {
+        if (!residency) return;
+        if (typeof residency.rotateSectorDeferred !== 'function') {
+          residency.rotateSector(targetSectorId);
+          return;
+        }
+        const mintIter = residency.rotateSectorDeferred(targetSectorId);
+        if (!mintIter) return;
+        const self = this;
+        const existing = self._sectorExitCleanupIter;
+        if (existing) {
+          const fused = (function* () { yield* existing; yield* mintIter; })();
+          // A .return() here only reaches the mint currently delegated to —
+          // cascade the abandonment hook so queued-never-started mints still
+          // finalize their rotate markers.
+          fused.onAbandoned = () => {
+            try { existing.onAbandoned?.(); } catch (_) { /* best effort */ }
+            try { mintIter.onAbandoned?.(); } catch (_) { /* best effort */ }
+          };
+          self._sectorExitCleanupIter = fused;
+        } else {
+          self._sectorExitCleanupIter = mintIter;
+        }
+      };
       try {
       // A sector is a new admission context: renderer-latched build failures retry here even
       // when the GPU set is kept, so a transient outage cannot strand a live entity invisible.
@@ -19533,7 +19850,7 @@ export const render = {
           state.render.sectorShellAdmission = false;
           state.render.sectorShellAdmissionSerial = null;
         }
-        this._publishAssetResidencyDiagnostics();
+        this._publishAssetResidencyDiagnosticsDeferred();
         return;
       }
       if (continuous !== true) {
@@ -19652,7 +19969,7 @@ export const render = {
         this._currentSectorPrewarm = null;
         this._authoredSectorPrewarmPending = null;
         this._authoredSectorPrewarmPendingId = null;
-        if (this._assetResidency && exactSectorId) this._assetResidency.rotateSector(exactSectorId);
+        if (this._assetResidency && exactSectorId) queueResidencyWarmMint(this._assetResidency, exactSectorId);
         clearDecodeRunwayDedupe(this);
         state.render.pipelinePrecompileReady = pipelinePrecompile;
         // Nothing in flight awaits this stored promise — suppress the unhandled
@@ -19662,7 +19979,7 @@ export const render = {
         pipelinePrecompile.catch((error) => {
           console.warn('[render] pipeline precompile rejected', error);
         });
-        this._publishAssetResidencyDiagnostics();
+        this._publishAssetResidencyDiagnosticsDeferred();
         return;
       }
 
@@ -19697,13 +20014,13 @@ export const render = {
           ? SECTOR_VISUAL_TRANSITION_SECONDS
           : 0;
         this._seamDeferredExtendS = null;
-        if (this._assetResidency && exactSectorId) this._assetResidency.rotateSector(exactSectorId);
+        if (this._assetResidency && exactSectorId) queueResidencyWarmMint(this._assetResidency, exactSectorId);
         clearDecodeRunwayDedupe(this);
         state.render.pipelinePrecompileReady = pipelinePrecompile;
         pipelinePrecompile.catch((error) => {
           console.warn('[render] pipeline precompile rejected', error);
         });
-        this._publishAssetResidencyDiagnostics();
+        this._publishAssetResidencyDiagnosticsDeferred();
         return;
       }
 
@@ -19737,6 +20054,24 @@ export const render = {
         return prepareSectorEntry(renderer, exactSectorId, prewarm.requests.slice(), {
           owner: prewarm.owner,
           residency: this._assetResidency,
+          // The entry seam's deferred rotate hands its paced legs back through this hook —
+          // chain them behind the sector-exit cleanup drive FIFO, exactly like the exit path's
+          // own warm mints, so the swap reports rotated immediately while the release/retain/
+          // coverage work drains on the paced slice clock.
+          queueWarmMint: (mintIter) => {
+            const self = this;
+            const existing = self._sectorExitCleanupIter;
+            if (existing) {
+              const fused = (function* () { yield* existing; yield* mintIter; })();
+              fused.onAbandoned = () => {
+                try { existing.onAbandoned?.(); } catch (_) { /* best effort */ }
+                try { mintIter.onAbandoned?.(); } catch (_) { /* best effort */ }
+              };
+              self._sectorExitCleanupIter = fused;
+            } else {
+              self._sectorExitCleanupIter = mintIter;
+            }
+          },
           isEntryActive: () => prewarm.active === true
             && state.world
             && state.world.currentSectorId === exactSectorId
@@ -19811,7 +20146,7 @@ export const render = {
         // rotates an incomplete set; this lifecycle-only fallback prevents a failed optional asset
         // from leaving residency labelled as the sector the player already departed.
         if (prewarm.active === true && state.world && state.world.currentSectorId === exactSectorId) {
-          if (this._assetResidency) this._assetResidency.rotateSector(exactSectorId);
+          if (this._assetResidency) queueResidencyWarmMint(this._assetResidency, exactSectorId);
           clearDecodeRunwayDedupe(this);
           if (this._currentSectorPrewarm && this._currentSectorPrewarm !== prewarm) {
             releaseSectorPrewarm(this._currentSectorPrewarm, 'failed-sector-prewarm-replaced');
@@ -19867,7 +20202,7 @@ export const render = {
             upgradeMintPass.catch(() => {});
           }
         }
-        this._publishAssetResidencyDiagnostics();
+        this._publishAssetResidencyDiagnosticsDeferred();
       });
       state.render.pipelinePrecompileReady = preparation;
       // A fail-closed arrival (an invariant broke; console.error above carries the cause) still
@@ -21412,6 +21747,7 @@ export const render = {
     if (state.mode !== 'loading') return;
     try {
       const openingProfile = !survivalRunHoldsArena(state);
+      if (openingProfile && isMobileRenderContext()) return;
       const warm = this._beginCrucibleBoundedRosterWarm({
         yieldToMain: yieldToBrowser,
         // The opening profile is deterministic at scenePrepared — the scripted-intro species
@@ -23161,14 +23497,22 @@ export const render = {
   *_publishArrivalRosterSteps(exactSectorId, batchRows = 1024) {
     const state = this.state;
     if (!state || state.mode !== 'flight' || !exactSectorId) return null;
+    // The roster census has no sector predicate: every live typed entity on stage is
+    // roster-eligible, including foreign-claimed visitors and adopted actors whose
+    // canonical stamp names another sector (e.homeSectorId outlives a cross-sector
+    // adopt by design). Bucketing by claim cannot express "physically present" —
+    // a divergent-stamped entrant sits in a foreign bucket and went invisible to the
+    // warm mint (W126 popin F1). The publish runs once per enter, so the full-list
+    // pool is µs-cheap; the bySectorId lane remains for genuinely sector-scoped readers.
     const entities = Array.isArray(state.entityList) ? state.entityList : [];
+    const pool = entities;
     const rosterOpts = {
       sectorId: exactSectorId,
       seed: state.seed,
       byteCeiling: GOVERNOR_RESIDENCY_BYTE_CEILING,
       presentOrigin: (state.render && state.render.presentCount) || 0,
     };
-    const roster = yield* buildArrivalRosterSteps(entities, rosterOpts, batchRows);
+    const roster = yield* buildArrivalRosterSteps(pool, rosterOpts, batchRows);
     const programKeys = roster.programKeys.slice();
     const seen = new Set(programKeys);
     const meshes = this._meshes;
@@ -23285,6 +23629,23 @@ export const render = {
     if (this.state.render.assetResidency === diagnostics) return diagnostics;
     this.state.render.assetResidency = diagnostics;
     return diagnostics;
+  },
+
+  // The snapshot itself is a memo, but the re-mint after a mass-retain storm is
+  // O(assets) — publishing it inline inside a seam emit spends ~1.6ms of the
+  // boundary frame on diagnostics nobody reads per-frame. Seam tails arm the
+  // publish on a post-present slot instead (deduped so a burst of emits shares
+  // one armed callback); readers continue to see the last canonical snapshot
+  // until the deferred publish lands, which is the documented snapshot contract.
+  _publishAssetResidencyDiagnosticsDeferred() {
+    if (this._assetResidencyDiagnosticsPublishArmed) return;
+    this._assetResidencyDiagnosticsPublishArmed = true;
+    armCallbackAfterPresent(() => {
+      this._assetResidencyDiagnosticsPublishArmed = false;
+      try {
+        this._publishAssetResidencyDiagnostics();
+      } catch (_) { /* diagnostics only */ }
+    });
   },
 
   // Burst-safe variant: a bus flush carrying N corpse events rebuilds the canonical sort once
@@ -24768,6 +25129,7 @@ export const render = {
     warmEncounterPendingDecode(this);
     warmPendingReinforcementsDecode(this);
     warmCombatReinforcementsDecode(this);
+    warmNemesisPendingDecode(this);
     yield;
     warmClaimDefenseDecode(this);
     warmAceReturnDecode(this);
@@ -26099,7 +26461,7 @@ export const render = {
     const fence = this._snapshotFence;
     const snapshot = fence && fence.latestSnapshot();
     const previous = !currentOnly && fence ? fence.previousSnapshot() : null;
-    if (!snapshotHasEntityGeneration(snapshot, world.entityIds[slot], world.slotGenerations?.[slot])) return false;
+    if (!snapshotHasEntityGeneration(snapshot, world.entityIds[slot], world.slotGenerations?.[slot], slot)) return false;
     const poseBeforeX = mesh.position.x;
     const poseBeforeZ = mesh.position.z;
     const applied = applySnapshotPoseToMesh(
@@ -26117,6 +26479,7 @@ export const render = {
           LOOP_FIXED_DT,
           alpha,
         ),
+      slot,
     );
     if (!applied) return false;
     const poseDx = mesh.position.x - poseBeforeX;
@@ -26136,7 +26499,22 @@ export const render = {
     const world = this._presentationWorld;
     const snapshot = this._snapshotFence && this._snapshotFence.latestSnapshot();
     if (!world || !snapshot || world.entityIds[slot] !== entityId) return false;
-    return snapshotHasEntityGeneration(snapshot, entityId, world.slotGenerations?.[slot]);
+    const expectedGeneration = world.slotGenerations?.[slot];
+    // Slot-table hint: one typed-array read verified against the entityId
+    // column; a miss (or a snapshot without the table) keeps the map lookup.
+    const slotRows = snapshot.slotRows;
+    const hinted = slotRows && slot >= 0 && slot < slotRows.length ? slotRows[slot] : -1;
+    const ids = snapshot.columns && snapshot.columns.entityId;
+    if (hinted >= 0 && ids && ids[hinted] === (entityId >>> 0)) {
+      const hintedGenerations = snapshot.columns.generation;
+      return !hintedGenerations || !Number.isInteger(expectedGeneration)
+        || hintedGenerations[hinted] === (expectedGeneration >>> 0);
+    }
+    const index = snapshotIndexOf(snapshot, entityId);
+    if (index < 0) return false;
+    const generations = snapshot.columns && snapshot.columns.generation;
+    return !generations || !Number.isInteger(expectedGeneration)
+      || generations[index] === (expectedGeneration >>> 0);
   },
 
   syncEntityViews(alpha) {
@@ -26445,7 +26823,7 @@ export const render = {
           transformed++;
         }
         if (userData.asteroidInstanceBody) userData.asteroidInstanceViewCulled = false;
-  
+
         // Projected-screen-size LOD (spec §12.4): visible roots resolve detail from projected pixel
         // width with hysteresis. Newly visible roots are fully posed above before this decision.
         _viewBandOptions.isPlayer = isPlayer;
@@ -26511,7 +26889,7 @@ export const render = {
             }
           }
         }
-  
+
         if (entity && mesh.userData?.geometryPending && this.state.mode === 'flight'
           && Number.isFinite(this.state.render?.firstPlayableFrameAt)) {
           this._noteArrivalRosterMiss(entity);
@@ -26617,10 +26995,10 @@ export const render = {
             }
           }
         }
-  
+
         if (entity) classifyRenderEntity(this._entityFrame, entity, mesh, false);
         fullSynced++;
-  
+
         // Visible interactive and hero roots retain their authored per-frame presentation closures.
         // Distant LOD2 traffic is a speck: runtime/damage closures cannot change a readable pixel.
         // Off-screen runway (middle band) keeps poses every frame but refreshes closures on cadence.
@@ -26675,7 +27053,7 @@ export const render = {
           // Native shoe/pad poses and consumed-force radiance remain exact when decoration sleeps.
           userData.updateCeresPhysicalState(entity, _worldSiteA11y);
         }
-  
+
         // A-List dynamic mechanical micro-motion & environmental reactions. Under a zero-scale
         // freeze presFrameDt is exactly 0 — skipping here also skips the spring CPU, and every
         // consumer floors its dt so passing 0 would still creep.
@@ -26751,7 +27129,7 @@ export const render = {
             globalInfrastructureMotion.updateWreckMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
           }
         }
-  
+
         // Shield geometry is an impact response, not a permanent bubble. The flash decays each visible
         // frame and is punched up whenever the entity's shield value drops.
         const shieldBubble = userData.shieldBubble;
@@ -26769,7 +27147,7 @@ export const render = {
             presFrameDt,
           );
         }
-  
+
         const hlod = userData.hlod;
         if (hlod) {
           hlodDetailedVisible += Number(hlod.detailedVisible) || 0;
@@ -31092,7 +31470,7 @@ export const render = {
     this._depthStageArmRetryAt = (typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now() : Date.now()) + 1000;
     noteLaneFault(this.state, 'depthStageArm', (this._depthStageArmFaults | 0) >= 3);
-  }, 
+  },
 
   _stageShadowDepthOnSettingEnable() {
     // Cast promotions applied while the map was off could neither withhold nor stage
@@ -31720,6 +32098,8 @@ export const render = {
       renderGraphDetails: renderGraphDiag,
       gpuTimers,
       dynResScale: Number.isFinite(this.state?.render?.dynResScale) ? this.state.render.dynResScale : 1,
+      firstPlayableFrameAt: Number.isFinite(this.state?.render?.firstPlayableFrameAt)
+        ? this.state.render.firstPlayableFrameAt : null,
     };
   },
 
@@ -32243,7 +32623,10 @@ function afterBrowserPaint(callback, schedule = null) {
     return;
   }
   requestAnimationFrame(() => {
-    scheduleLater(() => requestAnimationFrame(callback));
+    // Second hop rides the same post-present contract as every other resume
+    // seam — a nested rAF would land the callback pre-present inside the
+    // next frame's rAF task (the surface shape closed everywhere else).
+    scheduleLater(() => postTaskAtBackgroundPriorityBounded(callback));
   });
 }
 

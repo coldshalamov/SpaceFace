@@ -24,6 +24,7 @@ import { createStopScale } from '../orrery/stopDial.js';
 import { createYardCarousel } from '../orrery/yardCarousel.js';
 import { createHullRing } from '../orrery/hullRing.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { dpMark, injectDeckplate } from '../deckplate/index.js';
 import { capPins, platePins, channelPins }
@@ -518,6 +519,7 @@ export const newGameScreen = {
     const diffDesc = el('p', 'k-sentence', '');
     diffDesc.id = 'sf-ng-difficulty-desc';
     diffWords.setAttribute('aria-describedby', diffDesc.id);
+    diffWords.classList.add('sf-ng-difficulty-choices');
     diffField.wrap.appendChild(diffWords);
     diffField.wrap.appendChild(diff);
     diffField.wrap.appendChild(diffDesc);
@@ -525,7 +527,7 @@ export const newGameScreen = {
     // ORRERY: difficulty is a four-stop scale with the amber index, stood on end — the form
     // column is narrower than four grown names on one line, so the ruler stacks a station per
     // line and every word keeps the column's whole width (D136).
-    if (ORRERY) this._diffDial = createStopScale({ row: diffWords, width: 340, axis: 'y' });
+    if (ORRERY && !isPhoneLayout()) this._diffDial = createStopScale({ row: diffWords, width: 340, axis: 'y' });
     body.appendChild(hairline());
 
     // Arrow bridges for the Tab-invisible starter row: Down from the pilot name or Up from the
@@ -768,7 +770,9 @@ export const newGameScreen = {
       for (const s of NEW_GAME_STARTERS) mass['starter:' + s.id] = starterAirCard(s).massT;
       const starterOfLi = () => [...starterWords.children].filter((li) => li.querySelector && li.querySelector('button'))
         .map((li) => NEW_GAME_STARTERS.find((s) => 'starter:' + s.id === li.querySelector('button').dataset.action));
-      this._starterDial = createYardCarousel({ row: starterWords, host: rootEl, anchor: stage, hero: '.orr-ng-hero-box', art, artWidth: 132, mass, modelRing: true,
+      // Phones show the produced hull portrait and full-width measured dials. Do not mount a
+      // second hidden WebGL model carousel behind the phone's ordinary hull-choice row.
+      this._starterDial = createYardCarousel({ row: starterWords, host: rootEl, anchor: stage, hero: '.orr-ng-hero-box', art, artWidth: 132, mass, modelRing: !isPhoneLayout(),
         onModelsReady: (ok) => { stage.classList.toggle('orr-ng--models', !!ok); },
         onTurn: (i0, i1, f) => {
           const list = starterOfLi();
@@ -783,7 +787,7 @@ export const newGameScreen = {
     if (ORRERY) {
       const statsHost = stage.querySelector('.orr-ng-stats');
       const heroBox = stage.querySelector('.orr-ng-hero-box');
-      if (statsHost && heroBox) {
+      if (statsHost && heroBox && !isPhoneLayout()) {
         statsHost.textContent = '';
         this._hullRing = createHullRing({ host: statsHost, anchor: heroBox });
         if (this._lastStarter) this._paintStats(this._lastStarter);
@@ -818,7 +822,23 @@ export const newGameScreen = {
     });
     rootEl.appendChild(foot);
 
+    const launchError = el('p', 'k-sentence sf-ng-launch-error');
+    launchError.setAttribute('role', 'alert');
+    launchError.setAttribute('aria-live', 'assertive');
+    launchError.hidden = true;
+    rootEl.insertBefore(launchError, foot);
+
     rootEl.appendChild(el('div', 'k-fine', 'Casual, Standard and Veteran deaths use insurance respawn. Ironman ends the run.'));
+
+    if (isPhoneLayout()) {
+      // Keep Launch outside the content scroll instead of drawing a sticky footer over the
+      // last visible difficulty/hull choice. Every field and hull instrument remains reachable.
+      const scroll = el('div', 'sf-ng-scroll');
+      for (const node of [...rootEl.children]) {
+        if (node !== foot && node !== launchError) scroll.appendChild(node);
+      }
+      rootEl.insertBefore(scroll, launchError);
+    }
 
     // The word reads "Launching..." while the run boots and restores on game:startFailed.
     const setLaunching = (active) => {
@@ -851,10 +871,14 @@ export const newGameScreen = {
       if (hullRelease !== null) clearTimeout(hullRelease);
       hullRelease = null;
     };
-    const restoreLaunch = () => {
+    const restoreLaunch = (failure) => {
       const wasLaunching = launching;
       cancelHullRelease();
       setLaunching(false);
+      if (wasLaunching) {
+        launchError.textContent = `${failure?.text || 'The game could not finish loading.'} Try Launch again.`;
+        launchError.hidden = false;
+      }
       const hull = this.hull;
       if (!wasLaunching || !hull) return;
       const rebuilt = hull.restore();
@@ -871,7 +895,7 @@ export const newGameScreen = {
     });
 
     refs = {
-      root: rootEl, title, body, stage, foot, name, seed, diff, diffWords, diffDesc, launch, back,
+      root: rootEl, title, body, stage, foot, name, seed, diff, diffWords, diffDesc, launch, back, launchError,
       starterWords, starterDesc, hullName, hullBlurb, renderLoadout,
       starter: DEFAULT_STARTER,
       setLaunching, unsubStartFailed, unsubLoading, cancelHullRelease, ctx,
@@ -959,6 +983,8 @@ export const newGameScreen = {
     if (!refs) return;
     const launching = refs.isLaunching();
     if (launching) return;
+    refs.launchError.hidden = true;
+    refs.launchError.textContent = '';
     refs.setLaunching(true);
     // The loading shell is about to cover the stage: stop the hull drifting now. mount() frees its
     // WebGL context once the shell is opaque.
@@ -992,6 +1018,8 @@ export const newGameScreen = {
     cue('open');
     this._emitEmbarkSpec();
     refs.setLaunching(false);
+    refs.launchError.hidden = true;
+    refs.launchError.textContent = '';
     refs.cancelHullRelease();
     if (this.hull) this.hull.restore();
     try {
@@ -1005,7 +1033,11 @@ export const newGameScreen = {
       this.hull.show(refs.starter.shipId, { fittings: starterStageFittings(refs.starter) });
     }
     if (this._starterDial) this._starterDial.setActive(true);
-    try { refs.name.focus(); refs.name.select(); } catch (e) {}
+    // Native iPhone focus opens the keyboard and scrolls before the form has settled. Let a
+    // touch choose the field; desktop retains the immediate name-entry shortcut.
+    if (!isPhoneLayout()) {
+      try { refs.name.focus(); refs.name.select(); } catch (e) {}
+    }
   },
   onHide() {
     cue('close');

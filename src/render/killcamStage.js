@@ -17,6 +17,7 @@
 
 import * as THREE from 'three';
 import { wholeShipVisualForEntity } from './partsLibrary.js';
+import { dedupWarn } from '../core/warnDedup.js';
 import {
   decodeKillcamTape, isKillcamTape, takeKillcamTape, killcamPlaybackSkipped,
 } from '../sim/killcamTape.js';
@@ -104,7 +105,7 @@ export async function buildKillcamStage(built, io) {
         data: { lootTableId: ship.visual, silhouette: ship.silhouette },
       });
     } catch (error) {
-      console.warn('[killcam] visual lookup failed for', key, error);
+      dedupWarn('killcam.visual-lookup', '[killcam] visual lookup failed for', key, error);
     }
     const file = selection && selection.file;
     if (!file) continue;

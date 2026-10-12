@@ -64,6 +64,13 @@ const NO_ROUNDTRIP = CIRCUIT || process.argv.includes('--no-roundtrip');
 // not evidence about the app the player actually launches. Back up the save directory before using
 // this: the running game autosaves into it.
 const PLAYER_PROFILE = process.argv.includes('--player-profile');
+// --sim-lane worker boots the game with ?simLane=worker — the whole authoritative
+// sim runs in a module Worker and presentation consumes the wire journal
+// (S1 stage-8 flip verification lane). Browser route only: the isolated
+// Electron root-url contract requires a query-free URL, so the desktop route
+// cannot forward the lane flag without main.cjs plumbing.
+const SIM_LANE_ARG = (() => { const i = process.argv.indexOf('--sim-lane'); return i > 0 ? process.argv[i + 1] : null; })();
+const SIM_LANE_QUERY = SIM_LANE_ARG ? `?simLane=${encodeURIComponent(SIM_LANE_ARG)}` : '';
 const SLOT_ARG = (() => { const i = process.argv.indexOf('--slot'); return i > 0 ? process.argv[i + 1] : null; })();
 const pw = await loadPlaywright();
 const { chromium } = pw;
@@ -213,8 +220,14 @@ async function openElectronRoute() {
   return { page, baseUrl: new URL(page.url()).origin + '/' };
 }
 
+if (ELECTRON && SIM_LANE_ARG) {
+  console.error('  --sim-lane cannot run on the Electron route: the isolated root URL must be query-free.');
+  console.error('  Run the browser lane: node scripts/check-game-playable.mjs --sim-lane ' + SIM_LANE_ARG);
+  process.exit(2);
+}
+
 try {
-  console.log('\nSpaceFace — playable check\n');
+  console.log('\nSpaceFace — playable check' + (SIM_LANE_ARG ? ` (simLane=${SIM_LANE_ARG})` : '') + '\n');
   const opened = ELECTRON ? await openElectronRoute() : await openBrowserRoute();
   const page = opened.page;
   routeBaseUrl = opened.baseUrl;
@@ -312,7 +325,7 @@ try {
     // the CPU (per-request wall time then starves in the renderer, not the network — the server
     // answers a 1.4MB file in 170ms while the box is pinned). 180s matches the budget this file
     // already grants the desktop route's waitForLoadState below; a real hang still fails here.
-    await page.goto(routeBaseUrl, { waitUntil: 'domcontentloaded', timeout: 180_000 });
+    await page.goto(routeBaseUrl + SIM_LANE_QUERY, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   } else {
     // The desktop route boots itself and may raise the cinematic splash, which swallows a scripted
     // .click(). A real key press is the only thing that dismisses it.
@@ -348,6 +361,12 @@ try {
     try {
       await page.evaluate(() => {
         window.__playableStart = {};
+        // Stage-9 remediation proof: exactly-once game:started on the main bus.
+        // The worker lane generates the receipt inside the worker — a count>1
+        // means a duplicated replay/emit, 0 on a new game means the receipt
+        // never bridged back to main-side subscribers.
+        window.__gameStartedCount = 0;
+        window.SF.bus.on('game:started', () => { window.__gameStartedCount += 1; });
         window.SF.bus.on('game:loadingProgress', stage => { window.__playableStart.stage = stage; });
         window.SF.bus.on('game:startFailed', error => { window.__playableStart.error = error; });
       });
@@ -382,6 +401,7 @@ try {
           start: window.__playableStart,
           screens: [...document.querySelectorAll('[data-screen]')]
             .filter(e => getComputedStyle(e).display !== 'none').map(e => e.dataset.screen),
+          lane: window.SF?.simLaneDiag?.() || window.SF?.laneDiag || null,
         };
         if (!verbose || !state) return detail;
         const { authoredCriticalVisualReadiness, describeAuthoredUpgradeQueue } =
@@ -502,6 +522,127 @@ try {
     record('CONTROLS' + tag, controlsOk, controlsOk
       ? `thrust responded (speed ${control.speed.toFixed(1)} -> ${after.speed.toFixed(1)}, moved ${moved.toFixed(1)} wu)`
       : `holding thrust for 1.6s did NOTHING (speed ${control.speed.toFixed(2)} -> ${after.speed.toFixed(2)}, moved ${moved.toFixed(2)} wu)`);
+
+    // ── 6b. LANE-FWD (worker lane only) ──────────────────────────────────────────────────────
+    // Stage 9: the main→sim bus forward set is census-driven (~108 types). Emitting on the
+    // main-side bus must reach worker subscribers: a pos-typed ui:setCourse lands a mirrored
+    // nav.waypoint and the worker's own nav:waypoint receipt bridges back; settings:changed
+    // drives _writeProfileSettings in the worker whose localStorage write rides the storageOps
+    // relay; a sector-typed setCourse + nav:engageRoute exercises the route executor.
+    // Keyed off the live lane (simLaneDiag installs only under the worker runtime), so the
+    // Stage-E default flip keeps this gate armed on bare runs too.
+    const laneLive = await page.evaluate(() =>
+      !!(window.SF && typeof window.SF.simLaneDiag === 'function'));
+    if (SIM_LANE_ARG === 'worker' || laneLive) {
+      try {
+        await page.evaluate(() => {
+          window.__laneFwdReceipts = { waypoint: 0, probe: 0, denied: 0 };
+          // The bridged nav:waypoint replay carries the worker's own emit; the
+          // tracked mission re-owns nav.waypoint each tick, so match OUR emit by
+          // reason+pos on the receipt rather than on state.nav.waypoint.
+          window.SF.bus.on('nav:waypoint', (w) => {
+            window.__laneFwdReceipts.waypoint++;
+            if (w && w.reason === 'laneFwdCheck') window.__laneFwdReceipts.probe++;
+          });
+          window.SF.bus.on('nav:routeExecutorDenied', () => window.__laneFwdReceipts.denied++);
+          const st = window.SF.state;
+          const p = st.entities.get(st.playerId);
+          const pos = { x: (p ? p.pos.x : 0) + 4000, y: 0, z: (p ? p.pos.z : 0) + 4000 };
+          window.SF.bus.emit('ui:setCourse', { pos, label: 'LANEPROBE', reason: 'laneFwdCheck' });
+        });
+        await page.waitForTimeout(900);
+        const fwd = await page.evaluate(() => {
+          const st = window.SF.state;
+          const wp = st.nav && st.nav.waypoint;
+          // settings:changed -> worker saveSystem._writeProfileSettings -> storageOps relay.
+          window.SF.bus.emit('settings:changed', { section: 'playable', key: 'laneProbe' });
+          const sid = st.world && st.world.currentSectorId;
+          const sector = sid && st.world.sectors && st.world.sectors[sid];
+          const hop = sector && Array.isArray(sector.neighbors)
+            ? sector.neighbors.find((n) => st.world.discovery && st.world.discovery[n] && st.world.discovery[n].discovered)
+            : null;
+          return {
+            waypointLabel: wp && wp.label,
+            waypointReceipts: window.__laneFwdReceipts.waypoint,
+            probeReceipts: window.__laneFwdReceipts.probe,
+            hopSectorId: hop || null,
+          };
+        });
+        await page.waitForTimeout(900);
+        const fwd2 = await page.evaluate((hop) => {
+          const st = window.SF.state;
+          const profile = localStorage.getItem('sf.settings.profile.v1');
+          let route = null;
+          if (hop) {
+            window.SF.bus.emit('ui:setCourse', { sectorId: hop, reason: 'laneFwdCheck' });
+          }
+          return { profileWritten: !!profile, hop };
+        }, fwd.hopSectorId);
+        await page.waitForTimeout(900);
+        const fwd3 = await page.evaluate(() => {
+          const st = window.SF.state;
+          const route = st.nav && st.nav.route;
+          let engaged = null;
+          if (route && Array.isArray(route.legs) && route.legs.length) {
+            window.SF.bus.emit('nav:engageRoute', {});
+            engaged = 'sent';
+          } else {
+            engaged = 'no-route';
+          }
+          return { hasRoute: !!engaged && engaged === 'sent', engaged };
+        });
+        await page.waitForTimeout(900);
+        const fwd4 = await page.evaluate(async () => {
+          const st = window.SF.state;
+          const diag = (window.SF.simLaneDiag && window.SF.simLaneDiag()) || {};
+          // Worker-side ground truth: how many times the worker emitted
+          // game:started (staged by newGameBoot, consumed at the post-boot
+          // 'flight' apply). 1 = receipt fired once; 0 = never; >1 = duplicate.
+          let workerGameStarted = null;
+          try {
+            const probe = window.SF.laneRpc && await window.SF.laneRpc('probeState', {});
+            workerGameStarted = probe && probe.result ? probe.result.gameStartedEmits : null;
+          } catch (_) { workerGameStarted = null; }
+          return {
+            executor: !!(st.nav && st.nav.executor && st.nav.executor.status === 'engaged'),
+            denied: window.__laneFwdReceipts.denied,
+            unforwarded: diag.unforwardedEmitCount ?? null,
+            unforwardedTypes: diag.unforwardedEmitTypes || null,
+            gameStartedMain: window.__gameStartedCount,
+            gameStartedWorker: workerGameStarted,
+          };
+        });
+        // ui:setCourse crossed the lane iff the worker's own nav:waypoint receipt
+        // (marked by our reason) bridged back — tracked missions legitimately
+        // re-own state.nav.waypoint every tick, so the receipt is the proof.
+        const courseOk = fwd.probeReceipts > 0 && fwd.waypointReceipts > 0;
+        const settingsOk = fwd2.profileWritten === true;
+        const routeOk = fwd3.engaged === 'no-route'
+          || fwd4.executor === true || fwd4.denied > 0;
+        const unforwardedForProbe = fwd4.unforwardedTypes
+          ? ['ui:setCourse', 'settings:changed', 'nav:engageRoute'].filter((t) => t in fwd4.unforwardedTypes)
+          : [];
+        // Stage-9 remediation gates:
+        //  (a) unforwardedEmitCount === 0 — an emit whose type escapes BOTH the
+        //      forward set and KNOWN_UNFORWARDED fails loudly instead of
+        //      dead-ending at the lane boundary.
+        //  (b) game:started exactly once on BOTH lanes — the worker emits the
+        //      receipt once post-boot (gameStartedWorker === 1 after a new
+        //      game, === 0 after a save restore / ~LOAD pass) and its bridged
+        //      replay fires main-side subscribers exactly once (never duplicated).
+        const expectWorkerStarted = tag === '~LOAD' || REAL_SAVES ? 0 : 1;
+        const coverageOk = fwd4.unforwarded === 0;
+        const startedOk = fwd4.gameStartedWorker === expectWorkerStarted
+          && fwd4.gameStartedMain === expectWorkerStarted;
+        const ok = courseOk && settingsOk && routeOk && unforwardedForProbe.length === 0
+          && coverageOk && startedOk;
+        record('LANE-FWD' + tag, ok, ok
+          ? `ui:setCourse -> nav.waypoint (${fwd.waypointReceipts} receipt), settings:changed -> profile write, engage=${fwd3.engaged}${fwd4.executor ? '/executor' : fwd4.denied ? '/denied' : ''}, unfwd=0, game:started=${fwd4.gameStartedWorker}/w+${fwd4.gameStartedMain}/m`
+          : `waypoint=${JSON.stringify(fwd.waypointLabel)} receipts=${fwd.waypointReceipts} probeReceipts=${fwd.probeReceipts} profile=${fwd2.profileWritten} route=${fwd3.engaged} exec=${fwd4.executor} denied=${fwd4.denied} unfwd=${fwd4.unforwarded}/${JSON.stringify(unforwardedForProbe)} types=${JSON.stringify(fwd4.unforwardedTypes)} started w=${fwd4.gameStartedWorker} m=${fwd4.gameStartedMain}`);
+      } catch (err) {
+        record('LANE-FWD' + tag, false, 'forwarded-surface exercise threw: ' + err.message);
+      }
+    }
   }
 
   if (inFlight) {
@@ -591,6 +732,13 @@ try {
           return el && getComputedStyle(el).display !== 'none';
         }, null, { timeout: 60000 });
         phase = 'menu';
+        // Stage-9 remediation: a stray game:started on the restore path is the
+        // crash class the worker-side receipt replaced — count any emit here
+        // (must stay 0) before pressing Continue.
+        await page.evaluate(() => {
+          window.__gameStartedCount = 0;
+          window.SF.bus.on('game:started', () => { window.__gameStartedCount += 1; });
+        });
         // Press the real Continue button. mainMenu.js:254 reads the save index and emits
         // game:load with the latest slot; firing the event directly would skip the index lookup,
         // which is itself a place this can break.
@@ -604,6 +752,17 @@ try {
           const p = st && st.entities && st.entities.get(st.playerId);
           return !!(st && st.mode === 'flight' && p && p.alive);
         }, null, { timeout: 120000 });
+        continueStage = 'sim-resume';
+        // mode flips ahead of the tick loop on the worker lane: the 'flight' mode
+        // descriptor lands, then the host's tick cadence re-arms a beat later. A key
+        // down+up landing entirely inside that gap is swallowed (held toggles with no
+        // tick sampling it) — wait for the tick counter itself to advance so the
+        // CONTROLS probe can never be swallowed by the resume window.
+        const tickAtFlight = await page.evaluate(() => window.SF.state.tick);
+        await page.waitForFunction((t0) => {
+          const st = window.SF.state;
+          return st && Number.isFinite(st.tick) && st.tick > t0;
+        }, tickAtFlight, { timeout: 30000 });
         await page.waitForTimeout(3000);
         phase = 'flight';
         loaded = true;

@@ -44,7 +44,9 @@ try {
   // Navigation and boot waits are wall-clock bounds on a contended host, not assertions; the
   // env override lets a loaded box take longer without weakening what the probe measures.
   const navTimeoutMs = Number(process.env.SF_STABILITY_NAV_TIMEOUT_MS || 60_000);
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: navTimeoutMs });
+  // Writes state.player/factions directly — facade fabrications the worker lane's mirror
+  // would clobber, so this probe pins the main lane.
+  await page.goto(server.baseUrl + '?simLane=main', { waitUntil: 'domcontentloaded', timeout: navTimeoutMs });
   await page.waitForFunction(() => window.SF?.state && window.SF?.bus, null, { timeout: Math.max(30_000, navTimeoutMs) });
   await page.evaluate(() => {
     const state = window.SF.state;

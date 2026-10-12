@@ -4,6 +4,7 @@
 // of light, the circuit as a column of readings. It styles the shared stage's existing nodes in the
 // dock host only (`.orr-station .sx-sw`; THE SHIP keeps its own sheet) and pins nothing.
 import { injectOrrery } from './tokens.js';
+import { injectOrreryMobileScreens } from './mobileScreenLayouts.js';
 import { SCROLL_EXTENT_CSS } from './scrollExtent.js';
 import { arcD, polar, ticksD } from './svg.js';
 
@@ -1033,6 +1034,7 @@ ${W}:is(.orr-sw--jig, .sx-sw--buying) .sx-sw__main:has(.sx-sw-verbs--unseated) {
 `;
 
 export function injectOrreryShipworks(doc = globalThis.document) {
+  injectOrreryMobileScreens(doc);
   if (!doc?.head || typeof doc.createElement !== 'function' || typeof doc.getElementById !== 'function') return;
   injectOrrery(doc);
   if (doc.getElementById(STYLE_ID)) return;

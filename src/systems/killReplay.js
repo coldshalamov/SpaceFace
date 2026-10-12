@@ -17,6 +17,9 @@ const CAP = Math.round(KILL_REPLAY_S / KILL_REPLAY_DT);
 export const ADVENTURE_TAPE_S = 30;
 const TAPE_CAP = Math.round(ADVENTURE_TAPE_S * 60);
 const TAPE_MAX_MARKS = 32;
+export const ADVENTURE_POSE_STRIDE = 6;
+export const ADVENTURE_POSE_ACTORS = 12;
+const POSE_FRAME_CAP = Math.ceil(TAPE_CAP / ADVENTURE_POSE_STRIDE);
 
 const ring = {
   count: 0,
@@ -199,9 +202,11 @@ function recordTape(state) {
   const recording = state.replay && state.replay.recording;
   if (!recording) return;
   const ticks = tape.count;
+  recording.seed = state.meta?.seed ?? recording.seed;
   recording.ticks = ticks;
   recording.seconds = ticks * KILL_REPLAY_DT;
   recording.base = tape.total - ticks;
+  recording.absoluteBaseTick = Math.max(0, state.tick - ticks + 1);
   if (tape.marksVersion !== tape.publishedVersion) {
     rebuildTapeMarks(recording, recording.base);
   } else if (recording.events.length && tape.count >= TAPE_CAP) {
@@ -209,6 +214,35 @@ function recordTape(state) {
     // per-tick allocation. Aged-out marks go negative and the surface's own guards skip them.
     for (let i = 0; i < recording.events.length; i += 1) recording.events[i].tick -= 1;
   }
+  if (tape.total % ADVENTURE_POSE_STRIDE === 0) recordEntityPoses(state, player, recording);
+}
+
+function recordEntityPoses(state, player, recording) {
+  // 10 Hz, 30 seconds, at most twelve nearby actors. Never retain live entities.
+  const candidates = [];
+  const consider = (entity) => {
+    if (!entity || entity.alive === false || !entity.pos || entity.id == null) return;
+    const distance = (entity.pos.x - player.pos.x) ** 2 + (entity.pos.z - player.pos.z) ** 2;
+    if (entity !== player && distance > 1400 ** 2) return;
+    const at = candidates.findIndex((row) => row.distance > distance);
+    if (at < 0) { if (candidates.length < ADVENTURE_POSE_ACTORS) candidates.push({ entity, distance }); }
+    else { candidates.splice(at, 0, { entity, distance }); candidates.length = Math.min(candidates.length, ADVENTURE_POSE_ACTORS); }
+  };
+  if (state.entityList) for (const entity of state.entityList) consider(entity);
+  else state.entities?.forEach(consider);
+  const poses = candidates.map(({ entity }) => ({
+    tick: state.tick, id: String(entity.id), generation: entity.occupantGeneration || 0,
+    x: Number(entity.pos.x) || 0, z: Number(entity.pos.z) || 0,
+    heading: Number(entity.rot) || 0, type: String(entity.type || ''),
+  }));
+  recording.poseFrames.push({ tick: state.tick, poses });
+  while (recording.poseFrames.length > POSE_FRAME_CAP) recording.poseFrames.shift();
+  // The worker bridge mirrors this one small serializable leaf, never the native tape.
+  state.replay.latestPoseSample = {
+    tick: state.tick, poses, seed: recording.seed, tickRate: 60,
+    boost: tape.boost[(tape.head + TAPE_CAP - 1) % TAPE_CAP] === 1,
+    events: recording.events.filter((event) => event.tick >= 0).map((event) => ({ ...event })),
+  };
 }
 
 function rebuildTapeMarks(recording, base) {
@@ -216,19 +250,22 @@ function rebuildTapeMarks(recording, base) {
   for (let i = 0; i < tape.marks.length; i += 1) {
     const mark = tape.marks[i];
     const at = mark.at - base;
-    if (at >= 0) recording.events.push({ tick: at, type: mark.type, label: mark.label });
+    if (at >= 0) recording.events.push({ tick: at, absoluteTick: mark.absoluteTick, type: mark.type, label: mark.label });
   }
   tape.publishedVersion = tape.marksVersion;
 }
 
 function addTapeMark(state, type, label) {
   if (tape.total <= 0) return;
-  tape.marks.push({ at: tape.total - 1, type, label });
+  tape.marks.push({ at: tape.total - 1, absoluteTick: state.tick, type, label });
   if (tape.marks.length > TAPE_MAX_MARKS) tape.marks.shift();
   tape.marksVersion += 1;
   // Publish eagerly: a pause right after the kill must not lose the mark.
   const recording = state && state.replay && state.replay.recording;
-  if (recording) rebuildTapeMarks(recording, tape.total - tape.count);
+  if (recording) {
+    rebuildTapeMarks(recording, tape.total - tape.count);
+    if (state.replay.latestPoseSample) state.replay.latestPoseSample.events = recording.events.map((event) => ({ ...event }));
+  }
 }
 
 /** Test seam: the windowed tape in its published shape. */
@@ -242,6 +279,8 @@ export function adventureTapeRecording(state) {
       ticks: 0,
       seconds: 0,
       base: 0,
+      absoluteBaseTick: 0,
+      poseFrames: [],
       snapshotRing: null,
       events: [],
       inputRing: {
@@ -259,6 +298,7 @@ export const killReplay = {
   name: 'killReplay',
 
   init(ctx) {
+    this.destroy();
     this.state = ctx && ctx.state;
     resetKillReplay();
     resetAdventureTape();
@@ -273,6 +313,8 @@ export const killReplay = {
           recording.seconds = 0;
           recording.base = 0;
           recording.events.length = 0;
+          recording.poseFrames.length = 0;
+          delete this.state.replay.latestPoseSample;
         }
       });
       this._offTapeKill = bus.on('entity:killed', (p) => {
@@ -293,6 +335,7 @@ export const killReplay = {
 
   update(_dt, state) {
     const live = state || this.state;
+    recordTape(live);
     if (liveRun(live)) {
       const player = live.entities && live.playerId != null ? live.entities.get(live.playerId) : null;
       if (!player || !player.pos) return;
@@ -302,6 +345,11 @@ export const killReplay = {
       pushSample(player.pos.x, player.pos.z, bx, bz);
       return;
     }
-    recordTape(live);
+  },
+  destroy() {
+    for (const key of ['_offTapeNew', '_offTapeKill', '_offTapeTrick']) {
+      this[key]?.();
+      this[key] = null;
+    }
   },
 };

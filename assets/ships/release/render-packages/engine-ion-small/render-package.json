@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3b4d77cf285dee7862f31ffc0303242803336c4d12cca0a25812e7ef892c92c0",
+  "contentHash": "db6200a37349e1d5d32ae5cbb05351586201183d37e7aca044cab6448bea3f79",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e323173796958b75820ca0c01c6baa2cfecc0cd57c656a784c4d7326370851ac",
+      "geometryHash": "6e8c3642bca9fa08b50bd37e59eca922be15afcf1afd95f6ec0a6909263a95b2",
       "id": "sf.render.engine-ion-small.node.det-cable-tie.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -32,7 +32,7 @@
       "meshName": "Cube.006",
       "nodeId": "sf.render.engine-ion-small.node.det-cable-tie",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "394f00491d26148524fc1e22969f2ba47d78eef1869ae957e43a22573af7ddb1",
+      "geometryHash": "99fcffc56e47c42630eb4cb2e8fe3eb752f822e00230ac4c2ee45f9832faa3ae",
       "id": "sf.render.engine-ion-small.node.det-heat-discolor.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -57,7 +57,7 @@
       "meshName": "Cube.005",
       "nodeId": "sf.render.engine-ion-small.node.det-heat-discolor",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b3bb67b545f3e46d5ad72c6a1527d0297730ac1d85e779415a6c51617c9f8ca5",
+      "geometryHash": "1b2f06e3c9f50a2a949f7edd97eebe2ea791edee4c74ff846b1108672b17fcef",
       "id": "sf.render.engine-ion-small.node.det-jury-bolt-001.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -82,7 +82,7 @@
       "meshName": "Cube.004",
       "nodeId": "sf.render.engine-ion-small.node.det-jury-bolt-001",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4b3ac2380da855ed27c49f5e9f5a98ff78347549a9eb4b454841ff42028b9f23",
+      "geometryHash": "7bd9da3f54371acc6c451eb0611eff0911ade8f3d673a8c2aba54ff6e6753246",
       "id": "sf.render.engine-ion-small.node.det-jury-bolt.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -107,7 +107,7 @@
       "meshName": "Cube.003",
       "nodeId": "sf.render.engine-ion-small.node.det-jury-bolt",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -123,16 +123,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a3068e68a2c2f8f49f6cdd2d2b432a3d428a3d049f6879af3798d8c6a594313c",
+      "geometryHash": "895e1d0d240742fd28b16274c4220d95b7035a2817b9970fe3b05dfcdbd10bf9",
       "id": "sf.render.engine-ion-small.node.det-owner-stencil.primitive.0",
-      "indexCount": 324,
+      "indexCount": 252,
       "indexed": true,
       "materialHash": "51ee3958b2483446e0e89fbc39af3b78f039a23e02e573040ae38fc72f5e90cb",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.engine-ion-small.node.det-owner-stencil",
       "primitiveIndex": 0,
-      "vertexCount": 182
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "72f33a389ac5c3e32c4a4edcdeb7784a587a39a76aba8d754c593b74cf0aa259",
+      "geometryHash": "1948b4ce04cbb5498e72d4d046c06de3bfd6ba711c70545429453820f2c9c41d",
       "id": "sf.render.engine-ion-small.node.det-patch-plate.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -157,7 +157,7 @@
       "meshName": "Cube",
       "nodeId": "sf.render.engine-ion-small.node.det-patch-plate",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -173,7 +173,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "099bdf0be14cee1b6f7785fca37a56ffa4541ab376c1ba8331ed98766d99af00",
+      "geometryHash": "466d494fdc909a42c20482d9b7cae44271f501ac2889646994bec4a2c091ff46",
       "id": "sf.render.engine-ion-small.node.det-soot-vent-band.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -182,7 +182,7 @@
       "meshName": "Cube.002",
       "nodeId": "sf.render.engine-ion-small.node.det-soot-vent-band",
       "primitiveIndex": 0,
-      "vertexCount": 216
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -198,9 +198,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4354c91ee107de89f571aa457719b84d0f28bc04395b98484b4dcfef65e89a62",
+      "geometryHash": "a28564f2a89d4d307c40d4ba79632c0a90ea9476405aff799c215dcb44fbc961",
       "id": "sf.render.engine-ion-small.node.engine-ion-small-material-mechanical-merged.primitive.0",
-      "indexCount": 37704,
+      "indexCount": 37488,
       "indexed": true,
       "materialHash": "b2e9770f3044fe79fd1e0b3c2d43c36c21eaf3ea372be017ed8a1db18b2ae4a3",
       "materialPipelineKey": "opaque",
@@ -223,7 +223,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b7afad99c4d853578f38a14f2dbe725c087348b9bf0619b516a3634ae3305b57",
+      "geometryHash": "f739c610d41d60a0acfeeb91c5aa7803323ac1055d7ca8440d12529ffedd0e9c",
       "id": "sf.render.engine-ion-small.node.hook-drive-core.primitive.0",
       "indexCount": 396,
       "indexed": true,
@@ -232,7 +232,7 @@
       "meshName": "HOOK_DRIVE_CORE",
       "nodeId": "sf.render.engine-ion-small.node.hook-drive-core",
       "primitiveIndex": 0,
-      "vertexCount": 124
+      "vertexCount": 134
     },
     {
       "bounds": {
@@ -248,7 +248,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a256ef5410407039167ae8352368254417f1a62e168f1925e09c8130afb2e71",
+      "geometryHash": "bc4e8fa7604a8a6d09c5b3b587d2a76a9b1e74e285defb5055a180f4b44053ea",
       "id": "sf.render.engine-ion-small.node.hook-drive-fan.primitive.0",
       "indexCount": 1320,
       "indexed": true,
@@ -273,7 +273,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6a718b24bd8ba5f9e480cde5c6c4da7d686526649850253de26c9c00448f1c68",
+      "geometryHash": "f6131d5833e3bd63738b9b3de3837fdfd07a82b2676f32c142d7dd9dd50f8723",
       "id": "sf.render.engine-ion-small.node.hook-drive-plume.primitive.0",
       "indexCount": 168,
       "indexed": true,
@@ -282,7 +282,7 @@
       "meshName": "HOOK_DRIVE_PLUME",
       "nodeId": "sf.render.engine-ion-small.node.hook-drive-plume",
       "primitiveIndex": 0,
-      "vertexCount": 68
+      "vertexCount": 58
     },
     {
       "bounds": {
@@ -298,7 +298,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2fd8f5b8192c4fe94c9ef9fd26102e4c57015ac4dbf5a1cd04de598d5846420e",
+      "geometryHash": "77132fd82aa12d773cce365c24ff10c2f3c251f9f91c3aa9a8940e4bbcfda48f",
       "id": "sf.render.engine-ion-small.node.lod0-engine-ion-small-main.primitive.0",
       "indexCount": 720,
       "indexed": true,
@@ -307,7 +307,7 @@
       "meshName": "LOD0_ENGINE_ION_SMALL_MAIN",
       "nodeId": "sf.render.engine-ion-small.node.lod0-engine-ion-small-main",
       "primitiveIndex": 0,
-      "vertexCount": 186
+      "vertexCount": 266
     }
   ],
   "hlods": [],
@@ -976,19 +976,19 @@
       "sha256": "fa2ae6dc95a2ceae868c94385b027af8e3e84769f99ba7a5df6851c82437ece7"
     },
     "sourceGlb": {
-      "bytes": 371324,
-      "sha256": "e753a614694fa0af32480555c0ff34537a9b490aba13f281ebcab29a4b992141",
+      "bytes": 367900,
+      "sha256": "46d905321a8f46e54548ac5d9e6b7034fae4969add6d00774e27164a5800c86b",
       "uri": "engine_ion_small.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 599368,
-    "sha256": "ee4299e973cfb4ff4706e2838de1a99037e5c8d39430a64c8dc223a98f812502",
+    "bytes": 573480,
+    "sha256": "00d598674e01d538a4c26ce0696a33a7fa898292b3a700da5fd964138f6f00aa",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1463,7 +1463,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_ion_small.glb"
   },
-  "runtimeHash": "239a17366bbaa8eccfa675303f3795c720b75d4adbbd4443e181b5609436b79a",
+  "runtimeHash": "8220b7e82e34cd16e83e3758f52290177a887a3cedc26cecb7ee40feba16ffd3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

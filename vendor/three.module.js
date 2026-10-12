@@ -100,9 +100,51 @@ function spacefaceShadowCastersIn( scene ) {
 // updateMatrix() on a frozen node sets matrixWorldNeedsUpdate, which defeats the skip for
 // exactly one pass — that is the dirty path. add()/attach() clear the mark up the ancestor
 // chain so children grafted under a frozen subtree are walked normally.
+
+// SpaceFace (PERF-138): even on unfrozen nodes upstream calls updateMatrix() every frame —
+// matrix.compose(position, quaternion, scale) + matrixWorldNeedsUpdate = true, which then
+// mints force = true and drives a mandatory descent through every descendant. When the
+// 13-float transform signature (position + quaternion + scale + pivot — updateMatrix
+// reads all four) is unchanged this.matrix already === compose(fields), so the compose
+// is dead work AND the flag it mints is what force-descends static subtrees. Skip the
+// compose on an unchanged signature: the node pays ~13 compares instead of
+// compose+multiply, and its subtree evaluates its own flags instead of being forced.
+// The signature lives in userData so Object3D.copy() deep-copies it into clones — a clone
+// inherits a sig matching its own copied transform and skips correctly; a writer that
+// mutates this.matrix.elements directly was already stomped by the unconditional compose
+// upstream, and setting matrixWorldNeedsUpdate still re-runs compose on the next pass.
+function sfTransformSignatureClean( object ) {
+
+	const sig = object.userData.sfTransformSig;
+	if ( !sig ) return false;
+	const p = object.position, q = object.quaternion, s = object.scale, v = object.pivot;
+	return sig[ 0 ] === p.x && sig[ 1 ] === p.y && sig[ 2 ] === p.z
+		&& sig[ 3 ] === q.x && sig[ 4 ] === q.y && sig[ 5 ] === q.z && sig[ 6 ] === q.w
+		&& sig[ 7 ] === s.x && sig[ 8 ] === s.y && sig[ 9 ] === s.z
+		&& sig[ 10 ] === ( v ? v.x : 0 ) && sig[ 11 ] === ( v ? v.y : 0 ) && sig[ 12 ] === ( v ? v.z : 0 );
+
+}
+
+function sfTransformSignatureStore( object ) {
+
+	const p = object.position, q = object.quaternion, s = object.scale, v = object.pivot;
+	let sig = object.userData.sfTransformSig;
+	if ( !sig ) sig = object.userData.sfTransformSig = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+	sig[ 0 ] = p.x; sig[ 1 ] = p.y; sig[ 2 ] = p.z;
+	sig[ 3 ] = q.x; sig[ 4 ] = q.y; sig[ 5 ] = q.z; sig[ 6 ] = q.w;
+	sig[ 7 ] = s.x; sig[ 8 ] = s.y; sig[ 9 ] = s.z;
+	sig[ 10 ] = v ? v.x : 0; sig[ 11 ] = v ? v.y : 0; sig[ 12 ] = v ? v.z : 0;
+
+}
+
 Object3D.prototype.updateMatrixWorld = function ( force ) {
 
-	if ( this.matrixAutoUpdate ) this.updateMatrix();
+	if ( this.matrixAutoUpdate && ( this.matrixWorldNeedsUpdate || !sfTransformSignatureClean( this ) ) ) {
+
+		this.updateMatrix();
+		sfTransformSignatureStore( this );
+
+	}
 
 	if ( this.matrixWorldNeedsUpdate || force ) {
 
@@ -5040,6 +5082,7 @@ function WebGLOutput( type, width, height, depth, stencil ) {
 	} );
 
 	const mesh = new Mesh( geometry, material );
+	mesh.frustumCulled = false; // W140 F-A: unconditionally-drawn composite quad
 	const camera = new OrthographicCamera( -1, 1, 1, -1, 0, 1 );
 
 	let _outputColorSpace = null;
@@ -5174,7 +5217,7 @@ function WebGLOutput( type, width, height, depth, stencil ) {
 		// final output to canvas (or XR render target)
 		material.uniforms.tDiffuse.value = readBuffer.texture;
 		renderer.setRenderTarget( _savedRenderTarget );
-		renderer.render( mesh, camera );
+		renderer.renderQuadPass( mesh, camera );
 
 		_savedRenderTarget = null;
 		_isCompositing = false;
@@ -17760,7 +17803,7 @@ class WebGLRenderer {
 		 * @param {Object3D} scene - The scene to render.
 		 * @param {Camera} camera - The camera.
 		 */
-		this.render = function ( scene, camera ) {
+		this.render = function ( scene, camera, capturedList ) {
 
 			if ( camera !== undefined && camera.isCamera !== true ) {
 
@@ -17786,7 +17829,11 @@ class WebGLRenderer {
 
 			// update scene graph
 
-			if ( scene.matrixWorldAutoUpdate === true ) scene.updateMatrixWorld();
+			// SpaceFace (W142): the capture contract forbids any scene mutation between
+			// capture and replay, so the second walk is bit-identical dead work — skip it
+			// on replay. Camera stays unconditional: it's O(1) and covers the edge where
+			// the replayed camera isn't literally the same object state.
+			if ( !capturedList && scene.matrixWorldAutoUpdate === true ) scene.updateMatrixWorld();
 
 			// update camera matrices and frustum
 
@@ -17809,8 +17856,15 @@ class WebGLRenderer {
 			currentRenderState.state.textureUnits = textures.getTextureUnits();
 			renderStateStack.push( currentRenderState );
 
-			_projScreenMatrix.multiplyMatrices( camera.projectionMatrix, camera.matrixWorldInverse );
-			_frustum.setFromProjectionMatrix( _projScreenMatrix, WebGLCoordinateSystem, camera.reversedDepth );
+			// SpaceFace (W141): a capturedList replay never runs projectObject — the only
+			// consumer of _projScreenMatrix/_frustum — so skip the recompute. Falsy check
+			// matches the `if ( capturedList )` replay predicate (W142 F-B).
+			if ( !capturedList ) {
+
+				_projScreenMatrix.multiplyMatrices( camera.projectionMatrix, camera.matrixWorldInverse );
+				_frustum.setFromProjectionMatrix( _projScreenMatrix, WebGLCoordinateSystem, camera.reversedDepth );
+
+			}
 
 			_localClippingEnabled = this.localClippingEnabled;
 			_clippingEnabled = clipping.init( this.clippingPlanes, _localClippingEnabled );
@@ -17820,7 +17874,7 @@ class WebGLRenderer {
 
 			renderListStack.push( currentRenderList );
 
-			if ( xr.enabled === true && xr.isPresenting === true ) {
+			if ( !capturedList && xr.enabled === true && xr.isPresenting === true ) {
 
 				const depthSensingMesh = _this.xr.getDepthSensingMesh();
 
@@ -17832,26 +17886,80 @@ class WebGLRenderer {
 
 			}
 
-			projectObject( scene, camera, 0, _this.sortObjects );
-
-			currentRenderList.finish();
-
-			if ( _this.sortObjects === true ) {
-
-				currentRenderList.sort( _opaqueSort, _transparentSort );
-
-			}
-
 			_renderBackground = xr.enabled === false || xr.isPresenting === false || xr.hasDepthSensing() === false;
-			if ( _renderBackground ) {
 
-				background.addToRenderList( currentRenderList, scene );
+			if ( capturedList ) {
+
+				// SpaceFace (PERF-138 F1): replay the first pass's finished, sorted arrays
+				// instead of re-walking the scene — the AO/normal pass re-derives exactly
+				// the drawable set pass 1 enumerated (same scene, same camera, same
+				// epoch). Zero-count instanced items are dropped here, replacing the
+				// per-pass traverseVisible mask. Contract: no scene mutation between
+				// capture and replay — only the override material changes.
+				const capturedLists = [ capturedList.opaque, capturedList.transmissive, capturedList.transparent ];
+				const replayLists = [ currentRenderList.opaque, currentRenderList.transmissive, currentRenderList.transparent ];
+				for ( let l = 0; l < 3; l ++ ) {
+
+					const src = capturedLists[ l ], dst = replayLists[ l ];
+					for ( let i = 0, il = src.length; i < il; i ++ ) {
+
+						const item = src[ i ];
+						const object = item.object;
+						if ( object.isInstancedMesh === true && object.count <= 0 ) continue;
+						dst.push( item );
+
+					}
+
+				}
+
+			} else {
+
+				projectObject( scene, camera, 0, _this.sortObjects );
+
+				currentRenderList.finish();
+
+				if ( _this.sortObjects === true ) {
+
+					currentRenderList.sort( _opaqueSort, _transparentSort );
+
+				}
+
+				if ( _renderBackground ) {
+
+					background.addToRenderList( currentRenderList, scene );
+
+				}
+
+				// Depth-gated: only the outermost render may capture. A render nested
+				// inside pass 1 (e.g. a first-time CubeUV conversion) would otherwise
+				// overwrite the outer captured list and replay the wrong scene's items.
+				if ( _sfCaptureRenderList === true && renderListStack.length === 1 ) {
+
+					// Persistent shell: the captured arrays are consumed before the next
+					// capture on this renderer, so reusing them drops ~6 allocs/frame (W140-F2).
+					const shell = _sfCapturedShell;
+					const dstO = shell.opaque;
+					const dstT = shell.transmissive;
+					const dstTr = shell.transparent;
+					dstO.length = 0; dstT.length = 0; dstTr.length = 0;
+					const srcO = currentRenderList.opaque;
+					const srcT = currentRenderList.transmissive;
+					const srcTr = currentRenderList.transparent;
+					for ( let i = 0; i < srcO.length; i ++ ) dstO.push( srcO[ i ] );
+					for ( let i = 0; i < srcT.length; i ++ ) dstT.push( srcT[ i ] );
+					for ( let i = 0; i < srcTr.length; i ++ ) dstTr.push( srcTr[ i ] );
+					_sfCapturedList = shell;
+
+				}
 
 			}
 
 			//
 
-			this.info.render.frame ++;
+			// SpaceFace: a captured replay must NOT mint a new frame — objects.update is
+			// keyed on info.render.frame, and a second tick re-pays the WeakMap
+			// bookkeeping for every drawable (no GL re-upload — version-gated anyway).
+			if ( !capturedList ) this.info.render.frame ++;
 
 			if ( _clippingEnabled === true ) clipping.beginShadows();
 
@@ -17874,7 +17982,12 @@ class WebGLRenderer {
 				const opaqueObjects = currentRenderList.opaque;
 				const transmissiveObjects = currentRenderList.transmissive;
 
-				currentRenderState.setupLights();
+				// SpaceFace (W141): on a capturedList replay the lightsArray is empty
+				// (projectObject, which collects lights, is skipped) — setupLights would
+				// only bump the lights version and force lit materials to rewire for a
+				// state identical to init. Replay contract draws unlit overrides only;
+				// a future lit override must reintroduce setupLights here.
+				if ( !capturedList ) currentRenderState.setupLights();
 
 				if ( camera.isArrayCamera ) {
 
@@ -17982,6 +18095,231 @@ class WebGLRenderer {
 
 		};
 
+		// SpaceFace (W140 F-A): fullscreen post passes draw a fixed 1-mesh quad
+		// scene — upstream render() re-pays its whole scene-graph prelude for it
+		// (renderLists fill/finish/sort, projectObject's frustum pass, shadowMap
+		// and setupLights on empty arrays, background addToRenderList). This
+		// method runs the same pipeline with those branches elided: the scene's
+		// visible top-level drawables go through the identical
+		// objects.update → renderObject → renderBufferDirect tail a finished
+		// render list would take.
+		//
+		// Mutable bookkeeping kept verbatim, so the next main render observes
+		// exactly what an upstream render() leaves: renderStates/renderLists
+		// stack push + restore (a render() nested inside this pass can never
+		// satisfy the capture gate's renderListStack.length === 1, so
+		// _sfCapturedList is never clobbered — renderQuadPass itself does not
+		// run the capture branch and cannot capture), textureUnits
+		// save/restore, clipping.init + setGlobalState, info.render.frame mint
+		// (upstream mints per render() call; objects.update / VideoTexture /
+		// UBO-upload dedup is frame-keyed), info.reset under autoReset, scene
+		// onBefore/AfterRender hooks, output.begin/end + hasRenderPass skip,
+		// multisample/mipmap resolve, the renderScene depth/color-mask tail,
+		// bindingStates.resetDefaultState and the _currentCamera/_currentMaterialId
+		// clears.
+		//
+		// Skipped, and why each is dead for a flat unlit quad scene:
+		// _projScreenMatrix/_frustum (only consumers are projectObject's culling
+		// tests), renderLists fill/finish/sort + background.addToRenderList (no
+		// list is assembled), projectObject itself (no recursion — children draw
+		// in insertion order, no frustum test — every quad drawable is
+		// frustumCulled=false), shadowMap.render + clipping.beginShadows/
+		// endShadows (shadowsArray is empty — upstream early-outs identically),
+		// setupLights/setupLightsView (empty lightsArray — quad materials are
+		// unlit and never consult the lights state), and the XR depth-mesh
+		// projection (no XR-presenting quad passes). The local renderBackground
+		// mirrors upstream's _renderBackground without clobbering an enclosing
+		// render's module-level flag.
+		// Contract: scene contents are top-level drawable objects (the fixed
+		// FullscreenQuad/bloom quad scenes) — a non-Scene drawable may be passed
+		// directly. No captured-list support; capture/replay stays on render().
+		this.renderQuadPass = function ( scene, camera ) {
+
+			if ( camera !== undefined && camera.isCamera !== true ) {
+
+				error( 'WebGLRenderer.renderQuadPass: camera is not an instance of THREE.Camera.' );
+				return;
+
+			}
+
+			if ( _isContextLost === true ) return;
+
+			if ( _nodesHandler !== null ) {
+
+				_nodesHandler.renderStart( scene, camera );
+
+			}
+
+			const isXRPresenting = xr.enabled === true && xr.isPresenting === true;
+
+			const useOutput = output !== null && ( _currentRenderTarget === null || isXRPresenting ) && output.begin( _this, _currentRenderTarget );
+
+			if ( scene.matrixWorldAutoUpdate === true ) scene.updateMatrixWorld();
+
+			if ( camera.parent === null && camera.matrixWorldAutoUpdate === true ) camera.updateMatrixWorld();
+
+			if ( xr.enabled === true && xr.isPresenting === true && ( output === null || output.isCompositing() === false ) ) {
+
+				if ( xr.cameraAutoUpdate === true ) xr.updateCamera( camera );
+
+				camera = xr.getCamera(); // use XR camera for rendering
+
+			}
+
+			if ( scene.isScene === true ) scene.onBeforeRender( _this, scene, camera, _currentRenderTarget );
+
+			currentRenderState = renderStates.get( scene, renderStateStack.length );
+			currentRenderState.init( camera );
+
+			currentRenderState.state.textureUnits = textures.getTextureUnits();
+			renderStateStack.push( currentRenderState );
+
+			_localClippingEnabled = this.localClippingEnabled;
+			_clippingEnabled = clipping.init( this.clippingPlanes, _localClippingEnabled );
+
+			currentRenderList = renderLists.get( scene, renderListStack.length );
+			currentRenderList.init();
+
+			renderListStack.push( currentRenderList );
+
+			const renderBackground = xr.enabled === false || xr.isPresenting === false || xr.hasDepthSensing() === false;
+
+			// Upstream mints one frame per render() call — keep it so the
+			// frame-keyed dedups (objects.update, VideoTexture, UBO uploads)
+			// observe the exact sequence the equivalent render() calls produce.
+			this.info.render.frame ++;
+
+			if ( this.info.autoReset === true ) this.info.reset();
+
+			const skipSceneRender = useOutput && output.hasRenderPass();
+
+			if ( skipSceneRender === false ) {
+
+				if ( renderBackground ) background.render( scene );
+
+				if ( _clippingEnabled === true ) clipping.setGlobalState( _this.clippingPlanes, camera );
+
+				const overrideMaterial = scene.isScene === true ? scene.overrideMaterial : null;
+
+				if ( scene.isMesh === true || scene.isLine === true || scene.isPoints === true || scene.isSprite === true ) {
+
+					renderQuadObject( scene, scene, camera, overrideMaterial );
+
+				} else {
+
+					const children = scene.children;
+					for ( let i = 0, il = children.length; i < il; i ++ ) {
+
+						renderQuadObject( children[ i ], scene, camera, overrideMaterial );
+
+					}
+
+				}
+
+				// renderScene()'s tail: leave the depth/color flags the way a
+				// full pass does so the next render's clear/draw sees identical
+				// state.
+				state.buffers.depth.setTest( true );
+				state.buffers.depth.setMask( true );
+				state.buffers.color.setMask( true );
+
+				state.setPolygonOffset( false );
+
+			}
+
+			if ( _currentRenderTarget !== null && _currentActiveMipmapLevel === 0 ) {
+
+				// resolve multisample renderbuffers to a single-sample texture if necessary
+
+				textures.updateMultisampleRenderTarget( _currentRenderTarget );
+
+				// Generate mipmap if we're using any kind of mipmap filtering
+
+				textures.updateRenderTargetMipmap( _currentRenderTarget );
+
+			}
+
+			if ( useOutput ) {
+
+				output.end( _this );
+
+			}
+
+			if ( scene.isScene === true ) scene.onAfterRender( _this, scene, camera );
+
+			bindingStates.resetDefaultState();
+			_currentMaterialId = -1;
+			_currentCamera = null;
+
+			renderStateStack.pop();
+
+			if ( renderStateStack.length > 0 ) {
+
+				currentRenderState = renderStateStack[ renderStateStack.length - 1 ];
+
+				textures.setTextureUnits( currentRenderState.state.textureUnits );
+
+				if ( _clippingEnabled === true ) clipping.setGlobalState( _this.clippingPlanes, currentRenderState.state.camera );
+
+			} else {
+
+				currentRenderState = null;
+
+			}
+
+			renderListStack.pop();
+
+			if ( renderListStack.length > 0 ) {
+
+				currentRenderList = renderListStack[ renderListStack.length - 1 ];
+
+			} else {
+
+				currentRenderList = null;
+
+			}
+
+			if ( _nodesHandler !== null ) {
+
+				_nodesHandler.renderEnd();
+
+			}
+
+		};
+
+		// SpaceFace (PERF-138 F1): capture/replay pair for SpaceRenderGraph's color→AO
+		// double submission. renderAndCaptureList returns the finished, sorted render
+		// arrays of pass 1; renderCapturedList re-runs the identical prelude + draw
+		// path on them without re-walking the scene.
+		let _sfCaptureRenderList = false;
+		// Persistent capture shell (W140-F2): the list's arrays are refilled per capture
+		// instead of re-allocated — consumed before the next capture on this renderer.
+		const _sfCapturedShell = { opaque: [], transmissive: [], transparent: [] };
+		let _sfCapturedList = _sfCapturedShell;
+
+		this.renderAndCaptureList = function ( scene, camera ) {
+
+			_sfCapturedList = null;
+			_sfCaptureRenderList = true;
+			try {
+
+				this.render( scene, camera );
+
+			} finally {
+
+				_sfCaptureRenderList = false;
+
+			}
+			return _sfCapturedList;
+
+		};
+
+		this.renderCapturedList = function ( scene, camera, capturedList ) {
+
+			this.render( scene, camera, capturedList );
+
+		};
+
 		function projectObject( object, camera, groupOrder, sortObjects ) {
 
 			if ( object.visible === false ) return;
@@ -18036,6 +18374,12 @@ class WebGLRenderer {
 
 				} else if ( object.isMesh || object.isLine || object.isPoints ) {
 
+					// SpaceFace (W140-F-C): a drained instanced pool still pays the frustum
+					// test → objects.update → renderItem → setProgram before renderInstances
+					// returns primcount 0 — the replay already drops these items; drop them
+					// at walk time too (children still project below).
+					if ( object.isInstancedMesh !== true || object.count > 0 ) {
+
 					if ( ! object.frustumCulled || _frustum.intersectsObject( object ) ) {
 
 						const geometry = objects.update( object );
@@ -18083,6 +18427,8 @@ class WebGLRenderer {
 							currentRenderList.push( object, geometry, material, groupOrder, _vector4.z, null );
 
 						}
+
+					}
 
 					}
 
@@ -18303,6 +18649,51 @@ class WebGLRenderer {
 			}
 
 			object.onAfterRender( _this, scene, camera, geometry, material, group );
+
+		}
+
+		// SpaceFace (W140 F-A): the per-drawable tail of renderQuadPass — the same
+		// gates projectObject applies to a drawable (visible, layers, material
+		// visibility) plus the objects.update upload check and the override/
+		// multi-material resolution renderObjects() performs, minus the frustum
+		// test and render-item assembly. Non-drawable types (Group, Light) are
+		// skipped — quad scenes are flat and drawable-only by contract.
+		function renderQuadObject( object, scene, camera, overrideMaterial ) {
+
+			if ( object.visible === false ) return;
+			if ( object.isMesh !== true && object.isLine !== true && object.isPoints !== true && object.isSprite !== true ) return;
+			if ( object.isInstancedMesh === true && object.count <= 0 ) return;
+			if ( object.layers.test( camera.layers ) === false ) return;
+
+			const geometry = objects.update( object );
+			const material = object.material;
+
+			if ( Array.isArray( material ) ) {
+
+				const groups = geometry.groups;
+
+				for ( let i = 0, l = groups.length; i < l; i ++ ) {
+
+					const group = groups[ i ];
+					const groupMaterial = material[ group.materialIndex ];
+
+					if ( groupMaterial && groupMaterial.visible ) {
+
+						const drawn = ( groupMaterial.allowOverride === true && overrideMaterial !== null ) ? overrideMaterial : groupMaterial;
+
+						renderObject( object, scene, camera, geometry, drawn, group );
+
+					}
+
+				}
+
+			} else if ( material.visible ) {
+
+				const drawn = ( material.allowOverride === true && overrideMaterial !== null ) ? overrideMaterial : material;
+
+				renderObject( object, scene, camera, geometry, drawn, null );
+
+			}
 
 		}
 

@@ -811,6 +811,11 @@ function convoyFire(d, live, state, isConvoy) {
 
   const ships = live.plan.ships.map((sh, i) => {
     const out = { ...sh, passive: true };
+    // A live convoy's physical run IS the encounter — arrival is endpoint geometry in
+    // convoyTick. The route spans dormant space, so the transit cast pins mission-critical:
+    // it stays awake and moving end to end instead of freezing (native) or catching a
+    // double-counted catch-up drift past the mark (check-living-universe-events §J).
+    if (sh.role === 'hauler' || sh.role === 'escort') out.transitCritical = true;
     if (sh.role === 'hauler') {
       out.team = 2;                                     // true civilians; killing them is piracy (heat)
       out.scanLabel = `Hauler — ${cargo.label}`;

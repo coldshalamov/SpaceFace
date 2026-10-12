@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Creator's Dock</title>
+  <link rel="stylesheet" href="/editor.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <p class="kicker">SpaceFace lab authoring</p>
+      <h1>Creator's Dock</h1>
+    </div>
+    <p class="lede">XZ layout only. Validate and Run call the shipped scenario schema and the certifying lab. This picture is not a physics step.</p>
+    <div class="toolbar" role="toolbar" aria-label="Dock commands">
+      <button type="button" id="btn-new">New</button>
+      <button type="button" id="btn-open">Open</button>
+      <button type="button" id="btn-save">Save</button>
+      <button type="button" id="btn-undo">Undo</button>
+      <button type="button" id="btn-redo">Redo</button>
+      <button type="button" id="btn-clone">Clone</button>
+      <button type="button" id="btn-group">Group</button>
+      <button type="button" id="btn-ungroup">Ungroup</button>
+      <button type="button" id="btn-delete">Delete</button>
+      <button type="button" id="btn-snap" aria-pressed="true">Snap</button>
+      <button type="button" id="btn-validate">Validate</button>
+      <button type="button" id="btn-run">Run lab</button>
+      <button type="button" id="btn-export">Export</button>
+      <button type="button" id="btn-help">Keyboard</button>
+    </div>
+    <input id="file-open" type="file" accept="application/json,.json" hidden>
+  </header>
+  <div class="workspace">
+    <aside class="rail" aria-label="Examples and scene">
+      <h2>Examples</h2>
+      <ul id="examples" class="list"></ul>
+      <h2>Scene</h2>
+      <ul id="objects" class="list" aria-label="Scene objects"></ul>
+      <div class="add-row">
+        <button type="button" id="add-actor">Add actor</button>
+        <button type="button" id="add-trigger">Add trigger</button>
+        <button type="button" id="add-objective">Add objective</button>
+        <button type="button" id="add-field">Add place field</button>
+        <button type="button" id="add-route">Add route</button>
+      </div>
+    </aside>
+    <main class="stage-wrap">
+      <canvas id="stage" tabindex="0" aria-label="XZ scene. Arrow keys nudge the selection. Wheel zooms. Drag empty space to pan."></canvas>
+      <p id="status" class="status" role="status"></p>
+    </main>
+    <aside class="inspector" aria-label="Properties">
+      <h2>Inspector</h2>
+      <div id="chips" class="chips"></div>
+      <form id="inspector"></form>
+    </aside>
+  </div>
+  <section class="report" aria-live="polite">
+    <h2>Lab report</h2>
+    <pre id="report">Nothing run yet. The canvas does not predict motion.</pre>
+  </section>
+  <dialog id="help">
+    <h2>Keyboard</h2>
+    <ul>
+      <li>Arrow keys nudge the selection. Shift moves five steps.</li>
+      <li>Delete removes the selection.</li>
+      <li>Ctrl+Z undo, Ctrl+Y or Ctrl+Shift+Z redo, Ctrl+D clone, Ctrl+G group, Ctrl+Shift+G ungroup.</li>
+      <li>G toggles snap. + and - zoom. F fits the scene. Space+drag or middle-drag pans.</li>
+      <li>The object list is keyboard focusable. Enter selects that row.</li>
+    </ul>
+    <p>Velocity, heading, triggers, objectives, and tethers are marked lab-only. A place field exports as user content, not as a force.</p>
+    <form method="dialog"><button type="submit">Close</button></form>
+  </dialog>
+  <script type="module" src="/editor.js"></script>
+</body>
+</html>

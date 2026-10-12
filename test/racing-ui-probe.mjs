@@ -28,7 +28,10 @@ const html=`<!doctype html><meta charset="utf-8"><meta name="viewport" content="
 await fs.writeFile(path.join(out,'racing-ui.html'),html);
 if(!process.argv.includes('--bundle-only')){
   const {chromium}=await import('playwright');
-  const browser=await chromium.launch({headless:true});
+  const launchOptions={headless:true};
+  if(process.env.RACING_BROWSER_CHANNEL)launchOptions.channel=process.env.RACING_BROWSER_CHANNEL;
+  if(process.env.RACING_BROWSER_EXECUTABLE)launchOptions.executablePath=process.env.RACING_BROWSER_EXECUTABLE;
+  const browser=await chromium.launch(launchOptions);
   try{
     const page=await browser.newPage({viewport:{width:1440,height:1050},reducedMotion:'reduce'});
     const errors=[];page.on('pageerror',error=>errors.push(String(error)));
@@ -122,22 +125,51 @@ if(!process.argv.includes('--bundle-only')){
     await page.screenshot({path:path.join(out,'hud-mobile.png')});
     await page.getByRole('button',{name:'Recover',exact:true}).click();
     assert.ok(await page.evaluate(()=>probe.events.some(e=>e[0]==='race:reset')));
-    await page.evaluate(()=>{probe.result();probe.state.missions.active=[];probe.reopen();});
+    await page.evaluate(()=>{probe.race('contract_junction_draft');probe.state.settings.gameplay.steeringView='auto';probe.tick(.2);});
+    assert.match(await page.locator('.race-tape-title').innerText(),/APPROACH/);
+    assert.match(await page.locator('.race-tape-goal').innerText(),/WAKE 0.0 \/ 2.0s/);
+    assert.ok(await page.getByRole('button',{name:'Recover',exact:true}).isDisabled());
+    assert.ok(await page.getByRole('button',{name:/Overhead/}).isEnabled());
+    await page.screenshot({path:path.join(out,'approach-mobile.png')});
+    await page.evaluate(()=>{const p=probe.state.missions.active[0].params;p.phase='grid';probe.tick(.2);});
+    assert.ok(await page.getByRole('button',{name:'Mission view',exact:true}).isDisabled());
+    await page.evaluate(()=>{const p=probe.state.missions.active[0].params;p.phase='chase';p.raceStartSimS=probe.state.simTime;p.gridUntilSimS=probe.state.simTime;p.draftTimeS=1.25;probe.tick(.2);});
+    assert.match(await page.locator('.race-tape-goal').innerText(),/WAKE 1.3 \/ 2.0s/);
+    await page.screenshot({path:path.join(out,'wake-mobile.png')});
+    await page.evaluate(()=>{const p=probe.state.missions.active[0].params;p.phase='handoff';p.raceElapsedS=42.34;p.raceClean=true;probe.tick(.2);});
+    assert.match(await page.locator('.race-tape-stats').innerText(),/42.34s.*PAYMENT PENDING/);
+    assert.ok(await page.getByRole('button',{name:/Overhead/}).isEnabled());
+    assert.ok(await page.getByRole('button',{name:'Recover',exact:true}).isDisabled());
+    assert.equal(await page.locator('.race-tape-map').isVisible(),false);
+    await page.screenshot({path:path.join(out,'handoff-mobile.png')});
+    await page.getByRole('button',{name:'Leave run',exact:true}).click();
+    assert.ok(await page.evaluate(()=>probe.events.some(e=>e[0]==='race:abort')));
+    await page.evaluate(()=>{probe.result();probe.state.missions.active=[];probe.state.world.currentSectorId='sector_helios_prime';probe.reopen();});
     assert.equal(await page.getByRole('region',{name:'Last circuit result'}).count(),1);
     assert.match(await page.getByRole('region',{name:'Last circuit result',exact:true}).innerText(),/42.34s/);
     assert.ok(await page.getByRole('region',{name:'Local circuit recognition',exact:true}).isVisible());
     await page.getByRole('button',{name:'Apply to adventure ship',exact:true}).click();
     const applied=await page.evaluate(()=>probe.events.filter(e=>e[0]==='ui:setShipAppearance').at(-1)?.[1]);
     assert.equal(applied.appearance.hullColor,'#d3c6a0');
+    assert.ok(await page.getByRole('button',{name:'Retry in this flight',exact:true}).isEnabled());
+    await page.evaluate(()=>{
+      probe.ctx.registry.get=name=>name==='missions'?{postAndAcceptAuthoredOffer:offer=>{probe.events.push(['retry',offer.params.racingContractId]);probe.state.missions.active=[{...offer,status:'active'}];return {ok:true,missionId:offer.id};}}:name==='world'?{relocatePlayerInSector:()=>true}:null;
+    });
+    const games=await page.evaluate(()=>probe.events.filter(e=>e[0]==='game:new').length);
+    await page.getByRole('button',{name:'Retry in this flight',exact:true}).click();
+    assert.ok(await page.evaluate(()=>probe.events.some(e=>e[0]==='retry'&&e[1]==='contract_textile_qual')));
+    assert.equal(await page.evaluate(()=>probe.events.filter(e=>e[0]==='game:new').length),games);
+    await page.evaluate(()=>{probe.state.missions.active=[];probe.reopen();});
     const before=await page.evaluate(()=>probe.state.settings.gameplay.steeringView);
     await page.keyboard.press('Backslash');
     assert.equal(await page.evaluate(()=>probe.state.settings.gameplay.steeringView),before);
     // Fresh launch must carry the save guard and double-click protection, through the real confirm.
     await page.evaluate(()=>{probe.state.mode='menu';probe.reopen();});
+    assert.ok(await page.getByRole('button',{name:'Retry in this flight',exact:true}).isDisabled());
     await page.locator('.race-board-launch').first().click();
     assert.ok(await page.getByRole('dialog').isVisible());
     await page.getByRole('button',{name:'Launch circuit',exact:true}).click();
-    await page.waitForFunction(()=>probe.events.some(e=>e[0]==='game:new'));
+    await page.waitForFunction(()=>probe.events.some(e=>e[0]==='game:new'&&e[1]?.racingSession===true));
     const launches=await page.evaluate(()=>probe.events.filter(e=>e[0]==='game:new').map(e=>e[1]));
     assert.equal(launches.length,1,'confirmation emits one fresh launch');
     assert.equal(launches[0].racingSession,true);

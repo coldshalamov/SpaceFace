@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7901693ce750a4b2479ca2c36491f8150567f52a298eaa39ad3cb4a4e8ed6a5c",
+  "contentHash": "3cbd61afbdbde629af402e2e6ab7a8a30f162b912c1368bae91b82a306f4e7e5",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -70,7 +70,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7d12b90cdf66a580b3d197f639373a0ad9dd4d6c66b62f984c6465592ef82826",
+      "geometryHash": "de44cf998fda455ca7efb14f06bf64b34c0ea4d32d7e9a7443075ba7e7329aae",
       "id": "sf.render.weapon-lance.node.remaster-material-hull-vitreousceramic.primitive.0",
       "indexCount": 528,
       "indexed": true,
@@ -79,7 +79,7 @@
       "meshName": "Remaster_FoldedLancePetal_0",
       "nodeId": "sf.render.weapon-lance.node.remaster-material-hull-vitreousceramic",
       "primitiveIndex": 0,
-      "vertexCount": 288
+      "vertexCount": 264
     },
     {
       "bounds": {
@@ -95,7 +95,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "90058f17f4223ca4624df5006ca98648d81d923c59d3c0b692417508b1286810",
+      "geometryHash": "b3dcd8b9fb1190469fd345f70e9447b1c4ab67cd7dae6dabbca9fc10b6becde5",
       "id": "sf.render.weapon-lance.node.remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -104,7 +104,7 @@
       "meshName": "Remaster_OpticSocket",
       "nodeId": "sf.render.weapon-lance.node.remaster-material-mechanical-brushednickel",
       "primitiveIndex": 0,
-      "vertexCount": 144
+      "vertexCount": 112
     },
     {
       "bounds": {
@@ -145,16 +145,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a39f2e2b8f7375a303ee617dbb9ae88a47ef506af6addd0d8514df7180b6561",
+      "geometryHash": "92d4db534d7128b99cb27e1d0bc843859a15cbde49c09f8bc0e2ca89a3c8437a",
       "id": "sf.render.weapon-lance.node.weapon-lance-material-accent-merged.primitive.0",
-      "indexCount": 1776,
+      "indexCount": 1704,
       "indexed": true,
       "materialHash": "3e89ecd14466b59bdaf35c00c9a37317f7966cd6ad117b606a0d63b466a122b5",
       "materialPipelineKey": "opaque",
       "meshName": "weapon_lance_Material_Accent_Merged",
       "nodeId": "sf.render.weapon-lance.node.weapon-lance-material-accent-merged",
       "primitiveIndex": 0,
-      "vertexCount": 438
+      "vertexCount": 436
     },
     {
       "bounds": {
@@ -170,7 +170,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cee79f23a7c30a43650772a6cb217ca86e6b40fb02c43e338dea5869eaaf9e7b",
+      "geometryHash": "5d992a1973c3c6b4e5868d53d0a563fda54bce78a014e0183e9207e5ccfd34c5",
       "id": "sf.render.weapon-lance.node.weapon-lance-material-hull-merged.primitive.0",
       "indexCount": 120,
       "indexed": true,
@@ -195,7 +195,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e1b709e55aafc2e2c468453898474e09316e3257019c65e3ed6072a07888ca80",
+      "geometryHash": "57032f37d88bdd51f6206fd26d5bc337ffe8f75a14cf043577bcb9e513889f4e",
       "id": "sf.render.weapon-lance.node.weapon-lance-material-hull-merged.primitive.1",
       "indexCount": 996,
       "indexed": true,
@@ -204,7 +204,7 @@
       "meshName": "weapon_lance_Material_Hull_Merged.001",
       "nodeId": "sf.render.weapon-lance.node.weapon-lance-material-hull-merged",
       "primitiveIndex": 1,
-      "vertexCount": 648
+      "vertexCount": 341
     },
     {
       "bounds": {
@@ -220,7 +220,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ed11c589f99870c9cf798d3ea0911752db0a669d91c61e3ab3aad6c02b64266",
+      "geometryHash": "b1d0333b2e680ff6e7cdfe8cad1d99cc8ffd2929afdf23f2e752d8e1530d6a2d",
       "id": "sf.render.weapon-lance.node.weapon-lance-material-mechanical-merged.primitive.0",
       "indexCount": 864,
       "indexed": true,
@@ -1416,19 +1416,19 @@
       "sha256": "c2bee69e6faf536f207222142ad8fd9523561341b1dbfbede88177989d6b55d5"
     },
     "sourceGlb": {
-      "bytes": 425536,
-      "sha256": "a526bb5ed014e0c7bdcc20e6714065cb3a39c77050f1ea5ac1283c273c4bec64",
+      "bytes": 426280,
+      "sha256": "824c9b7423f71b7510e2ee6e6b606f0cd707891a0c1b47ac64d7c79151fecf96",
       "uri": "weapon_lance.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 460080,
-    "sha256": "89753fabdcce9c541ed525eb1bf95fd5a6b00d73515848c5b4ee1058bd66d0cc",
+    "bytes": 448908,
+    "sha256": "4171661eec45bb8f96b268539229163b3ccb1ca3f246501b1fb229f20e25ed03",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1779,7 +1779,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_lance.glb"
   },
-  "runtimeHash": "04d2121bbe546880b2eb51167cc29ec40b48f2c5eda1009c6753617b5268235c",
+  "runtimeHash": "421add4b20fe6a854e3797db489449815dc558cc941d7b03a5c82b198a142206",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

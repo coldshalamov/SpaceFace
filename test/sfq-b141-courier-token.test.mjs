@@ -24,12 +24,18 @@ import {
   materializeMachineLayer,
   tickMachineLayer,
   handleMachinePickupCollected,
+  handleMachineTokenDestroyed,
 } from '../src/systems/precursorMachines.js';
 import {
   serializeAlienEcologyState,
   deserializeAlienEcologyState,
   handleAlienEcologyEvent,
 } from '../src/systems/alienEcology.js';
+import { createGameState } from '../src/core/gameState.js';
+import { createBus } from '../src/core/eventBus.js';
+import { core } from '../src/core/coreSystem.js';
+import { world as worldSystem } from '../src/systems/world.js';
+import { combat } from '../src/systems/combat.js';
 import { addCargo } from '../src/systems/cargo.js';
 
 const SITE = MACHINE_SITES.io_listening_field;
@@ -79,6 +85,8 @@ function makeWorld(state, emitLog = []) {
       // committed pickup receipt to the machine layer's custody resolution.
       if (type.startsWith('ecology:')) handleAlienEcologyEvent(world, type, p);
       if (type === 'pickup:collected') handleMachinePickupCollected(world, p);
+      if (type === 'entity:killed') handleMachineTokenDestroyed(world, p, true);
+      if (type === 'entity:destroyed') handleMachineTokenDestroyed(world, p);
     },
   };
   return world;
@@ -333,4 +341,111 @@ test('re-entry re-bodies the same token once; a settled token never re-mints', (
     .machineSites[tokenD2.destSiteId].courierReceiver;
   assert.ok(receiverD.acceptedReceipts[tokenD2.receiptId] === 1,
     'the committed receipt survives the wire');
+});
+
+// SF20-17 dossier: return the actual finite courier token; missing/damaged tokens deny
+// access. This protects that existing prerequisite, not the unbuilt lock/gate itself.
+function looseMail() {
+  const state = makeState(), events = [], world = makeWorld(state, events);
+  materializeMachineLayer(world, { id: SITE.sectorId }, world.active);
+  makePlayer(state, -3000, 3000);
+  tickMachineLayer(world, DT);
+  const courier = courierOf(state), pod = tokenPods(state)[0];
+  const token = ensureAlienEcologyState(state).machineSites[SITE.siteId].courierToken;
+  pod.pos.x = courier.pos.x + KIND.strayR + 50;
+  tickMachineLayer(world, DT);
+  assert.equal(token.status, 'loose');
+  assert.equal(pod.data.machineCarriedBy, undefined, 'custody releases on the same tick');
+  return { state, world, events, courier, pod, token };
+}
+function removeBody(state, pod) {
+  state.entities.delete(pod.id);
+  state.entityList.splice(state.entityList.indexOf(pod), 1);
+}
+for (const receipt of ['tick', 'cleanup-before-receipt', 'entity:killed', 'entity:destroyed']) {
+  test(`loose token destruction via ${receipt} stays lost through cold Continue`, () => {
+    const { state, world, pod, token, events } = looseMail();
+    pod.hull = 0;
+    pod.alive = false;
+    if (receipt === 'entity:destroyed' || receipt === 'cleanup-before-receipt') removeBody(state, pod);
+    if (receipt.startsWith('entity:')) world.bus.emit(receipt, { id: pod.id, entity: pod });
+    tickMachineLayer(world, DT);
+    assert.equal(token.status, 'lost');
+    assert.equal(tokenPods(state).length, 0);
+    world.bus.emit('entity:destroyed', { id: pod.id, entity: pod });
+    assert.equal(events.filter(e => /DESTROYED IN TRANSIT/.test(e.p.text || '')).length, 1);
+    const fresh = makeState();
+    deserializeAlienEcologyState(fresh, JSON.parse(JSON.stringify(serializeAlienEcologyState(state))));
+    const resumed = materializeIo(fresh);
+    makePlayer(fresh, -3000, 3000);
+    simulate(resumed, fresh, 2);
+    assert.equal(tokenPods(fresh).length, 0);
+    assert.equal(ensureAlienEcologyState(fresh).machineSites[SITE.siteId].courierToken.status, 'lost');
+  });
+}
+
+test('shelving and stale destruction receipts cannot destroy a rematerialized token', () => {
+  const { state, world, pod, token } = looseMail();
+  pod.alive = false;
+  removeBody(state, pod);
+  world.bus.emit('entity:destroyed', { id: pod.id, entity: pod, reason: 'sector_retire' });
+  assert.equal(token.status, 'loose');
+  tickMachineLayer(world, DT);
+  const replacement = tokenPods(state)[0];
+  assert.ok(replacement && replacement !== pod);
+  assert.equal(tokenPods(state).length, 1);
+  pod.hull = 0;
+  world.bus.emit('entity:destroyed', { id: pod.id, entity: pod });
+  assert.equal(token.status, 'loose', 'old entity lease cannot kill its replacement');
+  assert.equal(tokenPods(state).length, 1);
+  // Restore/run-reset clear dead bodies while reconstructing the saved world.
+  replacement.alive = false;
+  replacement.hull = 0;
+  for (const reason of ['save_restore', 'run_reset']) {
+    world.bus.emit('entity:destroyed', { id: replacement.id, entity: replacement, reason });
+    assert.equal(token.status, 'loose');
+  }
+});
+
+test('recycled cached id and changed occupant generation are not evidence of mail loss', () => {
+  const { state, world, pod, token, courier } = looseMail();
+  removeBody(state, pod);
+  const unrelated = { ...pod, data: {}, alive: false, hull: 0 };
+  state.entities.set(pod.id, unrelated);
+  tickMachineLayer(world, DT);
+  assert.equal(token.status, 'loose');
+  assert.equal(tokenPods(state).length, 1);
+  assert.notEqual(state.entities.get(courier.data.machine.tokenPodId), unrelated);
+  const current = tokenPods(state)[0];
+  current.occupantGeneration = 20;
+  current.alive = false;
+  current.hull = 0;
+  world.bus.emit('entity:destroyed', { id: current.id, entity: current });
+  assert.equal(token.status, 'loose', 'same object with a different lifetime fails the lease');
+});
+
+
+test('production combat kill and world listener settle a restored pod before its first machine tick', () => {
+  const previous = looseMail();
+  const wire = JSON.parse(JSON.stringify(serializeAlienEcologyState(previous.state)));
+  const state = createGameState(47), bus = createBus(), helpers = {};
+  const ctx = { state, bus, helpers, registry: { get: () => null } };
+  Object.create(core).init(ctx);
+  const world = Object.create(worldSystem);
+  world.init(ctx);
+  state.world.currentSectorId = SITE.sectorId;
+  deserializeAlienEcologyState(state, wire);
+  const pod = helpers.spawnEntity({ type: 'payload', pos: { ...previous.pod.pos },
+    hull: 0, hullMax: 100, radius: 5, mass: 6,
+    data: JSON.parse(JSON.stringify(previous.pod.data)) });
+  const owner = Object.assign(Object.create(combat), ctx);
+  const token = ensureAlienEcologyState(state).machineSites[SITE.siteId].courierToken;
+  owner.kill(pod, null, { targetHostileToPlayer: false });
+  assert.equal(pod.alive, false);
+  assert.equal(token.status, 'lost', 'actual combat.kill reaches the actual world.init listener');
+  assert.equal(token.settledAt, state.simTime);
+  // A duplicate queued core receipt cannot reopen or duplicate the outcome.
+  helpers.removeEntity(pod.id, { immediate: true });
+  bus.flush();
+  assert.equal(token.status, 'lost');
 });

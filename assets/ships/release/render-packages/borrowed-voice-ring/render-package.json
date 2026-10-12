@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e564afb03b70bd42fb80d3c4f8f5f1eda5491a9f9d9e5a7855ecd4c1938d1a01",
+  "contentHash": "5d0458e4389988651521a8e95afcab771f78671dd24ba687bf8edd054615457f",
   "dynamicGroups": [
     {
       "id": "sf.render.borrowed-voice-ring.node.lod0-motion-borrowed-voice-fan-1-stone.dynamic",
@@ -177,7 +177,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8d161b048f5bad413df02a11c487f83b05a966489473268ab47a2586c74fa4bd",
+      "geometryHash": "abac8d52386954066b5fedf87947b6b744dd38c42c73e9828bcb0fa88e0600e4",
       "id": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-1.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -202,7 +202,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bce4982950ece7bfb16c6bf5d7f6295b9ebad3ea4ca7a890dfe72dc2a891151b",
+      "geometryHash": "911642eef03266bfea6c6147b4085cea23e020903dd30227d8bc3d0ba2c46e22",
       "id": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-2.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -227,7 +227,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d42acaafe95ffb6c5a9e5098c83d60e481f2179cc3709520b144ff427cfedff5",
+      "geometryHash": "3215b5ed0edf58a9ee20730887bf6e592c191666d435e0bc4e6dd3b42ad166b6",
       "id": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-3.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -252,7 +252,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0a57bc16966af5865fa853475747a2fcb45893531b694133a1ccaa0f0ba780ca",
+      "geometryHash": "747d19fb218ef85cbeaf3b9628eb60795f3730b606094a2bcaf1873d77d17c15",
       "id": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-4.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -277,7 +277,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee9be98ca481e35c50c2edf5c5877b76a69c8b01e0c613575fbc1f3d46e0a6f8",
+      "geometryHash": "cc03c3e1972fb6bd0c8ea81d92a20451cbf249a06c805e87bb009cd9d5e2b267",
       "id": "sf.render.borrowed-voice-ring.node.collision-borrowed-voice-ring-segment-5.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -302,7 +302,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d193802c1ffd5b776cf5f588ecd4ac54833576a902b9fffdfdc68f8369c1c7ef",
+      "geometryHash": "d97be0ee2b43acc6fddc6566158f7907dc464e5ef79c6ed01229d585ea3d7cad",
       "id": "sf.render.borrowed-voice-ring.node.lod0-armor.primitive.0",
       "indexCount": 2820,
       "indexed": true,
@@ -327,7 +327,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6c3cb2d6a0f393d43e3ce6a26a70bd60bfac1863e9ebda32ccc244689bcf8c20",
+      "geometryHash": "918ae16e222847cb36a34c180bffb9a3d6f0e21f8b9695d4e0f88d4f7231c81e",
       "id": "sf.render.borrowed-voice-ring.node.lod0-brushedmetal.primitive.0",
       "indexCount": 6180,
       "indexed": true,
@@ -352,7 +352,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "80b147023dd399221169ec9fc61f7544d49153922ea8c6c86560accb885bd982",
+      "geometryHash": "65526be03a522ff9d45dce59676e5af1cc24ceca713fba1b2524cbabf996ddb7",
       "id": "sf.render.borrowed-voice-ring.node.lod0-hook-borrowed-signal-1-lights-cyan.primitive.0",
       "indexCount": 852,
       "indexed": true,
@@ -377,7 +377,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "528f476e8e567a6cb373991168958708fec26ce4fad82e5b941f0ff9c637229f",
+      "geometryHash": "ef913cb594483dfa39be189b1675a7bb0a4dfaadc9c8bd71c2fa82f28a2b2735",
       "id": "sf.render.borrowed-voice-ring.node.lod0-hook-borrowed-signal-2-lights-cyan.primitive.0",
       "indexCount": 852,
       "indexed": true,
@@ -402,7 +402,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c9dc313625432752ffc39ccd3dcaa0190aa8b3fc2f91926eddd797158412b56",
+      "geometryHash": "959b52ce320398df263a3c3c6ad9f4b9c080365773a6202a156fbdd36f4a8a0f",
       "id": "sf.render.borrowed-voice-ring.node.lod0-hook-borrowed-signal-3-lights-cyan.primitive.0",
       "indexCount": 852,
       "indexed": true,
@@ -427,7 +427,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "558a8d784175097a90dcbb87fa8815cf32df476206e15a76989a2d6515c6ff94",
+      "geometryHash": "b5c4f30b6e25a187d93e66a721a54a351a9090491ab960fd566860f9dd405a2d",
       "id": "sf.render.borrowed-voice-ring.node.lod0-hook-borrowed-signal-4-lights-cyan.primitive.0",
       "indexCount": 852,
       "indexed": true,
@@ -452,7 +452,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bdff134216b2f68803fef6689e88e739f7e4a45cc36abc3b1380770311360a2b",
+      "geometryHash": "417d4b84cbc05005bcc0f25391ad21fdfe093b6933371a79b1ee93c927047682",
       "id": "sf.render.borrowed-voice-ring.node.lod0-hook-borrowed-signal-5-lights-cyan.primitive.0",
       "indexCount": 852,
       "indexed": true,
@@ -477,7 +477,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a5ad4f393547820f9d9576863f1a2054dcfd51656c5957fd4dcd0c17eeed119f",
+      "geometryHash": "b2f1e31b6ef6a154a067126522aad8324f3cccf0e2538ef2d8f41dd0872b9903",
       "id": "sf.render.borrowed-voice-ring.node.lod0-hull.primitive.0",
       "indexCount": 1740,
       "indexed": true,
@@ -502,7 +502,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "71028c64f714e26d76e6f58bb77fd2bacf0d40199ca81fa33889ff37bae8b654",
+      "geometryHash": "7c5cd2dd4f3d5665575ca24f4b77746abf49e289ad0ed4ff4f63158e38dbeb41",
       "id": "sf.render.borrowed-voice-ring.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 13590,
       "indexed": true,
@@ -527,16 +527,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2278a62baeb4d27b3e8b688a0ee3cd01e8bf83f41e2eee03f8b211a4601ba69f",
+      "geometryHash": "6adb4ec4dc53436678358335cb8f84dead3b5cd72c2001cefc18b7e363328dbd",
       "id": "sf.render.borrowed-voice-ring.node.lod0-motion-borrowed-voice-fan-1-stone.primitive.0",
-      "indexCount": 6900,
+      "indexCount": 6876,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_BORROWED_VOICE_FAN_1_Stone",
       "nodeId": "sf.render.borrowed-voice-ring.node.lod0-motion-borrowed-voice-fan-1-stone",
       "primitiveIndex": 0,
-      "vertexCount": 1926
+      "vertexCount": 1918
     },
     {
       "bounds": {
@@ -552,16 +552,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9477731d8fa02bc193a6e0736316813783b516f676f77f00c394a243da636b89",
+      "geometryHash": "8d622526f7ceec06cc367864debb4ae1c4297305c4963c6eb8f3f718984e5c23",
       "id": "sf.render.borrowed-voice-ring.node.lod0-motion-borrowed-voice-fan-2-stone.primitive.0",
-      "indexCount": 6564,
+      "indexCount": 6540,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_BORROWED_VOICE_FAN_2_Stone",
       "nodeId": "sf.render.borrowed-voice-ring.node.lod0-motion-borrowed-voice-fan-2-stone",
       "primitiveIndex": 0,
-      "vertexCount": 1885
+      "vertexCount": 1876
     },
     {
       "bounds": {
@@ -577,16 +577,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "02ed9306dc615b6897c75e3945e8532c646bc4fddc5ab18e00e3d13118f6f08c",
+      "geometryHash": "433f9da04c62e57b3bf7c485ef202de08450e4eb6f875c67c09b21028a26d3c2",
       "id": "sf.render.borrowed-voice-ring.node.lod0-motion-borrowed-voice-fan-3-stone.primitive.0",
-      "indexCount": 8676,
+      "indexCount": 8652,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_BORROWED_VOICE_FAN_3_Stone",
       "nodeId": "sf.render.borrowed-voice-ring.node.lod0-motion-borrowed-voice-fan-3-stone",
       "primitiveIndex": 0,
-      "vertexCount": 2478
+      "vertexCount": 2470
     },
     {
       "bounds": {
@@ -602,16 +602,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d6471b88f70c4b766cafc958555b5560e461740d05eaa8c4a9379d54e41dc130",
+      "geometryHash": "8ebdffad26b898d74e9419089867da5ab5a3165bc72ae92222d664b766f688cb",
       "id": "sf.render.borrowed-voice-ring.node.lod0-motion-borrowed-voice-fan-4-stone.primitive.0",
-      "indexCount": 6564,
+      "indexCount": 6540,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_BORROWED_VOICE_FAN_4_Stone",
       "nodeId": "sf.render.borrowed-voice-ring.node.lod0-motion-borrowed-voice-fan-4-stone",
       "primitiveIndex": 0,
-      "vertexCount": 1865
+      "vertexCount": 1854
     },
     {
       "bounds": {
@@ -627,16 +627,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9bf5d91627339a02b22103bab208c1bf6b244fbc9eda5ee55ba08e3aaf77bb1f",
+      "geometryHash": "85f483a7dc3f4993d9e0216e67975e838125e2ba74c8e53576e6aacf605c70bb",
       "id": "sf.render.borrowed-voice-ring.node.lod0-motion-borrowed-voice-fan-5-stone.primitive.0",
-      "indexCount": 6564,
+      "indexCount": 6540,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_BORROWED_VOICE_FAN_5_Stone",
       "nodeId": "sf.render.borrowed-voice-ring.node.lod0-motion-borrowed-voice-fan-5-stone",
       "primitiveIndex": 0,
-      "vertexCount": 1870
+      "vertexCount": 1860
     },
     {
       "bounds": {
@@ -652,16 +652,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ac2196e3cf90b6e2bd229a04d50f9ba33ec9d4d3d54d1a1a3c0addae77f4718d",
+      "geometryHash": "44d13d445677171918a22e655919ed6e00231b193219f5e803da72bebe7dc6c3",
       "id": "sf.render.borrowed-voice-ring.node.lod0-motion-borrowed-voice-fan-6-stone.primitive.0",
-      "indexCount": 8208,
+      "indexCount": 8184,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_BORROWED_VOICE_FAN_6_Stone",
       "nodeId": "sf.render.borrowed-voice-ring.node.lod0-motion-borrowed-voice-fan-6-stone",
       "primitiveIndex": 0,
-      "vertexCount": 2349
+      "vertexCount": 2341
     }
   ],
   "hlods": [],
@@ -2244,19 +2244,19 @@
       "sha256": "8d6bbaa8ca9eb96f47d6df69ae8802b6da6c21a8a5778d276343e7361fc9de5a"
     },
     "sourceGlb": {
-      "bytes": 676988,
-      "sha256": "e111ca3e69580a903062c98a71ffd20c28afefcc2937407b4e780fd087b209ae",
+      "bytes": 678284,
+      "sha256": "bca8f72fa1ee9ff4aadd9aa5383fc0ad36ae874346916e1981ac632a6f540e76",
       "uri": "borrowed_voice_ring.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 900144,
-    "sha256": "1bb75f17f5ce51642baad4df7f9608946970f66443e2426b0ad52ba7b43e15b5",
+    "bytes": 899512,
+    "sha256": "b904208e3fd0833eb05dfb0f28fb88ce36098691d263e507297a73b4d14ed6d9",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3348,7 +3348,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/borrowed_voice_ring.glb"
   },
-  "runtimeHash": "3cc2a8cd58afe4bd16910ea11d07d5ceb77d463de07c339496b13fd1fef31456",
+  "runtimeHash": "d61fe2a4aefb6c591a1c6ef9230b60755448dca2358bc2fbbd120a3d4e4f2303",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

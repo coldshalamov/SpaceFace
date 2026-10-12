@@ -421,7 +421,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7e2008171043321c8f71f78d23ede7267ea44d280c7151242809558ccdc2815c",
+  "contentHash": "95e14fe4013ba3aeaf399b0b1678cbd99bcfae8a54bec504282c5a51d4431c12",
   "dynamicGroups": [
     {
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-1-armor.dynamic",
@@ -589,7 +589,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ef95fda9fdf7f10ca629a4bd1aaa0e05a3ed783484059597ce074188537ec138",
+      "geometryHash": "7df70acb7e25304e4bc9489d18618124fda34ab8b83ada1cc82beab7fae5959f",
       "id": "sf.render.ilex-ark.node.collision-ilex-ark-core.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -614,7 +614,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "32861db7f9598d99b69ff217731d0de43831ed7a33fb2e8a8a03a260f17af43c",
+      "geometryHash": "ad5c4a71c4e0b586c76f8f92275a78b633cff47d9086bba7633a04f0d086e224",
       "id": "sf.render.ilex-ark.node.collision-ilex-ark-vault-1.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -639,7 +639,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "82ebab015bb1256bda0b95364984a3da6681458dd5bc975686664b391456dc44",
+      "geometryHash": "c254575271a06e11a699894c2439b1331d805a5b20831322afac87b4dfddb81c",
       "id": "sf.render.ilex-ark.node.collision-ilex-ark-vault-2.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -664,7 +664,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a87d85564fd5ef79fd1cd7c140877ec32b1fe1a857c7c095fdb3a0e465f930c8",
+      "geometryHash": "a7af7934dc0a0351f88fac69dd376781137c3c1198f3f623586496aa598027a3",
       "id": "sf.render.ilex-ark.node.collision-ilex-ark-vault-3.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -689,7 +689,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1d88ab996b6961ce3f014bd727adc5ec6adb96ecdb5e9bd2598747b271be6075",
+      "geometryHash": "0149a3fe3ff60045536675685b57fdf8b323a1258a650c194aed55b1dae4c14d",
       "id": "sf.render.ilex-ark.node.collision-ilex-ark-vault-4.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -714,7 +714,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e48d0f9becdcd64d9dd1871ad405582bfd744de9666de9918199187a5b0dabbc",
+      "geometryHash": "baddbb71a3caadfe29dd5b111f16d7ec0d78aee6375580cd7ec319a4b7f0e27f",
       "id": "sf.render.ilex-ark.node.collision-ilex-ark-vault-5.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -739,7 +739,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "52fd603697e71847fae2ffbf512e675de30362dcc473ee5c226a17722d6f6b6e",
+      "geometryHash": "dd54350b646f979c882c31cfb1bcc037ea845f52c3cd01edde3ea018aa86e5e3",
       "id": "sf.render.ilex-ark.node.collision-ilex-ark-vault-6.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -764,16 +764,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "89e915b67d11786c086f04d6602347d37cb96dc8c4b1f08c894cd23558322825",
+      "geometryHash": "bc88c43caf6cc73f877823f3ef30611330f87c2eaf2a7e50a252e556682447d9",
       "id": "sf.render.ilex-ark.node.lod0-armor.primitive.0",
-      "indexCount": 852,
+      "indexCount": 834,
       "indexed": true,
       "materialHash": "4287d042a4cd6321d2e8adbbeb95dc41d664aefaeba7b05b4aa1417ecaa4114c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.ilex-ark.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 245
+      "vertexCount": 238
     },
     {
       "bounds": {
@@ -789,7 +789,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c4a4a8191c5a5362039aa42b19e3403e6c5e202c951bc832133acaf19e31d871",
+      "geometryHash": "fc87356b9870ca2904fd7e70526d5983630b28ba77584db34ebcfd7c851ac017",
       "id": "sf.render.ilex-ark.node.lod0-canopy.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -814,7 +814,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aee2b4b9223b327ec1b59e1f4199b32b194101a7274c8291e359b577c9a72543",
+      "geometryHash": "50656da904d0fad56091c25d9c898c2b5ba5dbd6081cb38c73996c39b6c8ae79",
       "id": "sf.render.ilex-ark.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 1416,
       "indexed": true,
@@ -839,7 +839,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b54e9137374f1483f984a920e0d1d17e27c2ab1864e1325e3f59411ae6441a85",
+      "geometryHash": "5bd79aae30b9d7a5a045982eac71f2418b787a7477f2aec540216236ff43d02e",
       "id": "sf.render.ilex-ark.node.lod0-hull.primitive.0",
       "indexCount": 3768,
       "indexed": true,
@@ -864,7 +864,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "801b2caf62330e9de4c4d8ae70b490858f86fc27dfc929da093044f739a787f5",
+      "geometryHash": "b51da4d870678974454da3a556d2b395f9439a963ab918fae51f06c266c080d9",
       "id": "sf.render.ilex-ark.node.lod0-lights-warm.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -889,16 +889,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af6d2392d5d0d043f1f7985e62d6fa9128fa06635e7bb5244671642b44a598f7",
+      "geometryHash": "b47f232ddc3a6b6472d4907d0622398d52040d39a641cda751f5fa1e0581f909",
       "id": "sf.render.ilex-ark.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 15996,
+      "indexCount": 13536,
       "indexed": true,
       "materialHash": "e34c5389cdaa62a62425ec38367d20fbd0630fc0d7b8ca9706dbabb2f72dd927",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.ilex-ark.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 4976
+      "vertexCount": 4684
     },
     {
       "bounds": {
@@ -914,9 +914,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2fd8c12cc66d80960dbf019b60c19dfa2071ef3531cde7c3e288abb05cfcab47",
+      "geometryHash": "9a89dd817634c65de675e873e7ea86d534ce3ae0a54c235809d65c7639c02fd7",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-1-armor.primitive.0",
-      "indexCount": 5202,
+      "indexCount": 5178,
       "indexed": true,
       "materialHash": "4287d042a4cd6321d2e8adbbeb95dc41d664aefaeba7b05b4aa1417ecaa4114c",
       "materialPipelineKey": "opaque",
@@ -939,7 +939,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dea34992da986e7af1d7a3fe05c8aad2ba81394eccd1b4f7486dfec52231f8ff",
+      "geometryHash": "d666927be44e240e2b805d55690ced567dd80c136f8e2641c63615fa77a98854",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-1-canopy.primitive.0",
       "indexCount": 1236,
       "indexed": true,
@@ -964,7 +964,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "52b39564eae21047053bd66efb572927fbc51281442e23768e7407a38a4756b8",
+      "geometryHash": "a2677f0634c41b7e6f8e46ce2fbea0a1832a8a7979dfb49382c453ca6fb853b2",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-1-lights-warm.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -989,7 +989,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f79df0e4c20209e5ae0ff624c88b3ac3c86fe58ed351c2792c6beefa4947b79f",
+      "geometryHash": "76a5c419985fce93ea523c427860b0b439b2607c809d7aa4f13cbd51fb23227b",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-1-mechanicaldark.primitive.0",
       "indexCount": 10926,
       "indexed": true,
@@ -1014,9 +1014,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23f3374fef49208a818a693b350b2b15b838b2f7565b4dba1d0e8f73a4843a1f",
+      "geometryHash": "bcc8cd10d9e47f175975e50ec46ac1bf7db7e94e16da381ab4aa2c7b6ca502f4",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-2-armor.primitive.0",
-      "indexCount": 5202,
+      "indexCount": 5178,
       "indexed": true,
       "materialHash": "4287d042a4cd6321d2e8adbbeb95dc41d664aefaeba7b05b4aa1417ecaa4114c",
       "materialPipelineKey": "opaque",
@@ -1039,7 +1039,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e66c28aa568e1bd99167279016bd454454827fc4959b9a2c0a01521e339bdb5",
+      "geometryHash": "2bb216e91ce2a93a7d1164fbca42e68eb37083c05cac869c6565cdda05c6664d",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-2-canopy.primitive.0",
       "indexCount": 1236,
       "indexed": true,
@@ -1064,7 +1064,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e2cea25c08bda11f76e69106f99cf8c426ab0b7e6109bbd084d4fdbbff4db7b",
+      "geometryHash": "b4d4f6a39cfd9d8864e09389a029d5dccd07bc4ca3c1f6c098f5b37f69052389",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-2-lights-warm.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -1089,7 +1089,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ae2fec775e265e4a866d5fcfa50d0914ab6f2090b07ab70d36af814d8764517e",
+      "geometryHash": "c1b58874eafe6729dff4d866e5b64d7a7b9ebe7794ce3802e4e9aea6603385b9",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-2-mechanicaldark.primitive.0",
       "indexCount": 10926,
       "indexed": true,
@@ -1114,9 +1114,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ebe17e9e528b1b206bb685d72b7be063c72963306c82ea59753292899caadc3",
+      "geometryHash": "12ff44d607e56bf3d10a4e4e95bd651b84e160de742e3b6be0ca3f3b57ff6836",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-3-armor.primitive.0",
-      "indexCount": 5202,
+      "indexCount": 5178,
       "indexed": true,
       "materialHash": "4287d042a4cd6321d2e8adbbeb95dc41d664aefaeba7b05b4aa1417ecaa4114c",
       "materialPipelineKey": "opaque",
@@ -1139,7 +1139,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "97442e31e048b8c98fbc092dc8e0d7e240e25489d1565e8d6efdff8ce8c4f437",
+      "geometryHash": "3e3590c0d4da26addc3f774cf17a0a9a5698b9853137873ac3101f3fc85f1f49",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-3-canopy.primitive.0",
       "indexCount": 1236,
       "indexed": true,
@@ -1189,7 +1189,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a0491099ee2a005fc4ac95e61a5bbf15a04a82a1cb06bacc424610ae9681ab0",
+      "geometryHash": "226ac80ae0f2df0edc4a269176c06b81cdccc61c238d0c39f5765ffdc08cfe0f",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-3-mechanicaldark.primitive.0",
       "indexCount": 10926,
       "indexed": true,
@@ -1214,9 +1214,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "97de219194a5301609bc999f40de4b8ac561ec2647cd962b329cdfa2c38c64fd",
+      "geometryHash": "71c0e74896a87603c1d301709128583b2302b3b31fdab6ad9ffc8a3db1359fc1",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-4-armor.primitive.0",
-      "indexCount": 5202,
+      "indexCount": 5178,
       "indexed": true,
       "materialHash": "4287d042a4cd6321d2e8adbbeb95dc41d664aefaeba7b05b4aa1417ecaa4114c",
       "materialPipelineKey": "opaque",
@@ -1239,7 +1239,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "694e4cb6e062f89274fc1b3e562f1ca0930045c12d76b20fbe006ab8b5595b0e",
+      "geometryHash": "da0d3d46f9e4606b47ac520411f8b4cef5fc65d6e20e4ad1332dc6df1cbc71f5",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-4-canopy.primitive.0",
       "indexCount": 1236,
       "indexed": true,
@@ -1289,7 +1289,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "154af66cfcf12c24e02010708fe4069c6dd996ff6c703f1e778676872502a980",
+      "geometryHash": "f75b28f835e884c7866eabbc1e97d8b7a337511dc8fc4ca793512a3b34e909d3",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-4-mechanicaldark.primitive.0",
       "indexCount": 10926,
       "indexed": true,
@@ -1314,9 +1314,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bccf53160a294090ce0b807fb7ed5b00062689e58b8b08581b3f8992fb50ba20",
+      "geometryHash": "ffcf491cbf037de9f4140e11a621c40bf5c62c5df8e09d860af875140b6e8e7a",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-5-armor.primitive.0",
-      "indexCount": 5202,
+      "indexCount": 5178,
       "indexed": true,
       "materialHash": "4287d042a4cd6321d2e8adbbeb95dc41d664aefaeba7b05b4aa1417ecaa4114c",
       "materialPipelineKey": "opaque",
@@ -1339,7 +1339,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "204ff63afecc865bd128319e1a6e65a182a3d8c071a4a661eb18766eee275685",
+      "geometryHash": "b1837fcfa32dda6e4c2ef89a3909adbcde310dbf723bad87931651961d4edd22",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-5-canopy.primitive.0",
       "indexCount": 1236,
       "indexed": true,
@@ -1364,7 +1364,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad6987fd880d8626c057a3b2fb9833e12db0b9a783619152931a86885aba5b1a",
+      "geometryHash": "e6ea3dbd855f88b984f70fd1cfa7d881f1dc644ea5d6392d4764b4684b9dc80a",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-5-lights-warm.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -1389,7 +1389,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd7a33d95bf467241d97f8320db814f1c9fd26e6e2c952791762e146726ff2d4",
+      "geometryHash": "46f8a4d5a1a83ccf1f6c486dcbac64c37617a4f5c34a98502639c7e405616708",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-5-mechanicaldark.primitive.0",
       "indexCount": 10926,
       "indexed": true,
@@ -1414,9 +1414,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "298d446c39285e2a05fb744b671d02d44f22596b0a2f1426a5e085f062f8f9cd",
+      "geometryHash": "f47125c0969e338645aceae4c1d0385df57f2c0ad907c3b6abe16656b86d34b0",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-6-armor.primitive.0",
-      "indexCount": 5202,
+      "indexCount": 5178,
       "indexed": true,
       "materialHash": "4287d042a4cd6321d2e8adbbeb95dc41d664aefaeba7b05b4aa1417ecaa4114c",
       "materialPipelineKey": "opaque",
@@ -1439,7 +1439,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "403221d58e7ef31035079d8453bf42def5be1421d32ee3f493aa4af75229f8a5",
+      "geometryHash": "299da9a9fe58ee9b9591ed94b6b244e2c0411ced25dbd2d0b581465d7769d1d6",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-6-canopy.primitive.0",
       "indexCount": 1236,
       "indexed": true,
@@ -1464,7 +1464,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fee6ccad26a69f1288fd0ac5a90a58901317924c1c46cf217b44f466b5796b8d",
+      "geometryHash": "29cb04539e56e06c7dcd385ad10123f26bd91dcdfbeae0744d4297b50be26a0d",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-6-lights-warm.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -1489,7 +1489,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f422c629b6cbc2e0acb162b46051e23642128924ae5a434719b3d6b05ba7cd2f",
+      "geometryHash": "eb69e43c14014b5bef63c76dfbc3f83b163897afe2ea02770cc1e593a8e19732",
       "id": "sf.render.ilex-ark.node.lod0-motion-ilex-vault-6-mechanicaldark.primitive.0",
       "indexCount": 10926,
       "indexed": true,
@@ -4250,19 +4250,19 @@
       "sha256": "fdc0d94b6171d09b106d8a31423e1305700439194fc928492c53284c0a30e3c7"
     },
     "sourceGlb": {
-      "bytes": 927744,
-      "sha256": "31d0e15e9f995987e977d61a9263e065ad6cc200cdba320e76aee4aba95c8fab",
+      "bytes": 897976,
+      "sha256": "a6e5b035119e7a151f8ba62861dc3398628dfaa32fbdd74ac3036188f9929978",
       "uri": "ilex_ark.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1267736,
-    "sha256": "520afc0edc0c4b9ea0282cef6ed6a0312045501be004f55d6c438986207668e5",
+    "bytes": 1257744,
+    "sha256": "f5ec0bc71abe03bc1dd88b6fc5123806d20949cfe32d6111504f13d6c658edaf",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6272,7 +6272,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ilex_ark.glb"
   },
-  "runtimeHash": "e294391f23e3526bc15268425ed63bf2024379d1c91a873ce6728d03c99b85da",
+  "runtimeHash": "93d3d49c01ca838753eb8b77acc6198d04d5f1c1ff0cb94a454322a40a3c1a2a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -47,7 +47,17 @@ export function serializeCombatState(state) {
   };
 }
 
-export function restoreCombatState(state, payload, resolveEntityRef, { deferCeresAttachments = false } = {}) {
+export function restoreCombatState(state, payload, resolveEntityRef, options = {}) {
+  const it = restoreCombatStateSteps(state, payload, resolveEntityRef, options);
+  let r;
+  while (!(r = it.next()).done) { /* synchronous lane: section boundaries run through */ }
+  return r.value;
+}
+
+// Stepped twin driven by the save epilogue via yield*: the section seams already
+// exist (combatants → attachments → ceres resume → actions) — each runs as its own
+// generator step so a dense save's combat restore paints between sections.
+export function* restoreCombatStateSteps(state, payload, resolveEntityRef, { deferCeresAttachments = false } = {}) {
   const combat = resetCombatState(state);
   if (!payload || typeof payload !== 'object' || typeof resolveEntityRef !== 'function') {
     return { restoredEntities: 0, restoredAttachments: 0, restoredActions: 0, restoredRequests: 0, dropped: 0 };
@@ -61,13 +71,17 @@ export function restoreCombatState(state, payload, resolveEntityRef, { deferCere
     ? state.entities.get(id) || null
     : null;
   restoreCombatants(combat, payload.entities, resolveEntityRef, summary);
+  yield 'combat-entities-restored';
   restoreAttachments(state, combat, payload.attachments, resolveEntityRef, entityFor, summary);
+  yield 'combat-attachments-restored';
   if (!deferCeresAttachments) {
     const resumed = resumeCeresWorkfleetAttachments(state);
     summary.restoredAttachments += resumed.restoredAttachments;
     summary.dropped += resumed.dropped;
   }
+  yield 'combat-ceres-resumed';
   restoreActions(combat, payload.actions, resolveEntityRef, entityFor, summary);
+  yield 'combat-actions-restored';
   combat.attachments.nextId = normalizedAttachmentNextId(
     payload.attachments && payload.attachments.nextId,
     combat.attachments.byId, pendingCeresAttachments.get(combat),

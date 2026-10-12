@@ -330,8 +330,6 @@ test('PQ-160.01 export writes GIF and MP4 when frames exist (Electron save + bro
   const bolas = bolasKillTricks();
   const clip = director.observeTrick({ ...bolas[0], seed: SEED });
   const card = clips.exportClip(clip, { host: { kind: 'headless' } });
-  assert.equal(card.ok, true, 'a marked window rasterizes a software card without GPU frames');
-  assert.equal(card.source, 'software-card');
-  assert.equal(card.format, 'gif');
-  assert.equal(String.fromCharCode(card.bytes[0], card.bytes[1], card.bytes[2], card.bytes[3], card.bytes[4], card.bytes[5]), 'GIF89a');
+  assert.equal(card.ok, false, 'a logged window without pixels must never become title-card footage');
+  assert.equal(card.reason, 'gpu-export-unavailable');
 });

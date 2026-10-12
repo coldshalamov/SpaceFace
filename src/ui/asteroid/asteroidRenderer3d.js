@@ -62,6 +62,16 @@ import {
   INCLUSION_KIT_ID,
 } from './worksPartLoader.js';
 import { applyWorksFurnaceHeat } from '../../render/industrialMaterialFamilies.js';
+import { collectStartupGeometries, collectStartupGeometryDrawables, collectStartupTextures } from '../../render/startupGpuResidency.js';
+import {
+  armGeometryGpuResidentLedger,
+  detachedGeometryUploadPending,
+  detachedTextureUploadPending,
+  dropGeometryGpuResidencyLedger,
+  packageDetachSerialNow,
+  rehydrateDetachedGeometries,
+  rehydrateDetachedTextures,
+} from '../../render/packageCpuDetach.js';
 
 const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S } = DRILL_CONST;
 export const VIEW_ROWS = 18;
@@ -1385,6 +1395,56 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   let disposed = false;   // guards async surface arrival against a screen that already left
   let worksTearingDown = false;
+  // This private context can die and restore independently of the main one (W140-G4). On
+  // restore the uploadedOn ledger on the live renderer object still claims records the lost
+  // context took with it — drop this renderer's stamps, then re-run the admission consult's
+  // rehydrate gate over the live scene before the next bloom pass draws emptied arrays.
+  let contextRestoreConsult = null;
+  // Re-collect budget for the detach-race re-fire inside the consult's settle. A covered payload
+  // release landing mid-consult bumps packageDetachSerial, so the settle re-invokes the handler
+  // (ledger drop + re-collect, both idempotent) instead of clearing blind and letting the next
+  // works bind read emptied payloads inside bloom.render (W143-H1). The bound keeps sustained
+  // detach churn from suppressing the draw forever — past it the consult degrades to the old
+  // behavior and the next admission consult/restore heals instead.
+  let contextRestoreRecollects = 0;
+  const CONTEXT_RESTORE_RECOLLECT_MAX = 4;
+  const onWorksContextLost = (event) => { event.preventDefault(); };
+  const onWorksContextRestored = () => {
+    if (disposed || worksTearingDown || glTeardownDone) return;
+    dropGeometryGpuResidencyLedger(renderer);
+    if (contextRestoreConsult) return;
+    // The latch clears on the assigned promise, not inside the body: with empty pendings the
+    // body's finally runs synchronously, before the assignment stores the promise, and the
+    // latch would stick truthy forever — suppressing bloom.render and every later restore
+    // (W141-D5).
+    let consultArmedSerial = 0;
+    contextRestoreConsult = (async () => {
+      // Serial captured at collect time: any covered release after this point — inside the
+      // collected manifests or not — moves the serial, and the settle re-consults (W143-H1).
+      consultArmedSerial = packageDetachSerialNow();
+      try {
+        const pendingGeometries = collectStartupGeometries(scene)
+          .filter((geometry) => detachedGeometryUploadPending(geometry, renderer));
+        const pendingUploads = collectStartupTextures(scene)
+          .filter((texture) => detachedTextureUploadPending(texture, renderer.properties));
+        if (pendingGeometries.length) await rehydrateDetachedGeometries(pendingGeometries);
+        if (pendingUploads.length) await rehydrateDetachedTextures(pendingUploads);
+      } catch (error) {
+        console.warn('[asteroidRenderer3d] context-restore rehydrate failed', error);
+      }
+    })().finally(() => {
+      contextRestoreConsult = null;
+      if (packageDetachSerialNow() !== consultArmedSerial
+          && contextRestoreRecollects < CONTEXT_RESTORE_RECOLLECT_MAX) {
+        contextRestoreRecollects += 1;
+        onWorksContextRestored();
+      } else {
+        contextRestoreRecollects = 0;
+      }
+    });
+  };
+  canvas.addEventListener('webglcontextlost', onWorksContextLost, false);
+  canvas.addEventListener('webglcontextrestored', onWorksContextRestored, false);
   // Bloom refuses cold stamped materials on a presented frame. This private context must own
   // their admission; the flight renderer's queue cannot compile programs for another context.
   const pipelineAdmissions = new WeakMap();
@@ -1395,6 +1455,16 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function queueWorksPipelines(subject) {
     if (pipelineAdmissions.has(subject)) return pipelineAdmissions.get(subject);
     const admission = pipelineTail.then(async () => {
+      if (disposed || worksTearingDown) return false;
+      // A cpu-detached package texture this private context has not uploaded re-enters three's
+      // uploader on the admitted subject's first bind and reads emptied payloads — re-attach
+      // the pending set before its pipelines link and draw (the N2 secondary-context gate).
+      const pendingUploads = collectStartupTextures(subject)
+        .filter((texture) => detachedTextureUploadPending(texture, renderer.properties));
+      const pendingGeometries = collectStartupGeometries(subject)
+        .filter((geometry) => detachedGeometryUploadPending(geometry, renderer));
+      if (pendingGeometries.length) await rehydrateDetachedGeometries(pendingGeometries);
+      if (pendingUploads.length) await rehydrateDetachedTextures(pendingUploads);
       if (disposed || worksTearingDown) return false;
       const leaves = [];
       const seen = new Map();
@@ -1413,6 +1483,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         if (result?.skipped) throw new Error(result.reason || 'Mining pipeline unavailable');
         // Bound software-driver linking to one material family per task, preserving UI input.
         await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      // compile() creates NO attribute records — ledgering here would mark this renderer
+      // resident before a single buffer exists and blind the per-admission gate to a re-detach
+      // in the pre-draw window (W140-D1). Arm each drawable's onAfterRender: the ledger lands
+      // exactly when its own upload completes on the first real draw.
+      for (const drawable of collectStartupGeometryDrawables(subject)) {
+        armGeometryGpuResidentLedger(drawable);
       }
       return true;
     });
@@ -8765,7 +8842,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     layoutWantChips();
     stepFx(dt);
     stepDom(d, dt);
-    bloom.render(scene, camera);
+    // Hold the draw while a context-restore rehydrate is in flight — a bind on emptied
+    // payloads is exactly what the consult exists to prevent (W140-G4).
+    if (!contextRestoreConsult) bloom.render(scene, camera);
   }
 
   // ---------------------------------------------------------------- teardown
@@ -8784,6 +8863,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function finishDispose() {
     if (glTeardownDone) return;
     glTeardownDone = true;
+    canvas.removeEventListener('webglcontextlost', onWorksContextLost, false);
+    canvas.removeEventListener('webglcontextrestored', onWorksContextRestored, false);
     authoredInclusionsDispose();
     for (const [, b] of oreBuckets) { oreRoot.remove(b.mesh); b.mesh.dispose(); }
     oreBuckets.clear();

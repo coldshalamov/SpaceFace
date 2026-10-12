@@ -17,6 +17,7 @@ import { entitySpanHtml } from '../entityResolver.js';
 import { enhanceSelects } from '../uiPrimitives.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { industryReadoutFromState, renderIndustryStrip, traderCycleLine } from './industryReadout.js';
+import { injectOrreryMobileScreens } from '../orrery/mobileScreenLayouts.js';
 
 const DRONE_DISPLAY_ORE_ID = 'cmdty_ore_iron';
 const DRONE_DISPLAY_ORE_VALUE = (COMMODITIES.find((c) => c.id === DRONE_DISPLAY_ORE_ID) || {}).basePrice || 28;
@@ -769,6 +770,7 @@ export const automationScreen = {
 
   mount(rootEl, ctx) {
     injectStyle();
+    injectOrreryMobileScreens();
     this._ctx = ctx;
     this._root = rootEl;
     rootEl.id = 'sf-automation';

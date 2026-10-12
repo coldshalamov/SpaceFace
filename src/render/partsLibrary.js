@@ -27,6 +27,8 @@ import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection, ceresShipbreakTransform
 // damage lights, and LOD hooks stay as normal objects.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { detachPackageTexture } from './packageCpuDetach.js';
+import { textureGpuResident } from './startupGpuResidency.js';
 import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES } from '../data/palettes.js';
 import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
@@ -1175,8 +1177,50 @@ export function* collectFirstFlightCookEntitiesSteps(state, rowsPerSlice = 256) 
 
 /** Pure per-entity residency plan. Complete authored bodies need one GLB. Modular ships predict the
  * exact deterministic records consumed by live assembly before any decode/upload begins. */
+// The fit plan re-runs whole-ship predicates, contract record walks and seeded mount
+// picks every call — several µs per warm poll per entity — yet its inputs barely move:
+// every entity/data field the plan or the whole-ship predicate chain reads, plus a
+// content fingerprint of the mutable fittings/weapons arrays and the plan-shaping
+// options. Memo on that full tuple: a mount or identity change mints a different key
+// and re-plans (the ensureEntityLibrary retry loop depends on that), while unchanged
+// polls serve the same plan object (callers only read plans, never mutate).
+const authoredPreloadPlanMemo = new WeakMap();
+
+function authoredPreloadPlanKey(entity, options) {
+  const data = entity.data || {};
+  const fittings = Array.isArray(data.fittings) ? data.fittings : null;
+  const weapons = Array.isArray(data.weapons) ? data.weapons : null;
+  let key = [
+    entity.id, entity.factionId, entity.team, entity.radius,
+    data.defId, data.hullDefId, data.factionId,
+    data.lootTableId, data.silhouette, data.assetRef, data.trafficRole,
+    data.towlineMemberId, data.towlineBody, data.authoredAssetId, data.persistenceOwner,
+    data.mothlightKey, data.mothlightLampId, data.kilnbackKey, data.kilnbackCaskId,
+    data.authoredCharacter, data.redKiteActorId, data.worldRecordId,
+    data.ceresWorkfleetRole, data.placeId,
+    fittings ? fittings.join(',') : '',
+    options.forceWholeShipFile || '', options.lodLevel || '',
+    options.requiredWholeShip === true ? '1' : '',
+  ].join('|');
+  if (weapons) {
+    for (const weapon of weapons) {
+      key += `|${weapon ? `${weapon.defId || ''}:${weapon.facing || ''}:${weapon.size || ''}` : ''}`;
+    }
+  }
+  return key;
+}
+
 export function authoredPreloadPlanForEntity(entity, options = {}) {
   if (!entity || entity.type !== 'ship') return {};
+  const key = authoredPreloadPlanKey(entity, options);
+  const memoized = authoredPreloadPlanMemo.get(entity);
+  if (memoized && memoized.key === key) return memoized.plan;
+  const plan = authoredPreloadPlanForEntityUncached(entity, options);
+  authoredPreloadPlanMemo.set(entity, { key, plan });
+  return plan;
+}
+
+function authoredPreloadPlanForEntityUncached(entity, options = {}) {
   const whole = wholeShipVisualForEntity(entity, options);
   if (whole && whole.file) {
     const file = options.forceWholeShipFile
@@ -3139,7 +3183,20 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
   installBoundaryResolvingMarker(boundary, entity, markerOptions);
 
   let activeRoot = fallbackRoot;
+  // Epoch guard mirroring installPreparedBoundaryPublisher: a deferred swap armed by
+  // admission run A must refuse to fire after a newer run re-minted the boundary's
+  // epoch — grafting A's root under B's epoch would overlay stale geometry. The cell
+  // re-stamps at request time: residencyOptionsForBoundary mints the boundary's new
+  // epoch on the very upgrade request that arms this swap, so a live commit lands
+  // under the newer token and only a superseded run is refused.
+  let swapEpoch = boundary.userData.admissionEpoch;
   const setActiveRoot = (next) => {
+    if (boundary.userData.admissionEpoch !== swapEpoch) {
+      if (boundary.userData.__setActiveVisualRoot === setActiveRoot) {
+        delete boundary.userData.__setActiveVisualRoot;
+      }
+      return;
+    }
     activeRoot = next;
     boundary.userData.hull = next;
     boundary.userData.lod = next?.userData?.lod || null;
@@ -3164,6 +3221,7 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
     const liveEntity = boundaryLiveEntity(boundary, entity);
     boundary.userData.authoredAssetState = 'loading';
     const residency = residencyOptionsForBoundary(liveEntity, boundary, renderer);
+    swapEpoch = boundary.userData.admissionEpoch;
     const upgradeOptions = {
       releaseMode,
       loadAuthoredPart: options.loadAuthoredPart,
@@ -3345,7 +3403,10 @@ async function upgradeAuthoredCargoCapsuleBoundary(
   try {
     await prepareAuthoredVisualPipelines(authored.root, options);
   } catch (error) {
-    await ((installedPreparedDisposer ? installedPreparedDisposer() : disposePreparedCargoCapsule()) || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
+    await ((installedPreparedDisposer ? installedPreparedDisposer()
+      : (isAuthoredAdmissionBoundaryCurrent(options) && disposePreparedAuthoredBoundary(boundary))
+        || disposePreparedCargoCapsule())
+      || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
     assertQueuedAuthoredAdmissionActive(options, 'after-payload-pipeline-error');
     return failAuthoredCargoCapsuleAdmission(
       boundary,
@@ -3822,7 +3883,18 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   });
 
   let activeRoot = fallbackRoot;
+  // Same epoch guard as installPreparedBoundaryPublisher: a swap armed under a
+  // superseded admission epoch must self-clear instead of grafting stale geometry.
+  // Re-stamped at request time — residencyOptionsForBoundary mints the epoch the
+  // armed commit will land under.
+  let swapEpoch = boundary.userData.admissionEpoch;
   const setActiveVisualRoot = (next) => {
+    if (boundary.userData.admissionEpoch !== swapEpoch) {
+      if (boundary.userData.__setActiveVisualRoot === setActiveVisualRoot) {
+        delete boundary.userData.__setActiveVisualRoot;
+      }
+      return;
+    }
     if (!next || !next.isObject3D) return;
     activeRoot = next;
     boundary.userData.hull = next;
@@ -3866,6 +3938,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     const liveEntity = boundaryLiveEntity(boundary, options.liveEntity || entity);
     boundary.userData.authoredAssetState = 'loading';
     const residency = residencyOptionsForBoundary(liveEntity, boundary, renderer);
+    swapEpoch = boundary.userData.admissionEpoch;
     const upgradeOptions = {
       releaseMode,
       loadAuthoredPart: options.loadAuthoredPart,
@@ -3992,7 +4065,18 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
 
   attachLodState(boundary);
   let activeRoot = fallbackRoot;
+  // Same epoch guard as installPreparedBoundaryPublisher: a swap armed under a
+  // superseded admission epoch must self-clear instead of grafting stale geometry.
+  // Re-stamped at request time — residencyOptionsForBoundary mints the epoch the
+  // armed commit will land under.
+  let swapEpoch = boundary.userData.admissionEpoch;
   const setActiveVisualRoot = (next) => {
+    if (boundary.userData.admissionEpoch !== swapEpoch) {
+      if (boundary.userData.__setActiveVisualRoot === setActiveVisualRoot) {
+        delete boundary.userData.__setActiveVisualRoot;
+      }
+      return;
+    }
     if (!next || !next.isObject3D) return;
     activeRoot = next;
     boundary.userData.hull = next;
@@ -4054,10 +4138,12 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
     if (!renderer || !scene || authoredAdmissionStarted(state)) return null;
     const liveEntity = boundaryLiveEntity(boundary, entity);
     boundary.userData.authoredAssetState = 'loading';
+    const residency = residencyOptionsForBoundary(liveEntity, boundary, renderer);
+    swapEpoch = boundary.userData.admissionEpoch;
     const upgradeOptions = {
       releaseMode,
       loadAuthoredPart: options.loadAuthoredPart,
-      ...residencyOptionsForBoundary(liveEntity, boundary, renderer),
+      ...residency,
       ...requestOptions,
     };
     const completion = Promise.resolve(enqueueBoundaryUpgrade(scene, {
@@ -4299,7 +4385,10 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       await prepareAuthoredVisualPipelines(authored.root, options);
     } catch (error) {
       try {
-        await ((installedPreparedDisposer ? installedPreparedDisposer() : disposePreparedPlace()) || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
+        await ((installedPreparedDisposer ? installedPreparedDisposer()
+          : (isAuthoredAdmissionBoundaryCurrent(options) && disposePreparedAuthoredBoundary(boundary))
+            || disposePreparedPlace())
+          || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
       } catch (cleanupError) {
         throw new AggregateError(
           [error, cleanupError],
@@ -4374,6 +4463,7 @@ function failAuthoredPlaceAdmission(
   boundary, fallbackRoot, entity, renderer, options, setActive, reason, error, flags = {},
 ) {
   assertQueuedAuthoredAdmissionActive(options, 'before-place-failure');
+  if (!flags.residencyReleased) releaseBoundaryResidency(renderer, boundary, reason, options && options.admissionEpoch);
   const admissionEntity = options.admissionEntity || entity;
   // A stale run's fail legs are bookkeeping-only: the epoch-scoped release frees its own pins,
   // but every verdict write — readmission mark, same-semantic-fallback settle, 'unavailable' —
@@ -4397,7 +4487,7 @@ function failAuthoredPlaceAdmission(
   }
   if (boundary.parent && hasExplicitAuthoredGeologyPresentation(admissionEntity)) {
     fallbackRoot.visible = true;
-    markReadableFallbackLayer(fallbackRoot);
+    markReadableFallbackLayer(fallbackRoot, renderer);
     fallbackRoot.userData.authoredAssetState = 'same-semantic-fallback';
     fallbackRoot.userData.authoredVisualRoot = 'procedural-geology-fallback';
     if (error?.message) fallbackRoot.userData.authoredFallbackReason = error.message;
@@ -4431,6 +4521,8 @@ function failAuthoredPlaceAdmission(
     ? 'none-pipeline-failed'
     : (reason.includes('build') ? 'none-build-failed' : 'none-load-failed');
   setPresentationAdmission(admissionEntity, PRESENTATION_ADMISSION.unavailable);
+  // Verbatim per entity — the warn carries this asset's own detail (defId/
+  // assetRef); dedup'ing under a shared site key suppresses distinct failures.
   if (error) console.warn('[partsLibrary] authored place admission failed; no substitute visual published', error);
   return false;
 }
@@ -8570,6 +8662,11 @@ export async function waitForOpeningCompositionSettled(state, options = {}) {
     });
   };
   let lastRequest = { requested: 0, ids: [] };
+  // Settle-verdict latch: under the worker lane the readiness verdict reads a mirror that can
+  // sit one transport frame behind the authored upgrades it gates. Require pending===0 on two
+  // consecutive observations (the mirror consumes a fresh transport frame between polls); the
+  // same rule on the in-process lane costs one extra yield and no verdict change.
+  let settledPolls = 0;
   while (now() - started < timeoutMs) {
     if (stale()) {
       return {
@@ -8587,15 +8684,21 @@ export async function waitForOpeningCompositionSettled(state, options = {}) {
     const readiness = authoredCriticalVisualReadiness(state);
     const pending = (readiness && readiness.openingPending) || [];
     if (pending.length === 0) {
-      return {
-        settled: true,
-        waitedMs: now() - started,
-        pending: 0,
-        ids: [],
-        requested: lastRequest,
-        queue: describeAuthoredUpgradeQueue(options.scene),
-      };
+      settledPolls++;
+      if (settledPolls >= 2) {
+        return {
+          settled: true,
+          waitedMs: now() - started,
+          pending: 0,
+          ids: [],
+          requested: lastRequest,
+          queue: describeAuthoredUpgradeQueue(options.scene),
+        };
+      }
+      await yieldToMain();
+      continue;
     }
+    settledPolls = 0;
     const stillOpen = pending.filter((entry) => (
       openingAssetCanStillSettle(entry, state, options.meshes)
     ));
@@ -9221,12 +9324,7 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
     // A disposed preview rejects its in-flight compile/upload on teardown — the ordinary
     // hover-away case, not a composition defect. Keep the breadcrumb off the warning channel
     // so release evidence only counts real admission failures.
-    const log = (previewTeardownOnly || ownerInactiveOnly) ? console.info : console.warn;
-    log.call(console, previewTeardownOnly
-      ? '[partsLibrary] authored preview admission released by disposal'
-      : ownerInactiveOnly
-        ? '[partsLibrary] authored admission aborted; owner left before publish'
-        : '[partsLibrary] authored composition failed; no substitute visual published', {
+    const admissionFailureDetail = {
       entity: entity && entity.id,
       // Selector fields decide which whole-ship map the entity needed — without them a
       // "no required packaged whole-ship selection" warning cannot name the missing row.
@@ -9239,7 +9337,19 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
       causes: error && Array.isArray(error.errors)
         ? error.errors.map((cause) => String(cause && (cause.message || cause.reason || cause))).slice(0, 8)
         : undefined,
-    });
+    };
+    if (previewTeardownOnly || ownerInactiveOnly) {
+      console.info(previewTeardownOnly
+        ? '[partsLibrary] authored preview admission released by disposal'
+        : '[partsLibrary] authored admission aborted; owner left before publish',
+      admissionFailureDetail);
+    } else {
+      // Verbatim per entity — distinct admissionFailureDetail per caller; the
+      // contract is that EVERY missing authored body names itself in the warn.
+      console.warn(
+        '[partsLibrary] authored composition failed; no substitute visual published',
+        admissionFailureDetail);
+    }
     if (cleanupErrors.length) {
       throw new AggregateError([error, ...cleanupErrors], 'Authored composition failure cleanup failed', {
         cause: error,
@@ -9463,7 +9573,10 @@ const RETAINED_DISPOSE_STARVE_DRAINS = 8;
 function scheduleRetainedDisposeDrain() {
   if (retainedDisposeDrainScheduled) return;
   retainedDisposeDrainScheduled = true;
-  setTimeout(() => {
+  // Dispatch at bounded background priority: a setTimeout(0) arm lands the whole
+  // teardown drive inside the timer task that races the present; the 48 ms bound
+  // keeps the drain alive when the main thread never idles.
+  postTaskAtBackgroundPriorityBounded(() => {
     retainedDisposeDrainScheduled = false;
     retainedDisposeDrainSeq += 1;
     const started = monotonicNow();
@@ -9533,7 +9646,7 @@ function scheduleRetainedDisposeDrain() {
     notePacedFrameSpend(drainElapsed);
     if (forcedRan) noteForcedFrameSpend(drainElapsed);
     if (retainedDisposeQueue.length) scheduleRetainedDisposeDrain();
-  }, 0);
+  });
 }
 
 // Any detached subtree whose teardown would hitch a presented beat may ride the
@@ -10108,7 +10221,7 @@ function shouldRetainReadableFallback(fallbackRoot, entity, authored) {
   return assetId === KESTREL_HERO_ASSET_ID;
 }
 
-function markReadableFallbackLayer(fallbackRoot) {
+function markReadableFallbackLayer(fallbackRoot, renderer) {
   fallbackRoot.userData = fallbackRoot.userData || {};
   fallbackRoot.userData.authoredReadableFallbackLayer = true;
   const heroBody = fallbackRoot.userData.assetId === KESTREL_HERO_ASSET_ID;
@@ -10119,6 +10232,22 @@ function markReadableFallbackLayer(fallbackRoot) {
     if (heroBody && object.isMesh) {
       object.userData.spacefaceAuthoredHeroBody = true;
       if (!object.userData.spacefacePartUrl) object.userData.spacefacePartUrl = 'hero/kestrel_borrowed_time';
+    }
+    // N3 (heap-floor F4): a fallback layer never seals — it IS the live stand-in, already drawn
+    // — so its marked authored textures release their CPU mirrors at mark rather than waiting
+    // for a residency pass that will never cover this subtree. Unmarked textures no-op.
+    // W140-G3: only a texture already uploaded on this renderer may release — the subtree is
+    // invisible until this same block shows it, so a never-uploaded payload would leave the
+    // first bind uploading an emptied array (silent corruption, nothing gates it).
+    const materials = object.material
+      ? (Array.isArray(object.material) ? object.material : [object.material])
+      : [];
+    for (const material of materials) {
+      for (const value of Object.values(material || {})) {
+        if (value && value.isTexture === true && textureGpuResident(value, renderer)) {
+          detachPackageTexture(value);
+        }
+      }
     }
   });
 }
@@ -14287,6 +14416,10 @@ function createRenderPackageShipNodeFactory({
 
 function canPoolRenderPackageShipMesh(source, tags = {}) {
   if (!isRigidOpaqueBatchableSurface(source, tags, { requiresPerShipMesh })) return false;
+  // R8 pin (W142): an armed source (armGeometryGpuResidentLedger set a custom onAfterRender)
+  // is rejected here — correct: instanced pools never fire per-object hooks, so an armed
+  // source would silently lose its ledger stamp. Unreachable today (preview/subject
+  // instances are clones; Object3D.copy doesn't carry hooks) — keep the guard.
   if (source.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender
     || source.onAfterRender !== THREE.Object3D.prototype.onAfterRender) return false;
   return true;
@@ -14749,8 +14882,11 @@ function drivePoolAdmissionIfUnclaimed(admission, options) {
   }).catch((error) => {
     // A mid-preparation cancellation is the owner-gone race, not a defect — keep it off the
     // warning channel the same way the boundary path classifies 'owner became inactive'.
-    const log = admission && admission.cancelled === true ? console.info : console.warn;
-    try { log.call(console, '[partsLibrary] pooled chunk admission failed', error); } catch { /* diagnostics only */ }
+    if (admission && admission.cancelled === true) {
+      try { console.info('[partsLibrary] pooled chunk admission failed', error); } catch { /* diagnostics only */ }
+    } else {
+      try { console.warn('[partsLibrary] pooled chunk admission failed', error); } catch { /* diagnostics only */ }
+    }
   });
 }
 

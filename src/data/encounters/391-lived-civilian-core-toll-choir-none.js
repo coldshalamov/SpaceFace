@@ -28,18 +28,18 @@ const spec = {
   "choices": [
     {
       "id": "a",
-      "label": "Tend the casket",
-      "playerLine": "I'll tend the casket."
+      "label": "Pay the count",
+      "playerLine": "CANTOR, I will pay for the casket and take the marked lane."
     },
     {
       "id": "b",
-      "label": "Witness and leave",
-      "playerLine": "Witnessed. Leaving."
+      "label": "Ask for proof",
+      "playerLine": "Show me the casket count before I enter civilian core."
     },
     {
       "id": "c",
-      "label": "Refuse the stop",
-      "playerLine": "Not my stop."
+      "label": "Leave the toll",
+      "playerLine": "I decline the casket; clear my hull from civilian core."
     }
   ],
   "timeoutChoice": "c",
@@ -52,7 +52,7 @@ const spec = {
     {
       "id": "hail",
       "verb": "say",
-      "line": "CANTOR: The casket is the whole reason we are stopped. Do not improve it.",
+      "line": "CANTOR: The casket is due at civilian core. Pay, dispute, or keep moving.",
       "channel": "info",
       "primary": true,
       "next": "move"
@@ -67,7 +67,7 @@ const spec = {
     {
       "id": "a0",
       "verb": "say",
-      "line": "CANTOR: This is not a fight. If it becomes one, you started it.",
+      "line": "The toll board has one number and three kinds of handwriting.",
       "channel": "info",
       "next": "p0"
     },
@@ -81,7 +81,7 @@ const spec = {
     {
       "id": "a1",
       "verb": "say",
-      "line": "CANTOR: CASKET ON THE CIVILIAN CORE has a receipt. Make yours short.",
+      "line": "CANTOR counts the queue by hull, not by promise.",
       "channel": "info",
       "next": "p1"
     },
@@ -148,7 +148,7 @@ const spec = {
     {
       "id": "say_a",
       "verb": "say",
-      "line": "You tended the casket. The lane kept its reason.",
+      "line": "Count cleared. The casket crossed civilian core under your name.",
       "channel": "info",
       "next": "grant_a"
     },
@@ -175,7 +175,7 @@ const spec = {
     {
       "id": "say_b",
       "verb": "say",
-      "line": "Witnessed. The casket stays their problem and their pride.",
+      "line": "Dispute logged. CANTOR kept the original count intact.",
       "channel": "info",
       "next": "rep_b"
     },
@@ -195,7 +195,7 @@ const spec = {
     {
       "id": "say_c",
       "verb": "say",
-      "line": "You refused. The stop continues without a guest.",
+      "line": "Declined. The casket stays on their side of civilian core.",
       "channel": "info",
       "next": "rep_c"
     },
@@ -246,29 +246,29 @@ export default defineEncounter(trigger, {
   "motive": "lane_courtesy",
   "engagementTrigger": "hailed",
   "title": "CASKET ON THE CIVILIAN CORE",
-  "primaryLine": "CANTOR: The casket is the whole reason we are stopped. Do not improve it.",
+  "primaryLine": "CANTOR: The casket is due at civilian core. Pay, dispute, or keep moving.",
   "factionId": "faction_choir",
   "choices": [
     {
       "id": "a",
-      "label": "Tend the casket",
-      "playerLine": "I'll tend the casket."
+      "label": "Pay the count",
+      "playerLine": "CANTOR, I will pay for the casket and take the marked lane."
     },
     {
       "id": "b",
-      "label": "Witness and leave",
-      "playerLine": "Witnessed. Leaving."
+      "label": "Ask for proof",
+      "playerLine": "Show me the casket count before I enter civilian core."
     },
     {
       "id": "c",
-      "label": "Refuse the stop",
-      "playerLine": "Not my stop."
+      "label": "Leave the toll",
+      "playerLine": "I decline the casket; clear my hull from civilian core."
     }
   ],
   "timeoutChoice": "c",
   "receipts": {
-    "a": "You tended the casket. The lane kept its reason.",
-    "b": "Witnessed. The casket stays their problem and their pride.",
-    "c": "You refused. The stop continues without a guest."
+    "a": "Count cleared. The casket crossed civilian core under your name.",
+    "b": "Dispute logged. CANTOR kept the original count intact.",
+    "c": "Declined. The casket stays on their side of civilian core."
   }
 });

@@ -1,3 +1,4 @@
+import { readOrchardSaveSection } from '../data/anvilOrchard.js';
 import { validateCeresWorkfleetOperation, ceresWorkfleetContactRetained, CERES_WORKFLEET_REQUEST_STREAM, CERES_WORKFLEET_JOB_ID } from './ceresWorkfleet.js';
 import { CERES_WORKFLEET_CONTRACT as CERES_FLEET } from '../data/ceresWorkfleet.js';
 const CERES_NPC_AUTHORITY=Symbol('ceres-site-operation');
@@ -664,6 +665,7 @@ export const asteroidSites = {
       byId,
       worldOrder,
       worldById,
+      anvilOrchard: readOrchardSaveSection(src),
       meta: { rngSeed: src.meta && src.meta.rngSeed || 0 },
     };
   },
@@ -676,6 +678,7 @@ export const asteroidSites = {
   // only at record and section boundaries — order and RNG consumption stay identical.
   *deserializeChunked(data) {
     const next = makeDefaultSites();
+    next.anvilOrchard = readOrchardSaveSection(data);
     if (data && typeof data === 'object') {
       next.nextSiteNum = Math.max(1, Math.trunc(Number(data.nextSiteNum) || 1));
       if (data.meta && Number.isFinite(data.meta.rngSeed)) next.meta.rngSeed = data.meta.rngSeed >>> 0;

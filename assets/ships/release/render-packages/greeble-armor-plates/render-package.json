@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "568534d167bedf0c678a1ce2674f0a70f0ae7b17ab5378e7877ff5139a2229b8",
+  "contentHash": "1fa4e783f72529e88d4fa3d996d07aad4a2488180d285f50e86b828a9a6df7bb",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8e11579a023d34f4d85b34f604f17e35433cf7a43ffc5bed09d0027618e6ab63",
+      "geometryHash": "f58fd8a567c37e94b68e01632d5d37d8b3971bcb7dbba35e6c06dd1936c9b86c",
       "id": "sf.render.greeble-armor-plates.mesh.greeble-armor-plates-material-hull-merged.primitive.0",
       "indexCount": 972,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6763a7b842a6e149462b0a83f3bca33e68bf00befbd32b98a794e14420c17cad",
+      "geometryHash": "d77ee46ba99e4272db87744179d69b729bbb31c2ae842f8854460c8cc1a4bab3",
       "id": "sf.render.greeble-armor-plates.mesh.greeble-armor-plates-material-mechanical-merged.primitive.0",
       "indexCount": 9504,
       "indexed": true,
@@ -57,7 +57,7 @@
       "meshName": "greeble_armor_plates_Material_Mechanical_Merged",
       "nodeId": "sf.render.greeble-armor-plates.mesh.greeble-armor-plates-material-mechanical-merged",
       "primitiveIndex": 0,
-      "vertexCount": 2678
+      "vertexCount": 2256
     }
   ],
   "hlods": [],
@@ -257,19 +257,19 @@
       "sha256": "a2aac8bb7dc4999bb4fa2d80a320b4176f01de9a596137f65a033e9e81955330"
     },
     "sourceGlb": {
-      "bytes": 271888,
-      "sha256": "eb7b61fbf18142ba4c3a14c3cc5d836faa998c2ac2f82f317f7167adaffafd16",
+      "bytes": 268700,
+      "sha256": "2e60eed1d925e801fe7ba054060f324a96c42eeeb409dbe25fbd002ec60eb3de",
       "uri": "greeble_armor_plates.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 335444,
-    "sha256": "9a2824fbbb893a11609f6c3a775693672d5ff2f0d2e691f470d07fc16b5cabe2",
+    "bytes": 296148,
+    "sha256": "509cee83fbeb5b529d312d67a331d98cf50ba94d583288a1e39e185e80e6842e",
     "uri": "render.glb"
   },
   "runtime": {
@@ -373,7 +373,7 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
   },
-  "runtimeHash": "78792a38a94e74cd2c3569ae4e94a8e72143a9b0e00e1641ca431f0936329862",
+  "runtimeHash": "327c85a84ba847c37b8007c2b673da40828d2aeb29a04a858712f1e9806cda8b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -144,6 +144,51 @@ export function createPresentationSnapshot(options = {}) {
     },
 
     /**
+     * Overwrite an already-packed row in place — the same bytes write() appends,
+     * at a caller-resolved index. The membership-stable fast pack bulk-copies the
+     * previous frame, then refreshes only pack-dirty rows positionally.
+     */
+    rewriteAt(index, entityId, archetype, px, py, pz, qx, qy, qz, qw, sx, sy, sz, flags) {
+      if (index < 0 || index >= count) return -1;
+      const p = index * 3;
+      const q = index * 4;
+      columns.position[p] = px; columns.position[p + 1] = py; columns.position[p + 2] = pz;
+      columns.quaternion[q] = qx; columns.quaternion[q + 1] = qy;
+      columns.quaternion[q + 2] = qz; columns.quaternion[q + 3] = qw;
+      columns.scale[p] = sx; columns.scale[p + 1] = sy; columns.scale[p + 2] = sz;
+      columns.entityId[index] = entityId >>> 0;
+      columns.archetype[index] = archetype >>> 0;
+      columns.flags[index] = flags >>> 0;
+      columns.generation[index] = 0;
+      columns.bank[index] = 0;
+      columns.pitch[index] = 0;
+      return index;
+    },
+
+    /**
+     * Adopt a source snapshot's first rowCount rows wholesale: one contiguous
+     * copy per column instead of per-row scalar fanout. Only legal when the
+     * caller has proven the row order is unchanged (the membership-stable fast
+     * pack) — row i in the source must name the same entity as row i here.
+     */
+    blitColumnsFrom(sourceColumns, rowCount) {
+      const n = Math.max(0, rowCount | 0);
+      if (n > capacity) {
+        let next = capacity;
+        while (next < n) next *= GROWTH_FACTOR;
+        allocate(next);
+      }
+      for (const [name, spec] of SNAPSHOT_COLUMN_SPECS) {
+        const src = sourceColumns ? sourceColumns[name] : null;
+        const length = n * spec.stride;
+        if (src) columns[name].set(src.subarray(0, length), 0);
+        else columns[name].fill(0, 0, length);
+      }
+      count = n;
+      return n;
+    },
+
+    /**
      * Append one entity's packed row verbatim from a source snapshot's columns.
      * Used by the dirty-column pack: a slot with no pose/visual dirties since the
      * previous pack carries identical bytes — copying the typed-array strides

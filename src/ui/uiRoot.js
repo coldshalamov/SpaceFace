@@ -21,6 +21,8 @@ import { setPromptScheme, setPromptBindings } from './controlPrompts.js';
 import { resolveActionLabel } from '../systems/input.js';
 import { injectHudCss } from './views/hudStyles.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
+import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
+import { dedupError } from '../core/warnDedup.js';
 import {
   presentationAllowsPlayerFacingAction,
   presentationAllowsTargetLock,
@@ -37,6 +39,7 @@ import { mountRacingHud } from './racingHud.js';
 import { bindSound, bindTemperature } from './kit/index.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
+import { laneInputWrite } from '../core/simLaneCommands.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { flightCursorMode, installNativeFlightCursor } from './flightCursor.js';
 
@@ -207,9 +210,14 @@ function yieldPresentationFrame() {
   if (typeof requestAnimationFrame === 'function') {
     // A hidden or occluded tab never fires rAF; without a timeout the deferred registration waves
     // stall forever there, and a dock in that window soft-locks (station never mounts).
+    // The rAF resolve dispatches through a bounded background post: resolving inline lands the
+    // awaiting prewarm/paintWarm leg as a microtask inside this frame's task — pre-present.
     return new Promise((resolve) => {
       const timer = setTimeout(resolve, 250);
-      requestAnimationFrame(() => { clearTimeout(timer); resolve(); });
+      requestAnimationFrame(() => {
+        clearTimeout(timer);
+        postTaskAtBackgroundPriorityBounded(resolve);
+      });
     });
   }
   return Promise.resolve();
@@ -637,13 +645,18 @@ export const ui = {
     const offRacingNew = this.bus.on('game:new', (opts) => noteRacingNewGame(opts));
     const offRacingArm = this.bus.on('game:started', () => {
       const result = completeRacingLaunch(this.ctx);
-      if (result && result.ok !== true) {
-        // Later game:started listeners close the launch screens. Reopen the menu after
-        // that synchronous fan-out, unless another public transition already took over.
-        queueMicrotask(() => {
-          if (this.state.mode === 'menu') this._showMainMenuWhenReady?.();
-        });
-      }
+      // Worker lane resolves the arm on the rpc ack — same menu-reopen rule applies there.
+      const reopenMenuOnFailure = (resolved) => {
+        if (resolved && resolved.ok !== true) {
+          // Later game:started listeners close the launch screens. Reopen the menu after
+          // that synchronous fan-out, unless another public transition already took over.
+          queueMicrotask(() => {
+            if (this.state.mode === 'menu') this._showMainMenuWhenReady?.();
+          });
+        }
+      };
+      if (result && typeof result.then === 'function') result.then(reopenMenuOnFailure);
+      else reopenMenuOnFailure(result);
     });
     this._racingArmOff = () => {
       if (typeof offRacingNew === 'function') offRacingNew();
@@ -1418,8 +1431,8 @@ export const ui = {
 
       setTimeout(() => {
         // Phase 2: at peak darkness, do the screen swap
-        this.state.ui.docked = false;
-        this.state.ui.dockedStationId = null;
+        laneInputWrite(this.state, 'ui.docked', false);
+        laneInputWrite(this.state, 'ui.dockedStationId', null);
         if (this.screenManager.top() === 'station') this.screenManager.popScreen();
         this.screenManager.syncVisibility();
 
@@ -1438,7 +1451,7 @@ export const ui = {
     this.bus.on('drill:approachStarted', ({ asteroidId, attachmentId }) => {
       if (asteroidId == null || attachmentId == null) return;
       activeDrillApproach = { asteroidId, attachmentId };
-      this.state.input.blocked = true;
+      laneInputWrite(this.state, 'input.blocked', true);
       showDockFade('drill');
 
       const camCtrl = this.state.render && this.state.render.cameraCtrl;
@@ -1449,7 +1462,7 @@ export const ui = {
     this.bus.on('drill:approachCompleted', (payload) => {
       if (!sameDrillApproach(payload)) return;
       activeDrillApproach = null;
-      this.state.input.blocked = false;
+      laneInputWrite(this.state, 'input.blocked', false);
       if (!this.state.ui) this.state.ui = {};
       this.state.ui.pendingDrillAsteroidId = payload.asteroidId;
       this._pushScreenWhenRegistered('drill', 200);
@@ -1459,7 +1472,7 @@ export const ui = {
     this.bus.on('drill:approachCancelled', (payload) => {
       if (!sameDrillApproach(payload)) return;
       activeDrillApproach = null;
-      this.state.input.blocked = false;
+      laneInputWrite(this.state, 'input.blocked', false);
       hideDockFade('drill');
     });
 
@@ -1510,8 +1523,8 @@ export const ui = {
     this.bus.on('game:started', () => { this._gameOverShown = false; });
     this.bus.on('save:loaded', () => {
       // clear any stale modal restored from a save; HUD returns
-      this.state.ui.docked = false;
-      this.state.ui.dockedStationId = null;
+      laneInputWrite(this.state, 'ui.docked', false);
+      laneInputWrite(this.state, 'ui.dockedStationId', null);
       this.screenManager.closeAll();
       // closeAll does not emit game:over:dismissed, so the one-shot latch must reset here — a stale
       // 'already shown' would otherwise swallow the next death's after-action surface.
@@ -1632,7 +1645,7 @@ export const ui = {
           try {
             const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
             try { this.screenManager.prewarm(id); }
-            catch (e) { console.error(`[ui] prewarm("${id}")`, e); }
+            catch (e) { dedupError('ui.screen-prewarm', `[ui] prewarm("${id}")`, e); }
             // A mount that already ate the slice (multi-bank template parse, lazy GL) gets
             // its own frame before the hidden layout pass — the two costs never share a
             // flight-idle frame even when the mount alone exceeds the budget.
@@ -1643,7 +1656,7 @@ export const ui = {
             }
             const tp = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
             try { this.screenManager.paintWarm(id); }
-            catch (e) { console.error(`[ui] paintWarm("${id}")`, e); }
+            catch (e) { dedupError('ui.screen-paintwarm', `[ui] paintWarm("${id}")`, e); }
             // paintWarm's forced style+layout (void el.offsetHeight) runs untimed — a big screen
             // can land ~14ms in one flight-idle slice. The trailing yield below is unconditional,
             // but gate the NEXT warm on the paint's own cost so two heavy screens never chain.
@@ -1653,7 +1666,7 @@ export const ui = {
               if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
             }
           }
-          catch (e) { console.error(`[ui] prewarm("${id}")`, e); }
+          catch (e) { dedupError('ui.screen-warm-cycle', `[ui] prewarm("${id}")`, e); }
           await yieldPresentationFrame();
           if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
         }
@@ -1825,7 +1838,7 @@ function cycleTarget(state, dir, bus) {
   }
   contacts.sort((a, b) => a.d - b.d || String(a.e.id).localeCompare(String(b.e.id)));
   if (!contacts.length) {
-    state.player.targetId = null;
+    laneInputWrite(state, 'player.targetId', null);
     if (bus) bus.emit('toast', { text: 'No contacts in scanner range', kind: 'info', ttl: 2 });
     return;
   }
@@ -1839,20 +1852,19 @@ function cycleTarget(state, dir, bus) {
   }
   const nextIdx = idx < 0 ? (dir < 0 ? ids.length - 1 : 0) : idx + (dir < 0 ? -1 : 1);
   const target = contacts[nextIdx].e;
-  state.player.targetId = target.id;
-  if (state.ui) state.ui.objectSelection = null;
-  if (state.input) state.input.targetAssistDisabled = false;
+  laneInputWrite(state, 'player.targetId', target.id);
+  laneInputWrite(state, 'ui.objectSelection', null);
+  laneInputWrite(state, 'input.targetAssistDisabled', false);
   if (bus) bus.emit('toast', { text: 'Target: ' + targetLabel(target), kind: 'info', ttl: 2 });
 }
 
 function clearCombatTarget(state, bus) {
   if (!state?.player) return;
-  state.player.targetId = null;
-  if (state.ui) state.ui.objectSelection = null;
-  if (state.input) {
-    state.input.targetAssistDisabled = true;
-    if (state.input.autoAim) state.input.autoAim = null;
-  }
+  laneInputWrite(state, 'player.targetId', null);
+  laneInputWrite(state, 'ui.objectSelection', null);
+  laneInputWrite(state, 'input.targetAssistDisabled', true);
+  // Unconditional lane write — end state is null either way (was a truthy guard).
+  laneInputWrite(state, 'input.autoAim', null);
   if (bus) bus.emit('toast', { text: 'Free aim · Tab to lock', kind: 'info', ttl: 2 });
 }
 
@@ -2013,11 +2025,11 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
     }
   }
   // Past the quiet early-out, so a Tab/radar pick is never stomped by the 0.12s refresh.
-  if (state.ui) state.ui.objectSelection = null;
+  laneInputWrite(state, 'ui.objectSelection', null);
   const tethered = tetheredHostileLock(player, state);
   if (tethered) {
-    state.player.targetId = tethered.id;
-    rememberLock(state, tethered.id);
+  laneInputWrite(state, 'player.targetId', tethered.id);
+  rememberLock(state, tethered.id);
     if (bus && !quiet) {
       bus.emit('toast', { text: 'Target: ' + targetLabel(tethered) + ' (on the line)', kind: 'info', ttl: 2 });
     }
@@ -2043,11 +2055,11 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
     }
   }
   if (!best) {
-    state.player.targetId = null;
+    laneInputWrite(state, 'player.targetId', null);
     if (bus && !quiet) bus.emit('toast', { text: 'No hostile in range', kind: 'info', ttl: 2 });
     return;
   }
-  state.player.targetId = best.id;
+  laneInputWrite(state, 'player.targetId', best.id);
   rememberLock(state, best.id);
   if (bus && !quiet) bus.emit('toast', { text: 'Target: ' + targetLabel(best), kind: 'info', ttl: 2 });
 }

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7ea7f058756a8de8edc69ae05842330410a19d5d701d7599b179672fc226cf58",
+  "contentHash": "1f648c8043f9f4151ef003885d7293c9e05d0612e2eec5ee10bd6e37456f5103",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f9472a538031945542993318432ece77861e15b43abb64109e166d020606c45f",
+      "geometryHash": "3c3129eeb0d15c7974f1e4131027b51f6065b27fa40292a302dd2dafc75ed188",
       "id": "sf.render.works-cargo-port.mesh.lod0-cargo-port.primitive.0",
       "indexCount": 17472,
       "indexed": true,
@@ -32,7 +32,7 @@
       "meshName": "LOD0_cargo_port",
       "nodeId": "sf.render.works-cargo-port.mesh.lod0-cargo-port",
       "primitiveIndex": 0,
-      "vertexCount": 14556
+      "vertexCount": 6335
     },
     {
       "bounds": {
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d854e743cbd657c89372ec6f1a10acbcdcaaaa013cb6c8205395796ede22ffab",
+      "geometryHash": "4c8c3b0302c951ac98cfde932da22f43f1f27c863bb7a446ef5b86995dadf654",
       "id": "sf.render.works-cargo-port.mesh.lod0-cradle.primitive.0",
       "indexCount": 2460,
       "indexed": true,
@@ -57,7 +57,7 @@
       "meshName": "LOD0_cradle",
       "nodeId": "sf.render.works-cargo-port.mesh.lod0-cradle",
       "primitiveIndex": 0,
-      "vertexCount": 1893
+      "vertexCount": 825
     },
     {
       "bounds": {
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "65929c9859637989d2cd6671932d125636a6e1209d3d3a89ad01940403b0cc26",
+      "geometryHash": "62977a749742c861578c5849d35dbfdb94d433f3442015d1c2ac64ece8473024",
       "id": "sf.render.works-cargo-port.mesh.lod0-crate-0.primitive.0",
       "indexCount": 4212,
       "indexed": true,
@@ -82,7 +82,7 @@
       "meshName": "LOD0_crate_0",
       "nodeId": "sf.render.works-cargo-port.mesh.lod0-crate-0",
       "primitiveIndex": 0,
-      "vertexCount": 3432
+      "vertexCount": 2121
     },
     {
       "bounds": {
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f124a5d2e79a0bc846945c46cfba5995c96c9464caa2b2e012b54328f0e335c4",
+      "geometryHash": "e069941dde33ab4aec4760bc7cae770dddcad749158c12abe8f0278bde43ba02",
       "id": "sf.render.works-cargo-port.mesh.lod0-crate-1.primitive.0",
       "indexCount": 2916,
       "indexed": true,
@@ -107,7 +107,7 @@
       "meshName": "LOD0_crate_1",
       "nodeId": "sf.render.works-cargo-port.mesh.lod0-crate-1",
       "primitiveIndex": 0,
-      "vertexCount": 2376
+      "vertexCount": 1490
     },
     {
       "bounds": {
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dfefd40f728ce970ae9194c2af57272ed7ac65cf62c1790788cf90733af6c531",
+      "geometryHash": "f64d62af759bfccf792af5cd467ced94f9af757449bf2daeee455efdabf7c902",
       "id": "sf.render.works-cargo-port.mesh.lod0-crate-2.primitive.0",
       "indexCount": 2916,
       "indexed": true,
@@ -132,7 +132,7 @@
       "meshName": "LOD0_crate_2",
       "nodeId": "sf.render.works-cargo-port.mesh.lod0-crate-2",
       "primitiveIndex": 0,
-      "vertexCount": 2376
+      "vertexCount": 1478
     },
     {
       "bounds": {
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b74017e6f0bf346f8e402c6d82b1ee60248aa3050f82950ca9a534022b098494",
+      "geometryHash": "4b9d4e5d4b8f1e24e44c73c1263b004654e1b924213ec3c40aebe8eda11ab4c0",
       "id": "sf.render.works-cargo-port.mesh.lod0-crate-3.primitive.0",
       "indexCount": 3240,
       "indexed": true,
@@ -157,7 +157,7 @@
       "meshName": "LOD0_crate_3",
       "nodeId": "sf.render.works-cargo-port.mesh.lod0-crate-3",
       "primitiveIndex": 0,
-      "vertexCount": 2640
+      "vertexCount": 1618
     },
     {
       "bounds": {
@@ -173,7 +173,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1b4a5a15d712511f91cd9b446d9f28db9b829e6f4c15e2fd1819ffe09a18d7ce",
+      "geometryHash": "006fae58735119791bed205a14abfea779c9fe7b84051d919feda93a103a9243",
       "id": "sf.render.works-cargo-port.mesh.lod0-crate-4.primitive.0",
       "indexCount": 2268,
       "indexed": true,
@@ -182,7 +182,7 @@
       "meshName": "LOD0_crate_4",
       "nodeId": "sf.render.works-cargo-port.mesh.lod0-crate-4",
       "primitiveIndex": 0,
-      "vertexCount": 1676
+      "vertexCount": 1097
     },
     {
       "bounds": {
@@ -198,16 +198,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7f1d67d652526ce0267222caf80a165bf207d2dc1f09d230213a3e12395b38da",
+      "geometryHash": "58ccd3a76533ca90907d3948b178367625cb238f2764923f344cefc380b5ea16",
       "id": "sf.render.works-cargo-port.mesh.lod0-pod-thruster.primitive.0",
-      "indexCount": 1074,
+      "indexCount": 1044,
       "indexed": true,
       "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_pod_thruster",
       "nodeId": "sf.render.works-cargo-port.mesh.lod0-pod-thruster",
       "primitiveIndex": 0,
-      "vertexCount": 851
+      "vertexCount": 398
     },
     {
       "bounds": {
@@ -223,7 +223,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd7cbc7465b2cd479ffaaf166ab6d3e1f6c1d3cd5ac5a82c2897f699593a87b6",
+      "geometryHash": "5f11d0ce8652efc23d359bc98d20535a7535820c0ecf3c8d39669b054c54e10a",
       "id": "sf.render.works-cargo-port.mesh.lod0-pod.primitive.0",
       "indexCount": 2616,
       "indexed": true,
@@ -232,7 +232,7 @@
       "meshName": "LOD0_pod",
       "nodeId": "sf.render.works-cargo-port.mesh.lod0-pod",
       "primitiveIndex": 0,
-      "vertexCount": 2004
+      "vertexCount": 929
     },
     {
       "bounds": {
@@ -248,7 +248,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ac787b9f6b45fca4244f35e2345831ef716b0d2c828991999beea6973ab876c3",
+      "geometryHash": "f43657078203eb0d64c872142537f1f51ecd29b61d7b14fdf330578adef50369",
       "id": "sf.render.works-cargo-port.mesh.lod1-cargo-port.primitive.0",
       "indexCount": 1764,
       "indexed": true,
@@ -257,7 +257,7 @@
       "meshName": "LOD1_cargo_port",
       "nodeId": "sf.render.works-cargo-port.mesh.lod1-cargo-port",
       "primitiveIndex": 0,
-      "vertexCount": 1176
+      "vertexCount": 1560
     },
     {
       "bounds": {
@@ -273,7 +273,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "714a15cd81ae1331f7a106f1ab73b819ebacd74ccdda40834513e309b70d520c",
+      "geometryHash": "aeb527a4e37e4fc937ba1d94fa87816218586d78dff61384f8a3a0cc70be1b1a",
       "id": "sf.render.works-cargo-port.mesh.lod1-cradle.primitive.0",
       "indexCount": 252,
       "indexed": true,
@@ -282,7 +282,7 @@
       "meshName": "LOD1_cradle",
       "nodeId": "sf.render.works-cargo-port.mesh.lod1-cradle",
       "primitiveIndex": 0,
-      "vertexCount": 116
+      "vertexCount": 156
     },
     {
       "bounds": {
@@ -298,7 +298,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "281130a653b7d27685f0f0d341d8ab4596c9003f3be0bc38595a2662f747b23b",
+      "geometryHash": "f0a20b4d08e982fc41dc4542260f8421edfb3259f14b9e19662a8d0dcfcb29c1",
       "id": "sf.render.works-cargo-port.mesh.lod1-crate-0.primitive.0",
       "indexCount": 2772,
       "indexed": true,
@@ -307,7 +307,7 @@
       "meshName": "LOD1_crate_0",
       "nodeId": "sf.render.works-cargo-port.mesh.lod1-crate-0",
       "primitiveIndex": 0,
-      "vertexCount": 2232
+      "vertexCount": 1420
     },
     {
       "bounds": {
@@ -323,7 +323,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9b8626a14a5d561b892abe8b4556a3ed4d334bca58b10759cea1c3ba92899cf0",
+      "geometryHash": "97115af65e15e06e54d4b2c3af34ac8ae2943a4c61271f34f388e9b5bde6a07e",
       "id": "sf.render.works-cargo-port.mesh.lod1-crate-1.primitive.0",
       "indexCount": 612,
       "indexed": true,
@@ -332,7 +332,7 @@
       "meshName": "LOD1_crate_1",
       "nodeId": "sf.render.works-cargo-port.mesh.lod1-crate-1",
       "primitiveIndex": 0,
-      "vertexCount": 456
+      "vertexCount": 412
     },
     {
       "bounds": {
@@ -348,7 +348,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ef2989e401166de4c67272f85edb136ed9a9a2de89da8061476b067b0c2c6c41",
+      "geometryHash": "9c5a1ac25391d73bf06d8fc3453cdcb7aabfebc7c6020510a1b79596354ec3fd",
       "id": "sf.render.works-cargo-port.mesh.lod1-crate-2.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -357,7 +357,7 @@
       "meshName": "LOD1_crate_2",
       "nodeId": "sf.render.works-cargo-port.mesh.lod1-crate-2",
       "primitiveIndex": 0,
-      "vertexCount": 696
+      "vertexCount": 532
     },
     {
       "bounds": {
@@ -373,7 +373,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6a49159b40d14d614a7caa98804dabd98c05a2878bedcb767572f9c0dfcc5319",
+      "geometryHash": "0816ea372315f5d5cc26773792b1a4d18dcd43fcc2f3d809fadbe2d802ebff02",
       "id": "sf.render.works-cargo-port.mesh.lod1-crate-3.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -382,7 +382,7 @@
       "meshName": "LOD1_crate_3",
       "nodeId": "sf.render.works-cargo-port.mesh.lod1-crate-3",
       "primitiveIndex": 0,
-      "vertexCount": 1440
+      "vertexCount": 968
     },
     {
       "bounds": {
@@ -398,7 +398,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c2473b878f013b6a4bd34fa2f4b89eaebf4fdf7671041f3c23f2eb52d1e12bf",
+      "geometryHash": "5287dbfcb7e44d84b17b3f758d6ff84ec9ec1a3283cb2ea9f6f53970c7332ed8",
       "id": "sf.render.works-cargo-port.mesh.lod1-crate-4.primitive.0",
       "indexCount": 828,
       "indexed": true,
@@ -407,7 +407,7 @@
       "meshName": "LOD1_crate_4",
       "nodeId": "sf.render.works-cargo-port.mesh.lod1-crate-4",
       "primitiveIndex": 0,
-      "vertexCount": 648
+      "vertexCount": 468
     },
     {
       "bounds": {
@@ -423,16 +423,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb0fa3659fa79d33b58eb968d754e315300d129a33683c914e59b571968f7aa5",
+      "geometryHash": "e55c99876f3ae4c7677a1bdd09a4c603bc26d14903a643347ef0150e52fdfaf9",
       "id": "sf.render.works-cargo-port.mesh.lod1-pod-thruster.primitive.0",
-      "indexCount": 294,
+      "indexCount": 264,
       "indexed": true,
       "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_pod_thruster",
       "nodeId": "sf.render.works-cargo-port.mesh.lod1-pod-thruster",
       "primitiveIndex": 0,
-      "vertexCount": 183
+      "vertexCount": 134
     },
     {
       "bounds": {
@@ -1452,19 +1452,19 @@
       "sha256": "97d61aa765b9c560cad8786c4652503243fae9c4dddfce5b1aa22a1fe2e4bf41"
     },
     "sourceGlb": {
-      "bytes": 850076,
-      "sha256": "4e1be6a90ccdede4eb87840dda798ca71005baf9b258001e226204175f2d56b6",
+      "bytes": 883852,
+      "sha256": "db656eb8e38a885270cf8bed0daea1df436b544fd2705a04c248957c8c7febef",
       "uri": "place_works_cargo_port.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1264524,
-    "sha256": "021432aa50735b4d39b7a97c818d7102a86baad3be024f5bdee32af0bfc69cf0",
+    "bytes": 907768,
+    "sha256": "43774987ab100e4722288d5135e08f7a2cacb501ca4f402786f85cd51624b22b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2464,7 +2464,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_cargo_port.glb"
   },
-  "runtimeHash": "56e6ff3a729502eda53fd31f8905a4db1c7149236f9fe75a40fa4c497019d313",
+  "runtimeHash": "3900a8603b9a8b8dba6a9d4cc56756a2d0b18f9b2060fd722fa11e777374001a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

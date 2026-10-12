@@ -1,5 +1,19 @@
 const SOFTWARE_RENDERER_PATTERN = /swiftshader|llvmpipe|software rasterizer|microsoft basic render|mesa offscreen/i;
 
+/** Mobile browsers keep the same authored picture; speculative fleet warm-up is scheduled later. */
+export function isMobileRenderContext(environment = globalThis) {
+  const navigator = environment && environment.navigator;
+  if (navigator && navigator.userAgentData && navigator.userAgentData.mobile === true) return true;
+  if (/iphone|ipad|ipod|android/i.test(String(navigator && navigator.userAgent || ''))) return true;
+  try {
+    return Number(navigator && navigator.maxTouchPoints) > 0
+      && typeof environment.matchMedia === 'function'
+      && environment.matchMedia('(pointer: coarse)').matches === true;
+  } catch {
+    return false;
+  }
+}
+
 export function classifyRenderCapabilityProfile(input = {}) {
   const renderer = String(input.renderer || '');
   const vendor = String(input.vendor || '');

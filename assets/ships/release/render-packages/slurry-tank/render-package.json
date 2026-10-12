@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7718ba32822ab9ca1787017a4319ea75a0c4c34b9ef3810e65e1b2a97856cc85",
+  "contentHash": "edbc94daf6c935c5f2c551d3d5774523c0b1d81e540cf202977b36423fa01278",
   "dynamicGroups": [
     {
       "id": "sf.render.slurry-tank.mesh.lod0-hook-nav-port.dynamic",
@@ -117,7 +117,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a9387c680f99d51e6f098f0ac709b7f202632ff7dedd19ed436d74349fad6428",
+      "geometryHash": "0c0097374dfd6d2449f592ba61b31c60fc7d71345b7784bdcc5e32cc48f23eb1",
       "id": "sf.render.slurry-tank.mesh.lod0-armor.primitive.0",
       "indexCount": 13320,
       "indexed": true,
@@ -167,7 +167,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9307d0b2ee475301536bd948d47dbd6256ce1ea06dd973dba38dd3fe9d043166",
+      "geometryHash": "14177ebf027aa5c1647046303bf70f2120989398951048e9b160d4cd2f73f50b",
       "id": "sf.render.slurry-tank.mesh.lod0-deadmetal-dome.primitive.0",
       "indexCount": 3924,
       "indexed": true,
@@ -192,7 +192,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c673960a65b1c9f59480052cee8eeca3b106ed64d43c2499fee31eb3a793e0f9",
+      "geometryHash": "5e0e573b22ee9b56931059b1d20119641d142be8941ef6d389a173ca9ed89835",
       "id": "sf.render.slurry-tank.mesh.lod0-hook-nav-port.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -217,7 +217,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6148e73b2c7f219cb7b897f4a78952973b2083301a4f7b9e428774f31d7f0e10",
+      "geometryHash": "b885a645d800c7194cfe941db87752a0f2b0b279f3ed2c31586747af394f91a5",
       "id": "sf.render.slurry-tank.mesh.lod0-hull-aged.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -242,7 +242,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c305eceef131cb1d90205e9fb0ef2537139745e53fe986bcdaac18e4668f32fb",
+      "geometryHash": "1c9494b242e89c99e44636c0a05d9d46a833ce4af232aebbf5224fdab639edef",
       "id": "sf.render.slurry-tank.mesh.lod0-lights-warm.primitive.0",
       "indexCount": 852,
       "indexed": true,
@@ -267,7 +267,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8ff1231046bf6224b8cd2c93c7180c1659b3af85022c2c12e1a2295673ca2437",
+      "geometryHash": "920c542dc76f5e19f7babf7eea087db12b0fa0e7764716ff9e3ade86b69100df",
       "id": "sf.render.slurry-tank.mesh.lod0-mechanical.primitive.0",
       "indexCount": 9180,
       "indexed": true,
@@ -292,7 +292,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "70e3328db3097e6ec769a7c3ee5c5a48c761c3e9e3ddd797216df6e036d62e85",
+      "geometryHash": "495bbce6499548d6742b7be960462bb513d930d96a9fe5a7bf9efdf8ab176df9",
       "id": "sf.render.slurry-tank.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -317,7 +317,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e15e2f4375cdcf983c82cb7916d3de000eace1e6a996776451e9b0b171da93ee",
+      "geometryHash": "db438ca5d4a1406a471631616fb2e9bc68318b9b14d3226c6a1b469f558275ef",
       "id": "sf.render.slurry-tank.mesh.lod0-warning.primitive.0",
       "indexCount": 2916,
       "indexed": true,
@@ -342,7 +342,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3fa4f6c84b95beea5510d1c569e3a49567e00060e756d2544bb0faa9a7452d21",
+      "geometryHash": "c5c507d37ae934d5228704d145e5fd5842b80ac938108ab721790662f05ab612",
       "id": "sf.render.slurry-tank.mesh.lod1-armor.primitive.0",
       "indexCount": 5604,
       "indexed": true,
@@ -392,7 +392,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2d3b5a7d467904e9cadc3b1dc6e9d4c4810bf98ccef32c806fca7a1105462cea",
+      "geometryHash": "8ebcc20b632ab807eb2b0ea1a5a0503265a7e05b36be618f25cb98c97af8a3f8",
       "id": "sf.render.slurry-tank.mesh.lod1-deadmetal-dome.primitive.0",
       "indexCount": 3228,
       "indexed": true,
@@ -417,7 +417,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d8e26496f9b8d856c7e89419abd1b0c7b3f95a626f9c4c15d6ba5b82de2c9d35",
+      "geometryHash": "f1679e5a8a138b9878a1314cfca176810bf5b20df1f112fb1e9b7935bfa786d7",
       "id": "sf.render.slurry-tank.mesh.lod1-hook-nav-port.primitive.0",
       "indexCount": 204,
       "indexed": true,
@@ -442,7 +442,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d103e0f17e6c132175cacbce3acba8e99c193d1c7e940ebd832bfdd1f0785a9c",
+      "geometryHash": "2e244eb2311dfc468e7f8422770932a07a462c65de7cfbb98e982cac2c6a121b",
       "id": "sf.render.slurry-tank.mesh.lod1-hull-aged.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -467,7 +467,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0883b8a59e75e296d923d154b2a8d7ed272bc9fe315c9a216602862d3093b594",
+      "geometryHash": "7515e235fadef11e129762c1ddf0cb78fc7071a29c64bdb42f686e418148270b",
       "id": "sf.render.slurry-tank.mesh.lod1-lights-warm.primitive.0",
       "indexCount": 702,
       "indexed": true,
@@ -492,7 +492,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "55cfcbb8f2f5d2cf4badc0f7b09d91b5205ba16e051bb0283289c26625c9feb6",
+      "geometryHash": "68713da78f366cdafa6f3fb79eae7798810c15eae53ae8346fd2473eac30f135",
       "id": "sf.render.slurry-tank.mesh.lod1-mechanical.primitive.0",
       "indexCount": 1584,
       "indexed": true,
@@ -542,7 +542,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b57f3c98a1c1b2f809952562158c6fc52c31134f732d12ca864abfd90d88e115",
+      "geometryHash": "bfc8cfd8a7031c3d464eacba50030a51dd80046f080208cc60ede8365d382334",
       "id": "sf.render.slurry-tank.mesh.lod1-warning.primitive.0",
       "indexCount": 924,
       "indexed": true,
@@ -567,7 +567,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66714a0a9c12b9e2baed1664bfd7eabee87b9918288e5e79e0f8340b6a2c41e2",
+      "geometryHash": "55993d839036f235b88746f8552df54ac6c84c15caa0920e990c336b1790f595",
       "id": "sf.render.slurry-tank.mesh.lod2-armor.primitive.0",
       "indexCount": 1800,
       "indexed": true,
@@ -617,7 +617,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "db407e5ec958cf68e55db42cc224415c964be4f8372471d6c467c04cfc3dbe8d",
+      "geometryHash": "c9912e2f21f1aa0e2379b20fffdc1b88f0469eb65a6808e46d8146fc40babab6",
       "id": "sf.render.slurry-tank.mesh.lod2-deadmetal-dome.primitive.0",
       "indexCount": 2010,
       "indexed": true,
@@ -692,7 +692,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eba9a17e57a8d55361a82376055cd849753b2db8a03f36a2b2ebe227153146a8",
+      "geometryHash": "1c45fa603e91a3bc3361e93d1b8a6a90919ee9ce9cdf90d452f78b3b34a1063e",
       "id": "sf.render.slurry-tank.mesh.lod2-lights-warm.primitive.0",
       "indexCount": 156,
       "indexed": true,
@@ -701,7 +701,7 @@
       "meshName": "LOD2_Lights_Warm",
       "nodeId": "sf.render.slurry-tank.mesh.lod2-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 78
+      "vertexCount": 115
     },
     {
       "bounds": {
@@ -767,7 +767,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3f8b92d39bbc7ab1ce9af64f404f0cd027732fb77991c4f7c65f15cf9d9ac041",
+      "geometryHash": "6866c98bb9ad1e61e37c0e756f859d2ff16a4f55503026fb4f7fe0f41b818bbb",
       "id": "sf.render.slurry-tank.mesh.lod2-warning.primitive.0",
       "indexCount": 756,
       "indexed": true,
@@ -2424,19 +2424,19 @@
       "sha256": "4c13d1ae15c8cc76108cb630ad3666d7e86cc1a43fd1503a3a1f43d982e465ea"
     },
     "sourceGlb": {
-      "bytes": 613436,
-      "sha256": "ca8d990b07a29df342d6479404f430b44cdef7024fa721ab3b0864d8bb6af68d",
+      "bytes": 614228,
+      "sha256": "7125c5cb9c52c631b0d8e7810e6f56b974f05ed63948e509ca10d8921817c23c",
       "uri": "place_slurry_tank.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 929372,
-    "sha256": "0e16e9a9d8df15c6d9799383d71646d5382f2c4f27c17fd3207d76c35c9c29ae",
+    "bytes": 928696,
+    "sha256": "095642054221b0c2c2fbadfbe3f15a80b8009e4ff10a4f70527e1665297c7308",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3396,7 +3396,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_slurry_tank.glb"
   },
-  "runtimeHash": "8ef1296e11ed705d07c6e89bf2fdf2a00ad8a9d3bcf64d7f687f807dd2793bab",
+  "runtimeHash": "56a044546dcb71f552108fa83beac2c0cf728a3b372f33df58f85f5706f78f34",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

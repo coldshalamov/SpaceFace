@@ -350,12 +350,14 @@ test('a dedupe-shared payload is released only once its source has a single live
   });
 
   assert.equal(renderer.uploads.length, 1, 'the upload was proven');
-  // The release defers while the sibling lives: emptying this array now would leave the
-  // texture one fresh upload (different cache key, or a dispose/rebind whose entry was freed)
-  // away from mipmaps[0].width on an empty array — and would free no bytes anyway, since the
-  // sibling's array still holds the same mip records.
-  assert.equal(isPackageTextureDetached(owner), false);
-  assert.ok(owner.mipmaps.length > 0, 'payload retained while a shared-source sibling lives');
+  // F3: the resident user's own mip array releases eagerly — its GPU copy is proven live, the
+  // mip RECORDS stay alive through the sibling's array, and releasedUsers feeds the pending
+  // gate so a second-renderer bind rehydrates first. Only the canonical source release waits
+  // for every live user to be stamped: the un-stamped sibling keeps the dedupe payload.
+  assert.equal(isPackageTextureDetached(owner), true);
+  assert.equal(owner.mipmaps.length, 0, 'resident user releases its mip array eagerly');
+  assert.ok(sibling.mipmaps.length > 0, 'unstamped sibling retains the shared records');
+  assert.ok(owner.source && owner.source.data, 'canonical source retained until all-resident');
 
   // Once the sibling is gone the texture is the entry's last user — the next residency pass
   // releases the mirror (the bytes could not have left any earlier).

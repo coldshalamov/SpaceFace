@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e09a351ad09ad55d4597d01ec536b69f18232d4ad930f4853bb324a97d6e71d3",
+  "contentHash": "282b1fb8812cfc3aab1a64e02ffdd21a0bd3e9066b4353baa48ced5faedc4861",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "792b6ee5776a3eb219cb7aa968ec7bfe6dc1107fdaf41f7152616de47f4374e2",
+      "geometryHash": "ba99407fe9d448ba49adc70d29713dc5cfc9b8f4de6d3f5f333d333ccd6cd382",
       "id": "sf.render.fin-delta.mesh.delta-edge.primitive.0",
       "indexCount": 120,
       "indexed": true,
@@ -32,7 +32,7 @@
       "meshName": "Delta_Edge",
       "nodeId": "sf.render.fin-delta.mesh.delta-edge",
       "primitiveIndex": 0,
-      "vertexCount": 22
+      "vertexCount": 62
     },
     {
       "bounds": {
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9b572385fe2f995361a43879457625ada18dce077643e7c56f5e3d4ef4f9c6c9",
+      "geometryHash": "9a133d0a78a738bed2ced76179a9f259ac3b6974596159c630461d0b508c7e6d",
       "id": "sf.render.fin-delta.mesh.delta-main.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -57,7 +57,7 @@
       "meshName": "Delta_Main",
       "nodeId": "sf.render.fin-delta.mesh.delta-main",
       "primitiveIndex": 0,
-      "vertexCount": 20
+      "vertexCount": 35
     },
     {
       "bounds": {
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c97433f1826a43c713d94562e2958f624285e1f8bd931f3c5fa74ee6349147f",
+      "geometryHash": "36a26bedf7a79068f1520a609a7b195176ac8538b7e4b2f24e880d29f4969726",
       "id": "sf.render.fin-delta.mesh.fin-delta-material-mechanical-merged.primitive.0",
       "indexCount": 1524,
       "indexed": true,
@@ -339,19 +339,19 @@
       "sha256": "790bd0928c824782a1b63e3dff241f5e9ab708fb59eed309bd8fa67e310f4953"
     },
     "sourceGlb": {
-      "bytes": 372488,
-      "sha256": "63bed8f39a6f3b54bb6504561e2991548da69b2a5f8c42156fe9cfaff07df464",
+      "bytes": 373980,
+      "sha256": "8c149226be3b57bf078209acc6a70026956bf01477f920c69c795d2c2c9ab5eb",
       "uri": "fin_delta.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 377244,
-    "sha256": "8de6e3b3372ccf51c833e39bc42167432c04bcee36cb0d40064397a200230f73",
+    "bytes": 378784,
+    "sha256": "78be87396533230cae32d6f51d1c08501ae484868c1c2f9b87b9df7a1c7302c5",
     "uri": "render.glb"
   },
   "runtime": {
@@ -515,7 +515,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_delta.glb"
   },
-  "runtimeHash": "b1774ffee675689274a8aa9099ed8ec30c7dedea5e41bea0d846d68804cb92a4",
+  "runtimeHash": "bff88f5c63b395ab9acd5b2a3791ef2b0b3ad59153a0fe781054159fb030d577",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

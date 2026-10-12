@@ -21,6 +21,7 @@ import { coreText } from '../localizedCoreCopy.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import { escapeHtml } from '../comms.js';
 import { requestQuit } from '../quitGame.js';
+import { laneSetMode } from '../../core/simLaneCommands.js';
 import { IS_DEV } from '../../core/devMode.js';
 import { CREDITS } from '../../data/credits.js';
 import { leftoverVersionLabel, leftoverVersionDisplay, paintLeftoverVersion } from './mainMenu.js';
@@ -650,6 +651,44 @@ export function capturePhotoPng(source, opts = {}) {
   };
 }
 
+// Async twin of capturePhotoPng for click paths: canvas.toBlob moves the PNG readback
+// + encode off the calling task (toDataURL pays both synchronously), then a FileReader
+// makes the same data URL stampSlotCard expects. Falls back to the sync capture where
+// toBlob/FileReader are unavailable (non-DOM test hosts).
+export function capturePhotoPngAsync(source, opts = {}) {
+  const kind = opts.kind || PHOTO_STORE_KIND;
+  if (!source || typeof source.toBlob !== 'function' || typeof FileReader !== 'function') {
+    return Promise.resolve(capturePhotoPng(source, opts));
+  }
+  const filename = photoCaptureFilename(kind);
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (result) => { if (!settled) { settled = true; resolve(result); } };
+    try {
+      source.toBlob((blob) => {
+        if (!blob) {
+          done({ ok: false, reason: 'capture-failed', mime: 'image/png', filename });
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = typeof reader.result === 'string' ? reader.result : null;
+          if (!dataUrl || dataUrl.indexOf('data:image/png') !== 0) {
+            done({ ok: false, reason: 'not-png', mime: 'image/png', filename });
+            return;
+          }
+          done({ ok: true, mime: 'image/png', dataUrl, filename, kind });
+        };
+        reader.onerror = () => done({ ok: false, reason: 'capture-failed', mime: 'image/png', filename });
+        try { reader.readAsDataURL(blob); }
+        catch { done({ ok: false, reason: 'capture-failed', mime: 'image/png', filename }); }
+      }, 'image/png');
+    } catch {
+      done({ ok: false, reason: 'capture-failed', mime: 'image/png', filename });
+    }
+  });
+}
+
 export function writePhotoCapture(capture, host = globalThis) {
   if (!capture || capture.ok === false || !capture.dataUrl) {
     return { ok: false, reason: (capture && capture.reason) || 'no-image' };
@@ -1079,7 +1118,7 @@ export const pauseScreen = {
   },
 
   _resume(ctx) {
-    if (ctx.state.mode === 'paused') ctx.state.mode = 'flight';
+    if (ctx.state.mode === 'paused') laneSetMode(ctx.state, ctx.bus, 'flight');
     nav(ctx, 'popScreen');
   },
 
@@ -1087,7 +1126,7 @@ export const pauseScreen = {
     if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
       ctx.bus.emit('game:exitToMenu', { source: 'pause' });
     } else {
-      ctx.state.mode = 'menu';
+      laneSetMode(ctx.state, ctx.bus, 'menu');
     }
     const mgr = getManager(ctx);
     if (mgr) {
@@ -1100,7 +1139,7 @@ export const pauseScreen = {
   },
 
   onShow(ctx) {
-    if (ctx.state.mode === 'flight') ctx.state.mode = 'paused';
+    if (ctx.state.mode === 'flight') laneSetMode(ctx.state, ctx.bus, 'paused');
     // The Ending Archive row was gated at mount; a finale filed in a later session of this
     // mounted sheet must open the row. Remount once on the transition — mount owns the whole
     // sheet build, and the focus/settle work below lands on the fresh frame.

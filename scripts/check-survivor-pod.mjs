@@ -70,6 +70,9 @@ function makeState() {
       tether: { active: false, targetId: null },
     },
     factions: { faction_scn: { rep: 0 } },
+    // D133 contract: the rescue latch lands only when a live rescue contract exists, so the
+    // harness carries the missions table the live accept writes into.
+    missions: { active: [] },
     ui: {},
     world: {
       currentSectorId: 'sector_tethys_junction',
@@ -199,6 +202,8 @@ function testOfferUsesShippedChoiceAndPassengerRoute() {
   assert.deepEqual(offer.choice, template.choice, 'offer reuses shipped wm_survivor_pod choice exactly');
   assert.equal(offer.params.cmdtyId, null, 'passenger transport carries no commodity');
   assert.equal(offer.params.passengers, 1, 'passenger route carries one survivor');
+  assert.equal(offer.params.survivorPodId, point.id,
+    'offer carries the pod id the synchronous accept seam binds on');
   assert.ok(offer.survivorPod.oxygenRemaining_s > 0, 'offer exposes visible oxygen countdown metadata');
   assert.match(offer.summary, /oxygen|survivor|pod/i, 'offer copy surfaces the triage state');
   sys.destroy();
@@ -235,6 +240,18 @@ function testRescueChoiceRequiresTowAndRoutesPassenger() {
   const sys = initSystem(state, bus);
   const point = promote(state, bus);
   state.player.tether = { active: true, targetId: point.entityId };
+
+  // The live contract: missions listens on survivorPod:rescueSelected and accepts the pod's
+  // boarded passenger_transport offer inside the same synchronous emit (D133 — the latch lands
+  // on the contract, not the choice). The harness stands in for that accept.
+  bus.on('survivorPod:rescueSelected', (p) => {
+    state.missions.active.push({
+      id: `m_rescue_${p.salvagePointId}`,
+      status: 'active',
+      type: 'passenger_transport',
+      params: { survivorPodId: p.salvagePointId },
+    });
+  });
 
   bus.emit('survivorPod:choose', { salvagePointId: point.id, optionId: 'rescue' });
 

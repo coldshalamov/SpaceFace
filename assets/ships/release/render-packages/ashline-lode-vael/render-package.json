@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b93a4fe7e7d06ed5b0b288d9192c051749140fa54c1fa81b9551534d6b8672f4",
+  "contentHash": "c6ffb877a3d8c35cdfe6ca18b48b433f02001f5181a680703f3ae080f7030505",
   "dynamicGroups": [
     {
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -628,7 +628,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "baa6b08df126cd1ea027e83752ed0ea714002eff4d133de76a6a62b1c0e9b3a7",
+      "geometryHash": "368044969d284e01e3227f88b8473618acbafd10bd69f0f2187f971338d2ee80",
       "id": "sf.render.ashline-lode-vael.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -637,7 +637,7 @@
       "meshName": "COLLISION_HULL",
       "nodeId": "sf.render.ashline-lode-vael.node.collision-hull",
       "primitiveIndex": 0,
-      "vertexCount": 808
+      "vertexCount": 806
     },
     {
       "bounds": {
@@ -653,16 +653,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "136bcd27d1ae47ddfd2a1a98467b458a125e71f248fe3e711f5a319b846668f1",
+      "geometryHash": "d764bf4e33068e9df70ed6ebf10d2ae86f32b0a6d05cce30d82a8b56c8cd05c0",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-armor.primitive.0",
-      "indexCount": 14124,
+      "indexCount": 13098,
       "indexed": true,
       "materialHash": "41ec495cbb75346c6e74414a3faaedcdd46b2060245ac3ea824255103b60246e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Armor",
       "nodeId": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 4151
+      "vertexCount": 3810
     },
     {
       "bounds": {
@@ -703,16 +703,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b40fca0d29d1d75863637441eeb03dc924c226030323c93bea2e8bf8f085072b",
+      "geometryHash": "bfbcfd162c2a4b0c9a8be4a40278bfd714d3eab96af85346a04a60cd80d23404",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-brushedmetal.primitive.0",
-      "indexCount": 4416,
+      "indexCount": 2508,
       "indexed": true,
       "materialHash": "edf6856d053eb462dd89c79869d35b6483f123c9f01684479cb33d60a498d71c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_BrushedMetal",
       "nodeId": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 1288
+      "vertexCount": 1131
     },
     {
       "bounds": {
@@ -728,7 +728,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4dc8ed1d3afe6a6840fe166a8c234b53a22930c2f51bcd1e0ad27705a181925f",
+      "geometryHash": "c3afe828108471608faeeff2bb7e462578a78f19c5bbd7e3887e7441f618990a",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 4176,
       "indexed": true,
@@ -803,16 +803,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e407c99e615d13a92d4f890207435a09077cbf4b1170860af445aa9eb9c3dfb8",
+      "geometryHash": "43c82fec8c23d13038ddf22be10023efb60172d662da8b5e48e3d4a263321df8",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-hull.primitive.0",
-      "indexCount": 10503,
+      "indexCount": 9054,
       "indexed": true,
       "materialHash": "7327afe0ca1ee65d9e086f0bffdffd3d80c5c04ea3d820f5adf1ff9678c073c4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Hull",
       "nodeId": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-hull",
       "primitiveIndex": 0,
-      "vertexCount": 3284
+      "vertexCount": 2873
     },
     {
       "bounds": {
@@ -828,16 +828,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c4a40804f2dad383d5fe86cf5e8521422f2046fe96bab0e8de5ec45034b92620",
+      "geometryHash": "9ff27b909d3f426a5894619a75a11a7535b9977559e8307a43bb762342654193",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-lights-cyan-sodium.primitive.0",
-      "indexCount": 1488,
+      "indexCount": 285,
       "indexed": true,
       "materialHash": "6c6f2dfad1629408cda975200fd83d08bb8038aadb8e0a0340f110e2aa9f9781",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Lights_Cyan_sodium",
       "nodeId": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-lights-cyan-sodium",
       "primitiveIndex": 0,
-      "vertexCount": 435
+      "vertexCount": 152
     },
     {
       "bounds": {
@@ -878,7 +878,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "039c26e327c53efff8fd319fba6c763a495ee624e6dd7588b606c7915378655e",
+      "geometryHash": "0629a89a2ad66920b426dfc4a472ff3644fb5d77e64651fb4dda968a7e49f898",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-livery.primitive.0",
       "indexCount": 1212,
       "indexed": true,
@@ -903,16 +903,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f5fe3c54c25a0055a2ff9c60c89c00ee273c326cb33f553b03c0f2a2c266b55",
+      "geometryHash": "e7d20f6f7997357c322c7b7a8a3e87e0512c7abf106b79805a918157a003a197",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-mechanical.primitive.0",
-      "indexCount": 16935,
+      "indexCount": 16731,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Mechanical",
       "nodeId": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 5720
+      "vertexCount": 5680
     },
     {
       "bounds": {
@@ -928,16 +928,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b38e24b2e716be4d7eb758f3eea0f8b327e80d9fc824b2df5c818f44d2ed159",
+      "geometryHash": "5f054fb86081dfc8de93dd938ef3bb9bed12aa14ff173f44b9f10027cd6548b4",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-mechanicaldark.primitive.0",
-      "indexCount": 7914,
+      "indexCount": 7722,
       "indexed": true,
       "materialHash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_MechanicalDark",
       "nodeId": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 2486
+      "vertexCount": 2413
     },
     {
       "bounds": {
@@ -953,16 +953,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3c540fdc5cac0f5da1213f723d0b561fa31b3e3ee267a991d55ba47f38f197f4",
+      "geometryHash": "ceaa2562d1d733770f682ce4488ec315d6188b57e2c2294b498270309671413c",
       "id": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-warning.primitive.0",
-      "indexCount": 1062,
+      "indexCount": 939,
       "indexed": true,
       "materialHash": "74b8a7f0cf05c7ab5ae857cdc42f015d4e7aa2dd0168d85d79df0b7fb8655567",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Warning",
       "nodeId": "sf.render.ashline-lode-vael.node.lod0-motion-hull-core-warning",
       "primitiveIndex": 0,
-      "vertexCount": 357
+      "vertexCount": 301
     },
     {
       "bounds": {
@@ -978,16 +978,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1bab6ccdfedaef57777b71487107e63004409d33adaa98b53699345dce06315e",
+      "geometryHash": "53e2c99f1e4a0db7f8be57eeeb4b7e66e2334382450142d56ab52b0e051c987d",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-armor.primitive.0",
-      "indexCount": 4335,
+      "indexCount": 4287,
       "indexed": true,
       "materialHash": "41ec495cbb75346c6e74414a3faaedcdd46b2060245ac3ea824255103b60246e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_HULL_CORE_Armor",
       "nodeId": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1460
+      "vertexCount": 1447
     },
     {
       "bounds": {
@@ -1028,7 +1028,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5fb9ed2ab3cc5ca563cb135bdbf6e858e94db8504fb340c9ff1542525534077a",
+      "geometryHash": "cd793ef03e8e91f7c79b1efe4e256a038d0b9fa25367ac3ed4c7b37499042a98",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 1002,
       "indexed": true,
@@ -1037,7 +1037,7 @@
       "meshName": "LOD1_MOTION_HULL_CORE_BrushedMetal",
       "nodeId": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-brushedmetal",
       "primitiveIndex": 0,
-      "vertexCount": 306
+      "vertexCount": 443
     },
     {
       "bounds": {
@@ -1053,7 +1053,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "67c92df32fe07b5638d9094a887d815ac522fcccc4d1e97427899191733c75f8",
+      "geometryHash": "168622f5a891389f73d1c83a558fd3e2cdd9f6fa1da4830b2740888cd17bd971",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -1128,7 +1128,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "704e6211baf58fac8773b267c0b3e49b84de1155bf5d884cb40ff21915717ede",
+      "geometryHash": "0d967e89e5e0bb5700175e17c8bbc62d40fe348d3d64b818f3942597980286c1",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-hull.primitive.0",
       "indexCount": 2709,
       "indexed": true,
@@ -1153,7 +1153,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c84f360e37fcab5865a48cba56e64d5c4540c04461ae3aa2123c8076b494800a",
+      "geometryHash": "9377084a58dd4e56505235f9bdd45df2d8aecd6a21565c1753ea8cb05d1e7eb0",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-lights-cyan-sodium.primitive.0",
       "indexCount": 78,
       "indexed": true,
@@ -1203,7 +1203,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "763393ac850575a06d301956a9bde5d35ea5321f94cf71bb7a0255c6fd73cdcb",
+      "geometryHash": "88e60d0e148aeb1865dade77eb80f99765219c4b7c61c4f2b2253df84263130b",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-livery.primitive.0",
       "indexCount": 222,
       "indexed": true,
@@ -1228,7 +1228,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "419559250477beb98fff143323841968222bcf8c5df42b4fd1ef273bceddbb91",
+      "geometryHash": "d76063fcc250930fd21b6ab7ec40f6858b1e58b430440f11d39aa8faa958c206",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-mechanical.primitive.0",
       "indexCount": 8643,
       "indexed": true,
@@ -1253,7 +1253,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fe674ab55f7c378c18e8f7fc2661fd959527ed8139a1d28cab5b3e35fb8cf2d6",
+      "geometryHash": "8d1bbd304f0674e48e6a97859dd707c2f4d6495610446869b5119f163e6a22a3",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 5154,
       "indexed": true,
@@ -1278,7 +1278,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "072f5c90137e6c907fd9903c1899e2a9bb9128c2b1306a39ec1a97b7f7e395c7",
+      "geometryHash": "8ef01070c8fa59e9361e6a81e8503aa44adb751f49e96e7b744b7dfa3263b476",
       "id": "sf.render.ashline-lode-vael.node.lod1-motion-hull-core-warning.primitive.0",
       "indexCount": 135,
       "indexed": true,
@@ -1303,16 +1303,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ceeecfc8c1196650103833f1d30c2cfc17c51f3b1a4fee4283c91dac3f6d90bf",
+      "geometryHash": "8cfe3190f545e5d3ae220e9060f84a79c27a2b920524bca426b0a5126ac12614",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-armor.primitive.0",
-      "indexCount": 1911,
+      "indexCount": 1863,
       "indexed": true,
       "materialHash": "41ec495cbb75346c6e74414a3faaedcdd46b2060245ac3ea824255103b60246e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_HULL_CORE_Armor",
       "nodeId": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-armor",
       "primitiveIndex": 0,
-      "vertexCount": 696
+      "vertexCount": 684
     },
     {
       "bounds": {
@@ -1353,7 +1353,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "741b42e5f0665adf75a5a13d9e8136a232cde060d7fda95774eeb5aa6da14655",
+      "geometryHash": "da342b049e2ab04a100a34eeddd161c553a46709146210269a1ee7048ec6cec8",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-brushedmetal.primitive.0",
       "indexCount": 336,
       "indexed": true,
@@ -1378,7 +1378,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e93f4ecf07b333be3266786e7f3a4ee5b1fded7a299bc35c1ba72114fff35b31",
+      "geometryHash": "66a14f3b048e2739db46c3b7bb3ea6b6ce957ca7eb6fc906edbba7ceb71ee7fd",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-hook-drive-core.primitive.0",
       "indexCount": 1116,
       "indexed": true,
@@ -1453,7 +1453,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "72eb18f302241754a90601839122a2bd8e48c4dd1113d8a5ca5863f44df12996",
+      "geometryHash": "4ed465234b3d9d2733947619fd3eb898f037807db9aa081a2272fcde7b7b3696",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-hull.primitive.0",
       "indexCount": 939,
       "indexed": true,
@@ -1478,7 +1478,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c84f360e37fcab5865a48cba56e64d5c4540c04461ae3aa2123c8076b494800a",
+      "geometryHash": "9377084a58dd4e56505235f9bdd45df2d8aecd6a21565c1753ea8cb05d1e7eb0",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-lights-cyan-sodium.primitive.0",
       "indexCount": 78,
       "indexed": true,
@@ -1528,7 +1528,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "57f727808c8c0df2a6e086e9c262c99bcc933b2e5b0d9fdb7f6285c070eb68d2",
+      "geometryHash": "183101f9c1b89e956a70d00aec6695723caff6136375f205d1122fe84f65467b",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-livery.primitive.0",
       "indexCount": 21,
       "indexed": true,
@@ -1553,7 +1553,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a970113f60bf42804505e15f0cd253cc84f3928ed49bbcc63246504f5723b96",
+      "geometryHash": "9db3d611eee16c24aeefbe30a6d2e0184be3d3ee3fecf6ff6bd898f47704fe07",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-mechanical.primitive.0",
       "indexCount": 3456,
       "indexed": true,
@@ -1578,7 +1578,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7027b56c3810fbbfe00f9c3d1298024f0c8d1e0bbf58c6fe9f3ec46af96e8a3a",
+      "geometryHash": "3939a9605611d68d44dbab35ce3f755b98a68faa4f525e3d085d3f1670f9ece0",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-mechanicaldark.primitive.0",
       "indexCount": 1602,
       "indexed": true,
@@ -1603,7 +1603,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cba0353a279e1a5fd42a79d956eea34cea9b8a65ec2eedd4f46ed27d207b6c69",
+      "geometryHash": "3654f9a992c5409a7e417cc25b62af9d12544e23a0b060d1f3a40f617fa37b8d",
       "id": "sf.render.ashline-lode-vael.node.lod2-motion-hull-core-warning.primitive.0",
       "indexCount": 63,
       "indexed": true,
@@ -4577,19 +4577,19 @@
       "sha256": "9cf62c634b2142b40ddebbf4ba79a745498d69c7315e41953a407cefe13051e8"
     },
     "sourceGlb": {
-      "bytes": 850080,
-      "sha256": "9b1db91d1c6f26231db5432884983dea10e394dee5147d1ac6c38efa767cbe10",
+      "bytes": 831524,
+      "sha256": "6e3d9dae15c305c8f37a2023ddc7e9a121d2fd2a26fb661ccc310f6e4eae7eda",
       "uri": "ashline_lode_vael.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1441416,
-    "sha256": "e5307ae3a45339068113c4c24c81142abcd4b055312db495c421cca2c35f4680",
+    "bytes": 1384148,
+    "sha256": "d5152a1036ba3df89a711bce5ff1966c02a2885118fecdd94941a94d7f03518a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6688,7 +6688,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_lode_vael.glb"
   },
-  "runtimeHash": "a5d70b612c40958bed043b7dcc029253a7e6867c39d5ac9f81a72ace91ba6f6e",
+  "runtimeHash": "7a007ea15956f63f520c77fbb7e8e02f6153fc2350b7a0b69fbe066defd2c4db",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

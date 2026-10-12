@@ -55,7 +55,9 @@ import { VEIL_NURSERY_ID, materializeNurseryDressing, tickVeilNursery,
 const TWO_PI = Math.PI * 2;
 
 /** Membership lanes for the sector fauna cast — members are type 'fauna' only. */
-const FAUNA_SCAN_LANES = ['fauna'];
+// 'sectorMemberships' joins the latch: a post-append re-home used to leave the
+// (laneVersion, sectorId) pair unchanged, so the cache served pre-move membership.
+const FAUNA_SCAN_LANES = ['fauna', 'sectorMemberships'];
 
 function dist2(ax, az, bx, bz) {
   const dx = ax - bx;
@@ -494,7 +496,15 @@ export function handleAlienEcologyEvent(world, type, payload) {
       if (fittedFlag(state, 'resonantMassline')) break;
       const sectorId = payload.sectorId;
       if (!sectorId) break;
-      for (const e of indexedTypeScan(state, 'fauna')) {
+      // Sector-membership lane — O(sector bucket) instead of the fauna lane + filter;
+      // the per-member predicates below are unchanged.
+      const _impIndex = state.entityIndex;
+      const _impPool = _impIndex && _impIndex.__spacefaceEntityIndexV1 === true
+          && _impIndex.ready === true && _impIndex.bySectorId instanceof Map
+        ? _impIndex.bySectorId.get(sectorId)
+        : indexedTypeScan(state, 'fauna');
+      if (!_impPool) break;
+      for (const e of _impPool) {
         const eco = e && e.data && e.data.ecology;
         if (!eco || e.homeSectorId !== sectorId) continue;
         const species = faunaSpeciesById(eco.speciesId);
@@ -800,7 +810,15 @@ export function tickAlienEcology(world, dt) {
     faunaCache.sectorId = sectorId;
     faunaCache.fauna.length = 0;
     faunaCache.shepherds.length = 0;
-    for (const e of indexedTypeScan(state, 'fauna')) {
+    // The sector lane holds every indexed entity under its canonical claim — walking
+    // this sector's bucket is O(members) instead of the fauna lane + filter. The
+    // per-member predicates are unchanged, so cast membership matches the old walk.
+    const index = state.entityIndex;
+    const pool = index && index.__spacefaceEntityIndexV1 === true && index.ready === true
+        && index.bySectorId instanceof Map
+      ? index.bySectorId.get(sectorId)
+      : indexedTypeScan(state, 'fauna');
+    if (pool) for (const e of pool) {
       if (!e || e.alive === false || e.type !== 'fauna' || !e.data || !e.data.ecology) continue;
       if (e.homeSectorId !== sectorId) continue;
       faunaCache.fauna.push(e);
