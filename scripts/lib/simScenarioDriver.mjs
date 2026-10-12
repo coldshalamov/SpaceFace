@@ -103,7 +103,15 @@ export async function reloadThroughSave(registry, state, metrics, reloadAt, opti
   const persistentAfter = state.entityList.filter((e) => e.alive && e.flags && e.flags.persistent).length;
   assert.equal(state.tick, reloadAt, '47-A reload should preserve sim tick');
   assert.equal(persistentAfter, persistentBefore, '47-A reload should preserve persistent live actors');
-  await preparePhysicsBackend(registry, state, options.physicsBackend || 'rapier-dynamic', { reset: true });
+  // loadEnvelope's epilogue adopts the snapshot into the LIVE owner, consuming the deserialize
+  // stash — the reset below then mints a fresh owner that would rebuild from entity scalars and
+  // lose the solver's contact-manifold warm starts (an f32 ulp that grows into a hash divergence
+  // ~10 ticks later; D184). Hand the fresh owner the envelope's own physics payload so it adopts
+  // the same canonical world bytes, like resumeLoadedEnvelope already does for --load-envelope.
+  await preparePhysicsBackend(registry, state, options.physicsBackend || 'rapier-dynamic', {
+    reset: true,
+    sg02Snapshot: envelope.data && envelope.data.physics,
+  });
   if (metrics) metrics.saveReloads++;
 }
 
