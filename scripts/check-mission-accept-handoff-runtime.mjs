@@ -60,9 +60,15 @@ try {
   });
   await waitForVisible(page, '[data-screen="station"] .sx-dock', DOCK_TIMEOUT_MS, 'command dock after dock')
     .catch((error) => reportDockHandoffFailure(page, dockTarget, issues, error));
+  // On the worker lane ui.dockedStationId is sim-authored — the screen mounts on the
+  // docked emit while the station id still travels the inputFold→mirror round trip.
+  await page.waitForFunction(() => {
+    const s = window.SF && window.SF.state;
+    return !!(s && s.ui && typeof s.ui.dockedStationId === 'string' && s.ui.dockedStationId);
+  }, null, { timeout: DOCK_TIMEOUT_MS });
 
   // Seed a live commodity contract on this station's board (a bulk_trade the market here can buy).
-  const seeded = await page.evaluate(() => {
+  const seeded = await page.evaluate(async () => {
     const sf = window.SF;
     const state = sf.state;
     const stationId = state.ui.dockedStationId;
@@ -73,30 +79,70 @@ try {
     for (const e of (state.entityList || [])) {
       if (e && e.type === 'station' && e.data && e.data.stationId && e.data.stationId !== stationId) { dest = e.data; break; }
     }
-    const board = state.missions.boards[stationId] || { slots: [] };
-    board.slots = board.slots || [];
-    board.slots.unshift({
+    const offer = {
       id: 'handoff_probe_bulk_trade',
       type: 'bulk_trade',
       factionId: 'faction_mts',
       title: 'Probe tracked cargo loop',
       risk: 0,
       reward: 1200,
+      stationId,
       cargo: { commodityId: cmdtyId, qty: 6 },
       destinationName: dest ? (dest.name || dest.stationId) : 'Depot',
       destStationId: dest ? dest.stationId : null,
       params: { cmdtyId, qty: 6 },
-    });
-    state.missions.boards[stationId] = board;
-    sf.bus.emit('mission:updated', { missionId: null });
-    return { ok: true, stationId, cmdtyId };
+    };
+    // On the worker lane the facade's missions.boards is a read-only mirror — a direct
+    // mutation renders transiently but the sim never sees the offer, so accept denies.
+    // Post through the lane rpc so the seeded offer is authoritative in the sim; on the
+    // main lane laneRpc reports no handler and the in-process mutation is the authority.
+    let posted = false;
+    if (typeof sf.laneRpc === 'function') {
+      try {
+        const resp = await sf.laneRpc('missionsCall', { method: 'postBoardOffer', offer });
+        posted = !!(resp && resp.ok === true && resp.result && resp.result.ok === true);
+      } catch (_) { posted = false; }
+    }
+    if (!posted) {
+      const board = state.missions.boards[stationId] || { slots: [] };
+      board.slots = board.slots || [];
+      board.slots.unshift(offer);
+      state.missions.boards[stationId] = board;
+      sf.bus.emit('mission:updated', { missionId: null });
+    }
+    return { ok: true, stationId, cmdtyId, posted };
   });
   assert.equal(seeded.ok, true, 'probe should seed a commodity contract on the docked board');
 
   // Go to Contracts, select the seeded offer, and Accept & Track it.
   await domClick(page, '[data-screen="station"] .sx-dock [data-nav="contracts"]');
   await waitForVisible(page, '[data-screen="station"] .sx-ct', 8000, 'Contracts board');
-  await page.waitForFunction(() => !!document.querySelector('[data-screen="station"] .sx-ct-row[data-mid="handoff_probe_bulk_trade"]'), null, { timeout: 6000 });
+  // On the worker lane the seeded offer crosses back on the missions domain mirror —
+  // a cold-tier leaf that re-signs on a multi-second cadence. Wait for the mirrored
+  // board to carry the offer before expecting the row; the main lane resolves on
+  // the first poll since the mutation is in-process.
+  await page.waitForFunction((sid) => {
+    const b = window.SF && window.SF.state && window.SF.state.missions && window.SF.state.missions.boards;
+    return !!(b && b[sid]
+      && (b[sid].slots || []).some((o) => o && o.id === 'handoff_probe_bulk_trade'));
+  }, seeded.stationId, { timeout: 20000 });
+  await page.waitForFunction(() => !!document.querySelector('[data-screen="station"] .sx-ct-row[data-mid="handoff_probe_bulk_trade"]'), null, { timeout: 6000 }).catch(async (err) => {
+    const snap = await page.evaluate(() => {
+      const sf = window.SF; const st = sf.state;
+      const board = st.missions.boards && st.missions.boards[st.ui.dockedStationId];
+      const el = document.querySelector('[data-screen="station"] .sx-ct');
+      const applied = (window.__SF_LANE_APPLIED || []).slice(-8).map((r) => r && r.type);
+      return {
+        docked: st.ui.dockedStationId,
+        slotIds: board ? (board.slots || []).map((o) => o && o.id) : null,
+        rowCount: el ? el.querySelectorAll('.sx-ct-row').length : -1,
+        boardHtml: el ? (el.innerHTML || '').slice(0, 600) : null,
+        lastEvents: applied,
+      };
+    });
+    console.log('[diag-rows]', JSON.stringify(snap));
+    throw err;
+  });
   const before = await page.evaluate(() => window.SF.state.missions.active.filter((m) => m && m.status === 'active').length);
 
   await domClick(page, '[data-screen="station"] .sx-ct-row[data-mid="handoff_probe_bulk_trade"]');
@@ -156,6 +202,8 @@ try {
 
   // Accept + Track continuity: the seeded mission becomes active AND tracked (nav waypoint plotting
   // is owned by the sim and covered by check:market-nav; here we assert the UI-driven continuity).
+  // The accept mutates sim-side on the worker lane; missions.active crosses back on its own
+  // hot domain leaf (every publish pass), so the timeout covers several publish rounds.
   await page.waitForFunction((prev) => {
     const state = window.SF.state;
     const active = (state.missions.active || []).filter((m) => m && m.status === 'active');

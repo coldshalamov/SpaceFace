@@ -947,6 +947,10 @@ export const CONTRACT_47A_B3_TAG = 'campaign47a:b3:bigger_boat';
 // first-hour rail can guarantee a legible three-loop choice without inventing a second contract
 // lifecycle. Missions still owns generation, acceptance, targets, rewards, and receipts.
 export const ONBOARDING_CHOICE_SOURCE = 'onboardingChoice';
+// Provenance tag for offers inserted through postBoardOffer: posted authored work,
+// not an epoch reroll — ensureBoard's refresh retains them like the other
+// player-earned classes so a regen cannot swallow the row before acceptance.
+export const POSTED_BOARD_SOURCE = 'postedBoardOffer';
 export const ONBOARDING_CHOICE_LOOPS = Object.freeze([
   Object.freeze({
     type: 'bulk_trade', label: 'HAUL', maxRiskTier: 1, maxCollateralCr: 2000, maxRewardCr: 10000,
@@ -2039,6 +2043,11 @@ export const missions = {
       offer && offer.source === CAPITAL_BOSS_SOURCE
       && !completedEndgamePull(state, offer.params && offer.params.capitalBossId)
     ));
+    // postBoardOffer rows are posted authored work kept until accepted — same
+    // class as the other player-earned retentions; acceptMission withdraws them.
+    const retainedPostedOffers = previousSlots.filter((offer) => (
+      offer && offer.source === POSTED_BOARD_SOURCE
+    ));
     board = {
       refreshEpoch: epoch,
       slots: [
@@ -2068,6 +2077,7 @@ export const missions = {
         ...retainedSalvageOffers,
         ...retainedEcologyOffers,
         ...retainedSetPieceFollowOns,
+        ...retainedPostedOffers,
       ],
     };
     if (!info.desklessOutpost) this._guaranteeRecoveryOffer(info, board, epoch);
@@ -3958,6 +3968,44 @@ export const missions = {
       if (row.board.slots.some((candidate) => candidate && candidate.id === row.offer.id)) continue;
       row.board.slots.splice(Math.min(row.index, row.board.slots.length), 0, row.offer);
     }
+  },
+
+  /**
+   * Missions-owned seam to post an authored board offer without accepting it — the
+   * post-only half of postAndAcceptAuthoredOffer for callers that need the offer
+   * on the board so the player (or a probe driving the player's click) accepts it.
+   */
+  postBoardOffer(rawOffer) {
+    if (!rawOffer || typeof rawOffer !== 'object') return { ok: false, reason: 'bad_offer' };
+    const offer = JSON.parse(JSON.stringify(rawOffer));
+    if (!offer.id || !offer.type || !offer.stationId) {
+      return { ok: false, reason: 'bad_offer_shape' };
+    }
+    if (!this.state.missions.boards || typeof this.state.missions.boards !== 'object') {
+      this.state.missions.boards = {};
+    }
+    let board = this.state.missions.boards[offer.stationId];
+    if (!board || typeof board !== 'object') {
+      board = { refreshEpoch: this._epoch(), slots: [] };
+      this.state.missions.boards[offer.stationId] = board;
+    }
+    if (!Array.isArray(board.slots)) board.slots = [];
+    board.slots = board.slots.filter((candidate) => candidate && candidate.id !== offer.id);
+    if (offer.source == null) offer.source = POSTED_BOARD_SOURCE;
+    board.slots.unshift(offer);
+    this.bus.emit('mission:updated', { missionId: null, stationId: offer.stationId });
+    return { ok: true, offerId: offer.id };
+  },
+
+  // Read-only lane probes — facade reads cross on the missions domain leaf (a
+  // multi-second cadence); harnesses that need the sim's truth now ask it
+  // directly instead of treating mirror staleness as a verdict.
+  listActive() {
+    return (this.state.missions.active || []).map((m) => ({ id: m && m.id, status: m && m.status }));
+  },
+  boardSlots(stationId) {
+    const board = this.state.missions.boards && this.state.missions.boards[stationId];
+    return board && Array.isArray(board.slots) ? board.slots.map((o) => o && o.id) : [];
   },
 
   /**

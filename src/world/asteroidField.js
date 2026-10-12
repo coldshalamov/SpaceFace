@@ -11,6 +11,7 @@ import { NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js
 import { indexedTypeScan, entityIndexLaneVersion } from './livingWorldViews.js';
 import { advanceResourceBody } from './worldCatchup.js';
 import { racingAsteroidSpec } from './racingCorridor.js';
+import { markAuxRowDirty, markAuxRowRemoved } from './auxRowJournal.js';
 
 export const ASTEROID_FIELD_SCHEMA = 'spaceface.asteroidField.v1';
 export const ASTEROID_FIELD_CELL = 220;
@@ -170,6 +171,7 @@ export function insertAsteroidFieldRock(state, spec = {}) {
   field.dirtyPoseIds.add(id);
   noteFieldRockMotion(field, rec);
   field.version++;
+  markAuxRowDirty(field, id);
   return rec;
 }
 
@@ -312,6 +314,7 @@ function removeFieldRecord(field, rec) {
   gridRemove(field, rec);
   field.version++;
   rec.alive = false;
+  markAuxRowRemoved(field, rec.id);
   clearEntityRuntime(rec);
   return true;
 }
@@ -337,6 +340,7 @@ function catchUpFieldRock(field, rec, simTime) {
   if (!(toT > fromT)) {
     rec.lastExactT = toT;
     noteFieldRockMotion(field, rec);
+    markAuxRowDirty(field, rec.id);
     return rec;
   }
   const advanced = advanceResourceBody({
@@ -358,6 +362,7 @@ function catchUpFieldRock(field, rec, simTime) {
   if (field && field.dirtyPoseIds instanceof Set) field.dirtyPoseIds.add(rec.id);
   noteFieldRockMotion(field, rec);
   if (field && Number.isFinite(field.version)) field.version++;
+  markAuxRowDirty(field, rec.id);
   return rec;
 }
 

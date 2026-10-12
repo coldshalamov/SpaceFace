@@ -220,7 +220,9 @@ try {
 
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-  page._hudProbeUrl = baseUrl;
+  // Writes state.entities/onboarding/missions/ui/nav directly — facade fabrications the
+  // worker lane's mirror would clobber, so this probe pins the main lane.
+  page._hudProbeUrl = baseUrl + '?simLane=main';
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(String(error)));
   await bootFlight(page);

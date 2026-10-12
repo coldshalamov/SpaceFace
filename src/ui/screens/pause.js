@@ -21,6 +21,7 @@ import { coreText } from '../localizedCoreCopy.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import { escapeHtml } from '../comms.js';
 import { requestQuit } from '../quitGame.js';
+import { laneSetMode } from '../../core/simLaneCommands.js';
 import { IS_DEV } from '../../core/devMode.js';
 import { CREDITS } from '../../data/credits.js';
 import { leftoverVersionLabel, leftoverVersionDisplay, paintLeftoverVersion } from './mainMenu.js';
@@ -1117,7 +1118,7 @@ export const pauseScreen = {
   },
 
   _resume(ctx) {
-    if (ctx.state.mode === 'paused') ctx.state.mode = 'flight';
+    if (ctx.state.mode === 'paused') laneSetMode(ctx.state, ctx.bus, 'flight');
     nav(ctx, 'popScreen');
   },
 
@@ -1125,7 +1126,7 @@ export const pauseScreen = {
     if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
       ctx.bus.emit('game:exitToMenu', { source: 'pause' });
     } else {
-      ctx.state.mode = 'menu';
+      laneSetMode(ctx.state, ctx.bus, 'menu');
     }
     const mgr = getManager(ctx);
     if (mgr) {
@@ -1138,7 +1139,7 @@ export const pauseScreen = {
   },
 
   onShow(ctx) {
-    if (ctx.state.mode === 'flight') ctx.state.mode = 'paused';
+    if (ctx.state.mode === 'flight') laneSetMode(ctx.state, ctx.bus, 'paused');
     // The Ending Archive row was gated at mount; a finale filed in a later session of this
     // mounted sheet must open the row. Remount once on the transition — mount owns the whole
     // sheet build, and the focus/settle work below lands on the fresh frame.

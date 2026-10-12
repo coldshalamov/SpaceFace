@@ -202,6 +202,7 @@ import { NEMESIS_KITS } from '../data/nemesisRival.js';
 import { BREAKAWAY_THIRD_SHIFT_VARIANT_ID, heistLaunchVariant } from '../data/heistFacilities.js';
 import { BREAKAWAY_PRESSURE } from '../data/heistMission.js';
 import { promoteAsteroidFieldRock, queryAsteroidField, queryAsteroidFieldNearestSteps, queryAsteroidFieldSteps } from '../world/asteroidField.js';
+import { laneCommandSink, lanePromote } from '../core/simLaneCommands.js';
 import { entityIndexVersion, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { itineraryPositionInto, itineraryVelocityInto } from '../world/worldCatchup.js';
 import {
@@ -13902,7 +13903,10 @@ export const render = {
             if (dx * dx + dz * dz > reach * reach) continue;
             const key = asteroidFirstFlightCookKey(rec);
             if (seenRockKeys.has(key)) continue;
-            if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
+            const promoted = laneCommandSink()
+              ? lanePromote({ id: rec.id, source: 'rock', reason: 'first-flight-cook' })
+              : promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook');
+            if (!promoted) continue;
             seenRockKeys.add(key);
             // A promote fans a synchronous entity:spawned emit to ~24 listeners —
             // pace the burst or the cook's slice clock parks for the whole tail.
@@ -14125,6 +14129,12 @@ export const render = {
             }
             const key = asteroidFirstFlightCookKey(rec);
             if (coveredKeys.has(key)) continue;
+            if (laneCommandSink()) {
+              if (lanePromote({ id: rec.id, source: 'rock', reason: 'survival-roster-prewarm' })) {
+                coveredKeys.add(key);
+              }
+              continue;
+            }
             const promoted = promoteAsteroidFieldRock(state, rec.id, this._simHelpers,
               'survival-roster-prewarm');
             if (!promoted) continue;
@@ -17150,7 +17160,10 @@ export const render = {
               if (dx * dx + dz * dz > reach * reach) continue;
               const key = asteroidFirstFlightCookKey(rec);
               if (seenRockKeys.has(key)) continue;
-              if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
+              const promoted = laneCommandSink()
+                ? lanePromote({ id: rec.id, source: 'rock', reason: 'first-flight-cook' })
+                : promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook');
+              if (!promoted) continue;
               seenRockKeys.add(key);
               // A promote fans a synchronous entity:spawned emit to ~24 listeners —
               // pace the burst or the cook's slice clock parks for the whole tail.
@@ -26760,7 +26773,7 @@ export const render = {
           transformed++;
         }
         if (userData.asteroidInstanceBody) userData.asteroidInstanceViewCulled = false;
-  
+
         // Projected-screen-size LOD (spec §12.4): visible roots resolve detail from projected pixel
         // width with hysteresis. Newly visible roots are fully posed above before this decision.
         _viewBandOptions.isPlayer = isPlayer;
@@ -26826,7 +26839,7 @@ export const render = {
             }
           }
         }
-  
+
         if (entity && mesh.userData?.geometryPending && this.state.mode === 'flight'
           && Number.isFinite(this.state.render?.firstPlayableFrameAt)) {
           this._noteArrivalRosterMiss(entity);
@@ -26932,10 +26945,10 @@ export const render = {
             }
           }
         }
-  
+
         if (entity) classifyRenderEntity(this._entityFrame, entity, mesh, false);
         fullSynced++;
-  
+
         // Visible interactive and hero roots retain their authored per-frame presentation closures.
         // Distant LOD2 traffic is a speck: runtime/damage closures cannot change a readable pixel.
         // Off-screen runway (middle band) keeps poses every frame but refreshes closures on cadence.
@@ -26990,7 +27003,7 @@ export const render = {
           // Native shoe/pad poses and consumed-force radiance remain exact when decoration sleeps.
           userData.updateCeresPhysicalState(entity, _worldSiteA11y);
         }
-  
+
         // A-List dynamic mechanical micro-motion & environmental reactions. Under a zero-scale
         // freeze presFrameDt is exactly 0 — skipping here also skips the spring CPU, and every
         // consumer floors its dt so passing 0 would still creep.
@@ -27066,7 +27079,7 @@ export const render = {
             globalInfrastructureMotion.updateWreckMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
           }
         }
-  
+
         // Shield geometry is an impact response, not a permanent bubble. The flash decays each visible
         // frame and is punched up whenever the entity's shield value drops.
         const shieldBubble = userData.shieldBubble;
@@ -27084,7 +27097,7 @@ export const render = {
             presFrameDt,
           );
         }
-  
+
         const hlod = userData.hlod;
         if (hlod) {
           hlodDetailedVisible += Number(hlod.detailedVisible) || 0;
@@ -31407,7 +31420,7 @@ export const render = {
     this._depthStageArmRetryAt = (typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now() : Date.now()) + 1000;
     noteLaneFault(this.state, 'depthStageArm', (this._depthStageArmFaults | 0) >= 3);
-  }, 
+  },
 
   _stageShadowDepthOnSettingEnable() {
     // Cast promotions applied while the map was off could neither withhold nor stage

@@ -4,6 +4,17 @@
 // send/invoke surface.
 const { contextBridge, ipcRenderer } = require('electron');
 
+// S1 stage D: SPACEFACE_SIM_LANE opts the authoritative sim onto its worker lane for a
+// launched shell. The canonical game URL forbids query params (launch policy), so the
+// lane ships through localStorage 'sf.simLane' — the same channel the browser soak
+// harnesses use — set here before any page module evaluates. Per-launch semantics: an
+// unset env clears the key so a stale value from an env'd boot cannot pin the lane.
+try {
+  const simLane = String(process.env.SPACEFACE_SIM_LANE || '').trim();
+  if (simLane) localStorage.setItem('sf.simLane', simLane);
+  else localStorage.removeItem('sf.simLane');
+} catch (_) { /* storage gated — the lane selector falls back to its default */ }
+
 const SHELL_LIFECYCLE_CHANNEL = 'spaceface:shell-lifecycle';
 const ALLOWED_STATES = new Set([
   'foreground-visible',

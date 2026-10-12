@@ -3403,7 +3403,10 @@ async function upgradeAuthoredCargoCapsuleBoundary(
   try {
     await prepareAuthoredVisualPipelines(authored.root, options);
   } catch (error) {
-    await ((installedPreparedDisposer ? installedPreparedDisposer() : disposePreparedCargoCapsule()) || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
+    await ((installedPreparedDisposer ? installedPreparedDisposer()
+      : (isAuthoredAdmissionBoundaryCurrent(options) && disposePreparedAuthoredBoundary(boundary))
+        || disposePreparedCargoCapsule())
+      || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
     assertQueuedAuthoredAdmissionActive(options, 'after-payload-pipeline-error');
     return failAuthoredCargoCapsuleAdmission(
       boundary,
@@ -4382,7 +4385,10 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       await prepareAuthoredVisualPipelines(authored.root, options);
     } catch (error) {
       try {
-        await ((installedPreparedDisposer ? installedPreparedDisposer() : disposePreparedPlace()) || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
+        await ((installedPreparedDisposer ? installedPreparedDisposer()
+          : (isAuthoredAdmissionBoundaryCurrent(options) && disposePreparedAuthoredBoundary(boundary))
+            || disposePreparedPlace())
+          || disposeOwnedPreparedBoundary(boundary, installedPreparedDisposer));
       } catch (cleanupError) {
         throw new AggregateError(
           [error, cleanupError],
@@ -4457,6 +4463,7 @@ function failAuthoredPlaceAdmission(
   boundary, fallbackRoot, entity, renderer, options, setActive, reason, error, flags = {},
 ) {
   assertQueuedAuthoredAdmissionActive(options, 'before-place-failure');
+  if (!flags.residencyReleased) releaseBoundaryResidency(renderer, boundary, reason, options && options.admissionEpoch);
   const admissionEntity = options.admissionEntity || entity;
   // A stale run's fail legs are bookkeeping-only: the epoch-scoped release frees its own pins,
   // but every verdict write — readmission mark, same-semantic-fallback settle, 'unavailable' —
@@ -8655,6 +8662,11 @@ export async function waitForOpeningCompositionSettled(state, options = {}) {
     });
   };
   let lastRequest = { requested: 0, ids: [] };
+  // Settle-verdict latch: under the worker lane the readiness verdict reads a mirror that can
+  // sit one transport frame behind the authored upgrades it gates. Require pending===0 on two
+  // consecutive observations (the mirror consumes a fresh transport frame between polls); the
+  // same rule on the in-process lane costs one extra yield and no verdict change.
+  let settledPolls = 0;
   while (now() - started < timeoutMs) {
     if (stale()) {
       return {
@@ -8672,15 +8684,21 @@ export async function waitForOpeningCompositionSettled(state, options = {}) {
     const readiness = authoredCriticalVisualReadiness(state);
     const pending = (readiness && readiness.openingPending) || [];
     if (pending.length === 0) {
-      return {
-        settled: true,
-        waitedMs: now() - started,
-        pending: 0,
-        ids: [],
-        requested: lastRequest,
-        queue: describeAuthoredUpgradeQueue(options.scene),
-      };
+      settledPolls++;
+      if (settledPolls >= 2) {
+        return {
+          settled: true,
+          waitedMs: now() - started,
+          pending: 0,
+          ids: [],
+          requested: lastRequest,
+          queue: describeAuthoredUpgradeQueue(options.scene),
+        };
+      }
+      await yieldToMain();
+      continue;
     }
+    settledPolls = 0;
     const stillOpen = pending.filter((entry) => (
       openingAssetCanStillSettle(entry, state, options.meshes)
     ));

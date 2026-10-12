@@ -19,6 +19,7 @@ import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js'
 import { COLLISION_CUE } from '../audio/audioSystem.js';
 import { screenShakeScale, traumaFromContact } from './feel.js';
 import { entityWeaponBlocked } from '../combat/runtime.js';
+import { laneWriteSetting } from '../core/simLaneCommands.js';
 import {
   createLatchSpring,
   stepBoostLag,
@@ -374,12 +375,12 @@ export function applyPhotoPresentation(state, photo) {
         grain: video.grain,
       };
     }
-    video.bloom = next.filters === true;
-    video.exposure = next.exposure;
+    laneWriteSetting(state, 'settings.video.bloom', next.filters === true);
+    laneWriteSetting(state, 'settings.video.exposure', next.exposure);
     if (next.filters !== true) {
-      video.grade = 0;
-      video.vignette = 0;
-      video.grain = 0;
+      laneWriteSetting(state, 'settings.video.grade', 0);
+      laneWriteSetting(state, 'settings.video.vignette', 0);
+      laneWriteSetting(state, 'settings.video.grain', 0);
     }
   }
   composePhotoStoreFrame(state, next);
@@ -411,15 +412,12 @@ export function restorePhotoPresentation(state) {
   const video = state && state.settings && state.settings.video;
   if (photo && photo._prevVideo && video) {
     const prev = photo._prevVideo;
-    video.bloom = prev.bloom;
-    if (prev.exposure !== undefined) video.exposure = prev.exposure;
-    else delete video.exposure;
-    if (prev.grade !== undefined) video.grade = prev.grade;
-    else delete video.grade;
-    if (prev.vignette !== undefined) video.vignette = prev.vignette;
-    else delete video.vignette;
-    if (prev.grain !== undefined) video.grain = prev.grain;
-    else delete video.grain;
+    laneWriteSetting(state, 'settings.video.bloom', prev.bloom);
+    // Wire folds null for the absent-key restore (readers treat null like undefined).
+    laneWriteSetting(state, 'settings.video.exposure', prev.exposure !== undefined ? prev.exposure : null);
+    laneWriteSetting(state, 'settings.video.grade', prev.grade !== undefined ? prev.grade : null);
+    laneWriteSetting(state, 'settings.video.vignette', prev.vignette !== undefined ? prev.vignette : null);
+    laneWriteSetting(state, 'settings.video.grain', prev.grain !== undefined ? prev.grain : null);
   }
   if (state && state.render) {
     state.render.photoMode = { active: false, hideHud: false, freeCamera: false, filters: PHOTO_FILTERS_DEFAULT };

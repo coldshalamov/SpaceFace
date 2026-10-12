@@ -1407,11 +1407,17 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
       // in the outer continuation leaves a strictly cache-owned window that byte-pressure
       // eviction can reclaim mid-mount (decode→evict→retry livelock). Scopeless callers claim
       // the shared runtime-cache session owner, matching the late-retain fallback below.
+      residencyOwner: options.residencyOwner || runtime.defaultResidencyOwner,
+      residencyRole: options.residencyRole || (options.residencyOwner ? 'live-boundary' : 'runtime-cache'),
+      residencySectorId: options.sectorId || null,
       // Same ownerless-warm predicate as the GLB lane: with no boundary lifecycle to release
       // the pin, a non-soft warm role on the session fallback owner would pin the package
       // forever. softLease keeps it inside the soft-eviction tier; decodeWarm makes it lose
       // the byte-pressure race last, mirroring the decode-cache retain.
       ...packageConsumer,
+      residencySoftLease: !options.residencyOwner
+        && WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || '')),
+      isResidencyOwnerActive: () => authoredConsumerIsActive(options),
       // Source-URL dedupe means later consumers never call renderPackages.load themselves.
       // Keep shared decode liveness separate from this first caller's residency ownership:
       // a live joiner needs the bytes but must not revive the departed creator's retain.

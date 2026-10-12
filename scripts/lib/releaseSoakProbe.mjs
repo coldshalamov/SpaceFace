@@ -265,6 +265,12 @@ export async function runReleaseSoakProbe({
       assert.equal(ownedServer.ownsServer, true, 'browser soak must own its canonical in-process server');
       rootUrl = ownedServer.baseUrl;
       ({ page, browser, context, browserServer, browserChildProcess } = await launchBrowser(viewport));
+      // Lane selection for soaks: the canonical root forbids query strings, so
+      // SF_SOAK_SIM_LANE seeds localStorage 'sf.simLane' before app scripts run.
+      if (process.env.SF_SOAK_SIM_LANE) {
+        const lane = process.env.SF_SOAK_SIM_LANE;
+        await context.addInitScript((v) => { try { localStorage.setItem('sf.simLane', v); } catch (_) {} }, lane);
+      }
       pageIssueTracker = collectPageIssues(page, { playerStoreMounted: false, includeWarnings: true, ignoreProbeWarnings: true });
       canonicalUrlTracker = createCanonicalUrlTracker(page, rootUrl);
       // Navigation is measurement apparatus (the boot floor anchors at timeOrigin, read

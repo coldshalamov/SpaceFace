@@ -3,11 +3,11 @@
 // save system is implemented it owns newGame() and this delegates to it.
 import * as THREE from 'three';
 import { createGameState } from './core/gameState.js';
-import { shouldGrantKeepsake } from './core/newGamePlus.js';
 import { clearEntityRuntime } from './core/entity.js';
 import { bootstrapProfileSettingsBeforeRegistry } from './core/graphicsProfileBootstrap.js';
 import { createBus } from './core/eventBus.js';
 import { createRegistry } from './core/registry.js';
+import { resolveSimLaneFlags, createSimLaneRuntime } from './core/simLaneMain.js';
 import { startLoop } from './core/loop.js';
 import { createPresentationJournal } from './core/presentationJournal.js';
 import { entityIsJournaled } from './world/presentationSources.js';
@@ -15,21 +15,26 @@ import { configureRacingCorridorSession } from './world/racingCorridor.js';
 import { createPresentationRuntimeCloser } from './core/presentationRunner.js';
 import { canonicalStringify } from './core/simSnapshot.js';
 import { installLiveClipDirector } from './ui/screens/clips.js';
-import { makeShipEntitySpec } from './systems/ships.js';
+
 import { makeEnemySpawnSpec } from './systems/combat.js';
-import { NEW_GAME, resolveNewGameStarter } from './data/newGameDefaults.js';
-import { applyRacingLoadout } from './data/racingLoadouts.js';
+
 import { listUserMods, hasUserContent, userContentDirLabel } from './data/userContent.js';
 import { createTelemetry } from './systems/telemetry.js';
 import { installAchievements } from './systems/achievements.js';
 import { createDeterministicEventTrace } from './core/eventTrace.js';
 import { postTaskAtBackgroundPriorityBounded } from './core/backgroundPost.js';
 import { createTimeEffects } from './core/timeEffects.js';
-import { resetFreshRunSystems } from './core/runReset.js';
+
 import { createRunTransitionGuard } from './core/runTransitionGuard.js';
+import { laneCommandSink, laneInputWrite, laneRpc, laneSetMode } from './core/simLaneCommands.js';
+import {
+  resolveNewGamePlusOverlay,
+  resetCombatInputMode,
+  runNewGameSimBoot,
+  resetRunUiState,
+} from './core/newGameBoot.js';
 import {
   describeGameStartFailure,
-  GameStartReadinessError,
   runNewGameStartTransition,
 } from './core/newGameStartTransition.js';
 import { applyAccessibility } from './ui/accessibility.js';
@@ -46,12 +51,7 @@ import {
 } from './render/pipelineReadiness.js';
 import { shouldAwaitOpeningGpuCook } from './render/renderCapabilityProfile.js';
 import { releaseUiStage } from './render/uiStage.js';
-import {
-  SCENARIO_47A_CONTRACT_PATH,
-  mark47aPlayerActor,
-  spawn47aOpeningScene,
-} from './data/scenarios/47aLiveScene.js';
-import { defaultShipAppearance } from './core/shipAppearance.js';
+import { SCENARIO_47A_CONTRACT_PATH } from './data/scenarios/47aLiveScene.js';
 
 // Debug surfaces (the mutable window.SF handle + boot logs) are exposed outside production bundles.
 // Launcher URLs stay identical for browser/Electron; release/debug behavior must not fork gameplay.
@@ -157,6 +157,11 @@ async function boot() {
       scenarioContractPath: contract.path,
       scenarioContractHash: contract.sha256,
     };
+    // Stage-8: resolve the sim-lane flags once at boot (?simLane=worker, ?simSab=1).
+    // ctx.simLane lands BEFORE createRegistry so the registry can skip init of
+    // sim-owned systems when the whole sim lives in the worker.
+    const simLaneFlags = resolveSimLaneFlags();
+    for (const w of simLaneFlags.warnings) console.warn(`[simLane] ${w}`);
     const ctx = {
       state,
       bus,
@@ -165,10 +170,25 @@ async function boot() {
       helpers,
       timeEffects,
       presentationJournal,
+      simLane: simLaneFlags.lane,
     };
 
     const registry = createRegistry(ctx);
     ctx.registry = registry;
+    // Whole-sim worker lane: null on the main lane (zero behavior change);
+    // otherwise a createSimulationRunner-compatible lane runner plus the
+    // transport journal presentation consumes.
+    const simLaneRuntime = createSimLaneRuntime({
+      state,
+      registry,
+      bus,
+      flags: simLaneFlags,
+      helpers,
+    });
+    // The render publisher binds ctx.presentationJournal at renderer init —
+    // under the lane it must read the transport journal, not the in-process
+    // one (which the worker's journal replaces wholesale).
+    if (simLaneRuntime) ctx.presentationJournal = simLaneRuntime.journal;
     const bootInitMetrics = await registry.initAsync({
       // Each yield costs a rAF+task hop (~a frame); the loading shell owns the picture, so
       // larger slices convert that scheduling overhead back into time-to-title.
@@ -321,6 +341,18 @@ async function boot() {
     bus.on('settings:changed', () => applyAccessibility(state.settings));
     bus.on('save:loaded', () => applyAccessibility(state.settings));
     bus.on('save:restoring', () => configureRacingCorridorSession(state, false));
+    // Worker lane: the sim realm's save.load restores state off-thread, so the
+    // restore generator's own helpers.finalizeLoadedGame call never fires
+    // there. The bridged save:loaded is the same signal — drive the identical
+    // main-side finalization (visual gates, enterFlightMode, ui:closeAll) here.
+    // On the main lane this listener is inert: finalizeLoadedGame already ran
+    // inside the save generator before save:loaded emitted.
+    bus.on('save:loaded', (payload) => {
+      if (!(laneCommandSink && laneCommandSink())) return;
+      try {
+        helpers.finalizeLoadedGame(payload || {});
+      } catch (err) { console.error('[SpaceFace] lane finalizeLoadedGame failed', err); }
+    });
     // Ledger D15: the station sheet set used to arrive at first dock, so every screen rendered
     // differently before vs after docking once. Loading it at boot keeps the cascade identical
     // regardless of dock history; stationStyles positions it after the Deckplate sheet, matching
@@ -363,8 +395,8 @@ async function boot() {
       const cancelledToken = runTransitionGuard.begin('exit-to-menu');
       if (state.render) state.render.admissionRunGeneration = cancelledToken.generation;
       const previousMode = state.mode;
-      state.mode = 'menu';
-      if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
+      laneSetMode(state, bus, 'menu');
+      if (previousMode !== 'menu') bus.emit('mode:changed', { mode: 'menu', previousMode });
     });
 
     const recoverRuntimeFailure = (failure) => {
@@ -375,7 +407,10 @@ async function boot() {
       failurePresenter.show(failure);
     };
     loopController = startLoop(state, registry, {
-      presentationJournal,
+      // Under the flip the presentation lane reads the transport journal and
+      // steps the worker-backed runner; identical shapes on the main lane.
+      presentationJournal: simLaneRuntime ? simLaneRuntime.journal : presentationJournal,
+      simulationRunner: simLaneRuntime ? simLaneRuntime.runner : undefined,
       // Gates that pay a paint boundary only need one when nothing has drawn
       // recently — the runner's accepted presents are exactly that evidence,
       // while its suspended/restoring window correctly stops stamping.
@@ -386,12 +421,15 @@ async function boot() {
     ctx.simStep = () => loopController.stepOnce();
     const loopDebug = {
       getDiagnostics: () => loopController.getDiagnostics(),
+      getPresentationFrame: () => loopController.getPresentationFrame?.(),
       getLifecycleState: () => loopController.getLifecycleState(),
       isSuspended: () => loopController.isSuspended(),
       simStep: () => loopController.stepOnce(),
     };
     SF_DEBUG_ONLY: if (SF_DEBUG) window.SF = Object.assign(window.SF || {}, {
       state, bus, registry, ctx, helpers, timeEffects, THREE, telemetry, eventTrace, loop: loopDebug,
+      simLaneDiag: simLaneRuntime ? () => simLaneRuntime.runner.getDiagnostics() : null,
+      laneRpc,
     });
     // The title route must become usable promptly. Heavy shader/asset warmup is sector-scoped in
     // renderer.js once a run exists; running the all-archetype precompile here competes with the
@@ -556,40 +594,6 @@ async function boot() {
   }
 }
 
-// Minimal playable scene so the engine is verifiable before subsystems exist:
-// player ship + a station + an asteroid ring.
-async function bootstrapScene(state, helpers, bus, registry, options = {}) {
-  const owned = state.player.ownedShips[state.player.activeShipIndex] || null;
-  const shipId = (owned && owned.defId) || NEW_GAME.shipId || 'ship_kestrel';
-  const fittings = (owned && owned.fittings) || [];
-  const playerSpec = makeShipEntitySpec(shipId, {
-    team: 0, factionId: 'faction_free', isPlayer: true, player: state.player, fittings,
-    appearance: owned && owned.appearance,
-    livingHull: owned && owned.livingHull,
-    pos: { x: 0, z: 0 },
-  });
-  const player = helpers.spawnEntity(playerSpec);
-  state.playerId = player.id;
-  mark47aPlayerActor(player);
-  state.player.credits = NEW_GAME.credits || 5000;
-  const ships = registry.get('ships');
-  if (ships && typeof ships.recomputeActiveShip === 'function') ships.recomputeActiveShip();
-
-  // World owns sector contents: it spawns stations, asteroid fields, enemies, and POIs from data.
-  const world = registry.get('world');
-  if (world && typeof world.enterSector === 'function') {
-    world.enterSector(NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime');
-  } else {
-    // fallback: a single station + asteroid ring so the build is still playable
-    helpers.spawnEntity({ type: 'station', factionId: 'faction_scn', pos: { x: 280, z: -140 }, radius: 42, mass: 1e6, hull: 1e6, hullMax: 1e6, data: { stationId: 'station_helios', dockRadius: 72, services: ['market', 'shipyard', 'missions'] } });
-    for (let i = 0; i < 12; i++) { const a = (Math.PI * 2 * i) / 12; const r = 360 + state.rng() * 200; helpers.spawnEntity({ type: 'asteroid', pos: { x: Math.cos(a) * r, z: Math.sin(a) * r }, radius: 12, mass: 500, hull: 240, hullMax: 240, data: { typeId: 'ast_rock', oreHP: 240, oreHPMax: 240 } }); }
-  }
-  // Split the two heaviest scene-build halves so the 'preparing' stage gets a paint between
-  // world regen and opening composition instead of one frozen monolith.
-  if (typeof options.yield === 'function') await options.yield();
-  spawn47aOpeningScene({ state, helpers, liveColdStartSafe: true });
-}
-
 // Start a fresh game from the main menu: clear any prior world, build the new one, enter flight.
 async function startNewGame(state, helpers, bus, registry, runTransitionGuard, transitionToken, opts) {
   // The dynamic authority's bring-up (Rapier WASM compile + world construction) is pure CPU
@@ -605,131 +609,32 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       // The veil goes up before the roster clear: a populated sector's entity:destroyed fan-out
       // is a multi-hundred-ms stretch, and it must not brick on the previous screen.
       enterLoadingMode(state, bus);
-      // The NG+ overlay revalidates its source slot — up to two O(save) envelope prepares —
-      // so it resolves under the veil through the yielded twin instead of bricking the
-      // click task pre-veil. A resolve failure lands in the transition's discard path
-      // (veil drops, roster restore aborted) identically to any other prepareRun fault.
       newGamePlus = await resolveNewGamePlusOverlay(registry, opts);
-      let cleared = 0;
-      for (const e of [...state.entityList]) {
-        clearEntityRuntime(e);
-        bus.emit('entity:destroyed', { id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId, reason: 'run_reset' });
-        if (!runTransitionGuard.isCurrent(transitionToken)) return;
-        if (++cleared % 16 === 0) {
-          await nextPaintSliced();
-          if (!runTransitionGuard.isCurrent(transitionToken)) return;
-        }
-      }
-      state.entities.clear(); state.entityList.length = 0; state.freeIds.length = 0; state.nextEntityId = 1; state.playerId = 0;
-
-      resetRunState(state, opts || {});
-      // The run reset clears every time-effects request, including the veil the loading shell
-      // raised above — re-assert it or a frame landing on the paints below steps the sim while
-      // state.combat is still the fresh, pre-newGame shape.
-      createTimeEffects(state).set('runtime:loading', { scale: 0 });
-      resetCombatInputMode(state, registry);
-      if (!runTransitionGuard.isCurrent(transitionToken)) return;
-      // Let the loading shell paint the "preparing" stage between the synchronous chunks —
-      // the bar's smoothing loop only moves when the compositor gets a frame.
-      await nextPaintSliced();
-      if (!runTransitionGuard.isCurrent(transitionToken)) return;
-
-      const resetCompleted = resetFreshRunSystems(registry, {
-        afterEach: () => runTransitionGuard.isCurrent(transitionToken),
-      });
-      if (!resetCompleted || !runTransitionGuard.isCurrent(transitionToken)) return;
-      // Many systems/VFX listen only to the legacy `game:newGame` alias. The public route emits
-      // `game:new`; without this alias, titles, fragile cargo, cloak, and presentation caches
-      // keep the previous run's instance state.
-      bus.emit('game:newGame', { seed: state.meta && state.meta.seed, ...(opts || {}) });
-      if (!runTransitionGuard.isCurrent(transitionToken)) return;
-
-      const ships = registry.get('ships');
-      if (ships && typeof ships.newGame === 'function') {
-        ships.newGame();
-      } else {
-        state.player.ownedShips = [{ defId: NEW_GAME.shipId || 'ship_kestrel', fittings: [] }];
-        state.player.activeShipIndex = 0;
-        state.player.moduleInventory = [];
-        state.player.researchedNodes = (NEW_GAME.researchedNodes || []).slice();
-        state.player.researchPoints = NEW_GAME.researchPoints || 0;
-      }
-      if (!runTransitionGuard.isCurrent(transitionToken)) return;
-
-      // PQ-156.00 — a starter pick rides game:new as opts.starter. ships.newGame() always
-      // installs the legacy NEW_GAME ship, so the pick rewrites the active owned ship here,
-      // before bootstrapScene spawns the player entity. Absent/unknown ids keep the legacy
-      // defaults byte-for-byte; nothing about the pick is saved as a class or lock.
-      applyStarterPick(state, ships, opts);
-      applyRacingLoadout(state, ships, opts);
-      if (!runTransitionGuard.isCurrent(transitionToken)) return;
-      // Single-frame breath: a committed paint is reserved for the boundary just
-      // before bootstrapScene — this one only needs to yield.
-      await nextFrame();
-      if (!runTransitionGuard.isCurrent(transitionToken)) return;
-
-      if (newGamePlus) {
-        const keepsakeId = newGamePlus.keepsake && newGamePlus.keepsake.defId;
-        const grantKeepsake = shouldGrantKeepsake(state.player, keepsakeId);
-        if (grantKeepsake && (!ships || typeof ships.grantModule !== 'function'
-            || !ships.grantModule({
-              defId: keepsakeId,
-              reason: `new-game-plus:${newGamePlus.sourceEnding}`,
-            }))) {
-          throw new GameStartReadinessError(
-            'NEW_GAME_PLUS_UNAVAILABLE',
-            'new-game-plus',
-            'The selected New Run+ keepsake is no longer available.',
-          );
-        }
-        const grudges = Array.isArray(newGamePlus.grudges) ? newGamePlus.grudges : [];
-        if (grudges.length) {
-          const aceMemory = registry.get('aceMemory');
-          const applied = aceMemory && typeof aceMemory.applyNewGamePlusGrudges === 'function'
-            ? aceMemory.applyNewGamePlusGrudges(grudges)
-            : 0;
-          if (applied !== grudges.length) {
-            throw new GameStartReadinessError(
-              'NEW_GAME_PLUS_UNAVAILABLE',
-              'new-game-plus',
-              'The selected New Run+ hunter history could not be restored.',
-            );
-          }
-        }
-      }
-      if (!runTransitionGuard.isCurrent(transitionToken)) return;
-      await nextPaintSliced();
-      if (!runTransitionGuard.isCurrent(transitionToken)) return;
-
-      // Wave-143: RU-7 template payloads arrive via dynamic import in the post-eval warm
-      // lane. bootstrapScene is the earliest point a real entity (and therefore a template()
-      // call through the mesh-build lane) can appear — settle the warm first so the
-      // synchronous template contract can never observe a cold key.
       await ruckusWarmReady;
-      // Create the canonical player and starting sector before readiness waits. This gives the
-      // renderer real entity boundaries to upgrade while the route remains frozen in loading.
-      configureRacingCorridorSession(state, opts?.racingSession === true);
-      await bootstrapScene(state, helpers, bus, registry, { yield: () => nextFrame() });
-      if (!runTransitionGuard.isCurrent(transitionToken)) return;
-      // Run-specific loadouts and arena placement must exist before visual/GPU admission.
-      // Installing them on game:started prepares the wrong hull, then replaces it in flight.
-      bus.emit('game:scenePrepared', {});
-      if (!runTransitionGuard.isCurrent(transitionToken)) return;
-      const physicsSystem = registry.get('physics');
-      if (physicsSystem && typeof physicsSystem.prepareBackend === 'function') {
-        // Fresh-run entities were just spawned while timeScale was 0; reset so no record
-        // from a prior run's entity objects survives into the new world. The catch marker
-        // only suppresses the unhandled-rejection window before waitForPhysics awaits it.
-        physicsPrep = Promise.resolve()
-          .then(() => physicsSystem.prepareBackend(state, { reset: true, initTimeoutMs: 20000 }));
-        physicsPrep.catch(() => {});
+      if (laneCommandSink()) {
+        // Whole-sim-worker lane: the boot's sim mutations replay inside the worker's directive
+        // window as one correlated rpc; its ack resolves after the physics-prep promise the
+        // boot kicked settles, so waitForPhysics below still gates on the same work.
+        physicsPrep = laneRpc('newGameBoot', {
+          opts: opts || {},
+          newGamePlus: newGamePlus || null,
+        });
+        const bootResult = await physicsPrep;
+        if (!bootResult || bootResult.aborted) return;
+        // state.ui is main-owned — the boot's reset ran against the worker's
+        // copy, so replay the same ui write here or the menu screens pinned on
+        // screenStack would hold shouldFreezeFlightSubmit open forever.
+        resetRunUiState(state);
+        return;
       }
-      const saveSystem = registry.get('save');
-      if (saveSystem && typeof saveSystem.primeAutosaveCapture === 'function') {
-        saveSystem.primeAutosaveCapture();
-      }
-      if (opts.name) state.player.name = opts.name;
-      if (opts.difficulty) state.settings.gameplay.difficulty = opts.difficulty;
+      const bootResult = await runNewGameSimBoot({
+        state, helpers, bus, registry, opts: opts || {}, newGamePlus,
+        isCurrent: () => runTransitionGuard.isCurrent(transitionToken),
+        nextPaint: () => nextPaintSliced(),
+        nextFrameTick: () => nextFrame(),
+        onPhysicsPrep: (prep) => { physicsPrep = prep; },
+      });
+      if (!bootResult || bootResult.aborted) return;
     },
     discardRun: () => discardPreparedNewGameScene(
       state, bus, runTransitionGuard, transitionToken,
@@ -857,49 +762,16 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
     enterFlight() {
       enterFlightMode(state, bus);
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
-      bus.emit('game:started', { newGamePlus });
+      // Worker lane: the receipt is generated inside the worker — the newGameBoot
+      // rpc stages the payload and the post-boot 'flight' mode apply emits
+      // game:started once on the worker bus; the bridge replays it back so
+      // main-side subscribers fire exactly once. A local emit here would
+      // double-fire them. (Stage-9 remediation: forwarding the main emit used
+      // to replay the receipt into restore windows and double-seed the world.)
+      if (!laneCommandSink()) bus.emit('game:started', { newGamePlus });
       SF_DEBUG_ONLY: if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
     },
   });
-}
-
-// PQ-156.00 — apply a New Game starter pick to the run's first owned ship. Runs inside
-// startNewGame's prepareRun after ships.newGame() and before bootstrapScene, so the spawned
-// player entity is the hull the player picked rather than a quick swap of it after spawn.
-// The Hitch starter (or no pick) resolves to the legacy NEW_GAME hull and is left untouched.
-function applyStarterPick(state, ships, opts) {
-  const starter = resolveNewGameStarter(opts);
-  if (!starter || starter.shipId === NEW_GAME.shipId) return;
-  const p = state.player;
-  const owned = p && Array.isArray(p.ownedShips) && p.ownedShips[p.activeShipIndex || 0];
-  if (!owned) return;
-  owned.defId = starter.shipId;
-  owned.fittings = ships && typeof ships.fittingsFromDefaults === 'function'
-    ? ships.fittingsFromDefaults(starter.shipId, starter.fittedModules || [])
-    : [];
-  owned.appearance = defaultShipAppearance(starter.shipId);
-  // ships.newGame() already published a role packet for the legacy hull while the run is in
-  // loading; the held briefing is replaced by this republish naming the hull actually picked.
-  if (ships && typeof ships.publishActiveRoleContext === 'function') {
-    ships.publishActiveRoleContext({ source: 'new_game', announce: true });
-  }
-}
-
-async function resolveNewGamePlusOverlay(registry, opts = {}) {
-  const request = opts && opts.newGamePlus;
-  if (!request) return null;
-  const saveSystem = registry && typeof registry.get === 'function' ? registry.get('save') : null;
-  const overlay = saveSystem && typeof saveSystem.prepareNewGamePlusAsync === 'function'
-    ? await saveSystem.prepareNewGamePlusAsync(request)
-    : (saveSystem && typeof saveSystem.prepareNewGamePlus === 'function'
-      ? saveSystem.prepareNewGamePlus(request)
-      : null);
-  if (overlay) return overlay;
-  throw new GameStartReadinessError(
-    'NEW_GAME_PLUS_UNAVAILABLE',
-    'new-game-plus',
-    'The selected completed-run save is no longer available for New Run+.',
-  );
 }
 
 function discardPreparedNewGameScene(state, bus, runTransitionGuard, transitionToken) {
@@ -1180,23 +1052,6 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
   }
 }
 
-function resetCombatInputMode(state, registry) {
-  if (!state || !state.input) return;
-  state.input.autoFire = false;
-  if (state.input.pursuitSlot) {
-    state.input.pursuitSlot = {
-      ...state.input.pursuitSlot,
-      active: false,
-      reason: 'runtime-reset',
-      releasedTick: Number.isFinite(state.tick) ? state.tick : null,
-    };
-  }
-  const assist = registry && typeof registry.get === 'function' ? registry.get('autoTargetAssist') : null;
-  if (assist && assist._runtime) {
-    assist._runtime.lastActive = false;
-    assist._runtime.lastReason = 'runtime-reset';
-  }
-}
 
 const _loadingClearColor = new THREE.Color();
 
@@ -1204,7 +1059,7 @@ function enterLoadingMode(state, bus) {
   const timeEffects = createTimeEffects(state);
   timeEffects.set('runtime:loading', { scale: 0 });
   const previousMode = state.mode;
-  state.mode = 'loading';
+  laneSetMode(state, bus, 'loading');
   try { releaseUiStage('loading-started'); } catch (_) { /* stage may not be mounted */ }
   // The frozen canvas holds its last presented frame for the whole load. If any cover lifts a
   // beat before the first flight present, that frame is what shows — so make the held frame a
@@ -1231,11 +1086,11 @@ function enterLoadingMode(state, bus) {
 function enterFlightMode(state, bus) {
   const timeEffects = createTimeEffects(state);
   const previousMode = state.mode;
-  state.mode = 'flight';
+  laneSetMode(state, bus, 'flight');
   timeEffects.clear('runtime:boot-menu');
   timeEffects.clear('runtime:loading');
   timeEffects.clear('runtime:start-failed');
-  if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
+  if (previousMode !== 'flight') bus.emit('mode:changed', { mode: 'flight', previousMode });
 }
 
 function failGameStart(state, bus, error, text, runTransitionGuard = null, transitionToken = null, failure = null) {
@@ -1245,8 +1100,8 @@ function failGameStart(state, bus, error, text, runTransitionGuard = null, trans
   timeEffects.clear('runtime:boot-menu');
   timeEffects.clear('runtime:loading');
   const previousMode = state.mode;
-  state.mode = 'menu';
-  if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
+  laneSetMode(state, bus, 'menu');
+  if (previousMode !== 'menu') bus.emit('mode:changed', { mode: 'menu', previousMode });
   if (runTransitionGuard && !runTransitionGuard.isCurrent(transitionToken)) return false;
   bus.emit('game:startFailed', {
     error: error && error.message ? error.message : String(error),
@@ -1441,66 +1296,6 @@ function nowMs() {
     : Date.now();
 }
 
-function resetRunState(state, opts = {}) {
-  const requestedSeed = Number(opts.seed);
-  const seed = Number.isFinite(requestedSeed) && requestedSeed > 0
-    ? (requestedSeed >>> 0)
-    : (((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0) || 1);
-  const fresh = createGameState(seed);
-  const cameraObj = state.camera && state.camera.obj;
-  const cameraFocus = state.camera && state.camera.focus;
-  const cameraShake = state.camera && state.camera.shakeOffset;
-
-  state.meta = fresh.meta;
-  createTimeEffects(state).reset();
-  state.accumulator = 0;
-  state.simTime = 0;
-  state.tick = 0;
-  state.days = 0;
-  state.rng = fresh.rng;
-  state.input = fresh.input;
-  Object.assign(state.camera, fresh.camera, {
-    obj: cameraObj || null,
-    focus: cameraFocus || fresh.camera.focus,
-    shakeOffset: cameraShake || fresh.camera.shakeOffset,
-  });
-  if (state.camera.focus && typeof state.camera.focus.set === 'function') state.camera.focus.set(0, 0, 0);
-  if (state.camera.shakeOffset && typeof state.camera.shakeOffset.set === 'function') state.camera.shakeOffset.set(0, 0, 0);
-  state.bounds = fresh.bounds;
-  state.spatialHash = fresh.spatialHash;
-  state.player = fresh.player;
-  state.run = fresh.run;
-  state.combat = fresh.combat;
-  state.economy = fresh.economy;
-  state.factions = fresh.factions;
-  state.conflicts = fresh.conflicts;
-  state.missions = fresh.missions;
-  state.scenario = fresh.scenario;
-  state.story = fresh.story;
-  state.world = fresh.world;
-  // Mark the fresh world's epoch newer than any pending emit tail: a sector:enter slice
-  // deferred across this reset drains inside the next emit or pump frame, and without an
-  // epoch here its stale payload would pass the live-or-inert guard on an un-serialed world.
-  state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
-  state.world.enterSerial = state.enterSerialSeq;
-  state.jump = fresh.jump;
-  state.fuel = fresh.fuel;
-  state.nav = fresh.nav;
-  state.automation = fresh.automation;
-  state.crafting = fresh.crafting;
-  state.sectorSim = fresh.sectorSim;
-  state.aiEncounter = fresh.aiEncounter;
-  state.interventions = fresh.interventions;
-  state.interventionMeta = fresh.interventionMeta;
-  state.drill = fresh.drill;
-  state.claims = fresh.claims;
-  state.traffic = fresh.traffic;
-  const ui = state.ui || (state.ui = {});
-  const screenStack = Array.isArray(ui.screenStack) ? ui.screenStack : [];
-  screenStack.length = 0;
-  Object.assign(ui, fresh.ui, { screenStack });
-  state.save = fresh.save;
-}
 
 // SFQ-B228: a boot-stage failure (missing scenario asset, failed fetch, init throw) used to
 // dump a raw stack into the overlay — a cause, but no exit: a dead screen. The recovery pane

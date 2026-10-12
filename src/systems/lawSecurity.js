@@ -3271,6 +3271,7 @@ export const lawSecurity = {
           publishCustomsConesQuiet(state, false);
         }
       }
+      dwell.clear();
       return;
     }
     const pods = this._coneScratchPods || (this._coneScratchPods = []);

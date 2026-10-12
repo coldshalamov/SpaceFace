@@ -29,6 +29,7 @@ import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
 import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
+import { laneCommandSink, laneBusEmit } from '../core/simLaneCommands.js';
 import { beginFocusLossSaveWrite, endFocusLossSaveWrite } from '../core/focusLossHold.js';
 import { stampIronmanLatch } from './ironmanChoice.js';
 import { stampSlotCard, boundSlotThumbnail } from './slotStill.js';
@@ -94,6 +95,23 @@ import {
 
 const LS_PREFIX = 'sf.save.';
 const INDEX_KEY = LS_PREFIX + 'index';
+
+// The sf.* keyspace snapshot staged onto worker-side storage for a forwarded
+// save/load — the sim realm resolves slots and recovery against real bytes.
+function _collectSfStorage() {
+  const out = {};
+  try {
+    if (typeof localStorage === 'undefined') return out;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (typeof key === 'string' && key.startsWith('sf.')) {
+        const v = localStorage.getItem(key);
+        if (typeof v === 'string') out[key] = v;
+      }
+    }
+  } catch (_) { /* storage enumeration unavailable */ }
+  return out;
+}
 
 // Save-store write generation: detecting slot changes used to mean walking + hashing every
 // stored blob on EVERY listSlots call — multi-MB getItem copies plus an FNV-1a pass per
@@ -343,10 +361,10 @@ export const save = {
         });
         return false;
       }
-      // Paced twin: while the sim sits at a frozen boundary (pause/dock/stacked
-      // screen — where this emit fires) the serialize→write chain runs across
-      // scheduled hops instead of one brick inside this emit. Live flight falls
-      // back to the documented one-task coherent capture inside saveAsync.
+      // Worker lane: the forwarded game:save runs the sim realm's own save —
+      // its bytes relay back and persist here. Serializing the mirror facade
+      // on main would stall the frame and produce a dead-state envelope.
+      if (laneCommandSink && laneCommandSink()) return false;
       return this.saveAsync((p && p.slot) || 'quick', {
         reason: 'manual',
         label: p && p.label,
@@ -366,6 +384,10 @@ export const save = {
       if (this._campaignSaveSuppressed()) {
         bus.emit('run:endRequested', { outcome: 'aborted', reason: 'load_during_run', tick: 0 });
       }
+      // Worker lane: the forwarded game:load drives the sim realm's own load
+      // (staged sf.* bytes). Restoring here would parse the envelope on main —
+      // exactly the stall the lane exists to remove — into a dead mirror.
+      if (laneCommandSink && laneCommandSink()) return false;
       const load = () => this.load((p && p.slot) || 'latest');
       const defer = this.helpers && this.helpers.deferLoadedGameRestore;
       // The painted defer path swallows a promise (nextPaint().then(restore).catch), so the
@@ -1513,6 +1535,13 @@ export const save = {
     // The public function must obey the same guard as keyboard, interval and exit routes.
     if (this._campaignSaveSuppressed()) return false;
     slot = slot || 'quick';
+    // Worker lane (main side): the sim realm's own save system writes real
+    // bytes; they relay back and persist to localStorage. The mirror facade
+    // cannot produce a trustworthy envelope, so calls forward instead of run.
+    if (laneCommandSink && laneCommandSink()) {
+      laneBusEmit('game:save', { slot, __laneStorage: _collectSfStorage() });
+      return true;
+    }
     const reason = options.reason || (slot === AUTOSAVE_SLOT ? 'autosave' : 'manual');
     const autosave = !!options.autosave || slot === AUTOSAVE_SLOT;
     const started = nowMs();
@@ -4853,6 +4882,12 @@ export const save = {
   /** Load a slot (or 'latest'). Validates fully before any destructive restore; a live run is
    *  snapshotted for one rollback attempt if restore fails. Returns true only for an accepted load. */
   load(slot, options = null) {
+    // Worker lane (main side): restore authority sits in the sim realm — the
+    // forwarded event stages this realm's sf.* bytes for its slot resolution.
+    if (laneCommandSink && laneCommandSink()) {
+      laneBusEmit('game:load', { slot: slot || 'latest', __laneStorage: _collectSfStorage() });
+      return true;
+    }
     // preferAsync: the painted Continue lane asks for the worker-backed restore; callers that
     // stub `load` as the restore primitive (tests, overrides) keep the seam — options are just
     // a second argument to them.
@@ -7201,6 +7236,13 @@ export const save = {
       }
     }
     this.state.settings = restored;
+    // Under the whole-sim lane, state.settings is main-owned and NOT mirrored:
+    // this wholesale restore must be replayed main-side or the facade answers
+    // stale reads. `settings:restored` bridges worker→main (clone the merge —
+    // live objects never cross the lane).
+    if (this.bus && typeof this.bus.emit === 'function') {
+      try { this.bus.emit('settings:restored', { settings: clonePlain(restored) }); } catch (e) {}
+    }
   },
 
   _restoreNav(d) {

@@ -24,6 +24,7 @@ import { dressLampKey } from '../orrery/lampKey.js';
 import { arcGauge } from '../orrery/instruments.js';
 import { attachClipDirectorToBus, createClipDirector } from '../../core/simSnapshot.js';
 import { openReplay, requestReplaySeek, resolveReplayRecording } from './replay.js';
+import { laneSetMode } from '../../core/simLaneCommands.js';
 import {
   CLIP_EXPORT_FORMATS,
   CLIP_EXPORT_UNAVAILABLE,
@@ -338,7 +339,7 @@ export function forceCloseClips() {
 /** FLY TO MAKE ONE: close the instrument and unpause into flight (pause's own resume path). */
 function flyToMakeOne(ctx) {
   closeClips();
-  if (ctx && ctx.state && ctx.state.mode === 'paused') ctx.state.mode = 'flight';
+  if (ctx && ctx.state && ctx.state.mode === 'paused') laneSetMode(ctx.state, ctx.bus, 'flight');
   const mgr = ctx && (ctx.screenManager
     || (ctx.screens && ctx.screens.pushScreen ? ctx.screens : null)
     || (ctx.registry && ctx.registry.get && ctx.registry.get('ui') && ctx.registry.get('ui').screenManager));
@@ -1243,7 +1244,7 @@ export const clipsScreen = {
   },
 
   onShow(ctx) {
-    if (ctx && ctx.state && ctx.state.mode === 'flight') ctx.state.mode = 'paused';
+    if (ctx && ctx.state && ctx.state.mode === 'flight') laneSetMode(ctx.state, ctx.bus, 'paused');
     cue('open');
   },
 

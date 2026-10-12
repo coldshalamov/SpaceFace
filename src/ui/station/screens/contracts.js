@@ -33,7 +33,7 @@ import { mountDataState } from '../../uiPrimitives.js';
 import { factionIcon, icon } from '../icons.js';
 import { missionBoardReadiness } from '../stationHubModel.js';
 import { recommendMissionBoardOffer } from '../stationMissionModel.js';
-import { chooseAdventureDecision, presentSurfaceDecisions } from '../../adventureDecisions.js';
+import { acceptMissionOnLane, chooseAdventureDecision, presentSurfaceDecisions } from '../../adventureDecisions.js';
 import { objectiveText } from '../../screens/missionLog.js';
 import {
   dressState,
@@ -1365,11 +1365,11 @@ export function createContractsScreen(ctx) {
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
   }
 
-  boardEl.addEventListener('click', (ev) => {
+  boardEl.addEventListener('click', async (ev) => {
     const adventure = ev.target.closest('[data-adventure-option]');
     if (adventure) {
       const state = ctx.state || {};
-      const chosen = chooseAdventureDecision(state, adventure.getAttribute('data-adventure-id'), adventure.getAttribute('data-adventure-option'), {
+      const chosen = await chooseAdventureDecision(state, adventure.getAttribute('data-adventure-id'), adventure.getAttribute('data-adventure-option'), {
         bus: ctx.bus,
       });
       renderAll(state);
@@ -1396,7 +1396,7 @@ export function createContractsScreen(ctx) {
     select(rows[next].getAttribute('data-mid'), true);
   });
 
-  function acceptMission(acc) {
+  async function acceptMission(acc) {
     if (!acc || acc.disabled) return;
     acc.disabled = true;
     const missionId = acc.getAttribute('data-accept');
@@ -1408,11 +1408,11 @@ export function createContractsScreen(ctx) {
     )));
     if (match && ctx.bus) {
       const option = match.options.find((row) => row.effect && row.effect.missionId === missionId);
-      const chosen = chooseAdventureDecision(state, match.id, option.id, { bus: ctx.bus });
+      const chosen = await chooseAdventureDecision(state, match.id, option.id, { bus: ctx.bus });
       ctx.bus.emit('audio:cue', { id: chosen && chosen.ok ? 'ui_accept' : 'ui_deny' });
     } else if (ctx.bus) {
-      ctx.bus.emit('ui:acceptMission', { missionId });
-      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      const res = await acceptMissionOnLane(ctx.bus, missionId);
+      ctx.bus.emit('audio:cue', { id: res && res.ok ? 'ui_accept' : 'ui_deny' });
     }
     setTimeout(() => renderAll(state), 60);
   }
