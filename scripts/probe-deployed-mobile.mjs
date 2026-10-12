@@ -13,9 +13,20 @@ await mkdir(out, { recursive: true });
 const report = { url: url.href, engine, startedAt: new Date().toISOString(), passed: false,
   responses: [], requestFailures: [], pageErrors: [], console: [], stages: [], observations: [], lifecycle: [] };
 let browser;
-const snapshot = page => page.evaluate(() => {
+async function boundedBrowserRead(read, timeoutMs = 20000) {
+  let timer;
+  try {
+    return await Promise.race([read(), new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`Mobile renderer stopped answering for ${timeoutMs / 1000} seconds`)), timeoutMs);
+      timer.unref();
+    })]);
+  } finally { clearTimeout(timer); }
+}
+const snapshot = page => boundedBrowserRead(() => page.evaluate(() => {
   const shown = e => !e.hidden && e.getBoundingClientRect().width > 0
     && getComputedStyle(e).visibility !== 'hidden' && getComputedStyle(e).display !== 'none';
+  // Observer only; the actor below still uses the public menu and touch controls.
+  const render = window.SF?.state?.render;
   return {
     launchButton: (() => { const e = document.querySelector('.sf-ng-launch'); return e ? { text: e.textContent, disabled: e.disabled, ariaDisabled: e.getAttribute('aria-disabled') } : null; })(),
     title: document.title, mobile: document.documentElement.dataset.sfMobile || null,
@@ -26,15 +37,22 @@ const snapshot = page => page.evaluate(() => {
     loading: [...document.querySelectorAll('[data-loading-label], [data-loading-detail]')].filter(shown).map(e => e.textContent),
     screens: [...document.querySelectorAll('[data-screen]')].filter(shown).map(e => e.dataset.screen),
     alerts: [...document.querySelectorAll('[role="alert"], .boot-error')].filter(shown).map(e => e.textContent),
+    runtime: render ? {
+      gpu: render.gpu,
+      parallelCompile: !!render.renderer?.extensions?.get('KHR_parallel_shader_compile'),
+      admission: render.requiredPackageAdmission,
+      cook: render.openingCookLedger,
+      frame: window.__SF_WITNESS__?.snapshot?.().samples?.at(-1),
+    } : null,
   };
-});
+}));
 const visible = async (page, selector) => page.locator(selector).first().isVisible().catch(() => false);
 const critical = response => response.status >= 400 && (
   /\.(?:glb|wasm|m?js)(?:\?|$)/.test(response.url) || /\/assets\/ships\/motions\/.*\.json(?:\?|$)/.test(response.url));
 try {
   browser = await (engine === 'webkit' ? webkit : chromium).launch({ headless: true,
     ...(engine === 'chromium' ? { args: ['--enable-webgl', '--ignore-gpu-blocklist', '--mute-audio'] } : {}) });
-  const context = await browser.newContext({ ...devices['iPhone 13'], serviceWorkers: 'block',
+  const context = await browser.newContext({ ...devices['iPhone 14'], serviceWorkers: 'block',
     // Official Vercel E2E header: exclude preview-only feedback UI, not game code
     // or deployment protection. Production visitors do not normally load this toolbar.
     extraHTTPHeaders: { 'x-vercel-skip-toolbar': '1' } });
@@ -43,8 +61,13 @@ try {
   page.on('close', () => report.lifecycle.push({ event: 'page-close', at: new Date().toISOString() }));
   page.on('pageerror', error => report.pageErrors.push(String(error?.stack || error)));
   page.on('console', message => {
-    if (['error', 'warning'].includes(message.type()) && report.console.length < 250)
+    if (message.type() === 'log' && /\[render\] GPU:|\[opening-cook\]/.test(message.text()))
+      console.log(`[mobile:${engine}] ${message.text()}`);
+    if (['error', 'warning'].includes(message.type()) && report.console.length < 250) {
       report.console.push({ type: message.type(), text: message.text().slice(0, 3000) });
+      if (!/was preloaded using link preload/.test(message.text()))
+        console.log(`[mobile:${engine}:${message.type()}] ${message.text().slice(0, 2000)}`);
+    }
   });
   page.on('requestfailed', request => {
     if (report.requestFailures.length < 500) report.requestFailures.push({ url: request.url(), error: request.failure()?.errorText });
@@ -67,15 +90,24 @@ try {
   await page.screenshot({ path: join(out, '01-menu.png') });
   if (!(await visible(page, menu))) throw new Error('Main menu never became playable');
   report.stages.push({ stage: 'menu', ...await snapshot(page) });
+  console.log(`[mobile:${engine}] menu ready`);
   await page.locator(menu).tap();
   await page.locator('.sf-ng-launch').waitFor({ state: 'visible', timeout: 30000 });
   report.stages.push({ stage: 'new-game', ...await snapshot(page) });
+  console.log(`[mobile:${engine}] launching`);
   await page.screenshot({ path: join(out, '02-new-game.png') });
   await page.locator('.sf-ng-launch').tap();
   const launchAt = Date.now(); let reachedFlight = false;
   while (Date.now() - launchAt < 300000) {
     await page.waitForTimeout(2000);
     const state = await snapshot(page); report.observations.push({ elapsedMs: Date.now() - launchAt, ...state });
+    if (report.observations.length % 5 === 1) {
+      console.log(JSON.stringify({ engine, elapsedMs: Date.now() - launchAt,
+        loading: state.loading, flight: state.flight,
+        gpu: state.runtime?.gpu, parallelCompile: state.runtime?.parallelCompile,
+        admission: state.runtime?.admission, lastCookStep: state.runtime?.cook?.at(-1) }));
+      await writeFile(join(out, 'progress.json'), JSON.stringify(report, null, 2));
+    }
     if (report.console.some(entry => /\[SpaceFace\] new game startup failed/.test(entry.text)))
       throw new Error('Game reported a startup-readiness failure; see console and failed asset URLs');
     if (state.flight === '1' && !state.loading.length) { reachedFlight = true; break; }
@@ -113,7 +145,12 @@ try {
   if (report.pageErrors.length) throw new Error(`${report.pageErrors.length} unhandled page error(s)`);
   if (report.responses.some(critical)) throw new Error('Runtime script, model or decoder returned an HTTP error');
   for (const name of ['renderPackageDigestWorker.js', 'glbPrepassWorker.js']) {
-    const worker = report.responses.find(r => new URL(r.url).pathname.endsWith(`/workers/${name}`) && r.status === 200);
+    const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+    const worker = report.responses.find(r => {
+      const path = new URL(r.url).pathname;
+      return r.status === 200 && (path.endsWith(`/workers/${name}`)
+        || (local && path.endsWith(`/src/render/${name}`)));
+    });
     if (!worker || !/(javascript|ecmascript)/i.test(worker.mime || ''))
       throw new Error(`Worker not loaded with JavaScript MIME: ${name}`);
   }
@@ -129,7 +166,9 @@ try {
 } finally {
   // Persist diagnostics before a crashed renderer can stall browser shutdown.
   await writeFile(join(out, 'report.json'), JSON.stringify(report, null, 2));
-  await browser?.close();
+  await Promise.race([browser?.close(), new Promise(resolve => {
+    const timer = setTimeout(resolve, 5000); timer.unref();
+  })]);
   console.log(JSON.stringify({ engine, passed: report.passed, launchMs: report.launchMs,
     failure: report.failure, final: report.final, pageErrors: report.pageErrors,
     failedHttp: report.responses.filter(r => r.status >= 400) }, null, 2));
