@@ -3,6 +3,9 @@
 // The deterministic radio system emits presentation intent; this module owns only cosmetic Web
 // Audio nodes. A retune replaces one small graph, while signal-strength changes reuse that graph.
 
+import { createScoreDirector } from './scoreDirector.js';
+import { createRoomToneRuntime } from './roomTone.js';
+
 export const BAND_BED_PROFILES = Object.freeze({
   civil_service: profile({ waveA: 'square', waveB: 'sine', hzA: 118, hzB: 236, detune: 2,
     tone: 1480, q: 1.2, noise: 0.16, noiseRate: 0.82, pan: -0.08, level: 0.72 }),
@@ -41,9 +44,51 @@ export function createBandBedRuntime(ctx, destination, options = {}) {
     fadingGraph: null,
     crossfadeS,
     lastIntent: null,
+    radioIntent: null,
+    scoreFrame: null,
     _noiseBuffer: null,
+    director: createScoreDirector(),
+    room: null,
 
+    // Two writers share this runtime. The audio host's place intent (sectorBedToBandIntent, ten
+    // times a second, `layer: 'place'`) drives the score director and the room tone and supplies
+    // the sector carrier; a Band radio intent (bandRadio's `band:bed`) owns the carrier while it
+    // is on air, so the place tick no longer overwrites the tuned station.
     setIntent(value = {}) {
+      if (value && value.reason === 'pause') {
+        if (this.room) this.room.stop();
+        return this._applyCarrier(value);
+      }
+      if (value && value.layer === 'place') {
+        this._updatePlace(value);
+        if (this.radioIntent) {
+          if (!this.activeGraph) this._applyCarrier(this.radioIntent);
+          return this.activeGraph;
+        }
+        return this._applyCarrier(value);
+      }
+      const radioOn = !!(value && value.active && !value.silence && finite(value.strength, 0) > 0);
+      this.radioIntent = radioOn ? value : null;
+      return this._applyCarrier(value);
+    },
+
+    _updatePlace(value) {
+      const now = finite(ctx.currentTime, 0);
+      if (!value.active || !value.place) {
+        this.scoreFrame = null;
+        if (this.room) this.room.stop();
+        return;
+      }
+      this.scoreFrame = this.director.step(value.place, now);
+      if (!this.room) {
+        this.room = createRoomToneRuntime(ctx, destination, {
+          noiseBuffer: () => this._noiseBuffer || (this._noiseBuffer = makeNoiseBuffer(ctx, random)),
+        });
+      }
+      this.room.update(this.scoreFrame, now);
+    },
+
+    _applyCarrier(value) {
       const intent = normalizeIntent(value);
       this.lastIntent = intent;
       if (!intent.active || intent.silence || intent.strength <= 0 || !intent.profile) {
@@ -90,6 +135,10 @@ export function createBandBedRuntime(ctx, destination, options = {}) {
 
     destroy() {
       this._stopGraph();
+      if (this.room) this.room.destroy();
+      this.room = null;
+      this.radioIntent = null;
+      this.scoreFrame = null;
       this.lastIntent = null;
       this._noiseBuffer = null;
     },

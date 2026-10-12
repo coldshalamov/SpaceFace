@@ -4,6 +4,7 @@
 
 import { BAND_BED_PROFILES } from './bandBeds.js';
 import { MUSIC_STEMS } from '../data/audioRecipes.js';
+import { resolveScoreIdentity, resolveFactionColour } from './scoreDirector.js';
 
 export const THEME_MATRIX_SEED = 15803;
 
@@ -122,6 +123,15 @@ export function mixAudibleStemWeights(stateWeights, sectorWeights) {
 }
 
 /** WANTED motif transposed by two semitones per heat tier. Band 1 is unison. */
+// THE EAR: the director's continuous faders (phase x intensity) on the sector's register. Null
+// when the director has not read this state yet (or disagrees on docking), so the caller keeps
+// the authored state row.
+export function scoreStemWeights(frame, theme) {
+  if (!frame || !frame.stemWeights || !theme) return null;
+  if ((theme.state === 'station') !== (frame.phase === 'dock')) return null;
+  return mixAudibleStemWeights(frame.stemWeights, theme.sectorStemWeights);
+}
+
 export function wantedMotifRate(band) {
   const steps = Math.max(0, Math.min(4, (Number(band) || 1) - 1));
   return Math.round(Math.pow(2, (steps * 2) / 12) * 1000) / 1000;
@@ -198,9 +208,11 @@ export function resolveFactionSting(factionId) {
 
 /** Band intent for a sector bed. Wave/hz/noise ride the existing Band graph; no second writer. */
 export function sectorBedToBandIntent(bed, options = {}) {
-  if (!bed) return Object.freeze({ active: false, reason: 'no-bed' });
+  if (!bed) return Object.freeze({ active: false, reason: 'no-bed', layer: 'place' });
   return Object.freeze({
     active: true,
+    layer: 'place',
+    place: bed.place || null,
     strength: options.strength == null ? 0.45 : options.strength,
     channelId: bed.id,
     bed: Object.freeze({
@@ -215,10 +227,17 @@ export function sectorBedToBandIntent(bed, options = {}) {
   });
 }
 
+// THE EAR: a hunter closing before any shot lands (threat in the committed/approach band) is a
+// chase, and the chase is the tension stem's job — the same B row the law's pursuit uses. Before
+// this band existed a committed hunter at 0.45 threat left the travel lead playing.
+export const PURSUIT_THREAT = 0.3;
+
 export function resolveThemeState(input = {}) {
   if (input.docked || input.station) return 'station';
   if (input.wanted) return 'wanted';
-  if (input.inCombat || clamp01(input.threat) >= 0.6) return 'combat';
+  const threat = clamp01(input.threat);
+  if (input.inCombat || threat >= 0.6) return 'combat';
+  if (threat >= PURSUIT_THREAT) return 'wanted';
   return 'travel';
 }
 
@@ -266,6 +285,20 @@ export function resolveThemeMatrix(input = {}) {
   // driven hotter as the run's kill chain climbs.
   audibleStemWeights = applySwarmStemLift(audibleStemWeights, sectorStemWeights, input.swarmLift);
   const stingRow = resolveFactionSting(input.factionId);
+  const score = resolveScoreIdentity(input.sectorId);
+  const factionColour = resolveFactionColour(input.factionId);
+  // The place intent the Band runtime's score director and room tone read: the same inputs this
+  // resolver was handed, so the room and the stems answer one state read.
+  const place = Object.freeze({
+    sectorId: input.sectorId || null,
+    factionId: input.factionId || null,
+    docked: !!(input.docked || input.station),
+    wanted: !!input.wanted,
+    inCombat: !!input.inCombat,
+    threat: clamp01(input.threat),
+    swarmLift: clamp01(input.swarmLift),
+    working: !!input.working,
+  });
   const stem = MUSIC_STEMS.find((row) => row && (row.id === `stem_${motif.stem.toLowerCase()}` || row.label))
     || MUSIC_STEMS[0];
   return Object.freeze({
@@ -279,8 +312,11 @@ export function resolveThemeMatrix(input = {}) {
     audibleStemWeights,
     stemId: motif.stem,
     stemDef: stem,
-    bed: bedRow,
+    bed: Object.freeze({ ...bedRow, place }),
     sting: stingRow,
+    pursuit: state === 'wanted' && !input.wanted,
+    score,
+    factionColour,
     hummable: motif.hummable,
   });
 }
