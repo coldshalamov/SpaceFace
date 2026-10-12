@@ -9,6 +9,8 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, symlinkSync, rmSync
 import { execFileSync, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { overall, regradeSoftwareFrameTime } from './checks.mjs';
+import { renderVerdict } from './verdict.mjs';
 
 const RANK = { PASS: 0, 'N/A': 0, UNKNOWN: 1, INCOMPLETE: 1, FAIL: 2 };
 const load = (p) => JSON.parse(readFileSync(p.endsWith('.json') ? p : path.join(p, 'verdict.json'), 'utf8'));
@@ -18,11 +20,54 @@ export function compareVerdicts(base, head) {
   const ids = [...new Set([...base.results.map((r) => r.id), ...head.results.map((r) => r.id)])];
   const rows = ids.map((id) => {
     const a = base.results.find((r) => r.id === id); const b = head.results.find((r) => r.id === id);
-    const ra = a ? RANK[a.status] ?? 1 : null; const rb = b ? RANK[b.status] ?? 1 : null;
-    const change = ra == null || rb == null ? 'new/removed' : rb < ra ? 'improved' : rb > ra ? 'REGRESSED' : 'same';
+    const sa = a && a.status; const sb = b && b.status;
+    let change;
+    // An environment abort is the harness, not a gameplay regression.
+    if (sa === 'ENVIRONMENT' || sb === 'ENVIRONMENT') change = sa === sb ? 'same' : sb === 'ENVIRONMENT' ? 'environment' : 'cleared';
+    else {
+      const ra = a ? RANK[a.status] ?? 1 : null; const rb = b ? RANK[b.status] ?? 1 : null;
+      change = ra == null || rb == null ? 'new/removed' : rb < ra ? 'improved' : rb > ra ? 'REGRESSED' : 'same';
+    }
     return { id, title: (b || a).title, base: a, head: b, change };
   });
   return { rows, regressed: rows.filter((r) => r.change === 'REGRESSED').length, improved: rows.filter((r) => r.change === 'improved').length };
+}
+
+/** Grade the head's software-GL frame_time against the baseline verdict. Mutates `head`. */
+export function applyBaselineToHead(head, base, { baselineMissing = false, commit = null } = {}) {
+  const rev = commit || (base && base.meta && base.meta.commit) || null;
+  const frameResult = base && base.results && base.results.find((r) => r.id === 'frame_time');
+  const baseFrame = frameResult && frameResult.frame && frameResult.frame.p99 != null && frameResult.frame.longTasks != null ? frameResult.frame : null;
+  const missing = baselineMissing || !baseFrame;
+  const changed = regradeSoftwareFrameTime(head.results, baseFrame, { commit: rev, baselineMissing: missing });
+  if (changed) {
+    head.overall = overall(head.results);
+    if (head.meta) head.meta.overall = head.overall;
+  }
+  return changed;
+}
+
+function writeRegraded(outDir, head, root) {
+  const paths = {
+    verdict: path.relative(root, path.join(outDir, 'verdict.md')),
+    contactSheet: path.relative(root, path.join(outDir, 'contact-sheet.jpg')),
+    json: path.relative(root, path.join(outDir, 'verdict.json')),
+    trace: path.relative(root, path.join(outDir, 'trace.json.gz')),
+    frames: path.relative(root, path.join(outDir, 'frames')),
+  };
+  writeFileSync(path.join(outDir, 'verdict.json'), JSON.stringify(head, null, 1));
+  writeFileSync(path.join(outDir, 'verdict.md'), renderVerdict({ meta: head.meta, results: head.results, overall: head.overall, paths }));
+  const label = head.meta && head.meta.label;
+  if (!label) return;
+  const evDir = path.join(root, 'design/program/player-truth', label);
+  if (!existsSync(path.join(evDir, 'verdict.json'))) return;
+  const evPaths = {
+    verdict: path.relative(root, path.join(evDir, 'verdict.md')),
+    contactSheet: path.relative(root, path.join(evDir, 'contact-sheet.jpg')),
+    json: path.relative(root, path.join(evDir, 'verdict.json')),
+  };
+  writeFileSync(path.join(evDir, 'verdict.json'), JSON.stringify(head, null, 1));
+  writeFileSync(path.join(evDir, 'verdict.md'), renderVerdict({ meta: head.meta, results: head.results, overall: head.overall, paths: evPaths }));
 }
 
 export function renderComparison(base, head) {
@@ -63,10 +108,21 @@ export async function runBaseline({ ref, argv, outcomes, root }) {
     mkdirSync(outRoot, { recursive: true });
     const tables = [];
     for (const o of outcomes) {
+      const headPath = path.join(o.outDir, 'verdict.json');
+      if (!existsSync(headPath)) { tables.push(`### ${o.label}: branch run produced no verdict\n`); continue; }
+      const head = load(o.outDir);
+      const before = head.overall;
       const baseDir = path.join(wt, 'scratch/player-truth', o.label);
-      if (!existsSync(path.join(baseDir, 'verdict.json'))) { tables.push(`### ${o.label}: baseline run produced no verdict\n`); continue; }
-      execFileSync('cp', ['-r', baseDir, path.join(outRoot, o.label)]);
-      tables.push(renderComparison(load(path.join(outRoot, o.label)), load(o.outDir)));
+      const baseReady = existsSync(path.join(baseDir, 'verdict.json'));
+      if (baseReady) execFileSync('cp', ['-r', baseDir, path.join(outRoot, o.label)]);
+      const base = baseReady ? load(path.join(outRoot, o.label)) : null;
+      if (applyBaselineToHead(head, base, { baselineMissing: !base, commit: (base && base.meta && base.meta.commit) || ref })) {
+        writeRegraded(o.outDir, head, root);
+        o.verdict = head.overall;
+        if (before !== head.overall) console.log(`regraded ${o.label} frame_time: overall ${before} → ${head.overall}`);
+      }
+      if (!base) { tables.push(`### ${o.label}: baseline run produced no verdict\n`); continue; }
+      tables.push(renderComparison(base, head));
     }
     const file = path.join(root, 'scratch/player-truth', `compare-${ref.replace(/[^a-z0-9]+/gi, '-')}.md`);
     writeFileSync(file, tables.join('\n'));

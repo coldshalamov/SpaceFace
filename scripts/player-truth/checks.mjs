@@ -31,6 +31,12 @@ export const THRESHOLDS = Object.freeze({
   yawDeltaRad: 0.2, // rad turned after ~0.8 s of yaw
   tumblePitch: 0.35, tumbleBank: 0.75, tumbleY: 4, tumbleAngVel: 2.5, tumbleSeconds: 0.5,
   readabilityMinSeparation: 1.0, readabilityMinSamples: 5,
+  readabilityLowDeltaL: 8, // |ΔL| below this against the local backdrop ring is "barely differs"
+  readabilityLowContrastFrac: 0.5, // more than half the samples of a measured class at that ΔL is a FAIL
+  readabilityMarkerCredit: 1.5, // added to separation when one class wears a bright ring and the other does not
+  readabilityMarkerOn: 0.4, readabilityMarkerSplit: 0.35, // marker rate, and how far apart the two rates must be
+  frameP99RegressionRatio: 1.25, frameP99RegressionAbsMs: 100,
+  longTaskRegressionRatio: 1.25, longTaskRegressionAbs: 30,
   vfxCoverP95: 0.25, vfxPlayerOccludedFrac: 0.1, vfxThreatOccludedP95: 0.3, vfxPersistSeconds: 3, backdropThreatP95: 0.3, pinnedMoveFrac: 0.25, pinnedMinExpect: 40,
   longTaskMs: 250, frameP99Ms: 50,
 });
@@ -439,24 +445,48 @@ function heldIntervals(trace, codes) {
 }
 const inIntervals = (iv, x) => iv.some(([a, b]) => x >= a && x <= b);
 
+const READABILITY_CLASSES = ['enemy', 'asteroid', 'projectile'];
+
+function readabilityThreshold() {
+  const T = THRESHOLDS;
+  return `separation ≥${T.readabilityMinSeparation} (colour, silhouette, +${T.readabilityMarkerCredit} marker); ≤${T.readabilityLowContrastFrac * 100}% of samples with ΔL<${T.readabilityLowDeltaL} vs backdrop`;
+}
+
 export function checkReadability(trace) {
   const T = THRESHOLDS; const r = trace.readability;
-  if (!r || !r.classes) return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, `separation ≥${T.readabilityMinSeparation}`, 'no frame analysis');
-  const pairs = (r.pairs || []).filter((p) => p.nA >= T.readabilityMinSamples && p.nB >= T.readabilityMinSamples);
-  const counts = Object.entries(r.classes).map(([k, v]) => `${k} ${v.n}`).join(', ');
-  if (!pairs.length) return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, `separation ≥${T.readabilityMinSeparation}`, `not enough on-screen samples per class (${counts}; need ${T.readabilityMinSamples})`);
+  const threshold = readabilityThreshold();
+  if (!r || !r.classes || r.error) return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, threshold, r && r.error ? `no frame analysis (${r.error})` : 'no frame analysis');
+  const counts = Object.entries(r.classes).map(([k, v]) => `${k} ${v.n}`).join(', ') || 'none';
+  const graded = READABILITY_CLASSES.filter((k) => r.classes[k] && r.classes[k].n >= T.readabilityMinSamples);
+  const pairs = (r.pairs || []).filter((p) => p.sep != null && p.nA >= T.readabilityMinSamples && p.nB >= T.readabilityMinSamples);
+  // A measured class can pass or fail on its own backdrop contrast. UNKNOWN only when no combat class reached the sample floor.
+  if (!graded.length && !pairs.length) {
+    return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, threshold, `not enough on-screen samples (${counts}; need ${T.readabilityMinSamples} of one class)`);
+  }
   const bad = pairs.filter((p) => p.sep < T.readabilityMinSeparation).sort((a, b) => a.sep - b.sep);
-  const lowContrast = Object.entries(r.classes).filter(([k, v]) => (k === 'enemy' || k === 'projectile') && v.n >= T.readabilityMinSamples && v.lowContrastFrac > 0.5);
+  const lowContrast = graded.filter((k) => (r.classes[k].lowContrastFrac || 0) > T.readabilityLowContrastFrac);
   const offenders = [
-    ...bad.map((p) => ({ line: `${p.a} vs ${p.b}: separation ${fmt(p.sep)} (colour Δ ${fmt(p.dColor, 1)}, size ratio ${fmt(p.sizeRatio, 2)}) over ${p.nA}/${p.nB} samples`, t: p.exampleT, sim: null, box: p.exampleBox })),
-    ...lowContrast.map(([k, v]) => ({ line: `${k}: ${fmt(v.lowContrastFrac * 100, 0)}% of samples barely differ from the background (ΔL < 8)`, t: v.exampleT, sim: null, box: v.exampleBox })),
+    ...bad.map((p) => ({ line: `${p.a} vs ${p.b}: separation ${fmt(p.sep)} (colour Δ ${fmt(p.dColor, 1)}, size ratio ${fmt(p.sizeRatio, 2)}${p.markerCredit ? `, marker +${fmt(p.markerCredit, 1)}` : ''}) over ${p.nA}/${p.nB} samples`, t: p.exampleT, sim: null, box: p.exampleBox })),
+    ...lowContrast.map((k) => {
+      const v = r.classes[k];
+      return { line: `${k}: ${fmt((v.lowContrastFrac || 0) * 100, 0)}% of samples barely differ from the background (ΔL < ${T.readabilityLowDeltaL})`, t: v.exampleT, sim: null, box: v.exampleBox };
+    }),
     // Big play-space bodies that are neither enemy nor asteroid (e.g. a white station sphere) sitting on the player.
     ...(r.census || []).filter((c) => ['station', 'neutral', 'other'].includes(c.cls) && c.n >= T.readabilityMinSamples && c.overPlayerFrac >= 0.2)
       .map((c) => ({ line: `${c.name || c.cls} (${c.cls}, ${c.look}, r ${fmt(c.meanRadiusPx, 0)} px) sits over the player ship in ${fmt(c.overPlayerFrac * 100, 0)}% of ${c.n} samples — a play-space body that reads as neither enemy nor asteroid`, t: c.exampleT, sim: null, box: c.exampleBox })),
   ];
-  const minSep = Math.min(...pairs.map((p) => p.sep));
-  return result('readability', 'Enemy / asteroid / projectile readable', offenders.length ? 'FAIL' : 'PASS', `min separation ${fmt(minSep)}`, `≥${T.readabilityMinSeparation} per class pair; ≤50% low-contrast`,
-    `samples: ${counts}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
+  const moments = [];
+  for (const k of lowContrast) {
+    const worst = (r.classes[k].worst || []).filter((w) => w && w.box);
+    if (worst.length) for (const w of worst.slice(0, 2)) moments.push({ line: `${k} ΔL ${fmt(w.deltaL, 1)} vs backdrop`, t: w.t, sim: null, box: w.box });
+    else if (r.classes[k].exampleBox) moments.push({ line: `${k} low contrast`, t: r.classes[k].exampleT, sim: null, box: r.classes[k].exampleBox });
+  }
+  for (const p of bad) if (p.exampleBox) moments.push({ line: `${p.a} vs ${p.b} separation ${fmt(p.sep)}`, t: p.exampleT, sim: null, box: p.exampleBox });
+  const thin = READABILITY_CLASSES.filter((k) => !graded.includes(k));
+  const contrastValue = graded.map((k) => `${k} ${fmt((r.classes[k].lowContrastFrac || 0) * 100, 0)}% low-contrast`).join(' · ');
+  const value = pairs.length ? `min separation ${fmt(Math.min(...pairs.map((p) => p.sep)))}` : contrastValue;
+  const detail = `samples: ${counts}${thin.length ? `; not graded (under ${T.readabilityMinSamples}): ${thin.join(', ')}` : ''}`;
+  return result('readability', 'Enemy / asteroid / projectile readable', offenders.length ? 'FAIL' : 'PASS', value, threshold, detail, offenders.slice(0, 6), moments.slice(0, 6));
 }
 
 /** Combat VFX graded per pixel when the reader's offscreen split ran (backdrop layers excluded). */
@@ -530,22 +560,39 @@ export function checkVfx(trace) {
 export function checkLoadout(trace) {
   const L = trace.loadout;
   if (!L) return result('loadout', 'Loadout readable and relevant', trace.meta.hasLoadout ? 'UNKNOWN' : 'N/A', null, '0 irrelevant · 0 undescribed · 0 silent swaps', trace.meta.hasLoadout ? 'loadout screen not audited' : 'mode has no preparation loadout');
+  const offers = L.items || [];
+  const fitted = L.fitted || [];
   const offenders = [];
   for (const it of L.irrelevant || []) offenders.push({ line: `irrelevant to ${trace.meta.mode}: ${it.name} (${it.category}) — ${it.reason}`, t: L.shotT, box: it.box });
   for (const it of L.undescribed || []) offenders.push({ line: `no description: ${it.name}`, t: L.shotT, box: it.box });
   for (const sw of L.silentSwaps || []) offenders.push({ line: `silent replace: installing ${sw.bought} removed ${sw.removed.join(', ')}; screen said "${(sw.said || '').slice(0, 80)}"`, t: sw.t, box: null });
-  const n = (L.irrelevant || []).length + (L.undescribed || []).length + (L.silentSwaps || []).length;
-  const status = n ? 'FAIL' : (L.swapProbe === 'not-run' ? 'UNKNOWN' : 'PASS');
+  const quote = String(L.offerQuote || L.doorQuote || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+  if (L.offerSource === 'harness-miss') offenders.push({ line: `harness failed to read the screen: "${quote}"`, t: L.shotT, box: null });
+  const fittedClaimed = Number(L.fittedClaimed) || 0;
+  if (L.fittedRead === false) {
+    offenders.push({ line: `harness failed to read fitted items${L.fittedError ? `: ${String(L.fittedError).slice(0, 140)}` : ''}`, t: L.shotT, box: null });
+  } else if (fittedClaimed > 0 && fitted.length === 0 && offers.length === 0 && L.offerSource !== 'harness-miss' && L.offerSource !== 'cards') {
+    offenders.push({ line: `preparation says ${fittedClaimed} fitted but names none and explains none: "${quote}"`, t: L.shotT, box: null });
+  }
+  let source = `${offers.length} offers read`;
+  if (L.offerSource === 'game-empty') source = `game offered nothing: "${quote}"`;
+  else if (L.offerSource === 'harness-miss') source = `harness failed to read the screen: "${quote}"`;
+  else if (L.offerSource === 'door-only') source = `preparation lists no item shelf: "${quote}"`;
+  const fittedNote = `${fitted.length} fitted${L.fittedRead === false ? ' (fit list not read)' : ''}`;
+  const detail = `${source}; ${fittedNote}; swap probe: ${L.swapProbe}`;
+  const status = offenders.length ? 'FAIL' : (L.swapProbe === 'not-run' ? 'UNKNOWN' : 'PASS');
   return result('loadout', 'Loadout readable and relevant', status,
     `${(L.irrelevant || []).length} irrelevant · ${(L.undescribed || []).length} undescribed · ${(L.silentSwaps || []).length} silent swaps`, '0 · 0 · 0',
-    `${L.items.length} offers read; swap probe: ${L.swapProbe}`, offenders.slice(0, 6), offenders.filter((o) => o.t != null).slice(0, 1));
+    detail, offenders.slice(0, 6), offenders.filter((o) => o.t != null).slice(0, 1));
 }
 
-export function checkFrameTime(trace) {
-  const T = THRESHOLDS; const samples = playSamples(trace).filter((s) => s.dt > 0);
-  if (samples.length < 10) return result('frame_time', 'Frame time / long tasks', 'UNKNOWN', null, null, 'too few frames');
+function frameStats(trace) {
+  const T = THRESHOLDS;
+  const samples = playSamples(trace).filter((s) => s.dt > 0);
+  if (samples.length < 10) return null;
   const dts = samples.map((s) => s.dt).sort((a, b) => a - b);
-  const p50 = dts[Math.floor(dts.length * 0.5)]; const p99 = dts[Math.floor(dts.length * 0.99)];
+  const p50 = dts[Math.floor(dts.length * 0.5)];
+  const p99 = dts[Math.floor(dts.length * 0.99)];
   const t0 = samples[0].t; const t1 = samples[samples.length - 1].t;
   const longs = (trace.longTasks || []).filter((l) => l.t >= t0 && l.t <= t1 && l.d >= T.longTaskMs).sort((a, b) => b.d - a.d);
   const worstFrames = samples.slice().sort((a, b) => b.dt - a.dt).slice(0, 3);
@@ -553,12 +600,76 @@ export function checkFrameTime(trace) {
     ...longs.slice(0, 3).map((l) => ({ line: `long task ${fmt(l.d, 0)} ms at sim ${fmt(l.sim, 1)} s (frame ${l.f})`, t: l.t, sim: l.sim, box: null })),
     ...worstFrames.map((s) => ({ line: `frame ${s.f}: ${fmt(s.dt, 0)} ms at sim ${fmt(s.sim, 1)} s (${s.e.length} entities${s.info ? `, ${s.info.calls} draws` : ''})`, t: s.t, sim: s.sim, box: null })),
   ];
-  const value = `p50 ${fmt(p50, 0)} ms · p99 ${fmt(p99, 0)} ms · ${longs.length} long tasks ≥${T.longTaskMs} ms`;
-  if (trace.meta.softwareGl) return result('frame_time', 'Frame time / long tasks', 'UNKNOWN', value, `p99 ≤${T.frameP99Ms} ms · 0 long tasks ≥${T.longTaskMs} ms`, 'software GL (SwiftShader): frame time is not the player\'s — rerun headed on a GPU to grade', offenders.slice(0, 4), []);
-  return result('frame_time', 'Frame time / long tasks', p99 > T.frameP99Ms || longs.length ? 'FAIL' : 'PASS', value, `p99 ≤${T.frameP99Ms} ms · 0 long tasks ≥${T.longTaskMs} ms`, `${samples.length} play frames`, offenders.slice(0, 4), offenders.filter((o) => o.t != null).slice(0, 2));
+  return { p50, p99, longTasks: longs.length, samples: samples.length, offenders };
+}
+
+/** Software-GL numbers are evidence. PASS/FAIL is only a regression against a baseline that itself measured frame time. */
+export function gradeSoftwareFrameTime(stats, baseline) {
+  const T = THRESHOLDS;
+  const value = `software-renderer evidence · p50 ${fmt(stats.p50, 0)} ms · p99 ${fmt(stats.p99, 0)} ms · ${stats.longTasks} long tasks ≥${T.longTaskMs} ms`;
+  const frame = { p50: stats.p50, p99: stats.p99, longTasks: stats.longTasks, softwareGl: true, samples: stats.samples };
+  const policy = `p99 ≤${Math.round(T.frameP99RegressionRatio * 100)}% and ≤+${T.frameP99RegressionAbsMs} ms · long tasks ≤${Math.round(T.longTaskRegressionRatio * 100)}% and ≤+${T.longTaskRegressionAbs}`;
+  const bare = !baseline;
+  const unmeasured = !bare && (baseline.p99 == null || baseline.longTasks == null || !Number.isFinite(Number(baseline.p99)) || !Number.isFinite(Number(baseline.longTasks)));
+  if (bare || unmeasured) {
+    const who = bare ? null : (baseline.commit || '?');
+    return {
+      status: 'UNKNOWN', value, frame,
+      threshold: bare ? `no regression vs --baseline (${policy})` : `no regression vs ${who} (${policy})`,
+      detail: bare ? 'software-renderer evidence only; no --baseline to grade regression' : `software-renderer evidence only; baseline ${who} produced no frame-time measurement`,
+    };
+  }
+  const p99 = Number(stats.p99); const lt = Number(stats.longTasks);
+  const baseP99 = Number(baseline.p99); const baseLt = Number(baseline.longTasks);
+  const p99Cap = Math.max(baseP99 * T.frameP99RegressionRatio, baseP99 + T.frameP99RegressionAbsMs);
+  const ltCap = Math.max(baseLt * T.longTaskRegressionRatio, baseLt + T.longTaskRegressionAbs);
+  const fail = p99 > p99Cap || lt > ltCap;
+  const commit = baseline.commit || 'baseline';
+  return {
+    status: fail ? 'FAIL' : 'PASS', value, frame,
+    threshold: `no regression vs ${commit}: p99 ≤${fmt(p99Cap, 0)} ms · long tasks ≤${fmt(ltCap, 0)}`,
+    detail: `${stats.samples} play frames · baseline p99 ${fmt(baseP99, 0)} ms · ${baseLt} long tasks`,
+  };
+}
+
+/** Rewrite a recorded software-GL frame_time result once the baseline verdict exists. Returns true when it changed the result. */
+export function regradeSoftwareFrameTime(results, baselineFrame, { commit, baselineMissing = false } = {}) {
+  const row = results.find((x) => x.id === 'frame_time');
+  if (!row || !row.frame || !row.frame.softwareGl) return false;
+  const baseline = baselineMissing || !baselineFrame
+    ? { commit: commit || '?', p99: null, longTasks: null }
+    : { ...baselineFrame, commit: commit || baselineFrame.commit || '?' };
+  const graded = gradeSoftwareFrameTime(row.frame, baseline);
+  row.status = graded.status;
+  row.value = graded.value;
+  row.threshold = graded.threshold;
+  row.detail = graded.detail;
+  row.frame = graded.frame;
+  return true;
+}
+
+export function checkFrameTime(trace) {
+  const T = THRESHOLDS;
+  const stats = frameStats(trace);
+  if (!stats) return result('frame_time', 'Frame time / long tasks', 'UNKNOWN', null, null, 'too few frames');
+  if (trace.meta.softwareGl) {
+    const graded = gradeSoftwareFrameTime(stats, trace.meta.frameBaseline || null);
+    const row = result('frame_time', 'Frame time / long tasks', graded.status, graded.value, graded.threshold, graded.detail, stats.offenders.slice(0, 4), graded.status === 'FAIL' ? stats.offenders.filter((o) => o.t != null).slice(0, 2) : []);
+    row.frame = graded.frame;
+    return row;
+  }
+  const value = `p50 ${fmt(stats.p50, 0)} ms · p99 ${fmt(stats.p99, 0)} ms · ${stats.longTasks} long tasks ≥${T.longTaskMs} ms`;
+  const row = result('frame_time', 'Frame time / long tasks', stats.p99 > T.frameP99Ms || stats.longTasks ? 'FAIL' : 'PASS', value, `p99 ≤${T.frameP99Ms} ms · 0 long tasks ≥${T.longTaskMs} ms`, `${stats.samples} play frames`, stats.offenders.slice(0, 4), stats.offenders.filter((o) => o.t != null).slice(0, 2));
+  row.frame = { p50: stats.p50, p99: stats.p99, longTasks: stats.longTasks, softwareGl: false, samples: stats.samples };
+  return row;
 }
 
 export function checkRoute(trace) {
+  const quote = trace.meta && trace.meta.environmentQuote;
+  if (quote) {
+    return result('route', 'Public route plays end to end', 'ENVIRONMENT', 'HARNESS ENVIRONMENT', 'served assets and design match HEAD, and the route loads',
+      `route load failed: "${quote}"`, [{ line: quote, t: null, box: null }], []);
+  }
   const r = trace.route || { steps: [] };
   const failed = r.steps.find((s) => !s.ok);
   const reached = r.steps.filter((s) => s.ok).map((s) => s.name).join(' → ');
@@ -623,9 +734,16 @@ export function runChecks(trace) {
   return results;
 }
 
-/** Verdict over a check list: any FAIL fails; otherwise UNKNOWN beats PASS. */
+/** Verdict over a check list. ENVIRONMENT outranks a gameplay FAIL: the run was not the code under test. */
 export function overall(results) {
+  if (results.some((r) => r.status === 'ENVIRONMENT')) return 'ENVIRONMENT';
   if (results.some((r) => r.status === 'FAIL')) return 'FAIL';
   if (results.some((r) => r.status === 'UNKNOWN')) return 'INCOMPLETE';
   return 'PASS';
+}
+
+/** The UNKNOWN checks that make an overall INCOMPLETE. Empty when the verdict is not INCOMPLETE. */
+export function incompleteCauses(results) {
+  if (overall(results) !== 'INCOMPLETE') return [];
+  return results.filter((r) => r.status === 'UNKNOWN');
 }

@@ -44,11 +44,12 @@ export async function buildContactSheet({ shots, results, meta, outFile, vw, vh 
   const flagged = [];
   for (const r of results) {
     if (r.status !== 'FAIL') continue;
+    const cap = r.id === 'readability' ? 4 : 2;
     for (const m of r.moments || []) {
       if (m.t == null) continue;
       const shot = nearestShot(shots, m.t); if (!shot) continue;
       flagged.push({ shot, label: `FAIL ${r.id}`, sub: m.line || r.value, boxes: [m.box] });
-      if (flagged.filter((f) => f.label === `FAIL ${r.id}`).length >= 2) break;
+      if (flagged.filter((f) => f.label === `FAIL ${r.id}`).length >= cap) break;
     }
   }
   const flagTiles = flagged.slice(0, 12);

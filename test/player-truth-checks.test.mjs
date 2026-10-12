@@ -141,24 +141,94 @@ test('loadout audit flags a cargo scanner in Swarm and a silent swap', () => {
   assert.equal(r.status, 'FAIL'); assert.equal(r.offenders.length, 3);
 });
 
-test('frame_time is UNKNOWN on software GL and grades on a GPU', () => {
-  assert.equal(checkFrameTime(trace({ meta: { softwareGl: true } })).status, 'UNKNOWN');
+test('frame_time is software-renderer evidence on SwiftShader and grades on a GPU', () => {
+  const sw = checkFrameTime(trace({ meta: { softwareGl: true } }));
+  assert.equal(sw.status, 'UNKNOWN');
+  assert.match(sw.value, /software-renderer evidence/);
+  assert.match(sw.detail, /no --baseline to grade regression/);
+  assert.equal(sw.frame.softwareGl, true);
   assert.equal(checkFrameTime(trace()).status, 'PASS');
+  const same = checkFrameTime(trace({ meta: { softwareGl: true, frameBaseline: { p99: 800, longTasks: 400, commit: 'base' } } }));
+  assert.equal(same.status, 'PASS');
+  assert.match(same.threshold, /no regression vs base/);
+  const slow = trace({ n: 20, meta: { softwareGl: true, frameBaseline: { p99: 200, longTasks: 10, commit: 'old' } } });
+  for (const s of slow.samples) s.dt = 800;
+  slow.longTasks = Array.from({ length: 80 }, (_, i) => ({ t: (i % 20) * 100, d: 300, sim: 10, f: i }));
+  const regressed = checkFrameTime(slow);
+  assert.equal(regressed.status, 'FAIL');
+  assert.match(regressed.value, /software-renderer evidence/);
+  const missing = checkFrameTime(trace({ meta: { softwareGl: true, frameBaseline: { commit: 'e617', p99: null, longTasks: null } } }));
+  assert.equal(missing.status, 'UNKNOWN');
+  assert.match(missing.detail, /baseline e617 produced no frame-time measurement/);
+  assert.doesNotMatch(missing.detail, /no --baseline/);
 });
 
-test('readability: overlapping classes fail, distinct classes pass, thin data is UNKNOWN', () => {
+test('readability: overlapping classes fail, a measured class can fail alone, thin data is UNKNOWN', () => {
   const S = (L, a, b, r, n) => Array.from({ length: n }, (_, i) => ({ lab: [L + (i % 3) * 4, a, b], r }));
   assert.ok(separation(S(50, 10, 10, 8, 6), S(51, 10, 11, 8, 6)).sep < 1);
   assert.ok(separation(S(80, 60, 40, 8, 6), S(30, -5, -20, 30, 6)).sep > 3);
+  const marked = separation(S(50, 10, 10, 8, 6), S(51, 10, 11, 8, 6), { markerCredit: 1.5 });
+  assert.ok(marked.sep >= separation(S(50, 10, 10, 8, 6), S(51, 10, 11, 8, 6)).sep + 1.5);
   const bad = { meta: { mode: 'swarm' }, readability: { classes: { enemy: { n: 6 }, asteroid: { n: 6 } }, pairs: [{ a: 'enemy', b: 'asteroid', nA: 6, nB: 6, sep: 0.4, dColor: 3, sizeRatio: 1 }] } };
   assert.equal(checkReadability(bad).status, 'FAIL');
   assert.equal(checkReadability({ meta: {}, readability: { classes: { enemy: { n: 1 } }, pairs: [{ a: 'enemy', b: 'asteroid', nA: 1, nB: 0, sep: null }] } }).status, 'UNKNOWN');
+  const asteroids = checkReadability({ meta: {}, readability: {
+    classes: { enemy: { n: 0, lowContrastFrac: 0 }, asteroid: { n: 8, lowContrastFrac: 1, exampleT: 5, exampleBox: [1, 2, 3, 4], worst: [{ t: 5, box: [1, 2, 3, 4], deltaL: 1.2 }] }, projectile: { n: 0, lowContrastFrac: 0 } },
+    pairs: [{ a: 'enemy', b: 'asteroid', nA: 0, nB: 8, sep: null }],
+  } });
+  assert.equal(asteroids.status, 'FAIL');
+  assert.match(asteroids.value, /asteroid 100% low-contrast/);
+  assert.match(asteroids.detail, /not graded \(under 5\): enemy, projectile/);
+  assert.equal(asteroids.moments.length, 1);
+  const clear = checkReadability({ meta: {}, readability: { classes: { enemy: { n: 0 }, asteroid: { n: 8, lowContrastFrac: 0.1 }, projectile: { n: 0 } }, pairs: [] } });
+  assert.equal(clear.status, 'PASS');
 });
 
-test('overall: any FAIL fails, UNKNOWN is never PASS', () => {
+test('overall: any FAIL fails, UNKNOWN is never PASS, ENVIRONMENT outranks both', () => {
   assert.equal(overall([{ status: 'PASS' }, { status: 'FAIL' }]), 'FAIL');
   assert.equal(overall([{ status: 'PASS' }, { status: 'UNKNOWN' }]), 'INCOMPLETE');
   assert.equal(overall([{ status: 'PASS' }, { status: 'N/A' }]), 'PASS');
+  assert.equal(overall([{ status: 'FAIL' }, { status: 'ENVIRONMENT' }]), 'ENVIRONMENT');
+  const md = renderVerdict({
+    meta: { label: 'adv', mode: 'adventure', seed: 1, commit: 'abc', renderer: 'sw', softwareGl: true, headed: false, browserVersion: '1', resolution: '960x540', when: 't', wallSeconds: 1, simSeconds: 1, frames: 1, shots: 1, script: 's' },
+    results: [
+      { id: 'readability', status: 'UNKNOWN', value: null, threshold: 't', detail: 'not enough on-screen samples' },
+      { id: 'frame_time', status: 'UNKNOWN', value: 'p50 94 ms', threshold: 't', detail: 'software-renderer evidence only; no --baseline to grade regression' },
+    ],
+    overall: 'INCOMPLETE', paths: null,
+  });
+  assert.match(md, /Incomplete because:/);
+  assert.match(md, /readability — not enough on-screen samples/);
+  assert.match(md, /frame_time — software-renderer evidence only; no --baseline to grade regression/);
+});
+
+test('loadout names a game-empty shelf, a harness miss, and a fit count with no items', () => {
+  const empty = checkLoadout({ meta: { mode: 'swarm', hasLoadout: true }, loadout: {
+    items: [], fitted: [{ name: 'Bank Stream', category: 'fitted', desc: '' }], irrelevant: [], undescribed: [{ name: 'Bank Stream' }], silentSwaps: [],
+    swapProbe: 'no install possible', offerSource: 'game-empty', offerQuote: 'Wave 0 cleared. Nothing new fits this hull.',
+  } });
+  assert.equal(empty.status, 'FAIL');
+  assert.match(empty.detail, /game offered nothing: "Wave 0 cleared\. Nothing new fits this hull\."/);
+  assert.match(empty.offenders[0].line, /no description: Bank Stream/);
+  const shelf = checkLoadout({ meta: { mode: 'swarm', hasLoadout: true }, loadout: {
+    items: [], fitted: [], irrelevant: [], undescribed: [], silentSwaps: [], swapProbe: 'no install possible',
+    offerSource: 'game-empty', offerQuote: 'Wave 0 cleared. Nothing new fits this hull. · No equipment matches this search.',
+  } });
+  assert.equal(shelf.status, 'PASS');
+  assert.match(shelf.detail, /game offered nothing/);
+  const miss = checkLoadout({ meta: { mode: 'swarm', hasLoadout: true }, loadout: {
+    items: [], fitted: [], irrelevant: [], undescribed: [], silentSwaps: [], swapProbe: 'not-run',
+    offerSource: 'harness-miss', offerQuote: 'All, 4 offers',
+  } });
+  assert.equal(miss.status, 'FAIL');
+  assert.match(miss.detail, /harness failed to read the screen/);
+  const door = checkLoadout({ meta: { mode: 'gauntlet', hasLoadout: true }, loadout: {
+    items: [], fitted: [], irrelevant: [], undescribed: [], silentSwaps: [],
+    swapProbe: 'gauntlet preparation has no armory shelf', offerSource: 'door-only',
+    offerQuote: 'Hornet · 4 hardpoints fitted', fittedClaimed: 4,
+  } });
+  assert.equal(door.status, 'FAIL');
+  assert.match(door.offenders[0].line, /preparation says 4 fitted but names none/);
 });
 
 test('menu clicks are not flight input; canvas presses and keys are', async () => {

@@ -167,6 +167,39 @@ test('gate process exits non-zero when any verdict is FAIL', async () => {
   assert.equal(gateExitCode(['INCOMPLETE']), 2);
   assert.equal(gateExitCode(['PASS', 'INCOMPLETE']), 2);
   assert.equal(gateExitCode(['FAIL', 'INCOMPLETE']), 1);
+  assert.equal(gateExitCode(['ENVIRONMENT']), 4);
+  assert.equal(gateExitCode(['FAIL', 'ENVIRONMENT']), 4);
+});
+
+test('an environment verdict is not a gameplay regression, and software frame time regrades against baseline', async () => {
+  const { applyBaselineToHead } = await import('../scripts/player-truth/compare.mjs');
+  const base = { overall: 'FAIL', meta: { commit: 'aaa' }, results: [{ id: 'route', title: 'Route', status: 'ENVIRONMENT', value: 'HARNESS ENVIRONMENT' }] };
+  const head = { overall: 'PASS', meta: { commit: 'bbb' }, results: [{ id: 'route', title: 'Route', status: 'PASS', value: 'menu' }] };
+  const c = compareVerdicts(base, head);
+  assert.equal(c.regressed, 0);
+  assert.equal(c.rows[0].change, 'cleared');
+  const stale = compareVerdicts(head, base);
+  assert.equal(stale.regressed, 0);
+  assert.equal(stale.rows[0].change, 'environment');
+  const recorded = {
+    overall: 'INCOMPLETE',
+    meta: { label: 'adv', mode: 'adventure', commit: 'head', seed: 1, renderer: 'sw', resolution: '960x540', softwareGl: true },
+    results: [{ id: 'frame_time', title: 'Frame time / long tasks', status: 'UNKNOWN', value: 'software-renderer evidence · p50 94 ms · p99 904 ms · 962 long tasks ≥250 ms', threshold: 'no regression vs --baseline', detail: 'software-renderer evidence only; no --baseline to grade regression', frame: { p50: 94, p99: 904, longTasks: 962, softwareGl: true, samples: 400 } }, { id: 'readability', title: 'Readable', status: 'PASS', value: 'ok' }],
+  };
+  const baseline = { overall: 'INCOMPLETE', meta: { commit: 'd88f4d5881' }, results: [{ id: 'frame_time', frame: { p50: 94, p99: 904, longTasks: 962, softwareGl: true } }] };
+  assert.equal(applyBaselineToHead(recorded, baseline), true);
+  assert.equal(recorded.results[0].status, 'PASS');
+  assert.equal(recorded.overall, 'PASS');
+  const worse = structuredClone(recorded);
+  worse.results[0].status = 'UNKNOWN';
+  worse.results[0].frame = { p50: 94, p99: 904, longTasks: 962, softwareGl: true, samples: 400 };
+  applyBaselineToHead(worse, { meta: { commit: 'old' }, results: [{ id: 'frame_time', frame: { p99: 200, longTasks: 10, softwareGl: true } }] });
+  assert.equal(worse.results[0].status, 'FAIL');
+  assert.equal(worse.overall, 'FAIL');
+  const absent = { overall: 'INCOMPLETE', meta: { commit: 'head' }, results: [{ id: 'frame_time', status: 'UNKNOWN', frame: { p50: 94, p99: 904, longTasks: 962, softwareGl: true, samples: 10 }, value: 'x', threshold: 't', detail: 'software-renderer evidence only; no --baseline to grade regression' }] };
+  applyBaselineToHead(absent, null, { baselineMissing: true });
+  assert.match(absent.results[0].detail, /baseline baseline produced no frame-time measurement|produced no frame-time measurement/);
+  assert.equal(absent.overall, 'INCOMPLETE');
 });
 
 test('pinned spans name the solid body the ship sits on', async () => {

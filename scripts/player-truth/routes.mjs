@@ -1,13 +1,58 @@
 // Public routes: main menu → mode select → preparation/loadout → spawn → play, through the DOM
 // controls a player clicks. No game service is called to skip a step.
 
+import { quoteLoadError } from './environment.mjs';
+
 const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+
+/** Page text that is a load failure, or null. The sentence is the player's, quoted unchanged. */
+export async function readLoadError(page) {
+  const text = await page.evaluate(() => (document.body && document.body.innerText) || '').catch(() => '');
+  return quoteLoadError(text);
+}
+
+function environmentError(quote) {
+  const err = new Error(quote);
+  err.environmentQuote = quote;
+  return err;
+}
 
 export async function bootToMenu(page, baseUrl, step) {
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 180000 });
-  await page.waitForFunction(() => { const el = document.querySelector('[data-screen="mainMenu"]'); return el && getComputedStyle(el).display !== 'none'; }, null, { timeout: 180000 });
-  step('main menu', true, 'menu visible');
+  const deadline = Date.now() + 180000;
+  while (Date.now() < deadline) {
+    const quote = await readLoadError(page);
+    if (quote) throw environmentError(quote);
+    const ready = await page.evaluate(() => {
+      const el = document.querySelector('[data-screen="mainMenu"]');
+      return !!(window.SF && window.SF.state && window.SF.bus && el && getComputedStyle(el).display !== 'none');
+    }).catch(() => false);
+    if (ready) { step('main menu', true, 'menu visible'); return; }
+    await page.waitForTimeout(400);
+  }
+  const quote = await readLoadError(page);
+  if (quote) throw environmentError(quote);
+  throw new Error('main menu did not appear');
+}
+
+/** Flight, or a quoted load error. `active` also requires the run phase to be active. */
+export async function waitUntilFlight(page, { timeout = 600000, active = false } = {}) {
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    const quote = await readLoadError(page);
+    if (quote) throw environmentError(quote);
+    const flight = await page.evaluate((needActive) => {
+      const st = window.SF && window.SF.state;
+      if (!st || st.mode !== 'flight') return false;
+      if (!needActive) return true;
+      return !!(st.run && st.run.phase === 'active');
+    }, active).catch(() => false);
+    if (flight) return;
+    await page.waitForTimeout(400);
+  }
+  const quote = await readLoadError(page);
+  if (quote) throw environmentError(quote);
+  throw new Error(active ? 'flight did not become active before the timeout' : 'flight did not start before the timeout');
 }
 
 /** Click a visible, enabled button in #screens whose text contains `text`. */
@@ -38,8 +83,10 @@ export async function listHulls(page) {
   return page.evaluate(() => [...document.querySelectorAll('#screens .sf-crd-hull')].map((b) => ({ id: b.dataset.starterId, face: b.textContent.replace(/\s+/g, ' ').trim().slice(0, 40), locked: b.dataset.locked === '1' || !!b.disabled })));
 }
 
-/** Crucible door → ruleset → arena → seed → ship & kit → armory. Returns what the door showed. */
-export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantHull = null }, step) {
+/** Crucible door → ruleset → arena → seed → ship & kit → armory. Returns what the door showed.
+ *  `hooks.onShip(doorPrep)` runs after the hull is selected and before the launch click, so a
+ *  caller can photograph the ship step. Gauntlet never opens an armory; the door sentence is the preparation. */
+export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantHull = null }, step, hooks = {}) {
   await clickText(page, 'Crucible', { exact: true });
   await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucible', null, { timeout: 60000 });
   await page.locator(`#screens .sf-crd-mode[data-ruleset="${ruleset}"]`).click();
@@ -106,6 +153,8 @@ export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantH
     await page.waitForTimeout(400);
   }
   const hull = await page.evaluate(() => { const b = [...document.querySelectorAll('#screens .sf-crd-hull')].find((x) => x.getAttribute('aria-pressed') === 'true' || x.getAttribute('aria-checked') === 'true' || x.classList.contains('is-selected')); return b ? b.textContent.replace(/\s+/g, ' ').trim().slice(0, 60) : null; });
+  const doorPrep = await readDoorPreparation(page);
+  if (hooks && typeof hooks.onShip === 'function') await hooks.onShip(doorPrep);
   if (ruleset === 'swarm') {
     await clickText(page, 'Open armory');
     // #318: a Training Derelict fallthrough fails immediately. Any other non-draft
@@ -117,7 +166,7 @@ export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantH
     await clickText(page, 'Enter the Gauntlet');
     await waitForArmory(page, { acceptSurvival: true, verb: 'Enter the Gauntlet' });
   }
-  return { arenas, seedSet, hull, hulls };
+  return { arenas, seedSet, hull, hulls, doorPrep };
 }
 
 /** A non-draft world may sit this long after Open armory before the route is lost. */
@@ -239,6 +288,105 @@ const IRRELEVANT = {
 };
 IRRELEVANT.gauntlet = IRRELEVANT.swarm;
 
+/** "4/8 fitted" or "4 hardpoints fitted" from a door or shelf sentence. 0 when the screen states no count. */
+export function fittedClaimFromText(text) {
+  const s = String(text || '').replace(/\s+/g, ' ');
+  const ratio = s.match(/(\d+)\s*\/\s*(\d+)\s*fitted/i);
+  if (ratio) return Number(ratio[1]);
+  const hard = s.match(/(\d+)\s+hardpoints?\s+fitted/i);
+  return hard ? Number(hard[1]) : 0;
+}
+
+/**
+ * Why an armory read returned no cards.
+ * `cards` — the selector saw offer cards.
+ * `game-empty` — the shelf itself says nothing is offered (zero count, empty node, or the wave sentence).
+ * `harness-miss` — the screen claims offers or prints names the card selector did not return.
+ */
+export function classifyOfferRead({ cards = [], allCount = null, strayNames = [], sub = '', emptyText = '' } = {}) {
+  if (cards.length > 0) return { offerSource: 'cards', offerQuote: null };
+  const quote = [sub, emptyText].map((s) => String(s || '').replace(/\s+/g, ' ').trim()).filter(Boolean).join(' · ').slice(0, 240);
+  const stray = (strayNames || []).filter(Boolean);
+  if ((Number(allCount) > 0) || stray.length > 0) {
+    return { offerSource: 'harness-miss', offerQuote: quote || `category count ${allCount}; names on screen were not .sf-cru-card` };
+  }
+  if (allCount === 0 || /nothing new fits|no equipment matches/i.test(quote)) {
+    return { offerSource: 'game-empty', offerQuote: quote || 'shelf empty' };
+  }
+  return { offerSource: 'harness-miss', offerQuote: quote || 'armory showed no cards and no empty-shelf sentence' };
+}
+
+/** The selected hull's face and the door's hull sentence, before the launch click. */
+export async function readDoorPreparation(page) {
+  const snap = await page.evaluate(() => {
+    const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+    const hull = [...document.querySelectorAll('#screens .sf-crd-hull')].find((x) => x.getAttribute('aria-pressed') === 'true' || x.getAttribute('aria-checked') === 'true' || x.classList.contains('is-selected'));
+    const sub = document.querySelector('#screens .sf-crd-hull-sub');
+    return { face: hull ? norm(hull.textContent).slice(0, 120) : '', sub: sub ? norm(sub.textContent).slice(0, 240) : '' };
+  });
+  const quote = [snap.face, snap.sub].filter(Boolean).join(' · ');
+  return { ...snap, quote, fittedClaimed: fittedClaimFromText(quote) };
+}
+
+/** Offer cards plus the shelf census that says whether zero cards is the game or the harness. */
+export async function readArmoryShelf(page) {
+  const cards = await readArmory(page);
+  const census = await page.evaluate(() => {
+    const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+    const allBtn = [...document.querySelectorAll('#screens button')].find((b) => {
+      const word = b.querySelector('.sf-cru-filter-word');
+      return word && norm(word.textContent) === 'All';
+    });
+    let allCount = null;
+    if (allBtn) {
+      const c = allBtn.querySelector('.sf-cru-count');
+      if (c && /^\d+$/.test(norm(c.textContent))) allCount = Number(norm(c.textContent));
+      const aria = allBtn.getAttribute('aria-label') || '';
+      const m = aria.match(/All,\s*(\d+)/);
+      if (allCount == null && m) allCount = Number(m[1]);
+    }
+    const sub = norm((document.querySelector('#screens .k-title .sf-cru-sub') || document.querySelector('#screens .sf-cru-sub') || {}).textContent || '');
+    const empty = document.querySelector('#screens .orr-armory-empty');
+    const emptyText = empty ? norm(empty.textContent) : '';
+    const strayNames = [...document.querySelectorAll('#screens .sf-cru-name')].filter((n) => !n.closest('.sf-cru-card')).map((n) => norm(n.textContent)).filter(Boolean);
+    return { allCount, sub, emptyText, strayNames };
+  });
+  return { cards, ...census, fittedClaimed: fittedClaimFromText(`${census.sub} ${census.emptyText}`) };
+}
+
+/**
+ * Open Rearrange loadout, read each fitted row's name and any explanation that is not the name,
+ * then Back to armory (draft pop, not a launch). Throws when the control is missing; the caller
+ * records that as a harness read failure and still launches.
+ */
+export async function readFittedRows(page) {
+  await clickText(page, 'Rearrange loadout', { timeout: 15000 });
+  await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucibleRefit', null, { timeout: 20000 });
+  await page.waitForTimeout(300);
+  const rows = await page.evaluate(() => {
+    const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+    return [...document.querySelectorAll('#screens .sf-cru-row.orr-hp.is-fitted, #screens li.sf-cru-row.is-fitted')].map((row) => {
+      const r = row.getBoundingClientRect();
+      const name = norm((row.querySelector('.orr-hp__value') || {}).textContent);
+      const label = norm((row.querySelector('.orr-hp__label') || {}).textContent);
+      const contrast = norm((row.querySelector('.orr-hp__contrast') || {}).textContent);
+      const slot = norm((row.querySelector('.sf-cru-slottag') || {}).textContent);
+      const desc = contrast && contrast !== name ? contrast : '';
+      return { name: name || label, desc, category: slot || 'fitted', role: 'fitted', text: norm(row.textContent).slice(0, 200), box: [r.left, r.top, r.right, r.bottom], visible: r.width > 0 && r.height > 0 };
+    });
+  });
+  try {
+    await clickText(page, 'Back to armory', { timeout: 8000 });
+    await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucibleDraft', null, { timeout: 8000 });
+  } catch (err) {
+    // During a draft, Escape pops the refit and does not launch.
+    await page.keyboard.press('Escape').catch(() => {});
+    const back = await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucibleDraft', null, { timeout: 8000 }).then(() => true, () => false);
+    if (!back) throw err;
+  }
+  return { rows };
+}
+
 /** Read every armory offer and its words. Pure DOM. */
 export async function readArmory(page) {
   return page.evaluate(() => [...document.querySelectorAll('#screens .sf-cru-card')].map((c, i) => {
@@ -315,7 +463,7 @@ export async function adventureToFlight(page, step) {
   const tutorials = await page.evaluate(() => window.SF.state.settings && window.SF.state.settings.gameplay ? window.SF.state.settings.gameplay.tutorialHints : null);
   step('mode select', true, `New Game (Adventure) · tutorial hints ${tutorials}`);
   await clickText(page, 'Launch', { exact: true });
-  await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 600000 });
+  await waitUntilFlight(page, { timeout: 600000 });
   await waitBootOverlayGone(page);
   step('preparation', true, 'default pilot/ship (no changes), Launch');
   return { tutorials };
@@ -333,7 +481,7 @@ export async function racingToFlight(page, step) {
   const ok = page.locator('.sf-confirm .sf-confirm__ok').first();
   let confirmed = null;
   try { await ok.waitFor({ state: 'visible', timeout: 15000 }); confirmed = (await ok.textContent()).trim(); await ok.click(); } catch { /* no confirm on this build */ }
-  await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 600000 });
+  await waitUntilFlight(page, { timeout: 600000 });
   await waitBootOverlayGone(page);
   step('preparation', true, `"${word}" on ${course}${confirmed ? ` → confirm "${confirmed}"` : ''}`);
   return { course };
