@@ -1,0 +1,5777 @@
+{
+  "schemaVersion": 1,
+  "program": "asset-experience-program",
+  "spec": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md",
+  "audit": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+  "verify_command": "node scripts/check-aep-queue-ingestion.mjs --check",
+  "summary": {
+    "items": 188,
+    "passed": 188,
+    "failed": 0,
+    "metrics": {
+      "lived-* encounter files": 176,
+      "situation:\"toll\" defs": 176,
+      "scene-* encounter files": 0,
+      "aftermath_* release assets": 0
+    }
+  },
+  "items": [
+    {
+      "item": "RP-1",
+      "section": "3.1",
+      "source_file": "design/ASSET_REPURPOSE_POOL.md",
+      "item_ids": [
+        "assets/ships/m5_kestrel_upgrade/"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "unshipped (.blend source in repurpose pool)",
+      "note": null,
+      "checks": [
+        {
+          "check": "dir assets/ships/m5_kestrel_upgrade",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md contains \"m5_kestrel_upgrade\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "RP-2",
+      "section": "3.1",
+      "source_file": "design/ASSET_REPURPOSE_POOL.md",
+      "item_ids": [
+        "role-identification-sheet.png"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "unshipped (design input only)",
+      "note": null,
+      "checks": [
+        {
+          "check": "exists assets/incubator/npc_activity_pack/evidence/role-identification-sheet.png",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "RP-3",
+      "section": "3.1",
+      "source_file": "design/ASSET_REPURPOSE_POOL.md",
+      "item_ids": [
+        "m4_ashline_v2",
+        "kestrel_borrowed_time_v2",
+        "kestrel_borrowed_time_v3",
+        "m4_hero_hauler"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "deleted 2026-09-08 — restore-or-retire decision per dir",
+      "note": null,
+      "checks": [
+        {
+          "check": "absent assets/ships/m4_ashline_v2",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "absent assets/ships/kestrel_borrowed_time_v2",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "absent assets/ships/kestrel_borrowed_time_v3",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "absent assets/ships/m4_hero_hauler",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q1",
+      "section": "3.1",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "wholeship_pelican",
+        "wholeship_wasp",
+        "wholeship_pelican_production_v1",
+        "wholeship_wasp_production_v1",
+        "wholeship_kestrel"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "residual: admit pelican_production_v1; retire/repair 2 blocked rows; kestrel already live",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"wholeship_pelican\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "assets/QUEUE.md contains \"wholeship_wasp\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest wholeship_pelican",
+          "expect": "status=blocked",
+          "observed": "status:blocked file:wholeships/pelican.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest wholeship_wasp",
+          "expect": "status=blocked",
+          "observed": "status:blocked file:wholeships/wasp.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest wholeship_pelican_production_v1",
+          "expect": "status=integration_candidate",
+          "observed": "status:integration_candidate file:wholeships/pelican_production_v1.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest wholeship_wasp_production_v1",
+          "expect": "status=accepted",
+          "observed": "status:accepted file:wholeships/wasp_production_v1.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest wholeship_kestrel",
+          "expect": "no status field",
+          "observed": "status:(none) file:wholeships/kestrel.glb",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "AD-1",
+      "section": "3.1",
+      "source_file": "parts_manifest.json",
+      "item_ids": [
+        "wholeship_atlas_production_v1"
+      ],
+      "manifest_row": "wholeship_atlas_production_v1",
+      "canonical_id": null,
+      "lifecycle_status": "integration_candidate (adopt, don't rebuild)",
+      "note": null,
+      "checks": [
+        {
+          "check": "manifest wholeship_atlas_production_v1",
+          "expect": "status=integration_candidate",
+          "observed": "status:integration_candidate file:wholeships/atlas_production_v1.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB wholeship_atlas_production_v1",
+          "expect": "row + GLB on disk",
+          "observed": "wholeships/atlas_production_v1.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "AD-2",
+      "section": "3.1",
+      "source_file": "parts_manifest.json",
+      "item_ids": [
+        "wholeship_bastion_production_v1"
+      ],
+      "manifest_row": "wholeship_bastion_production_v1",
+      "canonical_id": null,
+      "lifecycle_status": "integration_candidate (adopt, don't rebuild)",
+      "note": null,
+      "checks": [
+        {
+          "check": "manifest wholeship_bastion_production_v1",
+          "expect": "status=integration_candidate",
+          "observed": "status:integration_candidate file:wholeships/bastion_production_v1.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB wholeship_bastion_production_v1",
+          "expect": "row + GLB on disk",
+          "observed": "wholeships/bastion_production_v1.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "AD-3",
+      "section": "3.1",
+      "source_file": "parts_manifest.json",
+      "item_ids": [
+        "wholeship_colossus_production_v1"
+      ],
+      "manifest_row": "wholeship_colossus_production_v1",
+      "canonical_id": null,
+      "lifecycle_status": "integration_candidate (adopt, don't rebuild)",
+      "note": null,
+      "checks": [
+        {
+          "check": "manifest wholeship_colossus_production_v1",
+          "expect": "status=integration_candidate",
+          "observed": "status:integration_candidate file:wholeships/colossus_production_v1.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB wholeship_colossus_production_v1",
+          "expect": "row + GLB on disk",
+          "observed": "wholeships/colossus_production_v1.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "AD-4",
+      "section": "3.1",
+      "source_file": "parts_manifest.json",
+      "item_ids": [
+        "wholeship_hornet_production_v1"
+      ],
+      "manifest_row": "wholeship_hornet_production_v1",
+      "canonical_id": null,
+      "lifecycle_status": "integration_candidate (adopt, don't rebuild)",
+      "note": null,
+      "checks": [
+        {
+          "check": "manifest wholeship_hornet_production_v1",
+          "expect": "status=integration_candidate",
+          "observed": "status:integration_candidate file:wholeships/hornet_production_v1.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB wholeship_hornet_production_v1",
+          "expect": "row + GLB on disk",
+          "observed": "wholeships/hornet_production_v1.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "AD-5",
+      "section": "3.1",
+      "source_file": "parts_manifest.json",
+      "item_ids": [
+        "wholeship_ironback_production_v1"
+      ],
+      "manifest_row": "wholeship_ironback_production_v1",
+      "canonical_id": null,
+      "lifecycle_status": "integration_candidate (adopt, don't rebuild)",
+      "note": null,
+      "checks": [
+        {
+          "check": "manifest wholeship_ironback_production_v1",
+          "expect": "status=integration_candidate",
+          "observed": "status:integration_candidate file:wholeships/ironback_production_v1.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB wholeship_ironback_production_v1",
+          "expect": "row + GLB on disk",
+          "observed": "wholeships/ironback_production_v1.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "AD-6",
+      "section": "3.1",
+      "source_file": "parts_manifest.json",
+      "item_ids": [
+        "wholeship_leviathan_production_v1"
+      ],
+      "manifest_row": "wholeship_leviathan_production_v1",
+      "canonical_id": null,
+      "lifecycle_status": "integration_candidate (adopt, don't rebuild)",
+      "note": null,
+      "checks": [
+        {
+          "check": "manifest wholeship_leviathan_production_v1",
+          "expect": "status=integration_candidate",
+          "observed": "status:integration_candidate file:wholeships/leviathan_production_v1.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB wholeship_leviathan_production_v1",
+          "expect": "row + GLB on disk",
+          "observed": "wholeships/leviathan_production_v1.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "AD-7",
+      "section": "3.1",
+      "source_file": "parts_manifest.json",
+      "item_ids": [
+        "wholeship_saucer_production_v1"
+      ],
+      "manifest_row": "wholeship_saucer_production_v1",
+      "canonical_id": null,
+      "lifecycle_status": "integration_candidate (adopt, don't rebuild)",
+      "note": null,
+      "checks": [
+        {
+          "check": "manifest wholeship_saucer_production_v1",
+          "expect": "status=integration_candidate",
+          "observed": "status:integration_candidate file:wholeships/saucer_production_v1.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB wholeship_saucer_production_v1",
+          "expect": "row + GLB on disk",
+          "observed": "wholeships/saucer_production_v1.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "AD-8",
+      "section": "3.1",
+      "source_file": "parts_manifest.json",
+      "item_ids": [
+        "wholeship_massline_express_liner_v1"
+      ],
+      "manifest_row": "wholeship_massline_express_liner_v1",
+      "canonical_id": null,
+      "lifecycle_status": "integration_candidate (adopt, don't rebuild) — only AD id without _production_v1 suffix",
+      "note": null,
+      "checks": [
+        {
+          "check": "manifest wholeship_massline_express_liner_v1",
+          "expect": "status=integration_candidate",
+          "observed": "status:integration_candidate file:wholeships/massline_express_liner_v1.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB wholeship_massline_express_liner_v1",
+          "expect": "row + GLB on disk",
+          "observed": "wholeships/massline_express_liner_v1.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "AD-9",
+      "section": "3.1",
+      "source_file": "parts_manifest.json",
+      "item_ids": [
+        "wholeship_mule_production_v1"
+      ],
+      "manifest_row": "wholeship_mule_production_v1",
+      "canonical_id": null,
+      "lifecycle_status": "integration_candidate (adopt, don't rebuild)",
+      "note": null,
+      "checks": [
+        {
+          "check": "manifest wholeship_mule_production_v1",
+          "expect": "status=integration_candidate",
+          "observed": "status:integration_candidate file:wholeships/mule_production_v1.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB wholeship_mule_production_v1",
+          "expect": "row + GLB on disk",
+          "observed": "wholeships/mule_production_v1.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "AD-10",
+      "section": "3.1",
+      "source_file": "parts_manifest.json",
+      "item_ids": [
+        "wholeship_pelican_production_v1"
+      ],
+      "manifest_row": "wholeship_pelican_production_v1",
+      "canonical_id": null,
+      "lifecycle_status": "integration_candidate (adopt, don't rebuild)",
+      "note": null,
+      "checks": [
+        {
+          "check": "manifest wholeship_pelican_production_v1",
+          "expect": "status=integration_candidate",
+          "observed": "status:integration_candidate file:wholeships/pelican_production_v1.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB wholeship_pelican_production_v1",
+          "expect": "row + GLB on disk",
+          "observed": "wholeships/pelican_production_v1.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "AD-11",
+      "section": "3.1",
+      "source_file": "parts_manifest.json",
+      "item_ids": [
+        "wholeship_ranger_production_v1"
+      ],
+      "manifest_row": "wholeship_ranger_production_v1",
+      "canonical_id": null,
+      "lifecycle_status": "integration_candidate (adopt, don't rebuild)",
+      "note": null,
+      "checks": [
+        {
+          "check": "manifest wholeship_ranger_production_v1",
+          "expect": "status=integration_candidate",
+          "observed": "status:integration_candidate file:wholeships/ranger_production_v1.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB wholeship_ranger_production_v1",
+          "expect": "row + GLB on disk",
+          "observed": "wholeships/ranger_production_v1.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "AD-12",
+      "section": "3.1",
+      "source_file": "parts_manifest.json",
+      "item_ids": [
+        "wholeship_warden_production_v1"
+      ],
+      "manifest_row": "wholeship_warden_production_v1",
+      "canonical_id": null,
+      "lifecycle_status": "integration_candidate (adopt, don't rebuild)",
+      "note": null,
+      "checks": [
+        {
+          "check": "manifest wholeship_warden_production_v1",
+          "expect": "status=integration_candidate",
+          "observed": "status:integration_candidate file:wholeships/warden_production_v1.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB wholeship_warden_production_v1",
+          "expect": "row + GLB on disk",
+          "observed": "wholeships/warden_production_v1.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_station_trade_hub"
+      ],
+      "manifest_row": "place_station_trade_hub",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_station_trade_hub\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_station_trade_hub",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_station_trade_hub.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_station_trade_hub",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_station_refinery"
+      ],
+      "manifest_row": "place_station_refinery",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_station_refinery\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_station_refinery",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_station_refinery.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_station_refinery",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_station_military"
+      ],
+      "manifest_row": "place_station_military",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_station_military\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_station_military",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_station_military.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_station_military",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_station_blackmarket"
+      ],
+      "manifest_row": "place_station_blackmarket",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_station_blackmarket\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_station_blackmarket",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_station_blackmarket.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_station_blackmarket",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_station_mining"
+      ],
+      "manifest_row": "place_station_mining",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_station_mining\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_station_mining",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_station_mining.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_station_mining",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_station_fab"
+      ],
+      "manifest_row": "place_station_fab",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_station_fab\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_station_fab",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_station_fab.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_station_fab",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_station_research"
+      ],
+      "manifest_row": "place_station_research",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_station_research\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_station_research",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_station_research.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_station_research",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_station_billboard"
+      ],
+      "manifest_row": "place_station_billboard",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_station_billboard\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_station_billboard",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_station_billboard.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_station_billboard",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_asteroid_seamed"
+      ],
+      "manifest_row": "place_asteroid_seamed",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_asteroid_seamed\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_asteroid_seamed",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_asteroid_seamed.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_asteroid_seamed",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_asteroid_rock_a"
+      ],
+      "manifest_row": "place_asteroid_rock_a",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_asteroid_rock_a\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_asteroid_rock_a",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_asteroid_rock_a.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_asteroid_rock_a",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_asteroid_rock_b"
+      ],
+      "manifest_row": "place_asteroid_rock_b",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_asteroid_rock_b\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_asteroid_rock_b",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_asteroid_rock_b.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_asteroid_rock_b",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_asteroid_rock_c"
+      ],
+      "manifest_row": "place_asteroid_rock_c",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_asteroid_rock_c\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_asteroid_rock_c",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_asteroid_rock_c.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_asteroid_rock_c",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_asteroid_graffiti"
+      ],
+      "manifest_row": "place_asteroid_graffiti",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_asteroid_graffiti\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_asteroid_graffiti",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_asteroid_graffiti.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_asteroid_graffiti",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_dead_hulk"
+      ],
+      "manifest_row": "place_dead_hulk",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_dead_hulk\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_dead_hulk",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_dead_hulk.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_dead_hulk",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_debris_chunk"
+      ],
+      "manifest_row": "place_debris_chunk",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_debris_chunk\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_debris_chunk",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_debris_chunk.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_debris_chunk",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_lane_beacon"
+      ],
+      "manifest_row": "place_lane_beacon",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_lane_beacon\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_lane_beacon",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_lane_beacon.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_lane_beacon",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_nav_buoy"
+      ],
+      "manifest_row": "place_nav_buoy",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_nav_buoy\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_nav_buoy",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_nav_buoy.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_nav_buoy",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_conveyor_barge"
+      ],
+      "manifest_row": "place_conveyor_barge",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_conveyor_barge\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_conveyor_barge",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_conveyor_barge.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_conveyor_barge",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_mining_drone"
+      ],
+      "manifest_row": "place_mining_drone",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_mining_drone\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_mining_drone",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_mining_drone.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_mining_drone",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PL",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "place_gate_jump_ring"
+      ],
+      "manifest_row": "place_gate_jump_ring",
+      "canonical_id": null,
+      "lifecycle_status": "VISIBLE_IN_PLAY (finish-tier revamp, not a new GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_gate_jump_ring\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_gate_jump_ring",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_gate_jump_ring.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_gate_jump_ring",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-A",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "hull_starter"
+      ],
+      "manifest_row": "hull_starter",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"hull_starter\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB hull_starter",
+          "expect": "row + GLB on disk",
+          "observed": "hulls/hull_starter.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-A",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "cockpit_recessed"
+      ],
+      "manifest_row": "cockpit_recessed",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"cockpit_recessed\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB cockpit_recessed",
+          "expect": "row + GLB on disk",
+          "observed": "cockpits/cockpit_recessed.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-A",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "engine_resonator"
+      ],
+      "manifest_row": "engine_resonator",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"engine_resonator\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB engine_resonator",
+          "expect": "row + GLB on disk",
+          "observed": "engines/engine_resonator.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-A",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "engine_vector"
+      ],
+      "manifest_row": "engine_vector",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"engine_vector\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB engine_vector",
+          "expect": "row + GLB on disk",
+          "observed": "engines/engine_vector.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-A",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "engine_plasma_ring"
+      ],
+      "manifest_row": "engine_plasma_ring",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"engine_plasma_ring\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB engine_plasma_ring",
+          "expect": "row + GLB on disk",
+          "observed": "engines/engine_plasma_ring.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-A",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "weapon_pulse_cannon"
+      ],
+      "manifest_row": "weapon_pulse_cannon",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"weapon_pulse_cannon\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB weapon_pulse_cannon",
+          "expect": "row + GLB on disk",
+          "observed": "weapons/weapon_pulse_cannon.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-A",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "weapon_heavy_cannon"
+      ],
+      "manifest_row": "weapon_heavy_cannon",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"weapon_heavy_cannon\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB weapon_heavy_cannon",
+          "expect": "row + GLB on disk",
+          "observed": "weapons/weapon_heavy_cannon.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-A",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "weapon_turret_dual"
+      ],
+      "manifest_row": "weapon_turret_dual",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"weapon_turret_dual\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB weapon_turret_dual",
+          "expect": "row + GLB on disk",
+          "observed": "weapons/weapon_turret_dual.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-A",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "weapon_lance"
+      ],
+      "manifest_row": "weapon_lance",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"weapon_lance\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB weapon_lance",
+          "expect": "row + GLB on disk",
+          "observed": "weapons/weapon_lance.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-A",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "weapon_gatling"
+      ],
+      "manifest_row": "weapon_gatling",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"weapon_gatling\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB weapon_gatling",
+          "expect": "row + GLB on disk",
+          "observed": "weapons/weapon_gatling.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-A",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "weapon_railgun"
+      ],
+      "manifest_row": "weapon_railgun",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"weapon_railgun\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB weapon_railgun",
+          "expect": "row + GLB on disk",
+          "observed": "weapons/weapon_railgun.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-A",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "fin_wedge"
+      ],
+      "manifest_row": "fin_wedge",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"fin_wedge\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB fin_wedge",
+          "expect": "row + GLB on disk",
+          "observed": "fins/fin_wedge.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-A",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "fin_radiator_grid"
+      ],
+      "manifest_row": "fin_radiator_grid",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"fin_radiator_grid\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB fin_radiator_grid",
+          "expect": "row + GLB on disk",
+          "observed": "fins/fin_radiator_grid.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-A",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "fin_swept_smuggler"
+      ],
+      "manifest_row": "fin_swept_smuggler",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"fin_swept_smuggler\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB fin_swept_smuggler",
+          "expect": "row + GLB on disk",
+          "observed": "fins/fin_swept_smuggler.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-A",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "fin_crystalline"
+      ],
+      "manifest_row": "fin_crystalline",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"fin_crystalline\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB fin_crystalline",
+          "expect": "row + GLB on disk",
+          "observed": "fins/fin_crystalline.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-A",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "fin_delta"
+      ],
+      "manifest_row": "fin_delta",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"fin_delta\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB fin_delta",
+          "expect": "row + GLB on disk",
+          "observed": "fins/fin_delta.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-A",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "fin_stabilator"
+      ],
+      "manifest_row": "fin_stabilator",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"fin_stabilator\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB fin_stabilator",
+          "expect": "row + GLB on disk",
+          "observed": "fins/fin_stabilator.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-B",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "greeble_vents"
+      ],
+      "manifest_row": "greeble_vents",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"greeble_vents\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB greeble_vents",
+          "expect": "row + GLB on disk",
+          "observed": "greebles/greeble_vents.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-B",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "greeble_hatches"
+      ],
+      "manifest_row": "greeble_hatches",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"greeble_hatches\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB greeble_hatches",
+          "expect": "row + GLB on disk",
+          "observed": "greebles/greeble_hatches.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-B",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "greeble_pipes"
+      ],
+      "manifest_row": "greeble_pipes",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"greeble_pipes\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB greeble_pipes",
+          "expect": "row + GLB on disk",
+          "observed": "greebles/greeble_pipes.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-B",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "greeble_rcs"
+      ],
+      "manifest_row": "greeble_rcs",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"greeble_rcs\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB greeble_rcs",
+          "expect": "row + GLB on disk",
+          "observed": "greebles/greeble_rcs.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-B",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "greeble_antennas"
+      ],
+      "manifest_row": "greeble_antennas",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"greeble_antennas\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB greeble_antennas",
+          "expect": "row + GLB on disk",
+          "observed": "greebles/greeble_antennas.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-B",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "greeble_nav_lights"
+      ],
+      "manifest_row": "greeble_nav_lights",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"greeble_nav_lights\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB greeble_nav_lights",
+          "expect": "row + GLB on disk",
+          "observed": "greebles/greeble_nav_lights.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-B",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "greeble_armor_plates"
+      ],
+      "manifest_row": "greeble_armor_plates",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"greeble_armor_plates\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB greeble_armor_plates",
+          "expect": "row + GLB on disk",
+          "observed": "greebles/greeble_armor_plates.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-B",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "skid_trio"
+      ],
+      "manifest_row": "skid_trio",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"skid_trio\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB skid_trio",
+          "expect": "row + GLB on disk",
+          "observed": "gear/skid_trio.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-B",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "skid_quad"
+      ],
+      "manifest_row": "skid_quad",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"skid_quad\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB skid_quad",
+          "expect": "row + GLB on disk",
+          "observed": "gear/skid_quad.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-B",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "pod_utility"
+      ],
+      "manifest_row": "pod_utility",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"pod_utility\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB pod_utility",
+          "expect": "row + GLB on disk",
+          "observed": "pods/pod_utility.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-B",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "pod_cargo_container"
+      ],
+      "manifest_row": "pod_cargo_container",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"pod_cargo_container\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB pod_cargo_container",
+          "expect": "row + GLB on disk",
+          "observed": "pods/pod_cargo_container.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PT-B",
+      "section": "3.2",
+      "source_file": "needed-assets.md §A",
+      "item_ids": [
+        "pod_repair_patch"
+      ],
+      "manifest_row": "pod_repair_patch",
+      "canonical_id": null,
+      "lifecycle_status": "finish-tier (no FULL FINISH note)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"pod_repair_patch\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB pod_repair_patch",
+          "expect": "row + GLB on disk",
+          "observed": "pods/pod_repair_patch.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "claim_hopper"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"claim_hopper\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest claim_hopper",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"claim_hopper\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "claim_battery_mast"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"claim_battery_mast\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest claim_battery_mast",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"claim_battery_mast\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "claim_hangar_frame"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"claim_hangar_frame\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest claim_hangar_frame",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"claim_hangar_frame\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "claim_hab_ring"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"claim_hab_ring\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest claim_hab_ring",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"claim_hab_ring\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "claim_sensor_dish"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"claim_sensor_dish\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest claim_sensor_dish",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"claim_sensor_dish\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "claim_depot_silo"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"claim_depot_silo\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest claim_depot_silo",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"claim_depot_silo\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "claim_teleport_ring"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"claim_teleport_ring\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest claim_teleport_ring",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"claim_teleport_ring\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "hunter_sig_rail_01"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"hunter_sig_rail_01\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest hunter_sig_rail_01",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"hunter_sig_rail_01\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "hunter_sig_rail_02"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"hunter_sig_rail_02\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest hunter_sig_rail_02",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"hunter_sig_rail_02\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "hunter_sig_rail_03"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"hunter_sig_rail_03\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest hunter_sig_rail_03",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"hunter_sig_rail_03\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "hunter_sig_rail_04"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"hunter_sig_rail_04\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest hunter_sig_rail_04",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"hunter_sig_rail_04\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "hunter_sig_rail_05"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"hunter_sig_rail_05\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest hunter_sig_rail_05",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"hunter_sig_rail_05\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "hunter_sig_rail_06"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"hunter_sig_rail_06\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest hunter_sig_rail_06",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"hunter_sig_rail_06\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "hunter_sig_rail_07"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"hunter_sig_rail_07\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest hunter_sig_rail_07",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"hunter_sig_rail_07\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "hunter_sig_rail_08"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"hunter_sig_rail_08\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest hunter_sig_rail_08",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"hunter_sig_rail_08\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "hunter_sig_rail_09"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"hunter_sig_rail_09\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest hunter_sig_rail_09",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"hunter_sig_rail_09\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "hunter_sig_rail_10"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"hunter_sig_rail_10\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest hunter_sig_rail_10",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"hunter_sig_rail_10\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "hunter_sig_rail_11"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"hunter_sig_rail_11\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest hunter_sig_rail_11",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"hunter_sig_rail_11\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "hunter_sig_rail_12"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"hunter_sig_rail_12\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest hunter_sig_rail_12",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"hunter_sig_rail_12\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "module_vis_battery_S"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"module_vis_battery_S\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest module_vis_battery_S",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"module_vis_battery_S\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "module_vis_battery_M"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"module_vis_battery_M\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest module_vis_battery_M",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"module_vis_battery_M\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "module_vis_battery_L"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"module_vis_battery_L\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest module_vis_battery_L",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"module_vis_battery_L\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "module_vis_drill_head"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"module_vis_drill_head\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest module_vis_drill_head",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"module_vis_drill_head\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "module_vis_cargo_pod"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"module_vis_cargo_pod\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest module_vis_cargo_pod",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"module_vis_cargo_pod\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "module_vis_shield_emitter"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"module_vis_shield_emitter\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest module_vis_shield_emitter",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"module_vis_shield_emitter\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "module_vis_salvage_claw"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"module_vis_salvage_claw\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest module_vis_salvage_claw",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"module_vis_salvage_claw\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q2",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "module_vis_tow_winch"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "missing — commission under this id at its QUEUE row budget",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"module_vis_tow_winch\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest module_vis_tow_winch",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"module_vis_tow_winch\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q3",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "landmark_beacon_spire"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_landmark_beacon_spire",
+      "lifecycle_status": "commission (C6)",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"landmark_beacon_spire\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_landmark_beacon_spire",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_landmark_beacon_spire\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q3",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "landmark_veil_obelisk"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_landmark_veil_obelisk",
+      "lifecycle_status": "commission (C6)",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"landmark_veil_obelisk\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_landmark_veil_obelisk",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_landmark_veil_obelisk\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q3",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "landmark_pit_anchor"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_landmark_pit_anchor",
+      "lifecycle_status": "commission (C6) — same canonical id as needed-assets §B row; dedupe",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"landmark_pit_anchor\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_landmark_pit_anchor",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_landmark_pit_anchor\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q3",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "landmark_vault_maw"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_landmark_vault_maw",
+      "lifecycle_status": "commission (C6) — same canonical id as needed-assets §B row; dedupe",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"landmark_vault_maw\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_landmark_vault_maw",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_landmark_vault_maw\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q3",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "landmark_tower_crown"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_landmark_tower_crown",
+      "lifecycle_status": "commission (C6)",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"landmark_tower_crown\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_landmark_tower_crown",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_landmark_tower_crown\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "Q3",
+      "section": "3.2",
+      "source_file": "assets/QUEUE.md",
+      "item_ids": [
+        "landmark_wreck_cathedral"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_landmark_wreck_cathedral",
+      "lifecycle_status": "RETIRE — shipped+wired; no new GLB",
+      "note": null,
+      "checks": [
+        {
+          "check": "assets/QUEUE.md contains \"landmark_wreck_cathedral\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_landmark_wreck_cathedral",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_landmark_wreck_cathedral.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8a",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_station_concord_hub"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_station_concord_hub",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_station_concord_hub\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_station_concord_hub",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_station_concord_hub\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8a",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_station_meridian_exchange"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_station_meridian_exchange",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_station_meridian_exchange\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_station_meridian_exchange",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_station_meridian_exchange\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8a",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_station_drift_refinery"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_station_drift_refinery",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_station_drift_refinery\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_station_drift_refinery",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_station_drift_refinery\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8a",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_station_reach_den"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_station_reach_den",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_station_reach_den\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_station_reach_den",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_station_reach_den\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8a",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_station_quiet_cache"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_station_quiet_cache",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_station_quiet_cache\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_station_quiet_cache",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_station_quiet_cache\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8a",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_station_choir_shrine"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_station_choir_shrine",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_station_choir_shrine\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_station_choir_shrine",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_station_choir_shrine\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8a",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_station_free_waystation"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_station_free_waystation",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_station_free_waystation\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_station_free_waystation",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_station_free_waystation\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8a",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_station_vael_spire"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_station_vael_spire",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_station_vael_spire\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_station_vael_spire",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_station_vael_spire\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8c",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_gate_concord"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_gate_concord",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_gate_concord\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_gate_concord",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_gate_concord\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8c",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_gate_merchant"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_gate_merchant",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_gate_merchant\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_gate_merchant",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_gate_merchant\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8c",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_gate_reach"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_gate_reach",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_gate_reach\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_gate_reach",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_gate_reach\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8d",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_wreck_freighter"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_wreck_freighter",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_wreck_freighter\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_wreck_freighter",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_wreck_freighter\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8d",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_wreck_patrol"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_wreck_patrol",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_wreck_patrol\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_wreck_patrol",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_wreck_patrol\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8d",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_wreck_miner"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_wreck_miner",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_wreck_miner\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_wreck_miner",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_wreck_miner\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8d",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_wreck_capital_section"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_wreck_capital_section",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_wreck_capital_section\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_wreck_capital_section",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_wreck_capital_section\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8d",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_comm_beacon"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_comm_beacon",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_comm_beacon\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_comm_beacon",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_comm_beacon\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8e",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_asteroid_luminite"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_asteroid_luminite",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_asteroid_luminite\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_asteroid_luminite",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_asteroid_luminite\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8e",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_asteroid_ice"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_asteroid_ice",
+      "lifecycle_status": "missing — commission (per §3.9 id map)",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_asteroid_ice\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_asteroid_ice",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_asteroid_ice\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8b",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_landmark_vault_maw"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_landmark_vault_maw",
+      "lifecycle_status": "commission — dedupes with QUEUE landmark_vault_maw",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_landmark_vault_maw\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_landmark_vault_maw",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_landmark_vault_maw\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8b",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_landmark_crystal_spire"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_landmark_crystal_spire",
+      "lifecycle_status": "commission — distinct from beacon_spire",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_landmark_crystal_spire\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_landmark_crystal_spire",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_landmark_crystal_spire\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8b",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_landmark_pit_anchor"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_landmark_pit_anchor",
+      "lifecycle_status": "commission — dedupes with QUEUE landmark_pit_anchor",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_landmark_pit_anchor\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_landmark_pit_anchor",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_landmark_pit_anchor\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8b",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_landmark_billboard_array"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_landmark_billboard_array",
+      "lifecycle_status": "commission",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_landmark_billboard_array\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_landmark_billboard_array",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "no assets/ships/parts file matching \"place_landmark_billboard_array\"",
+          "expect": "0 files",
+          "observed": "0 file(s)",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "BP-8b",
+      "section": "3.3",
+      "source_file": "needed-assets.md §B",
+      "item_ids": [
+        "place_landmark_cathedral_wreck"
+      ],
+      "manifest_row": null,
+      "canonical_id": "place_landmark_wreck_cathedral",
+      "lifecycle_status": "spelling alias of shipped asset — fold into state variants; a distinct second cathedral takes place_landmark_cathedral_wreck_ii via C6 brief",
+      "note": "never author the cathedral_wreck spelling (§3.9)",
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"place_landmark_cathedral_wreck\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "no manifest place_landmark_cathedral_wreck",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_landmark_wreck_cathedral",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_landmark_wreck_cathedral.glb on disk",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-H",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "police_interceptor"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 ship row); capital silhouettes try leviathan/liner/ark reuse first",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Police interceptor\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-H",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "prison_barge"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 ship row); capital silhouettes try leviathan/liner/ark reuse first",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Prison barge\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-H",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "worker_shuttle"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 ship row); capital silhouettes try leviathan/liner/ark reuse first",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Worker shuttle\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-H",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "pilgrim_hulk"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 ship row); capital silhouettes try leviathan/liner/ark reuse first",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Pilgrim hulk\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-H",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "capital_silhouettes_x2"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 ship row); capital silhouettes try leviathan/liner/ark reuse first",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Capital silhouettes\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest wholeship_leviathan_production_v1",
+          "expect": "row present",
+          "observed": "status:integration_candidate file:wholeships/leviathan_production_v1.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest wholeship_massline_express_liner_v1",
+          "expect": "row present",
+          "observed": "status:integration_candidate file:wholeships/massline_express_liner_v1.glb",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/ilexArk.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-H",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "ice_cutter_sled"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 ship row); capital silhouettes try leviathan/liner/ark reuse first",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Ice-cutter\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-H",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "racer_hull"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 ship row); capital silhouettes try leviathan/liner/ark reuse first",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Racer hull\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-P",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "market_stall_module"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 place row); kitbash refs verified where extra checks listed",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Market stall module\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists assets/ships/parts/places/place_freight_platform.glb",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists assets/ships/parts/places/place_container_rack.glb",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-P",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "hose_umbilical"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 place row); kitbash refs verified where extra checks listed",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Hose / umbilical\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-P",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "banner_strike_sign"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 place row); kitbash refs verified where extra checks listed",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Banner / strike sign\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-P",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "lantern_buoy"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 place row); kitbash refs verified where extra checks listed",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Lantern buoy\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest place_lane_beacon",
+          "expect": "row present",
+          "observed": "status:(none) file:places/place_lane_beacon.glb",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-P",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "toy_kits_x15"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 place row); kitbash refs verified where extra checks listed",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Toy kits\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists assets/ships/release/parts/places/place_customs_pylon.glb",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists assets/ships/parts/places/place_scrap_cage.glb",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest place_dead_hulk",
+          "expect": "row present",
+          "observed": "status:(none) file:places/place_dead_hulk.glb",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-P",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "duel_ring_markers"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 place row); kitbash refs verified where extra checks listed",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Duel ring markers\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest place_ash_pin",
+          "expect": "row present",
+          "observed": "status:(none) file:places/place_ash_pin.glb",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-P",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "faction_beacon_variants"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 place row); kitbash refs verified where extra checks listed",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Faction beacon variants\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest place_nav_buoy",
+          "expect": "row present",
+          "observed": "status:(none) file:places/place_nav_buoy.glb",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-V",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "fire_front_vfx"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 VFX/audio/texture row)",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Fire-front VFX\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-V",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "thermal_plume_vfx"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 VFX/audio/texture row)",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Thermal plume\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-V",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "ion_storm_front_vfx"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 VFX/audio/texture row)",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Ion storm front\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "src/data/environmentalMachinery.js contains \"WEATHER_VOLUMES\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-V",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "radio_chatter_corpus"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 VFX/audio/texture row)",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Radio chatter\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/barks.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-V",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "crowd_liveries"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (audit §8 VFX/audio/texture row)",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Crowd liveries\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-L",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "cut_saw_track"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (monumental landmark, Hyperion)",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Cut Saw\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_hyperion_cut\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-S",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "ringworld_arc"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (skybox/parallax artifact for Sedna — not a GLB)",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Ringworld Arc\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_sedna_dark\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-F",
+      "section": "3.4",
+      "source_file": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md §D",
+      "item_ids": [
+        "customs_pen"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (institution frontage structure, ASSET_FAMILIES §D)",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md contains \"Institutions and planetary workplaces\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/authoredPlaces.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-F",
+      "section": "3.4",
+      "source_file": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md §D",
+      "item_ids": [
+        "salvage_court"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (institution frontage structure, ASSET_FAMILIES §D)",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md contains \"Institutions and planetary workplaces\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/authoredPlaces.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-F",
+      "section": "3.4",
+      "source_file": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md §D",
+      "item_ids": [
+        "relief_berth"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (institution frontage structure, ASSET_FAMILIES §D)",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md contains \"Institutions and planetary workplaces\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/authoredPlaces.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-F",
+      "section": "3.4",
+      "source_file": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md §D",
+      "item_ids": [
+        "repair_quay"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (institution frontage structure, ASSET_FAMILIES §D)",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md contains \"Institutions and planetary workplaces\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/authoredPlaces.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-F",
+      "section": "3.4",
+      "source_file": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md §D",
+      "item_ids": [
+        "black_market_intake"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "commission (institution frontage structure, ASSET_FAMILIES §D)",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md contains \"Institutions and planetary workplaces\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/authoredPlaces.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "ID-FA",
+      "section": "3.4",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "rim_fauna_casts"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "site casts in alienEcology.js — species already procedural in faunaVisuals.js; not new GLBs",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"Rim fauna\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/alienEcology.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "src/render/faunaVisuals.js contains \"wake_eel\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "src/render/faunaVisuals.js contains \"glassback\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "src/render/faunaVisuals.js contains \"furnace_maw\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "src/render/faunaVisuals.js contains \"cold_bell\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_triton_wake\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_haumea_rift\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_rhea_cinder\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_sedna_dark\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "U",
+      "section": "3.5",
+      "source_file": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md",
+      "item_ids": [
+        "npc_customs_interceptor"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "[P] unit def — traffic/NPC — doctrine+silhouette variant of inspection_cutter/hornet_scn_interdictor",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md contains \"npc_customs_interceptor\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "src/data/occupationalTrafficCraft.js contains \"inspection_cutter\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists assets/ships/parts/wholeships/hornet_scn_interdictor.glb",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "U",
+      "section": "3.5",
+      "source_file": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md",
+      "item_ids": [
+        "npc_prison_warden_barge"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "[P] unit def — traffic + encounter — hull = ID-H prison barge commission",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md contains \"npc_prison_warden_barge\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/systems/traffic.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/enemies.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "U",
+      "section": "3.5",
+      "source_file": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md",
+      "item_ids": [
+        "npc_media_drone"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "[P] unit def — traffic/NPC — small wholeship or inspection_cutter variant (picked in brief)",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md contains \"npc_media_drone\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "src/data/occupationalTrafficCraft.js contains \"inspection_cutter\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "U",
+      "section": "3.5",
+      "source_file": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md",
+      "item_ids": [
+        "npc_fuel_tender"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "[P] unit def — traffic/NPC — reuse volatiles_tanker/repair_tender, no new hull",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md contains \"npc_fuel_tender\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest wholeship_volatiles_tanker",
+          "expect": "row present",
+          "observed": "status:(none) file:wholeships/volatiles_tanker.glb",
+          "pass": true
+        },
+        {
+          "check": "manifest wholeship_repair_tender",
+          "expect": "row present",
+          "observed": "status:(none) file:wholeships/repair_tender.glb",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "U",
+      "section": "3.5",
+      "source_file": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md",
+      "item_ids": [
+        "npc_quarantine_corvette"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "[P] unit def — traffic + encounter — Charon quarantine fields exist in data",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md contains \"npc_quarantine_corvette\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "src/data/alienEcology.js contains \"quarantine\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_charon_expanse\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "U",
+      "section": "3.5",
+      "source_file": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md",
+      "item_ids": [
+        "npc_courier_relay"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "[P] unit def — traffic/NPC — promote courier lane contacts (10) to timed-manifest runs",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md contains \"npc_courier_relay\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "src/data/laneContacts.js /role:\\s*'courier'/",
+          "expect": ">= 10",
+          "observed": "10",
+          "pass": true
+        },
+        {
+          "check": "manifest wholeship_apron_shuttle",
+          "expect": "row present",
+          "observed": "status:(none) file:wholeships/apron_shuttle.glb",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "U",
+      "section": "3.5",
+      "source_file": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md",
+      "item_ids": [
+        "npc_storm_prospector"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "[P] unit def — CONDITIONAL — requires moving weather-front system (§3.8) or cut",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md contains \"npc_storm_prospector\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "src/data/environmentalMachinery.js contains \"WEATHER_VOLUMES\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "U",
+      "section": "3.5",
+      "source_file": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md",
+      "item_ids": [
+        "enemy_assassin"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "[P] unit def — enemy path — differentiate vs 16 named aces (stated in brief)",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md contains \"enemy_assassin\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/enemies.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/combatDefs.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "src/data/namedAces.js /id:\\s*'ace_/",
+          "expect": ">= 16",
+          "observed": "16",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "U",
+      "section": "3.5",
+      "source_file": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md",
+      "item_ids": [
+        "npc_diplomat_yacht"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "[P] unit def — traffic/NPC — hull = ID-H pilgrim hulk commission",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md contains \"npc_diplomat_yacht\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md contains \"pilgrim hulk\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "U",
+      "section": "3.5",
+      "source_file": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md",
+      "item_ids": [
+        "enemy_duel_champion"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "[P] unit def — enemy path — Sker ash_pin duel rings; hull = ID-H racer commission",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md contains \"enemy_duel_champion\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest place_ash_pin",
+          "expect": "row present",
+          "observed": "status:(none) file:places/place_ash_pin.glb",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_sker_haven\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "F2-ref",
+      "section": "3.5",
+      "source_file": "devin/1791167345-lattice-warden (unmerged)",
+      "item_ids": [
+        "lattice_warden"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "unmerged reference pattern — lands via chunk F2",
+      "note": null,
+      "checks": [
+        {
+          "check": "absent src/combat/latticeWarden.js",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "absent src/render/latticeWardenTethers.js",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        },
+        {
+          "check": "absent src/data/encounters/capital-boss/lattice-warden.js",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PH-1",
+      "section": "3.6",
+      "source_file": "src/data/encounters/",
+      "item_ids": [
+        "lived-* vignettes",
+        "situation:toll"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "baseline recorded: 176 lived-* files, 176 toll defs (pre-F1)",
+      "note": null,
+      "checks": [
+        {
+          "check": "lived-* encounter files",
+          "expect": "F1 target: de-templated",
+          "observed": "176",
+          "pass": true
+        },
+        {
+          "check": "situation:\"toll\" defs",
+          "expect": "post-F1 gate: <=90 catalog entries",
+          "observed": "176",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PH-2",
+      "section": "3.6",
+      "source_file": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md",
+      "item_ids": [
+        "= BP-8a"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "owned by C7 — no duplicate work",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md contains \"PH-2\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PH-3",
+      "section": "3.6",
+      "source_file": "needed-assets.md",
+      "item_ids": [
+        "place_station_trade_hub"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "faction-redesign note lands with the C1 finish pass",
+      "note": null,
+      "checks": [
+        {
+          "check": "needed-assets.md contains \"faction redesign\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "manifest+GLB place_station_trade_hub",
+          "expect": "row + GLB on disk",
+          "observed": "places/place_station_trade_hub.glb on disk",
+          "pass": true
+        },
+        {
+          "check": "ledger place_station_trade_hub",
+          "expect": "lifecycle=VISIBLE_IN_PLAY",
+          "observed": "lifecycle:VISIBLE_IN_PLAY",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PH-4",
+      "section": "3.6",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "fence sectors",
+        "vael-courier sectors"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "opposite-verb resolution via rim packets (§3.7 PR)",
+      "note": null,
+      "checks": [
+        {
+          "check": "frontier sectors contain \"sector_nyx_march\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_eris_margin\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_eunomia_gulf\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_kepler_scar\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_orcus_shadow\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_triton_wake\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_phoebe_echo\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PP-1",
+      "section": "3.7",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "Cam<=4 sectors"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "placement packet — macroform belts + approach lanes (rim sectors carried by PR rows)",
+      "note": null,
+      "checks": [
+        {
+          "check": "frontier sectors contain \"sector_helios_prime\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_veil_nebula\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_pallas_drift\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_io_reach\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PP-2",
+      "section": "3.7",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "battle dressing"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "placement packet — staged cover, aftermath, escalation",
+      "note": null,
+      "checks": [
+        {
+          "check": "exists src/data/enemies.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/combatDefs.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/wreckAftermathDressing.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PP-3",
+      "section": "3.7",
+      "source_file": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md §D",
+      "item_ids": [
+        "institution frontage"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "placement packet — consumes C10 ID-F structures",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md contains \"Institutions and planetary workplaces\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/authoredPlaces.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PP-4",
+      "section": "3.7",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "economy/crime"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "placement packet — claims, custody props, smuggler lanes",
+      "note": null,
+      "checks": [
+        {
+          "check": "exists src/data/fences.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/regionalEconomyProfiles.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PP-5",
+      "section": "3.7",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "play pack"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "placement packet — toy systems + bazaars + duel rings",
+      "note": null,
+      "checks": [
+        {
+          "check": "exists src/data/environmentalMachinery.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_sker_haven\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PP-6",
+      "section": "3.7",
+      "source_file": "scripts/lib/bench/scenarios/world.sector_identity.mjs",
+      "item_ids": [
+        "camera scale"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "placement packet — 144 WU arrival-frame census",
+      "note": null,
+      "checks": [
+        {
+          "check": "exists src/data/sectorActivityPockets.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists scripts/lib/bench/scenarios/world.sector_identity.mjs",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PR-1",
+      "section": "3.7",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "Kepler",
+        "Dione",
+        "Rhea",
+        "Phoebe",
+        "Sedna"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "rim signature packet wave 1 (audit order)",
+      "note": null,
+      "checks": [
+        {
+          "check": "frontier sectors contain \"sector_kepler_scar\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_dione_lane\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_rhea_cinder\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_phoebe_echo\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_sedna_dark\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "PR-2",
+      "section": "3.7",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "Nyx",
+        "Hyperion",
+        "Orcus",
+        "Haumea",
+        "Eris",
+        "Nereid",
+        "Proteus",
+        "Triton",
+        "Eunomia"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "rim signature packet wave 2",
+      "note": null,
+      "checks": [
+        {
+          "check": "frontier sectors contain \"sector_nyx_march\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_hyperion_cut\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_orcus_shadow\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_haumea_rift\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_eris_margin\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_nereid_shoal\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_proteus_well\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_triton_wake\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_eunomia_gulf\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "D-BP-9",
+      "section": "3.8",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "BP-9"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "deferred per §3.8 disposition",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"BP-9\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "aftermath_* release assets",
+          "expect": "reuse pool for wreck lifecycle",
+          "observed": "0",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "D-BP-10",
+      "section": "3.8",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "BP-10"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "deferred per §3.8 disposition",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"BP-10\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "D-BP-11",
+      "section": "3.8",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "BP-11"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "deferred per §3.8 disposition",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"BP-11\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/laneContacts.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "D-BP-12",
+      "section": "3.8",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "BP-12"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "deferred per §3.8 disposition",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"BP-12\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/heistFacilities.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/ilexArk.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "D-BP-13",
+      "section": "3.8",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "BP-13"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "deferred per §3.8 disposition",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"BP-13\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/namedAces.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "src/data/namedAces.js /homeSectorId/",
+          "expect": "recorded",
+          "observed": "0",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "D-BP-14",
+      "section": "3.8",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "BP-14"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "deferred per §3.8 disposition",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"BP-14\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_sedna_dark\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "D-BP-15",
+      "section": "3.8",
+      "source_file": "design/world-identity/WORLD_PLACEMENT_AUDIT.md",
+      "item_ids": [
+        "BP-15"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "deferred per §3.8 disposition",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/world-identity/WORLD_PLACEMENT_AUDIT.md contains \"BP-15\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_pallas_drift\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_vesta_forge\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_haumea_rift\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "frontier sectors contain \"sector_dione_lane\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "D-AF-A",
+      "section": "3.8",
+      "source_file": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md",
+      "item_ids": [
+        "### A."
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "deferred per §3.8 disposition",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md contains \"### A.\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists design/program/world-depth-2026-10-02/ASSET_FAMILIES.md",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "D-AF-B",
+      "section": "3.8",
+      "source_file": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md",
+      "item_ids": [
+        "### B."
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "deferred per §3.8 disposition",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md contains \"### B.\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/data/shipRoleLattice.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "D-AF-C",
+      "section": "3.8",
+      "source_file": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md",
+      "item_ids": [
+        "### C."
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "deferred per §3.8 disposition",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md contains \"### C.\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "D-AF-E",
+      "section": "3.8",
+      "source_file": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md",
+      "item_ids": [
+        "### E."
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "deferred per §3.8 disposition",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md contains \"### E.\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "D-AF-F",
+      "section": "3.8",
+      "source_file": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md",
+      "item_ids": [
+        "### F."
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "deferred per §3.8 disposition",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md contains \"### F.\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/render/faunaVisuals.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "D-AF-G",
+      "section": "3.8",
+      "source_file": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md",
+      "item_ids": [
+        "### G."
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "deferred per §3.8 disposition",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md contains \"### G.\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "exists src/render/machineVisuals.js",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "D-AF-H",
+      "section": "3.8",
+      "source_file": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md",
+      "item_ids": [
+        "### H."
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "deferred per §3.8 disposition",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md contains \"### H.\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "D-AF-I",
+      "section": "3.8",
+      "source_file": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md",
+      "item_ids": [
+        "### I."
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "deferred per §3.8 disposition",
+      "note": null,
+      "checks": [
+        {
+          "check": "design/program/world-depth-2026-10-02/ASSET_FAMILIES.md contains \"### I.\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "D-RW",
+      "section": "3.8",
+      "source_file": "design/program/02_REMAINING_WORK.md",
+      "item_ids": [
+        "graphics rows"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "cross-check, not absorbed — final wave gate notes overlap",
+      "note": null,
+      "checks": [
+        {
+          "check": "exists design/program/02_REMAINING_WORK.md",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        },
+        {
+          "check": "design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md contains \"02_REMAINING_WORK\"",
+          "expect": "present",
+          "observed": "present",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    },
+    {
+      "item": "F1-ref",
+      "section": "3.6",
+      "source_file": "devin/1791689614-world-placement-program (unmerged)",
+      "item_ids": [
+        "scene-* encounters"
+      ],
+      "manifest_row": null,
+      "canonical_id": null,
+      "lifecycle_status": "unmerged — lands via chunk F1",
+      "note": null,
+      "checks": [
+        {
+          "check": "scene-* encounter files",
+          "expect": "0 expected pre-F1 merge; 16 expected after",
+          "observed": "0",
+          "pass": true
+        },
+        {
+          "check": "absent src/data/livedSectorOverlays.js",
+          "expect": "absent",
+          "observed": "absent",
+          "pass": true
+        }
+      ],
+      "verdict": "pass"
+    }
+  ]
+}

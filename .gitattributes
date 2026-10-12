@@ -30,3 +30,8 @@ assets/ships/motions/*.motion.json text eol=lf
 assets/ships/render-packages/pilots.json text eol=lf
 assets/ships/release/render-packages/**/render-package.json text eol=lf
 src/render/renderPackageManifest.js text eol=lf
+
+# AEP §3 queue-ingestion artifacts are byte-compared by check-aep-queue-ingestion.mjs --check;
+# pin eol so a Windows CRLF checkout cannot fake staleness.
+design/program/asset-experience-program/QUEUE_INGESTION_VERIFICATION.json text eol=lf
+design/program/asset-experience-program/QUEUE_INGESTION_VERIFICATION.md text eol=lf
