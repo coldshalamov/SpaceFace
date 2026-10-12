@@ -1,4 +1,14 @@
-# Wreck Court adapter (unapplied)
+# Wreck Court production host
+
+`createWreckCourtSystem()` in `src/systems/wreckCourt.js` now hosts real Adventure bodies. `materializeCase()` generates the prior incident as authored historical data; after opening, Rapier owns every current body pose. Offline `act()` movement verbs remain for catalog fixtures, and explicitly refuse live sessions. Actual scanner readings, normal Massline motion, native contact destruction, physical gravity impulses, slow occupancy of an assay buoy, and recorded reconstruction drive the live notebook.
+
+The loss promoter stamps the real communicator with `wreckCourtCaseId` and `wreckCourtSeed`. Root's salvage adapter emits `buildAdventureOffer(seed)` with the point origin and an accessible station. `mission:accepted` resolves the actual mission row and opens it. Root owns registry/factory/save and the existing public prompt controls; `wreckCourtPublic` carries bodies, notebook, supported claims, interventions and ruling. `wreckCourt:action {verb:'reconstructAll'}` fits only already collected readings, without moving or collecting bodies.
+
+Accepted rulings queue real departures and readable stamps, and emit guarded law/world facts plus `mission:venueProof`. `verifyRulingFact()` validates the exact accepted receipt and consequence. Root's world/heat owners apply persistent fact and legal consequences, with receipt deduplication; the fictional historical faction labels are not current jurisdiction IDs. Non-player compensation schedules remain named beneficiaries in the ruling; they are not player credit grants. Zero mission rewards and `settlesExternally` prevent duplicate settlement.
+
+Schema 2 saves restore the notebook and existing stamped body identities rather than replaying interventions. Sector exit/new game/destroy remove only owned actors and listeners. Focused native verification: `node --test test/wreck-court-live.test.mjs`; historical catalog checks are separate. Browser/GPU and full route acceptance belong to root's integration run.
+
+## Historical proposal (superseded)
 
 Do not apply this while another lane owns the files below. The court runs without it: `openCourt` / `act` / `file` are the playable path, and `buildAdventureOffer` is the offer shape. Nothing here writes credits, heat, reputation, cargo, or the save envelope.
 

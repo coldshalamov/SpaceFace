@@ -1,4 +1,14 @@
-# Mercy Service adapter (NOT APPLIED)
+# Mercy Service production host
+
+`createMercyServiceSystem()` now creates `live.js`, which observes the production physics owner and queues bounded impulses. The old private integrator is only an offline catalog fixture, exposed as `createMercyFixtureSystem()`; it must never enter the default registry.
+
+The live host discovers one deterministic board emergency per sector through the ordinary scanner. It emits a zero-reward `recon_scan` offer with `source: 'mercyService'`, `params.mercyIncidentId`, `mercyOrigin`, and `settlesExternally: true`. The missions owner accepts it; normal Massline joints, native safety clamps, torque stabilizers and containment operate on authored Forge place entities. Contact damage uses actual native contacts through combat. Vent, horizon and capture failures can materialize a second physical incident.
+
+Root integration owns registry/factory/save, the guarded `mission:venueProof` / `mission:venueFailure` listeners, and the existing prompt UI. `verifyMissionProof` and `verifyMissionFailure` bind those receipts to this host. `mercyServicePublic` is the plain public mirror. Schema 2 snapshots preserve actor identity and receipts; restoring never replays player movement. Sector exit, new game and destroy remove only stamped owned bodies and constraints.
+
+Focused production verification: `node --test test/mercy-service-live.test.mjs`. The original catalog tests below exercise authored scenarios offline; they do not claim twelve native player-route completions. Browser/GPU and complete Adventure acceptance belong to the integration run.
+
+## Historical proposal (superseded)
 
 This file is the last-mile hook. It was not applied. Do not treat the campaign as shipped, and do not rename `tow_recovery` or `rescue_under_fire`.
 

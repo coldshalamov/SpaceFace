@@ -2,10 +2,12 @@
 // Money, heat, and world facts are intents on the ruling. This module does not
 // write credits, law, reputation, or the save envelope.
 //
-// Not registered. The unapplied adapter in src/data/wreckCourt/ADAPTER.md is the
-// seam into salvage scan and the single writers.
+// Offline reconstruction fixtures retain their historical verbs. The production
+// host below observes the normal flight/physics owners and never replays motion.
 
-import { DT, ageFromTemperature, bodyVisible } from '../data/wreckCourt/physics.js';
+import { DT, ageFromTemperature, temperatureFromAge, bodyVisible, backIntegratePoint } from '../data/wreckCourt/physics.js';
+import { hash32 } from '../core/rng.js';
+import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import {
   ballisticFit,
   closestApproach,
@@ -55,6 +57,7 @@ function refreshRevealed(session) {
 }
 
 function measurement(session, id, record) {
+  if (session.live) record.sampleTime = session.simTime;
   session.notebook.measurements[id] = record;
   return record;
 }
@@ -64,6 +67,7 @@ function publicBody(session, body) {
   if (!known || body.departed) return null;
   return {
     id: body.id,
+    entityId: body.entityId ?? null,
     variant: body.variant,
     x: body.x,
     z: body.z,
@@ -72,6 +76,7 @@ function publicBody(session, body) {
     destroyed: !!body.destroyed,
     historySpoiled: !!body.historySpoiled,
     role: body.role,
+    stamp: body.stamp || null,
   };
 }
 
@@ -146,7 +151,7 @@ export function publicView(session) {
     briefing: session.briefing,
     uncertainty: session.uncertainty,
     fieldManual: WRECK_COURT_FIELD_MANUAL,
-    verbs: ['scan', 'position', 'grapple', 'release', 'tow', 'compare', 'moveObstruction', 'bringPod', 'reconstruct', 'file'],
+    verbs: session.live ? ['scan', 'compare', 'bringPod', 'reconstruct', 'file'] : ['scan', 'position', 'grapple', 'release', 'tow', 'compare', 'moveObstruction', 'bringPod', 'reconstruct', 'file'],
     player: { x: session.player.x, z: session.player.z },
     bodies,
     assayPoints: session.assayPoints.map((p) => ({ ...p })),
@@ -249,6 +254,7 @@ function doScan(session, targetId, mode) {
   if (!revealed(session, body)) return fail('not_visible');
   if (body.destroyed && mode !== 'visual') return fail('destroyed');
   if (mode === 'spectro' && body.volatile && !body.destroyed) {
+    if (session.live && !body.liveSpectroDamage) return fail('destructive_scan_requires_live_damage');
     body.destroyed = true;
     body.historySpoiled = true;
     body.cargo = null;
@@ -368,7 +374,10 @@ function doCompare(session, aId, bId) {
     const record = measurement(session, id, { id, kind: 'compare', spoiled: true, data: { spoiled: true } });
     return { ok: true, measurement: record };
   }
-  const fit = closestApproach(a.data, b.data);
+  const left = session.live ? sampleOf(session, aId) : a.data;
+  const right = session.live ? sampleOf(session, bId) : b.data;
+  if (!left || !right) return fail('sampling_window_expired');
+  const fit = closestApproach(left, right);
   const record = measurement(session, id, {
     id, kind: 'compare', spoiled: false,
     data: { ...fit, sigma: 2.5 },
@@ -381,7 +390,7 @@ function sampleOf(session, id) {
   const mass = session.notebook.measurements[`scan:${id}:mass`];
   const thermal = session.notebook.measurements[`scan:${id}:thermal`];
   if (!traj || traj.spoiled || traj.data.spoiled) return null;
-  return {
+  const sample = {
     id,
     x: traj.data.x,
     z: traj.data.z,
@@ -390,6 +399,20 @@ function sampleOf(session, id) {
     mass: mass && Number.isFinite(mass.data.mass) ? mass.data.mass : null,
     age: thermal ? thermal.data.age : null,
   };
+  if (session.live) {
+    // A pilot samples moving debris at different times. Align recorded readings
+    // to the opening epoch before comparing or fitting them; never move live bodies.
+    const elapsed = Math.max(0, (traj.sampleTime ?? session.openedAt) - session.openedAt);
+    if (elapsed > 360) return null;
+    const grav = Object.values(session.notebook.measurements).find((m) => m.mode === 'mass' && m.data?.mu > 0);
+    const source = grav && findBody(session, grav.targetId);
+    if (source && source.fixed) {
+      const aligned = backIntegratePoint(sample, elapsed, { x: source.x, z: source.z, mu: grav.data.mu, soft: Math.max(50, source.radius) });
+      Object.assign(sample, { x: aligned.x, z: aligned.z, vx: aligned.vx, vz: aligned.vz });
+    } else { sample.x -= sample.vx * elapsed; sample.z -= sample.vz * elapsed; }
+    if (Number.isFinite(sample.age)) sample.age = Math.max(0, sample.age - ((thermal.sampleTime ?? session.openedAt) - session.openedAt));
+  }
+  return sample;
 }
 
 function doReconstruct(session, action) {
@@ -434,6 +457,14 @@ function doBringPod(session, targetId, assayId) {
   if (!revealed(session, body)) return fail('not_visible');
   const near = Math.hypot(body.x - session.player.x, body.z - session.player.z);
   if (near > GRAPPLE_RANGE) return fail('out_of_range');
+  if (session.live) {
+    if (Math.hypot(assay.x - body.x, assay.z - body.z) > ASSAY_RANGE || Math.hypot(body.vx, body.vz) > 8 || (body.assayHold || 0) < 0.3) return fail('tow_to_assay');
+    const id = `assay:${body.id}:${assay.id}`;
+    if (session.notebook.measurements[id]) return { ok: true, measurement: session.notebook.measurements[id] };
+    const data = { declared: body.cargo.declared, actual: body.cargo.actual, mismatch: body.cargo.declared !== body.cargo.actual };
+    body.cargo = { ...body.cargo, sealed: false };
+    return { ok: true, measurement: measurement(session, id, { id, kind: 'assay', targetId: body.id, spoiled: false, data }) };
+  }
   session.grappled = body.id;
   const stepsCap = Math.round(45 / DT);
   for (let i = 0; i < stepsCap; i += 1) {
@@ -476,6 +507,7 @@ function applyEffects(session, effects) {
     } else if (effect.kind === 'depart') {
       const body = findBody(session, effect.targetId);
       if (!body || body.destroyed || body.fixed) continue;
+      if (session.live) { body.departure = { heading: effect.heading, remaining: effect.seconds || 4 }; body.departedOrder = true; continue; }
       const accel = 6;
       const steps = Math.round((effect.seconds || 4) / DT);
       for (let i = 0; i < steps; i += 1) {
@@ -527,6 +559,7 @@ function doFile(session, hypothesisId) {
 
 export function act(session, action, opts = {}) {
   if (!action || !action.verb) return fail('bad_action');
+  if (session.live && ['position', 'grapple', 'release', 'tow', 'moveObstruction'].includes(action.verb)) return fail('use_flight_controls');
   if (session.ruling && session.ruling.status === 'accepted' && action.verb !== 'file') {
     // The scene may still be read. Further tows after a ruling would be a second case.
   }
@@ -558,6 +591,7 @@ export function act(session, action, opts = {}) {
 }
 
 export function serializeCourt(session) {
+  if (session.live) return { v: 2, session: JSON.parse(JSON.stringify(session)) };
   return {
     v: WRECK_COURT_SCHEMA_VERSION,
     caseId: session.caseId,
@@ -567,6 +601,15 @@ export function serializeCourt(session) {
 }
 
 export function restoreCourt(blob) {
+  if (blob?.v === 2) {
+    const raw = blob.session;
+      if (!raw?.live || !caseDef(raw.caseId) || typeof raw.uid !== 'string' || !Number.isFinite(raw.simTime) || !Number.isFinite(raw.openedAt)
+        || !Array.isArray(raw.bodies) || !Array.isArray(raw.assayPoints) || !Array.isArray(raw.actionLog) || !raw.notebook?.measurements || !raw.revealed) throw new Error('bad live wreck court save');
+    const session = openCourt({ caseId: raw.caseId, seed: raw.seed });
+    if (raw.bodies.length !== session.bodies.length || raw.bodies.some((b) => !session.bodies.some((s) => s.id === b.id)
+      || ![b.x, b.z, b.vx, b.vz].every(Number.isFinite))) throw new Error('bad live wreck court bodies');
+    return Object.assign(session, JSON.parse(JSON.stringify(raw)), { hypotheses: session.hypotheses, _truth: session._truth });
+  }
   if (!blob || blob.v !== WRECK_COURT_SCHEMA_VERSION) throw new Error('bad wreck court save');
   const session = openCourt({ caseId: blob.caseId, seed: blob.seed });
   for (const action of blob.actions || []) act(session, action, { record: true });
@@ -697,8 +740,9 @@ export function carefulInvestigation(session) {
   return { supported, ruling: session.ruling };
 }
 
-export function buildAdventureOffer(seed) {
-  const def = caseDef(WRECK_COURT_ENTRY_CASE);
+export function buildAdventureOffer(seed, { caseId = WRECK_COURT_ENTRY_CASE } = {}) {
+  const def = caseDef(caseId);
+  if (!def) throw new Error('unknown wreck court case');
   const numericSeed = (seed >>> 0) || 1;
   return {
     id: `wreck_court_${def.id}_${numericSeed}`,
@@ -713,11 +757,15 @@ export function buildAdventureOffer(seed) {
     giver: 'Loss investigation communicator',
     stationId: null,
     reward_cr: 0,
+    reward_rep: 0,
+    collateral_cr: 0,
+    factionId: null,
     params: {
       wreckCourtCaseId: def.id,
       seed: numericSeed,
       scanTargets: 4,
       acceptsBy: 'physical_reconstruction',
+      settlesExternally: true,
     },
   };
 }
@@ -748,8 +796,188 @@ export function evidenceFingerprint(session) {
  * Library shape for a future registry row. update() does not tick unless a
  * session has been mounted by the adapter. Mounting is not done here.
  */
-export const wreckCourt = {
-  name: 'wreckCourt',
-  init() {},
-  update() {},
-};
+const LIVE_PLACES = Object.freeze({
+  wc_pod: 'place_cargo_pod_standard', wc_capsule: 'place_47a_rescue_capsule', wc_hauler: 'place_aftermath_wreck_ore_freighter_bow',
+  wc_freighter: 'place_aftermath_wreck_liner_bow', wc_fragment: 'place_aftermath_deb_ore_freighter_hopper_lid',
+  wc_tug: 'place_dead_hulk', wc_nozzle: 'place_aftermath_aft_engine_section', wc_plate: 'place_aftermath_aft_armor_slab',
+  wc_round: 'place_aftermath_frag_strut_shard', wc_rock: 'place_debris_chunk', wc_station: 'place_freight_platform',
+  wc_cable: 'place_aftermath_frag_cable_bundle', wc_tank: 'place_cargo_pod_hazmat', wc_train: 'place_conveyor_barge',
+  wc_barge: 'place_aftermath_wreck_mining_barge_authored_down', wc_liner: 'place_aftermath_wreck_liner_drum',
+  wc_escort: 'place_aftermath_wreck_corvette_forward', wc_gunship: 'place_aftermath_wreck_corvette_turret',
+  wc_skiff: 'place_aftermath_aft_cockpit_section', wc_tender: 'place_conveyor_barge', wc_isotope_pod: 'place_cargo_pod_hazmat',
+  wc_planetoid: 'place_debris_chunk', wc_buoy: 'place_nav_buoy', wc_vent: 'place_aftermath_aft_radiator_panel',
+  wc_decoy: 'place_cold_locker', wc_ballast: 'place_aftermath_deb_ore_freighter_hopper_lid', wc_assay: 'place_nav_buoy',
+});
+const liveAdventure = (s) => s.mode === 'flight' && !s.physicsVenueSession && !s.physicsVenue?.active
+  && (!s.run || s.run.phase === 'inactive' || s.run.kind === 'adventure');
+const jsonCopy = (v) => JSON.parse(JSON.stringify(v));
+
+export function createWreckCourtSystem() {
+  return {
+    name: 'wreckCourt',
+    init(ctx) {
+      this.ctx = ctx; this.destroying = false; this.session = null; this.failures = {}; this.off = [];
+      const on = (event, fn) => { const off = ctx.bus?.on?.(event, fn); if (typeof off === 'function') this.off.push(off); };
+      on('mission:accepted', (p) => { const m = ctx.state.missions?.active?.find((m) => m.id === p?.missionId) || p;
+        if (m?.params?.wreckCourtCaseId) this.open({ caseId: m.params.wreckCourtCaseId, seed: m.params.seed, origin: m.params.wreckCourtOrigin || m.params.wreckPos, missionId: m.id }); });
+      on('wreckCourt:open', (p) => this.open(p));
+      on('wreckCourt:action', (p) => { const result = this.action(p); ctx.bus.emit('wreckCourt:result', { ...result, requestId: p?.requestId }); });
+      on('scan:pulse', (p) => { if (p?.source !== 'player-scanner' || !this.session) return;
+        this.observe(); for (const b of this.session.bodies) for (const mode of SCAN_MODES) this.action({ verb: 'scan', targetId: b.id, mode }); });
+      on('combat:damage', (p) => { const body = this.session?.bodies.find((b) => b.entityId === p?.targetId); if (body && !body.trajectoryLocked) body.historySpoiled = true; });
+      on('sector:exit', () => this.leave()); on('game:newGame', () => { this.leave(); this.failures = {}; });
+    },
+    entity(body) {
+      const e = this.ctx.state.entities.get(body.entityId), tag = e?.data?.wreckCourt;
+      return e?.alive && tag?.uid === this.session?.uid && tag.bodyId === body.id ? e : null;
+    },
+    newGame() { this.leave(); this.failures = {}; },
+    open({ caseId = WRECK_COURT_ENTRY_CASE, seed, origin, missionId = null } = {}) {
+      const { state } = this.ctx; const p = state.entities.get(state.playerId);
+      if (!liveAdventure(state) || !p?.alive || !this.ctx.helpers?.spawnEntity) return fail('not_in_adventure');
+      if (this.session && !this.session.ruling) return fail('court_active');
+      let session; try { session = openCourt({ caseId, seed: (seed >>> 0) || hash32(state.meta.seed, state.world.currentSectorId, caseId) }); } catch { return fail('unknown_case'); }
+      const requested = origin && Number.isFinite(origin.x) && Number.isFinite(origin.z) ? origin : { x: p.pos.x + 250, z: p.pos.z };
+      let point = null;
+      for (let i = 0; i < 24; i++) {
+        const candidate = { x: requested.x + Math.cos(i * Math.PI / 4) * 180 * Math.ceil(i / 8), z: requested.z + Math.sin(i * Math.PI / 4) * 180 * Math.ceil(i / 8) };
+        if (session.bodies.every((b) => b.noCollide || !(state.entityList || []).some((e) => e.alive && e.collides !== false && e.physicsBody !== false
+          && Math.hypot(e.pos.x - (b.x + candidate.x - session.player.x), e.pos.z - (b.z + candidate.z - session.player.z)) < (e.radius || 0) + b.radius + 15))) { point = candidate; break; }
+      }
+      if (!point) return fail('no_clear_space');
+      const dx = point.x - session.player.x, dz = point.z - session.player.z;
+      for (const b of session.bodies) { b.x += dx; b.z += dz; b.initialAge = ageFromTemperature(b.temperature); b.assayHold = 0; }
+      for (const a of session.assayPoints) { a.x += dx; a.z += dz; }
+      Object.assign(session, { live: true, uid: `court:${caseId}:${session.seed}:${missionId || state.world.currentSectorId}`,
+        missionId, sectorId: state.world.currentSectorId, openedAt: state.simTime, player: { x: p.pos.x, z: p.pos.z }, simTime: state.simTime });
+      this.leave(); this.session = session;
+      for (const b of session.bodies) this.spawn(b);
+      for (const a of session.assayPoints) this.spawnAssay(a);
+      this.observe(); state.wreckCourt = state.wreckCourtPublic = this.report();
+      this.ctx.bus.emit('wreckCourt:opened', { caseId, missionId, title: session.title });
+      this.ctx.bus.emit('toast', { text: `${session.title}. Use your scanner, fly around the scars, and record trajectories before towing.`, kind: 'info', ttl: 9 });
+      return { ok: true, uid: session.uid };
+    },
+    spawn(b) {
+      const { state, helpers } = this.ctx;
+      const existing = (state.entityList || []).find((e) => e.alive && e.data?.wreckCourt?.uid === this.session.uid && e.data.wreckCourt.bodyId === b.id);
+      if (existing) { b.entityId = existing.id; return existing; }
+      const radius = Math.max(2.5, b.radius);
+      const e = helpers.spawnEntity({ type: 'fx', ttl: Infinity, team: 2, alive: true, pos: { x: b.x, y: 0, z: b.z },
+        vel: { x: b.vx, y: 0, z: b.vz }, rot: b.heading, angVel: b.omega, radius, mass: b.mass,
+        hull: Math.max(1, Math.round(b.integrity * 100)), hullMax: 100, collides: !b.noCollide,
+        physicsBody: b.noCollide ? false : { dynamic: !b.fixed, shape: 'ball', radius, mass: b.mass, ccd: true },
+        data: { placeId: LIVE_PLACES[b.variant] || 'place_aftermath_frag_plate_curl', placeTargetRadius: radius, worldOneOff: true,
+          salvageProtected: true, masslineTetherable: !b.noCollide, displayName: `${this.session.title}: ${b.id}`, scanLabel: `${this.session.title}: ${b.id}`, wreckCourt: { uid: this.session.uid, bodyId: b.id, variant: b.variant } },
+        flags: { persistent: true } });
+      b.entityId = e.id; return e;
+    },
+    spawnAssay(a) {
+      const existing = (this.ctx.state.entityList || []).find((e) => e.alive && e.data?.wreckCourt?.uid === this.session.uid && e.data.wreckCourt.assayId === a.id);
+      if (existing) { a.entityId = existing.id; return; }
+      a.entityId = this.ctx.helpers.spawnEntity({ type: 'fx', ttl: Infinity, pos: { x: a.x, y: 0, z: a.z }, radius: 6,
+        mass: 1000, collides: false, physicsBody: false, data: { placeId: 'place_nav_buoy', placeTargetRadius: 6, worldOneOff: true,
+          scanLabel: 'Wreck Court assay buoy', wreckCourt: { uid: this.session.uid, assayId: a.id } }, flags: { persistent: true } }).id;
+    },
+    observe(dt = 0) {
+      const s = this.session, state = this.ctx.state; if (!s) return;
+      const p = state.entities.get(state.playerId); if (!p?.alive) return;
+      s.player = { x: p.pos.x, z: p.pos.z }; s.simTime = state.simTime;
+      const attachments = Object.values(state.combat?.attachments?.byId || {});
+      s.grappled = null;
+      for (const b of s.bodies) {
+        const e = this.entity(b); if (!e) { b.destroyed = true; b.historySpoiled = true; continue; }
+        Object.assign(b, { x: e.pos.x, z: e.pos.z, vx: e.vel.x, vz: e.vel.z, heading: e.rot, omega: e.angVel || 0 });
+        const line = attachments.find((a) => a.state === 'active' && a.ownerId === p.id && a.targetId === e.id);
+        if (line) { s.grappled = b.id; if (!b.trajectoryLocked) b.historySpoiled = true; }
+        const contact = this.ctx.helpers.combatPhysics?.sampleSolidContacts?.(e.id)?.some((c) => c.normalImpulse > 0.1);
+        if (contact && !b.trajectoryLocked) b.historySpoiled = true;
+        for (const c of this.ctx.helpers.combatPhysics?.sampleSolidContacts?.(e.id) || []) {
+          if (!(b.crushable || b.fragile) || Math.hypot(c.relativeVelocity?.x || 0, c.relativeVelocity?.z || 0) <= 8 || c.normalImpulse <= 0) continue;
+          const hit = this.ctx.registry?.get?.('combat')?.onHit?.({ targetId: e.id, ownerId: null, pos: e.pos,
+            damagePacket: { channels: { kinetic: Math.max(1, e.hull) * 10 }, flags: { allowAnyTarget: true, ignoreFriendlyFire: true } }, origin: { kind: 'wreckCourt', id: 'solid-crush' } });
+          if (hit?.ok && !e.alive) { b.destroyed = true; b.historySpoiled = true; b.cargo = null; }
+        }
+        if (!b.fixed && !b.destroyed && dt > 0) for (const rock of s.bodies) {
+          if (!rock.mu || rock.id === b.id || rock.destroyed) continue;
+          const dx = rock.x - b.x, dz = rock.z - b.z, distance = Math.max(Math.hypot(dx, dz), rock.radius, 50);
+          const factor = Math.min(20, rock.mu / (distance * distance)) * b.mass * dt / distance;
+          queuePhysicsImpulse(e, { x: dx * factor, y: 0, z: dz * factor });
+        }
+        if (b.initialAge != null && b.thermalLock == null) b.temperature = temperatureFromAge(b.initialAge + state.simTime - s.openedAt, b.shedTemp);
+        const assay = s.assayPoints.some((a) => Math.hypot(a.x - b.x, a.z - b.z) <= ASSAY_RANGE);
+        b.assayHold = assay && Math.hypot(b.vx, b.vz) <= 8 ? (b.assayHold || 0) + dt : 0;
+        if (b.departure?.remaining > 0 && !b.fixed) { queuePhysicsImpulse(e, { x: Math.cos(b.departure.heading) * b.mass * 6 * dt, y: 0, z: Math.sin(b.departure.heading) * b.mass * 6 * dt }); b.departure.remaining -= dt; }
+        if (b.stamp) e.data.wreckCourt.stamp = b.stamp;
+      }
+      refreshRevealed(s);
+    },
+    action(action) {
+      if (!this.session || !liveAdventure(this.ctx.state)) return fail('no_live_court');
+      this.observe(); const s = this.session;
+      const b = action?.targetId && findBody(s, action.targetId);
+      if (action?.verb === 'scan') {
+        if (!b || Math.hypot(s.player.x - b.x, s.player.z - b.z) > 600) return fail('out_of_scanner_range');
+        if (action.mode === 'spectro' && b.volatile && !b.destroyed) {
+          const e = this.entity(b); const result = e && this.ctx.registry?.get?.('combat')?.onHit?.({ targetId: e.id, ownerId: null, pos: e.pos,
+            damagePacket: { channels: { thermal: Math.max(1, e.hull) * 10 }, flags: { allowAnyTarget: true, ignoreFriendlyFire: true } }, origin: { kind: 'wreckCourt', id: 'destructive-spectro' } });
+          if (!result?.ok || e.alive) return fail('destructive_scan_failed');
+          b.liveSpectroDamage = true;
+        }
+      }
+      let result;
+      if (action?.verb === 'reconstructAll') { reconstructFromNotebook(s); result = { ok: true, support: s.hypotheses.map((h) => supportReport(s, h.id)) }; }
+      else result = act(s, action, { record: false });
+      if (result.ok && s.ruling?.status === 'accepted' && !s.receipt) {
+        s.receipt = `${s.uid}:${s.ruling.hypothesisId}`;
+        const intent = s.ruling.intents.economy;
+        if (intent.payee === 'player' && intent.amount > 0) this.ctx.bus.emit('economy:grantCredits', { amount: intent.amount, reason: intent.reason, receiptId: s.receipt });
+        for (const fact of s.ruling.intents.worldFacts || []) this.ctx.bus.emit('wreckCourt:worldFact', { ...fact, source: this.name, receiptId: s.receipt, caseId: s.caseId });
+        if (s.ruling.intents.heat) this.ctx.bus.emit('wreckCourt:lawFact', { ...s.ruling.intents.heat, source: this.name, receiptId: s.receipt, caseId: s.caseId });
+        this.ctx.bus.emit('wreckCourt:ruled', { missionId: s.missionId, receiptId: s.receipt, ruling: s.ruling });
+        this.ctx.bus.emit('toast', { text: s.ruling.situation, kind: 'info', ttl: 9 });
+        if (s.missionId) this.ctx.bus.emit('mission:venueProof', { missionId: s.missionId, source: this.name, receiptId: s.receipt, kind: 'court-ruled' });
+      }
+      this.ctx.state.wreckCourt = this.ctx.state.wreckCourtPublic = this.report(); return result;
+    },
+    update(dt, state) { if (!this.session || !liveAdventure(state)) return; this.observe(dt); state.wreckCourt = state.wreckCourtPublic = this.report(); },
+    report() { return this.session ? { ...publicView(this.session), live: true, notebook: notebook(this.session),
+      interventions: [{ verb: 'scan', label: 'Read a body' }, { verb: 'reconstructAll', label: 'Reconstruct recorded evidence' },
+        { verb: 'bringPod', label: 'Assay a delivered pod' }, { verb: 'file', label: 'File a supported claim' }],
+      support: this.session.hypotheses.map((h) => supportReport(this.session, h.id)) } : { live: true, phase: 'idle' }; },
+    verifyMissionProof(p) { const s = this.session, m = this.ctx.state.missions?.active?.find((m) => m.id === p?.missionId);
+      return { ok: !!(m?.params?.wreckCourtCaseId && s?.missionId === m.id && p.source === this.name && p.kind === 'court-ruled'
+        && s.ruling?.status === 'accepted' && s.receipt === p.receiptId && s.caseId === m.params.wreckCourtCaseId) }; },
+    verifyMissionFailure(p) { const m = this.ctx.state.missions?.active?.find((m) => m.id === p?.missionId), saved = this.failures[p?.receiptId];
+      return { ok: !!(m?.params?.wreckCourtCaseId && p.source === this.name && saved?.missionId === m.id && saved.kind === p.kind) }; },
+    verifyRulingFact(p) {
+      const s = this.session;
+      if (!s?.receipt || p?.source !== this.name || p.receiptId !== s.receipt || p.caseId !== s.caseId || s.ruling?.status !== 'accepted') return { ok: false };
+      const fact = s.ruling.intents.worldFacts.find((f) => f.id === p.id && f.value === p.value);
+      const heat = s.ruling.intents.heat;
+      return { ok: !!fact || !!(heat && p.delta === heat.delta && p.factionId === heat.factionId), sectorId: s.sectorId };
+    },
+    serialize() { return { schema: 2, failures: jsonCopy(this.failures), court: this.session ? serializeCourt(this.session) : null }; },
+    deserialize(raw) {
+      if (!raw || raw.schema !== 2) return false;
+      let next = null; try { if (raw.court) next = restoreCourt(raw.court); } catch { return false; }
+      this.session = next; this.failures = jsonCopy(raw.failures || {});
+      if (next) { for (const b of next.bodies) if (!b.destroyed && !b.departed) this.spawn(b); for (const a of next.assayPoints) this.spawnAssay(a); this.observe(); }
+      this.ctx.state.wreckCourt = this.ctx.state.wreckCourtPublic = this.report();
+      return true;
+    },
+    leave() {
+      if (!this.session) return;
+      const uid = this.session.uid;
+      if (!this.destroying && this.session.missionId && this.session.ruling?.status !== 'accepted' && !this.failures[uid]) {
+        const p = { missionId: this.session.missionId, source: this.name, receiptId: uid, kind: 'rescue-left' };
+        this.failures[uid] = p; this.ctx.bus.emit('mission:venueFailure', p);
+      }
+      for (const e of [...(this.ctx.state.entityList || [])]) if (e.data?.wreckCourt?.uid === uid) this.ctx.helpers.removeEntity(e.id, { immediate: true });
+      this.session = null; this.ctx.state.wreckCourt = this.ctx.state.wreckCourtPublic = { live: true, phase: 'idle' };
+    },
+    destroy() { this.destroying = true; this.leave(); for (const off of this.off) off(); this.off = []; },
+  };
+}
+
+export const wreckCourt = createWreckCourtSystem();

@@ -17,6 +17,7 @@ function pushIntent(rt, inc, intent) {
   inc.settlementReceipt.keys[intent.key] = true;
   const row = {
     key: intent.key,
+    receiptId: intent.key,
     type: intent.type,
     amount: intent.amount || 0,
     delta: intent.type === 'faction:repDelta' ? (intent.amount || 0) : 0,

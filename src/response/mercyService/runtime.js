@@ -16,6 +16,7 @@ import {
 } from './physics.js';
 import { commandFor } from './pilot.js';
 import { emitRivalCapture, settleDelivery, settleLeave, settleLost } from './settlement.js';
+import { createLiveMercyServiceSystem } from './live.js';
 const CATALOG_ERRORS = validateCatalog();
 
 function emptyStats() {
@@ -416,7 +417,7 @@ function measure(rt, inc) {
   };
 }
 
-function failIncident(rt, inc, subject, kind) {
+export function failMercyIncident(rt, inc, subject, kind) {
   if (!inc || inc.failedForward || inc.latches.settled || inc.latches.extracted) return;
   const spawn = inc.def.failure && inc.def.failure.spawn;
   const wreckPos = subject ? { x: subject.pos.x, z: subject.pos.z } : { x: 0, z: 0 };
@@ -455,6 +456,8 @@ function failIncident(rt, inc, subject, kind) {
   }
   notePhase(inc);
 }
+
+const failIncident = failMercyIncident;
 
 function checkFailure(rt, inc) {
   const fail = inc.def.failure;
@@ -725,6 +728,8 @@ function slimIncident(inc) {
     wreck: inc.wreck ? { ...inc.wreck } : null,
     cleanupAt: inc.cleanupAt,
     bornTick: inc.bornTick,
+    offerId: inc.offerId ?? null,
+    scanUntil: inc.scanUntil || 0,
   };
 }
 
@@ -818,6 +823,10 @@ export function commandFromGameState(state) {
 }
 
 export function createMercyServiceSystem() {
+  return createLiveMercyServiceSystem();
+}
+
+export function createMercyFixtureSystem() {
   return {
     name: 'mercyService',
     rt: null,
@@ -842,3 +851,4 @@ export function createMercyServiceSystem() {
 }
 
 export { noteImpact };
+export { measure as measureMercyIncident };

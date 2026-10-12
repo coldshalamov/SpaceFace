@@ -158,6 +158,8 @@ export const lossInvestigation = {
     point.isCommunicator = true;
     point.wreckMissionId = overlay.metadata.wreckMissionId;
     point.lossInvestigation = { ...overlay.metadata };
+    point.wreckCourtCaseId = 'wc_desperate_rescue';
+    point.wreckCourtSeed = hash32(seed, sectorId, loss.lossId, 'wreckCourt');
 
     const ent = entityForPoint(state, point);
     if (ent && ent.data) {
@@ -166,6 +168,8 @@ export const lossInvestigation = {
       ent.data.wreckMissionId = point.wreckMissionId;
       ent.data.scanLabel = 'Loss Investigation Communicator';
       ent.data.lossInvestigation = { ...overlay.metadata };
+      ent.data.wreckCourtCaseId = point.wreckCourtCaseId;
+      ent.data.wreckCourtSeed = point.wreckCourtSeed;
     }
 
     const rec = {

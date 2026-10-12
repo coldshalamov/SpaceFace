@@ -397,7 +397,7 @@ test('bad initialization is refused and the unregistered system does not write c
   system.update(0.5, state);
   assert.equal(state.player.credits, 40);
   assert.equal(system.name, 'mercyService');
-  assert.equal(system.rt.delegatePlayer, true);
+  assert.equal(system.rt, null, 'live registration has no hidden private-body simulation while idle');
 });
 
 test('same seed matches, another seed moves jittered ore, and sources stay free of Math.random', () => {
