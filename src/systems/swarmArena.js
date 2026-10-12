@@ -782,6 +782,7 @@ export const swarmArena = {
         // owner samples that mass and velocity, then publishes its post-impulse mirror now:
         // run:waveStarted happens after physics in the production update order.
         physics.settlePassiveBody({ entityId: e.id, occupantGeneration: e.occupantGeneration,
+          entity: e, entities,
           minSpeed: SETTLE_SPEED, reason: 'swarm_round_settle', tick,
           provenance: { actorId: null, tag: 'swarm_round_settle' } });
         continue;

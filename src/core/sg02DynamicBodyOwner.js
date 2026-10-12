@@ -1194,12 +1194,28 @@ export class Sg02DynamicBodyOwner {
   /** Boundary-owned passive settling. Native mass includes the live field/body response;
    * publish the impulse result immediately when the boundary runs after this tick's solve. */
   settlePassiveBody(input = {}) {
-    const rec = this.records.get(input.entityId);
-    if (input.reason !== 'swarm_round_settle' || !rec || !rec.spec.dynamic || rec.entity.alive === false || rec.entity.isPlayer === true
-      || (rec.entity.type !== 'asteroid' && rec.entity.type !== 'wreck')
-      || (input.occupantGeneration != null && input.occupantGeneration !== rec.entity.occupantGeneration)) return false;
-    const velocity = rec.body.linvel();
+    let rec = this.records.get(input.entityId);
+    const entity = input.entity ?? rec?.entity;
+    if (input.reason !== 'swarm_round_settle' || !entity || entity.id !== input.entityId
+      || entity.alive === false || entity.isPlayer === true || entity.physicsBody === false
+      || (entity.type !== 'asteroid' && entity.type !== 'wreck')
+      || (input.occupantGeneration != null && input.occupantGeneration !== entity.occupantGeneration)) return false;
+    // New debris may arrive after the preceding physics slot while the public shop is paused.
+    // Only the arena's exact current live object may admit that one body at the opening boundary.
+    // A detached object or an old occupant must never replace an existing native record here.
+    if (input.entity != null && (typeof input.entities?.get !== 'function'
+      || input.entities.get(input.entityId) !== entity || (rec && rec.entity !== entity))) return false;
     const minSpeed = Number.isFinite(input.minSpeed) && input.minSpeed >= 0 ? input.minSpeed : 6;
+    if (!rec) {
+      if (input.entity == null || !Number.isSafeInteger(entity.occupantGeneration) || entity.occupantGeneration < 1
+        || input.occupantGeneration !== entity.occupantGeneration
+        || Math.hypot(finite(entity.vel?.x), finite(entity.vel?.z)) < minSpeed) return false;
+      const spec = resolvePhysicsBodySpec(entity);
+      if (!spec?.dynamic || !(spec.radius > 0)) return false;
+      rec = this._syncRecord(entity, spec);
+    }
+    if (!rec?.spec.dynamic) return false;
+    const velocity = rec.body.linvel();
     if (Math.hypot(velocity.x, velocity.z) < minSpeed) return false;
     const mass = rec.body.mass();
     if (!(Number.isFinite(mass) && mass > 0)) return false;
