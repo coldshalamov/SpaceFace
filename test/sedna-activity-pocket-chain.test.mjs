@@ -39,6 +39,10 @@ import {
   SEDNA_AUTHORED_ACTIVITY_CAPACITY,
   SEDNA_POCKET_ACTOR_SLOT_ORDER,
   SEDNA_ROUTE_TOPOLOGY,
+  KEPLER_ACTIVITY_POCKETS,
+  DIONE_ACTIVITY_POCKETS,
+  RHEA_ACTIVITY_POCKETS,
+  PHOEBE_ACTIVITY_POCKETS,
   TETHYS_ACTIVITY_POCKETS,
   TETHYS_ACTIVITY_SECTOR_ID,
   VESTA_ACTIVITY_POCKETS,
@@ -52,6 +56,7 @@ import {
 } from '../src/data/sectorActivityPockets.js';
 import { SECTOR_ANCHORS } from '../src/data/sectorAnchors.js';
 import { SECTOR_ZONES } from '../src/data/sectorZones.js';
+import { SEDNA_PATCH_GUN } from '../src/data/environmentalMachinery.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { createSimulation } from '../src/core/sim.js';
@@ -76,9 +81,13 @@ test('the activity-pocket registry includes Sedna Dark, and the older sectors ar
       + PALLAS_ACTIVITY_POCKETS.length
       + VESTA_ACTIVITY_POCKETS.length
       + TETHYS_ACTIVITY_POCKETS.length
-      + SEDNA_ACTIVITY_POCKETS.length,
+      + SEDNA_ACTIVITY_POCKETS.length
+      + KEPLER_ACTIVITY_POCKETS.length
+      + DIONE_ACTIVITY_POCKETS.length
+      + RHEA_ACTIVITY_POCKETS.length
+      + PHOEBE_ACTIVITY_POCKETS.length,
   );
-  assert.equal(activityPocketsForSector('sector_sedna_dark').length, 2);
+  assert.equal(activityPocketsForSector('sector_sedna_dark').length, 3);
   assert.equal(activityPocketsForSector('sector_nowhere_belt').length, 0);
 
   // The discovery readers Ceres uses resolve Sedna pockets and slots too.
@@ -90,7 +99,7 @@ test('the activity-pocket registry includes Sedna Dark, and the older sectors ar
     assert.ok(slot, `Sedna slot readable through the shared reader: ${slotId}`);
     assert.equal(slot.worldRecordSlotId, `sedna:activity:${slotId}`, 'Sedna durable slot namespace');
   }
-  assert.equal(activityRouteTopologyForSector(SEDNA_ACTIVITY_SECTOR_ID).length, 4);
+  assert.equal(activityRouteTopologyForSector(SEDNA_ACTIVITY_SECTOR_ID).length, 6);
   assert.ok(ACTIVITY_POCKETS_BY_ID.sedna_survey_rounds, 'Sedna joins the all-sector pocket index');
 
   // Older sectors keep their exact contracts.
@@ -101,7 +110,7 @@ test('the activity-pocket registry includes Sedna Dark, and the older sectors ar
 });
 
 test('Sedna pockets obey the same band, shape and topology laws Ceres does', () => {
-  assert.equal(SEDNA_ACTIVITY_POCKETS.length, 2, 'the rounds at the post, the watch at the rim');
+  assert.equal(SEDNA_ACTIVITY_POCKETS.length, 3, 'the rounds at the post, the watch at the rim, the patch at the lamp');
   assert.equal(SEDNA_POCKET_ACTOR_SLOT_ORDER.length, SEDNA_AUTHORED_ACTIVITY_CAPACITY);
   assert.equal(new Set(SEDNA_POCKET_ACTOR_SLOT_ORDER).size, SEDNA_POCKET_ACTOR_SLOT_ORDER.length);
 
@@ -124,6 +133,17 @@ test('Sedna pockets obey the same band, shape and topology laws Ceres does', () 
       assert.ok(zone, `${pocket.id} station anchor claims a real zone`);
       assert.equal(anchor.x, zone.center.x);
       assert.equal(anchor.z, zone.center.z);
+    } else if (pocket.activityAnchor.kind === 'machine') {
+      // The patch watch claims the Patch Gun itself: the lantern economy's working lamp,
+      // inside the glow zone its walk is strung along.
+      const machine = SEDNA_PATCH_GUN;
+      assert.equal(pocket.activityAnchor.id, machine.id);
+      assert.equal(anchor.x, machine.localPos.x);
+      assert.equal(anchor.z, machine.localPos.z);
+      const zone = sednaZones.find((z) => z.id === pocket.activityAnchor.zoneId);
+      assert.ok(zone, `${pocket.id} machine anchor claims a real zone`);
+      const zoneDist = Math.hypot(anchor.x - zone.center.x, anchor.z - zone.center.z);
+      assert.ok(zoneDist <= zone.radius, `${pocket.id} machine anchor sits inside ${zone.id}`);
     } else if (pocket.activityAnchor.kind === 'poi') {
       const poi = sednaAnchors.pois.find((p) => p.id === pocket.activityAnchor.id);
       assert.ok(poi, `${pocket.id} anchor POI exists`);
@@ -308,7 +328,7 @@ test('seed 4242: the watch is already under way when you arrive in Sedna Dark', 
     const entity = bySlot.get(slotId).entity;
     return `${slotId}#${entity.data.worldRecordId}`;
   });
-  assert.equal(new Set(ids).size, 4, 'four distinct durable identities');
+  assert.equal(new Set(ids).size, 6, 'six distinct durable identities');
 });
 
 test('the marks sit on the authored marks: the rounds are one string between the post and the arc', () => {

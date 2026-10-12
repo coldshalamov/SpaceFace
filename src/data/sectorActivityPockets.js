@@ -15,6 +15,11 @@ import {
   CINDER_SLUICE_LOCAL_POS,
   CINDER_SLUICE_SECTOR_ID,
   CINDER_SLUICE_SITE_ID,
+  KEPLER_CAPSIZE_WINCH,
+  DIONE_LANE_GATE,
+  RHEA_POUR_GATE,
+  PHOEBE_TUNING_FORK,
+  SEDNA_PATCH_GUN,
 } from './environmentalMachinery.js';
 
 export const CERES_ACTIVITY_SECTOR_ID = 'sector_ceres_belt';
@@ -1618,8 +1623,8 @@ assertDistinctRouteTopology(TETHYS_ACTIVITY_POCKETS, TETHYS_ROUTE_TOPOLOGY, 'Tet
 // ───────────────────────────────────────────────────────────────────────────────────────────────
 
 export const SEDNA_ACTIVITY_SECTOR_ID = 'sector_sedna_dark';
-/** Two pockets × two actors: the rounds at the post, the watch at the rim. Quiet by count. */
-export const SEDNA_AUTHORED_ACTIVITY_CAPACITY = 4;
+/** Three pockets × two actors: the rounds at the post, the watch at the rim, the patch at the lamp. */
+export const SEDNA_AUTHORED_ACTIVITY_CAPACITY = 6;
 
 const sednaZones = requireArray(SECTOR_ZONES[SEDNA_ACTIVITY_SECTOR_ID], 'Sedna sector zones');
 const sednaAnchors = requireRecord(SECTOR_ANCHORS[SEDNA_ACTIVITY_SECTOR_ID], 'Sedna sector anchors');
@@ -1716,6 +1721,40 @@ const sednaRimActors = Object.freeze([
     ]),
 ]);
 
+// PR-1: the lighthouse economy's working lamp joins the watch — the Patch Gun's operator cycle,
+// anchored on the machine itself so the surge the player watches is the toy being used.
+const sednaGlowZone = findById(sednaZones, 'zone_sedna_glow', 'Sedna glow zone');
+const sednaPatchId = 'sedna_patch_watch';
+
+const sednaPatchObjects = Object.freeze([
+  // The hull plate the gun is working — a sheared section parked at the lamp line.
+  objectSlot({
+    id: 'sedna_patch_hull_plate',
+    pocketId: sednaPatchId,
+    kind: 'grave_shard',
+    offset: point(-35, 40),
+    runtimeOwner: 'world',
+    targetRef: 'object:sedna_patch_hull_plate',
+  }),
+]);
+
+const sednaPatchActors = Object.freeze([
+  // The gun's tender: a survey rig cycling the patch face — 93.7 deg / 171.2 WU, the tightest
+  // wedge the sector owns, because the plate and the lamp are the same body.
+  sednaActor('sedna_patch_tender', sednaPatchId, 'tender', 'surveyor', point(-35, -40),
+    'sedna_patch_face_round', 38, [
+      mark('sedna_patch_gun_leg', 90, -70, 'activity:sedna-patch-face'),
+      mark('sedna_patch_plate_leg', -80, -90, 'object:sedna_patch_hull_plate'),
+    ]),
+  // The lamp walker: a second rig pacing the walk's dark end toward the cadence line —
+  // 153.0 deg / 233.9 WU, the long leg the lanterns string together.
+  sednaActor('sedna_lamp_walker', sednaPatchId, 'surveyor', 'surveyor', point(40, 30),
+    'sedna_lamp_walk_round', 46, [
+      mark('sedna_walk_dark_leg', -60, -108, 'activity:sedna-lamp-line'),
+      mark('sedna_walk_post_leg', 95, 65, 'activity:sedna-post-line'),
+    ]),
+]);
+
 export const SEDNA_ACTIVITY_POCKETS = Object.freeze([
   pocket({
     id: sednaRoundsId,
@@ -1743,6 +1782,18 @@ export const SEDNA_ACTIVITY_POCKETS = Object.freeze([
     objectSlots: sednaRimObjects,
     sectorId: SEDNA_ACTIVITY_SECTOR_ID,
   }),
+  pocket({
+    id: sednaPatchId,
+    label: 'Patch Watch',
+    identity: Object.freeze({ zoneId: sednaGlowZone.id }),
+    anchor: canonicalAnchor({
+      kind: 'machine', id: SEDNA_PATCH_GUN.id, zoneId: sednaGlowZone.id,
+      placeId: SEDNA_PATCH_GUN.id, localPos: SEDNA_PATCH_GUN.localPos,
+    }),
+    actorSlots: sednaPatchActors,
+    objectSlots: sednaPatchObjects,
+    sectorId: SEDNA_ACTIVITY_SECTOR_ID,
+  }),
 ]);
 
 export const SEDNA_ACTIVITY_POCKET_ORDER = Object.freeze(SEDNA_ACTIVITY_POCKETS.map((entry) => entry.id));
@@ -1765,6 +1816,369 @@ if (new Set(SEDNA_POCKET_ACTOR_SLOT_ORDER).size !== SEDNA_POCKET_ACTOR_SLOT_ORDE
 assertDistinctRouteTopology(SEDNA_ACTIVITY_POCKETS, SEDNA_ROUTE_TOPOLOGY, 'Sedna');
 
 // ───────────────────────────────────────────────────────────────────────────────────────────────
+// AEP PR-1 rim wave 1 (audit BP-7/BP-8): one camera-scale pocket per rim sector, anchored on the
+// sector's signature toy so the operator cycle the player first watches is the toy being used.
+// Same band and topology laws as Ceres and Sedna; anchors are the machines themselves, so a mark
+// that names the work face is aimed from the machine's own body, not an invented waypoint.
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+
+// KEPLER SCAR — the winch yard. The graveyard bazaar's working face: a salvage clamp on the
+// capsized drum and a hauler cycling surplus out of the sweep before the graveyard keeps it.
+
+export const KEPLER_ACTIVITY_SECTOR_ID = 'sector_kepler_scar';
+export const KEPLER_AUTHORED_ACTIVITY_CAPACITY = 2;
+
+const keplerZones = requireArray(SECTOR_ZONES[KEPLER_ACTIVITY_SECTOR_ID], 'Kepler sector zones');
+const keplerScarZone = findById(keplerZones, 'zone_kepler_scar', 'Kepler scar zone');
+
+const keplerWinchId = 'kepler_winch_yard';
+
+function keplerActor(id, pocketId, role, jobKind, spawn, routeId, durationS, marks, { lawful = false, receiptType = null } = {}) {
+  return actor({
+    id,
+    pocketId,
+    namespace: 'kepler',
+    presentationRole: role,
+    jobKind,
+    lawful,
+    passive: true,
+    spawnOffset: spawn,
+    route: route({ id: routeId, jobKind, durationS, receiptType, marks }),
+  });
+}
+
+const keplerWinchObjects = Object.freeze([
+  // The hull section the winch is rolling onto the drum line — descriptor only; the winch body
+  // itself is the machine's own spawned shell, not an object slot.
+  objectSlot({
+    id: 'kepler_winch_drum_hull',
+    pocketId: keplerWinchId,
+    kind: 'grave_shard',
+    offset: point(30, -40),
+    runtimeOwner: 'world',
+    targetRef: 'object:kepler_winch_drum_hull',
+  }),
+]);
+
+const keplerWinchActors = Object.freeze([
+  // The winch's own operator: a salvage cutter cycling the haul face against the drum —
+  // wide arc 145.2 deg / 226.3 WU, working the sheet's mouth rather than standing in it.
+  keplerActor('kepler_winch_tender', keplerWinchId, 'salvor', 'salvor', point(-40, 30),
+    'kepler_winch_face_run', 36, [
+      mark('kepler_winch_haul_face', 105, 55, 'activity:kepler-winch-face'),
+      mark('kepler_winch_drum_leg', -55, -105, 'object:kepler_winch_drum_hull'),
+    ]),
+  // The surplus leg made physical: a hauler shuttling between the drum and the bazaar line —
+  // transit 165.4 deg / 239.9 WU, the straightest course the yard supports.
+  keplerActor('kepler_drum_hauler', keplerWinchId, 'hauler', 'hauler', point(45, -25),
+    'kepler_surplus_drum_run', 40, [
+      mark('kepler_drum_bazaar_leg', -56, 106, 'activity:kepler-bazaar-line'),
+      mark('kepler_drum_winch_leg', 80, -85, 'activity:kepler-winch-face'),
+    ]),
+]);
+
+export const KEPLER_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: keplerWinchId,
+    label: 'Winch Yard',
+    identity: Object.freeze({ zoneId: keplerScarZone.id }),
+    anchor: canonicalAnchor({
+      kind: 'machine', id: KEPLER_CAPSIZE_WINCH.id, zoneId: keplerScarZone.id,
+      placeId: KEPLER_CAPSIZE_WINCH.id, localPos: KEPLER_CAPSIZE_WINCH.localPos,
+    }),
+    actorSlots: keplerWinchActors,
+    objectSlots: keplerWinchObjects,
+    sectorId: KEPLER_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const KEPLER_ACTIVITY_POCKET_ORDER = Object.freeze(KEPLER_ACTIVITY_POCKETS.map((entry) => entry.id));
+export const KEPLER_ACTIVITY_POCKETS_BY_ID = Object.freeze(Object.fromEntries(
+  KEPLER_ACTIVITY_POCKETS.map((entry) => [entry.id, entry]),
+));
+export const KEPLER_POCKET_ACTOR_SLOT_ORDER = Object.freeze(KEPLER_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const KEPLER_ROUTE_TOPOLOGY = Object.freeze(KEPLER_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+
+if (KEPLER_POCKET_ACTOR_SLOT_ORDER.length !== KEPLER_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Kepler authored capacity mismatch: ${KEPLER_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(KEPLER_POCKET_ACTOR_SLOT_ORDER).size !== KEPLER_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Kepler authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(KEPLER_ACTIVITY_POCKETS, KEPLER_ROUTE_TOPOLOGY, 'Kepler');
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+// DIONE LANE — the gate watch. The speed lane's law on camera: a marshal pacing the slam line
+// while a cleared hauler runs the timed crossing. Lawful work — the only pocket in the wave
+// where the law is the point of the scene, not its absence.
+
+export const DIONE_ACTIVITY_SECTOR_ID = 'sector_dione_lane';
+export const DIONE_AUTHORED_ACTIVITY_CAPACITY = 2;
+
+const dioneZones = requireArray(SECTOR_ZONES[DIONE_ACTIVITY_SECTOR_ID], 'Dione sector zones');
+const dioneRelayZone = findById(dioneZones, 'zone_dione_relay', 'Dione relay zone');
+
+const dioneGateId = 'dione_gate_watch';
+
+function dioneActor(id, pocketId, role, jobKind, spawn, routeId, durationS, marks, { lawful = false, receiptType = null } = {}) {
+  return actor({
+    id,
+    pocketId,
+    namespace: 'dione',
+    presentationRole: role,
+    jobKind,
+    lawful,
+    passive: true,
+    spawnOffset: spawn,
+    route: route({ id: routeId, jobKind, durationS, receiptType, marks }),
+  });
+}
+
+const dioneGateObjects = Object.freeze([
+  // A timed freight pod waiting its clearance slot at the gate — the run's visible cargo.
+  objectSlot({
+    id: 'dione_gate_clearance_pod',
+    pocketId: dioneGateId,
+    kind: 'cargo_staging_pod',
+    offset: point(-45, 30),
+    runtimeOwner: 'world',
+    targetRef: 'object:dione_gate_clearance_pod',
+  }),
+]);
+
+const dioneGateActors = Object.freeze([
+  // The lane's law: a marshal pacing the slam line ahead of the cycle — 135.6 deg / 218.0 WU.
+  dioneActor('dione_gate_marshal', dioneGateId, 'patrol', 'patrol', point(50, -30),
+    'dione_gate_slam_line_watch', 32, [
+      mark('dione_gate_slam_leg', 115, 30, 'activity:dione-gate-face'),
+      mark('dione_gate_corridor_leg', -60, -100, 'activity:dione-corridor-line'),
+    ], { lawful: true }),
+  // The cleared run on the clock: a hauler holding the timed crossing through the gate —
+  // tight lane 100.3 deg / 180.3 WU, the crossing IS the work.
+  dioneActor('dione_cleared_hauler', dioneGateId, 'hauler', 'hauler', point(-50, 40),
+    'dione_cleared_run_crossing', 38, [
+      mark('dione_cleared_gate_leg', -95, -70, 'activity:dione-gate-face'),
+      mark('dione_cleared_lane_leg', 85, -80, 'activity:dione-cleared-run'),
+    ]),
+]);
+
+export const DIONE_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: dioneGateId,
+    label: 'Gate Watch',
+    identity: Object.freeze({ zoneId: dioneRelayZone.id }),
+    anchor: canonicalAnchor({
+      kind: 'machine', id: DIONE_LANE_GATE.id, zoneId: dioneRelayZone.id,
+      placeId: DIONE_LANE_GATE.id, localPos: DIONE_LANE_GATE.localPos,
+    }),
+    actorSlots: dioneGateActors,
+    objectSlots: dioneGateObjects,
+    sectorId: DIONE_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const DIONE_ACTIVITY_POCKET_ORDER = Object.freeze(DIONE_ACTIVITY_POCKETS.map((entry) => entry.id));
+export const DIONE_ACTIVITY_POCKETS_BY_ID = Object.freeze(Object.fromEntries(
+  DIONE_ACTIVITY_POCKETS.map((entry) => [entry.id, entry]),
+));
+export const DIONE_POCKET_ACTOR_SLOT_ORDER = Object.freeze(DIONE_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const DIONE_ROUTE_TOPOLOGY = Object.freeze(DIONE_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+
+if (DIONE_POCKET_ACTOR_SLOT_ORDER.length !== DIONE_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Dione authored capacity mismatch: ${DIONE_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(DIONE_POCKET_ACTOR_SLOT_ORDER).size !== DIONE_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Dione authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(DIONE_ACTIVITY_POCKETS, DIONE_ROUTE_TOPOLOGY, 'Dione');
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+// RHEA CINDER — the pour shift. The burning claim's furnace crew: a miner cycling the gate face
+// while a hauler races the front with the scorched lots. The gate's cycle sets the shift's clock.
+
+export const RHEA_ACTIVITY_SECTOR_ID = 'sector_rhea_cinder';
+export const RHEA_AUTHORED_ACTIVITY_CAPACITY = 2;
+
+const rheaZones = requireArray(SECTOR_ZONES[RHEA_ACTIVITY_SECTOR_ID], 'Rhea sector zones');
+const rheaSlagZone = findById(rheaZones, 'zone_rhea_slag', 'Rhea slag zone');
+
+const rheaPourId = 'rhea_pour_shift';
+
+function rheaActor(id, pocketId, role, jobKind, spawn, routeId, durationS, marks, { lawful = false, receiptType = null } = {}) {
+  return actor({
+    id,
+    pocketId,
+    namespace: 'rhea',
+    presentationRole: role,
+    jobKind,
+    lawful,
+    passive: true,
+    spawnOffset: spawn,
+    route: route({ id: routeId, jobKind, durationS, receiptType, marks }),
+  });
+}
+
+const rheaPourObjects = Object.freeze([
+  // A scorched ore drum staged at the gate — the next lot the pour keeps for the claim.
+  objectSlot({
+    id: 'rhea_pour_scorched_drum',
+    pocketId: rheaPourId,
+    kind: 'cargo_staging_pod',
+    offset: point(-40, 30),
+    runtimeOwner: 'world',
+    targetRef: 'object:rhea_pour_scorched_drum',
+  }),
+]);
+
+const rheaPourActors = Object.freeze([
+  // The gate's tender: a claim miner cycling the pour face against the burn plate —
+  // 161.1 deg / 237.5 WU, around the gate's own line rather than across the pour.
+  rheaActor('rhea_pour_tender', rheaPourId, 'miner', 'miner', point(-40, -50),
+    'rhea_pour_face_shift', 36, [
+      mark('rhea_pour_burn_leg', -100, -60, 'activity:rhea-burn-line'),
+      mark('rhea_pour_gate_leg', 80, 95, 'activity:rhea-gate-face'),
+    ]),
+  // Racing the front: a hauler running the scorched lot out before the surge takes it —
+  // 97.4 deg / 180.3 WU, the tight turn a timed crossing earns.
+  rheaActor('rhea_scorched_runner', rheaPourId, 'hauler', 'hauler', point(35, 45),
+    'rhea_scorched_run', 30, [
+      mark('rhea_runner_drum_leg', -110, -45, 'object:rhea_pour_scorched_drum'),
+      mark('rhea_runner_out_leg', 60, -105, 'activity:rhea-claim-run'),
+    ]),
+]);
+
+export const RHEA_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: rheaPourId,
+    label: 'Pour Shift',
+    identity: Object.freeze({ zoneId: rheaSlagZone.id }),
+    anchor: canonicalAnchor({
+      kind: 'machine', id: RHEA_POUR_GATE.id, zoneId: rheaSlagZone.id,
+      placeId: RHEA_POUR_GATE.id, localPos: RHEA_POUR_GATE.localPos,
+    }),
+    actorSlots: rheaPourActors,
+    objectSlots: rheaPourObjects,
+    sectorId: RHEA_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const RHEA_ACTIVITY_POCKET_ORDER = Object.freeze(RHEA_ACTIVITY_POCKETS.map((entry) => entry.id));
+export const RHEA_ACTIVITY_POCKETS_BY_ID = Object.freeze(Object.fromEntries(
+  RHEA_ACTIVITY_POCKETS.map((entry) => [entry.id, entry]),
+));
+export const RHEA_POCKET_ACTOR_SLOT_ORDER = Object.freeze(RHEA_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const RHEA_ROUTE_TOPOLOGY = Object.freeze(RHEA_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+
+if (RHEA_POCKET_ACTOR_SLOT_ORDER.length !== RHEA_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Rhea authored capacity mismatch: ${RHEA_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(RHEA_POCKET_ACTOR_SLOT_ORDER).size !== RHEA_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Rhea authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(RHEA_ACTIVITY_POCKETS, RHEA_ROUTE_TOPOLOGY, 'Rhea');
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
+// PHOEBE ECHO — the fork watch. The song's own listening post: a tender cycling the tines and a
+// keeper holding the sphere's bearing so the note never loses the note it answers.
+
+export const PHOEBE_ACTIVITY_SECTOR_ID = 'sector_phoebe_echo';
+export const PHOEBE_AUTHORED_ACTIVITY_CAPACITY = 2;
+
+const phoebeZones = requireArray(SECTOR_ZONES[PHOEBE_ACTIVITY_SECTOR_ID], 'Phoebe sector zones');
+const phoebeShrineZone = findById(phoebeZones, 'zone_phoebe_shrine', 'Phoebe shrine zone');
+
+const phoebeForkId = 'phoebe_fork_watch';
+
+function phoebeActor(id, pocketId, role, jobKind, spawn, routeId, durationS, marks, { lawful = false, receiptType = null } = {}) {
+  return actor({
+    id,
+    pocketId,
+    namespace: 'phoebe',
+    presentationRole: role,
+    jobKind,
+    lawful,
+    passive: true,
+    spawnOffset: spawn,
+    route: route({ id: routeId, jobKind, durationS, receiptType, marks }),
+  });
+}
+
+const phoebeForkObjects = Object.freeze([
+  // A shard off the sphere's edge the fork keeps in tune — the note's own body.
+  objectSlot({
+    id: 'phoebe_fork_shard',
+    pocketId: phoebeForkId,
+    kind: 'grave_shard',
+    offset: point(35, -30),
+    runtimeOwner: 'world',
+    targetRef: 'object:phoebe_fork_shard',
+  }),
+]);
+
+const phoebeForkActors = Object.freeze([
+  // The tine tender: a survey rig walking the fork's rim — 158.9 deg / 226.9 WU around the mast
+  // rather than through the lobe the note sweeps.
+  phoebeActor('phoebe_fork_tender', phoebeForkId, 'surveyor', 'surveyor', point(-40, 35),
+    'phoebe_fork_tine_round', 34, [
+      mark('phoebe_fork_note_leg', 90, -70, 'activity:phoebe-note-line'),
+      mark('phoebe_fork_shard_leg', -60, 100, 'object:phoebe_fork_shard'),
+    ]),
+  // The song's keeper: a second rig holding the sphere's bearing where the note lands —
+  // 101.0 deg / 178.5 WU, the listening half of the watch.
+  phoebeActor('phoebe_song_keeper', phoebeForkId, 'surveyor', 'surveyor', point(40, -40),
+    'phoebe_song_bearing_watch', 42, [
+      mark('phoebe_song_sphere_leg', -100, -55, 'activity:phoebe-sphere-bearing'),
+      mark('phoebe_song_plate_leg', 75, -90, 'activity:phoebe-note-line'),
+    ]),
+]);
+
+export const PHOEBE_ACTIVITY_POCKETS = Object.freeze([
+  pocket({
+    id: phoebeForkId,
+    label: 'Fork Watch',
+    identity: Object.freeze({ zoneId: phoebeShrineZone.id }),
+    anchor: canonicalAnchor({
+      kind: 'machine', id: PHOEBE_TUNING_FORK.id, zoneId: phoebeShrineZone.id,
+      placeId: PHOEBE_TUNING_FORK.id, localPos: PHOEBE_TUNING_FORK.localPos,
+    }),
+    actorSlots: phoebeForkActors,
+    objectSlots: phoebeForkObjects,
+    sectorId: PHOEBE_ACTIVITY_SECTOR_ID,
+  }),
+]);
+
+export const PHOEBE_ACTIVITY_POCKET_ORDER = Object.freeze(PHOEBE_ACTIVITY_POCKETS.map((entry) => entry.id));
+export const PHOEBE_ACTIVITY_POCKETS_BY_ID = Object.freeze(Object.fromEntries(
+  PHOEBE_ACTIVITY_POCKETS.map((entry) => [entry.id, entry]),
+));
+export const PHOEBE_POCKET_ACTOR_SLOT_ORDER = Object.freeze(PHOEBE_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => slot.id),
+));
+export const PHOEBE_ROUTE_TOPOLOGY = Object.freeze(PHOEBE_ACTIVITY_POCKETS.flatMap(
+  (entry) => entry.actorSlots.map((slot) => routeTopology(slot)),
+));
+
+if (PHOEBE_POCKET_ACTOR_SLOT_ORDER.length !== PHOEBE_AUTHORED_ACTIVITY_CAPACITY) {
+  throw new Error(`Phoebe authored capacity mismatch: ${PHOEBE_POCKET_ACTOR_SLOT_ORDER.length}`);
+}
+if (new Set(PHOEBE_POCKET_ACTOR_SLOT_ORDER).size !== PHOEBE_POCKET_ACTOR_SLOT_ORDER.length) {
+  throw new Error('Phoebe authored activity slot ids must be unique');
+}
+assertDistinctRouteTopology(PHOEBE_ACTIVITY_POCKETS, PHOEBE_ROUTE_TOPOLOGY, 'Phoebe');
+
+// ───────────────────────────────────────────────────────────────────────────────────────────────
 // The registry. Everything downstream reads this instead of a Ceres constant, which is the whole
 // reason a second sector can exist here at all.
 // ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -1778,6 +2192,10 @@ export const ACTIVITY_POCKETS_BY_SECTOR = Object.freeze({
   [VESTA_ACTIVITY_SECTOR_ID]: VESTA_ACTIVITY_POCKETS,
   [TETHYS_ACTIVITY_SECTOR_ID]: TETHYS_ACTIVITY_POCKETS,
   [SEDNA_ACTIVITY_SECTOR_ID]: SEDNA_ACTIVITY_POCKETS,
+  [KEPLER_ACTIVITY_SECTOR_ID]: KEPLER_ACTIVITY_POCKETS,
+  [DIONE_ACTIVITY_SECTOR_ID]: DIONE_ACTIVITY_POCKETS,
+  [RHEA_ACTIVITY_SECTOR_ID]: RHEA_ACTIVITY_POCKETS,
+  [PHOEBE_ACTIVITY_SECTOR_ID]: PHOEBE_ACTIVITY_POCKETS,
 });
 
 export const ACTIVITY_POCKET_SECTOR_IDS = Object.freeze(Object.keys(ACTIVITY_POCKETS_BY_SECTOR));
