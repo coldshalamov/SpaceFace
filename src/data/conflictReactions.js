@@ -236,6 +236,7 @@ export const ENDGAME_PULL_LINES = Object.freeze({
   capital_boss_tollman: 'The Tollman is down. Sker is rewriting the fee.',
   capital_boss_ala: 'ALA is down in Ashfall. The grave has a new name.',
   capital_boss: 'The Coalition heavy is down. Mass decided it.',
+  capital_boss_lattice_warden: 'The Lattice Warden is down. Pallas lanes are unmarked again.',
 });
 
 export function endgamePullLine(pullId, tokens = {}) {

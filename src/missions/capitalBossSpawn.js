@@ -3,6 +3,9 @@ import { requireCapitalBossEncounter } from '../data/encounters/capital-boss.js'
 /** Call INSIDE _spawnCapitalBossTargets, before helpers.spawnEntity(spec). Mutates a NEW spec, not GameState. */
 export function decorateCapitalBossSpawnSpec(spec,actor,encounter,{missionId,index=0}={}) {
   if(!spec||!actor||!encounter?.score||!missionId) throw new TypeError('Capital spawn context missing');
+  // Presentation-only authored body override (Lattice Warden's forge hull). Render lane reads
+  // it through WHOLE_SHIP_FILE_BY_ASSET_REF; combat fields stay untouched.
+  if(actor.assetRef) spec.data={...(spec.data||{}),assetRef:actor.assetRef};
   spec.data={...(spec.data||{}),capitalBossEncounterId:encounter.id,
     capitalBossActorKey:`${missionId}/${actor.role}/${index}`,missionPinned:true};
   // Verified combat/save persistence includes only player + flags.persistent entities.
@@ -100,5 +103,9 @@ export function resolveCapitalBossRoleBinding({record,targetId,entities}) {
     const wing=definition.score.wings.find(w=>w.id===id);
     wingIds[id]=wing.members.map((_,i)=>byKey.get(`${record.fightId}/${id}/${i}`)??null);
   }
-  return {bossId,targetId,wingIds};
+  // Lattice Warden stakes rebind by their recorded durable keys — same absence-is-not-death
+  // rule as every other role. A stake that died keeps a null slot (the kill was observed).
+  const latticeNodeIds=record.lattice&&Array.isArray(record.lattice.nodeKeys)
+    ? record.lattice.nodeKeys.map((k)=>(k?byKey.get(k)??null:null)) : null;
+  return {bossId,targetId,wingIds,latticeNodeIds};
 }

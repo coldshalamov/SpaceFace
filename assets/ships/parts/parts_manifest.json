@@ -6760,6 +6760,58 @@
       "note": "Forge-v1 rebuild (tools/blender/forge/ships/helios_lark.py): Helios civil courier, ivory hull, teal courier band, lit cabin, swept pod drives, parcel rack."
     },
     {
+      "id": "wholeship_lattice_warden",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/lattice_warden.glb",
+      "tris": 33364,
+      "bytes": 2189876,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Massline",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -21.61546516418457,
+          -4.083916664123535,
+          -12.15576171875
+        ],
+        "max": [
+          28.799999237060547,
+          5.174499988555908,
+          12.156641960144043
+        ],
+        "dimensionsM": [
+          50.41546440124512,
+          9.258416652679443,
+          24.312403678894043
+        ]
+      },
+      "note": "Lattice Warden (tools/blender/forge/ships/lattice_warden.py): cold surveyor capital hunter — slate spindle hull, tri-vane teal lattice projector claw at the bow, stake collar ring, three stern drives."
+    },
+    {
       "id": "wholeship_helios_span",
       "category": "wholeships",
       "priority": "P1",

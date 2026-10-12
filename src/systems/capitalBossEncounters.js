@@ -1,6 +1,7 @@
 import { requireCapitalBossEncounter } from '../data/encounters/capital-boss.js';
 import { createCapitalBossFight,restoreCapitalBossFight,rebindCapitalBossFight,
-  bindCapitalBossWing,stepCapitalBossFight,validFightId } from '../combat/capitalBossScore.js';
+  bindCapitalBossWing,stepCapitalBossFight,validFightId,
+  bindCapitalBossLattice,capitalBossLatticeNodeKilled,rebindCapitalBossLattice } from '../combat/capitalBossScore.js';
 import { capitalOrderKey } from '../ai/capitalBossOrders.js';
 
 const clone=v=>JSON.parse(JSON.stringify(v));
@@ -47,6 +48,13 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       if(!Array.isArray(ids)) throw new TypeError('spawnWing must synchronously return a bounded ID array');
       bindCapitalBossWing(r,c.wing.id,ids);
       for(const id of ids) if(id!=null) store.orders[capitalOrderKey(id)]={fightId:r.fightId,scoreOwnsAttacks:false,suppressStockFire:true};
+    } else if(c.type==='latticeDeploy') {
+      // Lattice Warden: three breakable mission-owned stakes placed around the TARGET by the
+      // same injected spawn port (the production branch dispatches on command type). The score
+      // only ever asks; the owner decides what physically lands.
+      const ids=spawnWing(c,r,ctx);
+      if(!Array.isArray(ids)||ids.length!==3) throw new TypeError('Lattice deploy needs a three-slot receipt');
+      bindCapitalBossLattice(r,ids,c.nodeKeys||[]);
     } else if(c.type==='voice') {
       const say=ctx.helpers.voice?.say;
       if(say) say.call(ctx.helpers.voice,{channel:c.priority,text:c.text,kind:'info',ttl:4,id:`capital:${r.fightId}`});
@@ -73,6 +81,9 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
           if(r.terminal) continue;
           if(p.id===r.bossId) r.bossKilled=true;
           if(p.id===r.targetId) r.targetKilled=true;
+          // A broken stake is a combat fact the score reads next tick — the counter stays
+          // inside the same kill channel every other body already uses.
+          if(r.lattice) capitalBossLatticeNodeKilled(r,p.id);
         }
       });
     },
@@ -132,6 +143,7 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       if(r.cast) ctx.bus.emit('capitalBoss:telegraphEnd',{fightId:r.fightId,castId:r.cast.id,reason:'rebound'});
       r.cast=null;r.suspended=true;r.phase='suspended';
       rebindCapitalBossFight(r,roles);
+      if(r.lattice && Array.isArray(roles.latticeNodeIds)) rebindCapitalBossLattice(r,roles.latticeNodeIds);
       root().orders[capitalOrderKey(r.bossId)]={fightId:r.fightId,scoreOwnsAttacks:true,suppressStockFire:true,forward:0,brake:true,phase:r.phase};
       for(const w of Object.values(r.wings)) for(const id of w.ids) if(id!=null) root().orders[capitalOrderKey(id)]={fightId:r.fightId,suppressStockFire:true,scoreOwnsAttacks:false};
     },

@@ -36,6 +36,7 @@ const DOCTRINE_ANCHORS = Object.freeze({
   capital_broadside: { id: 'commander', verve: 0.30, poise: 0.80, weave: 0.12, dash: 0.20, aim: 0.90 },
   capital_broadside_tollman: { id: 'commander', verve: 0.30, poise: 0.80, weave: 0.12, dash: 0.20, aim: 0.90 },
   capital_broadside_ala: { id: 'commander', verve: 0.30, poise: 0.80, weave: 0.12, dash: 0.20, aim: 0.90 },
+  capital_broadside_lattice_warden: { id: 'commander', verve: 0.25, poise: 0.85, weave: 0.10, dash: 0.20, aim: 0.92 },
   escort_screen: { id: 'warden', verve: 0.50, poise: 0.70, weave: 0.30, dash: 0.40, aim: 0.60 },
   // Specialists split the difference; their authored verbs dominate.
   tether_control_raider: { id: 'specialist', verve: 0.55, poise: 0.60, weave: 0.45, dash: 0.50, aim: 0.60 },

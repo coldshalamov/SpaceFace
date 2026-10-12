@@ -118,6 +118,46 @@ export function createProductionCapitalBossEncounters() {
 
     spawnWing(command, record, ctx) {
       const state = ctx.state;
+      // Lattice Warden: a latticeDeploy command is not a wing. Three breakable mission-owned
+      // stakes land around the TARGET through the same owned-spawn boundary, durable-keyed so
+      // the save seam never remints a killed stake and a fresh deploy never leaks budget.
+      if (command && command.type === 'latticeDeploy') {
+        const plan = Array.isArray(command.plan) ? command.plan : [];
+        if (isSwarmFightId(record.fightId)) return plan.map(() => null);
+        const mission = missionById(state, record.fightId);
+        if (!mission) return plan.map(() => null);
+        mission.params ??= {};
+        const ledger = (mission.params.capitalLatticeLedger ??= {});
+        const owner = (ctx.registry && typeof ctx.registry.get === 'function'
+          && ctx.registry.get('missions')) || missions;
+        const node = command.node || {};
+        return plan.map((p, i) => {
+          const slot = `${record.fightId}/lattice_node/${command.deployIndex || 1}/${i}`;
+          if (Object.hasOwn(ledger, slot)) return ledger[slot].entityId ?? null;
+          ledger[slot] = { entityId: null, spawned: true };
+          const spec = {
+            type: 'asteroid', team: 2,
+            pos: { x: p.x, z: p.z }, vel: { x: 0, z: 0 }, rot: 0,
+            radius: node.radius || 10, mass: node.mass || 34,
+            hull: node.hull || 150, hullMax: node.hull || 150,
+            collides: true,
+            data: {
+              tetherable: true, missionTag: record.fightId, physicalRole: 'lattice_node',
+              capitalBossActorKey: slot, missionPinned: true,
+              scanLabel: 'LATTICE NODE', latticeNode: true,
+            },
+            flags: { persistent: true },
+          };
+          try {
+            const entity = owner.spawnOwnedCapitalBossActor(mission, spec);
+            ledger[slot].entityId = entity?.id ?? null;
+          } catch (error) {
+            ledger[slot].error = { name: String(error?.name || 'Error').slice(0, 80),
+              message: String(error?.message || error).slice(0, 240) };
+          }
+          return ledger[slot].entityId;
+        });
+      }
       const boss = state.entities.get(record.bossId);
       if (!boss) throw new Error('Wing request reached an unresolved boss');
       if (isSwarmFightId(record.fightId)) {

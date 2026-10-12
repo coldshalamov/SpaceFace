@@ -1160,6 +1160,14 @@
       "part_id": "wholeship_mothlight_lamp",
       "npc_root": "SF_PROP_MOTHLIGHT_LAMP_ROOT",
       "note": "Original SF20 source with measured native collision and causal runtime presentation."
+    },
+    "lattice_warden": {
+      "layout": "npc",
+      "file": "lattice_warden",
+      "asset_id": "SF_WHOLESHIP_LATTICE_WARDEN",
+      "part_id": "wholeship_lattice_warden",
+      "npc_root": "SF_M4_LATTICE_WARDEN_ROOT",
+      "note": "Lattice Warden (tools/blender/forge/ships/lattice_warden.py): cold surveyor capital hunter — slate spindle hull, tri-vane teal lattice projector claw at the bow, stake collar ring, three stern drives."
     }
   }
 }

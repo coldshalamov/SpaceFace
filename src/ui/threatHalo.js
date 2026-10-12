@@ -147,7 +147,7 @@ export function leftoverTelegraphKind(payload) {
     return 'engine_flare';
   }
   if (doctrineId === 'capital_broadside' || doctrineId === 'capital_broadside_tollman'
-      || doctrineId === 'capital_broadside_ala') {
+      || doctrineId === 'capital_broadside_ala' || doctrineId === 'capital_broadside_lattice_warden') {
     return 'broadside_charge';
   }
   if (doctrineId === 'tether_control_raider') return 'attach_spool';
