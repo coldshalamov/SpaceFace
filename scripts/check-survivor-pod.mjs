@@ -202,6 +202,8 @@ function testOfferUsesShippedChoiceAndPassengerRoute() {
   assert.deepEqual(offer.choice, template.choice, 'offer reuses shipped wm_survivor_pod choice exactly');
   assert.equal(offer.params.cmdtyId, null, 'passenger transport carries no commodity');
   assert.equal(offer.params.passengers, 1, 'passenger route carries one survivor');
+  assert.equal(offer.params.survivorPodId, point.id,
+    'offer carries the pod id the synchronous accept seam binds on');
   assert.ok(offer.survivorPod.oxygenRemaining_s > 0, 'offer exposes visible oxygen countdown metadata');
   assert.match(offer.summary, /oxygen|survivor|pod/i, 'offer copy surfaces the triage state');
   sys.destroy();
