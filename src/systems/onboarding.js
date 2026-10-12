@@ -923,7 +923,11 @@ export const onboarding = {
   _onUndockedFromChoice() {
     const ob = this.state && this.state.onboarding;
     const beat = ob && ob.active && !ob.finished && BEATS[ob.currentBeat];
-    if (!beat || beat.key !== 'choice') return;
+    if (!beat) return;
+    // Leaving inside the silence gap (B4 done at the berth, B5 not yet entered) is the same
+    // decline: never let the choice beat open in flight with nothing to pick from.
+    const choicePending = beat.key === 'dock' && ob.beatDoneAt && ob.beatDoneAt.dock != null;
+    if (beat.key !== 'choice' && !choicePending) return;
     this._finish();
   },
 

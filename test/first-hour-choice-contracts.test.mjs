@@ -127,6 +127,20 @@ test('starter-progression: undocking from B5 without a job retires the rail and 
   assert.equal(h.state.onboarding.finished, true);
 });
 
+test('starter-progression: undocking before B5 enters (silence gap) also retires the rail', () => {
+  const h = makeHarness();
+  h.state.world.currentSectorId = 'sector_helios_prime';
+  h.state.ui.dockedStationId = 'station_helios';
+  h.state.onboarding.currentBeat = CHOICE_BEAT - 1;
+  h.bus.emit('dock:docked', { stationId: 'station_helios' });
+  assert.ok(h.state.onboarding.beatDoneAt.dock != null);
+  assert.equal(h.state.onboarding.currentBeat, CHOICE_BEAT - 1, 'B5 waits out its silence gap');
+  h.state.ui.dockedStationId = null;
+  h.bus.emit('dock:undocked', { stationId: 'station_helios' });
+  assert.equal(h.state.onboarding.finished, true,
+    'the choice beat never opens in flight after the player already left the berth');
+});
+
 test('B5 posts three normal starter-risk offers and accepts exactly one choice', () => {
   const h = makeHarness();
   h.state.onboarding.currentBeat = CHOICE_BEAT;
