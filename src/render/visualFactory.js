@@ -2552,6 +2552,8 @@ function buildAsteroid(e) {
 
 const _threatPlateQuat = new THREE.Quaternion();
 const _threatPlateScale = new THREE.Vector3();
+const _threatCameraQuat = new THREE.Quaternion();
+const _swarmThreatMarks = new WeakMap();
 
 /**
  * Hostile swarm hulls are dark metal on a dark field. A filled disk the size of the
@@ -2565,6 +2567,8 @@ const _threatPlateScale = new THREE.Vector3();
 export function syncSwarmThreatPlate(mesh, entity, camera) {
   if (!mesh || typeof mesh.getObjectByName !== 'function') return;
   if (!entity || entity.type !== 'ship' || entity.team == null || entity.team === 0 || entity.team === 2) {
+    const marks = _swarmThreatMarks.get(mesh);
+    if (marks) { marks.plate.visible = false; marks.core.visible = false; }
     return;
   }
   let plate = mesh.getObjectByName('sf-swarm-threat-plate');
@@ -2577,7 +2581,7 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
         color: 0xff1a3a,
         side: THREE.DoubleSide,
         depthWrite: false,
-        depthTest: false,
+        depthTest: true,
         fog: false,
         toneMapped: false,
       })),
@@ -2612,10 +2616,13 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     worldR / Math.max(1e-4, Math.abs(_threatPlateScale.z)),
   );
   core.scale.copy(plate.scale);
+  _swarmThreatMarks.set(mesh, { plate, core });
   plate.visible = true;
   core.visible = true;
   if (camera && camera.quaternion && mesh.quaternion) {
-    _threatPlateQuat.copy(mesh.quaternion).invert().multiply(camera.quaternion);
+    mesh.getWorldQuaternion(_threatPlateQuat);
+    camera.getWorldQuaternion(_threatCameraQuat);
+    _threatPlateQuat.invert().multiply(_threatCameraQuat);
     plate.quaternion.copy(_threatPlateQuat);
     core.quaternion.copy(_threatPlateQuat);
   }

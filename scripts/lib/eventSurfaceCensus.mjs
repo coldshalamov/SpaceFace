@@ -385,6 +385,7 @@ const BESPOKE_ADAPTERS = {
 // bus, whose bridge receipt fires main-side subscribers exactly once. Main's
 // emit is suppressed on the worker lane, so nothing needs forwarding here.
 const FORWARD_EXCLUDE = {
+  'mission:updated': 'main-side domain-mirror receipt refreshes UI after worker mission rows land; it is never a gameplay intent and must not echo back to the worker',
   'game:started': 'lifecycle receipt — worker emits its own once post-boot (pendingGameStarted consumed at the first flight-mode apply); forwarding a main emit would double-fire sim subscribers',
   // Dead subscriptions verified stage-9 remediation: sim-side `bus.on` subs
   // exist but NOTHING emits these types anywhere in src/. needsForward already

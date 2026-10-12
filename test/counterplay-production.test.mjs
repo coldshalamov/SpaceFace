@@ -145,3 +145,17 @@ test('a charted peek produces real projectile damage and arena scoring starts fr
   assert.ok(receipt.playerDamage > 16, JSON.stringify(receipt));
   assert.equal(receipt.goalComplete, true);
 });
+
+for (const frozen of [false, true]) test(`leaving a Counterplay home sector clears firing metadata with ${frozen ? 'frozen' : 'mutable'} intent`, async () => {
+  const h = await host();
+  try {
+    const actor = h.hulls[1]; stamp(actor, 'cp_collateral_hold', h.player);
+    actor.data.homeSectorId = 'sector_ceres_belt';
+    h.state.world.currentSectorId = 'sector_helios_prime';
+    const before = { fire: true, fireGroup: 2, fireBlockReason: 'ally_in_lane', fireBlockerId: 91, aimAngle: 0.7, boost: true };
+    actor.data.intent = frozen ? Object.freeze(before) : before;
+    driveCounterplay({ ctx: ctx(h), entities: [actor], sensorPort: { frameFor: () => { throw new Error('inactive-sector sensing must stay asleep'); } } });
+    assert.deepEqual(actor.data.intent, { fire: false, fireGroup: null, fireBlockReason: null, fireBlockerId: null, aimAngle: 0.7, boost: true });
+    if (frozen) assert.equal(before.fire, true);
+  } finally { h.dispose(); }
+});

@@ -5,6 +5,7 @@ import { applyCounterplayIntent, applyCounterplayPhysical } from './adapterPatch
 import { capitalScoreControls, capitalBossOrder } from '../capitalBossOrders.js';
 import { nemesisFireAllowed } from '../nemesisTactics.js';
 import { occupantGenerationOf } from '../../core/entity.js';
+import { clearAIFiringIntent } from '../../systems/aiFireIntent.js';
 
 export function isCounterplayActor(entity, state) {
   return entity?.id !== state?.playerId && entity?.alive !== false
@@ -88,7 +89,10 @@ export function driveCounterplay({ ctx, entities, sensorPort, maneuverPort } = {
   for (const entity of entities || []) {
     if (!isCounterplayActor(entity, state)) continue;
     if (entity.data.homeSectorId && entity.data.homeSectorId !== state.world?.currentSectorId) {
-      if (entity.data.intent) entity.data.intent = { ...entity.data.intent, fire: false, fireGroup: null };
+      if (entity.data.intent) {
+        if (Object.isFrozen(entity.data.intent)) entity.data.intent = { ...entity.data.intent };
+        clearAIFiringIntent(entity.data.intent);
+      }
       continue;
     }
     const ai = entity.data.ai, frame = sensorPort.frameFor(entity.id, state.tick);

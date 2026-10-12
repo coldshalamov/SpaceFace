@@ -171,7 +171,7 @@ test('failure screenshot uses uploaded artifact tree with original animations an
   const { captureStationHandoffScreenshot } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
   let options;
   const path = await captureStationHandoffScreenshot({ screenshot: async (value) => { options = value; } }, { boundary: 'mission dock identity' });
-  assert.match(path, /scratch\/check-ci-report\/station-handoff\/\d+-mission-dock-identity\.png$/);
+  assert.match(path.replaceAll('\\', '/'), /scratch\/check-ci-report\/station-handoff\/\d+-mission-dock-identity\.png$/);
   assert.deepEqual(options, { path, type: 'png', timeout: 2000 });
 });
 

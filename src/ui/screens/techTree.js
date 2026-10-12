@@ -220,6 +220,9 @@ export const techTreeScreen = {
     injectConstellationScreens();
     this._ctx = ctx;
     this._root = rootEl;
+    // Resource readings belong to this DOM mount. A retained singleton may be
+    // mounted into fresh elements with unchanged balances.
+    this._held = null;
     rootEl.id = 'sf-techtree';
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-wide', 'sf-techtree', 'of-research', 'fh-shell');

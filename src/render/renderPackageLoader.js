@@ -31,6 +31,7 @@ const SHA256_RE = /^[a-f0-9]{64}$/;
 let defaultDecoderModules = null;
 
 const VERIFIED_METADATA_CACHE_MAX = 512;
+const VERIFIED_METADATA_CACHE_MAX_BYTES = 16 * 1024 * 1024;
 
 export function createRenderPackageLoader(options = {}) {
   const fetchImpl = options.fetchImpl || globalThis.fetch;
@@ -62,6 +63,7 @@ export function createRenderPackageLoader(options = {}) {
   let ownerSequence = 0;
   let disposed = false;
   const verifiedMetadataCache = new Map();
+  let verifiedMetadataBytes = 0;
 
   // Admission ledger: each decode generation rides one async-admission token. An evicted or
   // superseded generation's token aborts so a late decode fails its assertActive instead of
@@ -115,14 +117,27 @@ export function createRenderPackageLoader(options = {}) {
     const verifiedKey = typeof metadataUrl === 'string' && metadataValue && typeof metadataValue === 'object'
       ? `${metadataUrl}|${metadataValue.contentHash}|${metadataValue.runtimeHash || ''}|${expectedHash || ''}|${expectedRuntime || ''}`
       : null;
-    const verifiedHit = verifiedKey ? verifiedMetadataCache.get(verifiedKey) : null;
+    // Declared hashes are claims, not evidence that a new response has identical bytes.
+    // JSON serialization is cheaper than canonicalization + hashing, but a changed payload
+    // must take the complete verification path even when its declarations stay unchanged.
+    const payload = verifiedKey ? JSON.stringify(metadataValue) : null;
+    const prior = verifiedKey ? verifiedMetadataCache.get(verifiedKey) : null;
+    const verifiedHit = prior && prior.payload === payload ? prior.metadata : null;
     const metadata = verifiedHit || deepFreeze(stableJsonValue(metadataValue));
     if (!verifiedHit) await verifyMetadataTrustAnchors(metadata, expectedHash, expectedRuntime, requestAdmission);
     if (verifiedKey && !verifiedHit) {
-      if (verifiedMetadataCache.size >= VERIFIED_METADATA_CACHE_MAX) {
-        verifiedMetadataCache.delete(verifiedMetadataCache.keys().next().value);
+      const bytes = payload.length * 2;
+      if (prior) { verifiedMetadataBytes -= prior.bytes; verifiedMetadataCache.delete(verifiedKey); }
+      while (verifiedMetadataCache.size && (verifiedMetadataCache.size >= VERIFIED_METADATA_CACHE_MAX
+          || verifiedMetadataBytes + bytes > VERIFIED_METADATA_CACHE_MAX_BYTES)) {
+        const oldest = verifiedMetadataCache.keys().next().value;
+        verifiedMetadataBytes -= verifiedMetadataCache.get(oldest).bytes;
+        verifiedMetadataCache.delete(oldest);
       }
-      verifiedMetadataCache.set(verifiedKey, metadata);
+      if (bytes <= VERIFIED_METADATA_CACHE_MAX_BYTES) {
+        verifiedMetadataCache.set(verifiedKey, { metadata, payload, bytes });
+        verifiedMetadataBytes += bytes;
+      }
     }
     return loadVerified(metadata, baseUrl, expectedHash, expectedRuntime, loadOptions, requestAdmission, metadataUrl);
   }
@@ -487,6 +502,7 @@ export function createRenderPackageLoader(options = {}) {
   function dispose(reason = 'render-package-loader-disposed') {
     if (disposed) return false;
     disposed = true;
+    verifiedMetadataCache.clear(); verifiedMetadataBytes = 0;
     for (const entry of cache.values()) {
       releasePackageOwner(entry, reason);
       dropPackageDetachManifest(entry.metadata.contentHash);

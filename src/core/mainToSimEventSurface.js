@@ -160,6 +160,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
 
 // Census hits deliberately NOT forwarded — see FORWARD_EXCLUDE in the
 // generator for the full reasons.
+//   mission:updated — main-side domain-mirror receipt refreshes UI after worker mission rows land; it is never a gameplay intent and must not echo back to the worker
 //   game:started — lifecycle receipt — worker emits its own once post-boot (pendingGameStarted consumed at the first flight-mode apply); forwarding a main emit would double-fire sim subscribers
 //   ui:restockBombRack — dead subscription — sim-side subscriber exists but no emitters anywhere; nothing would ever ship
 //   ui:endgameConfirm — dead subscription — sim-side subscriber exists but no emitters anywhere; nothing would ever ship
@@ -205,6 +206,7 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'hud:slotClaim',
   'hud:slotRelease',
   'lane:facadeMiss',
+  'mission:updated',
   'nav:waypoint',
   'news:headline',
   'news:publish',
@@ -256,4 +258,4 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'watch:changed',
 ]);
 
-// provenance: census=129 dynamic=22 legacy=7 excluded=5 total=149 knownUnforwarded=75
+// provenance: census=129 dynamic=22 legacy=7 excluded=6 total=149 knownUnforwarded=76
