@@ -695,9 +695,10 @@ test('prepared place cleanup failure cannot publish the same-semantic fallback',
       loadAuthoredPart: async () => record,
       prepareAuthoredPipelines: async (root) => {
         stagedRoot = root;
-        root.traverse((object) => {
-          if (!failingGeometry && object.geometry) failingGeometry = object.geometry;
-        });
+        // Compile preparation may acquire an owner-local resource; shared package buffers
+        // and the resident bounds proxy must never be the cleanup-refusal fixture.
+        failingGeometry = new THREE.BoxGeometry(1, 1, 1);
+        root.add(new THREE.Mesh(failingGeometry, sourceMaterial));
         assert.ok(failingGeometry);
         restoreDispose = failingGeometry.dispose;
         failingGeometry.dispose = () => { throw new Error('injected prepared-place cleanup refusal'); };
@@ -953,29 +954,28 @@ test('preparing ship cleanup failure remains journaled for generation quarantine
   const scene = new THREE.Scene();
   const fixture = await packageShipFixture({ includeAuthoredNavLights: false });
   let stagedRoot = null;
-  let failingGeometry = null;
-  let restoreGeometryDispose = null;
+  let failingMaterial = null;
+  let restoreMaterialDispose = null;
   let failingInstance = null;
   let restoreInstanceDispose = null;
   let navLightMaterial = null;
   let instanceDisposeAttempts = 0;
   let fallbackNavMaterialDisposals = 0;
   let navMaterialDisposeListenerCalls = 0;
-  let geometryDisposeListenerCalls = 0;
+  let failedMaterialDisposeListenerCalls = 0;
   let detachedContextListeners = 0;
   const contextDisposeListener = () => {};
-  const geometryContextDisposeListener = (event) => {
-    if (event.target === failingGeometry) geometryDisposeListenerCalls++;
+  const failedMaterialContextDisposeListener = (event) => {
+    if (event.target === failingMaterial) failedMaterialDisposeListenerCalls++;
   };
   const navMaterialContextDisposeListener = (event) => {
     if (event.target === navLightMaterial) navMaterialDisposeListenerCalls++;
   };
-  Object.defineProperty(geometryContextDisposeListener, 'name', { configurable: true, value: 'r' });
   captureSimulatedRendererInstancedMeshDisposeRegistration(
     renderer,
     scene,
     contextDisposeListener,
-    { geometry: geometryContextDisposeListener, material: navMaterialContextDisposeListener },
+    { material: navMaterialContextDisposeListener },
   );
   const options = {
     releaseMode: true,
@@ -986,8 +986,10 @@ test('preparing ship cleanup failure remains journaled for generation quarantine
       if (!subject?.isGroup || stagedRoot) return { skipped: false };
       stagedRoot = subject;
       const boundsProxy = subject.getObjectByName('GLTFKit_BoundsProxy');
-      failingGeometry = boundsProxy?.geometry || null;
-      assert.ok(failingGeometry);
+      // Bounds geometry is fleet-shared and deliberately undisposable; its material is
+      // owner-local and already belongs to the composition's strict cleanup journal.
+      failingMaterial = boundsProxy?.material || null;
+      assert.ok(failingMaterial && failingMaterial.userData?.spacefaceSharedAsset !== true);
       // Fallback nav lights are two plain meshes on the shared resident sphere geometry — a
       // per-ship InstancedMesh would owe a fresh instanceMatrix upload inside the round. The
       // owner-local leg they contribute is the shared cloned accent material; the disposable
@@ -1009,7 +1011,7 @@ test('preparing ship cleanup failure remains journaled for generation quarantine
         if (instance && !failingInstance) failingInstance = instance;
       });
       assert.ok(failingInstance, 'the prepared whole-ship owns its render-package instance');
-      failingGeometry.addEventListener('dispose', geometryContextDisposeListener);
+      failingMaterial.addEventListener('dispose', failedMaterialContextDisposeListener);
       navLightMaterial.addEventListener('dispose', navMaterialContextDisposeListener);
       restoreInstanceDispose = failingInstance.dispose.bind(failingInstance);
       failingInstance.dispose = () => {
@@ -1024,8 +1026,8 @@ test('preparing ship cleanup failure remains journaled for generation quarantine
         fallbackNavMaterialDisposals++;
         originalNavMaterialDispose();
       };
-      restoreGeometryDispose = failingGeometry.dispose;
-      failingGeometry.dispose = () => { throw new Error('injected preparing ship cleanup refusal'); };
+      restoreMaterialDispose = failingMaterial.dispose;
+      failingMaterial.dispose = () => { throw new Error('injected preparing ship cleanup refusal'); };
       throw new Error('injected preparing ship pipeline failure');
     },
     prepareAuthoredGpuResidency: async () => ({ skipped: false }),
@@ -1071,10 +1073,10 @@ test('preparing ship cleanup failure remains journaled for generation quarantine
       'owner-local fallback material cleanup is not skipped by an earlier resource failure');
     assert.equal(navMaterialDisposeListenerCalls, 1,
       'the owner-local material still delivers its live dispose listener');
-    assert.equal(geometryDisposeListenerCalls, 0,
-      'the refused geometry disposal never dispatched');
+    assert.equal(failedMaterialDisposeListenerCalls, 0,
+      'the refused owner-local material disposal never dispatched');
 
-    failingGeometry.dispose = restoreGeometryDispose;
+    failingMaterial.dispose = restoreMaterialDispose;
     assert.equal(await disposePreparedAuthoredBoundary(boundary), true);
     assert.equal(stagedRoot.children.length, 0);
     assert.equal(instanceDisposeAttempts, 2,
@@ -1082,8 +1084,8 @@ test('preparing ship cleanup failure remains journaled for generation quarantine
     assert.equal(fallbackNavMaterialDisposals, 1,
       'retrying the failed journal does not redispose resources that already completed cleanup');
     assert.equal(navMaterialDisposeListenerCalls, 1);
-    assert.equal(geometryDisposeListenerCalls, 1,
-      'the restored geometry dispose still delivers its live listener once');
+    assert.equal(failedMaterialDisposeListenerCalls, 1,
+      'the restored owner-local material dispose still delivers its live listener once');
     assert.equal(boundary.userData.__disposePreparedAuthoredBoundary, undefined);
     scene.remove(boundary);
   } finally {
