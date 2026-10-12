@@ -9717,7 +9717,7 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
     const nextLod = next.userData && next.userData.lod;
     const prevLod = prev && prev !== next && prev.userData ? prev.userData.lod : null;
     if (nextLod && typeof nextLod.adopt === 'function') {
-      nextLod.adopt(level, prevLod && Number.isFinite(prevLod.lastPx) ? prevLod.lastPx : undefined);
+      nextLod.adopt(level, prevLod && Number.isFinite(prevLod.lastPx) ? prevLod.lastPx : undefined, prevLod);
     }
     activeLevel = level;
     boundary.userData.wholeShipLodActiveLevel = level;

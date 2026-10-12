@@ -90,6 +90,7 @@ export function createLodState() {
   return {
     get level() { return level; },
     get lastPx() { return lastPx; },
+    get swapTimes() { return swaps.slice(); },
     resolve(px, nowS) {
       const width = Number(px);
       if (!Number.isFinite(width)) return level;
@@ -130,10 +131,13 @@ export function createLodState() {
     // the incoming level is already presented, so the new resolver must remember it (and the
     // latest px) instead of waking at lod0. Without this a ship parked inside the hysteresis
     // band reads a different level off each root's resolver and swaps the family every frame.
-    adopt(nextLevel, px) {
+    // The swap history moves with it: each family root owns its own resolver, so a cap kept per
+    // resolver restarted empty on every swap and an entity flipped lod1<->lod2 4x in 10 s.
+    adopt(nextLevel, px, prior = null) {
       if (nextLevel === 'lod0' || nextLevel === 'lod1' || nextLevel === 'lod2') level = nextLevel;
       if (Number.isFinite(px)) lastPx = px;
       pendingLevel = null;
+      if (prior && Array.isArray(prior.swapTimes)) swaps.splice(0, swaps.length, ...prior.swapTimes);
     },
   };
 }

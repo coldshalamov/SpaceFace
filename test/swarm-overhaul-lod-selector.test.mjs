@@ -26,3 +26,30 @@ test('an entity presents at most LOD_SWAP_CAP changes per window', () => {
   assert.equal(lod.resolve(90, 6.6), 'lod0', 'capped');
   assert.equal(lod.resolve(90, 2.6 + LOD_SWAP_WINDOW_S + 0.1), 'lod1', 'window rolled');
 });
+
+test('the swap cap follows the entity across family roots (adopt carries the history)', async () => {
+  const { createLodState, LOD_SWAP_CAP, LOD_DWELL_S, LOD_THRESHOLDS } = await import('../src/render/lod.js');
+  const far = LOD_THRESHOLDS.LOD2_BELOW * 0.5;
+  const near = LOD_THRESHOLDS.LOD2_BELOW * 1.6;
+  let lod = createLodState();
+  let t = 0;
+  lod.resolve(near, t);
+  let swaps = 0;
+  let level = lod.level;
+  for (let i = 0; i < 40; i++) {
+    t += LOD_DWELL_S + 0.05;
+    const px = i % 2 ? near : far;
+    lod.resolve(px, t);
+    lod.resolve(px, t + LOD_DWELL_S + 0.01);
+    t += LOD_DWELL_S + 0.01;
+    if (lod.level !== level) {
+      swaps++;
+      level = lod.level;
+      const next = createLodState();
+      next.adopt(level, px, lod);
+      lod = next;
+    }
+    if (t > 9.5) break;
+  }
+  assert.ok(swaps <= LOD_SWAP_CAP, `${swaps} swaps inside 10 s across rebinds`);
+});
