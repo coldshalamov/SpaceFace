@@ -251,12 +251,12 @@ export function sabFreePackSlot(header, pack) {
 // the canonical-cloned data block so the main-side facade answers the same
 // questions the live entity would.
 const VITAL_FIELDS = [
-  'hull', 'hullMax', 'shield', 'shieldMax', 'fuel', 'fuelMax', 'heat', 'heatMax',
+  'hull', 'hullMax', 'shield', 'shieldMax', 'cap', 'capMax', 'fuel', 'fuelMax', 'heat', 'heatMax',
   'rot', 'bank', 'pitch', 'angVel', 'radius', 'team', 'collides', 'alive', 'ttl',
   'isPlayer', 'physicsSleeping',
 ];
 
-function entityVitalsOf(e) {
+export function entityVitalsOf(e) {
   const fields = {};
   for (const k of VITAL_FIELDS) {
     if (e[k] !== undefined) fields[k] = e[k];
@@ -264,6 +264,10 @@ function entityVitalsOf(e) {
   if (e.vel && typeof e.vel === 'object') {
     fields.vx = finite(e.vel.x);
     fields.vz = finite(e.vel.z);
+  }
+  if (e.boost && typeof e.boost === 'object') {
+    if (e.boost.energy !== undefined) fields.boostEnergy = e.boost.energy;
+    if (e.boost.max !== undefined) fields.boostMax = e.boost.max;
   }
   return fields;
 }

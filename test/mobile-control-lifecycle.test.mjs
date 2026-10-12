@@ -7,6 +7,7 @@ import { MobileGestures } from '../src/systems/mobile/model.js';
 import { mountMobileView } from '../src/systems/mobile/view.js';
 import { POWER_PAGES } from '../src/systems/mobile/catalog.js';
 import { enhanceMobileTouch } from '../src/systems/mobile/bridge.js';
+import { createReadModel, applySpawnInfos, applyEntityVitals } from '../scripts/lib/simReadModel.mjs';
 
 const camel = k => k.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
 const VOID = new Set(['input', 'br', 'img', 'meta', 'link', 'hr']);
@@ -182,6 +183,31 @@ function pinWheel(w, bank = 0) {
   w.finger.up(9, 366, 470, edge);
 }
 const wheelOpen = w => w.q('.mf-wheel').hidden === false;
+
+test('the phone Energy and Boost meters read full, spent and replenished worker resources', () => {
+  const w = mount();
+  try {
+    const readModel = createReadModel();
+    applySpawnInfos(readModel, [{entityId:1,type:'ship',vitals:{cap:80,capMax:80,boostEnergy:12,boostMax:12}}]);
+    w.state.entities = readModel.entities;
+    const meter = name => w.q(`[data-read="${name}"]`);
+    const paint = () => { w.clock.now += 300; w.view.render(); };
+    paint();
+    assert.equal(meter('energy').style.transform, 'scaleX(1.000)');
+    assert.equal(meter('boost').style.transform, 'scaleX(1.000)');
+    applyEntityVitals(readModel, [[1,{cap:0,boostEnergy:3}]]);
+    paint();
+    assert.equal(meter('energy').style.transform, 'scaleX(0.000)');
+    assert.equal(meter('energy').closest('.mf-row').getAttribute('aria-valuetext'), '0%');
+    assert.equal(meter('boost').style.transform, 'scaleX(0.250)');
+    assert.equal(meter('boost').closest('.mf-row').dataset.low, '1');
+    applyEntityVitals(readModel, [[1,{cap:40,boostEnergy:12}]]);
+    paint();
+    assert.equal(meter('energy').style.transform, 'scaleX(0.500)');
+    assert.equal(meter('boost').style.transform, 'scaleX(1.000)');
+    assert.equal(meter('boost').closest('.mf-row').dataset.low, '0');
+  } finally { w.dispose(); }
+});
 
 test('a thumb on empty space flies, and a cancelled touch leaves nothing drawn or held', () => {
   const w = mount();
