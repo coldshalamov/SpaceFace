@@ -1118,15 +1118,15 @@ ${T} .sx-ct__rows .sx-ct-row.sx-decision__opt--sub .k-row__sub { font-size: 12px
   ${T} .sx-dossier > :is(.sx-dossier__risk, .sx-dossier__terms) { order:3; }
   ${T} .sx-dossier > .sx-dossier__risk { position:static !important; clip:auto !important; clip-path:none !important; width:calc(50% - 8px) !important;
     height:auto !important; overflow:visible !important; white-space:normal !important; margin:2px 0 6px !important; padding:0 !important;
-    font-size:11.5px !important; line-height:1.35 !important; color:rgb(${BONE} / .82) !important; }
+    font-size:11px !important; line-height:1.3 !important; color:rgb(${BONE} / .82) !important; }
   /* at this size the scales' words would be 5px and the route map a postage stamp; the risk sentence
      says both readings in words, and the title names the destination */
   ${T} .sx-dossier > :is(.orr-ct-scales, .orr-ct-route) { display:none !important; }
   ${T} .sx-dossier > .sx-dossier__terms { margin:0 !important; }
-  ${T} .sx-dossier__terms > li { grid-template-columns:86px minmax(0, 1fr) !important; column-gap:8px !important; padding:1px 0 !important; }
+  ${T} .sx-dossier__terms > li { grid-template-columns:84px minmax(0, 1fr) !important; column-gap:8px !important; padding:2px 0 !important; }
   ${T} .sx-dossier__terms > li > .k-62 { font-size:9.5px !important; letter-spacing:.1em !important; }
-  ${T} .sx-dossier__terms .sx-term__v { font-size:11.5px !important; gap:0 6px !important; line-height:1.3 !important; }
-  ${T} .sx-dossier__terms .sx-term__sub { font-size:10.5px !important; white-space:normal !important; }
+  ${T} .sx-dossier__terms .sx-term__v { font-size:11px !important; gap:0 6px !important; line-height:1.25 !important; }
+  ${T} .sx-dossier__terms .sx-term__sub { font-size:10px !important; line-height:1.25 !important; white-space:normal !important; }
   ${T} .sx-dossier__terms .sx-term__v { min-width:0 !important; white-space:normal !important; }
   ${T} .sx-dossier__terms > li.sx-term--threat > .k-62::before { left:-10px; width:6px; }
   ${T} .sx-dossier > .k-caps { margin:0 0 2px !important; font-size:10.5px !important; letter-spacing:.14em !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
