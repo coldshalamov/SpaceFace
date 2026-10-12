@@ -17,6 +17,9 @@
 // seed-stable, so the same body returns across sector residency until a player terminal outcome
 // (destroyed/captured) tombstones the record.
 
+import { SECTORS } from './sectors.js';
+import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
+
 export const FACTION_BERTH_SCHEMA_VERSION = 1;
 
 export const FACTION_BERTHS = Object.freeze([
@@ -63,6 +66,8 @@ export const FACTION_BERTHS = Object.freeze([
       mass: 280,
       wreckClass: 'consigned_hulk',
     }),
+    // The line boss: a Pitborn salvage tender from the faction's own shipRoles, working the strip.
+    keeper: Object.freeze({ role: 'salvage-tender', dx: 30, dz: 70 }),
     why: 'The Pitborn rent the strip-line off the foundry: a sold claim parks here as a hull under the cutters.',
   }),
   Object.freeze({
@@ -119,6 +124,70 @@ export const FACTION_BERTHS = Object.freeze([
       wreckClass: 'fresh',
     }),
     why: 'The Understory keep the slip off the refinery: an appraised hull is laid into the growth, and the slip keeps what the wreck remembers.',
+    // Understory hulls come from the loss ledger only; the slip keeps no standing keeper.
+    keeper: null,
+  }),
+  Object.freeze({
+    // CR-BERTH-3 — the Archive keeps a copy of you. A reading at the Pallas reading room racks a
+    // sealed folio here; hauling it off the rack opens a redaction writ, putting it back closes it.
+    id: 'berth_archive_pallas_stacks',
+    name: 'The Pallas Stacks',
+    factionId: 'faction_archive',
+    sectorId: 'sector_pallas_drift',
+    stationId: 'station_drift',
+    anchor: Object.freeze({ type: 'station', id: 'station_drift' }),
+    offsetLocal: Object.freeze({ x: 360, z: 300 }),
+    receiptKey: 'berthFolio:berth_archive_pallas_stacks',
+    crib: Object.freeze([
+      Object.freeze({ placeId: 'place_container_rack', dx: -50, dz: -10, rot: 1.57, radius: 22 }),
+      Object.freeze({ placeId: 'place_container_rack', dx: 50, dz: -10, rot: 1.57, radius: 22 }),
+      Object.freeze({ placeId: 'place_sensor_mast', dx: 0, dz: -70, rot: 0, radius: 12 }),
+      Object.freeze({ placeId: 'place_comms_array', dx: -96, dz: 40, rot: 0.6, radius: 18 }),
+      Object.freeze({ placeId: 'place_radiator_bank', dx: 96, dz: 44, rot: 2.4, radius: 16 }),
+    ]),
+    hulk: Object.freeze({
+      placeId: 'place_cold_locker',
+      name: 'Sealed Folio — the Archive’s copy of your reading',
+      dx: 0, dz: 30,
+      rot: 0,
+      radius: 14,
+      mass: 60,
+      wreckClass: 'archive_folio',
+    }),
+    // A censor frigate from the Archive's own shipRoles reads every hull that comes to the rack.
+    keeper: Object.freeze({ role: 'censor-frigate', dx: -20, dz: 110 }),
+    why: 'The Archive racks every reading it grants: the folio is the copy it keeps of you, and the Stacks notice when one leaves.',
+  }),
+  Object.freeze({
+    // CR-BERTH-4 — the paper faction's place. Filing Form 7-V at the Sedna audit desk moors the
+    // Directorate's duplicate here; removing it opens a variance that suspends the desk.
+    id: 'berth_helix_variance_pier',
+    name: 'The Variance Pier',
+    factionId: 'faction_helix',
+    sectorId: 'sector_sedna_dark',
+    stationId: 'station_sedna',
+    anchor: Object.freeze({ type: 'station', id: 'station_sedna' }),
+    offsetLocal: Object.freeze({ x: -340, z: 260 }),
+    receiptKey: 'berthFiling:berth_helix_variance_pier',
+    crib: Object.freeze([
+      Object.freeze({ placeId: 'place_customs_pylon', dx: -60, dz: 0, rot: 0, radius: 14 }),
+      Object.freeze({ placeId: 'place_customs_pylon', dx: 60, dz: 0, rot: 3.14, radius: 14 }),
+      Object.freeze({ placeId: 'place_tally_post', dx: -30, dz: -56, rot: 0.3, radius: 10 }),
+      Object.freeze({ placeId: 'place_tally_three', dx: 34, dz: -60, rot: 2.8, radius: 12 }),
+      Object.freeze({ placeId: 'place_traffic_signal', dx: 0, dz: 70, rot: 0, radius: 10 }),
+    ]),
+    hulk: Object.freeze({
+      placeId: 'place_cargo_pod_standard',
+      name: 'Filed Copy — the Directorate’s duplicate of your Form 7-V',
+      dx: 0, dz: 18,
+      rot: 0.4,
+      radius: 12,
+      mass: 40,
+      wreckClass: 'filed_copy',
+    }),
+    // Helix is the paper faction (fleetClass none): the pier has no keeper hull; the desk is it.
+    keeper: null,
+    why: 'Helix flies nothing and keeps everything: every filing is moored in duplicate off the rad floor, and a missing copy is a variance.',
   }),
 ]);
 
@@ -131,4 +200,33 @@ export function factionBerthForStation(stationId) {
 
 export function factionBerthById(berthId) {
   return BERTH_BY_ID.get(String(berthId || '')) || null;
+}
+
+export function factionBerthsInSector(sectorId) {
+  return FACTION_BERTHS.filter((berth) => berth.sectorId === sectorId);
+}
+
+// Same placement law world._spawnFactionBerths uses: station sector-local pos + offsetLocal,
+// converted to galactic-global XZ; pieces ride dx/dz off that apron centre.
+export function factionBerthApronGlobal(berth) {
+  if (!berth || !berth.anchor || berth.anchor.type !== 'station') return null;
+  const sector = SECTORS.find((row) => row.id === berth.sectorId);
+  const station = sector && (sector.stations || []).find((row) => row.id === berth.anchor.id);
+  if (!station || !station.pos) return null;
+  return sectorLocalToGlobalForSector({
+    x: station.pos.x + berth.offsetLocal.x,
+    z: station.pos.z + berth.offsetLocal.z,
+  }, berth.sectorId, { x: 0, z: 0 });
+}
+
+export function factionBerthHulkHome(berth) {
+  const apron = factionBerthApronGlobal(berth);
+  if (!apron || !berth.hulk) return null;
+  return { x: apron.x + berth.hulk.dx, z: apron.z + berth.hulk.dz };
+}
+
+export function factionBerthKeeperPos(berth) {
+  const apron = factionBerthApronGlobal(berth);
+  if (!apron || !berth.keeper) return null;
+  return { x: apron.x + berth.keeper.dx, z: apron.z + berth.keeper.dz };
 }

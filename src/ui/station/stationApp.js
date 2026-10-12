@@ -285,7 +285,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       ...factionPresenceServiceRows(state(), stationId()).map((row) => ({
         label: row.label,
         icon: 'factions',
-        detail: row.desc || row.disabledReason || 'Faction desk',
+        detail: (!row.available && row.disabledReason) || row.desc || 'Faction desk',
         disabled: !row.available,
         keywords: 'faction archive pitborn understory',
         run: () => runAction(row.id),

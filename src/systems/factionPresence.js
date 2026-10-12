@@ -20,10 +20,30 @@ import {
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import {
   FULFILLMENT_FIXED_ROUTES,
+  planBerthKeepers,
   planFactionPresence,
   presenceServiceForStation,
 } from '../data/factionPresence.js';
-import { factionBerthForStation } from '../data/factionBerths.js'; // CR-BERTH-1
+import {
+  FACTION_BERTHS,
+  factionBerthById,
+  factionBerthForStation, // CR-BERTH-1
+  factionBerthHulkHome,
+  factionBerthKeeperPos,
+  factionBerthsInSector,
+} from '../data/factionBerths.js';
+import {
+  conductActivity,
+  conductFor,
+  conductLine,
+  deriveConductStance,
+  emptyConductMemory,
+  forgiveConduct,
+  grudgeLapsed,
+  normalizeConductMemory,
+  recordConductAct,
+} from '../data/factionConduct.js';
+import { FACTION_KITS } from '../data/factions/index.js';
 import { conflictAftermathAnchor } from '../data/conflictZones.js';
 import {
   RECORD_KIND,
@@ -86,7 +106,59 @@ function ensureOwnState(state) {
   if (!own.servicesByStation || typeof own.servicesByStation !== 'object') own.servicesByStation = {};
   if (!own.serviceReceipts || typeof own.serviceReceipts !== 'object') own.serviceReceipts = {};
   if (own.boarding != null && typeof own.boarding !== 'object') own.boarding = null;
+  if (!own.conduct || typeof own.conduct !== 'object') own.conduct = {};
+  if (!own.berthWatch || typeof own.berthWatch !== 'object') own.berthWatch = {};
   return own;
+}
+
+// Conduct: a berth hulk counts as carried off past this distance from its rack, and as returned
+// once it is back inside the smaller radius (hysteresis so a nudge never flickers the writ).
+const BERTH_DISPLACED_WU = 220;
+const BERTH_RETURNED_WU = 120;
+const CONDUCT_PERIOD_S = 0.5;
+// A berth keeper comes out to meet a hull that approaches its berth, well beyond the glass edge,
+// instead of idling (and sleeping in Rapier) across the whole sector from the moment of entry.
+const BERTH_KEEPER_WAKE_WU = 1500;
+const SELF_DEFENSE_MOTIVES = new Set(['self_defense', 'archive_station_defense']);
+const FACTION_NAME = new Map(FACTION_KITS.map((kit) => [kit.id, kit.name || kit.short || kit.id]));
+
+function conductMemory(own, factionId) {
+  if (!own.conduct[factionId]) own.conduct[factionId] = emptyConductMemory();
+  return own.conduct[factionId];
+}
+
+function conductStanceFor(state, factionId) {
+  const own = ensureOwnState(state);
+  const rep = Number(state && state.factions && state.factions[factionId] && state.factions[factionId].rep) || 0;
+  return deriveConductStance(factionId, rep, own.conduct[factionId] || null, Number(state.simTime) || 0);
+}
+
+/** factionId → stance for every faction with conduct doctrine (desk gating input). */
+export function conductStances(state) {
+  const out = {};
+  for (const factionId of FACTION_NAME.keys()) {
+    if (conductFor(factionId)) out[factionId] = conductStanceFor(state, factionId);
+  }
+  return out;
+}
+
+function sanitizeBerthWatch(value) {
+  const out = {};
+  for (const [berthId, row] of Object.entries(value && typeof value === 'object' ? value : {})) {
+    if (!row || typeof row !== 'object') continue;
+    out[berthId] = {
+      displaced: row.displaced === true,
+      displacedAt: Number.isFinite(row.displacedAt) ? row.displacedAt : null,
+      visits: Math.max(0, Math.floor(Number(row.visits) || 0)),
+      lastVisitAt: Number.isFinite(row.lastVisitAt) ? row.lastVisitAt : null,
+    };
+  }
+  return out;
+}
+
+function berthReceiptCount(own, berth) {
+  const receipt = own.serviceReceipts && own.serviceReceipts[berth.receiptKey];
+  return Math.max(0, Math.floor(Number(receipt && receipt.count) || 0));
 }
 
 function pushReceipt(state, receipt) {
@@ -220,6 +292,8 @@ function presenceMarker(plan) {
     formationIndex: plan.formationIndex,
     formationCount: plan.formationCount,
     formationSpacing: plan.formationSpacing,
+    berthKeeper: plan.berthKeeper === true,
+    berthId: plan.berthId || null,
   };
 }
 
@@ -436,6 +510,7 @@ export const factionPresence = {
     this._boardingRepairRequested = false;
     this._presenceQuiet = null;
     this._presenceWakeSeq = 0;
+    this._conductAt = -Infinity;
     ensureOwnState(this.state);
     this._unsub = [
       // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
@@ -458,6 +533,8 @@ export const factionPresence = {
       this.bus.on('entity:spawned', (payload) => this._onEntitySpawned(payload || {})),
       this.bus.on('save:loaded', () => this._onSaveLoaded()),
       this.bus.on('conflict:flip', (payload) => this._onConflictFlip(payload || {})),
+      this.bus.on('combat:kill', (payload) => this._onCombatKill(payload || {})),
+      this.bus.on('faction:repChanged', (payload) => this._onRepChanged(payload || {})),
     ];
     // Census arm: faction-presence materialization lands inside the sector cook
     // deterministically (the handler falls back to world.currentSectorId itself).
@@ -475,7 +552,7 @@ export const factionPresence = {
     this._presenceWakeSeq = 0;
     this.state.factionPresence = {
       active: {}, receipts: [], sequence: 0, boarding: null, processedDisable: {},
-      servicesByStation: {}, serviceReceipts: {},
+      servicesByStation: {}, serviceReceipts: {}, conduct: {}, berthWatch: {},
     };
   },
 
@@ -490,6 +567,15 @@ export const factionPresence = {
     // (sector enter / spawn / combat / boarding / save), or 0.5 s rescan. Soft-GPU fps not claimed.
     const state = this.state;
     const own = ensureOwnState(state);
+    // Conduct runs on its own slow cadence ahead of the quiet latch: forgiveness is a clock and
+    // a berth hulk can be towed off its rack without any shipLike membership change.
+    // Gated on sim time, not tick phase: the registry may itself run this system on a coarse
+    // cadence, and a second tick-phase gate on top of it can never line up.
+    const conductNow = Number(state.simTime) || 0;
+    if (!(conductNow >= this._conductAt && conductNow - this._conductAt < CONDUCT_PERIOD_S)) {
+      this._conductAt = conductNow;
+      this._conductTick();
+    }
     if (FACTION_PRESENCE_QUIET_LATCH !== false) {
       const laneVersion = entityIndexLaneVersion(state, PRESENCE_QUIET_LANES);
       const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
@@ -637,14 +723,16 @@ export const factionPresence = {
     const losses = hasLedger ? lossesFor(state, sectorId) : [];
     const story = currentStoryInputs(state);
     const sectors = (state.world && state.world.sectors) || {};
-    const plans = planFactionPresence({
-      sectorId,
-      seed,
-      losses,
-      ...story,
-      conflicts: state.conflicts || null,
-      ownerFactionId: (sectors[sectorId] && sectors[sectorId].owner) || null,
-    });
+    const plans = [
+      ...planFactionPresence({
+        sectorId,
+        seed,
+        losses,
+        ...story,
+        conflicts: state.conflicts || null,
+        ownerFactionId: (sectors[sectorId] && sectors[sectorId].owner) || null,
+      }),
+    ];
     const own = ensureOwnState(state);
     const carriers = this._presenceCarrierIndex(sectorId);
     for (const presencePlan of plans) {
@@ -694,6 +782,267 @@ export const factionPresence = {
     }
     this._bindPitbornConcordTargets();
     this._rehydrateBoardingConvoy();
+    this._applyConductInSector();
+    this._greetBerths(sectorId);
+  },
+
+  // ── Conduct: what the player did to a faction, and how its people treat them for it ──
+
+  _recordAct(factionId, act, extra = {}) {
+    const conduct = conductFor(factionId);
+    if (!conduct) return null;
+    const own = ensureOwnState(this.state);
+    const now = Number(this.state.simTime) || 0;
+    const result = recordConductAct(conductMemory(own, factionId), factionId, act, now);
+    const stance = conductStanceFor(this.state, factionId);
+    const payload = {
+      factionId, act, stance, opened: result.opened, forgave: result.forgave, t: now, ...extra,
+    };
+    // A hit lands every damage tick; only the grudge opening is a receipt worth a row.
+    if (act !== 'struck' || result.opened) pushReceipt(this.state, { kind: 'conduct', ...payload });
+    this.bus.emit('factionPresence:conduct', payload);
+    if (result.forgave) this._speakConduct(factionId, 'forgive');
+    // A direct hit already triggers the faction's own immediate response (self-defense, the
+    // route variance); conduct only takes the hulls when its grudge is a hostile doctrine, or
+    // when the act was not a shot at all (a robbed berth, a kill the hull cannot answer).
+    if (result.forgave || (result.opened && (act !== 'struck' || conduct.grudge.hostile))) {
+      this._applyConduct(factionId);
+    }
+    if (result.opened || result.forgave) this._refreshDesks();
+    return result;
+  },
+
+  _speakConduct(factionId, key, { count = 0, berth = null } = {}) {
+    const text = conductLine(factionId, key, { count });
+    if (!text) return;
+    const own = ensureOwnState(this.state);
+    this.bus.emit('comms:popup', {
+      id: `conduct_${factionId}_${key}_${own.sequence}`,
+      sender: berth ? berth.name : (FACTION_NAME.get(factionId) || factionId),
+      text,
+      category: 'faction',
+      persist: false,
+    });
+  },
+
+  _applyConductInSector() {
+    for (const factionId of FACTION_NAME.keys()) {
+      if (conductFor(factionId)) this._applyConduct(factionId);
+    }
+  },
+
+  /** Restyle this faction's live presence hulls to the stance the player's history earns. */
+  _applyConduct(factionId) {
+    const conduct = conductFor(factionId);
+    if (!conduct) return 0;
+    const stance = conductStanceFor(this.state, factionId);
+    const playerId = this.state.playerId;
+    const tick = this.state.tick | 0;
+    let styled = 0;
+    for (const entity of indexedShipLikeScan(this.state)) {
+      const marker = entity && entity.data && entity.data.factionPresence;
+      const ai = entity && entity.data && entity.data.ai;
+      if (!marker || marker.factionId !== factionId || !ai || entity.alive === false) continue;
+      // Route walkers keep their route law; Verge prisms keep their phase law.
+      if (marker.fixedRoute || marker.observerPrism) continue;
+      const conductOwned = typeof ai.conductStance === 'string';
+      if (ai.passive === false && !conductOwned && !SELF_DEFENSE_MOTIVES.has(ai.motive)) continue;
+      const keeper = marker.berthKeeper === true;
+      // A keeper always works its apron; every other hull keeps its authored behavior until the
+      // player's history gives its faction a reason to change it.
+      if (stance === 'known' && !conductOwned && ai.passive !== false && !keeper) continue;
+      if (!ai.conductAnchor) {
+        const apron = keeper ? factionBerthKeeperPos(factionBerthById(marker.berthId)) : null;
+        const anchor = apron || (ai.activity && ai.activity.anchor);
+        ai.conductAnchor = anchor && Number.isFinite(anchor.x)
+          ? { x: anchor.x, z: anchor.z }
+          : { x: entity.pos.x, z: entity.pos.z };
+      }
+      if (stance === 'grudge' && conduct.grudge.hostile) {
+        entity.team = 1;
+        if (entity.data) entity.data.team = 1;
+        ai.passive = false;
+        ai.roe = 'weapons_free';
+        ai.retaliationTargetId = playerId;
+        ai.motive = `${conduct.short}_grudge`;
+        ai.engagementTrigger = 'player_history';
+        ai.zoneId = (this.state.world && this.state.world.currentSectorId) || marker.sectorId || null;
+        ai.approachTelegraph = conduct.grudge.reason;
+        ai.noFireResponseWindowS = 1;
+      } else {
+        if (ai.passive === false) {
+          entity.team = 2;
+          if (entity.data) entity.data.team = 2;
+          ai.passive = true;
+          ai.roe = 'hold_fire';
+          ai.retaliationTargetId = null;
+          ai.motive = null;
+          ai.engagementTrigger = null;
+          ai.approachTelegraph = null;
+        }
+      }
+      ai.activity = conductActivity(factionId, stance, {
+        playerId, anchor: ai.conductAnchor, tick, keeper,
+      }) || {
+        kind: 'loiter',
+        reason: keeper ? 'berth_keeper_holds_apron' : 'k1_nonhostile_presence',
+        anchor: { ...ai.conductAnchor },
+        leashRadius: 900,
+        preferredRange: 0,
+        startedTick: tick,
+        conductStance: stance,
+      };
+      ai.conductStance = stance;
+      marker.stance = stance;
+      styled++;
+    }
+    return styled;
+  },
+
+  _conductTick() {
+    const own = ensureOwnState(this.state);
+    const now = Number(this.state.simTime) || 0;
+    for (const [factionId, memory] of Object.entries(own.conduct)) {
+      if (!grudgeLapsed(factionId, memory, now)) continue;
+      forgiveConduct(memory, now);
+      const payload = { factionId, act: 'lapsed', stance: conductStanceFor(this.state, factionId), forgave: true, t: now };
+      pushReceipt(this.state, { kind: 'conduct', ...payload });
+      this.bus.emit('factionPresence:conduct', payload);
+      this._speakConduct(factionId, 'forgive');
+      this._applyConduct(factionId);
+      this._refreshDesks();
+    }
+    this._wakeBerthKeepers();
+    this._watchBerths();
+  },
+
+  /** Keepers ride the authored presence spawn path, materialized once the player nears the berth. */
+  _wakeBerthKeepers() {
+    const state = this.state;
+    const sectorId = state.world && state.world.currentSectorId;
+    if (!sectorId || typeof this.helpers.spawnEntity !== 'function') return;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || !player.pos) return;
+    const seed = ((state.meta && state.meta.seed) || 1) >>> 0;
+    const own = ensureOwnState(state);
+    for (const keeperPlan of planBerthKeepers({ sectorId, seed })) {
+      const key = spawnKey(keeperPlan);
+      if (own.active[key]) continue;
+      if (Math.hypot(player.pos.x - keeperPlan.pos.x, player.pos.z - keeperPlan.pos.z) > BERTH_KEEPER_WAKE_WU) continue;
+      const carrierId = this._presenceCarrierIndex(sectorId).get(key);
+      if (carrierId !== undefined) {
+        own.active[key] = { entityId: carrierId, sectorId, factionId: keeperPlan.factionId, routeId: null };
+        continue;
+      }
+      const entity = this.helpers.spawnEntity(makePresenceSpec(keeperPlan, state));
+      if (!entity) continue;
+      own.active[key] = { entityId: entity.id || null, sectorId, factionId: keeperPlan.factionId, routeId: null };
+      const receipt = {
+        t: Number(state.simTime) || 0,
+        sectorId,
+        factionId: keeperPlan.factionId,
+        entityId: entity.id || null,
+        shipDefId: keeperPlan.shipDefId,
+        source: 'berthKeeper',
+      };
+      pushReceipt(state, { kind: 'spawned', ...receipt });
+      this.bus.emit('factionPresence:spawned', receipt);
+      this._applyConduct(keeperPlan.factionId);
+    }
+  },
+
+  /** A berth hulk is the faction's property on its rack: towing it off is an act, so is returning it. */
+  // A desk the player already stands at shuts (or reopens) the moment the stance turns.
+  _refreshDesks() {
+    const own = ensureOwnState(this.state);
+    const reps = factionReps(this.state);
+    const stances = conductStances(this.state);
+    for (const stationId of Object.keys(own.servicesByStation)) {
+      const service = presenceServiceForStation(stationId, reps, stances);
+      if (service) own.servicesByStation[stationId] = { ...service };
+    }
+  },
+
+  _watchBerths() {
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    const berths = sectorId ? factionBerthsInSector(sectorId) : [];
+    if (!berths.length) return;
+    const own = ensureOwnState(this.state);
+    const entities = this.state.entities;
+    if (!entities || typeof entities.values !== 'function') return;
+    for (const berth of berths) {
+      if (!berth.hulk || !own.serviceReceipts[berth.receiptKey]) continue;
+      const home = factionBerthHulkHome(berth);
+      if (!home) continue;
+      let hulk = null;
+      for (const entity of entities.values()) {
+        const tag = entity && entity.alive !== false && entity.data && entity.data.berthConsign;
+        if (tag && tag.berthId === berth.id) { hulk = entity; break; }
+      }
+      if (!hulk || !hulk.pos) continue;
+      const watch = own.berthWatch[berth.id] || (own.berthWatch[berth.id] = sanitizeBerthWatch({ row: {} }).row);
+      const d = Math.hypot(hulk.pos.x - home.x, hulk.pos.z - home.z);
+      if (!watch.displaced && d > BERTH_DISPLACED_WU) {
+        watch.displaced = true;
+        watch.displacedAt = Number(this.state.simTime) || 0;
+        this._watchedHulkId = hulk.id;
+        this.bus.emit('factionPresence:berthRobbed', { berthId: berth.id, factionId: berth.factionId, distance: d });
+        this._speakConduct(berth.factionId, 'robbed', { berth });
+        this._recordAct(berth.factionId, 'berth_robbed', { berthId: berth.id });
+      } else if (watch.displaced && d >= BERTH_RETURNED_WU) {
+        // The stolen hull persists where it was left (reentry, Continue); keep its live id so
+        // hauling that same hull home still counts as the return.
+        this._watchedHulkId = hulk.id;
+      } else if (watch.displaced && this._watchedHulkId === hulk.id) {
+        // Only the hull that was seen away and hauled back is restitution; a fresh copy that turns
+        // up on the rack is the faction's record, and the theft stays on the books.
+        watch.displaced = false;
+        watch.displacedAt = null;
+        this.bus.emit('factionPresence:berthReturned', { berthId: berth.id, factionId: berth.factionId });
+        this._speakConduct(berth.factionId, 'returned', { berth });
+        this._recordAct(berth.factionId, 'berth_returned', { berthId: berth.id });
+        this._watchedHulkId = null;
+      }
+    }
+  },
+
+  /** Coming back to a berth: the keeper's posture plus one line that cites what the berth holds. */
+  _greetBerths(sectorId) {
+    const own = ensureOwnState(this.state);
+    for (const berth of factionBerthsInSector(sectorId)) {
+      const watch = own.berthWatch[berth.id] || (own.berthWatch[berth.id] = sanitizeBerthWatch({ row: {} }).row);
+      watch.visits += 1;
+      watch.lastVisitAt = Number(this.state.simTime) || 0;
+      const stance = conductStanceFor(this.state, berth.factionId);
+      const count = berthReceiptCount(own, berth);
+      const key = stance === 'known' && count > 0 ? 'kin' : stance;
+      const greeting = {
+        berthId: berth.id, factionId: berth.factionId, stance, count, visits: watch.visits,
+        displaced: watch.displaced === true,
+      };
+      this.bus.emit('factionPresence:berthGreeting', greeting);
+      if (watch.visits > 1 || count > 0 || stance !== 'known') {
+        this._speakConduct(berth.factionId, watch.displaced ? 'robbed' : key, { count, berth });
+      }
+    }
+  },
+
+  _onCombatKill(payload) {
+    if (payload.killerId == null || payload.killerId !== this.state.playerId) return;
+    const targetId = payload.targetId;
+    const own = ensureOwnState(this.state);
+    for (const row of Object.values(own.active)) {
+      if (row && row.entityId === targetId && row.factionId) {
+        this._recordAct(row.factionId, 'killed', { entityId: targetId });
+        return;
+      }
+    }
+  },
+
+  _onRepChanged(payload) {
+    if (!payload.factionId || !conductFor(payload.factionId)) return;
+    this._applyConduct(payload.factionId);
   },
 
   _bindCeresRefineryTender(context, own = ensureOwnState(this.state)) {
@@ -878,6 +1227,7 @@ export const factionPresence = {
       ? this.state.entities.get(payload.targetId)
       : null;
     const marker = target && target.data && target.data.factionPresence;
+    if (marker && conductFor(marker.factionId)) this._recordAct(marker.factionId, 'struck', { entityId: target.id });
     if (marker && ['faction_understory', 'faction_archive', 'faction_choir'].includes(marker.factionId)) {
       this._activateDefensivePresence(marker.factionId, this.state.playerId, 'direct_attack');
       return;
@@ -1014,6 +1364,7 @@ export const factionPresence = {
       if (context) this._bindCeresRefineryTender(context, ensureOwnState(this.state));
     }
     const boarding = ensureOwnState(this.state).boarding;
+    this._applyConductInSector();
     this._rehydrateBoardingConvoy();
     if (boarding) this._emitBoardingPhase(boarding);
     if (boarding && boarding.phase === 'wake_pending') this._repairBoardingSubsystem(boarding);
@@ -1059,9 +1410,10 @@ export const factionPresence = {
   _onDocked(payload) {
     const stationId = payload.stationId || payload.id || null;
     if (!stationId) return;
-    const service = presenceServiceForStation(stationId, factionReps(this.state));
+    const service = presenceServiceForStation(stationId, factionReps(this.state), conductStances(this.state));
     if (!service) return;
     const own = ensureOwnState(this.state);
+    own.lastDock = { stationId, t: Number(this.state.simTime) || 0 };
     own.servicesByStation[stationId] = { ...service };
     const receipt = { ...service, t: this.state.simTime || 0 };
     pushReceipt(this.state, { kind: 'service', ...receipt });
@@ -1076,12 +1428,12 @@ export const factionPresence = {
     const stored = own.servicesByStation[stationId];
     if (!stored) return;
     const reps = factionReps(this.state);
-    const current = presenceServiceForStation(stationId, reps);
+    const current = presenceServiceForStation(stationId, reps, conductStances(this.state));
     if (!current) return;
     const available = current.available === true;
     if (!available) {
       this.bus.emit('toast', {
-        text: `Archive access requires ${current.requiredRep} reputation`, kind: 'warn', ttl: 3,
+        text: current.closedReason || `Archive access requires ${current.requiredRep} reputation`, kind: 'warn', ttl: 3,
       });
       return;
     }
@@ -1113,6 +1465,7 @@ export const factionPresence = {
         own.serviceReceipts[readingId] = receipt;
         pushReceipt(this.state, receipt);
       }
+      this._rackBerthCopy(stationId, 'berthFolio:', 'berth_folio');
       this.bus.emit('comms:popup', {
         id: readingId, sender: 'Archive Reading Room', text, category: 'archive', persist: true,
       });
@@ -1162,6 +1515,7 @@ export const factionPresence = {
         };
         own.serviceReceipts[berth.receiptKey] = feed;
         pushReceipt(this.state, feed);
+        if (!alreadyFed) this._recordAct(berth.factionId, 'berth_feed', { berthId: berth.id });
       }
       this.bus.emit('comms:popup', {
         id: appraisalId, sender: 'Understory Wreck Buyer', text, category: 'salvage', persist: true,
@@ -1177,6 +1531,7 @@ export const factionPresence = {
         own.serviceReceipts[auditId] = receipt;
         pushReceipt(this.state, receipt);
       }
+      this._rackBerthCopy(stationId, 'berthFiling:', 'berth_filing');
       this.bus.emit('comms:popup', {
         id: auditId, sender: 'Helix Rim Audit', text, category: 'paper', persist: true,
       });
@@ -1218,6 +1573,32 @@ export const factionPresence = {
     };
     own.serviceReceipts[berth.receiptKey] = receipt;
     pushReceipt(this.state, receipt);
+    this._recordAct(berth.factionId, 'berth_consign', { berthId: berth.id });
+  },
+
+  // CR-BERTH-3/4 — a desk visit at a berth station racks the faction's copy on the berth: the
+  // Archive's sealed folio, the Directorate's filed duplicate. One copy per dock visit: the count
+  // is how many times you came back and did business, not how many times the button was pressed.
+  _rackBerthCopy(stationId, prefix, act) {
+    const berth = factionBerthForStation(stationId);
+    if (!berth || !String(berth.receiptKey).startsWith(prefix)) return null;
+    const own = ensureOwnState(this.state);
+    const prior = own.serviceReceipts[berth.receiptKey];
+    const dockedAt = own.lastDock && own.lastDock.stationId === stationId ? own.lastDock.t : null;
+    if (prior && dockedAt != null && Number(prior.dockedAt) === dockedAt) return prior;
+    const receipt = {
+      kind: prefix.slice(0, -1),
+      berthId: berth.id,
+      stationId,
+      factionId: berth.factionId,
+      count: (prior && Number.isFinite(prior.count) ? prior.count : 0) + 1,
+      dockedAt,
+      t: Number(this.state.simTime) || 0,
+    };
+    own.serviceReceipts[berth.receiptKey] = receipt;
+    pushReceipt(this.state, receipt);
+    this._recordAct(berth.factionId, act, { berthId: berth.id });
+    return receipt;
   },
 
   _updateFulfillmentRoutes() {
@@ -1462,6 +1843,11 @@ export const factionPresence = {
       boarding,
       servicesByStation: JSON.parse(JSON.stringify(own.servicesByStation)),
       serviceReceipts: JSON.parse(JSON.stringify(own.serviceReceipts)),
+      conduct: Object.fromEntries(Object.entries(own.conduct)
+        .filter(([factionId]) => conductFor(factionId))
+        .map(([factionId, memory]) => [factionId, normalizeConductMemory(memory)])),
+      berthWatch: sanitizeBerthWatch(own.berthWatch),
+      lastDock: own.lastDock ? { ...own.lastDock } : null,
     };
   },
 
@@ -1489,7 +1875,15 @@ export const factionPresence = {
       processedDisable: {},
       servicesByStation: JSON.parse(JSON.stringify((data && data.servicesByStation) || {})),
       serviceReceipts: JSON.parse(JSON.stringify((data && data.serviceReceipts) || {})),
+      conduct: Object.fromEntries(Object.entries((data && data.conduct) || {})
+        .filter(([factionId]) => conductFor(factionId))
+        .map(([factionId, memory]) => [factionId, normalizeConductMemory(memory)])),
+      berthWatch: sanitizeBerthWatch(data && data.berthWatch),
+      lastDock: data && data.lastDock && typeof data.lastDock.stationId === 'string'
+        ? { stationId: data.lastDock.stationId, t: Number(data.lastDock.t) || 0 }
+        : null,
     };
+    this._watchedHulkId = null;
     this._boardingRepairRequested = false;
     if (boarding) this._emitBoardingPhase(boarding);
   },
