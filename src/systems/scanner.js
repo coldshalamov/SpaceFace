@@ -1983,6 +1983,9 @@ const NONCOMBAT_TRAFFIC_ROLES = new Set([
   'hauler', 'courier', 'miner', 'mining_barge', 'surveyor', 'salvor', 'tender', 'ore_carrier',
   'express', 'liner', 'rescue', 'tourist', 'tanker', 'arclight', 'civilian', 'trader',
   'fleeing_trader', 'smuggler', 'barge',
+  // AEP U1 civilian roster — never turned hostile by faction aggro (the two lawful U1
+  // roles deliberately stay out: they are law presence and fight under the law gate).
+  'fuel_tender', 'courier_relay', 'media_drone', 'diplomat_yacht',
 ]);
 
 /** True when the entity's faction record is flagged aggro (rep <= the sole-writer threshold). */

@@ -34,6 +34,9 @@ const CIVILIAN_TRAFFIC_ROLES = new Set([
   // Occupational work fleet (working trades + PQ-136.02). Deaths of these hulls feed lane rumor.
   // Patrol/escort/customs stay out: they are law presence, not civilian traffic.
   'surveyor', 'salvor', 'tender', 'prospector', 'sweeper', 'shuttle',
+  // AEP U1 civilian roster — a killed fuel tender, relay runner, drone, or diplomat yacht is
+  // exactly the kind of civilian loss the lane talks about. The lawful U1 roles stay out.
+  'fuel_tender', 'courier_relay', 'media_drone', 'diplomat_yacht',
 ]);
 const PIRATE_BASE_VECTOR_KINDS = new Set(['ambush_snare', 'pirate_toll', 'named_hunter']);
 const PIRATE_CAPABLE_ZONE_TYPES = new Set(['ambush_lane', 'outlaw_zone', 'derelict_field']);

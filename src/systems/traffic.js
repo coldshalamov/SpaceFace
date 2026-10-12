@@ -109,6 +109,8 @@ import {
   activityPocketsForSector,
 } from '../data/sectorActivityPockets.js';
 import { stepPallasWorkLoop } from './pallasWorkLoop.js';
+import { npcUnitsForSector, NPC_UNIT_ROLES } from '../data/npcUnitRoster.js';
+import { AUTHORED_PLACE_ZONES } from '../data/authoredPlaces.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { NPC_JOB_PHASE, NPC_JOB_SCHEMA } from './npcJobs.js';
 import {
@@ -257,7 +259,7 @@ const CIVILIAN_VIOLENCE_RADIUS_SQ = CIVILIAN_VIOLENCE_RADIUS_WU * CIVILIAN_VIOLE
 const CIVILIAN_ALARM_TTL_S = 5;
 const CIVILIAN_VIOLENCE_RING_CAP = 8;
 const CIVILIAN_ALARM_FLEE_ROLES = new Set(['hauler', 'courier', 'ore_carrier', 'shuttle', 'tug', 'miner', 'prospector', 'tourist', 'rescue']);
-const CIVILIAN_ALARM_HOLD_ROLES = new Set(['surveyor', 'tender', 'salvor']);
+const CIVILIAN_ALARM_HOLD_ROLES = new Set(['surveyor', 'tender', 'salvor', 'fuel_tender']);
 const CIVILIAN_HAULER_DUMP_ROLES = new Set(['hauler', 'shuttle', 'tanker', 'arclight']);
 // THE WORLD ANSWERS C5 — a player well drags a loaded hauler off its lane (`well:haulerDragged`).
 // Its escorts close up on it and hold for a bounded window (the physical pile-up), the hauler
@@ -403,6 +405,22 @@ const TRAFFIC_ROLES = {
   // The tug carries a finite freight lot through the existing hauler graph. Its lower planning
   // speed keeps the working hull visibly distinct; the Hawser def is the yard-tug hull the
   // role already renders (wholeships/yard_tug.glb), so its sim mass and radius now match the body.
+  // AEP U1 (spec §3.5): the NPC-path unit roster. Every role below is weight 0 — these
+  // units never roll into the ambient mix; `_ensureNpcUnitFixtures` fields each one on
+  // its own placement hook under its roster gate. Sim-def hulls match the released
+  // visual class each role binds in WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.
+  customs_interceptor: { ship: 'ship_hornet',   team: 2, speed: 46, archetype: 'passive', weight: 0,
+                         label: 'Customs Interceptor', lawful: true },
+  fuel_tender:         { ship: 'ship_mule',     team: 2, speed: 58, archetype: 'passive', weight: 0,
+                         label: 'Fuel Tender' },
+  courier_relay:       { ship: 'ship_kestrel',  team: 2, speed: 62, archetype: 'fleeing_trader', weight: 0,
+                         label: 'Courier Relay', docks: true, trades: false },
+  media_drone:         { ship: 'ship_ranger',   team: 2, speed: 34, archetype: 'passive', weight: 0,
+                         label: 'Media Drone', orbits: true },
+  quarantine_corvette: { ship: 'ship_wasp',     team: 2, speed: 42, archetype: 'passive', weight: 0,
+                         label: 'Quarantine Corvette', lawful: true },
+  diplomat_yacht:      { ship: 'ship_mule',     team: 2, speed: 30, archetype: 'fleeing_trader', weight: 0,
+                         label: 'Diplomat Yacht', docks: true, trades: false },
   tug:        { ship: 'ship_hawser',   team: 2, speed: 20, archetype: 'passive', weight: 4,
               label: 'Yard Tug', docks: true, trades: true },
   // PQ-193.07: rare Helios heavy. Own role and body — never remaps hauler/Span or Atlas.
@@ -420,7 +438,10 @@ const TRAFFIC_ROLES = {
 };
 
 function lawPresenceRole(role) {
-  return role === 'patrol' || role === 'escort';
+  // AEP U1 lawful hulls carry the same WANTED-gate hostility + patrol spawn context as
+  // patrol/escort — the interceptor and the corvette are law presence, not civilians.
+  return role === 'patrol' || role === 'escort'
+    || role === 'customs_interceptor' || role === 'quarantine_corvette';
 }
 
 function occupationalJobKind(role) {
@@ -1904,6 +1925,7 @@ export const traffic = {
       this._retireLegacyCeresTraffic();
       this._materializeCeresActivityCast(sector);
       this._ensureNamedLaneContact(sectorId, sector, this._sectorStations());
+      this._ensureNpcUnitFixtures(sectorId, sector, this._sectorStations());
       this._applyWorldSiteTrafficHooks(sectorId);
       this._ensureCeresCausalChain('sector_enter');
       // Continuous/noTeleport exit skips chain reset; live links would otherwise fast-forward one
@@ -1931,6 +1953,7 @@ export const traffic = {
       // stamps onto one hull so the sector is not anonymous.
       const faceStations = this._sectorStations();
       if (faceStations.length >= 1) this._ensureNamedLaneContact(sectorId, sector, faceStations);
+      this._ensureNpcUnitFixtures(sectorId, sector, faceStations);
       return;
     }
 
@@ -1948,6 +1971,7 @@ export const traffic = {
         this._ensurePriorityCourierService(sectorId, stations);
         this._ensurePassengerLinerService(sectorId, stations);
         this._ensureNamedLaneContact(sectorId, sector, stations);
+        this._ensureNpcUnitFixtures(sectorId, sector, stations);
       this._applyWorldSiteTrafficHooks(sectorId);
       this._applyClaimTravelHooks(sectorId);
       return;
@@ -2050,6 +2074,7 @@ export const traffic = {
     this._ensurePriorityCourierService(sectorId, stations);
     this._ensurePassengerLinerService(sectorId, stations);
     this._ensureNamedLaneContact(sectorId, sector, stations);
+    this._ensureNpcUnitFixtures(sectorId, sector, stations);
     this._applyWorldSiteTrafficHooks(sectorId);
     this._applyClaimTravelHooks(sectorId);
     this._dispatchGeneralSalvors(sectorId);
@@ -4370,6 +4395,311 @@ export const traffic = {
       effects.tenderJob = 'resumed';
       effects.salvorQuietUntil = 0;
     }
+  },
+
+  // AEP U1 (spec §3.5): NPC-path unit fixtures. Each roster row gated into this sector is
+  // fielded exactly once, anchored on its own placement hook — the units are all weight 0
+  // so they never enter through the ambient draw, and the npcUnitId stamp keeps re-enters
+  // from spawning a second hull. Anchor resolution is roster-driven: job-site rows bind a
+  // station by service/faction, zone-orbit rows bind an authored zone or named station,
+  // lane rows spawn at the leg's origin berth.
+  _ensureNpcUnitFixtures(sectorId, sector, stations, list = this.state.traffic.freighters) {
+    const units = npcUnitsForSector(sectorId, sector);
+    if (!units.length || !stations) return;
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    // Slot doctrine matches the priority courier: a roster already at its ambient target
+    // donates unowned civilian slots — a U1 unit IS this sector's version of that slot and
+    // must never grow the cast past cap. Below target (hollow rims, sparse lanes) the unit
+    // appends: there the roster IS the sector's content. No eligible donor → fail closed.
+    const cap = ambientCountForSector(sector, this.state);
+    const atCap = cap > 0 && list.length >= cap;
+    for (let i = 0; i < units.length; i++) {
+      const unit = units[i];
+      const def = TRAFFIC_ROLES[unit.role];
+      if (!def) continue;
+      let present = false;
+      for (const rec of list) {
+        if (rec && rec.npcUnitId === unit.unitId) { present = true; break; }
+        const entity = rec && liveEntity(this.state, rec.id);
+        if (entity && entity.data && entity.data.npcUnitId === unit.unitId) { present = true; break; }
+      }
+      if (present) continue;
+      const anchor = this._npcUnitAnchor(unit, sector, stations, sectorId);
+      if (!anchor || !anchor.pos) continue;
+      if (atCap) {
+        const donor = this._pickNpcUnitDonor(list);
+        if (donor) this._rebuildNpcUnit(donor.entity, donor.rec, unit, anchor, sectorId);
+        continue;
+      }
+      if (!this.helpers || !this.helpers.spawnEntity) return;
+      const ang = ((hash32(seed, unit.unitId, sectorId) >>> 0) / 0xffffffff) * Math.PI * 2;
+      const rad = 60 + (((hash32(seed, `${unit.unitId}:r`, sectorId) >>> 0) / 0xffffffff) * 140);
+      const pos = { x: anchor.pos.x + Math.cos(ang) * rad, z: anchor.pos.z + Math.sin(ang) * rad };
+      const factionId = this._npcUnitFactionId(unit, sector, anchor, sectorId);
+      const spec = makeShipEntitySpec(def.ship, {
+        team: def.team,
+        factionId,
+        pos,
+        ai: {
+          archetype: def.archetype,
+          passive: true,
+          lawful: lawPresenceRole(unit.role),
+          spawnContext: lawPresenceRole(unit.role) ? 'patrol' : 'convoy_civilian',
+        },
+      });
+      const ent = this.helpers.spawnEntity(spec);
+      if (!ent) continue;
+      this._stampTrafficDurableIdentity(ent, sectorId, unit.role, def, 730 + i);
+      this._stampNpcUnitIdentity(ent, unit, def);
+      const manifest = this._assignManifest(ent, unit.role, anchor.station || stations[0], sectorId);
+      this._active.push(ent.id);
+      const rec = {
+        id: ent.id,
+        role: unit.role,
+        npcUnitId: unit.unitId,
+        targetId: (anchor.station || stations[0] || {}).id,
+        waitT: 0,
+        nextTradeT: 0,
+        orbitPhase: ang,
+        dockSeq: 0,
+        manifest,
+      };
+      list.push(rec);
+      this._assignNpcUnitJob(ent, unit, sector, stations, anchor, sectorId);
+    }
+  },
+
+  _npcUnitFactionId(unit, sector, anchor, sectorId) {
+    const lane = unit.laneBySector && unit.laneBySector[sectorId];
+    return unit.factionId
+      || (lane && lane.factionId)
+      || (anchor.station && anchor.station.factionId)
+      || (sector && sector.factionId)
+      || 'faction_free';
+  },
+
+  _stampNpcUnitIdentity(ent, unit, def) {
+    ent.data.trafficRole = unit.role;
+    ent.data.role = unit.role;
+    ent.data.npcUnitId = unit.unitId;
+    ent.data.trafficLabel = def.label;
+    ent.data.scanLabel = def.label ? def.label.toUpperCase() : unit.unitId;
+    if (unit.hail) ent.data.hail = unit.hail;
+  },
+
+  // Unowned-ambient donor eligibility for an at-cap retcon. Mirrors the priority-courier
+  // candidate predicate minus the courier-only bits: ordinary ambient freight with no
+  // owner, no chain, no flag — a protected hull is never relabelled. `data.jobId` is
+  // allowed (the ambient job is released on rebuild); rec.control/leases still reject.
+  _isNpcUnitDonorCandidate(rec, entity) {
+    const data = entity && entity.data;
+    const flags = entity && entity.flags || {};
+    const manifest = rec && rec.manifest || data && data.cargoManifest;
+    const ai = data && data.ai;
+    if (!rec || !entity || !data || entity.alive === false || entity.team !== 2) return false;
+    if (!rec.role || NPC_UNIT_ROLES.includes(rec.role) || !isWorldSiteTrafficFallbackRole(rec.role)) return false;
+    if (data.npcUnitId || data.worldSiteTrafficHookId || data.claimTravelTrafficHookId
+      || data.activityActorSlotId || data.ceresActivityCast || data.ceresActivityJobOwned
+      || data.generalSalvor || data.namedLaneContactId || data.missionId || data.missionTag
+      || data.missionPinned || data.missionTargetSlot || data.contractId || data.persistent
+      || data.worldRecordSlotId || data.hitchable || data.isBoss || data.encounterBoss || data.missionBoss
+      || data.scenarioActorId || data.scenarioRole || data.itinerary || data.priorityCourierService
+      || flags.missionPinned || flags.persistent) return false;
+    if (rec.worldSiteRoute || rec.claimTravelRoute || rec.activityActorSlotId
+      || rec.ceresActivityCast || rec.ceresActivityJobOwned || rec.generalSalvor
+      || rec.control || rec.controlLease || rec.itinerary || rec.priorityCourierService
+      || rec.npcUnitId) return false;
+    if (ai && (ai.lawful === true || ai.pirate === true || ai.hostile === true
+      || ai.spawnContext === 'patrol' || ai.isBoss === true || ai.missionTarget === true)) return false;
+    if (manifest && (manifest.active === true || manifest.custody || manifest.lotId || manifest.lotSource
+      || manifest.special === true || manifest.protected === true || manifest.reservedBy)) return false;
+    return true;
+  },
+
+  _pickNpcUnitDonor(list) {
+    const candidates = (list || [])
+      .map((rec) => ({ rec, entity: rec && liveEntity(this.state, rec.id) }))
+      .filter(({ rec, entity }) => this._isNpcUnitDonorCandidate(rec, entity))
+      .sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)));
+    return candidates[0] || null;
+  },
+
+  // Rebuild-in-place, same convention as _rebuildPriorityCourierService: keep the donor's
+  // durable record id and world slot, retcon its role/hull/identity onto the unit, refresh
+  // hull stats through the ships owner, and hand it the unit's job. The ambient job the
+  // donor held is released first — the slot is reclaimed, not double-booked.
+  _rebuildNpcUnit(entity, rec, unit, anchor, sectorId) {
+    const def = TRAFFIC_ROLES[unit.role];
+    if (!entity || !entity.data || !def) return false;
+    const data = entity.data;
+    if (data.jobId) {
+      const release = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
+      if (typeof release === 'function') release(data.jobId);
+    }
+    rec.role = unit.role;
+    rec.npcUnitId = unit.unitId;
+    data.defId = def.ship;
+    entity.factionId = this._npcUnitFactionId(unit, null, anchor, sectorId);
+    if (!data.ai) data.ai = {};
+    data.ai.lawful = lawPresenceRole(unit.role);
+    data.ai.spawnContext = lawPresenceRole(unit.role) ? 'patrol' : 'convoy_civilian';
+    data.ai.archetype = def.archetype;
+    data.ai.passive = true;
+    this._stampNpcUnitIdentity(entity, unit, def);
+    const shipsSystem = this._registry && typeof this._registry.get === 'function'
+      ? this._registry.get('ships')
+      : null;
+    if (shipsSystem && typeof shipsSystem.recomputeEntity === 'function') {
+      shipsSystem.recomputeEntity(entity.id, []);
+    } else if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('ship:appearanceChanged', { id: entity.id });
+    }
+    this._assignNpcUnitJob(entity, unit, null, null, anchor, sectorId);
+    return true;
+  },
+
+  // Roster-driven anchor resolution. Returns {pos, station?, zone?, label} or null —
+  // a unit whose anchor cannot resolve does NOT spawn (its gate promised a real site,
+  // not a floating hull).
+  _npcUnitAnchor(unit, sector, stations, sectorId) {
+    const placement = unit.placement || {};
+    if (placement.kind === 'job-site') {
+      const station = (stations || []).find((st) => {
+        const services = st && st.services || [];
+        if (placement.stationService && !services.includes(placement.stationService)) return false;
+        if (placement.stationFactionId && st.factionId !== placement.stationFactionId) return false;
+        return st && st.pos;
+      });
+      // Some sectors express the same institutional site by type, not service — Helios'
+      // customs authority is a military post, not a scan desk.
+      const fallback = !station && placement.fallbackStationType
+        ? (stations || []).find((st) =>
+            st && st.pos && st.type === placement.fallbackStationType
+            && (!placement.stationFactionId || st.factionId === placement.stationFactionId))
+        : null;
+      const anchored = station || fallback;
+      if (!anchored) return null;
+      return { pos: anchored.pos, station: anchored, label: anchored.name || anchored.id };
+    }
+    if (placement.kind === 'zone-orbit') {
+      const bySector = (unit.anchorBySector && unit.anchorBySector[sectorId]) || {};
+      const zoneId = bySector.zoneId || placement.zoneId;
+      const stationId = bySector.stationId || placement.stationId;
+      if (zoneId) {
+        const zone = ((AUTHORED_PLACE_ZONES[sectorId]) || []).find((row) => row && row.id === zoneId);
+        if (zone && zone.center) return { pos: zone.center, zone, label: zone.name || zone.id };
+        return null;
+      }
+      if (stationId) {
+        const station = (stations || []).find((st) => stationIdentity(st) === stationId);
+        if (station && station.pos) return { pos: station.pos, station, label: station.name || station.id };
+        return null;
+      }
+      return null;
+    }
+    if (placement.kind === 'lane') {
+      const lane = unit.laneBySector && unit.laneBySector[sectorId];
+      if (lane) {
+        const origin = (stations || []).find((st) => stationIdentity(st) === lane.from);
+        if (!origin || !origin.pos) return null;
+        return { pos: origin.pos, station: origin, label: origin.name || origin.id };
+      }
+      // courier_relay: the sector's first berth pair IS the relay lane.
+      const origin = stations && stations[0];
+      if (!origin || !origin.pos) return null;
+      return { pos: origin.pos, station: origin, label: origin.name || origin.id };
+    }
+    return null;
+  },
+
+  // The behavior owner: each placement kind resolves to a real npcJobs spec, built in
+  // the same shapes _buildJobSpec emits. No spec → the hull keeps its ambient stepper,
+  // which is exactly the decorative failure the roster forbids — callers must resolve
+  // anchors so this returns non-null.
+  _assignNpcUnitJob(ent, unit, sector, stations, anchor, sectorId) {
+    const assign = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.assign;
+    if (typeof assign !== 'function') return;
+    if (!ent || !ent.data || !ent.data.worldRecordId) return;
+    const spec = this._npcUnitJobSpec(unit, sector, stations, anchor, sectorId);
+    if (!spec) return;
+    const jobId = assign(ent, spec);
+    if (jobId && unit.placement && unit.placement.kind === 'lane') {
+      // Timed lane run: the manifest contract, stamped on the hull — scan reads it,
+      // interception can take it like any freighter manifest.
+      ent.data.timedRun = spec.payload && spec.payload.timedRun;
+    }
+  },
+
+  _npcUnitJobSpec(unit, sector, stations, anchor, sectorId) {
+    const placement = unit.placement || {};
+    const orbitBeat = (center, radius) => {
+      const R = radius || 200;
+      return [
+        { id: 'beat0', pos: { x: center.x + R, z: center.z }, label: 'Beat 1' },
+        { id: 'beat1', pos: { x: center.x, z: center.z + R }, label: 'Beat 2' },
+        { id: 'beat2', pos: { x: center.x - R, z: center.z }, label: 'Beat 3' },
+        { id: 'beat3', pos: { x: center.x, z: center.z - R }, label: 'Beat 4' },
+      ];
+    };
+    if (unit.jobKind === 'patrol') {
+      if (!anchor || !anchor.pos) return null;
+      return { kind: 'patrol', sectorId, route: orbitBeat(anchor.pos, placement.orbitRadius) };
+    }
+    if (unit.jobKind === 'tender') {
+      // Call-out: berth to the nearest client post and back — a second station when the
+      // sector has one, else the nearest gate (a picket still needs its fuel run).
+      const berth = anchor.station || stations[0];
+      if (!berth || !berth.pos) return null;
+      const client = this._nearestStationTo(stations, berth)
+        || ((sector && sector.gates || []).map((g) => ({ id: g.to, pos: g.pos }))
+            .find((g) => g && g.pos));
+      if (!client || !client.pos) return null;
+      return {
+        kind: 'tender', sectorId,
+        route: [
+          { id: 'berth:' + stationIdentity(berth), pos: { x: berth.pos.x, z: berth.pos.z }, label: 'Berth' },
+          { id: 'client:' + stationIdentity(client), pos: { x: client.pos.x, z: client.pos.z }, label: 'Fuel call' },
+        ],
+      };
+    }
+    if (unit.jobKind === 'hauler' && placement.kind === 'lane') {
+      const lane = unit.laneBySector && unit.laneBySector[sectorId];
+      const origin = lane
+        ? (stations || []).find((st) => stationIdentity(st) === lane.from)
+        : stations[0];
+      if (!origin || !origin.pos) return null;
+      let dest = null;
+      if (lane && lane.to) {
+        dest = (stations || []).find((st) => stationIdentity(st) === lane.to) || null;
+        if (!dest && sector && Array.isArray(sector.pois)) {
+          const poi = sector.pois.find((row) => row && row.id === lane.to);
+          if (poi && poi.pos) dest = { id: poi.id, pos: poi.pos, name: poi.name || poi.id };
+        }
+      } else {
+        dest = stations[1] || null;
+      }
+      if (!dest || !dest.pos) return null;
+      const legS = Math.max(20, Math.round(
+        Math.hypot(dest.pos.x - origin.pos.x, dest.pos.z - origin.pos.z) / 60,
+      ));
+      return {
+        kind: 'hauler', sectorId,
+        route: [
+          { id: 'origin:' + stationIdentity(origin), pos: { x: origin.pos.x, z: origin.pos.z }, label: `${stationName(origin, 'Origin')} Berth` },
+          { id: 'dest:' + stationIdentity(dest), pos: { x: dest.pos.x, z: dest.pos.z }, label: `${stationName(dest, 'Destination')} Approach` },
+        ],
+        payload: {
+          timedRun: {
+            unitId: unit.unitId,
+            from: stationIdentity(origin),
+            to: stationIdentity(dest),
+            legS,
+            dueSlackS: Math.round(legS * 0.35),
+          },
+        },
+      };
+    }
+    return null;
   },
 
   _ensureNamedLaneContact(sectorId, sector, stations) {
