@@ -33,8 +33,13 @@ export async function listDoorArenas(page) {
     .map((b) => ({ name: b.textContent.replace(/\s+/g, ' ').trim(), disabled: !!b.disabled || b.getAttribute('aria-disabled') === 'true', pressed: b.getAttribute('aria-pressed') === 'true' || b.getAttribute('aria-checked') === 'true' })));
 }
 
+/** Every hull tile the Crucible ship step offers: starter id, face word, locked flag. */
+export async function listHulls(page) {
+  return page.evaluate(() => [...document.querySelectorAll('#screens .sf-crd-hull')].map((b) => ({ id: b.dataset.starterId, face: b.textContent.replace(/\s+/g, ' ').trim().slice(0, 40), locked: b.dataset.locked === '1' || !!b.disabled })));
+}
+
 /** Crucible door → ruleset → arena → seed → ship & kit → armory. Returns what the door showed. */
-export async function crucibleToArmory(page, { ruleset, arena, seed }, step) {
+export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantHull = null }, step) {
   await clickText(page, 'Crucible', { exact: true });
   await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucible', null, { timeout: 60000 });
   await page.locator(`#screens .sf-crd-mode[data-ruleset="${ruleset}"]`).click();
@@ -47,16 +52,59 @@ export async function crucibleToArmory(page, { ruleset, arena, seed }, step) {
   const seedInput = page.locator('#screens .sf-crd-seed input').first();
   const trySeed = async () => {
     if (seed == null || seedSet) return;
-    // The seed sits inside the door's collapsed prep disclosure: open it the way a player does.
+    // The seed is a settings row on the door, often below the fold at 960x540. Scroll it into
+    // the centre the way a player does, then replace the digits. A collapsed disclosure is the
+    // older door; open that too if it is still there.
     const closed = page.locator('#screens details:not([open]):has(.sf-crd-seed) > summary').first();
     if (await closed.count().catch(() => 0)) await closed.click({ timeout: 15000 }).catch(() => {});
-    try { await seedInput.scrollIntoViewIfNeeded({ timeout: 10000 }); await seedInput.fill(String(seed), { timeout: 3000 }); await seedInput.press('Tab'); seedSet = true; } catch { /* not on this step */ }
+    if (!(await seedInput.count().catch(() => 0))) return;
+    await seedInput.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'nearest' })).catch(() => {});
+    const want = String(seed);
+    try {
+      await seedInput.fill(want, { timeout: 5000 });
+      await seedInput.press('Tab');
+    } catch {
+      // The row is in the DOM but Playwright still calls it hidden (overflow clip). Click the
+      // centre and type, which is what a player does once the row is on screen.
+      const bb = await seedInput.boundingBox().catch(() => null);
+      if (!bb) return;
+      await page.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2);
+      await page.keyboard.press('ControlOrMeta+a');
+      await page.keyboard.type(want, { delay: 15 });
+      await page.keyboard.press('Tab');
+    }
+    const got = await seedInput.inputValue().catch(() => '');
+    if (String(got).trim() === want) seedSet = true;
   };
   await trySeed();
   const chosen = await listDoorArenas(page);
   step('mode select', true, `Crucible · ${ruleset} · arena ${(chosen.find((x) => x.pressed) || {}).name || arena || 'default'} · seed ${seedSet ? seed : 'field not visible'}`);
   await clickText(page, 'Choose ship');
   await trySeed();
+  const hulls = await listHulls(page);
+  if (wantHull) {
+    const pick = hulls.find((h) => h.id === wantHull || h.face.toLowerCase() === String(wantHull).toLowerCase());
+    if (!pick) throw new Error(`hull "${wantHull}" not offered (offered: ${hulls.map((h) => h.id).join(', ')})`);
+    if (pick.locked) throw new Error(`hull "${wantHull}" is locked for this profile`);
+    // The tile idles in a perpetual CSS motion, so Playwright's "stable" wait never settles under
+    // software GL. Click it the way a player does: a trusted mouse click at the tile's centre.
+    const tile = page.locator(`#screens .sf-crd-hull[data-starter-id="${pick.id}"]`).first();
+    await tile.scrollIntoViewIfNeeded({ timeout: 15000 }).catch(() => {});
+    const bb = await tile.boundingBox();
+    if (!bb) throw new Error(`hull "${pick.id}" tile has no box on screen`);
+    const picked = (id) => { const t = document.querySelector(`#screens .sf-crd-hull[data-starter-id="${id}"]`); return !!t && t.getAttribute('aria-pressed') === 'true'; };
+    await page.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2);
+    let ok = await page.waitForFunction(picked, pick.id, { timeout: 4000 }).then(() => true, () => false);
+    if (!ok) {
+      // Mouse missed (the tile is covered or reflowing): Tab-focus the tile and press Enter, as a keyboard player does.
+      const hit = await page.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); return e ? `${e.tagName.toLowerCase()}.${[...e.classList].slice(0, 3).join('.')}` : 'nothing'; }, [bb.x + bb.width / 2, bb.y + bb.height / 2]);
+      await tile.focus();
+      await page.keyboard.press('Enter');
+      ok = await page.waitForFunction(picked, pick.id, { timeout: 8000 }).then(() => true, () => false);
+      if (!ok) throw new Error(`hull "${pick.id}" did not select by mouse (centre hits ${hit}) or keyboard`);
+    }
+    await page.waitForTimeout(400);
+  }
   const hull = await page.evaluate(() => { const b = [...document.querySelectorAll('#screens .sf-crd-hull')].find((x) => x.getAttribute('aria-pressed') === 'true' || x.getAttribute('aria-checked') === 'true' || x.classList.contains('is-selected')); return b ? b.textContent.replace(/\s+/g, ' ').trim().slice(0, 60) : null; });
   if (ruleset === 'swarm') {
     await clickText(page, 'Open armory');
@@ -64,7 +112,7 @@ export async function crucibleToArmory(page, { ruleset, arena, seed }, step) {
   } else {
     await clickText(page, 'Enter the Gauntlet');
   }
-  return { arenas, seedSet, hull };
+  return { arenas, seedSet, hull, hulls };
 }
 
 const IRRELEVANT = {

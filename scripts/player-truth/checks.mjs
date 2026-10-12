@@ -31,7 +31,7 @@ export const THRESHOLDS = Object.freeze({
   yawDeltaRad: 0.2, // rad turned after ~0.8 s of yaw
   tumblePitch: 0.35, tumbleBank: 0.75, tumbleY: 4, tumbleAngVel: 2.5, tumbleSeconds: 0.5,
   readabilityMinSeparation: 1.0, readabilityMinSamples: 5,
-  vfxCoverP95: 0.25, vfxPlayerOccludedFrac: 0.1, vfxThreatOccludedP95: 0.3, vfxPersistSeconds: 3,
+  vfxCoverP95: 0.25, vfxPlayerOccludedFrac: 0.1, vfxThreatOccludedP95: 0.3, vfxPersistSeconds: 3, backdropThreatP95: 0.3, pinnedMoveFrac: 0.25, pinnedMinExpect: 40,
   longTaskMs: 250, frameP99Ms: 50,
 });
 
@@ -289,23 +289,78 @@ export function checkPlayerControl(trace) {
   if (!probes.length) return result('player_control', 'Ship answers input', 'UNKNOWN', null, `thrust Δv≥${T.thrustDeltaSpeed} u/s · yaw Δ≥${T.yawDeltaRad} rad`, 'no control probe ran');
   const offenders = []; let worst = null;
   for (const pr of probes) {
-    const a = nearestSample(trace, pr.startSim); const b = nearestSample(trace, pr.endSim);
-    if (!a || !b || !a.p || !b.p) { offenders.push({ line: `${pr.label}: no player sample`, t: pr.startT, sim: pr.startSim, box: null, bad: true }); continue; }
-    if (pr.kind === 'thrust') {
-      const dv = Math.hypot(b.p.vx, b.p.vz) - Math.hypot(a.p.vx, a.p.vz);
-      const moved = Math.hypot(b.p.x - a.p.x, b.p.z - a.p.z);
-      pr.value = dv;
-      if (dv < T.thrustDeltaSpeed && moved < 3) offenders.push({ line: `${pr.label}: held W ${fmt(pr.endSim - pr.startSim, 1)} s → Δspeed ${fmt(dv, 1)} u/s, moved ${fmt(moved, 1)} u`, t: b.t, sim: b.sim, box: b.p.box, bad: true });
-    } else if (pr.kind === 'yaw') {
-      let d = b.p.rot - a.p.rot; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
-      pr.value = d;
-      if (Math.abs(d) < T.yawDeltaRad) offenders.push({ line: `${pr.label}: held ${pr.key} ${fmt(pr.endSim - pr.startSim, 1)} s → turned ${fmt(d, 2)} rad`, t: b.t, sim: b.sim, box: b.p.box, bad: true });
-    }
+    const d = probeDead(trace, pr);
+    if (d.dead) offenders.push({ line: `${pr.label}: ${d.why}`, t: d.b ? d.b.t : pr.startT, sim: d.b ? d.b.sim : pr.startSim, box: d.b ? d.b.p.box : null, bad: true });
     worst = worst || pr;
   }
-  const bad = offenders.filter((o) => o.bad).length;
-  return result('player_control', 'Ship answers input', bad ? 'FAIL' : 'PASS', `${bad}/${probes.length} probes dead`, `thrust Δv≥${T.thrustDeltaSpeed} u/s · yaw Δ≥${T.yawDeltaRad} rad`,
+  for (const sp of pinnedSpans(trace, playSamples(trace).filter((x) => x.p && x.p.alive))) {
+    offenders.push({ line: `pinned ${fmt(sp.start, 1)}–${fmt(sp.end, 1)} s: velocity says ${fmt(sp.expect, 0)} u of travel, ship moved ${fmt(sp.path, 0)} u${heldBy(trace, sp.s)}`, t: sp.s.t, sim: sp.s.sim, box: sp.s.p.box, bad: true, pinned: true });
+  }
+  const bad = offenders.filter((o) => o.bad).length; const pins = offenders.filter((o) => o.pinned).length;
+  return result('player_control', 'Ship answers input', bad ? 'FAIL' : 'PASS', `${bad - pins}/${probes.length} probes dead · ${pins} pinned spans`, `thrust Δv≥${T.thrustDeltaSpeed} u/s and moves ≥${Math.round(T.pinnedMoveFrac * 100)}% of its velocity · yaw Δ≥${T.yawDeltaRad} rad`,
     probes.map((p) => `${p.label} ${fmt(p.value, 2)}`).join(' · '), offenders, offenders.slice(0, 2));
+}
+
+/** A thrust/yaw probe is dead when the ship does not answer it on screen. A thrust probe needs real
+ * displacement, not just a velocity number: a body whose velocity reads 140 u/s while its position
+ * stays put is pinned, and the player sees a ship that cannot move. */
+export function probeDead(trace, pr) {
+  const T = THRESHOLDS;
+  const a = nearestSample(trace, pr.startSim); const b = nearestSample(trace, pr.endSim);
+  if (!a || !b || !a.p || !b.p) return { dead: true, why: 'no player sample' };
+  if (pr.kind === 'thrust') {
+    const dv = Math.hypot(b.p.vx, b.p.vz) - Math.hypot(a.p.vx, a.p.vz);
+    const moved = Math.hypot(b.p.x - a.p.x, b.p.z - a.p.z);
+    const win = trace.samples.filter((s) => s.p && s.sim >= pr.startSim && s.sim <= pr.endSim);
+    let expect = 0; for (let i = 1; i < win.length; i++) expect += Math.hypot(win[i].p.vx, win[i].p.vz) * Math.max(0, win[i].sim - win[i - 1].sim);
+    pr.value = dv; pr.moved = moved; pr.expect = expect;
+    const held = fmt(pr.endSim - pr.startSim, 1);
+    if (dv < T.thrustDeltaSpeed && moved < 3) return { dead: true, a, b, why: `held W ${held} s → Δspeed ${fmt(dv, 1)} u/s, moved ${fmt(moved, 1)} u` };
+    if (expect > 20 && moved < T.pinnedMoveFrac * expect) return { dead: true, a, b, why: `held W ${held} s → velocity reads ${fmt(Math.max(Math.hypot(b.p.vx, b.p.vz), dv), 0)} u/s but the ship moved ${fmt(moved, 1)} u of ${fmt(expect, 0)} u (pinned)` };
+    return { dead: false, a, b };
+  }
+  let d = b.p.rot - a.p.rot; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+  pr.value = d;
+  return Math.abs(d) < T.yawDeltaRad ? { dead: true, a, b, why: `held ${pr.key} ${fmt(pr.endSim - pr.startSim, 1)} s → turned ${fmt(d, 2)} rad` } : { dead: false, a, b };
+}
+
+/** The nearest solid body (not a projectile, pickup or VFX) to the player in one sample: a pinned ship
+ * sitting on top of one names what is holding it. */
+export function nearestBody(trace, s) {
+  if (!s || !s.p || !Array.isArray(s.e)) return null;
+  let best = null;
+  for (const e of s.e) {
+    const key = (trace.keys && trace.keys[e[E.type]]) || '';
+    if (!key || /^(projectile|pickup|vfx|player)/.test(key) || e[E.id] === s.p.id) continue;
+    const d = Math.hypot(e[E.x] - s.p.x, e[E.z] - s.p.z);
+    if (!best || d < best.d) best = { d, key, id: e[E.id] };
+  }
+  return best;
+}
+
+function heldBy(trace, s) {
+  const b = nearestBody(trace, s);
+  return b && b.d < 60 ? ` — ship sits ${fmt(b.d, 0)} u from ${b.key.replace(/:$/, '')} #${b.id}` : '';
+}
+
+/** Stretches of ≥1 s where the reported speed says the ship is flying but its position does not change. */
+export function pinnedSpans(trace, samples) {
+  const T = THRESHOLDS; const spans = []; let i = 0;
+  while (i < samples.length) {
+    let j = i; let expect = 0;
+    while (j + 1 < samples.length && samples[j + 1].sim - samples[i].sim <= 1.0) { j++; expect += Math.hypot(samples[j].p.vx, samples[j].p.vz) * Math.max(0, samples[j].sim - samples[j - 1].sim); }
+    const dur = samples[j].sim - samples[i].sim;
+    if (dur >= 0.8 && expect >= T.pinnedMinExpect) {
+      let path = 0; for (let k = i + 1; k <= j; k++) path += Math.hypot(samples[k].p.x - samples[k - 1].p.x, samples[k].p.z - samples[k - 1].p.z);
+      if (path < T.pinnedMoveFrac * expect) {
+        const last = spans[spans.length - 1];
+        if (last && samples[i].sim - last.end < 0.3) { last.end = samples[j].sim; last.expect += expect; last.path += path; }
+        else spans.push({ start: samples[i].sim, end: samples[j].sim, expect, path, s: samples[i] });
+      }
+    }
+    i = j > i ? i + Math.max(1, Math.floor((j - i) / 2)) : i + 1;
+  }
+  return spans;
 }
 
 function nearestSample(trace, sim) {
@@ -359,13 +414,53 @@ export function checkReadability(trace) {
   const offenders = [
     ...bad.map((p) => ({ line: `${p.a} vs ${p.b}: separation ${fmt(p.sep)} (colour Δ ${fmt(p.dColor, 1)}, size ratio ${fmt(p.sizeRatio, 2)}) over ${p.nA}/${p.nB} samples`, t: p.exampleT, sim: null, box: p.exampleBox })),
     ...lowContrast.map(([k, v]) => ({ line: `${k}: ${fmt(v.lowContrastFrac * 100, 0)}% of samples barely differ from the background (ΔL < 8)`, t: v.exampleT, sim: null, box: v.exampleBox })),
+    // Big play-space bodies that are neither enemy nor asteroid (e.g. a white station sphere) sitting on the player.
+    ...(r.census || []).filter((c) => ['station', 'neutral', 'other'].includes(c.cls) && c.n >= T.readabilityMinSamples && c.overPlayerFrac >= 0.2)
+      .map((c) => ({ line: `${c.name || c.cls} (${c.cls}, ${c.look}, r ${fmt(c.meanRadiusPx, 0)} px) sits over the player ship in ${fmt(c.overPlayerFrac * 100, 0)}% of ${c.n} samples — a play-space body that reads as neither enemy nor asteroid`, t: c.exampleT, sim: null, box: c.exampleBox })),
   ];
   const minSep = Math.min(...pairs.map((p) => p.sep));
   return result('readability', 'Enemy / asteroid / projectile readable', offenders.length ? 'FAIL' : 'PASS', `min separation ${fmt(minSep)}`, `≥${T.readabilityMinSeparation} per class pair; ≤50% low-contrast`,
     `samples: ${counts}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
 }
 
+/** Combat VFX graded per pixel when the reader's offscreen split ran (backdrop layers excluded). */
+function checkVfxPixels(trace, px) {
+  const T = THRESHOLDS; const q = (xs) => { const a = xs.filter((x) => x != null).sort((m, n) => m - n); return a.length ? a[Math.floor(a.length * 0.95)] : null; };
+  const p95 = q(px.map((s) => s.px.c)) || 0;
+  const pS = px.filter((s) => s.px.cp != null); const pOccFrac = pS.length ? pS.filter((s) => s.px.cp >= 0.5).length / pS.length : null;
+  const tP95 = q(px.map((s) => s.px.ct));
+  let persist = 0; let runStart = null;
+  for (const s of px) { if (s.px.c > T.vfxCoverP95) { if (runStart == null) runStart = s.sim; persist = Math.max(persist, s.sim - runStart); } else runStart = null; }
+  const maxS = px.reduce((a, b) => (b.px.c > a.px.c ? b : a));
+  const occ = pS.find((s) => s.px.cp >= 0.5);
+  const fail = p95 > T.vfxCoverP95 || (pOccFrac != null && pOccFrac > T.vfxPlayerOccludedFrac) || (tP95 != null && tP95 > T.vfxThreatOccludedP95) || persist > T.vfxPersistSeconds;
+  const offenders = [];
+  if (occ) offenders.push({ line: `player ship ≥50% under combat VFX pixels in ${fmt(pOccFrac * 100, 0)}% of splits (first sim ${fmt(occ.sim, 1)} s)`, t: occ.t, sim: occ.sim, box: occ.p && occ.p.box });
+  offenders.push({ line: `peak combat-VFX pixels ${fmt(maxS.px.c * 100, 0)}% of screen at sim ${fmt(maxS.sim, 1)} s (${maxS.px.nC} combat layers lit)`, t: maxS.t, sim: maxS.sim, box: null });
+  return result('vfx_coverage', 'Combat VFX coverage / occlusion', fail ? 'FAIL' : 'PASS',
+    `p95 ${fmt(p95 * 100, 0)}% screen · player hidden ${pOccFrac == null ? 'n/a' : fmt(pOccFrac * 100, 0) + '%'} · threats hidden p95 ${tP95 == null ? 'n/a' : fmt(tP95 * 100, 0) + '%'} · ${fmt(persist, 1)} s persist`,
+    `≤${T.vfxCoverP95 * 100}% · ≤${T.vfxPlayerOccludedFrac * 100}% · ≤${T.vfxThreatOccludedP95 * 100}% · ≤${T.vfxPersistSeconds} s`,
+    `${px.length} per-pixel splits (offscreen render with combat VFX hidden vs shown, pre-bloom 160×90; backdrop layers graded separately)`,
+    offenders, offenders.filter((o) => o.box).slice(0, 2));
+}
+
+/** Backdrop (deep field, nebula, stars, planets) drawn over the play: reported apart from combat VFX. */
+export function checkBackdrop(trace) {
+  const T = THRESHOLDS; const px = playSamples(trace).filter((s) => s.px && !s.px.err);
+  if (px.length < 5) return result('backdrop_coverage', 'Backdrop stays behind the play', 'UNKNOWN', null, `threats over bright backdrop p95 ≤${T.backdropThreatP95 * 100}%`, 'no per-pixel splits sampled');
+  const a = px.map((s) => s.px.bt).filter((x) => x != null).sort((m, n) => m - n); const tP95 = a.length ? a[Math.floor(a.length * 0.95)] : null;
+  const covs = px.map((s) => s.px.b).sort((m, n) => m - n); const p50 = covs[Math.floor(covs.length / 2)]; const p95 = covs[Math.floor(covs.length * 0.95)];
+  const worst = px.reduce((m, s) => ((s.px.bt || 0) > (m.px.bt || 0) ? s : m));
+  const fail = tP95 != null && tP95 > T.backdropThreatP95;
+  const offenders = fail ? [{ line: `${fmt(worst.px.bt * 100, 0)}% of on-screen threats sit on bright backdrop pixels at sim ${fmt(worst.sim, 1)} s (backdrop lights ${fmt(worst.px.b * 100, 0)}% of the screen)`, t: worst.t, sim: worst.sim, box: null }] : [];
+  return result('backdrop_coverage', 'Backdrop stays behind the play', fail ? 'FAIL' : 'PASS',
+    `backdrop lights median ${fmt(p50 * 100, 0)}% / p95 ${fmt(p95 * 100, 0)}% of screen · threats on bright backdrop p95 ${tP95 == null ? 'n/a' : fmt(tP95 * 100, 0) + '%'}`,
+    `threats on bright backdrop p95 ≤${T.backdropThreatP95 * 100}%`, `${px.length} per-pixel splits with backdrop layers hidden vs shown`, offenders, offenders);
+}
+
 export function checkVfx(trace) {
+  const px = playSamples(trace).filter((s) => s.px && !s.px.err);
+  if (px.length >= 5) return checkVfxPixels(trace, px);
   const T = THRESHOLDS; const scans = playSamples(trace).filter((s) => s.vfx && !s.vfx.err);
   if (scans.length < 5) return result('vfx_coverage', 'VFX coverage / occlusion', 'UNKNOWN', null, `p95 ≤${T.vfxCoverP95}`, 'too few VFX scans');
   const covs = scans.map((s) => s.vfx.cov).sort((a, b) => a - b);
@@ -438,7 +533,59 @@ export function checkRoute(trace) {
 export const ALL_CHECKS = [checkRoute, checkRoundResolution, checkKillsBeforeInput, checkRewardBeforeInput, checkSpawnMotion, checkPlayerControl, checkTumble,
   checkPlayerShip, checkLodChurn, checkPopping, checkReadability, checkVfx, checkLoadout, checkFrameTime];
 
-export function runChecks(trace) { return ALL_CHECKS.map((fn) => fn(trace)); }
+/** Round transitions: after every round start past the first, the ship is whole, answers input and stays in plane. */
+export function checkRoundTransitions(trace) {
+  const T = THRESHOLDS; const rounds = roundsOf(trace);
+  if (!trace.meta.rounds) return result('round_transitions', 'Every round starts playable', 'N/A', null, null, 'mode has no rounds');
+  const later = rounds.slice(1);
+  if (!later.length) return result('round_transitions', 'Every round starts playable', 'UNKNOWN', null, 'ship whole · probes answer · in plane, first 8 s of each round', 'no round after round 1 was reached');
+  const offenders = []; const parts = [];
+  for (const r of later) {
+    const win = trace.samples.filter((s) => s.sim >= r.startSim && s.sim <= r.startSim + 8 && s.p);
+    const bad = win.filter((s) => playerBadReasons(s.p).length);
+    const tumble = win.filter((s) => Math.abs(s.p.pitch) > T.tumblePitch || Math.abs(s.p.bank) > T.tumbleBank || Math.abs(s.p.y) > T.tumbleY);
+    const probes = (trace.probes || []).filter((pr) => pr.label && pr.label.startsWith(`round ${r.wave} `));
+    const dead = probes.filter((pr) => probeDead(trace, pr).dead);
+    const pins = pinnedSpans(trace, win.filter((x) => x.p.alive));
+    const hull = win[0] && win[0].p.hullMax ? Math.round(100 * win[0].p.hull / win[0].p.hullMax) : null;
+    parts.push(`round ${r.wave}: ${win.length} frames, hull ${hull == null ? '?' : hull + '%'}, ${bad.length} bad ship, ${tumble.length} out of plane, ${dead.length}/${probes.length} dead probes, ${pins.length} pinned`);
+    const why = [];
+    if (!win.length) why.push('no player frames in the first 8 s');
+    if (bad.length / Math.max(1, win.length) > T.playerBadFrac) why.push(`ship bad in ${bad.length}/${win.length} frames (${playerBadReasons(bad[0].p).join(', ')})`);
+    if (tumble.length >= 3) why.push(`out of plane in ${tumble.length} frames`);
+    if (!probes.length) why.push('no control probe ran');
+    else if (dead.length) why.push(`${dead.length}/${probes.length} control probes dead (${dead.map((pr) => probeDead(trace, pr).why).join('; ')})`);
+    if (pins.length) why.push(`pinned ${fmt(pins[0].start, 1)}–${fmt(pins[0].end, 1)} s (velocity ${fmt(pins[0].expect, 0)} u, moved ${fmt(pins[0].path, 0)} u${heldBy(trace, pins[0].s)})`);
+    if (why.length) { const s0 = bad[0] || tumble[0] || win[0]; offenders.push({ line: `round ${r.wave} start (hull ${hull == null ? '?' : hull + '%'}): ${why.join('; ')}`, t: s0 ? s0.t : r.startT, sim: s0 ? s0.sim : r.startSim, box: s0 && s0.p ? s0.p.box : null }); }
+  }
+  return result('round_transitions', 'Every round starts playable', offenders.length ? 'FAIL' : 'PASS', `${offenders.length}/${later.length} round starts broken`, 'ship whole · probes answer · in plane, first 8 s of each round',
+    parts.join(' · '), offenders, offenders.slice(0, 2));
+}
+
+/** Gate pass reached the required round. */
+export function checkRoundsReached(trace) {
+  const need = trace.meta.requireRounds;
+  if (!need) return result('rounds_reached', 'Run reaches the gate round', 'N/A', null, null, 'not a gate active pass');
+  const got = Math.max(0, ...roundsOf(trace).map((r) => r.wave || 0));
+  return result('rounds_reached', 'Run reaches the gate round', got >= need ? 'PASS' : 'FAIL', `round ${got}`, `≥ round ${need}`,
+    `stopped: ${trace.meta.stopReason || 'n/a'}`, got >= need ? [] : [{ line: `scripted fighter stopped at round ${got}: ${trace.meta.stopReason || ''}`, t: null, sim: null, box: null }]);
+}
+
+ALL_CHECKS.splice(ALL_CHECKS.indexOf(checkVfx) + 1, 0, checkBackdrop);
+ALL_CHECKS.push(checkRoundTransitions, checkRoundsReached);
+
+/** In gate mode "not measured" cannot pass a gameplay PR: UNKNOWN on these checks is a FAIL. */
+export const GATE_STRICT = Object.freeze(['player_control', 'tumble', 'player_ship', 'round_resolution', 'round_transitions']);
+const GATE_STRICT_IDLE = Object.freeze(['player_ship', 'tumble']);
+
+export function runChecks(trace) {
+  const results = ALL_CHECKS.map((fn) => fn(trace));
+  const gate = trace.meta.gate;
+  if (!gate) return results;
+  const strict = gate === 'idle' ? GATE_STRICT_IDLE : GATE_STRICT;
+  for (const r of results) if (r.status === 'UNKNOWN' && strict.includes(r.id)) { r.status = 'FAIL'; r.detail = `not measured — gate counts UNKNOWN as FAIL (${r.detail})`; }
+  return results;
+}
 
 /** Verdict over a check list: any FAIL fails; otherwise UNKNOWN beats PASS. */
 export function overall(results) {

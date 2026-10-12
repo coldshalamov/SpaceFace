@@ -44,7 +44,22 @@ npm run player-truth -- --mode=swarm --arena=all      # every reachable Crucible
 npm run player-truth -- --mode=gauntlet
 npm run player-truth -- --mode=adventure              # default New Game: Hitch, Helios, tutorials on
 npm run player-truth -- --mode=racing                 # Circuits, first course
+npm run player-truth -- --mode=swarm --gate           # PR gate: idle pass + active pass to round 3
+npm run player-truth -- --mode=swarm --gate --baseline=origin/master   # before/after table for the PR
 ```
+
+**Gate preset (`--gate`, required for a gameplay PR).** Round modes run two passes: an *idle* pass
+(no input: kills, reward and spawn motion before input) and an *active* pass (the scripted fighter
+plays from 3 s and must reach round 3; each round start is shot densely and re-probed for ship
+model/LOD, thrust/yaw response, pinning and tumble). In gate mode an UNKNOWN on `player_control`,
+`tumble`, `player_ship`, `round_resolution` or `round_transitions` is a FAIL ("not measured" cannot
+pass a gameplay PR); `frame_time` stays UNKNOWN on software GL. No invulnerability is used.
+`--viewports=960x540,1280x720,1920x1080` and `--hull=all` (every unlocked hull on the preparation
+screen; or `--hull=<starter id>`) repeat the run per combination. `--baseline=<ref>` re-runs the same
+harness on `<ref>`'s game in a temporary `.worktrees/` checkout (removed when done) and prints a
+before/after table; `node scripts/player-truth/compare.mjs <before dir> <after dir>` builds one
+from two existing runs. `vfx_coverage` grades only combat VFX, from a per-pixel diff with the
+combat additive layers hidden; `backdrop_coverage` grades the deep field / nebula / planets apart.
 
 The harness (`scripts/player-truth/`) walks the real public route in a rendered Chromium with
 trusted keyboard/mouse input (idle first, then thrust/yaw probes, then a simple fighter or flyer),
@@ -54,6 +69,8 @@ samples live telemetry through the observer-only `src/testing/playerTruth/reader
 
 - **GPU (preferred):** add `--headed` on a machine with a real GPU. The verdict records the WebGL
   renderer string; frame-time is graded only here.
+- **Browser:** Playwright's bundled Chromium first (`npx playwright install chromium`), then
+  `CHROME_PATH`, `/opt/google/chrome/chrome`, or `google-chrome`/`chromium` on PATH.
 - **Software GL (fallback):** the default headless run uses SwiftShader. It plays the same route at a
   fraction of real speed (sim time is the clock, so bounds still hold), takes a few minutes of wall
   time per bounded run, and reports `frame_time` as UNKNOWN. The verdict says SOFTWARE GL.
