@@ -100,9 +100,12 @@ explanation and is relevant to the mode. Zero armory cards are either "the game 
 count or a name the card selector missed). That sentence leads the measured column, with the
 shelf's own words quoted, so a PASS is not a bare "0 irrelevant". An offer's explanation is the
 sentence the player can read: the card blurb when it is on screen, otherwise the armory reading
-panel. A blurb the rail hides does not count unless that panel is showing the selected row's
-sentence. A refit contrast clipped for the screen reader (`.orr-hp__contrast--drawn`) is not an
-explanation. A preparation line that claims a fit count but names no item is a FAIL. A vacuous
+panel when that panel matches the lit row's own blurb. A panel that is up but names a different
+sentence is an offender (`reading panel does not match lit row`), not an explanation. A blurb the
+rail hides on another row counts only once that match holds. A refit contrast the player can see
+counts. A hidden refit contrast counts only when a lit row is showing its own contrast, and the
+verdict prints `row-on-select (inferred)`. A contrast clipped for the screen reader
+(`.orr-hp__contrast--drawn`) is not an explanation. A preparation line that claims a fit count but names no item is a FAIL. A vacuous
 "0 offers read" is not a PASS.
 
 `sim_stalled` fails when sim time advances less than 0.5 s across 60 s of wall time while the run

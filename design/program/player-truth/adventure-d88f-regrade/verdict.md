@@ -8,10 +8,8 @@ Regrade of the Code Work master-gate trace `state/mastercheck-d88f/adventure/` w
 | Check | Result | Measured |
 |---|---|---|
 | readability | **FAIL** | asteroid 100% low-contrast (8 samples, ΔL < 8). enemy 0, projectile 0, under the sample floor, not graded |
-| frame_time, no --baseline | **UNKNOWN** | software-renderer evidence · p50 94 ms · p99 904 ms · 962 long tasks ≥250 ms |
-| frame_time vs p99 200 ms / 10 long tasks, matched 1m load | **FAIL** | same numbers. regression |
-| frame_time, same numbers, 1m load 13 vs 8 | **ADVISORY** | numbers would FAIL; not a FAIL |
+| frame_time | **UNKNOWN** | software-renderer evidence · p50 94 ms · p99 904 ms · 962 long tasks ≥250 ms |
 
 Worst frames (contact sheet, red box): `frames/0001.jpg` (sim 1.8 s, ΔL 0) and `frames/0002.jpg` (sim 4.1 s, ΔL 0). The box is the on-screen asteroid. It does not separate from the black backdrop.
 
-Overall of this pair is **FAIL** because readability failed. `frame_time` stays UNKNOWN until `--baseline` supplies a measurement, and that UNKNOWN is still printed. It is an INCOMPLETE cause only when no check FAILed.
+Overall of this pair is **FAIL** because readability failed. The harness graded `frame_time` UNKNOWN: this trace has no `--baseline`, so the absolute SwiftShader numbers are evidence and not a PASS or a FAIL. The same numbers against a p99 of 200 ms and 10 long tasks would FAIL at a matched 1-minute load, and would be ADVISORY (not a FAIL) if that load were 13 versus 8. That UNKNOWN is still printed. It is an INCOMPLETE cause only when no check FAILed.

@@ -106,8 +106,28 @@ test('an explanation is the sentence the player can see', () => {
   assert.equal(hidden.surface, 'none');
   const onCard = explanationThePlayerSees({ blurb: 'Printed on the card itself.', blurbVisible: true, lit: false, reading: '', readingVisible: false });
   assert.equal(onCard.surface, 'card');
-  assert.equal(fittedSentenceThePlayerSees({ contrast: 'Hits harder than the fitted gun.', clipped: false, visible: false }).surface, 'row-on-select');
-  assert.equal(fittedSentenceThePlayerSees({ contrast: 'Hits harder than the fitted gun.', clipped: true, visible: false }).desc, '');
+  const stale = explanationThePlayerSees({
+    blurb: 'A pulse laser for the hardpoint.', blurbVisible: false, lit: true,
+    reading: 'Reads what a hull carries in the hold.', readingVisible: true,
+    litBlurb: 'A pulse laser for the hardpoint.',
+  });
+  assert.equal(stale.desc, '');
+  assert.equal(stale.surface, 'reading-mismatch');
+  assert.match(stale.panel, /hull carries/);
+  const noBlurb = explanationThePlayerSees({
+    blurb: '', blurbVisible: false, lit: true,
+    reading: 'A pulse laser for the hardpoint.', readingVisible: true, litBlurb: '',
+  });
+  assert.equal(noBlurb.surface, 'reading');
+  assert.equal(noBlurb.desc, 'A pulse laser for the hardpoint.');
+  const unproven = fittedSentenceThePlayerSees({ contrast: 'Hits harder than the fitted gun.', clipped: false, visible: false });
+  assert.equal(unproven.desc, '');
+  assert.equal(unproven.surface, 'none');
+  const inferred = fittedSentenceThePlayerSees({ contrast: 'Hits harder than the fitted gun.', clipped: false, visible: false, selectedShowsOwn: true });
+  assert.equal(inferred.surface, 'row-on-select');
+  assert.match(inferred.desc, /Hits harder/);
+  assert.equal(fittedSentenceThePlayerSees({ contrast: 'Hits harder than the fitted gun.', clipped: false, visible: true }).surface, 'row');
+  assert.equal(fittedSentenceThePlayerSees({ contrast: 'Hits harder than the fitted gun.', clipped: true, visible: false, selectedShowsOwn: true }).desc, '');
   assert.equal(fittedSentenceThePlayerSees({ contrast: 'Hits harder than the fitted gun.', clipped: true, visible: false }).surface, 'clipped');
 });
 

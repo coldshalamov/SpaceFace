@@ -381,6 +381,7 @@ export async function readFittedRows(page) {
       const slot = norm((row.querySelector('.sf-cru-slottag') || {}).textContent);
       return {
         name: name || label, contrast: contrast !== (name || label) ? contrast : '', clipped, contrastVisible,
+        lit: row.classList.contains('is-lit'),
         category: slot || 'fitted', role: 'fitted', text: norm(row.textContent).slice(0, 200),
         box: [r.left, r.top, r.right, r.bottom], visible: r.width > 0 && r.height > 0,
       };
@@ -395,9 +396,14 @@ export async function readFittedRows(page) {
     const back = await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucibleDraft', null, { timeout: 8000 }).then(() => true, () => false);
     if (!back) throw err;
   }
+  // A lit row that is showing its own contrast proves selection paints the sentence.
+  // Other rows' hidden contrast then counts, and the verdict labels that credit inferred.
+  const selectedShowsOwn = rows.some((row) => row.lit && row.contrastVisible && row.contrast);
   return {
     rows: rows.map((row) => {
-      const seen = fittedSentenceThePlayerSees({ contrast: row.contrast, clipped: row.clipped, visible: row.contrastVisible });
+      const seen = fittedSentenceThePlayerSees({
+        contrast: row.contrast, clipped: row.clipped, visible: row.contrastVisible, selectedShowsOwn,
+      });
       return { ...row, desc: seen.desc, explanationSurface: seen.surface };
     }),
   };
@@ -406,17 +412,20 @@ export async function readFittedRows(page) {
 /**
  * The sentence a player can read for one armory offer.
  * The Swarm rail hides `.sf-cru-blurb`. The explanation is the reading panel
- * (`.orr-armory-reading__blurb`) for the row under the pointer. A hidden blurb
- * counts only when that panel is on screen and is showing the lit row's own
- * sentence — selecting this row paints the same string. A hidden blurb with no
- * reading panel is not an explanation.
+ * (`.orr-armory-reading__blurb`) for the lit row, and only when that panel's
+ * words are the lit row's own blurb (or the lit row has no blurb to compare).
+ * A visible panel that names a different sentence is a mismatch, not an
+ * explanation. Another row's hidden blurb counts only once that match holds.
  */
 export function explanationThePlayerSees({ blurb = '', blurbVisible = false, lit = false, reading = '', readingVisible = false, litBlurb = '' } = {}) {
   const text = norm(blurb);
   const shown = norm(reading);
   const litText = norm(litBlurb);
   if (blurbVisible) return { desc: text, surface: 'card' };
-  if (lit && readingVisible) return { desc: shown, surface: 'reading' };
+  if (lit && readingVisible) {
+    if (shown.length > 0 && (litText === '' || shown === litText)) return { desc: shown, surface: 'reading' };
+    if (shown.length > 0 && litText !== '') return { desc: '', surface: 'reading-mismatch', panel: shown, expected: litText };
+  }
   const panelWired = readingVisible && shown.length > 0 && litText === shown;
   if (panelWired && text.length > 0) return { desc: text, surface: 'reading' };
   return { desc: '', surface: 'none' };
@@ -425,13 +434,15 @@ export function explanationThePlayerSees({ blurb = '', blurbVisible = false, lit
 /**
  * The sentence a player can read on a refit row.
  * A contrast marked `--drawn` is clipped for the screen reader; the row draws scales, not that sentence.
- * Otherwise the sheet shows the sentence on the selected row and hides it on the others, so the words count.
+ * A contrast on screen counts. A hidden contrast counts only when a lit row is
+ * showing its own contrast, which is the proof that selection paints the sentence.
+ * That credit is inferred for the unselected row (`row-on-select`).
  */
-export function fittedSentenceThePlayerSees({ contrast = '', clipped = false, visible = false } = {}) {
+export function fittedSentenceThePlayerSees({ contrast = '', clipped = false, visible = false, selectedShowsOwn = false } = {}) {
   const text = norm(contrast);
   if (clipped) return { desc: '', surface: 'clipped' };
   if (visible && text) return { desc: text, surface: 'row' };
-  if (text) return { desc: text, surface: 'row-on-select' };
+  if (selectedShowsOwn && text) return { desc: text, surface: 'row-on-select' };
   return { desc: '', surface: 'none' };
 }
 
@@ -472,7 +483,10 @@ export async function readArmory(page) {
       blurb: c.blurb, blurbVisible: c.blurbVisible, lit: c.lit,
       reading: raw.reading, readingVisible: raw.readingVisible, litBlurb: lit ? lit.blurb : '',
     });
-    return { ...c, desc: seen.desc, explanationSurface: seen.surface };
+    return {
+      ...c, desc: seen.desc, explanationSurface: seen.surface,
+      ...(seen.surface === 'reading-mismatch' ? { panel: seen.panel, expected: seen.expected } : {}),
+    };
   });
 }
 

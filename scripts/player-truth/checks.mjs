@@ -568,8 +568,16 @@ export function checkLoadout(trace) {
   const offers = L.items || [];
   const fitted = L.fitted || [];
   const offenders = [];
+  const clipQuote = (s) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  const mismatched = new Set();
+  for (const it of [...offers, ...fitted, ...(L.undescribed || [])]) {
+    if (!it || it.explanationSurface !== 'reading-mismatch' || mismatched.has(it.name)) continue;
+    mismatched.add(it.name);
+    offenders.push({ line: `reading panel does not match lit row ${it.name}: panel "${clipQuote(it.panel)}" vs blurb "${clipQuote(it.expected)}"`, t: L.shotT, box: it.box });
+  }
   for (const it of L.irrelevant || []) offenders.push({ line: `irrelevant to ${trace.meta.mode}: ${it.name} (${it.category}) — ${it.reason}`, t: L.shotT, box: it.box });
   for (const it of L.undescribed || []) {
+    if (it.explanationSurface === 'reading-mismatch') continue;
     const surface = it.explanationSurface && it.explanationSurface !== 'card' ? ` (${it.explanationSurface})` : '';
     offenders.push({ line: `no description: ${it.name}${surface}`, t: L.shotT, box: it.box });
   }
@@ -588,7 +596,8 @@ export function checkLoadout(trace) {
   else if (L.offerSource === 'door-only') source = `preparation lists no item shelf: "${quote}"`;
   const fittedNote = `${fitted.length} fitted${L.fittedRead === false ? ' (fit list not read)' : ''}`;
   const surfaces = [...new Set([...offers, ...fitted].map((it) => it && it.explanationSurface).filter((s) => s && s !== 'card'))];
-  const surfaceNote = surfaces.length ? `; explanation surface: ${surfaces.join(', ')}` : '';
+  const surfaceLabel = (s) => (s === 'row-on-select' ? 'row-on-select (inferred)' : s);
+  const surfaceNote = surfaces.length ? `; explanation surface: ${surfaces.map(surfaceLabel).join(', ')}` : '';
   const detail = `${source}; ${fittedNote}; swap probe: ${L.swapProbe}${surfaceNote}`;
   const status = offenders.length ? 'FAIL' : (L.swapProbe === 'not-run' ? 'UNKNOWN' : 'PASS');
   const counts = `${(L.irrelevant || []).length} irrelevant · ${(L.undescribed || []).length} undescribed · ${(L.silentSwaps || []).length} silent swaps`;
@@ -597,6 +606,7 @@ export function checkLoadout(trace) {
   if (L.offerSource === 'game-empty') value = `game offered nothing${quote ? ` ("${quote}")` : ''} · ${counts}`;
   else if (L.offerSource === 'harness-miss') value = `harness failed to read the screen${quote ? ` ("${quote}")` : ''} · ${counts}`;
   else if (L.offerSource === 'door-only') value = `no item shelf${quote ? ` ("${quote}")` : ''} · ${counts}`;
+  if (surfaces.includes('row-on-select')) value = `${value} · row-on-select (inferred)`;
   return result('loadout', 'Loadout readable and relevant', status,
     value, '0 · 0 · 0',
     detail, offenders.slice(0, 6), offenders.filter((o) => o.t != null).slice(0, 1));

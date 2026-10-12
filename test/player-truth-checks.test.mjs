@@ -358,6 +358,23 @@ test('loadout names a game-empty shelf, a harness miss, and a fit count with no 
   } });
   assert.equal(door.status, 'FAIL');
   assert.match(door.offenders[0].line, /preparation says 4 fitted but names none/);
+  const mismatch = checkLoadout({ meta: { mode: 'swarm', hasLoadout: true }, loadout: {
+    items: [{ name: 'Pulse Laser S', category: 'Weapons', desc: '', explanationSurface: 'reading-mismatch', panel: 'Reads what a hull carries in the hold.', expected: 'A pulse laser for the hardpoint.' }],
+    fitted: [], irrelevant: [],
+    undescribed: [{ name: 'Pulse Laser S', explanationSurface: 'reading-mismatch', panel: 'Reads what a hull carries in the hold.', expected: 'A pulse laser for the hardpoint.' }],
+    silentSwaps: [], swapProbe: 'no install possible', offerSource: 'cards',
+  } });
+  assert.equal(mismatch.status, 'FAIL');
+  assert.match(mismatch.offenders[0].line, /reading panel does not match lit row Pulse Laser S: panel "Reads what a hull carries in the hold\." vs blurb "A pulse laser for the hardpoint\."/);
+  assert.equal(mismatch.offenders.filter((o) => /no description: Pulse Laser S/.test(o.line)).length, 0);
+  const inferred = checkLoadout({ meta: { mode: 'swarm', hasLoadout: true }, loadout: {
+    items: [], fitted: [{ name: 'Pulse Laser S', category: 'fitted', desc: 'Hits harder than the fitted gun.', explanationSurface: 'row-on-select' }],
+    irrelevant: [], undescribed: [], silentSwaps: [], swapProbe: 'no install possible',
+    offerSource: 'cards',
+  } });
+  assert.equal(inferred.status, 'PASS');
+  assert.match(inferred.detail, /explanation surface: row-on-select \(inferred\)/);
+  assert.match(inferred.value, /row-on-select \(inferred\)/);
 });
 
 test('menu clicks are not flight input; canvas presses and keys are', async () => {
