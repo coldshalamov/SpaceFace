@@ -1792,6 +1792,8 @@ const skerZones = requireArray(SECTOR_ZONES[SKER_ACTIVITY_SECTOR_ID], 'Sker sect
 const skerAnchors = requireRecord(SECTOR_ANCHORS[SKER_ACTIVITY_SECTOR_ID], 'Sker sector anchors');
 const skerHavenZone = findById(skerZones, 'zone_sker_haven', 'Skerris Deep zone');
 const skerBeltZone = findById(skerZones, 'zone_sker_belt', 'Press-Gang Seams zone');
+// Gate-camp, stash, and Pallas-gate rows are loaded as existence proofs, not consumed directly —
+// the comments below cite their true bearings, so a missing or renamed row must fail at load.
 const skerGatecampZone = findById(skerZones, 'zone_sker_gatecamp', 'Reach Gate-Camp zone');
 const stationSker = findById(skerAnchors.stations, 'station_sker', 'Sker Bazaar station anchor');
 const stashPoi = findById(skerAnchors.pois, 'poi_stash', 'Sker stash POI');
@@ -1828,6 +1830,8 @@ const skerApronObjects = Object.freeze([
   // to the real stash at poi_stash — the pod is where the apron's goods actually live, and the
   // runner's far leg points through it stash-ward. Descriptor-only, like every non-Ceres object
   // slot: the targetRef gives the route marks a name to point at, not a materialized body.
+  // Band-edge watch: the pod resolves at ~94.6 WU — a hair under the immediate band ceiling —
+  // so any offset nudge positive pushes it out of the band the pocket asserts.
   objectSlot({
     id: 'sker_fence_hold_pod',
     pocketId: skerApronId,
@@ -1875,7 +1879,7 @@ const skerSeamActors = Object.freeze([
   // The crew that is worked: a mining barge shuttling between the seam's face — on the true
   // bearing to the gate-camp whose guns cover it (-41.7 deg vs the camp's own -41.55) — and the
   // crate that tallies the take, parked under the tally mark's own bearing (+76.5 deg). Wedge
-  // opened wide, 118.3 deg / 197.5 WU over 40 s — a worked pace between two fixed points of work.
+  // opened wide, 118.2 deg / 197.5 WU over 40 s — a worked pace between two fixed points of work.
   skerActor('sker_seam_toiler', skerSeamId, 'miner', 'miner', point(-42, -28),
     'sker_seam_tally_loop', 40, [
       mark('sker_toiler_face', 82, -73, 'field:f_sker_1'),
@@ -1908,7 +1912,7 @@ export const SKER_ACTIVITY_POCKETS = Object.freeze([
   pocket({
     id: skerSeamId,
     label: 'Press-Gang Seam',
-    identity: Object.freeze({ zoneId: skerBeltZone.id }),
+    identity: Object.freeze({ zoneId: skerBeltZone.id, fieldId: 'f_sker_1' }),
     anchor: canonicalAnchor({
       kind: 'zone', id: skerBeltZone.id, zoneId: skerBeltZone.id,
       placeId: null, localPos: skerBeltZone.center,

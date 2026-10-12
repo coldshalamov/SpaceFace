@@ -212,6 +212,7 @@ test('the Sker shift is the Bazaar\'s day: the fence apron, the press-gang seam'
   // face and the crate that tallies the take.
   assert.equal(seam.activityAnchor.kind, 'zone', 'the seam anchors on its zone, not the market');
   assert.equal(seam.activityAnchor.zoneId, 'zone_sker_belt');
+  assert.equal(seam.pq020Identity.fieldId, 'f_sker_1', 'the seam works the belt\'s authored field');
   const toiler = activityActorSlotById('sker_seam_toiler');
   assert.equal(toiler.presentationRole, 'miner', 'the press-ganged crew flies a mining barge');
   assert.equal(toiler.jobKind, 'miner', 'the crew flies the proven extraction kernel');
