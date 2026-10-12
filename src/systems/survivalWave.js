@@ -566,7 +566,35 @@ export const survivalWave = {
         this._swarm.durationTicks -= shift;
       }
     }
+    this._spaceOpeningArrivals();
     this._emit('run:openingLessonReleased', { wave: this._wave, tick: this._cursor });
+  },
+
+  /**
+   * The held batches would otherwise all land inside the release beat: a new pilot who just won
+   * the one-on-one meets the whole pack at once. Successive batches keep their order and their
+   * shared tick, a breath apart.
+   */
+  _spaceOpeningArrivals() {
+    const ticks = [];
+    for (const item of this._pending) {
+      const entry = item && item.entry;
+      if (entry && Number.isInteger(entry.atTick) && entry.atTick > this._cursor) ticks.push(entry.atTick);
+    }
+    if (ticks.length < 2) return;
+    ticks.sort((x, y) => x - y);
+    const moved = new Map();
+    let prev = null;
+    for (const t of ticks) {
+      if (moved.has(t)) continue;
+      const next = prev == null ? t : Math.max(t, prev + OPENING_ARRIVAL_GAP_TICKS);
+      moved.set(t, next);
+      prev = next;
+    }
+    for (const item of this._pending) {
+      const entry = item && item.entry;
+      if (entry && moved.has(entry.atTick)) entry.atTick = moved.get(entry.atTick);
+    }
   },
 
   /**
