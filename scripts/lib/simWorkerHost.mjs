@@ -880,6 +880,11 @@ export function createSimHost() {
         });
         if (result && result.ok === true) {
           host.pendingGameStarted = { newGamePlus: (args && args.newGamePlus) || null };
+          // A Crucible/Swarm launch: the receipt says so, so onboarding stands down even if
+          // the main-side sandbox hook's run:beginRequested has not landed yet.
+          if (args && args.opts && args.opts.crucibleLaunch === true) {
+            host.pendingGameStarted.crucibleLaunch = true;
+          }
         }
         return result;
       }],

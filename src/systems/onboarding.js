@@ -1006,7 +1006,8 @@ export const onboarding = {
     this._latchDenialStreak = 0;
     this._shelfPending = null;
     this._shelfStraightS = 0;
-    if (isRacingCorridorSession(st) || (st.run?.kind === 'survival' && st.run.phase !== 'inactive')) {
+    if (isRacingCorridorSession(st) || payload?.crucibleLaunch === true
+      || (st.run?.kind === 'survival' && st.run.phase !== 'inactive')) {
       // The fresh world may already have reused the old tutorial actor IDs.
       this._teardown({ removeActors: false });
       st.onboarding = { active: false, finished: false };
@@ -1922,6 +1923,8 @@ export const onboarding = {
     if (!st || st.mode !== 'loading') return false;
     if (isRacingCorridorSession(st)) return false;
     if (payload && payload.scenario != null) return false;
+    // A Crucible/Swarm launch owns its arena; its run may begin only after this (worker lane).
+    if (payload && payload.crucibleLaunch === true) return false;
     const run = st.run;
     if (run && (run.kind === 'survival' || run.kind === 'lab') && run.phase !== 'inactive') return false;
     if (st.settings && st.settings.gameplay && st.settings.gameplay.tutorialHints === false) return false;

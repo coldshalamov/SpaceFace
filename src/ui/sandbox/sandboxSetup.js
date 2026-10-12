@@ -367,12 +367,18 @@ export const SCENARIO_PRESETS = Object.freeze([
 ]);
 
 function gameNewOptionsForSandboxConfig(config) {
-  if (!config || typeof config !== 'object'
-    || !Object.prototype.hasOwnProperty.call(config, 'seed')) return {};
+  if (!config || typeof config !== 'object') return {};
+  const out = {};
   const seed = config.seed;
-  return Number.isSafeInteger(seed) && seed >= 1 && seed <= 0xffffffff
-    ? { seed }
-    : {};
+  if (Object.prototype.hasOwnProperty.call(config, 'seed')
+    && Number.isSafeInteger(seed) && seed >= 1 && seed <= 0xffffffff) out.seed = seed;
+  // A Crucible/Swarm launch rides game:new marked so the sim-side boot knows before
+  // game:scenePrepared that this is not an Adventure opening. Under the worker lane the boot
+  // (and onboarding's scenePrepared staging) runs in the worker, which never sees this
+  // module's pendingConfig — without the mark it stages the Training Derelict rescue opening
+  // and the run lands in the Adventure tutorial instead of the armory.
+  if (config.survivalSetup != null) out.crucibleLaunch = true;
+  return out;
 }
 
 /**
