@@ -166,8 +166,12 @@ export async function racingToFlight(page, step) {
   await page.waitForFunction(() => { const b = document.querySelector('#screens .race-board-launch'); return b && !b.disabled; }, null, { timeout: 60000 });
   const word = await page.evaluate(() => document.querySelector('#screens .race-board-launch').textContent.trim());
   await page.locator('#screens .race-board-launch').first().click();
+  // The board asks "Launch a temporary circuit flight?" before it leaves the menu: answer it like a player.
+  const ok = page.locator('.sf-confirm .sf-confirm__ok').first();
+  let confirmed = null;
+  try { await ok.waitFor({ state: 'visible', timeout: 15000 }); confirmed = (await ok.textContent()).trim(); await ok.click(); } catch { /* no confirm on this build */ }
   await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 600000 });
   await waitBootOverlayGone(page);
-  step('preparation', true, `"${word}" on ${course}`);
+  step('preparation', true, `"${word}" on ${course}${confirmed ? ` → confirm "${confirmed}"` : ''}`);
   return { course };
 }
