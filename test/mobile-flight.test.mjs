@@ -101,6 +101,17 @@ test('wheel top-left-bottom resolves all six sectors and cancels safely',()=>{
  assert.equal(wheelSlot(200,300,400,300,140),-1);
  assert.equal(wheelSlot(430,300,400,300,140),-1);
 });
+
+test('a portrait orbit resolves all seven powers on both hands, including Gyre',()=>{
+ for(const side of ['left','right'])for(let i=0;i<7;i++){
+  const a=(i+.5)*Math.PI*2/7, sign=side==='left'?1:-1;
+  const x=195+sign*Math.sin(a)*100, y=358-Math.cos(a)*100;
+  assert.equal(wheelSlot(x,y,195,358,122,7,-1,side,360),i);
+ }
+ assert.equal(wheelSlot(195,358,195,358,122,7,-1,'right',360),-1,'middle cancels');
+ const a=355*Math.PI/180;
+ assert.equal(wheelSlot(195+Math.sin(a)*100,358-Math.cos(a)*100,195,358,122,6,6,'left',360),5,'a previous bank cannot retain its seventh slot');
+});
 test('steering respects hull turn rate rather than teleporting orientation',()=>{
  assert.deepEqual(steerToward({x:1,z:0},0,1),{turn:0,thrust:1});
  const f=steerToward({x:-1,z:0},0,1);assert.equal(Math.abs(f.turn),1);assert.equal(f.thrust,.18);

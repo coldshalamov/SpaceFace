@@ -144,15 +144,18 @@ export function distanceToRect(x, y, rect) {
   const dy = Math.max(rect.top - y, 0, y - rect.bottom);
   return Math.hypot(dx, dy);
 }
-/** Semicircle opening inward from an edge. `side` 'left' mirrors it for a left-handed rail. */
-export function wheelSlot(x, y, cx, cy, radius, count = 6, previous = -1, side = 'right') {
+/** Inward arc in landscape, full orbit in portrait; both mirror for the other hand. */
+export function wheelSlot(x, y, cx, cy, radius, count = 6, previous = -1, side = 'right', span = 180) {
   const dx = x - cx, dy = y - cy, d = Math.hypot(dx, dy);
   const outward = side === 'left' ? -dx : dx;
-  if (outward > 12 || d < radius * 0.30 || d > radius * 1.30) return -1;
-  const angle = Math.atan2(side === 'left' ? dx : -dx, -dy);
-  if (angle < 0 || angle > Math.PI) return -1;
-  const sector = Math.PI / count;
-  if (previous >= 0 && Math.abs(angle - (previous + 0.5) * sector) < sector * 0.62) return previous;
+  if ((span < 360 && outward > 12) || d < radius * 0.30 || d > radius * 1.30) return -1;
+  let angle = Math.atan2(side === 'left' ? dx : -dx, -dy);
+  if (span === 360 && angle < 0) angle += Math.PI * 2;
+  const arc = span * Math.PI / 180;
+  if (angle < 0 || angle > arc) return -1;
+  const sector = arc / count;
+  const delta = Math.abs(angle - (previous + 0.5) * sector);
+  if (previous >= 0 && previous < count && Math.min(delta, span === 360 ? arc - delta : delta) < sector * 0.62) return previous;
   return clamp(Math.floor(angle / sector), 0, count - 1);
 }
 export function canFly(state, documentLike) {

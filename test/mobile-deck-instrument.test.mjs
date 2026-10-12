@@ -70,6 +70,20 @@ test('wheel sectors fan counter-clockwise from the top for the right hand and mi
   assert.equal(sectorDeg(0, 'left'), 15); assert.equal(sectorDeg(5, 'left'), 165);
 });
 
+test('every power stays on the wheel when a bank gains a seventh choice', () => withDoc(doc => {
+  const wheel = createWheel(doc, { pages: POWER_PAGES, icon, onUse() {}, onPage() {} });
+  wheel.open({ cx: 370, cy: 360, radius: 140, side: 'right' }, 0, false);
+  const [nodes] = byClass(wheel.root, 'mf-nodes');
+  assert.equal(nodes.children.length, 7);
+  for (const node of nodes.children) assert.ok(Number.parseFloat(node.style.left) < 370, 'all choices open inward');
+  assert.equal(sectorDeg(6, 'right', 7), -180 * 6.5 / 7);
+  wheel.open({ cx: 195, cy: 358, radius: 122, side: 'right', span: 360 }, 0, true);
+  for (const node of nodes.children) {
+    const x = Number.parseFloat(node.style.left), y = Number.parseFloat(node.style.top);
+    assert.ok(x >= 40 && x <= 350 && y >= 230 && y <= 490, `portrait choice ${x},${y} fits`);
+  }
+}));
+
 test('the stick instrument draws the Hand on the very first frame and follows the pull', () => withDoc(doc => {
   const stick = createStick(doc);
   const pointer = { ox: 100, oy: 300, x: 130, y: 260, radius: 70, boost: false };

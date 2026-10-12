@@ -98,7 +98,7 @@ function makeEvent(type, init = {}) {
   return e;
 }
 
-function makeWorld({ width = 390, height = 844 } = {}) {
+function makeWorld({ width = 390, height = 844, visibleHeight = null } = {}) {
   const frames = []; const clock = { now: 1000 };
   const win = {
     innerWidth: width, innerHeight: height, listeners: [], visualViewport: null, navigator: {},
@@ -124,6 +124,13 @@ function makeWorld({ width = 390, height = 844 } = {}) {
     addEventListener(type, fn) { this.listeners.push({ type, fn }); },
     removeEventListener(type, fn) { this.listeners = this.listeners.filter(l => !(l.type === type && l.fn === fn)); },
   };
+  if (visibleHeight) {
+    win.visualViewport = { height: visibleHeight, scale: 1, listeners: [],
+      addEventListener(type, fn) { this.listeners.push({ type, fn }); },
+      removeEventListener(type, fn) { this.listeners = this.listeners.filter(l => !(l.type === type && l.fn === fn)); },
+      resize(height) { this.height = height; this.listeners.filter(l => l.type === 'resize').forEach(l => l.fn()); },
+    };
+  }
   doc.documentElement = new Elem('html', doc); doc.head = new Elem('head', doc); doc.body = new Elem('body', doc);
   doc.documentElement.append(doc.head, doc.body);
   const canvas = new Elem('canvas', doc); canvas.setAttribute('id', 'gl-canvas'); doc.body.append(canvas);
@@ -131,8 +138,8 @@ function makeWorld({ width = 390, height = 844 } = {}) {
 }
 
 /** A 390x844 phone in flight with the real view mounted. `finger` drives pointer events through the window. */
-function mount() {
-  const world = makeWorld(); const { win, doc } = world;
+function mount(options) {
+  const world = makeWorld(options); const { win, doc } = world;
   globalThis.document = doc; // svg() and the motion helpers read the global document
   const state = { tick: 1, mode: 'flight', playerId: 1, paused: false, player: { alive: true }, ui: { screenStack: [] }, input: {}, entities: new Map() };
   const model = new MobileGestures();
@@ -280,6 +287,45 @@ test('rotating the phone lets go of the stick and the pinned wheel; a small resi
     assert.equal(wheelOpen(w), false);
     assert.equal(w.doc.documentElement.dataset.sfMobileWheel, '0');
     assert.equal(w.q('.mf-stick').hidden, true);
+  } finally { w.dispose(); }
+});
+
+test('the iPhone browser bar relays out a pinned wheel without losing the other thumb', () => {
+  const w = mount({ visibleHeight: 724 });
+  try {
+    w.finger.down(1, 100, 540); pinWheel(w);
+    w.win.visualViewport.resize(664);
+    assert.ok(w.model.stick, 'browser chrome does not cancel the flight thumb');
+    assert.equal(wheelOpen(w), true);
+    assert.equal(w.view.root.style.height, '664px');
+    assert.equal(w.q('.mf-wheel').dataset.orbit, '1');
+    const nodes = w.q('.mf-nodes').children;
+    for (const n of nodes) assert.ok(Number.parseFloat(n.style.top) < 490, 'all powers clear the key cluster');
+  } finally { w.dispose(); }
+});
+
+test('swiping to the seventh portrait power requests Gyre while flight stays held', () => {
+  const w = mount({ height: 664 });
+  try {
+    w.finger.down(1, 100, 520);
+    const edge = w.q('.mf-edge');
+    w.finger.down(2, 366, 360, edge);
+    const gyre = w.q('.mf-nodes').children[6];
+    const x = Number.parseFloat(gyre.style.left), y = Number.parseFloat(gyre.style.top);
+    w.finger.move(2, x, y, edge); w.finger.up(2, x, y, edge);
+    assert.deepEqual(w.calls.activate, ['gyreSnare']);
+    assert.equal(wheelOpen(w), false); assert.ok(w.model.stick, 'the other thumb keeps flying');
+  } finally { w.dispose(); }
+});
+
+test('a landscape tap pins the wheel at the same place as its first contact', () => {
+  const w = mount({ width:844, height:390 });
+  try {
+    const edge = w.q('.mf-edge');
+    w.finger.down(2, 820, 120, edge);
+    const first = w.q('.mf-nodes').children[0].style.top;
+    w.finger.up(2, 820, 120, edge);
+    assert.equal(w.q('.mf-nodes').children[0].style.top, first, 'pinning never jumps the power rail into its tabs');
   } finally { w.dispose(); }
 });
 
