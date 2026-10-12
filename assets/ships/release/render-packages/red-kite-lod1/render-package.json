@@ -283,7 +283,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "481a2b9c8cd31b055a9dd67ad7a23e184e2f0ddb2ad74bfa0ac040022bfa86d6",
+  "contentHash": "a029c8d330f70df2f9b229c3280847d8e6e4413e58c2decff391dc5afc39b540",
   "dynamicGroups": [
     {
       "id": "sf.render.red-kite-lod1.node.lod1-motion-red-kite-clamp-port-armor.dynamic",
@@ -2357,8 +2357,8 @@
       "uri": "red_kite_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 251589,
+      "sha256": "6f1a9e5f4d4cab750b6c4b83c7f0c670bdec377831156db4047a427ea294027e",
       "uri": "pilots.json"
     }
   },
@@ -3340,7 +3340,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/red_kite_lod1.glb"
   },
-  "runtimeHash": "4cff7700903d796ecc9284031d61e5acaa51b6e31f7e66f6edf06b340e04cb6e",
+  "runtimeHash": "87410f7f99f9f82959572244eed6d1daed03dc404c1a73c54ee0e4591b37f310",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "666ca477b40edbbd017e8e9b790b3d3e11c5e03f079acb59dbaea362960ff14e",
+  "contentHash": "3eea2a20617111159e9b1fbbb4b3fe8762a67a92476eb2385de7de6c2a19c1aa",
   "dynamicGroups": [
     {
       "id": "sf.render.lattice-warden.node.lod0-hook-drive-core.dynamic",
@@ -3680,8 +3680,8 @@
       "uri": "lattice_warden.glb"
     },
     "sourceManifest": {
-      "bytes": 220580,
-      "sha256": "52e74ff56d9e5cdfdbb3b7a880277bcd0ebc001559de3b0601fb64ed3c57845d",
+      "bytes": 251589,
+      "sha256": "6f1a9e5f4d4cab750b6c4b83c7f0c670bdec377831156db4047a427ea294027e",
       "uri": "pilots.json"
     }
   },
@@ -5353,7 +5353,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/lattice_warden.glb"
   },
-  "runtimeHash": "69ac9aed6cd960aabf4f1fffa99efeb6523fa05fc4f29eb4651f07f7f579fe65",
+  "runtimeHash": "248cc0a0baf60d1fe3cb20e73dc3883f3c77845a4f5e3c92d0bfdb9ff61bede2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

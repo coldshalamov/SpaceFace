@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c9e4d69781d3c50a88c16c0bec19093a0228ea9025d0d8833e5040a3dfc68917",
+  "contentHash": "7685a269c8ad9aaac627968e567e61c024c4398b0c9eac428c93c4fa1d1ab490",
   "dynamicGroups": [
     {
       "id": "sf.render.mule-production-v1-lod2.node.lod0-motion-hull-core-hook-armor-bumper-mechanical.dynamic",
@@ -2790,8 +2790,8 @@
       "uri": "mule_production_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 251589,
+      "sha256": "6f1a9e5f4d4cab750b6c4b83c7f0c670bdec377831156db4047a427ea294027e",
       "uri": "pilots.json"
     }
   },
@@ -4094,7 +4094,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/mule_production_v1_lod2.glb"
   },
-  "runtimeHash": "5f7c3ed5c04dd142de4081b78225e727c4fef65b54e73d95bb4e9a11bd0f85e2",
+  "runtimeHash": "8e4da1f2cbc45239f61cb19a27b6a48a864fc564f42a63688f11595cd32950a6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

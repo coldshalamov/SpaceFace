@@ -933,7 +933,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e909c9893f08cb61324ada3004cdc71c93714c9435dc32eabad985cfb74b50fa",
+  "contentHash": "03a958085d2098cbc463ba5b024da11c995d3e3672cb045d41a3447b384f60bf",
   "dynamicGroups": [
     {
       "id": "sf.render.stormshift-collector.node.lod0-hook-drive-core.dynamic",
@@ -12915,8 +12915,8 @@
       "uri": "ship_stormshift_collector_v01.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 251589,
+      "sha256": "6f1a9e5f4d4cab750b6c4b83c7f0c670bdec377831156db4047a427ea294027e",
       "uri": "pilots.json"
     }
   },
@@ -19029,7 +19029,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ship_stormshift_collector_v01.glb"
   },
-  "runtimeHash": "a5e0268c56007220a9ea2d8075027bf275e77bab6e3b02e00776ddadff0d3be7",
+  "runtimeHash": "79bc821aca378ab647aae1f992be2d638a52ddfbbf422035e3946c0c99f1d5c1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

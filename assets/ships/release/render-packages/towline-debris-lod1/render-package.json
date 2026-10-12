@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1600e993e9fbb861b560dd086b3544856c2b6ca13b5105277ee53472a541ae97",
+  "contentHash": "2612b36b13b88bef6403c95f1b3f65acf30d31a08d3daf5fc60d8b6e4fc27f30",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -774,8 +774,8 @@
       "uri": "towline_debris_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 270120,
-      "sha256": "71a9d3f0804231cafe110ef0726e8db701a10a2c3b2e1780b82b2cf5f9689b1e",
+      "bytes": 251589,
+      "sha256": "6f1a9e5f4d4cab750b6c4b83c7f0c670bdec377831156db4047a427ea294027e",
       "uri": "pilots.json"
     }
   },
@@ -1017,7 +1017,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/wholeships/towline_debris_lod1.glb"
   },
-  "runtimeHash": "f2ef0610a38dbfe1ec7e468a522d67f77cb5e4007cd62da26f6d9cdaf803d888",
+  "runtimeHash": "aa44596bee162de1e7662404a533670e003079cf156588d5b97c80d3268d8bb2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
