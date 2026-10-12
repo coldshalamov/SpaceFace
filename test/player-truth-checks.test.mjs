@@ -195,4 +195,11 @@ test('Open armory is ready on the draft screen and lost in a non-draft world', (
   assert.match(line, /mode=flight kind=adventure phase=inactive top=none/);
   assert.match(line, /Ceres Refinery/);
   assert.ok(line.length < 180);
+  const parked = formatArmoryMiss({ mode: 'flight', kind: 'adventure', phase: 'inactive', top: null, x: -1900, z: -2200, hud: 'TRAINING DERELICT' });
+  assert.match(parked, /at -1900,-2200 helios_core spawn/);
+  assert.ok(parked.length < 180);
+  const gauntlet = { top: null, mode: 'flight', kind: 'survival', phase: 'active' };
+  assert.equal(classifyArmoryArrival(gauntlet, ARMORY_WORLD_GRACE_MS), 'lost');
+  assert.equal(classifyArmoryArrival(gauntlet, ARMORY_WORLD_GRACE_MS, { acceptSurvival: true }), 'ready');
+  assert.match(formatArmoryMiss(gauntlet, 'Enter the Gauntlet'), /^Enter the Gauntlet missed the draft:/);
 });

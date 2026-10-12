@@ -110,7 +110,10 @@ export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantH
     await clickText(page, 'Open armory');
     await waitForArmory(page);
   } else {
+    // Gauntlet does not stop on the draft screen. A survival run is the landing.
+    // The same adventure/inactive flight that swallows Swarm is still a miss.
     await clickText(page, 'Enter the Gauntlet');
+    await waitForArmory(page, { acceptSurvival: true, verb: 'Enter the Gauntlet' });
   }
   return { arenas, seedSet, hull, hulls };
 }
@@ -124,9 +127,11 @@ export const ARMORY_WORLD_GRACE_MS = 60000;
  * or loading world that is not in draft, held past the grace, missed the armory.
  * @returns {'ready'|'wait'|'lost'}
  */
-export function classifyArmoryArrival(snap, flightForMs) {
+export function classifyArmoryArrival(snap, flightForMs, opts = {}) {
   if (!snap || typeof snap !== 'object') return 'wait';
   if (snap.top === 'crucibleDraft') return 'ready';
+  // Gauntlet never opens the draft screen. A live survival run is the landing.
+  if (opts.acceptSurvival && snap.kind === 'survival' && snap.phase && snap.phase !== 'inactive') return 'ready';
   const inWorld = snap.mode === 'flight' || snap.mode === 'loading';
   if (!inWorld) return 'wait';
   if (snap.phase === 'draft') return 'wait';
@@ -135,13 +140,20 @@ export function classifyArmoryArrival(snap, flightForMs) {
 }
 
 /** First line of a route failure. formatRouteFailure keeps 180 characters of it. */
-export function formatArmoryMiss(snap) {
+export function formatArmoryMiss(snap, verb = 'Open armory') {
   const top = snap && snap.top ? snap.top : 'none';
   const mode = snap && snap.mode ? snap.mode : 'none';
   const kind = snap && snap.kind ? snap.kind : 'none';
   const phase = snap && snap.phase ? snap.phase : 'none';
-  const hud = String(snap && snap.hud || '').replace(/\s+/g, ' ').trim().slice(0, 60);
-  return `Open armory missed the draft: mode=${mode} kind=${kind} phase=${phase} top=${top}${hud ? ` hud="${hud}"` : ''}`;
+  const hud = String(snap && snap.hud || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+  let pos = '';
+  if (snap && Number.isFinite(snap.x) && Number.isFinite(snap.z)) {
+    pos = ` at ${Math.round(snap.x)},${Math.round(snap.z)}`;
+    // combatLabSetups.js helios_core. The door relocates here even when survival does not begin.
+    if (Math.round(snap.x) === -1900 && Math.round(snap.z) === -2200) pos += ' helios_core spawn';
+  }
+  const line = `${verb} missed the draft: mode=${mode} kind=${kind} phase=${phase} top=${top}${pos}${hud ? ` hud="${hud}"` : ''}`;
+  return line.length > 179 ? line.slice(0, 179) : line;
 }
 
 async function readArmorySnap(page) {
@@ -150,38 +162,42 @@ async function readArmorySnap(page) {
     const run = st && st.run;
     const hudEl = document.querySelector('.sf-crun') || document.querySelector('#hud');
     const sm = window.SF && window.SF.ctx && window.SF.ctx.screenManager;
+    const player = st && st.entityList && st.entityList.find((e) => e.id === st.playerId);
     return {
       top: sm && typeof sm.top === 'function' ? sm.top() : null,
       mode: st ? st.mode : null,
       kind: run ? run.kind : null,
       phase: run ? run.phase : null,
+      x: player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : null,
+      z: player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : null,
       hud: hudEl && hudEl.innerText ? hudEl.innerText.replace(/\s+/g, ' ').trim().slice(0, 80) : '',
     };
   }).catch(() => null);
 }
 
 /** Poll the live page. Ready on crucibleDraft. Lost when the world is not a draft. */
-async function waitForArmory(page, { timeoutMs = 300000, graceMs = ARMORY_WORLD_GRACE_MS } = {}) {
+async function waitForArmory(page, { timeoutMs = 300000, graceMs = ARMORY_WORLD_GRACE_MS, acceptSurvival = false, verb = 'Open armory' } = {}) {
   const deadline = Date.now() + timeoutMs;
   let flightSince = null;
   let last = null;
   while (Date.now() < deadline) {
     last = await readArmorySnap(page);
     if (last) {
-      const inWorld = (last.mode === 'flight' || last.mode === 'loading') && last.phase !== 'draft' && last.top !== 'crucibleDraft';
+      const survivalLive = acceptSurvival && last.kind === 'survival' && last.phase && last.phase !== 'inactive';
+      const inWorld = (last.mode === 'flight' || last.mode === 'loading') && last.phase !== 'draft' && last.top !== 'crucibleDraft' && !survivalLive;
       if (inWorld) {
         if (flightSince == null) flightSince = Date.now();
       } else if (last.phase !== 'draft') {
         flightSince = null;
       }
       const flightFor = flightSince == null ? 0 : Date.now() - flightSince;
-      const status = classifyArmoryArrival(last, flightFor >= graceMs ? graceMs : flightFor);
+      const status = classifyArmoryArrival(last, flightFor >= graceMs ? graceMs : flightFor, { acceptSurvival });
       if (status === 'ready') return last;
-      if (status === 'lost') throw new Error(formatArmoryMiss(last));
+      if (status === 'lost') throw new Error(formatArmoryMiss(last, verb));
     }
     await page.waitForTimeout(500);
   }
-  throw new Error(last ? formatArmoryMiss(last) : 'Open armory: page had no SF state before the draft opened');
+  throw new Error(last ? formatArmoryMiss(last, verb) : `${verb}: page had no SF state before the draft opened`);
 }
 
 const IRRELEVANT = {
