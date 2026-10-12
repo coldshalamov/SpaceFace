@@ -1,0 +1,35 @@
+name: INFERENCE ten-unit source checkout
+on:
+  push:
+    branches: ['inference/ten-units-2026-10-12']
+    paths: ['.github/workflows/inference-ten-source.yml']
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          sparse-checkout: |
+            src
+            test
+            scripts
+            design/program
+            design/inference-workflows
+            docs
+            data
+            styles
+            tools
+            .github
+      - name: Package tracked source only
+        run: |
+          git rev-parse HEAD > SOURCE_COMMIT.txt
+          tar --exclude=.git --exclude=node_modules --exclude=assets --exclude=.campaign -czf "$RUNNER_TEMP/inference-source.tar.gz" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inference-ten-source
+          path: ${{ runner.temp }}/inference-source.tar.gz
+          retention-days: 1
