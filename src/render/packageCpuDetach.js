@@ -665,6 +665,10 @@ async function rehydrateManifest(manifest) {
       record.version += 1;
       entry.detachedVersions.set(record, record.version);
     }
+    // The old stamp describes pre-refill attribute versions. A stamped-skip admission must
+    // not retire these new bytes before their first upload, nor certify an older GL context.
+    entry.geometry.userData.spacefaceGpuResident = false;
+    entry.uploadedOn = new WeakMap();
     entry.recordsDied = false;
     // The refill consumed the released-name/record pairs: a later re-detach re-collects them
     // fresh — clearing here keeps the list from accreting duplicates across cycles (W140-D3).

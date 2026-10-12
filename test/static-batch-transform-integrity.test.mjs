@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { buildStaticBatchGeometrySteps } from '../src/render/partsLibrary.js';
 import { clearStaticBatchGeometryCacheForTests } from '../src/render/staticBatchGeometryCache.js';
+import { collectUnresidentInstancedDrawables } from '../src/render/startupGpuResidency.js';
 import {
   createPackageDetachManifest, detachPackageGeometry, rehydrateDetachedGeometries,
   resetPackageDetachManifestsForTests, retainPackageGeometryCpu,
@@ -75,4 +76,17 @@ test('a later stepped batch refills exact authored attributes under a bounded CP
     batch.dispose();
   } finally { release(); release(); }
   assert.equal(detachPackageGeometry(geometry, {}), true, 'retirement resumes when composition releases its lease');
+});
+
+test('refill invalidates the old upload stamp before a shared instance admission retries retirement', async () => {
+  const geometry = fixture();
+  geometry.userData.spacefaceGpuResident = true;
+  detachPackageGeometry(geometry, {});
+  await rehydrateDetachedGeometries([geometry]);
+  const source = new THREE.InstancedMesh(geometry, new THREE.MeshStandardMaterial(), 1);
+  const pending = collectUnresidentInstancedDrawables([source]);
+  assert.deepEqual(pending, [source], 'the new attribute versions require a real upload');
+  assert.ok(geometry.attributes.normal.array.length > 0, 'stamp skip cannot empty refilled normals');
+  assert.ok(geometry.attributes.uv.array.length > 0, 'stamp skip cannot empty refilled texture coordinates');
+  source.material.dispose();
 });
