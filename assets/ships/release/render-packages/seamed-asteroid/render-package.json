@@ -59,7 +59,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "20196f1f9017e8e06c5d98b52417a16e7f6139316fcd68befa3f2cb82dc3f509",
+=======
+  "contentHash": "39949d5923348104bc5db8bdbb9f1e03991f6e592f0da5ed279cb47ee6da08e9",
+>>>>>>> origin/pr-maturation-261
   "dynamicGroups": [],
   "geometry": [
     {
@@ -76,7 +80,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54ac4a1321783a3b79d5d20d3eee484497d588b3a5c940e29cba158774d50021",
+      "geometryHash": "a488290a1d075711795b512cebd8e1f407b6db5af19a1842107f88c85d491161",
       "id": "sf.render.seamed-asteroid.mesh.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -101,7 +105,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "21c395bdac105ffe4e8d480214f030324741b41391da904b6e77267050075b94",
+      "geometryHash": "3ed0589a24ae44cf6ed426e9069642be4a59d9534396c3257dd7f4d2b89167dd",
       "id": "sf.render.seamed-asteroid.mesh.lod0-lights-warm.primitive.0",
       "indexCount": 708,
       "indexed": true,
@@ -110,7 +114,7 @@
       "meshName": "LOD0_Lights_Warm",
       "nodeId": "sf.render.seamed-asteroid.mesh.lod0-lights-warm",
       "primitiveIndex": 0,
-      "vertexCount": 422
+      "vertexCount": 370
     },
     {
       "bounds": {
@@ -126,7 +130,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f0ceec520eacbac77c123b25e41b3132f28cf5bbb556ca60b1278ff7d45416c",
+      "geometryHash": "513640125e3d52858b708da62093eacfddfe77f0230ce36edfde8aa892b5ea7d",
       "id": "sf.render.seamed-asteroid.mesh.lod0-stone-deep.primitive.0",
       "indexCount": 8697,
       "indexed": true,
@@ -151,7 +155,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a47b82fd4e4439cf986d2112865e0ee07197e68ce374fa56de18bf4dc94a3c49",
+      "geometryHash": "859c418c483450599c862c7b7dc0a01085a471af7038af521f96d1ef79cb1317",
       "id": "sf.render.seamed-asteroid.mesh.lod0-stone-strata.primitive.0",
       "indexCount": 1380,
       "indexed": true,
@@ -176,7 +180,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c01ce91439239c344d423a177da82a1ce8e665c643a324f320f35cdc9be72ff1",
+      "geometryHash": "dfc8bfd7a60b98e82888ab11b7b6f7a3be445ecc2e1a4ca2de8d63691e0e50df",
       "id": "sf.render.seamed-asteroid.mesh.lod0-stone-vein.primitive.0",
       "indexCount": 4458,
       "indexed": true,
@@ -201,7 +205,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "82c068c514db52dc7868c8d38a05de5e8b99bc4a969a870c4dc3f0b3a9742264",
+      "geometryHash": "41a361a85bcaceee72d6b07d7a7479442ffbe68de0dfeee841ec3cbb9582e726",
       "id": "sf.render.seamed-asteroid.mesh.lod0-stone.primitive.0",
       "indexCount": 7239,
       "indexed": true,
@@ -226,7 +230,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "75acb40fa3a03fd0fd37eb90e4b0fd78efb658525d694d686d80853d53f1a7e8",
+      "geometryHash": "64919dd6248406fe0376047ee90a65c3168c4f3ced34553beb5de3d44313fa06",
       "id": "sf.render.seamed-asteroid.mesh.lod1-stone-deep.primitive.0",
       "indexCount": 3588,
       "indexed": true,
@@ -251,7 +255,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eaa43fa3444f3fb8a39f2e0ef4b050471558fda9a9688b287f973083536a2b32",
+      "geometryHash": "37d71b10878ca70f7627dc85fb15605570c72d19f95bdb1b22e63f854f02092c",
       "id": "sf.render.seamed-asteroid.mesh.lod1-stone-strata.primitive.0",
       "indexCount": 354,
       "indexed": true,
@@ -276,7 +280,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "543ed5f8cecbaae75f8758ee4f1467079473658012567dead569a5b7c327bfae",
+      "geometryHash": "df56251fa6db655138f53df79784392c9bbaa2945ee7c9e461428986a70896b1",
       "id": "sf.render.seamed-asteroid.mesh.lod1-stone-vein.primitive.0",
       "indexCount": 1152,
       "indexed": true,
@@ -301,7 +305,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "39b0065c0b3c28cdb32c2721d9fc1f528bd1addc60b25db8bf679aa5eb2e39c8",
+      "geometryHash": "5a42e8c55c97a226ef751f10d40af53220d9b3ecfcc37ffa253489552848480a",
       "id": "sf.render.seamed-asteroid.mesh.lod1-stone.primitive.0",
       "indexCount": 3894,
       "indexed": true,
@@ -326,7 +330,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "66353e61874a218250803296b2f7f485413a99197b2c618d32fd74e33c42c3eb",
+      "geometryHash": "5cd00aea8da460ac0607ecc5a9ad7a23b0838a2d4845932874c29002b01cb045",
       "id": "sf.render.seamed-asteroid.mesh.lod2-stone-deep.primitive.0",
       "indexCount": 1452,
       "indexed": true,
@@ -376,7 +380,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd0991c44fe061ac113c7aaebe4970f696c312f8243db3a7715241dcf0dc42c2",
+      "geometryHash": "499d832b5bd8437f0bfc76abc8296b2d88018929d082f8d1618585562f1deea7",
       "id": "sf.render.seamed-asteroid.mesh.lod2-stone-vein.primitive.0",
       "indexCount": 621,
       "indexed": true,
@@ -401,7 +405,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e17422f8250e009e2f1dc9b8fab9e1ce89f5d9e60a20e1ebd997b2b9bbda74aa",
+      "geometryHash": "739ae795932c63f7755b49e932ca3158065df2ab8a21fb30ea319fe9da103089",
       "id": "sf.render.seamed-asteroid.mesh.lod2-stone.primitive.0",
       "indexCount": 1773,
       "indexed": true,
@@ -1194,19 +1198,24 @@
       "sha256": "0334e54858a57021e1a22240dbea7907354ea34fc2f02b4a80fdb46b84cfba0c"
     },
     "sourceGlb": {
-      "bytes": 423576,
-      "sha256": "a1955e3cce73ced1b3c1869a20067758d2aa5dfd05fe96be537c5a2eea9f17fc",
+      "bytes": 422520,
+      "sha256": "9cb963c45400cd13d0a526b8922161847d3e3db389eb82a7a7843489ae6df661",
       "uri": "place_asteroid_seamed.glb"
     },
     "sourceManifest": {
+<<<<<<< HEAD
       "bytes": 270894,
       "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+=======
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
+>>>>>>> origin/pr-maturation-261
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 878704,
-    "sha256": "d4164232d7b24042f744161e107a25d434ef184e2817e3eb95439ab55e4ede76",
+    "bytes": 874740,
+    "sha256": "835cf508d997f258711291f7e09c5425a1e932f19b310f687174596b803a0702",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1720,7 +1729,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_asteroid_seamed.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "75f0f664f761fd1aedbf43731671c204e3ca0c5713e7aaa23bdf2b9a9a5cd511",
+=======
+  "runtimeHash": "c19e0c9063730c3789eb68eb79da62420a1b47b77782846a84e3db26748144c1",
+>>>>>>> origin/pr-maturation-261
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

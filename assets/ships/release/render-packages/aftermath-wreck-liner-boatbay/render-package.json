@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9b574994a4c42147fd06543f49c0b9d13d9eddcc21b49a76a4514d582585e0c8",
+  "contentHash": "516980d99190db1487e9cc68adcd133bf433934ac1144a716a457c9d33cf15db",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -716,7 +716,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5dc5b28b5dfb0c55c082d60c76b27d6ee9cfc1cd7bd325f212437e68ac5a3fce",
+      "geometryHash": "59ad2f603df026c109b1b2014789d84cd20610c0219efa55a108636cef8df1b0",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.bayb-f-rib8.primitive.0",
       "indexCount": 48,
       "indexed": true,
@@ -1916,7 +1916,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bad1cec5cc69d869d5e41fc0cf5333fd8b81d081ad57e4429edeadce47e9c598",
+      "geometryHash": "ba3f8bc62c2e25a213be96c5f08d44e3df351a2360caeceec76f92ea0dcc2537",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.dockcollar.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -1941,7 +1941,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d7680ba31276166d07de069ca6e0ee444fa8c3a8022fa07a3f987e767c5a417d",
+      "geometryHash": "f35899a832e0bb82228fa879d5626387723fe1b601295c18b67ff1e54580dc7e",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.dockcollar.primitive.1",
       "indexCount": 948,
       "indexed": true,
@@ -1991,7 +1991,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2b43547786c296c9928f3dd10eaa41fa9c3c18cab255fae438cdbaac6a129ce0",
+      "geometryHash": "d718ad1a3799da2981868f9d79c4da626daab534bdd6880015bd24a120ce18af",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.dockring.primitive.0",
       "indexCount": 1920,
       "indexed": true,
@@ -2016,9 +2016,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad816a5338f3c29cf3afb9dd673ddf60816b87197b0d78a6c21ff2b50444abd9",
+      "geometryHash": "5f2e893ad2a11a89898353b06ef1018a1c38d88e781030f25016cbb0aec79c8f",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.drum.primitive.0",
-      "indexCount": 6063,
+      "indexCount": 6057,
       "indexed": true,
       "materialHash": "436e825fb4214a10ba93e7b72a94a36ce31b8abd0ae1cb5a23381e988dcc772c",
       "materialPipelineKey": "opaque",
@@ -2041,9 +2041,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d531e5a514daffd9c775e875b84c8839d1117a874c2a89c02894f63c660a23a2",
+      "geometryHash": "fff315903481b258ad34d2b71f7bddfb99a887adebbfccf2811ad569fd2e784d",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.drum.primitive.1",
-      "indexCount": 8487,
+      "indexCount": 8481,
       "indexed": true,
       "materialHash": "a960ad704f56f0f9ba951b08148abdbf2679044fcaa08a85224a1c41f0eb2e4e",
       "materialPipelineKey": "opaque",
@@ -2066,7 +2066,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d4bfe68c8b91ceef949b1703710e437f97c29439fc5899211c05d88d5f6e8e57",
+      "geometryHash": "a42149e27272e4d07e9278778e721f7861021964f45e071cc318bb697939a7a8",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.drum.primitive.2",
       "indexCount": 5673,
       "indexed": true,
@@ -2091,7 +2091,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7afc0039c914cc6ce72ce340a9d0634c23a9f782dedfd6e4bd7d410b3459126c",
+      "geometryHash": "5ea9cbfd665acc7f8ba804ee92c76e4ebb741e04134b905057155d7089241e5e",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.drum.primitive.3",
       "indexCount": 456,
       "indexed": true,
@@ -2116,7 +2116,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "571bb9fd92e4abdd4c5b8aa4f33841cb4c5af628f175575478bbaa5338de72ab",
+      "geometryHash": "7b95a3b122fc726c0b00622879c12372d2ec0b6f7f371c761a268804d93b5bb7",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.drum.primitive.4",
       "indexCount": 2133,
       "indexed": true,
@@ -2125,7 +2125,7 @@
       "meshName": "Drum",
       "nodeId": "sf.render.aftermath-wreck-liner-boatbay.mesh.drum",
       "primitiveIndex": 4,
-      "vertexCount": 911
+      "vertexCount": 1221
     },
     {
       "bounds": {
@@ -2141,7 +2141,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a7680d3d0b95a01e1a511e00bc173c5405b65a2ddbd3fa831afb22597f9ecc24",
+      "geometryHash": "9a8917df95fd6cb9b5ce85b919b55451edfe58d9c8edbe3bc6f49ade671c8d4b",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.fairlead.primitive.0",
       "indexCount": 1920,
       "indexed": true,
@@ -2166,7 +2166,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "96db2a9ac3fde675916f2bb842de965e26aa319f3349bd121f9039c932a2cade",
+      "geometryHash": "b9626baa666cd2ace01b1dd49a470491e1411a8621744ea14adaf353bc55f54a",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.gallery-3-1.primitive.0",
       "indexCount": 474,
       "indexed": true,
@@ -2216,7 +2216,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ebff0bb90d33c2c4c386f1f7fa97f80875b68e7a4baeedb332affc7fdef66a22",
+      "geometryHash": "269c0594d7e1bf5be860887bbf3d927986d1558103dc94bbf2c5272391cb3e33",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.gallery3-1.primitive.0",
       "indexCount": 474,
       "indexed": true,
@@ -2441,7 +2441,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d0f87edcc7997cc37e679f967f7b818566732db3882d2398e27f37c31a4e8903",
+      "geometryHash": "f6a0afcbd37822e047dd2f5d2a18375d39140110bd1344afe67abc254c3fee37",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.gallerylit-3-1-6.primitive.1",
       "indexCount": 6,
       "indexed": true,
@@ -2450,7 +2450,7 @@
       "meshName": "GalleryLit-3.1_6",
       "nodeId": "sf.render.aftermath-wreck-liner-boatbay.mesh.gallerylit-3-1-6",
       "primitiveIndex": 1,
-      "vertexCount": 4
+      "vertexCount": 6
     },
     {
       "bounds": {
@@ -2866,7 +2866,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4e0374c4d98a918e82d274628922e586053fb2e5f20af18357f0cec2981b013c",
+      "geometryHash": "01b9cdc5f8ea0a2fa8e277fba830af4ba82604ba778bd209448104f14ced4b1b",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.keelskeg.primitive.0",
       "indexCount": 474,
       "indexed": true,
@@ -3091,7 +3091,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c68281e2650676cef03306938c89c3b8cda3152f6d24fc123d0d5d382927cdd",
+      "geometryHash": "60306f01fc03202c9a938e4d91c2c17a868e547c909866962787a4f54715dc46",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.spine.primitive.0",
       "indexCount": 504,
       "indexed": true,
@@ -3116,7 +3116,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4628b1df1347fc94ba14d8a73c8dc4ec605019be7eeb9de3d3cc8d68c57b6be9",
+      "geometryHash": "b33c183830785aa64c6d018716157d180d7b5e78bf6f7b13a41d0414193c1a6e",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.spine.primitive.1",
       "indexCount": 252,
       "indexed": true,
@@ -3141,7 +3141,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "20ac4289451933353d1cb139e35ae5a97ed1ae80c3b4bab1d7cba8ef9f9ec524",
+      "geometryHash": "e11d72e1ff1d47bd9ca82f298b71e192bed43b355f62b368685fdb4756274c8a",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.spinesaddle3.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -3191,7 +3191,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "09740f54150a1ac00980a1c49ccb255d1e0a89cc627dcbc192b661dc79417b59",
+      "geometryHash": "6e12f668b019ade4746e1cc785395fff47cb485da8d127aabb3ae32d616ae3e1",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.spinesaddle5.primitive.0",
       "indexCount": 474,
       "indexed": true,
@@ -3216,7 +3216,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b51317b9428bfd71cb780ad8f4c08960ac807387f3f0698d8c1da925190478f0",
+      "geometryHash": "e8fbf7d4f1aa329813ac10be502fc81871892c8ae01cd8aa662be847f24eabfd",
       "id": "sf.render.aftermath-wreck-liner-boatbay.mesh.spinesaddle5.primitive.1",
       "indexCount": 90,
       "indexed": true,
@@ -8987,19 +8987,19 @@
       "sha256": "40bdfb597167b21df0bede8ecfdf575d41c6ce8dd1bcec30d07050d5fbb2fc14"
     },
     "sourceGlb": {
-      "bytes": 421312,
-      "sha256": "0a81a062d1ae8a313586a6420f1e199237d84817953d037cf9e3cf7edd117b2c",
+      "bytes": 427048,
+      "sha256": "d844a3aaaf1d958e6452a0c70890c0f277a8e192243413fe1da7f2e3e3ad0ff2",
       "uri": "place_aftermath_wreck_liner_boatbay.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 635008,
-    "sha256": "bcbada3a7a1c6a273c722929d060aa333d76b04331b339166e7cc05607b38fa9",
+    "bytes": 643016,
+    "sha256": "bfdd352eeaaabe9b8f137883bbc257cca0d9d7a625075144b4708d1092a3dd84",
     "uri": "render.glb"
   },
   "runtime": {
@@ -13120,7 +13120,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_boatbay.glb"
   },
-  "runtimeHash": "78f6821a2b09b3a449fdeda9dae88b4b80845470c4c30d7fa1eafc9db052f494",
+  "runtimeHash": "bd9e3eca0dcc378b60af4e3240490099145c98291a35eea0f4b230bdc799359f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

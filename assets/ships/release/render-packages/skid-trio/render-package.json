@@ -6,7 +6,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "6ee913a9a1081887501a7699148c23ca686e841ae4783bc17e139ac5b6140b15",
+=======
+  "contentHash": "1ea6421939a37bb2552cfdf43294dc6f6a9085aa37c6bd311045ad42b30660c7",
+>>>>>>> origin/pr-maturation-261
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +27,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "21c1661244faafc5d9938881e044c83a17c59edfb53112522b4135c3b41dfd08",
+      "geometryHash": "4bbc1735570cc16ff1879184385ee8c6d0627433c845b5d59b77769c97205251",
       "id": "sf.render.skid-trio.mesh.skid-replacement-foot.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -48,7 +52,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "62b62f183fadd59973dd780ad01c8fc62ae2712eab19972876e7dcb8212f1c29",
+      "geometryHash": "5fb34a3f2ec0864e22a83568964d14d5530dca0aa56cac657b466a0d8d5b15d4",
       "id": "sf.render.skid-trio.mesh.skid-trio-material-hull-merged.primitive.0",
       "indexCount": 3744,
       "indexed": true,
@@ -73,7 +77,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "07cae39bd2d7137db1288af3ae55c54dc510a28939150310a7327102e484ee08",
+      "geometryHash": "e15b18ae31859982e2284746c1af868a05cdaa77e53b148f0d1aebbfa6da7fb9",
       "id": "sf.render.skid-trio.mesh.skid-trio-material-mechanical-merged.primitive.0",
       "indexCount": 5772,
       "indexed": true,
@@ -82,7 +86,7 @@
       "meshName": "skid_trio_Material_Mechanical_Merged",
       "nodeId": "sf.render.skid-trio.mesh.skid-trio-material-mechanical-merged",
       "primitiveIndex": 0,
-      "vertexCount": 1902
+      "vertexCount": 1420
     }
   ],
   "hlods": [],
@@ -338,19 +342,24 @@
       "sha256": "3a4fe4d7dbf00d3c8a7be66d0f614824c2267250ac9ad5228c2d551c083f7369"
     },
     "sourceGlb": {
-      "bytes": 244652,
-      "sha256": "cdfa7612fa6587878f43f98bfbfbfce9e82dca46371c8d5ff939985a60315d4d",
+      "bytes": 241028,
+      "sha256": "1cdaca72f3e313b0331f6b0c6bced189be9317ac35b1e27643a0ca1c32ad9f2e",
       "uri": "skid_trio.glb"
     },
     "sourceManifest": {
+<<<<<<< HEAD
       "bytes": 270894,
       "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+=======
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
+>>>>>>> origin/pr-maturation-261
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 306232,
-    "sha256": "cc3b56e2f63227b4eace97ad86dbf8adfb8eaef69f23b741c708c6b748e63c2b",
+    "bytes": 273704,
+    "sha256": "44513eccbce8be3f568cbfd725f7e50064166d86452acf3306324d39f658cce4",
     "uri": "render.glb"
   },
   "runtime": {
@@ -486,7 +495,11 @@
     "slot": "gear",
     "url": "assets/ships/release/parts/gear/skid_trio.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "0927e64b5d774959e9b1578bc33350c1b591839c8b835ac35972cdec9a47d317",
+=======
+  "runtimeHash": "105834a6242a07e5b9225b06534018328d53718b764f5ad8b7944d275cb22053",
+>>>>>>> origin/pr-maturation-261
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

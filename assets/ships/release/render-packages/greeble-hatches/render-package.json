@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a716d39d2819fe1652d5c39007839370f336e58478bbdad32d61f5e7ce3ded4a",
+  "contentHash": "6ed4c720d30d4d78284be46d03022114d02226610c84d5b0fce6f16565a7ae7c",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8c918d6e9fa9e19c270ff42acca113850a34f421b23d5cd1a80942ae62b9c655",
+      "geometryHash": "c9771aa11a3dd58237fed960dc81bfc393c58e122367bf70307992feea7eb591",
       "id": "sf.render.greeble-hatches.mesh.greeble-hatches-material-hull-merged.primitive.0",
       "indexCount": 972,
       "indexed": true,
@@ -32,7 +32,7 @@
       "meshName": "greeble_hatches_Material_Hull_Merged",
       "nodeId": "sf.render.greeble-hatches.mesh.greeble-hatches-material-hull-merged",
       "primitiveIndex": 0,
-      "vertexCount": 288
+      "vertexCount": 414
     },
     {
       "bounds": {
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4fe618dbdee0e7b7189eacbc9caadee5dbc63ced00bcdba0a9733c12f026b90a",
+      "geometryHash": "18e4156dc0036e17f8d11d2b5a818f02080d7440512508f7235e52c266c9b956",
       "id": "sf.render.greeble-hatches.mesh.greeble-hatches-material-mechanical-merged.primitive.0",
       "indexCount": 3312,
       "indexed": true,
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d9d17689d1f23a3a558a1aa2a53dec5608bd45d6f6c082a86d9cc3a49004e87e",
+      "geometryHash": "005aa4fc8160068e3d277e0e88d80c6fa46c97ba278b07e0192a7bd6d7e66838",
       "id": "sf.render.greeble-hatches.mesh.hatch-handle.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -338,19 +338,19 @@
       "sha256": "b4484e8be6a9ceeb73224c0756a0c945c35b77ca73ad539dff7786b5cc69924c"
     },
     "sourceGlb": {
-      "bytes": 416740,
-      "sha256": "8c8686cd1cbdc8fafc6d166f643d5858a408ac1d2ec1f7391a1bc0049caaaaf9",
+      "bytes": 422940,
+      "sha256": "412a087c70d5b006f6cd8cbc08d577ab7d1199f2fdce212a6e2977164766eaa0",
       "uri": "greeble_hatches.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 430620,
-    "sha256": "24ccc41af2f182db4cc8701dda38787220971aef5b666086cd36edbc278db27a",
+    "bytes": 436732,
+    "sha256": "27d105f86c828fc3218081999bb8be425a58503f92ff4b5f9f1a64f8b8114fc0",
     "uri": "render.glb"
   },
   "runtime": {
@@ -486,7 +486,7 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_hatches.glb"
   },
-  "runtimeHash": "434308de31c8f63f759130e3e15d88d7b876c4334ee3c36b7325d30dd955cc03",
+  "runtimeHash": "bb140882f5637997849848ef7dc8a9e3f5832db592c9f2ac322fa2f5a543eeab",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

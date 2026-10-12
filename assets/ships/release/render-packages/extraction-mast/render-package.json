@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "82f75b31acc4c559562dfe2916150de32bef35ddf6f236bc7395aa8a689d4cd9",
+  "contentHash": "78021f75aa520ba5ffe56e39a5c4c75fb4b574cb537f9b67f8b1352345aebd12",
   "dynamicGroups": [
     {
       "id": "sf.render.extraction-mast.mesh.lod0-hook-nav-port.dynamic",
@@ -117,7 +117,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a9cb03e97584894e1e66a81730470c7f677ebd1a9e4be90616cc40a4e229a3bd",
+      "geometryHash": "2f0f3058c5e07ad024a00fda32357cb48fd9e3f9a10e058bb94a9fffa12451c1",
       "id": "sf.render.extraction-mast.mesh.lod0-armor.primitive.0",
       "indexCount": 6372,
       "indexed": true,
@@ -142,7 +142,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e0c1649a750a1a5d2a9ac60757c93baffded5d5ede5109a7ff88dc71e175323f",
+      "geometryHash": "9b83a02804ed34e74e83e0a68e4c7097077b1612fbeb01e8255f009200c9c673",
       "id": "sf.render.extraction-mast.mesh.lod0-beacon-amber.primitive.0",
       "indexCount": 2736,
       "indexed": true,
@@ -167,7 +167,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "435e10b9f2158a649db1027abb0a32c456ca59f40d091c5e40362bfb5f7ef27e",
+      "geometryHash": "9f9caefadd5d57b7e19afc3898d640588707e668230db36920801a8172da5ff8",
       "id": "sf.render.extraction-mast.mesh.lod0-hook-nav-port.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -192,7 +192,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5c82e666c8b155acc3dd68bfce1061c04d55a851f9fec913da0246635b0c39cb",
+      "geometryHash": "dd8b461a555085bd92516e817625f08c2d34cbb98d57b26cb5062459489ed727",
       "id": "sf.render.extraction-mast.mesh.lod0-hull-aged.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -242,7 +242,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "995b716c066fc9ec423b64b482f184b1b7230d39821248588ac7a47b90dfda13",
+      "geometryHash": "1b44d851c11839a4ed60b432a06b560afaaa41c8b628b06d0f0ac72dc35dc91c",
       "id": "sf.render.extraction-mast.mesh.lod0-mechanical.primitive.0",
       "indexCount": 4548,
       "indexed": true,
@@ -267,7 +267,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ae5ca0b73ca253a97347039c6a7f641f1364dae697aacbf9480c7efb8fcf2262",
+      "geometryHash": "e2446698b28441040c172f4e6f6cd80d951abc7f922e9abea040a212508575a7",
       "id": "sf.render.extraction-mast.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 720,
       "indexed": true,
@@ -292,7 +292,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b0ef0d21bca263baebd1db393abe58a05775604d02f706bfd829b0b56f563355",
+      "geometryHash": "b3910586a90cec1bbe3451247abc3cf4e363ce00d0169f5e490280bf11ec8bf7",
       "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -317,7 +317,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4259f9752efbd8b8fbf29e71ea62a692066da741bf5326e208528861052268d",
+      "geometryHash": "8adf7cac207e48496c0c830b61ec5220b0496f7d5504321142e6d5f2b24994cd",
       "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -342,7 +342,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d99d562d9d0a7f5aecbf822b425e2427b8a39b63776a176a97cb02d65467b357",
+      "geometryHash": "0bf6bcaf52d2780fde8d6911fb6535212aca2cd1116975f08e1169f9c11ca03b",
       "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-rod-brushedmetal.primitive.0",
       "indexCount": 1428,
       "indexed": true,
@@ -367,7 +367,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6b94d50f536fa83c413405093e877ad5fbec4d633e0deb511b97551a732403a0",
+      "geometryHash": "aff5896ccee5f9d9c5bfaaba45214d87fb8830bc03ac466c9c59b41e5e66f400",
       "id": "sf.render.extraction-mast.mesh.lod0-warning.primitive.0",
       "indexCount": 1836,
       "indexed": true,
@@ -392,7 +392,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "888b7a8efea3faf9a0d63836a6b8692b87c859bb6c6f2de2bccf716033f6cc67",
+      "geometryHash": "b1e49b4f370623c0c312c6b409a120190f6faea118d652271c303c3a6ee189cf",
       "id": "sf.render.extraction-mast.mesh.lod1-armor.primitive.0",
       "indexCount": 3888,
       "indexed": true,
@@ -417,7 +417,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c7f2e78af0c75ead25ba865523e83c43a70d5e53732acf62660cfe334c7ef89d",
+      "geometryHash": "d193d663ef10a8e2d724d8308594414a4212f5c6ecc09a10373ab5885496de91",
       "id": "sf.render.extraction-mast.mesh.lod1-beacon-amber.primitive.0",
       "indexCount": 1356,
       "indexed": true,
@@ -442,7 +442,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ca8468df91984d3ffa07610de9ea6f277211db6978dc22f2156d9c9deacae1b0",
+      "geometryHash": "a997fd57929cef282229f9f1ac41f992d99dfcd52243c3f7dcd200f8526ef056",
       "id": "sf.render.extraction-mast.mesh.lod1-hook-nav-port.primitive.0",
       "indexCount": 102,
       "indexed": true,
@@ -467,7 +467,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "effa4fb4d1d6979cb362f099fc8b62e76d1b3781ce202cc153f09dacd299048a",
+      "geometryHash": "48a09a44d2a11ffdbf3c56a5bdd7e725010c3fac472460d20357caa007774152",
       "id": "sf.render.extraction-mast.mesh.lod1-hull-aged.primitive.0",
       "indexCount": 138,
       "indexed": true,
@@ -567,7 +567,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ef83801d15153af2f81bf9e18007209220f1ba70125f694307f4cba6a746cefe",
+      "geometryHash": "1cabbf22d089d2101a746723ade1040f0627c57912157e6dab34ef67b06f291b",
       "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-armor.primitive.0",
       "indexCount": 276,
       "indexed": true,
@@ -592,7 +592,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa630d91c9782c96b7c565ecca5be529947a560c0c085fae875bc4f93c3281b3",
+      "geometryHash": "426deafc937c9007af4fc0e41ceb8cbe913ca78dbd083b526400303e52db36d6",
       "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-warning.primitive.0",
       "indexCount": 174,
       "indexed": true,
@@ -617,7 +617,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5097cc17fe97239e70467914a0de7195071fb62c18efa0ecac88ff1066ed602b",
+      "geometryHash": "3e00cd01d137cb0b06863fb8758f01ae6471272f911e5242391f85fd89c5af3d",
       "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-rod-brushedmetal.primitive.0",
       "indexCount": 570,
       "indexed": true,
@@ -692,7 +692,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "52b80d19b7395b5aa1cf46e6b477f4a47665de17c04b29934fa2c558b18c49a7",
+      "geometryHash": "74bcb4b7975e2cc51f6600a16f463508096bebeed82d993945aa7fca6a5acda7",
       "id": "sf.render.extraction-mast.mesh.lod2-beacon-amber.primitive.0",
       "indexCount": 429,
       "indexed": true,
@@ -701,7 +701,7 @@
       "meshName": "LOD2_Beacon_Amber",
       "nodeId": "sf.render.extraction-mast.mesh.lod2-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 289
+      "vertexCount": 364
     },
     {
       "bounds": {
@@ -717,7 +717,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a6e5d10557f4259a2ddd27d0601413c83471c69d18342375a7f2aa3b3fb7ac6e",
+      "geometryHash": "48b15d0408a18443d592333d6144f82282c4d024f92a3f3b281adaf8b5eda919",
       "id": "sf.render.extraction-mast.mesh.lod2-hook-nav-port.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -792,7 +792,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "86c24619be450722399030c4bf7aa9d7323babc85866ed5906f2a674e510cdc3",
+      "geometryHash": "b4cf82f519c22b206baec10273543fd59e77d25663fc0046cfd5981095f2c7a2",
       "id": "sf.render.extraction-mast.mesh.lod2-mechanical.primitive.0",
       "indexCount": 318,
       "indexed": true,
@@ -842,7 +842,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a79c2303faeaf4e57e30e7802b892175a98c1258f10bf796c6d6fa2c4deb7aa6",
+      "geometryHash": "1738252757a7a2f5fded089792bc3b72f0616b4a9bf5c68bf17d819b891a6f23",
       "id": "sf.render.extraction-mast.mesh.lod2-motion-mast-beam-armor.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -3000,19 +3000,19 @@
       "sha256": "20ac7bee8695fd39221ccda7fdc5792abbdd262adbb9f5220a53111cf129c024"
     },
     "sourceGlb": {
-      "bytes": 408816,
-      "sha256": "06ad8fff2f2c6a733eb72da00262d5ff60644d0d07a01df5186d6d9177120fce",
+      "bytes": 408692,
+      "sha256": "3d05ff38798bfe7c8237d91669d7411650b33eba2728bd541f8d6bd1b1430d13",
       "uri": "place_extraction_mast.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 653676,
-    "sha256": "4ce2d8a5a484c9f9674f1bdf544db1afda639dab88cbeb107963e1cef6213b46",
+    "bytes": 651036,
+    "sha256": "62719d5e2dabf273c3adff38d1e92ad04145b47e363a27bad6d356844eb0b2bc",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4310,7 +4310,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_extraction_mast.glb"
   },
-  "runtimeHash": "d9b66a691159a43fe5c7cbb12c304781d22cfa902922f9cf6dd06f742042f018",
+  "runtimeHash": "b8f437bffa634f0a3ee3b42dd13c76441b07a7737e5b0b10f5f76b18f66beaa1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

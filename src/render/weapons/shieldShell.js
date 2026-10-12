@@ -318,10 +318,14 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
 
     // Absorbed charge does not light every panel at once: each panel has its own place in the
     // sequence, so the lattice energises as a scatter across the shell and drains the same way.
-    float panelCharge = clamp(load * 1.35 - cell * 0.35, 0.0, 1.0);
+    // GRAPHICS BAR: an ordinary contact flash (~0.7-0.8) used to charge almost every panel and
+    // saturate activity, so one round lit the whole dodecahedral cage as a bright football over the
+    // hull. The shell now answers an ordinary hit locally (contact + nearby welds) and only a heavy
+    // load (approaching rupture) charges the whole lattice.
+    float panelCharge = clamp(load * load * 0.95 - cell * 0.45, 0.0, 1.0);
     float core = clamp(contact.x, 0.0, 1.4);
     float ring = clamp(contact.y, 0.0, 1.4);
-    float activity = clamp(load * 4.0 + panelCharge * 2.0 + (core + ring) * 2.5 + base * 4.0, 0.0, 1.0);
+    float activity = clamp(load * 0.45 + panelCharge * 1.3 + (core + ring) * 2.5 + base * 4.0, 0.0, 1.0);
 
     // CONSTRUCTED MEMBERS. Three nested frame depths make the membrane read as layered machinery,
     // not one painted sphere. Their phases are offset so the layers breathe through one another.

@@ -12,7 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3919c2ab98ac5a96eeb8ce30a09f995a6ee1cd0f3fa6d204a7d58046c05da69c",
+  "contentHash": "7ffa7acb0bde82a171f7ca3ea9df5fbd2d152e71bae03bff4b3cfd6ecbae484a",
   "dynamicGroups": [
     {
       "id": "sf.render.whistle.node.lod0-hook-nav-port.dynamic",
@@ -45,7 +45,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4e822f16b4c4684a829a733aeb8806f1eb61528d08b8bfdd31992f396610742",
+      "geometryHash": "601681c9d445bf85750de3e05f5711d69a9d367afad4eab15e86a5d64d12ec0c",
       "id": "sf.render.whistle.node.collision-hull.primitive.0",
       "indexCount": 696,
       "indexed": true,
@@ -70,7 +70,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "37be97362b940f303e0ce15da99f4c88ca9e90aed85d0bf96dc7ffc07a8c5b6a",
+      "geometryHash": "ac02895e1b801ab8139977d1513bcac836388c1e33e156596ea36fedcf65f0c7",
       "id": "sf.render.whistle.node.lod0-armor.primitive.0",
       "indexCount": 5784,
       "indexed": true,
@@ -120,7 +120,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5b44be58701b32483ef310d595e707f16a3ae797645cb528e0556fa3c9ae1489",
+      "geometryHash": "5dde00ea08a8bb2efaebb8292598d782376604106aaba4c28243de283a3949fa",
       "id": "sf.render.whistle.node.lod0-hook-nav-port.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -170,7 +170,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad7a8d902116d17b0f347353785ce7dd7add4ac6cdd1888afd4565c66b6535d6",
+      "geometryHash": "f169479f4d1171eb6048a2f6dce63b9f2c3f9797b09cd3125d2361bc2d085ca5",
       "id": "sf.render.whistle.node.lod0-livery.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -195,7 +195,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0e8877baad4d31a1fe76f21fc57f894b8ef427ee862d6b9ef58aa0d9e4ab9138",
+      "geometryHash": "a47284966d7d3c5f26446a87729f822814089d52b2721a0c6f7f598d2c24dd55",
       "id": "sf.render.whistle.node.lod0-mechanical.primitive.0",
       "indexCount": 2556,
       "indexed": true,
@@ -245,7 +245,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "509f96ecae5784201762a24e4099bccba5a8a30b2dc61cd2d862704db0db5ccf",
+      "geometryHash": "af16c9690fb8857e3ca6b0fe04e1453d2276fea4aee751d3a27569ce6cc6ba78",
       "id": "sf.render.whistle.node.lod1-armor.primitive.0",
       "indexCount": 1500,
       "indexed": true,
@@ -345,7 +345,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f21d031156a316c705de9c06fa9b9b33f9d8c1775bb0aa335168be3d4b1aa6d4",
+      "geometryHash": "9e3e74b79494260546e3689422d113c04c56d2c9ab12e0e2d99a076e535c616d",
       "id": "sf.render.whistle.node.lod1-livery.primitive.0",
       "indexCount": 576,
       "indexed": true,
@@ -370,7 +370,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4051c78c0f249bb7de836579b3f05aca30784009401ca017c579732871eb6810",
+      "geometryHash": "ada6eb42d45e7d7b45b75919c2c395318a54b40216a9d7a90660c91a6cfc7b5f",
       "id": "sf.render.whistle.node.lod1-mechanical.primitive.0",
       "indexCount": 1554,
       "indexed": true,
@@ -420,7 +420,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "16728746df44d5c3bae144f31712eb920aa989626723cc80cb9ed760ff272b45",
+      "geometryHash": "c3640d676db29af9ba0bf4e990e899652762e4d6b1136f0d65ad6580b6facb1b",
       "id": "sf.render.whistle.node.lod2-armor.primitive.0",
       "indexCount": 678,
       "indexed": true,
@@ -520,7 +520,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "43edcf97498914d91a0269289bd93f372c2fdfb4a478b1cf5038bf4489002b5d",
+      "geometryHash": "76627e12dd4031028b9cb8707b88357ef7476b3cce518cf82ae40d40d42ab185",
       "id": "sf.render.whistle.node.lod2-livery.primitive.0",
       "indexCount": 282,
       "indexed": true,
@@ -545,7 +545,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5e7c52758be32ff79042a76aee07ceb81c3efbca15f55e55d646bc6cc4fcf567",
+      "geometryHash": "74b9aa8083f0873a7752e01f02a05bcfcd5a3c8d69365355b45fc62b53e455ce",
       "id": "sf.render.whistle.node.lod2-mechanical.primitive.0",
       "indexCount": 615,
       "indexed": true,
@@ -554,7 +554,7 @@
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.whistle.node.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 439
+      "vertexCount": 547
     },
     {
       "bounds": {
@@ -1894,19 +1894,19 @@
       "sha256": "c260b56e7c8d34b2ac338c5d5ced83ea828e3b7a658698e694fdc60875a3fd2b"
     },
     "sourceGlb": {
-      "bytes": 440464,
-      "sha256": "286bae01890acca70ca8863b4d542cddd3cc4eea273462d12cd7a92625a9df16",
+      "bytes": 440352,
+      "sha256": "cdb0fb45a6a5628b245b112ed57b066ce224346576a6c8792a447ac9bd90bbb6",
       "uri": "place_whistle.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 558452,
-    "sha256": "bfbef2d99a582f67d34a376af1973da59b19ee0632f0a674c8306e8d4b999a66",
+    "bytes": 553968,
+    "sha256": "336b665f8e86347087a5fb8756f9dea643e64756b3f467cdf10c3b5f89c440b3",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2632,7 +2632,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_whistle.glb"
   },
-  "runtimeHash": "51115ef1f1f4d535d68266171ff1c9c941b78d6e6d1e0efae503b33ddfabff22",
+  "runtimeHash": "28d2743858aaf109e11b0880ae7a9b7d3e23214eb4d95b93c6acc42f17a24113",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

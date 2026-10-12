@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9a6e496d0c5a74b70df0bd686c31ec0ce775d1fed3f71b4530b2ab80b1f53383",
+  "contentHash": "642db2367cf4362bda1a7cece0416c5c8df0f8a39abc56a34a195edd13e8ea30",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -116,7 +116,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d719bb8ee2ca42af2cd69d334fc415cdbc8e1d3c100c432e2afb54b3af1bd9f3",
+      "geometryHash": "adda5c64d7cfc52c40e13a0964c6493fe4046192f2b1368c1c29397c96cfa947",
       "id": "sf.render.hull-starter.mesh.lod0-det-nav-heat-band.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -141,16 +141,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d6820a0ef6a0f52237ca9dbced2116bebfde4cd5aa76f61be6e9650bdcfd013c",
+      "geometryHash": "e87d084144d6da717c97426bd7af0bf5f8e70211a8235718d7248f26fed70416",
       "id": "sf.render.hull-starter.mesh.lod0-hull-starter-main.primitive.0",
-      "indexCount": 16608,
+      "indexCount": 16563,
       "indexed": true,
       "materialHash": "4d35591d718b465e2edee138b7c8b8bcfa6c737f607b85467ba71bf1cc98e360",
       "materialPipelineKey": "opaque",
       "meshName": "hull_starter_mesh",
       "nodeId": "sf.render.hull-starter.mesh.lod0-hull-starter-main",
       "primitiveIndex": 0,
-      "vertexCount": 6004
+      "vertexCount": 5975
     },
     {
       "bounds": {
@@ -166,7 +166,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "412c5fb473d4fde4b0c820d2ccdf449c7b67cf24020c5bfafdc83e8ab591dd61",
+      "geometryHash": "3370074c853c66d2be765af955baf7c5e8b15bbb3ed4e1f1c20e96bd1b22640f",
       "id": "sf.render.hull-starter.mesh.lod0-hull-starter-main.primitive.1",
       "indexCount": 5751,
       "indexed": true,
@@ -175,7 +175,7 @@
       "meshName": "hull_starter_mesh",
       "nodeId": "sf.render.hull-starter.mesh.lod0-hull-starter-main",
       "primitiveIndex": 1,
-      "vertexCount": 2110
+      "vertexCount": 1874
     },
     {
       "bounds": {
@@ -191,7 +191,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "866646e7b61d7f05da1b8dd0b10e2e218bf14358ea101f786f6c6fd429186aed",
+      "geometryHash": "1d3d5910c8809b52aa85497731993f1752cfd153ccf71ff03339ebd4767d70e7",
       "id": "sf.render.hull-starter.mesh.lod0-hull-starter-main.primitive.2",
       "indexCount": 6165,
       "indexed": true,
@@ -200,7 +200,7 @@
       "meshName": "hull_starter_mesh",
       "nodeId": "sf.render.hull-starter.mesh.lod0-hull-starter-main",
       "primitiveIndex": 2,
-      "vertexCount": 2054
+      "vertexCount": 2131
     },
     {
       "bounds": {
@@ -216,16 +216,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "76e70ccce1341101e02db41331625f8b3f36bee3eb045a61dd166eb55a634330",
+      "geometryHash": "90d9fab74b6c8debd275bccd5a314fdcd4366beb0991e02125b91fb94588ce3c",
       "id": "sf.render.hull-starter.mesh.lod1-hull-starter-silhouette.primitive.0",
-      "indexCount": 7335,
+      "indexCount": 7317,
       "indexed": true,
       "materialHash": "4d35591d718b465e2edee138b7c8b8bcfa6c737f607b85467ba71bf1cc98e360",
       "materialPipelineKey": "opaque",
       "meshName": "hull_starter_mesh.001",
       "nodeId": "sf.render.hull-starter.mesh.lod1-hull-starter-silhouette",
       "primitiveIndex": 0,
-      "vertexCount": 3453
+      "vertexCount": 3589
     },
     {
       "bounds": {
@@ -241,7 +241,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cca2680261c4e8af3909347b946986fa792297141a1437da5e3a869df50ff547",
+      "geometryHash": "096cd39688ccc0adfbdf67659f7f94f540dba1415dc13e29f6acb5c938ed4246",
       "id": "sf.render.hull-starter.mesh.lod1-hull-starter-silhouette.primitive.1",
       "indexCount": 2538,
       "indexed": true,
@@ -250,7 +250,7 @@
       "meshName": "hull_starter_mesh.001",
       "nodeId": "sf.render.hull-starter.mesh.lod1-hull-starter-silhouette",
       "primitiveIndex": 1,
-      "vertexCount": 1203
+      "vertexCount": 1035
     },
     {
       "bounds": {
@@ -266,7 +266,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "847dd155b3da253978c36bfa3ffdfc2b063576cd1ad7ba7af887d44a64fdf965",
+      "geometryHash": "3540475a6475abf479e521f41845ba252e8adae605064f5a4da4e59fd34fcff0",
       "id": "sf.render.hull-starter.mesh.lod1-hull-starter-silhouette.primitive.2",
       "indexCount": 2103,
       "indexed": true,
@@ -275,7 +275,7 @@
       "meshName": "hull_starter_mesh.001",
       "nodeId": "sf.render.hull-starter.mesh.lod1-hull-starter-silhouette",
       "primitiveIndex": 2,
-      "vertexCount": 929
+      "vertexCount": 1071
     },
     {
       "bounds": {
@@ -291,7 +291,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "01ce00169763cea00b8c6b10d617e9ec2aed56f36f7eb60c012e4b58f16567e8",
+      "geometryHash": "a407023811d06d6a0bf4a5ee38b8a55baa3ec003af45fdd6813630a932ead4e2",
       "id": "sf.render.hull-starter.mesh.lod2-hull-starter-silhouette.primitive.0",
       "indexCount": 3114,
       "indexed": true,
@@ -300,7 +300,7 @@
       "meshName": "hull_starter_mesh.002",
       "nodeId": "sf.render.hull-starter.mesh.lod2-hull-starter-silhouette",
       "primitiveIndex": 0,
-      "vertexCount": 1801
+      "vertexCount": 1003
     }
   ],
   "hlods": [],
@@ -623,19 +623,19 @@
       "sha256": "47e6bf09b3d18322805c82eec334c0b4aef88d9269082d229d913ce1fa1a4fba"
     },
     "sourceGlb": {
-      "bytes": 629336,
-      "sha256": "f7db31ff57b878054d801c680048640eaea150870830584515ef77bc08b3527d",
+      "bytes": 619264,
+      "sha256": "9318d8011e43eace7e68a4a3d9d645ebc86dd3791bfccec56a645d7f70e53f01",
       "uri": "hull_starter.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1004124,
-    "sha256": "3c020f5bdc95e2023e06774c01bed272238d5f37de13fce7fcc78b19be06ba54",
+    "bytes": 857712,
+    "sha256": "c56b11988488644c857418d9a97adfc20e9a4deddc3da1cf1f5364be9eade0d5",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1181,7 +1181,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/hulls/hull_starter.glb"
   },
-  "runtimeHash": "922256c392b3811cb85056ac1e596f7543dac39b31bc224cacd92514c88eb4d4",
+  "runtimeHash": "ea612c1bd8a78b03ae550227cb754b012b58c7e5ac87a7027bd5ab9efd6911bd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

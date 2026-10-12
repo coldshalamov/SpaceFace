@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "4ae2806b0a7a2fd24eb4948ce41b3db0000b60bcdcfe488bda58cf2353029046",
+  "contentHash": "ec2a0752e8e92dbf1a84947e7c32fb97c354ab7688d1588a8bd21176ab0a4057",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -70,7 +70,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1c4e36e44236b2295302a22d869a7ab03dd791a28eb60d95d6d3159cab0354e6",
+      "geometryHash": "5727e659a1ba7fa7451148e1a4c4215219c92128d6b2c77ad0d9eef788850c9d",
       "id": "sf.render.weapon-railgun.node.rail-accent-slit.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -79,7 +79,7 @@
       "meshName": "Rail_Accent_Slit",
       "nodeId": "sf.render.weapon-railgun.node.rail-accent-slit",
       "primitiveIndex": 0,
-      "vertexCount": 53
+      "vertexCount": 54
     },
     {
       "bounds": {
@@ -95,7 +95,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "70196962be9afe3522caaa9e1322adb3b0242dd3b414fe44f97bb9be2ad32b31",
+      "geometryHash": "b6c9e6bb776841959ae654932d65c88f333b59f78db426b7d15f566777802133",
       "id": "sf.render.weapon-railgun.node.rail-breech.primitive.0",
       "indexCount": 996,
       "indexed": true,
@@ -104,7 +104,7 @@
       "meshName": "TEMP_castReceiver.001",
       "nodeId": "sf.render.weapon-railgun.node.rail-breech",
       "primitiveIndex": 0,
-      "vertexCount": 648
+      "vertexCount": 332
     },
     {
       "bounds": {
@@ -120,7 +120,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ed5dfc2df73a4149acb17722d48d401b1c05c7a09ff87d09445e624da0a318b4",
+      "geometryHash": "12ab0ba595aa18f87c66d40b5fca6bca420bdf9d038962b204dd903520f43c93",
       "id": "sf.render.weapon-railgun.node.remaster-material-hull-vitreousceramic.primitive.0",
       "indexCount": 768,
       "indexed": true,
@@ -134,18 +134,18 @@
     {
       "bounds": {
         "max": [
-          5.755250930786133,
-          0.22883349657058716,
-          0.2818912863731384
+          5.755251407623291,
+          0.2288336455821991,
+          0.28189119696617126
         ],
         "min": [
-          1.8142478466033936,
-          0.025509344413876534,
-          -0.281920850276947
+          1.814247727394104,
+          0.025509189814329147,
+          -0.2819209396839142
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9184459da2e3523f5f133b4ed13a524826920e26b0194c6f57ccbdf30675c4d6",
+      "geometryHash": "7f24fc8d9c5e8c0cd492b14490b9d7bb6d744560b176859944930f0519e81227",
       "id": "sf.render.weapon-railgun.node.remaster-material-mechanical-brushednickel.primitive.0",
       "indexCount": 648,
       "indexed": true,
@@ -154,7 +154,7 @@
       "meshName": "Remaster_AccelerationRail-1",
       "nodeId": "sf.render.weapon-railgun.node.remaster-material-mechanical-brushednickel",
       "primitiveIndex": 0,
-      "vertexCount": 432
+      "vertexCount": 192
     },
     {
       "bounds": {
@@ -195,7 +195,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cab4a4a892599cd5f35a449a3dbd7aca7299c547a17c62f005433677d9815b90",
+      "geometryHash": "37f0fbcf73aeab28f5bb4af5d2b0cf228dd4b93a8952999ee040dab9ae593148",
       "id": "sf.render.weapon-railgun.node.weapon-railgun-material-accent-merged.primitive.0",
       "indexCount": 2880,
       "indexed": true,
@@ -220,7 +220,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a3c4a97414d74102b38e398ddadec64c970ed5741eb5a72b6ff33f3e0a112b82",
+      "geometryHash": "77aec49aa99ed8c70514bdde27e86c37e8eda6729d82c6bdd61382b54d5d2aac",
       "id": "sf.render.weapon-railgun.node.weapon-railgun-material-mechanical-merged.primitive.0",
       "indexCount": 1764,
       "indexed": true,
@@ -1429,19 +1429,19 @@
       "sha256": "4cd4a1b33f54179f6c73715f4e7573c67fdb42466a886300db7f82332d4e757b"
     },
     "sourceGlb": {
-      "bytes": 66420,
-      "sha256": "10e212bebc37a5d7c37cecd9cfdf012b3f45110111a443f4fa2c307ebd7a7cf3",
+      "bytes": 64500,
+      "sha256": "a829ebc039f09881da602125a4b3b68ec453c61fd8146cd23aad402280ea61f0",
       "uri": "weapon_railgun.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 118460,
-    "sha256": "e72517f626c4b607317719737180a8ed730431d6124277e6e71037134b2e4ec6",
+    "bytes": 99824,
+    "sha256": "36ef27ba80447d779f98ca8c3faeef8858f51b6297fa88806cefdef414251905",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1792,7 +1792,7 @@
     "slot": "weapon",
     "url": "assets/ships/release/parts/weapons/weapon_railgun.glb"
   },
-  "runtimeHash": "4c757b8d207761a9908ea021367c4a30bf42a41e838f15a258c04e60e71182e6",
+  "runtimeHash": "785dac782e65cb77c70a41976d0e8e141975187e0a5d643f49e8557ee1977bbd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

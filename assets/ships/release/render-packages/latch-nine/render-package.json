@@ -375,7 +375,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6019842b55a7165ead29bc635ec93f1fcb581300c75c2df1a6948175c6409989",
+  "contentHash": "f1c8cbeb9d2d7a0242674cc700bbf26260f68d021ad75be36e749c7c27ffaf5b",
   "dynamicGroups": [
     {
       "id": "sf.render.latch-nine.node.lod0-hook-latch-thruster-main-port-glow-drive.dynamic",
@@ -743,7 +743,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b868b86bf4fd82267f73b1af568e76899b36cb5333799bf60b3582226bc4f91b",
+      "geometryHash": "bde8f23ac73e7cca60577ff5509449c3dc0f46e0896cf8f49e7ecd910126f2e5",
       "id": "sf.render.latch-nine.node.lod0-armor.primitive.0",
       "indexCount": 5076,
       "indexed": true,
@@ -768,7 +768,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "22e4a3c268d4b72c163c09ba08bc9413ac674e9f96f1ad6c5652ec3c130f5515",
+      "geometryHash": "187ded3597756a1f3c27fe76619f45aa0e13cd49e7237ff2d914252871c66cc9",
       "id": "sf.render.latch-nine.node.lod0-beacon-amber.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -793,7 +793,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9fd69bd9a35a48ec8b0da1d7a133d7eb18ddfdc8ae8706db4bfc8dfd86764772",
+      "geometryHash": "0f0caad47c90b4d3f01fb8880f952ecb5f7bcc94abdb801c023681d64b313eb8",
       "id": "sf.render.latch-nine.node.lod0-brushedmetal.primitive.0",
       "indexCount": 12792,
       "indexed": true,
@@ -843,7 +843,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3024e0c1a0a79f7f754d466fe39874692d5c3532c00d20ca8ae1bf45e4ca426f",
+      "geometryHash": "39cc2fdbb9051f1033f982ae0577b8c6ed841a9435f113cb9b4466861d3b8143",
       "id": "sf.render.latch-nine.node.lod0-hook-latch-thruster-main-stbd-glow-drive.primitive.0",
       "indexCount": 90,
       "indexed": true,
@@ -868,16 +868,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aeaf51666bf8e58861751da0b33581d04f6069fa4071701728b56b658f9e23e4",
+      "geometryHash": "01a1c465ce9ed909c05e51471b9c1d46481c4ff035d427f352b4d437018af134",
       "id": "sf.render.latch-nine.node.lod0-hook-latch-thruster-port-aft-glow-drive.primitive.0",
-      "indexCount": 564,
+      "indexCount": 492,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_LATCH_THRUSTER_PORT_AFT_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod0-hook-latch-thruster-port-aft-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 172
+      "vertexCount": 160
     },
     {
       "bounds": {
@@ -893,16 +893,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd95cf93e78ee43811e30f2b066b11f42306bb10c7782a206992cc371efa12dd",
+      "geometryHash": "7d38f16fffbae291f3f9123025754ce5b365e7b20eb024c50f7f86a5bfb46a50",
       "id": "sf.render.latch-nine.node.lod0-hook-latch-thruster-port-fore-glow-drive.primitive.0",
-      "indexCount": 564,
+      "indexCount": 492,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_LATCH_THRUSTER_PORT_FORE_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod0-hook-latch-thruster-port-fore-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 172
+      "vertexCount": 160
     },
     {
       "bounds": {
@@ -918,16 +918,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "780b383c439ffdfa606b05080142cfc7412baea45918edef5bbe3c23479764ab",
+      "geometryHash": "77159415b5eb9b0130bb83c7ea62a775ea744d4bfba3e9338080e99b004ae890",
       "id": "sf.render.latch-nine.node.lod0-hook-latch-thruster-reverse-port-glow-drive.primitive.0",
-      "indexCount": 564,
+      "indexCount": 492,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_LATCH_THRUSTER_REVERSE_PORT_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod0-hook-latch-thruster-reverse-port-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 172
+      "vertexCount": 160
     },
     {
       "bounds": {
@@ -943,16 +943,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "eefc13c1432c19302a8c9fb64564b5d0aa634b5f2edffc2a7eeb997375ebc18f",
+      "geometryHash": "09817579a251b8429435864ce657026bea42089d01707739d187258c43142b1f",
       "id": "sf.render.latch-nine.node.lod0-hook-latch-thruster-reverse-stbd-glow-drive.primitive.0",
-      "indexCount": 564,
+      "indexCount": 492,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_LATCH_THRUSTER_REVERSE_STBD_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod0-hook-latch-thruster-reverse-stbd-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 172
+      "vertexCount": 160
     },
     {
       "bounds": {
@@ -968,16 +968,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c505a2c7fc791646145d508664ed2b5130326089e7898d69fd116d658feb1bb",
+      "geometryHash": "e578ec9e5d68718aab21d702b1cf6b8ae9d85b20798c3fd277f153d562163eaa",
       "id": "sf.render.latch-nine.node.lod0-hook-latch-thruster-stbd-aft-glow-drive.primitive.0",
-      "indexCount": 564,
+      "indexCount": 492,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_LATCH_THRUSTER_STBD_AFT_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod0-hook-latch-thruster-stbd-aft-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 172
+      "vertexCount": 160
     },
     {
       "bounds": {
@@ -993,16 +993,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b2f6a4eec193c9c5d6362ac0280208ce5680140cf62b92ae2094bcf421b50df8",
+      "geometryHash": "127b0521badf7560d54f3963ab4cb24cc77977d80d98d9f1f4f36f3ce9c9e0eb",
       "id": "sf.render.latch-nine.node.lod0-hook-latch-thruster-stbd-fore-glow-drive.primitive.0",
-      "indexCount": 564,
+      "indexCount": 492,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_LATCH_THRUSTER_STBD_FORE_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod0-hook-latch-thruster-stbd-fore-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 172
+      "vertexCount": 160
     },
     {
       "bounds": {
@@ -1068,7 +1068,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ac0616aecf3f07150fcde0dd55bd6027b79dc8af88faf396b12d50eec2401a7f",
+      "geometryHash": "c898a9603e102327d135fc618381d3add8acfbc73b304f04f5e192b1a9ecdbe3",
       "id": "sf.render.latch-nine.node.lod0-hull.primitive.0",
       "indexCount": 7332,
       "indexed": true,
@@ -1093,7 +1093,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "164c0c8a1054057ce87f5b2e0dd3c023dc58fc8d99bd9b36a0fe6934c674bc90",
+      "geometryHash": "92a8a2fbb0661b9913ef363b222cdd83fb03d4398711839486e9728b76c62c34",
       "id": "sf.render.latch-nine.node.lod0-mechanical.primitive.0",
       "indexCount": 20220,
       "indexed": true,
@@ -1118,7 +1118,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2a2b96035c527a8b0844ad97c7b0e3e2269516df8e8c29048e4115ab2f8da550",
+      "geometryHash": "3c56f48e0f7e750e37a08aee9f1b353e3970f681c03c09b787dc7a6f2c689c23",
       "id": "sf.render.latch-nine.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 6036,
       "indexed": true,
@@ -1143,7 +1143,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "563b93676072f125a09213deb4d90857b83433f08f0bf40bd8772a003cf8931c",
+      "geometryHash": "193a59170da0344f36abf18e6833a6d716a2a2875a952085d4c7e9099be17bcf",
       "id": "sf.render.latch-nine.node.lod0-motion-latch-paddle-a-brushedmetal.primitive.0",
       "indexCount": 1140,
       "indexed": true,
@@ -1168,7 +1168,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5187536c75ef49d97061ea8a6265910aa3a1325e5ec6fd41f43ae3e1a0c84fd7",
+      "geometryHash": "f8bdf52b791916415ebd054a15bf919bbb28abd8ef69249a5f8435d98acfcd52",
       "id": "sf.render.latch-nine.node.lod0-motion-latch-paddle-a-lights-warm.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1193,7 +1193,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a32374c8fad702b25f1a113b46dead42ac39a9672595babeafeda4e1ccffa33a",
+      "geometryHash": "d0f223037b32fbb38271a7e471383a5a9d0e2cf231bfc5958b4cc5c07f06a3d5",
       "id": "sf.render.latch-nine.node.lod0-motion-latch-paddle-a-mechanical.primitive.0",
       "indexCount": 2070,
       "indexed": true,
@@ -1218,16 +1218,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "14a0e7464f7601ae86aeabd0bf3ed83d5b8ec16b8bffb5f5a4f5f0cd917ea163",
+      "geometryHash": "60c0e9c1bb60f1da85e502de9e73bab71554605c63632458d2a0bfcdae911be3",
       "id": "sf.render.latch-nine.node.lod0-motion-latch-paddle-a-warning.primitive.0",
-      "indexCount": 1182,
+      "indexCount": 1086,
       "indexed": true,
       "materialHash": "0554fb9ea577be2f22daa1641e6eb72498d78284fb176e1854f87c6d453e4e74",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_LATCH_PADDLE_A_Warning",
       "nodeId": "sf.render.latch-nine.node.lod0-motion-latch-paddle-a-warning",
       "primitiveIndex": 0,
-      "vertexCount": 404
+      "vertexCount": 364
     },
     {
       "bounds": {
@@ -1243,7 +1243,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "471e0ff414bc0664dc40210138a107a7b310a32d925b6456752355e376e11a7b",
+      "geometryHash": "388a07d70544059e576f3461525c88cece02a700a9bab0a46f090a8c2264dd15",
       "id": "sf.render.latch-nine.node.lod0-motion-latch-paddle-b-brushedmetal.primitive.0",
       "indexCount": 1140,
       "indexed": true,
@@ -1268,7 +1268,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5e69c7dd8f682e4f391b579eaa2d563c28139e544967271d7e34ab8ee4d5fabd",
+      "geometryHash": "ef1a8537f4b40b8c8ee5cb28f0b849856d59ec35465ff449c416d7f3985a7fbb",
       "id": "sf.render.latch-nine.node.lod0-motion-latch-paddle-b-lights-warm.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1293,7 +1293,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "06bebb0333aaf30d42b5e5589b3b08a50ffd5f67a5c0c0680e959acbc213f6ba",
+      "geometryHash": "51272bb0f0ee4bbf384c381e70ea6155e57d0ee1314f84d6719ae41dc2170b90",
       "id": "sf.render.latch-nine.node.lod0-motion-latch-paddle-b-mechanical.primitive.0",
       "indexCount": 2070,
       "indexed": true,
@@ -1318,16 +1318,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f39167c44fab4b78a80834ecbb97600fb0a686797373480bf092fd5d5f57b2b3",
+      "geometryHash": "17f3c9899a9effaabd9625c67f01321ae7f334073042656bb23ff45e82675f7a",
       "id": "sf.render.latch-nine.node.lod0-motion-latch-paddle-b-warning.primitive.0",
-      "indexCount": 1182,
+      "indexCount": 1086,
       "indexed": true,
       "materialHash": "0554fb9ea577be2f22daa1641e6eb72498d78284fb176e1854f87c6d453e4e74",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_LATCH_PADDLE_B_Warning",
       "nodeId": "sf.render.latch-nine.node.lod0-motion-latch-paddle-b-warning",
       "primitiveIndex": 0,
-      "vertexCount": 408
+      "vertexCount": 368
     },
     {
       "bounds": {
@@ -1343,7 +1343,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "82585d312ed9bc4b013578537ca012039316a3eb4178c78e0cc24ded11d4b2d3",
+      "geometryHash": "087a20143f78c0aa2ade08020ff306c6a36089c4e00dffe6f341c1901021af5a",
       "id": "sf.render.latch-nine.node.lod0-motion-latch-paddle-c-brushedmetal.primitive.0",
       "indexCount": 1140,
       "indexed": true,
@@ -1368,7 +1368,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd361d5855fc23e6d911ba6bf3845d98ff515b20ffb91a972494c3d424fee7b0",
+      "geometryHash": "051e390abc8ab9f2f77ea940e83b784d5c51f58543694eb40dd7398b3cfddb4e",
       "id": "sf.render.latch-nine.node.lod0-motion-latch-paddle-c-lights-warm.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1393,7 +1393,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03515f8976053427db47214a1b699e8ac844281718d7cbd674d8292e5956333c",
+      "geometryHash": "7253955cb3601c6169c90bbc35d4be81a5e4c15e97b82a321af058e4ae536a18",
       "id": "sf.render.latch-nine.node.lod0-motion-latch-paddle-c-mechanical.primitive.0",
       "indexCount": 2070,
       "indexed": true,
@@ -1418,16 +1418,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d5aa8762c5261fe0049d8ae7a944f32b8563c4cced42df60fe8720f36f7ff296",
+      "geometryHash": "d9850a715a06dfc636835c22222b6f7485ef1620a06142abccaec055fba1dcd9",
       "id": "sf.render.latch-nine.node.lod0-motion-latch-paddle-c-warning.primitive.0",
-      "indexCount": 1182,
+      "indexCount": 1086,
       "indexed": true,
       "materialHash": "0554fb9ea577be2f22daa1641e6eb72498d78284fb176e1854f87c6d453e4e74",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_LATCH_PADDLE_C_Warning",
       "nodeId": "sf.render.latch-nine.node.lod0-motion-latch-paddle-c-warning",
       "primitiveIndex": 0,
-      "vertexCount": 404
+      "vertexCount": 364
     },
     {
       "bounds": {
@@ -1443,7 +1443,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a449630cba076cbf93d5c446d2bdc0380218db99210e9008132ab6f3cb6575a1",
+      "geometryHash": "886650e54ec00624b9fdc59b75ede0569258bd52879b83166368d7bab44079a9",
       "id": "sf.render.latch-nine.node.lod0-motion-latch-shutter-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1468,7 +1468,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e7252f3bde0f7a2b1f6bc69de36f1498c1e729336c8c976064ef5e94de2089da",
+      "geometryHash": "794c46d8dcf42aea3f7116d5eb66666f60006d026f2da9e2a96e3ce1c45ce203",
       "id": "sf.render.latch-nine.node.lod0-motion-latch-shutter-beacon-amber.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1518,7 +1518,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a540f71d7919e09ad1287af94a7f087c575d0fccada251d7f5fd5ab42ebc6c67",
+      "geometryHash": "57af2baedcbcb808b98c0b68e994e0abd800847b6c814b9fbcd787d277dace6d",
       "id": "sf.render.latch-nine.node.lod1-armor.primitive.0",
       "indexCount": 2916,
       "indexed": true,
@@ -1543,7 +1543,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e14415012fe1b5a45d92c557da2075c6e14b7095bbbc5081139d6760f43075a7",
+      "geometryHash": "d9262abb43b65245cc24c27bed36000d10b489675f139466ff887cfdfa8dc1b8",
       "id": "sf.render.latch-nine.node.lod1-beacon-amber.primitive.0",
       "indexCount": 138,
       "indexed": true,
@@ -1568,7 +1568,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7aa6bf89193c6221fe8e89b3c2ccd907ec4b951964e2e64b8ac05dc121022657",
+      "geometryHash": "48a2489de246e98a09fa99dc5ee2109ebc58c5277fe59d9235ad66ad13393dd5",
       "id": "sf.render.latch-nine.node.lod1-brushedmetal.primitive.0",
       "indexCount": 3108,
       "indexed": true,
@@ -1618,7 +1618,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "773aa63bdd37657e0638a30069d50ca9f2110527dded0980bc73461c0f207a96",
+      "geometryHash": "bc48a00fc199d088a6ab88d398b5328169332fb938a9794aca9ca5025c19e5f9",
       "id": "sf.render.latch-nine.node.lod1-hook-latch-thruster-main-stbd-glow-drive.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1643,16 +1643,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c7b2f8ace6ccb860197d560e7972467a42f45f2829e21fca04a8ebf9b47edfbd",
+      "geometryHash": "59fd68efe077be52fdc73ae849c201f0ce51b7fed76e8b90cd656aa4c1caaf2c",
       "id": "sf.render.latch-nine.node.lod1-hook-latch-thruster-port-aft-glow-drive.primitive.0",
-      "indexCount": 222,
+      "indexCount": 150,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_LATCH_THRUSTER_PORT_AFT_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod1-hook-latch-thruster-port-aft-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 82
+      "vertexCount": 70
     },
     {
       "bounds": {
@@ -1668,16 +1668,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "450177a84adf368f077fda92e79ddaebdd79eb34deacd369dd5d2aed1b28582c",
+      "geometryHash": "1e053cd404d03d6109cb5cc2f2750913b349638c78ba965bbbdc19d1c8b225ae",
       "id": "sf.render.latch-nine.node.lod1-hook-latch-thruster-port-fore-glow-drive.primitive.0",
-      "indexCount": 222,
+      "indexCount": 150,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_LATCH_THRUSTER_PORT_FORE_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod1-hook-latch-thruster-port-fore-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 82
+      "vertexCount": 70
     },
     {
       "bounds": {
@@ -1693,16 +1693,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0794e46a1d0338e073390c3c53254e6a766a0e46d8535b1b874ea41d4c045dbd",
+      "geometryHash": "542a01ad8f82670cd79d5f7eaeee6b2ef3fd28720f98c786b0f0a5755f642161",
       "id": "sf.render.latch-nine.node.lod1-hook-latch-thruster-reverse-port-glow-drive.primitive.0",
-      "indexCount": 222,
+      "indexCount": 150,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_LATCH_THRUSTER_REVERSE_PORT_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod1-hook-latch-thruster-reverse-port-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 82
+      "vertexCount": 70
     },
     {
       "bounds": {
@@ -1718,16 +1718,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ab5d5ce1efae60320b7bcd6c74eff220f3966131793e8cda205310c937bc59df",
+      "geometryHash": "f8a652a7a19369710a575e4ed60aee600ff699de1e7c5bd2e92ee4b62db9db74",
       "id": "sf.render.latch-nine.node.lod1-hook-latch-thruster-reverse-stbd-glow-drive.primitive.0",
-      "indexCount": 222,
+      "indexCount": 150,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_LATCH_THRUSTER_REVERSE_STBD_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod1-hook-latch-thruster-reverse-stbd-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 82
+      "vertexCount": 70
     },
     {
       "bounds": {
@@ -1743,16 +1743,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ae302988b92e751fc357ae7d8f2e5fc540c9bb1e46843ab51357514c9501f713",
+      "geometryHash": "d7549be6676455a7a2baf2050f9a90d65deeb11f2a9e4916cc35e2cd03b96cae",
       "id": "sf.render.latch-nine.node.lod1-hook-latch-thruster-stbd-aft-glow-drive.primitive.0",
-      "indexCount": 222,
+      "indexCount": 150,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_LATCH_THRUSTER_STBD_AFT_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod1-hook-latch-thruster-stbd-aft-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 82
+      "vertexCount": 70
     },
     {
       "bounds": {
@@ -1768,16 +1768,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bb25b6cec03d558e0bdb6bba24752e6f93bde993d5de8a6028c6785dc84283cd",
+      "geometryHash": "cad8c2e21680e76612631198deb44359ce51380631eea1a113eb02ce5f846bfc",
       "id": "sf.render.latch-nine.node.lod1-hook-latch-thruster-stbd-fore-glow-drive.primitive.0",
-      "indexCount": 222,
+      "indexCount": 150,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_HOOK_LATCH_THRUSTER_STBD_FORE_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod1-hook-latch-thruster-stbd-fore-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 82
+      "vertexCount": 70
     },
     {
       "bounds": {
@@ -1843,7 +1843,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "abc86786e0e7aa8608ae2e2022a732cef3354202a41df3a8ecb89bf371747e22",
+      "geometryHash": "4f3e2335620c287031396eeac561fa250dd39d4826733c95d563150ad139d7f1",
       "id": "sf.render.latch-nine.node.lod1-hull.primitive.0",
       "indexCount": 4110,
       "indexed": true,
@@ -1868,7 +1868,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dec1a6fe7a512a00cc18fabd764466fa2b8d67fe2b789de02e2a18c7f67a2356",
+      "geometryHash": "c2f06d523c1397bd24c13c8a930d1dc4652f8bbfb2d7ee7d35c8e06bbf98cf32",
       "id": "sf.render.latch-nine.node.lod1-mechanical.primitive.0",
       "indexCount": 8787,
       "indexed": true,
@@ -1893,7 +1893,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7cda317ca1a10ec32448ced79571ea213314c0181040f6a846c7715c21025ece",
+      "geometryHash": "1c23f3972d4d61e92570ea6835966e40395436a61bd13de75312e60abd7143f4",
       "id": "sf.render.latch-nine.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 1809,
       "indexed": true,
@@ -1918,7 +1918,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b4bec2167850a5d8a0d4a810c20eadb1c3f88ca7a63960b1ebda7a94a9787b41",
+      "geometryHash": "60aa8881b31c4accc2309b191d06541faf56e15c38ea42ff4e3cd9346f1cbd03",
       "id": "sf.render.latch-nine.node.lod1-motion-latch-paddle-a-brushedmetal.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1943,7 +1943,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f52549b176ac9ca21b56f1317e45d23817d0afe2b326289c1e8d7902a02716cf",
+      "geometryHash": "aedc80734abcc0ec00735aae66258cd0af6ba1fe8dd39b59a0d51a10b524f061",
       "id": "sf.render.latch-nine.node.lod1-motion-latch-paddle-a-lights-warm.primitive.0",
       "indexCount": 252,
       "indexed": true,
@@ -1968,7 +1968,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "91095092c597061cc34f3c829cab2afdcfaac5083792bbaafaff6d45906b983d",
+      "geometryHash": "42eaefc6e761642b6a6516f0804d563da811ed29342c973314b440bdf04ae6af",
       "id": "sf.render.latch-nine.node.lod1-motion-latch-paddle-a-mechanical.primitive.0",
       "indexCount": 555,
       "indexed": true,
@@ -1993,16 +1993,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9ad6dfc3201373e684efe27dd1f4da6c78fc542602c2359daf9f3e86696765c9",
+      "geometryHash": "d9812ff66aea4867b76ae7df0641ffff3df871387be64269e00bc5ca19459395",
       "id": "sf.render.latch-nine.node.lod1-motion-latch-paddle-a-warning.primitive.0",
-      "indexCount": 609,
+      "indexCount": 513,
       "indexed": true,
       "materialHash": "0554fb9ea577be2f22daa1641e6eb72498d78284fb176e1854f87c6d453e4e74",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_LATCH_PADDLE_A_Warning",
       "nodeId": "sf.render.latch-nine.node.lod1-motion-latch-paddle-a-warning",
       "primitiveIndex": 0,
-      "vertexCount": 231
+      "vertexCount": 191
     },
     {
       "bounds": {
@@ -2018,7 +2018,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fb9cf9a5176ec16e62c531e0047ea02223fb8310ee3ebc41b6d228fbdbc03ffe",
+      "geometryHash": "d054b4b1869d5a3ceb805879e7d65f8ea01498eb99a901a55db1632992dae3f6",
       "id": "sf.render.latch-nine.node.lod1-motion-latch-paddle-b-brushedmetal.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -2043,7 +2043,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "99ff9abf9d4c0679a6b5dc3f4997fe2f3e06207c14d1a165fbcbf0c85049a4b7",
+      "geometryHash": "d20c5259a9409f6c862979453babbefd77420f84af3b127a78bfd9f68d5c84c6",
       "id": "sf.render.latch-nine.node.lod1-motion-latch-paddle-b-lights-warm.primitive.0",
       "indexCount": 252,
       "indexed": true,
@@ -2068,7 +2068,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "076301f7ea324d9e4473c4623396496fe802c7ad02f2a68c762e877798e63247",
+      "geometryHash": "5b17a1d3caffafa7bbcea8b973704ee2c42a57927a8cca060f095e1a2cd0b41a",
       "id": "sf.render.latch-nine.node.lod1-motion-latch-paddle-b-mechanical.primitive.0",
       "indexCount": 558,
       "indexed": true,
@@ -2093,16 +2093,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "510cdcf31efb662a5e76355c35f6e2910767cfc9384e193a255e240fc04967f6",
+      "geometryHash": "36c812c50aa562e3f2ca43fe5b0fb1532ce6ab2983790b7204c3bd0251d6fb4b",
       "id": "sf.render.latch-nine.node.lod1-motion-latch-paddle-b-warning.primitive.0",
-      "indexCount": 606,
+      "indexCount": 510,
       "indexed": true,
       "materialHash": "0554fb9ea577be2f22daa1641e6eb72498d78284fb176e1854f87c6d453e4e74",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_LATCH_PADDLE_B_Warning",
       "nodeId": "sf.render.latch-nine.node.lod1-motion-latch-paddle-b-warning",
       "primitiveIndex": 0,
-      "vertexCount": 225
+      "vertexCount": 185
     },
     {
       "bounds": {
@@ -2118,7 +2118,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d5f851e3b2d48f057163bdb321c3313c7466444d2e28ae2d583c3ed916824d5d",
+      "geometryHash": "2e2a9b2c3a980520d5128b2c1d6db3ef4c1740e13f787392a38c982854e9a711",
       "id": "sf.render.latch-nine.node.lod1-motion-latch-paddle-c-brushedmetal.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -2143,7 +2143,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e1f44bdd8fa16ddfff1b06c97e49ae3554e06beee56fe171ff99884caaa5540d",
+      "geometryHash": "6d07210f7cf3742dcf08af5ca4fc6ac8be05f8cc49373bcb3ddcf8c147e633a7",
       "id": "sf.render.latch-nine.node.lod1-motion-latch-paddle-c-lights-warm.primitive.0",
       "indexCount": 258,
       "indexed": true,
@@ -2168,7 +2168,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "37026ea5c783ec6a7bc0ef839d23320ec1643a5ef8243208bd988358d006ca76",
+      "geometryHash": "c529fc307e45a52faec086a7e8a30a010df65cafd05968ed04b0b76bae2580fb",
       "id": "sf.render.latch-nine.node.lod1-motion-latch-paddle-c-mechanical.primitive.0",
       "indexCount": 546,
       "indexed": true,
@@ -2193,16 +2193,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ab655dc4764f272fa3292bf568669f94afbfb7929214cbf6a7d8e472fab3535",
+      "geometryHash": "fe6cc5f821a94b2a0d9b4b29291091b9a0d178aa24de29b362479b8bf597dc3a",
       "id": "sf.render.latch-nine.node.lod1-motion-latch-paddle-c-warning.primitive.0",
-      "indexCount": 612,
+      "indexCount": 516,
       "indexed": true,
       "materialHash": "0554fb9ea577be2f22daa1641e6eb72498d78284fb176e1854f87c6d453e4e74",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_LATCH_PADDLE_C_Warning",
       "nodeId": "sf.render.latch-nine.node.lod1-motion-latch-paddle-c-warning",
       "primitiveIndex": 0,
-      "vertexCount": 236
+      "vertexCount": 196
     },
     {
       "bounds": {
@@ -2218,7 +2218,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c4211c9b7cd83ccdb15c0342d9df37bed0d82655226378b19df3ff4cabcbc146",
+      "geometryHash": "433ec656448553fd947b202d98c7e7a27b557c8ac3f5f34a091b2f392b43f3d3",
       "id": "sf.render.latch-nine.node.lod1-motion-latch-shutter-armor.primitive.0",
       "indexCount": 318,
       "indexed": true,
@@ -2293,7 +2293,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "97aa01e27e77acaebdc459574352a8b819202132889d716d9a63521d2ec766c2",
+      "geometryHash": "3ccdadee2b9504a58d6830b5718e872de5ebddf327a8125645f6490f3bebef2a",
       "id": "sf.render.latch-nine.node.lod2-armor.primitive.0",
       "indexCount": 966,
       "indexed": true,
@@ -2318,7 +2318,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5e371ca1fe8d29e34d20821b3be13aef6c47f7fab54f8743f50e7c975116a2cb",
+      "geometryHash": "9c2cbe46ad1ba3a5a002b5f540c432bd3e5af879fbbbab94b7fc5642dee34df1",
       "id": "sf.render.latch-nine.node.lod2-beacon-amber.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -2343,7 +2343,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2ba3e0ab113b080c03f2c5b1feaa1e320f2149c6205eda7d30740376fcfd4edc",
+      "geometryHash": "716b843166d5266e12b41e3e1e06d7f674a301a9b3b5e8320451c059ae35b94a",
       "id": "sf.render.latch-nine.node.lod2-brushedmetal.primitive.0",
       "indexCount": 198,
       "indexed": true,
@@ -2418,16 +2418,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e32138f39a5ade0433688d3c2239ca11f3527e15c47ceb8f3b0b6507bf3a6746",
+      "geometryHash": "f4bf791954d7dc25b41a832ef714d02dc8761dd533516eb3f551a458199fba3e",
       "id": "sf.render.latch-nine.node.lod2-hook-latch-thruster-port-aft-glow-drive.primitive.0",
-      "indexCount": 144,
+      "indexCount": 72,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_LATCH_THRUSTER_PORT_AFT_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod2-hook-latch-thruster-port-aft-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 52
+      "vertexCount": 40
     },
     {
       "bounds": {
@@ -2443,16 +2443,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e8ae4b5b315a0b1cd2be2794b37c0da150f255fceab5023330bec4c2365a4ecd",
+      "geometryHash": "de1efd3f1ec6fcb36bee0a16fb9f3711f7da589b3c042e6e673bc3c60498d240",
       "id": "sf.render.latch-nine.node.lod2-hook-latch-thruster-port-fore-glow-drive.primitive.0",
-      "indexCount": 144,
+      "indexCount": 72,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_LATCH_THRUSTER_PORT_FORE_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod2-hook-latch-thruster-port-fore-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 52
+      "vertexCount": 40
     },
     {
       "bounds": {
@@ -2468,16 +2468,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f9c219c13ff0288969cf475168c02fb02ac451d4005153fdedc1ae5d06611a35",
+      "geometryHash": "19f5655a163dad1ffa70618a44df66b1e74ea9e4588305922e5971b826e3ac36",
       "id": "sf.render.latch-nine.node.lod2-hook-latch-thruster-reverse-port-glow-drive.primitive.0",
-      "indexCount": 144,
+      "indexCount": 72,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_LATCH_THRUSTER_REVERSE_PORT_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod2-hook-latch-thruster-reverse-port-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 52
+      "vertexCount": 40
     },
     {
       "bounds": {
@@ -2493,16 +2493,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6a57288965675281094da717a97ca688fe0aa60274e92f52d7c06e138244833f",
+      "geometryHash": "77b7006d1a7d0b015a4005bde78bcc393b47bcde6501004f93f56710749bfeb9",
       "id": "sf.render.latch-nine.node.lod2-hook-latch-thruster-reverse-stbd-glow-drive.primitive.0",
-      "indexCount": 144,
+      "indexCount": 72,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_LATCH_THRUSTER_REVERSE_STBD_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod2-hook-latch-thruster-reverse-stbd-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 52
+      "vertexCount": 40
     },
     {
       "bounds": {
@@ -2518,16 +2518,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "92a39c15ecf8a1e144b8964d45b50563f2cd9f7eb6272b7615375e29dff72fad",
+      "geometryHash": "7efa1c203956b91a5a63b8e78710405ec613398b83f6f914fef737b6407e3406",
       "id": "sf.render.latch-nine.node.lod2-hook-latch-thruster-stbd-aft-glow-drive.primitive.0",
-      "indexCount": 144,
+      "indexCount": 72,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_LATCH_THRUSTER_STBD_AFT_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod2-hook-latch-thruster-stbd-aft-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 52
+      "vertexCount": 40
     },
     {
       "bounds": {
@@ -2543,16 +2543,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd7c064cdd3ada7b7e5599cd576a0caa4c217c0d1b0a4be4228e218e862ad143",
+      "geometryHash": "5c4e9748eec1bfbf49e61aa974240af2ab89c21dfe9e5497055cefe925f8c920",
       "id": "sf.render.latch-nine.node.lod2-hook-latch-thruster-stbd-fore-glow-drive.primitive.0",
-      "indexCount": 144,
+      "indexCount": 72,
       "indexed": true,
       "materialHash": "3c8f2316d486945b654ba370e2a006c2ed21a76d68e6c1cd97c27b7ddc85c9dd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_HOOK_LATCH_THRUSTER_STBD_FORE_glow_drive",
       "nodeId": "sf.render.latch-nine.node.lod2-hook-latch-thruster-stbd-fore-glow-drive",
       "primitiveIndex": 0,
-      "vertexCount": 52
+      "vertexCount": 40
     },
     {
       "bounds": {
@@ -2618,7 +2618,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f1e61c1c1f42e6aaa6cd172ba0032362fe27d36493318814bb8df0cdb4c9ac11",
+      "geometryHash": "89ebf5eb93d079180a1fe173212224e3030fb9154b775e39ba2cf65314c8e79a",
       "id": "sf.render.latch-nine.node.lod2-hull.primitive.0",
       "indexCount": 1152,
       "indexed": true,
@@ -2643,7 +2643,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "69da84e55ea8d776f0431082b46c00346df2a9d6539c74c8338861735cddcb53",
+      "geometryHash": "b2b1d1774c73457271fa8fbd9a29c331e09eb3df8888cf9671d094623635a0d1",
       "id": "sf.render.latch-nine.node.lod2-mechanical.primitive.0",
       "indexCount": 3048,
       "indexed": true,
@@ -2768,16 +2768,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e9a2e71a518df7c20b086fa9cfa5543a75b96060476baba3813a52db56035b9a",
+      "geometryHash": "abd2fc137a087bf42dc288ec1a85ce63bcdb677a96aa27565d100b8cfefe000f",
       "id": "sf.render.latch-nine.node.lod2-motion-latch-paddle-a-warning.primitive.0",
-      "indexCount": 348,
+      "indexCount": 252,
       "indexed": true,
       "materialHash": "0554fb9ea577be2f22daa1641e6eb72498d78284fb176e1854f87c6d453e4e74",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_LATCH_PADDLE_A_Warning",
       "nodeId": "sf.render.latch-nine.node.lod2-motion-latch-paddle-a-warning",
       "primitiveIndex": 0,
-      "vertexCount": 156
+      "vertexCount": 116
     },
     {
       "bounds": {
@@ -2793,7 +2793,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c41cc158991ab4eed9ffe9f913e69d08d6f97a98709ea06220a26df0b2d6f539",
+      "geometryHash": "1cbfa888e5c321c86a329fcd43838c3c88fb47d97c2ccf6ce52e106bb910dd3e",
       "id": "sf.render.latch-nine.node.lod2-motion-latch-paddle-b-brushedmetal.primitive.0",
       "indexCount": 276,
       "indexed": true,
@@ -2818,7 +2818,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fc3e3b3eb4695084715ba66d7117871ed8e400a105b847b55c7b773812d07638",
+      "geometryHash": "fefdf07b556c32ea4629dac88483faa18a17fac5c9bf0499e533321733c4ad41",
       "id": "sf.render.latch-nine.node.lod2-motion-latch-paddle-b-lights-warm.primitive.0",
       "indexCount": 90,
       "indexed": true,
@@ -2868,16 +2868,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "370790b7fbe20ecb7dcba6ccd8c16de6192b953d293f2073a63f65efb7719d89",
+      "geometryHash": "ea59c55edfeb252a4fbbec3cf3429c9f8bc4a2982bc74fbb866488da11bcd3c7",
       "id": "sf.render.latch-nine.node.lod2-motion-latch-paddle-b-warning.primitive.0",
-      "indexCount": 348,
+      "indexCount": 252,
       "indexed": true,
       "materialHash": "0554fb9ea577be2f22daa1641e6eb72498d78284fb176e1854f87c6d453e4e74",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_LATCH_PADDLE_B_Warning",
       "nodeId": "sf.render.latch-nine.node.lod2-motion-latch-paddle-b-warning",
       "primitiveIndex": 0,
-      "vertexCount": 156
+      "vertexCount": 116
     },
     {
       "bounds": {
@@ -2968,16 +2968,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e8fcbd0120c40aa6bedf42dfa91d799527e8605ad91c2a006381084444b7d785",
+      "geometryHash": "6446e88c93c5e91c8e9594b1406f119c02ab146feaa3cfdebc8f734385175090",
       "id": "sf.render.latch-nine.node.lod2-motion-latch-paddle-c-warning.primitive.0",
-      "indexCount": 351,
+      "indexCount": 255,
       "indexed": true,
       "materialHash": "0554fb9ea577be2f22daa1641e6eb72498d78284fb176e1854f87c6d453e4e74",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_LATCH_PADDLE_C_Warning",
       "nodeId": "sf.render.latch-nine.node.lod2-motion-latch-paddle-c-warning",
       "primitiveIndex": 0,
-      "vertexCount": 157
+      "vertexCount": 117
     },
     {
       "bounds": {
@@ -8529,19 +8529,19 @@
       "sha256": "994c368835bd71bc82996dc79ceb8951bf78ae4f653191077b6b3292942dbc38"
     },
     "sourceGlb": {
-      "bytes": 879144,
-      "sha256": "c3550bccf5ff6c191008619616f68e2e22ff01f8be8bb19a9c4e1d3fd380b80c",
+      "bytes": 861980,
+      "sha256": "cb8e487b9ee5ea90a401a494d683dd768adc8673dde901575326b39bbe2c0152",
       "uri": "place_latch_nine.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1487920,
-    "sha256": "61fe8328cfefa1e7e979c4461fe3aac2715ed5cdb6d62dc839c7a55880b8dd99",
+    "bytes": 1479312,
+    "sha256": "8ebb56b7e13f68757a88d0af4652c3737687c2d3a3db6ddb33cd2aede27c91b9",
     "uri": "render.glb"
   },
   "runtime": {
@@ -12317,7 +12317,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_latch_nine.glb"
   },
-  "runtimeHash": "d9b5a7481b1dab935b033c3a26a7f9a9908757394ec8a1e110012abd2e092a1d",
+  "runtimeHash": "ae2ee295c07977d8b45806c6f4eff3621ea5c39f306d6e08dd24a9e6cde7db22",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

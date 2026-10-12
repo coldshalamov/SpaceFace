@@ -105,7 +105,11 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
+<<<<<<< HEAD
   "contentHash": "8e423b94496b126d81de19f658601f0bfb997c816037cffb5c5e7fe56b51045c",
+=======
+  "contentHash": "3a83f5f25f7f90c95d10cdda8bfb9727c231db086845570cb208b38a48e4f0be",
+>>>>>>> origin/pr-maturation-261
   "dynamicGroups": [
     {
       "id": "sf.render.resonant-cathedral.node.lod0-hook-nav-port.dynamic",
@@ -178,16 +182,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "64b6451edfe31bb7f1a5119a6602fa7a050a5d581bb4bfac1b8d923524673585",
+      "geometryHash": "e133dfa294091fe6d3ae28ead94db2a1527368453f8b74f08070346e4ba74301",
       "id": "sf.render.resonant-cathedral.node.lod0-armor.primitive.0",
-      "indexCount": 16362,
+      "indexCount": 16170,
       "indexed": true,
       "materialHash": "009ea587035dfc09e04818aa30ea1e988740cd94b2d6fa33c9cd6b60fc0230fb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.resonant-cathedral.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 7101
+      "vertexCount": 7087
     },
     {
       "bounds": {
@@ -203,16 +207,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7e34f21ba87fc2c184d5db2702c2f58b47074e42aa1e0c489bef078e9392931a",
+      "geometryHash": "ce1f247533d4827117849dacdce38a8338feef5c70e3094f59ebfc47e3bc0350",
       "id": "sf.render.resonant-cathedral.node.lod0-beacon-amber.primitive.0",
-      "indexCount": 3126,
+      "indexCount": 3024,
       "indexed": true,
       "materialHash": "6f08a4ce950adc05cf7913e335be7b01c8e27047c8a87a00ae8fe8cf9619e7c8",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.resonant-cathedral.node.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 1660
+      "vertexCount": 1649
     },
     {
       "bounds": {
@@ -228,7 +232,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ccccd4a2cda94fc3fb0bedf07358e3b32f31b80a3b855565448c7e1d4ded58cf",
+      "geometryHash": "6bddd2c2c25a09f25c234ff8972c47e21089956d712b494705e13b263184b0fe",
       "id": "sf.render.resonant-cathedral.node.lod0-canopy.primitive.0",
       "indexCount": 8400,
       "indexed": true,
@@ -303,16 +307,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "056a71c5fdc88b449b680b3e33db732a13ecd6430eea586fb6429bed866de70d",
+      "geometryHash": "190ef525bf12aadd2d400140ae27e520caef5dc9ad24add4d966f1c6223dc8bd",
       "id": "sf.render.resonant-cathedral.node.lod0-hull-graphite.primitive.0",
-      "indexCount": 70059,
+      "indexCount": 69891,
       "indexed": true,
       "materialHash": "b0b6df36052e2796df947cce8aa1adc6b30fc9f49a249ae643467557e195f70b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_graphite",
       "nodeId": "sf.render.resonant-cathedral.node.lod0-hull-graphite",
       "primitiveIndex": 0,
-      "vertexCount": 24056
+      "vertexCount": 24012
     },
     {
       "bounds": {
@@ -328,7 +332,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b9a736f1608d78bc7e6f5c913da5790c0a833cd17324a9174b152718ba16fa4a",
+      "geometryHash": "d3bedb452d1649b9804cce1b533022a3f1a146551f690c517415f5501bdeb221",
       "id": "sf.render.resonant-cathedral.node.lod0-hull-spire.primitive.0",
       "indexCount": 4089,
       "indexed": true,
@@ -353,7 +357,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e0b3e947fa09fa9601fa3a0343fb8c2510f40b7b7f49f8112147c0bcfbe1b87e",
+      "geometryHash": "42d346d7c5c89d426017a2842324de26924be428a4d6bcf64b49a60ae2a095dc",
       "id": "sf.render.resonant-cathedral.node.lod0-hull.primitive.0",
       "indexCount": 18408,
       "indexed": true,
@@ -378,16 +382,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f7efee0eb610668f789d5a39f83ed20985b014449503b8ce28fcb7887ffcbc33",
+      "geometryHash": "c1a95d67215267029a0399cd933ff79e739bb7f2a7469bc75f1929dcf8e4f8d6",
       "id": "sf.render.resonant-cathedral.node.lod0-lights-cyan-magenta.primitive.0",
-      "indexCount": 23604,
+      "indexCount": 23484,
       "indexed": true,
       "materialHash": "14707ecf5a0da9a5ebb982e20663c435747b2963a10bf89a909c3ee9a5db2381",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Lights_Cyan_magenta",
       "nodeId": "sf.render.resonant-cathedral.node.lod0-lights-cyan-magenta",
       "primitiveIndex": 0,
-      "vertexCount": 8020
+      "vertexCount": 8008
     },
     {
       "bounds": {
@@ -453,16 +457,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f32eea7b254011d050e6c2dacb80cb2a90eea5a79f3144b86db1c446593e5dcd",
+      "geometryHash": "48f3117299152d74a55728ff523bd51d3b691fb76e400e00400b204f27fe60ea",
       "id": "sf.render.resonant-cathedral.node.lod0-mechanical.primitive.0",
-      "indexCount": 10368,
+      "indexCount": 7560,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.resonant-cathedral.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 3948
+      "vertexCount": 3676
     },
     {
       "bounds": {
@@ -478,7 +482,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "54f56e65e202c38585534645f5bd7f1ff7decf0891285174aa1bf39d5d3238c5",
+      "geometryHash": "816cc7944cca74952ed900b4b61f831183545332ca6db039d8b7ff2cac6a9e1c",
       "id": "sf.render.resonant-cathedral.node.lod0-mechanicaldark.primitive.0",
       "indexCount": 8040,
       "indexed": true,
@@ -503,7 +507,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8a4f2f9d2ceae5c1080fff722d5d18b9a205d4f3745f749426fc5db35a159110",
+      "geometryHash": "afe630f91f5967c403d6e28fd179dda931dc84566ed4cbe6eed2a439353d9189",
       "id": "sf.render.resonant-cathedral.node.lod0-warning.primitive.0",
       "indexCount": 3840,
       "indexed": true,
@@ -528,16 +532,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2a69e525302755a31f2c509fea0dec262c2ca8c12d1b23ec5003a5a09d57e7fb",
+      "geometryHash": "72d6fe1c4b13264772f862fd38a12c7abeb985a307fa0fba0e1af1c8c5b4b7a2",
       "id": "sf.render.resonant-cathedral.node.lod1-armor.primitive.0",
-      "indexCount": 5670,
+      "indexCount": 5478,
       "indexed": true,
       "materialHash": "009ea587035dfc09e04818aa30ea1e988740cd94b2d6fa33c9cd6b60fc0230fb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.resonant-cathedral.node.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 3378
+      "vertexCount": 3366
     },
     {
       "bounds": {
@@ -553,7 +557,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4610dfbf3cece23f982d45582c8cfa6bab2fc8a26823ce23c572c2dde936f2df",
+      "geometryHash": "9ecaf711e818cc79c76bf93c613ee134d4888c44ab718331e1bc0f0e4ff838c1",
       "id": "sf.render.resonant-cathedral.node.lod1-beacon-amber.primitive.0",
       "indexCount": 1662,
       "indexed": true,
@@ -653,16 +657,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "170def3fa5dcef64ff3350ad2f655a5771d65bbf90112c7905a2d130c3d008b9",
+      "geometryHash": "cae79f3e5f26a32d66126fce3b0cc5e3154621ef22e3f40834ba49935788f44a",
       "id": "sf.render.resonant-cathedral.node.lod1-hull-graphite.primitive.0",
-      "indexCount": 22296,
+      "indexCount": 22185,
       "indexed": true,
       "materialHash": "b0b6df36052e2796df947cce8aa1adc6b30fc9f49a249ae643467557e195f70b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_graphite",
       "nodeId": "sf.render.resonant-cathedral.node.lod1-hull-graphite",
       "primitiveIndex": 0,
-      "vertexCount": 9806
+      "vertexCount": 9775
     },
     {
       "bounds": {
@@ -678,7 +682,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8372a1e466c0e456faa3a205bfbfb20c9915aedfffbba362734167b1daff187c",
+      "geometryHash": "3e1a6180f988c4a044c054e4dfa5d1bb6cb77add3541ab2ebe0636c14062429b",
       "id": "sf.render.resonant-cathedral.node.lod1-hull-spire.primitive.0",
       "indexCount": 1296,
       "indexed": true,
@@ -703,7 +707,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b70512993dd538baf735e4666d91d6057f755345531906271f248321c790013e",
+      "geometryHash": "15a7715eec3cc49f3e669da4cd3ad7742f0134a6ea8c91cc66e188ee5f010c5d",
       "id": "sf.render.resonant-cathedral.node.lod1-hull.primitive.0",
       "indexCount": 15354,
       "indexed": true,
@@ -728,7 +732,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "50cf797bb72d9b637d7f4219ae25591e9d4773b5a49f99a840e005ac0e7c8526",
+      "geometryHash": "a286aefbb5499e3cf3c33a66c0b737123ae47a66a2700c63d7b9356e5ba89d1a",
       "id": "sf.render.resonant-cathedral.node.lod1-lights-cyan-magenta.primitive.0",
       "indexCount": 11439,
       "indexed": true,
@@ -803,7 +807,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7da5f8ae818df963f87974dd1775ef227f8b9ee3639553817160b2aff7192869",
+      "geometryHash": "0724c6f17d2cea3fda290ebb8ddf35f39465949fc396a3773459e9820e7d1101",
       "id": "sf.render.resonant-cathedral.node.lod1-mechanical.primitive.0",
       "indexCount": 1584,
       "indexed": true,
@@ -828,7 +832,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dd5eafc1968c1ca8130089b5630a2b2043394554c9711abac7a3baccbe12a959",
+      "geometryHash": "02022d84f9f0090d98e88124d95fd709b15e5a10ca5a1c6bd90c15d84ee6bea1",
       "id": "sf.render.resonant-cathedral.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 4029,
       "indexed": true,
@@ -878,16 +882,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "374d65c069b6daa76c169d606dbcfdbda2086fb1a3b8eda4c7742b684754c89a",
+      "geometryHash": "75087498c620141793c9397388f839ab7991dad5ebab6c1763f14a614b68831f",
       "id": "sf.render.resonant-cathedral.node.lod2-armor.primitive.0",
-      "indexCount": 2058,
+      "indexCount": 1866,
       "indexed": true,
       "materialHash": "009ea587035dfc09e04818aa30ea1e988740cd94b2d6fa33c9cd6b60fc0230fb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.resonant-cathedral.node.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1089
+      "vertexCount": 1077
     },
     {
       "bounds": {
@@ -903,7 +907,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6a4f6f13352181ef63960fe6f4d50274f945c3cc5c56239b9f54f3365bb48c14",
+      "geometryHash": "c079d727d9d35847fefcb0d2ee4d680a996cca10095d859732f6477937836462",
       "id": "sf.render.resonant-cathedral.node.lod2-beacon-amber.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -1003,16 +1007,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "68f41c3d736a60fcbdcbc8d05ad28bef3259b13068d326de13764275f4eb9c31",
+      "geometryHash": "5c8093dc7322d42d17b25be5ba1d42212783090273f31486bf86a6677b8ec966",
       "id": "sf.render.resonant-cathedral.node.lod2-hull-graphite.primitive.0",
-      "indexCount": 9636,
+      "indexCount": 9525,
       "indexed": true,
       "materialHash": "b0b6df36052e2796df947cce8aa1adc6b30fc9f49a249ae643467557e195f70b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_graphite",
       "nodeId": "sf.render.resonant-cathedral.node.lod2-hull-graphite",
       "primitiveIndex": 0,
-      "vertexCount": 4933
+      "vertexCount": 4902
     },
     {
       "bounds": {
@@ -1028,7 +1032,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "746babc4f8198ebafe0eb27eec2c5e8a9f5e380447604bd90a77de3bb7fb9c88",
+      "geometryHash": "c568171271469f980be52f921b3fcaaec14b329050d1fcf870d82d3249afb71e",
       "id": "sf.render.resonant-cathedral.node.lod2-hull-spire.primitive.0",
       "indexCount": 630,
       "indexed": true,
@@ -1053,7 +1057,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "80cc44e0855bbd03e415c3f31323d90fae56972c98d521ea0460b735ddf909e7",
+      "geometryHash": "ca3dd0d387528f4374c918d89e09035277b1b09adc7c292a8b9c523190537fda",
       "id": "sf.render.resonant-cathedral.node.lod2-hull.primitive.0",
       "indexCount": 6063,
       "indexed": true,
@@ -1062,7 +1066,7 @@
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.resonant-cathedral.node.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 4297
+      "vertexCount": 4860
     },
     {
       "bounds": {
@@ -1078,7 +1082,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "48af63ebd9ebce9002d81351c0ba49408adcb9f8f06876359fdf4289024be43a",
+      "geometryHash": "219f11fd0be6acc23856c615b4ba67bcd86d539c3359d8d66719ac0a9701daba",
       "id": "sf.render.resonant-cathedral.node.lod2-lights-cyan-magenta.primitive.0",
       "indexCount": 3921,
       "indexed": true,
@@ -1087,7 +1091,7 @@
       "meshName": "LOD2_Lights_Cyan_magenta",
       "nodeId": "sf.render.resonant-cathedral.node.lod2-lights-cyan-magenta",
       "primitiveIndex": 0,
-      "vertexCount": 1739
+      "vertexCount": 2728
     },
     {
       "bounds": {
@@ -1128,7 +1132,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2487a73519488a18f41a9f94c016ba685bad4621f849fcff90b512770093167b",
+      "geometryHash": "1eeab5409cc7f1ba803a23aef716e0097e7b7be53086cdc25481f12487aee702",
       "id": "sf.render.resonant-cathedral.node.lod2-mechanical.primitive.0",
       "indexCount": 279,
       "indexed": true,
@@ -1153,7 +1157,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fc7c5658ac9e164503e01e9f8aba239209c24c239eb6928da3459c29c16b0829",
+      "geometryHash": "9f2ba9f5a37546a82d8e92e437172bcacb6195c68bc1c5c3ebebbeccf9a1aced",
       "id": "sf.render.resonant-cathedral.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 1677,
       "indexed": true,
@@ -1162,7 +1166,7 @@
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.resonant-cathedral.node.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1073
+      "vertexCount": 1269
     },
     {
       "bounds": {
@@ -3704,19 +3708,24 @@
       "sha256": "9ba09c97ab04cb012cab2a53aee0b93d85254abce8751a43c964cf35b9aff939"
     },
     "sourceGlb": {
-      "bytes": 2203068,
-      "sha256": "2eb574f12ce4e29898982e582f4f04d692bd83b956d287554fac41a253b2a78f",
+      "bytes": 2198072,
+      "sha256": "43cd5e2e2620da8416ebce3d49b610df595def78de0e98c567162990e0e6300c",
       "uri": "place_landmark_resonant_cathedral.glb"
     },
     "sourceManifest": {
+<<<<<<< HEAD
       "bytes": 270894,
       "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+=======
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
+>>>>>>> origin/pr-maturation-261
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 4119060,
-    "sha256": "05edaf97fa569382b56cbd7d9c720ed9b2fb46361325715a49ad2255cf4fd9f1",
+    "bytes": 4051808,
+    "sha256": "59f004d6659d4a4c4c4149b02b1dfc995a31c7f7b5c43dad78ee1c18bb1f3101",
     "uri": "render.glb"
   },
   "runtime": {
@@ -5192,7 +5201,11 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_landmark_resonant_cathedral.glb"
   },
+<<<<<<< HEAD
   "runtimeHash": "3b871c0374197024f73c425d780287a61d934a09237a2166d8f9376b3e515190",
+=======
+  "runtimeHash": "696ed2f1e9795b52f63737d38824ed71d12054a187b3052943813a5880d9a513",
+>>>>>>> origin/pr-maturation-261
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

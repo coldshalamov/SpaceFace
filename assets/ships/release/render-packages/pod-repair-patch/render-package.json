@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "cc50aa6fbcc6f2825aaec473f931cfb4b87d8f7d4f07f96b1c965d866c16e921",
+  "contentHash": "e6b5c87685bc65dccf4340df69e620cf88e9fc78a3d50b519cd7bdcdc19ac724",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b0f6b526c5f7e4723e28f8d28230662711b3f303e9834c159fa44c71596fe710",
+      "geometryHash": "b4bf74d6a4615e41c4b906eaa4a6b4b512b875dabb59896f4243059207a121b1",
       "id": "sf.render.pod-repair-patch.mesh.pod-repair-patch-material-accent-merged.primitive.0",
       "indexCount": 4800,
       "indexed": true,
@@ -32,7 +32,7 @@
       "meshName": "pod_repair_patch_Material_Accent_Merged",
       "nodeId": "sf.render.pod-repair-patch.mesh.pod-repair-patch-material-accent-merged",
       "primitiveIndex": 0,
-      "vertexCount": 1587
+      "vertexCount": 1130
     },
     {
       "bounds": {
@@ -48,16 +48,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1086c25c3acb2c360d650d8fbb9015dc587f1adb7086050712cfc255b10825b3",
+      "geometryHash": "1140e75cb9b00a4e740b3ab99905c63a548da9faf78238ef8d7777b423447c7d",
       "id": "sf.render.pod-repair-patch.mesh.pod-repair-patch-material-mechanical-merged.primitive.0",
-      "indexCount": 20484,
+      "indexCount": 20304,
       "indexed": true,
       "materialHash": "0d612528a03bab333df5b88aae8ccb024556b565a4c3510d36bb5c7577608cd2",
       "materialPipelineKey": "opaque",
       "meshName": "pod_repair_patch_Material_Mechanical_Merged",
       "nodeId": "sf.render.pod-repair-patch.mesh.pod-repair-patch-material-mechanical-merged",
       "primitiveIndex": 0,
-      "vertexCount": 6656
+      "vertexCount": 4855
     },
     {
       "bounds": {
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d58d83f3c413d98df9a9801c40b8680ea7e7c82a593d9765bc7dc47dbe82282e",
+      "geometryHash": "449439b04b3acee40b4f029155d102af98c353870e81ad92524ee90ca3ac13e2",
       "id": "sf.render.pod-repair-patch.mesh.repair-patch.primitive.0",
       "indexCount": 1044,
       "indexed": true,
@@ -82,7 +82,7 @@
       "meshName": "Repair_Patch",
       "nodeId": "sf.render.pod-repair-patch.mesh.repair-patch",
       "primitiveIndex": 0,
-      "vertexCount": 241
+      "vertexCount": 254
     }
   ],
   "hlods": [],
@@ -338,19 +338,19 @@
       "sha256": "3941087c4bbb9b5d0f3395a7e3d862d8b9045937d22ebe0321c5ce57135dc7dc"
     },
     "sourceGlb": {
-      "bytes": 340908,
-      "sha256": "5c749c12efabff01c7668447cd418b0317f46e3cda0212aabd897687038e498d",
+      "bytes": 327636,
+      "sha256": "ae64b1405ecf298d64c57e6a3acfb43689cf3d0b33aaacd0ebad6f18595ea641",
       "uri": "pod_repair_patch.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 522464,
-    "sha256": "8113b863fab9c24b997d59f09847ddb8faef2b723832a6b796e03d8ee540be36",
+    "bytes": 371388,
+    "sha256": "99ee02666f50f81cd35e4ee60dff11bb0e0dd09697ff61d025c9fdc09929225b",
     "uri": "render.glb"
   },
   "runtime": {
@@ -486,7 +486,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/pods/pod_repair_patch.glb"
   },
-  "runtimeHash": "acf8c992bcd1eceb4290d287c57fe4d9249de8e18d764adacc5c35793e6317ea",
+  "runtimeHash": "4a330ddcc93a71469a48510d3d7684afa4a5b22fb7eb7f4bf42503291ad10bed",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

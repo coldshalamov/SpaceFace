@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2d6415a076516555869b5418372f3596d72548c4d650a8240636510c6bfdaa6d",
+  "contentHash": "f294a63403db883ae84842426bcd76d3e45d484929b5d50711e3038114244f74",
   "dynamicGroups": [
     {
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hook-armor-flap-armor.dynamic",
@@ -608,7 +608,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "72a25b15038e4ccb7cdaf0137e402aff48bbea8483741f46b04bfbbe8fb09b05",
+      "geometryHash": "d84cf09cf20401e369d358c24912c0823471a9ddb245cf93e3693d04c5405c2c",
       "id": "sf.render.wasp-production-v1-lod2.node.collision-hull.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -633,7 +633,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "44db34c6e0af7f593e90108fd60a4d18e0321f121d88e1948ce3473f9183ae78",
+      "geometryHash": "2e22bcb365fef2b05f067f40cbd65721a00b03d29c76a4dc82115ba10411aaaa",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-armor.primitive.0",
       "indexCount": 2700,
       "indexed": true,
@@ -642,7 +642,7 @@
       "meshName": "LOD0_Armor.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 874
+      "vertexCount": 1056
     },
     {
       "bounds": {
@@ -683,7 +683,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "256a710be0b870bcc747f357596a91849958c915b747a9f5c19fc9d44bce5259",
+      "geometryHash": "6f93436787a3eb30b60d45d73c269a75a37f94c939f575809a9aa5e9a00664f2",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-canopy.primitive.0",
       "indexCount": 690,
       "indexed": true,
@@ -708,7 +708,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9a6812ed835b0058c701b703c0d98828947c456cebb758550270ebdb5e253efb",
+      "geometryHash": "01e05eb8e9afa328c88559c94a057ebcebc215689f11578b6a93b52088f53f11",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hook-armor-flap-armor.primitive.0",
       "indexCount": 168,
       "indexed": true,
@@ -733,7 +733,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e028fcfc35010280aa3eaf15ddfd5c78f6318636a69547cfc290e1d95d30a096",
+      "geometryHash": "4830a17d8f33b029f75fe38e3625d5b19a80f421929a46df2aba4ce1161a115b",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hook-drive-core.primitive.0",
       "indexCount": 144,
       "indexed": true,
@@ -808,7 +808,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dd9a4cf2524b580448112d213f54a93121db20760df640017999e9e12b69210c",
+      "geometryHash": "f30d89bd52ace33654ee253bebf8dfbcaf8212dd16231379b925a55b257592d9",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-hull.primitive.0",
       "indexCount": 5559,
       "indexed": true,
@@ -833,16 +833,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b85901d3d5dce7572dfad6265b31b1f321b739730cc902d8e011bbe3893560d1",
+      "geometryHash": "68bc2b25ffb77dab928e4812f4c2d8a1a8ceb47b3651403c340dc1d91de69c00",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-lights-cyan.primitive.0",
-      "indexCount": 705,
+      "indexCount": 693,
       "indexed": true,
       "materialHash": "85add90c89b799ae69ad3e2f1d67cd8a9294fc71610c80e6f115a1ee61fd4888",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Lights_Cyan.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 284
+      "vertexCount": 275
     },
     {
       "bounds": {
@@ -858,16 +858,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd6679e3836a5cd82b1786f9ec458781e4a69916a18d9a6cb6200077775c88de",
+      "geometryHash": "c9d216d0661d17eeb10a4c5a55550da1983fc6b37ff2e388f10f42195830f801",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-mechanical.primitive.0",
-      "indexCount": 3639,
+      "indexCount": 3312,
       "indexed": true,
       "materialHash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1169
+      "vertexCount": 1065
     },
     {
       "bounds": {
@@ -883,16 +883,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b8c2c04f681a66d30a96e8235400791245f177f2cb0c71a35af954490523606f",
+      "geometryHash": "848b6a62500bb1c977ca4e448069af92db9ffb8237dddca7b3479a018f49f7bf",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 4383,
+      "indexCount": 4293,
       "indexed": true,
       "materialHash": "8214949ffc1c28fa4a3d3fdbbf0329870ff799e2738678a6d06faf31e01c844b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark.002",
       "nodeId": "sf.render.wasp-production-v1-lod2.node.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 1633
+      "vertexCount": 1720
     },
     {
       "bounds": {
@@ -908,7 +908,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d45da43317979ca65a797e425be02d848b0dca44dee5e985755c41032a22cd8b",
+      "geometryHash": "a91e04dc3bd98c5fccdd019eda683cce1c0eb62cde5dc4f5d91c686024b7710e",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-armor.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -933,7 +933,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03314179433cc2512a26dc02f56a029b5c22ef22587fc1c1f9f27595b3e8954d",
+      "geometryHash": "7d33e04afda1c2c3b1871b15136399eefbb268c770169bc29e592055fe00ee87",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-mechanical.primitive.0",
       "indexCount": 669,
       "indexed": true,
@@ -958,7 +958,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "27c996ad448a116529db648141fd226e32330d8cb890da80a00c193beab79ec7",
+      "geometryHash": "a3eff9a3539004dbc2c36677b979367065f5fc88fbed7779c3bc1a9ec5caec0c",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-guns-mechanicaldark.primitive.0",
       "indexCount": 309,
       "indexed": true,
@@ -983,7 +983,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25a141df97f3a8ca46c6a118d6ea17288831d7cb754ef136fdcebd734a7f53b1",
+      "geometryHash": "9dea444aa21ac5e6737a495a1c43aa7e3e6023b380c7e4a276ce3901b86c05c4",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-p-armor.primitive.0",
       "indexCount": 162,
       "indexed": true,
@@ -1083,7 +1083,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30dd7a05a5e171b7df9f20912ddf519b1ed3835aeff39823b84aacf03aa74e8c",
+      "geometryHash": "359e18cfb3ee8e2a7ceff934435e66c9ae678ee30eff3709ca84a8a73d9c144f",
       "id": "sf.render.wasp-production-v1-lod2.node.lod0-motion-wasp-winglet-s-mechanical.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -3048,19 +3048,19 @@
       "sha256": "ac04d30f45e51dda623d4e3b1757c182e8d75445d5786bbbea728c353bd95042"
     },
     "sourceGlb": {
-      "bytes": 450256,
-      "sha256": "842c0ec53ef32c6a8a7243937c57014a7383a372f6b653608887e3e8e30b4667",
+      "bytes": 445128,
+      "sha256": "9480cecfd2c89d360936bc1fdf6da64daa56c15d450b425c36958534b717b625",
       "uri": "wasp_production_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 607792,
-    "sha256": "362567c9a2ca859a7985c786e37df4a804d0619193f6950d909348739ad5a882",
+    "bytes": 579852,
+    "sha256": "4455c8d80d9189e80d47af2fdcbcbe6ce4ed2e082285f55b178d4f8ca6a707e3",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4577,7 +4577,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/wasp_production_v1_lod2.glb"
   },
-  "runtimeHash": "ab7964a57f44f3839de462829639c11d83f514a7d9f5eb7a406881c572517ee0",
+  "runtimeHash": "850364bd7779878a6f7ddfd8795805f846d47e08c8fdc47eda9e3d9e0917334a",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

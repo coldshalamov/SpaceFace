@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d1780719bf74340cf866fa6d5f3ef5a7e661bd0b43f19dd0bd7e34f75138a2f0",
+  "contentHash": "884f18f3a87d3c49a55f7b3a33ae90b99ba9701d018dfeb48fdf3a769c474c8d",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ebf16f93056e8c176055074488adf8eddd4122ad6c3d9dbbb8fb3c24fb2096e3",
+      "geometryHash": "019326fd60331bb09b637665bb9b5acc4b62a004f2fd100bef5b047ccf21a491",
       "id": "sf.render.works-conduit-power-straight.mesh.lod1-merged-material-atlas.primitive.0",
       "indexCount": 996,
       "indexed": true,
@@ -82,7 +82,7 @@
       "meshName": "LOD1_Merged_Material_Atlas",
       "nodeId": "sf.render.works-conduit-power-straight.mesh.lod1-merged-material-atlas",
       "primitiveIndex": 0,
-      "vertexCount": 568
+      "vertexCount": 700
     },
     {
       "bounds": {
@@ -404,19 +404,19 @@
       "sha256": "d902f8a972764aa30943ee6d67f1fcb61815a5bcf8cce054e96a21ecf3411ae7"
     },
     "sourceGlb": {
-      "bytes": 495772,
-      "sha256": "260696197b239f31586c5f42277dd2f6c65c443f98155bfe5367ff9dd7170de0",
+      "bytes": 496144,
+      "sha256": "c9cbae5875f29ecbe77bc6679acbf68783595256082f45f4bf69778b124171bb",
       "uri": "place_works_conduit_power_straight.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 510756,
-    "sha256": "1565c63a6cbb1aa7dceb839a74a50a358d47234008dfb9dbcb4c6fd65762c09e",
+    "bytes": 510420,
+    "sha256": "96df9438823080ea7264d6d206dd3d8ebf9ddbaccc96dc80ce1a146f0daf012f",
     "uri": "render.glb"
   },
   "runtime": {
@@ -622,7 +622,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_conduit_power_straight.glb"
   },
-  "runtimeHash": "03ff92f8cc9d632c4881783fd4406a9aa30cbd1ae255612759c650e9a3b7fedc",
+  "runtimeHash": "b1de044d7290d8a01080e3eefce1d7d2ae56636428dae02fa7d4c9f0e82b6ebd",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
