@@ -1,6 +1,6 @@
 # Starter integration notes
 
-Local join of the three starter lanes onto `codex/starter-integration`. The scratch branch was never pushed and has been deleted. Nothing here is on master. This is not starter-experience acceptance.
+Local join of the three starter lanes onto `codex/starter-integration`. The scratch branch was never pushed and has been deleted. This branch is not on master. This is not starter-experience acceptance.
 
 ## Join
 
@@ -98,3 +98,58 @@ Useful without the sibling branches:
 - A valid throw solution pulls the chase focus toward the predicted meeting. An invalid solution does not.
 - The claim cracker at (720, −420), mass 11,000, is already inside `f_helios_starter` and `zone_helios_claim`, about 560 WU from Helios. That is the local swing yard. No new zone and no spawned body.
 - Death and respawn break lines that name the player (`endpoint_lost`), keep a living target, drop a dead one, and release held thrust, turn, boost, and fire. `save:loaded` does not cut a line.
+
+## Rebase onto the published harness
+
+`origin/master` moved to `c15b0e913` (merge of PR #288, `codex/player-truth-harness`). This branch was rebased onto that commit. The flight, orbit-assist, camera, audio, tether, input, and starter-integration test blobs are the same bytes as `cd22d5d89`. No conflict. The harness tree (`scripts/player-truth/**`, `src/testing/playerTruth/**`) is master's and is not edited here. The join table above is the earlier scratch merge; this rebase does not redo it.
+
+## Player-truth adventure
+
+Required gate for the tutorial-on circuit, run once the harness existed:
+
+`npm run player-truth -- --mode=adventure --duration=150 --evidence --wall=35`
+
+The recorded build is `55f38f0f7` (dirty). That commit was a local merge of the pre-rebase flight head `cd22d5d89` and harness `ec37c3d2e`. The scratch branch was never pushed and has been deleted. Dirty is `scripts/player-truth/run.mjs` only: an uncommitted launch used system Chrome at `/usr/bin/google-chrome` (`channel: 'chrome'`, `--no-sandbox`, `--disable-dev-shm-usage`) because Playwright's bundled Chromium is not installed on this box. That patch was reverted before the scratch branch was deleted. It is not on this branch. An empty diff of the owned flight, input, audio, camera, and tether files between `cd22d5d89` and the rebased head is the game tree this verdict grades. Master's later harness commit `da74b69c0` only prints the game entity id (`id % 1e6`) on offender lines and pluralizes the popping count. This run had no FAIL, so that wording does not move a grade.
+
+Exit code 2. Overall **INCOMPLETE**. No page errors. Seed 4242. Software GL (SwiftShader), headless Chromium 154.0.8037.57, 960×540. Wall 1395 s, play sim 150.4 s, 2698 frames, 66 screenshots. Stopped because the 150 s duration was reached. The player script was idle 6 s, then thrust and yaw probes, then cruise thrust bursts and turns.
+
+| Check | Result |
+|---|---|
+| route | **PASS** — main menu → mode select → preparation → spawn → play. Tutorial hints true. Default pilot and ship, Launch. Flight at sim 0.2 s. |
+| player_control | **PASS** — 0/2 probes dead. KeyW thrust Δv 189.9 over sim 6.32–7.55 s. KeyD yaw 2.40 rad over sim 7.55–8.37 s. |
+| tumble | **PASS** — longest 0 s. |
+| player_ship | **PASS** — 0/2580 frames bad. |
+| spawn_motion | **PASS** — 0 bodies. |
+| lod_churn | **PASS** — 0/s. |
+| popping | **PASS** — 0.4/min, worst entity 1 toggle. |
+| vfx_coverage | **PASS** — p95 0% of the screen. |
+| readability | **UNKNOWN** — enemy 0, asteroid 0, projectile 0, pickup 0 (need 5). |
+| frame_time | **UNKNOWN** — p50 72 ms, p99 238 ms, 8 long tasks ≥250 ms. Software GL, not graded. |
+| round_resolution, kills_before_input, reward_before_input, loadout | n/a |
+
+Copies of the harness output, unchanged:
+
+- `design/program/starter-integration/player-truth/adventure/verdict.md`
+- `design/program/starter-integration/player-truth/adventure/verdict.json`
+- `design/program/starter-integration/player-truth/adventure/contact-sheet.jpg`
+
+The sheet header is `INCOMPLETE · adventure · seed 4242 · 55f38f0f7` and `FAIL: none`. Speed climbs from 0 to about 195 by sim 16 s and later holds near 180–189. The tutorial strip stays `TUTORIAL 1 / 12` for the whole 150 s. The earlier custom public session remains the evidence that a Space latch, reel, and cut, plus blur, F5, pause, and Continue, work through the public keys. This harness cruise does not press Massline, so it does not replace that session.
+
+### Routed: the adventure cruise never arms the tether lesson
+
+- File: `scripts/player-truth/driver.mjs`, `cruiseBeat` (harness owner; not edited here)
+- Symptom: a 150 s adventure cruise leaves the tutorial strip at `TUTORIAL 1 / 12` while the ship is moving.
+- Cause: `cruiseBeat` holds KeyW for 0.8 s and, every fourth beat, KeyA or KeyD for 0.4 s. It never taps Space, so the massline latch does not happen. Adventure does not call `fightBeat` (that beat presses Space only every seventh beat).
+- Suggested change: an adventure beat that taps Space once the marked derelict is in range, then holds to reel and taps to cut, on the public pilot scheme. A strip stuck at 1/12 on this cruise is that script, not a starter-integration failure.
+
+## Ship that cannot move, or tumbles, after a round reset
+
+Looked for that cause in the files this lane owns: `src/systems/flightV3.js`, `src/core/flight/orbitAssist.js`, `src/systems/input.js`, `src/systems/tetherGameplay.js`, `src/render/camera.js`, `src/audio/audioSystem.js`, and the rest of `src/core/flight/`. Not found. No fix added.
+
+`flightV3` listens for `flight:racePrecision`, `save:loaded`, `game:started`, `player:death`, `player:respawn`, `tether:latched`, and `massline:selfSling`. It has no round-reset subscriber. The flight sim is inactive while the player is dead, defeated, out of flight, or docked. Death and respawn release held controls and clear the swing commit. A Swarm round reset that does not emit those events does not hit this path.
+
+`origin/codex/swarm-crucible-overhaul` at `459fa9348` does not change those files. Since master its names are the survival and swarm systems, the crucible draft UI, deep-field and background render, `src/render/lod.js`, and its tests. LOD, HLOD, whole-ship LOD policy, asset residency, crucible warm-package residency, crucible ghost, and startup GPU residency were not edited on this branch.
+
+The published summary on master (`design/program/player-truth/SUMMARY.md`), from the harness run on master `6dc08f08e`, already marks both owner reports **NOT REPRODUCED**: `player_control` 0/4 thrust/yaw probes dead across both Swarm rounds, `tumble` no uncommanded spin beyond 0.5 s. This adventure run on the starter flight code also passes both (0/2 probes dead, tumble 0 s).
+
+This is still not starter-experience acceptance. The harness result is INCOMPLETE, the adventure cruise does not play the massline lesson, and the branch is not on master.
