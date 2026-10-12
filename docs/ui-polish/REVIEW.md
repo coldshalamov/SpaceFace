@@ -55,7 +55,9 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `range` | SURVEYED | Owns CSS holdout |
 | `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
 | `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | SURVEYED | Ledger DONE; re-judge when stack reaches station |
-| **`crucible` / `crucible-door`** (+ draft/rearm/refit/results still open) | **DONE** (Encounter / door) | See § Crucible door below — this session |
+| **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
+| **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below — this session |
+| `crucible-rearm` / `crucible-refit` / `crucible-results` | OPEN | Next after armory |
 | `demoEnd` | SURVEYED | |
 | `asteroid-works` / `drill` / `drill-claimed` / `drill-build` | SURVEYED | Own design law |
 | `base` / `base-claimed` | SURVEYED | |
@@ -367,7 +369,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Code touched:** `src/ui/orrery/constellationLayouts.js` (RESEARCH block), `src/ui/screens/techTree.js` (curve clip + title= only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
-**Next:** `crucible` / `crucible-door` — now DONE for Encounter (see below); remaining draft/armory steps next.
+**Next:** `crucible` / `crucible-door` — DONE; `crucible-draft` / armory — DONE (see below); remaining: rearm / refit / results.
 
 ---
 
@@ -397,7 +399,37 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Code touched:** `src/ui/orrery/cruciblePreparationLayouts.js`, `src/ui/orrery/cruciblePreparation.js` (nextStep textContent casing/format only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
-**Next:** `crucible-draft` / armory (and remaining crucible family steps), then the next unfinished screen in the ledger.
+**Next:** `crucible-draft` / armory — now DONE (see below); remaining crucible family: rearm / refit / results.
+
+---
+
+## Crucible Armory (`crucible-draft`) — session notes (2026-10-12)
+
+**Before:** Armory foot was a thin top border only (no void backing/shadow); ESC / 1–3 / Tab rode as bare hint glyphs without stack keycaps; secondary copy (`.sf-cru-sub`, wallet span, filter rest, card verb/price, search placeholder, crew/object labels, reading verb/act, build summary) leaned on washed `--dp-ink-dim`; selected filter Hand underline was 1px; search bottom rule faint; selected catalog card Hand wash/edge soft at 1080.
+
+**After (CSS-only in `cruciblePreparationLayouts.js` under `${A}` — door `${D}` untouched):**
+
+1. **Foot rail** — solid `rgb(5 7 10)` void + upward void shadow + stronger top rule (`bone / .16`); Launch stays a bone/hot **word** (not a Hand fill slab); Rearrange / secondary words dimmer hierarchy; `.sf-cru-kbd` + `.orr-armory-keycap` / nested kbd styled as stack keycaps (padding, bone/0.5 border, inset shadow); `.sf-cru-fine` contrast up.
+2. **Secondary contrast** — dim copy raised toward bone ~0.78–0.92 (sub, preview, cradle, wallet span, filters, counts, card verb/price/name, crew/object labels, reading verb/act/blurb, build summary, refusal, note).
+3. **Filters + search** — selected filter Hand underline 2px + soft glow; rest filters brighter; search rule `bone / .28`; placeholder less washed.
+4. **Selected card** — brighter name; stronger Hand wash + 2px Hand edge bar (overrides older pointer clip so the bar reads over the list).
+5. **1080p lift** — type/spacing nudge in 1800–2199×≥1000 band **without** CSS zoom (door lesson: zoom clipped the foot). 720p short-height / narrow rules left intact.
+
+**Walk:** `node scripts/ui-bench.mjs --shot=crucible-draft --viewport=1920x1080` and `--viewport=1280x720` — exit 0; measured clean both. Selectors/IDs and loadout catalog data unchanged.
+
+**Artifacts**
+
+| | Path |
+|---|---|
+| Before (@1080) | `docs/ui-polish/crucible-draft-before.png` |
+| Before (@720) | `docs/ui-polish/crucible-draft-before-720.png` |
+| After (@1080) | `docs/ui-polish/crucible-draft-after.png` |
+| After (@720) | `docs/ui-polish/crucible-draft-after-720.png` |
+
+**Code touched:** `src/ui/orrery/cruciblePreparationLayouts.js` (Armory `${A}` polish block only). No commit this session — parent reviews then commits.
+
+**Next:** `crucible-rearm` (or refit / results), then the next unfinished screen in the ledger.
+
 
 ---
 

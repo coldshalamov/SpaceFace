@@ -348,7 +348,7 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${D} .orr-tile .fh-tile-legend { font-size:12px !important; }
  ${D} .orr-prep-stake-number { font-size:22px; }
  ${D} .orr-prep-stake-pressure { font-size:12px; }
- ${A} > .k-title .sf-cru-sub { margin-right:0; max-width:100%; }
+ ${A} > .k-title :is(.sf-cru-sub,.sf-cru-preview,.sf-cru-cradle) { margin-right:0; max-width:100%; }
  ${A} .orr-armory-wallet { position:static; text-align:left; display:flex; align-items:baseline; gap:12px; margin-top:16px; }
  ${A} .orr-armory-wallet strong { font-size:30px; }
  ${A} > .sf-cru-stage { height:420px !important; flex:none !important; }
@@ -414,6 +414,107 @@ ${D} .orr-prep-nextstep { text-transform:uppercase !important; letter-spacing:.1
   ${D} .orr-door-hero__line { font-size:15px !important; }
   ${D} .orr-prep-purse { font-size:40px; }
   ${D} .k-foot .orr-prep-continue, ${D} .k-foot .orr-key--hazard { font-size:20px !important; min-height:52px !important; }
+}
+
+/* —— UI polish: Crucible Armory (foot rail, contrast, filters, 1080p lift) —— */
+/* Foot: solid void + upward shadow + stronger top rule (matches door). Launch stays a word. */
+${A} > .k-foot {
+  z-index:6 !important; padding:14px 0 0 !important;
+  border-top:1px solid rgb(${BONE} / .16) !important;
+  background:rgb(${VOID}) !important;
+  box-shadow:0 -28px 40px 12px rgb(${VOID}) !important;
+  isolation:isolate;
+}
+${A} .k-foot .k-words { position:relative; z-index:1; }
+${A} .k-foot .k-word--primary {
+  color:rgb(255 253 248) !important; font-weight:700 !important;
+  text-shadow:0 0 18px rgb(0 0 0 / .55) !important; background:none !important;
+}
+${A} .k-foot .k-word--primary:is(:hover, :focus-visible) {
+  color:var(--dp-hand-hot, #ffd98c) !important;
+  text-shadow:0 0 22px rgb(242 185 80 / .5) !important;
+}
+${A} .k-foot .k-word:not(.k-word--primary) {
+  color:rgb(${BONE} / .72) !important; font-weight:600 !important;
+}
+${A} .k-foot .k-word:not(.k-word--primary):is(:hover, :focus-visible) {
+  color:rgb(${BONE} / .92) !important;
+}
+/* Keycaps — .sf-cru-kbd on Launch/Esc + nested kbd language; fine-print 1/2/3/Tab caps. */
+${A} .k-foot :is(.sf-cru-kbd, .k-kbd, .dp-kbd, kbd),
+${A} .sf-cru-fine :is(.orr-armory-keycap, .k-kbd, .dp-kbd, kbd) {
+  display:inline-block !important; box-sizing:border-box !important;
+  margin-left:12px !important; margin-right:0 !important;
+  padding:3px 7px 4px !important; min-width:0 !important; height:auto !important;
+  font:600 11px var(--dp-face-label) !important; letter-spacing:.2em !important;
+  line-height:1 !important; text-transform:uppercase !important;
+  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important;
+  border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important;
+  opacity:1 !important; text-shadow:none !important;
+}
+${A} .sf-cru-fine :is(.orr-armory-keycap) { margin-left:0 !important; margin-right:4px !important; }
+${A} .sf-cru-fine { color:rgb(${BONE} / .78) !important; position:relative; z-index:1; }
+${A} .orr-armory-hintword { color:rgb(${BONE} / .78) !important; }
+
+/* Secondary contrast — bone alphas where washed --dp-ink-dim was the problem. */
+${A} > .k-title .sf-cru-sub { color:rgb(${BONE} / .86) !important; }
+${A} > .k-title .sf-cru-preview { color:rgb(${BONE} / .82) !important; margin:6px 200px 0 0; font:400 13px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif !important; }
+${A} > .k-title .sf-cru-cradle { color:rgb(${BONE} / .8) !important; margin:4px 200px 0 0; font:400 12.5px/1.4 var(--dp-face-body,'Instrument Sans'),sans-serif !important; }
+${A} .orr-armory-wallet span { color:rgb(${BONE} / .8) !important; }
+${A} .sf-cru-filters > button { color:rgb(${BONE} / .82) !important; }
+${A} .sf-cru-filters > button[aria-pressed=true] {
+  color:rgb(${BONE} / .98) !important; border-bottom:2px solid var(--dp-hand) !important;
+  box-shadow:0 1px 0 0 rgb(242 185 80 / .35);
+}
+${A} .sf-cru-count { opacity:1 !important; color:rgb(${BONE} / .72) !important; }
+${A} .sf-cru-card.sf-cru-card { position:relative !important; }
+${A} .sf-cru-card .sf-cru-name { color:rgb(${BONE} / .9) !important; }
+${A} .sf-cru-card .sf-cru-verb { color:rgb(${BONE} / .78) !important; }
+${A} .sf-cru-card .sf-cru-price { color:rgb(${BONE} / .82) !important; }
+${A} .sf-cru-card.is-lit {
+  background:linear-gradient(90deg,rgb(242 185 80 / .16),rgb(242 185 80 / .04) 48%,transparent 78%) !important;
+}
+${A} .sf-cru-card.is-lit .sf-cru-name { color:rgb(255 253 248) !important; }
+${A} .sf-cru-card.is-lit::before {
+  content:'' !important; display:block !important; position:absolute !important;
+  left:0 !important; top:14px !important; bottom:14px !important; width:2px !important;
+  height:auto !important; transform:none !important; clip-path:none !important;
+  background:var(--dp-hand) !important; box-shadow:0 0 8px rgb(242 185 80 / .35) !important;
+}
+${A} .orr-crew-item-label, ${A} .orr-crew-names, ${A} .orr-crew-status { color:rgb(${BONE} / .8) !important; }
+${A} .orr-armory-object-label { color:rgb(${BONE} / .78) !important; }
+${A} .orr-armory-reading__verb { color:rgb(${BONE} / .78) !important; }
+${A} .orr-armory-reading__act { color:rgb(${BONE} / .82) !important; }
+${A} .orr-armory-build { color:rgb(${BONE} / .8) !important; }
+${A} .orr-armory-build li small { color:rgb(${BONE} / .78) !important; }
+${A} .orr-armory-refusal { color:rgb(${BONE} / .78) !important; }
+${A} .orr-rail-divider { color:rgb(${BONE} / .72) !important; }
+${A} .orr-armory-empty { color:rgb(${BONE} / .8) !important; }
+${A} .orr-armory-reading__demo-word, ${A} .orr-armory-reading__hold-word { color:rgb(${BONE} / .78) !important; }
+
+/* Filters + search chrome */
+${A} .sf-cru-search {
+  border-bottom:1px solid rgb(${BONE} / .28) !important;
+  color:rgb(${BONE} / .96) !important;
+}
+${A} .sf-cru-search::placeholder { color:rgb(${BONE} / .62) !important; opacity:1 !important; }
+${A} .sf-cru-wallet { color:rgb(${BONE} / .8) !important; }
+${A} .orr-armory-reading__blurb { color:rgb(${BONE} / .92) !important; }
+${A} .orr-armory-fitline { color:rgb(${BONE} / .9) !important; }
+${A} .sf-cru-note { color:rgb(${BONE} / .88) !important; }
+
+/* 1080p lift — type/spacing without CSS zoom (door learned zoom clips the foot). */
+@media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
+  ${A} { padding:28px 52px 20px !important; gap:22px 42px !important; }
+  ${A} > .k-title h1 { font-size:52px !important; }
+  ${A} > .k-title .sf-cru-sub { font-size:15px !important; }
+  ${A} .orr-armory-wallet strong { font-size:44px; }
+  ${A} .sf-cru-card.sf-cru-card { min-height:96px !important; padding:14px 4px 14px 14px !important; }
+  ${A} .sf-cru-card .sf-cru-name { font-size:17px !important; }
+  ${A} .orr-armory-purchase { min-height:54px; font-size:17px; }
+  ${A} .orr-armory-reading__name { font-size:clamp(26px,2.5vw,40px) !important; }
+  ${A} .k-foot .k-word { font-size:17px !important; }
 }
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {
