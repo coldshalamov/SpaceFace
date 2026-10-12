@@ -1,10 +1,14 @@
 import * as THREE from 'three';
 import { createRuckusFixture } from './labRuntime.js';
-import { buildRuckusVisual, disposeRuckusVisual } from '../../src/render/characters/ruckusModel.js';
+import { buildRuckusVisual, disposeRuckusVisual, ruckusWarmReady } from '../../src/render/characters/ruckusModel.js';
 import { RUCKUS as C, RUCKUS_AUDIO_RECIPES } from '../../src/data/ruckus.js';
 import { RUCKUS_GLOBAL_ANCHOR as HOME } from '../../src/systems/ruckus.js';
 import { playRecipe } from '../../src/audio/synth.js';
 const $ = id => document.getElementById(id);
+// Wave-143: template payloads arrive via dynamic import — settle the warm before the first
+// buildRuckusVisual so the synchronous template() contract holds (production spawns gate on
+// this same promise inside the title→flight transitions).
+await ruckusWarmReady;
 let f = await createRuckusFixture(), inspect = false, sound = false, audio = null, eventCursor = 0, disposed = false, resetPending = null;
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.7)); renderer.setSize(innerWidth, innerHeight);

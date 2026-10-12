@@ -64,10 +64,12 @@ test('a hit or a held hostage lights the wedge; the record is one reused object 
   assert.equal(hullBurstFieldRecord(stateWith({ kind: 'grip', grip: { targetId: 9 } })).engaged, true);
 });
 
-test('each burst type has its own tint, and every burst kind draws as a cone', () => {
+test('each burst type has its own tint; nose bursts are cones and the Saucer is radial', () => {
   const colors = Object.values(BURST_STYLE).map((s) => s.color);
   assert.equal(new Set(colors).size, colors.length, 'three different bodies');
-  for (const kind of Object.keys(BURST_STYLE)) assert.equal(shapeOfFieldKind(kind), 'cone');
+  for (const kind of Object.keys(BURST_STYLE)) {
+    assert.equal(shapeOfFieldKind(kind), kind === 'burst_saucer_horizon' ? 'repulsor' : 'cone');
+  }
   assert.equal(shapeOfFieldKind('well'), 'well', 'ordinary fields are untouched');
 });
 

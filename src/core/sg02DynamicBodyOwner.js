@@ -1,3 +1,4 @@
+import { consumeSaucerVelocity } from './physicsAuthority.js';
 import { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
 export { planarProxyPrismHalfHeight, planarProxyObbHalfHeight } from './planarProxyGeometry.js';
 // SG-02 dynamic body owner.
@@ -740,6 +741,84 @@ export class Sg02DynamicBodyOwner {
     } catch (error) { candidate.dispose(); throw error; }
   }
 
+  // Stepped twin of syncFromEntities: identical mint/removal/resume order, with a
+  // yield every `yieldEvery` collider mints so a mature save's rebuild paces across
+  // presented beats instead of one atomic WASM-build span inside the veil window.
+  *syncFromEntitiesSteps(entities = [], yieldEvery = 16) {
+    const every = Math.max(1, Math.floor(Number(yieldEvery) || 1));
+    this._syncSerial++;
+    const live = this._liveEntityIds;
+    live.clear();
+    let count = 0;
+    let minted = 0;
+    for (const entity of entities) {
+      if (!entity || entity.alive === false || entity.physicsBody === false) continue;
+      const spec = resolvePhysicsBodySpec(entity);
+      if (!spec || !(spec.radius > 0)) continue;
+      live.add(entity.id);
+      count++;
+      this._syncRecord(entity, spec);
+      if (++minted % every === 0) yield;
+    }
+
+    for (const [id, rec] of this.records) {
+      if (!live.has(id)) this._removeRecord(id, rec);
+    }
+    this._resumeSuspendedAttachments(live);
+    this._staticLayerVersion = null;
+    this._writeSyncDiagnostics('full', count, 0, 0, -1);
+  }
+
+  // Stepped twin of rebuildWorldFromEntities: candidate construction, scratch staging,
+  // the paced collider mints, mirror collection, then the atomic _commitNativeOwner —
+  // commit still lands in one step so a suspended drive can never publish a torn world.
+  *rebuildWorldFromEntitiesSteps(entities = [], options = {}, yieldEvery = 16) {
+    const candidate = new Sg02DynamicBodyOwner(this.RAPIER, {
+      fixedDt: this.fixedDt, quantum: this.quantum, mode: this.mode,
+      captureContactImpacts: this.captureContactImpacts, publishTelemetry: this.publishTelemetry,
+      frameOrigin: options.frameOrigin || this._frameOrigin,
+      frameOriginSeq: options.frameOriginSeq ?? this._frameOriginSeq,
+    });
+    let committed = false;
+    try {
+      // Construction may move coincident spawns. Stage those mirrors too so a later
+      // native construction failure cannot mutate entities belonging to the old owner.
+      const originals = new Map();
+      const staged = entities.map(entity => {
+        if (!entity) return entity;
+        const scratch = { ...entity, pos: entity.pos && { ...entity.pos },
+          prevPos: entity.prevPos && { ...entity.prevPos }, vel: entity.vel && { ...entity.vel },
+          flags: entity.flags && { ...entity.flags } };
+        originals.set(scratch, entity);
+        return scratch;
+      });
+      yield 'native-rebuild-staged';
+      yield* candidate.syncFromEntitiesSteps(staged, yieldEvery);
+      if (candidate._pendingNativeRebuilds.size) throw new Error('scalar_body_reconstruction_failed');
+      const mirrors = [];
+      for (const rec of candidate.records.values()) {
+        const scratch = rec.entity, entity = originals.get(scratch);
+        for (const property of ['pos', 'prevPos']) {
+          for (const key of ['x', 'z']) {
+            if (entity[property] && scratch[property] && entity[property][key] !== scratch[property][key]) {
+              mirrors.push({ entity: entity[property], key, value: scratch[property][key] });
+            }
+          }
+        }
+        rec.entity = entity;
+        if (ceresWorkfleetSlideRole(entity)) {rec.ceresWorkfleetEntity=entity;rec.ceresWorkfleetLife=entity.occupantGeneration;}
+      }
+      yield 'native-rebuild-mirrored';
+      this._commitNativeOwner(candidate, mirrors);
+      committed = true;
+    } finally {
+      // A generator abandoned mid-drive (iterator.return on a parked drive)
+      // runs finally but never catch — the scratch RAPIER world + its
+      // colliders would leak without the committed flag.
+      if (!committed) candidate.dispose();
+    }
+  }
+
   _commitNativeOwner(candidate, mirrors = []) {
     const previousWorld = this.world, previousQueue = this._eventQueue;
     const previousFailures = this._pendingNativeRebuilds;
@@ -1402,10 +1481,19 @@ export class Sg02DynamicBodyOwner {
     const recoilRecords = this._stepAnchoredRecoil();
     this._applyAttachmentSprings();
 
+    // The alien drive rejects inertia, not collision geometry. Commit its bounded velocity
+    // AFTER external impulses (including towing), BEFORE the trusted prediction and collision
+    // solve. Contacts may still stop/slide the ship and transfer its real mass to other bodies.
+    // No post-solve velocity override: that would push the ship through walls on the next tick.
     // Structural-give baseline: at this point every impulse (dash, spring, combat) has already
     // mutated linvel/angvel; only the continuous control force/torque still integrates inside
     // world.step(). Predicting that lets the post-step pass isolate pure contact response.
     for (const rec of this.dynamicRecords) {
+      const command = rec.entity.isPlayer ? consumeSaucerVelocity(rec.entity, this._simTick) : null;
+      if (command) {
+        rec.body.setLinvel({ x: command.x, y: 0, z: command.z }, true);
+        if (command.haltYaw) rec.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      }
       if (this._sleepingRecordSkipsCpu(rec, false)) continue;
       this._captureExpectedKinematics(rec);
     }
@@ -3605,7 +3693,19 @@ export class Sg02DynamicBodyOwner {
 }
 
 async function loadRapierCompat() {
-  return loadRapierCompatRuntime();
+  return loadRapierCompatRuntime({ importModule: importRapierCompatModule });
+}
+
+// Module Workers resolve specifiers without the document's import map, so the
+// bare specifier path (document main thread, node_modules on the node lanes)
+// is tried first and the vendored bundle by URL second — the same build the
+// page itself loads, addressed relative to this module.
+async function importRapierCompatModule() {
+  try {
+    return await import('@dimforge/rapier3d-compat');
+  } catch (_) {
+    return import(new URL('../../vendor/rapier3d-compat/rapier.mjs', import.meta.url).href);
+  }
 }
 
 function resetBodyForces(body) {
@@ -4774,8 +4874,22 @@ function bodyStateMatchesEntity(rec, entity, frameOrigin, frameScratch) {
   const bodyYaw = wrapAngle(yawFromQuat(q));
   return savedVx === finite(v && v.x)
     && savedVz === finite(v && v.z)
-    && savedYaw === bodyYaw
+    && (savedYaw === bodyYaw || fixedAuthoredYawMatches(rec.body, q, entity.rot))
     && finite(entity.angVel) === -finite(w && w.y);
+}
+
+// Fixed scenery is not projected back into scalar yaw after a native step. Rapier
+// stores the authored quaternion as f32; converting it back to atan2 need not equal
+// the original JS angle. Match that exact native representation, with no angular
+// tolerance and no scalar pose mutation. Dynamic and kinematic bodies keep their
+// stricter solved-yaw path above.
+function fixedAuthoredYawMatches(body, quaternion, yaw) {
+  if (!body.isFixed() || !quaternion || !Number.isFinite(yaw)) return false;
+  const expected = quatFromYaw(yaw);
+  return quaternion.x === Math.fround(expected.x)
+    && quaternion.y === Math.fround(expected.y)
+    && quaternion.z === Math.fround(expected.z)
+    && quaternion.w === Math.fround(expected.w);
 }
 
 function wrapAngle(value) {

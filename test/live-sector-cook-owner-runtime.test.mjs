@@ -4,11 +4,12 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { setImmediate as nextTurn } from 'node:timers/promises';
 import * as lifecycleHelpers from '../src/core/sectorEnterDefer.js';
+import { prepareMobileOpeningFirstPicture } from '../src/render/pipelineReadiness.js';
 const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
 const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 const ast = parse(source, { sourceType: 'module' });
-let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode;
+let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode;
 function walk(node) {
   if (!node || typeof node !== 'object') return;
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'prepareLiveSectorAfterJump') cookNode = node.right;
@@ -17,6 +18,7 @@ function walk(node) {
   if (node.type === 'VariableDeclarator' && node.id?.name === 'captureLiveSectorCookStale') guardNode = node.init;
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'prepareLiveSectorBeforeFlight') preflightNode = node.right;
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'cookLiveSceneGpu') gpuNode = node.right;
+  if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'captureOpeningSubmissionPlanSteps') openingCaptureNode = node.right;
   if (node.type === 'CallExpression' && node.callee?.name === 'onBus' && node.arguments?.[0]?.value === 'sector:enter') enterNode = node.arguments[1];
   for (const value of Object.values(node)) {
     if (Array.isArray(value)) value.forEach(walk);
@@ -32,6 +34,7 @@ const preflightCode = source.slice(preflightNode.start, preflightNode.end);
 const gpuCode = source.slice(gpuNode.start, gpuNode.end);
 const compileCode = source.slice(compileNode.start, compileNode.end);
 const guardCode = guardNode ? source.slice(guardNode.start, guardNode.end) : null;
+const openingCaptureCode = source.slice(openingCaptureNode.start, openingCaptureNode.end);
 function evaluate(code, owner, values) {
   const env = new Proxy(values, {
     has: (target, key) => key in target || key in globalThis,
@@ -45,6 +48,28 @@ function deferred() {
   const promise = new Promise(r => { resolve = r; });
   return { promise, resolve };
 }
+test('opening plan capture uses the renderer owner when invoked through the render facade', () => {
+  const owner = { _meshes: new Map([[1, { name: 'player' }]]) };
+  const state = { render: {} };
+  const plan = { complete: true, compileSubjects: [...owner._meshes.values()] };
+  const capture = evaluate(openingCaptureCode, owner, {
+    state,
+    captureLiveSectorCookStale: () => () => false,
+    *buildOpeningSubmissionPlanSteps() {
+      assert.equal(this._meshes, owner._meshes);
+      yield;
+      return plan;
+    },
+    stampProducerReceipt: () => {},
+    openingSubjectIdentity: (subject) => subject.name,
+    openingCohort: { capture: () => {}, snapshot: () => ({}) },
+  });
+  state.render.captureOpeningSubmissionPlanSteps = capture;
+  const steps = state.render.captureOpeningSubmissionPlanSteps();
+  assert.equal(steps.next().done, false);
+  assert.equal(steps.next().value, plan);
+  assert.equal(state.render.openingSubmissionPlan, plan);
+});
 function fixture(providers = []) {
   const frames = [], marks = [];
   let now = 0;
@@ -55,6 +80,7 @@ function fixture(providers = []) {
     _meshes: new Map(), _meshBuildQueue: [], _meshBuildQueueHead: 0, _meshBuildQueuedIds: new Set() };
   const noop = () => {};
   const values = { ...lifecycleHelpers, state,
+    isMobileRenderContext: () => false,
     rendererGenerationIsActive: () => owner._rendererGeneration === 2 && !owner._rendererResourcesDisposed, scene: { environment: {} },
     renderer: { getContext: () => ({ flush: noop, isContextLost: () => false }) },
     globalThis: { requestAnimationFrame: fn => frames.push(fn) },
@@ -241,6 +267,7 @@ function enterFixture() {
   const f = fixture();
   f.owner._sessionRecookKeepGpu = true;
   f.owner._publishAssetResidencyDiagnostics = () => f.marks.push('diagnostics');
+  f.owner._publishAssetResidencyDiagnosticsDeferred = () => f.marks.push('diagnostics');
   f.values.clearRendererMeshLatches = () => f.marks.push('clear');
   f.values.cam = { snapToPlayer() {} };
   f.values.reattachResidentGpuMeshes = () => f.marks.push('reattach');
@@ -378,6 +405,57 @@ function preflightFixture() {
   });
   return { ...f, opening, preflight: evaluate(preflightCode, f.owner, f.values) };
 }
+
+function mobilePreflightFixture() {
+  const f = preflightFixture();
+  f.values.isMobileRenderContext = () => true;
+  f.values.prepareMobileOpeningFirstPicture = prepareMobileOpeningFirstPicture;
+  f.owner._discardEarlyCrucibleWarm = () => f.marks.push('discard-speculative-warm');
+  f.owner._openingAdmissionPendingCount = () => {
+    assert.equal(f.state.mode, 'loading', 'the loading shell still owns the first picture');
+    f.marks.push('watch-opening-admissions');
+    return 0;
+  };
+  const plan = { complete: true, firstPlayablePipelineSet: { complete: true }, drawLeaves: [{ id: 'player' }] };
+  Object.assign(f.state.render, {
+    prepareOpeningFirstPicture: async () => true,
+    *captureOpeningSubmissionPlanSteps() { return plan; },
+    drainOpeningSubmissionPlan: async (candidate) => { assert.equal(candidate, plan); return { materials: 1 }; },
+    prepareOpeningGpuResources: async () => ({ skipped: false, openingSubmissionPlan: plan }),
+  });
+  return { ...f, plan, preflight: evaluate(preflightCode, f.owner, f.values) };
+}
+
+test('mobile preflight admits the exact picture and cleans up its publication guards once', async () => {
+  const f = mobilePreflightFixture();
+  const result = await f.preflight();
+  assert.equal(result.mobileFirstPicture, true);
+  assert.equal(result.plan, f.plan);
+  assert.equal(f.state.render.sessionLiveSectorCookedId, 'ceres');
+  assert.equal(f.state.render.liveSectorGpuAdmission, false);
+  assert.deepEqual(f.marks, ['discard-speculative-warm', 'watch-opening-admissions', 'hold', 'freeze']);
+});
+
+test('mobile preflight rejects a required admission failure and restores the current guards', async () => {
+  const f = mobilePreflightFixture();
+  const error = new Error('required GPU admission failed');
+  f.state.render.drainOpeningSubmissionPlan = async () => { throw error; };
+  await assert.rejects(f.preflight(), (failure) => failure === error);
+  assert.equal(f.state.render.sessionLiveSectorCookedId, undefined);
+  assert.equal(f.state.render.liveSectorGpuAdmission, false);
+  assert.deepEqual(f.marks, ['discard-speculative-warm', 'hold', 'freeze']);
+});
+
+test('superseded mobile preflight preserves the replacement publication guards', async () => {
+  const f = mobilePreflightFixture();
+  const pending = deferred();
+  f.state.render.prepareOpeningFirstPicture = () => pending.promise;
+  const run = f.preflight();
+  f.state.world.enterSerial = 8;
+  pending.resolve(true);
+  assert.equal((await run).reason, 'sector-superseded');
+  assert.deepEqual(f.marks, ['discard-speculative-warm']);
+});
 
 test('preflight same-sector cancellation returns cleanly without stale finalizer writes', async () => {
   const f = preflightFixture();

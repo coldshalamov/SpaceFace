@@ -3,6 +3,7 @@
 // Mule gameplay stats remain canonical; the collector role selects its authored body.
 // The receiving Mule is interim service hardware until the separate cradle integration.
 import { ensurePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { STORMSHIFT_COLLECTOR_COLLISION } from '../data/stormshiftCollectorCollision.js';
 import { PLANET_SITE } from '../data/planets.js';
 import { makeShipEntitySpec } from './ships.js';
@@ -192,7 +193,10 @@ export const anvilTrafficMethods = {
     if (!e || e.data.jobId) return; // another existing movement owner wins
     e.data.anvilSlingWitness = true;
     bindCollectorCollision(e);
-    if (state.planet?.active) state.planet.witnessId = e.id;
+    if (state.planet?.active) {
+      state.planet.witnessId = e.id;
+      state.planet.witnessGeneration = occupantGenerationOf(e);
+    }
     const route = itinerary(e), center = route.center;
     if (!center || !Number.isFinite(center.x) || !Number.isFinite(center.z)) { hold(e); return; }
     if (!receiver) { hold(e); return; } // retain finite cargo if berth was destroyed or removed
@@ -238,7 +242,15 @@ export const anvilTrafficMethods = {
       } else {
         steer(this, e, receiver.pos, ANVIL_WORK.transferRange * 0.65, 40);
         this._transferAnvilLoad(e, receiver);
-        if (!used(e) && route.phase === 'return') { route.phase = 'berthed'; persist(this, e); }
+        // An empty return still has to physically arrive. Otherwise a heat-aborted
+        // collection pass can restart from hundreds of units away from the tender.
+        const distance = Math.hypot(e.pos.x - receiver.pos.x, e.pos.z - receiver.pos.z);
+        const relativeSpeed = Math.hypot(finite(e.vel?.x) - finite(receiver.vel?.x),
+          finite(e.vel?.z) - finite(receiver.vel?.z));
+        if (!used(e) && route.phase === 'return'
+          && distance <= ANVIL_WORK.transferRange && relativeSpeed <= ANVIL_WORK.transferSpeed) {
+          route.phase = 'berthed'; persist(this, e);
+        }
       }
     }
   },

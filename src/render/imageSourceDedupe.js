@@ -48,6 +48,26 @@ let hashedBytesTotal = 0;
 let hashMsTotal = 0;
 let digestCalls = 0;
 let digestMemoHits = 0;
+
+// Detach serial: bumped on every CPU-payload release the package-detach pending/rehydrate gates
+// can see — this module's shared-source and per-user releases below, plus packageCpuDetach's
+// manifest detaches (it imports the bump). A restore/admission consult captures the serial at
+// collect time: if it moved during the await window a release landed outside the collected
+// pendings, so the consult must re-collect rather than present a bind on emptied payloads
+// (W143-H1). Monotonic-only — consumers compare values, never the count itself.
+let packageDetachSerial = 0;
+
+/** Record one covered CPU-payload release. Bump once per emptied user/record — never on
+ * rehydrate or no-op paths, or a consult's own refills would re-arm its race check. */
+export function bumpPackageDetachSerial() {
+  packageDetachSerial += 1;
+}
+
+/** The current detach serial — strictly greater after any covered payload release. */
+export function packageDetachSerialNow() {
+  return packageDetachSerial;
+}
+
 // ArrayBuffer -> `${byteOffset}:${byteLength}:${mimeType}` -> Promise<key>. WeakMap so a cached
 // GLB body that gets re-parsed reuses its image digests; entries die with the buffer.
 let keyMemoByBuffer = new WeakMap();
@@ -346,6 +366,16 @@ export function sharedImageSourceUserCount(texture) {
  * WebGLTextures upload cache key (a different key on a shared source forces a fresh upload).
  * Used by the admission-touch failure diagnostics; not on a hot path.
  */
+/**
+ * The dedupe entry a texture adopted through — packageCpuDetach reads `sourceReleased` and
+ * `releasedUsers` off it to fold shared-payload releases into the same pending/detached
+ * bookkeeping as a solo detach (no back-edge notification needed).
+ */
+export function sharedImageSourceEntry(texture) {
+  const key = texture && texture.userData && texture.userData[SHARED_SOURCE_KEY];
+  return (key && entries.get(key)) || null;
+}
+
 export function sharedImageSourceUsers(texture) {
   const key = texture && texture.userData && texture.userData[SHARED_SOURCE_KEY];
   const entry = key && entries.get(key);
@@ -370,6 +400,73 @@ export function sharedImageSourceUsers(texture) {
     mipmaps: Array.isArray(user.mipmaps) ? user.mipmaps.length : -1,
     version: user.version,
   }));
+}
+
+/**
+ * F3: release the canonical shared payload once EVERY live user of the entry is GPU-resident
+ * on the caller's renderer (`isResident(user)` — the residency pass answers with its upload
+ * stamp). Two releases, deliberately split:
+ *
+ * - Canonical `entry.source.data` (adopted PNG/JPEG ImageBitmaps): gated on all-resident — one
+ *   not-yet-uploaded user would still need the bytes for its own first upload.
+ * - Per-user `texture.mipmaps` (shared KTX2 clone chains): eager per resident user. Clone()
+ *   slices the mipmaps ARRAY but shares the records, so clearing one user's array frees the
+ *   bytes only when the last sibling clears — and each clearing lands in `releasedUsers`, where
+ *   the detach gate treats that texture as released (a second-renderer bind would otherwise
+ *   read mipmaps[0] on the empty array).
+ *
+ * `isDetachCovered` (optional) answers whether a live detach manifest covers a user — the only
+ * users whose releases the pending gate and rehydrate can see. An uncovered user (an adopted
+ * texture outside `loaded.resources`, or a clone carrying a COPIED mark that fails the
+ * manifest identity check) can never be rehydrated: emptying its mips or its shared source
+ * would leave it one second-context bind away from reading emptied payloads unguarded
+ * (W140-D2). Uncovered users therefore keep their payloads, and a live one still pointing at
+ * the canonical source holds the canonical release off entirely.
+ *
+ * Returns true only when every user is resident (the canonical release condition). Safe to
+ * call repeatedly: resident-user mip clearing is idempotent and the canonical release runs once.
+ */
+export function releaseSharedImageSource(texture, isResident, isDetachCovered) {
+  const key = texture && texture.userData && texture.userData[SHARED_SOURCE_KEY];
+  const entry = key && entries.get(key);
+  if (!entry) return false;
+  const resident = typeof isResident === 'function' ? isResident : () => false;
+  const covered = typeof isDetachCovered === 'function' ? isDetachCovered : () => true;
+  if (!entry.releasedUsers) entry.releasedUsers = new Set();
+  const source = entry.source || (entry.owner && entry.owner.source);
+  let allResident = true;
+  let uncoveredSharesSource = false;
+  for (const user of entry.users) {
+    if (!resident(user)) { allResident = false; continue; }
+    if (!covered(user)) {
+      // Resident but gate-blind: its payload is unrecoverable once cleared.
+      if (source && user.source === source) uncoveredSharesSource = true;
+      continue;
+    }
+    if (Array.isArray(user.mipmaps) && user.mipmaps.length > 0) {
+      user.mipmaps = [];
+      entry.releasedUsers.add(user);
+      bumpPackageDetachSerial();
+    }
+  }
+  if (!allResident || uncoveredSharesSource || entry.sourceReleased === true) return false;
+  // Compressed entries keep {width,height} dims in source.data — that stub IS the image and
+  // must survive; only uncompressed canonical payloads are released.
+  const payload = entry.owner && entry.owner.isCompressedTexture === true
+    ? null
+    : source && source.data;
+  if (payload) {
+    try { if (typeof payload.close === 'function') payload.close(); } catch (_) {}
+    source.data = null;
+  }
+  entry.sourceReleased = true;
+  bumpPackageDetachSerial();
+  return true;
+}
+
+/** Test/diagnostic seam: undo a canonical release flag without refilling bytes. */
+export function noteSharedImageSourceRefilled(entry) {
+  if (entry && entry.sourceReleased === true) entry.sourceReleased = false;
 }
 
 export function imageSourceDedupeStats() {

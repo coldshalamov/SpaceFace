@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "944fcda2a877ec2ce7cdfbf862b9c3e1a88c661edd64c84fbc8104d47594a706",
+  "contentHash": "a049a42d378ad611aa3470a7db4ffdebf62d29f294ef23131fc8fb4b757b8a64",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -145,7 +145,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "de773952ab2a883e6a398e0ce1a2914b44f11ad25f3b6600a6b0c54e06dd5b7b",
+      "geometryHash": "f2e49335f5d5386a59f39f40cb56f1c1014bf563cf2c6d04ee8a8fb742d09b2d",
       "id": "sf.render.comms-array.mesh.feed.primitive.0",
       "indexCount": 120,
       "indexed": true,
@@ -170,7 +170,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2e58c84e375112fed9f573769490e7749d6a33aafae49fd87a006571e6843663",
+      "geometryHash": "f172098249d7324b08070732c0559a7877242e36b3b71e66294f05d5ceff5dd7",
       "id": "sf.render.comms-array.mesh.main-dish.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -179,23 +179,23 @@
       "meshName": "Cone.003",
       "nodeId": "sf.render.comms-array.mesh.main-dish",
       "primitiveIndex": 0,
-      "vertexCount": 120
+      "vertexCount": 60
     },
     {
       "bounds": {
         "max": [
           3.3807578086853027,
           7.126039505004883,
-          0.05201283097267151
+          0.052012816071510315
         ],
         "min": [
           1.1603913307189941,
           5.154911994934082,
-          -0.05201283097267151
+          -0.052012816071510315
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6504a2388eab3d2e7063afb655214d297b9122c24068ce65f62236ca5f606f23",
+      "geometryHash": "ac7273a4875d1b788143169a3233c78899f205f039f3da23ca83184d4d49670f",
       "id": "sf.render.comms-array.mesh.main-feed.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -220,7 +220,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "74abbf71dc486f8f42082e1a0e91475bc6a64aa01a5470b0744483fc41c4a931",
+      "geometryHash": "6fc04a4271b31a575eca16564ec90681e11bf6c72dda1011d6f7edf4090d9f4b",
       "id": "sf.render.comms-array.mesh.main-lnb.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -229,7 +229,7 @@
       "meshName": "Sphere.005",
       "nodeId": "sf.render.comms-array.mesh.main-lnb",
       "primitiveIndex": 0,
-      "vertexCount": 176
+      "vertexCount": 146
     },
     {
       "bounds": {
@@ -270,7 +270,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "38627c3e94eedc6236618a612e5186d3482596e8abfd08a27b6e9c73cc6e3f51",
+      "geometryHash": "75abd73c3ea3b5d9eef29911953f787df4721c4ba8b83958b92207eb452b09b0",
       "id": "sf.render.comms-array.mesh.rim-a.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -279,7 +279,7 @@
       "meshName": "Sphere.006",
       "nodeId": "sf.render.comms-array.mesh.rim-a",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 142
     },
     {
       "bounds": {
@@ -295,7 +295,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4edc135feb747576e69792537248d6334b07492f376d6be49179184c370dd2ee",
+      "geometryHash": "5a99948cdc7eaad50bf163edad819472e1d42c7cf90048fc6c5644fcca08747b",
       "id": "sf.render.comms-array.mesh.sub-a-dish.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -304,7 +304,7 @@
       "meshName": "Cone.004",
       "nodeId": "sf.render.comms-array.mesh.sub-a-dish",
       "primitiveIndex": 0,
-      "vertexCount": 120
+      "vertexCount": 60
     },
     {
       "bounds": {
@@ -320,7 +320,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3980a8f8088b061e3c48f66130692de5725b1c697b3ccff5e35312aa2ea21d3e",
+      "geometryHash": "6da06b90709f6c0ba97a4b77a9d01cf5612b8600ff62cbd7041c180c002f53bf",
       "id": "sf.render.comms-array.mesh.sub-a-feed.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -345,7 +345,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "571d8d3601d72c59d4cb8f5e45221fd4a2f4555fee7d136beb15ebcacba32565",
+      "geometryHash": "fc12e0fc0590620dc0c38de8d60b10b075637a59c3c43cbdb64635c5546a7e81",
       "id": "sf.render.comms-array.mesh.sub-a-lnb.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -354,12 +354,12 @@
       "meshName": "Sphere.003",
       "nodeId": "sf.render.comms-array.mesh.sub-a-lnb",
       "primitiveIndex": 0,
-      "vertexCount": 176
+      "vertexCount": 146
     },
     {
       "bounds": {
         "max": [
-          0.04629413038492203,
+          0.046294134110212326,
           3.899540662765503,
           -0.5219290852546692
         ],
@@ -370,7 +370,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e41eada05e6606a679b3b578696fb34ef1eae056e3c81f57d9396ec8417eb858",
+      "geometryHash": "509d0ca7417471eb9922dace0af8837f7e0ff002da10328b83d4c70d2c1526c8",
       "id": "sf.render.comms-array.mesh.sub-a-stub.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -395,7 +395,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2e9dded86da8ff5e9088920e2d8de459fc1b502103802c965176492f7c4c59a6",
+      "geometryHash": "59083a61b2f792b0425e56495e8c78999599ed65f9d1f7d7aa1fdfa5b939c96b",
       "id": "sf.render.comms-array.mesh.sub-b-dish.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -404,7 +404,7 @@
       "meshName": "Cone.001",
       "nodeId": "sf.render.comms-array.mesh.sub-b-dish",
       "primitiveIndex": 0,
-      "vertexCount": 120
+      "vertexCount": 60
     },
     {
       "bounds": {
@@ -445,7 +445,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "beb038521b7bc2fc65c352018407f27d0cf5dc4f894c67f332752af1f74e7005",
+      "geometryHash": "51ce0c22680af195f2f3e198a4e6935bae0d1682f0fae15cf70d784bc26e4fd9",
       "id": "sf.render.comms-array.mesh.sub-b-lnb.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -454,23 +454,23 @@
       "meshName": "Sphere.001",
       "nodeId": "sf.render.comms-array.mesh.sub-b-lnb",
       "primitiveIndex": 0,
-      "vertexCount": 176
+      "vertexCount": 146
     },
     {
       "bounds": {
         "max": [
-          0.046294379979372025,
-          3.4995412826538086,
-          1.6780707836151123
+          0.04629453644156456,
+          3.4995415210723877,
+          1.6780706644058228
         ],
         "min": [
-          -1.8462942838668823,
-          3.100459098815918,
-          0.5219293236732483
+          -1.8462945222854614,
+          3.100458860397339,
+          0.5219293832778931
         ]
       },
       "drawMode": 4,
-      "geometryHash": "647e33ca4c39b54cd37747fbd023b5e40d20c9de761714a5253b3d46fe485144",
+      "geometryHash": "ebf0198bbd94a345a36741956518fe0753e3ae5195b861f6988acc933d0967fd",
       "id": "sf.render.comms-array.mesh.sub-b-stub.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -495,7 +495,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5ead7cfcd04cff7229203862725413b12660e1184a29a6b16daa26bd0db63ae4",
+      "geometryHash": "c57b690a7726fe029e96e96fd4a59b6025dfedc72949d4c9daf446992a8546bb",
       "id": "sf.render.comms-array.mesh.yoke-strobe.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -504,7 +504,7 @@
       "meshName": "Sphere.002",
       "nodeId": "sf.render.comms-array.mesh.yoke-strobe",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 142
     },
     {
       "bounds": {
@@ -520,7 +520,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d4592444ff173254d04b56034b9943b24c13793807fb4afece3cd9719a29601f",
+      "geometryHash": "4136c4a4945777cf5d4c8d926fba113dec933fe5c3e9e7f78197a74b96607046",
       "id": "sf.render.comms-array.mesh.yoke.primitive.0",
       "indexCount": 156,
       "indexed": true,
@@ -529,7 +529,7 @@
       "meshName": "Cylinder.004",
       "nodeId": "sf.render.comms-array.mesh.yoke",
       "primitiveIndex": 0,
-      "vertexCount": 84
+      "vertexCount": 56
     }
   ],
   "hlods": [],
@@ -1575,19 +1575,19 @@
       "sha256": "aa687fbc61b7252c6f04cd51638662b2520668ac8bdfc0c059bd58898bdcad49"
     },
     "sourceGlb": {
-      "bytes": 27596,
-      "sha256": "d2e5f5b6d6a7310fd630986e03cdd2b3524b589f9aed870f2b9fe71946e0cc68",
+      "bytes": 28048,
+      "sha256": "0cd9d58424c1822fd90f0b3179e196c73a62d4ee8a0cb49aee8958b99ff321a2",
       "uri": "place_comms_array.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 54756,
-    "sha256": "dd4f1fd722f5eb81d78fbcc4ce405e218c0efdbf60d40861717b25f6f70657db",
+    "bytes": 53932,
+    "sha256": "d88cfd9f9c0b76a9690e83ef6ca302e1387954011cc84342a9644016fe4a76e0",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2277,7 +2277,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_comms_array.glb"
   },
-  "runtimeHash": "9c102da4499860971bd587f28b4a6f92bccd27f0c995f594ae3cced6238b1677",
+  "runtimeHash": "a28651f82fd6f2da8587b0c9c86536dbb24402ffd241d63aefb8b36a6bb314b6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -1,3 +1,4 @@
+import { readOrchardSaveSection, orchardHistoryFitsTick } from '../data/anvilOrchard.js';
 // save system (ARCHITECTURE §4.5 + design/specs/11). Owns serialization: assembles a versioned
 // envelope from a fixed deps-first registry of systems, writes autosave + manual slots to
 // localStorage and to the shared loopback player store both shells use, plus an exportable
@@ -21,7 +22,7 @@ import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 import { mulberry32, mulberry32FromContinuation } from '../core/rng.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { STORY_BEATS } from '../data/missions.js';
-import { restoreCombatState, serializeCombatState, hasPendingCeresWorkfleetAttachments,
+import { restoreCombatState, restoreCombatStateSteps, serializeCombatState, hasPendingCeresWorkfleetAttachments,
   resumeCeresWorkfleetAttachments, cancelPendingCeresWorkfleetAttachments,
   ceresWorkfleetEntityRef, ceresWorkfleetRefKey, resolveCeresWorkfleetEntityRef, ceresWorkfleetHostileAttachmentOwners, ceresWorkfleetIncomingSavedOwnerIds } from '../combat/persistence.js';
 import { resolveCapitalBossRoleBinding } from '../missions/capitalBossSpawn.js';
@@ -29,6 +30,7 @@ import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
 import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
+import { laneCommandSink, laneBusEmit } from '../core/simLaneCommands.js';
 import { beginFocusLossSaveWrite, endFocusLossSaveWrite } from '../core/focusLossHold.js';
 import { stampIronmanLatch } from './ironmanChoice.js';
 import { stampSlotCard, boundSlotThumbnail } from './slotStill.js';
@@ -68,6 +70,7 @@ import {
   saveGzipAvailable,
   SAVE_GZIP_FORMAT,
   SAVE_WRITE_MAX_BYTES,
+  cardDataFromEnvelope,
 } from './saveWorker.js';
 import {
   ACHIEVEMENTS_STORAGE_KEY,
@@ -82,7 +85,7 @@ import {
   saveCrucibleMeta,
 } from '../systems/survivalRecords.js';
 import {
-  applySharedStoreKeys,
+  applySharedStoreKeysChunked,
   collectLocalSharedStoreKeys,
   collectLocalSharedStoreKeysChunked,
   fetchSharedPlayerStore,
@@ -93,6 +96,23 @@ import {
 
 const LS_PREFIX = 'sf.save.';
 const INDEX_KEY = LS_PREFIX + 'index';
+
+// The sf.* keyspace snapshot staged onto worker-side storage for a forwarded
+// save/load — the sim realm resolves slots and recovery against real bytes.
+function _collectSfStorage() {
+  const out = {};
+  try {
+    if (typeof localStorage === 'undefined') return out;
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (typeof key === 'string' && key.startsWith('sf.')) {
+        const v = localStorage.getItem(key);
+        if (typeof v === 'string') out[key] = v;
+      }
+    }
+  } catch (_) { /* storage enumeration unavailable */ }
+  return out;
+}
 
 // Save-store write generation: detecting slot changes used to mean walking + hashing every
 // stored blob on EVERY listSlots call — multi-MB getItem copies plus an FNV-1a pass per
@@ -105,20 +125,27 @@ const INDEX_KEY = LS_PREFIX + 'index';
 // worst consequence is a stale slot card — never hidden corruption, because a real load
 // re-validates every byte of the envelope.
 let _saveStoreGeneration = 0;
+// >0 while a boot-reconcile apply writes through the silenced facade: its own writes make
+// storage match the merged map by construction, so they must not bump the generation the
+// post-apply cache stamp compares. Foreign writes still bump — they arrive outside the flag.
+let _saveStoreApplySilenced = 0;
 let _saveStoreTrackedObject = null;
 // Optional subscriber for save-store writes — the save system installs its speculative
 // re-arm here so a mid-dwell write can refresh an armed generation instead of letting
 // it go stale until the click.
 let _onSaveStoreBump = null;
 
-function bumpSaveStoreGeneration(key) {
+function bumpSaveStoreGeneration(key, value) {
+  if (_saveStoreApplySilenced > 0) return;
   if (key != null) {
     const k = String(key);
-    if (!k.startsWith(LS_PREFIX) && !k.startsWith(RECOVERY_PREFIX)) return;
+    // sf.settings.* rows ride the shared-store mirror too; an untracked settings write
+    // inside a collect's generation bracket can ship a stale row in the materialized map.
+    if (!k.startsWith(LS_PREFIX) && !k.startsWith(RECOVERY_PREFIX) && !k.startsWith('sf.settings.')) return;
   }
   _saveStoreGeneration++;
   if (_onSaveStoreBump) {
-    try { _onSaveStoreBump(); } catch (err) { /* subscriber is best-effort */ }
+    try { _onSaveStoreBump(key, value); } catch (err) { /* subscriber is best-effort */ }
   }
 }
 
@@ -137,7 +164,9 @@ function installSaveStoreWriteTracking() {
     const wrapped = function (...args) {
       const result = original.apply(this, args);
       // 'clear' takes no key — treat it as a bump for every store, save-prefixed or not.
-      bumpSaveStoreGeneration(name === 'clear' ? null : args[0]);
+      // setItem forwards its value so a write to an armed slot's own key can re-arm the
+      // speculation off the bytes in hand instead of reading them back in this task.
+      bumpSaveStoreGeneration(name === 'clear' ? null : args[0], name === 'setItem' ? args[1] : undefined);
       return result;
     };
     wrapped.spacefaceSaveTracking = true;
@@ -145,7 +174,7 @@ function installSaveStoreWriteTracking() {
   }
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('storage', (event) => {
-      bumpSaveStoreGeneration(event && event.key);
+      bumpSaveStoreGeneration(event && event.key, event && event.newValue);
     });
   }
 }
@@ -167,6 +196,11 @@ export const SAVE_IMPORT_MAX_PERSISTENT_ENTITIES = 2_048;
 // Restore-route persistent respawn batch: spawn order is unchanged; the window only bounds
 // how much spawn work runs between presentation yields inside the chunked restore.
 const RESTORE_PERSISTENT_SPAWN_BATCH = 16;
+// A screen pick re-arms the speculative envelope prepare per row crossed (filmstrip
+// pointermove, focus walk). The worker dispatch is a synchronous O(blob) structured clone,
+// so the arm parks it briefly — a scrub collapses into one dispatch for the settle row,
+// and a real consume flushes it immediately.
+const SPEC_ARM_DEBOUNCE_MS = 200;
 // Entities cleared per restore yield — a dispose-mesh fan-out sits behind each destroy emit.
 const RESTORE_ENTITY_CLEAR_BATCH = 16;
 export const SAVE_IMPORT_LIMITS = Object.freeze({
@@ -295,6 +329,7 @@ export const save = {
     this._autosaveGeneration = 0;      // invalidates stale worker/task completions
     this._runEpoch = 0;                // invalidates every stage when a new run starts
     this._activeAutosaveJob = null;    // terminal receipt owner before the transaction starts
+    this._activePacedSave = null;      // in-flight saveAsync job; a new paced write supersedes it
     this._activeAutosaveTransaction = null; // cleanup owner; survives run/generation invalidation
     this._activeSaveWorkers = new Set();
     this._saveWorkerRequestId = 0;
@@ -327,7 +362,11 @@ export const save = {
         });
         return false;
       }
-      return this.save((p && p.slot) || 'quick', {
+      // Worker lane: the forwarded game:save runs the sim realm's own save —
+      // its bytes relay back and persist here. Serializing the mirror facade
+      // on main would stall the frame and produce a dead-state envelope.
+      if (laneCommandSink && laneCommandSink()) return false;
+      return this.saveAsync((p && p.slot) || 'quick', {
         reason: 'manual',
         label: p && p.label,
         thumbnail: p && p.thumbnail,
@@ -346,6 +385,10 @@ export const save = {
       if (this._campaignSaveSuppressed()) {
         bus.emit('run:endRequested', { outcome: 'aborted', reason: 'load_during_run', tick: 0 });
       }
+      // Worker lane: the forwarded game:load drives the sim realm's own load
+      // (staged sf.* bytes). Restoring here would parse the envelope on main —
+      // exactly the stall the lane exists to remove — into a dead mirror.
+      if (laneCommandSink && laneCommandSink()) return false;
       const load = () => this.load((p && p.slot) || 'latest');
       const defer = this.helpers && this.helpers.deferLoadedGameRestore;
       // The painted defer path swallows a promise (nextPaint().then(restore).catch), so the
@@ -358,17 +401,59 @@ export const save = {
     // envelope can start decoding during dwell — pause arms 'quick' (the F9 target), the
     // save/load page arms the row under the cursor.
     bus.on('save:loadSpeculationTarget', (p) => {
-      try { this.speculateLoadPrepare(p && p.slot); } catch (err) { /* best-effort */ }
+      try { this.speculateLoadPrepare(p && p.slot, p); } catch (err) { /* best-effort */ }
     });
     // An autosave landing mid-dwell (e.g. behind the after-action sheet) invalidates the
     // armed spec's generation sig — re-arm for the same slot so the click still consumes
     // a warm envelope. The slot's raw is re-read, so a same-slot write re-warms rather
     // than staling; the frozen/menu gate inside speculateLoadPrepare keeps this inert
     // in-flight.
-    _onSaveStoreBump = () => {
+    _onSaveStoreBump = (bumpKey, bumpValue) => {
       try {
         const spec = this._speculativeContinuePrepare;
-        if (spec && spec.sig !== 'gen:' + _saveStoreGeneration) this.speculateLoadPrepare(spec.slot);
+        if (!spec || spec.sig === 'gen:' + _saveStoreGeneration) return;
+        if (bumpKey === LS_PREFIX + spec.slot && typeof bumpValue === 'string' && bumpValue) {
+          // The write to the armed slot's own key already holds the new bytes — keep them
+          // as the re-arm's raw so the settle pays no getItem. A same-slot burst (import+save,
+          // autosave+promote) coalesces into ONE deferred re-arm: each bump only refreshes
+          // the pending bytes; the settle dispatches a single clone+parse carrying the
+          // freshest write. The pending gen proves the raw still current at settle —
+          // speculateLoadPrepare only accepts it while its own sig matches.
+          const pending = this._pendingSlotRearm || (this._pendingSlotRearm = { slot: null, raw: null, gen: 0, timer: null });
+          pending.slot = spec.slot;
+          pending.raw = bumpValue;
+          pending.gen = _saveStoreGeneration;
+          if (pending.timer == null) {
+            pending.timer = setTimeout(() => {
+              pending.timer = null;
+              const live = this._speculativeContinuePrepare;
+              // Re-arm only while a live STALE arm still owns this slot: a cross-slot
+              // pick or mount restore minted a fresh arm the pending fire would steal
+              // (killing the row the player is selecting); a disarm clears the arm and
+              // the pending timer must not resurrect it after hide/dispose; and an arm
+              // already current needs no re-warm at all.
+              if (!live || live.slot !== pending.slot || live.sig === 'gen:' + _saveStoreGeneration) {
+                pending.raw = null;
+                return;
+              }
+              const raw = pending.raw;
+              // Drop the blob reference the moment it's dispatched — the last bump's
+              // multi-MB raw must not stay pinned on this singleton until the next bump.
+              pending.raw = null;
+              try { this.speculateLoadPrepare(pending.slot, { sig: 'gen:' + pending.gen, raw }); }
+              catch (err) { /* speculation is best-effort */ }
+            }, 0);
+          }
+          return;
+        }
+        // Any other write leaves the armed blob's bytes unknown to this handler — defer
+        // the re-read + clone past the writer's task so a mid-dwell autosave doesn't fuse
+        // a multi-MB getItem into it. A real task hop, not a microtask: microtasks drain
+        // before the next paint, so the getItem would still land inside the writer's frame.
+        const staleSlot = spec.slot;
+        setTimeout(() => {
+          try { this.speculateLoadPrepare(staleSlot); } catch (err) { /* best-effort */ }
+        }, 0);
       } catch (err) { /* speculation is best-effort */ }
     };
     bus.on('settings:changed', (payload) => {
@@ -467,7 +552,7 @@ export const save = {
     // to stop playing. This listener runs BEFORE main.js flips state.mode to 'menu' (systems
     // register during init, main's handler is installed after), and it writes synchronously
     // through save(), so the bytes are durable before the screen changes.
-    bus.on('game:exitToMenu', () => this.requestExitAutosave());
+    bus.on('game:exitToMenu', () => this.requestExitAutosave({ paced: true }));
     // PRO-06, second route: closing the tab or quitting the window is the same data loss by a
     // different door. main.js's beforeunload tears the runtime down and writes nothing, so a player
     // who alt-tabs out and closes the window loses the session exactly as quitting to the menu
@@ -534,14 +619,39 @@ export const save = {
       const localNow = genAtCollect === _saveStoreGeneration
         ? local : await this._collectSharedStoreKeysChunked();
       const merged = mergeSharedStoreKeys(localNow, remote || {});
-      applySharedStoreKeys(merged);
+      // The apply's own setItem/removeItem calls ride the wrapped store and would bump the
+      // generation — silence them behind this facade so a bump inside the window can only
+      // come from a foreign write (a storage event or a reentrant tracked setItem), which
+      // then voids the cache stamp below instead of being claimed by it.
+      const silencedStore = {
+        get length() { return globalThis.localStorage.length; },
+        key: (index) => globalThis.localStorage.key(index),
+        getItem: (key) => globalThis.localStorage.getItem(key),
+        setItem: (key, value) => {
+          _saveStoreApplySilenced++;
+          try { globalThis.localStorage.setItem(key, value); } finally { _saveStoreApplySilenced--; }
+        },
+        removeItem: (key) => {
+          _saveStoreApplySilenced++;
+          try { globalThis.localStorage.removeItem(key); } finally { _saveStoreApplySilenced--; }
+        },
+      };
+      // Chunked: the getItem-compare + setItem pass was the last multi-MB atomic
+      // leg in the boot reconcile — same semantics, the task queue yields between batches.
+      await applySharedStoreKeysChunked(merged, silencedStore, {
+        yieldQueue: () => this._restoreFrameYield(),
+      });
       // Post-apply storage == merged for every shared key (skipped writes were identical by
       // construction) — hand the materialized map to the slot signature so the first menu scan
-      // doesn't getItem the same megabytes a second time.
-      this._sharedStoreCollectCache = {
-        gen: _saveStoreGeneration,
-        raws: new Map(Object.entries(merged)),
-      };
+      // doesn't getItem the same megabytes a second time. Only stamp it when no foreign write
+      // landed inside the apply's yield windows: merged predates such a write, and a stale
+      // stamp would serve it to one consult as if current until the next bump.
+      if (_saveStoreGeneration === genAtCollect) {
+        this._sharedStoreCollectCache = {
+          gen: _saveStoreGeneration,
+          raws: new Map(Object.entries(merged)),
+        };
+      }
       if (remote != null || Object.keys(local).length > 0) {
         // Only ship what the merge actually changed — an already-mirrored store keeps the
         // ~220 KB envelope PUT off the boot path entirely.
@@ -549,6 +659,9 @@ export const save = {
         for (const [key, value] of Object.entries(merged)) {
           if ((remote || {})[key] !== value) (delta || (delta = {}))[key] = value;
         }
+        // Yield before the push — its JSON.stringify is an unsliced O(store-bytes)
+        // leg; isolating it on its own task keeps "Checking saves…" responsive.
+        if (delta != null) await this._restoreFrameYield();
         const pushed = delta == null ? true : await pushSharedPlayerStore(delta);
         if (!pushed) { ok = false; error = 'mirror_unreachable'; }
       }
@@ -571,12 +684,33 @@ export const save = {
 
   _queueSharedStoreMirror(patch = null) {
     if (!sharedPlayerStoreAvailable()) return;
-    this._sharedStorePatch = this._sharedStorePatch || {};
-    if (patch && typeof patch === 'object') {
-      Object.assign(this._sharedStorePatch, patch);
-    } else {
-      Object.assign(this._sharedStorePatch, collectLocalSharedStoreKeys());
+    if (!patch || typeof patch !== 'object') {
+      // No delta supplied: the whole-corpus collect is megabyte-scale sync work, so it runs
+      // through the chunked generation-bracketed walk off this call and re-queues the
+      // materialized map when it resolves — identical end state, none of it in this task.
+      // Every in-tree writer (save/delete/evict) carries its own delta; this arm only fires
+      // for a writer the patch contract does not cover yet.
+      if (!this._sharedStoreCollectQueued) {
+        this._sharedStoreCollectQueued = true;
+        Promise.resolve()
+          .then(() => this._collectSharedStoreKeysChunked())
+          .then((keys) => {
+            this._sharedStoreCollectQueued = false;
+            if (!keys) return;
+            // A writer delta that landed between the collect's generation check and
+            // this merge is fresher than the collect's row for that key — keep it
+            // dominant; the collect only fills keys the delta doesn't cover.
+            const pending = this._sharedStorePatch;
+            this._queueSharedStoreMirror(pending
+              ? Object.fromEntries(Object.entries(keys).filter(([k]) => !Object.hasOwn(pending, k)))
+              : keys);
+          })
+          .catch(() => { this._sharedStoreCollectQueued = false; });
+      }
+      return;
     }
+    this._sharedStorePatch = this._sharedStorePatch || {};
+    Object.assign(this._sharedStorePatch, patch);
     if (this._sharedStoreFlushTimer != null) return;
     const flush = () => {
       this._sharedStoreFlushTimer = null;
@@ -944,7 +1078,13 @@ export const save = {
   // is frozen: the same section generator driven on the restore lane’s deadline gate splits
   // the multi-MB serialize into paint-seamed chunks without changing a single byte of the
   // snapshot. It only stays coherent while the freeze holds — every yield re-checks.
-  async _serializeDataFrozenAsync() {
+  async _serializeDataFrozenAsync(frozenBoundary) {
+    // An explicit boundary predicate extends the freeze contract past the pause/dock
+    // surfaces — a deferred capture inside an open restore session relies on its
+    // scale-0 + _restoring gates instead of _frozenTickBoundary().
+    const staysFrozen = typeof frozenBoundary === 'function'
+      ? frozenBoundary
+      : () => this._frozenTickBoundary();
     const it = this._serializeDataSteps();
     let lastYieldAt = nowMs();
     let r;
@@ -956,7 +1096,7 @@ export const save = {
         lastYieldAt = nowMs();
         // If the sim unfreezes between sections the generator's prefix/suffix would mix
         // frozen and live ticks — retake the snapshot atomically on the live state.
-        if (!this._frozenTickBoundary()) return this.serializeData();
+        if (!staysFrozen()) return this.serializeData();
       }
     }
     return r.value;
@@ -1396,6 +1536,13 @@ export const save = {
     // The public function must obey the same guard as keyboard, interval and exit routes.
     if (this._campaignSaveSuppressed()) return false;
     slot = slot || 'quick';
+    // Worker lane (main side): the sim realm's own save system writes real
+    // bytes; they relay back and persist to localStorage. The mirror facade
+    // cannot produce a trustworthy envelope, so calls forward instead of run.
+    if (laneCommandSink && laneCommandSink()) {
+      laneBusEmit('game:save', { slot, __laneStorage: _collectSfStorage() });
+      return true;
+    }
     const reason = options.reason || (slot === AUTOSAVE_SLOT ? 'autosave' : 'manual');
     const autosave = !!options.autosave || slot === AUTOSAVE_SLOT;
     const started = nowMs();
@@ -1469,6 +1616,257 @@ export const save = {
     }
   },
 
+  /**
+   * Paced twin of save() for the emit-driven writes (game:save, exit-to-menu): the same
+   * guards, receipts, boundary markers and durable write, but the chain runs across
+   * _scheduleAutosaveWork hops instead of as one multi-hundred-ms task inside the emit.
+   *
+   * Only legal while `_frozenTickBoundary()` holds — pause/dock/stacked surfaces — where
+   * `_serializeDataFrozenAsync` can slice the O(world) capture coherently (an unfreeze
+   * retakes atomically). A live-flight save takes the documented one-task coherent
+   * capture on the sync lane, so this defers to save() outright when unfrozen.
+   *
+   * Overlapping paced writes supersede: a new job marks the in-flight one, which aborts
+   * at its next hop with a 'superseded' receipt (a cancellation — the slot keeps its
+   * previous generation and the newer snapshot still lands).
+   */
+  saveAsync(slot, options = {}) {
+    if (this._campaignSaveSuppressed()) return Promise.resolve(false);
+    slot = slot || 'quick';
+    const reason = options.reason || (slot === AUTOSAVE_SLOT ? 'autosave' : 'manual');
+    const autosave = !!options.autosave || slot === AUTOSAVE_SLOT;
+    const started = nowMs();
+    if (this._restoring) {
+      const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'restoring' });
+      this._recordSaveTiming(timing);
+      this._emitSaveTimingError(timing);
+      return Promise.resolve(false);
+    }
+    if (!autosave && this._autosavePending) this._autosavePending = null;
+    if (!this._hasPlayerEntity()) {
+      const timing = this._saveTiming({ slot, reason, autosave, started, ok: false, failure: 'no_player' });
+      this._recordSaveTiming(timing);
+      this._emitSaveTimingError(timing);
+      return Promise.resolve(false);
+    }
+    // Live sim: the chunked walk can't stay coherent across yields, so the documented
+    // one-task coherent capture still owns this lane.
+    if (!this._frozenTickBoundary()) return Promise.resolve(this.save(slot, options));
+
+    const job = { slot, reason, autosave, started, superseded: false, runEpoch: this._runEpoch };
+    if (this._activePacedSave) this._activePacedSave.superseded = true;
+    this._activePacedSave = job;
+    this.bus.emit('save:started', { slot, reason, autosave });
+    this._noteWritePending(slot, reason, autosave);
+    beginFocusLossSaveWrite(this.state);
+    const snapshotBoundary = this._captureSaveSnapshotBoundary();
+    const chain = this._runPacedSaveChain(job, options, snapshotBoundary);
+    // Exposed so callers/tests that need the write's settlement can await it —
+    // the emit-driven routes deliberately ignore it (the receipts carry the outcome).
+    job.promise = chain;
+    return chain;
+  },
+
+  async _runPacedSaveChain(job, options, snapshotBoundary) {
+    const { slot, reason, autosave, started } = job;
+    // The serialized realm is captured once — init()/run teardowns rebind this.state
+    // and this.bus, and the chain must keep reading the state it snapshotted.
+    const state = this.state;
+    const samples = [];
+    const hop = () => new Promise((resolve) => { this._scheduleAutosaveWork(resolve); });
+    const abortReason = () => (
+      job.superseded ? 'superseded'
+        : (this._restoring ? 'restoring'
+        : (job.runEpoch !== this._runEpoch ? 'stale' : null))
+    );
+    const fail = (failure, write = null, extra = {}) => {
+      // A stale-epoch abort owes no receipt: the realm that heard save:started is
+      // already torn down — the new session must not inherit a save:error it never made.
+      if (failure === 'stale') return false;
+      const timing = this._saveTiming({
+        slot, reason, autosave, started, ok: false, failure,
+        blockingSamples: samples.length ? samples : null,
+        ...extra,
+      });
+      this._publishSaveResult(slot, null, write || { ok: false, reason: failure }, timing);
+      // The superseding job already re-emitted save:started/_noteWritePending — the
+      // aborted chain's terminal receipt must not leave the durable pending row cleared.
+      if (failure === 'superseded' && this._activePacedSave && this._activePacedSave !== job) {
+        const active = this._activePacedSave;
+        this._noteWritePending(active.slot, active.reason, active.autosave);
+      }
+      return false;
+    };
+    try {
+      // Serialize — sliced while the frozen boundary holds; an unfreeze retakes
+      // atomically inside _serializeDataFrozenAsync before it can mix ticks.
+      let t = nowMs();
+      let data;
+      try {
+        data = await this._serializeDataFrozenAsync();
+      } catch (err) {
+        // A torn-down realm fails the same way a corrupt one does — stale wins.
+        const rr = abortReason();
+        if (rr) return fail(rr);
+        console.error('[save] serialize failed', err);
+        return fail('serialize_failed');
+      }
+      let r = abortReason();
+      if (r) return fail(r);
+      samples.push({ phase: 'serialize', ms: nowMs() - t });
+      const serializeMs = nowMs() - t;
+
+      // Envelope head — the card stamp rides the descriptor so the encoded blob is
+      // byte-complete on either lane; the index read is O(index), not O(save).
+      t = nowMs();
+      const descriptor = {
+        fmt: FMT,
+        version: CURRENT_VERSION,
+        savedAt: new Date().toISOString(),
+        playtimeS: Math.floor(state.meta.playtimeS || 0),
+        slot,
+      };
+      try {
+        const prior = this._readIndex()[slot] || {};
+        stampSlotCard(descriptor, options, prior);
+      } catch (err) {
+        const rr = abortReason();
+        if (rr) return fail(rr);
+        console.error('[save] serialize failed', err);
+        return fail('serialize_failed');
+      }
+      samples.push({ phase: 'envelope', ms: nowMs() - t });
+
+      await hop();
+      r = abortReason();
+      if (r) return fail(r);
+
+      // Encode — the two O(save) passes (data stringify+checksum, envelope stringify) run
+      // inside the save worker when one exists. A named bound verdict comes back verbatim
+      // (the worker bounded the same envelope); an infra failure falls back to the sync
+      // twin below, which keeps the same two passes on their own bounded tasks.
+      t = nowMs();
+      let envelope = null;
+      let json = null;
+      let workerRoundtripMs = 0;
+      let workerCpuMs = 0;
+      const encoded = await this._encodeEnvelopeViaWorker(descriptor, data);
+      workerRoundtripMs = nowMs() - t;
+      r = abortReason();
+      if (r) return fail(r);
+      if (encoded && encoded.ok) {
+        json = encoded.json;
+        workerCpuMs = encoded.workerCpuMs || 0;
+        envelope = { ...descriptor, checksum: encoded.checksum, data };
+        if (json.length > SAVE_WRITE_MAX_BYTES) {
+          return fail('save_size_limit', { ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: json.length, bytes: 0 });
+        }
+      } else if (encoded && encoded.reason === 'superseded') {
+        return fail(abortReason() || 'superseded');
+      } else if (encoded && encoded.reason
+        && encoded.reason !== 'no_worker' && encoded.reason !== 'save_worker_failed'
+        && encoded.reason !== 'save_worker_timeout' && encoded.reason !== 'post_failed') {
+        return fail(encoded.reason, { ok: false, reason: encoded.reason, bytes: 0 });
+      }
+
+      if (!envelope) {
+        // Workerless or a worker transport fault — the sync twin pays the same two passes
+        // on its own bounded tasks, identical verdicts to the pre-worker lane.
+        t = nowMs();
+        try {
+          const dataJson = safeStringify(data);
+          envelope = { ...descriptor, checksum: fnv1a(dataJson), data };
+        } catch (err) {
+          const rr = abortReason();
+          if (rr) return fail(rr);
+          console.error('[save] serialize failed', err);
+          return fail('serialize_failed');
+        }
+        samples.push({ phase: 'checksum', ms: nowMs() - t });
+
+        await hop();
+        r = abortReason();
+        if (r) return fail(r);
+
+        // Preflight bound-walk + envelope stringify — one bounded task (a JSON.stringify
+        // cannot slice further), exact same verdict/reasons as _writeSlot's json lane.
+        t = nowMs();
+        const bound = preflightSaveImport(envelope);
+        if (!bound.ok) {
+          return fail(bound.reason, { ok: false, reason: bound.reason, limit: bound.limit, actual: bound.actual, bytes: 0 });
+        }
+        try { json = JSON.stringify(envelope); }
+        catch (err) { return fail('stringify_failed', { ok: false, reason: 'stringify_failed', bytes: 0 }); }
+        if (json.length > SAVE_WRITE_MAX_BYTES) {
+          return fail('save_size_limit', { ok: false, reason: 'save_size_limit', limit: SAVE_WRITE_MAX_BYTES, actual: json.length, bytes: 0 });
+        }
+        samples.push({ phase: 'stringify', ms: nowMs() - t });
+      }
+      const stringifyMs = workerCpuMs || nowMs() - t;
+
+      await hop();
+      r = abortReason();
+      if (r) return fail(r);
+
+      // Previous generation — read + paced prepare, so _writeSlot's rotation consults
+      // caller-supplied verdicts and pays no whole-ledger sync prepare.
+      t = nowMs();
+      let previousRaw = null;
+      let previousPrepared = null;
+      try { previousRaw = localStorage.getItem(LS_PREFIX + slot); }
+      catch (err) { return fail('read_failed', { ok: false, reason: 'read_failed', bytes: json.length }); }
+      if (previousRaw) {
+        previousPrepared = this._cachedPreparedEnvelope(previousRaw)
+          || await this._prepareEnvelopeStringAsync(previousRaw).catch(() => null);
+        // The async prepare only yields for plain envelopes — a gzip-compacted previous
+        // generation (_compactPrimariesForQuotaPressure) still deserves its rollback, so the
+        // paced lane pays the bounded sync decode rather than judge it unverifiable.
+        if (previousPrepared && previousPrepared.reason === 'compressed_envelope') {
+          previousPrepared = this._prepareEnvelopeForWriter(previousRaw);
+        }
+        if (previousPrepared) this._rememberPreparedEnvelope(previousRaw, previousPrepared);
+      }
+      r = abortReason();
+      if (r) return fail(r);
+      samples.push({ phase: 'verify-previous', ms: nowMs() - t });
+
+      await hop();
+      r = abortReason();
+      if (r) return fail(r);
+
+      // Storage leg — atomic platform I/O: rotate, setItem ladder, read-back verify, index.
+      t = nowMs();
+      const write = this._writeSlot(slot, envelope, { json, previousRaw, previousPrepared });
+      const writeMs = nowMs() - t;
+      samples.push({ phase: 'write', ms: writeMs });
+
+      const timing = this._saveTiming({
+        slot,
+        reason,
+        autosave,
+        started,
+        serializeMs,
+        writeMs,
+        stringifyMs: write.stringifyMs || stringifyMs,
+        storageMs: write.storageMs,
+        indexMs: write.indexMs,
+        workerRoundtripMs,
+        bytes: write.bytes,
+        ok: !!write.ok,
+        failure: write.reason && write.verifyReason
+          ? `${write.reason}:${write.verifyReason}${Number.isFinite(write.verifyActual) ? `(${write.verifyActual}>${write.verifyLimit})` : ''}`
+          : write.reason || null,
+        blockingSamples: samples,
+      });
+      const ok = this._publishSaveResult(slot, envelope, write, timing);
+      if (ok) this._acknowledgeSaveSnapshotBoundary(snapshotBoundary);
+      return ok;
+    } finally {
+      endFocusLossSaveWrite(state);
+      if (this._activePacedSave === job) this._activePacedSave = null;
+    }
+  },
+
   _writeSlot(slot, envelope, options = {}) {
     if (typeof localStorage === 'undefined') {
       return { ok: false, reason: 'no_storage', bytes: 0, stringifyMs: 0, storageMs: 0, indexMs: 0 };
@@ -1500,17 +1898,36 @@ export const save = {
     const recoveryKey = RECOVERY_PREFIX + slot;
     let previousRaw = null;
     let previousPrepared = null;
-    try { previousRaw = localStorage.getItem(primaryKey); }
-    catch (err) { return { ok: false, reason: 'read_failed', bytes: json.length, stringifyMs, storageMs, indexMs }; }
+    if (options.previousRaw !== undefined) {
+      // Caller already read (and optionally verified) the previous generation on a paced lane.
+      previousRaw = options.previousRaw;
+      previousPrepared = options.previousPrepared || null;
+    } else {
+      try { previousRaw = localStorage.getItem(primaryKey); }
+      catch (err) { return { ok: false, reason: 'read_failed', bytes: json.length, stringifyMs, storageMs, indexMs }; }
+    }
 
     // Refuse to destroy the last known-good generation when storage cannot preserve it. A corrupt
-    // primary is never rotated over an existing good recovery copy.
-    if (previousRaw) previousPrepared = this._prepareEnvelopeForWriter(previousRaw);
+    // primary is never rotated over an existing good recovery copy. The verify consults the
+    // caller-supplied verdict and the proven-envelope cache before paying a whole-ledger sync
+    // prepare — generations this process already verified (its own writes, paced validates,
+    // async prepares) answer O(1) instead. The fallback is the writer variant: it decodes the
+    // gzip lane _compactPrimariesForQuotaPressure can leave on disk, where plain _prepareEnvelopeString
+    // would report the previous generation unverifiable and sacrifice its rotation.
+    if (previousRaw && !previousPrepared) {
+      previousPrepared = this._cachedPreparedEnvelope(previousRaw) || this._prepareEnvelopeForWriter(previousRaw);
+      this._rememberPreparedEnvelope(previousRaw, previousPrepared);
+    }
     let backupCreated = false;
+    // Tracks the recovery key's final disposition for the shared-store mirror patch: a rotated
+    // copy ships its bytes, a sacrificed one ships a tombstone, and an untouched key stays out
+    // of the patch entirely (its stale mirror entry remains consistent by construction).
+    let recoveryGone = false;
     if (previousPrepared && previousPrepared.ok) {
       try {
         localStorage.setItem(recoveryKey, previousRaw);
         backupCreated = true;
+        recoveryGone = false;
       }
       catch (err) {
         if (err && err.name === 'QuotaExceededError') {
@@ -1518,10 +1935,11 @@ export const save = {
           // copy is the cheapest thing to free. Sacrifice it and retry once — a lost backup
           // beats a lost save. If it still will not fit, proceed to the primary write: the
           // read-back verify + rollback below protects the previous primary either way.
-          try { localStorage.removeItem(recoveryKey); } catch (_) { /* keep going */ }
+          try { localStorage.removeItem(recoveryKey); recoveryGone = true; } catch (_) { /* keep going */ }
           try {
             localStorage.setItem(recoveryKey, previousRaw);
             backupCreated = true;
+            recoveryGone = false;
           } catch (_) { /* recovery sacrificed; primary still owns the save */ }
         } else {
           return { ok: false, reason: 'backup_write_failed', bytes: json.length, stringifyMs, storageMs, indexMs };
@@ -1564,7 +1982,7 @@ export const save = {
         }
         if (!fitted) {
           // A damaged primary has no authority to spend its surviving recovery generation.
-          if (previousPrepared?.ok) { try { localStorage.removeItem(recoveryKey); } catch (_) {} }
+          if (previousPrepared?.ok) { try { localStorage.removeItem(recoveryKey); recoveryGone = true; } catch (_) {} }
           backupCreated = false;
           try {
             const t = nowMs();
@@ -1573,7 +1991,7 @@ export const save = {
             fitted = true;
           } catch (retryErr) {
             if (!(retryErr && retryErr.name === 'QuotaExceededError')) {
-              if (previousPrepared?.ok) { try { localStorage.setItem(recoveryKey, previousRaw); } catch (_) { /* recovery already spent */ } }
+              if (previousPrepared?.ok) { try { localStorage.setItem(recoveryKey, previousRaw); recoveryGone = false; } catch (_) { /* recovery already spent */ } }
               console.error('[save] write failed', retryErr);
               return { ok: false, reason: 'write_failed', bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
             }
@@ -1589,7 +2007,7 @@ export const save = {
           } catch (_) { /* keep escalating */ }
         }
         if (!fitted) {
-          if (previousPrepared?.ok) { try { localStorage.setItem(recoveryKey, previousRaw); } catch (_) { /* recovery already spent */ } }
+          if (previousPrepared?.ok) { try { localStorage.setItem(recoveryKey, previousRaw); recoveryGone = false; } catch (_) { /* recovery already spent */ } }
           console.error('[save] write failed: storage quota exceeded');
           return { ok: false, reason: 'quota', bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
         }
@@ -1609,10 +2027,13 @@ export const save = {
       // stale null) must not masquerade as corruption — a real byte mismatch reads identically.
       try { storedRaw = localStorage.getItem(primaryKey); } catch (err) {}
     }
-    // A worker-compressed write cannot re-validate on this sync lane — the byte-exact
-    // re-read above is the corruption gate, and the worker already proved the envelope
-    // before encoding it.
-    const storedPrepared = storedRaw === json && isGzippedSaveText(storedRaw)
+    // A byte-exact re-read of the string this write just produced needs no re-verify on ANY
+    // lane: every lane reaching here bounded the envelope before encoding it (preflightSaveImport
+    // at autosave/worker encode, and inside _writeSlot above for the manual lane) — the same
+    // proven-bytes escape the gzip lane documented, extended to plain envelopes. The mismatch
+    // path is a cold failure receipt, where the sync prepare stays so the report can name the
+    // corruption it found.
+    const storedPrepared = storedRaw === json
       ? { ok: true }
       : this._prepareEnvelopeString(storedRaw);
     if (storedRaw !== json || !storedPrepared.ok) {
@@ -1637,10 +2058,27 @@ export const save = {
       };
     }
     const t = nowMs();
-    this._updateIndex(slot, envelope, json,
+    const indexJson = this._updateIndex(slot, envelope, json,
       backupCreated && previousPrepared && previousPrepared.env
         ? { raw: previousRaw, env: previousPrepared.env } : null);
     indexMs = nowMs() - t;
+    // The bytes just stored are proven — a later write whose previousRaw is this string answers
+    // its rotate-over-good check O(1) instead of re-preparing a generation we already verified.
+    if (envelope && typeof envelope === 'object') {
+      this._rememberPreparedEnvelope(json, {
+        ok: true,
+        env: envelope,
+        data: envelope.data,
+        version: readSaveVersion(envelope.version).version,
+      });
+    }
+    // The shared-store mirror ships the delta this write just landed — the primary bytes, the
+    // recovery copy or its tombstone, and the index row — instead of re-collecting and
+    // re-uploading the whole save corpus at every save boundary.
+    const mirrorPatch = { [primaryKey]: json };
+    if (backupCreated && !recoveryGone) mirrorPatch[recoveryKey] = previousRaw;
+    else if (recoveryGone) mirrorPatch[recoveryKey] = null;
+    if (typeof indexJson === 'string') mirrorPatch[INDEX_KEY] = indexJson;
     return {
       ok: true,
       bytes: json.length,
@@ -1649,6 +2087,7 @@ export const save = {
       indexMs,
       backupCreated,
       backupSavedAt: backupCreated && previousPrepared.ok ? previousPrepared.env.savedAt || null : null,
+      mirrorPatch,
     };
   },
 
@@ -1747,7 +2186,7 @@ export const save = {
         });
       }
       this.bus.emit('save:completed', timing);
-      this._queueSharedStoreMirror();
+      this._queueSharedStoreMirror(write.mirrorPatch);
       return true;
     }
     this._emitSaveTimingError(timing);
@@ -1813,7 +2252,7 @@ export const save = {
   // handler sees the settled result rather than a stale pending row.
   _emitSaveTimingError(timing) {
     this._noteWriteOutcome(timing && timing.slot, timing);
-    this.bus.emit('save:error', timing);
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('save:error', timing);
   },
 
   // Lightweight slot index (§ design/specs/11) so the menu lists slots without parsing big blobs.
@@ -1847,8 +2286,11 @@ export const save = {
         if (recoveryCard) card._recoveryCard = recoveryCard;
       }
       idx[slot] = card;
-      localStorage.setItem(INDEX_KEY, JSON.stringify(idx));
+      const indexJson = JSON.stringify(idx);
+      localStorage.setItem(INDEX_KEY, indexJson);
+      return indexJson;
     } catch (err) { /* index is best-effort; never fail a save over it */ }
+    return null;
   },
 
   _readIndex() {
@@ -1897,6 +2339,40 @@ export const save = {
     return { sig, raws };
   },
 
+  // Async twin of _slotStoreSignature for the Continue lane: same short-circuits and the same
+  // enumerate+getItem materialization, but the walk yields every 16 keys and is
+  // generation-bracketed — a write interleaved mid-walk redoes the pass (bounded attempts,
+  // then the atomic sync walk so a storming writer can't starve the consult). The sync twin
+  // stays authoritative for every sync caller.
+  async _slotStoreSignatureAsync() {
+    if (typeof localStorage === 'undefined') return { sig: 'none', raws: null };
+    installSaveStoreWriteTracking();
+    const sig = 'gen:' + _saveStoreGeneration;
+    const cache = this._slotIndexCache;
+    if (cache && cache.sig === sig) return { sig, raws: null };
+    const collected = this._sharedStoreCollectCache;
+    if (collected && collected.gen === _saveStoreGeneration) {
+      this._sharedStoreCollectCache = null;
+      return { sig, raws: collected.raws };
+    }
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const genBefore = _saveStoreGeneration;
+      const raws = new Map();
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          if (i > 0 && i % 16 === 0) await this._restoreFrameYield();
+          const key = localStorage.key(i);
+          if (!key || (!key.startsWith(LS_PREFIX) && !key.startsWith(RECOVERY_PREFIX))) continue;
+          raws.set(key, localStorage.getItem(key));
+        }
+        if (_saveStoreGeneration === genBefore) return { sig: 'gen:' + genBefore, raws };
+      } catch (err) {
+        return { sig: 'sig-error:' + (this._slotSigErrorSeq = (this._slotSigErrorSeq || 0) + 1), raws };
+      }
+    }
+    return this._slotStoreSignature();
+  },
+
   // `burst` shares one signature walk across a single call chain (a Continue click resolves
   // through _newerUnplayableSkip → _latestSlot → the index scan). Callers own the object and
   // never let it outlive the chain — nothing stale can be served, because a burst is only
@@ -1924,6 +2400,65 @@ export const save = {
       if (!scanned[slot] && !recovered[slot]) delete merged[slot];
     }
     // _blobHash/_recovery* are scan-internal bookkeeping — never publish them on slot cards.
+    for (const slot in merged) {
+      const m = merged[slot];
+      if (m && (m._blobHash !== undefined || m._recoveryBlobHash !== undefined || m._recoveryCard !== undefined)) {
+        merged[slot] = Object.assign({}, m);
+        delete merged[slot]._blobHash;
+        delete merged[slot]._recoveryBlobHash;
+        delete merged[slot]._recoveryCard;
+      }
+    }
+    this._slotIndexCache = { sig, merged, authoritative: true };
+    this._maybeSpeculateContinuePrepare(sig, merged, raws);
+    return { ...merged };
+  },
+
+  // Async twin for the Continue lane: identical verdict + merge + publish contract, but a
+  // generation miss no longer pays the whole enumerate→scan→merge as one brick on the
+  // click task. An in-flight _scheduleSlotIndexValidation pass already walking this
+  // generation is ridden to its publish; otherwise the scans run with the same
+  // 16-entry yields the validation walk uses, and untrusted blobs ride
+  // _prepareEnvelopeMetaAsync's worker verdict before a card rebuild. The sync twin stays
+  // authoritative for every sync caller (title list, sync load, deleteSlot).
+  async _slotIndexWithFallbackAsync(burst = null) {
+    const { sig, raws } = burst && burst.sig != null ? burst
+      : (burst ? Object.assign(burst, await this._slotStoreSignatureAsync()) : await this._slotStoreSignatureAsync());
+    const cache = this._slotIndexCache;
+    if (cache && cache.sig === sig) return { ...cache.merged };
+    const inFlight = this._slotIndexValidationInFlight;
+    if (inFlight && inFlight.sig === sig && inFlight.promise) {
+      try { await inFlight.promise; } catch (err) { /* publish stays best-effort */ }
+      const settled = this._slotIndexCache;
+      if (settled && settled.sig === sig) return { ...settled.merged };
+      // No publish means the generation moved mid-ride — re-sign so the walk below
+      // reads current bytes instead of the stale collect.
+      const fresh = await this._slotStoreSignatureAsync();
+      if (fresh.sig !== sig) {
+        // Stamp the fresh collect into the burst before recursing — the re-entry consults
+        // burst.sig, so discarding `fresh` here used to make a mid-ride slot write invisible
+        // to this consult until the next generation bump.
+        if (burst) Object.assign(burst, fresh);
+        return this._slotIndexWithFallbackAsync(burst || null);
+      }
+    }
+    // The signature collect above already paid its getItem walk on this task — break
+    // before the scans so the miss can't fuse the whole store read into one frame.
+    await this._restoreFrameYield();
+    const indexed = normalizeSlotIndex(this._readIndex());
+    const scanned = await this._scanStoredSlotsAsync(indexed, raws);
+    const recovered = await this._scanRecoverySlotsAsync(indexed, scanned, raws);
+    const merged = mergeSlotIndexes(indexed, scanned);
+    for (const slot in recovered) {
+      merged[slot] = Object.assign({}, merged[slot] || {}, recovered[slot], {
+        slot,
+        recoveryAvailable: true,
+        integrity: 'recovery',
+      });
+    }
+    for (const slot in merged) {
+      if (!scanned[slot] && !recovered[slot]) delete merged[slot];
+    }
     for (const slot in merged) {
       const m = merged[slot];
       if (m && (m._blobHash !== undefined || m._recoveryBlobHash !== undefined || m._recoveryCard !== undefined)) {
@@ -1987,7 +2522,7 @@ export const save = {
   _scheduleSlotIndexValidation(sig) {
     if (this._slotIndexValidationSig === sig) return;
     this._slotIndexValidationSig = sig;
-    (async () => {
+    const promise = (async () => {
       try {
         if (typeof localStorage === 'undefined') return;
         // An authoritative same-generation scan already hash-verified every blob — the walk
@@ -2002,6 +2537,8 @@ export const save = {
         await this._restoreFrameYield();
         const indexed = normalizeSlotIndex(this._readIndex());
         const verdicts = {};
+        const cardEnvs = {};
+        const cardDatas = {};
         const primaryRaws = new Map();
         const collected = this._sharedStoreCollectCache;
         const collectedRaws = collected && collected.gen === _saveStoreGeneration
@@ -2035,11 +2572,25 @@ export const save = {
           }
           jobs.push(Promise.resolve(this._prepareEnvelopeMetaAsync(raw)).then((v) => {
             verdicts[slot] = Object.assign(verdicts[slot] || {}, { [kind]: !!(v && v.ok) });
+            if (v && v.cardEnv) {
+              cardEnvs[slot] = v.cardEnv;
+              // Retain the small card projection alongside the verdicts — the slot fill's
+              // lazy tail consults it instead of re-posting the same multi-MB blob to the
+              // worker for an identical parse (W139-G2).
+              const cardData = cardDataFromEnvelope(v.cardEnv);
+              if (cardData) cardDatas[slot] = cardData;
+            }
           }).catch(() => {
             verdicts[slot] = Object.assign(verdicts[slot] || {}, { [kind]: false });
           }));
         }
-        await Promise.all(jobs);
+        // Same bounded fan-out the scan consults use — K untrusted blobs used to dispatch K
+        // simultaneous worker requests (each a spawn-per-request checkout plus its postMessage
+        // hand-off); slices of four overlap the roundtrips without the burst.
+        for (let i = 0; i < jobs.length; i += 4) {
+          await Promise.all(jobs.slice(i, i + 4));
+          if (i + 4 < jobs.length) await this._restoreFrameYield();
+        }
         // A newer write generation may have landed while the worker walked — republish under
         // the current signature only if it is still the one this pass validated.
         installSaveStoreWriteTracking();
@@ -2057,8 +2608,9 @@ export const save = {
             merged[slot] = clean;
           } else if (v.primary) {
             // Verified blob with no index card (foreign write): the meta verdict already
-            // proved it restorable, so this re-parse only rebuilds the display card.
-            const env = this._prepareEnvelopeMeta(primaryRaws.get(LS_PREFIX + slot));
+            // proved it restorable and carries the worker's card-env projection — the sync
+            // re-parse below only runs when the verdict could not produce one.
+            const env = cardEnvs[slot] || this._prepareEnvelopeMeta(primaryRaws.get(LS_PREFIX + slot));
             const meta = env && slotCardFromEnvelopeData(slot, env, null);
             if (meta) merged[slot] = meta;
           } else if (v.primary === false) {
@@ -2075,11 +2627,18 @@ export const save = {
         }
         const cache = this._slotIndexCache;
         if (cache && cache.sig === sig && cache.authoritative) return;
-        this._slotIndexCache = { sig, merged, authoritative: false };
+        this._slotIndexCache = { sig, merged, authoritative: false, cardDatas };
         this._maybeSpeculateContinuePrepare(sig, merged, primaryRaws);
         if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('save:slotsValidated', {});
-      } catch (err) { /* validation is best-effort */ }
+      } catch (err) { /* validation is best-effort */ } finally {
+        if (this._slotIndexValidationInFlight && this._slotIndexValidationInFlight.sig === sig) {
+          this._slotIndexValidationInFlight = null;
+        }
+      }
     })();
+    // Continue's async fallback consult rides this pass's publish instead of paying a
+    // parallel enumerate+meta walk when a click lands mid-validation.
+    this._slotIndexValidationInFlight = { sig, promise };
   },
 
   // The newest occupied slot is almost certainly what Continue resolves on the next click —
@@ -2095,34 +2654,102 @@ export const save = {
       if (typeof raw !== 'string' || !raw) return;
       const prior = this._speculativeContinuePrepare;
       if (prior && prior.sig === sig) return;
-      this._armSpeculativePrepare(slot, raw, sig);
+      // The index-publish arm has no pick burst to collapse — dispatch now so the warm
+      // runway starts with the menu beat instead of 200ms later.
+      this._armSpeculativePrepare(slot, raw, sig, { immediate: true });
     } catch (err) { /* speculation is best-effort — a miss just prepares on the click */ }
   },
 
-  _armSpeculativePrepare(slot, raw, sig) {
+  _armSpeculativePrepare(slot, rawOrRead, sig, { immediate = false } = {}) {
+    // A scrub's previous pick still has its dispatch parked — cancel it so only the
+    // settle row ever pays the postMessage clone + worker parse.
+    const priorArm = this._speculativeContinuePrepare;
+    if (priorArm && priorArm._timer != null) { clearTimeout(priorArm._timer); priorArm._timer = null; }
+    // `rawOrRead` is either the blob string a caller already materialized, or a
+    // thunk reading it on demand — the deferred dispatch/consume paths pay the
+    // multi-MB getItem so the arming task (a pick or a writer) never does.
     const spec = this._speculativeContinuePrepare = {
       sig,
       slot,
       // Byte-identity is the staleness test — strictly stronger than the blobHash compare
       // it replaces, and the click path resolves it via native string equality instead of
       // rehashing a multi-MB blob on the main thread.
-      raw,
-      promise: Promise.resolve(this._prepareEnvelopeStringAsync(raw)).catch(() => null),
+      raw: typeof rawOrRead === 'string' ? rawOrRead : null,
+      promise: null,
+      prepared: null,
+      dispatch: null,
+      _timer: null,
     };
-    // A prepare that resolves while the menu is still up names the hull/place set the saved
-    // sector will rematerialize — the decode runway can start overlapping dwell time instead
-    // of the restore window. Restricted emit: only the visuals prefetch subscribes; physics
-    // still kicks on the real save:envelopePrepared at click, and the click emit's decode
-    // dedupe makes the second pass nearly free.
-    spec.promise.then((prepared) => {
-      try {
-        if (this._speculativeContinuePrepare !== spec) return;
-        if (!prepared || prepared.ok !== true) return;
-        installSaveStoreWriteTracking();
-        if (spec.sig !== 'gen:' + _saveStoreGeneration) return;
-        if (this.bus && this.bus.emit) this.bus.emit('save:envelopeSpecPrepared', { slot, data: prepared.data });
-      } catch (err) { /* speculative warm is best-effort */ }
-    });
+    const thunk = typeof rawOrRead === 'function' ? rawOrRead : () => rawOrRead;
+    spec.readRaw = () => {
+      if (spec.raw == null) {
+        try { const v = thunk(); spec.raw = typeof v === 'string' ? v : null; }
+        catch (err) { spec.raw = null; }
+      }
+      return spec.raw;
+    };
+    // The worker dispatch is a synchronous O(blob) structured clone on the arming task —
+    // a filmstrip scrub re-picks rows inside pointermove tasks, so park it ~200ms and only
+    // the row the scrub settles on pays the clone + parse. A consume flushes immediately
+    // (spec.dispatch()); the debounce shifts warm start, never correctness.
+    spec.dispatch = () => {
+      if (spec.promise) return spec.promise;
+      if (spec._timer != null) { clearTimeout(spec._timer); spec._timer = null; }
+      const blob = spec.readRaw();
+      if (typeof blob !== 'string' || !blob) {
+        spec.promise = Promise.resolve(null);
+        return spec.promise;
+      }
+      spec.promise = Promise.resolve(this._prepareEnvelopeStringAsync(blob))
+        // Stash the verdict for the synchronous consume lanes — a click that
+        // lands after the worker finished can reuse the validated envelope
+        // instead of re-paying the whole sync prepare chain on the click task.
+        .then((prepared) => { spec.prepared = prepared; return prepared; })
+        .catch(() => null);
+      // A prepare that resolves while the menu is still up names the hull/place set the saved
+      // sector will rematerialize — the decode runway can start overlapping dwell time instead
+      // of the restore window. Restricted emit: only the visuals prefetch subscribes; physics
+      // still kicks on the real save:envelopePrepared at click, and the click emit's decode
+      // dedupe makes the second pass nearly free.
+      spec.promise.then((prepared) => {
+        try {
+          if (this._speculativeContinuePrepare !== spec) return;
+          if (!prepared || prepared.ok !== true) return;
+          installSaveStoreWriteTracking();
+          if (spec.sig !== 'gen:' + _saveStoreGeneration) return;
+          // The arm was mode-gated at mint — a prepare that resolves after exit must not
+          // still fan the saved-sector visual warm into the next mode's window.
+          const state = this.state;
+          if (!(state && (state.mode === 'menu' || this._frozenTickBoundary()))) return;
+          if (this.bus && this.bus.emit) this.bus.emit('save:envelopeSpecPrepared', { slot, data: prepared.data });
+        } catch (err) { /* speculative warm is best-effort */ }
+      });
+      return spec.promise;
+    };
+    spec._timer = !immediate && (typeof setTimeout === 'function')
+      ? setTimeout(() => {
+        try {
+          if (this._speculativeContinuePrepare !== spec) return;
+          const state = this.state;
+          if (!(state && (state.mode === 'menu' || this._frozenTickBoundary()))) {
+            // The arm outlived its screen — drop it rather than mint a clone + worker
+            // parse nobody will consume inside the next mode's window.
+            this._speculativeContinuePrepare = null;
+            spec._timer = null;
+            return;
+          }
+          spec.dispatch();
+        } catch (err) { /* best-effort */ }
+      }, SPEC_ARM_DEBOUNCE_MS)
+      : null;
+    if (spec._timer == null) spec.dispatch();
+  },
+
+  // The same generation signature the speculation lane arms on: 'gen:' equality implies
+  // byte-identical slot bytes for every tracked writer (installSaveStoreWriteTracking).
+  saveStoreSignature() {
+    installSaveStoreWriteTracking();
+    return 'gen:' + _saveStoreGeneration;
   },
 
   /**
@@ -2132,7 +2759,7 @@ export const save = {
    * live ticks (still correct — the generation sig rejects drift — but wasted disk/worker
    * work), so it stays off there.
    */
-  speculateLoadPrepare(slot) {
+  speculateLoadPrepare(slot, provided) {
     try {
       if (typeof Worker !== 'function' || typeof slot !== 'string' || !slot) return;
       const state = this.state;
@@ -2141,10 +2768,46 @@ export const save = {
       const sig = 'gen:' + _saveStoreGeneration;
       const prior = this._speculativeContinuePrepare;
       if (prior && prior.sig === sig && prior.slot === slot) return;
-      const raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null;
-      if (typeof raw !== 'string' || !raw) return;
-      this._armSpeculativePrepare(slot, raw, sig);
+      // A caller that already materialized this slot's bytes under this generation (the
+      // save/load row pick) hands them over — the arm then skips its own getItem. Without
+      // one, the blob read defers into the parked dispatch: a pick-emit or a writer re-arm
+      // task must not pay a synchronous multi-MB localStorage read.
+      const raw = provided && provided.sig === sig && typeof provided.raw === 'string' && provided.raw
+        ? provided.raw
+        : () => {
+          try {
+            return (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null;
+          } catch (err) { return null; }
+        };
+      this._armSpeculativePrepare(slot, raw, sig, { immediate: !!(provided && provided.immediate) });
     } catch (err) { /* speculation is best-effort — a miss just prepares on the click */ }
+  },
+
+  // The armed spec when it covers this slot under the live generation — the data
+  // fill's consult rides the covering arm's worker parse instead of duplicating
+  // the multi-MB JSON.parse on the settle task.
+  coveringSpeculativePrepare(slot) {
+    const spec = this._speculativeContinuePrepare;
+    if (!spec || spec.slot !== slot) return null;
+    installSaveStoreWriteTracking();
+    return spec.sig === 'gen:' + _saveStoreGeneration ? spec : null;
+  },
+
+  // A screen going away takes its pick-armed speculation with it — the parked dispatch
+  // would otherwise mint a multi-MB clone + worker parse (and emit the visual warm)
+  // inside the next mode's window.
+  disarmSpeculativePrepare() {
+    // A coalesced same-slot re-arm parked on the pending lane must die with the arm —
+    // its timer would otherwise re-mint an arm after the screen is gone.
+    const pending = this._pendingSlotRearm;
+    if (pending) {
+      if (pending.timer != null) { clearTimeout(pending.timer); pending.timer = null; }
+      pending.raw = null;
+    }
+    const spec = this._speculativeContinuePrepare;
+    if (!spec) return;
+    if (spec._timer != null) { clearTimeout(spec._timer); spec._timer = null; }
+    this._speculativeContinuePrepare = null;
   },
 
   // Metadata-read path for index scans: the full _prepareEnvelope validation chain (parse →
@@ -2222,6 +2885,72 @@ export const save = {
     return out;
   },
 
+  // Async twin of _scanStoredSlots for the Continue lane: identical verdict contract
+  // (hash-trusted index card, else full meta verdict, else the gzip peek keeps the slot
+  // discoverable), but the walk yields every 16 keys and each untrusted blob pays its
+  // parse+checksum on the save worker via _prepareEnvelopeMetaAsync instead of bricking
+  // the click frame. A verified-ok blob still rebuilds its card through the sync meta —
+  // same shape _scheduleSlotIndexValidation's publish leg uses — one bounded prepare per
+  // foreign write, yields in between.
+  async _scanStoredSlotsAsync(indexed = {}, raws = null) {
+    const out = {};
+    if (raws == null && typeof localStorage === 'undefined') return out;
+    try {
+      const entries = raws != null ? [...raws.entries()] : (() => {
+        const list = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          list.push([key, localStorage.getItem(key)]);
+        }
+        return list;
+      })();
+      let n = 0;
+      const pendingVerdicts = [];
+      for (const [key, raw] of entries) {
+        if (!key || !key.startsWith(LS_PREFIX) || key === INDEX_KEY) continue;
+        const slot = key.slice(LS_PREFIX.length);
+        if (!slot || slot === 'index' || isUnsafePlainKey(slot)) continue;
+        const indexCard = indexed && typeof indexed === 'object' ? indexed[slot] : null;
+        if (indexCard && typeof indexCard._blobHash === 'string' && typeof raw === 'string'
+            && fnv1a(raw) === indexCard._blobHash) {
+          const trusted = Object.assign({}, indexCard);
+          delete trusted._blobHash;
+          out[slot] = trusted;
+        } else {
+          pendingVerdicts.push({ slot, raw });
+        }
+        if (++n % 16 === 0) await this._restoreFrameYield();
+      }
+      // The walk above used to await each untrusted blob's worker verdict serially — K
+      // untrusted entries paid K sequential roundtrips on the click consult while the
+      // identical verdicts fan out in _scheduleSlotIndexValidation one function away.
+      // Dispatch in bounded slices so the roundtrips overlap; every slot writes only its
+      // own card key, so fan-out preserves results.
+      for (let i = 0; i < pendingVerdicts.length; i += 4) {
+        await Promise.all(pendingVerdicts.slice(i, i + 4).map(({ slot, raw }) =>
+          Promise.resolve(this._prepareEnvelopeMetaAsync(raw)).then((verdict) => {
+            const env = verdict && verdict.ok
+              ? (verdict.cardEnv || this._prepareEnvelopeMeta(raw)) : null;
+            if (env) {
+              // Card straight off the envelope, same as the sync twin — the checksum already
+              // ran inside the meta, so the post-migration re-verify can never misfire. The
+              // worker's cardEnv projection carries the card fields without a second parse.
+              const meta = slotCardFromEnvelopeData(slot, env, null);
+              if (meta) out[slot] = meta;
+            } else {
+              const peek = this._peekSaveEnvelope(raw);
+              const meta = peek && peek.ok ? slotMetaFromGzipEnvelope(slot, peek.env) : null;
+              if (meta) out[slot] = meta;
+            }
+          })));
+        if (i + 4 < pendingVerdicts.length) await this._restoreFrameYield();
+      }
+    } catch (err) {
+      // localStorage scans are a recovery path; never break title/load screens.
+    }
+    return out;
+  },
+
   _scanRecoverySlots(indexed = {}, primarySlots = {}, raws = null) {
     const out = {};
     if (raws == null && typeof localStorage === 'undefined') return out;
@@ -2253,6 +2982,59 @@ export const save = {
         const peek = this._peekSaveEnvelope(raw);
         const meta = peek && peek.ok ? slotMetaFromGzipEnvelope(slot, peek.env) : null;
         if (meta) out[slot] = meta;
+      }
+    } catch (err) {
+      // Backup discovery is best-effort; explicit load still attempts the named recovery key.
+    }
+    return out;
+  },
+
+  // Async twin of _scanRecoverySlots — same fingerprint-trust / verdict / peek contract
+  // with the same yields and worker verdicts as _scanStoredSlotsAsync.
+  async _scanRecoverySlotsAsync(indexed = {}, primarySlots = {}, raws = null) {
+    const out = {};
+    if (raws == null && typeof localStorage === 'undefined') return out;
+    try {
+      const entries = raws != null ? [...raws.entries()] : (() => {
+        const list = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          list.push([key, localStorage.getItem(key)]);
+        }
+        return list;
+      })();
+      let n = 0;
+      const pendingVerdicts = [];
+      for (const [key, raw] of entries) {
+        if (!key || !key.startsWith(RECOVERY_PREFIX)) continue;
+        const slot = key.slice(RECOVERY_PREFIX.length);
+        if (!slot || isUnsafePlainKey(slot) || primarySlots[slot]) continue;
+        const indexCard = indexed && typeof indexed === 'object' ? indexed[slot] : null;
+        if (indexCard && typeof indexCard._recoveryBlobHash === 'string' && typeof raw === 'string'
+            && fnv1a(raw) === indexCard._recoveryBlobHash && indexCard._recoveryCard) {
+          out[slot] = clonePlain(indexCard._recoveryCard);
+        } else {
+          pendingVerdicts.push({ slot, raw });
+        }
+        if (++n % 16 === 0) await this._restoreFrameYield();
+      }
+      // Same bounded fan-out as _scanStoredSlotsAsync — untrusted recovery blobs verdict
+      // in overlapping slices instead of serial roundtrips on the consult.
+      for (let i = 0; i < pendingVerdicts.length; i += 4) {
+        await Promise.all(pendingVerdicts.slice(i, i + 4).map(({ slot, raw }) =>
+          Promise.resolve(this._prepareEnvelopeMetaAsync(raw)).then((verdict) => {
+            const env = verdict && verdict.ok
+              ? (verdict.cardEnv || this._prepareEnvelopeMeta(raw)) : null;
+            if (env) {
+              const meta = slotCardFromEnvelopeData(slot, env, null);
+              if (meta) out[slot] = meta;
+            } else {
+              const peek = this._peekSaveEnvelope(raw);
+              const meta = peek && peek.ok ? slotMetaFromGzipEnvelope(slot, peek.env) : null;
+              if (meta) out[slot] = meta;
+            }
+          })));
+        if (i + 4 < pendingVerdicts.length) await this._restoreFrameYield();
       }
     } catch (err) {
       // Backup discovery is best-effort; explicit load still attempts the named recovery key.
@@ -2340,6 +3122,18 @@ export const save = {
     });
   },
 
+  /** Yielded twin of prepareNewGamePlus — same projection, prepared on the sliced async lane. */
+  async prepareNewGamePlusAsync(selection = {}) {
+    const slot = selection && selection.slot ? String(selection.slot) : null;
+    if (!slot) return null;
+    const prepared = await this._prepareNewGamePlusSlotAsync(slot);
+    if (!prepared) return null;
+    return buildNewGamePlusOverlay(prepared.data, selection, {
+      slot: prepared.slot,
+      savedAt: prepared.env && prepared.env.savedAt,
+    });
+  },
+
   _prepareNewGamePlusSlot(slot) {
     if (!slot || isUnsafePlainKey(slot) || typeof localStorage === 'undefined') return null;
     let primaryRaw = null;
@@ -2359,6 +3153,13 @@ export const save = {
   /** Resolve a 'latest' request to the newest slot in the index (used by Continue / mainMenu). */
   _latestSlot(burst = null) {
     const idx = this._slotIndexWithFallback(burst);
+    return selectLatestOccupiedSlot(idx);
+  },
+
+  // Async twin for the Continue lane — identical verdict, but the index fallback rides
+  // the sliced async walk instead of paying the atomic scan on the click task.
+  async _latestSlotAsync(burst = null) {
+    const idx = await this._slotIndexWithFallbackAsync(burst);
     return selectLatestOccupiedSlot(idx);
   },
 
@@ -2402,11 +3203,22 @@ export const save = {
     } catch (err) { return null; }
     const best = selectLatestOccupiedSlot(raw);
     if (!best) return null;
-    if (this._latestSlot(burst) === best) return null; // newest is playable — no skip
+    if (await this._latestSlotAsync(burst) === best) return null; // newest is playable — no skip
     let primaryRaw = null, backupRaw = null;
     try {
-      primaryRaw = localStorage.getItem(LS_PREFIX + best);
-      backupRaw = localStorage.getItem(RECOVERY_PREFIX + best);
+      // The signature walk the consult above just rode already materialized both blobs
+      // under this generation — a still-matching gen proves the Map's copies identical
+      // to what getItem would return, so the multi-MB re-read stays off the click chain.
+      installSaveStoreWriteTracking();
+      const burstRaws = burst && burst.sig === 'gen:' + _saveStoreGeneration
+        && burst.raws && typeof burst.raws.get === 'function' ? burst.raws : null;
+      if (burstRaws) {
+        primaryRaw = burstRaws.has(LS_PREFIX + best) ? burstRaws.get(LS_PREFIX + best) : null;
+        backupRaw = burstRaws.has(RECOVERY_PREFIX + best) ? burstRaws.get(RECOVERY_PREFIX + best) : null;
+      } else {
+        primaryRaw = localStorage.getItem(LS_PREFIX + best);
+        backupRaw = localStorage.getItem(RECOVERY_PREFIX + best);
+      }
     } catch (err) { return null; }
     const [primary, backup] = await Promise.all([
       this._prepareEnvelopeMetaAsync(primaryRaw),
@@ -2423,9 +3235,25 @@ export const save = {
         localStorage.removeItem(LS_PREFIX + slot);
         localStorage.removeItem(RECOVERY_PREFIX + slot);
       }
-      const idx = this._slotIndexWithFallback();
+      // A delete is a self-describing mutation — it needs no blob verification. The
+      // removeItems already bumped the generation, so consulting _slotIndexWithFallback
+      // here would pay the whole sync signature walk + scans + a fresh spec arm on the
+      // click task just to land one key removal. Write the index row directly and splice
+      // the merged cache under the new generation instead — same shape the screen's own
+      // bare-storage fallback produces.
+      const idx = normalizeSlotIndex(this._readIndex());
       delete idx[slot];
       if (typeof localStorage !== 'undefined') localStorage.setItem(INDEX_KEY, JSON.stringify(idx));
+      const cache = this._slotIndexCache;
+      if (cache && typeof cache.merged === 'object' && cache.merged) {
+        const merged = { ...cache.merged };
+        delete merged[slot];
+        this._slotIndexCache = {
+          sig: 'gen:' + _saveStoreGeneration,
+          merged,
+          authoritative: cache.authoritative,
+        };
+      }
       this._queueSharedStoreMirror({
         [LS_PREFIX + slot]: null,
         [RECOVERY_PREFIX + slot]: null,
@@ -2521,9 +3349,13 @@ export const save = {
    * is in when they pick "back to main menu" from the pause screen (mode 'paused'). Routing the
    * exit through it would have reproduced the bug it is meant to fix.
    *
-   * So this writes synchronously via save(), which is the same verified write the manual-save
-   * button uses: serialize → stringify → write → read-back verify, with the previous generation
-   * kept as the recovery copy. The player's last minute is durable before the menu paints.
+   * So this writes via the same verified path the manual-save button uses: serialize →
+   * stringify → write → read-back verify, with the previous generation kept as the
+   * recovery copy. The in-app exit emit passes `paced: true` — the frozen pause boundary
+   * lets saveAsync slice the chain across scheduled hops so the menu transition paints
+   * between legs; the unload flush (`pagehide`/`beforeunload`) deliberately stays
+   * synchronous because a paced chain may never run its hops before the process dies.
+   * The player's last minute is durable before the menu paints either way.
    *
    * Gates, each of which is a real state this can be called from:
    *  - an arena run is ephemeral by contract (PQ-133 ruling 2) and must never reach a campaign slot;
@@ -2531,7 +3363,7 @@ export const save = {
    *  - dead or mid-jump the live world is not a truthful snapshot of a moment worth keeping —
    *    requestAutosave already refuses both, and this must not be the loophole that doesn't.
    */
-  requestExitAutosave() {
+  requestExitAutosave(options = {}) {
     if (this._campaignSaveSuppressed()) return false;
     if (this._restoring) return false;
     const state = this.state;
@@ -2547,7 +3379,9 @@ export const save = {
     // callback carries the stale token and becomes a no-op, same as the manual-save supersede.
     if (this._autosavePending) this._autosavePending = null;
 
-    return this.save(AUTOSAVE_SLOT, { reason: 'exit_to_menu' });
+    return options.paced === true
+      ? this.saveAsync(AUTOSAVE_SLOT, { reason: 'exit_to_menu' })
+      : this.save(AUTOSAVE_SLOT, { reason: 'exit_to_menu' });
   },
 
   /** Debounced autosave to slot 'auto'. Never mid-jump, never while restoring / dead / not flying. */
@@ -2714,6 +3548,10 @@ export const save = {
     if (!this.state || this.state.mode !== 'loading' || !this._hasPlayerEntity()) return false;
     const plan = this._saveCapturePlan();
     const incrementalPlayer = this._shouldCapturePlayerIncrementally();
+    // A slice armed by restore A must never resume inside restore B's loading window
+    // (mode is 'loading' again, so the mode guard alone can't tell them apart — B's
+    // reads would capture mid-restore state under A's captured plan).
+    const restoreSeq = this._restoreSequence;
     const runSlice = (index) => {
       try {
         const started = workNowMs();
@@ -2736,8 +3574,10 @@ export const save = {
         // Same macrotask cadence the autosave capture slices use: bounded reads between
         // painted frames instead of one ~50-read monolith at the end of the restore. The warm
         // only exists for loading mode; once flight starts, the first real autosave reads
-        // again anyway, so a stale slice simply stops.
-        if (this.state.mode !== 'loading' || !this._hasPlayerEntity()) return true;
+        // again anyway, so a stale slice simply stops. A newer restore's own prime re-arms
+        // under its own sequence — this chain belongs to the minted session only.
+        if (this.state.mode !== 'loading' || !this._hasPlayerEntity()
+            || this._restoreSequence !== restoreSeq) return true;
         this._scheduleAutosaveWork(() => runSlice(index));
       }
       return true;
@@ -3020,6 +3860,7 @@ export const save = {
     this._cancelCeresEntityReferenceRestore();
     this._cancelCeresAttachmentRestore();
     this._cancelActiveAutosave('superseded');
+    if (this._activePacedSave) this._activePacedSave.superseded = true;
     const current = Number.isSafeInteger(this._runEpoch) ? this._runEpoch : 0;
     this._runEpoch = current + 1;
     this._autosaveGeneration = (Number.isSafeInteger(this._autosaveGeneration)
@@ -3089,6 +3930,135 @@ export const save = {
     return false;
   },
 
+  // One encode-part post: [key, value] tuples ride 'encode_part'; the sectioned bags and the
+  // chunked player payload ride their own types. Shared by the autosave posting loop and the
+  // paced-save encode rpc so both speak exactly one wire protocol.
+  _postSaveEncodeEntry(worker, id, entry) {
+    if (Array.isArray(entry)) {
+      const [key, value] = entry;
+      worker.postMessage({ id, type: 'encode_part', payload: { key, value } });
+      return;
+    }
+    if (entry.type === 'encode_player_begin') {
+      worker.postMessage({ id, type: entry.type, payload: entry.payload });
+      return;
+    }
+    if (entry.type === 'encode_bag_begin') {
+      worker.postMessage({
+        id,
+        type: 'encode_bag_begin',
+        payload: { key: entry.key, kind: entry.kind, length: entry.length },
+      });
+      return;
+    }
+    if (entry.type === 'encode_bag_part') {
+      worker.postMessage({
+        id,
+        type: 'encode_bag_part',
+        payload: { key: entry.key, start: entry.start, items: entry.source.slice(entry.start, entry.end) },
+      });
+      return;
+    }
+    worker.postMessage({
+      id,
+      type: 'encode_player_part',
+      payload: {
+        collection: entry.collection,
+        start: entry.start,
+        items: entry.source.slice(entry.start, entry.end),
+      },
+    });
+  },
+
+  // Encode rpc for the paced manual save: the two O(save) passes (data stringify+checksum,
+  // envelope stringify) run inside the save worker under the same encode_begin/part/finish
+  // protocol the autosave lane posts. Resolves {ok:true, json, checksum, gz, workerCpuMs};
+  // {ok:false, reason} carries either a named bound verdict the caller must honor verbatim
+  // (save_size_limit etc.) or an infra failure it falls back from ('no_worker',
+  // 'save_worker_*', 'post_failed', 'superseded').
+  _encodeEnvelopeViaWorker(descriptor, data) {
+    const worker = this._checkoutSaveWorker();
+    if (!worker) return Promise.resolve({ ok: false, reason: 'no_worker' });
+    const runEpoch = this._runEpoch;
+    const encoder = {
+      id: ++this._saveWorkerRequestId,
+      entries: this._autosaveEncoderEntries(data),
+      index: 0,
+      settled: false,
+      timeout: null,
+      finishPosted: false,
+    };
+    return new Promise((resolve) => {
+      const settle = (result, reusable = false) => {
+        if (encoder.settled) return;
+        encoder.settled = true;
+        clearTimeout(encoder.timeout);
+        this._releaseSaveWorker(worker, { reusable });
+        resolve(result);
+      };
+      const drive = () => {
+        if (encoder.settled) return;
+        if (runEpoch !== this._runEpoch) return settle({ ok: false, reason: 'superseded' });
+        const started = workNowMs();
+        let posted = 0;
+        let lastPostMs = 0;
+        try {
+          while (encoder.index < encoder.entries.length) {
+            const elapsed = workNowMs() - started;
+            if (posted > 0 && elapsed + lastPostMs >= AUTOSAVE_TARGET_SLICE_MS) break;
+            const entry = encoder.entries[encoder.index++];
+            const postStarted = workNowMs();
+            this._postSaveEncodeEntry(worker, encoder.id, entry);
+            lastPostMs = workNowMs() - postStarted;
+            posted++;
+          }
+          if (encoder.index >= encoder.entries.length && !encoder.finishPosted) {
+            const elapsed = workNowMs() - started;
+            if (posted > 0 && elapsed + lastPostMs >= AUTOSAVE_TARGET_SLICE_MS) {
+              this._scheduleAutosaveWork(drive);
+              return;
+            }
+            worker.postMessage({ id: encoder.id, type: 'encode_finish' });
+            encoder.finishPosted = true;
+          }
+        } catch (error) { return settle({ ok: false, reason: 'post_failed' }); }
+        if (encoder.index < encoder.entries.length) this._scheduleAutosaveWork(drive);
+      };
+      worker.onmessage = (event) => {
+        const message = event && event.data;
+        if (!message || message.id !== encoder.id || message.type !== 'encoded') {
+          return settle({ ok: false, reason: 'save_worker_failed' });
+        }
+        // A bounded encode that refused its envelope carries the named reason — that verdict
+        // IS the answer the caller reports, not a transport fault the sync lane re-derives.
+        // The worker's bounded failures carry limit/actual like the sync lane's — forward them
+        // so the receipt names the bound it tripped instead of a bare reason.
+        if (message.ok === false) return settle({
+          ok: false,
+          reason: message.reason || 'save_size_limit',
+          ...(message.limit != null ? { limit: message.limit } : {}),
+          ...(message.actual != null ? { actual: message.actual } : {}),
+        });
+        if (typeof message.json !== 'string') return settle({ ok: false, reason: 'save_worker_failed' });
+        settle({
+          ok: true,
+          json: message.json,
+          checksum: message.checksum,
+          gz: message.gz === true,
+          workerCpuMs: Number(message.workerCpuMs) || 0,
+        }, true);
+      };
+      worker.onerror = () => settle({ ok: false, reason: 'save_worker_failed' });
+      worker.__spacefaceSaveSupersede = () => settle({ ok: false, reason: 'superseded' });
+      encoder.timeout = setTimeout(
+        () => settle({ ok: false, reason: 'save_worker_timeout' }), SAVE_WORKER_TIMEOUT_MS);
+      try {
+        worker.postMessage({ id: encoder.id, type: 'encode_begin', payload: { descriptor } });
+      } catch (error) { return settle({ ok: false, reason: 'post_failed' }); }
+      this._scheduleAutosaveWork(drive);
+    });
+  },
+
   _postAutosaveEncodeParts(job, capture, encoder, fail) {
     if (!this._autosaveJobCurrent(job) || encoder.runEpoch !== this._runEpoch) {
       fail('superseded', false);
@@ -3111,46 +4081,8 @@ export const save = {
         if (posted > 0 && elapsed + lastPostMs >= AUTOSAVE_TARGET_SLICE_MS) break;
         const entry = encoder.entries[encoder.index++];
         const postStarted = workNowMs();
-        if (Array.isArray(entry)) {
-          const [key, value] = entry;
-          encoder.worker.postMessage({ id: encoder.id, type: 'encode_part', payload: { key, value } });
-        } else if (entry.type === 'encode_player_begin') {
-          postedPlayerPart = true;
-          encoder.worker.postMessage({
-            id: encoder.id,
-            type: entry.type,
-            payload: entry.payload,
-          });
-        } else if (entry.type === 'encode_bag_begin') {
-          postedPlayerPart = true;
-          encoder.worker.postMessage({
-            id: encoder.id,
-            type: 'encode_bag_begin',
-            payload: { key: entry.key, kind: entry.kind, length: entry.length },
-          });
-        } else if (entry.type === 'encode_bag_part') {
-          postedPlayerPart = true;
-          encoder.worker.postMessage({
-            id: encoder.id,
-            type: 'encode_bag_part',
-            payload: {
-              key: entry.key,
-              start: entry.start,
-              items: entry.source.slice(entry.start, entry.end),
-            },
-          });
-        } else {
-          postedPlayerPart = true;
-          encoder.worker.postMessage({
-            id: encoder.id,
-            type: 'encode_player_part',
-            payload: {
-              collection: entry.collection,
-              start: entry.start,
-              items: entry.source.slice(entry.start, entry.end),
-            },
-          });
-        }
+        if (!Array.isArray(entry)) postedPlayerPart = true;
+        this._postSaveEncodeEntry(encoder.worker, encoder.id, entry);
         lastPostMs = workNowMs() - postStarted;
         posted++;
       }
@@ -3281,8 +4213,33 @@ export const save = {
     }
   },
 
-  _commitAutosaveSnapshot(job, snapshot) {
+  async _commitAutosaveSnapshot(job, snapshot) {
     if (!job || !snapshot || !this._autosaveInFlight) return false;
+    if (this._restoring || job.restoreSequence !== this._restoreSequence) {
+      const timing = this._saveTiming({
+        slot: AUTOSAVE_SLOT, reason: job.reason, autosave: true, started: job.requestedAt,
+        serializeMs: snapshot.serializeMs, stringifyMs: snapshot.stringifyMs,
+        ok: false, failure: 'superseded', blockingSlicesMs: snapshot.blockingSlices || [snapshot.blockingSliceMs, 0],
+      });
+      this._autosaveInFlight = false;
+      if (this._activeAutosaveJob === job) this._activeAutosaveJob = null;
+      return this._publishSaveResult(AUTOSAVE_SLOT, null, { ok: false }, timing);
+    }
+
+    // The previous-generation verify is a whole-ledger prepare — run it on the paced lane
+    // (yielded twin when this no-worker commit exists precisely because the worker refused)
+    // instead of inside _writeSlot's scheduled task. A read failure defers to _writeSlot's
+    // own read, which returns read_failed identically.
+    let previousRaw;
+    try { previousRaw = localStorage.getItem(LS_PREFIX + AUTOSAVE_SLOT); }
+    catch (error) { previousRaw = undefined; }
+    const previousPrepared = previousRaw
+      ? await this._prepareEnvelopeStringAsync(previousRaw).catch(() => ({ ok: false, reason: 'load_failed' }))
+      : null;
+    // Liveness re-check after the paced prepare: a restore/run boundary crossed during
+    // the await already cancelled this job and published its own terminal receipt —
+    // finish quietly instead of writing over the newer generation.
+    if (!this._autosaveInFlight || this._activeAutosaveJob !== job) return false;
     if (this._restoring || job.restoreSequence !== this._restoreSequence) {
       const timing = this._saveTiming({
         slot: AUTOSAVE_SLOT, reason: job.reason, autosave: true, started: job.requestedAt,
@@ -3298,6 +4255,7 @@ export const save = {
     const write = this._writeSlot(AUTOSAVE_SLOT, snapshot.envelope, {
       json: snapshot.json,
       stringifyMs: snapshot.stringifyMs,
+      ...(previousRaw !== undefined ? { previousRaw, previousPrepared } : {}),
     });
     const writeSliceMs = workNowMs() - writeStarted;
     const timing = this._saveTiming({
@@ -3575,10 +4533,11 @@ export const save = {
         return;
       }
       if (result && result.ok && result.version < CURRENT_VERSION) {
-        this._scheduleAutosaveWork(() => {
+        this._scheduleAutosaveWork(async () => {
           const verifyStarted = workNowMs();
           const peek = this._peekSaveEnvelope(tx.previousRaw);
-          const prepared = peek || this._prepareEnvelopeString(tx.previousRaw);
+          const prepared = peek || await this._prepareEnvelopeStringAsync(tx.previousRaw).catch(() => null) || { ok: false, reason: 'load_failed' };
+          if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return;
           const verifyMs = workNowMs() - verifyStarted;
           tx.verifyMs += verifyMs;
           this._pushAutosaveSlice(tx, 'validate_previous_migration', verifyMs);
@@ -3609,13 +4568,16 @@ export const save = {
     return true;
   },
 
-  _autosaveValidatePreviousSync(job, snapshot, tx) {
+  async _autosaveValidatePreviousSync(job, snapshot, tx) {
     if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const started = workNowMs();
     // A prior compressed generation is a valid previous write: its wrapper meta proves it
-    // without a sync decode the platform cannot run.
+    // without a sync decode the platform cannot run. The remaining whole-ledger prepare rides
+    // the worker-first async lane (yielded twin when this fallback exists precisely because
+    // the worker refused) so the verify no longer bricks its scheduled task.
     const peek = this._peekSaveEnvelope(tx.previousRaw);
-    const prepared = peek || this._prepareEnvelopeString(tx.previousRaw);
+    const prepared = peek || await this._prepareEnvelopeStringAsync(tx.previousRaw).catch(() => null) || { ok: false, reason: 'load_failed' };
+    if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const verifyMs = workNowMs() - started;
     tx.verifyMs += verifyMs;
     this._pushAutosaveSlice(tx, 'validate_previous_sync', verifyMs);
@@ -3739,14 +4701,18 @@ export const save = {
     return true;
   },
 
-  _autosaveValidateReadbackSync(job, snapshot, tx, storedRaw) {
+  async _autosaveValidateReadbackSync(job, snapshot, tx, storedRaw) {
     if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const started = workNowMs();
-    // A worker-compressed write cannot re-validate on this sync lane; a byte-exact re-read of
-    // the string the worker produced is the corruption gate (the worker bounded it pre-write).
-    const prepared = storedRaw === snapshot.json && isGzippedSaveText(storedRaw)
+    // A byte-exact re-read of the string this transaction produced needs no re-verify on ANY
+    // lane — the envelope was bounded at encode (the gzip lane's proven-bytes escape, extended
+    // to plain envelopes). The mismatched path is cold (the caller only schedules this verify
+    // after the byte compare passed, so it is defensive insurance) and now rides the async
+    // prepare lane rather than bricking the scheduled task.
+    const prepared = storedRaw === snapshot.json
       ? { ok: true }
-      : this._prepareEnvelopeString(storedRaw);
+      : await this._prepareEnvelopeStringAsync(storedRaw).catch(() => null) || { ok: false, reason: 'load_failed' };
+    if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const verifyMs = workNowMs() - started;
     tx.verifyMs += verifyMs;
     this._pushAutosaveSlice(tx, 'validate_readback_sync', verifyMs);
@@ -3917,6 +4883,12 @@ export const save = {
   /** Load a slot (or 'latest'). Validates fully before any destructive restore; a live run is
    *  snapshotted for one rollback attempt if restore fails. Returns true only for an accepted load. */
   load(slot, options = null) {
+    // Worker lane (main side): restore authority sits in the sim realm — the
+    // forwarded event stages this realm's sf.* bytes for its slot resolution.
+    if (laneCommandSink && laneCommandSink()) {
+      laneBusEmit('game:load', { slot: slot || 'latest', __laneStorage: _collectSfStorage() });
+      return true;
+    }
     // preferAsync: the painted Continue lane asks for the worker-backed restore; callers that
     // stub `load` as the restore primitive (tests, overrides) keep the seam — options are just
     // a second argument to them.
@@ -3940,10 +4912,13 @@ export const save = {
     }
     // Consume a screen-armed speculative prepare the same way loadAsync does: a
     // same-generation spec already proves the disk bytes, so the multi-MB materialize
-    // stays off the click path. The worker prepare still runs — sync load can't await
-    // its promise — but the raw bytes are the win either way.
+    // stays off the click path. A dispatch that already resolved carries its validated
+    // envelope in spec.prepared — consumed below for free; a still-pending worker
+    // prepare can't be awaited on this lane, so the raw bytes + sync chain run instead.
     const spec = this._speculativeContinuePrepare;
     this._speculativeContinuePrepare = null;
+    // Drop any parked dispatch — a pending worker parse is unconsumable here.
+    if (spec && spec._timer != null) { clearTimeout(spec._timer); spec._timer = null; }
     installSaveStoreWriteTracking();
     const specHit = spec && spec.slot === slot
       && spec.sig === 'gen:' + _saveStoreGeneration;
@@ -3952,7 +4927,15 @@ export const save = {
       try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
       catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
     }
-    const primary = this._prepareEnvelopeString(specHit ? spec.raw : raw);
+    // The gen: sig proves the armed bytes are the disk bytes, and the worker's
+    // resolved verdict carries the same {ok,env,data,version} shape the sync
+    // chain returns — a resolved prepare skips the multi-MB parse + checksum +
+    // migrate + normalize walks entirely. Anything less (unresolved, non-ok)
+    // falls through to the full sync chain, preserving every failure reason.
+    const primary = (specHit && spec.prepared && spec.prepared.ok === true)
+      ? spec.prepared
+      : this._prepareEnvelopeString(specHit
+        ? (spec.readRaw ? spec.readRaw() : spec.raw) : raw);
     if (primary.ok) {
       return this._restorePreparedEnvelope(primary, slot,
         skippedNewer ? { skippedNewer } : undefined);
@@ -3980,8 +4963,12 @@ export const save = {
         try {
           localStorage.setItem(LS_PREFIX + slot, backupRaw);
           promoted = localStorage.getItem(LS_PREFIX + slot) === backupRaw;
-          if (promoted) this._updateIndex(slot, backup.env, backupRaw);
-          if (promoted) this._queueSharedStoreMirror();
+          if (promoted) {
+            const indexJson = this._updateIndex(slot, backup.env, backupRaw);
+            this._queueSharedStoreMirror(typeof indexJson === 'string'
+              ? { [LS_PREFIX + slot]: backupRaw, [INDEX_KEY]: indexJson }
+              : { [LS_PREFIX + slot]: backupRaw });
+          }
         } catch (err) { /* recovery remains playable even if self-heal cannot persist */ }
         this._publishRecovery({
           slot,
@@ -4010,10 +4997,11 @@ export const save = {
   async loadAsync(slot) {
     slot = slot || 'quick';
     let skippedNewer = null;
+    let slotBurst = null;
     if (slot === 'latest') {
-      const slotBurst = {};
+      slotBurst = {};
       try { skippedNewer = await this._newerUnplayableSkipAsync(slotBurst); } catch (err) { skippedNewer = null; }
-      const resolved = this._latestSlot(slotBurst);
+      const resolved = await this._latestSlotAsync(slotBurst);
       if (!resolved) {
         this.bus.emit('save:error', Object.assign({ slot, reason: 'no_save' },
           skippedNewer ? { skippedNewer } : null));
@@ -4025,39 +5013,87 @@ export const save = {
     // bytes it read are still on disk — a stale speculation prepares fresh like a miss.
     const spec = this._speculativeContinuePrepare;
     this._speculativeContinuePrepare = null;
+    // A consumed arm never dispatches again — a still-parked debounce would otherwise fire
+    // inside the load window and mint a clone + worker parse nobody consumes.
+    if (spec && spec._timer != null) { clearTimeout(spec._timer); spec._timer = null; }
     // A same-generation spec already proves the disk bytes: every tracked writer bumps the
     // generation, so 'gen:' equality makes spec.raw identical to what getItem would return —
     // the multi-MB materialize + byte compare stay off the click path.
     installSaveStoreWriteTracking();
+    // Generation latched at consume time: for specHit this equals the arm's own sig
+    // (the movement predicate is identical either way), but for specByteHit it is the
+    // FIRST generation that could stale the bytes we just byte-proved — the arm's sig
+    // is stale by construction there, so comparing spec.sig to now would discard every
+    // verified byteHit and re-pay the parse the byte-equality exists to skip. Guard on
+    // movement since this latch, not since arm time.
+    const latchGen = _saveStoreGeneration;
     const specHit = spec && spec.slot === slot
       && spec.sig === 'gen:' + _saveStoreGeneration;
     let raw = null;
     if (!specHit) {
-      try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
-      catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
+      // Same freshness proof as specHit: the 'latest' consult's signature walk already
+      // materialized this blob under a still-live generation — the Map's copy is the
+      // bytes getItem would return, so the second multi-MB read stays off the click task.
+      const burstRaws = slotBurst && slotBurst.sig === 'gen:' + _saveStoreGeneration
+        && slotBurst.raws && typeof slotBurst.raws.get === 'function' ? slotBurst.raws : null;
+      if (burstRaws) {
+        raw = burstRaws.has(LS_PREFIX + slot) ? burstRaws.get(LS_PREFIX + slot) : null;
+      } else {
+        try { raw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
+        catch (err) { this.bus.emit('save:error', { slot, reason: 'read_failed' }); return false; }
+      }
     }
     // A spec minted under an older generation still consumes, but only after byte equality
-    // proves nothing drifted since it read.
+    // proves nothing drifted since it read. An unmaterialized thunk arm is tautologically
+    // byte-equal — its readRaw would re-read the identical key on this same task — so only
+    // an already-materialized spec.raw can differ and earn the compare.
     const specByteHit = !specHit && spec && spec.slot === slot
-      && typeof raw === 'string' && spec.raw === raw;
+      && typeof raw === 'string'
+      && (spec.raw != null ? spec.raw : raw) === raw;
     // NXI-234: capture the load generation before the worker roundtrip. A restore that
     // commits first bumps _restoreSequence, so a late-completing prepare cannot pass the
     // destructive-commit check in _restore/_restoreAsync and overwrite the newer run.
     const acceptSeq = this._restoreSequence;
-    const primaryPromise = ((specHit || specByteHit) ? spec.promise : Promise.resolve(null))
-      .then((prepared) => prepared || this._prepareEnvelopeStringAsync(specHit ? spec.raw : raw));
+    // A consumed spec flushes its parked dispatch now — the debounce exists for scrub
+    // cadence, and a click means the arm's row is the one being loaded.
+    const specPromise = ((specHit || specByteHit) && spec && typeof spec.dispatch === 'function')
+      ? spec.dispatch()
+      : ((specHit || specByteHit) && spec && spec.promise) || Promise.resolve(null);
+    const primaryPromise = specPromise
+      .then((prepared) => prepared || this._prepareEnvelopeStringAsync(specHit
+        ? (spec.readRaw ? spec.readRaw() : spec.raw) : raw));
     // Snapshot the outgoing run while the worker decodes the incoming envelope — the capture
     // is main-thread serialize work that used to serialize after the roundtrip. A failed
     // primary falls through to the same snapshot: nothing destructive ran in between.
     let rollbackSnapshot = null;
     let rollbackSnapshotError = null;
     if (this._hasPlayerEntity()) {
-      try { rollbackSnapshot = await this._captureRollbackSnapshotAsync(); }
-      catch (err) { rollbackSnapshotError = err; }
+      if (this._frozenTickBoundary()) {
+        try { rollbackSnapshot = await this._captureRollbackSnapshotAsync(); }
+        catch (err) { rollbackSnapshotError = err; }
+      } else {
+        // A live-sim capture can't slice coherently on this task — defer it into the
+        // restore session, where its scale-0 + _restoring gates hold the sim frozen and
+        // the same sliced walk pays the O(world) serialize across frames instead of
+        // bricking this click+1 continuation. _restoreAsync/_restore resolve the marker
+        // to a real snapshot before the first destructive chunk runs.
+        rollbackSnapshot = { deferred: true };
+      }
     } else {
       rollbackSnapshot = { notNeeded: true };
     }
-    const primary = await primaryPromise;
+    let primary = await primaryPromise;
+    // A spec-derived verdict was computed under the generation the arm was minted in — and a
+    // spec-miss `raw` was itself getItem'd before this window. A store write landing anywhere
+    // inside it (the sliced rollback capture + worker roundtrip) bumps the generation, so
+    // whatever bytes `primary` prepared may be pre-write. Re-verify unconditionally before
+    // trusting the result; on mismatch discard and re-prepare from the bytes now on disk.
+    if (_saveStoreGeneration !== latchGen) {
+      let freshRaw = null;
+      try { freshRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; }
+      catch (err) { /* null — the prepare reports its own read reason */ }
+      primary = await this._prepareEnvelopeStringAsync(freshRaw);
+    }
     if (primary.ok) {
       // The envelope tells us exactly which ships/stations/places the saved sector will
       // rematerialize — start those authored decodes now so they overlap the chunked
@@ -4090,8 +5126,12 @@ export const save = {
         try {
           localStorage.setItem(LS_PREFIX + slot, backupRaw);
           promoted = localStorage.getItem(LS_PREFIX + slot) === backupRaw;
-          if (promoted) this._updateIndex(slot, backup.env, backupRaw);
-          if (promoted) this._queueSharedStoreMirror();
+          if (promoted) {
+            const indexJson = this._updateIndex(slot, backup.env, backupRaw);
+            this._queueSharedStoreMirror(typeof indexJson === 'string'
+              ? { [LS_PREFIX + slot]: backupRaw, [INDEX_KEY]: indexJson }
+              : { [LS_PREFIX + slot]: backupRaw });
+          }
         } catch (err) { /* recovery remains playable even if self-heal cannot persist */ }
         this._publishRecovery({
           slot,
@@ -4130,7 +5170,7 @@ export const save = {
     }
     if (typeof this._requestSaveWorker !== 'function' || typeof Worker !== 'function') {
       const meta = this._prepareEnvelopeMeta(raw);
-      return Promise.resolve(meta ? { ok: true } : { ok: false, reason: 'load_failed' });
+      return Promise.resolve(meta ? { ok: true, cardEnv: meta } : { ok: false, reason: 'load_failed' });
     }
     return new Promise((resolve) => {
       let settled = false;
@@ -4147,12 +5187,51 @@ export const save = {
       if (!accepted) settle(null);
     }).then((prepared) => {
       if (!prepared) {
+        // Timeout/wedged-worker fallback: keep the env this parse already paid for — the
+        // card consult consumes cardEnv instead of re-parsing the same multi-MB blob.
         const meta = this._prepareEnvelopeMeta(raw);
-        return meta ? { ok: true } : { ok: false, reason: 'load_failed' };
+        return meta ? { ok: true, cardEnv: meta } : { ok: false, reason: 'load_failed' };
       }
       if (!prepared.ok) return { ok: false, reason: prepared.reason || 'load_failed' };
-      return { ok: true };
+      return { ok: true, cardEnv: prepared.cardEnv || null };
     });
+  },
+
+  // The card projection a validated scan already produced for this slot — lives and dies
+  // with the sig-keyed _slotIndexCache, so a same-generation write re-mints it instead of
+  // serving stale data. Null when no scan produced one; the caller falls back to the
+  // worker peek (W139-G2).
+  slotCardData(slot) {
+    const cache = this._slotIndexCache;
+    const data = cache && cache.cardDatas ? cache.cardDatas[slot] : null;
+    return data || null;
+  },
+
+  // The slot fill's card payload — a JSON.parse + small projection only (no migration/
+  // normalize: the portrait reads the stored shape verbatim). The multi-MB parse runs on
+  // the save worker; world tables and thumbnail stay off postMessage. Resolves null on any
+  // failure so the caller can run its identical sync tail.
+  peekSaveCardData(raw) {
+    if (!raw || typeof raw !== 'string') return Promise.resolve(null);
+    if (typeof this._requestSaveWorker !== 'function' || typeof Worker !== 'function') {
+      return Promise.resolve(null);
+    }
+    return new Promise((resolve) => {
+      let settled = false;
+      const settle = (value) => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+      const accepted = this._requestSaveWorker('peek_card_data',
+        { raw },
+        (message) => settle(message && message.result ? message.result : null),
+        () => settle(null),
+        { timeoutMs: 2500 });
+      if (!accepted) settle(null);
+    }).then((prepared) => (prepared && prepared.ok === true && prepared.cardData
+      ? prepared.cardData
+      : null));
   },
 
   _prepareEnvelopeStringAsync(raw) {
@@ -4212,13 +5291,18 @@ export const save = {
         if (!normalized.ok) return { ok: false, reason: normalized.reason };
         const preparedResult = { ok: true, env, data, version: ver };
         // A compressed generation the worker just proved stays readable to every sync
-        // caller downstream (rollback verification, slot cards, NG+ prep).
+        // caller downstream (rollback verification, slot cards, NG+ prep). FIFO-capped
+        // like _preparedEnvelopeCache: each generation mints a distinct multi-MB raw key
+        // + full parsed envelope, so an uncapped map is the one unbounded save accretion
+        // (W138 heap-floor F1) — a miss just re-runs this async lane.
         if (isGzippedSaveText(raw)) {
           try {
-            this._decodedSaveEnvelopes = this._decodedSaveEnvelopes || new Map();
-            this._decodedSaveEnvelopes.set(raw, preparedResult);
+            const decoded = this._decodedSaveEnvelopes || (this._decodedSaveEnvelopes = new Map());
+            decoded.set(raw, preparedResult);
+            while (decoded.size > 8) decoded.delete(decoded.keys().next().value);
           } catch (err) { /* a cache miss only forces the async lane again */ }
         }
+        this._rememberPreparedEnvelope(raw, preparedResult);
         return preparedResult;
       } catch (err) {
         return { ok: false, reason: 'load_failed', error: err };
@@ -4233,8 +5317,13 @@ export const save = {
     if (typeof raw === 'string' && isGzippedSaveText(raw)) {
       return this._loadEnvelopeFromStringAsync(raw, slot);
     }
-    const prepared = this._prepareEnvelopeString(raw);
-    if (!prepared.ok) {
+    // Keep the O(1) rejects synchronous — importString still answers literal `false`
+    // for them (byte-cap/pre-parse pins). The deep walks (parse → preflight →
+    // checksum → migrate → normalize) ride the same sliced async lane the gzip leg
+    // and slot loads already take, so a multi-MB plain import no longer bricks the
+    // Save/Load click before deferLoadedGameRestore can even paint progress.
+    if (!raw || typeof raw !== 'string' || saveImportByteLength(raw) > SAVE_IMPORT_MAX_BYTES) {
+      const prepared = this._prepareEnvelopeString(raw);
       this.bus.emit('save:error', {
         slot,
         reason: prepared.reason,
@@ -4243,8 +5332,7 @@ export const save = {
       });
       return false;
     }
-    this._importProfileSideBags(prepared.env, slot);
-    return this._restorePreparedEnvelope(prepared, slot);
+    return this._loadEnvelopeFromStringAsync(raw, slot);
   },
 
   async _loadEnvelopeFromStringAsync(raw, slot) {
@@ -4265,7 +5353,7 @@ export const save = {
       return false;
     }
     this._importProfileSideBags(prepared.env, slot);
-    return this._restorePreparedEnvelope(prepared, slot, { acceptSeq });
+    return this._restorePreparedEnvelopeAsync(prepared, slot, { acceptSeq });
   },
 
   /** Validate an already-parsed envelope and restore it (atomic: validate before destructive work). */
@@ -4283,6 +5371,25 @@ export const save = {
     }
     this._importProfileSideBags(prepared.env, slot);
     return this._restorePreparedEnvelope(prepared, slot);
+  },
+
+  // Proven-envelope verdict cache: any lane that already verified a raw stored string
+  // (a completed write, a paced validate, an async prepare) leaves its verdict here so the
+  // next consumer — usually _writeSlot's previous-generation check — answers O(1) instead of
+  // re-running a whole-ledger prepare over bytes this process already proved. FIFO-capped; a
+  // miss costs nothing beyond the sync fallback the caller already had.
+  _cachedPreparedEnvelope(raw) {
+    const cache = this._preparedEnvelopeCache;
+    if (!cache || typeof raw !== 'string') return null;
+    return cache.get(raw) || null;
+  },
+
+  _rememberPreparedEnvelope(raw, prepared) {
+    if (typeof raw !== 'string' || !prepared || prepared.ok !== true) return;
+    const cache = this._preparedEnvelopeCache || (this._preparedEnvelopeCache = new Map());
+    if (cache.has(raw)) cache.delete(raw);
+    cache.set(raw, prepared);
+    while (cache.size > 8) cache.delete(cache.keys().next().value);
   },
 
   /** Bounded sync validation only for the writer's previous-generation recovery decision. */
@@ -4497,6 +5604,13 @@ export const save = {
   // against the pre-restore snapshot when one exists. Rollback rides the caller's own lane —
   // the async Continue path's second failure chunks the rollback the same as the first.
   _handleLoadFailure(err, slot, options, rollbackSnapshot, rollbackAttempt) {
+    const marker = rollbackSnapshot;
+    if (marker && marker.deferred === true) {
+      if (!marker.resolved && marker.error) {
+        return this._deferredCaptureFailure(slot, options, marker.error);
+      }
+      rollbackSnapshot = marker.resolved;
+    }
     const failure = this._beginLoadFailure(err, slot, options, rollbackSnapshot, rollbackAttempt);
     if (failure === null) return false;
     let rollbackError = null;
@@ -4523,6 +5637,13 @@ export const save = {
   // chunks so a double-failure on the Continue lane stays paintable instead of re-running the
   // whole restore as one uninterruptible block behind the veil.
   async _handleLoadFailureAsync(err, slot, options, rollbackSnapshot, rollbackAttempt) {
+    const marker = rollbackSnapshot;
+    if (marker && marker.deferred === true) {
+      if (!marker.resolved && marker.error) {
+        return this._deferredCaptureFailure(slot, options, marker.error);
+      }
+      rollbackSnapshot = marker.resolved;
+    }
     const failure = this._beginLoadFailure(err, slot, options, rollbackSnapshot, rollbackAttempt);
     if (failure === null) return false;
     let rollbackError = null;
@@ -4542,6 +5663,22 @@ export const save = {
       this._rollbackInProgress = false;
     }
     this._endLoadFailure(failure, rollbackError);
+    return false;
+  },
+
+  // A deferred rollback capture that refused inside the opened session reports the same
+  // pre-destructive receipt the eager capture arm emits: the restore closed before any
+  // chunk ran, so the world is intact and there is nothing to roll back to.
+  _deferredCaptureFailure(slot, options, captureError) {
+    console.error('[save] rollback snapshot failed', captureError);
+    if (options.emitError !== false) {
+      this.bus.emit('save:error', {
+        slot,
+        reason: 'restore_prepare_failed',
+        rollback: 'unavailable',
+        error: restoreErrorMessage(captureError),
+      });
+    }
     return false;
   },
 
@@ -4618,6 +5755,30 @@ export const save = {
       return true;
     }
 
+    // SFQ-B223, same rule the sync twin applies: a load arriving inside the restore window
+    // defers whole — the deferred call re-runs this full path, so its rollback snapshot reads
+    // the now-restored world instead of a half-restored one captured here. Rollback restores
+    // are internal and must never defer.
+    if (this._restoring && !rollbackAttempt) {
+      this.deferRunTransition(() => {
+        try {
+          // The deferred call is async too: chain the rejection handler like the
+          // _restoreAsync twin so a late failure reports instead of escaping as
+          // an unhandled rejection through the drain's return path.
+          return this._restorePreparedEnvelopeAsync(prepared, slot, options).catch((error) => {
+            console.error('[save] deferred restore failed', error);
+            this.bus.emit('save:error', { slot, reason: 'load_failed' });
+            return { restored: false, slot, error: true };
+          });
+        } catch (error) {
+          console.error('[save] deferred restore failed', error);
+          this.bus.emit('save:error', { slot, reason: 'load_failed' });
+          return { restored: false, slot, error: true };
+        }
+      });
+      return true;
+    }
+
     let rollbackSnapshot = null;
     let rollbackSnapshotError = null;
     if (!rollbackAttempt) {
@@ -4625,10 +5786,16 @@ export const save = {
         rollbackSnapshot = options.rollbackSnapshot;
         rollbackSnapshotError = options.rollbackSnapshotError || null;
       } else if (this._hasPlayerEntity()) {
-        try {
-          rollbackSnapshot = this._captureRollbackSnapshot();
-        } catch (err) {
-          rollbackSnapshotError = err;
+        if (this._frozenTickBoundary()) {
+          try {
+            rollbackSnapshot = await this._captureRollbackSnapshotAsync();
+          } catch (err) {
+            rollbackSnapshotError = err;
+          }
+        } else {
+          // Same deferral contract as loadAsync's live-sim lane — the atomic capture
+          // used to run here on this task regardless of caller.
+          rollbackSnapshot = { deferred: true };
         }
       } else {
         rollbackSnapshot = { notNeeded: true };
@@ -4648,7 +5815,12 @@ export const save = {
     }
 
     try {
-      const result = await this._restoreAsync(prepared.data, slot, {
+      // Test seams stub the synchronous _restore twin alone; honoring it keeps those
+      // contracts identical across sync/async lanes (a stubbed _restoreAsync wins first).
+      const restoreLane = this._restoreAsync !== CANONICAL_SAVE_RESTORE_ASYNC
+        ? this._restoreAsync
+        : this._restore !== CANONICAL_SAVE_RESTORE ? this._restore : this._restoreAsync;
+      const result = await restoreLane.call(this, prepared.data, slot, {
         ...options,
         rollbackSnapshot,
       });
@@ -4696,7 +5868,7 @@ export const save = {
   // generator drives with frame yields between sections instead — same bytes, spread across frames. Every pass after the capture walks
   // the detached copy, so clone → migrate → normalize yield a frame between them
   // (same pacing _prepareEnvelopeStringAsync uses) instead of extending the capture brick.
-  async _captureRollbackSnapshotAsync() {
+  async _captureRollbackSnapshotAsync(frozenBoundary) {
     const state = this.state;
     const slot = state && state.save && state.save.currentSlot
       ? state.save.currentSlot
@@ -4705,8 +5877,9 @@ export const save = {
     this._rollbackCaptureActive = true;
     let data;
     try {
-      if (this.state && this._frozenTickBoundary()) {
-        data = await this._serializeDataFrozenAsync();
+      if (this.state && (this._frozenTickBoundary()
+          || (typeof frozenBoundary === 'function' && frozenBoundary()))) {
+        data = await this._serializeDataFrozenAsync(frozenBoundary);
       } else {
         data = this.serializeData();
       }
@@ -4726,9 +5899,11 @@ export const save = {
       const versionRead = readSaveVersion(env.version);
       if (!versionRead.ok) throw new Error('rollback_snapshot_invalid:' + (versionRead.reason || 'version'));
       const ver = versionRead.version;
+      // The O(world-graph) validator walk must not fuse to the capture tail in
+      // the same task — yield before it like _prepareEnvelopeStringAsync does.
+      await this._restoreFrameYield();
       const preflight = preflightSaveImport(env);
       if (!preflight.ok) throw new Error('rollback_snapshot_invalid:' + preflight.reason);
-      await this._restoreFrameYield();
       const migrated = clonePlain(env.data);
       if (!runMigrations(migrated, ver)) throw new Error('rollback_snapshot_invalid:migration_failed');
       await this._restoreFrameYield();
@@ -4767,7 +5942,27 @@ export const save = {
       return { restored: false, superseded: true, stale: true, slot };
     }
 
-    const s = this._openRestoreSession(data, slot, options);
+    const deferredMarker = options.rollbackSnapshot && options.rollbackSnapshot.deferred === true
+      ? options.rollbackSnapshot : null;
+    const s = this._openRestoreSession(data, slot, deferredMarker
+      ? Object.assign({}, options, { deferRestoringEmit: true }) : options);
+    if (deferredMarker) {
+      // The capture must serialize live state BEFORE the session's save:restoring emit —
+      // its listeners wipe tensionDirector.policy, predation bindings, and free-id order,
+      // and a rollback that snapshots after them restores the post-wipe world. The sync
+      // drive can't pace the capture across frames — the identical atomic capture still
+      // lands inside the frozen session, before the first destructive chunk.
+      const marker = deferredMarker;
+      try {
+        marker.resolved = this._captureRollbackSnapshot();
+        options.rollbackSnapshot = marker.resolved;
+      } catch (error) {
+        marker.error = error;
+        options.rollbackSnapshot = null;
+        return this._closeRestoreSession(s, error);
+      }
+      this._firePendingRestoringEmit(s);
+    }
     const it = this._restoreChunks(s);
     let restoreError = null;
     try {
@@ -4811,7 +6006,31 @@ export const save = {
       return { restored: false, superseded: true, stale: true, slot };
     }
 
-    const s = this._openRestoreSession(data, slot, options);
+    const deferredMarker = options.rollbackSnapshot && options.rollbackSnapshot.deferred === true
+      ? options.rollbackSnapshot : null;
+    const s = this._openRestoreSession(data, slot, deferredMarker
+      ? Object.assign({}, options, { deferRestoringEmit: true }) : options);
+    if (deferredMarker) {
+      // A live-sim caller deferred its O(world) rollback capture to this point — the
+      // session's scale-0 freeze + _restoring-gated writes hold the sim still between
+      // yields, so the same sliced walk pays it across frames and still completes before
+      // the first destructive chunk. It must also land BEFORE the session's save:restoring
+      // emit: that event's listeners mutate exactly the fields the capture serializes
+      // (tensionDirector.policy, ai predation bindings, free-id order), so a snapshot
+      // taken after it restores the post-wipe world, not the one the player left.
+      // The marker must resolve to real snapshot data (or a refusal) before the generator
+      // runs, or a later chunk failure would consume the marker itself as rollback data.
+      const marker = deferredMarker;
+      try {
+        marker.resolved = await this._captureRollbackSnapshotAsync(() => this._restoring === true);
+        options.rollbackSnapshot = marker.resolved;
+      } catch (error) {
+        marker.error = error;
+        options.rollbackSnapshot = null;
+        return this._closeRestoreSession(s, error);
+      }
+      this._firePendingRestoringEmit(s);
+    }
     const it = this._restoreChunks(s);
     let restoreError = null;
     // Chunks pay a frame boundary only once the last one is at least a frame old — a
@@ -4907,7 +6126,29 @@ export const save = {
     // world object itself survives deserialize; only its bags are reset).
     state.enterSerialSeq = (Number(state.enterSerialSeq) || 0) + 1;
     if (state.world && typeof state.world === 'object') state.world.enterSerial = state.enterSerialSeq;
-    this.bus.emit('save:restoring', { slot, source: restoreSource });
+    let pendingRestoringEmit = null;
+    if (options && options.deferRestoringEmit === true) {
+      // A deferred rollback capture is about to serialize live state inside this frozen
+      // session — hold the emit until it resolves: save:restoring listeners wipe exactly
+      // the fields the capture reads. The caller fires it via _firePendingRestoringEmit
+      // before the first restore chunk; a capture failure closes without it.
+      pendingRestoringEmit = { slot, source: restoreSource };
+    } else {
+      this.bus.emit('save:restoring', { slot, source: restoreSource });
+    }
+    // sector:exit slicing is restore-scoped: the world-restore chunk's departure emit
+    // parks its listener tail on the bus and the restore's own yields + frame-leftover
+    // drains retire it across painted beats. Inside a restore the sim is frozen and
+    // exit listeners observe departure only, so the order hazard that forbids exit
+    // slicing on live ticks does not apply here. Cleared in _closeRestoreSession.
+    if (typeof this.bus.setEmitSliceBudget === 'function') {
+      this.bus.setEmitSliceBudget('sector:exit', 8);
+      // mode:changed slicing is restore-scoped for the same reason: its ~8
+      // listener files are UI/reset-class (veil, pause sync, HUD refresh, radial
+      // close, contact-hail/auto-aim reset) — none writes state a later restore
+      // leg reads back, and the tails drain at the restore's own yields.
+      this.bus.setEmitSliceBudget('mode:changed', 8);
+    }
     timeEffects.reset();
     timeEffects.set(restoreSource, { scale: 0 });
     const entityIdRemap = new Map();
@@ -4931,8 +6172,19 @@ export const save = {
     return {
       data, slot, options, state, timeEffects, restoreSource,
       entityIdRemap, finalizeLoadedGame, transitionToken,
+      pendingRestoringEmit,
       finalizerPending: false,
     };
+  },
+
+  // Fires a save:restoring emit _openRestoreSession held for a deferred rollback capture —
+  // the listeners' pre-wipe mutations then run between the capture and the first restore
+  // chunk, exactly where the eager path always had them.
+  _firePendingRestoringEmit(s) {
+    if (!s || !s.pendingRestoringEmit) return;
+    const pending = s.pendingRestoringEmit;
+    s.pendingRestoringEmit = null;
+    this.bus.emit('save:restoring', pending);
   },
 
   // Destructive restore. Pre-conditions: data validated + migrated. Order = deps-first (§4.5):
@@ -5014,7 +6266,7 @@ export const save = {
       yield 'deserialized-scanner';
       // The long incident/encounter tail is the restore's biggest contiguous un-sliced
       // block — each call below is its own slice point under the same driver cadence.
-      this._callDeserialize('recoveryEncounter', data.recoveryEncounters);
+      yield* this._callDeserializeChunked('recoveryEncounter', data.recoveryEncounters);
       yield 'recovery-encounters-restored';
       this._callDeserialize('latchNine', data.latchNine);
       yield 'latch-nine-restored';
@@ -5166,16 +6418,26 @@ export const save = {
       this._clearStaleTargets();
 
       // 12. restore semantic SG-03 combat state after all save-restored actor ids are remapped.
-      this._restoreCombat(data.combat, entityIdRemap);
+      yield* this._restoreCombatSteps(data.combat, entityIdRemap);
       yield 'combat-ledger-restored';
+      // Each afterContinue re-derives session state from the restored world —
+      // splitting the run lets a dense save's per-system reconciles paint between.
       this.registry.get('lastShift')?.afterContinue?.();
+      yield 'after-continue-lastShift';
       this.registry.get('redKite')?.afterContinue?.();
+      yield 'after-continue-redKite';
       this.registry.get('ilexArk')?.afterContinue?.();
+      yield 'after-continue-ilexArk';
       this.registry.get('kilnback')?.afterContinue?.();
+      yield 'after-continue-kilnback';
       this.registry.get('mothlight')?.afterContinue?.();
+      yield 'after-continue-mothlight';
       this.registry.get('palletJack')?.afterContinue?.();
+      yield 'after-continue-palletJack';
       this.registry.get('secondRinse')?.afterContinue?.();
+      yield 'after-continue-secondRinse';
       this.registry.get('towlineTable')?.afterContinue?.();
+      yield 'after-continue-towlineTable';
       this.registry.get('borrowedVoice')?.afterContinue?.();
       yield 'after-continue-applied';
       // PQ-205.03: the bomb rack bag (fitted cells, sockets, hangar stock, cooldowns,
@@ -5237,7 +6499,7 @@ export const save = {
       yield* this._callDeserializeChunked('asteroidFormations', data.formations);
       this._reportRestoreProgress(0.22, 'Restoring world memory');
       yield 'deserialized-tail';
-      this._callDeserialize('aceMemory', data.aceMemory);
+      yield* this._callDeserializeChunked('aceMemory', data.aceMemory);
       yield 'ace-memory-restored';
       yield* this._callDeserializeChunked('lossLedger', data.lossLedger);
       yield* this._callDeserializeChunked('provenanceLedger', data.provenance);
@@ -5422,10 +6684,19 @@ export const save = {
       // the async lane can paint between the resume chain and the whole-census WASM
       // rebuild instead of stacking them inside one generator step before veil lift.
       yield 'physics-restored';
-      this.registry?.get?.('physics')?.completeRestore?.({
+      // The stepped twin lets the native-world adopt's JS legs + per-body fallback
+      // mints pace across presented beats; the WASM adopt itself stays one step.
+      // Sync callers (fixtures, older paths) keep the atomic completeRestore.
+      const physicsSystem = this.registry?.get?.('physics');
+      const completeRestoreContext = {
         entityIdRemap,
         pendingBodyRefs: [...(this._ceresEntityReferenceRestore?.pending?.values() || [])].map(entry => entry.alias),
-      });
+      };
+      if (typeof physicsSystem?.completeRestoreSteps === 'function') {
+        yield* physicsSystem.completeRestoreSteps(completeRestoreContext);
+      } else {
+        physicsSystem?.completeRestore?.(completeRestoreContext);
+      }
       this.primeAutosaveCapture();
       if (finalizeLoadedGame) {
         let finalizerResult;
@@ -5438,12 +6709,17 @@ export const save = {
           this.bus.emit('save:error', { slot, reason: 'visual_gate_failed' });
         }
         if (s.finalizerPending) {
+          const restoreSeqAtArm = this._restoreSequence;
           Promise.resolve(finalizerResult).then(
             () => timeEffects.clear(restoreSource),
             (err) => {
               timeEffects.clear(restoreSource);
               console.error('[save] finalizeLoadedGame', err);
-              this.bus.emit('save:error', { slot, reason: 'visual_gate_failed' });
+              // A rejection surfacing under a NEWER restore session is the stale
+              // finalizer's tail — the live session owns the failure toast.
+              if (this._restoreSequence === restoreSeqAtArm) {
+                this.bus.emit('save:error', { slot, reason: 'visual_gate_failed' });
+              }
             },
           );
         }
@@ -5453,6 +6729,7 @@ export const save = {
       // listener ignores persist:false, so Continue does not rewrite the raw profile or timestamp.
       if (!this._pendingRunTransition) {
         this.bus.emit('settings:changed', { section: 'audio', key: null, persist: false, source: 'save-load' });
+        yield 'save-settings-audio';
         this.bus.emit('settings:changed', { section: 'video', key: null, persist: false, source: 'save-load' });
       }
     } catch (error) {
@@ -5474,6 +6751,13 @@ export const save = {
     hadPendingRunTransition = !!pendingRunTransition;
     this._pendingRunTransition = null;
     this._restoring = false;
+    // sector:exit slicing was armed in _openRestoreSession for this session's
+    // world leg only — a live-tick exit emit must never slice (listener order).
+    // mode:changed restores its sync commit for the same hazard outside restores.
+    if (typeof this.bus.setEmitSliceBudget === 'function') {
+      this.bus.setEmitSliceBudget('sector:exit', 0);
+      this.bus.setEmitSliceBudget('mode:changed', 0);
+    }
     // The envelope's record-id deferral is restore-scoped: every rematerialize that could see
     // it ran inside _restoreChunks (membership enter + residency drain), and a drained newer
     // route republishes its own set in _openRestoreSession. Clearing must precede the error
@@ -5681,6 +6965,13 @@ export const save = {
   },
 
   _restoreCombat(d, entityIdRemap) {
+    const it = this._restoreCombatSteps(d, entityIdRemap);
+    let r;
+    while (!(r = it.next()).done) { /* synchronous lane runs the whole chain */ }
+    return r.value;
+  },
+
+  *_restoreCombatSteps(d, entityIdRemap) {
     const state = this.state;
     const resolveEntityRef = (ref) => {
       if (!ref || typeof ref !== 'object') return null;
@@ -5692,7 +6983,7 @@ export const save = {
       return null;
     };
     this._cancelCeresAttachmentRestore();
-    restoreCombatState(state, d, resolveEntityRef, { deferCeresAttachments: true });
+    yield* restoreCombatStateSteps(state, d, resolveEntityRef, { deferCeresAttachments: true });
     if (!hasPendingCeresWorkfleetAttachments(state)) return;
     const token = { state, combat: state.combat, sequence: this._restoreSequence,
       runEpoch: this._runEpoch, ready: false, off: [] };
@@ -5946,6 +7237,13 @@ export const save = {
       }
     }
     this.state.settings = restored;
+    // Under the whole-sim lane, state.settings is main-owned and NOT mirrored:
+    // this wholesale restore must be replayed main-side or the facade answers
+    // stale reads. `settings:restored` bridges worker→main (clone the merge —
+    // live objects never cross the lane).
+    if (this.bus && typeof this.bus.emit === 'function') {
+      try { this.bus.emit('settings:restored', { settings: clonePlain(restored) }); } catch (e) {}
+    }
   },
 
   _restoreNav(d) {
@@ -6249,11 +7547,13 @@ export const save = {
     slot = slot || this.state.save.currentSlot || 'quick';
     let json = null;
     try { json = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; } catch (e) {}
-    const primary = this._prepareEnvelopeString(json);
+    // Proven-envelope FIFO consult first: generations this process already wrote
+    // or verified answer O(1); a miss pays the whole-ledger prepare as before.
+    const primary = this._cachedPreparedEnvelope(json) || this._prepareEnvelopeString(json);
     if (!primary.ok) {
       let recovery = null;
       try { recovery = (typeof localStorage !== 'undefined') ? localStorage.getItem(RECOVERY_PREFIX + slot) : null; } catch (e) {}
-      const preparedRecovery = this._prepareEnvelopeString(recovery);
+      const preparedRecovery = this._cachedPreparedEnvelope(recovery) || this._prepareEnvelopeString(recovery);
       if (preparedRecovery.ok) {
         json = recovery;
         this.bus.emit('save:exportRecovery', {
@@ -6266,6 +7566,59 @@ export const save = {
         json = null;
       }
     }
+    return this._finishExportJson(json, slot);
+  },
+
+  /** Async twin of exportSlot for the UI path: memo consult first, paced prepare on miss. */
+  async exportSlotAsync(slot) {
+    slot = slot || this.state.save.currentSlot || 'quick';
+    let json = null;
+    try { json = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null; } catch (e) {}
+    const primary = this._cachedPreparedEnvelope(json)
+      || await this._prepareEnvelopeStringAsync(json).catch(() => ({ ok: false, reason: 'load_failed' }));
+    if (!primary.ok) {
+      let recovery = null;
+      try { recovery = (typeof localStorage !== 'undefined') ? localStorage.getItem(RECOVERY_PREFIX + slot) : null; } catch (e) {}
+      const preparedRecovery = this._cachedPreparedEnvelope(recovery)
+        || await this._prepareEnvelopeStringAsync(recovery).catch(() => ({ ok: false, reason: 'load_failed' }));
+      if (preparedRecovery && preparedRecovery.ok) {
+        json = recovery;
+        this.bus.emit('save:exportRecovery', {
+          slot,
+          source: 'previous_generation',
+          failedReason: primary && primary.reason,
+          recoveredSavedAt: preparedRecovery.env.savedAt || null,
+        });
+      } else {
+        json = null;
+      }
+    }
+    return this._finishExportJsonAsync(json, slot);
+  },
+
+  // Async twin of the _finishExportJson entry: the double-fail lane (primary and recovery
+  // both unreadable) serializes live state through the sliced serialize instead of one
+  // sync serialize + stringify — a mature world used to brick the export click in one task.
+  async _finishExportJsonAsync(json, slot) {
+    if (!json) {
+      try {
+        const data = await this._serializeDataFrozenAsync();
+        const envelope = {
+          fmt: FMT,
+          version: CURRENT_VERSION,
+          savedAt: new Date().toISOString(),
+          playtimeS: Math.floor((this.state.meta && this.state.meta.playtimeS) || 0),
+          slot: slot || (this.state.save && this.state.save.currentSlot) || 'quick',
+          checksum: fnv1a(safeStringify(data)),
+          data,
+        };
+        json = JSON.stringify(envelope);
+      } catch (e) { json = null; }
+    }
+    return this._finishExportJson(json, slot);
+  },
+
+  _finishExportJson(json, slot) {
     if (!json) { try { json = JSON.stringify(this.serialize(slot)); } catch (e) { json = null; } }
     if (!json) { this.bus.emit('save:error', { slot, reason: 'export_failed' }); return null; }
     // FB-104 — the file is the transport for a machine move, so the profile side bags ride
@@ -6317,6 +7670,13 @@ export const save = {
     const profile = this._profileBundleSection();
     if (!profile || typeof json !== 'string' || !json) return json;
     try {
+      // A serialized object root takes the profile key textually — profile lands last in
+      // both paths, so the splice emits the same bytes as parse+assign+stringify for the
+      // shapes the exporters produce, without an O(blob) roundtrip on the click task.
+      if (json.length > 2 && json.charCodeAt(0) === 0x7b && json.charCodeAt(json.length - 1) === 0x7d
+        && json.indexOf('"profile"') === -1) {
+        return json.slice(0, -1) + ',"profile":' + JSON.stringify(profile) + '}';
+      }
       const parsed = JSON.parse(json);
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return json;
       parsed.profile = profile;
@@ -6396,8 +7756,8 @@ export const save = {
     const reader = new FileReader();
     reader.onload = () => {
       const out = this.importString(String(reader.result || ''), slot);
-      // A compressed import restores through the async lane and reports on resolution; legacy
-      // plain imports keep the synchronous callback contract callers already observe.
+      // Imports restore through the sliced async lane and report on resolution; rejection
+      // paths still return a sync bool.
       if (out && typeof out.then === 'function') out.then((ok) => { if (cb) cb(!!ok); });
       else if (cb) cb(!!out);
     };
@@ -6407,12 +7767,19 @@ export const save = {
 };
 
 const CANONICAL_SAVE_SERIALIZE = save.serialize;
+const CANONICAL_SAVE_RESTORE = save._restore;
+const CANONICAL_SAVE_RESTORE_ASYNC = save._restoreAsync;
 
 // ── module helpers ────────────────────────────────────────────────────────────────────────────
 
 /** Return the UTF-8 size of a raw import string without coercing or parsing it. */
 export function saveImportByteLength(value) {
   if (typeof value !== 'string') return Infinity;
+  // UTF-16 units encode to 1-3 UTF-8 bytes (a surrogate pair spends two units on four), so
+  // length <= bytes <= 3*length always: length over the cap fails and 3*length inside it
+  // passes — the per-unit walk is only decisive inside the cap band.
+  if (value.length > SAVE_IMPORT_MAX_BYTES) return SAVE_IMPORT_MAX_BYTES + 1;
+  if (value.length * 3 <= SAVE_IMPORT_MAX_BYTES) return value.length;
   let bytes = 0;
   for (let i = 0; i < value.length; i++) {
     const code = value.charCodeAt(i);
@@ -6561,6 +7928,12 @@ function hasRestorablePlayer(data) {
 function normalizeRestorableData(data) {
   if (!data || typeof data !== 'object') return { ok: false, reason: 'no_data' };
   if (!hasRestorablePlayer(data)) return { ok: false, reason: 'no_player' };
+  // Validate the new custody section on the detached candidate, before restore side effects.
+  try {
+    const orchard = readOrchardSaveSection(data.sites);
+    if (!orchardHistoryFitsTick(orchard, data.entities?.tick)) return { ok: false, reason: 'invalid_orchard_history' };
+    if (data.sites && Object.hasOwn(data.sites, 'anvilOrchard')) data.sites.anvilOrchard = orchard;
+  } catch (_) { return { ok: false, reason: 'invalid_orchard_custody' }; }
   const savedPlayer = data.entities.player;
   if (savedPlayer.type && savedPlayer.type !== 'ship') return { ok: false, reason: 'invalid_player' };
 

@@ -337,7 +337,7 @@ test('save and registry wiring preserve semantic sidecars before world rebuild',
   const salvageSource = readFileSync(new URL('../src/systems/salvage.js', import.meta.url), 'utf8');
   const registrySource = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
   assert.match(saveSource, /data\.recoveryEncounters\s*=\s*this\._callSerialize\('recoveryEncounter'\)/);
-  assert.match(saveSource, /this\._callDeserialize\('recoveryEncounter',\s*data\.recoveryEncounters\)/);
+  assert.match(saveSource, /this\._callDeserializeChunked\('recoveryEncounter',\s*data\.recoveryEncounters\)/);
   assert.match(salvageSource, /bus\.on\('save:restoring'/);
   assert.doesNotMatch(salvageSource, /bus\.on\('save:loaded'[\s\S]{0,180}salvage\.points\s*=\s*\[\]/);
   const registryOrder = ['salvageActions', 'survivorPod', 'recoveryEncounter', 'factions']

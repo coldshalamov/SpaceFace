@@ -385,6 +385,7 @@ export const encounterDirector = {
 
   update(dt, state) {
     if (state.mode && state.mode !== 'flight') return;
+    if (state.physicsVenue?.active === true) return;
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
     if (this._freightCustodyRebindPasses > 0) {
       this._freightCustodyRebindPasses--;
@@ -1783,6 +1784,10 @@ export const encounterDirector = {
         if (sh.bossName) { ai.name = sh.bossName; spec.data.encounterBoss = true; }
         if (sh.bountyCr != null) spec.data.bountyCr = sh.bountyCr;
         if (sh.scanLabel) spec.data.scanLabel = sh.scanLabel;
+        // A live convoy's transit cast must physically finish its route — the marker lands on
+        // entity data before the first classification pass so the pin holds from spawn
+        // (check-living-universe-events §J; activityRuntime ctx.missionCritical).
+        if (sh.transitCritical === true) spec.data.transitCritical = true;
         const ent = spawnEntity(spec);
         if (ent && ent.id != null) {
           spawned.push(ent.id);

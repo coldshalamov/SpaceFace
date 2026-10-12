@@ -13,6 +13,7 @@ import {
 import { spawnJettisonedCargoPod, volatileThrowSpeedScale } from './lootShards.js';
 import { getDerivedStats, shipworksStationAccess } from './ships.js';
 import { TALLY_THREE, tallyThreeBody, tallyThreeSource, tallyThreeFingerprint } from '../data/tallyThree.js';
+import { salvageBaySaleAllowsIllicit } from './economy.js';
 
 /** Explicit SF20-03 receiver intent. Source and payment owners commit before Massline retires. */
 export function deliverTallyThreeCrate(state,quote,registry) {
@@ -51,7 +52,8 @@ export function deliverTallyThreeCrate(state,quote,registry) {
 // commodityId -> { volPerU, massPerU } lookup, built once from the static registry.
 const VOL = Object.create(null);
 const MASS = Object.create(null);
-for (const c of COMMODITIES) { VOL[c.id] = c.volPerU; MASS[c.id] = c.massPerU; }
+const LEGALITY = Object.create(null);
+for (const c of COMMODITIES) { VOL[c.id] = c.volPerU; MASS[c.id] = c.massPerU; LEGALITY[c.id] = c.legality; }
 // Receipt copy needs the player-facing name (the mechanic voice uses the same registry).
 const COMMODITY_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
 function commodityName(commodityId) {
@@ -92,9 +94,9 @@ function defOf(state, id) {
   const reg = state && state.content && state.content.commodities;
   if (reg) {
     const c = Array.isArray(reg) ? reg.find((x) => x.id === id) : reg[id];
-    if (c) return { vol: c.volPerU, mass: c.massPerU };
+    if (c) return { vol: c.volPerU, mass: c.massPerU, legality: c.legality };
   }
-  if (id in VOL) return { vol: VOL[id], mass: MASS[id] };
+  if (id in VOL) return { vol: VOL[id], mass: MASS[id], legality: LEGALITY[id] };
   if (PERSISTENT_FOOTPRINT.has(id)) return PERSISTENT_FOOTPRINT.get(id);
   return null;
 }
@@ -535,7 +537,7 @@ export function addSalvage(state, commodityId, qty) {
 }
 
 /** Empty the bay and say what it was worth at the scrap rate. Returns { units, credits, lots } or null when empty. */
-export function cashInSalvage(state) {
+export function cashInSalvage(state, { includeIllicit = false } = {}) {
   const bay = state && state.player && state.player.salvageBay;
   if (!bay || !bay.items) return null;
   let units = 0;
@@ -544,15 +546,32 @@ export function cashInSalvage(state) {
   for (const id of Object.keys(bay.items).sort()) {
     const qty = Math.floor(Number(bay.items[id]) || 0);
     if (qty <= 0) continue;
+    const def = defOf(state, id);
+    if (!includeIllicit && def?.legality && def.legality !== 'legal') continue;
     const value = Math.floor(qty * (BASE_PRICE[id] || 0) * SALVAGE_BAY.saleRate);
     units += qty;
     credits += value;
     lots.push({ commodityId: id, qty, credits: value });
+    delete bay.items[id];
   }
-  bay.items = {};
-  bay.usedVolume = 0;
+  bay.usedVolume = Object.entries(bay.items).reduce((volume, [id, qty]) =>
+    volume + Math.max(0, Math.floor(Number(qty) || 0)) * (defOf(state, id)?.vol || 1), 0);
   if (units <= 0) return null;
   return { units, credits, lots };
+}
+
+/** Canonical bay custody removal for the customs owner. */
+export function removeSalvageBayCargo(state, commodityId, requested) {
+  const bay = state.player?.salvageBay, def = defOf(state, commodityId);
+  if (!bay?.items || !def) return 0;
+  const amount = Math.min(Math.max(0, Math.floor(Number(bay.items[commodityId]) || 0)),
+    Math.max(0, Math.floor(Number(requested) || 0)));
+  if (!amount) return 0;
+  const left = bay.items[commodityId] - amount;
+  if (left > 0) bay.items[commodityId] = left;
+  else delete bay.items[commodityId];
+  bay.usedVolume = Math.max(0, (Number(bay.usedVolume) || 0) - amount * (def.vol || 1));
+  return amount;
 }
 
 /** Remove up to `qty` units of `commodityId`. Returns the amount actually removed. */
@@ -682,7 +701,7 @@ export const cargo = {
 
     subscribe(binding, 'dock:docked', (payload) => this._spillHotArrival(payload || {}));
     // Docking cashes the salvage bay in at the scrap rate (credits through the economy owner).
-    subscribe(binding, 'dock:docked', () => this._cashInSalvage());
+    subscribe(binding, 'dock:docked', payload => this._cashInSalvage(payload));
     // The spill itself lands under the dock clunk and the station hub, so the undock is the
     // legible moment: the player is back in flight right beside their spilled pods. Cargo owns
     // the spill receipt, so cargo announces it here — once per spill, no repeat on later undocks.
@@ -1044,9 +1063,14 @@ export const cargo = {
    * announcement rides the toast + alert voices; the spilled pods themselves are persistent
    * payload entities, so the beat resolves in the world whether or not the player reacts.
    */
-  _cashInSalvage() {
+  _cashInSalvage(payload = {}) {
     if (!combatFlag('salvageBay')) return;
-    const sale = cashInSalvage(this.state);
+    const sale = cashInSalvage(this.state, { includeIllicit: salvageBaySaleAllowsIllicit(this.state, payload.stationId) });
+    const retained = Object.values(this.state.player.salvageBay?.items || {}).reduce((sum, qty) => sum + Math.max(0, Number(qty) || 0), 0);
+    if (retained && this.bus?.emit) this.bus.emit('toast', {
+      text: `Restricted salvage remains in your bay: ${retained} units. Find a black market to sell it.`,
+      kind: 'warn', ttl: 7,
+    });
     if (!sale || !this.bus || typeof this.bus.emit !== 'function') return;
     if (sale.credits > 0) {
       this.bus.emit('economy:grantCredits', {
@@ -1056,7 +1080,7 @@ export const cargo = {
       });
     }
     this.bus.emit('salvage:bayCashedIn', { units: sale.units, credits: sale.credits, lots: sale.lots });
-    this.bus.emit('salvage:changed', { used: 0, cap: Math.round(salvageBayCap(this.state)) });
+    this.bus.emit('salvage:changed', { used: Math.round(this.state.player.salvageBay?.usedVolume || 0), cap: Math.round(salvageBayCap(this.state)) });
     this.bus.emit('toast', {
       text: `Salvage bay cashed in: ${sale.units} units for ${sale.credits} cr.`,
       kind: 'good',

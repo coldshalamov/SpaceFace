@@ -5,11 +5,14 @@ import { bindCommittedRange, settingsScreen } from '../src/ui/screens/settings.j
 
 function fakeRange(value) {
   const listeners = new Map();
+  const attributes = new Map();
   return {
     value: String(value),
     min: '0',
     max: '1',
     style: { setProperty() {} },
+    setAttribute(name, value) { attributes.set(name, String(value)); },
+    getAttribute(name) { return attributes.get(name) ?? null; },
     addEventListener(type, listener) {
       const list = listeners.get(type) || [];
       list.push(listener);
@@ -40,6 +43,8 @@ test('range edits apply live but request profile persistence only when committed
     { value: 0.35, persist: false },
   ]);
   assert.equal(label.textContent, '35%', 'the live value label follows every intermediate edit');
+  assert.equal(range.getAttribute('aria-valuenow'), '0.35');
+  assert.equal(range.getAttribute('aria-valuetext'), '35%');
 
   range.dispatch('change');
   assert.deepEqual(changes.at(-1), { value: 0.35, persist: true });

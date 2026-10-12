@@ -66,7 +66,7 @@ export const PQ020_CERES_SECTOR_ID = 'sector_ceres_belt';
 export const PQ020_CATHEDRAL_SITE_ID = 'world_site_wreck_cathedral';
 export const PQ020_CATHEDRAL_PLACE_ID = 'place_landmark_wreck_cathedral';
 export const PQ020_CERES_ADDITIVE_WORLD_SITES_SCHEMA =
-  'spaceface.pq020-ceres-additive-world-sites.v1';
+  'spaceface.pq020-ceres-additive-world-sites.v2';
 export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
   'spaceface.pq020-ceres-additive-dressing.v1';
 // Re-pinned 2026-09-09 after dormant belt rocks left the combat list for the compact field.
@@ -151,8 +151,14 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // take the ghost branch instead of measured-skin bodies. Census moves 19→15 collidable and
 // 329→260 colliders; the remaining solids are the legit dressing targets. Prior digest was
 // 1e245a850b53c10a7de1cda7ce4caf7cf97685e39f5e1b39e30529c4b15e68a6.
+// 2026-10-12 (D186): far residency (b7a4f2494, d51aba898) shelves the Cathedral's fourteen
+// static wrecks at boot and keeps Second Measure's compound payload sections approach-dormant,
+// so the one-tick core census reads 38 entities / 16 solids / 284 primitives with 14 shelved
+// site bodies. Every exact pin already matched; the additive census now proves approach
+// materialization (schema v2, `approachDormant` == structural sections). Prior digest was
+// f3ddedcef9d4992fcf9a7c39c983fe967ab1f4906e72a4302e148fd203b5d333.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  'f3ddedcef9d4992fcf9a7c39c983fe967ab1f4906e72a4302e148fd203b5d333';
+  '8f38ca9502b927fce2a250462f209a4a91238bf32b9c384b35f07839f3abaf6e';
 
 // PR221 preserves static site anatomy under its canonical owner: the Cathedral's fourteen
 // wrecks stay live instead of losing fixed/compound geometry on the generic far shelf. Ceres
@@ -718,11 +724,6 @@ async function buildHeadlessCeresHarness({ sector, cathedralManifest, cathedralB
     const additiveManifests = WORLD_SITE_MANIFESTS.filter((manifest) => (
       manifest.sectorId === sector.id && manifest.id !== PQ020_CATHEDRAL_SITE_ID
     ));
-    const additiveWorldSites = buildAdditiveWorldSiteCensus(
-      materializedCeresEntities,
-      additiveManifests,
-      farCeresRows,
-    );
     const additiveDressing = buildAdditiveDressingCensus([...liveCeresEntities, ...dressingRows]);
     const additiveWorldObjectIds = new Set(additiveManifests.map((manifest) => manifest.worldObjectId));
     const entities = liveCeresEntities.filter((entity) => (
@@ -786,6 +787,38 @@ async function buildHeadlessCeresHarness({ sector, cathedralManifest, cathedralB
         state,
       ),
     };
+    // Far residency keeps a far site's structural payload sections dormant until approach —
+    // a lean far row cannot rebuild their compound bodies — so the boot census above cannot
+    // see them (D186: second_measure planned 12/16, boot 9/5). Walk each additive site once
+    // with the player inside its approach envelope and census what rematerializes; that is
+    // the site a player who flies in actually stands in, and the proof the compound sections
+    // rebuild from the manifest rather than from a shelf row.
+    const additiveApproach = {};
+    for (const manifest of additiveManifests) {
+      const siteOrigin = manifest.placement && manifest.placement.pos;
+      if (!siteOrigin) continue;
+      player.pos.x = siteOrigin.x;
+      player.pos.z = siteOrigin.z;
+      sim.step(SIM_DT);
+      sim.step(SIM_DT);
+      const ownerId = manifest.worldObjectId;
+      const ownedBySite = (entity) => worldSiteOwnerIdForEntity(entity, new Set([ownerId])) === ownerId;
+      const approachRows = [...state.entities.values()]
+        .filter((entity) => entity && entity.alive !== false && !entity.data?.pq020HarnessPlayer)
+        .filter(ownedBySite);
+      const approachFarRows = ((farTable && Array.isArray(farTable.rows)) ? farTable.rows : [])
+        .filter((row) => row && row.alive !== false && ownedBySite(row));
+      additiveApproach[manifest.id] = {
+        live: censusLiveEntities([...approachRows, ...approachFarRows]),
+        shelved: approachFarRows.length,
+      };
+    }
+    const additiveWorldSites = buildAdditiveWorldSiteCensus(
+      materializedCeresEntities,
+      additiveManifests,
+      farCeresRows,
+      additiveApproach,
+    );
     return {
       structuralCost,
       additiveWorldSites,
@@ -804,31 +837,44 @@ async function buildHeadlessCeresHarness({ sector, cathedralManifest, cathedralB
   }
 }
 
-function buildAdditiveWorldSiteCensus(materializedEntities, manifests, farRows = []) {
+function buildAdditiveWorldSiteCensus(materializedEntities, manifests, farRows = [], approach = {}) {
   const sites = [...manifests]
     .sort((left, right) => left.id.localeCompare(right.id))
     .map((manifest) => {
       const ownerIds = new Set([manifest.worldObjectId]);
       const owned = (entity) => worldSiteOwnerIdForEntity(entity, ownerIds) === manifest.worldObjectId;
-      // `live` is the site as materialized against its plan: live bodies plus far-shelved rows
-      // (which keep pose, mass, collides and worldRecordId and promote on approach). `shelved`
-      // says how many of those are currently on the far shelf rather than the combat list.
-      const live = censusLiveEntities(materializedEntities.filter(owned));
+      // `boot` is what stands at sector entry: live bodies plus far-shelved rows (which keep
+      // pose, mass, collides and worldRecordId and promote on approach). Since far residency
+      // (b7a4f2494, d51aba898) a far site's structural payload sections are absent by design —
+      // a lean far row cannot rebuild their compound bodies, so they are reauthored from the
+      // manifest on approach. `live` is therefore the site as materialized against its plan
+      // for a player who flies in: the approach census proves every shelved row promotes and
+      // every dormant compound section rematerializes. `approachDormant` counts the rows only
+      // approach standing materializes and must equal the manifest's structural sections.
+      const boot = censusLiveEntities(materializedEntities.filter(owned));
       const shelved = farRows.filter(owned).length;
       const planned = censusPlannedWorldSite(manifest);
+      const approached = approach[manifest.id] || null;
+      const live = approached ? approached.live : boot;
+      const approachDormant = approached
+        ? Math.max(0, (Number(approached.live?.entities) || 0) - boot.entities)
+        : null;
       return {
         siteId: manifest.id,
         worldObjectId: manifest.worldObjectId,
         manifestSchemaVersion: manifest.schemaVersion,
         producerKind: manifest.producer?.kind || null,
         live,
+        boot,
         shelved,
+        approachDormant,
         planned,
         exactAgreement: stableStringify(live) === stableStringify(planned),
       };
     });
   const totals = {
     live: sumEntityCensuses(sites.map((site) => site.live)),
+    boot: sumEntityCensuses(sites.map((site) => site.boot)),
     planned: sumEntityCensuses(sites.map((site) => site.planned)),
   };
   return {
@@ -1043,6 +1089,16 @@ function validateAdditiveWorldSites(value, failures) {
         + `!=${stableStringify(expected)}`,
       );
     }
+    // Only a manifest's structural sections may stand approach-dormant at boot; anything else
+    // missing from the approach census is a real materialization gap, not residency policy.
+    const structuralSections = (manifest.payloads || [])
+      .filter((payload) => payload && payload.structural).length;
+    exact(
+      failures,
+      `additiveWorldSites.${manifest.id}.approachDormant`,
+      row.approachDormant,
+      structuralSections,
+    );
     exact(failures, `additiveWorldSites.${manifest.id}.exactAgreement`, row.exactAgreement, true);
   }
 

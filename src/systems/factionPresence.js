@@ -6,7 +6,7 @@
 import { hash32 } from '../core/rng.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
-import { syncEntityActivitySlotMembership } from '../core/coreSystem.js';
+import { syncEntityActivitySlotMembership, syncEntitySectorMembership } from '../core/coreSystem.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { buildSlotList, makeShipEntitySpec } from './ships.js';
@@ -1094,6 +1094,7 @@ export const factionPresence = {
       // entity — register it or the new id stays a miss-memo'd negative / walk-only carrier.
       registerEntityWorldRecordId(this.state && this.state.entityIndex, entity);
       syncEntityActivitySlotMembership(this.state && this.state.entityIndex, entity);
+      syncEntitySectorMembership(this.state && this.state.entityIndex, entity);
     } else if (typeof this.helpers.spawnEntity === 'function') {
       entity = this.helpers.spawnEntity(canonicalSpec);
       spawned = !!entity;
@@ -1101,6 +1102,7 @@ export const factionPresence = {
         stampCeresTenderIdentity(entity, context);
         registerEntityWorldRecordId(this.state && this.state.entityIndex, entity);
         syncEntityActivitySlotMembership(this.state && this.state.entityIndex, entity);
+        syncEntitySectorMembership(this.state && this.state.entityIndex, entity);
       }
     }
     if (!entity) return null;

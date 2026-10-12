@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createBus } from '../src/core/eventBus.js';
-import { addCargo } from '../src/systems/cargo.js';
+import { addCargo, cashInSalvage } from '../src/systems/cargo.js';
 import { economy as economyBase } from '../src/systems/economy.js';
 import { factions as factionsBase } from '../src/systems/factions.js';
 
@@ -56,4 +56,28 @@ test('a contraband bust applies the factions standing hit once, not stacked with
   economySys.runScan({ security: 1, scannerCloak: 0, factionId: 'faction_scn' });
   assert.equal(state.factions.faction_scn.rep - after, -60, 'second strike is 1.5× the base hit, not a stacked pair');
   assert.equal(state.factions.faction_scn.knownContrabandStrikes, 2);
+});
+
+test('external salvage keeps illicit custody and uses the real scan, cloak, fine and debt rules', () => {
+  const { state, economySys } = bootScan();
+  state.player.cargo.items = {};
+  state.player.credits = 0;
+  state.player.salvageBay = { items: { cmdty_stolen_goods: 2, cmdty_ore_iron: 1 }, usedVolume: 3 };
+  const sale = cashInSalvage(state);
+  assert.equal(sale.units, 1, 'ordinary docks sell only legal scrap');
+  assert.equal(state.player.salvageBay.items.cmdty_stolen_goods, 2);
+  assert.equal(state.player.salvageBay.usedVolume, 2);
+  economySys._rng = () => 1;
+  const evaded = economySys.runScan({ security: 0, scannerCloak: 1, factionId: 'faction_scn' });
+  assert.equal(evaded.evaded, true);
+  assert.equal(state.player.salvageBay.items.cmdty_stolen_goods, 2, 'an evasion preserves custody');
+  economySys._rng = () => 0;
+  const caught = economySys.runScan({ security: 1, scannerCloak: 0, factionId: 'faction_scn' });
+  assert.equal(caught.found, true);
+  assert.deepEqual(caught.confiscated, [{ commodityId: 'cmdty_stolen_goods', qty: 2 }]);
+  assert.equal(state.player.salvageBay.usedVolume, 0);
+  assert.ok(state.player.debt > 0, 'a broke wallet owes the actual customs fine');
+  assert.ok(state.player.bounty > 0);
+  state.player.salvageBay = { items: { cmdty_stolen_goods: 1 }, usedVolume: 1 };
+  assert.equal(cashInSalvage(state, { includeIllicit: true }).units, 1, 'black-market sale may release the lot');
 });

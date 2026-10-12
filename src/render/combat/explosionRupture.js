@@ -277,7 +277,10 @@ const FRAGMENT = /* glsl */`
       surfaceHeat=heat*carriedHeat*(rim*0.50+cellRim*0.80+foldFire*0.18+front*0.30);
     } else if(vKind<2.5) {
       cold=vec3(0.028,0.050,0.068)*light;
-      hot=mix(vec3(1.05,2.7,4.1),vec3(4.7,1.9,0.35),smoothstep(0.62,0.83,vPhase.z));
+      // GRAPHICS BAR: a ship reactor tears open hot white-gold, with only a minority of parcels
+      // running cool. The old ramp sent ~62% of parcels saturated ice-blue at 4.1, which read as
+      // crystal shards (palette clash with the warm combustion family) and clipped under bloom.
+      hot=mix(vec3(1.55,1.85,2.35),vec3(3.9,1.75,0.42),smoothstep(0.18,0.42,vPhase.z));
       vec3 flow=reactorTransport(vec2(u,v),motionTime,seed);
       float thermalWave=0.25+0.75*pow(max(0.0,sin(flow.x*13.7-flow.y*4.8+seed)),2.0);
       float opticalBody=1.0-exp(-max(0.0,density-dissolution)*3.2);

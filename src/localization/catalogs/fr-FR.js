@@ -1,6 +1,6 @@
-// Shipped French catalog. Built from the English inventory through the translation pipeline.
-import { buildTranslatedCatalog } from '../pipeline.js';
+// Shipped French catalog. Lazy translation-pipeline catalog; materializes on first use.
+import { deferredCatalog } from '../pipeline.js';
 
 export const locale = 'fr-FR';
-export const messages = buildTranslatedCatalog('fr-FR');
+export const messages = deferredCatalog('fr-FR');
 export default messages;

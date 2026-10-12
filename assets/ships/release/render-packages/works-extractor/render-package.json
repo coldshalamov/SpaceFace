@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "95cfffb0ba9908e70663eb65b83d814559b9a71e48948206c4a935ec0c8b9a49",
+  "contentHash": "877d692e61b2b4ad29908df3c99219c24daa82e6292c76581f8f5405f9cb8ab9",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa60ed51dbb10690af023d57ce629b2080fa4995434ba83d200894c5a1cd98c3",
+      "geometryHash": "af295522e894336a34791dbd505267c8342d01a3e4170f4db926cabd2cf861cd",
       "id": "sf.render.works-extractor.mesh.lod0-belt.primitive.0",
       "indexCount": 1740,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "96e4107e54c9c0babee529aa739ceb7614309b9e7b05ed5e53f0354a4f9178be",
+      "geometryHash": "8f62cc0b1b790df4b33f727d92890157d06b31c9d4fdb059175ea0fe63f8169f",
       "id": "sf.render.works-extractor.mesh.lod0-extractor.primitive.0",
       "indexCount": 3132,
       "indexed": true,
@@ -57,7 +57,7 @@
       "meshName": "rail_P_Mesh",
       "nodeId": "sf.render.works-extractor.mesh.lod0-extractor",
       "primitiveIndex": 0,
-      "vertexCount": 2038
+      "vertexCount": 1954
     },
     {
       "bounds": {
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3199f81a59d030b3429be329b26a806e0faa8711b6d14d822118e595d7df18c1",
+      "geometryHash": "284bb07681cec1b8814db28aacafca7839d919d13faea6efce90d4d655754e2d",
       "id": "sf.render.works-extractor.mesh.lod0-head.primitive.0",
       "indexCount": 3600,
       "indexed": true,
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d7984ccc5a91c4f0c0a01bdc84f7788a7560cd8608e23422fb9ea29128cf7f0e",
+      "geometryHash": "161ac499d4af6a973f3d58e0525fa25e4dbb8c9741e39f06d575cdd4eba414c5",
       "id": "sf.render.works-extractor.mesh.lod0-lamp.primitive.0",
       "indexCount": 588,
       "indexed": true,
@@ -132,7 +132,7 @@
       "meshName": "Cube.025",
       "nodeId": "sf.render.works-extractor.mesh.lod0-lamp",
       "primitiveIndex": 0,
-      "vertexCount": 326
+      "vertexCount": 313
     },
     {
       "bounds": {
@@ -934,19 +934,19 @@
       "sha256": "396084d37e42cebd4e5399f50c39df3da62edeb46ff65b98ae0ce1d800fdeb24"
     },
     "sourceGlb": {
-      "bytes": 2016576,
-      "sha256": "a65685bc1e917da9512879159ed2e65f2e640a233d4010bdb4099d8d26fa6a02",
+      "bytes": 2014412,
+      "sha256": "8abfb60ec956dcbf6371686c51a5061a4c01d7c32729612e320f504f47d05e06",
       "uri": "place_works_extractor.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 2101292,
-    "sha256": "a36300cf923e77f421875f176642749fad5730281f791a0a79a864af8df0a54d",
+    "bytes": 2091928,
+    "sha256": "3e5c65e6e87b473af56670efceab530f31a41fce1c449169a8f6eb18e02d8f6a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1417,7 +1417,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/works/place_works_extractor.glb"
   },
-  "runtimeHash": "8595b88ef2ac538a8792243cf6d82399f3511a3b08e2b870aff5aa3e3dc7204a",
+  "runtimeHash": "d48e2d8db053dfeca38d181435a8d274dab892ceaa5bac968bf9b21c89ed8aa1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

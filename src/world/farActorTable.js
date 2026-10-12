@@ -7,6 +7,7 @@ import { WORLD_SITE_MANIFESTS } from '../data/worldSiteManifests.js';
 // them. They are not GameState combat entities while shelved.
 
 import { clearEntityRuntime } from '../core/entity.js';
+import { syncEntitySectorMembership } from '../core/coreSystem.js';
 import { authoredPrefetchRadius, farLedgerScanRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
 import { SIM_TIER, NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js';
 import { ensureActivityClassified, physicsReachWuFromState } from './activityRuntime.js';
@@ -15,6 +16,7 @@ import { getAsteroidFieldRock } from './asteroidField.js';
 import { getDressingRow } from './dressingTable.js';
 import { advanceWorldRecordInto, itineraryPositionInto, normalizeIntent } from './worldCatchup.js';
 import { resolveFarEncounters } from './farEncounterOutcomes.js';
+import { markAuxRowDirty, markAuxRowRemoved } from './auxRowJournal.js';
 
 export const FAR_ACTOR_SCHEMA = 'spaceface.farActors.v1';
 export const FAR_ACTOR_CELL = 400;
@@ -426,6 +428,7 @@ export function catchUpFarRecord(rec, simTime, table = null) {
   const fromT = Number.isFinite(rec.lastExactT) ? rec.lastExactT : toT;
   if (!(toT > fromT)) {
     rec.lastExactT = toT;
+    markAuxRowDirty(table, rec.id);
     return rec;
   }
   // In-place advance: the per-tick sweep only needs the record's fields to land —
@@ -440,10 +443,12 @@ export function catchUpFarRecord(rec, simTime, table = null) {
   const advanced = advanceWorldRecordInto(rec, fromT, toT);
   if (!advanced) {
     rec.lastExactT = toT;
+    markAuxRowDirty(table, rec.id);
     return rec;
   }
   rec.lastExactT = toT;
   rec.lastObservedT = toT;
+  markAuxRowDirty(table, rec.id);
   // A moved row must re-key the spatial grid — otherwise query discs centred on the
   // stale cell keep returning it beside ghosts while its true cell never sees it.
   if (table && rec.pos) {
@@ -507,6 +512,7 @@ export function insertFarActor(state, entity, simTime = 0, helpers = null) {
   table.byId.set(rec.id, rec);
   gridAdd(table, rec);
   table.version++;
+  markAuxRowDirty(table, rec.id);
   return rec;
 }
 
@@ -616,6 +622,7 @@ function removeFarRecord(table, rec) {
   gridRemove(table, rec);
   table.version++;
   rec.alive = false;
+  markAuxRowRemoved(table, rec.id);
   clearEntityRuntime(rec);
   return true;
 }
@@ -729,7 +736,7 @@ export function promoteFarActor(state, id, helpers) {
     granted = true;
   }
   const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
-  catchUpFarRecord(rec, simTime);
+  catchUpFarRecord(rec, simTime, state.world && state.world.farActors);
   // The renderer resolves an id to one presentation row, so never raise a body onto an id a
   // dressing prop or field rock holds; take a fresh one instead.
   const reserved = Number.isSafeInteger(rec.id) && rec.id > 0
@@ -785,6 +792,7 @@ export function promoteFarActor(state, id, helpers) {
     ent.homeSectorId = rec.homeSectorId;
     if (ent.data) ent.data.homeSectorId = rec.homeSectorId;
   }
+  syncEntitySectorMembership(state && state.entityIndex, ent);
   if (ent.activity) ent.activity.lastExactT = simTime;
   removeFarRecord(ensureFarActorTable(state), rec);
   return ent;

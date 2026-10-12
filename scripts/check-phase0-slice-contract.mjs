@@ -43,6 +43,10 @@ assert(!read('src/systems/story.js').includes('setTimeout'), 'story scheduling m
 
 const allowedRandomFiles = new Map([
   ['src/main.js', 'boot seed generation before an explicit run seed exists'],
+  // Same boot-seed case as src/main.js, moved by the worker-lane extraction: resetRunState
+  // draws a fallback seed only when opts.seed is not finite — the value becomes the run's
+  // explicit seed (createGameState(seed)), so the raw draw never reaches a sim stream.
+  ['src/core/newGameBoot.js', 'boot seed generation before an explicit run seed exists (resetRunState extraction)'],
   ['src/audio/synth.js', 'cosmetic procedural noise buffer'],
   ['src/audio/audioSystem.js', 'cosmetic audio variation'],
   ['src/render/camera.js', 'cosmetic camera shake offset'],

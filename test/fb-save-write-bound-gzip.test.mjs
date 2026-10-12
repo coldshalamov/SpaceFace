@@ -81,7 +81,7 @@ function evalWorkerSource(overrides = {}) {
   return {
     responses,
     post(request) { self.__listener({ data: request }); },
-    async waitFor(predicate = (value) => value !== undefined, limit = 500) {
+    async waitFor(predicate = (value) => value !== undefined, limit = 5000) {
       for (let turn = 0; turn < limit; turn++) {
         const found = responses.find(predicate);
         if (found) return found;

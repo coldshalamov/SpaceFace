@@ -583,6 +583,39 @@ function toastCards(dom) {
   assert.notEqual(document.activeElement, document.body, 'fallback must not strand on body');
 }
 
+// Delayed bootstrap focus must not override an intentional Tab inside the dialog.
+// Run both defaults: stealing focus back to OK can turn a chosen Cancel into approval.
+for (const danger of [true, false]) {
+  installDom();
+  const raf = [], delayedFocus = [];
+  const realSetTimeout = globalThis.setTimeout;
+  globalThis.requestAnimationFrame = callback => { raf.push(callback); return raf.length; };
+  globalThis.setTimeout = (callback, ms, ...args) => ms === 30
+    ? (delayedFocus.push(() => callback(...args)), 999)
+    : realSetTimeout(callback, ms, ...args);
+  const pending = confirm({ title: 'Focus race?', danger });
+  const dialog = document.querySelector('#sf-confirm-root .sf-confirm');
+  const ok = dialog.querySelector('.sf-confirm__ok');
+  const cancel = dialog.querySelector('.sf-confirm__cancel');
+  const initial = danger ? cancel : ok;
+  const chosen = danger ? ok : cancel;
+  try {
+    assert.equal(document.activeElement, initial);
+    dialog.dispatchEvent('keydown', { key: 'Tab', preventDefault() {}, stopPropagation() {} });
+    assert.equal(document.activeElement, chosen);
+    for (const callback of raf) callback(0);
+    assert.equal(document.activeElement === chosen, true, 'animation-frame bootstrap must preserve intentional in-dialog focus');
+    for (const callback of delayedFocus) callback();
+    assert.equal(document.activeElement === chosen, true, '30ms bootstrap must preserve intentional in-dialog focus');
+    dialog.dispatchEvent('keydown', { key: 'Enter', preventDefault() {}, stopPropagation() {} });
+    assert.equal(await pending, danger, 'Enter must follow the chosen action, including a deliberately chosen Cancel');
+  } finally {
+    globalThis.setTimeout = realSetTimeout;
+    globalThis.requestAnimationFrame = callback => { callback(0); return 1; };
+    if (isConfirmOpen()) { cancel.click(); await pending; }
+  }
+}
+
 // ── 3. Confirm cancel restores its opener ───────────────────────────────────
 
 {

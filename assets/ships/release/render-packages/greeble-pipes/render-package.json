@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "555a279dc1e92110f1a0a251a0b53ad443f5ac5f4fdc7cec8336e24d37125943",
+  "contentHash": "ce06e66bd7c471292a888cd4c73d5de28727084ea4d9b01184d86401598613f0",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "33d6450d13258f10c5c7422acdbe9464ee4e49d7b1ea814d0605a2cdb93d4097",
+      "geometryHash": "7f0b7b4d9217271925c00bff4983fc16ffcf3fd4d4bfc21b0a00a6431801f1c1",
       "id": "sf.render.greeble-pipes.mesh.greeble-pipes-material-accent-merged.primitive.0",
       "indexCount": 1680,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e6701a6084ada0910d472e1c2d5a3fa012211cc603b9bd68be303224f861cfb6",
+      "geometryHash": "5235b6521a3dba631591de54b3cd6e448f1d696614b01b3428e3424323505274",
       "id": "sf.render.greeble-pipes.mesh.greeble-pipes-material-mechanical-merged.primitive.0",
       "indexCount": 1536,
       "indexed": true,
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ed1efef99de83f5838d8b6b5b1f85d33d9e3ce9533d5af7e007891c139584aa7",
+      "geometryHash": "f0dc724cb565a64197372e1e805b4c07ed3c244adc4fa1b1eb891e44962b26a0",
       "id": "sf.render.greeble-pipes.mesh.pipe-base.primitive.0",
       "indexCount": 324,
       "indexed": true,
@@ -82,7 +82,7 @@
       "meshName": "Pipe_Base",
       "nodeId": "sf.render.greeble-pipes.mesh.pipe-base",
       "primitiveIndex": 0,
-      "vertexCount": 80
+      "vertexCount": 96
     }
   ],
   "hlods": [],
@@ -338,19 +338,19 @@
       "sha256": "79a1275a309e4d62e098158640699d7e303fd8b986ac06d9b1ae0581ae3cf8dd"
     },
     "sourceGlb": {
-      "bytes": 410796,
-      "sha256": "014444ada089137b21b740ad0b3d55eddf3f5e5bafd016b6ba358baf272b9a0f",
+      "bytes": 410840,
+      "sha256": "5087afcb73d60e9cd121bc7da9f8b55277a733b0bebaaa1d946a91046acfa5d4",
       "uri": "greeble_pipes.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 419904,
-    "sha256": "37daa108e6feecfd439356f0290c9ea6204cd395efec63f556832022d9681a64",
+    "bytes": 420088,
+    "sha256": "3256db92de3f6267c2116596bc8410509240beb50eda5a5ce8ff0a5e6f97b3db",
     "uri": "render.glb"
   },
   "runtime": {
@@ -486,7 +486,7 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_pipes.glb"
   },
-  "runtimeHash": "eaffba091318dd0af435d4845eff06587b3778d54d67d0ca79b02b376700c80d",
+  "runtimeHash": "6c960656ef296662816a499685ba1dee9721a7ecd5342d5ded53d13e889f8639",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

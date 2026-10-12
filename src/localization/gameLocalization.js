@@ -1,27 +1,41 @@
-import { messages as englishExtracted } from './catalogs/en-US.generated.js';
 import { messages as spanishMessages } from './catalogs/es-ES.js';
 import { messages as frenchMessages } from './catalogs/fr-FR.js';
 import { messages as germanMessages } from './catalogs/de-DE.js';
 import { messages as portugueseMessages } from './catalogs/pt-BR.js';
 import { createLocalizationRuntime, DEFAULT_LOCALE, PSEUDO_LOCALE } from './runtime.js';
 import { installLocalizedDocumentBridge, localizationBridgeStats } from './domBridge.js';
-import { STORE_COPY } from './storeCopy.js';
-import { barkMessagesFor } from './barks.js';
 import { IS_DEV } from '../core/devMode.js';
-import { localeReadiness, SHIPPED_LOCALES, translateMessage } from './pipeline.js';
+import {
+  deferredArray,
+  deferredCatalog,
+  localeReadiness,
+  SHIPPED_LOCALES,
+  translateMessage,
+  warmTranslatedCatalog,
+} from './pipeline.js';
 
-const englishMessages = Object.freeze({
-  ...englishExtracted,
-  ...barkMessagesFor(DEFAULT_LOCALE),
-  ...STORE_COPY[DEFAULT_LOCALE],
-});
+// Boot-eval deferral (wave-140 B5): the English merge, the message→key map, and the picker rows
+// (whose labels measure per-locale readiness over the whole inventory) used to be built inside
+// the post-gate eval task. They now materialize on first real access through the deferred
+// proxies — identical values — and the post-eval warm at the bottom of this module makes that
+// access land inside the media-gate window, long before the Settings menu or first localized paint.
+// W142-5: the en-US proxy resolves through deferredCatalog → buildTranslatedCatalog, so the
+// object served here IS catalogCache['en-US'] — one merge, not two.
+const englishMessages = deferredCatalog(DEFAULT_LOCALE);
 
 const LOCALE_TOKEN_RE = /^[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*$/;
-const keyByEnglishMessage = new Map();
+let keyByEnglishMessageMap = null;
 
-for (const [key, entry] of Object.entries(englishMessages).sort(([a], [b]) => a.localeCompare(b))) {
-  const message = typeof entry === 'string' ? entry : entry && entry.message;
-  if (typeof message === 'string' && !keyByEnglishMessage.has(message)) keyByEnglishMessage.set(message, key);
+function keyByEnglishMessage() {
+  if (keyByEnglishMessageMap === null) {
+    const map = new Map();
+    for (const [key, entry] of Object.entries(englishMessages).sort(([a], [b]) => a.localeCompare(b))) {
+      const message = typeof entry === 'string' ? entry : entry && entry.message;
+      if (typeof message === 'string' && !map.has(message)) map.set(message, key);
+    }
+    keyByEnglishMessageMap = map;
+  }
+  return keyByEnglishMessageMap;
 }
 
 /** The five languages a player can pick. English is first: it is the default unless chosen.
@@ -35,13 +49,13 @@ function honestLocaleLabel(localeId, label) {
   return localeReadiness(localeId).preview ? `${label}${MACHINE_PREVIEW_LABEL_SUFFIX}` : label;
 }
 
-const SHIPPED_LANGUAGE_ROWS = Object.freeze([
+const SHIPPED_LANGUAGE_ROWS = deferredArray(() => Object.freeze([
   Object.freeze({ id: DEFAULT_LOCALE, label: 'English' }),
   Object.freeze({ id: 'es-ES', label: honestLocaleLabel('es-ES', 'Español') }),
   Object.freeze({ id: 'fr-FR', label: honestLocaleLabel('fr-FR', 'Français') }),
   Object.freeze({ id: 'de-DE', label: honestLocaleLabel('de-DE', 'Deutsch') }),
   Object.freeze({ id: 'pt-BR', label: honestLocaleLabel('pt-BR', 'Português (Brasil)') }),
-]);
+]));
 
 const PSEUDO_LANGUAGE_OPTION = Object.freeze({
   id: PSEUDO_LOCALE,
@@ -62,6 +76,7 @@ export { SHIPPED_LOCALES };
 /** Measured reviewed coverage per locale (FB-107) — the data the labels are read from. */
 export { localeReadiness };
 
+// Every value here is a deferred proxy: the en-US merge and each stub's deferredCatalog.
 export const CATALOGS = Object.freeze({
   [DEFAULT_LOCALE]: englishMessages,
   'es-ES': spanishMessages,
@@ -95,7 +110,7 @@ export const gameLocalization = createLocalizationRuntime({
  * use; en-US and the pseudo locale keep the deterministic source/pseudo path. */
 export function localizeText(message, values = {}) {
   const source = String(message == null ? '' : message);
-  const key = keyByEnglishMessage.get(source) || `runtime:${source}`;
+  const key = keyByEnglishMessage().get(source) || `runtime:${source}`;
   return gameLocalization.t(key, values, () => {
     const locale = gameLocalization.locale;
     if (locale === DEFAULT_LOCALE || locale === PSEUDO_LOCALE) return source;
@@ -148,4 +163,64 @@ if (typeof document !== 'undefined' && document.documentElement) {
     document.documentElement.dataset.locale = startupLocale;
     publishLocalizationApi();
   }
+}
+
+// Post-eval warm for the deferred data: run once the blocking eval task returns to the event
+// loop, inside the media-gate window, so the parse/translate passes finish before the Settings
+// menu mounts. Sliced via warmTranslatedCatalog so no single task stalls a frame; a real
+// consumer arriving mid-warm still resolves synchronously on first access.
+if (typeof window !== 'undefined') {
+  // The boot locale leads: a `?locale=` pick warms ahead of the rest. en-US is always second —
+  // every fallback chain ends there, so it is the catalog `t()` touches first.
+  // W141-N8: only catalogs a consumer can actually read are warmed — a `?locale=` token
+  // naming a non-shipped locale used to spend warm slices on dead data. SHIPPED_LOCALES is a
+  // plain const, so the filter never materializes the deferredRows proxy.
+  const warmQueue = [...new Set([startupLocale, DEFAULT_LOCALE, 'es-ES', 'fr-FR', 'de-DE', 'pt-BR'])]
+    .filter((locale) => SHIPPED_LOCALES.includes(locale));
+  // Phased warm chain (W141-BG-2/BG-3): every step is its own sub-frame task.
+  //  0 — englishMessages materialize alone (generated JSON parse ~30-40ms) — otherwise it
+  //      piggybacks on whichever consumer touches the catalog first.
+  //  1 — keyByEnglishMessage (~86-90ms loop, inputs cached): it backs every localizeText,
+  //      so leaving it for idle or the first consumer moves the cost into title paint.
+  //  2 — localeReadiness per shipped locale (memoized, ~15-25ms each): pre-pays the
+  //      per-entry scans so the rows materialize below is a freeze, not a parse.
+  //  3 — SHIPPED_LANGUAGE_ROWS materializes with all inputs cached — trivial.
+  //  4 — translated catalogs at ~400 rows/slice (W141-N3) — every task stays sub-frame.
+  let warmPhase = 0;
+  let warmIndex = 0;
+  const warmStep = () => {
+    if (warmPhase === 0) {
+      void Object.keys(englishMessages).length;
+      warmPhase = 1;
+      setTimeout(warmStep, 0);
+      return;
+    }
+    if (warmPhase === 1) {
+      keyByEnglishMessage();
+      warmPhase = 2;
+      setTimeout(warmStep, 0);
+      return;
+    }
+    if (warmPhase === 2) {
+      if (warmIndex < SHIPPED_LOCALES.length) {
+        localeReadiness(SHIPPED_LOCALES[warmIndex]);
+        warmIndex += 1;
+        setTimeout(warmStep, 0);
+        return;
+      }
+      warmPhase = 3;
+      warmIndex = 0;
+    }
+    if (warmPhase === 3) {
+      void SHIPPED_LANGUAGE_ROWS.length;
+      warmPhase = 4;
+      setTimeout(warmStep, 0);
+      return;
+    }
+    if (warmIndex < warmQueue.length) {
+      if (warmTranslatedCatalog(warmQueue[warmIndex], 400)) warmIndex += 1;
+      setTimeout(warmStep, 0);
+    }
+  };
+  setTimeout(warmStep, 0);
 }

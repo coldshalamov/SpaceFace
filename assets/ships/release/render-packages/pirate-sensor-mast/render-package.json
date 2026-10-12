@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "18f55608573c2aea238b41b5a06ce806ebfe944a5ccf65b21bfea29ee45830ea",
+  "contentHash": "ff64d4010c66504048f25c4388783eb0623ad38983f5e6722f461c9e26d4685a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -70,7 +70,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b253852519a5e01f8ed6b49a9cd7226c4d5cd91839e3b9a3812b11b150ad3f2a",
+      "geometryHash": "93b122fe35c303fe8b3338737492844955f01ff7360809c1ee56b6eca1622ab6",
       "id": "sf.render.pirate-sensor-mast.mesh.col-hi.primitive.0",
       "indexCount": 840,
       "indexed": true,
@@ -95,7 +95,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3a63028b5e46fddd16cb5a7abdea2d25ed38ceffb9296b7e713977db6cc185ab",
+      "geometryHash": "957499966bce3231d19892c06cd299e282e30ef9f0ee9ba648e01be4aeb54720",
       "id": "sf.render.pirate-sensor-mast.mesh.col-lo.primitive.0",
       "indexCount": 840,
       "indexed": true,
@@ -120,7 +120,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2fbb75056c188230cc7a68816cc0d941b5a2de3ae5ed0fea977e3c90791e6903",
+      "geometryHash": "c007ad68d05a85bba1ad644ea278f865ac8ff42ba7bdd1a1d49c086ab0dde494",
       "id": "sf.render.pirate-sensor-mast.mesh.drum.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -129,7 +129,7 @@
       "meshName": "Cylinder.036",
       "nodeId": "sf.render.pirate-sensor-mast.mesh.drum",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -161,7 +161,7 @@
         "max": [
           1.0754361152648926,
           9.862452507019043,
-          0.03649662807583809
+          0.03649662435054779
         ],
         "min": [
           -2.0378451347351074,
@@ -170,7 +170,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4bc34adced222979879c629511e0f3e7ffc62f0b9c9756b0c424dbfba81b5978",
+      "geometryHash": "6e9e8ed1f2517d40d537b894bec0add6166817734d31c35006c18ff665561ab9",
       "id": "sf.render.pirate-sensor-mast.mesh.guy0.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -395,7 +395,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e37da7b5a09f6bab800f8199245cc341b70e1afde15806471e4ff88f252b17f4",
+      "geometryHash": "67e07d0b902ef8da8818de7f60d4b2b0dbd69dc15b7f170268118cda6e53c895",
       "id": "sf.render.pirate-sensor-mast.mesh.side-dish-dish.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -404,7 +404,7 @@
       "meshName": "Cone.002",
       "nodeId": "sf.render.pirate-sensor-mast.mesh.side-dish-dish",
       "primitiveIndex": 0,
-      "vertexCount": 120
+      "vertexCount": 60
     },
     {
       "bounds": {
@@ -445,7 +445,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dd46c0af5499511b9b27761b13c5419ab2bff1b355478ecdf94054e8f9911a61",
+      "geometryHash": "a72633ac265f0fec3318c87cf21dc66a9a596dd4c57b2ac5175426ca160340e5",
       "id": "sf.render.pirate-sensor-mast.mesh.side-dish-lnb.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -454,7 +454,7 @@
       "meshName": "Sphere.002",
       "nodeId": "sf.render.pirate-sensor-mast.mesh.side-dish-lnb",
       "primitiveIndex": 0,
-      "vertexCount": 176
+      "vertexCount": 146
     },
     {
       "bounds": {
@@ -495,7 +495,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "681010bb74e8a97b48e549fa4bc0050fcf88bc6e759e42f39781a17a310565e7",
+      "geometryHash": "6e1627a3c8558993a119589a9d21274938200c52703b6d132f3030fb0ad55d87",
       "id": "sf.render.pirate-sensor-mast.mesh.stolen-dish-dish.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -504,23 +504,23 @@
       "meshName": "Cone.001",
       "nodeId": "sf.render.pirate-sensor-mast.mesh.stolen-dish-dish",
       "primitiveIndex": 0,
-      "vertexCount": 120
+      "vertexCount": 60
     },
     {
       "bounds": {
         "max": [
-          2.8861100673675537,
+          2.8861098289489746,
           9.94780445098877,
-          0.05193733796477318
+          0.05193742737174034
         ],
         "min": [
           1.6456483602523804,
           9.679852485656738,
-          -0.05193733796477318
+          -0.05193742737174034
         ]
       },
       "drawMode": 4,
-      "geometryHash": "116e5c8607b22ba6c1d35f81d2a56cc67e2544a8bbb018a2a91c5b4bd701b7e2",
+      "geometryHash": "7ec68d1035fde5f386163bc0a41b77ed08ad5546f1d7ac887961721b02d898c6",
       "id": "sf.render.pirate-sensor-mast.mesh.stolen-dish-feed.primitive.0",
       "indexCount": 60,
       "indexed": true,
@@ -545,7 +545,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "60de05a7c6ea3d2bef153279fad4adb9f8592e5a10d4af7031f0cb1179695cb4",
+      "geometryHash": "d7bcba1d6e04ec3ff378658267d357d51bb8deb47972ec0f643d3bc1c8616bb8",
       "id": "sf.render.pirate-sensor-mast.mesh.stolen-dish-lnb.primitive.0",
       "indexCount": 240,
       "indexed": true,
@@ -554,7 +554,7 @@
       "meshName": "Sphere.001",
       "nodeId": "sf.render.pirate-sensor-mast.mesh.stolen-dish-lnb",
       "primitiveIndex": 0,
-      "vertexCount": 176
+      "vertexCount": 146
     }
   ],
   "hlods": [],
@@ -1655,19 +1655,19 @@
       "sha256": "dc774170fbd1a955619ff4360cd2afc1fe27fcad251fa92cf6e0d7faf83ffe57"
     },
     "sourceGlb": {
-      "bytes": 31812,
-      "sha256": "b4006163fa007d1dca9becc6fe25c1d70767b1e024956a9b6eb6341eb8b8a233",
+      "bytes": 31988,
+      "sha256": "cc40948a556d1909216879cebb233491ce28d29dd33e6e0fae851a7dd3e57634",
       "uri": "place_pirate_sensor_mast.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 60932,
-    "sha256": "41a16db1e2ad5ae5463d1e0bb0f775c4d75bc466162f012e9e8b83b73348295f",
+    "bytes": 60908,
+    "sha256": "8b669388cd3f0594ee72f79f830d45de1d63f5c883f99cab61d48101b9ad601f",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2389,7 +2389,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_pirate_sensor_mast.glb"
   },
-  "runtimeHash": "02b8957617b7b2ac23f45f97867e2974ad56c36415b2694d6a92f2a8ec9e9205",
+  "runtimeHash": "640a7daf63b9cb2832afd1c25bbca267dae1ad751020c56a0b8746b9a693ac26",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -1,0 +1,200 @@
+{
+  "camera": {
+    "x": 0,
+    "z": 0,
+    "zoom": 3.2
+  },
+  "composition": "collision-chain",
+  "description": "The Hitch coasts on an authored velocity into three light masses grouped as one chain.",
+  "encounter": {
+    "context": "encounter",
+    "cooldownS": 480,
+    "deck": "combat",
+    "factionId": "faction_reach",
+    "id": "dock_collision_chain",
+    "order": 1005,
+    "pressureCost": 12,
+    "proximity": true,
+    "script": "ambush",
+    "shape": {
+      "actor": "reaver_pirate",
+      "place": [
+        "derelict_field"
+      ],
+      "situation": "wreck",
+      "twist": "none"
+    },
+    "squad": {
+      "archetypes": [
+        "reaver_pirate"
+      ]
+    },
+    "tier": "minor",
+    "title": "Collision chain",
+    "weight": 1,
+    "zoneTypes": [
+      "derelict_field"
+    ]
+  },
+  "evidenceClass": "focused-fixture",
+  "fixtureExceptions": [
+    "focused-fixture authored in Creator's Dock; not production-manifest evidence"
+  ],
+  "frames": [
+    {
+      "input": {
+        "boost": false,
+        "fire": false,
+        "moveX": 0,
+        "moveZ": 0,
+        "turnIntent": 0
+      },
+      "tick": 0
+    }
+  ],
+  "grid": {
+    "size": 10,
+    "snap": true
+  },
+  "id": "dock.collision-chain",
+  "inputEvents": [],
+  "notes": {
+    "composition": "collision-chain",
+    "creatorsDock": "1",
+    "expectedObservation": "playerX advances from the authored +X velocity toward the grouped rocks. The group id is editor-only."
+  },
+  "objects": [
+    {
+      "angularVelocity": 0,
+      "factionId": "faction_free",
+      "heading": 0,
+      "id": "player",
+      "isPlayer": true,
+      "kind": "actor",
+      "label": "Hitch coasting",
+      "persistent": true,
+      "profile": "ship.starter",
+      "role": "player",
+      "team": 0,
+      "velX": 30,
+      "velZ": 0,
+      "x": 0,
+      "z": 0
+    },
+    {
+      "angularVelocity": 0,
+      "groupId": "chain",
+      "heading": 0,
+      "id": "rock_a",
+      "kind": "actor",
+      "label": "chain 1",
+      "overrides": {
+        "mass": 80,
+        "radius": 5
+      },
+      "persistent": true,
+      "profile": "asteroid.light",
+      "role": "debris",
+      "team": 2,
+      "velX": 0,
+      "velZ": 0,
+      "x": 40,
+      "z": 0
+    },
+    {
+      "angularVelocity": 0,
+      "groupId": "chain",
+      "heading": 0,
+      "id": "rock_b",
+      "kind": "actor",
+      "label": "chain 2",
+      "overrides": {
+        "mass": 80,
+        "radius": 5
+      },
+      "persistent": true,
+      "profile": "asteroid.light",
+      "role": "debris",
+      "team": 2,
+      "velX": 0,
+      "velZ": 0,
+      "x": 60,
+      "z": 0
+    },
+    {
+      "angularVelocity": 0,
+      "groupId": "chain",
+      "heading": 0,
+      "id": "rock_c",
+      "kind": "actor",
+      "label": "chain 3",
+      "overrides": {
+        "mass": 80,
+        "radius": 5
+      },
+      "persistent": true,
+      "profile": "asteroid.light",
+      "role": "debris",
+      "team": 2,
+      "velX": 0,
+      "velZ": 0,
+      "x": 80,
+      "z": 0
+    },
+    {
+      "id": "moved",
+      "kind": "objective",
+      "labOnly": true,
+      "label": "coasted toward the chain",
+      "metric": "trace.final",
+      "op": ">",
+      "signal": "playerX",
+      "value": 1,
+      "x": 40,
+      "z": -30
+    },
+    {
+      "assertion": {
+        "holdsTicks": 60,
+        "kind": "holds",
+        "signal": "playerAlive"
+      },
+      "id": "alive_chain",
+      "kind": "trigger",
+      "labOnly": true,
+      "label": "player stays alive",
+      "radius": 12,
+      "shape": "circle",
+      "x": -90,
+      "z": -10
+    },
+    {
+      "from": "player",
+      "gameplay": false,
+      "id": "to_chain",
+      "kind": "route",
+      "label": "into the chain",
+      "to": "rock_a"
+    }
+  ],
+  "observer": {
+    "enabled": false
+  },
+  "runtimeProfile": "focused-lab",
+  "schema": "spaceface.creatorsDock.v1",
+  "seed": 11005,
+  "standardInvariants": true,
+  "ticks": 180,
+  "title": "Collision chain",
+  "traceSignals": [],
+  "version": 1,
+  "world": {
+    "aiBackend": "legacy",
+    "credits": 5000,
+    "fixtureProfile": "empty-flight",
+    "flightBackend": "v3",
+    "mode": "flight",
+    "physicsBackend": "rapier-dynamic",
+    "sectorId": "sector_helios_prime"
+  }
+}

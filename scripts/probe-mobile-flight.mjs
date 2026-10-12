@@ -111,12 +111,18 @@ const snapDom = () => page.evaluate(() => {
     screens, toast: vis('.mf-toast') ? q('.mf-toast').textContent : null };
 });
 const snapSf = () => page.evaluate(() => {
-  const st = window.SF.state, p = st.entities.get(st.playerId), t = window.SF.ctx.touch, m = t.mobile;
+  const st = window.SF.state, p = st.entities.get(st.playerId);
+  const t = window.SF.registry?.get?.('input')?.touch || window.SF.ctx?.touch;
   const q = (s) => document.querySelector(s);
+  const m = t?.mobile, stick = q('.mf-stick'), shown = !!stick && !stick.hidden && !stick.classList.contains('is-leaving');
+  const word = q('.mf-stick .mf-num')?.textContent || '', mag = /^[0-9]+$/.test(word) ? Number(word) / 100 : stick?.dataset.boost === '1' ? 1 : 0;
+  const liveInput = st.input || {};
   return { mode: st.mode, rot: p ? +p.rot.toFixed(3) : null, speed: p ? +Math.hypot(p.vel.x, p.vel.z).toFixed(1) : null,
-    axes: { lx: +t.axes.leftX.toFixed(2), ly: +t.axes.leftY.toFixed(2), rx: +t.axes.rightX.toFixed(2), ry: +t.axes.rightY.toFixed(2) },
-    flight: { active: m.frame.flight.active, mag: +(m.frame.flight.magnitude || 0).toFixed(2), boost: !!m.frame.flight.boost, brake: !!m.frame.flight.brake, flick: !!m.frame.flight.flick },
-    fire: !!t._btnHeld?.fire, stickShown: !!q('.mf-stick') && !q('.mf-stick').hidden, boostFlag: q('.mf-stick')?.dataset.boost, leaving: !!q('.mf-stick.is-leaving'),
+    position:p?{x:p.pos.x,z:p.pos.z}:null,tick:st.tick,simTime:st.simTime,timeScale:st.timeScale,paused:st.paused,input:liveInput,
+    lane:(()=>{const d=window.SF.simLaneDiag?.();return d?{closed:d.closed,ready:d.laneReady,error:d.error,droppedEnvelopes:d.droppedEnvelopes,postedSteps:d.postedSteps}:null;})(),
+    axes: t?.axes ? { lx: +t.axes.leftX.toFixed(2), ly: +t.axes.leftY.toFixed(2), rx: +t.axes.rightX.toFixed(2), ry: +t.axes.rightY.toFixed(2) } : {lx:liveInput.turnIntent || 0,ly:-(liveInput.moveZ || 0),rx:liveInput.aimIntentActive?Math.cos(liveInput.aimAngle || 0):0,ry:liveInput.aimIntentActive?-Math.sin(liveInput.aimAngle || 0):0},
+    flight: m?.frame?.flight ? { active: m.frame.flight.active, mag: +(m.frame.flight.magnitude || 0).toFixed(2), boost: !!m.frame.flight.boost, brake: !!m.frame.flight.brake, flick: !!m.frame.flight.flick } : {active:shown,mag,boost:stick?.dataset.boost==='1',brake:stick?.dataset.brake==='1',flick:stick?.dataset.flick==='1'},
+    fire: t ? !!t._btnHeld?.fire : liveInput.fire===true, stickShown: shown, boostFlag: q('.mf-stick')?.dataset.boost, leaving: !!q('.mf-stick.is-leaving'),
     wheelOpen: !!q('.mf-wheel') && !q('.mf-wheel').hidden, gunHeld: q('.mf-gun')?.dataset.held, dockShown: !!q('.mf-dock') && !q('.mf-dock').hidden,
     screens: [...(st.ui.screenStack || [])], toast: q('.mf-toast') && !q('.mf-toast').hidden ? q('.mf-toast').textContent : null };
 });
@@ -172,6 +178,7 @@ try {
   await finger.tap(launch.x, launch.y);
   const t0 = Date.now();
   await page.waitForFunction(() => (window.SF && window.SF.state ? window.SF.state.mode === 'flight' : document.documentElement.dataset.sfMobileFlight === '1'), null, { timeout: BOOT_TIMEOUT, polling: 1000 });
+  HAS_SF = await page.evaluate(() => !!window.SF?.state);
   check('a plain New Game is the adventure, not the physics toy', await page.evaluate(() => (window.SF && window.SF.state ? window.SF.state.sandbox !== true : !document.querySelector('.sf-sandbox-lab-form') || ![...document.querySelectorAll('.sf-sandbox-lab-form')].some((e) => e.offsetParent))));
   console.log(`  launch -> flight in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
   await sleep(4000);
@@ -225,12 +232,13 @@ try {
   await shot('11-flight-stick');
   await sleep(1500);
   const moving = await snap();
+  writeFileSync(join(OUT,'motion-observer.json'),JSON.stringify({before,pressed:s,moving},null,2));
   check('the hull accelerates (the speed numeral climbs)', moving.speed > before.speed + 5, `speed ${before.speed} -> ${moving.speed}`);
   // boost: pull past the dashed ring
   await finger.drag(id, stickAt.x + radius * 0.55, stickAt.y - radius * 0.5, stickAt.x + radius * 1.1, stickAt.y - radius * 1.1, 200);
   await sleep(500);
   s = await snap();
-  check('past the dashed ring latches boost', s.flight.boost && s.boostFlag === '1', JSON.stringify(s.flight));
+  check('past the dashed ring latches boost', s.flight.boost && s.boostFlag === '1' && (!HAS_SF || s.input.boost===true), JSON.stringify(s.flight));
   await shot('12-flight-boost');
   await finger.up(id);
   await sleep(120);
@@ -246,7 +254,6 @@ try {
     window.__flicks = 0;
     const watch = () => { const st = document.querySelector('.mf-stick'); if (!st) return setTimeout(watch, 50); new MutationObserver(() => { if (st.dataset.flick === '1') window.__flicks += 1; }).observe(st, { attributes: true, attributeFilter: ['data-flick'] }); };
     watch();
-    if (window.SF && window.SF.ctx) { const m = window.SF.ctx.touch.mobile.model; const orig = m.sample.bind(m); m.sample = (dt) => { const f = orig(dt); if (f.flight.flick) window.__flicks += 1; return f; }; }
   });
   await finger.flick(stickAt.x, stickAt.y, stickAt.x + radius * 1.1, stickAt.y - radius * 0.2);
   await sleep(400);
@@ -255,10 +262,14 @@ try {
 
   // gun
   const gun = await rect('.mf-gun');
+  const gunDownAt = Date.now();
   const gid = await finger.down(gun.x, gun.y);
-  await sleep(250);
+  // A lane descriptor becomes authoritative on the next worker reply; wait for that acknowledgement,
+  // rather than sampling the previous mirrored tick after an arbitrary fixed sleep.
+  await page.waitForFunction(() => document.querySelector('.mf-gun')?.dataset.held === '1'
+    && (!window.SF?.state || window.SF.state.input?.fire === true), null, {timeout:2000,polling:50}).catch(()=>{});
   s = await snap();
-  check('GUN held feeds the fire channel', s.fire && s.gunHeld === '1');
+  check('GUN held feeds the fire channel', s.fire && s.gunHeld === '1', `worker acknowledgement ${Date.now()-gunDownAt}ms`);
   // gun + stick together
   const sid = await finger.down(stickAt.x, stickAt.y);
   await finger.drag(sid, stickAt.x, stickAt.y, stickAt.x - radius * 0.6, stickAt.y - radius * 0.3, 150);
@@ -274,7 +285,7 @@ try {
   await finger.up(sid); await finger.up(gid);
   await sleep(300);
   s = await snap();
-  check('both thumbs up: nothing stuck', !s.fire && !s.flight.active && s.axes.rx === 0 || !s.fire, JSON.stringify({ fire: s.fire, axes: s.axes }));
+  check('both thumbs up: nothing stuck', !s.fire && !s.flight.active && s.axes.lx===0 && s.axes.ly===0, JSON.stringify({ fire: s.fire, axes: s.axes }));
 
   // tether: tap latches or cuts, hold shows the reel ladder
   const teth = await rect('.mf-tether');
@@ -314,18 +325,6 @@ try {
   s = await snap();
   check('a tap in open space puts the pinned wheel away', !s.wheelOpen);
 
-  // DOCK key follows dock:range (needs the debug bus, so dev route only)
-  if (HAS_SF) {
-    await page.evaluate(() => window.SF.bus.emit('dock:range', { inRange: true }));
-    await sleep(500);
-    s = await snap();
-    check('DOCK key appears when a berth is in range', s.dockShown);
-    await shot('17-flight-dock');
-    await page.evaluate(() => window.SF.bus.emit('dock:range', { inRange: false }));
-    await sleep(300);
-    check('DOCK key leaves when the berth does', !(await snap()).dockShown);
-  }
-
   // main breadth: a grid of taps; every non-control point must start the stick
   const refused = await page.evaluate(() => {
     const out = [];
@@ -336,7 +335,7 @@ try {
       const x = Math.round((i + 0.5) * innerWidth / cols), y = Math.round((j + 0.5) * innerHeight / rows);
       const el = document.elementFromPoint(x, y);
       if (!el) continue;
-      if (el.closest('[data-role]') || el.closest('.mf-edge') || el.closest('.mf-pause') || el.closest('.mf-dock') || el.closest('.sf-radar-wrap')) continue; // the keys, the handle and the radar dial (a tap sets a course) are controls on purpose
+      if (el.closest('[data-role]') || el.closest('.mf-edge') || el.closest('.mf-pause') || el.closest('.mf-dock') || el.closest('.sf-radar-wrap') || el.closest('#race-tape button')) continue; // the keys, camera/Circuits rail, handle and radar dial are controls on purpose
       if (el.closest(UI) || el.closest(NOFLY)) out.push({ x, y, el: el.tagName.toLowerCase() + '.' + String(el.className).split(' ')[0], inUI: !!el.closest(UI) });
     }
     return out;

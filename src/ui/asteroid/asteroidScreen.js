@@ -16,6 +16,7 @@
 // structures/production in systems/asteroidSites.js.
 import { DRILL_CONST, tileIndex, generateDrillField } from '../../systems/drill.js';
 import { BINDINGS } from '../bindings.js';
+import { injectOrreryMobileScreens } from '../orrery/mobileScreenLayouts.js';
 import { resolveDrillControlMap } from '../screens/drill.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { machineName, createStrataCache } from './asteroidRenderer2d.js';
@@ -343,6 +344,7 @@ export const asteroidScreen = {
   id: 'drill',
 
   mount(rootEl, ctx) {
+    injectOrreryMobileScreens();
     rootEl.innerHTML = '';
     this._ctx = ctx;
     const state = ctx.state;

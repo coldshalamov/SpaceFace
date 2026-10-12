@@ -29,7 +29,7 @@ import { createSaveFilmstrip } from '../orrery/saveFilmstrip.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { rollTo, decrypt } from '../orrery/text.js';
 import { hullPosterUrl } from '../hullPosters.js';
-import { capturePhotoPng } from './pause.js';
+import { capturePhotoPngAsync } from './pause.js';
 import {
   backupKeptLine,
   importDestination,
@@ -763,22 +763,144 @@ export function roundTripSavePortrait(source) {
   return { first, second, ok: JSON.stringify(first) === JSON.stringify(second) };
 }
 
+// Bounded per-slot memo keyed on the save store's generation signature: 'gen:' equality
+// already implies byte-identical slot bytes for every tracked writer, so a same-generation
+// stage re-render, re-pick, or scrub back-track reuses {raw, data} instead of paying another
+// getItem + full multi-MB parse per selection. A write bumps the generation and the entry
+// falls through. raws are shared string refs; `data` is the retained part — cap the map so
+// a long dwell can't grow it.
+const _slotDataMemo = new Map();
+const _SLOT_DATA_MEMO_MAX = 6;
+
 function readSlotSaveData(ctx, slot) {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      const raw = localStorage.getItem(LS_PREFIX + slot);
-      const data = unwrapSaveData(raw ? JSON.parse(raw) : null);
-      if (data) return data;
-    }
-  } catch (e) {}
   const sys = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
-  if (sys && typeof sys.peekSlot === 'function') {
-    try {
-      const peeked = unwrapSaveData(sys.peekSlot(slot));
-      if (peeked) return peeked;
-    } catch (e) {}
+  const sig = sys && typeof sys.saveStoreSignature === 'function' ? sys.saveStoreSignature() : null;
+  const hit = _slotDataMemo.get(slot);
+  if (hit && sig && hit.sig === sig) {
+    // Refresh recency — the oldest entry is evicted first.
+    _slotDataMemo.delete(slot);
+    _slotDataMemo.set(slot, hit);
+    return hit;
   }
-  return null;
+  // The multi-MB getItem + JSON.parse a data fill needs stays off the pick task — the
+  // stage chrome renders from the card meta now, the blob materializes lazily inside
+  // the deferred fill/spec paths, and the portrait lands when the fill settles (or
+  // the spec arm's worker-parsed envelope arrives first).
+  const entry = { sig, slot, raw: null, data: null };
+  _slotDataMemo.delete(slot);
+  _slotDataMemo.set(slot, entry);
+  while (_slotDataMemo.size > _SLOT_DATA_MEMO_MAX) {
+    _slotDataMemo.delete(_slotDataMemo.keys().next().value);
+  }
+  return entry;
+}
+
+// A pick burst only parses the row it settles on — same trailing-debounce idiom as the
+// spec arm's dispatch park.
+let _slotDataFillTimer = null;
+let _slotDataFillSlot = null;
+let _slotDataFillCtx = null;
+const _SLOT_DATA_FILL_MS = 180;
+
+function readSlotBlob(slot) {
+  try {
+    return (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_PREFIX + slot) : null;
+  } catch (e) { return null; }
+}
+
+function fillSlotData(ctx, slot) {
+  const entry = _slotDataMemo.get(slot);
+  if (!entry || entry.data || entry.attempted) return;
+  entry.attempted = true;
+  // A covering spec arm already parses these bytes in the worker — flush its parked
+  // dispatch and let save:envelopeSpecPrepared fill the row instead of duplicating
+  // the multi-MB JSON.parse on this settle task.
+  const sys = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
+  const spec = sys && typeof sys.coveringSpeculativePrepare === 'function'
+    ? sys.coveringSpeculativePrepare(slot) : null;
+  if (spec && typeof spec.dispatch === 'function') {
+    try {
+      Promise.resolve(spec.dispatch()).then((prepared) => {
+        // An ok verdict only fills the row when the arm's emit still fires — it is
+        // also gated on spec identity, live sig, and mode, so a supersede, disarm,
+        // or generation bump mid-flight resolves ok with no emit and no fill.
+        // Only skip the lazy tail when the emit could still run; coveringSpeculativePrepare
+        // re-proves identity + slot + live sig in one call.
+        if (prepared && prepared.ok === true
+            && sys.coveringSpeculativePrepare(slot) === spec) return;
+        try { fillSlotDataLazy(ctx, slot, entry); } catch (e) { /* best-effort */ }
+      });
+    } catch (e) {
+      try { fillSlotDataLazy(ctx, slot, entry); } catch (e2) { /* best-effort */ }
+    }
+    return;
+  }
+  fillSlotDataLazy(ctx, slot, entry);
+}
+
+function unwrapSlotDataRaw(raw) {
+  try { return unwrapSaveData(JSON.parse(raw)); } catch (e) { return null; }
+}
+
+function fillSlotDataLazy(ctx, slot, entry) {
+  // Re-resolve the live memo entry — between the consult and this deferred run an
+  // LRU eviction or a generation bump can replace it; writing the captured object
+  // would be silently lost (the new entry refills on its own consult either way).
+  entry = _slotDataMemo.get(slot) || entry;
+  if (!entry || entry.data) return;
+  const sys = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
+  // A validated slot-index scan already parsed this blob into a card projection — consume
+  // it instead of materializing the multi-MB raw and posting it for an identical worker
+  // parse (W139-G2). The projection lives inside the sig-keyed cache, so a same-slot write
+  // re-mints it rather than serving stale data.
+  if (sys && typeof sys.slotCardData === 'function') {
+    let cached = null;
+    try { cached = sys.slotCardData(slot); } catch (e) { cached = null; }
+    if (cached) {
+      entry.data = cached;
+      if (refs && refs.selected === slot) saveLoadScreen._renderStage(ctx);
+      return;
+    }
+  }
+  const raw = entry.raw != null ? entry.raw : (entry.raw = readSlotBlob(slot));
+  if (!raw) return;
+  // The save worker parses + projects the portrait fields off-thread — the same
+  // multi-MB JSON.parse class the spec arm already moved. The sync tail is the
+  // byte-identical fallback for the no-worker lane or a peek failure.
+  if (sys && typeof sys.peekSaveCardData === 'function') {
+    let peek = null;
+    try { peek = sys.peekSaveCardData(raw); } catch (e) { peek = null; }
+    if (peek && typeof peek.then === 'function') {
+      const fillEntry = entry;
+      peek.then((cardData) => {
+        try {
+          // A same-slot write between dispatch and resolve re-mints the memo entry —
+          // only write onto the identity we consulted, or pre-bump card data gets
+          // stamped onto the new generation's entry and suppresses its fresh refill
+          // (a re-minted entry reschedules its own fill via attempted:false).
+          if (!fillEntry || _slotDataMemo.get(slot) !== fillEntry || fillEntry.data) return;
+          fillEntry.data = cardData || unwrapSlotDataRaw(raw);
+          if (refs && refs.selected === slot) saveLoadScreen._renderStage(ctx);
+        } catch (e) { /* speculative fill is best-effort */ }
+      });
+      return;
+    }
+  }
+  entry.data = unwrapSlotDataRaw(raw);
+  if (refs && refs.selected === slot) saveLoadScreen._renderStage(ctx);
+}
+
+function scheduleSlotDataFill(ctx, slot) {
+  _slotDataFillCtx = ctx;
+  _slotDataFillSlot = slot;
+  if (_slotDataFillTimer != null) { clearTimeout(_slotDataFillTimer); _slotDataFillTimer = null; }
+  _slotDataFillTimer = (typeof setTimeout === 'function')
+    ? setTimeout(() => {
+      _slotDataFillTimer = null;
+      try { fillSlotData(_slotDataFillCtx, _slotDataFillSlot); } catch (e) { /* best-effort */ }
+    }, _SLOT_DATA_FILL_MS)
+    : null;
+  if (_slotDataFillTimer == null) fillSlotData(ctx, slot);
 }
 
 function shipDisplayName(ctx, defId) {
@@ -957,6 +1079,20 @@ export const saveLoadScreen = {
       const row = refs && refs.list && refs.list.querySelector('[data-id="' + note.focus + '"]');
       if (row && typeof row.focus === 'function') row.focus();
     });
+    // A speculative prepare that resolves carries the worker-parsed envelope — the picked
+    // row's portrait fills straight from it without a main-thread parse.
+    const unsubSpecPrepared = ctx.bus.on('save:envelopeSpecPrepared', (payload = {}) => {
+      try {
+        const slot = payload.slot;
+        const data = unwrapSaveData(payload.data);
+        if (typeof slot !== 'string' || !slot || !data) return;
+        const sys = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
+        const sig = sys && typeof sys.saveStoreSignature === 'function' ? sys.saveStoreSignature() : null;
+        const entry = _slotDataMemo.get(slot) || { sig, slot, raw: null, data: null };
+        if (!entry.data) { entry.data = data; entry.sig = sig; _slotDataMemo.set(slot, entry); }
+        if (refs && refs.selected === slot) this._renderStage(ctx);
+      } catch (e) { /* speculative fill is best-effort */ }
+    });
 
     // Foot: Export, Import (the hidden file input stays), Back.
     const foot = el('footer', orr ? 'k-foot' : 'k-foot of-pause');
@@ -987,8 +1123,9 @@ export const saveLoadScreen = {
       caption, shipName, portrait, scars, repairs, titles, rapSheet, grudge,
       objective, credits, fine, actions, facts,
       selected: null, shownShipId: null, ids: [], slots: {},
+      saveSys: ctx && ctx.registry && ctx.registry.get ? ctx.registry.get('save') : null,
       cancelHullRelease, unsubLoading, unsubStartFailed, unsubLoadFailed, unsubSynced, unsubValidated, unsubCompleted,
-      unsubRecovered, unsubBackup, unsubRecoveryFailed, unsubProfile,
+      unsubRecovered, unsubBackup, unsubRecoveryFailed, unsubProfile, unsubSpecPrepared,
       markLoadRequested: () => { loadRequested = true; },
       clearLoadRequest: () => { loadRequested = false; },
     };
@@ -1013,6 +1150,18 @@ export const saveLoadScreen = {
       refs.selected = (ctx.state.save && ctx.state.save.currentSlot && ids.includes(ctx.state.save.currentSlot))
         ? ctx.state.save.currentSlot
         : (latestOccupiedSlot(slots) || 'quick');
+      // A restored selection never gets a pick event — arm its envelope decode on mount
+      // instead of leaving a non-default restore (currentSlot != latest-occupied) to
+      // click cold. Idempotent: the arm early-outs on same slot+sig and self-gates to
+      // frozen/menu + occupied slots.
+      if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
+        const picked = _slotDataMemo.get(refs.selected) || null;
+        ctx.bus.emit('save:loadSpeculationTarget', {
+          slot: refs.selected,
+          raw: picked && picked.raw,
+          sig: picked && picked.sig,
+        });
+      }
     }
     refs.ids = ids;
     refs.slots = slots;
@@ -1133,12 +1282,19 @@ export const saveLoadScreen = {
     }
     if (this._film) this._film.choose(id);
     if (!quiet) cue('move');
-    // The row under the cursor is the slot Enter is about to load — arm its envelope decode
-    // during the dwell (saveSystem self-gates to frozen/menu and to occupied slots).
-    if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
-      ctx.bus.emit('save:loadSpeculationTarget', { slot: id });
-    }
     this._renderStage(ctx);
+    // The row under the cursor is the slot Enter is about to load — arm its envelope decode
+    // during the dwell (saveSystem self-gates to frozen/menu and to occupied slots). The
+    // stage read already materialized the bytes this generation, so the arm rides the memo's
+    // raw instead of a second getItem on the same click task.
+    if (ctx && ctx.bus && typeof ctx.bus.emit === 'function') {
+      const picked = _slotDataMemo.get(id) || null;
+      ctx.bus.emit('save:loadSpeculationTarget', {
+        slot: id,
+        raw: picked && picked.raw,
+        sig: picked && picked.sig,
+      });
+    }
   },
 
   _renderStage(ctx) {
@@ -1147,7 +1303,11 @@ export const saveLoadScreen = {
     const meta = refs.slots[id];
     const occupied = isOccupied(meta);
     const saveAllowed = refs.saveAllowed;
-    const saveData = occupied ? readSlotSaveData(ctx, id) : null;
+    const saved = occupied ? readSlotSaveData(ctx, id) : null;
+    // A memo miss defers the whole fill — the blob materializes lazily inside the
+    // settle task (or the spec arm's worker parse fills it first).
+    if (saved && !saved.data && !saved.attempted) scheduleSlotDataFill(ctx, id);
+    const saveData = saved && saved.data;
     const currentSlot = ctx && ctx.state && ctx.state.save && ctx.state.save.currentSlot;
     const portrait = occupied
       ? buildSavePortrait({
@@ -1396,7 +1556,9 @@ export const saveLoadScreen = {
       let thumbnailSource;
       if (!presenting && typeof document !== 'undefined' && typeof document.querySelector === 'function') {
         const canvas = document.querySelector('canvas');
-        const shot = capturePhotoPng(canvas);
+        // toBlob twin — the PNG readback+encode rides the browser's async path
+        // instead of toDataURL's synchronous block on this click task.
+        const shot = await capturePhotoPngAsync(canvas);
         if (shot && shot.ok) {
           thumbnail = shot.dataUrl;
           thumbnailSource = canvas;
@@ -1445,14 +1607,17 @@ export const saveLoadScreen = {
     }
   },
 
-  _export(ctx) {
+  async _export(ctx) {
     const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
     const slots = readSlots(ctx);
     const slot = exportSlotChoice(ctx, slots);
     let blobText = null;
     if (!slot) { ctx.bus.emit('toast', { text: 'Nothing to export', kind: 'warn', ttl: 2500 }); return; }
     if (refs) refs.selected = slot;
-    if (sys && typeof sys.exportSlot === 'function') {
+    if (sys && typeof sys.exportSlotAsync === 'function') {
+      try { blobText = await sys.exportSlotAsync(slot); } catch (e) { blobText = null; }
+      if (blobText) { this._render(ctx); return; }
+    } else if (sys && typeof sys.exportSlot === 'function') {
       try { blobText = sys.exportSlot(slot); } catch (e) { blobText = null; }
       if (blobText) { this._render(ctx); return; }
     }
@@ -1563,11 +1728,18 @@ export const saveLoadScreen = {
     }
     try {
       const selectedRow = refs.list && refs.list.querySelector('.k-row[aria-selected="true"]');
-      (selectedRow || refs.list.querySelector('.k-row')).focus();
+      (selectedRow || refs.list.querySelector('.k-row')).focus({ preventScroll: true });
     } catch (e) {}
   },
   onHide() {
     cue('close');
+    // A pick armed 150ms before exit must not keep its parked dispatch — drop the arm so
+    // the clone + worker parse + visual warm don't land inside the next screen's window.
+    try {
+      const sys = refs && refs.saveSys;
+      if (sys && typeof sys.disarmSpeculativePrepare === 'function') sys.disarmSpeculativePrepare();
+    } catch (e) {}
+    if (_slotDataFillTimer != null) { clearTimeout(_slotDataFillTimer); _slotDataFillTimer = null; }
     if (this.hull) this.hull.deactivate();
   },
   // Everything the render reads is either captured by this cheap signature (save allowed, current
@@ -1594,10 +1766,16 @@ export const saveLoadScreen = {
       try { refs.unsubSynced(); } catch (e) { /* bus already gone */ }
       try { refs.unsubValidated(); } catch (e) { /* bus already gone */ }
       try { refs.unsubCompleted(); } catch (e) { /* bus already gone */ }
-      for (const key of ['unsubRecovered', 'unsubBackup', 'unsubRecoveryFailed', 'unsubProfile']) {
+      for (const key of ['unsubRecovered', 'unsubBackup', 'unsubRecoveryFailed', 'unsubProfile', 'unsubSpecPrepared']) {
         if (typeof refs[key] === 'function') refs[key]();
       }
+      try {
+        if (refs.saveSys && typeof refs.saveSys.disarmSpeculativePrepare === 'function') {
+          refs.saveSys.disarmSpeculativePrepare();
+        }
+      } catch (e) {}
     }
+    if (_slotDataFillTimer != null) { clearTimeout(_slotDataFillTimer); _slotDataFillTimer = null; }
     if (this.hull) { this.hull.dispose(); this.hull = null; }
     if (this._film) { this._film.dispose(); this._film = null; }
     refs = null;

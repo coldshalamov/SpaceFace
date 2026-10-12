@@ -23,6 +23,9 @@ import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const PQ023_H1 = process.env.SF_PQ023_H1 === '1';
+// SF_COMBAT_VFX_BAR=1: compact art-review sequence covering every VFX family (graphics bar sheets);
+// skips the acceptance strips, reel and report checks.
+const VFX_BAR = process.env.SF_COMBAT_VFX_BAR === '1';
 const PQ023_COMBAT_READABILITY_ONLY = process.env.SF_PQ023_COMBAT_READABILITY === '1';
 const PQ023_SMALL_DESTRUCTION_SALIENCE_ONLY =
   process.env.SF_PQ023_SMALL_DESTRUCTION_SALIENCE === '1';
@@ -93,7 +96,8 @@ try {
 
   gpu = await readGpuContract(page);
   assert.equal(gpu.available, true, 'combat VFX acceptance requires WebGL');
-  assert.doesNotMatch(gpu.renderer || '', /SwiftShader|llvmpipe|software/i,
+  // SF_ALLOW_SOFTWARE_GL=1: picture review on a GPU-less host (frames only; timing claims are void).
+  if (process.env.SF_ALLOW_SOFTWARE_GL !== '1') assert.doesNotMatch(gpu.renderer || '', /SwiftShader|llvmpipe|software/i,
     `combat VFX acceptance requires a real GPU path, got ${gpu.renderer}`);
   if (PQ023_H1) await installPq023CueObservers(page);
 
@@ -107,6 +111,11 @@ try {
   });
   const spatialContract = await prepareCaptureTarget(page);
   const origin = spatialContract.target.center;
+  if (VFX_BAR) {
+    await captureVfxBar(page, { origin, explosionOrigin });
+    report = { mode: 'vfx-bar', captures, issues, ok: true };
+    await writeFile(path.join(OUT, 'report.json'), JSON.stringify(report, null, 2));
+  } else {
 
   const weapons = [
     ['kinetic', 'wpn_autocannon_m'],
@@ -535,6 +544,7 @@ try {
   await writeFile(path.join(OUT, 'report.json'), JSON.stringify(report, null, 2));
   if (!report.ok) process.exitCode = 1;
   console.log(JSON.stringify(report, null, 2));
+  }
 } finally {
   const video = page.video();
   await context.close().catch(() => {});
@@ -572,8 +582,11 @@ async function triggerImpact(targetPage, { weaponId, freezeMs }) {
     window.__sfResetCombatVfx?.();
     const approach = spatial.source.forward;
     const normal = { x: -approach.x, z: -approach.z };
+    const targetEntity = window.__sfCombatTargetEntity;
+    if (targetEntity) targetEntity.shield = 0;
     vfx._onProjectileHit({
       weaponId: id,
+      targetId: window.__sfCombatTargetId,
       pos: spatial.target.contact,
       approach,
       normal,
@@ -585,9 +598,179 @@ async function triggerImpact(targetPage, { weaponId, freezeMs }) {
   }, { id: weaponId, holdMs: freezeMs });
 }
 
-async function prepareCaptureTarget(targetPage) {
+async function captureVfxBar(targetPage, { origin, explosionOrigin }) {
+  const weapons = [
+    ['kinetic', 'wpn_autocannon_m', 82],
+    ['rail', 'wpn_railgun_m', 42],
+    ['plasma', 'wpn_plasma_cannon_m', 150],
+    ['beam', 'wpn_beam_laser_m', 30],
+    ['missile', 'wpn_missile_rack_m', 210],
+  ];
+  const settle = () => targetPage.waitForTimeout(220);
+  for (let i = 0; i < weapons.length; i++) {
+    const [family, weaponId, releaseWait] = weapons[i];
+    const tag = `bar-${String(i + 1).padStart(2, '0')}-${family}`;
+    await triggerMuzzle(targetPage, { ...origin, family, weaponId, index: i, freezeMs: 16 });
+    await capture(`${tag}-muzzle.png`, `${family} muzzle`); await settle();
+    await triggerFlight(targetPage, { ...origin, family, weaponId, index: i, freezeMs: 18, motion: false });
+    await capture(`${tag}-flight.png`, `${family} flight`);
+    await stopBeam(targetPage, { family, index: i }); await settle();
+    await triggerImpact(targetPage, { ...origin, weaponId, index: i, freezeMs: 16 });
+    await capture(`${tag}-impact.png`, `${family} impact contact`); await settle();
+    await triggerImpact(targetPage, { ...origin, weaponId, index: i, freezeMs: releaseWait });
+    await capture(`${tag}-release.png`, `${family} impact release`); await settle();
+    await triggerMaterialImpact(targetPage, { ...origin, weaponId, index: i, material: 'shield', freezeMs: 40 });
+    if (i === 0) {
+      console.log('[vfx-bar] shield probe', JSON.stringify(await targetPage.evaluate(() => {
+        const t = window.__sfCombatTargetEntity;
+        const root = window.SF.registry.get('render')?._meshes?.get?.(t?.id) || t?.mesh;
+        const b = root?.userData?.shieldBubble;
+        return {
+          id: t?.id, type: t?.type, shield: t?.shield, shieldMax: t?.shieldMax, alive: t?.alive,
+          mesh: !!t?.mesh, bubble: !!b, bubbleVisible: b?.visible, aux: b?.userData?.shipAuxPool || null,
+          flash: b?.material?.uniforms?.uFlash?.value, scale: b?.scale?.x,
+          shellSource: window.__sfCombatTargetShellSource || null,
+        };
+      })));
+    }
+    await capture(`${tag}-shield.png`, `${family} shield contact`); await settle();
+    await triggerMaterialImpact(targetPage, { ...origin, weaponId, index: i, material: 'hull', freezeMs: 40 });
+    await capture(`${tag}-hull.png`, `${family} hull contact`); await settle();
+  }
+  // Shield break on the real shell.
+  await targetPage.evaluate(() => {
+    const vfx = window.SF.registry.get('vfx');
+    const spatial = window.__sfCombatSpatialContract;
+    window.__sfResetCombatVfx?.();
+    const t = window.__sfCombatTargetEntity;
+    if (t) t.shield = 0;
+    vfx._onDamage({
+      weaponId: 'wpn_plasma_cannon_m', attackerId: spatial.source.entityId,
+      targetId: window.__sfCombatTargetId, pos: spatial.target.contact,
+      approach: spatial.source.forward,
+      normal: { x: -spatial.source.forward.x, z: -spatial.source.forward.z },
+      shieldAbsorbed: true, brokeShield: true, amount: 40,
+    });
+    window.__sfFreezeCombatVfx?.(90);
+  });
+  await capture('bar-06-shield-break.png', 'shield break'); await settle();
+  await targetPage.evaluate(() => {
+    const t = window.__sfCombatTargetEntity;
+    if (t) t.shield = t.shieldMax;
+  });
+
+  await setCaptureTargetVisible(targetPage, false);
+  const blasts = [['small', 4, 70], ['ordinary', 8, 190], ['capital', 15, 430], ['capital', 15, 1030]];
+  for (let i = 0; i < blasts.length; i++) {
+    const [classId, radius, wait] = blasts[i];
+    await triggerExplosion(targetPage, { ...explosionOrigin, classId, radius, freezeMs: wait });
+    await capture(`bar-07-explosion-${classId}-${wait}.png`, `${classId} explosion ${wait}ms`);
+    await targetPage.waitForTimeout(160);
+  }
+  await setCaptureTargetVisible(targetPage, true);
+
+  // Damage smoke / venting on the real target hull.
+  await targetPage.evaluate(() => {
+    window.__sfResetCombatVfx?.();
+    const t = window.__sfCombatTargetEntity;
+    if (t) { t.hull = Math.max(1, (Number(t.hullMax) || 100) * 0.12); t.shield = 0; }
+    // Damaged-port venting reads the combat subsystem table: one ruptured and one
+    // dependency-cooled subsystem on the target, removed again after the frame.
+    const sf = window.SF;
+    sf.state.combat = sf.state.combat || {};
+    const table = sf.state.combat.entities || (sf.state.combat.entities = {});
+    window.__sfSavedCombatRow = table[t?.id];
+    if (t) {
+      table[t.id] = {
+        ...(table[t.id] || {}),
+        subsystems: {
+          ...((table[t.id] && table[t.id].subsystems) || {}),
+          engine: { ...(((table[t.id] || {}).subsystems || {}).engine || {}), destroyed: true },
+          reactor: { ...(((table[t.id] || {}).subsystems || {}).reactor || {}), effectiveDisabled: true },
+        },
+      };
+    }
+    window.__sfFreezeCombatVfx?.(1600, { ambient: ['_updateDamageVenting', '_emitTrails'] });
+  });
+  await capture('bar-08-damage-smoke.png', 'damaged hull venting smoke'); await settle();
+  await targetPage.evaluate(() => {
+    const t = window.__sfCombatTargetEntity;
+    if (t) { t.hull = t.hullMax; t.shield = t.shieldMax; }
+    const table = window.SF.state.combat?.entities;
+    if (table && t) {
+      if (window.__sfSavedCombatRow) table[t.id] = window.__sfSavedCombatRow; else delete table[t.id];
+    }
+  });
+
+  // Mining beam onto the target.
+  await targetPage.evaluate(() => {
+    const vfx = window.SF.registry.get('vfx');
+    window.__sfResetCombatVfx?.();
+    vfx._onMiningStart({ targetId: window.__sfCombatTargetId, verb: 'extract' });
+    window.__sfFreezeCombatVfx?.(700);
+  });
+  await capture('bar-09-mining-beam.png', 'mining beam'); await settle();
+  await targetPage.evaluate(() => {
+    const vfx = window.SF.registry.get('vfx');
+    vfx._onMiningStop();
+    window.__sfFreezeCombatVfx?.(600);
+  });
+
+  // Massline tether onto the target.
   await targetPage.evaluate(() => {
     const sf = window.SF;
+    window.__sfResetCombatVfx?.();
+    sf.state.player = sf.state.player || {};
+    window.__sfSavedTether = sf.state.player.tether;
+    const target = window.__sfCombatTargetEntity;
+    const player = sf.state.entities.get(sf.state.playerId);
+    const length = target && player ? Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z) : 30;
+    sf.state.player.tether = {
+      ...(window.__sfSavedTether || {}),
+      active: true, targetId: window.__sfCombatTargetId, length, restLength: length, tension: 0.55,
+    };
+    window.__sfFreezeCombatVfx?.(500);
+  });
+  await capture('bar-10-tether.png', 'massline tether'); await settle();
+  await targetPage.evaluate(() => {
+    const sf = window.SF;
+    sf.state.player.tether = window.__sfSavedTether || { active: false };
+    window.__sfFreezeCombatVfx?.(600);
+  });
+
+  // Engine trails: let the real flight model run the player at full throttle for a moment.
+  await targetPage.evaluate(() => {
+    const sf = window.SF;
+    window.__sfResetCombatVfx?.();
+    window.__sfResumeCombatVfx?.();
+    sf.state.timeScale = Number(window.__sfCombatOriginalTimeScale) || 1;
+  });
+  await targetPage.keyboard.down('KeyW');
+  await targetPage.waitForTimeout(1800);
+  await targetPage.evaluate(() => {
+    const sf = window.SF;
+    sf.state.timeScale = 0;
+    sf.state.accumulator = 0;
+    sf.registry.get('vfx').update = () => {};
+  });
+  await targetPage.keyboard.up('KeyW');
+  await capture('bar-11-engine-trail.png', 'engine trail at full throttle');
+}
+
+async function prepareCaptureTarget(targetPage) {
+  await targetPage.evaluate(async (softwareParity) => {
+    const sf = window.SF;
+    if (softwareParity && sf.state.render?.softwareRenderer) {
+      // Software GL boots the emergency profile (bloom off, 0.34 dynamic resolution). Effects are
+      // judged with the shipped hardware presentation, so restore full resolution and bloom here;
+      // the frame rate is irrelevant to a frozen evidence frame.
+      const video = sf.state.settings?.video;
+      if (video) { video.dynamicResolution = false; video.bloom = true; }
+      sf.registry.get('render')?._adaptive?.setEnabled?.(false);
+      sf.state.render.dynResScale = 1;
+      sf.registry.get('render')?._applySize?.();
+      try { sf.state.render.bloom?.setOptions?.({ bloom: true }); } catch (_) { /* best effort */ }
+    }
     const player = sf.state.entities.get(sf.state.playerId);
     const vfx = sf.registry.get('vfx');
     const weaponSystem = sf.registry.get('weapons');
@@ -620,8 +803,75 @@ async function prepareCaptureTarget(targetPage) {
     // same frame. This is the ordinary camera system and projection, not a standalone test camera.
     sf.state.camera.zoom = Math.max(88, Number(sf.state.camera.zoom) || 0);
     const previous = window.__sfCombatVfxCaptureTarget;
-    if (previous?.parent) previous.parent.remove(previous);
-    const target = player.mesh.clone(true);
+    if (previous?.parent && !previous.userData?.entityId) previous.parent.remove(previous);
+    const previousTargetEntity = window.__sfCombatTargetEntity;
+    if (previousTargetEntity) {
+      previousTargetEntity.alive = false;
+      sf.state.entities.delete?.(previousTargetEntity.id);
+    }
+    // A real, shielded ship entity is the target: the production renderer builds its hull and its
+    // pooled shield shell (contacts, flash, collapse) exactly as in play, and _onDamage resolves
+    // radius/position/faction from it. The clone below is kept only as a fallback if spawning fails.
+    let targetEntity = null;
+    try {
+      const shells = await import('/src/render/weapons/shieldBubblePresentation.js');
+      window.__sfShieldBubblePresentation = shells.updateEntityShieldBubblePresentation;
+    } catch (_) { window.__sfShieldBubblePresentation = null; }
+    try {
+      const { makeShipEntitySpec, fittingsFromDefaultModules } = await import('/src/systems/ships.js');
+      const hullId = player.data?.defId || 'ship_kestrel';
+      targetEntity = sf.helpers.spawnEntity(makeShipEntitySpec(hullId, {
+        team: 1,
+        factionId: 'faction_reavers',
+        fittings: fittingsFromDefaultModules(hullId, []),
+        pos: { x: targetCenter.x, z: targetCenter.z },
+        rot: direction + Math.PI,
+        ai: { role: 'capture_combat_vfx_target', passive: true, roe: 'hold_fire' },
+      }));
+      if (targetEntity) {
+        targetEntity.shieldMax = Math.max(200, Number(targetEntity.shieldMax) || 0);
+        targetEntity.shield = targetEntity.shieldMax;
+        targetEntity.shieldRegenRate = 0;
+        if (targetEntity.vel) { targetEntity.vel.x = 0; targetEntity.vel.z = 0; }
+        if (targetEntity.prevPos) { targetEntity.prevPos.x = targetCenter.x; targetEntity.prevPos.z = targetCenter.z; }
+      }
+    } catch (error) {
+      console.warn('[combat-vfx] target spawn failed; using mesh clone', error);
+      targetEntity = null;
+    }
+    window.__sfCombatTargetEntity = targetEntity;
+    window.__sfCombatTargetId = targetEntity ? targetEntity.id : 'capture-target';
+    if (targetEntity) {
+      // Let the renderer build the authored hull and its shield bubble before any trigger.
+      // Authored hulls admit asynchronously (proxy first); wait for the admitted root that carries
+      // the shield shell, bounded so a missing package cannot hang the capture.
+      const deadline = performance.now() + 20000;
+      const ready = () => {
+        const mesh = sf.registry.get('render')?._meshes?.get?.(targetEntity.id) || targetEntity.mesh;
+        return !!(mesh && mesh.userData && mesh.userData.shieldBubble
+          && String(mesh.userData.authoredAssetState || 'authored').startsWith('authored'));
+      };
+      while (!ready() && performance.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      // A freshly spawned hull can sit in authored admission for a long time on software GL. The
+      // shell is not part of the authored body: attach the production shell (shipKit material,
+      // presented by the renderer's pooled shield lane) to the live root if admission has not.
+      const root = sf.registry.get('render')?._meshes?.get?.(targetEntity.id) || targetEntity.mesh;
+      if (root && !root.userData.shieldBubble) {
+        const kit = await import('/src/render/ships/shipKit.js');
+        const tint = vfx._shieldColor?.(targetEntity.factionId) || '#5fd0ff';
+        const bubble = kit.createShieldBubble(tint, Number(targetEntity.radius) || 12);
+        root.add(bubble);
+        root.userData.shieldBubble = bubble;
+        window.__sfCombatTargetShellSource = 'harness-attached production shell';
+      } else {
+        window.__sfCombatTargetShellSource = 'authored root shell';
+      }
+      // Two more presented frames so the swapped root has its world transform.
+      for (let f = 0; f < 4; f++) await new Promise((r) => requestAnimationFrame(r));
+    }
+    const target = targetEntity?.mesh || player.mesh.clone(true);
     const local = vfx._toLocalXZ(targetCenter.x, targetCenter.z, { x: 0, z: 0 });
     target.name = 'SF_Combat_VFX_Acceptance_Target';
     target.position.set(local.x, player.mesh.position.y, local.z);
@@ -630,10 +880,12 @@ async function prepareCaptureTarget(targetPage) {
     target.rotation.copy(player.mesh.rotation);
     target.rotation.y += Math.PI;
     target.scale.copy(player.mesh.scale);
-    target.traverse((node) => {
-      node.userData = { ...(node.userData || {}), combatVfxAcceptanceTarget: true };
-    });
-    parent.add(target);
+    if (!targetEntity) {
+      target.traverse((node) => {
+        node.userData = { ...(node.userData || {}), combatVfxAcceptanceTarget: true };
+      });
+      parent.add(target);
+    }
     window.__sfCombatVfxCaptureTarget = target;
     window.__sfCombatTargetRadius = targetRadius;
     const contract = {
@@ -750,6 +1002,30 @@ async function prepareCaptureTarget(targetPage) {
       window.__sfCombatBeamMotionReceipt = null;
       vfx._combatBeams?.clear();
       vfx._explosions?.clear();
+      // The full-update freeze drives every owner, so every owner's residue must be cleared too
+      // or one strip frame's debris/gas/contact marks bleed into the next.
+      try { vfx._explosionRupture?.clear?.(); } catch (_) {}
+      try { vfx._arcadeStructural?.clear?.(); } catch (_) {}
+      try { vfx._combatContactVfx?.clear?.(); } catch (_) {}
+      try { vfx._bombDetonationVfx?.clear?.(); } catch (_) {}
+      try { vfx._gas?.clear?.(); } catch (_) {}
+      try { vfx._weaponPresenter?.quarks?.reset?.(); } catch (_) {}
+      // Every other presentation owner hanging off the VFX root or the weapon presenter (status
+      // matter, action primitives, scorches, bolts, ribbons, distortion) exposes clear().
+      for (const owner of [vfx, vfx._weaponPresenter]) {
+        if (!owner) continue;
+        for (const key of Object.keys(owner)) {
+          const value = owner[key];
+          if (!value || typeof value !== 'object' || value === vfx || value === owner) continue;
+          if (value instanceof Map || value instanceof Set || Array.isArray(value) || ArrayBuffer.isView(value)) continue;
+          if (key === 'state' || key === 'helpers' || key === '_scene' || key === 'scene') continue;
+          if (typeof value.clear === 'function' && value.clear.length === 0) {
+            try { value.clear(); } catch (_) { /* owner without a live pool */ }
+          }
+        }
+      }
+      try { vfx._resetPendingDetonations?.(); } catch (_) {}
+      try { vfx._resetCollisionPresentation?.(); } catch (_) {}
       while (vfx._liveTrailStreakCount > 0) vfx._retireTrailStreak(vfx._activeTrailStreaks[0]);
       while (vfx._liveSpriteCount > 0) vfx._retireSprite(vfx._activeSprites[0]);
       while (vfx._liveCount > 0) vfx._retireParticle(vfx._activeParticles[0]);
@@ -757,25 +1033,47 @@ async function prepareCaptureTarget(targetPage) {
       vfx._integrateSprites(0);
       vfx._commitTrailStreakInstances();
     };
-    window.__sfFreezeCombatVfx = (advanceMs = 16) => {
+    // Ambient emitters that would write unrelated world wakes (other ships' thrusters, ambient
+    // projectiles, station/job chatter) into the evidence pools. Every combat owner still runs.
+    const AMBIENT_EMITTERS = [
+      '_emitTrails', '_updateRibbonTrails', '_emitProjectileTrails', '_updateDamageVenting',
+      '_syncNpcJobSignatures', '_updateStationSideEvents', '_updateCeresJobActionVfx',
+      '_updateWreckWisps', '_updateSeamMarkers', '_updateLootMagnet',
+    ];
+    window.__sfFreezeCombatVfx = (advanceMs = 16, options = {}) => {
       let remaining = Math.max(1, Number(advanceMs) || 16) / 1000;
-      while (remaining > 1e-6) {
-        const step = Math.min(1 / 60, remaining);
-        // Advance only the acceptance-owned combat pools. Calling the full VFX update here also
-        // emits ambient ship thrusters/trails, polluting both the screenshot and the diagnostics
-        // with unrelated instances while the player route continues normally around this frame.
-        vfx._t += step;
-        vfx._explosions?.update(step, vfx._explosionEmitter);
-        vfx._combatBeams?.update(vfx._t, vfx._combatBeamLocalizer, null);
-        vfx._integrateParticles(step);
-        vfx._integrateSprites(step);
-        vfx._integrateTrailStreaks(step);
-        vfx._decayEventLights(step);
-        remaining -= step;
+      const saved = {};
+      const keep = new Set(options.ambient || []);
+      for (const key of AMBIENT_EMITTERS) {
+        if (keep.has(key)) continue;
+        if (typeof vfx[key] === 'function') { saved[key] = vfx[key]; vfx[key] = () => 0; }
+      }
+      try {
+        while (remaining > 1e-6) {
+          const step = Math.min(1 / 60, remaining);
+          // The effect clock IS the frozen sim clock: advance simTime by the same step so every
+          // simTime-driven owner (rupture, shells, weapon presenter, contact/bomb receipts, gas)
+          // progresses in lockstep with _t, then run the production VFX update once.
+          if (Number.isFinite(sf.state.simTime)) sf.state.simTime += step;
+          originalUpdate.call(vfx, step);
+          // The renderer presents shells with a time-effects-scaled dt that is 0 under the hard
+          // freeze; step the capture target's shell on the same sim step so flash/collapse decay.
+          const targetEntity = window.__sfCombatTargetEntity;
+          const render = sf.registry.get('render');
+          const root = targetEntity && (render?._meshes?.get?.(targetEntity.id) || targetEntity.mesh);
+          const bubble = root?.userData?.shieldBubble;
+          if (bubble && window.__sfShieldBubblePresentation) {
+            window.__sfShieldBubblePresentation(targetEntity, bubble, performance.now() / 1000,
+              sf.state.simTime, false, step);
+          }
+          remaining -= step;
+        }
+      } finally {
+        for (const key of Object.keys(saved)) vfx[key] = saved[key];
       }
       vfx.update = () => {};
     };
-  });
+  }, process.env.SF_ALLOW_SOFTWARE_GL === '1');
   await targetPage.waitForTimeout(900);
   return targetPage.evaluate(() => {
     window.__sfUpdateCombatSpatialOverlay?.();
@@ -784,8 +1082,18 @@ async function prepareCaptureTarget(targetPage) {
 }
 
 async function setCaptureTargetVisible(targetPage, visible) {
-  await targetPage.evaluate((nextVisible) => {
-    if (window.__sfCombatVfxCaptureTarget) window.__sfCombatVfxCaptureTarget.visible = nextVisible;
+  await targetPage.evaluate(async (nextVisible) => {
+    // A spawned target's mesh can be swapped by the renderer (authored admission / LOD), so
+    // resolve it through the entity each time rather than trusting the first mesh reference.
+    const targetEntity = window.__sfCombatTargetEntity;
+    if (targetEntity) {
+      // The renderer owns a real entity's root visibility (and re-admits a moved view slowly on
+      // software GL), so the spawned target simply stays in frame: explosion strips then also
+      // show scale against a real hull. Only the evidence overlay follows the flag.
+      targetEntity.__sfCaptureHidden = !nextVisible;
+      const root = window.SF.registry.get('render')?._meshes?.get?.(targetEntity.id) || targetEntity.mesh;
+      window.__sfCombatVfxCaptureTarget = root || window.__sfCombatVfxCaptureTarget;
+    } else if (window.__sfCombatVfxCaptureTarget) window.__sfCombatVfxCaptureTarget.visible = nextVisible;
     if (window.__sfCombatSpatialOverlay) {
       window.__sfCombatSpatialOverlay.style.display = nextVisible ? 'block' : 'none';
       if (nextVisible) window.__sfUpdateCombatSpatialOverlay?.();
@@ -843,7 +1151,7 @@ async function triggerFlight(targetPage, { family, weaponId, index, freezeMs, mo
       vfx._onDamage({
         weaponId: id,
         attackerId: spatial.source.entityId,
-        targetId: 'capture-target',
+        targetId: window.__sfCombatTargetId || 'capture-target',
         pos: spatial.target.contact,
         approach: spatial.source.forward,
         normal: { x: -spatial.source.forward.x, z: -spatial.source.forward.z },
@@ -920,7 +1228,7 @@ async function triggerMaterialImpact(targetPage, { weaponId, index, material, fr
     const receipt = {
       weaponId: id,
       attackerId: spatial.source.entityId,
-      targetId: 'capture-target',
+      targetId: window.__sfCombatTargetId || 'capture-target',
       pos: spatial.target.contact,
       approach,
       normal,
@@ -940,6 +1248,25 @@ async function triggerMaterialImpact(targetPage, { weaponId, index, material, fr
         to: spatial.target.contact,
         dir: spatial.source.forward,
       });
+    }
+    const targetEntity = window.__sfCombatTargetEntity;
+    // Each material frame starts from a cold, intact shell: earlier hull frames (shield 0) would
+    // otherwise hand this frame a collapse/rupture flash that no single contact produces.
+    const shellRoot = targetEntity
+      && (window.SF.registry.get('render')?._meshes?.get?.(targetEntity.id) || targetEntity.mesh);
+    const shell = shellRoot?.userData?.shieldBubble;
+    if (shell?.material?.uniforms?.uFlash) {
+      shell.material.uniforms.uFlash.value = 0;
+      shell.userData._prevShield = Number(targetEntity.shieldMax) || 200;
+      shell.userData._collapseTimer = 0;
+      shell.userData._sfShieldQuietLatched = false;
+    }
+    if (targetEntity) {
+      // Real shield bookkeeping: a shield receipt drains shield HP, which is what punches the
+      // pooled shell's flash on the next presented frame. Hull receipts leave the shell cold.
+      targetEntity.shield = materialId === 'shield'
+        ? Math.max(1, (Number(targetEntity.shieldMax) || 200) - 24)
+        : 0;
     }
     vfx._onProjectileHit(receipt);
     vfx._onDamage({
@@ -1024,7 +1351,7 @@ async function triggerDenseDestruction(targetPage, { x, z, freezeMs }) {
     vfx._onDamage({
       weaponId: beamReceipt.weaponId,
       attackerId: spatial.source.entityId,
-      targetId: 'capture-target',
+      targetId: window.__sfCombatTargetId || 'capture-target',
       pos: spatial.target.contact,
       approach: spatial.source.forward,
       normal: { x: -spatial.source.forward.x, z: -spatial.source.forward.z },
@@ -1749,7 +2076,14 @@ async function buildEvidenceSheets() {
 
 async function capture(file, scenario, options = {}) {
   const fullPath = path.join(OUT, file);
-  await page.evaluate(() => window.__sfUpdateCombatSpatialOverlay?.());
+  await page.evaluate(async (clean) => {
+    window.__sfUpdateCombatSpatialOverlay?.();
+    const targetEntity = window.__sfCombatTargetEntity;
+
+    // SF_COMBAT_CAPTURE_CLEAN=1: same frame without the evidence labels, for art review sheets.
+    if (clean && window.__sfCombatSpatialOverlay) window.__sfCombatSpatialOverlay.style.visibility = 'hidden';
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  }, process.env.SF_COMBAT_CAPTURE_CLEAN === '1');
   await page.screenshot({ path: fullPath, fullPage: false });
   const bytes = await readFile(fullPath);
   const sha256 = createHash('sha256').update(bytes).digest('hex');
@@ -1844,10 +2178,13 @@ async function dismissTutorial(targetPage) {
 
 function findSystemBrowser() {
   const candidates = [
+    process.env.SF_CHROMIUM,
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
     'C:/Program Files/Google/Chrome/Application/chrome.exe',
     'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
     'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
     'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
   ];
-  return candidates.find((candidate) => existsSync(candidate)) || null;
+  return candidates.find((candidate) => candidate && existsSync(candidate)) || null;
 }

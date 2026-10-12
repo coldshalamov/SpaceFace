@@ -217,6 +217,8 @@ import {
 import { markKindForMaterial } from './weapons/contactMarks.js';
 import { ArcadeStructuralFx } from './combat/arcadeStructuralFx.js';
 import { createGasSystem } from './combat/gas/gasVolumeField.js';
+import { GAS_VOLUME_PAYLOAD_READY } from './combat/gas/gasVolumeData.js';
+import { DENSITY_VOLUME_PAYLOAD_READY } from './combat/densityVolumeData.js';
 import { ExplosionRupture, explosionRuptureFamily, explosionSourceMaterial } from './combat/explosionRupture.js';
 import { TetherWebFx } from './combat/tetherWebFx.js';
 import {
@@ -327,6 +329,11 @@ import {
 import { resolveAdditionalActionVfxReceipt } from './vfx/actionEventRecipes.js';
 import { spawnCausalStructuralBurst } from './combat/causalStructuralBurst.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
+import { dedupError } from '../core/warnDedup.js';
+
+// Wave-143 (boot F1): shared readiness for the deferred _initPools — both volume payloads
+// arrive via dynamic import kicked at their module evals (see the two data modules).
+const VFX_VOLUME_PAYLOAD_READY = Promise.all([GAS_VOLUME_PAYLOAD_READY, DENSITY_VOLUME_PAYLOAD_READY]);
 
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
 const VFX_TRAIL_LANES = ['shipLike'];
@@ -1670,7 +1677,32 @@ export const vfx = {
     this._ctmp = new THREE.Color();
     this._cFaction = new THREE.Color('#88aaff');
 
-    this._initPools();
+    // Wave-143 (boot F1): the gas/density volume payloads load via dynamic import kicked at
+    // module eval — _initPools is the first synchronous decode consumer (the instanced-sprite
+    // buckets and the gas volume field both decode film data), so in the browser it waits for
+    // arrival rather than racing the fetch. initAsync's per-system checkpoints resolve that
+    // fetch long before this line in practice; the deferral below is what makes "payload before
+    // decode" structural instead of a timing assumption. Node/unit tests keep the synchronous
+    // path — they resolve bytes through require() inside packed() (and have no scene anyway,
+    // so _initPools early-returns exactly as before).
+    if (typeof window === 'undefined') {
+      this._initPools();
+    } else {
+      // W144-F1: the update() reattach lane must not call _initPools while the
+      // payload is still in flight — packed() throws mid-build and each retry
+      // orphans another partial pool set. Pending/failed latches gate it below.
+      this._volumePoolsPending = true;
+      VFX_VOLUME_PAYLOAD_READY.then(() => {
+        this._volumePoolsPending = false;
+        if (this._destroyed === true || !this.state) return;
+        this._initPools();
+      }, (error) => {
+        this._volumePoolsPending = false;
+        this._volumePoolsFailed = true;
+        console.error('[vfx] volume payload failed to load; transient/gas pools degrade', error);
+        this._scene = null;
+      });
+    }
     // The renderer's loading-stage residency pass runs after every system has initialized. Publish
     // the exact live VFX roots so their already-created textures are uploaded under the loading
     // shell instead of on the first ambient impact during exposed flight. The getter stays live
@@ -1713,7 +1745,7 @@ export const vfx = {
     for (const unsubscribe of this._subs || []) {
       if (typeof unsubscribe !== 'function') continue;
       try { unsubscribe(); } catch (error) {
-        console.error('[vfx] unsubscribe failed', error);
+        dedupError('vfx.unsubscribe', '[vfx] unsubscribe failed', error);
       }
     }
     this._subs = [];
@@ -12329,8 +12361,12 @@ export const vfx = {
     const tier1Counter = tier1Perf && tier1Perf.tier1;
     this._tier1Spawn = tier1Counter && tier1Counter.isEnabled() ? tier1Counter : null;
     if (!this._scene) {
-      // render may have come up after vfx.init (defensive) — try once to attach pools
-      if (this.state.render && this.state.render.scene) { this._initPools(); this._subscribeOnce(); }
+      // render may have come up after vfx.init (defensive) — try once to attach pools.
+      // While the deferred volume payload is in flight (or failed), init's own
+      // READY continuation owns the attach — a mid-window call here throws on
+      // packed() and would orphan a partial pool set per tick (W144-F1).
+      if (!this._volumePoolsPending && !this._volumePoolsFailed
+          && this.state.render && this.state.render.scene) { this._initPools(); this._subscribeOnce(); }
       if (!this._scene) return;
     }
     if (this._perfVfxIsolationRestore) {
@@ -17042,7 +17078,7 @@ function releaseVfxDynamicBufferOwner(owner) {
     // A renderer may be in the middle of a publication epoch when host shutdown arrives. The
     // renderer's own coordinator remains the fallback owner of that callback; VFX still clears
     // its references below, and one failed release cannot strand the rest of the presentation.
-    console.error('[vfx] dynamic buffer owner release failed', error);
+    dedupError('vfx.buffer-owner-release', '[vfx] dynamic buffer owner release failed', error);
     return false;
   }
 }
@@ -17053,7 +17089,7 @@ function invokeVfxDisposer(owner, label) {
     owner.dispose();
     return true;
   } catch (error) {
-    console.error('[vfx] ' + label + ' disposal failed', error);
+    dedupError('vfx.disposer', '[vfx] ' + label + ' disposal failed', error);
     return false;
   }
 }
@@ -17064,7 +17100,7 @@ function invokeVfxCall(fn, receiver, label) {
     fn.call(receiver);
     return true;
   } catch (error) {
-    console.error('[vfx] ' + label + ' failed', error);
+    dedupError('vfx.invoke', '[vfx] ' + label + ' failed', error);
     return false;
   }
 }
@@ -17109,13 +17145,13 @@ function disposeVfxRoot(root, state) {
   } catch (error) {
     // Keep teardown best-effort even for a malformed/stale Object3D tree. The root is still
     // detached below, and registry-level isolation continues with the next system.
-    console.error('[vfx] root resource walk failed', error);
+    dedupError('vfx.root-walk', '[vfx] root resource walk failed', error);
   }
   try {
     if (typeof root.removeFromParent === 'function') root.removeFromParent();
     else if (root.parent && typeof root.parent.remove === 'function') root.parent.remove(root);
   } catch (error) {
-    console.error('[vfx] root detach failed', error);
+    dedupError('vfx.root-detach', '[vfx] root detach failed', error);
   }
   return true;
 }

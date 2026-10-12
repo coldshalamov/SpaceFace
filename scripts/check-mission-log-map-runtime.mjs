@@ -32,7 +32,9 @@ try {
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
   });
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: HEAVY_TIMEOUT_MS });
+  // Writes state.world/missions/ui/nav directly — facade fabrications that the worker
+  // lane's domain mirror would clobber, so this probe pins the main lane.
+  await page.goto(server.baseUrl + '?simLane=main', { waitUntil: 'domcontentloaded', timeout: HEAVY_TIMEOUT_MS });
   // Headless boot is roughly TWICE as slow as a real GPU here, and not because the game is slow:
   // SwiftShader does not expose KHR_parallel_shader_compile, so THREE compiles every program
   // serially on the main thread. Measured on this machine: window.SF.ctx ready at 11,977 ms

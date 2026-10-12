@@ -255,7 +255,15 @@ export function tickBolus(world, dt) {
   let ringHeld = false;
   let lipHeldLoaded = false;
 
-  const list = state.entityList || [];
+  // Bolus organs all claim the bolus sector; outside it this used to scan the whole
+  // live list for nothing. The sector bucket early-outs to empty there and narrows
+  // the walk inside — homeSectorId heads the canonical claim chain, so the bucket
+  // holds every match; fall back to the list walk while the lane is unready.
+  const bolusIndex = state.entityIndex;
+  const list = bolusIndex && bolusIndex.__spacefaceEntityIndexV1 === true
+      && bolusIndex.ready === true && bolusIndex.bySectorId instanceof Map
+    ? (bolusIndex.bySectorId.get(BOLUS_SECTOR_ID) || [])
+    : (state.entityList || []);
   for (let i = 0; i < list.length; i++) {
     const ent = list[i];
     if (!ent || ent.alive === false || !ent.data || !ent.data.bolus) continue;

@@ -28,23 +28,6 @@ const POST_DEFAULTS = Object.freeze({
   ...DEFAULT_POST_PRESENTATION,
 });
 
-function hideInactiveInstancedMeshes(scene, hidden) {
-  hidden.length = 0;
-  if (!scene || typeof scene.traverseVisible !== 'function') return;
-  scene.traverseVisible((object) => {
-    if (!object?.isInstancedMesh || !(Number(object.count) <= 0) || !object.layers?.mask) return;
-    // A zero-instance mesh has no pixels, but its children may. Suppress only its own draw;
-    // visibility=false would also remove any live child from Three's traversal.
-    hidden.push(object, object.layers.mask);
-    object.layers.mask = 0;
-  });
-}
-
-function restoreInactiveInstancedMeshes(hidden) {
-  for (let index = 0; index < hidden.length; index += 2) hidden[index].layers.mask = hidden[index + 1];
-  hidden.length = 0;
-}
-
 const FULLSCREEN_VERT = /* glsl */`
   varying vec2 vUv;
   void main() {
@@ -315,7 +298,7 @@ export class SpaceRenderGraph {
 
     this.normalMaterial = new THREE.MeshNormalMaterial({ blending: THREE.NoBlending });
     this.normalMaterial.name = 'SpaceRenderGraph:normal-prepass';
-    this._hiddenNormalPassInstances = [];
+    this._hiddenNormalPassInstances = null; // retired: captured-list replay filters count<=0 instanced items
     this.quad = new FullscreenQuad();
     this.aoMaterial = shaderMaterial(AO_FRAG, {
       tDepth: null, tNormal: null, uInvResolution: new THREE.Vector2(1,1),
@@ -433,20 +416,26 @@ export class SpaceRenderGraph {
     try {
       renderer.setRenderTarget(this.sceneTarget);
       renderer.clear(true, true, true);
-      renderWithoutAutoClear(renderer, () => renderer.render(scene, camera));
-
+      // Pass 2's drawable set is exactly pass 1's (same scene, same camera, same epoch) —
+      // capture the finished sorted render list once and replay it under the AO override
+      // instead of paying a second whole-scene projectObject plus a traverseVisible
+      // instanced mask (PERF-138 F1). The replay drops count<=0 instanced items itself.
+      // Contract: nothing mutates the scene between capture and replay — only the
+      // override material changes in this window. With AO off there is no second pass —
+      // render plainly and skip the capture allocations entirely.
       if (this.options.ao) {
+        const captured = renderWithoutAutoClear(renderer, () => renderer.renderAndCaptureList(scene, camera));
         scene.overrideMaterial = this.normalMaterial;
         renderer.setRenderTarget(this.normalTarget);
         renderer.clear(true, true, true);
-        hideInactiveInstancedMeshes(scene, this._hiddenNormalPassInstances);
         try {
-          renderWithoutAutoClear(renderer, () => renderer.render(scene, camera));
+          renderWithoutAutoClear(renderer, () => renderer.renderCapturedList(scene, camera, captured));
         } finally {
-          restoreInactiveInstancedMeshes(this._hiddenNormalPassInstances);
           scene.overrideMaterial = previousOverride;
         }
         this._renderAo(camera);
+      } else {
+        renderWithoutAutoClear(renderer, () => renderer.render(scene, camera));
       }
       if (this._bloomActive()) this._renderBloom();
       this._renderDistortion(camera);
@@ -825,6 +814,14 @@ function renderWithoutAutoClear(renderer, draw) {
   }
 }
 
+// W140 F-A: vendored renderQuadPass draws the fixed quad scene without the
+// scene-graph prelude; mock/alternate renderers without it take the identical
+// upstream pass through render().
+function renderQuadScene(renderer, scene, camera) {
+  if (typeof renderer.renderQuadPass === 'function') renderer.renderQuadPass(scene, camera);
+  else renderer.render(scene, camera);
+}
+
 class FullscreenQuad {
   constructor() {
     this.camera = new THREE.OrthographicCamera(-1,1,1,-1,0,1);
@@ -839,7 +836,7 @@ class FullscreenQuad {
     // No clear: the 2x2 quad covers the whole target and the materials used here are
     // all NoBlending/depthTest:false/depthWrite:false with no discard, so every texel
     // is unconditionally overwritten — a prior clear can never be observed.
-    renderWithoutAutoClear(renderer, () => renderer.render(this.scene, this.camera));
+    renderWithoutAutoClear(renderer, () => renderQuadScene(renderer, this.scene, this.camera));
   }
   dispose() { this.mesh.geometry.dispose(); this.mesh.material.dispose(); }
 }

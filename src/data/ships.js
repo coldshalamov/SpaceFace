@@ -402,7 +402,7 @@ export const SHIPS = [
     hull: 2200, shield: 2600, baseShieldRegen: 30, cargo: 120, mass: 520, handling: 2.2,
     outfitSpace: 240, weaponCapacity: 96, engineCapacity: 18, designMass: 760,
     bankFactor: 0.10,
-    driveId: 'drive_inertialess_s',  // gravimetric envelope tuned past the fleet — the inertialess hull
+    driveId: 'drive_inertialess_s',  // player uses the native velocity-command drive, never a yaw-rate trick
     energyCap: 2200, energyRegen: 170, collisionRadius: 19, price: 4200000,
     boost: { max: 360, drainRate: 22, regenRate: 48, dashImpulse: 400, dashCooldown: 1.4 },  // mega boost: fleet-largest pool, fleet-strongest kick
     // Two L hardpoints plus a full-turret L mount: the disc fights in any direction it is already

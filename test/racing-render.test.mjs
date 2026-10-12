@@ -6,6 +6,7 @@ import { createRacingCourseView } from '../src/render/racingCourseView.js';
 import { racingOfferFor, raceGateGlobals } from '../src/data/raceLevels.js';
 import { circuitPacePoint, gateApproach } from '../src/systems/racingGeometry.js';
 import { createRacingDraftView } from '../src/render/racingDraftView.js';
+import { racingPaceSpeed } from '../src/systems/racingSteer.js';
 
 function chaseHarness(view = 'racing') {
   const player = { id:1,type:'ship',alive:true,pos:{x:0,z:0},prevPos:{x:0,z:0},vel:{x:0,z:0},
@@ -54,7 +55,7 @@ test('phase-scoped mission view restores the preference in the real camera owner
 });
 
 test('course view uses vertical apertures and the same pace sampler, survives rebases, disposes idempotently',()=>{
-  const offer=racingOfferFor('contract_junction_draft');offer.status='active';offer.params.raceStartSimS=0;
+  const offer=racingOfferFor('contract_junction_draft');offer.status='active';offer.params.phase='chase';offer.params.raceStartSimS=0;
   const state={mode:'flight',simTime:2,ui:{},world:{currentSectorId:offer.params.courseSectorId,frameOrigin:{x:0,z:0}},missions:{active:[offer]}};
   const scene=new THREE.Scene(),view=createRacingCourseView(scene,state);view.frame();
   assert.equal(view.root.visible,true);
@@ -63,11 +64,12 @@ test('course view uses vertical apertures and the same pace sampler, survives re
   const matrix=new THREE.Matrix4();rings.getMatrixAt(0,matrix);
   const normal=new THREE.Vector3(0,0,1).transformDirection(matrix),a=gateApproach(offer.params.gates,0);
   assert.ok(Math.abs(normal.x-a.nx)<1e-6&&Math.abs(normal.z-a.nz)<1e-6&&Math.abs(normal.y)<1e-6);
-  const globals=raceGateGlobals(offer.params),point=circuitPacePoint(globals,2*640+70);
+  const globals=raceGateGlobals(offer.params),point=circuitPacePoint(globals,2*racingPaceSpeed(offer.params)+70);
   assert.ok(Math.abs(pace.position.x+view.root.position.x-point.x)<1e-6);
   assert.ok(Math.abs(pace.position.z+view.root.position.z-point.z)<1e-6);
   const initial=view.root.position.clone();state.world.frameOrigin={x:5000,z:-3000};view.frame();
   assert.equal(view.root.position.x,initial.x-5000);assert.equal(view.root.position.z,initial.z+3000);
+  offer.params.phase='handoff';view.frame();assert.equal(view.root.visible,false);
   let geometries=0;view.root.traverse(o=>{if(o.geometry)o.geometry.addEventListener('dispose',()=>geometries++);});
   view.dispose();const count=geometries;view.dispose();assert.equal(geometries,count);assert.ok(count>=3);
   assert.equal(scene.children.length,0);

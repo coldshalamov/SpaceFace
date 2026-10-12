@@ -398,17 +398,31 @@ function autosaveHarness({
     get tickAdvances() { return tickAdvances; },
     get scheduledTurns() { return scheduledTurns; },
     serializerCalls,
-    drain(limit = 200) {
+    // The paced lanes now suspend inside awaited worker roundtrips and
+    // _restoreFrameYield's setTimeout fallback — continuations re-arm their next
+    // scheduled step on the macrotask queue, which a purely synchronous drive can
+    // never observe. drain pumps one real tick whenever the queues run dry and
+    // treats three consecutive empty ticks as settled.
+    async drain(limit = 600) {
       let turns = 0;
-      while ((tasks.length || workerTasks.length) && turns++ < limit) {
-        if (tasks.length) tasks.shift()();
-        if (workerTasks.length) workerTasks.shift()();
+      for (let idleRounds = 0; turns < limit && idleRounds < 3;) {
+        let didWork = false;
+        if (tasks.length) { tasks.shift()(); turns++; didWork = true; }
+        if (workerTasks.length) { workerTasks.shift()(); turns++; didWork = true; }
+        if (didWork) { idleRounds = 0; continue; }
+        idleRounds++;
+        await new Promise((resolve) => setTimeout(resolve, 0));
       }
       assert.ok(turns < limit, 'autosave task graph must settle');
     },
-    step() {
+    async step() {
       if (tasks.length) tasks.shift()();
       if (workerTasks.length) workerTasks.shift()();
+      if (!tasks.length && !workerTasks.length) {
+        // Suspended continuations re-arm on the macrotask queue — yield once so a
+        // step-driven loop sees work a synchronous pump can't.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
     },
     restore() {
       Object.assign(save, {
@@ -440,7 +454,7 @@ function primeProductionAutosave(harness) {
   }
 }
 
-test('production capture plan is fixed-tick, worker-encoded, phased, and truthfully reports raw 8/12ms limits', () => {
+test('production capture plan is fixed-tick, worker-encoded, phased, and truthfully reports raw 8/12ms limits', async () => {
   const h = autosaveHarness({ productionCapture: true });
   try {
     primeProductionAutosave(h);
@@ -451,7 +465,7 @@ test('production capture plan is fixed-tick, worker-encoded, phased, and truthfu
     h.storage.setItem('sf.save.auto', old);
     h.storage.operations.length = 0;
     assert.equal(save.requestAutosave('bounded', { force: true }), true);
-    h.drain();
+    await h.drain();
 
     const complete = h.events.find((event) => event.name === 'save:completed');
     assert.ok(complete, `worker path must publish one completed receipt; receipts=${JSON.stringify(h.events.filter((event) => event.name.startsWith('save:')))}`);
@@ -543,7 +557,7 @@ test('production capture plan is fixed-tick, worker-encoded, phased, and truthfu
   } finally { h.restore(); }
 });
 
-test('three serial production autosaves preserve exact data, report the 8ms target, and meet the raw 12ms hard limit', () => {
+test('three serial production autosaves preserve exact data, report the 8ms target, and meet the raw 12ms hard limit', async () => {
   const h = autosaveHarness({ productionCapture: true });
   try {
     primeProductionAutosave(h);
@@ -551,7 +565,7 @@ test('three serial production autosaves preserve exact data, report the 8ms targ
     for (let run = 0; run < 3; run++) {
       const eventStart = h.events.length;
       assert.equal(save.requestAutosave(`serial_${run}`, { force: true }), true);
-      h.drain();
+      await h.drain();
       const completed = h.events.slice(eventStart).find((event) => event.name === 'save:completed');
       assert.ok(completed, `serial autosave ${run + 1} must complete`);
       receipts.push(completed.payload);
@@ -568,14 +582,14 @@ test('three serial production autosaves preserve exact data, report the 8ms targ
   } finally { h.restore(); }
 });
 
-test('six simultaneous autosave requests coalesce into one exact production save', () => {
+test('six simultaneous autosave requests coalesce into one exact production save', async () => {
   const h = autosaveHarness({ productionCapture: true });
   try {
     const accepted = Array.from({ length: 6 }, (_, index) => (
       save.requestAutosave(`simultaneous_${index}`, { force: true })
     ));
     assert.deepEqual(accepted, [true, false, false, false, false, false]);
-    h.drain();
+    await h.drain();
     const completed = h.events.filter((event) => event.name === 'save:completed');
     assert.equal(completed.length, 1);
     assert.equal(h.events.some((event) => event.name === 'save:error'), false);
@@ -583,7 +597,7 @@ test('six simultaneous autosave requests coalesce into one exact production save
   } finally { h.restore(); }
 });
 
-test('interrupted encode worker falls back safely and keeps generation recovery playable', () => {
+test('interrupted encode worker falls back safely and keeps generation recovery playable', async () => {
   const h = autosaveHarness({ interruptFirstWorker: true });
   try {
     const old = encodeSavePayload({
@@ -592,7 +606,7 @@ test('interrupted encode worker falls back safely and keeps generation recovery 
     }).json;
     h.storage.setItem('sf.save.auto', old);
     assert.equal(save.requestAutosave('worker_interrupt', { force: true }), true);
-    h.drain();
+    await h.drain();
     assert.ok(h.events.some((event) => event.name === 'save:completed'),
       `retry should complete; receipts=${JSON.stringify(h.events.filter((event) => event.name.startsWith('save:')))}`);
     assert.ok(h.workerCount >= 2, 'an interrupted encoder must retry in a fresh worker before sync fallback');
@@ -617,7 +631,7 @@ test('restore generation supersedes an in-flight worker result exactly once with
       () => h.events.some((event) => event.name === 'save:error' && event.payload.failure === 'superseded'),
       () => h.step(),
     ), true, 'restore supersession receipt must arrive by condition, not an arbitrary delay');
-    h.drain();
+    await h.drain();
     assert.equal(h.storage.getItem('sf.save.auto'), old);
     assert.equal(h.events.filter((event) => (
       event.name === 'save:error' && event.payload.failure === 'superseded'
@@ -626,7 +640,7 @@ test('restore generation supersedes an in-flight worker result exactly once with
   } finally { h.restore(); }
 });
 
-test('new-game and restore cancellation roll back every transaction phase with one terminal receipt', () => {
+test('new-game and restore cancellation roll back every transaction phase with one terminal receipt', async () => {
   const phaseCases = [
     {
       name: 'encode_worker', transition: 'restore', previous: true,
@@ -672,7 +686,7 @@ test('new-game and restore cancellation roll back every transaction phase with o
 
       if (phase.transition === 'new_game') h.bus.emit('game:new');
       else save._beginRestoreSequence();
-      h.drain(500);
+      await h.drain(500);
 
       assert.equal(h.storage.getItem('sf.save.auto'), old,
         `${phase.name} cancellation must restore the prior primary or remove a newly-created slot`);
@@ -690,7 +704,7 @@ test('new-game and restore cancellation roll back every transaction phase with o
   }
 });
 
-test('production snapshot completes during 120+ continuously advancing scheduled turns without rerunning serializers', () => {
+test('production snapshot completes during 120+ continuously advancing scheduled turns without rerunning serializers', async () => {
   const h = autosaveHarness({
     productionCapture: true,
     advanceTickEveryScheduledTurn: true,
@@ -708,7 +722,7 @@ test('production snapshot completes during 120+ continuously advancing scheduled
     assert.equal(save.requestAutosave('live_tick_churn', { force: true }), true);
     for (let turn = 0; turn < 400 && !h.events.some((event) => (
       event.name === 'save:completed' || event.name === 'save:error'
-    )); turn++) h.step();
+    )); turn++) await h.step();
 
     // Cost-aware batching should yield under crowded clone pressure while the captured snapshot
     // remains pinned to one tick and every serializer still runs exactly once.
@@ -730,7 +744,7 @@ test('production snapshot completes during 120+ continuously advancing scheduled
       assert.equal(calls, 1, `${key} serializer must run exactly once`);
     }
     assert.equal(completed.payload.serializerTimings.length, captureKeyCount);
-    h.drain(400);
+    await h.drain(400);
     assert.equal(h.tasks.length, 0);
     assert.equal(h.workerTasks.length, 0);
     assert.equal(save._autosaveInFlight, false);
@@ -759,7 +773,7 @@ test('raw blocking observations are never rounded below the 8/12ms receipt thres
     'every raw observation above 12ms must fail the hard flag, even below display rounding precision');
 });
 
-test('an indivisible 14ms serializer trips the unchanged hard-budget telemetry without losing the save', () => {
+test('an indivisible 14ms serializer trips the unchanged hard-budget telemetry without losing the save', async () => {
   const h = autosaveHarness();
   const originalPlan = save._saveCapturePlan;
   try {
@@ -773,7 +787,7 @@ test('an indivisible 14ms serializer trips the unchanged hard-budget telemetry w
       return plan;
     };
     assert.equal(save.requestAutosave('heavy_serializer', { force: true }), true);
-    h.drain();
+    await h.drain();
     const completed = h.events.find((event) => event.name === 'save:completed');
     assert.ok(completed, 'timing contention must never turn a valid snapshot into data loss');
     assert.equal(completed.payload.targetSliceMs, 8);
@@ -788,7 +802,7 @@ test('an indivisible 14ms serializer trips the unchanged hard-budget telemetry w
   } finally { h.restore(); }
 });
 
-test('new-game run epoch supersedes an in-flight autosave before any old-run write', () => {
+test('new-game run epoch supersedes an in-flight autosave before any old-run write', async () => {
   const h = autosaveHarness();
   try {
     const old = encodeSavePayload({
@@ -805,7 +819,7 @@ test('new-game run epoch supersedes an in-flight autosave before any old-run wri
     h.bus.emit('game:new');
     assert.equal(save._activeSaveWorkers.size, 0, 'new run must terminate live save workers immediately');
     assert.equal(h.workerTerminations, 1);
-    h.drain();
+    await h.drain();
     assert.equal(h.storage.getItem('sf.save.auto'), old);
     assert.equal(save._autosaveInFlight, false);
     const epoch = save._runEpoch;
@@ -908,7 +922,7 @@ test('production scheduler prefers prompt hops and never arms a 250ms idle deadl
   );
 });
 
-test('batched encode_part dispatch uses far fewer schedule turns than save keys while still completing', () => {
+test('batched encode_part dispatch uses far fewer schedule turns than save keys while still completing', async () => {
   const h = autosaveHarness({ productionCapture: true });
   try {
     assert.equal(save.requestAutosave('batched_encode', { force: true }), true);
@@ -929,10 +943,10 @@ test('batched encode_part dispatch uses far fewer schedule turns than save keys 
         && !save._activeAutosaveTransaction
         && !h.events.some((event) => event.name === 'save:completed' || event.name === 'save:error')) {
         // allow microtask/timeout-driven progress in harness via drain step
-        h.step();
+        await h.step();
       }
     }
-    h.drain();
+    await h.drain();
     const completed = h.events.find((event) => event.name === 'save:completed');
     assert.ok(completed, 'batched encode path must complete');
     const keyCount = completed.payload.serializerTimings.length;
@@ -961,11 +975,11 @@ test('batched encode_part dispatch uses far fewer schedule turns than save keys 
 test('batched worker dispatch yields before repeated clone posts can cross the 12ms hard slice', async () => {
   // D48 retry-to-clean: a host preemption/GC pause inside one measured task may spike a single
   // sample. The raw 12ms bound is unchanged — an attempt passes only when every sample honours it.
-  await retryToClean(() => {
+  await retryToClean(async () => {
     const h = autosaveHarness({ productionCapture: true, cloneFloorMs: 6.2 });
     try {
       assert.equal(save.requestAutosave('bounded_clone_headroom', { force: true }), true);
-      h.drain(500);
+      await h.drain(500);
       const completed = h.events.find((event) => event.name === 'save:completed');
       assert.ok(completed, 'cost-aware encode and validation batches must still complete');
       const batchedDispatches = completed.payload.blockingSamples.filter(({ phase }) => (

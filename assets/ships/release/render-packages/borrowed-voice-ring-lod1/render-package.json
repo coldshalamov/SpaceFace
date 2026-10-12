@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "54ac751231047b7472f92efb91d3b537a3bc8d957792e93f7539577e33173810",
+  "contentHash": "4d17d20d6e703d2de8820709a8ca89c62d0506de5fb51454a7a41074c7e3fac7",
   "dynamicGroups": [
     {
       "id": "sf.render.borrowed-voice-ring-lod1.node.lod1-motion-borrowed-voice-fan-1-stone.dynamic",
@@ -177,7 +177,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8d161b048f5bad413df02a11c487f83b05a966489473268ab47a2586c74fa4bd",
+      "geometryHash": "abac8d52386954066b5fedf87947b6b744dd38c42c73e9828bcb0fa88e0600e4",
       "id": "sf.render.borrowed-voice-ring-lod1.node.collision-borrowed-voice-ring-segment-1.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -202,7 +202,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bce4982950ece7bfb16c6bf5d7f6295b9ebad3ea4ca7a890dfe72dc2a891151b",
+      "geometryHash": "911642eef03266bfea6c6147b4085cea23e020903dd30227d8bc3d0ba2c46e22",
       "id": "sf.render.borrowed-voice-ring-lod1.node.collision-borrowed-voice-ring-segment-2.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -227,7 +227,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d42acaafe95ffb6c5a9e5098c83d60e481f2179cc3709520b144ff427cfedff5",
+      "geometryHash": "3215b5ed0edf58a9ee20730887bf6e592c191666d435e0bc4e6dd3b42ad166b6",
       "id": "sf.render.borrowed-voice-ring-lod1.node.collision-borrowed-voice-ring-segment-3.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -252,7 +252,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0a57bc16966af5865fa853475747a2fcb45893531b694133a1ccaa0f0ba780ca",
+      "geometryHash": "747d19fb218ef85cbeaf3b9628eb60795f3730b606094a2bcaf1873d77d17c15",
       "id": "sf.render.borrowed-voice-ring-lod1.node.collision-borrowed-voice-ring-segment-4.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -277,7 +277,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee9be98ca481e35c50c2edf5c5877b76a69c8b01e0c613575fbc1f3d46e0a6f8",
+      "geometryHash": "cc03c3e1972fb6bd0c8ea81d92a20451cbf249a06c805e87bb009cd9d5e2b267",
       "id": "sf.render.borrowed-voice-ring-lod1.node.collision-borrowed-voice-ring-segment-5.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -302,7 +302,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ab12e86cc39d32ad7f12a6b35376b1a4d92ed399e71483e97cf03476ca51011e",
+      "geometryHash": "ca932ae699e3869e30753f5691aa102aaaedefca28f0aca3c1480a00f17a1f26",
       "id": "sf.render.borrowed-voice-ring-lod1.node.lod1-armor.primitive.0",
       "indexCount": 1620,
       "indexed": true,
@@ -327,7 +327,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30f4fc2d1c673fffbc6d33535a3c32c6aae06eaa4ecba1d3126ca10ce817afdf",
+      "geometryHash": "7f78286746b83675bdeeb371b81067700c4ba42b00a473472d72da405baf3d66",
       "id": "sf.render.borrowed-voice-ring-lod1.node.lod1-brushedmetal.primitive.0",
       "indexCount": 1500,
       "indexed": true,
@@ -352,7 +352,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4b53fefe449e3df5cf7090aefe053f6bd31f516f4e198e4027db9e1182005551",
+      "geometryHash": "a4964a6c8b3f3072e52caeda8865501df34efbfab138c445bcbe5ef7dd0583e5",
       "id": "sf.render.borrowed-voice-ring-lod1.node.lod1-hook-borrowed-signal-1-lights-cyan.primitive.0",
       "indexCount": 336,
       "indexed": true,
@@ -377,7 +377,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c04af52ba5e677d3ecbc28a1138ff789c9ff1cf4ce9cd128351541aa926fe8ff",
+      "geometryHash": "1bb7914d2cf57a6a0685da27a1cec6bbea35292d3f71d615a72e3b6e655ad18c",
       "id": "sf.render.borrowed-voice-ring-lod1.node.lod1-hook-borrowed-signal-2-lights-cyan.primitive.0",
       "indexCount": 336,
       "indexed": true,
@@ -402,7 +402,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a633a3a656719e4964a50148b529aad19ad2a10c984b9587a2f1cfe194f80dc4",
+      "geometryHash": "e35c329e2c2a698207c847a8bb6495506ef63474e202eff8569c23d5c6b0837d",
       "id": "sf.render.borrowed-voice-ring-lod1.node.lod1-hook-borrowed-signal-3-lights-cyan.primitive.0",
       "indexCount": 336,
       "indexed": true,
@@ -427,7 +427,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0a352c03312631032f7cf1270e281376dc3c3dafa81a55e300bb05c8087a6413",
+      "geometryHash": "e5f0eb57271e28d1413bf2b4fb52964700a7f38228c8fe6c38e07b9bb46617eb",
       "id": "sf.render.borrowed-voice-ring-lod1.node.lod1-hook-borrowed-signal-4-lights-cyan.primitive.0",
       "indexCount": 336,
       "indexed": true,
@@ -452,7 +452,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0be7e6b15fdee2e35c8461af94f4677ce392ecdec008bee47fd50fd508e492f6",
+      "geometryHash": "8ca19d714f822259dd3f35cba5fd9f938a8f8719c41a4e14d03c4d4f587c186a",
       "id": "sf.render.borrowed-voice-ring-lod1.node.lod1-hook-borrowed-signal-5-lights-cyan.primitive.0",
       "indexCount": 336,
       "indexed": true,
@@ -477,7 +477,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b78f506f7c078a6f4f266c32760f246dcce2dd20dc58d046204715dd145a2fac",
+      "geometryHash": "e0e05ddfe65617db395c64bb8758be77e69d5d87fd1ea0ca5f55a36f60e753d6",
       "id": "sf.render.borrowed-voice-ring-lod1.node.lod1-hull.primitive.0",
       "indexCount": 966,
       "indexed": true,
@@ -502,7 +502,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40bd1bbd715cccb6c319f063dc16e953a1ea18b1bfcee5cf4b3b8d4dd7ec3eec",
+      "geometryHash": "41484851d18d75822b0115cf3ef4b4b35ea874d8d1f860fbd9bf2a05e1fe060b",
       "id": "sf.render.borrowed-voice-ring-lod1.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 5646,
       "indexed": true,
@@ -527,16 +527,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8ea1e73676de519444f8d67343a8df9975bd89567830da5967c8290856999ccd",
+      "geometryHash": "3d0893b37185acc9fb009a35b18d0815801da1d2d22b2dda014be77eb970796e",
       "id": "sf.render.borrowed-voice-ring-lod1.node.lod1-motion-borrowed-voice-fan-1-stone.primitive.0",
-      "indexCount": 2760,
+      "indexCount": 2748,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_BORROWED_VOICE_FAN_1_Stone",
       "nodeId": "sf.render.borrowed-voice-ring-lod1.node.lod1-motion-borrowed-voice-fan-1-stone",
       "primitiveIndex": 0,
-      "vertexCount": 743
+      "vertexCount": 736
     },
     {
       "bounds": {
@@ -552,16 +552,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e3b77dcc9187e2ad1fd965754c283dcc6673ceecde31d31bf343a3a90fb730aa",
+      "geometryHash": "10330a892a1c54a7997686d16032006581bea266e445450b8b8a072e541b1b6c",
       "id": "sf.render.borrowed-voice-ring-lod1.node.lod1-motion-borrowed-voice-fan-2-stone.primitive.0",
-      "indexCount": 2622,
+      "indexCount": 2610,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_BORROWED_VOICE_FAN_2_Stone",
       "nodeId": "sf.render.borrowed-voice-ring-lod1.node.lod1-motion-borrowed-voice-fan-2-stone",
       "primitiveIndex": 0,
-      "vertexCount": 715
+      "vertexCount": 705
     },
     {
       "bounds": {
@@ -577,16 +577,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9b34515dd0b559880890d260ed4f42b445b52ba94e564f04ef0f25c775d8276b",
+      "geometryHash": "bc8a855990195198f79cff6c75cd366e78675a961c0a6393c1b438aab9609c64",
       "id": "sf.render.borrowed-voice-ring-lod1.node.lod1-motion-borrowed-voice-fan-3-stone.primitive.0",
-      "indexCount": 3468,
+      "indexCount": 3456,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_BORROWED_VOICE_FAN_3_Stone",
       "nodeId": "sf.render.borrowed-voice-ring-lod1.node.lod1-motion-borrowed-voice-fan-3-stone",
       "primitiveIndex": 0,
-      "vertexCount": 956
+      "vertexCount": 949
     },
     {
       "bounds": {
@@ -602,16 +602,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "676165033cc837c677282a8eec48362b289af48e1ff7df89c0553420f2eedea7",
+      "geometryHash": "ac934ab893ff0cc88a1523e945ff7928fdc4c4cdb04148df39c150793e072318",
       "id": "sf.render.borrowed-voice-ring-lod1.node.lod1-motion-borrowed-voice-fan-4-stone.primitive.0",
-      "indexCount": 2622,
+      "indexCount": 2610,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_BORROWED_VOICE_FAN_4_Stone",
       "nodeId": "sf.render.borrowed-voice-ring-lod1.node.lod1-motion-borrowed-voice-fan-4-stone",
       "primitiveIndex": 0,
-      "vertexCount": 713
+      "vertexCount": 706
     },
     {
       "bounds": {
@@ -627,16 +627,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "686dccf9665d507c01bf09a415447b944625d3b9540d60f5d926604506132273",
+      "geometryHash": "904857feac2fd9390fc9c2dcc02ed101cefc9504aa1ee73fbe9bb8c13a30bb08",
       "id": "sf.render.borrowed-voice-ring-lod1.node.lod1-motion-borrowed-voice-fan-5-stone.primitive.0",
-      "indexCount": 2622,
+      "indexCount": 2598,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_BORROWED_VOICE_FAN_5_Stone",
       "nodeId": "sf.render.borrowed-voice-ring-lod1.node.lod1-motion-borrowed-voice-fan-5-stone",
       "primitiveIndex": 0,
-      "vertexCount": 720
+      "vertexCount": 705
     },
     {
       "bounds": {
@@ -652,16 +652,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1b83bb2980e403ce60e06297b8a2b9c5d9b08f915dcbe7f26e84adaf2070a1a1",
+      "geometryHash": "609b1f23099afcdf84ab9ee418f758f3edc4eb1b38f7f242c701c4dc5e0657a1",
       "id": "sf.render.borrowed-voice-ring-lod1.node.lod1-motion-borrowed-voice-fan-6-stone.primitive.0",
-      "indexCount": 3282,
+      "indexCount": 3270,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_BORROWED_VOICE_FAN_6_Stone",
       "nodeId": "sf.render.borrowed-voice-ring-lod1.node.lod1-motion-borrowed-voice-fan-6-stone",
       "primitiveIndex": 0,
-      "vertexCount": 898
+      "vertexCount": 888
     }
   ],
   "hlods": [],
@@ -2244,19 +2244,19 @@
       "sha256": "eb56a6aaf13b9512f14d82fde32ec3ad614aa5a69268f0a7981e8ac5fdb46658"
     },
     "sourceGlb": {
-      "bytes": 503700,
-      "sha256": "be956f517f7f54347f88665cf7d22c194d03c0f7d4c64bfa6d1aec98dc739e57",
+      "bytes": 502876,
+      "sha256": "d81a34cac6e985becd1ec062fd8a3abad88f2873d031b4f7371bbf0ffc9efe1f",
       "uri": "borrowed_voice_ring_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 631264,
-    "sha256": "8226f8cc3ce763ad350e7db7c29e7fb84d7c0b0025139cbf2ff8eb7c3432690f",
+    "bytes": 630244,
+    "sha256": "b05343c7151ed2dc2c3109ddc4647ba4796c33cc945ac1a93873cd140cf436f9",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3348,7 +3348,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/borrowed_voice_ring_lod1.glb"
   },
-  "runtimeHash": "5b13b7c558a07e64996183e9b518e8769f692f800ec6630d5fbc5b396a49b807",
+  "runtimeHash": "b411847b95339d101c25984d8d620da25a42a8e6c8c5f443fe401627157cd5ba",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

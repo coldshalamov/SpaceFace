@@ -9,35 +9,40 @@
 // through d.grant / d.rep. No Math.random, no wall clock.
 
 const HOP_CAP = 12;
-const MOTIONS = new Set(['hold', 'orbit', 'creep', 'ring', 'weave', 'depart', 'face']);
+const MOTIONS = new Set(['hold', 'orbit', 'creep', 'ring', 'weave', 'depart', 'face', 'chase', 'tow', 'column', 'vulture']);
 
-function clamp1(v) { return v < -1 ? -1 : v > 1 ? 1 : v; }
-
-function steerToward(e, tx, tz, slow) {
+// Vignettes own destinations, not a second helm. Passive/hold-fire actors opt into the
+// same tactical navigation that clears solid scenery and freight for other pilots.
+function steerToward(e, tx, tz, slow, motion = 'hold', velocity = null) {
   if (!e || !e.pos) return;
   const dx = tx - e.pos.x;
   const dz = tz - e.pos.z;
-  const d2 = dx * dx + dz * dz;
+  const distance = Math.hypot(dx, dz);
+  const stop = slow || 80;
+  const remaining = velocity && motion !== 'depart' ? distance : Math.max(0, distance - stop);
   const data = e.data || (e.data = {});
+  const ai = data.ai || (data.ai = {});
+  ai.passive = true;
+  ai.allowPassiveManeuver = true;
+  ai.roe = 'hold_fire';
+  ai.activity = {
+    ...ai.activity,
+    kind: motion === 'hold' || motion === 'face' ? 'loiter' : 'transit',
+    reason: `vignette_motion:${motion}`,
+    anchor: {
+      x: e.pos.x + (distance > 0 ? dx / distance * remaining : 0),
+      z: e.pos.z + (distance > 0 ? dz / distance * remaining : 0),
+    },
+    anchorVelocity: velocity,
+    targetId: null,
+    preferredRange: 0,
+  };
+  // Retain the authored endpoint for observers, but never overwrite the maneuver's
+  // thruster request. Firing remains forbidden by passive + ROE at the final adapter.
   const intent = data.intent || (data.intent = {});
   intent.tx = tx;
   intent.tz = tz;
   intent.fire = false;
-  const stop = slow || 80;
-  if (d2 <= stop * stop) {
-    intent.moveZ = 0;
-    intent.moveX = 0;
-    intent.aimAngle = e.rot || 0;
-    return;
-  }
-  const len = Math.sqrt(d2) || 1;
-  const ux = dx / len;
-  const uz = dz / len;
-  const cf = Math.cos(e.rot || 0);
-  const sf = Math.sin(e.rot || 0);
-  intent.moveZ = clamp1(cf * ux + sf * uz);
-  intent.moveX = clamp1(-sf * ux + cf * uz);
-  intent.aimAngle = Math.atan2(dz, dx);
 }
 
 function phaseOf(byId, id) {
@@ -52,11 +57,47 @@ function rememberSeen(state, id, outcome) {
   dir.stats.livedSeen[id] = outcome || 'seen';
 }
 
-function applyMotion(d, live, motion, now) {
+export function applyMotion(d, live, motion, now) {
   const ships = d.entsOf(live);
   if (!ships.length || !motion) return;
   const origin = live.vars.motionOrigin || live.anchor || ships[0].pos;
-  const t = now - (live.vars.motionT0 || now);
+  const t = now - (live.vars.motionT0 ?? now);
+  const sceneAxis = live.data && live.data.sceneAxis;
+  const ux = sceneAxis && Number.isFinite(sceneAxis.ux) ? sceneAxis.ux : 1;
+  const uz = sceneAxis && Number.isFinite(sceneAxis.uz) ? sceneAxis.uz : 0;
+  if (motion === 'chase') {
+    const runner = ships[0];
+    if (!runner || !runner.pos) return;
+    steerToward(runner, origin.x + ux * 700, origin.z + uz * 700, 40, motion);
+    const hx = Math.cos(runner.rot || 0);
+    const hz = Math.sin(runner.rot || 0);
+    for (let i = 1; i < ships.length; i++) {
+      steerToward(ships[i], runner.pos.x - hx * 60 * i, runner.pos.z - hz * 60 * i, 30,
+        motion, { x: runner.vel?.x || 0, z: runner.vel?.z || 0 });
+    }
+    return;
+  }
+  if (motion === 'tow') {
+    const tug = ships[0];
+    if (!tug || !tug.pos) return;
+    const cruise = (Number(tug.maxSpeed) || 120) * 0.22;
+    steerToward(tug, origin.x + ux * 500, origin.z + uz * 500, 40, motion,
+      { x: ux * cruise, z: uz * cruise });
+    const hx = Math.cos(tug.rot || 0);
+    const hz = Math.sin(tug.rot || 0);
+    for (let i = 1; i < ships.length; i++) {
+      steerToward(ships[i], tug.pos.x - hx * 55 * i, tug.pos.z - hz * 55 * i, 20,
+        motion, { x: tug.vel?.x || 0, z: tug.vel?.z || 0 });
+    }
+    return;
+  }
+  if (motion === 'column') {
+    for (let i = 0; i < ships.length; i++) {
+      const distance = 700 - 90 * i;
+      steerToward(ships[i], origin.x + ux * distance, origin.z + uz * distance, 40, motion);
+    }
+    return;
+  }
   if (motion === 'hold' || motion === 'face') {
     if (motion === 'face' && ships.length >= 2) {
       steerToward(ships[0], ships[1].pos.x, ships[1].pos.z, 110);
@@ -73,25 +114,40 @@ function applyMotion(d, live, motion, now) {
   if (motion === 'depart') {
     // The hailer is ships[0]. They leave. The rest hold the berth.
     for (let i = 1; i < ships.length; i++) steerToward(ships[i], origin.x, origin.z, 40);
-    steerToward(ships[0], origin.x + 900, origin.z + 220, 60);
+    const ship = ships[0], tx = origin.x + 900, tz = origin.z + 220;
+    const dx = tx - ship.pos.x, dz = tz - ship.pos.z, distance = Math.hypot(dx, dz);
+    const speed = Number(ship.propulsion?.maxSpeed || ship.data?.derived?.propulsion?.maxSpeed || ship.maxSpeed) || 0;
+    const velocity = distance > 60
+      ? { x: dx / distance * speed, z: dz / distance * speed } : { x: 0, z: 0 };
+    steerToward(ship, tx, tz, 60, motion, velocity);
     return;
   }
-  const speed = motion === 'orbit' ? 0.55 : motion === 'weave' ? 0.8 : motion === 'creep' ? 0.22 : 0.35;
-  const radius = motion === 'ring' ? 220 : motion === 'creep' ? 40 : 160;
+  const speed = motion === 'vulture' ? 0.7 : motion === 'orbit' ? 0.55 : motion === 'weave' ? 0.8 : motion === 'creep' ? 0.22 : 0.35;
+  const radius = motion === 'vulture' ? 95 : motion === 'ring' ? 220 : motion === 'creep' ? 40 : 160;
   for (let i = 0; i < ships.length; i++) {
     const ang = t * speed + (i / ships.length) * Math.PI * 2;
     const ox = motion === 'creep' ? origin.x + t * 28 : origin.x;
     const oz = motion === 'creep' ? origin.z + Math.sin(t * 0.4) * 30 : origin.z;
     const tx = ox + Math.cos(ang) * radius;
     const tz = oz + Math.sin(ang) * (motion === 'weave' ? radius * 0.45 : radius);
-    steerToward(ships[i], tx, tz, motion === 'creep' ? 50 : 36);
+    // The authored point is moving. Its derivative lets the shared tracker match
+    // that motion instead of braking toward zero velocity inside the ring.
+    const velocity = {
+      x: (motion === 'creep' ? 28 : 0) - Math.sin(ang) * radius * speed,
+      z: (motion === 'creep' ? Math.cos(t * 0.4) * 12 : 0)
+        + Math.cos(ang) * (motion === 'weave' ? radius * 0.45 : radius) * speed,
+    };
+    steerToward(ships[i], tx, tz, motion === 'creep' ? 50 : 36, motion, velocity);
   }
 }
 
 function runVerb(d, live, state, spec, phase) {
   const verb = phase.verb;
   if (verb === 'say') {
-    const text = phase.line || '';
+    const overlay = live.data && live.data.livedOverlay;
+    const text = phase.id === 'work_line' && overlay && overlay.line
+      ? overlay.line
+      : phase.line || '';
     if (text) {
       d.say(live, phase.channel || 'info', text, null, {
         literal: true,
@@ -102,10 +158,11 @@ function runVerb(d, live, state, spec, phase) {
   }
   if (verb === 'spawn') {
     const anchor = live.anchor || { x: 0, z: 0 };
+    const overlay = live.data && live.data.livedOverlay;
     live.ids = live.ids || [];
     live.roles = live.roles || {};
     live.plan = live.plan || {};
-    live.plan.ships = (spec.cast || []).map((member) => ({
+    live.plan.ships = (spec.cast || []).map((member, index) => ({
       archetype: member.archetype,
       level: member.level || 2,
       pos: { x: anchor.x + (member.dx || 0), z: anchor.z + (member.dz || 0) },
@@ -114,7 +171,9 @@ function runVerb(d, live, state, spec, phase) {
       role: member.role,
       passive: true,
       team: 2,
-      scanLabel: member.scanLabel || spec.title,
+      scanLabel: overlay && overlay.crew
+        ? `${overlay.crew} ${index + 1}`
+        : member.scanLabel || spec.title,
     }));
     const ids = d.spawnShips(live, live.plan.ships) || [];
     if (ids.length < (spec.cast || []).length) {

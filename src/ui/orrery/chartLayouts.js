@@ -15,6 +15,7 @@
 // and pins nothing. Selectors carry one class more than the Deckplate CHART block
 // (src/ui/deckplate/screens.js) so this sheet wins without touching it.
 import { injectOrrery } from './tokens.js';
+import { injectOrreryMobileScreens } from './mobileScreenLayouts.js';
 import { injectLampKey } from './lampKey.js';
 
 const STYLE_ID = 'sf-orrery-chart';
@@ -377,6 +378,7 @@ ${C} .gm-apron { width:min(100%, var(--sf-stage-max)); margin-inline:auto; }
 `;
 
 export function injectChartLayouts(doc = globalThis.document) {
+  injectOrreryMobileScreens(doc);
   if (!doc?.head || typeof doc.createElement !== 'function' || typeof doc.getElementById !== 'function') return;
   injectOrrery(doc);
   injectLampKey(doc);

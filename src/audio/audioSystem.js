@@ -35,6 +35,7 @@ import {
 import { bindFieldAudio, isFieldLoopKey } from './fieldAudio.js';
 import { resolveMasslineInstrument, resolveTetherTone } from './masslineInstrument.js';
 import { tetherBreakCueForReason } from '../systems/presentationOrchestrator.js';
+import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
 import { entityIndexLaneVersion, indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import { ceresActivityActorWorldRecordId } from '../systems/traffic.js';
 
@@ -7311,7 +7312,10 @@ export const audio = {
     const tick = () => {
       rt._rafId = 0;
       if (rt._lifecycleSuspended || !rt.ctx || rt.ctx.state !== 'running') return;
-      this._frame();
+      // The ~25-call body rides a bounded background post instead of running
+      // inside the rAF task — the last unbudgeted per-frame work in the
+      // presented frame. _frame() re-guards suspended/context state itself.
+      postTaskAtBackgroundPriorityBounded(() => { this._frame(); });
       if (!rt._lifecycleSuspended && rt.ctx && rt.ctx.state === 'running') {
         rt._rafId = requestAnimationFrame(tick);
       }

@@ -413,13 +413,19 @@ export function createIndustryScreen(ctx) {
     if (key) { key.classList.remove('is-holding'); const ring = key.querySelector('.dp-holdring'); if (ring && ring.style) ring.style.setProperty('--sf-hold-p', '0'); }
     const sid = ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
     const crafting = ctx.crafting || (ctx.registry && ctx.registry.get && ctx.registry.get('crafting'));
-    const ok = attemptIndustryBuild({ crafting, bpId: hold.bpId, stationId: sid });
-    if (ctx.bus) ctx.bus.emit('audio:cue', { id: ok ? 'ui_accept' : 'ui_back' });
-    // a refused build never plays the landing: the chain falls back and the screen says why
-    if (!ok) { hold = null; if (chain) chain.reset(); renderAll(ctx.state || {}); return; }
-    // the run lands in the product, then the screen shows the hold as it now stands
-    const land = () => setTimeout(() => { hold = null; renderAll(ctx.state || {}); }, reducedMotion() ? 240 : 700);
-    if (chain) chain.complete({ onDone: land }); else land();
+    const fired = hold;
+    // attemptIndustryBuild may return a Promise on the worker lane — the cue,
+    // refusal fallback, and landing all await its resolve. A newer hold armed
+    // in the gap is left alone.
+    Promise.resolve(attemptIndustryBuild({ crafting, bpId: fired.bpId, stationId: sid })).then((ok) => {
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: ok ? 'ui_accept' : 'ui_back' });
+      const firedChain = chain;
+      // a refused build never plays the landing: the chain falls back and the screen says why
+      if (!ok) { if (hold === fired) hold = null; if (firedChain) firedChain.reset(); renderAll(ctx.state || {}); return; }
+      // the run lands in the product, then the screen shows the hold as it now stands
+      const land = () => setTimeout(() => { if (hold === fired) hold = null; renderAll(ctx.state || {}); }, reducedMotion() ? 240 : 700);
+      if (firedChain) firedChain.complete({ onDone: land }); else land();
+    });
   }
   // pointer: down arms, up / cancel / leave lets go; the click that follows a pointer hold is the hold's, never a build
   let pointerAt = -1;
@@ -545,5 +551,10 @@ export function createIndustryScreen(ctx) {
 
 export function attemptIndustryBuild({ crafting, bpId, stationId }) {
   if (!crafting || typeof crafting.build !== 'function') return false;
-  try { return crafting.build(bpId, stationId) === true; } catch (_) { return false; }
+  try {
+    const out = crafting.build(bpId, stationId);
+    // worker lane: the build commits sim-side and the rpc resolves the verdict
+    if (out && typeof out.then === 'function') return out.then((done) => done === true);
+    return out === true;
+  } catch (_) { return false; }
 }

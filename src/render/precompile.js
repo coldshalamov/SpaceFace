@@ -20,6 +20,8 @@ import { build47aScenarioProp } from './scenarioProps47a.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { createWormholePipelineMesh } from './spaceBackground.js';
 import { createVfxPrecompileSalvo, visiblePointLightBudget } from './vfx.js';
+import { GAS_VOLUME_PAYLOAD_READY } from './combat/gas/gasVolumeData.js';
+import { DENSITY_VOLUME_PAYLOAD_READY } from './combat/densityVolumeData.js';
 import { createBombPresentationPrecompileMesh } from './bombPresentation.js';
 import { createActionPrimitivePrecompileMesh } from './vfx/actionPrimitives.js';
 export { visiblePointLightBudget };
@@ -376,6 +378,10 @@ async function precompileNow(
       // Only the common-rock probe needs decoded rock maps. Awaiting them here overlaps the texture
       // load with every ship/global compile above instead of idling the driver before any work.
       await waitForRockSurfaceLibraryReady();
+      // Wave-143: the salvo synchronously decodes the transient-density + gas volume films.
+      // Both payloads arrive via dynamic import kicked at module eval — settle them here so
+      // the synchronous decoder contract holds (the same promise gates _initPools at boot).
+      await Promise.all([GAS_VOLUME_PAYLOAD_READY, DENSITY_VOLUME_PAYLOAD_READY]);
       const commonRockWarmup = addCommonRockPipelineWarmup(canopyPipelineWarmup, vf);
       const vfxWarmup = createVfxPrecompileSalvo();
       globalWarmup.add(vfxWarmup);

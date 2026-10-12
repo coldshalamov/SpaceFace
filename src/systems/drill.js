@@ -1714,6 +1714,21 @@ export const drill = {
   },
 };
 
+// Lane-facade read view: binds the system's read methods to a foreign `state`
+// (the worker lane's mirror). The prototype IS the system object, so every
+// `this.` read helper (getDrillTier, getDrillDPS, getTargetTelemetry,
+// isHazardRevealed, isTileSurveyed) resolves against the real implementation
+// while `this.state` reads the mirror. READ-ONLY surface — the write path
+// (tickInput, begin, pulseScan, end) belongs to lane domEvent descriptors;
+// callers must pick read names off the view, never expose it whole.
+export function drillReadView(state) {
+  const view = Object.create(drill);
+  view.state = state;
+  view.bus = null;
+  view.ctx = { state, bus: null };
+  return view;
+}
+
 export const DRILL_CONST = {
   COLS,
   ROWS,

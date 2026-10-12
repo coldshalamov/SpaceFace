@@ -2,7 +2,7 @@
 import { el, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { confirm } from '../confirm.js';
-import { RACE_LEVELS, courseForLevel, practiceContractForLevel, racingOfferFor, racingSeedFor, storyContracts } from '../../data/raceLevels.js';
+import { RACE_LEVELS, courseForLevel, practiceContractForLevel, raceContractById, raceLevelById, racingOfferFor, racingSeedFor, storyContracts } from '../../data/raceLevels.js';
 import { readRaceRecords, raceRecordKey, normalizeSteeringView, STEERING_VIEWS, activeRaceMission } from '../../systems/racingSteer.js';
 import { armRacingContract, stageRacingLaunch } from '../racingLaunch.js';
 import { setSteeringView, lastRacingResult } from '../racingControls.js';
@@ -111,6 +111,11 @@ export const raceBoardScreen={
     }
     const current=activeRaceMission(ctx?.state);
     if(current)rootEl.appendChild(el('p','k-sentence','A race is active. Finish it or use Leave run in the flight instrument before joining another.'));
+    const launch=async(contractId,level)=>{
+      if(this._launching)return;
+      this._launching=true;rootEl.querySelectorAll('.race-board-launch,.race-board-retry').forEach(b=>b.disabled=true);cue('confirm');
+      try{await runContract(ctx,contractId,level,{...fit});}finally{this._launching=false;this.refresh(ctx);}
+    };
     const result=lastRacingResult();
     if(result){
       const receipt=el('section','race-board-result dp-glass');receipt.setAttribute('aria-label','Last circuit result');
@@ -123,6 +128,13 @@ export const raceBoardScreen={
       for(const pilot of result.raceStandings||[])receipt.appendChild(el('p','k-sentence',
         `${pilot.position}. ${pilot.name} · ${pilot.status==='finished'?formatRaceTime(pilot.elapsedS):pilot.status==='dnf'?'Did not finish':'Still on course when you finished'}`));
       if(result.status==='dnf')receipt.appendChild(el('p','k-sentence','The run ended without a finish. Select the course to retry; your clean best is safe.'));
+      const contract=raceContractById(result.racingContractId),level=contract&&raceLevelById(contract.levelId);
+      if(level){
+        const retry=el('button','k-word race-board-retry','Retry in this flight');retry.type='button';
+        retry.disabled=!!current||!!this._launching||!inFlight(ctx)||!!ctx.state.ui?.docked||ctx.state.world?.currentSectorId!==level.sectorId;
+        retry.title=`Undock in ${level.name}'s sector to retry with your current ship. No new game or save reset.`;
+        retry.addEventListener('click',()=>launch(contract.id,level));receipt.appendChild(retry);
+      }
       rootEl.appendChild(receipt);
     }
     const records=readRaceRecords(storageOf()),ghosts=listRacingGhosts(storageOf()),stories=storyContracts(),grid=el('div','race-board-grid');

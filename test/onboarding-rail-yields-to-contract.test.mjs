@@ -4,6 +4,7 @@ import test from 'node:test';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
+import { racingOfferFor, startLineFor } from '../src/data/raceLevels.js';
 import {
   FIRST_TRADE_CONTRACT_SOURCE,
   buildFirstTradeOffer,
@@ -99,7 +100,46 @@ test('accepting a non-rail contract finishes the rail through _finish()', () => 
     'the stale onboarding objective marker is cleared');
 });
 
-test('accepting the rail recommended contract keeps the rail going', () => {
+test('accepting a racing circuit before the first beat releases approach and handoff navigation', () => {
+  const h = makeHarness(-1);
+  h.state.settings.gameplay.tutorialHints = true;
+  h.state.mode = 'flight';
+  h.state.ui.docked = false;
+  const offer = racingOfferFor('contract_junction_jam');
+  h.state.world.currentSectorId = offer.params.courseSectorId;
+  const tutorialHints = h.state.settings.gameplay.tutorialHints;
+  const published = [];
+  h.bus.on('nav:waypoint', (waypoint) => published.push(waypoint));
+
+  const result = h.missions.postAndAcceptAuthoredOffer(offer);
+
+  assert.equal(result.ok, true);
+  const mission = h.state.missions.active.find((row) => row && row.id === result.missionId);
+  assert.ok(mission);
+  assert.equal(h.state.onboarding.finished, true);
+  assert.equal(h.state.onboarding.active, false);
+  assert.equal(h.tutorialFinished.length, 1);
+  assert.equal(h.state.settings.gameplay.tutorialHints, tutorialHints);
+  const approach = h.state.nav.waypoint;
+  const start = startLineFor(mission.params);
+  assert.equal(approach.kind, 'mission');
+  assert.equal(approach.missionId, mission.id);
+  assert.equal(approach.stationId, null);
+  assert.deepEqual(approach.pos, { x: start.x, z: start.z });
+  assert.ok(published.some((waypoint) => waypoint && waypoint.missionId === mission.id
+    && waypoint.stationId === null && waypoint.pos?.x === start.x && waypoint.pos?.z === start.z));
+
+  mission.params.phase = 'handoff';
+  h.missions._refreshTrackedMissionNav(mission);
+  const handoff = h.state.nav.waypoint;
+  assert.equal(handoff.kind, 'mission');
+  assert.equal(handoff.missionId, mission.id);
+  assert.equal(handoff.stationId, mission.destStationId);
+  assert.ok(published.some((waypoint) => waypoint && waypoint.missionId === mission.id
+    && waypoint.stationId === mission.destStationId));
+});
+
+test('accepting the rail recommended contract hands off to the real delivery job', () => {
   const h = makeHarness(DOCK_BEAT);
   const offer = buildFirstTradeOffer(4242);
   const board = h.missions.ensureBoard(HELIOS);
@@ -107,9 +147,9 @@ test('accepting the rail recommended contract keeps the rail going', () => {
 
   assert.equal(h.missions.acceptMission(offer.id), true);
   const ob = h.state.onboarding;
-  assert.equal(ob.finished, false, 'the authored first-trade contract is the rail\'s own job');
-  assert.equal(ob.active, true);
-  assert.equal(h.tutorialFinished.length, 0);
+  assert.equal(ob.finished, true, 'the current rail finishes when the delivery is accepted');
+  assert.equal(ob.active, false);
+  assert.equal(h.tutorialFinished.length, 1);
 
   const accepted = h.state.missions.active.find((m) => m && m.source === FIRST_TRADE_CONTRACT_SOURCE);
   assert.ok(accepted);

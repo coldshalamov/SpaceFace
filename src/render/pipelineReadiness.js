@@ -2,6 +2,7 @@ import { shouldStartHeavyAdmission } from './admissionSliceBudget.js';
 import { forcedFrameSpend, FORCED_FRAME_BUDGET_MS, noteForcedFrameSpend } from './decodeTaskBudget.js';
 import { reportBootWork } from '../core/bootWork.js';
 import { armCallbackAfterPresent } from './compilePresentSlice.js';
+import { dedupWarn } from '../core/warnDedup.js';
 import { cookLiveSceneGpu } from './liveSceneCook.js';
 import { settleOpeningCompositionTail } from './precompile.js';
 import { yieldToBrowser } from './startupGpuResidency.js';
@@ -53,6 +54,64 @@ async function settleWithin(promise, timeoutMs) {
     // The loser of the race must not keep a multi-minute timer alive after the gate moved on.
     limit.cancel();
   }
+}
+
+/**
+ * Phone launch admits the exact playable picture once. Offscreen streaming and dormant effects
+ * keep their ordinary admission owners instead of becoming a second, whole-sector startup gate.
+ */
+export async function prepareMobileOpeningFirstPicture(render, options = {}) {
+  if (!render) throw new Error('mobile opening renderer is unavailable');
+  const timeoutMs = Math.max(1, Number(options.timeoutMs) || 20000);
+  const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser;
+  let active = true;
+  const assertActive = () => {
+    if (!active || (typeof options.isActive === 'function' && !options.isActive())) {
+      throw new Error('mobile opening admission superseded');
+    }
+  };
+  const work = (async () => {
+    assertActive();
+    if (await render.prepareOpeningFirstPicture(timeoutMs) === false) {
+      throw new Error('mobile opening first-picture preparation failed');
+    }
+    assertActive();
+    let plan;
+    if (typeof render.captureOpeningSubmissionPlanSteps === 'function') {
+      const steps = render.captureOpeningSubmissionPlanSteps();
+      try {
+        for (;;) {
+          assertActive();
+          const step = steps.next();
+          if (step.done) { plan = step.value; break; }
+          await yieldToMain();
+        }
+      } finally {
+        if (typeof steps.return === 'function') steps.return();
+      }
+    } else plan = render.captureOpeningSubmissionPlan();
+    assertActive();
+    if (!plan || plan.complete !== true || plan.firstPlayablePipelineSet?.complete !== true) {
+      throw new Error('mobile opening submission plan is incomplete');
+    }
+    const submission = await render.drainOpeningSubmissionPlan(plan);
+    assertActive();
+    if (submission === false || submission?.ok === false) {
+      throw new Error('mobile opening submission admission failed');
+    }
+    const resources = await render.prepareOpeningGpuResources();
+    assertActive();
+    if (!resources || resources.skipped === true || resources.ok === false) {
+      throw new Error('mobile opening GPU resources were not admitted');
+    }
+    return { plan, submission, resources };
+  })();
+  const settled = await settleWithin(work, timeoutMs);
+  active = false;
+  if (!settled.ok) {
+    throw settled.error || new Error('mobile opening first-picture admission timed out');
+  }
+  return settled.value;
 }
 
 function ledgerNow() {
@@ -200,7 +259,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     : null;
   const onRejected = typeof options.onRejected === 'function'
     ? options.onRejected
-    : (error) => console.warn('[render] pipeline admission failed', error);
+    : (error) => dedupWarn('pipeline.admission-rejected', '[render] pipeline admission failed', error);
   const now = typeof options.now === 'function'
     ? options.now
     : () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -250,8 +309,17 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       return;
     }
     if (quietTimer != null) clearTimeout(quietTimer);
-    quietTimer = setTimeout(() => { observePipelineAdmission(flushQueued()); }, quietMs);
-    if (maxTimer == null) maxTimer = setTimeout(() => { observePipelineAdmission(flushQueued()); }, maxWaitMs);
+    // The debounce timers keep their contract, but the flush itself dispatches
+    // post-present at background priority — the whole queued compile cohort used
+    // to fold into compileBatch inside a timer task, racing the compositor beat.
+    quietTimer = setTimeout(() => {
+      quietTimer = null;
+      armCallbackAfterPresent(() => { observePipelineAdmission(flushQueued()); }, { idleBoundMs: 48 });
+    }, quietMs);
+    if (maxTimer == null) maxTimer = setTimeout(() => {
+      maxTimer = null;
+      armCallbackAfterPresent(() => { observePipelineAdmission(flushQueued()); }, { idleBoundMs: 48 });
+    }, maxWaitMs);
   }
 
   /** Time only the synchronous compileBatch call (until it returns a value/promise). */

@@ -43,6 +43,7 @@
 // Every position this module chooses is derived from the live sector's own entity ordering.
 
 import { createAuthoritativeRuntime } from '../../../../src/runtime/createAuthoritativeRuntime.js';
+import { core as dbgCore } from '../../../../src/core/coreSystem.js';
 import { makeShipEntitySpec } from '../../../../src/systems/ships.js';
 import {
   applyFeatureConfigToMaps,
@@ -569,6 +570,9 @@ async function observeSector(seed, sectorId) {
   const visible = {
     jobKinds: tally(), roles: tally(), structures: tally(), affordances: tally(), aftermath: tally(),
   };
+  if (process.env.SF_DEBUG_SECTOR) {
+    dbgCore._dbgArms = { signal: 0, probe: 0, backstop: 0, removed: 0, kills: {} };
+  }
   let samples = 0;
   let censusActors = 0;
   let bodiedActors = 0;
@@ -644,6 +648,36 @@ async function observeSector(seed, sectorId) {
   counting = false;
   for (const [name, handler] of unsubs) {
     if (typeof bus.off === 'function') bus.off(name, handler);
+  }
+
+  if (process.env.SF_DEBUG_SECTOR) {
+    const corpses = [];
+    for (const e of state.entityList || []) {
+      if (!e || e.alive !== false || e.id === state.playerId) continue;
+      corpses.push({
+        id: e.id, type: e.type, cls: e.data && e.data.hullClass,
+        role: e.data && e.data.trafficRole, jobId: e.data && e.data.jobId,
+        pos: e.pos && { x: Math.round(e.pos.x), z: Math.round(e.pos.z) },
+        inRing: e.pos ? dist(e.pos, anchorPos) <= POCKET_RADIUS_WU : false,
+      });
+    }
+    const jobs = [];
+    const byId = state.npcJobs && state.npcJobs.byId;
+    for (const [jobId, entry] of Object.entries(byId || {})) {
+      const e = entry.entityId != null ? state.entities.get(entry.entityId) : null;
+      jobs.push({
+        jobId, kind: entry.kind, phase: entry.job && entry.job.phase,
+        entityId: entry.entityId,
+        entAlive: e ? e.alive !== false : null,
+        entPos: e && e.pos ? { x: Math.round(e.pos.x), z: Math.round(e.pos.z) } : null,
+        entInRing: e && e.pos ? dist(e.pos, anchorPos) <= POCKET_RADIUS_WU : false,
+      });
+    }
+    console.log(`[sector-debug] ${sectorId} corpses=${corpses.length} jobs=${jobs.length}`);
+    console.log('[sector-debug] corpses:', JSON.stringify(corpses.slice(0, 40)));
+    console.log('[sector-debug] jobs:', JSON.stringify(jobs.slice(0, 60)));
+    console.log('[sector-debug] arms:', JSON.stringify(dbgCore._dbgArms || null));
+    dbgCore._dbgArms = null;
   }
 
   const perSample = (map) => {

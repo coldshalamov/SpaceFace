@@ -1,6 +1,191 @@
 <!-- LIFETIME: DURABLE -->
 # Expansion execution: current result and next step
 
+## Current implementation — 10 October 2026, 11:00 UTC
+
+Verified public draft PR #262 head: `9c959be34de1abc566763a1492b20251c2d36ac8`.
+The schema/save15 and dock-observer increment is published. Its simulation CI
+exposed expected-hash drift. Exact before/after standard, V3 and reload60 snapshots
+show only `meta.version: 14 → 15`; metrics and traces match. Replacing only that
+field reconstructs every old digest. Evidence is in
+[evidence/schema-v15-hash-reconciliation-2026-10-10.json](evidence/schema-v15-hash-reconciliation-2026-10-10.json).
+Only four digest fields in the two expected files are updated; no gameplay metric,
+assertion or tolerance changes. Eight affected/companion replay commands pass.
+Phase0 passed the corrected hash stage and is being rerun after materializing its
+missing public Kestrel assets. This is not a claim of fully green CI.
+
+A separate reproduced Contracts defect is repaired: repainting the unchanged,
+still-eligible offer no longer cancels an active acceptance hold. Selection,
+removal, changed terms/eligibility, hide/disposal and key/pointer release still
+cancel. Document release handlers cover a replaced button and are removed on
+disposal. The existing P04 fixture now exercises real dossier composition; its
+pre-fix red is retained. Thirteen focused author checks pass; integration reran the
+P04/diagnostic selection, ten passing test cases. The handoff probe now follows the
+accepted instance's `sourceOfferId` and tracked instance ID. Its final deadline and
+assertions remain. This reproduces a defect, not the cause of every historical CI
+failure. These owned changes and the digest correction are next for publication.
+
+The same Orchard unit remains active: native construction review found tapered
+prism and claimed-body cleanup defects, with failed source preserved. Authored v4
+receiver proxies correct the actual native hull mismatch without relaxing geometry
+checks or changing visible meshes. Native owner and reviewer are verifying the
+successor. Geometry/render owner is binding actual current native jaw poses;
+packaging owner is rebuilding normal releases/packages/census from corrected
+source. Earlier source previews remain source-only evidence. Release motor,
+finite refill and ordinary earning route remain unfinished. No final acceptance,
+merge or deployment is implied.
+
+## Historical implementation — 10 October 2026, 10:41 UTC
+
+Draft PR #262, branch `dot/expansion-recovery-2026-10-10`, remains based on
+master `38368f739952f7a8ad062600b5169d113e61e0e2` (checked 10:41 UTC).
+The arrival and generation-safe restore increment is published and its entire
+remote tree verified at `66c77b73851602456d0531077788213c9715651b`.
+
+The next coherent increment adds the finite Orchard save ledger and version14→15
+migration. Forty-eight units are conserved across source and at most twelve lots;
+three sockets retain independent physical-work history. Invalid contradictions,
+future history beyond the canonical saved tick, duplicate lots and corrupt stock
+refuse before restore callbacks or live-state mutation. Older absent/null sections
+remain uncreated. This is save support; native release/refill activation is still
+under implementation.
+
+Independent review approved the exact seven schema paths: 42/42 new author/reviewer
+cases, 24/24 existing save/migration cases, and generated schema check pass. The six
+future-history failures and their pre-fix sources are preserved. Integration ran
+72/72 schema, prior Anvil/restore/field regressions and diagnostic cases with the
+unfinished native/render changes excluded by a read-only source loader.
+
+The same increment includes an eight-case-tested dock-timeout observer. It records
+state, screen/DOM visibility and page issues while preserving the original failure,
+15-second gate, actor flow and assertions. It does not claim a docking runtime fix.
+Publication and remote verification of this increment are next.
+
+Active ownership:
+- Native/custody owner: finish exact-source cold construction and snapshot adoption,
+  then real collar release, current-world readiness, finite refill and public route.
+- Geometry/render owner: editable frame/pod source and strict scale/origin routing;
+  ten geometry/composer checks pass. Source and exported-GLB views were inspected;
+  browser launch at 10:28 UTC failed with socket Operation not permitted, so live
+  game-camera quality remains unverified.
+- Packaging owner: register and package both models through the normal pipeline;
+  preserve moving pivots and exclude explicitly non-render collision proxies.
+- Independent reviewer: schema slice approved; native and packaging acceptance open.
+- CI owner: simulation and feel pass for66c77b7; static failures match earlier
+  master fingerprints. Browser shards remain under investigation; no green claim.
+
+Next executable integration check: `node --test test/anvil-orchard-native-foundation.test.mjs`.
+Continue the same Orchard implementation with these owners. Final expansion,
+ordinary earning/refill routes, original concept obligations and reviewer final
+acceptance remain open. No merge or deployment is authorized by this handoff.
+
+## Historical implementation — 10 October 2026, 10:28 UTC
+
+Draft PR: [#262](https://github.com/coldshalamov/SpaceFace/pull/262), branch
+`dot/expansion-recovery-2026-10-10`, base `38368f739952f7a8ad062600b5169d113e61e0e2`.
+Field-consequence repair was published and independently read back at
+`83968aab95d22d40949a37a544e4d45c8355d336` on 10 October at 10:15 UTC.
+
+The next tested increment fixes two reproduced defects:
+- An empty Anvil collector may finish returning only within the existing 72 WU
+  arrival radius and 8 WU/s relative-speed limit. Previously it could report itself
+  berthed 936 WU away. Actual native approach reaches the unchanged gate after
+  1,897 ticks; no participant pose or velocity is injected after preparation.
+- Planet teardown and witness harvest now require the exact entity generation and
+  site identity. Real Save/Continue previously allowed old numeric IDs to kill
+  unrelated restored convoy/cargo occupants. Teardown retires its old runtime
+  before callbacks, preserving any successor installed by a callback.
+
+The loaded-Continue fixture separately keeps its observer local before saving;
+otherwise ordinary far-shelving legitimately removes the collector from the active
+world. This is a fixture correction, not a change to residency rules. The sling
+fixture now stamps and binds actual entity generations without weakening assertions.
+
+Checks: 55/55 composed arrival, ordinary work, actor ambiguity, sling, restore
+identity and field cases pass. A second 55/55 run selects the previous published
+save/schema/site files, proving this increment without the concurrent Orchard
+schema candidate. Independent identity review has 22/22, loaded Continue 1/1,
+and affected planet/field/arrival selections 71/71; counts overlap. Six changed
+source/test files are frozen and reviewed. Publication of this increment is next.
+
+Active ownership and next executable steps:
+- Integration owner: publish the six frozen source/test paths and this handoff;
+  verify the resulting remote tree before reporting delivery.
+- Orchard custody owner: finish the fresh schema, finite ledger and actual native
+  release/refill integration. The schema candidate has seven passing tests but is
+  not yet published or gameplay accepted. Keep the existing single physics owner.
+- Geometry owner: rebuild editable Orchard frame/pod assets and source-derived
+  colliders, inspect source renders, and obtain game-camera evidence when possible.
+- Independent reviewer: review the new exact Orchard composition and lifecycle
+  gates. Original acceptance fields remain unchanged.
+- CI owner: follow PR checks through terminal results. Several static/browser
+  failure fingerprints also occur on pre-PR master; CI is not declared green.
+
+No complete earning/refill route, live model quality, or final expansion acceptance
+is claimed. All outstanding original concept and implementation obligations remain.
+
+## Historical recovery — 10 October 2026, 10:08 UTC
+
+Branch: `dot/expansion-recovery-2026-10-10`, based on public master
+`38368f739952f7a8ad062600b5169d113e61e0e2`. The prior unpublished source checkout
+is unavailable. Current public source has been restored without replacing newer
+upstream work. Original plans, assets and reviewer acceptance fields are unchanged.
+
+Previously reported local head `7afd810ffd476358f91a6c6b6d2920dc14921e92` is
+not available from GitHub (checked 10 October, 10:02 UTC). Its historical 1,099-test
+result does not qualify this recovered checkout. Neither the full Orchard source
+nor its native test logs have been recovered. Initial unpublished Thimble payload
+`995ebb492f21e781da8e78bb7f51803f0fbb4b30` and later Orchard changes remain
+recovery obligations. Public continuation branch remains at already-merged
+`1394d2d3d60a0ebae5a113f20d82b22d70b404d0` from PR #246.
+
+Active work and ownership:
+- Integration owner: current source composition, dependency checks, handoff and
+  draft PR delivery. No merge or deployment.
+- Existing field-consequence author: reconstruct and freshly test the bounded
+  passive-planet Well consequence fix in `src/core/fields/fieldKernel.js`,
+  `src/systems/fields.js`, `src/data/planets.js`, `src/systems/planetRuntime.js`
+  and its focused test. Ordinary weapon consequences and field forces must remain.
+- Existing custody author: recover source fragments and tests before rebuilding
+  the missing Orchard base. Release, migration and finite-stock refill remain
+  incomplete and unapproved.
+- Existing independent reviewer: review newly reconstructed source; do not carry
+  prior acceptance forward to different or unverified bytes.
+- Existing route author: recover traffic reader/deadline helpers. No public route
+  is currently running; no complete earnings comparison has passed.
+
+Five review documents and the final traffic reader/deadline helpers have been
+recovered with hashes matching their prior versions. This does not recover their
+referenced source, generated assets or recordings. The last failed public route
+reported two sales totaling 312 recurring credits and a third pod lost to kinetic
+shock; it did not reach refill and remains a failed comparison.
+
+Current checks: locked production dependencies installed; package manifests
+unchanged; actual Rapier initialization and eight continuation-readiness tests
+passed on 10 October at 10:06 UTC. No reconstructed gameplay fix is approved yet.
+The new remote recovery branch was independently read back at the public base at
+10:07 UTC. Branch creation alone is not delivery of new code.
+
+Field consequence reconstruction is complete and independently reviewed on this
+base: 25 focused cases, 99 adjacent cases, 32 differential cases and 14 independent
+review cases pass (overlapping selections, not a summed full-game count). Root
+independently reran the 25 focused cases. Four native actor roles over 360 ticks
+produce byte-identical motion, consumed commands, heat/stage and damage results
+between public baseline and repaired source. No force or planetary damage was
+weakened. The initial native observer had an invalid command-count expectation for
+a coasting prop; that failed attempt is retained, and no source change was needed.
+
+The repair prevents the passive planetary field from applying weapon-Well grind
+priming and exit hitstun. Normal weapon and machinery Wells retain their aggregate
+consequences, including earned release on expiry, destruction and disruption.
+Public route, model activation and whole-expansion acceptance remain open.
+
+Draft delivery: [PR #262](https://github.com/coldshalamov/SpaceFace/pull/262).
+Next: publish and verify this exact reviewed five-path source/test increment, then
+continue reconstruction of the missing Orchard source and custody unit. Continue recovery of the same Orchard unit. All original
+P00–P21 and twenty-concept completion obligations remain open where not accepted.
+Historical sections below are retained as prior source-scoped results.
+
 ## Active continuation — 8 October 2026, 21:56 UTC
 
 Branch: `dot/expansion-continuation-2026-10-08`, starting from current master

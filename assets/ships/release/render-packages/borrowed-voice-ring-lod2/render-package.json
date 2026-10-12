@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0d699c906440f9f6abd982cec7302d710f3756809a8a2470eb10b7300fa45629",
+  "contentHash": "a386a1e1dc0a0042261961540aa84da056900427586c6af8e8810d776243c0be",
   "dynamicGroups": [
     {
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-1-stone.dynamic",
@@ -177,7 +177,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8d161b048f5bad413df02a11c487f83b05a966489473268ab47a2586c74fa4bd",
+      "geometryHash": "abac8d52386954066b5fedf87947b6b744dd38c42c73e9828bcb0fa88e0600e4",
       "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-1.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -202,7 +202,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bce4982950ece7bfb16c6bf5d7f6295b9ebad3ea4ca7a890dfe72dc2a891151b",
+      "geometryHash": "911642eef03266bfea6c6147b4085cea23e020903dd30227d8bc3d0ba2c46e22",
       "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-2.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -227,7 +227,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d42acaafe95ffb6c5a9e5098c83d60e481f2179cc3709520b144ff427cfedff5",
+      "geometryHash": "3215b5ed0edf58a9ee20730887bf6e592c191666d435e0bc4e6dd3b42ad166b6",
       "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-3.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -252,7 +252,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0a57bc16966af5865fa853475747a2fcb45893531b694133a1ccaa0f0ba780ca",
+      "geometryHash": "747d19fb218ef85cbeaf3b9628eb60795f3730b606094a2bcaf1873d77d17c15",
       "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-4.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -277,7 +277,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee9be98ca481e35c50c2edf5c5877b76a69c8b01e0c613575fbc1f3d46e0a6f8",
+      "geometryHash": "cc03c3e1972fb6bd0c8ea81d92a20451cbf249a06c805e87bb009cd9d5e2b267",
       "id": "sf.render.borrowed-voice-ring-lod2.node.collision-borrowed-voice-ring-segment-5.primitive.0",
       "indexCount": 900,
       "indexed": true,
@@ -302,7 +302,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c6f1de7323c1d445e8ada1fd337fa6027e50ca6480582c0670e917b3f9fb8834",
+      "geometryHash": "5d84e70db33a6a1d7f794b7cd55ac78ab31b1b3ac0e00e8d73a7aad5613f1416",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-armor.primitive.0",
       "indexCount": 594,
       "indexed": true,
@@ -327,7 +327,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ade25aee682ef2e78f8c8fcd1b49516e10e038d9d18cd68d18c9a8344776822b",
+      "geometryHash": "11138f5be22c5acc8586c1f19eef815005c60f31abb5d0de2d4fe44adec70b0d",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-brushedmetal.primitive.0",
       "indexCount": 1020,
       "indexed": true,
@@ -477,7 +477,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa29fec9eb404382cadd706face2e5742e187ad294f755449a4bd17fea1e42ef",
+      "geometryHash": "87da0d753851cd74db021d487a2ce96b5825e1bd5610a48d5cbd31c41448e4a0",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-hull.primitive.0",
       "indexCount": 390,
       "indexed": true,
@@ -502,7 +502,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "af645dd8c4914b1231d2b98621dbefee056c6d71aefb94b8d6d4e2f2972e2c2d",
+      "geometryHash": "fd1be4e122c73fdec98eb570449c697fde777efbd99a28b71f08ea6b9d0353c0",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 2370,
       "indexed": true,
@@ -527,16 +527,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3be7a4d8877fc952f73250ca5e9b2fd76748a0de3a727c256dc139c75e37493d",
+      "geometryHash": "801e24741002476096861f321de2fcd4a26e09993eade8dc9853738fdd9e3130",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-1-stone.primitive.0",
-      "indexCount": 1242,
+      "indexCount": 1230,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_BORROWED_VOICE_FAN_1_Stone",
       "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-1-stone",
       "primitiveIndex": 0,
-      "vertexCount": 384
+      "vertexCount": 377
     },
     {
       "bounds": {
@@ -552,16 +552,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "77077d9c232fc07e5f8cf71aa2b8511eb581b3e3823437e881154ea351cd1c5c",
+      "geometryHash": "a0be7a79473c9b4397f51f3332a357c7a716b40988c6bd28420981020ba6f1ef",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-2-stone.primitive.0",
-      "indexCount": 1176,
+      "indexCount": 1164,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_BORROWED_VOICE_FAN_2_Stone",
       "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-2-stone",
       "primitiveIndex": 0,
-      "vertexCount": 380
+      "vertexCount": 372
     },
     {
       "bounds": {
@@ -577,16 +577,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "18a9e439d3d96a79f4e259f1df3df41c078c0a78b8c5ef960f24b055eba49d48",
+      "geometryHash": "58609299b0212f18fcdd153cc1b95979e17f7eb6a903d3d2595e169c41b39be4",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-3-stone.primitive.0",
-      "indexCount": 1560,
+      "indexCount": 1548,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_BORROWED_VOICE_FAN_3_Stone",
       "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-3-stone",
       "primitiveIndex": 0,
-      "vertexCount": 463
+      "vertexCount": 456
     },
     {
       "bounds": {
@@ -602,16 +602,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1aefe564e1e956cdc8635e26d0158cee02553e57e51929cbae66b9df8cc5e532",
+      "geometryHash": "dc18c6cf75e9cacf11e6d792ca08f07bc9852df04cda25a6df3c60523a57a463",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-4-stone.primitive.0",
-      "indexCount": 1176,
+      "indexCount": 1164,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_BORROWED_VOICE_FAN_4_Stone",
       "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-4-stone",
       "primitiveIndex": 0,
-      "vertexCount": 372
+      "vertexCount": 365
     },
     {
       "bounds": {
@@ -627,16 +627,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8c121029d797a2d2a2cdb55d978a79f6f44dfb162195b7a5d63c795302125162",
+      "geometryHash": "c437a21662022851ed8498ecb80b70b5b6b901e632e46b7997aa9b44dcf17000",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-5-stone.primitive.0",
-      "indexCount": 1176,
+      "indexCount": 1152,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_BORROWED_VOICE_FAN_5_Stone",
       "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-5-stone",
       "primitiveIndex": 0,
-      "vertexCount": 380
+      "vertexCount": 365
     },
     {
       "bounds": {
@@ -652,16 +652,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "967cdd31afcd1fe7a88143cfcea51d8f3ebae5493c1dff352f8f8a3ff6c5694c",
+      "geometryHash": "9e106eddd376abf55d87576ede5b121dbd945612f012f588c81ddc37b3b4fb3a",
       "id": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-6-stone.primitive.0",
-      "indexCount": 1476,
+      "indexCount": 1464,
       "indexed": true,
       "materialHash": "9a70f6005f98ebde63c9c948bc3068f8b27cdc0f5544a776817b2b2208233318",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_BORROWED_VOICE_FAN_6_Stone",
       "nodeId": "sf.render.borrowed-voice-ring-lod2.node.lod2-motion-borrowed-voice-fan-6-stone",
       "primitiveIndex": 0,
-      "vertexCount": 456
+      "vertexCount": 446
     }
   ],
   "hlods": [],
@@ -2244,19 +2244,19 @@
       "sha256": "abc91e6cf673652fb070167b23c3016c3e11c8a7a0d2da379b1d7b4a6d1baf85"
     },
     "sourceGlb": {
-      "bytes": 439232,
-      "sha256": "ca7017c87e76e149034c0daf67b5a6776b665b899fd7c9fc049853308e607c40",
+      "bytes": 438448,
+      "sha256": "4d197061182a8098b178bd5ce2141681997058a87bccb0e1b6b9ccefab9007a5",
       "uri": "borrowed_voice_ring_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 525300,
-    "sha256": "f7a9c4fe2e7e9ce345f6e7903b1a1c81efd23371c787cf8a391e9e6b42bd56fa",
+    "bytes": 524380,
+    "sha256": "419ba5b57aa46b42426843102b0e785e437858e3e3c3b77c6c00cfeb9c607a16",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3348,7 +3348,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/borrowed_voice_ring_lod2.glb"
   },
-  "runtimeHash": "848c470c895a2a2f164206dd835e34cd10496b55cf45cd755df3f8261c007f39",
+  "runtimeHash": "66af4e350844d0dace9084ec39a24e3bb1f6602ffcf333330a8d9b520883dd61",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -191,7 +191,14 @@ function syncFreezeCards(view, state) {
   const cards = view.cards;
   const origin = SECTOR_GLOBAL_ORIGINS[BOLUS_SECTOR_ID];
   const want = [];
-  const list = state.entityList || [];
+  // Bolus organs all claim the bolus sector (homeSectorId heads the canonical
+  // claim chain) — same bucket conversion as tickBolus: entityList only while
+  // the lane is unready.
+  const bolusIndex = state.entityIndex;
+  const list = bolusIndex && bolusIndex.__spacefaceEntityIndexV1 === true
+      && bolusIndex.ready === true && bolusIndex.bySectorId instanceof Map
+    ? (bolusIndex.bySectorId.get(BOLUS_SECTOR_ID) || [])
+    : (state.entityList || []);
   for (let i = 0; i < list.length; i++) {
     const ent = list[i];
     if (!ent || !ent.data || !ent.data.bolus || !ent.pos || ent.alive === false) continue;

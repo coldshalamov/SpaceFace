@@ -24,13 +24,13 @@ export function createRacingMap(gates, label = 'Circuit route', doc = globalThis
   target.setAttribute('display', 'none');
   return {
     element: svg,
-    update(pos, nextGate) {
-      const g = points[Math.max(0, Math.min(points.length-1, nextGate | 0))];
+    update(pos, nextGate, waypoint = null) {
+      const g = waypoint || points[Math.max(0, Math.min(points.length-1, nextGate | 0))];
       target.setAttribute('display',''); target.setAttribute('cx',x(g.x).toFixed(2)); target.setAttribute('cy',y(g.z).toFixed(2));
       const p = pos?.pos || pos;
       if (p && Number.isFinite(p.x) && Number.isFinite(p.z)) {
         player.setAttribute('display','');
-        player.setAttribute('transform',`translate(${x(p.x).toFixed(2)} ${y(p.z).toFixed(2)}) rotate(${(Number(pos?.rot)||0)*180/Math.PI+90})`);
+        player.setAttribute('transform',`translate(${Math.max(8,Math.min(312,x(p.x))).toFixed(2)} ${Math.max(8,Math.min(162,y(p.z))).toFixed(2)}) rotate(${(Number(pos?.rot)||0)*180/Math.PI+90})`);
       } else player.setAttribute('display','none');
     },
   };

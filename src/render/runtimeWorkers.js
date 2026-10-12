@@ -5,6 +5,11 @@ export const RUNTIME_WORKERS = Object.freeze([
     output: 'workers/renderPackageDigestWorker.js', type: 'classic', format: 'iife' }),
   Object.freeze({ id: 'prepass', source: 'src/render/glbPrepassWorker.js',
     output: 'workers/glbPrepassWorker.js', type: 'module', format: 'esm' }),
+  // The whole-sim lane worker (S1): default runtime since Stage E. Same contract —
+  // URL-created, invisible to the main-thread bundler, emitted as a self-contained
+  // retail entry under workers/ so the deployment root resolves it.
+  Object.freeze({ id: 'simLane', source: 'src/core/wholeSimBrowserWorker.js',
+    output: 'workers/wholeSimBrowserWorker.js', type: 'module', format: 'esm' }),
 ]);
 
 export function runtimeWorkerUrl(id, moduleUrl, {
@@ -16,5 +21,7 @@ export function runtimeWorkerUrl(id, moduleUrl, {
   // A split chunk's import.meta.url is NOT the document root. Use the deployment's
   // document base for retail, including deployments hosted below a path prefix.
   if (production) return new URL(spec.output, documentBase || moduleUrl).href;
-  return new URL(`./${spec.source.split('/').pop()}`, moduleUrl).href;
+  // Dev serves the source tree at the origin root — spec.source is a repo-root
+  // path, so resolve it there regardless of which module asks.
+  return new URL(`/${spec.source}`, moduleUrl).href;
 }

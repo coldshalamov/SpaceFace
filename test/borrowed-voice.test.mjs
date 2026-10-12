@@ -18,6 +18,13 @@ function fixture({revelation=2,saved=null}={}){const sim=createSimulation({seed:
   return {sim,s,p,owner,advance,recover,close:()=>sim.dispose()};
 }
 
+test('startup cleanup ignores unbound and missing entity identities',()=>{const h=fixture({revelation:1});try{
+  const before=h.owner.serialize();
+  for(const id of [undefined,null,99999])assert.doesNotThrow(()=>h.owner._lost(id));
+  h.sim.bus.emit('entity:destroyed',{reason:'run_reset'});
+  assert.deepEqual(h.owner.serialize(),before);
+}finally{h.close();}});
+
 test('R1 reveals no physical artifact, subtitles or journal title; R2 uses the existing host',()=>{const h=fixture({revelation:1});try{
   const offers=[];h.sim.bus.on('borrowedVoice:offer',r=>offers.push(r));h.advance(10);
   assert.equal(h.s.entityList.filter(e=>e.data?.persistenceOwner===C.owner).length,0);

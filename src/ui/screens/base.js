@@ -535,7 +535,7 @@ export function describeBaseInvestmentConfirm(item, player = {}, body = {}, opti
 /** Keep the claims owner entirely behind the player's confirmation decision. */
 export async function applyConfirmedBaseInvestment(confirmOptions, apply, requestConfirm = confirm) {
   if (confirmOptions && !(await requestConfirm(confirmOptions))) return false;
-  const committed = typeof apply === 'function' && apply() === true;
+  const committed = typeof apply === 'function' && (await Promise.resolve(apply())) === true;
   return committed ? true : 'denied';
 }
 

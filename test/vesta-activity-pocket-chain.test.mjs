@@ -30,6 +30,7 @@ import {
   PALLAS_ACTIVITY_SECTOR_ID,
   PALLAS_POCKET_ACTOR_SLOT_ORDER,
   SEDNA_ACTIVITY_POCKETS,
+  SKER_ACTIVITY_POCKETS,
   TETHYS_ACTIVITY_POCKETS,
   TETHYS_ACTIVITY_SECTOR_ID,
   VESTA_ACTIVITY_POCKETS,
@@ -72,7 +73,8 @@ test('the activity-pocket registry includes Vesta Forge, and the older sectors a
       + PALLAS_ACTIVITY_POCKETS.length
       + VESTA_ACTIVITY_POCKETS.length
       + TETHYS_ACTIVITY_POCKETS.length
-      + SEDNA_ACTIVITY_POCKETS.length,
+      + SEDNA_ACTIVITY_POCKETS.length
+      + SKER_ACTIVITY_POCKETS.length,
   );
   assert.equal(activityPocketsForSector('sector_vesta_forge').length, 4);
   assert.equal(activityPocketsForSector('sector_nowhere_belt').length, 0);

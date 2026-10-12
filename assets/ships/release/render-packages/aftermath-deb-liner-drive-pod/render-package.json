@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "beb9b884a96755715a7dd17a1734684bb59fea05b4e59dc22590a080f9331c21",
+  "contentHash": "48d28158893f760658607420fad6fc3699f6e3634e04b79f304146da4a6fa8ad",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "38bea0eb5240b8fe2fb10fa5972964a7f2ca735978a44aa5142b140fbd0cadeb",
+      "geometryHash": "5d95f6ba0fb4ed1f00a1f0f1f7ef59efd05566cf4a95fe9b5f13cbfa01eee67f",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive-4-55.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "156b0e523607e33236a1fab325438743faaa227fe32a5fc407ee7fdcd266de6e",
+      "geometryHash": "0b8dcf14f69b6a11b18e013c1e03251cf52384825535298c1a8ce96ac9819ac2",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive-4-55.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -98,7 +98,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "effd9577b47637e0c996d5cf3efbc6a1bb8a4f3d7b059d49f68a7053a41f327d",
+      "geometryHash": "5146c37dd1fd1163f161d0424ee25eb1366ab1f5219ad9ee3ae9bc65e3569eaa",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive0-0.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -123,7 +123,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "93a9e3ae22ac9c1cbe1b132c261de7b8a3ba92ebf7456ec1f8f1e11bd8dcfc08",
+      "geometryHash": "3466cb84e25e6afcb19554d47953c4c0d6e035ab5c2c2c3590642b0258d136ba",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive0-0.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -148,7 +148,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "19a7ca5e41a95f5c0d434266eb8165b11dd2859b1993e6a088de5dd9cff276f3",
+      "geometryHash": "ea5a37ce2d9c7037f8d2941e154155b95b1b974828676bbe91966771e7410c59",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive0-0.primitive.2",
       "indexCount": 90,
       "indexed": true,
@@ -173,7 +173,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ebd7a4344f44a0650b4ce8699fe165dc8140f7e99ef4b4a86466fe35959bdcbd",
+      "geometryHash": "59ecc188b838c589d194abbf21b046763c5e8275fdd1cf6388fdd61df1237788",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive4-55.primitive.0",
       "indexCount": 666,
       "indexed": true,
@@ -198,7 +198,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1519291b566f88d10685f7027da930a55d22688bc25f902041bba5a69123ce83",
+      "geometryHash": "f10032bc5e1c029382803628938574aa90fa257a49ae713447ea8a355ea2d624",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drive4-55.primitive.1",
       "indexCount": 384,
       "indexed": true,
@@ -298,7 +298,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd8a85e9d6e9a74d0965091e56053199550d56b8f389a516bf6909590db24786",
+      "geometryHash": "f9a618d603cadf3fe1287b65c1497e9e4bfe9399ad73111ccdebbc46c78a97f9",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum.primitive.0",
       "indexCount": 699,
       "indexed": true,
@@ -323,7 +323,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c1d31009c56d5e4d8e8b9fd35347cdd70a974bfc7c1a523f37ae34cd3ef74b75",
+      "geometryHash": "da29b2a39841da4cb05f68dc7450515e45ec13ef9e42038144007f115a0952bb",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum.primitive.1",
       "indexCount": 171,
       "indexed": true,
@@ -332,7 +332,7 @@
       "meshName": "Drum",
       "nodeId": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum",
       "primitiveIndex": 1,
-      "vertexCount": 92
+      "vertexCount": 82
     },
     {
       "bounds": {
@@ -348,7 +348,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30f72a93fc2a6d8d31be950e9254f1d1b8e65e34d0fe83d2d6f324aadece97a6",
+      "geometryHash": "6959ca34077685af4d37c2043aa393d47ab52aa0c93554e8afc90d3bf2ce5258",
       "id": "sf.render.aftermath-deb-liner-drive-pod.mesh.drum.primitive.2",
       "indexCount": 816,
       "indexed": true,
@@ -2351,19 +2351,19 @@
       "sha256": "01300678214d3145c5e13350274fd709aa0df067a207ec89c6eb299225b1116d"
     },
     "sourceGlb": {
-      "bytes": 198032,
-      "sha256": "46ea8a5e8e9e87d0b05eb173420c83bc400adaf6b95ee9e58a7f511a8e4537c6",
+      "bytes": 196024,
+      "sha256": "b6c06c1ca0a558f558ad68890596246a8e921b3d80fe64c822da5e6c545349b0",
       "uri": "place_aftermath_deb_liner_drive_pod.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 231316,
-    "sha256": "19513fe706f13f672586dc9fee2f0a706b6de65efceabe2424c1c4ba378b48dd",
+    "bytes": 231008,
+    "sha256": "760c773abda5c208b4782ac519147f0a9bb281d77c64e28dec21e20a09b495a7",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3462,7 +3462,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_liner_drive_pod.glb"
   },
-  "runtimeHash": "dde236963a32093220a98a04621171bb6e3a39228a48da70f27f1526ce62edc0",
+  "runtimeHash": "485166873876fe2755110a18b8d8b12a229ec36eda10e0c95a519e79f24d6c6b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

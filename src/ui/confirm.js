@@ -99,6 +99,7 @@ export function confirm(opts) {
 
   const root = getRoot();
   const token = Symbol('sf-confirm');
+  let settled = false;
   root._sfConfirmToken = token;
   // capture the element that had focus before opening so we can restore it on close
   const opener = document.activeElement;
@@ -155,17 +156,22 @@ export function confirm(opts) {
   };
   document.addEventListener('focusin', onFocusIn, true);
   focusInitial();
-  // animate in next frame, then re-assert focus in case the game shell bootstraps late
+  // Recover focus if late shell setup moved it outside, but never undo the user's
+  // deliberate Tab/click choice between Cancel and Confirm inside this dialog.
+  const recoverInitialFocus = () => {
+    if (settled || root._sfConfirmToken !== token) return;
+    if (!dialog.contains(document.activeElement)) focusInitial();
+  };
   requestAnimationFrame(() => {
+    if (settled || root._sfConfirmToken !== token) return;
     root.classList.add('sf-confirm--in');
-    focusInitial();
+    recoverInitialFocus();
   });
-  setTimeout(focusInitial, 30);
+  setTimeout(recoverInitialFocus, 30);
 
   // build the promise + a settle closure that tears down the dialog, restores focus, and resolves.
   let _resolve;
   const promise = new Promise((res) => { _resolve = res; });
-  let settled = false;
   function onBackdropClick(ev) {
     if (ev.target === root) close(false);
   }

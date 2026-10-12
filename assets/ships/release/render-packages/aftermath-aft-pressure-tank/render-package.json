@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7fb3b70b43094498fee3cb01dec390c7c2fb48b851545cfe949522dcec2f5a87",
+  "contentHash": "9438ad9617c4606dab1285c84092c4c2287f08ea826013d35383c4854bbf3263",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -70,7 +70,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b0265ebb86a4001ca3f784fa8ede85478740bb9287f20c7e41d902cf6c102aa1",
+      "geometryHash": "bf87293dfeec02604459fd63df40178425e6d06a3ba49ef1bdc72d1b52b8cea0",
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankbody.primitive.0",
       "indexCount": 1704,
       "indexed": true,
@@ -95,7 +95,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c1486be76edfdef828f2933cbc2c293c2928aa221e155a7af03e400d0370b3bc",
+      "geometryHash": "bd4cc47ab208c0e147b74eead27905ec6c7f4a5b1d3dd05e7af58fabb785759a",
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankbody.primitive.1",
       "indexCount": 540,
       "indexed": true,
@@ -104,7 +104,7 @@
       "meshName": "TankBody",
       "nodeId": "sf.render.aftermath-aft-pressure-tank.node.tankbody",
       "primitiveIndex": 1,
-      "vertexCount": 252
+      "vertexCount": 331
     },
     {
       "bounds": {
@@ -120,7 +120,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aff8bf6045e9b48bf46249468200433509bb1bd4f2ce612f49f7edc40d28077d",
+      "geometryHash": "8eebafe86a973b096bd0810c2be70c51977b8b8dd1280fb5c58bd92cd11c47a8",
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankdome0.primitive.0",
       "indexCount": 1332,
       "indexed": true,
@@ -320,7 +320,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3f4c0b57433ea99dffa345b61c33a2079d82bdf40afa0ff111df16683125ec98",
+      "geometryHash": "0a0b926c7da2bc4a508ed560278d3370a7b6b7008e78aa900f6625b8a388ceb8",
       "id": "sf.render.aftermath-aft-pressure-tank.node.tankvalve.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -1059,19 +1059,19 @@
       "sha256": "0b8e619e5f67dea6a723d40aa501d385ad45e85b25bd38d001321ebfb62213d0"
     },
     "sourceGlb": {
-      "bytes": 151276,
-      "sha256": "20d80a092d4ab91fd89b7936a85cb1c836feeba3490ffbe071af24f911e84e07",
+      "bytes": 152904,
+      "sha256": "9c2026c4dcc47ad4924eb2276194938d8ae48bc2cd85e4ba78a23348b9665aa7",
       "uri": "place_aftermath_aft_pressure_tank.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 171348,
-    "sha256": "cdb3512d2db7fca4b17bf91ff3eef2418548317defae1ee9e5324cb1059c5a23",
+    "bytes": 173368,
+    "sha256": "b21fe58f072a573493b0a800ddff3d2dc02bb9f4a4deaf3669a939c8b483ba06",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1504,7 +1504,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_aft_pressure_tank.glb"
   },
-  "runtimeHash": "bdf5269902b4eaf643d19d733922ac1f095a1b62ebec1e6694aae7d95a55a166",
+  "runtimeHash": "ffbe23ac87a8664722e1d29f1939672eb097f6ef7132394a72bbbb62d7e1386f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

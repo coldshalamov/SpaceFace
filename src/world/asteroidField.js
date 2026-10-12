@@ -3,6 +3,7 @@
 // projectile that actually reaches the rock — including one that has left the frame.
 
 import { allocateEntityId, makeEntity, clearEntityRuntime } from '../core/entity.js';
+import { syncEntitySectorMembership } from '../core/coreSystem.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { initializePresentationAdmission } from '../core/presentationAdmission.js';
 import { authoredPrefetchRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
@@ -10,6 +11,7 @@ import { NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js
 import { indexedTypeScan, entityIndexLaneVersion } from './livingWorldViews.js';
 import { advanceResourceBody } from './worldCatchup.js';
 import { racingAsteroidSpec } from './racingCorridor.js';
+import { markAuxRowDirty, markAuxRowRemoved } from './auxRowJournal.js';
 
 export const ASTEROID_FIELD_SCHEMA = 'spaceface.asteroidField.v1';
 export const ASTEROID_FIELD_CELL = 220;
@@ -169,6 +171,7 @@ export function insertAsteroidFieldRock(state, spec = {}) {
   field.dirtyPoseIds.add(id);
   noteFieldRockMotion(field, rec);
   field.version++;
+  markAuxRowDirty(field, id);
   return rec;
 }
 
@@ -311,6 +314,7 @@ function removeFieldRecord(field, rec) {
   gridRemove(field, rec);
   field.version++;
   rec.alive = false;
+  markAuxRowRemoved(field, rec.id);
   clearEntityRuntime(rec);
   return true;
 }
@@ -336,6 +340,7 @@ function catchUpFieldRock(field, rec, simTime) {
   if (!(toT > fromT)) {
     rec.lastExactT = toT;
     noteFieldRockMotion(field, rec);
+    markAuxRowDirty(field, rec.id);
     return rec;
   }
   const advanced = advanceResourceBody({
@@ -357,6 +362,7 @@ function catchUpFieldRock(field, rec, simTime) {
   if (field && field.dirtyPoseIds instanceof Set) field.dirtyPoseIds.add(rec.id);
   noteFieldRockMotion(field, rec);
   if (field && Number.isFinite(field.version)) field.version++;
+  markAuxRowDirty(field, rec.id);
   return rec;
 }
 
@@ -456,6 +462,7 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
     ent.homeSectorId = rec.homeSectorId;
     if (ent.data) ent.data.homeSectorId = rec.homeSectorId;
   }
+  syncEntitySectorMembership(state && state.entityIndex, ent);
   if (ent.activity) ent.activity.lastExactT = simTime;
   rec.liveEntityId = ent.id;
   rec.promoteReason = String(reason || 'promote');

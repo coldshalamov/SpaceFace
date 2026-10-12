@@ -11,6 +11,7 @@
 // Renderer view culling is applied before compaction, avoiding sector-wide always-visible batches.
 import * as THREE from 'three';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
+import { dedupWarn } from '../core/warnDedup.js';
 import {
   assertDynamicBufferOwnerWritable,
   commitDynamicBufferOwner,
@@ -809,7 +810,7 @@ function recoverRetiredBucket(pool, bucket, variantStats) {
   if (variantStats) variantStats.retiredOwners = bucket.retiredOwnerCount;
   const reason = retired && retired.diagnostics && retired.diagnostics.lastError;
   if (bucket.retiredOwnerCount <= MAX_RETIRED_BUCKET_REBUILDS + 1 && typeof console !== 'undefined') {
-    console.warn(`[asteroid-pool] variant ${bucket.variant} buffer owner retired (${reason || 'unknown'}); `
+    dedupWarn('asteroid-pool.variant-retire', `[asteroid-pool] variant ${bucket.variant} buffer owner retired (${reason || 'unknown'}); `
       + (bucket.retiredOwnerCount <= MAX_RETIRED_BUCKET_REBUILDS
         ? 'rebuilding the instanced batch'
         : 'drawing its rocks individually from now on'));

@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a236bdcba7122e05709488044da63fbe80fcfe46d47cfb327d805456bd2e8538",
+  "contentHash": "7541881882cc819ebb6fe07f6332df8761fd463dd9686fc4af902a728b0cfcf2",
   "dynamicGroups": [
     {
       "id": "sf.render.worklight-tower.mesh.lod0-hook-nav-port.dynamic",
@@ -107,7 +107,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "29fe583188bb3f5943781b8e58c59d00b71742c3a7aa4fe96d4aa34242973535",
+      "geometryHash": "5c60c3d20bb3d56b0ff9a109ded6fe48c5a55ab31a220dd2615107d1c19e93aa",
       "id": "sf.render.worklight-tower.mesh.collision-hull.primitive.0",
       "indexCount": 846,
       "indexed": true,
@@ -132,16 +132,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "972bdaa6b7b6b079c1fbd5dec2f2084c1af05afc1047d057ac9cd2c42a405616",
+      "geometryHash": "9a64351f00a495b4d4b207b5f706f28508b9ed51326c20fcd431985aba85f202",
       "id": "sf.render.worklight-tower.mesh.lod0-armor.primitive.0",
-      "indexCount": 23808,
+      "indexCount": 23124,
       "indexed": true,
       "materialHash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.worklight-tower.mesh.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 7944
+      "vertexCount": 7807
     },
     {
       "bounds": {
@@ -157,7 +157,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ddeb9ebed6a2e168c88c5011958230849f7da0bbd53336f077b5771ef1185d3e",
+      "geometryHash": "944e380a7c6b82391fdaf1d31699653901697e54c35cb0d6b968538f9df32df4",
       "id": "sf.render.worklight-tower.mesh.lod0-beacon-amber.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -232,16 +232,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ceae9e695e6ffe40b469ce21e5a76ac2af6e301d1cc26f7f11c3fb4fcab6b8c5",
+      "geometryHash": "a9082f6fb1c6e45a3358fbfaba2ec6821f6dffb184ad38c065235d26fc491f5c",
       "id": "sf.render.worklight-tower.mesh.lod0-hull.primitive.0",
-      "indexCount": 7290,
+      "indexCount": 7194,
       "indexed": true,
       "materialHash": "538042ffe6526d9bfcfae76bb73b0253ec79125f365c5f6c3c54406e0e182c40",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.worklight-tower.mesh.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 3153
+      "vertexCount": 3138
     },
     {
       "bounds": {
@@ -257,7 +257,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "53339cf2b0c041ecbabf3e7d99261e5d0d9af6b982fd7b67be95f9ba429d6515",
+      "geometryHash": "ee61db2175777200c5ec56282c1c75a568f4369ce13b374a6dfae6b558ebc89f",
       "id": "sf.render.worklight-tower.mesh.lod0-lights-warm.primitive.0",
       "indexCount": 5952,
       "indexed": true,
@@ -282,7 +282,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "30095966db89a6073f96469725cfa5e8618fb04094218c5dfaa9cf921d589eba",
+      "geometryHash": "9292379285bc2e08c445bd397d1494d836fc0cdca2792524782e28b730467c21",
       "id": "sf.render.worklight-tower.mesh.lod0-mechanical.primitive.0",
       "indexCount": 5760,
       "indexed": true,
@@ -307,7 +307,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "787a2bb8d266adb2a683a42bfb230d5bb65a3a4a5aa6928f4b94b4cddc33e740",
+      "geometryHash": "c138727eb6e2cc3b3e073d6441f664fb00fff351f7f9bee67dda6a1ecd48dd6f",
       "id": "sf.render.worklight-tower.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 4746,
       "indexed": true,
@@ -357,16 +357,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "96bf81c26098524c8bc96add7f3d4259e2e584481921b1f3f235c510f2f35e45",
+      "geometryHash": "e03e91446bf18e9bafd359fe87031255e5f220389f95659c594e1ea32c3f52e8",
       "id": "sf.render.worklight-tower.mesh.lod1-armor.primitive.0",
-      "indexCount": 5613,
+      "indexCount": 5313,
       "indexed": true,
       "materialHash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.worklight-tower.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 2848
+      "vertexCount": 2703
     },
     {
       "bounds": {
@@ -382,7 +382,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4185e700f2f6aea0d95b92f99c075945792fa06a9d7e85d19d5abb0f586e0638",
+      "geometryHash": "28b81217b5b90d57e47f8d95ea649b2c6d1cede188c051aea774e097d649169c",
       "id": "sf.render.worklight-tower.mesh.lod1-beacon-amber.primitive.0",
       "indexCount": 204,
       "indexed": true,
@@ -457,16 +457,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e6aab4a24692b53657319665e7284fe4c329b395902516955658104903b4c049",
+      "geometryHash": "8d4ca0c72bcd2f8397d5d9891508ac9a6461cd9760f2d8242d0676bc6af8bd66",
       "id": "sf.render.worklight-tower.mesh.lod1-hull.primitive.0",
-      "indexCount": 3597,
+      "indexCount": 3573,
       "indexed": true,
       "materialHash": "538042ffe6526d9bfcfae76bb73b0253ec79125f365c5f6c3c54406e0e182c40",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.worklight-tower.mesh.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1977
+      "vertexCount": 1975
     },
     {
       "bounds": {
@@ -482,7 +482,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "da6014821c77c4d52ba1f13280f6e1aa69a918c36469e425eac80256791f6cc7",
+      "geometryHash": "e55ccde8e788918aceb88fabae6412b14e049516c428baaecfb73d84d16cf674",
       "id": "sf.render.worklight-tower.mesh.lod1-lights-warm.primitive.0",
       "indexCount": 5952,
       "indexed": true,
@@ -507,7 +507,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "48c388a0a2a448a674e5da2eb648f3d7788d2fba31abd7c5201af79f8eff58c9",
+      "geometryHash": "995504b1a763cc7192e55f5b5939691f8024376d12318c1b71308965c2dec1a8",
       "id": "sf.render.worklight-tower.mesh.lod1-mechanical.primitive.0",
       "indexCount": 1158,
       "indexed": true,
@@ -532,7 +532,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "996d4564a28ba89288809e41c50acc957b437f9af1aa60d6435507e4d3591bb9",
+      "geometryHash": "5b210df15b1ab190c14bcfc5e1557c79526b155693adad181fd47b7da99c1882",
       "id": "sf.render.worklight-tower.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 2406,
       "indexed": true,
@@ -582,16 +582,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee4d2c35eed72c4df16ec2c47f4998ca2128e676876837c29b4335b3a3beb924",
+      "geometryHash": "e913160b6045ab3f132e7aaa03681b0f65907b04f612b79a354ffd498356389a",
       "id": "sf.render.worklight-tower.mesh.lod2-armor.primitive.0",
-      "indexCount": 2121,
+      "indexCount": 1821,
       "indexed": true,
       "materialHash": "3b5154ad7ec0ee2263502c49e749f2a8dbe1fd5159df213996c1e629139c80de",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.worklight-tower.mesh.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1106
+      "vertexCount": 1079
     },
     {
       "bounds": {
@@ -682,16 +682,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a3f6414ada9ee9872cbd9eaef881cef1a4b2035d69e4f3eadd5aa11863127d1",
+      "geometryHash": "56fbac4628c83c7ddd0947d42818852d2d63e2e29c1c62db89ba351703547120",
       "id": "sf.render.worklight-tower.mesh.lod2-hull.primitive.0",
-      "indexCount": 2217,
+      "indexCount": 2193,
       "indexed": true,
       "materialHash": "538042ffe6526d9bfcfae76bb73b0253ec79125f365c5f6c3c54406e0e182c40",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.worklight-tower.mesh.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 1488
+      "vertexCount": 1486
     },
     {
       "bounds": {
@@ -707,7 +707,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e4f28067bad4f013bb06f903030c3b0f64c6a88a30a376815f3cfe73af70c011",
+      "geometryHash": "ac5e695bd954a75ddabf91241236611825da312113f718d88a8b047757f8ae98",
       "id": "sf.render.worklight-tower.mesh.lod2-lights-warm.primitive.0",
       "indexCount": 2430,
       "indexed": true,
@@ -757,7 +757,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a21fe36257dd834ec26ce429ba2fcc708033dbb57b6beff18643c29bab16dedf",
+      "geometryHash": "397031fcf836af202ec79bd2c0029d5dba1cf2c57ba2eb32ac12db2c0dfd7b55",
       "id": "sf.render.worklight-tower.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 1044,
       "indexed": true,
@@ -2414,19 +2414,19 @@
       "sha256": "485e7809f51305f21183d6fe52c69fe9a083bebc4592f637b2a1e67b5af77d57"
     },
     "sourceGlb": {
-      "bytes": 791868,
-      "sha256": "2e97c0a6b8fc952454165c3c92f9446e711b0cffd9dcaa19b75ddf291ded8181",
+      "bytes": 785080,
+      "sha256": "7c552d4c82c079ca2e827f20e4ac1d3e5cd20d7bb9bd3f4a52fbfd6ed204c312",
       "uri": "place_worklight_tower.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 1266484,
-    "sha256": "6d148201ad4c8884d63e3b1813742d3803b7e46d1f1d3608c761415d66f003f8",
+    "bytes": 1242572,
+    "sha256": "1814950fadef6c8cff2475642d72fbc23d24e9df9a472f95a800023ca1b09da7",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3389,7 +3389,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_worklight_tower.glb"
   },
-  "runtimeHash": "4a3e56362de9dbc19feb7095cf7c64481f5f5592ef065219fe163d302973c054",
+  "runtimeHash": "1d36cb9f9e99f8feb8ff5787b4c5686927661c26a55f232cbfc2ea512fce3185",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

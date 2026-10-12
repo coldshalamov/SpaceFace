@@ -247,7 +247,7 @@ import {
 } from '../world/worldRecords.js';
 import { bumpCollidesFlipEpoch, entityIndexVersion, forEachLivingWorldActor, forEachJobInteractable, isLivingWorldActor, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
 import { CIVILIAN_MANIFEST_PAYLOAD_TYPE } from './lootShards.js';
-import { syncEntityCollisionIndexMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
+import { syncEntityCollisionIndexMembership, syncEntitySectorMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
 import { getDressingRow } from '../world/dressingTable.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
@@ -947,6 +947,10 @@ export const CONTRACT_47A_B3_TAG = 'campaign47a:b3:bigger_boat';
 // first-hour rail can guarantee a legible three-loop choice without inventing a second contract
 // lifecycle. Missions still owns generation, acceptance, targets, rewards, and receipts.
 export const ONBOARDING_CHOICE_SOURCE = 'onboardingChoice';
+// Provenance tag for offers inserted through postBoardOffer: posted authored work,
+// not an epoch reroll — ensureBoard's refresh retains them like the other
+// player-earned classes so a regen cannot swallow the row before acceptance.
+export const POSTED_BOARD_SOURCE = 'postedBoardOffer';
 export const ONBOARDING_CHOICE_LOOPS = Object.freeze([
   Object.freeze({
     type: 'bulk_trade', label: 'HAUL', maxRiskTier: 1, maxCollateralCr: 2000, maxRewardCr: 10000,
@@ -1431,7 +1435,7 @@ export const missions = {
         this._refreshNavigation({ silent: true });
       }
       this.ensureBoard(stationId);
-      this._dnfAuthoredRaces('race_left_course');
+      this._onDockedAuthoredRaces(stationId);
       this._onDockedObjectives(stationId);
       this._onContract47aB3Docked(stationId);
       this._storyTrigger('dock', { stationId });
@@ -1712,7 +1716,7 @@ export const missions = {
       }
       // FB-066: an ordered gate course scores the player's own flight line each tick — the
       // contract is the geometry, so the per-tick predicate is the only honest judge.
-      if (m.type === 'race') this._driveRace(m, i, state);
+      if (m.type === 'race') this._driveRace(m, i, state, dt);
     }
     // A saturated cap defers authored targets; retry in stable mission order at a bounded cadence.
     // This is also the Continue top-up path after world adopted only part of a target group.
@@ -2039,6 +2043,11 @@ export const missions = {
       offer && offer.source === CAPITAL_BOSS_SOURCE
       && !completedEndgamePull(state, offer.params && offer.params.capitalBossId)
     ));
+    // postBoardOffer rows are posted authored work kept until accepted — same
+    // class as the other player-earned retentions; acceptMission withdraws them.
+    const retainedPostedOffers = previousSlots.filter((offer) => (
+      offer && offer.source === POSTED_BOARD_SOURCE
+    ));
     board = {
       refreshEpoch: epoch,
       slots: [
@@ -2068,6 +2077,7 @@ export const missions = {
         ...retainedSalvageOffers,
         ...retainedEcologyOffers,
         ...retainedSetPieceFollowOns,
+        ...retainedPostedOffers,
       ],
     };
     if (!info.desklessOutpost) this._guaranteeRecoveryOffer(info, board, epoch);
@@ -3961,6 +3971,44 @@ export const missions = {
   },
 
   /**
+   * Missions-owned seam to post an authored board offer without accepting it — the
+   * post-only half of postAndAcceptAuthoredOffer for callers that need the offer
+   * on the board so the player (or a probe driving the player's click) accepts it.
+   */
+  postBoardOffer(rawOffer) {
+    if (!rawOffer || typeof rawOffer !== 'object') return { ok: false, reason: 'bad_offer' };
+    const offer = JSON.parse(JSON.stringify(rawOffer));
+    if (!offer.id || !offer.type || !offer.stationId) {
+      return { ok: false, reason: 'bad_offer_shape' };
+    }
+    if (!this.state.missions.boards || typeof this.state.missions.boards !== 'object') {
+      this.state.missions.boards = {};
+    }
+    let board = this.state.missions.boards[offer.stationId];
+    if (!board || typeof board !== 'object') {
+      board = { refreshEpoch: this._epoch(), slots: [] };
+      this.state.missions.boards[offer.stationId] = board;
+    }
+    if (!Array.isArray(board.slots)) board.slots = [];
+    board.slots = board.slots.filter((candidate) => candidate && candidate.id !== offer.id);
+    if (offer.source == null) offer.source = POSTED_BOARD_SOURCE;
+    board.slots.unshift(offer);
+    this.bus.emit('mission:updated', { missionId: null, stationId: offer.stationId });
+    return { ok: true, offerId: offer.id };
+  },
+
+  // Read-only lane probes — facade reads cross on the missions domain leaf (a
+  // multi-second cadence); harnesses that need the sim's truth now ask it
+  // directly instead of treating mirror staleness as a verdict.
+  listActive() {
+    return (this.state.missions.active || []).map((m) => ({ id: m && m.id, status: m && m.status }));
+  },
+  boardSlots(stationId) {
+    const board = this.state.missions.boards && this.state.missions.boards[stationId];
+    return board && Array.isArray(board.slots) ? board.slots.map((o) => o && o.id) : [];
+  },
+
+  /**
    * Missions-owned seam for authored, deterministic contracts such as M3 Hauler steps.
    * The caller supplies a normal board offer; this method alone inserts and accepts it so
    * collateral, active ids, mission navigation, rewards, and receipts keep one authority.
@@ -4238,8 +4286,11 @@ export const missions = {
       case 'race':
         // Multi-lap authored circuits count every gate of every lap. A board race has no
         // laps field, so its target stays one unit per gate.
-        if (params && (params.closedCircuit || Number(params.laps) > 1)) return raceObjectiveUnits(params);
-        return Math.max(1, (params && Array.isArray(params.gates) && params.gates.length) || 1);
+        if (params && (params.closedCircuit || Number(params.laps) > 1)) {
+          return raceObjectiveUnits(params) + (params.sectionMission ? 1 : 0);
+        }
+        return Math.max(1, (params && Array.isArray(params.gates) && params.gates.length) || 1)
+          + (params && params.sectionMission ? 1 : 0);
       case SPLIT_MANIFEST_TYPE:
         // One unit per net landed — the manifest itself decides when the contract settles.
         return Math.max(1, (params && Array.isArray(params.lots) && params.lots.length) || 2);
@@ -4628,6 +4679,27 @@ export const missions = {
     // waypoint follows: it points at the thing you have to fly through, not the whole course.
     if (m.type === 'race') {
       const params = m.params || {};
+      if (params.sectionMission) {
+        if (params.phase === 'approach' || params.phase === 'grid') {
+          const line = startLineFor(params);
+          return {
+            ...base,
+            label: `${params.courseName || 'Race'} start line`,
+            stationId: null,
+            sectorId: params.courseSectorId || m.destSectorId,
+            pos: line ? { x: line.x, z: line.z } : null,
+            reason: params.phase === 'approach'
+              ? 'Stop within 70 WU of the start line, slow to 8 WU/s or less, align with the first leg and release any tether'
+              : 'Hold on the start line until the green light',
+          };
+        }
+        if (params.phase === 'handoff') {
+          return {
+            ...base,
+            reason: `Dock at ${destination} to settle the course`,
+          };
+        }
+      }
       const gates = Array.isArray(params.gates) ? params.gates : [];
       const next = Math.max(0, Math.min(Math.max(0, gates.length - 1), params.nextGate | 0));
       const gatePos = this._raceGateGlobal(m, next);
@@ -7564,7 +7636,7 @@ export const missions = {
   },
 
   /**
-   * Dock or jump abandons an authored circuit. Collateral on these offers is zero and they
+   * Jumping or leaving an authored circuit fails it. Collateral on these offers is zero and they
    * carry no faction, so the ordinary fail path does not debt the wallet or standing.
    * Procedural board races have no racingContractId and are left alone.
    */
@@ -7574,6 +7646,33 @@ export const missions = {
       const m = active[i];
       if (!m || m.status !== 'active' || m.type !== 'race' || !m.params || !m.params.racingContractId) continue;
       this._failMission(m, i, reason || 'race_left_course');
+    }
+  },
+
+  _onDockedAuthoredRaces(stationId) {
+    const active = this.state.missions.active || [];
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const player = this.state.entities && this.state.playerId != null
+      ? this.state.entities.get(this.state.playerId) : null;
+    for (let i = active.length - 1; i >= 0; i--) {
+      const m = active[i];
+      if (!m || m.status !== 'active' || m.type !== 'race' || !m.params
+        || !m.params.racingContractId) continue;
+      if (m.deadline_s != null && Number.isFinite(m.deadline_s) && now >= m.deadline_s) {
+        this._expireMission(m, i);
+        continue;
+      }
+      if (!player || player.alive === false) {
+        this._failMission(m, i, 'race_pilot_lost');
+        continue;
+      }
+      if (!m.params.sectionMission || m.params.phase !== 'handoff'
+        || stationId !== m.destStationId) {
+        this._failMission(m, i, 'race_left_course');
+        continue;
+      }
+      m.objectiveProgress = m.objectiveTarget;
+      this._completeMission(m, i);
     }
   },
 
@@ -7589,6 +7688,17 @@ export const missions = {
       }
     }
     if (!found) return;
+    if (found.params.sectionMission
+      && found.params.phase !== 'grid' && found.params.phase !== 'chase') {
+      this.bus.emit('toast', {
+        text: found.params.phase === 'handoff'
+          ? 'Course complete. Dock at the destination; recovery is no longer available.'
+          : 'Recovery is unavailable before the start grid.',
+        kind: 'info',
+        ttl: 3,
+      });
+      return;
+    }
     // Same-sector relocation moves only the hull. Keep the attachment and its load intact
     // until the pilot releases it through the Massline owner; never teleport one rope end.
     if (this.state.player?.tether?.active) {
@@ -7617,6 +7727,10 @@ export const missions = {
     params.planeSampleSimS = null;
     params.resetCount = (params.resetCount | 0) + 1;
     params.precisionChain = 0;
+    if (params.sectionMission) {
+      params.draftTimeS = 0;
+      params.drafting = false;
+    }
     this.bus.emit('toast', {
       text: 'Recovered at the last cleared gate. Clock continues; this run cannot set a clean best.',
       kind: 'info',
@@ -7628,7 +7742,7 @@ export const missions = {
    * Authored circuits: grid hold, plane gates, laps, draft/boost/leash. Reached only when
    * params.racingContractId is set, so an FB-066 bubble race never enters.
    */
-  _driveAuthoredRace(m, index, state) {
+  _driveAuthoredRace(m, index, state, dt = 0) {
     const params = m.params || {};
     const gates = Array.isArray(params.gates) ? params.gates : [];
     const player = state.entities && state.playerId != null ? state.entities.get(state.playerId) : null;
@@ -7641,6 +7755,12 @@ export const missions = {
       return;
     }
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const sectionMission = params.sectionMission === true;
+    let phase = params.phase;
+    if (sectionMission && !['approach', 'grid', 'chase', 'handoff'].includes(phase)) {
+      this._failMission(m, index, 'race_bad_phase');
+      return;
+    }
     if (!params.adventureSpeedId) {
       const category = racingLoadoutCategory(state, player);
       if (!params.raceCategory) {
@@ -7655,13 +7775,63 @@ export const missions = {
     this._racingSetPieces.update(m);
     const globals = raceGateGlobals(params);
     if (globals.length !== gates.length) { this._failMission(m, index, 'race_bad_course'); return; }
+    if (sectionMission && phase === 'approach') {
+      const start = startLineFor(params);
+      if (!start) { this._failMission(m, index, 'race_bad_course'); return; }
+      const dx = globals[1].x - globals[0].x;
+      const dz = globals[1].z - globals[0].z;
+      const length = Math.hypot(dx, dz);
+      const speed = Math.hypot(Number(player.vel?.x) || 0, Number(player.vel?.z) || 0);
+      const aligned = length > 0 && Number.isFinite(player.rot)
+        && Math.cos(player.rot) * dx / length + Math.sin(player.rot) * dz / length >= 0.8;
+      const nearLine = Math.hypot(player.pos.x - start.x, player.pos.z - start.z) <= 70;
+      if (nearLine && speed <= 8 && aligned && !state.player?.tether?.active) {
+        params.phase = 'grid';
+        params.gridUntilSimS = now + (Number(params.gridHoldS) || 0);
+        params.raceStartSimS = null;
+        params.planeSample = null;
+        params.planeSampleSimS = null;
+        params.draftTimeS = 0;
+        params.drafting = false;
+        this._refreshTrackedMissionNav(m);
+        this.bus.emit('mission:updated', { missionId: m.id });
+        this.bus.emit('toast', {
+          text: `Chase view engaged. Green in ${(Number(params.gridHoldS) || 0).toFixed(1)}s.`,
+          kind: 'info',
+          ttl: 4,
+        });
+      }
+      return;
+    }
+    if (sectionMission && phase === 'handoff') return;
+    if (sectionMission && phase === 'grid' && !Number.isFinite(params.gridUntilSimS)) {
+      params.gridUntilSimS = now + (Number(params.gridHoldS) || 0);
+    } else if (!sectionMission && !Number.isFinite(params.gridUntilSimS)) {
+      params.gridUntilSimS = now + (Number(params.gridHoldS) || 0);
+    }
+    if (sectionMission && phase === 'grid' && now >= params.gridUntilSimS) {
+      params.phase = 'chase';
+      phase = 'chase';
+      params.raceStartSimS = params.gridUntilSimS;
+      params.planeSample = null;
+      params.planeSampleSimS = null;
+      this._refreshTrackedMissionNav(m);
+      this.bus.emit('mission:updated', { missionId: m.id });
+      this.bus.emit('toast', { text: 'Green. The chase is live.', kind: 'success', ttl: 3 });
+    }
     const prev = params.planeSample;
     const previousTime = Number.isFinite(params.planeSampleSimS) ? params.planeSampleSimS : now;
     params.planeSample = { x: player.pos.x, z: player.pos.z };
     params.planeSampleSimS = now;
     if (now < params.gridUntilSimS) return;
     // The green-light instant is authoritative, not whichever later tick observes it.
-    if (!Number.isFinite(params.raceStartSimS)) params.raceStartSimS = params.gridUntilSimS;
+    if (!Number.isFinite(params.raceStartSimS)) {
+      if (sectionMission && !Number.isFinite(params.gridUntilSimS)) {
+        this._failMission(m, index, 'race_bad_phase');
+        return;
+      }
+      params.raceStartSimS = params.gridUntilSimS;
+    }
 
     const sample = { prev, pos: player.pos, vel: player.vel, gates: globals, previousTime, now };
     let section = { sample, context: null };
@@ -7724,7 +7894,7 @@ export const missions = {
     // Burn rings run after ordered crossings. Proximity alone cannot farm a boost.
     const assist = params.adventureSpeedId && !(params.nextGate > 0)
       ? { patch: {}, impulses: [] }
-      : racingAssistIntents({ params, player, simTime: now, gatesGlobal: globals });
+      : racingAssistIntents({ params, player, simTime: now, gatesGlobal: globals, dt });
     Object.assign(params, assist.patch);
     for (const row of assist.impulses) if (row?.impulse) queuePhysicsImpulse(player, row.impulse);
     if (speedRun) finish = speedRun.outcome === 'complete' ? speedRun.finishedEvent : null;
@@ -7733,6 +7903,12 @@ export const missions = {
     const elapsedS = finish.elapsedS;
     if (params.adventureSpeed?.kind === 'thermal' && !this._deliverCargo(m)) {
       this._failMission(m, index, 'speed_payload_lost');
+      return;
+    }
+    const draftRequiredS = Number(params.draftRequiredS);
+    if (Number.isFinite(draftRequiredS) && draftRequiredS > 0
+      && (Number(params.draftTimeS) || 0) < draftRequiredS) {
+      this._failMission(m, index, 'race_wake_incomplete');
       return;
     }
     const band = raceBandForElapsed(elapsedS, params);
@@ -7749,6 +7925,22 @@ export const missions = {
       try { rememberRaceRecord(globalThis.localStorage, raceRecordKey(params), params.raceElapsedS); }
       catch { /* private-mode storage is optional; the mission result is not */ }
     }
+    if (sectionMission) {
+      params.phase = 'handoff';
+      params.raceLease = false;
+      params.drafting = false;
+      params.planeSample = null;
+      params.planeSampleSimS = null;
+      const destination = STATION_INFO.get(m.destStationId)?.name || 'the destination station';
+      this._refreshTrackedMissionNav(m);
+      this.bus.emit('mission:updated', { missionId: m.id });
+      this.bus.emit('toast', {
+        text: `Course clear – ${params.raceElapsedS.toFixed(2)}s – ${band.toUpperCase()}. Dock at ${destination} to file.`,
+        kind: 'success',
+        ttl: 5,
+      });
+      return;
+    }
     this.bus.emit('toast', { text: `${params.adventureSpeedId ? 'Speed contract' : 'Circuit'} complete · ${params.raceElapsedS.toFixed(2)}s · ${band.toUpperCase()}`
       + (params.raceClean ? ' · clean run' : ' · unranked run, no best time'), kind: 'success', ttl: 5 });
     this._completeMission(m, index);
@@ -7760,11 +7952,11 @@ export const missions = {
    * timed segment regardless of where they were standing when the contract posted. Gates score
    * ONLY in order: standing inside a later buoy early warns once per gate and counts nothing.
    */
-  _driveRace(m, index, state) {
+  _driveRace(m, index, state, dt = 0) {
     const params = (m && m.params) || {};
     // Authored terminal paths must run before the legacy out-of-sector early return.
     if (params.racingContractId) {
-      this._driveAuthoredRace(m, index, state);
+      this._driveAuthoredRace(m, index, state, dt);
       return;
     }
     const gates = Array.isArray(params.gates) ? params.gates : [];
@@ -9323,6 +9515,7 @@ export const missions = {
       ent.homeSectorId = sectorId;
       ent.data.homeSectorId = sectorId;
       if (ent.data.sectorId == null) ent.data.sectorId = sectorId;
+      syncEntitySectorMembership(this.state && this.state.entityIndex, ent);
     }
     if (ent.data.worldRecordId || !sectorId) return;
     const seed = (this.state.meta && this.state.meta.seed) || 1;

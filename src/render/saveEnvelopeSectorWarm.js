@@ -880,8 +880,10 @@ function liveEnterSpawnerStubs(state, sector, out, coverBareMissionWrecks) {
   // (intervention.js _materializePendings → _spawnSite/_spawnGuard/_spawnJumper). Every
   // job.kind is non-military, so the mount's residue file is the spawn's allocated-id hash
   // — an id-less stub hashes 'undefined' onto one fixed class (~5/6 wrong); cover the table.
-  // The guard/jumper specs carry no defId/lootTableId/silhouette, so both hulls mount the
-  // procedural buildShipMesh path — no authored file to warm, no roster stubs to push.
+  // The guard/jumper specs carry no defId/lootTableId/silhouette, so their hull selection
+  // resolves the id-seeded modular pick (partsLibrary authoredPreloadPlanForEntity) — not
+  // enumerable here by id. The residency-poll intervention arm warms that closed modular
+  // pool (warmPendingInterventionDecodes → warmSeededModularPool).
   const pendings = Array.isArray(state.pendingInterventions) ? state.pendingInterventions : [];
   if (pendings.some((job) => job && job.sectorId === sector.id)) coverBareMissionWrecks();
   // Unique-wreck bearings, the morrow companion, and the survivor pod moved into

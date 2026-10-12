@@ -12,7 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3933c44e4d974a35a2d266336b73b0cf41c23f05e933b172a815567acb65b58f",
+  "contentHash": "a7fcfaa865a287a79ee57340a6a5e7f915cc0fc731c1f789d4415acb3e7145eb",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -54,7 +54,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b61715b90da7f53ce1d659d56623f86f57979513b1cbd6e1d647b1338a3e7305",
+      "geometryHash": "44178cd836ce467170b7adc3b7f99cc2a9c96696d6e38b20f39d4df882d338d2",
       "id": "sf.render.mark.node.lod0-armor.primitive.0",
       "indexCount": 1140,
       "indexed": true,
@@ -79,16 +79,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a66b78cc875abce968f3211cd17ded7b240ef6e7e81a000614c3c985fbe0046a",
+      "geometryHash": "68e4d15a8beef56cf2f6b1b4d7b872215d01011a2e9b3d23ee79f7b4bb2e1d48",
       "id": "sf.render.mark.node.lod0-beacon-amber.primitive.0",
-      "indexCount": 1620,
+      "indexCount": 1596,
       "indexed": true,
       "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.mark.node.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 483
+      "vertexCount": 477
     },
     {
       "bounds": {
@@ -129,7 +129,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40b05de7e89aaa59b3e14d9483a9d3d52cf970760410d6169a440855a285f5a3",
+      "geometryHash": "6d38099a49721d93a9b2f2fd549b2293cc324e1694341f2e81b5402cba384418",
       "id": "sf.render.mark.node.lod0-hull.primitive.0",
       "indexCount": 708,
       "indexed": true,
@@ -154,7 +154,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "77be81fd88cafe0c426c1612641b5ebedc466a553f40d8c40d90bd84f9c46037",
+      "geometryHash": "c97c403cdf3ae123f9d6b8d71e47b96ea25e647859a64734bc919812cd00e60c",
       "id": "sf.render.mark.node.lod0-mechanical.primitive.0",
       "indexCount": 2724,
       "indexed": true,
@@ -204,7 +204,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9b6199bc63d7bbb4d8306e318354dd61d36b1c685c8b4c0e80a63491477d410b",
+      "geometryHash": "2227e347b98c1aec3f9a595d9d34f607b8cead6318aca1175bf6eafd707292dc",
       "id": "sf.render.mark.node.lod0-warning.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -229,7 +229,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a137293d1e0ad7986954787cc824489b1b96a362494ddd645f13fd75116b546",
+      "geometryHash": "80ff2ab422e410bf21ac0d0e97776b395e12e058eaf660ffb6a0681448405215",
       "id": "sf.render.mark.node.lod1-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -254,7 +254,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ea225bff0605892501b6ec9b552e4e1f9a9572d4ecc42ef26c17a9272c9f1f28",
+      "geometryHash": "35715c99ccb381af93711f87240b6265adb12cc2db1b695bb920cea8494a4f68",
       "id": "sf.render.mark.node.lod1-beacon-amber.primitive.0",
       "indexCount": 459,
       "indexed": true,
@@ -304,7 +304,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1e3c639bc2ff073e7bfdabeab1ebb5a822983ba759e4bbc3e8d86f38b35d2d99",
+      "geometryHash": "c2249b56c0305f0b4e743d29b1d1d5b37c87f0a956c904154baa2a53ce9bc478",
       "id": "sf.render.mark.node.lod1-hull.primitive.0",
       "indexCount": 99,
       "indexed": true,
@@ -329,7 +329,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8dd750a9d26cc401a7308c46134ce7ab5f8791ab045158bf453e3a3ca14894d9",
+      "geometryHash": "dca7f689b9c428cfe431b6d727127b5649910253e00e9a417612fe488e5af988",
       "id": "sf.render.mark.node.lod1-mechanical.primitive.0",
       "indexCount": 1236,
       "indexed": true,
@@ -379,7 +379,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8f477bb9803f5e4c47caf48329570f55e966aca1d077aa80fe3a2d86b23ceb55",
+      "geometryHash": "fe19ce615957f534faa76a175c512dbd58a0ae2a42db588563b4907f88c69564",
       "id": "sf.render.mark.node.lod1-warning.primitive.0",
       "indexCount": 786,
       "indexed": true,
@@ -404,7 +404,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5932ebfa9839029745313b1dd18eb08457380b0253996c60c2cc5aef917fc432",
+      "geometryHash": "5f11134ab117155edb71ecd45b58492cd71cff6e343d0f80c8cad117c5b3b36d",
       "id": "sf.render.mark.node.lod2-armor.primitive.0",
       "indexCount": 198,
       "indexed": true,
@@ -479,7 +479,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "801de04df3534a1e2bd499cd29254584afa97becfb2fed921a53f625644267f6",
+      "geometryHash": "9ad33debda444ad0b3d6814fed9caf6746d5b4ea58b36190ad979b8a644b2913",
       "id": "sf.render.mark.node.lod2-mechanical.primitive.0",
       "indexCount": 672,
       "indexed": true,
@@ -529,7 +529,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9ea3643aaf85111657d2a5587cf9ef35a1258b99d91abfe39d7ac3f0b05bc169",
+      "geometryHash": "7ca1ac561b363f88bc191be514e3b42528e2be6d10c647c8b0a41cec1e45b2bc",
       "id": "sf.render.mark.node.lod2-warning.primitive.0",
       "indexCount": 216,
       "indexed": true,
@@ -1804,19 +1804,19 @@
       "sha256": "f744bf69e9c479a55a1338bc0ee0391f7017c76ebe0911016a277620f523a032"
     },
     "sourceGlb": {
-      "bytes": 239288,
-      "sha256": "ab2db3f7e66536490d1875310ee2165d9f066f036db5d0068cce0fe534988682",
+      "bytes": 239220,
+      "sha256": "9d7ed07d399989049e1af12c9d5b52641e984a6cb54670fd40db227ec1308373",
       "uri": "place_claim_mark.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 360180,
-    "sha256": "4e78cad2c269004cc12688c4f1e8a53543d2a73d9f4644951ff9eca4057f9650",
+    "bytes": 359872,
+    "sha256": "67e3eeecfd7d4e6c8c26d19718cc0955e98be1e72d902ba9134e93498b6e4575",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2508,7 +2508,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_mark.glb"
   },
-  "runtimeHash": "e582172b3e8618a0954674ec5d79eec44a517394fadf981f277f208b5f4e2cba",
+  "runtimeHash": "a73e5062121020444c330a0b56b633a3eb3e49a10bed3aa9528a1ef98f599e0e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

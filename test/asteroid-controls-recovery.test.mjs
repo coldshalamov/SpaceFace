@@ -8,6 +8,17 @@ const STEP = 1 / 60;
 const empty = () => ({ type: 'empty', hp: 0, maxHp: 0, tierReq: 1, ore: null });
 const key = (code) => ({ code, repeat: false, preventDefault() {} });
 
+test('guidance can cancel the cold asteroid screen before the drill owner exists', () => {
+  const controller = createAsteroidController({
+    drillSys: null,
+    getDrillState: () => null,
+    controlMap: { left: ['KeyA'], right: ['KeyD'], up: ['KeyW'], down: ['KeyS'], scan: ['KeyF'] },
+    hooks: {},
+  });
+  assert.doesNotThrow(() => controller.cancel());
+  assert.doesNotThrow(() => controller.cancel(), 'repeated drawer/guidance cancellation stays safe');
+});
+
 function harness() {
   const state = createGameState(90130);
   const bus = { emit() {}, on() { return () => {}; } };

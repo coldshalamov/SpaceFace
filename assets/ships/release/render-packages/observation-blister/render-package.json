@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1fcc4b7b3927d4f7f97059168367c7c324a7f4fa629899c2f47179aea7c96d34",
+  "contentHash": "fa16471bced1a59553795f301323e67f5d9bad35eeee4bb26e5df7ca196b5e47",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -95,7 +95,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ba5a89d33b3886d5b61f364910fdd4de36d11f51a96dc2d6c04fb0c10505e348",
+      "geometryHash": "843f049447a5fa4723d6b840d240e5d7c5491084c74704df55f655d96b9ed873",
       "id": "sf.render.observation-blister.mesh.base.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -104,7 +104,7 @@
       "meshName": "Cylinder.005",
       "nodeId": "sf.render.observation-blister.mesh.base",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 64
     },
     {
       "bounds": {
@@ -120,7 +120,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6bbddb04152a381c868c78764c28edf8e61c3f88addd5a864c9dc1430ffd8107",
+      "geometryHash": "991f37cc4add64826475142ffb8800e9373723bd789ec2d1361c84147ab2b42d",
       "id": "sf.render.observation-blister.mesh.dome.primitive.0",
       "indexCount": 1320,
       "indexed": true,
@@ -129,7 +129,7 @@
       "meshName": "Sphere.002",
       "nodeId": "sf.render.observation-blister.mesh.dome",
       "primitiveIndex": 0,
-      "vertexCount": 920
+      "vertexCount": 222
     },
     {
       "bounds": {
@@ -145,7 +145,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f4ad39cde6b5d24e726f7a849b00ea4657a88c585ef8e33a74d1abf3d1ef670",
+      "geometryHash": "f154b65db832c9432b76897cf6f5c22aaafd8ae2069a7f14987000a01cfd7aa6",
       "id": "sf.render.observation-blister.mesh.glow-band.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -154,7 +154,7 @@
       "meshName": "Cylinder.004",
       "nodeId": "sf.render.observation-blister.mesh.glow-band",
       "primitiveIndex": 0,
-      "vertexCount": 120
+      "vertexCount": 80
     },
     {
       "bounds": {
@@ -170,7 +170,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0b305c9e25fea6963addef7d0265e557d8954254285275dffaace32458bed4c6",
+      "geometryHash": "484aff0e7d2c4f88b579c04e8c6498fb0856386f22ff185a5e2b5cbef8669228",
       "id": "sf.render.observation-blister.mesh.glow.primitive.0",
       "indexCount": 204,
       "indexed": true,
@@ -179,7 +179,7 @@
       "meshName": "Cylinder.022",
       "nodeId": "sf.render.observation-blister.mesh.glow",
       "primitiveIndex": 0,
-      "vertexCount": 108
+      "vertexCount": 72
     },
     {
       "bounds": {
@@ -195,7 +195,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "316c26afbe383213a2acb33768080f1d7cc86ae2ea85e26e630e05d564408da6",
+      "geometryHash": "c2e15416e7db7a8210ecca9387b95cc4798eff153127ed4ba747a21c7c49b70e",
       "id": "sf.render.observation-blister.mesh.nav.primitive.0",
       "indexCount": 300,
       "indexed": true,
@@ -204,7 +204,7 @@
       "meshName": "Sphere.003",
       "nodeId": "sf.render.observation-blister.mesh.nav",
       "primitiveIndex": 0,
-      "vertexCount": 220
+      "vertexCount": 142
     },
     {
       "bounds": {
@@ -220,7 +220,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a04af72603bfaef053a0099159506f14ba7113ce3c133a88549d366b629e39f3",
+      "geometryHash": "c59b52b40c6aff44022c28062105505f64248d39044242a7877307ffde878234",
       "id": "sf.render.observation-blister.mesh.ring.primitive.0",
       "indexCount": 228,
       "indexed": true,
@@ -229,7 +229,7 @@
       "meshName": "Cylinder.003",
       "nodeId": "sf.render.observation-blister.mesh.ring",
       "primitiveIndex": 0,
-      "vertexCount": 120
+      "vertexCount": 80
     },
     {
       "bounds": {
@@ -245,7 +245,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "59d78080e27ad0bae42e1a8d750f18b4944216ef165832d0b3e33a6ddf51a434",
+      "geometryHash": "4d25fc738b5cde676b6fa065c5e5eb5233d66bab6bd219cbb1a0f44841cc89d6",
       "id": "sf.render.observation-blister.mesh.stalk.primitive.0",
       "indexCount": 180,
       "indexed": true,
@@ -254,7 +254,7 @@
       "meshName": "Cylinder.002",
       "nodeId": "sf.render.observation-blister.mesh.stalk",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 64
     }
   ],
   "hlods": [],
@@ -751,19 +751,19 @@
       "sha256": "57d938e947c7623f1a1e3a185a0ff1b7ac9cc7dce55f7e60d1cb2d418d595b57"
     },
     "sourceGlb": {
-      "bytes": 28892,
-      "sha256": "556a020536596f6ec4cb9f7f13624ab47d2e085160c0def6073d4d9471b90000",
+      "bytes": 30128,
+      "sha256": "e9515d6c765a85a56f4b03ae469586473da6802c63201586fd19486285ebb244",
       "uri": "place_observation_blister.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 46912,
-    "sha256": "337f5318ef74c15cc0f45915245b464c019422d4f0a2feef5585ff54f8dc57ae",
+    "bytes": 36168,
+    "sha256": "06c40384a9765d076cafbb107756ac968530143d4330b78e5c406c1c3c70cec3",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1100,7 +1100,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_observation_blister.glb"
   },
-  "runtimeHash": "e6314a45ad3ee4d2a253d1504fedf2dba860ebfd818d7f2a5c8a86aeb091e1a7",
+  "runtimeHash": "eb3cb9e5c36f917bc081b8e3e0d113af15985dadca4c1eec3a497ed9fc085867",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

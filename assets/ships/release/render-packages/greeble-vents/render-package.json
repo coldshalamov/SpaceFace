@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d925f8c519846781842f8c1a7f46cb1a101f0cb193686d50e01e7b278e91d25f",
+  "contentHash": "6a8f55b72ad02392f0bedf221c37c5f3629a2aaa648e8a1f6b29dccb058f0971",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,7 +23,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "07e6ab4baa7260ee38436c4be9bf6cb833c73718022ca7ab5f27dca6af3f7695",
+      "geometryHash": "10dcce51e3903b4f311d3e0d9d0c7a97f0b4293149f768bc720078ada8aabb40",
       "id": "sf.render.greeble-vents.mesh.greeble-vents-material-hull-merged.primitive.0",
       "indexCount": 648,
       "indexed": true,
@@ -32,7 +32,7 @@
       "meshName": "greeble_vents_Material_Hull_Merged",
       "nodeId": "sf.render.greeble-vents.mesh.greeble-vents-material-hull-merged",
       "primitiveIndex": 0,
-      "vertexCount": 152
+      "vertexCount": 265
     },
     {
       "bounds": {
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "748e942eeb155aa4dad48f53040d4c70f18f5fd2c4ca25e932cff3de5f4d3916",
+      "geometryHash": "11937a9aa7ff1de22ad5754e59feeaee043304b3d8d8bb1debd91572b027e0cb",
       "id": "sf.render.greeble-vents.mesh.greeble-vents-material-mechanical-merged.primitive.0",
       "indexCount": 2256,
       "indexed": true,
@@ -257,19 +257,19 @@
       "sha256": "3cd4c1b63ba152135c71475273f902409f87270c296e92fa0522cd38cc4b2efb"
     },
     "sourceGlb": {
-      "bytes": 411196,
-      "sha256": "ffbd4bcab14bbcf81a18cd171cd0ffec2deda80b0c66ed148c3c135b085e5e89",
+      "bytes": 416328,
+      "sha256": "9a28cc7825d80a52d5d6c4907ba04602273cf862d2f68001b667d22747052d4a",
       "uri": "greeble_vents.glb"
     },
     "sourceManifest": {
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
+      "bytes": 270117,
+      "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 421696,
-    "sha256": "7c54a67e4843c0faaacafc9af98253ea884158197855249aae95c69c77af205c",
+    "bytes": 426736,
+    "sha256": "1e7233a2ecba4bd73cd2cf7165f071c12bd26514bfdbfb5e6b479a07bfe01592",
     "uri": "render.glb"
   },
   "runtime": {
@@ -373,7 +373,7 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_vents.glb"
   },
-  "runtimeHash": "72f022b6336759187671c0f77eec96ef121a1eea325d133f9b6a6a5567c79c88",
+  "runtimeHash": "0868cb9dcf82b4d6470b9da5db16b6ed1d2cec7d3ca42293914821aa10e2ea51",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

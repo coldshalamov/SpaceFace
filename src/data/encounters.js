@@ -181,7 +181,6 @@ function mergeUserEncounters(base) {
   return Object.freeze(merged);
 }
 
-export const ENCOUNTERS = mergeUserEncounters(SHIPPED_ENCOUNTERS);
 
 /** Persistent named captains (the seed roster). State lives in state.encounterDirector.named:
  *  { [id]: { alive, tier, escapes, kills, lastSeenSector } } — saved, migration-safe. Escalation is
@@ -467,6 +466,9 @@ export const ENCOUNTER_BARKS = Object.freeze({
   whisper_scan_hint: 'Signal has a source, {range} out. Hold it on your scanner.',
   whisper_broken:    'The source is wreckage now. Partial data recovered.',
 });
+
+// User records may reference shipped barks; initialize the table before validation.
+export const ENCOUNTERS = mergeUserEncounters(SHIPPED_ENCOUNTERS);
 
 /** CHN UNKNOWN whisper pool (anomaly ambience — lowercase on purpose; seeded pick). */
 export const WHISPER_LINES = Object.freeze([

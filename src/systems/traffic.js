@@ -51,7 +51,7 @@ import { getFarActor } from '../world/farActorTable.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
-import { syncEntityActivitySlotMembership } from '../core/coreSystem.js';
+import { syncEntityActivitySlotMembership, syncEntitySectorMembership } from '../core/coreSystem.js';
 import {
   RECORD_KIND,
   stableRecordId,
@@ -2497,6 +2497,7 @@ export const traffic = {
     data.sectorId = CERES_ACTIVITY_SECTOR_ID;
     this._indexWorldRecordId(entity);
     syncEntityActivitySlotMembership(this.state && this.state.entityIndex, entity);
+    syncEntitySectorMembership(this.state && this.state.entityIndex, entity);
   },
 
   _captureCeresActivityCast() {
@@ -2640,6 +2641,7 @@ export const traffic = {
     data.sectorId = sectorId;
     this._indexWorldRecordId(entity);
     syncEntityActivitySlotMembership(this.state && this.state.entityIndex, entity);
+    syncEntitySectorMembership(this.state && this.state.entityIndex, entity);
   },
 
   _assignActivityJob(entity, entry) {
@@ -4861,6 +4863,7 @@ export const traffic = {
     ent.homeSectorId = sectorId;
     ent.data.homeSectorId = sectorId;
     if (ent.data.sectorId == null) ent.data.sectorId = sectorId;
+    syncEntitySectorMembership(this.state && this.state.entityIndex, ent);
     // AI readability tags (hostility still team/passive/lawful + WANTED gate — never factionId).
     if (!ent.data.ai) ent.data.ai = {};
     if (lawPresenceRole(role)) {
@@ -4953,6 +4956,7 @@ export const traffic = {
         d.homeSectorId = sectorId;
       }
       if (d.sectorId == null) d.sectorId = sectorId;
+      syncEntitySectorMembership(this.state && this.state.entityIndex, e);
       if (!d.worldRecordId) {
         this._stampTrafficDurableIdentity(e, sectorId, d.trafficRole, { label: d.trafficLabel }, adoptIdx);
       }

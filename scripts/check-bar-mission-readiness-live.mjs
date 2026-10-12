@@ -41,7 +41,9 @@ try {
   // The navigation itself gets the same heavy allowance the boot wait below documents:
   // on a contended host the module-graph fetch that domcontentloaded waits on can exceed
   // Playwright's 30 s default even though nothing is wrong with the route.
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: HEAVY_TIMEOUT_MS });
+  // Worker-lane fabrications are transient: this probe writes state.missions/ui/player
+  // main-side, which the domain mirror would clobber — pin the main lane.
+  await page.goto(server.baseUrl + '?simLane=main', { waitUntil: 'domcontentloaded', timeout: HEAVY_TIMEOUT_MS });
   // Headless boot is roughly TWICE as slow as a real GPU here, and not because the game is slow:
   // SwiftShader does not expose KHR_parallel_shader_compile, so THREE compiles every program
   // serially on the main thread. Measured on this machine: window.SF.ctx ready at 11,977 ms

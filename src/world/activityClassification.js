@@ -171,6 +171,9 @@ export function resolvePins(entity, context = {}) {
   const d = entity.data || {};
   const flags = entity.flags || {};
   if (flags.missionPinned || d.missionPinned || d.missionId || d.missionTag || d.jobId
+    // A live convoy's transit cast is mission-critical from data alone — the run must
+    // physically complete regardless of the owner's context fill (check §J).
+    || d.transitCritical === true
     || d.activityActorSlotId
     || (typeof d.activityObjectSlotId === 'string' && /[a-z]/i.test(d.activityObjectSlotId))
     || d.predationRole || (d.ai && (d.ai.predationRole || d.ai.predationStatus))

@@ -56,6 +56,8 @@ if (!receipt.pass) {
     `${site.siteId}: live == planned ${site.live.entities} entities`
     + ` (${site.live.byType.fx || 0} fx + ${site.live.byType.wreck || 0} wreck),`
     + ` ${site.live.collidable} collidable / ${site.live.colliders} colliders`
+    + ` (boot ${site.boot.entities}, ${site.approachDormant} approach-dormant,`
+    + ` ${site.shelved} shelved)`
   )).join('; ');
   const additiveDressingSummary = (receipt.additiveDressing?.groups || []).map((group) => (
     `${group.id}: ${group.live.entities} entities`

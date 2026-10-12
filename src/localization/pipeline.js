@@ -534,25 +534,141 @@ export function translateMessage(locale, english, key) {
 
 const catalogCache = new Map();
 
+// The source locale merges once and the merge is shared: CATALOGS['en-US'] (through
+// deferredCatalog in gameLocalization.js) and this builder hand out the same frozen object —
+// the post-eval warm used to Object.assign a second full copy of every English row into
+// catalogCache (wave-142 finding 5). Non-English catalogs still build per-locale below.
+let englishMerged = null;
+function englishMergedCatalog() {
+  if (englishMerged === null) {
+    const out = {};
+    Object.assign(out, englishMessages, barkMessagesFor('en-US'), STORE_COPY['en-US']);
+    englishMerged = Object.freeze(out);
+  }
+  return englishMerged;
+}
+
 export function buildTranslatedCatalog(locale) {
   if (catalogCache.has(locale)) return catalogCache.get(locale);
-  const out = {};
   if (locale === 'en-US') {
-    Object.assign(out, englishMessages, barkMessagesFor('en-US'), STORE_COPY['en-US']);
-  } else {
-    for (const [key, english] of Object.entries(englishMessages)) {
-      out[key] = translateMessage(locale, english, key);
-    }
-    Object.assign(out, barkMessagesFor(locale), STORE_COPY[locale] || {});
+    const merged = englishMergedCatalog();
+    catalogCache.set(locale, merged);
+    return merged;
   }
+  const out = {};
+  for (const [key, english] of Object.entries(englishMessages)) {
+    out[key] = translateMessage(locale, english, key);
+  }
+  Object.assign(out, barkMessagesFor(locale), STORE_COPY[locale] || {});
   const frozen = Object.freeze(out);
   catalogCache.set(locale, frozen);
   return frozen;
 }
 
+// ── Deferred data ─────────────────────────────────────────────────────────────────────────────
+// Boot-eval deferral (wave-140 B5): a catalog's translate pass used to run inside the post-gate
+// eval task through the stub modules' top-level `buildTranslatedCatalog` call. These proxies keep
+// every consumer's synchronous view byte-identical while the build runs on first real access —
+// a language switch, a `?locale=` boot, or the idle warmup — never inside module eval.
+//
+// The proxy targets stay empty until materialized; reads forward to the built value. On
+// `preventExtensions` the real descriptors are copied onto the target first, which keeps the
+// proxy invariants (ownKeys/descriptor parity with a non-extensible target) exact.
+
+/** A plain object whose real contents are built synchronously on first property access. */
+export function deferredObject(build) {
+  const target = {};
+  let real = null;
+  const materialize = () => {
+    if (real === null) real = build();
+    return real;
+  };
+  return new Proxy(target, {
+    get: (t, p) => Reflect.get(materialize(), p),
+    has: (t, p) => p in materialize(),
+    ownKeys: () => Reflect.ownKeys(materialize()),
+    getOwnPropertyDescriptor: (t, p) => {
+      const d = Object.getOwnPropertyDescriptor(materialize(), p);
+      // A descriptor reported for a property the target does not own must be configurable; once
+      // the target is frozen it owns every real key and the real descriptor is reported verbatim.
+      return d && !Object.prototype.hasOwnProperty.call(t, p) ? { ...d, configurable: true } : d;
+    },
+    preventExtensions: (t) => {
+      const o = materialize();
+      Object.defineProperties(t, Object.getOwnPropertyDescriptors(o));
+      return Object.preventExtensions(t);
+    },
+    set: (t, p, v) => Reflect.set(materialize(), p, v),
+    deleteProperty: (t, p) => Reflect.deleteProperty(materialize(), p),
+    defineProperty: (t, p, d) => Reflect.defineProperty(materialize(), p, d),
+  });
+}
+
+/** `deferredObject` for arrays: the built contents are pushed onto the target once. */
+export function deferredArray(build) {
+  const target = [];
+  let real = null;
+  const materialize = () => {
+    if (real === null) {
+      real = build();
+      for (const value of real) target.push(value);
+    }
+    return target;
+  };
+  return new Proxy(target, {
+    get: (t, p) => Reflect.get(materialize(), p),
+    has: (t, p) => p in materialize(),
+    ownKeys: () => Reflect.ownKeys(materialize()),
+    getOwnPropertyDescriptor: (t, p) => Object.getOwnPropertyDescriptor(materialize(), p),
+    preventExtensions: (t) => { materialize(); return Object.preventExtensions(t); },
+    set: (t, p, v) => Reflect.set(materialize(), p, v),
+    deleteProperty: (t, p) => Reflect.deleteProperty(materialize(), p),
+    defineProperty: (t, p, d) => Reflect.defineProperty(materialize(), p, d),
+  });
+}
+
+/** A shipped catalog that builds on first real access instead of at module eval. */
+export function deferredCatalog(locale) {
+  return deferredObject(() => buildTranslatedCatalog(locale));
+}
+
+// Idle warm for the deferred catalogs: identical output to buildTranslatedCatalog, produced in
+// slices so a full translate pass never lands as one main-thread task. A partially warmed locale
+// is invisible — only the completed, frozen object enters catalogCache — so a consumer arriving
+// mid-warm still materializes the whole catalog synchronously through buildTranslatedCatalog.
+const catalogWarmState = new Map();
+
+/** Advance one slice of a locale's warm build; returns true once the catalog is complete. */
+export function warmTranslatedCatalog(locale, sliceCount = 1600) {
+  if (catalogCache.has(locale)) {
+    catalogWarmState.delete(locale);
+    return true;
+  }
+  if (locale === 'en-US') {
+    buildTranslatedCatalog(locale);
+    return true;
+  }
+  let state = catalogWarmState.get(locale);
+  if (!state) {
+    state = { out: {}, keys: Object.keys(englishMessages), index: 0 };
+    catalogWarmState.set(locale, state);
+  }
+  const end = Math.min(state.index + Math.max(1, Math.floor(sliceCount) || 1600), state.keys.length);
+  for (; state.index < end; state.index++) {
+    const key = state.keys[state.index];
+    state.out[key] = translateMessage(locale, englishMessages[key], key);
+  }
+  if (state.index < state.keys.length) return false;
+  Object.assign(state.out, barkMessagesFor(locale), STORE_COPY[locale] || {});
+  catalogCache.set(locale, Object.freeze(state.out));
+  catalogWarmState.delete(locale);
+  return true;
+}
+
 // ── FB-107: honest locale readiness ───────────────────────────────────────────────────────────
-// The four non-English shipped catalogs are machine-filled at import time (buildTranslatedCatalog
-// → machineTranslate, a glossary pass over the English inventory). A locale's string counts as
+// The four non-English shipped catalogs are machine-filled on first use (deferredCatalog →
+// buildTranslatedCatalog → machineTranslate, a glossary pass over the English inventory). A
+// locale's string counts as
 // REVIEWED only when it resolves from an authored table — an explicit PHRASES row, a reviewed
 // bark, or reviewed store copy — never through the machine pass. While a locale's reviewed
 // coverage stands under LOCALE_REVIEWED_GATE, its picker label honestly reads as a machine

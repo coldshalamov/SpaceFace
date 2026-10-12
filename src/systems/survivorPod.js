@@ -1337,7 +1337,7 @@ export const survivorPod = {
 
     const point = pointForRec(state, rec);
     const ent = entityForPoint(state, point || rec);
-    const meta = mirrorMeta(state, rec, point, ent);
+    let meta = mirrorMeta(state, rec, point, ent);
     const reward = Math.max(
       Math.round((template.reward_cr || 0) * meta.minRewardMultiplier),
       Math.round((template.reward_cr || 0) * meta.rewardMultiplier),
@@ -1379,6 +1379,10 @@ export const survivorPod = {
         rec.destStationId = reroute.id;
         // Local rows are raw catalog records without sectorId — keep the pod's sector.
         rec.destSectorId = reroute.sectorId || rec.sectorId;
+        // The mirror stamped above still names the refused berth — re-stamp so readers see
+        // the admitted destination now rather than on the next update tick. Refresh `meta`
+        // too: offer.survivorPod spreads it below and must not contradict offer.destStationId.
+        meta = mirrorMeta(state, rec, point, ent);
       }
     }
     // salvage._buildOffer already bound a board station; the rescue desk is the fallback.
@@ -1459,6 +1463,9 @@ export const survivorPod = {
       return false;
     }
     const ent = entityForPoint(state, point);
+    // Latch before the emit: the payload meta (spread below) and the mirrors stamp the true
+    // state at choice time, and missions' synchronous accept runs inside the emit.
+    rec.rescueSelected = true;
     const meta = mirrorMeta(state, rec, point, ent);
     if (this._bus && this._bus.emit) {
       this._bus.emit('survivorPod:rescueSelected', {
@@ -1471,18 +1478,16 @@ export const survivorPod = {
     }
     // Missions accepts synchronously inside the emit above. A refused accept — standing lost
     // at the destination desk between the berth re-resolve and this choice, or an offer row
-    // that is already gone — leaves NO contract. The latch must not hold: set it only when a
-    // live rescue mission for this pod exists, otherwise roll back and tell the card so the
-    // prompt stays for the retry instead of resolving on a choice that produced nothing
-    // (D133).
+    // that is already gone — leaves NO contract. The latch must not hold: it survives only
+    // when a live rescue mission for this pod exists, otherwise roll back and tell the card
+    // so the prompt stays for the retry instead of resolving on a choice that produced
+    // nothing (D133).
     const active = (state.missions && state.missions.active) || [];
     const committed = active.some((m) => m && m.status === 'active'
       && m.params && m.params.survivorPodId === point.id);
-    if (committed) {
-      rec.rescueSelected = true;
-      return true;
-    }
+    if (committed) return true;
     rec.rescueSelected = false;
+    mirrorMeta(state, rec, point, ent);
     if (this._bus && this._bus.emit) {
       this._bus.emit('survivorPod:rescueBlocked', {
         salvagePointId: point.id,

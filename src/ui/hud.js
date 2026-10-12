@@ -30,6 +30,7 @@ import { swarmStakeFor } from '../data/swarmStakes.js';
 import { catalogHullFacts } from '../systems/ships.js';
 import { reservedCargoQty, salvageBayReading, sellableCargoQty } from '../systems/cargo.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { laneInputWrite, laneWriteSetting } from '../core/simLaneCommands.js';
 import { SECTORS } from '../data/sectors.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
@@ -4179,11 +4180,14 @@ export function createHud(ctx, alerts) {
   ctx.bus.on('cargo:jettison', ({ commodityId, qty }) => {
     const cargoSys = ctx.registry && ctx.registry.get('cargo');
     if (cargoSys && cargoSys.jettison) {
-      const dumped = cargoSys.jettison(commodityId, qty || 1);
-      if (dumped > 0) {
-        const name = cargoDisplayName(commodityId);
-        ctx.bus.emit('toast', { text: `Jettisoned ${dumped}× ${name}`, kind: 'warn', ttl: 2 });
-      }
+      // On the worker lane the facade returns a Promise of the dumped count;
+      // main-side it resolves a number through the same await.
+      Promise.resolve(cargoSys.jettison(commodityId, qty || 1)).then((dumped) => {
+        if (dumped > 0) {
+          const name = cargoDisplayName(commodityId);
+          ctx.bus.emit('toast', { text: `Jettisoned ${dumped}× ${name}`, kind: 'warn', ttl: 2 });
+        }
+      });
     }
   });
 
@@ -4788,11 +4792,11 @@ export function createHud(ctx, alerts) {
   if (!state.settings.ui) state.settings.ui = {};
   if (state.settings.ui.overviewOpen === undefined) {
     // Default to on-demand (unpinned): the strip speaks only when scanned or when a threat arrives.
-    state.settings.ui.overviewOpen = false;
+    laneWriteSetting(state, 'settings.ui.overviewOpen', false);
   }
 
   ctx.bus.on('ui:toggleOverview', () => {
-    state.settings.ui.overviewOpen = !state.settings.ui.overviewOpen;
+    laneWriteSetting(state, 'settings.ui.overviewOpen', !state.settings.ui.overviewOpen);
     if (state.settings.ui.overviewOpen) revealOverview(OVERVIEW_SCAN_REVEAL_MS);
     updateOverview();
     ctx.bus.emit('toast', {
@@ -4879,8 +4883,8 @@ export function createHud(ctx, alerts) {
         : null;
       if (!presentationAllowsTargetLock(contact, state)) return;
       if (!state.player) state.player = {};
-      state.player.targetId = rec.id;
-      if (state.input) state.input.targetAssistDisabled = false;
+      laneInputWrite(state, 'player.targetId', rec.id);
+      laneInputWrite(state, 'input.targetAssistDisabled', false);
       ctx.bus.emit('toast', { text: `Selected target: ${rec.name}`, kind: 'info', ttl: 2 });
       updateOverview();
     });

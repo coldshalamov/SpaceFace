@@ -9,6 +9,7 @@ import { isHostileToPlayer } from '../systems/scanner.js';
 import { isConfirmOpen } from './confirm.js';
 import { targetDisplayName } from './targetPanel.js';
 import { createHoverTag, placeHoverTag, paintHoverTagVitals } from './orrery/hoverTag.js';
+import { laneInputWrite } from '../core/simLaneCommands.js';
 
 function hasOwn(o, k) {
   return !!o && Object.prototype.hasOwnProperty.call(o, k);
@@ -50,28 +51,25 @@ export function applyWorldObjectSelection(state, entity, source) {
   if (!state.player) state.player = {};
   const prevId = state.player.targetId;
   if (prevId !== entity.id && state.ui) state.ui.componentSelection = null;
-  state.player.targetId = entity.id;
-  if (!state.ui) state.ui = {};
-  state.ui.objectSelection = {
+  laneInputWrite(state, 'player.targetId', entity.id);
+  laneInputWrite(state, 'ui.objectSelection', {
     targetId: entity.id,
     source: source || 'pointer',
     stableKey: entity.stableKey != null ? entity.stableKey : entity.id,
     // The pick binds the occupant, not the number: when the id recycles, a recorded token that
     // no longer matches the resolved subject tells the sweep the picked body is gone.
     occupantGeneration: occupantGenerationOf(entity),
-  };
-  if (state.input) state.input.targetAssistDisabled = false;
+  });
+  if (state.input) laneInputWrite(state, 'input.targetAssistDisabled', false);
   return true;
 }
 
 export function clearWorldObjectSelection(state) {
   if (!state || !state.player) return;
-  state.player.targetId = null;
-  if (state.ui) {
-    state.ui.objectSelection = null;
-    state.ui.componentSelection = null;
-  }
-  if (state.input) state.input.targetAssistDisabled = true;
+  laneInputWrite(state, 'player.targetId', null);
+  if (state.ui) state.ui.componentSelection = null;
+  laneInputWrite(state, 'ui.objectSelection', null);
+  laneInputWrite(state, 'input.targetAssistDisabled', true);
 }
 
 export function createWorldObjectInteraction(ctx, screenManager) {
@@ -193,22 +191,22 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     if (bus && typeof bus.emit === 'function') {
       try { bus.emit('input:worldGestureCancelled', { reason }); } catch (_) {}
     }
-    if (inp && hasOwn(inp, 'worldObjectTargetId')) delete inp.worldObjectTargetId;
+    if (inp && hasOwn(inp, 'worldObjectTargetId')) laneInputWrite(state, 'input.worldObjectTargetId', undefined);
   }
 
   function endGesture() {
     gestureActive = false;
     gestureTargetId = null;
     const inp = state && state.input;
-    if (inp && hasOwn(inp, 'worldObjectTargetId')) delete inp.worldObjectTargetId;
+    if (inp && hasOwn(inp, 'worldObjectTargetId')) laneInputWrite(state, 'input.worldObjectTargetId', undefined);
   }
 
   function clearSelectionMeta() {
     const sel = state.ui && state.ui.objectSelection;
     if (sel && state.player && state.player.targetId === sel.targetId) {
-      state.player.targetId = null;
+      laneInputWrite(state, 'player.targetId', null);
     }
-    if (state.ui) state.ui.objectSelection = null;
+    laneInputWrite(state, 'ui.objectSelection', null);
   }
 
   function setHover(entity) {
@@ -340,7 +338,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     // A deliberate down must see a just-changed layout even before the observer delivers.
     viewportDirty = true;
     const hit = pickAt(pt);
-    inp.worldObjectTargetId = hit && hit.entity ? hit.entity.id : null;
+    laneInputWrite(state, 'input.worldObjectTargetId', hit && hit.entity ? hit.entity.id : null);
     gestureActive = true;
     gestureTargetId = inp.worldObjectTargetId;
     if (hit && hit.entity) {
@@ -437,8 +435,8 @@ export function createWorldObjectInteraction(ctx, screenManager) {
       const recycled = !!(subject && sel.occupantGeneration != null && generation != null
         && generation !== sel.occupantGeneration);
       if (!subject || recycled) {
-        state.ui.objectSelection = null;
-        if (state.player && state.player.targetId === sel.targetId) state.player.targetId = null;
+        laneInputWrite(state, 'ui.objectSelection', null);
+        if (state.player && state.player.targetId === sel.targetId) laneInputWrite(state, 'player.targetId', null);
       }
     }
     if (hoverId != null && !presentableSubject(state, hoverId)) setHover(null);

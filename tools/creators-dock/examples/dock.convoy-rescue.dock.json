@@ -1,0 +1,187 @@
+{
+  "camera": {
+    "x": 0,
+    "z": 0,
+    "zoom": 3.2
+  },
+  "composition": "convoy-rescue",
+  "description": "A mule hauler and a point-defense escort sit up the lane. Thrust toward them. The encounter pack carries the escort recipe.",
+  "encounter": {
+    "context": "encounter",
+    "cooldownS": 480,
+    "deck": "combat",
+    "escort": {
+      "archetypes": [
+        "pd_screen_escort"
+      ]
+    },
+    "factionId": "faction_scn",
+    "id": "dock_convoy_rescue",
+    "order": 1007,
+    "pressureCost": 12,
+    "proximity": true,
+    "script": "convoy",
+    "shape": {
+      "actor": "pd_screen_escort",
+      "place": [
+        "trade_lane"
+      ],
+      "situation": "escort",
+      "twist": "none"
+    },
+    "squad": {
+      "archetypes": [
+        "mule_trader"
+      ]
+    },
+    "tier": "minor",
+    "title": "Convoy rescue",
+    "weight": 1,
+    "zoneTypes": [
+      "trade_lane"
+    ]
+  },
+  "evidenceClass": "focused-fixture",
+  "fixtureExceptions": [
+    "focused-fixture authored in Creator's Dock; not production-manifest evidence"
+  ],
+  "frames": [
+    {
+      "input": {
+        "boost": false,
+        "fire": false,
+        "moveX": 0,
+        "moveZ": 1,
+        "turnIntent": 0
+      },
+      "tick": 0
+    }
+  ],
+  "grid": {
+    "size": 10,
+    "snap": true
+  },
+  "id": "dock.convoy-rescue",
+  "inputEvents": [],
+  "notes": {
+    "composition": "convoy-rescue",
+    "creatorsDock": "1",
+    "expectedObservation": "Player thrust increases playerZ toward the hauler and the player stays alive."
+  },
+  "objects": [
+    {
+      "angularVelocity": 0,
+      "factionId": "faction_free",
+      "heading": 1.570796,
+      "id": "player",
+      "isPlayer": true,
+      "kind": "actor",
+      "label": "Hitch closing",
+      "persistent": true,
+      "profile": "ship.starter",
+      "role": "player",
+      "team": 0,
+      "velX": 0,
+      "velZ": 0,
+      "x": 0,
+      "z": 0
+    },
+    {
+      "angularVelocity": 0,
+      "factionId": "faction_mts",
+      "heading": 0,
+      "id": "hauler",
+      "kind": "actor",
+      "label": "mule hauler",
+      "persistent": true,
+      "profile": "ship_mule",
+      "role": "hauler",
+      "team": 0,
+      "velX": 0,
+      "velZ": 4,
+      "x": 0,
+      "z": 70
+    },
+    {
+      "angularVelocity": 0,
+      "factionId": "faction_scn",
+      "heading": 0,
+      "id": "escort",
+      "kind": "actor",
+      "label": "PD screen",
+      "persistent": true,
+      "profile": "pd_screen_escort",
+      "role": "escort",
+      "velX": 0,
+      "velZ": 0,
+      "x": 20,
+      "z": 60
+    },
+    {
+      "id": "closing",
+      "kind": "objective",
+      "labOnly": true,
+      "label": "closed on the convoy",
+      "metric": "trace.final",
+      "op": ">",
+      "signal": "playerZ",
+      "value": 0.5,
+      "x": -30,
+      "z": 70
+    },
+    {
+      "id": "speed",
+      "kind": "objective",
+      "labOnly": true,
+      "label": "still moving",
+      "metric": "flight.finalSpeed",
+      "op": ">=",
+      "value": 0.5,
+      "x": -90,
+      "z": 10
+    },
+    {
+      "assertion": {
+        "holdsTicks": 60,
+        "kind": "holds",
+        "signal": "playerAlive"
+      },
+      "id": "alive_convoy",
+      "kind": "trigger",
+      "labOnly": true,
+      "label": "player stays alive",
+      "radius": 12,
+      "shape": "circle",
+      "x": -90,
+      "z": -10
+    },
+    {
+      "from": "player",
+      "gameplay": false,
+      "id": "to_hauler",
+      "kind": "route",
+      "label": "rescue run",
+      "to": "hauler"
+    }
+  ],
+  "observer": {
+    "enabled": false
+  },
+  "runtimeProfile": "focused-lab",
+  "schema": "spaceface.creatorsDock.v1",
+  "seed": 11007,
+  "standardInvariants": true,
+  "ticks": 180,
+  "title": "Convoy rescue",
+  "traceSignals": [],
+  "version": 1,
+  "world": {
+    "aiBackend": "legacy",
+    "credits": 5000,
+    "fixtureProfile": "empty-flight",
+    "flightBackend": "v3",
+    "mode": "flight",
+    "physicsBackend": "rapier-dynamic",
+    "sectorId": "sector_helios_prime"
+  }
+}

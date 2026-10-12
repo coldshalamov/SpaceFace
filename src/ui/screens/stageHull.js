@@ -137,6 +137,13 @@ export function createStageHull(stageEl, {
       return;
     }
     let last = null;
+    let pendingRad = 0;
+    let lastRender = null;
+    // W141-F2: the drift is the only aux GL surface ticking at display rate for the whole
+    // stage dwell. The angle is dt-driven, so accumulating it and drawing at ≤30 Hz keeps
+    // the identical yaw rate and picture while halving the preview's presented renders —
+    // the same cap introSignalRemix already runs.
+    const DRIFT_RENDER_MS = 1000 / 30;
     const tick = (nowMs) => {
       if (!mount) { driftRaf = 0; return; }
       // The Launch path replaces the screen stack without always routing through onHide, which used
@@ -152,7 +159,13 @@ export function createStageHull(stageEl, {
       const dt = last == null ? 0 : Math.min(0.1, Math.max(0, (now - last) / 1000));
       last = now;
       if (motionReduced(ctxRef)) { driftRaf = 0; return; }
-      try { mount.rotateBy(dt * DRIFT_RAD_PER_S); } catch (_) {}
+      pendingRad += dt * DRIFT_RAD_PER_S;
+      if (lastRender == null || now - lastRender >= DRIFT_RENDER_MS) {
+        lastRender = now;
+        const rad = pendingRad;
+        pendingRad = 0;
+        try { mount.rotateBy(rad); } catch (_) {}
+      }
       driftRaf = requestAnimationFrame(tick);
     };
     driftRaf = requestAnimationFrame(tick);
