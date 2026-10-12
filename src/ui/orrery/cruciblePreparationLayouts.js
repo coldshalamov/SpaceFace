@@ -280,11 +280,6 @@ ${D} .k-foot .orr-prep-continue:active, ${D} .k-foot .orr-key--hazard:active { t
  ${D} .sf-crd-modes .fh-tile-art svg { width:44px !important; }
  ${D} .sf-crd-stakes .orr-tile { min-height:80px !important; }
  ${D} .orr-prep-stake-number { font-size:24px !important; }
- /* UI polish: at 720p the stake mark gives its 30px back so purse, pressure and yield all fit the tile unclipped */
- ${D} .sf-crd-stake .fh-tile-art { display:none !important; }
- ${D} .orr-prep-stake-yield { font-size:11.5px !important; letter-spacing:0 !important; }
- ${D} .orr-prep-stake-pressure { letter-spacing:.04em !important; }
- ${D} :is(.orr-prep-stake-pressure,.orr-prep-stake-yield) { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
  ${D} .sf-crd-arenas .orr-tile { min-height:56px !important; padding:4px 4px 6px !important; }
  ${D} .sf-crd-arenas .fh-tile-art img { height:32px !important; }
  ${D} :is(.sf-crd-mode-sub,.sf-crd-stake-sub,.sf-crd-arena-sub,.sf-crd-hull-sub) { margin-top:6px !important; }
