@@ -1,6 +1,6 @@
 # UI polish review — living doc for the `ui-polish` PR
 
-Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-6` (PR #329) · stacked on `master` (includes merged #322/#324/#325).
+Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-10` (PR #333) · stacked on `master`.
 
 
 This file tracks the stacked visual polish of every shootable 2D screen (`node scripts/ui-bench.mjs --list`). Seeded from `design/frontend/UNIFICATION_LEDGER.md` where useful; **this REVIEW is the authority for this PR**, not the ledger.
@@ -9,8 +9,8 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 ## Remaining work — top priority (ui-polish-6)
 
-- **(a) Race board:** oversized, stacked labels at 1280×720 and 960×540. **Fixed** — `raceBoardLayouts.js`: the board's children were auto-placed into the kit `.k-screen` grid's zero-height rows, so 30px `.k-word` selects/buttons spilled over the cards. Now a scrolling document: labelled fit rail, three course cards (amber primary Race, outlined story contracts), paint + recognition two-up. Same sheet fixes the Physics board, which shares `.race-board`. Bench can now mount `raceBoard`.
-- **(b) Adventure combat HUD clicks (agreed with Code Work):** during Adventure combat, while weapons are hot, primary clicks go to the game and HUD buttons must not open menus. Build on #327's approach, which only covers Crucible.
+- **(a) Race board:** oversized, stacked labels at 1280×720 and 960×540. **Fixed** — `raceBoardLayouts.js`: the board's children were auto-placed into the kit `.k-screen` grid's zero-height rows, so 30px `.k-word` selects/buttons spilled over the cards. Now a scrolling document: labelled fit rail, three course cards (amber primary Race, outlined story contracts), paint + recognition two-up. Same sheet fixes the Physics board, which shares `.race-board`. Bench can now mount `raceBoard`. (#329)
+- **(b) Adventure combat HUD clicks (agreed with Code Work):** during Adventure combat, while weapons are hot, primary clicks go to the game and HUD buttons must not open menus. Build on #327's approach, which only covers Crucible. **Fixed in #330** — `hudCombatLock.js` makes the HUD row inert for 4s of sim after the player fires or is hit; keyboard blur only on pointer clicks (`ev.detail > 0`).
 
 ## Design direction (this PR)
 
@@ -63,7 +63,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `footprint` / `footprint-marked` / `footprint-clean` | SURVEYED | |
 | `range` | SURVEYED | Owns CSS holdout |
 | `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
-| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | SURVEYED | Ledger DONE; re-judge when stack reaches station |
+| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth shell DONE; Market/Contracts/Shipworks tab bodies + Market SPREAD polished this session (§ Station tab bodies); Industry/Factions/Bar/Ledger still open at 960 |
 | **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
 | **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
 | **`crucible-rearm`** | **DONE** | Alias of armory / `crucible-draft` — no separate polish |
@@ -79,6 +79,34 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `sandbox` | SURVEYED | Ledger DONE for overflow |
 | `localmap` / `localmap-legacy` | SURVEYED | |
 | `starmap` / `starmap-legacy` | SURVEYED | |
+
+---
+
+## Station berth — session notes (2026-10-12, ui-polish-10)
+
+**Before (960×540):** `station.css` still reserves a 292px right gutter (228px under 900) for the legacy corner crown, but the ORRERY crown sits in the head grid, so a third of the screen was empty. The vitals strip is capped at 326px and nowrap, so it spilled left over the mechanic's note. The tab rail clipped at FAC, and every tab body was squeezed into 636px. At every size, the word reading CREDIT LINE OPEN crossed the Ledger's empty ring. At ≤800px tall, the `/ 100` denominators sat on the dial ends.
+
+**After (`src/ui/orrery/stationLayouts.js` only):** at 651–1100 the gutter is gone. At 901–1100 the head is a 280px note column plus the vitals strip, the next-step title stays on one line with its sentence under it, and the foot's seven destinations, Comms/Help and Undock fit on one line. Word readings hide the empty ring under them. Short-screen dials are 80px with tighter denominators. Selectors and IDs are unchanged.
+
+**Still open after berth:** tab bodies (addressed in § Station tab bodies below).
+
+---
+
+## Station tab bodies — session notes (2026-10-12, ui-polish-10)
+
+**Market body @960×540 (≤1100×≤800):** body height ~192px. Legend and the find share one line (the find's rule is that line's foot, no longer through the filters). The eight families are a vertical ladder beside the register, so all stay visible and the names get the width (fixed BUY/SELL/STOCK columns). Analysis: price keeps "you pay · one unit now", readings sit two-up, SPREAD sits on one line above its bracket. Console: 96px dial with QUANTITY under the number, FEWER/MORE/MAX under the ring, total, collapsed **Quote breakdown** (fees one click away), BUY + SELL on one row. Hull decision and hold arc sleep here; the berth head carries REPAIR and HOLD.
+
+**Contracts dossier @960×540 (≤1100×≤800):** ACCEPT is in flow, never sticky. The dossier wraps into two columns without new markup (`::after` is the column break): kind, title, client, reward and ACCEPT on the left; the risk sentence (risk, pay, standing gain and loss) and the terms (time, collateral, follow-up, readiness) on the right. The scales and route map sleep at this size (their words would be ~5px); the risk sentence says the same readings. Board: legends close up, the posted list fades out instead of slicing a row, and the tracked job is one line with TRACKED beside it.
+
+**Shipworks verbs @960×540:** `seatVerbs` pinned a fixed row onto the nameplate/rail on short dock stages. Bail to `--unseated` when stage height &lt; 300; CSS absolutely fills the 192px grid cell and pins the verb row to the panel foot (clear of the destination rail). Handling stats hide at this size (they were sitting on the rail).
+
+**Market SPREAD @1280×720:** `.orr-mkt-spread__v` sat at 50% of the bracket and crossed the price trace. Label now sits just above the bracket (`translateY(-100%)`).
+
+**Code:** `marketLayouts.js`, `stationTabsLayouts.js`, `shipworksLayouts.js`, plus a one-line bail in `shipworks.js` `seatVerbs`. Selectors/IDs unchanged.
+
+**Follow-up (not in #333):** Shipworks slot callouts (Utility/Drive/Cargo) sit on the hull at 960 — they are placed by the jig in JS. Phone (390×844) station berth still stacks the note under the vitals.
+
+**Leftover:** filter search can still bury "Raw & rare" at 960; Contracts TRACKED badge can sit off-frame; Shipworks left-rail "Starter / systems fitted" can clip at 960. Industry/Factions/Bar/Ledger tab bodies not walked this session.
 
 ---
 
@@ -405,7 +433,7 @@ Not reached from the menu: **Archive**, **Achievements** and **Quit** clicks lef
 |---|---|---|
 | P0 | Settings @ ≤1500px | Label column was 150px: "Sun shadows (ships/rocks/stations)", "Emergency dynamic resolution", "Mute when the window loses focus", "Steer left (classic scheme)" wrapped to 3 lines and rows went ragged. **Fixed** (190px labels, wider pane, tighter tracking + `text-wrap:balance`). |
 | P0 | Crucible @ 720p | Stake tiles clipped their own text ("PAYS ×0.75 ·" cut mid-line, "100% / PRESSURE" wrapped) and the Arena row fell below the fold. **Fixed** for the tiles (earlier) and Arena fold (this session: short-height tighten + arena thumbs hidden so both name rows clear the foot). |
-| P0 | Archive / Achievements / Quit | Click gives no visible response in browser build. Needs a screen, a toast, or a disabled state. |
+| P0 | Archive / Achievements / Quit | Archive and Achievements open their screens on the bench walk. **Quit fixed in #332** (hidden in the web build). Still to confirm Archive/Achievements in a live browser build. |
 | P1 | Settings @ 1080p | All legends 12px on a 1080p screen — tiny. **Fixed** with a 1.12 composition zoom between 1800–2199px (the existing 1440p/4K zoom rules already did this above). |
 | P1 | Crucible | Hero arena title ("RICOCHET FOUNDRY") and its blurb sit straight on bright 3D art without a scrim — blurb unreadable over the lit floor. **Fixed** (void→transparent scrim under words + brief). |
 | P1 | Crucible @ 1080p | The 3D hull in the bottom-right renders over BACK / ESC and the footer hint. **Fixed** (foot z-index + solid void backing, stronger art bottom fade, `‹ BACK` + ESC keycap rail). |
@@ -474,7 +502,8 @@ CSS only, in `src/ui/orrery/newGameLayouts.js`. No DOM, selector, ID or loadout-
 - **Fixed (P1, logo over rings):** the old mask cut a tight box out of the rings, so ring strokes ended right against the letters. A crown of rim also stuck out above the kicker. Now none of the dial is drawn above the name. It fades in under the name over about 1.3× the name's height, so the name has open space around it. The mask is a static gradient, not a blur filter, so the orbit's drift costs nothing extra per frame.
 - **Fixed (P1, words on strokes):** the awake verb grows 6% toward the dial, so its first letter sat on the tick and the Hand's leader (0px gap at 720p). On the title the verbs now sit half a verb-size further out (18px @720, 23px @1080). The awake word clears the leader by about 12px.
 - Checked at 1280×720, 1920×1080, 2560×1440 and 390×844 (phone has no dial; Tab order checked there too). `--walk` exercised 12 controls. Related tests pass, except two failures that also fail on the base commit: `focus-lifecycle` "pushScreen restores the prior exposure" and the credits NOTICE check. Shots are in `/workspace/spaceface-scratch/ui-shots/main-menu-20261012-1425/` (not committed).
-- **Remaining:** at 1080p the reference line's SANDBOX sits over the hull's nose in the key art (this was already true before; it moved about 17px). Archive / Achievements / Quit (P0 above): the bench walk opens Codex and Achievements, and Quit asks to confirm. This still needs checking in a live browser build.
+- **Resolved:** SANDBOX over the hull's nose (#331, three-line reference line) and the web-build Quit (#332).
+- **Was remaining:** at 1080p the reference line's SANDBOX sits over the hull's nose in the key art (this was already true before; it moved about 17px). Archive / Achievements / Quit (P0 above): the bench walk opens Codex and Achievements, and Quit asks to confirm. This still needs checking in a live browser build.
 ---
 
 ## #322 HOLD review fixes (2026-10-12)
