@@ -24,10 +24,23 @@ jobs:
             styles
             tools
             .github
-      - name: Package tracked source only
+      - name: Package source and bounded fixtures only
+        env:
+          OUT: ${{ runner.temp }}/inference-source.tar.gz
         run: |
           git rev-parse HEAD > SOURCE_COMMIT.txt
-          tar --exclude=.git --exclude=node_modules --exclude=assets --exclude=.campaign -czf "$RUNNER_TEMP/inference-source.tar.gz" .
+          python3 - <<'PY'
+          import os, pathlib, tarfile
+          root = pathlib.Path('.')
+          suffixes = {'.js','.mjs','.cjs','.json','.md','.txt','.html','.css','.yml','.yaml','.ts','.frag','.vert','.glsl','.wasm'}
+          with tarfile.open(os.environ['OUT'], 'w:gz') as archive:
+              for path in root.rglob('*'):
+                  if not path.is_file() or any(p in {'.git','node_modules','assets','.campaign','vm-drop','quiet-host','player-truth'} for p in path.parts):
+                      continue
+                  if path.suffix in suffixes or path.name.startswith('.git'):
+                      archive.add(path, arcname=str(path), recursive=False)
+          print(pathlib.Path(os.environ['OUT']).stat().st_size)
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: inference-ten-source
