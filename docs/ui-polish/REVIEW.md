@@ -47,6 +47,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `flight` / `power-rail` | SURVEYED | Off-limits for threat markers (PR #300); polish chrome only later |
 | `mobile-flight` / `mobile-stick` / `mobile-boost` / `mobile-brake` / `mobile-wheel` / `mobile-wheel-pinned` | SURVEYED | |
 | `crucibleHud` | SURVEYED | |
+| **`crucible-results`** | **DONE** (ui-polish-5) | See § Crucible results below |
 | `orrery-flight` | SURVEYED | |
 | `comms-radial` | SURVEYED | |
 | `wingman-radial` | SURVEYED | |
@@ -453,3 +454,13 @@ The game already ships a mature system: Deckplate tokens (`--dp-*`) + ORRERY ins
 - `src/ui/orrery/newGameLayouts.js` + `src/ui/screens/newGame.js`: New Game foot keycap rail, secondary contrast, loadout size column, 1080p zoom. Selectors/IDs and loadout data unchanged.
 - `src/ui/orrery/constellationLayouts.js` + `src/ui/screens/techTree.js`: Tech Tree / Research foot keycap rail, hour-verb curve clip (no dial tangle), secondary contrast, rim chrome, 1080p zoom. Selectors/IDs unchanged. ACHIEVEMENTS block untouched.
 - No selectors/IDs changed; no engine/render, audio, loadout data or HUD threat-marker code touched.
+
+## Crucible results (`crucible-results`) — ui-polish-5 (2026-10-12)
+
+New overlay `src/ui/orrery/crucibleResultsLayouts.js`, injected from the results mount (one import + one call in `crucible.js`). Scoped to `.sf-crucible-results.has-deathdial`; no DOM, selector or ID changes.
+
+- **Fixed (P0):** the left column was two clipped scrollers. At 720p *What you built* ran into *The run* and the share codes faded out; at 1080p *Share* showed a title with nothing under it. Now it is one scroll column in reading order: figures, the run, the build, results sheet, stunt combo, share. A bottom fade shows there is more.
+- **Fixed (P0, 390×844):** the dial sat on top of the column and the figures overlapped ("6 31 24 88"). The phone layout now stacks title, dial, take, column, with the ways out docked at the bottom on a solid fade. The figures are a 2×2 grid, the wave engraving is hidden where it hit STARBOARD, and the short hit legend replaces the long one.
+- **Finish (P1):** each band title runs into a hairline. The share codes are framed fields with an underlined save link. Story and lead copy is brighter. The 1080p band lifts the figures, copy and build verbs.
+- Checked at 1280×720, 1920×1080 and 390×844, including scrolled to the bottom. Shots are in `/workspace/spaceface-scratch/ui-shots/results/` (not committed).
+
