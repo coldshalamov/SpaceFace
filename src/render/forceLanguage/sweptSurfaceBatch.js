@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { LIVING_NOISE_GLSL, LIVING_MATERIAL_GLSL } from '../vfx/livingMaterial.glsl.js';
 import {
   registerDynamicBufferOwner, unregisterDynamicBufferOwner,
   assertDynamicBufferOwnerWritable, markDynamicBufferItems, commitDynamicBufferOwner,
@@ -37,6 +38,7 @@ varying vec3 vSurfaceWorld;
 varying vec3 vSurfaceNormal;
 varying float vFieldReach;
 varying vec2 vResponse;
+${LIVING_NOISE_GLSL}
 const float PI=3.14159265359;
 void main(){
   float t=position.x;
@@ -90,7 +92,15 @@ void main(){
     float wave=t*8.0-motionTime*2.2+phaseOffset;
     float section=across*PI;
     float roll=0.36*sin(t*5.0-motionTime*1.1+phaseOffset);
-    float span=iShape.y*taper;
+    vec3 carried=sfLivingPotential(vec2(t*3.1-motionTime*.52,iBehavior.z*11.7));
+    float span=iShape.y*taper*(family>1.5?.55+carried.x*1.08:1.0);
+    // Material clumps overtake each other along the path; the carrier is not a rigid propeller.
+    // Source and receiver remain pinned and authoritative boundaries never enter this branch.
+    if(family>1.5&&family<2.5){
+      vec2 vortex=sfLivingCurl(vec2(t*2.7-motionTime*.33,iBehavior.z*13.9));
+      p+=normal*vortex.x*iShape.y*1.65*sin(PI*t)*uMotion;
+      height+=vortex.y*iShape.y*.85*sin(PI*t)*uMotion;
+    }
     float lateral=0.0,vertical=0.0;
     if(family<1.5){
       // Seed: bevelled open load paths. Their sections flex, never rigidly orbit.
@@ -125,6 +135,13 @@ void main(){
       vertical=sin(across*2.5)*span*0.78;
       sectionDy=cos(across*2.5)*1.95;
       roll=0.18*sin(wave);
+    }
+    // Eddies deform a material cross-section, not its authoritative field boundary.
+    // The analytic carrier remains anchored; transported mesh parcels keep actual velocity history.
+    vec2 eddy=sfLivingCurl(vec2(t*3.4-motionTime*.31,across*.72+iBehavior.z*7.1));
+    if(family>1.5){
+      lateral+=eddy.x*span*.20*uMotion;
+      vertical+=eddy.y*span*.26*uMotion;
     }
     float flex=iBehavior.w*uMotion*(1.0-release*0.55);
     lateral*=1.0+flex*0.13*sin(wave+across*2.0)*sin(PI*t);
@@ -287,6 +304,7 @@ varying vec3 vSurfaceWorld;
 varying vec3 vSurfaceNormal;
 varying float vFieldReach;
 varying vec2 vResponse;
+${LIVING_MATERIAL_GLSL}
 // Integrate unresolved detail toward its mean instead of letting a bright comb become pixels.
 float filteredWave(float phase){
   return 0.5+0.5*sin(phase)*(1.0-smoothstep(0.7,3.14159,fwidth(phase)));
@@ -301,109 +319,62 @@ float strand(float distance,float width){
 vec4 fieldVolume(){
   float t=vUv.x,v=vUv.y,kind=vCycle.x,flow=vCycle.z;
   float heat=clamp(vMaterial.z,0.0,1.0),phase=vFlow.y*6.2831853;
-  float tipAA=max(fwidth(t)*1.25,0.014);
+  float tipAA=max(fwidth(t)*1.25,.014);
   float tips=smoothstep(0.0,tipAA,t)*(1.0-smoothstep(1.0-tipAA,1.0,t));
-  float reveal=1.0-smoothstep(vFlow.w-0.07,vFlow.w+0.01,t);
-  float direction=kind<2.5?-1.0:1.0;
-  float transport=t*11.0-flow*direction*3.2+phase;
-  if(kind>4.5)transport=v*4.8-flow*3.0+phase;
-  if(kind<1.5)transport=t*10.0-flow*3.7+phase;
-  float warped=v+0.20*sin(t*7.0-flow*1.4+phase);
-  float bulk=filteredWave(transport+1.6*sin(warped*3.0+t*2.0));
-  float secondary=filteredWave(t*19.0-flow*direction*4.7+warped*5.5+phase*1.3);
-  float channel=strand(warped-0.16*sin(t*13.0-flow*2.1+phase),0.24);
-  float shoulder=strand(warped+0.50,0.22)+0.72*strand(warped-0.57,0.17);
-  float ignition=pow(bulk,3.0)*(0.36+0.64*secondary);
-  float sectionMass=0.48+0.52*(1.0-abs(v)*0.42);
-  // Material separates into broad advecting charge patches and transparent wakes.
-  // A constant density made a 190-WU field a full-screen plastic object. This is
-  // continuous tearing through the body, not a global fade or tiny noisy cells.
-  float tearing=0.56*filteredWave(t*21.0-flow*direction*2.4+sin(v*6.0+phase)*1.8)
-    +0.44*filteredWave(v*9.0+t*9.0-flow*direction*1.5+phase);
-  float chargeRegion=smoothstep(0.34,0.78,tearing);
-  bool accretion=kind>1.5&&kind<2.5;
-  if(accretion){
-    // Accretion has dense travelling parcels with real openings between them.
-    // Cross-flow curls shear each parcel differently; a constant luminous shoulder
-    // would otherwise turn the large footprint into three uninterrupted cloth sails.
-    float stream=t*38.0+flow*4.1+phase;
-    float curl=sin(warped*8.0+stream*.43+sin(t*17.0-flow*1.7+phase)*1.8);
-    float parcel=.48*filteredWave(stream*.53+curl*1.9)
-      +.34*filteredWave(stream*1.17+warped*9.0-curl)
-      +.18*filteredWave(stream*2.63-warped*17.0+phase);
-    float parcelAA=max(fwidth(parcel),.025);
-    chargeRegion=smoothstep(.49-.105-parcelAA,.49+.105+parcelAA,parcel);
-    ignition*=.38+.62*filteredWave(stream+curl*2.0);
+  float reveal=1.0-smoothstep(vFlow.w-.07,vFlow.w+.01,t);
+  // Every authored path begins at its supply end. Well paths run OUTER -> INNER:
+  // the former negative sign sent surface light backwards, against the particle transport.
+  float rate=kind<1.5?.72:kind<2.5?1.55:kind<3.5?1.10:1.30;
+  vec2 uv=vec2(t*(kind<1.5?5.0:7.3),v*1.35);
+  vec3 film=sfLivingFilm(uv,flow*rate,phase);
+  vec3 fine=sfLivingFilm(uv*1.71+vec2(4.3,-2.7),flow*rate*1.19,phase+.73);
+  float mass=smoothstep(.24,.74,film.x);
+  float warp=(film.x-.5)*.42;
+  float shoulder=strand(v+.53+warp,.19)+.72*strand(v-.50+warp*.5,.16);
+  float cavity=strand(v+warp*.8,.27);
+  float crest=film.y*(.35+.65*fine.x);
+  float hot=(shoulder*(.65+2.4*crest)+.65*crest)*film.z;
+  float thickness=(.035+.34*mass)*(.73+.27*(1.0-abs(v)))*(.12+.88*film.z);
+  if(kind>2.5&&kind<3.5){
+    // Pressure: a hard outward lip with a darker, heavier skirt, never inward spirals.
+    hot=(strand(v+.68+warp*.25,.17)*(.60+2.5*crest)+.20*crest)*film.z;
+    thickness*=.70+.30*(1.0-v)*.5;
+  }else if(kind>4.5){
+    // Skim: transverse intake folds carry charge toward the centre, separated by return wakes.
+    hot=(shoulder*(.40+2.05*crest)+.18*fine.y)*film.z;
+  }else if(kind<1.5){
+    // Seed is an articulated constraint: dark load paths and short ratchet packets, not a vortex.
+    hot=shoulder*(.10+2.1*crest)+.24*crest;
+    thickness=.17+.25*mass;
   }
-  float innerPresence=1.0-smoothstep(0.16,0.72,vFieldReach);
-  float opticalDepth=sectionMass*(0.07+chargeRegion*(0.22+0.25*bulk))*(0.46+0.54*innerPresence);
-  float edge=1.0-smoothstep(0.89,1.0,abs(v));
-  // Closed clamp/extrusion sections have no artificial slit at their shared back seam.
+  float edge=1.0-smoothstep(.86,1.0,abs(v));
   if(kind<1.5||(kind>3.5&&kind<4.5))edge=1.0;
   vec3 normal=normalize(vSurfaceNormal);
   float facing=abs(dot(normal,normalize(cameraPosition-vSurfaceWorld)));
-  float sideLight=0.34+0.66*abs(dot(normal,normalize(vec3(-0.45,0.8,0.35))));
-  float absorbed=1.0-exp(-opticalDepth*(0.72+0.28*(1.0-facing)));
-  float coolChannel=channel*(0.40+0.60*bulk);
-  vec3 dark=vTint.rgb*vec3(0.15,0.21,0.38);
-  vec3 body=mix(dark,vTint.rgb,0.32+0.68*bulk)*sideLight;
-  body*=1.0-0.68*coolChannel;
-  float hot=(shoulder*(0.36+1.45*ignition)+0.36*ignition)*(0.24+0.76*chargeRegion);
-  if(kind>2.5&&kind<3.5){
-    // Pressure light lives on the outward lip; the skirt carries compressed amber body.
-    hot=((0.35+1.85*bulk)*strand(v+0.64,0.24)+0.25*secondary)*(0.24+0.76*chargeRegion);
-    body*=0.78+0.22*(1.0-v)*0.5;
-  }else if(kind>4.5){
-    // Intake banks light across their fold, exposing alternating heavy and open folds.
-    hot=(shoulder*(0.45+1.35*bulk)+0.24*secondary)*(0.24+0.76*chargeRegion);
-  }else if(kind<1.5){
-    // Mechanical mass keeps a restrained body and charge that traverses its raised edges.
-    // A dark load-bearing frame with moving charged sections, not a luminous
-    // reticle whose whole loop stays equally bright. Independent packets reveal
-    // its changing strain; late bridges retain their separate material arrival.
-    float load=pow(bulk,3.0)*(0.35+0.65*secondary);
-    body*=0.27;hot=shoulder*(0.05+2.4*load)+ignition*.38;
-    absorbed=max(absorbed*.66,0.11+load*.30);
-  }
-  if(accretion){
-    hot=(shoulder*(.16+2.25*ignition)+.26*ignition)*(.06+.94*chargeRegion);
-    body*=.32+.68*chargeRegion;
-    absorbed*=.07+.93*chargeRegion;
-  }
-  // Mature colliding streams develop secondary knots; their cadence is slower
-  // than ignition and cannot appear in the build stage.
-  hot+=vResponse.x*(.16*ignition*secondary)+vResponse.y*(.35+.40*ignition)*shoulder;
-  // Uneven crest pulses ride each field's own clock; uFlash gates the amplitude.
-  float crestPulse=filteredWave(t*5.0-flow*direction*1.15+phase+v*2.4)
-    *(0.30+0.70*filteredWave(t*1.9-flow*0.60+phase*1.7+2.1));
-  hot*=1.10+0.75*uFlash*crestPulse;
+  float sideLight=.30+.70*abs(dot(normal,normalize(vec3(-.45,.8,.35))));
+  vec3 pigment=mix(vTint.rgb*vec3(.12,.20,.32),vTint.rgb,.25+.75*mass);
+  vec3 body=pigment*sideLight*(1.0-.70*cavity);
+  float contact=vResponse.y*(.50+.50*crest);
+  hot+=contact*(.8+shoulder)+vResponse.x*fine.y*crest*.16;
   float fracture=1.0;
   if(vCycle.y>0.0){
-    float tear=0.55*filteredWave(t*17.0+v*3.0+phase)+0.45*filteredWave(t*9.0-v*5.0+phase*1.7);
-    fracture=smoothstep(vCycle.y-0.20,vCycle.y+0.10,tear);
+    // Supply stops; separated patches erode while the remaining material keeps travelling.
+    vec3 tear=sfLivingFilm(uv*.83,flow*.22,phase+3.7);
+    fracture=smoothstep(vCycle.y-.20,vCycle.y+.10,tear.x);
     if((kind>1.5&&kind<2.5)||(kind>3.5&&kind<4.5)){
-      // Source cutoff progresses through the path while existing charge coasts.
-      float cutoff=vCycle.y*(1.12+.10*sin(phase))-0.08;
+      float cutoff=vCycle.y*1.16-.08;
       fracture*=smoothstep(cutoff-.08,cutoff+.08,t);
     }
-    hot*=1.0-0.90*vCycle.y;body*=1.0-0.45*vCycle.y;
+    hot*=1.0-.87*vCycle.y;body*=1.0-.40*vCycle.y;
   }
-  // A substantial coloured body remains below the brightest folds; this is not a
-  // white wire with a bloom halo. The open channels and varied section normals give depth.
-  vec3 emission=vTint.rgb*(body*(0.12+0.18*heat)+hot*heat*uFlash*3.0)
-    +vec3(0.80,0.92,1.0)*(pow(shoulder*0.58,3.0)*ignition*(0.70+1.15*crestPulse)
-      +vResponse.y*pow(shoulder,3.0)*1.10)*heat*uFlash;
-  // Hot folds carry light through thin material once, rather than disappearing
-  // under a second alpha multiply. Coverage stays substantial only inside the
-  // broad transported crest; background ships remain visible through the wakes.
-  float crestCoverage=clamp(hot*0.14,0.0,0.30)*(0.52+0.48*innerPresence);
-  absorbed=min(0.64,absorbed+crestCoverage);
-  // Emission was divided down by this fragment's own coverage, so hot crests inside dense folds
-  // paid for the same density twice. Bounded compensation restores them; alpha still reads the
-  // uncompensated lifecycle envelope.
-  float opticalComp=min(3.0,1.0/max(0.22,absorbed));
-  vec3 color=body*0.22+emission*opticalComp;
-  float alpha=edge*tips*reveal*vTint.a*vFront*fracture*absorbed;
+  float density=1.0-exp(-thickness*(.85+.35*(1.0-facing)));
+  density=min(.90,density+min(.70,hot*.42));
+  // Saturated transported material with white restricted to tiny hot junctions. A large white
+  // mix clips to grey aluminium in the non-bloom path and bleaches every family in HDR.
+  vec3 emission=vTint.rgb*min(3.0,hot*3.2)*heat*uFlash;
+  emission+=vec3(1.0,.95,.86)*(pow(crest,5.0)*pow(clamp(shoulder*.6,0.0,1.0),3.0)*.85+contact*.65)*heat*uFlash;
+  vec3 color=body*.35+emission;
+  float alpha=edge*tips*reveal*vTint.a*vFront*fracture*density;
   return vec4(color,alpha);
 }
 void main(){
@@ -425,8 +396,9 @@ void main(){
   // Broad pigment folds survive play scale. A high-frequency sine comb used to make
   // every force resemble corrugated ribbon irrespective of its physical construction.
   float warp=0.32*sin(t*9.0-vCycle.z*2.1+vFlow.y*8.0);
-  float groove=filteredWave(t*18.0+v*4.0+vFlow.y*9.0+warp);
-  float packet=pow(filteredWave(t*16.0-vCycle.z*vFlow.x*5.0+vFlow.y*6.283+1.5708),3.0);
+  vec3 sourceFilm=sfLivingFilm(vec2(t*4.7,v*1.2),vCycle.z*vFlow.x*1.8,vFlow.y);
+  float groove=sourceFilm.x;
+  float packet=sourceFilm.y*sourceFilm.z;
   // Legacy weapon discharges and the quiet truthful footprint keep their original
   // surface response. Deployed energy volumes have already returned above.
   bool boundary=vCycle.x>0.5;

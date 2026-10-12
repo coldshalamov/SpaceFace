@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { LIVING_MATERIAL_GLSL } from '../vfx/livingMaterial.glsl.js';
 import {
   commitDynamicBufferOwner,
   markDynamicBufferItems,
@@ -205,6 +206,7 @@ const VERTEX_SHADER = /* glsl */`
 `;
 
 const FRAGMENT_SHADER = /* glsl */`
+  ${LIVING_MATERIAL_GLSL}
   precision highp float;
   varying vec2 vUv;
   varying vec3 vColor;
@@ -249,10 +251,13 @@ const FRAGMENT_SHADER = /* glsl */`
     bool motor=vVariant>7.5;
     if(thermal||induction||pressure||siege||motor){
       float t=vUv.x,v=vUv.y*2.0-1.0;
-      float flow=t*13.0-boltClock*5.8+vPatch*2.1;
-      float curl=v+.19*boltWave(t*9.0-boltClock*3.1+vPatch);
-      float convection=.5+.5*boltWave(flow+curl*2.8);
-      float secondary=.5+.5*boltWave(t*23.0-boltClock*7.0-curl*4.0+vPatch);
+      // The same material transport library feeds different physical cross-sections:
+      // collimated charge, forked current, pressure shoulders, and shearing hot exhaust.
+      float rate=induction?3.1:pressure?1.2:siege?2.0:2.4;
+      vec3 carried=sfLivingFilm(vec2(t*5.8,v*1.25),boltClock*rate,vPatch+vVariation.x);
+      float curl=v+(carried.x-.5)*(induction?.16:.38);
+      float convection=carried.x;
+      float secondary=carried.y;
       float broad=boltStrand(curl+.28,.30);
       float fold=boltStrand(curl-.56,.14);
       float channel=boltStrand(curl-.08,.18);
@@ -279,7 +284,7 @@ const FRAGMENT_SHADER = /* glsl */`
         body=.18+.24*patches;alpha=.23+.25*patches+.12*shoulder;
       }else if(motor){
         float aft=1.0-t;
-        float carried=.5+.5*boltWave(aft*17.0-boltClock*8.0+vPatch*1.8);
+        float carried=sfLivingFilm(vec2(aft*5.0,v),boltClock*2.8,vPatch).x;
         float nozzle=boltStrand(aft-.13,.10);
         hot=(broad*(.35+.75*carried)+fold*.45)*(1.0-aft*.58)+nozzle*.48;
         body=.12+.20*carried;alpha=(.20+.28*carried)*(1.0-smoothstep(.63,1.0,aft));
@@ -318,9 +323,10 @@ const FRAGMENT_SHADER = /* glsl */`
     float pulse = 1.0 - step(0.5, vVariant);
     float pulseTip = smoothstep(0.0, 0.1, vAlong) * (1.0 - smoothstep(0.88, 1.0, vAlong));
     float pulseHead = smoothstep(0.40, 0.76, vAlong);
-    float pulseShed = sin(vAlong * 5.0 + uBoltTime * 17.0);
+    vec3 pulseFlow=sfLivingFilm(vec2(vAlong*3.1,across*.7),boltClock*2.2,vVariation.x);
+    float pulseShed = pulseFlow.x*2.0-1.0;
     float pulseLip = exp(-pow((across - (0.57 + 0.13 * pulseShed)) / 0.13, 2.0));
-    float pulseSurge = 0.9 + uBoltFlicker * 0.1 * sin(uBoltTime * 29.0 - vAlong * 4.0);
+    float pulseSurge = 0.90 + uBoltFlicker * 0.14 * pulseFlow.y;
     body = mix(body, (sheath * 0.20 + pulseLip * (0.72 + pulseHead * 0.95)
       + core * (0.25 + pulseHead * 0.58) * pulseSurge) * pulseTip, pulse);
     col = mix(col, vec3(0.92, 0.98, 1.0), pulseLip * pulse * pulseHead * 0.67);
