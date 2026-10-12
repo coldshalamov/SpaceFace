@@ -1473,6 +1473,9 @@ export const survivalArena = {
   _tickToys(dt, state) {
     const toys = this._toys;
     if (!toys || toys.length === 0) return;
+    // The opening lesson is a still room: the crushers and currents that shove bodies arrive
+    // with the room's fields, when the lesson releases the pack — not before the first key.
+    const roomStill = this._deferredFields != null;
     const step = Number.isFinite(dt) && dt > 0 ? dt : ARENA_TOY_DT;
     const elapsed = simTimeOf(state) - (this._installedAt || 0);
     const fields = this._installedFields || [];
@@ -1482,6 +1485,7 @@ export const survivalArena = {
     for (let i = 0; i < toys.length; i++) {
       const toy = toys[i];
       if (!toy) continue;
+      if (roomStill && (toy.kind === 'crusher' || toy.kind === 'current')) continue;
       if (toy.kind === 'crusher') {
         for (let b = 0; b < bodies.length; b++) {
           const entity = bodies[b];
