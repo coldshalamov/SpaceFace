@@ -10,7 +10,7 @@
 //
 // Readout order is the causal chain; the first link that does not happen is reported as
 // `firstViolatedExpectation`, so the next agent knows which production owner to open:
-//   spill_emitted -> spill_noticed -> npc_targets_pod -> npc_reaches_pod -> pod_custody_changed
+//   spill_emitted -> spill_noticed -> npc_targets_pod (within B10 30 s) -> npc_reaches_pod -> pod_custody_changed
 import { deliverProductionGunHit } from './feel.hitstun_curve.mjs';
 import { B10B_DEADLINE_S, bootWorld, bodilessActors, withFeatures } from './world.reaction_trio.mjs';
 
@@ -19,6 +19,7 @@ const SETTLE_TICKS = 600;          // let the sector spawn and route its own tra
 const STANDOFF_WU = 220;
 const SAMPLE_STRIDE = 6;
 const ARRIVAL_WU = 60;
+const CUSTODY_WINDOW_S = 180;
 const HIT_MAGNITUDE = 60;
 // Roles traffic itself treats as civilian dump-on-violence carriers. Read-only mirror: if
 // traffic changes its set, a run that finds no candidate says so instead of guessing.
@@ -45,7 +46,7 @@ export async function measureCargoSpill(seed) {
   const events = [];
   const tick = () => state.tick | 0;
   for (const name of ['freight:cargoSpilled', 'traffic:spillNoticed', 'traffic:salvorDispatched',
-    'npcjobs:assigned', 'pickup:collected']) {
+    'npcjobs:assigned', 'pickup:collected', 'salvage:npcExtraction']) {
     bus.on(name, (p) => events.push({ tick: tick(), type: name, p: p || {} }));
   }
   runtime.runTicks(SETTLE_TICKS, DT);
@@ -72,39 +73,53 @@ export async function measureCargoSpill(seed) {
   const pods = [...podIds].map((id) => state.entities.get(id)).filter(Boolean);
   let noticedTick = null; let noticerId = null; let nearest = Infinity; let nearestId = null;
   let arrival = null; let custody = null;
-  const watched = podIds.size ? B10B_DEADLINE_S * 60 : 0;
+  // B10 bars the attraction at 30 s; the run keeps watching (bounded) so arrival and the custody
+  // change that follow are measured rather than assumed.
+  const watched = podIds.size ? CUSTODY_WINDOW_S * 60 : 0;
+  const claimant = () => {
+    for (const pod of pods) {
+      const rid = pod.data && pod.data.salvorClaimedBy;
+      if (!rid) continue;
+      const e = (state.entityList || []).find((x) => x && x.alive !== false && x.data && x.data.worldRecordId === rid);
+      if (e) return { e, pod };
+    }
+    return null;
+  };
   for (let i = SAMPLE_STRIDE; i <= watched; i += SAMPLE_STRIDE) {
     runtime.runTicks(SAMPLE_STRIDE, DT);
-    const take = events.find((e) => e.type === 'pickup:collected' && podIds.has(e.p.pickupId));
+    const take = events.find((e) => (e.type === 'pickup:collected' && podIds.has(e.p.pickupId))
+      || (e.type === 'salvage:npcExtraction' && podIds.has(e.p.targetId)));
     if (take && !custody) {
-      custody = { tick: take.tick, collectorId: take.p.collectorId,
-        byPlayer: take.p.collectorId === player.id, byOwner: take.p.collectorId === carrier.id };
-      if (!custody.byPlayer && !custody.byOwner && !arrival) arrival = { tick: take.tick, id: take.p.collectorId, tookPod: true };
+      const collectorId = take.type === 'pickup:collected' ? take.p.collectorId : take.p.salvorId;
+      const taker = state.entities.get(collectorId);
+      const m = taker && taker.data && taker.data.cargoManifest;
+      custody = { tick: take.tick, via: take.type, collectorId,
+        byPlayer: collectorId === player.id, byOwner: collectorId === carrier.id,
+        qty: take.p.totalQty ?? null, collectorManifestQty: m ? m.totalQty : null };
+      if (!custody.byPlayer && !custody.byOwner && !arrival) arrival = { tick: take.tick, id: collectorId, tookPod: true };
       break;
     }
+    const c = claimant();
+    if (c && noticedTick == null) { noticedTick = tick(); noticerId = c.e.id; }
     for (const e of state.entityList || []) {
       if (!e || e.alive === false || e.type !== 'ship' || e.id === player.id || e.id === carrier.id) continue;
-      const d = e.data || {};
-      const targeted = podIds.has(d.salvageTargetId) || podIds.has(d.targetId)
-        || (((state.traffic && state.traffic.freighters) || []).find((r) => r && r.id === e.id) || {}).targetId != null
-          && podIds.has(((state.traffic.freighters).find((r) => r && r.id === e.id)).targetId);
-      if (targeted && noticedTick == null) { noticedTick = tick(); noticerId = e.id; }
       for (const pod of pods) {
         if (pod.alive === false) continue;
         const dd = dist(e.pos, pod.pos);
         if (dd < nearest) { nearest = dd; nearestId = e.id; }
-        if (targeted && dd <= ARRIVAL_WU && !arrival) arrival = { tick: tick(), id: e.id, tookPod: false };
+        if (c && e.id === c.e.id && dd <= ARRIVAL_WU && !arrival) arrival = { tick: tick(), id: e.id, tookPod: false };
       }
     }
-    if (arrival) break;
   }
   const noticed = events.find((e) => e.type === 'traffic:spillNoticed'
     && Array.isArray(e.p.podIds) && e.p.podIds.some((id) => podIds.has(id))) || null;
   const dispatched = events.filter((e) => e.type === 'traffic:salvorDispatched' || e.type === 'npcjobs:assigned');
+  const attractedInBar = noticedTick != null && (noticedTick - hitTick) / 60 <= B10B_DEADLINE_S;
   const chain = [
     ['spill_emitted', !!spill],
     ['spill_noticed', !!noticed || noticedTick != null],
-    ['npc_targets_pod', noticedTick != null || !!arrival],
+    ['npc_targets_pod', noticedTick != null],
+    ['npc_targets_pod_within_b10', attractedInBar],
     ['npc_reaches_pod', !!arrival],
     ['pod_custody_changed', !!custody],
   ];
@@ -121,13 +136,14 @@ export async function measureCargoSpill(seed) {
       commodityId: spill.p.commodityId, podIds: [...podIds],
       podCustodyStamp: pod0 ? !!(pod0.data && pod0.data.freightCustodyPod) : null,
       podOwnerId: pod0 && pod0.data ? pod0.data.ownerId ?? null : null } : null,
-    noticedAtS: s(noticed ? noticed.tick : noticedTick),
+    noticedAtS: s(noticed ? noticed.tick : null),
+    targetedAtS: s(noticedTick),
     noticerId,
     dispatchEvents: dispatched.length,
     nearestNpcApproachWU: r1(nearest), nearestNpcId: nearestId,
     arrivalId: arrival ? arrival.id : null,
     timeToNpcArrivalS: arrival ? s(arrival.tick) : null,
-    custody,
+    custody: custody ? { ...custody, atS: s(custody.tick) } : null,
     podsAlive: pods.filter((p) => p.alive !== false).length,
     podsAttracted: arrival ? 1 : 0,
     windowS: r1(watched / 60),
@@ -137,7 +153,7 @@ export async function measureCargoSpill(seed) {
   };
   const eventTrace = events.map((e) => ({ tick: e.tick, type: e.type,
     data: { carrierId: e.p.carrierId ?? null, podIds: e.p.podIds ?? null, pickupId: e.p.pickupId ?? null,
-      collectorId: e.p.collectorId ?? null, cause: e.p.cause ?? null } }));
+      collectorId: e.p.collectorId ?? e.p.salvorId ?? null, targetId: e.p.targetId ?? null, cause: e.p.cause ?? null } }));
   runtime.dispose();
   return { metrics, eventTrace };
 }
