@@ -1,0 +1,47 @@
+name: Player surface VFX contracts
+on:
+  push:
+    branches: [codex/player-surface-vfx-20261012]
+    paths:
+      - '.github/workflows/player-surface-vfx.yml'
+      - 'src/render/weapons/**'
+      - 'test/player-surface-vfx.test.mjs'
+  pull_request:
+    paths:
+      - '.github/workflows/player-surface-vfx.yml'
+      - 'src/render/weapons/**'
+      - 'test/player-surface-vfx.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: player-surface-vfx-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+          persist-credentials: false
+          sparse-checkout: |
+            src
+            test
+            scripts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install runtime module dependencies without full asset build
+        run: |
+          DEPS=$(node -e "const p=require('./package.json');console.log(['three','three.quarks','three-mesh-bvh','@dimforge/rapier3d-compat'].map(n=>n+'@'+p.dependencies[n]).join(' '))")
+          npm install --prefix .vfx-ci --ignore-scripts --no-audit --no-fund $DEPS
+          ln -s .vfx-ci/node_modules node_modules
+      - name: Check updated module syntax
+        run: |
+          node --check src/render/weapons/contactMarks.js
+          node --check src/render/weapons/playerSurfaceSplash.js
+          node --check src/render/weapons/presenter.js
+      - name: Verify receiver integration
+        run: node --test test/player-surface-vfx.test.mjs
