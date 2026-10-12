@@ -5,9 +5,9 @@ Tri budgets follow the live manifest/exporter contract: part ≤15k · whole-shi
 
 | id | kind | thread | tri budget | palette | status |
 |---|---|---|---:|---|---|
-| wholeship_kestrel | wholeship | F9-37 | 6000 | core cyan accent | **blocked** — hull body missing; re-export in Blender |
-| wholeship_pelican | wholeship | F9-37 | 6000 | industrial amber | **blocked** — hull body missing; re-export in Blender |
-| wholeship_wasp | wholeship | F9-37 | 6000 | smuggler violet | **blocked** — hull body missing; re-export in Blender |
+| wholeship_kestrel | wholeship | F9-37 | 6000 | core cyan accent | **done** — rebuilt with hull body; live (`wholeship_kestrel`, 39,518 tris, LOD family) |
+| wholeship_pelican | wholeship | F9-37 | 6000 | industrial amber | **retired** — superseded by `wholeship_pelican_production_v1` (accepted); blocked row + accessory-only GLB removed 2026-10-12 |
+| wholeship_wasp | wholeship | F9-37 | 6000 | smuggler violet | **retired** — superseded by `wholeship_wasp_production_v1` (accepted); blocked row + accessory-only GLB removed 2026-10-12 |
 | claim_hopper | prop | F6-26 | 600 | claim sector palette | queued |
 | claim_battery_mast | prop | F6-26 | 600 | claim sector palette | queued |
 | claim_hangar_frame | prop | F6-26 | 600 | claim sector palette | queued |

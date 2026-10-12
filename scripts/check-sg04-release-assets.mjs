@@ -32,8 +32,6 @@ const WHOLE_SHIP_FILES = [
   'wholeships/kestrel.glb',
   'wholeships/kestrel_lod1.glb',
   'wholeships/kestrel_lod2.glb',
-  'wholeships/pelican.glb',
-  'wholeships/wasp.glb',
 ];
 const manifestPartFiles = new Set((partManifest.parts || []).map((part) => part.file));
 // lodFamily siblings (lod1/lod2/…) are separate runtime files the distance selector loads on

@@ -38,8 +38,10 @@ test('visual asset catalog covers the exact release manifest without confusing p
   assert.equal(new Set(catalog.manifestCensus.releaseAssets.map((row) => row.id)).size, 83);
   assert.match(catalog.coverage.glbInternals, /not complete/);
   assert.equal(catalog.coverage.visualAcceptance, 'none assigned by this catalog');
-  assert.ok(catalog.manifestCensus.sourceOnlyIds.includes('wholeship_pelican'));
-  assert.ok(catalog.manifestCensus.sourceOnlyIds.includes('wholeship_wasp'));
+  // AEP C8 (2026-10-12): the accessory-only legacy pelican/wasp exports were retired — their
+  // blocked parts-manifest rows were removed vs the accepted production_v1 replacements.
+  assert.ok(!catalog.manifestCensus.sourceOnlyIds.includes('wholeship_pelican'));
+  assert.ok(!catalog.manifestCensus.sourceOnlyIds.includes('wholeship_wasp'));
   assert.deepEqual(
     catalog.manifestCensus.releaseOnlyIds,
     ['ship_kestrel_reference', 'wholeship_kestrel_lod1', 'wholeship_kestrel_lod2'],

@@ -191,14 +191,8 @@ const RECOVERY_AND_DONORS = Object.freeze([
 const REJECTED = Object.freeze([
   {
     id: 'legacy_pelican_and_wasp',
-    lifecycle: 'rejected/evidence-only',
-    paths: [
-      'assets/ships/parts/wholeships/pelican.glb',
-      'assets/ships/parts/wholeships/wasp.glb',
-      'assets/ships/release/parts/wholeships/pelican.glb',
-      'assets/ships/release/parts/wholeships/wasp.glb',
-    ],
-    finding: 'Packaged residuals exist, but the current player selector uses wasp_production_v1 and neither legacy file has a current release-manifest row. They are accessory-heavy legacy shells, not alternate ships ready for promotion.',
+    lifecycle: 'rejected/retired',
+    finding: 'Retired 2026-10-12 (AEP C8 admission): the accessory-only legacy exports (wholeships/pelican.glb, wholeships/wasp.glb source + orphan release copies) were deleted and their blocked parts-manifest rows removed. The live selectors use pelican_production_v1/wasp_production_v1 (accepted). Do not recreate.',
   },
   {
     id: 'helios_hub_v10_v12',

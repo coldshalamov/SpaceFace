@@ -14,7 +14,6 @@ const DEFAULT_TARGETS = [
   'assets/ships/parts/wholeships/helios_cradle.glb',
   'assets/ships/parts/wholeships/helios_span.glb',
   'assets/ships/parts/wholeships/wasp_production_v1.glb',
-  'assets/ships/parts/wholeships/pelican.glb',
   'assets/ships/parts/weapons/weapon_gatling.glb',
 ];
 

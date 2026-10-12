@@ -15,8 +15,6 @@ const CHUNK_JSON = 0x4e4f534a;
 
 const WHOLE_SHIPS = [
   { path: 'assets/ships/parts/wholeships/kestrel.glb', kind: 'wholeship', id: 'kestrel', assetId: 'SF_WHOLESHIP_KESTREL' },
-  { path: 'assets/ships/parts/wholeships/pelican.glb', kind: 'wholeship', id: 'pelican', assetId: 'SF_WHOLESHIP_PELICAN' },
-  { path: 'assets/ships/parts/wholeships/wasp.glb', kind: 'wholeship', id: 'wasp', assetId: 'SF_WHOLESHIP_WASP' },
 ];
 
 function parseGlb(bytes) {

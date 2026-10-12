@@ -102,8 +102,6 @@ const SHIPS = [
 
 const FORBIDDEN_TOUCH = [
   'assets/ships/parts/wholeships/kestrel.glb',
-  'assets/ships/parts/wholeships/pelican.glb',
-  'assets/ships/parts/wholeships/wasp.glb',
 ];
 
 const errors = [];

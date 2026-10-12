@@ -83,8 +83,6 @@ const WHOLE_SHIP_FILES = [
   'kestrel.glb',
   'kestrel_lod1.glb',
   'kestrel_lod2.glb',
-  'pelican.glb',
-  'wasp.glb',
   'drifter_production_v1.glb',
   'drifter_production_v1_lod1.glb',
   'drifter_production_v1_lod2.glb',

@@ -20,7 +20,7 @@ Hitch (`ship_kestrel`) is excluded.
 | ship_colossus | Colossus | battlecruiser T4 | `colossus_production_v1.glb` | — | Factory remaster |
 | ship_leviathan | Leviathan | flagship T5 | `leviathan_production_v1.glb` | — | Factory remaster |
 
-Unwired / blocked wholeships (do **not** wire): `wholeships/pelican.glb`, `wholeships/wasp.glb` — accessory-only, no Material_Hull body.
+Retired 2026-10-12 (AEP C8): `wholeships/pelican.glb`, `wholeships/wasp.glb` — accessory-only exports (no Material_Hull body) superseded by `pelican_production_v1`/`wasp_production_v1` (accepted, live). Files and blocked manifest rows removed.
 
 ## NPC / hostile / traffic bodies (10)
 
