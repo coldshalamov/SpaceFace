@@ -12,11 +12,12 @@ function fixture() {
   resetPackageDetachManifestsForTests();
   clearStaticBatchGeometryCacheForTests();
   const geometry = new THREE.BoxGeometry(2, 4, 6);
+  // Runtime preparation can install the illustrated alias before the detach manifest is built.
+  // The raw verified donor decoder does not install that runtime-only shader alias.
+  geometry.setAttribute('sfHullPosition', geometry.getAttribute('position'));
   createPackageDetachManifest({ contentHash: 'fixture.lane-beacon', resources: [geometry] }, {
     redecode: async () => new THREE.BoxGeometry(2, 4, 6), collectResources: donor => [donor],
   });
-  // The illustrated hull alias arrives after manifest registration, as on the live beacon.
-  geometry.setAttribute('sfHullPosition', geometry.getAttribute('position'));
   return geometry;
 }
 
@@ -29,6 +30,24 @@ test('GPU retirement preserves the position keep-set through a shader attribute 
   assert.equal(geometry.attributes.sfHullPosition, position);
   assert.deepEqual([...position.array], positions, 'the alias cannot empty the kept position record');
   assert.deepEqual([...geometry.index.array], index);
+});
+
+test('registration moves an interleaved hull alias with its kept position record', () => {
+  resetPackageDetachManifestsForTests();
+  const geometry = new THREE.BufferGeometry();
+  const data = new THREE.InterleavedBuffer(new Float32Array([
+    0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1,
+  ]), 6);
+  geometry.setAttribute('position', new THREE.InterleavedBufferAttribute(data, 3, 0));
+  geometry.setAttribute('normal', new THREE.InterleavedBufferAttribute(data, 3, 3));
+  geometry.setAttribute('sfHullPosition', geometry.attributes.position);
+  createPackageDetachManifest({ contentHash: 'fixture.interleaved-layout', resources: [geometry] }, {
+    redecode: async () => geometry, collectResources: donor => [donor],
+  });
+  detachPackageGeometry(geometry, {});
+  assert.equal(data.array.length, 0, 'the obsolete shared buffer still retires');
+  assert.equal(geometry.attributes.sfHullPosition, geometry.attributes.position);
+  assert.deepEqual([...geometry.attributes.sfHullPosition.array], [0, 0, 0, 1, 0, 0, 0, 1, 0]);
 });
 
 test('a later stepped batch refills exact authored attributes under a bounded CPU read lease', async () => {

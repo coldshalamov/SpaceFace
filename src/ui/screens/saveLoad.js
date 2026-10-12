@@ -15,6 +15,7 @@ import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { SHIPS } from '../../data/ships.js';
 import { THUNDERCHILD, THUNDERCHILD_TITLE_ID, TITLES } from '../../data/titles.js';
 import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength, selectLatestOccupiedSlot } from '../../save/saveSystem.js';
+import { boundSlotThumbnail } from '../../save/slotStill.js';
 import { WANTED_TIER, wantedTierInfo } from '../../systems/heat.js';
 import { wantedClearClause } from '../wantedReason.js';
 import { confirm } from '../confirm.js';
@@ -464,6 +465,15 @@ export function canSave(ctx) {
   const state = ctx && ctx.state;
   return !!(state && state.playerId != null && state.entities
     && typeof state.entities.get === 'function' && state.entities.get(state.playerId));
+}
+
+export function saveSlotIntent(slot, options = {}) {
+  const intent = { slot, label: options.label };
+  // Canvas belongs to this browser. Bound its still before the intent crosses the sim lane.
+  if (options.thumbnail !== undefined) {
+    intent.thumbnail = boundSlotThumbnail(options.thumbnail, options.thumbnailSource) ?? null;
+  }
+  return intent;
 }
 
 export function shouldOfferNewGameShortcut(meta, saveAllowed) {
@@ -1564,12 +1574,11 @@ export const saveLoadScreen = {
           thumbnailSource = canvas;
         }
       }
-      ctx.bus.emit('game:save', {
-        slot: id,
+      ctx.bus.emit('game:save', saveSlotIntent(id, {
         label: refs.labelInput ? refs.labelInput.value : '',
         thumbnail,
         thumbnailSource,
-      });
+      }));
       setTimeout(() => this._render(ctx), 120);
       return;
     }

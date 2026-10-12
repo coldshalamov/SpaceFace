@@ -34,6 +34,7 @@ import {
 export { packageDetachSerialNow } from './imageSourceDedupe.js';
 
 const manifests = new Map();
+const GEOMETRY_CPU_KEEP_ATTRIBUTES = new Set(['position', 'sfHullPosition']);
 
 // Whether a manifest still has any released payload — DERIVED, not ledgered: the F3 shared
 // release lands in imageSourceDedupe without a back-edge into this module, so membership must
@@ -88,11 +89,10 @@ function geometryDetachEligible(geometry) {
   return true;
 }
 
-// Stride-copy an interleaved position attribute into a standalone BufferAttribute — position is
-// the one attribute CPU consumers still need (raycast keeps position+index), so it leaves the
-// shared interleaved buffer before that buffer's array can be released (SPEC F2 §3.3.1).
-function deinterleavePositionAttribute(geometry) {
-  const position = geometry.getAttribute && geometry.getAttribute('position');
+// Stride-copy kept coordinates into standalone attributes before their shared interleaved
+// buffer is retired. Raycast keeps position+index; CPU composition also keeps hull shading layout.
+function deinterleaveKeptAttribute(geometry, name) {
+  const position = geometry.getAttribute && geometry.getAttribute(name);
   if (!position || position.isInterleavedBufferAttribute !== true) return;
   const interleaved = position.data;
   const source = interleaved.array;
@@ -104,7 +104,12 @@ function deinterleavePositionAttribute(geometry) {
     const base = i * stride + offset;
     for (let j = 0; j < itemSize; j++) standalone[i * itemSize + j] = source[base + j];
   }
-  geometry.setAttribute('position', new BufferAttribute(standalone, itemSize, position.normalized));
+  const attribute = new BufferAttribute(standalone, itemSize, position.normalized);
+  // The illustrated hull can alias POSITION before this pass. Move every alias with it so
+  // retirement of the remaining interleaved records cannot erase the shader's kept coordinates.
+  for (const [key, value] of Object.entries(geometry.attributes)) {
+    if (value === position) geometry.setAttribute(key, attribute);
+  }
 }
 
 // Rehydrate pairing fingerprint (SPEC F2 §3.5): attr name set + position/index counts +
@@ -112,7 +117,9 @@ function deinterleavePositionAttribute(geometry) {
 // means the package changed under its content hash and the entry stays detached.
 function geometryFingerprint(geometry) {
   const attrs = geometry.attributes || {};
-  const names = Object.keys(attrs).sort();
+  // sfHullPosition is runtime shading layout, not part of the verified decoder's source shape.
+  // It stays in the CPU keep-set and must not make its raw donor appear incompatible.
+  const names = Object.keys(attrs).filter(name => name !== 'sfHullPosition').sort();
   const itemSizes = {};
   const normalized = {};
   for (const name of names) {
@@ -268,7 +275,7 @@ export function createPackageDetachManifest(loaded, options = {}) {
     // the first upload then builds the position VBO from the standalone array, and every later
     // bounds query (asteroidInstancePool culls, raycast early-outs) hits the cached fields once
     // the sibling buffers' arrays are released.
-    deinterleavePositionAttribute(geometry);
+    for (const name of GEOMETRY_CPU_KEEP_ATTRIBUTES) deinterleaveKeptAttribute(geometry, name);
     try { geometry.computeBoundingSphere(); } catch (_) {}
     try { geometry.computeBoundingBox(); } catch (_) {}
     entry.fingerprint = geometryFingerprint(geometry);
@@ -512,8 +519,8 @@ export function dropGeometryGpuResidencyLedger(renderer) {
 }
 
 /**
- * Release a marked geometry's non-kept CPU arrays (every attribute except the deinterleaved
- * `position` and `geometry.index`). Call only after the geometry is provably GPU-resident —
+ * Release a marked geometry's non-kept CPU arrays (keep position, hull shading coordinates,
+ * and index by record identity). Call only after the geometry is provably GPU-resident —
  * the residency pass invokes it right after stamping `spacefaceGpuResident`, and stamped-skip
  * paths retry it for geometries sealed by earlier passes.
  *
@@ -530,11 +537,12 @@ export function detachPackageGeometry(geometry, renderer) {
 
   let freed = 0;
   const attrs = geometry.attributes || {};
-  const position = attrs.position;
-  const keptRecords = new Set([geometry.index,
-    position?.isInterleavedBufferAttribute === true ? position.data : position]);
+  const keptRecords = new Set([geometry.index, ...[...GEOMETRY_CPU_KEEP_ATTRIBUTES].map(name => {
+    const attribute = attrs[name];
+    return attribute?.isInterleavedBufferAttribute === true ? attribute.data : attribute;
+  })]);
   for (const name of Object.keys(attrs)) {
-    if (name === 'position') continue; // keep-set: standalone CPU copy stays live
+    if (GEOMETRY_CPU_KEEP_ATTRIBUTES.has(name)) continue;
     const attribute = attrs[name];
     if (!attribute || attribute.isGLBufferAttribute === true) continue;
     const record = attribute.isInterleavedBufferAttribute === true ? attribute.data : attribute;

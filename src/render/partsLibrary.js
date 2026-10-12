@@ -4308,7 +4308,10 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     const refill = await waitForAuthoredAdmission(rehydrateDetachedGeometries(sourceGeometries), options);
     assertQueuedAuthoredAdmissionActive(options, 'after-place-cpu-refill');
     if (refill.errors.length || sourceGeometries.some(isPackageGeometryDetached)) {
-      throw new Error(`[partsLibrary] Authored place CPU refill failed: ${JSON.stringify(refill.errors)}`);
+      const unresolved = [record, overlayRecord].filter(Boolean).filter(source =>
+        (source.primitives || []).some(primitive => isPackageGeometryDetached(primitive.geometry)))
+        .map(source => ({ url: source.url, contentHash: source.renderPackage?.contentHash }));
+      throw new Error(`[partsLibrary] Authored place CPU refill failed: ${JSON.stringify({ errors: refill.errors, unresolved })}`);
     }
     authored = await driveAuthoredBuildStepsAsync(
       buildPlacePropRootSteps(entity, record, scene, boundary, {
