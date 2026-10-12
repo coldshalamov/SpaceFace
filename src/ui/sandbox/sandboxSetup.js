@@ -366,6 +366,45 @@ export const SCENARIO_PRESETS = Object.freeze([
   },
 ]);
 
+function canonicalLaunchConfig(config) {
+  // Structured-clone safe: the config is plain validated data; drop anything that is not.
+  return JSON.parse(JSON.stringify(config));
+}
+
+/** True when this config's setup is applied inside the worker (see gameNewOptionsForSandboxConfig). */
+export function sandboxSetupRunsInWorker(config) {
+  return !!(config && config.survivalSetup != null && laneCommandSink());
+}
+
+/**
+ * Worker realm: arm the Crucible setup carried on game:new (opts.crucibleSetupConfig) to apply
+ * on the worker's own game:scenePrepared — the same beat the main lane applies it — against the
+ * authoritative ctx { state, helpers, registry, bus }. Fires at most once. Returns a disarm fn.
+ */
+export function armWorkerCrucibleSetup(ctx, opts) {
+  const cfg = opts && opts.crucibleSetupConfig;
+  const bus = ctx && ctx.bus;
+  if (!cfg || typeof cfg !== 'object' || !bus || typeof bus.on !== 'function') return () => {};
+  let armed = true;
+  const onScene = () => {
+    if (!armed) return;
+    disarm();
+    try {
+      applySandboxSetup(ctx, cfg);
+    } catch (err) {
+      console.error('[sandbox] worker crucible setup failed', err);
+      bus.emit('toast', { text: 'Sandbox setup failed: ' + (err && err.message), kind: 'error', ttl: 6 });
+    }
+  };
+  bus.on('game:scenePrepared', onScene);
+  function disarm() {
+    if (!armed) return;
+    armed = false;
+    if (typeof bus.off === 'function') bus.off('game:scenePrepared', onScene);
+  }
+  return disarm;
+}
+
 function gameNewOptionsForSandboxConfig(config) {
   if (!config || typeof config !== 'object') return {};
   const out = {};
@@ -377,7 +416,15 @@ function gameNewOptionsForSandboxConfig(config) {
   // (and onboarding's scenePrepared staging) runs in the worker, which never sees this
   // module's pendingConfig — without the mark it stages the Training Derelict rescue opening
   // and the run lands in the Adventure tutorial instead of the armory.
-  if (config.survivalSetup != null) out.crucibleLaunch = true;
+  if (config.survivalSetup != null) {
+    out.crucibleLaunch = true;
+    // Worker lane: the sim (ships, world, tech, run wallet) lives in the worker, and main's
+    // registry has no 'ships'/'world' facades — applySandboxSetup on main silently no-ops the
+    // tech unlock, hull, fittings and arena relocation, so the run began in the Adventure world
+    // (Helios, rescue objective, empty armory). Ship the whole config with game:new; the
+    // worker's newGameBoot applies it at its own game:scenePrepared (see simWorkerHost).
+    if (laneCommandSink()) out.crucibleSetupConfig = canonicalLaunchConfig(config);
+  }
   return out;
 }
 
@@ -433,6 +480,14 @@ export function installSandboxGameStartedHook(bus, ctxRef) {
     const cfg = pendingConfig;
     pendingConfig = null;
     if (!cfg) return; // a normal new game, not a sandbox launch
+    // Worker lane + Crucible (Swarm/Gauntlet/scored): the worker already applied the setup
+    // inside its boot. Only main-owned presentation (camera) remains for this realm.
+    if (sandboxSetupRunsInWorker(cfg)) {
+      if (cfg.cameraCandidate) {
+        try { applyCameraCandidate(resolveCtx(), cfg.cameraCandidate); } catch (_) { /* presentation only */ }
+      }
+      return;
+    }
     const apply = () => {
       try {
         applySandboxSetup(resolveCtx(), cfg);
