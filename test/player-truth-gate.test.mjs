@@ -168,7 +168,14 @@ test('gate process exits non-zero when any verdict is FAIL', async () => {
   assert.equal(gateExitCode(['PASS', 'INCOMPLETE']), 2);
   assert.equal(gateExitCode(['FAIL', 'INCOMPLETE']), 1);
   assert.equal(gateExitCode(['ENVIRONMENT']), 4);
-  assert.equal(gateExitCode(['FAIL', 'ENVIRONMENT']), 4);
+  assert.equal(gateExitCode(['PASS', 'ENVIRONMENT']), 4);
+  assert.equal(gateExitCode(['FAIL', 'ENVIRONMENT']), 1);
+  assert.equal(gateExitCode(['ENVIRONMENT', 'FAIL']), 1);
+  const { environmentReportLines } = await import('../scripts/player-truth/run.mjs');
+  assert.deepEqual(environmentReportLines([
+    { verdict: 'FAIL', label: 'swarm-active' },
+    { verdict: 'ENVIRONMENT', label: 'adventure-idle' },
+  ]), ['player-truth ENVIRONMENT: adventure-idle — harness environment, not a gameplay FAIL']);
 });
 
 test('an environment verdict is not a gameplay regression, and software frame time regrades against baseline', async () => {
@@ -200,6 +207,23 @@ test('an environment verdict is not a gameplay regression, and software frame ti
   applyBaselineToHead(absent, null, { baselineMissing: true });
   assert.match(absent.results[0].detail, /baseline baseline produced no frame-time measurement|produced no frame-time measurement/);
   assert.equal(absent.overall, 'INCOMPLETE');
+  const noisyHead = structuredClone(recorded);
+  noisyHead.results[0].status = 'UNKNOWN';
+  noisyHead.results[0].frame = { p50: 94, p99: 904, longTasks: 962, softwareGl: true, samples: 400 };
+  noisyHead.meta.loadavg = { start: [13, 12, 11], end: [13, 12, 11] };
+  applyBaselineToHead(noisyHead, {
+    meta: { commit: 'd88f4d5881', loadavg: { start: [8, 8, 8], end: [8, 8, 8] } },
+    results: [{ id: 'frame_time', frame: { p99: 200, longTasks: 10, softwareGl: true } }],
+  });
+  assert.equal(noisyHead.results[0].status, 'ADVISORY');
+  assert.match(noisyHead.results[0].detail, /not a FAIL/);
+  assert.equal(noisyHead.overall, 'PASS');
+  const cmp = compareVerdicts(
+    { results: [{ id: 'frame_time', title: 'Frame time / long tasks', status: 'PASS', value: 'ok' }] },
+    { results: [{ id: 'frame_time', title: 'Frame time / long tasks', status: 'ADVISORY', value: 'software-renderer evidence' }] },
+  );
+  assert.equal(cmp.regressed, 0);
+  assert.equal(cmp.rows[0].change, 'advisory');
 });
 
 test('pinned spans name the solid body the ship sits on', async () => {

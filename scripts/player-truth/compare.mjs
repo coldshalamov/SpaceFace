@@ -23,7 +23,9 @@ export function compareVerdicts(base, head) {
     const sa = a && a.status; const sb = b && b.status;
     let change;
     // An environment abort is the harness, not a gameplay regression.
+    // A load-noise frame_time advisory is not a PASS→FAIL regression either.
     if (sa === 'ENVIRONMENT' || sb === 'ENVIRONMENT') change = sa === sb ? 'same' : sb === 'ENVIRONMENT' ? 'environment' : 'cleared';
+    else if (sa === 'ADVISORY' || sb === 'ADVISORY') change = sa === sb ? 'same' : 'advisory';
     else {
       const ra = a ? RANK[a.status] ?? 1 : null; const rb = b ? RANK[b.status] ?? 1 : null;
       change = ra == null || rb == null ? 'new/removed' : rb < ra ? 'improved' : rb > ra ? 'REGRESSED' : 'same';
@@ -39,7 +41,11 @@ export function applyBaselineToHead(head, base, { baselineMissing = false, commi
   const frameResult = base && base.results && base.results.find((r) => r.id === 'frame_time');
   const baseFrame = frameResult && frameResult.frame && frameResult.frame.p99 != null && frameResult.frame.longTasks != null ? frameResult.frame : null;
   const missing = baselineMissing || !baseFrame;
-  const changed = regradeSoftwareFrameTime(head.results, baseFrame, { commit: rev, baselineMissing: missing });
+  const changed = regradeSoftwareFrameTime(head.results, baseFrame, {
+    commit: rev, baselineMissing: missing,
+    headLoad: head.meta && head.meta.loadavg,
+    baseLoad: base && base.meta && base.meta.loadavg,
+  });
   if (changed) {
     head.overall = overall(head.results);
     if (head.meta) head.meta.overall = head.overall;

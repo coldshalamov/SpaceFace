@@ -1,6 +1,6 @@
 // Short verdict: header, one line per check, worst offenders. Readable in under a minute.
 
-const ICON = { PASS: 'PASS', FAIL: 'FAIL', UNKNOWN: 'UNKNOWN', 'N/A': 'n/a', ENVIRONMENT: 'ENVIRONMENT' };
+const ICON = { PASS: 'PASS', FAIL: 'FAIL', UNKNOWN: 'UNKNOWN', 'N/A': 'n/a', ENVIRONMENT: 'ENVIRONMENT', ADVISORY: 'ADVISORY' };
 
 export function renderVerdict({ meta, results, overall, paths }) {
   const L = [];
@@ -21,6 +21,12 @@ export function renderVerdict({ meta, results, overall, paths }) {
     const env = results.find((r) => r.status === 'ENVIRONMENT');
     L.push('');
     L.push(`HARNESS ENVIRONMENT (not a gameplay FAIL): ${env ? env.detail : 'served assets or the route load did not match HEAD'}`);
+  }
+  const advisory = results.filter((r) => r.status === 'ADVISORY');
+  if (advisory.length) {
+    L.push('');
+    L.push('Advisory (not a FAIL):');
+    for (const r of advisory) L.push(`- ${r.id} — ${r.detail}`);
   }
   L.push('');
   L.push('| Check | Result | Measured | Threshold |');
@@ -53,6 +59,7 @@ export function printSummary({ meta, results, overall, paths }, log = console.lo
     for (const r of unknown) log(`    ${r.id}: ${r.detail}`);
   }
   if (overall === 'ENVIRONMENT') log('  harness environment — not a gameplay FAIL');
+  for (const r of results) if (r.status === 'ADVISORY') log(`  advisory ${r.id}: ${r.detail}`);
   for (const r of results) log(`  ${String(r.status).padEnd(12)} ${r.id.padEnd(19)} ${r.value == null ? '' : r.value}`);
   for (const [k, v] of Object.entries(paths || {})) log(`  ${k}: ${v}`);
 }

@@ -19,20 +19,58 @@ function srgbToLab(r, g, b) {
   return [116 * f(Y) - 16, 500 * (f(X) - f(Y)), 200 * (f(Y) - f(Z))];
 }
 
+/** Declared threat-marker colour from #326's crimson ring. Lab is srgbToLab(255, 26, 58): L~54, so the old L≥75 rule never saw it. */
+export const THREAT_MARKER = Object.freeze({
+  rgb: 0xff1a3a,
+  lab: Object.freeze([54.35, 78.74, 44.87]),
+  hueDeg: 29.68,
+  chroma: 90.62,
+});
+export const THREAT_HUE_TOLERANCE_DEG = 18;
+export const THREAT_CHROMA_MIN = 40;
+
+export function rimHue(lab) {
+  if (!lab) return null;
+  return { chroma: Math.hypot(lab[1], lab[2]), hue: (Math.atan2(lab[2], lab[1]) * 180 / Math.PI + 360) % 360 };
+}
+
+/** True when the rim's mean colour is the declared threat hue. A bright low-chroma glow does not match. */
+export function rimMatchesThreat(lab) {
+  const h = rimHue(lab);
+  if (!h || h.chroma < THREAT_CHROMA_MIN) return false;
+  let d = Math.abs(h.hue - THREAT_MARKER.hueDeg);
+  if (d > 180) d = 360 - d;
+  return d <= THREAT_HUE_TOLERANCE_DEG;
+}
+
+/** Old rule, kept so tests can show it does not credit #326's crimson (L~54 < 75). Not used to grade. */
+export function brightRimCredit(rateA, rateB) {
+  const a = Number(rateA) || 0; const b = Number(rateB) || 0;
+  if (Math.max(a, b) >= THRESHOLDS.readabilityMarkerOn && Math.abs(a - b) >= THRESHOLDS.readabilityMarkerSplit) return THRESHOLDS.readabilityMarkerCredit;
+  return 0;
+}
+
+/** +1.5 only when one class wears the threat hue and the other does not. The rates are threat matches, not L≥75. */
+export function threatMarkerCredit(rateA, rateB) {
+  const a = Number(rateA) || 0; const b = Number(rateB) || 0;
+  if (Math.max(a, b) >= THRESHOLDS.readabilityMarkerOn && Math.abs(a - b) >= THRESHOLDS.readabilityMarkerSplit) return THRESHOLDS.readabilityMarkerCredit;
+  return 0;
+}
+
 /** Mean Lab of the pixels inside a box, and of a ring around it (background). Exported for tests.
- *  `marker` is the share of the rim (just outside the body, inside the backdrop ring) whose L is ≥ 75:
- *  a bright outline the player can use when the fill colour matches the backdrop. */
+ *  `marker` is the share of the mid rim whose L is ≥ 75 (the old bright-outline signal). It does not buy credit.
+ *  `rim` is the mean Lab of that whole mid rim, which is what the threat-hue test reads. */
 export function sampleBox(raw, W, H, ch, cx, cy, r) {
   const inner = Math.max(1, Math.round(r * 0.7)); const ring = Math.round(Math.max(r * 1.6, r + 4));
   const acc = [0, 0, 0]; let n = 0; const bg = [0, 0, 0]; let nb = 0; const inn = [];
-  let markerN = 0; let midN = 0;
+  let markerN = 0; let midN = 0; const rimAcc = [0, 0, 0];
   for (let y = Math.max(0, cy - ring); y <= Math.min(H - 1, cy + ring); y++) {
     for (let x = Math.max(0, cx - ring); x <= Math.min(W - 1, cx + ring); x++) {
       const dx = x - cx; const dy = y - cy; const d = Math.max(Math.abs(dx), Math.abs(dy));
       const i = (y * W + x) * ch;
       const L = srgbToLab(raw[i], raw[i + 1], raw[i + 2]);
       if (d <= inner) { acc[0] += L[0]; acc[1] += L[1]; acc[2] += L[2]; n++; inn.push(L); }
-      else if (d <= r * 1.15) { midN++; if (L[0] >= 75) markerN++; }
+      else if (d <= r * 1.15) { midN++; rimAcc[0] += L[0]; rimAcc[1] += L[1]; rimAcc[2] += L[2]; if (L[0] >= 75) markerN++; }
       else if (d > r * 1.2) { bg[0] += L[0]; bg[1] += L[1]; bg[2] += L[2]; nb++; }
     }
   }
@@ -40,13 +78,17 @@ export function sampleBox(raw, W, H, ch, cx, cy, r) {
   // The lit quarter of the body: what the eye calls its colour ("white sphere", "orange blob").
   inn.sort((p, q) => q[0] - p[0]); const top = inn.slice(0, Math.max(1, Math.ceil(inn.length / 4)));
   const lit = [0, 1, 2].map((k) => top.reduce((sum, L) => sum + L[k], 0) / top.length);
-  return { lab: acc.map((v) => v / n), lit, bg: nb ? bg.map((v) => v / nb) : null, marker: midN ? markerN / midN : 0 };
+  return {
+    lab: acc.map((v) => v / n), lit, bg: nb ? bg.map((v) => v / nb) : null,
+    marker: midN ? markerN / midN : 0,
+    rim: midN ? rimAcc.map((v) => v / midN) : null,
+  };
 }
 
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
 /** Separation index between two sample sets: centroid distance / pooled spread, plus size.
- *  `markerCredit` is added by the caller when one class wears a bright ring and the other does not. */
+ *  `markerCredit` is added by the caller when one class wears the declared threat hue and the other does not. */
 export function separation(A, B, { markerCredit = 0 } = {}) {
   const mean = (S) => [0, 1, 2].map((k) => S.reduce((s, x) => s + x.lab[k], 0) / S.length);
   const mA = mean(A); const mB = mean(B);
@@ -89,15 +131,12 @@ export async function analyzeReadability(shots, nearestSample) {
     const worst = S.slice().sort((a, b) => (deltaL(a) ?? 99) - (deltaL(b) ?? 99)).slice(0, 2)
       .map((x) => ({ t: x.t, box: x.box, deltaL: deltaL(x) == null ? null : +deltaL(x).toFixed(1) }));
     const marked = S.filter((x) => (x.marker || 0) >= 0.08).length;
+    const threat = S.filter((x) => rimMatchesThreat(x.rim)).length;
     classes[c] = { n: S.length, lowContrastFrac: S.length ? low.length / S.length : 0, exampleT: (low[0] || S[0] || {}).t, exampleBox: (low[0] || S[0] || {}).box,
-      markerRate: S.length ? marked / S.length : 0, worst,
+      markerRate: S.length ? marked / S.length : 0, threatRate: S.length ? threat / S.length : 0, worst,
       meanLab: S.length ? [0, 1, 2].map((k) => +(S.reduce((s, x) => s + x.lab[k], 0) / S.length).toFixed(1)) : null };
   }
-  const markerCreditFor = (a, b) => {
-    const ra = classes[a] ? classes[a].markerRate : 0; const rb = classes[b] ? classes[b].markerRate : 0;
-    if (Math.max(ra, rb) >= THRESHOLDS.readabilityMarkerOn && Math.abs(ra - rb) >= THRESHOLDS.readabilityMarkerSplit) return THRESHOLDS.readabilityMarkerCredit;
-    return 0;
-  };
+  const markerCreditFor = (a, b) => threatMarkerCredit(classes[a] ? classes[a].threatRate : 0, classes[b] ? classes[b].threatRate : 0);
   const pairs = [];
   for (const [a, b] of [['enemy', 'asteroid'], ['enemy', 'projectile'], ['asteroid', 'projectile'], ['enemy', 'pickup']]) {
     if (!per[a].length || !per[b].length) { pairs.push({ a, b, nA: per[a].length, nB: per[b].length, sep: null }); continue; }

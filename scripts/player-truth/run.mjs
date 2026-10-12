@@ -14,10 +14,13 @@
 // Drives the real public route in a real rendered browser with trusted keyboard/mouse input,
 // samples live telemetry with src/testing/playerTruth/reader.js (observer only), takes periodic
 // screenshots, runs scripts/player-truth/checks.mjs and writes verdict.md + contact-sheet.jpg.
-// Exit code: 0 PASS, 1 FAIL, 2 INCOMPLETE (a check could not measure), 3 harness error,
-//            4 HARNESS ENVIRONMENT (served assets/design stale vs HEAD, or a quoted route load error). Not a gameplay FAIL.
+// Exit code: 0 PASS, 1 FAIL (any arena, even when another arena is ENVIRONMENT),
+//            2 INCOMPLETE (a check could not measure), 3 harness error,
+//            4 HARNESS ENVIRONMENT only when no arena FAILed (stale served assets/ vs HEAD,
+//            or a quoted route load error). ENVIRONMENT is printed on its own line.
 
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { loadavg } from 'node:os';
 import { gzipSync } from 'node:zlib';
 import { execSync } from 'node:child_process';
 import path from 'node:path';
@@ -83,12 +86,18 @@ export function formatRouteFailure(message, { notes = [], exitCode = null, signa
   return `harness/route error: ${head}${extra}`.slice(0, 400);
 }
 
-/** Process status for a finished matrix. ENVIRONMENT (4) outranks a gameplay FAIL: the run was not the code under test. */
+/** Process status for a finished matrix. A gameplay FAIL exits 1 even when another arena is ENVIRONMENT.
+ *  ENVIRONMENT exits 4 only when no arena FAILed. It is still printed on its own line. */
 export function gateExitCode(verdicts) {
-  if (verdicts.some((v) => v === 'ENVIRONMENT')) return ENVIRONMENT_EXIT;
   if (verdicts.some((v) => v === 'FAIL')) return 1;
+  if (verdicts.some((v) => v === 'ENVIRONMENT')) return ENVIRONMENT_EXIT;
   if (verdicts.some((v) => v !== 'PASS')) return 2;
   return 0;
+}
+
+/** One stdout line per ENVIRONMENT arena, so exit 1 does not hide that arena behind the FAIL. */
+export function environmentReportLines(outcomes) {
+  return (outcomes || []).filter((o) => o && o.verdict === 'ENVIRONMENT').map((o) => `player-truth ENVIRONMENT: ${o.label} — harness environment, not a gameplay FAIL`);
 }
 
 /** Starter-fight pacing watch: shots, encounter beats and the post-combat silence, in sim seconds. */
@@ -140,7 +149,7 @@ async function runOne(args, arena, extra = {}) {
   const shotEveryMs = (args.shotEvery || (args.headed ? 1 : 3)) * 1000;
   const T0 = Date.now();
   const log = (...m) => console.log(`[${label} ${((Date.now() - T0) / 1000).toFixed(0)}s]`, ...m);
-  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm' || args.mode === 'gauntlet', gate: args.gatePass || null, requireRounds: args.requireRounds || null }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
+  const trace = { meta: { mode: args.mode, rounds: args.mode === 'swarm' || args.mode === 'gauntlet', hasLoadout: args.mode === 'swarm' || args.mode === 'gauntlet', gate: args.gatePass || null, requireRounds: args.requireRounds || null, loadavg: { start: [...loadavg()], end: null } }, samples: [], events: [], longTasks: [], keys: [], rounds: [], probes: [], route: { steps: [] }, loadout: null, readability: null };
   const shots = [];
   const step = (name, ok, detail) => { trace.route.steps.push({ name, ok, detail, t: null }); log(`${ok ? 'ok ' : 'XX '} ${name} — ${detail}`); };
 
@@ -409,6 +418,7 @@ async function runOne(args, arena, extra = {}) {
   const dirty = (() => { try { return execSync('git status --porcelain -- src scripts', { cwd: ROOT }).toString().trim().length > 0; } catch { return false; } })();
   const softwareGl = /swiftshader|llvmpipe|software|softpipe/i.test(renderer);
   const playStart = trace.meta.playStartSim;
+  if (trace.meta.loadavg) trace.meta.loadavg.end = [...loadavg()];
   Object.assign(trace.meta, {
     label, browserExecutable: executable, hullPicked: extra.hull || null, hullsOffered: doorInfo && doorInfo.hulls ? doorInfo.hulls : null, idleSeconds: args.idle, seedSet: !!(doorInfo && doorInfo.seedSet), arena: arena || (doorInfo && doorInfo.arenas ? (doorInfo.arenas.find((x) => x.pressed) || {}).name : null) || null, seed: args.seed, commit, dirty, renderer, softwareGl, headed: args.headed, browserVersion,
     resolution: `${vw}x${vh}`, when: new Date().toISOString(), wallSeconds: Math.round((Date.now() - T0) / 1000),
@@ -494,7 +504,7 @@ async function assertHarnessEnvironment() {
       console.error(md);
       code = ENVIRONMENT_EXIT;
     } else {
-      console.log(`harness environment: ${env.checked} assets/design blobs match HEAD (${env.hashed} hashed)`);
+      console.log(`harness environment: ${env.checked} assets blobs match HEAD (${env.hashed} hashed)`);
     }
   } catch (err) {
     if (err && err.harnessError) { console.error(err.message || err); code = 3; }
@@ -554,6 +564,7 @@ async function main() {
     const { runBaseline } = await import('./compare.mjs');
     await runBaseline({ ref: args.baseline, argv: process.argv.slice(2), outcomes, root: ROOT });
   }
+  for (const line of environmentReportLines(outcomes)) console.log(line);
   const worst = gateExitCode(outcomes.map((o) => o.verdict));
   console.log(`player-truth exit ${worst}`);
   // Browser and bench server are already closed inside each run. Flush the verdict lines, then exit

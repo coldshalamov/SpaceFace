@@ -54,11 +54,11 @@ plays from 3 s and must reach round 3; each round start is shot densely and re-p
 model/LOD, thrust/yaw response, pinning and tumble). In gate mode an UNKNOWN on `player_control`,
 `tumble`, `player_ship`, `round_resolution` or `round_transitions` is a FAIL ("not measured" cannot
 pass a gameplay PR). No invulnerability is used.
-The process exits 1 when any check FAILs, 2 when the verdict is INCOMPLETE, 4 when the verdict is
-ENVIRONMENT, and 0 only when every graded check PASSes. ENVIRONMENT is a harness failure (stale
-served `assets/` or `design/`, or a quoted route load error such as "The authored starter ship
-could not be loaded"). It is not a gameplay FAIL, and it outranks one. An INCOMPLETE verdict lists
-each UNKNOWN check that caused it. `--gate=active` or `--gate=idle` runs that one pass; a bare
+The process exits 1 when any arena FAILs, including when another arena is ENVIRONMENT. ENVIRONMENT
+is a harness failure (stale served `assets/`, or a quoted route load error such as "The authored
+starter ship could not be loaded"). It is printed on its own line and is not a gameplay FAIL.
+Exit 4 is used only when no arena FAILed. Exit 2 is INCOMPLETE. Exit 0 only when every arena's
+verdict is PASS. An INCOMPLETE verdict lists each UNKNOWN check that caused it. `--gate=active` or `--gate=idle` runs that one pass; a bare
 `--gate` still runs both. `--evidence` copies the verdict and contact sheet into
 `design/program/player-truth/` and leaves `scratch/player-truth/<label>/frames/` in place for
 review. `--prune-frames` deletes those frames; it is off unless passed.
@@ -75,19 +75,20 @@ samples live telemetry through the observer-only `src/testing/playerTruth/reader
 `scratch/player-truth/<mode>[-<arena>]/{verdict.md,contact-sheet.jpg,verdict.json,trace.json.gz,frames/}`.
 `--evidence` copies the compact verdict and sheet into `design/program/player-truth/<label>/`.
 
-Before the browser starts, the harness checks that served `assets/` and `design/` match
-`git ls-tree HEAD` (every blob's size, plus a content hash of files ≤64KB, every
-`render-package.json`, and the starter-hull `render.glb` files, and one manifest fetched through
-the bench server). `design/program/player-truth/` is the harness's own scoreboard, not a file the
-game loads, so it is left out of that check. A mismatch aborts with `HARNESS ENVIRONMENT: assets stale vs HEAD` and exit 4.
+Before the browser starts, the harness checks that served `assets/` match `git ls-tree HEAD`
+(every blob's size, plus a content hash of files ≤64KB, every `render-package.json`, and the
+starter-hull `render.glb` files, and one manifest fetched through the bench server). `design/`
+is not fetched by the route, so it is not graded. A mismatch aborts with `HARNESS ENVIRONMENT: assets stale vs HEAD` and exit 4 when that is the only result.
 The same exit quotes a player-facing load error ("The authored starter ship could not be loaded…",
 a prepare/boot failure of the same family) instead of grading it as a route FAIL.
 
 `readability` is PASS or FAIL once any of enemy, asteroid, or projectile has at least 5 on-screen
 samples. It fails when more than half of those samples have ΔL < 8 against the local backdrop, or
 when a pair that both cleared 5 samples separates by less than 1.0. Separation is colour distance
-over spread, plus a silhouette term from the size ratio, plus 1.5 when one class wears a bright
-rim (L ≥ 75) and the other does not. Projectile visibility is the same backdrop-contrast rule.
+over spread, plus a silhouette term from the size ratio, plus 1.5 when one class's rim matches the
+declared threat hue `0xff1a3a` (Lab L ≈ 54, hue ≈ 30°) and the other does not. A bright rim
+(L ≥ 75) does not buy that credit. The crimson ring is below L 75, so the old brightness rule
+does not credit it either. Projectile visibility is the same backdrop-contrast rule.
 UNKNOWN only when no combat class reaches 5 samples. The contact sheet keeps up to four of the
 worst frames for that check.
 
@@ -115,9 +116,12 @@ started but was not watched.
   fraction of real speed (sim time is the clock, so bounds still hold) and takes a few minutes of wall
   time per bounded run. Absolute frame times are labeled `software-renderer evidence` and are not a
   PASS/FAIL. With `--baseline`, frame time FAILs only on a regression: p99 above 125% of baseline and
-  above baseline + 100 ms, or long-task count above 125% and above baseline + 30. Without a baseline
-  measurement the check stays UNKNOWN and is named in the INCOMPLETE cause list. Long-task counts
-  are always kept. The verdict says SOFTWARE GL.
+  above baseline + 100 ms, or long-task count above 125% and above baseline + 30. Each run records
+  `os.loadavg()` at start and end in `verdict.json` (`meta.loadavg`). When the mean of the
+  1-minute samples differs by more than 30% of the louder side, the regrade is ADVISORY instead of
+  FAIL, and the compare table marks that row `advisory` rather than REGRESSED. A missing load does
+  not claim noise. Without a baseline measurement the check stays UNKNOWN and is named in the
+  INCOMPLETE cause list. Long-task counts are always kept. The verdict says SOFTWARE GL.
 - Bounds are flags: `--rounds` (default 3), `--duration=<sim s>` (Swarm 180, Adventure 300),
   `--wall=<minutes>`, `--idle=<sim s>`, `--seed` (house seed 4242).
 - Check logic is fixture-tested without a browser: `npm run check:player-truth`. Thresholds live in

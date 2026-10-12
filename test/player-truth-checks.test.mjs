@@ -5,11 +5,11 @@ import assert from 'node:assert/strict';
 import {
   CLS, VIS, checkLodChurn, checkPlayerShip, checkPopping, checkRoundResolution, checkKillsBeforeInput,
   checkSpawnMotion, checkPlayerControl, checkTumble, checkVfx, checkLoadout, checkFrameTime, checkReadability, overall,
-  isLoadingAssetState,
+  isLoadingAssetState, gradeSoftwareFrameTime, frameLoadNoise,
 } from '../scripts/player-truth/checks.mjs';
 import { classifyEntity } from '../src/testing/playerTruth/reader.js';
 import { auditItems, classifyArmoryArrival, formatArmoryMiss, formatSwarmTutorialMiss, SWARM_TUTORIAL_MISS, ARMORY_WORLD_GRACE_MS } from '../scripts/player-truth/routes.mjs';
-import { separation } from '../scripts/player-truth/readability.mjs';
+import { separation, sampleBox, rimMatchesThreat, brightRimCredit, threatMarkerCredit } from '../scripts/player-truth/readability.mjs';
 import { renderVerdict } from '../scripts/player-truth/verdict.mjs';
 
 const goodPlayer = (o = {}) => ({ id: 1, alive: true, x: 0, y: 0, z: 0, vx: 0, vz: 0, rot: 0, angVel: 0, pitch: 0, bank: 0, mesh: true, vis: true, onScreen: true, box: [600, 330, 680, 390], lod: 'lod0', model: 'hornet', state: 'authored', tris: 4000, marker: false, meshId: 'aaaa', ...o });
@@ -184,11 +184,14 @@ test('readability: overlapping classes fail, a measured class can fail alone, th
   assert.equal(clear.status, 'PASS');
 });
 
-test('overall: any FAIL fails, UNKNOWN is never PASS, ENVIRONMENT outranks both', () => {
+test('overall: any FAIL fails, UNKNOWN is never PASS, ENVIRONMENT outranks both, ADVISORY is neither', () => {
   assert.equal(overall([{ status: 'PASS' }, { status: 'FAIL' }]), 'FAIL');
   assert.equal(overall([{ status: 'PASS' }, { status: 'UNKNOWN' }]), 'INCOMPLETE');
   assert.equal(overall([{ status: 'PASS' }, { status: 'N/A' }]), 'PASS');
   assert.equal(overall([{ status: 'FAIL' }, { status: 'ENVIRONMENT' }]), 'ENVIRONMENT');
+  assert.equal(overall([{ status: 'ADVISORY' }, { status: 'PASS' }]), 'PASS');
+  assert.equal(overall([{ status: 'ADVISORY' }, { status: 'FAIL' }]), 'FAIL');
+  assert.equal(overall([{ status: 'ADVISORY' }, { status: 'UNKNOWN' }]), 'INCOMPLETE');
   const md = renderVerdict({
     meta: { label: 'adv', mode: 'adventure', seed: 1, commit: 'abc', renderer: 'sw', softwareGl: true, headed: false, browserVersion: '1', resolution: '960x540', when: 't', wallSeconds: 1, simSeconds: 1, frames: 1, shots: 1, script: 's' },
     results: [
@@ -200,6 +203,69 @@ test('overall: any FAIL fails, UNKNOWN is never PASS, ENVIRONMENT outranks both'
   assert.match(md, /Incomplete because:/);
   assert.match(md, /readability — not enough on-screen samples/);
   assert.match(md, /frame_time — software-renderer evidence only; no --baseline to grade regression/);
+  const adv = renderVerdict({
+    meta: { label: 'adv', mode: 'adventure', seed: 1, commit: 'abc', renderer: 'sw', softwareGl: true, headed: false, browserVersion: '1', resolution: '960x540', when: 't', wallSeconds: 1, simSeconds: 1, frames: 1, shots: 1, script: 's' },
+    results: [{ id: 'frame_time', status: 'ADVISORY', value: 'software-renderer evidence', threshold: 't', detail: 'load 1m mean differs' }],
+    overall: 'PASS', paths: null,
+  });
+  assert.match(adv, /Advisory \(not a FAIL\)/);
+  assert.match(adv, /frame_time — load 1m mean differs/);
+});
+
+test('frame_time load noise is advisory, and a missing load is not', () => {
+  const stats = { p50: 94, p99: 904, longTasks: 962, samples: 400 };
+  const baseline = { p99: 200, longTasks: 10, commit: 'd88f' };
+  const quiet = { start: [8, 8, 8], end: [8, 8, 8] };
+  const busy = { start: [13, 12, 11], end: [13, 12, 11] };
+  const matched = gradeSoftwareFrameTime(stats, baseline, { head: quiet, base: quiet });
+  assert.equal(matched.status, 'FAIL');
+  const noisy = frameLoadNoise(busy, quiet);
+  assert.ok(noisy.noisy, noisy.rel);
+  assert.ok(noisy.rel > 0.30);
+  const advisory = gradeSoftwareFrameTime(stats, baseline, { head: busy, base: quiet });
+  assert.equal(advisory.status, 'ADVISORY');
+  assert.match(advisory.detail, /advisory, numbers would FAIL; not a FAIL/);
+  assert.equal(advisory.frame.load.advisory, true);
+  const close = gradeSoftwareFrameTime(stats, baseline, { head: { start: [10, 0, 0], end: [10, 0, 0] }, base: { start: [12, 0, 0], end: [12, 0, 0] } });
+  assert.equal(close.status, 'FAIL');
+  assert.equal(frameLoadNoise({ start: [10, 0, 0], end: [10, 0, 0] }, { start: [12, 0, 0], end: [12, 0, 0] }).noisy, false);
+  const missing = gradeSoftwareFrameTime(stats, baseline, { head: busy, base: { start: [8, 8, 8], end: null } });
+  assert.equal(missing.status, 'FAIL');
+  assert.doesNotMatch(missing.detail, /advisory/);
+  const wouldPass = gradeSoftwareFrameTime({ p50: 90, p99: 200, longTasks: 10, samples: 40 }, baseline, { head: busy, base: quiet });
+  assert.equal(wouldPass.status, 'ADVISORY');
+  assert.match(wouldPass.detail, /numbers would PASS/);
+});
+
+test('threat-hue marker credit: crimson 0xff1a3a does not earn the old bright-rim credit, and a white glow earns none', () => {
+  const paint = (rim) => {
+    const size = 48; const cx = 24; const cy = 24; const r = 12;
+    const raw = Buffer.alloc(size * size * 3);
+    const fill = [30, 30, 36]; const bg = [12, 14, 18];
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      const d = Math.max(Math.abs(x - cx), Math.abs(y - cy));
+      const inner = Math.max(1, Math.round(r * 0.7));
+      const rgb = d <= inner ? fill : d <= r * 1.15 ? rim : bg;
+      const i = (y * size + x) * 3;
+      raw[i] = rgb[0]; raw[i + 1] = rgb[1]; raw[i + 2] = rgb[2];
+    }
+    return sampleBox(raw, size, size, 3, cx, cy, r);
+  };
+  const crimson = paint([255, 26, 58]);
+  assert.ok(crimson.rim[0] > 45 && crimson.rim[0] < 65, `crimson L ${crimson.rim[0]}`);
+  assert.ok(crimson.rim[0] < 75);
+  assert.equal(crimson.marker, 0);
+  assert.equal(rimMatchesThreat(crimson.rim), true);
+  assert.equal(brightRimCredit(crimson.marker, 0), 0);
+  assert.equal(threatMarkerCredit(1, 0), 1.5);
+  const white = paint([255, 255, 255]);
+  assert.ok(white.marker >= 0.4, white.marker);
+  assert.equal(rimMatchesThreat(white.rim), false);
+  assert.equal(brightRimCredit(white.marker, 0), 1.5);
+  assert.equal(threatMarkerCredit(0, 0), 0);
+  const yellow = paint([255, 240, 80]);
+  assert.equal(rimMatchesThreat(yellow.rim), false);
+  assert.equal(threatMarkerCredit(0, 0), 0);
 });
 
 test('loadout names a game-empty shelf, a harness miss, and a fit count with no items', () => {

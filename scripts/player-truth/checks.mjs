@@ -34,10 +34,12 @@ export const THRESHOLDS = Object.freeze({
   readabilityMinSeparation: 1.0, readabilityMinSamples: 5,
   readabilityLowDeltaL: 8, // |ΔL| below this against the local backdrop ring is "barely differs"
   readabilityLowContrastFrac: 0.5, // more than half the samples of a measured class at that ΔL is a FAIL
-  readabilityMarkerCredit: 1.5, // added to separation when one class wears a bright ring and the other does not
-  readabilityMarkerOn: 0.4, readabilityMarkerSplit: 0.35, // marker rate, and how far apart the two rates must be
+  readabilityMarkerCredit: 1.5, // added when one class's rim matches the declared threat hue (0xff1a3a) and the other does not. L≥75 alone does not qualify.
+  readabilityMarkerOn: 0.4, readabilityMarkerSplit: 0.35, // threat-hue rate, and how far apart the two rates must be
   frameP99RegressionRatio: 1.25, frameP99RegressionAbsMs: 100,
   longTaskRegressionRatio: 1.25, longTaskRegressionAbs: 30,
+  // 1-minute load (mean of start and end) differing by more than this is host noise, not a frame-time FAIL.
+  frameLoadNoiseFrac: 0.30, frameLoadEpsilon: 0.05,
   // Active flight whose sim advances less than this across the window is stalled, not slow.
   simStallWindowMs: STALL_WINDOW_MS, simStallMinAdvanceS: STALL_MIN_SIM_S,
   vfxCoverP95: 0.25, vfxPlayerOccludedFrac: 0.1, vfxThreatOccludedP95: 0.3, vfxPersistSeconds: 3, backdropThreatP95: 0.3, pinnedMoveFrac: 0.25, pinnedMinExpect: 40,
@@ -452,7 +454,7 @@ const READABILITY_CLASSES = ['enemy', 'asteroid', 'projectile'];
 
 function readabilityThreshold() {
   const T = THRESHOLDS;
-  return `separation ≥${T.readabilityMinSeparation} (colour, silhouette, +${T.readabilityMarkerCredit} marker); ≤${T.readabilityLowContrastFrac * 100}% of samples with ΔL<${T.readabilityLowDeltaL} vs backdrop`;
+  return `separation ≥${T.readabilityMinSeparation} (colour, silhouette, +${T.readabilityMarkerCredit} when one rim matches threat hue 0xff1a3a and the other does not); ≤${T.readabilityLowContrastFrac * 100}% of samples with ΔL<${T.readabilityLowDeltaL} vs backdrop`;
 }
 
 export function checkReadability(trace) {
@@ -606,8 +608,26 @@ function frameStats(trace) {
   return { p50, p99, longTasks: longs.length, samples: samples.length, offenders };
 }
 
-/** Software-GL numbers are evidence. PASS/FAIL is only a regression against a baseline that itself measured frame time. */
-export function gradeSoftwareFrameTime(stats, baseline) {
+/** Mean of the 1-minute loads recorded at the start and end of a run. Null when either sample is missing. */
+export function meanLoad1m(loadavg) {
+  if (!loadavg || !Array.isArray(loadavg.start) || !Array.isArray(loadavg.end)) return null;
+  const a = Number(loadavg.start[0]); const b = Number(loadavg.end[0]);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  return (a + b) / 2;
+}
+
+/** Relative |head − base| / max(head, base, epsilon). A missing load is not noise: do not call the regrade advisory. */
+export function frameLoadNoise(headLoad, baseLoad) {
+  const T = THRESHOLDS;
+  const head = meanLoad1m(headLoad); const base = meanLoad1m(baseLoad);
+  if (head == null || base == null) return { noisy: false, head, base, rel: null };
+  const rel = Math.abs(head - base) / Math.max(head, base, T.frameLoadEpsilon);
+  return { noisy: rel > T.frameLoadNoiseFrac, head, base, rel };
+}
+
+/** Software-GL numbers are evidence. PASS/FAIL is only a regression against a baseline that itself measured frame time.
+ *  When the two runs' 1-minute loads differ by more than ~30%, the regrade is ADVISORY instead of FAIL. */
+export function gradeSoftwareFrameTime(stats, baseline, load = null) {
   const T = THRESHOLDS;
   const value = `software-renderer evidence · p50 ${fmt(stats.p50, 0)} ms · p99 ${fmt(stats.p99, 0)} ms · ${stats.longTasks} long tasks ≥${T.longTaskMs} ms`;
   const frame = { p50: stats.p50, p99: stats.p99, longTasks: stats.longTasks, softwareGl: true, samples: stats.samples };
@@ -628,21 +648,34 @@ export function gradeSoftwareFrameTime(stats, baseline) {
   const ltCap = Math.max(baseLt * T.longTaskRegressionRatio, baseLt + T.longTaskRegressionAbs);
   const fail = p99 > p99Cap || lt > ltCap;
   const commit = baseline.commit || 'baseline';
+  const noise = frameLoadNoise(load && load.head, load && load.base);
+  const loadNote = noise.head != null && noise.base != null
+    ? ` · load 1m mean head ${fmt(noise.head, 2)} vs baseline ${fmt(noise.base, 2)} (rel ${fmt(noise.rel * 100, 0)}%)`
+    : '';
+  if (noise.noisy) {
+    frame.load = { head1m: +noise.head.toFixed(3), base1m: +noise.base.toFixed(3), rel: +noise.rel.toFixed(3), advisory: true };
+    return {
+      status: 'ADVISORY', value, frame,
+      threshold: `no regression vs ${commit}: p99 ≤${fmt(p99Cap, 0)} ms · long tasks ≤${fmt(ltCap, 0)} · advisory when 1m load differs by >${Math.round(T.frameLoadNoiseFrac * 100)}%`,
+      detail: `${stats.samples} play frames · baseline p99 ${fmt(baseP99, 0)} ms · ${baseLt} long tasks${loadNote} — advisory, numbers would ${fail ? 'FAIL' : 'PASS'}; not a FAIL`,
+    };
+  }
+  if (noise.head != null && noise.base != null) frame.load = { head1m: +noise.head.toFixed(3), base1m: +noise.base.toFixed(3), rel: +noise.rel.toFixed(3), advisory: false };
   return {
     status: fail ? 'FAIL' : 'PASS', value, frame,
     threshold: `no regression vs ${commit}: p99 ≤${fmt(p99Cap, 0)} ms · long tasks ≤${fmt(ltCap, 0)}`,
-    detail: `${stats.samples} play frames · baseline p99 ${fmt(baseP99, 0)} ms · ${baseLt} long tasks`,
+    detail: `${stats.samples} play frames · baseline p99 ${fmt(baseP99, 0)} ms · ${baseLt} long tasks${loadNote}`,
   };
 }
 
 /** Rewrite a recorded software-GL frame_time result once the baseline verdict exists. Returns true when it changed the result. */
-export function regradeSoftwareFrameTime(results, baselineFrame, { commit, baselineMissing = false } = {}) {
+export function regradeSoftwareFrameTime(results, baselineFrame, { commit, baselineMissing = false, headLoad = null, baseLoad = null } = {}) {
   const row = results.find((x) => x.id === 'frame_time');
   if (!row || !row.frame || !row.frame.softwareGl) return false;
   const baseline = baselineMissing || !baselineFrame
     ? { commit: commit || '?', p99: null, longTasks: null }
     : { ...baselineFrame, commit: commit || baselineFrame.commit || '?' };
-  const graded = gradeSoftwareFrameTime(row.frame, baseline);
+  const graded = gradeSoftwareFrameTime(row.frame, baseline, { head: headLoad, base: baseLoad });
   row.status = graded.status;
   row.value = graded.value;
   row.threshold = graded.threshold;
@@ -776,7 +809,8 @@ export function runChecks(trace) {
   return results;
 }
 
-/** Verdict over a check list. ENVIRONMENT outranks a gameplay FAIL: the run was not the code under test. */
+/** Verdict over one run. ENVIRONMENT outranks a gameplay FAIL inside that run: the run was not the code under test.
+ *  ADVISORY (load-noise frame time) is neither a FAIL nor an INCOMPLETE cause. Across arenas, gateExitCode prefers FAIL. */
 export function overall(results) {
   if (results.some((r) => r.status === 'ENVIRONMENT')) return 'ENVIRONMENT';
   if (results.some((r) => r.status === 'FAIL')) return 'FAIL';
