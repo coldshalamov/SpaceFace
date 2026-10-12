@@ -2882,6 +2882,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const w0 = [...rack.children].reduce((s, li) => s + (li.offsetWidth || 0), 0)
       + Math.max(0, rack.children.length - 1) * gap;
     if (w0 * k > sr.width - 12) { rack.classList.add('sx-sw-verbs--unseated'); rack.style.cssText = ''; return; }
+    // a short dock stage (~192–280px at 960×540): the fixed seat lands on the nameplate or the
+    // destination rail — hand the row back to flow under the stage (CSS --unseated).
+    if (host === 'dock' && ringShort() && sr.height < 300) {
+      rack.classList.add('sx-sw-verbs--unseated'); rack.style.cssText = ''; return;
+    }
     rack.classList.remove('sx-sw-verbs--unseated');
     rack.style.cssText = 'position:fixed !important; left:0px !important; top:0px !important; margin:0 !important; z-index:4;';
     const w = rack.offsetWidth || 300;

@@ -107,7 +107,9 @@ ${S} .sxb-vitals { display:flex !important; flex-wrap:nowrap !important; justify
 ${S} .sxb-vital { display:flex !important; flex-direction:column; align-items:center; position:relative; min-width:132px !important; width:auto !important; flex:none !important;
   margin:0 !important; padding:0 !important; gap:0 !important; background:none !important; border:0 !important; box-shadow:none !important; }
 ${S} .sxb-vital::before, ${S} .sxb-vital::after { display:none !important; }
-@media (min-width:900px) { ${S} .sxb-berth > .sxb-handoff { max-width:max(320px, calc(100vw - 816px)) !important; } }
+@media (min-width:900px) { ${S} .sxb-berth > .sxb-handoff { max-width:max(320px, calc(100vw - 816px)) !important; }
+  /* the next step's title is one line (OPEN YOUR HOLD, not OPEN YOUR / HOLD); its sentence wraps instead */
+  ${S} .sxb-next__t { white-space:nowrap !important; flex:none !important; } }
 ${S} .sxb-vital__head { display:flex !important; flex-direction:column; align-items:center; gap:1px; background:none !important; border:0 !important;
   box-shadow:none !important; padding:0 !important; min-height:0 !important; width:auto !important; color:inherit; cursor:default; }
 ${S} button.sxb-vital__head { cursor:pointer; }
@@ -166,6 +168,9 @@ ${S} .sxb-vital [data-vital-act]:is(:hover, :focus-visible)::before { color:var(
 ${S} .sxb-vital [data-vital-act]:is(:hover, :focus-visible) .orr-act__cost { color:rgb(255 217 140 / .8); }
 ${S} .sxb-vital [data-vital-act]:is(.is-disabled, [aria-disabled='true'], :disabled) { color:rgb(${BONE} / .6) !important; }
 ${S} .sxb-vital__ok { position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+/* a reading that is a word (CREDIT LINE OPEN) is wider than any ring: it stands on the numerals' line
+   and the empty ring under it steps aside, so the word never crosses a scale */
+${S} .sxb-vital:has(.sxb-vital__value .orr-vnum.is-word) > .orr-vdial-bare { visibility:hidden; }
 ${S} .sxb-vital--industry .sxb-vital__value { position:static !important; margin-top:2px !important; pointer-events:auto; }
 ${S} .sxb-vital--industry .sxb-vital__value .orr-vnum.is-word { margin-top:0; letter-spacing:.12em; }
 
@@ -286,8 +291,10 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${S} .sxb-tape .sxb-berth__ledger { display:none !important; }
   ${S} .sxb-purse__value { font-size:30px !important; }
   ${S} .sxb-vitals { margin-top:2px !important; gap:4px 12px !important; }
-  ${S} :is(.sxb-vital__track, .sxb-vital > .orr-vdial-bare, .orr-vdial) { width:72px !important; height:47px !important; }
-  ${S} .sxb-vital__value { top:15px; }
+  /* 80px, not 72: at 72 the denominator ("/ 100") was wider than the ring's open foot and sat on its ends */
+  ${S} :is(.sxb-vital__track, .sxb-vital > .orr-vdial-bare, .orr-vdial) { width:80px !important; height:53px !important; }
+  ${S} .sxb-vital__value { top:13px; }
+  ${S} .sxb-vital__value .orr-vden { letter-spacing:.02em !important; }
   ${S} .sxb-vital__value .orr-vnum { font-size:16px; }
   ${S} .sxb-vital__value .orr-vden { font-size: 12px !important; }
   ${S} .sxb-vital__acts { margin-top:2px !important; gap:0 !important; }
@@ -295,6 +302,37 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
 /* a short screen: the trade receipt stands over the comms words, never across UNDOCK */
 @media (max-height:800px) {
   ${S} .sx-comms .sx-receipt, ${S} .sxb-ops .sx-receipt { position:absolute !important; left:0 !important; right:auto !important; top:auto !important; bottom:calc(100% + 6px) !important; max-width:min(420px, 46vw) !important; }
+}
+/* station.css reserves a 292px (228px under 900) right gutter for the legacy corner crown; the ORRERY
+   crown sits in the head grid, so that gutter was a dead third of a 960 screen. Give it back. */
+@media (min-width:651px) and (max-width:1100px) {
+  ${S} { padding-right:calc(32px * var(--k-s)); }
+}
+/* …and under 1280 station.css caps the vitals strip at two gauges' width (326px) while keeping it on
+   one nowrap line, so at 901-1100 the strip spilled left over the mechanic's note and its last verb
+   hung across its neighbour's. Here the note column is a fixed measure and the strip owns the rest. */
+@media (min-width:901px) and (max-width:1100px) {
+  ${S} .sxb-berth.dp-frame__head { grid-template-columns:minmax(0, 280px) minmax(0, 1fr) !important; }
+  ${S} .sxb-berth .sxb-crown { width:auto !important; justify-self:stretch !important; left:0 !important; right:auto !important; }
+  ${S} .sxb-crown .sxb-vitals { max-width:none !important; gap:6px !important; justify-content:space-between !important; }
+  ${S} .sxb-vital { min-width:max-content !important; width:auto !important; }
+  ${S} .sxb-crown .sxb-vitals > .sxb-vital:last-child .sxb-vital__acts { position:static !important; width:auto !important; }
+  ${S} .sxb-berth > :is(.sxb-tape, .sxb-handoff) { min-width:0 !important; max-width:100% !important; }
+  ${S} .sxb-tape .sxb-event { width:auto !important; max-width:100% !important; min-width:0 !important; }
+  /* the next-step card: its title on one line with its count, the sentence under it */
+  ${S} .sxb-next { flex-wrap:wrap !important; align-items:baseline !important; row-gap:4px !important; }
+  ${S} .sxb-next__t { white-space:nowrap !important; flex:0 1 auto !important; }
+  ${S} .sxb-next__n { margin-left:auto !important; }
+  ${S} .sxb-next__w { order:3; flex:1 0 100% !important; padding-left:17px !important; }
+  /* the foot: seven destinations, comms and Undock on one line — the words close up rather than clip */
+  ${S} .sxb-ops .of-facility-rail { max-width:none !important; flex:1 1 auto !important; }
+  ${S} .sxb-ops .sx-dock__group--nav { gap:0 9px !important; padding-left:2px !important; }
+  ${S} .sxb-ops .sx-tile__label { letter-spacing:.07em !important; }
+  ${S} .sxb-ops .sx-comms { margin-left:0 !important; }
+  ${S} .sxb-ops :is(.sx-comms__toggle, .sxb-help) { letter-spacing:.14em !important; }
+  ${S} .sxb-ops { column-gap:10px !important; }
+  ${S} .sxb-launch { gap:10px !important; }
+  ${S} .sxb-launch__label { letter-spacing:.08em !important; }
 }
 /* a 1440p screen shows the 1080p composition at 1.25 (the kit scale is folded into the zoom, so nothing scales twice) */
 @media (min-width:2200px) and (min-height:1200px) {
