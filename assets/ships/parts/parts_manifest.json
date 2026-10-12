@@ -3651,6 +3651,386 @@
       }
     },
     {
+      "id": "place_landmark_beacon_spire",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_landmark_beacon_spire.glb",
+      "tris": 6238,
+      "bytes": 934996,
+      "textureSize": 1024,
+      "note": "C6/Q3: sector-identity lighthouse beacon. Forge place_landmark_beacon_spire.py.",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -28.760631561279297,
+          -9.206621170043945,
+          -31.037349700927734
+        ],
+        "max": [
+          29.118000030517578,
+          121.1186752319336,
+          29.504192352294922
+        ],
+        "dimensionsM": [
+          57.878631591796875,
+          130.32529640197754,
+          60.541542053222656
+        ]
+      },
+      "triangleMetric": "lod0"
+    },
+    {
+      "id": "place_landmark_veil_obelisk",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_landmark_veil_obelisk.glb",
+      "tris": 4666,
+      "bytes": 640008,
+      "textureSize": 1024,
+      "note": "C6/Q3: Veil cyan monolith with levitating shard halo. Forge place_landmark_veil_obelisk.py.",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -22.404876708984375,
+          -8.732320785522461,
+          -27.57070541381836
+        ],
+        "max": [
+          21.270225524902344,
+          105.22010803222656,
+          24.575775146484375
+        ],
+        "dimensionsM": [
+          43.67510223388672,
+          113.95242881774902,
+          52.146480560302734
+        ]
+      },
+      "triangleMetric": "lod0"
+    },
+    {
+      "id": "place_landmark_pit_anchor",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_landmark_pit_anchor.glb",
+      "tris": 6544,
+      "bytes": 843920,
+      "textureSize": 1024,
+      "note": "C6/Q3: broken Pit colony anchor, ember memorial. Forge place_landmark_pit_anchor.py.",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -32.062171936035156,
+          -19.49703025817871,
+          -34.90509033203125
+        ],
+        "max": [
+          72.4850082397461,
+          29.300310134887695,
+          33.64421844482422
+        ],
+        "dimensionsM": [
+          104.54718017578125,
+          48.797340393066406,
+          68.54930877685547
+        ]
+      },
+      "triangleMetric": "lod0"
+    },
+    {
+      "id": "place_landmark_vault_maw",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_landmark_vault_maw.glb",
+      "tris": 9792,
+      "bytes": 1134552,
+      "textureSize": 1024,
+      "note": "C6/Q3: anomaly-violet half-open vault maw ring. Forge place_landmark_vault_maw.py.",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -27.863248825073242,
+          -41.95755386352539,
+          -41
+        ],
+        "max": [
+          21.891536712646484,
+          41,
+          41
+        ],
+        "dimensionsM": [
+          49.75478553771973,
+          82.95755386352539,
+          82
+        ]
+      },
+      "triangleMetric": "lod0"
+    },
+    {
+      "id": "place_landmark_tower_crown",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_landmark_tower_crown.glb",
+      "tris": 7508,
+      "bytes": 962340,
+      "textureSize": 1024,
+      "note": "C6/Q3: siege-brass crown keep with turret ring. Forge place_landmark_tower_crown.py.",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -36.1230354309082,
+          -11.994909286499023,
+          -35.48221206665039
+        ],
+        "max": [
+          31.782485961914062,
+          78.952392578125,
+          34.94225311279297
+        ],
+        "dimensionsM": [
+          67.90552139282227,
+          90.94730186462402,
+          70.42446517944336
+        ]
+      },
+      "triangleMetric": "lod0"
+    },
+    {
+      "id": "place_landmark_crystal_spire",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_landmark_crystal_spire.glb",
+      "tris": 5516,
+      "bytes": 513244,
+      "textureSize": 1024,
+      "note": "C6/BP-8b: luminous faceted crystal spire cluster. Forge place_landmark_crystal_spire.py.",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -32.53321838378906,
+          -10.682485580444336,
+          -29.68343162536621
+        ],
+        "max": [
+          31.52761459350586,
+          99.83379364013672,
+          30.05787467956543
+        ],
+        "dimensionsM": [
+          64.06083297729492,
+          110.51627922058105,
+          59.74130630493164
+        ]
+      },
+      "triangleMetric": "lod0"
+    },
+    {
+      "id": "place_landmark_cathedral_wreck_ii",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_landmark_cathedral_wreck_ii.glb",
+      "tris": 15548,
+      "bytes": 1599448,
+      "textureSize": 1024,
+      "note": "C6/BP-8b: second cathedral wreck — capital hull rib arches (distinct silhouette from place_landmark_wreck_cathedral). Forge place_landmark_cathedral_wreck_ii.py.",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -68.5,
+          -19.16518783569336,
+          -50.1681022644043
+        ],
+        "max": [
+          72.82440948486328,
+          72.34524536132812,
+          50.16777420043945
+        ],
+        "dimensionsM": [
+          141.32440948486328,
+          91.51043319702148,
+          100.33587646484375
+        ]
+      },
+      "triangleMetric": "lod0"
+    },
+    {
+      "id": "place_landmark_billboard_array",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_landmark_billboard_array.glb",
+      "tris": 6804,
+      "bytes": 1018824,
+      "textureSize": 1024,
+      "note": "C6/BP-8b: Meridian flat holo-ad billboard fan. Forge place_landmark_billboard_array.py.",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -33.031639099121094,
+          0,
+          -5.920521259307861
+        ],
+        "max": [
+          33.03165054321289,
+          38.599998474121094,
+          5.920521259307861
+        ],
+        "dimensionsM": [
+          66.06328964233398,
+          38.599998474121094,
+          11.841042518615723
+        ]
+      },
+      "triangleMetric": "lod0"
+    },
+    {
+      "id": "place_gate_concord",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_gate_concord.glb",
+      "tris": 10622,
+      "bytes": 1222616,
+      "textureSize": 1024,
+      "note": "C6/BP-8c: austere official-blue Concord inspection ring gate. Forge place_gate_concord.py.",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Emissive",
+        "SOCKET_Gate_Aperture",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -8.75,
+          -51,
+          -51
+        ],
+        "max": [
+          8.799999237060547,
+          51,
+          51
+        ],
+        "dimensionsM": [
+          17.549999237060547,
+          102,
+          102
+        ]
+      },
+      "triangleMetric": "lod0"
+    },
+    {
+      "id": "place_gate_merchant",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_gate_merchant.glb",
+      "tris": 22048,
+      "bytes": 2090600,
+      "textureSize": 1024,
+      "note": "C6/BP-8c: ornate gold Meridian toll ring gate. Forge place_gate_merchant.py.",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Emissive",
+        "SOCKET_Gate_Aperture",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -7.599999904632568,
+          -49.1782341003418,
+          -41.650001525878906
+        ],
+        "max": [
+          9.073793411254883,
+          49.1782341003418,
+          41.650001525878906
+        ],
+        "dimensionsM": [
+          16.67379331588745,
+          98.3564682006836,
+          83.30000305175781
+        ]
+      },
+      "triangleMetric": "lod0"
+    },
+    {
+      "id": "place_gate_reach",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_gate_reach.glb",
+      "tris": 12000,
+      "bytes": 1350800,
+      "textureSize": 1024,
+      "note": "C6/BP-8c: booby-trapped red Crimson Reach ring gate. Forge place_gate_reach.py.",
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Emissive",
+        "SOCKET_Gate_Aperture",
+        "SOCKET_Structure_Core"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -7.677328586578369,
+          -39.190914154052734,
+          -40.491031646728516
+        ],
+        "max": [
+          7.954030990600586,
+          43.5,
+          40.38422393798828
+        ],
+        "dimensionsM": [
+          15.631359577178955,
+          82.69091415405273,
+          80.8752555847168
+        ]
+      },
+      "triangleMetric": "lod0"
+    },
+    {
       "id": "place_landmark_resonant_cathedral",
       "category": "places",
       "priority": "P1",
@@ -9530,14 +9910,14 @@
       "triangleMetric": "lod0",
       "bounds": {
         "min": [
-          -10.681609,
-          -1.41,
-          -5.630055
+          -10.681609153747559,
+          -1.409999966621399,
+          -5.635477066040039
         ],
         "max": [
-          11.175684,
-          4.21171,
-          5.117123
+          11.17846393585205,
+          4.211710453033447,
+          5.121239185333252
         ],
         "dimensionsM": [
           21.86007308959961,
@@ -9685,7 +10065,18 @@
       "places/place_ceres_breaker_cutter_head.glb",
       "places/place_latch_nine.glb",
       "places/place_pip_spanner.glb",
-      "places/place_tally_three.glb"
+      "places/place_tally_three.glb",
+      "places/place_landmark_beacon_spire.glb",
+      "places/place_landmark_veil_obelisk.glb",
+      "places/place_landmark_pit_anchor.glb",
+      "places/place_landmark_vault_maw.glb",
+      "places/place_landmark_tower_crown.glb",
+      "places/place_landmark_crystal_spire.glb",
+      "places/place_landmark_cathedral_wreck_ii.glb",
+      "places/place_landmark_billboard_array.glb",
+      "places/place_gate_concord.glb",
+      "places/place_gate_merchant.glb",
+      "places/place_gate_reach.glb"
     ]
   }
 }
