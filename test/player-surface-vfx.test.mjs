@@ -93,3 +93,13 @@ test('player asteroid hit attaches the bright material reaction, while NPC hits 
     assert.equal(p.scorches.slots.filter(s=>s.alive && s.surfaceSplash).length,1,'NPC hits do not spend hero budget');
   } finally {p.dispose();}
 });
+
+test('optional splash never evicts permanent retained scars',()=>{
+  const scene=new THREE.Scene(),pool=new HullScorchPool(scene,{capacity:2});
+  try {
+    pool.spawn({targetId:1,persistent:true,life:5});
+    pool.spawn({targetId:2,persistent:true,life:5});
+    assert.equal(pool.spawn({targetId:3,surfaceSplash:true,markKind:CONTACT_MARK_KINDS.mineralSplash}),-1);
+    assert.equal(pool.slots.filter(s=>s.alive&&s.persistent).length,2);
+  } finally {pool.dispose();}
+});
