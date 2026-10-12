@@ -53,8 +53,11 @@ const PLACE_ID = 'place_landmark_wreck_cathedral';
 // census (37), authored counts, cathedral census (15/15, 14 shelved) and releaseSha256 are all
 // unchanged — verified against the live receipt, which the standalone check passes.
 // Prior digest 8404e62c8acaa5e75feca22c173c32ee3597254df16ab0f4db176d516cf77e1b.
+// Re-pinned 2026-10-12 (D186): far residency shelves the Cathedral's fourteen static wrecks
+// at boot (core 52→38 entities, colliders 291→284); additive census v2 proves approach
+// materialization. Prior digest f3ddedcef9d4992fcf9a7c39c983fe967ab1f4906e72a4302e148fd203b5d333.
 const EXPECTED_STRUCTURAL_COST_DIGEST =
-  'f3ddedcef9d4992fcf9a7c39c983fe967ab1f4906e72a4302e148fd203b5d333';
+  '8f38ca9502b927fce2a250462f209a4a91238bf32b9c384b35f07839f3abaf6e';
 
 function pocket(receipt, id) {
   const value = receipt.topology.pockets.find((candidate) => candidate.id === id);
@@ -165,20 +168,23 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   assert.equal(first.receiptDigest, second.receiptDigest);
 
   assert.equal(first.structuralCost.scope, 'sector_ceres_belt:seed47:one-fixed-tick');
-  // PR221 keeps the Cathedral's fourteen static wrecks under asteroidSites: generic far rows
-  // cannot preserve their fixed compound source anatomy. Its seven solids now remain live.
-  // The four ghost activity slots (7f6f048ef) stay free of physics; two new Ceres POIs shift
-  // the ordinary seeded patrol into live range. Additive Second Measure is counted separately.
+  // Far residency (b7a4f2494, d51aba898) shelves dormant site wrecks onto the far table until
+  // the player approaches, so the Cathedral's fourteen wrecks (seven solids) no longer sit in
+  // the one-tick live core: 52 → 38 entities, collidable 23 → 16, colliders 291 → 284, and
+  // worldSite.shelvedEntities reads 14. The four ghost activity slots (7f6f048ef) stay free of
+  // physics; two new Ceres POIs shift the ordinary seeded patrol into live range. Additive
+  // Second Measure is counted separately.
   assert.deepEqual(first.structuralCost.entities, {
-    total: 52,
-    byType: { asteroid: 6, fauna: 12, fx: 12, ship: 2, station: 6, wreck: 14 },
-    collidable: 23,
+    total: 38,
+    byType: { asteroid: 6, fauna: 12, fx: 12, ship: 2, station: 6 },
+    collidable: 16,
   });
-  // Latest core260 + seven canonical Cathedral solids + one 24-primitive patrol skin.
-  assert.equal(first.structuralCost.colliders, 291);
+  // Latest core260 + one 24-primitive patrol skin; the seven canonical Cathedral solids are
+  // shelved at boot and return on approach.
+  assert.equal(first.structuralCost.colliders, 284);
   assert.equal(first.structuralCost.worldSite.siteId, SITE_ID);
   assert.equal(first.structuralCost.worldSite.materializedEntities, 15);
-  assert.equal(first.structuralCost.worldSite.shelvedEntities, 0);
+  assert.equal(first.structuralCost.worldSite.shelvedEntities, 14);
   assert.equal(first.structuralCost.residencyTier, 'FULL');
   assert.equal(first.structuralCost.presentationAdmission, 'headless');
   assert.ok(Number.isInteger(first.structuralCost.spatial.queries));
@@ -187,7 +193,7 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   assert.deepEqual(first.additiveWorldSites, second.additiveWorldSites);
   assert.equal(
     first.additiveWorldSites.schema,
-    'spaceface.pq020-ceres-additive-world-sites.v1',
+    'spaceface.pq020-ceres-additive-world-sites.v2',
   );
   assert.equal(first.additiveWorldSites.coreWorldSiteId, SITE_ID);
   assert.equal(
@@ -198,14 +204,20 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
     'world_site_ceres_cinder_sluice', 'world_site_ceres_second_measure',
   ]);
   assert.equal(first.additiveWorldSites.allMaterializedExactlyAsPlanned, true);
+  // `live` is the approach census — the site as it stands for a player who flies in. `boot` is
+  // the sector-entry census: Second Measure's three compound payload sections are approach-
+  // dormant by far-residency design (a lean far row cannot rebuild their compound bodies).
   assert.deepEqual(first.additiveWorldSites.totals, {
     live: { entities: 17, byType: { fx: 2, wreck: 15 }, collidable: 10, colliders: 18 },
+    boot: { entities: 14, byType: { fx: 2, wreck: 12 }, collidable: 7, colliders: 7 },
     planned: { entities: 17, byType: { fx: 2, wreck: 15 }, collidable: 10, colliders: 18 },
   });
   const cinder = first.additiveWorldSites.sites[0];
   assert.equal(cinder.siteId, 'world_site_ceres_cinder_sluice');
   assert.equal(cinder.exactAgreement, true);
   assert.deepEqual(cinder.live, cinder.planned);
+  assert.deepEqual(cinder.live, cinder.boot);
+  assert.equal(cinder.approachDormant, 0);
   const secondMeasure = first.additiveWorldSites.sites[1];
   assert.equal(secondMeasure.siteId, 'world_site_ceres_second_measure');
   assert.equal(secondMeasure.exactAgreement, true);
@@ -215,6 +227,12 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
     entities: 12, byType: { fx: 1, wreck: 11 }, collidable: 8, colliders: 16,
   });
   assert.deepEqual(secondMeasure.live, secondMeasure.planned);
+  // At sector entry the three compound sections are dormant (boot 9/5); flying into the
+  // site's approach envelope must reauthor them from the manifest with their web boxes.
+  assert.deepEqual(secondMeasure.boot, {
+    entities: 9, byType: { fx: 1, wreck: 8 }, collidable: 5, colliders: 5,
+  });
+  assert.equal(secondMeasure.approachDormant, 3);
 
   assert.deepEqual(first.additiveDressing, second.additiveDressing);
   assert.equal(
