@@ -26,8 +26,12 @@ const RELEASE_PATH = `assets/ships/release/parts/${PART_FILE}`;
 // evidence set in assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/.
 // Re-author candidate (outer cladding plates, casemate section lips, denser rooted rupture,
 // multi-zone materials) superseding REVISE baseline f335935f… and prior d77097b7….
-const SOURCE_SHA256 = '7c2f3fcd82235b8a44463320b83d3ee18d377049fe63995d8ebf7b896733ee0e';
-const SOURCE_BYTES = 18890576;
+// Re-frozen 2026-10-12 (D187): the 2026-09-25 re-measure (6ff452c31) landed a new reviewed
+// source without re-freezing this pin. The release was restored to its 6de8743a… bytes (exact
+// triangle parity with this source) after the graphics-bar repair pass dropped 65,821 of its
+// triangles — only 24,444 of them provably degenerate.
+const SOURCE_SHA256 = 'da8f79004a261bcf9907b46d025528b031a1612ea1d945d2e9c501e14146f23c';
+const SOURCE_BYTES = 18890564;
 
 // Every marker the later PQ-018 phases bind against. Release optimization must not rename, merge,
 // or drop any of them, and their local transforms must survive byte-for-byte.

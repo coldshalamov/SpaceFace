@@ -12,6 +12,15 @@
 // Primitive count, materials and textures are preserved. UV repair may duplicate corners;
 // typed skin/color attributes and morph deltas follow that mapping. Static surfaces drop stale
 // tangents; authored tangent animation and deforming geometry retain their original basis.
+//
+// Exact-anatomy parts skip this repair entirely: their admission contracts freeze the authored
+// triangle set to the source, and both the zero-area drop and the coincident-face dedup rewrite
+// the index buffer. The cathedral (PQ-018) lost 65,821 triangles in one such rebuild — only
+// 24,444 of them provably degenerate (D187). Builders consult this set before applying the repair.
+export const EXACT_ANATOMY_PART_IDS = new Set([
+  'place_ceres_second_measure',
+  'place_landmark_wreck_cathedral',
+]);
 
 const FACETED_ON_PURPOSE = /crystal|rock|asteroid|regolith|(^|[^a-z])ice|geology|stone|(^|[^a-z])ore|gem|shard|ingot/i;
 // Names that only borrow a geology word ("Material_Ceramic_ore" hull paint, "wreck_ore_freighter_*").

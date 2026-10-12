@@ -1594,12 +1594,12 @@
       "source": "assets/ships/parts/places/place_landmark_wreck_cathedral.glb",
       "release": "assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb",
       "sourceSha256": "da8f79004a261bcf9907b46d025528b031a1612ea1d945d2e9c501e14146f23c",
-      "releaseSha256": "838e32537750f42386d2b68555f056eff2fecc40c0f1b726a306730ba493b6ec",
+      "releaseSha256": "6de8743a60209ce6ce62c12d93832956e85351b1e2fb2025aa474bff7b9e6313",
       "sourceBytes": 18890564,
-      "releaseBytes": 6998824,
+      "releaseBytes": 7563264,
       "textures": 26,
       "ktx2Textures": 26,
-      "meshoptBufferViews": 90,
+      "meshoptBufferViews": 97,
       "contractNodeCount": 30
     },
     {

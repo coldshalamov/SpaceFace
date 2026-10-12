@@ -3484,12 +3484,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.wreck-cathedral",
-    "expectedContentHash": "4f8a6280f522c282430b67f2112a89c5c9e381df162cb12604e9c7d430ce30cf",
+    "expectedContentHash": "d2616722ab809bb5045c236b4adbad550cccc231e74013f14165ff7bad8a5d8c",
     "key": "wreck-cathedral",
     "metadataUrl": "assets/ships/release/render-packages/wreck-cathedral/render-package.json",
     "runtimeAssetId": "SF_LANDMARK_PLACE_LANDMARK_WRECK_CATHEDRAL",
     "slot": "place",
-    "sourceSha256": "838e32537750f42386d2b68555f056eff2fecc40c0f1b726a306730ba493b6ec",
+    "sourceSha256": "6de8743a60209ce6ce62c12d93832956e85351b1e2fb2025aa474bff7b9e6313",
     "sourceUrl": "assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb"
   },
   {

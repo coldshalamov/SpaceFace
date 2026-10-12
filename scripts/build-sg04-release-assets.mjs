@@ -17,7 +17,7 @@ import {
   inspectReleaseAssetPair,
 } from '../src/contracts/assetReleaseValidation.js';
 import { RELEASE_MESHOPT_OPTIONS } from './lib/releaseMeshoptProfile.mjs';
-import { shadingRepair } from './lib/glbShadingRepair.mjs';
+import { EXACT_ANATOMY_PART_IDS, shadingRepair } from './lib/glbShadingRepair.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PART_MANIFEST = resolve(ROOT, 'assets/ships/parts/parts_manifest.json');
@@ -251,7 +251,9 @@ for (let index = 0; index < assets.length; index++) {
       );
     }
     // Graphics bar: rebuild lost smooth-by-angle normals, fix flipped normals, drop zero-area triangles.
-    transforms.push(shadingRepair());
+    // Exact-anatomy parts (frozen admission contracts, D187) skip the repair: its zero-area drop
+    // and coincident-face dedup rewrite the index buffer those contracts pin to the source.
+    if (!EXACT_ANATOMY_PART_IDS.has(asset.id)) transforms.push(shadingRepair());
     transforms.push(meshopt({
       encoder: MeshoptEncoder,
       ...RELEASE_MESHOPT_OPTIONS,

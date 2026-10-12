@@ -151,23 +151,25 @@ export const WORLD_SITE_ASSET_BINDINGS = Object.freeze({
   place_conveyor_barge: binding({
     partId: 'place_conveyor_barge', assetId: 'SF_PLACE_CONVEYOR_BARGE',
     sourceSha256: '777b899e007341f0bfb72f11b73d40d07f526c095a37a252b8179faee811b582',
-    releaseSha256: '3665d4d8b4d443d6b9b6e883394c6ffb9fa365f206dd58acab894eea1b472e0d',
-    sourceBytes: 1015148, releaseBytes: 559352,
+    // Re-pinned to the 6cedd536b graphics-bar rebuild (6 degenerate triangles dropped): the
+    // release manifest row moved with the rebuild; this binding was left stale (D187).
+    releaseSha256: 'cb87db67e19ca1d73c84d0802e9139a90777f35c0aef78c88d16e677eb35f632',
+    sourceBytes: 1015148, releaseBytes: 559316,
     rootName: 'place_conveyor_barge', visualCenterXZ: { x: 33.8525, z: 0 },
     socketBindings: conveyorBargeSockets,
   }),
   place_claim_outpost_base: binding({
     partId: 'place_claim_outpost_base', assetId: 'SF_PLACE_CLAIM_OUTPOST_BASE',
     sourceSha256: '47f9ed4c7283eeca1b104a9f2a8714feea078664cf8945baac96d8d6d85ae3c6',
-    releaseSha256: '39949e590427a67e4156d2e9f01acb0b1f3ef2051e7b7f8d0e2e434264a529eb',
-    sourceBytes: 2634400, releaseBytes: 833552,
+    releaseSha256: '1f80c65ddf394c0b81bb0cbabd20c16f900aa764906ff67970eadc0909710220',
+    sourceBytes: 2634400, releaseBytes: 820696,
     rootName: 'SF_PLACE_CLAIM_OUTPOST_BASE_ROOT', visualCenterXZ: { x: 4.2387, z: 0 }, emissiveZ: -8.125,
   }),
   place_claim_outpost_refinery: binding({
     partId: 'place_claim_outpost_refinery', assetId: 'SF_PLACE_CLAIM_OUTPOST_REFINERY',
     sourceSha256: '208eb07d2af1dac691c4548eca2a9991f365d76e363a8f2984eec449d311b270',
-    releaseSha256: '986c1991d136d05b4dce1dea7eeefda93bbce0c698822a40bb7acc233d8a62d9',
-    sourceBytes: 3736864, releaseBytes: 1142984,
+    releaseSha256: '07d12d931e66b124783f3653afb45a46ea116172682008aae60a14966fd0fe83',
+    sourceBytes: 3736864, releaseBytes: 1137832,
     rootName: 'SF_PLACE_CLAIM_OUTPOST_REFINERY_ROOT', visualCenterXZ: { x: 2.3174, z: -1.9213 }, emissiveZ: -20.10449981689453,
   }),
   // PQ-022.heist-receivers-promote: the Tethys heist receivers wear their own KEEP re-authored
@@ -177,22 +179,22 @@ export const WORLD_SITE_ASSET_BINDINGS = Object.freeze({
   place_claim_outpost_catcher: binding({
     partId: 'place_claim_outpost_catcher', assetId: 'SF_PLACE_CLAIM_OUTPOST_CATCHER',
     sourceSha256: 'bb98193733b91009c9be2ad26945d2e91bd2fadc94563942e5edb85dd98a21af',
-    releaseSha256: '62b0b8f49e877c2b49ed7397fe5cc32cd0e561d4c2167a0171626353a2c77e97',
-    sourceBytes: 3549220, releaseBytes: 1094540,
+    releaseSha256: 'a00ff78630d5578acc0ceee8cd4db5bf0d3300599a7b5ebe14d9b728cec5940e',
+    sourceBytes: 3549220, releaseBytes: 1081004,
     rootName: 'SF_PLACE_CLAIM_OUTPOST_CATCHER_ROOT', visualCenterXZ: { x: 4.2387, z: 0 }, emissiveZ: -8.125,
   }),
   place_claim_outpost_fence: binding({
     partId: 'place_claim_outpost_fence', assetId: 'SF_PLACE_CLAIM_OUTPOST_FENCE',
     sourceSha256: '5ca570eb29ea10c5594ca7abe6c2ae6ff1c7426235a7739ae3553cab6ad8d414',
-    releaseSha256: '9cf8ee23dea1a2e75dda5221799f5a50de9762fa905ec114ef778dae075e1c68',
-    sourceBytes: 3637652, releaseBytes: 1120196,
+    releaseSha256: '3ec3818f75c0c6fc990f346317d68ae0156d78dbfe0ff98092c029230397d5a0',
+    sourceBytes: 3637652, releaseBytes: 1106128,
     rootName: 'SF_PLACE_CLAIM_OUTPOST_FENCE_ROOT', visualCenterXZ: { x: 2.3174, z: -1.9213 }, emissiveZ: -20.10449981689453,
   }),
   place_claim_outpost_relay: binding({
     partId: 'place_claim_outpost_relay', assetId: 'SF_PLACE_CLAIM_OUTPOST_RELAY',
     sourceSha256: '945d66a35df8d0c2c4b553cb8b5e5653c30fbae07a21cb17563f29f83cd7e005',
-    releaseSha256: 'b9d6bca8703a33ada88f78fd4770949a82906e6ad40fe04b5c1336b1a5302ff0',
-    sourceBytes: 3189868, releaseBytes: 1004408,
+    releaseSha256: '7a4aa21892b94230539e5ca2345991fa1cda6ab165ae08e1ef5aa51dc576cd7b',
+    sourceBytes: 3189868, releaseBytes: 990676,
     rootName: 'SF_PLACE_CLAIM_OUTPOST_RELAY_ROOT', visualCenterXZ: { x: 3.3318, z: 0 }, emissiveZ: -24.472501754760742,
   }),
   place_landmark_wreck_cathedral: binding({
@@ -211,8 +213,8 @@ export const WORLD_SITE_ASSET_BINDINGS = Object.freeze({
   place_breakaway_sp07: binding({
     partId: 'place_breakaway_sp07', assetId: 'SF_PLACE_BREAKAWAY_SP07',
     sourceSha256: '220955d866d318956720858b97880b0927ad708885dbf8d1b0ad4b146499de6f',
-    releaseSha256: '74808d3568c43a8820eccac64d7763e3afe98c0c4e5d3c6d7fb034f931e13663',
-    sourceBytes: 861372, releaseBytes: 543700,
+    releaseSha256: '851ad640417dbd95872a48ddd77115b92b7269aaf82d18e86153773117cbf98d',
+    sourceBytes: 861372, releaseBytes: 543564,
     rootName: 'SF_PLACE_BREAKAWAY_SP07_ROOT', visualCenterXZ: { x: 0, z: 0 },
     socketBindings: spindleSockets,
   }),
@@ -222,8 +224,8 @@ export const WORLD_SITE_ASSET_BINDINGS = Object.freeze({
   place_breakaway_fork: binding({
     partId: 'place_breakaway_fork', assetId: 'SF_PLACE_BREAKAWAY_FORK',
     sourceSha256: '45a72f3d578576159aa7b9e2c7cde8adce155e5a58b0d80eaa6ab9df979a14c3',
-    releaseSha256: '304774edaa0515f6a2ad000ea14b21591d1942f6a2130efb62ee4e486409b4f7',
-    sourceBytes: 1216060, releaseBytes: 614420,
+    releaseSha256: '49b0a75548697a69bc6d01431bde26c5726236d0eecb41a2d1915ca60b6f9d99',
+    sourceBytes: 1216060, releaseBytes: 614504,
     rootName: 'SF_PLACE_BREAKAWAY_FORK_ROOT', visualCenterXZ: { x: 0, z: 0 },
     socketBindings: forkSockets,
   }),
