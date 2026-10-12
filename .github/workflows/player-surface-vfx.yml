@@ -43,5 +43,5 @@ jobs:
           node --check src/render/weapons/contactMarks.js
           node --check src/render/weapons/playerSurfaceSplash.js
           node --check src/render/weapons/presenter.js
-      - name: Verify receiver integration
-        run: node --test test/player-surface-vfx.test.mjs
+      - name: Verify receiver integration and adjacent VFX contracts
+        run: node --test test/player-surface-vfx.test.mjs test/vfx-weapon-variation.test.mjs test/impact-event-grammar.test.mjs test/arsenal-vfx-ownership.test.mjs
