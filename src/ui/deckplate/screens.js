@@ -1345,6 +1345,9 @@ const RACING = `
 .race-tape[hidden] { display:none; }
 .race-tape[data-compact="true"] { left:auto; right:max(12px,env(safe-area-inset-right,0px)); transform:none; width:auto; grid-template-columns:1fr; }
 .race-tape-map { align-self:center; }
+.race-tape-readings { min-width:0; }
+.race-tape[data-phase="handoff"] { grid-template-columns:1fr; }
+.race-tape-goal { color:var(--dp-lamp); }
 .race-map { display:block; width:100%; height:auto; overflow:visible; }
 .race-tape-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--dp-lamp); }
 .race-tape-hint { min-height:1.45em; color:var(--dp-ink-dim); }

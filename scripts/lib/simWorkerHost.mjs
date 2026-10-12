@@ -1000,7 +1000,8 @@ export function createSimHost() {
         const missions = registry.get('missions');
         const world = registry.get('world');
         if (!missions || typeof missions.postAndAcceptAuthoredOffer !== 'function') return { ok: false, reason: 'no_missions' };
-        if (!world || typeof world.relocatePlayerInSector !== 'function') return { ok: false, reason: 'no_relocation' };
+        if (!world || (args?.relocate !== false && typeof world.relocatePlayerInSector !== 'function')) return { ok: false, reason: 'no_relocation' };
+        if (args?.allowEnterSector === false && args.sectorId !== state.world?.currentSectorId) return { ok: false, reason: 'wrong_sector' };
         const result = missions.postAndAcceptAuthoredOffer((args && args.offer) || null);
         if (!result || result.ok !== true || result.reused) {
           return { ok: result && result.ok === false ? false : !!(result && result.ok), reused: !!(result && result.reused), missionId: result && result.missionId, result: result || null };
@@ -1010,7 +1011,7 @@ export function createSimHost() {
         try {
           if (sectorId && here !== sectorId && typeof world.enterSector === 'function') world.enterSector(sectorId);
           const start = args && args.start;
-          if (!start || world.relocatePlayerInSector(start, { reason: 'race_grid' }) === false) {
+          if (args?.relocate !== false && (!start || world.relocatePlayerInSector(start, { reason: 'race_grid' }) === false)) {
             throw new Error('grid relocation refused');
           }
         } catch (error) {

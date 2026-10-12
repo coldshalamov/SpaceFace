@@ -1,7 +1,7 @@
 // Authored circuit presentation: real vertical apertures, route line and a visible pace beacon.
 // Presentation consumes the mission owner's truth; all course markers are non-colliding.
 import * as THREE from 'three';
-import { activeAuthoredRace } from '../systems/racingSteer.js';
+import { activeAuthoredRace, racingPaceSpeed } from '../systems/racingSteer.js';
 import { circuitPacePoint, gateApproach } from '../systems/racingGeometry.js';
 import { raceGateGlobals } from '../data/raceLevels.js';
 import { readFrameOrigin } from './frameCoordinates.js';
@@ -78,7 +78,8 @@ export function createRacingCourseView(scene, state) {
       ghost.frame(race);
       draft.frame(race);
       root.visible=!!race&&state.mode==='flight'&&!state.ui?.docked
-        &&state.world?.currentSectorId===race.params.courseSectorId;
+        &&state.world?.currentSectorId===race.params.courseSectorId
+        &&(!race.params.sectionMission||race.params.phase!=='handoff');
       if(!root.visible)return;
       const p=race.params;
       if(owner!==p)rebuild(p);
@@ -107,9 +108,9 @@ export function createRacingCourseView(scene, state) {
       }
       // The scripted pace light coaches the line; physical opponents alone provide drafting.
       const paceStart=p.adventureSpeedId?p.adventureSpeedStartSimS:p.raceStartSimS;
-      const racing=Number.isFinite(paceStart);
+      const racing=Number.isFinite(paceStart)&&(!p.sectionMission||p.phase==='chase');
       pace.visible=racing&&p.racingKind==='draft';
-      if(pace.visible&&circuitPacePoint(globals,Math.max(0,(state.simTime||0)-paceStart)*640+70,pacePoint)){
+      if(pace.visible&&circuitPacePoint(globals,Math.max(0,(state.simTime||0)-paceStart)*racingPaceSpeed(p)+70,pacePoint)){
         pace.position.set(pacePoint.x-sectorX,0,pacePoint.z-sectorZ);
         forward.set(Math.cos(pacePoint.heading),0,Math.sin(pacePoint.heading));
         pace.quaternion.setFromUnitVectors(up,forward);

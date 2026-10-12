@@ -206,7 +206,7 @@ function courseParams(course, extra) {
     courseName: course.courseName,
     courseKind: course.kind,
     closedCircuit: true,
-    courseRevision: 3,
+    courseRevision: Number.isInteger(extra && extra.courseRevision) ? extra.courseRevision : 3,
     courseSectorId: course.sectorId,
     gates: course.gates.map((g) => ({ x: g.x, z: g.z })),
     gateRadiusWU: course.gateRadiusWU,
@@ -238,16 +238,19 @@ const CONTRACTS = Object.freeze([
   Object.freeze({
     id: 'contract_junction_jam',
     levelId: 'level_junction_return',
+    courseRevision: 4,
     practice: false,
     laps: 1,
     steerLock: 'racing',
+    sectionMission: true,
+    steerLockPhases: ['grid', 'chase'],
     racingKind: 'sensors',
     reward_cr: 1100,
     duration_s: 900,
     title: 'Burned canopy',
-    brief: 'Customs cooked the overhead picture on the tally. Fly the stern camera through the queue, the scan gates, and back.',
-    summary: 'The tally circuit. Stern camera locked until the lap is done.',
-    gridLine: 'Hold. The count lamps are the course, not the overhead chart.',
+    brief: 'Customs cooked the overhead picture on the tally. Approach within 70 WU of the line at 8 WU/s or less, align with the first leg and release any tether; fly the course, then dock at the destination station to file.',
+    summary: 'Stop and align at the start line (within 70 WU, at 8 WU/s or less, no tether), run the tally, then dock at the destination station. Chase view during countdown and course.',
+    gridLine: 'Approach within 70 WU, slow to 8 WU/s or less, align with the first leg and release any tether. Dock at the destination after the finish.',
   }),
   Object.freeze({
     id: 'contract_veil_laps',
@@ -282,10 +285,15 @@ const CONTRACTS = Object.freeze([
   Object.freeze({
     id: 'contract_junction_draft',
     levelId: 'level_junction_return',
+    courseRevision: 4,
     practice: false,
     laps: 1,
     steerLock: 'racing',
+    sectionMission: true,
+    steerLockPhases: ['grid', 'chase'],
     racingKind: 'draft',
+    draftRequiredS: 2.0,
+    paceSpeedWU: 260,
     reward_cr: 1200,
     duration_s: 900,
     title: 'Pace light',
@@ -337,10 +345,18 @@ export function racingOfferFor(contractId) {
     levelId: level.id,
     racingContractId: row.id,
     racingKind: row.racingKind,
+    courseRevision: Number.isInteger(row.courseRevision) ? row.courseRevision : 3,
     laps: row.laps,
     terrain: level.terrain,
     gridLine: row.gridLine || '',
   });
+  if (row.sectionMission) {
+    params.sectionMission = true;
+    params.phase = 'approach';
+    params.steerLockPhases = row.steerLockPhases.slice();
+  }
+  if (Number.isFinite(row.draftRequiredS)) params.draftRequiredS = row.draftRequiredS;
+  if (Number.isFinite(row.paceSpeedWU)) params.paceSpeedWU = row.paceSpeedWU;
   if (row.steerLock) params.steerLock = row.steerLock;
   if (Number.isInteger(row.boostGateIndex)) params.boostGateIndex = row.boostGateIndex;
   if (row.laps > 1) {

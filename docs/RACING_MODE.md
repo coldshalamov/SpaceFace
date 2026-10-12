@@ -9,7 +9,8 @@ Press **backslash (`\`)** during unobstructed flight to switch overhead/chase. T
 V (cruise), C (scan), R (detonate), or the flight keys. Repeated keydown, text entry, modifiers and
 modal screens do not toggle the camera. On touch, use the **Overhead / Chase** button in the flight
 instrument. Settings → Gameplay also offers **Overhead**, **Racing**, and **Auto**; Auto follows any
-active race. Distance, height and look-ahead remain adjustable there.
+active race's driving section (not its approach or station handoff). Distance, height and look-ahead
+remain adjustable there.
 
 The camera eases around the hull into a close stern view, follows the presented ship rather than
 the overhead camera's threat/velocity-biased focus, and retains the existing solid-clearance solver.
@@ -43,6 +44,32 @@ straight, not an arbitrary last buoy. The route's closing leg contributes to its
 The yellow pace beacon in Pace light is a scripted guide, **not a simulated AI opponent**. Its
 visible motion and drafting impulse use the same loop sampler.
 
+### Missions that borrow the camera
+
+**Burned canopy** and **Pace light** now have three playable sections, rather than paying at the
+finish line:
+
+1. **Approach:** fly to the marked grid in your preferred view. Stop within 70 wu, at 8 wu/s or
+   slower, facing the first gate (within about 37 degrees). Release the Massline. An in-sector
+   campaign launch does not relocate your ship; a temporary launch starts behind the grid.
+2. **Course:** the grid countdown borrows chase view, then starts the clock at green. Burned canopy
+   requires the ordered lap. Pace light additionally requires **2 seconds total in the beacon's
+   wake** before the finish. The HUD shows collected wake time; separate valid intervals add up.
+3. **Handoff:** the finish freezes the course time and returns your preferred view. Follow mission
+   navigation and dock at the marked Tethys station to receive payment. The mission remains active
+   until then; docking elsewhere or abandoning/jumping forfeits payment.
+
+Pace light is explicitly a coaching beacon, not convoy AI. It travels at 260 wu/s. Drafting requires
+being 18–150 wu behind it, within 45 wu laterally, facing and moving along its heading, with at least
+35% of its speed. A stationary ship, an oncoming ship or merely pointing at the beacon cannot earn
+wake credit. Its push is fixed-step, capped at 40 wu/s², and uses the beacon's direction. Recovery
+clears collected wake time. Finish without the required wake and the contract fails without a record
+or payout. These two contracts use a new timing revision so old stopwatch times do not compete.
+
+The camera and encounter lease apply only to countdown/course. The phase persists in campaign saves;
+loading resumes the saved section, not a second countdown or payout. Existing non-section saves keep
+their original behavior. Photo and death camera authority remain unchanged.
+
 ## Starting, scoring, recovering
 
 The grid holds movement and boost until the countdown expires, including draw-flight and
@@ -57,10 +84,12 @@ reference delta is distance-weighted against the posted reference pace, not a re
 empirically calibrated opponent. Off-course is distance from the current segment, not distance
 from a far-away next gate. Burn-ring assistance requires an ordered crossing and can fire once
 per lap. The shared mission receipt announces the finish; reopening Circuits shows the last result
-and individual lap times.
+and individual lap times. Its **Retry in this flight** action reuses the current ship after completion;
+undock in the same sector first. Other contracts remain selectable after a failed/abandoned run.
 
 **Recover** returns behind the last cleared gate, preserves the clock and marks the attempt as a
-recovery run. It cannot jump most of the next leg or set a clean best. **Leave run**, docking,
+recovery run. It is unavailable during approach/handoff and cannot jump most of the next leg or set a
+clean best. **Leave run**, docking (except the correct section handoff),
 jumping, death, a missing player or entering the wrong sector releases the authored race through
 the existing mission failure path. Procedural board races keep their previous scoring behavior.
 
@@ -86,4 +115,4 @@ another sector. Another active race, docking or a pending jump prevents arming a
 The complementary build packets, implementation owners and acceptance checks are in
 [`RACING_FLIGHT_PROGRAM.md`](../design/program/RACING_FLIGHT_PROGRAM.md). They separate the
 shipped mechanics from larger work such as authored safe corridors, actual rival ships, ghosts,
-phase-specific story missions and ship-class competitive records.
+the broader five-story mission program and ship-class competitive records.
