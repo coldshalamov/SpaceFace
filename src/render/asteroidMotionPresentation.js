@@ -172,7 +172,7 @@ function buildVeinStrip(seed) {
   const anchor = dir.clone().normalize();
   const tangent = pdir.clone();
   const bitangent = new THREE.Vector3().crossVectors(anchor, tangent).normalize();
-  const span = 0.16;
+  const span = 0.08;
   const lift = ((((seed >>> 8) & 0xff) / 255) - 0.5) * 0.03;
   const halfW = 0.012;
 

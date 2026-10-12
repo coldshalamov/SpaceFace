@@ -53,13 +53,51 @@ function frameDisk(worldR, rockR) {
   return { pr, frac: (Math.PI * pr * pr) / (VW * VH) };
 }
 
-// Measured on this branch after the unit-space fix. One strip. Master bar is 29% screen
-// and 6% player-hidden; these disks are the local proof, not a player-truth pass.
+// The reader stamps each additive sphere's screen AABB onto a 48×27 grid, then
+// scores the union. A disk-area estimate understates that stamp.
+function harnessUnionFrac(rig, rockR) {
+  const dist = Math.max(30, rockR * 1.5);
+  const GW = 48;
+  const GH = 27;
+  const grid = new Uint8Array(GW * GH);
+  const sphere = new THREE.Sphere();
+  const aspect = VW / VH;
+  const tan = Math.tan(FOV / 2);
+  rig.traverse((o) => {
+    if (!o.isMesh || !o.geometry || !o.geometry.boundingSphere) return;
+    if (!o.material || o.material.opacity < 0.02) return;
+    sphere.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld);
+    const zCam = dist - sphere.center.z;
+    if (zCam <= 0.05) return;
+    const viewDist = Math.hypot(sphere.center.x, sphere.center.y, zCam);
+    const pr = sphere.radius * (VH / 2) / (Math.max(1e-3, viewDist) * tan);
+    if (pr > UNBOUNDED_PR) return;
+    const ndcX = sphere.center.x / (zCam * tan * aspect);
+    const ndcY = sphere.center.y / (zCam * tan);
+    const sx = (ndcX * 0.5 + 0.5) * VW;
+    const sy = (-ndcY * 0.5 + 0.5) * VH;
+    const x0 = Math.max(0, Math.floor((sx - pr) / VW * GW));
+    const x1 = Math.min(GW - 1, Math.floor((sx + pr) / VW * GW));
+    const y0 = Math.max(0, Math.floor((sy - pr) / VH * GH));
+    const y1 = Math.min(GH - 1, Math.floor((sy + pr) / VH * GH));
+    if (x1 < x0 || y1 < y0) return;
+    for (let gy = y0; gy <= y1; gy++) {
+      for (let gx = x0; gx <= x1; gx++) grid[gy * GW + gx] = 1;
+    }
+  });
+  let covered = 0;
+  for (let i = 0; i < grid.length; i++) covered += grid[i];
+  return covered / grid.length;
+}
+
+// Measured after the unit-space crack was shortened to span 0.08. `frac` is one strip's
+// disk. `union` is the three strips stamped the way the reader does (48×27 AABB union).
+// Master bar is 29% screen and 6% player-hidden. This table is not a player-truth pass.
 const FOOTPRINT = [
-  { R: 8, worldR: 1.23, frac: 0.0034 },
-  { R: 16, worldR: 2.47, frac: 0.0137 },
-  { R: 24, worldR: 3.70, frac: 0.0215 },
-  { R: 40, worldR: 6.17, frac: 0.0215 },
+  { R: 8, worldR: 0.63, frac: 0.0009, union: 0.0108 },
+  { R: 16, worldR: 1.26, frac: 0.0036, union: 0.0255 },
+  { R: 24, worldR: 1.89, frac: 0.0056, union: 0.0247 },
+  { R: 40, worldR: 3.15, frac: 0.0056, union: 0.0247 },
 ];
 
 test('a worked-rock crack matches the measured footprint table', () => {
@@ -83,6 +121,10 @@ test('a worked-rock crack matches the measured footprint table', () => {
     assert.ok(Math.abs(disk.frac - row.frac) < 0.002, `R=${row.R} frame disk ${(disk.frac * 100).toFixed(2)}% != ${(row.frac * 100).toFixed(2)}%`);
     assert.ok(disk.frac < 0.06, 'one crack stays under the 6% player-hidden bar');
     assert.ok(disk.pr < UNBOUNDED_PR);
+    const union = harnessUnionFrac(rig, row.R);
+    assert.ok(Math.abs(union - row.union) < 0.004, `R=${row.R} harness union ${(union * 100).toFixed(2)}% != ${(row.union * 100).toFixed(2)}%`);
+    assert.ok(union < 0.06, `R=${row.R} three-strip harness union ${(union * 100).toFixed(2)}% of the frame`);
+    assert.ok(union < 0.29, `R=${row.R} three-strip harness union exceeds the 29% screen bar`);
     // The double-scaled sphere the #287 run graded (max 188% of the screen).
     const oldWorld = 0.92 * row.R * row.R;
     const oldDisk = frameDisk(oldWorld, row.R);

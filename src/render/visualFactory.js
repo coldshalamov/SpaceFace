@@ -2551,6 +2551,7 @@ function buildAsteroid(e) {
 }
 
 const _threatPlateQuat = new THREE.Quaternion();
+const _threatPlateScale = new THREE.Vector3();
 
 /**
  * Hostile swarm hulls are dark metal on a dark field, so the inner sample disk matches
@@ -2581,8 +2582,17 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     plate.frustumCulled = true;
     mesh.add(plate);
   }
-  const radius = Math.max(2, Number(entity.radius) || 2) * 1.25;
-  plate.scale.set(radius, radius, radius);
+  // Local scale is divided by the parent so a scaled hull cannot inflate the disk.
+  // The readability sampler reads the inner 70% of entity.radius; 1.25 covers that
+  // disk without a second copy of the hull scale.
+  const worldR = Math.max(2, Number(entity.radius) || 2) * 1.25;
+  mesh.updateWorldMatrix(true, false);
+  mesh.getWorldScale(_threatPlateScale);
+  plate.scale.set(
+    worldR / Math.max(1e-4, Math.abs(_threatPlateScale.x)),
+    worldR / Math.max(1e-4, Math.abs(_threatPlateScale.y)),
+    worldR / Math.max(1e-4, Math.abs(_threatPlateScale.z)),
+  );
   plate.visible = true;
   if (camera && camera.quaternion && mesh.quaternion) {
     _threatPlateQuat.copy(mesh.quaternion).invert().multiply(camera.quaternion);

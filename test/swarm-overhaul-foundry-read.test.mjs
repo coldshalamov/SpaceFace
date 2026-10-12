@@ -59,6 +59,34 @@ test('a hostile ship wears one opaque threat plate that faces the camera', () =>
   assert.equal(other.material, plate.material);
 });
 
+test('a scaled hull does not inflate the threat plate past the ship', () => {
+  const mesh = new THREE.Group();
+  mesh.scale.setScalar(4);
+  const camera = new THREE.Object3D();
+  syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
+  mesh.updateMatrixWorld(true);
+  const plate = mesh.getObjectByName('sf-swarm-threat-plate');
+  const world = plate.getWorldScale(new THREE.Vector3());
+  assert.ok(Math.abs(world.x - 10) < 1e-3, `world radius ${world.x} should be 1.25×8`);
+  assert.ok(Math.abs(world.y - 10) < 1e-3);
+  // Readability samples the inner 70% of entity.radius. The plate has to cover that
+  // disk and stay a ship-sized marker.
+  assert.ok(world.x >= 8 * 0.7);
+  assert.ok(world.x <= 8 * 1.25 + 1e-3);
+});
+
+test('the threat crimson clears the low-contrast bar against a dark field', () => {
+  const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const L = (r, g, b) => {
+    const y = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    const f = y > 0.008856 ? Math.cbrt(y) : 7.787 * y + 16 / 116;
+    return 116 * f - 16;
+  };
+  const plateL = L(1, 0x1a / 255, 0x3a / 255);
+  const fieldL = L(0.02, 0.02, 0.03);
+  assert.ok(Math.abs(plateL - fieldL) >= 8, `ΔL ${plateL - fieldL} is below the readability floor`);
+});
+
 test('friendly teams and non-ships grow no threat plate', () => {
   for (const team of [null, undefined, 0, 2]) {
     const { plate } = plateOn({ type: 'ship', team, radius: 8 }, null, null);
