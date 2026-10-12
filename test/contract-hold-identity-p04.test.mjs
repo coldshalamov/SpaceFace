@@ -64,7 +64,13 @@ class CtNode {
     return ev;
   }
   get firstChild() { return this.children[0] || null; }
+  get childNodes() { return this.children; }
   appendChild(child) { child.parentNode = this; this.children.push(child); return child; }
+  removeChild(child) {
+    this.children = this.children.filter((node) => node !== child);
+    child.parentNode = null; child.isConnected = false;
+    return child;
+  }
   append(...kids) { for (const k of kids) this.appendChild(k); }
   insertBefore(node, ref) {
     const i = ref ? this.children.indexOf(ref) : -1;
@@ -112,8 +118,10 @@ function makeContractsDom() {
     },
     getElementById() { return null; },
     querySelector() { return null; },
-    addEventListener() {},
-    removeEventListener() {},
+    listeners: {},
+    addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); },
+    removeEventListener(type, fn) { this.listeners[type] = (this.listeners[type] || []).filter((f) => f !== fn); },
+    fire(type, ev = {}) { for (const fn of [...(this.listeners[type] || [])]) fn(ev); },
     createElement(tag) {
       const node = new CtNode(tag, doc);
       node._onHtml = (html) => { if (html.includes('sx-ct__dossier')) wireScreen(node); };
@@ -141,6 +149,8 @@ function makeContractsDom() {
     };
     dossier.querySelector = (sel) => {
       if (typeof sel !== 'string') return null;
+      // Run real dossier composition, including hold retirement and Lamp Key dressing.
+      if (sel === '.sx-dossier') return dossier;
       if (sel.includes('sx-ct-commit')) {
         if (!accept) return null;
         if (sel.includes(':not(:disabled)') && accept.disabled) return null;
@@ -336,6 +346,98 @@ async function main() {
       assert.deepEqual(acceptEmits(emitted), ['m_alpha'], 'unchanged A accepts exactly once');
       sc.root.fire('keyup', { target: keyA, key: 'Enter' });
       screen.dispose();
+    }
+
+    // An unchanged repaint retains an active hold for every ordinary activation route.
+    for (const source of ['auto', 'pointer', 'key']) {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      const initial = sc.dossier.currentAccept();
+      assert.equal(initial.getAttribute('data-hold'), '1', 'real composeDossier dressed the held key');
+      sc.root.fire(source === 'auto' ? 'click' : source === 'pointer' ? 'pointerdown' : 'keydown',
+        { target: initial, button: 0, key: 'Enter' });
+      advance(250);
+      screen.refresh(ctx);
+      assert.equal(initial.isConnected, false, 'the active hold outlives its original DOM node');
+      advance(120);
+      screen.refresh(ctx);
+      advance(700);
+      assert.deepEqual(acceptEmits(emitted), ['m_alpha'], `${source} accepts exactly once through unchanged repaints`);
+      screen.dispose();
+    }
+
+    // Changed identity, terms or eligibility never inherit the previous active hold.
+    for (const change of ['selection', 'replacement', 'removal', 'terms', 'eligibility']) {
+      const { ctx, state, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000,
+        change === 'eligibility' ? { collateral: 1000 } : {}), offer('m_beta', 'Beta Haul', 9000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow({ ...ctx, missionId: 'm_alpha' });
+      sc.root.fire('click', { target: sc.dossier.currentAccept() });
+      advance(250);
+      if (change === 'selection') screen.refresh({ ...ctx, missionId: 'm_beta' });
+      else {
+        state.missions.boards.station_alpha.slots = change === 'removal' ? []
+          : change === 'replacement' ? [offer('m_beta', 'Beta Haul', 9000)]
+            : [offer('m_alpha', 'Alpha Run', change === 'terms' ? 7000 : 5000,
+              change === 'eligibility' ? { collateral: 1000 } : {})];
+        if (change === 'eligibility') state.player.credits = 0;
+        screen.refresh(ctx);
+      }
+      if (change === 'eligibility') {
+        assert.equal(sc.dossier.currentAccept().disabled, true, 'new readiness gate disables the fresh key');
+        state.player.credits = 5_000_000;
+        screen.refresh(ctx); // eligibility returning is not a new user activation
+      }
+      advance(10000);
+      assert.deepEqual(acceptEmits(emitted), [], `${change} cancels the old active hold`);
+      screen.dispose();
+    }
+
+    // A repaint cannot turn a released or cancelled physical input into an automatic accept.
+    for (const release of ['pointerup', 'pointercancel', 'pointerleave', 'keyup']) {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      sc.root.fire(release === 'keyup' ? 'keydown' : 'pointerdown',
+        { target: sc.dossier.currentAccept(), button: 0, key: 'Enter' });
+      advance(250);
+      screen.refresh(ctx);
+      sc.root.fire(release, { target: sc.dossier.currentAccept(), key: 'Enter' });
+      advance(1000);
+      assert.deepEqual(acceptEmits(emitted), [], `${release} still retracts the retained hold`);
+      screen.dispose();
+    }
+
+    // Detached focus / pointer-capture targets release on the document, not the replaced key.
+    for (const release of ['pointerup', 'pointercancel', 'keyup']) {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      const pressed = sc.dossier.currentAccept();
+      sc.root.fire(release === 'keyup' ? 'keydown' : 'pointerdown',
+        { target: pressed, button: 0, key: 'Enter' });
+      advance(250);
+      screen.refresh(ctx);
+      assert.equal(pressed.isConnected, false);
+      dom.doc.fire(release, { target: dom.doc.body, key: 'Enter' });
+      advance(1000);
+      assert.deepEqual(acceptEmits(emitted), [], `${release} on the document cancels the retained hold`);
+      screen.dispose();
+      assert.equal((dom.doc.listeners[release] || []).length, 0, 'disposal removes release listeners');
+    }
+
+    for (const stop of ['hide', 'dispose']) {
+      const { ctx, emitted } = makeCtx([offer('m_alpha', 'Alpha Run', 5000)]);
+      const screen = createContractsScreen(ctx), sc = dom.last();
+      screen.onShow(ctx);
+      sc.root.fire('click', { target: sc.dossier.currentAccept() });
+      advance(250);
+      screen.refresh(ctx);
+      if (stop === 'hide') screen.onHide(); else screen.dispose();
+      advance(1000);
+      assert.deepEqual(acceptEmits(emitted), [], `${stop} cancels a repainted active hold`);
+      if (stop === 'hide') screen.dispose();
     }
 
     console.log('contract-hold-identity-p04: OK');

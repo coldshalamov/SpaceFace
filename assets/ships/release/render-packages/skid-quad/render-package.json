@@ -6,11 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "ff17594094279a494a27cfbf1d56813a57c53a20cffc9fd9a9e4fcf1a1d727db",
-=======
   "contentHash": "cfd25725bc9b47610bc45eda12208a7a469c00fb134ed74521cd85990c3c0457",
->>>>>>> origin/pr-maturation-261
   "dynamicGroups": [],
   "geometry": [
     {
@@ -347,13 +343,8 @@
       "uri": "skid_quad.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
-=======
       "bytes": 270117,
       "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
->>>>>>> origin/pr-maturation-261
       "uri": "pilots.json"
     }
   },
@@ -495,11 +486,7 @@
     "slot": "gear",
     "url": "assets/ships/release/parts/gear/skid_quad.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "0e09e3dedd0494870b57e29afd03bcf38a013a6c7b0f299a602d50e14cc0f345",
-=======
   "runtimeHash": "26b6f9bfa2231e9eb590d1bcc45cacbf01289cd235df10ca63b6c18d58abed08",
->>>>>>> origin/pr-maturation-261
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

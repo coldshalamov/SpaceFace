@@ -38,6 +38,7 @@ import { SECTOR_ZONES } from '../data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { occupantGenerationOf } from '../core/entity.js';
 
 const MAX_TRACKED_SHIPS = 8;   // bounded per-tick work: player + the nearest 7 ships in the bands
 const MAX_AFTERMATH = 4;       // bounded presentation memory of recent plunge terminations
@@ -45,6 +46,10 @@ const REGION_ORDER = ['outside', 'influence', 'sling', 'skim', 'danger', 'reentr
 
 function finite(v, fb = 0) { return Number.isFinite(v) ? v : fb; }
 function nowOf(state) { return Number.isFinite(state.simTime) ? state.simTime : state.tick / 60; }
+function boundLife(entity, id, generation) {
+  return !!entity && entity.id === id && Number.isSafeInteger(generation) && generation > 0
+    && occupantGenerationOf(entity) === generation;
+}
 
 function defaultRuntime() {
   return {
@@ -54,6 +59,9 @@ function defaultRuntime() {
     zoneId: null,          // THE canonical Atlas identity (save/nav/mission reference)
     sectorId: null,
     entityId: null,        // the spawned 'planet' entity (visual + static exclusion body)
+    entityGeneration: null,
+    witnessId: null,
+    witnessGeneration: null,
     fieldId: null,         // the annular attraction profile in the PQ-012 kernel
     center: { x: 0, z: 0 },// global centre (converted once from the authored sector-local anchor)
     player: {
@@ -192,7 +200,9 @@ export const planetRuntime = {
     rt.zoneId = site.zoneId;
     rt.sectorId = sectorId;
     rt.entityId = entity.id;
+    rt.entityGeneration = occupantGenerationOf(entity);
     rt.witnessId = witness && witness.id;
+    rt.witnessGeneration = occupantGenerationOf(witness);
     rt.fieldId = `${site.id}_pull`;
     rt.center.x = global.x;
     rt.center.z = global.z;
@@ -242,6 +252,8 @@ export const planetRuntime = {
     fsys.registerExternal({
       id: rt.fieldId,
       kind: 'well',
+      // Passive gravity keeps the shared force law, without weapon-style grind/exit stun.
+      wellConsequences: site.field.wellConsequences,
       center: { x: rt.center.x, z: rt.center.z },
       radius: site.field.radius,
       strength: site.field.strength,
@@ -257,18 +269,23 @@ export const planetRuntime = {
     const state = this.state;
     if (!state) return;
     const rt = ensureRuntime(state);
+    // Retire the old runtime before publication. A listener may synchronously restore or
+    // register a successor; the old unwind must never reset that successor afterward.
+    state.planet = defaultRuntime();
     if (rt.active) {
       const fsys = this.registry && this.registry.get ? this.registry.get('fields') : null;
       if (fsys && typeof fsys.unregisterExternal === 'function' && rt.fieldId) fsys.unregisterExternal(rt.fieldId);
       const entity = state.entities && state.entities.get ? state.entities.get(rt.entityId) : null;
-      if (entity && entity.alive !== false) entity.alive = false;
+      if (boundLife(entity, rt.entityId, rt.entityGeneration) && entity.alive !== false
+        && entity.type === 'planet' && entity.data?.planetSite?.siteId === rt.siteId) entity.alive = false;
       const witness = state.entities && state.entities.get ? state.entities.get(rt.witnessId) : null;
-      if (witness?.data) witness.data.stormshiftCollectorOn = false;
-      if (witness && witness.alive !== false
-        && witness.data?.itinerary?.kind !== 'anvil_work') witness.alive = false;
+      if (boundLife(witness, rt.witnessId, rt.witnessGeneration)
+        && witness.data?.anvilSlingWitness === true) {
+        witness.data.stormshiftCollectorOn = false;
+        if (witness.alive !== false && witness.data.itinerary?.kind !== 'anvil_work') witness.alive = false;
+      }
       this.bus && this.bus.emit && this.bus.emit('planet:unregistered', { siteId: rt.siteId, why });
     }
-    state.planet = defaultRuntime();
   },
 
   // ── band state machine + heat + drag + the Plunge ─────────────────────────────────────────────
@@ -588,7 +605,11 @@ export const planetRuntime = {
   _tickWorkerHarvest(dt, state, rt, site) {
     if (!(Number.isFinite(dt) && dt > 0)) return;
     const worker = state.entities.get(rt.witnessId);
-    if (worker?.data) worker.data.stormshiftCollectorOn = false;
+    // Numeric ids recycle during restore/residency. Validate the bound life before even
+    // clearing the presentation flag on what may now be a different occupant.
+    if (!boundLife(worker, rt.witnessId, rt.witnessGeneration)
+      || worker.data?.anvilSlingWitness !== true) return;
+    worker.data.stormshiftCollectorOn = false;
     if (!worker || worker.alive === false || !(worker.hull > 0)
       || worker.data?.anvilSlingWitness !== true
       || worker.data?.itinerary?.kind !== 'anvil_work'

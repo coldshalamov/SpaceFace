@@ -131,6 +131,8 @@ test('real save/load preserves a loaded return through world records and never t
     const owner = sim.registry.get('traffic');
     const collector = state.entities.get(state.planet.witnessId);
     const recordId = collector.data.worldRecordId;
+    // Keep the saved observer local: a far actor legitimately leaves the exact entity list.
+    player.pos.x = collector.pos.x; player.pos.z = collector.pos.z + 100;
     collector.data.itinerary.phase = 'collect';
     assert.equal(owner.acceptAnvilHarvest(collector, { siteId: PLANET_SITE.id,
       commodityId: PLANET_SITE.harvest.commodityShallow, qty: 12 }), 12);

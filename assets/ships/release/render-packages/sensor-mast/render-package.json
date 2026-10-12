@@ -59,11 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "9013f8ea62f725e4910b53068ee1dd5a646200629b193ff0cfb2b39732b49b24",
-=======
   "contentHash": "71ea5cb49fd01e874ae1023b76fa2ab3680f2053c1faa3d7dd6b520a22d7a615",
->>>>>>> origin/pr-maturation-261
   "dynamicGroups": [
     {
       "id": "sf.render.sensor-mast.mesh.lod0-hook-nav-port.dynamic",
@@ -2783,13 +2779,8 @@
       "uri": "place_sensor_mast.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
-=======
       "bytes": 270117,
       "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
->>>>>>> origin/pr-maturation-261
       "uri": "pilots.json"
     }
   },
@@ -3886,11 +3877,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_sensor_mast.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "759e990b1aec2f464447973603fbeb7ad9a80721516b56850dc2543e80ed52dc",
-=======
   "runtimeHash": "789cf3ae610a460139fe43bd858ee77fdaf58a51ebc5156c0625a553cf6758dc",
->>>>>>> origin/pr-maturation-261
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

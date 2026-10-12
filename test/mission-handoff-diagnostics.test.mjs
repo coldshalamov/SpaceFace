@@ -206,15 +206,16 @@ test('acceptance snapshot distinguishes missing runtime and caps board and insta
 });
 
 function acceptancePredicates(state, before) {
-  const extract = (startMarker, endMarker) => {
-    const start = source.indexOf(startMarker);
+  const extract = (startMarker, endMarker, callMarker = startMarker) => {
+    const section = source.indexOf(startMarker);
+    const start = source.indexOf(callMarker, section);
     const end = source.indexOf(endMarker, start);
     assert.ok(start >= 0 && end > start, 'actual acceptance predicate must exist');
-    return runInNewContext(`(${source.slice(start + startMarker.length, end)})(${before})`,
+    return runInNewContext(`(${source.slice(start + callMarker.length, end)})(${before})`,
       { window: { SF: { state } } });
   };
   return {
-    final: extract('// is owned by the sim and covered by check:market-nav; here we assert the UI-driven continuity).\n  await page.waitForFunction(', ', before, { timeout: 10000 })'),
+    final: extract('// Accept + Track continuity:', ', before, { timeout: 10000 })', 'await page.waitForFunction('),
     consumed: extract('const consumed = !(commit && commit.found) ? await page.evaluate(', ', before) : { grew: false'),
   };
 }

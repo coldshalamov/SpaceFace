@@ -53,11 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "004784aa13342eddb0487aff50d414cf7a99d2342f34b457156c28e018b63870",
-=======
   "contentHash": "895093e7c665c54ca825447b4e85fd5257b6f70c2c553785c1dcb4b1a162b4f7",
->>>>>>> origin/pr-maturation-261
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1495,13 +1491,8 @@
       "uri": "place_salvage_clamp.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
-=======
       "bytes": 270117,
       "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
->>>>>>> origin/pr-maturation-261
       "uri": "pilots.json"
     }
   },
@@ -2165,11 +2156,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_salvage_clamp.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "7d5adf84405cc96c85a598760f106acb06126a35875dadeab0cca8e8299ab494",
-=======
   "runtimeHash": "96b5c5b5198f3afebd49174fa5c8a4f8da66920f89f3346aca11f74e8fbd2feb",
->>>>>>> origin/pr-maturation-261
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

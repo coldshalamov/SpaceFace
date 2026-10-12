@@ -2,6 +2,7 @@
 // The well bends that coast. A hull outside the influence does not get the same curve.
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { stampOccupantGeneration, occupantGenerationOf } from '../src/core/entity.js';
 
 import { normalizeField, projectFieldTrajectory } from '../src/core/fields/fieldKernel.js';
 import {
@@ -83,6 +84,7 @@ test('registering the Anvil places one coasting hauler and leaving removes it', 
   const sys = Object.create(planetRuntime);
   const spawnEntity = (spec) => {
     const entity = { id: nextId++, alive: true, ...spec };
+    stampOccupantGeneration(state, entity);
     spawned.push(entity);
     entities.set(entity.id, entity);
     state.entityList.push(entity);
@@ -104,6 +106,7 @@ test('registering the Anvil places one coasting hauler and leaving removes it', 
     schemaVersion: 1,
     active: true,
     witnessId: first.id,
+    witnessGeneration: occupantGenerationOf(first),
     entityId: null,
     fieldId: null,
     siteId: 'planet_tethys_anvil',

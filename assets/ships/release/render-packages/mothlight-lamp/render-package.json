@@ -53,11 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-<<<<<<< HEAD
-  "contentHash": "ffbf4c9f4dff2035042756d40003cf3c2fb8ede7bdd2dbba8ea40c299276b91f",
-=======
   "contentHash": "42db9db6f4b4ae1c088ae4521ef7e3b78ee0f62fbb8507b6e3a1d2323e9eea4c",
->>>>>>> origin/pr-maturation-261
   "dynamicGroups": [],
   "geometry": [
     {
@@ -648,13 +644,8 @@
       "uri": "mothlight_lamp.glb"
     },
     "sourceManifest": {
-<<<<<<< HEAD
-      "bytes": 270894,
-      "sha256": "4ca488611ca974b23b0d65d563b5cd5c8bf73559af8bad9c8eb041fc80f9f1d6",
-=======
       "bytes": 270117,
       "sha256": "c679d832ce5c4a989089aea1bdc5097b064e1f8945dca704cc0237ae23c86b76",
->>>>>>> origin/pr-maturation-261
       "uri": "pilots.json"
     }
   },
@@ -887,11 +878,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/wholeships/mothlight_lamp.glb"
   },
-<<<<<<< HEAD
-  "runtimeHash": "8644f0c89e636efd56c53d704d0e9c9e5596bb30c97eb37d2c05d5adff59530d",
-=======
   "runtimeHash": "80598dde7d27778c719f42605f8034447a070b5bd56f3a109682fd6611abb2c9",
->>>>>>> origin/pr-maturation-261
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
