@@ -109,6 +109,10 @@ export function collectContentCatalogIssues(opts = {}) {
   return issues;
 }
 
+const SWARM_STRAGGLER_MAX = 2;
+const SWARM_STRAGGLER_LEASH_WU = 1800;
+const SWARM_STRAGGLER_GRACE_TICKS = 8 * 60;
+
 function playerIsAlive(state) {
   if (!state || state.playerId == null || !state.entities || typeof state.entities.get !== 'function') {
     return false;
@@ -171,6 +175,7 @@ export const survivalWave = {
     this._maybeReleaseOpeningLesson();
     this._dispatchDue();
     this._reinforceSwarm(run);
+    this._releaseStragglers();
     this._publishWaveProgress();
     this._checkCleared(run);
   },
@@ -715,6 +720,41 @@ export const survivalWave = {
       if (this._isCohortMemberDisabled(id, member)) count += 1;
     }
     return count;
+  },
+
+  /**
+   * The pack's last one or two bodies, left far behind a pilot who has outrun them (no drag:
+   * a new pilot drifts thousands of units without meaning to), would otherwise hold a won
+   * round open forever. Once they have stayed past the leash — well off screen — for the
+   * grace window, they break off and leave the field: removed out of sight, resolved by the
+   * destroyed receipt, never paid out as a kill.
+   */
+  _releaseStragglers() {
+    if (!this._swarm || !this._swarm.killTarget || !this._cohort || this._cohort.size === 0) return;
+    if (this._admittedTotal < this._plannedBodies || (this._pending && this._pending.length)) return;
+    const helpers = this.helpers;
+    const state = this.state;
+    if (!helpers || typeof helpers.removeEntity !== 'function' || !state || !state.entities) return;
+    const player = state.entities.get(state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    const actionable = [];
+    for (const [id, member] of this._cohort.entries()) {
+      if (this._isCohortMemberActionable(id, member)) actionable.push([id, member]);
+      if (actionable.length > SWARM_STRAGGLER_MAX) return;
+    }
+    const leash2 = SWARM_STRAGGLER_LEASH_WU * SWARM_STRAGGLER_LEASH_WU;
+    for (const [id, member] of actionable) {
+      if (this._bossIds && this._bossIds.has(id)) continue;
+      const entity = this._resolveCohortEntity(id, member);
+      if (!entity || !entity.pos) continue;
+      const data = entity.data || {};
+      if (data.isBoss === true || data.bossId != null) continue;
+      const dx = entity.pos.x - player.pos.x;
+      const dz = entity.pos.z - player.pos.z;
+      if (dx * dx + dz * dz < leash2) { member.strayTicks = 0; continue; }
+      member.strayTicks = (member.strayTicks || 0) + 1;
+      if (member.strayTicks >= SWARM_STRAGGLER_GRACE_TICKS) helpers.removeEntity(id);
+    }
   },
 
   _actionableCohortCount() {
