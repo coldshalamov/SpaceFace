@@ -53,7 +53,7 @@ function loadedCarrierSpec(pos, qty) {
 
 test('starter-world: the opening raid hits the loaded Helios ore barge already in its frame', () => {
   for (const seed of [4242, 8008]) {
-    const { state, player, carrier, live, spawned } = fireOpeningRaid(seed,
+    const { sim, state, player, carrier, live, spawned } = fireOpeningRaid(seed,
       loadedCarrierSpec({ x: 40, z: 30 }, 3));
     assert.ok(live, `seed ${seed}: raid must fire`);
     assert.ok(spawned.some((p) => p.encounterId === live.id), `seed ${seed}: commitment event`);
@@ -82,6 +82,16 @@ test('starter-world: the opening raid hits the loaded Helios ore barge already i
     const designated = state.entities.get(live.data.predationRaiderId);
     assert.ok(designated && raiders.includes(designated), `seed ${seed}: one designated raider`);
     assert.equal(isHostileForAI(state, designated, carrier), true, `seed ${seed}: designated raider hunts the barge`);
+
+    // Nobody intervenes: the raid's window closes and the barge goes back to its own work.
+    sim.runTicks(60 * 90);
+    assert.equal(live.phase, 'done', `seed ${seed}: raid resolved`);
+    assert.equal(carrier.alive, true, `seed ${seed}: the barge is still a live hull`);
+    assert.equal(live.ids.includes(carrier.id), false, `seed ${seed}: released from the raid roster`);
+    assert.equal(carrier.data.predationEncounterId == null, true, `seed ${seed}: predation binding cleared`);
+    assert.equal(carrier.data.freightRewardOwner, undefined, `seed ${seed}: world reward ownership restored`);
+    assert.equal(carrier.data.ai.encounterId, undefined, `seed ${seed}: squad-frame stamps restored`);
+    assert.equal(carrier.data.worldRecordId, 'wr_starter_world_test_carrier');
   }
 });
 

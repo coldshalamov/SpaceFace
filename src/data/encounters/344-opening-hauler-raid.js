@@ -84,8 +84,10 @@ const STARTER_CARRIER_ADOPT_RANGE = 2 * 115 + 30;
 // The starter seam's barge, when it is physically hauling real cut ore, is the corridor's actual
 // freight. The raid targets that hull instead of inventing a second cargo nobody cut.
 function loadedStarterCarrier(state, live) {
+  // The frame law is measured from the player the raid is delivered to, not from the plan's hauler.
+  const player = state.entities && state.playerId != null ? state.entities.get(state.playerId) : null;
   const plannedHauler = (live.plan.ships || []).find((ship) => ship && ship.role === 'hauler');
-  const anchor = (plannedHauler && plannedHauler.pos) || live.pos;
+  const anchor = (player && player.pos) || (plannedHauler && plannedHauler.pos) || live.pos;
   let best = null;
   let bestD2 = STARTER_CARRIER_ADOPT_RANGE * STARTER_CARRIER_ADOPT_RANGE;
   for (const entity of state.entityList || []) {
@@ -181,6 +183,7 @@ export const runtime = Object.freeze({
     // A partial budget grant that lands the hauler alone would resolve 'defended' for a raid
     // that never existed — the premise needs a hauler AND at least one raider on the field.
     if (!ids.length || d.aliveCount(live, 'hauler') < 1 || d.aliveCount(live, 'raider') < 1) {
+      releaseAdoptedCarrier(d, live);
       return d.abort(live, 'no_budget');
     }
     // VERB-02: the raid is already happening — no consent dialog, no pass-on-timeout. Every
