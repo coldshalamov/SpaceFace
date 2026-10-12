@@ -712,6 +712,10 @@ export const swarmArena = {
       this._broodHeldUntil = now + this._lessonHoldS;
       this._lessonHoldS = null;
     } else if (this._brood) this._brood.spawnWave(this.state);
+    // The planning settle runs before the draft; the last round's fields and ricochets keep working
+    // through it, so rocks were still sliding 12–16 u/s when the next pack arrived and killed four
+    // hulls in its first second (player-truth m4-active, round 2). Settle again as the round opens.
+    if (Number.isInteger(run.wave) && run.wave > 1) this._settleRoom();
     // B4 — the Hive's room lands with the wave: first wall ring standing, sacs pulsing.
     if (run.arenaId === HIVE_ARENA_ID) this._hiveInstall(run);
     this._pressureAlive = liveCohortCount(this.state);
