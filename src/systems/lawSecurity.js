@@ -1704,18 +1704,25 @@ export const lawSecurity = {
         ai.engagementTrigger = 'wanted_status';
         ai.motive = 'law_enforcement';
         ai.roe = RulesOfEngagement.LAWFUL_WANTED_ONLY;
+        let returnStation = null;
         let stationPos = null;
         if (incidentId) {
           const inc = ensureState(state).incidents[incidentId]
             || Object.values(ensureState(state).incidents || {}).find((i) => i && i.id === incidentId);
           const station = inc && (incidentOccupant(state, inc.stationEntityId, inc.stationGeneration)
             || stationByPublicId(state, inc.stationId));
-          if (station && station.pos) stationPos = station.pos;
+          if (station && station.type === 'station' && station.pos) {
+            returnStation = station;
+            stationPos = station.pos;
+          }
           else if (inc && inc.ringPos) stationPos = inc.ringPos;
         }
         if (!stationPos && ai.zoneId && ai.zoneId.startsWith('jurisdiction:')) {
           const st = stationByPublicId(state, ai.zoneId.slice('jurisdiction:'.length));
-          if (st && st.pos) stationPos = st.pos;
+          if (st && st.pos) {
+            returnStation = st;
+            stationPos = st.pos;
+          }
         }
         const returnAnchor = (isHolder && stationPos)
           ? { x: stationPos.x, z: stationPos.z }
@@ -1723,7 +1730,7 @@ export const lawSecurity = {
         ai.activity = normalizeActivity({
           kind: ActivityKind.RETURN_TO_ANCHOR,
           reason: isHolder ? 'security_witness:return' : 'security_response:clear',
-          anchor: returnAnchor,
+          anchor: stationReturnAnchor(returnAnchor, returnStation, responder),
           leashRadius: ai.activity && ai.activity.leashRadius || 2600,
           startedTick: state.tick | 0,
         });
@@ -5521,6 +5528,28 @@ function incidentOccupant(state, id, generation) {
   const entity = entityById(state, id);
   if (!entity) return null;
   return generation != null && occupantGenerationOf(entity) !== generation ? null : entity;
+}
+
+// RETURN_TO_ANCHOR tracks a world point, not a docking request. A station-center
+// response anchor would keep a patrol pressed into the hull (and a visiting berth
+// occupied) forever. Only move unsafe anchors; authored clear anchors remain exact.
+function stationReturnAnchor(anchor, station, responder) {
+  if (!anchor || !station || station.type !== 'station' || station.alive === false || !station.pos) return anchor;
+  const radius = Math.max(0, Number(station.radius) || 0)
+    + Math.max(0, Number(responder.radius) || 0) + 120;
+  // The 120-WU margin covers the normal approach volume plus steering/arrival slack.
+  const ax = anchor.x - station.pos.x;
+  const az = anchor.z - station.pos.z;
+  if (Math.hypot(ax, az) >= radius) return anchor;
+  // Return on the current side rather than asking the pilot to cross a solid station.
+  const dx = (responder.pos?.x ?? station.pos.x) - station.pos.x;
+  const dz = (responder.pos?.z ?? station.pos.z) - station.pos.z;
+  const distance = Math.hypot(dx, dz);
+  const angle = (hash32(String(responder.id)) / 0x100000000) * Math.PI * 2;
+  return {
+    x: station.pos.x + (distance > 0.001 ? dx / distance : Math.cos(angle)) * radius,
+    z: station.pos.z + (distance > 0.001 ? dz / distance : Math.sin(angle)) * radius,
+  };
 }
 
 function stationByPublicId(state, stationId) {
