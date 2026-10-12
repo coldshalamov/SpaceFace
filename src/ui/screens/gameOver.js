@@ -614,6 +614,13 @@ export const gameOverScreen = {
     this._endDeathSlide();
   },
 
+  // The bench already awaits this screen seam. WAAPI settling alone cannot finish the
+  // timer-owned death slide (400ms) or delayed headline decrypt (420ms + 560ms).
+  // Production keeps the same entrance; composition captures read the report at rest.
+  settled() {
+    return new Promise((resolve) => setTimeout(resolve, this._slideTimer ? 1100 : 0));
+  },
+
   _armDeathSlide(ctx) {
     const settings = ctx && ctx.state && ctx.state.settings;
     const root = this._rootEl;
