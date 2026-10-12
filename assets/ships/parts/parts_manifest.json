@@ -6429,7 +6429,7 @@
         "lod1": "wholeships/atlas_production_v1_lod1.glb",
         "lod2": "wholeships/atlas_production_v1_lod2.glb"
       },
-      "status": "integration_candidate",
+      "status": "accepted",
       "wiringStatus": "live_player_atlas",
       "tris": 39968,
       "bytes": 2400936,
@@ -6490,7 +6490,7 @@
         "lod1": "wholeships/bastion_production_v1_lod1.glb",
         "lod2": "wholeships/bastion_production_v1_lod2.glb"
       },
-      "status": "integration_candidate",
+      "status": "accepted",
       "wiringStatus": "live_player_bastion",
       "tris": 34806,
       "bytes": 2134012,
@@ -6550,7 +6550,7 @@
         "lod1": "wholeships/colossus_production_v1_lod1.glb",
         "lod2": "wholeships/colossus_production_v1_lod2.glb"
       },
-      "status": "integration_candidate",
+      "status": "accepted",
       "wiringStatus": "live_player_colossus",
       "tris": 59184,
       "bytes": 3611260,
@@ -6985,7 +6985,7 @@
         "lod1": "wholeships/hornet_production_v1_lod1.glb",
         "lod2": "wholeships/hornet_production_v1_lod2.glb"
       },
-      "status": "integration_candidate",
+      "status": "accepted",
       "wiringStatus": "live_player_hornet",
       "tris": 16076,
       "bytes": 1167952,
@@ -7100,7 +7100,7 @@
         "lod1": "wholeships/ironback_production_v1_lod1.glb",
         "lod2": "wholeships/ironback_production_v1_lod2.glb"
       },
-      "status": "integration_candidate",
+      "status": "accepted",
       "wiringStatus": "live_player_ironback",
       "tris": 44718,
       "bytes": 2520668,
@@ -7293,7 +7293,7 @@
         "lod1": "wholeships/leviathan_production_v1_lod1.glb",
         "lod2": "wholeships/leviathan_production_v1_lod2.glb"
       },
-      "status": "integration_candidate",
+      "status": "accepted",
       "wiringStatus": "live_player_leviathan",
       "tris": 53340,
       "bytes": 3470752,
@@ -7354,7 +7354,7 @@
         "lod1": "wholeships/saucer_production_v1_lod1.glb",
         "lod2": "wholeships/saucer_production_v1_lod2.glb"
       },
-      "status": "integration_candidate",
+      "status": "accepted",
       "wiringStatus": "live_player_saucer",
       "tris": 60570,
       "bytes": 3519124,
@@ -7416,7 +7416,7 @@
         "lod1": "wholeships/massline_express_liner_v1_lod1.glb",
         "lod2": "wholeships/massline_express_liner_v1_lod2.glb"
       },
-      "status": "integration_candidate",
+      "status": "accepted",
       "wiringStatus": "live_express_candidate",
       "tris": 35324,
       "bytes": 2192860,
@@ -7479,7 +7479,7 @@
         "lod1": "wholeships/mule_production_v1_lod1.glb",
         "lod2": "wholeships/mule_production_v1_lod2.glb"
       },
-      "status": "integration_candidate",
+      "status": "accepted",
       "wiringStatus": "live_player_mule",
       "tris": 26746,
       "bytes": 1721536,
@@ -7583,14 +7583,6 @@
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Ore Barge, live traffic role ore_carrier; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (7752/1044/446 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
     },
     {
-      "id": "wholeship_pelican",
-      "category": "wholeships",
-      "priority": "P0",
-      "file": "wholeships/pelican.glb",
-      "status": "blocked",
-      "statusNote": "Accessory-only export missing a Material_Hull body. Do not wire into runtime until re-exported with a real hull body per SPEC3-37."
-    },
-    {
       "id": "wholeship_pelican_production_v1",
       "assetId": "SF_PELICAN_PRODUCTION_V1",
       "category": "wholeships",
@@ -7601,7 +7593,7 @@
         "lod1": "wholeships/pelican_production_v1_lod1.glb",
         "lod2": "wholeships/pelican_production_v1_lod2.glb"
       },
-      "status": "integration_candidate",
+      "status": "accepted",
       "wiringStatus": "live_player_pelican",
       "tris": 27474,
       "bytes": 1727912,
@@ -7714,7 +7706,7 @@
         "lod1": "wholeships/ranger_production_v1_lod1.glb",
         "lod2": "wholeships/ranger_production_v1_lod2.glb"
       },
-      "status": "integration_candidate",
+      "status": "accepted",
       "wiringStatus": "live_player_ranger",
       "tris": 33120,
       "bytes": 2101692,
@@ -8151,7 +8143,7 @@
         "lod1": "wholeships/warden_production_v1_lod1.glb",
         "lod2": "wholeships/warden_production_v1_lod2.glb"
       },
-      "status": "integration_candidate",
+      "status": "accepted",
       "wiringStatus": "live_player_warden",
       "tris": 46694,
       "bytes": 2989524,
@@ -8199,14 +8191,6 @@
         ]
       },
       "note": "Fleet remaster production Warden. Live player gunship. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
-    },
-    {
-      "id": "wholeship_wasp",
-      "category": "wholeships",
-      "priority": "P0",
-      "file": "wholeships/wasp.glb",
-      "status": "blocked",
-      "statusNote": "Accessory-only export missing a Material_Hull body. Do not wire into runtime until re-exported with a real hull body per SPEC3-37."
     },
     {
       "id": "wholeship_wasp_production_v1",
@@ -9530,14 +9514,14 @@
       "triangleMetric": "lod0",
       "bounds": {
         "min": [
-          -10.681609,
-          -1.41,
-          -5.630055
+          -10.681609153747559,
+          -1.409999966621399,
+          -5.635477066040039
         ],
         "max": [
-          11.175684,
-          4.21171,
-          5.117123
+          11.17846393585205,
+          4.211710453033447,
+          5.121239185333252
         ],
         "dimensionsM": [
           21.86007308959961,
