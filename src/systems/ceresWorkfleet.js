@@ -364,6 +364,43 @@ export function syncCeresWorkfleetActivity(owner) {
   }
 }
 
+/** Site retirement honors the exact live section lease or its physical handoff.
+ * A saved jobId or a replacement occupant cannot pin a body. */
+export function ceresWorkfleetRetainsSection(state,entity) {
+  const job=jobOf(state),bag=ACTIVITY_PINS.get(state),lease=bag?.leases.get('section');
+  if(!job||!entity||state.entities.get(entity.id)!==entity||entity.alive===false||entity.hull<=0
+    ||!exactSection(entity)||!finitePose({...entity.pos,rot:entity.rot})||state.mode!=='flight'||state.world?.currentSectorId!==C.sectorId
+    ||job.id!==CERES_WORKFLEET_JOB_ID||job.worker!==C.identities.worker||job.head!==C.identities.cutterHead
+    ||job.cradle!==C.identities.cradle||job.section!==C.identities.payload)return false;
+  const bodies=liveBodies(state);
+  if(bodies.section!==entity)return false;
+  // NPC attachment rows do not set the player's tethered flag. At tow/receiver
+  // handoff the temporary lease is deliberately removed; the real same-life
+  // coupling now retains the section, including after work has stopped.
+  for(const [id,role] of [[job.towId,'breaker'],[job.receiverId,'cradle']]) {
+    const line=id&&state.combat?.attachments?.byId?.[id],owner=bodies[role];
+    if(line?.state==='active'&&line.controlMode==='ceres_workfleet'&&owner?.alive!==false&&owner?.hull>0
+      &&line.ownerId===owner.id&&line.ownerGeneration===owner.occupantGeneration
+      &&line.targetId===entity.id&&line.targetGeneration===entity.occupantGeneration)return true;
+  }
+  if(bag?.job!==job||lease?.e!==entity||lease.life!==entity.occupantGeneration
+    ||entity.data?.jobId!==job.id||controlled(state,entity)
+    ||!['head_retract','tow_attach','reacquire'].includes(job.phase)
+    ||!siteRecord(state)?.completedOperations?.release_long_plate_clamp
+    ||!(Math.hypot(entity.pos.x-C.sitePlacement.pos.x,entity.pos.z-C.sitePlacement.pos.z)<=CERES_RECOVERY_LIMITS.workRadius))return false;
+  const budget=restoreCeresWorkfleetReacquireReturnBudget(job.reacquireReturnBudget);
+  if(job.phase==='reacquire'&&(job.reacquireReturnBudget!=null&&!budget
+    ||budget&&(state.tick<budget.startedTick||state.tick>budget.deadlineTick)))return false;
+  if(job.phase==='reacquire'&&!hasPendingCeresWorkfleetAttachments(state,job.mountId)
+    &&!requiredControlCouplings(state,job,bodies.breaker,bodies.cutterHead,entity))return false;
+  return ROLES.every(role=>{
+    const e=bodies[role],held=bag.leases.get(role),record=state.world.records?.byId?.[C.identities[role==='breaker'?'worker':role]];
+    return !!e&&held?.e===e&&held.life===e.occupantGeneration&&e.alive!==false&&e.hull>0
+      &&e.data?.jobId===job.id&&!controlled(state,e)&&!record?.playerOwned&&record?.alive!==false
+      &&!['destroyed','defeated'].includes(record?.outcome);
+  });
+}
+
 /** One disposable flight sample. A serialized marker cannot grant flight authority. */
 export function authorizeCeresBreakerControl(entity,state,job,target,options={}) {
   if(ceresWorkfleetRoleForEntity(entity)!=='breaker'||!Number.isSafeInteger(entity.occupantGeneration)||job!==jobOf(state)||!finitePose(target)
