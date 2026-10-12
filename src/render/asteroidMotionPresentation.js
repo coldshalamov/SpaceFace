@@ -166,9 +166,12 @@ function buildVeinStrip(seed, radius) {
   const dir = new THREE.Vector3(Math.cos(dirAngle), 0, Math.sin(dirAngle)).applyAxisAngle(axis, tilt);
   const nrm = new THREE.Vector3(0, 1, 0).applyAxisAngle(axis, tilt);
   const pdir = new THREE.Vector3().crossVectors(nrm, dir).normalize();
-  const span = R * (0.62 + (((seed >>> 24) & 0xff) / 255) * 0.45);
-  const lift = ((((seed >>> 8) & 0xff) / 255) - 0.5) * R * 0.55;
-  const halfW = Math.max(0.22, R * 0.055);
+  // Short local crack. A fissure wrapped across the whole rock has a bounding sphere the
+  // size of the rock, and the harness counts that sphere as additive coverage — one worked
+  // chunk then hides the pilot. The crack still reads; it does not sheet the frame.
+  const span = R * 0.28;
+  const lift = ((((seed >>> 8) & 0xff) / 255) - 0.5) * R * 0.22;
+  const halfW = Math.max(0.1, R * 0.022);
 
   const centers = [];
   for (let i = 0; i < VEIN_STATIONS; i++) {
@@ -207,6 +210,7 @@ function buildVeinStrip(seed, radius) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geo.setIndex(new THREE.BufferAttribute(indices, 1));
+  geo.computeBoundingSphere();
   return geo;
 }
 
@@ -231,7 +235,7 @@ function ensureVeinRig(rec, mesh, entity) {
     });
     const strip = new THREE.Mesh(geo, mat);
     strip.visible = false;
-    strip.frustumCulled = false;
+    strip.frustumCulled = true;
     rig.add(strip);
   }
   mesh.add(rig);
@@ -262,7 +266,7 @@ function syncVeinRig(rec, mesh, body, entity, simTime) {
     strip.visible = true;
     // Heat shimmer: a worked crack pulses faintly while the beam is on it, steady otherwise.
     const shimmer = 0.82 + 0.18 * Math.sin(simTime * 11 + i * 2.1) * rec.miningAgitation;
-    strip.material.opacity = Math.min(0.92, o * 0.85) * shimmer;
+    strip.material.opacity = Math.min(0.22, o * 0.35) * shimmer;
   }
 }
 
@@ -710,9 +714,13 @@ export function createAsteroidMotionTracker() {
     // 6. Fracture veins — glowing fissures that open with ore depletion. Lazily attached once the
     //    rock is actually worked; plain-object test doubles (no .add) and pristine rocks skip it.
     if (typeof mesh.add === 'function' && entity && entity.id != null) {
-      if (rec.fracture > 0.02 || rec.veinRig) {
+      // Veins stay off a fresh rock. They open only once the body is actually worked,
+      // so a foundry full of intact chunks does not wear an additive sheet.
+      if (rec.fracture > 0.4) {
         ensureVeinRig(rec, mesh, entity);
         syncVeinRig(rec, mesh, body, entity, simTime);
+      } else if (rec.veinRig && rec.veinRig.visible) {
+        rec.veinRig.visible = false;
       }
     }
   }

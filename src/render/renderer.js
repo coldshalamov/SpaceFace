@@ -53,7 +53,7 @@ import {
   loadFoundryIblTexture,
   resolveIblSource,
 } from './foundryEnvironment.js';
-import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, updateHulkEmber, upgradeBareRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
+import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, syncSwarmThreatPlate, updateHulkEmber, upgradeBareRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
 import { installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, setBoundaryStandInResolver, upgradeAdmissionStandIn } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
@@ -221,7 +221,7 @@ import {
 } from './persistentSubmitLanes.js';
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
 import { setShieldShellClock, shieldShellUniforms } from './weapons/shieldShell.js';
-import { projectedWidthPx } from './lod.js';
+import { holdPresentedHarnessKey, machineAuthoredAssetState, projectedWidthPx } from './lod.js';
 import { resolveWebGlContextAttributes, resolveWebGlRendererFlags } from './presentPath.js';
 import {
   createOpeningAdmissionCohort,
@@ -5275,7 +5275,7 @@ function kickAuthoredBoundaryUpgrade(owner, entity, residencyRole, runwayEnv = n
   const boundary = owner && owner._meshes && owner._meshes.get(entity.id);
   const boundaryData = boundary && boundary.userData;
   if (boundaryData && typeof boundaryData.requestAuthoredUpgrade === 'function'
-      && boundaryData.authoredAssetState === 'awaiting-authored-admission') {
+      && machineAuthoredAssetState(boundaryData) === 'awaiting-authored-admission') {
     // Same 'visible' class the spawn decode kick posts: a boundary job at the glass must not
     // decode at deadline FIFO behind wave-hull warms — its stand-in is the hole in the frame.
     const onGlass = entityIsOnReadableGlass(entity, state);
@@ -15264,7 +15264,7 @@ export const render = {
               if ((++sweepVisited % 512) === 0) yield;
               const data = mesh && mesh.userData;
               if (!data) continue;
-              if (data.authoredAssetState === 'awaiting-authored-admission'
+              if (machineAuthoredAssetState(data) === 'awaiting-authored-admission'
                   && typeof data.requestAuthoredUpgrade === 'function') {
                 try {
                   requestAuthoredUpgrade(mesh, renderer, scene, {
@@ -15273,7 +15273,7 @@ export const render = {
                   });
                 } catch (_) { /* a refused request leaves the live trigger armed */ }
               }
-              if (loadsNow && data.authoredAssetState === 'loading') {
+              if (loadsNow && machineAuthoredAssetState(data) === 'loading') {
                 // Staging-sector dressing the arena frame provably cannot show (the same glass
                 // test the survival admission defer uses) buys the first frame nothing — the
                 // settle once held 6 s on Helios trade-hub/military station fallbacks.
@@ -25775,9 +25775,16 @@ export const render = {
       // instead of first-linking inside a presented frame.
       if (this._postOpeningPipelinesInFlight) this._postOpeningRescanRequested = true;
       this._bindPresentationMesh(e, m);
+      // A body already inside the readable glass must not be inserted hidden and then
+      // revealed: that hidden→onscreen pair is the pop the player and the harness both see.
+      // Off-glass builds keep the residency latch. On-glass builds stay submitted; the lane
+      // still uploads, it just does not blank the picture first.
+      const linkOnGlass = this.state.mode === 'flight'
+        && entityIsOnReadableGlassScan(e, this.state, drainScan);
       const holdFirstFlightBuffers = (e.type === 'asteroid' || e.type === 'payload')
         && !(m.userData && m.userData.spacefaceGeometryResident === true)
-        && !isFirstFlightProtectedEntity(e);
+        && !isFirstFlightProtectedEntity(e)
+        && !linkOnGlass;
       // compile() never uploads vertex buffers: a live-built mesh with unuploaded geometry used to
       // attach drawable-immediately and pay its upload inside the presented bloomScene (the 129 ms
       // multi-primitive structure brick). Hold every unready live build behind the same latch the
@@ -25786,7 +25793,8 @@ export const render = {
       // still appear instantly.
       const holdLiveBuildBuffers = this.state.mode === 'flight'
         && !isFirstFlightProtectedEntity(e)
-        && hasUnresidentGeometry(m);
+        && hasUnresidentGeometry(m)
+        && !linkOnGlass;
       if (holdFirstFlightBuffers || holdLiveBuildBuffers) {
         const data = m.userData || (m.userData = {});
         data.geometryPending = true;
@@ -25804,8 +25812,6 @@ export const render = {
       } else {
         registerAsteroidBaseLeaf(this._asteroidInstancePool, e, m);
       }
-      const linkOnGlass = this.state.mode === 'flight'
-        && entityIsOnReadableGlassScan(e, this.state, drainScan);
       // Do not compile or 1x1-upload held first-flight rocks during the live
       // frame. That was the leftover Intel context-loss: several residency
       // prepares stacked on the first present. Cooked roots are stamped behind
@@ -25826,12 +25832,16 @@ export const render = {
           // closure, not this class method.
           const markPending = this.state.render
             && this.state.render.markSubjectPipelinesPending;
-          if (typeof markPending === 'function') {
-            markPending(subject, true, 'mesh-build-compile');
-          } else {
-            const ud = subject.userData || (subject.userData = {});
-            ud.pipelinesPending = true;
-            ud.pipelinesPendingBy = 'mesh-build-compile';
+          // On-glass: do not latch pipelinesPending. That latch hides the root until
+          // compile returns, and the reveal is an in-view pop. The compile still runs.
+          if (!linkOnGlass) {
+            if (typeof markPending === 'function') {
+              markPending(subject, true, 'mesh-build-compile');
+            } else {
+              const ud = subject.userData || (subject.userData = {});
+              ud.pipelinesPending = true;
+              ud.pipelinesPendingBy = 'mesh-build-compile';
+            }
           }
           const capturedState = this.state;
           const capturedRender = capturedState.render;
@@ -26900,6 +26910,18 @@ export const render = {
         // real screen. The presented pose inside the live glass extents wins over the runway deny.
         const glassRadius = Math.max(lodRadius, world.radii[slot] || 0);
         const onLiveGlass = rootOnLiveGlass(bounds, liveViewFrustum, mesh.position, glassRadius);
+        if (!isPlayer && userData.lod) {
+          const lodBeforeHold = userData._appliedLodLevel;
+          holdPresentedHarnessKey(userData, this.state && this.state.simTime, onLiveGlass === true);
+          if (userData.updateLod && lodBeforeHold && userData._appliedLodLevel && userData._appliedLodLevel !== lodBeforeHold) {
+            userData.updateLod(userData._appliedLodLevel);
+            lodLevel = userData._appliedLodLevel;
+          }
+        }
+        if (entity && entity.type === 'ship' && !isPlayer
+            && this.state.run && this.state.run.kind === 'survival') {
+          syncSwarmThreatPlate(mesh, entity, this.cam && this.cam.obj);
+        }
         const glassSpan = Math.max(bounds.glassHalfX || 0, bounds.glassHalfZ || 0, 1);
         let planarSpeed = 0;
         if (entity) {
