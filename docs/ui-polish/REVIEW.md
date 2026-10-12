@@ -43,7 +43,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | **`achievements`** | **DONE** | See § Achievements below — this session |
 | **`statistics`** | **DONE** | See § Statistics below — this session |
 | **`game-over`** / `gameOver` | **DONE** | See § Game Over below — this session |
-| `tech-tree` / `techTree` / `tech-tree-progress` | SURVEYED | |
+| **`tech-tree`** / `techTree` / `tech-tree-progress` | **DONE** | See § Tech Tree below — this session |
 | `flight` / `power-rail` | SURVEYED | Off-limits for threat markers (PR #300); polish chrome only later |
 | `mobile-flight` / `mobile-stick` / `mobile-boost` / `mobile-brake` / `mobile-wheel` / `mobile-wheel-pinned` | SURVEYED | |
 | `crucibleHud` | SURVEYED | |
@@ -335,11 +335,42 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Code touched:** `src/ui/orrery/gameOverLayouts.js` (new), `src/ui/screens/gameOver.js` (inject only). `saveLayouts.js` GAME_OVER block untouched. No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
-**Next:** `tech-tree` / `tech-tree-progress`.
+**Next:** `tech-tree` / `tech-tree-progress` — now DONE (see below).
 
 ---
 
 ---
+
+## Tech Tree — session notes (2026-10-12)
+
+**Before:** Research Constellation already composed (dial, dossier, legend). Gaps vs the polished stack: the hour-verb curve (`1 Propelled charge · …`) ran the full title width and tangled with rim sector names (LOGISTICS) and star labels (Deflector Theory) — ui-bench reported ON TOP OF at 1080 and 720; foot used plain `BACK · ESC` instead of the stack's `‹ BACK` + ESC keycap; secondary copy (sub, corner labels, dossier chrome, legend/view) sat at ~.62–.8 bone; no 1080p composition zoom.
+
+**After (2 visual iterations, RESEARCH CSS in `constellationLayouts.js` + curve clip in `techTree.js`):**
+
+1. **Pass 1** — foot keycap rail; secondary contrast; title shade pool; curve max-width + ellipsis; rim sector chrome brighten; 1080p/1440/4K zoom.
+2. **Pass 2** — tighter curve width; DOM-clipped hour-verb line (full ladder on `title=`) so Range-based layout measure matches the eye. Bench: `measured: no tangled…` on `tech-tree` and `tech-tree-progress`; walk exercised controls on both.
+
+**Walk:** `node scripts/ui-bench.mjs --shot=tech-tree,tech-tree-progress --walk` — exit 0; measured clean; selectors/IDs unchanged. ACHIEVEMENTS block untouched.
+
+**Artifacts**
+
+| | Path |
+|---|---|
+| Before (empty @1080) | `docs/ui-polish/tech-tree-before.png` |
+| Before (empty @720) | `docs/ui-polish/tech-tree-before-720.png` |
+| Before (progress @1080) | `docs/ui-polish/tech-tree-progress-before.png` |
+| Before (progress @720) | `docs/ui-polish/tech-tree-progress-before-720.png` |
+| After (empty @1080) | `docs/ui-polish/tech-tree-after.png` |
+| After (empty @720) | `docs/ui-polish/tech-tree-after-720.png` |
+| After (progress @1080) | `docs/ui-polish/tech-tree-progress-after.png` |
+| After (progress @720) | `docs/ui-polish/tech-tree-progress-after-720.png` |
+
+**Code touched:** `src/ui/orrery/constellationLayouts.js` (RESEARCH block), `src/ui/screens/techTree.js` (curve clip + title= only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
+
+**Next:** `crucible` / `crucible-door` / `crucible-draft` (open P1s in the live-boot survey: stake scrim, tab treatment, footer under 3D hull).
+
+---
+
 ## Live-boot survey (2026-10-12, real game booted in headless Chromium, 1280×720 + 1920×1080)
 
 Captured by booting the actual game (`node server.js`, Playwright + SwiftShader) and clicking through the main menu the way a player does. Images: `docs/ui-polish/before/*.jpg`, `docs/ui-polish/after/*.jpg`.
@@ -389,4 +420,5 @@ The game already ships a mature system: Deckplate tokens (`--dp-*`) + ORRERY ins
 - `src/ui/orrery/constellationLayouts.js`: Achievements foot keycap rail, secondary contrast, dial/stage chrome brighten, 1080p (+1440/4K) zoom. Selectors/IDs unchanged. RESEARCH block untouched.
 - `src/ui/orrery/statisticsLayouts.js` + `src/ui/screens/statistics.js`: Statistics ORRERY foot keycap rail, reading contrast, shade pool, 1080p zoom, short-frame LAW fit. Selectors/IDs unchanged.
 - `src/ui/orrery/newGameLayouts.js` + `src/ui/screens/newGame.js`: New Game foot keycap rail, secondary contrast, loadout size column, 1080p zoom. Selectors/IDs and loadout data unchanged.
+- `src/ui/orrery/constellationLayouts.js` + `src/ui/screens/techTree.js`: Tech Tree / Research foot keycap rail, hour-verb curve clip (no dial tangle), secondary contrast, rim chrome, 1080p zoom. Selectors/IDs unchanged. ACHIEVEMENTS block untouched.
 - No selectors/IDs changed; no engine/render, audio, loadout data or HUD threat-marker code touched.
