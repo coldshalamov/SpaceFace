@@ -285,12 +285,24 @@ const STATION_ARCHETYPE_FILES = Object.freeze([
 ]);
 // PQ-193.09: existing foundry trade-hub overlay identities. Garnish on the live hub, never a
 // replacement body and never a new faction system.
-const TRADE_HUB_OVERLAY_FILE_BY_FACTION = Object.freeze({
-  faction_free: 'places/var_station_trade_hub_free_overlay_v01.glb',
-  faction_mts: 'places/var_station_trade_hub_mts_overlay_v01.glb',
-  faction_scn: 'places/var_station_trade_hub_scn_overlay_v01.glb',
+// AEP-U3: the overlay seam keys on the resolved base archetype stem so faction garnishes for
+// other station bodies slot into the same read contract instead of a parallel registry.
+const STATION_OVERLAY_FILE_BY_BASE_AND_FACTION = Object.freeze({
+  place_station_trade_hub: Object.freeze({
+    faction_free: 'places/var_station_trade_hub_free_overlay_v01.glb',
+    faction_mts: 'places/var_station_trade_hub_mts_overlay_v01.glb',
+    faction_scn: 'places/var_station_trade_hub_scn_overlay_v01.glb',
+  }),
 });
+const TRADE_HUB_OVERLAY_FILE_BY_FACTION = STATION_OVERLAY_FILE_BY_BASE_AND_FACTION.place_station_trade_hub;
 const TRADE_HUB_OVERLAY_FILES = Object.freeze(Object.values(TRADE_HUB_OVERLAY_FILE_BY_FACTION));
+// Overlay files are registered in PLACE_FILES so the loader can decode them, but they are
+// garnish-only bodies: a record naming one as archetypeGlb/placeId/landmarkGlb must never
+// publish it as a standalone place/station body (the base archetype owns that read).
+export const STATION_OVERLAY_FILES = Object.freeze(
+  Object.values(STATION_OVERLAY_FILE_BY_BASE_AND_FACTION).flatMap((byFaction) => Object.values(byFaction)),
+);
+const STATION_OVERLAY_FILE_SET = new Set(STATION_OVERLAY_FILES);
 const CLAIM_SPECIALIZATION_PLACE_FILE_BY_ID = Object.freeze({
   spec_refinery: 'places/place_claim_outpost_refinery.glb',
   spec_relay: 'places/place_claim_outpost_relay.glb',
@@ -1899,7 +1911,6 @@ const LIVE_SPAN_FILE = 'wholeships/helios_span.glb';
 const LIVE_WASP_FILE = 'wholeships/wasp_production_v1.glb';
 const LIVE_RIG_FILE = 'wholeships/ashline_rig.glb';
 const LIVE_CRADLE_FILE = 'wholeships/helios_cradle.glb';
-const LIVE_TRADE_HUB_FILE = 'places/place_station_trade_hub.glb';
 /** Helios / Kessler opening-flyby NPC slots. Each must resolve a packaged complete hull. */
 export const OPENING_FLYBY_NPC_SLOTS = Object.freeze([
   Object.freeze({ id: 'smuggler', data: Object.freeze({ defId: 'ship_drifter', trafficRole: 'smuggler' }) }),
@@ -2010,10 +2021,19 @@ function applyFactionWholeShipKit(entity, selection) {
 }
 
 export function tradeHubOverlayFileForEntity(entity) {
+  return stationOverlayFileForEntity(entity);
+}
+
+// AEP-U3: station overlay resolution is keyed on the station's resolved base place file —
+// a faction garnish exists only where the (archetype, faction) pair is registered, and the
+// base archetype read stays singular: the overlay is a garnish on that read, never a second
+// body and never a replacement body.
+export function stationOverlayFileForEntity(entity) {
   if (!entity || entity.type !== 'station') return null;
   const placeFile = placeFileForEntity(entity);
-  if (placeFile !== LIVE_TRADE_HUB_FILE) return null;
-  const overlay = TRADE_HUB_OVERLAY_FILE_BY_FACTION[factionIdForVisual(entity)];
+  const byFaction = placeFile && STATION_OVERLAY_FILE_BY_BASE_AND_FACTION[placeFileStem(placeFile)];
+  if (!byFaction) return null;
+  const overlay = byFaction[factionIdForVisual(entity)];
   return overlay || null;
 }
 
@@ -5918,7 +5938,27 @@ function placeFileForEntity(entity) {
     }
     const explicitFile = PLACE_FILE_BY_ID[id]
       || (PLACE_FILES.includes(`places/${id}.glb`) ? `places/${id}.glb` : null);
-    if (explicitFile) return explicitFile;
+    // AEP-U3: a faction overlay stem is garnish, not a body — a record naming one must not
+    // publish it standalone. Stations fall through to their authored family body; any other
+    // entity simply has no authored body to publish.
+    if (explicitFile && STATION_OVERLAY_FILE_SET.has(explicitFile)) {
+      // One accurate warn per id: pre-seed the unresolved-id ledger so the gate/stationTypeId
+      // rescue paths below don't re-warn "not in the place registry" for a file that is
+      // registered (as garnish-only).
+      warnedUnresolvedStationPlaceIds.add(id);
+      if (entity && entity.type === 'station') {
+        const rescue = data.isGate === true ? 'the authored jump ring' : 'the authored station family body';
+        dedupWarn('partsLibrary:overlay-as-body',
+          `[partsLibrary] station place id '${id}' is a faction overlay garnish, not a station`
+          + ` body; resolving ${rescue} instead`,
+          entity && entity.id);
+      } else {
+        dedupWarn('partsLibrary:overlay-as-body',
+          `[partsLibrary] place id '${id}' is a station overlay garnish and has no standalone body;`
+          + ' nothing resolves for it', entity && entity.id);
+        return null;
+      }
+    } else if (explicitFile) return explicitFile;
   }
   // PQ-193.12: a station the player can reach must never fall through to the procedural
   // fat-cylinder-plus-hoops body. The station catalog type vocabulary is total over

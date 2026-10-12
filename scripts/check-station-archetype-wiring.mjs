@@ -37,7 +37,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const { SECTORS } = await import('../src/data/sectors.js');
 const {
   STATION_ARCHETYPE_PLACE_IDS,
+  STATION_OVERLAY_FILES,
   resolvePlaceFileForEntity,
+  stationOverlayFileForEntity,
   buildAuthoredStationArchetype,
 } = await import('../src/render/partsLibrary.js');
 const { createVisualFactory } = await import('../src/render/visualFactory.js');
@@ -66,6 +68,18 @@ for (const sector of SECTORS) {
     const placeFile = resolvePlaceFileForEntity(ent);
     check(`${sector.id}/${st.id}: resolvePlaceFile`, typeof placeFile === 'string' && placeFile.endsWith('.glb'), placeFile);
     check(`${sector.id}/${st.id}: place in whitelist`, STATION_ARCHETYPE_PLACE_IDS.includes(st.archetypeGlb), st.archetypeGlb);
+    // AEP-U3 read dedup: the base read is never an overlay garnish, and a faction overlay
+    // when present is a registered garnish on that same read — not a second body.
+    check(`${sector.id}/${st.id}: base read is not an overlay`, !(placeFile && STATION_OVERLAY_FILES.includes(placeFile)), placeFile);
+    const overlayFile = stationOverlayFileForEntity({
+      ...ent,
+      factionId: st.factionId || sector.factionId,
+      data: { ...ent.data, stationTypeId: st.type, factionId: st.factionId || sector.factionId },
+    });
+    if (overlayFile) {
+      check(`${sector.id}/${st.id}: overlay registered`, STATION_OVERLAY_FILES.includes(overlayFile), overlayFile);
+      check(`${sector.id}/${st.id}: overlay distinct from base`, overlayFile !== placeFile, overlayFile);
+    }
     const visual = buildAuthoredStationArchetype(ent, { releaseMode: true });
     check(`${sector.id}/${st.id}: authored boundary`, !!visual && visual.userData.kind === 'station', visual && visual.userData.kind);
     check(`${sector.id}/${st.id}: upgrade hook`, typeof visual?.userData?.requestAuthoredUpgrade === 'function');
@@ -74,6 +88,18 @@ for (const sector of SECTORS) {
 }
 
 check('distinct station archetypes >= 5', archetypeIds.size >= 5, `count=${archetypeIds.size}`);
+
+// AEP-U3: overlay garnish stems fail closed as bodies — a station naming one resolves its
+// authored family body, a gate resolves the jump ring, and no other entity type resolves it.
+const OVERLAY_STEM = 'var_station_trade_hub_scn_overlay_v01';
+check('overlay stem on a station resolves family body',
+  resolvePlaceFileForEntity({ type: 'station', data: { stationTypeId: 'trade_hub', archetypeGlb: OVERLAY_STEM } })
+    === 'places/place_station_trade_hub.glb');
+check('overlay stem on a gate resolves jump ring',
+  resolvePlaceFileForEntity({ type: 'station', data: { isGate: true, archetypeGlb: OVERLAY_STEM } })
+    === 'places/place_gate_jump_ring.glb');
+check('overlay stem on a non-station resolves nothing',
+  resolvePlaceFileForEntity({ type: 'poi', data: { landmarkGlb: OVERLAY_STEM } }) === null);
 
 const vf = createVisualFactory();
 installVisualOverrides(vf, {});
