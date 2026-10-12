@@ -33,6 +33,8 @@ test('lod_churn fails an entity flapping between LODs and passes a stable one', 
   assert.equal(r.status, 'FAIL'); assert.match(r.offenders[0].line, /entity 7/);
   assert.equal(checkLodChurn(trace({ ents: () => [ent(7, CLS.enemy, { 10: 0 })] })).status, 'PASS');
   assert.equal(checkLodChurn(trace({ ents: () => [ent(7, CLS.enemy)] })).status, 'UNKNOWN');
+  const unseen = checkLodChurn(trace({ ents: (i) => [ent(7, CLS.enemy, { 10: i % 2, 9: VIS.offscreen })] }));
+  assert.equal(unseen.status, 'PASS'); assert.match(unseen.detail, /off screen, not graded/);
 });
 
 test('player_ship flags a placeholder rectangle and a missing ship', () => {

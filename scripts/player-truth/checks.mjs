@@ -48,7 +48,7 @@ function keyName(trace, k) { return k >= 0 ? (trace.keys[k] || String(k)) : null
 export function checkLodChurn(trace) {
   const T = THRESHOLDS; const samples = playSamples(trace);
   if (samples.length < 10) return result('lod_churn', 'LOD / model swap churn', 'UNKNOWN', null, T.lodSwapsPer10s, 'too few play frames sampled');
-  const last = new Map(); const swaps = new Map(); let total = 0; let measured = 0;
+  const last = new Map(); const swaps = new Map(); let total = 0; let measured = 0; let unseen = 0;
   const playerSwaps = [];
   for (const s of samples) {
     if (s.p && s.p.meshId) {
@@ -61,12 +61,16 @@ export function checkLodChurn(trace) {
       const k = e[E.key]; if (k < 0) continue;
       measured++;
       const prev = last.get(e[E.id]);
+      const on = e[E.vis] === VIS.onscreen;
+      // Only a swap the player can see counts: a body re-keying off screen (or while hidden) is not churn on screen.
       if (prev && prev.k !== k) {
-        total++;
-        const list = swaps.get(e[E.id]) || []; list.push({ sim: s.sim, t: s.t, from: prev.k, to: k, cls: e[E.cls], box: boxOf(e), on: e[E.vis] === VIS.onscreen });
-        swaps.set(e[E.id], list);
+        if (on || prev.on) {
+          total++;
+          const list = swaps.get(e[E.id]) || []; list.push({ sim: s.sim, t: s.t, from: prev.k, to: k, cls: e[E.cls], box: boxOf(e), on });
+          swaps.set(e[E.id], list);
+        } else unseen++;
       }
-      last.set(e[E.id], { k });
+      last.set(e[E.id], { k, on });
     }
   }
   if (!measured) return result('lod_churn', 'LOD / model swap churn', 'UNKNOWN', null, T.lodSwapsPer10s, 'no entity carried a per-entity mesh to read');
@@ -88,7 +92,7 @@ export function checkLodChurn(trace) {
   if (playerSwaps.length) offenders.unshift({ line: `player ship swapped model/LOD ${playerSwaps.length}× (first sim ${fmt(playerSwaps[0].sim, 1)} s: ${playerSwaps[0].from} → ${playerSwaps[0].to})`, t: playerSwaps[0].t, sim: playerSwaps[0].sim, box: playerSwaps[0].box });
   return result('lod_churn', 'LOD / model swap churn', fail ? 'FAIL' : 'PASS',
     `max ${maxPer10}/10s per entity · ${fmt(totalRate)}/s total`, `≤${T.lodSwapsPer10s}/10s per entity · ≤${T.lodTotalPerSec}/s total`,
-    `${total + playerSwaps.length} swaps over ${fmt(span, 1)} sim s across ${swaps.size} entities`, offenders, offenders.filter((o) => o.t != null).slice(0, 3));
+    `${total + playerSwaps.length} on-screen swaps over ${fmt(span, 1)} sim s across ${swaps.size} entities (${unseen} more off screen, not graded)`, offenders, offenders.filter((o) => o.t != null).slice(0, 3));
 }
 
 function shortKey(k) { if (!k) return '?'; const [, model, lod, st] = k.split('|'); return `${(model || '').replace(/^GLTFKIT_/, '').slice(0, 28)}@${lod || '-'}${st && st !== 'authored' ? '/' + st : ''}`; }
