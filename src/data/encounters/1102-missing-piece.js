@@ -18,7 +18,8 @@ export const trigger = deepFreeze({
   id: 'missing_piece',
   tier: 'minor',
   deck: 'civilian',
-  weight: 1,
+  // Ashfall rolls a crowded deck since #286; weight 2 keeps the brief within the first 60 sector-days (first: day 25, seed 4242).
+  weight: 2,
   zoneTypes: ['anomaly_deep'],
   script: 'selfRegistered',
   pressureCost: 14,
