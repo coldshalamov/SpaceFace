@@ -231,6 +231,8 @@ test('live bloom defaults resolve through renderer and render-graph behavior for
     vesta_forge: { bloomStrength: 0.572, bloomThreshold: 0.94, exposure: 0.95 },
     pallas_drift: { bloomStrength: 0.5616, bloomThreshold: 0.96, exposure: 0.94 },
     sker_haven: { bloomStrength: 0.5616, bloomThreshold: 0.96, exposure: 0.94 },
+    // AEP C11 (ID-S): Sedna's rig derives from anomaly and inherits its post block.
+    sedna_dark: { bloomStrength: 0.6032, bloomThreshold: 0.90, exposure: 0.95 },
   };
 
   assert.equal(DEFAULT_BLOOM_STRENGTH, 0.52);

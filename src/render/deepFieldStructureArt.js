@@ -402,11 +402,82 @@ function paintDerelictHauler(ctx, w, h, ramp) {
 }
 
 // ----------------------------------------------------------------------------
+// Ringworld Arc — a distant segment of an ancient orbital ring, for Sedna Dark (ID-S, AEP C11).
+//
+// The audit's AE.2 asks for a silhouette, not a GLB: a band so large it bends across the sky
+// while its details stay at the edge of legibility. The painting is a shallow arc of broken
+// band: dark structural mass, one lit inner rim, habitation ticks and two cold city clusters
+// along the face, and a torn end where the segment is lost to the dark. Mass first, accents
+// small — at this distance the Arc is a smudge that happens to be too straight to be natural.
+// ----------------------------------------------------------------------------
+function paintRingworldArc(ctx, w, h, ramp) {
+  const X = (lx) => (lx + 1) * 0.5 * w;
+  const Y = (ly) => (1 - ly) * h;
+  // The band arcs shallowly across the frame, dipping right of centre. Points along it are
+  // interpolated through the same curve the fill uses, so rim lines and ticks track the bend.
+  const sagY = (t) => 0.58 + 0.10 * Math.sin((t - 0.5) * Math.PI * 0.9);
+  const bandH = (t) => h * (0.055 + 0.028 * Math.sin(t * Math.PI)); // thicker mid-band
+  const topAt = (t) => Y(sagY(t)) - bandH(t) * 0.5;
+  const botAt = (t) => Y(sagY(t)) + bandH(t) * 0.5;
+  const leftT = 0.02, rightT = 0.86; // torn end at rightT — the rest of the ring is gone
+
+  // --- structural mass: one closed band, deep value, soft edge --------------------------
+  const topEdge = [], botEdge = [];
+  const steps = 26;
+  for (let i = 0; i <= steps; i++) {
+    const t = leftT + (rightT - leftT) * (i / steps);
+    topEdge.push([X(2 * t - 1), topAt(t)]);
+    botEdge.push([X(2 * t - 1), botAt(t)]);
+  }
+  softPoly(ctx, topEdge.concat(botEdge.slice().reverse()), ramp.deep, Math.max(1.5, w * 0.012));
+  // Inner face plane: slightly lighter than the edge mass so the band reads solid, not glow.
+  poly(ctx, topEdge.concat(botEdge.slice().reverse()), ramp.shadow);
+
+  // --- torn end: the band steps down into exposed deck strakes before the void ------------
+  for (let i = 0; i < 3; i++) {
+    const t0 = rightT - i * 0.028;
+    const t1 = Math.min(0.985, rightT + 0.045 - i * 0.05);
+    const y0 = topAt(t0) + (botAt(t0) - topAt(t0)) * (0.2 + i * 0.3);
+    poly(ctx, [
+      [X(2 * t0 - 1), y0 - h * 0.008], [X(2 * t1 - 1), y0 - h * (0.012 + i * 0.01)],
+      [X(2 * t1 - 1), y0 + h * 0.006], [X(2 * t0 - 1), y0 + h * 0.008],
+    ], i === 1 ? ramp.base : ramp.shadow);
+  }
+
+  // --- the lit inner rim: one thin bright edge along the lower face ----------------------
+  const rimPts = botEdge.map(([x, y]) => [x, y - h * 0.006]);
+  stroke(ctx, rimPts, ramp.lit, Math.max(0.8, h * 0.008), 'round');
+  // A second, broken rim line above it: deck edges catching the same cold light in places.
+  stroke(ctx, topEdge.filter((_, i) => i % 7 !== 3).map(([x, y]) => [x, y + h * 0.004]),
+    ramp.plate, Math.max(0.6, h * 0.005), 'round');
+
+  // --- habitation ticks: short cross-band seams at irregular intervals -------------------
+  const tickW = Math.max(0.7, h * 0.010);
+  for (const t of [0.10, 0.16, 0.24, 0.30, 0.39, 0.45, 0.52, 0.61, 0.68, 0.76, 0.82]) {
+    const x = X(2 * t - 1);
+    stroke(ctx, [[x, topAt(t)], [x, botAt(t) - (botAt(t) - topAt(t)) * 0.18]],
+      ramp.deep, tickW);
+  }
+
+  // --- two dormant city clusters: tiny warm specks seated ON the band, never a haze -------
+  for (const [cx, cy, spread, n] of [
+    [0.34, 0.5, 0.030, 7], [0.60, 0.42, 0.024, 5],
+  ]) {
+    for (let i = 0; i < n; i++) {
+      const t = cx + (i - (n - 1) / 2) * spread * (i % 2 ? 1 : 0.6);
+      const y = topAt(t) + (botAt(t) - topAt(t)) * cy;
+      disc(ctx, X(2 * t - 1), y, Math.max(0.5, h * 0.004 * (1 + (i % 3) * 0.4)), ramp.hot);
+    }
+  }
+}
+
+// ----------------------------------------------------------------------------
 // Registry + bake entry point
 // ----------------------------------------------------------------------------
 export const DEEP_FIELD_STRUCTURE_ART = Object.freeze({
   relay_mast: Object.freeze({ aspect: 0.62, paint: paintRelayMast }),
   derelict_hauler: Object.freeze({ aspect: 2.35, paint: paintDerelictHauler }),
+  ringworld_arc: Object.freeze({ aspect: 2.9, paint: paintRingworldArc }),
 });
 
 export function resolveStructureArt(structure) {

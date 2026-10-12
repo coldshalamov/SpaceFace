@@ -235,6 +235,33 @@ export const DEEP_FIELD_STRUCTURE_RECIPES = deepFreeze({
     ],
   }),
 
+  // Sedna Dark (ID-S, AEP C11): the Ringworld Arc silhouette. The audit's AE.2 says this is a
+  // skybox/parallax artifact, not a GLB — this recipe IS the artifact: one authored deep-field
+  // structure drawn by the `ringworld_arc` painter, carried far back on the parallax stack so
+  // it reads as a skybox feature while the sector's play space stays dark. No ribbons: Sedna's
+  // sky is genuinely black except for the Arc and its sparse cold star associations.
+  sedna_ringworld_arc: R({
+    id: 'sedna_ringworld_arc',
+    kind: 'ion_filaments',
+    anchorNdc: [-0.08, 0.42],
+    parallax: 0.022,
+    apparentScale: 1.45,
+    ribbons: [],
+    starAssociations: [
+      { x: 0.10, z: 0.06, radiusH: 1.05, strength: 0.85 },
+      { x: -0.18, z: 0.02, radiusH: 0.72, strength: 0.65 },
+    ],
+    structures: [
+      {
+        // The Arc itself: a torn band of ringworld segment bent across the upper sky — dark
+        // structural mass, one lit inner rim, habitation ticks, two dormant city clusters.
+        id: 'sedna-ringworld-arc',
+        art: { kind: 'ringworld_arc' },
+        scale: 0.30, offset: [0.05, 0.34], opacity: 0.9, color: '#4a5a72',
+      },
+    ],
+  }),
+
   galactic_spur: R({
     id: 'galactic_spur',
     kind: 'galactic_band',

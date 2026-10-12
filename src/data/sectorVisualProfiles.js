@@ -369,6 +369,15 @@ const PER_SECTOR_RIGS = Object.freeze({
         lightAngle: 0.8, ringTilt: 0,
       },
     } },
+  // Sedna Dark (ID-S, AEP C11): lanterns in the dark. Dim cold key, almost no bounce — and a
+  // bespoke sky the sector has earned: the anomaly family's plates and bodies stay, but the
+  // deep-field composition is Sedna's own `sedna_ringworld_arc` recipe, so the Arc silhouette
+  // hangs in this sky and nowhere else. No signature hero: the Arc IS the hero.
+  sector_sedna_dark: { base: 'anomaly', id: 'sedna_dark',
+    lighting: { ambient: 0.12, key: 2.60, rim: 1.60, fill: 0.36, keyColor: 0xa8bce4, fillColor: 0x6b7aa8 },
+    structure: { recipeId: 'sedna_ringworld_arc' },
+    composition: { signatureHero: null },
+  },
 });
 
 const DERIVED_PROFILES = {};
@@ -378,10 +387,21 @@ for (const rig of Object.values(PER_SECTOR_RIGS)) {
     ...base,
     id: rig.id,
     lighting: rig.lighting,
-    // A sector may fork only the hero/composition grammar while sharing the family's baked sky
+    // A sector may fork the hero/composition grammar while sharing the family's baked sky
     // (structure, painted plate, intensity) — the shared sub-objects stay frozen references.
-    background: rig.composition
-      ? { ...base.background, composition: { ...base.background.composition, ...rig.composition } }
+    // A sector that has earned a bespoke sky composition may also fork `structure` (e.g.
+    // Sedna's ringworld recipe): same rule — merged onto the family's structure, other keys
+    // (sky plate, paintedSky, intensity) stay inherited.
+    background: (rig.composition || rig.structure)
+      ? {
+        ...base.background,
+        ...(rig.structure
+          ? { structure: { ...base.background.structure, ...rig.structure } }
+          : {}),
+        ...(rig.composition
+          ? { composition: { ...base.background.composition, ...rig.composition } }
+          : {}),
+      }
       : base.background,
   });
 }
@@ -407,6 +427,7 @@ const PROFILE_BY_ID = new Map([
   ['sector_pallas_drift', SECTOR_VISUAL_PROFILES.pallas_drift],
   ['sector_sker_haven', SECTOR_VISUAL_PROFILES.sker_haven],
   ['sector_anomaly_well', SECTOR_VISUAL_PROFILES.anomaly],
+  ['sector_sedna_dark', SECTOR_VISUAL_PROFILES.sedna_dark],
 ]);
 
 export function resolveSectorVisualProfile(sector) {
