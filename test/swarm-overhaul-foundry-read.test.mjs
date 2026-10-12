@@ -127,7 +127,94 @@ test('a cohort mark is clamped to 1.12× and the wedge stays on the nose', () =>
   assert.ok(chevronReach > 12 * 0.4, 'the wedge still reads as a nose, not a speck at the origin');
   syncSwarmThreatPlate(mesh, { type: 'ship', team: 0, radius: 12 }, camera);
   assert.equal(chevron.visible, false);
+  assert.equal(mesh.getObjectByName('sf-swarm-threat-glyph').visible, false);
 });
+
+test('the hostile glyph fills the hull sample and follows the projected nose', () => {
+  const mesh = new THREE.Group();
+  // rotation.y = π sends mesh +X to world −X. Identity camera looks down −Z,
+  // so the nose lies in the plate and the glyph must aim at world −X.
+  mesh.rotation.y = Math.PI;
+  const camera = new THREE.Object3D();
+  const entity = {
+    type: 'ship', team: 1, radius: 12, alive: true,
+    data: { ai: { swarmFireHeld: false } },
+  };
+  syncSwarmThreatPlate(mesh, entity, camera);
+  mesh.updateMatrixWorld(true);
+  const plate = mesh.getObjectByName('sf-swarm-threat-plate');
+  const glyph = mesh.getObjectByName('sf-swarm-threat-glyph');
+  const lamp = glyph.getObjectByName('sf-swarm-threat-lamp');
+  assert.equal(glyph.geometry.type, 'ShapeGeometry');
+  assert.notEqual(glyph.geometry.type, 'CircleGeometry');
+  assert.equal(glyph.material, plate.material, 'the glyph cannot become its own additive layer');
+  assert.equal(glyph.material.blending, THREE.NormalBlending);
+  assert.equal(glyph.material.depthTest, false);
+  assert.equal(lamp.material.isMeshBasicMaterial, true);
+  assert.equal(lamp.material.blending, THREE.NormalBlending);
+  assert.notEqual(lamp.material.blending, THREE.AdditiveBlending);
+  assert.equal(lamp.material.depthTest, false);
+  assert.equal(lamp.material.depthWrite, false);
+  assert.equal(lamp.material.toneMapped, true);
+  assert.equal(lamp.visible, true, 'a live gun shows the nose lamp');
+  const nose = new THREE.Vector3(1, 0, 0).applyQuaternion(glyph.getWorldQuaternion(new THREE.Quaternion()));
+  assert.ok(nose.dot(new THREE.Vector3(-1, 0, 0)) > 0.99, `glyph nose ${nose.x.toFixed(2)},${nose.y.toFixed(2)},${nose.z.toFixed(2)} leaves world −X`);
+  const glyphZ = new THREE.Vector3(0, 0, 1).applyQuaternion(glyph.getWorldQuaternion(new THREE.Quaternion()));
+  const camZ = new THREE.Vector3(0, 0, 1);
+  assert.ok(glyphZ.dot(camZ) > 0.999, 'glyph +Z faces the camera, same as the rim');
+  const reach = chebyshevReach(mesh, glyph);
+  assert.ok(reach <= 12 * 0.7 + 1e-3, `glyph reaches ${reach}, outside the hull sample`);
+  assert.ok(reach > 12 * 0.5, `glyph reach ${reach} is a speck`);
+  const lampReach = chebyshevReach(mesh, lamp);
+  assert.ok(lampReach <= 12 * 0.7 + 1e-3, `lamp reaches ${lampReach}, into the background ring`);
+  const pos = glyph.geometry.attributes.position;
+  let maxEuclid = 0;
+  for (let i = 0; i < pos.count; i++) {
+    maxEuclid = Math.max(maxEuclid, Math.hypot(pos.getX(i), pos.getY(i), pos.getZ(i)));
+  }
+  assert.ok(maxEuclid <= 1 + 1e-3, `unit glyph vertex at ${maxEuclid} can leave the 0.7r sample when the camera tilts`);
+  const filled = geometryAreaXY(glyph.geometry);
+  const frac = filled * (glyph.scale.x / 12) ** 2 / (1.4 ** 2);
+  const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  const L = (r, g, b) => {
+    const y = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    const f = y > 0.008856 ? Math.cbrt(y) : 7.787 * y + 16 / 116;
+    return 116 * f - 16;
+  };
+  const lift = frac * (L(1, 0x1a / 255, 0x3a / 255) - L(0.02, 0.02, 0.03));
+  assert.ok(lift >= 8, `glyph covers ${frac.toFixed(3)} of the hull sample, mean ΔL ${lift.toFixed(1)}`);
+
+  syncSwarmThreatPlate(mesh, { ...entity, data: { ai: { swarmFireHeld: true } } }, camera);
+  assert.equal(lamp.visible, false, 'a held gun keeps the mark and drops the muzzle lamp');
+  assert.equal(glyph.visible, true);
+  syncSwarmThreatPlate(mesh, { type: 'ship', team: 1, radius: 12 }, camera);
+  assert.equal(lamp.visible, true, 'no swarmFireHeld field (gauntlet) leaves the lamp on');
+
+  // Nose parallel to an identity camera (local +X → world −Z). The heading
+  // falls back to plate +X, which is world +X, and must not invent −Z.
+  mesh.rotation.y = Math.PI / 2;
+  syncSwarmThreatPlate(mesh, entity, camera);
+  mesh.updateMatrixWorld(true);
+  const fallback = new THREE.Vector3(1, 0, 0).applyQuaternion(glyph.getWorldQuaternion(new THREE.Quaternion()));
+  assert.ok(fallback.dot(new THREE.Vector3(1, 0, 0)) > 0.99, `parallel nose fallback ${fallback.x.toFixed(2)},${fallback.y.toFixed(2)},${fallback.z.toFixed(2)}`);
+  assert.ok(Math.abs(fallback.z) < 0.05, 'a nose along the view does not spin the glyph onto the view axis');
+});
+
+function geometryAreaXY(geometry) {
+  const pos = geometry.attributes.position;
+  const index = geometry.index;
+  let area = 0;
+  const tri = (i0, i1, i2) => {
+    const ax = pos.getX(i0); const ay = pos.getY(i0);
+    area += Math.abs((pos.getX(i1) - ax) * (pos.getY(i2) - ay) - (pos.getX(i2) - ax) * (pos.getY(i1) - ay)) * 0.5;
+  };
+  if (index) {
+    for (let i = 0; i < index.count; i += 3) tri(index.getX(i), index.getX(i + 1), index.getX(i + 2));
+  } else {
+    for (let i = 0; i < pos.count; i += 3) tri(i, i + 1, i + 2);
+  }
+  return area;
+}
 
 /** Farthest vertex from the mesh origin, Chebyshev, in the mesh's local frame. */
 function chebyshevReach(mesh, child) {

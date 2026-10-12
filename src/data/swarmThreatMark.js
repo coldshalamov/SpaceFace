@@ -5,7 +5,8 @@
 // stroke outside the hull sample and short of the sky sample. 1.65× with a floor
 // of 16 put a radius-12 wasp at 19.8, and the idle gate scored the bright sky
 // as the threat. The rim is an identity stroke, not a disc filled to cover the
-// sample box.
+// sample box. The in-hull read is the fighter glyph in visualFactory
+// (SWARM_GLYPH_OF_BODY), which this constant must not grow into.
 //
 // survivalWave.js stamps entity.data.swarmMarkRadius with this factor.
 // visualFactory.js clamps the rendered plate to the same factor. Neither file

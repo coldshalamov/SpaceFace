@@ -2554,7 +2554,53 @@ function buildAsteroid(e) {
 const _threatPlateQuat = new THREE.Quaternion();
 const _threatPlateScale = new THREE.Vector3();
 const _threatCameraQuat = new THREE.Quaternion();
+const _glyphNose = new THREE.Vector3();
+const _glyphInv = new THREE.Quaternion();
 const _swarmThreatMarks = new WeakMap();
+// Fraction of body radius. sampleBox reads Chebyshev d ≤ 0.7r. 0.66 keeps a
+// unit-circle silhouette inside that square after any camera tilt, and still
+// covers enough of the square that mean ΔL against a dark field clears 8.
+const SWARM_GLYPH_OF_BODY = 0.66;
+// Nose parallel to the view: plate-local XY of mesh +X collapses, so keep the
+// glyph's nose on plate +X instead of inventing a heading from noise.
+const SWARM_GLYPH_NOSE_PARALLEL = 0.2;
+
+/**
+ * Camera-facing fighter in the plate XY plane. Nose is local +X, the same
+ * axis the hull uses. Vertices stay inside the unit circle so the mesh-local
+ * Chebyshev reach cannot exceed SWARM_GLYPH_OF_BODY × body radius.
+ */
+function swarmThreatGlyphGeometry() {
+  const shape = new THREE.Shape();
+  const upper = [
+    [0.98, 0],
+    [0.15, 0.62],
+    [-0.08, 0.94],
+    [-0.40, 0.50],
+    [-0.90, 0.40],
+    [-0.58, 0.16],
+  ];
+  shape.moveTo(upper[0][0], upper[0][1]);
+  for (let i = 1; i < upper.length; i++) shape.lineTo(upper[i][0], upper[i][1]);
+  for (let i = upper.length - 1; i >= 1; i--) shape.lineTo(upper[i][0], -upper[i][1]);
+  shape.closePath();
+  return new THREE.ShapeGeometry(shape);
+}
+
+/**
+ * Point the glyph's +X at the mesh nose projected into the camera plane.
+ * plate.quaternion already equals the camera orientation in mesh space
+ * (plate world quat = camera world quat). atan2(y, x) is that plane's angle
+ * from plate +X; rotateZ applies it in the same plane the shape was built in.
+ * A world-yaw formula would disagree once the camera leaves the horizontal.
+ */
+function aimSwarmThreatGlyph(glyph, plate) {
+  glyph.quaternion.copy(plate.quaternion);
+  _glyphInv.copy(plate.quaternion).invert();
+  _glyphNose.set(1, 0, 0).applyQuaternion(_glyphInv);
+  if (Math.hypot(_glyphNose.x, _glyphNose.y) < SWARM_GLYPH_NOSE_PARALLEL) return;
+  glyph.rotateZ(Math.atan2(_glyphNose.y, _glyphNose.x));
+}
 
 const _hostileTint = new THREE.Color(0xff2438);
 const _hostileTintOf = new WeakMap();
@@ -2615,27 +2661,38 @@ function tintSwarmHostileHull(mesh) {
 /**
  * Hostile swarm hulls are dark metal on a dark field. A thick reticle, and a
  * filled disc the size of the hull, painted the ship out: enemies read as red
- * coins. Two marks, both MeshBasic, normal blending, tone-mapped so they do
- * not bloom into a white ring:
- *   - a thin camera-facing rim at 0.92–1 of the capped mark, depthTest off,
- *     depthWrite off. An identity stroke, not a disc sized to the sample box.
+ * coins. Marks are MeshBasic, normal blending, tone-mapped so they do not
+ * bloom into a white ring:
+ *   - a thin camera-facing rim at 0.92–1 of the capped mark, depthTest off.
+ *     An identity stroke in the 0.7–1.2 sample gap, not a disc.
  *   - a heading wedge on the nose, inside the hull sample, along +X
  *     (the renderer yaws with mesh.rotation.y = -entity.rot)
+ *   - a camera-facing fighter glyph at SWARM_GLYPH_OF_BODY × body, sharing
+ *     the rim material (DoubleSide). It sits in the d ≤ 0.7 sample, which
+ *     the rim never reaches. Not named a core, not a circle.
+ *   - a small nose lamp, same non-additive material family, on while the
+ *     gun is live (ai.swarmFireHeld !== true). Held guns stay marked, dark.
  * The hull itself carries a light crimson emissive (see hostileTintMaterial).
  * The rim is capped at SWARM_THREAT_MARK_SCALE × body radius. Created once per boundary.
  * The scale lives in src/data/swarmThreatMark.js, the same leaf the wave owner
  * uses when it stamps swarmMarkRadius. This file does not import survivalWave.
  */
+function hideSwarmThreatMarks(mesh) {
+  const marks = _swarmThreatMarks.get(mesh);
+  if (marks) {
+    marks.plate.visible = false;
+    if (marks.chevron) marks.chevron.visible = false;
+    if (marks.glyph) marks.glyph.visible = false;
+    if (marks.lamp) marks.lamp.visible = false;
+  }
+  const staleCard = mesh.getObjectByName('sf-swarm-threat-core');
+  if (staleCard) mesh.remove(staleCard);
+}
+
 export function syncSwarmThreatPlate(mesh, entity, camera) {
   if (!mesh || typeof mesh.getObjectByName !== 'function') return;
   if (!entity || entity.type !== 'ship' || entity.team == null || entity.team === 0 || entity.team === 2) {
-    const marks = _swarmThreatMarks.get(mesh);
-    if (marks) {
-      marks.plate.visible = false;
-      if (marks.chevron) marks.chevron.visible = false;
-    }
-    const staleCard = mesh.getObjectByName('sf-swarm-threat-core');
-    if (staleCard) mesh.remove(staleCard);
+    hideSwarmThreatMarks(mesh);
     return;
   }
   tintSwarmHostileHull(mesh);
@@ -2674,6 +2731,38 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     chevron.rotation.z = -Math.PI / 2;
     mesh.add(chevron);
   }
+  // In-hull silhouette. Shares the rim's DoubleSide material. The lens sits
+  // on plate +Z, so the face it sees is the shape's +Z side. Not a disc, and
+  // not an additive VFX layer (those hid the threat pixels).
+  let glyph = mesh.getObjectByName('sf-swarm-threat-glyph');
+  let lamp = glyph && glyph.getObjectByName('sf-swarm-threat-lamp');
+  if (!glyph) {
+    glyph = new THREE.Mesh(
+      getGeometry('swarm:threat-glyph', swarmThreatGlyphGeometry),
+      plate.material,
+    );
+    glyph.name = 'sf-swarm-threat-glyph';
+    glyph.renderOrder = 12;
+    glyph.frustumCulled = true;
+    mesh.add(glyph);
+    lamp = new THREE.Mesh(
+      getGeometry('swarm:threat-lamp', () => new THREE.SphereGeometry(0.11, 10, 8)),
+      getMaterial('swarm:threat-lamp', () => new THREE.MeshBasicMaterial({
+        color: 0xffe4ea,
+        depthWrite: false,
+        depthTest: false,
+        fog: false,
+        toneMapped: true,
+      })),
+    );
+    lamp.name = 'sf-swarm-threat-lamp';
+    lamp.renderOrder = 13;
+    lamp.frustumCulled = true;
+    // 0.72 of the unit glyph, inside the nose, still under the 0.7r sample
+    // once the glyph is scaled by SWARM_GLYPH_OF_BODY.
+    lamp.position.set(0.72, 0, 0.06);
+    glyph.add(lamp);
+  }
   // Local scale is divided by the parent so a scaled hull cannot inflate the rim
   // past the ship. The cohort mark may ask for a wider bracket; the cap keeps
   // the outer edge inside the readability background ring.
@@ -2696,17 +2785,28 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
   // lifts the hull sample and does not tint the background ring. Not the bracket.
   chevron.scale.set(bodyScaleX, bodyScaleY, bodyScaleZ);
   chevron.position.set(bodyScaleX * 0.36, 0, 0);
+  glyph.scale.set(
+    bodyScaleX * SWARM_GLYPH_OF_BODY,
+    bodyScaleY * SWARM_GLYPH_OF_BODY,
+    bodyScaleZ * SWARM_GLYPH_OF_BODY,
+  );
   const marks = _swarmThreatMarks.get(mesh);
-  if (marks) { marks.plate = plate; marks.chevron = chevron; }
-  else _swarmThreatMarks.set(mesh, { plate, chevron });
+  if (marks) { marks.plate = plate; marks.chevron = chevron; marks.glyph = glyph; marks.lamp = lamp; }
+  else _swarmThreatMarks.set(mesh, { plate, chevron, glyph, lamp });
   plate.visible = true;
   chevron.visible = true;
+  glyph.visible = true;
+  // Guns live unless this wave has stamped a hold. Gauntlet hulls have no
+  // swarmFireHeld field, so the lamp stays on and the nose still reads armed.
+  const gunsHeld = !!(entity.data && entity.data.ai && entity.data.ai.swarmFireHeld === true);
+  if (lamp) lamp.visible = !gunsHeld;
   if (camera && camera.quaternion && mesh.quaternion) {
     mesh.getWorldQuaternion(_threatPlateQuat);
     camera.getWorldQuaternion(_threatCameraQuat);
     _threatPlateQuat.invert().multiply(_threatCameraQuat);
     plate.quaternion.copy(_threatPlateQuat);
   }
+  aimSwarmThreatGlyph(glyph, plate);
 }
 
 /** Dark industrial furniture. Matte, no white rings, no hostile-red lamps. */

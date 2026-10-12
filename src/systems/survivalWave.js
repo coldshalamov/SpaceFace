@@ -619,8 +619,8 @@ export const survivalWave = {
       if (!entity || entity.alive === false || !entity.pos || !entity.data?.ai) continue;
       // Opt-in bracket. The default plate stays on entity.radius so a hull without
       // this field cannot grow a halo. The stroke stays just outside the hull
-      // (see SWARM_THREAT_MARK_SCALE) so the dark body, not the crimson rim, is
-      // what the bright-sky sample separates.
+      // (see SWARM_THREAT_MARK_SCALE). The in-hull glyph is what lifts the dark
+      // body off the sky; widening this rim paints the background ring.
       const bodyR = Math.max(2, Number(entity.radius) || 2);
       entity.data.swarmMarkRadius = bodyR * SWARM_THREAT_MARK_SCALE;
       const ai = entity.data.ai;
