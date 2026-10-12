@@ -12,7 +12,9 @@
       "lived-* encounter files": 176,
       "situation:\"toll\" defs": 176,
       "scene-* encounter files": 0,
-      "aftermath_* release assets": 0
+      "aftermath_* release assets": 0,
+      "F1 merge files present": 0,
+      "F2 merge files present": 0
     }
   },
   "items": [
@@ -4848,20 +4850,20 @@
       "note": null,
       "checks": [
         {
-          "check": "absent src/combat/latticeWarden.js",
-          "expect": "absent",
+          "check": "merge-state src/combat/latticeWarden.js",
+          "expect": "present or absent (lands via F2)",
           "observed": "absent",
           "pass": true
         },
         {
-          "check": "absent src/render/latticeWardenTethers.js",
-          "expect": "absent",
+          "check": "merge-state src/render/latticeWardenTethers.js",
+          "expect": "present or absent (lands via F2)",
           "observed": "absent",
           "pass": true
         },
         {
-          "check": "absent src/data/encounters/capital-boss/lattice-warden.js",
-          "expect": "absent",
+          "check": "merge-state src/data/encounters/capital-boss/lattice-warden.js",
+          "expect": "present or absent (lands via F2)",
           "observed": "absent",
           "pass": true
         }
@@ -5765,8 +5767,8 @@
           "pass": true
         },
         {
-          "check": "absent src/data/livedSectorOverlays.js",
-          "expect": "absent",
+          "check": "merge-state src/data/livedSectorOverlays.js",
+          "expect": "present or absent (lands via F1)",
           "observed": "absent",
           "pass": true
         }

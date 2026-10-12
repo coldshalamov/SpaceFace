@@ -135,12 +135,30 @@ const partsAbsent = (substr) => () => {
   return ck(`no ${PARTS_DIR} file matching "${substr}"`, '0 files', `${hits.length} file(s)${hits.length ? ': ' + hits.slice(0, 3).join(',') : ''}`, hits.length === 0);
 };
 const metric = (label, observed, note) => () => ({ check: label, expect: note || 'recorded', observed: String(observed), pass: true });
+// Merge-state checks record presence/absence of files owned by a sibling chunk's
+// merge. They always pass: the §6.5 landing sequence (F1 → F2 → F3) makes either
+// state valid truth, and --write snapshots whichever is observed so the artifact
+// still diffs merge truth. A hard absent() assert here would go red the moment
+// the sibling chunk lands.
+const mergeState = (p, note) => () => {
+  const e = existsSync(R(p));
+  return ck(`merge-state ${p}`, `present or absent (${note})`, e ? 'present' : 'absent', true);
+};
 
 // --- spec-side observed metrics (shared by several items) --------------------
 const encDir = R('src/data/encounters');
 const encFiles = existsSync(encDir) ? readdirSync(encDir).filter((f) => f.endsWith('.js') && f !== 'index.generated.js') : [];
 const livedFiles = encFiles.filter((f) => basename(f).includes('lived-'));
-const sceneFiles = encFiles.filter((f) => basename(f).startsWith('scene-'));
+// F1 lands encounters as `NNN-scene-*.js` (verified 570-scene-… through 585-scene-…).
+const sceneFiles = encFiles.filter((f) => /^\d+-scene-/.test(f));
+
+// Files owned by sibling chunks in the §6.5 sequence — recorded, never asserted.
+const F1_FILES = ['src/data/livedSectorOverlays.js'];
+const F2_FILES = [
+  'src/combat/latticeWarden.js',
+  'src/render/latticeWardenTethers.js',
+  'src/data/encounters/capital-boss/lattice-warden.js',
+];
 let tollCount = 0;
 for (const f of encFiles) {
   const s = txt(`src/data/encounters/${f}`) || '';
@@ -390,10 +408,7 @@ for (const [id, checks, note] of UNITS) {
     { lifecycle_status: `[P] unit def — ${note}` }));
 }
 ITEMS.push(it('F2-ref', '3.5', 'devin/1791167345-lattice-warden (unmerged)', ['lattice_warden'],
-  [
-    absent('src/combat/latticeWarden.js'), absent('src/render/latticeWardenTethers.js'),
-    absent('src/data/encounters/capital-boss/lattice-warden.js'),
-  ],
+  F2_FILES.map((p) => mergeState(p, 'lands via F2')),
   { lifecycle_status: 'unmerged reference pattern — lands via chunk F2' }));
 
 // §3.6 — placeholder replacements
@@ -492,7 +507,7 @@ ITEMS.push(it('D-RW', '3.8', 'design/program/02_REMAINING_WORK.md', ['graphics r
 ITEMS.push(it('F1-ref', '3.6', 'devin/1791689614-world-placement-program (unmerged)', ['scene-* encounters'],
   [
     metric('scene-* encounter files', sceneFiles.length, '0 expected pre-F1 merge; 16 expected after'),
-    absent('src/data/livedSectorOverlays.js'),
+    ...F1_FILES.map((p) => mergeState(p, 'lands via F1')),
   ],
   { lifecycle_status: 'unmerged — lands via chunk F1' }));
 
@@ -535,6 +550,8 @@ const artifact = {
       'situation:"toll" defs': tollCount,
       'scene-* encounter files': sceneFiles.length,
       'aftermath_* release assets': aftermathFiles.length,
+      'F1 merge files present': F1_FILES.filter((p) => existsSync(R(p))).length,
+      'F2 merge files present': F2_FILES.filter((p) => existsSync(R(p))).length,
     },
   },
   items: results,
