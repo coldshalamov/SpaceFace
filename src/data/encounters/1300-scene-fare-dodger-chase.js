@@ -152,7 +152,7 @@ export const spec = {
   ]
 };
 
-export const encounterOrder = 569;
+export const encounterOrder = 1300;
 export const trigger = deepFreeze({
   "id": "scene_fare_dodger_chase",
   "tier": "ambient",
