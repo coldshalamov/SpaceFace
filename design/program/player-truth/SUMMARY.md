@@ -8,7 +8,7 @@ its check reads PASS. Renderer for every run below:
 
 ## Scoreboard (seed 4242) — measured on `9e647c306`, branch now on `debe715c8a`
 
-Rebased onto `origin/master` `debe715c8a` (2026-10-12, clean, no content conflicts, `mergeable` MERGEABLE). The rows below were measured on `9e647c306`, which already contains Lane 6's room-solid clearance `6b67d1fb1`. They are not a fresh measurement of `debe715c8a`: master moved 328 commits after that run, including the popin/residency waves and UI polish #301. The harness commits do not change combat. Renderer: SwiftShader, 960x540. Command that produced the rows: `npm run player-truth -- --mode=swarm --arena="Ricochet Foundry" --gate --evidence --tag=seed4242`. Evidence: `swarm-ricochet-foundry-idle-seed4242/`, `swarm-ricochet-foundry-active-seed4242/`. A fresh `--gate=active` on this tip is the open run.
+Rebased onto `origin/master` `debe715c8a` (2026-10-12, clean, no content conflicts, `mergeable` MERGEABLE). The rows below were measured on `9e647c306`, which already contains Lane 6's room-solid clearance `6b67d1fb1`. They are not a fresh measurement of `debe715c8a`: master moved 328 commits after that run, including the popin/residency waves and UI polish #301. The harness commits do not change combat. Renderer: SwiftShader, 960x540. Command that produced the rows: `npm run player-truth -- --mode=swarm --arena="Ricochet Foundry" --gate --evidence --tag=seed4242`. Evidence: `swarm-ricochet-foundry-idle-seed4242/`, `swarm-ricochet-foundry-active-seed4242/`. A fresh `--gate` (idle + active) is queued, not started: `--mode=swarm --arena="Ricochet Foundry" --seed=4242 --gate --evidence --wall=50 --tag=seed4242-debe715`. `--prune-frames` is not set.
 
 A status of UNKNOWN is not a pass. Round 2 after the clearance is UNKNOWN: the active pass died in round 1 when the browser closed. The exit code of a FAIL is 1 (`gateExitCode`); INCOMPLETE is 2; only an all-PASS run exits 0.
 
@@ -38,11 +38,11 @@ These are not measured. Do not read an older first-generation verdict below as t
 
 | run | status | reason |
 |---|---|---|
-| Swarm round 2 after `6b67d1fb1` | UNKNOWN | Active seed 4242 closed in round 1 on `9e647c306`. The 07:24 queue acquired the lock and died before Chromium (`uv_cwd`: the process directory was replaced while it waited). The replacement queue on `debe715c8a` waits on `player-truth.lock` (one Chromium): `--gate=active --wall=50 --evidence --tag=seed4242-r2`. |
-| Hull × viewport matrix (960 / 1280 / 1920 × unlocked hulls) | UNKNOWN | Not run. Same queue, after the round-2 re-run. `player_ship` names a rectangle or an invisible ship. |
-| Gauntlet `--gate` | UNKNOWN | Not run. Same queue, after the matrix. The first-generation arena rows below are not a `--gate` pass. |
-| Adventure `--gate` | UNKNOWN | Not run. Same queue. The 150 s cruise below is not a `--gate` pass. |
-| Racing `--gate` | UNKNOWN | Not run. Same queue. The 75 s Textile Belt row below is not a `--gate` pass. |
+| Swarm round 2 after `6b67d1fb1` | UNKNOWN | Active seed 4242 closed in round 1 on `9e647c306`. The 07:24 queue acquired the lock and died before Chromium (`uv_cwd`: the process directory was replaced while it waited). The replacement on `debe715c8a` is waiting on `player-truth.lock` (pid 191163, one Chromium, not started): `--gate --wall=50 --evidence --tag=seed4242-debe715`. |
+| Hull × viewport matrix (960 / 1280 / 1920 × unlocked hulls) | UNKNOWN | Not run. Not in the current lock queue. `player_ship` names a rectangle or an invisible ship. |
+| Gauntlet `--gate` | UNKNOWN | Not run. Not in the current lock queue. The first-generation arena rows below are not a `--gate` pass. |
+| Adventure `--gate` | UNKNOWN | Not run. Not in the current lock queue. The 150 s cruise below is not a `--gate` pass. |
+| Racing `--gate` | UNKNOWN | Not run. Not in the current lock queue. The 75 s Textile Belt row below is not a `--gate` pass. |
 
 ## Owning lanes (rebased onto `debe715c8a`, 2026-10-12)
 
