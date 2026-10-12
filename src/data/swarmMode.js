@@ -137,8 +137,8 @@ export const SWARM_REINFORCE_SURGE_MAX = 7;
  *
  * A ≥3-kill hole (or three unrepaired kills) buys SWARM_BREATH_TICKS of visibly thinner air.
  * Pressure accumulates in the reservoir for that beat, then one telegraphed group spends it.
- * Same roster, same concurrent ceiling, same hull values. The empty-room emergency still
- * returns a batch immediately so the board never sits at zero.
+ * Same roster, same concurrent ceiling, same hull values. A fresh empty room fills immediately;
+ * a complete player-earned wipe keeps this same breath instead of cancelling the reward.
  */
 export const SWARM_CLEAR_KILLS = 3;
 export const SWARM_BREATH_TICKS = 240;
@@ -195,6 +195,7 @@ export function swarmPressureIsHolding(state = livePressure) {
  * `alive` is the live cohort census. `null` means unknown (tests that never bound the arena):
  * a hole of SWARM_CONCURRENT_MIN or more is treated as an empty-room emergency. Production
  * binds the arena, so a wiped board is `alive === 0` regardless of the opening count.
+ * Recorded kills distinguish an earned wipe from an empty startup.
  */
 export function swarmReinforceDecision(state, deficit, opts = {}) {
   const bag = state && typeof state === 'object' ? state : createSwarmPressureState();
@@ -210,8 +211,8 @@ export function swarmReinforceDecision(state, deficit, opts = {}) {
     return { count: 0, telegraph: false, spent: 0 };
   }
 
-  // AN EMPTY BOARD IS AN EMERGENCY. The breath is "thinner", never "nobody here".
-  if (empty) {
+  // Empty at startup is starvation; empty after a real clear is an earned breath.
+  if (empty && !bag.holding && bag.killsSinceReinforce < SWARM_CLEAR_KILLS) {
     resetSwarmPressureState(bag);
     return { count: Math.min(d, SWARM_REINFORCE_BATCH), telegraph: false, spent: 0 };
   }

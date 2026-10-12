@@ -8,7 +8,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createRunState } from '../src/core/runState.js';
 import { mulberry32 } from '../src/core/rng.js';
-import { createBroodEngine, broodStreamSeed, BROOD_PHASE_WINDUP, BROOD_PHASE_DASH, BROOD_PHASE_RECOVER, BROOD_PHASE_LATCHED } from '../src/systems/swarmBrood.js';
+import { createBroodEngine, broodStreamSeed, BROOD_ATTACK_ARRIVAL_S, BROOD_PHASE_WINDUP, BROOD_PHASE_DASH, BROOD_PHASE_RECOVER, BROOD_PHASE_LATCHED } from '../src/systems/swarmBrood.js';
 import {
   BROOD_CHARGER_DASH_SPEED,
   BROOD_CHARGER_WINDUP_S,
@@ -151,6 +151,7 @@ test('spitters lob a marked arc: the marker leads, the splash punishes standing 
   const engine = makeEngine(h, { damage });
   engine.prepareWave(h.state.run, 3);
   engine.spawnWave(h.state);
+  h.state.simTime += BROOD_ATTACK_ARRIVAL_S; // this suite tests attack language AFTER safe arrival
   const i = familySlot(engine, 'spitter');
   assert.ok(i >= 0, 'wave 3 fields spitters');
   // Isolate this spitter so the splash receipt is exactly its own.
@@ -190,6 +191,7 @@ test('spitters lob a marked arc: the marker leads, the splash punishes standing 
   const engine2 = makeEngine(h2, { damage: damage2 });
   engine2.prepareWave(h2.state.run, 3);
   engine2.spawnWave(h2.state);
+  h2.state.simTime += BROOD_ATTACK_ARRIVAL_S;
   const j = familySlot(engine2, 'spitter');
   for (let k = 0; k < SWARM_BROOD_MAX; k++) {
     if (engine2._bodies.alive[k] && k !== j) engine2._killDirectForTest(k, 'terrain');
@@ -211,8 +213,12 @@ test('chargers line-telegraph, then dash — and a rock on the pass is their end
   const engine = makeEngine(h);
   engine.prepareWave(h.state.run, 7);
   engine.spawnWave(h.state);
+  h.state.simTime += BROOD_ATTACK_ARRIVAL_S; // this suite tests attack language AFTER safe arrival
   const i = familySlot(engine, 'charger');
   assert.ok(i >= 0, 'wave 7 fields chargers');
+  for (let k = 0; k < SWARM_BROOD_MAX; k++) {
+    if (engine._bodies.alive[k] && k !== i) engine._killDirectForTest(k, 'direct');
+  } // isolate one tell; the group-level cap is tested separately
   engine._bodies.px[i] = 250;
   engine._bodies.pz[i] = 0;
   h.state.simTime += DT;
@@ -248,6 +254,7 @@ test('a charger pass that reaches the hull lands once, shoves, and recovers', ()
   const engine = makeEngine(h, { damage });
   engine.prepareWave(h.state.run, 7);
   engine.spawnWave(h.state);
+  h.state.simTime += BROOD_ATTACK_ARRIVAL_S; // this suite tests attack language AFTER safe arrival
   const i = familySlot(engine, 'charger');
   assert.ok(i >= 0);
   // Isolate this charger so every slam receipt is its own.
@@ -277,6 +284,7 @@ test('leechers latch and drag; a wall scrape sheds them', () => {
   const engine = makeEngine(h);
   engine.prepareWave(h.state.run, 11);
   engine.spawnWave(h.state);
+  h.state.simTime += BROOD_ATTACK_ARRIVAL_S; // this suite tests attack language AFTER safe arrival
   const i = familySlot(engine, 'leecher');
   assert.ok(i >= 0, 'wave 11 fields leechers');
   // Onto the hull: the latch.
@@ -315,6 +323,7 @@ test('the whole family set stays deterministic: same seed, identical 10 seconds'
     const engine = makeEngine(h);
     engine.prepareWave(h.state.run, 12);
     engine.spawnWave(h.state);
+  h.state.simTime += BROOD_ATTACK_ARRIVAL_S; // this suite tests attack language AFTER safe arrival
     return { h, engine };
   };
   const a = mk(SEED);
@@ -337,6 +346,7 @@ test('the renderer speaks the attack language: markers, lines, pools, lobs, fami
   const engine = makeEngine(h, { damage });
   engine.prepareWave(h.state.run, 12);
   engine.spawnWave(h.state);
+  h.state.simTime += BROOD_ATTACK_ARRIVAL_S; // this suite tests attack language AFTER safe arrival
   const scene = { objects: [], add(o) { this.objects.push(o); }, remove(o) { const i = this.objects.indexOf(o); if (i >= 0) this.objects.splice(i, 1); } };
   const pres = createBroodPresentation(scene, 400);
   pres.update(engine.view, DT, { simTime: 0 });
@@ -348,11 +358,15 @@ test('the renderer speaks the attack language: markers, lines, pools, lobs, fami
   // A winding spitter draws its marker ring; a winding charger draws its line.
   const si = familySlot(engine, 'spitter');
   const ci = familySlot(engine, 'charger');
+  for (let k = 0; k < SWARM_BROOD_MAX; k++) {
+    if (engine._bodies.alive[k] && k !== si && k !== ci) engine._killDirectForTest(k, 'direct');
+  }
   engine._bodies.px[si] = 120; engine._bodies.pz[si] = 0;
   engine._bodies.px[ci] = 240; engine._bodies.pz[ci] = 0;
   h.state.simTime += DT;
   engine.step(h.state);
   assert.equal(engine._bodies.phase[si], BROOD_PHASE_WINDUP);
+  stepSeconds(engine, h.state, 0.45); // tells enter separately, not all on one frame
   assert.equal(engine._bodies.phase[ci], BROOD_PHASE_WINDUP);
   pres.update(engine.view, DT, { simTime: 0.1 });
   assert.ok(rings.count >= 1, 'the spitter marker is drawn');

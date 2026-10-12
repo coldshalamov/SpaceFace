@@ -57,6 +57,11 @@ export function applyAIFiringIntent(decision, state) {
   const pdActor = isPdScreenActor(e);
   // INF-028 arrival hold: the same data marker the legacy brain honours. A fresh arrival (or a
   // hull a wave director has told to wait its turn) keeps flying and aiming but does not fire.
+  const swarmHoldUntil = Number(data.ai && data.ai.swarmFireHoldUntil);
+  if (Number.isFinite(swarmHoldUntil) && state.simTime < swarmHoldUntil) {
+    clearFire(intent, 'swarm_fire_hold');
+    return;
+  }
   const holdUntil = Number(data.ai && data.ai.arrivalHoldUntil);
   if (Number.isFinite(holdUntil) && Number.isFinite(state.simTime) && state.simTime < holdUntil) {
     clearFire(intent, 'arrival_hold');
