@@ -23,6 +23,7 @@ import {
   classifySelectionSubject,
   resolveSelectionSigil,
   sigilRadius,
+  swarmWithholdsSelectionSigil,
 } from '../src/render/selectionSigil.js';
 import { resolveTargetContour, resolveTargetContourEntity } from '../src/render/targetContour.js';
 import { targetBracketShape } from '../src/ui/targetBracket.js';
@@ -82,6 +83,22 @@ test('a live selection beats an engaged contact', () => {
   const firing = ship(9, 1, -30, 55, 8, true);
   const state = stateFor(0, picked, firing);
   assert.equal(resolveSelectionSigil(state).id, 4, 'what the player chose is what gets marked');
+});
+
+test('an active swarm fight withholds the additive sigil and keeps the lock', () => {
+  const target = ship(7, 1, 100, -40, 12, true);
+  const state = stateFor(0, target);
+  state.run = { kind: 'survival', ruleset: 'swarm', phase: 'active', wave: 1 };
+  assert.equal(swarmWithholdsSelectionSigil(state), true);
+  assert.equal(resolveSelectionSigil(state), null);
+  assert.equal(resolveTargetContour(state).id, 7, 'the lock stays; only the deck is withheld');
+  state.run = { kind: 'survival', ruleset: 'swarm', phase: 'inactive' };
+  assert.equal(swarmWithholdsSelectionSigil(state), false);
+  assert.equal(resolveSelectionSigil(state).id, 7);
+  state.run = { kind: 'survival', ruleset: 'arc', phase: 'active' };
+  assert.equal(swarmWithholdsSelectionSigil(state), false);
+  assert.equal(resolveSelectionSigil(state).id, 7);
+  assert.equal(resolveSelectionSigil(state).tight, undefined);
 });
 
 // -----------------------------------------------------------------------------------------------
@@ -170,6 +187,7 @@ test('the three-way class is the HUD bracket class, by construction', () => {
   assert.equal(targetBracketShape(hostile, true), 'bracket-hostile');
   assert.equal(targetBracketShape(pod, false), 'bracket-cargo');
   assert.equal(targetBracketShape(friendly, false), 'bracket-friendly');
+});
 
 // -----------------------------------------------------------------------------------------------
 // Arrival and departure are structural, never an opacity channel (VFX standard B17).
@@ -336,6 +354,4 @@ test('a disposed sigil refuses work instead of throwing', () => {
   sigil.reproject(1, 1);
   assert.equal(sigil.inspect().visible, false);
   assert.equal(sigil.inspect().renderOrder, null);
-});
-
 });
