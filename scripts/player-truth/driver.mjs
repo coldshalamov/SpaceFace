@@ -21,10 +21,10 @@ export async function waitSim(page, seconds, { maxWallMs = 120000, until = null,
   return { done: false, timeout: true };
 }
 
-export async function holdKey(page, code, seconds, label, probes) {
+export async function holdKey(page, code, seconds, label, probes, until = null) {
   const startSim = await simNow(page); const startT = await wallNow(page);
   await page.keyboard.down(code);
-  try { await waitSim(page, seconds, { maxWallMs: 90000 }); } finally { await page.keyboard.up(code); }
+  try { await waitSim(page, seconds, { maxWallMs: 90000, until }); } finally { await page.keyboard.up(code); }
   const endSim = await simNow(page); const endT = await wallNow(page);
   const rec = { label, key: code, kind: code === 'KeyW' ? 'thrust' : 'yaw', startSim, endSim, startT, endT };
   if (probes) probes.push(rec);
@@ -83,6 +83,19 @@ export function readTarget() {
 
 const fighterMemory = { hull: null, breakBeats: 0 };
 
+// A pausing arena surface legitimately stops the simulation clock. Finish the
+// current public-input beat and let run.mjs use its real between-round controls.
+function combatPhaseEnded(st) {
+  return st.mode !== 'flight'
+    || !!(st.run && st.run.kind === 'survival' && st.run.phase !== 'active');
+}
+
+function readCombatPhaseEnded() {
+  const st = window.SF.state;
+  return st.mode !== 'flight'
+    || !!(st.run && st.run.kind === 'survival' && st.run.phase !== 'active');
+}
+
 /**
  * One beat of a kiting fighter (public input only): aim the mouse at the nearest hostile and fire,
  * hold a 230–400 u standoff, and break off — turn away from the pack and burn — when 3+ hostiles
@@ -96,8 +109,10 @@ export async function fightBeat(page, beat) {
   // Kite: never sit inside a pack. Burn away when 3+ hostiles close in, when hit, or when low.
   if ((tg.near >= 3 && tg.packDist < 450) || lost > 0.04 || (tg.hull < 0.5 && tg.near >= 2 && tg.packDist < 600)) fighterMemory.breakBeats = Math.max(fighterMemory.breakBeats, 4);
   if (tg.none) {
-    await holdKey(page, 'KeyW', 0.6, null, null);
-    if (beat % 3 === 0) await holdKey(page, 'KeyA', 0.4, null, null);
+    await holdKey(page, 'KeyW', 0.6, null, null, combatPhaseEnded);
+    if (beat % 3 === 0 && !await page.evaluate(readCombatPhaseEnded)) {
+      await holdKey(page, 'KeyA', 0.4, null, null, combatPhaseEnded);
+    }
     return;
   }
   await page.mouse.move(Math.round(tg.x), Math.round(tg.y), { steps: 2 });
@@ -114,13 +129,20 @@ export async function fightBeat(page, beat) {
     else if (tg.dist > 400 || beat % 3 !== 2) keys.push('KeyW');
   }
   if (Math.abs(err) > 0.12) turn = err > 0 ? 'KeyA' : 'KeyD'; // KeyD lowers rot (measured by the yaw probes)
-  for (const k of keys) await page.keyboard.down(k);
-  const turnS = turn ? Math.min(0.6, Math.abs(err) / 4.5) : 0;
-  if (turn) { await page.keyboard.down(turn); await waitSim(page, turnS, { maxWallMs: 30000 }); await page.keyboard.up(turn); }
-  await waitSim(page, Math.max(0.05, 0.6 - turnS), { maxWallMs: 30000 });
-  for (const k of ['KeyW', 'KeyS', 'KeyA', 'KeyD']) await page.keyboard.up(k);
-  await page.mouse.up();
-  if (beat % 7 === 3) { await page.keyboard.press('Space'); }
+  try {
+    for (const k of keys) await page.keyboard.down(k);
+    const turnS = turn ? Math.min(0.6, Math.abs(err) / 4.5) : 0;
+    if (turn) {
+      await page.keyboard.down(turn);
+      await waitSim(page, turnS, { maxWallMs: 30000, until: combatPhaseEnded });
+      await page.keyboard.up(turn);
+    }
+    await waitSim(page, Math.max(0.05, 0.6 - turnS), { maxWallMs: 30000, until: combatPhaseEnded });
+  } finally {
+    for (const k of ['KeyW', 'KeyS', 'KeyA', 'KeyD']) await page.keyboard.up(k);
+    await page.mouse.up();
+  }
+  if (beat % 7 === 3 && !await page.evaluate(readCombatPhaseEnded)) { await page.keyboard.press('Space'); }
 }
 
 /** A non-combat flyer for Adventure / racing: thrust bursts and gentle turns, never idle long. */
