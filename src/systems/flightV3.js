@@ -27,7 +27,7 @@ import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propuls
 import { applyFeelEnvelope, hullIdFromEntity, pathFollowBlocksFeel } from '../data/flightFeelEnvelopes.js';
 import { createPropulsionRuntime, stepPropulsion } from '../core/flight/propulsionKernel.js';
 import { computeFlightTelemetry, computeSweptHullAdvisory, SWEPT_HULL_DEFAULTS } from '../core/flight/flightTelemetry.js';
-import { orbitHeadingThrustGate, orbitSwingThrottleScale, stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
+import { ORBIT_ASSIST_TUNING_V1, orbitHeadingThrustGate, orbitSwingThrottleScale, stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 // FB-001: the authored pursuit-slot chase assist. Pure module; flightV3 is its only caller and
 // gates it behind the opt-in gameplay.pursuitSlotAssist setting (default off).
@@ -111,6 +111,10 @@ const BOOST_ACCEL_OVERSHOOT_S = 0.2;
 // SWING DRIVE: a tangent-redirected dash carries this uprate over the straight dash — the line
 // constrains the direction, so the pendulum press is worth more than an ordinary burst.
 const SWING_DRIVE_GAIN = 1.35;
+// After that dash the nose is often still radial. For this long, a held forward command (and
+// not a brake or a reversal) is steered with the dash's tangent sign, so the thrust the pilot
+// is already holding continues around the anchor. The window adds no impulse of its own.
+const SWING_DRIVE_COMMIT_S = 1.35;
 const DEFAULT_BOOST_RESOURCE = Object.freeze({
   energy: 0,
   max: 0,
@@ -153,6 +157,7 @@ export const flightV3 = {
     // Dash-earned momentum window (simTime seconds). Instance state, not sim state: it is derived
     // presentation-free input tagging, so it must not enter the save or the sim snapshot.
     this._dashEarnedUntil = 0;
+    this._swingCommit = null;
     // Swept-hull advisory face latch (SF-012): which advisory state the bus last saw. Derived
     // publication state only — never saved, never sim-authoritative.
     this._sweptHull = { active: false, contactId: null, sliding: false, emittedAt: -Infinity };
@@ -188,12 +193,15 @@ export const flightV3 = {
       this.bus.on('save:loaded', () => {
         this._masslineSlingUntil = 0;
         this._dashEarnedUntil = 0;
+        this._clearSwingCommit();
         this._resetSweptHullLatch();
         this._sanitizeAllRuntime();
         this._cancelPlayerBoostOnRestore();
         this._setFlightMode('manual', 'load');
       });
-      this.bus.on('game:started', () => { this._masslineSlingUntil = 0; this._dashEarnedUntil = 0; this._resetSweptHullLatch(); this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
+      this.bus.on('game:started', () => { this._masslineSlingUntil = 0; this._dashEarnedUntil = 0; this._clearSwingCommit(); this._resetSweptHullLatch(); this._sanitizeAllRuntime(); this._cancelPlayerBoostOnRestore(); this._setFlightMode('manual', 'new-game'); });
+      this.bus.on('player:death', () => this._clearSwingCommit());
+      this.bus.on('player:respawn', () => this._clearSwingCommit());
       this.bus.on('tether:latched', () => this._setFlightMode('manual', 'tether'));
       this.bus.on('massline:selfSling', () => {
         if (!massline2Flag('throw')) return;
@@ -247,6 +255,7 @@ export const flightV3 = {
       settleBank(player, dt);
       this._cancelPlayerBoost(player);
       cancelPhaseBlink(player);
+      this._clearSwingCommit();
     }
 
     for (const entity of flightCraftCandidates(state)) {
@@ -383,8 +392,9 @@ export const flightV3 = {
     if (isPlayer) {
       // Same step the pre-boost probe ran; re-run with the post-boost input so the returned
       // packet carries the resource-gated boost flag and the keys the boost block attached.
+      const swingCommit = this._liveSwingCommit(entity, state, rawInput, input);
       orbitAssist = craftOrbitAssistStep(
-        state, entity, body, orbitAnchor, rawInput, input, tether, profile, dt,
+        state, entity, body, orbitAnchor, rawInput, input, tether, profile, dt, swingCommit,
       );
       // Direction latch memory lives on the entity and is written only after this steering call,
       // so the pre-boost probe and this call read the same previous-tick latch (both stay pure).
@@ -488,6 +498,7 @@ export const flightV3 = {
       frame.orbitAssist = orbitAssist
         ? { active: orbitAssist.active, ...orbitAssist.telemetry, swingThrottleScale: orbitSwingScale }
         : { active: false, reason: 'unavailable' };
+      frame.swingCommit = publishSwingCommit(this._swingCommit, state);
       // FB-001: published-state telemetry for the opt-in pursuit-slot assist (instrument and
       // tests read this; nothing consumes it to steer). Mirrors the orbitAssist row above.
       frame.pursuitSlot = pursuitSlot
@@ -682,6 +693,7 @@ export const flightV3 = {
     let imp = boost.dashImpulse;
     let dirX = cf, dirZ = sf;
     let swung = false;
+    let swingSign = 1;
     // SWING DRIVE (mod_swing_drive_m → derived.swingDrive): with a live tether latched, the dash
     // becomes a pendulum input — the whole impulse is redirected onto the line's tangent (the
     // swing direction the hull is already carrying, else the side the nose points), and uprated,
@@ -706,6 +718,7 @@ export const flightV3 = {
         dirZ = tz * sign;
         imp *= SWING_DRIVE_GAIN;
         swung = true;
+        swingSign = sign;
       }
     }
     const mass = positive(e.physicsBody && e.physicsBody.mass, positive(e.mass, 1));
@@ -727,6 +740,10 @@ export const flightV3 = {
       }
     }
     queuePhysicsImpulse(e, { x: dirX * scaled * mass, y: 0, z: dirZ * scaled * mass });
+    if (e && state && e.id === state.playerId) {
+      if (swung) this._armSwingCommit(state, tether, swingSign);
+      else this._clearSwingCommit();
+    }
     boost.energy = Math.max(0, boost.energy - boost.dashCost);
     boost.dashCdT = boost.dashCd;
     // The dash impulse is queued through physics authority above, so by the time the pure kernel
@@ -748,6 +765,38 @@ export const flightV3 = {
       if (swung) this.bus.emit('ship:swingDash', { shipId: e.id, impulse: imp });
     }
     return true;
+  },
+
+  // The dash already queued its one impulse. This only remembers which way that impulse
+  // went, so a later forward command can yaw onto it. Cleared by time, a cut line, a
+  // brake, a reversal, death, or a straight dash.
+  _armSwingCommit(state, tether, direction) {
+    if (!tether || tether.targetId == null) return;
+    this._swingCommit = {
+      until: finite(state && state.simTime, 0) + SWING_DRIVE_COMMIT_S,
+      targetId: tether.targetId,
+      direction: Math.sign(direction) || 1,
+    };
+  },
+
+  _clearSwingCommit() {
+    this._swingCommit = null;
+  },
+
+  _liveSwingCommit(entity, state, rawInput, input) {
+    const commit = this._swingCommit;
+    if (!commit) return null;
+    const now = finite(state && state.simTime, 0);
+    const tether = state && state.player && state.player.tether;
+    const lateral = finite(rawInput && (rawInput.turnIntent ?? rawInput.turn));
+    const reversed = lateral !== 0 && Math.sign(lateral) !== commit.direction;
+    const lostLine = !tether || tether.active !== true || tether.targetId !== commit.targetId;
+    if (!entity || entity.alive === false || lostLine || !!(input && input.brake)
+        || reversed || !(now < commit.until)) {
+      this._swingCommit = null;
+      return null;
+    }
+    return commit;
   },
 
   // Called when controls go inactive (menu/docked) or on save:loaded/game:started. Suppresses an
@@ -1104,17 +1153,22 @@ const _diagArgs = { body: null, profile: null, control: _diagControl };
  * the probe's `.active` is always the steering call's `.active`: suppression owns exactly the
  * ticks the assist owns.
  */
-function craftOrbitAssistStep(state, entity, body, anchor, rawInput, input, tether, profile, dt) {
+function craftOrbitAssistStep(state, entity, body, anchor, rawInput, input, tether, profile, dt, swingCommit) {
+  const forward = finite(rawInput && (rawInput.moveZ ?? rawInput.throttle));
+  const commitDirection = swingCommit && forward > ORBIT_ASSIST_TUNING_V1.minIntent
+    ? swingCommit.direction
+    : 0;
   return stepAnchorRelativeOrbitAssist({
     dt,
     host: body,
     anchor,
     tether,
     flightIntent: {
-      forward: finite(rawInput && (rawInput.moveZ ?? rawInput.throttle)),
+      forward,
       lateral: finite(rawInput && (rawInput.turnIntent ?? rawInput.turn)),
       lateralFromAim: !!(rawInput && rawInput.turnIntentFromAim),
     },
+    commitDirection,
     latchedDirection: entity._orbitDirectionLatch || 0,
     input,
     profile,
@@ -1122,6 +1176,18 @@ function craftOrbitAssistStep(state, entity, body, anchor, rawInput, input, teth
       && state.settings.gameplay.orbitAssistStrength,
     controlsBlocked: !playerFlightControlsActive(state, entity) || !!input.drawFlight,
   });
+}
+
+function publishSwingCommit(commit, state) {
+  if (!commit) return { active: false, direction: 0, targetId: null, remainingS: 0 };
+  const remainingS = commit.until - finite(state && state.simTime, 0);
+  if (!(remainingS > 0)) return { active: false, direction: 0, targetId: null, remainingS: 0 };
+  return {
+    active: true,
+    direction: commit.direction,
+    targetId: commit.targetId,
+    remainingS,
+  };
 }
 
 /**

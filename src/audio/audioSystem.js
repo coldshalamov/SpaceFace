@@ -34,6 +34,7 @@ import {
 } from './bombAudio.js';
 import { bindFieldAudio, isFieldLoopKey } from './fieldAudio.js';
 import { resolveMasslineInstrument, resolveTetherTone } from './masslineInstrument.js';
+import { tetherBreakCueForReason } from '../systems/presentationOrchestrator.js';
 import { entityIndexLaneVersion, indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import { ceresActivityActorWorldRecordId } from '../systems/traffic.js';
 
@@ -2662,8 +2663,11 @@ export const audio = {
     // Route handoff commits the autopilot brake once per leg approach (routeFollower).
     bus.on('nav:routeBrake', (p) => this._onRouteBrake(p));
     bus.on('ship:dash', (p) => {
-      // Dash: layered whoosh+thump (juice recipe), player-only.
-      if (p && p.shipId === this.state.playerId) this.play('sfx.shipDash', { gain: 0.7 });
+      // Dash: layered whoosh+thump (juice recipe), player-only. A swing-drive dash is the
+      // same recipe slowed, so the pendulum press is audible without a second verb owner.
+      if (p && p.shipId === this.state.playerId) {
+        this.play('sfx.shipDash', p.swung ? { gain: 0.85, rate: 0.78 } : { gain: 0.7 });
+      }
     });
     // Sustained cruise is still the engine-hum 'cruise' tier (65 Hz fifth). Presentation owns
     // finite charge/lock accents so a second continuous oscillator can never leak into the pool.
@@ -2705,11 +2709,14 @@ export const audio = {
     bus.on('tether:releaseRated', (p) => this._onMasslineInstrument('release', p));
     bus.on('tether:broken', (p) => {
       const reason = String((p && p.reason) || '').toLowerCase();
-      // A player cut is a let-go, not a cable failure. 158.02 break is the snap of a line that failed.
-      if (reason === 'tether_cut' || reason === 'cut' || reason === 'release') {
-        if (this.rt) this.rt._masslinePlayerCutTick = Number(this.state && this.state.tick);
-        return;
-      }
+      // A chosen cut stamps the release window so a later releaseRated does not snap.
+      // Presentation's quiet set (sector changes, accepted handoff, flight exit) is the
+      // same silence: those are the line being left behind, not a cable that failed.
+      // 'cut' and 'release' stay quiet here even though presentation still names a generic
+      // break for them — they are the player's let-go, and the stamp depends on them.
+      const deliberate = reason === 'tether_cut' || reason === 'cut' || reason === 'release';
+      if (deliberate && this.rt) this.rt._masslinePlayerCutTick = Number(this.state && this.state.tick);
+      if (deliberate || !tetherBreakCueForReason(reason)) return;
       this._onMasslineInstrument('break', p);
     });
     bus.on('tether:attached', (p) => {
