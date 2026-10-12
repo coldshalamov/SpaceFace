@@ -1113,7 +1113,21 @@ function normalizeExpectedRuntimeHash(value) {
   return value;
 }
 
+// Metadata reaching the signature is deep-frozen canonical output, so the signature of one object
+// never changes; verified re-loads hand back the same object and hit this cache.
+const runtimePackageSignatures = new WeakMap();
 function runtimePackageSignature(metadata) {
+  const frozen = metadata && typeof metadata === 'object' && Object.isFrozen(metadata);
+  if (frozen) {
+    const cached = runtimePackageSignatures.get(metadata);
+    if (cached !== undefined) return cached;
+  }
+  const signature = computeRuntimePackageSignature(metadata);
+  if (frozen) runtimePackageSignatures.set(metadata, signature);
+  return signature;
+}
+
+function computeRuntimePackageSignature(metadata) {
   return stableJsonStringify({
     content: renderPackageContentIdentity(metadata),
     runtimeHash: metadata.runtimeHash || null,
