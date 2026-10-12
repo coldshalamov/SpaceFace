@@ -46,6 +46,10 @@ export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
  * from its own arrival. A player who shoots the wasp waits one beat, not forty-five seconds.
  */
 export const OPENING_LESSON_RELEASE_TICKS = 3 * 60;
+// After the lesson the pack arrives in readable groups, a breath apart, instead of the whole
+// room landing on a new pilot inside one second.
+const OPENING_ARRIVAL_WINDOW_TICKS = 8 * 60;
+const OPENING_ARRIVAL_GAP_TICKS = 80;
 
 /**
  * SWARM REINFORCEMENT (PQ-135).
@@ -546,6 +550,7 @@ export const survivalWave = {
     if (!Number.isFinite(lesson.holdTicks) || this._cursor >= lesson.holdTicks) return;
     if (this._actionableCohortCount() > 0) return;
     this._lessonReleased = true;
+    this._lessonOpenedAt = this._cursor;
     const shift = lesson.holdTicks - (this._cursor + OPENING_LESSON_RELEASE_TICKS);
     if (shift > 0) {
       for (const item of this._pending) {
@@ -580,7 +585,12 @@ export const survivalWave = {
     // remainder below stops arrivals after the earned clear; the armory owns that breathing room.
     const roomIsEmpty = this._cohort.size === 0 && this._pendingBodies() === 0;
     if (emergencyOnly && !roomIsEmpty) return;
-    if (!emergencyOnly && !roomIsEmpty && this._cursor - this._lastReinforceTick < this._reinforceGap) return;
+    let gap = this._reinforceGap;
+    if (lesson && Number.isFinite(lesson.holdTicks)) {
+      const openedAt = Number.isInteger(this._lessonOpenedAt) ? this._lessonOpenedAt : lesson.holdTicks;
+      if (this._cursor - openedAt < OPENING_ARRIVAL_WINDOW_TICKS) gap = Math.max(gap, OPENING_ARRIVAL_GAP_TICKS);
+    }
+    if (!emergencyOnly && !roomIsEmpty && this._cursor - this._lastReinforceTick < gap) return;
 
     // Current rounds build pressure with resolved quota progress. Timed plans use elapsed
     // time only for compatibility with older saved/replay plans.
@@ -851,6 +861,7 @@ export const survivalWave = {
     this._reinforceIndex = 0;
     this._lastReinforceTick = -9999;
     this._lessonReleased = false;
+    this._lessonOpenedAt = null;
     this._bossIds = new Set();
     // A capital champion's fight record never outlives its wave: terminal, surviving or
     // run-ended, the next wave (or teardown) starts from an empty fight ledger.
