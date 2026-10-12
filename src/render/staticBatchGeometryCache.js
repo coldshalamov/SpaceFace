@@ -1,6 +1,6 @@
 // Cache merged static-batch geometries so the second same-class ship does not re-clone,
-// transform, and merge every plate. Each consumer still clones the cached buffer so entity
-// dispose cannot steal another ship's GPU resource.
+// transform, and merge every plate. Consumers share the immutable marked geometry;
+// entity disposal must leave the cache-owned resource available to later instances.
 
 const DEFAULT_LIMIT = 48;
 const cache = new Map();

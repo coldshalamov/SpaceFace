@@ -200,6 +200,7 @@ export function createPackageDetachManifest(loaded, options = {}) {
         geometry,
         ordinal,
         detached: false,
+        cpuReaders: 0,
         freedBytes: 0,
         // {name, record} — record is the version-bearing object three's WebGLAttributes keys on:
         // the shared InterleavedBuffer for interleaved attrs, the BufferAttribute otherwise.
@@ -433,6 +434,24 @@ function geometryManifestEntry(geometry) {
   return (entry && entry.geometry === geometry) ? { manifest, entry } : null;
 }
 
+// A stepped CPU composition may yield after reading a GPU-resident source. Keep the exact
+// source records alive until its final clone is made; callers refill retired bytes through
+// rehydrateDetachedGeometries while this lease prevents another upload from retiring them.
+export function retainPackageGeometryCpu(geometries) {
+  const entries = new Set();
+  for (const geometry of geometries || []) {
+    const found = geometryManifestEntry(geometry);
+    if (found) entries.add(found.entry);
+  }
+  for (const entry of entries) entry.cpuReaders += 1;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    for (const entry of entries) entry.cpuReaders -= 1;
+  };
+}
+
 /**
  * Ledger API: record that `renderer` holds live attribute records for this marked geometry
  * (its uploads landed before detach, or it compiled/drew post-rehydrate). Secondary contexts
@@ -506,17 +525,20 @@ export function detachPackageGeometry(geometry, renderer) {
   const found = geometryManifestEntry(geometry);
   if (!found) return false;
   const { manifest, entry } = found;
-  if (entry.detached) return false;
+  if (entry.detached || entry.cpuReaders > 0) return false;
   if (renderer) entry.uploadedOn.set(renderer, true);
 
   let freed = 0;
   const attrs = geometry.attributes || {};
+  const position = attrs.position;
+  const keptRecords = new Set([geometry.index,
+    position?.isInterleavedBufferAttribute === true ? position.data : position]);
   for (const name of Object.keys(attrs)) {
     if (name === 'position') continue; // keep-set: standalone CPU copy stays live
     const attribute = attrs[name];
     if (!attribute || attribute.isGLBufferAttribute === true) continue;
     const record = attribute.isInterleavedBufferAttribute === true ? attribute.data : attribute;
-    if (!record) continue;
+    if (!record || keptRecords.has(record)) continue;
     entry.detachedVersions.set(record, record.version);
     entry.released.push({ name, record });
     const array = record.array;
