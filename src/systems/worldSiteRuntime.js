@@ -1,3 +1,4 @@
+import { ceresWorkfleetRetainsSection } from './ceresWorkfleet.js';
 import { refreshEntityPhysicsIndex, syncEntitySectorMembership } from '../core/coreSystem.js';
 import { refreshPhysicsPartition, requestActivityReclassify } from '../world/activityRuntime.js';
 import {
@@ -54,6 +55,7 @@ function siteFarRowCount(state, siteId) {
 function retireSiteWreck(state, helpers, entity) {
   const data = entity.data || {};
   if (entity.flags && entity.flags.tethered || data.tethered) return false;
+  if (ceresWorkfleetRetainsSection(state, entity)) return false;
   const structural = data.worldSiteStructural === true;
   if (!structural && !isWorldSiteStaticAnatomy(entity)) return false;
   // Structural sections are reauthored from the manifest on approach. A lean far row
