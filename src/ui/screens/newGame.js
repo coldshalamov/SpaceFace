@@ -24,6 +24,7 @@ import { createStopScale } from '../orrery/stopDial.js';
 import { createYardCarousel } from '../orrery/yardCarousel.js';
 import { createHullRing } from '../orrery/hullRing.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
+import { injectNewGameLayouts } from '../orrery/newGameLayouts.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { dpMark, injectDeckplate } from '../deckplate/index.js';
 import { capPins, platePins, channelPins }
@@ -427,6 +428,7 @@ export const newGameScreen = {
     rootEl.dataset.kReady = '0';
     rootEl.setAttribute('aria-label', coreText('newGame'));
     injectOrreryScreens();
+    injectNewGameLayouts();
     installShell(rootEl);
 
     // Title. `.sf-ng-header` is an inert hook the layout probe measures.

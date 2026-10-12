@@ -32,7 +32,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 |---|---|---|
 | `title` / `mainMenu` | SURVEYED | Ledger DONE earlier; re-judge later if polish stack returns |
 | `motionAsk` | SURVEYED | Inherits title |
-| `new-game` / `newGame` | SURVEYED | Still on fh primitives; composition pass later |
+| **`new-game`** / `newGame` | **DONE** | See § New Game below — this session |
 | `pause` | SURVEYED | Ledger DONE; keep selectors stable for player-truth |
 | **`settings`** | **DONE** | See § Settings below — this session |
 | **`save-load`** / `saveLoad` / `save-load-empty` / `save-load-live` | **DONE** | See § Save/Load below — this session |
@@ -281,7 +281,33 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Code touched:** `src/ui/orrery/statisticsLayouts.js` (new), `src/ui/screens/statistics.js` (inject + `orr-statistics` + `sf-back` on Back only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
-**Next:** `new-game` (styling only — stay off loadout item list data) or `game-over`.
+**Next after statistics was:** `new-game` — now DONE (see below).
+
+---
+
+## New Game — session notes (2026-10-12)
+
+**Before:** ORRERY New Game already strong (yard carousel + hull ring + Lamp Launch). Gaps vs the polished settings/save-load/help/credits/codex/mission-log/achievements/statistics stack: BACK foot was plain `BACK ESC` text (no ‹ / keycap box / underline); field labels (~.55), difficulty rest words, route caps, loadout copy, and fine print sat soft on void; loadout size letters trailed with a · and no shared column edge (P2); no 1.12 composition zoom in the 1080p band.
+
+**After (2 visual iterations, CSS overlay in `newGameLayouts.js`):**
+
+1. **Pass 1** — foot rail matched settings stack (`‹ BACK` + ESC keycap box + underline); secondary copy contrast raised (≥ ~0.78–0.94); loadout size letter column (no · separator); 1.12 zoom @1080p band. Launch Lamp Key untouched.
+2. **Pass 2** — loadout name column fixed-width so size letters share one edge; LOADOUT kicker brighter; short-width name column tighten.
+
+**Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=new-game --walk` — exit 0; measured clean at 1920×1080 and 1280×720; 12 controls exercised; selectors/IDs unchanged. Loadout item DATA untouched.
+
+**Artifacts**
+
+| | Path |
+|---|---|
+| Before (@1080) | `docs/ui-polish/new-game-before.png` |
+| Before (@720) | `docs/ui-polish/new-game-before-720.png` |
+| After (@1080) | `docs/ui-polish/new-game-after.png` |
+| After (@720) | `docs/ui-polish/new-game-after-720.png` |
+
+**Code touched:** `src/ui/orrery/newGameLayouts.js` (new), `src/ui/screens/newGame.js` (inject only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
+
+**Next:** `game-over` or `tech-tree`.
 
 ---
 
@@ -309,7 +335,7 @@ Not reached from the menu: **Archive**, **Achievements** and **Quit** clicks lef
 | P1 | Main menu | First Tab press jumps to "Credits" in the footer instead of NEW GAME; focus order should follow the visual ladder. |
 | P1 | Main menu | SPACEFACE wordmark sits on top of the orrery rings; menu words overlap ring strokes. Needs a clear zone. |
 | P2 | Load | "No saves yet" is ~50% bone on void, under contrast for body copy. **Fixed** (emph ≥.94, empty detail .92, vacant word .9 + open-berth glow). |
-| P2 | New Game | Loadout list ("PULSE LASER · S") is tracked caps at 11px with no column alignment for the size letter (styling only — list data is off-limits). |
+| P2 | New Game | Loadout list ("PULSE LASER · S") is tracked caps at 11px with no column alignment for the size letter (styling only — list data is off-limits). **Fixed** (size column, no ·; contrast + foot keycap). |
 | P2 | Settings | Scroll lists fade out at the bottom (Engine trails, Boost / Dash) without a scroll affordance. |
 | P2 | Credits | "0% READ" dial read as a loading bar. **Fixed** — label is now "OF REEL"; foot keycap + contrast pass. |
 
@@ -334,4 +360,5 @@ The game already ships a mature system: Deckplate tokens (`--dp-*`) + ORRERY ins
 - `src/ui/orrery/archiveLayouts.js`: Mission Log foot keycap rail, secondary contrast, beam/lane/dial brighten, 1080p zoom. Selectors/IDs unchanged.
 - `src/ui/orrery/constellationLayouts.js`: Achievements foot keycap rail, secondary contrast, dial/stage chrome brighten, 1080p (+1440/4K) zoom. Selectors/IDs unchanged. RESEARCH block untouched.
 - `src/ui/orrery/statisticsLayouts.js` + `src/ui/screens/statistics.js`: Statistics ORRERY foot keycap rail, reading contrast, shade pool, 1080p zoom, short-frame LAW fit. Selectors/IDs unchanged.
+- `src/ui/orrery/newGameLayouts.js` + `src/ui/screens/newGame.js`: New Game foot keycap rail, secondary contrast, loadout size column, 1080p zoom. Selectors/IDs and loadout data unchanged.
 - No selectors/IDs changed; no engine/render, audio, loadout data or HUD threat-marker code touched.
