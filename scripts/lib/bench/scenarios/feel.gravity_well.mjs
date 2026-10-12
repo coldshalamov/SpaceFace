@@ -131,7 +131,7 @@ export async function measureGravityWell(seed) {
 
 export const scenario = {
   id: 'feel.gravity_well',
-  label: 'B1 Gravitic Well Deflection & Fling (real fields owner, control-differenced)',
+  label: 'B1 Gravitic Well Deflection & Capture (real fields owner, control-differenced; fling not claimed)',
   run: measureGravityWell,
 };
 

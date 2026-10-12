@@ -31,12 +31,13 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const MODES = ['swarm', 'gauntlet', 'adventure', 'racing'];
 
 export function parseArgs(argv) {
-  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, out: null, evidence: false, shotEvery: null, tag: null };
+  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, out: null, evidence: false, shotEvery: null, tag: null, fight: false };
   for (const raw of argv) {
     const m = raw.match(/^--([^=]+)(?:=(.*))?$/); if (!m) continue;
     const [, k, v] = m;
     if (k === 'headed' || k === 'gpu') a.headed = true;
     else if (k === 'evidence') a.evidence = true;
+    else if (k === 'fight') a.fight = true;
     else if (k === 'shot-every') a.shotEvery = Number(v);
     else if (k in a) a[k] = v === undefined ? true : (typeof a[k] === 'number' ? Number(v) : v);
   }
@@ -45,6 +46,39 @@ export function parseArgs(argv) {
   a.viewport = a.viewport || (a.headed ? '1280x720' : '960x540');
   a.duration = a.duration || { swarm: 180, gauntlet: 180, adventure: 300, racing: 180 }[a.mode];
   return a;
+}
+
+/** Starter-fight pacing watch: shots, encounter beats and the post-combat silence, in sim seconds. */
+async function installPacingWatch(page) {
+  await page.evaluate(() => {
+    const SF = window.SF; const log = window.__ptPacing = [];
+    const sim = () => Number(SF.state.simTime) || 0;
+    const on = (name, fn) => SF.bus.on(name, (p) => { if (log.length < 20000) log.push({ ev: name, sim: sim(), ...fn(p || {}) }); });
+    on('combat:fire', (p) => { const e = SF.state.entities.get(p.ownerId); return { ownerId: p.ownerId, byPlayer: p.ownerId === SF.state.playerId, team: e ? e.team : null }; });
+    on('combat:outcome', (p) => ({ entityId: p.entityId ?? p.id ?? null, outcome: p.outcome || null }));
+    on('barkDirector:silence', (p) => ({ until: p.until }));
+    on('encounter:telegraph', (p) => ({ kind: p.kind || null }));
+    on('encounter:resolved', (p) => ({ kind: p.kind || p.shapeId || null, outcome: p.outcome || null }));
+  });
+}
+
+/** Per hush: the shots that still land inside its breath, and when the fight's last shot fell. */
+export function summarizePacing(log, breathS = 2.4) {
+  const fires = log.filter((e) => e.ev === 'combat:fire');
+  const lastShot = fires.length ? fires[fires.length - 1].sim : null;
+  const hushes = log.filter((e) => e.ev === 'barkDirector:silence').map((h) => {
+    const inBreath = fires.filter((f) => f.sim > h.sim && f.sim <= h.sim + breathS);
+    const before = fires.filter((f) => f.sim <= h.sim);
+    const next = fires.find((f) => f.sim > h.sim);
+    return { sim: +h.sim.toFixed(2), until: h.until, sinceLastShotS: before.length ? +(h.sim - before[before.length - 1].sim).toFixed(2) : null,
+      shotsInBreath: inBreath.length, hostileShotsInBreath: inBreath.filter((f) => !f.byPlayer).length, nextShotS: next ? +(next.sim - h.sim).toFixed(2) : null };
+  });
+  return {
+    shots: fires.length, playerShots: fires.filter((f) => f.byPlayer).length, lastShotSim: lastShot,
+    outcomes: log.filter((e) => e.ev === 'combat:outcome').map((e) => ({ sim: +e.sim.toFixed(2), entityId: e.entityId, outcome: e.outcome })),
+    encounters: log.filter((e) => e.ev.startsWith('encounter:')).map((e) => ({ ev: e.ev, sim: +e.sim.toFixed(2), kind: e.kind, outcome: e.outcome || null })),
+    hushes, hushAfterLastShot: hushes.length ? hushes.every((h) => h.hostileShotsInBreath === 0) : null,
+  };
 }
 
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -143,6 +177,7 @@ async function runOne(args, arena) {
       let round = { wave: st0.w, startSim: st0.sim, startT: st0.t, endSim: null, endT: null, endPhase: null };
       trace.rounds.push(round);
       startStreams(() => `round ${round.wave}`);
+      if (args.fight && !page.__ptPacing) { await installPacingWatch(page); page.__ptPacing = true; }
       let beat = 0; let first = true;
       // eslint-disable-next-line no-constant-condition
       while (true) {
@@ -193,6 +228,7 @@ async function runOne(args, arena) {
       step('spawn', true, `flight at sim ${st0.sim.toFixed(1)} s`);
       trace.meta.playStartSim = st0.sim;
       startStreams(() => 'flight');
+      if (args.fight) await installPacingWatch(page);
       log(`idle ${args.idle} sim s (no input)`);
       await waitSim(page, args.idle, { maxWallMs: 600000 });
       await controlProbes(page, 'spawn', trace.probes);
@@ -202,7 +238,7 @@ async function runOne(args, arena) {
         if (ph.mode !== 'flight') { await page.waitForTimeout(800); if (Date.now() - T0 > wallCapMs) break; continue; }
         // A modal (tutorial card, dialogue) gets the keyboard answer a player gives: Enter/Space.
         if (ph.top && !['hud', null].includes(ph.top) && beat % 5 === 4) await page.keyboard.press('Enter');
-        await cruiseBeat(page, beat++);
+        if (args.fight) await fightBeat(page, beat++); else await cruiseBeat(page, beat++);
       }
       step('play', true, `${((await simNow(page)) - st0.sim).toFixed(1)} sim s flown`);
     }
@@ -216,6 +252,15 @@ async function runOne(args, arena) {
     while (busy) await new Promise((r) => setTimeout(r, 100));
     await drain().catch(() => {});
   }
+  if (args.fight) {
+    trace.pacing = summarizePacing(await page.evaluate(() => window.__ptPacing || []).catch(() => []));
+    trace.pacing.director = await page.evaluate(() => {
+      const st = window.SF.state; const d = st.encounterDirector || {}; const ob = st.onboarding || {};
+      return { pending: (d.pending || []).map((i) => ({ shapeId: i.shapeId, dueAt: +(+i.dueAt).toFixed(1), defers: i.defers | 0, fireReadyHoldSince: i.fireReadyHoldSince ?? null })),
+        stats: d.stats ? { fired: d.stats.fired, fizzled: d.stats.fizzled, resolved: d.stats.resolved, fireReadyExpired: d.stats.fireReadyExpired | 0 } : null,
+        sectorId: st.world && st.world.currentSectorId, tension: st.tension && st.tension.phase, onboarding: { active: !!ob.active, finished: !!ob.finished, step: ob.stepId ?? ob.step ?? null } };
+    }).catch((e) => ({ error: String(e) }));
+  }
   const t1 = trace.samples.length ? trace.samples[trace.samples.length - 1] : null;
   const commit = (() => { try { return execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim(); } catch { return 'unknown'; } })();
   const dirty = (() => { try { return execSync('git status --porcelain -- src scripts', { cwd: ROOT }).toString().trim().length > 0; } catch { return false; } })();
@@ -225,7 +270,7 @@ async function runOne(args, arena) {
     label, seedSet: !!(doorInfo && doorInfo.seedSet), arena: arena || (doorInfo && doorInfo.arenas ? (doorInfo.arenas.find((x) => x.pressed) || {}).name : null) || null, seed: args.seed, commit, dirty, renderer, softwareGl, headed: args.headed, browserVersion,
     resolution: `${vw}x${vh}`, when: new Date().toISOString(), wallSeconds: Math.round((Date.now() - T0) / 1000),
     simSeconds: t1 && playStart != null ? +(t1.sim - playStart).toFixed(1) : 0, frames: trace.samples.length, shots: shots.length,
-    script: `idle ${args.idle} s → thrust/yaw probes → ${args.mode === 'swarm' || args.mode === 'gauntlet' ? 'aim+fire at nearest hostile, close/open range, latch every 7th beat' : 'cruise: thrust bursts and turns'}`,
+    script: `idle ${args.idle} s → thrust/yaw probes → ${args.mode === 'swarm' || args.mode === 'gauntlet' ? 'aim+fire at nearest hostile, close/open range, latch every 7th beat' : args.fight ? 'adventure fight: aim+fire at nearest hostile when one is in reach, else cruise' : 'cruise: thrust bursts and turns'}`,
     stopReason, pageErrors: pageErrors.slice(0, 10), arenasOffered: doorInfo && doorInfo.arenas ? doorInfo.arenas : null,
   });
   await browser.close().catch(() => {}); await server.close().catch(() => {});
@@ -243,7 +288,7 @@ export async function gradeAndWrite({ trace, shots, outDir, label, evidence, vw,
   const paths = { verdict: path.relative(ROOT, path.join(outDir, 'verdict.md')), contactSheet: path.relative(ROOT, path.join(outDir, 'contact-sheet.jpg')), json: path.relative(ROOT, path.join(outDir, 'verdict.json')), trace: path.relative(ROOT, path.join(outDir, 'trace.json.gz')), frames: path.relative(ROOT, path.join(outDir, 'frames')) };
   const meta = { ...trace.meta, overall: verdict };
   await buildContactSheet({ shots, results, meta, outFile: path.join(outDir, 'contact-sheet.jpg'), vw, vh });
-  const compact = { meta, overall: verdict, results: results.map((r) => ({ ...r, offenders: (r.offenders || []).slice(0, 4) })), rounds: trace.rounds, probes: trace.probes, route: trace.route, readability: trace.readability, loadout: trace.loadout && { ...trace.loadout, items: trace.loadout.items.map((x) => ({ name: x.name, category: x.category, desc: x.desc })) } };
+  const compact = { meta, overall: verdict, results: results.map((r) => ({ ...r, offenders: (r.offenders || []).slice(0, 4) })), rounds: trace.rounds, probes: trace.probes, route: trace.route, pacing: trace.pacing || null, readability: trace.readability, loadout: trace.loadout && { ...trace.loadout, items: trace.loadout.items.map((x) => ({ name: x.name, category: x.category, desc: x.desc })) } };
   writeFileSync(path.join(outDir, 'verdict.json'), JSON.stringify(compact, null, 1));
   writeFileSync(path.join(outDir, 'trace.json.gz'), gzipSync(JSON.stringify({ ...trace, shots: shots.map((s) => ({ ...s, file: path.basename(s.file) })) })));
   if (evidence) {
