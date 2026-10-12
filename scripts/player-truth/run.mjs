@@ -6,6 +6,9 @@
 //   flags: --headed (GPU Chrome, preferred) · --rounds=3 · --duration=<sim s> · --wall=<min>
 //          --idle=<sim s> · --viewport=WxH (1280x720 headed, 960x540 software GL) · --out=<dir> · --tag=<suffix> (label suffix, e.g. idle) · --evidence (copy compact result
 //          into design/program/player-truth/<label>/)
+//   gate:  --gate (idle pass + active pass to round 3; UNKNOWN on core checks = FAIL) · --viewports=960x540,1280x720,1920x1080
+//          --hull=all|<starter id> · --baseline=<git ref> (before/after table) · browser: bundled Chromium
+//          (`npx playwright install chromium`), else CHROME_PATH or /opt/google/chrome/chrome
 //
 // Drives the real public route in a real rendered browser with trusted keyboard/mouse input,
 // samples live telemetry with src/testing/playerTruth/reader.js (observer only), takes periodic
