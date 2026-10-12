@@ -1743,6 +1743,10 @@ function packagedLiveWholeShipFile(file) {
 //   quiet_ghost                    The Quiet's ink-violet Wasp (lancer_sniper and the pirate Wasp stay put)
 //   choir_zealot                   Ascendant Choir plum/magenta dart (the Reach dart keeps its sodium)
 //   warden_escort                  Vael teal lode (the Reach bruisers keep the oxide lode)
+//   lattice_warden                 Forge-authored tri-vane capital hull. The boss spec also
+//                                  stamps data.assetRef='asset.slice.lattice_warden', but its
+//                                  silhouette ('bruiser_armor') resolves before assetRef —
+//                                  binding the enemy id here keeps the authored hull live.
 const WHOLE_SHIP_FILE_BY_HOSTILE_ID = Object.freeze({
   wasp_swarmer: 'wholeships/ashline_dart.glb',
   choir_zealot: 'wholeships/ashline_dart_choir.glb',
@@ -1759,6 +1763,7 @@ const WHOLE_SHIP_FILE_BY_HOSTILE_ID = Object.freeze({
   corsair_raider: 'wholeships/ashline_rig_corsair_blade.glb',
   tether_control_raider: 'wholeships/ashline_rig.glb',
   mule_trader: 'wholeships/helios_span.glb',
+  lattice_warden: 'wholeships/lattice_warden.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
   wasp_swarmer: 'SF_WHOLESHIP_ASHLINE_DART',
@@ -1776,6 +1781,7 @@ const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
   corsair_raider: 'SF_WHOLESHIP_ASHLINE_RIG_CORSAIR_BLADE',
   tether_control_raider: 'SF_WHOLESHIP_ASHLINE_RIG',
   mule_trader: 'SF_WHOLESHIP_HELIOS_SPAN',
+  lattice_warden: 'SF_WHOLESHIP_LATTICE_WARDEN',
 });
 const WHOLE_SHIP_FILE_BY_SILHOUETTE = Object.freeze({
   drone_swarm: 'wholeships/ashline_dart.glb',
