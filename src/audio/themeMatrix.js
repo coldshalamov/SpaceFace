@@ -4,6 +4,7 @@
 
 import { BAND_BED_PROFILES } from './bandBeds.js';
 import { MUSIC_STEMS } from '../data/audioRecipes.js';
+import { resolveScoreIdentity, resolveFactionColour } from './scoreDirector.js';
 
 export const THEME_MATRIX_SEED = 15803;
 
@@ -122,6 +123,26 @@ export function mixAudibleStemWeights(stateWeights, sectorWeights) {
 }
 
 /** WANTED motif transposed by two semitones per heat tier. Band 1 is unison. */
+// THE EAR: the director's continuous faders (phase x intensity) on the sector's register. Null
+// when the director has not read this state yet (or disagrees on docking), so the caller keeps
+// the authored state row.
+export function scoreStemWeights(frame, theme) {
+  if (!frame || !frame.stemWeights || !theme) return null;
+  if ((theme.state === 'station') !== (frame.phase === 'dock')) return null;
+  // The sector colours the mix but never overturns the phase's lead: a hub that thins its
+  // tension stem (Helios B 0.4) still lets a chase lead with it.
+  const sector = theme.sectorStemWeights || {};
+  const out = {};
+  for (const key of ['A', 'B', 'C', 'D']) {
+    const k = Number.isFinite(sector[key]) ? sector[key] : 1;
+    const f = key === frame.stem ? SCORE_LEAD_SECTOR_FLOOR + (1 - SCORE_LEAD_SECTOR_FLOOR) * k : k;
+    out[key] = Math.round((Number(frame.stemWeights[key]) || 0) * f * 1000) / 1000;
+  }
+  return Object.freeze(out);
+}
+
+export const SCORE_LEAD_SECTOR_FLOOR = 0.6;
+
 export function wantedMotifRate(band) {
   const steps = Math.max(0, Math.min(4, (Number(band) || 1) - 1));
   return Math.round(Math.pow(2, (steps * 2) / 12) * 1000) / 1000;
@@ -198,9 +219,11 @@ export function resolveFactionSting(factionId) {
 
 /** Band intent for a sector bed. Wave/hz/noise ride the existing Band graph; no second writer. */
 export function sectorBedToBandIntent(bed, options = {}) {
-  if (!bed) return Object.freeze({ active: false, reason: 'no-bed' });
+  if (!bed) return Object.freeze({ active: false, reason: 'no-bed', layer: 'place' });
   return Object.freeze({
     active: true,
+    layer: 'place',
+    place: bed.place || null,
     strength: options.strength == null ? 0.45 : options.strength,
     channelId: bed.id,
     bed: Object.freeze({
@@ -215,12 +238,27 @@ export function sectorBedToBandIntent(bed, options = {}) {
   });
 }
 
+// THE EAR: a hunter closing before any shot lands (threat in the committed/approach band) is a
+// chase. The chase rides the tension stem's mix, but it is NOT the law: the theme state stays
+// `travel` (so nothing that reads `wanted` — the law mark, recipes, UI — fires for an unwanted
+// pilot) and the matrix carries a separate `pursuit` flag.
+export const PURSUIT_THREAT = 0.3;
+
 export function resolveThemeState(input = {}) {
   if (input.docked || input.station) return 'station';
   if (input.wanted) return 'wanted';
-  if (input.inCombat || clamp01(input.threat) >= 0.6) return 'combat';
+  const threat = clamp01(input.threat);
+  if (input.inCombat || threat >= 0.6) return 'combat';
   return 'travel';
 }
+
+/** An unwanted pilot under a committed hunter, short of a fight. */
+export function resolvePursuit(input = {}, state = resolveThemeState(input)) {
+  return state === 'travel' && !input.wanted && clamp01(input.threat) >= PURSUIT_THREAT;
+}
+
+// Chase mix: the tension stem leads over a thinned travel bed; no combat drums yet.
+export const PURSUIT_STEM_WEIGHTS = Object.freeze({ A: 0.35, B: 0.9, C: 0.2, D: 0.0 });
 
 /**
  * SWARM-06 — the chain's music lift, 0..1. A running Swarm chain drags the audible stem mix
@@ -258,7 +296,8 @@ export function applySwarmStemLift(audibleWeights, sectorWeights, lift) {
 export function resolveThemeMatrix(input = {}) {
   const state = THEME_STATES.includes(input.state) ? input.state : resolveThemeState(input);
   const motif = THEME_MOTIFS[state];
-  const stemWeights = THEME_STEM_WEIGHTS[state];
+  const pursuit = resolvePursuit(input, state);
+  const stemWeights = pursuit ? PURSUIT_STEM_WEIGHTS : THEME_STEM_WEIGHTS[state];
   const bedRow = resolveSectorBed(input.sectorId);
   const sectorStemWeights = bedRow.stemWeights;
   let audibleStemWeights = mixAudibleStemWeights(stemWeights, sectorStemWeights);
@@ -266,21 +305,41 @@ export function resolveThemeMatrix(input = {}) {
   // driven hotter as the run's kill chain climbs.
   audibleStemWeights = applySwarmStemLift(audibleStemWeights, sectorStemWeights, input.swarmLift);
   const stingRow = resolveFactionSting(input.factionId);
+  const score = resolveScoreIdentity(input.sectorId);
+  const factionColour = resolveFactionColour(input.factionId);
+  // The place intent the Band runtime's score director and room tone read: the same inputs this
+  // resolver was handed, so the room and the stems answer one state read.
+  // `scoreThreat` is the host's live-hostile read (no damage-window tail): the score's aftermath
+  // starts when the last hostile is gone, not six seconds later when the hit timer expires.
+  const liveThreat = Number.isFinite(input.scoreThreat) ? clamp01(input.scoreThreat) : clamp01(input.threat);
+  const place = Object.freeze({
+    sectorId: input.sectorId || null,
+    factionId: input.factionId || null,
+    docked: !!(input.docked || input.station),
+    wanted: !!input.wanted,
+    inCombat: !!input.inCombat && liveThreat > 0,
+    threat: liveThreat,
+    swarmLift: clamp01(input.swarmLift),
+    working: !!input.working,
+  });
   const stem = MUSIC_STEMS.find((row) => row && (row.id === `stem_${motif.stem.toLowerCase()}` || row.label))
     || MUSIC_STEMS[0];
   return Object.freeze({
     schema: 'spaceface.themeMatrix.v1',
     seed: THEME_MATRIX_SEED,
     state,
-    musicState: THEME_TO_MUSIC_STATE[state],
+    musicState: pursuit ? 'tense' : THEME_TO_MUSIC_STATE[state],
     motif,
     stemWeights,
     sectorStemWeights,
     audibleStemWeights,
     stemId: motif.stem,
     stemDef: stem,
-    bed: bedRow,
+    bed: Object.freeze({ ...bedRow, place }),
     sting: stingRow,
+    pursuit,
+    score,
+    factionColour,
     hummable: motif.hummable,
   });
 }

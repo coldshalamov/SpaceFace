@@ -50,6 +50,7 @@ import {
 } from './elementaryVoices.js';
 import {
   resolveThemeMatrix,
+  scoreStemWeights,
   swarmChainLift,
   wantedMotifRate,
   TRAVEL_MOTIF,
@@ -59,6 +60,7 @@ import {
   THEME_STEM_WEIGHTS,
   sectorBedToBandIntent,
 } from './themeMatrix.js';
+import { scoreNoteHz, PHASE_QUANTIZE_BARS } from './scoreDirector.js';
 import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
 import { resolveBarkVoice, resolveInstructorVoice, resolveBarkSampleBinding } from './barkVoice.js';
 import { leftoverMechanicLines } from '../story/mechanicVoice.js';
@@ -3008,7 +3010,62 @@ export const audio = {
     if (!stems) return;
     for (const key of ['A', 'B', 'C', 'D']) {
       const stem = stems[key];
+      if (this.rt._stemIdle && this.rt._stemIdle[key]) continue;
       if (stem && typeof stem.resumeScheduler === 'function') stem.resumeScheduler();
+    }
+  },
+
+  // THE EAR: land stem faders on the incoming stem's musical grid and keep inaudible stems from
+  // scheduling voices. `quantizeBars` 0 applies now (continuous intensity riding).
+  _applyStemTargets(w, timeConstant, quantizeBars) {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || !w) return;
+    const t = ctx.currentTime;
+    let lead = 'A';
+    for (const key of ['B', 'C', 'D']) if ((w[key] || 0) > (w[lead] || 0)) lead = key;
+    const leadStem = rt.stems && rt.stems[lead];
+    let at = t;
+    if (quantizeBars > 0 && leadStem && typeof leadStem.nextBoundary === 'function') {
+      const boundary = leadStem.nextBoundary(quantizeBars);
+      if (Number.isFinite(boundary) && boundary >= t && boundary - t <= 4) at = boundary;
+      rt._stemLandAt = at;
+    } else if (rt._stemLandAt > t) {
+      // Intensity riding never cancels a phrase-quantised change still waiting on its downbeat.
+      at = rt._stemLandAt;
+    }
+    rt._stemTargets = rt._stemTargets || {};
+    rt._stemIdle = rt._stemIdle || {};
+    rt._stemQuietSince = rt._stemQuietSince || {};
+    for (const key of ['A', 'B', 'C', 'D']) {
+      const g = rt.stemGains[key]; if (!g) continue;
+      const target = Math.max(0.0001, w[key] || 0);
+      rt._stemTargets[key] = target;
+      const stem = rt.stems && rt.stems[key];
+      if (target > 0.002) {
+        rt._stemQuietSince[key] = null;
+        if (rt._stemIdle[key]) {
+          rt._stemIdle[key] = false;
+          if (!rt._paused && stem && typeof stem.resumeScheduler === 'function') stem.resumeScheduler();
+        }
+      } else if (rt._stemQuietSince[key] == null) {
+        rt._stemQuietSince[key] = at;
+      }
+      try {
+        g.gain.cancelScheduledValues(at);
+        g.gain.setTargetAtTime(target, at, timeConstant);
+      } catch (_) { try { g.gain.value = target; } catch (__) {} }
+    }
+  },
+
+  _idleQuietStems() {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || !rt._stemQuietSince) return;
+    for (const key of ['A', 'B', 'C', 'D']) {
+      const since = rt._stemQuietSince[key];
+      if (since == null || rt._stemIdle[key] || ctx.currentTime - since < XFADE_S * 2) continue;
+      const stem = rt.stems && rt.stems[key];
+      if (stem && typeof stem.pauseScheduler === 'function') stem.pauseScheduler();
+      rt._stemIdle[key] = true;
     }
   },
 
@@ -5624,6 +5681,9 @@ export const audio = {
     this._reconcileDockedState(forceUndock);
     rt._wantedSearchInside = null;
     if (rt._buildIdentityHeard) rt._buildIdentityHeard.clear();
+    // THE EAR: the next run's score opens fresh — no inherited fight, aftermath or phrase anchor.
+    if (rt.bandBed && typeof rt.bandBed.resetScore === 'function') rt.bandBed.resetScore();
+    rt._scoreTransitionsSeen = null;
   },
 
   _onDocked(p) {
@@ -6235,6 +6295,8 @@ export const audio = {
       swarmLift: swarmChainLift(rt._swarmChain),
     });
     rt._themeMatrix = theme;
+    // THE EAR: the sector's key and mode move with the sector, never mid-sector.
+    if (sectorId) rt._scoreIdentity = theme.score || null;
     this._applySectorBed(theme);
     this._syncEnvironmentMix(docked);
   },
@@ -6395,7 +6457,8 @@ export const audio = {
   // -> Drop / 4-on-the-floor Groove -> Climax Melodic Hook).
 
   _noteFreq(note, octave) {
-    return noteToHz(note, octave);
+    const identity = this.rt && this.rt._scoreIdentity;
+    return identity ? scoreNoteHz(note, octave, identity) : noteToHz(note, octave);
   },
 
   _playThemeMotif(motif, ctx, t, bar, beat, sixteenth, busNode, delayNode, vel, wave) {
@@ -6696,6 +6759,12 @@ export const audio = {
         if (seq.timerId) clearTimeout(seq.timerId);
         seq.timerId = 0;
       },
+      // THE EAR: the next bar (or fraction/multiple of bars) on this stem's own grid.
+      nextBoundary(bars = 1) {
+        const span = Math.max(1, Math.round(16 * bars));
+        return seq.nextNoteTime + ((span - (seq.step % span)) % span) * sixteenthS;
+      },
+      get schedulerActive() { return seq.active && !seq.destroyed; },
       resumeScheduler() {
         if (seq.destroyed || seq.active) return;
         seq.active = true;
@@ -6881,8 +6950,10 @@ export const audio = {
       this._playBass(ctx, chord.bass, sixteenth * 1.6, 0.12, t, sidechainPump, 'sawtooth');
     }
 
-    // Wanted motif hook on designated bars
-    const motifPlayed = this._playThemeMotif(WANTED_MOTIF, ctx, t, totalBar, beat, sixteenth, sidechainPump, delayNode, 0.15, 'sawtooth');
+    // Wanted motif hook on designated bars. THE EAR: a chase rides this stem too, but the law's
+    // mark is for the law — an unwanted pilot under a hunter hears the tension, not the warrant.
+    const chase = !!(this.rt && this.rt._themeMatrix && this.rt._themeMatrix.pursuit);
+    const motifPlayed = !chase && this._playThemeMotif(WANTED_MOTIF, ctx, t, totalBar, beat, sixteenth, sidechainPump, delayNode, 0.15, 'sawtooth');
 
     // Dissonant tension pad cluster
     if (beat === 0) {
@@ -7017,12 +7088,18 @@ export const audio = {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx) return;
     rt.musicState = stateName;
-    const w = (rt._themeMatrix && (rt._themeMatrix.audibleStemWeights || rt._themeMatrix.stemWeights))
+    const frame = rt.bandBed && rt.bandBed.scoreFrame;
+    const w = (!instant && scoreStemWeights(frame, rt._themeMatrix))
+      || (rt._themeMatrix && (rt._themeMatrix.audibleStemWeights || rt._themeMatrix.stemWeights))
       || STEM_WEIGHTS[stateName]
       || STEM_WEIGHTS.calm;
     rt._musicFeed = (w.A || 0) + (w.B || 0) + (w.C || 0) + (w.D || 0);
     const xf = stateName === 'combat' ? XFADE_COMBAT_S : XFADE_S;
     const t = ctx.currentTime;
+    if (!instant) {
+      this._applyStemTargets(w, xf / 3, frame ? (PHASE_QUANTIZE_BARS[frame.phase] || 1) : 1);
+      return;
+    }
     for (const key of ['A', 'B', 'C', 'D']) {
       const g = rt.stemGains[key]; if (!g) continue;
       const target = Math.max(0.0001, w[key]);
@@ -7070,6 +7147,8 @@ export const audio = {
       wanted,
       inCombat: threat >= 0.6,
       threat,
+      // THE EAR: the score director reads live hostiles only (the pressure bed's read).
+      scoreThreat: combatPressureThreat(context, docked),
       sectorId: rt._themeSectorId,
       factionId: rt._themeFactionId,
       // SWARM-06: the kill chain's lift — the same theme row, mixed hotter as the run climbs.
@@ -7106,7 +7185,23 @@ export const audio = {
       }
     }
 
-    if (desired === rt.musicState) { rt._pendingState = null; return; }
+    if (desired === rt.musicState) {
+      rt._pendingState = null;
+      // THE EAR: inside a state the faders ride the director's intensity, not a fixed row.
+      // A director phase change inside one host state (arrival, threat, aftermath, departure)
+      // lands on that phase's phrase grid; plain intensity drift rides now.
+      const frame = rt.bandBed && rt.bandBed.scoreFrame;
+      const w = scoreStemWeights(frame, theme);
+      const last = rt._stemTargets;
+      const phaseMoved = !!frame && rt._scoreTransitionsSeen !== frame.transitions;
+      if (frame) rt._scoreTransitionsSeen = frame.transitions;
+      if (w && (phaseMoved || !last || ['A', 'B', 'C', 'D'].some((k) => Math.abs((w[k] || 0) - (last[k] || 0)) > 0.04))) {
+        rt._musicFeed = (w.A || 0) + (w.B || 0) + (w.C || 0) + (w.D || 0);
+        this._applyStemTargets(w, phaseMoved ? XFADE_S / 3 : 1.2, phaseMoved ? (PHASE_QUANTIZE_BARS[frame.phase] || 1) : 0);
+      }
+      this._idleQuietStems();
+      return;
+    }
     // hysteresis: hold the change for STATE_HOLD_S before switching (docked is immediate)
     if (desired === 'docked' || rt.musicState === 'docked') {
       this._setMusicState(desired);
