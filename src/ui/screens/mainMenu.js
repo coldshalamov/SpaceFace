@@ -9,7 +9,7 @@ import { CREDITS } from '../../data/credits.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { requestCodexTab } from './codex.js';
 import { coreText } from '../localizedCoreCopy.js';
-import { requestQuit } from '../quitGame.js';
+import { canQuit, requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
 import { IS_DEMO } from '../../core/demoMode.js';
 import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
@@ -433,12 +433,17 @@ export const mainMenuScreen = {
     // The emblem sits BEHIND the logotype (ORRERY 6): its upper third runs under the name, its rim is
     // lettered, and the verbs ride its right side from just above east down to the south-east, so the name
     // and the choice are one object and the lower left goes back to the key art.
+    // Without Quit (web build) the dial carries one stop fewer. A line of air before the reference
+    // line holds every stop where it sits with Quit, instead of spreading four verbs down the whole
+    // arc onto the console prop.
+    const quitShown = canQuit();
     arcRail = phone ? null : createArcRail({ host: stage, list, frame: rootEl, extra: [aside],
       // T-S1: the title's signature — the Hand follows the pointer round the dial, the rings answer
       freeTrack: true,
       // the pivot keeps the rim's ticks clear of the frame (re + 33) at every height
       place: (W, H) => { const re = Math.round(H * 0.278); const c = Math.max(Math.round(H * 0.305), re + 33); return { pivot: { x: c, y: c }, re, centerDeg: 112 }; },
       span: 74,
+      extraGap: quitShown ? 0 : 1,
       // the awake word steps 6% toward the dial; seated this far out it stops short of its tick and
       // the Hand's leader instead of landing on them (half the verb size, plus air)
       seat: (W, H) => Math.round(8 + Math.min(31, Math.max(20, H * 0.027)) * 0.5),
@@ -478,6 +483,9 @@ export const mainMenuScreen = {
     if (IS_DEMO) bNew.setAttribute('aria-label', coreText('newGame'));
     bArchive.setAttribute('aria-label', coreText('signalArchive'));
     bQuit.setAttribute('aria-label', coreText('quitGame'));
+    // Web build: no shell to quit, so no Quit verb (it stays in the DOM, hidden like an empty
+    // Continue, so the hooks and the verb order are unchanged).
+    if (!quitShown && bQuit.closest('li')) bQuit.closest('li').hidden = true;
     if (bSandbox) bSandbox.classList.add('k-38');
     // The save summary rides Continue's sub line. `.sf-menu-save-summary` / `has-save` are inert
     // hooks the boot and title-continue checks query; kit.css styles the sub line.
