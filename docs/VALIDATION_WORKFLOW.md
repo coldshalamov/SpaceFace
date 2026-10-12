@@ -33,6 +33,36 @@ Never rerun an unchanged expensive failure. Preserve its fingerprint, classify i
 seconds-scale regression, change the owning source or evidence, and only then request another
 acceptance claim.
 
+## Player-truth acceptance gate (binding)
+
+Any gameplay PR attaches the player-truth verdict (`verdict.md`) and contact sheet
+(`contact-sheet.jpg`) for every mode it touches. **A FAIL blocks landing.** An INCOMPLETE verdict
+(a check reported UNKNOWN) must name the unmeasured check in the PR; it never counts as PASS.
+
+```
+npm run player-truth -- --mode=swarm --arena=all      # every reachable Crucible arena
+npm run player-truth -- --mode=gauntlet
+npm run player-truth -- --mode=adventure              # default New Game: Hitch, Helios, tutorials on
+npm run player-truth -- --mode=racing                 # Circuits, first course
+```
+
+The harness (`scripts/player-truth/`) walks the real public route in a rendered Chromium with
+trusted keyboard/mouse input (idle first, then thrust/yaw probes, then a simple fighter or flyer),
+samples live telemetry through the observer-only `src/testing/playerTruth/reader.js`, and writes
+`scratch/player-truth/<mode>[-<arena>]/{verdict.md,contact-sheet.jpg,verdict.json,trace.json.gz,frames/}`.
+`--evidence` copies the compact verdict and sheet into `design/program/player-truth/<label>/`.
+
+- **GPU (preferred):** add `--headed` on a machine with a real GPU. The verdict records the WebGL
+  renderer string; frame-time is graded only here.
+- **Software GL (fallback):** the default headless run uses SwiftShader. It plays the same route at a
+  fraction of real speed (sim time is the clock, so bounds still hold), takes a few minutes of wall
+  time per bounded run, and reports `frame_time` as UNKNOWN. The verdict says SOFTWARE GL.
+- Bounds are flags: `--rounds` (default 3), `--duration=<sim s>` (Swarm 180, Adventure 300),
+  `--wall=<minutes>`, `--idle=<sim s>`, `--seed` (house seed 4242).
+- Check logic is fixture-tested without a browser: `npm run check:player-truth`. Thresholds live in
+  `THRESHOLDS`/`MODE_DESIGN` in `scripts/player-truth/checks.mjs`; changing one is a reviewed
+  design decision, never a way to turn a verdict green.
+
 ## Cost ladder
 
 Choose the smallest layer that can answer the changed behavior's question. Escalate only for a

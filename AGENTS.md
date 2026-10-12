@@ -241,6 +241,7 @@ Run the checks the change actually needs. Fast gate first; do not loop on verifi
 | Quick sanity pass | `npm run check:baseline` (~15s) — run it when the change could plausibly break something it touches; judgment, not ritual |
 | What the running game is actually doing (freeze, hitch, "why is it slow") | `npm run probe:runtime-witness`, then read `.devshots/runtime-witness/report.md` |
 | Hitch vs pop-in in flight: longest frame, time-to-appear, shader links inside a drawn frame, what paid for each | `node scripts/probe-frame-solid.mjs` (`--cpu-profile` for who paid, `--compare=<earlier .json>` to gate a change). Plan and baseline: `build_map.md` §21.4 |
+| Any gameplay change (what the player plays and sees) | `npm run player-truth -- --mode=<mode>` — attach `verdict.md` + `contact-sheet.jpg`; FAIL blocks landing |
 | A gameplay, feel, or content claim | The live owner plus a fixed-seed number or focused test. Do not capture to review. Owner ruling: `docs/AGENT_LESSONS.md` |
 | A session-SHAPE claim (encounter pacing, spawn policy, economy phases, director cadence, law wiring) that no focused fixture can express | ONE targeted playthrough session: one archetype, one seed, hours capped to the affected window (default 3). Multi-session batteries are L4 diagnostic instruments — never a routine gate. `docs/VALIDATION_WORKFLOW.md` |
 | Broad sweep | `npm run check:all` (not `check` — a fail-fast chain that hides failures) |
@@ -256,6 +257,12 @@ Browser test servers must set `SPACEFACE_PLAYER_STORE_DIR=''` explicitly, or use
 a fresh browser profile or alternate port alone does not isolate player saves.
 
 Full ladder: [`docs/VALIDATION_WORKFLOW.md`](./docs/VALIDATION_WORKFLOW.md).
+
+**Player-truth gate (binding).** Any gameplay PR attaches the player-truth verdict and contact sheet
+for every mode it touches: `npm run player-truth -- --mode=<swarm|gauntlet|adventure|racing>`
+(`--headed` on a GPU machine; headless SwiftShader is the slow fallback and says so in the verdict).
+A FAIL blocks landing; an INCOMPLETE verdict names what was not measured. Contract and current work
+list: [`design/program/player-truth/SUMMARY.md`](./design/program/player-truth/SUMMARY.md).
 
 ## 11. Depth docs (read by need, not by default)
 

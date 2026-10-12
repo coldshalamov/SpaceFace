@@ -1,0 +1,432 @@
+{
+ "meta": {
+  "mode": "adventure",
+  "rounds": false,
+  "hasLoadout": false,
+  "playStartSim": 0.41666666666666663,
+  "label": "adventure",
+  "seedSet": false,
+  "arena": null,
+  "seed": 4242,
+  "commit": "a4536789f",
+  "dirty": false,
+  "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+  "softwareGl": true,
+  "headed": false,
+  "browserVersion": "149.0.7827.55",
+  "resolution": "960x540",
+  "when": "2026-10-12T01:41:11.157Z",
+  "wallSeconds": 250,
+  "simSeconds": 150.9,
+  "frames": 3304,
+  "shots": 68,
+  "script": "idle 6 s → thrust/yaw probes → cruise: thrust bursts and turns",
+  "stopReason": "duration 150 sim s reached",
+  "pageErrors": [],
+  "arenasOffered": null,
+  "overall": "INCOMPLETE"
+ },
+ "overall": "INCOMPLETE",
+ "results": [
+  {
+   "id": "route",
+   "title": "Public route plays end to end",
+   "status": "PASS",
+   "value": "main menu → mode select → preparation → spawn → play",
+   "threshold": "every step through public controls",
+   "detail": "5 steps",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "round_resolution",
+   "title": "Round resolves by play",
+   "status": "N/A",
+   "value": null,
+   "threshold": null,
+   "detail": "mode has no rounds",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "kills_before_input",
+   "title": "Kills before the player acts",
+   "status": "N/A",
+   "value": null,
+   "threshold": 0,
+   "detail": "mode has no rounds",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "reward_before_input",
+   "title": "Score before the player acts",
+   "status": "N/A",
+   "value": null,
+   "threshold": 0,
+   "detail": "mode has no rounds",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "spawn_motion",
+   "title": "Unexplained motion at spawn",
+   "status": "PASS",
+   "value": "0 bodies",
+   "threshold": "0 passive bodies >8 u/s within 900 u",
+   "detail": "1 spawn moment(s) checked",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "player_control",
+   "title": "Ship answers input",
+   "status": "PASS",
+   "value": "0/2 probes dead",
+   "threshold": "thrust Δv≥3 u/s · yaw Δ≥0.2 rad",
+   "detail": "spawn thrust 190.07 · spawn yaw 2.66",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "tumble",
+   "title": "Ship stays in the play plane",
+   "status": "PASS",
+   "value": "longest 0 s",
+   "threshold": "<0.5 s out of plane / uncommanded spin",
+   "detail": "0 s total; limits pitch 0.35, bank 0.75 rad, |y| 4, spin 2.5 rad/s",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "player_ship",
+   "title": "Player ship visible as hero model",
+   "status": "PASS",
+   "value": "0.2% frames bad (6/3165)",
+   "threshold": "≤0.5%",
+   "detail": "missing / hidden / off-frame / non-lod0 / placeholder (<300 tris) while alive in play",
+   "offenders": [
+    {
+     "line": "130 tris (placeholder): 6 frames, first at sim 0.1 s",
+     "t": 43680.7,
+     "sim": 0.067,
+     "box": [
+      475,
+      258,
+      509,
+      265
+     ]
+    }
+   ],
+   "moments": [
+    {
+     "line": "130 tris (placeholder): 6 frames, first at sim 0.1 s",
+     "t": 43680.7,
+     "sim": 0.067,
+     "box": [
+      475,
+      258,
+      509,
+      265
+     ]
+    }
+   ]
+  },
+  {
+   "id": "lod_churn",
+   "title": "LOD / model swap churn",
+   "status": "PASS",
+   "value": "max 2/10s per entity · 0.03/s total",
+   "threshold": "≤3/10s per entity · ≤1/s total",
+   "detail": "4 on-screen swaps over 151.2 sim s across 2 entities (139 more off screen, not graded)",
+   "offenders": [
+    {
+     "line": "entity 357 (other) 2 swaps in 10 s (2 total) — last @-/compiling-pipelines → @- at sim 3.5 s",
+     "t": 56886.9,
+     "sim": 3.517,
+     "box": [
+      91.1,
+      492.1,
+      222.9,
+      623.9
+     ]
+    },
+    {
+     "line": "entity 110 (enemy) 2 swaps in 10 s (2 total) — last DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines → ship_hornet_b25a6371@lod1 at sim 21.7 s",
+     "t": 86243.2,
+     "sim": 21.667,
+     "box": [
+      19.799999999999997,
+      340.8,
+      116.2,
+      437.2
+     ]
+    }
+   ],
+   "moments": [
+    {
+     "line": "entity 357 (other) 2 swaps in 10 s (2 total) — last @-/compiling-pipelines → @- at sim 3.5 s",
+     "t": 56886.9,
+     "sim": 3.517,
+     "box": [
+      91.1,
+      492.1,
+      222.9,
+      623.9
+     ]
+    },
+    {
+     "line": "entity 110 (enemy) 2 swaps in 10 s (2 total) — last DIRECT_AUTHORED_ADMISSION@-/compiling-pipelines → ship_hornet_b25a6371@lod1 at sim 21.7 s",
+     "t": 86243.2,
+     "sim": 21.667,
+     "box": [
+      19.799999999999997,
+      340.8,
+      116.2,
+      437.2
+     ]
+    }
+   ]
+  },
+  {
+   "id": "popping",
+   "title": "Pop-in / pop-out on screen",
+   "status": "PASS",
+   "value": "0/min · worst entity 0 toggles",
+   "threshold": "≤6/min · ≤2 toggles",
+   "detail": "0 pops inside the inner 80% of the view; 0 non-projectile bodies born on screen (info)",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "readability",
+   "title": "Enemy / asteroid / projectile readable",
+   "status": "UNKNOWN",
+   "value": null,
+   "threshold": "separation ≥1",
+   "detail": "not enough on-screen samples per class (enemy 1, asteroid 0, projectile 0, pickup 0; need 5)",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "vfx_coverage",
+   "title": "VFX coverage / occlusion",
+   "status": "PASS",
+   "value": "p95 0% screen · player hidden 0% · threats hidden p95 0% · 0 s persist",
+   "threshold": "≤25% · ≤10% · ≤30% · ≤3 s",
+   "detail": "792 scans of additive/transparent layers (bounding-sphere footprint on a 48×27 grid; 1 screen-sized batches excluded)",
+   "offenders": [
+    {
+     "line": "peak coverage 23% at sim 11.9 s (overdraw 0.9×)",
+     "t": 71540.6,
+     "sim": 11.933,
+     "box": [
+      63,
+      306,
+      548,
+      795
+     ]
+    },
+    {
+     "line": "layer \"worldObjectHover\": mean 0.1% of screen, max 92%",
+     "t": null,
+     "sim": null,
+     "box": null
+    },
+    {
+     "line": "layer \"sf-plasma-throat-0\": mean 0% of screen, max 0%",
+     "t": null,
+     "sim": null,
+     "box": null
+    },
+    {
+     "line": "layer \"sf-liquid-plasma-root\": mean 0% of screen, max 0%",
+     "t": null,
+     "sim": null,
+     "box": null
+    }
+   ],
+   "moments": [
+    {
+     "line": "peak coverage 23% at sim 11.9 s (overdraw 0.9×)",
+     "t": 71540.6,
+     "sim": 11.933,
+     "box": [
+      63,
+      306,
+      548,
+      795
+     ]
+    }
+   ]
+  },
+  {
+   "id": "loadout",
+   "title": "Loadout readable and relevant",
+   "status": "N/A",
+   "value": null,
+   "threshold": "0 irrelevant · 0 undescribed · 0 silent swaps",
+   "detail": "mode has no preparation loadout",
+   "offenders": [],
+   "moments": []
+  },
+  {
+   "id": "frame_time",
+   "title": "Frame time / long tasks",
+   "status": "UNKNOWN",
+   "value": "p50 55 ms · p99 214 ms · 4 long tasks ≥250 ms",
+   "threshold": "p99 ≤50 ms · 0 long tasks ≥250 ms",
+   "detail": "software GL (SwiftShader): frame time is not the player's — rerun headed on a GPU to grade",
+   "offenders": [
+    {
+     "line": "long task 1238 ms at sim 0.3 s (frame 148)",
+     "t": 44927.424999999814,
+     "sim": 0.3,
+     "box": null
+    },
+    {
+     "line": "long task 334 ms at sim 0.6 s (frame 154)",
+     "t": 50095.82999999914,
+     "sim": 0.55,
+     "box": null
+    },
+    {
+     "line": "long task 286 ms at sim 7.5 s (frame 306)",
+     "t": 63086.11999999918,
+     "sim": 7.483,
+     "box": null
+    },
+    {
+     "line": "frame 153: 3357 ms at sim 0.5 s (108 entities, 0 draws)",
+     "t": 50425.8,
+     "sim": 0.517,
+     "box": null
+    }
+   ],
+   "moments": []
+  }
+ ],
+ "rounds": [],
+ "probes": [
+  {
+   "label": "spawn thrust",
+   "key": "KeyW",
+   "kind": "thrust",
+   "startSim": 6.6166666666666485,
+   "endSim": 7.949999999999977,
+   "startT": 61362.01999999955,
+   "endT": 63964.875,
+   "value": 190.0745849609375
+  },
+  {
+   "label": "spawn yaw",
+   "key": "KeyD",
+   "kind": "yaw",
+   "startSim": 7.949999999999977,
+   "endSim": 8.85000000000002,
+   "startT": 63965.89999999944,
+   "endT": 65375.264999999665,
+   "value": 2.660780100179287
+  }
+ ],
+ "route": {
+  "steps": [
+   {
+    "name": "main menu",
+    "ok": true,
+    "detail": "menu visible",
+    "t": null
+   },
+   {
+    "name": "mode select",
+    "ok": true,
+    "detail": "New Game (Adventure) · tutorial hints true",
+    "t": null
+   },
+   {
+    "name": "preparation",
+    "ok": true,
+    "detail": "default pilot/ship (no changes), Launch",
+    "t": null
+   },
+   {
+    "name": "spawn",
+    "ok": true,
+    "detail": "flight at sim 0.4 s",
+    "t": null
+   },
+   {
+    "name": "play",
+    "ok": true,
+    "detail": "150.3 sim s flown",
+    "t": null
+   }
+  ]
+ },
+ "readability": {
+  "classes": {
+   "enemy": {
+    "n": 1,
+    "lowContrastFrac": 1,
+    "exampleT": 86071.93999999948,
+    "exampleBox": [
+     28.5,
+     284.5,
+     121.5,
+     377.5
+    ],
+    "meanLab": [
+     10.9,
+     0,
+     -4.3
+    ]
+   },
+   "asteroid": {
+    "n": 0,
+    "lowContrastFrac": 0,
+    "meanLab": null
+   },
+   "projectile": {
+    "n": 0,
+    "lowContrastFrac": 0,
+    "meanLab": null
+   },
+   "pickup": {
+    "n": 0,
+    "lowContrastFrac": 0,
+    "meanLab": null
+   }
+  },
+  "pairs": [
+   {
+    "a": "enemy",
+    "b": "asteroid",
+    "nA": 1,
+    "nB": 0,
+    "sep": null
+   },
+   {
+    "a": "enemy",
+    "b": "projectile",
+    "nA": 1,
+    "nB": 0,
+    "sep": null
+   },
+   {
+    "a": "asteroid",
+    "b": "projectile",
+    "nA": 0,
+    "nB": 0,
+    "sep": null
+   },
+   {
+    "a": "enemy",
+    "b": "pickup",
+    "nA": 1,
+    "nB": 0,
+    "sep": null
+   }
+  ]
+ },
+ "loadout": null
+}
