@@ -110,6 +110,7 @@ import {
 } from '../data/sectorActivityPockets.js';
 import { stepPallasWorkLoop } from './pallasWorkLoop.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { NPC_JOB_PHASE, NPC_JOB_SCHEMA } from './npcJobs.js';
 import {
   claimRichSeamOpportunity,
@@ -345,6 +346,10 @@ function factionHullFor(anchorHull, factionId, rng) {
   return group.hullIds[Math.floor(rng() * group.hullIds.length)] || anchorHull;
 }
 
+const HELIOS_TALLY_REACH = 70;
+const HELIOS_TALLY_STILL = 4;
+const HELIOS_TALLY_COUNT_S = 6;
+const HELIOS_BERTH_MAX_DRIFT = 20;
 const TRAFFIC_ROLES = {
   hauler:   { ship: 'ship_mule',     team: 2, speed: 26, archetype: 'fleeing_trader', weight: 30,
               label: 'Cargo Hauler', docks: true, trades: true },
@@ -6373,6 +6378,15 @@ export const traffic = {
     setIntent(e, 0, 1, false, false, null, Math.atan2(rock.pos.z - e.pos.z, rock.pos.x - e.pos.x));
   },
 
+  // The Helios freight spine counts every laden hull at its tally post before the berth: the seam's
+  // ore crosses the opening neighbourhood as real freight instead of slipping off behind the rock.
+  _heliosTallyPoint() {
+    if (this._heliosTallyPos !== undefined) return this._heliosTallyPos;
+    const poi = (SECTOR_ANCHORS.sector_helios_prime?.pois || []).find((row) => row.id === 'poi_helios_tally');
+    this._heliosTallyPos = poi ? sectorLocalToGlobalForSector(poi.pos, 'sector_helios_prime') : null;
+    return this._heliosTallyPos;
+  },
+
   // One existing hull runs seam -> loose ore -> refinery. Collection consumes the actual pickup;
   // a player taking/towing it first leaves the barge empty, and a killed barge spills its real hold.
   _stepHeliosOreCarrier(entity, rec, stations, state) {
@@ -6387,14 +6401,25 @@ export const traffic = {
       const close = distance <= reach;
       const aim = Math.atan2(dz, dx);
       const propulsion = resolvePropulsionProfile(entity, state);
+      // A settled chip keeps its spawn-kick `vel` field after the body stops; leading on that stale
+      // number had the barge crawl at ~5 WU/s toward a chip 150 WU off. Lead on observed motion.
+      const leadCap = TRAFFIC_ROLES.ore_carrier.speed / Math.max(TRAFFIC_ROLES.ore_carrier.speed, Math.hypot(target.vel?.x || 0, target.vel?.z || 0));
+      let leadX = (target.vel?.x || 0) * leadCap, leadZ = (target.vel?.z || 0) * leadCap;
+      if (target.type === 'pickup') {
+        const seen = rec.chipTrack;
+        const dtSeen = seen && seen.id === target.id ? state.simTime - seen.t : 0;
+        leadX = dtSeen > 0 ? (target.pos.x - seen.x) / dtSeen : 0;
+        leadZ = dtSeen > 0 ? (target.pos.z - seen.z) / dtSeen : 0;
+        rec.chipTrack = { id: target.id, x: target.pos.x, z: target.pos.z, t: state.simTime };
+      }
       if (propulsion.family === DRIVE_FAMILIES.PULSE_PLATE) {
         // The Ironback's brake fires its pulse plate. A cargo approach uses its ordinary
         // precision thrusters instead: ask for a local velocity correction, never a pose snap.
         const decel = Math.max(1, propulsion.rcsReverseAccel);
         const speed = close ? 0 : Math.min(TRAFFIC_ROLES.ore_carrier.speed,
           Math.sqrt(2 * decel * Math.max(0, distance - reach * 0.6)));
-        const vx = (target.vel?.x || 0) + dx / Math.max(1, distance) * speed - (entity.vel?.x || 0);
-        const vz = (target.vel?.z || 0) + dz / Math.max(1, distance) * speed - (entity.vel?.z || 0);
+        const vx = leadX + dx / Math.max(1, distance) * speed - (entity.vel?.x || 0);
+        const vz = leadZ + dz / Math.max(1, distance) * speed - (entity.vel?.z || 0);
         const c = Math.cos(entity.rot || 0), s = Math.sin(entity.rot || 0);
         const forward = vx * c + vz * s;
         const side = -vx * s + vz * c;
@@ -6418,6 +6443,25 @@ export const traffic = {
       return close;
     };
     if (loaded) {
+      const tally = this._heliosTallyPoint();
+      if (tally && rec.tallyManifestId !== current.manifestId) {
+        rec.targetId = refinery.id;
+        const at = steer({ pos: tally }, HELIOS_TALLY_REACH);
+        const drift = Math.hypot(entity.vel?.x || 0, entity.vel?.z || 0);
+        if (!at || drift > HELIOS_TALLY_STILL) {
+          rec.tallyHoldSince = null;
+          return;
+        }
+        if (rec.tallyHoldSince == null) rec.tallyHoldSince = state.simTime;
+        if (state.simTime - rec.tallyHoldSince < HELIOS_TALLY_COUNT_S) return;
+        rec.tallyManifestId = current.manifestId;
+        rec.tallyHoldSince = null;
+        this.bus.emit('traffic:freightTallied', {
+          carrierId: entity.id, worldRecordId: entity.data.worldRecordId || null,
+          manifestId: current.manifestId, totalQty: current.totalQty, destinationId: 'station_helios',
+        });
+        return;
+      }
       rec.targetId = refinery.id;
       if (steer(refinery, (refinery.radius || 0) + DOCK_RANGE)
         && this._emitArrival(entity, rec, refinery, { manifest: current })) {
@@ -6434,20 +6478,38 @@ export const traffic = {
         || candidate.data?.npcMiningSource?.fieldId !== 'f_helios_starter'
         || !(candidate.data.amount > 0) || !candidate.data.commodityId
         || isMasslineLatchedPickup(state, player, candidate)) return;
+      // A cut chip is the claim's lot, not free scrap: title to the cutter's stable record keeps a
+      // passing lawful hull (or this barge's own hull) from contact-vacuuming it outside custody;
+      // the player and outlaws can still take it, which is theft the law owner can see.
+      const source = candidate.data.npcMiningSource;
+      if (source.minerWorldRecordId && candidate.data.ownerId == null && !candidate.data.cargoIdentity) {
+        candidate.data.ownerId = source.minerWorldRecordId;
+      }
       const d2 = (candidate.pos.x - entity.pos.x) ** 2 + (candidate.pos.z - entity.pos.z) ** 2;
       if (d2 < nearest) { pickup = candidate; nearest = d2; }
     });
     if (!pickup) {
       // Wait beside the active face, not on top of it. There is no invented load on a timer.
-      const miner = state.traffic.freighters.map((row) => state.entities.get(row.id))
-        .find((worker) => worker?.alive !== false && worker?.data?.minerShiftRockId != null);
-      const rock = miner && this._resolveAsteroid(state, miner.data.minerShiftRockId);
-      steer(rock || refinery, (rock?.radius || refinery.radius || 0) + 100);
-      rec.targetId = rock?.id || refinery.id;
+      // The cutter may be a traffic hull or the claim's authored seam miner (npcJobs-commissioned);
+      // either way the barge's berth is the face that hull is cutting, never the refinery apron.
+      const cutting = (worker) => worker && worker.alive !== false && worker.type === 'ship'
+        && worker.data?.minerShiftRockId != null;
+      const miner = state.traffic.freighters.map((row) => state.entities.get(row.id)).find(cutting)
+        || (state.entityList || []).find(cutting);
+      const cutRock = miner && this._resolveAsteroid(state, miner.data.minerShiftRockId);
+      // A rock knocked loose is no berth: chasing its momentum flung the barge 2 km off the claim
+      // at 250 WU/s. Hold on the miner itself until it settles on a seated face again.
+      const rock = cutRock && Math.hypot(cutRock.vel?.x || 0, cutRock.vel?.z || 0) <= HELIOS_BERTH_MAX_DRIFT
+        ? cutRock : null;
+      const berth = rock || miner || refinery;
+      steer(berth, (berth.radius || 0) + 100);
+      rec.targetId = berth.id;
       return;
     }
     rec.targetId = pickup.id;
-    if (!steer(pickup, (entity.radius || 6) + (pickup.radius || 1) + 6)) return;
+    // Take custody at scoop range, short of hull contact: a refused contact shoves the 0.1-mass
+    // chip away and the velocity-matched approach then chases it across the sector.
+    if (!steer(pickup, (entity.radius || 6) * 1.25 + (pickup.radius || 1) + 18)) return;
     const qty = Math.floor(pickup.data.amount);
     if (!(qty > 0)) return;
     const manifest = this._buildMinerManifest(entity, rec.dockSeq || 0,

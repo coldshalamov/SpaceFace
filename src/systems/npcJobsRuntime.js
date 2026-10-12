@@ -188,6 +188,11 @@ const ROUTE_HOLD_DISTRESS_S = 60;
 const HELIOS_STARTER_SECTOR_ID = 'sector_helios_prime';
 const HELIOS_STARTER_FIELD_ID = 'f_helios_starter';
 const HELIOS_STARTER_MINER_SHIFT_S = 6;
+const HELIOS_SEAM_MINER_SLOT_ID = 'helios_seam_miner';
+const HELIOS_STARTER_ROCK_MAX_DRIFT = 20;
+// A miner's lot changes hands only across a shared berth: the receiving hull must load within
+// this of where the lot was set down (a station's berth spread, not a sector).
+const LOT_HANDOFF_RANGE = 260;
 const BEAM_MK1 = BEAMS.find((row) => row && row.id === 'beam_mk1') || {
   dps: 18, range: 240, heatMax: 100, heatRate: 22, coolRate: 55,
 };
@@ -651,9 +656,16 @@ function isSweeperJob(entry, entity) {
 
 function isHeliosCuttingMiner(entity) {
   if (!entity || entity.alive === false || entity.type !== 'ship' || !entity.data) return false;
-  if (entity.data.trafficRole !== 'miner') return false;
-  if (entity.data.ceresActivityCast || (entity.data.activityActorSlotId
-    && entity.data.activityActorSlotId !== 'helios_starter_cutter')) return false;
+  if (entity.data.ceresActivityCast) return false;
+  const slot = entity.data.activityActorSlotId;
+  // The authored claim miner works the same starter rock when no traffic cutter rolled,
+  // instead of flying a timetable beside a seam nobody cuts.
+  if (slot === HELIOS_SEAM_MINER_SLOT_ID) {
+    if (entity.data.jobKind && entity.data.jobKind !== 'miner') return false;
+  } else {
+    if (entity.data.trafficRole !== 'miner') return false;
+    if (slot && slot !== 'helios_starter_cutter') return false;
+  }
   return typeof entity.data.worldRecordId === 'string' && entity.data.worldRecordId.length > 0;
 }
 
@@ -681,6 +693,8 @@ function starterRockMineable(rock) {
   if (rock.data.fieldId !== HELIOS_STARTER_FIELD_ID) return false;
   if (rock.data.siteAnchored || rock.data.opticMaterial || rock.data.respawnAt != null) return false;
   if (rock.data.isChunk) return false;
+  // A face knocked loose and tumbling away is no longer a seam; a cutter chasing it leaves the claim.
+  if (rock.vel && Math.hypot(rock.vel.x || 0, rock.vel.z || 0) > HELIOS_STARTER_ROCK_MAX_DRIFT) return false;
   return true;
 }
 
@@ -1202,6 +1216,8 @@ export const npcJobsRuntime = {
     if (intent.event === 'npcjobs:unload' && intent.kind === NPC_JOB_KIND.MINER) {
       const loop = entry && entry.job ? entry.job.loopCount | 0 : 0;
       const posted = { lotId: `lot:${intent.jobId}:l${loop}`, kind: 'ore', postedBy: intent.jobId, postedAt: now, sectorId };
+      const at = this._handoffPos(entry, intent);
+      if (at) posted.pos = at;
       const replaced = lots[sectorId] && lots[sectorId].lotId !== posted.lotId ? lots[sectorId] : null;
       lots[sectorId] = posted;
       if (this.bus && typeof this.bus.emit === 'function') {
@@ -1217,6 +1233,14 @@ export const npcJobsRuntime = {
     if (intent.event === 'npcjobs:load' && intent.kind === NPC_JOB_KIND.HAULER
       && !(intent.payload && intent.payload.claimConvoy)) {
       const standing = lots[sectorId] || null;
+      // The lot sits where the miner set it down; a load somewhere else in the sector is not a
+      // handoff. It stays on the shelf for a hull that actually comes alongside.
+      if (standing && standing.lotId && !this._withinLotHandoff(standing, entry, intent)) {
+        if (this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('npcjobs:loadEmpty', { haulerJobId: intent.jobId, sectorId, simTime: now, lotId: standing.lotId, reason: 'not_alongside' });
+        }
+        return;
+      }
       if (standing && standing.lotId) {
         lots[sectorId] = null;
         if (this.bus && typeof this.bus.emit === 'function') {
@@ -1232,6 +1256,23 @@ export const npcJobsRuntime = {
         this._publishShortRunNews(intent, entry, sectorId, now);
       }
     }
+  },
+
+  // Where a handoff physically happens: the live hull when this job's body is in the sector,
+  // otherwise the waypoint the kernel completed the phase at (virtual jobs keep the same rule).
+  _handoffPos(entry, intent) {
+    const entity = entry && entry.entityId != null && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(entry.entityId) : null;
+    const live = entity && entity.alive !== false && entity.pos
+      && (!entry.worldRecordId || !entity.data || entity.data.worldRecordId === entry.worldRecordId);
+    const pos = live ? entity.pos : intent && intent.pos;
+    return pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) ? { x: pos.x, z: pos.z } : null;
+  },
+  _withinLotHandoff(lot, entry, intent) {
+    if (!lot.pos) return true;
+    const at = this._handoffPos(entry, intent);
+    if (!at) return false;
+    return Math.hypot(at.x - lot.pos.x, at.z - lot.pos.z) <= LOT_HANDOFF_RANGE;
   },
 
   /**
@@ -3806,7 +3847,8 @@ export const npcJobsRuntime = {
       // The shift belongs to a living hull, not a once-per-session latch. A depleted face is
       // replaced at the home turn of the existing job; the return leg and its history survive.
       if (entry && miner && miner.alive !== false) {
-        if (!this._starterRockForMinerJob(entry) && this._minerFieldRetargetSafe(entry.job)) {
+        if (!this._starterRockForMinerJob(entry) && (this._minerFieldRetargetSafe(entry.job)
+          || this._heliosCutWaypoint(entry.job)?.authored === true)) {
           this._commissionHeliosStarterMiner(miner);
         }
         return;
@@ -3820,7 +3862,10 @@ export const npcJobsRuntime = {
       if (isHeliosCuttingMiner(entity)) candidates.push(entity);
     });
     if (!candidates.length) return;
-    candidates.sort((a, b) => String(a.data.worldRecordId).localeCompare(String(b.data.worldRecordId)));
+    // A traffic-staged cutter keeps the shift; the claim miner takes it only when no cutter rolled.
+    const authored = (entity) => (entity.data.activityActorSlotId === HELIOS_SEAM_MINER_SLOT_ID ? 1 : 0);
+    candidates.sort((a, b) => authored(a) - authored(b)
+      || String(a.data.worldRecordId).localeCompare(String(b.data.worldRecordId)));
     for (let i = 0; i < candidates.length; i++) {
       if (this._commissionHeliosStarterMiner(candidates[i])) return;
     }
@@ -3831,8 +3876,10 @@ export const npcJobsRuntime = {
     const jobId = 'job:' + recordId;
     const existing = this._byId()[jobId];
     if (existing && existing.job && existing.job.kind !== NPC_JOB_KIND.MINER) return false;
-    let rock = existing && existing.job ? this._starterRockForMinerJob(existing) : null;
-    if (!rock) rock = this._pickHeliosStarterRock(miner.pos || { x: 0, z: 0 });
+    let rock = existing && existing.job && existing.worldRecordId === this._heliosStarterMinerRecordId
+      ? this._starterRockForMinerJob(existing) : null;
+    const authoredFace = existing && existing.job ? this._heliosCutWaypoint(existing.job) : null;
+    if (!rock) rock = this._pickHeliosStarterRock((authoredFace && authoredFace.waypoint.pos) || miner.pos || { x: 0, z: 0 });
     if (!rock) return false;
     const live = this._promoteStarterRock(rock);
     if (!live) return false;
@@ -3857,7 +3904,7 @@ export const npcJobsRuntime = {
     const entry = this._byId()[jobId];
     if (entry) entry.heliosShiftStopped = false;
     miner.data.minerShiftRockId = live.id;
-    miner.data.activityActorSlotId = 'helios_starter_cutter';
+    if (!miner.data.activityActorSlotId) miner.data.activityActorSlotId = 'helios_starter_cutter';
     syncEntityActivitySlotMembership(this.state && this.state.entityIndex, miner);
     requestActivityReclassify(this.state, miner);
     return true;
@@ -3889,10 +3936,29 @@ export const npcJobsRuntime = {
   },
 
   _starterRockForMinerJob(entry) {
-    const field = this._fieldWaypointForMinerJob(entry && entry.job);
+    const field = this._heliosCutWaypoint(entry && entry.job);
     if (!field) return null;
-    const rock = this._asteroidForFieldWaypoint(field.waypoint);
+    // An authored claim mark keeps its catalog id; the live rock it is cutting is this system's
+    // transient binding (numeric ids never persist — Continue re-picks the nearest live face).
+    const rock = field.authored
+      ? (entry.worldRecordId === this._heliosStarterMinerRecordId && this._heliosStarterRockId != null
+        && this.state.entities && this.state.entities.get
+        ? this.state.entities.get(this._heliosStarterRockId) : null)
+      : this._asteroidForFieldWaypoint(field.waypoint);
     return starterRockMineable(rock) ? rock : null;
+  },
+
+  /** The cutting stop of a Helios miner: a `field:` waypoint, or the authored claim's ore face. */
+  _heliosCutWaypoint(job) {
+    const field = this._fieldWaypointForMinerJob(job);
+    if (field) return { ...field, authored: false };
+    if (!job || job.kind !== NPC_JOB_KIND.MINER || !Array.isArray(job.route)) return null;
+    for (let index = 0; index < job.route.length; index++) {
+      const waypoint = job.route[index];
+      if (waypoint && typeof waypoint.targetRef === 'string' && waypoint.targetRef.startsWith('field:')
+        && waypoint.pos) return { index, waypoint, authored: true };
+    }
+    return null;
   },
 
   _promoteStarterRock(rock) {
@@ -3902,8 +3968,13 @@ export const npcJobsRuntime = {
   },
 
   _pointMinerJobAtRock(entry, rock) {
-    const field = this._fieldWaypointForMinerJob(entry && entry.job);
+    const field = this._heliosCutWaypoint(entry && entry.job);
     if (!field || !field.waypoint || !rock || !rock.pos) return false;
+    if (field.authored) {
+      // Same claim, same mark id: only the cut point follows the live face, in any phase.
+      field.waypoint.pos = { x: rock.pos.x, z: rock.pos.z };
+      return true;
+    }
     const id = 'field:' + rock.id;
     if (field.waypoint.id === id) return true;
     if (!this._minerFieldRetargetSafe(entry.job)) return false;
@@ -4121,8 +4192,12 @@ export const npcJobsRuntime = {
       const physicalTarget = !claimedBeforeAdvance && this._livingAdventureWorkTarget(entry, entity);
       // The settle test is relative to the target: a hull riding a drifting rock at matching
       // velocity IS arrived, even though its world-frame speed stays at belt drift.
+      // A cutter's commission is paperwork at the pad, not a docking manoeuvre; the seam face and
+      // the unload berth are the stops that need the hull physically there.
       const holdingForArrival = physicalTarget
         && ![NPC_JOB_PHASE.TRANSIT, NPC_JOB_PHASE.RETURN].includes(entry.job.phase)
+        && !(entry.job.phase === NPC_JOB_PHASE.COMMISSION && this._heliosStarterMinerRecordId != null
+          && entry.worldRecordId === this._heliosStarterMinerRecordId)
         && (Math.hypot(entity.pos.x - physicalTarget.pos.x, entity.pos.z - physicalTarget.pos.z) > physicalTarget.reach
           || Math.hypot((entity.vel?.x || 0) - (physicalTarget.vel?.x || 0),
             (entity.vel?.z || 0) - (physicalTarget.vel?.z || 0)) > 8);
@@ -4526,13 +4601,16 @@ export const npcJobsRuntime = {
   // Three authored opening workers require physical arrival, not a timetable standing in for
   // contact. The pure job still owns the itinerary; this adapter owns convergence to its target.
   _livingAdventureWorkTarget(entry, entity) {
-    const slot = entity.data?.activityActorSlotId;
+    const cutter = this._heliosStarterMinerRecordId != null
+      && entry.worldRecordId === this._heliosStarterMinerRecordId;
+    const slot = cutter ? 'helios_starter_cutter' : entity.data?.activityActorSlotId;
     if (slot !== 'helios_starter_cutter' && slot !== 'choir_relief_attendant' && slot !== 'choir_relief_patient') return null;
     const job = entry.job;
     if (!job || job.phase === NPC_JOB_PHASE.FLEE || job.phase === NPC_JOB_PHASE.COMPLETE) return null;
     const waypoint = this._ceresRealTargetWaypoint(job);
     if (!waypoint?.pos) return null;
-    if (slot === 'helios_starter_cutter' && waypoint.id?.startsWith('field:')) {
+    const cutStop = slot === 'helios_starter_cutter' && this._heliosCutWaypoint(job);
+    if (cutStop && cutStop.waypoint === waypoint) {
       const rock = this._starterRockForMinerJob(entry);
       if (rock) return { pos: rock.pos, vel: rock.vel, reach: BEAM_MK1.range * 0.8 + (rock.radius || 0) };
     }
@@ -6471,6 +6549,8 @@ export const npcJobsRuntime = {
           postedBy: typeof lot.postedBy === 'string' ? lot.postedBy : null,
           postedAt: Number.isFinite(Number(lot.postedAt)) ? Number(lot.postedAt) : 0,
           sectorId,
+          ...(lot.pos && Number.isFinite(lot.pos.x) && Number.isFinite(lot.pos.z)
+            ? { pos: { x: lot.pos.x, z: lot.pos.z } } : {}),
         };
       }
     }
