@@ -692,6 +692,7 @@ export const impulseCharges = {
       radius,
       shoves: result.shoves,
       trigger: 'detonator_dart',
+      ownerId: creditId,
       hostId: rec.id,
     });
     this.bus.emit('audio:cue', { id: 'sfx_explosion_small', position: pos, gain: 0.8 });
@@ -1340,6 +1341,7 @@ export const impulseCharges = {
       hits: result.hits,
       radius: def.radius,
       shoves: result.shoves,
+      ownerId,
       trigger,
       hostId: d.hostId != null ? d.hostId : null,
     });

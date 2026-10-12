@@ -38,6 +38,7 @@
 
 import { ENVIRONMENT_FAMILIES, environmentSurfaceData, environmentMaterialOf } from '../data/environmentMaterials.js';
 import { mulberry32 } from '../core/rng.js';
+import { swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
@@ -103,31 +104,21 @@ const WELL_SOLID_TYPES = new Set(['asteroid', 'wreck', 'station']);
  * The teaching well is planted where it pulls nothing at rest. A well dropped over the optic
  * lattice or the debris field drags that furniture into motion before the player has touched a
  * key — the rocks fly, plow the room and the round "plays itself". Keep the authored distance,
- * walk the bearing round the pilot, and take the first disc with no solid inside it (or, failing
- * that, the disc holding the least mass).
+ * walk the bearing round the pilot, and take the first disc with no solid crossing it.
+ * No clear disc means no teaching well; never choose a least-bad occupied location.
  */
 export function quietWellCenter(state, anchor, offset, radius) {
-  const list = state && Array.isArray(state.entityList) ? state.entityList : [];
+  const list = state?.entities?.values?.() || state?.entityList || [];
+  const solids = Array.from(list).filter(e => e && WELL_SOLID_TYPES.has(e.type));
   const dist = Math.hypot(offset.x, offset.z);
   const base = Math.atan2(offset.z, offset.x);
-  let best = null;
-  let bestMass = Infinity;
   for (let k = 0; k < 16; k++) {
-    const turn = (k % 2 === 0 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 8);
-    const x = anchor.x + Math.cos(base + turn) * dist;
-    const z = anchor.z + Math.sin(base + turn) * dist;
-    let mass = 0;
-    for (const e of list) {
-      if (!e || e.alive === false || !e.pos || !WELL_SOLID_TYPES.has(e.type) || e.collides === false) continue;
-      const reach = radius + (Number.isFinite(e.radius) ? e.radius : 0);
-      const dx = e.pos.x - x;
-      const dz = e.pos.z - z;
-      if (dx * dx + dz * dz < reach * reach) mass += Number.isFinite(e.mass) ? e.mass : 1;
-    }
-    if (mass === 0) return { x, z };
-    if (mass < bestMass) { bestMass = mass; best = { x, z }; }
+    const turn = (k % 2 === 0 ? 1 : -1) * Math.ceil(k / 2) * Math.PI / 8;
+    const pos = { x: anchor.x + Math.cos(base + turn) * dist,
+      z: anchor.z + Math.sin(base + turn) * dist };
+    if (!solids.some(e => sweptDiscsOverlap(pos, radius, e, { clearance: 8 }))) return pos;
   }
-  return best || { x: anchor.x + offset.x, z: anchor.z + offset.z };
+  return null; // no quiet position is preferable to a free-running debris blender
 }
 /** Restamp only after the fight has left the lattice. Closer than this, the same rocks stay. */
 const SWARM_OPTIC_RESTAMP = 520;
@@ -958,15 +949,21 @@ export const swarmArena = {
     const presentMaterials = new Set((state.entityList || []).filter(e => e.alive !== false && e.data?.[SWARM_DEBRIS_TAG]
       && Math.hypot(e.pos.x - anchor.x, e.pos.z - anchor.z) <= SWARM_DEBRIS_FIGHT_RADIUS).map(environmentMaterialOf));
     const missingMaterials = ENVIRONMENT_FAMILIES.filter(m => !presentMaterials.has(m));
-    if (spots.length < missingMaterials.length) {
+    if (spots.length < Math.min(want, missingMaterials.length)) {
       // Tight arena lanes can exhaust their placement search. Their missing toys sit on
       // a safe outer shoulder rather than silently disappearing from this arena's grammar.
       spots.push(...planSwarmDebris({ anchor, existing: nearbySolids.concat(spots),
-        want: missingMaterials.length - spots.length, rng,
+        want: Math.min(want, missingMaterials.length) - spots.length, rng,
         layout: { inner: 265, outer: 390, safeRadius: 120, separation: 32 } }));
     }
     let materialIndex = 0;
-    for (const spot of spots) {
+    for (const spot of spots.slice(0, want)) {
+      // The old terrain-only census missed hulls crossing the replenishment site.
+      // Recheck against the LIVE map (including this batch's accepted rocks) and swept hulls.
+      if (!swarmPlacementIsClear(state, spot, spot.radius, { clearance: 24 })) {
+        this._terrainRetry = true;
+        continue;
+      }
       const material = missingMaterials[materialIndex] || ENVIRONMENT_FAMILIES[materialIndex % ENVIRONMENT_FAMILIES.length];
       materialIndex++;
       const id = this._spawnDebrisRock(spot.x, spot.z, spot.radius, rng, now,
@@ -1378,13 +1375,14 @@ export const swarmArena = {
       const id = 'swarm-opening-lesson-well';
       const createdAt = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
       const wellRadius = Number.isFinite(well.radius) ? well.radius : 96;
+      const offset = { x: Number.isFinite(well.x) ? well.x : -24,
+        z: Number.isFinite(well.z) ? well.z : 108 };
+      const center = quietWellCenter(this.state, anchor, offset, wellRadius);
+      if (!center) return;
       const record = system.registerEnvironmental({
         id,
         kind: 'well',
-        center: quietWellCenter(this.state, anchor, {
-          x: Number.isFinite(well.x) ? well.x : -24,
-          z: Number.isFinite(well.z) ? well.z : 108,
-        }, wellRadius),
+        center,
         radius: wellRadius,
         // Planted asleep: an awake well drags whatever furniture lands near it into motion before
         // the pilot has touched a key. It wakes with the pack, at the lesson release.
@@ -1395,6 +1393,7 @@ export const swarmArena = {
       if (record != null) {
         this._wellIds = this._wellIds.concat(id);
         this._lessonWellStrength = Number.isFinite(well.strength) ? well.strength : 90;
+        this._lessonWellPlacement = { center, radius: wellRadius };
       }
     }
   },
@@ -1404,6 +1403,15 @@ export const swarmArena = {
     this._lessonWellStrength = null;
     if (!Number.isFinite(strength)) return;
     const system = this._fieldsSystem();
+    const placement = this._lessonWellPlacement;
+    this._lessonWellPlacement = null;
+    if (!placement) return;
+    // Revalidate on activation: the furniture can have moved since the sleeping well was planted.
+    const bodies = this.state?.entities?.values?.() || this.state?.entityList || [];
+    for (const entity of bodies) {
+      if (entity && WELL_SOLID_TYPES.has(entity.type)
+        && sweptDiscsOverlap(placement.center, placement.radius, entity, { clearance: 8 })) return;
+    }
     if (system && typeof system.updateExternal === 'function') {
       system.updateExternal('swarm-opening-lesson-well', { strength });
     }
@@ -1429,6 +1437,8 @@ export const swarmArena = {
   },
 
   _releaseWells() {
+    this._lessonWellPlacement = null;
+    this._lessonWellStrength = null;
     const ids = this._wellIds || [];
     this._wellIds = [];
     if (ids.length === 0) return;
