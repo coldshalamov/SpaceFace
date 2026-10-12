@@ -117,6 +117,38 @@ test('parseArgs keeps a bounded hull x viewport matrix, and --gate replaces its 
   assert.throws(() => gatePasses(parseArgs(['--mode=swarm', '--gate=nope'])), /--gate must be/);
 });
 
+test('scratch frames stay unless --prune-frames is passed with --evidence', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { parseArgs, maybePruneFrames } = await import('../scripts/player-truth/run.mjs');
+  assert.equal(parseArgs(['--evidence']).pruneFrames, false);
+  assert.equal(parseArgs(['--evidence', '--prune-frames']).pruneFrames, true);
+  assert.equal(parseArgs(['--prune-frames=false']).pruneFrames, false);
+  const dir = mkdtempSync(join(tmpdir(), 'pt-frames-'));
+  const frames = join(dir, 'frames');
+  mkdirSync(frames);
+  writeFileSync(join(frames, '0000.jpg'), 'frame');
+  assert.equal(maybePruneFrames(dir, { evidence: true, pruneFrames: false }), false);
+  assert.equal(existsSync(join(frames, '0000.jpg')), true);
+  assert.equal(maybePruneFrames(dir, { evidence: false, pruneFrames: true }), false);
+  assert.equal(existsSync(join(frames, '0000.jpg')), true);
+  assert.equal(maybePruneFrames(dir, { evidence: true, pruneFrames: true }), true);
+  assert.equal(existsSync(frames), false);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('the exit code is applied only after stdout and stderr flush', async () => {
+  const { exitAfterFlush } = await import('../scripts/player-truth/run.mjs');
+  const order = [];
+  const stream = () => ({
+    writable: true, destroyed: false, writableEnded: false,
+    write(_chunk, cb) { order.push('flush'); cb(); return true; },
+  });
+  await exitAfterFlush(1, { stdout: stream(), stderr: stream(), exit: (code) => { order.push(`exit ${code}`); } });
+  assert.deepEqual(order, ['flush', 'flush', 'exit 1']);
+});
+
 test('a closed browser records the chrome exit signal in the stop line', async () => {
   const { formatRouteFailure } = await import('../scripts/player-truth/run.mjs');
   const line = formatRouteFailure('page.evaluate: Target page, context or browser has been closed', { notes: ['page closed'], exitCode: null, signal: 'SIGKILL' });

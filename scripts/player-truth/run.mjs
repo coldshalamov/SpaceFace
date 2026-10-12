@@ -5,7 +5,7 @@
 //   npm run player-truth -- --mode=adventure|racing|gauntlet [--duration=300]
 //   flags: --headed (GPU Chrome, preferred) · --rounds=3 · --duration=<sim s> · --wall=<min>
 //          --idle=<sim s> · --viewport=WxH (1280x720 headed, 960x540 software GL) · --out=<dir> · --tag=<suffix> (label suffix, e.g. idle) · --evidence (copy compact result
-//          into design/program/player-truth/<label>/)
+//          into design/program/player-truth/<label>/; scratch frames stay) · --prune-frames (opt-in delete of scratch frames after --evidence; default off)
 //   gate:  --gate (idle pass + active pass to round 3; UNKNOWN on core checks = FAIL)
 //          --gate=idle or --gate=active runs one of those passes · --viewports=960x540,1280x720,1920x1080
 //          --hull=all|<starter id> · --baseline=<git ref> (before/after table) · browser: bundled Chromium
@@ -36,12 +36,13 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const MODES = ['swarm', 'gauntlet', 'adventure', 'racing'];
 
 export function parseArgs(argv) {
-  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, out: null, evidence: false, shotEvery: null, tag: null, fight: false };
+  const a = { mode: 'swarm', arena: null, seed: 4242, rounds: 3, duration: null, wall: null, idle: 6, headed: false, viewport: null, viewports: null, hull: null, gate: false, baseline: null, out: null, evidence: false, pruneFrames: false, shotEvery: null, tag: null, fight: false };
   for (const raw of argv) {
     const m = raw.match(/^--([^=]+)(?:=(.*))?$/); if (!m) continue;
     const [, k, v] = m;
     if (k === 'headed' || k === 'gpu') a.headed = true;
     else if (k === 'evidence') a.evidence = true;
+    else if (k === 'prune-frames') a.pruneFrames = v == null || v === '' || v === 'true';
     else if (k === 'fight') a.fight = true;
     else if (k === 'gate') a.gate = v == null || v === '' || v === 'true' ? true : v;
     else if (k === 'shot-every') a.shotEvery = Number(v);
@@ -333,12 +334,38 @@ async function runOne(args, arena, extra = {}) {
   });
   await browser.close().catch(() => {}); await server.close().catch(() => {});
 
-  const verdict = await gradeAndWrite({ trace, shots, outDir, label, evidence: args.evidence, vw, vh });
+  const verdict = await gradeAndWrite({ trace, shots, outDir, label, evidence: args.evidence, pruneFrames: args.pruneFrames, vw, vh });
   return { label, verdict, outDir };
 }
 
+/** Scratch frames stay for review. They are removed only when --evidence and --prune-frames are both set. */
+export function maybePruneFrames(outDir, { evidence = false, pruneFrames = false } = {}) {
+  if (!evidence || !pruneFrames) return false;
+  rmSync(path.join(outDir, 'frames'), { recursive: true, force: true });
+  return true;
+}
+
+/** process.exit drops unflushed pipe buffers. Drain both streams, then exit. */
+export function flushWritable(stream) {
+  return new Promise((resolve) => {
+    if (!stream || typeof stream.write !== 'function' || stream.destroyed || stream.writableEnded) { resolve(); return; }
+    let settled = false;
+    const finish = () => { if (!settled) { settled = true; clearTimeout(timer); resolve(); } };
+    const timer = setTimeout(finish, 1000);
+    try {
+      stream.write('', () => finish());
+    } catch { finish(); }
+  });
+}
+
+export async function exitAfterFlush(code, { stdout = process.stdout, stderr = process.stderr, exit = process.exit } = {}) {
+  await flushWritable(stdout);
+  await flushWritable(stderr);
+  exit(code);
+}
+
 /** Grade a recorded trace and write verdict.md/json, contact sheet and (with evidence) the compact copy. */
-export async function gradeAndWrite({ trace, shots, outDir, label, evidence, vw, vh }) {
+export async function gradeAndWrite({ trace, shots, outDir, label, evidence, pruneFrames = false, vw, vh }) {
   const nearestSample = (t) => { let best = null; let bd = Infinity; for (const s of trace.samples) { const d = Math.abs(s.t - t); if (d < bd) { bd = d; best = s; } } return bd < 2000 ? best : null; };
   trace.readability = await analyzeReadability(shots, nearestSample).catch((e) => ({ error: String(e) }));
   for (const c of (trace.readability && trace.readability.census) || []) c.name = trace.keys[c.ty] || null;
@@ -357,8 +384,7 @@ export async function gradeAndWrite({ trace, shots, outDir, label, evidence, vw,
     writeFileSync(path.join(evDir, 'verdict.json'), JSON.stringify(compact, null, 1));
     const evPaths = { verdict: path.relative(ROOT, path.join(evDir, 'verdict.md')), contactSheet: path.relative(ROOT, path.join(evDir, 'contact-sheet.jpg')), json: path.relative(ROOT, path.join(evDir, 'verdict.json')) };
     writeFileSync(path.join(evDir, 'verdict.md'), renderVerdict({ meta, results, overall: verdict, paths: evPaths }));
-    // The compact verdict and contact sheet are the retained evidence. Frames are the bulky copy.
-    rmSync(path.join(outDir, 'frames'), { recursive: true, force: true });
+    maybePruneFrames(outDir, { evidence: true, pruneFrames });
   }
   writeFileSync(path.join(outDir, 'verdict.md'), renderVerdict({ meta, results, overall: verdict, paths }));
   printSummary({ meta, results, overall: verdict, paths });
@@ -417,7 +443,9 @@ async function main() {
   }
   const worst = gateExitCode(outcomes.map((o) => o.verdict));
   console.log(`player-truth exit ${worst}`);
-  process.exit(worst);
+  // Browser and bench server are already closed inside each run. Flush the verdict lines, then exit
+  // so a pipe (the lock wrapper) cannot lose the exit code, and so a leftover handle cannot hold the lock.
+  await exitAfterFlush(worst);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
