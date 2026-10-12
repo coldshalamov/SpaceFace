@@ -2,7 +2,7 @@
 // fresh arrivals hold a beat, and a hull the pilot just hit may always answer.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { survivalWave } from '../src/systems/survivalWave.js';
+import { survivalWave, SWARM_THREAT_MARK_SCALE } from '../src/systems/survivalWave.js';
 
 function world(n, { wave = 1, simTime = 10 } = {}) {
   const entities = new Map([[1, { id: 1, alive: true, pos: { x: 0, z: 0 } }]]);
@@ -51,6 +51,7 @@ test('a hull the pilot just hit may answer even when it is not the nearest', () 
 
 test('an idle swarm round holds every gun until the pilot acts', () => {
   const sys = world(6);
+  sys.state.entities.get(10).radius = 12;
   sys.state.run = { kind: 'survival', ruleset: 'swarm', phase: 'active', wave: 1 };
   sys.state.input = { fire: false, moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false, autoFire: true };
   sys._shapeSwarmFire();
@@ -58,7 +59,11 @@ test('an idle swarm round holds every gun until the pilot acts', () => {
   sys._cursor = 30;
   sys._shapeSwarmFire();
   assert.deepEqual([10, 11, 12, 13, 14, 15].map((id) => held(sys, id)), [true, true, true, true, true, true]);
-  assert.ok(sys.state.entities.get(10).data.swarmMarkRadius >= 16);
+  // Radius-12 wasp: 12 × 1.12 = 13.44. The stroke ends inside 1.2× body radius,
+  // which is where the readability background ring starts.
+  const mark = sys.state.entities.get(10).data.swarmMarkRadius;
+  assert.equal(mark, 12 * SWARM_THREAT_MARK_SCALE);
+  assert.ok(mark > 12 && mark <= 12 * 1.2);
   sys.state.input.fire = true;
   sys._shapeSwarmFire();
   assert.deepEqual([10, 11, 12, 13, 14, 15].map((id) => held(sys, id)), [false, false, true, true, true, true]);

@@ -14,6 +14,7 @@ import { survivalRewards } from '../src/systems/survivalRewards.js';
 import { bankActive, recordTrick } from '../src/systems/stuntCombo.js';
 import { stuntGrammar } from '../src/systems/stuntGrammar.js';
 import { earnLine } from '../src/ui/survivalHud.js';
+import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 
 const VICTIM = [{ lifeId: 'bank-life', threatClass: 'fodder', dead: true }];
 const METRICS = { payloadMass: 20, playerDryHullMass: 20, usefulDeltaV: 0, referenceCruise: 100 };
@@ -53,6 +54,7 @@ test('a settled bank reaches the award with its trick names', () => {
     for (const nextPhase of ['arena_intro', 'wave_intro', 'active']) {
       bus.emit('run:transitionRequested', { expectedPhase: state.run.phase, nextPhase });
     }
+    noteSwarmPilotAction(state);
     const combo = state.stunts.combo;
     recordTrick(combo, trickFor('bolas', 'Bolas', 'ep-a', 600));
     recordTrick(combo, trickFor('bank_job', 'Bank Job', 'ep-b', 620));
@@ -81,6 +83,7 @@ test('the awarded receipt carries the names through the run wallet', () => {
     for (const nextPhase of ['arena_intro', 'wave_intro', 'active']) {
       bus.emit('run:transitionRequested', { expectedPhase: state.run.phase, nextPhase });
     }
+    noteSwarmPilotAction(state);
     assert.equal(runSession.award({ score: 340, reason: 'stunt_bank', bankActs: ['Bolas', 7, ''] }), true);
     assert.deepEqual(awarded[0].bankActs, ['Bolas'], 'only real names pass through');
     assert.equal(runSession.award({ score: 100, reason: 'kill', bankActs: 'Bolas' }), true);

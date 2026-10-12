@@ -69,6 +69,44 @@ function readTarget() {
   return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height, dist: bd, rel, away, near, packDist, hull, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
 }
 
+const AIM_RETREAT = 0.35;
+const AIM_RETREAT_STEPS = 8;
+
+/** One step from an aim point toward the canvas center. Shared by the page loop and tests. */
+export function nudgeAimTowardCenter(x, y, cx, cy) {
+  return { x: x + (cx - x) * AIM_RETREAT, y: y + (cy - y) * AIM_RETREAT };
+}
+
+/**
+ * Walk an aim point off a HUD control. `isControl(x, y)` is the hit test.
+ * Eight blocked steps fall back to the canvas center. The flight tape's Circuits
+ * button sits on the top edge; a projected hostile there used to open the race
+ * board and freeze sim time (active gate, sim 9.3s, then a heap OOM).
+ */
+export function retreatAim(x, y, cx, cy, isControl) {
+  let ax = x;
+  let ay = y;
+  for (let i = 0; i < AIM_RETREAT_STEPS; i++) {
+    if (!isControl(ax, ay)) return { x: ax, y: ay };
+    ({ x: ax, y: ay } = nudgeAimTowardCenter(ax, ay, cx, cy));
+  }
+  return { x: cx, y: cy };
+}
+
+async function aimClearOfHud(page, x, y, cx, cy) {
+  let ax = x;
+  let ay = y;
+  for (let i = 0; i < AIM_RETREAT_STEPS; i++) {
+    const blocked = await page.evaluate(([px, py]) => {
+      const hit = document.elementFromPoint(Math.round(px), Math.round(py));
+      return !!(hit && hit.closest('button, a, input, select, textarea, [role="button"]'));
+    }, [ax, ay]);
+    if (!blocked) return { x: ax, y: ay };
+    ({ x: ax, y: ay } = nudgeAimTowardCenter(ax, ay, cx, cy));
+  }
+  return { x: cx, y: cy };
+}
+
 const fighterMemory = { hull: null, breakBeats: 0 };
 
 /**
@@ -88,7 +126,8 @@ export async function fightBeat(page, beat) {
     if (beat % 3 === 0) await holdKey(page, 'KeyA', 0.4, null, null);
     return;
   }
-  await page.mouse.move(Math.round(tg.x), Math.round(tg.y), { steps: 2 });
+  const aim = await aimClearOfHud(page, tg.x, tg.y, tg.cx, tg.cy);
+  await page.mouse.move(Math.round(aim.x), Math.round(aim.y), { steps: 2 });
   await page.mouse.down();
   // Turn by tapping: hold the turn key only as long as the bearing error needs (the hull turns
   // ~5 rad/s; holding it for a whole beat overshoots and the ship spins in place under fire).

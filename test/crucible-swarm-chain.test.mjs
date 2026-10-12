@@ -18,6 +18,7 @@ import {
   swarmChainStep,
 } from '../src/systems/swarmChain.js';
 import { SURVIVAL_COHORT_TAG } from '../src/systems/waveMaterialization.js';
+import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 
 const DT = 1 / 60;
@@ -44,6 +45,7 @@ function boot({ ruleset = 'swarm', phase = 'active' } = {}) {
   state.run = createRunState({ kind: 'survival', ruleset, seed: 4242 });
   state.run.phase = phase;
   state.run.wave = 3;
+  noteSwarmPilotAction(state);
   return { state, bus, emitted, player, ctx };
 }
 

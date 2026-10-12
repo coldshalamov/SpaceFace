@@ -53,6 +53,14 @@ export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
  * from its own arrival. A player who shoots the wasp waits one beat, not forty-five seconds.
  */
 export const OPENING_LESSON_RELEASE_TICKS = 3 * 60;
+
+// sampleBox (scripts/player-truth/readability.mjs) reads the hull at Chebyshev
+// d ≤ 0.7r and the background at d > 1.2r. The plate is RingGeometry(0.70, 1)
+// scaled by swarmMarkRadius, so this factor puts that stroke in (0.784r, 1.12r):
+// outside the hull sample, short of the sky sample. 1.65× with a floor of 16
+// put a radius-12 wasp at 19.8 and the idle gate scored the bright sky as the
+// threat (separation 1.94, threats-on-bright p95 100%).
+export const SWARM_THREAT_MARK_SCALE = 1.12;
 // After the lesson the pack arrives in readable groups, a breath apart, instead of the whole
 // room landing on a new pilot inside one second.
 const OPENING_ARRIVAL_WINDOW_TICKS = 8 * 60;
@@ -613,10 +621,11 @@ export const survivalWave = {
       const entity = this._resolveCohortEntity(id, member);
       if (!entity || entity.alive === false || !entity.pos || !entity.data?.ai) continue;
       // Opt-in bracket. The default plate stays on entity.radius so a hull without
-      // this field cannot grow a halo. A wasp (radius 12) needs a mark a person
-      // can pick out from foundry rock.
+      // this field cannot grow a halo. The stroke stays just outside the hull
+      // (see SWARM_THREAT_MARK_SCALE) so the dark body, not the crimson rim, is
+      // what the bright-sky sample separates.
       const bodyR = Math.max(2, Number(entity.radius) || 2);
-      entity.data.swarmMarkRadius = Math.max(bodyR * 1.65, 16);
+      entity.data.swarmMarkRadius = bodyR * SWARM_THREAT_MARK_SCALE;
       const ai = entity.data.ai;
       if (!Number.isFinite(member.armedAt)) {
         member.armedAt = Number.isFinite(ai.swarmArmedAt) ? ai.swarmArmedAt : now + SWARM_ARRIVAL_HOLD_S;

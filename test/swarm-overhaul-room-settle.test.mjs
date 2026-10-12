@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { swarmArena } from '../src/systems/swarmArena.js';
-import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
 import { resolvePhysicsBodySpec } from '../src/core/physicsAuthority.js';
 import { createRunState } from '../src/core/runState.js';
 
@@ -26,25 +25,44 @@ test('between rounds a rock still flying from the last fight is stopped through 
   assert.deepEqual(calls[1].impulse, { x: -0 * m4, z: -75 * m4 });
 });
 
-test('every round, including the opener, settles the room as it opens', () => {
-  for (const wave of [1, 2]) {
-    const calls = [];
-    const sys = Object.create(swarmArena);
-    sys._lessonHoldS = null;
-    sys.helpers = { combatPhysics: { applyImpulse: (input) => { calls.push(input); return true; } } };
-    sys.state = {
-      tick: 9,
-      simTime: 44,
-      run: Object.assign(createRunState({ kind: 'survival', ruleset: 'swarm', seed: 4242 }), { phase: 'active', wave }),
-      entities: new Map([[1, { id: 1, type: 'asteroid', alive: true, mass: 40, vel: { x: 16, z: 0 } }]]),
-      entityList: [],
-    };
-    sys._onWaveStarted();
-    assert.deepEqual(calls.map((c) => c.entityId), [1], `wave ${wave}`);
+function openingRoom(wave) {
+  const calls = [];
+  const sys = Object.create(swarmArena);
+  sys._lessonHoldS = null;
+  sys._brood = null;
+  sys._hiveRelease = () => {};
+  sys._raiseCapacity = () => {};
+  sys._cullWrecks = () => {};
+  sys._topUp = () => {};
+  sys._installSlalomWells = () => {};
+  sys._installOpeningLesson = () => {};
+  sys._installMassGapWall = () => {};
+  sys.helpers = { combatPhysics: { applyImpulse: (input) => { calls.push(input); return true; } } };
+  sys.state = {
+    tick: 9,
+    simTime: 44,
+    run: Object.assign(createRunState({ kind: 'survival', ruleset: 'swarm', seed: 4242 }), { phase: 'active', wave }),
+    entities: new Map([[1, { id: 1, type: 'asteroid', alive: true, mass: 40, vel: { x: 16, z: 0 } }]]),
+    entityList: [],
+  };
+  return { sys, calls };
+}
+
+test('wave 1 does not settle; a later round does, on plan and on start', () => {
+  // Seed 4242 idle: parking the opener held foundry rocks at ≤5.8 u/s and the
+  // lesson wasp (life 379) rammed them at sim 31.167. Master settles only
+  // wave > 1, rocks reached 44 u/s, and that wasp lived the 45s hold.
+  for (const method of ['_onWaveStarted', '_onWavePlanned']) {
+    const opener = openingRoom(1);
+    opener.sys[method](method === '_onWavePlanned' ? { wave: 1 } : undefined);
+    assert.deepEqual(opener.calls.map((c) => c.entityId), [], `${method} leaves wave 1 in motion`);
+    const later = openingRoom(2);
+    later.sys[method](method === '_onWavePlanned' ? { wave: 2 } : undefined);
+    assert.deepEqual(later.calls.map((c) => c.entityId), [1], `${method} still stops a later round`);
   }
 });
 
-test('until the pilot acts, a live round keeps settling rocks that are still fast', () => {
+test('a quiet live round does not keep settling rocks', () => {
   const calls = [];
   const sys = Object.create(swarmArena);
   sys._brood = null;
@@ -59,17 +77,9 @@ test('until the pilot acts, a live round keeps settling rocks that are still fas
     entities: new Map([[1, { id: 1, type: 'asteroid', alive: true, mass: 40, vel: { x: 16, z: 0 }, pos: { x: 0, z: 0 } }]]),
   };
   sys.update();
-  assert.deepEqual(calls.map((c) => c.entityId), [1]);
-  const settled = calls.length;
-  sys.state.simTime = 1.2;
-  sys.update();
-  assert.equal(calls.length, settled, 'the quiet settle waits out its throttle');
   sys.state.simTime = 1.5;
   sys.update();
-  assert.equal(calls.length, settled + 1);
-  sys.state.input.fire = true;
-  noteSwarmPilotAction(sys.state);
-  sys.state.simTime = 2;
+  sys.state.simTime = 3;
   sys.update();
-  assert.equal(calls.length, settled + 1, 'once the pilot has acted, the room keeps its motion');
+  assert.deepEqual(calls, [], 'wave 1 keeps the field moving until the pilot meets it');
 });
