@@ -5,6 +5,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { createRunTransitionGuard } from '../src/core/runTransitionGuard.js';
 import { runNewGameStartTransition } from '../src/core/newGameStartTransition.js';
 import { createPresentationRuntimeCloser } from '../src/core/presentationRunner.js';
+import { laneSetMode, installSimCommandSink, applyLaneMode } from '../src/core/simLaneCommands.js';
 
 // Execute the boot owner's actual route/teardown callbacks without initializing a GPU or loading
 // the entire system registry. The transition and close transaction remain their production owners.
@@ -17,8 +18,8 @@ function fixture() {
   const state = { mode: 'loading', render: { admissionRunGeneration: 0 } };
   const guard = createRunTransitionGuard();
   const bus = createBus();
-  const exitToMenu = new Function('state', 'bus', 'runTransitionGuard', `return () => {${menuBody}\n};`)(
-    state, bus, guard,
+  const exitToMenu = new Function('state', 'bus', 'runTransitionGuard', 'laneSetMode', `return () => {${menuBody}\n};`)(
+    state, bus, guard, laneSetMode,
   );
   const stopPresentation = new Function(
     'state', 'runTransitionGuard', 'loadingPresenter', 'loopController',
@@ -81,3 +82,26 @@ test('a gate rejecting after terminal close cannot discard the retired world', a
   assert.deepEqual(await pending.result, { stale: true, enteredFlight: false });
   assert.equal(pending.discarded(), 0, 'late failure cleanup must not mutate the retired scene');
 });
+
+for (const outcome of ['ready', 'failed']) {
+  test(`worker menu command cancels startup before a late ${outcome} result`, async t => {
+    const h = fixture();
+    const commands = [];
+    const uninstall = installSimCommandSink(command => commands.push(command));
+    t.after(uninstall);
+    const pending = pendingStart(h);
+    await pending.reached;
+    h.bus.emit('game:exitToMenu', { source: 'pause' });
+    assert.equal(h.guard.isCurrent(pending.token), false, 'cancellation is immediate on the presentation owner');
+    assert.ok(h.state.render.admissionRunGeneration > pending.token.generation);
+    assert.equal(h.state.mode, 'loading', 'the facade does not impersonate worker-owned mode');
+    assert.deepEqual(commands, [{ kind: 'mode', mode: 'menu' }]);
+    if (outcome === 'ready') pending.resolve(true);
+    else pending.reject(new Error('readiness failed after menu request'));
+    assert.deepEqual(await pending.result, { stale: true, enteredFlight: false });
+    assert.equal(pending.discarded(), 0, 'late work cannot discard the newer route');
+    assert.deepEqual(commands, [{ kind: 'mode', mode: 'menu' }], 'late work cannot enqueue flight');
+    applyLaneMode(h.state, h.bus, commands[0].mode);
+    assert.equal(h.state.mode, 'menu', 'the real shared worker applier completes the route');
+  });
+}
