@@ -110,6 +110,7 @@ import {
 } from '../data/sectorActivityPockets.js';
 import { stepPallasWorkLoop } from './pallasWorkLoop.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { NPC_JOB_PHASE, NPC_JOB_SCHEMA } from './npcJobs.js';
 import {
   claimRichSeamOpportunity,
@@ -345,6 +346,10 @@ function factionHullFor(anchorHull, factionId, rng) {
   return group.hullIds[Math.floor(rng() * group.hullIds.length)] || anchorHull;
 }
 
+const HELIOS_TALLY_REACH = 70;
+const HELIOS_TALLY_STILL = 4;
+const HELIOS_TALLY_COUNT_S = 6;
+const HELIOS_BERTH_MAX_DRIFT = 20;
 const TRAFFIC_ROLES = {
   hauler:   { ship: 'ship_mule',     team: 2, speed: 26, archetype: 'fleeing_trader', weight: 30,
               label: 'Cargo Hauler', docks: true, trades: true },
@@ -6373,6 +6378,15 @@ export const traffic = {
     setIntent(e, 0, 1, false, false, null, Math.atan2(rock.pos.z - e.pos.z, rock.pos.x - e.pos.x));
   },
 
+  // The Helios freight spine counts every laden hull at its tally post before the berth: the seam's
+  // ore crosses the opening neighbourhood as real freight instead of slipping off behind the rock.
+  _heliosTallyPoint() {
+    if (this._heliosTallyPos !== undefined) return this._heliosTallyPos;
+    const poi = (SECTOR_ANCHORS.sector_helios_prime?.pois || []).find((row) => row.id === 'poi_helios_tally');
+    this._heliosTallyPos = poi ? sectorLocalToGlobalForSector(poi.pos, 'sector_helios_prime') : null;
+    return this._heliosTallyPos;
+  },
+
   // One existing hull runs seam -> loose ore -> refinery. Collection consumes the actual pickup;
   // a player taking/towing it first leaves the barge empty, and a killed barge spills its real hold.
   _stepHeliosOreCarrier(entity, rec, stations, state) {
@@ -6389,7 +6403,8 @@ export const traffic = {
       const propulsion = resolvePropulsionProfile(entity, state);
       // A settled chip keeps its spawn-kick `vel` field after the body stops; leading on that stale
       // number had the barge crawl at ~5 WU/s toward a chip 150 WU off. Lead on observed motion.
-      let leadX = target.vel?.x || 0, leadZ = target.vel?.z || 0;
+      const leadCap = TRAFFIC_ROLES.ore_carrier.speed / Math.max(TRAFFIC_ROLES.ore_carrier.speed, Math.hypot(target.vel?.x || 0, target.vel?.z || 0));
+      let leadX = (target.vel?.x || 0) * leadCap, leadZ = (target.vel?.z || 0) * leadCap;
       if (target.type === 'pickup') {
         const seen = rec.chipTrack;
         const dtSeen = seen && seen.id === target.id ? state.simTime - seen.t : 0;
@@ -6428,6 +6443,25 @@ export const traffic = {
       return close;
     };
     if (loaded) {
+      const tally = this._heliosTallyPoint();
+      if (tally && rec.tallyManifestId !== current.manifestId) {
+        rec.targetId = refinery.id;
+        const at = steer({ pos: tally }, HELIOS_TALLY_REACH);
+        const drift = Math.hypot(entity.vel?.x || 0, entity.vel?.z || 0);
+        if (!at || drift > HELIOS_TALLY_STILL) {
+          rec.tallyHoldSince = null;
+          return;
+        }
+        if (rec.tallyHoldSince == null) rec.tallyHoldSince = state.simTime;
+        if (state.simTime - rec.tallyHoldSince < HELIOS_TALLY_COUNT_S) return;
+        rec.tallyManifestId = current.manifestId;
+        rec.tallyHoldSince = null;
+        this.bus.emit('traffic:freightTallied', {
+          carrierId: entity.id, worldRecordId: entity.data.worldRecordId || null,
+          manifestId: current.manifestId, totalQty: current.totalQty, destinationId: 'station_helios',
+        });
+        return;
+      }
       rec.targetId = refinery.id;
       if (steer(refinery, (refinery.radius || 0) + DOCK_RANGE)
         && this._emitArrival(entity, rec, refinery, { manifest: current })) {
@@ -6462,9 +6496,14 @@ export const traffic = {
         && worker.data?.minerShiftRockId != null;
       const miner = state.traffic.freighters.map((row) => state.entities.get(row.id)).find(cutting)
         || (state.entityList || []).find(cutting);
-      const rock = miner && this._resolveAsteroid(state, miner.data.minerShiftRockId);
-      steer(rock || refinery, (rock?.radius || refinery.radius || 0) + 100);
-      rec.targetId = rock?.id || refinery.id;
+      const cutRock = miner && this._resolveAsteroid(state, miner.data.minerShiftRockId);
+      // A rock knocked loose is no berth: chasing its momentum flung the barge 2 km off the claim
+      // at 250 WU/s. Hold on the miner itself until it settles on a seated face again.
+      const rock = cutRock && Math.hypot(cutRock.vel?.x || 0, cutRock.vel?.z || 0) <= HELIOS_BERTH_MAX_DRIFT
+        ? cutRock : null;
+      const berth = rock || miner || refinery;
+      steer(berth, (berth.radius || 0) + 100);
+      rec.targetId = berth.id;
       return;
     }
     rec.targetId = pickup.id;

@@ -908,6 +908,12 @@ export const lawSecurity = {
       // bounded recent-harm history to tell an isolated contact (accident) from a continued
       // attack (murder). Recording is not accusing — chips still never convict on their own.
       this._noteHarmOnVictim(target.id);
+      // SF-159 holds for contact too: one collision chip is an accident (a pilot shoved into a
+      // hauler by a third hull), so only a sustained run of harm on that victim opens a case.
+      if (payload.origin && payload.origin.kind === 'collision'
+        && this._recentHarmCount(target.id, SUSTAINED_HARM_WINDOW_S) < SUSTAINED_HARM_MIN_EVENTS) {
+        return;
+      }
       // Already hostile at first contact: the fight was lawful before it began. The combat
       // receipt carries the FROZEN first-hit truth, so a victim who only turned hostile by
       // retaliating to the player's own first shot still flows through as a crime scene —
