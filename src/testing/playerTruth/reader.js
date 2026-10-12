@@ -74,11 +74,24 @@ export function installPlayerTruthReader(win, opts = {}) {
   };
   const INPUT_EVENTS = ['keydown', 'keyup', 'mousedown', 'mouseup'];
   for (const name of INPUT_EVENTS) win.addEventListener(name, onInput, { capture: true, passive: true });
+  // Entity ids recycle through freeIds: a new occupant of an old id gets its own life id so a
+  // recycled slot never reads as one body swapping model or popping.
+  const lives = new Map(); let lifeSerial = 0;
+  const lifeId = (e) => {
+    if (!e) return null;
+    const gen = e.occupantGeneration != null ? e.occupantGeneration : null;
+    const cur = lives.get(e.id);
+    if (!cur) { lives.set(e.id, { gen, uid: e.id }); return e.id; }
+    if (gen == null || cur.gen === gen) return cur.uid;
+    const uid = e.id + 1e6 * (++lifeSerial);
+    lives.set(e.id, { gen, uid }); return uid;
+  };
   const unsubs = [];
   if (SF.bus && typeof SF.bus.on === 'function') {
     const u1 = SF.bus.on('entity:killed', (p) => {
       const st = SF.state; const killer = p && p.killerId != null && st.entities && st.entities.get ? st.entities.get(p.killerId) : null;
-      events.push({ ev: 'killed', t: now(), sim: simNow(), id: p && p.id, type: p && p.type, killerId: p ? p.killerId : null,
+      const victim = p && p.id != null && st.entities && st.entities.get ? st.entities.get(p.id) : null;
+      events.push({ ev: 'killed', t: now(), sim: simNow(), id: victim ? lifeId(victim) : p && p.id, rawId: p && p.id, type: p && p.type, killerId: killer ? lifeId(killer) : p ? p.killerId : null,
         killerType: killer ? killer.type : null, byPlayer: !!(p && p.killerId === st.playerId), hostile: !!(p && p.targetHostileToPlayer),
         phase: st.run && st.run.phase, wave: st.run && st.run.wave });
     });
@@ -257,7 +270,7 @@ export function installPlayerTruthReader(win, opts = {}) {
         } else if (sc.inView) visCode = 4; // no per-entity mesh (instanced/pooled) but inside the view
         if ((cls === 'enemy' || cls === 'projectile') && sc.inView) threatBoxes.push([sx - pr, sy - pr, sx + pr, sy + pr]);
       }
-      s.e.push([e.id, CLS[cls], +e.pos.x.toFixed(1), +e.pos.z.toFixed(1), +(e.vel ? e.vel.x : 0).toFixed(2), +(e.vel ? e.vel.z : 0).toFixed(2), sx, sy, pr, visCode, key, e.type === 'asteroid' || cls !== 'other' ? 0 : intern(e.type)]);
+      s.e.push([lifeId(e), CLS[cls], +e.pos.x.toFixed(1), +e.pos.z.toFixed(1), +(e.vel ? e.vel.x : 0).toFixed(2), +(e.vel ? e.vel.z : 0).toFixed(2), sx, sy, pr, visCode, key, e.type === 'asteroid' || cls !== 'other' ? 0 : intern(e.type)]);
     }
     if (cam && scene && frame % vfxEvery === 0) {
       try { s.vfx = vfxScan(st, cam, scene, vw, vh, s.p && s.p.onScreen ? s.p.box : null, threatBoxes); } catch (err) { s.vfx = { err: String(err && err.message || err) }; }

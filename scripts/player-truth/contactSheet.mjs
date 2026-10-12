@@ -61,7 +61,7 @@ export async function buildContactSheet({ shots, results, meta, outFile, vw, vh 
   const W = COLS * TILE_W; const H = HEADER + rows * TILE_H + (flagRows ? 18 : 0) + 18;
   const fails = results.filter((r) => r.status === 'FAIL').map((r) => r.id);
   const header = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg"><rect width="${W}" height="${HEADER}" fill="#111"/>
-    <text x="10" y="22" font-family="DejaVu Sans, sans-serif" font-size="17" font-weight="bold" fill="${meta.overall === 'PASS' ? '#4cd964' : '#ff6b60'}">${esc(meta.overall)} · ${esc(meta.label)} · seed ${esc(meta.seed)} · ${esc(meta.commit)}</text>
+    <text x="10" y="22" font-family="DejaVu Sans, sans-serif" font-size="17" font-weight="bold" fill="${meta.overall === 'PASS' ? '#4cd964' : '#ff6b60'}">${esc(meta.overall)} · ${esc(meta.label)} · seed ${esc(meta.runSeed != null ? meta.runSeed : meta.seed)}${meta.seedSet === false && meta.runSeed != null && String(meta.runSeed) !== String(meta.seed) ? esc(` (asked ${meta.seed})`) : ''} · ${esc(meta.commit)}</text>
     <text x="10" y="44" font-family="DejaVu Sans, sans-serif" font-size="12" fill="#ccc">${esc(meta.renderer).slice(0, 90)} · ${esc(meta.resolution)} · FAIL: ${esc(fails.join(', ') || 'none')}</text>
     ${flagRows ? `<text x="10" y="${HEADER + 13}" font-family="DejaVu Sans, sans-serif" font-size="12" fill="#ff8a80">FLAGGED MOMENTS</text>` : ''}
     <text x="10" y="${HEADER + (flagRows ? 18 + flagRows * TILE_H : 0) + 13}" font-family="DejaVu Sans, sans-serif" font-size="12" fill="#9ad">TIMELINE (evenly spaced)</text></svg>`;
