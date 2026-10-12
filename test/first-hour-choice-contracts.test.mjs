@@ -128,7 +128,7 @@ test('starter-progression: undocking from B5 without a job retires the rail and 
   assert.equal(h.state.onboarding.finished, true);
 });
 
-test('starter-progression: undocking before B5 enters (silence gap) also retires the rail', () => {
+test('starter-progression: B5 opens at the berth with sim time frozen; undocking without a job retires the rail', () => {
   const h = makeHarness();
   h.state.world.currentSectorId = 'sector_helios_prime';
   // Live order: input emits the dock intent before uiRoot commits ui.dockedStationId.
@@ -136,11 +136,11 @@ test('starter-progression: undocking before B5 enters (silence gap) also retires
   h.state.onboarding.currentBeat = CHOICE_BEAT - 1;
   h.bus.emit('dock:docked', { stationId: 'station_helios' });
   assert.ok(h.state.onboarding.beatDoneAt.dock != null);
-  assert.equal(h.state.onboarding.currentBeat, CHOICE_BEAT - 1, 'B5 waits out its silence gap');
+  assert.equal(h.state.onboarding.currentBeat, CHOICE_BEAT, 'B5 opens at the berth: the station pauses sim time');
   h.state.ui.dockedStationId = null;
   h.bus.emit('dock:undocked', { stationId: 'station_helios' });
   assert.equal(h.state.onboarding.finished, true,
-    'the choice beat never opens in flight after the player already left the berth');
+    'the choice beat never rides along into flight after the player left the berth');
 });
 
 test('B5 posts three normal starter-risk offers and accepts exactly one choice', () => {

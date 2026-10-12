@@ -1303,7 +1303,7 @@ export const onboarding = {
 
   // Try to advance to the next beat if the silence gate has passed since the previous beat's DONE.
   // Called from update(). Fires the new beat's entry line + spawns the beat's world content.
-  _tryAdvanceBeat() {
+  _tryAdvanceBeat(opts = {}) {
     const ob = this.state.onboarding;
     if (!ob || !ob.active || ob.finished) return;
     const nextIndex = ob.currentBeat + 1;
@@ -1323,7 +1323,8 @@ export const onboarding = {
       const prevDoneAt = ob.beatDoneAt[prev.key];
       if (prevDoneAt == null) return;                 // predecessor not DONE yet
       const now = this.state.simTime || 0;
-      if (now - Math.max(prevDoneAt, this._lastTextAtS) < SILENCE_S) return;
+      // The station screen pauses sim time, so a beat DONE'd by docking opens at the berth.
+      if (!opts.atBerth && now - Math.max(prevDoneAt, this._lastTextAtS) < SILENCE_S) return;
     }
     // Rescue-opening gate (PQ-163.00): while a rescue verb is current, the drill beat it gates
     // waits. The rescue speaks through the same one-voice chokepoint, so the ≥4 s cadence the
@@ -1520,7 +1521,10 @@ export const onboarding = {
       resolved = eventName === 'recommended:completed' || !!stationId;
     }
     // Movement, heat recovery, distance, and ore collection resolve from deterministic state reads.
-    if (resolved) this._beatDone(beat);
+    if (resolved) {
+      this._beatDone(beat);
+      if (done === 'docked' && eventName === 'dock:docked') this._tryAdvanceBeat({ atBerth: true });
+    }
   },
 
   // Mark a beat DONE and, if it was the choice beat, finish the tutorial.
