@@ -18,8 +18,15 @@
 // neighbours (Ceres Belt, Tethys Junction, Vesta Forge). PlaceIds reference existing packaged
 // props only (verified by test/world-one-offs.test.mjs against the packaged GLBs); no new art,
 // no owner call.
+//
+// AEP P1 (fields + battles): the waymark-chain and battlescar set pieces for the Cam≤4 scorecard
+// sectors live in src/data/fieldsBattlesPlacements.js (owned by chunk p1-fields-battles) and are
+// prepended here so this registry stays the single spawn list.
+
+import { FIELDS_BATTLES_ONE_OFFS } from './fieldsBattlesPlacements.js';
 
 export const WORLD_ONE_OFFS = Object.freeze([
+  ...FIELDS_BATTLES_ONE_OFFS,
   Object.freeze({
     id: 'oneoff_abandoned_tug',
     name: 'The Long Berth — an abandoned yard tug',

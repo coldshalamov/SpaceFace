@@ -543,6 +543,121 @@ export const ZONE_TETHYS_TALLY = Object.freeze({
   threat: 0,
 });
 
+// ─── AEP P1 (PP-1/PP-2): fields + battles sites ──────────────────────────────────────────────
+// One authored map-glyph zone per Cam≤4 scorecard sector names the battle scar / field silhouette
+// on the chart. They ride the same additive seam as every other authored place: no presence, so
+// `planZoneSpawns` contributes nothing and the deterministic 47a golden cannot move; the Atlas
+// derives the glyph from the record itself (atlasProxy procedural disc, no bespoke asset).
+
+export const ZONE_HELIOS_HARBOUR_SCAR = Object.freeze({
+  id: 'zone_helios_harbour_scar', name: 'Harbour Scar', type: 'derelict_field',
+  factionId: 'faction_reach',
+  reason: 'The cordon the Reach never lifted — hulls down guarding the station run.',
+  center: Object.freeze({ x: -520, z: -120 }), radius: 320, threat: 2,
+});
+export const ZONE_VEIL_REVOKED_CORDON = Object.freeze({
+  id: 'zone_veil_revoked_cordon', name: 'The Revoked Cordon', type: 'derelict_field',
+  factionId: 'faction_reach',
+  reason: 'Wrecks on a dead picket — the gate is gone, the guard never left.',
+  center: Object.freeze({ x: 300, z: -500 }), radius: 280, threat: 2,
+});
+export const ZONE_PALLAS_REEF_SCAR = Object.freeze({
+  id: 'zone_pallas_reef_scar', name: 'Reef Scar', type: 'derelict_field',
+  factionId: 'faction_free',
+  reason: 'A held line gone to hulls — the scavengers strip it a piece at a time.',
+  center: Object.freeze({ x: -80, z: -420 }), radius: 300, threat: 2,
+});
+export const ZONE_IO_FRONT_WAKE = Object.freeze({
+  id: 'zone_io_front_wake', name: 'The Front Wake', type: 'ambush_lane',
+  factionId: 'faction_quiet',
+  reason: 'A frozen front — hulls from both lines, still holding their spacing.',
+  center: Object.freeze({ x: -940, z: -80 }), radius: 320, threat: 3,
+});
+export const ZONE_NYX_MARCH_SCAR = Object.freeze({
+  id: 'zone_nyx_march_scar', name: 'March Scar', type: 'ambush_lane',
+  factionId: 'faction_quiet',
+  reason: 'An old ambush line preserved in hulls — the march floor remembers.',
+  center: Object.freeze({ x: -180, z: 800 }), radius: 300, threat: 3,
+});
+export const ZONE_HYPERION_CUT_TEETH = Object.freeze({
+  id: 'zone_hyperion_cut_teeth', name: 'Cut Teeth', type: 'derelict_field',
+  factionId: 'faction_free',
+  reason: 'A yard fight folded into the belt — the seam still shows the bite.',
+  center: Object.freeze({ x: 300, z: -300 }), radius: 320, threat: 2,
+});
+export const ZONE_KEPLER_SCAR_GRAVE = Object.freeze({
+  id: 'zone_kepler_scar_grave', name: 'Scar Grave', type: 'derelict_field',
+  factionId: 'faction_free',
+  reason: 'The wreck column the sector is named for — still holding its line.',
+  center: Object.freeze({ x: 280, z: 320 }), radius: 320, threat: 2,
+});
+export const ZONE_ORCUS_SHADOW_TEETH = Object.freeze({
+  id: 'zone_orcus_shadow_teeth', name: 'Shadow Teeth', type: 'derelict_field',
+  factionId: 'faction_quiet',
+  reason: 'Redacted contact preserved in wreckage — the archive calls it weather.',
+  center: Object.freeze({ x: -300, z: -200 }), radius: 300, threat: 3,
+});
+export const ZONE_RHEA_CINDER_TEETH = Object.freeze({
+  id: 'zone_rhea_cinder_teeth', name: 'Cinder Teeth', type: 'derelict_field',
+  factionId: 'faction_free',
+  reason: 'The claim-war line the slag field kept — hulls fused to the floor.',
+  center: Object.freeze({ x: 0, z: -300 }), radius: 320, threat: 2,
+});
+export const ZONE_HAUMEA_FISSURE_SCAR = Object.freeze({
+  id: 'zone_haumea_fissure_scar', name: 'Fissure Scar', type: 'derelict_field',
+  factionId: 'faction_free',
+  reason: 'Hulls frozen mid-run at the ice line — the rift keeps them.',
+  center: Object.freeze({ x: -600, z: 300 }), radius: 300, threat: 2,
+});
+export const ZONE_ERIS_DROP_SCAR = Object.freeze({
+  id: 'zone_eris_drop_scar', name: 'Drop Scar', type: 'ambush_lane',
+  factionId: 'faction_quiet',
+  reason: 'Where the convoy came down — the margin keeps what it takes.',
+  center: Object.freeze({ x: 600, z: -500 }), radius: 320, threat: 3,
+});
+export const ZONE_PHOEBE_ECHO_GRAVE = Object.freeze({
+  id: 'zone_phoebe_echo_grave', name: 'Echo Grave', type: 'derelict_field',
+  factionId: 'faction_free',
+  reason: 'A wreck line inside the shrine count — the echo carries the tally.',
+  center: Object.freeze({ x: -400, z: 600 }), radius: 300, threat: 2,
+});
+export const ZONE_NEREID_SHOAL_SCAR = Object.freeze({
+  id: 'zone_nereid_shoal_scar', name: 'Shoal Scar', type: 'ambush_lane',
+  factionId: 'faction_quiet',
+  reason: 'Ambush line folded into the shoals — the rocks kept the lesson.',
+  center: Object.freeze({ x: 300, z: 400 }), radius: 300, threat: 3,
+});
+export const ZONE_PROTEUS_WELL_TEETH = Object.freeze({
+  id: 'zone_proteus_well_teeth', name: 'Well Teeth', type: 'ambush_lane',
+  factionId: 'faction_quiet',
+  reason: 'Hulls stacked at the pinch — the well’s teeth showing.',
+  center: Object.freeze({ x: 200, z: -200 }), radius: 300, threat: 3,
+});
+export const ZONE_TRITON_WAKE_SCAR = Object.freeze({
+  id: 'zone_triton_wake_scar', name: 'Wake Scar', type: 'derelict_field',
+  factionId: 'faction_free',
+  reason: 'A dragged-in battle line resting on the anomaly’s shoulder.',
+  center: Object.freeze({ x: -200, z: 400 }), radius: 300, threat: 2,
+});
+export const ZONE_EUNOMIA_GULF_SCAR = Object.freeze({
+  id: 'zone_eunomia_gulf_scar', name: 'Gulf Scar', type: 'derelict_field',
+  factionId: 'faction_free',
+  reason: 'A salvage-war line — each wreck earned by the ones before.',
+  center: Object.freeze({ x: 100, z: -600 }), radius: 300, threat: 2,
+});
+export const ZONE_SEDNA_DARK_TEETH = Object.freeze({
+  id: 'zone_sedna_dark_teeth', name: 'Dark Teeth', type: 'derelict_field',
+  factionId: 'faction_quiet',
+  reason: 'Unreported hulls in a row — the dark kept the whole fight.',
+  center: Object.freeze({ x: -800, z: -200 }), radius: 320, threat: 3,
+});
+export const ZONE_DIONE_LANE_SCAR = Object.freeze({
+  id: 'zone_dione_lane_scar', name: 'Lane Scar', type: 'ambush_lane',
+  factionId: 'faction_reach',
+  reason: 'A cordon that went loud — the lane keeps the evidence.',
+  center: Object.freeze({ x: 200, z: -500 }), radius: 300, threat: 3,
+});
+
 /**
  * sectorId -> additional authored zone records, appended to the per-sector tables.
  * Keyed by sector so the merge stays a pure append and can never shadow an existing sector's list.
@@ -551,8 +666,8 @@ export const AUTHORED_PLACE_ZONES = Object.freeze({
   sector_ceres_belt: Object.freeze([ZONE_CERES_THROUGHLINE, ZONE_CERES_PRISM_GALLERY, ZONE_CERES_CLOSED_REFINERY]),
   sector_tethys_junction: Object.freeze([ZONE_TETHYS_DRIFTMARK, ZONE_TETHYS_ANVIL, ZONE_TETHYS_SPLIT_STATION, ZONE_TETHYS_TALLY]),
   sector_vesta_forge: Object.freeze([ZONE_VESTA_RED_CABLE_YARD]),
-  sector_pallas_drift: Object.freeze([ZONE_PALLAS_EMPTY_HABITAT, ZONE_PALLAS_EMPTY_FOUNDRY]),
-  sector_io_reach: Object.freeze([ZONE_IO_SHEPHERDS_RING, ZONE_IO_LISTENING_FIELD]),
+  sector_pallas_drift: Object.freeze([ZONE_PALLAS_EMPTY_HABITAT, ZONE_PALLAS_EMPTY_FOUNDRY, ZONE_PALLAS_REEF_SCAR]),
+  sector_io_reach: Object.freeze([ZONE_IO_SHEPHERDS_RING, ZONE_IO_LISTENING_FIELD, ZONE_IO_FRONT_WAKE]),
   sector_charon_expanse: Object.freeze([
     ZONE_CHARON_CINDER_NURSERY, ZONE_CHARON_WARM_FREIGHTER, ZONE_CHARON_HULL_GARDEN,
     ZONE_CHARON_PYLON_FIELD, ZONE_CHARON_PRESERVED_COCKPIT, ZONE_CHARON_EMPTY_SKIN,
@@ -561,7 +676,7 @@ export const AUTHORED_PLACE_ZONES = Object.freeze({
   sector_veil_nebula: Object.freeze([
     ZONE_VEIL_QUIET_ICE, ZONE_VEIL_SURVEY_MONOLITH, ZONE_VEIL_NULL_CORRIDOR,
     ZONE_VEIL_REVOKED_GATE, ZONE_VEIL_BLACK_ORCHARD,
-    ZONE_VEIL_CONTAINMENT_RING, ZONE_VEIL_EXCEPTION_CHAMBER,
+    ZONE_VEIL_CONTAINMENT_RING, ZONE_VEIL_EXCEPTION_CHAMBER, ZONE_VEIL_REVOKED_CORDON,
   ]),
   sector_ashfall_reach: Object.freeze([
     ZONE_ASHFALL_BREATHING_DOCK, ZONE_ASHFALL_GATE_UNDERLAYER, ZONE_ASHFALL_OSSUARY,
@@ -571,6 +686,23 @@ export const AUTHORED_PLACE_ZONES = Object.freeze({
   sector_sker_haven: Object.freeze([
     ZONE_SKER_HARVEST_DEEP, ZONE_SKER_NULL_CAUSEWAY, ZONE_SKER_RED_SNOW, ZONE_SKER_QUIET_DOCK,
   ]),
+
+  // AEP P1 (PP-1/PP-2): battle-site map-glyph zones for the Cam≤4 scorecard sectors.
+  sector_helios_prime: Object.freeze([ZONE_HELIOS_HARBOUR_SCAR]),
+  sector_nyx_march: Object.freeze([ZONE_NYX_MARCH_SCAR]),
+  sector_hyperion_cut: Object.freeze([ZONE_HYPERION_CUT_TEETH]),
+  sector_kepler_scar: Object.freeze([ZONE_KEPLER_SCAR_GRAVE]),
+  sector_orcus_shadow: Object.freeze([ZONE_ORCUS_SHADOW_TEETH]),
+  sector_rhea_cinder: Object.freeze([ZONE_RHEA_CINDER_TEETH]),
+  sector_haumea_rift: Object.freeze([ZONE_HAUMEA_FISSURE_SCAR]),
+  sector_eris_margin: Object.freeze([ZONE_ERIS_DROP_SCAR]),
+  sector_phoebe_echo: Object.freeze([ZONE_PHOEBE_ECHO_GRAVE]),
+  sector_nereid_shoal: Object.freeze([ZONE_NEREID_SHOAL_SCAR]),
+  sector_proteus_well: Object.freeze([ZONE_PROTEUS_WELL_TEETH]),
+  sector_triton_wake: Object.freeze([ZONE_TRITON_WAKE_SCAR]),
+  sector_eunomia_gulf: Object.freeze([ZONE_EUNOMIA_GULF_SCAR]),
+  sector_sedna_dark: Object.freeze([ZONE_SEDNA_DARK_TEETH]),
+  sector_dione_lane: Object.freeze([ZONE_DIONE_LANE_SCAR]),
 });
 
 /**

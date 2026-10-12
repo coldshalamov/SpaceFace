@@ -22,8 +22,8 @@ const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const PLACES_DIR = fileURLToPath(new URL('../assets/ships/release/parts/places/', import.meta.url));
 
 test('the placed one-offs exist, plus the too-fast courier', () => {
-  assert.equal(WORLD_ONE_OFFS.length, 32,
-    'thirty-two placed set pieces: the nine beside places, the four CV-QUIET detours on the legs, plus nineteen for per-sector coverage');
+  assert.equal(WORLD_ONE_OFFS.length, 68,
+    'sixty-eight placed set pieces: the nine beside places, the four CV-QUIET detours on the legs, nineteen for per-sector coverage, plus thirty-six AEP P1 waymark/battlescar packets for the Cam≤4 sectors');
   const courier = NAMED_LANE_CONTACTS.find((c) => c.id === 'lane_cinder_run_courier');
   assert.ok(courier, 'the named express courier still lives in laneContacts.js');
   const ids = WORLD_ONE_OFFS.map((o) => o.id);
@@ -245,7 +245,8 @@ test('the world spawns the one-offs verbatim on sector activation, and spins the
       `${prop.data.name || prop.data.placeId} must never be spun`);
   }
 
-  // Helios Prime: the great tanker plus the four CV-QUIET lane detours and their furniture.
+  // Helios Prime: the great tanker plus the four CV-QUIET lane detours and their furniture,
+  // and the AEP P1 packets — the Tethys-run waymarks and the Harbour Scar battlescar.
   const helios = SECTOR_BY_ID.get('sector_helios_prime');
   const activeHelios = { pois: [], stations: [], gates: [], dressing: [] };
   system._spawnWorldOneOffs(helios, activeHelios);
@@ -253,8 +254,8 @@ test('the world spawns the one-offs verbatim on sector activation, and spins the
   const expectedRows = heliosOneOffs.reduce((total, o) => total + 1 + (o.cluster ? o.cluster.props.length : 0), 0);
   assert.equal(activeHelios.dressing.length, expectedRows,
     'every Helios one-off and every cluster part lands as dressing');
-  assert.equal(heliosOneOffs.length, 5,
-    'the tanker plus the four detours (body, job, signal, joke) sit in the start sector');
+  assert.equal(heliosOneOffs.length, 7,
+    'the tanker, the four detours (body, job, signal, joke), and the two P1 packets sit in the start sector');
   // The spare keg is a physical body, so its tumble is its own angVel and it is never double-spun
   // as dressing. Only the two non-physical tumbling detours join the spin list.
   assert.ok(activeHelios.worldOneOffSpins, 'the tumbling detours spin as dressing');
