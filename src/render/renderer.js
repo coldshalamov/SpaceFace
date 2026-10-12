@@ -395,6 +395,7 @@ import {
   beginOpeningCookLedger,
   createGpuResidencyAdmissionTracker,
   createPipelineAdmissionTracker,
+  prepareMobileOpeningFirstPicture,
   createSlicedYield,
   formatOpeningCookLedger,
   observePipelineAdmission,
@@ -436,7 +437,7 @@ import {
   GOVERNOR_CPU_RESIDENCY_BYTE_CEILING,
   GOVERNOR_RESIDENCY_BYTE_CEILING,
 } from './resourceGovernor.js';
-import { shouldAwaitOpeningGpuCook } from './renderCapabilityProfile.js';
+import { isMobileRenderContext, shouldAwaitOpeningGpuCook } from './renderCapabilityProfile.js';
 import {
   collectStartupGeometries,
   collectStartupGeometriesSteps,
@@ -13248,7 +13249,11 @@ export const render = {
       const pooledSubjects = Array.isArray(plan.pooledResourceSubjects)
         ? plan.pooledResourceSubjects.filter((subject) => subject && !leafSubjectSet.has(subject))
         : [];
-      const allSubjects = subjects.concat(pooledSubjects);
+      // The phone's required gate is the real first picture. Empty pools retain their resource
+      // identities in the plan and admit through their normal effect/streaming owner on use.
+      const allSubjects = isMobileRenderContext() && !survivalRunHoldsArena(state)
+        ? subjects
+        : subjects.concat(pooledSubjects);
       // Chunked like the seal/rockPool legs — the full opening draw set is the largest
       // subject list in the run; a monolithic dedupe lands inside the veil-lift frame.
       const unitSeenMaterials = new Set();
@@ -13319,7 +13324,7 @@ export const render = {
       openingCohort.capture(identities);
       state.render.openingAdmissionCohort = openingCohort.snapshot();
       return plan;
-    })();
+    }).call(this);
     state.render.captureOpeningSubmissionPlan = () => {
       const iterator = state.render.captureOpeningSubmissionPlanSteps();
       let step = iterator.next();
@@ -13514,6 +13519,46 @@ export const render = {
           skipped: true,
           reason: 'session-recook-keep-gpu',
         };
+      }
+      if (isMobileRenderContext() && !survivalRunHoldsArena(state)) {
+        // WebKit exposes parallel compile on phones too. That does not make desktop-scale hidden
+        // catalog/effect rehearsals affordable: they consumed the cook budget before touching any
+        // of the opening picture and held New Game until required-package admission failed.
+        const mobileStarted = performance.now();
+        let mobileActive = true;
+        releaseOpeningGraphPublication(this);
+        state.render.liveSectorGpuAdmission = true;
+        resumeAuthoredUpgradeQueueAfterOpening(scene);
+        this._discardEarlyCrucibleWarm();
+        try {
+          const admitted = await prepareMobileOpeningFirstPicture(state.render, {
+            timeoutMs: 20000,
+            yieldToMain: yieldToBrowser,
+            isActive: () => mobileActive && !recookStale(),
+          });
+          if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
+          this._postOpeningPipelineAdmissionReleased = true;
+          this._sessionLiveSectorCookedId = recookSectorId;
+          state.render.sessionLiveSectorCookedId = recookSectorId;
+          recordOpeningCookStep(state.render, 'live.mobileFirstPicture', mobileStarted, 'resolved', {
+            drawLeaves: admitted.plan.drawLeaves.length,
+            materials: admitted.submission.materials,
+          });
+          return { skipped: false, mobileFirstPicture: true, ...admitted };
+        } catch (error) {
+          if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
+          recordOpeningCookStep(state.render, 'live.mobileFirstPicture', mobileStarted, 'error', {
+            error: String(error && error.message || error),
+          });
+          throw error;
+        } finally {
+          mobileActive = false;
+          if (!recookStale()) {
+            state.render.liveSectorGpuAdmission = false;
+            holdAuthoredUpgradeQueueForFirstFlight(scene);
+            freezeOpeningGraphPublication(this);
+          }
+        }
       }
       // Publish the held next-sector upgrades behind the loading shell, drain
       // their compiles, then touch the live materials. First-playable readiness
@@ -21698,6 +21743,7 @@ export const render = {
     if (state.mode !== 'loading') return;
     try {
       const openingProfile = !survivalRunHoldsArena(state);
+      if (openingProfile && isMobileRenderContext()) return;
       const warm = this._beginCrucibleBoundedRosterWarm({
         yieldToMain: yieldToBrowser,
         // The opening profile is deterministic at scenePrepared — the scripted-intro species

@@ -75,8 +75,8 @@ import {
 
 const SIM_LANE = Object.freeze({ MAIN: 'main', WORKER: 'worker' });
 
-// A tick directive has this long to come back before the lane is dead. A real
-// worker round-trip is <50ms even on loaded boxes; 5s means the realm is gone.
+// A tick directive has this long to come back before the lane is dead. Confirm after a task
+// turn: a main-thread GL stall can delay dispatch of a healthy worker's already queued reply.
 const LANE_STALL_MS = 5000;
 // Replies can never outpace posts (one outstanding directive), but the ring
 // keeps the production bound — an overflow is an impossible-state failure,
@@ -313,6 +313,7 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   const pending = new Map();            // seq -> { kind, resolve, reject }
   const pendingRpcs = new Map();        // rpc id -> { resolve, reject }
   let inFlight = null;                  // { seq, sentMs, steps }
+  let stallConfirmationTimer = null;
   let sabEnv = null;                    // armed SAB envelope channel (layout v2)
   let laneClosed = false;
   let laneClosedComplete = false;
@@ -387,6 +388,10 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   }
 
   function releaseFlight(msg, flight) {
+    if (stallConfirmationTimer !== null) {
+      clearTimeout(stallConfirmationTimer);
+      stallConfirmationTimer = null;
+    }
     inFlightSteps = Math.max(0, inFlightSteps - (flight ? flight.steps : 0));
     inFlight = null;
   }
@@ -709,8 +714,20 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   function flushDirectives() {
     if (laneClosed || !ready) return;
     if (inFlight) {
-      if (nowMs() - inFlight.sentMs > LANE_STALL_MS) {
-        failLane(`sim worker tick directive stalled >${LANE_STALL_MS}ms (seq ${inFlight.seq})`);
+      if (nowMs() - inFlight.sentMs > LANE_STALL_MS && stallConfirmationTimer === null) {
+        const suspectFlight = inFlight;
+        // RAF can resume ahead of postMessage after a long GL/init task. Yield once so queued
+        // replies can land, then fail only the same still-outstanding directive. This does not
+        // widen the watchdog or forgive a worker that really stopped responding.
+        stallConfirmationTimer = setTimeout(() => {
+          stallConfirmationTimer = null;
+          if (laneClosed || inFlight !== suspectFlight) return;
+          drainSabRepliesNow();
+          if (!laneClosed && inFlight === suspectFlight
+              && nowMs() - suspectFlight.sentMs > LANE_STALL_MS) {
+            failLane(`sim worker tick directive stalled >${LANE_STALL_MS}ms (seq ${suspectFlight.seq})`);
+          }
+        }, 0);
       }
       return;
     }
@@ -1062,6 +1079,10 @@ export function createSimLaneRuntime({ state, registry, bus, flags, onInputComma
   function close() {
     if (laneClosed) return false;
     laneClosed = true;
+    if (stallConfirmationTimer !== null) {
+      clearTimeout(stallConfirmationTimer);
+      stallConfirmationTimer = null;
+    }
     try { uninstallSink(); } catch (_) {}
     try { if (busForward && typeof busForward.restore === 'function') busForward.restore(); } catch (_) {}
     try { domSurface.dispose(); } catch (_) {}
