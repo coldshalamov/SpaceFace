@@ -7,7 +7,6 @@
 // park your own hull between the cutter and the pods — a hull blocks a scanner's sight, yours
 // included — and walk them home in your shadow. Fly on and customs reads every one.
 import { deepFreeze, defineEncounter } from './catalog.js';
-import { CUSTOMS_SCAN_HALF_ANGLE } from '../../systems/lawSecurity.js';
 import {
   alive, dist, entityById, priorOutcome, publishSituationNews, settleSituation,
 } from '../../systems/crSituationKit.js';
@@ -42,7 +41,7 @@ export const DECL = Object.freeze({
   touchedWu: 40,           // a pod this far off its coast line was moved by someone
 });
 
-/** lawSecurity cones take a heading in atan2(z, x) radians (pointInScanCone). */
+/** Data modules never import systems (import cycle); lawSecurity cones take a heading in atan2(z, x) radians (pointInScanCone). */
 function headingToward(origin, point) {
   return Math.atan2(point.z - origin.z, point.x - origin.x);
 }
@@ -90,7 +89,8 @@ export const runtime = Object.freeze({
     if (!cutter || !runner || podIds.length < DECL.pods) return d.abort(live, 'no_bodies');
     const heading = headingToward(cutter.pos, at(0, 0));
     cutter.data = cutter.data || {};
-    cutter.data.customsScanCone = { heading, range: DECL.coneRangeWu, halfAngle: CUSTOMS_SCAN_HALF_ANGLE };
+    // Half-angle and dwell stay the law owner's defaults; only aim and reach are authored.
+    cutter.data.customsScanCone = { heading, range: DECL.coneRangeWu };
     for (const s of [cutter, runner]) if (s.data && s.data.ai) s.data.ai.allowPassiveManeuver = false;
 
     live.data.declaration = {
