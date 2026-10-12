@@ -793,8 +793,91 @@ export function checkPlayInterrupted(trace) {
   return result('play_interrupted', 'Play stays on the flight HUD', 'PASS', 'HUD held', threshold, 'no non-HUD screen during active play');
 }
 
+/** How far from the viewport edge a G4 chip center may sit and still be an edge mark, not a second radar. */
+export const EDGE_MARKER_INSET = 48;
+/** Off-screen samples with no marker before the check admits it never saw one. */
+export const OFFSCREEN_MARKER_MIN_SAMPLES = 5;
+
+/** Quadrant of an off-frame screen point. Same rule as `offscreenShooterMarker` in src/ui/threatHalo.js. */
+export function edgeMarkerSide(sx, sy, vw, vh) {
+  const w = Math.max(1, Number(vw) || 1); const h = Math.max(1, Number(vh) || 1);
+  const cx = w * 0.5; const cy = h * 0.5;
+  const dx = sx - cx; const dy = sy - cy;
+  const nx = Math.abs(dx) / cx; const ny = Math.abs(dy) / cy;
+  return nx >= ny ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'top' : 'bottom');
+}
+
+function markerInset(m, vw, vh) {
+  return Math.min(m.x, m.y, vw - m.x, vh - m.y);
+}
+
+/** Outside on exactly one axis: a bearing beside the frame, not a behind-camera point the HUD un-mirrors. */
+function oneAxisOutside(sx, sy, vw, vh) {
+  const outX = sx < 0 || sx > vw;
+  const outY = sy < 0 || sy > vh;
+  return outX !== outY;
+}
+
+/**
+ * Build-map G4, as the player sees it. The driver stamps `edgeMarkers` from the visible
+ * `.sf-threat-halo__slot--arc` chips. This does not edit the HUD.
+ * A marker in the middle of the frame fails. A marker while every hostile is in frame fails.
+ * One off-screen hostile and one marker must agree on the side when the hostile is outside on one axis.
+ * Off-screen hostiles with no marker stay UNKNOWN: the halo only marks shooters inside its range,
+ * and the trace does not carry that. No off-screen hostile is N/A.
+ */
+export function checkOffscreenMarker(trace) {
+  const title = 'Off-screen shooter has an edge marker';
+  const threshold = 'one screen-edge marker while a hostile is off-screen; none while every hostile is in frame; the side matches that hostile';
+  const started = trace.meta && trace.meta.playStartSim != null;
+  const samples = playSamples(trace).filter((s) => Array.isArray(s.edgeMarkers));
+  if (!samples.length) {
+    return result('offscreen_marker', title, started ? 'UNKNOWN' : 'N/A', null, threshold, started ? 'edge markers were not read' : 'play did not start');
+  }
+  const offenders = [];
+  let offscreenSamples = 0; let markedOffscreen = 0;
+  for (const s of samples) {
+    const vw = s.vw || 960; const vh = s.vh || 540;
+    const enemies = (s.e || []).filter((e) => e[E.cls] === CLS.enemy);
+    const off = enemies.filter((e) => e[E.vis] === VIS.offscreen);
+    const on = enemies.filter((e) => e[E.vis] === VIS.onscreen);
+    const markers = s.edgeMarkers.filter((m) => m && Number.isFinite(m.x) && Number.isFinite(m.y));
+    if (off.length) offscreenSamples++;
+    if (off.length && markers.length) markedOffscreen++;
+    for (const m of markers) {
+      if (markerInset(m, vw, vh) > EDGE_MARKER_INSET) {
+        offenders.push({ line: `edge marker at (${Math.round(m.x)}, ${Math.round(m.y)}) is not on the screen edge`, t: s.t ?? null, sim: s.sim ?? null, box: null });
+      }
+    }
+    if (markers.length && enemies.length && off.length === 0 && on.length === enemies.length) {
+      offenders.push({ line: `edge marker while every hostile is in frame (${on.length} on screen)`, t: s.t ?? null, sim: s.sim ?? null, box: null });
+    }
+    if (off.length === 1 && markers.length === 1 && oneAxisOutside(off[0][E.sx], off[0][E.sy], vw, vh)) {
+      const want = edgeMarkerSide(off[0][E.sx], off[0][E.sy], vw, vh);
+      const got = markers[0].edge;
+      if (got !== want) {
+        offenders.push({ line: `off-screen hostile on the ${want} has an edge marker on the ${got || 'unmarked side'}`, t: s.t ?? null, sim: s.sim ?? null, box: null });
+      }
+    }
+  }
+  if (offenders.length) {
+    return result('offscreen_marker', title, 'FAIL', offenders[0].line, threshold, `${offenders.length} edge-marker miss${offenders.length === 1 ? '' : 'es'}`, offenders.slice(0, 8));
+  }
+  if (!offscreenSamples) {
+    return result('offscreen_marker', title, 'N/A', 'no off-screen hostile', threshold, 'no off-screen hostile in the frames where markers were read');
+  }
+  if (!markedOffscreen) {
+    const thin = offscreenSamples < OFFSCREEN_MARKER_MIN_SAMPLES;
+    return result('offscreen_marker', title, 'UNKNOWN', `0 markers / ${offscreenSamples} off-screen samples`, threshold,
+      thin
+        ? 'too few off-screen samples to grade the edge marker'
+        : `${offscreenSamples} samples had an off-screen hostile and no edge marker. The HUD marks shooters inside the threat halo, which this read cannot see, so this is not a FAIL.`);
+  }
+  return result('offscreen_marker', title, 'PASS', `${markedOffscreen} samples with an off-screen hostile and an edge marker`, threshold, 'markers sat on the screen edge beside an off-screen hostile');
+}
+
 ALL_CHECKS.splice(ALL_CHECKS.indexOf(checkVfx) + 1, 0, checkBackdrop);
-ALL_CHECKS.push(checkRoundTransitions, checkRoundsReached, checkSimStalled, checkPlayInterrupted);
+ALL_CHECKS.push(checkRoundTransitions, checkRoundsReached, checkSimStalled, checkPlayInterrupted, checkOffscreenMarker);
 
 /** In gate mode "not measured" cannot pass a gameplay PR: UNKNOWN on these checks is a FAIL. */
 export const GATE_STRICT = Object.freeze(['player_control', 'tumble', 'player_ship', 'round_resolution', 'round_transitions']);

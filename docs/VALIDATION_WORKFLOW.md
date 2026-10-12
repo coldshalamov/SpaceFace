@@ -110,6 +110,8 @@ is reported. The driver still aims at the hostile. A draft screen that is alread
 becomes active has 3 s to clear. Both checks are N/A when play never started and UNKNOWN when play
 started but was not watched.
 
+`offscreen_marker` grades the Wave G4 edge chip the player sees (`.sf-threat-halo__slot--arc`), not a second radar and not `weapons.js`. A marker whose center is more than 48 px from every screen edge fails. A marker while every hostile is in frame fails. One off-screen hostile and one marker must name the same side when that hostile is outside on one axis. Off-screen hostiles with no chip stay UNKNOWN: the HUD marks shooters inside the threat halo, and the trace cannot see that. No off-screen hostile is N/A. The check is not gate-strict.
+
 - **GPU (preferred):** add `--headed` on a machine with a real GPU. The verdict records the WebGL
   renderer string. Frame time is graded here on absolute numbers: p99 ≤ 50 ms and 0 long tasks ≥ 250 ms.
 - **Browser:** Playwright's bundled Chromium first (`npx playwright install chromium`), then

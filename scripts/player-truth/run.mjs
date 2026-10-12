@@ -35,7 +35,7 @@ import { buildContactSheet } from './contactSheet.mjs';
 import { renderVerdict, printSummary } from './verdict.mjs';
 import { verifyHarnessEnvironment, ENVIRONMENT_EXIT, renderEnvironmentAbort, quoteLoadError } from './environment.mjs';
 import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmoryShelf, classifyOfferRead, readFittedRows, auditItems, swapProbe, armoryLaunchWord, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls } from './routes.mjs';
-import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, readPlaySample, noteKey } from './driver.mjs';
+import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, readPlaySample, readEdgeMarkers, noteKey } from './driver.mjs';
 import { createPlayWatch, formatPlayStop } from './playWatch.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -182,6 +182,11 @@ async function runOne(args, arena, extra = {}) {
     if (!d) return;
     trace.samples.push(...d.samples); trace.events.push(...d.events); trace.longTasks.push(...d.longTasks); trace.keys = d.keys;
     const last = trace.samples[trace.samples.length - 1];
+    // One DOM read per drain. Stamp the newest sample only: older samples in the batch are not this frame.
+    if (last) {
+      const marks = await readEdgeMarkers(page).catch(() => null);
+      if (marks) last.edgeMarkers = marks;
+    }
     if (last && Date.now() - lastProgress > 30000) {
       const prev = progressMark; progressMark = { wall: Date.now(), sim: last.sim, f: trace.samples.length };
       if (prev) log(`progress: sim ${last.sim.toFixed(1)} s · ${((progressMark.f - prev.f) / ((progressMark.wall - prev.wall) / 1000)).toFixed(1)} fps · ${((progressMark.sim - prev.sim) / ((progressMark.wall - prev.wall) / 1000)).toFixed(2)} sim s per wall s · phase ${last.run ? last.run.ph : last.mode}`);

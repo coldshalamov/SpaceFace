@@ -50,6 +50,21 @@ export function noteKey(page, code) {
 }
 
 /** One flight sample for the play watcher. `boot` is the opening overlay, which is a loading state. */
+/** Visible Wave G4 arc chips. Hidden slots stay `display: none` and are not marks. */
+export async function readEdgeMarkers(page) {
+  return page.evaluate(() => {
+    const out = [];
+    for (const el of document.querySelectorAll('.sf-threat-halo__slot--arc')) {
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) < 0.05) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) continue;
+      out.push({ edge: el.getAttribute('data-edge'), x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) });
+    }
+    return out;
+  });
+}
+
 export async function readPlaySample(page) {
   return page.evaluate(() => {
     const st = window.SF && window.SF.state;

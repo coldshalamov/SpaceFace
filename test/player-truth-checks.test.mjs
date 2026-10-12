@@ -4,13 +4,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  CLS, VIS, checkLodChurn, checkPlayerShip, checkPopping, checkRoundResolution, checkKillsBeforeInput,
+  CLS, VIS, E, checkLodChurn, checkPlayerShip, checkPopping, checkRoundResolution, checkKillsBeforeInput,
   checkSpawnMotion, checkPlayerControl, checkTumble, checkVfx, checkLoadout, checkFrameTime, checkReadability, overall,
-  isLoadingAssetState, gradeSoftwareFrameTime, frameLoadNoise,
+  isLoadingAssetState, gradeSoftwareFrameTime, frameLoadNoise, checkOffscreenMarker, edgeMarkerSide,
 } from '../scripts/player-truth/checks.mjs';
 import { classifyEntity } from '../src/testing/playerTruth/reader.js';
 import { auditItems, classifyArmoryArrival, formatArmoryMiss, formatSwarmTutorialMiss, SWARM_TUTORIAL_MISS, ARMORY_WORLD_GRACE_MS } from '../scripts/player-truth/routes.mjs';
 import { separation, sampleBox, rimMatchesThreat, threatMarkerCredit, THREAT_MARKER } from '../scripts/player-truth/readability.mjs';
+import { offscreenShooterMarker } from '../src/ui/threatHalo.js';
 import { renderVerdict } from '../scripts/player-truth/verdict.mjs';
 
 const goodPlayer = (o = {}) => ({ id: 1, alive: true, x: 0, y: 0, z: 0, vx: 0, vz: 0, rot: 0, angVel: 0, pitch: 0, bank: 0, mesh: true, vis: true, onScreen: true, box: [600, 330, 680, 390], lod: 'lod0', model: 'hornet', state: 'authored', tris: 4000, marker: false, meshId: 'aaaa', ...o });
@@ -286,6 +287,36 @@ test('threat marker colour is the swarm threat-ring material', () => {
   const m = src.slice(at, at + 500).match(/color:\s*(0x[0-9a-fA-F]+)/);
   assert.ok(m, 'threat-ring material has no color literal');
   assert.equal(Number(m[1]), THREAT_MARKER.rgb);
+});
+
+test('offscreen marker: edge chip matches the hostile side, and a center chip or an in-frame mark fails', () => {
+  const frame = { frameWidth: 960, frameHeight: 540 };
+  for (const [sx, sy, side] of [[-80, 270, 'left'], [1400, 270, 'right'], [480, -40, 'top'], [480, 800, 'bottom']]) {
+    assert.equal(edgeMarkerSide(sx, sy, frame.frameWidth, frame.frameHeight), side);
+    assert.equal(offscreenShooterMarker({ alive: true, canShoot: true, onScreen: false, screenX: sx, screenY: sy, ...frame }).side, side);
+  }
+  const ent = (vis, sx, sy) => [2, CLS.enemy, 0, 0, 0, 0, sx, sy, 8, vis, -1, 0];
+  const sample = (e, markers) => ({ mode: 'flight', run: { ph: 'active' }, vw: 960, vh: 540, t: 10, sim: 12, e, edgeMarkers: markers });
+  const played = (samples) => ({ meta: { rounds: true, playStartSim: 1 }, samples });
+  const left = { edge: 'left', x: 12, y: 270 };
+  const matched = checkOffscreenMarker(played([sample([ent(VIS.offscreen, -80, 270)], [left])]));
+  assert.equal(matched.status, 'PASS');
+  const wrong = checkOffscreenMarker(played([sample([ent(VIS.offscreen, -80, 270)], [{ edge: 'right', x: 948, y: 270 }])]));
+  assert.equal(wrong.status, 'FAIL');
+  assert.match(wrong.offenders[0].line, /on the left has an edge marker on the right/);
+  const center = checkOffscreenMarker(played([sample([ent(VIS.offscreen, -80, 270)], [{ edge: 'left', x: 480, y: 270 }])]));
+  assert.equal(center.status, 'FAIL');
+  assert.match(center.offenders[0].line, /not on the screen edge/);
+  const inFrame = checkOffscreenMarker(played([sample([ent(VIS.onscreen, 480, 270)], [left])]));
+  assert.equal(inFrame.status, 'FAIL');
+  assert.match(inFrame.offenders[0].line, /every hostile is in frame/);
+  const none = checkOffscreenMarker(played(Array.from({ length: 5 }, () => sample([ent(VIS.offscreen, -80, 270)], []))));
+  assert.equal(none.status, 'UNKNOWN');
+  assert.match(none.detail, /not a FAIL/);
+  const quiet = checkOffscreenMarker(played([sample([ent(VIS.onscreen, 480, 270)], [])]));
+  assert.equal(quiet.status, 'N/A');
+  assert.equal(checkOffscreenMarker({ meta: {}, samples: [{ mode: 'flight', run: { ph: 'active' }, e: [], edgeMarkers: undefined }] }).status, 'N/A');
+  assert.equal(checkOffscreenMarker({ meta: { playStartSim: 1 }, samples: [{ mode: 'flight', run: { ph: 'active' }, e: [] }] }).status, 'UNKNOWN');
 });
 
 test('loadout names a game-empty shelf, a harness miss, and a fit count with no items', () => {
