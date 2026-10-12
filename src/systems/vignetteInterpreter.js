@@ -9,7 +9,7 @@
 // through d.grant / d.rep. No Math.random, no wall clock.
 
 const HOP_CAP = 12;
-const MOTIONS = new Set(['hold', 'orbit', 'creep', 'ring', 'weave', 'depart', 'face']);
+const MOTIONS = new Set(['hold', 'orbit', 'creep', 'ring', 'weave', 'depart', 'face', 'chase', 'tow', 'column', 'vulture']);
 
 // Vignettes own destinations, not a second helm. Passive/hold-fire actors opt into the
 // same tactical navigation that clears solid scenery and freight for other pilots.
@@ -57,11 +57,47 @@ function rememberSeen(state, id, outcome) {
   dir.stats.livedSeen[id] = outcome || 'seen';
 }
 
-function applyMotion(d, live, motion, now) {
+export function applyMotion(d, live, motion, now) {
   const ships = d.entsOf(live);
   if (!ships.length || !motion) return;
   const origin = live.vars.motionOrigin || live.anchor || ships[0].pos;
   const t = now - (live.vars.motionT0 ?? now);
+  const sceneAxis = live.data && live.data.sceneAxis;
+  const ux = sceneAxis && Number.isFinite(sceneAxis.ux) ? sceneAxis.ux : 1;
+  const uz = sceneAxis && Number.isFinite(sceneAxis.uz) ? sceneAxis.uz : 0;
+  if (motion === 'chase') {
+    const runner = ships[0];
+    if (!runner || !runner.pos) return;
+    steerToward(runner, origin.x + ux * 700, origin.z + uz * 700, 40, motion);
+    const hx = Math.cos(runner.rot || 0);
+    const hz = Math.sin(runner.rot || 0);
+    for (let i = 1; i < ships.length; i++) {
+      steerToward(ships[i], runner.pos.x - hx * 60 * i, runner.pos.z - hz * 60 * i, 30,
+        motion, { x: runner.vel?.x || 0, z: runner.vel?.z || 0 });
+    }
+    return;
+  }
+  if (motion === 'tow') {
+    const tug = ships[0];
+    if (!tug || !tug.pos) return;
+    const cruise = (Number(tug.maxSpeed) || 120) * 0.22;
+    steerToward(tug, origin.x + ux * 500, origin.z + uz * 500, 40, motion,
+      { x: ux * cruise, z: uz * cruise });
+    const hx = Math.cos(tug.rot || 0);
+    const hz = Math.sin(tug.rot || 0);
+    for (let i = 1; i < ships.length; i++) {
+      steerToward(ships[i], tug.pos.x - hx * 55 * i, tug.pos.z - hz * 55 * i, 20,
+        motion, { x: tug.vel?.x || 0, z: tug.vel?.z || 0 });
+    }
+    return;
+  }
+  if (motion === 'column') {
+    for (let i = 0; i < ships.length; i++) {
+      const distance = 700 - 90 * i;
+      steerToward(ships[i], origin.x + ux * distance, origin.z + uz * distance, 40, motion);
+    }
+    return;
+  }
   if (motion === 'hold' || motion === 'face') {
     if (motion === 'face' && ships.length >= 2) {
       steerToward(ships[0], ships[1].pos.x, ships[1].pos.z, 110);
@@ -86,8 +122,8 @@ function applyMotion(d, live, motion, now) {
     steerToward(ship, tx, tz, 60, motion, velocity);
     return;
   }
-  const speed = motion === 'orbit' ? 0.55 : motion === 'weave' ? 0.8 : motion === 'creep' ? 0.22 : 0.35;
-  const radius = motion === 'ring' ? 220 : motion === 'creep' ? 40 : 160;
+  const speed = motion === 'vulture' ? 0.7 : motion === 'orbit' ? 0.55 : motion === 'weave' ? 0.8 : motion === 'creep' ? 0.22 : 0.35;
+  const radius = motion === 'vulture' ? 95 : motion === 'ring' ? 220 : motion === 'creep' ? 40 : 160;
   for (let i = 0; i < ships.length; i++) {
     const ang = t * speed + (i / ships.length) * Math.PI * 2;
     const ox = motion === 'creep' ? origin.x + t * 28 : origin.x;
@@ -108,7 +144,10 @@ function applyMotion(d, live, motion, now) {
 function runVerb(d, live, state, spec, phase) {
   const verb = phase.verb;
   if (verb === 'say') {
-    const text = phase.line || '';
+    const overlay = live.data && live.data.livedOverlay;
+    const text = phase.id === 'work_line' && overlay && overlay.line
+      ? overlay.line
+      : phase.line || '';
     if (text) {
       d.say(live, phase.channel || 'info', text, null, {
         literal: true,
@@ -119,10 +158,11 @@ function runVerb(d, live, state, spec, phase) {
   }
   if (verb === 'spawn') {
     const anchor = live.anchor || { x: 0, z: 0 };
+    const overlay = live.data && live.data.livedOverlay;
     live.ids = live.ids || [];
     live.roles = live.roles || {};
     live.plan = live.plan || {};
-    live.plan.ships = (spec.cast || []).map((member) => ({
+    live.plan.ships = (spec.cast || []).map((member, index) => ({
       archetype: member.archetype,
       level: member.level || 2,
       pos: { x: anchor.x + (member.dx || 0), z: anchor.z + (member.dz || 0) },
@@ -131,7 +171,9 @@ function runVerb(d, live, state, spec, phase) {
       role: member.role,
       passive: true,
       team: 2,
-      scanLabel: member.scanLabel || spec.title,
+      scanLabel: overlay && overlay.crew
+        ? `${overlay.crew} ${index + 1}`
+        : member.scanLabel || spec.title,
     }));
     const ids = d.spawnShips(live, live.plan.ships) || [];
     if (ids.length < (spec.cast || []).length) {
