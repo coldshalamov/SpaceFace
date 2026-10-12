@@ -1402,6 +1402,13 @@ export const missions = {
       this._reconcileLandmarkQuestOffers();
     });
     bus.on('save:restoring', () => this._missionBudgetDeferrals.clear());
+    // A Crucible launch (Swarm / Gauntlet / scored) boots the shared NEW_GAME world, whose
+    // newGame() installs and tracks the 47-A cold-start contract. The Crucible is not the
+    // campaign: withdraw that contract before the run so its objective, nav marker and HUD
+    // tracker never paint over the arena (worker-lane regression: "Recover the 47-A sample").
+    bus.on('game:scenePrepared', (p) => {
+      if (p && p.crucibleLaunch === true) this._withdrawContract47aColdStartForCrucible();
+    });
 
     // ── Player intents (UI) ────────────────────────────────────────────────────────────────
     bus.on('ui:acceptMission', (p) => this.acceptMission(p && p.missionId));
@@ -11940,6 +11947,20 @@ export const missions = {
     if (!locked.includes(THREAD_B_FRAGMENT_ID)) locked.push(THREAD_B_FRAGMENT_ID);
     const have = Number(state.player.cargo.items && state.player.cargo.items[THREAD_B_FRAGMENT_ID]) || 0;
     if (have < 1) addCargo(state, THREAD_B_FRAGMENT_ID, 1);
+  },
+
+  _withdrawContract47aColdStartForCrucible() {
+    const missions = this.state && this.state.missions;
+    if (!missions || !Array.isArray(missions.active)) return false;
+    const idx = missions.active.findIndex((m) => m && m.storyTag === CONTRACT_47A_B0_TAG
+      && !(m.params && m.params.sampleRecovered));
+    if (idx < 0) return false;
+    const mission = missions.active[idx];
+    this._clearMissionNav(mission.id);
+    missions.active.splice(idx, 1);
+    if (this.state.ui && this.state.ui.trackedMissionId === mission.id) this.state.ui.trackedMissionId = null;
+    this.bus.emit('mission:updated', { missionId: mission.id, tracked: false, source: 'crucible:launch' });
+    return true;
   },
 
   _installContract47aColdStart() {
