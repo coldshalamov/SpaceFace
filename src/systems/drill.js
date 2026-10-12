@@ -216,6 +216,19 @@ export function applyVeinRemainders(field, remainders) {
  * Pay a broken vein through the cargo writer before the hole is committed.
  * Returns 'preserve' when unaccepted ore is still on this cell, otherwise 'clear'.
  */
+// Cargo is durable as soon as it lands. Book field memory at that same boundary,
+// not only when the transient drill screen eventually closes (Continue discards it).
+function recordAcceptedFieldYield(host, d, units) {
+  if (!d.fieldId || !(units > 0)) return;
+  const before = Math.max(0, Number(d.fieldRecordedU) || 0);
+  const rec = recordFieldExtraction(host.state, {
+    fieldId: d.fieldId, sectorId: d._sectorId, asteroidId: d.asteroidId,
+    extractedU: units, batchExtractedBeforeU: before,
+    destroyed: false, event: 'drill_extraction', source: 'player_drill',
+  });
+  if (rec) d.fieldRecordedU = before + units;
+}
+
 function settleVeinYield(host, d, rockEnt, target, col, row, ore, yieldU) {
   const budget = Number.isFinite(d.rockBudget) ? d.rockBudget : Infinity;
   if (budget <= 0) {
@@ -251,6 +264,7 @@ function settleVeinYield(host, d, rockEnt, target, col, row, ore, yieldU) {
       entData.drillDepletion = clamp01((Number(entData.drillDepletion) || 0) + added / Number(d.rockBudgetMax));
       entData.lastDrillT = Number(host.state.simTime) || 0;
     }
+    recordAcceptedFieldYield(host, d, added);
     host.bus.emit('drill:yield', { commodityId: ore, qty: added, pos: { col, row } });
     if (Number.isFinite(d.rockBudget) && d.rockBudget <= 0 && Number(d.rockBudgetMax) > 0) {
       host.bus.emit('drill:rockDepleted', {
@@ -1140,6 +1154,7 @@ export const drill = {
       cableTrail: [{ col: spawnCol, row: spawnRow }], // active massline cable path trail
       accumulator: 0,         // fractional ore carry + drill damage carry
       gasHits: 0,             // how many gas pockets the player has triggered
+      fieldRecordedU: 0,      // cumulative accepted ore already booked to durable field memory
       yieldLog: {},           // commodityId -> total units extracted this session (for the HUD + log)
       tilesCleared: cleared.length,
       maxDepth: Math.max(0, ...cleared.map((idx) => Math.floor(idx / COLS)), spawnRow),
@@ -1187,12 +1202,10 @@ export const drill = {
     d.active = false;
     this._persistSessionProgress(d);
     const result = sessionResult(d, reason);
-    // Share extraction with the field-depletion ledger so drill + flight mining accumulate against
-    // one field richness/recovery curve (a single receipt per session, by total units extracted).
-    if (d.fieldId && Number(result.yieldUnits) > 0) {
-      try { recordFieldExtraction(this.state, { fieldId: d.fieldId, sectorId: d._sectorId, extractedU: result.yieldUnits }); }
-      catch (_) { /* field memory is best-effort; it must never block session end */ }
-    }
+    // Current bites are already durable. Flush only an unbooked legacy/session tail;
+    // retraction, retry and abort must never count the same cargo a second time.
+    const unrecorded = Math.max(0, (Number(result.yieldUnits) || 0) - (Number(d.fieldRecordedU) || 0));
+    recordAcceptedFieldYield(this, d, unrecorded);
     this.state.drill = null;
     this.bus.emit('drill:end', result);
     return result;

@@ -448,7 +448,12 @@ export function recordFieldExtraction(state, payload = {}) {
   const sectorId = sectorIdOf(state, payload);
   const simTime = round6(payload.simTime != null ? payload.simTime : state && state.simTime);
   const extractedU = Math.max(0, Number(payload.extractedU != null ? payload.extractedU : payload.yieldU) || 0);
-  const delta = depletionDeltaForYield(extractedU);
+  // A drill session can commit accepted cargo in several bites without raising the
+  // existing per-batch depletion ceiling. Ordinary destruction/NPC calls start at 0.
+  const beforeRaw = Number(payload.batchExtractedBeforeU);
+  const before = Number.isFinite(beforeRaw) ? Math.max(0, beforeRaw) : 0;
+  const delta = round6(Math.max(0, depletionDeltaForYield(before + extractedU)
+    - depletionDeltaForYield(before)));
   const destroyed = payload.destroyed !== false;
   const rec = fieldRecord(own, fieldId, sectorId);
   rec.sectorId = rec.sectorId || sectorId;
