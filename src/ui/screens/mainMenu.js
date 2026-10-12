@@ -494,13 +494,8 @@ export const mainMenuScreen = {
 
     refs = {
       root: rootEl, backdrop, title, list, version, versionText, bCredits, bAchievements, saveSummary, status,
-<<<<<<< src/ui/screens/mainMenu.js
-      bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive, bCircuits, bHelp,
-      buttons: [bContinue, bNew, bLoad, bCrucible, bHelp, bArchive, bCircuits, bSettings, bSandbox, bQuit].filter(Boolean),
-=======
-      bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive, bCircuits, bPhysics,
-      buttons: [bContinue, bNew, bLoad, bCrucible, bArchive, bCircuits, bPhysics, bSettings, bSandbox, bQuit].filter(Boolean),
->>>>>>> C:\Users\93rob\Documents\GitHub\SpaceFace\.devshots\mobile-deployment\merge-preservation\foreign-2.txt
+      bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive, bCircuits, bHelp, bPhysics,
+      buttons: [bContinue, bNew, bLoad, bCrucible, bHelp, bArchive, bCircuits, bPhysics, bSettings, bSandbox, bQuit].filter(Boolean),
     };
 
     // data-k-ready is owned by the screen manager once `stage` is declared: live, plate, or
