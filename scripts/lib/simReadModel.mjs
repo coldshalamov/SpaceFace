@@ -50,6 +50,14 @@ function finite(n, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+// The wire carries scalars; HUD readers use the live entity's nested boost reservoir.
+function foldBoostVitals(row, fields) {
+  if (fields.boostEnergy === undefined && fields.boostMax === undefined) return;
+  if (!row.boost || typeof row.boost !== 'object') row.boost = {};
+  if (fields.boostEnergy !== undefined) row.boost.energy = fields.boostEnergy;
+  if (fields.boostMax !== undefined) row.boost.max = fields.boostMax;
+}
+
 export function createReadModel() {
   return {
     entities: new Map(),   // entityId -> projected entity row (journal-covered)
@@ -96,6 +104,7 @@ export function applySpawnInfos(readModel, spawnInfos) {
     // the vitals diff channel; absent fields stay undefined rather than 0.
     if (info.vitals && typeof info.vitals === 'object') {
       Object.assign(row, canonicalClone(info.vitals));
+      foldBoostVitals(row, info.vitals);
     }
     // A re-delivered spawn (init replay, rebuild) must not mint a fresh row
     // object: the render realm holds entity refs across the hop (admission
@@ -161,6 +170,7 @@ export function applyEntityVitals(readModel, vitals) {
       if (v === undefined) delete row[key];
       else row[key] = v;
     }
+    foldBoostVitals(row, fields);
     // Vitals ship velocity as flat vx/vz while presentation readers (HUD speed
     // tape, playable checks) consume the nested `vel` vector the live entity
     // carries — refold so both views stay coherent.
