@@ -340,8 +340,8 @@ ${C}::before { background:linear-gradient(90deg, rgb(5 7 10 / .92) 0%, rgb(5 7 1
 ${C} > :is(.k-title, .k-hang, .k-stage, .k-foot) { position:relative; z-index:2; }
 ${C} > .k-title { max-width:none !important; align-self:end; }
 ${C} > .k-title > p { ${LABEL} margin:14px 0 0 !important; max-width:none !important; font-size: 12px !important; letter-spacing:.26em !important; line-height:1.4 !important;
-  color:rgb(${BONE} / .6) !important; display:flex; align-items:center; gap:14px; }
-${C} > .k-title > p::after { content:""; width:72px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .42), rgb(${BONE} / 0)); }
+  color:rgb(${BONE} / .86) !important; display:flex; align-items:center; gap:14px; }
+${C} > .k-title > p::after { content:""; width:72px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .62), rgb(${BONE} / 0)); }
 /* the drift field and the emblem stand behind everything */
 ${C} > .orr-cr-drift { position:absolute; left:0; top:0; width:100%; height:100%; z-index:1; pointer-events:none; overflow:hidden; }
 /* the orrery: the emblem (produced art) the reel turns; the sections ride its orbit as bodies and the amber
@@ -360,7 +360,7 @@ ${C} .orr-cr-body__disc { fill:rgb(10 13 18); stroke:rgb(${BONE} / .7); transiti
 ${C} .orr-cr-body__halo { fill:rgb(${BONE} / .08); transition:fill .3s linear; }
 ${C} .orr-cr-body.is-current .orr-cr-body__disc { fill:rgb(${HOT}); stroke:rgb(255 253 248); }
 ${C} .orr-cr-body.is-current .orr-cr-body__halo { fill:rgb(255 250 236 / .2); }
-${C} .orr-cr-body text { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; letter-spacing:.2em; text-transform:uppercase; fill:rgb(${BONE} / .7); }
+${C} .orr-cr-body text { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; letter-spacing:.2em; text-transform:uppercase; fill:rgb(${BONE} / .84); }
 ${C} .orr-cr-body text.orr-cr-body__num { font-size:17px; letter-spacing:.14em; }
 ${C} .orr-cr-body text.orr-cr-body__name { font-size:19px; opacity:0; transition:opacity .3s linear; }
 ${C} .orr-cr-body.is-current text { fill:rgb(${HOT}); }
@@ -374,12 +374,16 @@ ${ladder(C, '.k-hang > .k-words', '.k-word', '[aria-current="true"]')}
 ${C} .k-hang > .k-words:is(:focus-within, :hover) .k-word[aria-current="true"]::after { background:rgb(${HOT} / .85) !important; }
 ${C} .k-hang > .k-words:is(:focus-within, :hover) .k-word[aria-current="true"]::before { background:rgb(${HOT}) !important; filter:drop-shadow(0 0 5px rgb(255 250 236 / .45)); }
 /* a long section name breaks at its space onto a second line of its rung, never under the next */
-${C} .k-hang > .k-words .k-word { white-space:normal !important; line-height:1.35 !important; padding-top:7px !important; padding-bottom:7px !important; }
+${C} .k-hang > .k-words .k-word { white-space:normal !important; line-height:1.35 !important; padding-top:7px !important; padding-bottom:7px !important;
+  color:rgb(${BONE} / .78) !important; }
+${C} .k-hang > .k-words .k-word[aria-current="true"] { color:rgb(${HOT}) !important; }
+${C} .k-hang > li::before { color:rgb(${BONE} / .78) !important; }
+${C} .k-hang > li:has(> .k-word[aria-current="true"])::before { color:rgb(${HOT}) !important; }
 ${C} .orr-cr-progress { display:grid; grid-template-columns:84px auto; align-items:center; column-gap:16px; margin:30px 0 0 6px; pointer-events:none; }
 ${C} .orr-cr-progress svg { width:84px; height:84px; overflow:visible; }${C} .orr-cr-progress__n { font-family:var(--dp-face-numeral, "Archivo") !important; font-variation-settings:"wdth" 100, "wght" 280 !important; font-weight:280 !important; font-size:32px;
   line-height:.9; color:rgb(${HOT}); font-variant-numeric:tabular-nums; }
-${C} .orr-cr-progress__n small { font-size:.46em; margin-left:2px; color:rgb(${BONE} / .7); }
-${C} .orr-cr-progress__l { ${LABEL} display:block; margin-top:6px; font-size: 12px; letter-spacing:.24em; color:rgb(${BONE} / .74); }
+${C} .orr-cr-progress__n small { font-size:.46em; margin-left:2px; color:rgb(${BONE} / .82); }
+${C} .orr-cr-progress__l { ${LABEL} display:block; margin-top:6px; font-size: 12px; letter-spacing:.24em; color:rgb(${BONE} / .88); }
 
 /* ------------------------------------------------ credits: the reel ---------------------------- */
 ${C} > .k-stage { ${PLAIN} backdrop-filter:none !important; -webkit-backdrop-filter:none !important; max-width:none !important; width:100% !important; min-height:0 !important;
@@ -401,23 +405,23 @@ ${C} .of-credits-kicker { display:none !important; }
 ${C} .of-credits-name { margin:0 !important; font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 230 !important;
   font-weight:230 !important; font-size:clamp(58px, 8.8vh, 100px) !important; line-height:.9 !important; white-space:nowrap; letter-spacing:.02em !important; text-transform:uppercase !important;
   color:rgb(${HOT}) !important; text-shadow:none !important; }${C} .of-credits-ver, ${C} .of-credits-made .k-row__sub { ${LABEL} display:inline-block; margin:18px 22px 0 0 !important; font-size: 12px !important; letter-spacing:.24em !important;
-  color:rgb(${BONE} / .72) !important; }
+  color:rgb(${BONE} / .88) !important; }
 ${C} .of-credits-ver { color:var(--dp-phos, #dfeeff) !important; }
 ${C} .orr-cr-sec > .k-sentence { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:16px !important; line-height:1.55 !important; max-width:44ch !important;
-  color:rgb(${BONE} / .82) !important; margin:6px 0 0 !important; text-transform:none !important; letter-spacing:0 !important; }
+  color:rgb(${BONE} / .92) !important; margin:6px 0 0 !important; text-transform:none !important; letter-spacing:0 !important; }
 /* a credit list hangs off the rail: a tick per name, the name in reading type, its role in labels */
 ${C} .of-credits-rows { ${PLAIN} position:relative; margin:0 !important; padding:4px 0 !important; max-width:none !important; background:${RAIL_BG} !important; }
 ${C} .of-credits-rows .k-row { ${PLAIN} position:relative !important; display:grid !important; grid-template-columns:minmax(0, 1fr) auto !important; align-items:baseline !important;
   column-gap:28px !important; min-height:0 !important; height:auto !important; padding:12px 0 12px 30px !important; }
 ${C} .of-credits-rows .k-row::after { content:none !important; display:none !important; }
 ${C} .of-credits-rows .k-row::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:22px !important; width:8px !important;
-  height:1.5px !important; margin:0 !important; background:rgb(${BONE} / .55) !important; transform:none !important; translate:none !important; scale:none !important;
+  height:1.5px !important; margin:0 !important; background:rgb(${BONE} / .72) !important; transform:none !important; translate:none !important; scale:none !important;
   box-shadow:none !important; border:0 !important; }
 ${C} .of-credits-rows .k-row__name { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:17px !important; font-weight:500 !important; letter-spacing:0 !important;
   text-transform:none !important; color:rgb(${HOT}) !important; }
 /* the line under a name reads as text (versions, makers, addresses keep their case) */
 ${C} .of-credits-rows .k-row__sub { display:block; margin-top:5px !important; font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:12.5px !important;
-  font-weight:400 !important; letter-spacing:.01em !important; text-transform:none !important; line-height:1.45 !important; color:rgb(${BONE} / .66) !important; white-space:normal !important; overflow-wrap:anywhere; }
+  font-weight:400 !important; letter-spacing:.01em !important; text-transform:none !important; line-height:1.45 !important; color:rgb(${BONE} / .82) !important; white-space:normal !important; overflow-wrap:anywhere; }
 ${C} .of-credits-rows .k-row__num { ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .84) !important; text-align:right; white-space:nowrap; }
 /* a licence: its name, its terms in labels, its text as quiet reading */
 ${C} .of-credits-notice { ${PLAIN} padding:0 0 0 30px !important; margin:0 0 40px !important; position:relative; max-width:none !important; }
@@ -425,11 +429,11 @@ ${C} .of-credits-notice::before { content:"" !important; position:absolute; left
 ${C} .of-credits-notice::after { content:none !important; display:none !important; }
 ${C} .of-credits-notice > h2 { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:16px !important; font-weight:600 !important; letter-spacing:0 !important;
   text-transform:none !important; color:rgb(${HOT}) !important; margin:0 !important; }
-${C} .of-credits-notice > .k-caps { ${LABEL} margin:6px 0 12px !important; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .64) !important;
+${C} .of-credits-notice > .k-caps { ${LABEL} margin:6px 0 12px !important; font-size: 12px !important; letter-spacing:.2em !important; color:rgb(${BONE} / .8) !important;
   background:none !important; padding:0 !important; }
 ${C} .of-credits-notice > .k-sentence { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:12.5px !important; line-height:1.6 !important; max-width:66ch !important;
-  color:rgb(${BONE} / .68) !important; margin:0 0 10px !important; text-transform:none !important; letter-spacing:0 !important; }
-${C} .of-credits-notice .orr-cr-copy { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:13px !important; line-height:1.5 !important; color:rgb(${BONE} / .8) !important;
+  color:rgb(${BONE} / .86) !important; margin:0 0 10px !important; text-transform:none !important; letter-spacing:0 !important; }
+${C} .of-credits-notice .orr-cr-copy { font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:13px !important; line-height:1.5 !important; color:rgb(${BONE} / .9) !important;
   margin:0 0 8px !important; max-width:66ch; }
 ${C} .of-credits-notice .orr-cr-unfold { all:unset; box-sizing:border-box; position:relative; cursor:pointer; padding:5px 0 5px 14px; ${LABEL} font-size: 12px; letter-spacing:.2em; color:rgb(${HOT}); }
 ${C} .of-credits-notice .orr-cr-unfold::before { content:""; position:absolute; left:1px; top:50%; width:5px; height:5px; margin-top:-2.5px; border-radius:50%; background:rgb(${BONE} / .55); }
@@ -440,7 +444,7 @@ ${C} .of-credits-notice .orr-cr-unfold:focus { outline:none !important; }
 ${C} .of-credits-notice .orr-cr-unfold:focus-visible::before { width:3px; height:16px; margin-top:-8px; left:2px; border-radius:0; background:rgb(255 253 248); box-shadow:0 0 8px rgb(255 250 236 / .6); }
 ${C} .of-credits-notice .orr-cr-full { margin-top:10px; }
 ${C} .of-credits-notice .orr-cr-full[hidden] { display:none !important; }
-${C} .orr-cr-end { ${LABEL} display:flex; align-items:center; gap:16px; margin:96px 0 0 30px; font-size: 12px; letter-spacing:.3em; color:rgb(${BONE} / .68); }
+${C} .orr-cr-end { ${LABEL} display:flex; align-items:center; gap:16px; margin:96px 0 0 30px; font-size: 12px; letter-spacing:.3em; color:rgb(${BONE} / .84); }
 ${C} .orr-cr-end::before { content:""; width:28px; height:1px; background:rgb(${BONE} / .4); }
 /* Scroll Reveal: each line rises out of the dark as the reel brings it up */
 ${C} .orr-cr-line { opacity:0; transform:translateY(16px); transition:opacity 640ms var(--dp-ease-out, ease-out), transform 760ms var(--dp-ease-out, ease-out); }
@@ -450,15 +454,18 @@ ${C} .orr-cr-head.orr-cr-line.is-in { filter:none; }
 html.sf-reduce-motion ${C} .orr-cr-line { opacity:1 !important; transform:none !important; filter:none !important; transition:none !important; }
 
 
-/* ------------------------------------------------ credits: the way back ------------------------ */
+/* ------------------------------------------------ credits: the way back (‹ BACK + ESC keycap, matches settings/save-load/help) - */
 ${C} > .k-foot { align-items:center !important; }
-${C} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important;
-  padding:8px 0 !important; ${LABEL} font-size:13px !important; letter-spacing:.24em !important; color:rgb(${HOT}) !important; }
+${C} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
+  padding:10px 0 12px !important; min-height:44px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
+  background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
 ${C} > .k-foot .sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${C} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
-  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important; color:rgb(${BONE} / .9) !important;
-  background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important; vertical-align:baseline !important; }
-${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:rgb(255 253 248) !important; text-shadow:0 0 14px rgb(255 250 236 / .45); }
+  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important;
+  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
+${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
+${C} > .k-foot .sf-back:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
 
 @media (max-width:1500px) {
   ${C} { grid-template-columns:minmax(180px, 210px) minmax(0, 1fr) !important; }
@@ -479,9 +486,20 @@ ${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:rgb(255 253 248) !imp
   ${C} .of-credits-rows .k-row { padding-top:8px !important; padding-bottom:8px !important; }
   ${C} .of-credits-rows .k-row::before { top:18px !important; }
 }
+@media (max-height:820px) {
+  /* short window: orrery body nums were clipping their discs at 720p — hide nums, keep current name */
+  ${C} .orr-cr-body text.orr-cr-body__num { font-size:0 !important; opacity:0 !important; }
+  ${C} .orr-cr-body.is-current text.orr-cr-body__name { font-size:15px; }
+  ${C} .orr-cr-progress { margin-top:16px; }
+  ${C} .orr-cr-progress svg { width:64px; height:64px; }
+  ${C} .orr-cr-progress__n { font-size:26px; }
+}
 @media (max-width:900px) {
   ${C} { grid-template-columns:minmax(0, 1fr) !important; grid-template-areas:"title" "hang" "stage" "foot" !important; }
   ${C} > .orr-cr-orrery { display:none; }
+}
+@media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
+  ${C} { zoom:1.12; }
 }
 @media (forced-colors: active) { ${C} > .orr-cr-orrery, ${C} > .orr-cr-drift { display:none; } }
 `;
@@ -666,7 +684,7 @@ export function createReelProgress(doc = globalThis.document) {
   n.className = 'orr-cr-progress__n';
   const l = doc.createElement('span');
   l.className = 'orr-cr-progress__l';
-  l.textContent = 'Read';
+  l.textContent = 'Of reel';
   read.append(n, l);
   el.append(s, read);
   let shown = -1;
