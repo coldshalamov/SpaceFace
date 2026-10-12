@@ -670,7 +670,7 @@ export function checkFrameTime(trace) {
 export function checkRoute(trace) {
   const quote = trace.meta && trace.meta.environmentQuote;
   if (quote) {
-    return result('route', 'Public route plays end to end', 'ENVIRONMENT', 'HARNESS ENVIRONMENT', 'served assets and design match HEAD, and the route loads',
+    return result('route', 'Public route plays end to end', 'ENVIRONMENT', 'HARNESS ENVIRONMENT', 'served assets match HEAD, and the route loads',
       `route load failed: "${quote}"`, [{ line: quote, t: null, box: null }], []);
   }
   const r = trace.route || { steps: [] };

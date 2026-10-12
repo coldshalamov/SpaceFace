@@ -11,6 +11,10 @@
 // whole design tree (~1GB) plus every render package on each run is too much
 // IO for the shared box. Extra files on disk are ignored. A git failure is a
 // harness error (exit 3), not an environment verdict.
+//
+// Only `assets/` is graded. The runtime never fetches `design/` (docs, specs,
+// receipts), so a branch that adds or edits a design doc must not turn every
+// gate on a shared-assets worktree into an ENVIRONMENT abort.
 
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -30,6 +34,11 @@ export const HARNESS_OUTPUT_PREFIX = 'design/program/player-truth/';
 
 export function isHarnessOutput(filePath) {
   return String(filePath).startsWith(HARNESS_OUTPUT_PREFIX);
+}
+
+/** Files the public route can load: everything under assets/. design/ is documentation only. */
+export function isRouteServed(filePath) {
+  return String(filePath).startsWith('assets/');
 }
 
 /** Directories the public route loads as the starter hull, plus their lod1 sibling. */
@@ -177,7 +186,7 @@ export async function checkServedSample(baseUrl, entries, samplePath = 'assets/s
 }
 
 export async function verifyHarnessEnvironment({ root, rev = 'HEAD', baseUrl = null }) {
-  const entries = readHeadTree(root, rev).filter((entry) => !isHarnessOutput(entry.path));
+  const entries = readHeadTree(root, rev).filter((entry) => isRouteServed(entry.path) && !isHarnessOutput(entry.path));
   const disk = assessTree(entries, { root });
   const served = baseUrl ? await checkServedSample(baseUrl, entries) : { ok: true, problems: [] };
   const problems = [...disk.problems, ...served.problems];
@@ -191,7 +200,7 @@ export function renderEnvironmentAbort({ problems, commit, checked, hashed }) {
     '',
     STALE_BANNER,
     '',
-    `This is not a gameplay FAIL. Served assets/ and design/ do not match ${commit || 'HEAD'}.`,
+    `This is not a gameplay FAIL. Served assets/ do not match ${commit || 'HEAD'}.`,
     `Checked ${checked == null ? '?' : checked} blobs, hashed ${hashed == null ? '?' : hashed}. The browser was not started.`,
     '',
     ...shown.map((p) => `- ${p.path}: ${p.kind} expected ${p.expected} served ${p.served}`),

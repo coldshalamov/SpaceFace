@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  assessTree, parseLsTree, quoteLoadError, needsHash, gitBlobOid, renderEnvironmentAbort, STALE_BANNER, verifyHarnessEnvironment, isHarnessOutput,
+  assessTree, parseLsTree, quoteLoadError, needsHash, gitBlobOid, renderEnvironmentAbort, STALE_BANNER, verifyHarnessEnvironment, isHarnessOutput, isRouteServed,
 } from '../scripts/player-truth/environment.mjs';
 import { classifyOfferRead, fittedClaimFromText } from '../scripts/player-truth/routes.mjs';
 
@@ -92,7 +92,13 @@ test('the harness scoreboard is not a route file', () => {
   assert.equal(isHarnessOutput('design/specs/03-economy-trading.md'), false);
 });
 
-test('this worktree\'s served assets and design match HEAD', async () => {
+test('only assets/ is graded: a design doc on the branch is not an environment abort', () => {
+  assert.equal(isRouteServed('assets/ships/release/render-packages/kestrel/render-package.json'), true);
+  assert.equal(isRouteServed('design/specs/03-economy-trading.md'), false);
+  assert.equal(isRouteServed('design/program/DEMO_READINESS_2026-09-20.md'), false);
+});
+
+test('this worktree\'s served assets match HEAD', async () => {
   const { startBenchServer } = await import('../scripts/lib/benchServer.mjs');
   const server = await startBenchServer();
   try {

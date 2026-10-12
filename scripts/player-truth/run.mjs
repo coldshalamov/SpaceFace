@@ -32,7 +32,7 @@ import { buildContactSheet } from './contactSheet.mjs';
 import { renderVerdict, printSummary } from './verdict.mjs';
 import { verifyHarnessEnvironment, ENVIRONMENT_EXIT, renderEnvironmentAbort, quoteLoadError } from './environment.mjs';
 import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmoryShelf, classifyOfferRead, readFittedRows, auditItems, swapProbe, armoryLaunchWord, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls } from './routes.mjs';
-import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, readPlaySample } from './driver.mjs';
+import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, readPlaySample, noteKey } from './driver.mjs';
 import { createPlayWatch, formatPlayStop } from './playWatch.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -357,6 +357,9 @@ async function runOne(args, arena, extra = {}) {
             if (await haltIfInterrupted()) break;
             const ph = await phaseNow();
             if (ph.mode !== 'flight') { await page.waitForTimeout(800); if (Date.now() - T0 > wallCapMs) break; continue; }
+            // A modal (tutorial card, dialogue) gets the keyboard answer a player gives: Enter.
+            // Adventure has no run phase, so the play watcher never treats these as an interrupt.
+            if (ph.top && !['hud', null].includes(ph.top) && beat % 5 === 4) { noteKey(page, 'Enter'); await page.keyboard.press('Enter'); }
             if (args.fight) await fightBeat(page, beat++); else await cruiseBeat(page, beat++);
             if (await haltIfInterrupted()) break;
           }
