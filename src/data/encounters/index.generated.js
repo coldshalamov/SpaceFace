@@ -300,6 +300,12 @@ import * as encounter296 from './582-scene-refuel-hookup.js';
 import * as encounter297 from './583-scene-rescue-drill.js';
 import * as encounter298 from './584-scene-archive-record-tail.js';
 import * as encounter299 from './585-scene-fissure-haul-out.js';
+import * as encounter300 from './586-scene-field-scar-survey.js';
+import * as encounter301 from './587-scene-wreck-cordon.js';
+import * as encounter302 from './588-scene-cover-line-standoff.js';
+import * as encounter303 from './589-scene-escalation-silhouette.js';
+import * as encounter304 from './590-scene-waymark-relight.js';
+import * as encounter305 from './591-scene-battle-drift.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -601,5 +607,11 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter297,
   encounter298,
   encounter299,
+  encounter300,
+  encounter301,
+  encounter302,
+  encounter303,
+  encounter304,
+  encounter305,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);

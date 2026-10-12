@@ -154,7 +154,7 @@ test('generated lived vignettes cover situations and configured places evenly', 
 
 test('ambient scenes compile, use the lived trigger contract, and cover every non-Bolus sector', () => {
   const modules = ENCOUNTER_MODULES.filter((module) => module.default && module.default.ambientScene === true);
-  assert.equal(modules.length, 16);
+  assert.equal(modules.length, 22);
   const validMotions = new Set(['hold', 'orbit', 'creep', 'ring', 'weave', 'depart', 'face', 'chase', 'tow', 'column', 'vulture']);
   const covered = new Set();
   const noRunnerScenes = new Set(['scene_funeral_column', 'scene_pilgrim_lamp_walk', 'scene_fissure_haul_out']);
