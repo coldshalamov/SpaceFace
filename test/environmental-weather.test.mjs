@@ -39,14 +39,23 @@ function alongPoint(volume, along, across) {
 
 test('Veil, Vesta, and Io Reach each carry a storm lane and a radiation belt on a schedule', () => {
   // 2026-09-28 INFERENCE unit: Io Reach joins the same one-storm/one-belt roster.
+  // AEP C11 (ID-V): the burning claim / forge / dark-rim fronts join the same weather table —
+  // fire fronts and thermal plumes at Vesta and Rhea, ion storms at Eris and Nyx — each still
+  // a weather volume on the shared warning/surge/calm schedule, styled by its vfxProfile.
   const roles = WEATHER_VOLUMES.map((row) => `${row.sectorId}:${row.role}`).sort();
   assert.deepEqual(roles, [
+    'sector_eris_margin:ion_storm',
     'sector_io_reach:radiation_belt',
     'sector_io_reach:storm',
+    'sector_nyx_march:ion_storm',
+    'sector_rhea_cinder:fire_front',
+    'sector_rhea_cinder:thermal_plume',
     'sector_veil_nebula:radiation_belt',
     'sector_veil_nebula:storm',
+    'sector_vesta_forge:fire_front',
     'sector_vesta_forge:radiation_belt',
     'sector_vesta_forge:storm',
+    'sector_vesta_forge:thermal_plume',
   ]);
   assert.equal(weatherPhase(STORM, 0).phase, 'warning');
   assert.equal(weatherPhase(STORM, SURGE_S).phase, 'surge');

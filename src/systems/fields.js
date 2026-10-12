@@ -2370,6 +2370,10 @@ export const fields = {
       // word the same lifecycle the kernel is forcing. Unphased kinds read active.
       rec.phase = f.lifecyclePhase || FIELD_PHASE_ACTIVE;
       rec.halfAngleRad = f.halfAngleRad; rec.halfWidth = f.halfWidth;
+      // ID-V (AEP C11): an authored environmental front's VFX profile id travels on the
+      // record so the force-language layer can style it (ember fire front, hot plume,
+      // cold ion sheet) instead of the generic kind signature. Null everywhere else.
+      rec.vfxProfile = f.vfxProfile ?? null;
       rec.volume = f.volume || fieldVolumeOf(f);
       rec.palette = FIELD_PALETTE[f.kind] || FIELD_PALETTE[rec.volume] || null;
       rec.expireAt = f.expireAt;  // Infinity for the sustained cone; the HUD countdown chip reads it

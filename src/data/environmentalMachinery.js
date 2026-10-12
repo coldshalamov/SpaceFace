@@ -893,6 +893,9 @@ export const PALLAS_REEF_CYCLE_S = PALLAS_REEF_CYCLE;
 export const VEIL_WEATHER_SECTOR_ID = 'sector_veil_nebula';
 export const VESTA_WEATHER_SECTOR_ID = 'sector_vesta_forge';
 export const IO_REACH_WEATHER_SECTOR_ID = 'sector_io_reach';
+export const RHEA_CINDER_WEATHER_SECTOR_ID = 'sector_rhea_cinder';
+export const ERIS_MARGIN_WEATHER_SECTOR_ID = 'sector_eris_margin';
+export const NYX_MARCH_WEATHER_SECTOR_ID = 'sector_nyx_march';
 const WEATHER_CYCLE = Object.freeze({ warningS: 2, surgeS: 6, calmS: 4 });
 export const WEATHER_SCAN_SCALE_INSIDE = 0.4;
 
@@ -950,7 +953,7 @@ export function vestaWinnowPhase(simTime, out = null) {
 }
 
 function buildWeatherVolume({
-  id, role, sectorId, hazardType, localPos, rot, scanScale, field,
+  id, role, sectorId, hazardType, localPos, rot, scanScale, field, vfxProfile,
 }) {
   const dir = freezeVec(Math.cos(finite(rot)), Math.sin(finite(rot)));
   const globalPos = Object.freeze(sectorLocalToGlobalForSector(localPos, sectorId));
@@ -959,6 +962,7 @@ function buildWeatherVolume({
     role,
     sectorId,
     hazardType,
+    vfxProfile: typeof vfxProfile === 'string' ? vfxProfile : null,
     scanScale: Number.isFinite(scanScale) ? scanScale : 1,
     localPos: Object.freeze({ x: localPos.x, z: localPos.z }),
     globalPos,
@@ -979,6 +983,7 @@ function buildWeatherVolume({
       innerSoft: Math.max(0, finite(field.innerSoft, 0)),
       sourceId: id,
       team: null,
+      vfxProfile: typeof vfxProfile === 'string' ? vfxProfile : null,
     }),
   });
 }
@@ -1088,12 +1093,129 @@ export const WEATHER_VOLUMES = Object.freeze([
       falloff: 1.2,
     },
   }),
+  // ID-V (AEP C11): the audit's fire fronts over the burning claim and the forge. Same
+  // debris-current mechanics as a storm sheet — shots bend and hulls are shoved — but the
+  // volume carries the fire_front VFX profile so the presentation reads ember and scorch,
+  // not the shared green storm. Positions sit clear of stations, gates, ore fields, hazards
+  // and named POIs (sectorAnchors/frontierRegions layout).
+  buildWeatherVolume({
+    id: 'vesta_fire_front',
+    role: 'fire_front',
+    sectorId: VESTA_WEATHER_SECTOR_ID,
+    hazardType: 'debris_current',
+    localPos: { x: -950, z: 1350 },
+    rot: -0.3,
+    scanScale: 1,
+    vfxProfile: 'fire_front',
+    field: {
+      kind: 'sheet',
+      strength: 320,
+      radius: 440,
+      halfWidth: 82,
+      falloff: 1.05,
+    },
+  }),
+  buildWeatherVolume({
+    id: 'rhea_fire_front',
+    role: 'fire_front',
+    sectorId: RHEA_CINDER_WEATHER_SECTOR_ID,
+    hazardType: 'debris_current',
+    localPos: { x: -1600, z: 1500 },
+    rot: 0.55,
+    scanScale: 1,
+    vfxProfile: 'fire_front',
+    field: {
+      kind: 'sheet',
+      strength: 320,
+      radius: 460,
+      halfWidth: 82,
+      falloff: 1.05,
+    },
+  }),
+  // ID-V: thermal plumes off the forge floor and the burning claim — a vent-column cone that
+  // pushes hulls out of the column, styled hot by the thermal_plume profile.
+  buildWeatherVolume({
+    id: 'vesta_thermal_plume',
+    role: 'thermal_plume',
+    sectorId: VESTA_WEATHER_SECTOR_ID,
+    hazardType: 'debris_current',
+    localPos: { x: 1150, z: -850 },
+    rot: 0.9,
+    scanScale: 1,
+    vfxProfile: 'thermal_plume',
+    field: {
+      kind: 'cone',
+      strength: 340,
+      radius: 380,
+      halfAngleRad: 0.5,
+      edgeSoftRad: 0.12,
+      falloff: 1.05,
+    },
+  }),
+  buildWeatherVolume({
+    id: 'rhea_thermal_plume',
+    role: 'thermal_plume',
+    sectorId: RHEA_CINDER_WEATHER_SECTOR_ID,
+    hazardType: 'debris_current',
+    localPos: { x: 1500, z: 1400 },
+    rot: -2.1,
+    scanScale: 1,
+    vfxProfile: 'thermal_plume',
+    field: {
+      kind: 'cone',
+      strength: 340,
+      radius: 380,
+      halfAngleRad: 0.5,
+      edgeSoftRad: 0.12,
+      falloff: 1.05,
+    },
+  }),
+  // ID-V: ion storm fronts on the dark rim — radar-killing charged sheets. hazardType 'nebula'
+  // pairs the ion_storm VFX profile with the scan-scale shrink (the front really does kill
+  // radar inside it), and the sheet still bends shots and shoves traffic.
+  buildWeatherVolume({
+    id: 'eris_ion_storm',
+    role: 'ion_storm',
+    sectorId: ERIS_MARGIN_WEATHER_SECTOR_ID,
+    hazardType: 'nebula',
+    localPos: { x: -1200, z: -800 },
+    rot: 0.25,
+    scanScale: WEATHER_SCAN_SCALE_INSIDE,
+    vfxProfile: 'ion_storm',
+    field: {
+      kind: 'sheet',
+      strength: 300,
+      radius: 520,
+      halfWidth: 96,
+      falloff: 1.05,
+    },
+  }),
+  buildWeatherVolume({
+    id: 'nyx_ion_storm',
+    role: 'ion_storm',
+    sectorId: NYX_MARCH_WEATHER_SECTOR_ID,
+    hazardType: 'nebula',
+    localPos: { x: 800, z: 1600 },
+    rot: -1.15,
+    scanScale: WEATHER_SCAN_SCALE_INSIDE,
+    vfxProfile: 'ion_storm',
+    field: {
+      kind: 'sheet',
+      strength: 300,
+      radius: 520,
+      halfWidth: 96,
+      falloff: 1.05,
+    },
+  }),
 ]);
 
 export const WEATHER_SECTOR_IDS = Object.freeze(new Set([
   VEIL_WEATHER_SECTOR_ID,
   VESTA_WEATHER_SECTOR_ID,
   IO_REACH_WEATHER_SECTOR_ID,
+  RHEA_CINDER_WEATHER_SECTOR_ID,
+  ERIS_MARGIN_WEATHER_SECTOR_ID,
+  NYX_MARCH_WEATHER_SECTOR_ID,
 ]));
 
 // WEATHER_VOLUMES is frozen at module load, so per-sector slices are memoized: the tick loop

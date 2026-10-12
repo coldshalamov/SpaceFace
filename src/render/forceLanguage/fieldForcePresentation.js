@@ -5,6 +5,7 @@ import { FIELD_LIFECYCLES, FIELD_ROLE, sampleFieldLifecycle } from './effectLife
 import { ForceParticleFlow } from '../vfx/forceParticleFlow.js';
 import { FlowEnvironment } from './flowEnvironment.js';
 import { BURST_STYLE, hullBurstFieldRecord, shapeOfFieldKind } from './hullBurstField.js';
+import { ENVIRONMENT_VFX_PROFILES } from '../../data/environmentVfxProfiles.js';
 export { FIELD_RELEASE_SECONDS } from './effectLifecycle.js';
 
 export const FIELD_PRESENTATION_CAPACITY=7; // six simulation fields PLUS the published Seed
@@ -22,6 +23,13 @@ const COLORS=new Map();
 for(const value of [0x54e5ed,0xffc36c,0x58bdff,0xb9a2ff,0xffb766,0xffe1a4,0xb7f5ff,0x79f0c8,0xd9ffe0,0x8ac043])COLORS.set(value,new THREE.Color(value));
 // Hull-burst wedges draw with the cone recipe in their own tints (forceLanguage/hullBurstField.js).
 for(const style of Object.values(BURST_STYLE)){COLORS.set(style.color,new THREE.Color(style.color));COLORS.set(style.accent,new THREE.Color(style.accent));}
+// ID-V (AEP C11): authored environmental-front palettes (fire front, thermal plume, ion storm)
+// resolve through the same map — still no Color allocation in the frame loop.
+for(const p of Object.values(ENVIRONMENT_VFX_PROFILES)){
+  for(const hex of [p.tint,p.accent,p.edgeTint,p.scorch&&p.scorch.tint]){
+    if(Number.isFinite(hex))COLORS.set(hex,new THREE.Color(hex));
+  }
+}
 
 // Field recipes are authored for hand-deployed tools (r <= ~150 WU). Arena/environmental
 // machinery registers fields at 300-600+ WU, where full-strength working membranes blanket
@@ -148,6 +156,7 @@ export class FieldForcePresentation {
     slot.field.engaged=field.engaged===true;
     slot.field.halfAngleRad=finite(field.halfAngleRad,0.56);
     slot.field.halfWidth=finite(field.halfWidth,52);
+    slot.field.vfxProfile=typeof field.vfxProfile==='string'?field.vfxProfile:null;
     if(field.kind==='seed'){
       const seed=state.massSeed;
       slot.seed.phase=seed?.phase||'active';
@@ -244,6 +253,12 @@ export class FieldForcePresentation {
       this.slot=s;this.cycle=FIELD_LIFECYCLES[shapeOfFieldKind(s.kind)];this.releasing=s.release>=0;
       this.accent=style.accent;
       this.tint=COLORS.get(style.color);this.alpha=0.88+(s.field.engaged?0.12:0);
+      // ID-V: a published vfxProfile id overrides the kind-level palette for this one front —
+      // the parameter set names the tint/accent/edge colours and the particle burst shaping
+      // (src/data/environmentVfxProfiles.js). Falls back to the kind style when absent.
+      const envVfx=s.field.vfxProfile?ENVIRONMENT_VFX_PROFILES[s.field.vfxProfile]:null;
+      this.vfxProfile=envVfx||null;
+      if(envVfx){this.tint=COLORS.get(envVfx.tint)||this.tint;this.accent=envVfx.accent;}
       this.reveal=1; // per-section arrival and retirement are owned by iLife in the shader
       this.orientation=s.angle;this.engaged=s.field.engaged===true;
       // `engaged` means a body was affected THIS TICK, not that the tool is switched on.
@@ -266,8 +281,10 @@ export class FieldForcePresentation {
         p.dx=Math.cos(s.angle);p.dz=Math.sin(s.angle);p.radius=s.kind==='seed'?Math.min(s.radius*.33,14):s.radius;
         p.halfAngle=s.field.halfAngleRad;p.halfWidth=s.field.halfWidth;
         p.seed=s.character+Math.imul(pulse,2654435761)/4294967296;
-        p.count=s.field.engaged?8:5;p.strength=s.field.engaged?1.12:.85;
-        p.life=Math.min(.8,this.cycle.release*.85);
+        const pm=envVfx?envVfx.particles:null;
+        p.count=Math.round((s.field.engaged?8:5)*(pm?pm.countMul:1));
+        p.strength=(s.field.engaged?1.12:.85)*(pm?pm.strengthMul:1);
+        p.life=Math.min(.8,this.cycle.release*.85)*(pm?pm.lifeMul:1);
         p.environment=s.environment;
         this.particles.emit(p);
       }
@@ -510,10 +527,23 @@ export class FieldForcePresentation {
         this._surface(1,-side*Math.PI/2,0,0,w*.60,Math.min(4.4,w*.16),Math.min(4.8,w*.18),w*.16,i/6,2,1,.88,x,z);
       }
     }
-    this.tint=COLORS.get(0xd9ffe0);
+    this.tint=COLORS.get(this.vfxProfile&&Number.isFinite(this.vfxProfile.edgeTint)?this.vfxProfile.edgeTint:0xd9ffe0);
     if(!this.releasing){this.role=FIELD_ROLE.BOUNDARY;this._member('truth');
       for(let end=0;end<2;end++)this._surface(1,Math.PI/2,0,-w,w,w*.016,0,0,0,0,0,.6,ca*end*r,sa*end*r,0);
       this.role=FIELD_ROLE.BODY;}
+    // ID-V fire front: the scorch band is the burnt ground line the front leaves at its outer
+    // edges — a dark charred strip just outside each bank (the "scorched rock" decal read).
+    const scorch=this.vfxProfile&&this.vfxProfile.scorch;
+    if(scorch){
+      const scorchW=Math.min(24,Math.max(1.5,w*finite(scorch.bandFrac,0.1)));
+      const keepTint=this.tint;this.tint=COLORS.get(scorch.tint)||this.tint;
+      this._member('membrane');
+      for(let side=-1;side<=1;side+=2){
+        const off=side*(w+scorchW*.55);
+        this._surface(1,0,0,r*.02,r*.98,scorchW,Math.min(1.4,scorchW*.06),0,0,0,0,finite(scorch.alpha,.5),-sa*off,ca*off,0);
+      }
+      this.tint=keepTint;
+    }
   }
   _seed(s,seed,motion){
     const phase=seed?.phase||'active';this.style=2;this.flow=0;this.orientation=s.angle;

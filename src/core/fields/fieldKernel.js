@@ -73,6 +73,10 @@ export function normalizeField(spec = {}) {
     // PQ-013: presentation tag passthrough ('external' = authored world profile, not a player
     // deploy — the fields system keeps it out of the deploy cap and the Intake-funnel VFX).
     tag: typeof spec.tag === 'string' ? spec.tag : null,
+    // ID-V (AEP C11): authored VFX parameter-set id passthrough — an environmental weather
+    // front's presentation profile id (src/data/environmentVfxProfiles.js). Presentation-only;
+    // the kernel never reads it. Null for every field that does not author one.
+    vfxProfile: typeof spec.vfxProfile === 'string' ? spec.vfxProfile : null,
     halfAngleRad: positive(spec.halfAngleRad, Math.PI * 0.25),
     edgeSoftRad: Math.max(0, finite(spec.edgeSoftRad, 0.12)),
     durationS: spec.durationS === Infinity ? Infinity : Math.max(0, finite(spec.durationS, 0)),
