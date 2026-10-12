@@ -259,7 +259,11 @@ export function checkRoundResolution(trace) {
   const rounds = roundsOf(trace); const design = MODE_DESIGN[trace.meta.mode] || {};
   if (!design.minRoundSeconds) return result('round_resolution', 'Round resolves by play', 'N/A', null, null, 'mode has no rounds');
   const done = rounds.filter((r) => r.endSim != null && (r.endPhase === 'cleanup' || r.endPhase === 'draft' || r.endPhase === 'victory'));
-  if (!done.length) return result('round_resolution', 'Round resolves by play', 'UNKNOWN', null, `≥${design.minRoundSeconds} s and player input`, rounds.length ? 'no round was won inside the run' : 'no round started');
+  if (!done.length) {
+    const lost = rounds.filter((r) => r.endSim != null && r.endPhase === 'ended');
+    const why = lost.length ? `no round was won; ${lost.map((r) => `round ${r.wave} ended (run over) after ${fmt(r.endSim - r.startSim, 1)} s`).join('; ')}` : rounds.length ? 'no round was won inside the run' : 'no round started';
+    return result('round_resolution', 'Round resolves by play', 'UNKNOWN', null, `≥${design.minRoundSeconds} s and player input`, why);
+  }
   const offenders = []; let minDur = Infinity; let fail = false;
   for (const r of done) {
     const dur = r.endSim - r.startSim; minDur = Math.min(minDur, dur);

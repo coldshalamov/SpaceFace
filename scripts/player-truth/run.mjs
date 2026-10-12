@@ -230,6 +230,12 @@ async function runOne(args, arena) {
   });
   await browser.close().catch(() => {}); await server.close().catch(() => {});
 
+  const verdict = await gradeAndWrite({ trace, shots, outDir, label, evidence: args.evidence, vw, vh });
+  return { label, verdict, outDir };
+}
+
+/** Grade a recorded trace and write verdict.md/json, contact sheet and (with evidence) the compact copy. */
+export async function gradeAndWrite({ trace, shots, outDir, label, evidence, vw, vh }) {
   const nearestSample = (t) => { let best = null; let bd = Infinity; for (const s of trace.samples) { const d = Math.abs(s.t - t); if (d < bd) { bd = d; best = s; } } return bd < 2000 ? best : null; };
   trace.readability = await analyzeReadability(shots, nearestSample).catch((e) => ({ error: String(e) }));
   const results = runChecks(trace);
@@ -240,7 +246,7 @@ async function runOne(args, arena) {
   const compact = { meta, overall: verdict, results: results.map((r) => ({ ...r, offenders: (r.offenders || []).slice(0, 4) })), rounds: trace.rounds, probes: trace.probes, route: trace.route, readability: trace.readability, loadout: trace.loadout && { ...trace.loadout, items: trace.loadout.items.map((x) => ({ name: x.name, category: x.category, desc: x.desc })) } };
   writeFileSync(path.join(outDir, 'verdict.json'), JSON.stringify(compact, null, 1));
   writeFileSync(path.join(outDir, 'trace.json.gz'), gzipSync(JSON.stringify({ ...trace, shots: shots.map((s) => ({ ...s, file: path.basename(s.file) })) })));
-  if (args.evidence) {
+  if (evidence) {
     const evDir = path.join(ROOT, 'design/program/player-truth', label);
     mkdirSync(evDir, { recursive: true });
     await sharp(path.join(outDir, 'contact-sheet.jpg')).resize({ width: 1200 }).jpeg({ quality: 68 }).toFile(path.join(evDir, 'contact-sheet.jpg'));
@@ -250,7 +256,7 @@ async function runOne(args, arena) {
   }
   writeFileSync(path.join(outDir, 'verdict.md'), renderVerdict({ meta, results, overall: verdict, paths }));
   printSummary({ meta, results, overall: verdict, paths });
-  return { label, verdict, outDir };
+  return verdict;
 }
 
 // CLI mode → the Crucible door's data-ruleset (Gauntlet is the 'scored' ruleset).
