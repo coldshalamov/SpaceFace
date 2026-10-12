@@ -40,6 +40,15 @@ const folioOf = (runtime, berthId) => entities(runtime)
   .find((e) => e.data && e.data.berthConsign && e.data.berthConsign.berthId === berthId) || null;
 const fact = (dossier, k) => (dossier && dossier.facts.find((f) => f.k === k)) || null;
 const remembered = (dossier) => (dossier && dossier.lines.find((l) => l.label === 'They remember')) || null;
+const prepared = new WeakSet();
+// Conduct runs inside the production tick, never a direct call: the registry cadence is on trial too.
+async function settle(runtime, seconds = 1) {
+  if (!prepared.has(runtime)) {
+    assert.equal(await runtime.getSystem('physics').prepareBackend(runtime.state, { reset: true }), true);
+    prepared.add(runtime);
+  }
+  runtime.runTicks(Math.round(60 * seconds), 1 / 60);
+}
 function listen(runtime, names) {
   const seen = [];
   for (const name of names) runtime.bus.on(name, (payload) => seen.push({ name, payload }));
@@ -88,11 +97,15 @@ test('faction-identity route: an Archive grudge, its closed desk and the racked 
     assert.equal(runFactionPresenceDockAction(source.bus, s, 'station_drift', 'archive_reading_room').ok, true);
     const home = factionBerthHulkHome(berth);
     fly(source, { x: home.x + 600, z: home.z });
+    const woke = listen(source, ['factionPresence:spawned']);
     enter(source, 'sector_pallas_drift');
+    await settle(source);
+    assert.ok(woke.some((r) => r.payload.source === 'berthKeeper' && r.payload.factionId === 'faction_archive'),
+      'the censor keeper comes out as the player nears the Stacks, through the production tick');
     const folio = folioOf(source, berth.id);
     assert.ok(folio, 'the reading racks a sealed folio at the Stacks');
     folio.pos.x += 400;
-    presence(source)._conductTick();
+    await settle(source);
     assert.equal(conductStances(s).faction_archive, 'grudge', 'hauling the folio off opens a writ');
     assert.ok(factionPresenceServiceRows(s, 'station_drift').every((r) => r.available === false && r.disabledReason),
       'the reading room is closed to you');
@@ -118,7 +131,7 @@ test('faction-identity route: an Archive grudge, its closed desk and the racked 
     const stolen = folioOf(target, berth.id);
     assert.ok(stolen, 'the berth hulk persists through Continue and reentry');
     assert.ok(Math.hypot(stolen.pos.x - home.x, stolen.pos.z - home.z) > 300, 'still where the thief left it');
-    presence(target)._conductTick();
+    await settle(target);
     assert.equal(conductStances(t).faction_archive, 'grudge', 'reentry does not wash the writ');
     assert.equal(t.factionPresence.berthWatch[berth.id].displaced, true, 'the theft stays on the books');
     const g = greet.find((r) => r.payload.berthId === berth.id);
@@ -127,7 +140,7 @@ test('faction-identity route: an Archive grudge, its closed desk and the racked 
     const said = listen(target, ['comms:popup']);
     stolen.pos.x = home.x;
     stolen.pos.z = home.z;
-    presence(target)._conductTick();
+    await settle(target);
     assert.notEqual(conductStances(t).faction_archive, 'grudge', 'hauling the folio home closes the writ');
     assert.equal(t.factionPresence.berthWatch[berth.id].displaced, false);
     assert.ok(said.some((r) => /correction/.test(r.payload.text)), 'the Archive says so');
@@ -141,7 +154,7 @@ test('faction-identity route: an Archive grudge, its closed desk and the racked 
   } finally { (target || source).dispose(); }
 });
 
-test('faction-identity route: a Pitborn grudge is settled by business — redeeming salvage rights at the yard', () => {
+test('faction-identity route: a Pitborn grudge is settled by business — redeeming salvage rights at the yard', async () => {
   const runtime = boot();
   try {
     const s = runtime.state;
@@ -156,7 +169,7 @@ test('faction-identity route: a Pitborn grudge is settled by business — redeem
     }
     assert.equal(conductStances(s).faction_pitborn, 'grudge', 'three deliberate strikes open the debt');
     s.simTime = (Number(s.simTime) || 0) + 3600;
-    presence(runtime)._conductTick();
+    await settle(runtime);
     assert.equal(conductStances(s).faction_pitborn, 'grudge', 'the Pitborn never forget on the clock');
 
     s.player.salvageRights = 2;

@@ -115,7 +115,7 @@ function ensureOwnState(state) {
 // once it is back inside the smaller radius (hysteresis so a nudge never flickers the writ).
 const BERTH_DISPLACED_WU = 220;
 const BERTH_RETURNED_WU = 120;
-const CONDUCT_TICK_EVERY = 30;
+const CONDUCT_PERIOD_S = 0.5;
 // A berth keeper comes out to meet a hull that approaches its berth, well beyond the glass edge,
 // instead of idling (and sleeping in Rapier) across the whole sector from the moment of entry.
 const BERTH_KEEPER_WAKE_WU = 1500;
@@ -510,6 +510,7 @@ export const factionPresence = {
     this._boardingRepairRequested = false;
     this._presenceQuiet = null;
     this._presenceWakeSeq = 0;
+    this._conductAt = -Infinity;
     ensureOwnState(this.state);
     this._unsub = [
       // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
@@ -568,7 +569,13 @@ export const factionPresence = {
     const own = ensureOwnState(state);
     // Conduct runs on its own slow cadence ahead of the quiet latch: forgiveness is a clock and
     // a berth hulk can be towed off its rack without any shipLike membership change.
-    if (shouldRunOnTick(state.tick, 'factionPresence:conduct', CONDUCT_TICK_EVERY)) this._conductTick();
+    // Gated on sim time, not tick phase: the registry may itself run this system on a coarse
+    // cadence, and a second tick-phase gate on top of it can never line up.
+    const conductNow = Number(state.simTime) || 0;
+    if (!(conductNow >= this._conductAt && conductNow - this._conductAt < CONDUCT_PERIOD_S)) {
+      this._conductAt = conductNow;
+      this._conductTick();
+    }
     if (FACTION_PRESENCE_QUIET_LATCH !== false) {
       const laneVersion = entityIndexLaneVersion(state, PRESENCE_QUIET_LANES);
       const membership = laneVersion === -1 ? entityIndexVersion(state) : laneVersion;
