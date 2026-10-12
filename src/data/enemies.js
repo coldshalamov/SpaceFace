@@ -674,6 +674,130 @@ export const ENEMY_TYPES = [
     behavior: 'light engineered cutter; locks one crossing, misses when displaced, exposes its side in recovery',
     loot: { creditsRange: [80, 180], drops: [{ id: 'cmdty_electronics', chance: 0.45, qtyRange: [1, 2] }] },
   },
+  // ── U2 enemy-path units (asset-experience-program §5) ─────────────────────────
+  // Type-level identities, not aces: the 16 named aces are INDIVIDUALS with fixed callsigns,
+  // authored loadouts and personal grudges (src/data/namedAces.js). These rows are doctrine
+  // machines — every spawn of the def fights the same distinct fight. Per-unit differentiation
+  // against the ace roster and the rest of this table is stated on each row.
+  {
+    id: 'enemy_assassin', name: 'Contract Assassin', shipId: 'ship_wasp',
+    silhouette: 'sniper_lance', factionId: 'faction_reach',
+    aiArchetype: 'sniper', levelRange: [12, 18],
+    combatDoctrineId: 'assassin_mark',
+    // Differentiation: the quiet_ghost (ranged_stalker) snipes from 520+ and relocates after
+    // every volley; the warrant loop's hunters answer a bounty flag; ace rival Brigga Two-Turn
+    // duels as a named individual. The assassin answers a GRUDGE — it shadows one marked hull
+    // without firing, cues once, flies a single committed pass, and leaves. Nothing else on
+    // the roster spends exactly one window per mark.
+    hull: 130, armor: 22, armorFlat: 1, shield: 60, shieldRegen: 8, shieldRegenCapable: true,
+    cap: 160, capRegen: 24,
+    maxSpeed: 178, accel: 170, turnRate: 2.6, collisionRadius: 12, mass: 26,
+    weapons: [
+      { id: 'wpn_pulse_laser_m' },
+      { id: 'wpn_railgun_m', dmgOverride: 26, rofOverride: 0.8, projSpeedOverride: 680, rangeOverride: 700 },
+    ],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 480, leashRadius: 2200 },
+    physicalClass: 'specialist', rareSpecialist: true,
+    telegraph: {
+      bark: 'warn',
+      line: 'A mark is being locked. It will not fire until the lock completes — break the lock or break the hull.',
+      cue: 'assassin_mark',
+    },
+    counterHint: 'break_lock_during_cue_or_outrun_the_single_pass',
+    behavior: 'shadows one marked hull outside the fire band, telegraphs once, commits one pass, then withdraws — re-marking is a fresh contract',
+    bountyCr: 920, shipClass: 'fighter',
+    loot: {
+      creditsRange: [220, 560],
+      drops: [
+        { id: 'cmdty_stolen_goods', chance: 0.5, qtyRange: [2, 5] },
+        { id: 'cmdty_electronics', chance: 0.4, qtyRange: [1, 3] },
+      ],
+    },
+  },
+  {
+    id: 'enemy_duel_champion', name: 'Duel Champion', shipId: 'ship_hornet',
+    silhouette: 'corsair_blade', factionId: 'faction_reach',
+    aiArchetype: 'brawler', levelRange: [10, 16],
+    combatDoctrineId: 'duel_champion',
+    // Differentiation: Brigga Two-Turn is the named ace with a duelist gimmick — one individual
+    // with authored loadout and grudge. The champion is the TYPE the Sker rings field: it
+    // squares to the ring edge, announces the challenge, then flies bounded exchanges with an
+    // authored peel after every pass — the rule-bound vocabulary the brawler's relentless
+    // commit deliberately lacks.
+    hull: 220, armor: 55, armorFlat: 2, shield: 110, shieldRegen: 12, shieldRegenCapable: true,
+    cap: 200, capRegen: 26,
+    maxSpeed: 152, accel: 130, turnRate: 2.2, collisionRadius: 14, mass: 34,
+    weapons: [{ id: 'wpn_pulse_laser_m' }, { id: 'wpn_pulse_laser_m' }],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 220, leashRadius: 1500 },
+    physicalClass: 'specialist', rareSpecialist: true,
+    telegraph: {
+      bark: 'warn',
+      line: 'A challenge is out. The champion holds the ring — bounded passes only, until one hull yields.',
+      cue: 'duel_challenge',
+    },
+    counterHint: 'win_the_exchange_inside_the_ring_or_leave_the_ring',
+    behavior: 'squares to a ring, announces the challenge, flies bounded exchanges with a peel after every pass; stays on a tight ring leash',
+    bountyCr: 780, shipClass: 'fighter',
+    loot: {
+      creditsRange: [260, 620],
+      drops: [
+        { id: 'cmdty_alloys', chance: 0.5, qtyRange: [2, 5] },
+        { id: 'cmdty_munitions', chance: 0.4, qtyRange: [1, 3] },
+      ],
+    },
+  },
+  // Prison transfer pair. npc_prison_barge is the lawful carrier (civilian slot — slow hull,
+  // rich manifest); prison_warden_escort is the SCN screen bound to it by escort_screen custody
+  // (it darts at whatever presses the barge, including a raiding player). "Frees prisoners if
+  // cracked" rides the existing seams: the barge is crackable like any carrier — its hold is
+  // the manifest (loot), and attacking it is a crime against Concord law (illegalToKill). No
+  // bespoke prison format. Hull: reuses ship_ironback — the dedicated prison-barge commission
+  // is the C9 identity-hulls item (ID-H) and swaps into shipId when it lands.
+  {
+    id: 'npc_prison_barge', name: 'Prison Barge', shipId: 'ship_ironback',
+    silhouette: 'trader_haul', factionId: 'faction_scn',
+    aiArchetype: 'fleeing_trader', levelRange: [6, 10],
+    combatDoctrineId: null,
+    hull: 380, armor: 60, armorFlat: 2, shield: 90, shieldRegen: 8, cap: 160, capRegen: 16,
+    maxSpeed: 64, accel: 34, turnRate: 0.8, collisionRadius: 26, mass: 320,
+    weapons: [{ id: 'wpn_flak_turret_s', defensiveOnly: true }],
+    aiDoctrine: { defaultActivity: 'transit', roe: 'defensive', preferredRange: 300, leashRadius: 2600 },
+    physicalClass: 'terrain',
+    telegraph: { bark: 'scan', line: 'Concord transfer manifest. The hold is people, not freight — crack it and the law lands on you.', cue: 'engine_flare' },
+    behavior: 'slow lawful carrier: runs the transfer lane under escort; its hold is the prisoner manifest',
+    bountyCr: 0, illegalToKill: true, shipClass: 'frigate',
+    loot: {
+      creditsRange: [300, 900],
+      drops: [
+        { id: 'cmdty_stolen_goods', chance: 0.55, qtyRange: [3, 8] },
+        { id: 'cmdty_consumer_goods', chance: 0.4, qtyRange: [3, 7] },
+        { id: 'cmdty_munitions', chance: 0.35, qtyRange: [1, 3] },
+      ],
+    },
+  },
+  {
+    id: 'prison_warden_escort', name: 'Prison Warden', shipId: 'ship_hornet',
+    silhouette: 'patrol_interdict', factionId: 'faction_scn',
+    aiArchetype: 'guardian', levelRange: [6, 11],
+    combatDoctrineId: 'escort_screen',
+    hull: 260, armor: 70, armorFlat: 3, shield: 120, shieldRegen: 14, shieldRegenCapable: true,
+    cap: 190, capRegen: 26,
+    maxSpeed: 112, accel: 90, turnRate: 1.7, collisionRadius: 17, mass: 70,
+    weapons: [{ id: 'wpn_autocannon_m' }, { id: 'wpn_pulse_laser_s' }],
+    aiDoctrine: { defaultActivity: 'screen', roe: 'weapons_free', preferredRange: 160, leashRadius: 2600 },
+    physicalClass: 'specialist',
+    telegraph: { bark: 'warn', line: 'Warden screen on a prison transfer. Stay off the barge or take the law.', cue: 'engine_flare' },
+    counterHint: 'drag_the_dart_past_its_leash_or_crack_the_barge_fast',
+    behavior: 'custody-bound screen: holds between the barge and the pressing threat, darts only on a breach, leashed to the carrier',
+    bountyCr: 0, factionLawful: true, shipClass: 'guardian',
+    loot: {
+      creditsRange: [160, 380],
+      drops: [
+        { id: 'cmdty_scrap_metal', chance: 0.6, qtyRange: [3, 7] },
+        { id: 'cmdty_munitions', chance: 0.35, qtyRange: [1, 3] },
+      ],
+    },
+  },
   KILNBACK_ENEMY,
   MOTH_ENEMY,
   PALLET_JACK_ENEMY,

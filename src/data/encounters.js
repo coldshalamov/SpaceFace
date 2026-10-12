@@ -302,6 +302,38 @@ export const ENCOUNTER_BARKS = Object.freeze({
     'TRAFFIC ALERT: Vael freighter under warden screen. Raiders want the hold; the screen wants the lane.',
     'VAEL: convoy under screen. Raiders closing — pick a side or keep clear.',
   ]),
+  // prison transfer — Concord barge under warden screen, Reach pack working the crack
+  prison_transfer_alert: Object.freeze([
+    'CONCORD: prison transfer under warden screen. Keep clear of the barge.',
+    'CONCORD: prisoner manifest in transit. The warden screen answers any press.',
+    'TRAFFIC ALERT: prison barge on route. Raiders want the hold; the screen answers to Concord.',
+  ]),
+  // grudge mark — a Reach contract assassin already holding your bearing
+  assassin_mark_tele: Object.freeze([
+    'GRUDGE MARK: a hull has held your bearing without firing. It is waiting for a lock.',
+    'SENSOR WHISPER: one quiet contact, no demand, no demand ever. Someone sold your name to a dead ledger.',
+    'GRUDGE MARK: the assassin does not negotiate. Break the lock or break the hull.',
+  ]),
+  // ash-pin champion — the Sker ring challenge; terse, proud, rule-bound
+  duel_challenge_demand: Object.freeze([
+    'ASH-PIN RING: a champion holds the line ahead. Bounded passes, first to yield. Answer or keep burning.',
+    'DUEL CHALLENGE: ring rules — one hull, one exchange at a time. The champion counts silence as a yes.',
+    'ASH-PIN RING: the champion names you worth an exchange. Take the ring or take the lane out.',
+  ]),
+  duel_accept_spring: Object.freeze([
+    'Answered. The ring is live — bounded passes only.',
+    'Accepted. Square to the line. The champion flies first exchange.',
+    'A yes. Ring rules hold: passes, not a grind.',
+  ]),
+  duel_ring_live: Object.freeze([
+    'Ring live. Exchange starts now.',
+    'The champion commits. First exchange on the line.',
+  ]),
+  duel_decline_ack: Object.freeze([
+    'Decline logged. The ring keeps its ledger.',
+    'No ring today. The champion counts the lane you took.',
+    'Gone. The ash-pin holds your name for a later night.',
+  ]),
   // patrol scan — Concord [0,1,3] bureaucratic; Meridian [2,4] border-control voice
   patrol_scan_hail: Object.freeze([
     'CONCORD: cut thrust for scan.',

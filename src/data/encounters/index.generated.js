@@ -284,6 +284,9 @@ import * as encounter280 from './566-lived-derelict-field-toll-helix-literalized
 import * as encounter281 from './567-second-rinse.js';
 import * as encounter282 from './568-false-bloom.js';
 import * as encounter283 from './569-build-your-own-escape.js';
+import * as encounter284 from './586-grudge-mark.js';
+import * as encounter285 from './587-ash-pin-champion.js';
+import * as encounter286 from './588-prison-transfer.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -569,5 +572,8 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter281,
   encounter282,
   encounter283,
+  encounter284,
+  encounter285,
+  encounter286,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);
