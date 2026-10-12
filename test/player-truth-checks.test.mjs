@@ -117,3 +117,23 @@ test('overall: any FAIL fails, UNKNOWN is never PASS', () => {
   assert.equal(overall([{ status: 'PASS' }, { status: 'UNKNOWN' }]), 'INCOMPLETE');
   assert.equal(overall([{ status: 'PASS' }, { status: 'N/A' }]), 'PASS');
 });
+
+test('menu clicks are not flight input; canvas presses and keys are', async () => {
+  const { isFlightInput } = await import('../scripts/player-truth/checks.mjs');
+  assert.equal(isFlightInput({ ev: 'input', kind: 'mousedown', tgt: 'BUTTON' }), false);
+  assert.equal(isFlightInput({ ev: 'input', kind: 'mousedown', tgt: 'CANVAS' }), true);
+  assert.equal(isFlightInput({ ev: 'input', kind: 'keydown', tgt: 'BODY' }), true);
+  assert.equal(isFlightInput({ ev: 'input', kind: 'keyup', tgt: 'BODY' }), false);
+});
+
+test('score credited before the first flight input fails', async () => {
+  const { checkRewardBeforeInput } = await import('../scripts/player-truth/checks.mjs');
+  const mk = (sim, sc) => ({ sim, t: sim * 1000, mode: 'flight', run: { ph: 'active', sc }, e: [] });
+  const trace = { meta: { mode: 'swarm', rounds: true }, rounds: [{ wave: 1, startSim: 1, endSim: null }],
+    samples: [mk(1, 0), mk(2, 0), mk(3, 120), mk(8, 300)], events: [{ ev: 'input', kind: 'keydown', sim: 7.5 }] };
+  const r = checkRewardBeforeInput(trace);
+  assert.equal(r.status, 'FAIL');
+  assert.match(r.value, /\+120/);
+  trace.samples[2].run.sc = 0;
+  assert.equal(checkRewardBeforeInput(trace).status, 'PASS');
+});

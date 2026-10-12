@@ -65,9 +65,11 @@ export function installPlayerTruthReader(win, opts = {}) {
 
   const onInput = (ev) => {
     if (!ev.isTrusted) return;
-    const rec = { t: now(), sim: simNow(), kind: ev.type, code: ev.code || ev.button };
+    const tgt = ev.target && ev.target.tagName ? ev.target.tagName : null;
+    const rec = { t: now(), sim: simNow(), kind: ev.type, code: ev.code || ev.button, tgt };
     if (ev.type === 'keydown' && ev.repeat) return;
-    if (!firstInput && SF.state.mode === 'flight' && (ev.type === 'keydown' || ev.type === 'mousedown')) firstInput = rec;
+    const flightInput = ev.type === 'keydown' || (ev.type === 'mousedown' && tgt === 'CANVAS');
+    if (!firstInput && SF.state.mode === 'flight' && flightInput) firstInput = rec;
     events.push({ ev: 'input', ...rec });
   };
   const INPUT_EVENTS = ['keydown', 'keyup', 'mousedown', 'mouseup'];
@@ -103,9 +105,20 @@ export function installPlayerTruthReader(win, opts = {}) {
     return { sx, sy, pr, inView };
   }
 
+  // Visible only when every ancestor is visible AND the chain reaches the scene: a detached
+  // object keeps visible=true but draws nothing.
   function meshChainVisible(m) {
-    for (let o = m; o; o = o.parent) if (!o.visible) return false;
-    return true;
+    let o = m;
+    for (; o; o = o.parent) { if (!o.visible) return false; if (o.isScene) return true; }
+    return false;
+  }
+
+  // Sky/backdrop layers (deep-field stars, nebula ribbons, planets painted behind the plane)
+  // are additive but are the backdrop, not VFX over the play.
+  const BACKDROP_NAME = /^(SF_)?DeepField|^SpaceBackground$|^L\d[a-z]?[_-]/;
+  function isBackdrop(o) {
+    for (let n = o; n && !n.isScene; n = n.parent) if (n.name && BACKDROP_NAME.test(n.name)) return true;
+    return false;
   }
 
   function playerRecord(st, p, mesh, cam, vw, vh) {
@@ -154,7 +167,7 @@ export function installPlayerTruthReader(win, opts = {}) {
 
   function vfxScan(st, cam, scene, vw, vh, playerBox, threatBoxes) {
     const grid = new Uint16Array(GW * GH);
-    let overdraw = 0; let unbounded = 0; const per = new Map();
+    let overdraw = 0; let unbounded = 0; let backdrop = 0; const per = new Map();
     const sphere = new THREE.Sphere();
     scene.traverseVisible((o) => {
       if (!(o.isMesh || o.isPoints || o.isSprite || o.isLine)) return;
@@ -162,6 +175,7 @@ export function installPlayerTruthReader(win, opts = {}) {
       const mats = Array.isArray(o.material) ? o.material : [o.material];
       const mat = mats.find((m) => isAdditive(m, THREE));
       if (!mat || (mat.opacity !== undefined && mat.opacity < 0.02 && !mat.isShaderMaterial)) return;
+      if (isBackdrop(o)) { backdrop++; return; }
       let r; let cx; let cy; let cz;
       if (o.isSprite) {
         o.getWorldPosition(v); cx = v.x; cy = v.y; cz = v.z; r = Math.max(o.scale.x, o.scale.y) * 0.5 * Math.max(1, o.matrixWorld.getMaxScaleOnAxis() / Math.max(1e-6, Math.max(o.scale.x, o.scale.y)));
@@ -206,7 +220,7 @@ export function installPlayerTruthReader(win, opts = {}) {
     const top = [...per.values()].sort((a, b) => b.cells - a.cells).slice(0, 5)
       .map((x) => [x.name, x.owner, +(x.cells / grid.length).toFixed(3), x.box]);
     return { cov: +(covered / grid.length).toFixed(3), od: +(overdraw / grid.length).toFixed(2), pOcc: fracCovered(playerBox),
-      tOcc: tn ? +(tc / tn).toFixed(3) : null, tN: tn, unb: unbounded, top };
+      tOcc: tn ? +(tc / tn).toFixed(3) : null, tN: tn, unb: unbounded, bg: backdrop, top };
   }
 
   function sample() {
@@ -218,7 +232,7 @@ export function installPlayerTruthReader(win, opts = {}) {
     const run = st.run || null;
     const s = { f: frame, t: +t.toFixed(1), dt: +dt.toFixed(1), sim: simNow(), mode: st.mode,
       top: SF.ctx && SF.ctx.screenManager && SF.ctx.screenManager.top ? SF.ctx.screenManager.top() : null,
-      run: run ? { kind: run.kind, rs: run.ruleset, ph: run.phase, w: run.wave, a: run.arenaId, res: run.resolvedThreat, sp: run.spawnedThreat, bud: run.threatBudget } : null,
+      run: run ? { kind: run.kind, rs: run.ruleset, ph: run.phase, w: run.wave, a: run.arenaId, res: run.resolvedThreat, sp: run.spawnedThreat, bud: run.threatBudget, sc: Number.isFinite(run.score) ? run.score : null } : null,
       vw, vh, p: null, e: [], info: null, vfx: null };
     if (r.renderer && r.renderer.info) s.info = { calls: r.renderer.info.render.calls, tris: r.renderer.info.render.triangles };
     const list = st.entityList || [];

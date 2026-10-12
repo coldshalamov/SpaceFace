@@ -120,7 +120,7 @@ async function runOne(args, arena) {
     await shoot('main menu', false);
 
     if (args.mode === 'swarm' || args.mode === 'gauntlet') {
-      doorInfo = await crucibleToArmory(page, { ruleset: args.mode, arena, seed: args.seed }, step);
+      doorInfo = await crucibleToArmory(page, { ruleset: RULESET[args.mode] || args.mode, arena, seed: args.seed }, step);
       if (args.mode === 'swarm') {
         await page.waitForFunction(() => { const n = (s) => String(s || '').replace(/\s+/g, ' '); return [...document.querySelectorAll('#screens button')].some((x) => x.offsetParent && !x.disabled && /Launch round 1/.test(n(x.textContent))); }, null, { timeout: 600000 });
         await waitBootOverlayGone(page);
@@ -161,7 +161,7 @@ async function runOne(args, arena) {
             if (round === trace.rounds[0] && args.idle > 0) {
               log(`idle ${args.idle} sim s (no input)`);
               await waitSim(page, args.idle, { maxWallMs: 600000, until: (st) => !st.run || st.run.phase !== 'active' });
-              continue;
+              if ((await phaseNow()).ph !== 'active') continue;
             }
             await controlProbes(page, `round ${round.wave}`, trace.probes);
             continue;
@@ -253,6 +253,9 @@ async function runOne(args, arena) {
   return { label, verdict, outDir };
 }
 
+// CLI mode → the Crucible door's data-ruleset (Gauntlet is the 'scored' ruleset).
+const RULESET = Object.freeze({ swarm: 'swarm', gauntlet: 'scored' });
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   process.env.SPACEFACE_PLAYER_STORE_DIR = '';
@@ -263,10 +266,12 @@ async function main() {
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     await bootToMenu(page, server.baseUrl, () => {});
     await clickText(page, 'Crucible', { exact: true });
-    await page.locator(`#screens .sf-crd-mode[data-ruleset="${args.mode}"]`).click();
-    arenas = (await listDoorArenas(page)).filter((a) => !a.disabled).map((a) => a.name);
+    await page.locator(`#screens .sf-crd-mode[data-ruleset="${RULESET[args.mode] || args.mode}"]`).click();
+    const door = await listDoorArenas(page);
+    arenas = door.filter((a) => !a.disabled).map((a) => a.name);
     await browser.close(); await server.close();
-    console.log(`arenas reachable from the door: ${arenas.join(', ')}`);
+    const locked = door.filter((a) => a.disabled).map((a) => a.name);
+    console.log(`arenas reachable from the door: ${arenas.join(', ')}${locked.length ? ` · locked for a fresh profile: ${locked.join(', ')}` : ''}`);
   }
   const outcomes = [];
   for (const arena of arenas) outcomes.push(await runOne(args, arena));

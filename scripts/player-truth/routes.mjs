@@ -76,11 +76,12 @@ IRRELEVANT.gauntlet = IRRELEVANT.swarm;
 /** Read every armory offer and its words. Pure DOM. */
 export async function readArmory(page) {
   return page.evaluate(() => [...document.querySelectorAll('#screens .sf-cru-card')].map((c, i) => {
-    const r = c.getBoundingClientRect(); const title = c.getAttribute('title') || '';
-    const parts = title.split('. ');
+    const r = c.getBoundingClientRect();
+    const q = (sel) => { const n = c.querySelector(sel); return n ? n.textContent.replace(/\s+/g, ' ').trim() : ''; };
     const text = c.textContent.replace(/\s+/g, ' ').trim();
-    const cat = (text.match(/^\d*([A-Za-z]+)\s*\d+\s*cr/) || [])[1] || null;
-    return { i, role: parts[0] || '', name: parts[1] || text.slice(0, 40), desc: parts.slice(2).join('. '), category: cat, unavailable: c.classList.contains('is-unavail'), text: text.slice(0, 200), box: [r.left, r.top, r.right, r.bottom], visible: r.width > 0 && r.height > 0 };
+    const name = q('.sf-cru-name') || (c.getAttribute('aria-label') || '').split('. ')[1] || text.slice(0, 40);
+    const cat = q('.sf-cru-verb') || null;
+    return { i, role: cat || '', name, desc: q('.sf-cru-blurb'), category: cat, unavailable: c.classList.contains('is-unavail'), text: text.slice(0, 200), box: [r.left, r.top, r.right, r.bottom], visible: r.width > 0 && r.height > 0 };
   }));
 }
 

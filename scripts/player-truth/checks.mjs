@@ -133,6 +133,10 @@ export function checkPlayerShip(trace) {
     'missing / hidden / off-frame / non-lod0 / placeholder (<' + T.playerMinTris + ' tris) while alive in play', offenders, moments);
 }
 
+// Bodies that should only leave the screen by dying or flying off — a collected pickup or a spent
+// shot leaving is normal.
+const REMOVAL_CLASSES = new Set([CLS.enemy, CLS.asteroid, CLS.neutral, CLS.station]);
+
 export function checkPopping(trace) {
   const T = THRESHOLDS; const samples = playSamples(trace);
   if (samples.length < 10) return result('popping', 'Pop-in / pop-out on screen', 'UNKNOWN', null, `≤${T.popsPerMin}/min`, 'too few play frames');
@@ -154,7 +158,7 @@ export function checkPopping(trace) {
         }
       }
       for (const [id, p] of prev.map) {
-        if (cur.has(id) || p[E.vis] !== VIS.onscreen || !inner(p, prev.s) || killedIds.has(id) || p[E.cls] === CLS.projectile || p[E.cls] === CLS.fx) continue;
+        if (cur.has(id) || p[E.vis] !== VIS.onscreen || !inner(p, prev.s) || killedIds.has(id) || !REMOVAL_CLASSES.has(p[E.cls])) continue;
         pops.push({ id, kind: 'removed without death', s: prev.s, e: p });
       }
     }
@@ -175,7 +179,11 @@ export function checkPopping(trace) {
 
 /** Rounds as the harness saw them: [{ wave, startSim, startT, endSim, endT, endPhase }]. */
 function roundsOf(trace) { return trace.rounds || []; }
-function inputsBetween(trace, a, b) { return trace.events.filter((ev) => ev.ev === 'input' && (ev.kind === 'keydown' || ev.kind === 'mousedown') && ev.sim >= a && ev.sim <= b); }
+/** Flight input: a key press, or a mouse press on the game canvas (a click on a menu button is not flying). */
+export function isFlightInput(ev) {
+  return ev.ev === 'input' && (ev.kind === 'keydown' || (ev.kind === 'mousedown' && (ev.tgt == null || ev.tgt === 'CANVAS')));
+}
+function inputsBetween(trace, a, b) { return trace.events.filter((ev) => isFlightInput(ev) && ev.sim >= a && ev.sim <= b); }
 
 export function checkSpawnMotion(trace) {
   const T = THRESHOLDS; const rounds = roundsOf(trace);
@@ -217,7 +225,34 @@ export function checkKillsBeforeInput(trace) {
       offenders.push({ line: `round ${r.wave}: ${kills.length} ${kills.length === 1 ? 'kill' : 'kills'} in the first ${fmt(cutoff - r.startSim, 1)} s before input — by ${Object.entries(by).map(([k, v]) => `${k}×${v}`).join(', ')}`, t: kills[0].t, sim: kills[0].sim, box: null });
     }
   }
-  return result('kills_before_input', 'Kills before the player acts', n > THRESHOLDS.killsBeforeInput ? 'FAIL' : 'PASS', `${n} kills`, '0', 'non-player kills between round start and first player input', offenders, offenders.slice(0, 2));
+  const hostileKills = trace.events.filter((ev) => ev.ev === 'killed' && ev.hostile && rounds.some((r) => ev.sim >= r.startSim && ev.sim <= (r.endSim != null ? r.endSim : Infinity)));
+  const passive = hostileKills.filter((ev) => !ev.byPlayer).length;
+  const info = `non-player kills between round start and first flight input · whole run: ${hostileKills.length} hostile deaths, ${passive} not credited to the player (info)`;
+  return result('kills_before_input', 'Kills before the player acts', n > THRESHOLDS.killsBeforeInput ? 'FAIL' : 'PASS', `${n} kills`, '0', info, offenders, offenders.slice(0, 2));
+}
+
+/** Score the HUD credits to the player before the player has touched the controls. */
+export function checkRewardBeforeInput(trace) {
+  const rounds = roundsOf(trace);
+  if (!rounds.length) return result('reward_before_input', 'Score before the player acts', 'N/A', null, 0, 'mode has no rounds');
+  const offenders = []; let total = 0; let measured = false;
+  for (const r of rounds) {
+    const end = r.endSim != null ? r.endSim : Infinity;
+    const first = inputsBetween(trace, r.startSim, end)[0];
+    const cutoff = first ? first.sim : end;
+    const win = trace.samples.filter((s) => s.run && s.run.sc != null && s.sim >= r.startSim && s.sim <= cutoff);
+    if (win.length < 2) continue;
+    measured = true;
+    const gain = win[win.length - 1].run.sc - win[0].run.sc;
+    if (gain > 0) {
+      total += gain;
+      const at = win.find((s) => s.run.sc > win[0].run.sc) || win[win.length - 1];
+      offenders.push({ line: `round ${r.wave}: +${gain} score in the first ${fmt(cutoff - r.startSim, 1)} s with zero flight input (first credit at sim ${fmt(at.sim, 1)} s)`, t: at.t, sim: at.sim, box: null });
+    }
+  }
+  if (!measured) return result('reward_before_input', 'Score before the player acts', 'UNKNOWN', null, 0, 'no run score sampled before the first input');
+  return result('reward_before_input', 'Score before the player acts', total > 0 ? 'FAIL' : 'PASS', `+${total} score`, '0',
+    'HUD score credited between round start and the first flight input — the player is rewarded for doing nothing', offenders, offenders.slice(0, 2));
 }
 
 export function checkRoundResolution(trace) {
@@ -389,7 +424,7 @@ export function checkRoute(trace) {
     failed ? `stalled at ${failed.name}: ${failed.detail || ''}` : `${r.steps.length} steps`, failed ? [{ line: `${failed.name}: ${failed.detail || 'failed'}`, t: failed.t, box: null }] : [], failed && failed.t ? [{ line: failed.name, t: failed.t, box: null }] : []);
 }
 
-export const ALL_CHECKS = [checkRoute, checkRoundResolution, checkKillsBeforeInput, checkSpawnMotion, checkPlayerControl, checkTumble,
+export const ALL_CHECKS = [checkRoute, checkRoundResolution, checkKillsBeforeInput, checkRewardBeforeInput, checkSpawnMotion, checkPlayerControl, checkTumble,
   checkPlayerShip, checkLodChurn, checkPopping, checkReadability, checkVfx, checkLoadout, checkFrameTime];
 
 export function runChecks(trace) { return ALL_CHECKS.map((fn) => fn(trace)); }
