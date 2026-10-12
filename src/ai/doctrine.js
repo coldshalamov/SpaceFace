@@ -59,6 +59,7 @@ export function normalizeActivity(value, fallback = null) {
     && cached.kind === src.kind
     && cached.reason === src.reason
     && cached.anchor === src.anchor
+    && cached.anchorVelocity === src.anchorVelocity
     && cached.leashRadius === src.leashRadius
     && cached.preferredRange === src.preferredRange
     && cached.startedTick === src.startedTick
@@ -73,6 +74,7 @@ export function normalizeActivity(value, fallback = null) {
     kind,
     reason: String(src.reason || kind),
     anchor: normalizeVec(src.anchor),
+    ...(src.anchorVelocity ? { anchorVelocity: normalizeVec(src.anchorVelocity) } : {}),
     leashRadius: positive(src.leashRadius, DEFAULT_LEASH_RADIUS),
     preferredRange: positive(src.preferredRange, 0),
     startedTick: finiteInt(src.startedTick, 0),
@@ -87,6 +89,7 @@ export function normalizeActivity(value, fallback = null) {
       kind: src.kind,
       reason: src.reason,
       anchor: src.anchor,
+      anchorVelocity: src.anchorVelocity,
       leashRadius: src.leashRadius,
       preferredRange: src.preferredRange,
       startedTick: src.startedTick,
@@ -403,6 +406,14 @@ export function movementForActivity(maneuver, activityValue, directive, freeze =
     case ActivityKind.PATROL_ROUTE:
     case ActivityKind.TRANSIT:
     case ActivityKind.RETURN_TO_ANCHOR: {
+      // A vignette supplies a moving, authored world point (orbit/weave/depart), not a
+      // squad slot to rejoin at formation crawl. Use the existing intercept point tracker
+      // and keep its obstacle/arrival control. Never inherit a selected combat target:
+      // these passive hold-fire destinations have no body to pursue or ram.
+      if (activity.kind === ActivityKind.TRANSIT && activity.reason.startsWith('vignette_motion:')) {
+        return freeze({ ...base, kind: ManeuverKind.INTERCEPT, targetId: null, breakFormation: true,
+          formationVelocity: activity.anchorVelocity || freeze({ x: 0, z: 0 }) });
+      }
       // Ordinary lane transit keeps formation travel. A TRANSIT activity that names a concrete
       // target (freight pod recovery, rendezvous) must break the squad formation envelope and
       // seek the activity anchor/target until physical contact can fire. A full interceptor
