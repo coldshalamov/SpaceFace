@@ -159,23 +159,43 @@ ${A}::before { background:radial-gradient(120% 90% at 32% 50%, rgb(5 7 10 / .76)
 ${A} > .k-title { grid-area:title; max-width:none; padding-right:0 !important; display:block; }
 ${A} > .k-title .con-title { width:fit-content; margin:0; ${DISPLAY} font-size:clamp(32px, min(3.1vw, 5.6vh), 84px) !important; line-height:.92 !important;
   letter-spacing:.02em !important; color:rgb(${WARM}) !important; white-space:nowrap; ${HALO} }
-${A} > .k-title .con-sub { margin:clamp(6px, 1vh, 12px) 0 0 !important; ${READ} font-size:clamp(14px, min(.9vw, 1.7vh), 19px) !important; line-height:1.35; color:rgb(${BONE} / .8) !important; ${HALO} }
+${A} > .k-title .con-sub { margin:clamp(6px, 1vh, 12px) 0 0 !important; ${READ} font-size:clamp(14px, min(.9vw, 1.7vh), 19px) !important; line-height:1.35; color:rgb(${BONE} / .88) !important; ${HALO} }
 /* the categories: words standing on a ruler, a bone bead under the one in view */
 ${A} .k-hang.con-filters { grid-area:auto; overflow:visible !important; max-height:none; min-width:0; margin:0 0 0 clamp(24px, 3.4vw, 72px); align-self:flex-end; }
 ${A} .con-filters .k-words { display:flex !important; flex-direction:row !important; flex-wrap:nowrap; gap:clamp(14px, 2vw, 44px) !important; margin:0; padding:0 8px; list-style:none; }
 ${A} .con-filters .k-words > li { margin:0; padding:0; }
 ${A} .con-filters .k-word { all:unset; box-sizing:border-box; display:inline-flex; align-items:center; min-height:36px; cursor:pointer; position:relative;
-  ${LABEL} font-size:clamp(11px, .66vw, 14px); letter-spacing:.2em; color:rgb(${BONE} / .7); white-space:nowrap; }
+  ${LABEL} font-size:clamp(11px, .66vw, 14px); letter-spacing:.2em; color:rgb(${BONE} / .88); white-space:nowrap; }
 ${A} .con-filters .k-word::before, ${A} .con-filters .k-word::after { content:none !important; display:none !important; }
 ${A} .con-filters .k-word:hover { color:rgb(${WARM}); }
 ${A} .con-filters .k-word[aria-current="true"] { color:rgb(${WARM}); }
 ${A} .con-filters .k-word:focus-visible { outline:none !important; color:rgb(${WARM}); }
 ${A} .con-filters .k-word:focus-visible::before { content:"" !important; display:block !important; position:absolute; left:-9px; top:50%; width:2px; height:14px; margin-top:-7px;
   background:rgb(${WARM}); box-shadow:0 0 6px rgb(${WARM} / .6); }
+/* word-scale under filters: raise mute chrome without washing the warm bead */
+${A} .orr-svg .con-wordscale__rule { stroke:rgb(${BONE} / .48); }
+${A} .orr-svg .con-wordscale__fine { stroke:rgb(${BONE} / .28); }
+${A} .orr-svg .con-wordscale__stop { stroke:rgb(${BONE} / .72); }
+${A} .orr-svg text.con-wordscale__n { fill:rgb(${BONE} / .78); }
+/* stage orrery mute chrome: brighter tracks / hub / labels on void */
+${A} .orr-svg .con-morr__track { stroke:rgb(${BONE} / .68); }
+${A} .orr-svg .con-morr__trackbloom { stroke:rgb(${BONE} / .4); }
+${A} .orr-svg .con-morr__ring.is-dim .con-morr__track { stroke:rgb(${BONE} / .52); }
+${A} .orr-svg .con-morr__gscale { stroke:rgb(${BONE} / .4); }
+${A} .orr-svg text.con-morr__ringname { fill:rgb(${BONE} / .84); }
+${A} .orr-svg .con-morr__ring.is-dim text.con-morr__ringname { fill:rgb(${BONE} / .78); }
+${A} .orr-svg .con-morr__ring.is-dim text.con-morr__ringname tspan { fill:rgb(${BONE} / .86); }
+${A} .con-morr__of { color:rgb(${BONE} / .84); }
+${A} .con-morr__lsub { color:rgb(${BONE} / .82); }
+${A} .con-morr__lname { color:rgb(${BONE} / .92); }
 /* the grid of medals */
 ${A} > .k-title, ${A} > .k-foot { position:relative; z-index:3; }
 ${A} > .k-stage.con-medal-stage { grid-area:auto; grid-column:1; grid-row:1 / 3; position:relative; z-index:1; min-width:0; min-height:0; margin:0; padding:0 !important; border:0 !important;
   background:none !important; box-shadow:none !important; overflow:visible !important; -webkit-mask-image:none !important; mask-image:none !important; animation:none !important; max-width:none !important; }
+/* stage medals on void: slightly brighter dim chrome */
+${A} .con-medal.is-dim:not(:hover):not(:focus-visible) .orr-svg .con-medal__ghost { stroke:rgb(${BONE} / .62); }
+${A} .con-medal.is-dim:not(:hover):not(:focus-visible) .orr-svg .con-medal__ghostband { stroke:rgb(${BONE} / .4); }
+${A} .con-medal[data-state="going"] .orr-svg .con-medal__ghost { stroke:rgb(${BONE} / .38); }
 /* the chosen medal's line */
 ${A} > .con-medal-read { grid-area:read; position:relative; z-index:1; align-self:center; display:flex; flex-direction:column; align-items:flex-start; gap:clamp(6px, 1.1vh, 14px);
   min-width:0; padding:0 0 clamp(20px, 6vh, 90px); }
@@ -188,38 +208,53 @@ ${A} .con-medal-read__dial[data-state="locked"] .con-medal__glyph:has(.con-medal
 ${A} .con-medal-read__dial .orr-svg .con-medal__arc { stroke-width:3.5; }
 ${A} .con-medal-read__dial .orr-svg .con-medal__bloom { stroke-width:10; }
 ${A} .con-medal-read__rim { position:absolute; left:-30px; top:-30px; width:calc(100% + 60px); height:calc(100% + 60px); overflow:visible; }
-${A} .con-medal-read__rim text { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.3em; text-transform:uppercase; fill:rgb(${WARM} / .82); }
+${A} .con-medal-read__rim text { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.3em; text-transform:uppercase; fill:rgb(${WARM} / .9); }
 ${A} .con-medal-read__dial > svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
 ${A} .con-medal-read__dial > .con-medal__art { opacity:.34; }
 ${A} .con-medal-read__dial[data-state="going"] > .con-medal__art { opacity:.66; }
 ${A} .con-medal-read__dial[data-state="earned"] > .con-medal__art { opacity:1; }
 ${A} .con-medal-read__dial.has-art > .con-medal__glyph { display:none; }
 ${A} .con-medal-read__dial.has-art.has-glyph > .con-medal__glyph { display:grid; }
-${A} .con-medal-read__dial .con-medal__glyph { color:rgb(${BONE} / .55); }
+${A} .con-medal-read__dial .con-medal__glyph { color:rgb(${BONE} / .8); }
 ${A} .con-medal-read__dial[data-state="earned"] .con-medal__glyph { color:rgb(${WARM}); }
-${A} .con-medal-read__dial[data-state="going"] .con-medal__glyph { color:rgb(${BONE} / .8); }
-${A} .con-medal-read__dial .orr-svg .con-medal__ghost { stroke:rgb(${BONE} / .36); }
-${A} .con-medal-read__dial[data-state="earned"] .orr-svg .con-medal__ghost { stroke-dasharray:none; stroke:rgb(${WARM} / .5); }
-${A} .con-medal-read__dial[data-state="earned"] .orr-svg .con-medal__inner { stroke:rgb(${WARM} / .5); }
-${A} .con-medal-read__dial[data-state="going"] .orr-svg .con-medal__ghost { stroke-dasharray:none; stroke:rgb(${BONE} / .24); }
-${A} .con-medal-read__dial .orr-svg .con-medal__ticks { stroke:rgb(${BONE} / .34); }
-${A} .con-medal-read__kicker { ${LABEL} font-size:clamp(10.5px, .62vw, 13px); letter-spacing:.24em; color:rgb(${BONE} / .68); }
+${A} .con-medal-read__dial[data-state="going"] .con-medal__glyph { color:rgb(${BONE} / .88); }
+${A} .con-medal-read__dial .orr-svg .con-medal__ghost { stroke:rgb(${BONE} / .55); }
+${A} .con-medal-read__dial[data-state="earned"] .orr-svg .con-medal__ghost { stroke-dasharray:none; stroke:rgb(${WARM} / .58); }
+${A} .con-medal-read__dial[data-state="earned"] .orr-svg .con-medal__inner { stroke:rgb(${WARM} / .58); }
+${A} .con-medal-read__dial[data-state="going"] .orr-svg .con-medal__ghost { stroke-dasharray:none; stroke:rgb(${BONE} / .38); }
+${A} .con-medal-read__dial .orr-svg .con-medal__ticks { stroke:rgb(${BONE} / .58); }
+${A} .con-medal-read__kicker { ${LABEL} font-size:clamp(10.5px, .62vw, 13px); letter-spacing:.24em; color:rgb(${BONE} / .82); }
 ${A} .con-medal-read__kicker span { margin:0 .3em; }
 ${A} .con-medal-read__name { ${DISPLAY} font-size:clamp(22px, min(1.75vw, 3.3vh), 36px); line-height:1.02; letter-spacing:.02em; color:rgb(${WARM}); text-wrap:balance; ${HALO} }
-${A} .con-medal-read__line { ${READ} font-size:clamp(15px, .9vw, 19px); line-height:1.45; color:rgb(${BONE} / .86); max-width:34ch; }
+${A} .con-medal-read__line { ${READ} font-size:clamp(15px, .9vw, 19px); line-height:1.45; color:rgb(${BONE} / .9); max-width:34ch; }
 ${A} .con-medal-read__figure { display:flex; align-items:baseline; gap:12px; margin-top:clamp(4px, 1vh, 12px) !important; }
 ${A} .con-medal-read__n { ${NUMERAL} font-size:clamp(44px, min(3.4vw, 6vh), 88px); line-height:.9; color:var(--dp-phos, #dfeeff); }
 ${A} .con-medal-read[data-state="locked"] .con-medal-read__n { color:var(--dp-phos, #dfeeff); }
-${A} .con-medal-read__of { ${LABEL} font-size:clamp(10.5px, .62vw, 13px); letter-spacing:.18em; color:rgb(${BONE} / .66); }
-${A} .con-medal-read__status { ${LABEL} font-size:clamp(10.5px, .6vw, 12.5px); letter-spacing:.16em; color:rgb(${BONE} / .64); }
-/* Back, a word */
-${A} > .k-foot.con-foot { grid-area:foot; display:flex; align-items:flex-end; min-height:0; margin:0; padding:0; border:0; background:none; }
+${A} .con-medal-read__of { ${LABEL} font-size:clamp(10.5px, .62vw, 13px); letter-spacing:.18em; color:rgb(${BONE} / .82); }
+${A} .con-medal-read__status { ${LABEL} font-size:clamp(10.5px, .6vw, 12.5px); letter-spacing:.16em; color:rgb(${BONE} / .8); }
+/* the foot: ‹ BACK + ESC keycap (matches settings/save-load/help/credits/codex/mission-log) */
+${A} > .k-foot.con-foot { grid-area:foot; display:flex; align-items:center; min-height:0; margin:0; padding:0; border:0; background:none; }
 ${A} > .k-foot .k-words { display:flex; margin:0; padding:0; list-style:none; }
-${A} .con-back.sf-back.k-word { all:unset; box-sizing:border-box; display:inline-flex; align-items:center; gap:0; min-height:40px; cursor:pointer;
-  ${LABEL} font-size:clamp(12px, .72vw, 15px); letter-spacing:.2em; color:rgb(${WARM}); }
-${A} .con-back.sf-back.k-word::before { content:none !important; }
-${A} .con-back.sf-back.k-word::after { all:unset; content:"· ESC" / ""; margin-left:.7em; ${LABEL} font-size:.82em; letter-spacing:.16em; color:rgb(${BONE} / .6); }
-${A} .con-back.sf-back.k-word:is(:hover, :focus-visible) { outline:none !important; text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:6px; }
+${A} > .k-foot .con-back.sf-back.k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
+  padding:10px 0 12px !important; min-height:44px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
+  background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; text-shadow:none !important; }
+${A} > .k-foot .con-back.sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
+${A} > .k-foot .con-back.sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
+  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important;
+  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
+${A} > .k-foot .con-back.sf-back.k-word:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; text-decoration:none !important; }
+${A} > .k-foot .con-back.sf-back.k-word:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
+/* 1080p band: match settings/save-load/credits/codex/mission-log composition zoom */
+@media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
+  ${A} { zoom:1.12; }
+}
+@media (min-width:2200px) and (min-height:1200px) {
+  ${A} { zoom:1.25; --k-s:1; }
+}
+@media (min-width:3400px) and (min-height:1900px) {
+  ${A} { zoom:1.85; --k-s:1; }
+}
 @media (max-width:1400px) {
   ${A} { grid-template-columns:minmax(0, 1fr) clamp(260px, 26vw, 340px) !important; }
 }

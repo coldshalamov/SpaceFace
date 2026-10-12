@@ -1,6 +1,6 @@
 # UI polish review — living doc for the `ui-polish` PR
 
-Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish` · base `master` @ `d748312d1`.
+Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-2` (PR #306; #301 merged) · stacked on `master`.
 
 This file tracks the stacked visual polish of every shootable 2D screen (`node scripts/ui-bench.mjs --list`). Seeded from `design/frontend/UNIFICATION_LEDGER.md` where useful; **this REVIEW is the authority for this PR**, not the ledger.
 
@@ -32,17 +32,17 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 |---|---|---|
 | `title` / `mainMenu` | SURVEYED | Ledger DONE earlier; re-judge later if polish stack returns |
 | `motionAsk` | SURVEYED | Inherits title |
-| `new-game` / `newGame` | SURVEYED | Still on fh primitives; composition pass later |
+| **`new-game`** / `newGame` | **DONE** | See § New Game below — this session |
 | `pause` | SURVEYED | Ledger DONE; keep selectors stable for player-truth |
 | **`settings`** | **DONE** | See § Settings below — this session |
 | **`save-load`** / `saveLoad` / `save-load-empty` / `save-load-live` | **DONE** | See § Save/Load below — this session |
 | **`help`** | **DONE** | See § Help below — this session |
-| `codex` / `codex-record` | SURVEYED | |
-| `mission-log` / `missionLog` | SURVEYED | |
-| `credits` | SURVEYED | Shares orrery settingsLayouts credits path |
-| `achievements` | SURVEYED | |
-| `statistics` | SURVEYED | |
-| `game-over` / `gameOver` | SURVEYED | |
+| **`codex`** / **`codex-record`** | **DONE** | See § Codex below — this session |
+| **`mission-log`** / `missionLog` | **DONE** | See § Mission Log below — this session |
+| **`credits`** | **DONE** | See § Credits below — this session |
+| **`achievements`** | **DONE** | See § Achievements below — this session |
+| **`statistics`** | **DONE** | See § Statistics below — this session |
+| **`game-over`** / `gameOver` | **DONE** | See § Game Over below — this session |
 | `tech-tree` / `techTree` / `tech-tree-progress` | SURVEYED | |
 | `flight` / `power-rail` | SURVEYED | Off-limits for threat markers (PR #300); polish chrome only later |
 | `mobile-flight` / `mobile-stick` / `mobile-boost` / `mobile-brake` / `mobile-wheel` / `mobile-wheel-pinned` | SURVEYED | |
@@ -146,7 +146,198 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Code touched:** `src/ui/orrery/helpLayouts.js` only. No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
-**Next:** `credits` (shares orrery settingsLayouts credits path) or `codex` on the player path.
+**Next after help was:** `credits` — now DONE (see below).
+
+---
+
+
+## Credits — session notes (2026-10-12)
+
+**Before:** ORRERY Credits already strong (reel + orrery Hand + drift). Gaps vs the polished settings/save-load/help stack: BACK foot was plain `‹ BACK ESC` text (no keycap box / underline); subtitle / ladder / notice / row-sub copy sat too dim on void; "0% READ" read as a loading bar; at 720p orrery body nums 03/04 clipped their discs.
+
+**After (2 visual iterations, CSS + one label string in `settingsLayouts.js`):**
+
+1. **Pass 1** — foot rail matched settings/save-load/help (`‹ BACK` + ESC keycap box + underline); progress label `Read` → `Of reel`; title/ladder/notice/row-sub/end contrast raised (≥ ~0.78–0.92); short-window hide of orrery body nums; 1.12 zoom @1080p band.
+2. **Pass 2** — ladder rest/current contrast nudged; title rule and row ticks brighter.
+
+**Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=credits --walk` — exit 0; measured clean at 1920×1080 and 1280×720; 14 controls exercised; selectors/IDs unchanged.
+
+**Artifacts**
+
+| | Path |
+|---|---|
+| Before (Made by @1080) | `docs/ui-polish/credits-before.png` |
+| Before (@720) | `docs/ui-polish/credits-before-720.png` |
+| After (Made by @1080) | `docs/ui-polish/credits-after.png` |
+| After (@720) | `docs/ui-polish/credits-after-720.png` |
+| After (Libraries / Fonts) | `docs/ui-polish/credits-after-libraries.png`, `credits-after-fonts.png` |
+
+**Code touched:** `src/ui/orrery/settingsLayouts.js` (CREDITS_CSS + `createReelProgress` label only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
+
+**Next:** `codex` / `codex-record` — now DONE (see below).
+
+---
+
+## Codex — session notes (2026-10-12)
+
+**Before:** ORRERY Codex already strong (section ladder + entry rail + plate dial + unlock gauges). Gaps vs the polished settings/save-load/help/credits stack: CLOSE foot was plain `‹ CLOSE ESC` text (no keycap box / underline); subtitle, index labels, section tabs, locked cipher, filed/meta, empty notes, and search placeholder sat soft on void; no 1.12 composition zoom in the 1080p band; ladder/search rails and ticks read thin.
+
+**After (2 visual iterations, CSS only in `archiveLayouts.js` CODEX_CSS):**
+
+1. **Pass 1** — foot rail matched settings/save-load/help/credits (`‹ CLOSE` + ESC keycap box + underline); secondary copy contrast raised (≥ ~0.78–0.94); plate engraving brighter; 1.12 zoom @1080p band (1800–2199 × ≥1000).
+2. **Pass 2** — search rule + lens, section scale, entry rail, row ticks, wedge edge, and measure rule nudged brighter.
+
+**Walk:** `node scripts/ui-bench.mjs --shot=codex --walk` — exit 0; measured clean at 1920×1080 and 1280×720; 13 controls exercised (tabs, next, close); selectors/IDs unchanged. `codex-record` re-shot after the same CSS.
+
+**Artifacts**
+
+| | Path |
+|---|---|
+| Before (Story / B0 @1080) | `docs/ui-polish/codex-before.png` |
+| Before (@720) | `docs/ui-polish/codex-before-720.png` |
+| After (Story / B0 @1080) | `docs/ui-polish/codex-after.png` |
+| After (@720) | `docs/ui-polish/codex-after-720.png` |
+| Before (Figures / The Record) | `docs/ui-polish/codex-record-before.png` |
+| After (Figures / The Record) | `docs/ui-polish/codex-record-after.png` |
+
+**Code touched:** `src/ui/orrery/archiveLayouts.js` (CODEX_CSS only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes. Mission-log CSS in the same file left alone this session.
+
+**Next after codex was:** `mission-log` — now DONE (see below).
+
+---
+
+
+## Mission Log — session notes (2026-10-12)
+
+**Before:** ORRERY Mission Log already strong (tracing beam + dial + route lane). Gaps vs the polished settings/save-load/help/credits/codex stack: BACK foot was plain `‹ BACK ESC` text (no keycap box / underline); story line, section caps, kickers, row-subs, empty notes, dial/clock secondary, and terms labels sat soft on void; no 1.12 composition zoom in the 1080p band; beam / lane / dial ticks read thin.
+
+**After (2 visual iterations, CSS only in `archiveLayouts.js` MLOG_CSS):**
+
+1. **Pass 1** — foot rail matched settings/save-load/help/credits/codex (`‹ BACK` + ESC keycap box + underline); secondary copy contrast raised (≥ ~0.78–0.94); beam + dial ticks brighter; 1.12 zoom @1080p band (1800–2199 × ≥1000).
+2. **Pass 2** — SHOW/verb chevrons and word-subs nudged; lane band / hop ticks / route face ring / clock ticks / career diamond / completed hollow nodes brighter.
+
+**Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=mission-log --walk` — exit 0; measured clean at 1920×1080 and 1280×720; 6 controls exercised (SHOW×2, track, local map, abandon, close); selectors/IDs unchanged.
+
+**Artifacts**
+
+| | Path |
+|---|---|
+| Before (@1080) | `docs/ui-polish/mission-log-before.png` |
+| Before (@720) | `docs/ui-polish/mission-log-before-720.png` |
+| After (@1080) | `docs/ui-polish/mission-log-after.png` |
+| After (@720) | `docs/ui-polish/mission-log-after-720.png` |
+
+**Code touched:** `src/ui/orrery/archiveLayouts.js` (MLOG_CSS only). Codex CSS in the same file left alone this session. No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
+
+**Next after mission-log was:** `achievements` — now DONE (see below).
+
+---
+
+## Achievements — session notes (2026-10-12)
+
+**Before:** ORRERY Achievements already strong (medal orrery + read dial + word-scale filters). Gaps vs the polished settings/save-load/help/credits/codex/mission-log stack: BACK foot was plain `BACK · ESC` (no keycap box / underline / ‹); subtitle, filter rest words, kicker/of/status, locked glyph, dial ghost/ticks, stage tracks/labels sat soft on void; no 1.12 composition zoom in the 1080p band.
+
+**After (2 visual iterations, CSS only in `constellationLayouts.js` ACHIEVEMENTS):**
+
+1. **Pass 1** — foot rail matched settings/save-load/help/credits/codex/mission-log (`‹ BACK` + ESC keycap box + underline); secondary copy contrast raised (≥ ~0.78–0.94); read-dial ghost/ticks/glyph brighter; word-scale rule/counts brighter; 1.12 zoom @1080p band; optional 1440p/4K zoom rules (`1.25` / `1.85`) matching archive screens.
+2. **Pass 2** — filter rest bumped again; stage orrery tracks / ring names / hub of / medal labels brighter under achievements-only selectors; read dial chrome nudged once more.
+
+**Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=achievements --walk` — exit 0; measured clean at 1920×1080 and 1280×720; 28 controls (24 exercised: medals, Back, ALL); selectors/IDs unchanged.
+
+**Artifacts**
+
+| | Path |
+|---|---|
+| Before (@1080) | `docs/ui-polish/achievements-before.png` |
+| Before (@720) | `docs/ui-polish/achievements-before-720.png` |
+| After (@1080) | `docs/ui-polish/achievements-after.png` |
+| After (@720) | `docs/ui-polish/achievements-after-720.png` |
+
+**Code touched:** `src/ui/orrery/constellationLayouts.js` (ACHIEVEMENTS only). RESEARCH CSS in the same file left alone this session. No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
+
+**Next after achievements was:** `statistics` — now DONE (see below).
+
+---
+
+## Statistics — session notes (2026-10-12)
+
+**Before:** kit `k-screen--stage` list with fh title; amber primary Back (no ‹ / ESC keycap); group caps / row hairlines / secondary copy soft on void; no ORRERY composition sheet; no 1.12 zoom in the 1080p band; LAW rows fell under the fold at 720p.
+
+**After (2 visual iterations + short-frame tighten):**
+
+1. **Pass 1** — new `statisticsLayouts.js` ORRERY sheet scoped to `.orr-statistics`: foot rail `‹ BACK` + ESC keycap + underline; title/subtitle contrast; shade pool under the reading; group caps + row names ≥ ~0.84–0.94; phos numerals; brighter hairlines; scrollable stage; 1.12 zoom @1080p (+1440/4K archive zoom).
+2. **Pass 2** — group caps get a soft rule; row/numeral contrast nudged; stage bottom pad so LAW clears the foot; short-height (≤820px) tighten so Status + Heat stay on first paint at 720p.
+
+**Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=statistics --walk` — exit 0; measured clean at 1920×1080 and 1280×720; 1 control (Back); selectors/IDs unchanged.
+
+**Artifacts**
+
+| | Path |
+|---|---|
+| Before (@1080) | `docs/ui-polish/statistics-before.png` |
+| Before (@720) | `docs/ui-polish/statistics-before-720.png` |
+| After (@1080) | `docs/ui-polish/statistics-after.png` |
+| After (@720) | `docs/ui-polish/statistics-after-720.png` |
+
+**Code touched:** `src/ui/orrery/statisticsLayouts.js` (new), `src/ui/screens/statistics.js` (inject + `orr-statistics` + `sf-back` on Back only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
+
+**Next after statistics was:** `new-game` — now DONE (see below).
+
+---
+
+## New Game — session notes (2026-10-12)
+
+**Before:** ORRERY New Game already strong (yard carousel + hull ring + Lamp Launch). Gaps vs the polished settings/save-load/help/credits/codex/mission-log/achievements/statistics stack: BACK foot was plain `BACK ESC` text (no ‹ / keycap box / underline); field labels (~.55), difficulty rest words, route caps, loadout copy, and fine print sat soft on void; loadout size letters trailed with a · and no shared column edge (P2); no 1.12 composition zoom in the 1080p band.
+
+**After (2 visual iterations, CSS overlay in `newGameLayouts.js`):**
+
+1. **Pass 1** — foot rail matched settings stack (`‹ BACK` + ESC keycap box + underline); secondary copy contrast raised (≥ ~0.78–0.94); loadout size letter column (no · separator); 1.12 zoom @1080p band. Launch Lamp Key untouched.
+2. **Pass 2** — loadout name column fixed-width so size letters share one edge; LOADOUT kicker brighter; short-width name column tighten.
+
+**Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=new-game --walk` — exit 0; measured clean at 1920×1080 and 1280×720; 12 controls exercised; selectors/IDs unchanged. Loadout item DATA untouched.
+
+**Artifacts**
+
+| | Path |
+|---|---|
+| Before (@1080) | `docs/ui-polish/new-game-before.png` |
+| Before (@720) | `docs/ui-polish/new-game-before-720.png` |
+| After (@1080) | `docs/ui-polish/new-game-after.png` |
+| After (@720) | `docs/ui-polish/new-game-after-720.png` |
+
+**Code touched:** `src/ui/orrery/newGameLayouts.js` (new), `src/ui/screens/newGame.js` (inject only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
+
+**Next:** `game-over` — now DONE (see below).
+
+---
+
+## Game Over — session notes (2026-10-12)
+
+**Before:** ORRERY after-action already composed (red-cooled rays, cause as headline, career ring, black-box tape). Gaps vs the polished stack: at 1280×720 the action rail wrapped (MAIN MENU / LOAD dropped to a second line); the secondary verbs were 11px words with a dim `›` and no affordance; an unavailable *Load latest* (no save yet) looked exactly as live as the others; the ring hub (`NO RECORD` / time flown) sat straight on the hull plan view; hero labels, coverage lines, ring stations, ring title and the black-box legend sat at ~.6–.7 bone; no lift in the 1080p band.
+
+**Bench note:** `ui-bench --shot=game-over` photographs before the screen's 400 ms death slide ends (a JS timer, not a CSS animation, so `settleAnimations` can't finish it) and shows only the backdrop. Shots this session came from a bench page held ~1.2 s past ready, plus a career-populated variant (playtime, contracts, kills, trades, profit) to load the ring stations.
+
+**After (2 visual iterations, CSS overlay in `gameOverLayouts.js`):**
+
+1. **Pass 1** — verbs on one non-wrapping rail with an underline that lights with the Hand (720p gets a tighter gap); verbs 12.5px bone; hub shaded with a soft void disc and the hull dimmed under `NO RECORD`; contrast raised on sub/coverage/hero labels/stations/units/tape legend; CAREER RECORD title flanked by rules; `--sv` 1.1 in the 1080p band.
+2. **Pass 2** — red kicker one step larger; `aria-disabled` verbs (Load latest with no save) rest at .46 bone with a faint rule.
+
+**Walk:** `node scripts/ui-bench.mjs --shot=game-over --walk` — exit 0; measured clean; 4 controls exercised (Load save → saveLoad, Load latest disabled, New Game asks, Main menu → mainMenu). Related tests (black-box names, death recovery, load-latest verb, interrupted recovery, death name, gamepad screens) 53/53 pass. Selectors/IDs unchanged.
+
+**Artifacts**
+
+| | Path |
+|---|---|
+| Before (career @1080) | `docs/ui-polish/game-over-before.png` |
+| Before (no record @720) | `docs/ui-polish/game-over-before-720.png` |
+| After (career @1080) | `docs/ui-polish/game-over-after.png` |
+| After (no record @720) | `docs/ui-polish/game-over-after-720.png` |
+
+**Code touched:** `src/ui/orrery/gameOverLayouts.js` (new), `src/ui/screens/gameOver.js` (inject only). `saveLayouts.js` GAME_OVER block untouched. No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
+
+**Next:** `tech-tree` / `tech-tree-progress`.
+
+---
 
 ---
 ## Live-boot survey (2026-10-12, real game booted in headless Chromium, 1280×720 + 1920×1080)
@@ -172,9 +363,9 @@ Not reached from the menu: **Archive**, **Achievements** and **Quit** clicks lef
 | P1 | Main menu | First Tab press jumps to "Credits" in the footer instead of NEW GAME; focus order should follow the visual ladder. |
 | P1 | Main menu | SPACEFACE wordmark sits on top of the orrery rings; menu words overlap ring strokes. Needs a clear zone. |
 | P2 | Load | "No saves yet" is ~50% bone on void, under contrast for body copy. **Fixed** (emph ≥.94, empty detail .92, vacant word .9 + open-berth glow). |
-| P2 | New Game | Loadout list ("PULSE LASER · S") is tracked caps at 11px with no column alignment for the size letter (styling only — list data is off-limits). |
+| P2 | New Game | Loadout list ("PULSE LASER · S") is tracked caps at 11px with no column alignment for the size letter (styling only — list data is off-limits). **Fixed** (size column, no ·; contrast + foot keycap). |
 | P2 | Settings | Scroll lists fade out at the bottom (Engine trails, Boost / Dash) without a scroll affordance. |
-| P2 | Credits | "0% READ" dial reads as a loading bar; fine conceptually but the label needs explaining. |
+| P2 | Credits | "0% READ" dial read as a loading bar. **Fixed** — label is now "OF REEL"; foot keycap + contrast pass. |
 
 ## Design direction (consolidated)
 
@@ -189,8 +380,13 @@ The game already ships a mature system: Deckplate tokens (`--dp-*`) + ORRERY ins
 
 ## Done this session (stacked commit)
 
-- `src/ui/orrery/settingsLayouts.js`: ≤1500px label column 150→190px, pane 480→516–560px, nav 168–176px, tighter label tracking + balanced wrap; ≥1501px label 236px; 1.12 zoom for 1800–2199px wide screens.
+- `src/ui/orrery/settingsLayouts.js`: ≤1500px label column 150→190px, pane 480→516–560px, nav 168–176px, tighter label tracking + balanced wrap; ≥1501px label 236px; 1.12 zoom for 1800–2199px wide screens. Credits: foot keycap rail, `Of reel` progress label, contrast, short-window orrery-num hide, 1080p zoom.
 - `src/ui/orrery/cruciblePreparationLayouts.js`: ≤820px tall — stake mark hidden, pressure/yield single-line with tightened tracking, so tiles no longer clip.
 - `src/ui/orrery/saveLayouts.js`: save-load empty-state contrast (emph/detail/vacant/filmstrip), open-berth glow, settings-matched `‹ BACK` + ESC keycap foot rail, 1.12 zoom @1080p band. Game-over styles unchanged.
 - `src/ui/orrery/helpLayouts.js`: Help foot rail `‹ CLOSE` + ESC keycap; ladder/reading/search contrast; fixed broken search-rule CSS; reading shade deepened. Selectors/IDs unchanged.
+- `src/ui/orrery/archiveLayouts.js`: Codex foot keycap rail, secondary contrast, rail/tick brighten, 1080p zoom. Selectors/IDs unchanged.
+- `src/ui/orrery/archiveLayouts.js`: Mission Log foot keycap rail, secondary contrast, beam/lane/dial brighten, 1080p zoom. Selectors/IDs unchanged.
+- `src/ui/orrery/constellationLayouts.js`: Achievements foot keycap rail, secondary contrast, dial/stage chrome brighten, 1080p (+1440/4K) zoom. Selectors/IDs unchanged. RESEARCH block untouched.
+- `src/ui/orrery/statisticsLayouts.js` + `src/ui/screens/statistics.js`: Statistics ORRERY foot keycap rail, reading contrast, shade pool, 1080p zoom, short-frame LAW fit. Selectors/IDs unchanged.
+- `src/ui/orrery/newGameLayouts.js` + `src/ui/screens/newGame.js`: New Game foot keycap rail, secondary contrast, loadout size column, 1080p zoom. Selectors/IDs and loadout data unchanged.
 - No selectors/IDs changed; no engine/render, audio, loadout data or HUD threat-marker code touched.
