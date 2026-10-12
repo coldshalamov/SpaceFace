@@ -118,7 +118,7 @@ export const runtime = Object.freeze({
     if (!center || !Number.isFinite(center.x)) return d.abort(live, 'no_zone_anchor');
     const layout = findLayout(state, center, d.stream(live, 'm28_layout'));
     const custodian = d.spawnProp(live, {
-      type: 'beacon', pos: layout.custodian, radius: 14, mass: 1e6, tetherable: false,
+      type: 'machine', pos: layout.custodian, radius: 14, mass: 1e6, tetherable: false,
       scanLabel: 'CUSTODIAN — REPEATING A STALLED REPAIR', storyPropKind: 'm28_custodian',
     });
     const socket = d.spawnProp(live, {
@@ -126,11 +126,11 @@ export const runtime = Object.freeze({
       scanLabel: 'EMPTY SOCKET — OUTLINE OF A RIB INSERT', storyPropKind: 'm28_socket',
     });
     const genuine = d.spawnProp(live, {
-      type: 'beacon', pos: layout.genuine, radius: INSERT_RADIUS, mass: INSERT_MASS, tetherable: true,
+      type: 'payload', pos: layout.genuine, radius: INSERT_RADIUS, mass: INSERT_MASS, tetherable: true,
       scanLabel: 'RIB INSERT — MATCHES THE SOCKET OUTLINE', storyPropKind: 'm28_insert_genuine',
     });
     const substitute = d.spawnProp(live, {
-      type: 'beacon', pos: layout.substitute, radius: INSERT_RADIUS, mass: INSERT_MASS, tetherable: true,
+      type: 'payload', pos: layout.substitute, radius: INSERT_RADIUS, mass: INSERT_MASS, tetherable: true,
       scanLabel: 'CRACKED INSERT — WRONG TEMPER, IT WILL FIT', storyPropKind: 'm28_insert_cracked',
     });
     if (!custodian || !socket || !genuine || !substitute) return d.abort(live, 'no_bodies');
@@ -139,6 +139,8 @@ export const runtime = Object.freeze({
       piece.data.masslineTetherable = true;
     }
     custodian.data.masslineTetherable = false;
+    // The catalogue Custodian silhouette; no homeSectorId, so the Verge machine layer never patrols it.
+    custodian.data.machine = { kind: 'custodian', anchor: { ...layout.custodian }, t: 0, phase: 0, encounterOwned: true };
     socket.data.masslineTetherable = false;
 
     const now = d.now();

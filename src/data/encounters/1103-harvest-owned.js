@@ -108,15 +108,17 @@ export const runtime = Object.freeze({
     if (!center || !Number.isFinite(center.x)) return d.abort(live, 'no_zone_anchor');
     const layout = findLayout(state, center, d.stream(live, 'm34_layout'));
     const sorter = d.spawnProp(live, {
-      type: 'beacon', pos: layout.sorter, radius: SORTER_RADIUS, mass: 1e6, tetherable: false,
+      type: 'machine', pos: layout.sorter, radius: SORTER_RADIUS, mass: 1e6, tetherable: false,
       scanLabel: 'SORTER — CLASSIFYING DEBRIS FOR REDUCTION', storyPropKind: 'm34_sorter',
     });
     const core = d.spawnProp(live, {
-      type: 'beacon', pos: layout.core, radius: CORE_RADIUS, mass: CORE_MASS, tetherable: true,
+      type: 'payload', pos: layout.core, radius: CORE_RADIUS, mass: CORE_MASS, tetherable: true,
       scanLabel: 'SURVEY CORE — YOUR SALVAGE CLAIM, UNPROTECTED', storyPropKind: 'm34_survey_core',
     });
     if (!sorter || !core) return d.abort(live, 'no_bodies');
     sorter.data.masslineTetherable = false;
+    // The catalogue Debris Sorter silhouette; no homeSectorId, so the Verge machine layer never drives it.
+    sorter.data.machine = { kind: 'debris_sorter', anchor: { ...layout.sorter }, t: 0, phase: 0, encounterOwned: true };
     core.physicsBody = { shape: 'ball', mass: CORE_MASS, dynamic: true };
     core.data.masslineTetherable = true;
 

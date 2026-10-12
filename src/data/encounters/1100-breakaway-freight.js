@@ -11,6 +11,7 @@
 // that reaches the spar is crushed into scrap and stays crushed. There is no drag: a segment
 // nobody catches keeps drifting until it hits something or leaves the approach.
 import { deepFreeze, defineEncounter } from './catalog.js';
+import { queuePhysicsImpulse } from '../../core/physicsAuthority.js';
 
 export const encounterOrder = 1100;
 export const trigger = deepFreeze({
@@ -133,7 +134,7 @@ export const runtime = Object.freeze({
     if (tug && tug.data) tug.data.scanLabel = 'YARD TUG — COUPLER BLOWN, NET OUT';
 
     const segment = d.spawnProp(live, {
-      type: 'beacon', pos: layout.segment, radius: SEGMENT_RADIUS, mass: SEGMENT_MASS, tetherable: true,
+      type: 'payload', pos: layout.segment, radius: SEGMENT_RADIUS, mass: SEGMENT_MASS, tetherable: true,
       scanLabel: `BREAKAWAY SEGMENT — MANIFEST: ${MANIFEST_QTY}× COMPOSITE ALLOYS`, storyPropKind: 'm02_freight_segment',
     });
     const spar = d.spawnWreck(live, {
@@ -222,7 +223,12 @@ export const runtime = Object.freeze({
       if (spill && spill.data) spill.data.scanLabel = 'BURST SEGMENT — LOOSE ALLOYS';
     } else if (outcome === 'crushed') {
       // The segment is not deleted: it becomes the wreck it now is, and its scrap is real salvage.
-      segment.vel = { x: 0, z: 0 };
+      // The yard's arrest tackle takes the crushed segment's momentum through the physics authority.
+      const m = Number(segment.mass) || SEGMENT_MASS;
+      const v = segment.vel || {};
+      queuePhysicsImpulse(segment, { x: -(Number(v.x) || 0) * m, y: 0, z: -(Number(v.z) || 0) * m }, {
+        provenance: 'encounter:breakaway_freight', tick: d.state.tick | 0, kind: 'crush_arrest',
+      });
       segment.data.scanLabel = 'CRUSHED SEGMENT — WRITTEN OFF';
       segment.data.masslineTetherable = false;
       segment.data.manifest = null;

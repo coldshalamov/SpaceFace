@@ -5,7 +5,8 @@ import test from 'node:test';
 
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
-import { encounterDirector } from '../src/systems/encounterDirector.js';
+import { encounterDirector, planEncountersDay } from '../src/systems/encounterDirector.js';
+import { zonesForSector } from '../src/data/sectorZones.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
 import { isAttachable } from '../src/systems/tetherGameplay.js';
 import { ensurePhysicsBodySpec, isDynamicPhysicsBodyEntity } from '../src/core/physicsAuthority.js';
@@ -145,8 +146,20 @@ test('unattended on the real Rapier path the segment drifts without drag, hits t
     const moved = Math.hypot(seg.pos.x - start.x, seg.pos.z - start.z);
     assert.ok(moved > 125 && moved < 155, `10 s of drift at 14 WU/s (moved ${moved.toFixed(1)})`);
     assert.ok(Math.abs(Math.hypot(seg.vel.x, seg.vel.z) - 14) < 0.5, 'no drag bled the drift');
-    for (let i = 0; i < 4800 && !b.settled; i++) h.sim.step(SIM_DT);
+    let prev = { ...seg.pos };
+    let maxStep = 0;
+    const stepAndTrack = () => {
+      h.sim.step(SIM_DT);
+      maxStep = Math.max(maxStep, Math.hypot(seg.pos.x - prev.x, seg.pos.z - prev.z));
+      prev = { ...seg.pos };
+    };
+    for (let i = 0; i < 4800 && !b.settled; i++) stepAndTrack();
     assert.deepEqual(resolved(h), ['crushed']);
+    for (let i = 0; i < 240; i++) stepAndTrack();
+    assert.ok(Math.hypot(seg.vel.x, seg.vel.z) < 0.5,
+      `the arrest impulse brought the crushed segment to rest (speed ${Math.hypot(seg.vel.x, seg.vel.z).toFixed(2)})`);
+    assert.ok(maxStep < 14 * SIM_DT * 2, `no teleport: largest per-step move ${maxStep.toFixed(3)} WU`);
+    assert.equal(seg.physicsBody.dynamic, true, 'it is still a live dynamic body, not frozen');
     assert.deepEqual(grants(h), []);
     assert.equal(seg.alive !== false, true, 'the crushed segment is still in the world');
     assert.equal(seg.data.scanLabel, 'CRUSHED SEGMENT — WRITTEN OFF');
@@ -192,4 +205,34 @@ test('same seed, same layout', () => {
   const pa = ent(a, bOf(la).segmentId).pos; const pc = ent(c, bOf(lc).segmentId).pos;
   assert.deepEqual({ x: pa.x, z: pa.z }, { x: pc.x, z: pc.z });
   assert.deepEqual(ent(a, bOf(la).sparId).pos, ent(c, bOf(lc).sparId).pos);
+});
+
+test('the ordinary sector-day roll (seed 4242) draws it off the starter corridor and it fires there without force', () => {
+  const zones = zonesForSector(SECTOR);
+  let planned = null;
+  for (let day = 0; day < 60 && !planned; day++) {
+    planned = planEncountersDay(SEED, SECTOR, day, zones).find((item) => item.shapeId === SHAPE) || null;
+  }
+  assert.ok(planned, `${SHAPE} is drawn by the ordinary roll in ${SECTOR}`);
+  assert.ok(ENCOUNTERS[SHAPE].zoneTypes.includes(planned.zoneType), 'it lands on one of its authored zone types');
+  const helios = zonesForSector('sector_helios_prime');
+  for (let day = 0; day < 60; day++) {
+    assert.equal(planEncountersDay(SEED, 'sector_helios_prime', day, helios).some((item) => item.shapeId === SHAPE), false,
+      'the starter corridor never draws it');
+  }
+  const h = makeHarness();
+  const director = h.sim.registry.get('encounterDirector');
+  const request = () => director.requestAuthoredEncounter({
+    shapeId: SHAPE, encounterId: planned.encounterId, sectorId: SECTOR, anchor: { ...planned.zoneCenter },
+    zoneType: planned.zoneType, zoneRadius: planned.zoneRadius, respectPacing: true,
+  });
+  // No force: the deck's tension pool must accrue through ordinary flight time before it can fire.
+  let res = request();
+  for (let s = 0; s < 900 && !res.ok; s++) {
+    assert.equal(res.reason, 'pressure', `only the pressure budget may hold it back: ${JSON.stringify(res)}`);
+    h.sim.runTicks(60);
+    res = request();
+  }
+  assert.equal(res.ok, true, `the planned item passes the fire-time gates and pacing: ${JSON.stringify(res)}`);
+  assert.ok(Object.values(h.state.encounterDirector.live).some((l) => l.shapeId === SHAPE));
 });

@@ -5,7 +5,8 @@ import test from 'node:test';
 
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
-import { encounterDirector } from '../src/systems/encounterDirector.js';
+import { encounterDirector, planEncountersDay } from '../src/systems/encounterDirector.js';
+import { zonesForSector } from '../src/data/sectorZones.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
 import { isAttachable } from '../src/systems/tetherGameplay.js';
 import { physics } from '../src/core/physics.js';
@@ -134,4 +135,34 @@ test('shooting the core apart is final and pays nothing', () => {
   h.sim.runTicks(70);
   assert.deepEqual(resolved(h), ['destroyed']);
   assert.deepEqual(grants(h), []);
+});
+
+test('the ordinary sector-day roll (seed 4242) draws it off the starter corridor and it fires there without force', () => {
+  const zones = zonesForSector(SECTOR);
+  let planned = null;
+  for (let day = 0; day < 60 && !planned; day++) {
+    planned = planEncountersDay(SEED, SECTOR, day, zones).find((item) => item.shapeId === SHAPE) || null;
+  }
+  assert.ok(planned, `${SHAPE} is drawn by the ordinary roll in ${SECTOR}`);
+  assert.ok(ENCOUNTERS[SHAPE].zoneTypes.includes(planned.zoneType), 'it lands on one of its authored zone types');
+  const helios = zonesForSector('sector_helios_prime');
+  for (let day = 0; day < 60; day++) {
+    assert.equal(planEncountersDay(SEED, 'sector_helios_prime', day, helios).some((item) => item.shapeId === SHAPE), false,
+      'the starter corridor never draws it');
+  }
+  const h = makeHarness();
+  const director = h.sim.registry.get('encounterDirector');
+  const request = () => director.requestAuthoredEncounter({
+    shapeId: SHAPE, encounterId: planned.encounterId, sectorId: SECTOR, anchor: { ...planned.zoneCenter },
+    zoneType: planned.zoneType, zoneRadius: planned.zoneRadius, respectPacing: true,
+  });
+  // No force: the deck's tension pool must accrue through ordinary flight time before it can fire.
+  let res = request();
+  for (let s = 0; s < 900 && !res.ok; s++) {
+    assert.equal(res.reason, 'pressure', `only the pressure budget may hold it back: ${JSON.stringify(res)}`);
+    h.sim.runTicks(60);
+    res = request();
+  }
+  assert.equal(res.ok, true, `the planned item passes the fire-time gates and pacing: ${JSON.stringify(res)}`);
+  assert.ok(Object.values(h.state.encounterDirector.live).some((l) => l.shapeId === SHAPE));
 });

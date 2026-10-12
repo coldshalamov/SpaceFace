@@ -120,7 +120,7 @@ export const runtime = Object.freeze({
       scanLabel: 'CLAIMED WRECK — PITBORN SALVAGE BEACON', storyPropKind: 'm09_claimed_wreck',
     });
     const pod = d.spawnProp(live, {
-      type: 'beacon', pos: layout.pod, radius: POD_RADIUS, mass: POD_MASS, tetherable: true,
+      type: 'payload', pos: layout.pod, radius: POD_RADIUS, mass: POD_MASS, tetherable: true,
       scanLabel: 'ESCAPE POD — LIFE SIGNS, AIR FAILING', storyPropKind: 'm09_escape_pod',
     });
     if (!wreck || !pod) return d.abort(live, 'no_bodies');
