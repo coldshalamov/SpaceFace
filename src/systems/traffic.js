@@ -6387,14 +6387,24 @@ export const traffic = {
       const close = distance <= reach;
       const aim = Math.atan2(dz, dx);
       const propulsion = resolvePropulsionProfile(entity, state);
+      // A settled chip keeps its spawn-kick `vel` field after the body stops; leading on that stale
+      // number had the barge crawl at ~5 WU/s toward a chip 150 WU off. Lead on observed motion.
+      let leadX = target.vel?.x || 0, leadZ = target.vel?.z || 0;
+      if (target.type === 'pickup') {
+        const seen = rec.chipTrack;
+        const dtSeen = seen && seen.id === target.id ? state.simTime - seen.t : 0;
+        leadX = dtSeen > 0 ? (target.pos.x - seen.x) / dtSeen : 0;
+        leadZ = dtSeen > 0 ? (target.pos.z - seen.z) / dtSeen : 0;
+        rec.chipTrack = { id: target.id, x: target.pos.x, z: target.pos.z, t: state.simTime };
+      }
       if (propulsion.family === DRIVE_FAMILIES.PULSE_PLATE) {
         // The Ironback's brake fires its pulse plate. A cargo approach uses its ordinary
         // precision thrusters instead: ask for a local velocity correction, never a pose snap.
         const decel = Math.max(1, propulsion.rcsReverseAccel);
         const speed = close ? 0 : Math.min(TRAFFIC_ROLES.ore_carrier.speed,
           Math.sqrt(2 * decel * Math.max(0, distance - reach * 0.6)));
-        const vx = (target.vel?.x || 0) + dx / Math.max(1, distance) * speed - (entity.vel?.x || 0);
-        const vz = (target.vel?.z || 0) + dz / Math.max(1, distance) * speed - (entity.vel?.z || 0);
+        const vx = leadX + dx / Math.max(1, distance) * speed - (entity.vel?.x || 0);
+        const vz = leadZ + dz / Math.max(1, distance) * speed - (entity.vel?.z || 0);
         const c = Math.cos(entity.rot || 0), s = Math.sin(entity.rot || 0);
         const forward = vx * c + vz * s;
         const side = -vx * s + vz * c;
@@ -6458,7 +6468,9 @@ export const traffic = {
       return;
     }
     rec.targetId = pickup.id;
-    if (!steer(pickup, (entity.radius || 6) + (pickup.radius || 1) + 6)) return;
+    // Take custody at scoop range, short of hull contact: a refused contact shoves the 0.1-mass
+    // chip away and the velocity-matched approach then chases it across the sector.
+    if (!steer(pickup, (entity.radius || 6) * 1.25 + (pickup.radius || 1) + 18)) return;
     const qty = Math.floor(pickup.data.amount);
     if (!(qty > 0)) return;
     const manifest = this._buildMinerManifest(entity, rec.dockSeq || 0,
