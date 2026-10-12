@@ -81,7 +81,7 @@ const simpleCourse = [
   { x: 0, z: 1000 }, { x: 0, z: 0 },
 ];
 function wakeParams(extra = {}) {
-  return { racingKind: 'draft', paceSpeedWU: 260, raceStartSimS: 0, phase: 'chase',
+  return { sectionMission: true, racingKind: 'draft', paceSpeedWU: 260, raceStartSimS: 0, phase: 'chase',
     draftRequiredS: 2, draftTimeS: 0, nextGate: 1, gateRadiusWU: 90, ...extra };
 }
 function wakePlayer(time, offset = 80) {
