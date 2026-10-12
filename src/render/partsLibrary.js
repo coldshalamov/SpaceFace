@@ -282,6 +282,12 @@ const STATION_ARCHETYPE_FILES = Object.freeze([
   'places/place_station_mining.glb',
   'places/place_station_research.glb',
   'places/place_gate_jump_ring.glb',
+  // C6/BP-8c faction ring gates: Concord inspection ring, Meridian toll ring,
+  // Crimson Reach booby-trapped ring. They resolve through the same
+  // archetypeGlb path as the authored jump ring.
+  'places/place_gate_concord.glb',
+  'places/place_gate_merchant.glb',
+  'places/place_gate_reach.glb',
 ]);
 // PQ-193.09: existing foundry trade-hub overlay identities. Garnish on the live hub, never a
 // replacement body and never a new faction system.
@@ -373,6 +379,15 @@ const PLACE_FILES = Object.freeze([
   'places/place_landmark_candle_fleet.glb',
   'places/place_landmark_resonant_cathedral.glb',
   'places/place_landmark_skerris_throne.glb',
+  // C6 landmarks (QUEUE + BP-08 commissions).
+  'places/place_landmark_beacon_spire.glb',
+  'places/place_landmark_veil_obelisk.glb',
+  'places/place_landmark_pit_anchor.glb',
+  'places/place_landmark_vault_maw.glb',
+  'places/place_landmark_tower_crown.glb',
+  'places/place_landmark_crystal_spire.glb',
+  'places/place_landmark_cathedral_wreck_ii.glb',
+  'places/place_landmark_billboard_array.glb',
   // PQ-195.00: the SP-07 spindle (authored payload) and the capture fork machine resolve through
   // the same authored-place path. The fork GLB's origin is the mouth plane (no recentering).
   'places/place_breakaway_sp07.glb',
@@ -2231,6 +2246,15 @@ const DRESSING_RADIUS_BY_PLACE = Object.freeze({
   place_landmark_candle_fleet: 106,
   place_landmark_resonant_cathedral: 90,
   place_landmark_skerris_throne: 109,
+  // C6 landmarks: same rule — authored plan half-extent in metres.
+  place_landmark_beacon_spire: 30,
+  place_landmark_veil_obelisk: 26,
+  place_landmark_pit_anchor: 52,
+  place_landmark_vault_maw: 41,
+  place_landmark_tower_crown: 35,
+  place_landmark_crystal_spire: 32,
+  place_landmark_cathedral_wreck_ii: 71,
+  place_landmark_billboard_array: 33,
 });
 
 function placeFamily(placeId) {
@@ -2261,7 +2285,7 @@ export function liveSolidGlbCatalog() {
 
   for (const file of STATION_ARCHETYPE_FILES) {
     const placeId = file.replace(/^places\//, '').replace(/\.glb$/, '');
-    const gate = placeId === 'place_gate_jump_ring';
+    const gate = placeId.startsWith('place_gate_');
     add({
       id: placeId,
       family: gate ? 'gate' : 'station',

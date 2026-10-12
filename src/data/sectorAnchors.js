@@ -30,7 +30,8 @@ const CORE_SECTOR_ANCHORS = {
     ],
     gates: [
       { to: 'sector_ceres_belt', pos: { x: -2388, z: 1592 } },
-      { to: 'sector_tethys_junction', pos: { x: 2388, z: 1592 } },
+      // C6/BP-8c: the Concord inspection ring guards the Concord -> Meridian chord.
+      { to: 'sector_tethys_junction', pos: { x: 2388, z: 1592 }, archetypeGlb: 'place_gate_concord' },
       { to: 'sector_vesta_forge', pos: { x: 0, z: 2870 } },
     ],
     fields: [
@@ -60,6 +61,10 @@ const CORE_SECTOR_ANCHORS = {
       { id: 'poi_helios_bay7', pos: { x: 1410, z: -310 }, landmarkGlb: 'place_cold_locker', visualRadius: 14 },
       { id: 'poi_helios_ash_pin', pos: { x: 1642, z: -792 }, landmarkGlb: 'place_ash_pin', visualRadius: 6 },
       { id: 'poi_helios_whistle', pos: { x: -1704, z: -1212 }, landmarkGlb: 'place_whistle', visualRadius: 6 },
+      // C6: the sector-identity lighthouse reads ~95 WU against the 26.5 WU player hull (D54).
+      { id: 'poi_helios_beacon_spire', name: 'The Beacon Spire', pos: { x: -860, z: 1560 }, landmarkGlb: 'place_landmark_beacon_spire', landmark: true, visualRadius: 30, placeTargetRadius: 95 },
+      // C6: the broken Pit colony anchor — the memorial the Candle Fleet's convoy never reached.
+      { id: 'poi_helios_pit_anchor', name: 'The Pit Anchor', pos: { x: -1740, z: -420 }, landmarkGlb: 'place_landmark_pit_anchor', landmark: true, visualRadius: 28, placeTargetRadius: 90 },
     ],
   },
   sector_ceres_belt: {
@@ -101,7 +106,8 @@ const CORE_SECTOR_ANCHORS = {
       { id: 'station_customs', pos: { x: -640, z: -1180 }, archetypeGlb: 'place_station_military' },
     ],
     gates: [
-      { to: 'sector_helios_prime', pos: { x: -2729, z: -1819 } },
+      // C6/BP-8c: the Meridian toll ring on the Helios-bound trade route.
+      { to: 'sector_helios_prime', pos: { x: -2729, z: -1819 }, archetypeGlb: 'place_gate_merchant' },
       { to: 'sector_ceres_belt', pos: { x: -3280, z: 0 } },
       { to: 'sector_vesta_forge', pos: { x: -2729, z: 1819 } },
       { to: 'sector_io_reach', pos: { x: 1819, z: 2729 } },
@@ -113,6 +119,8 @@ const CORE_SECTOR_ANCHORS = {
       { id: 'poi_blackmkt', pos: { x: -1380, z: 420 }, landmarkGlb: 'place_nav_buoy' },
       { id: 'poi_tethys_weigh', pos: { x: 720, z: -980 }, landmarkGlb: 'place_lane_beacon' },
       { id: 'poi_tethys_customs_log', pos: { x: -920, z: -640 }, landmarkGlb: 'place_nav_buoy' },
+      // C6: the flat holo-ad fan off the toll lane.
+      { id: 'poi_tethys_billboard_array', name: 'Meridian Billboard Array', pos: { x: 380, z: -520 }, landmarkGlb: 'place_landmark_billboard_array', landmark: true, visualRadius: 22, placeTargetRadius: 60 },
       ...PQ019_FACILITY_ANCHORS,
     ],
   },
@@ -182,6 +190,8 @@ const CORE_SECTOR_ANCHORS = {
     pois: [
       { id: 'poi_merc', pos: { x: 1520, z: 780 }, landmarkGlb: 'place_nav_buoy' },
       { id: 'poi_cruiser', pos: { x: -1420, z: -780 }, landmarkGlb: 'place_dead_hulk', landmark: true },
+      // C6: the siege-brass crown keep watching the Reach approaches.
+      { id: 'poi_io_tower_crown', name: 'The Tower Crown', pos: { x: 240, z: -1620 }, landmarkGlb: 'place_landmark_tower_crown', landmark: true, visualRadius: 24, placeTargetRadius: 85 },
       { id: 'poi_claim_pallas', pos: { x: 320, z: 1280 }, landmarkGlb: 'place_asteroid_seamed' },
     ],
   },
@@ -238,6 +248,9 @@ const CORE_SECTOR_ANCHORS = {
     ],
     pois: [
       { id: 'poi_anomaly', pos: { x: 0, z: 0 }, landmarkGlb: 'place_asteroid_seamed', landmark: true },
+      // C6: the Veil monolith and its luminous twin — the two named wonders of the nebula.
+      { id: 'poi_veil_obelisk', name: 'The Veil Obelisk', pos: { x: -760, z: -420 }, landmarkGlb: 'place_landmark_veil_obelisk', landmark: true, visualRadius: 26, placeTargetRadius: 85 },
+      { id: 'poi_veil_crystal_spire', name: 'The Crystal Spire', pos: { x: 940, z: 320 }, landmarkGlb: 'place_landmark_crystal_spire', landmark: true, visualRadius: 26, placeTargetRadius: 85 },
       { id: 'poi_wormhole', pos: { x: 680, z: 4120 }, landmarkGlb: 'place_gate_jump_ring' },
     ],
   },
@@ -246,7 +259,8 @@ const CORE_SECTOR_ANCHORS = {
       { id: 'station_ashcache', pos: { x: -820, z: 480 }, archetypeGlb: 'place_station_blackmarket', landmark: true },
     ],
     gates: [
-      { to: 'sector_charon_expanse', pos: { x: -2017, z: -4034 } },
+      // C6/BP-8c: the Crimson Reach booby-trapped ring guards the only way out.
+      { to: 'sector_charon_expanse', pos: { x: -2017, z: -4034 }, archetypeGlb: 'place_gate_reach' },
     ],
     fields: [
       { id: 'f_ash_1', center: { x: 640, z: -280 }, clusterRadius: 400 },
@@ -255,7 +269,10 @@ const CORE_SECTOR_ANCHORS = {
     pois: [
       { id: 'poi_boss', pos: { x: 240, z: 1180 }, landmarkGlb: 'place_nav_buoy', landmark: true },
       { id: 'poi_vault', pos: { x: -1480, z: 320 }, landmarkGlb: 'place_debris_chunk' },
-      { id: 'poi_vault_maw', pos: { x: -980, z: 1240 }, landmarkGlb: 'place_asteroid_seamed', landmark: true },
+      // C6: the anomaly-violet half-open maw — upgrades the asteroid_seamed stand-in.
+      { id: 'poi_vault_maw', name: 'The Vault Maw', pos: { x: -980, z: 1240 }, landmarkGlb: 'place_landmark_vault_maw', landmark: true, visualRadius: 30, placeTargetRadius: 95 },
+      // C6: the second cathedral wreck — capital-hull ribs over the debris aisle.
+      { id: 'poi_ashfall_cathedral_wreck_ii', name: 'The Broken Nave', pos: { x: -240, z: -1620 }, landmarkGlb: 'place_landmark_cathedral_wreck_ii', landmark: true, visualRadius: 34, placeTargetRadius: 105 },
     ],
   },
 };
