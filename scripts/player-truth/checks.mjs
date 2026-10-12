@@ -4,6 +4,7 @@
 // measure returns UNKNOWN with the reason — never PASS.
 
 import { PLAYER_TRUTH_CLASSES } from '../../src/testing/playerTruth/reader.js';
+import { STALL_MIN_SIM_S, STALL_WINDOW_MS, formatInterruptDetail } from './playWatch.mjs';
 
 export const E = Object.freeze({ id: 0, cls: 1, x: 2, z: 3, vx: 4, vz: 5, sx: 6, sy: 7, pr: 8, vis: 9, key: 10, type: 11 });
 export const CLS = Object.freeze(Object.fromEntries(PLAYER_TRUTH_CLASSES.map((c, i) => [c, i])));
@@ -37,6 +38,8 @@ export const THRESHOLDS = Object.freeze({
   readabilityMarkerOn: 0.4, readabilityMarkerSplit: 0.35, // marker rate, and how far apart the two rates must be
   frameP99RegressionRatio: 1.25, frameP99RegressionAbsMs: 100,
   longTaskRegressionRatio: 1.25, longTaskRegressionAbs: 30,
+  // Active flight whose sim advances less than this across the window is stalled, not slow.
+  simStallWindowMs: STALL_WINDOW_MS, simStallMinAdvanceS: STALL_MIN_SIM_S,
   vfxCoverP95: 0.25, vfxPlayerOccludedFrac: 0.1, vfxThreatOccludedP95: 0.3, vfxPersistSeconds: 3, backdropThreatP95: 0.3, pinnedMoveFrac: 0.25, pinnedMinExpect: 40,
   longTaskMs: 250, frameP99Ms: 50,
 });
@@ -718,8 +721,47 @@ export function checkRoundsReached(trace) {
     `stopped: ${trace.meta.stopReason || 'n/a'}`, got >= need ? [] : [{ line: `scripted fighter stopped at round ${got}: ${trace.meta.stopReason || ''}`, t: null, sim: null, box: null }]);
 }
 
+/** Sim froze while the run still said the phase was active. Loading and the boot overlay are not a stall. */
+export function checkSimStalled(trace) {
+  const threshold = `≥${STALL_MIN_SIM_S} s sim per ${Math.round(STALL_WINDOW_MS / 1000)} s wall while phase is active and not loading`;
+  const watch = trace.playWatch;
+  const missing = !watch || !watch.watched;
+  if (missing) {
+    const started = trace.meta && trace.meta.playStartSim != null;
+    return result('sim_stalled', 'Sim kept moving', started ? 'UNKNOWN' : 'N/A', null, threshold, started ? 'play was not watched' : 'play did not start');
+  }
+  const stall = (watch.interrupts || []).find((item) => item.kind === 'stall');
+  if (stall) {
+    const line = formatInterruptDetail(stall);
+    const moment = stall.t != null ? [{ line, t: stall.t, sim: stall.sim ?? null, box: null }] : [];
+    return result('sim_stalled', 'Sim kept moving', 'FAIL', `${Number(stall.simAdvanced).toFixed(2)} s / ${(stall.wallMs / 1000).toFixed(0)} s wall`, threshold, line, [{ line, t: stall.t ?? null, sim: stall.sim ?? null, box: null }], moment);
+  }
+  const adv = watch.simAdvanced;
+  const wall = watch.wallMs;
+  const value = adv == null ? 'no active span' : `+${adv} s / ${wall == null ? '?' : (wall / 1000).toFixed(0)} s wall`;
+  return result('sim_stalled', 'Sim kept moving', 'PASS', value, threshold, 'sim advanced through the watched active span');
+}
+
+/** A screen covered the flight HUD during active play. The script does not open screens while the phase is active. */
+export function checkPlayInterrupted(trace) {
+  const threshold = 'flight HUD only during active play; a screen the script did not open fails';
+  const watch = trace.playWatch;
+  const missing = !watch || !watch.watched;
+  if (missing) {
+    const started = trace.meta && trace.meta.playStartSim != null;
+    return result('play_interrupted', 'Play stays on the flight HUD', started ? 'UNKNOWN' : 'N/A', null, threshold, started ? 'play was not watched' : 'play did not start');
+  }
+  const screen = (watch.interrupts || []).find((item) => item.kind === 'screen');
+  if (screen) {
+    const line = formatInterruptDetail(screen);
+    const moment = screen.t != null ? [{ line, t: screen.t, sim: screen.sim ?? null, box: null }] : [];
+    return result('play_interrupted', 'Play stays on the flight HUD', 'FAIL', screen.top || 'screen', threshold, line, [{ line, t: screen.t ?? null, sim: screen.sim ?? null, box: null }], moment);
+  }
+  return result('play_interrupted', 'Play stays on the flight HUD', 'PASS', 'HUD held', threshold, 'no non-HUD screen during active play');
+}
+
 ALL_CHECKS.splice(ALL_CHECKS.indexOf(checkVfx) + 1, 0, checkBackdrop);
-ALL_CHECKS.push(checkRoundTransitions, checkRoundsReached);
+ALL_CHECKS.push(checkRoundTransitions, checkRoundsReached, checkSimStalled, checkPlayInterrupted);
 
 /** In gate mode "not measured" cannot pass a gameplay PR: UNKNOWN on these checks is a FAIL. */
 export const GATE_STRICT = Object.freeze(['player_control', 'tumble', 'player_ship', 'round_resolution', 'round_transitions']);

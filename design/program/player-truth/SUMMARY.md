@@ -15,6 +15,7 @@ rows were not remeasured under those rules.
 - SwiftShader frame time is `software-renderer evidence`. It FAILs only when it regresses against `--baseline` (p99 above 125% and above +100 ms, or long tasks above 125% and above +30). Without a baseline measurement the check stays UNKNOWN and is listed as an INCOMPLETE cause. A GPU run still uses p99 ≤ 50 ms and 0 long tasks ≥ 250 ms. Long-task counts stay on the line.
 - "Loadout readable and relevant" covers Swarm offers and fitted rows, and the Gauntlet ship step. Every named item needs an explanation and must be relevant to the mode. Zero armory cards are either "the game offered nothing" (empty-shelf sentence and a zero count) or "the harness failed to read the screen". A fit count with no item names is a FAIL.
 - Overall INCOMPLETE lists each UNKNOWN check. It is not used for an environment mismatch.
+- `sim_stalled` fails when sim time advances less than 0.5 s across 60 s of wall time while the phase stays active and the game is not loading. The run stops then, instead of sitting until the wall cap. `play_interrupted` fails when a screen other than the flight HUD opens during that active phase. The line names the screen, the last input, and the DOM element under a click. The driver still aims at hostiles; it does not steer around HUD controls. The historical scoreboard rows were not remeasured under this rule.
 
 ## Scoreboard (seed 4242) — measured on `9e647c306`, branch now on `e6173d9552`
 

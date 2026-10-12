@@ -97,6 +97,16 @@ explanation and is relevant to the mode. Zero armory cards are either "the game 
 count or a name the card selector missed). A preparation line that claims a fit count but names
 no item is a FAIL. A vacuous "0 offers read" is not a PASS.
 
+`sim_stalled` fails when sim time advances less than 0.5 s across 60 s of wall time while the run
+phase stays active and the boot overlay is gone (mode is not `loading`). The run stops then. It
+does not sit until `--wall`. `play_interrupted` fails when any screen other than the flight HUD
+opens during that active phase without the script opening it. The line names the screen id, the
+last input, and, when that input was a click, the viewport coordinates and the DOM element under
+them (`document.elementFromPoint`, read before mouseup). A fire click that lands on a HUD control
+is reported. The driver still aims at the hostile. A draft screen that is already up as the phase
+becomes active has 3 s to clear. Both checks are N/A when play never started and UNKNOWN when play
+started but was not watched.
+
 - **GPU (preferred):** add `--headed` on a machine with a real GPU. The verdict records the WebGL
   renderer string. Frame time is graded here on absolute numbers: p99 ≤ 50 ms and 0 long tasks ≥ 250 ms.
 - **Browser:** Playwright's bundled Chromium first (`npx playwright install chromium`), then

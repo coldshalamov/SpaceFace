@@ -5,10 +5,15 @@
 export const simNow = (page) => page.evaluate(() => (window.SF && window.SF.state ? window.SF.state.simTime : 0));
 export const wallNow = (page) => page.evaluate(() => performance.now());
 
-/** Wait until sim time advances by `seconds`, or a predicate (in page) becomes true, or wall cap. */
+/** Wait until sim time advances by `seconds`, or a predicate (in page) becomes true, or wall cap.
+ *  `page.__ptObserve`, when set, can end the wait early (sim stall or a screen over the HUD). */
 export async function waitSim(page, seconds, { maxWallMs = 120000, until = null, arg = null } = {}) {
   const start = await simNow(page); const t0 = Date.now();
   while (Date.now() - t0 < maxWallMs) {
+    if (typeof page.__ptObserve === 'function') {
+      const hit = await page.__ptObserve();
+      if (hit) return { done: false, watch: hit, sim: start };
+    }
     const r = await page.evaluate(([want, src, a]) => {
       const st = window.SF.state; const done = st.simTime - want.start >= want.s;
       // eslint-disable-next-line no-new-func
@@ -21,20 +26,69 @@ export async function waitSim(page, seconds, { maxWallMs = 120000, until = null,
   return { done: false, timeout: true };
 }
 
+/** What is under a viewport point, in one short string. Recorded before the click, not after the screen changes. */
+export async function noteClick(page, x, y) {
+  const hit = await page.evaluate(([px, py]) => {
+    const el = document.elementFromPoint(px, py);
+    const text = el ? String(el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40) : '';
+    const element = !el ? 'nothing'
+      : `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}${el.classList.length ? `.${[...el.classList].slice(0, 3).join('.')}` : ''}${text ? ` "${text}"` : ''}`;
+    const sm = window.SF && window.SF.ctx && window.SF.ctx.screenManager;
+    const st = window.SF && window.SF.state;
+    return { element, top: sm ? sm.top() : null, sim: st ? st.simTime : null, t: performance.now() };
+  }, [x, y]).catch(() => ({ element: 'unreadable', top: null, sim: null, t: null }));
+  const input = { kind: 'click', x, y, button: 'left', ...hit };
+  page.__ptLastInput = input;
+  page.__ptLastClick = input;
+  return input;
+}
+
+export function noteKey(page, code) {
+  const input = { kind: 'key', code };
+  page.__ptLastInput = input;
+  return input;
+}
+
+/** One flight sample for the play watcher. `boot` is the opening overlay, which is a loading state. */
+export async function readPlaySample(page) {
+  return page.evaluate(() => {
+    const st = window.SF && window.SF.state;
+    const sm = window.SF && window.SF.ctx && window.SF.ctx.screenManager;
+    const o = document.getElementById('boot-overlay');
+    let boot = false;
+    if (o) {
+      const cs = getComputedStyle(o);
+      boot = !(cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) < 0.05 || o.hidden);
+    }
+    return {
+      sim: st && Number.isFinite(st.simTime) ? st.simTime : null,
+      t: performance.now(),
+      mode: st ? st.mode : null,
+      phase: st && st.run ? st.run.phase : null,
+      top: sm ? sm.top() : null,
+      boot,
+    };
+  });
+}
+
 export async function holdKey(page, code, seconds, label, probes) {
   const startSim = await simNow(page); const startT = await wallNow(page);
+  noteKey(page, code);
   await page.keyboard.down(code);
-  try { await waitSim(page, seconds, { maxWallMs: 90000 }); } finally { await page.keyboard.up(code); }
+  let waited = null;
+  try { waited = await waitSim(page, seconds, { maxWallMs: 90000 }); } finally { await page.keyboard.up(code); }
   const endSim = await simNow(page); const endT = await wallNow(page);
-  const rec = { label, key: code, kind: code === 'KeyW' ? 'thrust' : 'yaw', startSim, endSim, startT, endT };
+  const rec = { label, key: code, kind: code === 'KeyW' ? 'thrust' : 'yaw', startSim, endSim, startT, endT, watch: waited && waited.watch };
   if (probes) probes.push(rec);
   return rec;
 }
 
 /** Thrust and yaw probes: the "can I move at all" question, asked at every spawn/round start. */
 export async function controlProbes(page, tag, probes) {
-  await holdKey(page, 'KeyW', 1.2, `${tag} thrust`, probes);
-  await holdKey(page, 'KeyD', 0.8, `${tag} yaw`, probes);
+  const thrust = await holdKey(page, 'KeyW', 1.2, `${tag} thrust`, probes);
+  if (thrust && thrust.watch) return thrust.watch;
+  const yaw = await holdKey(page, 'KeyD', 0.8, `${tag} yaw`, probes);
+  return yaw && yaw.watch ? yaw.watch : null;
 }
 
 function readTarget() {
@@ -75,20 +129,33 @@ const fighterMemory = { hull: null, breakBeats: 0 };
  * One beat of a kiting fighter (public input only): aim the mouse at the nearest hostile and fire,
  * hold a 230–400 u standoff, and break off — turn away from the pack and burn — when 3+ hostiles
  * close inside 450 u, when hit, or when low, instead of trading hits. Latch (Space) every 7th beat.
+ *
+ * The aim point is the hostile's projected position even when that pixel is a HUD control
+ * (the race-tape Circuits button is one). The click is recorded with elementFromPoint before
+ * mouseup. The driver does not steer around DOM controls; the play watcher reports them.
  */
 export async function fightBeat(page, beat) {
   const tg = await page.evaluate(readTarget).catch(() => null);
-  if (!tg) { await page.waitForTimeout(300); return; }
+  if (!tg) { await page.waitForTimeout(300); return null; }
   const lost = fighterMemory.hull != null ? fighterMemory.hull - tg.hull : 0;
   fighterMemory.hull = tg.hull;
   // Kite: never sit inside a pack. Burn away when 3+ hostiles close in, when hit, or when low.
   if ((tg.near >= 3 && tg.packDist < 450) || lost > 0.04 || (tg.hull < 0.5 && tg.near >= 2 && tg.packDist < 600)) fighterMemory.breakBeats = Math.max(fighterMemory.breakBeats, 4);
   if (tg.none) {
-    await holdKey(page, 'KeyW', 0.6, null, null);
-    if (beat % 3 === 0) await holdKey(page, 'KeyA', 0.4, null, null);
-    return;
+    const coast = await holdKey(page, 'KeyW', 0.6, null, null);
+    if (coast && coast.watch) return coast.watch;
+    if (beat % 3 === 0) {
+      const yaw = await holdKey(page, 'KeyA', 0.4, null, null);
+      if (yaw && yaw.watch) return yaw.watch;
+    }
+    return null;
   }
-  await page.mouse.move(Math.round(tg.x), Math.round(tg.y), { steps: 2 });
+  const x = Math.round(tg.x);
+  const y = Math.round(tg.y);
+  await page.mouse.move(x, y, { steps: 2 });
+  // Record the element under the aim before the button goes down, and again before mouseup,
+  // which is when a HUD button's click listener runs.
+  await noteClick(page, x, y);
   await page.mouse.down();
   // Turn by tapping: hold the turn key only as long as the bearing error needs (the hull turns
   // ~5 rad/s; holding it for a whole beat overshoots and the ship spins in place under fire).
@@ -102,17 +169,42 @@ export async function fightBeat(page, beat) {
     else if (tg.dist > 400 || beat % 3 !== 2) keys.push('KeyW');
   }
   if (Math.abs(err) > 0.12) turn = err > 0 ? 'KeyA' : 'KeyD'; // KeyD lowers rot (measured by the yaw probes)
-  for (const k of keys) await page.keyboard.down(k);
-  const turnS = turn ? Math.min(0.6, Math.abs(err) / 4.5) : 0;
-  if (turn) { await page.keyboard.down(turn); await waitSim(page, turnS, { maxWallMs: 30000 }); await page.keyboard.up(turn); }
-  await waitSim(page, Math.max(0.05, 0.6 - turnS), { maxWallMs: 30000 });
-  for (const k of ['KeyW', 'KeyS', 'KeyA', 'KeyD']) await page.keyboard.up(k);
-  await page.mouse.up();
-  if (beat % 7 === 3) { await page.keyboard.press('Space'); }
+  let watchHit = null;
+  try {
+    for (const k of keys) { noteKey(page, k); await page.keyboard.down(k); }
+    const turnS = turn ? Math.min(0.6, Math.abs(err) / 4.5) : 0;
+    if (turn) {
+      noteKey(page, turn);
+      await page.keyboard.down(turn);
+      const turned = await waitSim(page, turnS, { maxWallMs: 30000 });
+      await page.keyboard.up(turn);
+      if (turned && turned.watch) watchHit = turned.watch;
+    }
+    if (!watchHit) {
+      const held = await waitSim(page, Math.max(0.05, 0.6 - turnS), { maxWallMs: 30000 });
+      if (held && held.watch) watchHit = held.watch;
+    }
+  } finally {
+    for (const k of ['KeyW', 'KeyS', 'KeyA', 'KeyD']) await page.keyboard.up(k).catch(() => {});
+    await noteClick(page, x, y);
+    await page.mouse.up().catch(() => {});
+  }
+  if (typeof page.__ptObserve === 'function') {
+    const after = await page.__ptObserve();
+    if (after) return after;
+  }
+  if (watchHit) return watchHit;
+  if (beat % 7 === 3) { noteKey(page, 'Space'); await page.keyboard.press('Space'); }
+  return null;
 }
 
 /** A non-combat flyer for Adventure / racing: thrust bursts and gentle turns, never idle long. */
 export async function cruiseBeat(page, beat) {
-  await holdKey(page, 'KeyW', 0.8, null, null);
-  if (beat % 4 === 1) await holdKey(page, beat % 8 === 1 ? 'KeyA' : 'KeyD', 0.4, null, null);
+  const thrust = await holdKey(page, 'KeyW', 0.8, null, null);
+  if (thrust && thrust.watch) return thrust.watch;
+  if (beat % 4 === 1) {
+    const yaw = await holdKey(page, beat % 8 === 1 ? 'KeyA' : 'KeyD', 0.4, null, null);
+    if (yaw && yaw.watch) return yaw.watch;
+  }
+  return null;
 }

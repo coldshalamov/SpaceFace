@@ -32,7 +32,8 @@ import { buildContactSheet } from './contactSheet.mjs';
 import { renderVerdict, printSummary } from './verdict.mjs';
 import { verifyHarnessEnvironment, ENVIRONMENT_EXIT, renderEnvironmentAbort, quoteLoadError } from './environment.mjs';
 import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmoryShelf, classifyOfferRead, readFittedRows, auditItems, swapProbe, armoryLaunchWord, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls } from './routes.mjs';
-import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat } from './driver.mjs';
+import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, readPlaySample } from './driver.mjs';
+import { createPlayWatch, formatPlayStop } from './playWatch.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const MODES = ['swarm', 'gauntlet', 'adventure', 'racing'];
@@ -198,6 +199,26 @@ async function runOne(args, arena, extra = {}) {
   };
   const phaseNow = () => page.evaluate(() => ({ sim: window.SF.state.simTime, t: performance.now(), mode: window.SF.state.mode, ph: window.SF.state.run ? window.SF.state.run.phase : null, w: window.SF.state.run ? window.SF.state.run.wave : null, top: window.SF.ctx.screenManager.top(), playerAlive: !!window.SF.state.entityList.find((e) => e.id === window.SF.state.playerId && e.alive !== false) }));
   const overBudget = (playStart, sim) => (Date.now() - T0 > wallCapMs ? 'wall-clock cap' : (sim - playStart > args.duration ? `duration ${args.duration} sim s reached` : null));
+  const playWatch = createPlayWatch();
+  const observePlay = async () => {
+    try {
+      const sample = await readPlaySample(page);
+      if (!sample) return null;
+      sample.wall = Date.now();
+      playWatch.setInputs(page.__ptLastInput, page.__ptLastClick);
+      return playWatch.observe(sample);
+    } catch { return null; }
+  };
+  page.__ptObserve = observePlay;
+  const haltIfInterrupted = async () => {
+    await observePlay();
+    const why = playWatch.interrupts.length ? formatPlayStop(playWatch) : null;
+    if (!why) return false;
+    stopReason = why;
+    log(why);
+    await shoot('play interrupted', false);
+    return true;
+  };
 
   let doorInfo = null; let renderer = 'unknown'; let browserVersion = browser.version();
   try {
@@ -269,6 +290,7 @@ async function runOne(args, arena, extra = {}) {
       let beat = 0; let first = true;
       // eslint-disable-next-line no-constant-condition
       while (true) {
+        if (await haltIfInterrupted()) break;
         const ph = await phaseNow();
         stopReason = overBudget(trace.meta.playStartSim, ph.sim);
         if (ph.ph !== 'active' && round.endSim == null) {
@@ -287,14 +309,17 @@ async function runOne(args, arena, extra = {}) {
             if (round === trace.rounds[0] && args.idle > 0) {
               log(`idle ${args.idle} sim s (no input)`);
               await waitSim(page, args.idle, { maxWallMs: 600000, until: (st) => !st.run || st.run.phase !== 'active' });
+              if (await haltIfInterrupted()) break;
               if ((await phaseNow()).ph !== 'active') continue;
             }
             if (round !== trace.rounds[0]) await shoot(`round ${round.wave} start`, true);
             await controlProbes(page, `round ${round.wave}`, trace.probes);
+            if (await haltIfInterrupted()) break;
             if (round !== trace.rounds[0]) await shoot(`round ${round.wave} after probes`, true);
             continue;
           }
           await fightBeat(page, beat++, args.fighter);
+          if (await haltIfInterrupted()) break;
           continue;
         }
         if (ph.ph === 'draft' || ph.ph === 'cleanup' || ph.ph === 'refit') {
@@ -324,14 +349,18 @@ async function runOne(args, arena, extra = {}) {
       if (args.fight) await installPacingWatch(page);
       log(`idle ${args.idle} sim s (no input)`);
       await waitSim(page, args.idle, { maxWallMs: 600000 });
-      await controlProbes(page, 'spawn', trace.probes);
-      let beat = 0;
-      while (!(stopReason = overBudget(st0.sim, await simNow(page)))) {
-        const ph = await phaseNow();
-        if (ph.mode !== 'flight') { await page.waitForTimeout(800); if (Date.now() - T0 > wallCapMs) break; continue; }
-        // A modal (tutorial card, dialogue) gets the keyboard answer a player gives: Enter/Space.
-        if (ph.top && !['hud', null].includes(ph.top) && beat % 5 === 4) await page.keyboard.press('Enter');
-        if (args.fight) await fightBeat(page, beat++); else await cruiseBeat(page, beat++);
+      if (!(await haltIfInterrupted())) {
+        await controlProbes(page, 'spawn', trace.probes);
+        if (!(await haltIfInterrupted())) {
+          let beat = 0;
+          while (!(stopReason = overBudget(st0.sim, await simNow(page)))) {
+            if (await haltIfInterrupted()) break;
+            const ph = await phaseNow();
+            if (ph.mode !== 'flight') { await page.waitForTimeout(800); if (Date.now() - T0 > wallCapMs) break; continue; }
+            if (args.fight) await fightBeat(page, beat++); else await cruiseBeat(page, beat++);
+            if (await haltIfInterrupted()) break;
+          }
+        }
       }
       step('play', true, `${((await simNow(page)) - st0.sim).toFixed(1)} sim s flown`);
     }
@@ -358,6 +387,7 @@ async function runOne(args, arena, extra = {}) {
       await shoot('route failure', false);
     }
   } finally {
+    page.__ptObserve = null;
     clearInterval(shotTimer); clearInterval(drainTimer);
     while (busy) await new Promise((r) => setTimeout(r, 100));
     await drain().catch(() => {});
@@ -383,6 +413,7 @@ async function runOne(args, arena, extra = {}) {
     script: `idle ${args.idle} s → thrust/yaw probes → ${args.mode === 'swarm' || args.mode === 'gauntlet' ? 'kiting fighter: aim+fire at nearest hostile, hold 230–400 u range, burn away from packs of 3+ inside 450 u, strafe, break off under fire, latch every 7th beat; probes + shots at every round start' : args.fight ? 'adventure fight: aim+fire at nearest hostile when one is in reach, else cruise' : 'cruise: thrust bursts and turns'}${args.gatePass ? ` · gate ${args.gatePass} pass` : ''} · no invulnerability (the only toggle is the physics-lab practice rack, not offered in Swarm/Gauntlet)`,
     stopReason, pageErrors: pageErrors.slice(0, 10), arenasOffered: doorInfo && doorInfo.arenas ? doorInfo.arenas : null,
   });
+  trace.playWatch = playWatch.snapshot();
   await browser.close().catch(() => {}); await server.close().catch(() => {});
 
   const verdict = await gradeAndWrite({ trace, shots, outDir, label, evidence: args.evidence, pruneFrames: args.pruneFrames, vw, vh });
