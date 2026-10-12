@@ -303,6 +303,22 @@ export function titleVerbOrder(demo) {
   return ['continue', 'newGame', 'load', 'crucible', 'settings', 'quit'];
 }
 
+/** The title's Tab order, in reading order: the verb ladder, the reference line, the fine line —
+ *  every word on screen. A hidden Continue is not on screen, so it is not in the ladder. */
+function titleTabLadder(r) {
+  if (!r || !r.list) return [];
+  const groups = [r.list, r.root && r.root.querySelector('.of-title-aside')].filter(Boolean);
+  const out = [];
+  for (const g of groups) for (const b of g.querySelectorAll('button[data-action]')) out.push(b);
+  out.push(r.bCredits, r.bAchievements);
+  return out.filter((b) => b && typeof b.getClientRects === 'function' && b.getClientRects().length > 0);
+}
+/** A Tab stop is a word that can act: a still-loading verb is passed over, the same rule the arrow
+ *  keys' roving follows. */
+function titleVerbUsable(b) {
+  return !!b && !b.disabled && b.getAttribute('aria-disabled') !== 'true';
+}
+
 export const mainMenuScreen = {
   id: 'mainMenu',
 
@@ -423,6 +439,9 @@ export const mainMenuScreen = {
       // the pivot keeps the rim's ticks clear of the frame (re + 33) at every height
       place: (W, H) => { const re = Math.round(H * 0.278); const c = Math.max(Math.round(H * 0.305), re + 33); return { pivot: { x: c, y: c }, re, centerDeg: 112 }; },
       span: 74,
+      // the awake word steps 6% toward the dial; seated this far out it stops short of its tick and
+      // the Hand's leader instead of landing on them (half the verb size, plus air)
+      seat: (W, H) => Math.round(8 + Math.min(31, Math.max(20, H * 0.027)) * 0.5),
       engraving: (W, H) => (H <= 800 ? 'Orrery of the Helios Reach' : 'SpaceFace · Orrery of the Helios Reach'),
       engravingDeg: 292,
       // the kicker's box spans the frame: its words' own extent (a range over its text, the dot included) is what clears
@@ -501,6 +520,30 @@ export const mainMenuScreen = {
       bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive, bCircuits, bHelp, bPhysics,
       buttons: [bContinue, bNew, bLoad, bCrucible, bHelp, bArchive, bCircuits, bPhysics, bSettings, bSandbox, bQuit].filter(Boolean),
     };
+
+    // Tab walks the screen the way it reads: down the verb ladder, along the reference line, then the
+    // fine line (Credits, Achievements), and round again. Each words() group keeps its single roving
+    // stop for the arrow keys; without this the reference line had no Tab stop at all and the first
+    // Tab from the lit verb jumped straight to Credits in the footer.
+    if (this._onTabKey) rootEl.removeEventListener('keydown', this._onTabKey);
+    this._onTabKey = (ev) => {
+      if (ev.key !== 'Tab' || ev.altKey || ev.ctrlKey || ev.metaKey || !refs) return;
+      const ladder = titleTabLadder(refs);
+      const at = ladder.indexOf(document.activeElement);
+      if (at < 0) return;
+      const step = ev.shiftKey ? -1 : 1;
+      let next = null;
+      for (let k = 1; k < ladder.length && !next; k += 1) {
+        const b = ladder[(at + step * k + ladder.length * k) % ladder.length];
+        if (titleVerbUsable(b)) next = b;
+      }
+      if (!next) return;
+      ev.preventDefault();
+      // the screen manager's focus trap (document) would otherwise see the moved focus and wrap it
+      ev.stopPropagation();
+      try { next.focus({ preventScroll: true }); } catch (_) { next.focus(); }
+    };
+    rootEl.addEventListener('keydown', this._onTabKey);
 
     // data-k-ready is owned by the screen manager once `stage` is declared: live, plate, or
     // unavailable. The still is already in the tree as `.k-world--plate`.
@@ -701,6 +744,8 @@ export const mainMenuScreen = {
   dispose() {
     this._stopIdleAttract();
     if (arcRail) { arcRail.dispose(); arcRail = null; }
+    if (this._onTabKey && refs && refs.root) refs.root.removeEventListener('keydown', this._onTabKey);
+    this._onTabKey = null;
     for (const off of this._offBus || []) { try { off(); } catch (_) {} }
     this._offBus = [];
     refs = null;
