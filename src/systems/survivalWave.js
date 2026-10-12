@@ -50,6 +50,13 @@ export const OPENING_LESSON_RELEASE_TICKS = 3 * 60;
 // room landing on a new pilot inside one second.
 const OPENING_ARRIVAL_WINDOW_TICKS = 8 * 60;
 const OPENING_ARRIVAL_GAP_TICKS = 80;
+// Swarm fire shaping. A new pilot reads one or two guns, not ten: only the nearest few cohort
+// hulls are cleared to shoot at once (more each wave), a fresh arrival holds its guns for a beat,
+// and a hull the pilot just hit may always answer. Uses the AI's own arrival-hold marker.
+const SWARM_SHOOTERS_BY_WAVE = Object.freeze([2, 2, 3, 4, 5, 6, 6, 7, 8]);
+const SWARM_ARRIVAL_HOLD_S = 2.5;
+const SWARM_ROSTER_EVERY_TICKS = 30;
+const SWARM_RETURN_FIRE_S = 2;
 
 /**
  * SWARM REINFORCEMENT (PQ-135).
@@ -178,6 +185,7 @@ export const survivalWave = {
     this._cursor += 1;
     this._maybeReleaseOpeningLesson();
     this._dispatchDue();
+    this._shapeSwarmFire();
     this._reinforceSwarm(run);
     this._releaseStragglers();
     this._publishWaveProgress();
@@ -571,6 +579,49 @@ export const survivalWave = {
     }
     this._spaceOpeningArrivals();
     this._emit('run:openingLessonReleased', { wave: this._wave, tick: this._cursor });
+  },
+
+  _shapeSwarmFire() {
+    if (!this._swarm || !this._cohort || this._cohort.size === 0) return;
+    const state = this.state;
+    const entities = state && state.entities;
+    if (!entities || typeof entities.get !== 'function') return;
+    const player = entities.get(state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const live = [];
+    for (const [id, member] of this._cohort.entries()) {
+      const e = this._resolveCohortEntity(id, member);
+      if (!e || e.alive === false || !e.pos || !e.data || !e.data.ai) continue;
+      if (!Number.isFinite(member.armedAt)) {
+        member.armedAt = now + SWARM_ARRIVAL_HOLD_S;
+        e.data.ai.arrivalHoldUntil = Math.max(Number(e.data.ai.arrivalHoldUntil) || 0, member.armedAt);
+      }
+      live.push({ id, e, member });
+    }
+    if (this._cursor % SWARM_ROSTER_EVERY_TICKS !== 0) return;
+    const waveIdx = Math.max(0, Math.min(SWARM_SHOOTERS_BY_WAVE.length - 1, (this._wave | 0) - 1));
+    const cap = SWARM_SHOOTERS_BY_WAVE[waveIdx];
+    const rank = [];
+    for (const row of live) {
+      if (row.member.armedAt > now) continue;
+      const boss = this._bossIds && this._bossIds.has(row.id);
+      const answering = Number.isFinite(row.e.lastDamageT) && now - row.e.lastDamageT < SWARM_RETURN_FIRE_S;
+      const d = Math.hypot(row.e.pos.x - player.pos.x, row.e.pos.z - player.pos.z);
+      rank.push({ row, key: (boss ? 0 : answering ? 1 : 2), d });
+    }
+    rank.sort((a, b) => (a.key - b.key) || (a.d - b.d) || (a.row.id - b.row.id));
+    const holdUntil = now + (SWARM_ROSTER_EVERY_TICKS + 6) / 60;
+    for (let i = 0; i < rank.length; i++) {
+      const ai = rank[i].row.e.data.ai;
+      if (i < cap || rank[i].key === 0) {
+        if (Number(ai.arrivalHoldUntil) > now && ai.swarmFireHeld === true) delete ai.arrivalHoldUntil;
+        ai.swarmFireHeld = false;
+      } else {
+        ai.arrivalHoldUntil = Math.max(Number(ai.arrivalHoldUntil) || 0, holdUntil);
+        ai.swarmFireHeld = true;
+      }
+    }
   },
 
   /**
