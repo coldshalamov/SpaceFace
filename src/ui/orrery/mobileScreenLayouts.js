@@ -124,6 +124,9 @@ export const MOBILE_SCREEN_CSS = `
   ${B} .sx-fab { display:flex !important; flex-direction:column; gap:12px !important; height:auto !important; }
   ${B} .sx-fab > * { position:relative !important; inset:auto !important; transform:none !important;
     grid-area:auto !important; width:100% !important; max-width:100% !important; min-width:0 !important; }
+  ${B} .orr-chain__label { max-width:55%; white-space:normal !important; }
+  ${B} .orr-chain__verb > * { max-width:100%; white-space:normal !important; overflow-wrap:anywhere;
+    font-size:12px !important; letter-spacing:.08em !important; }
   ${B} :is(.sx-fac__stage, .sx-bar__stage, .sx-ct__stage) { grid-template-columns:minmax(0,1fr) !important; }
   ${B} footer.sxb-ops { position:relative !important; bottom:auto !important; flex:none !important; }
   ${M}, ${M} .sx-mkt__stage { display:flex !important; flex-direction:column; gap:20px !important; height:auto !important; overflow:visible !important; }
