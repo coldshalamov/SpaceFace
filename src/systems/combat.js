@@ -461,6 +461,8 @@ function doctrineTelegraphFor(doctrineId) {
   if (doctrineId === CombatDoctrineId.RANGED_DISENGAGER) return 'weapon_charge';
   if (doctrineId === CombatDoctrineId.RANGED_STALKER) return 'sensor_ghost';
   if (doctrineId === CombatDoctrineId.DETONATOR_RUN) return 'detonator_fuse';
+  if (doctrineId === CombatDoctrineId.ASSASSIN_MARK) return 'assassin_mark';
+  if (doctrineId === CombatDoctrineId.DUEL_CHAMPION) return 'duel_challenge';
   return 'engine_flare';
 }
 

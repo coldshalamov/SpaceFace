@@ -89,6 +89,16 @@ const CASES = [
   [CombatDoctrineId.DETONATOR_RUN, 'commit', false],
   [CombatDoctrineId.DETONATOR_RUN, 'fuse_cue', false],
   [CombatDoctrineId.DETONATOR_RUN, 'ingress', false],
+  // U2 identities (AEP §5): the assassin's guns are live only during the single committed pass;
+  // the champion's only inside the exchange. Both keep their telegraphs and egress beats cold.
+  [CombatDoctrineId.ASSASSIN_MARK, 'strike', true],
+  [CombatDoctrineId.ASSASSIN_MARK, 'mark_cue', false],
+  [CombatDoctrineId.ASSASSIN_MARK, 'shadow', false],
+  [CombatDoctrineId.ASSASSIN_MARK, 'withdraw', false],
+  [CombatDoctrineId.DUEL_CHAMPION, 'exchange', true],
+  [CombatDoctrineId.DUEL_CHAMPION, 'challenge_cue', false],
+  [CombatDoctrineId.DUEL_CHAMPION, 'square', false],
+  [CombatDoctrineId.DUEL_CHAMPION, 'peel', false],
 ];
 
 test('doctrine fire phases: advertised gun windows authorize; telegraph/egress do not', () => {

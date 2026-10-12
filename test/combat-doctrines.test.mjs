@@ -34,11 +34,13 @@ const {
 
 assert(Object.isFrozen(CombatDoctrineId), 'combat doctrine ids are an immutable typed vocabulary');
 assert.deepEqual(Object.values(CombatDoctrineId).sort(), [
+  'assassin_mark',
   'brawler_commit',
   'capital_broadside',
   'capital_broadside_ala',
   'capital_broadside_tollman',
   'detonator_run',
+  'duel_champion',
   'escort_screen',
   'field_anchor_controller',
   'interceptor_flyby',
@@ -770,15 +772,18 @@ for (const [label, selfOverrides, contactOverrides] of [
   assert.equal(runtime.inspect(7), null, 'new/load reset clears every transient doctrine record');
 }
 
-for (const def of ENEMY_TYPES.filter((entry) => entry.id !== 'mule_trader')) {
+const NONCOMBAT_CARRIER_IDS = new Set(['mule_trader', 'npc_prison_barge']);
+for (const def of ENEMY_TYPES.filter((entry) => !NONCOMBAT_CARRIER_IDS.has(entry.id))) {
   assert(Object.values(CombatDoctrineId).includes(def.combatDoctrineId), `${def.id} has a typed combatDoctrineId`);
   const spec = makeEnemySpawnSpec(def.id, def.levelRange?.[0] || 1, { x: 20, z: -5 });
   assert.equal(spec.data.ai.combatDoctrineId, def.combatDoctrineId, `${def.id} live spawn preserves combat doctrine`);
 }
-const mule = ENEMY_TYPES.find((entry) => entry.id === 'mule_trader');
-assert.equal(mule.combatDoctrineId, null, 'noncombat trader archetype has no combat doctrine assignment');
-assert.equal(makeEnemySpawnSpec(mule.id, 1, { x: 20, z: -5 }).data.ai.combatDoctrineId, null,
-  'noncombat trader spawn skips doctrine gating entirely');
+for (const carrierId of NONCOMBAT_CARRIER_IDS) {
+  const carrier = ENEMY_TYPES.find((entry) => entry.id === carrierId);
+  assert.equal(carrier.combatDoctrineId, null, `${carrierId} noncombat carrier has no combat doctrine assignment`);
+  assert.equal(makeEnemySpawnSpec(carrier.id, 1, { x: 20, z: -5 }).data.ai.combatDoctrineId, null,
+    `${carrierId} noncombat carrier spawn skips doctrine gating entirely`);
+}
 const sable = NAMED_CAPTAINS.find((captain) => captain.id === 'cap_sable_iask');
 assert.equal(sable.combatDoctrineId, CombatDoctrineId.RANGED_DISENGAGER, 'Sable Iask stages as the ranged doctrine');
 const ironMaw = makeEnemySpawnSpec('dreadnought_boss', 10, { x: 20, z: -5 });

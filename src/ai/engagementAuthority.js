@@ -63,6 +63,11 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
   // machine can interrupt it; this table deliberately names no fire phase so a kamikaze hull can
   // never be authorized as an ordinary gunship.
   detonator_run: new Set(),
+  // U2 identities (asset-experience-program §5). The assassin's guns are live only during the
+  // single committed pass — the shadow and the cue stay cold, which is the contract. The
+  // champion fires only inside the exchange; the ring beats (square, challenge, peel) never do.
+  assassin_mark: new Set(['strike']),
+  duel_champion: new Set(['exchange']),
 });
 const ROBBERY_ESCALATION_TRIGGERS = new Set(['explicit_refusal', 'ignored_demand', 'player_attack']);
 // Ambient predation: unscripted team-1 pirates hunting manifested team-2 civilians. The director's

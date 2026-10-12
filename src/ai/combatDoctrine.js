@@ -34,6 +34,11 @@ export const CombatDoctrineId = Object.freeze({
   MINE_LAYER_WAKE: 'mine_layer_wake',
   SHIELD_BREAKER: 'shield_breaker',
   DETONATOR_RUN: 'detonator_run',
+  // U2 enemy-path units (asset-experience-program §5): two further fight identities that no
+  // existing machine expresses — a single-mark assassin that spends exactly one window, and a
+  // rule-bound duel champion that flies bounded exchanges around a ring.
+  ASSASSIN_MARK: 'assassin_mark',
+  DUEL_CHAMPION: 'duel_champion',
 });
 
 export const DOCTRINE_TELEGRAPH_TICKS = 30;
@@ -52,7 +57,7 @@ const STRIKE_CLOSE_CAP_TICKS = 240;
 // bearing, keeping the run's sweep side. Master followed the current velocity, which on a pass that
 // had not crossed yet pointed straight back into the target (wasp extend closed 118 -> 66 WU).
 const EGRESS_AWAY_MIN_COS = 0.8;
-const EGRESS_PHASES = new Set(['extend', 'breakaway', 'peel', 'disengage', 'escape']);
+const EGRESS_PHASES = new Set(['extend', 'breakaway', 'peel', 'disengage', 'escape', 'withdraw']);
 const INTERCEPTOR_EXTEND_TICKS = 75;
 const INTERCEPTOR_EXTEND_MAX_TICKS = 180;
 const INTERCEPTOR_REFORM_TICKS = 45;
@@ -178,6 +183,25 @@ const DETONATOR_COMMIT_MIN_TICKS = 20;
 const DETONATOR_COMMIT_MAX_TICKS = 150;
 const DETONATOR_BREAKAWAY_TICKS = 50;
 const DETONATOR_REFORM_TICKS = 50;
+// Assassin mark (U2): a single-contract killer. It SHADOWS one hull — holds outside the fire
+// band without firing — until the mark cue locks, then commits exactly one pass and withdraws.
+// The identity is the spent single shot: after the strike the hull leaves, which is what
+// separates it from the stalker's relocate-per-volley loop and the flyby's repeat passes.
+const ASSASSIN_SHADOW_BAND_WU = 560;
+const ASSASSIN_SHADOW_MAX_TICKS = 360;
+const ASSASSIN_STRIKE_BAND_WU = 170;
+const ASSASSIN_STRIKE_MAX_TICKS = 60;
+const ASSASSIN_WITHDRAW_WU = 720;
+const ASSASSIN_WITHDRAW_MAX_TICKS = 150;
+// Duel champion (U2): a rule-bound ring fighter. It squares to the ring edge, announces the
+// challenge, then flies bounded exchanges; every exchange peels back to the ring instead of
+// pressing the advantage — the peel IS the rule, and it is what keeps the duel readable instead
+// of collapsing into a brawler grind.
+const DUEL_RING_WU = 300;
+const DUEL_SQUARE_MAX_TICKS = 150;
+const DUEL_EXCHANGE_BAND_WU = 190;
+const DUEL_EXCHANGE_MAX_TICKS = 66;
+const DUEL_PEEL_TICKS = 42;
 // Identity doctrines own their engagement band: factionBehavior.preferredRange would otherwise
 // re-flatten every identity onto its faction's sampled range and re-collapse the vocabulary.
 // The boss choreographies are staged the same way — the act table owns the standoff.
@@ -379,6 +403,10 @@ export class CombatDoctrineRuntime {
       updateShieldBreaker(record, tick, self, target, distance);
     } else if (doctrineId === CombatDoctrineId.DETONATOR_RUN) {
       updateDetonator(record, tick, self, target, distance);
+    } else if (doctrineId === CombatDoctrineId.ASSASSIN_MARK) {
+      updateAssassin(record, tick, self, target, distance);
+    } else if (doctrineId === CombatDoctrineId.DUEL_CHAMPION) {
+      updateDuelChampion(record, tick, self, target, distance);
     } else {
       updateRanged(record, tick, self, target, distance);
     }
@@ -739,6 +767,76 @@ function updateEscort(record, tick, perception, self, target, distance) {
   }
 }
 
+// The assassin's fight is one spent mark: shadow -> cue -> a single committed pass -> gone.
+// It never fires during the stalk (mark_cue is the only gun-adjacent beat and its window is
+// 'strike' alone) and it never flies a second pass on the same commitment — re-marking a
+// still-living target is a fresh cycle, not a wheel-back.
+function updateAssassin(record, tick, self, target, distance) {
+  const age = tick - record.phaseStartedTick;
+  if (record.phase === 'shadow') {
+    // The stalk holds off the lock band; once inside the shadow band — or when the stalk clock
+    // has run long enough that the contract is overdue — it locks the mark and cues.
+    if (distance <= ASSASSIN_SHADOW_BAND_WU || age >= ASSASSIN_SHADOW_MAX_TICKS) {
+      enter(record, 'mark_cue', tick, 'assassin_mark');
+    }
+    return;
+  }
+  if (record.phase === 'mark_cue') {
+    if (age >= DOCTRINE_TELEGRAPH_TICKS) enter(record, 'strike', tick, null);
+    return;
+  }
+  if (record.phase === 'strike') {
+    record.closestDistance = Math.min(record.closestDistance, distance);
+    if (strikeTimedOut(record, tick, age, distance, ASSASSIN_STRIKE_MAX_TICKS, ASSASSIN_STRIKE_BAND_WU)
+      || runHasPassed(record, self, target, distance)) {
+      // The mark is spent whether the pass landed or not — one resolved window is the contract.
+      beginEgress(record, 'withdraw', tick, self, target, 'mark_resolved');
+    }
+    return;
+  }
+  if (record.phase === 'withdraw') {
+    // The exit leg is the identity: the assassin leaves the fight after its pass instead of
+    // wheeling for another. Once clear it may re-mark a still-living target on a fresh cycle.
+    if (distance >= ASSASSIN_WITHDRAW_WU || age >= ASSASSIN_WITHDRAW_MAX_TICKS) beginReform(record, tick);
+    return;
+  }
+  if (record.phase === 'reform' && age >= INTERCEPTOR_REFORM_TICKS) advanceCycle(record, tick, 'shadow');
+}
+
+// The champion's fight is bounded exchanges around a ring: square -> announce -> exchange ->
+// peel. Rule-bound means the reset beat always lands — the peel after each pass is authored,
+// not a morale break — so the duel reads as rounds, not a grind.
+function updateDuelChampion(record, tick, self, target, distance) {
+  const age = tick - record.phaseStartedTick;
+  if (record.phase === 'square') {
+    // Approach to the ring edge and square up; a challenger that cannot close (spawn geometry,
+    // fast mark) still issues the challenge on the clock so the cue is never skipped.
+    if (distance <= DUEL_RING_WU || age >= DUEL_SQUARE_MAX_TICKS) {
+      enter(record, 'challenge_cue', tick, 'duel_challenge');
+    }
+    return;
+  }
+  if (record.phase === 'challenge_cue') {
+    if (age >= DOCTRINE_TELEGRAPH_TICKS) enter(record, 'exchange', tick, null);
+    return;
+  }
+  if (record.phase === 'exchange') {
+    record.closestDistance = Math.min(record.closestDistance, distance);
+    if (strikeTimedOut(record, tick, age, distance, DUEL_EXCHANGE_MAX_TICKS, DUEL_EXCHANGE_BAND_WU)
+      || runHasPassed(record, self, target, distance)) {
+      beginEgress(record, 'peel', tick, self, target, 'exchange_spent');
+    }
+    return;
+  }
+  if (record.phase === 'peel') {
+    // The bounded reset: win or lose, every exchange peels back to the ring before the next
+    // square — this is what the brawler's relentless commit deliberately lacks.
+    if (age >= DUEL_PEEL_TICKS) advanceCycle(record, tick, 'square');
+    return;
+  }
+  if (record.phase === 'reform' && age >= INTERCEPTOR_REFORM_TICKS) advanceCycle(record, tick, 'square');
+}
+
 /**
  * Any hostile inside the breach ring counts — the dart answers the PRESSURE on the ward, not one
  * specifically-selected hull (a capital at 261wu must not suppress the dart an armed light at
@@ -781,7 +879,7 @@ function pointWithin(self, point, rangeWu) {
 // from egressPhaseFor again.
 const PRESSURE_BREAK_EXCLUDED_PHASES = new Set([
   'extend', 'breakaway', 'escape', 'recover', 'retreat', 'reform', 'regroup', 'reset', 'broadside_shift',
-  'disengage', 'peel', 'relocate',
+  'disengage', 'peel', 'relocate', 'withdraw',
 ]);
 
 /**
@@ -829,6 +927,10 @@ function egressPhaseFor(record) {
   if (doctrineId === CombatDoctrineId.SHIELD_BREAKER) return 'peel';
   if (doctrineId === CombatDoctrineId.DETONATOR_RUN) return 'breakaway';
   if (doctrineId === CombatDoctrineId.RANGED_STALKER) return 'relocate';
+  // The assassin's egress IS the disengage — a disabled-target or pressure break lands on its
+  // authored withdraw leg, which updateAssassin advances like a completed mark.
+  if (doctrineId === CombatDoctrineId.ASSASSIN_MARK) return 'withdraw';
+  if (doctrineId === CombatDoctrineId.DUEL_CHAMPION) return 'peel';
   // The capital has no generic retreat machine: broadside_shift is its authored reposition beat
   // (timer exit back to broadside_charge), so a broken-off capital re-enters its cycle instead of
   // parking on a stale flightPoint in a phase updateCapitalBroadside never advances.
@@ -1249,7 +1351,7 @@ function enter(record, phase, tick, telegraphKind) {
     : null;
   record.telegraphStartedTick = telegraphKind ? tick : null;
     record.fireWindow = phase === 'strike' || phase === 'commit' || phase === 'fire_window'
-    || phase === 'press'
+    || phase === 'press' || phase === 'exchange'
     || phase === 'anchor_hold' || phase === 'broadside_fire'
     || phase === 'screen_hold' || phase === 'shield_dart'
     || phase === 'lance' || phase === 'mine_drop';
@@ -1522,6 +1624,51 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
         : phase === 'breakaway' ? 240
           : phase === 'reform' ? 300
             : 170;
+  } else if (doctrineId === CombatDoctrineId.ASSASSIN_MARK) {
+    // The shadow is a stalk: nose OFF the mark, closing from outside the lock band. The cue
+    // squares it; 'strike' is the only live gun phase; the withdraw leg keeps its egress range
+    // because a spent assassin leaving is the whole identity.
+    formationLocked = phase === 'reform';
+    lateralSign = phase === 'reform' ? 0 : record.side;
+    if (phase === 'withdraw') {
+      maneuverKind = ManeuverKind.INTERCEPT;
+      maneuverTargetId = null;
+    } else if (phase === 'reform') {
+      maneuverKind = ManeuverKind.FORMATION;
+      maneuverTargetId = null;
+    } else if (phase === 'strike') {
+      maneuverKind = ManeuverKind.ORBIT;
+      faceTarget = true;
+    } else if (phase === 'mark_cue') {
+      maneuverKind = ManeuverKind.INTERCEPT;
+      faceTarget = true;
+    } else {
+      maneuverKind = ManeuverKind.INTERCEPT;
+    }
+    preferredRange = phase === 'shadow' ? ASSASSIN_SHADOW_BAND_WU - 40
+      : phase === 'mark_cue' ? 320 : phase === 'withdraw' ? 240 : 150;
+    if (phase === 'strike') allowedActionId = 'action_burst';
+  } else if (doctrineId === CombatDoctrineId.DUEL_CHAMPION) {
+    // The ring owns the geometry: square holds the edge, the exchange is the committed pass,
+    // and every peel returns to the ring rather than pressing the advantage.
+    formationLocked = phase === 'reform';
+    lateralSign = phase === 'exchange' ? record.side : 0;
+    if (phase === 'peel') {
+      maneuverKind = ManeuverKind.INTERCEPT;
+      maneuverTargetId = null;
+    } else if (phase === 'reform') {
+      maneuverKind = ManeuverKind.FORMATION;
+      maneuverTargetId = null;
+    } else if (phase === 'exchange') {
+      maneuverKind = ManeuverKind.ORBIT;
+      faceTarget = true;
+    } else {
+      maneuverKind = phase === 'square' ? ManeuverKind.INTERCEPT : ManeuverKind.HOLD;
+      faceTarget = true;
+    }
+    preferredRange = phase === 'exchange' ? 170 : phase === 'peel' ? 240
+      : phase === 'square' ? DUEL_RING_WU : 280;
+    if (phase === 'exchange') allowedActionId = 'action_burst';
   } else {
     maneuverKind = phase === 'retreat' ? ManeuverKind.RETREAT
       : (phase === 'outer_standoff' || phase === 'reset' || phase === 'relocate' ? ManeuverKind.ORBIT : ManeuverKind.HOLD);
@@ -1536,7 +1683,7 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
   // Every phase egressPhaseFor can return: a doctrine parked on a disabled-target or pressure-break
   // egress must keep its egress range instead of falling back to the faction standoff band.
   const isEgress = phase === 'extend' || phase === 'breakaway' || phase === 'escape' || phase === 'recover'
-    || phase === 'retreat' || phase === 'disengage' || phase === 'peel'
+    || phase === 'retreat' || phase === 'disengage' || phase === 'peel' || phase === 'withdraw'
     || phase === 'regroup' || phase === 'broadside_shift' || phase === 'relocate';
   if (factionBehavior && !isEgress && !IDENTITY_OWNED_RANGE_DOCTRINES.has(doctrineId)) {
     preferredRange = factionBehavior.preferredRange;
@@ -1703,6 +1850,16 @@ function targetScore(doctrineId, contact, ward = null) {
     return threat * 4 + (3 - bandScore(contact.mobilityBand, ['low', 'medium', 'high'])) * 3 +
       bandScore(contact.cargoBand, ['empty', 'light', 'valuable', 'rich']);
   }
+  if (doctrineId === CombatDoctrineId.ASSASSIN_MARK) {
+    // The mark is the capable prey: fast and dangerous outranks fat and slow. The interceptor
+    // prefers the opposite — the contract is on the hull most likely to get away.
+    return threat * 5 + bandScore(contact.mobilityBand, ['low', 'medium', 'high']) * 3;
+  }
+  if (doctrineId === CombatDoctrineId.DUEL_CHAMPION) {
+    // A champion picks the strongest hull on the field — the duel is against the top threat,
+    // never the easy kill.
+    return threat * 6 + bandScore(contact.operationalMassBand, ['light', 'medium', 'heavy', 'capital']) * 2;
+  }
   return threat * 5 + (3 - bandScore(contact.mobilityBand, ['low', 'medium', 'high'])) * 2;
 }
 
@@ -1736,6 +1893,8 @@ function initialPhase(doctrineId) {
   if (doctrineId === CombatDoctrineId.ESCORT_SCREEN) return 'screen_approach';
   if (doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) return 'flank';
   if (doctrineId === CombatDoctrineId.SHIELD_BREAKER) return 'close';
+  if (doctrineId === CombatDoctrineId.ASSASSIN_MARK) return 'shadow';
+  if (doctrineId === CombatDoctrineId.DUEL_CHAMPION) return 'square';
   return 'ingress';
 }
 
@@ -1757,6 +1916,9 @@ function flightProfileFor(doctrineId, self) {
   // maneuverKind + preferredRange, and downstream consumers only know these profile strings.
   if (doctrineId === CombatDoctrineId.PACK_PURSUIT) return 'pack_pursuit';
   if (doctrineId === CombatDoctrineId.SWARM_PACK || doctrineId === CombatDoctrineId.SHIELD_BREAKER) return 'flyby';
+  // Both U2 identities are committed-pass machines: the motion vocabulary (close, strike, leave)
+  // is the flyby profile's, expressed through maneuverKind + preferredRange per phase.
+  if (doctrineId === CombatDoctrineId.ASSASSIN_MARK || doctrineId === CombatDoctrineId.DUEL_CHAMPION) return 'flyby';
   if (doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) return 'ranged_standoff';
   if (doctrineId === CombatDoctrineId.DETONATOR_RUN) return 'detonator_run';
   return 'ranged_standoff';
