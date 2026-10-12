@@ -29,6 +29,7 @@ import { SWARM_DRAFT_OFFERS } from '../src/data/swarmDraft.js';
 import {
   catalogBlurbFor,
   isArmoryStock,
+  isSwarmRelevantDef,
   swarmCatalogCoverage,
   swarmCatalogOffers,
   validateSwarmCatalog,
@@ -221,7 +222,7 @@ test('a swarm run walks loadout through the armory into wave 1', () => {
 
 // ── S6.4 — the shelf is exhaustive against the real def tables ───────────────
 
-test('the armory shelf covers every purchasable def the game ships', () => {
+test('the armory shelf covers every purchasable def that does something in a Swarm fight', () => {
   const authoredIds = new Set(
     SURVIVAL_DRAFT_OFFERS.concat(SWARM_DRAFT_OFFERS).map((offer) => offer.defId),
   );
@@ -231,6 +232,10 @@ test('the armory shelf covers every purchasable def the game ships', () => {
   const catalog = swarmCatalogOffers(authoredIds);
   const cataloged = new Set(catalog.map((row) => row.defId));
   for (const def of stock) {
+    if (!isSwarmRelevantDef(def)) {
+      assert.equal(cataloged.has(def.id), false, `${def.id} is adventure stock, off the Swarm shelf`);
+      continue;
+    }
     assert.ok(authoredIds.has(def.id) || cataloged.has(def.id),
       `${def.id} is buyable — authored card or catalog row`);
   }

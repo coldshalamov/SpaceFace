@@ -26,7 +26,7 @@ import { mulberry32 } from '../core/rng.js';
 import { MODULES } from './modules.js';
 import { SHIPS } from './ships.js';
 import { SWARM_DRAFT_OFFERS } from './swarmDraft.js';
-import { swarmCatalogOffers, swarmCategoryFor } from './swarmCatalog.js';
+import { isSwarmRelevantDef, swarmCatalogOffers, swarmCategoryFor } from './swarmCatalog.js';
 import { SWARM_RULESET } from './swarmMode.js';
 import { WEAPONS } from './weapons.js';
 import { buildSlotList, fits, outfitBudgetForFittings } from '../systems/ships.js';
@@ -408,6 +408,7 @@ function offerDraftInner(input) {
     // `fromWave`, the same gate the swarm enemy roster uses. Generated catalog rows are
     // wave-agnostic and carry no gate.
     if (Number.isInteger(offer.fromWave) && wave < offer.fromWave) continue;
+    if (src.ruleset === SWARM_RULESET && !isSwarmRelevantDef(def)) continue;
     // Swarm can build a battery of a favourite gun. Gauntlet keeps its variety-focused draft;
     // support modules remain distinct choices instead of stacking the same passive repeatedly.
     const duplicateGun = src.ruleset === SWARM_RULESET && def.slotType === 'weapon';

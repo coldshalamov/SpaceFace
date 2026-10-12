@@ -26479,7 +26479,7 @@ export const render = {
         );
         if (userData.lod && userData.updateLod) {
           lodChecked++;
-          lodLevel = isPlayer ? 'lod0' : userData.lod.resolve(projectedPx);
+          lodLevel = isPlayer ? 'lod0' : userData.lod.resolve(projectedPx, this.state.simTime);
           // Retain: same hysteresis band ⇒ updateLod is a no-op for picture. Asteroid/station
           // paths otherwise re-traverse detail surfaces every frame; ships already self-retain.
           if (SYNC_ENTITY_LOD_RETAIN === false || userData._appliedLodLevel !== lodLevel) {

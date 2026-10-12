@@ -303,6 +303,7 @@ export const tetherGameplay = {
           this.bus.on('combat:tumbled', (payload) => this._shareHelmLoss(payload)),
           this.bus.on('ai:doctrinePhase', (payload) => this._handleNPCBridleCounterplay(payload)),
           this.bus.on('pickup:collected', (payload) => this._onLatchedPayloadAcceptance(payload)),
+          this.bus.on('run:wavePlanned', (payload) => this._onSwarmRoundBoundary(payload)),
         ]
       : [];
     this._resetPhaseMirror();
@@ -374,7 +375,9 @@ export const tetherGameplay = {
 
     // The normalized input grammar has already resolved tap vs hold. Execute its cut in this same
     // tether tick; the legacy pending-cut path below remains for old tapes/direct harnesses.
-    if (this._active && !this._drillApproach && masslineCommand && masslineCommand.cut) {
+    if (!this._active) this._roundBoundaryCut = false;
+    if (this._active && !this._drillApproach && ((masslineCommand && masslineCommand.cut) || this._roundBoundaryCut)) {
+      this._roundBoundaryCut = false;
       this._cutActive(attachments, state, player, now);
       return;
     }
@@ -1910,6 +1913,17 @@ export const tetherGameplay = {
     });
     computeSweepCommit(blades, lines, commit);
     publishHostileSweepRead(state, read, commit);
+  },
+
+  // A Swarm round starts with a free ship. A line latched in the last round (often to a body the
+  // room has since settled or anchored) held the pilot at rest through the next round's opening:
+  // thrust against a held line read as dead controls. The line is cut the ordinary way, so the
+  // release is seen and heard like any other cut.
+  _onSwarmRoundBoundary(payload) {
+    const run = this.state && this.state.run;
+    const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run && run.wave;
+    if (!run || run.kind !== 'survival' || run.ruleset !== 'swarm' || !(wave > 1)) return;
+    if (this._active) this._roundBoundaryCut = true;
   },
 
   _cutActive(attachments, state, player, now) {

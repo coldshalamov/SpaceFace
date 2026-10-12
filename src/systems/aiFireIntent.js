@@ -55,6 +55,13 @@ export function applyAIFiringIntent(decision, state) {
   const aimCommit = combatDoctrine && combatDoctrine.aimCommit
     && Number.isFinite(combatDoctrine.aimCommit.bearing) ? combatDoctrine.aimCommit : null;
   const pdActor = isPdScreenActor(e);
+  // INF-028 arrival hold: the same data marker the legacy brain honours. A fresh arrival (or a
+  // hull a wave director has told to wait its turn) keeps flying and aiming but does not fire.
+  const holdUntil = Number(data.ai && data.ai.arrivalHoldUntil);
+  if (Number.isFinite(holdUntil) && Number.isFinite(state.simTime) && state.simTime < holdUntil) {
+    clearFire(intent, 'arrival_hold');
+    return;
+  }
 
   // W04: pd_screen_escort policy owns target selection, but never fire authorization.
   // A null selection is an explicit saturated/unavailable result, not permission to fall back

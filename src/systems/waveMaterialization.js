@@ -128,6 +128,74 @@ export function lawArenaBossDressing(arenaId, enemyId, role) {
  * The caller must treat a partly-admitted (or fully rejected) batch as DISPATCHED — a Survival wave
  * that waits for bodies the cap will never allow strands the player in `active` forever.
  */
+// Arrivals clear the field's rocks: a hull materialized inside a rock is shoved out by the
+// solver on its first tick and dies of the impact before the player has touched anything.
+const SPAWN_ROCK_CLEARANCE_WU = 24;
+const SPAWN_HULL_CLEARANCE_WU = 14;
+
+function spawnObstacleNeed(state, e) {
+  if (!e || e.alive === false || !e.pos) return 0;
+  // Hulls of the same batch are obstacles too: two bodies born a unit apart are thrown
+  // apart at hundreds of u/s by the solver and pay out a pile-up the player never caused.
+  const hull = (e.type === 'ship' || e.type === 'drone') && e.id !== state.playerId;
+  if (e.type !== 'asteroid' && !hull) return 0;
+  return (Number.isFinite(e.radius) ? e.radius : 10)
+    + (hull ? SPAWN_HULL_CLEARANCE_WU : SPAWN_ROCK_CLEARANCE_WU);
+}
+
+function overlapsObstacle(state, pos) {
+  for (const e of state.entities.values()) {
+    const need = spawnObstacleNeed(state, e);
+    if (need <= 0) continue;
+    const dx = pos.x - e.pos.x;
+    const dz = pos.z - e.pos.z;
+    if (dx * dx + dz * dz < need * need) return true;
+  }
+  return false;
+}
+
+function clearOfRocks(state, pos) {
+  const entities = state && state.entities;
+  if (!entities || typeof entities.values !== 'function') return pos;
+  const player = entities.get(state.playerId);
+  const ring = player && player.pos ? Math.hypot(pos.x - player.pos.x, pos.z - player.pos.z) : 0;
+  for (let pass = 0; pass < 4; pass++) {
+    let moved = false;
+    for (const e of entities.values()) {
+      const need = spawnObstacleNeed(state, e);
+      if (need <= 0) continue;
+      const dx = pos.x - e.pos.x;
+      const dz = pos.z - e.pos.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 >= need * need) continue;
+      const d = Math.sqrt(d2);
+      pos.x = e.pos.x + (d > 1e-6 ? dx / d : 1) * need;
+      pos.z = e.pos.z + (d > 1e-6 ? dz / d : 0) * need;
+      moved = true;
+    }
+    if (!moved) break;
+  }
+  // A shove never brings the arrival inside its gate ring: it steps back out along its bearing.
+  if (ring > 0) {
+    const rx = pos.x - player.pos.x;
+    const rz = pos.z - player.pos.z;
+    const r = Math.hypot(rx, rz);
+    if (r > 1e-6 && r < ring) {
+      const ux = rx / r;
+      const uz = rz / r;
+      let out = ring;
+      pos.x = player.pos.x + ux * out;
+      pos.z = player.pos.z + uz * out;
+      for (let step = 0; step < 40 && overlapsObstacle(state, pos); step++) {
+        out += 4;
+        pos.x = player.pos.x + ux * out;
+        pos.z = player.pos.z + uz * out;
+      }
+    }
+  }
+  return pos;
+}
+
 export function materializeWaveBatch(ctx, request) {
   const req = request || {};
   const requested = Number.isInteger(req.count) && req.count > 0 ? req.count : 0;
@@ -187,6 +255,7 @@ export function materializeWaveBatch(ctx, request) {
           z: anchor.z + Math.sin(angle) * radius,
         };
       }
+      clearOfRocks(ctx && ctx.state, pos);
       const spec = makeEnemySpawnSpec(req.enemyId, level, pos);
       if (!spec) continue;
       spec.data = spec.data || {};

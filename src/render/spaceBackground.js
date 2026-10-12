@@ -192,6 +192,9 @@ const HERO_DEPTH = 12;
 // budget, so planets never stack beside each other or beside the wormhole. See _refreshHeroes
 // for the admission/retirement rules that hold the single slot.
 const PLANET_PAR = 0.055;   // single parallax factor for planet placement (bg-space grid)
+// A Crucible round recedes the sky landmarks (ringed giant, stellar formation) so nothing behind the
+// fight competes with hostiles for the eye; they stay drawn, just quieter.
+const ARENA_BACKDROP_FOCUS = 0.38;
 const WORM_PAR = 0.10;
 const LOOK_BIAS_Z = 0.30;   // camera never yaws; view center sits ahead (+Z) of the camera point
 
@@ -2976,6 +2979,12 @@ export class SpaceBackground {
     const cx = Number.isFinite(camPos.x) ? camPos.x : 0;
     const cz = Number.isFinite(camPos.z) ? camPos.z : 0;
     this.camX = cx; this.camZ = cz;
+    const arenaRun = this.state && this.state.run;
+    const arenaTarget = arenaRun && arenaRun.kind === 'survival' && this.state.mode === 'flight'
+      ? ARENA_BACKDROP_FOCUS : 1;
+    this.arenaFocus = Number.isFinite(this.arenaFocus)
+      ? this.arenaFocus + (arenaTarget - this.arenaFocus) * (1 - Math.exp(-dt / 0.6))
+      : arenaTarget;
     const sectorTransitionActive = this._sectorTransition.active;
     this._updateSectorVisualTransition(dt);
 
@@ -3199,7 +3208,7 @@ export class SpaceBackground {
       p.sprite.position.x = p.spec.bx - cx * PLANET_PAR;
       p.sprite.position.z = p.spec.bz - cz * PLANET_PAR;
       // Fully integrated landmark (not a washed overlay).
-      p.mat.opacity = 1.0;
+      p.mat.opacity = Number.isFinite(this.arenaFocus) ? this.arenaFocus : 1.0;
     }
     if (this.wormhole) {
       this.wormhole.mesh.position.x = this.wormhole.spec.bx - cx * WORM_PAR;

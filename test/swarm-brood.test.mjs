@@ -20,6 +20,7 @@ import {
   swarmBroodIssues,
   swarmBroodPlan,
   swarmBroodPopulation,
+  BROOD_MAX_SPEED,
 } from '../src/data/swarmBrood.js';
 import { swarmKillCauseWord } from '../src/data/swarmJuice.js';
 import { createBroodPresentation } from '../src/render/broodPresentation.js';
@@ -200,6 +201,9 @@ test('brood die against rocks: contact death, terrain receipt, run pay', () => {
   };
   h.state.entityIndex.asteroids.push(rock);
   h.state.entityList.push(rock);
+  // Flung: a body driven into the rock far faster than it cruises (a blast, a well, a charge).
+  engine._bodies.vx[slot] = BROOD_MAX_SPEED;
+  engine._bodies.vz[slot] = 0;
   const before = engine.census().alive;
   stepSeconds(engine, h.state, DT);
   assert.ok(engine.census().alive < before, 'bodies on the rock died');
@@ -325,6 +329,8 @@ test('kill receipts speak the kill words and pay one credit a mite', () => {
     pos: { x, z }, vel: { x: 0, z: 0 }, radius: 20, mass: 99999,
   };
   h.state.entityIndex.asteroids.push(rock);
+  engine._bodies.vx[slot] = BROOD_MAX_SPEED;
+  engine._bodies.vz[slot] = 0;
   stepSeconds(engine, h.state, DT);
   const receipt = h.emitted.find((e) => e.event === 'swarm:broodKills');
   assert.ok(receipt);
@@ -453,4 +459,53 @@ test('per-frame allocation stays flat: buffers are retained, step allocates noth
     const growth = process.memoryUsage().heapUsed - base;
     assert.ok(growth < 262144, `six 2-second windows grew the heap by ${growth}B (ceiling 256KB)`);
   }
+});
+
+test('a body steering itself into a still rock slides along it instead of dying', () => {
+  const h = boot({ wave: 1 });
+  const engine = makeEngine(h);
+  engine.prepareWave(h.state.run, 1);
+  engine.spawnWave(h.state);
+  let slot = -1;
+  for (let i = 0; i < SWARM_BROOD_MAX; i++) if (engine._bodies.alive[i]) { slot = i; break; }
+  const rock = {
+    id: 9010, alive: true, type: 'asteroid', collides: true,
+    pos: { x: engine._bodies.px[slot] + 21, z: engine._bodies.pz[slot] },
+    vel: { x: 0, z: 0 }, radius: 20, mass: 99999,
+  };
+  h.state.entityIndex.asteroids.push(rock);
+  h.state.entityList.push(rock);
+  engine._bodies.vx[slot] = 20;
+  engine._bodies.vz[slot] = 0;
+  stepSeconds(engine, h.state, DT * 4);
+  assert.equal(engine._bodies.alive[slot], 1, 'a cruising body is not a kill');
+  assert.ok(Math.hypot(engine._bodies.px[slot] - rock.pos.x, engine._bodies.pz[slot] - rock.pos.z) >= rock.radius,
+    'the body was pushed out to the rock face');
+  assert.equal(h.emitted.filter((e) => e.event === 'swarm:broodKills' && e.payload.cause === 'terrain').length, 0);
+});
+
+test('arrivals never land inside a rock (no first-tick free kills)', () => {
+  const h = boot({ wave: 1 });
+  const engine = makeEngine(h);
+  // A rock field over every gate bearing at the arrival distance.
+  const player = h.state.entities.get(h.state.playerId);
+  const ax = player ? player.pos.x : 0;
+  const az = player ? player.pos.z : 0;
+  for (let k = 0; k < 24; k++) {
+    const a = (k / 24) * Math.PI * 2;
+    const rock = {
+      id: 9100 + k, alive: true, type: 'asteroid', collides: true,
+      pos: { x: ax + Math.cos(a) * 165, z: az + Math.sin(a) * 165 },
+      vel: { x: 0, z: 0 }, radius: 24, mass: 99999,
+    };
+    h.state.entityIndex.asteroids.push(rock);
+    h.state.entityList.push(rock);
+  }
+  engine.prepareWave(h.state.run, 1);
+  engine.spawnWave(h.state);
+  const born = engine.census().alive;
+  assert.ok(born > 0);
+  stepSeconds(engine, h.state, DT);
+  assert.equal(h.emitted.filter((e) => e.event === 'swarm:broodKills').length, 0, 'nobody died on arrival');
+  assert.equal(engine.census().alive, born);
 });

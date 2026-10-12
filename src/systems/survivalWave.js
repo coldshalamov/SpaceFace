@@ -46,6 +46,17 @@ export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
  * from its own arrival. A player who shoots the wasp waits one beat, not forty-five seconds.
  */
 export const OPENING_LESSON_RELEASE_TICKS = 3 * 60;
+// After the lesson the pack arrives in readable groups, a breath apart, instead of the whole
+// room landing on a new pilot inside one second.
+const OPENING_ARRIVAL_WINDOW_TICKS = 8 * 60;
+const OPENING_ARRIVAL_GAP_TICKS = 80;
+// Swarm fire shaping. A new pilot reads one or two guns, not ten: only the nearest few cohort
+// hulls are cleared to shoot at once (more each wave), a fresh arrival holds its guns for a beat,
+// and a hull the pilot just hit may always answer. Uses the AI's own arrival-hold marker.
+const SWARM_SHOOTERS_BY_WAVE = Object.freeze([2, 2, 3, 4, 5, 6, 6, 7, 8]);
+const SWARM_ARRIVAL_HOLD_S = 2.5;
+const SWARM_ROSTER_EVERY_TICKS = 30;
+const SWARM_RETURN_FIRE_S = 2;
 
 /**
  * SWARM REINFORCEMENT (PQ-135).
@@ -109,6 +120,15 @@ export function collectContentCatalogIssues(opts = {}) {
   return issues;
 }
 
+const SWARM_STRAGGLER_MAX = 2;
+const SWARM_STRAGGLER_LEASH_WU = 1800;
+const SWARM_STRAGGLER_GRACE_TICKS = 8 * 60;
+// The pack's last few lights kept their orbiting pursuit long after the round clock ran out, so a
+// round with three wasps circling at 70 u/s stayed open for two more minutes (player-truth
+// m6-active). Once the clock is spent they stop circling and commit to the pilot: a climax.
+const SWARM_LAST_STAND_MAX = 3;
+const SWARM_LAST_STAND_DOCTRINE = 'brawler_commit';
+
 function playerIsAlive(state) {
   if (!state || state.playerId == null || !state.entities || typeof state.entities.get !== 'function') {
     return false;
@@ -170,7 +190,10 @@ export const survivalWave = {
     this._cursor += 1;
     this._maybeReleaseOpeningLesson();
     this._dispatchDue();
+    this._shapeSwarmFire();
     this._reinforceSwarm(run);
+    this._releaseStragglers();
+    this._commitLastStand();
     this._publishWaveProgress();
     this._checkCleared(run);
   },
@@ -198,6 +221,9 @@ export const survivalWave = {
     this._plan = plan;
     this._swarm = swarm;
     this._pending = plan.schedule.map((entry, index) => ({ entry, index }));
+    // A later Swarm wave opens the same way the first one does after its lesson: batch by batch,
+    // a breath apart, so the escalation reads as packs arriving instead of one dump in 3 s.
+    if (swarm && wave > 1 && !plan.openingLesson) this._spaceOpeningArrivals();
     const rules = plan.completionRules || {};
     const roles = Array.isArray(rules.blockingRoles) ? rules.blockingRoles : [];
     this._blockingRoles = new Set(roles);
@@ -541,6 +567,7 @@ export const survivalWave = {
     if (!Number.isFinite(lesson.holdTicks) || this._cursor >= lesson.holdTicks) return;
     if (this._actionableCohortCount() > 0) return;
     this._lessonReleased = true;
+    this._lessonOpenedAt = this._cursor;
     const shift = lesson.holdTicks - (this._cursor + OPENING_LESSON_RELEASE_TICKS);
     if (shift > 0) {
       for (const item of this._pending) {
@@ -556,7 +583,79 @@ export const survivalWave = {
         this._swarm.durationTicks -= shift;
       }
     }
+    this._spaceOpeningArrivals();
     this._emit('run:openingLessonReleased', { wave: this._wave, tick: this._cursor });
+  },
+
+  _shapeSwarmFire() {
+    if (!this._swarm || !this._cohort || this._cohort.size === 0) return;
+    const state = this.state;
+    const entities = state && state.entities;
+    if (!entities || typeof entities.get !== 'function') return;
+    const player = entities.get(state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const live = [];
+    for (const [id, member] of this._cohort.entries()) {
+      const e = this._resolveCohortEntity(id, member);
+      if (!e || e.alive === false || !e.pos || !e.data || !e.data.ai) continue;
+      if (!Number.isFinite(member.armedAt)) {
+        member.armedAt = now + SWARM_ARRIVAL_HOLD_S;
+        e.data.ai.arrivalHoldUntil = Math.max(Number(e.data.ai.arrivalHoldUntil) || 0, member.armedAt);
+      }
+      live.push({ id, e, member });
+    }
+    if (this._cursor % SWARM_ROSTER_EVERY_TICKS !== 0) return;
+    const waveIdx = Math.max(0, Math.min(SWARM_SHOOTERS_BY_WAVE.length - 1, (this._wave | 0) - 1));
+    const cap = SWARM_SHOOTERS_BY_WAVE[waveIdx];
+    const rank = [];
+    for (const row of live) {
+      if (row.member.armedAt > now) continue;
+      const boss = this._bossIds && this._bossIds.has(row.id);
+      const answering = Number.isFinite(row.e.lastDamageT) && now - row.e.lastDamageT < SWARM_RETURN_FIRE_S;
+      const d = Math.hypot(row.e.pos.x - player.pos.x, row.e.pos.z - player.pos.z);
+      rank.push({ row, key: (boss ? 0 : answering ? 1 : 2), d });
+    }
+    rank.sort((a, b) => (a.key - b.key) || (a.d - b.d) || (a.row.id - b.row.id));
+    const holdUntil = now + (SWARM_ROSTER_EVERY_TICKS + 6) / 60;
+    for (let i = 0; i < rank.length; i++) {
+      const ai = rank[i].row.e.data.ai;
+      if (i < cap || rank[i].key === 0) {
+        if (Number(ai.arrivalHoldUntil) > now && ai.swarmFireHeld === true) delete ai.arrivalHoldUntil;
+        ai.swarmFireHeld = false;
+      } else {
+        ai.arrivalHoldUntil = Math.max(Number(ai.arrivalHoldUntil) || 0, holdUntil);
+        ai.swarmFireHeld = true;
+      }
+    }
+  },
+
+  /**
+   * The held batches would otherwise all land inside the release beat: a new pilot who just won
+   * the one-on-one meets the whole pack at once. Successive batches keep their order and their
+   * shared tick, a breath apart.
+   */
+  _spaceOpeningArrivals() {
+    const ticks = [];
+    const cursor = Number.isInteger(this._cursor) ? this._cursor : 0;
+    for (const item of this._pending) {
+      const entry = item && item.entry;
+      if (entry && Number.isInteger(entry.atTick) && entry.atTick > cursor) ticks.push(entry.atTick);
+    }
+    if (ticks.length < 2) return;
+    ticks.sort((x, y) => x - y);
+    const moved = new Map();
+    let prev = null;
+    for (const t of ticks) {
+      if (moved.has(t)) continue;
+      const next = prev == null ? t : Math.max(t, prev + OPENING_ARRIVAL_GAP_TICKS);
+      moved.set(t, next);
+      prev = next;
+    }
+    for (const item of this._pending) {
+      const entry = item && item.entry;
+      if (entry && moved.has(entry.atTick)) entry.atTick = moved.get(entry.atTick);
+    }
   },
 
   /**
@@ -575,7 +674,12 @@ export const survivalWave = {
     // remainder below stops arrivals after the earned clear; the armory owns that breathing room.
     const roomIsEmpty = this._cohort.size === 0 && this._pendingBodies() === 0;
     if (emergencyOnly && !roomIsEmpty) return;
-    if (!emergencyOnly && !roomIsEmpty && this._cursor - this._lastReinforceTick < this._reinforceGap) return;
+    let gap = this._reinforceGap;
+    if (lesson && Number.isFinite(lesson.holdTicks)) {
+      const openedAt = Number.isInteger(this._lessonOpenedAt) ? this._lessonOpenedAt : lesson.holdTicks;
+      if (this._cursor - openedAt < OPENING_ARRIVAL_WINDOW_TICKS) gap = Math.max(gap, OPENING_ARRIVAL_GAP_TICKS);
+    }
+    if (!emergencyOnly && !roomIsEmpty && this._cursor - this._lastReinforceTick < gap) return;
 
     // Current rounds build pressure with resolved quota progress. Timed plans use elapsed
     // time only for compatibility with older saved/replay plans.
@@ -717,6 +821,62 @@ export const survivalWave = {
     return count;
   },
 
+  /**
+   * The pack's last one or two bodies, left far behind a pilot who has outrun them (no drag:
+   * a new pilot drifts thousands of units without meaning to), would otherwise hold a won
+   * round open forever. Once they have stayed past the leash — well off screen — for the
+   * grace window, they break off and leave the field: removed out of sight, resolved by the
+   * destroyed receipt, never paid out as a kill.
+   */
+  _releaseStragglers() {
+    if (!this._swarm || !this._swarm.killTarget || !this._cohort || this._cohort.size === 0) return;
+    if (this._admittedTotal < this._plannedBodies || (this._pending && this._pending.length)) return;
+    const helpers = this.helpers;
+    const state = this.state;
+    if (!helpers || typeof helpers.removeEntity !== 'function' || !state || !state.entities) return;
+    const player = state.entities.get(state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    const actionable = [];
+    for (const [id, member] of this._cohort.entries()) {
+      if (this._isCohortMemberActionable(id, member)) actionable.push([id, member]);
+      if (actionable.length > SWARM_STRAGGLER_MAX) return;
+    }
+    const leash2 = SWARM_STRAGGLER_LEASH_WU * SWARM_STRAGGLER_LEASH_WU;
+    for (const [id, member] of actionable) {
+      if (this._bossIds && this._bossIds.has(id)) continue;
+      const entity = this._resolveCohortEntity(id, member);
+      if (!entity || !entity.pos) continue;
+      const data = entity.data || {};
+      if (data.isBoss === true || data.bossId != null) continue;
+      const dx = entity.pos.x - player.pos.x;
+      const dz = entity.pos.z - player.pos.z;
+      if (dx * dx + dz * dz < leash2) { member.strayTicks = 0; continue; }
+      member.strayTicks = (member.strayTicks || 0) + 1;
+      if (member.strayTicks >= SWARM_STRAGGLER_GRACE_TICKS) helpers.removeEntity(id);
+    }
+  },
+
+  _commitLastStand() {
+    if (!this._swarm || !this._swarm.killTarget || !this._cohort || this._cohort.size === 0) return;
+    if (this._admittedTotal < this._plannedBodies || (this._pending && this._pending.length)) return;
+    if (this._elapsedSeconds() < this._durationSeconds()) return;
+    const rows = [];
+    for (const [id, member] of this._cohort.entries()) {
+      if (!this._isCohortMemberActionable(id, member)) continue;
+      rows.push([id, member]);
+      if (rows.length > SWARM_LAST_STAND_MAX) return;
+    }
+    for (const [id, member] of rows) {
+      if (this._bossIds && this._bossIds.has(id)) continue;
+      const entity = this._resolveCohortEntity(id, member);
+      const data = entity && entity.data;
+      if (!data || !data.ai || data.ai.swarmLastStand === true) continue;
+      if (data.isBoss === true || data.bossId != null) continue;
+      data.ai.combatDoctrineId = SWARM_LAST_STAND_DOCTRINE;
+      data.ai.swarmLastStand = true;
+    }
+  },
+
   _actionableCohortCount() {
     if (!this._cohort || this._cohort.size === 0) return 0;
     let count = 0;
@@ -811,6 +971,7 @@ export const survivalWave = {
     this._reinforceIndex = 0;
     this._lastReinforceTick = -9999;
     this._lessonReleased = false;
+    this._lessonOpenedAt = null;
     this._bossIds = new Set();
     // A capital champion's fight record never outlives its wave: terminal, surviving or
     // run-ended, the next wave (or teardown) starts from an empty fight ledger.

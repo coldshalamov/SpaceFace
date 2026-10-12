@@ -783,6 +783,9 @@ function liveSurvivalRun(state) {
   return run;
 }
 
+// Seconds a later round's field law waits after the round is planned: the intro plus the arrivals.
+const ROUND_FIELD_BREATH_S = 4;
+
 function simTimeOf(state) {
   return Number.isFinite(state && state.simTime)
     ? state.simTime
@@ -949,6 +952,28 @@ function makeRosterPrewarmSpec(enemyId) {
   return spec;
 }
 
+// A room solid is immovable. Stamped over the pilot (a later round's room is laid out around wherever
+// the ship sits), it pinned the ship inside a fixed body: thrust built speed for a few frames, then the
+// solver snapped the hull back to rest - the owner's round-2 "could not move" (player-truth m2-active,
+// station solid at 2 u from the ship). The toy keeps its place in the room's grammar, pushed straight out
+// from the ship until it clears the hull with a margin.
+const ROOM_SOLID_PILOT_CLEARANCE = 24;
+function clearOfPilot(state, at, radius) {
+  const pos = { x: at.x, z: at.z };
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  if (!player || player.alive === false || !player.pos) return pos;
+  const need = radius + (Number.isFinite(player.radius) ? player.radius : 10) + ROOM_SOLID_PILOT_CLEARANCE;
+  const dx = pos.x - player.pos.x;
+  const dz = pos.z - player.pos.z;
+  const d = Math.hypot(dx, dz);
+  if (d >= need) return pos;
+  const ux = d > 1e-3 ? dx / d : 1;
+  const uz = d > 1e-3 ? dz / d : 0;
+  return { x: player.pos.x + ux * need, z: player.pos.z + uz * need };
+}
+
 export const survivalArena = {
   name: 'survivalArena',
 
@@ -999,6 +1024,11 @@ export const survivalArena = {
     // functions below and their six tests are ready and stay covered meanwhile.
     // ---------------------------------------------------------------------------------------
     this._unsubs.push(this.bus.on('run:waveCleared', () => this._teardown('wave_cleared')));
+    this._unsubs.push(this.bus.on('run:openingLessonReleased', () => {
+      const deferred = this._deferredFields;
+      this._deferredFields = null;
+      if (deferred) this._installFields(deferred);
+    }));
     this._unsubs.push(this.bus.on('run:ended', () => {
       // Mirrors the renderer's _releaseSurvivalRosterPrewarm('run_ended'): the roots are gone,
       // so the ledger that says "already warm" has to go with them.
@@ -1082,6 +1112,7 @@ export const survivalArena = {
     } else if (this._lawId === STORM_ARENA_ID) {
       this._tickStorm(st);
     }
+    this._releaseRoundFields(st);
     if (this._swarmEvents) this._swarmEvents.update(_dt, st);
     this._tickToys(_dt, st);
   },
@@ -1152,7 +1183,17 @@ export const survivalArena = {
       this._authoredStrength = cone && Number.isFinite(cone.strength) ? cone.strength : 0;
     }
     this._installedFields = Array.isArray(install.fields) ? install.fields.slice() : [];
-    this._installFields(install.fields);
+    // The opening lesson is a still room: one hostile, one rock, nothing drifting. The room's
+    // law (a sag, a shove) arrives with the pack — otherwise it drags the furniture into the
+    // lone hostile before the pilot has touched a key and the round plays itself.
+    // Every later Swarm round opens the same way: the room's law waits out the arrival breath, so a rock
+    // the field would sling is not already flying into the next pack before the pilot can see it.
+    this._deferredUntil = null;
+    if (plan.openingLesson && wave <= 1) this._deferredFields = install.fields;
+    else if (wave > 1 && run.ruleset === 'swarm' && Array.isArray(install.fields) && install.fields.length > 0) {
+      this._deferredFields = install.fields;
+      this._deferredUntil = simTimeOf(state) + ROUND_FIELD_BREATH_S;
+    } else this._installFields(install.fields);
     this._installMines(install.mines);
     this._installCover(install.cover || run.ruleset === 'swarm', wave);
     this._installToys(install);
@@ -1461,9 +1502,21 @@ export const survivalArena = {
     }
   },
 
+  _releaseRoundFields(state) {
+    if (!this._deferredFields || !Number.isFinite(this._deferredUntil)) return;
+    if (simTimeOf(state) < this._deferredUntil) return;
+    const deferred = this._deferredFields;
+    this._deferredFields = null;
+    this._deferredUntil = null;
+    this._installFields(deferred);
+  },
+
   _tickToys(dt, state) {
     const toys = this._toys;
     if (!toys || toys.length === 0) return;
+    // The opening lesson is a still room: the crushers and currents that shove bodies arrive
+    // with the room's fields, when the lesson releases the pack — not before the first key.
+    const roomStill = this._deferredFields != null;
     const step = Number.isFinite(dt) && dt > 0 ? dt : ARENA_TOY_DT;
     const elapsed = simTimeOf(state) - (this._installedAt || 0);
     const fields = this._installedFields || [];
@@ -1473,6 +1526,7 @@ export const survivalArena = {
     for (let i = 0; i < toys.length; i++) {
       const toy = toys[i];
       if (!toy) continue;
+      if (roomStill && (toy.kind === 'crusher' || toy.kind === 'current')) continue;
       if (toy.kind === 'crusher') {
         for (let b = 0; b < bodies.length; b++) {
           const entity = bodies[b];
@@ -1571,10 +1625,11 @@ export const survivalArena = {
         ? Math.max(1, Number.isFinite(toy.mass) ? toy.mass : SHUTTER_MASS)
         : Math.max(400, Math.round(radius * radius * 2.5));
       const hull = 100000 + Math.round(radius * 40);
+      const pos = clearOfPilot(state, toy.pos, radius);
       const entity = helpers.spawnEntity({
         type: 'station',
         id: solidId,
-        pos: { x: toy.pos.x, z: toy.pos.z },
+        pos,
         vel: { x: 0, z: 0 },
         angVel: 0,
         radius,
@@ -1723,6 +1778,8 @@ export const survivalArena = {
 
   _reset() {
     this._fieldIds = [];
+    this._deferredFields = null;
+    this._deferredUntil = null;
     this._mineIds = [];
     this._encounterId = null;
     this._phase = null;
