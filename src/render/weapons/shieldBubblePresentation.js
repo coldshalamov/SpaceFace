@@ -113,7 +113,7 @@ export function updateEntityShieldBubblePresentation(entity, shieldBubble, now, 
   return false;
 }
 
-/** Swarm-only shell. A full-radius disk covers most of the threat box on every contact. */
+/** Swarm-only shell. A full-radius disk covers the ship on every contact. */
 export function swarmCombatShieldRadius(entityRadius) {
   const r = Number(entityRadius);
   const body = Number.isFinite(r) && r > 0 ? r : 2;

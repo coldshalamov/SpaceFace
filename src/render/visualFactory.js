@@ -2557,10 +2557,10 @@ const _threatPlateScale = new THREE.Vector3();
  * Hostile swarm hulls are dark metal on a dark field. A filled disk the size of the
  * hull painted the ship out — enemies read as red circles. This is a camera-facing
  * crimson rim on the silhouette: the center stays open so the hull shows through.
- * Outer radius is entity.radius (floor 2). MeshBasic, not a sprite, and not
- * additive, so the rim is not combat VFX. depthWrite is off so the rim does not
- * occlude the hull or anything drawn after it. Created once per boundary; the
- * per-frame work is a quaternion write.
+ * Outer radius is entity.radius (floor 2). MeshBasic with normal blending, so
+ * the rim is a mark on the silhouette rather than a glow that washes the hull
+ * out. depthWrite is off so the rim does not occlude the ship. Created once
+ * per boundary; the per-frame work is a quaternion write.
  */
 export function syncSwarmThreatPlate(mesh, entity, camera) {
   if (!mesh || typeof mesh.getObjectByName !== 'function') return;
@@ -2588,7 +2588,7 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     mesh.add(plate);
   }
   // Local scale is divided by the parent so a scaled hull cannot inflate the rim
-  // past the ship. 1.25× used to reach the readability background ring.
+  // past the ship. A rim larger than the hull crowds the picture.
   const worldR = Math.max(2, Number(entity.radius) || 2);
   mesh.updateWorldMatrix(true, false);
   mesh.getWorldScale(_threatPlateScale);

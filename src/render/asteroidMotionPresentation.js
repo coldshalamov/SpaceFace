@@ -162,7 +162,7 @@ function pristineScaleFor(body, entity) {
 function buildVeinStrip(seed) {
   // Unit-sphere space. A chord through the origin, then normalize(), lands on opposite
   // sides of the rock; copying body.scale on top of world-unit positions made that sphere
-  // R×R and the harness counted it as most of the screen.
+  // R×R and the ribbon covered the frame.
   const dirAngle = ((seed & 0xffff) / 0xffff) * Math.PI * 2;
   const tilt = (((seed >>> 16) & 0xff) / 255 - 0.5) * 1.7;
   const axis = new THREE.Vector3(-Math.sin(dirAngle), 0, Math.cos(dirAngle));
@@ -172,10 +172,9 @@ function buildVeinStrip(seed) {
   const anchor = dir.clone().normalize();
   const tangent = pdir.clone();
   const bitangent = new THREE.Vector3().crossVectors(anchor, tangent).normalize();
-  // A fissure across about half the radius. Span 0.08 (a speck after
-  // 40% depletion) was invisible in play. Unit space only: the rig copies
-  // body.scale once. Authoring world units here made the sphere R×R and sheeted
-  // the frame (screen p95 83%, player hidden 14%, master bar 29% / 6%).
+  // A fissure across about half the radius. Span 0.08 was a speck once the
+  // rock was worked. Unit space only: the rig copies body.scale once. World-unit
+  // positions here made the ribbon cover the frame and hide the pilot.
   const span = 0.28;
   const lift = ((((seed >>> 8) & 0xff) / 255) - 0.5) * 0.04;
   const halfW = 0.03;

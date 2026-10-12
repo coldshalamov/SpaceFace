@@ -79,7 +79,7 @@ export function projectedWidthPx(pos, radius, camera, viewport) {
  * current level ('lod0'|'lod1'|'lod2') with hysteresis applied. Each asset's per-frame hook reads the
  * level and decides what to show/hide — this module owns only the selection, never the geometry.
  *
- * @returns {{ resolve(px:number, nowS?:number, sharedSwaps?:number[]):'lod0'|'lod1'|'lod2', level:string, lastPx:number }}
+ * @returns {{ resolve(px:number):'lod0'|'lod1'|'lod2', level:string, lastPx:number }}
  */
 export function createLodState() {
   let level = 'lod0';
@@ -91,14 +91,9 @@ export function createLodState() {
     get level() { return level; },
     get lastPx() { return lastPx; },
     get swapTimes() { return swaps.slice(); },
-    // sharedSwaps, when passed, is the only book. The first untimed commit is
-    // recorded there too: a new resolver must not spend a free swap the entity
-    // already used. Callers that omit it keep the untimed first commit.
-    resolve(px, nowS, sharedSwaps) {
+    resolve(px, nowS) {
       const width = Number(px);
       if (!Number.isFinite(width)) return level;
-      const book = Array.isArray(sharedSwaps) ? sharedSwaps : null;
-      const swapsBook = book || swaps;
       const timed = Number.isFinite(nowS) && lastPx !== Infinity;
       const presented = level;
       // Hysteresis: only change level when px moves HYSTERESIS_PX past the current level's boundary.
@@ -111,25 +106,7 @@ export function createLodState() {
         if (width > LOD_THRESHOLDS.LOD2_BELOW + lodBand(LOD_THRESHOLDS.LOD2_BELOW)) level = 'lod1';
       }
       lastPx = width;
-      if (level === presented) {
-        pendingLevel = null;
-        return level;
-      }
-      if (!timed && !book) {
-        pendingLevel = null;
-        return level;
-      }
-      if (!Number.isFinite(nowS)) {
-        pendingLevel = null;
-        return level;
-      }
-      if (!timed && book) {
-        while (swapsBook.length > 0 && nowS - swapsBook[0] >= LOD_SWAP_WINDOW_S) swapsBook.shift();
-        if (swapsBook.length >= LOD_SWAP_CAP) {
-          level = presented;
-          return level;
-        }
-        swapsBook.push(nowS);
+      if (!timed || level === presented) {
         pendingLevel = null;
         return level;
       }
@@ -141,12 +118,12 @@ export function createLodState() {
         level = presented;
         return level;
       }
-      while (swapsBook.length > 0 && nowS - swapsBook[0] >= LOD_SWAP_WINDOW_S) swapsBook.shift();
-      if (swapsBook.length >= LOD_SWAP_CAP) {
+      while (swaps.length > 0 && nowS - swaps[0] >= LOD_SWAP_WINDOW_S) swaps.shift();
+      if (swaps.length >= LOD_SWAP_CAP) {
         level = presented;
         return level;
       }
-      swapsBook.push(nowS);
+      swaps.push(nowS);
       pendingLevel = null;
       return level;
     },

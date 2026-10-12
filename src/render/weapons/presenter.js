@@ -6,7 +6,6 @@ import {
 } from '../forceLanguage/weaponDischargePool.js';
 import { resolveVfxAccessibilityProfile } from '../vfxAccessibility.js';
 import { EnergyBoltPool } from './energyBoltPool.js';
-import { ProjectileReadCores, projectileReadCoreActive } from './projectileReadCore.js';
 import { HeavyImpactVfx } from './heavyImpactVfx.js';
 import { WeaponRibbonPool } from './ribbonPool.js';
 import { DistortionField } from './distortionField.js';
@@ -151,7 +150,6 @@ export class WeaponVfxPresenter {
         return target;
       };
     this.bolts = new EnergyBoltPool(this.scene);
-    this.readCores = new ProjectileReadCores(this.scene);
     this.discharges = new WeaponDischargePool(this.scene);
     this.heavyImpacts = new HeavyImpactVfx(this.scene);
     this._motorMeshes = new WeakSet();
@@ -528,7 +526,6 @@ export class WeaponVfxPresenter {
 
   _syncBolts(entities, alpha, camera, dt = 0, accessibilityProfile = this._a11y()) {
     this.bolts.beginFrame(dt, accessibilityProfile);
-    this.readCores.begin();
     _seen.clear();
     const camPos = camera && camera.position;
     const state = this.state;
@@ -634,20 +631,11 @@ export class WeaponVfxPresenter {
         bolt.prevX = bolt.x; bolt.prevZ = bolt.z;
       }
       this.bolts.writeBolt(bolt);
-      if (projectileReadCoreActive(state) && recipe.flight.mode === FLIGHT_MODE.ENERGY_CARD) {
-        this.readCores.write(
-          currLocal.x, y, currLocal.z,
-          finiteOr(entity.radius, 1),
-          this._flightColors.core,
-          camera,
-        );
-      }
     }
     for (const [entityId] of this.ribbons.byEntity) {
       if (!_seen.has(entityId)) this.ribbons.release(entityId);
     }
     this.bolts.commit();
-    this.readCores.commit();
   }
 
   _updateNearMiss(dt, entities, alpha, camera) {
@@ -1039,7 +1027,6 @@ export class WeaponVfxPresenter {
   getOwnerRoots() {
     return [
       this.bolts.mesh,
-      this.readCores.mesh,
       this.discharges.mesh,
       this.heavyImpacts.mesh,
       this.ribbons.mesh,
@@ -1066,7 +1053,6 @@ export class WeaponVfxPresenter {
     this._graph = null;
     clearShieldContacts();
     this.bolts.dispose();
-    if (this.readCores) this.readCores.dispose();
     this.discharges.dispose();
     this.heavyImpacts.dispose();
     this.ribbons.dispose();

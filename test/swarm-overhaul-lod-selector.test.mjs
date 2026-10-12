@@ -27,28 +27,6 @@ test('an entity presents at most LOD_SWAP_CAP changes per window', () => {
   assert.equal(lod.resolve(90, 2.6 + LOD_SWAP_WINDOW_S + 0.1), 'lod1', 'window rolled');
 });
 
-test('without a shared book the first commit stays untimed', () => {
-  const lod = createLodState();
-  assert.equal(lod.resolve(20, 0), 'lod1');
-  assert.equal(lod.swapTimes.length, 0);
-});
-
-test('a shared book counts the first commit and caps every resolver for that entity', () => {
-  const book = [];
-  const a = createLodState();
-  assert.equal(a.resolve(20, 0, book), 'lod1');
-  assert.equal(book.length, 1);
-  assert.equal(a.swapTimes.length, 0, 'the shared book is the only record');
-  const b = createLodState();
-  assert.equal(b.resolve(20, 1, book), 'lod1');
-  assert.equal(book.length, 2);
-  const c = createLodState();
-  assert.equal(c.resolve(20, 2, book), 'lod0', 'a third resolver holds once the entity book is full');
-  assert.equal(book.length, LOD_SWAP_CAP);
-  assert.equal(a.resolve(200, 3, book), 'lod1', 'dwell not served');
-  assert.equal(a.resolve(200, 3 + LOD_DWELL_S + 0.01, book), 'lod1', 'cap holds the presented level');
-});
-
 test('the swap cap follows the entity across family roots (adopt carries the history)', async () => {
   const { createLodState, LOD_SWAP_CAP, LOD_DWELL_S, LOD_THRESHOLDS } = await import('../src/render/lod.js');
   const far = LOD_THRESHOLDS.LOD2_BELOW * 0.5;

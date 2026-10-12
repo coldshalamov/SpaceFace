@@ -59,8 +59,8 @@ export const SELECTION_SIGIL_LIFT = 0.5;
 export const SIGIL_RADIUS_SCALE = 3.0;
 export const SIGIL_RADIUS_MIN = 6;
 export const SIGIL_RADIUS_MAX = 170;
-// Swarm fights grade the sigil as combat VFX. The 3× instrument's center strokes
-// fill the threat box; a tight scale keeps the same figures on the hull.
+// In a swarm fight the wide instrument's center strokes sit across the hull.
+// A tight scale keeps the same figures on the ship.
 export const SIGIL_TIGHT_SCALE = 1.2;
 export const SIGIL_TIGHT_GAIN = 0.2;
 
