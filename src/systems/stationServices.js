@@ -322,6 +322,15 @@ export const stationServices = {
    * spec: { type:'refuel'|'repair', units, stationId, meta } — meta fields pass through to the
    * completion receipt (cost, beforeProtection, restored* targets for repair).
    */
+  /** The live yard already owns this service: read before economy charges again.
+   * A different service may queue behind it; a completed partial fill can be topped up. */
+  pendingPlayerJob(type, stationId) {
+    if (!isProductionDocked(this.state) || this.state.ui.dockedStationId !== stationId) return null;
+    const player = this.state.stationServices && this.state.stationServices.player;
+    if (!player || player.stationId !== stationId || !Array.isArray(player.jobs)) return null;
+    return player.jobs.find((job) => job && job.type === type && job.applied < job.total) || null;
+  },
+
   enqueuePlayerJob(spec) {
     const state = this.state;
     if (!isProductionDocked(state)) return false;

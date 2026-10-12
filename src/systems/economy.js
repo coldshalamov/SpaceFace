@@ -4071,6 +4071,24 @@ export const economy = {
         return;
       }
     }
+    // A delayed pump/weld has not changed the tank/hull yet. Re-quoting that same
+    // deficit would sell the identical work twice (or stack emergency-fuel debt).
+    // Refuse before any credit/debt mutation; returning false from enqueue alone
+    // would incorrectly fall through to the legacy instant-delivery branch.
+    if (type === 'refuel' || type === 'repair') {
+      const yard = this._serviceYard();
+      const stationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null;
+      const pending = yard && typeof yard.pendingPlayerJob === 'function'
+        ? yard.pendingPlayerJob(type, stationId) : null;
+      if (pending) {
+        const label = type === 'refuel' ? 'Refuel' : 'Repair';
+        this.bus.emit('toast', {
+          text: label + (pending.status === 'active' ? ' already underway' : ' already queued') + ' at this yard',
+          kind: 'info', ttl: 3,
+        });
+        return;
+      }
+    }
     if (type === 'refuel') {
       const fuel = state.fuel || (state.fuel = { current: 0, max: 100 });
       const want = p.amount != null ? p.amount : (fuel.max - fuel.current);
