@@ -38,7 +38,8 @@ import { readCadencePair, rateCadenceTechnique } from './masslineControlLaw.js';
 import { resolveActionLabel } from './input.js';
 import { fitFeelRowFor, pickFitFelt } from '../onboarding/fitFeel.js';
 import { WEAPONS } from '../data/weapons.js';
-import { getDerivedStats } from './ships.js';
+import { buildSlotList, exclusivityRepMet, fits, getDerivedStats, stationShopOffer } from './ships.js';
+import { SHIPS } from '../data/ships.js';
 import { substanceFor } from '../core/physicsAuthority.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
@@ -337,7 +338,7 @@ export const BEATS = [
     key: 'choice',
     line: 'Pick the work that fits.',
     followups: [
-      { on: 'sold', line: "Board's got one job for you." },
+      { on: 'sold', line: "The board's holding work that fits." },
     ],
     done: 'mission:accepted',
   },
@@ -477,10 +478,20 @@ export const onboarding = {
       this._dockControlInRange = false;
       this._demoFittedThisDock = null;
       this._onBeatEvent('dock:docked', p);
+      // A berth arrival after the rail still earns the rack pointer — during the rail the B5
+      // line owns this same floor, so the sale/payout triggers below carry it there instead.
+      if (!this._tutorialRailOwnsVoice()) this._maybeSpeakFitOffer(p && p.stationId);
     });
     bus.on('economy:tradeCompleted', (p) => {
-      if (p && p.side === 'sell') this._onBeatEvent('sold', p);
+      if (!p || p.side !== 'sell') return;
+      // The earned rack pointer outranks the generic board pointer: a sale that closes an
+      // offer's price gap names the exact module it buys. _maybeSpeakFitOffer spends the
+      // static followup itself, so one sale never plays two guidance lines — including a
+      // sale whose contract payout already spoke the pointer via economy:grantCredits.
+      this._maybeSpeakFitOffer(p.stationId);
+      this._onBeatEvent('sold', p);
     });
+    bus.on('economy:grantCredits', () => this._maybeSpeakFitOffer());
     bus.on('mining:start', (p) => this._onBeatEvent('mining:start', p || {}));
     bus.on('mining:yield', (p) => this._recordTrainingOreYield(p || {}));
     bus.on('pickup:collected', (p) => this._recordOreCollected(p || {}));
@@ -977,6 +988,84 @@ export const onboarding = {
     if (state.ui && state.ui.docked) return;
     if (this._tutorialRailOwnsVoice()) return;
     this._maybeSpeakFitFelt();
+  },
+
+  // SR-01 earned rack pointer. A berth event — a sale, a docked payout, or an arrival after
+  // the rail — that leaves the pilot able to afford a verb-changing module on THIS station's
+  // rack earns one line naming it. The pointer is earned, not scripted: the candidate must be
+  // a real hull-compatible offer actually in reach under the same gates the purchase row
+  // applies, unowned, and verb-changing, and the line spends itself once per profile.
+  _fitOfferCandidate(stationId) {
+    const st = this.state;
+    const player = st && st.player;
+    if (!stationId || !player) return null;
+    const owned = Array.isArray(player.ownedShips) ? player.ownedShips[player.activeShipIndex || 0] : null;
+    const shipDefId = typeof owned === 'string' ? owned : owned && owned.defId;
+    const shipDef = SHIPS.find((hull) => hull && hull.id === shipDefId);
+    if (!shipDef) return null;
+    const fittings = (owned && typeof owned === 'object' && Array.isArray(owned.fittings)) ? owned.fittings : [];
+    const held = new Set();
+    for (const id of fittings) if (id) held.add(id);
+    for (const item of player.moduleInventory || []) {
+      const invId = item && typeof item === 'object' ? item.defId : item;
+      if (invId) held.add(invId);
+    }
+    const slots = buildSlotList(shipDef);
+    const researched = new Set(player.researchedNodes || player.researched || []);
+    const credits = Math.max(0, Number(player.credits) || 0);
+    let best = null;
+    for (const def of FIT_FEEL_DEFS.values()) {
+      if (held.has(def.id)) continue;
+      const offer = stationShopOffer(def, stationId);
+      if (!offer) continue;
+      // Same gates describeOutfittingPurchase applies: standing lock, research/offer unlock,
+      // a slot this hull can take, and the real offer price against real credits.
+      if (def.exclusivity && !exclusivityRepMet(def.exclusivity, st.factions)) continue;
+      // (offer is non-null here, so the purchase row's off-rack research exemption applies.)
+      if (def.requiresTech && !researched.has(def.requiresTech) && def.exclusivity) continue;
+      if (!slots.some((slot) => fits(slot, def))) continue;
+      if (credits < offer.price) continue;
+      // The swing drive extends the latch the tutorial already taught, so it leads; the
+      // cheapest remaining verb-fit is the honest tiebreak.
+      const rank = [def.mods && def.mods.swingDrive ? 0 : 1, offer.price];
+      if (!best || rank[0] < best.rank[0] || (rank[0] === best.rank[0] && rank[1] < best.rank[1])) {
+        best = { def, rank };
+      }
+    }
+    return best && best.def;
+  },
+
+  _maybeSpeakFitOffer(stationId) {
+    const st = this.state;
+    const player = st && st.player;
+    const ob = st && st.onboarding;
+    if (!player) return '';
+    const berth = stationId || (st.ui && st.ui.dockedStationId);
+    if (!berth) return '';
+    if (stationId == null) {
+      const berthed = !!(st.ui && (st.ui.docked === true || st.ui.dockedStationId != null))
+        || st.mode === 'station';
+      if (!berthed) return '';
+    }
+    if (!ob || (!ob.active && !ob.finished)) return '';
+    // The voice cannot speak in these modes — spending the flag first would eat the pointer
+    // without ever showing it (same gates _showHint applies).
+    if (st.settings && st.settings.gameplay && st.settings.gameplay.tutorialHints === false) return '';
+    if (isRacingCorridorSession(st)) return '';
+    if (st.run?.kind === 'survival' && st.run.phase !== 'inactive') return '';
+    if (player.hints && player.hints.fitOffer) return '';
+    const def = this._fitOfferCandidate(berth);
+    if (!def) return '';
+    if (!player.hints) player.hints = {};
+    player.hints.fitOffer = true;
+    // The earned line supersedes B5's generic board followup whichever berth event spoke it
+    // (a contract payout's grantCredits fires inside the same sale, before tradeCompleted
+    // reaches this system).
+    if (ob.firedFollowups) ob.firedFollowups['choice:sold'] = true;
+    const line = `Your credits cover the yard's ${def.name}.`;
+    if (this._tutorialRailOwnsVoice()) ob.beatAction = line;
+    this._sayTutorial(line);
+    return line;
   },
 
   _maybeShowDemoEndCard() {
