@@ -917,6 +917,7 @@ export const input = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    this._bindInterruptControlRelease();
     this._domBindings = [];
     const keys = (this._keys = Object.create(null));
     this._ndc = { x: 0, y: 0 };
@@ -1083,6 +1084,7 @@ export const input = {
   },
 
   destroy() {
+    this._releaseInterruptControlSubs();
     const bindings = this._domBindings;
     if (Array.isArray(bindings)) {
       for (const { target, type, listener, options } of bindings) {
@@ -1150,6 +1152,36 @@ export const input = {
       this._m2SlingTargetId = tether && tether.targetId != null ? tether.targetId : null;
     }
     return lane;
+  },
+
+  // Death and the recovery berth are not key-ups. A boost, thrust, or throw held across the
+  // wreck screen must not still be down when the hull is alive again. Focus loss already
+  // comes through releaseHeldControls('window-blur').
+  _bindInterruptControlRelease() {
+    this._releaseInterruptControlSubs();
+    const bus = this.bus;
+    if (!bus || typeof bus.on !== 'function') return;
+    const offs = [];
+    const onDeath = () => {
+      if (this._initialized) this.releaseHeldControls('player-death');
+    };
+    const onRespawn = () => {
+      if (this._initialized) this.releaseHeldControls('player-respawn');
+    };
+    const offDeath = bus.on('player:death', onDeath);
+    const offRespawn = bus.on('player:respawn', onRespawn);
+    if (typeof offDeath === 'function') offs.push(offDeath);
+    if (typeof offRespawn === 'function') offs.push(offRespawn);
+    this._interruptControlOffs = offs;
+  },
+
+  _releaseInterruptControlSubs() {
+    const offs = this._interruptControlOffs;
+    this._interruptControlOffs = null;
+    if (!offs) return;
+    for (const off of offs) {
+      try { off(); } catch (_) { /* teardown must not strand the next init */ }
+    }
   },
 
   // Lifecycle transitions clear raw device ownership here, before the next authoritative input tick.

@@ -2,7 +2,9 @@
 //
 // A tether is only a physical rope. This helper owns one optional convenience: while the pilot
 // explicitly holds forward + turn, request the yaw rate that keeps the ship tangent to the live
-// ship-to-anchor radius. It never owns thrust, boost, strafe, braking, speed, or radial force.
+// ship-to-anchor radius. A swing-drive commitment may supply that missing turn sign for the
+// short window after a tangent dash, including while the line is still slack. It never owns
+// thrust, boost, strafe, braking, speed, or radial force.
 
 export const ORBIT_ASSIST_TUNING_V1 = Object.freeze({
   id: 'orbitAssist.tuning.v1',
@@ -118,6 +120,16 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
   let selectedDirection = Math.sign(finite(options.flightIntent && options.flightIntent.lateral));
   if (priorLatch !== 0) selectedDirection = priorLatch;
   if (input.brake || options.controlsBlocked) return inactive('manual-override');
+  // Swing Drive's commitment is a turn sign, not a force. It fills a stick that is not
+  // already steering so forward thrust can be yawed onto the tangent the dash just bought,
+  // even while the line is still slack and carrySwing has nothing taut to follow.
+  const commitDirection = Math.sign(finite(options.commitDirection));
+  let intentFromCommit = false;
+  if (selectedDirection === 0 && commitDirection !== 0
+      && forward > ORBIT_ASSIST_TUNING_V1.minIntent) {
+    selectedDirection = commitDirection;
+    intentFromCommit = true;
+  }
   // No chord (forward + a turn direction): the pilot still gets the swing carried for them.
   if (!(forward > ORBIT_ASSIST_TUNING_V1.minIntent) || selectedDirection === 0) {
     return carrySwing(options, input, strength, inactive);
@@ -194,7 +206,7 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
       strength,
       direction: selectedDirection,
       selectedDirection,
-      intentSource: 'flight',
+      intentSource: intentFromCommit ? 'swing-drive' : 'flight',
       radius,
       restLength: positive(options.tether.restLength, radius),
       radialSpeed,

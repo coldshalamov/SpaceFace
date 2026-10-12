@@ -59,6 +59,23 @@ const THREAT_COMPOSE_MAX_BIAS = 70;
 const THREAT_COMPOSE_FRACTION = 0.08;
 const TETHER_COMPOSE_MAX_BIAS = 64;
 const TETHER_COMPOSE_FRACTION = 0.12;
+// The throw solver already names where the released body meets its target. Lean the chase
+// focus part of the way there so the thing about to be hit stays in the same frame as the
+// hull. Capped so a far solution cannot yank the picture off the ship; the safe-rect clamp
+// still keeps the hull on screen. This is functional framing, like an active attacker.
+const RELEASE_MEETING_FRACTION = 0.4;
+const RELEASE_MEETING_MAX_BIAS = 140;
+
+/**
+ * Reduced motion softens decorative chase bias. An attacker, a gyre, and a live release
+ * meeting stay at full scale: they are the thing the pilot is about to hit or be hit by.
+ */
+export function chaseCompositionMotionScale(composition, reduced) {
+  const soften = reduced ? 0.35 : 1;
+  if (!composition) return soften;
+  if (composition.hasActiveAttacker || composition.hasGyreFocus || composition.hasReleaseFocus) return 1;
+  return soften;
+}
 // Bounded tactical threat containment (2026-09): the context channel is a gentle, heavily damped
 // viewport expansion only — never speed-based FOV breathing, never snap. Hard ceiling +20% total,
 // passive hostiles nudge +5-12%, a live attacker earns +15-20% by distance. The functional
@@ -1035,6 +1052,7 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
     result.hasThreatFocus = false;
     delete result.hasActiveAttacker;
     result.hasTetherFocus = false;
+    result.hasReleaseFocus = false;
     result.hasGyreFocus = false;
     result.maxZoom = 0;
     result.zoomBias = zoomBias;
@@ -1316,12 +1334,27 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
     }
   }
 
+  let hasReleaseFocus = false;
+  const meeting = releaseMeetingPoint(state);
+  if (meeting && player.pos) {
+    const mx = meeting.x - player.pos.x;
+    const mz = meeting.z - player.pos.z;
+    const md = Math.hypot(mx, mz);
+    if (md > 1) {
+      const bias = Math.min(RELEASE_MEETING_MAX_BIAS, md * RELEASE_MEETING_FRACTION);
+      fx += (mx / md) * bias;
+      fz += (mz / md) * bias;
+      hasReleaseFocus = true;
+    }
+  }
+
   result.x = fx;
   result.z = fz;
   result.nearbyEnemies = nearbyEnemies;
   result.hasThreatFocus = !!nearestThreat || !!composedThreat;
   result.hasActiveAttacker = composedIsActive;
   result.hasTetherFocus = !!tetherAnchor;
+  result.hasReleaseFocus = hasReleaseFocus;
   result.zoomBias = Math.min(CONTEXT_ZOOM_MAX, zoomBias);
   result.minZoom = minZoom;
   result.composedThreatId = composedThreat ? composedThreat.id : null;
@@ -1337,6 +1370,20 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
   groupScratch.members.length = 0;
   groupScratch.byId.clear();
   return result;
+}
+
+function releaseMeetingPoint(state) {
+  const throwState = state && state.massline2 && state.massline2.throw;
+  if (!throwState) return null;
+  const solution = throwState.solution;
+  if (solution && solution.valid === true && finitePlanarPoint(solution.predicted)) return solution.predicted;
+  const self = throwState.selfSolution;
+  if (self && self.valid === true && finitePlanarPoint(self.predicted)) return self.predicted;
+  return null;
+}
+
+function finitePlanarPoint(point) {
+  return !!(point && Number.isFinite(point.x) && Number.isFinite(point.z));
 }
 
 function resolveTetherCompositionAnchor(state, player, out = null) {
@@ -1944,11 +1991,10 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
             _tetherAnchorScratch,
             _compositionSticky,
           );
-          const motionScale = isMotionReduced(state) ? 0.35 : 1;
-          // Keeping an active attacker visible is functional combat framing, not decorative motion.
-          // Reduced motion may soften ambient/tether bias but must not move the actual threat out of
-          // the zoom geometry that was computed to contain it.
-          const compositionScale = composition.hasActiveAttacker || composition.hasGyreFocus ? 1 : motionScale;
+          // Keeping an active attacker, a gyre, or a release meeting visible is functional
+          // framing. Reduced motion may soften ambient/tether bias but must not move the
+          // thing about to be hit out of the zoom geometry that was computed to contain it.
+          const compositionScale = chaseCompositionMotionScale(composition, isMotionReduced(state));
           _contextZoomCap = Math.max(_contextZoomCap, composition.maxZoom || 0, _contextMinZoom);
           const desiredBiasX = (composition.x - _compositionFocusScratch.x) * compositionScale;
           const desiredBiasZ = (composition.z - _compositionFocusScratch.z) * compositionScale;
@@ -1976,11 +2022,10 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
             _tetherAnchorScratch,
             _compositionSticky,
           );
-          const motionScale = isMotionReduced(state) ? 0.35 : 1;
-          // Keeping an active attacker visible is functional combat framing, not decorative motion.
-          // Reduced-motion may soften ambient/tether bias but must not move the actual threat out of
-          // the zoom geometry that was computed to contain it.
-          const compositionScale = composition.hasActiveAttacker || composition.hasGyreFocus ? 1 : motionScale;
+          // Keeping an active attacker, a gyre, or a release meeting visible is functional
+          // framing. Reduced motion may soften ambient/tether bias but must not move the
+          // thing about to be hit out of the zoom geometry that was computed to contain it.
+          const compositionScale = chaseCompositionMotionScale(composition, isMotionReduced(state));
           _contextZoomCap = Math.max(_contextZoomCap, composition.maxZoom || 0, _contextMinZoom);
           const desiredBiasX = (composition.x - _compositionFocusScratch.x) * compositionScale;
           const desiredBiasZ = (composition.z - _compositionFocusScratch.z) * compositionScale;
