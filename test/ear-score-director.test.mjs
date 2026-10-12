@@ -153,3 +153,14 @@ test('sector key and mode move the engine note names; A aeolian home is untouche
   // Pallas folds its tonic upward (D above A), so the sub bass never sinks below the engine's.
   assert.ok(scoreNoteHz('A', 1, SECTOR_SCORE_IDENTITY.sector_pallas_drift) > noteToHz('A', 1));
 });
+
+test('a sector jump out of a fight opens the new sector with its arrival, not the old fight\'s aftermath', () => {
+  const d = createScoreDirector();
+  const ceres = { sectorId: 'sector_ceres_belt' };
+  let { t } = run(d, [[4, helios], [3, { ...helios, threat: 0.9, inCombat: true }]]);
+  const { frames } = run(d, [[6, ceres]], t);
+  const phases = new Set(frames.map((f) => f.phase));
+  assert.ok(!phases.has('aftermath'), 'the old fight does not resolve over the new sector');
+  assert.ok(phases.has('arrival'));
+  assert.equal(frames.at(-1).sectorId, 'sector_ceres_belt');
+});

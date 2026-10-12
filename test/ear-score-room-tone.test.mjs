@@ -111,3 +111,20 @@ test('a tuned Band station keeps the carrier while the place tick keeps the room
   assert.equal(rt.activeGraph, null);
   assert.equal(rt.room.activeGraph, null);
 });
+
+test('a new session does not inherit the last session\'s fight, and pause clears the room fast', () => {
+  const ctx = mockCtx();
+  const rt = createBandBedRuntime(ctx, { connect() {} }, { random: () => 0.5 });
+  for (let i = 0; i < 30; i += 1) { ctx.currentTime += 0.1; rt.setIntent(placeIntent({ sectorId: 'sector_helios_prime' })); }
+  for (let i = 0; i < 30; i += 1) { ctx.currentTime += 0.1; rt.setIntent(placeIntent({ sectorId: 'sector_helios_prime', threat: 0.9, inCombat: true })); }
+  assert.equal(rt.scoreFrame.phase, 'fight');
+  ctx.currentTime += 0.1;
+  const pausedAt = ctx.currentTime;
+  rt.setIntent({ active: false, reason: 'pause' });
+  assert.ok(rt.room.fadingGraph.stopAt <= pausedAt + 0.13, 'the room does not play on behind the menu');
+  ctx.currentTime += 8;
+  for (let i = 0; i < 5; i += 1) { ctx.currentTime += 0.1; rt.setIntent(placeIntent({ sectorId: 'sector_helios_prime' })); }
+  assert.notEqual(rt.scoreFrame.phase, 'aftermath', 'a loaded or new session starts its own story');
+  rt.resetScore();
+  assert.equal(rt.scoreFrame, null);
+});

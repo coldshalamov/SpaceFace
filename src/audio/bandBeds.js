@@ -31,6 +31,9 @@ const SILENCE_GAIN = 0.0001;
  * Build the Band's cosmetic carrier runtime over an existing audio bus.
  * The caller owns AudioContext lifecycle and must call destroy when replacing the context.
  */
+export const PLACE_GAP_RESET_S = 2;
+export const PAUSE_ROOM_FADE_S = 0.12;
+
 export function createBandBedRuntime(ctx, destination, options = {}) {
   if (!ctx || !destination) throw new TypeError('Band bed runtime requires an AudioContext and destination.');
   const random = typeof options.random === 'function' ? options.random : Math.random;
@@ -49,6 +52,7 @@ export function createBandBedRuntime(ctx, destination, options = {}) {
     _noiseBuffer: null,
     director: createScoreDirector(),
     room: null,
+    _lastPlaceAt: null,
 
     // Two writers share this runtime. The audio host's place intent (sectorBedToBandIntent, ten
     // times a second, `layer: 'place'`) drives the score director and the room tone and supplies
@@ -56,7 +60,7 @@ export function createBandBedRuntime(ctx, destination, options = {}) {
     // is on air, so the place tick no longer overwrites the tuned station.
     setIntent(value = {}) {
       if (value && value.reason === 'pause') {
-        if (this.room) this.room.stop();
+        if (this.room) this.room.stop(PAUSE_ROOM_FADE_S);
         return this._applyCarrier(value);
       }
       if (value && value.layer === 'place') {
@@ -72,8 +76,18 @@ export function createBandBedRuntime(ctx, destination, options = {}) {
       return this._applyCarrier(value);
     },
 
+    // A new game or a loaded save must not inherit the last session's fight. The place tick runs
+    // at 10 Hz in flight, so a long gap (menu, pause, load) restarts the score story.
+    resetScore() {
+      this.director.reset();
+      this.scoreFrame = null;
+      this._lastPlaceAt = null;
+    },
+
     _updatePlace(value) {
       const now = finite(ctx.currentTime, 0);
+      if (this._lastPlaceAt != null && now - this._lastPlaceAt > PLACE_GAP_RESET_S) this.resetScore();
+      this._lastPlaceAt = now;
       if (!value.active || !value.place) {
         this.scoreFrame = null;
         if (this.room) this.room.stop();

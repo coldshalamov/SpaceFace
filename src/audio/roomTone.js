@@ -199,18 +199,21 @@ export function createRoomToneRuntime(ctx, destination, options = {}) {
       }
     },
 
-    _fade(graph, now) {
+    _fade(graph, now, fadeS = crossfadeS) {
       if (!graph) return;
       if (this.fadingGraph && this.fadingGraph !== graph) stopRoomGraph(this.fadingGraph);
       this.fadingGraph = graph;
-      setTarget(graph.output.gain, SILENCE, now, crossfadeS / 3);
-      for (const s of graph.sources) { try { s.stop(now + crossfadeS); } catch (_) {} }
-      graph.stopAt = now + crossfadeS;
+      setTarget(graph.output.gain, SILENCE, now, fadeS / 3);
+      for (const s of graph.sources) { try { s.stop(now + fadeS); } catch (_) {} }
+      graph.stopAt = now + fadeS;
     },
 
-    stop() {
+    // A place change crossfades the room out; pause passes a short fade because the ambient
+    // bus stays live behind the menu.
+    stop(fadeS = crossfadeS) {
       const now = Number(ctx.currentTime) || 0;
-      this._fade(this.activeGraph, now);
+      const f = Math.max(0.03, Math.min(crossfadeS, Number(fadeS) || crossfadeS));
+      this._fade(this.activeGraph, now, f);
       this.activeGraph = null;
     },
 

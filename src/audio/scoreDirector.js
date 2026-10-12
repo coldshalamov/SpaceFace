@@ -276,7 +276,7 @@ export function createScoreDirector(options = {}) {
   const aftermathS = options.aftermathS ?? AFTERMATH_S;
   const mem = {
     t: null, phase: 'travel', phaseSince: 0, sectorId: undefined, docked: false,
-    intensity: 0.2, peak: 0, lastFightAt: -Infinity, arrivalAt: -Infinity, departureAt: -Infinity,
+    intensity: 0.2, peak: 0, lastFightAt: -Infinity, fightSector: undefined, arrivalAt: -Infinity, departureAt: -Infinity,
     threatLatched: false, anchor: 0, t0: 0, pendingPhase: null, pendingSince: 0, transitionAt: 0, frame: null, transitions: 0,
   };
 
@@ -308,8 +308,10 @@ export function createScoreDirector(options = {}) {
 
     const prevPhase = mem.phase;
     if (prevPhase === 'fight') mem.lastFightAt = now;
-    // Aftermath only follows the fight it resolves: docking or a sector jump closes the story.
-    const allowAftermath = prevPhase === 'fight' || prevPhase === 'aftermath' || prevPhase === 'threat';
+    // Aftermath only follows the fight it resolves, in the sector it was fought: docking or a
+    // sector jump closes the story and the new place opens with its own arrival.
+    const allowAftermath = mem.fightSector === sectorId
+      && (prevPhase === 'fight' || prevPhase === 'aftermath' || prevPhase === 'threat');
     const candidate = choosePhase(input, now, allowAftermath);
     let phase = prevPhase;
     if (candidate === prevPhase || candidate === 'fight' || candidate === 'dock' || prevPhase === 'dock'
@@ -325,6 +327,7 @@ export function createScoreDirector(options = {}) {
     }
     if (phase === 'fight') {
       mem.lastFightAt = now;
+      if (candidate === 'fight') mem.fightSector = sectorId;
       mem.peak = Math.max(mem.peak, clamp01(input.threat), clamp01(input.swarmLift));
     } else if (phase !== 'aftermath' && phase !== 'threat') {
       mem.peak = 0;
@@ -376,7 +379,7 @@ export function createScoreDirector(options = {}) {
     step,
     get frame() { return mem.frame; },
     reset() { mem.t = null; mem.phase = 'travel'; mem.sectorId = undefined; mem.docked = false; mem.peak = 0;
-      mem.lastFightAt = -Infinity; mem.arrivalAt = -Infinity; mem.departureAt = -Infinity; mem.threatLatched = false;
+      mem.lastFightAt = -Infinity; mem.fightSector = undefined; mem.arrivalAt = -Infinity; mem.departureAt = -Infinity; mem.threatLatched = false;
       mem.pendingPhase = null; mem.intensity = 0.2; mem.frame = null; mem.transitions = 0; },
   };
 }
