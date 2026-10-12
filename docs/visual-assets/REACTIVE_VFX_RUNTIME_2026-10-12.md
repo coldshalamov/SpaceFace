@@ -61,7 +61,7 @@ Do not distinguish families by palette alone. Compare in grayscale, without bloo
 | Medium / integrated GPU | 4 | 150 ms | 0 | 0 |
 | High | 6 | 90 ms | 0 | 0 |
 
-The old 32-slot mark InstancedMesh continues to draw all marks in one batch. The new 5×5 patch topology supports inexpensive spherical projection (36 vertices per mark); its fragment fill is unchanged in order of area. It does **not** establish mesh-accurate conformation, physically simulated splash, or a performance improvement. Optional splashes cannot evict persistent gameplay scars. Every mark follows the original target-local anchor and disappears with its bounded lifetime. The weapon's existing hit-light remains the only hit light. Mining now preserves the correct gouge kind and fracture amount all the way to the mark pool.
+The old 32-slot mark InstancedMesh continues to draw all marks in one batch. The new 5×5 patch topology supports inexpensive spherical projection (36 vertices per mark); its fragment fill is unchanged in order of area. The number of *additional renderer passes/material owners* is zero, but activating an otherwise-idle existing mark batch can still cost a draw call. These are admission limits rather than measured milliseconds. This does **not** establish mesh-accurate conformation, physically simulated splash, or a performance improvement. Optional splashes cannot evict persistent gameplay scars. Every mark follows the original target-local anchor and disappears with its bounded lifetime. The weapon's existing hit-light remains the only hit light. Mining now preserves the correct gouge kind and fracture amount all the way to the mark pool.
 
 ## Performance policy before any further remaster
 
