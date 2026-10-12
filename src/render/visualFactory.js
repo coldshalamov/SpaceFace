@@ -74,7 +74,9 @@ import * as kit from './ships/shipKit.js';
 import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from './hlod.js';
 import { attachLodState } from './lod.js';
 import { loadAuthoredPart } from './assetLoader.js';
-import { attachAuthoredMotionDriver, bindInstanceMotionSteps } from './authoredMotion.js';
+import { attachAuthoredMotionDriver, bindInstanceMotion, bindInstanceMotionSteps } from './authoredMotion.js';
+import { createReadyPackagedBodyCache } from './readyPackagedBodies.js';
+import { getAssetResidency } from './assetResidency.js';
 import { primeDrawnCullStamps } from './visualCullRadius.js';
 import {
   admissionOwnerInactive,
@@ -87,6 +89,7 @@ import {
   prepareAuthoredVisualPipelines,
   queuePacedDetachedTeardown,
   releaseBoundaryResidency,
+  registerOwnerRelease,
   residencyOptionsForBoundary,
   staleAuthoredRunVerdict,
   waitForOpeningGraphPublicationRelease,
@@ -4331,7 +4334,55 @@ function disposeDetachedPackagedGroup(group) {
   });
 }
 
-function attachPackagedBody(root, relativeFile, entity) {
+function packagedBodyTemplateKey(relativeFile, entity) {
+  const dead = relativeFile === hulkPackagedFileForEntity(entity) || relativeFile === fractureFragmentFileForEntity(entity);
+  return `${relativeFile}|${dead ? 'dead' : 'normal'}|${dead && entity.data?.fracturePiece ? 'residual' : 'quiet'}`;
+}
+
+function readyPackagedWreck(cache, relativeFile, entity) {
+  if (!cache) return null;
+  const ready = cache.acquire(packagedBodyTemplateKey(relativeFile, entity), {
+    fitRadius: fractureFragmentFitRadius(entity) || entity.radius,
+    patchMaterial: material => {
+      if (material.envMap) material.envMap = SHIP_ENV_MAP;
+      if (material.userData?.hulkEmberGain != null) material.emissiveIntensity = 0;
+    },
+  });
+  if (!ready) return null;
+  const root = new THREE.Group(); const packaged = ready.root;
+  const identity = interactionProfileForEntity(entity);
+  root.userData.kind = 'wreck';
+  root.userData.interactionKind = identity.kind;
+  root.userData.visualLanguage = identity.hazardous ? 'mechanical-reactor-hazard' : 'mechanical-wreckage';
+  root.add(packaged);
+  try {
+    const controller = bindInstanceMotion(packaged, ready.motionBank);
+    if (controller) {
+      attachAuthoredMotionDriver(root, entity, [controller]);
+      if (entity.data?.fracturePiece && entity.data.fractureRuptureFired !== true) {
+        controller.handleEvent?.('wreck:rupture', { pieceId: entity.id }, factoryPresentationNow() ?? 0);
+        entity.data.fractureRuptureFired = true;
+      }
+    }
+    const emberMats = ready.materials.filter(material => material.userData?.hulkEmberGain != null);
+    if (emberMats.length) root.userData.hulkEmber = { mats: emberMats, killedAt: Number(entity.data?.killedAt) || 0 };
+    root.userData.hull = packaged;
+    carryAdmittedOnceStamp(packaged, root);
+    root.userData.assetId = ready.record.assetId || relativeFile;
+    root.userData.authoredAssetState = 'authored';
+    root.userData.authoredPackageUrl = packagedPartUrl(relativeFile);
+    root.userData.authoredVisualRoot = ready.record.assetId || root.userData.authoredPackageUrl;
+    root.userData.renderContract = { assetBoundary: 'admitted packaged wreck', gracefulFallback: false };
+    registerOwnerRelease(root, ready.release);
+    return root;
+  } catch (error) {
+    root.userData.detachAuthoredMotion?.(); ready.release();
+    for (const material of ready.materials) material.dispose();
+    throw error;
+  }
+}
+
+function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
   if (!root || !relativeFile) {
     // No packaged file resolved — stamp the terminal identity so the root never sits
     // 'missing' in front of the readiness gate (same wedge class as buildFallback).
@@ -4395,6 +4446,7 @@ function attachPackagedBody(root, relativeFile, entity) {
     // so every verdict write and the commit guard below compare this run's own epoch — including
     // the pre-mint legs and the outer catch, which a .then-scoped mint could not reach.
     const mintedAdmissionOptions = admissionOptions();
+    const readyGeneration = readyBodies?.generation;
     // Same admission barrier as the scenario-prop packaged path (visualOverrides.js): the group
     // is compiled and its buffers uploaded while still detached, and publication waits on the
     // opening-graph release. Attaching straight to the live root linked the packaged materials
@@ -4644,11 +4696,17 @@ function attachPackagedBody(root, relativeFile, entity) {
       if (typeof packagedShadowSync === 'function') {
         try { packagedShadowSync(root, liveEntity || entity, packaged); } catch (_) { /* best effort */ }
       }
-      notePacedFrameSpend(legNow() - legStarted);
       root.userData.hull = packaged;
       root.userData.authoredReadableFallbackRetained = false;
       root.userData.authoredAssetState = 'authored';
       root.userData.authoredVisualRoot = record.assetId || url;
+      // The roster's normal admission paid every geometry/program/motion preparation cost.
+      // Future wrecks can draw that complete identity immediately rather than substitute rubble.
+      readyBodies?.capture(packagedBodyTemplateKey(relativeFile, entity), packaged, {
+        record, fitRadius: fractureFragmentFitRadius(entity) || entity.radius,
+        motionBank: record.motionBank, gpuAdmitted: true, admissionGeneration: readyGeneration,
+      });
+      notePacedFrameSpend(legNow() - legStarted);
       return true;
     }).catch((error) => {
       if (detachedCommitGroup && !detachedCommitGroup.parent) {
@@ -6128,8 +6186,12 @@ function stampBuiltVisual(root) {
   return root;
 }
 
-export function createVisualFactory() {
+export function createVisualFactory({ renderer = null, readyPackagedBodies = null } = {}) {
+  const readyBodies = readyPackagedBodies || (renderer
+    ? createReadyPackagedBodyCache({ residency: getAssetResidency(renderer) }) : null);
   return {
+    clearReadyPackagedBodies(reason) { readyBodies?.clear(reason); },
+    readyPackagedBodyDiagnostics() { return readyBodies?.diagnostics() || { templates: 0, geometryBytes: 0 }; },
     build(e) {
       try {
         if (!e) return null;
@@ -6161,7 +6223,11 @@ export function createVisualFactory() {
           case 'bomb': return stampBuiltVisual(buildBomb(e));
           case 'massSeed': return stampBuiltVisual(buildMassSeed(e));
           case 'masslineSnareAnchor': return stampBuiltVisual(buildMasslineSnareAnchor(e));
-          case 'wreck': return stampBuiltVisual(attachPackagedBody(freezeStaticPresentation(buildWreck(e), { merge: false }), wreckPackagedFile(e), e));
+          case 'wreck': {
+            const file = wreckPackagedFile(e);
+            return stampBuiltVisual(readyPackagedWreck(readyBodies, file, e)
+              || attachPackagedBody(freezeStaticPresentation(buildWreck(e), { merge: false }), file, e, readyBodies));
+          }
           // Alien Ecology: organic fauna — procedural bodies, no authored GLB in the slice.
           case 'fauna': return stampBuiltVisual(buildFaunaMesh(e));
           // Verge-Layer: machine entities — kinematic procedural bodies (prism/custodian/auditor).

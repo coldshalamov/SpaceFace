@@ -4543,13 +4543,12 @@ function failAuthoredPlaceAdmission(
   return false;
 }
 
-async function commitAuthoredPlaceBoundary(
+export async function commitAuthoredPlaceBoundary(
   boundary, fallbackRoot, authored, setActive, admissionEntity, options = {},
   disposePrepared = null,
 ) {
   // A validated place record is the sole presentation authority. The hidden substrate never appears
   // in play, so there is no placeholder frame or blue-clay-to-authored identity swap.
-  detachBoundaryResolvingMarker(boundary);
   // Each contiguous leg debits the shared paced ledger — the freeze stretch, the atomic
   // graft+publish tail and the deferred dispose all land in inter-present windows other
   // slicers budget against.
@@ -4589,6 +4588,7 @@ async function commitAuthoredPlaceBoundary(
     else unregisterPreparedAuthoredAdmission(authored);
     return false;
   }
+  detachBoundaryResolvingMarker(boundary);
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
   // The swap mutated the tree under no park key — a withheld/parked verdict
@@ -16276,7 +16276,7 @@ function isOwnerInCullContext(owner, context, stats) {
   return visible;
 }
 
-function registerOwnerRelease(owner, release) {
+export function registerOwnerRelease(owner, release) {
   let state = ownerReleaseState.get(owner);
   if (!state) {
     state = { releases: new Set(), pending: new Set(), errors: [] };

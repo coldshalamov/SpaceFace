@@ -10455,7 +10455,7 @@ export const render = {
     state.render.spaceBg = spaceBg;
     // Generated backdrop producers publish their exact construction recipe in their constructors;
     // renderer only consumes those immutable boundaries.
-    const vf = createVisualFactory();
+    const vf = createVisualFactory({ renderer });
     if (this._livingHullPresentation) this._livingHullPresentation.dispose();
     this._livingHullPresentation = createLivingHullPresentation();
     if (this._crucibleGhostPresentation) this._crucibleGhostPresentation.dispose();
@@ -10609,6 +10609,7 @@ export const render = {
         // its dead handles through the lost generation's managers (the v6 Electron delete storm).
         stashStaleWebGlDisposeProvenance(preparedPoolResources.provenance);
         if (this._assetResidency) this._assetResidency.handleContextLost();
+        vf.clearReadyPackagedBodies('context-lost');
         retireAppearanceGpuGeneration(this, 'webgl-context-lost');
         // The restored WebGL context has a fresh driver program cache. Drop only our JS-side
         // admission receipts here; the detached warmup graph belongs to the lost context and must
@@ -18954,6 +18955,7 @@ export const render = {
     // so a blind clearAllMeshes(keepPlayer) used to wipe the station/asteroids and leave the player
     // alone in empty space. reconcileMeshes() removes only meshes for entities that are gone.
     onBus('game:new', () => {
+      vf.clearReadyPackagedBodies('game-new');
       // New Game (including Crucible retry) destroys the entity graph and reuses numeric
       // ids. The same-sector save recook cannot identify those replacement hulls by id.
       // Retain resource caches, but prepare a fresh visible composition for the new run.
@@ -20250,6 +20252,7 @@ export const render = {
       preparation.catch(() => {});
     });
     onBus('mode:changed', ({ mode } = {}) => {
+      if (mode === 'menu' || mode === 'loading') vf.clearReadyPackagedBodies(`mode-${mode}`);
       if (mode === 'loading') {
         const recook = this._sessionLiveSectorCookedId != null
           && this._sessionLiveSectorCookedId === (state.world && state.world.currentSectorId)
@@ -20387,6 +20390,7 @@ export const render = {
   },
 
   destroy() {
+    this.vf?.clearReadyPackagedBodies?.('renderer-destroyed');
     this._racingCourseView?.dispose();
     this._racingCourseView = null;
     try { this._contextRestoreReceipt?.cancel?.(); } catch (_) { /* best effort */ }
