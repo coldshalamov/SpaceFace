@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { reportStationHandoffFailure } from './lib/stationHandoffDiagnostics.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const MARKET_CAPTURE = process.env.SF_MARKET_CAPTURE || '';
@@ -62,7 +63,8 @@ try {
     sf.bus.emit('dock:docked', { stationId: station.data.stationId });
     return { stationId: station.data.stationId };
   });
-  await waitForVisible(page, '[data-screen="station"] .sx-dock', DOCK_TIMEOUT_MS, 'command dock after dock');
+  await waitForVisible(page, '[data-screen="station"] .sx-dock', DOCK_TIMEOUT_MS, 'command dock after dock')
+    .catch((error) => reportStationHandoffFailure(page, { boundary: 'market dock visibility', dockTarget }, issues, error));
 
   // Open Market so its live market initialises (onShow emits economy:marketOpened), then seed a
   // known higher-priced buyer elsewhere so the Trade Routes panel has a profitable run to show.

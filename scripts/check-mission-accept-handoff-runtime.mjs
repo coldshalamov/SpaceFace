@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { BINDINGS } from '../src/ui/bindings.js';
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { reportStationHandoffFailure } from './lib/stationHandoffDiagnostics.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const START_TIMEOUT_MS = 90000;
@@ -65,7 +66,8 @@ try {
   await page.waitForFunction(() => {
     const s = window.SF && window.SF.state;
     return !!(s && s.ui && typeof s.ui.dockedStationId === 'string' && s.ui.dockedStationId);
-  }, null, { timeout: DOCK_TIMEOUT_MS });
+  }, null, { timeout: DOCK_TIMEOUT_MS }).catch((error) =>
+    reportStationHandoffFailure(page, { boundary: 'mission dock identity', dockTarget }, issues, error));
 
   // Seed a live commodity contract on this station's board (a bulk_trade the market here can buy).
   const seeded = await page.evaluate(async () => {
@@ -126,23 +128,8 @@ try {
     return !!(b && b[sid]
       && (b[sid].slots || []).some((o) => o && o.id === 'handoff_probe_bulk_trade'));
   }, seeded.stationId, { timeout: 20000 });
-  await page.waitForFunction(() => !!document.querySelector('[data-screen="station"] .sx-ct-row[data-mid="handoff_probe_bulk_trade"]'), null, { timeout: 6000 }).catch(async (err) => {
-    const snap = await page.evaluate(() => {
-      const sf = window.SF; const st = sf.state;
-      const board = st.missions.boards && st.missions.boards[st.ui.dockedStationId];
-      const el = document.querySelector('[data-screen="station"] .sx-ct');
-      const applied = (window.__SF_LANE_APPLIED || []).slice(-8).map((r) => r && r.type);
-      return {
-        docked: st.ui.dockedStationId,
-        slotIds: board ? (board.slots || []).map((o) => o && o.id) : null,
-        rowCount: el ? el.querySelectorAll('.sx-ct-row').length : -1,
-        boardHtml: el ? (el.innerHTML || '').slice(0, 600) : null,
-        lastEvents: applied,
-      };
-    });
-    console.log('[diag-rows]', JSON.stringify(snap));
-    throw err;
-  });
+  await page.waitForFunction(() => !!document.querySelector('[data-screen="station"] .sx-ct-row[data-mid="handoff_probe_bulk_trade"]'), null, { timeout: 6000 }).catch((error) =>
+    reportStationHandoffFailure(page, { boundary: 'posted mission row', seeded }, issues, error));
   const before = await page.evaluate(() => window.SF.state.missions.active.filter((m) => m && m.status === 'active').length);
 
   await domClick(page, '[data-screen="station"] .sx-ct-row[data-mid="handoff_probe_bulk_trade"]');
