@@ -158,7 +158,6 @@ export function resolvePins(entity, context = {}) {
   if (context.playerMiningTarget === true) pins.push(PIN_REASON.PLAYER_MINING_TARGET);
   if (context.playerScannedAndTracked === true) pins.push(PIN_REASON.PLAYER_SCANNED_AND_TRACKED);
   if (context.imminentCollision === true) pins.push(PIN_REASON.IMMINENT_COLLISION);
-  if (context.missionCritical === true) pins.push(PIN_REASON.MISSION_CRITICAL);
   const now = finite(context.simTime);
   const damagedByPlayerUntil = finite(context.damagedByPlayerUntilT, -1);
   const damagedPlayerUntil = finite(context.damagedPlayerUntilT, -1);

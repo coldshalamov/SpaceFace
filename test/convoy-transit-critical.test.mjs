@@ -15,7 +15,11 @@ import { hash32, mulberry32 } from '../src/core/rng.js';
 import { CONVOY_CARGO, ENCOUNTERS } from '../src/data/encounters.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import { PIN_REASON, SIM_TIER } from '../src/world/activityClassification.js';
-import { ensureActivityClassified, entityNeedsPhysics } from '../src/world/activityRuntime.js';
+import {
+  ensureActivityClassified,
+  entityNeedsPhysics,
+  physicsReachWuFromState,
+} from '../src/world/activityRuntime.js';
 import { physics } from '../src/core/physics.js';
 import { cargo } from '../src/systems/cargo.js';
 import { economy } from '../src/systems/economy.js';
@@ -89,7 +93,12 @@ test('transit cast carries data.transitCritical and pins S0_EXACT far from the p
   const haulers = members(h, live, 'hauler');
   const escorts = members(h, live, 'escort');
   assert.ok(haulers.length >= 2 && escorts.length >= 1, 'convoy = haulers + escort');
+  // Counterfactual: the run starts outside even the exact rim — reach is the S0 distance
+  // bound, so past it only the pin keeps a hull exact; without it the cast shelves.
+  const reach = physicsReachWuFromState(h.state, h.player);
   for (const e of [...haulers, ...escorts]) {
+    const dist = Math.hypot(e.pos.x - h.player.pos.x, e.pos.z - h.player.pos.z);
+    assert.ok(dist > reach, `route exits the near band (${Math.round(dist)} > ${Math.round(reach)})`);
     assert.equal(e.data.transitCritical, true, 'marker lands on entity data at spawn');
     assert.ok(
       e.activity && e.activity.pinnedExact && e.activity.pins.includes(PIN_REASON.MISSION_CRITICAL),
@@ -102,9 +111,11 @@ test('transit cast carries data.transitCritical and pins S0_EXACT far from the p
   h.sim.runTicks(150 * 60);
   ensureActivityClassified(h.state);
   for (const e of [...members(h, live, 'hauler'), ...members(h, live, 'escort')]) {
-    assert.ok(
-      e.activity.simTier === SIM_TIER.S0_EXACT || e.activity.simTier === SIM_TIER.S1_NEAR,
-      `mid-transit ${live.roles[e.id]} never shelves (got ${e.activity.simTier})`,
+    const dist = Math.hypot(e.pos.x - h.player.pos.x, e.pos.z - h.player.pos.z);
+    assert.ok(dist > reach, `mid-transit still outside the exact rim (${Math.round(dist)})`);
+    assert.equal(
+      e.activity.simTier, SIM_TIER.S0_EXACT,
+      `mid-transit ${live.roles[e.id]} is pinned exact, never shelved`,
     );
   }
 });

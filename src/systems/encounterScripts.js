@@ -815,6 +815,8 @@ function convoyFire(d, live, state, isConvoy) {
     // convoyTick. The route spans dormant space, so the transit cast pins mission-critical:
     // it stays awake and moving end to end instead of freezing (native) or catching a
     // double-counted catch-up drift past the mark (check-living-universe-events §J).
+    // Raiders stay unpinned on purpose — the ambush curtain shelves until the player nears;
+    // predation members pin through predationRole when the attack arms.
     if (sh.role === 'hauler' || sh.role === 'escort') out.transitCritical = true;
     if (sh.role === 'hauler') {
       out.team = 2;                                     // true civilians; killing them is piracy (heat)
@@ -2644,6 +2646,22 @@ function convoyTick(d, live, state, now, isConvoy) {
     d.despawnAll(live, 8);
     return d.resolve(live, outcome, { vars: live.vars, speak: live.data.noticed || live.data.robbed });
   }
+  // Every surviving carrier is dead in the water (drive-disabled — not a passage stall): a
+  // non-custody convoy can never close the endpoint, so write the freight off instead of
+  // holding the pinned transit cast in an unending transit (REV-89a814). Custody convoys
+  // keep their own terminal paths — a disabled carrier mid-robbery is predation business.
+  if (!custody && haulers.length && haulers.every((h) => convoyTargetDisabled(state, h))) {
+    d.freightLoss(live, {
+      manifest: live.data.freightManifest,
+      stationId: live.data.destId,
+      killerId: live.data.lossKillerId,
+    });
+    d.despawnAll(live, 8);
+    return d.resolve(live, live.data.robbed ? 'robbed' : 'lost', {
+      vars: live.vars,
+      speak: live.data.noticed || live.data.robbed,
+    });
+  }
   const end = live.data.end;
   if (!end) return;
   // Only route-owned passive hulls receive director intent. The selected raider is rostered and
@@ -3198,6 +3216,11 @@ const namedHunter = {
       factionPresenceDoctrine: cultureProfile,
       cultureId: culture && culture.id,
       namedAceId: authoredAce && authoredAce.id,
+      // The entrance is a 1400 WU approach — past the player's near band at spawn, so the
+      // cast must physically close. An authored ace already pins via namedAceId; a pool
+      // captain needs the stamp or it shelves mid-approach and the hunt resolves 'unmet'
+      // without ever arriving (same shelved-transit class as the convoy fix).
+      transitCritical: true,
       role: 'boss',
       passive: true,                                    // the entrance: silhouette first, guns later
       bossName: cap.name,
@@ -3218,6 +3241,7 @@ const namedHunter = {
         factionPresenceDoctrine: cultureProfile,
         cultureId: culture && culture.id,
         namedAceId: authoredAce && authoredAce.id,
+        transitCritical: true,
         role: 'escort',
         passive: true,
       });
@@ -3352,6 +3376,10 @@ const bountyHunter = {
     const a = rng() * Math.PI * 2;
     const ships = live.plan.ships.map((sh, i) => ({
       ...sh,
+      // ~1000 WU out: inside the near band at default zoom, outside it once the player
+      // zooms in — a shelved hunter freezes mid-approach and the deadline resolves
+      // 'escaped'. The pursuit must keep closing, so it pins like a transit cast.
+      transitCritical: true,
       pos: { x: p.pos.x + Math.cos(a) * 1000 + (rng() - 0.5) * 200, z: p.pos.z + Math.sin(a) * 1000 + (rng() - 0.5) * 200 },
     }));
     const ids = d.spawnShips(live, ships);
