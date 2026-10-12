@@ -1728,7 +1728,7 @@ export const saveLoadScreen = {
     }
     try {
       const selectedRow = refs.list && refs.list.querySelector('.k-row[aria-selected="true"]');
-      (selectedRow || refs.list.querySelector('.k-row')).focus();
+      (selectedRow || refs.list.querySelector('.k-row')).focus({ preventScroll: true });
     } catch (e) {}
   },
   onHide() {

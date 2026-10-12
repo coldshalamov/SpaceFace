@@ -500,6 +500,10 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
     if (!model || W < 320 || H < 240) { standDown(); return; }
     host.classList.remove('is-off');
     const small = W < 760 || H < 470;
+    // A phone cannot host the hull plus two label columns. The same working rig stays centred
+    // above its full-size touch choices; desktop keeps the projected callout composition.
+    const phone = W < 560 && doc.documentElement?.dataset?.sfMobile === '1';
+    host.classList.toggle('is-phone', phone);
     host.classList.toggle('is-small', small);
     if (!echoLine.classList.contains('is-live')) restEcho();
     // the foot holds the device words, the echo line and (with a pad) the drawn pad
@@ -527,11 +531,12 @@ export function createControlsRig(host, { onPreview = null, onDevice = null, pad
     // worst-case half-band plus the keycap's 3px bleed a station paints past its own box on each
     // side, so a wider set of station columns (a grown locale) shrinks the ring instead of pushing
     // a station's edge past the rig's own box.
-    const S = Math.max(200, Math.min(availH / 0.99, small ? Infinity : availH * 0.84, (W - colW.L - colW.R - 2 * gap - 36) / 0.98));
+    const S = phone ? Math.min(240, W - 48)
+      : Math.max(200, Math.min(availH / 0.99, small ? Infinity : availH * 0.84, (W - colW.L - colW.R - 2 * gap - 36) / 0.98));
     const bandW = Math.round(Math.max(14, Math.min(22, S * 0.03)));
     const block = colW.L + gap + S * 0.98 + gap + colW.R + bandW + 6;
-    const cx = Math.max(0, (W - block) / 2) + colW.L + gap + S * 0.49;
-    const cy = top + availH / 2;
+    const cx = phone ? W / 2 : Math.max(0, (W - block) / 2) + colW.L + gap + S * 0.49;
+    const cy = phone ? 16 + S / 2 : top + availH / 2;
     const Rb = S * 0.49 - bandW / 2;         // band centre radius
     const Rout = Rb + bandW / 2;
     const Rin = Rb - bandW / 2;

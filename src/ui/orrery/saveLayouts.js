@@ -11,6 +11,7 @@
 // their classes) and pins nothing. Scoped by the root classes the screens add (`orr-saveload`,
 // `orr-gameover`), doubled where an older deckplate/kit rule needs out-ranking.
 import { injectOrrery } from './tokens.js';
+import { injectOrreryMobileScreens } from './mobileScreenLayouts.js';
 import { berthImage } from './saveBerth.js';
 
 const STYLE_ID = 'sf-orrery-save-layouts';
@@ -344,6 +345,7 @@ ${GO} > .sf-go-tape .orr-tape__stop { border-radius:50% !important; outline:none
 export const SAVE_LAYOUT_CSS = SAVE_LOAD + GAME_OVER;
 
 export function injectSaveLayouts(doc = globalThis.document) {
+  injectOrreryMobileScreens(doc);
   if (!doc || !doc.head || typeof doc.getElementById !== 'function' || typeof doc.createElement !== 'function') return;
   injectOrrery(doc);
   if (doc.getElementById(STYLE_ID)) return;

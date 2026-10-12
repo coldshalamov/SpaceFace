@@ -317,7 +317,7 @@ export function createDrillInputController({ drillSys, getState }) {
       // a chain — it is the tap itself — so it stays latched and completes.
       if (!seatPending()) clearCommand();
       // Retire drilling state immediately instead of waiting for the next animation frame.
-      drillSys.tickInput(held, 0);
+      drillSys?.tickInput?.(held, 0);
       return true;
     },
     tick(frameDt) {
@@ -342,7 +342,9 @@ export function createDrillInputController({ drillSys, getState }) {
       blockedUntilRelease = false;
       seatOwed = false;
       clearCommand();
-      drillSys.tickInput(held, 0);
+      // Opening guidance/drawers can cancel before the drill owner has mounted. Retire the
+      // local intent even then; an absent owner has no held drilling state to release.
+      drillSys?.tickInput?.(held, 0);
     },
     hasActiveIntent() { return !!intent || (!!activeDirection && !blockedUntilRelease); },
     /** True while an uncommitted intent is the tap's own promised cell (survives keyup). */

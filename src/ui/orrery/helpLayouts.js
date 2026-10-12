@@ -7,6 +7,7 @@
 // (its kicker, its name, a ledger of terms), and the search field as a lit rule. No box, no card, no
 // table rule. It styles the screen's own nodes (checks read .sf-tab, .sf-help-now, .sf-lc__search).
 import { injectOrrery } from './tokens.js';
+import { injectOrreryMobileScreens } from './mobileScreenLayouts.js';
 import { SCROLL_EXTENT_CSS } from './scrollExtent.js';
 
 const STYLE_ID = 'sf-orrery-help-layouts';
@@ -288,6 +289,7 @@ ${SCROLL_EXTENT_CSS}
 `;
 
 export function injectHelpLayouts(doc = globalThis.document) {
+  injectOrreryMobileScreens(doc);
   if (!doc || !doc.head || typeof doc.getElementById !== 'function' || doc.getElementById(STYLE_ID)) return;
   injectOrrery(doc);
   const style = doc.createElement('style');

@@ -3,6 +3,7 @@
 // and Undock as the one primary verb. It styles the shell's existing nodes (the station checks read
 // their classes, roles and widths) and pins nothing: every rule is scoped to `.orr-station`.
 import { injectOrrery } from './tokens.js';
+import { injectOrreryMobileScreens } from './mobileScreenLayouts.js';
 import { arcD, polar, ticksD } from './svg.js';
 
 const STYLE_ID = 'sf-orrery-station';
@@ -319,6 +320,7 @@ ${S} .sxb-ops .orr-stationrow:is(:focus-within, :hover) .orr-stationrow__glow { 
 `;
 
 export function injectOrreryStation(doc = globalThis.document) {
+  injectOrreryMobileScreens(doc);
   if (!doc?.head || typeof doc.createElement !== 'function') return;
   injectOrrery(doc);
   if (typeof doc.getElementById === 'function' && doc.getElementById(STYLE_ID)) return;

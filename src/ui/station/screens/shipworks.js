@@ -1,5 +1,6 @@
 import { shipworksFrameHtml } from '../../views/stationFrames.js';
 import { injectOrreryShipworks, powerDialSvg } from '../../orrery/shipworksLayouts.js';
+import { isPhoneLayout } from '../../../systems/mobile/model.js';
 import { createHullSchematic } from '../../orrery/hullSchematic.js';
 import { rollTo } from '../../orrery/text.js';
 import { createSpring } from '../../orrery/motion.js';
@@ -451,6 +452,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   const railProgressEl = el.querySelector('.sx-sw__railtrack i');
   const canvas = el.querySelector('.sx-sw__canvas');
   const nameplateEl = el.querySelector('.sx-sw__nameplate');
+  if (isPhoneLayout() && nameplateEl) {
+    // The portrait hull and its projected system callouts need the whole phone-width stage.
+    // The same name/rename/description nodes read above it, keeping all their live handlers.
+    const main = el.querySelector('.sx-sw__main');
+    if (main) main.insertBefore(nameplateEl, main.firstChild);
+  }
   const statsEl = el.querySelector('.sx-sw__stats');
   const sideEl = el.querySelector('.sx-sw__side');
   const chooserEl = el.querySelector('.sx-sw__chooser');

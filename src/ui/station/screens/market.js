@@ -13,6 +13,7 @@ import { FACTION_LABELS } from '../../../data/encounters.js';
 import { volatileClassOf } from '../../../data/commodityVolatileClasses.js';
 import { fragileCargoGlyphFor } from '../../../systems/fragileCargo.js';
 import { injectOrreryMarket, qtyFromDialPoint, setQtyDial } from '../../orrery/marketLayouts.js';
+import { isPhoneLayout } from '../../../systems/mobile/model.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 import { rollTo } from '../../orrery/text.js';
 import { arcD, polar } from '../../orrery/svg.js';
@@ -2122,7 +2123,11 @@ export function createMarketScreen(ctx) {
       pinSealedSellQuantity(st, selectedId);
       renderAll(st);
       const active = tbodyEl && tbodyEl.querySelector('.is-active');
-      if (active && typeof active.scrollIntoView === 'function') { try { active.scrollIntoView({ block: 'nearest' }); } catch (_) {} }
+      // A phone's market shares the berth's page scroll. Opening the tab must preserve the
+      // station header; only the desktop's independent commodity rail scrolls to its selection.
+      if (!isPhoneLayout() && active && typeof active.scrollIntoView === 'function') {
+        try { active.scrollIntoView({ block: 'nearest' }); } catch (_) {}
+      }
     },
     refresh(c) { if (visible && !disposed) renderAll((c || ctx).state || {}); },
     onHide() { visible = false; cancelDeferred(); },
