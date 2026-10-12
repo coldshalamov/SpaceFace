@@ -296,6 +296,7 @@ import * as encounter292 from './1200-the-wedge.js';
 import * as encounter293 from './1201-the-cold-shoulder.js';
 import * as encounter294 from './1202-the-kick-start.js';
 import * as encounter295 from './1203-the-declaration.js';
+import * as encounter296 from './1204-the-mine-garden.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -593,5 +594,6 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter293,
   encounter294,
   encounter295,
+  encounter296,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);
