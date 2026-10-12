@@ -47,8 +47,8 @@ ${scope} ${list} > li::before { content:counter(orrlad, decimal-leading-zero); p
   ${LABEL} font-size: 12px; letter-spacing:.14em; color:rgb(${BONE} / .68); font-variant-numeric:tabular-nums; }
 ${scope} ${list} > li:has(> ${item}:is(${chosen}))::before { color:rgb(${BONE} / .86); }
 ${scope} ${list} ${item} { all:unset !important; box-sizing:border-box !important; position:relative !important; display:flex !important; align-items:center !important;
-  width:100% !important; min-height:46px !important; padding:0 8px 0 74px !important; cursor:pointer !important; ${LABEL} font-size:13px !important;
-  letter-spacing:.2em !important; color:rgb(${BONE} / .7) !important; white-space:nowrap !important; transition:color .16s linear; }
+  width:100% !important; min-height:48px !important; padding:0 8px 0 74px !important; cursor:pointer !important; ${LABEL} font-size:13.5px !important;
+  letter-spacing:.18em !important; color:rgb(${BONE} / .62) !important; white-space:nowrap !important; transition:color .16s linear; }
 ${scope} ${list} ${item}::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:8px !important;
   height:1.5px !important; margin:0 !important; translate:none !important; scale:none !important; transform:none !important; background:rgb(${BONE} / .55) !important;
   box-shadow:none !important; border:0 !important; clip-path:none !important; border-radius:0 !important; opacity:1 !important; }
@@ -72,7 +72,9 @@ ${S} { grid-template-columns:minmax(168px, 212px) minmax(600px, 660px) minmax(0,
   grid-template-rows:auto minmax(0, 1fr) auto !important;
   grid-template-areas:"title title title" "hang stage preview" "foot foot foot" !important;
   column-gap:clamp(28px, 3.4vw, 72px) !important; row-gap:clamp(18px, 3.6vh, 44px) !important; }
-${S}::before { background:radial-gradient(120% 95% at 18% 36%, rgb(5 7 10 / .9), rgb(5 7 10 / .72) 55%, rgb(5 7 10 / .5)) !important; }
+${S}::before { background:
+  radial-gradient(90% 70% at 72% 48%, rgb(8 12 18 / .38), transparent 62%),
+  radial-gradient(120% 95% at 18% 36%, rgb(5 7 10 / .92), rgb(5 7 10 / .76) 52%, rgb(5 7 10 / .52)) !important; }
 ${S} > .k-title { align-self:end; }
 ${S} > .k-title > p { ${LABEL} margin:14px 0 0 !important; font-size: 12px !important; letter-spacing:.26em !important; color:rgb(${BONE} / .6) !important;
   display:flex; align-items:center; gap:14px; }
@@ -89,6 +91,15 @@ ${S} #sf-settings-pane { ${PLAIN} backdrop-filter:none !important; -webkit-backd
   justify-self:stretch !important; align-self:stretch !important; max-height:100% !important; min-height:0 !important; overflow:hidden auto !important;
   padding:0 20px 34px 0 !important; margin:0 !important; scrollbar-width:none; position:relative; --sf-fade-edge:0px !important; }
 ${S} #sf-settings-pane::-webkit-scrollbar { display:none; }
+/* scroll cue: a thin bone rail on the pane's edge + a "More ▾" chip on the stage's bottom edge while rows continue */
+${S} > .orr-set-more { grid-area:stage; align-self:end; justify-self:start; z-index:3; display:none; margin:0 0 -34px 30px !important; padding:6px 14px 7px !important; cursor:pointer;
+  ${PLAIN} ${LABEL} font-size:11px !important; letter-spacing:.24em !important; color:rgb(${HOT}) !important; background:rgb(8 10 14 / .82) !important;
+  border:1px solid rgb(${BONE} / .42) !important; border-radius:999px !important; }
+${S} > .orr-set-more::after { content:"▾" / ""; margin-left:8px; color:var(--dp-hand-hot, #ffd98c); }
+${S} > .orr-set-more.is-on { display:inline-block; animation:orr-more-bob 2.4s ease-in-out infinite; }
+${S} > .orr-set-more:hover { border-color:rgb(${HOT} / .8) !important; }
+@keyframes orr-more-bob { 0%, 100% { transform:translateY(0); } 50% { transform:translateY(3px); } }
+@media (prefers-reduced-motion:reduce) { ${S} > .orr-set-more.is-on { animation:none; } }
 ${S} #sf-settings-pane.is-scrolled { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 46px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important;
   mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 46px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important; }
 ${S} #sf-settings-pane .k-row { scroll-margin:40px 0 80px; }
@@ -104,70 +115,78 @@ ${S} #sf-settings-pane .orr-set-check__state[data-state="ready"]::before, ${S} #
 ${S} #sf-settings-pane::before, ${S} #sf-settings-pane::after { content:none !important; display:none !important; }
 ${S} #sf-settings-pane .k-rows { ${PLAIN} position:relative; margin:0 !important; padding:2px 0 !important; max-width:none !important; background:${RAIL_BG} !important; }
 ${S} #sf-settings-pane .k-row { ${PLAIN} position:relative !important; display:grid !important; grid-template-columns:var(--orr-label-w, 206px) minmax(0, 1fr) !important;
-  align-items:center !important; column-gap:22px !important; row-gap:2px !important; min-height:46px !important; height:auto !important; padding:5px 0 5px 30px !important;
-  color:rgb(${BONE} / .78) !important; }
+  align-items:center !important; column-gap:22px !important; row-gap:3px !important; min-height:50px !important; height:auto !important; padding:7px 0 7px 30px !important;
+  color:rgb(${BONE} / .82) !important; }
 ${S} #sf-settings-pane .k-row::after { content:none !important; display:none !important; }
-${S} #sf-settings-pane .k-row::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:8px !important;
-  height:1.5px !important; margin:0 !important; background:rgb(${BONE} / .5) !important; translate:none !important; scale:none !important; transform:none !important;
+${S} #sf-settings-pane .k-row::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:9px !important;
+  height:1.5px !important; margin:0 !important; background:rgb(${BONE} / .58) !important; translate:none !important; scale:none !important; transform:none !important;
   box-shadow:none !important; border:0 !important; clip-path:none !important; }
-${S} #sf-settings-pane .k-row:hover::before { width:13px !important; background:rgb(${HOT}) !important; }
+${S} #sf-settings-pane .k-row:hover::before { width:15px !important; background:rgb(${HOT}) !important; box-shadow:0 0 8px rgb(255 250 236 / .35) !important; }
 ${S} #sf-settings-pane .k-row:focus-within::before { left:6.5px !important; width:2.5px !important; height:20px !important; margin-top:-10px !important; background:rgb(${HOT}) !important;
   box-shadow:0 0 8px rgb(255 250 236 / .5) !important; }
+${S} #sf-settings-pane .k-row:focus-within {
+  background:linear-gradient(90deg, rgb(${BONE} / .07), rgb(${BONE} / .03) 42%, transparent 78%) !important;
+}
 ${S} #sf-settings-pane .k-row:has(.sf-bind-btn--capture)::before { left:6px !important; width:3px !important; height:24px !important; margin-top:-12px !important;
   background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 10px rgb(255 217 140 / .7) !important; }
 /* a short category spreads its rows over the column: the scales carry it, not a hole under them */
 @media (min-height:900px) { ${S} #sf-settings-pane.is-roomy .k-row { min-height:62px !important; } ${S} #sf-settings-pane.is-roomy.is-sparse .k-row { min-height:76px !important; } }
-${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { ${LABEL} font-size: 12px !important; letter-spacing:.13em !important; line-height:1.3 !important;
-  color:rgb(${BONE} / .8) !important; white-space:normal; overflow-wrap:break-word; text-shadow:none !important; }
-${S} #sf-settings-pane .k-row:is(:focus-within, :hover) > :is(label, span.k-t-body) { color:rgb(${HOT}) !important; }
+${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { ${LABEL} font-size: 12.5px !important; letter-spacing:.12em !important; line-height:1.35 !important;
+  color:rgb(${BONE} / .9) !important; white-space:normal; overflow-wrap:break-word; text-shadow:none !important; }
+${S} #sf-settings-pane .k-row:is(:focus-within, :hover) > :is(label, span.k-t-body) { color:rgb(255 253 248) !important; text-shadow:0 0 18px rgb(255 250 236 / .16); }
 
 /* a slider is a graduated Scale: the ruled line, a tick every 5 %, majors at the quarters, the fill to
    the value, a bone light cursor, the value as a thin numeral. The cursor is the Hand while it has focus. */
 ${S} #sf-settings-pane .k-row > div.k-words--row { ${PLAIN} display:grid !important; grid-template-columns:var(--orr-scale-w, 254px) 64px !important; align-items:center !important;
   column-gap:14px !important; justify-content:start !important; width:auto !important; }
 ${S} #sf-settings-pane input.k-range { -webkit-appearance:none !important; appearance:none !important; ${PLAIN} display:block !important; width:var(--orr-scale-w, 254px) !important;
-  height:30px !important; margin:0 !important; padding:0 !important; cursor:pointer !important;
+  height:32px !important; margin:0 !important; padding:0 !important; cursor:pointer !important;
   background:
-    linear-gradient(rgb(${HOT} / .96) 0 0) 7px 12.5px / calc((100% - 14px) * var(--orr-v, .5)) 3px no-repeat,
-    linear-gradient(rgb(${HOT} / .17) 0 0) 7px 9.5px / calc((100% - 14px) * var(--orr-v, .5)) 9px no-repeat,
-    linear-gradient(rgb(${BONE} / .44) 0 0) 7px 13.25px / calc(100% - 14px) 1.5px no-repeat,
-    linear-gradient(rgb(${BONE} / .075) 0 0) 7px 9.5px / calc(100% - 14px) 9px no-repeat,
-    linear-gradient(90deg, rgb(${BONE} / .5) 0 1px, transparent 1px) 7px 21px / calc((100% - 14px) / 20) 4px repeat-x,
-    linear-gradient(90deg, rgb(${BONE} / .72) 0 1.5px, transparent 1.5px) 7px 21px / calc((100% - 14px) / 4) 8px repeat-x !important; }
+    linear-gradient(rgb(255 253 248 / .98) 0 0) 7px 12.5px / calc((100% - 14px) * var(--orr-v, .5)) 3.5px no-repeat,
+    linear-gradient(rgb(${HOT} / .22) 0 0) 7px 9px / calc((100% - 14px) * var(--orr-v, .5)) 10px no-repeat,
+    linear-gradient(rgb(${BONE} / .5) 0 0) 7px 13.25px / calc(100% - 14px) 1.5px no-repeat,
+    linear-gradient(rgb(${BONE} / .1) 0 0) 7px 9px / calc(100% - 14px) 10px no-repeat,
+    linear-gradient(90deg, rgb(${BONE} / .55) 0 1px, transparent 1px) 7px 22px / calc((100% - 14px) / 20) 5px repeat-x,
+    linear-gradient(90deg, rgb(${BONE} / .78) 0 1.5px, transparent 1.5px) 7px 22px / calc((100% - 14px) / 4) 9px repeat-x !important; }
 ${S} #sf-settings-pane input.k-range::-webkit-slider-runnable-track { -webkit-appearance:none; height:30px; background:transparent; border:0; box-shadow:none; }
-${S} #sf-settings-pane input.k-range::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:14px; height:24px; margin-top:2px; border:0; border-radius:0; box-shadow:none;
+${S} #sf-settings-pane input.k-range::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:16px; height:26px; margin-top:2px; border:0; border-radius:0; box-shadow:none;
   background:
-    linear-gradient(90deg, transparent 5.5px, rgb(${HOT}) 5.5px 8.5px, transparent 8.5px) 0 0 / 14px 24px no-repeat,
-    linear-gradient(90deg, transparent 2px, rgb(${HOT} / .24) 2px 12px, transparent 12px) 0 4px / 14px 16px no-repeat; }
+    linear-gradient(90deg, transparent 6px, rgb(255 253 248) 6px 10px, transparent 10px) 0 0 / 16px 26px no-repeat,
+    linear-gradient(90deg, transparent 2px, rgb(${HOT} / .32) 2px 14px, transparent 14px) 0 4px / 16px 18px no-repeat; }
 ${S} #sf-settings-pane input.k-range:hover::-webkit-slider-thumb {
   background:
-    linear-gradient(90deg, transparent 5.5px, rgb(255 253 248) 5.5px 8.5px, transparent 8.5px) 0 0 / 14px 24px no-repeat,
-    linear-gradient(90deg, transparent 1px, rgb(${HOT} / .34) 1px 13px, transparent 13px) 0 3px / 14px 18px no-repeat; }
+    linear-gradient(90deg, transparent 6px, rgb(255 255 252) 6px 10px, transparent 10px) 0 0 / 16px 26px no-repeat,
+    linear-gradient(90deg, transparent 1px, rgb(${HOT} / .42) 1px 15px, transparent 15px) 0 3px / 16px 20px no-repeat; }
 ${S} #sf-settings-pane input.k-range:focus::-webkit-slider-thumb { height:28px; margin-top:0;
   background:
     linear-gradient(90deg, transparent 5px, var(--dp-hand-hot, #ffd98c) 5px 9px, transparent 9px) 0 0 / 14px 28px no-repeat,
     linear-gradient(90deg, transparent 1px, rgb(242 185 80 / .36) 1px 13px, transparent 13px) 0 4px / 14px 18px no-repeat; }
 ${S} #sf-settings-pane input.k-range:focus { outline:none !important; }
 ${S} #sf-settings-pane .k-row > div.k-words--row > span { ${PLAIN} font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100% !important;
-  font-variation-settings:"wdth" 100, "wght" 300 !important; font-weight:300 !important; font-size:22px !important; line-height:1 !important; letter-spacing:-.01em !important;
-  text-transform:none !important; font-variant-numeric:tabular-nums lining-nums; text-align:right !important; width:auto !important; margin:0 !important; color:rgb(${HOT}) !important; }
+  font-variation-settings:"wdth" 100, "wght" 320 !important; font-weight:320 !important; font-size:24px !important; line-height:1 !important; letter-spacing:-.01em !important;
+  text-transform:none !important; font-variant-numeric:tabular-nums lining-nums; text-align:right !important; width:auto !important; margin:0 !important; color:rgb(255 253 248) !important;
+  text-shadow:0 0 16px rgb(255 250 236 / .18); }
 
 /* a switch / a choice: the words on the line, the chosen one lit with a bead of light; focus stands the
    Hand beside the word (a vertical segment of amber) */
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) { ${PLAIN} display:flex !important; flex-direction:row !important; flex-wrap:wrap !important; align-items:center !important;
-  gap:4px 20px !important; width:auto !important; height:auto !important; min-width:0 !important; padding:0 !important; justify-self:start !important; }
+  gap:4px 22px !important; width:auto !important; height:auto !important; min-width:0 !important; padding:2px 0 6px !important; justify-self:start !important;
+  background:linear-gradient(0deg, rgb(${BONE} / .22) 0 1.5px, transparent 1.5px) 0 100% / 100% 100% no-repeat !important; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) > li { list-style:none !important; margin:0 !important; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { all:unset !important; box-sizing:border-box !important; position:relative !important; display:inline-block !important;
-  cursor:pointer !important; padding:8px 0 8px 14px !important; ${LABEL} font-size: 12px !important; letter-spacing:.2em !important; line-height:1 !important;
-  color:rgb(${BONE} / .62) !important; transition:color .16s linear; }
+  cursor:pointer !important; padding:8px 2px 10px 14px !important; ${LABEL} font-size: 12.5px !important; letter-spacing:.18em !important; line-height:1 !important;
+  color:rgb(${BONE} / .55) !important; transition:color .16s linear; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word::after { content:none !important; display:none !important; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word::before { content:"" !important; display:block !important; position:absolute !important; left:1px !important; top:50% !important;
-  width:4px !important; height:4px !important; margin-top:-2px !important; border-radius:50% !important; background:rgb(${BONE} / .26) !important; transform:none !important;
+  width:4px !important; height:4px !important; margin-top:-4px !important; border-radius:50% !important; background:rgb(${BONE} / .22) !important; transform:none !important;
   translate:none !important; scale:none !important; border:0 !important; box-shadow:none !important; clip-path:none !important; opacity:1 !important; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word:hover { color:rgb(${HOT}) !important; }
-${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word[aria-pressed="true"] { color:rgb(${HOT}) !important; text-shadow:0 0 12px rgb(255 250 236 / .28); }
-${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word[aria-pressed="true"]::before { left:0 !important; width:6px !important; height:6px !important; margin-top:-3px !important;
-  background:rgb(${HOT}) !important; box-shadow:0 0 7px rgb(255 250 236 / .65) !important; }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word[aria-pressed="true"] { color:rgb(255 253 248) !important; text-shadow:0 0 14px rgb(255 250 236 / .34); }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word[aria-pressed="true"]::before { left:0 !important; width:7px !important; height:7px !important; margin-top:-5.5px !important;
+  background:rgb(${HOT}) !important; box-shadow:0 0 9px rgb(255 250 236 / .75) !important; }
+${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word[aria-pressed="true"]::after { content:"" !important; display:block !important; position:absolute !important;
+  left:14px !important; right:2px !important; bottom:0 !important; height:2px !important; background:linear-gradient(90deg, rgb(${HOT}), rgb(${HOT} / 0)) !important;
+  box-shadow:0 0 10px rgb(255 250 236 / .35) !important; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word:focus-visible { color:var(--dp-hand-hot, #ffd98c) !important; }
 ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word:focus-visible::before { left:1.5px !important; width:3px !important; height:16px !important; margin-top:-8px !important;
   border-radius:0 !important; background:var(--dp-hand-hot, #ffd98c) !important; box-shadow:0 0 8px rgb(255 217 140 / .7) !important; }
@@ -176,8 +195,8 @@ ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word:focus-visible::bef
    scale (one tick per option, the chosen one lit); it opens as the instrument column below */
 ${S} #sf-settings-pane select.k-select { all:unset !important; -webkit-appearance:none !important; appearance:none !important; box-sizing:border-box !important; display:inline-block !important;
   justify-self:start !important; align-self:end !important; max-width:100% !important; min-width:0 !important; cursor:pointer !important; padding:6px 0 4px !important;
-  ${LABEL} font-size:12px !important; letter-spacing:.16em !important; line-height:1.2 !important; color:rgb(${HOT}) !important; background:none !important;
-  text-overflow:ellipsis; white-space:nowrap; overflow:hidden; text-shadow:0 0 12px rgb(255 250 236 / .22); }
+  ${LABEL} font-size:13px !important; letter-spacing:.14em !important; line-height:1.2 !important; color:rgb(255 253 248) !important; background:none !important;
+  text-overflow:ellipsis; white-space:nowrap; overflow:hidden; text-shadow:0 0 14px rgb(255 250 236 / .28); }
 ${S} #sf-settings-pane select.k-select:hover { color:rgb(255 253 248) !important; }
 ${S} #sf-settings-pane select.k-select:focus-visible, ${S} #sf-settings-pane select.k-select:focus { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
 ${S} #sf-settings-pane .k-row[data-orr-kind="select"] { grid-template-rows:auto auto; }
@@ -230,13 +249,13 @@ ${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] .k-row__sub { display:bl
 ${S} #sf-settings-pane .k-row[data-orr-kind="shortcut"] > .k-t-emph { ${LABEL} justify-self:start !important; padding-left:14px !important; font-size:12.5px !important; letter-spacing:.16em !important;
   color:rgb(${HOT}) !important; text-align:left !important; margin-top:1px; }
 /* a section head in the rows, and a quiet sentence between lists */
-${S} #sf-settings-pane .k-row[data-orr-kind="head"] { min-height:0 !important; padding:22px 0 6px 30px !important; grid-template-columns:minmax(0, 1fr) !important; }
+${S} #sf-settings-pane .k-row[data-orr-kind="head"] { min-height:0 !important; padding:28px 0 8px 30px !important; grid-template-columns:minmax(0, 1fr) !important; }
 ${S} #sf-settings-pane .k-row[data-orr-kind="head"]::before { top:auto !important; bottom:12px !important; width:12px !important; background:rgb(${BONE} / .7) !important; }
 ${S} #sf-settings-pane .k-row .k-caps { ${PLAIN} ${LABEL} display:flex !important; align-items:center; gap:14px; padding:0 !important; font-size: 12px !important;
   letter-spacing:.26em !important; color:rgb(${BONE} / .66) !important; }
 ${S} #sf-settings-pane .k-row .k-caps::after { content:""; flex:1 1 auto; max-width:120px; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .3), rgb(${BONE} / 0)); }
-${S} #sf-settings-pane > p.k-sentence { ${PLAIN} font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:12.5px !important; line-height:1.5 !important;
-  color:rgb(${BONE} / .66) !important; max-width:58ch !important; margin:8px 0 12px 30px !important; padding:0 !important; text-transform:none !important; letter-spacing:0 !important; }
+${S} #sf-settings-pane > p.k-sentence { ${PLAIN} font-family:var(--dp-face-read, "Instrument Sans") !important; font-size:13px !important; line-height:1.55 !important;
+  color:rgb(${BONE} / .74) !important; max-width:58ch !important; margin:10px 0 14px 30px !important; padding:0 !important; text-transform:none !important; letter-spacing:0 !important; }
 ${S} #sf-settings-pane > .k-words { ${PLAIN} display:flex !important; flex-wrap:wrap; align-items:baseline; gap:6px 16px !important; margin:10px 0 12px 30px !important; padding:0 !important; }
 ${S} #sf-settings-pane > .k-words > .k-word { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; padding:5px 0 !important; ${LABEL} font-size: 12px !important;
   letter-spacing:.18em !important; color:rgb(${HOT}) !important; }
@@ -256,17 +275,22 @@ ${S} #sf-settings-pane { z-index:1; }
 /* ------------------------------------------------ the way back --------------------------------- */
 ${S} > .k-foot { align-items:center !important; }
 ${S} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
-  padding:8px 0 !important; ${LABEL} font-size:13px !important; letter-spacing:.24em !important; color:rgb(${HOT}) !important; }
+  padding:10px 0 12px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
+  background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; }
 ${S} > .k-foot .sf-back::before { content:"‹" !important; margin-right:12px; font-size:15px; color:rgb(${BONE} / .6); }
-${S} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; margin-left:16px !important; ${LABEL} font-size: 12px !important; letter-spacing:.2em !important;
-  color:rgb(${BONE} / .58) !important; }
+${S} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
+  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important; color:rgb(${BONE} / .9) !important;
+  background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important; vertical-align:baseline !important; }
 ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; }
 
 @media (min-width:1501px) { ${S} #sf-settings-pane.is-roomy { --orr-scale-w:294px; } }
+/* UI polish: at 1080p the label column fits every label on one or two lines, and the composition reads at 1.12 so 12px legends are not tiny on a 24in screen */
+@media (min-width:1501px) { ${S} { --orr-label-w:236px; } }
+@media (min-width:1800px) and (min-height:1000px) and (max-width:2199px) { ${S}, ${C} { zoom:1.12; } }
 @media (max-width:1500px) {
-  ${S} { --orr-scale-w:174px; --orr-label-w:150px; grid-template-columns:minmax(150px, 176px) minmax(456px, 480px) minmax(0, 1fr) !important; }
+  ${S} { --orr-scale-w:174px; --orr-label-w:190px; grid-template-columns:minmax(168px, 176px) minmax(516px, 560px) minmax(0, 1fr) !important; }
   ${S} #sf-settings-pane .k-row { column-gap:16px !important; }
-  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size: 12px !important; letter-spacing:.12em !important; }
+  ${S} #sf-settings-pane .k-row > :is(label, span.k-t-body) { font-size: 12px !important; letter-spacing:.09em !important; text-wrap:balance; }
   ${S} #sf-settings-pane .k-row .k-words--row:has(> li) { gap:4px 14px !important; }
   ${S} #sf-settings-pane .k-row .k-words--row:has(> li) .k-word { font-size: 12px !important; letter-spacing:.12em !important; }
   ${S} #sf-settings-pane .k-row > div.k-words--row { grid-template-columns:var(--orr-scale-w, 174px) 56px !important; column-gap:10px !important; }
@@ -432,8 +456,9 @@ ${C} > .k-foot { align-items:center !important; }
 ${C} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important;
   padding:8px 0 !important; ${LABEL} font-size:13px !important; letter-spacing:.24em !important; color:rgb(${HOT}) !important; }
 ${C} > .k-foot .sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
-${C} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; margin-left:16px !important; ${LABEL} font-size: 12px !important; letter-spacing:.2em !important;
-  color:rgb(${BONE} / .58) !important; }
+${C} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
+  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important; color:rgb(${BONE} / .9) !important;
+  background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important; vertical-align:baseline !important; }
 ${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:rgb(255 253 248) !important; text-shadow:0 0 14px rgb(255 250 236 / .45); }
 
 @media (max-width:1500px) {

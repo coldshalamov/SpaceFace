@@ -367,6 +367,7 @@ export const mainMenuScreen = {
     // "Archive" opens the Codex on its Archive tab, where the authored intro cinematics replay.
     // Wave B11: Physics lab / Sandbox toy on front door.
     const asideItems = [
+      { action: 'help', label: 'Help' },
       { action: 'archive', label: 'Archive' },
       { action: 'circuits', label: 'Circuits' },
       { action: 'sandbox', label: 'Sandbox' },
@@ -443,6 +444,7 @@ export const mainMenuScreen = {
     const bLoad = byAction('load');
     const bCrucible = byAction('crucible');
     const bArchive = byAction('archive');
+    const bHelp = byAction('help');
     const bCircuits = byAction('circuits');
     const bSettings = byAction('settings');
     const bSandbox = byAction('sandbox');
@@ -490,8 +492,8 @@ export const mainMenuScreen = {
 
     refs = {
       root: rootEl, backdrop, title, list, version, versionText, bCredits, bAchievements, saveSummary, status,
-      bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive, bCircuits,
-      buttons: [bContinue, bNew, bLoad, bCrucible, bArchive, bCircuits, bSettings, bSandbox, bQuit].filter(Boolean),
+      bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive, bCircuits, bHelp,
+      buttons: [bContinue, bNew, bLoad, bCrucible, bHelp, bArchive, bCircuits, bSettings, bSandbox, bQuit].filter(Boolean),
     };
 
     // data-k-ready is owned by the screen manager once `stage` is declared: live, plate, or
@@ -539,6 +541,7 @@ export const mainMenuScreen = {
       case 'newGame': pushWhenReady(ctx, 'newGame', 'New Game'); return;
       case 'load': pushWhenReady(ctx, 'saveLoad', 'Load Game'); return;
       case 'crucible': pushWhenReady(ctx, 'crucible', 'Crucible'); return;
+      case 'help': pushWhenReady(ctx, 'help', 'Help'); return;
       case 'archive': requestCodexTab('Archive'); pushWhenReady(ctx, 'codex', 'Signal Archive'); return;
       case 'circuits': pushWhenReady(ctx, 'raceBoard', 'Circuits'); return;
       case 'settings': pushWhenReady(ctx, 'settings', 'Settings'); return;
@@ -561,6 +564,7 @@ export const mainMenuScreen = {
       screenReady(ctx, 'newGame') ? '1' : '0',
       screenReady(ctx, 'saveLoad') ? '1' : '0',
       screenReady(ctx, 'settings') ? '1' : '0',
+      screenReady(ctx, 'help') ? '1' : '0',
       screenReady(ctx, 'sandbox') ? '1' : '0',
       screenReady(ctx, 'raceBoard') ? '1' : '0',
       screenReady(ctx, 'crucible') ? '1' : '0',
@@ -574,6 +578,7 @@ export const mainMenuScreen = {
     setScreenButtonReady(refs.bLoad, ctx, 'saveLoad', 'Load Game');
     setScreenButtonReady(refs.bSettings, ctx, 'settings', 'Settings');
     if (refs.bSandbox) setScreenButtonReady(refs.bSandbox, ctx, 'sandbox', 'Sandbox');
+    if (refs.bHelp) setScreenButtonReady(refs.bHelp, ctx, 'help', 'Help');
     if (refs.bCircuits) setScreenButtonReady(refs.bCircuits, ctx, 'raceBoard', 'Circuits');
     if (refs.bCrucible) setScreenButtonReady(refs.bCrucible, ctx, 'crucible', 'Crucible');
     const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');

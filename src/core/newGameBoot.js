@@ -221,7 +221,7 @@ export async function runNewGameSimBoot({
   if (!isCurrent()) return { aborted: true };
   // Run-specific loadouts and arena placement must exist before visual/GPU admission.
   // Installing them on game:started prepares the wrong hull, then replaces it in flight.
-  bus.emit('game:scenePrepared', {});
+  bus.emit('game:scenePrepared', opts && opts.crucibleLaunch === true ? { crucibleLaunch: true } : {});
   if (!isCurrent()) return { aborted: true };
   const physicsSystem = registry.get('physics');
   if (physicsSystem && typeof physicsSystem.prepareBackend === 'function') {

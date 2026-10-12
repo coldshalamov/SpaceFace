@@ -367,12 +367,18 @@ export const SCENARIO_PRESETS = Object.freeze([
 ]);
 
 function gameNewOptionsForSandboxConfig(config) {
-  if (!config || typeof config !== 'object'
-    || !Object.prototype.hasOwnProperty.call(config, 'seed')) return {};
+  if (!config || typeof config !== 'object') return {};
+  const out = {};
   const seed = config.seed;
-  return Number.isSafeInteger(seed) && seed >= 1 && seed <= 0xffffffff
-    ? { seed }
-    : {};
+  if (Object.prototype.hasOwnProperty.call(config, 'seed')
+    && Number.isSafeInteger(seed) && seed >= 1 && seed <= 0xffffffff) out.seed = seed;
+  // A Crucible/Swarm launch rides game:new marked so the sim-side boot knows before
+  // game:scenePrepared that this is not an Adventure opening. Under the worker lane the boot
+  // (and onboarding's scenePrepared staging) runs in the worker, which never sees this
+  // module's pendingConfig — without the mark it stages the Training Derelict rescue opening
+  // and the run lands in the Adventure tutorial instead of the armory.
+  if (config.survivalSetup != null) out.crucibleLaunch = true;
+  return out;
 }
 
 /**
@@ -427,12 +433,21 @@ export function installSandboxGameStartedHook(bus, ctxRef) {
     const cfg = pendingConfig;
     pendingConfig = null;
     if (!cfg) return; // a normal new game, not a sandbox launch
-    try {
-      applySandboxSetup(resolveCtx(), cfg);
-    } catch (err) {
-      console.error('[sandbox] setup failed', err);
-      bus.emit('toast', { text: 'Sandbox setup failed: ' + (err && err.message), kind: 'error', ttl: 6 });
-    }
+    const apply = () => {
+      try {
+        applySandboxSetup(resolveCtx(), cfg);
+      } catch (err) {
+        console.error('[sandbox] setup failed', err);
+        bus.emit('toast', { text: 'Sandbox setup failed: ' + (err && err.message), kind: 'error', ttl: 6 });
+      }
+    };
+    // Worker lane: scenePrepared reaches main as a REPLAY of the worker's emit, and the lane
+    // suppresses main→worker forwarding for the whole replay window (so replayed events don't
+    // echo). Applied inline, the setup's run:beginRequested (and every other forwarded intent)
+    // was silently dropped — the Crucible run never began and Swarm OPEN ARMORY fell into the
+    // Adventure opening. Step out of the replay window first; in-process stays synchronous.
+    if (laneCommandSink()) queueMicrotask(apply);
+    else apply();
   };
   bus.on('game:started', handler);
   // Player-facing sandbox launches are complete before the shared loading gate: firing at
