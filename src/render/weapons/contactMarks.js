@@ -62,6 +62,9 @@ export const CONTACT_MARK_KINDS = Object.freeze({
   gouge: 1,
   frost: 2,
   craze: 3,
+  mineralSplash: 4,
+  thermalSeat: 5,
+  inductionBranch: 6,
 });
 
 /** Map a material id from the impact grammar onto the mark this surface actually takes. */
@@ -79,7 +82,8 @@ const VERTEX_SHADER = /* glsl */`
   attribute vec3 aNormal;
   attribute vec4 aSize; // width, height, opacity, heat (0 cold .. 1 white-hot)
   attribute vec3 aColor;
-  attribute vec3 aMark; // kind, fracture, retained contact seed (never derived from moving pose)
+  attribute vec3 aMark; // kind+phase for transient reactions, fracture, stable seed
+  attribute vec4 aSurface; // world-space receiver centre XYZ and approximate collision radius
   varying vec2 vUv;
   varying vec3 vColor;
   varying float vOpacity;
@@ -102,6 +106,15 @@ const VERTEX_SHADER = /* glsl */`
     vec3 world = aPos + n * 0.16
       + tangent * (uv.x - 0.5) * aSize.x
       + bitangent * (uv.y - 0.5) * aSize.y;
+    if (aSurface.w > 0.0) {
+      // Approximate receiver sphere, no per-particle physics or new draw. The authored rock
+      // depth test occludes the patch; irregular concavities remain a known R1 limitation.
+      vec3 fromCentre = world - aSurface.xyz;
+      float lengthToCentre = length(fromCentre);
+      if (lengthToCentre > 0.001) {
+        world = aSurface.xyz + fromCentre / lengthToCentre * (aSurface.w + 0.19);
+      }
+    }
     gl_Position = projectionMatrix * viewMatrix * vec4(world, 1.0);
   }
 `;
@@ -186,6 +199,42 @@ const FRAGMENT_SHADER = /* glsl */`
       }
     }
 
+    if (vKind >= 4.0) {
+      // The receiver answers the real contact. Mineral, heat and charge each have their own
+      // distinct aftermath, not one uniformly illuminated expanding/moving object.
+      float progress = fract(vKind);
+      float nature = floor(vKind);
+      float angle = atan(d.y, d.x);
+      float sector = sin(angle * 7.0 + vSeed * 6.2831) * 0.09
+        + sin(angle * 13.0 - vSeed * 12.83) * 0.045;
+      float skew = dot(d, vec2(cos(vSeed * 6.2831), sin(vSeed * 6.2831)));
+      float rBroken = r + sector * smoothstep(0.10, 0.8, r);
+      float footprint = 1.0 - smoothstep(0.68, 0.93, rBroken);
+      float reach = smoothstep(rBroken * 0.45, rBroken * 0.45 + 0.13, progress * 1.9 + 0.08);
+      float cooling = 1.0 - smoothstep(0.42, 0.98, progress);
+      float ignition = exp(-progress * 16.0) * exp(-rBroken * rBroken * 14.0);
+      float cracks = radialCracks(d + skew * vec2(0.035, -0.026), rBroken, 0.82, vSeed);
+      if (nature < 4.5) {
+        float fresh = footprint * reach * (0.55 + 0.45 * max(0.0, sin(angle * 6.0 + vSeed * 10.0)));
+        col = mix(vec3(0.09, 0.105, 0.12), vec3(0.67, 0.77, 0.79), fresh);
+        col += vec3(1.75, 1.45, 0.94) * (ignition * 3.0 + cracks * cooling * 0.48);
+        alpha = (fresh * 0.75 + cracks * 0.55 + ignition) * cooling * vOpacity;
+      } else if (nature < 5.5) {
+        float tongues = smoothstep(0.47, 0.82,
+          0.5 + 0.3 * sin(angle * 5.0 + vSeed * 8.0 + rBroken * 10.0)
+          + 0.18 * sin(angle * 11.0 - rBroken * 17.0));
+        float hot = footprint * reach * tongues * exp(-progress * 5.0);
+        col = vec3(0.12, 0.037, 0.018) + vec3(3.2, 1.15, 0.27) * hot
+          + vec3(3.1, 2.8, 2.1) * ignition;
+        alpha = (footprint * 0.40 + hot * 0.75 + ignition) * cooling * vOpacity;
+      } else {
+        float forks = max(cracks, radialCracks(d * 1.33, rBroken, 0.75, vSeed + 0.41));
+        float charge = forks * footprint * reach * exp(-progress * 4.0);
+        col = vec3(0.04, 0.07, 0.11) + vec3(0.38, 1.55, 3.05) * charge
+          + vec3(2.0, 2.5, 3.1) * ignition;
+        alpha = (charge + ignition + footprint * 0.10) * cooling * vOpacity;
+      }
+    }
     // GRAPHICS BAR: the wobbled radius let the char and crack terms reach the quad's edge
     // midpoints at a few percent alpha, which drew a faint hard-edged card at grazing angles.
     // Every mark kind now reaches exactly zero inside the quad.
@@ -226,6 +275,7 @@ export class HullScorchPool {
       markKind: 0,
       fracture: 0,
       seed: 0,
+      surfaceSplash: false,
       r: 0.2,
       g: 0.55,
       b: 0.85,
@@ -234,17 +284,20 @@ export class HullScorchPool {
       boundKey: null,
       scarId: null,
     }));
-    this.geometry = new THREE.PlaneGeometry(1, 1);
+    // 5x5 receiver curvature: 36 vertices per slot, 1152 at existing 32-slot saturation.
+    this.geometry = new THREE.PlaneGeometry(1, 1, 5, 5);
     this.pos = dynamicAttribute(this.capacity * 3, 3);
     this.normal = dynamicAttribute(this.capacity * 3, 3);
     this.size = dynamicAttribute(this.capacity * 4, 4);
     this.color = dynamicAttribute(this.capacity * 3, 3);
     this.mark = dynamicAttribute(this.capacity * 3, 3);
+    this.surface = dynamicAttribute(this.capacity * 4, 4);
     this.geometry.setAttribute('aPos', this.pos);
     this.geometry.setAttribute('aNormal', this.normal);
     this.geometry.setAttribute('aSize', this.size);
     this.geometry.setAttribute('aColor', this.color);
     this.geometry.setAttribute('aMark', this.mark);
+    this.geometry.setAttribute('aSurface', this.surface);
     this.material = new THREE.ShaderMaterial({
       vertexShader: VERTEX_SHADER,
       fragmentShader: FRAGMENT_SHADER,
@@ -277,6 +330,7 @@ export class HullScorchPool {
         { name: 'size', attribute: this.size },
         { name: 'color', attribute: this.color },
         { name: 'mark', attribute: this.mark },
+        { name: 'surface', attribute: this.surface },
       ],
     }) : null;
     if (scene) scene.add(this.mesh);
@@ -296,6 +350,8 @@ export class HullScorchPool {
         if (!this.slots[i].persistent) { slot = i; break; }
       }
     }
+    // Optional player splashes must never evict persistent damage history.
+    if (slot < 0 && spec.surfaceSplash === true) return -1;
     if (slot < 0) {
       slot = this._cursor;
       this._cursor = (this._cursor + 1) % this.capacity;
@@ -320,7 +376,8 @@ export class HullScorchPool {
     s.opacity = Math.max(0, finiteOr(spec.opacity, 1));
     s.heat0 = Math.min(1, Math.max(0, finiteOr(spec.heat, 0.8)));
     // Default 0 (scorch) and 0 (fresh) keep every existing caller's mark exactly as it was.
-    s.markKind = Math.max(0, Math.min(3, Math.round(finiteOr(spec.markKind, 0))));
+    s.markKind = Math.max(0, Math.min(6, Math.round(finiteOr(spec.markKind, 0))));
+    s.surfaceSplash = spec.surfaceSplash === true;
     s.fracture = Math.min(1, Math.max(0, finiteOr(spec.fracture, 0)));
     s.seed = Number.isFinite(spec.seed) ? spec.seed : weaponEffectSeed(`${s.targetId}:${++this._spawnSerial}`);
     s.r = finiteOr(spec.r, 0.2);
@@ -374,8 +431,9 @@ export class HullScorchPool {
       let nx = s.nx;
       let ny = s.ny;
       let nz = s.nz;
+      let pose = null;
       if (resolvePose) {
-        const pose = resolvePose(s);
+        pose = resolvePose(s);
         // false retires a transient flash. null holds the slot and draws nothing,
         // so a LOD/refit gap cannot publish the local offset as a world card.
         if (pose === false) {
@@ -401,13 +459,21 @@ export class HullScorchPool {
       this.normal.setXYZ(drawn, nx, ny, nz);
       this.size.setXYZW(drawn, s.width, s.height, fade, heat);
       this.color.setXYZ(drawn, s.r, s.g, s.b);
-      this.mark.setXYZ(drawn, s.markKind, s.fracture, s.seed);
+      this.mark.setXYZ(drawn,
+        s.surfaceSplash ? s.markKind + Math.min(0.98, s.age / s.life * 0.98) : s.markKind,
+        s.fracture, s.seed);
+      this.surface.setXYZW(drawn,
+        s.surfaceSplash && Number.isFinite(pose?.surfaceRadius) && pose.surfaceRadius > 0 ? pose.surfaceX : 0,
+        s.surfaceSplash && Number.isFinite(pose?.surfaceRadius) && pose.surfaceRadius > 0 ? pose.surfaceY : 0,
+        s.surfaceSplash && Number.isFinite(pose?.surfaceRadius) && pose.surfaceRadius > 0 ? pose.surfaceZ : 0,
+        s.surfaceSplash && Number.isFinite(pose?.surfaceRadius) && pose.surfaceRadius > 0 ? pose.surfaceRadius : 0);
       if (this.dynamicBufferOwner) {
         markDynamicBufferItems(this.dynamicBufferOwner, 0, drawn);
         markDynamicBufferItems(this.dynamicBufferOwner, 1, drawn);
         markDynamicBufferItems(this.dynamicBufferOwner, 2, drawn);
         markDynamicBufferItems(this.dynamicBufferOwner, 3, drawn);
         markDynamicBufferItems(this.dynamicBufferOwner, 4, drawn);
+        markDynamicBufferItems(this.dynamicBufferOwner, 5, drawn);
       }
       drawn++;
     }
@@ -421,6 +487,7 @@ export class HullScorchPool {
       this.size.needsUpdate = true;
       this.color.needsUpdate = true;
       this.mark.needsUpdate = true;
+      this.surface.needsUpdate = true;
     }
     this.mesh.visible = drawn > 0;
     return drawn;
