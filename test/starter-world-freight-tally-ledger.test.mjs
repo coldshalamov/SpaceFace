@@ -202,4 +202,51 @@ describe('Helios freight tally ledger', { concurrency: false }, () => {
     assert.equal(old.dispositionSimTime, undefined);
     lost.sim.dispose();
   });
+
+  test('the opening raid closes a counted hold only when the ore is taken or the barge is destroyed', () => {
+    const { sim, state, bus, traffic: lanes } = boot();
+    const entity = bargeAtTally(sim, manifest('fm_raid_hold', 3, 'cmdty_silicate'));
+    lanes._rememberHeliosFreightTally(entity, manifest('fm_raid_hold', 3, 'cmdty_silicate'), 'cmdty_silicate');
+    lanes._rememberHeliosFreightTally(entity, manifest('fm_destroyed_hold', 2), 'cmdty_ore_iron');
+    lanes._rememberHeliosFreightTally(entity, manifest('fm_delivered_hold', 1), 'cmdty_silicate');
+    lanes._noteHeliosFreightDisposition('fm_delivered_hold', 'delivered');
+    state.simTime = 30;
+
+    bus.emit('encounter:resolved', {
+      shape: 'opening_hauler_raid', outcome: 'defended',
+      causality: { manifestId: 'fm_raid_hold' },
+    });
+    bus.emit('encounter:resolved', {
+      shape: 'opening_hauler_raid', outcome: 'raid_over',
+      causality: { manifestId: 'fm_raid_hold' },
+    });
+    bus.emit('encounter:resolved', {
+      shape: 'pirate_toll', outcome: 'robbed',
+      causality: { manifestId: 'fm_raid_hold' },
+    });
+    assert.equal(heliosFreightTallies(state).find((row) => row.manifestId === 'fm_raid_hold').disposition, 'counted');
+
+    bus.emit('encounter:resolved', {
+      shape: 'opening_hauler_raid', outcome: 'robbed',
+      causality: { manifestId: 'fm_raid_hold', adoptedWorkingBarge: true },
+    });
+    const robbed = heliosFreightTallies(state).find((row) => row.manifestId === 'fm_raid_hold');
+    assert.equal(robbed.disposition, 'lost');
+    assert.equal(robbed.dispositionSimTime, 30);
+    assert.equal(heliosFreightTallies(state).find((row) => row.manifestId === 'fm_delivered_hold').disposition, 'delivered');
+
+    state.simTime = 44;
+    bus.emit('encounter:resolved', {
+      shape: 'opening_hauler_raid', outcome: 'hauler_destroyed',
+      causality: { manifestId: 'fm_destroyed_hold' },
+    });
+    bus.emit('encounter:resolved', {
+      shape: 'opening_hauler_raid', outcome: 'hauler_destroyed',
+      causality: { manifestId: 'fm_raid_hold' },
+    });
+    assert.equal(heliosFreightTallies(state).find((row) => row.manifestId === 'fm_destroyed_hold').disposition, 'lost');
+    assert.equal(heliosFreightTallies(state).find((row) => row.manifestId === 'fm_destroyed_hold').dispositionSimTime, 44);
+    assert.equal(heliosFreightTallies(state).find((row) => row.manifestId === 'fm_raid_hold').dispositionSimTime, 30);
+    sim.dispose();
+  });
 });

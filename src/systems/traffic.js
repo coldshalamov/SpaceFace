@@ -1689,6 +1689,10 @@ export const traffic = {
     this.bus.on('sector:exit', (p) => this._onSectorExit(p));
     // ECON-P2: freighter loss → owner-safe scarcity intents + named news (no wallet writes).
     this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
+    // A living barge can lose the counted hold without dying: the opening raid's robbed
+    // outcome is the raider leaving with the ore. Destruction closes the same row when the
+    // kill path never saw this manifest id.
+    this.bus.on('encounter:resolved', (p) => this._onOpeningRaidFreightResolved(p || {}));
     this.bus.on('world:farActorShelved', (p) => this._onFarActorShelved(p || {}));
     this.bus.on('world:farActorRestored', (p) => this._onFarActorRestored(p || {}));
     // Working freight is driven by npcJobsRuntime, so the ambient traffic stepper never reaches
@@ -6462,6 +6466,18 @@ export const traffic = {
     row.disposition = disposition;
     row.dispositionSimTime = Number(this.state.simTime) || 0;
     return true;
+  },
+
+  // Robbed and destroyed are the two opening-raid outcomes that take the counted hold.
+  // Defended and flying on leave the ore on the barge, so the row stays counted until a
+  // real dock or a later loss. Another shape cannot close a Helios tally.
+  _onOpeningRaidFreightResolved(payload) {
+    if (!payload || payload.shape !== 'opening_hauler_raid') return false;
+    if (payload.outcome !== 'robbed' && payload.outcome !== 'hauler_destroyed') return false;
+    const causality = payload.causality;
+    const manifestId = causality && typeof causality.manifestId === 'string'
+      ? causality.manifestId : '';
+    return this._noteHeliosFreightDisposition(manifestId, 'lost');
   },
 
   // The Helios freight spine counts every laden hull at its tally post before the berth: the seam's
