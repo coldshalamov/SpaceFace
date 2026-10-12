@@ -755,6 +755,107 @@ export const ALIEN_SITES = Object.freeze({
     morphologyMix: Object.freeze(['dead_crown', 'silt_root', 'mineral_root']),
     surveyOfferId: 'em_sterile_zone_survey',
   }),
+
+  // ── C12 / ID-FA rim fauna casts (AEP) ─────────────────────────────────────────────────
+  // The four procedural species get authored homes on the rim: Wake Eel in the Triton
+  // Wake, Furnace Maw in Rhea's slag glow, Glassback on the Haumea ice seams, Cold Bell
+  // in Sedna's dark radiation field. Each is a real ALIEN_SITES entry — growth dressing
+  // + fauna cast + arrival bands materialize on sector entry like every other site.
+  triton_wake_eel_run: Object.freeze({
+    siteId: 'triton_wake_eel_run',
+    sectorId: 'sector_triton_wake',
+    zoneId: 'zone_triton_anomaly',
+    poiId: 'poi_triton_anomaly',
+    name: 'The Wake Run',
+    strainId: 'veil_glass',
+    // A drift of wake eels surfing the anomaly's ion gradient — the thing the lab watches.
+    baseContamination: 0.30,
+    center: Object.freeze({ x: -180, z: 360 }),
+    arrivalBands: Object.freeze({ long: 2400, mid: 1400, close: 480 }),
+    arrivalLines: Object.freeze({
+      long: 'Long thin returns riding the wake spine — not debris, they change bearing on their own.',
+      mid: 'Organisms drafted into your wake. They are following the ship, not fleeing it.',
+      close: 'Wake eels, a full run of them. Cut thrust gently — a hard burn scatters the whole line.',
+    }),
+    faunaCast: Object.freeze({
+      wake_eel: 4,
+      veil_ray: 2,
+      mourning_kite: 1,
+    }),
+    growthRing: Object.freeze({ inner: 24, outer: 90, count: 12 }),
+    morphologyMix: Object.freeze(['filament_sheet', 'membrane_patch', 'mirror_membrane', 'sensory_fan']),
+  }),
+  rhea_furnace_maw_gulch: Object.freeze({
+    siteId: 'rhea_furnace_maw_gulch',
+    sectorId: 'sector_rhea_cinder',
+    zoneId: 'zone_rhea_slag',
+    poiId: 'poi_rhea_slag',
+    name: 'The Slag Gulch',
+    strainId: 'ashfall_choir',
+    // Reactor slag keeps this pocket warm; a furnace maw hunts the heat the barges bleed.
+    baseContamination: 0.48,
+    center: Object.freeze({ x: 380, z: -560 }),
+    arrivalBands: Object.freeze({ long: 2200, mid: 1300, close: 450 }),
+    arrivalLines: Object.freeze({
+      long: 'A hot pocket inside the slag field — hotter than the geology can explain.',
+      mid: 'Something big is holding station off the slag hulk, drinking the heat plume.',
+      close: 'Furnace maw on the hulk. Kill your cruise burn or it charges the glow.',
+    }),
+    faunaCast: Object.freeze({
+      furnace_maw: 1,
+      hull_leech: 2,
+      needle_swarm: 4,
+    }),
+    growthRing: Object.freeze({ inner: 30, outer: 110, count: 16 }),
+    morphologyMix: Object.freeze(['vent_lung', 'spore_chimney', 'red_core', 'calcified_collar', 'nerve_lace']),
+  }),
+  haumea_glassback_shelf: Object.freeze({
+    siteId: 'haumea_glassback_shelf',
+    sectorId: 'sector_haumea_rift',
+    zoneId: 'zone_haumea_ice',
+    poiId: 'poi_haumea_fissure',
+    name: 'The Fracture Shelf',
+    strainId: 'veil_glass',
+    // Silicate grazers scrape the rift shear faces — a herd the observatory logs nightly.
+    baseContamination: 0.26,
+    center: Object.freeze({ x: 280, z: 520 }),
+    arrivalBands: Object.freeze({ long: 2100, mid: 1250, close: 430 }),
+    arrivalLines: Object.freeze({
+      long: 'Broad slow returns on the ice seams — too regular for rockfall.',
+      mid: 'Armored grazers working the fracture faces. Beams will skate off them.',
+      close: 'Glassbacks on the shelf. They will not chase you; do not corner them.',
+    }),
+    faunaCast: Object.freeze({
+      glassback: 3,
+      veil_ray: 2,
+    }),
+    growthRing: Object.freeze({ inner: 20, outer: 70, count: 10 }),
+    morphologyMix: Object.freeze(['mineral_root', 'cyst_cluster', 'membrane_patch', 'filament_sheet']),
+  }),
+  sedna_cold_bell_field: Object.freeze({
+    siteId: 'sedna_cold_bell_field',
+    sectorId: 'sector_sedna_dark',
+    zoneId: 'zone_sedna_glow',
+    poiId: 'poi_sedna_cadence',
+    name: 'The Bell Field',
+    strainId: 'ashfall_choir',
+    // A cold-bell colony tolls ahead of each radiation front — the survey post times
+    // its sorties by the ringing (AE-160 weather-listener species, seeded dark-side).
+    baseContamination: 0.34,
+    center: Object.freeze({ x: 240, z: -320 }),
+    arrivalBands: Object.freeze({ long: 2600, mid: 1500, close: 500 }),
+    arrivalLines: Object.freeze({
+      long: 'A deep metallic ring on the passive array — repeating, too slow for a beacon.',
+      mid: 'The bells toll louder as the front nears. The survey crews learned to listen first.',
+      close: 'Cold bells drifting in colony. When the toll stops, the radiation is already here.',
+    }),
+    faunaCast: Object.freeze({
+      cold_bell: 3,
+      mourning_kite: 1,
+    }),
+    growthRing: Object.freeze({ inner: 30, outer: 110, count: 16 }),
+    morphologyMix: Object.freeze(['cyst_cluster', 'sensory_fan', 'node_bulb_small', 'filament_sheet', 'dead_crown']),
+  }),
 });
 
 export function alienSitesForSector(sectorId) {
