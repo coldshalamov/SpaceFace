@@ -686,6 +686,26 @@ export const PRESENTATION_RECIPES = Object.freeze({
     budgets: { particles: 52, voices: 1, uiPulses: 2 },
     tags: ['scenario', 'branch', 'aftermath'],
   }),
+  // Lane2's witnessed incident: a live carrier loses custody-stamped pods to violence or a raid.
+  // The pods are physical and claimable, so the cue's world lanes answer where the pods ARE —
+  // the authored amber pod-beacon ring plus the cargo-jettison voice — while the player lanes
+  // (receipt, caption) surface only for a player-addressed cue through the adapters' relevance
+  // floor. A raider's distant spill stays world-scoped; barkDirector keeps the spoken line.
+  // camera.none: a spill must never kick the camera off the player's own work.
+  'freight.cargo_spilled': recipe({
+    importance: 0.6,
+    dedupeWindowTicks: 45,
+    material: 'freight',
+    lanes: {
+      camera: 'camera.none',
+      vfx: 'vfx.pod_beacon',
+      audio: 'audio.freight_spill',
+      ui: 'ui.freight_spill',
+      accessibility: 'accessibility.freight_spill',
+    },
+    budgets: { particles: 20, voices: 1, uiPulses: 1 },
+    tags: ['freight', 'spill', 'witnessed'],
+  }),
 });
 
 export function getPresentationRecipe(id) {

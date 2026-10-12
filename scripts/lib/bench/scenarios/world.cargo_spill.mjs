@@ -10,7 +10,10 @@
 //
 // Readout order is the causal chain; the first link that does not happen is reported as
 // `firstViolatedExpectation`, so the next agent knows which production owner to open:
-//   spill_emitted -> spill_noticed -> npc_targets_pod (within B10 30 s) -> npc_reaches_pod -> pod_custody_changed
+//   spill_emitted -> spill_cue_published -> spill_noticed -> npc_targets_pod (within B10 30 s) -> npc_reaches_pod -> pod_custody_changed
+// The cue link is the witnessed-incident half: presentationOrchestrator (booted with the same
+// production manifest) must publish freight.cargo_spilled onto the pod cloud — the same run that
+// proves the world reacted also proves the player was told.
 import { deliverProductionGunHit } from './feel.hitstun_curve.mjs';
 import { B10B_DEADLINE_S, bootWorld, bodilessActors, withFeatures } from './world.reaction_trio.mjs';
 
@@ -45,7 +48,7 @@ export async function measureCargoSpill(seed) {
   const { runtime, state, bus, player } = h;
   const events = [];
   const tick = () => state.tick | 0;
-  for (const name of ['freight:cargoSpilled', 'traffic:spillNoticed', 'traffic:salvorDispatched',
+  for (const name of ['freight:cargoSpilled', 'presentation:cue', 'traffic:spillNoticed', 'traffic:salvorDispatched',
     'npcjobs:assigned', 'pickup:collected', 'salvage:npcExtraction']) {
     bus.on(name, (p) => events.push({ tick: tick(), type: name, p: p || {} }));
   }
@@ -69,6 +72,10 @@ export async function measureCargoSpill(seed) {
   runtime.runTicks(1, DT);
 
   const spill = events.find((e) => e.type === 'freight:cargoSpilled' && e.p.carrierId === carrier.id) || null;
+  // The witnessed readout: the orchestrator must publish freight.cargo_spilled addressed at this
+  // carrier (its targetId), not merely leave the pods to explain themselves.
+  const spillCue = events.find((e) => e.type === 'presentation:cue'
+    && e.p.id === 'freight.cargo_spilled' && e.p.targetId === carrier.id) || null;
   const podIds = new Set(spill && Array.isArray(spill.p.podIds) ? spill.p.podIds : []);
   const pods = [...podIds].map((id) => state.entities.get(id)).filter(Boolean);
   let noticedTick = null; let noticerId = null; let nearest = Infinity; let nearestId = null;
@@ -117,6 +124,7 @@ export async function measureCargoSpill(seed) {
   const attractedInBar = noticedTick != null && (noticedTick - hitTick) / 60 <= B10B_DEADLINE_S;
   const chain = [
     ['spill_emitted', !!spill],
+    ['spill_cue_published', !!spillCue],
     ['spill_noticed', !!noticed || noticedTick != null],
     ['npc_targets_pod', noticedTick != null],
     ['npc_targets_pod_within_b10', attractedInBar],
@@ -136,6 +144,9 @@ export async function measureCargoSpill(seed) {
       commodityId: spill.p.commodityId, podIds: [...podIds],
       podCustodyStamp: pod0 ? !!(pod0.data && pod0.data.freightCustodyPod) : null,
       podOwnerId: pod0 && pod0.data ? pod0.data.ownerId ?? null : null } : null,
+    spillCue: spillCue ? { tick: spillCue.tick, distance: r1(spillCue.p.distance),
+      position: spillCue.p.position || null, vfxLane: spillCue.p.lanes && spillCue.p.lanes.vfx,
+      relevance: spillCue.p.playerRelevance, sourceEvent: spillCue.p.sourceEvent } : null,
     noticedAtS: s(noticed ? noticed.tick : null),
     targetedAtS: s(noticedTick),
     noticerId,
@@ -152,7 +163,8 @@ export async function measureCargoSpill(seed) {
     barMet: firstViolated == null,
   };
   const eventTrace = events.map((e) => ({ tick: e.tick, type: e.type,
-    data: { carrierId: e.p.carrierId ?? null, podIds: e.p.podIds ?? null, pickupId: e.p.pickupId ?? null,
+    data: { cueId: e.type === 'presentation:cue' ? e.p.id : null,
+      carrierId: e.p.carrierId ?? null, podIds: e.p.podIds ?? null, pickupId: e.p.pickupId ?? null,
       collectorId: e.p.collectorId ?? e.p.salvorId ?? null, targetId: e.p.targetId ?? null, cause: e.p.cause ?? null } }));
   runtime.dispose();
   return { metrics, eventTrace };

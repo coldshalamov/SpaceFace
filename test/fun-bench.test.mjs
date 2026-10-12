@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import { computeRunHash } from '../scripts/lib/bench/runHash.mjs';
 import { simulateCrucibleSwarm, buildKnockEvents, verifyCrucibleDeterminism } from '../scripts/lib/bench/crucibleBench.mjs';
 import { runFlightBench } from '../scripts/lib/bench/flightBench.mjs';
-import { runVerbBench, listVerbScenarios, VERB_BENCH_SCENARIOS } from '../scripts/lib/bench/verbBench.mjs';
+import { runVerbBench, listVerbScenarios, discoverScenarioModules } from '../scripts/lib/bench/verbBench.mjs';
 import { PLAYER_CONTACT_EVENT_BRIDGE_TICKS } from '../src/core/sg02DynamicBodyOwner.js';
 
 test('computeRunHash generates bit-identical SHA-256 hashes for identical inputs', () => {
@@ -66,34 +66,36 @@ test('runFlightBench executes all 4 motion lab scenarios and hashes identically'
   }
 });
 
-test('runVerbBench executes the inline verb scenarios and hashes identically; discovered modules append', async () => {
-  // The inline scenarios run in milliseconds; discovered scenario modules (scripts/lib/bench/
-  // scenarios/*.mjs) may boot the real runtime and take minutes, so the full default sweep is
-  // not repeated here — the measurer's own end-to-end runs exercise it.
-  const inlineIds = VERB_BENCH_SCENARIOS.map((s) => s.id);
-  const result1 = await runVerbBench({ seeds: [4242], scenarioIds: inlineIds });
-  const result2 = await runVerbBench({ seeds: [4242], scenarioIds: inlineIds });
-
-  assert.equal(result1.ok, true);
-  assert.equal(result2.ok, true);
-  assert.equal(result1.runs.length, inlineIds.length);
-
-  for (let i = 0; i < result1.runs.length; i++) {
-    const r1 = result1.runs[i];
-    const r2 = result2.runs[i];
-    assert.equal(r1.runHash, r2.runHash, `${r1.scenarioId} must produce identical hash on repeat`);
-    assert.deepEqual(r1.metrics, r2.metrics, `${r1.scenarioId} metrics must match`);
-  }
-
-  // The drop-in seam: discovered modules merge over the inline list (override by id, new ids
-  // append) with unique ids and a runnable seed entrypoint.
+test('runVerbBench dispatches every retired inline stand-in id to its real-path module', async () => {
+  // The last inline verb stand-ins are gone: the ids that used to resolve to hand-integrated
+  // local models are all dispatched by discovered scripts/lib/bench/scenarios/*.mjs modules
+  // now. The heavy runs themselves are covered by each module's own test — this pins that the
+  // IDs still resolve to a runnable module entrypoint (no id silently lost) and stay unique.
+  const retiredInlineIds = [
+    'feel.rope_swing_release',
+    'feel.shove_magnitude',
+    'feel.stroke_speed',
+    'feel.terrain_slam',
+    'feel.knock_budget',
+  ];
   const all = await listVerbScenarios();
-  assert.ok(all.length >= inlineIds.length, 'discovered modules must never shrink the scenario list');
+  const discovered = await discoverScenarioModules();
+  assert.equal(all.length, discovered.size, 'the bench list is exactly the discovered module set');
+  for (const id of retiredInlineIds) {
+    const spec = discovered.get(id);
+    assert.ok(spec, `${id} must still resolve — a retired stand-in leaves a real-path module behind`);
+    const row = all.find((s) => s.id === id);
+    assert.ok(row && row.run === spec.run, `${id} must dispatch its discovered module, not a fallback`);
+  }
   assert.equal(new Set(all.map((s) => s.id)).size, all.length, 'scenario ids must stay unique');
   for (const scenario of all) {
-    const runnable = typeof scenario.run === 'function' || inlineIds.includes(scenario.id);
-    assert.ok(runnable, `${scenario.id} must expose run(seed) or be an inline scenario`);
+    assert.equal(typeof scenario.run, 'function', `${scenario.id} must expose run(seed)`);
   }
+
+  // Fail-closed: a filter that names nothing produces an empty result, not a stand-in run.
+  const empty = await runVerbBench({ seeds: [4242], scenarioIds: ['feel.does_not_exist'] });
+  assert.equal(empty.ok, false);
+  assert.equal(empty.runs.length, 0);
 });
 
 test('feel.knock_budget is deterministic: metrics deepEqual and identical runHash across repeats', async () => {
