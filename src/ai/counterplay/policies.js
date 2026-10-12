@@ -35,7 +35,7 @@ function goal(kind, progress) {
 }
 
 function pack(doctrine, tick, phase, extra) {
-  return {
+  const intent = {
     doctrineId: doctrine.id,
     tick,
     phase,
@@ -49,8 +49,9 @@ function pack(doctrine, tick, phase, extra) {
     cue: null,
     fallback: null,
     ...extra,
-    phase,
   };
+  intent.phase = phase;
+  return intent;
 }
 
 function pointOf(value) {
