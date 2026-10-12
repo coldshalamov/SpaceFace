@@ -76,6 +76,7 @@ import { shouldSkipFullTickSystems } from '../../src/core/presentationFreeze.js'
 import { partitionUpdateSystems } from '../../src/core/catchupPolicy.js';
 import { createBus } from '../../src/core/eventBus.js';
 import { createGameState } from '../../src/core/gameState.js';
+import { readTimeEffectsRequests } from '../../src/core/timeEffects.js';
 import { canonicalClone, deepAssignInPlace } from './simReadModel.mjs';
 import { setLaneViewport, setLaneModalActive } from '../../src/systems/input.js';
 import { nowNs, realmMemoryUsage, installLaneStorage, stageLaneStorage } from './simRealm.mjs';
@@ -1060,6 +1061,7 @@ export function createSimHost() {
           simTime: state.simTime,
           mode: state.mode,
           timeScale: state.timeScale,
+          timeEffects: readTimeEffectsRequests(state),
           playerId: state.playerId,
           skipFullTick: shouldSkipFullTickSystems(state),
           input: state.input ? { moveX: state.input.moveX, moveZ: state.input.moveZ, boost: state.input.boost, blocked: state.input.blocked } : null,
