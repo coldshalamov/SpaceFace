@@ -172,9 +172,13 @@ function buildVeinStrip(seed) {
   const anchor = dir.clone().normalize();
   const tangent = pdir.clone();
   const bitangent = new THREE.Vector3().crossVectors(anchor, tangent).normalize();
-  const span = 0.08;
-  const lift = ((((seed >>> 8) & 0xff) / 255) - 0.5) * 0.03;
-  const halfW = 0.012;
+  // A fissure across about half the radius. Span 0.08 (a speck after
+  // 40% depletion) was invisible in play. Unit space only: the rig copies
+  // body.scale once. Authoring world units here made the sphere R×R and sheeted
+  // the frame (screen p95 83%, player hidden 14%, master bar 29% / 6%).
+  const span = 0.28;
+  const lift = ((((seed >>> 8) & 0xff) / 255) - 0.5) * 0.04;
+  const halfW = 0.03;
 
   const centers = [];
   for (let i = 0; i < VEIN_STATIONS; i++) {
@@ -267,7 +271,8 @@ function syncVeinRig(rec, mesh, body, entity, simTime) {
     strip.visible = true;
     // Heat shimmer: a worked crack pulses faintly while the beam is on it, steady otherwise.
     const shimmer = 0.82 + 0.18 * Math.sin(simTime * 11 + i * 2.1) * rec.miningAgitation;
-    strip.material.opacity = Math.min(0.22, o * 0.35) * shimmer;
+    // Hot enough to read on a dark rock, capped so a fissure stays a line.
+    strip.material.opacity = Math.min(0.5, 0.16 + o * 0.42) * shimmer;
   }
 }
 
@@ -715,9 +720,9 @@ export function createAsteroidMotionTracker() {
     // 6. Fracture veins — glowing fissures that open with ore depletion. Lazily attached once the
     //    rock is actually worked; plain-object test doubles (no .add) and pristine rocks skip it.
     if (typeof mesh.add === 'function' && entity && entity.id != null) {
-      // Veins stay off a fresh rock. They open only once the body is actually worked,
-      // so a foundry full of intact chunks does not wear an additive sheet.
-      if (rec.fracture > 0.4) {
+      // Intact chunks stay dark. The first fissure opens once about a fifth of the
+      // ore is gone — waiting until 40% left the beam with nothing to look at.
+      if (rec.fracture > 0.18) {
         ensureVeinRig(rec, mesh, entity);
         syncVeinRig(rec, mesh, body, entity, simTime);
       } else if (rec.veinRig && rec.veinRig.visible) {

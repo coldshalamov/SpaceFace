@@ -2554,10 +2554,13 @@ const _threatPlateQuat = new THREE.Quaternion();
 const _threatPlateScale = new THREE.Vector3();
 
 /**
- * Hostile swarm hulls are dark metal on a dark field, so the inner sample disk matches
- * the rocks. A camera-facing opaque plate fills that disk with a crimson the asteroids
- * do not wear. MeshBasic, not a sprite: a sprite would count as combat VFX coverage.
- * Created once per boundary; the per-frame work is a quaternion write.
+ * Hostile swarm hulls are dark metal on a dark field. A filled disk the size of the
+ * hull painted the ship out — enemies read as red circles. This is a camera-facing
+ * crimson rim on the silhouette: the center stays open so the hull shows through.
+ * Outer radius is entity.radius (floor 2). MeshBasic, not a sprite, and not
+ * additive, so the rim is not combat VFX. depthWrite is off so the rim does not
+ * occlude the hull or anything drawn after it. Created once per boundary; the
+ * per-frame work is a quaternion write.
  */
 export function syncSwarmThreatPlate(mesh, entity, camera) {
   if (!mesh || typeof mesh.getObjectByName !== 'function') return;
@@ -2566,12 +2569,14 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
   }
   let plate = mesh.getObjectByName('sf-swarm-threat-plate');
   if (!plate) {
+    // Unit ring. 0.84–1.0 leaves the middle of the hull open and keeps the
+    // stroke on the silhouette. Scaled by entity.radius below.
     plate = new THREE.Mesh(
-      getGeometry('swarm:threat-plate', () => new THREE.CircleGeometry(1, 20)),
-      getMaterial('swarm:threat-plate', () => new THREE.MeshBasicMaterial({
+      getGeometry('swarm:threat-ring', () => new THREE.RingGeometry(0.84, 1, 40)),
+      getMaterial('swarm:threat-ring', () => new THREE.MeshBasicMaterial({
         color: 0xff1a3a,
         side: THREE.DoubleSide,
-        depthWrite: true,
+        depthWrite: false,
         depthTest: false,
         fog: false,
         toneMapped: false,
@@ -2582,10 +2587,8 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     plate.frustumCulled = true;
     mesh.add(plate);
   }
-  // Local scale is divided by the parent so a scaled hull cannot inflate the disk.
-  // The inner sample is the chebyshev square at 0.7r (corners at ~0.99r). A disk
-  // of radius r covers that square. 1.25r reached the background ring (d > 1.2r)
-  // and pulled the enemy's ΔL back toward the field.
+  // Local scale is divided by the parent so a scaled hull cannot inflate the rim
+  // past the ship. 1.25× used to reach the readability background ring.
   const worldR = Math.max(2, Number(entity.radius) || 2);
   mesh.updateWorldMatrix(true, false);
   mesh.getWorldScale(_threatPlateScale);

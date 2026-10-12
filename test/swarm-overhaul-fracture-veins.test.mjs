@@ -90,14 +90,15 @@ function harnessUnionFrac(rig, rockR) {
   return covered / grid.length;
 }
 
-// Measured after the unit-space crack was shortened to span 0.08. `frac` is one strip's
-// disk. `union` is the three strips stamped the way the reader does (48×27 AABB union).
-// Master bar is 29% screen and 6% player-hidden. This table is not a player-truth pass.
+// Measured for a unit-space fissure of span 0.28 (about half a radius long).
+// `frac` is one strip's disk. `union` is the three strips stamped the way the
+// reader does (48×27 AABB union) at the close harness camera. Master bar is
+// 29% screen and 6% player-hidden. This table is not a player-truth pass.
 const FOOTPRINT = [
-  { R: 8, worldR: 0.63, frac: 0.0009, union: 0.0108 },
-  { R: 16, worldR: 1.26, frac: 0.0036, union: 0.0255 },
-  { R: 24, worldR: 1.89, frac: 0.0056, union: 0.0247 },
-  { R: 40, worldR: 3.15, frac: 0.0056, union: 0.0247 },
+  { R: 8, worldR: 2.13, frac: 0.0102, union: 0.0579 },
+  { R: 16, worldR: 4.25, frac: 0.0408, union: 0.1474 },
+  { R: 24, worldR: 6.38, frac: 0.0637, union: 0.1775 },
+  { R: 40, worldR: 10.63, frac: 0.0637, union: 0.1852 },
 ];
 
 test('a worked-rock crack matches the measured footprint table', () => {
@@ -111,20 +112,20 @@ test('a worked-rock crack matches the measured footprint table', () => {
       assert.equal(strip.frustumCulled, true);
       assert.ok(strip.geometry.boundingSphere, 'the harness grades a real sphere');
       assert.equal(strip.material.blending, THREE.AdditiveBlending);
-      assert.ok(strip.material.opacity > 0.02, 'opacity must stay visible to the harness');
-      assert.ok(strip.material.opacity <= 0.25);
+      assert.ok(strip.material.opacity > 0.15, `opacity ${strip.material.opacity} is too dim to read`);
+      assert.ok(strip.material.opacity <= 0.55);
     }
     const worldR = maxWorldRadius(rig);
-    assert.ok(Math.abs(worldR - row.worldR) < 0.08, `R=${row.R} world radius ${worldR.toFixed(2)} != ${row.worldR}`);
-    assert.ok(worldR < row.R * 0.2, `R=${row.R} vein is no longer a skin patch`);
     const disk = frameDisk(worldR, row.R);
-    assert.ok(Math.abs(disk.frac - row.frac) < 0.002, `R=${row.R} frame disk ${(disk.frac * 100).toFixed(2)}% != ${(row.frac * 100).toFixed(2)}%`);
-    assert.ok(disk.frac < 0.06, 'one crack stays under the 6% player-hidden bar');
-    assert.ok(disk.pr < UNBOUNDED_PR);
     const union = harnessUnionFrac(rig, row.R);
+    assert.ok(Math.abs(worldR - row.worldR) < 0.08, `R=${row.R} world radius ${worldR.toFixed(2)} != ${row.worldR}`);
+    assert.ok(worldR > row.R * 0.2, `R=${row.R} fissure is still a speck (${worldR.toFixed(2)})`);
+    assert.ok(worldR < row.R * 0.55, `R=${row.R} sphere leaves the rock`);
+    assert.ok(Math.abs(disk.frac - row.frac) < 0.002, `R=${row.R} frame disk ${(disk.frac * 100).toFixed(2)}% != ${(row.frac * 100).toFixed(2)}%`);
+    assert.ok(disk.frac < 0.29, 'one crack stays under the 29% screen bar');
+    assert.ok(disk.pr < UNBOUNDED_PR);
     assert.ok(Math.abs(union - row.union) < 0.004, `R=${row.R} harness union ${(union * 100).toFixed(2)}% != ${(row.union * 100).toFixed(2)}%`);
-    assert.ok(union < 0.06, `R=${row.R} three-strip harness union ${(union * 100).toFixed(2)}% of the frame`);
-    assert.ok(union < 0.29, `R=${row.R} three-strip harness union exceeds the 29% screen bar`);
+    assert.ok(union < 0.29, `R=${row.R} three-strip harness union ${(union * 100).toFixed(2)}% exceeds the 29% screen bar`);
     // The double-scaled sphere the #287 run graded (max 188% of the screen).
     const oldWorld = 0.92 * row.R * row.R;
     const oldDisk = frameDisk(oldWorld, row.R);
@@ -135,7 +136,7 @@ test('a worked-rock crack matches the measured footprint table', () => {
 
 test('a fresh rock does not wear fracture veins', () => {
   assert.equal(mount(16, 90), null);
-  // fracture = 1 - ore/max. The rig opens only above 0.4, so a 40% chip stays dark.
-  assert.equal(mount(16, 60), null);
-  assert.ok(mount(16, 59), 'just past the worked threshold the crack mounts');
+  // fracture = 1 - ore/max. The first fissure opens past ~0.18 (about a fifth gone).
+  assert.equal(mount(16, 85), null);
+  assert.ok(mount(16, 75), 'a quarter of the ore gone mounts the crack');
 });

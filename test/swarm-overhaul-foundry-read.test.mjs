@@ -1,7 +1,7 @@
 // Swarm residual readability contracts outside the Perf Lane.
-// Threat plates are opaque camera-facing markers. The harness counts a layer only when it is
-// additive, or transparent with depthWrite false and a Points/Sprite/Shader. An opaque MeshBasic
-// plate must not join that budget.
+// Threat markers are camera-facing crimson rims. A filled disk the size of the hull hid the
+// ship. The harness counts a layer only when it is additive, or transparent with depthWrite
+// false and a Points/Sprite/Shader. An opaque MeshBasic rim must not join that budget.
 // Foundry room solids are dark furniture. The generic station (white greeble, rings, blinkers)
 // read as a geodesic sitting on the pilot.
 import test from 'node:test';
@@ -23,12 +23,25 @@ function plateOn(entity, meshQuat, camQuat) {
   return { mesh, camera, plate: mesh.getObjectByName('sf-swarm-threat-plate') };
 }
 
-test('a hostile ship wears one opaque threat plate that faces the camera', () => {
+test('a hostile ship wears one opaque threat rim that faces the camera', () => {
   const camQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.4, -0.7, 0.15));
   const meshQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.2, 1.1, 0.55));
   const { mesh, camera, plate } = plateOn(hostile(1, 8), meshQuat, camQuat);
-  assert.ok(plate && plate.isMesh, 'hostile team 1 mounts a mesh plate');
+  assert.ok(plate && plate.isMesh, 'hostile team 1 mounts a mesh rim');
   assert.equal(plate.isSprite, undefined);
+  assert.equal(plate.geometry.type, 'RingGeometry');
+  assert.equal(plate.geometry.parameters.innerRadius, 0.84);
+  assert.equal(plate.geometry.parameters.outerRadius, 1);
+  const pos = plate.geometry.attributes.position;
+  let minR = Infinity;
+  let maxR = 0;
+  for (let i = 0; i < pos.count; i++) {
+    const r = Math.hypot(pos.getX(i), pos.getY(i));
+    if (r < minR) minR = r;
+    if (r > maxR) maxR = r;
+  }
+  assert.ok(minR >= 0.84 - 1e-3, `ring reaches into the hull (min ${minR})`);
+  assert.ok(maxR <= 1 + 1e-3, `ring extends past the silhouette (max ${maxR})`);
   assert.equal(plate.renderOrder, 12);
   assert.equal(plate.frustumCulled, true);
   assert.equal(plate.scale.x, 8);
@@ -37,7 +50,7 @@ test('a hostile ship wears one opaque threat plate that faces the camera', () =>
   assert.equal(plate.material.color.getHex(), 0xff1a3a);
   assert.equal(plate.material.side, THREE.DoubleSide);
   assert.equal(plate.material.transparent, false);
-  assert.equal(plate.material.depthWrite, true);
+  assert.equal(plate.material.depthWrite, false, 'the rim must not occlude the hull');
   assert.equal(plate.material.depthTest, false);
   assert.equal(plate.material.blending, THREE.NormalBlending);
   assert.notEqual(plate.material.blending, THREE.AdditiveBlending);
@@ -55,7 +68,7 @@ test('a hostile ship wears one opaque threat plate that faces the camera', () =>
   const other = plateOn(hostile(3, 1), null, null).plate;
   assert.ok(other);
   assert.equal(other.scale.x, 2, 'radius floor is 2');
-  assert.equal(other.geometry, plate.geometry, 'plates share one circle');
+  assert.equal(other.geometry, plate.geometry, 'rims share one ring');
   assert.equal(other.material, plate.material);
 });
 
@@ -69,10 +82,10 @@ test('a scaled hull does not inflate the threat plate past the ship', () => {
   const world = plate.getWorldScale(new THREE.Vector3());
   assert.ok(Math.abs(world.x - 8) < 1e-3, `world radius ${world.x} should be 1×8`);
   assert.ok(Math.abs(world.y - 8) < 1e-3);
-  // Readability samples the inner 70% of entity.radius. The plate covers that
-  // square (corners ~0.99r) and stays inside the background ring at 1.2r.
-  assert.ok(world.x >= 8 * 0.99);
+  // Outer edge sits on the silhouette. It must not grow past the ship into the
+  // readability background ring (d > 1.2r).
   assert.ok(world.x <= 8 * 1.05);
+  assert.ok(world.x >= 8 * 0.99);
 });
 
 test('the threat crimson clears the low-contrast bar against a dark field', () => {
