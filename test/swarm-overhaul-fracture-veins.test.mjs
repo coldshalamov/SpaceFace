@@ -4,9 +4,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createAsteroidMotionTracker } from '../src/render/asteroidMotionPresentation.js';
+import { beginFractureVeinFrame, createAsteroidMotionTracker } from '../src/render/asteroidMotionPresentation.js';
 
 function mount(rockRadius, oreLeft) {
+  // The footprint pin counts every staggered vein. A survival frame left open
+  // by another test would hide the third strip and move the union.
+  beginFractureVeinFrame(null);
   const tracker = createAsteroidMotionTracker();
   const root = new THREE.Group();
   const body = new THREE.Mesh(new THREE.SphereGeometry(1, 6, 4));
@@ -139,4 +142,48 @@ test('a fresh rock does not wear fracture veins', () => {
   // fracture = 1 - ore/max. The first fissure opens past ~0.18 (about a fifth gone).
   assert.equal(mount(16, 85), null);
   assert.ok(mount(16, 75), 'a quarter of the ore gone mounts the crack');
+});
+
+function countVisibleStrips(root) {
+  const rig = root && root.getObjectByName('sf-fracture-veins');
+  let shown = 0;
+  if (!rig) return shown;
+  rig.traverse((o) => { if (o.isMesh && o.visible) shown += 1; });
+  return shown;
+}
+
+function workedRock(tracker, id, oreLeft) {
+  const root = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(1, 6, 4));
+  body.scale.setScalar(16);
+  root.add(body);
+  root.userData.asteroidInstanceBody = body;
+  tracker.updateAsteroidMotion({
+    id,
+    radius: 16,
+    alive: true,
+    pos: { x: 0, y: 0, z: 0 },
+    hull: oreLeft,
+    hullMax: 100,
+    data: { oreHP: oreLeft, oreHPMax: 100 },
+  }, root, 2, 1 / 60);
+  return root;
+}
+
+test('a survival frame spends two fissure slots and keeps one strip on the mined rock', () => {
+  const tracker = createAsteroidMotionTracker();
+  try {
+    beginFractureVeinFrame('survival', 99);
+    const field = [11, 12, 13, 14].map((id) => workedRock(tracker, id, 20));
+    const shown = field.reduce((sum, root) => sum + countVisibleStrips(root), 0);
+    assert.ok(shown <= 2, `non-mined field showed ${shown} strips`);
+    assert.ok(shown >= 1, 'the budget still marks a worked rock');
+    const mined = workedRock(tracker, 99, 20);
+    assert.ok(countVisibleStrips(mined) >= 1, 'the rock under the beam keeps a strip after the slots are spent');
+    beginFractureVeinFrame('survival', null);
+    const light = workedRock(tracker, 21, 75);
+    assert.equal(countVisibleStrips(light), 0, 'a crack that has only just opened draws no survival strip');
+  } finally {
+    beginFractureVeinFrame(null);
+  }
 });

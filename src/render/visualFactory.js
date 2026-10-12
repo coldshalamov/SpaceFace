@@ -2587,6 +2587,20 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     plate.frustumCulled = true;
     mesh.add(plate);
   }
+  // The silhouette rim sits outside the inner 70% of the hull, which is the
+  // disk a readability sample actually reads. A second hoop inside that disk
+  // pulls the hull off the dark field and off grey rock. The center stays open.
+  let core = mesh.getObjectByName('sf-swarm-threat-core');
+  if (!core) {
+    core = new THREE.Mesh(
+      getGeometry('swarm:threat-core', () => new THREE.RingGeometry(0.42, 0.62, 40)),
+      plate.material,
+    );
+    core.name = 'sf-swarm-threat-core';
+    core.renderOrder = 12;
+    core.frustumCulled = true;
+    mesh.add(core);
+  }
   // Local scale is divided by the parent so a scaled hull cannot inflate the rim
   // past the ship. A rim larger than the hull crowds the picture.
   const worldR = Math.max(2, Number(entity.radius) || 2);
@@ -2597,10 +2611,13 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     worldR / Math.max(1e-4, Math.abs(_threatPlateScale.y)),
     worldR / Math.max(1e-4, Math.abs(_threatPlateScale.z)),
   );
+  core.scale.copy(plate.scale);
   plate.visible = true;
+  core.visible = true;
   if (camera && camera.quaternion && mesh.quaternion) {
     _threatPlateQuat.copy(mesh.quaternion).invert().multiply(camera.quaternion);
     plate.quaternion.copy(_threatPlateQuat);
+    core.quaternion.copy(_threatPlateQuat);
   }
 }
 

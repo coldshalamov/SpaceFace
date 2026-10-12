@@ -61,9 +61,29 @@ test('a hostile ship wears one opaque threat rim that faces the camera', () => {
   const camZ = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
   assert.ok(plateZ.dot(camZ) > 0.999, 'plate +Z matches the camera +Z, so the face looks back at the lens');
 
+  // The silhouette rim sits outside the inner 70% disk the readability sample
+  // reads. This hoop is inside that disk and leaves the center open. It shares
+  // the rim material, so it stays MeshBasic and out of the additive budget.
+  const core = mesh.getObjectByName('sf-swarm-threat-core');
+  assert.ok(core && core.isMesh, 'hostile team 1 mounts an inner hoop');
+  assert.equal(core.geometry.type, 'RingGeometry');
+  assert.equal(core.geometry.parameters.innerRadius, 0.42);
+  assert.equal(core.geometry.parameters.outerRadius, 0.62);
+  assert.ok(core.geometry.parameters.outerRadius < 0.7, 'the hoop sits inside the readability sample');
+  assert.ok(core.geometry.parameters.innerRadius > 0.2, 'the center of the hull stays open');
+  assert.equal(core.material, plate.material);
+  assert.equal(core.scale.x, plate.scale.x);
+  assert.equal(core.scale.y, plate.scale.y);
+  assert.equal(core.renderOrder, 12);
+  assert.equal(core.visible, true);
+  const coreZ = new THREE.Vector3(0, 0, 1).applyQuaternion(core.getWorldQuaternion(new THREE.Quaternion()));
+  assert.ok(coreZ.dot(camZ) > 0.999, 'the inner hoop faces the camera with the rim');
+
   const again = mesh.getObjectByName('sf-swarm-threat-plate');
+  const againCore = mesh.getObjectByName('sf-swarm-threat-core');
   syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
   assert.equal(mesh.getObjectByName('sf-swarm-threat-plate'), again, 'a second sync reuses the plate');
+  assert.equal(mesh.getObjectByName('sf-swarm-threat-core'), againCore, 'a second sync reuses the inner hoop');
 
   const other = plateOn(hostile(3, 1), null, null).plate;
   assert.ok(other);
@@ -80,8 +100,12 @@ test('a scaled hull does not inflate the threat plate past the ship', () => {
   mesh.updateMatrixWorld(true);
   const plate = mesh.getObjectByName('sf-swarm-threat-plate');
   const world = plate.getWorldScale(new THREE.Vector3());
+  const core = mesh.getObjectByName('sf-swarm-threat-core');
+  const coreWorld = core.getWorldScale(new THREE.Vector3());
   assert.ok(Math.abs(world.x - 8) < 1e-3, `world radius ${world.x} should be 1×8`);
   assert.ok(Math.abs(world.y - 8) < 1e-3);
+  assert.ok(Math.abs(coreWorld.x - world.x) < 1e-3, 'the inner hoop uses the rim scale');
+  assert.ok(Math.abs(coreWorld.y - world.y) < 1e-3);
   // Outer edge sits on the silhouette. It must not grow past the ship into the
   // readability background ring (d > 1.2r).
   assert.ok(world.x <= 8 * 1.05);
@@ -102,11 +126,13 @@ test('the threat crimson clears the low-contrast bar against a dark field', () =
 
 test('friendly teams and non-ships grow no threat plate', () => {
   for (const team of [null, undefined, 0, 2]) {
-    const { plate } = plateOn({ type: 'ship', team, radius: 8 }, null, null);
-    assert.equal(plate, undefined, `team ${team} stays unmarked`);
+    const built = plateOn({ type: 'ship', team, radius: 8 }, null, null);
+    assert.equal(built.plate, undefined, `team ${team} stays unmarked`);
+    assert.equal(built.mesh.getObjectByName('sf-swarm-threat-core'), undefined, `team ${team} grows no inner hoop`);
   }
-  const rock = plateOn({ type: 'asteroid', team: 1, radius: 8 }, null, null).plate;
-  assert.equal(rock, undefined);
+  const rockBuilt = plateOn({ type: 'asteroid', team: 1, radius: 8 }, null, null);
+  assert.equal(rockBuilt.plate, undefined);
+  assert.equal(rockBuilt.mesh.getObjectByName('sf-swarm-threat-core'), undefined);
   assert.equal(syncSwarmThreatPlate(null, hostile(1, 8), null), undefined);
 });
 

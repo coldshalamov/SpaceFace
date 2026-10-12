@@ -45,6 +45,30 @@ function clamp01(v) {
 // Max axis swell of a fully fractured rock (2.5% — a worked rock reads strained, never ballooned).
 const FRACTURE_SWELL_MAX = 0.025;
 const FRACTURE_VEIN_COUNT = 3;
+
+// Survival grades fissures as a mark on the rock, not a screen-filling layer.
+// The rock under the beam keeps one strip. Every other open crack shares two
+// slots for the frame, so a field of nicked rocks cannot sheet the picture.
+// Outside a survival frame the budget is open and every staggered vein draws.
+const veinFrame = { slots: Infinity, minedId: null, minedShown: false };
+
+export function beginFractureVeinFrame(kind, minedId = null) {
+  veinFrame.slots = kind === 'survival' ? 2 : Infinity;
+  veinFrame.minedId = minedId == null ? null : minedId;
+  veinFrame.minedShown = false;
+}
+
+function claimVeinSlot(entityId, open) {
+  if (veinFrame.slots === Infinity) return true;
+  if (!(open > 0.45)) return false;
+  if (entityId != null && entityId === veinFrame.minedId && veinFrame.minedShown !== true) {
+    veinFrame.minedShown = true;
+    return true;
+  }
+  if (veinFrame.slots <= 0) return false;
+  veinFrame.slots -= 1;
+  return true;
+}
 const EMPTY_DATA = {};
 
 /**
@@ -266,7 +290,7 @@ function syncVeinRig(rec, mesh, body, entity, simTime) {
   for (let i = 0; i < veins.length; i++) {
     const strip = veins[i];
     const o = pattern.veins[i] ? pattern.veins[i].open : 0;
-    if (o <= 0.01) { strip.visible = false; continue; }
+    if (o <= 0.01 || !claimVeinSlot(entity && entity.id, o)) { strip.visible = false; continue; }
     strip.visible = true;
     // Heat shimmer: a worked crack pulses faintly while the beam is on it, steady otherwise.
     const shimmer = 0.82 + 0.18 * Math.sin(simTime * 11 + i * 2.1) * rec.miningAgitation;
@@ -781,9 +805,14 @@ export function createAsteroidMotionTracker() {
     return rec ? rec.fracture : 0;
   }
 
+  function beginVeinFrame(kind) {
+    beginFractureVeinFrame(kind, currentMinedTargetId);
+  }
+
   return {
     bindEvents,
     unbindEvents,
+    beginVeinFrame,
     updateAsteroidMotion,
     onDamage,
     onImpact,

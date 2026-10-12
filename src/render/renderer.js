@@ -326,6 +326,7 @@ import {
   applyEntityMeshVisibility,
   isAuthoredPendingStatus,
   isProtectedEntityMesh,
+  retainShownSurvivalGlass,
   shouldSubmitEntityMesh,
 } from './entityMeshVisibility.js';
 import {
@@ -26652,6 +26653,27 @@ export const render = {
       ? performance.now() : Date.now());
     let viewSweepStrideAt = viewSweepNow();
 
+    const innerView = viewHalfExtents(
+      this.state.camera && this.state.camera.zoom,
+      this.cam && this.cam.obj && this.cam.obj.fov,
+      this.cam && this.cam.obj && this.cam.obj.aspect,
+      INNER_VIEW_BAND_SCALE,
+    );
+
+    // Visibility means the camera's real view, not only the requested-zoom rectangle: a body
+    // whose centre leaves the rectangle while a limb is still drawn stays on-glass. Built once
+    // per pass from the live camera; no camera -> the rectangle below decides alone.
+    let liveViewFrustum = null;
+    const liveCam = this.cam && this.cam.obj;
+    if (liveCam && liveCam.projectionMatrix && liveCam.matrixWorldInverse && _liveViewFrustum) {
+      liveCam.updateMatrixWorld();
+      _liveViewProjView.multiplyMatrices(liveCam.projectionMatrix, liveCam.matrixWorldInverse);
+      _liveViewFrustum.setFromProjectionMatrix(_liveViewProjView);
+      liveViewFrustum = _liveViewFrustum;
+    }
+    const survivalRun = !!(this.state.run && this.state.run.kind === 'survival');
+    globalAsteroidMotion.beginVeinFrame(survivalRun ? 'survival' : null);
+
     // A root crossing out of the retained visible set receives one final authoritative current pose.
     // It can then stay untouched while far-culled without lingering at a stale near-camera transform.
     for (let index = 0; index < query.hiddenCount; index++) {
@@ -26686,8 +26708,11 @@ export const render = {
           transformed++;
           continue;
         }
+        const cullRadius = (entity && entity.alive !== false)
+          ? entityVisualCullRadius(entity, mesh)
+          : 0;
         if (entity && entity.alive !== false) {
-          world.refreshVisibleEntity(slot, entity, entityVisualCullRadius(entity, mesh));
+          world.refreshVisibleEntity(slot, entity, cullRadius);
         }
         const posed = this._applyPresentationPose(slot, mesh, alpha, true);
         const isPlayer = !!(packedFlags & PRESENTATION_FLAGS.PLAYER) || entityId === this.state.playerId;
@@ -26722,19 +26747,32 @@ export const render = {
         _submitVisibilityOptions.projectedPx = 0;
         _submitVisibilityOptions.allowShadowCast = false;
         _submitVisibilityOptions.onLiveGlass = false;
+        // The query dropped this row, but a limb can still be inside the camera.
+        // Blanking a picture that is already on that glass, then revealing it when
+        // the query takes the row back, is the in-view pop. The hold does not
+        // reveal a root that has not been shown, and it does not keep a root
+        // whose pose is missing. Off the frustum the ordinary rule releases it.
+        const retainShown = retainShownSurvivalGlass({
+          survival: survivalRun,
+          alreadyVisible: mesh.visible !== false,
+          onFrustum: isOnLiveCameraView(liveViewFrustum, mesh.position, cullRadius),
+          snapshotMissing: !posed,
+          alive: !entity || entity.alive !== false,
+        });
         const visibilityChanged = !(!posed && protectedRoot)
-          && applyEntityMeshVisibility(mesh, posed && shouldSubmitEntityMesh(_submitVisibilityOptions));
+          && applyEntityMeshVisibility(mesh, retainShown || (posed && shouldSubmitEntityMesh(_submitVisibilityOptions)));
         if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
-        if (mesh.userData && mesh.userData.asteroidInstanceBody) {
+        if (!retainShown && mesh.userData && mesh.userData.asteroidInstanceBody) {
           mesh.userData.asteroidInstanceViewCulled = true;
         }
         world.clearDirty(slot);
         // Out of the visible set the root's local transform is never rewritten (the pose above
         // was its final write until re-entry), so the walk's per-frame updateMatrix compose and
-        // the force it propagates through the subtree are dead work. Frozen roots still refresh
+        // the force it propagates through the subtree are dead work. A retained survival body
+        // is still being drawn, so it keeps the live compose. Frozen roots still refresh
         // their matrixWorld when a moved ancestor forces the walk, and hidden pose writers all
         // run the matrixAutoUpdate === false hook — output is identical, the compose is gone.
-        this._queueHiddenSubtreeFreeze(mesh);
+        if (!retainShown) this._queueHiddenSubtreeFreeze(mesh);
         transformed++;
         } catch (rowError) {
           notePresentationRowFault(this, mesh, entityId, rowError);
@@ -26748,25 +26786,6 @@ export const render = {
     // Deferral is correctness-safe: an unfrozen culled subtree keeps paying
     // the updateMatrixWorld compose it always paid.
     this._drainHiddenFreezeQueue();
-
-    const innerView = viewHalfExtents(
-      this.state.camera && this.state.camera.zoom,
-      this.cam && this.cam.obj && this.cam.obj.fov,
-      this.cam && this.cam.obj && this.cam.obj.aspect,
-      INNER_VIEW_BAND_SCALE,
-    );
-
-    // Visibility means the camera's real view, not only the requested-zoom rectangle: a body
-    // whose centre leaves the rectangle while a limb is still drawn stays on-glass. Built once
-    // per pass from the live camera; no camera -> the rectangle below decides alone.
-    let liveViewFrustum = null;
-    const liveCam = this.cam && this.cam.obj;
-    if (liveCam && liveCam.projectionMatrix && liveCam.matrixWorldInverse && _liveViewFrustum) {
-      liveCam.updateMatrixWorld();
-      _liveViewProjView.multiplyMatrices(liveCam.projectionMatrix, liveCam.matrixWorldInverse);
-      _liveViewFrustum.setFromProjectionMatrix(_liveViewProjView);
-      liveViewFrustum = _liveViewFrustum;
-    }
 
     for (let index = 0; index < query.visibleCount; index++) {
       if ((index & 127) === 127 || viewSweepNow() - viewSweepStrideAt >= 2) {
@@ -26988,8 +27007,19 @@ export const render = {
         _submitVisibilityOptions.ledgerRow = !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity);
         _submitVisibilityOptions.presentationTier = entity && entity.activity && entity.activity.presentationTier;
         _submitVisibilityOptions.onLiveGlass = onLiveGlass;
+        // Pending latches hide an ordinary root until compile finishes. On a body
+        // the camera is already drawing, that blank and the later reveal are the
+        // in-view pop. The hold is not a first-show skip: a root that is not
+        // already visible still waits on shouldSubmitEntityMesh.
+        const retainShown = retainShownSurvivalGlass({
+          survival: survivalRun,
+          alreadyVisible: mesh.visible !== false,
+          onFrustum: onLiveGlass === true,
+          snapshotMissing: !posed,
+          alive: !entity || entity.alive !== false,
+        });
         const visibilityChanged = !(!posed && protectedRoot)
-          && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh(_submitVisibilityOptions));
+          && applyEntityMeshVisibility(mesh, retainShown || shouldSubmitEntityMesh(_submitVisibilityOptions));
         if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
         // D38 — a latched root on the live glass is a hole in the picture: whatever lane queued
         // its compile/residency while it was still off-glass must not finish under ambient FIFO

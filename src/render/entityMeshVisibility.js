@@ -64,6 +64,22 @@ export function isProtectedEntityMesh(options = {}) {
   return options.isPlayer === true || options.forceRender === true || options.neverCull === true;
 }
 
+/**
+ * A survival body the camera is already drawing stays on the glass while the
+ * frustum still contains it. A pending latch or a query miss would blank that
+ * picture, and the reveal is the in-view pop. The hold does not reveal a root
+ * that has not been shown, and it does not keep a root whose pose is missing.
+ * Off the frustum, the ordinary submit rule releases it.
+ */
+export function retainShownSurvivalGlass(options = {}) {
+  if (options.survival !== true) return false;
+  if (options.alreadyVisible !== true) return false;
+  if (options.onFrustum !== true) return false;
+  if (options.snapshotMissing === true) return false;
+  if (options.alive === false) return false;
+  return true;
+}
+
 export function applyEntityMeshVisibility(mesh, submit) {
   if (!mesh) return false;
   const next = submit !== false;
