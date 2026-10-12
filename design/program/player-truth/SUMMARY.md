@@ -38,8 +38,8 @@ These are not measured. Do not read an older first-generation verdict below as t
 
 | run | status | reason |
 |---|---|---|
-| Swarm round 2 after `6b67d1fb1` | UNKNOWN | Active seed 4242 closed in round 1 on `9e647c306`. The 07:24 queue acquired the lock and died before Chromium (`uv_cwd`: the process directory was replaced while it waited). The replacement on `debe715c8a` is waiting on `player-truth.lock` (pid 191163, one Chromium, not started): full `--gate` (idle + active), `--wall=50 --evidence --tag=seed4242-debe715`. |
-| Hull × viewport matrix (960 / 1280 / 1920 × unlocked hulls) | UNKNOWN | Not run. Queued behind that gate on the same lock (one Chromium, not started). `player_ship` names a rectangle or an invisible ship. |
+| Swarm round 2 after `6b67d1fb1` | UNKNOWN | Active seed 4242 closed in round 1 on `9e647c306`. The 07:24 queue died before Chromium (`uv_cwd`). The worktree was removed after a clean push and restored at `6ce0380015`. The Swarm `--gate` waiter is pid 208317 (not started): full `--gate`, `--wall=50 --evidence --tag=seed4242-debe715`. |
+| Hull × viewport matrix (960 / 1280 / 1920 × unlocked hulls) | UNKNOWN | Not run. Follow-on waiter pid 208327, behind the Swarm gate, one Chromium. `player_ship` names a rectangle or an invisible ship. |
 | Gauntlet `--gate` | UNKNOWN | Not run. Same follow-on queue, after the matrix. The first-generation arena rows below are not a `--gate` pass. |
 | Adventure `--gate` | UNKNOWN | Not run. Same follow-on queue. The 150 s cruise below is not a `--gate` pass. |
 | Racing `--gate` | UNKNOWN | Not run. Same follow-on queue. The 75 s Textile Belt row below is not a `--gate` pass. |
