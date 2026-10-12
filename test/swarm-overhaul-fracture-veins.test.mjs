@@ -39,26 +39,61 @@ function maxWorldRadius(rig) {
   return maxWorld;
 }
 
-test('a worked-rock crack stays a patch on the skin, not a screen sheet', () => {
-  const vh = 540;
-  const vw = 960;
-  const fov = 50 * Math.PI / 180;
-  const diag = Math.hypot(vw, vh);
-  for (const R of [4, 16, 24, 80]) {
-    const rig = mount(R, 20);
-    assert.ok(rig, `worked rock R=${R} mounts sf-fracture-veins`);
+// Harness camera the footprint table uses: 960×540, fov 50°, standoff max(30, 1.5 R).
+// The pre-fix ribbon was authored at ~0.92 R and then scaled by the body again (0.92 R²).
+const VW = 960;
+const VH = 540;
+const FOV = 50 * Math.PI / 180;
+const DIAG = Math.hypot(VW, VH);
+const UNBOUNDED_PR = DIAG * 0.6;
+
+function frameDisk(worldR, rockR) {
+  const dist = Math.max(30, rockR * 1.5);
+  const pr = worldR * (VH / 2) / (dist * Math.tan(FOV / 2));
+  return { pr, frac: (Math.PI * pr * pr) / (VW * VH) };
+}
+
+// Measured on this branch after the unit-space fix. One strip. Master bar is 29% screen
+// and 6% player-hidden; these disks are the local proof, not a player-truth pass.
+const FOOTPRINT = [
+  { R: 8, worldR: 1.23, frac: 0.0034 },
+  { R: 16, worldR: 2.47, frac: 0.0137 },
+  { R: 24, worldR: 3.70, frac: 0.0215 },
+  { R: 40, worldR: 6.17, frac: 0.0215 },
+];
+
+test('a worked-rock crack matches the measured footprint table', () => {
+  for (const row of FOOTPRINT) {
+    const rig = mount(row.R, 20);
+    assert.ok(rig, `worked rock R=${row.R} mounts sf-fracture-veins`);
+    const strips = [];
+    rig.traverse((o) => { if (o.isMesh) strips.push(o); });
+    assert.equal(strips.length, 3);
+    for (const strip of strips) {
+      assert.equal(strip.frustumCulled, true);
+      assert.ok(strip.geometry.boundingSphere, 'the harness grades a real sphere');
+      assert.equal(strip.material.blending, THREE.AdditiveBlending);
+      assert.ok(strip.material.opacity > 0.02, 'opacity must stay visible to the harness');
+      assert.ok(strip.material.opacity <= 0.25);
+    }
     const worldR = maxWorldRadius(rig);
-    // The old ribbon was ~0.92 R in the geometry and then scaled by R again.
-    assert.ok(worldR < R * 0.35, `R=${R} vein world radius ${worldR.toFixed(2)} is a sheet, not a crack`);
-    assert.ok(worldR > R * 0.02, `R=${R} vein world radius ${worldR.toFixed(2)} collapsed`);
-    const dist = Math.max(30, R * 1.5);
-    const pr = worldR * (vh / 2) / (dist * Math.tan(fov / 2));
-    assert.ok(pr < diag * 0.6, `R=${R} projects as an unbounded batch (${pr.toFixed(0)} px)`);
-    const frac = (Math.PI * pr * pr) / (vw * vh);
-    assert.ok(frac < 0.06, `R=${R} one crack covers ${(frac * 100).toFixed(1)}% of the frame`);
+    assert.ok(Math.abs(worldR - row.worldR) < 0.08, `R=${row.R} world radius ${worldR.toFixed(2)} != ${row.worldR}`);
+    assert.ok(worldR < row.R * 0.2, `R=${row.R} vein is no longer a skin patch`);
+    const disk = frameDisk(worldR, row.R);
+    assert.ok(Math.abs(disk.frac - row.frac) < 0.002, `R=${row.R} frame disk ${(disk.frac * 100).toFixed(2)}% != ${(row.frac * 100).toFixed(2)}%`);
+    assert.ok(disk.frac < 0.06, 'one crack stays under the 6% player-hidden bar');
+    assert.ok(disk.pr < UNBOUNDED_PR);
+    // The double-scaled sphere the #287 run graded (max 188% of the screen).
+    const oldWorld = 0.92 * row.R * row.R;
+    const oldDisk = frameDisk(oldWorld, row.R);
+    assert.ok(oldDisk.pr > UNBOUNDED_PR, `R=${row.R} old sphere should have sheeted the frame`);
+    assert.ok(oldDisk.frac > 0.29, `R=${row.R} old disk should exceed the master 29% bar`);
   }
 });
 
 test('a fresh rock does not wear fracture veins', () => {
   assert.equal(mount(16, 90), null);
+  // fracture = 1 - ore/max. The rig opens only above 0.4, so a 40% chip stays dark.
+  assert.equal(mount(16, 60), null);
+  assert.ok(mount(16, 59), 'just past the worked threshold the crack mounts');
 });
