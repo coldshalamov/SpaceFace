@@ -56,7 +56,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `footprint` / `footprint-marked` / `footprint-clean` | SURVEYED | |
 | `range` | SURVEYED | Owns CSS holdout |
 | `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
-| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | SURVEYED | Ledger DONE; re-judge when stack reaches station |
+| `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | IN PROGRESS | Berth head, vitals and foot DONE (ui-polish-10, § Station berth below); tab bodies at 960×540 still open |
 | **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
 | **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
 | **`crucible-rearm`** | **DONE** | Alias of armory / `crucible-draft` — no separate polish |
@@ -72,6 +72,16 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `sandbox` | SURVEYED | Ledger DONE for overflow |
 | `localmap` / `localmap-legacy` | SURVEYED | |
 | `starmap` / `starmap-legacy` | SURVEYED | |
+
+---
+
+## Station berth — session notes (2026-10-12, ui-polish-10)
+
+**Before (960×540):** `station.css` still reserves a 292px right gutter (228px under 900) for the legacy corner crown, but the ORRERY crown sits in the head grid, so a third of the screen was empty. The vitals strip is capped at 326px and nowrap, so it spilled left over the mechanic's note. The tab rail clipped at FAC, and every tab body was squeezed into 636px. At every size, the word reading CREDIT LINE OPEN crossed the Ledger's empty ring. At ≤800px tall, the `/ 100` denominators sat on the dial ends.
+
+**After (`src/ui/orrery/stationLayouts.js` only):** at 651–1100 the gutter is gone. At 901–1100 the head is a 280px note column plus the vitals strip, the next-step title stays on one line with its sentence under it, and the foot's seven destinations, Comms/Help and Undock fit on one line. Word readings hide the empty ring under them. Short-screen dials are 80px with tighter denominators. Selectors and IDs are unchanged.
+
+**Still open at 960×540:** Market body (list rows and analysis crushed by the decision), Contracts (ACCEPT over the title), Shipworks (verbs row on the tab rail). The Market chart's SPREAD label also crosses the trace at 720p.
 
 ---
 
@@ -370,7 +380,7 @@ Not reached from the menu: **Archive**, **Achievements** and **Quit** clicks lef
 |---|---|---|
 | P0 | Settings @ ≤1500px | Label column was 150px: "Sun shadows (ships/rocks/stations)", "Emergency dynamic resolution", "Mute when the window loses focus", "Steer left (classic scheme)" wrapped to 3 lines and rows went ragged. **Fixed** (190px labels, wider pane, tighter tracking + `text-wrap:balance`). |
 | P0 | Crucible @ 720p | Stake tiles clipped their own text ("PAYS ×0.75 ·" cut mid-line, "100% / PRESSURE" wrapped) and the Arena row fell below the fold. **Fixed** for the tiles (earlier) and Arena fold (this session: short-height tighten + arena thumbs hidden so both name rows clear the foot). |
-| P0 | Archive / Achievements / Quit | Click gives no visible response in browser build. Needs a screen, a toast, or a disabled state. |
+| P0 | Archive / Achievements / Quit | Archive and Achievements open their screens on the bench walk. **Quit fixed in #332** (hidden in the web build). Still to confirm Archive/Achievements in a live browser build. |
 | P1 | Settings @ 1080p | All legends 12px on a 1080p screen — tiny. **Fixed** with a 1.12 composition zoom between 1800–2199px (the existing 1440p/4K zoom rules already did this above). |
 | P1 | Crucible | Hero arena title ("RICOCHET FOUNDRY") and its blurb sit straight on bright 3D art without a scrim — blurb unreadable over the lit floor. **Fixed** (void→transparent scrim under words + brief). |
 | P1 | Crucible @ 1080p | The 3D hull in the bottom-right renders over BACK / ESC and the footer hint. **Fixed** (foot z-index + solid void backing, stronger art bottom fade, `‹ BACK` + ESC keycap rail). |
@@ -437,7 +447,8 @@ CSS only, in `src/ui/orrery/newGameLayouts.js`. No DOM, selector, ID or loadout-
 - **Fixed (P1, logo over rings):** the old mask cut a tight box out of the rings, so ring strokes ended right against the letters. A crown of rim also stuck out above the kicker. Now none of the dial is drawn above the name. It fades in under the name over about 1.3× the name's height, so the name has open space around it. The mask is a static gradient, not a blur filter, so the orbit's drift costs nothing extra per frame.
 - **Fixed (P1, words on strokes):** the awake verb grows 6% toward the dial, so its first letter sat on the tick and the Hand's leader (0px gap at 720p). On the title the verbs now sit half a verb-size further out (18px @720, 23px @1080). The awake word clears the leader by about 12px.
 - Checked at 1280×720, 1920×1080, 2560×1440 and 390×844 (phone has no dial; Tab order checked there too). `--walk` exercised 12 controls. Related tests pass, except two failures that also fail on the base commit: `focus-lifecycle` "pushScreen restores the prior exposure" and the credits NOTICE check. Shots are in `/workspace/spaceface-scratch/ui-shots/main-menu-20261012-1425/` (not committed).
-- **Remaining:** at 1080p the reference line's SANDBOX sits over the hull's nose in the key art (this was already true before; it moved about 17px). Archive / Achievements / Quit (P0 above): the bench walk opens Codex and Achievements, and Quit asks to confirm. This still needs checking in a live browser build.
+- **Resolved:** SANDBOX over the hull's nose (#331, three-line reference line) and the web-build Quit (#332).
+- **Was remaining:** at 1080p the reference line's SANDBOX sits over the hull's nose in the key art (this was already true before; it moved about 17px). Archive / Achievements / Quit (P0 above): the bench walk opens Codex and Achievements, and Quit asks to confirm. This still needs checking in a live browser build.
 ---
 
 ## #322 HOLD review fixes (2026-10-12)
