@@ -516,6 +516,25 @@ export const settingsScreen = {
     hang.appendChild(bar);
     rootEl.appendChild(hang);
     rootEl.appendChild(pane);
+    // Scroll cue (UI polish #301): the pane hides its scrollbar, so a tab longer than the stage
+    // (Video, Controls at 720p) gave no hint that rows continue below. A quiet "More" chip sits on
+    // the stage's bottom edge while there is more to read; clicking it pages the pane down.
+    const more = el('button', 'orr-set-more', 'More');
+    more.type = 'button';
+    more.tabIndex = -1;
+    more.setAttribute('aria-hidden', 'true');
+    rootEl.appendChild(more);
+    const syncMore = () => {
+      const left = (Number(pane.scrollHeight) || 0) - (Number(pane.scrollTop) || 0) - (Number(pane.clientHeight) || 0);
+      more.classList.toggle('is-on', left > 8);
+      pane.classList.toggle('has-more', left > 8);
+    };
+    if (typeof pane.addEventListener === 'function') {
+      pane.addEventListener('scroll', syncMore, { passive: true });
+      more.addEventListener('click', () => { pane.scrollBy({ top: Math.max(120, pane.clientHeight * 0.8), behavior: 'smooth' }); });
+      if (typeof ResizeObserver === 'function') { const ro = new ResizeObserver(syncMore); ro.observe(pane); }
+      if (typeof MutationObserver === 'function') { new MutationObserver(() => requestAnimationFrame(syncMore)).observe(pane, { childList: true }); }
+    }
 
     const foot = el('footer', 'k-foot');
     const back = el('button', 'k-word k-word--emph sf-back', 'Back');

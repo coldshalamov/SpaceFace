@@ -178,7 +178,7 @@ ${SL} > .k-foot .k-word.sf-back { all:unset !important; box-sizing:border-box !i
 ${SL} > .k-foot .k-word.sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
 ${SL} > .k-foot .k-word.sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
   ${LABEL} font-size:max(10px, calc(11px * var(--sv))) !important; letter-spacing:.2em !important; line-height:1 !important;
-  color:rgb(${BONE} / .72) !important; background:rgb(${BONE} / .06) !important; border:1px solid rgb(${BONE} / .28) !important; border-radius:3px !important;
+  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
 ${SL} > .k-foot .k-word:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
 ${SL} > .k-foot .k-word.sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; }

@@ -90,6 +90,15 @@ ${S} #sf-settings-pane { ${PLAIN} backdrop-filter:none !important; -webkit-backd
   justify-self:stretch !important; align-self:stretch !important; max-height:100% !important; min-height:0 !important; overflow:hidden auto !important;
   padding:0 20px 34px 0 !important; margin:0 !important; scrollbar-width:none; position:relative; --sf-fade-edge:0px !important; }
 ${S} #sf-settings-pane::-webkit-scrollbar { display:none; }
+/* scroll cue: a thin bone rail on the pane's edge + a "More ▾" chip on the stage's bottom edge while rows continue */
+${S} > .orr-set-more { grid-area:stage; align-self:end; justify-self:start; z-index:3; display:none; margin:0 0 -34px 30px !important; padding:6px 14px 7px !important; cursor:pointer;
+  ${PLAIN} ${LABEL} font-size:11px !important; letter-spacing:.24em !important; color:rgb(${HOT}) !important; background:rgb(8 10 14 / .82) !important;
+  border:1px solid rgb(${BONE} / .42) !important; border-radius:999px !important; }
+${S} > .orr-set-more::after { content:"▾" / ""; margin-left:8px; color:var(--dp-hand-hot, #ffd98c); }
+${S} > .orr-set-more.is-on { display:inline-block; animation:orr-more-bob 2.4s ease-in-out infinite; }
+${S} > .orr-set-more:hover { border-color:rgb(${HOT} / .8) !important; }
+@keyframes orr-more-bob { 0%, 100% { transform:translateY(0); } 50% { transform:translateY(3px); } }
+@media (prefers-reduced-motion:reduce) { ${S} > .orr-set-more.is-on { animation:none; } }
 ${S} #sf-settings-pane.is-scrolled { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 46px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important;
   mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 46px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important; }
 ${S} #sf-settings-pane .k-row { scroll-margin:40px 0 80px; }
@@ -268,8 +277,9 @@ ${S} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important
   padding:10px 0 12px !important; ${LABEL} font-size:13.5px !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
   background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; }
 ${S} > .k-foot .sf-back::before { content:"‹" !important; margin-right:12px; font-size:15px; color:rgb(${BONE} / .6); }
-${S} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; margin-left:16px !important; ${LABEL} font-size: 12px !important; letter-spacing:.2em !important;
-  color:rgb(${BONE} / .58) !important; }
+${S} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
+  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important; color:rgb(${BONE} / .9) !important;
+  background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important; vertical-align:baseline !important; }
 ${S} > .k-foot .sf-back:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; }
 
 @media (min-width:1501px) { ${S} #sf-settings-pane.is-roomy { --orr-scale-w:294px; } }
@@ -445,8 +455,9 @@ ${C} > .k-foot { align-items:center !important; }
 ${C} > .k-foot .sf-back { all:unset !important; box-sizing:border-box !important; cursor:pointer !important; display:inline-flex !important; align-items:baseline !important;
   padding:8px 0 !important; ${LABEL} font-size:13px !important; letter-spacing:.24em !important; color:rgb(${HOT}) !important; }
 ${C} > .k-foot .sf-back::before { all:unset !important; content:"‹" !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
-${C} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; margin-left:16px !important; ${LABEL} font-size: 12px !important; letter-spacing:.2em !important;
-  color:rgb(${BONE} / .58) !important; }
+${C} > .k-foot .sf-back::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
+  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important; color:rgb(${BONE} / .9) !important;
+  background:rgb(${BONE} / .1) !important; border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important; vertical-align:baseline !important; }
 ${C} > .k-foot .sf-back:is(:hover, :focus-visible) { color:rgb(255 253 248) !important; text-shadow:0 0 14px rgb(255 250 236 / .45); }
 
 @media (max-width:1500px) {
