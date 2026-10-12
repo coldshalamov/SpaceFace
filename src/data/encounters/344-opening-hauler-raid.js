@@ -75,11 +75,109 @@ function releaseSquadToWorld(live) {
   }
 }
 
+const STARTER_CARRIER_SLOT_ID = 'helios_starter_ore_carrier';
+const ADOPTED_AI_KEYS = Object.freeze(['encounterId', 'encounterKind', 'encounterRole', 'sectorId', 'zoneId']);
+// The opening frame law (two screen depths + margin around the planned hauler) still holds: the
+// raid takes the working ore barge only when the barge is already in the frame the raid lands in.
+const STARTER_CARRIER_ADOPT_RANGE = 2 * 115 + 30;
+
+// The starter seam's barge, when it is physically hauling real cut ore, is the corridor's actual
+// freight. The raid targets that hull instead of inventing a second cargo nobody cut.
+function loadedStarterCarrier(state, live) {
+  const plannedHauler = (live.plan.ships || []).find((ship) => ship && ship.role === 'hauler');
+  const anchor = (plannedHauler && plannedHauler.pos) || live.pos;
+  let best = null;
+  let bestD2 = STARTER_CARRIER_ADOPT_RANGE * STARTER_CARRIER_ADOPT_RANGE;
+  for (const entity of state.entityList || []) {
+    const data = entity && entity.data;
+    if (!data || entity.alive === false || entity.type !== 'ship' || !entity.pos
+      || data.activityActorSlotId !== STARTER_CARRIER_SLOT_ID
+      || data.disabled === true || data.predationEncounterId != null
+      || (data.ai && data.ai.squadId)) continue;
+    const manifest = data.cargoManifest;
+    if (!manifest || typeof manifest.manifestId !== 'string' || !(manifest.totalQty > 0)
+      || !Array.isArray(manifest.lines) || !manifest.lines.some((line) => line && line.qty > 0)) continue;
+    const d2 = anchor && Number.isFinite(anchor.x) && Number.isFinite(anchor.z)
+      ? (entity.pos.x - anchor.x) ** 2 + (entity.pos.z - anchor.z) ** 2 : 0;
+    if (d2 <= bestD2 && (!best || d2 < bestD2 || entity.id < best.id)) { best = entity; bestD2 = d2; }
+  }
+  return best;
+}
+
+// Raiders keep the authored curtain geometry, re-centred on the real barge.
+function raidersAroundCarrier(ships, carrier) {
+  const plannedHauler = ships.find((ship) => ship && ship.role === 'hauler');
+  const origin = plannedHauler && plannedHauler.pos;
+  return ships.filter((ship) => ship && ship.role !== 'hauler').map((ship) => {
+    const shift = (pos) => (pos && origin && Number.isFinite(pos.x) && Number.isFinite(pos.z)
+      ? { ...pos, x: pos.x - origin.x + carrier.pos.x, z: pos.z - origin.z + carrier.pos.z }
+      : pos);
+    const out = { ...ship, pos: shift(ship.pos) };
+    if (ship.entitySpec && ship.entitySpec.pos) out.entitySpec = { ...ship.entitySpec, pos: shift(ship.entitySpec.pos) };
+    return out;
+  });
+}
+
+// The barge goes back to its own owner exactly as it was: custody suppression lasted for this raid.
+function releaseAdoptedCarrier(d, live) {
+  const adopted = live.data && live.data.adoptedCarrier;
+  if (!adopted || adopted.released === true) return;
+  adopted.released = true;
+  const entity = d.state && d.state.entities && d.state.entities.get(adopted.entityId);
+  if (Array.isArray(live.ids)) {
+    const index = live.ids.indexOf(adopted.entityId);
+    if (index >= 0) live.ids.splice(index, 1);
+  }
+  if (live.roles) delete live.roles[adopted.entityId];
+  if (!entity || !entity.data || entity.data.worldRecordId !== adopted.worldRecordId) return;
+  if (entity.alive === false) return;
+  const restore = adopted.restore || {};
+  for (const key of ['freightRewardOwner', 'bountyCr', 'loot']) {
+    if (restore[key] === undefined) delete entity.data[key];
+    else entity.data[key] = restore[key];
+  }
+  const ai = entity.data.ai;
+  if (ai && ai.encounterId === live.id) {
+    for (const key of ADOPTED_AI_KEYS) {
+      const prior = adopted.restoreAi ? adopted.restoreAi[key] : undefined;
+      if (prior === undefined) delete ai[key];
+      else ai[key] = prior;
+    }
+  }
+}
+
 export const runtime = Object.freeze({
   fire(d, live, state) {
     // Deadline lands before spawnShips so the spawned activities bake the real deadlineTick.
     live.deadlineAt = d.now() + (live.shape.transitS || 60);
-    const ids = d.spawnShips(live, live.plan.ships);
+    const carrier = loadedStarterCarrier(state, live);
+    const ids = d.spawnShips(live, carrier ? raidersAroundCarrier(live.plan.ships, carrier) : live.plan.ships);
+    if (carrier && ids.length) {
+      const cdata = carrier.data;
+      live.ids.push(carrier.id);
+      live.roles[carrier.id] = 'hauler';
+      const ai = cdata.ai || (cdata.ai = {});
+      const restoreAi = {};
+      for (const key of ADOPTED_AI_KEYS) restoreAi[key] = ai[key];
+      // The same squad-frame stamps spawnShips gives a planned hull, so predation binds this barge.
+      ai.encounterId = live.id;
+      ai.encounterKind = live.shapeId;
+      ai.encounterRole = 'hauler';
+      ai.sectorId = live.sectorId;
+      ai.zoneId = live.zoneId;
+      live.data.adoptedCarrier = {
+        entityId: carrier.id,
+        worldRecordId: cdata.worldRecordId || null,
+        slotId: STARTER_CARRIER_SLOT_ID,
+        manifestId: cdata.cargoManifest.manifestId,
+        restore: {
+          freightRewardOwner: cdata.freightRewardOwner,
+          bountyCr: cdata.bountyCr,
+          loot: cdata.loot,
+        },
+        restoreAi,
+      };
+    }
     // A partial budget grant that lands the hauler alone would resolve 'defended' for a raid
     // that never existed — the premise needs a hauler AND at least one raider on the field.
     if (!ids.length || d.aliveCount(live, 'hauler') < 1 || d.aliveCount(live, 'raider') < 1) {
@@ -100,7 +198,22 @@ export const runtime = Object.freeze({
     // VERB-06: the opener hauls a volatile lot — fuel cells are the explosive class lootShards
     // already cooks off on a hard slam. Ordinary civilian role + cargo fields let the existing
     // violence-spill path shed the pods; no encounter-specific plumbing.
-    if (hauler) {
+    if (hauler && live.data.adoptedCarrier) {
+      const hdata = hauler.data;
+      const real = hdata.cargoManifest;
+      // F11 on the real hold: custody tracks the ore this barge physically collected at the seam.
+      live.data.freightManifest = {
+        manifestId: real.manifestId,
+        freighterKey: real.freighterKey || hdata.worldRecordId || `encounter:${live.id}`,
+        role: real.role || 'ore_carrier',
+        lines: real.lines.filter((line) => line && line.qty > 0)
+          .map((line) => ({ commodityId: line.commodityId, qty: line.qty })),
+        totalQty: real.totalQty,
+      };
+      hdata.bountyCr = 0;
+      hdata.loot = null;
+      hdata.freightRewardOwner = 'manifest_custody';
+    } else if (hauler) {
       const band = live.shape.unitsPerHauler || [6, 10];
       const qty = Math.max(1, Math.round(
         band[0] + d.stream(live, 'cargo')() * Math.max(0, band[1] - band[0]),
@@ -144,6 +257,7 @@ export const runtime = Object.freeze({
 
     if (!haulerAlive) {
       if (custodyOpen) return;
+      releaseAdoptedCarrier(d, live);
       d.despawnAll(live, 12);
       const outcome = custody && custody.raiderEscaped ? 'robbed' : 'hauler_destroyed';
       sayOpeningConsequence(d, outcome);
@@ -154,6 +268,7 @@ export const runtime = Object.freeze({
       if (custodyOpen) return;
       if (custody && custody.raiderEscaped) {
         // The winner already left reach with the pod — there is no rescue left to pay for.
+        releaseAdoptedCarrier(d, live);
         d.despawnAll(live, 15, 'hauler');
         sayOpeningConsequence(d, 'robbed');
         return d.resolve(live, 'robbed', { speak: false });
@@ -165,6 +280,7 @@ export const runtime = Object.freeze({
         text: 'All raiders down! Thank you for the assist, pilot. Hazard pay transferred.',
         kind: 'encounter',
       });
+      releaseAdoptedCarrier(d, live);
       d.despawnAll(live, 15, 'hauler');
       return d.resolve(live, 'defended', { speak: true });
     }
@@ -176,6 +292,7 @@ export const runtime = Object.freeze({
       // The scripted beat closes; the cast does not delete itself. Released from the live
       // record, the hauler keeps flying and the raiders keep being pirates as ordinary world
       // entities the player can still fight, save, or rob after the encounter has ended.
+      releaseAdoptedCarrier(d, live);
       releaseSquadToWorld(live);
       sayOpeningConsequence(d, 'raid_over');
       return d.resolve(live, 'raid_over', { speak: false });
