@@ -9,7 +9,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { MISSION_TUNING } from '../data/missions.js';
 import { SECTORS } from '../data/sectors.js';
 import { SERVICE_PRICES, quote } from '../systems/economy.js';
-import { evaluateTwoLegItinerary, predictPriceCurve } from '../systems/economyCycles.js';
+import { predictPriceCurve } from '../systems/economyCycles.js';
 import { missionPreflight } from './missionPreflight.js';
 import { applyTradeNavigation, computeBestTrades } from './market/tradeLogic.js';
 import { laneRpc } from '../core/simLaneCommands.js';
@@ -236,7 +236,7 @@ function listForecastDecision(state, stationId) {
 }
 
 function listHaulDecision(state, stationId) {
-  const trades = computeBestTrades(state, stationId);
+  const trades = computeBestTrades(state, stationId, { quote });
   let best = null;
   for (const trade of trades) {
     const buy = Number(trade.buyHere) || 0;
@@ -251,21 +251,9 @@ function listHaulDecision(state, stationId) {
     if (!best || profit > best.profit) best = { trade, units, profit, buy };
   }
   if (!best) return null;
-  const cargo = state.player && state.player.cargo;
-  const cargoFree = cargo && Number(cargo.capVolume) > 0
-    ? Math.max(0, Number(cargo.capVolume) - (Number(cargo.usedVolume) || 0))
-    : best.units;
-  const plan = evaluateTwoLegItinerary({
-    credits: creditsOf(state),
-    cargoFree,
-    leg1: { qty: best.units, unitCr: best.buy, unitVolume: 1, stock: best.units },
-    leg2: { qty: best.units },
-  });
-  if (!(plan.leg1Taken > 0)) return null;
-  best = { ...best, units: plan.leg1Taken };
   const name = best.trade.cmdtyName || commodityName(best.trade.cmdtyId);
   const dest = stationName(best.trade.destStation);
-  const cost = Math.round(best.units * best.buy);
+  const cost = best.trade.loadCost;
   return {
     id: `haul:${stationId}:${best.trade.destStation}:${best.trade.cmdtyId}:${best.profit}`,
     kind: 'haul',
@@ -275,7 +263,7 @@ function listHaulDecision(state, stationId) {
       {
         id: 'haul',
         label: `Haul to ${dest}`,
-        tradeoff: `Buy ${best.units} for ${cost.toLocaleString('en-US')} cr and set course for ${dest}. The payout is an estimate.`,
+        tradeoff: `Buy ${best.units} for ${cost.toLocaleString('en-US')} cr and set course for ${dest}. Arrival margin is estimated before flight costs.`,
         stake: `haul:${cost}:${best.profit}`,
         viable: true,
         effect: {
@@ -283,12 +271,14 @@ function listHaulDecision(state, stationId) {
           commodityId: best.trade.cmdtyId,
           qty: best.units,
           destStationId: best.trade.destStation,
+          expectedTotal: cost,
+          sourceStationId: stationId,
         },
       },
       {
         id: 'stay',
         label: 'Keep the credits',
-        tradeoff: `Keep ${cost.toLocaleString('en-US')} cr. Skip the ${best.profit.toLocaleString('en-US')} cr margin.`,
+        tradeoff: `Keep ${cost.toLocaleString('en-US')} cr. Skip the estimated ${best.profit.toLocaleString('en-US')} cr margin.`,
         stake: `stay:${creditsOf(state)}`,
         viable: true,
         effect: { type: 'stay' },
@@ -483,24 +473,37 @@ async function applyEffect(state, effect, ctx) {
     const side = effect.type === 'sell' ? 'sell' : 'buy';
     const beforeCredits = creditsOf(state);
     const beforeQty = heldQty(state, effect.commodityId);
+    if (effect.type === 'haul') {
+      const dock = state.ui && (state.ui.dockedStationId || (state.ui.docked && state.ui.docked.stationId));
+      if (effect.sourceStationId && dock !== effect.sourceStationId) return { ok: false, reason: 'station_changed' };
+      const current = economy && typeof economy.quote === 'function'
+        ? await economy.quote(effect.sourceStationId, effect.commodityId, 'buy', effect.qty)
+        : quote(effect.sourceStationId, effect.commodityId, 'buy', effect.qty);
+      if (!current || !current.ok || current.partial || current.qty !== effect.qty
+        || (current.acceptQty != null && current.acceptQty !== effect.qty)) return { ok: false, reason: 'load_changed' };
+      if (!Number.isSafeInteger(effect.expectedTotal) || current.total > effect.expectedTotal) return { ok: false, reason: 'price_changed' };
+      if (current.total > beforeCredits) return { ok: false, reason: 'credits' };
+    }
+    const terms = effect.expectedTotal == null ? undefined : { expectedTotal: effect.expectedTotal };
     let ok = null;
     let reason = 'trade_failed';
     if (economy && typeof economy.handleTrade === 'function') {
-      const result = economy.handleTrade(effect.commodityId, side, effect.qty);
+      const result = await economy.handleTrade(effect.commodityId, side, effect.qty, terms);
       if (result && result.ok === false) return { ok: false, reason: result.reason || 'trade_failed' };
       ok = creditsOf(state) !== beforeCredits || heldQty(state, effect.commodityId) !== beforeQty;
       reason = 'trade_unchanged';
     } else {
       const resp = await laneRpc('economyTrade', {
-        commodityId: effect.commodityId, side, qty: effect.qty,
+        commodityId: effect.commodityId, side, qty: effect.qty, ...(terms || {}),
       });
       if (!rpcUnavailable(resp)) {
-        const res = resp && resp.result;
+        const reply = resp && resp.result;
+        const res = reply && reply.result !== undefined ? reply.result : reply;
         if (res && res.ok === false) return { ok: false, reason: res.reason || 'trade_failed' };
         ok = res === true || (res && res.ok === true);
       } else {
         const wait = waitTradeOutcome(bus, effect.commodityId, side);
-        if (bus) bus.emit(side === 'sell' ? 'ui:sell' : 'ui:buy', { commodityId: effect.commodityId, qty: effect.qty });
+        if (bus) bus.emit(side === 'sell' ? 'ui:sell' : 'ui:buy', { commodityId: effect.commodityId, qty: effect.qty, ...(terms || {}) });
         const outcome = await wait;
         if (!outcome.ok) return { ok: false, reason: outcome.reason };
         ok = true;

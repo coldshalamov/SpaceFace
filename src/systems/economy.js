@@ -26,7 +26,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { TALLY_THREE, tallyThreeSource } from '../data/tallyThree.js';
 import { ILEX_ARK, validIlexOutcome } from '../data/ilexArk.js';
 import { ECONOMY_BALANCE as BALANCE } from '../data/economyDerived.js';
-import { averageBoundedPrice, averageLivePrice, normalizedTradeQuantity, settleCredits, recoverStock } from '../economy/economyMath.js';
+import { averageBoundedPrice, averageLivePrice, normalizedTradeQuantity, settleCredits, recoverStock, commodityStandingMultipliers } from '../economy/economyMath.js';
 import { resourceIntent, restoreResourceWork, serializeResourceWork } from '../economy/economyResources.js';
 import { createEconomyPulse, recordEconomyPulse, recordEconomyCash, restoreEconomyPulse, economyPulseReport } from '../economy/economyPulse.js';
 import { presenceServiceForStation } from '../data/factionPresence.js';
@@ -2586,9 +2586,9 @@ export const economy = {
     // THE WORLD REMEMBERS — a strike worsens what this berth pays the player; a blockade makes
     // its goods dear. One lookup, applied here so quote/execute/automation all see the same price.
     const conditionMult = stationTradeMults(state, stationId, info);
-    const standing = conditionMult.buy === 1 && conditionMult.sell === 1
-      ? standingBase
-      : { ...standingBase, buy: standingBase.buy * conditionMult.buy, sell: standingBase.sell * conditionMult.sell };
+    const frontier = info ? this.frontierPenalty(info) : 0;
+    const spread = spreadOf(entry, frontier);
+    const standing = commodityStandingMultipliers(spread, standingBase, conditionMult);
     // Low-tier ports buy valuable finds from the player but do not create an infinite local
     // supply of resources that only occur deeper in the world. This preserves discovery value
     // and stops starter markets from becoming risk-free rare-ore vending machines.
@@ -2609,8 +2609,6 @@ export const economy = {
     const requestedQty = qty;
     if (side === 'buy') qty = Math.min(qty, Math.max(0, Math.floor(entry.stock - 1)));
     if (qty <= 0) return { ok: false, reason: 'no_stock' };
-    const frontier = info ? this.frontierPenalty(info) : 0;
-    const spread = spreadOf(entry, frontier);
     const el = def.elasticity;
     // Benefits cannot invert the same-port spread over an unchanged stock interval.
     const bidFactor = 1 - spread / 2;
@@ -4856,13 +4854,10 @@ export const economy = {
     return this.state.economy.markets[stationId] || this.ensureMarket(stationId);
   },
   priceOf(stationId, commodityId, side) {
-    const m = this.getMarket(stationId);
-    const e = m && m[commodityId];
-    if (!e) return null;
-    const info = stationInfo(this.state, stationId);
-    const standing = priceModForState(this.state, info && info.factionId);
-    const raw = side === 'buy' ? e.lastBuy * standing.buy : e.lastSell * standing.sell;
-    return Math.max(1, round(raw));
+    // A one-unit price has the same rounding, standing, conditions and access rules
+    // as the counter. Cached market mids remain non-personal world intelligence.
+    const quoted = this.quote(stationId, commodityId, side, 1);
+    return quoted && quoted.ok && quoted.qty === 1 ? quoted.total : null;
   },
 
   // -------------------------------------------------------------------------------------------
