@@ -127,7 +127,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     tab.addEventListener('click', () => show(i));
     tablist.appendChild(tab); return tab;
   });
-  const nextStep = make('span', 'orr-prep-nextstep', '03 / Armory');
+  const nextStep = make('span', 'orr-prep-nextstep', '03 ARMORY');
   nextStep.setAttribute('aria-label', 'Next, fit equipment in the armory');
   const summary = make('p', 'orr-prep-summary', '');
   nav.append(tablist, nextStep, summary); root.insertBefore(nav, stage);
@@ -217,7 +217,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     // lands (a locked hull, a denied tile) reads here immediately — the summary is the receipt.
     const purseBits = isSwarm ? ` · ${stake.purse.toLocaleString('en-US')} cr purse` : '';
     summary.textContent = `${state.daily ? 'Daily · ' : ''}${modeName(state.ruleset)} · ${state.arenaLabel || 'Arena'} · ${loadout.hull.name}${purseBits}`;
-    nextStep.textContent = isSwarm ? '03 / Armory' : '03 / Launch';
+    nextStep.textContent = isSwarm ? '03 ARMORY' : '03 LAUNCH';
     nextStep.setAttribute('aria-label', isSwarm ? 'Next, fit equipment in the armory' : 'Next, enter the arena');
     if (isSwarm) enter.textContent = 'Open armory →';
     // The purse is a mechanical counter: it rolls to the new stake and settles. Non-swarm terms
