@@ -454,10 +454,6 @@ const HAND = [
     ['The hail wants a ship that docked yesterday.', 'Accepting their hull is how manifests rot.'], null),
 ];
 
-// The third choice on wrong_berth was truncated in C() — fix by using full C above.
-// Rebuild 390 properly below if length mismatches. Checked: C() needs 3 pairs.
-// I passed only 2 to the last scene's C() by mistake. Fixing in a post step if needed.
-
 function ambient(id, grammar, sectors, motion, authority, runner, voice, cast, hail, color, choices, receipts, prop = null) {
   const [situation, place, twist, actor] = grammar.split('|');
   return {
@@ -586,18 +582,6 @@ function assertScenes(list) {
       twist: row.twist,
       actor: row.actor,
     }, row.id);
-  }
-}
-
-// Fix scene 390 if it was built short — reconstruct choices to 3.
-{
-  const row = HAND[HAND.length - 1];
-  if (row.id === 'wrong_berth' && row.choices.length < 3) {
-    row.choices = C(
-      ['Correct the name', 'Correcting the name.'],
-      ['Accept their hull', 'I\'ll wear their hull.'],
-      ['Ignore the hail', 'Not my hull.'],
-    );
   }
 }
 
