@@ -47,6 +47,14 @@ function isAdditive(mat, THREE) {
     && (mat.isPointsMaterial || mat.isSpriteMaterial || mat.isShaderMaterial));
 }
 
+/** Target instrumentation identifies a subject; it is not a weapon/contact obscuring it. */
+export function isPlayerTruthInstrumentation(object) {
+  for (let node = object; node && !node.isScene; node = node.parent) {
+    if (node.userData?.presentationRole === 'target-instrument') return true;
+  }
+  return false;
+}
+
 export function installPlayerTruthReader(win, opts = {}) {
   if (win.__playerTruth) return win.__playerTruth;
   const SF = win.SF;
@@ -181,7 +189,7 @@ export function installPlayerTruthReader(win, opts = {}) {
 
   function vfxScan(st, cam, scene, vw, vh, playerBox, threatBoxes) {
     const grid = new Uint16Array(GW * GH);
-    let overdraw = 0; let unbounded = 0; let backdrop = 0; const per = new Map();
+    let overdraw = 0; let unbounded = 0; let backdrop = 0; let instruments = 0; const per = new Map();
     const sphere = new THREE.Sphere();
     scene.traverseVisible((o) => {
       if (!(o.isMesh || o.isPoints || o.isSprite || o.isLine)) return;
@@ -189,6 +197,7 @@ export function installPlayerTruthReader(win, opts = {}) {
       const mats = Array.isArray(o.material) ? o.material : [o.material];
       const mat = mats.find((m) => isAdditive(m, THREE));
       if (!mat || (mat.opacity !== undefined && mat.opacity < 0.02 && !mat.isShaderMaterial)) return;
+      if (isPlayerTruthInstrumentation(o)) { instruments++; return; }
       if (isBackdrop(o)) { backdrop++; return; }
       let r; let cx; let cy; let cz;
       if (o.isSprite) {
@@ -234,7 +243,7 @@ export function installPlayerTruthReader(win, opts = {}) {
     const top = [...per.values()].sort((a, b) => b.cells - a.cells).slice(0, 5)
       .map((x) => [x.name, x.owner, +(x.cells / grid.length).toFixed(3), x.box]);
     return { cov: +(covered / grid.length).toFixed(3), od: +(overdraw / grid.length).toFixed(2), pOcc: fracCovered(playerBox),
-      tOcc: tn ? +(tc / tn).toFixed(3) : null, tN: tn, unb: unbounded, bg: backdrop, top };
+      tOcc: tn ? +(tc / tn).toFixed(3) : null, tN: tn, unb: unbounded, bg: backdrop, nI: instruments, top };
   }
 
   // Per-pixel split of what additive layers contribute: render the same camera into a small
@@ -251,11 +260,14 @@ export function installPlayerTruthReader(win, opts = {}) {
   function pixelSplit(renderer, scene, cam, vw, vh, playerBox, threatBoxes) {
     if (!renderer || !renderer.isWebGLRenderer || !renderer.readRenderTargetPixels) return { err: 'renderer is not WebGL' };
     if (!pxTarget) { pxTarget = new THREE.WebGLRenderTarget(PW, PH); bufA = new Uint8Array(PW * PH * 4); bufB = new Uint8Array(PW * PH * 4); bufC = new Uint8Array(PW * PH * 4); }
-    const combat = []; const back = [];
+    const combat = []; const back = []; let instruments = 0;
     scene.traverseVisible((o) => {
       if (!(o.isMesh || o.isPoints || o.isSprite || o.isLine)) return;
       const mats = Array.isArray(o.material) ? o.material : [o.material];
       if (!mats.some((m) => isAdditive(m, THREE))) return;
+      // Keep the target instrument present in all three renders. Only combat/backdrop
+      // contributions change; a selected enemy cannot occlude itself by being marked.
+      if (isPlayerTruthInstrumentation(o)) { instruments++; return; }
       (isBackdropLayer(o) ? back : combat).push(o);
     });
     const prevTarget = renderer.getRenderTarget(); const prevAuto = renderer.info.autoReset;
@@ -292,7 +304,7 @@ export function installPlayerTruthReader(win, opts = {}) {
     const occ = (mask) => { let tn = 0; let tc = 0; for (const b of threatBoxes) { const f = boxFrac(mask, b); if (f != null) { tn++; if (f >= 0.5) tc++; } } return tn ? +(tc / tn).toFixed(3) : null; };
     const pc = boxFrac(cMask, playerBox); const pb = boxFrac(bMask, playerBox);
     return { c: +(cN / (PW * PH)).toFixed(3), b: +(bN / (PW * PH)).toFixed(3), cp: pc == null ? null : +pc.toFixed(3), bp: pb == null ? null : +pb.toFixed(3),
-      ct: occ(cMask), bt: occ(bMask), nC: combat.length, nB: back.length };
+      ct: occ(cMask), bt: occ(bMask), nC: combat.length, nB: back.length, nI: instruments };
   }
 
   function sample() {
@@ -319,7 +331,12 @@ export function installPlayerTruthReader(win, opts = {}) {
       const m = meshes ? meshes.get(e.id) : null;
       let visCode = 0; let sx = -1; let sy = -1; let pr = 0; let key = -1;
       if (cam) {
-        const sc = screenOf(cam, e.pos.x, e.pos.y || 0, e.pos.z, Math.max(0.5, e.radius || 1), vw, vh);
+        // Physics coordinates may be a fixed tick ahead of the interpolated/rebased picture.
+        // The already-presented root matrix is the observation seam for pixel measurements.
+        const matrix = m?.matrixWorld?.elements;
+        const sc = screenOf(cam, matrix ? matrix[12] : e.pos.x,
+          matrix ? matrix[13] : e.pos.y || 0, matrix ? matrix[14] : e.pos.z,
+          Math.max(0.5, e.radius || 1), vw, vh);
         sx = Math.round(sc.sx); sy = Math.round(sc.sy); pr = +sc.pr.toFixed(1);
         if (m) {
           const vis = meshChainVisible(m);

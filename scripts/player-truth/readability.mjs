@@ -8,6 +8,7 @@ import { E, CLS, VIS } from './checks.mjs';
 const CLASSES = ['enemy', 'asteroid', 'projectile', 'pickup'];
 // Play-space bodies that are none of the combat classes (stations, neutral hulls, props): census only.
 const BODY_CLASSES = ['station', 'neutral', 'other'];
+const INNER_SCALE = 0.7;
 
 function srgbToLab(r, g, b) {
   const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
@@ -21,7 +22,7 @@ function srgbToLab(r, g, b) {
 
 /** Mean Lab of the pixels inside a box, and of a ring around it (background). Exported for tests. */
 export function sampleBox(raw, W, H, ch, cx, cy, r) {
-  const inner = Math.max(1, Math.round(r * 0.7)); const ring = Math.round(Math.max(r * 1.6, r + 4));
+  const inner = Math.max(1, Math.round(r * INNER_SCALE)); const ring = Math.round(Math.max(r * 1.6, r + 4));
   const acc = [0, 0, 0]; let n = 0; const bg = [0, 0, 0]; let nb = 0; const inn = [];
   for (let y = Math.max(0, cy - ring); y <= Math.min(H - 1, cy + ring); y++) {
     for (let x = Math.max(0, cx - ring); x <= Math.min(W - 1, cx + ring); x++) {
@@ -53,17 +54,59 @@ export function separation(A, B) {
   return { sep, dColor, sizeRatio };
 }
 
-export async function analyzeReadability(shots, nearestSample) {
+function captureWindow(shot, nearestSample, samples) {
+  if (!Number.isFinite(shot.endT) || shot.endT < shot.t) return null;
+  const start = nearestSample(shot.t); const end = nearestSample(shot.endT);
+  if (!start || !end) return null;
+  return [...new Set([start, ...samples.filter((s) => s.t >= shot.t && s.t <= shot.endT), end])];
+}
+
+function capturePose(entity, window) {
+  const entries = window.map((s) => s.e.find((e) => e[E.id] === entity[E.id]));
+  if (entries.some((e, i) => !e || e[E.cls] !== entity[E.cls]
+      || e[E.key] !== entity[E.key] || e[E.type] !== entity[E.type]
+      || ![VIS.onscreen, VIS.pooled].includes(e[E.vis])
+      || window[i].vw !== window[0].vw || window[i].vh !== window[0].vh)) {
+    return { reason: 'capture-identity-or-visibility' };
+  }
+  const radius = Math.min(...entries.map((e) => e[E.pr]));
+  const xs = entries.map((e) => e[E.sx]); const ys = entries.map((e) => e[E.sy]);
+  const x0 = Math.min(...xs); const x1 = Math.max(...xs);
+  const y0 = Math.min(...ys); const y1 = Math.max(...ys);
+  // The sampled inner patch occupies 70% of the body radius. Require the observed
+  // motion to fit within its remaining margin throughout capture, including out-and-back
+  // motion. Screenshot encoding has no exact exposed frame timestamp; unstable images
+  // cannot honestly assign their pixels to one of these poses.
+  if (!Number.isFinite(radius) || radius <= 0
+      || Math.hypot(x1 - x0, y1 - y0) > radius * (1 - INNER_SCALE)) {
+    return { reason: 'capture-motion' };
+  }
+  const pose = [...entity];
+  pose[E.sx] = (x0 + x1) / 2; pose[E.sy] = (y0 + y1) / 2; pose[E.pr] = radius;
+  return { pose };
+}
+
+export async function analyzeReadability(shots, nearestSample, samples = []) {
   const per = Object.fromEntries([...CLASSES, ...BODY_CLASSES].map((c) => [c, []]));
+  const rejected = Object.fromEntries([...CLASSES, ...BODY_CLASSES].map((c) => [c, {}]));
+  let unboundedShots = 0;
   for (const shot of shots) {
     if (!shot.play) continue;
-    const s = nearestSample(shot.t); if (!s) continue;
+    const window = captureWindow(shot, nearestSample, samples);
+    if (!window) { unboundedShots++; continue; }
+    const s = window[0];
     let img;
     try { img = await sharp(shot.file).removeAlpha().raw().toBuffer({ resolveWithObject: true }); } catch { continue; }
     const { data, info } = img; const W = info.width; const H = info.height; const sc = W / s.vw;
-    for (const e of s.e) {
+    for (const entity of s.e) {
+      const aligned = capturePose(entity, window);
+      const e = aligned.pose || entity;
       const cls = [...CLASSES, ...BODY_CLASSES].find((c) => CLS[c] === e[E.cls]); if (!cls) continue;
       if (!(e[E.vis] === VIS.onscreen || e[E.vis] === VIS.pooled)) continue;
+      if (!aligned.pose) {
+        rejected[cls][aligned.reason] = (rejected[cls][aligned.reason] || 0) + 1;
+        continue;
+      }
       const r = e[E.pr] * sc; if (r < 2.5) continue;
       const cx = Math.round(e[E.sx] * sc); const cy = Math.round(e[E.sy] * sc);
       if (cx < r || cy < r || cx > W - r || cy > H - r) continue;
@@ -100,5 +143,7 @@ export async function analyzeReadability(shots, nearestSample) {
     const look = chroma < 12 ? (L > 70 ? 'white' : L > 40 ? 'grey' : 'dark') : hue < 35 || hue > 340 ? 'red' : hue < 85 ? 'orange' : hue < 110 ? 'yellow' : hue < 200 ? 'green' : hue < 260 ? 'cyan/blue' : 'violet';
     return { cls: r.cls, ty: r.ty, n: r.n, litLab: [+L.toFixed(1), +a.toFixed(1), +b.toFixed(1)], look, meanRadiusPx: +(r.r / r.n).toFixed(1), overPlayerFrac: +(r.over / r.n).toFixed(3), exampleT: r.overT || r.t, exampleBox: r.overBox || r.box };
   });
-  return { classes, pairs, census };
+  const rejectedCount = Object.values(rejected).reduce((n, reasons) => n + Object.values(reasons).reduce((a, b) => a + b, 0), 0);
+  const measurementNote = `capture coherence: ${rejectedCount} body samples rejected for capture-motion or identity/visibility changes; ${unboundedShots} screenshots lack a recorded capture interval`;
+  return { classes, pairs, census, captureCoherence: { rejected, unboundedShots }, measurementNote };
 }

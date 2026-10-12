@@ -216,7 +216,9 @@ async function runOne(args, arena, extra = {}) {
       const info = await page.evaluate(() => ({ t: performance.now(), sim: window.SF ? window.SF.state.simTime : null, hud: (document.querySelector('.sf-crun') || document.querySelector('#hud') || {}).innerText || '' }));
       const file = path.join(outDir, 'frames', `${String(shots.length).padStart(4, '0')}.jpg`);
       await page.screenshot({ path: file, type: 'jpeg', quality: 72 });
-      shots.push({ t: info.t, sim: info.sim, file, play, label: tag, hud: info.hud.replace(/\s+/g, ' ').trim().slice(0, 60) });
+      const end = await page.evaluate(() => ({ t: performance.now(), sim: window.SF ? window.SF.state.simTime : null }));
+      shots.push({ t: info.t, endT: end.t, sim: info.sim, endSim: end.sim,
+        file, play, label: tag, hud: info.hud.replace(/\s+/g, ' ').trim().slice(0, 60) });
     } catch { /* page navigating */ } finally { busy = false; }
   };
   const startStreams = (tag) => {
@@ -406,7 +408,7 @@ export async function exitAfterFlush(code, { stdout = process.stdout, stderr = p
 /** Grade a recorded trace and write verdict.md/json, contact sheet and (with evidence) the compact copy. */
 export async function gradeAndWrite({ trace, shots, outDir, label, evidence, pruneFrames = false, vw, vh }) {
   const nearestSample = (t) => { let best = null; let bd = Infinity; for (const s of trace.samples) { const d = Math.abs(s.t - t); if (d < bd) { bd = d; best = s; } } return bd < 2000 ? best : null; };
-  trace.readability = await analyzeReadability(shots, nearestSample).catch((e) => ({ error: String(e) }));
+  trace.readability = await analyzeReadability(shots, nearestSample, trace.samples).catch((e) => ({ error: String(e) }));
   for (const c of (trace.readability && trace.readability.census) || []) c.name = trace.keys[c.ty] || null;
   const results = runChecks(trace);
   const verdict = overall(results);

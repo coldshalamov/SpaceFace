@@ -444,7 +444,8 @@ export function checkReadability(trace) {
   if (!r || !r.classes) return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, `separation ≥${T.readabilityMinSeparation}`, 'no frame analysis');
   const pairs = (r.pairs || []).filter((p) => p.nA >= T.readabilityMinSamples && p.nB >= T.readabilityMinSamples);
   const counts = Object.entries(r.classes).map(([k, v]) => `${k} ${v.n}`).join(', ');
-  if (!pairs.length) return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, `separation ≥${T.readabilityMinSeparation}`, `not enough on-screen samples per class (${counts}; need ${T.readabilityMinSamples})`);
+  const measurementNote = r.measurementNote ? `; ${r.measurementNote}` : '';
+  if (!pairs.length) return result('readability', 'Enemy / asteroid / projectile readable', 'UNKNOWN', null, `separation ≥${T.readabilityMinSeparation}`, `not enough on-screen samples per class (${counts}; need ${T.readabilityMinSamples})${measurementNote}`);
   const bad = pairs.filter((p) => p.sep < T.readabilityMinSeparation).sort((a, b) => a.sep - b.sep);
   const lowContrast = Object.entries(r.classes).filter(([k, v]) => (k === 'enemy' || k === 'projectile') && v.n >= T.readabilityMinSamples && v.lowContrastFrac > 0.5);
   const offenders = [
@@ -456,7 +457,7 @@ export function checkReadability(trace) {
   ];
   const minSep = Math.min(...pairs.map((p) => p.sep));
   return result('readability', 'Enemy / asteroid / projectile readable', offenders.length ? 'FAIL' : 'PASS', `min separation ${fmt(minSep)}`, `≥${T.readabilityMinSeparation} per class pair; ≤50% low-contrast`,
-    `samples: ${counts}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
+    `samples: ${counts}${measurementNote}`, offenders.slice(0, 4), offenders.filter((o) => o.box).slice(0, 2));
 }
 
 /** Combat VFX graded per pixel when the reader's offscreen split ran (backdrop layers excluded). */
