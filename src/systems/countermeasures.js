@@ -423,8 +423,8 @@ export const countermeasures = {
         // Gun batteries spend the shot even when it misses — the chance roll happens at fire
         // time, same as a real gun's spread. Cheap energy keeps flak honest instead of free.
         if (ch.energyCost > 0 && (e.cap || 0) < ch.energyCost) continue;
-        const target = nearestInterceptableProjectile(projectiles, e, ch.radius);
-        if (!target || !projectileInArc(target, e, ch.arcRad)) continue;
+        const target = nearestInterceptableProjectile(projectiles, e, ch.radius, ch.arcRad);
+        if (!target) continue;
         ch.commit();
         if (ch.energyCost > 0) e.cap = Math.max(0, (e.cap || 0) - ch.energyCost);
         if (ch.chance < 1 && !(state.rng && state.rng() < ch.chance)) continue;
@@ -725,7 +725,7 @@ function projectilesNear(state, pos, radius, out) {
 // nearest hostile projectile inside the ring, ties broken by scan order (the spatial index's
 // stable order). Own-side rounds and the servo owner's own shots are never intercepted. The
 // radius check is restated here so the choice stays correct even on a fallback (unhashed) scan.
-function nearestInterceptableProjectile(projectiles, ship, radius) {
+function nearestInterceptableProjectile(projectiles, ship, radius, arcRad = Math.PI * 2) {
   let bestMissile = null;
   let bestMissileD2 = Infinity;
   let bestOther = null;
@@ -738,6 +738,9 @@ function nearestInterceptableProjectile(projectiles, ship, radius) {
     const dx = p.pos.x - ship.pos.x, dz = p.pos.z - ship.pos.z;
     const d2 = dx * dx + dz * dz;
     if (d2 > r2) continue;
+    // Filter coverage BEFORE prioritizing threats. An unreachable missile behind
+    // the turret must not mask a second round the battery can actually answer.
+    if (!projectileInArc(p, ship, arcRad)) continue;
     if (p.data && p.data.kind === 'missile') {
       if (d2 < bestMissileD2) {
         bestMissile = p;
