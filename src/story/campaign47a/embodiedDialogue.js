@@ -1,6 +1,7 @@
 // Concise canonical contact voice for Campaign 47-A. Story remains the presentation authority.
 import { CAMPAIGN_BEATS, ENDINGS } from './campaignData.js';
 import { stationContactCounterValue } from '../../data/stationContacts.js';
+import { spineGreeting } from './storySpine.js';
 
 export const EMBODIED_DIALOGUE_ID = 'campaign47a.embodiedDialogue.v2';
 export const EMBODIED_DIALOGUE_SCHEMA_VERSION = 2;
@@ -119,7 +120,9 @@ export function depthContactsForStation(stationId, state = {}) {
       const greeting = witnessSeamGreeting(entry.id, state);
       // G2: the two Witness Run contacts greet you by what you actually did — differently per
       // branch, and Kell's greeting erodes with his cover counter. Null keeps the authored blurb.
-      return greeting ? { ...entry, blurb: greeting } : entry;
+      if (greeting) return { ...entry, blurb: greeting };
+      const remembered = spineGreeting(entry.id, state);
+      return remembered ? { ...entry, blurb: remembered } : entry;
     });
 }
 

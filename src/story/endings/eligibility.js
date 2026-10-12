@@ -95,6 +95,7 @@ export function assessEndingHistory(state) {
     rows: rows.map(r => ({ id: r.id, title: r.def.title, eligible: r.eligible, unmet: r.unmet,
       evidence: reasons[r.id] || ['Explicit non-ending continuation'] })),
     warning: 'Recommendation describes the retained record. It does not choose for the captain.',
+    spine: f.spineRoad || null,
     evidence: f.evidence,
   });
 }

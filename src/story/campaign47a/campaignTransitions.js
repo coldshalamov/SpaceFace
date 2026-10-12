@@ -42,6 +42,17 @@ import {
   pushChoiceLog,
   validateCampaign47aState,
 } from './campaignSchema.js';
+import {
+  methodFromPayload,
+  noteSpineBeatChanged,
+  noteSpineDoor,
+  noteSpineFailure,
+  noteSpineRecover,
+  noteSpineSignal,
+  deployKind,
+  noteSpineStep,
+  readSpine,
+} from './storySpine.js';
 
 /**
  * Read-only view of the live missions/story spine.
@@ -100,6 +111,7 @@ export function syncObservedBeat(state, simTime = 0) {
       from: prev,
       to: canon.beatIndex,
     }, t);
+    noteSpineBeatChanged(own, prev, canon.beatIndex);
   } else {
     own.observedBeatIndex = canon.beatIndex;
   }
@@ -118,6 +130,7 @@ export function recordBeatStep(state, signal, payload = {}, simTime = 0) {
 
   const t = Number(simTime) || 0;
   syncObservedBeat(state, t);
+  noteSpineSignal(state, own, payload, t);
   const canon = readCanonicalStory(state);
   const beatIndex = canon.beatIndex;
   const def = beatDefAt(beatIndex);
@@ -131,6 +144,11 @@ export function recordBeatStep(state, signal, payload = {}, simTime = 0) {
 
   // B7 is observe-only — never complete via sidecar steps.
   if (def.observeOnly || beatIndex === 7) {
+    if (payload && (payload.completionMethod || payload.physicalVerb)) {
+      noteSpineStep(state, own, {
+        beat: beatIndex, stepId: 'deep_reach', payload, simTime: t, stepsComplete: false,
+      });
+    }
     return {
       ok: true,
       reason: 'observe_only',
@@ -233,6 +251,7 @@ function recordOrderedSteps(state, own, def, signal, payload, simTime, canon) {
   own.observedBeatIndex = def.beat;
 
   const stepsComplete = steps.every((s) => bucket.completed.includes(s.id));
+  const completionMethod = methodFromPayload(payload, def.beat, canon.branch);
   const receipt = buildStepProgressReceipt({
     beatIndex: def.beat,
     stepId: nextStep.id,
@@ -242,8 +261,12 @@ function recordOrderedSteps(state, own, def, signal, payload, simTime, canon) {
     simTime,
     attempt: own.attempt,
     physicalVerb: payload.physicalVerb || null,
+    completionMethod,
   });
   pushCampaignReceipt(own, receipt);
+  noteSpineStep(state, own, {
+    beat: def.beat, stepId: nextStep.id, payload, simTime, stepsComplete,
+  });
   pushCampaignHistory(own, {
     kind: 'step_progress',
     beatIndex: def.beat,
@@ -295,6 +318,7 @@ function recordBranchIntroStep(state, own, signal, payload, simTime, canon) {
   own.beatStatus = BEAT_STATUS.TRACKING;
   own.observedBeatIndex = 4;
   own.flags.branch_intro_observed = branch;
+  noteSpineDoor(state, own, branch, simTime);
 
   const receipt = buildBranchIntroAcceptReceipt({
     branch,
@@ -320,6 +344,9 @@ function recordBranchIntroStep(state, own, signal, payload, simTime, canon) {
     physicalVerb: payload.physicalVerb || null,
   });
   pushCampaignReceipt(own, stepReceipt);
+  noteSpineStep(state, own, {
+    beat: 4, stepId: 'branch_intro_accept', payload, simTime, stepsComplete: true,
+  });
 
   return {
     ok: true,
@@ -378,6 +405,9 @@ function recordChainStep(state, own, signal, payload, simTime, canon) {
   }, simTime);
 
   if (!complete) {
+    noteSpineStep(state, own, {
+      beat: 5, stepId: 'chain_progress', payload, simTime, stepsComplete: false,
+    });
     return {
       ok: true,
       reason: 'chain_progress',
@@ -409,8 +439,12 @@ function recordChainStep(state, own, signal, payload, simTime, canon) {
     simTime,
     attempt: own.attempt,
     physicalVerb: payload.physicalVerb || null,
+    completionMethod: methodFromPayload(payload, 5, branch),
   });
   pushCampaignReceipt(own, stepReceipt);
+  noteSpineStep(state, own, {
+    beat: 5, stepId: 'chain_complete', payload, simTime, stepsComplete: true,
+  });
 
   return {
     ok: true,
@@ -465,8 +499,12 @@ function recordAssetDeployStep(state, own, signal, payload, simTime, canon) {
     simTime,
     attempt: own.attempt,
     physicalVerb: payload.physicalVerb || (beatDefAt(6) || {}).headlineVerb || null,
+    assetKind: deployKind(payload),
   });
   pushCampaignReceipt(own, receipt);
+  noteSpineStep(state, own, {
+    beat: 6, stepId: 'asset_deploy', payload, simTime, stepsComplete: true,
+  });
   pushCampaignHistory(own, {
     kind: 'asset_deploy',
     kindPayload: payload.kind || null,
@@ -559,15 +597,17 @@ export function failEncounter(state, reason = 'encounter_failed', simTime = 0, e
   own.observedBeatIndex = beatIndex;
   own.activeContract = null;
 
+  const situation = noteSpineFailure(state, own, beatIndex, reason, extra, t);
   const receipt = buildEncounterFailReceipt({
     beatIndex,
     reason,
     simTime: t,
     attempt: own.attempt,
     encounterId: extra.encounterId || null,
+    failedMethod: situation && situation.failedMethod || null,
   });
   pushCampaignReceipt(own, receipt);
-  pushCampaignHistory(own, { kind: 'fail', beatIndex, reason }, t);
+  pushCampaignHistory(own, { kind: 'fail', beatIndex, reason, askId: situation && situation.askId || null }, t);
 
   return {
     ok: true,
@@ -621,6 +661,7 @@ export function recoverEncounter(state, simTime = 0, opts = {}) {
     previousFailures: prevFails,
   });
   pushCampaignReceipt(own, receipt);
+  noteSpineRecover(own, beatIndex, t);
   pushCampaignHistory(own, { kind: 'recover', beatIndex }, t);
 
   return {
@@ -810,6 +851,7 @@ export function getCampaignPublicView(state) {
     outpostSpecializationId: own.outpostSpecializationId,
     outpostsOwned: own.outpostsOwned.slice(),
     failureCount: own.failureCount,
+    situationAsk: (readSpine(state).situation && readSpine(state).situation.askId) || null,
     receiptCount: own.receipts.length,
     choiceCount: own.choiceLog.length,
     ownsProgression: false,

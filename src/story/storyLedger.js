@@ -39,7 +39,7 @@ const STEP_SPEECH = Object.freeze({
   }),
   '6:asset_deploy': Object.freeze({
     id: 'b6', rank: 80,
-    doing: 'deploying the yard drone', so: 'deployed the yard drone', then: 'the drone was on the plot',
+    doing: 'deploying the asset', so: 'deployed the asset', then: 'the plot took it',
   }),
 });
 
@@ -89,7 +89,7 @@ const FAIL_SPEECH = Object.freeze({
   3: Object.freeze({ doing: 'missing the slag core', so: 'missed the slag core' }),
   4: Object.freeze({ doing: 'missing the intro', so: 'missed the intro' }),
   5: Object.freeze({ doing: 'missing the proving runs', so: 'missed the proving runs' }),
-  6: Object.freeze({ doing: 'missing the yard drone', so: 'missed the yard drone' }),
+  6: Object.freeze({ doing: 'missing the deploy', so: 'missed the deploy' }),
 });
 
 const SIGNAL_THEN = Object.freeze({
@@ -233,8 +233,20 @@ function outpostSpeech(role) {
   };
 }
 
-function failSpeech(beatIndex, at) {
-  const row = FAIL_SPEECH[beatIndex];
+const FAIL_METHOD = Object.freeze({
+  wrecking_ball: Object.freeze({ doing: 'missing the tower with the throw', so: 'missed the tower with the throw' }),
+  cut_down: Object.freeze({ doing: 'missing the tower with the cut', so: 'missed the tower with the cut' }),
+  stage_tow: Object.freeze({ doing: 'missing the yard tow', so: 'missed the yard tow' }),
+  corridor_pull: Object.freeze({ doing: 'missing the corridor reel', so: 'missed the corridor reel' }),
+  tow_in: Object.freeze({ doing: 'missing the line tow', so: 'missed the line tow' }),
+  sling_in: Object.freeze({ doing: 'missing the sling', so: 'missed the sling' }),
+  park_the_hulk: Object.freeze({ doing: 'missing the park', so: 'missed the park' }),
+  swing_the_wedge: Object.freeze({ doing: 'missing the wedge', so: 'missed the wedge' }),
+});
+
+function failSpeech(beatIndex, at, method) {
+  const specific = method && FAIL_METHOD[method];
+  const row = specific || FAIL_SPEECH[beatIndex];
   if (!row) return null;
   return speakAct({
     id: `fail-${beatIndex}-${at}`,
@@ -243,6 +255,16 @@ function failSpeech(beatIndex, at) {
     so: row.so,
     then: 'the attempt failed',
   }, at, { timed: true });
+}
+
+function assetSpeech(kind) {
+  const name = kind === 'drone' ? 'yard drone' : kind === 'trader' ? 'trader' : kind === 'outpost' ? 'outpost' : 'asset';
+  return {
+    id: 'b6', rank: 80,
+    doing: `deploying the ${name}`,
+    so: `deployed the ${name}`,
+    then: 'the plot took it',
+  };
 }
 
 function stepSpeech(beatIndex, stepId, signal) {
@@ -310,7 +332,7 @@ function readCampaignReceipts(map, state) {
     }
     if (kind === 'encounter_fail') {
       const beat = Number.isFinite(raw.beatIndex) ? raw.beatIndex : null;
-      put(map, failSpeech(beat, at));
+      put(map, failSpeech(beat, at, clean(raw.failedMethod)));
       continue;
     }
     if (kind === 'branch_intro_accept') {
@@ -326,6 +348,11 @@ function readCampaignReceipts(map, state) {
       continue;
     }
     if (kind !== 'step_progress') continue;
+    const methodSpeech = METHOD_SPEECH[clean(raw.completionMethod)];
+    if (methodSpeech) {
+      put(map, speakAct(methodSpeech, at, { timed: true, specific: true }));
+      continue;
+    }
     const beatIndex = Number.isFinite(raw.beatIndex) ? raw.beatIndex : null;
     const stepId = clean(raw.stepId);
     if (beatIndex == null || !stepId) continue;
@@ -335,6 +362,10 @@ function readCampaignReceipts(map, state) {
     }
     if (stepId === 'chain_complete') {
       put(map, speakAct(chainSpeech(raw.branch || story.branch, 0, 0, true), at, { timed: true }));
+      continue;
+    }
+    if (beatIndex === 6 && stepId === 'asset_deploy') {
+      put(map, speakAct(assetSpeech(clean(raw.assetKind)), at, { timed: true }));
       continue;
     }
     const speech = stepSpeech(beatIndex, stepId, clean(raw.signal));

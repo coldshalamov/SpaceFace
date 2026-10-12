@@ -238,6 +238,12 @@ function livesLine(id, f) {
 }
 
 function archiveLine(id, f) {
+  const line = archiveBody(id, f);
+  const cite = f && f.spineRoad && typeof f.spineRoad.cite === 'string' ? f.spineRoad.cite : '';
+  return cite ? `${line} ${cite}` : line;
+}
+
+function archiveBody(id, f) {
   if (f.valeGatesRevoked) return 'The retained Verge record says Vale’s gate access was revoked. This disposition does not restore it. The surviving office is not proof that every one of its permissions survived.';
   if (f.heliosGridFound) return 'HELIOS BAY 7: the maintenance scan remains in your record. The wrong grid had a destination. A new title, a blank name or a closed payment line does not install it where it was needed.';
   if (f.archiveSources.length) return `${n(f.archiveSources.length)} independently verified archive source${f.archiveSources.length === 1 ? '' : 's'} remain attached. Neither an appointment nor a settlement turns an original into an administrative inconvenience.`;

@@ -204,5 +204,52 @@ evidence, asset approvals, or manifest inputs. No file copy is implied.
 When a packet adopts a candidate, it must record the exact existing leaf, resolve any conflict with
 the current story or runtime source, and specify the player-facing measurement that closes it. An
 adopted place or asset still needs the relevant visual, accessibility, performance, manifest, and
-route review. Until then, this file is a compact home for ideas, not evidence that anything has
+route review. The candidate tables above stay proposals. The section below is the runtime that
 shipped.
+
+## Shipped runtime
+
+Campaign 47-A keeps one spine, B0 through B7, and the existing endings A–E. Nothing in this
+section adds a branch, a dialogue tree, a choice menu, or an ending.
+
+The memory lives on `state.story.campaign47a.flags.spine`, written by
+`src/story/campaign47a/storySpine.js`. It does not advance `story.beatIndex`, pay credits, or
+write cargo, heat, reputation, or `state.morrow`. Morrow is read. When a story signal notices
+R-07, the spine keeps a copy of whether the hull was met, whether the machine is dark, and how
+many launches and visits occurred. The rescue machine itself is unchanged.
+
+What the ship does is what the spine stores. B0 still completes only on a sample yield and then
+a Helios dock, in that order. B1–B3, the branch intro, the proving chain, and the yard deploy
+stay on the signals missions already sends. Deep Reach completion does not send one of those
+step signals: missions marks `deep_reach_operation_complete` and `deep_reach_variant`, and the
+spine reads those flags. The bar and the archive name the blockade, the siege, or the evidence
+tow from that variant. They do not wait for a beat advance, and they do not keep an open miss
+as the current ask after the operation is done. The miss stays in the citation. A step stores
+the physical verb that payload carried. It stores a completion method only when that method is
+one of the two authored solutions for that beat. A headline verb is not spoken as one of those
+solutions. A freight sale or a kill during Cold Start does not become the sample. A nameless
+miss does not name a throw, a cut, a line, or a sling. A deployed asset is remembered as the
+kind that was deployed.
+
+A miss replaces the open ask. It does not reload the ask from before the miss, and it does not
+advance the beat. The replacement is heavier, and a second miss is heavier again. When the failed
+payload names one of the two solutions, the other solution is the ask the contacts remember.
+`buildMissionBoardContract` applies that ask to the offer — a changed brief, scarred numbers, and
+one remaining method — only when the caller passes `options.state`. The live missions board does
+not pass state yet, so a played miss is remembered by the bar and the ending while the posted
+contract still lists both solutions.
+
+Taking a faction door records the other two doors as refusals. Those refusals stay in the choice
+log through migrate and through save → Continue. They do not delete completed steps.
+
+The depth-program contacts already standing in the bar speak a remembered line of at most twelve
+words when they have something to remember. Maera and Halev are the Helios faces in the first
+hour, and they do not say the same sentence about the same hull. After an ending is filed they
+still name the deed, and they say they watched the filing. Dorin and Kell stay on the witness
+seam. An empty save, and a late save with no branch and no spine, keeps the authored blurbs.
+
+The written finale's archive line cites the retained road: the door, the refusals, each physical
+solution that still has a name, scarred misses, the Deep Reach operation when missions has marked
+it done, and whether R-07 was met. A Deep Reach method is not cited as the tower, even when it
+reuses an earlier method name. An earlier miss stays in that citation when a later beat fails.
+Ending eligibility is unchanged. A road with nothing to say leaves the archive line as it was.

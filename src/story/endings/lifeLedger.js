@@ -1,6 +1,7 @@
 // One read-only normalization boundary for live GameState, raw v14 data, and {data: v14} saves.
 // A current wanted level is not a lifetime crime count. Unknown is never silently made innocent.
 import { dossArchiveEvidence } from '../../data/dossArchive.js';
+import { spineRoadFrom } from '../campaign47a/storySpine.js';
 import { CAPITAL_SHIP_DEF_IDS, BRANCH_FACTION } from './endingDefs.js';
 import { array, object, number, count, key, text, timestamp, freeze } from './value.js';
 
@@ -221,6 +222,7 @@ export function readLifeLedger(input) {
     heliosGridFound: flags.helios_bay7_scanned === true,
     // This is the aftermath fact, not its private unrevealed inputs.
     valeGatesRevoked: object(story.verge).valeGatesRevoked === true,
+    spineRoad: spineRoadFrom({ story, morrow: state.morrow }),
     evidence,
   });
 }

@@ -45,6 +45,8 @@ export function buildStepProgressReceipt({
   simTime = 0,
   attempt = 0,
   physicalVerb = null,
+  completionMethod = null,
+  assetKind = null,
 }) {
   const def = beatDefAt(beatIndex);
   const id = receiptId('step_progress', {
@@ -63,6 +65,8 @@ export function buildStepProgressReceipt({
     stepId,
     signal,
     physicalVerb: physicalVerb || null,
+    completionMethod: typeof completionMethod === 'string' ? completionMethod : null,
+    assetKind: assetKind === 'drone' || assetKind === 'trader' || assetKind === 'outpost' ? assetKind : null,
     completedSteps: completedSteps.slice(),
     stepsComplete: !!stepsComplete,
     attempt,
@@ -189,6 +193,7 @@ export function buildEncounterFailReceipt({
   simTime = 0,
   attempt = 0,
   encounterId = null,
+  failedMethod = null,
 }) {
   const def = beatDefAt(beatIndex);
   const id = receiptId('encounter_fail', {
@@ -207,6 +212,7 @@ export function buildEncounterFailReceipt({
     reason,
     attempt,
     encounterId,
+    failedMethod: typeof failedMethod === 'string' ? failedMethod : null,
     recovery: def ? def.recovery : null,
     intents: [
       {
