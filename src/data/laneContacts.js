@@ -131,6 +131,8 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     role: 'hauler',
     gimmick: 'cut-run',
     ship: 'ship_mule',
+    hail: 'Ore manifest, same as yesterday. The cut knows my hull.',
+    memoryHook: 'hyperion-cut-run',
     sectorIds: Object.freeze(['sector_hyperion_cut']),
   }),
   Object.freeze({
@@ -143,6 +145,8 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     role: 'courier',
     gimmick: 'quiet-run',
     ship: 'ship_kestrel',
+    hail: 'No manifest to read. The march burns its own paper.',
+    memoryHook: 'nyx-hush-cargo',
     sectorIds: Object.freeze(['sector_nyx_march']),
   }),
   // ── The frontier's faces (2026-09-28): every traffic-bearing frontier sector gets one
@@ -169,6 +173,8 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     role: 'ore_carrier',
     gimmick: 'ice-cut',
     ship: 'ship_ironback',
+    hail: 'Shoal ore, still wet. The scale reads it same-shift or it is free.',
+    memoryHook: 'nereid-ice-cut',
     sectorIds: Object.freeze(['sector_nereid_shoal']),
   }),
   Object.freeze({
@@ -181,6 +187,8 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     role: 'surveyor',
     gimmick: 'survey-mail',
     ship: 'ship_ranger',
+    hail: 'Fracture mail for the Observatory. The rift ghosts every return but mine.',
+    memoryHook: 'haumea-fractureline',
     sectorIds: Object.freeze(['sector_haumea_rift']),
   }),
   Object.freeze({
@@ -205,6 +213,8 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     role: 'surveyor',
     gimmick: 'well-sound',
     ship: 'ship_ranger',
+    hail: 'The well answers the right pulse. The den reads it first.',
+    memoryHook: 'proteus-well-sound',
     sectorIds: Object.freeze(['sector_proteus_well']),
   }),
   Object.freeze({
@@ -229,6 +239,8 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     role: 'salvor',
     gimmick: 'license-salvage',
     ship: 'ship_pelican',
+    hail: 'Board seal on my transponder. The gulf does not dispute my cuts.',
+    memoryHook: 'eunomia-license-board',
     sectorIds: Object.freeze(['sector_eunomia_gulf']),
   }),
   Object.freeze({
@@ -241,6 +253,8 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     role: 'courier',
     gimmick: 'margin-cross',
     ship: 'ship_kestrel',
+    hail: 'The sweep has a beat. Cross on the down-stroke or do not cross.',
+    memoryHook: 'eris-margin-cross',
     sectorIds: Object.freeze(['sector_eris_margin']),
   }),
   Object.freeze({

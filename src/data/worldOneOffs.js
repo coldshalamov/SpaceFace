@@ -401,6 +401,9 @@ export const WORLD_ONE_OFFS = Object.freeze([
     rot: 0.5,
     spin: 0,
     radius: 24,
+    // The ring is welded into a memorial — but it is still a ring, and a Quiet pilot who
+    // wants the relic off the march floor can put a rope on it.
+    physicalBody: Object.freeze({ mass: 260 }),
     cluster: Object.freeze({
       props: Object.freeze([
         Object.freeze({ placeId: 'place_memorial_array', dx: -40, dz: 30, rot: 1.8, radius: 10 }),
@@ -421,6 +424,9 @@ export const WORLD_ONE_OFFS = Object.freeze([
     rot: 2.9,
     spin: 0,
     radius: 22,
+    // The dead platform still has its bite in the rock. It tows like a hull that gave up
+    // mid-sentence, which is exactly what it is.
+    physicalBody: Object.freeze({ mass: 240 }),
     cluster: Object.freeze({
       props: Object.freeze([
         Object.freeze({ placeId: 'place_asteroid_seamed', dx: 36, dz: -20, rot: 1.3, radius: 14 }),
@@ -465,6 +471,9 @@ export const WORLD_ONE_OFFS = Object.freeze([
     rot: 1.4,
     spin: 0.05,
     radius: 16,
+    // The gate that marks the tide can itself be unmade — the ring keeps the debris,
+    // the rope takes the marker.
+    physicalBody: Object.freeze({ mass: 120 }),
     cluster: Object.freeze({
       props: Object.freeze([
         Object.freeze({ placeId: 'place_aftermath_frag_pipe_tangle', dx: 120, dz: 40, rot: 0.8, radius: 8 }),
@@ -509,6 +518,9 @@ export const WORLD_ONE_OFFS = Object.freeze([
     rot: 0.4,
     spin: 0,
     radius: 10,
+    // The tower is light enough to reel — the rift keeps the drill, but the light bill can
+    // finally be carried off the lip.
+    physicalBody: Object.freeze({ mass: 40 }),
     cluster: Object.freeze({
       props: Object.freeze([
         Object.freeze({ placeId: 'place_extraction_mast', dx: 24, dz: -18, rot: 2.2, radius: 10 }),
@@ -577,6 +589,9 @@ export const WORLD_ONE_OFFS = Object.freeze([
     rot: 1.2,
     spin: 0,
     radius: 16,
+    // The coupling arm is a body, not a fixture — a pilot can pull the handshake closed
+    // or drag the whole arm home to the waystation.
+    physicalBody: Object.freeze({ mass: 60 }),
     cluster: Object.freeze({
       props: Object.freeze([
         Object.freeze({ placeId: 'place_freight_platform', dx: -50, dz: 30, rot: 2.7, radius: 14 }),
@@ -599,6 +614,9 @@ export const WORLD_ONE_OFFS = Object.freeze([
     rot: 0.8,
     spin: 0,
     radius: 12,
+    // The rack itself is the stash — roping it out of the boatbay's shadow is the second
+    // take the name promises.
+    physicalBody: Object.freeze({ mass: 70 }),
     cluster: Object.freeze({
       props: Object.freeze([
         Object.freeze({ placeId: 'place_aftermath_wreck_liner_boatbay', dx: 60, dz: -20, rot: 2.0, radius: 30 }),
@@ -620,6 +638,8 @@ export const WORLD_ONE_OFFS = Object.freeze([
     rot: 0.7,
     spin: 0.03,
     radius: 12,
+    // The tithe post comes loose if a pilot has the nerve — nobody has yet.
+    physicalBody: Object.freeze({ mass: 80 }),
     cluster: Object.freeze({
       props: Object.freeze([
         Object.freeze({ placeId: 'place_tally_post', dx: 36, dz: -24, rot: 2.4, radius: 8 }),
