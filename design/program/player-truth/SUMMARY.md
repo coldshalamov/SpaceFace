@@ -30,9 +30,33 @@ Idle pass finished (363 s wall, 46 sim s, round still active at the duration cap
 | backdrop_coverage | PASS | FAIL threats p95 100% |
 | player_control | UNKNOWN (dead before probes) | PASS 0 pinned |
 
-Active pass is **not a round-2 measurement**. The page closed at 25.6 sim s of round 1 (1616 s wall) after a SwiftShader stall (sim 6.4 → 10.5 across ~22 min, 0.1 fps). `rounds_reached` and `round_transitions` FAIL because the browser died, not because the ship was pinned. Before the close: `player_control` PASS (0 pinned), `spawn_motion` PASS, `reward_before_input` PASS, `readability` PASS 3.24, `loadout` PASS, `player_ship` FAIL 0.6% (5 frames, resolving marker / `compiling-pipelines` at 1.5 s), `popping` FAIL 30/min, `vfx_coverage` FAIL (threats hidden p95 100%). The pin-after-clearance question is still open; the active pass is being re-run with the seed field filled.
+Active pass on seed 73311 is **not a round-2 measurement**. The page closed at 25.6 sim s of round 1 (1616 s wall) after a SwiftShader stall (sim 6.4 → 10.5 across ~22 min, 0.1 fps). `rounds_reached` and `round_transitions` FAIL because the browser died, not because the ship was pinned. Before the close: `player_control` PASS (0 pinned), `spawn_motion` PASS, `reward_before_input` PASS, `readability` PASS 3.24, `loadout` PASS, `player_ship` FAIL 0.6% (5 frames, resolving marker / `compiling-pipelines` at 1.5 s), `popping` FAIL 30/min, `vfx_coverage` FAIL (threats hidden p95 100%), `backdrop_coverage` PASS (threats p95 20%).
+
+### Remount on the requested seed (`9e647c306`, 2026-10-12)
+
+The seed row sits below the fold at 960x540. `9e647c306` scrolls it into view and checks the field value, so both passes below record seed **4242** (the 73311 remount did not). Command: `npm run player-truth -- --mode=swarm --arena="Ricochet Foundry" --gate --evidence --tag=seed4242`. SwiftShader, 960x540. Evidence: `swarm-ricochet-foundry-idle-seed4242/`, `swarm-ricochet-foundry-active-seed4242/`.
+
+**Idle 4242: overall FAIL.** 2059 s wall, 41.5 sim s, stopped after 1 round. `round_resolution` PASS (shortest 41.1 s); the pre-clearance idle on this seed died at 13.2 s. `player_ship` / `lod_churn` / `popping` / `readability` / `vfx_coverage` / `backdrop_coverage` FAIL. `kills_before_input` and `reward_before_input` now PASS (0 kills, +0), improved vs pre-clearance (FAIL 9 / +4041) and vs the 73311 remount (FAIL 12 / +2839). Also PASS: `spawn_motion` 0, `player_control` 0 pinned, `loadout` 0. `player_ship` regressed vs both earlier idles: 8.2% of frames (105/1278) are a resolving marker (`loading` from sim 1.5 s, `compiling-pipelines` from 2.7 s). `lod_churn` 2.61/s (per-entity max 3/10 s, on the cap). `popping` 275/min. `readability` min separation 0.26; enemy 76% of samples have ΔL < 8; `station:plate` sits over the ship in 21% of 34 samples. `vfx_coverage` threats hidden p95 100% (combat p95 34%). `backdrop_coverage` threats on a bright backdrop p95 40%.
+
+| check | pre-clearance idle (4242) | remount idle (73311) | this idle (4242) |
+|---|---|---|---|
+| kills_before_input | FAIL 9 | FAIL 12 | PASS 0 |
+| reward_before_input | FAIL +4041 | FAIL +2839 | PASS +0 |
+| spawn_motion | FAIL 13 bodies | PASS 0 | PASS 0 |
+| player_ship | PASS | PASS | FAIL 8.2% resolving marker |
+| loadout | FAIL 5 irrelevant | PASS 0 | PASS 0 |
+| lod_churn | FAIL 5.34/s | FAIL 1.8/s | FAIL 2.61/s |
+| popping | FAIL 307/min | FAIL 116/min | FAIL 275/min |
+| readability | FAIL 0.69 | FAIL 0.93 | FAIL 0.26 |
+| vfx_coverage | FAIL threats p95 100% | FAIL threats p95 100% | FAIL threats p95 100% (combat p95 34%) |
+| backdrop_coverage | PASS | FAIL threats p95 100% | FAIL threats p95 40% |
+| player_control | UNKNOWN (dead before probes) | PASS 0 pinned | PASS 0 pinned |
+
+**Active 4242: overall FAIL.** Not a round-2 measurement. The browser closed mid-run at 11.2 sim s of round 1 (1370 s wall). `route` / `rounds_reached` / `round_transitions` FAIL as a harness crash (`page.evaluate: Target page, context or browser has been closed`); `round_resolution` FAIL because the gate counts that unmeasured win as FAIL. Round 2 is still unmeasured. Before the close: `popping` / `readability` / `vfx_coverage` still FAIL; `player_ship` / `lod_churn` / `kills_before_input` / `reward_before_input` / `spawn_motion` / `player_control` PASS. `backdrop_coverage` PASS (threats p95 25%). Readability's min separation is 2.1 (clears ≥ 1); the FAIL is low contrast (enemy 67% of samples ΔL < 8) plus `station:plate` over the ship in 27% of 11 samples. `popping` 31.7/min. `vfx_coverage` threats hidden p95 100% (combat p95 11%). `player_ship` 0/381 bad frames. `lod_churn` 0.7/s. 0 pinned spans. The pin-after-clearance question stays open.
 
 ## v2 gate (2026-10-12) — round 2 and beyond
+
+The table below is the **pre-clearance** reproduction (harness commits `a0b854c91`, `07e4eda14`, seed 4242). Lane 6 then shipped `6b67d1fb1`. Post-clearance numbers are the remounts above. Round 2 after that clearance is **still unmeasured**: the seed-4242 active pass died in round 1 when the browser closed. Do not read a pre-clearance REPRODUCED row as a result after `6b67d1fb1`.
 
 `npm run player-truth -- --mode=<mode> --gate` runs an **idle pass** (no input for 40 s: passive kills, reward,
 spawn motion) and an **active pass** (the scripted fighter plays from 3 s with public mouse aim/fire and W/S/A/D, and
@@ -45,7 +69,7 @@ planet layers are graded separately as `backdrop_coverage`.
 
 | Owner saw (round 2) | v2 result on master (Crucible · Ricochet Foundry · seed 4242 · 960x540 SwiftShader) | Evidence | Owner |
 |---|---|---|---|
-| Could not move next round | **REPRODUCED** — every round-2 start the fighter reached is pinned. At 66 % hull: W held 1.7 s reads 47 u/s, ship moves 1.5 u of 93 u; pinned 62.5–64.5 s (175 u implied, 21 u moved). At 97 % hull (another run): 168 u/s read, 1 u of 180 u moved, pinned 22.2–24.7 s. Not damage-dependent: it follows the round start. **Cause seen in the trace:** in every pinned span the ship sits 0–2 u from a solid room toy (`station:furnace`, `survivalArena._materializeRoom`) or an asteroid, i.e. the round-2 room solids materialize on top of the player (`player_control` / `round_transitions` now name the body). Gate active pass, 100 % hull: W held 1.4 s reads 141 u/s, ship moves 1.2 u of 179 u; pinned 45.5–47.6 s 1 u from `station:furnace` | `swarm-ricochet-foundry-round2-damaged/`, `swarm-ricochet-foundry-gate-active/` | Lane 6 (arena room placement, `survivalArena`) + Local integration (collision resolve) |
+| Could not move next round | **REPRODUCED (pre-clearance)** — every round-2 start the fighter reached is pinned. At 66 % hull: W held 1.7 s reads 47 u/s, ship moves 1.5 u of 93 u; pinned 62.5–64.5 s (175 u implied, 21 u moved). At 97 % hull (another run): 168 u/s read, 1 u of 180 u moved, pinned 22.2–24.7 s. Not damage-dependent: it follows the round start. **Cause seen in the trace:** in every pinned span the ship sits 0–2 u from a solid room toy (`station:furnace`, `survivalArena._materializeRoom`) or an asteroid, i.e. the round-2 room solids materialize on top of the player (`player_control` / `round_transitions` now name the body). Gate active pass, 100 % hull: W held 1.4 s reads 141 u/s, ship moves 1.2 u of 179 u; pinned 45.5–47.6 s 1 u from `station:furnace` | `swarm-ricochet-foundry-round2-damaged/`, `swarm-ricochet-foundry-gate-active/` | Lane 6 (arena room placement, `survivalArena`) + Local integration (collision resolve) |
 | Things shot at him, he died | **REPRODUCED** — killed 7.3 s into round 2 while pinned ("Wasp Swarmer killed you on wave 2") | same | Lane 6 |
 | "Told I WON" fast | **REPRODUCED (active)** — round 1 won in 18.4 s (< 20 s) with the fighter playing (Ricochet Runner, 960x540) | matrix run | Lane 6 |
 | Round-2 passive kills | **REPRODUCED** — 2 hostiles killed by asteroids in the first 0.3 s of round 2 before input | matrix run | Lane 6 |
@@ -55,8 +79,8 @@ planet layers are graded separately as `backdrop_coverage`.
 | Tumbling | **NOT REPRODUCED** — longest out-of-plane/uncommanded spin 0.1 s across all round starts measured | — | — |
 | Rectangle ship | see hull × viewport matrix below | — | — |
 
-Round 3: **not reached on master.** The fighter clears round 1, but the round-2 pin kills it. `rounds_reached` FAILs
-honestly (round 2); no round-3 coverage is claimed. A player can't get there either.
+Round 3: **not reached in the pre-clearance runs.** The fighter cleared round 1, and the round-2 pin killed it. `rounds_reached` FAILs
+honestly (round 2); no round-3 coverage is claimed. After `6b67d1fb1`, round 2 itself is still unmeasured.
 
 <!-- V2-GATE-RESULTS -->
 
