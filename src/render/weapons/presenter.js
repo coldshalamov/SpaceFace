@@ -830,7 +830,15 @@ export class WeaponVfxPresenter {
     const side = apx * nz - apz * nx;
     pose.slant = Math.atan2(side, Math.max(0.25, -into));
     flash.r = _color.r; flash.g = _color.g; flash.b = _color.b;
-    flash.pxw = this._pixelWorldAt(pose.x, pose.y, pose.z);
+    // Retain the hull-local contact, but measure its pixel floor in the camera's scene space.
+    const mesh = pose.attached ? this._mesh(targetId) : null;
+    if (mesh) {
+      _offset.set(pose.x, pose.y, pose.z);
+      markAnchor(mesh).localToWorld(_offset);
+      flash.pxw = this._pixelWorldAt(_offset.x, _offset.y, _offset.z);
+    } else {
+      flash.pxw = this._pixelWorldAt(pose.x, pose.y, pose.z);
+    }
     const priority = targetId === (this.state && this.state.playerId) ? 0.9 : 0.4;
     this.discharges.spawnImpact(pose, kind, recipe.variant, flash, priority);
   }
