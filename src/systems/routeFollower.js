@@ -378,10 +378,10 @@ export const routeFollower = {
     // transition came from a gate jump or continuous M2a geography.
     bus.on('sector:enter', (p) => this._onSectorEnter(p || {}));
 
-    // Combat interrupts travel. Both seams are covered: a direct hit on the player, and the
-    // encounter-level interdiction receipt.
-    bus.on('combat:hit', (p) => this._onCombatHit(p));
-    bus.on('combat:routeDamage', (p) => this._onCombatHit(p));
+    // The kernel's accepted receipt is the combat fact. Listening to damage requests both
+    // misses direct weapon/kernel hits and interrupts on refused friendly or invulnerable hits.
+    // Gate/interdiction refusals remain handled by jump:chargeAbort above.
+    bus.on('combat:damage', (p) => this._onCombatDamage(p));
 
     // A restored save revalidates durable route identity before UI or the autopilot can consume it.
     bus.on('save:loaded', () => this._onSaveLoaded());
@@ -868,7 +868,8 @@ export const routeFollower = {
     return retired;
   },
 
-  _onCombatHit(payload) {
+  _onCombatDamage(payload) {
+    if (!payload || !(Number(payload.applied) > 0)) return;
     const state = this.state;
     const nav = state && state.nav;
     const executor = nav && nav.executor;

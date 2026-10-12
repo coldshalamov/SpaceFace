@@ -626,10 +626,10 @@ test('combat on the player interrupts travel; combat on someone else does not', 
   h.sys.engage({});
   h.sys.update(1 / 60, h.state);
 
-  h.bus.emit('combat:hit', { targetId: 'some_pirate' });
+  h.bus.emit('combat:damage', { targetId: 'some_pirate', applied: 10 });
   assert.equal(h.state.nav.executor.status, ROUTE_EXECUTOR_STATUS.TRANSITING, 'not our problem');
 
-  h.bus.emit('combat:hit', { targetId: 'player' });
+  h.bus.emit('combat:damage', { targetId: 'player', applied: 10 });
   assert.equal(h.state.nav.executor.status, ROUTE_EXECUTOR_STATUS.INTERRUPTED);
   assert.equal(h.state.nav.executor.interruptReason, 'combat');
   assert.ok(h.state.nav.route, 'combat must not orphan the route');
