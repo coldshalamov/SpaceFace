@@ -190,3 +190,24 @@ test('the aftermath hush waits for contact to release: a hunter lingering after 
   assert.ok(after.at(-1).since === first.since && after.length * 0.1 > AFTERMATH_S * 0.8,
     'the full hush plays out instead of being spent under the standoff');
 });
+
+test('every charted sector has an authored score identity; jump-linked neighbours differ in mode and sit a tone apart', async () => {
+  const data = await import('../src/data/sectors.js');
+  const rows = Object.values(data).map((v) => (Array.isArray(v) ? v : (v && typeof v === 'object' ? Object.values(v) : [])))
+    .find((a) => a.length && a[0] && Array.isArray(a[0].neighbors));
+  assert.ok(rows && rows.length >= 25, 'sector table found');
+  for (const row of rows) {
+    assert.ok(SECTOR_SCORE_IDENTITY[row.id], `${row.id} has an authored key, not the hash fallback`);
+    if (row.factionId) assert.ok(FACTION_SCORE_COLOUR[row.factionId], `${row.factionId} has a score colour`);
+  }
+  for (const row of rows) {
+    const a = SECTOR_SCORE_IDENTITY[row.id];
+    for (const n of row.neighbors) {
+      const b = SECTOR_SCORE_IDENTITY[n];
+      const d = (((a.tonic - b.tonic) % 12) + 12) % 12;
+      assert.notEqual(a.mode, b.mode, `${row.id} ~ ${n} share a mode`);
+      assert.ok(Math.min(d, 12 - d) >= 2, `${row.id} ~ ${n} sit ${Math.min(d, 12 - d)} semitone(s) apart`);
+    }
+  }
+  assert.equal(scoreIdentitiesAreDistinct(), true);
+});

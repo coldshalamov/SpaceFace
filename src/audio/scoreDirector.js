@@ -69,10 +69,26 @@ export const SECTOR_SCORE_IDENTITY = Object.freeze({
   sector_vesta_forge: identity('sector_vesta_forge', -5, 'phrygian', 1, 'forge', 'forge', 'Vesta Forge — E phrygian, forge'),
   sector_pallas_drift: identity('sector_pallas_drift', -7, 'lydian', -4, 'drift', 'drift', 'Pallas Drift — D lydian, drift'),
   sector_io_reach: identity('sector_io_reach', -2, 'aeolian', 0, 'reach', 'reach', 'Io Reach — G aeolian, reach'),
-  sector_charon_expanse: identity('sector_charon_expanse', 2, 'phrygian', -3, 'cold', 'deep', 'Charon Expanse — B phrygian, cold'),
+  sector_charon_expanse: identity('sector_charon_expanse', 2, 'dorian', -3, 'cold', 'deep', 'Charon Expanse — B dorian, cold'),
   sector_sker_haven: identity('sector_sker_haven', 1, 'phrygian', 3, 'rust', 'haven', 'Sker Haven — Bb phrygian, rust'),
   sector_veil_nebula: identity('sector_veil_nebula', -6, 'lydian', -6, 'choir', 'nebula', 'Veil Nebula — Eb lydian, choir'),
   sector_ashfall_reach: identity('sector_ashfall_reach', 4, 'aeolian', 1, 'ash', 'ash', 'Ashfall Reach — C# aeolian, ash'),
+  // The outer ring: every jump-linked pair differs in mode and sits at least a tone apart.
+  sector_nyx_march: identity('sector_nyx_march', -1, 'dorian', -2, 'choir', 'nebula', 'Nyx March — Ab dorian, choir'),
+  sector_hyperion_cut: identity('sector_hyperion_cut', -6, 'mixolydian', 2, 'grit', 'belt', 'Hyperion Cut — Eb mixolydian, grit'),
+  sector_kepler_scar: identity('sector_kepler_scar', -4, 'aeolian', 1, 'rust', 'ash', 'Kepler Scar — F aeolian, rust'),
+  sector_orcus_shadow: identity('sector_orcus_shadow', 3, 'phrygian', -4, 'cold', 'deep', 'Orcus Shadow — C phrygian, cold'),
+  sector_rhea_cinder: identity('sector_rhea_cinder', -2, 'mixolydian', 2, 'forge', 'forge', 'Rhea Cinder — G mixolydian, forge'),
+  sector_haumea_rift: identity('sector_haumea_rift', 2, 'aeolian', 0, 'grit', 'belt', 'Haumea Rift — B aeolian, grit'),
+  sector_eris_margin: identity('sector_eris_margin', -5, 'lydian', -3, 'drift', 'nebula', 'Eris Margin — E lydian, drift'),
+  sector_phoebe_echo: identity('sector_phoebe_echo', -3, 'phrygian', -2, 'choir', 'deep', 'Phoebe Echo — F# phrygian, choir'),
+  sector_nereid_shoal: identity('sector_nereid_shoal', 5, 'dorian', 1, 'drift', 'drift', 'Nereid Shoal — D dorian, drift'),
+  sector_proteus_well: identity('sector_proteus_well', 1, 'aeolian', -3, 'cold', 'nebula', 'Proteus Well — Bb aeolian, cold'),
+  sector_triton_wake: identity('sector_triton_wake', -1, 'phrygian', -1, 'choir', 'nebula', 'Triton Wake — Ab phrygian, choir'),
+  sector_eunomia_gulf: identity('sector_eunomia_gulf', 4, 'dorian', -1, 'rust', 'reach', 'Eunomia Gulf — C# dorian, rust'),
+  sector_sedna_dark: identity('sector_sedna_dark', -4, 'phrygian', -4, 'cold', 'void', 'Sedna Dark — F phrygian, cold'),
+  sector_dione_lane: identity('sector_dione_lane', -4, 'ionian', 3, 'signal', 'junction', 'Dione Lane — F ionian, signal'),
+  sector_the_bolus: identity('sector_the_bolus', -5, 'mixolydian', 0, 'rust', 'haven', 'The Bolus — E mixolydian, rust'),
 });
 
 export const DEFAULT_SCORE_IDENTITY = identity('void', 0, 'aeolian', 0, 'void', 'void', 'Open void — A aeolian');
@@ -97,6 +113,7 @@ export const FACTION_SCORE_COLOUR = Object.freeze({
   faction_fulfillment: colour('faction_fulfillment', [0, 0, 1, 2], 1, 'pluck', 'Fulfillment — conveyor step', 2),
   faction_pitborn: colour('faction_pitborn', [0, 1, 6], 3, 'grit', 'Pitborn — tritone growl', 6),
   faction_understory: colour('faction_understory', [0, 4, 3, 1], 2, 'reed', 'Understory — root walk', 3),
+  faction_helix: colour('faction_helix', [0, 7, 2, 7], 1, 'bell', 'Helix — clinical fifth-check', 7),
   faction_verge_layers: colour('faction_verge_layers', [6, 4, 6, 0], 0, 'tone', 'Verge-Layer — high flicker', 10),
 });
 
