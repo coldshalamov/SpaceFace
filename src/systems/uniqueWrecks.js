@@ -9,6 +9,7 @@ import { salvagePoolForWreck } from '../data/salvageLegality.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { hash32, mulberry32 } from '../core/rng.js';
+import { syncEntitySectorMembership } from '../core/coreSystem.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import { fittedModuleDefs } from '../core/fittedModules.js';
 import {
@@ -1463,6 +1464,7 @@ export const uniqueWrecks = {
     data.authoredWreckId = def.id;
     data.aftermathMarkerId = authored.markerId;
     data.sectorId = def.sectorId;
+    syncEntitySectorMembership(this.state && this.state.entityIndex, entity);
     data.parentType = authored.parentType;
     data.wreckClass = authored.wreckClass;
     data.wreckClassLabel = authored.wreckClassLabel;

@@ -23,6 +23,7 @@ import { listUserMods, hasUserContent, userContentDirLabel } from './data/userCo
 import { createTelemetry } from './systems/telemetry.js';
 import { installAchievements } from './systems/achievements.js';
 import { createDeterministicEventTrace } from './core/eventTrace.js';
+import { postTaskAtBackgroundPriorityBounded } from './core/backgroundPost.js';
 import { createTimeEffects } from './core/timeEffects.js';
 import { resetFreshRunSystems } from './core/runReset.js';
 import { createRunTransitionGuard } from './core/runTransitionGuard.js';
@@ -36,6 +37,7 @@ import { ensureStylesheet as ensureStationStylesheet } from './ui/station/statio
 import { createLoadingPresenter } from './ui/loadingPresenter.js';
 import { createRuntimeFailurePresenter, describeBootFailure } from './ui/runtimeFailurePresenter.js';
 import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
+import { ruckusWarmReady } from './render/characters/ruckusModel.js';
 import { settleOpeningCompositionTail } from './render/precompile.js';
 import {
   settleRequiredPackageAdmission,
@@ -230,8 +232,11 @@ async function boot() {
       });
       // One rAF boundary: the 0.05 emit rides the presenter's own paint loop, so the
       // restore only needs to leave this task — the double-rAF paint commit added ~16-33 ms
-      // of dead time before the slot scans and worker dispatch could even start.
-      nextFrame().then(restore).catch((error) => {
+      // of dead time before the slot scans and worker dispatch could even start. The
+      // ruckus warm rides alongside it (wave-143): restored entities can materialize RU-7
+      // visuals from the first restore frame, so the synchronous template() contract must
+      // already hold — it resolves in the boot window long before a click can reach here.
+      Promise.all([nextFrame(), ruckusWarmReady]).then(restore).catch((error) => {
         console.error('[SpaceFace] deferred save restore failed', error);
         // SFQ-B228: name the cause so the recovery toast can state it — the saveSystem's own
         // failure receipts already carry `error`; this outer catch was the bare one.
@@ -587,12 +592,12 @@ async function bootstrapScene(state, helpers, bus, registry, options = {}) {
 
 // Start a fresh game from the main menu: clear any prior world, build the new one, enter flight.
 async function startNewGame(state, helpers, bus, registry, runTransitionGuard, transitionToken, opts) {
-  const newGamePlus = resolveNewGamePlusOverlay(registry, opts);
   // The dynamic authority's bring-up (Rapier WASM compile + world construction) is pure CPU
   // work with no dependency on authored assets or the GPU cook. Kicked at scenePrepared it
   // overlaps the whole readiness chain instead of sitting as a serial stage at the end;
   // waitForPhysics below still gates flight on the same promise.
   let physicsPrep = null;
+  let newGamePlus = null;
   return runNewGameStartTransition({
     guard: runTransitionGuard,
     token: transitionToken,
@@ -600,6 +605,11 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       // The veil goes up before the roster clear: a populated sector's entity:destroyed fan-out
       // is a multi-hundred-ms stretch, and it must not brick on the previous screen.
       enterLoadingMode(state, bus);
+      // The NG+ overlay revalidates its source slot — up to two O(save) envelope prepares —
+      // so it resolves under the veil through the yielded twin instead of bricking the
+      // click task pre-veil. A resolve failure lands in the transition's discard path
+      // (veil drops, roster restore aborted) identically to any other prepareRun fault.
+      newGamePlus = await resolveNewGamePlusOverlay(registry, opts);
       let cleared = 0;
       for (const e of [...state.entityList]) {
         clearEntityRuntime(e);
@@ -691,6 +701,11 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       await nextPaintSliced();
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
 
+      // Wave-143: RU-7 template payloads arrive via dynamic import in the post-eval warm
+      // lane. bootstrapScene is the earliest point a real entity (and therefore a template()
+      // call through the mesh-build lane) can appear — settle the warm first so the
+      // synchronous template contract can never observe a cold key.
+      await ruckusWarmReady;
       // Create the canonical player and starting sector before readiness waits. This gives the
       // renderer real entity boundaries to upgrade while the route remains frozen in loading.
       configureRacingCorridorSession(state, opts?.racingSession === true);
@@ -870,13 +885,15 @@ function applyStarterPick(state, ships, opts) {
   }
 }
 
-function resolveNewGamePlusOverlay(registry, opts = {}) {
+async function resolveNewGamePlusOverlay(registry, opts = {}) {
   const request = opts && opts.newGamePlus;
   if (!request) return null;
   const saveSystem = registry && typeof registry.get === 'function' ? registry.get('save') : null;
-  const overlay = saveSystem && typeof saveSystem.prepareNewGamePlus === 'function'
-    ? saveSystem.prepareNewGamePlus(request)
-    : null;
+  const overlay = saveSystem && typeof saveSystem.prepareNewGamePlusAsync === 'function'
+    ? await saveSystem.prepareNewGamePlusAsync(request)
+    : (saveSystem && typeof saveSystem.prepareNewGamePlus === 'function'
+      ? saveSystem.prepareNewGamePlus(request)
+      : null);
   if (overlay) return overlay;
   throw new GameStartReadinessError(
     'NEW_GAME_PLUS_UNAVAILABLE',
@@ -1365,7 +1382,10 @@ function nextFrame() {
       if (done) return;
       done = true;
       frameWaitStarved = viaTimer ? frameWaitStarved + 1 : 0;
-      resolve();
+      // The rAF path resolves in a fresh background task — an inline resolve
+      // runs the awaited boot/restore leg inside this frame's task, pre-present.
+      if (viaTimer) resolve();
+      else postTaskAtBackgroundPriorityBounded(resolve);
     };
     if (frameWaitStarved >= 2) {
       armFrameWaitProbe();
@@ -1388,7 +1408,8 @@ function nextPaint() {
       done = true;
       frameWaitStarved = viaTimer ? frameWaitStarved + 1 : 0;
       lastPaintAt = nowMs();
-      resolve();
+      if (viaTimer) resolve();
+      else postTaskAtBackgroundPriorityBounded(resolve);
     };
     if (frameWaitStarved >= 2) {
       armFrameWaitProbe();

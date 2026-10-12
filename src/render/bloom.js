@@ -837,6 +837,14 @@ function releaseSharedQuadGeometry() {
   }
 }
 
+// W140 F-A: vendored renderQuadPass draws the fixed quad scene without the
+// scene-graph prelude; mock/alternate renderers without it take the identical
+// upstream pass through render().
+function renderQuadScene(renderer, scene, camera) {
+  if (typeof renderer.renderQuadPass === 'function') renderer.renderQuadPass(scene, camera);
+  else renderer.render(scene, camera);
+}
+
 // --- GLSL (inlined as strings; no external shader files) -------------------------------------
 
 // Shared vertex shader for every fullscreen pass: a [-1..1] quad straight to clip space, UV 0..1.
@@ -1743,7 +1751,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       renderer.setScissorTest(false);
     }
     renderer.setRenderTarget(target);
-    renderer.render(quadScene, quadCam);
+    renderQuadScene(renderer, quadScene, quadCam);
   }
 
   function releaseBloomSceneSamplers() {
@@ -2306,7 +2314,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         // geometry with WebGLGeometries. Submit one disposable offscreen pass while loading so
         // the opening receipt includes this renderer-owned buffer; the first visible bloom pass
         // must never be the quad's first GPU admission.
-        if (typeof renderer.render === 'function') renderer.render(quadScene, quadCam);
+        if (typeof renderer.render === 'function') renderQuadScene(renderer, quadScene, quadCam);
       }
       quadMesh.material = compositeMat;
       renderer.setRenderTarget(null);

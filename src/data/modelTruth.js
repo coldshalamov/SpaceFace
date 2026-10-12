@@ -1,7 +1,7 @@
 // The one reader. Measurements live in modelTruthCensus.json, written only by
 // scripts/model-truth-census.mjs. Sim, camera, weapons, and labels import this module.
 
-import census from './modelTruthCensus.json' with { type: 'json' };
+import { CENSUS_JSON } from './modelTruthCensus.generated.js';
 import { isMothlightTender, MOTHLIGHT_GUN_SOCKET } from './mothlightBody.js';
 import {
   CAMERA_NEAR_MARGIN_WU,
@@ -33,8 +33,74 @@ import {
   weaponSocketNameForSlot,
 } from './modelTruthMounts.js';
 
-const ROWS = Array.isArray(census.rows) ? census.rows : [];
-const BY_ID = new Map(ROWS.map((row) => [row.id, row]));
+// Boot-eval deferral (wave-142): the ~2.1MB census used to JSON.parse inside the post-gate
+// eval task through the static `with { type: 'json' }` import. The generated module now
+// interns the text only; the document materializes on first real access — a modelTruth*
+// call below or the post-eval warm at the bottom of this module — never inside module eval.
+// deferredObject/deferredArray are mirrored verbatim from src/localization/pipeline.js: this
+// file sits on the sim import graph (src/core imports it), so it cannot import that layer.
+
+/** A plain object whose real contents are built synchronously on first property access. */
+function deferredObject(build) {
+  const target = {};
+  let real = null;
+  const materialize = () => {
+    if (real === null) real = build();
+    return real;
+  };
+  return new Proxy(target, {
+    get: (t, p) => Reflect.get(materialize(), p),
+    has: (t, p) => p in materialize(),
+    ownKeys: () => Reflect.ownKeys(materialize()),
+    getOwnPropertyDescriptor: (t, p) => {
+      const d = Object.getOwnPropertyDescriptor(materialize(), p);
+      // A descriptor reported for a property the target does not own must be configurable; once
+      // the target is frozen it owns every real key and the real descriptor is reported verbatim.
+      return d && !Object.prototype.hasOwnProperty.call(t, p) ? { ...d, configurable: true } : d;
+    },
+    preventExtensions: (t) => {
+      const o = materialize();
+      Object.defineProperties(t, Object.getOwnPropertyDescriptors(o));
+      return Object.preventExtensions(t);
+    },
+    set: (t, p, v) => Reflect.set(materialize(), p, v),
+    deleteProperty: (t, p) => Reflect.deleteProperty(materialize(), p),
+    defineProperty: (t, p, d) => Reflect.defineProperty(materialize(), p, d),
+  });
+}
+
+/** `deferredObject` for arrays: the built contents are pushed onto the target once. */
+function deferredArray(build) {
+  const target = [];
+  let real = null;
+  const materialize = () => {
+    if (real === null) {
+      real = build();
+      for (const value of real) target.push(value);
+    }
+    return target;
+  };
+  return new Proxy(target, {
+    get: (t, p) => Reflect.get(materialize(), p),
+    has: (t, p) => p in materialize(),
+    ownKeys: () => Reflect.ownKeys(materialize()),
+    getOwnPropertyDescriptor: (t, p) => Object.getOwnPropertyDescriptor(materialize(), p),
+    preventExtensions: (t) => { materialize(); return Object.preventExtensions(t); },
+    set: (t, p, v) => Reflect.set(materialize(), p, v),
+    deleteProperty: (t, p) => Reflect.deleteProperty(materialize(), p),
+    defineProperty: (t, p, d) => Reflect.defineProperty(materialize(), p, d),
+  });
+}
+
+const census = deferredObject(() => JSON.parse(CENSUS_JSON));
+const ROWS = deferredArray(() => (Array.isArray(census.rows) ? census.rows : []));
+// A Map cannot take the deferredObject proxy (its methods need the real receiver), so the
+// id index materializes through a memo instead — same laziness contract, internal only.
+let byIdCache = null;
+function byIdMap() {
+  if (byIdCache === null) byIdCache = new Map(ROWS.map((row) => [row.id, row]));
+  return byIdCache;
+}
 
 // MODEL SUBSTANCE TRUTH TABLE (Rapier SG-02 live collider truth — READ-ONLY data).
 //
@@ -75,7 +141,7 @@ export function modelTruthRows() {
 }
 
 export function modelTruthRow(id) {
-  return BY_ID.get(id) || null;
+  return byIdMap().get(id) || null;
 }
 
 export function modelTruthRowForEntity(entity) {
@@ -83,17 +149,17 @@ export function modelTruthRowForEntity(entity) {
   const data = entity.data || {};
   // Hot path (physics sync, LOS, scanning): short-circuit lookups in the canonical priority
   // order, no per-call key array.
-  const row = (data.defId && BY_ID.get(data.defId))
-    || (data.placeId && BY_ID.get(data.placeId))
-    || (data.archetypeGlb && BY_ID.get(data.archetypeGlb))
-    || (data.typeId && BY_ID.get(data.typeId))
-    || (data.lootTableId && BY_ID.get(data.lootTableId))
-    || (entity.id && BY_ID.get(entity.id));
+  const row = (data.defId && byIdMap().get(data.defId))
+    || (data.placeId && byIdMap().get(data.placeId))
+    || (data.archetypeGlb && byIdMap().get(data.archetypeGlb))
+    || (data.typeId && byIdMap().get(data.typeId))
+    || (data.lootTableId && byIdMap().get(data.lootTableId))
+    || (entity.id && byIdMap().get(entity.id));
   if (row) return row;
-  if (data.trafficRole && BY_ID.has(`traffic:${data.trafficRole}`)) {
-    return BY_ID.get(`traffic:${data.trafficRole}`);
+  if (data.trafficRole && byIdMap().has(`traffic:${data.trafficRole}`)) {
+    return byIdMap().get(`traffic:${data.trafficRole}`);
   }
-  if (data.isGate || data.isWormhole) return BY_ID.get('place_gate_jump_ring');
+  if (data.isGate || data.isWormhole) return byIdMap().get('place_gate_jump_ring');
   return null;
 }
 
@@ -174,7 +240,7 @@ export function modelTruthProxyManifest(entity) {
 const SKIN_HULL_CACHE = new Map();
 
 export function modelTruthSkinHull(rowOrId) {
-  const row = typeof rowOrId === 'string' ? BY_ID.get(rowOrId) : rowOrId;
+  const row = typeof rowOrId === 'string' ? byIdMap().get(rowOrId) : rowOrId;
   if (!row) return null;
   if (SKIN_HULL_CACHE.has(row.id)) return SKIN_HULL_CACHE.get(row.id);
   let verts = null;
@@ -206,7 +272,7 @@ export function modelTruthSkinHull(rowOrId) {
 const SKIN_POLYGON_CACHE = new Map();
 
 export function modelTruthSkinPolygon(rowOrId) {
-  const row = typeof rowOrId === 'string' ? BY_ID.get(rowOrId) : rowOrId;
+  const row = typeof rowOrId === 'string' ? byIdMap().get(rowOrId) : rowOrId;
   if (!row) return null;
   if (SKIN_POLYGON_CACHE.has(row.id)) return SKIN_POLYGON_CACHE.get(row.id);
   let verts = null;
@@ -236,9 +302,9 @@ function stationRow(entity) {
   }
   const token = String(data.archetypeGlb || data.stationTypeId || data.placeId || '');
   if (!token) return modelTruthRow('place_station_trade_hub');
-  if (BY_ID.has(token)) return BY_ID.get(token);
+  if (byIdMap().has(token)) return byIdMap().get(token);
   const prefixed = `place_station_${token}`;
-  if (BY_ID.has(prefixed)) return BY_ID.get(prefixed);
+  if (byIdMap().has(prefixed)) return byIdMap().get(prefixed);
   return modelTruthRow('place_station_trade_hub');
 }
 
@@ -505,6 +571,14 @@ export function modelTruthWeaponSocketName(entity, weapon) {
   if (!row) return null;
   const slot = weapon && Number.isFinite(weapon.slotIndex) ? weapon.slotIndex : 0;
   return weaponSocketNameForSlot(row, slot);
+}
+
+// Post-eval warm: materialize the deferred census in the post-gate idle window so the first
+// station render or LOS query never pays ~2.1MB of JSON.parse inside a frame. One task —
+// the same setTimeout seam the RU-7 asset warm uses — and a real consumer arriving first
+// still materializes synchronously through the same proxies.
+if (typeof window !== 'undefined') {
+  setTimeout(() => { void ROWS.length; }, 0);
 }
 
 export { flightPlaneToleranceWu, CAMERA_NEAR_MARGIN_WU, fittedSocketLocal };

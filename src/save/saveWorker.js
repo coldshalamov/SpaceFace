@@ -3,6 +3,14 @@ import { fnv1a } from './checksum.js';
 const encodeSessions = new Map();
 const validationSessions = new Map();
 
+// A begin whose finish never arrives abandons its assembled payload for the worker's
+// life — cap both maps so orphaned sessions can't accrete save-sized graphs (W138 F5).
+// An evicted orphan's next part fails missing_session and the caller falls back.
+const MAX_WORKER_SESSIONS = 4;
+function capWorkerSessions(map) {
+  while (map.size >= MAX_WORKER_SESSIONS) map.delete(map.keys().next().value);
+}
+
 // FB-093 — write-side bound mirrors the import limit object: same byte ceiling, one law.
 export const SAVE_WRITE_MAX_BYTES = 12 * 1024 * 1024;
 export const SAVE_GZIP_FORMAT = 'spaceface-save-gz';
@@ -295,6 +303,37 @@ export function preflightSaveImport(value) {
   return { ok: true, nodes };
 }
 
+// Portrait-data projection for the Save/Load screen's lazy fill: everything
+// buildSavePortrait + slotShipId read out of unwrapSaveData(env) — the heavy env.data
+// fields nobody's card consumes (world tables, thumbnail) stay off postMessage, and the
+// multi-MB JSON.parse happens on the worker instead of the settle task.
+export function cardDataFromEnvelope(env) {
+  const source = env && typeof env === 'object'
+    ? (env.data && typeof env.data === 'object' && !Array.isArray(env.data) ? env.data : env)
+    : null;
+  if (!source || typeof source !== 'object') return null;
+  if (!source.player && !source.missions && !source.story && !source.aceMemory) return null;
+  return {
+    player: source.player,
+    story: source.story,
+    missions: source.missions,
+    aceMemory: source.aceMemory,
+    meta: source.meta,
+  };
+}
+
+// JSON.parse + project only — no version/migration/normalize chain: the card reads the
+// stored shape verbatim (the slot fill's own contract — migrations belong to load()).
+export function peekCardDataJson(raw) {
+  if (!raw || typeof raw !== 'string') return { ok: false, reason: 'no_save' };
+  let env;
+  try { env = JSON.parse(raw); } catch (error) {
+    return { ok: false, reason: 'parse_failed' };
+  }
+  const cardData = cardDataFromEnvelope(env);
+  return cardData ? { ok: true, cardData } : { ok: false, reason: 'bad_format' };
+}
+
 export function handleSaveWorkerRequest(message) {
   const request = message || {};
   return handleSaveWorkerRequestCore(request, { asyncFinal: false });
@@ -340,15 +379,28 @@ function handleSaveWorkerRequestCore(request, { asyncFinal } = {}) {
       result = { ok: false, reason: 'load_failed' };
     }
     // Meta lane: the caller only wants the verdict — the multi-MB envelope clone must not
-    // cross postMessage for a slot nobody will load.
+    // cross postMessage for a slot nobody will load. The ~1 KB cardEnv projection still
+    // crosses so the index consult builds the display card without re-parsing the blob.
     if (result && typeof result === 'object' && 'env' in result) {
+      const cardEnv = cardEnvFromEnvelope(result.env);
       const { env: _env, ...meta } = result;
       void _env;
-      result = meta;
+      result = cardEnv ? Object.assign(meta, { cardEnv }) : meta;
     }
     return { id: request.id, type: 'restored_prepare', result, workerCpuMs: workerNow() - started };
   }
+  if (request.type === 'peek_card_data') {
+    const started = workerNow();
+    let result;
+    try {
+      result = peekCardDataJson(request.payload && request.payload.raw);
+    } catch (error) {
+      result = { ok: false, reason: 'parse_failed' };
+    }
+    return { id: request.id, type: 'peeked_card_data', result, workerCpuMs: workerNow() - started };
+  }
   if (request.type === 'validate_begin') {
+    capWorkerSessions(validationSessions);
     validationSessions.set(request.id, {
       currentVersion: request.payload && request.payload.currentVersion,
       chunks: [],
@@ -373,6 +425,7 @@ function handleSaveWorkerRequestCore(request, { asyncFinal } = {}) {
     return done(validateSaveJson(session.chunks.join(''), session.currentVersion));
   }
   if (request.type === 'encode_begin') {
+    capWorkerSessions(encodeSessions);
     encodeSessions.set(request.id, { descriptor: request.payload && request.payload.descriptor || {}, data: {} });
     return null;
   }
@@ -418,6 +471,52 @@ function workerNow() {
   // observable; main-thread blocking is reported independently by saveSystem.
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now();
+}
+
+// Card-lane projection of a prepared envelope: exactly the fields slotCardFromEnvelopeData
+// reads — fmt/version/savedAt/playtimeS/label/thumbnail plus the player ship pick, the current
+// sector's name row, and meta/missions/story/nav — minus the multi-MB remainder (entities, the
+// other world.sectors rows). Posted with the meta verdict so the slot-index consult builds its
+// display card off the worker's parse instead of re-parsing the blob on the main thread.
+export function cardEnvFromEnvelope(env) {
+  const data = env && env.data;
+  if (!env || typeof env !== 'object' || !data || typeof data !== 'object') return null;
+  const player = data.player && typeof data.player === 'object' ? data.player : {};
+  const ships = Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  const world = data.world && typeof data.world === 'object' ? data.world : {};
+  const sectorId = typeof world.currentSectorId === 'string' ? world.currentSectorId : '';
+  const sector = sectorId && world.sectors && typeof world.sectors === 'object'
+    ? world.sectors[sectorId] : null;
+  const liteSectors = {};
+  if (sectorId && sector && typeof sector === 'object') {
+    liteSectors[sectorId] = { name: sector.name, id: sector.id };
+  }
+  return {
+    fmt: env.fmt,
+    version: env.version,
+    savedAt: env.savedAt,
+    playtimeS: env.playtimeS,
+    label: env.label,
+    thumbnail: env.thumbnail,
+    data: {
+      player: {
+        credits: player.credits,
+        activeShipIndex: player.activeShipIndex,
+        heat: player.heat,
+        bounty: player.bounty,
+        livingHull: player.livingHull,
+        // Full ship records — the slot portrait reads fittings/livingHull off the active
+        // ship, so a defId-only projection degrades the card (W140-G2). Still KB-scale.
+        ownedShips: ships,
+      },
+      world: { currentSectorId: sectorId, sectors: liteSectors },
+      meta: data.meta,
+      missions: data.missions,
+      story: data.story,
+      nav: data.nav,
+      aceMemory: data.aceMemory,
+    },
+  };
 }
 
 // Blob-backed source keeps browser, minified bundle, and Electron on one path. This literal is
@@ -683,12 +782,88 @@ function now() {
   // their scheduler-quantized readings hide ordinary sub-15 ms encodes as zero.
   return typeof performance !== 'undefined' ? performance.now() : Date.now();
 }
+// Import-free twin of the host-side cardEnvFromEnvelope: exactly the envelope fields the slot
+// card builder reads, posted with the meta verdict so the index consult builds its card off
+// this parse instead of re-parsing the blob on the main thread.
+function cardEnvFromEnvelope(env) {
+  var data = env && env.data;
+  if (!env || typeof env !== 'object' || !data || typeof data !== 'object') return null;
+  var player = data.player && typeof data.player === 'object' ? data.player : {};
+  var ships = Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  var world = data.world && typeof data.world === 'object' ? data.world : {};
+  var sectorId = typeof world.currentSectorId === 'string' ? world.currentSectorId : '';
+  var sector = sectorId && world.sectors && typeof world.sectors === 'object'
+    ? world.sectors[sectorId] : null;
+  var liteSectors = {};
+  if (sectorId && sector && typeof sector === 'object') {
+    liteSectors[sectorId] = { name: sector.name, id: sector.id };
+  }
+  return {
+    fmt: env.fmt,
+    version: env.version,
+    savedAt: env.savedAt,
+    playtimeS: env.playtimeS,
+    label: env.label,
+    thumbnail: env.thumbnail,
+    data: {
+      player: {
+        credits: player.credits,
+        activeShipIndex: player.activeShipIndex,
+        heat: player.heat,
+        bounty: player.bounty,
+        livingHull: player.livingHull,
+        // Full ship records — the slot portrait reads fittings/livingHull off the active
+        // ship, so a defId-only projection degrades the card (W140-G2). Still KB-scale.
+        ownedShips: ships,
+      },
+      world: { currentSectorId: sectorId, sectors: liteSectors },
+      meta: data.meta,
+      missions: data.missions,
+      story: data.story,
+      nav: data.nav,
+      aceMemory: data.aceMemory,
+    },
+  };
+}
+// Portrait-data projection for the Save/Load screen's lazy fill — the heavy env.data
+// fields nobody's card consumes (world tables, thumbnail) stay off postMessage.
+function cardDataFromEnvelope(env) {
+  var source = env && typeof env === 'object'
+    ? (env.data && typeof env.data === 'object' && !Array.isArray(env.data) ? env.data : env)
+    : null;
+  if (!source || typeof source !== 'object') return null;
+  if (!source.player && !source.missions && !source.story && !source.aceMemory) return null;
+  return {
+    player: source.player,
+    story: source.story,
+    missions: source.missions,
+    aceMemory: source.aceMemory,
+    meta: source.meta,
+  };
+}
+function peekCardDataJson(raw) {
+  if (!raw || typeof raw !== 'string') return { ok: false, reason: 'no_save' };
+  var env;
+  try { env = JSON.parse(raw); } catch (error) {
+    return { ok: false, reason: 'parse_failed' };
+  }
+  var cardData = cardDataFromEnvelope(env);
+  return cardData ? { ok: true, cardData: cardData } : { ok: false, reason: 'bad_format' };
+}
 self.addEventListener('message', function (event) {
   const request = event.data || {};
   try {
     self.__saveEncodeSessions = self.__saveEncodeSessions || new Map();
     self.__saveValidationSessions = self.__saveValidationSessions || new Map();
+    // Same orphan bound as the module sessions — a begin without finish must not pin
+    // its assembled payload in the worker forever (W138 F5).
+    if (!self.__capWorkerSessions) {
+      self.__capWorkerSessions = function (map) {
+        while (map.size >= 4) map.delete(map.keys().next().value);
+      };
+    }
     if (request.type === 'validate_begin') {
+      self.__capWorkerSessions(self.__saveValidationSessions);
       self.__saveValidationSessions.set(request.id, {
         currentVersion: request.payload && request.payload.currentVersion,
         chunks: [],
@@ -717,6 +892,7 @@ self.addEventListener('message', function (event) {
       return;
     }
     if (request.type === 'encode_begin') {
+      self.__capWorkerSessions(self.__saveEncodeSessions);
       self.__saveEncodeSessions.set(request.id, { descriptor: request.payload && request.payload.descriptor || {}, data: {} });
       return;
     }
@@ -738,6 +914,22 @@ self.addEventListener('message', function (event) {
       });
       return;
     }
+    if (request.type === 'peek_card_data') {
+      var startedPeek = now();
+      var peekResult;
+      try {
+        peekResult = peekCardDataJson(request.payload && request.payload.raw);
+      } catch (error) {
+        peekResult = { ok: false, reason: 'parse_failed' };
+      }
+      self.postMessage({
+        id: request.id,
+        type: 'peeked_card_data',
+        result: peekResult,
+        workerCpuMs: now() - startedPeek,
+      });
+      return;
+    }
     if (request.type === 'restore_prepare' || request.type === 'restore_prepare_meta') {
       var startedPrepare = now();
       restorePrepareSaveJsonAsync(
@@ -746,14 +938,16 @@ self.addEventListener('message', function (event) {
       ).then(function (prepared) {
         var result = prepared;
         // Meta lane: verdict only — the multi-MB envelope clone must not cross postMessage for a
-        // slot nobody will load.
+        // slot nobody will load. The ~1 KB cardEnv projection still crosses so the consult
+        // builds the display card without re-parsing the blob on the main thread.
         if (request.type === 'restore_prepare_meta'
             && prepared && typeof prepared === 'object' && prepared.env !== undefined) {
           var meta = {};
           for (var mk in prepared) {
             if (mk !== 'env') meta[mk] = prepared[mk];
           }
-          result = meta;
+          var cardEnv = cardEnvFromEnvelope(prepared.env);
+          result = cardEnv ? Object.assign(meta, { cardEnv: cardEnv }) : meta;
         }
         self.postMessage({
           id: request.id,

@@ -2,6 +2,7 @@ import { shouldStartHeavyAdmission } from './admissionSliceBudget.js';
 import { forcedFrameSpend, FORCED_FRAME_BUDGET_MS, noteForcedFrameSpend } from './decodeTaskBudget.js';
 import { reportBootWork } from '../core/bootWork.js';
 import { armCallbackAfterPresent } from './compilePresentSlice.js';
+import { dedupWarn } from '../core/warnDedup.js';
 import { cookLiveSceneGpu } from './liveSceneCook.js';
 import { settleOpeningCompositionTail } from './precompile.js';
 import { yieldToBrowser } from './startupGpuResidency.js';
@@ -200,7 +201,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     : null;
   const onRejected = typeof options.onRejected === 'function'
     ? options.onRejected
-    : (error) => console.warn('[render] pipeline admission failed', error);
+    : (error) => dedupWarn('pipeline.admission-rejected', '[render] pipeline admission failed', error);
   const now = typeof options.now === 'function'
     ? options.now
     : () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -250,8 +251,17 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       return;
     }
     if (quietTimer != null) clearTimeout(quietTimer);
-    quietTimer = setTimeout(() => { observePipelineAdmission(flushQueued()); }, quietMs);
-    if (maxTimer == null) maxTimer = setTimeout(() => { observePipelineAdmission(flushQueued()); }, maxWaitMs);
+    // The debounce timers keep their contract, but the flush itself dispatches
+    // post-present at background priority — the whole queued compile cohort used
+    // to fold into compileBatch inside a timer task, racing the compositor beat.
+    quietTimer = setTimeout(() => {
+      quietTimer = null;
+      armCallbackAfterPresent(() => { observePipelineAdmission(flushQueued()); }, { idleBoundMs: 48 });
+    }, quietMs);
+    if (maxTimer == null) maxTimer = setTimeout(() => {
+      maxTimer = null;
+      armCallbackAfterPresent(() => { observePipelineAdmission(flushQueued()); }, { idleBoundMs: 48 });
+    }, maxWaitMs);
   }
 
   /** Time only the synchronous compileBatch call (until it returns a value/promise). */

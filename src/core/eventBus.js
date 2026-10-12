@@ -58,9 +58,15 @@ function rowsForBusListener(listener) {
     if (busErrorRowsByKey.size >= BUS_ERROR_CAP) {
       // Oldest-row evict, not clear(): a cap-hit wipe re-arms every storming
       // key's verbatim budget simultaneously and erases accrued suppressed
-      // counts before their heartbeat can report them.
+      // counts before their heartbeat can report them. The evicted key's rows
+      // leave the index too — keeping them would double-count the re-minted
+      // logical row once that listener faults again.
       const oldest = busErrorRowsByKey.keys().next();
-      if (!oldest.done) busErrorRowsByKey.delete(oldest.value);
+      if (!oldest.done) {
+        const evicted = busErrorRowsByKey.get(oldest.value);
+        busErrorRowsByKey.delete(oldest.value);
+        if (evicted) for (const row of evicted) busErrorIndex.delete(row);
+      }
     }
     rows = [];
     busErrorRowsByKey.set(key, rows);
@@ -108,20 +114,34 @@ function noteBusHandlerError(event, err, label, listener) {
         retired.rows.splice(retired.rows.indexOf(retired), 1);
       }
     }
-    entry = { rows, label, event, logged: 0, suppressed: 0, faults: 0, lastWarnAt: -Infinity, lastErrorHead: null };
+    entry = { rows, label, event, logged: 0, suppressed: 0, faults: 0, lastWarnAt: -Infinity, lastErrorHead: null, heartbeatMs: 1000 };
     rows.push(entry);
     busErrorIndex.add(entry);
   }
   entry.faults += 1;
   entry.lastErrorHead = busErrorHead(err);
+  // Refresh recency: Set.add alone does not reorder, so without the delete a
+  // row that keeps storming drifts to the oldest end of the index and gets
+  // evicted mid-storm — invisible to busFaultSummary, and the splice that
+  // follows would re-arm its verbatim budget.
+  busErrorIndex.delete(entry);
+  busErrorIndex.add(entry);
   if (entry.logged < BUS_ERROR_VERBATIM) {
     entry.logged += 1;
     console.error(`[bus] ${label} for "${event}":`, err);
     return;
   }
   entry.suppressed += 1;
-  if (now - entry.lastWarnAt >= 1000) {
+  // Exponentially-backing-off heartbeat (1 s doubling to a 30 s cap — the
+  // same shape as warnDedup/tryPresentedCall): a persistently-faulting
+  // listener's storm still reports its volume without paying a flat ~1
+  // console.error+stack-serialize per second for the whole storm.
+  // Heal proxy: a >60 s quiet gap re-arms the short cadence so a fresh
+  // storm doesn't inherit the previous one's backed-off interval.
+  if (now - entry.lastWarnAt >= 60000) entry.heartbeatMs = 1000;
+  if (now - entry.lastWarnAt >= entry.heartbeatMs) {
     entry.lastWarnAt = now;
+    entry.heartbeatMs = Math.min(entry.heartbeatMs * 2, 30000);
     console.error(
       `[bus] ${label} for "${event}": ${entry.suppressed} further fault(s) suppressed; latest:`,
       err,
@@ -397,7 +417,11 @@ export function createBus() {
 
   function emit(event, payload) {
     const budget = emitSliceSuspended ? 0 : sliceBudgets.get(event) | 0;
-    if (budget > 0 && (event === 'sector:enter' || event === 'save:loaded')) {
+    // sector:exit joins the slice set for the restore session specifically: inside a
+    // restore the sim is frozen, departure listeners observe no arrival state, and the
+    // restore generator itself drains the parked tail at its yields.
+    if (budget > 0 && (event === 'sector:enter' || event === 'save:loaded' || event === 'sector:exit'
+        || event === 'mode:changed')) {
       startEmitSlice(event, payload, budget);
       return;
     }

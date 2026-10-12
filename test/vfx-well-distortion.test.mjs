@@ -142,6 +142,8 @@ function makeGraphRenderer(options = {}) {
         autoClear: renderer.autoClear,
       });
     },
+    renderAndCaptureList(scene, camera) { this.render(scene, camera); return { opaque: [], transmissive: [], transparent: [] }; },
+    renderCapturedList(scene, camera) { this.render(scene, camera); },
   };
   return {
     renderer,

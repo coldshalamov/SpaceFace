@@ -254,7 +254,7 @@ function productionWiring() {
       && /preventSectorFallbackRotation = true/.test(source)
       && /const abortOutcomes = await this\._sectorBoundaryPreparations\.abortRecords\(/.test(source)
       && /error = promoteSectorPrewarmAbortQuarantine\(abortingRecords, abortOutcomes, error\);[\s\S]*if \(error\?\.preventSectorFallbackRotation !== true\) prewarm\.boundaryRecords\?\.clear\(\);/.test(source)
-      && /if \(error\?\.preventSectorFallbackRotation === true\) \{[\s\S]*releaseSectorPrewarm\(prewarm, 'sector-prewarm-invariant-failed'\);[\s\S]*throw error;[\s\S]*rotateSector\(exactSectorId\)/.test(source));
+      && /if \(error\?\.preventSectorFallbackRotation === true\) \{[\s\S]*releaseSectorPrewarm\(prewarm, 'sector-prewarm-invariant-failed'\);[\s\S]*throw error;[\s\S]*(?:rotateSector\(exactSectorId\)|queueResidencyWarmMint\(this\._assetResidency, exactSectorId\))/.test(source));
   check('publication binds the prepared identity and flips visibility last',
     /publishBoundary: \(record\) => \{[\s\S]*publishPreparedSectorBoundary\(record, \{/.test(source)
       && /export function publishPreparedSectorBoundary[\s\S]*boundary\.visible = false;[\s\S]*options\.meshes\?\.set\(id, boundary\);[\s\S]*boundary\.visible = true;/.test(source));

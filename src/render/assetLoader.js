@@ -21,7 +21,11 @@ import {
   renderPackagePilotForAssetId,
   renderPackagePilotForSourceUrl,
 } from './renderPackageManifest.js';
-import { dedupeGltfTextureSources } from './imageSourceDedupe.js';
+import { dedupeGltfTextureSources, imageSourceKeyAsync } from './imageSourceDedupe.js';
+import {
+  createSourceDetachManifest,
+  dropPackageDetachManifest,
+} from './packageCpuDetach.js';
 import { createAsyncAdmission } from './asyncAdmission.js';
 
 export const ASSET_AUTHORING_CONTRACT = Object.freeze({
@@ -418,7 +422,10 @@ export function configureCspSafeKtx2Loader(ktx2, options = {}) {
       };
       pendingPoolTasks.add(task);
       const work = decodeBudget.acquire({
-        decodeClass: msg && msg.spacefaceDecodeClass || activeDecodeClass(),
+        // No spacefaceDecodeClass read: the field is written nowhere — a pooled post
+        // outlives the caller's class scope, so the only legal authority is the live
+        // activeDecodeClass() at post time (W138 popin F-1).
+        decodeClass: activeDecodeClass(),
         signal: admission.signal,
       }).then((release) => {
         if (admission.signal.aborted) {
@@ -714,6 +721,11 @@ export async function loadAuthoredPart(url, options = {}) {
   const ownerlessWarm = !options.residencyOwner
     && WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || ''));
   const request = residency && residencyOwner
+    // A warm re-post on an entry this owner already holds needs no request mint:
+    // reclaimWarm refreshes the soft-claim stamp so the idle sort keeps the armed
+    // cohort young, and the shared task cache serves the blueprint below.
+    && !(ownerlessWarm && typeof residency.reclaimWarm === 'function'
+      && residency.reclaimWarm(cacheKey, residencyOwner, options.sectorId || null))
     ? residency.beginRequest(cacheKey, residencyOwner, {
       role: options.residencyRole || (options.residencyOwner ? 'live-boundary' : 'runtime-cache'),
       sectorId: options.sectorId || null,
@@ -994,8 +1006,21 @@ export async function prepareSectorEntry(renderer, sectorId, requestsOrUrls, opt
     if (!isEntryActive()) return cancelled();
 
     // Swap last. Everything above is the "prepare"; this single call is the "then swap".
+    // The deferred rotate still snaps currentSectorId and mints the warm-mint plan here, but
+    // hands its paced release/retain/coverage legs to the caller's drain (queueWarmMint) instead
+    // of paying them atomically inside this presented-frame seam — the same trade the exit
+    // path's prepareSectorExitDeferred already made.
     failureReason = 'sector-prewarm-rotate-failed';
-    const rotated = residency ? residency.rotateSector(exactSectorId) : false;
+    let rotated = false;
+    if (residency) {
+      if (typeof options.queueWarmMint === 'function' && typeof residency.rotateSectorDeferred === 'function') {
+        const mintIter = residency.rotateSectorDeferred(exactSectorId);
+        if (mintIter && typeof mintIter.next === 'function') options.queueWarmMint(mintIter);
+        rotated = mintIter !== false;
+      } else {
+        rotated = residency.rotateSector(exactSectorId);
+      }
+    }
     return Object.freeze({
       schema: 'spaceface.sectorPrepare.v1',
       sectorId: exactSectorId,
@@ -1688,12 +1713,31 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
     residency: residencyState,
   });
   const resources = blueprintGpuResources(blueprint);
+  // F4: mark authored textures for post-residency CPU-payload detach. Source GLBs carry no
+  // content-hash URL, so the manifest keys on the source bytes' sha256 (recorded on the decode
+  // by loadGltfDocument); rehydrate re-decodes byte-identical donors through it.
+  const sourceDetachRef = gltf && gltf[SOURCE_DETACH_REF];
+  let sourceManifest = null;
+  if (sourceDetachRef && sourceDetachRef.contentHash && typeof sourceDetachRef.redecode === 'function') {
+    sourceManifest = createSourceDetachManifest(url, collectAuthoredDetachTextures(scene), {
+      contentHash: sourceDetachRef.contentHash,
+      sourceBytesSha256: sourceDetachRef.contentHash,
+      assetId: blueprint.assetId,
+      redecode: sourceDetachRef.redecode,
+      collectResources: (decoded) => collectAuthoredDetachTextures(
+        decoded && decoded.scene ? decoded.scene : decoded),
+      // N3: the whole subtree may already be an authoredReadableFallbackLayer-stamped stand-in
+      // (it never seals) — detach eagerly at mark when it is.
+      detachOnMark: scene.userData && scene.userData.authoredReadableFallbackLayer === true,
+    });
+  }
   if (residencyRegistration && residencyRegistration.residency) {
     const handle = residencyRegistration.residency.registerAsset(residencyState.key, resources, {
       metadata: { url, slot: expectedSlot || metadata.slot || null },
       onEvict(handle, reason) {
         residencyState.state = 'evicted';
         residencyState.reason = reason;
+        if (sourceManifest) dropPackageDetachManifest(sourceManifest.contentHash);
         if (typeof residencyRegistration.onEvict === 'function') residencyRegistration.onEvict(handle, reason);
       },
     });
@@ -2289,6 +2333,51 @@ export function hasNonEmptyWholeShipHullBody(hullTriangles) {
   return Number.isFinite(hullTriangles) && hullTriangles > 0;
 }
 
+// F4: the detach-manifest identity for a source GLB — non-enumerable so texture.userData
+// JSON-clones and blueprint freezes never see it. compileBlueprint reads it off the decode.
+const SOURCE_DETACH_REF = '__spacefaceSourceDetachRef';
+
+export async function sourceDetachRefFor(url, loader, fetchImpl, bytes = null) {
+  if (typeof fetchImpl !== 'function' || !loader || typeof loader.parseAsync !== 'function') return null;
+  try {
+    let body = bytes;
+    if (!body) {
+      // The load's own fetch already warmed this URL — force-cache re-reads it for the digest
+      // (whole-ship passes its fetched bytes in directly instead of paying a second arrayBuffer).
+      const response = await fetchImpl(url, { cache: 'force-cache' });
+      if (!response || !response.ok) return null;
+      body = new Uint8Array(await response.arrayBuffer());
+    }
+    const contentHash = await imageSourceKeyAsync(body, body.byteLength, 'model/gltf-binary');
+    return {
+      contentHash,
+      // Lean rehydrate donor path: re-fetch (cache-warm), verify the digest byte-exactly, then
+      // parseAsync — no compileBlueprint re-run; we only need the textures' payloads.
+      redecode: async () => {
+        const fresh = await fetchImpl(url, { cache: 'force-cache' });
+        if (!fresh || !fresh.ok) {
+          throw new Error(`source GLB rehydrate fetch failed: HTTP ${fresh ? fresh.status : 'no response'}`);
+        }
+        const freshBytes = new Uint8Array(await fresh.arrayBuffer());
+        const freshHash = await imageSourceKeyAsync(freshBytes, freshBytes.byteLength, 'model/gltf-binary');
+        if (freshHash !== contentHash) {
+          throw new Error('source GLB bytes changed under its recorded digest');
+        }
+        return loader.parseAsync(freshBytes.buffer, assetBasePath(url));
+      },
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+function noteSourceDetachRef(gltf, ref) {
+  if (!gltf || !ref) return;
+  Object.defineProperty(gltf, SOURCE_DETACH_REF, {
+    value: ref, enumerable: false, configurable: true, writable: true,
+  });
+}
+
 export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch, parseToken = null, parseIsLive = null) {
   if (!isWholeShipUrl(url) || typeof fetchImpl !== 'function' || typeof loader?.parseAsync !== 'function') {
     const gltf = await scheduleGltfParse(() => loader.loadAsync(url), parseToken, parseIsLive);
@@ -2299,6 +2388,7 @@ export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch
     // class lanes so a parse-cluster burst can't stack several walks in one microtask drain.
     // Its async digests already yield off-main.
     await scheduleGltfCompile(() => dedupeGltfTextureSources(gltf), activeDecodeClass(), parseToken);
+    noteSourceDetachRef(gltf, await sourceDetachRefFor(url, loader, fetchImpl));
     return gltf;
   }
   // Electron intentionally keeps a stable localhost origin so saves persist. Revalidate whole-ship
@@ -2314,7 +2404,33 @@ export async function loadGltfDocument(url, loader, fetchImpl = globalThis.fetch
   const parsed = await scheduleGltfParse(() => loader.parseAsync(buffer, assetBasePath(url)), parseToken, parseIsLive);
   if (parsed == null) return null;
   await scheduleGltfCompile(() => dedupeGltfTextureSources(parsed), activeDecodeClass(), parseToken);
+  noteSourceDetachRef(parsed, await sourceDetachRefFor(url, loader, fetchImpl, bytes));
   return parsed;
+}
+
+/**
+ * Textures of an authored scene in deterministic pre-order — the F4 collector. Identical bytes
+ * re-traverse identically, so the ordinal is a stable address across decodes (same doctrine as
+ * package manifests' resource ordinal).
+ */
+function collectAuthoredDetachTextures(root) {
+  const textures = [];
+  const seen = new Set();
+  if (root && typeof root.traverse === 'function') {
+    root.traverse((object) => {
+      const materials = object && object.material
+        ? (Array.isArray(object.material) ? object.material : [object.material])
+        : [];
+      for (const material of materials) {
+        for (const texture of materialTextures(material)) {
+          if (seen.has(texture)) continue;
+          seen.add(texture);
+          textures.push(texture);
+        }
+      }
+    });
+  }
+  return textures;
 }
 
 function assetBasePath(url) {

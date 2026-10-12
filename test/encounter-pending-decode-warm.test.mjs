@@ -24,8 +24,8 @@ test('encounter pending squads warm through the roster decode lane inside the de
     'entitySpec escape-hatch records are collected alongside archetype rows');
   assert.match(body, /'encounter-pending-decode-runway'/,
     'the warm posts a deadline-class runway role, not the visible class');
-  assert.match(body, /WeakMap\(\)/,
-    'warmed dueAt is tracked per pending item so deferred items re-warm');
+  assert.doesNotMatch(body, /warmedAt|WarmDueAt|WeakMap/,
+    'no once-fired latch: every in-window poll re-posts so an eviction re-decodes');
 });
 
 test('the pending-squad warm runs on the residency poll beside sector prewarm', () => {

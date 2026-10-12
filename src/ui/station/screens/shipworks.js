@@ -2107,6 +2107,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let saleLightTries = 0;
   let saleCentres = null;
   let saleCanvasSize = { cw: 0, ch: 0 };
+  let saleLightRun = null;
   const SALE_HULL_P90 = 125;
   const SALE_FIT = 0.82;
   // every 12 deg of bezel across the detents (up to 25 deg of hull where the gear runs fast through the nose)
@@ -2145,42 +2146,38 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     canvas.style.setProperty('transform-origin', `${c.x.toFixed(1)}px ${c.y.toFixed(1)}px`);
     canvas.style.setProperty('translate', `${(cw / 2 - c.x).toFixed(1)}px ${(ch / 2 - c.y).toFixed(1)}px`);
   }
-  function lightSaleHull(g, { force = false } = {}) {
-    if (!mount || typeof mount.frame !== 'function' || typeof mount.setYaw !== 'function' || !canvas || !g) return false;
-    if (buyId !== saleLightHull) { saleLightHull = buyId; saleLightTries = 0; saleCentres = null; }
-    if (!force && poster.has() && !poster.isLive()) return false;
-    const state = typeof mount.getAssetState === 'function' ? mount.getAssetState() : '';
-    const key = `${buyId}|${Math.round(g.R)}|${state}|${canvas.clientWidth}`;
-    if (key === saleLightKey) return true;
+  // one bearing of the read-back: turn, render, copy, scan — all inside the task that drew it, because
+  // the drawing buffer is only readable then. While the poster still covers the stage the drawn bearings
+  // never show; once the live canvas is the stage the turn's own frame is drawn again inside the same
+  // task, so the hull never flickers through the sampling sweep.
+  function saleLightStep(run) {
+    if (run !== saleLightRun || run.dead) return;
+    // the run is stale if the hull, the dial's size or the asset moved under it: drop it and let the
+    // next key re-read instead of grading a mix of two states
+    const state = mount && typeof mount.getAssetState === 'function' ? mount.getAssetState() : '';
+    if (!mount || !canvas || !canvas.isConnected || !stageEl.isConnected || buyId !== run.hull
+        || state !== run.state || canvas.clientWidth !== run.cw || canvas.clientHeight !== run.ch) {
+      failSaleLightRun(run);
+      return;
+    }
+    const { N, c2, sx, sy, rows, cols, lum, centres } = run;
     try {
-      const N = 128;
-      if (!saleSample) { saleSample = document.createElement('canvas'); saleSample.width = N; saleSample.height = N; }
-      const c2 = saleSample.getContext('2d', { willReadFrequently: true });
-      if (!c2) return false;
-      const cw = canvas.clientWidth || 0; const ch = canvas.clientHeight || 0;
-      if (cw < 20 || ch < 20) return false;
-      const sx = cw / N; const sy = ch / N;
-      const lum = [];
-      const centres = [];
-      let far = 0;
-      const rows = new Uint16Array(N); const cols = new Uint16Array(N);
-      // the drawing buffer is only readable in the task that drew it: each bearing is drawn and read at once
-      for (const t of SALE_SAMPLES) {
-        mount.setYaw(hullYawAt(t));
-        c2.clearRect(0, 0, N, N);
-        c2.drawImage(canvas, 0, 0, N, N);
-        const d = c2.getImageData(0, 0, N, N).data;
-        rows.fill(0); cols.fill(0);
-        let n = 0;
-        for (let y = 0; y < N; y++) {
-          for (let x = 0; x < N; x++) {
-            const i = (y * N + x) * 4;
-            const l = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
-            if (l < 6) continue;
-            lum.push(l); rows[y] += 1; cols[x] += 1; n += 1;
-          }
+      const t = SALE_SAMPLES[run.i];
+      mount.setYaw(hullYawAt(t));
+      c2.clearRect(0, 0, N, N);
+      c2.drawImage(canvas, 0, 0, N, N);
+      const d = c2.getImageData(0, 0, N, N).data;
+      rows.fill(0); cols.fill(0);
+      let n = 0;
+      for (let y = 0; y < N; y++) {
+        for (let x = 0; x < N; x++) {
+          const i = (y * N + x) * 4;
+          const l = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+          if (l < 6) continue;
+          lum.push(l); rows[y] += 1; cols[x] += 1; n += 1;
         }
-        if (n < 40) continue;
+      }
+      if (n >= 40) {
         // the silhouette's box: rows and columns holding at least two lit pixels (a stray spark does not widen it)
         let x0 = 0; while (x0 < N - 1 && cols[x0] < 2) x0++;
         let x1 = N - 1; while (x1 > x0 && cols[x1] < 2) x1--;
@@ -2193,12 +2190,46 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             const i = (y * N + x) * 4;
             if (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2] < 6) continue;
             const dist = Math.hypot(((x + 0.5) * sx) - cx, ((y + 0.5) * sy) - cy);
-            if (dist > far) far = dist;
+            if (dist > run.far) run.far = dist;
           }
         }
       }
+      // the live canvas is the stage: leave the bezel's frame standing where a presented frame would flicker
+      if (!poster.has() || poster.isLive()) mount.setYaw(turnYaw());
+    } catch (_) { failSaleLightRun(run); return; }
+    run.i += 1;
+    if (run.i < SALE_SAMPLES.length) { scheduleSaleLightStep(run); return; }
+    finishSaleLightRun(run);
+  }
+  function scheduleSaleLightStep(run) {
+    const step = () => {
+      if (run.dead) return;
+      if (run.raf) { cancelAnimationFrame(run.raf); run.raf = 0; }
+      if (run.timer) { clearTimeout(run.timer); run.timer = 0; }
+      saleLightStep(run);
+    };
+    run.raf = requestAnimationFrame(step);
+    run.timer = setTimeout(step, 160); // a stalled rAF (hidden tab) still finishes under the poster
+  }
+  function abortSaleLightRun(run, ok) {
+    if (!run || run.dead) return;
+    run.dead = true;
+    if (run === saleLightRun) saleLightRun = null;
+    if (run.raf) { cancelAnimationFrame(run.raf); run.raf = 0; }
+    if (run.timer) { clearTimeout(run.timer); run.timer = 0; }
+    const waiters = run.waiters.splice(0);
+    for (const w of waiters) { try { w(ok); } catch (_) { /* a dead waiter must not stall the rest */ } }
+  }
+  function failSaleLightRun(run) {
+    const g = run && run.g;
+    abortSaleLightRun(run, false);
+    if (g) relightSaleHullSoon(g);
+  }
+  function finishSaleLightRun(run) {
+    const { g, key, state, cw, ch, lum, centres, far } = run;
+    try {
       mount.setYaw(turnYaw());
-      if (lum.length < 200 || centres.length < 3) { relightSaleHullSoon(g); return false; }
+      if (lum.length < 200 || centres.length < 3) { failSaleLightRun(run); return; }
       saleLightKey = key;
       saleCentres = centres;
       saleCanvasSize = { cw, ch };
@@ -2213,7 +2244,41 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const at0 = saleCentreAt(0);
       canvas.dataset.saleLight = `p90 ${Math.round(p90)} k ${k.toFixed(2)} far ${Math.round(far)} fit ${scale.toFixed(3)} centre0 ${Math.round(at0.x - cw / 2)},${Math.round(at0.y - ch / 2)}`;
       canvas.dataset.saleCentres = centres.map((c) => `${c.t}:${Math.round(c.x - cw / 2)},${Math.round(c.y - ch / 2)}`).join(' ');
-      return true;
+      abortSaleLightRun(run, true);
+    } catch (_) { failSaleLightRun(run); /* a render that cannot be read keeps the sheet's lift */ }
+  }
+  function lightSaleHull(g, { force = false, onDone = null } = {}) {
+    if (!mount || typeof mount.frame !== 'function' || typeof mount.setYaw !== 'function' || !canvas || !g) return false;
+    if (buyId !== saleLightHull) { saleLightHull = buyId; saleLightTries = 0; saleCentres = null; }
+    if (!force && poster.has() && !poster.isLive()) return false;
+    const state = typeof mount.getAssetState === 'function' ? mount.getAssetState() : '';
+    const key = `${buyId}|${Math.round(g.R)}|${state}|${canvas.clientWidth}`;
+    if (key === saleLightKey) return true;
+    // a live run for this key answers its waiters together when it lands
+    if (saleLightRun && saleLightRun.key === key) {
+      if (onDone) saleLightRun.waiters.push(onDone);
+      return 'pending';
+    }
+    try {
+      const N = 128;
+      if (!saleSample) { saleSample = document.createElement('canvas'); saleSample.width = N; saleSample.height = N; }
+      const c2 = saleSample.getContext('2d', { willReadFrequently: true });
+      if (!c2) return false;
+      const cw = canvas.clientWidth || 0; const ch = canvas.clientHeight || 0;
+      if (cw < 20 || ch < 20) return false;
+      if (saleLightRun) abortSaleLightRun(saleLightRun, false);
+      // thirteen bearings at one a frame instead of thirteen renders in a single task: the samples,
+      // the lift and the fit are byte-identical, the poster covers until the run lands
+      saleLightRun = {
+        key, g, state, hull: buyId, i: 0, N, c2, cw, ch,
+        sx: cw / N, sy: ch / N,
+        lum: [], centres: [], far: 0,
+        rows: new Uint16Array(N), cols: new Uint16Array(N),
+        waiters: onDone ? [onDone] : [],
+        raf: 0, timer: 0, dead: false,
+      };
+      saleLightStep(saleLightRun);
+      return 'pending';
     } catch (_) { return false; /* a render that cannot be read keeps the sheet's lift */ }
   }
   // the For Sale stage as the instrument: the ring, its tick scale, the caption arc naming the hull, the view
@@ -2229,6 +2294,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       saleZoomKey = '';
       saleLightKey = '';
       saleGeo = null;
+      abortSaleLightRun(saleLightRun, false);
       const wasSale = stageEl.classList.contains('has-salering');
       stageEl.classList.remove('has-salering', 'has-viewmarks', 'has-sockets', 'is-turning');
       if (bezelTurn !== 0 || saleView !== 'reset') { saleView = 'reset'; turnSpring.set(0, { instant: true }); }
@@ -3099,6 +3165,26 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let saleHandoverTimer = 0;
   let saleHandoverTries = 0;
   let saleHandoverHull = '';
+  // the read-back run's answer: unready retries on the old cadence; ready hands over a frame later,
+  // so the disc never blinks empty
+  function settleSaleHandover(ok) {
+    if (!ok) {
+      if (!saleHandoverTimer && saleHandoverTries < 40) {
+        saleHandoverTries += 1;
+        saleHandoverTimer = setTimeout(() => { saleHandoverTimer = 0; syncPosterLive(); }, 250);
+      }
+      return;
+    }
+    if (saleHandover) return;
+    saleHandover = true;
+    const hull = poster.defId();
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      saleHandover = false;
+      if (poster.isLive() || poster.defId() !== hull) return;
+      poster.setLive(true);
+      scheduleSpatialProjection();
+    }));
+  }
   function syncPosterLive() {
     if (!poster.has()) { canvas.tabIndex = 0; return; }
     const state = mount && mount.getAssetState ? mount.getAssetState() : '';
@@ -3112,22 +3198,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         if (saleHandoverHull !== poster.defId()) { saleHandoverHull = poster.defId(); saleHandoverTries = 0; }
         if (!saleHandover) {
           const g = stageRingGeo();
-          const ready = g ? lightSaleHull(g, { force: true }) : false;
-          if (!ready) {
-            if (!saleHandoverTimer && saleHandoverTries < 40) {
-              saleHandoverTries += 1;
-              saleHandoverTimer = setTimeout(() => { saleHandoverTimer = 0; syncPosterLive(); }, 250);
-            }
-          } else {
-            saleHandover = true;
-            const hull = poster.defId();
-            requestAnimationFrame(() => requestAnimationFrame(() => {
-              saleHandover = false;
-              if (poster.isLive() || poster.defId() !== hull) return;
-              poster.setLive(true);
-              scheduleSpatialProjection();
-            }));
-          }
+          // the run samples one bearing a frame and answers through onDone; a refused or already-lit
+          // key answers here
+          const ready = g ? lightSaleHull(g, { force: true, onDone: settleSaleHandover }) : false;
+          if (ready !== 'pending') settleSaleHandover(ready === true);
         }
       } else {
         poster.setLive(true);
@@ -5319,6 +5393,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       if (typeof rangeIntentUnsub === 'function') { try { rangeIntentUnsub(); } catch (_) {} }
       rangeIntentUnsub = null;
       try { powerBeam.dispose(); } catch (_) {}
+      abortSaleLightRun(saleLightRun, false);
       if (mount) { try { mount.dispose(); } catch (_) {} mount = null; }
       try { delete canvas.__sfPreviewDiagnostics; } catch (_) {}
     },

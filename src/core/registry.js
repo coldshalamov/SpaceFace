@@ -1006,7 +1006,16 @@ export function createRegistry(ctx) {
         });
       } finally {
         const diag = state.render && state.render.diagnostics;
-        if (diag && typeof diag.update === 'function') diag.update(frameDt);
+        try {
+          if (diag && typeof diag.update === 'function') diag.update(frameDt);
+        } catch (diagError) {
+          // Quarantined like the other presented-frame lanes: a diagnostics
+          // throw must not mask runRenderUpdatePhase's return (the journal-ack
+          // contract at renderUpdatePhase.js:68) or escape to the rAF caller.
+          const n = (perf._diagErrorLogCount = (perf._diagErrorLogCount || 0) + 1);
+          if (n <= 20) console.error('[loop] diagnostics error:', diagError);
+          else if (n === 21) console.error('[loop] further diagnostics errors suppressed');
+        }
       }
     },
   };

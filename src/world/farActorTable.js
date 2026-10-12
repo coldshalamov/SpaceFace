@@ -7,6 +7,7 @@ import { WORLD_SITE_MANIFESTS } from '../data/worldSiteManifests.js';
 // them. They are not GameState combat entities while shelved.
 
 import { clearEntityRuntime } from '../core/entity.js';
+import { syncEntitySectorMembership } from '../core/coreSystem.js';
 import { authoredPrefetchRadius, farLedgerScanRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
 import { SIM_TIER, NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js';
 import { ensureActivityClassified, physicsReachWuFromState } from './activityRuntime.js';
@@ -785,6 +786,7 @@ export function promoteFarActor(state, id, helpers) {
     ent.homeSectorId = rec.homeSectorId;
     if (ent.data) ent.data.homeSectorId = rec.homeSectorId;
   }
+  syncEntitySectorMembership(state && state.entityIndex, ent);
   if (ent.activity) ent.activity.lastExactT = simTime;
   removeFarRecord(ensureFarActorTable(state), rec);
   return ent;

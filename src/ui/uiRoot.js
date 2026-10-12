@@ -21,6 +21,8 @@ import { setPromptScheme, setPromptBindings } from './controlPrompts.js';
 import { resolveActionLabel } from '../systems/input.js';
 import { injectHudCss } from './views/hudStyles.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
+import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
+import { dedupError } from '../core/warnDedup.js';
 import {
   presentationAllowsPlayerFacingAction,
   presentationAllowsTargetLock,
@@ -207,9 +209,14 @@ function yieldPresentationFrame() {
   if (typeof requestAnimationFrame === 'function') {
     // A hidden or occluded tab never fires rAF; without a timeout the deferred registration waves
     // stall forever there, and a dock in that window soft-locks (station never mounts).
+    // The rAF resolve dispatches through a bounded background post: resolving inline lands the
+    // awaiting prewarm/paintWarm leg as a microtask inside this frame's task — pre-present.
     return new Promise((resolve) => {
       const timer = setTimeout(resolve, 250);
-      requestAnimationFrame(() => { clearTimeout(timer); resolve(); });
+      requestAnimationFrame(() => {
+        clearTimeout(timer);
+        postTaskAtBackgroundPriorityBounded(resolve);
+      });
     });
   }
   return Promise.resolve();
@@ -1632,7 +1639,7 @@ export const ui = {
           try {
             const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
             try { this.screenManager.prewarm(id); }
-            catch (e) { console.error(`[ui] prewarm("${id}")`, e); }
+            catch (e) { dedupError('ui.screen-prewarm', `[ui] prewarm("${id}")`, e); }
             // A mount that already ate the slice (multi-bank template parse, lazy GL) gets
             // its own frame before the hidden layout pass — the two costs never share a
             // flight-idle frame even when the mount alone exceeds the budget.
@@ -1643,7 +1650,7 @@ export const ui = {
             }
             const tp = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
             try { this.screenManager.paintWarm(id); }
-            catch (e) { console.error(`[ui] paintWarm("${id}")`, e); }
+            catch (e) { dedupError('ui.screen-paintwarm', `[ui] paintWarm("${id}")`, e); }
             // paintWarm's forced style+layout (void el.offsetHeight) runs untimed — a big screen
             // can land ~14ms in one flight-idle slice. The trailing yield below is unconditional,
             // but gate the NEXT warm on the paint's own cost so two heavy screens never chain.
@@ -1653,7 +1660,7 @@ export const ui = {
               if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
             }
           }
-          catch (e) { console.error(`[ui] prewarm("${id}")`, e); }
+          catch (e) { dedupError('ui.screen-warm-cycle', `[ui] prewarm("${id}")`, e); }
           await yieldPresentationFrame();
           if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
         }

@@ -169,7 +169,7 @@ import {
   upsertRecord,
 } from '../world/worldRecords.js';
 import { bumpCollidesFlipEpoch, entityIndexLaneVersion, forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan, registerEntityWorldRecordId } from '../world/livingWorldViews.js';
-import { syncEntityCollisionIndexMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
+import { syncEntityCollisionIndexMembership, syncEntitySectorMembership, syncEntityTypeLaneMembership } from '../core/coreSystem.js';
 import { presentationEntityIdForCourseTarget } from '../ui/navigationWaypoint.js';
 import { captureEntitySelection, liveEntityById } from '../ui/sim/stableSelection.js';
 import {
@@ -812,6 +812,7 @@ export const world = {
         d.homeSectorId = sectorId;
       }
       if (d.sectorId == null) d.sectorId = sectorId;
+      syncEntitySectorMembership(state && state.entityIndex, e);
       const kind = d.trafficRole || d.convoyId || d.itinerary
         ? RECORD_KIND.CONVOY
         : (missionIdentityOf(d) || d.missionPinned || (e.flags && e.flags.missionPinned)
@@ -2027,6 +2028,9 @@ export const world = {
     // byWorldRecordId/count answer O(1) for this rematerialized durable immediately instead
     // of waiting on a fallback-walk reseed (which can't bump the lane or the count).
     registerEntityWorldRecordId(state && state.entityIndex, ent);
+    // It may also stamp homeSectorId — the sector lane follows the same register-after-write
+    // contract so the bucket answer stays current for this rematerialized durable.
+    syncEntitySectorMembership(state && state.entityIndex, ent);
     this._decorateOrrinWitnessRecorder(ent, advanced);
     this._stampHomeSector(ent, advanced.homeSectorId || sectorId);
     // Restore pose after stamp (global — never re-add sector origin). Catch-up is simTime-closed-form.
@@ -2318,6 +2322,7 @@ export const world = {
     if (!ent.data) ent.data = {};
     ent.data.homeSectorId = sectorId;
     if (ent.data.sectorId == null) ent.data.sectorId = sectorId;
+    syncEntitySectorMembership(this.state && this.state.entityIndex, ent);
     return ent;
   },
 

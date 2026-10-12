@@ -25,7 +25,6 @@ import {
   PIN_REASON,
 } from './activityClassification.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
-import { packPoseTable, poseTableDiscoveryScan } from './poseTable.js';
 import { hasNearWorkSlot, shouldOwnerThink } from '../core/activityScheduler.js';
 import { ballisticDrift, consumeScheduledWorldWake } from './worldCatchup.js';
 import {
@@ -314,7 +313,7 @@ function captureDematerialized(state, entity, simTime, abstractTier) {
   return captured;
 }
 
-function catchUpEntity(entity, rec, simTime) {
+function catchUpEntity(entity, rec, simTime, runtime) {
   if (!entity || !entity.pos) return;
   if (entity.type === 'projectile' || entity.type === 'fx') return;
   if (entity.alive === false) return;
@@ -323,6 +322,13 @@ function catchUpEntity(entity, rec, simTime) {
   const next = ballisticDrift(entity.pos, entity.vel, entity.rot, entity.angVel, dt);
   entity.pos.x = next.pos.x;
   entity.pos.z = next.pos.z;
+  // This in-place pos write bumps no index version — the shelved-discovery cell map would
+  // keep the member in its stale cell until the audit pass. Mark partition-0 members so each
+  // classify pass envelope-tests them directly until the next map rebuild folds them back in.
+  if (runtime && entity._physicsPartition !== 1 && entity._physicsPartition !== 2) {
+    const moved = runtime.shelvedDiscoveryMoved || (runtime.shelvedDiscoveryMoved = new Set());
+    moved.add(entity);
+  }
   if (!entity.vel || typeof entity.vel !== 'object') entity.vel = { x: next.vel.x, z: next.vel.z };
   else {
     entity.vel.x = next.vel.x;
@@ -457,7 +463,7 @@ function attachStamp(entity, rec) {
   return rec;
 }
 
-function applyStamp(entity, classified, simTime) {
+function applyStamp(entity, classified, simTime, runtime) {
   let rec = entity.activity;
   if (!rec) {
     rec = makeStamp(classified, simTime);
@@ -481,7 +487,7 @@ function applyStamp(entity, classified, simTime) {
     }
   } else if (nowExact) {
     if (!wasExact && rec.lastExactT >= 0 && simTime > rec.lastExactT + 1e-4) {
-      catchUpEntity(entity, rec, simTime);
+      catchUpEntity(entity, rec, simTime, runtime);
     }
     rec.lastExactT = simTime;
     rec.graceUntilT = -1;
@@ -898,6 +904,17 @@ export function admitSameTickProjectiles(state, runtime, membership) {
   return true;
 }
 
+// W125 hitches F1 — the discovery authority's shelved-member index. The hash query only
+// sees last pass's physics lanes; partition-0 in-list members (abstract/dormant tiers and
+// unstamped gap entities) were rediscoverable only through the O(list) branch walk. They
+// are position-stable between stamp transitions — the republish is the sole catch-up/mover
+// seam for them — so a coarse cell map over partition-0 members answers the disc query in
+// O(cells + candidates). The walk remains the cold build and a periodic audit:
+// CLASSIFY_DISCOVERY_AUDIT_EVERY bounds how long a silent pos write on a shelved member
+// can stall rediscovery, and membership/partition movement forces an immediate rebuild.
+const CLASSIFY_DISCOVERY_CELL_WU = 2048;
+const CLASSIFY_DISCOVERY_AUDIT_EVERY = 8;
+
 function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu) {
   if (!runtime.ready || runtime.seenEntityIds.size === 0) {
     return { mode: 'full', entities: list };
@@ -979,29 +996,95 @@ function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu)
   // physicsDynamics). Anything that dropped out of that set — a station or rock shelved to
   // S3/R3 when the player flew past reach — is not in the hash, so the radius query can
   // never find it again no matter how close the player returns. The hash query is therefore
-  // only a cache of last pass's neighbourhood; THIS walk is the discovery authority: every
-  // live, positioned entity whose presence envelope reaches inside the discovery disc
-  // (physics reach + exit pad, the residency prefetch radius, or the submit-cull corner —
-  // whichever reaches furthest) is re-stamped this pass. The per-entity test is two
-  // subtracts and a compare against scratch state — no allocation.
+  // only a cache of last pass's neighbourhood; the discovery authority for everything else
+  // is the shelved-member cell map below: every live, positioned partition-0 entity whose
+  // presence envelope reaches inside the discovery disc (physics reach + exit pad, the
+  // residency prefetch radius, or the submit-cull corner — whichever reaches furthest) is
+  // re-stamped this pass, exactly as the old O(list) walk stamped them — the walk itself
+  // still runs as the cold build and the audit cadence.
   if (origin) {
     const discover = Math.max(0, finite(discoverWu));
-    const poseTable = packPoseTable(state);
-    const byId = state.entities;
-    const useColumns = poseTable
-      && poseTable.source === list
-      && poseTable._idlessCount === 0
-      && byId && typeof byId.get === 'function';
-    if (useColumns) {
-      poseTableDiscoveryScan(poseTable, byId, seen, add, discover, origin);
-    } else {
+    const shelved = runtime.shelvedDiscovery || (runtime.shelvedDiscovery = {
+      cells: null,
+      maxPresence: 0,
+      epoch: -1,
+      indexVersion: -1,
+      pass: 0,
+      walks: 0,
+      queries: 0,
+    });
+    shelved.pass += 1;
+    const indexVersion = entityIndexVersion(state);
+    const stale = shelved.cells === null
+      || shelved.epoch !== PHYSICS_PARTITION_EPOCH
+      || shelved.indexVersion !== indexVersion
+      || (shelved.pass % CLASSIFY_DISCOVERY_AUDIT_EVERY) === 0;
+    if (stale) {
+      shelved.walks += 1;
+      const cells = new Map();
+      let maxPresence = 0;
+      const cellKey = (x, z) => Math.floor(x / CLASSIFY_DISCOVERY_CELL_WU) * 131072
+        + Math.floor(z / CLASSIFY_DISCOVERY_CELL_WU);
       for (let i = 0; i < list.length; i++) {
         const entity = list[i];
-        if (!entity || entity.alive === false || !entity.pos || seen.has(entity.id)) continue;
+        if (!entity || entity.alive === false || !entity.pos) continue;
+        // Partition 1/2 members ride the physics lanes the hash already sees — only
+        // partition-0 members need a cell. Buckets key on pos at build time; the
+        // per-candidate test below still reads the entity's live pos, so a member
+        // moved inside a stale cell is envelope-tested wherever the query finds it.
+        if (entity._physicsPartition !== 1 && entity._physicsPartition !== 2) {
+          const pres = entityPresenceRadius(entity);
+          if (pres > maxPresence) maxPresence = pres;
+          const key = cellKey(finite(entity.pos.x), finite(entity.pos.z));
+          let bucket = cells.get(key);
+          if (!bucket) { bucket = new Set(); cells.set(key, bucket); }
+          bucket.add(entity);
+        }
+        if (seen.has(entity.id)) continue;
         const limit = discover + entityPresenceRadius(entity);
         const dx = finite(entity.pos.x) - origin.x;
         const dz = finite(entity.pos.z) - origin.z;
         if (dx * dx + dz * dz <= limit * limit) add(entity);
+      }
+      shelved.cells = cells;
+      shelved.maxPresence = maxPresence;
+      shelved.epoch = PHYSICS_PARTITION_EPOCH;
+      shelved.indexVersion = indexVersion;
+      // The rebuilt cells index every member's live pos — any silent-write marks retire here.
+      if (runtime.shelvedDiscoveryMoved) runtime.shelvedDiscoveryMoved.clear();
+    } else {
+      shelved.queries += 1;
+      // The pad carries the largest presence seen at build time, so a big-hulled member
+      // parked just outside the disc still lands in the queried cell band before its
+      // envelope test decides — same coverage the walk produced.
+      const pad = discover + shelved.maxPresence;
+      const cx0 = Math.floor((origin.x - pad) / CLASSIFY_DISCOVERY_CELL_WU);
+      const cx1 = Math.floor((origin.x + pad) / CLASSIFY_DISCOVERY_CELL_WU);
+      const cz0 = Math.floor((origin.z - pad) / CLASSIFY_DISCOVERY_CELL_WU);
+      const cz1 = Math.floor((origin.z + pad) / CLASSIFY_DISCOVERY_CELL_WU);
+      for (let cx = cx0; cx <= cx1; cx++) {
+        for (let cz = cz0; cz <= cz1; cz++) {
+          const bucket = shelved.cells.get(cx * 131072 + cz);
+          if (!bucket) continue;
+          for (const entity of bucket) {
+            if (!entity || entity.alive === false || !entity.pos || seen.has(entity.id)) continue;
+            const limit = discover + entityPresenceRadius(entity);
+            const dx = finite(entity.pos.x) - origin.x;
+            const dz = finite(entity.pos.z) - origin.z;
+            if (dx * dx + dz * dz <= limit * limit) add(entity);
+          }
+        }
+      }
+      // Members moved by a silent pos write (catchUp drift) sit in stale cells the band query
+      // can't reach — envelope-test them directly until the audit rebuild re-buckets them.
+      if (runtime.shelvedDiscoveryMoved) {
+        for (const entity of runtime.shelvedDiscoveryMoved) {
+          if (!entity || entity.alive === false || !entity.pos || seen.has(entity.id)) continue;
+          const limit = discover + entityPresenceRadius(entity);
+          const dx = finite(entity.pos.x) - origin.x;
+          const dz = finite(entity.pos.z) - origin.z;
+          if (dx * dx + dz * dz <= limit * limit) add(entity);
+        }
       }
     }
   }
@@ -1779,7 +1862,7 @@ function classifyWorld(state, runtime) {
     const classified = classifyActivity(entity, ctx);
     const priorTier = entity.activity && entity.activity.simTier;
     classified.pins = reusablePins(runtime, entity.id, classified.pins);
-    const stamp = applyStamp(entity, classified, simTime);
+    const stamp = applyStamp(entity, classified, simTime, runtime);
     if (worldRec && Number.isFinite(worldRec.nextEventAtT)) {
       stamp.nextEventAtT = worldRec.nextEventAtT;
     }

@@ -8,6 +8,7 @@
 // salvage, or sectorSim edits.
 
 import { hash32 } from '../core/rng.js';
+import { syncEntitySectorMembership } from '../core/coreSystem.js';
 import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
 import { validateRunState } from '../core/runState.js';
 import { salvagePoolFromManifest, spawnJettisonedCargoPod } from './lootShards.js';
@@ -1887,6 +1888,7 @@ export const aftermathWrecks = {
     // Sector teardown reads the top-level field: an adopted mining body otherwise stays homeless
     // and survives eviction beside the marker's own respawn (same hole as the spec stamp).
     if (marker.sectorId) entity.homeSectorId = marker.sectorId;
+    syncEntitySectorMembership(this.state && this.state.entityIndex, entity);
     // Adopt dead-man's motion only onto a wreck that is not already moving. A wreck mining spawned
     // from this same spec already carries the inherited momentum and must never be overwritten.
     const vx = Number(entity.vel && entity.vel.x) || 0;
