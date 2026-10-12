@@ -8,7 +8,29 @@ its check reads PASS. Renderer for every run below:
 
 ## Owning lanes (rebased onto `d748312d1`, 2026-10-12)
 
-Room pin, the station toy, and LOD/residency: **Lane 6** (`codex/swarm-crucible-overhaul` — `survivalArena`, `src/render/lod.js`, `assetResidency.js`, `crucibleWarmPackageResidency.js`). Collision resolve if a ship is still held inside a solid: **local integration** (flight/physics under `src/runtime/**`). Master already shipped Lane 6's clearance (`6b67d1fb1`, a room solid is pushed until it clears the hull by 24 u) and a presented-LOD swap cap (`68da0fae3`, `d3e7d8dcc`). The v2 rows below were measured **before** that clearance (harness commits `a0b854c91`, `07e4eda14`). They stay as the reproduction that made the pin a number. A fresh `npm run player-truth -- --mode=swarm --gate` on this tip is the current-master verdict.
+Room pin, the station toy, and LOD/residency: **Lane 6** (`codex/swarm-crucible-overhaul` — `survivalArena`, `src/render/lod.js`, `assetResidency.js`, `crucibleWarmPackageResidency.js`). Collision resolve if a ship is still held inside a solid: **local integration** (flight/physics under `src/runtime/**`). Master already shipped Lane 6's clearance (`6b67d1fb1`, a room solid is pushed until it clears the hull by 24 u) and a presented-LOD swap cap (`68da0fae3`, `d3e7d8dcc`). The v2 rows below were measured **before** that clearance (harness commits `a0b854c91`, `07e4eda14`). They stay as the reproduction that made the pin a number.
+
+### Remount after the clearance (`5e1f24156`, 2026-10-12)
+
+`npm run player-truth -- --mode=swarm --arena="Ricochet Foundry" --gate --evidence --tag=master`. SwiftShader, 960x540. The door's seed field was not fillable, so both passes played the door seed **73311**, not the requested 4242. Evidence: `swarm-ricochet-foundry-idle-master/`, `swarm-ricochet-foundry-active-master/`.
+
+Idle pass finished (363 s wall, 46 sim s, round still active at the duration cap). Pre-clearance idle on seed 4242 died at 13.2 s.
+
+| check | pre-clearance idle (4242) | this idle (73311) |
+|---|---|---|
+| kills_before_input | FAIL 9 | FAIL 12 |
+| reward_before_input | FAIL +4041 | FAIL +2839 |
+| spawn_motion | FAIL 13 bodies | PASS 0 |
+| player_ship | PASS | PASS |
+| loadout | FAIL 5 irrelevant | PASS 0 |
+| lod_churn | FAIL 5.34/s | FAIL 1.8/s |
+| popping | FAIL 307/min | FAIL 116/min |
+| readability | FAIL 0.69 | FAIL 0.93 |
+| vfx_coverage | FAIL threats p95 100% | FAIL threats p95 100% |
+| backdrop_coverage | PASS | FAIL threats p95 100% |
+| player_control | UNKNOWN (dead before probes) | PASS 0 pinned |
+
+Active pass is **not a round-2 measurement**. The page closed at 25.6 sim s of round 1 (1616 s wall) after a SwiftShader stall (sim 6.4 → 10.5 across ~22 min, 0.1 fps). `rounds_reached` and `round_transitions` FAIL because the browser died, not because the ship was pinned. Before the close: `player_control` PASS (0 pinned), `spawn_motion` PASS, `reward_before_input` PASS, `readability` PASS 3.24, `loadout` PASS, `player_ship` FAIL 0.6% (5 frames, resolving marker / `compiling-pipelines` at 1.5 s), `popping` FAIL 30/min, `vfx_coverage` FAIL (threats hidden p95 100%). The pin-after-clearance question is still open; the active pass is being re-run with the seed field filled.
 
 ## v2 gate (2026-10-12) — round 2 and beyond
 
