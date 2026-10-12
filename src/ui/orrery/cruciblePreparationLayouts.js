@@ -423,7 +423,7 @@ ${A} > .k-foot {
   z-index:6 !important; padding:14px 0 0 !important;
   border-top:1px solid rgb(${BONE} / .16) !important;
   background:rgb(${VOID}) !important;
-  box-shadow:0 -28px 40px 12px rgb(${VOID}) !important;
+  box-shadow:0 -10px 14px 0 rgb(${VOID} / .85) !important;
   isolation:isolate;
 }
 ${A} .k-foot .k-words { position:relative; z-index:1; }
@@ -442,8 +442,8 @@ ${A} .k-foot .k-word:not(.k-word--primary):is(:hover, :focus-visible) {
   color:rgb(${BONE} / .92) !important;
 }
 /* Keycaps — .sf-cru-kbd on Launch/Esc + nested kbd language; fine-print 1/2/3/Tab caps. */
-${A} .k-foot :is(.sf-cru-kbd, .k-kbd, .dp-kbd, kbd),
-${A} .sf-cru-fine :is(.orr-armory-keycap, .k-kbd, .dp-kbd, kbd) {
+${A} .k-foot .sf-cru-kbd,
+${A} .sf-cru-fine .orr-armory-keycap {
   display:inline-block !important; box-sizing:border-box !important;
   margin-left:12px !important; margin-right:0 !important;
   padding:3px 7px 4px !important; min-width:0 !important; height:auto !important;
@@ -454,14 +454,16 @@ ${A} .sf-cru-fine :is(.orr-armory-keycap, .k-kbd, .dp-kbd, kbd) {
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important;
   opacity:1 !important; text-shadow:none !important;
 }
-${A} .sf-cru-fine :is(.orr-armory-keycap) { margin-left:0 !important; margin-right:4px !important; }
+${A} .sf-cru-fine .orr-armory-keycap { margin-left:0 !important; margin-right:4px !important; }
 ${A} .sf-cru-fine { color:rgb(${BONE} / .78) !important; position:relative; z-index:1; }
 ${A} .orr-armory-hintword { color:rgb(${BONE} / .78) !important; }
 
 /* Secondary contrast — bone alphas where washed --dp-ink-dim was the problem. */
 ${A} > .k-title .sf-cru-sub { color:rgb(${BONE} / .86) !important; }
-${A} > .k-title .sf-cru-preview { color:rgb(${BONE} / .82) !important; margin:6px 200px 0 0; font:400 13px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif !important; }
-${A} > .k-title .sf-cru-cradle { color:rgb(${BONE} / .8) !important; margin:4px 200px 0 0; font:400 12.5px/1.4 var(--dp-face-body,'Instrument Sans'),sans-serif !important; }
+${A} > .k-title .sf-cru-preview { color:rgb(${BONE} / .82) !important; margin:6px 0 0; font:400 13px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif !important; }
+${A} > .k-title .sf-cru-cradle { color:rgb(${BONE} / .8) !important; margin:4px 0 0; font:400 12.5px/1.4 var(--dp-face-body,'Instrument Sans'),sans-serif !important; }
+/* Right gutter for the wallet only where there's room; phones keep full text width. */
+@media (min-width:761px) { ${A} > .k-title :is(.sf-cru-preview,.sf-cru-cradle) { margin-right:200px; } }
 ${A} .orr-armory-wallet span { color:rgb(${BONE} / .8) !important; }
 ${A} .sf-cru-filters > button { color:rgb(${BONE} / .82) !important; }
 ${A} .sf-cru-filters > button[aria-pressed=true] {
@@ -524,7 +526,7 @@ ${R} > .k-foot {
   z-index:6 !important; padding:16px 0 10px !important;
   border-top:1px solid rgb(${BONE} / .18) !important;
   background:rgb(${VOID}) !important;
-  box-shadow:0 -32px 48px 16px rgb(${VOID}) !important;
+  box-shadow:0 -10px 14px 0 rgb(${VOID} / .85) !important;
   isolation:isolate;
 }
 ${R} .k-foot .k-words { position:relative; z-index:1; }
@@ -549,7 +551,7 @@ ${R} .k-foot .k-word--primary.is-lamp .sf-cru-kbd {
   color:rgb(${BONE} / .92) !important; border-color:rgb(${BONE} / .55) !important;
 }
 /* Keycaps — .sf-cru-kbd on foot verbs + Enter on lit FIT (override bare-hint strip in screenLayouts). */
-${R} .k-foot :is(.sf-cru-kbd, .k-kbd, .dp-kbd, kbd) {
+${R} .k-foot .sf-cru-kbd {
   display:inline-block !important; box-sizing:border-box !important;
   margin-left:12px !important; margin-right:0 !important;
   padding:3px 7px 4px !important; min-width:0 !important; height:auto !important;
@@ -616,7 +618,7 @@ ${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb
 
 /* Short plates: keep the void rail, but don't bury the fit count under a tall foot. */
 @media (max-height:820px) {
-  ${R} > .k-foot { padding:8px 0 4px !important; box-shadow:0 -18px 24px 6px rgb(${VOID}) !important; }
+  ${R} > .k-foot { padding:8px 0 4px !important; box-shadow:0 -8px 12px 0 rgb(${VOID} / .85) !important; }
   ${R} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { bottom:178px !important; }
 }
 
