@@ -512,6 +512,7 @@ export const swarmArena = {
     this._opticIds = [];
     this._opticAnchor = null;
     this._wellIds = [];
+    this._lessonWellStrength = null;
     this._pressureAlive = null;
     this._pressureWave = 0;
     this._lastTerrainAnchor = null;
@@ -617,6 +618,7 @@ export const swarmArena = {
     if (this._broodHeldUntil != null && run && run.phase === 'active' && state.mode === 'flight'
       && (state.simTime || 0) >= this._broodHeldUntil) {
       this._broodHeldUntil = null;
+      this._wakeLessonWell();
       if (this._brood) this._brood.spawnWave(state);
     }
     if (this._brood) this._brood.step(state);
@@ -686,6 +688,7 @@ export const swarmArena = {
   },
 
   _onOpeningLessonReleased() {
+    this._wakeLessonWell();
     if (this._broodHeldUntil == null) return;
     const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
     this._broodHeldUntil = Math.min(this._broodHeldUntil, now + OPENING_LESSON_RELEASE_TICKS / 60);
@@ -1347,11 +1350,26 @@ export const swarmArena = {
           z: Number.isFinite(well.z) ? well.z : 108,
         }, wellRadius),
         radius: wellRadius,
-        strength: Number.isFinite(well.strength) ? well.strength : 90,
+        // Planted asleep: an awake well drags whatever furniture lands near it into motion before
+        // the pilot has touched a key. It wakes with the pack, at the lesson release.
+        strength: 0,
         falloff: Number.isFinite(well.falloff) ? well.falloff : 1.35,
         createdAt,
       });
-      if (record != null) this._wellIds = this._wellIds.concat(id);
+      if (record != null) {
+        this._wellIds = this._wellIds.concat(id);
+        this._lessonWellStrength = Number.isFinite(well.strength) ? well.strength : 90;
+      }
+    }
+  },
+
+  _wakeLessonWell() {
+    const strength = this._lessonWellStrength;
+    this._lessonWellStrength = null;
+    if (!Number.isFinite(strength)) return;
+    const system = this._fieldsSystem();
+    if (system && typeof system.updateExternal === 'function') {
+      system.updateExternal('swarm-opening-lesson-well', { strength });
     }
   },
 

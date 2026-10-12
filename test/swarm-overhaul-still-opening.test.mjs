@@ -18,3 +18,27 @@ test('the opening lesson room is still: currents wait for the lesson release', (
   sys._tickToys(1 / 60, sys.state);
   assert.equal(Math.hypot(ship.vel.x, ship.vel.z), 0, 'no shove before the pack is released');
 });
+
+test('the lesson well is planted asleep and wakes when the lesson releases the pack', async () => {
+  const { swarmArena } = await import('../src/systems/swarmArena.js');
+  const sys = Object.create(swarmArena);
+  const registered = [];
+  const updates = [];
+  const fields = {
+    registerEnvironmental: (spec) => { registered.push(spec); return spec; },
+    updateExternal: (id, patch) => { updates.push({ id, patch }); return true; },
+  };
+  sys._fieldsSystem = () => fields;
+  sys.state = { simTime: 0, tick: 0, entities: new Map(), entityList: [], player: { pos: { x: 0, z: 0 } } };
+  sys.helpers = null;
+  sys._ids = [];
+  sys._wellIds = [];
+  sys._installOpeningLesson({ holdTicks: 600, rock: { x: 78, z: 16, radius: 6 }, well: { x: -24, z: 108, radius: 96, strength: 90 } });
+  assert.equal(registered.length, 1);
+  assert.equal(registered[0].strength, 0, 'no pull before the pilot has the room');
+  sys._broodHeldUntil = 10;
+  sys._onOpeningLessonReleased();
+  assert.deepEqual(updates, [{ id: 'swarm-opening-lesson-well', patch: { strength: 90 } }]);
+  sys._onOpeningLessonReleased();
+  assert.equal(updates.length, 1, 'wakes once');
+});
