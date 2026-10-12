@@ -430,6 +430,9 @@ export function createBroodEngine(deps = {}) {
     // Arrivals land in open space: a body born inside a rock would die on its first tick and
     // pay out a kill the player never made.
     cacheRocks(state);
+    // ...and clear of the hulls already flying, so a clump never lands on a ship it would be
+    // plowed by on the first step.
+    cacheMovers(state);
     let spawned = 0;
     let groupIndex = 0;
     for (const part of pendingPlan) {
@@ -485,6 +488,17 @@ export function createBroodEngine(deps = {}) {
         const nz = d > 1e-6 ? dz / d : 0;
         ox = rockX[r] + nx * need;
         oz = rockZ[r] + nz * need;
+        moved = true;
+      }
+      for (let m = 0; m < movCount; m++) {
+        const dx = ox - movX[m];
+        const dz = oz - movZ[m];
+        const need = movRad[m] + rad + BROOD_SPAWN_ROCK_CLEARANCE;
+        const d2 = dx * dx + dz * dz;
+        if (d2 >= need * need) continue;
+        const d = Math.sqrt(d2);
+        ox = movX[m] + (d > 1e-6 ? dx / d : 1) * need;
+        oz = movZ[m] + (d > 1e-6 ? dz / d : 0) * need;
         moved = true;
       }
       if (!moved) break;

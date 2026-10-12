@@ -131,15 +131,21 @@ export function lawArenaBossDressing(arenaId, enemyId, role) {
 // Arrivals clear the field's rocks: a hull materialized inside a rock is shoved out by the
 // solver on its first tick and dies of the impact before the player has touched anything.
 const SPAWN_ROCK_CLEARANCE_WU = 24;
+const SPAWN_HULL_CLEARANCE_WU = 14;
 
 function clearOfRocks(state, pos) {
   const entities = state && state.entities;
   if (!entities || typeof entities.values !== 'function') return pos;
-  for (let pass = 0; pass < 3; pass++) {
+  for (let pass = 0; pass < 4; pass++) {
     let moved = false;
     for (const e of entities.values()) {
-      if (!e || e.type !== 'asteroid' || e.alive === false || !e.pos) continue;
-      const need = (Number.isFinite(e.radius) ? e.radius : 10) + SPAWN_ROCK_CLEARANCE_WU;
+      if (!e || e.alive === false || !e.pos) continue;
+      // Hulls of the same batch are obstacles too: two bodies born a unit apart are thrown
+      // apart at hundreds of u/s by the solver and pay out a pile-up the player never caused.
+      const hull = (e.type === 'ship' || e.type === 'drone') && e.id !== state.playerId;
+      if (e.type !== 'asteroid' && !hull) continue;
+      const need = (Number.isFinite(e.radius) ? e.radius : 10)
+        + (hull ? SPAWN_HULL_CLEARANCE_WU : SPAWN_ROCK_CLEARANCE_WU);
       const dx = pos.x - e.pos.x;
       const dz = pos.z - e.pos.z;
       const d2 = dx * dx + dz * dz;
