@@ -4,6 +4,7 @@
 
 import { createCombatCatalog, ensureCombatant } from '../../src/combat/runtime.js';
 import { readPhysicsTelemetry } from '../../src/core/physicsAuthority.js';
+import { getCombatKernel } from '../../src/combat/kernel.js';
 import { counterplayDoctrineById } from '../../src/ai/counterplay/catalog.js';
 import {
   applyCounterplayIntent,
@@ -83,7 +84,7 @@ export async function runCounterplayScenario(options = {}) {
         dynamic: row.dynamic,
         vel: row.vel,
         hull: row.hull,
-        data: { counterplayRole: row.role },
+        data: { counterplayRole: row.role, combatProfileId: 'combat_profile_tether_anchor' },
       });
       tag(entity, row.role);
       actors.set(row.role, entity);
@@ -104,6 +105,7 @@ export async function runCounterplayScenario(options = {}) {
     const memory = createCounterplayMemory(doctrine.id);
     const stats = freshStats(scene, opponent, patient, actors);
     stats.driveStart = driveStart;
+    stats.vitalStart = vitalStart;
     let lastPhase = '';
     const reloadAt = Number.isInteger(options.reloadAtTick) ? options.reloadAtTick : -1;
 
@@ -387,23 +389,20 @@ function refreshTetherLengths(tethers, actors) {
 
 function latch(host, tethers, owner, target, role, restScale, tick, restLength) {
   if (!owner || !target || owner.id === target.id) return false;
-  const id = `cp:${role}:${owner.id}:${target.id}`;
-  if (tethers.some((row) => row.id === id)) return true;
+  if (tethers.some((row) => row.ownerId === owner.id && row.targetId === target.id)) return true;
   const length = dist(owner.pos, target.pos);
   const rest = Number.isFinite(restLength) ? restLength : Math.max(18, length * (restScale || 1));
-  const physics = host.runtime.getHelpers().combatPhysics;
-  if (!physics || typeof physics.createAttachment !== 'function') return false;
-  const handle = physics.createAttachment({
-    attachmentId: id,
-    defId: 'tether_standard',
+  const kernel = getCombatKernel({ state: host.state, bus: host.bus, helpers: host.runtime.getHelpers() });
+  const result = kernel.attachments.create({
+    defId: 'attachment_massline',
     ownerId: owner.id,
     targetId: target.id,
     sourceWorld: { x: owner.pos.x, y: 0, z: owner.pos.z },
     targetWorld: { x: target.pos.x, y: 0, z: target.pos.z },
-    restLength: rest,
-    tick,
   });
-  if (!handle) return false;
+  if (!result.ok) return false;
+  const id = result.attachment.id;
+  if (Math.abs(rest - result.attachment.restLength) > 0.01) kernel.attachments.reel(id, rest - result.attachment.restLength, 18);
   tethers.push({
     id,
     ownerId: owner.id,
@@ -416,13 +415,12 @@ function latch(host, tethers, owner, target, role, restScale, tick, restLength) 
 }
 
 function cutRole(host, tethers, role, tick) {
-  const physics = host.runtime.getHelpers().combatPhysics;
-  if (!physics || typeof physics.cutAttachment !== 'function') return 0;
+  const kernel = getCombatKernel({ state: host.state, bus: host.bus, helpers: host.runtime.getHelpers() });
   let removed = 0;
   for (let i = tethers.length - 1; i >= 0; i -= 1) {
     if (role && tethers[i].role !== role) continue;
-    const ok = physics.cutAttachment({ attachmentId: tethers[i].id, reason: 'pilot_cut', tick });
-    if (ok) {
+    const result = kernel.attachments.cut(tethers[i].id, null, 'pilot_cut');
+    if (result.ok) {
       tethers.splice(i, 1);
       removed += 1;
     }

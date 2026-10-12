@@ -55,8 +55,22 @@ import { applyNpcFieldDeploy } from '../ai/npcFieldDeploy.js';
 import { stepEgressExits } from '../ai/egressExit.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { setThrusterHealth } from '../core/physicsAuthority.js';
+import { driveCounterplay, isCounterplayOwned, rebindCounterplayCast } from '../ai/counterplay/live.js';
+import { placeCounterplayAdventure, clearCounterplayAdventure } from '../ai/counterplay/adventure.js';
 
 const OWNERSHIP_REFRESH_TICKS = 3;
+function counterplayFreeRoster(base, stateProvider) {
+  if (!base) return base;
+  const filter = (rows) => {
+    const state = stateProvider();
+    if (!rows?.some((squad) => squad.members?.some((member) => isCounterplayOwned(state?.entities?.get(member.id), state)))) return rows;
+    return rows.map((squad) => ({ ...squad,
+      members: (squad.members || []).filter((member) => !isCounterplayOwned(state?.entities?.get(member.id), state)),
+    })).filter((squad) => squad.members.length);
+  };
+  return { ...base, listSquads: (tick) => filter(base.listSquads(tick)),
+    ...(base.liveListSquads ? { liveListSquads: (tick) => filter(base.liveListSquads(tick)) } : {}) };
+}
 const HEAVY_MASS_THRESHOLD = 150;
 // Stock doctrine id stamped by the enemy def (makeEnemySpawnSpec) for each roster id. The
 // identity stamp only upgrades a hull still carrying its stock id, so an encounter script,
@@ -230,6 +244,7 @@ export function createTacticalAISystem({
   const lifecycleUnsubscribes = [];
   const decisionIntervalTicks = runtimeDecisionInterval(runtimeConfig);
   let quietLatch = null;
+  let counterplayBindingVersion = -1;
 
   function ensureStack(state) {
     if (stack) return stack;
@@ -238,7 +253,7 @@ export function createTacticalAISystem({
     const baseManeuver = maneuver || helpers.aiManeuver;
     const ports = {
       sensors: sensors || helpers.aiSensors,
-      roster: roster || helpers.aiRoster,
+      roster: counterplayFreeRoster(roster || helpers.aiRoster, () => ctxRef.state),
       maneuver: heavyAwareManeuverPort(baseManeuver, () => ctxRef && ctxRef.state),
       encounter: encounter || helpers.aiEncounter || null,
       actions: guardCapitalBossActionPort(actionPortFactory(ctxRef), () => ctxRef.state),
@@ -318,6 +333,7 @@ export function createTacticalAISystem({
     lastManeuverRequests = [];
     lastDecisionEntityRefs.clear();
     quietLatch = null;
+    counterplayBindingVersion = -1;
     resetFirstSessionAttackerOwnership(ctxRef && ctxRef.state);
   }
 
@@ -373,6 +389,7 @@ export function createTacticalAISystem({
         ? entities.get(id)
         : null;
       if (entity && entityNeedsAiThink(entity, state) === false) continue;
+      if (isCounterplayOwned(entity, state)) continue;
       const sourceCurrent = entity?.data?.kilnback
         ? kilnbackDecision({ entityId: id, maneuver: request }, state).maneuver : request;
       maneuverPort.request(retickManeuverRequest(sourceCurrent, tick));
@@ -396,6 +413,7 @@ export function createTacticalAISystem({
           resetRuntime();
         });
         listenLifecycle(ctx.bus, 'save:loaded', resetRuntime);
+        listenLifecycle(ctx.bus, 'game:new', () => clearCounterplayAdventure(ctxRef));
         listenLifecycle(ctx.bus, 'entity:spawned', invalidateLifecycleEntity);
         listenLifecycle(ctx.bus, 'entity:destroyed', invalidateDestroyedLifecycleEntity);
       }
@@ -408,6 +426,12 @@ export function createTacticalAISystem({
     },
 
     update(_dt, state) {
+      if (productionPortDefaults) placeCounterplayAdventure(ctxRef);
+      const bindingVersion = entityIndexVersion(state);
+      if (bindingVersion !== counterplayBindingVersion) {
+        rebindCounterplayCast(state, state.entityList);
+        counterplayBindingVersion = bindingVersion;
+      }
       ensureActivityClassified(state);
       // Quiet latch: no non-player needs AI think → skip cohort stamp, squad/fodder steps, stack
       // update, and maneuver replay. Probe think interest every tick (nextEventAtT / pins can flip
@@ -416,7 +440,12 @@ export function createTacticalAISystem({
       // One classified scan per tick: every helper below walks the same shipLike view, so the list
       // is fetched once here and threaded through instead of re-scanning (and re-classifying each
       // entity) four to six times per fixed step.
-      const shipLikeList = indexedShipLikeScan(state);
+      const allShipLike = indexedShipLikeScan(state);
+      const hasCounterplay = allShipLike.some((entity) => isCounterplayOwned(entity, state));
+      const shipLikeList = hasCounterplay ? allShipLike.filter((entity) => !isCounterplayOwned(entity, state)) : allShipLike;
+      if (hasCounterplay) driveCounterplay({ ctx: ctxRef, entities: allShipLike,
+        sensorPort: sensors || ctxRef.helpers.aiSensors,
+        maneuverPort: heavyAwareManeuverPort(maneuver || ctxRef.helpers.aiManeuver, () => state) });
       // Egress exit bound runs ahead of the quiet latch: a latched-quiet world still owes its
       // fleeing hulls the 960 WU exit, and the pass is cadence-gated and cheap.
       stepEgressExits(state, shipLikeList, ctxRef && ctxRef.bus);
@@ -429,7 +458,7 @@ export function createTacticalAISystem({
           };
           lastManeuverRequests.length = 0;
           lastDecisionEntityRefs.clear();
-          publishTacticalAiQuiet(state, true);
+          publishTacticalAiQuiet(state, !hasCounterplay);
           return;
         }
         quietLatch = null;
@@ -617,6 +646,7 @@ export function revalidateCachedAIFiringIntents(liveStack, state, entityRefs = n
     const expectedEntity = entityRefs && typeof entityRefs.get === 'function' ? entityRefs.get(id) : null;
     if (expectedEntity && entity !== expectedEntity) continue;
     if (entity && entityNeedsAiThink(entity, state) === false) continue;
+    if (isCounterplayOwned(entity, state)) continue;
     applyMindAwareFiringIntent(palletJackDecision(kilnbackDecision(decision, state), state), state);
     applyNemesisFireGate(entity, state);
   }

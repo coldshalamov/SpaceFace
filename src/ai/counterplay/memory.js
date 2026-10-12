@@ -1,5 +1,5 @@
 // Serializable counterplay mind. Plain data only: a reload is JSON in, JSON out.
-// The live tactical stack does not own this object until the adapter in ADAPTER.md is applied.
+// The live tactical adapter preserves this object with its hull's ordinary data.ai save record.
 
 const MEMORY_VERSION = 1;
 

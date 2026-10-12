@@ -2,7 +2,7 @@
 // The arena boots the authoritative runtime. It does not start tacticalAI.
 
 import assert from 'node:assert/strict';
-import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { Worker } from 'node:worker_threads';
 import { CombatDoctrineId } from '../../../src/ai/combatDoctrine.js';
@@ -222,12 +222,6 @@ test('a decision stays inside a fraction of a millisecond', () => {
   }
   const per = (performance.now() - started) / n;
   assert.ok(per < 0.5, `decide averaged ${per.toFixed(3)} ms`);
-});
-
-test('tacticalAI does not import the unapplied adapter', () => {
-  const source = readFileSync(new URL('../../../src/systems/tacticalAI.js', import.meta.url), 'utf8');
-  assert.equal(source.includes('counterplay'), false);
-  assert.equal(ARENA_SYSTEM_NAMES.includes('tacticalAI'), false);
 });
 
 test('held-out arena separates counters and stays on the real physics', async () => {

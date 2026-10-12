@@ -39,6 +39,7 @@ function aimAt(self, target) {
 }
 
 export function pilotIntent(pilotId, ctx) {
+  if (pilotId === 'stationary') return toInput(ctx.player, holdManeuver(ctx.player));
   if (ctx.scene && ctx.scene.doctrineId === 'cp_feint_break_courier' && ctx.scene.tape === 'resists') {
     const feint = ctx.scene.objective && ctx.scene.objective.feint;
     return toInput(ctx.player, feint

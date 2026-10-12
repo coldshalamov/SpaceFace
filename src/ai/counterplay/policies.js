@@ -551,6 +551,13 @@ export function policyCollateralHold(ctx) {
       goal: goal('collateral', 0.2),
     });
   }
+  if (!Number.isInteger(memory.notes.clearSince)) memory.notes.clearSince = tick;
+  if (tick - memory.notes.clearSince < TELEGRAPH_TICKS) {
+    enter(memory, tick, 'show_clear_lane');
+    return pack(doctrine, tick, 'show_clear_lane', { self, maneuver: holdManeuver(self),
+      telegraph: telegraph(doctrine.telegraphKind, memory.notes.clearSince),
+      explain: 'Showing the clear lane before requesting a shot.', goal: goal('collateral', 0.3) });
+  }
   enter(memory, tick, 'fire');
   const want = dist(self.pos, player.pos) < 230 && tick >= 60 && noseOn(self, player);
   return pack(doctrine, tick, 'fire', {
@@ -567,6 +574,17 @@ export function policyCoverPeel(ctx) {
   const player = contactByRole(ctx.sensed, 'player');
   const rock = (ctx.sensed.obstacles || []).find((row) => row && row.role === 'cover')
     || (objective && objective.cover ? { pos: objective.cover, radius: objective.coverRadius || 26, role: 'cover' } : null);
+  if (!player && rock && objective?.peel) {
+    const lived = enter(memory, tick, 'probe_peel');
+    return pack(doctrine, tick, 'probe_peel', {
+      self, attack: null,
+      maneuver: lived < TELEGRAPH_TICKS ? holdManeuver(self) : steerToward(self, objective.peel, { arrive: 24, brakeDist: 32 }),
+      telegraph: lived < TELEGRAPH_TICKS ? telegraph(doctrine.telegraphKind, memory.phaseSince) : null,
+      cue: { kind: doctrine.telegraphKind, peel: objective.peel },
+      explain: 'No sighting through cover. Probing the charted peek without firing.',
+      goal: goal('cover', Math.max(0, 1 - dist(self.pos, objective.peel) / 200) * 0.3),
+    });
+  }
   if (!player || !rock) {
     enter(memory, tick, 'search');
     const hide = pointOf(objective && objective.hide);

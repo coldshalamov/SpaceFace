@@ -79,7 +79,7 @@ export function limitKnowledge(world, doctrine, memory, tick) {
     if (!copy || copy.alive === false) continue;
     const dist = Math.hypot(copy.pos.x - origin.x, copy.pos.z - origin.z);
     if (dist > range) continue;
-    if (segmentBlocked(origin, copy.pos, obstacles, 0)) continue;
+    if (segmentBlocked(origin, copy.pos, obstacles.filter((obstacle) => obstacle.id !== copy.id), 0)) continue;
     contacts.push(copy);
   }
   const tethers = [];

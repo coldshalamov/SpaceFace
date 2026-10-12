@@ -243,6 +243,7 @@ function layoutFor(id, s, scale, jx, jz) {
         cover,
         coverRadius: 30,
         hide: { x: cover.x + 58, z: cover.z },
+        peel: { x: cover.x + 70, z: cover.z + 80 },
         player: { x: cover.x - 90, z: cover.z },
       },
     };

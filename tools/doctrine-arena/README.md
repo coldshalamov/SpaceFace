@@ -10,4 +10,6 @@ node --test tools/doctrine-arena/test/counterplay.test.mjs
 ```
 
 Held-out seeds are `101`, `409`, `1601`. Development seeds are `17`, `43`, `89`.
-The global AI adapter is described in `src/ai/counterplay/ADAPTER.md` and is not applied.
+The production tactical adapter is active and described in `src/ai/counterplay/ADAPTER.md`.
+`test/counterplay-production.test.mjs` covers the live tactical owner and native physical verbs.
+Use `--pilot=stationary` for a fixed target when probing physical shot outcomes.
