@@ -356,8 +356,10 @@ const SCREEN_CSS = `
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml-cadence { width:100%!important; padding:9px 12px 8px!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml-cadence :is(.ml-cadence__stats,.ml-cadence__hint) { display:none!important; }
  :root[data-sf-mobile-wheel="1"] .ml2-cadence-slot { opacity:0!important; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { right:auto!important; left:calc(14px + var(--sf-safe-left,0px))!important; width:max(120px, calc(100vw - var(--mf-cluster-w,196px) - 56px))!important; max-width:none!important; }
- /* receipts are information on a phone: they sit where the stick thumb lives, so they must never catch a touch */
+ /* Receipts grow upward above the stick and Dock key. Keep the power handle's edge clear;
+    the cluster width also carries the player's control-size setting into this reserved lane. */
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { right:auto!important; left:calc(14px + var(--sf-safe-left,0px))!important; top:auto!important; bottom:calc(max(224px,94px + var(--mf-cluster-w,196px) * .8) + var(--sf-safe-bottom,0px))!important; width:min(320px,calc(100vw - 26px - max(58px,var(--mf-cluster-w,196px) * .25) - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)))!important; max-width:none!important; }
+ /* Receipts remain information, so a touch through their text still starts the flight stick. */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] :is(#toasts,#toasts *) { pointer-events:none!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-lefty="1"][data-sf-mobile-flight="1"] #toasts { left:auto!important; right:calc(14px + var(--sf-safe-right,0px))!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud :is(.sf-contact-hail__button,.sf-comm-backlog-btn) { min-height:40px; min-width:60px; pointer-events:auto; }
@@ -383,6 +385,7 @@ const SCREEN_CSS = `
  :root[data-sf-mobile="1"] .dp-frame__head { flex:none; }
 }
 @media (max-height:500px) {
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #toasts { bottom:calc(max(182px,84px + var(--mf-cluster-w,196px) * .675) + var(--sf-safe-bottom,0px))!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-radar-wrap { top:56px!important; transform:scale(.4)!important; }
  /* landscape has the width: alerts return to the top centre, the right dock sits left of the pause key */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #alerts { transform:none!important; }
