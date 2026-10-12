@@ -42,6 +42,7 @@ import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { validateRunState } from '../core/runState.js';
 import { createBroodEngine } from './swarmBrood.js';
+import { OPENING_LESSON_RELEASE_TICKS } from './survivalWave.js';
 import { BROOD_EXPLOSION_EVENTS } from '../data/swarmBrood.js';
 import {
   SWARM_BREATH_SECONDS,
@@ -94,6 +95,39 @@ import {
 export const SWARM_DEBRIS_TAG = 'swarmArenaDebris';
 /** Optic lattices are a rigid stamp, not debris. Census must not release them as leftover cover. */
 export const SWARM_OPTIC_TAG = 'swarmArenaOptic';
+
+const WELL_SOLID_TYPES = new Set(['asteroid', 'wreck', 'station']);
+
+/**
+ * The teaching well is planted where it pulls nothing at rest. A well dropped over the optic
+ * lattice or the debris field drags that furniture into motion before the player has touched a
+ * key — the rocks fly, plow the room and the round "plays itself". Keep the authored distance,
+ * walk the bearing round the pilot, and take the first disc with no solid inside it (or, failing
+ * that, the disc holding the least mass).
+ */
+export function quietWellCenter(state, anchor, offset, radius) {
+  const list = state && Array.isArray(state.entityList) ? state.entityList : [];
+  const dist = Math.hypot(offset.x, offset.z);
+  const base = Math.atan2(offset.z, offset.x);
+  let best = null;
+  let bestMass = Infinity;
+  for (let k = 0; k < 16; k++) {
+    const turn = (k % 2 === 0 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 8);
+    const x = anchor.x + Math.cos(base + turn) * dist;
+    const z = anchor.z + Math.sin(base + turn) * dist;
+    let mass = 0;
+    for (const e of list) {
+      if (!e || e.alive === false || !e.pos || !WELL_SOLID_TYPES.has(e.type) || e.collides === false) continue;
+      const reach = radius + (Number.isFinite(e.radius) ? e.radius : 0);
+      const dx = e.pos.x - x;
+      const dz = e.pos.z - z;
+      if (dx * dx + dz * dz < reach * reach) mass += Number.isFinite(e.mass) ? e.mass : 1;
+    }
+    if (mass === 0) return { x, z };
+    if (mass < bestMass) { bestMass = mass; best = { x, z }; }
+  }
+  return best || { x: anchor.x + offset.x, z: anchor.z + offset.z };
+}
 /** Restamp only after the fight has left the lattice. Closer than this, the same rocks stay. */
 const SWARM_OPTIC_RESTAMP = 520;
 
@@ -524,7 +558,10 @@ export const swarmArena = {
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
     this._unsubs.push(this.bus.on('entity:destroyed', () => this._onPressureDestroyed()));
     this._unsubs.push(this.bus.on('physics:impact', (p) => this._onDebrisImpact(p)));
+    this._unsubs.push(this.bus.on('run:openingLessonReleased', () => this._onOpeningLessonReleased()));
     this._unsubs.push(this.bus.on('run:ended', () => {
+      this._broodHeldUntil = null;
+      this._lessonHoldS = null;
       if (this._brood) this._brood.clear('run_ended');
       this._hiveRelease('run_ended');
       this._millOres.clear();
@@ -559,6 +596,8 @@ export const swarmArena = {
     this._terrainRetry = false;
     this._lessonRockId = null;
     this._wallWave = 0;
+    this._broodHeldUntil = null;
+    this._lessonHoldS = null;
     if (this._brood) this._brood.clear('new_game');
     this._hiveRelease('new_game');
     if (this._millOres) this._millOres.clear();
@@ -574,8 +613,13 @@ export const swarmArena = {
     const state = this.state;
     // SWARM-07 B1 — the Brood step runs on the same fixed tick as the room's own housekeeping.
     // The engine re-gates on the live swarm run, the active phase and flight mode itself.
-    if (this._brood) this._brood.step(state);
     const run = liveSwarmRun(state);
+    if (this._broodHeldUntil != null && run && run.phase === 'active' && state.mode === 'flight'
+      && (state.simTime || 0) >= this._broodHeldUntil) {
+      this._broodHeldUntil = null;
+      if (this._brood) this._brood.spawnWave(state);
+    }
+    if (this._brood) this._brood.step(state);
     if (!run || run.phase !== 'active' || state.mode !== 'flight') return;
     // B4 — the Hive breathes on the same fixed tick: walls grow, sacs pulse, acid drips.
     if (run.arenaId === HIVE_ARENA_ID) this._hiveTick(state, run);
@@ -617,6 +661,9 @@ export const swarmArena = {
     this._topUp(run, wave);
     this._installSlalomWells(run);
     const lesson = payload && payload.plan && payload.plan.openingLesson;
+    this._lessonHoldS = lesson && wave <= 1 && Number.isFinite(lesson.holdTicks) && lesson.holdTicks > 0
+      ? lesson.holdTicks / 60
+      : null;
     if (lesson && wave <= 1) this._installOpeningLesson(lesson);
     const massGap = payload && payload.plan && payload.plan.swarm && payload.plan.swarm.massGap;
     if (massGap) this._installMassGapWall(massGap, wave);
@@ -625,11 +672,22 @@ export const swarmArena = {
   _onWaveStarted() {
     const run = liveSwarmRun(this.state);
     if (!run) return;
-    // SWARM-07 B1 — the fight goes live; the planned cohort arrives around the pilot.
-    if (this._brood) this._brood.spawnWave(this.state);
+    // SWARM-07 B1 — the fight goes live; the planned cohort arrives around the pilot. The
+    // opening lesson holds the brood with the rest of the pack: one hull on the field means one.
+    const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    if (this._lessonHoldS != null) {
+      this._broodHeldUntil = now + this._lessonHoldS;
+      this._lessonHoldS = null;
+    } else if (this._brood) this._brood.spawnWave(this.state);
     // B4 — the Hive's room lands with the wave: first wall ring standing, sacs pulsing.
     if (run.arenaId === HIVE_ARENA_ID) this._hiveInstall(run);
     this._pressureAlive = liveCohortCount(this.state);
+  },
+
+  _onOpeningLessonReleased() {
+    if (this._broodHeldUntil == null) return;
+    const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    this._broodHeldUntil = Math.min(this._broodHeldUntil, now + OPENING_LESSON_RELEASE_TICKS / 60);
   },
 
   _onPressureDestroyed() {
@@ -1251,14 +1309,15 @@ export const swarmArena = {
       && !(this._wellIds || []).includes('swarm-opening-lesson-well')) {
       const id = 'swarm-opening-lesson-well';
       const createdAt = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+      const wellRadius = Number.isFinite(well.radius) ? well.radius : 96;
       const record = system.registerEnvironmental({
         id,
         kind: 'well',
-        center: {
-          x: anchor.x + (Number.isFinite(well.x) ? well.x : -24),
-          z: anchor.z + (Number.isFinite(well.z) ? well.z : 108),
-        },
-        radius: Number.isFinite(well.radius) ? well.radius : 96,
+        center: quietWellCenter(this.state, anchor, {
+          x: Number.isFinite(well.x) ? well.x : -24,
+          z: Number.isFinite(well.z) ? well.z : 108,
+        }, wellRadius),
+        radius: wellRadius,
         strength: Number.isFinite(well.strength) ? well.strength : 90,
         falloff: Number.isFinite(well.falloff) ? well.falloff : 1.35,
         createdAt,

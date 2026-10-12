@@ -316,6 +316,12 @@ export const BROOD_DRAG_PER_S = 0.55;
 /** Contact death: a body dies when a moving solid this much heavier comes this fast. */
 export const BROOD_PLOW_MIN_SPEED = 26;
 export const BROOD_PLOW_MIN_MASS = 30;
+/** Terrain death: a body only dies on a STILL rock when it hits it this many times faster than
+ *  its family cruises — flung by a blast, a well or a charge. A body steering itself into a rock
+ *  slides along it: the room kills what the player throws at it, not what wanders into it. */
+export const BROOD_TERRAIN_SLAM_FACTOR = 1.5;
+/** Arrival clearance (wu) between a fresh body and any rock surface. */
+export const BROOD_SPAWN_ROCK_CLEARANCE = 8;
 /** The whip line sweeps brood aside (and shreds when the swing is solid). */
 export const BROOD_WHIP_KILL_SPEED = 60;
 export const BROOD_WHIP_BAT_SPEED = 34;

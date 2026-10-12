@@ -71,6 +71,8 @@ import {
   BROOD_PLASMA_TYPE,
   BROOD_PLOW_MIN_MASS,
   BROOD_PLOW_MIN_SPEED,
+  BROOD_SPAWN_ROCK_CLEARANCE,
+  BROOD_TERRAIN_SLAM_FACTOR,
   BROOD_PLAYER_RAM_SPEED,
   BROOD_POOL_MAX,
   BROOD_SEP_RADIUS,
@@ -425,6 +427,9 @@ export function createBroodEngine(deps = {}) {
     const az = finite(player && player.pos && player.pos.z);
     const familyIndex = buildFamilyIndex();
     const distance = 165;
+    // Arrivals land in open space: a body born inside a rock would die on its first tick and
+    // pay out a kill the player never made.
+    cacheRocks(state);
     let spawned = 0;
     let groupIndex = 0;
     for (const part of pendingPlan) {
@@ -451,7 +456,8 @@ export function createBroodEngine(deps = {}) {
           if (slot < 0) { pendingPlan = null; publish(); return spawned; } // the cap is the law
           const a = rng() * Math.PI * 2;
           const r = Math.sqrt(rng()) * 30;
-          spawnAt(slot, famIdx, cx + Math.cos(a) * r, cz + Math.sin(a) * r);
+          const open = clearOfRocks(cx + Math.cos(a) * r, cz + Math.sin(a) * r, liveFamilyRadius[famIdx]);
+          spawnAt(slot, famIdx, open.x, open.z);
           spawned += 1;
         }
       }
@@ -459,6 +465,33 @@ export function createBroodEngine(deps = {}) {
     pendingPlan = null;
     publish();
     return spawned;
+  }
+
+  const openScratch = { x: 0, z: 0 };
+  /** Push a point out of every cached rock (a few passes settle neighbours that overlap). */
+  function clearOfRocks(x, z, rad) {
+    let ox = x;
+    let oz = z;
+    for (let pass = 0; pass < 4; pass++) {
+      let moved = false;
+      for (let r = 0; r < rockCount; r++) {
+        const dx = ox - rockX[r];
+        const dz = oz - rockZ[r];
+        const need = rockR[r] + rad + BROOD_SPAWN_ROCK_CLEARANCE;
+        const d2 = dx * dx + dz * dz;
+        if (d2 >= need * need) continue;
+        const d = Math.sqrt(d2);
+        const nx = d > 1e-6 ? dx / d : 1;
+        const nz = d > 1e-6 ? dz / d : 0;
+        ox = rockX[r] + nx * need;
+        oz = rockZ[r] + nz * need;
+        moved = true;
+      }
+      if (!moved) break;
+    }
+    openScratch.x = ox;
+    openScratch.z = oz;
+    return openScratch;
   }
 
   function spawnAt(slot, famIdx, x, z) {
@@ -730,8 +763,28 @@ export function createBroodEngine(deps = {}) {
         if (dx * dx + dz * dz > rr * rr) continue;
         const relx = rockVX[r] - vx[i];
         const relz = rockVZ[r] - vz[i];
-        const moving = relx * relx + relz * relz >= BROOD_PLOW_MIN_SPEED * BROOD_PLOW_MIN_SPEED;
-        kill(i, moving ? 'collision' : 'terrain', px[i], pz[i]);
+        const rel2 = relx * relx + relz * relz;
+        const moving = rel2 >= BROOD_PLOW_MIN_SPEED * BROOD_PLOW_MIN_SPEED;
+        const slam = liveFamilySpeed[fam] * BROOD_TERRAIN_SLAM_FACTOR;
+        if (moving && (rockVX[r] * rockVX[r] + rockVZ[r] * rockVZ[r]) >= BROOD_PLOW_MIN_SPEED * BROOD_PLOW_MIN_SPEED) {
+          kill(i, 'collision', px[i], pz[i]);
+          break;
+        }
+        if (rel2 >= slam * slam) {
+          kill(i, 'terrain', px[i], pz[i]);
+          break;
+        }
+        // A body under its own steering meets the rock and slides along its face.
+        const d = Math.sqrt(dx * dx + dz * dz);
+        const nx = d > 1e-6 ? dx / d : 1;
+        const nz = d > 1e-6 ? dz / d : 0;
+        px[i] = rockX[r] + nx * rr;
+        pz[i] = rockZ[r] + nz * rr;
+        const into = (vx[i] - rockVX[r]) * nx + (vz[i] - rockVZ[r]) * nz;
+        if (into < 0) {
+          vx[i] -= into * nx;
+          vz[i] -= into * nz;
+        }
         break;
       }
       if (!alive[i]) continue;
