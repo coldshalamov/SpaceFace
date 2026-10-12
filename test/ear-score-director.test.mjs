@@ -171,3 +171,22 @@ test('a sector jump out of a fight opens the new sector with its arrival, not th
   assert.ok(phases.has('arrival'));
   assert.equal(frames.at(-1).sectorId, 'sector_ceres_belt');
 });
+
+test('the aftermath hush waits for contact to release: a hunter lingering after the exchange holds it back', () => {
+  const d = createScoreDirector();
+  d.step(helios, 0);
+  const { t } = run(d, [
+    [20, helios],
+    [6, { ...helios, threat: 0.8, inCombat: true }],
+    [AFTERMATH_S + 4, { ...helios, threat: 0.4 }],
+  ]);
+  const held = d.step({ ...helios, threat: 0.4 }, t);
+  assert.equal(held.phase, 'threat', 'a circling hunter keeps the score in threat');
+  const { frames } = run(d, [[AFTERMATH_S + 2, helios]], t + 0.1);
+  const after = frames.filter((f) => f.phase === 'aftermath');
+  assert.ok(after.length > 0, 'the respite still arrives after a long standoff');
+  const first = after[0];
+  assert.ok(first.since - t < 1, 'aftermath opens as contact releases');
+  assert.ok(after.at(-1).since === first.since && after.length * 0.1 > AFTERMATH_S * 0.8,
+    'the full hush plays out instead of being spent under the standoff');
+});

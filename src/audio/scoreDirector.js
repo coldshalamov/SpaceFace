@@ -277,7 +277,7 @@ export function createScoreDirector(options = {}) {
   const mem = {
     t: null, phase: 'travel', phaseSince: 0, sectorId: undefined, docked: false,
     intensity: 0.2, peak: 0, lastFightAt: -Infinity, fightSector: undefined, arrivalAt: -Infinity, departureAt: -Infinity,
-    threatLatched: false, anchor: 0, t0: 0, pendingPhase: null, pendingSince: 0, transitionAt: 0, frame: null, transitions: 0,
+    threatLatched: false, aftermathArmed: false, anchor: 0, t0: 0, pendingPhase: null, pendingSince: 0, transitionAt: 0, frame: null, transitions: 0,
   };
 
   function choosePhase(input, now, allowAftermath) {
@@ -307,7 +307,9 @@ export function createScoreDirector(options = {}) {
     mem.docked = docked;
 
     const prevPhase = mem.phase;
-    if (prevPhase === 'fight') mem.lastFightAt = now;
+    // The aftermath clock starts when contact releases, not when the last shot lands: a hunter still
+    // circling after the exchange (threat) holds the respite back so the hush is not spent under it.
+    if (prevPhase === 'fight' || (prevPhase === 'threat' && mem.aftermathArmed)) mem.lastFightAt = now;
     // Aftermath only follows the fight it resolves, in the sector it was fought: docking or a
     // sector jump closes the story and the new place opens with its own arrival.
     const allowAftermath = mem.fightSector === sectorId
@@ -327,10 +329,12 @@ export function createScoreDirector(options = {}) {
     }
     if (phase === 'fight') {
       mem.lastFightAt = now;
+      mem.aftermathArmed = true;
       if (candidate === 'fight') mem.fightSector = sectorId;
       mem.peak = Math.max(mem.peak, clamp01(input.threat), clamp01(input.swarmLift));
     } else if (phase !== 'aftermath' && phase !== 'threat') {
       mem.peak = 0;
+      mem.aftermathArmed = false;
     }
     const identityRow = resolveScoreIdentity(sectorId);
     const bpm = phaseBpm(phase, identityRow);
