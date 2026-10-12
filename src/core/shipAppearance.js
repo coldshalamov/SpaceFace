@@ -1,3 +1,5 @@
+import { crowdLiveryForEntity } from '../data/crowdLiveries.js';
+
 export const SHIP_APPEARANCE_VERSION = 1;
 export const SHIP_FINISHES = Object.freeze(['worn', 'satin', 'polished']);
 export const SHIP_DECALS = Object.freeze(['none', 'borrowed_time', 'concord', 'industrial', 'frontier']);
@@ -58,7 +60,20 @@ export function paletteWithShipAppearance(entity, basePalette) {
     appearanceAccentOverride: false,
   };
   const raw = entity && entity.data && entity.data.appearance;
-  if (!raw) return base;
+  if (!raw) {
+    // C12 crowd livery (ID-V): factioned NPC hulls without an authored appearance wear a
+    // deterministic per-faction texture set. Palette-level material treatment only — the
+    // player (team 0) and stations are ineligible, so nothing here touches player paint.
+    const livery = crowdLiveryForEntity(entity);
+    if (livery) {
+      base.hull = livery.hullColor || base.hull;
+      base.accent = livery.accentColor || base.accent;
+      base.finish = livery.finish;
+      base.wear = livery.wear;
+      base.crowdLiveryId = livery.id;
+    }
+    return base;
+  }
   const defId = entity && entity.data && entity.data.defId;
   const appearance = normalizeShipAppearance(raw, defId);
   if (appearance.hullColor) {
