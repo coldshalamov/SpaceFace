@@ -20,7 +20,7 @@ import { localizeText } from '../../localization/gameLocalization.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { entitySpanHtml } from '../entityResolver.js';
 import { escapeHtml } from '../comms.js';
-import { requestQuit } from '../quitGame.js';
+import { canQuit, requestQuit } from '../quitGame.js';
 import { laneSetMode } from '../../core/simLaneCommands.js';
 import { IS_DEV } from '../../core/devMode.js';
 import { CREDITS } from '../../data/credits.js';
@@ -1021,7 +1021,8 @@ export const pauseScreen = {
       if (ok) this._toMenu(ctx);
     }, { danger: true, group: 'Exit', bank: true, icon: 'undock' });
 
-    mk(coreText('quitGame'), async () => {
+    // Web build: Main Menu above is the way out; Quit Game is offered only where the shell can quit.
+    if (canQuit()) mk(coreText('quitGame'), async () => {
       const lines = pauseStatusLines(ctx && ctx.state);
       const ok = await confirm({
         title: 'Quit game?',
