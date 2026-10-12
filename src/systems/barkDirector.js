@@ -19,7 +19,9 @@ import {
   trafficRoleHail,
   tumbleRakeBarkFor,
   witnessCrimeBarkFor,
+  zoneChatterBarkFor,
 } from '../data/barks.js';
+import { zoneAt } from '../data/sectorZones.js';
 import { aceTrophyBarkFor } from '../data/conflictReactions.js';
 import { SECTORS, trophyFromFittings } from '../data/sectors.js';
 import { aceById, factionHistoryFromMemory } from '../data/namedAces.js';
@@ -64,6 +66,11 @@ const PLAYER_TEAM = 0;
 export const POST_COMBAT_SILENCE_S = 8.0;
 export const AMBIENT_BASE_GAP_S = 12.0;
 export const AMBIENT_GAP_STEP_S = 12.0;
+// Zone chatter cadence (ID-V): the overheard-radio layer speaks at most once per this
+// many seconds per zone. It does NOT ride the ambient hail floor — consuming the floor
+// would starve patrol greetings (check:bark-silence pins that contract); its own slower
+// gap is what keeps the channel from feeling canned.
+export const ZONE_CHATTER_GAP_S = 48;
 
 /** One line in the contestant's register. Null when the event is not a contest. */
 export function npcCounterplayBark(payload) {
@@ -760,6 +767,8 @@ export const barkDirector = {
       }
       if (this._hailPassingTraffic(entity, state, player)) spoke = true;
     });
+
+    if (this._zoneChatter(state, player)) spoke = true;
 
     if (BARK_DIRECTOR_QUIET_LATCH !== false) {
       const nearMissBusy = !!(this._bodyNearMisses && this._bodyNearMisses.size);
@@ -1569,6 +1578,83 @@ export const barkDirector = {
       this.bus.emit('npc:hailed', { entityId: entity.id, simTime: state.simTime });
     }
     return !!accepted;
+  },
+
+  /**
+   * ZONE CHATTER (audit Z.1 / ID-V) — the overheard-radio layer. When the player is inside
+   * an authored zone and the ambient channel floor is open, a real hull in the zone speaks
+   * a line resolved against the live census: every {actor} it names is a hull actually
+   * present, {site} a real station entity, {zone}/{sector} the authored names. Rides the
+   * same ambient decay record as other floor traffic, so it paces like the rest of the
+   * channel instead of stacking on top of it.
+   */
+  _zoneChatter(state, player) {
+    if (!state || !player || !player.pos) return false;
+    const sectorId = currentSectorId(state);
+    const zone = zoneAt(sectorId, player.pos.x, player.pos.z);
+    if (!zone || !zone.type) return false;
+    const now = Number(state.simTime) || 0;
+    const own = ensureState(state);
+    // Post-combat quiet and the per-zone cadence gate this layer — not the ambient floor.
+    if (now < (Number(own.postCombatSilenceUntil) || 0)) return false;
+    if (!own.zoneChatter) own.zoneChatter = {};
+    const lastChatterAt = own.zoneChatter[zone.id];
+    if (Number.isFinite(lastChatterAt) && lastChatterAt + ZONE_CHATTER_GAP_S > now) return false;
+
+    // Live census: living ships/drones inside this zone, non-hostile to the player.
+    // Any hostile presence in the zone makes it a hot channel — no small talk.
+    const radius = Number(zone.radius) || 0;
+    const census = [];
+    let hostileInZone = false;
+    if (radius > 0) {
+      forEachLivingWorldActor(state, (entity) => {
+        if (!entity || entity === player || entity.id === state.playerId) return;
+        if (!entity.pos) return;
+        const dx = entity.pos.x - zone.center.x;
+        const dz = entity.pos.z - zone.center.z;
+        if (dx * dx + dz * dz > radius * radius) return;
+        if (isHostileToPlayer(entity, PLAYER_TEAM, state)) { hostileInZone = true; return; }
+        census.push(entity);
+      });
+    }
+    if (hostileInZone || !census.length) return false;
+
+    const seed = state.meta && state.meta.seed;
+    const speaker = census[hash32(seed == null ? 0 : seed, 'zoneChatter', zone.id, 'speaker', String(census.length)) % census.length];
+    const referents = census.filter((e) => e !== speaker);
+    const tokens = {
+      zone: zone.name,
+      sector: sectorNameFor(sectorId),
+      site: nearestSiteName(state, zone, sectorId),
+      actor: referents.length ? chatterNameFor(referents[hash32(seed == null ? 0 : seed, 'zoneChatter', zone.id, String(speaker.id), 'referent') % referents.length]) : null,
+      actor2: referents.length > 1 ? chatterNameFor(referents[hash32(seed == null ? 0 : seed, 'zoneChatter', zone.id, String(speaker.id), 'referent2') % referents.length]) : null,
+    };
+    const index = hash32(seed == null ? 0 : seed, 'zoneChatter', zone.id, String(speaker.id));
+    const text = zoneChatterBarkFor(zone.type, index, tokens);
+    if (!text) return false;
+
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return false;
+    const factionId = factionFor(speaker);
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'zoneChatter',
+      ttl: VOICE_TTL_S,
+      id: `barkDirector:${speaker.id}:zone-chatter`,
+      factionId,
+      register: 'zone-chatter',
+    });
+    if (!accepted) return false;
+    own.zoneChatter[zone.id] = now;
+    const receipt = {
+      entityId: speaker.id, text, t: now,
+      zoneId: zone.id, zoneType: zone.type, register: 'zone-chatter', factionId,
+    };
+    // Zone chatter is its own receipt channel: the 'barkDirector:voice' log counts
+    // situation barks (scan/taunt/attack) and must not absorb ambient layer receipts.
+    this._emit('barkDirector:zone-chatter', receipt);
+    return true;
   },
 
   _speakTouristHail(entity) {
@@ -2879,6 +2965,40 @@ function rememberSuppressed(own, entity, situation, now, until, reason) {
     until,
   });
   if (own.suppressed.length > 16) own.suppressed.shift();
+}
+
+/** Zone-chatter helpers — the channel's names must come from the live census. */
+function chatterNameFor(entity) {
+  const d = entity && entity.data;
+  return (d && (d.callsign || d.trafficLabel || d.scanLabel)) || (entity && entity.name) || 'unidentified hull';
+}
+
+function sectorNameFor(sectorId) {
+  const def = SECTORS.find((s) => s && s.id === sectorId);
+  return (def && def.name) || sectorId;
+}
+
+/** Nearest live station entity to the zone center; falls back to the sector's first authored station name. */
+function nearestSiteName(state, zone, sectorId) {
+  let best = null;
+  let bestD = Infinity;
+  if (state && state.entities && typeof state.entities.get === 'function' && zone && zone.center) {
+    for (const e of state.entities.values()) {
+      if (!e || e.alive === false || !e.pos) continue;
+      if (e.type !== 'station') continue;
+      const dx = e.pos.x - zone.center.x;
+      const dz = e.pos.z - zone.center.z;
+      const d = dx * dx + dz * dz;
+      if (d < bestD) { bestD = d; best = e; }
+    }
+  }
+  if (best) {
+    const d = best.data;
+    return (d && (d.name || d.label)) || best.name || null;
+  }
+  const def = SECTORS.find((s) => s && s.id === sectorId);
+  const st = def && Array.isArray(def.stations) && def.stations[0];
+  return (st && st.name) || null;
 }
 
 export default barkDirector;
