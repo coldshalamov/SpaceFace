@@ -25,6 +25,11 @@ export const LOD_THRESHOLDS = Object.freeze({
 // levels every frame. Spec §12.4: "Use hysteresis ... where practical."
 const HYSTERESIS_PX = 25;
 
+// Dwell (seconds). A level change must hold for this long before it is presented, so a combat
+// camera breathing its zoom across a boundary cannot swap a rock's model several times a second.
+// Applies only when the caller passes a clock; the first resolve commits at once.
+export const LOD_DWELL_S = 0.75;
+
 const _v = new THREE.Vector3();
 const _camPos = new THREE.Vector3();
 
@@ -69,12 +74,16 @@ export function projectedWidthPx(pos, radius, camera, viewport) {
 export function createLodState() {
   let level = 'lod0';
   let lastPx = Infinity;
+  let pendingLevel = null;
+  let pendingSince = 0;
   return {
     get level() { return level; },
     get lastPx() { return lastPx; },
-    resolve(px) {
+    resolve(px, nowS) {
       const width = Number(px);
       if (!Number.isFinite(width)) return level;
+      const timed = Number.isFinite(nowS) && lastPx !== Infinity;
+      const presented = level;
       // Hysteresis: only change level when px moves HYSTERESIS_PX past the current level's boundary.
       if (level === 'lod0') {
         if (width < LOD_THRESHOLDS.LOD0_ABOVE - HYSTERESIS_PX) level = 'lod1';
@@ -85,6 +94,19 @@ export function createLodState() {
         if (width > LOD_THRESHOLDS.LOD2_BELOW + HYSTERESIS_PX) level = 'lod1';
       }
       lastPx = width;
+      if (!timed || level === presented) {
+        pendingLevel = null;
+        return level;
+      }
+      if (pendingLevel !== level) {
+        pendingLevel = level;
+        pendingSince = nowS;
+      }
+      if (nowS - pendingSince < LOD_DWELL_S) {
+        level = presented;
+        return level;
+      }
+      pendingLevel = null;
       return level;
     },
     // Seed continuity when a swap rebinding hands the boundary a different root's resolver:
@@ -94,6 +116,7 @@ export function createLodState() {
     adopt(nextLevel, px) {
       if (nextLevel === 'lod0' || nextLevel === 'lod1' || nextLevel === 'lod2') level = nextLevel;
       if (Number.isFinite(px)) lastPx = px;
+      pendingLevel = null;
     },
   };
 }

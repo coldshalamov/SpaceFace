@@ -279,7 +279,8 @@ function createFormationRecord(background) {
     const phaseZ = uniforms.uPhaseZ.value;
     let lit = false;
     for (let i = 0; i < FAMILIES; i++) {
-      const target = i === next ? STELLAR_FORMATIONS[i].intensity : 0;
+      const focus = Number.isFinite(background.arenaFocus) ? background.arenaFocus : 1;
+      const target = i === next ? STELLAR_FORMATIONS[i].intensity * focus : 0;
       weights[i] += (target - weights[i]) * ease;
       if (weights[i] < WEIGHT_DARK) weights[i] = 0;
       else lit = true;
