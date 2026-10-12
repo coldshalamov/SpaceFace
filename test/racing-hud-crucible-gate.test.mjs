@@ -63,8 +63,8 @@ function installDom() {
       this._listeners.set(type, list);
     }
     blur() { this._blurred = true; }
-    click() {
-      for (const fn of this._listeners.get('click') || []) fn({});
+    click(ev = { detail: 1 }) {
+      for (const fn of this._listeners.get('click') || []) fn(ev);
     }
   }
   const head = new FakeElement('head');
@@ -146,7 +146,10 @@ test('adventure free flight still shows the compact race-tape (Circuits availabl
     assert.ok(board, 'Circuits button present');
     board.click();
     assert.deepEqual(pushed, ['raceBoard']);
-    assert.equal(board._blurred, true, 'Circuits blurs after click so Space cannot re-fire');
+    assert.equal(board._blurred, true, 'Circuits blurs after a pointer click so Space cannot re-fire');
+    board._blurred = false;
+    board.click({ detail: 0 });
+    assert.equal(board._blurred, false, 'keyboard activation keeps focus on the button');
     hud.dispose();
   } finally {
     dom.restore();
@@ -199,6 +202,72 @@ test('ended / inactive Crucible restores the adventure race-tape', () => {
     state.simTime += 1;
     hud.frame(state);
     assert.equal(panel.hidden, false, 'campaign HUD returns after the run ends');
+    hud.dispose();
+  } finally {
+    dom.restore();
+  }
+});
+
+function busStub() {
+  const handlers = new Map();
+  return {
+    on(name, fn) {
+      const list = handlers.get(name) || [];
+      list.push(fn);
+      handlers.set(name, list);
+      return () => handlers.set(name, (handlers.get(name) || []).filter((f) => f !== fn));
+    },
+    emit(name, payload) { for (const fn of handlers.get(name) || []) fn(payload); },
+  };
+}
+
+function actionRow(panel) {
+  return panel.children.find((c) => c.className === 'race-tape-actions');
+}
+
+test('adventure combat: weapons hot takes the HUD row out of the click path', () => {
+  const dom = installDom();
+  try {
+    const root = document.createElement('div');
+    const state = flightState();
+    const bus = busStub();
+    const hud = mountRacingHud({
+      root, bus, state,
+      screens: { isOpen: () => false, pushScreen() {} },
+    });
+    const panel = root.children.find((c) => c.id === 'race-tape');
+    const row = actionRow(panel);
+    assert.ok(row, 'action row mounted');
+    hud.frame(state);
+    assert.equal(panel.hidden, false);
+    assert.notEqual(panel.dataset.combatLock, 'true', 'calm flight leaves the row clickable');
+    assert.ok(!row.inert);
+
+    bus.emit('combat:fire', { ownerId: 2, weaponId: 'npc' });
+    hud.frame(state);
+    assert.notEqual(panel.dataset.combatLock, 'true', 'NPC fire alone does not lock the row');
+
+    bus.emit('combat:fire', { ownerId: 1, weaponId: 'pulse' });
+    state.simTime += 0.5;
+    hud.frame(state);
+    assert.equal(panel.dataset.combatLock, 'true', 'player fire locks the row');
+    assert.equal(row.inert, true, 'locked row is inert (no clicks, no tab stop)');
+    assert.equal(panel.hidden, false, 'tape stays visible; only its buttons step aside');
+
+    state.simTime += 5;
+    hud.frame(state);
+    assert.equal(panel.dataset.combatLock, 'false', 'row returns once the fight cools');
+    assert.equal(row.inert, false);
+
+    bus.emit('combat:damage', { isPlayer: true });
+    state.simTime += 1;
+    hud.frame(state);
+    assert.equal(panel.dataset.combatLock, 'true', 'taking a hit also locks the row');
+
+    // A load that rewinds sim time must not leave a stale lock behind.
+    state.simTime = 0.2;
+    hud.frame(state);
+    assert.equal(panel.dataset.combatLock, 'false', 'rewound clock clears the lock');
     hud.dispose();
   } finally {
     dom.restore();
