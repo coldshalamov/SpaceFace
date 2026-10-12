@@ -272,6 +272,7 @@ export function createSg02CombatPhysicsPort(owner) {
   }
   return Object.freeze({
     applyImpulse(input) { return owner.applyImpulse(input); },
+    settlePassiveBody(input) { return typeof owner.settlePassiveBody === 'function' ? owner.settlePassiveBody(input) : false; },
     applyTorqueImpulse(input) { return owner.applyTorqueImpulse(input); },
     createAttachment(input) { return owner.createAttachment(input); },
     setAttachmentReel(input) { return owner.setAttachmentReel(input); },
@@ -1187,6 +1188,28 @@ export class Sg02DynamicBodyOwner {
       rec.body.applyImpulse(impulse, true);
     }
     if (evidenceBefore) observeAppliedImpulse(rec.entity, evidenceBefore, rec.body.linvel(), input.provenance, input.tick, input.reason);
+    return true;
+  }
+
+  /** Boundary-owned passive settling. Native mass includes the live field/body response;
+   * publish the impulse result immediately when the boundary runs after this tick's solve. */
+  settlePassiveBody(input = {}) {
+    const rec = this.records.get(input.entityId);
+    if (input.reason !== 'swarm_round_settle' || !rec || !rec.spec.dynamic || rec.entity.alive === false || rec.entity.isPlayer === true
+      || (rec.entity.type !== 'asteroid' && rec.entity.type !== 'wreck')
+      || (input.occupantGeneration != null && input.occupantGeneration !== rec.entity.occupantGeneration)) return false;
+    const velocity = rec.body.linvel();
+    const minSpeed = Number.isFinite(input.minSpeed) && input.minSpeed >= 0 ? input.minSpeed : 6;
+    if (Math.hypot(velocity.x, velocity.z) < minSpeed) return false;
+    const mass = rec.body.mass();
+    if (!(Number.isFinite(mass) && mass > 0)) return false;
+    const applied = this.applyImpulse({ ...input, point: null,
+      impulse: { x: -velocity.x * mass, z: -velocity.z * mass } });
+    if (!applied) return false;
+    writeEntityVelFromBody(rec);
+    rec.snapshot.vx = quantize(rec.entity.vel.x, this.quantum);
+    rec.snapshot.vz = quantize(rec.entity.vel.z, this.quantum);
+    if (rec.postStep) rec.postStep.vDirty = true;
     return true;
   }
 

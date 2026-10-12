@@ -1809,6 +1809,10 @@ function createDeferredSg02CombatPhysicsPort(host) {
       const runtime = owner();
       return runtime ? runtime.applyImpulse(input) : false;
     },
+    settlePassiveBody(input) {
+      const runtime = owner();
+      return runtime ? runtime.settlePassiveBody(input) : false;
+    },
     applyTorqueImpulse(input) {
       const runtime = owner();
       return runtime ? runtime.applyTorqueImpulse(input) : false;
