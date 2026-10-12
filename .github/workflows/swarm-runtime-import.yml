@@ -1,0 +1,103 @@
+name: swarm-runtime-import
+on:
+  push:
+    branches: [fix/swarm-runtime-maturity]
+    paths: [.agent/swarm-runtime-maturity.patch.br.b64]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: swarm-runtime-import
+  cancel-in-progress: false
+jobs:
+  apply:
+    if: "!contains(github.event.head_commit.message, '[swarm-imported]')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/swarm-runtime-maturity
+          fetch-depth: 4
+          sparse-checkout: |
+            .agent
+            .github
+            src
+            test
+            vendor
+            scripts
+            docs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate pinned patch and owned paths
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = 'fix/swarm-runtime-maturity'
+          git merge-base --is-ancestor d748312d1f28a1c954b6bbc508749191bee82457 HEAD
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          import { brotliDecompressSync } from 'node:zlib';
+          const patch = brotliDecompressSync(Buffer.from(fs.readFileSync('.agent/swarm-runtime-maturity.patch.br.b64', 'utf8').trim(), 'base64'));
+          if (crypto.createHash('sha256').update(patch).digest('hex') !== 'bce9578835b31671cb42232cc8d50a8e736a48b0d2cffa9a37f0cc3d8c44b43b') throw Error('Patch checksum mismatch');
+          const allowed = ['docs/Spec/SWARM_RUNTIME_MATURITY.md','src/data/swarmMode.js','src/systems/ai.js','src/systems/aiFireIntent.js','src/systems/impulseCharges.js','src/systems/survivalWave.js','src/systems/swarmArena.js','src/systems/swarmBrood.js','src/systems/swarmSafety.js','src/systems/waveMaterialization.js','test/swarm-brood-families.test.mjs','test/swarm-brood.test.mjs','test/swarm-overhaul-fire-roster.test.mjs','test/swarm-overhaul-spawn-clearance.test.mjs','test/swarm-pressure-reservoir.test.mjs','test/swarm-runtime-brood-maturity.test.mjs','test/swarm-runtime-maturity.test.mjs','test/swarm-runtime-rapier-maturity.test.mjs'];
+          const paths = [...patch.toString('utf8').matchAll(/^diff --git a\/(\S+) b\/(\S+)$/gm)].map(m => { if (m[1] !== m[2]) throw Error('Unexpected rename'); return m[1]; });
+          if (JSON.stringify(paths.sort()) !== JSON.stringify(allowed.sort())) throw Error('Unexpected patch path');
+          fs.writeFileSync('/tmp/swarm-runtime.patch', patch);
+          fs.writeFileSync('/tmp/swarm-owned-paths.json', JSON.stringify(allowed));
+          JS
+      - name: Hydrate the pinned engineering packet, not heavyweight media
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api /repos/coldshalamov/SpaceFace/actions/artifacts/11728156466/zip > /tmp/swarm-source.zip
+          unzip -oq /tmp/swarm-source.zip -d .
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const packet = JSON.parse(fs.readFileSync('.agent-packet.json','utf8'));
+          if (!JSON.stringify(packet).includes('d748312d1f28a1c954b6bbc508749191bee82457')) throw Error('Wrong source packet');
+          JS
+      - name: Apply only after a clean patch check
+        run: |
+          set -euo pipefail
+          git -c core.whitespace=cr-at-eol apply --check /tmp/swarm-runtime.patch
+          git -c core.whitespace=cr-at-eol apply /tmp/swarm-runtime.patch
+          git -c core.whitespace=cr-at-eol diff --check
+      - name: Bind repository-vendored runtime libraries without install scripts
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          fs.mkdirSync('node_modules/three',{recursive:true});
+          fs.writeFileSync('node_modules/three/package.json',JSON.stringify({name:'three',type:'module',exports:{'.':'./three.module.js','./addons/*':'./addons/*'}}));
+          fs.symlinkSync('../../vendor/three.module.js','node_modules/three/three.module.js');
+          fs.symlinkSync('../../vendor/three.core.js','node_modules/three/three.core.js');
+          fs.symlinkSync('../../vendor/addons','node_modules/three/addons');
+          fs.mkdirSync('node_modules/@dimforge/rapier3d-compat',{recursive:true});
+          fs.writeFileSync('node_modules/@dimforge/rapier3d-compat/package.json',JSON.stringify({name:'@dimforge/rapier3d-compat',type:'module',exports:'./rapier.mjs'}));
+          fs.symlinkSync('../../../vendor/rapier3d-compat/rapier.mjs','node_modules/@dimforge/rapier3d-compat/rapier.mjs');
+          JS
+      - name: Run new native-physics and adjacent regression tests
+        run: |
+          set -euo pipefail
+          node --test --test-concurrency=4 test/swarm-runtime-*.test.mjs test/swarm-overhaul-*.test.mjs test/swarm-brood*.test.mjs test/swarm-physics-ux.test.mjs test/swarm-pressure-reservoir.test.mjs test/crucible-wave-materialization.test.mjs | tee /tmp/swarm-import-tests.log
+      - name: Publish the owned source paths without merging master
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          const paths = JSON.parse(fs.readFileSync('/tmp/swarm-owned-paths.json','utf8'));
+          for (const path of paths) if (/\.(js|mjs)$/.test(path)) execFileSync(process.execPath,['--check',path],{stdio:'inherit'});
+          execFileSync('git',['add','--',...paths],{stdio:'inherit'});
+          execFileSync('git',['rm','--','.agent/swarm-runtime-maturity.patch.br.b64'],{stdio:'inherit'});
+          execFileSync('git',['-c','user.name=SpaceFace Engineering','-c','user.email=engineering@users.noreply.github.com','commit','-m','fix(swarm): safe arrivals, readable pressure and causal rewards [swarm-imported]'],{stdio:'inherit'});
+          execFileSync('git',['push','origin','HEAD:refs/heads/fix/swarm-runtime-maturity'],{stdio:'inherit'});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: swarm-runtime-import-validation
+          path: /tmp/swarm-import-tests.log
+          if-no-files-found: ignore
