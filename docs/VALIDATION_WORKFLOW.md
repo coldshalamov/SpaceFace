@@ -86,9 +86,11 @@ a prepare/boot failure of the same family) instead of grading it as a route FAIL
 samples. It fails when more than half of those samples have ΔL < 8 against the local backdrop, or
 when a pair that both cleared 5 samples separates by less than 1.0. Separation is colour distance
 over spread, plus a silhouette term from the size ratio, plus 1.5 when one class's rim matches the
-declared threat hue `0xff1a3a` (Lab L ≈ 54, hue ≈ 30°) and the other does not. A bright rim
-(L ≥ 75) does not buy that credit. The crimson ring is below L 75, so the old brightness rule
-does not credit it either. Projectile visibility is the same backdrop-contrast rule.
+declared threat hue `0xff1a3a` (the `swarm:threat-ring` material, Lab L ≈ 54, hue ≈ 30°) and the
+other does not. The hue is the mean of mid-band pixels that clear a chroma floor and differ from
+the local backdrop by ΔE ≥ 12, so an orange backdrop cannot paint an unmarked rock into that hue.
+A bright rim (L ≥ 75) does not buy that credit. The crimson ring is below L 75, so a brightness
+rule does not credit it either. Projectile visibility is the same backdrop-contrast rule.
 UNKNOWN only when no combat class reaches 5 samples. The contact sheet keeps up to four of the
 worst frames for that check.
 
@@ -119,9 +121,13 @@ started but was not watched.
   above baseline + 100 ms, or long-task count above 125% and above baseline + 30. Each run records
   `os.loadavg()` at start and end in `verdict.json` (`meta.loadavg`). When the mean of the
   1-minute samples differs by more than 30% of the louder side, the regrade is ADVISORY instead of
-  FAIL, and the compare table marks that row `advisory` rather than REGRESSED. A missing load does
-  not claim noise. Without a baseline measurement the check stays UNKNOWN and is named in the
-  INCOMPLETE cause list. Long-task counts are always kept. The verdict says SOFTWARE GL.
+  FAIL. On this shared box the 1-minute load swings between about 5 and 12 during a gate, which is
+  more than 30% for most head/baseline pairs, so software-GL `frame_time` will usually be ADVISORY
+  and will not gate. That is accepted for SwiftShader. The compare output still prints each advisory
+  row, including the head p99, the baseline p99, and the long-task counts, so a large blowup stays
+  visible. It is not a REGRESSED row and it is not a FAIL. A missing load does not claim noise.
+  Without a baseline measurement the check stays UNKNOWN and is named in the INCOMPLETE cause list.
+  Long-task counts are always kept. The verdict says SOFTWARE GL.
 - Bounds are flags: `--rounds` (default 3), `--duration=<sim s>` (Swarm 180, Adventure 300),
   `--wall=<minutes>`, `--idle=<sim s>`, `--seed` (house seed 4242).
 - Check logic is fixture-tested without a browser: `npm run check:player-truth`. Thresholds live in

@@ -2,6 +2,7 @@
 // traces — no browser — so the checks themselves are regression-tested.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   CLS, VIS, checkLodChurn, checkPlayerShip, checkPopping, checkRoundResolution, checkKillsBeforeInput,
   checkSpawnMotion, checkPlayerControl, checkTumble, checkVfx, checkLoadout, checkFrameTime, checkReadability, overall,
@@ -9,7 +10,7 @@ import {
 } from '../scripts/player-truth/checks.mjs';
 import { classifyEntity } from '../src/testing/playerTruth/reader.js';
 import { auditItems, classifyArmoryArrival, formatArmoryMiss, formatSwarmTutorialMiss, SWARM_TUTORIAL_MISS, ARMORY_WORLD_GRACE_MS } from '../scripts/player-truth/routes.mjs';
-import { separation, sampleBox, rimMatchesThreat, brightRimCredit, threatMarkerCredit } from '../scripts/player-truth/readability.mjs';
+import { separation, sampleBox, rimMatchesThreat, threatMarkerCredit, THREAT_MARKER } from '../scripts/player-truth/readability.mjs';
 import { renderVerdict } from '../scripts/player-truth/verdict.mjs';
 
 const goodPlayer = (o = {}) => ({ id: 1, alive: true, x: 0, y: 0, z: 0, vx: 0, vz: 0, rot: 0, angVel: 0, pitch: 0, bank: 0, mesh: true, vis: true, onScreen: true, box: [600, 330, 680, 390], lod: 'lod0', model: 'hornet', state: 'authored', tris: 4000, marker: false, meshId: 'aaaa', ...o });
@@ -237,11 +238,10 @@ test('frame_time load noise is advisory, and a missing load is not', () => {
   assert.match(wouldPass.detail, /numbers would PASS/);
 });
 
-test('threat-hue marker credit: crimson 0xff1a3a does not earn the old bright-rim credit, and a white glow earns none', () => {
-  const paint = (rim) => {
+test('threat-hue marker credit: crimson 0xff1a3a matches, a bright glow does not, and an orange backdrop does not paint an unmarked rock', () => {
+  const paint = ({ fill, rim, bg }) => {
     const size = 48; const cx = 24; const cy = 24; const r = 12;
     const raw = Buffer.alloc(size * size * 3);
-    const fill = [30, 30, 36]; const bg = [12, 14, 18];
     for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
       const d = Math.max(Math.abs(x - cx), Math.abs(y - cy));
       const inner = Math.max(1, Math.round(r * 0.7));
@@ -251,21 +251,41 @@ test('threat-hue marker credit: crimson 0xff1a3a does not earn the old bright-ri
     }
     return sampleBox(raw, size, size, 3, cx, cy, r);
   };
-  const crimson = paint([255, 26, 58]);
+  const dark = [12, 14, 18];
+  const body = [30, 30, 36];
+  const crimson = paint({ fill: body, rim: [255, 26, 58], bg: dark });
   assert.ok(crimson.rim[0] > 45 && crimson.rim[0] < 65, `crimson L ${crimson.rim[0]}`);
   assert.ok(crimson.rim[0] < 75);
   assert.equal(crimson.marker, 0);
   assert.equal(rimMatchesThreat(crimson.rim), true);
-  assert.equal(brightRimCredit(crimson.marker, 0), 0);
+  // The L≥75 fraction is not a threat-match rate. Crimson's fraction is 0, so it buys nothing.
+  assert.equal(threatMarkerCredit(crimson.marker, 0), 0);
   assert.equal(threatMarkerCredit(1, 0), 1.5);
-  const white = paint([255, 255, 255]);
+  const white = paint({ fill: body, rim: [255, 255, 255], bg: dark });
   assert.ok(white.marker >= 0.4, white.marker);
   assert.equal(rimMatchesThreat(white.rim), false);
-  assert.equal(brightRimCredit(white.marker, 0), 1.5);
   assert.equal(threatMarkerCredit(0, 0), 0);
-  const yellow = paint([255, 240, 80]);
+  const yellow = paint({ fill: body, rim: [255, 240, 80], bg: dark });
   assert.equal(rimMatchesThreat(yellow.rim), false);
-  assert.equal(threatMarkerCredit(0, 0), 0);
+  // [215, 40, 20] sits inside the threat hue window. On a dark field it is a mark.
+  // The same orange as the backdrop of an unmarked rock is not.
+  const orange = [215, 40, 20];
+  const distinct = paint({ fill: body, rim: orange, bg: dark });
+  assert.equal(rimMatchesThreat(distinct.rim), true);
+  const rock = paint({ fill: [70, 68, 66], rim: orange, bg: orange });
+  assert.equal(rock.rim, null);
+  assert.equal(rimMatchesThreat(rock.rim), false);
+  const marked = paint({ fill: body, rim: [255, 26, 58], bg: orange });
+  assert.equal(rimMatchesThreat(marked.rim), true);
+});
+
+test('threat marker colour is the swarm threat-ring material', () => {
+  const src = readFileSync(new URL('../src/render/visualFactory.js', import.meta.url), 'utf8');
+  const at = src.indexOf("getMaterial('swarm:threat-ring'");
+  assert.ok(at >= 0, 'swarm:threat-ring material missing');
+  const m = src.slice(at, at + 500).match(/color:\s*(0x[0-9a-fA-F]+)/);
+  assert.ok(m, 'threat-ring material has no color literal');
+  assert.equal(Number(m[1]), THREAT_MARKER.rgb);
 });
 
 test('loadout names a game-empty shelf, a harness miss, and a fit count with no items', () => {

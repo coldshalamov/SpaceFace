@@ -224,6 +224,16 @@ test('an environment verdict is not a gameplay regression, and software frame ti
   );
   assert.equal(cmp.regressed, 0);
   assert.equal(cmp.rows[0].change, 'advisory');
+  const blowup = renderComparison(
+    { overall: 'PASS', meta: { commit: 'd88f4d5881', label: 'swarm' }, results: [{ id: 'frame_time', title: 'Frame time / long tasks', status: 'PASS', value: 'software-renderer evidence · p99 200 ms · 10 long tasks' }] },
+    { overall: 'PASS', meta: { commit: 'head', label: 'swarm', mode: 'swarm', seed: 4242, resolution: '960x540', softwareGl: true }, results: [{ id: 'frame_time', title: 'Frame time / long tasks', status: 'ADVISORY', value: 'software-renderer evidence · p50 94 ms · p99 904 ms · 962 long tasks ≥250 ms', detail: '400 play frames · baseline p99 200 ms · 10 long tasks — advisory, numbers would FAIL; not a FAIL' }] },
+  );
+  assert.match(blowup, /Advisory \(not a regression/);
+  assert.match(blowup, /p99 904/);
+  assert.match(blowup, /baseline p99 200/);
+  assert.match(blowup, /962 long tasks/);
+  assert.match(blowup, /1 advisory/);
+  assert.doesNotMatch(blowup, /REGRESSED/);
 });
 
 test('pinned spans name the solid body the ship sits on', async () => {

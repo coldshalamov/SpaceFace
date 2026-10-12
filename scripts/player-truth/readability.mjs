@@ -19,22 +19,36 @@ function srgbToLab(r, g, b) {
   return [116 * f(Y) - 16, 500 * (f(X) - f(Y)), 200 * (f(Y) - f(Z))];
 }
 
-/** Declared threat-marker colour from #326's crimson ring. Lab is srgbToLab(255, 26, 58): L~54, so the old L≥75 rule never saw it. */
-export const THREAT_MARKER = Object.freeze({
-  rgb: 0xff1a3a,
-  lab: Object.freeze([54.35, 78.74, 44.87]),
-  hueDeg: 29.68,
-  chroma: 90.62,
-});
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+
+function labOfRgb(rgb) {
+  const lab = srgbToLab((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255);
+  const chroma = Math.hypot(lab[1], lab[2]);
+  const hueDeg = (Math.atan2(lab[2], lab[1]) * 180 / Math.PI + 360) % 360;
+  return {
+    rgb,
+    lab: Object.freeze([+lab[0].toFixed(2), +lab[1].toFixed(2), +lab[2].toFixed(2)]),
+    hueDeg: +hueDeg.toFixed(2),
+    chroma: +chroma.toFixed(2),
+  };
+}
+
+/** Crimson of `getMaterial('swarm:threat-ring')` in src/render/visualFactory.js. Lab comes from that rgb.
+ *  L is about 54, so a brightness test (L≥75) never sees this ring. A drift test reads the source literal. */
+export const THREAT_MARKER = Object.freeze(labOfRgb(0xff1a3a));
 export const THREAT_HUE_TOLERANCE_DEG = 18;
 export const THREAT_CHROMA_MIN = 40;
+/** Mid-band pixels closer than this to the backdrop are the backdrop, not a mark. */
+export const RIM_BG_DE_MIN = 12;
+/** Share of the mid band that must clear the chroma floor and the backdrop ΔE before the sample has a threat rim. */
+export const RIM_THREAT_SHARE = 0.08;
 
 export function rimHue(lab) {
   if (!lab) return null;
   return { chroma: Math.hypot(lab[1], lab[2]), hue: (Math.atan2(lab[2], lab[1]) * 180 / Math.PI + 360) % 360 };
 }
 
-/** True when the rim's mean colour is the declared threat hue. A bright low-chroma glow does not match. */
+/** True when this Lab is the declared threat hue and chromatic enough to be a mark. */
 export function rimMatchesThreat(lab) {
   const h = rimHue(lab);
   if (!h || h.chroma < THREAT_CHROMA_MIN) return false;
@@ -43,14 +57,7 @@ export function rimMatchesThreat(lab) {
   return d <= THREAT_HUE_TOLERANCE_DEG;
 }
 
-/** Old rule, kept so tests can show it does not credit #326's crimson (L~54 < 75). Not used to grade. */
-export function brightRimCredit(rateA, rateB) {
-  const a = Number(rateA) || 0; const b = Number(rateB) || 0;
-  if (Math.max(a, b) >= THRESHOLDS.readabilityMarkerOn && Math.abs(a - b) >= THRESHOLDS.readabilityMarkerSplit) return THRESHOLDS.readabilityMarkerCredit;
-  return 0;
-}
-
-/** +1.5 only when one class wears the threat hue and the other does not. The rates are threat matches, not L≥75. */
+/** +1.5 only when one class wears the threat hue and the other does not. Pass threat-match rates, not L≥75 rates. */
 export function threatMarkerCredit(rateA, rateB) {
   const a = Number(rateA) || 0; const b = Number(rateB) || 0;
   if (Math.max(a, b) >= THRESHOLDS.readabilityMarkerOn && Math.abs(a - b) >= THRESHOLDS.readabilityMarkerSplit) return THRESHOLDS.readabilityMarkerCredit;
@@ -58,19 +65,21 @@ export function threatMarkerCredit(rateA, rateB) {
 }
 
 /** Mean Lab of the pixels inside a box, and of a ring around it (background). Exported for tests.
- *  `marker` is the share of the mid rim whose L is ≥ 75 (the old bright-outline signal). It does not buy credit.
- *  `rim` is the mean Lab of that whole mid rim, which is what the threat-hue test reads. */
+ *  `marker` is the share of the mid rim whose L is ≥ 75. It does not buy credit.
+ *  `rim` is the mean Lab of mid-band pixels that pass the chroma floor and differ from the backdrop
+ *  by at least `RIM_BG_DE_MIN`. A warm backdrop therefore cannot paint the mean into the threat hue.
+ *  `rim` is null when those pixels are under `RIM_THREAT_SHARE` of the band. */
 export function sampleBox(raw, W, H, ch, cx, cy, r) {
   const inner = Math.max(1, Math.round(r * 0.7)); const ring = Math.round(Math.max(r * 1.6, r + 4));
   const acc = [0, 0, 0]; let n = 0; const bg = [0, 0, 0]; let nb = 0; const inn = [];
-  let markerN = 0; let midN = 0; const rimAcc = [0, 0, 0];
+  let markerN = 0; let midN = 0; const mid = [];
   for (let y = Math.max(0, cy - ring); y <= Math.min(H - 1, cy + ring); y++) {
     for (let x = Math.max(0, cx - ring); x <= Math.min(W - 1, cx + ring); x++) {
       const dx = x - cx; const dy = y - cy; const d = Math.max(Math.abs(dx), Math.abs(dy));
       const i = (y * W + x) * ch;
       const L = srgbToLab(raw[i], raw[i + 1], raw[i + 2]);
       if (d <= inner) { acc[0] += L[0]; acc[1] += L[1]; acc[2] += L[2]; n++; inn.push(L); }
-      else if (d <= r * 1.15) { midN++; rimAcc[0] += L[0]; rimAcc[1] += L[1]; rimAcc[2] += L[2]; if (L[0] >= 75) markerN++; }
+      else if (d <= r * 1.15) { midN++; mid.push(L); if (L[0] >= 75) markerN++; }
       else if (d > r * 1.2) { bg[0] += L[0]; bg[1] += L[1]; bg[2] += L[2]; nb++; }
     }
   }
@@ -78,14 +87,19 @@ export function sampleBox(raw, W, H, ch, cx, cy, r) {
   // The lit quarter of the body: what the eye calls its colour ("white sphere", "orange blob").
   inn.sort((p, q) => q[0] - p[0]); const top = inn.slice(0, Math.max(1, Math.ceil(inn.length / 4)));
   const lit = [0, 1, 2].map((k) => top.reduce((sum, L) => sum + L[k], 0) / top.length);
-  return {
-    lab: acc.map((v) => v / n), lit, bg: nb ? bg.map((v) => v / nb) : null,
-    marker: midN ? markerN / midN : 0,
-    rim: midN ? rimAcc.map((v) => v / midN) : null,
-  };
+  const bgLab = nb ? bg.map((v) => v / nb) : null;
+  const qualified = [];
+  for (const L of mid) {
+    if (Math.hypot(L[1], L[2]) < THREAT_CHROMA_MIN) continue;
+    if (bgLab && dist(L, bgLab) < RIM_BG_DE_MIN) continue;
+    qualified.push(L);
+  }
+  const share = midN ? qualified.length / midN : 0;
+  const rim = share >= RIM_THREAT_SHARE
+    ? [0, 1, 2].map((k) => qualified.reduce((sum, L) => sum + L[k], 0) / qualified.length)
+    : null;
+  return { lab: acc.map((v) => v / n), lit, bg: bgLab, marker: midN ? markerN / midN : 0, rim };
 }
-
-const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
 /** Separation index between two sample sets: centroid distance / pooled spread, plus size.
  *  `markerCredit` is added by the caller when one class wears the declared threat hue and the other does not. */

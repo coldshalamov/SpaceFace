@@ -32,7 +32,12 @@ export function compareVerdicts(base, head) {
     }
     return { id, title: (b || a).title, base: a, head: b, change };
   });
-  return { rows, regressed: rows.filter((r) => r.change === 'REGRESSED').length, improved: rows.filter((r) => r.change === 'improved').length };
+  return {
+    rows,
+    regressed: rows.filter((r) => r.change === 'REGRESSED').length,
+    improved: rows.filter((r) => r.change === 'improved').length,
+    advisory: rows.filter((r) => r.change === 'advisory').length,
+  };
 }
 
 /** Grade the head's software-GL frame_time against the baseline verdict. Mutates `head`. */
@@ -77,20 +82,30 @@ function writeRegraded(outDir, head, root) {
 }
 
 export function renderComparison(base, head) {
-  const { rows, regressed, improved } = compareVerdicts(base, head);
+  const { rows, regressed, improved, advisory } = compareVerdicts(base, head);
   const m = head.meta || {}; const bm = base.meta || {};
   const lines = [
     `### player-truth: ${m.label || '?'} — ${bm.commit || '?'} → ${m.commit || '?'}`,
     '',
     `${m.mode || ''}${m.arena ? ` · ${m.arena}` : ''} · seed ${m.seed ?? '?'} · ${m.resolution || '?'}${m.hullPicked ? ` · hull ${m.hullPicked}` : ''}${m.gate ? ` · gate ${m.gate}` : ''} · ${m.softwareGl ? 'software GL' : 'GPU'}`,
     '',
-    `**Overall: ${base.overall} → ${head.overall}** · ${improved} improved · ${regressed} regressed`,
+    `**Overall: ${base.overall} → ${head.overall}** · ${improved} improved · ${regressed} regressed · ${advisory} advisory`,
     '',
     '| Check | Baseline | Branch | Change |',
     '|---|---|---|---|',
     ...rows.map((r) => `| ${r.title} | ${cell(r.base)} | ${cell(r.head)} | ${r.change} |`),
     '',
   ];
+  const notes = rows.filter((r) => r.change === 'advisory');
+  if (notes.length) {
+    lines.push('Advisory (not a regression; the measured numbers stay visible):');
+    for (const r of notes) {
+      const value = r.head && r.head.value != null ? String(r.head.value) : (r.base && r.base.value != null ? String(r.base.value) : '');
+      const detail = r.head && r.head.detail ? String(r.head.detail) : '';
+      lines.push(`- ${r.title}: ${value}${detail ? ` — ${detail}` : ''}`);
+    }
+    lines.push('');
+  }
   return lines.join('\n');
 }
 
