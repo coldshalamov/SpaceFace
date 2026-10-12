@@ -952,6 +952,28 @@ function makeRosterPrewarmSpec(enemyId) {
   return spec;
 }
 
+// A room solid is immovable. Stamped over the pilot (a later round's room is laid out around wherever
+// the ship sits), it pinned the ship inside a fixed body: thrust built speed for a few frames, then the
+// solver snapped the hull back to rest - the owner's round-2 "could not move" (player-truth m2-active,
+// station solid at 2 u from the ship). The toy keeps its place in the room's grammar, pushed straight out
+// from the ship until it clears the hull with a margin.
+const ROOM_SOLID_PILOT_CLEARANCE = 24;
+function clearOfPilot(state, at, radius) {
+  const pos = { x: at.x, z: at.z };
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  if (!player || player.alive === false || !player.pos) return pos;
+  const need = radius + (Number.isFinite(player.radius) ? player.radius : 10) + ROOM_SOLID_PILOT_CLEARANCE;
+  const dx = pos.x - player.pos.x;
+  const dz = pos.z - player.pos.z;
+  const d = Math.hypot(dx, dz);
+  if (d >= need) return pos;
+  const ux = d > 1e-3 ? dx / d : 1;
+  const uz = d > 1e-3 ? dz / d : 0;
+  return { x: player.pos.x + ux * need, z: player.pos.z + uz * need };
+}
+
 export const survivalArena = {
   name: 'survivalArena',
 
@@ -1603,10 +1625,11 @@ export const survivalArena = {
         ? Math.max(1, Number.isFinite(toy.mass) ? toy.mass : SHUTTER_MASS)
         : Math.max(400, Math.round(radius * radius * 2.5));
       const hull = 100000 + Math.round(radius * 40);
+      const pos = clearOfPilot(state, toy.pos, radius);
       const entity = helpers.spawnEntity({
         type: 'station',
         id: solidId,
-        pos: { x: toy.pos.x, z: toy.pos.z },
+        pos,
         vel: { x: 0, z: 0 },
         angVel: 0,
         radius,
