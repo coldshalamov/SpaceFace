@@ -206,6 +206,7 @@ import {
   tickMachineLayer,
   machineRouteOpen,
   handleMachinePickupCollected,
+  handleMachineTokenDestroyed,
 } from './precursorMachines.js'; // Verge-Layer machine layer (doc 07, AE-090..109): same seam
 import {
   materializeFoldAberrant,
@@ -613,6 +614,7 @@ export const world = {
     // SFQ-B141: a committed pickup receipt is the courier token's custody transfer — the
     // machine layer settles intercept/stolen on the same receipt cargo's listener wrote.
     bus.on('pickup:collected', (p) => handleMachinePickupCollected(this, p || {}));
+    bus.on('entity:destroyed', (p) => handleMachineTokenDestroyed(this, p || {}));
     bus.on('pickup:collected', (p) => noteFoldSplinterCollected(this, p || {}));
     bus.on('save:restoring', () => {
       this._vestaDecisionSignature = null;
@@ -650,6 +652,7 @@ export const world = {
       this._onBossKilled(p || {});
       this._onDurableEntityKilled(p || {});
       handleAlienEcologyEvent(this, 'entity:killed', p || {});
+      handleMachineTokenDestroyed(this, p || {}, true);
       noteFoldAberrantKilled(this, p || {});
     });
     bus.on('sectorsim:embodiment', (p) => this._onSectorEmbodiment(p || {}));

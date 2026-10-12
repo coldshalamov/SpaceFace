@@ -663,6 +663,49 @@ export function tickMachineLayer(world, dt) {
 const COURIER_TOKEN_COMMODITY = 'cmdty_gate_handshake';
 const COURIER_TOKEN_RETURN_R = 320; // bring the held token home inside this radius
 const COURIER_TOKEN_OPEN = new Set(['in_transit', 'loose']);
+// Runtime leases are never saved: the durable token survives Continue, recycled body ids do not.
+const courierTokenBodies = new WeakMap();
+function tokenBodyMatches(pod, token) {
+  const stamp = pod?.data?.machineToken;
+  return pod?.type === 'payload' && stamp?.tokenId === token.tokenId
+    && stamp.originSiteId === token.originSiteId && stamp.destSiteId === token.destSiteId;
+}
+function bindCourierTokenBody(token, pod) {
+  const lease = courierTokenBodies.get(token);
+  if (lease?.entity !== pod || lease.generation !== pod.occupantGeneration) {
+    courierTokenBodies.set(token, { entity: pod, generation: pod.occupantGeneration });
+  }
+}
+function loseCourierToken(world, token, pod) {
+  const lease = courierTokenBodies.get(token);
+  if (!COURIER_TOKEN_OPEN.has(token.status) || !tokenBodyMatches(pod, token)
+      || lease?.entity !== pod || lease.generation !== pod.occupantGeneration) return false;
+  token.status = 'lost';
+  token.lastPodPos = { x: pod.pos.x, z: pod.pos.z };
+  token.settledAt = Number(world.state.simTime) || 0;
+  world.bus.emit('comms:log', {
+    from: 'Courier frame', kind: 'machine',
+    text: 'ROUTE MAIL DESTROYED IN TRANSIT. THE SITE FILES A LOSS.',
+  });
+  return true;
+}
+
+/** Positive destruction only. Retirement, restore and an absent resident are not losses. */
+export function handleMachineTokenDestroyed(world, payload, killed = false) {
+  if (!world?.state || !payload || payload.reason) return false;
+  const pod = killed ? world.state.entities?.get(payload.id) : payload.entity;
+  if (!pod || pod.id !== payload.id || pod.alive !== false
+      || (!killed && !(pod.hull <= 0))) return false;
+  const stamp = pod.data?.machineToken;
+  const token = world.state.world?.alienEcology?.machineSites?.[stamp?.originSiteId]?.courierToken;
+  if (!token || !tokenBodyMatches(pod, token)) return false;
+  // Continue can restore a pod before the machine's first tick. A synchronous kill
+  // resolves that exact current occupant; an unbound queued/stale corpse cannot do so.
+  if (killed && !courierTokenBodies.has(token) && world.state.entities?.get(pod.id) === pod) {
+    bindCourierTokenBody(token, pod);
+  }
+  return loseCourierToken(world, token, pod);
+}
 
 function courierRouteTargets(world, e, m, sites, machines, sectorId) {
   const targets = [];
@@ -681,11 +724,10 @@ function courierRouteTargets(world, e, m, sites, machines, sectorId) {
   return targets;
 }
 
-function findCourierTokenPod(state, tokenId) {
+function findCourierTokenPod(state, token) {
   for (const e of state.entityList || []) {
     if (!e || e.alive === false || !e.data) continue;
-    const stamp = e.data.machineToken;
-    if (stamp && stamp.tokenId === tokenId) return e;
+    if (tokenBodyMatches(e, token)) return e;
   }
   return null;
 }
@@ -711,7 +753,7 @@ function courierTokenRec(state, siteId, dest, now) {
 /** Body the token if no live pod carries its stamp — exactly one body per tokenId. */
 function ensureCourierTokenBody(world, e, token) {
   const state = world.state;
-  const existing = findCourierTokenPod(state, token.tokenId);
+  const existing = findCourierTokenPod(state, token);
   if (existing) return existing;
   const spawnPos = token.status === 'loose' && token.lastPodPos
     ? token.lastPodPos
@@ -846,28 +888,31 @@ function tickCourierToken(world, e, m, kind, dest, now) {
   // Adopt or re-body the token pod. The durable record is the token; the entity is its
   // body — rematerialization scans by stamp first, so one tokenId never mints a second pod.
   let pod = m.tokenPodId != null && state.entities ? state.entities.get(m.tokenPodId) : null;
-  if (pod && pod.alive === false) {
-    // The body we were holding died without a custody receipt (hull loss, not collection):
-    // observed destruction is a real outcome — the mail is gone, no re-mint.
-    token.status = 'lost';
-    token.lastPodPos = { x: pod.pos.x, z: pod.pos.z };
-    m.tokenPodId = null;
-    world.bus.emit('comms:log', {
-      from: 'Courier frame', kind: 'machine',
-      text: 'ROUTE MAIL DESTROYED IN TRANSIT. THE SITE FILES A LOSS.',
-    });
-    return;
-  }
-  if (!pod || !pod.data || !pod.data.machineToken
-      || pod.data.machineToken.tokenId !== token.tokenId) {
-    pod = findCourierTokenPod(state, token.tokenId);
+  if (!tokenBodyMatches(pod, token)) {
+    pod = findCourierTokenPod(state, token);
     m.tokenPodId = pod ? pod.id : null;
   }
+  if (pod && pod.alive === false) {
+    // A verified corpse is loss; a shelved/retired body is rematerializable instead.
+    if (pod.hull <= 0 && loseCourierToken(world, token, pod)) {
+      m.tokenPodId = null;
+      return;
+    }
+    pod = null;
+  }
   if (!pod) {
+    // Core may remove the corpse before its queued destruction receipt drains.
+    const previous = courierTokenBodies.get(token)?.entity;
+    if (previous?.alive === false && previous.hull <= 0 && loseCourierToken(world, token, previous)) {
+      m.tokenPodId = null;
+      return;
+    }
     pod = ensureCourierTokenBody(world, e, token);
     m.tokenPodId = pod ? pod.id : null;
     if (!pod) return;
   }
+
+  bindCourierTokenBody(token, pod);
 
   if (token.status === 'in_transit') {
     // Custody ride: the frame tows the pod at its trailing edge. A knock or a tether pull
@@ -876,7 +921,8 @@ function tickCourierToken(world, e, m, kind, dest, now) {
     if (dist2(pod.pos.x, pod.pos.z, e.pos.x, e.pos.z) > strayR * strayR) {
       token.status = 'loose';
       token.lastPodPos = { x: pod.pos.x, z: pod.pos.z };
-      m.tokenPodId = null;
+      // Keep the body lease while loose so a death before the next tick cannot re-mint mail.
+      if (pod.data) delete pod.data.machineCarriedBy;
       world.bus.emit('comms:log', {
         from: 'Courier frame', kind: 'machine',
         text: 'ROUTE MAIL ADRIFT. CUSTODY OPEN.',
