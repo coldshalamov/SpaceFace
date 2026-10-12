@@ -21,6 +21,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           lfs: false
+          persist-credentials: false
           sparse-checkout: |
             src
             scripts
@@ -44,13 +45,14 @@ jobs:
       - name: Package reproducible source-only candidate
         if: always()
         run: |
-          mkdir -p .vfx-artifact
-          git rev-parse HEAD > .vfx-artifact/BASE_COMMIT.txt
-          tar -czf .vfx-artifact/source.tar.gz --exclude=node_modules --exclude=.git --exclude=.vfx-artifact --exclude=.vfx-ci src scripts test docs design package.json package-lock.json AGENTS.md ARCHITECTURE.md
-          tar -czf .vfx-artifact/renderer-deps.tar.gz -C .vfx-ci node_modules
+          mkdir -p vfx-artifact
+          git rev-parse HEAD > vfx-artifact/BASE_COMMIT.txt
+          tar -czf vfx-artifact/source.tar.gz --exclude=node_modules --exclude=.git --exclude=vfx-artifact --exclude=.vfx-ci src scripts test docs design package.json package-lock.json AGENTS.md ARCHITECTURE.md
+          tar -czf vfx-artifact/renderer-deps.tar.gz -C .vfx-ci node_modules
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: living-vfx-candidate
-          path: .vfx-artifact/
+          path: vfx-artifact/
+          if-no-files-found: error
           retention-days: 3
