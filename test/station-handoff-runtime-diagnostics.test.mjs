@@ -265,14 +265,19 @@ test('trace start/read/storage failures never replace actor errors and still det
 
 test('unresponsive browser trace end is bounded and detach still runs', async (t) => {
   const { startStationHandoffTrace } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
-  t.mock.method(console, 'error', () => {});
+  const logs = [];
+  t.mock.method(console, 'error', (...args) => logs.push(args));
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const { session, calls } = traceSession({ stuckEnd: true });
   const trace = await startStationHandoffTrace({ newBrowserCDPSession: async () => session });
   const stopping = trace.stop();
-  t.mock.timers.tick(2000);
+  await Promise.resolve(); await Promise.resolve();
+  t.mock.timers.tick(15000);
   await stopping;
   assert.equal(calls.filter(([method]) => method === 'detach').length, 1);
+  const failure = logs.find(([message]) => message === '[station-handoff] browser trace unavailable:');
+  assert.match(failure[1], /exceeded 15000ms/);
+  assert.match(failure[2], /stage=Tracing.end, bytes=0/);
 });
 
 test('market trace surrounds original dock boundary, without tracing the mission actor', () => {
@@ -296,4 +301,30 @@ test('trace stream-close error still detaches the browser session', async (t) =>
   const trace = await startStationHandoffTrace({ newBrowserCDPSession: async () => session });
   await trace.stop();
   assert.equal(calls.filter(([method]) => method === 'detach').length, 1);
+});
+
+test('post-actor trace flush can settle after two seconds without changing page collector limits', async (t) => {
+  const { startStationHandoffTrace } = await import('../scripts/lib/stationHandoffDiagnostics.mjs');
+  const { unlink } = await import('node:fs/promises');
+  const logs = [];
+  t.mock.method(console, 'error', (...args) => logs.push(args));
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const { session } = traceSession();
+  const send = session.send;
+  session.send = async (method, args) => {
+    if (method === 'Tracing.end') await new Promise((resolve) => setTimeout(resolve, 5000));
+    return send(method, args);
+  };
+  const trace = await startStationHandoffTrace({ newBrowserCDPSession: async () => session });
+  let settled = false;
+  const stopping = trace.stop().then(() => { settled = true; });
+  await Promise.resolve(); await Promise.resolve();
+  t.mock.timers.tick(2000);
+  await Promise.resolve();
+  assert.equal(settled, false, 'post-actor flush is distinct from the two-second page collector');
+  t.mock.timers.tick(3000);
+  await stopping;
+  const path = logs.find(([message]) => message === '[station-handoff] browser trace:')?.[1];
+  assert.ok(path, 'five-second browser finalization produces the trace');
+  await unlink(path);
 });

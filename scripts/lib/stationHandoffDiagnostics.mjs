@@ -171,15 +171,16 @@ export async function reportStationHandoffFailure(page, context, issues, origina
 // finish without executing JavaScript in the blocked page; it is not another page snapshot.
 export async function startStationHandoffTrace(browser) {
   const log = (...args) => { try { console.error(...args); } catch (_) {} };
-  const bounded = async (work, label) => {
+  const bounded = async (work, label, budgetMs = 2000) => {
     let timer;
     try {
       return await Promise.race([Promise.resolve().then(work), new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`${label} exceeded 2000ms`)), 2000);
+        timer = setTimeout(() => reject(new Error(`${label} exceeded ${budgetMs}ms`)), budgetMs);
       })]);
     } finally { clearTimeout(timer); }
   };
   let session = null, stream = null, stopped = false, started = false, retired = false;
+  let traceStage = 'start', traceBytes = 0;
   let resolveComplete;
   const complete = new Promise((resolve) => { resolveComplete = resolve; });
   const onComplete = (event) => { stream = event.stream; resolveComplete(event); };
@@ -208,29 +209,35 @@ export async function startStationHandoffTrace(browser) {
         await bounded(async () => {
           await starting;
           if (!started || retired) return;
+          traceStage = 'Tracing.end';
           await session.send('Tracing.end');
+          traceStage = 'Tracing.tracingComplete';
           await complete;
           if (retired) return;
           const chunks = [];
           let bytes = 0;
           for (;;) {
+            traceStage = 'IO.read';
             const part = await session.send('IO.read', { handle: stream, size: 65536 });
             if (retired) return;
             const chunk = Buffer.from(part.data || '', part.base64Encoded ? 'base64' : 'utf8');
             bytes += chunk.length;
+            traceBytes = bytes;
             if (bytes > 16 * 1024 * 1024) throw new Error('station handoff trace exceeded 16MiB storage limit');
             chunks.push(chunk);
             if (part.eof) break;
           }
           if (retired) return;
+          traceStage = 'artifact write';
           const dir = resolve('scratch/check-ci-report/station-handoff');
           const file = resolve(dir, `${Date.now()}-market-dock.trace.json.gz`);
           await mkdir(dir, { recursive: true });
           if (retired) return;
           await writeFile(file, Buffer.concat(chunks));
           log('[station-handoff] browser trace:', file, `(${bytes} bytes)`);
-        }, 'station handoff trace stop/read');
-      } catch (error) { log('[station-handoff] browser trace unavailable:', error?.message); }
+        // Browser trace finalization is post-actor work, not part of a gameplay wait.
+        }, 'station handoff trace stop/read', 15000);
+      } catch (error) { log('[station-handoff] browser trace unavailable:', error?.message, `(stage=${traceStage}, bytes=${traceBytes})`); }
       finally {
         retired = true;
         // Cleanup is also bounded. Browser close remains the terminal owner if CDP is unavailable.
