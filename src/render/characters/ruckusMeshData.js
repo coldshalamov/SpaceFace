@@ -3,3 +3,10 @@
 // dynamic-imports in the post-eval warm lane instead of interning ~3.4MB inside the
 // post-gate eval task. This manifest stays on the static graph so warm keys are known.
 export const RUCKUS_MESH_KEYS = Object.freeze(["body0","body1","body2","core"]);
+// Literal lazy imports keep route wiring inspectable without eagerly loading the payloads.
+export const RUCKUS_MESH_LOADERS = Object.freeze({
+  "body0": () => import("./ruckusMeshData/body0.js"),
+  "body1": () => import("./ruckusMeshData/body1.js"),
+  "body2": () => import("./ruckusMeshData/body2.js"),
+  "core": () => import("./ruckusMeshData/core.js"),
+});

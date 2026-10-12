@@ -39,3 +39,46 @@ test('core warning and pulse are bounded volume meshes, with non-flashing access
   assert.ok(new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3()).length()<450);disposeRuckusVisual(root);
  }
 });
+
+test('every deferred RUCKUS payload has a literal path from the default game graph', async () => {
+ const {collectReachable}=await import('../scripts/check-src-reachability.mjs');
+ const {fileURLToPath}=await import('node:url');
+ const {RUCKUS_MESH_KEYS}=await import('../src/render/characters/ruckusMeshData.js');
+ const reachable=collectReachable();
+ for(const key of RUCKUS_MESH_KEYS)assert.ok(reachable.has(fileURLToPath(new URL(`../src/render/characters/ruckusMeshData/${key}.js`,import.meta.url))),key);
+});
+
+test('generated lazy manifest is reproducible and loaders retain exact authored payloads', async () => {
+ const {renderRuckusMeshManifest}=await import('../tools/ruckus/meshManifest.mjs');
+ const {RUCKUS_MESH_KEYS:keys,RUCKUS_MESH_LOADERS:loaders}=await import('../src/render/characters/ruckusMeshData.js');
+ const source=await readFile(new URL('../src/render/characters/ruckusMeshData.js',import.meta.url),'utf8');
+ assert.equal(source,renderRuckusMeshManifest(keys));
+ assert.deepEqual(Object.keys(loaders),keys);
+ assert.ok(Object.isFrozen(loaders));
+ assert.doesNotMatch(source,/^import\s/m,'no eager payload imports');
+ for(const key of keys){
+  const loaded=await loaders[key]();
+  const original=await import(`../src/render/characters/ruckusMeshData/${key}.js`);
+  assert.equal(loaded.default,original.default,key);
+ }
+ for(const invalid of [[],['body0','body0'],['../body0'],['body-0'],[null]])assert.throws(()=>renderRuckusMeshManifest(invalid),TypeError);
+});
+
+test('browser-shaped warm lane completes all deferred templates before first visual', async () => {
+ const {execFileSync}=await import('node:child_process');
+ const {fileURLToPath}=await import('node:url');
+ const code=`
+  import assert from 'node:assert/strict';
+  globalThis.window={};
+  const m=await import('./src/render/characters/ruckusModel.js');
+  const {ruckusEntitySpec}=await import('./src/systems/ruckus.js');
+  await m.ruckusWarmReady;
+  for(const part of [undefined,'core']){
+   const root=m.buildRuckusVisual(ruckusEntitySpec(part));
+   assert.equal(root.userData.authoredAssetState,'authored');
+   m.disposeRuckusVisual(root);
+  }
+  m.clearRuckusModelCache();
+ `;
+ execFileSync(process.execPath,['--input-type=module','-e',code],{cwd:fileURLToPath(new URL('..',import.meta.url)),timeout:30000,stdio:'pipe'});
+});

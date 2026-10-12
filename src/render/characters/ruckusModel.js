@@ -4,7 +4,7 @@
  * tools/ruckus/pack-model.mjs. Unsupported assets fail loudly at build/test time.
  */
 import * as THREE from 'three';
-import { RUCKUS_MESH_KEYS } from './ruckusMeshData.js';
+import { RUCKUS_MESH_KEYS, RUCKUS_MESH_LOADERS } from './ruckusMeshData.js';
 import { RUCKUS as C } from '../../data/ruckus.js';
 const templates = new Map();
 // Boot-eval deferral (wave-140 B5): each entry's `json` is stored as text so the module-eval task
@@ -218,7 +218,7 @@ export const ruckusWarmReady = typeof window === 'undefined'
   : (async () => {
       const arrivals = new Map(RUCKUS_MESH_KEYS.map((key) => [
         key,
-        import(`./ruckusMeshData/${key}.js`).then((mod) => meshData.set(key, mod.default)),
+        RUCKUS_MESH_LOADERS[key]().then((mod) => meshData.set(key, mod.default)),
       ]));
       for (const key of RUCKUS_MESH_KEYS) {
         await arrivals.get(key);
