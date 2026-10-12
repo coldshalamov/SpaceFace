@@ -2616,7 +2616,9 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     worldR / Math.max(1e-4, Math.abs(_threatPlateScale.z)),
   );
   core.scale.copy(plate.scale);
-  _swarmThreatMarks.set(mesh, { plate, core });
+  const marks = _swarmThreatMarks.get(mesh);
+  if (marks) { marks.plate = plate; marks.core = core; }
+  else _swarmThreatMarks.set(mesh, { plate, core });
   plate.visible = true;
   core.visible = true;
   if (camera && camera.quaternion && mesh.quaternion) {

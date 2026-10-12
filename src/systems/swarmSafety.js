@@ -32,7 +32,8 @@ export function swarmPlacementIsClear(state, pos, radius, options = {}) {
   const occupants = state?.entities && typeof state.entities.values === 'function'
     ? state.entities.values() : (state?.entityList || []);
   for (const entity of occupants) {
-    if (!entity || !SOLIDS.has(entity.type)) continue;
+    if (!entity || (!SOLIDS.has(entity.type)
+      && !(entity.physicsBody?.schemaVersion === 1 && entity.physicsBody.material !== 'massline_sensor'))) continue;
     if (sweptDiscsOverlap(pos, radius, entity, options)) return false;
   }
   for (const entity of options.reserved || []) {

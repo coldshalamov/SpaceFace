@@ -1093,6 +1093,12 @@ export const onboarding = {
 
   _begin(payload) {
     const st = this.state;
+    // Temporary physics challenges share New Game, but own their actors and instructions.
+    if (st.physicsVenueSession === true) {
+      this._teardown({ removeActors: false });
+      st.onboarding = { active: false, finished: false };
+      return;
+    }
     this._dockControlInRange = false;
     this._demoFittedThisDock = null;
     this._fitFeltOwed = false;
@@ -1370,7 +1376,7 @@ export const onboarding = {
   // EVERY first-hour tutorial line passes through here so the check can audit text overlap at one
   // place. Emits on the 'tutorial' tier (toast kind 'info'). Updates the silence-gate clock.
   _sayTutorial(text, { visual = true } = {}) {
-    if (!text || isRacingCorridorSession(this.state)) return;
+    if (!text || this.state.physicsVenueSession === true || isRacingCorridorSession(this.state)) return;
     this._lastTextAtS = this.state.simTime || 0;
     // Record for the one-voice audit: { atS, text } appended to a session log on state.onboarding.
     const ob = this.state.onboarding;
@@ -2016,6 +2022,7 @@ export const onboarding = {
   prepareStartingScene(payload = {}) {
     const st = this.state;
     if (!st || st.mode !== 'loading') return false;
+    if (st.physicsVenueSession === true) return false;
     if (isRacingCorridorSession(st)) return false;
     if (payload && payload.scenario != null) return false;
     // A Crucible/Swarm launch owns its arena; its run may begin only after this (worker lane).

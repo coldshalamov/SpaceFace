@@ -27,7 +27,7 @@ import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection, ceresShipbreakTransform
 // damage lights, and LOD hooks stay as normal objects.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { detachPackageTexture } from './packageCpuDetach.js';
+import { detachPackageTexture, isPackageGeometryDetached, rehydrateDetachedGeometries, retainPackageGeometryCpu } from './packageCpuDetach.js';
 import { textureGpuResident } from './startupGpuResidency.js';
 import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES } from '../data/palettes.js';
 import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
@@ -4299,7 +4299,17 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
 
   let authored = null;
   const placeBuildTrace = { root: null };
+  const sourceGeometries = [record, overlayRecord].filter(Boolean)
+    .flatMap(source => (source.primitives || []).map(primitive => primitive.geometry));
+  const releaseCpu = retainPackageGeometryCpu(sourceGeometries);
   try {
+    // UI previews and prior instances can upload/retire this same package before a later
+    // place batch reads it. Restore exact authored attributes while the stepped CPU read owns them.
+    const refill = await waitForAuthoredAdmission(rehydrateDetachedGeometries(sourceGeometries), options);
+    assertQueuedAuthoredAdmissionActive(options, 'after-place-cpu-refill');
+    if (refill.errors.length || sourceGeometries.some(isPackageGeometryDetached)) {
+      throw new Error(`[partsLibrary] Authored place CPU refill failed: ${JSON.stringify(refill.errors)}`);
+    }
     authored = await driveAuthoredBuildStepsAsync(
       buildPlacePropRootSteps(entity, record, scene, boundary, {
         overlayRecord, layoutEntity: options.admissionEntity || entity,
@@ -4311,6 +4321,8 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
       boundary, fallbackRoot, entity, renderer, options, setActive,
       'place-build-threw', error,
     );
+  } finally {
+    releaseCpu();
   }
   if (!authored || !boundary.parent) {
     if (!boundary.parent) {
@@ -13719,7 +13731,7 @@ function buildStaticBatchGeometry(bucket, options = {}) {
 
 // Steps twin — the cold-miss path clones+transforms every entry and merges
 // whole buckets atomically; per-entry yields pace a fat bucket's upload prep.
-function* buildStaticBatchGeometrySteps(bucket, options = {}) {
+export function* buildStaticBatchGeometrySteps(bucket, options = {}) {
   const cacheKey = staticBatchGeometryCacheKey(bucket);
   const cached = takeCachedStaticBatchGeometry(cacheKey);
   if (cached) return cached;
