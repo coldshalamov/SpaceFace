@@ -116,6 +116,11 @@
 
 ## B. BP-08 New Assets (not yet in manifest)
 
+> **Canonical-id ruling (F3):** manifest ids for this section are ruled in
+> `design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md` §3.9. Notably
+> `place_landmark_cathedral_wreck` below is a spelling alias of the already-shipped
+> `place_landmark_wreck_cathedral` — do not commission a fourth cathedral spelling.
+
 ### P0 — Faction-Distinct Stations (8)
 | ID | Faction | Silhouette Intent |
 |---|---|---|

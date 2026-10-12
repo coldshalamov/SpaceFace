@@ -189,6 +189,31 @@ The earlier `popup uses`/`palace`/`fortress`/`hotel`/`motel`/`carnival`/`announc
 | ASSET_FAMILIES §I intact→fractured→salvaged wreck families | **Partially in scope** — §D state variants ride the C1/C2 finish passes; the universal anatomy system defers. |
 | `design/program/02_REMAINING_WORK.md` graphics rows (M0-ASSET-INTEGRITY residuals, PQ-022 corridor promotion, PQ-045 four Ceres occupation ships, PQ-050 fleet remaster, M4-ASHLINE-V2 unwired) | **Cross-check, don't absorb** — owned by their own programs; the final wave gate (§6.7) must note overlap or contradiction. |
 
+### 3.9 Canonical-id map (F3 ruling — landmark/gate/wreck collisions)
+
+Every QUEUE/needed-assets row below resolves to exactly one canonical manifest id. Chunks register under the canonical id only; source spellings are retired aliases. Each row was re-verified at F3 ingest — see `design/program/asset-experience-program/QUEUE_INGESTION_VERIFICATION.json`.
+
+| Source row | Source file | Canonical manifest id | Ruling |
+|---|---|---|---|
+| `landmark_beacon_spire` | `assets/QUEUE.md` (F7-30) | `place_landmark_beacon_spire` | Commission (C6). Distinct from shipped `place_lane_beacon`/`place_nav_buoy` and from §B `place_landmark_crystal_spire` — different silhouettes, do not merge. |
+| `landmark_veil_obelisk` | `assets/QUEUE.md` (F7-31) | `place_landmark_veil_obelisk` | Commission (C6). |
+| `landmark_pit_anchor` | `assets/QUEUE.md` (F7-31) | `place_landmark_pit_anchor` | Commission (C6). Same canonical id as needed-assets §B `place_landmark_pit_anchor` — one asset satisfies both rows. |
+| `landmark_vault_maw` | `assets/QUEUE.md` (F7-31) | `place_landmark_vault_maw` | Commission (C6). Same canonical id as needed-assets §B `place_landmark_vault_maw` — dedupe to one commission. |
+| `landmark_tower_crown` | `assets/QUEUE.md` (F6-27) | `place_landmark_tower_crown` | Commission (C6). |
+| `landmark_wreck_cathedral` | `assets/QUEUE.md` (F7-30) | `place_landmark_wreck_cathedral` | **Retire — already shipped+wired**: manifest row + GLB on disk (`places/place_landmark_wreck_cathedral.glb`), bound in census/partsLibrary/`world_site_wreck_cathedral`. The QUEUE row is satisfied; no new GLB. |
+| `place_landmark_cathedral_wreck` | `needed-assets.md` §B-P2 | `place_landmark_wreck_cathedral` | **Spelling alias of the shipped asset — never author under this spelling.** Default: fold any extra treatment into the shipped cathedral's state variants. A genuinely distinct second wreck-cathedral must justify its silhouette in a C6 brief and take id `place_landmark_cathedral_wreck_ii`. |
+| `place_landmark_crystal_spire` | `needed-assets.md` §B-P2 | `place_landmark_crystal_spire` | Commission (C6). |
+| `place_landmark_billboard_array` | `needed-assets.md` §B-P2 | `place_landmark_billboard_array` | Commission (C6). |
+| `place_gate_concord`, `place_gate_merchant`, `place_gate_reach` | `needed-assets.md` §B-P3 | same ids | Commission (C6) — faction ring gates; distinct from shipped generic `place_gate_jump_ring` and `place_transponder_gate`. |
+| `place_wreck_freighter`, `place_wreck_patrol`, `place_wreck_miner`, `place_wreck_capital_section` | `needed-assets.md` §B-P4 | same ids | Commission (C7). Distinct from shipped `place_dead_hulk` (whole dead capital hulk) and `place_ceres_bait_wreck` (site prop): `_capital_section` is a severed section, not a hulk — each brief states the silhouette difference. |
+| `place_comm_beacon` | `needed-assets.md` §B-P4 | `place_comm_beacon` | Commission (C7). Comms/mission-chain beacon — distinct from shipped `place_lane_beacon` (lane navigation). |
+| `place_asteroid_luminite`, `place_asteroid_ice` | `needed-assets.md` §B-P5 | same ids | Commission (C7) — hero rocks; distinct from shipped `place_asteroid_rock_a/b/c`, `place_asteroid_seamed`, `place_asteroid_graffiti`. |
+| `place_station_concord_hub`, `place_station_meridian_exchange`, `place_station_drift_refinery`, `place_station_reach_den`, `place_station_quiet_cache`, `place_station_choir_shrine`, `place_station_free_waystation`, `place_station_vael_spire` | `needed-assets.md` §B-P0 | same ids | Commission (C7) — faction overlays built on the `var_station_trade_hub_{scn,mts,free}_overlay_v01` technique. New ids, not respellings of shipped `place_station_*` archetypes. |
+
+**Shipped landmark family — already registered, do not re-commission:** `place_landmark_wreck_cathedral`, `place_landmark_resonant_cathedral`, `place_landmark_skerris_throne`, `place_landmark_candle_fleet`, plus landmark-adjacent `place_worklight_tower`, `place_transponder_gate`, `place_ash_pin`.
+
+**Wholeship admission-id note:** the QUEUE/spec shorthand `massline_express_liner` maps to manifest id `wholeship_massline_express_liner_v1` — the only AD id without the `_production_v1` suffix. The other 11 candidates are `wholeship_<name>_production_v1`.
+
 ---
 
 ## 4. The agentic pipeline contract
