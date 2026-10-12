@@ -7,6 +7,11 @@ This file tracks the stacked visual polish of every shootable 2D screen (`node s
 
 Owner bar: consistent, high-detail, creative, interactive, non-generic. Design authority: Deckplate (`--dp-*` / `.dp-*`) + ORRERY composition (light, scales, ladders, the Hand). Screen placement lives in `deckplate/screens.js` / orrery layouts; no new token root.
 
+## Remaining work — top priority (ui-polish-6)
+
+- **(a) Race board:** oversized, stacked labels at 1280×720 and 960×540. **Fixed** — `raceBoardLayouts.js`: the board's children were auto-placed into the kit `.k-screen` grid's zero-height rows, so 30px `.k-word` selects/buttons spilled over the cards. Now a scrolling document: labelled fit rail, three course cards (amber primary Race, outlined story contracts), paint + recognition two-up. Same sheet fixes the Physics board, which shares `.race-board`. Bench can now mount `raceBoard`. (#329)
+- **(b) Adventure combat HUD clicks (agreed with Code Work):** during Adventure combat, while weapons are hot, primary clicks go to the game and HUD buttons must not open menus. Build on #327's approach, which only covers Crucible. **Fixed in #330** — `hudCombatLock.js` makes the HUD row inert for 4s of sim after the player fires or is hit; keyboard blur only on pointer clicks (`ev.detail > 0`).
+
 ## Design direction (this PR)
 
 | Axis | Direction |
@@ -33,6 +38,8 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 |---|---|---|
 | **`title`** / **`mainMenu`** | **DONE** | Tab order + logo clear of the orrery rings on ui-polish-5 (§ Main menu below) |
 | `motionAsk` | SURVEYED | Inherits title |
+| **`new-game`** / `newGame` | **DONE** | See § New Game below — this session |
+| **`pause`** | **DONE** | See § Pause below — ui-polish-6 (moved off #325) |
 | **`new-game`** / `newGame` | **DONE** | See § New Game below; yard/loadout fixes on ui-polish-5 (§ New Game yard fixes) |
 | `pause` | SURVEYED | Ledger DONE; keep selectors stable for player-truth |
 | **`settings`** | **DONE** | See § Settings below — this session |
@@ -383,6 +390,34 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 ---
 
+## Pause (`pause`) — ui-polish-6 (moved off ui-polish-5) (2026-10-12)
+
+New overlay `src/ui/orrery/pauseLayouts.js`, injected from `pause.js` (one import + one call beside `injectOrreryScreens`). Scoped to `.of-pause.orr-pause` / `.orr-pause--phone`; selectors/IDs unchanged. Composition in `screenLayouts.js` + deckplate PAUSE left alone.
+
+**Before:** title/eyebrow soft on the held world; FLIGHT BRIEF kicker + save line sat ~.55–.6 bone; foot keys were bare glyphs (screenLayouts stripped the boxes); bank verbs on the dial read thin; no 1080p lift; phone brief had little hierarchy.
+
+**Pass 1–2 (CSS only):**
+1. Title hotter bone + deeper void halo.
+2. Brief hierarchy — kicker ≥.9 with a trailing hairline, name hot bone, next ≥.86, save ≥.82, deeper shade pool, ice ring reading brighter.
+3. Verb ladder — rest dial words ≥.86; sector legends ≥.92; phone group heads + bank verbs clearer with more row gap.
+4. Foot — settings-rail keycap boxes (`ESC`/`P`/`F5`/…) + brighter verb labels + underline rail under the keys strip.
+5. 1080p band — zoom **head + brief + foot only** (`--sv` 1.12); dial stage untouched (arcRail places from `getBoundingClientRect`).
+6. Short-height tighten; phone brief kicker rule.
+
+**Walk:** `node scripts/ui-bench.mjs --shot=pause --walk` — exit 0; measured clean; 19 controls exercised; selectors/IDs unchanged. Checked at 1280×720, 1920×1080, 390×844.
+
+| Shot | Path |
+|---|---|
+| Before (@720) | `/workspace/spaceface-scratch/ui-shots/pause-20261012-1515/before/pause-1280x720.png` |
+| After (@720) | `/workspace/spaceface-scratch/ui-shots/pause-20261012-1515/after/pause-1280x720.png` |
+| Before (@1080) | `/workspace/spaceface-scratch/ui-shots/pause-20261012-1515/before/pause-1920x1080.png` |
+| After (@1080) | `/workspace/spaceface-scratch/ui-shots/pause-20261012-1515/after/pause-1920x1080.png` |
+| Before (phone) | `/workspace/spaceface-scratch/ui-shots/pause-20261012-1515/before/pause-390x844.png` |
+| After (phone) | `/workspace/spaceface-scratch/ui-shots/pause-20261012-1515/after/pause-390x844.png` |
+
+**Next:** HUD chrome / dialogs / stations; re-verify earlier screens on fresh assets; SANDBOX-over-nose remaining on main menu @1080p.
+
+
 ## Live-boot survey (2026-10-12, real game booted in headless Chromium, 1280×720 + 1920×1080)
 
 Captured by booting the actual game (`node server.js`, Playwright + SwiftShader) and clicking through the main menu the way a player does. Images: `docs/ui-polish/before/*.jpg`, `docs/ui-polish/after/*.jpg`.
@@ -434,6 +469,8 @@ The game already ships a mature system: Deckplate tokens (`--dp-*`) + ORRERY ins
 - `src/ui/orrery/statisticsLayouts.js` + `src/ui/screens/statistics.js`: Statistics ORRERY foot keycap rail, reading contrast, shade pool, 1080p zoom, short-frame LAW fit. Selectors/IDs unchanged.
 - `src/ui/orrery/newGameLayouts.js` + `src/ui/screens/newGame.js`: New Game foot keycap rail, secondary contrast, loadout size column, 1080p left-column lift (the screen-wide zoom was replaced on ui-polish-5). Selectors/IDs and loadout data unchanged.
 - `src/ui/orrery/constellationLayouts.js` + `src/ui/screens/techTree.js`: Tech Tree / Research foot keycap rail, hour-verb curve clip (no dial tangle), secondary contrast, rim chrome, 1080p zoom. Selectors/IDs unchanged. ACHIEVEMENTS block untouched.
+- `src/ui/orrery/pauseLayouts.js` + `src/ui/screens/pause.js`: Pause title/brief/ladder contrast, foot keycap rail, 1080p head/brief/foot lift (dial untouched). Selectors/IDs unchanged.
+- `src/ui/orrery/raceBoardLayouts.js` (+ inject in `raceBoard.js` / `physicsVenues.js`; bench loader + catalog id `raceBoard`): Circuits and Physics boards reflowed as described above. Selectors/IDs, data and launch logic unchanged.
 - No selectors/IDs changed; no engine/render, audio, loadout data or HUD threat-marker code touched.
 
 ## Crucible results (`crucible-results`) — ui-polish-5 (2026-10-12)

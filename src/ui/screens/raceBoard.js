@@ -1,6 +1,7 @@
 // Circuit selection is a real launch path, not a second campaign-save namespace.
 import { el, cue } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
+import { injectRaceBoardLayouts } from '../orrery/raceBoardLayouts.js';
 import { confirm } from '../confirm.js';
 import { RACE_LEVELS, courseForLevel, practiceContractForLevel, raceContractById, raceLevelById, racingOfferFor, racingSeedFor, storyContracts } from '../../data/raceLevels.js';
 import { readRaceRecords, raceRecordKey, normalizeSteeringView, STEERING_VIEWS, activeRaceMission } from '../../systems/racingSteer.js';
@@ -51,7 +52,7 @@ async function runContract(ctx, contractId, level, fit) {
 export const raceBoardScreen={
   id:'raceBoard',
   mount(rootEl,ctx){
-    injectDeckplate();rootEl.replaceChildren();rootEl.classList.add('k-screen','race-board');
+    injectDeckplate();injectRaceBoardLayouts();rootEl.replaceChildren();rootEl.classList.add('k-screen','race-board');
     rootEl.setAttribute('aria-label','Racing circuits');this._root=rootEl;
     const title=el('header','k-title');
     title.append(el('p','k-sentence','CIRCUITS / FLIGHT'),el('h1','k-display k-t-title','Thread the needle.'),
