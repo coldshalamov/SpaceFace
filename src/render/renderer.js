@@ -25864,6 +25864,10 @@ export const render = {
               urgent: entityIsOnDeadlineGlass(e, capturedState), isActive,
             });
           }).finally(() => {
+            // On-glass builds never took the hold above. Releasing anyway would
+            // decrement another lane's counted hold (bloom-unready, residency) and
+            // reveal that root before its own admission finished.
+            if (linkOnGlass) return;
             if (typeof markPending === 'function') {
               markPending(subject, false);
             } else if (subject && subject.userData) {
