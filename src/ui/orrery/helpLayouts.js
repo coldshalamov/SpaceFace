@@ -30,10 +30,10 @@ ${H} { grid-template-columns:clamp(172px, 12.2vw, 300px) minmax(0, 1fr) !importa
 ${H}::before { background:radial-gradient(120% 100% at 30% 40%, rgb(5 7 10 / .9), rgb(5 7 10 / .76) 55%, rgb(5 7 10 / .58)) !important; }
 ${H} > .k-title { align-self:end; margin:0 !important; padding:0 !important; border:0 !important; }
 ${H} > .k-title .k-t-title { margin:0 !important; }
-${H} > .k-title > .sf-help-now { ${LABEL} margin:12px 0 0 !important; font-size:clamp(12px, .62vw, 16px) !important; letter-spacing:.26em !important; color:rgb(${BONE} / .66) !important;
+${H} > .k-title > .sf-help-now { ${LABEL} margin:12px 0 0 !important; font-size:clamp(12px, .62vw, 16px) !important; letter-spacing:.26em !important; color:rgb(${BONE} / .88) !important;
   display:flex; align-items:center; gap:14px; }
 ${H}:not([data-tab="controls"]) > .k-title > .sf-help-now { visibility:hidden; }
-${H} > .k-title > .sf-help-now::after { content:""; width:72px; height:1.5px; background:linear-gradient(90deg, rgb(${BONE} / .5), rgb(${BONE} / 0)); }
+${H} > .k-title > .sf-help-now::after { content:""; width:72px; height:1.5px; background:linear-gradient(90deg, rgb(${BONE} / .7), rgb(${BONE} / 0)); }
 
 /* ------------------------------------------------ the section ladder --------------------------- */
 ${H} > .k-hang { ${PLAIN} overflow:visible !important; padding:0 !important; margin:0 !important; align-self:start; max-height:none !important; }
@@ -41,13 +41,13 @@ ${H} .orr-help__tabs { ${PLAIN} position:relative !important; display:flex !impo
   counter-reset:orrhelp; background:${SPINE} !important; }
 ${H} .orr-help__tabs > li { position:relative !important; counter-increment:orrhelp; width:100% !important; list-style:none !important; margin:0 !important; }
 ${H} .orr-help__tabs > li::before { content:counter(orrhelp, decimal-leading-zero); position:absolute; left:40px; top:50%; transform:translateY(-50%); pointer-events:none;
-  ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.14em; color:rgb(${BONE} / .66); font-variant-numeric:tabular-nums; }
+  ${LABEL} font-size:clamp(12px, .6vw, 15px); letter-spacing:.14em; color:rgb(${BONE} / .82); font-variant-numeric:tabular-nums; }
 ${H} .orr-help__tabs > li:has(> .sf-tab[aria-selected="true"])::before { color:rgb(${HOT}); }
 ${H} .orr-help__tabs .sf-tab { all:unset !important; box-sizing:border-box !important; position:relative !important; display:flex !important; align-items:center !important;
   width:100% !important; min-height:clamp(38px, 4.8vh, 50px) !important; padding:0 6px 0 72px !important; cursor:pointer !important; ${LABEL} font-size:clamp(13px, .68vw, 17px) !important;
-  letter-spacing:.2em !important; color:rgb(${BONE} / .72) !important; white-space:nowrap !important; transition:color .16s linear; }
+  letter-spacing:.2em !important; color:rgb(${BONE} / .88) !important; white-space:nowrap !important; transition:color .16s linear; }
 ${H} .orr-help__tabs .sf-tab::before { content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:9px !important;
-  height:2px !important; margin:-1px 0 0 !important; translate:none !important; scale:none !important; transform:none !important; background:rgb(${BONE} / .6) !important;
+  height:2px !important; margin:-1px 0 0 !important; translate:none !important; scale:none !important; transform:none !important; background:rgb(${BONE} / .72) !important;
   box-shadow:none !important; border:0 !important; clip-path:none !important; border-radius:0 !important; opacity:1 !important; }
 ${H} .orr-help__tabs .sf-tab::after { content:none !important; display:none !important; }
 ${H} .orr-help__tabs .sf-tab:is(:hover, :focus-visible) { color:rgb(255 255 255) !important; }
@@ -65,16 +65,23 @@ ${H}[data-tab="controls"] .orr-help__tabs .sf-tab[aria-selected="true"]::after {
 ${H}[data-tab="controls"] .orr-help__tabs .sf-tab[aria-selected="true"]::before { background:var(--dp-hand-hot, #ffd98c) !important; filter:drop-shadow(0 0 7px rgb(255 217 140 / .7)); }
 ${H} .orr-help__tabs .sf-tab[aria-selected="true"]:focus-visible { text-decoration:underline 2px rgb(255 255 255 / .8); text-underline-offset:7px; }
 
-/* ------------------------------------------------ the foot: Close + its key -------------------- */
-${H} > .k-foot { ${PLAIN} align-self:end; justify-content:flex-start; gap:0 !important; margin:0 !important; padding:0 !important; }
-${H} .orr-help__close.sf-back.k-word { all:unset !important; box-sizing:border-box !important; display:inline-flex !important; align-items:center !important; gap:14px !important;
-  cursor:pointer !important; padding:8px 0 !important; min-height:44px !important; }
-${H} .orr-help__close.sf-back.k-word::before { content:none !important; display:none !important; }
-${H} .orr-help__close.sf-back.k-word::after { content:none !important; display:none !important; }
-${H} .orr-help__close-word { font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800; font-weight:800;
-  font-size:clamp(18px, .94vw, 24px); letter-spacing:.16em; text-transform:uppercase; color:rgb(${HOT}); transition:color .16s linear; }
-${H} .orr-help__close:is(:hover, :focus-visible) .orr-help__close-word { color:rgb(255 255 255); text-shadow:0 0 18px rgb(255 250 236 / .35); }
-${H} .orr-help__close:focus-visible .orr-hkey::after { background:rgb(255 255 255); left:-5px; right:-5px; }
+/* ------------------------------------------------ the foot: ‹ CLOSE + ESC keycap (matches settings/save-load) - */
+${H} > .k-foot { ${PLAIN} align-self:end; justify-content:flex-start; align-items:center !important; gap:0 !important; margin:0 !important; padding:0 !important; }
+${H} .orr-help__close.sf-back.k-word { all:unset !important; box-sizing:border-box !important; display:inline-flex !important; align-items:baseline !important; gap:0 !important;
+  cursor:pointer !important; padding:10px 0 12px !important; min-height:44px !important;
+  ${LABEL} font-size:13.5px !important; letter-spacing:.22em !important; color:rgb(255 253 248) !important;
+  background:linear-gradient(0deg, rgb(${BONE} / .28) 0 1.5px, transparent 1.5px) 0 100% / 120px 100% no-repeat !important; }
+${H} .orr-help__close.sf-back.k-word::before { all:unset !important; content:"‹" !important; display:inline !important; margin-right:12px !important; font-size:15px !important; color:rgb(${BONE} / .6) !important; }
+${H} .orr-help__close.sf-back.k-word::after { all:unset !important; content:"ESC" / "" !important; display:inline-block !important; margin-left:16px !important; padding:3px 7px 4px !important;
+  ${LABEL} font-size:11px !important; letter-spacing:.2em !important; line-height:1 !important;
+  color:rgb(${BONE} / .72) !important; background:rgb(${BONE} / .06) !important; border:1px solid rgb(${BONE} / .28) !important; border-radius:3px !important;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important; }
+${H} .orr-help__close-word { ${LABEL} font-size:13.5px !important; letter-spacing:.22em !important; font-stretch:112% !important; font-variation-settings:"wdth" 112, "wght" 650 !important; font-weight:650 !important;
+  text-transform:uppercase !important; color:inherit !important; transition:color .16s linear; }
+${H} .orr-help__close .orr-hkey { display:none !important; }
+${H} .orr-help__close:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important; }
+${H} .orr-help__close:is(:hover, :focus-visible) .orr-help__close-word { color:inherit; text-shadow:none; }
+${H} .orr-help__close:focus-visible::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
 
 /* ------------------------------------------------ a key glyph (the letter over a bar of light) - */
 .orr-hkey { position:relative; display:inline-flex; align-items:baseline; justify-content:center; gap:6px; flex:none; min-width:20px; padding:0 3px 8px;
@@ -106,7 +113,7 @@ ${H} .orr-hreg__title { margin:0; font-family:var(--dp-face-display, "Archivo");
   letter-spacing:.12em; text-transform:uppercase; color:rgb(${HOT}); }
 ${H} .orr-hreg__secs { display:flex; gap:clamp(8px, 1vw, 22px); flex-wrap:nowrap; padding-bottom:14px;
   background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 calc(100% - 4px) / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .12) 0 0) 0 calc(100% - 1.5px) / 100% 7px no-repeat; }
-${H} .orr-hreg__secword { all:unset; box-sizing:border-box; cursor:pointer; position:relative; padding:3px 0 4px; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.18em; color:rgb(${BONE} / .72); }
+${H} .orr-hreg__secword { all:unset; box-sizing:border-box; cursor:pointer; position:relative; padding:3px 0 4px; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.18em; color:rgb(${BONE} / .88); }
 ${H} .orr-hreg__secword::after { content:""; position:absolute; left:50%; bottom:-12px; width:2px; height:9px; margin-left:-1px; background:rgb(${BONE} / .6); }
 ${H} .orr-hreg__secword[aria-current="true"] { color:rgb(${HOT}); }
 ${H} .orr-hreg__secword[aria-current="true"]::after { width:9px; height:9px; margin-left:-4.5px; bottom:-14px; border-radius:50%; background:rgb(${HOT}); box-shadow:0 0 8px rgb(255 244 222 / .55); }
@@ -129,14 +136,14 @@ ${H} .orr-hreg__sec:first-child { padding-top:4px; }
 ${H} .orr-hreg__sec::before { content:""; position:absolute; left:2px; bottom:14px; width:16px; height:2px; background:rgb(${HOT} / .9); }
 ${H} .orr-hreg__row { position:relative; display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; column-gap:14px; padding:5px 0 5px 30px; min-height:clamp(32px, 1.7vw, 42px); box-sizing:border-box; }
 ${H} .orr-hreg__row::before { content:""; position:absolute; left:4px; top:50%; width:8px; height:2px; margin-top:-1px; background:rgb(${BONE} / .55); transition:width .16s, background .16s; }
-${H} .orr-hreg__name { font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(14px, .73vw, 18px); line-height:1.3; color:rgb(${BONE} / .84); }
+${H} .orr-hreg__name { font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(14px, .73vw, 18px); line-height:1.3; color:rgb(${BONE} / .92); }
 ${H} .orr-hreg__row .orr-hkey { justify-self:end; max-width:210px; }
 ${H} .orr-hreg__row.is-echo::before { width:20px; background:rgb(255 255 255); box-shadow:0 0 8px rgb(143 203 255 / .8); }
 ${H} .orr-hreg__row.is-echo .orr-hreg__name { color:rgb(255 255 255); }
 ${H} .orr-hreg__row.is-echo .orr-hkey { color:rgb(255 255 255); text-shadow:0 0 12px rgb(143 203 255 / .9); }
 ${H} .orr-hreg__row.is-echo .orr-hkey::after { background:rgb(255 255 255); left:-4px; right:-4px; }
 ${H} .orr-hreg__row.is-echo .orr-hkey::before { background:rgb(143 203 255 / .34); }
-${H} .orr-hreg__fine { margin:10px 0 0; padding-left:30px; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(12px, .6vw, 15px); line-height:1.4; color:rgb(${BONE} / .7); }
+${H} .orr-hreg__fine { margin:10px 0 0; padding-left:30px; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(12px, .6vw, 15px); line-height:1.4; color:rgb(${BONE} / .84); }
 ${H} .orr-hreg .orr-extent::before { left:7px; width:2px; }
 
 /* ------------------------------------------------ the shared ladder + reading ------------------ */
@@ -156,10 +163,9 @@ ${H} .orr-help-list--ores .orr-help-terms { grid-column:2; grid-row:1 / span 2; 
 ${H} .orr-help-search.sf-lc { margin:0 0 12px !important; padding:0 !important; }
 ${H} .orr-help-search .sf-lc__search { ${PLAIN} width:100% !important; max-width:none !important; min-height:38px; padding:6px 2px 12px 2px !important; box-sizing:border-box;
   font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif !important; font-size:clamp(14px, .73vw, 18px) !important; color:rgb(${HOT}) !important;
-  background:linear-gradient(rgb(${BONE} / .55) 0 0) 0 calc(100% - 3px) / 100% 2px no-repeat,
-    repeating-linear-gradient(90deg, rgb(${BONE} / .5) 0 1.5px, transparent 1.5px 24px) 0 100% / 100% 8px no-repeat !important; }) !important;
-  background:linear-gradient(rgb(${BONE} / .5) 0 0) 0 100% / 100% 2px no-repeat, linear-gradient(rgb(${BONE} / .1) 0 0) 0 calc(100% - 2px) / 100% 7px no-repeat !important; }
-${H} .orr-help-search .sf-lc__search::placeholder { color:rgb(${BONE} / .66) !important; }
+  background:linear-gradient(rgb(${BONE} / .7) 0 0) 0 calc(100% - 3px) / 100% 2px no-repeat,
+    repeating-linear-gradient(90deg, rgb(${BONE} / .55) 0 1.5px, transparent 1.5px 24px) 0 100% / 100% 8px no-repeat !important; }
+${H} .orr-help-search .sf-lc__search::placeholder { color:rgb(${BONE} / .78) !important; }
 ${H} .orr-help-search .sf-lc__search:focus { background:linear-gradient(rgb(255 255 255) 0 0) 0 calc(100% - 3px) / 100% 2px no-repeat,
   repeating-linear-gradient(90deg, rgb(255 255 255 / .8) 0 1.5px, transparent 1.5px 24px) 0 100% / 100% 8px no-repeat !important; }
 ${H} .orr-help-search { position:relative; }
@@ -179,8 +185,8 @@ ${H} .orr-help-ladder__rung { margin:0; list-style:none; }
 ${H} .orr-help-ladder__item { all:unset; box-sizing:border-box; position:relative; display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; column-gap:12px; width:100%;
   min-height:clamp(34px, 1.8vw, 44px); padding:5px 4px 5px 44px; cursor:pointer; }
 ${H} .orr-help-ladder__item::before { content:""; position:absolute; left:4px; top:50%; width:8px; height:2px; margin-top:-1px; background:rgb(${BONE} / .55); transition:width .16s, background .16s; }
-${H} .orr-help-ladder__name { font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(14px, .73vw, 18px); line-height:1.25; color:rgb(${BONE} / .82); transition:color .16s linear; }
-${H} .orr-help-ladder__fig { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 500; font-size:clamp(13px, .68vw, 17px); font-variant-numeric:tabular-nums; color:rgb(${BONE} / .72); text-transform:none; }
+${H} .orr-help-ladder__name { font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(14px, .73vw, 18px); line-height:1.25; color:rgb(${BONE} / .92); transition:color .16s linear; }
+${H} .orr-help-ladder__fig { font-family:var(--dp-face-numeral, "Archivo"); font-variation-settings:"wdth" 100, "wght" 500; font-size:clamp(13px, .68vw, 17px); font-variant-numeric:tabular-nums; color:rgb(${BONE} / .86); text-transform:none; }
 ${H} .orr-help-ladder__fig.is-foe { color:#ff7a66; }
 ${H} .orr-help-ladder__item:hover .orr-help-ladder__name, ${H} .orr-help-ladder__item:focus-visible .orr-help-ladder__name { color:rgb(255 255 255); }
 ${H} .orr-help-ladder__item:hover::before { width:14px; background:rgb(${HOT}); }
@@ -190,10 +196,10 @@ ${H} .orr-help-ladder__item[aria-selected="true"] .orr-help-ladder__fig { color:
 /* the Hand on the chosen rung: a stem off the spine and the notched chevron, amber (the screen's one) */
 ${H} .orr-help-ladder__item[aria-selected="true"]::after { content:""; position:absolute; left:8px; top:50%; width:22px; height:2px; margin-top:-1px; background:var(--dp-hand, #f2b950); }
 ${H} .orr-help-ladder__item[aria-selected="true"]::before { left:29px; width:10px; height:12px; margin-top:-6px; ${HAND} background:var(--dp-hand-hot, #ffd98c); filter:drop-shadow(0 0 6px rgb(255 217 140 / .6)); box-shadow:none; }
-${H} .orr-help-reading__vs { display:block; margin:18px 0 0; line-height:1.6; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.18em; color:rgb(${BONE} / .76); }
+${H} .orr-help-reading__vs { display:block; margin:18px 0 0; line-height:1.6; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.18em; color:rgb(${BONE} / .88); }
 ${H} .orr-help-reading__vs b { font-weight:700; color:rgb(${HOT}); white-space:nowrap; }
 ${H} .orr-help-reading__vs-bead { display:inline-block; vertical-align:-1px; margin-right:10px; width:10px; height:10px; border-radius:50%; box-shadow:inset 0 0 0 2px rgb(${BONE} / .9); }
-${H} .orr-help-ladder__pin { margin-left:10px; ${LABEL} font-size:12px !important; letter-spacing:.18em; color:rgb(${BONE} / .76); }
+${H} .orr-help-ladder__pin { margin-left:10px; ${LABEL} font-size:12px !important; letter-spacing:.18em; color:rgb(${BONE} / .88); }
 ${H} .orr-help-ladder__pin::before { content:""; display:inline-block; width:7px; height:7px; margin-right:6px; border-radius:50%; box-shadow:inset 0 0 0 2px rgb(${BONE} / .9); vertical-align:1px; }
 /* a small verb on a reading: a word with its key, bone at rest, white where the player reaches it */
 ${H} .orr-help-verb { all:unset; box-sizing:border-box; display:inline-flex; align-items:center; gap:12px; margin:18px 0 0; padding:6px 0; cursor:pointer; }
@@ -205,22 +211,22 @@ html.sf-gamepad-focus ${H} .orr-help-verb:focus .orr-help-verb__word { color:rgb
 ${H} .orr-help-verb[aria-disabled="true"] { cursor:default; }
 ${H} .orr-help-verb[aria-disabled="true"] .orr-help-verb__word { color:rgb(${BONE} / .74); }
 ${H} .orr-help-verb[aria-disabled="true"] .orr-hkey { opacity:.6; }
-${H} .orr-help-empty { margin:10px 0 0 30px !important; font-size:14px !important; color:rgb(${BONE} / .76) !important; }
+${H} .orr-help-empty { margin:10px 0 0 30px !important; font-size:14px !important; color:rgb(${BONE} / .9) !important; }
 ${H} .orr-help-ladder ~ .orr-extent, ${H} .orr-help-ladder > .orr-extent { }
 
 /* the reading: no panel; a pool of shade, the figure, a ledger of terms */
 ${H} .orr-help-reading { position:relative; z-index:2; max-width:clamp(420px, 26vw, 640px); }
 ${H} .orr-help-reading::before { content:""; position:absolute; z-index:-1; left:-60px; right:-60px; top:-40px; bottom:-40px; pointer-events:none;
-  background:radial-gradient(closest-side, rgb(5 7 10 / .8), rgb(5 7 10 / .5) 60%, rgb(5 7 10 / 0)); }
-${H} .orr-help-reading__kicker { margin:0 0 6px; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.24em; color:rgb(${BONE} / .72); }
+  background:radial-gradient(closest-side, rgb(5 7 10 / .88), rgb(5 7 10 / .58) 60%, rgb(5 7 10 / 0)); }
+${H} .orr-help-reading__kicker { margin:0 0 6px; ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.24em; color:rgb(${BONE} / .88); }
 ${H} .orr-help-reading__name { margin:0 0 6px; font-family:var(--dp-face-display, "Archivo"); font-stretch:125%; font-variation-settings:"wdth" 125, "wght" 800; font-weight:800;
   font-size:clamp(24px, 2.1vw, 40px); line-height:1; letter-spacing:.02em; text-transform:uppercase; color:rgb(${HOT}); }
 ${H} .orr-help-reading__name.sf-entity-link { text-decoration:none !important; box-shadow:none !important; border:0 !important; color:rgb(${HOT}) !important; cursor:pointer; }
 ${H} .orr-help-reading__name.sf-entity-link:is(:hover, :focus-visible) { color:rgb(255 255 255) !important; outline:none; text-shadow:0 0 22px rgb(255 250 236 / .3); }
-${H} .orr-help-reading__sub { margin:0 0 14px; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(15px, .78vw, 19px); color:rgb(${BONE} / .84); }
+${H} .orr-help-reading__sub { margin:0 0 14px; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(15px, .78vw, 19px); color:rgb(${BONE} / .92); }
 ${H} .orr-help-terms { margin:14px 0 0; padding:0; display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:22px; row-gap:0; }
 ${H} .orr-help-terms__row { display:contents; }
-${H} .orr-help-terms dt, ${H} .orr-help-terms__k { ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.18em; color:rgb(${BONE} / .72); padding:7px 0; margin:0; }
+${H} .orr-help-terms dt, ${H} .orr-help-terms__k { ${LABEL} font-size:clamp(12px, .6vw, 15px) !important; letter-spacing:.18em; color:rgb(${BONE} / .86); padding:7px 0; margin:0; }
 ${H} .orr-help-terms dd { margin:0; padding:5px 0; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(15px, .78vw, 19px); line-height:1.4; color:rgb(${HOT}); font-variant-numeric:tabular-nums; }
 ${H} .orr-help-terms__row.is-against dd { color:#ff7a66; }
 ${H} .orr-help-reading__legal { display:flex; align-items:baseline; gap:22px; margin:8px 0 0; }
@@ -228,7 +234,7 @@ ${H} .orr-help-legal { ${LABEL} font-size:13px !important; letter-spacing:.18em;
 ${H} .orr-help-legal.is-foe { color:#ff7a66; }
 ${H} .orr-help-legal.is-goal { color:rgb(${HOT}); text-decoration:underline 2px rgb(${BONE} / .5); text-underline-offset:6px; }
 ${H} .orr-help-reading__body { margin:14px 0 0; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(15px, .78vw, 19px); line-height:1.5; color:rgb(${HOT}); }
-${H} .orr-help-reading__lore { margin:8px 0 0; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-style:italic; font-size:clamp(14px, .73vw, 18px); line-height:1.5; color:rgb(${BONE} / .8); }
+${H} .orr-help-reading__lore { margin:8px 0 0; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-style:italic; font-size:clamp(14px, .73vw, 18px); line-height:1.5; color:rgb(${BONE} / .88); }
 /* entity links on this screen read as bone, never a web underline or a second amber */
 ${H} .sf-entity-link { text-decoration:none !important; box-shadow:none !important; }
 
@@ -255,8 +261,9 @@ html.sf-gamepad-focus ${H} .orr-hrig__st:focus .orr-hrig__verb { color:rgb(255 2
 html.sf-gamepad-focus ${H} .orr-hrig__st:focus .orr-hrig__glyph::before { background:rgb(248 244 234 / .3); }
 html.sf-gamepad-focus ${H} :is(.orr-hrig__devword, .orr-hreg__secword):focus { color:rgb(255 255 255); }
 html.sf-gamepad-focus ${H} :is(.orr-hrig__devword, .orr-hreg__secword):focus::after { height:3px; background:rgb(255 255 255); }
-html.sf-gamepad-focus ${H} .orr-help__close:focus .orr-help__close-word { color:rgb(255 255 255); text-shadow:0 0 18px rgb(255 250 236 / .35); }
-html.sf-gamepad-focus ${H} .orr-help__close:focus .orr-hkey::after { background:rgb(255 255 255); left:-5px; right:-5px; }
+html.sf-gamepad-focus ${H} .orr-help__close:focus { color:var(--dp-hand-hot, #ffd98c) !important; }
+html.sf-gamepad-focus ${H} .orr-help__close:focus .orr-help__close-word { color:inherit; text-shadow:none; }
+html.sf-gamepad-focus ${H} .orr-help__close:focus::after { color:rgb(255 253 248) !important; border-color:rgb(255 253 248 / .45) !important; }
 html.sf-gamepad-focus ${H} :is(.orr-hloop__body, .orr-hmix__rock):focus::before { box-shadow:inset 0 0 0 3px rgb(255 255 255), 0 0 12px rgb(255 250 236 / .5); }
 html.sf-gamepad-focus ${H} .orr-hmix__lbl:focus .orr-hmix__lbl-name { color:rgb(255 255 255); text-decoration:underline 2px rgb(255 255 255 / .6); text-underline-offset:4px; }
 html.sf-gamepad-focus ${H} .orr-crest:focus > img, ${H} .orr-crest:focus-visible > img { opacity:.9; transform:scale(1.14); }
@@ -280,6 +287,7 @@ ${H} .orr-hmix__lbl:focus-visible { outline:none; }
   ${H} .orr-help__tabs .sf-tab[aria-selected="true"]::after { width:16px !important; }
   ${H} .orr-hreg__name { font-size:13px; }
 }
+/* UI polish: no 1080p zoom on Help — EVERY KEY + rebound footnote tangle under 1.12; contrast/foot rail carry the pass */
 ${SCROLL_EXTENT_CSS}
 @media (forced-colors: active) {
   ${H} .orr-help__tabs .sf-tab[aria-selected="true"]::before { background:Highlight !important; }

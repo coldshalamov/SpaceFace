@@ -36,7 +36,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `pause` | SURVEYED | Ledger DONE; keep selectors stable for player-truth |
 | **`settings`** | **DONE** | See § Settings below — this session |
 | **`save-load`** / `saveLoad` / `save-load-empty` / `save-load-live` | **DONE** | See § Save/Load below — this session |
-| `help` | SURVEYED | Next after save-load |
+| **`help`** | **DONE** | See § Help below — this session |
 | `codex` / `codex-record` | SURVEYED | |
 | `mission-log` / `missionLog` | SURVEYED | |
 | `credits` | SURVEYED | Shares orrery settingsLayouts credits path |
@@ -118,10 +118,37 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Code touched:** `src/ui/orrery/saveLayouts.js` only. No loadout data, audio, flight HUD threat markers, engine/render, or game-over style changes.
 
-**Next:** `help` on the player path.
+**Next after save-load was:** `help` — now DONE (see below).
 
 ---
 
+
+## Help — session notes (2026-10-12)
+
+**Before:** ORRERY Help already strong (ladder + Hand, Controls Rig, readings). Gaps vs the polished settings/save-load stack: CLOSE foot was a display-size word + Esc glyph (not the `‹ … ESC` keycap rail); section ladder / reading / search rested too dim on void; search rule CSS was broken (duplicate `background` + stray `}) !important`); no shared foot language with settings.
+
+**After (2 visual iterations, CSS-only in `helpLayouts.js`):**
+
+1. **Pass 1** — foot rail matched settings/save-load (`‹ CLOSE` + ESC keycap box + underline); section-ladder and reading contrast raised (tabs/names/kickers/terms/lore/empty ≥ ~0.82–0.92); fixed search lit-rule CSS; deeper reading shade pool.
+2. **Pass 2** — kept foot `min-height:44px` so the stage row doesn't collapse; left 1080p zoom off Help (EVERY KEY + rebound footnote already dense; 720p had a pre-existing measure tangle unrelated to this pass).
+
+**Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=help --walk` — exit 0; measured clean at default 1920×1080; 26 controls exercised; selectors/IDs unchanged. `--viewport=1280x720` still reports a pre-existing EVERY KEY / rebound-footnote bounding-box tangle (present on master before this pass).
+
+**Artifacts**
+
+| | Path |
+|---|---|
+| Before (Controls @1080) | `docs/ui-polish/help-before.png` |
+| Before tabs | `docs/ui-polish/help-before-{loops,ships,commodities,ores,factions}.png` |
+| After (Controls @1080) | `docs/ui-polish/help-after.png` |
+| After tabs | `docs/ui-polish/help-after-{loops,ships,commodities,ores,factions}.png` |
+| After @720 | `docs/ui-polish/help-after-720.png` |
+
+**Code touched:** `src/ui/orrery/helpLayouts.js` only. No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
+
+**Next:** `credits` (shares orrery settingsLayouts credits path) or `codex` on the player path.
+
+---
 ## Live-boot survey (2026-10-12, real game booted in headless Chromium, 1280×720 + 1920×1080)
 
 Captured by booting the actual game (`node server.js`, Playwright + SwiftShader) and clicking through the main menu the way a player does. Images: `docs/ui-polish/before/*.jpg`, `docs/ui-polish/after/*.jpg`.
@@ -165,4 +192,5 @@ The game already ships a mature system: Deckplate tokens (`--dp-*`) + ORRERY ins
 - `src/ui/orrery/settingsLayouts.js`: ≤1500px label column 150→190px, pane 480→516–560px, nav 168–176px, tighter label tracking + balanced wrap; ≥1501px label 236px; 1.12 zoom for 1800–2199px wide screens.
 - `src/ui/orrery/cruciblePreparationLayouts.js`: ≤820px tall — stake mark hidden, pressure/yield single-line with tightened tracking, so tiles no longer clip.
 - `src/ui/orrery/saveLayouts.js`: save-load empty-state contrast (emph/detail/vacant/filmstrip), open-berth glow, settings-matched `‹ BACK` + ESC keycap foot rail, 1.12 zoom @1080p band. Game-over styles unchanged.
+- `src/ui/orrery/helpLayouts.js`: Help foot rail `‹ CLOSE` + ESC keycap; ladder/reading/search contrast; fixed broken search-rule CSS; reading shade deepened. Selectors/IDs unchanged.
 - No selectors/IDs changed; no engine/render, audio, loadout data or HUD threat-marker code touched.
