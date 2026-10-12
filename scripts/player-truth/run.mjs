@@ -70,6 +70,13 @@ export function gatePasses(args) {
   throw new Error(`--gate must be idle, active, or omitted for both (got ${which})`);
 }
 
+/** Process status for a finished matrix: 1 if any verdict is FAIL, 2 if any is not PASS, else 0. */
+export function gateExitCode(verdicts) {
+  if (verdicts.some((v) => v === 'FAIL')) return 1;
+  if (verdicts.some((v) => v !== 'PASS')) return 2;
+  return 0;
+}
+
 /** Starter-fight pacing watch: shots, encounter beats and the post-combat silence, in sim seconds. */
 async function installPacingWatch(page) {
   await page.evaluate(() => {
@@ -338,6 +345,8 @@ export async function gradeAndWrite({ trace, shots, outDir, label, evidence, vw,
     writeFileSync(path.join(evDir, 'verdict.json'), JSON.stringify(compact, null, 1));
     const evPaths = { verdict: path.relative(ROOT, path.join(evDir, 'verdict.md')), contactSheet: path.relative(ROOT, path.join(evDir, 'contact-sheet.jpg')), json: path.relative(ROOT, path.join(evDir, 'verdict.json')) };
     writeFileSync(path.join(evDir, 'verdict.md'), renderVerdict({ meta, results, overall: verdict, paths: evPaths }));
+    // The compact verdict and contact sheet are the retained evidence. Frames are the bulky copy.
+    rmSync(path.join(outDir, 'frames'), { recursive: true, force: true });
   }
   writeFileSync(path.join(outDir, 'verdict.md'), renderVerdict({ meta, results, overall: verdict, paths }));
   printSummary({ meta, results, overall: verdict, paths });
@@ -394,8 +403,9 @@ async function main() {
     const { runBaseline } = await import('./compare.mjs');
     await runBaseline({ ref: args.baseline, argv: process.argv.slice(2), outcomes, root: ROOT });
   }
-  const worst = outcomes.some((o) => o.verdict === 'FAIL') ? 1 : outcomes.some((o) => o.verdict !== 'PASS') ? 2 : 0;
-  process.exitCode = worst;
+  const worst = gateExitCode(outcomes.map((o) => o.verdict));
+  console.log(`player-truth exit ${worst}`);
+  process.exit(worst);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

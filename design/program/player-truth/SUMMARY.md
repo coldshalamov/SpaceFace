@@ -6,6 +6,44 @@ its check reads PASS. Renderer for every run below:
 `ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero)), SwiftShader driver)` (no GPU on this VM),
 960x540, headless, so frame-time is UNKNOWN (graded only on a GPU, `--headed`).
 
+## Scoreboard on master `d748312d1` (seed 4242)
+
+This branch is rebased onto `d748312d1`. The game under these rows is that master, including Lane 6's room-solid clearance `6b67d1fb1`. The harness commits on top do not change combat. Renderer: SwiftShader, 960x540. Command: `npm run player-truth -- --mode=swarm --arena="Ricochet Foundry" --gate --evidence --tag=seed4242`. Evidence: `swarm-ricochet-foundry-idle-seed4242/`, `swarm-ricochet-foundry-active-seed4242/`.
+
+A status of UNKNOWN is not a pass. Round 2 after the clearance is UNKNOWN: the active pass died in round 1 when the browser closed. The exit code of a FAIL is 1 (`gateExitCode`); INCOMPLETE is 2; only an all-PASS run exits 0.
+
+| check | status | measured on this master | owner |
+|---|---|---|---|
+| route | FAIL | Idle reached play. Active closed: `Target page, context or browser has been closed` at 11.2 sim s. | This harness (the close). Not a missed door button. |
+| round_resolution | FAIL | Idle PASS, shortest 41.1 s. Active FAIL because no round was won before the browser died. | Lane 6 owns a short win. This active FAIL is the close. |
+| kills_before_input | PASS | 0 kills on both seed-4242 passes. Pre-clearance idle on this seed was FAIL 9. | Lane 6 |
+| reward_before_input | PASS | +0 on both passes. Pre-clearance idle was FAIL +4041. | Lane 6 |
+| spawn_motion | PASS | 0 passive bodies over 8 u/s on both passes. | Lane 6 |
+| player_control | UNKNOWN | Round 1 probes PASS, 0 pinned spans, both passes. Round 2 was not played, so the pin is not cleared. | Lane 6 (`survivalArena`) + local integration if a later span names a solid |
+| tumble | PASS | Longest 0 s on both passes. | — |
+| player_ship | FAIL | Idle: 8.2% of frames (105/1278) are a resolving marker from sim 1.5 s (`loading`, then `compiling-pipelines`). Active round 1 was 0/381 before the close. | Lane 6 (`assetResidency.js`, `crucibleWarmPackageResidency.js`) |
+| lod_churn | FAIL | Idle 2.61/s (cap ≤1/s). Active round 1 was 0.7/s. | Lane 6 (`src/render/lod.js`) |
+| popping | FAIL | Idle 275/min. Active 31.7/min. | Lane 6 (residency / streaming) |
+| readability | FAIL | Idle separation 0.26. Active separation 2.1 still FAILs: enemy 67% of samples have ΔL < 8, and `station:plate` sits over the ship. | Lane 6 (enemy and room look) |
+| vfx_coverage | FAIL | Threats hidden p95 100% on both passes. Idle combat p95 34%. Active combat p95 11%. | Agent 3 (presentation) + Lane 6 (Swarm VFX) |
+| backdrop_coverage | FAIL | Idle: threats on a bright backdrop p95 40%. Active round 1 PASS at 25%. | Lane 6 (arena look) |
+| loadout | PASS | 0 irrelevant offers on both passes. | Lane 6 (crucible / loadout UI) |
+| frame_time | UNKNOWN | Software GL. Graded only with `--headed` on a GPU. | — |
+| round_transitions | UNKNOWN | Round 2 was not played. The active verdict prints FAIL because an unmeasured gate check is FAIL. That line is the browser close, not a pin. | Lane 6 + local integration, once a round-2 start is on disk |
+| rounds_reached | FAIL | Active stopped at round 1. The gate requires round 3. Cause: browser closed. | This harness for the close. Lane 6 if a later run dies in-game before round 3. |
+
+## Not a `--gate` pass (UNKNOWN, not PASS)
+
+These are not measured. Do not read an older first-generation verdict below as this gate.
+
+| run | status | reason |
+|---|---|---|
+| Swarm round 2 after `6b67d1fb1` | UNKNOWN | Active seed 4242 closed in round 1. Re-run is queued behind `player-truth.lock`: `--gate=active --wall=90 --evidence --tag=seed4242-r2`. |
+| Hull × viewport matrix (960 / 1280 / 1920 × unlocked hulls) | UNKNOWN | Not run. Queued behind that round-2 re-run. `player_ship` is the check that would name a rectangle or an invisible ship. |
+| Gauntlet `--gate` | UNKNOWN | Not run. The first-generation arena rows below are not a `--gate` pass. |
+| Adventure `--gate` | UNKNOWN | Not run. The 150 s cruise below is not a `--gate` pass. |
+| Racing `--gate` | UNKNOWN | Not run. The 75 s Textile Belt row below is not a `--gate` pass. |
+
 ## Owning lanes (rebased onto `d748312d1`, 2026-10-12)
 
 Room pin, the station toy, and LOD/residency: **Lane 6** (`codex/swarm-crucible-overhaul` — `survivalArena`, `src/render/lod.js`, `assetResidency.js`, `crucibleWarmPackageResidency.js`). Collision resolve if a ship is still held inside a solid: **local integration** (flight/physics under `src/runtime/**`). Master already shipped Lane 6's clearance (`6b67d1fb1`, a room solid is pushed until it clears the hull by 24 u) and a presented-LOD swap cap (`68da0fae3`, `d3e7d8dcc`). The v2 rows below were measured **before** that clearance (harness commits `a0b854c91`, `07e4eda14`). They stay as the reproduction that made the pin a number.
@@ -77,7 +115,7 @@ planet layers are graded separately as `backdrop_coverage`.
 | White geodesic sphere | **CLASSIFIED** — a `station`-type entity (`station:furnace` in the gate run): one of the arena room's solid toys (`survivalArena._materializeRoom`), lit Lab ≈ [46, −4, −9] (grey-white), r ≈ 40 px, **over the player ship in 28–39 % of samples**. Play-space geometry, not backdrop; reads as neither enemy nor asteroid. `readability` lists it as an offender | `verdict.json` → `readability.census` | Lane 6 (arena room look) |
 | Orange blobs | **CLASSIFIED** — enemy `ship:` entities (lit Lab ≈ [39, 8, 9], "orange") and `wreck` bodies; enemy-vs-asteroid separation 0.66–0.75 (≥ 1.0) | same | Lane 6 (enemy look) |
 | Tumbling | **NOT REPRODUCED** — longest out-of-plane/uncommanded spin 0.1 s across all round starts measured | — | — |
-| Rectangle ship | see hull × viewport matrix below | — | — |
+| Rectangle ship | **UNKNOWN** — the hull × viewport matrix has not been run. A spawn-only pass can miss a round-2 rectangle, so this is not a PASS. | — | Lane 6 once a combo is measured |
 
 Round 3: **not reached in the pre-clearance runs.** The fighter cleared round 1, and the round-2 pin killed it. `rounds_reached` FAILs
 honestly (round 2); no round-3 coverage is claimed. After `6b67d1fb1`, round 2 itself is still unmeasured.
@@ -86,9 +124,9 @@ honestly (round 2); no round-3 coverage is claimed. After `6b67d1fb1`, round 2 i
 
 <!-- V2-MATRIX -->
 
-## Hull × viewport matrix (planned, not run)
+## Hull × viewport matrix (UNKNOWN, not run)
 
-The rectangle / invisible ship was reported as hull- and viewport-dependent. The CLI already repeats one combo at a time. This command is **not** `--gate`: a gate active pass forces rounds ≥ 3 and duration ≥ 300 sim s, which would throw away the 12 min wall. `player_ship` grades the rectangle, the invisible ship, and the resolving marker. Four unlocked fresh-profile hulls × three viewports = 12 combos. Evidence lands per finished combo (a killed run still keeps the combos that finished) at `design/program/player-truth/swarm-ricochet-foundry-<hull>-<viewport>-matrix/`.
+The rectangle / invisible ship was reported as hull- and viewport-dependent. No combo has a verdict, so the result is UNKNOWN, not PASS. It stays behind the seed-4242 round-2 active gate. The CLI already repeats one combo at a time. This command is **not** `--gate`: a gate active pass forces rounds ≥ 3 and duration ≥ 300 sim s, which would throw away the 12 min wall. `player_ship` grades the rectangle, the invisible ship, and the resolving marker. Four unlocked fresh-profile hulls × three viewports = 12 combos. Evidence lands per finished combo (a killed run still keeps the combos that finished) at `design/program/player-truth/swarm-ricochet-foundry-<hull>-<viewport>-matrix/`.
 
 ```
 npm run player-truth -- --mode=swarm --arena="Ricochet Foundry" --hull=all --viewports=960x540,1280x720,1920x1080 --rounds=2 --idle=3 --duration=70 --wall=12 --evidence --tag=matrix
@@ -140,6 +178,8 @@ and round resolution are measured on the 73311 run. Only Ricochet Foundry is ope
 
 ## Gauntlet (Crucible door "scored" ruleset) — every arena
 
+Gauntlet `--gate` is **UNKNOWN**. It has not been run. The rows below are an earlier non-gate pass, not a PASS of the gate.
+
 `npm run player-truth -- --mode=gauntlet --arena=all --rounds=2 --idle=30 --duration=75`. The scored door
 opens all seven arenas to a fresh profile (Swarm opens only Ricochet Foundry).
 
@@ -158,6 +198,8 @@ no "won after N s" to measure. Gauntlet LOD re-keying (1.3–4.2/s raw) happens 
 
 ## Adventure (New Game → default Hitch start, Helios, tutorial hints on)
 
+Adventure `--gate` is **UNKNOWN**. It has not been run. The cruise below is not a `--gate` pass and is not a PASS.
+
 `npm run player-truth -- --mode=adventure --duration=150` — **INCOMPLETE** (no FAIL). 150 s cruise, seed 4242
 (no seed field on this route; the default start is deterministic). Ship, control, tumble, popping and VFX PASS;
 on-screen LOD churn 0.03/s PASS. Readability UNKNOWN: only 1 hostile and 0 asteroids on screen in the first
@@ -165,6 +207,8 @@ on-screen LOD churn 0.03/s PASS. Readability UNKNOWN: only 1 hostile and 0 aster
 free flight. Contact sheet: `adventure/contact-sheet.jpg`.
 
 ## Racing (main menu → Circuits → first course Textile Belt → Race → confirm "Launch circuit")
+
+Racing `--gate` is **UNKNOWN**. It has not been run. The circuit below is not a `--gate` pass and is not a PASS.
 
 `npm run player-truth -- --mode=racing --duration=75` — **FAIL**, seed 4242. `popping` 7.9/min (≤6): 10 bodies
 appear from hidden to on screen in the inner view between sim 1.0 and 1.9 s, after the loading veil has lifted

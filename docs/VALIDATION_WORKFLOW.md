@@ -54,6 +54,7 @@ plays from 3 s and must reach round 3; each round start is shot densely and re-p
 model/LOD, thrust/yaw response, pinning and tumble). In gate mode an UNKNOWN on `player_control`,
 `tumble`, `player_ship`, `round_resolution` or `round_transitions` is a FAIL ("not measured" cannot
 pass a gameplay PR); `frame_time` stays UNKNOWN on software GL. No invulnerability is used.
+The process exits 1 when any check FAILs, 2 when the verdict is INCOMPLETE, and 0 only when every graded check PASSes. `--gate=active` or `--gate=idle` runs that one pass; a bare `--gate` still runs both. `--evidence` copies the verdict and contact sheet into `design/program/player-truth/` and then deletes the scratch frames.
 `--viewports=960x540,1280x720,1920x1080` and `--hull=all` (every unlocked hull on the preparation
 screen; or `--hull=<starter id>`) repeat the run per combination. `--baseline=<ref>` re-runs the same
 harness on `<ref>`'s game in a temporary `.worktrees/` checkout (removed when done) and prints a

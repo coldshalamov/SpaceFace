@@ -117,6 +117,17 @@ test('parseArgs keeps a bounded hull x viewport matrix, and --gate replaces its 
   assert.throws(() => gatePasses(parseArgs(['--mode=swarm', '--gate=nope'])), /--gate must be/);
 });
 
+test('gate process exits non-zero when any verdict is FAIL', async () => {
+  const { gateExitCode } = await import('../scripts/player-truth/run.mjs');
+  assert.equal(gateExitCode(['PASS']), 0);
+  assert.equal(gateExitCode(['PASS', 'PASS']), 0);
+  assert.equal(gateExitCode(['FAIL']), 1);
+  assert.equal(gateExitCode(['PASS', 'FAIL']), 1);
+  assert.equal(gateExitCode(['INCOMPLETE']), 2);
+  assert.equal(gateExitCode(['PASS', 'INCOMPLETE']), 2);
+  assert.equal(gateExitCode(['FAIL', 'INCOMPLETE']), 1);
+});
+
 test('pinned spans name the solid body the ship sits on', async () => {
   const { checkPlayerControl } = await import('../scripts/player-truth/checks.mjs');
   const t = trace({ probes: [{ label: 'round 2 thrust', kind: 'thrust', key: 'KeyW', startSim: 15, endSim: 16.4 }], player: () => P({ vx: 140, vz: 0, x: 0, z: 0 }) });
