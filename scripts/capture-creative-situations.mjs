@@ -17,6 +17,8 @@ import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { startBenchServer } from './lib/benchServer.mjs';
+import { zonesForSector } from '../src/data/sectorZones.js';
+import { sectorGlobalOrigin } from '../src/data/sectorCoordinates.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = path.join(ROOT, 'design/program/creative-situations');
@@ -69,17 +71,65 @@ async function main() {
       await page.waitForFunction((sectorId) => window.SF.state.world.currentSectorId === sectorId
         && (window.SF.state.entities.get(window.SF.state.playerId) || {}).presentationAdmission === 'ready', s.sectorId, { timeout: 300000, polling: 500 });
       await waitSim(page, 1.5);
+      // Stage on the sector's own zone of the encounter's type — the place the director's day
+      // plan books it — not beside the entry station. The ship is set down at the zone's edge.
+      // Opt-in (--zone=1): on the 2026-10-12 run, live zone hazards resolved 1200/1201 before the
+      // first frame and a mine hit the ship in 1204, so the default stages beside the entry point.
+      const zone = args.zone ? zonesForSector(s.sectorId).find((z) => z.type === s.zoneType) : null;
+      const origin = sectorGlobalOrigin(s.sectorId) || { x: 0, z: 0 };
+      const zc = zone ? { x: origin.x + (zone.x ?? zone.center.x), z: origin.z + (zone.z ?? zone.center.z) } : null;
+      if (zc) {
+        await page.evaluate((c) => {
+          const st = window.SF.state, p = st.entities.get(st.playerId);
+          p.pos.x = c.x - 160; p.pos.z = c.z;
+          if (p.prevPos) { p.prevPos.x = p.pos.x; p.prevPos.z = p.pos.z; }
+          if (p.vel) { p.vel.x = 0; p.vel.z = 0; }
+          p.angVel = 0; p.rot = 0; p.prevRot = 0;
+          p.flags = Object.assign({}, p.flags, { noInterp: true });
+        }, zc);
+        await waitSim(page, 2);
+      }
       const res = await page.evaluate((sit) => {
         const st = window.SF.state, p = st.entities.get(st.playerId);
         const fx = Math.cos(p.rot), fz = Math.sin(p.rot);
-        const anchor = { x: p.pos.x + fx * sit.ahead, z: p.pos.z + fz * sit.ahead };
+        const anchor = sit.zc ? { ...sit.zc } : { x: p.pos.x + fx * sit.ahead, z: p.pos.z + fz * sit.ahead };
         const r = window.SF.registry.get('encounterDirector').requestAuthoredEncounter({
           shapeId: sit.shapeId, encounterId: `capture_${sit.shapeId}`, sectorId: sit.sectorId, anchor,
           zoneType: sit.zoneType, zoneRadius: 600, force: true });
         return { ok: r && r.ok, reason: r && r.reason, anchor, player: { x: p.pos.x, z: p.pos.z, rot: p.rot } };
-      }, s);
+      }, { ...s, zc });
       log(s.shapeId, JSON.stringify(res));
       if (!res.ok) { shots.push({ ...s, file: null, sub: `NOT STAGED: ${res.reason}` }); continue; }
+      await waitSim(page, 1);
+      // Arrival: put the ship where a pilot flying in would first hold the scene — short of the
+      // authored cluster's centroid, nose on it — through the same pos-write + noInterp resync the
+      // world owner uses for entry placement. The follow camera is left alone.
+      const arrived = await page.evaluate(([shapeId, back]) => {
+        const st = window.SF.state, p = st.entities.get(st.playerId);
+        const live = Object.values(st.encounterDirector.live || {}).find((l) => l.shapeId === shapeId);
+        const ids = new Set((live && live.ids) || []);
+          for (const sub of Object.values((live && live.data) || {})) {
+            if (!sub || typeof sub !== 'object') continue;
+            for (const [k, v] of Object.entries(sub)) {
+              if (/Ids$/.test(k) && Array.isArray(v)) v.forEach((x) => Number.isFinite(x) && ids.add(x));
+              else if (/Id$/.test(k) && Number.isFinite(v)) ids.add(v);
+            }
+          }
+        const pts = [...ids].map((id) => st.entities.get(id)).filter((e) => e && e.alive !== false && e.pos && e.id !== st.playerId).map((e) => e.pos);
+        if (!pts.length) return null;
+        const med = (k) => pts.map((q) => q[k]).sort((a, b) => a - b)[pts.length >> 1];
+        const mx = med('x'), mz = med('z');
+        const core = pts.filter((q) => Math.hypot(q.x - mx, q.z - mz) <= 300);
+        const cx = core.reduce((a, q) => a + q.x, 0) / core.length, cz = core.reduce((a, q) => a + q.z, 0) / core.length;
+        let dx = p.pos.x - cx, dz = p.pos.z - cz; const len = Math.hypot(dx, dz) || 1; dx /= len; dz /= len;
+        p.pos.x = cx + dx * back; p.pos.z = cz + dz * back;
+        if (p.prevPos) { p.prevPos.x = p.pos.x; p.prevPos.z = p.pos.z; }
+        if (p.vel) { p.vel.x = 0; p.vel.z = 0; if ('y' in p.vel) p.vel.y = 0; }
+        p.angVel = 0; p.rot = Math.atan2(-dz, -dx); p.prevRot = p.rot;
+        p.flags = Object.assign({}, p.flags, { noInterp: true });
+        return { centroid: { x: Math.round(cx), z: Math.round(cz) }, core: core.length, of: pts.length };
+      }, [s.shapeId, s.back || Number(args.back || 40)]);
+      log(s.shapeId, 'arrival', JSON.stringify(arrived));
       for (const [i, after] of [[0, 2.5], [1, 6]]) {
         await waitSim(page, i === 0 ? after : after - 2.5);
         const file = path.join(OUT, `${s.shapeId}-${i}.png`);
@@ -87,14 +137,24 @@ async function main() {
         const facts = await page.evaluate(([shapeId, vw, vh]) => {
           const st = window.SF.state;
           const live = Object.values(st.encounterDirector.live || {}).find((l) => l.shapeId === shapeId);
-          const cam = st.camera && st.camera.obj; const T = window.SF.THREE;
+          const w2s = window.SF.helpers && window.SF.helpers.worldToScreen;
           const bodies = [];
-          for (const id of (live && live.ids) || []) {
+          const ids = new Set((live && live.ids) || []);
+          for (const sub of Object.values((live && live.data) || {})) {
+            if (!sub || typeof sub !== 'object') continue;
+            for (const [k, v] of Object.entries(sub)) {
+              if (/Ids$/.test(k) && Array.isArray(v)) v.forEach((x) => Number.isFinite(x) && ids.add(x));
+              else if (/Id$/.test(k) && Number.isFinite(v)) ids.add(v);
+            }
+          }
+          for (const id of ids) {
+            if (id === st.playerId) continue;
             const e = st.entities.get(id);
-            if (!e || e.alive === false || !e.pos || !cam || !T) continue;
-            const v = new T.Vector3(e.pos.x, 0, e.pos.z).project(cam);
-            const x = (v.x + 1) / 2 * vw; const y = (1 - v.y) / 2 * vh;
-            const inFrame = v.z < 1 && x >= 0 && x <= vw && y >= 0 && y <= vh;
+            if (!e || e.alive === false || !e.pos || typeof w2s !== 'function') continue;
+            // The renderer's own projection (frame membrane / sector-local origin), as the HUD uses it.
+            const v = w2s({ x: e.pos.x, z: e.pos.z }) || {};
+            const x = Number(v.x) || 0; const y = Number(v.y) || 0;
+            const inFrame = !!v.onScreen && !v.behind && x >= 0 && x <= vw && y >= 0 && y <= vh;
             bodies.push({ id, type: e.type, role: (e.data && (e.data.crRole || e.data.role || e.data.kind)) || null, x: Math.round(x), y: Math.round(y), inFrame, mesh: !!e.mesh || !!e.renderObj || e.presentationAdmission === 'ready' });
           }
           return { phase: live && live.phase, simTime: +(st.simTime || 0).toFixed(1), bodies };

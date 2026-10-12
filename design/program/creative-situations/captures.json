@@ -1,0 +1,700 @@
+{
+  "seed": 4242,
+  "viewport": "960x540",
+  "renderer": "headless Chrome + SwiftShader",
+  "route": "main menu -> New Game -> Launch -> world.enterSector(gated sector) -> encounterDirector.requestAuthoredEncounter(zone of its type, ahead of player) -> normal follow camera",
+  "shots": [
+    {
+      "shapeId": "the_wedge",
+      "file": "design/program/creative-situations/the_wedge-0.png",
+      "sub": "vesta_forge · refinery_approach · t+2.5s · jammed · 4/10 bodies in frame",
+      "bodies": [
+        {
+          "id": 377,
+          "type": "ship",
+          "role": null,
+          "x": -162,
+          "y": 158,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 379,
+          "type": "ship",
+          "role": null,
+          "x": -605,
+          "y": 214,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 380,
+          "type": "ship",
+          "role": null,
+          "x": -1109,
+          "y": 278,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 369,
+          "type": "wreck",
+          "role": null,
+          "x": 1311,
+          "y": 362,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 372,
+          "type": "payload",
+          "role": "cargo",
+          "x": 499,
+          "y": 23,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 373,
+          "type": "payload",
+          "role": "cargo",
+          "x": 509,
+          "y": 56,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 374,
+          "type": "payload",
+          "role": "cargo",
+          "x": 519,
+          "y": 91,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 375,
+          "type": "payload",
+          "role": "cargo",
+          "x": 531,
+          "y": 129,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 370,
+          "type": "payload",
+          "role": "cargo",
+          "x": 486,
+          "y": 590,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 371,
+          "type": "payload",
+          "role": "cargo",
+          "x": 526,
+          "y": -154,
+          "inFrame": false,
+          "mesh": true
+        }
+      ]
+    },
+    {
+      "shapeId": "the_wedge",
+      "file": "design/program/creative-situations/the_wedge-1.png",
+      "sub": "vesta_forge · refinery_approach · t+6s · jammed · 4/10 bodies in frame",
+      "bodies": [
+        {
+          "id": 377,
+          "type": "ship",
+          "role": null,
+          "x": -162,
+          "y": 158,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 379,
+          "type": "ship",
+          "role": null,
+          "x": -605,
+          "y": 214,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 380,
+          "type": "ship",
+          "role": null,
+          "x": -1109,
+          "y": 278,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 369,
+          "type": "wreck",
+          "role": null,
+          "x": 1311,
+          "y": 362,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 372,
+          "type": "payload",
+          "role": "cargo",
+          "x": 499,
+          "y": 23,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 373,
+          "type": "payload",
+          "role": "cargo",
+          "x": 509,
+          "y": 56,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 374,
+          "type": "payload",
+          "role": "cargo",
+          "x": 519,
+          "y": 91,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 375,
+          "type": "payload",
+          "role": "cargo",
+          "x": 531,
+          "y": 129,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 370,
+          "type": "payload",
+          "role": "cargo",
+          "x": 486,
+          "y": 590,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 371,
+          "type": "payload",
+          "role": "cargo",
+          "x": 526,
+          "y": -154,
+          "inFrame": false,
+          "mesh": true
+        }
+      ]
+    },
+    {
+      "shapeId": "the_cold_shoulder",
+      "file": "design/program/creative-situations/the_cold_shoulder-0.png",
+      "sub": "veil_nebula · nebula_fog · t+2.5s · boarding · 6/6 bodies in frame",
+      "bodies": [
+        {
+          "id": 365,
+          "type": "ship",
+          "role": null,
+          "x": 351,
+          "y": 252,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 473,
+          "type": "ship",
+          "role": null,
+          "x": 401,
+          "y": 246,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 479,
+          "type": "ship",
+          "role": null,
+          "x": 301,
+          "y": 258,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 372,
+          "type": "payload",
+          "role": "cargo",
+          "x": 500,
+          "y": 168,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 371,
+          "type": "payload",
+          "role": "cargo",
+          "x": 529,
+          "y": 305,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 370,
+          "type": "payload",
+          "role": "cargo",
+          "x": 393,
+          "y": 429,
+          "inFrame": true,
+          "mesh": true
+        }
+      ]
+    },
+    {
+      "shapeId": "the_cold_shoulder",
+      "file": "design/program/creative-situations/the_cold_shoulder-1.png",
+      "sub": "veil_nebula · nebula_fog · t+6s · boarding · 6/6 bodies in frame",
+      "bodies": [
+        {
+          "id": 365,
+          "type": "ship",
+          "role": null,
+          "x": 315,
+          "y": 240,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 473,
+          "type": "ship",
+          "role": null,
+          "x": 370,
+          "y": 233,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 479,
+          "type": "ship",
+          "role": null,
+          "x": 276,
+          "y": 213,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 372,
+          "type": "payload",
+          "role": "cargo",
+          "x": 490,
+          "y": 143,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 371,
+          "type": "payload",
+          "role": "cargo",
+          "x": 523,
+          "y": 303,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 370,
+          "type": "payload",
+          "role": "cargo",
+          "x": 354,
+          "y": 456,
+          "inFrame": true,
+          "mesh": true
+        }
+      ]
+    },
+    {
+      "shapeId": "the_kick_start",
+      "file": "design/program/creative-situations/the_kick_start-0.png",
+      "sub": "tethys_junction · trade_lane · t+2.5s · coasting · 0/3 bodies in frame",
+      "bodies": [
+        {
+          "id": 1224,
+          "type": "ship",
+          "role": null,
+          "x": 490,
+          "y": -97,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 1225,
+          "type": "ship",
+          "role": null,
+          "x": 6872,
+          "y": 9304,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 1223,
+          "type": "beacon",
+          "role": null,
+          "x": -514,
+          "y": 481,
+          "inFrame": false,
+          "mesh": true
+        }
+      ]
+    },
+    {
+      "shapeId": "the_kick_start",
+      "file": "design/program/creative-situations/the_kick_start-1.png",
+      "sub": "tethys_junction · trade_lane · t+6s · coasting · 0/4 bodies in frame",
+      "bodies": [
+        {
+          "id": 1224,
+          "type": "ship",
+          "role": null,
+          "x": 493,
+          "y": -93,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 1225,
+          "type": "ship",
+          "role": null,
+          "x": 6875,
+          "y": 9307,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 1223,
+          "type": "beacon",
+          "role": null,
+          "x": -514,
+          "y": 481,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 792,
+          "type": "ship",
+          "role": "salvor",
+          "x": -144,
+          "y": -714,
+          "inFrame": false,
+          "mesh": false
+        }
+      ]
+    },
+    {
+      "shapeId": "the_declaration",
+      "file": "design/program/creative-situations/the_declaration-0.png",
+      "sub": "tethys_junction · border_checkpoint · t+2.5s · coasting · 3/5 bodies in frame",
+      "bodies": [
+        {
+          "id": 1216,
+          "type": "ship",
+          "role": null,
+          "x": 4857,
+          "y": -6031,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 1217,
+          "type": "ship",
+          "role": null,
+          "x": 659,
+          "y": 326,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 1213,
+          "type": "payload",
+          "role": "cargo",
+          "x": 96,
+          "y": 556,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 1214,
+          "type": "payload",
+          "role": "cargo",
+          "x": 133,
+          "y": 362,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 1215,
+          "type": "payload",
+          "role": "cargo",
+          "x": 173,
+          "y": 266,
+          "inFrame": true,
+          "mesh": true
+        }
+      ]
+    },
+    {
+      "shapeId": "the_declaration",
+      "file": "design/program/creative-situations/the_declaration-1.png",
+      "sub": "tethys_junction · border_checkpoint · t+6s · coasting · 3/5 bodies in frame",
+      "bodies": [
+        {
+          "id": 1216,
+          "type": "ship",
+          "role": null,
+          "x": 4857,
+          "y": -6031,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 1217,
+          "type": "ship",
+          "role": null,
+          "x": 659,
+          "y": 326,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 1213,
+          "type": "payload",
+          "role": "cargo",
+          "x": 14,
+          "y": 677,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 1214,
+          "type": "payload",
+          "role": "cargo",
+          "x": 61,
+          "y": 400,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 1215,
+          "type": "payload",
+          "role": "cargo",
+          "x": 117,
+          "y": 337,
+          "inFrame": true,
+          "mesh": true
+        }
+      ]
+    },
+    {
+      "shapeId": "the_mine_garden",
+      "file": "design/program/creative-situations/the_mine_garden-0.png",
+      "sub": "pallas_drift · ambush_lane · t+2.5s · sown · 4/10 bodies in frame",
+      "bodies": [
+        {
+          "id": 1111,
+          "type": "ship",
+          "role": null,
+          "x": 1276,
+          "y": -8945,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 1110,
+          "type": "ship",
+          "role": null,
+          "x": 1246,
+          "y": -120,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 9,
+          "type": "mine",
+          "role": "mine",
+          "x": -364,
+          "y": 472,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 792,
+          "type": "mine",
+          "role": "mine",
+          "x": 1209,
+          "y": 536,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 1119,
+          "type": "mine",
+          "role": "mine",
+          "x": 240,
+          "y": 31,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 1120,
+          "type": "mine",
+          "role": "mine",
+          "x": 695,
+          "y": 42,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 1121,
+          "type": "mine",
+          "role": "mine",
+          "x": 461,
+          "y": -98,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 1122,
+          "type": "mine",
+          "role": "mine",
+          "x": 133,
+          "y": -128,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 15,
+          "type": "payload",
+          "role": "cargo",
+          "x": 260,
+          "y": 388,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 69,
+          "type": "payload",
+          "role": "cargo",
+          "x": 618,
+          "y": 147,
+          "inFrame": true,
+          "mesh": true
+        }
+      ]
+    },
+    {
+      "shapeId": "the_mine_garden",
+      "file": "design/program/creative-situations/the_mine_garden-1.png",
+      "sub": "pallas_drift · ambush_lane · t+6s · sown · 4/10 bodies in frame",
+      "bodies": [
+        {
+          "id": 1111,
+          "type": "ship",
+          "role": null,
+          "x": 1339,
+          "y": -10159,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 1110,
+          "type": "ship",
+          "role": null,
+          "x": 1246,
+          "y": -120,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 9,
+          "type": "mine",
+          "role": "mine",
+          "x": -364,
+          "y": 472,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 792,
+          "type": "mine",
+          "role": "mine",
+          "x": 1209,
+          "y": 536,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 1119,
+          "type": "mine",
+          "role": "mine",
+          "x": 240,
+          "y": 31,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 1120,
+          "type": "mine",
+          "role": "mine",
+          "x": 695,
+          "y": 42,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 1121,
+          "type": "mine",
+          "role": "mine",
+          "x": 461,
+          "y": -98,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 1122,
+          "type": "mine",
+          "role": "mine",
+          "x": 133,
+          "y": -128,
+          "inFrame": false,
+          "mesh": true
+        },
+        {
+          "id": 15,
+          "type": "payload",
+          "role": "cargo",
+          "x": 260,
+          "y": 388,
+          "inFrame": true,
+          "mesh": true
+        },
+        {
+          "id": 69,
+          "type": "payload",
+          "role": "cargo",
+          "x": 618,
+          "y": 147,
+          "inFrame": true,
+          "mesh": true
+        }
+      ]
+    }
+  ],
+  "pageErrors": []
+}
