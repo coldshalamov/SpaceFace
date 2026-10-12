@@ -50,10 +50,8 @@ export async function listVerbScenarios() {
 export const VERB_BENCH_SCENARIOS = [
   { id: 'feel.rope_swing_release', label: 'B7 Rope Swing & Tangential Speed Retention' },
   { id: 'feel.shove_magnitude', label: 'B4/B5 Shove Weapon Impulse & Displacement' },
-  { id: 'feel.gravity_well', label: 'B1 Gravitic Well Deflection & Fling' },
   { id: 'feel.stroke_speed', label: 'B8 Draw-to-Fly Stroke Velocity Preservation' },
   { id: 'feel.terrain_slam', label: 'B6 Terrain Slam Lethality & Helm Loss' },
-  { id: 'world.cargo_spill', label: 'B10b Cargo Spill Encounter Reaction' },
   { id: 'feel.knock_budget', label: 'B13 Player Knock Budget — contact-sourced velocity changes on the player hull' },
 ];
 
