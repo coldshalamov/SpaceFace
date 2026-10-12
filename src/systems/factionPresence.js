@@ -115,6 +115,9 @@ function ensureOwnState(state) {
 const BERTH_DISPLACED_WU = 220;
 const BERTH_RETURNED_WU = 120;
 const CONDUCT_TICK_EVERY = 30;
+// A berth keeper comes out to meet a hull that approaches its berth, well beyond the glass edge,
+// instead of idling (and sleeping in Rapier) across the whole sector from the moment of entry.
+const BERTH_KEEPER_WAKE_WU = 1500;
 const SELF_DEFENSE_MOTIVES = new Set(['self_defense', 'archive_station_defense']);
 const FACTION_NAME = new Map(FACTION_KITS.map((kit) => [kit.id, kit.name || kit.short || kit.id]));
 
@@ -721,8 +724,6 @@ export const factionPresence = {
         conflicts: state.conflicts || null,
         ownerFactionId: (sectors[sectorId] && sectors[sectorId].owner) || null,
       }),
-      // Berth keepers ride the same spawn/dedupe path as authored presence.
-      ...planBerthKeepers({ sectorId, seed }),
     ];
     const own = ensureOwnState(state);
     const carriers = this._presenceCarrierIndex(sectorId);
@@ -901,7 +902,44 @@ export const factionPresence = {
       this._speakConduct(factionId, 'forgive');
       this._applyConduct(factionId);
     }
+    this._wakeBerthKeepers();
     this._watchBerths();
+  },
+
+  /** Keepers ride the authored presence spawn path, materialized once the player nears the berth. */
+  _wakeBerthKeepers() {
+    const state = this.state;
+    const sectorId = state.world && state.world.currentSectorId;
+    if (!sectorId || typeof this.helpers.spawnEntity !== 'function') return;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || !player.pos) return;
+    const seed = ((state.meta && state.meta.seed) || 1) >>> 0;
+    const own = ensureOwnState(state);
+    for (const keeperPlan of planBerthKeepers({ sectorId, seed })) {
+      const key = spawnKey(keeperPlan);
+      if (own.active[key]) continue;
+      if (Math.hypot(player.pos.x - keeperPlan.pos.x, player.pos.z - keeperPlan.pos.z) > BERTH_KEEPER_WAKE_WU) continue;
+      const carrierId = this._presenceCarrierIndex(sectorId).get(key);
+      if (carrierId !== undefined) {
+        own.active[key] = { entityId: carrierId, sectorId, factionId: keeperPlan.factionId, routeId: null };
+        continue;
+      }
+      const entity = this.helpers.spawnEntity(makePresenceSpec(keeperPlan, state));
+      if (!entity) continue;
+      own.active[key] = { entityId: entity.id || null, sectorId, factionId: keeperPlan.factionId, routeId: null };
+      const receipt = {
+        t: Number(state.simTime) || 0,
+        sectorId,
+        factionId: keeperPlan.factionId,
+        entityId: entity.id || null,
+        shipDefId: keeperPlan.shipDefId,
+        source: 'berthKeeper',
+      };
+      pushReceipt(state, { kind: 'spawned', ...receipt });
+      this.bus.emit('factionPresence:spawned', receipt);
+      this._applyConduct(keeperPlan.factionId);
+    }
   },
 
   /** A berth hulk is the faction's property on its rack: towing it off is an act, so is returning it. */

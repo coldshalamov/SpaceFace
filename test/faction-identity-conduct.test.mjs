@@ -43,6 +43,15 @@ const live = (sim, factionId) => [...sim.state.entities.values()].filter((e) => 
 const hulkOf = (sim, berthId) => [...sim.state.entities.values()].find((e) => (
   e && e.alive !== false && e.data && e.data.berthConsign && e.data.berthConsign.berthId === berthId
 )) || null;
+// The player's own hull, parked where a test needs it (berth keepers meet a hull at the berth).
+function pilot(sim, pos) {
+  const player = sim.spawn({
+    type: 'ship', team: 0, pos: { x: pos.x, z: pos.z }, vel: { x: 0, z: 0 },
+    radius: 16, mass: 58, hull: 100, hullMax: 100, data: { defId: 'ship_kestrel' },
+  });
+  sim.state.playerId = player.id;
+  return player;
+}
 const near = (a, b, tol = 1) => Math.hypot(a.x - b.x, a.z - b.z) <= tol;
 function strike(sim, target, times = GRUDGE_STRIKES) {
   for (let i = 0; i < times; i++) {
@@ -120,8 +129,14 @@ test('faction-identity: standing is posture — kin Archive hulls come to catalo
   const courier = live(stranger, 'faction_archive').find((e) => !e.data.factionPresence.berthKeeper);
   assert.ok(courier, 'an Archive courier flies Pallas Drift');
   assert.equal(courier.data.ai.activity.reason, 'k1_nonhostile_presence', 'a stranger sees authored behavior');
+  assert.equal(live(stranger, 'faction_archive').some((e) => e.data.factionPresence.berthKeeper), false,
+    'the keeper is not idling across the sector before the player comes to the berth');
+  const stacks = factionBerthById('berth_archive_pallas_stacks');
+  const apron = factionBerthKeeperPos(stacks);
+  pilot(stranger, { x: apron.x + 900, z: apron.z });
+  stranger.runTicks(31);
   const keeper = live(stranger, 'faction_archive').find((e) => e.data.factionPresence.berthKeeper);
-  assert.ok(keeper, 'a censor keeps the Stacks');
+  assert.ok(keeper, 'a censor comes out to keep the Stacks as the player approaches');
   assert.equal(keeper.data.ai.activity.kind, 'loiter');
   assert.ok(near(keeper.data.ai.activity.anchor, factionBerthKeeperPos(factionBerthById('berth_archive_pallas_stacks'))),
     'the keeper works its berth apron');
@@ -142,6 +157,9 @@ test('faction-identity: shoot the Pitborn and they collect the debt; the yard sh
   const sim = boot({ faction_pitborn: 40 });
   const seen = record(sim);
   enter(sim, 'sector_vesta_forge');
+  const lineKeeper = factionBerthKeeperPos(factionBerthById('berth_pitborn_consign_line'));
+  pilot(sim, { x: lineKeeper.x + 600, z: lineKeeper.z });
+  sim.runTicks(31);
   const pitborn = live(sim, 'faction_pitborn').filter((e) => e.data.ai.passive !== false);
   assert.ok(pitborn.length >= 2, 'a Pitborn tender and the line boss work Vesta');
   strike(sim, pitborn[0], 1);
