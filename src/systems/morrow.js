@@ -20,7 +20,7 @@ export function morrowEntitySpec(memory = freshMorrowMemory()) {
     physicsBody: { dynamic: true, shape: 'ball', radius: MORROW.radius, mass: MORROW.mass,
       useMeasuredSkin: false, material: 'debris', ccd: true,
       contact: { friction: 0.1, restitution: 0.25, angularDamping: 0.45 } },
-    data: { morrow: true, visualRadius: 130, callsign: MORROW.callsign, scanLabel: 'Morrow · rescue machine',
+    data: { morrow: true, authoredCharacter: 'morrow', visualRadius: 130, callsign: MORROW.callsign, scanLabel: 'Morrow · rescue machine',
       scannerSignalKind: 'anomaly', homeSectorId: MORROW.sectorId,
       identityKey: MORROW.id, ai: { passive: true },
       morrowPose: { phase: 'sleep', charge: 0, sweep: 0, gaze: 0, gesture: '',
@@ -152,6 +152,9 @@ export function createMorrow() {
       // slices — re-resolve before minting or the suspended snapshot mints a double.
       if (!found) found = this._entity();
       if (!found && this.helpers.spawnEntity) found = this.helpers.spawnEntity(morrowEntitySpec(this.state.morrow));
+      // Adopted/restored owned bodies need the same resident identity as newly minted ones.
+      // The lean far row cannot retain our ritual/pose state; shelving it would mint a twin.
+      if (found?.data?.morrow === true) found.data.authoredCharacter = 'morrow';
       this._id = found?.id ?? null;
     },
     _say(key, important = false) {
