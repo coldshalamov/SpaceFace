@@ -1337,7 +1337,7 @@ export const survivorPod = {
 
     const point = pointForRec(state, rec);
     const ent = entityForPoint(state, point || rec);
-    const meta = mirrorMeta(state, rec, point, ent);
+    let meta = mirrorMeta(state, rec, point, ent);
     const reward = Math.max(
       Math.round((template.reward_cr || 0) * meta.minRewardMultiplier),
       Math.round((template.reward_cr || 0) * meta.rewardMultiplier),
@@ -1380,8 +1380,9 @@ export const survivorPod = {
         // Local rows are raw catalog records without sectorId — keep the pod's sector.
         rec.destSectorId = reroute.sectorId || rec.sectorId;
         // The mirror stamped above still names the refused berth — re-stamp so readers see
-        // the admitted destination now rather than on the next update tick.
-        mirrorMeta(state, rec, point, ent);
+        // the admitted destination now rather than on the next update tick. Refresh `meta`
+        // too: offer.survivorPod spreads it below and must not contradict offer.destStationId.
+        meta = mirrorMeta(state, rec, point, ent);
       }
     }
     // salvage._buildOffer already bound a board station; the rescue desk is the fallback.
