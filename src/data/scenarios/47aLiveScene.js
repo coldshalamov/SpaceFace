@@ -302,6 +302,10 @@ export function spawn47aScenarioCast(simOrOptions) {
     radius: 80,
     mass: 1,
     hull: 1,
+    // The handoff zone is a scripted marker, not a physical body (D186): an unowned body spec
+    // defaults to a dynamic ball with real contacts, and the 1-mass zone was shoved to double
+    // digit WU/s before the player's first input. physicsBody: false keeps its pose authored.
+    physicsBody: false,
     data: {
       handoffZone: true,
       contactActorId: 'contact_kessler',
