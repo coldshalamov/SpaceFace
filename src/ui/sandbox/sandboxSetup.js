@@ -433,12 +433,21 @@ export function installSandboxGameStartedHook(bus, ctxRef) {
     const cfg = pendingConfig;
     pendingConfig = null;
     if (!cfg) return; // a normal new game, not a sandbox launch
-    try {
-      applySandboxSetup(resolveCtx(), cfg);
-    } catch (err) {
-      console.error('[sandbox] setup failed', err);
-      bus.emit('toast', { text: 'Sandbox setup failed: ' + (err && err.message), kind: 'error', ttl: 6 });
-    }
+    const apply = () => {
+      try {
+        applySandboxSetup(resolveCtx(), cfg);
+      } catch (err) {
+        console.error('[sandbox] setup failed', err);
+        bus.emit('toast', { text: 'Sandbox setup failed: ' + (err && err.message), kind: 'error', ttl: 6 });
+      }
+    };
+    // Worker lane: scenePrepared reaches main as a REPLAY of the worker's emit, and the lane
+    // suppresses main→worker forwarding for the whole replay window (so replayed events don't
+    // echo). Applied inline, the setup's run:beginRequested (and every other forwarded intent)
+    // was silently dropped — the Crucible run never began and Swarm OPEN ARMORY fell into the
+    // Adventure opening. Step out of the replay window first; in-process stays synchronous.
+    if (laneCommandSink()) queueMicrotask(apply);
+    else apply();
   };
   bus.on('game:started', handler);
   // Player-facing sandbox launches are complete before the shared loading gate: firing at
