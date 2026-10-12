@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: fix/swarm-runtime-maturity
-          fetch-depth: 4
+          fetch-depth: 12
           sparse-checkout: |
             .agent
             .github
@@ -39,13 +39,15 @@ jobs:
           import fs from 'node:fs';
           import crypto from 'node:crypto';
           import { brotliDecompressSync } from 'node:zlib';
-          const patch = brotliDecompressSync(Buffer.from(fs.readFileSync('.agent/swarm-runtime-maturity.patch.br.b64', 'utf8').trim(), 'base64'));
+          const prefix = '.agent/swarm-runtime-maturity.patch.br.b64';
+          const encoded = ['.1','.2','.3',''].map(s => fs.readFileSync(prefix+s,'utf8').trim()).join('');
+          const patch = brotliDecompressSync(Buffer.from(encoded,'base64'));
           if (crypto.createHash('sha256').update(patch).digest('hex') !== 'bce9578835b31671cb42232cc8d50a8e736a48b0d2cffa9a37f0cc3d8c44b43b') throw Error('Patch checksum mismatch');
           const allowed = ['docs/Spec/SWARM_RUNTIME_MATURITY.md','src/data/swarmMode.js','src/systems/ai.js','src/systems/aiFireIntent.js','src/systems/impulseCharges.js','src/systems/survivalWave.js','src/systems/swarmArena.js','src/systems/swarmBrood.js','src/systems/swarmSafety.js','src/systems/waveMaterialization.js','test/swarm-brood-families.test.mjs','test/swarm-brood.test.mjs','test/swarm-overhaul-fire-roster.test.mjs','test/swarm-overhaul-spawn-clearance.test.mjs','test/swarm-pressure-reservoir.test.mjs','test/swarm-runtime-brood-maturity.test.mjs','test/swarm-runtime-maturity.test.mjs','test/swarm-runtime-rapier-maturity.test.mjs'];
           const paths = [...patch.toString('utf8').matchAll(/^diff --git a\/(\S+) b\/(\S+)$/gm)].map(m => { if (m[1] !== m[2]) throw Error('Unexpected rename'); return m[1]; });
           if (JSON.stringify(paths.sort()) !== JSON.stringify(allowed.sort())) throw Error('Unexpected patch path');
-          fs.writeFileSync('/tmp/swarm-runtime.patch', patch);
-          fs.writeFileSync('/tmp/swarm-owned-paths.json', JSON.stringify(allowed));
+          fs.writeFileSync('/tmp/swarm-runtime.patch',patch);
+          fs.writeFileSync('/tmp/swarm-owned-paths.json',JSON.stringify(allowed));
           JS
       - name: Hydrate the pinned engineering packet, not heavyweight media
         env:
@@ -91,7 +93,8 @@ jobs:
           const paths = JSON.parse(fs.readFileSync('/tmp/swarm-owned-paths.json','utf8'));
           for (const path of paths) if (/\.(js|mjs)$/.test(path)) execFileSync(process.execPath,['--check',path],{stdio:'inherit'});
           execFileSync('git',['add','--',...paths],{stdio:'inherit'});
-          execFileSync('git',['rm','--','.agent/swarm-runtime-maturity.patch.br.b64'],{stdio:'inherit'});
+          const prefix = '.agent/swarm-runtime-maturity.patch.br.b64';
+          execFileSync('git',['rm','--',...['.1','.2','.3',''].map(s=>prefix+s)],{stdio:'inherit'});
           execFileSync('git',['-c','user.name=SpaceFace Engineering','-c','user.email=engineering@users.noreply.github.com','commit','-m','fix(swarm): safe arrivals, readable pressure and causal rewards [swarm-imported]'],{stdio:'inherit'});
           execFileSync('git',['push','origin','HEAD:refs/heads/fix/swarm-runtime-maturity'],{stdio:'inherit'});
           JS
