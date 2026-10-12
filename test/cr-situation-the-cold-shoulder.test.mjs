@@ -111,3 +111,21 @@ test('flying on lets the boarders finish: the hauler flies a Reach flag and the 
     assert.deepEqual(grants(h), []);
   } finally { h.host.dispose(); }
 });
+
+test('ordinary director roll: the seed-4242 planner books it in every gated sector on its own zones', async () => {
+  const { planEncounters } = await import('../src/systems/encounterDirector.js');
+  const { zonesForSector } = await import('../src/data/sectorZones.js');
+  const enc = ENCOUNTERS['the_cold_shoulder'];
+  for (const sectorId of enc.gates.sectorIds) {
+    const zones = zonesForSector(sectorId);
+    const byId = new Map(zones.map((z) => [z.id, z]));
+    let booked = null;
+    for (let day = 0; day < 60 && !booked; day++) {
+      booked = planEncounters(4242, sectorId, day, zones).find((item) => item.shapeId === 'the_cold_shoulder') || null;
+    }
+    assert.ok(booked, `${sectorId}: planner never books it in 60 days`);
+    const zone = byId.get(booked.zoneId);
+    assert.ok(zone && enc.zoneTypes.includes(zone.type), `${sectorId}: booked on ${booked.zoneId}`);
+    assert.ok(!/helios/.test(sectorId));
+  }
+});
