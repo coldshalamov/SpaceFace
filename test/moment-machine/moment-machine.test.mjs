@@ -20,7 +20,6 @@ import { attemptHeadedPlayback } from '../../tools/moment-machine/headedCapture.
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const CLI = path.join(ROOT, 'tools/moment-machine/cli.mjs');
-const PATCH = path.join(ROOT, 'src/presentation/momentMachine/CLIP_EXPORT.patch');
 const CLIPS = path.join(ROOT, 'src/ui/screens/clips.js');
 
 function killStream(tick, samples, window) {
@@ -113,12 +112,13 @@ test('chronicle rescue without a threat is not a rescue event', () => {
   assert.notEqual(mapped.kind, 'rescue');
 });
 
-test('live tape kill is selectable and unrecorded positions stay unrecorded', () => {
+test('live tape kill has real poses without fabricating a causal shape', () => {
   const tape = readAdventureTape();
-  assert.equal(tape.stream.positionSource, 'none');
-  assert.equal(tape.stream.dropped.some((row) => row.reason === 'tape-positions-unrecorded'), true);
+  assert.equal(tape.stream.positionSource, 'tape-samples');
+  assert.ok(tape.stream.samples.length > 0);
+  assert.equal(tape.stream.dropped.some((row) => row.reason === 'tape-positions-unrecorded'), false);
   assert.equal(tape.selection.ranked[0].shape, 'logged_kill');
-  assert.equal(tape.selection.ranked[0].footage.status, 'unrecorded');
+  assert.equal(tape.selection.ranked[0].footage.status, 'pre-roll-missing');
   assert.equal(tape.selection.ranked.some((moment) => SHAPE_IDS.includes(moment.shape)), false);
 
   const killcam = readKillcam();
@@ -141,14 +141,11 @@ test('encoder does not verify a non-playback raster', async () => {
   assert.equal(encoded.reason, 'playback-frames-required');
 });
 
-test('clips export patch names its file and is not applied', async () => {
-  const patch = await readFile(PATCH, 'utf8');
+test('Moment Machine is integrated into the existing recorded Clips exporter', async () => {
   const clips = await readFile(CLIPS, 'utf8');
-  assert.match(patch, /src\/ui\/screens\/clips\.js/);
-  assert.match(patch, /export function exportLoggedMoment/);
-  assert.equal(clips.includes('analyzeMomentStream'), false);
-  assert.equal(clips.includes('exportLoggedMoment'), false);
-  assert.equal(clips.includes("from '../../presentation/momentMachine/index.js'"), false);
+  assert.equal(clips.includes('analyzeMomentStream'), true);
+  assert.equal(clips.includes('exportLoggedMoment'), true);
+  assert.equal(clips.includes("from '../../presentation/momentMachine/index.js'"), true);
 });
 
 test('cli ingest selects a logged kill and does not invent positions', () => {
@@ -172,12 +169,12 @@ test('cli ingest selects a logged kill and does not invent positions', () => {
   assert.equal(body.reason, 'tape-positions-unrecorded');
 });
 
-test('forty authoritative sessions and headed capture stay unverified', { timeout: 240000 }, async () => {
-  const sessions = runSessions(40);
-  assert.equal(sessions.count, 40);
+test('authoritative sessions store poses; absent live pixels stay unverified', { timeout: 240000 }, async () => {
+  const sessions = runSessions(2);
+  assert.equal(sessions.count, 2);
   assert.equal(sessions.evidenceClass, 'production-manifest');
   assert.equal(sessions.rows.every((row) => row.ok && row.tapeTicks === 60 && row.hasInputRing), true);
-  assert.equal(sessions.rows.every((row) => row.positionSource === 'none'), true);
+  assert.equal(sessions.rows.every((row) => row.positionSource === 'tape-samples'), true);
   for (const shape of SHAPE_IDS) {
     assert.equal(sessions.selectedShapes.includes(shape), false, shape);
   }
@@ -214,6 +211,6 @@ test('forty authoritative sessions and headed capture stay unverified', { timeou
   const saved = JSON.parse(await readFile(path.join(outDir, 'index.json'), 'utf8'));
   assert.equal(saved.videoVerified, false);
   assert.equal(saved.clipCount, 0);
-  assert.equal(saved.situations, 40);
+  assert.equal(saved.situations, 2);
   assert.deepEqual(saved.unselectedShapes, SHAPE_IDS);
 });

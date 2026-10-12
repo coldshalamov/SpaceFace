@@ -5,10 +5,8 @@
 // module owns only the surface: it lists the clips the detector recorded, presents each window, and
 // offers the export action. It never records video and never mutates gameplay state.
 //
-// Export writes a real GIF (or MP4 container) when RGBA frames exist, or rasterizes a software
-// title card from the clip window when they do not. A clip with no window and no frames fails
-// closed with `gpu-export-unavailable`. Electron saves through the packaged host; the browser
-// downloads the file. This module never records live video — the sim is deterministic.
+// Export uses pixels captured from presented flight. Missing frames fail closed.
+// Electron saves through the packaged host; browsers download the encoded file.
 //
 // ORRERY Wave 2: the instrument is the REEL — rated moments riding a curved rail mid-screen.
 // Each clip is a Tilt Plate with a rating Arc Gauge and a trimmable window Beam. Signature:
@@ -25,6 +23,8 @@ import { arcGauge } from '../orrery/instruments.js';
 import { attachClipDirectorToBus, createClipDirector } from '../../core/simSnapshot.js';
 import { openReplay, requestReplaySeek, resolveReplayRecording } from './replay.js';
 import { laneSetMode } from '../../core/simLaneCommands.js';
+import { analyzeMomentStream } from '../../presentation/momentMachine/index.js';
+import { installFlightFootage, getFlightFootage, createFootageViewer, resolveFlightClipFrames, encodeFlightVideo } from './flightFootage.js';
 import {
   CLIP_EXPORT_FORMATS,
   CLIP_EXPORT_UNAVAILABLE,
@@ -32,6 +32,7 @@ import {
   detectClipExportHost,
   encodeClipBytes,
   resolveClipFrames,
+  releaseClipDownloadURLs,
 } from './clipExport.js';
 
 export const CLIPS_LABEL = 'Clips';
@@ -47,6 +48,7 @@ const TRIM_MIN_SECONDS = 0.5;
 let clipDirector = null;
 let clipUnsub = null;
 let amendUnsub = null;
+let resetUnsub = null;
 let openState = null;
 // Amended grades keyed by the original moment tick and trick. Delete rebuilds clip ids,
 // and an amendment's own tick is later than the clip, so the reel must not key on either.
@@ -71,6 +73,7 @@ export function getClipDirector() {
  * Safe to call twice: the previous subscription is dropped first.
  */
 export function installLiveClipDirector(bus, options = {}) {
+  installFlightFootage(bus, options);
   if (!clipDirector) clipDirector = createClipDirector();
   if (clipUnsub) {
     try { clipUnsub(); } catch { /* best-effort */ }
@@ -80,16 +83,25 @@ export function installLiveClipDirector(bus, options = {}) {
     try { amendUnsub(); } catch { /* best-effort */ }
     amendUnsub = null;
   }
+  resetUnsub?.(); resetUnsub = null;
   if (bus) {
     clipUnsub = attachClipDirectorToBus(bus, clipDirector, options);
     // Re-rate the clip already on the reel. Never mark another one from the amendment.
     if (typeof bus.on === 'function') amendUnsub = bus.on('moment:amended', noteMomentAmendment);
+    const off = ['game:new', 'game:load', 'game:exitToMenu'].map((event) => bus.on(event, () => {
+      clipDirector.clear(); amendedGradeByKey.clear(); exportedKeys.clear();
+      releaseClipDownloadURLs();
+    }));
+    resetUnsub = () => off.forEach((fn) => fn?.());
   }
   return clipDirector;
 }
 
 /** Drop the live subscription. Does not clear recorded clips. */
 export function uninstallLiveClipDirector() {
+  releaseClipDownloadURLs();
+  resetUnsub?.(); resetUnsub = null;
+  getFlightFootage()?.dispose();
   if (clipUnsub) {
     try { clipUnsub(); } catch { /* best-effort */ }
     clipUnsub = null;
@@ -131,7 +143,17 @@ function withAmendedGrade(clip) {
 
 function listedClips(director) {
   const list = director && typeof director.list === 'function' ? director.list() : [];
-  return Array.isArray(list) ? list.map(withAmendedGrade) : [];
+  const raw = Array.isArray(list) ? list.map(withAmendedGrade) : [];
+  const recording = getFlightFootage()?.recording();
+  if (!recording) return raw;
+  const analysis = analyzeMomentStream({ adventureTape: recording });
+  const moments = analysis.selection?.ranked || [];
+  return moments.map((moment) => ({ id: moment.id, kind: moment.shape === 'logged_stunt' ? 'trick' : moment.shape === 'logged_kill' ? 'kill' : 'moment',
+    label: moment.label, momentTick: moment.payoffTick, startTick: Math.max(recording.absoluteBaseTick, moment.inTick),
+    endTick: Math.min(recording.absoluteBaseTick + recording.ticks - 1, moment.outTick),
+    tickRate: 60, seconds: (Math.min(recording.absoluteBaseTick + recording.ticks - 1, moment.outTick)
+      - Math.max(recording.absoluteBaseTick, moment.inTick)) / 60, rating: moment.score, moment }))
+    .concat(raw.filter((clip) => !moments.some((moment) => moment.payoffTick === clip.momentTick)));
 }
 
 function noteMomentAmendment(moment) {
@@ -174,6 +196,7 @@ export function clipListSummary(director) {
 
 /** Rating for the plate's corner gauge. An amended grade replaces rarity when it ranks higher. Death alone burns red. */
 export function clipRating(clip) {
+  if (clip?.moment) return { fraction: clip.moment.score, tone: 'hi', label: 'Highlight' };
   if (clip && clip.kind === 'death') return { fraction: 1, tone: 'threat', label: 'Death' };
   const rarity = clip && clip.rarity ? String(clip.rarity).toLowerCase() : '';
   if (rarity === 'legendary') return { fraction: 1, tone: 'hi', label: 'Legendary' };
@@ -216,9 +239,7 @@ function fmtClipSeconds(ticks, tickRate) {
 }
 
 /**
- * Export a clip as GIF/MP4. Recorded RGBA frames encode as-is; a marked window without GPU
- * frames rasterizes a software title card (headless, no GPU). A bare id with no window fails
- * closed as `gpu-export-unavailable`.
+ * Explicit recorded RGBA frames encode as-is. A window without pixels fails closed.
  */
 export function exportClip(clip, options = {}) {
   const clipId = clip && clip.id ? clip.id : null;
@@ -264,6 +285,33 @@ export function exportClip(clip, options = {}) {
   };
 }
 
+/** Genuine captured pixels only. Browser video may use WebM when MP4 is unavailable. */
+export async function exportRecordedClip(clip, options = {}) {
+  let encoded;
+  if (options.format === 'mp4' || options.format === 'webm') encoded = await encodeFlightVideo(clip, options);
+  else {
+    const resolved = await resolveFlightClipFrames(clip, options);
+    if (resolved) encoded = { bytes: encodeClipBytes(resolved.frames, resolved, 'gif'), format: 'gif',
+      mime: 'image/gif', source: resolved.source, actualStartTick: resolved.actualStartTick, actualEndTick: resolved.actualEndTick };
+  }
+  if (!encoded?.bytes?.length) return exportClip(clip, options);
+  if (options.signal?.aborted) throw new DOMException('Export cancelled', 'AbortError');
+  const filename = options.filename || `spaceface-clip-${String(clip.id || 'moment').replace(/[^a-zA-Z0-9_-]/g, '_')}.${encoded.format}`;
+  const delivery = deliverClipFile({ ...encoded, filename, host: options.host || detectClipExportHost() });
+  if (delivery.hostResult?.then) {
+    const result = await delivery.hostResult;
+    if (result?.ok === false || result?.cancelled) return { ok: false, reason: result.cancelled ? 'cancelled' : 'file-save-failed' };
+  }
+  return { ok: true, status: 'exported', ...encoded, filename, bytesLength: encoded.bytes.length, via: delivery.via };
+}
+
+export async function exportLoggedMoment(ctx, options = {}) {
+  const analysis = analyzeMomentStream({ adventureTape: resolveReplayRecording(ctx), chronicle: ctx?.state?.chronicler });
+  const moment = analysis.selection?.ranked?.[0];
+  if (!moment) return { ok: false, reason: 'no-logged-moment', applied: true };
+  return exportRecordedClip({ id: moment.id, startTick: moment.inTick, endTick: moment.outTick }, options);
+}
+
 function stopPlayback() {
   if (!openState) return;
   if (openState.view) disposeReelView(openState.view);
@@ -273,6 +321,8 @@ function stopPlayback() {
 function disposeReelView(view) {
   if (!view || view.disposed) return;
   view.disposed = true;
+  view.exportController?.abort();
+  for (const viewer of view.footageViewers || []) viewer.dispose();
   if (view.raf != null && typeof cancelAnimationFrame === 'function') {
     cancelAnimationFrame(view.raf);
   }
@@ -389,6 +439,13 @@ function ghostArt(kind, key, width, height) {
 function plateArt(clip, width, height) {
   const box = el('div', 'orr-clip__art');
   box.style.height = Math.round(height) + 'px';
+  if (getFlightFootage()?.ring.window(clip?.startTick, clip?.endTick).length) {
+    const canvas = document.createElement('canvas'); canvas.style.width = '100%'; canvas.style.height = '100%';
+    canvas.style.objectFit = 'cover'; canvas.setAttribute('aria-hidden', 'true'); box.append(canvas);
+    const viewer = createFootageViewer(canvas); box._footageViewer = viewer;
+    viewer.show(clip.momentTick ?? clip.startTick).catch(() => {});
+    return box;
+  }
   const frames = clip && (clip.frames || clip.frameBuffers);
   const fw = clip && (clip.frameWidth || clip.width);
   const fh = clip && (clip.frameHeight || clip.height);
@@ -425,6 +482,7 @@ function plateArt(clip, width, height) {
 
 /** Repaint a plate's canvas with the frame nearest a trim edge (the trim preview link). */
 function previewEdgeFrame(box, clip, tick) {
+  if (box?._footageViewer) { box._footageViewer.show(tick).catch(() => {}); return; }
   const rig = box && box._reelCanvas;
   const frames = clip && (clip.frames || clip.frameBuffers);
   if (!rig || !Array.isArray(frames) || frames.length < 2) return;
@@ -614,7 +672,8 @@ function buildPlate(clip, view, geo, { ghost = null } = {}) {
   plate.tabIndex = -1;
   plate.dataset.clipId = clip.id;
   const artH = Math.round(geo.plateW * 0.52);
-  plate.appendChild(plateArt(clip, geo.plateW, artH));
+  const art = plateArt(clip, geo.plateW, artH); plate.appendChild(art);
+  if (art._footageViewer) { view.footageViewers ||= []; view.footageViewers.push(art._footageViewer); }
   plate.appendChild(el('div', 'orr-clip__foot'));
   const name = clip.label || (clip.trickId ? String(clip.trickId).replace(/_/g, ' ') : 'Moment');
   plate.appendChild(el('h3', 'orr-clip__name', name));
@@ -660,6 +719,8 @@ function layoutReel(view) {
   }
   view.gauges = [];
   view.platesHost.innerHTML = '';
+  for (const viewer of view.footageViewers || []) viewer.dispose();
+  view.footageViewers = [];
   while (view.railSvg.firstChild) view.railSvg.firstChild.remove();
   view.railSvg.setAttribute('viewBox', `0 0 ${railW} 380`);
   const cx = railW / 2;
@@ -782,13 +843,19 @@ function wireHoldFeeds(button, hold) {
   button.addEventListener('blur', () => hold.feed(false));
 }
 
-function doExport(view) {
-  if (!view || view.disposed) return;
+async function doExport(view) {
+  if (!view || view.disposed || view.exportController) return;
   const clip = chosenClip(view);
   if (!clip) return;
   const win = trimmedWindow(clip, view.trims);
   const shaped = { ...clip, startTick: win.startTick, endTick: win.endTick, seconds: (win.endTick - win.startTick) / win.tickRate };
-  const outcome = exportClip(shaped, { format: view.format });
+  view.exportController = new AbortController();
+  if (view.readout) view.readout.textContent = 'ENCODING RECORDED FLIGHT…';
+  let outcome;
+  try { outcome = await exportRecordedClip(shaped, { format: view.format, signal: view.exportController.signal }); }
+  catch (error) { outcome = { ok: false, reason: error.name === 'AbortError' ? 'cancelled' : 'encoding-failed' }; }
+  finally { view.exportController = null; }
+  if (view.disposed) return;
   if (outcome.ok) {
     exportedKeys.add(clipStableKey(clip) + '|' + view.format);
     if (view.readout) view.readout.textContent = 'EXPORTED ' + outcome.filename + ' (' + outcome.source + ')';

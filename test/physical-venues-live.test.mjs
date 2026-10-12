@@ -116,6 +116,8 @@ test('a player-driven Gallery delivery earns its score from real movement and pr
   try {
     const gallery = run.runtime.getSystem('orbitalGallery');
     const credits = run.state.player.credits;
+    let finished;
+    run.bus.on('orbital-gallery:finished', payload => { finished = payload; });
     assert.equal(gallery.start('og-a1-straight-cue').ok, true);
     run.state.input.moveZ = 1;
     run.step(40);
@@ -128,6 +130,8 @@ test('a player-driven Gallery delivery earns its score from real movement and pr
     assert(result.score.total > 0);
     assert.equal(run.state.player.credits, credits);
     assert.equal(gallery.serialize().attempts['og-a1-straight-cue'], 1);
+    assert.equal(finished.ledger.best['og-a1-straight-cue'].total, result.score.total,
+      'finished receipt carries the earned durable record directly');
   } finally { run.dispose(); }
 });
 

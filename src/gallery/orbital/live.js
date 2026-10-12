@@ -103,7 +103,8 @@ export function createLiveGallery(ctx) {
         instruction: scenario.inference, remainingSeconds: Math.max(0,
           (gallery.limitTicks - (state.tick - gallery.playStartTick)) / 60),
         result: gallery.result, pockets: gallery.pockets, roles: gallery.roles,
-        best: state.orbitalGalleryLedger.best[scenario.id] || null };
+        best: state.orbitalGalleryLedger.best[scenario.id] || null,
+        ledger: state.orbitalGalleryLedger };
     },
     publish() {
       const status = api.status();

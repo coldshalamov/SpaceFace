@@ -210,7 +210,7 @@ export function fromAdventureTape(recording) {
   const tickRate = finiteNumber(recording.tickRate);
   stream.tickRate = tickRate != null && tickRate > 0 ? tickRate : TICK_RATE;
   const ticks = finiteNumber(recording.ticks);
-  const base = finiteNumber(recording.base);
+  const base = finiteNumber(recording.absoluteBaseTick ?? recording.base);
   const count = ticks != null && ticks >= 0 ? Math.floor(ticks) : 0;
   const baseTick = base != null && base >= 0 ? Math.floor(base) : 0;
   stream.window = { baseTick, ticks: count, seconds: count / stream.tickRate };
@@ -222,7 +222,7 @@ export function fromAdventureTape(recording) {
     if (!kind) continue;
     const relative = finiteNumber(mark.tick);
     if (relative == null || relative < 0) continue;
-    const absolute = baseTick + Math.floor(relative);
+    const absolute = Number.isFinite(mark.absoluteTick) ? mark.absoluteTick : baseTick + Math.floor(relative);
     pushEvent(stream, {
       id: `tape-${kind}-${absolute}`,
       causalityId: null,
@@ -235,7 +235,8 @@ export function fromAdventureTape(recording) {
       source: 'tape',
     });
   }
-  const plain = Array.isArray(recording.samples) ? recording.samples : null;
+  const plain = Array.isArray(recording.samples) ? recording.samples
+    : Array.isArray(recording.poseFrames) ? recording.poseFrames.flatMap((frame) => frame.poses) : null;
   if (plain) {
     stream.positionSource = 'tape-samples';
     for (let i = 0; i < plain.length; i += 1) pushSample(stream, plain[i]);

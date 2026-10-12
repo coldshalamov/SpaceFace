@@ -30,6 +30,7 @@ export function createLiveKineticLeague() {
       on('bracket:matchFinished', () => this._discover('match-finished'));
       on('kinetic-league:enter', payload => this.beginMatch(payload?.eventId));
       on('kinetic-league:retry', () => this.retry());
+      on('kinetic-league:next', () => this.next());
       on('kinetic-league:leave', () => this.leave());
       on('physics-venues:records', payload => {
         this.state.kineticLeague = normalizeLeagueMemory(payload?.league);

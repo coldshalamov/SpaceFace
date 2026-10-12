@@ -19,12 +19,15 @@ function plainTape(recording) {
     ticks: recording.ticks,
     seconds: recording.seconds,
     base: recording.base,
+    absoluteBaseTick: recording.absoluteBaseTick,
     events: events.map((event) => ({
       tick: event && event.tick,
+      absoluteTick: event && event.absoluteTick,
       type: event && event.type,
       label: event && event.label,
     })),
-    samples: Array.isArray(recording.samples) ? recording.samples : null,
+    samples: Array.isArray(recording.samples) ? recording.samples
+      : recording.poseFrames?.flatMap((frame) => frame.poses.map((pose) => ({ ...pose }))) || null,
     hasInputRing: !!(recording.inputRing && typeof recording.inputRing.read === 'function'),
   };
 }
