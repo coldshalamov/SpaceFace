@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import { createSimulation } from '../src/core/sim.js';
 import { economy } from '../src/systems/economy.js';
 import { priceModForState } from '../src/systems/factions.js';
@@ -7,9 +8,10 @@ import { commodityStandingMultipliers } from '../src/economy/economyMath.js';
 import { fullQuantityQuote, maxAffordableQuantity, planTradeLoad } from '../src/economy/tradePlanning.js';
 import { computeBestTrades, formatRouteCard } from '../src/ui/market/tradeLogic.js';
 import { formatOfflineReceiptLine, bindAutomationPayoffUi } from '../src/ui/automationPayoff.js';
-import { presentSurfaceDecisions, chooseAdventureDecision } from '../src/ui/adventureDecisions.js';
+import { presentSurfaceDecisions, chooseAdventureDecision, acceptMissionOnLane } from '../src/ui/adventureDecisions.js';
 import { marketQuoteHtml } from '../src/ui/views/marketPresentation.js';
 import { createBus } from '../src/core/eventBus.js';
+import { installSimCommandSink, uninstallSimCommandSink } from '../src/core/simLaneCommands.js';
 const HERE = 'station_helios', THERE = 'station_coalition', IRON = 'cmdty_ore_iron';
 
 function boot(seed = 4242) {
@@ -181,7 +183,7 @@ test('offline settlement names actual wallet loss and unpaid debt separately wit
   assert.equal(JSON.stringify(r), copy);
 });
 
-test('haul decision uses the batch quote and a changed price cannot buy or redirect the ship', () => {
+test('haul decision uses the batch quote and a changed price cannot buy or redirect the ship', async () => {
   const { sim, owner, state, bus } = boot();
   try {
     state.player.credits = 1000;
@@ -191,29 +193,111 @@ test('haul decision uses the batch quote and a changed price cannot buy or redir
     assert.equal(effect.expectedTotal, owner.quote(HERE, effect.commodityId, 'buy', effect.qty).total);
     const navBefore = JSON.stringify(state.nav), credits = state.player.credits;
     owner.getMarket(HERE)[effect.commodityId].demandMult = 2.5;
-    const result = chooseAdventureDecision(state, d.id, 'haul', { bus, economy: owner });
+    const result = await chooseAdventureDecision(state, d.id, 'haul', { bus, economy: owner });
     assert.equal(result.ok, false); assert.equal(result.reason, 'price_changed');
     assert.equal(state.player.credits, credits); assert.equal(JSON.stringify(state.nav), navBefore);
   } finally { sim.dispose(); }
 });
 
 
-test('successful haul settles the reviewed total once before the route is plotted', () => {
+test('successful haul settles the reviewed total once before the route is plotted', async () => {
   const {sim, owner, state, bus} = boot();
   try {
     state.player.credits = 1000;
     const d = presentSurfaceDecisions(state, HERE, 'market').find(x => x.kind === 'haul');
     const effect = d.options.find(x => x.id === 'haul').effect;
     const settlements = []; bus.on('economy:tradeCompleted', e => settlements.push(e));
-    const result = chooseAdventureDecision(state, d.id, 'haul', {bus, economy: owner});
+    const result = await chooseAdventureDecision(state, d.id, 'haul', {bus, economy: owner});
     assert.ok(result.ok);
     assert.equal(state.player.credits, 1000 - effect.expectedTotal);
     assert.equal(state.player.cargo.items[effect.commodityId], effect.qty);
     assert.equal(settlements.length, 1);
     const after = JSON.stringify([state.player.credits, state.player.cargo, state.nav]);
-    const duplicate = chooseAdventureDecision(state, d.id, 'haul', {bus, economy: owner});
+    const duplicate = await chooseAdventureDecision(state, d.id, 'haul', {bus, economy: owner});
     assert.ok(duplicate.duplicate); assert.equal(settlements.length, 1);
     assert.equal(JSON.stringify([state.player.credits, state.player.cargo, state.nav]), after);
+  } finally { sim.dispose(); }
+});
+
+test('reviewed loads reject moved berths, partial holds, and malformed price terms before settlement', () => {
+  const {sim, owner, state} = boot();
+  try {
+    const total = owner.quote(HERE, IRON, 'buy', 3).total;
+    const terms = {sourceStationId: HERE, requireFullQuantity: true, expectedTotal: total};
+    const before = JSON.stringify([state.player.credits, state.player.cargo, owner.getMarket(HERE), owner.getMarket(THERE)]);
+    assert.equal(owner.execute(THERE, IRON, 'buy', 3, terms).reason, 'station_changed');
+    assert.equal(owner.execute(HERE, IRON, 'buy', 3, {...terms, expectedTotal: NaN}).reason, 'bad_terms');
+    assert.equal(JSON.stringify([state.player.credits, state.player.cargo, owner.getMarket(HERE), owner.getMarket(THERE)]), before);
+    state.player.cargo.capVolume = 1;
+    const held = JSON.stringify([state.player.credits, state.player.cargo, owner.getMarket(HERE)]);
+    const partial = owner.handleTrade(IRON, 'buy', 3, terms);
+    assert.equal(partial.ok, false); assert.equal(partial.reason, 'load_changed');
+    assert.equal(JSON.stringify([state.player.credits, state.player.cargo, owner.getMarket(HERE)]), held);
+    assert.equal(fullQuantityQuote({ok: true, total: 10}, 3), false, 'an unspecified quantity cannot prove a full load');
+  } finally { sim.dispose(); }
+});
+
+test('lane haul forwards binding terms and waits for the actual owner verdict before navigation', async () => {
+  const {sim, owner, state, bus} = boot();
+  try {
+    state.player.credits = 1000;
+    const d = presentSurfaceDecisions(state, HERE, 'market').find(x => x.kind === 'haul');
+    const effect = d.options.find(x => x.id === 'haul').effect;
+    let fulfill; const calls = [];
+    installSimCommandSink(p => {
+      if (p.kind === 'rpc') { calls.push(p); return new Promise(resolve => { fulfill = resolve; }); }
+      return true;
+    });
+    const navBefore = JSON.stringify(state.nav);
+    const pending = chooseAdventureDecision(state, d.id, 'haul', {bus});
+    await Promise.resolve();
+    assert.equal(JSON.stringify(state.nav), navBefore);
+    const a = calls[0].args;
+    assert.equal(calls[0].op, 'economyTrade'); assert.equal(a.expectedTotal, effect.expectedTotal);
+    assert.equal(a.sourceStationId, HERE); assert.equal(a.requireFullQuantity, true);
+    assert.ok(a.intentId);
+    const result = owner.handleTrade(a.commodityId, a.side, a.qty, a);
+    fulfill({ok: true, result: {ok: true, result}});
+    assert.equal((await pending).ok, true);
+    assert.equal(state.player.credits, 1000 - effect.expectedTotal);
+    assert.equal(state.player.cargo.items[effect.commodityId], effect.qty);
+  } finally { uninstallSimCommandSink(); sim.dispose(); }
+});
+
+test('a rejected worker settlement cannot redirect or retry through the event bus', async () => {
+  const {sim, owner, state, bus} = boot();
+  try {
+    state.player.credits = 1000;
+    const d = presentSurfaceDecisions(state, HERE, 'market').find(x => x.kind === 'haul');
+    let emitted = 0; bus.on('ui:buy', () => emitted++);
+    const before = JSON.stringify([state.player.credits, state.player.cargo, state.nav]);
+    installSimCommandSink(() => Promise.resolve({ok: true, result: {ok: true, result: {ok: false, reason: 'station_changed'}}}));
+    const result = await chooseAdventureDecision(state, d.id, 'haul', {bus});
+    assert.equal(result.reason, 'station_changed'); assert.equal(emitted, 0);
+    assert.equal(JSON.stringify([state.player.credits, state.player.cargo, state.nav]), before);
+    installSimCommandSink(() => Promise.resolve({ok: false, reason: 'owner-threw-after-request'}));
+    assert.equal((await chooseAdventureDecision(state, d.id, 'haul', {bus})).ok, false);
+    assert.equal(emitted, 0, 'an RPC rejection is not evidence that no owner exists');
+  } finally { uninstallSimCommandSink(); sim.dispose(); }
+});
+
+test('bus fallback ignores unrelated trade receipts and settles only the submitted intent', async () => {
+  const {sim, owner, state} = boot();
+  const bus = createBus();
+  owner.bus = bus;
+  try {
+    state.player.credits = 1000;
+    const d = presentSurfaceDecisions(state, HERE, 'market').find(x => x.kind === 'haul');
+    const received = [];
+    bus.on('ui:buy', p => {
+      received.push(p);
+      bus.emit('economy:tradeCompleted', {...p, side: 'buy', intentId: 'unrelated-order'});
+      owner.handleTrade(p.commodityId, 'buy', p.qty, p);
+    });
+    const done = await chooseAdventureDecision(state, d.id, 'haul', {bus});
+    assert.equal(done.ok, true); assert.equal(received.length, 1);
+    assert.equal(received[0].requireFullQuantity, true); assert.equal(received[0].sourceStationId, HERE);
+    assert.ok(received[0].intentId);
   } finally { sim.dispose(); }
 });
 
@@ -223,4 +307,35 @@ test('unavailable quotes display no invented zero-price spread', () => {
   assert.match(html, /Local spread/);
   assert.match(html, /sx-mkt-readouts__item--margin[^]*?<dd>— cr<\/dd>/);
   assert.doesNotMatch(html, /class="k-hero__n">0</);
+});
+
+test('production worker registered trade port enforces berth, whole-load, price, and duplicate terms', async () => {
+  const {createSimHost} = await import('../scripts/lib/simWorkerHost.mjs');
+  const api = createSimHost();
+  try {
+    const scenarioContract = JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8'));
+    await api.init({profile: 'production', seed: 4242, scenarioContract, settings: {gameplay: {tutorialHints: false}}});
+    const {state, registry, rpcHandlers} = api.host;
+    const owner = registry.get('economy'), trade = rpcHandlers.get('economyTrade');
+    state.ui.dockedStationId = HERE; state.ui.docked = true;
+    state.player.credits = 10000; state.player.cargo.capVolume = 250;
+    owner.ensureMarket(HERE);
+    const total = owner.quote(HERE, IRON, 'buy', 3).total;
+    const args = {commodityId: IRON, side: 'buy', qty: 3, sourceStationId: HERE, requireFullQuantity: true, expectedTotal: total, intentId: 'reviewed-worker-load'};
+    const before = state.player.credits;
+    assert.equal(trade({...args, sourceStationId: THERE}).result.reason, 'station_changed');
+    assert.equal(trade({...args, expectedTotal: 0}).result.reason, 'price_changed');
+    state.player.cargo.capVolume = 1;
+    assert.equal(trade(args).result.reason, 'load_changed');
+    assert.equal(state.player.credits, before); assert.equal(state.player.cargo.items[IRON] || 0, 0);
+    state.player.cargo.capVolume = 250;
+    const paid = trade(args).result;
+    assert.equal(paid.ok, true); assert.equal(paid.qty, 3); assert.equal(paid.total, total);
+    const after = state.player.credits;
+    assert.equal(trade(args).result.duplicate, true); assert.equal(state.player.credits, after);
+    assert.equal(state.player.cargo.items[IRON], 3);
+    installSimCommandSink(p => Promise.resolve({ok: true, result: rpcHandlers.get(p.op)(p.args)}));
+    assert.equal((await acceptMissionOnLane(api.host.bus, 'mission-that-does-not-exist')).ok, false,
+      'a delivered mission RPC is not the owner acceptance verdict');
+  } finally { uninstallSimCommandSink(); api.shutdown(); }
 });

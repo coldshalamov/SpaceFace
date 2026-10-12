@@ -40,7 +40,7 @@ function makeHarness({ credits = 4000, rail = 'finished', hintsOn = true } = {})
   const onboarding = Object.create(onboardingProto);
   onboarding.init({ state, bus, helpers: { hash32, mulberry32, voice: { say: () => true } }, registry: { get: () => null } });
   return {
-    state, bus, said,
+    state, bus, said, onboarding,
     sell(stationId = 'station_helios') {
       bus.emit('economy:tradeCompleted', { side: 'sell', stationId, commodityId: 'cmdty_ore_iron', qty: 3, total: 120 });
     },
@@ -152,4 +152,28 @@ test('tutorial hints off stays silent and spends nothing', () => {
   h.bus.emit('economy:grantCredits', { amount: 400 });
   assert.deepEqual(h.said, []);
   assert.equal(h.state.player.hints.fitOffer, undefined);
+});
+
+test('stale trade station ids and in-flight dock remnants cannot spend an earned berth hint', () => {
+  const h = makeHarness({credits: 5200});
+  h.sell('station_tethys');
+  assert.deepEqual(h.said, []); assert.equal(h.state.player.hints.fitOffer, undefined);
+  h.state.mode = 'flight'; h.state.ui.docked = false;
+  h.sell();
+  assert.deepEqual(h.said, []); assert.equal(h.state.player.hints.fitOffer, undefined);
+  h.state.mode = 'station'; h.state.ui.docked = true; h.state.physicsVenueSession = true;
+  h.sell();
+  assert.deepEqual(h.said, []); assert.equal(h.state.player.hints.fitOffer, undefined);
+});
+
+test('outfit budget and modules already held on another owned hull constrain the rack pointer', () => {
+  const h = makeHarness({credits: 5200});
+  h.state.player.ownedShips.push({defId: 'ship_kestrel', fittings: ['mod_swing_drive_s']});
+  h.sell();
+  assert.deepEqual(h.said, [VEIL_LINE], 'an already owned parked module is not sold as a new verb');
+  const blocked = makeHarness({credits: 99999});
+  blocked.state.player.ownedShips[0].fittings[2] = 'mod_engine_warp_l';
+  blocked.sell();
+  assert.deepEqual(blocked.said, [], 'a loadout beyond its engine capacity cannot accept this promised fit');
+  assert.equal(blocked.state.player.hints.fitOffer, undefined);
 });

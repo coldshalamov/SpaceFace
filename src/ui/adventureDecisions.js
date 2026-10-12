@@ -393,13 +393,14 @@ function activeMissionIds(state) {
 // only inside the worker realm) or a bridged outcome event.
 const RPC_MISSING = /no lane rpc handler/;
 function rpcUnavailable(resp) {
-  return !resp || resp.ok !== true || (typeof resp.error === 'string' && RPC_MISSING.test(resp.error));
+  return !resp || (resp.ok !== true && (RPC_MISSING.test(String(resp.error || '')) || resp.reason === 'unhandled-rpc-op'));
 }
 
 export async function acceptMissionOnLane(bus, missionId) {
   const resp = await laneRpc('missionsCall', { method: 'acceptMission', missionId });
   if (!rpcUnavailable(resp)) {
-    const res = resp && resp.result;
+    const reply = resp && resp.result;
+    const res = reply && reply.result !== undefined ? reply.result : reply;
     return { ok: res === true || (res && res.ok === true) };
   }
   // Main lane: the emit applies synchronously; availability is verified by the caller.
@@ -408,9 +409,9 @@ export async function acceptMissionOnLane(bus, missionId) {
 }
 
 const TRADE_ACK_TIMEOUT_MS = 5000;
-function waitTradeOutcome(bus, commodityId, side, timeoutMs = TRADE_ACK_TIMEOUT_MS) {
+function waitTradeOutcome(bus, commodityId, side, intentId, timeoutMs = TRADE_ACK_TIMEOUT_MS) {
   return new Promise((resolve) => {
-    if (!bus || typeof bus.once !== 'function') {
+    if (!bus || typeof bus.on !== 'function') {
       resolve({ ok: false, reason: 'no_bus' });
       return;
     }
@@ -424,9 +425,9 @@ function waitTradeOutcome(bus, commodityId, side, timeoutMs = TRADE_ACK_TIMEOUT_
       for (const off of offs) { try { off(); } catch (_) {} }
       resolve(res);
     };
-    const match = (p) => p && p.commodityId === commodityId && p.side === side;
-    offs.push(bus.once('economy:tradeCompleted', (p) => { if (match(p)) finish({ ok: true }); }));
-    offs.push(bus.once('economy:tradeFailed', (p) => {
+    const match = (p) => p && p.commodityId === commodityId && p.side === side && p.intentId === intentId;
+    offs.push(bus.on('economy:tradeCompleted', (p) => { if (match(p)) finish({ ok: true }); }));
+    offs.push(bus.on('economy:tradeFailed', (p) => {
       if (match(p)) finish({ ok: false, reason: p.reason || 'trade_failed' });
     }));
     timer = setTimeout(() => finish({ ok: false, reason: 'trade_unconfirmed' }), timeoutMs);
@@ -484,13 +485,18 @@ async function applyEffect(state, effect, ctx) {
       if (!Number.isSafeInteger(effect.expectedTotal) || current.total > effect.expectedTotal) return { ok: false, reason: 'price_changed' };
       if (current.total > beforeCredits) return { ok: false, reason: 'credits' };
     }
-    const terms = effect.expectedTotal == null ? undefined : { expectedTotal: effect.expectedTotal };
+    const terms = {
+      intentId: effect.intentId,
+      ...(effect.expectedTotal == null ? {} : { expectedTotal: effect.expectedTotal }),
+      ...(effect.type === 'haul' ? { sourceStationId: effect.sourceStationId, requireFullQuantity: true } : {}),
+    };
     let ok = null;
     let reason = 'trade_failed';
     if (economy && typeof economy.handleTrade === 'function') {
       const result = await economy.handleTrade(effect.commodityId, side, effect.qty, terms);
       if (result && result.ok === false) return { ok: false, reason: result.reason || 'trade_failed' };
-      ok = creditsOf(state) !== beforeCredits || heldQty(state, effect.commodityId) !== beforeQty;
+      ok = result === true || (result && result.ok === true)
+        || (result == null && (creditsOf(state) !== beforeCredits || heldQty(state, effect.commodityId) !== beforeQty));
       reason = 'trade_unchanged';
     } else {
       const resp = await laneRpc('economyTrade', {
@@ -502,7 +508,7 @@ async function applyEffect(state, effect, ctx) {
         if (res && res.ok === false) return { ok: false, reason: res.reason || 'trade_failed' };
         ok = res === true || (res && res.ok === true);
       } else {
-        const wait = waitTradeOutcome(bus, effect.commodityId, side);
+        const wait = waitTradeOutcome(bus, effect.commodityId, side, terms.intentId);
         if (bus) bus.emit(side === 'sell' ? 'ui:sell' : 'ui:buy', { commodityId: effect.commodityId, qty: effect.qty, ...(terms || {}) });
         const outcome = await wait;
         if (!outcome.ok) return { ok: false, reason: outcome.reason };
@@ -537,7 +543,9 @@ export async function chooseAdventureDecision(state, decisionId, optionId, ctx =
   if (!option) return { ok: false, reason: 'missing_option' };
   log.applyingIds.add(decisionId);
   try {
-    const applied = await applyEffect(state, option.effect, ctx);
+    const applied = await applyEffect(state, option.effect && {
+      ...option.effect, intentId: `adventure:${decisionId}:${optionId}`,
+    }, ctx);
     if (!applied.ok) return applied;
     log.chosenIds.add(decisionId);
     log.chosen.push({

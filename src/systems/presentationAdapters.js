@@ -195,7 +195,7 @@ const CAPTIONS = Object.freeze({
   'scenario.branch.resolved': 'Evidence route resolved.',
   'fields.cluster_detonate': 'Cluster detonation — the clump cooked off.',
   'fields.cluster_detonate.cascade': 'Mass cascade — the whole cluster went.',
-  'freight.cargo_spilled': 'Cargo adrift — loose pods are claimable.',
+  'freight.cargo_spilled': 'Cargo adrift — check ownership before recovery.',
 });
 
 export const presentationAdapters = {

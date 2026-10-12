@@ -38,7 +38,7 @@ import { readCadencePair, rateCadenceTechnique } from './masslineControlLaw.js';
 import { resolveActionLabel } from './input.js';
 import { fitFeelRowFor, pickFitFelt } from '../onboarding/fitFeel.js';
 import { WEAPONS } from '../data/weapons.js';
-import { buildSlotList, exclusivityRepMet, fits, getDerivedStats, stationShopOffer } from './ships.js';
+import { buildSlotList, exclusivityRepMet, findMasslineHeadConflict, fits, getDerivedStats, outfitBudgetBlocker, stationShopOffer } from './ships.js';
 import { SHIPS } from '../data/ships.js';
 import { substanceFor } from '../core/physicsAuthority.js';
 import { towClassMassFor } from './shipCapabilities.js';
@@ -1005,14 +1005,16 @@ export const onboarding = {
     if (!shipDef) return null;
     const fittings = (owned && typeof owned === 'object' && Array.isArray(owned.fittings)) ? owned.fittings : [];
     const held = new Set();
-    for (const id of fittings) if (id) held.add(id);
+    for (const hull of player.ownedShips || []) {
+      for (const id of hull && typeof hull === 'object' && Array.isArray(hull.fittings) ? hull.fittings : []) if (id) held.add(id);
+    }
     for (const item of player.moduleInventory || []) {
       const invId = item && typeof item === 'object' ? item.defId : item;
       if (invId) held.add(invId);
     }
     const slots = buildSlotList(shipDef);
-    const researched = new Set(player.researchedNodes || player.researched || []);
-    const credits = Math.max(0, Number(player.credits) || 0);
+    const ships = this.registry && this.registry.get && this.registry.get('ships');
+    const credits = Number.isFinite(player.credits) ? Math.max(0, player.credits) : 0;
     let best = null;
     for (const def of FIT_FEEL_DEFS.values()) {
       if (held.has(def.id)) continue;
@@ -1021,9 +1023,16 @@ export const onboarding = {
       // Same gates describeOutfittingPurchase applies: standing lock, research/offer unlock,
       // a slot this hull can take, and the real offer price against real credits.
       if (def.exclusivity && !exclusivityRepMet(def.exclusivity, st.factions)) continue;
-      // (offer is non-null here, so the purchase row's off-rack research exemption applies.)
-      if (def.requiresTech && !researched.has(def.requiresTech) && def.exclusivity) continue;
-      if (!slots.some((slot) => fits(slot, def))) continue;
+      if (ships && typeof ships.isUnlocked === 'function' && !ships.isUnlocked(def)) continue;
+      if (!slots.some((slot, slotIndex) => {
+        if (!fits(slot, def)) return false;
+        if (ships && typeof ships.moduleFitBlocker === 'function') {
+          return !ships.moduleFitBlocker({ shipIndex: player.activeShipIndex || 0, slotIndex, def });
+        }
+        if (findMasslineHeadConflict(fittings, slotIndex, def)) return false;
+        const prospective = fittings.slice(); prospective[slotIndex] = def.id;
+        return !outfitBudgetBlocker(shipDef, prospective);
+      })) continue;
       if (credits < offer.price) continue;
       // The swing drive extends the latch the tutorial already taught, so it leads; the
       // cheapest remaining verb-fit is the honest tiebreak.
@@ -1040,18 +1049,15 @@ export const onboarding = {
     const player = st && st.player;
     const ob = st && st.onboarding;
     if (!player) return '';
-    const berth = stationId || (st.ui && st.ui.dockedStationId);
-    if (!berth) return '';
-    if (stationId == null) {
-      const berthed = !!(st.ui && (st.ui.docked === true || st.ui.dockedStationId != null))
-        || st.mode === 'station';
-      if (!berthed) return '';
-    }
+    const berth = st.ui && st.ui.dockedStationId;
+    if (!berth || (stationId != null && stationId !== berth)) return '';
+    if (!(st.ui.docked === true || st.mode === 'station')) return '';
     if (!ob || (!ob.active && !ob.finished)) return '';
     // The voice cannot speak in these modes — spending the flag first would eat the pointer
     // without ever showing it (same gates _showHint applies).
     if (st.settings && st.settings.gameplay && st.settings.gameplay.tutorialHints === false) return '';
     if (isRacingCorridorSession(st)) return '';
+    if (st.physicsVenueSession || st.physicsVenue?.active) return '';
     if (st.run?.kind === 'survival' && st.run.phase !== 'inactive') return '';
     if (player.hints && player.hints.fitOffer) return '';
     const def = this._fitOfferCandidate(berth);

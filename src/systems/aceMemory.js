@@ -1195,6 +1195,19 @@ export const aceMemory = {
 
   _spawnReturn(ace, rec, now) {
     if (ace && ace.lifecycleOwner === 'nemesis') return;
+    // A deadline can name a raider without despawning them. A return is a later meeting,
+    // so do not field another copy while that person is still physically present.
+    // Identity stamps survive save/load; a recycled numeric entity id is never sufficient.
+    if (rec.promoted === true) {
+      const entities = this.state.entities;
+      const live = entities && typeof entities.values === 'function' ? entities.values() : this.state.entityList || [];
+      for (const entity of live) {
+        if (entity && entity.alive !== false && promotedPilotRefOf(entity) === rec.id) {
+          rec.nextReturnAttemptAt = now + 10;
+          return;
+        }
+      }
+    }
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     const budget = this.helpers && this.helpers.spawnBudget;
     const stance = stanceForRecord(rec);

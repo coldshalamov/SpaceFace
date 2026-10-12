@@ -94,7 +94,7 @@ test('a player-inflicted spill publishes the cue on the pod cloud with the full 
   // Player-addressed lanes surface for the player who caused it: the incident receipt names it.
   assert.equal(rec.alert.at(-1).text, 'CARGO ADRIFT');
   assert.equal(rec.alert.at(-1).audioOwnedByPresentation, true, 'the cue owns the voice; the alert adds no generic chime');
-  assert.equal(rec.caption.at(-1).text, 'Cargo adrift — loose pods are claimable.');
+  assert.equal(rec.caption.at(-1).text, 'Cargo adrift — check ownership before recovery.');
   assert.equal(rec.caption.at(-1).assertive, false, 'a consequence receipt is not an interrupt');
 
   presentationOrchestrator.dispose();
@@ -134,8 +134,30 @@ test('dedupe merges a re-emit of the same lot inside the window; a distinct inci
   bus.flush();
   assert.equal(rec.cue.length, 2, 'a genuinely separate spill is a second incident');
 
+  state.tick += 10;
+  bus.emit('freight:cargoSpilled', spill({podIds: [POD_B]}));
+  bus.flush();
+  assert.equal(rec.cue.length, 3, 'another pod set from the same custody lot is a physical new spill');
+  state.tick += 10;
+  bus.emit('freight:cargoSpilled', spill({podIds: [POD_B, POD_B]}));
+  bus.flush();
+  assert.equal(rec.cue.length, 3, 'duplicate pod ids do not manufacture another incident');
+
   presentationOrchestrator.dispose();
   presentationAdapters.dispose();
+});
+
+test('corrupt positions cannot send freight feedback to a fabricated world origin', () => {
+  const {state, bus, rec} = makeWorld();
+  state.entities.get(POD_A).pos.x = NaN;
+  bus.emit('freight:cargoSpilled', spill()); bus.flush();
+  assert.equal(rec.cue[0].position.x, 206, 'a later valid live pod supplies the actual position');
+  state.tick += 100;
+  state.entities.get(POD_B).pos.z = Infinity;
+  state.entities.get(CARRIER_ID).pos.x = Infinity;
+  bus.emit('freight:cargoSpilled', spill({custodyId: 'bad-position'})); bus.flush();
+  assert.equal(rec.cue.length, 1, 'no located body means no authored cue');
+  presentationOrchestrator.dispose(); presentationAdapters.dispose();
 });
 
 test('the cue follows live pods: dead pods fall back to the carrier, and an unlocatable spill stays silent', () => {

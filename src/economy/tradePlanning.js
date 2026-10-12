@@ -9,7 +9,7 @@ function whole(value) {
 export function fullQuantityQuote(value, qty) {
   return !!value && value.ok === true && Number.isSafeInteger(value.total) && value.total >= 0
     && value.partial !== true && value.holdLimited !== true
-    && (value.qty == null || value.qty === qty)
+    && value.qty === qty
     && (value.acceptQty == null || value.acceptQty === qty);
 }
 

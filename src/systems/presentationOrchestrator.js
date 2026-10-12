@@ -1623,14 +1623,15 @@ export const presentationOrchestrator = {
     const entities = this.state && this.state.entities;
     const get = (id) => (entities && typeof entities.get === 'function' && id != null ? entities.get(id) : null);
     let position = null;
+    const located = (p) => p && Number.isFinite(p.x) && Number.isFinite(p.z);
     const podIds = Array.isArray(payload.podIds) ? payload.podIds : [];
     for (const id of podIds) {
       const pod = get(id);
-      if (pod && pod.alive !== false && pod.pos) { position = pod.pos; break; }
+      if (pod && pod.alive !== false && located(pod.pos)) { position = pod.pos; break; }
     }
     if (!position) {
       const carrier = get(payload.carrierId);
-      if (carrier && carrier.pos) position = carrier.pos;
+      if (carrier && located(carrier.pos)) position = carrier.pos;
     }
     if (!position) return false;
     return this._emitCue('freight.cargo_spilled', { ...payload, position }, {
@@ -1638,9 +1639,8 @@ export const presentationOrchestrator = {
       targetId: payload.carrierId ?? null,
       material: 'freight',
       magnitude: Math.max(1, Number(payload.qty) || Number(payload.podCount) || podIds.length || 1),
-      // One incident, one cue: the custody lot's identity merges a re-emit or a respill of the
-      // same lot inside the window; a genuinely separate spill re-pings.
-      sequence: `${payload.custodyId ?? payload.manifestId ?? payload.carrierId ?? 'spill'}:${payload.cause ?? 'unknown'}`,
+      // Replayed pod sets merge; a second physical spill from the same manifest still answers.
+      sequence: `${payload.custodyId ?? payload.manifestId ?? payload.carrierId ?? 'spill'}:${payload.cause ?? 'unknown'}:${[...new Set(podIds)].map(String).sort().join(',')}`,
       tags: ['freight', 'spill', payload.cause, payload.commodityId].filter(Boolean),
     });
   },

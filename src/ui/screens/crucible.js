@@ -2502,15 +2502,14 @@ export function killChainRows(defeat) {
   const rows = [
     ['Killed by', killer],
     // A rock or a hazard has no gun; "Unidentified weapon" under an environmental kill reads as a bug.
-    ['Its weapon', defeat.weapon
-      || (defeat.source && defeat.source.kind === 'environment' ? 'Impact' : 'Unidentified weapon')],
+    ['Its weapon', defeat.source && defeat.source.kind === 'environment' ? 'Impact' : defeat.weapon || 'Unidentified weapon'],
     ['It came from', bearingWord(defeat.direction)],
     ['It got in', breachPhrase(defeat.dominantLayer)],
   ];
   // PQ-174.06: the telegraph as two lines beside the cause — the frontend direction sheet's
   // "the cause of death and its telegraph as two lines". A receipt that predates the field
   // renders exactly as before.
-  if (defeat.telegraphName) {
+  if (defeat.telegraphName && !(defeat.source && defeat.source.kind === 'environment')) {
     const lead = Number.isFinite(Number(defeat.telegraphLeadMs))
       ? ` — ${Math.max(0, Math.round(Number(defeat.telegraphLeadMs)))}ms before impact` : '';
     rows.push(['It warned you', `${defeat.telegraphName}${lead}`]);

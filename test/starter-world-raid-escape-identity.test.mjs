@@ -73,6 +73,34 @@ function promotedRecords(memory) {
 }
 
 describe('opening raid escape identity', { concurrency: false }, () => {
+  test('a living named raider cannot duplicate into a return crew, while a recycled hull id cannot defer them', () => {
+    const {sim, state, live, director} = fireOpeningRaid(4242);
+    try {
+      live.deadlineAt = state.simTime;
+      openingRaid.tick(director, live, state, state.simTime);
+      const hull = promotedHulls(state)[0];
+      const [pilotId, rec] = promotedRecords(state.aceMemory)[0];
+      const ace = sim.registry.get('aceMemory');
+      state.simTime = rec.returnAt + 1;
+      const count = state.entities.size;
+      ace._processReturns(state);
+      assert.equal(state.entities.size, count, 'their original live hull still owns the identity');
+      assert.equal(rec.returnScheduled, true); assert.notEqual(rec.returned, true);
+      assert.equal(rec.nextReturnAttemptAt, state.simTime + 10);
+      // Leave the original physical hull, then reuse only its numeric id for somebody else.
+      state.entities.delete(hull.id);
+      state.entityList = state.entityList.filter(e => e.id !== hull.id);
+      const stranger = {id: hull.id, type: 'ship', alive: true, pos: {x: 1, z: 1}, data: {}};
+      state.entities.set(stranger.id, stranger); state.entityList.push(stranger);
+      state.simTime = rec.nextReturnAttemptAt;
+      ace._processReturns(state);
+      assert.equal(rec.returnScheduled, false);
+      assert.equal(rec.returned, true);
+      assert.ok(rec.activeReturnIds.length > 0, 'a genuine later encounter fields the promoted pilot');
+      const boss = rec.activeReturnIds.map(id => state.entities.get(id)).find(e => e?.data?.aceMemory?.role === 'boss');
+      assert.equal(boss.data.aceMemory.aceId, pilotId);
+    } finally { sim.dispose(); }
+  });
   test('flying on names one living raider, and the name survives save but not New Game', () => {
     const { sim, state, bus, carrier, live, director } = fireOpeningRaid(4242);
     assert.ok(live && live.data.adoptedCarrier);
