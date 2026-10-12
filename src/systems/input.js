@@ -1,3 +1,5 @@
+import { isPlayerSaucer } from '../data/saucer.js';
+import { projectSaucerControls } from '../core/flight/saucerControl.js';
 // Input system: samples keyboard + mouse, projects the cursor to the world plane, and writes
 // state.input each tick. THREE control schemes, picked by settings.gameplay.controlScheme
 // ('pilot' default | 'helm-assist' | 'classic'):
@@ -582,7 +584,8 @@ function clearActionCodes(state, keys, action, exceptCode) {
 
 /**
  * Deterministic keyboard event transition shared by the DOM listener and fixed-tick harnesses.
- * Opposing axes retain the established last-input-wins behavior. Dedicated actions such as
+ * Ordinary opposing axes retain last-input-wins; a player saucer keeps both for cancellation.
+ * Dedicated actions such as
  * brake do not need an impossible simultaneous-axis state.
  */
 export function transitionFlightKeyState(
@@ -602,7 +605,9 @@ export function transitionFlightKeyState(
   }
   const action = actionForCode(state, code);
   const opposingAction = action && OPPOSING_ACTIONS.get(action);
-  if (opposingAction) {
+  // A disc averages physically held directions. Conventional ships retain last-input-wins.
+  const saucer = isPlayerSaucer(state?.entities?.get?.(state?.playerId));
+  if (opposingAction && !saucer) {
     clearActionCodes(state, nextKeys, opposingAction, code);
   }
   nextKeys[code] = true;
@@ -1732,12 +1737,17 @@ export const input = {
     const kbmRecent = activityStampMoreRecent(this._lastKbmTick, this._lastKbmSeq, gpTick, gpSeq)
       && activityStampMoreRecent(this._lastKbmTick, this._lastKbmSeq, tpTick, tpSeq);
 
-    const kbdDrive = !!(kbdTurn || kbdMoveX || kbdMoveZ || kbdBrakeHeld || kbdBoost);
+    // Even opposing keys claim keyboard control: cancelling all four means STOP, not
+    // fall back to a previously active joystick whose last sample is still nonzero.
+    const saucerKeys = isPlayerSaucer(p) && (up || down
+      || this._held(state, 'yawLeft') || this._held(state, 'yawRight')
+      || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].some(k => this._keys[k]));
+    const kbdDrive = !!(saucerKeys || kbdTurn || kbdMoveX || kbdMoveZ || kbdBrakeHeld || kbdBoost);
     const pointerOwnsHelm = !!(helm && kbmRecent && this._screen && this._screen.active);
     const pointerHelmEdge = !!(this._pointerHelmEdge && pointerOwnsHelm);
     this._pointerHelmEdge = false;
     resolveMovementOwner(this, { kbdDrive, gp, tp, pointerHelmEdge, pointerOwnsHelm });
-    let keyboardBrake = (helm || pilot)
+    let keyboardBrake = isPlayerSaucer(p) ? !!kbdBrakeHeld : (helm || pilot)
       ? !!(pilotProjection ? pilotProjection.brake : (down || kbdBrakeHeld))
       : !!(down || kbdBrakeHeld);
     // Ownership gates the drive vector only (turn/move axes). Boost and brake are modifiers,
@@ -2072,6 +2082,18 @@ export const input = {
           inp.moveZ = 0; inp.moveX = 0;
         }
       }
+    }
+    if (isPlayerSaucer(p)) {
+      Object.assign(inp, projectSaucerControls({
+        keys: this._keys, source: this._movementSource,
+        left: this._held(state, 'yawLeft') || this._held(state, 'strafeLeft'),
+        right: this._held(state, 'yawRight') || this._held(state, 'strafeRight'),
+        up, down, pad: gp?.axes, touch: tp?.axes,
+        // Down is translation on a saucer, NEVER the ordinary reverse-brake shortcut.
+        brake: brakeHeld,
+      }));
+      inp.turnIntentFromAim = false;
+      inp.lineOrbit = 0;
     }
   },
 };
