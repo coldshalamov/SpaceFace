@@ -6434,13 +6434,24 @@ export const traffic = {
         || candidate.data?.npcMiningSource?.fieldId !== 'f_helios_starter'
         || !(candidate.data.amount > 0) || !candidate.data.commodityId
         || isMasslineLatchedPickup(state, player, candidate)) return;
+      // A cut chip is the claim's lot, not free scrap: title to the cutter's stable record keeps a
+      // passing lawful hull (or this barge's own hull) from contact-vacuuming it outside custody;
+      // the player and outlaws can still take it, which is theft the law owner can see.
+      const source = candidate.data.npcMiningSource;
+      if (source.minerWorldRecordId && candidate.data.ownerId == null && !candidate.data.cargoIdentity) {
+        candidate.data.ownerId = source.minerWorldRecordId;
+      }
       const d2 = (candidate.pos.x - entity.pos.x) ** 2 + (candidate.pos.z - entity.pos.z) ** 2;
       if (d2 < nearest) { pickup = candidate; nearest = d2; }
     });
     if (!pickup) {
       // Wait beside the active face, not on top of it. There is no invented load on a timer.
-      const miner = state.traffic.freighters.map((row) => state.entities.get(row.id))
-        .find((worker) => worker?.alive !== false && worker?.data?.minerShiftRockId != null);
+      // The cutter may be a traffic hull or the claim's authored seam miner (npcJobs-commissioned);
+      // either way the barge's berth is the face that hull is cutting, never the refinery apron.
+      const cutting = (worker) => worker && worker.alive !== false && worker.type === 'ship'
+        && worker.data?.minerShiftRockId != null;
+      const miner = state.traffic.freighters.map((row) => state.entities.get(row.id)).find(cutting)
+        || (state.entityList || []).find(cutting);
       const rock = miner && this._resolveAsteroid(state, miner.data.minerShiftRockId);
       steer(rock || refinery, (rock?.radius || refinery.radius || 0) + 100);
       rec.targetId = rock?.id || refinery.id;
