@@ -1,6 +1,6 @@
 # UI polish review — living doc for the `ui-polish` PR
 
-Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-3` (PR #320) · stacked on `master`.
+Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-5` (PR #325) · stacked on `master`. `ui-polish-4` (PR #322) is frozen for review.
 
 This file tracks the stacked visual polish of every shootable 2D screen (`node scripts/ui-bench.mjs --list`). Seeded from `design/frontend/UNIFICATION_LEDGER.md` where useful; **this REVIEW is the authority for this PR**, not the ledger.
 
@@ -32,7 +32,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 |---|---|---|
 | `title` / `mainMenu` | SURVEYED | Ledger DONE earlier; re-judge later if polish stack returns |
 | `motionAsk` | SURVEYED | Inherits title |
-| **`new-game`** / `newGame` | **DONE** | See § New Game below — this session |
+| **`new-game`** / `newGame` | **DONE** | See § New Game below; yard/loadout fixes on ui-polish-5 (§ New Game yard fixes) |
 | `pause` | SURVEYED | Ledger DONE; keep selectors stable for player-truth |
 | **`settings`** | **DONE** | See § Settings below — this session |
 | **`save-load`** / `saveLoad` / `save-load-empty` / `save-load-live` | **DONE** | See § Save/Load below — this session |
@@ -451,7 +451,7 @@ The game already ships a mature system: Deckplate tokens (`--dp-*`) + ORRERY ins
 - `src/ui/orrery/archiveLayouts.js`: Mission Log foot keycap rail, secondary contrast, beam/lane/dial brighten, 1080p zoom. Selectors/IDs unchanged.
 - `src/ui/orrery/constellationLayouts.js`: Achievements foot keycap rail, secondary contrast, dial/stage chrome brighten, 1080p (+1440/4K) zoom. Selectors/IDs unchanged. RESEARCH block untouched.
 - `src/ui/orrery/statisticsLayouts.js` + `src/ui/screens/statistics.js`: Statistics ORRERY foot keycap rail, reading contrast, shade pool, 1080p zoom, short-frame LAW fit. Selectors/IDs unchanged.
-- `src/ui/orrery/newGameLayouts.js` + `src/ui/screens/newGame.js`: New Game foot keycap rail, secondary contrast, loadout size column, 1080p zoom. Selectors/IDs and loadout data unchanged.
+- `src/ui/orrery/newGameLayouts.js` + `src/ui/screens/newGame.js`: New Game foot keycap rail, secondary contrast, loadout size column, 1080p left-column lift (the screen-wide zoom was replaced on ui-polish-5). Selectors/IDs and loadout data unchanged.
 - `src/ui/orrery/constellationLayouts.js` + `src/ui/screens/techTree.js`: Tech Tree / Research foot keycap rail, hour-verb curve clip (no dial tangle), secondary contrast, rim chrome, 1080p zoom. Selectors/IDs unchanged. ACHIEVEMENTS block untouched.
 - No selectors/IDs changed; no engine/render, audio, loadout data or HUD threat-marker code touched.
 
@@ -463,4 +463,14 @@ New overlay `src/ui/orrery/crucibleResultsLayouts.js`, injected from the results
 - **Fixed (P0, 390×844):** the dial sat on top of the column and the figures overlapped ("6 31 24 88"). The phone layout now stacks title, dial, take, column, with the ways out docked at the bottom on a solid fade. The figures are a 2×2 grid, the wave engraving is hidden where it hit STARBOARD, and the short hit legend replaces the long one.
 - **Finish (P1):** each band title runs into a hairline. The share codes are framed fields with an underlined save link. Story and lead copy is brighter. The 1080p band lifts the figures, copy and build verbs.
 - Checked at 1280×720, 1920×1080 and 390×844, including scrolled to the bottom. Shots are in `/workspace/spaceface-scratch/ui-shots/results/` (not committed).
+
+## New Game yard fixes (`new-game`) — ui-polish-5 (2026-10-12)
+
+CSS only, in `src/ui/orrery/newGameLayouts.js`. No DOM, selector, ID or loadout-data changes.
+
+- **Fixed (P0, 1080p):** HITCH / SKATER sat on the *First 15 minutes* route and WASP was cut by the hero ship. Cause: the screen-wide 1.12 zoom from the earlier New Game pass. The yard carousel places hulls and names from `getBoundingClientRect`, so the zoom scaled those offsets twice. The zoom now applies only to the left column (header, fields, foot, fine print), the same way the 1440p rule in `screenLayouts.js` already does it. The yard, stage and route stay at 1:1, and the caption copy and loadout get a small type lift instead.
+- **Fixed (P1):** hull names sit above every ship model, with a dark halo, so a hero's engine glow no longer covers a rear name.
+- **Fixed (P1, 720p):** SHIELD BOOSTER ran into its size letter. The loadout name column is wider at ≤1366px.
+- **Fixed (P1, 390×844):** PELICAN and WASP ran together in the *Start as* row. Names now size to their content, slightly smaller, with a fixed gap.
+- Checked at 1280×720, 1366×768, 1920×1080, 2560×1440 and 390×844; `--walk` exercised 12 controls with all three hulls brought to the front. `test/yard-carousel` and the new-game tests pass (50/50). Shots are in `/workspace/spaceface-scratch/ui-shots/ng5/` (not committed).
 
