@@ -200,12 +200,7 @@ export const wingmen = {
       if (!e || !e.alive) {
         // Wingman died in combat. Route through the existing onHitAsset path so the ledger stays
         // consistent + the LOST/asset-lost flow fires (same as the pre-P1-8 passive path).
-        fs.hp = 0; fs.hullPct = 0;
-        this.bus.emit('combat:hitAsset', { assetKind: 'fleet', assetId: fs.id, dmg: 9999, killerId: null });
-        // One named line per death. Clearing _liveId below keeps later ticks silent.
-        const name = (fs.customName || fs.name) || 'Wingman';
-        this.bus.emit('toast', { text: 'Wingman down — ' + name, kind: 'error', ttl: 4 });
-        fs._liveId = null;
+        this._settleWingmanLoss(fs);
         continue;
       }
       if (player) {
@@ -252,13 +247,33 @@ export const wingmen = {
     }
   },
 
+  _settleWingmanLoss(fs) {
+    // Clear membership before dispatch: the owner synchronously splices the fleet and may
+    // publish further lifecycle events. The canonical hit contract is `damage`, not `dmg`.
+    fs._liveId = null;
+    fs.hp = 0; fs.hullPct = 0;
+    this._orderRuntime.delete(fs.id);
+    this.bus.emit('combat:hitAsset', {
+      assetKind: 'fleet', assetId: fs.id, damage: 9999, killerId: null,
+      sectorId: this.state.world && this.state.world.currentSectorId,
+    });
+    const name = (fs.customName || fs.name) || 'Wingman';
+    this.bus.emit('toast', { text: 'Wingman down — ' + name, kind: 'error', ttl: 4 });
+  },
+
   _despawnWingmen() {
     const state = this.state;
     const fleet = state.automation && state.automation.fleet;
     if (!fleet) return;
-    for (const fs of fleet) {
+    // Loss settlement removes rows synchronously. Snapshot membership so two casualties
+    // cannot skip the next wing, and distinguish actual death from healthy relocation.
+    for (const fs of fleet.slice()) {
       if (fs._liveId && state.entities) {
         const e = state.entities.get(fs._liveId);
+        if (!e || e.alive === false) {
+          this._settleWingmanLoss(fs);
+          continue;
+        }
         // Capture the last hit even when a hard transition lands before our next update.
         // This is the same persisted fraction used by the normal live synchronization.
         if (e && e.hullMax > 0) {
