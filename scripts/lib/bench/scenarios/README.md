@@ -9,7 +9,7 @@ module and nothing else.
 ```js
 // scripts/lib/bench/scenarios/feel.reversal_course.mjs
 export const scenario = {
-  id: 'feel.reversal_course',          // stable id; a module with the SAME id as an inline scenario REPLACES it
+  id: 'feel.reversal_course',          // stable id — this directory is the only scenario source; no inline fallbacks remain
   label: 'B2 Nimble regime — rest→cruise, 180° reversal, turn radius at cruise',
   async run(seed) {                    // deterministic: state.rng / fixed tapes only; no Math.random, no Date.now
     // ... drive the REAL runtime (createAuthoritativeRuntime + the live systems, or the Motion Lab)
@@ -37,9 +37,9 @@ export const scenario = {
    the game's real path — the authoritative runtime (`src/runtime/createAuthoritativeRuntime.js`) with
    the live physics authority and the live systems, or a Motion Lab scenario (`src/testing/lab/`). A
    hand-rolled spring, a stand-in knock model, or a fixture that spawns the reaction it claims to
-   observe measures the bench, not SpaceFace. (Several of the original inline scenarios in
-   `verbBench.mjs` do exactly this; a module with the same id replaces them once the real-path version
-   exists.)
+   observe measures the bench, not SpaceFace. (The original inline scenarios in `verbBench.mjs`
+   did exactly this — each was replaced by a real-path module with the same id, then deleted. There
+   is no inline fallback left to shadow.)
 2. **Fixed seed, fixed tape.** Two runs of the same seed hash identical (`runHash.mjs`).
 3. **Player units.** Seconds, screen depths, hull lengths, fraction of cruise, fraction of hull.
 4. **One module, one owner.** Do not edit another lane's module; do not register anything anywhere.

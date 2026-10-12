@@ -121,6 +121,10 @@ export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
   // reads through its own banner tier instead of a second voice.
   'fields.cluster_detonate': 'presentation.fields.cluster_detonate',
   'fields.cluster_detonate.cascade': 'presentation.fields.cluster_detonate',
+  // A witnessed spill IS cargo going ballistic — the same authored voice the player's own
+  // jettison verb uses (dash_punch thunk), spatialized to the pod cloud. barkDirector owns the
+  // spoken owner-identity line for the same event, so the cue owns exactly one voice.
+  'freight.cargo_spilled': 'sfx_cargo_jettison',
 });
 
 const UI_CUES = Object.freeze({
@@ -156,6 +160,9 @@ const UI_CUES = Object.freeze({
   // Rated cluster detonations — the authored voice owns the moment so the alert stays silent.
   'fields.cluster_detonate': uiCue('presentation:fields:cluster-detonate', 'info', 'CLUSTER DETONATION', 1.8, true),
   'fields.cluster_detonate.cascade': uiCue('presentation:fields:cluster-cascade', 'warn', 'MASS CASCADE', 2.4, true),
+  // The witnessed-incident receipt: named so the player reads "the cargo I knocked loose", not a
+  // generic alert. audioOwnedByPresentation — the jettison thunk is this cue's voice already.
+  'freight.cargo_spilled': uiCue('presentation:freight:cargo-spilled', 'info', 'CARGO ADRIFT', 2.0, true),
 });
 
 const CAPTIONS = Object.freeze({
@@ -188,6 +195,7 @@ const CAPTIONS = Object.freeze({
   'scenario.branch.resolved': 'Evidence route resolved.',
   'fields.cluster_detonate': 'Cluster detonation — the clump cooked off.',
   'fields.cluster_detonate.cascade': 'Mass cascade — the whole cluster went.',
+  'freight.cargo_spilled': 'Cargo adrift — loose pods are claimable.',
 });
 
 export const presentationAdapters = {
@@ -719,6 +727,8 @@ function shapeForCue(id) {
   // The field receipt family gets its own silhouette — a forced-colors player reads the diamond
   // as a field moment, distinct from tether arcs and comms diamonds' scenario prefix.
   if (id && id.startsWith('fields.cluster')) return 'diamond';
+  // The spill beacon is a ring — the caption glyph matches the shape the vfx lane actually draws.
+  if (id === 'freight.cargo_spilled') return 'ring';
   return 'pulse';
 }
 

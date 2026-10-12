@@ -289,6 +289,11 @@ export const presentationOrchestrator = {
       // carried the authoritative transition; nothing was listening on the presentation side.
       this.bus.on('worldSite:failureReceipt', (payload) => this._onWorldSiteFailure(payload || {})),
       this.bus.on('worldSite:operationReceipt', (payload) => this._onWorldSiteOperation(payload || {})),
+      // Lane2's witnessed incident: freight:cargoSpilled already carries the real pods, custody,
+      // cause and causer — traffic dispatches salvors, economy levies restitution, bark speaks the
+      // owner identity — but nothing presented it. The beacon ring + jettison voice answer where
+      // the pods are; the receipt/caption surface only when the cue is player-addressed.
+      this.bus.on('freight:cargoSpilled', (payload) => this._onFreightCargoSpilled(payload || {})),
     ];
   },
 
@@ -1603,6 +1608,40 @@ export const presentationOrchestrator = {
       // "player is the source" tier, which is exactly what a completed repair is. The damage cue
       // keeps 0.9 because it IS addressed to the player: it undid their work.
       playerRelevanceFloor: 0.88,
+    });
+  },
+
+  /**
+   * A carrier lost freight — lane2's violence spill or a raid's custody drop. The cue belongs on
+   * the pod cloud, not the carrier: first live named pod, else the carrier's own position, else
+   * no cue — a spill with no located body cannot be presented at any lane. The causer (the
+   * attacker on a violence spill) is the source, so a player-inflicted spill infers participant
+   * relevance while a raider's drop stays distance-tiered; the carrier stays the target — it is
+   * who the incident happened to.
+   */
+  _onFreightCargoSpilled(payload) {
+    const entities = this.state && this.state.entities;
+    const get = (id) => (entities && typeof entities.get === 'function' && id != null ? entities.get(id) : null);
+    let position = null;
+    const podIds = Array.isArray(payload.podIds) ? payload.podIds : [];
+    for (const id of podIds) {
+      const pod = get(id);
+      if (pod && pod.alive !== false && pod.pos) { position = pod.pos; break; }
+    }
+    if (!position) {
+      const carrier = get(payload.carrierId);
+      if (carrier && carrier.pos) position = carrier.pos;
+    }
+    if (!position) return false;
+    return this._emitCue('freight.cargo_spilled', { ...payload, position }, {
+      sourceEvent: 'freight:cargoSpilled',
+      targetId: payload.carrierId ?? null,
+      material: 'freight',
+      magnitude: Math.max(1, Number(payload.qty) || Number(payload.podCount) || podIds.length || 1),
+      // One incident, one cue: the custody lot's identity merges a re-emit or a respill of the
+      // same lot inside the window; a genuinely separate spill re-pings.
+      sequence: `${payload.custodyId ?? payload.manifestId ?? payload.carrierId ?? 'spill'}:${payload.cause ?? 'unknown'}`,
+      tags: ['freight', 'spill', payload.cause, payload.commodityId].filter(Boolean),
     });
   },
 
