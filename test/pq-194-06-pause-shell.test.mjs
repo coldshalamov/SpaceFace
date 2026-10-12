@@ -5,7 +5,7 @@ import test from 'node:test';
 
 import { pauseScreen } from '../src/ui/screens/pause.js';
 
-function installMiniDom() {
+function installMiniDom({ desktop = true } = {}) {
   const previous = { document: globalThis.document, window: globalThis.window, requestAnimationFrame: globalThis.requestAnimationFrame, matchMedia: globalThis.matchMedia };
   class Mini {
     constructor(tagName = 'div') {
@@ -46,6 +46,8 @@ function installMiniDom() {
   const body = new Mini('body');
   globalThis.document = { body, documentElement: body, head: new Mini('head'), activeElement: body, createElement: (tag) => new Mini(tag), getElementById: () => null };
   globalThis.window = { addEventListener() {}, removeEventListener() {}, innerWidth: 1280, innerHeight: 720 };
+  // The desktop shell is what lets Quit Game act; the web build has none (test below).
+  if (desktop) globalThis.window.spacefaceShell = { quit() {} };
   globalThis.requestAnimationFrame = (fn) => { fn(0); return 1; };
   globalThis.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
   return { restore() { globalThis.document = previous.document; globalThis.window = previous.window; globalThis.requestAnimationFrame = previous.requestAnimationFrame; globalThis.matchMedia = previous.matchMedia; } };
@@ -105,6 +107,20 @@ test('pause HUD dims only for the exposed pause and lists every verb in one reac
     }
     assert.deepEqual(pushes, ['settings', 'saveLoad', 'missionLog', 'ship', 'automation'],
       'every plain verb pushes its own destination');
+  } finally {
+    dom.restore();
+  }
+});
+
+test('pause in the web build: no shell to quit, so no Quit Game; Main Menu is the way out', () => {
+  const dom = installMiniDom({ desktop: false });
+  try {
+    const root = globalThis.document.createElement('div');
+    const ctx = { state: { mode: 'paused', missions: { active: [] }, nav: {}, save: {}, meta: {}, ui: {}, run: { phase: 'inactive' } }, bus: { emit() {}, on() { return () => {}; } }, screenManager: { pushScreen() {}, popScreen() {}, hasScreen() { return true; } } };
+    pauseScreen.mount(root, ctx);
+    const labels = root.querySelectorAll('button').map((button) => button.textContent);
+    assert.ok(labels.some((label) => label.startsWith('Main Menu')), 'Main Menu stays');
+    assert.ok(!labels.some((label) => label.startsWith('Quit Game')), 'no dead Quit Game in a browser tab');
   } finally {
     dom.restore();
   }

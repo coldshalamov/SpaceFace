@@ -221,8 +221,10 @@ export function arcRailGeometry(W, H, count, { span = null, pivotY = 0.56, gaps 
   // Equal VERTICAL rhythm, not equal angles: words are set horizontally, so what must stay even is
   // the line spacing; equal angles bunch the lines where the arc turns steep at its ends. A group
   // change adds most of a line of air.
-  const gapBefore = new Set(gaps || []);
-  const units = (n - 1) + gapBefore.size * 0.7;
+  // a gap is an index (most of a line of extra air) or [index, lines] (that many lines of extra air)
+  const gapBefore = new Map((gaps || []).map((g) => (Array.isArray(g) ? [g[0], g[1]] : [g, 0.7])));
+  let units = n - 1;
+  for (const [at, extraLines] of gapBefore) if (at > 0 && at < n) units += extraLines;
   // the arc runs from center - spread/2 to center + spread/2 (0 = up, clockwise); its lines are evenly spaced in y
   const rad = Math.PI / 180;
   const yA = pivot.y - ri * Math.cos((center - spread / 2) * rad);
@@ -230,7 +232,7 @@ export function arcRailGeometry(W, H, count, { span = null, pivotY = 0.56, gaps 
   const angles = [];
   let u = 0;
   for (let i = 0; i < n; i += 1) {
-    if (i > 0) u += gapBefore.has(i) ? 1.7 : 1;
+    if (i > 0) u += 1 + (gapBefore.get(i) || 0);
     const y = n > 1 ? yA + ((yB - yA) * u) / units : pivot.y - ri * Math.cos(center * rad);
     angles.push(Math.acos(clamp((pivot.y - y) / ri, -1, 1)) * 180 / Math.PI);
   }
@@ -351,7 +353,8 @@ function drawFace(p, re) {
  *                                  the screens that pass it get it; the grouped dial never does.
  */
 export function createArcRail({ host, list, frame = null, extra = [], emblemUrl = null, engraving = '', grouped = false, dense = false,
-  clustered = false, span = null, pivotY = 0.56, place = null, engravingDeg = null, clearOf = null, freeTrack = false, seat = 6 } = {}) {
+  clustered = false, span = null, pivotY = 0.56, place = null, engravingDeg = null, clearOf = null, freeTrack = false, seat = 6,
+  extraGap = 0 } = {}) {
   const doc = (host && host.ownerDocument) || globalThis.document;
   // Headless shims (tests) mount screens without a real document: the rail is presentation only, so
   // it steps aside and the menu stays exactly the list the screen built.
@@ -499,6 +502,10 @@ export function createArcRail({ host, list, frame = null, extra = [], emblemUrl 
     // engraved on the rim beside its cluster
     const gaps = [];
     if (clustered) all.forEach((row, i) => { if (i > 0 && (row.items[0].dataset.group || '') !== (all[i - 1].items[0].dataset.group || '')) gaps.push(i); });
+    // extraGap: lines of air before the `extra` rows (the title keeps its reference line on its
+    // stop when a verb is absent)
+    const firstExtra = all.findIndex((row) => row.items.some((li) => extra.includes(li)));
+    if (extraGap > 0 && firstExtra > 0) gaps.push([firstExtra, extraGap]);
     geo = arcRailGeometry(W, H, all.length, { span, pivotY, gaps, place });
     // A grouped row's verbs run one line right of its anchor; a longer localization can run the
     // line past the host's right edge, where the tail verbs clip (D136). Measure each row's seated
