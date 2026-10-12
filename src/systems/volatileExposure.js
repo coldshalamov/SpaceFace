@@ -29,8 +29,8 @@
 //     recovery still yields usable freight (packet acceptance 3).
 //   • RUPTURE (abuse continues after a vent, or nothing left to spill): one thermal packet
 //     through the ORDINARY damage owner (combat kernel routeDamage — 'payload' is damageable
-//     membership) cooks the pod off. The cue publishes only when the packet was ACCEPTED
-//     (NXI-030 law: a rejected packet is not a hit). lootShards' hard-slam detonation remains
+//     membership) cooks the pod off. The loss cue requires an accepted packet AND actual
+//     destruction (NXI-030: rejection or surviving containment is not destroyed freight). lootShards' hard-slam detonation remains
 //     the impact-driven rupture path; this file never reimplements it.
 //
 // Determinism: state.simTime/state.tick only, hash32-seeded scatter, no Math.random, no wall
@@ -497,7 +497,7 @@ export const volatileExposure = {
   },
 
   // RUPTURE — the abused lot cooks off through the ORDINARY damage owner. The cue publishes
-  // only when the packet was accepted (NXI-030): a rejected packet is not a rupture, the body
+  // only after accepted damage destroys the body (NXI-030): refusal is not a rupture, the body
   // is not marked detonated, and the load parks just under the bar so a later fact can still
   // escalate it.
   _rupturePod(state, pod, rec, now, amount) {
@@ -541,8 +541,13 @@ export const volatileExposure = {
     // If the accepted packet somehow failed to kill the body, do not leave OUR mark on it:
     // lootShards' own slam must stay able to play, and the mark must not lie (P2b). A mark that
     // pre-dated this packet (lootShards' slam) is not ours to clear.
-    if (pod.alive !== false && pod.destroyed !== true && !wasDetonated) {
-      pod.data.volatileDetonated = false;
+    if (pod.alive !== false && pod.destroyed !== true) {
+      if (!wasDetonated) pod.data.volatileDetonated = false;
+      // Acceptance is not destruction: a tougher container or a zero-applied packet can
+      // leave the real freight intact. Keep that load critical and retryable, not "gone".
+      // Combat already presents the accepted hit; do not add a second explosion or loss.
+      this._publishStage(state, pod, rec, now, 'rupture_contained');
+      return;
     }
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('cargo:volatileRupture', {
