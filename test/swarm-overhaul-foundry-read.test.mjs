@@ -126,7 +126,7 @@ test('a cohort mark widens the bracket and a heading wedge points along the hull
   const chevron = mesh.getObjectByName('sf-swarm-threat-chevron');
   const plateWorld = plate.getWorldScale(new THREE.Vector3());
   const coreWorld = core.getWorldScale(new THREE.Vector3());
-  assert.ok(Math.abs(plateWorld.x - 20) < 1e-3, `bracket world radius ${plateWorld.x}`);
+  assert.ok(Math.abs(plateWorld.x - 12 * 1.12) < 1e-3, `bracket world radius ${plateWorld.x} should clamp to 1.12×12`);
   assert.ok(Math.abs(coreWorld.x - 12) < 1e-3, 'the inner hoop stays on the hull, not the bracket');
   assert.ok(chevron && chevron.isMesh);
   assert.equal(chevron.geometry.type, 'ConeGeometry');
@@ -140,9 +140,30 @@ test('a cohort mark widens the bracket and a heading wedge points along the hull
   assert.ok(tip.z > 0.99 && Math.abs(tip.x) < 0.05, 'yawed hull points the wedge at world +Z');
   const camFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
   assert.ok(Math.abs(tip.dot(camFwd)) < 0.95, 'the wedge is not a camera billboard');
+  // A requested bracket of 20 is clamped to 1.12× the hull. The wedge stays on
+  // the nose, inside the hull sample, even when the caller asks for a sky-sized halo.
+  const plateReach = chebyshevReach(mesh, plate);
+  const chevronReach = chebyshevReach(mesh, chevron);
+  assert.ok(plateReach <= 12 * 1.12 + 1e-3, `rim reaches ${plateReach}, past the 1.12 cap`);
+  assert.ok(chevronReach <= 12 * 0.7 + 1e-3, `wedge reaches ${chevronReach}, into the background ring`);
+  assert.ok(chevronReach > 12 * 0.4, 'the wedge still reads as a nose, not a speck at the origin');
   syncSwarmThreatPlate(mesh, { type: 'ship', team: 0, radius: 12 }, camera);
   assert.equal(chevron.visible, false);
 });
+
+/** Farthest vertex from the mesh origin, Chebyshev, in the mesh's local frame. */
+function chebyshevReach(mesh, child) {
+  const pos = child.geometry.attributes.position;
+  const v = new THREE.Vector3();
+  const inv = new THREE.Matrix4().copy(mesh.matrixWorld).invert();
+  let maxD = 0;
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i).applyMatrix4(child.matrixWorld).applyMatrix4(inv);
+    const d = Math.max(Math.abs(v.x), Math.abs(v.y), Math.abs(v.z));
+    if (d > maxD) maxD = d;
+  }
+  return maxD;
+}
 
 test('the threat crimson clears the low-contrast bar against a dark field', () => {
   const lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);

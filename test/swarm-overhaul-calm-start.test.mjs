@@ -46,6 +46,7 @@ import { SHIPS } from '../src/data/ships.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../src/data/combatLabSetups.js';
 import { swarmRosterFor } from '../src/data/swarmMode.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
+import { swarmPilotHasActed } from '../src/systems/swarmSafety.js';
 
 const DT = 1 / 60;
 const SEED = 4242;
@@ -166,6 +167,8 @@ test('swarm-overhaul: an idle first round stays calm — no brood, no kills, no 
   tick(h, 10 * 60); // ten idle seconds into the lesson
   assert.equal(named(h.emitted, 'swarm:broodKills').length, 0, 'no brood died while the pilot idled');
   assert.equal(named(h.emitted, 'entity:killed').length, 0, 'nothing died while the pilot idled');
+  assert.equal(h.state.run.score, 0, 'reward before input stays +0');
+  assert.equal(swarmPilotHasActed(h.state), false, 'an idle stick has not latched a pilot act');
   assert.equal(named(h.emitted, 'run:waveCleared').length, 0, 'the round did not resolve itself');
   assert.equal(swarmArena._brood ? swarmArena._brood.census().alive : 0, 0, 'the brood waits with the pack');
   const arenaFields = fields._kernel && typeof fields._kernel.list === 'function'
@@ -243,6 +246,15 @@ test('an idle 120s on seed 4242 does not win wave 1 in the Foundry or the Hive',
     assert.equal(h.state.run.wave, 1, arenaId);
     assert.equal(h.state.run.phase, 'active', arenaId);
     assert.equal(survivalWave._resolved, resolvedAtActive, `${arenaId} _resolved stayed put`);
+    // Gate rows kills_before_input and reward_before_input. The stub has no
+    // solver, so a parked-rock ram cannot show up here; room-settle pins that
+    // wave 1 is not parked. This pins the door: nothing died, the latch is
+    // still quiet, and a slingshot bank in that gap pays no score.
+    assert.equal(named(h.emitted, 'entity:killed').length, 0, `${arenaId} kills before input are 0`);
+    assert.equal(swarmPilotHasActed(h.state), false, `${arenaId} idle has no pilot act`);
+    assert.equal(h.state.run.score, 0, `${arenaId} reward before input is +0`);
+    assert.equal(runSession.award({ score: 202, reason: 'stunt_bank', bankActs: ['Slingshot'] }), false);
+    assert.equal(h.state.run.score, 0, `${arenaId} a bank during the idle still pays +0`);
     assert.equal(h.player.hull, ship.hull, `${arenaId} player hull stayed full`);
     assert.equal(h.player.hullMax, ship.hull, arenaId);
     const later = h.spawned.filter((e) => e && e.alive !== false && e.data && e.data.runCohort);

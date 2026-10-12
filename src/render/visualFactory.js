@@ -2560,13 +2560,21 @@ const _swarmThreatMarks = new WeakMap();
  * hull painted the ship out — enemies read as red circles. This is a camera-facing
  * crimson rim on the silhouette: the center stays open so the hull shows through.
  * Default outer radius is entity.radius (floor 2). A cohort member may set
- * entity.data.swarmMarkRadius to wear a wider bracket; hulls without that field
- * stay on the silhouette. A heading wedge points along the hull nose (+X: the
- * renderer yaws with mesh.rotation.y = -entity.rot). MeshBasic with normal
- * blending, so the mark is paint rather than a glow. depthWrite is off.
- * depthTest is off: a tested disc at the hull origin is hidden by the hull, which
- * is why the foundry wasp read as another rock. Created once per boundary.
+ * entity.data.swarmMarkRadius, but the rim is capped at SWARM_THREAT_MARK_CAP ×
+ * body radius so the stroke stays in the gap between the readability hull sample
+ * (Chebyshev d ≤ 0.7r) and the background ring (d > 1.2r). A wider rim painted
+ * both samples crimson (idle aaca743840: 82% of enemies within ΔL 8 of the field).
+ * The heading wedge sits on the nose, inside that hull sample, and points along
+ * +X (the renderer yaws with mesh.rotation.y = -entity.rot). It used to scale
+ * with the bracket and the tip landed at about 1.38× body radius, inside the
+ * background ring. MeshBasic with normal blending, so the mark is paint rather
+ * than a glow. depthWrite is off. depthTest is off: a tested disc at the hull
+ * origin is hidden by the hull, which is why the foundry wasp read as another
+ * rock. Created once per boundary.
  */
+// Lockstep with SWARM_THREAT_MARK_SCALE in survivalWave.js. Do not import that
+// module from here: the wave owner pulls the sim, and this file is the mesh builder.
+const SWARM_THREAT_MARK_CAP = 1.12;
 export function syncSwarmThreatPlate(mesh, entity, camera) {
   if (!mesh || typeof mesh.getObjectByName !== 'function') return;
   if (!entity || entity.type !== 'ship' || entity.team == null || entity.team === 0 || entity.team === 2) {
@@ -2627,19 +2635,25 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     mesh.add(chevron);
   }
   // Local scale is divided by the parent so a scaled hull cannot inflate the rim
-  // past the ship. A rim larger than the hull crowds the picture, unless the
-  // cohort opted into swarmMarkRadius.
+  // past the ship. The cohort mark may ask for a wider bracket; the cap keeps
+  // the outer edge inside the readability background ring.
   const bodyR = Math.max(2, Number(entity.radius) || 2);
   const markAuth = Number(entity.data && entity.data.swarmMarkRadius);
-  const markR = Number.isFinite(markAuth) && markAuth > bodyR ? markAuth : bodyR;
+  const requested = Number.isFinite(markAuth) && markAuth > bodyR ? markAuth : bodyR;
+  const markR = Math.min(requested, bodyR * SWARM_THREAT_MARK_CAP);
   mesh.updateWorldMatrix(true, false);
   mesh.getWorldScale(_threatPlateScale);
   const inv = (n) => 1 / Math.max(1e-4, Math.abs(n));
+  const bodyScaleX = bodyR * inv(_threatPlateScale.x);
+  const bodyScaleY = bodyR * inv(_threatPlateScale.y);
+  const bodyScaleZ = bodyR * inv(_threatPlateScale.z);
   plate.scale.set(markR * inv(_threatPlateScale.x), markR * inv(_threatPlateScale.y), markR * inv(_threatPlateScale.z));
-  core.scale.set(bodyR * inv(_threatPlateScale.x), bodyR * inv(_threatPlateScale.y), bodyR * inv(_threatPlateScale.z));
-  chevron.scale.copy(plate.scale);
-  // Base of the wedge sits on the ring's outer edge; the tip points along +X.
-  chevron.position.set(plate.scale.x * (1 + 0.46 / 2), 0, 0);
+  core.scale.set(bodyScaleX, bodyScaleY, bodyScaleZ);
+  // ConeGeometry(0.22, 0.46) half-height is 0.23. Center at 0.36 of the hull:
+  // tip at 0.59 body radii, tail at 0.13. Both sit inside d ≤ 0.7, so the wedge
+  // lifts the hull sample and does not tint the background ring. Not the bracket.
+  chevron.scale.set(bodyScaleX, bodyScaleY, bodyScaleZ);
+  chevron.position.set(bodyScaleX * 0.36, 0, 0);
   const marks = _swarmThreatMarks.get(mesh);
   if (marks) { marks.plate = plate; marks.core = core; marks.chevron = chevron; }
   else _swarmThreatMarks.set(mesh, { plate, core, chevron });
