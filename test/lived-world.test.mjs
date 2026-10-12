@@ -548,8 +548,8 @@ test('ambient motions steer along their scene axis and preserve existing motion 
   const holdLive = { vars: { motionOrigin: { x: 5, z: -7 }, motionT0: 0 }, data: {}, ships: holdShips };
   applyMotion(d, holdLive, 'hold', 0);
   assert.deepEqual(holdShips.map((ship) => ship.data.intent), [
-    { tx: 30, tz: 10, fire: false, moveZ: 0, moveX: 0, aimAngle: 0.3 },
-    { tx: 30, tz: 10, fire: false, moveZ: 0, moveX: 0, aimAngle: -0.2 },
+    { tx: 30, tz: 10, fire: false },
+    { tx: 30, tz: 10, fire: false },
   ]);
 
   const angle = -2.4939306811526896;
@@ -566,17 +566,19 @@ test('ambient motions steer along their scene axis and preserve existing motion 
   applyMotion(d, orbitLive, 'orbit', 0);
   const orbitLead = orbitShips[0].data.intent;
   assert.deepEqual(
-    { tx: orbitLead.tx, tz: orbitLead.tz, fire: orbitLead.fire, aimAngle: orbitLead.aimAngle },
-    { tx: 165, tz: -7, fire: false, aimAngle: 0.19739555984988078 },
+    { tx: orbitLead.tx, tz: orbitLead.tz, fire: orbitLead.fire },
+    { tx: 165, tz: -7, fire: false },
   );
-  close(orbitLead.moveZ, 0.9947407808046376);
-  close(orbitLead.moveX, -0.10242450392450109);
+  assert.equal(orbitLead.moveZ, undefined, 'tactical navigation owns thrust');
+  assert.equal(orbitLead.moveX, undefined);
+  assert.equal(orbitShips[0].data.ai.roe, 'hold_fire');
+  assert.ok(Number.isFinite(orbitShips[0].data.ai.activity.anchorVelocity.x));
   const orbitFollower = orbitShips[1].data.intent;
   assert.equal(orbitFollower.tx, -155);
   close(orbitFollower.tz, -6.9999999999999805);
-  close(orbitFollower.moveZ, -0.6617378547232061);
-  close(orbitFollower.moveX, -0.7497352943715063);
-  close(orbitFollower.aimAngle, angle);
+  assert.equal(orbitFollower.moveZ, undefined);
+  assert.equal(orbitFollower.moveX, undefined);
+  assert.equal(orbitFollower.aimAngle, undefined, 'a scripted point cannot replace weapon aim');
 
   const runner = { pos: { x: 0, z: 0 }, rot: 0, data: {} };
   const chaser = { pos: { x: -20, z: 10 }, rot: 0, data: {} };
@@ -599,7 +601,8 @@ test('ambient motions steer along their scene axis and preserve existing motion 
   applyMotion(d, towLive, 'tow', 0);
   close(tug.data.intent.tx, 500);
   close(tug.data.intent.tz, 0);
-  close(Math.hypot(tug.data.intent.moveZ, tug.data.intent.moveX), 0.22);
+  assert.ok(tug.data.ai.activity.anchorVelocity.x > 0, 'tow leader publishes cruise velocity');
+  assert.equal(tug.data.intent.moveZ, undefined);
   close(towed.data.intent.tx, 2);
   close(towed.data.intent.tz, -52);
 

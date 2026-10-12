@@ -136,7 +136,7 @@ export const spectrum = {
   _ensureLive() {
     const state = this.state, sectorId = state.world?.currentSectorId;
     const kind = state.run?.kind;
-    if (!this.helpers.spawnEntity || state.mode !== 'flight' || !(state.timeScale > 0)
+    if (state.physicsVenueSession || state.physicsVenue?.active || !this.helpers.spawnEntity || state.mode !== 'flight' || !(state.timeScale > 0)
       || (kind && kind !== 'adventure' && kind !== 'campaign')) return;
     const cases = SPECTRUM_PLACEMENTS[sectorId];
     if (!cases || this._activeSector === sectorId) return;

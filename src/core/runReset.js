@@ -28,6 +28,7 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   // Ambient contract scheduling is run-local even when no hunter currently exists.
   'bountyHunt',
   'world',
+  'reactiveMatter', 'spectrum', 'orbitalGallery', 'kineticLeague', 'mercyService', 'wreckCourt',
   'regionalEcology',
   'factions',
   'economy',

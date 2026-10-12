@@ -8,6 +8,12 @@
     "node": ">=22.12.0"
   },
   "scripts": {
+    "stranger-lab": "node tools/agentic/stranger-lab/cli.mjs",
+    "causal-foundry": "node tools/causal-foundry/cli.mjs",
+    "scene-truth": "node tools/scene-truth/cli.mjs",
+    "creators-dock": "node tools/creators-dock/cli.mjs",
+    "economic-redteam": "node tools/economic-redteam/cli.mjs",
+    "moment-machine": "node tools/moment-machine/cli.mjs",
     "start": "node server.js",
     "serve": "node server.js 8123",
     "electron": "node scripts/launch-electron.mjs",

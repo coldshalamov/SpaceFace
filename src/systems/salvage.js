@@ -23,6 +23,7 @@ import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { SECTORS } from '../data/sectors.js';
 import { stationBerthAdmits } from '../data/frontierRumors.js';
 import { pickWreckMission, wreckMissionById } from '../data/wreckMissions.js';
+import { buildAdventureOffer } from './wreckCourt.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { WRECK_ECOLOGY_DAY_S, isPlayerWreckMarker, playerWreckMarker } from './aftermathWrecks.js';
@@ -1218,6 +1219,15 @@ export const salvage = {
     // Board-schema offer (missions._onExternalBoardOffer): id/type/stationId/params are required.
     // The board is the sector's mission dock; the job itself is fieldwork at the wreck.
     const station = this._wreckStation(point);
+    if (point.wreckCourtCaseId && station) {
+      const offer = buildAdventureOffer(point.wreckCourtSeed);
+      return { ...offer, id: `salvage_${point.id}`, offerId: `salvage_${point.id}`,
+        stationId: station.id, sectorId: point.sectorId, destSectorId: point.sectorId,
+        destStationId: station.id, salvagePointId: point.id, reward_cr: 0,
+        duration_s: 2400, time_limit_s: 2400,
+        params: { ...offer.params, wreckCourtCaseId: point.wreckCourtCaseId,
+          salvagePointId: point.id, wreckCourtOrigin: { x: point.pos.x, z: point.pos.z } } };
+    }
     const params = { ...(wreckOfferParams(mission)) };
     if (mission.params && typeof mission.params === 'object') Object.assign(params, mission.params);
     params.salvagePointId = point.id;

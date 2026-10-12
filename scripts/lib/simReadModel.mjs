@@ -473,6 +473,9 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'player', 'missions', 'nav', 'economy', 'story', 'factions', 'combat',
   'input', 'fuel', 'aceMemory', 'sandbox', 'onboarding', 'meta', 'run',
   'cursor',
+  'spectrumPublic', 'physicsVenuePublic', 'orbitalGalleryLedger', 'kineticLeague',
+  'physicsVenueSession', 'world.wreckCourtRulings',
+  'replay.latestPoseSample', 'mercyServicePublic', 'wreckCourtPublic',
   // leaf-path mirrors (root stays on the facade; only the subtree ships)
   'sectorSim.field', 'npcJobs.byId', 'factionPresence.boarding',
   'automation.meta', 'automation.traders', 'automation.fleet',

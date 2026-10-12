@@ -4,8 +4,13 @@ export const PHYSICAL_REFERENCE_MASS = 16;
 // a rolling half-second budget so a swarm cannot chain the controls into knockback.
 export const PLAYER_EXTERNAL_RESPONSE = Object.freeze({ scale: 0.1, impulseBudget: 5, windowTicks: 30, maxAcceleration: 8 });
 
+export function isPhysicalMissionBody(body) {
+  return body?.type === 'fx' && body.physicsBody !== false && body.collides !== false
+    && !!(body.data?.mercyService || body.data?.wreckCourt);
+}
+
 export function isEnvironmentalBody(body) {
-  return !!body && !['ship', 'drone', 'projectile', 'station', 'gate', 'planet', 'structure', 'fx'].includes(body.type);
+  return isPhysicalMissionBody(body) || !!body && !['ship', 'drone', 'projectile', 'station', 'gate', 'planet', 'structure', 'fx'].includes(body.type);
 }
 
 export function environmentResponse(body) {

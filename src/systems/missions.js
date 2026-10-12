@@ -1139,6 +1139,7 @@ function setPieceCauseOf(value) {
 
 function isFingerprintBoardSource(source) {
   return source === 'poiBehavior'
+    || source === 'mercyService' || source === 'wreckCourt'
     || source === SET_PIECE_MISSION_SOURCE
     || source === LANDMARK_QUEST_SOURCE
     // Each cargo-kill chain mints its own salvage offer — dedupe per chain, not per source, so
@@ -1499,6 +1500,26 @@ export const missions = {
     bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p));
     // recon_scan: a scan target (or sector scan) completed.
     bus.on('scan:completed', (p) => this._onScan(p));
+    bus.on('mission:venueProof', payload => {
+      if (!payload || !['mercyService', 'wreckCourt'].includes(payload.source)) return;
+      const index = this.state.missions.active.findIndex(m => m.id === payload.missionId && m.status === 'active');
+      if (index < 0) return;
+      const mission = this.state.missions.active[index];
+      const key = payload.source === 'mercyService' ? 'mercyIncidentId' : 'wreckCourtCaseId';
+      if (!mission.params?.[key] || mission.source !== payload.source) return;
+      const verified = this.registry?.get(payload.source)?.verifyMissionProof?.(payload);
+      if (verified?.ok !== true) return;
+      mission.objectiveProgress = mission.objectiveTarget;
+      this._completeMission(mission, index);
+    });
+    bus.on('mission:venueFailure', payload => {
+      if (!payload || !['mercyService', 'wreckCourt'].includes(payload.source)) return;
+      const index = this.state.missions.active.findIndex(m => m.id === payload.missionId && m.status === 'active');
+      if (index < 0) return;
+      const mission = this.state.missions.active[index];
+      if (mission.source !== payload.source || this.registry?.get(payload.source)?.verifyMissionFailure?.(payload)?.ok !== true) return;
+      this._failMission(mission, index, payload.kind === 'rescue-left' || payload.kind === 'court-left' ? 'abandoned' : 'failed');
+    });
     bus.on('signal:scanResults', (p) => {
       this._onLandmarkProbeScan(p || {});
       // A multi-scan landmark may become board-ready on this exact pulse. Reconcile after scanner
@@ -2046,7 +2067,7 @@ export const missions = {
     // postBoardOffer rows are posted authored work kept until accepted — same
     // class as the other player-earned retentions; acceptMission withdraws them.
     const retainedPostedOffers = previousSlots.filter((offer) => (
-      offer && offer.source === POSTED_BOARD_SOURCE
+      offer && [POSTED_BOARD_SOURCE, 'mercyService', 'wreckCourt'].includes(offer.source)
     ));
     board = {
       refreshEpoch: epoch,
@@ -2781,6 +2802,8 @@ export const missions = {
       // supplies id/type/stationId/params) — the wreck's signal becomes a real board row, so
       // "failure creates content" also means discovery creates playable work.
       || rawOffer.source === 'salvage'
+      || rawOffer.source === 'mercyService'
+      || rawOffer.source === 'wreckCourt'
       // Alien Ecology AE-067/068/069/087/088/089: colonized sites emit fieldwork contracts on
       // close approach — the site IS the giver (alienEcology.emitEcologyOffer builds the row).
       || rawOffer.source === 'ecology'
@@ -5486,6 +5509,7 @@ export const missions = {
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (m.status !== 'active' || m.type !== 'recon_scan') continue;
+      if (m.params?.mercyIncidentId || m.params?.wreckCourtCaseId) continue;
       // Wreck-bound set-piece scans (long_read rumor survey + the four D13-D16 chain openings)
       // are aimed at one placed authored hull. A generic sector pulse must never finish them;
       // completion arrives from uniqueWreck:bearingFixed when the placed wreck is actually scanned.
@@ -9350,6 +9374,7 @@ export const missions = {
 
   /** Spawn bounty/patrol hostiles or the escortee if the player is in the mission's target sector. */
   _ensureMissionTargets(m) {
+    if (m.params?.mercyIncidentId || m.params?.wreckCourtCaseId) { m.needsTargets = false; return; }
     if (!m.needsTargets) return;
     if (this.state.world.currentSectorId !== m.destSectorId) return; // defer until the player arrives
     m.targetEntityIds = (m.targetEntityIds || []).filter((id) => {

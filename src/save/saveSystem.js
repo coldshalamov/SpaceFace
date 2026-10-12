@@ -503,7 +503,7 @@ export const save = {
     // Registered during system init, before main installs its new-game bootstrap listener, so old
     // run work is invalidated synchronously at the route boundary.
     bus.on('game:new', (opts) => {
-      this._ephemeralRacing = opts?.racingSession === true;
+      this._ephemeralRacing = opts?.racingSession === true || opts?.physicsVenueSession === true;
       this._epochOpenedByNew = true;
       this._beginRunEpoch('game:new');
     });
@@ -512,11 +512,12 @@ export const save = {
       // the legacy `game:newGame` alias so VFX/title listeners reset; a second bump would
       // orphan the autosave generation started by `game:new`.
       if (this._epochOpenedByNew) return;
-      this._ephemeralRacing = opts?.racingSession === true;
+      this._ephemeralRacing = opts?.racingSession === true || opts?.physicsVenueSession === true;
       this._beginRunEpoch('game:newGame');
     });
     bus.on('game:started', () => { this._epochOpenedByNew = false; });
-    bus.on('save:loaded', () => { this._epochOpenedByNew = false; this._ephemeralRacing = false; });
+    bus.on('save:loaded', () => { this._epochOpenedByNew = false; this._ephemeralRacing = false; this.state.physicsVenueSession = false; });
+    bus.on('save:restoring', () => { this.state.physicsVenueSession = false; });
     bus.on('race:launchFailed', () => {
       if (!this._ephemeralRacing || this.state?.mode !== 'menu') return;
       this._epochOpenedByNew = false;
@@ -813,6 +814,12 @@ export const save = {
       ['factions', () => this._callSerialize('factions') || {}],
       // Material heat must persist resource records before the world snapshot is copied.
       ['environmentMaterials', () => this._callSerialize('environmentMaterials') || { reactions: [], blasts: [] }],
+      ['reactiveMatter', () => this._callSerialize('reactiveMatter')],
+      ['spectrum', () => this._callSerialize('spectrum')],
+      ['orbitalGalleryLedger', () => this._callSerialize('orbitalGallery')],
+      ['kineticLeague', () => this._callSerialize('kineticLeague')],
+      ['mercyService', () => this._callSerialize('mercyService')],
+      ['wreckCourt', () => this._callSerialize('wreckCourt')],
       ['world', () => this._callSerialize('world') || {}],
       ['entities', () => this._serializeEntities()],
       ['combat', () => serializeCombatState(state)],
@@ -935,6 +942,13 @@ export const save = {
     yield 'serialize:factions';
     data.environmentMaterials = this._callSerialize('environmentMaterials') || { reactions: [], blasts: [] };
     yield 'serialize:environmentMaterials';
+    data.reactiveMatter = this._callSerialize('reactiveMatter');
+    data.spectrum = this._callSerialize('spectrum');
+    data.orbitalGalleryLedger = this._callSerialize('orbitalGallery');
+    data.kineticLeague = this._callSerialize('kineticLeague');
+    data.mercyService = this._callSerialize('mercyService');
+    data.wreckCourt = this._callSerialize('wreckCourt');
+    yield 'serialize:physical-play';
     data.world = this._callSerialize('world') || {};
     yield 'serialize:world';
     data.entities = this._serializeEntities();
@@ -3276,7 +3290,7 @@ export const save = {
    * `lab` counts too: a Combat Lab session is the same ephemeral state by another name.
    */
   _campaignSaveSuppressed() {
-    if (this._ephemeralRacing === true) return true;
+    if (this._ephemeralRacing === true || this.state?.physicsVenue?.active === true) return true;
     const run = this.state && this.state.run;
     if (!run || run.phase === 'inactive') return false;
     return run.kind === 'survival' || run.kind === 'lab';
@@ -6254,6 +6268,13 @@ export const save = {
       yield 'deserialized-factions';
       yield* this._callDeserializeChunked('world', data.world); // sets currentSectorId; does NOT spawn entities
       yield 'deserialized-world';
+      this._callDeserialize('reactiveMatter', data.reactiveMatter);
+      this._callDeserialize('spectrum', data.spectrum);
+      this._callDeserialize('orbitalGallery', data.orbitalGalleryLedger);
+      this._callDeserialize('kineticLeague', data.kineticLeague);
+      this._callDeserialize('mercyService', data.mercyService);
+      this._callDeserialize('wreckCourt', data.wreckCourt);
+      yield 'deserialized-physical-play';
       // Stash the SG-02 world snapshot: a fresh backend owner adopts it (boot-load, harness
       // reset); a live owner keeps its own world and the stash is dropped.
       this.registry?.get?.('physics')?.deserialize?.(data.physics, { deferNative: true });

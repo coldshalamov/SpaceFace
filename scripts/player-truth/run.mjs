@@ -89,9 +89,14 @@ export function summarizePacing(log, breathS = 2.4) {
 
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
+export function runOutputDirectory(args, label, multiple = false) {
+  const requested = args.out || path.join('scratch/player-truth', label);
+  return path.resolve(ROOT, args.out && multiple ? path.join(requested, label) : requested);
+}
+
 async function runOne(args, arena, extra = {}) {
   const label = [args.mode, arena ? slug(arena) : null, extra.hull ? slug(extra.hull) : null, extra.vpTag ? args.viewport : null, args.tag ? slug(args.tag) : null].filter(Boolean).join('-');
-  const outDir = path.resolve(ROOT, args.out || path.join('scratch/player-truth', label));
+  const outDir = runOutputDirectory(args, label, extra.multiple);
   rmSync(outDir, { recursive: true, force: true }); mkdirSync(path.join(outDir, 'frames'), { recursive: true });
   const [vwStr, vhStr] = args.viewport.split('x'); const vw = Number(vwStr); const vh = Number(vhStr);
   const wallCapMs = (args.wall || (args.headed ? 10 : 40)) * 60000;
@@ -357,9 +362,10 @@ async function main() {
     : roundMode ? [{ gatePass: 'idle', tag: 'idle', idle: 40, rounds: 1, duration: 45 }, { gatePass: 'active', tag: 'active', idle: 3, rounds: Math.max(3, args.rounds), requireRounds: 3, duration: Math.max(args.duration, 300) }]
       : [{ gatePass: 'active', tag: args.tag }];
   const outcomes = [];
+  const multiple = args.viewportList.length * hulls.length * arenas.length * passes.length > 1;
   for (const viewport of args.viewportList) for (const hull of hulls) for (const arena of arenas) for (const pass of passes) {
     const a = { ...args, viewport, ...pass, tag: pass.tag !== undefined ? [pass.tag, args.tag].filter(Boolean).join('-') || null : args.tag };
-    outcomes.push(await runOne(a, arena, { hull, vpTag: args.viewportList.length > 1 }));
+    outcomes.push(await runOne(a, arena, { hull, vpTag: args.viewportList.length > 1, multiple }));
   }
   if (outcomes.length > 1) {
     console.log('\nplayer-truth matrix:');

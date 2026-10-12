@@ -343,6 +343,7 @@ export const heat = {
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus;
+    this.registry = ctx.registry;
     const player = this.state.player;
     if (player && typeof player.heat !== 'number') player.heat = 0;
     if (player) {
@@ -352,6 +353,17 @@ export const heat = {
     this._resetTransientTiming();
 
     const bus = this.bus;
+    bus.on('wreckCourt:lawFact', payload => {
+      const verified = this.registry?.get('wreckCourt')?.verifyRulingFact?.(payload);
+      if (verified?.ok !== true || !Number.isFinite(payload.delta) || isRunSealed(this.state)) return;
+      const player = this.state.player;
+      const receipts = Array.isArray(player.courtLawReceipts) ? player.courtLawReceipts : [];
+      if (receipts.includes(payload.receiptId)) return;
+      // Court points use the same normalized WANTED writer and active sector jurisdiction.
+      this._setHeat((Number(player.heat) || 0) + Math.max(-2, Math.min(4, payload.delta)) * 0.02,
+        `Wreck Court ruling in ${verified.sectorId || this.state.world.currentSectorId}`);
+      player.courtLawReceipts = [...receipts.slice(-127), payload.receiptId];
+    });
 
     // Kills do NOT write heat directly. lawSecurity adjudicates every player-caused kill
     // through the same witness/jurisdiction gate as a reported theft and signs an incident

@@ -955,7 +955,7 @@ export function createWreckCourtSystem() {
       if (!s?.receipt || p?.source !== this.name || p.receiptId !== s.receipt || p.caseId !== s.caseId || s.ruling?.status !== 'accepted') return { ok: false };
       const fact = s.ruling.intents.worldFacts.find((f) => f.id === p.id && f.value === p.value);
       const heat = s.ruling.intents.heat;
-      return { ok: !!fact || !!(heat && p.delta === heat.delta && p.factionId === heat.factionId), sectorId: s.sectorId };
+      return { ok: Object.hasOwn(p, 'delta') ? !!(heat && p.delta === heat.delta && p.factionId === heat.factionId) : !!fact, sectorId: s.sectorId };
     },
     serialize() { return { schema: 2, failures: jsonCopy(this.failures), court: this.session ? serializeCourt(this.session) : null }; },
     deserialize(raw) {

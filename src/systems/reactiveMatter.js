@@ -477,7 +477,7 @@ export const reactiveMatter = {
   update(dt, state) {
     state = state || this.state;
     this.state = state;
-    if (this.registry && !this.helpers.reactiveMatterLab && (state.mode !== 'flight' || !(state.timeScale > 0)
+    if (this.registry && !this.helpers.reactiveMatterLab && (state.physicsVenueSession || state.physicsVenue?.active || state.mode !== 'flight' || !(state.timeScale > 0)
       || state.entities.get(state.playerId)?.flags?.docked)) return null;
     this._place();
     const world = ensureWorld(state || this.state);

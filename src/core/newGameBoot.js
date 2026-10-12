@@ -136,6 +136,7 @@ export async function runNewGameSimBoot({
   state.entities.clear(); state.entityList.length = 0; state.freeIds.length = 0; state.nextEntityId = 1; state.playerId = 0;
 
   resetRunState(state, opts || {});
+  state.physicsVenueSession = opts?.physicsVenueSession === true;
   // The run reset clears every time-effects request, including the veil the loading shell
   // raised above — re-assert it or a frame landing on the paints below steps the sim while
   // state.combat is still the fresh, pre-newGame shape.

@@ -101,8 +101,12 @@ test('production init + update order lengths match the live browser baseline', (
   // Hasp follows palletJack; HOOK-LEFT follows ruckus before physics.
   // Material reactions join both browser and Node fixed-step runtimes.
   // 201 -> 202 init only: warrantOfferPrompt, the licensed hunter's offer as deck verbs (event-only).
-  assert.equal(PRODUCTION_INIT_ORDER.length, 202);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 152);
+  assert.equal(PRODUCTION_INIT_ORDER.length, 208);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 158);
+  for (const id of ['orbitalGallery', 'kineticLeague', 'reactiveMatter', 'spectrum']) {
+    assert.ok(PRODUCTION_INIT_ORDER.includes(id));
+    assert.ok(PRODUCTION_UPDATE_ORDER.includes(id));
+  }
   assert.equal(getSystemClock('environmentMaterials'), 'table');
   assert.equal(PRODUCTION_INIT_ORDER.includes('stuckTowPrompt'), true);
   assert.equal(PRODUCTION_UPDATE_ORDER.includes('stuckTowPrompt'), false);
@@ -279,7 +283,7 @@ test('browser production system set is unchanged vs production manifest constant
   // fields and physics) and gyreHud (DOM-guarded lane pill beside fieldHud), one
   // system in both orders each.
   // 200 with secondRinse and ruud, each registered once in both orders.
-  assert.equal(registry.systems.length, 202);
+  assert.equal(registry.systems.length, PRODUCTION_INIT_ORDER.length);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

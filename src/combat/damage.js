@@ -19,7 +19,7 @@ import {
 } from './rewardEligibility.js';
 import { wardScreenTarget } from '../ai/specialistCounterplay.js';
 import { deliverPhysicalImpulseDetailed } from './physicalEffects.js';
-import { isEnvironmentalBody } from '../core/physicalResponse.js';
+import { isEnvironmentalBody, isPhysicalMissionBody } from '../core/physicalResponse.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { addEnvironmentHeat } from '../systems/environmentMaterials.js';
 import { GRAVITY_MARK_STATUS_ID } from '../data/combatDefs.js';
@@ -86,7 +86,7 @@ export function createDamageRouter(context, statusService, options = {}) {
     // Physical contact is independent of hull damage, IFF and invulnerable hit points.
     const impulseResult = applyImpulse(target, attacker, packet, input, origin);
     if (isEnvironmentalBody(target)) addEnvironmentHeat(state, target, packet.heat + (packet.channels.thermal || 0) + (packet.channels.plasma || 0), { actorId: input && input.attackerId, ...origin });
-    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target)) {
+    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target)) {
       const marks = packet.statuses.filter(status => status.id === GRAVITY_MARK_STATUS_ID);
       if (marks.length) {
         const runtime = ensureCombatant(state, target, catalog);
@@ -102,7 +102,7 @@ export function createDamageRouter(context, statusService, options = {}) {
     // PQ-015: damageable type-membership from the shared catalog (identical to the former
     // ship|station|drone|mine|massSeed literal). The allowAnyTarget bypass, dock/invuln/friendly-fire
     // layers below, and the 'target_not_damageable' reason string are ALL UNCHANGED.
-    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target)) return rejected('target_not_damageable', input, packet);
+    if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type) && !isCeresWorkfleetHardware(target) && !isPhysicalMissionBody(target)) return rejected('target_not_damageable', input, packet);
     if (!packet.flags.ignoreInvulnerability && playerDockProtected(state, target)) return rejected('target_docked', input, packet);
     if (target.flags && target.flags.invuln && !packet.flags.ignoreInvulnerability) return rejected('target_invulnerable', input, packet);
     // Player malice is adjudicated by law (player_assault/player_piracy incidents) and NPC

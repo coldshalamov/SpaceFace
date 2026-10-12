@@ -1007,6 +1007,9 @@ export const pauseScreen = {
     }, { group: 'Media', bank: true, icon: 'ledger' });
     // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
     // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
+    mk('Physics challenges', () => nav(ctx, 'pushScreen', 'physicsVenues'), { group: 'Play', bank: true, icon: 'utility' });
+    if (ctx.state?.mercyServicePublic?.bodies?.length) mk('Rescue tools', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.mercy(); }, { group: 'Field work', bank: true, icon: 'utility' });
+    if (ctx.state?.wreckCourtPublic?.bodies?.length) mk('Wreck Court notebook', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.court(); }, { group: 'Field work', bank: true, icon: 'utility' });
     if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', bank: true, icon: 'utility' });
     // Main Menu discards the current session entirely — confirm with the live run context first.
     mk(coreText('mainMenu'), async () => {

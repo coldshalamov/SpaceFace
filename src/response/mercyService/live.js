@@ -71,6 +71,7 @@ export function createLiveMercyServiceSystem() {
       const point = this.clearOrigin(incidentId, requested);
       if (!point) return { ok: false, reason: 'no-clear-space' };
       if (!this.rt) this.rt = createMercyRuntime({ seed: hash32(state.meta.seed, state.world.currentSectorId, 'mercy'), sectorId: state.world.currentSectorId, bus: this.ctx.bus });
+      this.rt.liveNamespace ||= `mercy:${this.rt.seed}:${state.world.currentSectorId}`;
       const opened = beginIncident(this.rt, incidentId, { origin: point, keepPlayer: true });
       if (!opened.ok || opened.queued) return opened;
       const inc = this.rt.incidents[opened.uid]; inc.offerId = offerId; inc.scanUntil = 0;

@@ -5,6 +5,37 @@ import { createBus } from '../src/core/eventBus.js';
 import { save } from '../src/save/saveSystem.js';
 import { raceLevelById, racingOfferFor, startLineFor } from '../src/data/raceLevels.js';
 import { armRacingContract, completeRacingLaunch, stageRacingLaunch, noteRacingNewGame } from '../src/ui/racingLaunch.js';
+import { installPhysicsVenueHooks, stagePhysicsVenue } from '../src/ui/physicsVenues.js';
+
+test('physics challenge launch waits for real boot, preserves campaign slots and cancels a superseded launch', async () => {
+  const h = harness();
+  const enters = [], records = [];
+  h.bus.on('orbital-gallery:enter', payload => enters.push(payload));
+  h.bus.on('physics-venues:records', payload => records.push(payload));
+  const off = installPhysicsVenueHooks(h.bus, () => h.ctx);
+  try {
+    assert.equal(stagePhysicsVenue(h.bus, 'gallery', 'og-01'), true);
+    assert.equal(enters.length, 0);
+    assert.equal(h.saveHost.save('quick'), false);
+    assert.equal(h.saveHost.requestAutosave('mission'), false);
+    assert.equal(h.saveHost.requestExitAutosave(), false);
+    h.bus.emit('game:started', {});
+    await Promise.resolve();
+    assert.deepEqual(enters, [{ scenarioId: 'og-01' }]);
+    assert.equal(records.length, 1);
+    h.bus.emit('game:started', {});
+    await Promise.resolve();
+    assert.equal(enters.length, 1, 'duplicate boot receipt cannot start another event');
+    stagePhysicsVenue(h.bus, 'gallery', 'og-02');
+    h.bus.emit('game:new', {});
+    h.bus.emit('game:started', {});
+    await Promise.resolve();
+    assert.equal(enters.length, 1, 'an ordinary New Game cancels the pending venue');
+    assert.equal(h.saveHost._campaignSaveSuppressed(), false);
+    h.state.physicsVenue = { active: true };
+    assert.equal(h.saveHost.save('quick'), false, 'direct venue entry also protects campaign custody');
+  } finally { off(); }
+});
 
 function harness({ jumpState = 'IDLE', throwing = false, relocate = true, currentSectorId = 'sector_helios_prime' } = {}) {
   const state = createGameState(239), bus = createBus(), saveHost = { ...save }, events = [];
