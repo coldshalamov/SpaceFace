@@ -3,14 +3,14 @@ import test from 'node:test';
 
 import { createSimulation } from '../src/core/sim.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
-import { encounterDirector, planEncounters } from '../src/systems/encounterDirector.js';
+import { encounterDirector, planEncounters, FIRE_READY_HOLD_S } from '../src/systems/encounterDirector.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import { isHostileForAI } from '../src/ai/engagementAuthority.js';
 import { openingRaidCarrierReady } from '../src/data/encounters/344-opening-hauler-raid.js';
 
 const FRAME_WU = 2 * 115 + 30;
 
-function fireOpeningRaid(seed, carrierSpec) {
+function fireOpeningRaid(seed, carrierSpec, { pastReadyHold = false } = {}) {
   const sim = createSimulation({ seed, systems: [spawnBudget, encounterDirector] });
   const { state, bus } = sim;
   state.mode = 'flight';
@@ -29,8 +29,15 @@ function fireOpeningRaid(seed, carrierSpec) {
   dir.pressure.combat = 30;
   state.simTime = raidPlan.delay + 1;
   sim.runTicks(120);
-  const live = Object.values(dir.live).find((l) => l.shapeId === 'opening_hauler_raid');
-  return { sim, state, player, carrier, live, spawned };
+  let live = Object.values(dir.live).find((l) => l.shapeId === 'opening_hauler_raid');
+  const firedBeforeHold = !!live;
+  if (!live && pastReadyHold) {
+    // #279: a due beat waits up to FIRE_READY_HOLD_S on the module's readiness seam, then fires anyway.
+    state.simTime += FIRE_READY_HOLD_S + 2;
+    sim.runTicks(120);
+    live = Object.values(dir.live).find((l) => l.shapeId === 'opening_hauler_raid');
+  }
+  return { sim, state, player, carrier, live, spawned, firedBeforeHold };
 }
 
 function loadedCarrierSpec(pos, qty) {
@@ -101,8 +108,9 @@ test('starter-world: an empty or out-of-frame barge is left to its work; the rai
     ['empty', loadedCarrierSpec({ x: 40, z: 30 }, 0)],
     ['far', loadedCarrierSpec({ x: 900, z: -400 }, 3)],
   ]) {
-    const { state, carrier, live } = fireOpeningRaid(4242, spec);
-    assert.ok(live, `${label}: raid must still fire`);
+    const { state, carrier, live, firedBeforeHold } = fireOpeningRaid(4242, spec, { pastReadyHold: true });
+    assert.equal(firedBeforeHold, false, `${label}: the raid holds for a ready barge first (bounded)`);
+    assert.ok(live, `${label}: raid must still fire once the readiness hold lapses`);
     assert.equal(live.data.adoptedCarrier == null, true, `${label}: no adoption`);
     assert.equal(live.ids.includes(carrier.id), false, `${label}: barge not enrolled`);
     assert.equal(carrier.data.predationEncounterId == null, true, `${label}: barge untouched`);
