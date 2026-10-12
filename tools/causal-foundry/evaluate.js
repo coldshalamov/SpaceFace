@@ -98,11 +98,13 @@ export function bodyClassOf(bodies, summary, attachment) {
       const row = live.find((item) => item.alias === body.alias);
       if (!row) continue;
       const moved = row.disp > 1 || Math.abs((row.speed || 0) - (row.launchSpeed || 0)) > 1 || row.hullDrop > 1;
-      if (!moved) continue;
+      const contacted = (summary.contacts || []).some((contact) => contact.aAlias === body.alias || contact.bAlias === body.alias);
+      if (!moved && !contacted) continue;
     }
-    if (body.role === 'hostile' || body.team === 1 || body.profile === 'wasp_swarmer') kinds.add('hostile');
-    else if (body.profile === 'asteroid.light' || (Number.isFinite(body.mass) && body.mass <= 80)) kinds.add('light');
-    else kinds.add('heavy');
+    const support = body.dynamic === false ? 'anchored-' : '';
+    if (body.role === 'hostile' || body.team === 1 || body.profile === 'wasp_swarmer') kinds.add(`${support}hostile`);
+    else if (body.profile === 'asteroid.light' || (Number.isFinite(body.mass) && body.mass <= 80)) kinds.add(`${support}light`);
+    else kinds.add(`${support}heavy`);
   }
   return kinds.size ? [...kinds].sort().join('+') : 'nobody';
 }

@@ -88,11 +88,12 @@ const PERSONAS = {
       const swing = unitFromSeed(ctx.seed, obs.tick, 2) * 2 - 1;
       const fighting = obs.journeyId === 'combat-death-retry';
       return base({
-        moveZ: fighting ? 0 : 1,
+        moveZ: fighting ? (ctx.recovered ? 0.4 : 0) : 1,
         moveX: fighting ? 0 : clamp(swing, -1, 1),
         turnIntent: fighting ? turnToward(obs) : clamp(swing * 0.8 + turnToward(obs) * 0.2, -1, 1),
         boost: fighting ? false : obs.tick > 6,
-        fire: fighting || !!(obs.nearest && obs.nearest.dist < 80 && obs.nearest.kind !== 'station'),
+        fire: fighting ? obs.tick < 3 : !!(obs.nearest && obs.nearest.dist < 80 && obs.nearest.kind !== 'station'),
+        commands: fighting && obs.alive === false ? [{ type: 'recover' }] : [],
         tether: masslineJourney(obs),
         reel: masslineJourney(obs) && (obs.tick % 20) < 8 ? -1 : 0,
       });
@@ -129,11 +130,12 @@ const PERSONAS = {
           commands,
         });
       }
-      if (obs.journeyId === 'docking' && (obs.dockPhase === 'approach' || obs.dockPhase === 'capture' || obs.dockPhase === 'berth')) {
+      if (obs.journeyId === 'docking' && obs.dockBerth) {
+        const arrivalSpeed = Math.min(16, Math.max(2, (obs.dockDistToBerth || 0) * 0.5));
         return base({
-          moveZ: obs.speed > 20 ? 0 : 0.2,
-          brake: obs.speed > 20,
-          turnIntent: turnToward(obs),
+          moveZ: obs.berthed || obs.speed > arrivalSpeed ? 0 : 0.15,
+          brake: obs.berthed || obs.speed > arrivalSpeed,
+          turnIntent: obs.berthed ? 0 : turnToward({ ...obs, nearest: obs.dockBerth }),
           commands,
         });
       }

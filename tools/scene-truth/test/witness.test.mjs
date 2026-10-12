@@ -4,6 +4,7 @@ import { analyzePack } from '../lib/analyze.mjs';
 import { highFails } from '../lib/detectors.mjs';
 import { sceneCatalog } from '../lib/scenarios.mjs';
 import { witnessScenario } from '../lib/witness.mjs';
+import { buildVerdict } from '../lib/atlas.mjs';
 
 test('starter scene runs on the lab runtime and stays semantically clean', async () => {
   const entry = sceneCatalog().find((row) => row.id === 'scene.starter-rest');
@@ -23,4 +24,28 @@ test('starter scene runs on the lab runtime and stays semantically clean', async
   assert.ok(tiers.has('low') && tiers.has('medium') && tiers.has('high'));
   const fails = highFails(analyzePack(pack));
   assert.deepEqual(fails.map((row) => row.kind), []);
+});
+
+test('an incomplete lab arm with a usable final surface cannot become a clean verdict', () => {
+  const pack = { id: 'partial', ok: true, lab: { ok: false, status: 'incomplete' }, views: [] };
+  const issues = analyzePack(pack);
+  assert.ok(issues.some((row) => row.kind === 'lab-incomplete'));
+  const verdict = buildVerdict({
+    scenarioCount: 1, scenarioRows: [{ id: 'partial', labOk: false, labStatus: 'incomplete' }],
+    issues, reviews: [], critique: { ok: true }, faults: [], benign: [],
+  });
+  assert.equal(verdict.ok, false);
+  assert.equal(verdict.status, 'incomplete');
+  assert.ok(verdict.missingMeasurements.some((row) => row.scenarioId === 'partial'));
+});
+
+test('skipping all simulations cannot mint an integration-ready verdict', () => {
+  const verdict = buildVerdict({
+    scenarioCount: 2, scenarioRows: [], issues: [], reviews: [],
+    critique: { ok: true }, faults: [], benign: [],
+  });
+  assert.equal(verdict.ok, false);
+  assert.equal(verdict.status, 'incomplete');
+  assert.equal(verdict.measuredScenarioCount, 0);
+  assert.equal(verdict.renderingStatus, 'unmeasured');
 });

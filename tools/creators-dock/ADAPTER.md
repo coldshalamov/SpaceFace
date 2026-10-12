@@ -12,9 +12,9 @@ The dock imports the live modules itself:
 
 It does not add a system to `src/core/registry.js`, does not edit `src/data/userContent.js`, and does not mount a route in `server.js`.
 
-## Withheld loader fix
+## Integrated loader fix
 
-`src/data/encounters.js` line 184 merges user encounters before `ENCOUNTER_BARKS` is initialized (the table closes at line 469). A user record that sets `bark` throws `Cannot access 'ENCOUNTER_BARKS' before initialization` and aborts the module. Dock encounters omit `bark`, so they load. Do not apply this from the dock. Move the one export to immediately after the bark table:
+The `ENCOUNTERS` merge now runs after `ENCOUNTER_BARKS` is initialized. Exported encounters may reference shipped bark ids; the real loader probe covers this path. The local workstation also refuses foreign Host/Origin requests and validates documents before saving them.
 
 ```diff
 --- a/src/data/encounters.js

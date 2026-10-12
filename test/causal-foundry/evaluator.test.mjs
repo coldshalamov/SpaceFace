@@ -108,6 +108,7 @@ test('player-caused gates are not satisfied by preseed, glide, or gun drift', ()
   assert.equal(signatureOf(['massline.reel', 'massline.tension'], 'heavy'), signatureOf(['massline.tension', 'massline.reel'], 'heavy'));
   assert.equal(bodyClassOf([{ profile: 'asteroid.heavy', mass: 800 }]), 'heavy');
   assert.equal(bodyClassOf([{ profile: 'asteroid.light', mass: 40 }]), 'light');
+  assert.equal(bodyClassOf([{ profile: 'asteroid.heavy', mass: 800, dynamic: false }]), 'anchored-heavy');
   const gone = contrastFails(
     { others: [{ alias: 'rock', speed: 20 }] },
     { others: [] },
@@ -122,4 +123,14 @@ test('generator candidates are deterministic and stay on runnable atoms', () => 
   assert.deepEqual(first, second);
   assert.ok(first.length >= 100);
   assert.equal(new Set(first).size, first.length);
+});
+
+test('speed changes and harmless projectile drift are not hull contacts without an owner receipt', () => {
+  const moved = { alias: 'pod', speed: 55, launchSpeed: 0, disp: 40, hullDrop: 0 };
+  const summary = { others: [moved], contacts: [] };
+  assert.equal(deriveHappened(summary, { fire: true }).includes('physics.collision'), false);
+  summary.contacts = [{ aAlias: 'projectile', bAlias: 'pod', impulse: 200, playerInvolved: false }];
+  assert.equal(deriveHappened(summary, { fire: true }).includes('physics.collision'), false);
+  summary.contacts = [{ aAlias: 'player', bAlias: 'pod', impulse: 200, playerInvolved: true }];
+  assert.equal(deriveHappened(summary, {}).includes('physics.collision'), true);
 });

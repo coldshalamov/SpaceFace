@@ -1,5 +1,15 @@
 # Causal Foundry integration patch (not applied)
 
+## Current tool behavior
+
+The generator reports template families separately from seed/numeric variants.
+The 115 attempts are 18 template families, not 115 distinct compositions. A
+collision atom requires a physics-owner solid-contact observation involving the
+player; speed change or projectile drift cannot satisfy it. The read-only witness
+runs through the existing internal lab API and remains non-promoting. Fixed
+anchors and movable masses are distinct physical supports in novelty signatures.
+Fresh output can be directed with `--out=.devshots/causal-foundry`.
+
 Do not apply this while `src/data/encounters/**` and `index.generated.js` are owned by the world/encounter program (open PR #264). Foundry scenes already run through `src/testing/lab/runScenario.js`. They are lab scenarios, not four-axis encounter modules, and they stay out of the default encounter index.
 
 ## Do not patch

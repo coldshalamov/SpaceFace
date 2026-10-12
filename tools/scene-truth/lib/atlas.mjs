@@ -94,7 +94,8 @@ function markdown(report, links) {
   const lines = [];
   lines.push('# Scene Truth atlas');
   lines.push('');
-  lines.push(`Verdict: **${report.verdict.ok ? 'pass' : 'fail'}** (${report.verdict.status}).`);
+  lines.push(`Verdict: **${report.verdict.status}**. Live rendering: **unmeasured**.`);
+  for (const row of report.verdict.missingMeasurements || []) lines.push(`- ${row.scenarioId || 'catalog'}: ${row.reason}`);
   lines.push('');
   lines.push('This gallery is semantic 3D scene integrity. It is not the UI screenshot matrix.');
   lines.push('');
@@ -188,20 +189,30 @@ ${cards}
 `;
 }
 
-export function buildVerdict({ commit, scenarioCount, issues, reviews, critique, faults, benign }) {
+export function buildVerdict({ commit, scenarioCount, scenarioRows = [], issues, reviews, critique, faults, benign }) {
   const high = (issues || []).filter((row) => row.failBuild === true);
   const faultMisses = (faults || []).filter((row) => !row.detected);
   const benignHits = (benign || []).filter((row) => row.highCount > 0);
-  const ok = high.length === 0
+  const failed = high.length > 0 || faultMisses.length > 0 || benignHits.length > 0 || critique.ok !== true;
+  const missingMeasurements = scenarioRows
+    .filter((row) => row.labOk !== true || row.labStatus === 'incomplete')
+    .map((row) => ({ scenarioId: row.id, reason: `lab ${row.labStatus || 'unmeasured'}` }));
+  if (scenarioRows.length < scenarioCount) missingMeasurements.push({
+    scenarioId: null, reason: `${scenarioCount - scenarioRows.length} selected scenarios were not run`,
+  });
+  const ok = missingMeasurements.length === 0 && high.length === 0
     && faultMisses.length === 0
     && benignHits.length === 0
     && critique.ok === true;
   return {
     schema: VERDICT_SCHEMA,
     ok,
-    status: ok ? 'integration-ready' : 'scene-defects',
+    status: failed ? 'scene-defects' : missingMeasurements.length ? 'incomplete' : 'semantic-pass',
     commit,
     scenarioCount,
+    measuredScenarioCount: scenarioRows.filter((row) => row.labOk === true && row.labStatus !== 'incomplete').length,
+    missingMeasurements,
+    renderingStatus: 'unmeasured',
     highFailCount: high.length,
     reviewCount: (reviews || []).length + (issues || []).filter((row) => row.confidence === 'review').length,
     faultCount: (faults || []).length,

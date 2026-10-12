@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { detectFailures, compareDigests } from '../../tools/agentic/stranger-lab/lib/detectors.mjs';
-import { listJourneys } from '../../tools/agentic/stranger-lab/lib/journeys.mjs';
+import { assessJourney, listJourneys } from '../../tools/agentic/stranger-lab/lib/journeys.mjs';
 import { buildRouteManifest, SWEEP_SEEDS } from '../../tools/agentic/stranger-lab/lib/manifest.mjs';
 import { PERSONA_IDS, getPersona } from '../../tools/agentic/stranger-lab/lib/personas.mjs';
 import { redact } from '../../tools/agentic/stranger-lab/lib/redact.mjs';
@@ -101,6 +101,8 @@ test('negative controls do not invent unresponsive, dock, payment, or model fail
     asset: { essentialModelCheck: 'not-run' },
   });
   assert.deepEqual(detection.confirmed, []);
+  assert.equal(detection.closures.some((row) => row.id === 'missing-essential-model'), false);
+  assert.ok(detection.unmeasured.some((row) => row.id === 'missing-essential-model'));
   const blocked = samples.map((sample, index) => ({
     ...sample,
     x: index < 20 ? index * 0.5 : 10,
@@ -112,6 +114,23 @@ test('negative controls do not invent unresponsive, dock, payment, or model fail
   const station = detectFailures({ samples: blocked, frames: thrusting, commands: [], asset: { essentialModelCheck: 'not-run' } });
   assert.equal(station.confirmed.some((row) => row.id === 'unresponsive-commands'), false);
   assert.equal(compareDigests('abc', 'abc'), null);
+});
+
+test('no detected defect is not completion of docking or death and recovery', () => {
+  const samples = [{ tick: 0, alive: true, mode: 'flight', docked: false },
+    { tick: 100, alive: true, mode: 'flight', docked: false, dockPhase: 'approach' }];
+  const dock = assessJourney({ journeyId: 'docking', samples });
+  assert.equal(dock.status, 'incomplete');
+  assert.ok(dock.missing.includes('berth arrival'));
+  const combat = assessJourney({ journeyId: 'combat-death-retry', samples });
+  assert.equal(combat.status, 'incomplete');
+  assert.ok(combat.missing.includes('player death'));
+  const recovered = assessJourney({
+    journeyId: 'combat-death-retry',
+    samples: [...samples, { tick: 101, alive: false }, { tick: 103, alive: true }],
+    commands: [{ type: 'recover', tick: 102, ok: true }],
+  });
+  assert.equal(recovered.status, 'complete');
 });
 
 test('canary reproduces the same fingerprint and the green control stays clean', async () => {
@@ -137,4 +156,11 @@ test('shrinking keeps the canary and shortens the tape', async () => {
   assert.equal(shrunk.ok, true);
   assert.ok(shrunk.minimalTicks < run.ticks);
   assert.ok(shrunk.minimalTicks >= 1);
+});
+
+test('the docking pilot reaches the actual manifest berth without a synthetic dock flag', async () => {
+  const run = await runSession({ journeyId: 'docking', seed: 7 });
+  assert.equal(run.status, 'pass', JSON.stringify(run.completion || run.error));
+  assert.equal(run.final.berthed, true);
+  assert.equal(run.final.docked, false, 'headless sim does not pretend the station UI opened');
 });

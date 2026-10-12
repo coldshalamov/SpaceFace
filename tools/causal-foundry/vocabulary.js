@@ -124,7 +124,7 @@ export const CAUSAL_ATOMS = Object.freeze([
     systems: ['physics'],
     prerequisites: ['two dynamic bodies whose paths meet'],
     consequences: ['momentum exchange', 'a body that was stopped starts moving'],
-    observable: 'other-body speed',
+      observable: 'native solid-contact observation involving the player; speed change alone is not contact',
     evidence: 'rock mass 400 at x 50, player vx 90: rock ends vx 76; light pod glancing ends vx ~28',
     source: 'src/core/physics.js rapier-dynamic',
     caveat: 'Focused lab does not run collisionConsequences, so contact does not write hull.',

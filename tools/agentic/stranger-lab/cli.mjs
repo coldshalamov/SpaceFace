@@ -9,7 +9,7 @@
 //   node tools/agentic/stranger-lab/cli.mjs replay --artifact artifacts/stranger-lab/canary-failure.json
 
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { writeArtifact } from './lib/artifact.mjs';
 import { buildRouteManifest } from './lib/manifest.mjs';
 import { runSession } from './lib/session.mjs';
@@ -18,7 +18,6 @@ import { runSweep } from './lib/sweep.mjs';
 import { triageSweep } from './lib/triage.mjs';
 
 const ROOT = join(import.meta.dirname, '../../..');
-const OUT = join(ROOT, 'artifacts/stranger-lab');
 
 const CANARY = Object.freeze({
   journeyId: 'flight',
@@ -38,6 +37,7 @@ const GREEN = Object.freeze({
 
 const command = process.argv[2] || 'prove';
 const args = parseArgs(process.argv.slice(3));
+const OUT = args.out ? resolve(args.out) : join(ROOT, 'artifacts/stranger-lab');
 
 try {
   if (command === 'manifest') {
@@ -60,8 +60,11 @@ try {
     writeArtifact(join(OUT, 'sweep.json'), { ...sweep, runs: sweep.runs.map(stripTape) });
     writeArtifact(join(OUT, 'triage.json'), triage);
     process.stdout.write(
-      `sweep runs=${sweep.runCount} pass=${sweep.passCount} fail=${sweep.failCount} infra=${sweep.infraCount} confirmed=${triage.confirmedCount}\n`,
+      `sweep runs=${sweep.runCount} pass=${sweep.passCount} incomplete=${sweep.incompleteCount} fail=${sweep.failCount} infra=${sweep.infraCount} confirmed=${triage.confirmedCount}\n`,
     );
+    if (sweep.infraCount) process.exitCode = 2;
+    else if (sweep.failCount) process.exitCode = 1;
+    else if (sweep.incompleteCount) process.exitCode = 3;
   } else if (command === 'run') {
     const run = await runSession({
       journeyId: args.journey || 'flight',
@@ -73,6 +76,8 @@ try {
     writeArtifact(join(OUT, `run-${run.journeyId}-${run.seed}.json`), stripTape(run));
     process.stdout.write(`${run.journeyId} ${run.status} digest ${run.digest}\n`);
     if (run.status === 'infra') process.exitCode = 2;
+    else if (run.status === 'fail') process.exitCode = 1;
+    else if (run.status === 'incomplete') process.exitCode = 3;
   } else if (command === 'replay') {
     const artifact = JSON.parse(readFileSync(args.artifact, 'utf8'));
     const first = await runSession(replayOptions(artifact));

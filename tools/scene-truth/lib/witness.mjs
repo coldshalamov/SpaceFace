@@ -171,7 +171,7 @@ export async function witnessScenario(entry) {
   const projected = viewsFor(entry, finalSurface, finalSurface.tick);
   const priorObjects = priorSurface ? bindScene(priorSurface, entry) : null;
   return {
-    ok: true,
+    ok: lab.ok === true && lab.status !== 'incomplete',
     id: entry.id,
     covers: entry.covers,
     source: entry.source,
@@ -185,6 +185,7 @@ export async function witnessScenario(entry) {
     views: projected.views,
     priorObjects,
     renderingDetached: true,
+    error: lab.ok === true ? null : lab.error || `lab status: ${lab.status}`,
   };
 }
 

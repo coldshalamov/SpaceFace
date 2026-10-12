@@ -8,14 +8,16 @@ import { createMasslineInputGrammar } from '../../../../src/systems/masslineInpu
 import { buildEntitySpawnSpec } from '../../../../src/testing/lab/entityProfiles.js';
 import { CURRENT_VERSION } from '../../../../src/data/saveVersion.js';
 import { NEW_GAME } from '../../../../src/data/newGameDefaults.js';
+import { CombatDoctrineId } from '../../../../src/ai/combatDoctrine.js';
 import {
   collisionProxyIdForStation,
-  corridorStateFor,
+  resolveBerthWorld,
+  resolveCorridorAxisWorld,
   resolveCollisionProxyManifest,
 } from '../../../../src/data/collisionProxyManifests.js';
 import { systemsForJourney } from './bundles.mjs';
 import { detectFailures } from './detectors.mjs';
-import { getJourney } from './journeys.mjs';
+import { assessJourney, getJourney } from './journeys.mjs';
 import { observeState, simDigest } from './observe.mjs';
 import { getPersona } from './personas.mjs';
 import { stableStringify } from './rng.mjs';
@@ -54,7 +56,7 @@ export async function runSession(options = {}) {
       ...(state.settings.gameplay || {}),
       physicsBackend: 'rapier-dynamic',
       flightBackend: 'v3',
-      aiBackend: 'legacy',
+      aiBackend: journey.extras?.includes('tacticalAI') ? 'tactical' : 'legacy',
     };
     if (state.world) state.world.currentSectorId = state.world.currentSectorId || HOME_SECTOR;
     if (state.player && !(state.player.credits > 0)) state.player.credits = NEW_GAME.credits;
@@ -95,7 +97,8 @@ export async function runSession(options = {}) {
       const obs = observeState(state, { tick, journeyId: journey.id, cue: journey.cue });
       const decided = playback
         ? actionFromTape(playback, tick)
-        : persona.decide(obs, { seed, tick, journeyId: journey.id, surface });
+        : persona.decide(obs, { seed, tick, journeyId: journey.id, surface,
+          recovered: milestones['player:respawn'] > 0 });
       const applied = materializeAction(decided, fault, surface);
       applied.frame.tick = tick;
       frames.push(applied.frame);
@@ -144,10 +147,13 @@ export async function runSession(options = {}) {
     const wallMs = Number(process.hrtime.bigint() - wallStart) / 1e6;
     const heapDelta = process.memoryUsage().heapUsed - heapStart;
     const confirmed = detection.confirmed;
+    const completion = assessJourney({ journeyId: journey.id, samples, commands: commandNotes, milestones });
+    const status = ordered.length ? 'fail' : completion.status === 'complete' ? 'pass' : 'incomplete';
     return {
       schema: 'spaceface.strangerRun.v1',
-      ok: ordered.length === 0,
-      status: ordered.length === 0 ? 'pass' : 'fail',
+      ok: status === 'pass',
+      status,
+      completion,
       evidenceClass: 'focused-fixture',
       host: 'node-headless',
       rendering: 'detached',
@@ -167,6 +173,7 @@ export async function runSession(options = {}) {
       failures: ordered,
       confirmed,
       closures: detection.closures,
+      unmeasured: detection.unmeasured,
       commands: commandNotes,
       final: finalSample,
       milestones,
@@ -549,6 +556,22 @@ function poseSnapshot(state) {
 
 async function prepareJourney(runtime, journey, aliasMap) {
   const state = runtime.state;
+  if (journey.id === 'combat-death-retry') {
+    state.world.currentSectorId = 'sector_ceres_belt';
+    // This is an authored combat fixture, not ambient traffic. Supply the same
+    // motive, response window and attack activity the live encounter producer owns.
+    for (const spec of journey.entities.filter((row) => row.role === 'hostile')) {
+      const enemy = state.entities.get(aliasMap[spec.alias]);
+      Object.assign(enemy.data.ai, {
+        passive: false, roe: 'weapons_free', hostileTeams: [0], huntPlayer: true,
+        motive: 'hostile_training_encounter', engagementTrigger: 'player_attack',
+        zoneId: 'stranger_combat_fixture', approachTelegraph: 'armed_wasp_approach',
+        noFireResponseWindowS: 2, combatDoctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+        activity: { kind: 'attack_run', reason: 'stranger_combat_fixture', startedTick: 0,
+          targetId: state.playerId, anchor: { ...enemy.pos }, leashRadius: 2000 },
+      });
+    }
+  }
   if (journey.setup === 'station-counter') {
     state.ui = state.ui || {};
     state.ui.docked = true;
@@ -617,18 +640,11 @@ function placeOnApproach(state, station) {
   if (!player) return;
   const manifest = resolveCollisionProxyManifest(station);
   if (!manifest) return;
-  const vel = { x: 0, z: 0 };
-  for (let dist = 40; dist <= 500; dist += 10) {
-    const pos = { x: station.pos.x, z: station.pos.z - dist };
-    const corridor = corridorStateFor(manifest, station, pos, vel);
-    if (corridor && corridor.phase && corridor.phase !== 'none') {
-      player.pos.x = pos.x;
-      player.pos.z = pos.z;
-      return;
-    }
-  }
-  player.pos.x = station.pos.x;
-  player.pos.z = station.pos.z - 180;
+  const berth = resolveBerthWorld(station, manifest);
+  const axis = resolveCorridorAxisWorld(station, manifest);
+  player.pos.x = berth.x + axis.x * 40;
+  player.pos.z = berth.z + axis.z * 40;
+  player.rot = Math.atan2(-axis.z, -axis.x);
 }
 
 function attachLines(runtime, aliasMap, attachments) {
@@ -669,6 +685,7 @@ const MILESTONE_EVENTS = new Set([
   'tether:cut',
   'mining:yield',
   'scan:completed',
+  'scan:pulse',
   'jump:arrive',
   'mission:accepted',
   'mission:failed',
@@ -677,6 +694,7 @@ const MILESTONE_EVENTS = new Set([
   'run:waveStarted',
   'projectile:hit',
   'player:death',
+  'player:respawn',
   'economy:tradeCompleted',
 ]);
 

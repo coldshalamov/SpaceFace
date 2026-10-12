@@ -14,7 +14,8 @@ import { testCandidates } from './generate.js';
 import { proveScene } from './proofs.js';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
-const OUT_DIR = join(ROOT, '../../artifacts/causal-foundry');
+const outputArg = process.argv.slice(2).find((arg) => arg.startsWith('--out='));
+const OUT_DIR = outputArg ? outputArg.slice('--out='.length) : join(ROOT, '../../artifacts/causal-foundry');
 
 const started = Date.now();
 const generated = await testCandidates();
@@ -30,6 +31,10 @@ const ranked = {
   note: 'auditOrder lists accepted rows first by how many observables fired, then by tick cost. It is not a fun score. A candidate is accepted only when every hard gate passes.',
   gates: HARD_GATES,
   simulated: generated.simulated,
+  simulatedVariants: generated.simulatedVariants,
+  templateCount: generated.templateCount,
+  templateFamilies: generated.templateFamilies,
+  generationNote: 'Numeric and seed variations are attempts, not distinct authored compositions.',
   candidateCount: generated.rows.length,
   acceptedCount: generated.rows.filter((row) => row.accepted).length,
   rejectedCount: generated.rows.filter((row) => !row.accepted).length,
@@ -58,6 +63,8 @@ const failedAccepted = proofs.filter((row) => !row.ok);
 console.log(JSON.stringify({
   schema: 'spaceface.causalFoundry.cliResult.v1',
   simulated: ranked.simulated,
+  templateCount: ranked.templateCount,
+  simulatedVariants: ranked.simulatedVariants,
   candidateCount: ranked.candidateCount,
   generatorAccepted: ranked.acceptedCount,
   generatorRejected: ranked.rejectedCount,
@@ -69,7 +76,7 @@ console.log(JSON.stringify({
   ms: Date.now() - started,
   out: OUT_DIR,
 }, null, 2));
-process.exit(failedAccepted.length === 0 && critic.ok && ranked.simulated >= 100 ? 0 : 1);
+process.exit(failedAccepted.length === 0 && critic.ok ? 0 : 1);
 
 function slimCandidate(row) {
   return {

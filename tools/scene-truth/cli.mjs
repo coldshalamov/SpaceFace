@@ -70,6 +70,7 @@ async function main() {
   const verdict = buildVerdict({
     commit,
     scenarioCount: selected.length,
+    scenarioRows,
     issues,
     reviews: inventory.reviews,
     critique,
@@ -119,7 +120,7 @@ async function main() {
     captureCostMs: Math.round(captureCostMs),
     runtimeFps: null,
   }, null, 2));
-  if (!verdict.ok) process.exitCode = 1;
+  if (!verdict.ok) process.exitCode = verdict.status === 'incomplete' ? 3 : 1;
 }
 
 main().catch((err) => {

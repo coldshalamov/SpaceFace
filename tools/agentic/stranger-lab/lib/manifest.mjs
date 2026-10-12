@@ -5,28 +5,22 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listJourneys } from './journeys.mjs';
 import { listPersonas } from './personas.mjs';
+import { DEFAULTS } from '../../../../src/systems/input.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '../../../..');
 
 export const SWEEP_SEEDS = Object.freeze([7, 11, 19, 47, 101, 202, 404, 808, 1601, 2718, 3141, 9001]);
 
-const CONTROL_NEEDLES = Object.freeze([
-  ['forward', "forward:  ['KeyW', 'ArrowUp']"],
-  ['reverse', "reverse:  ['KeyS', 'ArrowDown']"],
-  ['boost', "boost:    ['ShiftLeft', 'ShiftRight']"],
-  ['brake', "brake:    ['Digit0']"],
-  ['reelIn', "reelIn:  ['BracketLeft']"],
-  ['reelOut', "reelOut: ['BracketRight']"],
-]);
+const CONTROL_ACTIONS = Object.freeze(['forward', 'reverse', 'boost', 'brake', 'reelIn', 'reelOut']);
 
 export function buildRouteManifest() {
-  const inputSource = readFileSync(join(ROOT, 'src/systems/input.js'), 'utf8');
   const controls = {};
   const missingControls = [];
-  for (const [name, needle] of CONTROL_NEEDLES) {
-    controls[name] = needle;
-    if (!inputSource.includes(needle)) missingControls.push(name);
+  for (const name of CONTROL_ACTIONS) {
+    const bindings = DEFAULTS.BINDINGS[name];
+    controls[name] = Array.isArray(bindings) ? bindings.slice() : [];
+    if (!controls[name].length) missingControls.push(name);
   }
   const scenarioDir = join(ROOT, 'src/testing/scenarios');
   const labScenarios = readdirSync(scenarioDir)

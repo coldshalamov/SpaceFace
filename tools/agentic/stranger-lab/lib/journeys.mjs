@@ -89,7 +89,7 @@ export const JOURNEYS = Object.freeze([
     id: 'docking',
     title: 'Docking',
     cue: 'Approach the station corridor. Do not claim a berth you have not reached.',
-    ticks: 120,
+    ticks: 600,
     bundle: 'flight',
     extras: ['dockingCorridor'],
     defaultPersona: 'meticulous-cargo-handler',
@@ -133,19 +133,19 @@ export const JOURNEYS = Object.freeze([
     id: 'combat-death-retry',
     title: 'Combat, death, retry',
     cue: 'Fight the wasp. If you are wrecked, request recovery.',
-    ticks: 180,
+    ticks: 1800,
     bundle: 'flight',
     extras: ['tacticalAI', 'aiPorts', 'combat'],
     defaultPersona: 'reckless-improvisor',
     entities: [
-      PLAYER,
+      playerAt(3000, 0),
       {
         alias: 'wasp',
         profile: 'wasp_swarmer',
         role: 'hostile',
-        team: 2,
+        team: 1,
         factionId: 'faction_reach',
-        pos: { x: 0, z: 22 },
+        pos: { x: 3000, z: 160 },
         vel: { x: 0, z: 0 },
         heading: -Math.PI / 2,
         persistent: true,
@@ -154,9 +154,9 @@ export const JOURNEYS = Object.freeze([
         alias: 'wasp-b',
         profile: 'wasp_swarmer',
         role: 'hostile',
-        team: 2,
+        team: 1,
         factionId: 'faction_reach',
-        pos: { x: 14, z: 16 },
+        pos: { x: 3080, z: 160 },
         vel: { x: 0, z: 0 },
         heading: Math.PI,
         persistent: true,
@@ -165,9 +165,9 @@ export const JOURNEYS = Object.freeze([
         alias: 'wasp-c',
         profile: 'wasp_swarmer',
         role: 'hostile',
-        team: 2,
+        team: 1,
         factionId: 'faction_reach',
-        pos: { x: -12, z: 18 },
+        pos: { x: 2920, z: 160 },
         vel: { x: 0, z: 0 },
         heading: 0,
         persistent: true,
@@ -217,4 +217,55 @@ export function listJourneys() {
     defaultPersona: journey.defaultPersona,
     cue: journey.cue,
   }));
+}
+
+// Completing a route is separate from finding no defect during its prefix.
+export function assessJourney({ journeyId, samples = [], commands = [], milestones = {} }) {
+  const first = samples[0];
+  const last = samples.at(-1);
+  const checks = [];
+  const need = (label, measured) => checks.push({ label, measured: !!measured });
+  const command = (type) => commands.some((row) => row.type === type && row.ok === true && !row.skipped);
+  const event = (name) => milestones[name] > 0;
+  const flying = samples.some((sample) => sample.mode === 'flight' && sample.alive);
+  switch (journeyId) {
+    case 'launch':
+    case 'flight':
+      need('controlled flight motion', flying && first && last && Math.hypot(last.x - first.x, last.z - first.z) > 1);
+      break;
+    case 'tether-attach-cut':
+      need('massline attachment', event('tether:attached') || samples.some((sample) => sample.tetherActive));
+      need('massline cut', event('tether:cut'));
+      break;
+    case 'heavy-object':
+      need('loaded massline response', samples.some((sample) => sample.tetherActive && sample.tetherStrain > 0));
+      break;
+    case 'mining': need('mining yield', event('mining:yield')); break;
+    case 'docking': need('berth arrival', samples.some((sample) => sample.berthed || (sample.docked && !first?.docked))); break;
+    case 'buy-refit':
+      need('purchase settlement', command('buy'));
+      need('module refit', command('refit'));
+      break;
+    case 'scan': need('scanner pulse', event('scan:pulse') || event('scan:completed')); break;
+    case 'mission':
+      need('mission acceptance', command('accept-mission'));
+      need('mission completion or abandonment', event('mission:completed') || command('abandon-mission'));
+      break;
+    case 'combat-death-retry': {
+      const death = samples.find((sample) => sample.alive === false);
+      need('player death', death || event('player:death'));
+      need('recovery and living control', death && commands.some((row) => row.type === 'recover' && row.ok
+        && row.tick > death.tick && samples.some((sample) => sample.tick >= row.tick && sample.alive)));
+      break;
+    }
+    case 'crucible-wave': need('live survival wave', samples.some((sample) => sample.runPhase === 'wave' || sample.runPhase === 'combat') || event('run:waveStarted')); break;
+    case 'save-continue':
+      need('sector transition', first && samples.some((sample) => sample.sectorId && sample.sectorId !== first.sectorId));
+      need('save', command('save'));
+      need('Continue', command('continue'));
+      break;
+    default: need('known route completion', false);
+  }
+  const missing = checks.filter((check) => !check.measured).map((check) => check.label);
+  return { status: missing.length ? 'incomplete' : 'complete', layer: 'headless-sim', checks, missing };
 }

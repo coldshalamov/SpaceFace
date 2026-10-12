@@ -315,7 +315,12 @@ export async function testCandidates() {
       error: run.labOk ? null : run.error,
     });
   }
-  return { simulated, rows: rankCandidates(rows) };
+  const templateFamilies = [...new Set(buildCandidates().map((candidate) => candidate.family))];
+  return {
+    simulated, simulatedVariants: simulated,
+    templateCount: templateFamilies.length, templateFamilies,
+    rows: rankCandidates(rows),
+  };
 }
 
 function anchor(x, z, mass, dynamic) {

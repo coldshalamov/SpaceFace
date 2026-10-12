@@ -21,7 +21,17 @@ export function dedupeIssues(issues) {
 }
 
 export function analyzePack(pack) {
-  if (!pack || pack.ok !== true) {
+  if (pack && pack.lab && pack.lab.status === 'incomplete') {
+    return [{
+      schema: 'spaceface.sceneTruthIssue.v1', kind: 'lab-incomplete',
+      confidence: 'incomplete', failBuild: false, scenarioId: pack.id,
+      objectIds: [], expected: 'completed lab assertions and equivalence',
+      observed: pack.lab.error || 'lab returned an incomplete arm',
+      summary: `${pack.id} has diagnostic poses but its declared measurements are incomplete.`,
+      command: `node tools/scene-truth/cli.mjs --only=${pack.id}`,
+    }];
+  }
+  if (!pack || pack.ok !== true || (pack.lab && pack.lab.ok !== true)) {
     return [{
       schema: 'spaceface.sceneTruthIssue.v1',
       kind: 'lab-infra',

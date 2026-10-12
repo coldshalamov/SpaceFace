@@ -20,6 +20,11 @@ The atlas is `index.html`, `report.md`, `issues.csv`, `report.json`, and
 `verdict.json` under the output directory. Default output is
 `artifacts/scene-truth/`.
 
+A completed atlas reports `semantic-pass`, never live-render acceptance. Lab arms
+with deferred measurements and skipped selected scenarios produce `incomplete`
+(exit 3), list the missing scenarios, and retain any poses only as diagnostics.
+Live rendering stays `unmeasured` until a renderer witness provides it.
+
 ## What a capture is
 
 Each scenario is a `spaceface.simScenario.v1` document. Authored scenes use

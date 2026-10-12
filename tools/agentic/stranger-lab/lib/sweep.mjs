@@ -46,6 +46,7 @@ export async function runSweep(options = {}) {
     runCount: runs.length,
     passCount: runs.filter((run) => run.status === 'pass').length,
     failCount: runs.filter((run) => run.status === 'fail').length,
+    incompleteCount: runs.filter((run) => run.status === 'incomplete').length,
     infraCount: runs.filter((run) => run.status === 'infra').length,
     confirmed,
     headedBrowser: {
@@ -69,6 +70,8 @@ function compact(result) {
     seed: result.seed,
     surface: result.surface,
     status: result.status,
+    completion: result.completion || null,
+    unmeasured: result.unmeasured || [],
     ok: result.ok,
     digest: result.digest,
     tapeHash: result.tapeHash,

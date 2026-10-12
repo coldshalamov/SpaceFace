@@ -24,17 +24,13 @@ export function deriveHappened(summary, tape) {
   if (input.tap != null && s.cut === true) happened.push('massline.cut');
   if (s.maxTension >= 40 && s.attStart === true && (loaded || holding)) happened.push('massline.tension');
   if (s.maxAngular >= 0.25 && (s.attStart === true || s.cut === true)) happened.push('massline.orbit');
-  if ((s.others || []).some((body) => rammed(body))) happened.push('physics.collision');
+  if ((s.contacts || []).some((contact) => contact.playerInvolved === true
+    && contact.impulse > 0 && (contact.aAlias === 'player' || contact.bAlias === 'player'))) {
+    happened.push('physics.collision');
+  }
   if (input.fire && (s.others || []).some((body) => body.hullDrop >= 8)) happened.push('weapons.fire');
   if (s.savePerformed === true) happened.push('save.restore');
   return happened;
-}
-
-function rammed(body) {
-  if (!body) return false;
-  if (body.hullDrop >= 5) return false;
-  if (body.disp < 3) return false;
-  return Math.abs(body.speed - body.launchSpeed) >= 8;
 }
 
 export function deriveFired(summary, tape, mechanics) {

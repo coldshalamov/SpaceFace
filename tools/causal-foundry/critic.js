@@ -106,9 +106,8 @@ export async function executeCritic({ catalog, rows }) {
       if (decay < 8 && releasedDecay < 8) problems.push(`${scene.id} coast without decay`);
     }
     if ((proof.report.happened || []).includes('physics.collision')) {
-      const shot = (proof.primary.summary.others || []).some((body) => body.hullDrop >= 5 && Math.abs(body.speed - body.launchSpeed) >= 8);
-      const ram = (proof.primary.summary.others || []).some((body) => body.hullDrop < 5 && Math.abs(body.speed - body.launchSpeed) >= 8);
-      if (shot && !ram) problems.push(`${scene.id} collision is only gun drift`);
+      const ram = (proof.primary.summary.contacts || []).some((contact) => contact.playerInvolved && contact.impulse > 0);
+      if (!ram) problems.push(`${scene.id} collision has no physics-owner contact receipt`);
     }
     if ((proof.report.happened || []).length < 2) problems.push(`${scene.id} fewer than two player-caused atoms`);
   }

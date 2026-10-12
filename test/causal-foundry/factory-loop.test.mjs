@@ -1,11 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { testCandidates } from '../../tools/causal-foundry/generate.js';
+import { buildCandidates, testCandidates } from '../../tools/causal-foundry/generate.js';
 
-test('factory simulates at least 100 candidates and rejects fakes', { timeout: 180000 }, async () => {
-  const { simulated, rows } = await testCandidates();
-  assert.ok(simulated >= 100, `simulated ${simulated}`);
+test('factory reports templates separately from attempted variants and rejects fakes', { timeout: 180000 }, async () => {
+  const { simulated, simulatedVariants, templateCount, templateFamilies, rows } = await testCandidates();
+  assert.equal(simulated, buildCandidates().length);
+  assert.equal(simulatedVariants, simulated);
+  assert.equal(templateCount, templateFamilies.length);
+  assert.ok(templateCount < simulatedVariants, 'seed/numeric variants must not count as new templates');
   assert.equal(rows.length, simulated + 1);
   const accepted = rows.filter((row) => row.accepted);
   const rejected = rows.filter((row) => !row.accepted);
@@ -26,7 +29,9 @@ test('factory simulates at least 100 candidates and rejects fakes', { timeout: 1
   assert.equal(new Set(accepted.map((row) => row.signature)).size, accepted.length);
   const pinFamilies = ['gen-reel', 'gen-static', 'gen-diagonal'];
   const pinAccepted = accepted.filter((row) => pinFamilies.includes(row.family));
-  assert.ok(pinAccepted.length <= 1, pinAccepted.map((row) => `${row.id}:${row.signature}`).join(','));
+  // A reel that actually hits a hull is a different coupling from tension alone.
+  // A fixed pin is physically different from one that can be dragged.
+  assert.equal(new Set(pinAccepted.map((row) => row.signature)).size, pinAccepted.length);
   const hashes = new Map();
   for (const row of rows) {
     if (!row.traceHash) continue;

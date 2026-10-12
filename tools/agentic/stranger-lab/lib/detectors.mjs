@@ -62,12 +62,12 @@ export function detectFailures(input) {
     'Sustained turn did not yaw the opposite way, or no sustained turn was applied.',
   ));
 
-  if (!input.asset || input.asset.essentialModelCheck !== 'failed') {
+  if (input.asset && input.asset.essentialModelCheck === 'passed') {
     closures.push(closure(
       'missing-essential-model',
-      'Headless stranger runs do not load renderer models. Absence of a GPU asset pass is not a missing-model defect.',
+      'The essential model check was measured and passed.',
     ));
-  } else {
+  } else if (input.asset && input.asset.essentialModelCheck === 'failed') {
     failures.push(tag({
       id: 'missing-essential-model',
       tick: 0,
@@ -79,9 +79,27 @@ export function detectFailures(input) {
   if (save.failure) failures.push(tag(save.failure, fault));
   if (save.closure) closures.push(save.closure);
 
+  const exposed = new Set();
+  if (frames.filter((frame) => frame.moveZ > 0.5 && !frame.brake).length >= UNRESPONSIVE_WINDOW) exposed.add('unresponsive-commands');
+  if (frames.filter((frame) => Math.abs(frame.turnIntent) > 0.5).length >= TURN_WINDOW) exposed.add('wrong-ship-controls');
+  if (samples.some((sample) => sample.mode === 'flight')) exposed.add('unexpected-menu-fallback');
+  if (samples.filter((sample) => sample.mode === 'flight' && sample.alive).length > 10) exposed.add('stalled-loading');
+  if (samples.some((sample, i) => i && sample.docked && !samples[i - 1].docked)) exposed.add('impossible-docking');
+  if (commands.some((row) => row.type === 'buy' || row.type === 'refit')) exposed.add('false-success');
+  if (commands.some((row) => row.duplicate)) exposed.add('double-payment');
+  if (commands.some((row) => row.type === 'accept-mission' || row.type === 'abandon-mission')) exposed.add('stuck-missions');
+  if (save.closure) exposed.add('save-discontinuity');
+  if (input.asset?.essentialModelCheck === 'passed') exposed.add('missing-essential-model');
+  const unmeasured = closures.filter((row) => !exposed.has(row.id)).map((row) => ({
+    id: row.id, status: 'unmeasured', detail: 'The relevant action or transition was not exercised.',
+  }));
+  if (input.asset?.essentialModelCheck !== 'passed' && input.asset?.essentialModelCheck !== 'failed') unmeasured.push({
+    id: 'missing-essential-model', status: 'unmeasured', detail: 'Detached headless runs do not load renderer models.',
+  });
   return {
     failures,
-    closures,
+    closures: closures.filter((row) => exposed.has(row.id)),
+    unmeasured,
     confirmed: failures.filter((row) => row.origin === 'product'),
   };
 }

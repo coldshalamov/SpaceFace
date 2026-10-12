@@ -192,3 +192,17 @@ function writePack(root, exported) {
     fs.writeFileSync(file, text);
   }
 }
+
+test('an exported user encounter can reference shipped bark lines without aborting the loader', async () => {
+  const exported = await exportProject(getComposition('dock.intercept-cargo'));
+  assert.equal(exported.ok, true, exported.issues.join('\n'));
+  const files = packFileText(exported.pack.files);
+  const encounterPath = Object.keys(files).find((name) => name.startsWith('encounters/'));
+  assert.ok(encounterPath);
+  const encounter = JSON.parse(files[encounterPath]);
+  encounter.bark = 'toll_demand';
+  files[encounterPath] = stableStringify(encounter);
+  const probe = await probePackFiles(exported.pack.modId, files);
+  assert.equal(probe.ok, true, JSON.stringify(probe.result || probe.stderr));
+  assert.ok(probe.result.accepted.encounters.includes(encounter.id));
+});

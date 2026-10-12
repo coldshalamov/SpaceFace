@@ -46,6 +46,20 @@ export function startServer(port = 8765) {
 }
 
 async function handle(req, res) {
+  const localPort = req.socket.localPort;
+  const allowedHosts = new Set([`127.0.0.1:${localPort}`, `localhost:${localPort}`]);
+  if (!allowedHosts.has(req.headers.host)) {
+    send(res, 403, { ok: false, issues: ['Host must name this local workstation'] });
+    return;
+  }
+  if (req.headers.origin && req.headers.origin !== `http://${req.headers.host}`) {
+    send(res, 403, { ok: false, issues: ['Origin must match this local workstation'] });
+    return;
+  }
+  if (req.headers['sec-fetch-site'] === 'cross-site') {
+    send(res, 403, { ok: false, issues: ['Cross-site requests are refused'] });
+    return;
+  }
   const url = new URL(req.url || '/', 'http://127.0.0.1');
   if (url.pathname.includes('..')) {
     send(res, 400, { ok: false, issues: ['path traversal'] });
@@ -105,9 +119,17 @@ async function handle(req, res) {
     return;
   }
   if (req.method === 'POST') {
+    if (String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase() !== 'application/json') {
+      send(res, 415, { ok: false, issues: ['POST requires application/json'] });
+      return;
+    }
     const body = await readBody(req);
     if (!body.ok) {
       send(res, 400, { ok: false, issues: body.issues });
+      return;
+    }
+    if (!body.value || typeof body.value !== 'object' || Array.isArray(body.value)) {
+      send(res, 400, { ok: false, issues: ['Request must be a JSON object'] });
       return;
     }
     if (url.pathname === '/api/validate') {
@@ -144,6 +166,11 @@ async function handle(req, res) {
     }
     if (url.pathname === '/api/save') {
       const project = body.value.project;
+      const validated = await validateProject(project);
+      if (!validated.ok) {
+        send(res, 400, { ok: false, issues: validated.issues });
+        return;
+      }
       const file = projectFile(project && project.id);
       if (!file) {
         send(res, 400, { ok: false, issues: ['project id cannot be saved'] });

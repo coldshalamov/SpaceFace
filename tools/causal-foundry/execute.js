@@ -4,13 +4,52 @@
 
 import { ENEMY_TYPES } from '../../src/data/enemies.js';
 import { runLabScenarioInternal } from '../../src/testing/lab/runScenario.js';
+import { resolveSystemsForScenario } from '../../src/testing/lab/systemBundles.js';
 
 const ENEMY_HULL = new Map(ENEMY_TYPES.map((row) => [row.id, row.hull]));
 
 export async function executeScenario(doc) {
   let result;
+  const contacts = [];
+  const contactWitness = {
+    name: 'foundryContactWitness',
+    init(ctx) {
+      this.ctx = ctx;
+      this.off = ctx.bus.on('physics:impact', (impact) => {
+        const a = ctx.state.entities.get(impact.aId);
+        const b = ctx.state.entities.get(impact.bId);
+        const aAlias = a?.data?.scenarioAlias;
+        const bAlias = b?.data?.scenarioAlias;
+        if (!aAlias || !bAlias || a.type === 'projectile' || b.type === 'projectile') return;
+        if (!(impact.impulse > 0)) return;
+        contacts.push({
+          tick: impact.tick, aAlias, bAlias, impulse: impact.impulse,
+          playerInvolved: impact.playerInvolved === true,
+          closingSpeed: impact.preSolveClosingSpeed ?? null,
+        });
+      });
+    },
+    update() {
+      const { state, helpers } = this.ctx;
+      const player = state.entities.get(state.playerId);
+      const port = helpers.combatPhysics;
+      if (!player || typeof port?.sampleSolidContacts !== 'function') return;
+      for (const contact of port.sampleSolidContacts(player.id)) {
+        const target = state.entities.get(contact.targetId);
+        const bAlias = target?.data?.scenarioAlias;
+        if (!bAlias || target.type === 'projectile' || !(contact.normalImpulse > 0)) continue;
+        contacts.push({
+          tick: state.tick, aAlias: 'player', bAlias,
+          impulse: contact.normalImpulse, playerInvolved: true,
+          source: contact.source,
+        });
+      }
+    },
+    destroy() { if (typeof this.off === 'function') this.off(); },
+  };
   try {
     result = await runLabScenarioInternal(doc, {
+      systems: [...resolveSystemsForScenario(doc), contactWitness],
       retainOracleTrace: true,
       retainCheckpointSurfaces: true,
       verbosity: 3,
@@ -28,6 +67,8 @@ export async function executeScenario(doc) {
   const trace = Array.isArray(result.oracleTrace) ? result.oracleTrace : [];
   const entities = checkpointEntities(result);
   const summary = summarize(trace, entities, doc, result);
+  summary.contacts = contacts;
+  summary.contactEvidence = 'physics-owner-contact-observations';
   summary.labOk = result.ok === true && result.status !== 'infra';
   summary.status = result.status || null;
   summary.error = result.error
@@ -176,6 +217,7 @@ function emptySummary() {
     finite: false,
     savePerformed: false,
     others: [],
+    contacts: [],
     labOk: false,
   };
 }
