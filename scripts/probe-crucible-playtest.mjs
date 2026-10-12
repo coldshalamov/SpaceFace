@@ -50,7 +50,7 @@ const server = spawn(process.execPath, ['server.js', String(port)], {
   cwd: ROOT, stdio: ['ignore', 'ignore', 'ignore'], windowsHide: true,
 });
 for (let i = 0; i < 120; i++) {
-  try { if ((await fetch(url)).ok) break; } catch (_) {}
+  try { if ((await fetch(url)).ok) break; } catch { /* server not up yet */ }
   await new Promise((r) => setTimeout(r, 250));
 }
 const browser = await chromium.launch({

@@ -33,16 +33,10 @@ import {
   survivalRun,
 } from '../src/systems/survivalRun.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
-import { OPENING_LESSON_HOLD_TICKS } from '../src/systems/survivalWavePlanner.js';
 import { swarmArena } from '../src/systems/swarmArena.js';
 import { survivalArena } from '../src/systems/survivalArena.js';
-import { isAttachable } from '../src/systems/tetherGameplay.js';
-import { SURVIVAL_COHORT_TAG } from '../src/systems/waveMaterialization.js';
-import { SWARM_RULESET, SWARM_SPAWN_DISTANCE, swarmConcurrent } from '../src/data/swarmMode.js';
 import {
-  emptyCrucibleProfile,
   resetCrucibleMetaForTests,
-  saveCrucibleMeta,
   useCrucibleMetaStorage,
 } from '../src/systems/survivalRecords.js';
 import { crucibleSetupFor, requestCrucibleRun } from '../src/ui/crucibleLaunch.js';
@@ -50,11 +44,6 @@ import { installSandboxGameStartedHook } from '../src/ui/sandbox/sandboxSetup.js
 
 const DT = 1 / 60;
 const SEED = 4242;
-// Teaching reach sits strictly INSIDE the wave's authored gate ring (SWARM_SPAWN_DISTANCE,
-// 165 wu, minus its 18% radius jitter -> >= ~135): the lesson bodies land at handshake
-// distance while every ordinary arrival holds the ring.
-const TEACHING_REACH = 120;
-const GATE_RING_FLOOR = SWARM_SPAWN_DISTANCE * 0.82 - 1;
 const LESSON_WELL_ID = 'swarm-opening-lesson-well';
 
 function boot() {
@@ -118,23 +107,8 @@ function tick(h, n = 1) {
   }
 }
 
-/** Hostiles = the run cohort mark, not "everything that is not the player". */
-function liveHostiles(h) {
-  const out = [];
-  for (const entity of h.state.entities.values()) {
-    if (entity.id === h.player.id || entity.alive === false) continue;
-    if (!(entity.data && entity.data.runCohort === SURVIVAL_COHORT_TAG)) continue;
-    out.push(entity);
-  }
-  return out;
-}
-
 function named(emitted, event) {
   return emitted.filter((entry) => entry.event === event);
-}
-
-function distanceFromPlayer(h, pos) {
-  return Math.hypot(pos.x - h.player.pos.x, pos.z - h.player.pos.z);
 }
 
 // The sandbox game:started hook is a module singleton: the first bus it binds to keeps the
