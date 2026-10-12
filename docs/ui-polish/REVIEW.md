@@ -1,6 +1,7 @@
 # UI polish review — living doc for the `ui-polish` PR
 
-Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-3` (PR #320) · stacked on `master`.
+Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-5` (PR #325) · stacked on `master` (includes merged #322).
+
 
 This file tracks the stacked visual polish of every shootable 2D screen (`node scripts/ui-bench.mjs --list`). Seeded from `design/frontend/UNIFICATION_LEDGER.md` where useful; **this REVIEW is the authority for this PR**, not the ledger.
 
@@ -30,9 +31,9 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 | Screen (bench id) | Status | Notes / prioritized issues |
 |---|---|---|
-| `title` / `mainMenu` | SURVEYED | Ledger DONE earlier; re-judge later if polish stack returns |
+| **`title`** / **`mainMenu`** | **DONE** | Tab order + logo clear of the orrery rings on ui-polish-5 (§ Main menu below) |
 | `motionAsk` | SURVEYED | Inherits title |
-| **`new-game`** / `newGame` | **DONE** | See § New Game below — this session |
+| **`new-game`** / `newGame` | **DONE** | See § New Game below; yard/loadout fixes on ui-polish-5 (§ New Game yard fixes) |
 | `pause` | SURVEYED | Ledger DONE; keep selectors stable for player-truth |
 | **`settings`** | **DONE** | See § Settings below — this session |
 | **`save-load`** / `saveLoad` / `save-load-empty` / `save-load-live` | **DONE** | See § Save/Load below — this session |
@@ -47,6 +48,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `flight` / `power-rail` | SURVEYED | Off-limits for threat markers (PR #300); polish chrome only later |
 | `mobile-flight` / `mobile-stick` / `mobile-boost` / `mobile-brake` / `mobile-wheel` / `mobile-wheel-pinned` | SURVEYED | |
 | `crucibleHud` | SURVEYED | |
+| **`crucible-results`** | **DONE** (ui-polish-5) | See § Crucible results below |
 | `orrery-flight` | SURVEYED | |
 | `comms-radial` | SURVEYED | |
 | `wingman-radial` | SURVEYED | |
@@ -55,7 +57,11 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `range` | SURVEYED | Owns CSS holdout |
 | `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
 | `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | SURVEYED | Ledger DONE; re-judge when stack reaches station |
-| **`crucible` / `crucible-door`** (+ draft/rearm/refit/results still open) | **DONE** (Encounter / door) | See § Crucible door below — this session |
+| **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
+| **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
+| **`crucible-rearm`** | **DONE** | Alias of armory / `crucible-draft` — no separate polish |
+| **`crucible-refit`** | **DONE** | See § Crucible Refit below |
+| `crucible-results` | OPEN | Follow-up PR (not #322) |
 | `demoEnd` | SURVEYED | |
 | `asteroid-works` / `drill` / `drill-claimed` / `drill-build` | SURVEYED | Own design law |
 | `base` / `base-claimed` | SURVEYED | |
@@ -80,14 +86,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Walk:** `node scripts/ui-bench.mjs --shot=settings --walk` — exit 0; all 19 controls exercised; no tangled/buried/cut-off/offscreen; selectors/IDs unchanged.
 
-**Artifacts**
-
-| | Path |
-|---|---|
-| Before (Audio) | `docs/ui-polish/settings-before.png` |
-| Before tabs | `docs/ui-polish/settings-before-{video,gameplay,access,controls}.png` |
-| After (Audio) | `docs/ui-polish/settings-after.png` |
-| After tabs | `docs/ui-polish/settings-after-{video,gameplay,access,controls}.png` |
+**Artifacts:** screenshots are attached to PR #322 rather than committed (kept out of the repo per review).
 
 **Code touched:** `src/ui/orrery/settingsLayouts.js`, `src/ui/orrery/settingsPreview.js` only. No loadout data, audio systems, flight HUD threat markers, or engine/render changes.
 
@@ -106,15 +105,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=save-load-empty --walk` — exit 0; 5 controls exercised; no tangled/buried/cut-off/offscreen. Also `--shot=save-load` and `--shot=save-load-live` measured clean. Selectors/IDs unchanged. Game-over block untouched.
 
-**Artifacts**
-
-| | Path |
-|---|---|
-| Before (Load empty @720) | `docs/ui-polish/save-load-before.png` (+ `before/03-load-1280x720.jpg`) |
-| Before (Load empty @1080) | `docs/ui-polish/save-load-before-1080.png` |
-| After (bench empty @720) | `docs/ui-polish/save-load-after.png` |
-| After (bench empty @1080) | `docs/ui-polish/save-load-after-1080.png` |
-| After (filed + live) | `docs/ui-polish/save-load-filed-after.png`, `save-load-live-after.png` |
+**Artifacts:** screenshots are attached to PR #322 rather than committed (kept out of the repo per review).
 
 **Code touched:** `src/ui/orrery/saveLayouts.js` only. No loadout data, audio, flight HUD threat markers, engine/render, or game-over style changes.
 
@@ -134,15 +125,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=help --walk` — exit 0; measured clean at default 1920×1080; 26 controls exercised; selectors/IDs unchanged. `--viewport=1280x720` still reports a pre-existing EVERY KEY / rebound-footnote bounding-box tangle (present on master before this pass).
 
-**Artifacts**
-
-| | Path |
-|---|---|
-| Before (Controls @1080) | `docs/ui-polish/help-before.png` |
-| Before tabs | `docs/ui-polish/help-before-{loops,ships,commodities,ores,factions}.png` |
-| After (Controls @1080) | `docs/ui-polish/help-after.png` |
-| After tabs | `docs/ui-polish/help-after-{loops,ships,commodities,ores,factions}.png` |
-| After @720 | `docs/ui-polish/help-after-720.png` |
+**Artifacts:** screenshots are attached to PR #322 rather than committed (kept out of the repo per review).
 
 **Code touched:** `src/ui/orrery/helpLayouts.js` only. No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
@@ -162,15 +145,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=credits --walk` — exit 0; measured clean at 1920×1080 and 1280×720; 14 controls exercised; selectors/IDs unchanged.
 
-**Artifacts**
-
-| | Path |
-|---|---|
-| Before (Made by @1080) | `docs/ui-polish/credits-before.png` |
-| Before (@720) | `docs/ui-polish/credits-before-720.png` |
-| After (Made by @1080) | `docs/ui-polish/credits-after.png` |
-| After (@720) | `docs/ui-polish/credits-after-720.png` |
-| After (Libraries / Fonts) | `docs/ui-polish/credits-after-libraries.png`, `credits-after-fonts.png` |
+**Artifacts:** screenshots are attached to PR #322 rather than committed (kept out of the repo per review).
 
 **Code touched:** `src/ui/orrery/settingsLayouts.js` (CREDITS_CSS + `createReelProgress` label only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
@@ -189,16 +164,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Walk:** `node scripts/ui-bench.mjs --shot=codex --walk` — exit 0; measured clean at 1920×1080 and 1280×720; 13 controls exercised (tabs, next, close); selectors/IDs unchanged. `codex-record` re-shot after the same CSS.
 
-**Artifacts**
-
-| | Path |
-|---|---|
-| Before (Story / B0 @1080) | `docs/ui-polish/codex-before.png` |
-| Before (@720) | `docs/ui-polish/codex-before-720.png` |
-| After (Story / B0 @1080) | `docs/ui-polish/codex-after.png` |
-| After (@720) | `docs/ui-polish/codex-after-720.png` |
-| Before (Figures / The Record) | `docs/ui-polish/codex-record-before.png` |
-| After (Figures / The Record) | `docs/ui-polish/codex-record-after.png` |
+**Artifacts:** screenshots are attached to PR #322 rather than committed (kept out of the repo per review).
 
 **Code touched:** `src/ui/orrery/archiveLayouts.js` (CODEX_CSS only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes. Mission-log CSS in the same file left alone this session.
 
@@ -218,14 +184,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=mission-log --walk` — exit 0; measured clean at 1920×1080 and 1280×720; 6 controls exercised (SHOW×2, track, local map, abandon, close); selectors/IDs unchanged.
 
-**Artifacts**
-
-| | Path |
-|---|---|
-| Before (@1080) | `docs/ui-polish/mission-log-before.png` |
-| Before (@720) | `docs/ui-polish/mission-log-before-720.png` |
-| After (@1080) | `docs/ui-polish/mission-log-after.png` |
-| After (@720) | `docs/ui-polish/mission-log-after-720.png` |
+**Artifacts:** screenshots are attached to PR #322 rather than committed (kept out of the repo per review).
 
 **Code touched:** `src/ui/orrery/archiveLayouts.js` (MLOG_CSS only). Codex CSS in the same file left alone this session. No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
@@ -244,14 +203,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=achievements --walk` — exit 0; measured clean at 1920×1080 and 1280×720; 28 controls (24 exercised: medals, Back, ALL); selectors/IDs unchanged.
 
-**Artifacts**
-
-| | Path |
-|---|---|
-| Before (@1080) | `docs/ui-polish/achievements-before.png` |
-| Before (@720) | `docs/ui-polish/achievements-before-720.png` |
-| After (@1080) | `docs/ui-polish/achievements-after.png` |
-| After (@720) | `docs/ui-polish/achievements-after-720.png` |
+**Artifacts:** screenshots are attached to PR #322 rather than committed (kept out of the repo per review).
 
 **Code touched:** `src/ui/orrery/constellationLayouts.js` (ACHIEVEMENTS only). RESEARCH CSS in the same file left alone this session. No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
@@ -270,14 +222,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=statistics --walk` — exit 0; measured clean at 1920×1080 and 1280×720; 1 control (Back); selectors/IDs unchanged.
 
-**Artifacts**
-
-| | Path |
-|---|---|
-| Before (@1080) | `docs/ui-polish/statistics-before.png` |
-| Before (@720) | `docs/ui-polish/statistics-before-720.png` |
-| After (@1080) | `docs/ui-polish/statistics-after.png` |
-| After (@720) | `docs/ui-polish/statistics-after-720.png` |
+**Artifacts:** screenshots are attached to PR #322 rather than committed (kept out of the repo per review).
 
 **Code touched:** `src/ui/orrery/statisticsLayouts.js` (new), `src/ui/screens/statistics.js` (inject + `orr-statistics` + `sf-back` on Back only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
@@ -296,14 +241,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Walk:** `SF_CHROMIUM=… node scripts/ui-bench.mjs --shot=new-game --walk` — exit 0; measured clean at 1920×1080 and 1280×720; 12 controls exercised; selectors/IDs unchanged. Loadout item DATA untouched.
 
-**Artifacts**
-
-| | Path |
-|---|---|
-| Before (@1080) | `docs/ui-polish/new-game-before.png` |
-| Before (@720) | `docs/ui-polish/new-game-before-720.png` |
-| After (@1080) | `docs/ui-polish/new-game-after.png` |
-| After (@720) | `docs/ui-polish/new-game-after-720.png` |
+**Artifacts:** screenshots are attached to PR #322 rather than committed (kept out of the repo per review).
 
 **Code touched:** `src/ui/orrery/newGameLayouts.js` (new), `src/ui/screens/newGame.js` (inject only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
@@ -324,14 +262,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Walk:** `node scripts/ui-bench.mjs --shot=game-over --walk` — exit 0; measured clean; 4 controls exercised (Load save → saveLoad, Load latest disabled, New Game asks, Main menu → mainMenu). Related tests (black-box names, death recovery, load-latest verb, interrupted recovery, death name, gamepad screens) 53/53 pass. Selectors/IDs unchanged.
 
-**Artifacts**
-
-| | Path |
-|---|---|
-| Before (career @1080) | `docs/ui-polish/game-over-before.png` |
-| Before (no record @720) | `docs/ui-polish/game-over-before-720.png` |
-| After (career @1080) | `docs/ui-polish/game-over-after.png` |
-| After (no record @720) | `docs/ui-polish/game-over-after-720.png` |
+**Artifacts:** screenshots are attached to PR #322 rather than committed (kept out of the repo per review).
 
 **Code touched:** `src/ui/orrery/gameOverLayouts.js` (new), `src/ui/screens/gameOver.js` (inject only). `saveLayouts.js` GAME_OVER block untouched. No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
@@ -352,22 +283,10 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Walk:** `node scripts/ui-bench.mjs --shot=tech-tree,tech-tree-progress --walk` — exit 0; measured clean; selectors/IDs unchanged. ACHIEVEMENTS block untouched.
 
-**Artifacts**
-
-| | Path |
-|---|---|
-| Before (empty @1080) | `docs/ui-polish/tech-tree-before.png` |
-| Before (empty @720) | `docs/ui-polish/tech-tree-before-720.png` |
-| Before (progress @1080) | `docs/ui-polish/tech-tree-progress-before.png` |
-| Before (progress @720) | `docs/ui-polish/tech-tree-progress-before-720.png` |
-| After (empty @1080) | `docs/ui-polish/tech-tree-after.png` |
-| After (empty @720) | `docs/ui-polish/tech-tree-after-720.png` |
-| After (progress @1080) | `docs/ui-polish/tech-tree-progress-after.png` |
-| After (progress @720) | `docs/ui-polish/tech-tree-progress-after-720.png` |
+**Artifacts:** screenshots are attached to PR #322 rather than committed (kept out of the repo per review).
 
 **Code touched:** `src/ui/orrery/constellationLayouts.js` (RESEARCH block), `src/ui/screens/techTree.js` (curve clip + title= only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
-**Next:** `crucible` / `crucible-door` — now DONE for Encounter (see below); remaining draft/armory steps next.
 
 ---
 
@@ -385,19 +304,56 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Walk:** `node scripts/ui-bench.mjs --shot=crucible-door --viewport=1920x1080` and `--viewport=1280x720` — exit 0; measured clean. Selectors/IDs (`sf-prep-tab-*`, classes) unchanged.
 
-**Artifacts**
-
-| | Path |
-|---|---|
-| Before (@1080) | `docs/ui-polish/crucible-before.png` |
-| Before (@720) | `docs/ui-polish/crucible-before-720.png` |
-| After (@1080) | `docs/ui-polish/crucible-after.png` |
-| After (@720) | `docs/ui-polish/crucible-after-720.png` |
-| Live-boot baseline | `docs/ui-polish/before/04-crucible-*.jpg` (kept) |
+**Artifacts:** screenshots are attached to PR #322 rather than committed (kept out of the repo per review).
 
 **Code touched:** `src/ui/orrery/cruciblePreparationLayouts.js`, `src/ui/orrery/cruciblePreparation.js` (nextStep textContent casing/format only). No loadout data, audio, flight HUD threat markers, engine/render, or selector/ID changes.
 
-**Next:** `crucible-draft` / armory (and remaining crucible family steps), then the next unfinished screen in the ledger.
+**Next:** `crucible-results` (follow-up PR; #322 is frozen at Armory + Refit).
+
+---
+
+## Crucible Armory (`crucible-draft`) — session notes (2026-10-12)
+
+**Before:** Armory foot was a thin top border only (no void backing/shadow); ESC / 1–3 / Tab rode as bare hint glyphs without stack keycaps; secondary copy (`.sf-cru-sub`, wallet span, filter rest, card verb/price, search placeholder, crew/object labels, reading verb/act, build summary) leaned on washed `--dp-ink-dim`; selected filter Hand underline was 1px; search bottom rule faint; selected catalog card Hand wash/edge soft at 1080.
+
+**After (CSS-only in `cruciblePreparationLayouts.js` under `${A}` — door `${D}` untouched):**
+
+1. **Foot rail** — solid `rgb(5 7 10)` void + short upward fade (`0 -10px 14px`, see HOLD fixes) + stronger top rule (`bone / .16`); Launch stays a bone/hot **word** (not a Hand fill slab); Rearrange / secondary words dimmer hierarchy; `.sf-cru-kbd` + `.orr-armory-keycap` / nested kbd styled as stack keycaps (padding, bone/0.5 border, inset shadow); `.sf-cru-fine` contrast up.
+2. **Secondary contrast** — dim copy raised toward bone ~0.78–0.92 (sub, preview, cradle, wallet span, filters, counts, card verb/price/name, crew/object labels, reading verb/act/blurb, build summary, refusal, note).
+3. **Filters + search** — selected filter Hand underline 2px + soft glow; rest filters brighter; search rule `bone / .28`; placeholder less washed.
+4. **Selected card** — brighter name; stronger Hand wash + 2px Hand edge bar (overrides older pointer clip so the bar reads over the list).
+5. **1080p lift** — type/spacing nudge in 1800–2199×≥1000 band **without** CSS zoom (door lesson: zoom clipped the foot). 720p short-height / narrow rules left intact.
+
+**Walk:** `node scripts/ui-bench.mjs --shot=crucible-draft --viewport=1920x1080` and `--viewport=1280x720` — exit 0; measured clean both. Selectors/IDs and loadout catalog data unchanged.
+
+**Artifacts:** screenshots are attached to PR #322 rather than committed (kept out of the repo per review).
+
+**Code touched:** `src/ui/orrery/cruciblePreparationLayouts.js` (Armory `${A}` polish block only).
+
+
+
+
+---
+
+## Crucible Refit (`crucible-refit`) — session notes (2026-10-12)
+
+**Before:** Foot was a thin top border only (no void backing/shadow); ESC / Space·Y / hold F·X rode as bare hint glyphs without stack keycaps; secondary copy (`.sf-cru-sub`, slot tags, bare values, contrast lines, spare stats, fit count, foot fine print) leaned washed (~0.5–0.66); selected spare underline was 1px bone; Enter on lit FIT was a bare hint; 1080p type felt small for the plate.
+
+**After (CSS under `${R}` in `cruciblePreparationLayouts.js` + `injectCruciblePreparation()` from refit mount — door `${D}` / armory `${A}` untouched):**
+
+1. **Foot rail** — solid `rgb(5 7 10)` void + short upward fade (`0 -10px 14px`, see HOLD fixes) + stronger top rule (`bone / .18`); Take-the-win lamp stays Hand word (not a fill slab); Keep Going stays bone/hot word; `.sf-cru-kbd` stack keycaps (padding, bone/0.5 border, inset shadow); fine-print keynotes toward bone ~0.86.
+2. **Secondary contrast** — sub, row labels, slot tags, bare values, contrast, spare stats, empty lines, scales words, fit count raised toward bone ~0.72–0.86.
+3. **Lit spare / Enter** — checked spare Hand underline 2px + soft glow; open-offer dashed Hand rule; lit FIT `::after` Enter restyled as stack keycap.
+4. **1080p lift** — title/sub/hardpoint type + foot words nudged in 1800–2199×≥1000 band **without** CSS zoom. Short-height (`max-height:820px`) keeps a shorter foot + raised fit count so "N of M fitted" stays clear of the rail (720p measured clean after the bury fix).
+
+**Walk:** `node scripts/ui-bench.mjs --shot=crucible-refit --viewport=1920x1080` and `--viewport=1280x720` — exit 0; measured clean both. `--walk` exit 0 (controls respond; Autocannon line is a pre-existing no-picture-change tangle). Selectors/IDs and loadout catalog data unchanged.
+
+**Artifacts:** screenshots are attached to PR #322 rather than committed (kept out of the repo per review).
+
+**Code touched:** `src/ui/orrery/cruciblePreparationLayouts.js` (`${R}` polish block), `src/ui/screens/crucibleDraft.js` (inject call only). No assets/, audio, HUD threat markers, engine/render, or selector/ID changes.
+
+**Next:** `crucible-results` in a follow-up PR.
+
 
 ---
 
@@ -421,8 +377,8 @@ Not reached from the menu: **Archive**, **Achievements** and **Quit** clicks lef
 | P1 | Crucible | Step tabs mix three styles: boxed "01 ENCOUNTER", bare "02 SHIP & KIT", and lowercase "03 / Armory". **Fixed** (one uppercase tab face; selected = Hand underline; muted `03 ARMORY` / `03 LAUNCH`). |
 | P1 | Settings / Video | Live HUD preview's FOV readout collides with the speed dial at 1280 width. |
 | P1 | Settings | Value numerals (52%, 1.00x) use the thin read face while the rest of the row is Archivo legend caps — reads as two different products. |
-| P1 | Main menu | First Tab press jumps to "Credits" in the footer instead of NEW GAME; focus order should follow the visual ladder. |
-| P1 | Main menu | SPACEFACE wordmark sits on top of the orrery rings; menu words overlap ring strokes. Needs a clear zone. |
+| P1 | Main menu | First Tab press jumps to "Credits" in the footer instead of NEW GAME; focus order should follow the visual ladder. **Fixed** (Tab walks verbs → reference line → Credits/Achievements, wraps). |
+| P1 | Main menu | SPACEFACE wordmark sits on top of the orrery rings; menu words overlap ring strokes. Needs a clear zone. **Fixed** (dial fades up from under the name; awake verb seated clear of tick + leader). |
 | P2 | Load | "No saves yet" is ~50% bone on void, under contrast for body copy. **Fixed** (emph ≥.94, empty detail .92, vacant word .9 + open-berth glow). |
 | P2 | New Game | Loadout list ("PULSE LASER · S") is tracked caps at 11px with no column alignment for the size letter (styling only — list data is off-limits). **Fixed** (size column, no ·; contrast + foot keycap). |
 | P2 | Settings | Scroll lists fade out at the bottom (Engine trails, Boost / Dash) without a scroll affordance. |
@@ -450,6 +406,46 @@ The game already ships a mature system: Deckplate tokens (`--dp-*`) + ORRERY ins
 - `src/ui/orrery/archiveLayouts.js`: Mission Log foot keycap rail, secondary contrast, beam/lane/dial brighten, 1080p zoom. Selectors/IDs unchanged.
 - `src/ui/orrery/constellationLayouts.js`: Achievements foot keycap rail, secondary contrast, dial/stage chrome brighten, 1080p (+1440/4K) zoom. Selectors/IDs unchanged. RESEARCH block untouched.
 - `src/ui/orrery/statisticsLayouts.js` + `src/ui/screens/statistics.js`: Statistics ORRERY foot keycap rail, reading contrast, shade pool, 1080p zoom, short-frame LAW fit. Selectors/IDs unchanged.
-- `src/ui/orrery/newGameLayouts.js` + `src/ui/screens/newGame.js`: New Game foot keycap rail, secondary contrast, loadout size column, 1080p zoom. Selectors/IDs and loadout data unchanged.
+- `src/ui/orrery/newGameLayouts.js` + `src/ui/screens/newGame.js`: New Game foot keycap rail, secondary contrast, loadout size column, 1080p left-column lift (the screen-wide zoom was replaced on ui-polish-5). Selectors/IDs and loadout data unchanged.
 - `src/ui/orrery/constellationLayouts.js` + `src/ui/screens/techTree.js`: Tech Tree / Research foot keycap rail, hour-verb curve clip (no dial tangle), secondary contrast, rim chrome, 1080p zoom. Selectors/IDs unchanged. ACHIEVEMENTS block untouched.
 - No selectors/IDs changed; no engine/render, audio, loadout data or HUD threat-marker code touched.
+
+## Crucible results (`crucible-results`) — ui-polish-5 (2026-10-12)
+
+New overlay `src/ui/orrery/crucibleResultsLayouts.js`, injected from the results mount (one import + one call in `crucible.js`). Scoped to `.sf-crucible-results.has-deathdial`; no DOM, selector or ID changes.
+
+- **Fixed (P0):** the left column was two clipped scrollers. At 720p *What you built* ran into *The run* and the share codes faded out; at 1080p *Share* showed a title with nothing under it. Now it is one scroll column in reading order: figures, the run, the build, results sheet, stunt combo, share. A bottom fade shows there is more.
+- **Fixed (P0, 390×844):** the dial sat on top of the column and the figures overlapped ("6 31 24 88"). The phone layout now stacks title, dial, take, column, with the ways out docked at the bottom on a solid fade. The figures are a 2×2 grid, the wave engraving is hidden where it hit STARBOARD, and the short hit legend replaces the long one.
+- **Finish (P1):** each band title runs into a hairline. The share codes are framed fields with an underlined save link. Story and lead copy is brighter. The 1080p band lifts the figures, copy and build verbs.
+- Checked at 1280×720, 1920×1080 and 390×844, including scrolled to the bottom. Shots are in `/workspace/spaceface-scratch/ui-shots/results/` (not committed).
+
+## New Game yard fixes (`new-game`) — ui-polish-5 (2026-10-12)
+
+CSS only, in `src/ui/orrery/newGameLayouts.js`. No DOM, selector, ID or loadout-data changes.
+
+- **Fixed (P0, 1080p):** HITCH / SKATER sat on the *First 15 minutes* route and WASP was cut by the hero ship. Cause: the screen-wide 1.12 zoom from the earlier New Game pass. The yard carousel places hulls and names from `getBoundingClientRect`, so the zoom scaled those offsets twice. The zoom now applies only to the left column (header, fields, foot, fine print), the same way the 1440p rule in `screenLayouts.js` already does it. The yard, stage and route stay at 1:1, and the caption copy and loadout get a small type lift instead.
+- **Fixed (P1):** hull names sit above every ship model, with a dark halo, so a hero's engine glow no longer covers a rear name.
+- **Fixed (P1, 720p):** SHIELD BOOSTER ran into its size letter. The loadout name column is wider at ≤1366px.
+- **Fixed (P1, 390×844):** PELICAN and WASP ran together in the *Start as* row. Names now size to their content, slightly smaller, with a fixed gap.
+- Checked at 1280×720, 1366×768, 1920×1080, 2560×1440 and 390×844; `--walk` exercised 12 controls with all three hulls brought to the front. `test/yard-carousel` and the new-game tests pass (50/50). Shots are in `/workspace/spaceface-scratch/ui-shots/ng5/` (not committed).
+
+## Main menu (`mainMenu`) — ui-polish-5 (2026-10-12)
+
+`src/ui/screens/mainMenu.js` + `src/ui/orrery/arcRail.js` (the `clearOf` mask is used only by the title; the new `seat` option defaults to the old 6px, so pause is unchanged). No selector, ID or DOM changes.
+
+- **Fixed (P1, Tab order):** each `words()` group keeps its one roving Tab stop, and `_syncCurrent` set every reference word to `tabIndex -1`. The result was that the first Tab from the lit verb went straight to CREDITS, and HELP / ARCHIVE / CIRCUITS / PHYSICS / SANDBOX could not be reached with Tab at all. Tab and Shift+Tab now follow the reading order (verb ladder → reference line → Credits → Achievements) and wrap. Hidden Continue and still-loading verbs are skipped, the same as the arrow keys. Arrow keys still move within a group.
+- **Fixed (P1, logo over rings):** the old mask cut a tight box out of the rings, so ring strokes ended right against the letters. A crown of rim also stuck out above the kicker. Now none of the dial is drawn above the name. It fades in under the name over about 1.3× the name's height, so the name has open space around it. The mask is a static gradient, not a blur filter, so the orbit's drift costs nothing extra per frame.
+- **Fixed (P1, words on strokes):** the awake verb grows 6% toward the dial, so its first letter sat on the tick and the Hand's leader (0px gap at 720p). On the title the verbs now sit half a verb-size further out (18px @720, 23px @1080). The awake word clears the leader by about 12px.
+- Checked at 1280×720, 1920×1080, 2560×1440 and 390×844 (phone has no dial; Tab order checked there too). `--walk` exercised 12 controls. Related tests pass, except two failures that also fail on the base commit: `focus-lifecycle` "pushScreen restores the prior exposure" and the credits NOTICE check. Shots are in `/workspace/spaceface-scratch/ui-shots/main-menu-20261012-1425/` (not committed).
+- **Remaining:** at 1080p the reference line's SANDBOX sits over the hull's nose in the key art (this was already true before; it moved about 17px). Archive / Achievements / Quit (P0 above): the bench walk opens Codex and Achievements, and Quit asks to confirm. This still needs checking in a live browser build.
+---
+
+## #322 HOLD review fixes (2026-10-12)
+
+1. **Phone margin:** the 200px right gutter on Armory `.sf-cru-preview` / `.sf-cru-cradle` now lives under `@media (min-width:761px)`; the base rule is `margin-right:0`, so ≤760px keeps full text width (390×844 measured: preview 354px wide, margin 0).
+2. **Footer shadow:** Armory and Refit `.k-foot` shadow cut from `0 -28px 40px 12px` / `0 -32px 48px 16px` to `0 -10px 14px 0 rgb(VOID / .85)` (short-height Refit: `0 -8px 12px 0`). With the card list scrolled to its end, the last row clears the foot top by ~40px at 1280×720, 1920×1080 and 390×844.
+3. **Keycap scope:** dropped bare `kbd` and generic `.k-kbd` / `.dp-kbd` from the keycap rules; they now match only `.k-foot .sf-cru-kbd` and `.sf-cru-fine .orr-armory-keycap`.
+4. **This file:** stale "no commit" note and duplicate Next lines removed; code touched is `cruciblePreparationLayouts.js` + the one-line inject in `crucibleDraft.js`.
+5. **Scope:** #322 is frozen at Armory + Refit; later screens go to a new PR.
+6. **PNGs:** the eight `docs/ui-polish/crucible-*.png` files are removed from the PR; evidence lives in the PR conversation.
+
