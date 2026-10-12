@@ -455,7 +455,9 @@ export function createRuud() {
       this._id[part] = null;
       const rec = this._record(part);
       if (rec) rec.hull = Math.max(1, rec.hull || 1);
-      this._sync();
+      const playerKill = p.killerId != null && p.killerId === this.state.playerId;
+      if ((part === 'suit' || part === 'fin') && this.state.ruud.disposition === 'unchosen' && playerKill) this._cut();
+      else this._sync();
     },
     _tethered(id) {
       return this._held === id || (this.state.player?.tether?.active && this.state.player.tether.targetId === id);
@@ -494,7 +496,7 @@ export function createRuud() {
           if (this._inside && m.disposition === 'unchosen' && m.met) this._say('ignore');
           this._inside = false;
         }
-        if (distance <= C.hearRadius) {
+        if (distance <= C.hearRadius && m.disposition === 'unchosen') {
           if (m.disposition === 'unchosen' && now >= this._nextTick) {
             this._nextTick = now + C.tickEvery;
             this.bus?.emit('audio:cue', { id: 'sfx_ruud_tick', position: { x: suit.pos.x, z: suit.pos.z }, gain: 0.22, rate: 1 });

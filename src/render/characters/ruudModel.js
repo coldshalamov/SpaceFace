@@ -97,11 +97,12 @@ function buildFin(entity) {
   shell.name = 'radiator_fin';
   turn.add(shell);
   add(shell, plate([[-9, -0.35], [-8.2, -2.4], [1.2, -2.1], [2.4, -0.4], [2.4, 0.4], [1.2, 2.1], [-8.2, 2.4], [-9, 0.35]], 0.42, 0.12), m.slate, 'fin_blade').position.y = 0.2;
-  add(shell, plate([[-9.4, -0.2], [-7.6, -0.55], [-7.6, 0.55], [-9.4, 0.2]], 0.2, 0.04), m.frost, 'cold_tip').position.y = 0.72;
   add(shell, new THREE.CylinderGeometry(1.15, 1.35, 1.6, 16), m.foundry, 'root_collar').position.set(3.1, 0.7, 0);
   add(shell, new THREE.TorusGeometry(0.72, 0.16, 8, 18), m.verd, 'hose_gland').position.set(2.15, 0.85, 0);
   for (const z of [-1.35, 1.35]) add(shell, new THREE.BoxGeometry(0.28, 0.22, 0.55), m.foundry, 'blade_bolt').position.set(-2.2, 0.7, z);
   bake(shell);
+  const coldTip = add(turn, plate([[-9.4, -0.2], [-7.6, -0.55], [-7.6, 0.55], [-9.4, 0.2]], 0.2, 0.04), m.frost, 'ANIM_cold_tip');
+  coldTip.position.y = 0.72;
   const rootGlow = add(turn, new THREE.CylinderGeometry(0.72, 0.86, 0.7, 16), m.heat, 'cherry_root');
   rootGlow.position.set(3.15, 0.7, 0);
   const sign = add(turn, new THREE.BoxGeometry(2.4, 0.16, 1.7), m.foundry, 'bolted_sign');
@@ -122,7 +123,9 @@ function buildFin(entity) {
     const t = Number.isFinite(p.simTime) ? p.simTime : (Number.isFinite(time) ? time : 0);
     const reduced = !!a11y.reducedMotion;
     latch.rotation.z = p.hatch ? -1.15 : 0;
-    shear.visible = p.sheared === 1;
+    const parted = p.sheared === 1;
+    coldTip.visible = !parted;
+    shear.visible = parted;
     pawl.rotation.z = reduced || !p.chain ? 0 : Math.sin(t * (Math.PI * 2) / C.tickEvery) > 0.92 ? -0.55 : 0;
     m.heat.emissiveIntensity = reduced ? 1.05 : 1.02 + Math.sin(t * 2.2) * 0.08;
     m.heat.emissive.setHex(HEAT);
@@ -208,7 +211,14 @@ function buildSuit(entity) {
       }
     }
     breath.visible = clipped === 1;
-    m.breath.opacity = !clipped || reduced ? 0.22 : 0.14 + Math.abs(Math.sin(t * 1.7)) * 0.2;
+    m.breath.opacity = !clipped || reduced ? 0.22 : 0.12 + Math.abs(Math.sin(t * 1.7)) * 0.22;
+    if (clipped) {
+      breath.children.forEach((puff, i) => {
+        const phase = reduced ? i * 0.34 : ((t * 0.35 + i * 0.34) % 1);
+        puff.position.set(-0.85 - phase * 1.15, 1.28, (i - 1) * 0.22);
+        puff.scale.setScalar(0.65 + phase * 0.7);
+      });
+    }
     arms.rotation.x = clipped ? 1.15 : (reduced ? 0.2 : 0.2 + Math.sin(t * 0.7) * 0.06);
     body.position.y = clipped || reduced ? 0 : Math.sin(t * 1.3) * 0.04;
   });
