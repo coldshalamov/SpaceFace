@@ -205,6 +205,10 @@ export const environmentMaterials = {
       if (body.data?.worldSiteStructural === true || ceresWorkfleetRoleForEntity(body)) continue;
       stampEnvironmentMaterial(body, job.material);
       const condition = body.data.materialCondition;
+      if (isAnchoredPhysicalBody(body)) {
+        condition.pending = false;
+        continue;
+      }
       if (condition.reacted) continue;
       condition.pending = false; condition.reacted = true; jobs++;
       if (job.material === 'crystal' || job.material === 'rock') this._fracture(body);
