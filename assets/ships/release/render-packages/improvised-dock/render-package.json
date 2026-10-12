@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8b1b67cd9eb81d0b616773425d732ecccbd4aacd67442d1e43accdc230ee9fec",
+  "contentHash": "9c97d7ef0879634ea32c6a8c9acb1d6dcc2c01773a8e82c95a95e3fa536d09ae",
   "dynamicGroups": [
     {
       "id": "sf.render.improvised-dock.mesh.lod0-hook-nav-port.dynamic",
@@ -107,7 +107,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7be791251cce8af71f7eee372035c4a7c7a1fcad93855a7aa038f16122a850ff",
+      "geometryHash": "bd4bf1ab6611bc9b88450e2633b4cdfbf906d261bef5c9ba30642b4137bb25b7",
       "id": "sf.render.improvised-dock.mesh.collision-hull.primitive.0",
       "indexCount": 828,
       "indexed": true,
@@ -132,7 +132,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fc45da4e823d427060560cfdf1ebf55f5ebfdb1b216998e8f3fb63eda1e68d1b",
+      "geometryHash": "90d4b64ae785b7b6d97b2b2d189ed079c76cce1f7610ae4d2f46e515fc7ed40b",
       "id": "sf.render.improvised-dock.mesh.lod0-armor.primitive.0",
       "indexCount": 1128,
       "indexed": true,
@@ -157,16 +157,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "72ab952eb4ad251a6d12ff634bbbd34a61411df3d13fe4abe609f1856b9cef8f",
+      "geometryHash": "b645a3879778f01018776eec7bfaf4389a17079e858cef5c94e87797d7c27b2e",
       "id": "sf.render.improvised-dock.mesh.lod0-beacon-amber.primitive.0",
-      "indexCount": 1224,
+      "indexCount": 1368,
       "indexed": true,
       "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.improvised-dock.mesh.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 410
+      "vertexCount": 556
     },
     {
       "bounds": {
@@ -182,7 +182,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5a80420a514c52027f55e703f9032fd4b492ebebf93ad181832f06e60d8839f6",
+      "geometryHash": "18105288b7be586e3351188373384b72fe652a096aa4fac1efc92b8332a87001",
       "id": "sf.render.improvised-dock.mesh.lod0-deadmetal-rust.primitive.0",
       "indexCount": 600,
       "indexed": true,
@@ -282,7 +282,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "09f7b9c7b7adda6823cdf27c819588ed25747775037bd8ea0219499765a7c034",
+      "geometryHash": "829c6ea05e542e302e6c9db0a6fa15aa79386db3823827acf6951e7a892a98f6",
       "id": "sf.render.improvised-dock.mesh.lod0-mechanical-teal.primitive.0",
       "indexCount": 1716,
       "indexed": true,
@@ -307,7 +307,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d28cc1e5e11b9fabab6035267f2230ef404af3618bc859d3fd9eb4a6c83e6539",
+      "geometryHash": "a9a921725c2d01e88d4b496c3b4efea4e8855e730805b79e181ec502bb1984d7",
       "id": "sf.render.improvised-dock.mesh.lod0-mechanical.primitive.0",
       "indexCount": 2796,
       "indexed": true,
@@ -332,7 +332,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c88a50e494860e104c904d331acb36485b3233f49e1c9bbb313d72e1bdd1050",
+      "geometryHash": "d73f67ad72da14b9026f739f77cc61960337a1db19f7a920d4e83c63323d19c1",
       "id": "sf.render.improvised-dock.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 2928,
       "indexed": true,
@@ -382,7 +382,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0aac119d80e73278bfcc94772f5d9c8e6938ad6e6084c42f4aaddda307d7fbf8",
+      "geometryHash": "dfd2b0c8efd58438deff217fef27f69ecded5856a196775b8a6cca9cfc06b6bc",
       "id": "sf.render.improvised-dock.mesh.lod1-armor.primitive.0",
       "indexCount": 618,
       "indexed": true,
@@ -407,16 +407,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "681db9173b32ed6cad539559d5ccc5e8b28b6ada182e3b17a48e9abf8f1cdcff",
+      "geometryHash": "fc6267dfec1caf846cd2013f572cf05ff13cf271a9dc8e53062443bed0d21f20",
       "id": "sf.render.improvised-dock.mesh.lod1-beacon-amber.primitive.0",
-      "indexCount": 264,
+      "indexCount": 300,
       "indexed": true,
       "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber",
       "nodeId": "sf.render.improvised-dock.mesh.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 158
+      "vertexCount": 192
     },
     {
       "bounds": {
@@ -432,7 +432,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "05c0b729a2ba53b1d3a24c0918491def994680edeb43b3032ff5c5b7bf83b680",
+      "geometryHash": "7f9c05bf6759c3218412c767fa767783debaf3c2fafb2bebd3045f7a12005c75",
       "id": "sf.render.improvised-dock.mesh.lod1-deadmetal-rust.primitive.0",
       "indexCount": 552,
       "indexed": true,
@@ -532,7 +532,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98f519c78f167bbba3607f4b0915834781a2eb1c39c5236ccdf938004b10a046",
+      "geometryHash": "2a460fb95ab1590c5e2ac2117cb076a75cd74f59e68f3d4241cd32a6f5a595d6",
       "id": "sf.render.improvised-dock.mesh.lod1-mechanical-teal.primitive.0",
       "indexCount": 108,
       "indexed": true,
@@ -557,7 +557,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "73f2895a03d6846632129242eb51723baca6d2d576a292348bbd25da5f237bdf",
+      "geometryHash": "bdfb06bfbb4859d0a6a6558c036be71b9bbd966399e610170f2007f87067bf2e",
       "id": "sf.render.improvised-dock.mesh.lod1-mechanical.primitive.0",
       "indexCount": 1476,
       "indexed": true,
@@ -582,7 +582,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e1aa8d64a4ba86c8d8668064074040e08c300a51aa33766154789ee09d95ba33",
+      "geometryHash": "e448f1b777e7ce68cddf8b137a1f2b73ef0c7d54ddcccefce52e89d185fa4b45",
       "id": "sf.render.improvised-dock.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 1056,
       "indexed": true,
@@ -657,16 +657,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "64fc0701b97d660c627db0ac2cc1096757d3b020d121f5a2de1491eef59960dc",
+      "geometryHash": "9a8e93b8228ac9ee547d5c170097acfa14d299b7ebeb54bfd60d939cf271dc69",
       "id": "sf.render.improvised-dock.mesh.lod2-beacon-amber.primitive.0",
-      "indexCount": 168,
+      "indexCount": 204,
       "indexed": true,
       "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Beacon_Amber",
       "nodeId": "sf.render.improvised-dock.mesh.lod2-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 122
+      "vertexCount": 154
     },
     {
       "bounds": {
@@ -807,7 +807,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d23d797b13c5fff70151d0fa467a4121720b4394967f9bb12ec13f0cec637fae",
+      "geometryHash": "cd6393064cb93615083bdb7eaec0825402b415360415366de268832a29010701",
       "id": "sf.render.improvised-dock.mesh.lod2-mechanical.primitive.0",
       "indexCount": 1050,
       "indexed": true,
@@ -2668,19 +2668,19 @@
       "sha256": "05f122f8b9b7edf187f74f36e9dbbc36755cf47cc7c854816d2e37ae76bfca20"
     },
     "sourceGlb": {
-      "bytes": 284036,
-      "sha256": "e46d3849319a2b3a34018f0241b52ac9a19e17b322001b2a435581a3ee149ee4",
+      "bytes": 285712,
+      "sha256": "ed527b4fbaceb0394b4bd9b8e69c726f0614a874182543b019e05e370678e1fd",
       "uri": "place_improvised_dock.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 430124,
-    "sha256": "c10c2e60c04675c2edf721a4610a48ebd71e0f50117aa2840f44cf11c8fde208",
+    "bytes": 429924,
+    "sha256": "a4f334a1300d86f6ab29e864fda8e5881daa5cccc98f12d583fda5973a565458",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3739,7 +3739,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_improvised_dock.glb"
   },
-  "runtimeHash": "402de8d1c233477e87d7636b2f3d7bc7aa878311074da6cb93bdebceb7269fef",
+  "runtimeHash": "1285ef2ef405214ee50ab5844ea0fe0979d783eadc52e8d9bdd54be5e6dd89b7",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

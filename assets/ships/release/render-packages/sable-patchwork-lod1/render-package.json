@@ -283,7 +283,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0d0ba4ed27cd2d6b3aa4590b190cac220b8bea8f1d35d05366ab5930f082243d",
+  "contentHash": "6ba61a04c3a07eeaa521b82770eb60cc45904082f0c19861d0de18ceb245297e",
   "dynamicGroups": [
     {
       "id": "sf.render.sable-patchwork-lod1.node.lod1-motion-sable-arm-base-armor.dynamic",
@@ -2645,8 +2645,8 @@
       "uri": "sable_patchwork_lod1.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
@@ -3876,7 +3876,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/sable_patchwork_lod1.glb"
   },
-  "runtimeHash": "56ed488e582c33c3b8175498f42190ac51d354c8fe9d82ce810e623ce93502d0",
+  "runtimeHash": "1f726b6de498d4ec92b4596f07af59c8b74ec22d5390f2d6e3dc5a7dd5a7bba3",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

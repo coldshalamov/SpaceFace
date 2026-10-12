@@ -197,7 +197,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "00c6049a831690c298d5985f63eaffcb5fcca0d4ec0fcdc2c21b1bec4a88dd46",
+  "contentHash": "880cf80b0b96c7dcd4bdf86bf7d370eea73363f103c5237080448c3b00bf70f8",
   "dynamicGroups": [
     {
       "id": "sf.render.blackmarket.node.lod0-hook-nav-port.dynamic",
@@ -270,9 +270,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "12517177bf0250b19be2466b7182ac9b65695a0da2e3200e0b2b3eed08234bb2",
+      "geometryHash": "4027086f7561ee37a8c7cfbde47ccd7be3f4fb113be6732219e55b491f0a2e7e",
       "id": "sf.render.blackmarket.node.lod0-armor.primitive.0",
-      "indexCount": 20106,
+      "indexCount": 20112,
       "indexed": true,
       "materialHash": "390eb92a99a90b12de979461ffa39c47c190218d13ce359705e00e71f6404111",
       "materialPipelineKey": "opaque",
@@ -295,16 +295,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8c3bddee68cce9b29bb497a28e780229bc80d9a9f2376ba1f8816efc3d0abdc4",
+      "geometryHash": "85f985cc032f28fcb473ab5b7746a1601e1441a0363823a7ca313c5a88a27b45",
       "id": "sf.render.blackmarket.node.lod0-beacon-amber.primitive.0",
-      "indexCount": 1230,
+      "indexCount": 1260,
       "indexed": true,
       "materialHash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.blackmarket.node.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 653
+      "vertexCount": 656
     },
     {
       "bounds": {
@@ -320,7 +320,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b451a432dbdc00959d24f63afd28d3286f39cc0c76fdded427ef76e22eafac3f",
+      "geometryHash": "c75e9cbab24baff14ab2a4f30421c5f5452f5ebe9ecb5effd4c2fbafe7fcafc2",
       "id": "sf.render.blackmarket.node.lod0-ceramic-cut.primitive.0",
       "indexCount": 117,
       "indexed": true,
@@ -345,7 +345,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4906e08b41a7fb21e2d4f67d3b057bad750de4d5319a4c75540804c3dee908ab",
+      "geometryHash": "dbc4de00f6e74f94cb15e2728dd15b642572bf2a4833f4255ef1c35d0d624ff5",
       "id": "sf.render.blackmarket.node.lod0-ceramic-shadow.primitive.0",
       "indexCount": 477,
       "indexed": true,
@@ -370,7 +370,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5249446b2d8943a33faa12dc85d7a08dcf9c30372ee12bc73a7cb29c1d8cfe64",
+      "geometryHash": "bb26d3b65d02c9f59b596928802110be8cbcf20e4c1c1380ae35edf9a4567bec",
       "id": "sf.render.blackmarket.node.lod0-ceramic.primitive.0",
       "indexCount": 1086,
       "indexed": true,
@@ -395,16 +395,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4bed6400b31542e4b640ec14aa5bbc5a682859b5dd16e6a097ecca98e9ee2e3",
+      "geometryHash": "3f1dd944e2bbbece0d5e367ff3d4d93666698644288bc98111dc926019e34040",
       "id": "sf.render.blackmarket.node.lod0-hook-nav-port.primitive.0",
-      "indexCount": 1521,
+      "indexCount": 1584,
       "indexed": true,
       "materialHash": "6a5417b004bdbc8e05e1f1ee9213fb8a4ee950cf80ecdf61744524dd89b4d402",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_HOOK_NAV_PORT",
       "nodeId": "sf.render.blackmarket.node.lod0-hook-nav-port",
       "primitiveIndex": 0,
-      "vertexCount": 868
+      "vertexCount": 872
     },
     {
       "bounds": {
@@ -445,7 +445,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d22ae3983da001fe487cf4dc28f72d1c32be80cf163f3ff7342f931fb6e26281",
+      "geometryHash": "2683159f9dcec07cfa1a81e330213d4a4632611182a8f0fa5c76cf5483ff0888",
       "id": "sf.render.blackmarket.node.lod0-hull-ivory.primitive.0",
       "indexCount": 16560,
       "indexed": true,
@@ -470,7 +470,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1ee953d075703a89035fab2784bdb3ba4bb7f36ce88162e09407ad6f138c7fe3",
+      "geometryHash": "c652cd6639ae59f5ff207f061bc4356f742174f8bda9e1868d45a538bdfc0fcc",
       "id": "sf.render.blackmarket.node.lod0-hull-olive.primitive.0",
       "indexCount": 17484,
       "indexed": true,
@@ -495,7 +495,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5f8c610bfcd82eef099ee3b0fd511ecd4584244acdfcaf21df35c56f916dbcc0",
+      "geometryHash": "fbdc12a7885ce1fefcffcdb406c99ea45cd05ee83ceb211f747a2e91ab732fa2",
       "id": "sf.render.blackmarket.node.lod0-hull.primitive.0",
       "indexCount": 18048,
       "indexed": true,
@@ -545,7 +545,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1b2b10068350a842784f59ceb474de48998f96969a0b4a72066a9775bbb78d8e",
+      "geometryHash": "db9cad648585e65e65b640195ed471ea2abd37573cd781785149600e8a19ab92",
       "id": "sf.render.blackmarket.node.lod0-lights-warm.primitive.0",
       "indexCount": 34416,
       "indexed": true,
@@ -570,7 +570,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4ec1074e7ce5759a6cd77b61eda769a609d8fd8663475008e2b39d162478228f",
+      "geometryHash": "217c478561b41bcf4f7b04c74deda1d5ce851c24b01da203c8458fd4d8088ade",
       "id": "sf.render.blackmarket.node.lod0-livery.primitive.0",
       "indexCount": 18048,
       "indexed": true,
@@ -595,16 +595,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "518b68d45305c46368809cd38d9f7e33e4ca4c900880082c4e8bf002fac07fe7",
+      "geometryHash": "b217597c9c4e8f94a827b2baa572ac2fd26b9f3598d59335302633e9051f1890",
       "id": "sf.render.blackmarket.node.lod0-mechanical.primitive.0",
-      "indexCount": 27759,
+      "indexCount": 28860,
       "indexed": true,
       "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.blackmarket.node.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 9375
+      "vertexCount": 9507
     },
     {
       "bounds": {
@@ -620,9 +620,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "25dfdb03a16fcb7597cb7e8dc3fd796b076910791b90b6d82c0eba4bd0e8411b",
+      "geometryHash": "02258eb8fe66b11ed697cf2f7cd92075defafbb786dab8228942eddc76b218f7",
       "id": "sf.render.blackmarket.node.lod0-mechanicaldark.primitive.0",
-      "indexCount": 8235,
+      "indexCount": 8244,
       "indexed": true,
       "materialHash": "9cc378267eef4326a9a0f08b3d2ca9be7402c3baee9f0bab0263e35f31145ad9",
       "materialPipelineKey": "opaque",
@@ -670,7 +670,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f27a5c1830f6b10da0a8b71d4a44c21dbb3adf464ad34293ed3a6bc8a51c46b0",
+      "geometryHash": "6f38887dbf914a7fc054b2161c41a2160c2276d0b60e790b13ad84d463999cbd",
       "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-p-mechanicaldark.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -695,7 +695,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3c2dfbb75dc0dbd23f19d56a79e96d79ee8201efdaeef856a6d1a53a997147b1",
+      "geometryHash": "468af181ef2a01a661b67d4aae6e968d0ffd4c9b7c098a5b9c9de52effa637af",
       "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-p-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -745,7 +745,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "67c653ed1ee0bcee543169ebbf38445e71c37c085c4955d1bc1f9f3de12ec148",
+      "geometryHash": "56c988f0e47b5e181c44e1570ec3a86d6dacb16176e14711c1f38e6ad5d6066f",
       "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-s-mechanicaldark.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -770,7 +770,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "391825582d95968c1893937d4720913c8e5f3c01741ebbd88ae0b57cf8960b61",
+      "geometryHash": "0d84da48d4427f9db61a0bd4a8ba1f69ae33583e7a593abf937d36fea40807cb",
       "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-jaw-s-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
@@ -845,7 +845,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "702a652290699e985523c5586bd1a1163a10af511a4e036fc2df44b68351ea71",
+      "geometryHash": "1031a66275050e6883325633cb01ddfcf40fada696e8a69410f9f2d260293ddb",
       "id": "sf.render.blackmarket.node.lod0-motion-blackmarket-signal-mechanical.primitive.0",
       "indexCount": 600,
       "indexed": true,
@@ -870,7 +870,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "92e732a25144b83fb9b6068e0fa29d2c88617ccdd3946b02d9778c53a782f7eb",
+      "geometryHash": "74c3a0147cedd934adf8f29c97209a52c3c205fb8b74014b0690f950b0ab0dfa",
       "id": "sf.render.blackmarket.node.lod0-warning.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -895,7 +895,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "598bc86600ac6975671663d01b9b4118c619ec9d53f6004dfc74ad9a7328ada1",
+      "geometryHash": "65d14b09d55e663288fa10e402df00b25ec1f662932c108f3692eb277cc7626f",
       "id": "sf.render.blackmarket.node.lod1-armor.primitive.0",
       "indexCount": 4554,
       "indexed": true,
@@ -945,7 +945,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0fcaecaf499fe26537ba7c7206a882f038f0fa3b1a1a22ea23b9a05ec7890b60",
+      "geometryHash": "ac3849a0996c9196e9c00b86a5c40fbd8545f39cf4af5ff5f4a0eebc5a41663a",
       "id": "sf.render.blackmarket.node.lod1-ceramic-cut.primitive.0",
       "indexCount": 81,
       "indexed": true,
@@ -970,7 +970,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4906e08b41a7fb21e2d4f67d3b057bad750de4d5319a4c75540804c3dee908ab",
+      "geometryHash": "dbc4de00f6e74f94cb15e2728dd15b642572bf2a4833f4255ef1c35d0d624ff5",
       "id": "sf.render.blackmarket.node.lod1-ceramic-shadow.primitive.0",
       "indexCount": 477,
       "indexed": true,
@@ -995,7 +995,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9d5eaa0e18bfca7a45250b6bc9967a87043953c96b40a05b0922544447a30c35",
+      "geometryHash": "8bd7680a00d1215a974755ea4aa933027d3f1729e8f5eda8180fc7acec0438ae",
       "id": "sf.render.blackmarket.node.lod1-ceramic.primitive.0",
       "indexCount": 1086,
       "indexed": true,
@@ -1070,7 +1070,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b195198cb1450fbf1492569a6629bef925f31ce17b52fc9151f331aee610be4d",
+      "geometryHash": "6a5aadd3dd9c93ae60e29d83a723ccc2605935c16ac0bf6272e658cc0393f0f3",
       "id": "sf.render.blackmarket.node.lod1-hull-ivory.primitive.0",
       "indexCount": 4212,
       "indexed": true,
@@ -1095,7 +1095,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e4b7a59ea7c543e77353d325f3f28666abb2420ed9eb7e34301983628d68d678",
+      "geometryHash": "80fba57480096a60e1649cd048ee93f8ef764aedc21abdd04117dd2c4247080d",
       "id": "sf.render.blackmarket.node.lod1-hull-olive.primitive.0",
       "indexCount": 3462,
       "indexed": true,
@@ -1120,7 +1120,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7ae45cb2167050509c191f5faa24bebf26aa113d15a4197b05df9d1d413fcac9",
+      "geometryHash": "b64ff0933d11f8ee1775892e11ccfe59b32214471765c09983ebc715c284e588",
       "id": "sf.render.blackmarket.node.lod1-hull.primitive.0",
       "indexCount": 3642,
       "indexed": true,
@@ -1170,7 +1170,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7c7f519ccbc94574fbb8e460252525f65fa7f21d585d55a5fe97d8d7d2e06425",
+      "geometryHash": "90717f990877012cd5eacadbc4578a2f1d46d924a7f9493592cf6eb69eae5888",
       "id": "sf.render.blackmarket.node.lod1-lights-warm.primitive.0",
       "indexCount": 33048,
       "indexed": true,
@@ -1195,7 +1195,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6c7a556ca28f62f2647ce09d0c54d545b34b4761328372a21c9795baabb1d16f",
+      "geometryHash": "bd375990fb0387d9a24a229676bc40bfbd75e889c42ec40dfa21ba1a48bd8de0",
       "id": "sf.render.blackmarket.node.lod1-livery.primitive.0",
       "indexCount": 3360,
       "indexed": true,
@@ -1220,7 +1220,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d658dbe3aab879c99f21e8fa3ff7500cd389331d3ddc675c99e8be9ae5efc6a6",
+      "geometryHash": "bf7812b9a0dddc2460f38157026f6101f5de4df2550dd97041db6c0b168c1525",
       "id": "sf.render.blackmarket.node.lod1-mechanical.primitive.0",
       "indexCount": 5982,
       "indexed": true,
@@ -1245,7 +1245,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "51bea6f4c30ce0204b01744fe20bc0885a1604fcbc2a1c96a87cb325cf4a01ff",
+      "geometryHash": "39a4a08b5d5a26213375ae51224de5374077c35ca2b5b4b335fd6aaf018dae68",
       "id": "sf.render.blackmarket.node.lod1-mechanicaldark.primitive.0",
       "indexCount": 3822,
       "indexed": true,
@@ -1295,7 +1295,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bfc47961fb44af857ffb31425aec1d73b1cf4f5475e3dee0d9d7e1e507187865",
+      "geometryHash": "dfb2ae01c5e721c513940db4296dbd7233936681a2af2ab5dd0e01a32b70641c",
       "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-p-mechanicaldark.primitive.0",
       "indexCount": 132,
       "indexed": true,
@@ -1320,7 +1320,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f835d22ee0931ea520de03776b27705c9df9ca5ad6f72968bd8e088fa117e37",
+      "geometryHash": "ee5ab2accae20f4bb1ad2a2a218e7a737eeaeea7c6e7d0580b562b0e832815aa",
       "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-p-warning.primitive.0",
       "indexCount": 294,
       "indexed": true,
@@ -1395,7 +1395,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3cc5149dfb17e842af6a631e955c910066c30a74f81e97922cb635765282d0bd",
+      "geometryHash": "30a2ef57437646181685ebb6713b0b0dbf067c07c51d73968ec412c5b4313bd1",
       "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-jaw-s-warning.primitive.0",
       "indexCount": 294,
       "indexed": true,
@@ -1470,7 +1470,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "221c040533d9c7c716b9f091610c6e4d5775cf7c85e06745c73c19f7ccfe6dd7",
+      "geometryHash": "3d0cbce899ca52996e91fdf7bcf32d48c0072be3c169605f3096cef0807b81bc",
       "id": "sf.render.blackmarket.node.lod1-motion-blackmarket-signal-mechanical.primitive.0",
       "indexCount": 192,
       "indexed": true,
@@ -1495,7 +1495,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b05e869351134edd07f8fdef9a821fbfca2a7f961a53c8f73aec6046a37ddba5",
+      "geometryHash": "91c203e0331e07fa74494439d88d738bc51110f13f9cfa824fed91dd8b279c5e",
       "id": "sf.render.blackmarket.node.lod1-warning.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -1520,7 +1520,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0cfeca533d8ae2135e5a9fe5ec8ca56241ba7eb7466d9257c84f3407dd0a3ade",
+      "geometryHash": "ed5fae076bf70c64e5ed06fdab960f3027f700de2bce9c68edfb3c149ec9f6de",
       "id": "sf.render.blackmarket.node.lod2-armor.primitive.0",
       "indexCount": 2448,
       "indexed": true,
@@ -1545,7 +1545,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "19010ff3743306a6f7c9821e2e9b3c1224d12d17b9b16ee21cb604c7bec69866",
+      "geometryHash": "3dd5aff4780e0a6d0196b033c135b521ef44c59a431719ccf53d055c7c787010",
       "id": "sf.render.blackmarket.node.lod2-beacon-amber.primitive.0",
       "indexCount": 630,
       "indexed": true,
@@ -1570,7 +1570,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6f2f5313325aa0d9b5d4ec24a2d45b0fd2cd553fc24ace83b737caf7e6dd80a9",
+      "geometryHash": "46e29c054f89c18da4e569043d438de82b31a1ade8b050f8ce38e057fa6d8d10",
       "id": "sf.render.blackmarket.node.lod2-ceramic-cut.primitive.0",
       "indexCount": 75,
       "indexed": true,
@@ -1595,7 +1595,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4906e08b41a7fb21e2d4f67d3b057bad750de4d5319a4c75540804c3dee908ab",
+      "geometryHash": "dbc4de00f6e74f94cb15e2728dd15b642572bf2a4833f4255ef1c35d0d624ff5",
       "id": "sf.render.blackmarket.node.lod2-ceramic-shadow.primitive.0",
       "indexCount": 477,
       "indexed": true,
@@ -1620,7 +1620,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "40207a894e751b94d99a9ccca4e2268979dc861999d86b361d96c79c65ab90ae",
+      "geometryHash": "60c75d48f8d61c40fdc3aafa1a4ad5daedd24de555f08660a3791f65384fa8f9",
       "id": "sf.render.blackmarket.node.lod2-ceramic.primitive.0",
       "indexCount": 1080,
       "indexed": true,
@@ -1645,7 +1645,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "92a8d5c192daab171a9ab7aa18cadbb4788f0424d19114e83d8764509471e6e9",
+      "geometryHash": "71a92f65bc522f7fa85aa685b52e4e0fa16a40201fad6d9c39584708d22505eb",
       "id": "sf.render.blackmarket.node.lod2-hook-nav-port.primitive.0",
       "indexCount": 600,
       "indexed": true,
@@ -1695,7 +1695,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ad44f4162e47857b179f555c9596beaee17ec43a08b81352aaa8d2c093c8ed7c",
+      "geometryHash": "9b34c6c205947affcae741a702291a82ad7763c53923f5645fa7baa284888151",
       "id": "sf.render.blackmarket.node.lod2-hull-ivory.primitive.0",
       "indexCount": 1518,
       "indexed": true,
@@ -1745,7 +1745,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "615ef44d69c2a22304cd019c9d40b830deec9458439894e04d7b5330eaae92a7",
+      "geometryHash": "7e4a9ab249227a590d22ca43f0e90cf055f338e478da841f8ce480febef242a8",
       "id": "sf.render.blackmarket.node.lod2-hull.primitive.0",
       "indexCount": 1152,
       "indexed": true,
@@ -1770,7 +1770,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7cd8317dc353a21fc025dcc2ec5172ecf68d7ea9421286c605f088d9ecdbff90",
+      "geometryHash": "46ada1b2070efc706050ad6c24fe6606dc173ff9b4a34639482dbce7b44cbe21",
       "id": "sf.render.blackmarket.node.lod2-lights-cyan.primitive.0",
       "indexCount": 378,
       "indexed": true,
@@ -1820,7 +1820,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2e3cb422d9be89326daeeacf4ac34a94580e90a9cf42bdb1c7b5fb98b11eb5d7",
+      "geometryHash": "cee23406fc91a80dc1bf1453a9721d5bf7a8d97cca7ba8137cbcbf00d2857501",
       "id": "sf.render.blackmarket.node.lod2-livery.primitive.0",
       "indexCount": 1152,
       "indexed": true,
@@ -1845,7 +1845,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a1c383a2414735257b5fa22d50890e6dda05db3e62afd321cd08f530126936b7",
+      "geometryHash": "75cb97fe58c9d58482476859b18397368539ec32ab11240b823b18a1e904e5cf",
       "id": "sf.render.blackmarket.node.lod2-mechanical.primitive.0",
       "indexCount": 3270,
       "indexed": true,
@@ -1870,7 +1870,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7965b31b7a5b512871e431f5a9e6eb171d6608e4c97b69ceb5aca83de6c82ad3",
+      "geometryHash": "49da4be4de7d337902773c1cad1f4278e800ae92063db70459d805e99f71b5de",
       "id": "sf.render.blackmarket.node.lod2-mechanicaldark.primitive.0",
       "indexCount": 1668,
       "indexed": true,
@@ -2095,7 +2095,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bd287f4041bec099b2ebb4976f9f7daa97f8dbe3ba731a91719df3689149e19b",
+      "geometryHash": "752fbdab41247250ff66872a3e99655cedaa1d058824c7838287f77a6c6fe368",
       "id": "sf.render.blackmarket.node.lod2-motion-blackmarket-signal-mechanical.primitive.0",
       "indexCount": 84,
       "indexed": true,
@@ -2120,7 +2120,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b05e869351134edd07f8fdef9a821fbfca2a7f961a53c8f73aec6046a37ddba5",
+      "geometryHash": "91c203e0331e07fa74494439d88d738bc51110f13f9cfa824fed91dd8b279c5e",
       "id": "sf.render.blackmarket.node.lod2-warning.primitive.0",
       "indexCount": 288,
       "indexed": true,
@@ -6673,19 +6673,19 @@
       "sha256": "070030185ee273eb139db495d4f066331495475311ef9967e899787015107190"
     },
     "sourceGlb": {
-      "bytes": 1978528,
-      "sha256": "93eed888ecbf73f328c9243ef302b1b560a9eef4016faa2ed12fe05b369533a4",
+      "bytes": 1984572,
+      "sha256": "43fe9a7628de3aa2e554a602e2ac374d6a3c3ed59bff9642938617809838c8cc",
       "uri": "place_station_blackmarket.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 3899116,
-    "sha256": "6a1c3af6c1cb6cbd025393663ee0670673713af546781cefe1494b4024434180",
+    "bytes": 3903428,
+    "sha256": "78e6a8d53d9dc4382ab54a7163bdbb8ab3eff9707b79b9c8f35d888ef5fcdc83",
     "uri": "render.glb"
   },
   "runtime": {
@@ -9524,7 +9524,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_blackmarket.glb"
   },
-  "runtimeHash": "590060d2e57c0058f30f73324616aaefa5b281af93a36a2ca7227f967b7147f5",
+  "runtimeHash": "7ab42c169d890e8b44c45fb4e25379501c015c4e727f38f4be5987169dec9382",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

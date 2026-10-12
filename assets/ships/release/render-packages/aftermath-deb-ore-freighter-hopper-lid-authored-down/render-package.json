@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7d98ad30878b06af5cf82322d30f4346667be42a6539bf718d9afc8bd859b961",
+  "contentHash": "054221b278052d22a3895be11f7d97f52066a69d640da2a5abe23e31ca8228ff",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,16 +23,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "84f7807c6e97cdd8962a2e574855a3a08f545971c3303f4f0c32126c246b17dc",
+      "geometryHash": "a28df45dd6111ca24281a596c7c5bb8aa47b4428814ee5118efd7f1a4e1e9971",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid-material-insulation.primitive.0",
-      "indexCount": 12702,
+      "indexCount": 12750,
       "indexed": true,
       "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_deb_ore_freighter_hopper_lid_Material_Insulation_mesh",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod0-deb-ore-freighter-hopper-lid-material-insulation",
       "primitiveIndex": 0,
-      "vertexCount": 6177
+      "vertexCount": 6067
     },
     {
       "bounds": {
@@ -48,7 +48,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1771e7ff69220340d00e583b67c3adaf00bc46d90a2679677c4d1f4584248793",
+      "geometryHash": "3ae8783cd9b39deb0b37c4d6d5a0b0185d55daddc0877f82d72db54dc563a7e2",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid-material-insulation.primitive.0",
       "indexCount": 6120,
       "indexed": true,
@@ -57,7 +57,7 @@
       "meshName": "LOD1_deb_ore_freighter_hopper_lid_Material_Insulation_mesh",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod1-deb-ore-freighter-hopper-lid-material-insulation",
       "primitiveIndex": 0,
-      "vertexCount": 4175
+      "vertexCount": 4243
     },
     {
       "bounds": {
@@ -73,7 +73,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "23259aeb30a84f9ee3848895955d6a668940ada194b8d1f9d23f8a1fc638c55d",
+      "geometryHash": "aeb5db7bfad6bd2fc29f021e67a1166bd432a73cf7a34c59999a69ba5e0a8eb3",
       "id": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid-material-insulation.primitive.0",
       "indexCount": 2550,
       "indexed": true,
@@ -82,7 +82,7 @@
       "meshName": "LOD2_deb_ore_freighter_hopper_lid_Material_Insulation_mesh",
       "nodeId": "sf.render.aftermath-deb-ore-freighter-hopper-lid-authored-down.node.lod2-deb-ore-freighter-hopper-lid-material-insulation",
       "primitiveIndex": 0,
-      "vertexCount": 2009
+      "vertexCount": 1999
     }
   ],
   "hlods": [],
@@ -522,19 +522,19 @@
       "sha256": "33868d2e0c15ede093b538e229c10390ab809583d420914964eaf558430702b5"
     },
     "sourceGlb": {
-      "bytes": 335660,
-      "sha256": "e20eb70e39ae1ff46ec79de79a4abecdcc810a1ce707828f8f25af07df3415f8",
+      "bytes": 318664,
+      "sha256": "3cf8e771f5fd04c261e5d122f4d14693def01f6177bdcba90c2463e465e8e102",
       "uri": "place_aftermath_deb_ore_freighter_hopper_lid_authored_down.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 456440,
-    "sha256": "4f7f04f9699550d0601268b0a8b6cb65c2466f738135a3eba0fdbbb1d463308c",
+    "bytes": 458004,
+    "sha256": "8172192e69868413ad200f375c7c63977056cad63b0b2b5ff29ebe56b7bb11b0",
     "uri": "render.glb"
   },
   "runtime": {
@@ -671,7 +671,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_hopper_lid_authored_down.glb"
   },
-  "runtimeHash": "568b38b6675cf7275e324aa290315665ea1abcdccb44f8f4323d365676369f21",
+  "runtimeHash": "fd63cffda66a3f7d4d3837688b63a294eb70fb51d561ff52ea6b98f30fac13aa",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

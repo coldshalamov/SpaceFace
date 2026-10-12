@@ -421,7 +421,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c40aa4ce77e2e0dc9628152d81f10aace502eaa4f3fd86e9c6363d5c0274ece2",
+  "contentHash": "3a361e7fa12c9bc27e13f4b8845f3f373bab35eb2582d4c6e858af4b97088dd1",
   "dynamicGroups": [
     {
       "id": "sf.render.ilex-ark-lod2.node.lod2-motion-ilex-vault-1-armor.dynamic",
@@ -4255,8 +4255,8 @@
       "uri": "ilex_ark_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 270891,
-      "sha256": "9bc80696e1967ad06d73d3b81079c33b7b202581a52004ee92840b98cf4f8950",
+      "bytes": 270903,
+      "sha256": "6a7a4ed87189c29dd9cf0b2a0ee58ff6de9ddb77b3c0895a033acdc49d82a6d9",
       "uri": "pilots.json"
     }
   },
@@ -6272,7 +6272,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ilex_ark_lod2.glb"
   },
-  "runtimeHash": "427100af37971129319df34110827b52b6292f51f54f764e0cd6fd691e696620",
+  "runtimeHash": "f0638a19bcfe89af87e4ac93690d32e737c13dbae94bf840f1433f1058cb1f91",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
