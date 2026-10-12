@@ -1,6 +1,6 @@
 # UI polish review — living doc for the `ui-polish` PR
 
-Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-3` (PR #320) · stacked on `master`.
+Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-6` · off `master` (#322 / #325 frozen after review).
 
 This file tracks the stacked visual polish of every shootable 2D screen (`node scripts/ui-bench.mjs --list`). Seeded from `design/frontend/UNIFICATION_LEDGER.md` where useful; **this REVIEW is the authority for this PR**, not the ledger.
 
@@ -8,7 +8,7 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 ## Remaining work — top priority (ui-polish-6)
 
-- **(a) Race board:** oversized, stacked labels at 1280×720 and 960×540.
+- **(a) Race board:** oversized, stacked labels at 1280×720 and 960×540. **Fixed** — `raceBoardLayouts.js`: the board's children were auto-placed into the kit `.k-screen` grid's zero-height rows, so 30px `.k-word` selects/buttons spilled over the cards. Now a scrolling document: labelled fit rail, three course cards (amber primary Race, outlined story contracts), paint + recognition two-up. Same sheet fixes the Physics board, which shares `.race-board`. Bench can now mount `raceBoard`.
 - **(b) Adventure combat HUD clicks (agreed with Code Work):** during Adventure combat, while weapons are hot, primary clicks go to the game and HUD buttons must not open menus. Build on #327's approach, which only covers Crucible.
 
 ## Design direction (this PR)
@@ -486,4 +486,5 @@ The game already ships a mature system: Deckplate tokens (`--dp-*`) + ORRERY ins
 - `src/ui/orrery/newGameLayouts.js` + `src/ui/screens/newGame.js`: New Game foot keycap rail, secondary contrast, loadout size column, 1080p zoom. Selectors/IDs and loadout data unchanged.
 - `src/ui/orrery/constellationLayouts.js` + `src/ui/screens/techTree.js`: Tech Tree / Research foot keycap rail, hour-verb curve clip (no dial tangle), secondary contrast, rim chrome, 1080p zoom. Selectors/IDs unchanged. ACHIEVEMENTS block untouched.
 - `src/ui/orrery/pauseLayouts.js` + `src/ui/screens/pause.js`: Pause title/brief/ladder contrast, foot keycap rail, 1080p head/brief/foot lift (dial untouched). Selectors/IDs unchanged.
+- `src/ui/orrery/raceBoardLayouts.js` (+ inject in `raceBoard.js` / `physicsVenues.js`; bench loader + catalog id `raceBoard`): Circuits and Physics boards reflowed as described above. Selectors/IDs, data and launch logic unchanged.
 - No selectors/IDs changed; no engine/render, audio, loadout data or HUD threat-marker code touched.

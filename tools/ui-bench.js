@@ -67,6 +67,7 @@ const SCREENS = Object.freeze({
   clips: () => import('../src/ui/screens/clips.js').then((m) => m.clipsScreen),
   sandbox: () => import('../src/ui/screens/sandbox.js').then((m) => m.sandboxScreen),
   physicsVenues: () => import('../src/ui/screens/physicsVenues.js').then((m) => m.physicsVenuesScreen),
+  raceBoard: () => import('../src/ui/screens/raceBoard.js').then((m) => m.raceBoardScreen),
   station: () => import('../src/ui/station/stationScreen.js').then((m) => m.stationScreen),
   ship: () => import('../src/ui/ship/shipScreen.js').then((m) => m.shipScreen),
   galaxyMap: () => import('../src/ui/galaxyMap.js').then((m) => m.galaxyMapScreen),
