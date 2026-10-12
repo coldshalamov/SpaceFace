@@ -5,6 +5,7 @@ const BONE = '236 230 216';
 const VOID = '5 7 10';
 const D = 'html body #screens > .k-screen.orr-crucible.sf-crucible-door.orr-preparation[data-prep-step]';
 const A = 'html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory.orr-visual-armory';
+const R = 'html body #screens > .k-screen.orr-crucible.sf-crucible-refit.orr-refit';
 const CSS = `
 .orr-equipment-glyph { display:block; width:48px; height:48px; flex:none; color:var(--dp-ink); pointer-events:none; }
 ${D} { display:grid !important; grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important; grid-template-rows:auto auto minmax(0,1fr) auto !important; gap:18px 40px !important; padding:30px 48px 22px !important; width:100% !important; height:100dvh !important; max-width:none !important; max-height:none !important; margin:0 !important; overflow:hidden !important; }
@@ -515,6 +516,122 @@ ${A} .sf-cru-note { color:rgb(${BONE} / .88) !important; }
   ${A} .orr-armory-purchase { min-height:54px; font-size:17px; }
   ${A} .orr-armory-reading__name { font-size:clamp(26px,2.5vw,40px) !important; }
   ${A} .k-foot .k-word { font-size:17px !important; }
+}
+
+/* —— UI polish: Crucible Refit (foot rail, keycaps, contrast, lit spare, 1080p lift) —— */
+/* Foot: solid void + upward shadow + stronger top rule (matches door/armory). Continue stays a word. */
+${R} > .k-foot {
+  z-index:6 !important; padding:16px 0 10px !important;
+  border-top:1px solid rgb(${BONE} / .18) !important;
+  background:rgb(${VOID}) !important;
+  box-shadow:0 -32px 48px 16px rgb(${VOID}) !important;
+  isolation:isolate;
+}
+${R} .k-foot .k-words { position:relative; z-index:1; }
+${R} .k-foot .k-word:not(.k-word--primary):not(.is-lamp) {
+  color:rgb(${BONE} / .88) !important; font-weight:600 !important;
+}
+${R} .k-foot .k-word:not(.k-word--primary):not(.is-lamp):is(:hover, :focus-visible) {
+  color:rgb(${BONE} / .98) !important;
+}
+${R} .k-foot .k-word.k-word--primary:not(.is-lamp) {
+  color:rgb(255 253 248) !important; font-weight:700 !important;
+  text-shadow:0 0 18px rgb(0 0 0 / .55) !important; background:none !important; background-image:none !important;
+}
+${R} .k-foot .k-word.k-word--primary:not(.is-lamp):is(:hover, :focus-visible) {
+  color:var(--dp-hand-hot, #ffd98c) !important;
+  text-shadow:0 0 22px rgb(242 185 80 / .5) !important;
+}
+${R} .k-foot .sf-cru-fine, ${R} .k-foot .sf-cru-keynote {
+  color:rgb(${BONE} / .86) !important; position:relative; z-index:1; max-width:42ch;
+}
+${R} .k-foot .k-word--primary.is-lamp .sf-cru-kbd {
+  color:rgb(${BONE} / .92) !important; border-color:rgb(${BONE} / .55) !important;
+}
+/* Keycaps — .sf-cru-kbd on foot verbs + Enter on lit FIT (override bare-hint strip in screenLayouts). */
+${R} .k-foot :is(.sf-cru-kbd, .k-kbd, .dp-kbd, kbd) {
+  display:inline-block !important; box-sizing:border-box !important;
+  margin-left:12px !important; margin-right:0 !important;
+  padding:3px 7px 4px !important; min-width:0 !important; height:auto !important;
+  font:600 11px var(--dp-face-label) !important; letter-spacing:.2em !important;
+  line-height:1 !important; text-transform:uppercase !important;
+  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important;
+  border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important;
+  opacity:1 !important; text-shadow:none !important; place-items:unset !important;
+}
+${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-act:not(:disabled)::after {
+  display:inline-block !important; box-sizing:border-box !important;
+  margin-left:10px !important; padding:3px 7px 4px !important; min-width:0 !important;
+  width:auto !important; height:auto !important;
+  font:600 11px var(--dp-face-label) !important; letter-spacing:.2em !important;
+  line-height:1 !important; text-transform:uppercase !important;
+  color:rgb(${BONE} / .9) !important; background:rgb(${BONE} / .1) !important;
+  border:1px solid rgb(${BONE} / .5) !important; border-radius:3px !important;
+  box-shadow:inset 0 -1px 0 rgb(0 0 0 / .35) !important; vertical-align:baseline !important;
+  place-items:unset !important;
+}
+
+/* Secondary contrast — bone alphas on sub, slot tags, bare values, contrast, spares, fit count. */
+${R} > .k-title .sf-cru-sub { color:rgb(${BONE} / .86) !important; }
+${R} > .k-title .sf-cru-preview { color:rgb(${BONE} / .82) !important; }
+${R} > .sf-cru-stage.orr-hull--on .sf-cru-row { color:rgb(${BONE} / .84) !important; }
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__n { color:rgb(${BONE} / .72) !important; }
+${R} > .sf-cru-stage.orr-hull--on .sf-cru-slottag { color:rgb(${BONE} / .78) !important; }
+${R} > .sf-cru-stage.orr-hull--on .is-bare .orr-hp__value { color:rgb(${BONE} / .8) !important; }
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__contrast { color:rgb(${BONE} / .78) !important; }
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__spare { color:rgb(${BONE} / .72) !important; }
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__spare-stat { color:rgb(${BONE} / .78) !important; }
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__empty { color:rgb(${BONE} / .78) !important; }
+${R} > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare { color:rgb(${BONE} / .78) !important; }
+${R} > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare-name::before { color:rgb(${BONE} / .72) !important; }
+${R} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { color:rgb(${BONE} / .84) !important; }
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-word { fill:rgb(${BONE} / .8) !important; }
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__scales .orr-hp__scale-max { fill:rgb(${BONE} / .7) !important; }
+
+/* Selected / focus Hand underline on spares — 2px + soft glow (matches armory filters). */
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__spare::after {
+  height:2px !important; background:rgb(${BONE} / .85) !important;
+}
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__spare[aria-checked="true"] {
+  color:rgb(255 253 248) !important;
+}
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__spare[aria-checked="true"]::after {
+  background:var(--dp-hand, #f2b950) !important;
+  box-shadow:0 0 8px rgb(242 185 80 / .45) !important;
+}
+${R} > .sf-cru-stage.orr-hull--on .orr-hp__spare:focus-visible::after {
+  height:2px !important; background:var(--dp-hand, #f2b950) !important;
+  box-shadow:0 0 8px rgb(242 185 80 / .5) !important;
+}
+${R} > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare[aria-checked="true"] {
+  color:rgb(${BONE} / .96) !important;
+}
+${R} > .sf-cru-stage.orr-hull--on .is-open .orr-hp__spare::after {
+  height:2px !important;
+  background:repeating-linear-gradient(90deg, var(--dp-hand, #f2b950) 0 4px, transparent 4px 7px) !important;
+  box-shadow:0 0 6px rgb(242 185 80 / .3) !important;
+}
+${R} > .sf-cru-stage.orr-hull--on .sf-cru-row.is-lit .sf-cru-slottag { color:rgb(${BONE} / .92) !important; }
+
+/* Short plates: keep the void rail, but don't bury the fit count under a tall foot. */
+@media (max-height:820px) {
+  ${R} > .k-foot { padding:8px 0 4px !important; box-shadow:0 -18px 24px 6px rgb(${VOID}) !important; }
+  ${R} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { bottom:178px !important; }
+}
+
+/* 1080p lift — type/spacing without CSS zoom (door/armory lesson: zoom clips the foot). */
+@media (min-width:1800px) and (max-width:2199px) and (min-height:1000px) {
+  ${R} > .k-title .k-t-title { font-size:clamp(38px, 4.8vh, 56px) !important; }
+  ${R} > .k-title .sf-cru-sub { font-size:15px !important; max-width:48ch; }
+  ${R} > .sf-cru-stage.orr-hull--on .orr-hp__n { font-size:23px !important; }
+  ${R} > .sf-cru-stage.orr-hull--on .orr-hp__value { font-size:18px !important; }
+  ${R} > .sf-cru-stage.orr-hull--on .orr-hp__spare-name { font-size:16px !important; }
+  ${R} > .sf-cru-stage.orr-hull--on .sf-cru-slottag { font-size:13px !important; }
+  ${R} > .sf-cru-stage.orr-hull--on .orr-hp__contrast { font-size:13px !important; }
+  ${R} .k-foot .k-word { font-size:17px !important; }
+  ${R} > .sf-cru-stage.orr-hull--on .orr-hull-fitcount { font-size:13px !important; bottom:172px; }
+  ${R} > .k-foot { padding:18px 0 12px !important; }
 }
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {

@@ -1,6 +1,6 @@
 # UI polish review — living doc for the `ui-polish` PR
 
-Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-3` (PR #320) · stacked on `master`.
+Branch worktree: `/workspace/spaceface-scratch/ui-polish` · branch `ui-polish-4` (PR #322) · stacked on `master`.
 
 This file tracks the stacked visual polish of every shootable 2D screen (`node scripts/ui-bench.mjs --list`). Seeded from `design/frontend/UNIFICATION_LEDGER.md` where useful; **this REVIEW is the authority for this PR**, not the ledger.
 
@@ -56,8 +56,10 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 | `chart` / `galaxyMap` / `chart-galaxy` / `chart-route` / `chart-local` | SURVEYED | Ledger DONE for chart shell |
 | `station` / `station-dock` + tabs (`market`, `shipworks`, `industry`, `contracts`, `factions`, `bar`, `ledger`) | SURVEYED | Ledger DONE; re-judge when stack reaches station |
 | **`crucible` / `crucible-door`** | **DONE** (Encounter / door) | See § Crucible door below |
-| **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below — this session |
-| `crucible-rearm` / `crucible-refit` / `crucible-results` | OPEN | Next after armory |
+| **`crucible-draft`** / armory | **DONE** | See § Crucible Armory below |
+| **`crucible-rearm`** | **DONE** | Alias of armory / `crucible-draft` — no separate polish |
+| **`crucible-refit`** | **DONE** | See § Crucible Refit below — this session |
+| `crucible-results` | OPEN | Next after refit |
 | `demoEnd` | SURVEYED | |
 | `asteroid-works` / `drill` / `drill-claimed` / `drill-build` | SURVEYED | Own design law |
 | `base` / `base-claimed` | SURVEYED | |
@@ -428,7 +430,37 @@ Owner bar: consistent, high-detail, creative, interactive, non-generic. Design a
 
 **Code touched:** `src/ui/orrery/cruciblePreparationLayouts.js` (Armory `${A}` polish block only). No commit this session — parent reviews then commits.
 
-**Next:** `crucible-rearm` (or refit / results), then the next unfinished screen in the ledger.
+**Next:** `crucible-refit` — now DONE (see below); remaining: `crucible-results`.
+
+
+
+---
+
+## Crucible Refit (`crucible-refit`) — session notes (2026-10-12)
+
+**Before:** Foot was a thin top border only (no void backing/shadow); ESC / Space·Y / hold F·X rode as bare hint glyphs without stack keycaps; secondary copy (`.sf-cru-sub`, slot tags, bare values, contrast lines, spare stats, fit count, foot fine print) leaned washed (~0.5–0.66); selected spare underline was 1px bone; Enter on lit FIT was a bare hint; 1080p type felt small for the plate.
+
+**After (CSS under `${R}` in `cruciblePreparationLayouts.js` + `injectCruciblePreparation()` from refit mount — door `${D}` / armory `${A}` untouched):**
+
+1. **Foot rail** — solid `rgb(5 7 10)` void + upward void shadow + stronger top rule (`bone / .18`); Take-the-win lamp stays Hand word (not a fill slab); Keep Going stays bone/hot word; `.sf-cru-kbd` stack keycaps (padding, bone/0.5 border, inset shadow); fine-print keynotes toward bone ~0.86.
+2. **Secondary contrast** — sub, row labels, slot tags, bare values, contrast, spare stats, empty lines, scales words, fit count raised toward bone ~0.72–0.86.
+3. **Lit spare / Enter** — checked spare Hand underline 2px + soft glow; open-offer dashed Hand rule; lit FIT `::after` Enter restyled as stack keycap.
+4. **1080p lift** — title/sub/hardpoint type + foot words nudged in 1800–2199×≥1000 band **without** CSS zoom. Short-height (`max-height:820px`) keeps a shorter foot + raised fit count so "N of M fitted" stays clear of the rail (720p measured clean after the bury fix).
+
+**Walk:** `node scripts/ui-bench.mjs --shot=crucible-refit --viewport=1920x1080` and `--viewport=1280x720` — exit 0; measured clean both. `--walk` exit 0 (controls respond; Autocannon line is a pre-existing no-picture-change tangle). Selectors/IDs and loadout catalog data unchanged.
+
+**Artifacts**
+
+| | Path |
+|---|---|
+| Before (@1080) | `docs/ui-polish/crucible-refit-before.png` |
+| Before (@720) | `docs/ui-polish/crucible-refit-before-720.png` |
+| After (@1080) | `docs/ui-polish/crucible-refit-after.png` |
+| After (@720) | `docs/ui-polish/crucible-refit-after-720.png` |
+
+**Code touched:** `src/ui/orrery/cruciblePreparationLayouts.js` (`${R}` polish block), `src/ui/screens/crucibleDraft.js` (inject call only). No assets/, audio, HUD threat markers, engine/render, or selector/ID changes.
+
+**Next:** `crucible-results`, then the next unfinished screen in the ledger.
 
 
 ---
