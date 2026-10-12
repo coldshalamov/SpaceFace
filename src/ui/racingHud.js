@@ -8,6 +8,7 @@ import { toggleSteeringView, rememberRacingResult } from './racingControls.js';
 import { createRacingMap, formatRaceTime } from './racingMap.js';
 import { finishRacingCupHeat, releaseRacingCupHeat, recordRaceMeeting } from '../systems/racingCareer.js';
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
+import { isRunSealed } from '../core/runSeal.js';
 import { applyWorldObjectSelection } from './worldObjectInteraction.js';
 
 export function mountRacingHud({ root, bus, state, screens }) {
@@ -27,7 +28,10 @@ export function mountRacingHud({ root, bus, state, screens }) {
   const row = make('div','race-tape-actions');
   const live = make('span','race-sr-only'); live.setAttribute('role','status'); live.setAttribute('aria-live','polite');
   const button = (text, action) => {
-    const b = make('button','k-word',text); b.type='button'; b.addEventListener('click',action); row.appendChild(b); return b;
+    const b = make('button','k-word',text); b.type='button';
+    // Blur after activate so Space/Enter cannot re-fire a HUD button mid-combat.
+    b.addEventListener('click', (ev) => { action(ev); try { b.blur(); } catch {} });
+    row.appendChild(b); return b;
   };
   const view = button(`View ${BINDINGS.steeringView.label}`,()=>toggleSteeringView(state,bus));
   const reset = button('Recover',()=>bus?.emit?.('race:reset',{}));
@@ -76,8 +80,12 @@ export function mountRacingHud({ root, bus, state, screens }) {
       const st = liveState || state;
       const inFlight = st?.mode === 'flight' && !st.ui?.docked && !screens?.isOpen?.()
         && !st.render?.photoMode?.active && st.entities?.get?.(st.playerId)?.alive !== false;
-      panel.hidden=!inFlight || st.physicsVenuePublic?.active === true;
-      if(!inFlight)return;
+      // Crucible (Swarm/Gauntlet/boss_circuit/block): sealed survival run. Racing does not
+      // exist there; the compact Circuits tape was stealing combat mouse-fire clicks
+      // (player-truth swarm frame ~0212 → raceBoard, sim frozen at 140.1 s).
+      const crucibleLive = !!(st?.run && st.run.kind === 'survival' && isRunSealed(st));
+      panel.hidden = !inFlight || st.physicsVenuePublic?.active === true || crucibleLive;
+      if (!inFlight || crucibleLive) return;
       const now=st.simTime||0;
       if(now>=lastTick&&now-lastTick<0.1)return;
       lastTick=now;
