@@ -17,6 +17,7 @@ import { selectLatestOccupiedSlot } from '../../save/saveSystem.js';
 import { createArcRail } from '../orrery/arcRail.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
+import { injectTitleAsideLayouts } from '../orrery/titleAsideLayouts.js';
 
 const LS_PREFIX = 'sf.save.';
 /** Show or hide Continue's row on the dial, and re-seat the dial when it changes. */
@@ -370,8 +371,10 @@ export const mainMenuScreen = {
       { action: 'help', label: 'Help' },
       { action: 'archive', label: 'Archive' },
       { action: 'circuits', label: 'Circuits' },
-      { action: 'physics', label: 'Physics challenges' },
+      // Sandbox before Physics challenges: on the dial the line sets as three short lines (title
+      // aside overlay), and the longest label closes the block on a line of its own.
       { action: 'sandbox', label: 'Sandbox' },
+      { action: 'physics', label: 'Physics challenges' },
     ];
 
     // The decorative legend rail is gone (2026-09-22). It was a 64x787 nine-slice plate whose only
@@ -400,6 +403,7 @@ export const mainMenuScreen = {
       onPick: (action) => this._pick(ctx, action),
     });
     aside.classList.add('of-title-aside');
+    injectTitleAsideLayouts();
     stage.appendChild(aside);
     detachLamp = attachAttentionLamp(stage);
     // ORRERY: the same buttons, set round the rim of the emblem's dial; the amber Hand swings from
